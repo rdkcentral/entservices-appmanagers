@@ -24,6 +24,8 @@ set(PLUGIN_OCICONTAINER_STARTUPORDER "" CACHE STRING "To configure startup order
 
 find_package(PkgConfig)
 find_package(${NAMESPACE}Plugins REQUIRED)
+find_package(${NAMESPACE}Definitions REQUIRED)
+find_package(CompileSettingsDebug CONFIG REQUIRED)
 find_package(Dobby CONFIG)
 
 # Temporary fix to get defines in Dobby. Will be removed later.
@@ -36,14 +38,22 @@ if(NOT OMI_CLIENT_FOUND)
     message("Using stubs for omiclientlib")
 endif()
 
+add_definitions(-DOCICONTAINER_API_VERSION_NUMBER_MAJOR=1)
+add_definitions(-DOCICONTAINER_API_VERSION_NUMBER_MINOR=0)
+add_definitions(-DOCICONTAINER_API_VERSION_NUMBER_PATCH=0)
+
 add_library(${MODULE_NAME} SHARED
         OCIContainer.cpp
+        OCIContainerImplementation.cpp
+        DobbyInterface.cpp
         Module.cpp
 )
 
 set_target_properties(${MODULE_NAME} PROPERTIES
         CXX_STANDARD 11
         CXX_STANDARD_REQUIRED YES)
+
+set_source_files_properties(OCIContainer.cpp PROPERTIES COMPILE_FLAGS "-fexceptions")
 
 list(APPEND CMAKE_MODULE_PATH
         "${CMAKE_CURRENT_SOURCE_DIR}/cmake/")
@@ -64,19 +74,18 @@ find_package_handle_standard_args(
     SYSTEMD_LIBRARIES SYSTEMD_INCLUDE_DIRS
 )
 
-
 target_include_directories(${MODULE_NAME}
         PRIVATE
         ../helpers
         ${OMI_CLIENT_INCLUDE_DIRS}
 )
 
-
 target_link_libraries(${MODULE_NAME}
         PRIVATE
-
+        CompileSettingsDebug::CompileSettingsDebug
         ${DOBBY_LIBRARIES}
         ${NAMESPACE}Plugins::${NAMESPACE}Plugins
+        ${NAMESPACE}Definitions::${NAMESPACE}Definitions
         ${SYSTEMD_LIBRARIES}
         ${OMI_CLIENT_LIBRARIES}
 )
