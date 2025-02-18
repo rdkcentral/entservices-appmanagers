@@ -215,7 +215,7 @@ static bool is_encrypted(const std::string &bundlePath) {
     return true;
 }
 
-bool DobbyInterface::startContainer(const string& containerId, const string& bundlePath, const string& command, const string& westerosSocket, uint32_t& descriptor, string& errorReason)
+bool DobbyInterface::startContainer(const string& containerId, const string& bundlePath, const string& command, const string& westerosSocket, int32_t& descriptor, string& errorReason)
 {
     LOGINFO("Start container from OCI bundle");
     if (nullptr == mDobbyProxy)
@@ -294,7 +294,7 @@ bool DobbyInterface::startContainer(const string& containerId, const string& bun
     return true;
 }
 
-bool DobbyInterface::startContainerFromDobbySpec(const string& containerId, const string& dobbySpec, const string& command, const string& westerosSocket, uint32_t& descriptor, string& errorReason)
+bool DobbyInterface::startContainerFromDobbySpec(const string& containerId, const string& dobbySpec, const string& command, const string& westerosSocket, int32_t& descriptor, string& errorReason)
 {
     LOGINFO("Start container from Dobby spec");
     if (nullptr == mDobbyProxy)

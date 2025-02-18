@@ -170,14 +170,14 @@ namespace WPEFramework
             return Core::ERROR_NONE;
         }
 
-        Core::hresult OCIContainerImplementation::StartContainer(const string& containerId, const string& bundlePath, const string& command, const string& westerosSocket, uint32_t& descriptor, bool& success, string& errorReason)
+        Core::hresult OCIContainerImplementation::StartContainer(const string& containerId, const string& bundlePath, const string& command, const string& westerosSocket, int32_t& descriptor, bool& success, string& errorReason)
         {
             success = mDobbyInterface->startContainer(containerId, bundlePath, command, westerosSocket, descriptor, errorReason);
 
             return Core::ERROR_NONE;
         }
 
-        Core::hresult OCIContainerImplementation::StartContainerFromDobbySpec(const string& containerId, const string& dobbySpec, const string& command, const string& westerosSocket, uint32_t& descriptor, bool& success, string& errorReason)
+        Core::hresult OCIContainerImplementation::StartContainerFromDobbySpec(const string& containerId, const string& dobbySpec, const string& command, const string& westerosSocket, int32_t& descriptor, bool& success, string& errorReason)
         {
             success = mDobbyInterface->startContainerFromDobbySpec(containerId, dobbySpec, command, westerosSocket, descriptor, errorReason);
 

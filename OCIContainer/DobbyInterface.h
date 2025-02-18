@@ -44,8 +44,8 @@ namespace Plugin
             bool listContainers(string& containers, string& errorReason);
             bool getContainerInfo(const string& containerId, string& info, string& errorReason);
             bool getContainerState(const string& containerId, string& state, string& errorReason);
-            bool startContainer(const string& containerId, const string& bundlePath, const string& command, const string& westerosSocket, uint32_t& descriptor, string& errorReason);
-            bool startContainerFromDobbySpec(const string& containerId, const string& dobbySpec, const string& command, const string& westerosSocket, uint32_t& descriptor, string& errorReason);
+            bool startContainer(const string& containerId, const string& bundlePath, const string& command, const string& westerosSocket, int32_t& descriptor, string& errorReason);
+            bool startContainerFromDobbySpec(const string& containerId, const string& dobbySpec, const string& command, const string& westerosSocket, int32_t& descriptor, string& errorReason);
             bool stopContainer(const string& containerId, bool force, string& errorReason);
             bool pauseContainer(const string& containerId, string& errorReason);
             bool resumeContainer(const string& containerId, string& errorReason);

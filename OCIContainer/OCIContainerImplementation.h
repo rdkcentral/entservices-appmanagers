@@ -102,8 +102,8 @@ namespace Plugin
             virtual Core::hresult ListContainers(string& containers, bool& success, string& errorReason) override;
             virtual Core::hresult GetContainerInfo(const string& containerId, string& info, bool& success, string& errorReason) override;
             virtual Core::hresult GetContainerState(const string& containerId, ContainerState& state, bool& success, string& errorReason) override;
-            virtual Core::hresult StartContainer(const string& containerId, const string& bundlePath, const string& command, const string& westerosSocket, uint32_t& descriptor, bool& success, string& errorReason) override;
-            virtual Core::hresult StartContainerFromDobbySpec(const string& containerId, const string& dobbySpec, const string& command, const string& westerosSocket, uint32_t& descriptor, bool& success, string& errorReason) override;
+            virtual Core::hresult StartContainer(const string& containerId, const string& bundlePath, const string& command, const string& westerosSocket, int32_t& descriptor, bool& success, string& errorReason) override;
+            virtual Core::hresult StartContainerFromDobbySpec(const string& containerId, const string& dobbySpec, const string& command, const string& westerosSocket, int32_t& descriptor, bool& success, string& errorReason) override;
             virtual Core::hresult StopContainer(const string& containerId, bool force, bool& success, string& errorReason) override;
             virtual Core::hresult PauseContainer(const string& containerId, bool& success, string& errorReason) override;
             virtual Core::hresult ResumeContainer(const string& containerId, bool& success, string& errorReason) override;
