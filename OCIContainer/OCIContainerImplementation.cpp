@@ -132,7 +132,7 @@ namespace WPEFramework
                     while (index != mOCIContainerNotification.end())
                     {
                         string containerId("");
-                        ContainerState state(TERMINATED);
+                        ContainerState state(Invalid);
                         (*index)->OnContainerStateChanged(containerId, state);
                         ++index;
                     }
@@ -163,10 +163,8 @@ namespace WPEFramework
 
         Core::hresult OCIContainerImplementation::GetContainerState(const string& containerId, ContainerState& state, bool& success, string& errorReason)
         {
-            std::string stateString;
-            success = mDobbyInterface->getContainerState(containerId, stateString, errorReason);
+            success = mDobbyInterface->getContainerState(containerId, state, errorReason);
 
-            //TODO Convert from statestring to state
             return Core::ERROR_NONE;
         }
 
