@@ -59,7 +59,7 @@ namespace WPEFramework
             return Core::ERROR_NONE;
         }
         
-        Core::hresult OCIContainerImplementation::Unregister(Exchange::IOCIContainer::INotification *notification )
+        Core::hresult OCIContainerImplementation::Unregister(Exchange::IOCIContainer::INotification *notification)
         {
             Core::hresult status = Core::ERROR_GENERAL;
         
@@ -149,169 +149,109 @@ namespace WPEFramework
 
         Core::hresult OCIContainerImplementation::ListContainers(string& containers, bool& success, string& errorReason)
         {
-            Core::hresult status = Core::ERROR_NONE;
             success = mDobbyInterface->listContainers(containers, errorReason);
-            if (!success)
-            {
-                status = Core::ERROR_GENERAL;    
-            }
-            return status;
+
+            return Core::ERROR_NONE;
         }
 
         Core::hresult OCIContainerImplementation::GetContainerInfo(const string& containerId, string& info, bool& success, string& errorReason)
         {
-            Core::hresult status = Core::ERROR_NONE;
             success = mDobbyInterface->getContainerInfo(containerId, info, errorReason);
-            if (!success)
-            {
-                status = Core::ERROR_GENERAL;
-            }
-            return status;
+
+            return Core::ERROR_NONE;
         }
 
         Core::hresult OCIContainerImplementation::GetContainerState(const string& containerId, ContainerState& state, bool& success, string& errorReason)
         {
-            Core::hresult status = Core::ERROR_NONE;
             std::string stateString;
             success = mDobbyInterface->getContainerState(containerId, stateString, errorReason);
-            if (!success)
-            {
-                status = Core::ERROR_GENERAL;    
-            }
+
             //TODO Convert from statestring to state
-            return status;
+            return Core::ERROR_NONE;
         }
 
         Core::hresult OCIContainerImplementation::StartContainer(const string& containerId, const string& bundlePath, const string& command, const string& westerosSocket, uint32_t& descriptor, bool& success, string& errorReason)
         {
-            Core::hresult status = Core::ERROR_NONE;
             success = mDobbyInterface->startContainer(containerId, bundlePath, command, westerosSocket, descriptor, errorReason);
-            if (!success)
-            {
-                status = Core::ERROR_GENERAL;    
-            }
-            return status;
+
+            return Core::ERROR_NONE;
         }
 
         Core::hresult OCIContainerImplementation::StartContainerFromDobbySpec(const string& containerId, const string& dobbySpec, const string& command, const string& westerosSocket, uint32_t& descriptor, bool& success, string& errorReason)
         {
-            Core::hresult status = Core::ERROR_NONE;
             success = mDobbyInterface->startContainerFromDobbySpec(containerId, dobbySpec, command, westerosSocket, descriptor, errorReason);
-            if (!success)
-            {
-                status = Core::ERROR_GENERAL;    
-            }
-            return status;
+
+            return Core::ERROR_NONE;
         }
 
         Core::hresult OCIContainerImplementation::StopContainer(const string& containerId, bool force, bool& success, string& errorReason)
         {
-            Core::hresult status = Core::ERROR_NONE;
             success = mDobbyInterface->stopContainer(containerId, force, errorReason);
-            if (!success)
-            {
-                status = Core::ERROR_GENERAL;    
-            }
-            return status;
+
+            return Core::ERROR_NONE;
         }
 
         Core::hresult OCIContainerImplementation::PauseContainer(const string& containerId, bool& success, string& errorReason)
         {
-            Core::hresult status = Core::ERROR_NONE;
             success = mDobbyInterface->pauseContainer(containerId, errorReason);
-            if (!success)
-            {
-                status = Core::ERROR_GENERAL;    
-            }
-            return status;
+
+            return Core::ERROR_NONE;
         }
 
         Core::hresult OCIContainerImplementation::ResumeContainer(const string& containerId, bool& success, string& errorReason)
         {
-            Core::hresult status = Core::ERROR_NONE;
             success = mDobbyInterface->resumeContainer(containerId, errorReason);
-            if (!success)
-            {
-                status = Core::ERROR_GENERAL;    
-            }
-            return status;
+
+            return Core::ERROR_NONE;
         }
 
         Core::hresult OCIContainerImplementation::HibernateContainer(const string& containerId, const string& options, bool& success, string& errorReason)
         {
-            Core::hresult status = Core::ERROR_NONE;
             success = mDobbyInterface->hibernateContainer(containerId, options, errorReason);
-            if (!success)
-            {
-                status = Core::ERROR_GENERAL;    
-            }
-            return status;
+
+            return Core::ERROR_NONE;
         }
 
         Core::hresult OCIContainerImplementation::WakeupContainer(const string& containerId, bool& success, string& errorReason)
         {
-            Core::hresult status = Core::ERROR_NONE;
             success = mDobbyInterface->wakeupContainer(containerId, errorReason);
-            if (!success)
-            {
-                status = Core::ERROR_GENERAL;    
-            }
-            return status;
+
+            return Core::ERROR_NONE;
         }
 
         Core::hresult OCIContainerImplementation::ExecuteCommand(const string& containerId, const string& options, const string& command, bool& success ,string& errorReason)
         {
-            Core::hresult status = Core::ERROR_NONE;
             success = mDobbyInterface->executeCommand(containerId, options, command, errorReason);
-            if (!success)
-            {
-                status = Core::ERROR_GENERAL;    
-            }
-            return status;
+
+            return Core::ERROR_NONE;
         }
 
         Core::hresult OCIContainerImplementation::Annotate(const string& containerId, const string& key, const string& value, bool& success, string& errorReason)
         {
-            Core::hresult status = Core::ERROR_NONE;
             success = mDobbyInterface->annotate(containerId, key, value, errorReason);
-            if (!success)
-            {
-                status = Core::ERROR_GENERAL;    
-            }
-            return status;
+
+            return Core::ERROR_NONE;
         }
 
         Core::hresult OCIContainerImplementation::RemoveAnnotation(const string& containerId, const string& key, bool& success, string& errorReason)
         {
-            Core::hresult status = Core::ERROR_NONE;
             success = mDobbyInterface->removeAnnotation(containerId, key, errorReason);
-            if (!success)
-            {
-                status = Core::ERROR_GENERAL;    
-            }
-            return status;
+
+            return Core::ERROR_NONE;
         }
 
         Core::hresult OCIContainerImplementation::Mount(const string& containerId, const string& source, const string& target, const string& type, const string& options, bool& success ,string& errorReason)
         {
-            Core::hresult status = Core::ERROR_NONE;
             success = mDobbyInterface->mount(containerId, source, target, type, options, errorReason);
-            if (!success)
-            {
-                status = Core::ERROR_GENERAL;    
-            }
-            return status;
+
+            return Core::ERROR_NONE;
         }
 
         Core::hresult OCIContainerImplementation::Unmount(const string& containerId, const string& target, bool& success, string& errorReason)
         {
-            Core::hresult status = Core::ERROR_NONE;
             success = mDobbyInterface->unmount(containerId, target, errorReason);
-            if (!success)
-            {
-                status = Core::ERROR_GENERAL;    
-            }
-            return status;
+
+            return Core::ERROR_NONE;
         }
 
         void OCIContainerImplementation::onContainerStarted(JsonObject& data)
