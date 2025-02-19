@@ -201,6 +201,7 @@ namespace WPEFramework
 		mLoadedApplications.push_back(context);
 	    }
             context->setTargetLifecycleState(targetLifecycleState);
+            context->setMostRecentIntent(launchIntent);
             success = RequestHandler::getInstance()->launch(context, launchIntent, targetLifecycleState, errorReason);
             if (!success)
 	    {
@@ -226,17 +227,13 @@ namespace WPEFramework
 
             string errorReason("");
             context->setTargetLifecycleState(targetLifecycleState);
+            context->setMostRecentIntent(launchIntent);
 
             bool success = RequestHandler::getInstance()->updateState(context, targetLifecycleState, errorReason);
             if (false == success)
             {
                 status = Core::ERROR_GENERAL;
                 return status;
-            }
-            success = RequestHandler::getInstance()->sendIntent(context, launchIntent, errorReason);
-            if (false == success)
-            {
-                status = Core::ERROR_GENERAL;
             }
             return status;
         }
