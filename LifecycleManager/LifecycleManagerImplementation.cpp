@@ -320,8 +320,8 @@ namespace WPEFramework
 	Core::hresult LifecycleManagerImplementation::AppReady(const string& appId)
         {
             Core::hresult status = Core::ERROR_NONE;
-            //QUESTION
-	    //Anything to do here?
+	    printf("[LifecycleManager] Received appReady event for [%s] \n", appId.c_str());
+	    fflush(stdout);
 	    return status;
 	}
 
