@@ -368,24 +368,6 @@ namespace WPEFramework
 	    return status;
 	}
 
-        Core::hresult LifecycleManagerImplementation::RuntimeTerminated(const string& appInstanceId, const Exchange::ILifecycleManagerRuntime::AppTerminatedReason terminatedReason)
-	{
-            Core::hresult status = Core::ERROR_NONE;
-            ApplicationContext* context = getContext(appInstanceId, "");
-            if (nullptr == context)
-	    {
-                status = Core::ERROR_GENERAL;
-                return status;
-	    }
-            string errorReason("");
-            bool success = RequestHandler::getInstance()->updateState(context, Exchange::ILifecycleManager::LifecycleState::TERMINATING, errorReason);
-            if (!success || !(errorReason.empty()))
-	    {
-                status = Core::ERROR_GENERAL;
-	    }
-	    return status;
-	}
-
         uint32_t LifecycleManagerImplementation::Configure(PluginHost::IShell* service)
         {
             uint32_t result = Core::ERROR_GENERAL;
