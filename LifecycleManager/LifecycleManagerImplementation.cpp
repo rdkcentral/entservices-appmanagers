@@ -335,10 +335,8 @@ namespace WPEFramework
 
 	Core::hresult LifecycleManagerImplementation::CloseApp(const string& appId, const Exchange::ILifecycleManagerState::AppCloseReason closeReason)
         {
-            //QUESTION
-	    //This needs to be appInstaneId ?
             Core::hresult status = Core::ERROR_NONE;
-            ApplicationContext* context = getContext(appId, "");
+            ApplicationContext* context = getContext("", appId);
             if (nullptr == context)
 	    {
                 status = Core::ERROR_GENERAL;
@@ -347,7 +345,7 @@ namespace WPEFramework
 	    bool success = false;
             bool activate = false;
             string errorReason(""), appInstanceId("");
-            status = KillApp(appId, errorReason, success); 
+            status = KillApp(context->getAppInstanceId(), errorReason, success); 
             if (status != Core::ERROR_NONE)
 	    {
                 printf("Failed to close the app [%s]\n", appId.c_str());
