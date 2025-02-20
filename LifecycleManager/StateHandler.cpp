@@ -235,6 +235,7 @@ namespace WPEFramework
 
                 if (nullptr != eventHandler)
                 {
+                    //Need to populate intent as event parameter
                     JsonObject eventData;
                     eventData["appId"] = context->getAppId();
                     eventData["state"] = (uint32_t)(((State*)context->getState())->getValue());
