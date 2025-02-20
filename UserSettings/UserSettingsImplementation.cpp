@@ -441,7 +441,7 @@ uint32_t UserSettingsImplementation::GetUserSettingsValue(const string& key, str
     if (nullptr != _remotStoreObject)
     {
         status = _remotStoreObject->GetValue(Exchange::IStore2::ScopeType::DEVICE, USERSETTINGS_NAMESPACE, key, value, ttl);
-        LOGINFO("status[%d]", status);
+        LOGINFO("Key[%s] value[%s] status[%d]", key.c_str(), value.c_str(), status);
         if(Core::ERROR_UNKNOWN_KEY == status || Core::ERROR_NOT_EXIST == status)
         {
             if(usersettingsDefaultMap.find(key)!=usersettingsDefaultMap.end())
@@ -862,7 +862,7 @@ uint32_t UserSettingsImplementation::GetVoiceGuidanceRate(double &rate) const
     std::string value = "";
 
     status = GetUserSettingsValue(USERSETTINGS_VOICE_GUIDANCE_RATE_KEY, value);
-    if(Core::ERROR_NONE == status)
+    if(Core::ERROR_NONE == status && !(value.empty()))
     {
         rate = std::stod(value);
     }
