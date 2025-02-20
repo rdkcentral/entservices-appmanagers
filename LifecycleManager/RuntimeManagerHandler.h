@@ -77,10 +77,9 @@ namespace Plugin {
             bool suspend(const string& appInstanceId, string& errorReason);
             bool resume(const string& appInstanceId, string& errorReason);
             bool hibernate(const string& appInstanceId, string& errorReason);
-            string getRuntimeStats(ApplicationContext* context); //MADANA NEED TO PASS CONTEXT OR NEEDED INFO ONLY
+            bool getRuntimeStats(const string& appInstanceId, string& info);
 
         private:
-            PluginHost::IShell *mRuntimeManagerController;
             Exchange::IRuntimeManager* mRuntimeManager;
             IEventHandler* mEventHandler;
     };

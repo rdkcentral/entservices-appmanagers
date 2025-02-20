@@ -25,7 +25,7 @@ namespace WPEFramework {
 namespace Plugin {
 
 RuntimeManagerHandler::RuntimeManagerHandler()
-: mRuntimeManagerController(nullptr), mRuntimeManager(nullptr), mEventHandler(nullptr)
+: mRuntimeManager(nullptr), mEventHandler(nullptr)
 {
     LOGINFO("Create RuntimeManagerHandler Instance");
 }
@@ -61,10 +61,15 @@ void RuntimeManagerHandler::deinitialize()
     mRuntimeManager = nullptr;
 }
 
-string RuntimeManagerHandler::getRuntimeStats(ApplicationContext* context)
+bool RuntimeManagerHandler::getRuntimeStats(const string& appInstanceId, string& info)
 {
-    //PENDING get runtimestats
-    return "";
+    Core::hresult result = mRuntimeManager->GetInfo(appInstanceId, info);
+    if (Core::ERROR_NONE != result)
+    {
+        LOGINFO("unable to get information about application");
+        return false;
+    }
+    return true;
 }
 
 bool RuntimeManagerHandler::run(const string& appInstanceId, const string& appPath, const string& appConfig, const string& runtimeAppId, const string& runtimePath, const string& runtimeConfig, const string& environmentVars, const bool enableDebugger, const string& launchArgs, string& errorReason)
@@ -100,9 +105,8 @@ bool RuntimeManagerHandler::run(const string& appInstanceId, const string& appPa
     pathsIterator = Core::Service<RPC::StringIterator>::Create<RPC::IStringIterator>(pathsList);
     portsIterator = Core::Service<RPC::ValueIterator>::Create<RPC::IValueIterator>(portsList);
 
-    bool success;
-    Core::hresult result = mRuntimeManager->Run(appInstanceId, appPath, runtimePath, environmentVarsIterator, userId, groupId, portsIterator, pathsIterator, debugSettingsIterator, success);
-    if ((Core::ERROR_NONE != result) || !success)
+    Core::hresult result = mRuntimeManager->Run(appInstanceId, appPath, runtimePath, environmentVarsIterator, userId, groupId, portsIterator, pathsIterator, debugSettingsIterator);
+    if (Core::ERROR_NONE != result)
     {
         errorReason = "unable to start running application";
         return false;
@@ -112,9 +116,8 @@ bool RuntimeManagerHandler::run(const string& appInstanceId, const string& appPa
 
 bool RuntimeManagerHandler::kill(const string& appInstanceId, string& errorReason)
 {
-    bool success;
-    Core::hresult result = mRuntimeManager->Kill(appInstanceId, success);
-    if ((Core::ERROR_NONE != result) || !success)
+    Core::hresult result = mRuntimeManager->Kill(appInstanceId);
+    if (Core::ERROR_NONE != result)
     {
         errorReason = "unable to kill application";
         return false;
@@ -124,9 +127,8 @@ bool RuntimeManagerHandler::kill(const string& appInstanceId, string& errorReaso
 
 bool RuntimeManagerHandler::terminate(const string& appInstanceId, string& errorReason)
 {
-    bool success;
-    Core::hresult result = mRuntimeManager->Terminate(appInstanceId, success);
-    if ((Core::ERROR_NONE != result) || !success)
+    Core::hresult result = mRuntimeManager->Terminate(appInstanceId);
+    if (Core::ERROR_NONE != result)
     {
         errorReason = "unable to terminate application";
         return false;
@@ -136,9 +138,8 @@ bool RuntimeManagerHandler::terminate(const string& appInstanceId, string& error
 
 bool RuntimeManagerHandler::suspend(const string& appInstanceId, string& errorReason)
 {
-    bool success;
-    Core::hresult result = mRuntimeManager->Suspend(appInstanceId, success);
-    if ((Core::ERROR_NONE != result) || !success)
+    Core::hresult result = mRuntimeManager->Suspend(appInstanceId);
+    if (Core::ERROR_NONE != result)
     {
         errorReason = "unable to suspend application";
         return false;
@@ -148,9 +149,8 @@ bool RuntimeManagerHandler::suspend(const string& appInstanceId, string& errorRe
 
 bool RuntimeManagerHandler::resume(const string& appInstanceId, string& errorReason)
 {
-    bool success;
-    Core::hresult result = mRuntimeManager->Resume(appInstanceId, success);
-    if ((Core::ERROR_NONE != result) || !success)
+    Core::hresult result = mRuntimeManager->Resume(appInstanceId);
+    if (Core::ERROR_NONE != result)
     {
         errorReason = "unable to resume application";
         return false;
@@ -160,9 +160,8 @@ bool RuntimeManagerHandler::resume(const string& appInstanceId, string& errorRea
 
 bool RuntimeManagerHandler::hibernate(const string& appInstanceId, string& errorReason)
 {
-    bool success;
-    Core::hresult result = mRuntimeManager->Hibernate(appInstanceId, success);
-    if ((Core::ERROR_NONE != result) || !success)
+    Core::hresult result = mRuntimeManager->Hibernate(appInstanceId);
+    if (Core::ERROR_NONE != result)
     {
         errorReason = "unable to hibernate application";
         return false;
