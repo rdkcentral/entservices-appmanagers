@@ -113,6 +113,10 @@ namespace WPEFramework
                 virtual Core::hresult SendIntentToActiveApp(const string& appInstanceId, const string& intent, string& errorReason, bool& success) override;
 
                 /* ILifecycleManagerState methods  */
+                /** Register notification interface */
+		virtual Core::hresult Register(Exchange::ILifecycleManagerState::INotification *notification) override;
+		/** Unregister notification interface */
+		virtual Core::hresult Unregister(Exchange::ILifecycleManagerState::INotification *notification) override;
 		virtual Core::hresult AppReady(const string& appId) override;
 		virtual Core::hresult StateChangeComplete(const string& appId, const uint32_t stateChangedId, const bool success) override;
 		virtual Core::hresult CloseApp(const string& appId, const AppCloseReason closeReason) override;
