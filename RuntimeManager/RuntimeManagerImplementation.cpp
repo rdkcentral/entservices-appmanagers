@@ -106,6 +106,21 @@ namespace WPEFramework
             }
         }
 
+        WPEFramework::Plugin::RuntimeManagerImplementation::OCIContainerRequest::OCIContainerRequest(
+                OCIRequestType type, const std::string& containerId)
+                : mRequestType(type),
+                  mContainerId(containerId),
+                  mGetInfo(""),
+                  mResult(Core::ERROR_GENERAL),
+                  mDescriptor(0),
+                  mSuccess(false),
+                  mErrorReason("")
+        {
+            if (0 != sem_init(&mSemaphore, 0, 0))
+            {
+                LOGINFO("Failed to initialise semaphore");
+            }
+        }
 
         WPEFramework::Plugin::RuntimeManagerImplementation::OCIContainerRequest::~OCIContainerRequest()
         {
@@ -272,6 +287,22 @@ namespace WPEFramework
                             case OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_TERMINATE:
                             case OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_KILL:
                             case OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_GETINFO:
+                            {
+                                if (nullptr != ociContainerObject)
+                                {
+                                    LOGINFO("Runtime GetInfo Method");
+                                    request->mResult = ociContainerObject->GetContainerInfo(request->mContainerId,
+                                                                                            request->mGetInfo,
+                                                                                            request->mSuccess,
+                                                                                            request->mErrorReason);
+                                    if (Core::ERROR_NONE != request->mResult)
+                                    {
+                                        LOGERR("Failed to GetContainerInfo");
+                                        request->mErrorReason = "Failed to GetContainerInfo";
+                                    }
+                                }
+                            }
+                            break;
                             case OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_ANNONATE:
                             case OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_MOUNT:
                             case OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_UNMOUNT:
@@ -659,12 +690,50 @@ err_ret:
             return status;
         }
 
-        Core::hresult RuntimeManagerImplementation::GetInfo(const string& appInstanceId, string& info) const
+        Core::hresult RuntimeManagerImplementation::GetInfo(const string& appInstanceId, string& info)
         {
-            Core::hresult status = Core::ERROR_NONE;
+            Core::hresult status = Core::ERROR_GENERAL;
+            int ret = -1;
+            if (appInstanceId.empty())
+            {
+                LOGERR("appInstanceId is empty");
+            }
+            else
+            {
+                string containerId = "com.sky.as.apps" + appInstanceId;
 
-            LOGINFO("Entered GetInfo Implementation");
+                LOGINFO("Entered GetInfo Implementation");
 
+                mContainerLock.lock();
+                std::shared_ptr<OCIContainerRequest> request = std::make_shared<OCIContainerRequest>(OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_GETINFO, containerId);
+                mContainerRequest.push_back(request);
+                mContainerLock.unlock();
+                mContainerQueueCV.notify_one();
+
+                do
+                {
+                    ret = sem_wait(&request->mSemaphore);
+                } while (ret == -1 && errno == EINTR);
+
+                if (ret == -1)
+                {
+                    LOGERR("OCIContainerRequest: sem_wait failed for GETINFO: %s", strerror(errno));
+                    request->mResult = Core::ERROR_GENERAL;
+                }
+                else
+                {
+                    if (false == request->mSuccess)
+                    {
+                        LOGERR(" status: %d errorReason: %s",request->mResult, request->mErrorReason.c_str());
+                    }
+                    else
+                    {
+                        info = request->mGetInfo;
+                        LOGINFO(" status: %d",request->mResult);
+                    }
+                    status = request->mResult;
+                }
+            }
             return status;
         }
 
