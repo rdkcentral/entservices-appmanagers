@@ -51,7 +51,7 @@ namespace WPEFramework
         {
             LOGINFO("Call RuntimeManagerImplementation destructor");
 
-            sRunning = false;
+            setRunningState(false);
 
             mContainerQueueCV.notify_all();
 
@@ -97,7 +97,7 @@ namespace WPEFramework
               mWesterosSocket(westerosSocket),
               mResult(Core::ERROR_GENERAL),
               mDescriptor(0),
-              mSuccess(0),
+              mSuccess(false),
               mErrorReason("")
         {
             if (0 != sem_init(&mSemaphore, 0, 0))
@@ -515,13 +515,11 @@ err_ret:
                 }
                 else
                 {
-                    std::string errorReason = request->mErrorReason;
                     bool success = request->mSuccess;
-                    uint32_t descriptor = request->mDescriptor;
 
                     if (success == false)
                     {
-                        LOGINFO(" descriptor: %d errorReason: %s",descriptor, errorReason.c_str());
+                        LOGINFO("descriptor: %d errorReason: %s", request->mDescriptor, request->mErrorReason.c_str());
                     }
                     status = request->mResult;
 
