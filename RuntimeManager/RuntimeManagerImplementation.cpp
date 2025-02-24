@@ -249,6 +249,23 @@ namespace WPEFramework
                             break;
 
                             case OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_HIBERNATE:
+                            {
+                                if (nullptr != ociContainerObject)
+                                {
+                                    LOGINFO("Runtime Hibernate Method");
+                                    std::string options = "";
+                                    request->mResult = ociContainerObject->HibernateContainer(request->mContainerId,
+                                                                                              options,
+                                                                                              request->mSuccess,
+                                                                                              request->mErrorReason);
+                                    if (Core::ERROR_NONE != request->mResult)
+                                    {
+                                        LOGERR("Failed to HibernateContainer");
+                                        request->mErrorReason = "Failed to HibernateContainer";
+                                    }
+                                }
+                            }
+                            break;
                             case OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_WAKE:
                             case OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_SUSPEND:
                             case OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_RESUME:
@@ -544,10 +561,56 @@ err_ret:
 
         Core::hresult RuntimeManagerImplementation::Hibernate(const string& appInstanceId)
         {
-            Core::hresult status = Core::ERROR_NONE;
+            Core::hresult status = Core::ERROR_GENERAL;
+            int ret = -1;
 
-            LOGINFO("Entered Hibernate Implementation");
+            if (appInstanceId.empty())
+            {
+                LOGERR("appInstanceId is empty");
+            }
+            else
+            {
+                string containerId = "com.sky.as.apps" + appInstanceId;
 
+                LOGINFO("Entered Hibernate Implementation");
+                mContainerLock.lock();
+                std::shared_ptr<OCIContainerRequest> request = std::make_shared<OCIContainerRequest>(OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_HIBERNATE, containerId);
+                mContainerRequest.push_back(request);
+                mContainerLock.unlock();
+                mContainerQueueCV.notify_one();
+
+                do
+                {
+                    ret = sem_wait(&request->mSemaphore);
+                } while (ret == -1 && errno == EINTR);
+
+                if (ret == -1)
+                {
+                    LOGERR("OCIContainerRequest: sem_wait failed for HIBERNATE: %s", strerror(errno));
+                    request->mResult = Core::ERROR_GENERAL;
+                }
+                else
+                {
+                    if (false == request->mSuccess)
+                    {
+                        LOGERR(" status: %d errorReason: %s",request->mResult, request->mErrorReason.c_str());
+                    }
+                    status = request->mResult;
+                    if(request->mResult == Core::ERROR_NONE)
+                    {
+                        Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
+                        if(mRuntimeAppInfo.find(appInstanceId) != mRuntimeAppInfo.end())
+                        {
+                            mRuntimeAppInfo[appInstanceId].containerState = Exchange::IRuntimeManager::RUNTIME_STATE_HIBERNATED;
+                            LOGINFO("RuntimeAppInfo state for appInstanceId[%s] updated", mRuntimeAppInfo[appInstanceId].appInstanceId.c_str());
+                        }
+                        else
+                        {
+                            LOGERR("Missing appInstanceId[%s] in RuntimeAppInfo", appInstanceId.c_str());
+                        }
+                    }
+                }
+            }
             return status;
         }
 
