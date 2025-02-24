@@ -59,6 +59,7 @@ namespace WPEFramework
                 struct OCIContainerRequest
                 {
                     OCIContainerRequest(OCIRequestType type, const std::string& containerId, const std::string& dobbySpec, const std::string& command, const std::string& westerosSocket);
+                    OCIContainerRequest(OCIRequestType type, const std::string& containerId);
                     ~OCIContainerRequest();
 
                     OCIRequestType mRequestType;
@@ -67,6 +68,7 @@ namespace WPEFramework
                     std::string mCommand;
                     std::string mWesterosSocket;
                     sem_t mSemaphore;
+                    std::string mGetInfo;
                     Core::hresult mResult;
 
                     int32_t mDescriptor;
@@ -170,7 +172,7 @@ namespace WPEFramework
                 virtual Core::hresult Resume(const string& appInstanceId) override;
                 virtual Core::hresult Terminate(const string& appInstanceId) override;
                 virtual Core::hresult Kill(const string& appInstanceId) override;
-                virtual Core::hresult GetInfo(const string& appInstanceId, string& info) const override;
+                virtual Core::hresult GetInfo(const string& appInstanceId, string& info) override;
                 virtual Core::hresult Annotate(const string& appInstanceId, const string& key, const string& value) override;
                 virtual Core::hresult Mount() override;
                 virtual Core::hresult Unmount() override;
