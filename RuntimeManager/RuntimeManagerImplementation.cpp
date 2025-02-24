@@ -133,9 +133,9 @@ namespace WPEFramework
         Core::hresult RuntimeManagerImplementation::Register(Exchange::IRuntimeManager::INotification *notification)
         {
             ASSERT (nullptr != notification);
-        
+
             Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
-        
+
             /* Make sure we can't register the same notification callback multiple times */
             if (std::find(mRuntimeManagerNotification.begin(), mRuntimeManagerNotification.end(), notification) == mRuntimeManagerNotification.end())
             {
@@ -285,7 +285,28 @@ namespace WPEFramework
                             case OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_SUSPEND:
                             case OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_RESUME:
                             case OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_TERMINATE:
+                            {
+                                LOGWARN("Unknown Method type %d", static_cast<int>(request->mRequestType));
+                                request->mResult = Core::ERROR_GENERAL;
+                                request->mErrorReason = "Unknown Method type";
+                            }
+                            break;
                             case OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_KILL:
+                            {
+                                if (nullptr != ociContainerObject)
+                                {
+                                    request->mResult = ociContainerObject->StopContainer( request->mContainerId,
+                                                                                          true,
+                                                                                          request->mSuccess,
+                                                                                          request->mErrorReason);
+                                    if (Core::ERROR_NONE != request->mResult)
+                                    {
+                                        LOGERR("Failed to StopContainer");
+                                        request->mErrorReason = "Failed to StopContainer";
+                                    }
+                                }
+                            }
+                            break;
                             case OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_GETINFO:
                             {
                                 if (nullptr != ociContainerObject)
@@ -578,7 +599,7 @@ err_ret:
                         runtimeAppInfo.appPath = std::move(appPath);
                         runtimeAppInfo.runtimePath = std::move(runtimePath);
                         runtimeAppInfo.descriptor = std::move(request->mDescriptor);
-                        runtimeAppInfo.containerState = Exchange::IRuntimeManager::RUNTIME_STATE_RUNNING;
+                        runtimeAppInfo.containerState = Exchange::IRuntimeManager::RUNTIME_STATE_STARTING;
 
                         /* Insert/update runtime app info */
                         Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
@@ -632,12 +653,12 @@ err_ret:
                         Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
                         if(mRuntimeAppInfo.find(appInstanceId) != mRuntimeAppInfo.end())
                         {
-                            mRuntimeAppInfo[appInstanceId].containerState = Exchange::IRuntimeManager::RUNTIME_STATE_HIBERNATED;
+                            mRuntimeAppInfo[appInstanceId].containerState = Exchange::IRuntimeManager::RUNTIME_STATE_HIBERNATING;
                             LOGINFO("RuntimeAppInfo state for appInstanceId[%s] updated", mRuntimeAppInfo[appInstanceId].appInstanceId.c_str());
                         }
                         else
                         {
-                            LOGERR("Missing appInstanceId[%s] in RuntimeAppInfo", appInstanceId.c_str());
+                            LOGWARN("Missing appInstanceId[%s] in RuntimeAppInfo", appInstanceId.c_str());
                         }
                     }
                 }
@@ -683,9 +704,54 @@ err_ret:
 
         Core::hresult RuntimeManagerImplementation::Kill(const string& appInstanceId)
         {
-            Core::hresult status = Core::ERROR_NONE;
+            Core::hresult status = Core::ERROR_GENERAL;
 
             LOGINFO("Entered Kill Implementation");
+            if (!appInstanceId.empty())
+            {
+                int ret = -1;
+                std::string containerId = "com.sky.as.apps" + appInstanceId;
+
+                mContainerLock.lock();
+                std::shared_ptr<OCIContainerRequest> request = std::make_shared<OCIContainerRequest>(OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_KILL, containerId);
+                mContainerRequest.push_back(request);
+                mContainerLock.unlock();
+                mContainerQueueCV.notify_one();
+
+                do
+                {
+                    ret = sem_wait(&request->mSemaphore);
+                } while (ret == -1 && errno == EINTR);
+
+                if (ret == -1)
+                {
+                    LOGERR("OCIContainerRequest: sem_wait failed for Kill: %s", strerror(errno));
+                }
+                else if (request->mSuccess == false)
+                {
+                    LOGERR("errorReason: %s", request->mErrorReason.c_str());
+                }
+                else if (request->mResult == Core::ERROR_NONE)
+                {
+                    status = request->mResult;
+                    Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
+                    if(mRuntimeAppInfo.find(appInstanceId) != mRuntimeAppInfo.end())
+                    {
+                        mRuntimeAppInfo[appInstanceId].containerState = Exchange::IRuntimeManager::RUNTIME_STATE_TERMINATING;
+                        LOGINFO("RuntimeAppInfo appInstanceId[%s] updated", appInstanceId.c_str());
+                    }
+                    else
+                    {
+                        LOGERR("Missing appInstanceId[%s] in RuntimeAppInfo", appInstanceId.c_str());
+                    }
+                }
+            }
+            else
+            {
+                LOGERR("appInstanceId param is missing");
+            }
+
+            LOGINFO("Kill Implementation done with status: %d", status);
 
             return status;
         }
