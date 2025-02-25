@@ -207,7 +207,24 @@ namespace WPEFramework
             if (nullptr == context)
 	    {
                 context = new ApplicationContext(appId);
-                context->setApplicationLaunchParams(appId, appPath, appConfig, runtimeAppId, runtimePath, runtimeConfig, launchIntent, environmentVars, enableDebugger, launchArgs);
+                WindowManagerHandler* windowManagerHandler = RequestHandler::getInstance()->getWindowManagerHandler();
+                std::pair<std::string, std::string> displayDetails;
+                if (nullptr != windowManagerHandler)
+                {
+                    displayDetails = windowManagerHandler->generateDisplayName();
+		    if (displayDetails.first.empty() || displayDetails.second.empty())
+		    {
+                        if (nullptr != context)
+		        {
+                            delete context;
+                        }
+                        errorReason = "unable to get display details for application launch";
+                        status = Core::ERROR_GENERAL;
+                        success = false;
+                        return status;
+		    }
+                }
+                context->setApplicationLaunchParams(appId, appPath, appConfig, runtimeAppId, runtimePath, runtimeConfig, launchIntent, environmentVars, enableDebugger, launchArgs, displayDetails.first, displayDetails.second);
 		mLoadedApplications.push_back(context);
 	    }
             context->setTargetLifecycleState(targetLifecycleState);

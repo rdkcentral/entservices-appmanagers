@@ -18,6 +18,7 @@
 */
 
 #include "WindowManagerHandler.h"
+#include <random>
 
 namespace WPEFramework {
 namespace Plugin {
@@ -58,10 +59,11 @@ void WindowManagerHandler::terminate()
     mWindowManager = nullptr;
 }
 
-bool WindowManagerHandler::createDisplay(const string& appPath, const string& appConfig, const string& runtimeAppId, const string& runtimePath, const string& runtimeConfig, const string& launchArgs, string& errorReason)
+bool WindowManagerHandler::createDisplay(const string& appPath, const string& appConfig, const string& runtimeAppId, const string& runtimePath, const string& runtimeConfig, const string& launchArgs, const string& displayName, string& errorReason)
 {
     JsonObject displayParams;
     displayParams["client"] = runtimeAppId;
+    displayParams["displayName"] = displayName;
     string displayParamsString;
     displayParams.ToString(displayParamsString);
     Core::hresult createDisplayResult = mWindowManager->CreateDisplay(displayParamsString);
@@ -71,6 +73,71 @@ bool WindowManagerHandler::createDisplay(const string& appPath, const string& ap
         return false;
     }
     return true;
+}
+
+std::pair<std::string, std::string> WindowManagerHandler::generateDisplayName()
+{
+    std::pair<std::string, std::string> name;
+
+    int xdgRuntimeDirFd = -1;
+
+    const char *xdgRuntimeDir = getenv("XDG_RUNTIME_DIR");
+    if (xdgRuntimeDir)
+    {
+        xdgRuntimeDirFd = open(xdgRuntimeDir, O_CLOEXEC | O_DIRECTORY);
+        if (xdgRuntimeDirFd < 0)
+        {
+            printf("failed to open XDG_RUNTIME_DIR '%s' %d\n", xdgRuntimeDir, errno);
+            fflush(stdout);
+        }
+        else
+        {
+            name.first = xdgRuntimeDir;
+        }
+    }
+
+    // if failed to open the dir then open the default /tmp
+    if (xdgRuntimeDirFd < 0)
+    {
+        xdgRuntimeDirFd = open("/tmp", O_CLOEXEC | O_DIRECTORY);
+        if (xdgRuntimeDirFd < 0)
+        {
+            printf("failed to open XDG_RUNTIME_DIR /tmp %d\n", errno);
+            fflush(stdout);
+            return name;
+        }
+
+        name.first = "/tmp";
+    }
+
+    // generate  a new random name
+    for (int attempt = 0; attempt < 5; attempt++)
+    {
+        // a bit overkill for generating a random file name, but gcc whines
+        // about mktemp
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<> dis(0, 25);
+
+        char buf[] = "westeros-XXXXXX";
+        for (size_t i = 0; i < 6; i++)
+            buf[9 + i] = 'a' + dis(gen);
+
+        // sanity check we don't already have a socket with the same name
+        if (faccessat(xdgRuntimeDirFd, buf, F_OK, 0) != 0)
+        {
+            name.second.assign(buf);
+            break;
+        }
+    }
+
+    if (close(xdgRuntimeDirFd) < 0)
+    {
+        printf("failed to close XDG_RUNTIME_DIR \n");
+        fflush(stdout);
+    }
+
+    return name;
 }
 } // namespace Plugin
 } // namespace WPEFramework

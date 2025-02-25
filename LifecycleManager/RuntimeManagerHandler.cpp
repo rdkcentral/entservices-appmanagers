@@ -20,12 +20,15 @@
 #include "RuntimeManagerHandler.h"
 #include "UtilsLogging.h"
 #include "tracing/Logging.h"
+#include <sstream>
 
 namespace WPEFramework {
 namespace Plugin {
 
+#define FIREBOLT_ENDPOINT_APPACCESS_PORT 3473
+
 RuntimeManagerHandler::RuntimeManagerHandler()
-: mRuntimeManager(nullptr), mEventHandler(nullptr)
+: mRuntimeManager(nullptr), mFireboltAccessPort(FIREBOLT_ENDPOINT_APPACCESS_PORT), mEventHandler(nullptr)
 {
     LOGINFO("Create RuntimeManagerHandler Instance");
 }
@@ -72,7 +75,7 @@ bool RuntimeManagerHandler::getRuntimeStats(const string& appInstanceId, string&
     return true;
 }
 
-bool RuntimeManagerHandler::run(const string& appInstanceId, const string& appPath, const string& appConfig, const string& runtimeAppId, const string& runtimePath, const string& runtimeConfig, const string& environmentVars, const bool enableDebugger, const string& launchArgs, string& errorReason)
+bool RuntimeManagerHandler::run(const string& appInstanceId, const string& appPath, const string& appConfig, const string& runtimeAppId, const string& runtimePath, const string& runtimeConfig, const string& environmentVars, const bool enableDebugger, const string& launchArgs, const string& xdgRuntimeDir, const string& displayName, string& errorReason)
 {
     JsonArray environmentVarsArray, debugSettingsArray, pathsArray, portsArray;
     // read data from parameters
@@ -81,7 +84,6 @@ bool RuntimeManagerHandler::run(const string& appInstanceId, const string& appPa
     // convert launchArgs to meaningful environment variables when launching a container
 
     // FOR Q1
-    // -- ports - 3474 , pass in env variable here
     // -- debugSettings - [] //for vbn builds
     // -- paths - paths to set in container - path for XDG_RUNTIME_DIR
     
@@ -89,10 +91,28 @@ bool RuntimeManagerHandler::run(const string& appInstanceId, const string& appPa
     std::list<string> environmentVarsList, debugSettingsList, pathsList;
     std::list<uint32_t> portsList;
 
+    portsList.push_back(mFireboltAccessPort);
+
+    pathsList.push_back(xdgRuntimeDir);
+
     for (unsigned int i=0; i<environmentVarsArray.Length(); i++)
     {
         environmentVarsList.push_back(environmentVarsArray[i].String());
     }
+    std::stringstream ss;
+    ss << "FIREBOLT_ENDPOINT=http://localhost:" << mFireboltAccessPort << "?session=" << appInstanceId;
+    string fireboltEndPoint(ss.str());
+    environmentVarsList.push_back(fireboltEndPoint);
+
+    std::stringstream xdgRuntimeEnv;
+    xdgRuntimeEnv << "XDG_RUNTIME_DIR=" << xdgRuntimeDir;
+    string xdgRuntimeEnvString(xdgRuntimeEnv.str());
+    environmentVarsList.push_back(xdgRuntimeEnvString);
+
+    std::stringstream waylandDisplayEnv;
+    waylandDisplayEnv << "WAYLAND_DISPLAY=" << displayName;
+    string displayNameEnvString(waylandDisplayEnv.str());
+    environmentVarsList.push_back(displayNameEnvString);
    
     // prepare arguments to pass
     RPC::IStringIterator* environmentVarsIterator{};
