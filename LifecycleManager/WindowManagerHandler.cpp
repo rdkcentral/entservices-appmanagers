@@ -23,7 +23,7 @@ namespace WPEFramework {
 namespace Plugin {
 
 WindowManagerHandler::WindowManagerHandler()
-: mWindowManagerController(nullptr), mWindowManager(nullptr), mEventHandler(nullptr)
+: mWindowManager(nullptr), mEventHandler(nullptr)
 {
     LOGINFO("Create WindowManagerHandler Instance");
 }
