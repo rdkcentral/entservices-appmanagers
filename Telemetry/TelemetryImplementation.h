@@ -132,10 +132,10 @@ namespace Plugin {
         virtual Core::hresult Register(Exchange::ITelemetry::INotification *notification ) override ;
         virtual Core::hresult Unregister(Exchange::ITelemetry::INotification *notification ) override;
 
-        Core::hresult SetReportProfileStatus(const string& status) override;
-        Core::hresult LogApplicationEvent(const string& eventName, const string& eventValue) override;
-        Core::hresult UploadReport() override;
-        Core::hresult AbortReport() override;
+        virtual Core::hresult SetReportProfileStatus(const string& status) override;
+        virtual Core::hresult LogApplicationEvent(const string& eventName, const string& eventValue) override;
+        virtual Core::hresult UploadReport() override;
+        virtual Core::hresult AbortReport() override;
 
         void InitializePowerManager();
         void onPowerModeChanged(const PowerState &currentState, const PowerState &newState);
