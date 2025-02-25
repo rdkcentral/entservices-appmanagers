@@ -40,18 +40,13 @@ namespace Plugin {
                     : _parent(parent)
                 {
                 }
-                ~RuntimeManagerNotification() override = default;
-/*
-                void OnDevicePluggedIn(const USBDevice &device)
-                {
-                    _parent.OnDevicePluggedIn(device);
-                }
 
-                void OnDevicePluggedOut(const USBDevice &device)
-                {
-                    _parent.OnDevicePluggedOut(device);
-                }
-*/
+                virtual void OnStarted(const string& appInstanceId) override;
+                virtual void OnTerminated(const string& appInstanceId) override;
+                virtual void OnFailure(const string& appInstanceId, const string& error) override;
+                virtual void OnStateChanged(const string& appInstanceId, Exchange::IRuntimeManager::RuntimeState state) override;
+
+                ~RuntimeManagerNotification() override = default;
                 BEGIN_INTERFACE_MAP(RuntimeManagerNotification)
                 INTERFACE_ENTRY(Exchange::IRuntimeManager::INotification)
                 END_INTERFACE_MAP
@@ -79,9 +74,11 @@ namespace Plugin {
             bool hibernate(const string& appInstanceId, string& errorReason);
             bool wake(const string& appInstanceId, Exchange::ILifecycleManager::LifecycleState state, string& errorReason);
             bool getRuntimeStats(const string& appInstanceId, string& info);
+            void onEvent(JsonObject& data);
 
         private:
             Exchange::IRuntimeManager* mRuntimeManager;
+            Core::Sink<RuntimeManagerNotification> mRuntimeManagerNotification;
             uint32_t mFireboltAccessPort;
             IEventHandler* mEventHandler;
     };
