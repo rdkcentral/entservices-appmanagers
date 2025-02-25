@@ -189,5 +189,25 @@ bool RuntimeManagerHandler::hibernate(const string& appInstanceId, string& error
     return true;
 }
 
+bool RuntimeManagerHandler::wake(const string& appInstanceId, Exchange::ILifecycleManager::LifecycleState state, string& errorReason)
+{
+    Exchange::IRuntimeManager::RuntimeState runtimeState = Exchange::IRuntimeManager::RuntimeState::RUNTIME_STATE_UNKNOWN;
+    if (state == Exchange::ILifecycleManager::LifecycleState::SUSPENDED)
+    {
+        runtimeState = Exchange::IRuntimeManager::RuntimeState::RUNTIME_STATE_SUSPENDED;
+    }
+    else if ((state == Exchange::ILifecycleManager::LifecycleState::RUNNING) || (state == Exchange::ILifecycleManager::LifecycleState::ACTIVE))
+    {
+        runtimeState = Exchange::IRuntimeManager::RuntimeState::RUNTIME_STATE_RUNNING;
+    }
+    Core::hresult result = mRuntimeManager->Wake(appInstanceId, runtimeState);
+    if (Core::ERROR_NONE != result)
+    {
+        errorReason = "unable to wakeup application";
+        return false;
+    }
+    return true;
+}
+
 } // namespace Plugin
 } // namespace WPEFramework

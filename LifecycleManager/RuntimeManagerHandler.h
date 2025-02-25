@@ -77,6 +77,7 @@ namespace Plugin {
             bool suspend(const string& appInstanceId, string& errorReason);
             bool resume(const string& appInstanceId, string& errorReason);
             bool hibernate(const string& appInstanceId, string& errorReason);
+            bool wake(const string& appInstanceId, Exchange::ILifecycleManager::LifecycleState state, string& errorReason);
             bool getRuntimeStats(const string& appInstanceId, string& info);
 
         private:
