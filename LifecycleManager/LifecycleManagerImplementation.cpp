@@ -165,7 +165,17 @@ namespace WPEFramework
                         RuntimeManagerHandler* runtimeManagerHandler = RequestHandler::getInstance()->getRuntimeManagerHandler();
 			if (nullptr != runtimeManagerHandler)
 			{
-                            appData["runtimeStats"] = runtimeManagerHandler->getRuntimeStats(context);
+                            string runtimeStats("");
+                            Core::hresult runtimeStatsResult = runtimeManagerHandler->getRuntimeStats(context->getAppInstanceId(), runtimeStats);
+                            if (Core::ERROR_NONE == runtimeStatsResult)
+                            {
+                                appData["runtimeStats"] = runtimeStats;
+                            }
+                            else
+                            {
+                                printf("unable to get runtime status of application\n");
+                                fflush(stdout);
+                            }
                         }
                     }
                     appsInformation.Add(appData);
@@ -317,6 +327,16 @@ namespace WPEFramework
             return status;
         }
 
+        Core::hresult LifecycleManagerImplementation::Register(Exchange::ILifecycleManagerState::INotification *notification)
+	{
+            return Core::ERROR_NONE;		
+        }
+
+        Core::hresult LifecycleManagerImplementation::Unregister(Exchange::ILifecycleManagerState::INotification *notification)
+	{
+            return Core::ERROR_NONE;		
+        }
+
 	Core::hresult LifecycleManagerImplementation::AppReady(const string& appId)
         {
             Core::hresult status = Core::ERROR_NONE;
@@ -328,8 +348,6 @@ namespace WPEFramework
         Core::hresult LifecycleManagerImplementation::StateChangeComplete(const string& appId, const uint32_t stateChangedId, const bool success)
         {
             Core::hresult status = Core::ERROR_NONE;
-            //QUESTION
-	    //Anything to do here with stateChangedId for validation?
 	    return status;
 	}
 
