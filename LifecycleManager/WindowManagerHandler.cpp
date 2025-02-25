@@ -24,7 +24,7 @@ namespace WPEFramework {
 namespace Plugin {
 
 WindowManagerHandler::WindowManagerHandler()
-: mWindowManager(nullptr), mEventHandler(nullptr)
+: mWindowManager(nullptr), mWindowManagerNotification(*this), mEventHandler(nullptr)
 {
     LOGINFO("Create WindowManagerHandler Instance");
 }
@@ -42,8 +42,11 @@ bool WindowManagerHandler::initialize(PluginHost::IShell* service, IEventHandler
     if (mWindowManager != nullptr)
     {
         ret = true;
-        // PENDING any event handler registrations
-        //registerEventHandlers();
+        Core::hresult registerResult = mWindowManager->Register(&mWindowManagerNotification);
+        if (Core::ERROR_NONE != registerResult)
+        {
+            LOGINFO("Unable to register with windowmanager [%d] \n", registerResult);
+        }
     }
     else
     {
@@ -54,6 +57,11 @@ bool WindowManagerHandler::initialize(PluginHost::IShell* service, IEventHandler
 
 void WindowManagerHandler::terminate()
 {
+    Core::hresult unregisterResult = mWindowManager->Unregister(&mWindowManagerNotification);
+    if (Core::ERROR_NONE != unregisterResult)
+    {
+        LOGINFO("Unable to unregister from runtimemanager [%d] \n", unregisterResult);
+    }
     uint32_t result = mWindowManager->Release();
     LOGINFO("Window manager releases [%d]\n", result);
     mWindowManager = nullptr;
@@ -139,5 +147,10 @@ std::pair<std::string, std::string> WindowManagerHandler::generateDisplayName()
 
     return name;
 }
+
+void WindowManagerHandler::WindowManagerNotification::OnUserInactivity(const double minutes)
+{
+}
+
 } // namespace Plugin
 } // namespace WPEFramework

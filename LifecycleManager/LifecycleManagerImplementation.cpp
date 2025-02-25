@@ -20,8 +20,6 @@
 #include "LifecycleManagerImplementation.h"
 #include "RequestHandler.h"
 #include "UtilsJsonRpc.h"
-//MADANA COMMENTED
-//#include "State.h"
 
 namespace WPEFramework
 {
@@ -29,7 +27,7 @@ namespace WPEFramework
     {
         SERVICE_REGISTRATION(LifecycleManagerImplementation, 1, 0);
 
-        LifecycleManagerImplementation::LifecycleManagerImplementation(): mLifecycleManagerNotification(), mLoadedApplications(), mService(nullptr)
+        LifecycleManagerImplementation::LifecycleManagerImplementation(): mLifecycleManagerNotification(), mLifecycleManagerStateNotification(), mLoadedApplications(), mService(nullptr)
         {
             LOGINFO("Create LifecycleManagerImplementation Instance");
         }
@@ -110,22 +108,38 @@ namespace WPEFramework
         void LifecycleManagerImplementation::Dispatch(EventNames event, const JsonValue params)
         {
              JsonObject obj = params.Object();
+
+             //below is for ILifecycleManager notification
              string appId(obj["appId"].String());
              string errorReason(obj["errorReason"].String());
-             uint32_t state(obj["state"].Number());
+             uint32_t newLifecycleState(obj["newLifecycleState"].Number());
+
+             //below is additional for ILifecycleManagerState notification
+             string appInstanceId(obj["appInstanceId"].String());
+             uint32_t oldLifecycleState(obj["oldLifecycleState"].Number());
+             string navigationIntent(obj["navigationIntent"].String());
 
              mAdminLock.Lock();
         
              std::list<Exchange::ILifecycleManager::INotification*>::const_iterator index(mLifecycleManagerNotification.begin());
+             std::list<Exchange::ILifecycleManagerState::INotification*>::const_iterator stateNotificationIndex(mLifecycleManagerStateNotification.begin());
         
              switch(event)
              {
                  case LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED:
                      while (index != mLifecycleManagerNotification.end())
                      {
-                         (*index)->OnAppStateChanged(appId, (LifecycleState)state, errorReason);
+                         (*index)->OnAppStateChanged(appId, (LifecycleState)oldLifecycleState, errorReason);
                          ++index;
                      }
+                     while (stateNotificationIndex != mLifecycleManagerStateNotification.end())
+                     {
+                         (*stateNotificationIndex)->OnAppLifecycleStateChanged(appId, appInstanceId, (LifecycleState)oldLifecycleState, (LifecycleState)newLifecycleState, navigationIntent);
+                         ++stateNotificationIndex;
+                     }
+                     break;
+                 case LIFECYCLE_MANAGER_EVENT_RUNTIME:
+                     handleRuntimeManagerEvent(obj);
                      break;
                  default:
                      LOGWARN("Event[%u] not handled", event);
@@ -345,15 +359,51 @@ namespace WPEFramework
         }
 
         Core::hresult LifecycleManagerImplementation::Register(Exchange::ILifecycleManagerState::INotification *notification)
-	{
-            return Core::ERROR_NONE;		
+        {
+            ASSERT (nullptr != notification);
+        
+            mAdminLock.Lock();
+        
+            /* Make sure we can't register the same notification callback multiple times */
+            if (std::find(mLifecycleManagerStateNotification.begin(), mLifecycleManagerStateNotification.end(), notification) == mLifecycleManagerStateNotification.end())
+            {
+                LOGINFO("Register notification");
+                mLifecycleManagerStateNotification.push_back(notification);
+                notification->AddRef();
+            }
+        
+            mAdminLock.Unlock();
+        
+            return Core::ERROR_NONE;
         }
-
-        Core::hresult LifecycleManagerImplementation::Unregister(Exchange::ILifecycleManagerState::INotification *notification)
-	{
-            return Core::ERROR_NONE;		
+        
+        Core::hresult LifecycleManagerImplementation::Unregister(Exchange::ILifecycleManagerState::INotification *notification )
+        {
+            Core::hresult status = Core::ERROR_GENERAL;
+        
+            ASSERT (nullptr != notification);
+        
+            mAdminLock.Lock();
+        
+            /* Make sure we can't unregister the same notification callback multiple times */
+            auto itr = std::find(mLifecycleManagerStateNotification.begin(), mLifecycleManagerStateNotification.end(), notification);
+            if (itr != mLifecycleManagerStateNotification.end())
+            {
+                (*itr)->Release();
+                LOGINFO("Unregister notification");
+                mLifecycleManagerStateNotification.erase(itr);
+                status = Core::ERROR_NONE;
+            }
+            else
+            {
+                LOGERR("notification not found");
+            }
+        
+            mAdminLock.Unlock();
+        
+            return status;
         }
-
+        
 	Core::hresult LifecycleManagerImplementation::AppReady(const string& appId)
         {
             Core::hresult status = Core::ERROR_NONE;
@@ -447,9 +497,9 @@ namespace WPEFramework
 	    return context;
 	}
 
-	void LifecycleManagerImplementation::onRuntimeManagerEvent(string name, JsonObject& data)
+	void LifecycleManagerImplementation::onRuntimeManagerEvent(JsonObject& data)
 	{
-            //mLifecycleManager->dispatchEvent(LifecycleManagerImplementation::EventNames::LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED, JsonValue(minutes));
+            dispatchEvent(LifecycleManagerImplementation::EventNames::LIFECYCLE_MANAGER_EVENT_RUNTIME, data);
 	}
 
         void LifecycleManagerImplementation::onWindowManagerEvent(string name, JsonObject& data)
@@ -466,5 +516,33 @@ namespace WPEFramework
 	{
             dispatchEvent(LifecycleManagerImplementation::EventNames::LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED, data);
 	}
+
+	void LifecycleManagerImplementation::handleRuntimeManagerEvent(const JsonObject &data)
+	{
+            string eventName = data["name"];
+	    if (eventName.compare("onTerminated") == 0)
+	    {
+                printf("Received onterminated event from runtime manager \n");
+		fflush(stdout);
+                string appInstanceId = data["appInstanceId"];
+                ApplicationContext* context = getContext(appInstanceId, "");
+                if (nullptr == context)
+                {
+		    printf("Received termination event for app which is not available\n");
+	            fflush(stdout);	    
+                }
+                else
+		{
+                    string errorReason("");
+                    bool success = RequestHandler::getInstance()->updateState(context, Exchange::ILifecycleManager::LifecycleState::TERMINATING, errorReason);
+                    if (!success || !(errorReason.empty()))
+                    {
+		        printf("Received error during app[%s] state change error[%s]\n", appInstanceId.c_str(), errorReason.c_str());
+	                fflush(stdout);
+                    }
+                }            
+	    }
+	}
+
     } /* namespace Plugin */
 } /* namespace WPEFramework */
