@@ -43,7 +43,7 @@ namespace WPEFramework
                 ApplicationContext* context = getContext();
                 std::string errorReason;
                 ApplicationLaunchParams& launchParams = context->getApplicationLaunchParams();
-                result = windowManagerHandler->createDisplay(launchParams.mAppPath, launchParams.mAppConfig, launchParams.mRuntimeAppId, launchParams.mRuntimePath, launchParams.mRuntimeConfig, launchParams.mLaunchArgs, errorReason);
+                result = windowManagerHandler->createDisplay(launchParams.mAppPath, launchParams.mAppConfig, launchParams.mRuntimeAppId, launchParams.mRuntimePath, launchParams.mRuntimeConfig, launchParams.mLaunchArgs, launchParams.mDisplayName, errorReason);
             }
 
             return result;
@@ -64,7 +64,7 @@ namespace WPEFramework
                 std::string errorReason;
                 ApplicationLaunchParams& launchParams = context->getApplicationLaunchParams();
 
-                ret = runtimeManagerHandler->run(generatedInstanceId, launchParams.mAppPath, launchParams.mAppConfig, launchParams.mRuntimeAppId, launchParams.mRuntimePath, launchParams.mRuntimeConfig, launchParams.mEnvironmentVars, launchParams.mEnableDebugger, launchParams.mLaunchArgs, errorReason);
+                ret = runtimeManagerHandler->run(generatedInstanceId, launchParams.mAppPath, launchParams.mAppConfig, launchParams.mRuntimeAppId, launchParams.mRuntimePath, launchParams.mRuntimeConfig, launchParams.mEnvironmentVars, launchParams.mEnableDebugger, launchParams.mLaunchArgs, launchParams.mXdgRuntimeDir, launchParams.mDisplayName, errorReason);
 	    }
             return ret;
 	}
