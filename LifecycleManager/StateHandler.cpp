@@ -227,6 +227,7 @@ namespace WPEFramework
             // start from next state
 	    for (size_t stateIndex=1; stateIndex<statePath.size(); stateIndex++)
 	    {
+                Exchange::ILifecycleManager::LifecycleState oldLifecycleState = ((State*)context->getState())->getValue();
                 result = updateState(context, statePath[stateIndex], errorReason);
                 if (!result)
 		{
@@ -241,10 +242,16 @@ namespace WPEFramework
 
                 if (nullptr != eventHandler)
                 {
-                    //Need to populate intent as event parameter
+		    Exchange::ILifecycleManager::LifecycleState newLifecycleState = ((State*)context->getState())->getValue();
                     JsonObject eventData;
                     eventData["appId"] = context->getAppId();
-                    eventData["state"] = (uint32_t)(((State*)context->getState())->getValue());
+                    eventData["appInstanceId"] = context->getAppInstanceId();
+                    eventData["oldLifecycleState"] = (uint32_t)oldLifecycleState;
+                    eventData["newLifecycleState"] = (uint32_t)newLifecycleState;
+                    if (newLifecycleState == Exchange::ILifecycleManager::LifecycleState::ACTIVATEREQUESTED)
+                    {
+                        eventData["navigationIntent"] = context->getMostRecentIntent();
+                    }
                     eventData["errorReason"] = errorReason;
                     eventHandler->onStateChangeEvent(eventData);
                 }

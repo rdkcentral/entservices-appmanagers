@@ -30,6 +30,28 @@ namespace WPEFramework {
 namespace Plugin {
     class WindowManagerHandler
     {
+        class WindowManagerNotification : public Exchange::IRDKWindowManager::INotification
+        {
+            private:
+                WindowManagerNotification(const WindowManagerNotification&) = delete;
+                WindowManagerNotification& operator=(const WindowManagerNotification&) = delete;
+
+            public:
+                explicit WindowManagerNotification(WindowManagerHandler& parent)
+                    : _parent(parent)
+                {
+                }
+
+                ~WindowManagerNotification() override = default;
+                BEGIN_INTERFACE_MAP(WindowManagerNotification)
+                INTERFACE_ENTRY(Exchange::IRDKWindowManager::INotification)
+                END_INTERFACE_MAP
+
+                virtual void OnUserInactivity(const double minutes) override;
+
+            private:
+                WindowManagerHandler& _parent;
+        };
         public:
             WindowManagerHandler();
             ~WindowManagerHandler();
@@ -44,8 +66,8 @@ namespace Plugin {
             bool createDisplay(const string& appPath, const string& appConfig, const string& runtimeAppId, const string& runtimePath, const string& runtimeConfig, const string& launchArgs, const string& displayName, string& errorReason);
             std::pair<std::string, std::string> generateDisplayName();
         private:
-            PluginHost::IShell *mWindowManagerController;
             Exchange::IRDKWindowManager* mWindowManager;
+	    Core::Sink<WindowManagerNotification> mWindowManagerNotification;
             IEventHandler* mEventHandler;
     };
 } // namespace Plugin

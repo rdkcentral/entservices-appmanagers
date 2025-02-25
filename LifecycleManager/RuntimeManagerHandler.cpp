@@ -28,7 +28,7 @@ namespace Plugin {
 #define FIREBOLT_ENDPOINT_APPACCESS_PORT 3473
 
 RuntimeManagerHandler::RuntimeManagerHandler()
-: mRuntimeManager(nullptr), mFireboltAccessPort(FIREBOLT_ENDPOINT_APPACCESS_PORT), mEventHandler(nullptr)
+: mRuntimeManager(nullptr), mRuntimeManagerNotification(*this), mFireboltAccessPort(FIREBOLT_ENDPOINT_APPACCESS_PORT), mEventHandler(nullptr)
 {
     LOGINFO("Create RuntimeManagerHandler Instance");
 }
@@ -46,19 +46,26 @@ bool RuntimeManagerHandler::initialize(PluginHost::IShell* service, IEventHandle
     if (mRuntimeManager != nullptr)
     {
         ret = true;
-        // TODO any event handler registrations
-        //registerEventHandlers();
+        Core::hresult registerResult = mRuntimeManager->Register(&mRuntimeManagerNotification);
+        if (Core::ERROR_NONE != registerResult)
+        {
+            LOGINFO("Unable to register with runtimemanager [%d] \n", registerResult);
+        }
     }
     else
     {
         LOGERR("runtimemanager is null \n");
     }
-    // PENDING any event handler registrations
     return ret;
 }
 
 void RuntimeManagerHandler::deinitialize()
 {
+    Core::hresult unregisterResult = mRuntimeManager->Unregister(&mRuntimeManagerNotification);
+    if (Core::ERROR_NONE != unregisterResult)
+    {
+        LOGINFO("Unable to unregister from runtimemanager [%d] \n", unregisterResult);
+    }
     uint32_t result = mRuntimeManager->Release();
     LOGINFO("Terminated runtime manager hanlder [%d] \n", result);
     mRuntimeManager = nullptr;
@@ -207,6 +214,47 @@ bool RuntimeManagerHandler::wake(const string& appInstanceId, Exchange::ILifecyc
         return false;
     }
     return true;
+}
+
+void RuntimeManagerHandler::RuntimeManagerNotification::OnStarted(const string& appInstanceId)
+{
+    JsonObject eventData;
+    eventData["appInstanceId"] = appInstanceId; 
+    eventData["name"] = "onStarted";
+    _parent.onEvent(eventData);
+}
+
+void RuntimeManagerHandler::RuntimeManagerNotification::OnTerminated(const string& appInstanceId)
+{
+    JsonObject eventData;
+    eventData["appInstanceId"] = appInstanceId; 
+    eventData["name"] = "onTerminated"; 
+    _parent.onEvent(eventData);
+}
+
+void RuntimeManagerHandler::RuntimeManagerNotification::OnFailure(const string& appInstanceId, const string& error)
+{
+    JsonObject eventData;
+    eventData["appInstanceId"] = appInstanceId; 
+    eventData["name"] = "onFailure";
+    _parent.onEvent(eventData);
+}
+
+void RuntimeManagerHandler::RuntimeManagerNotification::OnStateChanged(const string& appInstanceId, Exchange::IRuntimeManager::RuntimeState state)
+{
+    JsonObject eventData;
+    eventData["appInstanceId"] = appInstanceId; 
+    eventData["state"] = (uint32_t)state;
+    eventData["name"] = "onStateChanged"; 
+    _parent.onEvent(eventData);
+}
+
+void RuntimeManagerHandler::onEvent(JsonObject& data)
+{
+    if (mEventHandler)
+    {
+        mEventHandler->onRuntimeManagerEvent(data);
+    }
 }
 
 } // namespace Plugin
