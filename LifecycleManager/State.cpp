@@ -143,9 +143,17 @@ namespace WPEFramework
 	}
 
         bool WakeRequestedState::handle(string& errorReason)
-	{
-            return true;
-	}
+        {
+            bool ret = false;
+            RuntimeManagerHandler* runtimeManagerHandler = RequestHandler::getInstance()->getRuntimeManagerHandler();
+            if (nullptr != runtimeManagerHandler)
+            {
+                ApplicationContext* context = getContext();
+                std::string errorReason;
+                ret = runtimeManagerHandler->wake(context->getAppInstanceId(), context->getTargetLifecycleState(), errorReason);
+            }
+            return ret;
+        }
 
         bool TerminateRequestedState::handle(string& errorReason)
 	{

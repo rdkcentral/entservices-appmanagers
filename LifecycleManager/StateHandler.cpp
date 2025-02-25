@@ -111,14 +111,14 @@ namespace WPEFramework
             return state;
 	}
 
-        bool StateHandler::isValidTransition(Exchange::ILifecycleManager::LifecycleState start, Exchange::ILifecycleManager::LifecycleState target, std::vector<Exchange::ILifecycleManager::LifecycleState>& foundPath)
+        bool StateHandler::isValidTransition(Exchange::ILifecycleManager::LifecycleState start, Exchange::ILifecycleManager::LifecycleState target, std::map<Exchange::ILifecycleManager::LifecycleState, bool>& pathSequence, std::vector<Exchange::ILifecycleManager::LifecycleState>& foundPath)
         {
             bool pathPresent = false;
             if (start == target)
             {
                 return true;
             }
-        
+            pathSequence[target] = true; 
             std::map<Exchange::ILifecycleManager::LifecycleState, std::list<Exchange::ILifecycleManager::LifecycleState>>::iterator transitionIter = mPossibleStateTransitions.find(target);
             if (transitionIter == mPossibleStateTransitions.end())
             {
@@ -127,7 +127,12 @@ namespace WPEFramework
             std::list<Exchange::ILifecycleManager::LifecycleState>& transitionList = transitionIter->second;
             for (auto iter = transitionList.begin(); iter != transitionList.end(); ++iter)
             {
-                pathPresent = isValidTransition(start, *iter, foundPath);
+                if (pathSequence.find(*iter) != pathSequence.end())
+                {
+                    continue;
+                }
+
+                pathPresent = isValidTransition(start, *iter, pathSequence, foundPath);
                 if (pathPresent)
                 {
 	            foundPath.push_back(*iter);		
@@ -207,7 +212,8 @@ namespace WPEFramework
 	    }
 
             std::vector<Exchange::ILifecycleManager::LifecycleState> statePath;
-            bool isValidRequest = StateHandler::isValidTransition(currentLifecycleState, lifecycleState, statePath);
+            std::map<Exchange::ILifecycleManager::LifecycleState, bool> seenPaths;
+            bool isValidRequest = StateHandler::isValidTransition(currentLifecycleState, lifecycleState, seenPaths, statePath);
             if (!isValidRequest)
             {
                 errorReason = "Invalid launch request in current state";
