@@ -87,7 +87,9 @@ namespace Plugin {
     public:
         enum Event
         {
-            ON_REPORT_UPLOAD
+            TELEMETRY_EVENT_ONREPORTUPLOAD,
+            TELEMETRY_EVENT_UPLOADREPORT,
+            TELEMETRY_EVENT_ABORTREPORT
         };
         class EXTERNAL Job : public Core::IDispatch {
         protected:
@@ -140,7 +142,7 @@ namespace Plugin {
         void InitializePowerManager();
         void onPowerModeChanged(const PowerState &currentState, const PowerState &newState);
         void registerEventHandlers();
-        
+
         // IConfiguration interface
         uint32_t Configure(PluginHost::IShell* service) override;
         
@@ -154,8 +156,6 @@ namespace Plugin {
     private:
         std::shared_ptr<WPEFramework::JSONRPC::LinkType<WPEFramework::Core::JSON::IElement>> m_systemServiceConnection;
         mutable Core::CriticalSection _adminLock;
-        Core::ProxyType<RPC::InvokeServerType<1, 0, 4>> _engine;
-        Core::ProxyType<RPC::CommunicatorClient> _communicatorClient;
         PluginHost::IShell* _service;
         std::list<Exchange::ITelemetry::INotification*> _telemetryNotification;
         PowerManagerInterfaceRef _powerManagerPlugin;
