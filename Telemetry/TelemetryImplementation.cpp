@@ -66,31 +66,14 @@ namespace Plugin {
     
     TelemetryImplementation::TelemetryImplementation()
     : _adminLock()
-    , _engine(Core::ProxyType<RPC::InvokeServerType<1, 0, 4>>::Create())
-    , _communicatorClient(Core::ProxyType<RPC::CommunicatorClient>::Create(Core::NodeId("/tmp/communicator"), Core::ProxyType<Core::IIPCServer>(_engine)))
     , _service(nullptr)
     , _pwrMgrNotification(*this)
     , _registeredEventHandlers(false)
     {
         LOGINFO("Create TelemetryImplementation Instance");
-
         TelemetryImplementation::_instance = this;
-
-         if (!_communicatorClient.IsValid())
-         {
-             LOGWARN("Invalid _communicatorClient\n");
-         }
-         else
-         {
-
-#if ((THUNDER_VERSION == 2) || ((THUNDER_VERSION == 4) && (THUNDER_VERSION_MINOR == 2)))
-            _engine->Announcements(_communicatorClient->Announcement());
-#endif
-
-            LOGINFO("Connect the COM-RPC socket\n");
-            Utils::Telemetry::init();
-            InitializePowerManager();
-        }
+        Utils::Telemetry::init();
+        InitializePowerManager();
     }
 
     TelemetryImplementation::~TelemetryImplementation()
@@ -99,15 +82,7 @@ namespace Plugin {
                 _powerManagerPlugin.Reset();
             }
 
-            LOGINFO("Disconnect from the COM-RPC socket\n");
-            // Disconnect from the COM-RPC socket
-            if (_communicatorClient.IsValid()) {
-                _communicatorClient->Close(RPC::CommunicationTimeOut);
-                _communicatorClient.Release();
-            }
-            if (_engine.IsValid()) {
-                _engine.Release();
-            }
+            LOGINFO("Call TelemetryImplementation destructor\n");
             _registeredEventHandlers = false;
 
             TelemetryImplementation::_instance = nullptr;
@@ -259,7 +234,7 @@ namespace Plugin {
         JsonObject eventData;
         std::string s(status);
         eventData["telemetryUploadStatus"] = s == "SUCCESS" ? "UPLOAD_SUCCESS" : "UPLOAD_FAILURE";
-        dispatchEvent(ON_REPORT_UPLOAD, eventData);
+        dispatchEvent(TELEMETRY_EVENT_ONREPORTUPLOAD, eventData);
     }
 
     void TelemetryImplementation::notifyT2PrivacyMode(std::string privacyMode)
@@ -391,9 +366,8 @@ namespace Plugin {
     void TelemetryImplementation::InitializePowerManager()
     {
         LOGINFO("Connect the COM-RPC socket\n");
-        _powerManagerPlugin = PowerManagerInterfaceBuilder(_communicatorClient, _T("org.rdk.PowerManager"))
-                            .withTimeout(3000)
-                            .withVersion(~0)
+        _powerManagerPlugin = PowerManagerInterfaceBuilder(_T("org.rdk.PowerManager"))
+                            .withIShell(_service)
                             .createInterface();
 
         registerEventHandlers();
@@ -413,23 +387,19 @@ namespace Plugin {
 
     void TelemetryImplementation::onPowerModeChanged(const PowerState &currentState, const PowerState &newState)
     {
-        if (nullptr == TelemetryImplementation::_instance)
-        {
-            LOGERR("TelemetryImplementation::_instance is NULL.\n");
-            return;
-        }
+        JsonObject params;
 
         if (WPEFramework::Exchange::IPowerManager::POWER_STATE_STANDBY == newState ||
             WPEFramework::Exchange::IPowerManager::POWER_STATE_STANDBY_LIGHT_SLEEP == newState)
         {
             if (WPEFramework::Exchange::IPowerManager::POWER_STATE_ON == currentState)
             {
-                TelemetryImplementation::_instance->UploadReport();
+                Core::IWorkerPool::Instance().Submit(Job::Create( this,TELEMETRY_EVENT_UPLOADREPORT, params));
             }
         }
         else if(WPEFramework::Exchange::IPowerManager::POWER_STATE_STANDBY_DEEP_SLEEP == newState)
         {
-            TelemetryImplementation::_instance->AbortReport();
+            Core::IWorkerPool::Instance().Submit(Job::Create( this,TELEMETRY_EVENT_ABORTREPORT, params));
         }
     }
     
@@ -444,9 +414,27 @@ namespace Plugin {
         
         std::list<Exchange::ITelemetry::INotification*>::const_iterator index(_telemetryNotification.begin());
 
-        while (index != _telemetryNotification.end()) {
-            (*index)->OnReportUpload(params.String());
-            ++index;
+        switch(event)
+        {
+            case TELEMETRY_EVENT_UPLOADREPORT:
+                TelemetryImplementation::_instance->UploadReport();
+                break;
+
+            case TELEMETRY_EVENT_ABORTREPORT:
+                TelemetryImplementation::_instance->AbortReport();
+                break;
+
+            case TELEMETRY_EVENT_ONREPORTUPLOAD:
+                while (index != _telemetryNotification.end())
+                {
+                    (*index)->OnReportUpload(params.String());
+                    ++index;
+                }
+                break;
+
+            default:
+                LOGWARN("Event[%u] not handled", event);
+                break;
         }
         _adminLock.Unlock();
     }
