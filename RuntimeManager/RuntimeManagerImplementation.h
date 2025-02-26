@@ -60,6 +60,7 @@ namespace WPEFramework
                 {
                     OCIContainerRequest(OCIRequestType type, const std::string& containerId, const std::string& dobbySpec, const std::string& command, const std::string& westerosSocket);
                     OCIContainerRequest(OCIRequestType type, const std::string& containerId);
+                    OCIContainerRequest(OCIRequestType type, const std::string& containerId, const std::string& key, const std::string& value);
                     ~OCIContainerRequest();
 
                     OCIRequestType mRequestType;
@@ -75,6 +76,8 @@ namespace WPEFramework
                     bool mSuccess;
                     std::string mErrorReason;
                     std::string mRequestId;
+                    std::string mAnnotateKey;
+                    std::string mAnnotateKeyValue;
                 };
 
                 typedef struct _RuntimeAppInfo
