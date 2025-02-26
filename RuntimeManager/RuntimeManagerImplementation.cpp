@@ -20,6 +20,8 @@
 #include "RuntimeManagerImplementation.h"
 #include <errno.h>
 
+#define RUNTIME_APP_PORTAL  "com.sky.as.apps"
+
 static bool sRunning = false;
 
 namespace WPEFramework
@@ -98,7 +100,9 @@ namespace WPEFramework
               mResult(Core::ERROR_GENERAL),
               mDescriptor(0),
               mSuccess(false),
-              mErrorReason("")
+              mErrorReason(""),
+              mAnnotateKey(""),
+              mAnnotateKeyValue("")
         {
             if (0 != sem_init(&mSemaphore, 0, 0))
             {
@@ -114,7 +118,27 @@ namespace WPEFramework
                   mResult(Core::ERROR_GENERAL),
                   mDescriptor(0),
                   mSuccess(false),
-                  mErrorReason("")
+                  mErrorReason(""),
+                  mAnnotateKey(""),
+                  mAnnotateKeyValue("")
+        {
+            if (0 != sem_init(&mSemaphore, 0, 0))
+            {
+                LOGINFO("Failed to initialise semaphore");
+            }
+        }
+
+        WPEFramework::Plugin::RuntimeManagerImplementation::OCIContainerRequest::OCIContainerRequest(
+                OCIRequestType type, const std::string& containerId, const std::string& key, const std::string& value)
+                : mRequestType(type),
+                  mContainerId(containerId),
+                  mGetInfo(""),
+                  mResult(Core::ERROR_GENERAL),
+                  mDescriptor(0),
+                  mSuccess(false),
+                  mErrorReason(""),
+                  mAnnotateKey(key),
+                  mAnnotateKeyValue(value)
         {
             if (0 != sem_init(&mSemaphore, 0, 0))
             {
@@ -133,9 +157,9 @@ namespace WPEFramework
         Core::hresult RuntimeManagerImplementation::Register(Exchange::IRuntimeManager::INotification *notification)
         {
             ASSERT (nullptr != notification);
-        
+
             Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
-        
+
             /* Make sure we can't register the same notification callback multiple times */
             if (std::find(mRuntimeManagerNotification.begin(), mRuntimeManagerNotification.end(), notification) == mRuntimeManagerNotification.end())
             {
@@ -303,7 +327,22 @@ namespace WPEFramework
                                 }
                             }
                             break;
+
                             case OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_ANNONATE:
+                            {
+                                request->mResult = ociContainerObject->Annotate( request->mContainerId,
+                                                                                 request->mAnnotateKey,
+                                                                                 request->mAnnotateKeyValue,
+                                                                                 request->mSuccess,
+                                                                                 request->mErrorReason);
+                                if (Core::ERROR_NONE != request->mResult)
+                                {
+                                    LOGERR("Failed to Annotate property key");
+                                    request->mErrorReason = "Failed to Annotate property key";
+                                }
+                            }
+                            break;
+
                             case OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_MOUNT:
                             case OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_UNMOUNT:
                             default:
@@ -739,10 +778,51 @@ err_ret:
 
         Core::hresult RuntimeManagerImplementation::Annotate(const string& appInstanceId, const string& key, const string& value)
         {
-            Core::hresult status = Core::ERROR_NONE;
+            Core::hresult status = Core::ERROR_GENERAL;
+            int ret = -1;
+            if (appInstanceId.empty())
+            {
+                LOGERR("appInstanceId is empty");
+            }
+            else if (key.empty())
+            {
+                LOGERR("key is empty");
+            }
+            else
+            {
+                string containerId = std::string(RUNTIME_APP_PORTAL) + appInstanceId;
 
-            LOGINFO("Entered Annotate Implementation");
+                LOGINFO("Annotate: containerId: %s key: %s value: %s", containerId.c_str(), key.c_str(), value.c_str());
 
+                mContainerLock.lock();
+                std::shared_ptr<OCIContainerRequest> request = std::make_shared<OCIContainerRequest>(OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_ANNONATE, containerId, key, value);
+                mContainerRequest.push_back(request);
+                mContainerLock.unlock();
+                mContainerQueueCV.notify_one();
+
+                do
+                {
+                    ret = sem_wait(&request->mSemaphore);
+                } while (ret == -1 && errno == EINTR);
+
+                if (ret == -1)
+                {
+                    LOGERR("OCIContainerRequest: sem_wait failed for Annotate: %s", strerror(errno));
+                    request->mResult = Core::ERROR_GENERAL;
+                }
+                else
+                {
+                    if (false == request->mSuccess)
+                    {
+                        LOGERR("Annotate: status: %d errorReason: %s", request->mResult, request->mErrorReason.c_str());
+                    }
+                    else
+                    {
+                        LOGINFO("Annotate: status: %d", request->mResult);
+                    }
+                    status = request->mResult;
+                }
+            }
             return status;
         }
 
