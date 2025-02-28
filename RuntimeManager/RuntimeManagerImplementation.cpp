@@ -113,6 +113,8 @@ namespace WPEFramework
                         containerReqData.descriptor = request.mDescriptor;
                         break;
                     case OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_WAKE:
+                        mRuntimeAppInfo[appInstanceId].containerState = Exchange::IRuntimeManager::RUNTIME_STATE_WAKING;
+                        break;
                     case OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_SUSPEND:
                     case OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_RESUME:
                     case OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_ANNONATE:
@@ -726,61 +728,17 @@ err_ret:
             Core::hresult status = Core::ERROR_GENERAL;
 
             LOGINFO("Entered Wake Implementation");
-            if (!appInstanceId.empty())
+            ContainerRequestData containerReqData;
+            RuntimeState currentRuntimeState = getRuntimeState(appInstanceId);
+            if (Exchange::IRuntimeManager::RUNTIME_STATE_HIBERNATING == currentRuntimeState ||
+                Exchange::IRuntimeManager::RUNTIME_STATE_HIBERNATED == currentRuntimeState)
             {
-                int ret = -1;
-                std::string containerId = "com.sky.as.apps" + appInstanceId;
-                RuntimeState currentRuntimeState = getRuntimeState(appInstanceId);
-
-                if (Exchange::IRuntimeManager::RUNTIME_STATE_HIBERNATING == currentRuntimeState ||
-                    Exchange::IRuntimeManager::RUNTIME_STATE_HIBERNATED == currentRuntimeState)
-                {
-                    mContainerLock.lock();
-                    std::shared_ptr<OCIContainerRequest> request = std::make_shared<OCIContainerRequest>(OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_WAKE, containerId);
-
-                    mContainerRequest.push_back(request);
-                    mContainerLock.unlock();
-                    mContainerQueueCV.notify_one();
-
-                    do
-                    {
-                        ret = sem_wait(&request->mSemaphore);
-                    } while (ret == -1 && errno == EINTR);
-
-                    if (ret == -1)
-                    {
-                        LOGERR("OCIContainerRequest: sem_wait failed for Wake: %s", strerror(errno));
-                    }
-                    else if (request->mSuccess == false)
-                    {
-                        LOGERR("errorReason: %s", request->mErrorReason.c_str());
-                    }
-                    else if (request->mResult == Core::ERROR_NONE)
-                    {
-                        status = request->mResult;
-                        Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
-
-                        if(mRuntimeAppInfo.find(appInstanceId) != mRuntimeAppInfo.end())
-                        {
-                            mRuntimeAppInfo[appInstanceId].containerState = Exchange::IRuntimeManager::RUNTIME_STATE_WAKING;
-                            LOGINFO("RuntimeAppInfo state for appInstanceId[%s] updated", mRuntimeAppInfo[appInstanceId].appInstanceId.c_str());
-                        }
-                        else
-                        {
-                            LOGERR("Missing appInstanceId[%s] in RuntimeAppInfo", appInstanceId.c_str());
-                        }
-                    }
-                }
-                else
-                {
-                     LOGERR("Container is Not in Hibernating/Hiberanted state");
-                }
+                status = handleContainerRequest(appInstanceId, OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_WAKE, containerReqData);
             }
             else
             {
-                LOGERR("appInstanceId param is missing");
+                LOGERR("Container is Not in Hibernating/Hiberanted state");
             }
-            LOGINFO("Wake Implementation done with status: %d", status);
 
             return status;
         }
