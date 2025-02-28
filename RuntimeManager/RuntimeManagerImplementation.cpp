@@ -99,6 +99,7 @@ namespace WPEFramework
                 switch(type)
                 {
                     case OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_TERMINATE:
+                        mRuntimeAppInfo[appInstanceId].containerState = Exchange::IRuntimeManager::RUNTIME_STATE_TERMINATING;
                     case OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_KILL:
                         mRuntimeAppInfo[appInstanceId].containerState = Exchange::IRuntimeManager::RUNTIME_STATE_TERMINATING;
                         break;
@@ -360,6 +361,12 @@ namespace WPEFramework
                             case OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_WAKE:
                             case OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_SUSPEND:
                             case OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_RESUME:
+                            {
+                                LOGWARN("Unknown Method type %d", static_cast<int>(request->mRequestType));
+                                request->mResult = Core::ERROR_GENERAL;
+                                request->mErrorReason = "Unknown Method type";
+                            }
+                            break;
                             case OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_TERMINATE:
                             {
                                 request->mResult = ociContainerObject->StopContainer(request->mContainerId,
@@ -705,54 +712,10 @@ err_ret:
         Core::hresult RuntimeManagerImplementation::Terminate(const string& appInstanceId)
         {
             Core::hresult status = Core::ERROR_GENERAL;
-
+            ContainerRequestData containerReqData;
             LOGINFO("Entered Terminate Implementation");
-            if (appInstanceId.empty())
-            {
-                LOGERR("appInstanceId is empty");
-            }
-            else
-            {
-                string containerId = "com.sky.as.apps" + appInstanceId;
-                int ret = -1;
-                mContainerLock.lock();
-                std::shared_ptr<OCIContainerRequest> request = std::make_shared<OCIContainerRequest>(OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_TERMINATE, containerId);
-                mContainerRequest.push_back(request);
-                mContainerLock.unlock();
-                mContainerQueueCV.notify_one();
 
-                do
-                {
-                    ret = sem_wait(&request->mSemaphore);
-                } while (ret == -1 && errno == EINTR);
-
-                if (ret == -1)
-                {
-                    LOGERR("OCIContainerRequest: sem_wait failed for TERMINATE: %s", strerror(errno));
-                    request->mResult = Core::ERROR_GENERAL;
-                }
-                else
-                {
-                    if (request->mSuccess == false)
-                    {
-                        LOGERR("errorReason: %s",request->mErrorReason.c_str());
-                    }
-                    status = request->mResult;
-                    if (request->mResult == Core::ERROR_NONE)
-                    {
-                        Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
-                        if(mRuntimeAppInfo.find(appInstanceId) != mRuntimeAppInfo.end())
-                        {
-                            mRuntimeAppInfo[appInstanceId].containerState = Exchange::IRuntimeManager::RUNTIME_STATE_TERMINATING;
-                            LOGINFO("RuntimeAppInfo state for appInstanceId[%s] updated", mRuntimeAppInfo[appInstanceId].appInstanceId.c_str());
-                        }
-                        else
-                        {
-                            LOGERR("Missing appInstanceId[%s] in RuntimeAppInfo", appInstanceId.c_str());
-                        }
-                    }
-                }
-            }
+            status = handleContainerRequest(appInstanceId, OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_TERMINATE, containerReqData);
             return status;
         }
 
