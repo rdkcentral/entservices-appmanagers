@@ -27,6 +27,8 @@
 #include <mutex>
 #include <interfaces/IOCIContainer.h>
 #include <condition_variable>
+#include "ApplicationConfiguration.h"
+
 
 namespace WPEFramework
 {
@@ -97,21 +99,6 @@ namespace WPEFramework
                     uint32_t descriptor;
                     Exchange::IRuntimeManager::RuntimeState containerState;
                 } RuntimeAppInfo;
-
-                /* ApplicationConfiguration To be removed once RDKEMW-1632 is ready */
-                struct ApplicationConfiguration
-                {
-                    ApplicationConfiguration() = default;
-                    std::string mAppInstanceId;
-                    std::string mAppPath;
-                    std::string mRuntimePath;
-                    std::vector<std::string> mEnvVars;
-                    uint32_t mUserId;
-                    uint32_t mGroupId;
-                    std::vector<uint32_t> mPorts;
-                    std::vector<std::string> mPaths;
-                    std::vector<std::string> mDebugSettings;
-                };
 
                 class EXTERNAL Job : public Core::IDispatch
                 {
