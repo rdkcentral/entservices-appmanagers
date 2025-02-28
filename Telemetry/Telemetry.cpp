@@ -99,12 +99,6 @@ namespace WPEFramework
             SYSLOG(Logging::Startup, (_T("Telemetry::Initialize: Failed to initialise Telemetry plugin")));
             message = _T("Telemetry plugin could not be initialised");
         }
-
-        if (0 != message.length())
-        {
-           Deinitialize(service);
-        }
-
         return message;
     }
 
