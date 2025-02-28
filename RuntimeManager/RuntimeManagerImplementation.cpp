@@ -18,6 +18,7 @@
 **/
 
 #include "RuntimeManagerImplementation.h"
+#include "DobbySpecGenerator.h"
 #include <errno.h>
 
 static bool sRunning = false;
@@ -546,32 +547,16 @@ err_ret:
             }
         }
 
-        bool RuntimeManagerImplementation::generate(const ApplicationConfiguration& config, std::string& dobbySpec)
+        bool RuntimeManagerImplementation::generate(const ApplicationConfiguration& /*config*/, std::string& dobbySpec)
         {
-            (void)config;
-
-            /* TODO: Hardcoded Dobby Spec JSON to be removed after RDKEMW-1632 is ready */
-            dobbySpec = R"({
-                "version": "1.0",
-                "cwd": "/",
-                "args": ["sleep", "600"],
-                "env": [],
-                "user": {
-                    "uid": 1000,
-                    "gid": 1000
-                },
-                "console": {
-                    "limit": 65536,
-                    "path": "/tmp/container.log"
-                },
-                "etc": {
-                    "group": ["root:x:0:"],
-                    "passwd": ["root::0:0:root:/:/bin/false"]
-                },
-                "memLimit": 41943040,
-                "network": "nat",
-                "mounts": []
-            })";
+            ApplicationConfiguration testConfig;
+            testConfig.mArgs = {"sleep", "600"};
+            testConfig.mAppPath = "/tmp";
+            testConfig.mUserId = 1000;
+            testConfig.mGroupId = 1000;
+        
+            DobbySpecGenerator generator;
+            generator.generate(testConfig, dobbySpec);
 
             return true;
         }
@@ -612,7 +597,7 @@ err_ret:
             /* Below code to be enabled once dobbySpec generator ticket is ready */
             ApplicationConfiguration config;
             config.mAppInstanceId = appInstanceId;
-            config.mAppPath = appPath;
+            config.mAppPath = {appPath};
             config.mRuntimePath = runtimePath;
             config.mUserId = userId;
             config.mGroupId = groupId;
@@ -635,14 +620,14 @@ err_ret:
                 }
             }
 
-            if (paths)
-            {
-                std::string path;
-                while (paths->Next(path))
-                {
-                    config.mPaths.push_back(path);
-                }
-            }
+            // if (paths)
+            // {
+            //     std::string path;
+            //     while (paths->Next(path))
+            //     {
+            //         config.mPaths.push_back(path);
+            //     }
+            // }
 
             if (debugSettings)
             {
