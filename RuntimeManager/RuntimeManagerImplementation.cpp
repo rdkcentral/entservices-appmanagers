@@ -99,6 +99,7 @@ namespace WPEFramework
                 switch(type)
                 {
                     case OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_TERMINATE:
+                        mRuntimeAppInfo[appInstanceId].containerState = Exchange::IRuntimeManager::RUNTIME_STATE_TERMINATING;
                     case OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_KILL:
                         mRuntimeAppInfo[appInstanceId].containerState = Exchange::IRuntimeManager::RUNTIME_STATE_TERMINATING;
                         break;
@@ -327,25 +328,21 @@ namespace WPEFramework
                         {
                             case OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_RUN:
                             {
-                                if (nullptr != ociContainerObject)
+                                request->mResult = ociContainerObject->StartContainerFromDobbySpec( \
+                                                                                        request->mContainerId,
+                                                                                        request->mDobbySpec,
+                                                                                        request->mCommand,
+                                                                                        request->mWesterosSocket,
+                                                                                        request->mDescriptor,
+                                                                                        request->mSuccess,
+                                                                                        request->mErrorReason);
+                                if (Core::ERROR_NONE != request->mResult)
                                 {
-                                    request->mResult = ociContainerObject->StartContainerFromDobbySpec( \
-                                                                                            request->mContainerId,
-                                                                                            request->mDobbySpec,
-                                                                                            request->mCommand,
-                                                                                            request->mWesterosSocket,
-                                                                                            request->mDescriptor,
-                                                                                            request->mSuccess,
-                                                                                            request->mErrorReason);
-                                    if (Core::ERROR_NONE != request->mResult)
-                                    {
-                                        LOGERR("Failed to StartContainerFromDobbySpec");
-                                        request->mErrorReason = "Failed to StartContainerFromDobbySpec";
-                                    }
+                                    LOGERR("Failed to StartContainerFromDobbySpec");
+                                    request->mErrorReason = "Failed to StartContainerFromDobbySpec";
                                 }
                             }
                             break;
-
                             case OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_HIBERNATE:
                             {
                                 LOGINFO("Runtime Hibernate Method");
@@ -364,11 +361,23 @@ namespace WPEFramework
                             case OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_WAKE:
                             case OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_SUSPEND:
                             case OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_RESUME:
-                            case OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_TERMINATE:
                             {
                                 LOGWARN("Unknown Method type %d", static_cast<int>(request->mRequestType));
                                 request->mResult = Core::ERROR_GENERAL;
                                 request->mErrorReason = "Unknown Method type";
+                            }
+                            break;
+                            case OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_TERMINATE:
+                            {
+                                request->mResult = ociContainerObject->StopContainer(request->mContainerId,
+                                                                                    false,
+                                                                                    request->mSuccess,
+                                                                                    request->mErrorReason);
+                                if (Core::ERROR_NONE != request->mResult)
+                                {
+                                    LOGERR("Failed to StopContainer to terminate");
+                                    request->mErrorReason = "Failed to StopContainer";
+                                }
                             }
                             break;
                             case OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_KILL:
@@ -702,10 +711,11 @@ err_ret:
 
         Core::hresult RuntimeManagerImplementation::Terminate(const string& appInstanceId)
         {
-            Core::hresult status = Core::ERROR_NONE;
-
+            Core::hresult status = Core::ERROR_GENERAL;
+            ContainerRequestData containerReqData;
             LOGINFO("Entered Terminate Implementation");
 
+            status = handleContainerRequest(appInstanceId, OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_TERMINATE, containerReqData);
             return status;
         }
 
