@@ -113,6 +113,8 @@ namespace WPEFramework
                         containerReqData.descriptor = request.mDescriptor;
                         break;
                     case OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_WAKE:
+                        mRuntimeAppInfo[appInstanceId].containerState = Exchange::IRuntimeManager::RUNTIME_STATE_WAKING;
+                        break;
                     case OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_SUSPEND:
                     case OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_RESUME:
                     case OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_ANNONATE:
@@ -359,6 +361,20 @@ namespace WPEFramework
                             }
                             break;
                             case OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_WAKE:
+                            {
+                                //Question: How should we pass the requested run state to the container?
+                                //There is no argument in the ociContainer interface to pass the input state.
+                                request->mResult = ociContainerObject->WakeupContainer(request->mContainerId,
+                                                                                       request->mSuccess,
+                                                                                       request->mErrorReason);
+
+                                if (Core::ERROR_NONE != request->mResult)
+                                {
+                                    LOGERR("Failed to WakeupContainer");
+                                    request->mErrorReason = "Failed to WakeupContainer";
+                                }
+                            }
+                            break;
                             case OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_SUSPEND:
                             case OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_RESUME:
                             {
@@ -545,6 +561,31 @@ err_ret:
             return true;
         }
 
+        Exchange::IRuntimeManager::RuntimeState RuntimeManagerImplementation::getRuntimeState(const string& appInstanceId)
+        {
+            Exchange::IRuntimeManager::RuntimeState runtimeState = Exchange::IRuntimeManager::RUNTIME_STATE_UNKNOWN;
+
+            Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
+
+            if (!appInstanceId.empty())
+            {
+                if(mRuntimeAppInfo.find(appInstanceId) == mRuntimeAppInfo.end())
+                {
+                   LOGERR("Missing appInstanceId[%s] in RuntimeAppInfo", appInstanceId.c_str());
+                }
+                else
+                {
+                   runtimeState = mRuntimeAppInfo[appInstanceId].containerState;
+                }
+            }
+            else
+            {
+                LOGERR("appInstanceId param is missing");
+            }
+
+            return runtimeState;
+        }
+
         Core::hresult RuntimeManagerImplementation::Run(const string& appInstanceId, const string& appPath, const string& runtimePath, IStringIterator* const& envVars, const uint32_t userId, const uint32_t groupId, IValueIterator* const& ports, IStringIterator* const& paths, IStringIterator* const& debugSettings)
         {
             Core::hresult status = Core::ERROR_GENERAL;
@@ -684,9 +725,20 @@ err_ret:
 
         Core::hresult RuntimeManagerImplementation::Wake(const string& appInstanceId, const RuntimeState runtimeState)
         {
-            Core::hresult status = Core::ERROR_NONE;
+            Core::hresult status = Core::ERROR_GENERAL;
 
             LOGINFO("Entered Wake Implementation");
+            ContainerRequestData containerReqData;
+            RuntimeState currentRuntimeState = getRuntimeState(appInstanceId);
+            if (Exchange::IRuntimeManager::RUNTIME_STATE_HIBERNATING == currentRuntimeState ||
+                Exchange::IRuntimeManager::RUNTIME_STATE_HIBERNATED == currentRuntimeState)
+            {
+                status = handleContainerRequest(appInstanceId, OCIRequestType::RUNTIME_OCI_REQUEST_METHOD_WAKE, containerReqData);
+            }
+            else
+            {
+                LOGERR("Container is Not in Hibernating/Hiberanted state");
+            }
 
             return status;
         }
