@@ -918,7 +918,7 @@ uint32_t UserSettingsImplementation::GetVoiceGuidanceHints(bool &hints) const
     return status;
 }
 
-Core::hresult UserSettingsImplementation::GetMigrationState(const SettingsKey key, SettingsMigrationState &migrationState) const
+Core::hresult UserSettingsImplementation::GetMigrationState(const SettingsKey key, bool &requiresMigration) const
 {
     uint32_t status = Core::ERROR_GENERAL;
     std::string value = "";
@@ -936,8 +936,6 @@ Core::hresult UserSettingsImplementation::GetMigrationState(const SettingsKey ke
     else
     {
         strkey.assign(itrInspectorMap->second);
-        migrationState.key = itrInspectorMap->first;
-
         LOGINFO("Key [%d] is mapped to property [%s]. Fetching value...", itrInspectorMap->first, strkey.c_str());
         if (nullptr != _remotStoreObject && !strkey.empty())
         {
@@ -945,14 +943,14 @@ Core::hresult UserSettingsImplementation::GetMigrationState(const SettingsKey ke
             LOGINFO("status[%d] [%s]'s value is [%s]", status, strkey.c_str(), value.c_str());
             if(Core::ERROR_NOT_EXIST == status || Core::ERROR_UNKNOWN_KEY == status)
             {
-                migrationState.requiresMigration = true;
+                requiresMigration = true;
                 status = Core::ERROR_NONE;
             }
             else
             {
-                migrationState.requiresMigration = false;
+                requiresMigration = false;
             }
-            LOGINFO("key[%d] requiresMigration[%d]", migrationState.key, migrationState.requiresMigration);
+            LOGINFO("requiresMigration[%d]", requiresMigration);
         }
         else
         {

@@ -205,7 +205,7 @@ namespace Plugin {
         uint32_t GetVoiceGuidanceHints(bool &hints) const override;
 
         // IUserSettingsInspector methods
-        Core::hresult GetMigrationState(const SettingsKey key, SettingsMigrationState &migrationState) const override;
+        Core::hresult GetMigrationState(const SettingsKey key, bool &requiresMigration) const override;
         Core::hresult GetMigrationStates(IUserSettingsMigrationStateIterator *&states) const override;
 
         // IConfiguration methods
