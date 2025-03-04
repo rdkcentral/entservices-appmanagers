@@ -26,24 +26,43 @@
 namespace WPEFramework {
 namespace Plugin {
 
-const std::map<string, string> UserSettingsImplementation::usersettingsDefaultMap =
-                                                                 {{USERSETTINGS_AUDIO_DESCRIPTION_KEY, "false"},
-                                                                 {USERSETTINGS_PREFERRED_AUDIO_LANGUAGES_KEY, ""},
-                                                                 {USERSETTINGS_PRESENTATION_LANGUAGE_KEY, ""},
-                                                                 {USERSETTINGS_CAPTIONS_KEY, "false"},
-                                                                 {USERSETTINGS_PREFERRED_CAPTIONS_LANGUAGES_KEY, ""},
-                                                                 {USERSETTINGS_PREFERRED_CLOSED_CAPTIONS_SERVICE_KEY, "AUTO"},
-                                                                 {USERSETTINGS_PIN_CONTROL_KEY, "false"},
-                                                                 {USERSETTINGS_VIEWING_RESTRICTIONS_KEY, ""},
-                                                                 {USERSETTINGS_VIEWING_RESTRICTIONS_WINDOW_KEY, ""},
-                                                                 {USERSETTINGS_LIVE_WATERSHED_KEY, "false"},
-                                                                 {USERSETTINGS_PLAYBACK_WATERSHED_KEY, "false"},
-                                                                 {USERSETTINGS_BLOCK_NOT_RATED_CONTENT_KEY, "false"},
-                                                                 {USERSETTINGS_PIN_ON_PURCHASE_KEY, "false"},
-                                                                 {USERSETTINGS_HIGH_CONTRAST_KEY, "false"},
-                                                                 {USERSETTINGS_VOICE_GUIDANCE_KEY, "false"},
-                                                                 {USERSETTINGS_VOICE_GUIDANCE_RATE_KEY, "1"},
-                                                                 {USERSETTINGS_VOICE_GUIDANCE_HINTS_KEY, "false"}};
+const std::map<string, string> UserSettingsImplementation::usersettingsDefaultMap = 
+                        {{USERSETTINGS_AUDIO_DESCRIPTION_KEY, "false"},
+                         {USERSETTINGS_PREFERRED_AUDIO_LANGUAGES_KEY, ""},
+                         {USERSETTINGS_PRESENTATION_LANGUAGE_KEY, ""},
+                         {USERSETTINGS_CAPTIONS_KEY, "false"},
+                         {USERSETTINGS_PREFERRED_CAPTIONS_LANGUAGES_KEY, ""},
+                         {USERSETTINGS_PREFERRED_CLOSED_CAPTIONS_SERVICE_KEY, "AUTO"},
+                         {USERSETTINGS_PIN_CONTROL_KEY, "false"},
+                         {USERSETTINGS_VIEWING_RESTRICTIONS_KEY, ""},
+                         {USERSETTINGS_VIEWING_RESTRICTIONS_WINDOW_KEY, ""},
+                         {USERSETTINGS_LIVE_WATERSHED_KEY, "false"},
+                         {USERSETTINGS_PLAYBACK_WATERSHED_KEY, "false"},
+                         {USERSETTINGS_BLOCK_NOT_RATED_CONTENT_KEY, "false"},
+                         {USERSETTINGS_PIN_ON_PURCHASE_KEY, "false"},
+                         {USERSETTINGS_HIGH_CONTRAST_KEY, "false"},
+                         {USERSETTINGS_VOICE_GUIDANCE_KEY, "false"},
+                         {USERSETTINGS_VOICE_GUIDANCE_RATE_KEY, "1"},
+                         {USERSETTINGS_VOICE_GUIDANCE_HINTS_KEY, "false"}};
+
+const std::map<Exchange::IUserSettingsInspector::SettingsKey, string> UserSettingsImplementation::_userSettingsInspectorMap =
+                         {{Exchange::IUserSettingsInspector::SettingsKey::PREFERRED_AUDIO_LANGUAGES, "preferredAudioLanguages"},
+                         {Exchange::IUserSettingsInspector::SettingsKey::AUDIO_DESCRIPTION, "audioDescription"},
+                         {Exchange::IUserSettingsInspector::SettingsKey::CAPTIONS, "captions"},
+                         {Exchange::IUserSettingsInspector::SettingsKey::PREFERRED_CAPTIONS_LANGUAGES, "preferredCaptionsLanguages"},
+                         {Exchange::IUserSettingsInspector::SettingsKey::PREFERRED_CLOSED_CAPTION_SERVICE, "preferredClosedCaptionsService"},
+                         {Exchange::IUserSettingsInspector::SettingsKey::PRESENTATION_LANGUAGE, "presentationLanguage"},
+                         {Exchange::IUserSettingsInspector::SettingsKey::HIGH_CONTRAST, "highContrast"},
+                         {Exchange::IUserSettingsInspector::SettingsKey::PIN_CONTROL, "pinControl"},
+                         {Exchange::IUserSettingsInspector::SettingsKey::VIEWING_RESTRICTIONS, "viewingRestrictions"},
+                         {Exchange::IUserSettingsInspector::SettingsKey::VIEWING_RESTRICTIONS_WINDOW, "viewingRestrictionsWindow"},
+                         {Exchange::IUserSettingsInspector::SettingsKey::LIVE_WATERSHED, "liveWaterShed"},
+                         {Exchange::IUserSettingsInspector::SettingsKey::PLAYBACK_WATERSHED, "playbackWaterShed"},
+                         {Exchange::IUserSettingsInspector::SettingsKey::BLOCK_NOT_RATED_CONTENT, "blockNotRatedContent"},
+                         {Exchange::IUserSettingsInspector::SettingsKey::PIN_ON_PURCHASE, "pinOnPurchase"},
+                         {Exchange::IUserSettingsInspector::SettingsKey::VOICE_GUIDANCE, "voiceGuidance"},
+                         {Exchange::IUserSettingsInspector::SettingsKey::VOICE_GUIDANCE_RATE, "voiceGuidanceRate"},
+                         {Exchange::IUserSettingsInspector::SettingsKey::VOICE_GUIDANCE_HINTS, "voiceGuidanceHints"}};
 
 SERVICE_REGISTRATION(UserSettingsImplementation, 1, 0);
 
@@ -419,6 +438,7 @@ uint32_t UserSettingsImplementation::SetUserSettingsValue(const string& key, con
     uint32_t status = Core::ERROR_GENERAL;
     _adminLock.Lock();
 
+    LOGINFO("Key[%s] value[%s]", key.c_str(), value.c_str());
     if (nullptr != _remotStoreObject)
     {
         status = _remotStoreObject->SetValue(Exchange::IStore2::ScopeType::DEVICE, USERSETTINGS_NAMESPACE, key, value, 0);
@@ -437,7 +457,7 @@ uint32_t UserSettingsImplementation::GetUserSettingsValue(const string& key, str
     uint32_t ttl = 0;
     _adminLock.Lock();
 
-    LOGINFO("Key[%s] value[%s]", key.c_str(), value.c_str());
+    LOGINFO("Key[%s]", key.c_str());
     if (nullptr != _remotStoreObject)
     {
         status = _remotStoreObject->GetValue(Exchange::IStore2::ScopeType::DEVICE, USERSETTINGS_NAMESPACE, key, value, ttl);
@@ -895,6 +915,97 @@ uint32_t UserSettingsImplementation::GetVoiceGuidanceHints(bool &hints) const
             hints = false;
         }
     }
+    return status;
+}
+
+Core::hresult UserSettingsImplementation::GetMigrationState(const SettingsKey key, SettingsMigrationState &migrationState) const
+{
+    uint32_t status = Core::ERROR_GENERAL;
+    std::string value = "";
+    uint32_t ttl = 0;
+    std::string strkey = "";
+
+    _adminLock.Lock();
+
+    LOGINFO("Input key [%d], which needs migration state ", key);
+    auto itrInspectorMap = _userSettingsInspectorMap.find(key);
+    if (itrInspectorMap == _userSettingsInspectorMap.end())
+    {
+        LOGINFO("Input key Is Invalid\n");
+    }
+    else
+    {
+        strkey.assign(itrInspectorMap->second);
+        migrationState.key = itrInspectorMap->first;
+
+        LOGINFO("Key [%d] is mapped to property [%s]. Fetching value...", itrInspectorMap->first, strkey.c_str());
+        if (nullptr != _remotStoreObject && !strkey.empty())
+        {
+            status = _remotStoreObject->GetValue(Exchange::IStore2::ScopeType::DEVICE, USERSETTINGS_NAMESPACE, strkey, value, ttl);
+            LOGINFO("status[%d] [%s]'s value is [%s]", status, strkey.c_str(), value.c_str());
+            if(Core::ERROR_NOT_EXIST == status || Core::ERROR_UNKNOWN_KEY == status)
+            {
+                migrationState.requiresMigration = true;
+                status = Core::ERROR_NONE;
+            }
+            else
+            {
+                migrationState.requiresMigration = false;
+            }
+            LOGINFO("key[%d] requiresMigration[%d]", migrationState.key, migrationState.requiresMigration);
+        }
+        else
+        {
+            LOGERR("_remotStoreObject is null or strkey is empty");
+        }
+    }
+    _adminLock.Unlock();
+
+    return status;
+
+}
+Core::hresult UserSettingsImplementation::GetMigrationStates(IUserSettingsMigrationStateIterator *&states) const
+{
+    uint32_t status = Core::ERROR_GENERAL;
+    std::string value = "";
+    uint32_t ttl = 0;
+    bool requiresMigration = false;
+
+    _adminLock.Lock();
+
+    Exchange::IUserSettingsInspector::SettingsMigrationState SettingMigrationState = {};
+    std::list<Exchange::IUserSettingsInspector::SettingsMigrationState> SettingMigrationStateList;
+
+    if (nullptr != _remotStoreObject)
+    {
+        for (auto uimap = _userSettingsInspectorMap.begin(); uimap != _userSettingsInspectorMap.end(); uimap++)
+        {
+            LOGINFO("Property [%s] value is fetching...", (uimap->second).c_str());
+            status = _remotStoreObject->GetValue(Exchange::IStore2::ScopeType::DEVICE, USERSETTINGS_NAMESPACE, uimap->second, value, ttl);
+            LOGINFO("value[%s] status[%d]", value.c_str(), status);
+            if(Core::ERROR_NOT_EXIST == status || Core::ERROR_UNKNOWN_KEY == status)
+            {
+                requiresMigration = true;
+                status = Core::ERROR_NONE;
+            }
+            else
+            {
+                requiresMigration = false;
+            }
+            LOGINFO("requiresMigration[%d]", requiresMigration);
+            SettingMigrationState.key = uimap->first;
+            SettingMigrationState.requiresMigration = requiresMigration;
+            SettingMigrationStateList.emplace_back(SettingMigrationState);
+        }
+        states = (Core::Service<RPC::IteratorType<Exchange::IUserSettingsInspector::IUserSettingsMigrationStateIterator>>::Create<Exchange::IUserSettingsInspector::IUserSettingsMigrationStateIterator>(SettingMigrationStateList));
+    }
+    else
+    {
+        LOGERR("_remotStoreObject is null");
+    }
+
+    _adminLock.Unlock();
+
     return status;
 }
 
