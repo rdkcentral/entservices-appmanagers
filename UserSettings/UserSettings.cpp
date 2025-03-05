@@ -132,7 +132,7 @@ namespace WPEFramework
         {
             _userSetting->Unregister(&_usersettingsNotification);
             Exchange::JUserSettings::Unregister(*this);
-            Exchange::JUserSettingsInspector::UnRegister(*this);
+            Exchange::JUserSettingsInspector::Unregister(*this);
 
             configure->Release();
             _userSettingsInspector->Release();

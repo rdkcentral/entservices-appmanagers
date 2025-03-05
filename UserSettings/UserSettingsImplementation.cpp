@@ -932,7 +932,6 @@ Core::hresult UserSettingsImplementation::GetMigrationState(const SettingsKey ke
     if (itrInspectorMap == _userSettingsInspectorMap.end())
     {
         LOGINFO("Input key Is Invalid\n");
-        status = Core::ERROR_INVALID_PARAMETER;
     }
     else
     {
