@@ -46,23 +46,23 @@ const std::map<string, string> UserSettingsImplementation::usersettingsDefaultMa
                          {USERSETTINGS_VOICE_GUIDANCE_HINTS_KEY, "false"}};
 
 const std::map<Exchange::IUserSettingsInspector::SettingsKey, string> UserSettingsImplementation::_userSettingsInspectorMap =
-                         {{Exchange::IUserSettingsInspector::SettingsKey::PREFERRED_AUDIO_LANGUAGES, "preferredAudioLanguages"},
-                         {Exchange::IUserSettingsInspector::SettingsKey::AUDIO_DESCRIPTION, "audioDescription"},
-                         {Exchange::IUserSettingsInspector::SettingsKey::CAPTIONS, "captions"},
-                         {Exchange::IUserSettingsInspector::SettingsKey::PREFERRED_CAPTIONS_LANGUAGES, "preferredCaptionsLanguages"},
-                         {Exchange::IUserSettingsInspector::SettingsKey::PREFERRED_CLOSED_CAPTION_SERVICE, "preferredClosedCaptionsService"},
-                         {Exchange::IUserSettingsInspector::SettingsKey::PRESENTATION_LANGUAGE, "presentationLanguage"},
-                         {Exchange::IUserSettingsInspector::SettingsKey::HIGH_CONTRAST, "highContrast"},
-                         {Exchange::IUserSettingsInspector::SettingsKey::PIN_CONTROL, "pinControl"},
-                         {Exchange::IUserSettingsInspector::SettingsKey::VIEWING_RESTRICTIONS, "viewingRestrictions"},
-                         {Exchange::IUserSettingsInspector::SettingsKey::VIEWING_RESTRICTIONS_WINDOW, "viewingRestrictionsWindow"},
-                         {Exchange::IUserSettingsInspector::SettingsKey::LIVE_WATERSHED, "liveWaterShed"},
-                         {Exchange::IUserSettingsInspector::SettingsKey::PLAYBACK_WATERSHED, "playbackWaterShed"},
-                         {Exchange::IUserSettingsInspector::SettingsKey::BLOCK_NOT_RATED_CONTENT, "blockNotRatedContent"},
-                         {Exchange::IUserSettingsInspector::SettingsKey::PIN_ON_PURCHASE, "pinOnPurchase"},
-                         {Exchange::IUserSettingsInspector::SettingsKey::VOICE_GUIDANCE, "voiceGuidance"},
-                         {Exchange::IUserSettingsInspector::SettingsKey::VOICE_GUIDANCE_RATE, "voiceGuidanceRate"},
-                         {Exchange::IUserSettingsInspector::SettingsKey::VOICE_GUIDANCE_HINTS, "voiceGuidanceHints"}};
+         {{Exchange::IUserSettingsInspector::SettingsKey::PREFERRED_AUDIO_LANGUAGES, USERSETTINGS_PREFERRED_AUDIO_LANGUAGES_KEY},
+         {Exchange::IUserSettingsInspector::SettingsKey::AUDIO_DESCRIPTION, USERSETTINGS_AUDIO_DESCRIPTION_KEY},
+         {Exchange::IUserSettingsInspector::SettingsKey::CAPTIONS, USERSETTINGS_CAPTIONS_KEY},
+         {Exchange::IUserSettingsInspector::SettingsKey::PREFERRED_CAPTIONS_LANGUAGES, USERSETTINGS_PREFERRED_CAPTIONS_LANGUAGES_KEY},
+         {Exchange::IUserSettingsInspector::SettingsKey::PREFERRED_CLOSED_CAPTION_SERVICE, USERSETTINGS_PREFERRED_CLOSED_CAPTIONS_SERVICE_KEY},
+         {Exchange::IUserSettingsInspector::SettingsKey::PRESENTATION_LANGUAGE, USERSETTINGS_PRESENTATION_LANGUAGE_KEY},
+         {Exchange::IUserSettingsInspector::SettingsKey::HIGH_CONTRAST, USERSETTINGS_HIGH_CONTRAST_KEY},
+         {Exchange::IUserSettingsInspector::SettingsKey::PIN_CONTROL, USERSETTINGS_PIN_CONTROL_KEY},
+         {Exchange::IUserSettingsInspector::SettingsKey::VIEWING_RESTRICTIONS, USERSETTINGS_VIEWING_RESTRICTIONS_KEY},
+         {Exchange::IUserSettingsInspector::SettingsKey::VIEWING_RESTRICTIONS_WINDOW, USERSETTINGS_VIEWING_RESTRICTIONS_WINDOW_KEY},
+         {Exchange::IUserSettingsInspector::SettingsKey::LIVE_WATERSHED, USERSETTINGS_LIVE_WATERSHED_KEY},
+         {Exchange::IUserSettingsInspector::SettingsKey::PLAYBACK_WATERSHED, USERSETTINGS_PLAYBACK_WATERSHED_KEY},
+         {Exchange::IUserSettingsInspector::SettingsKey::BLOCK_NOT_RATED_CONTENT, USERSETTINGS_BLOCK_NOT_RATED_CONTENT_KEY},
+         {Exchange::IUserSettingsInspector::SettingsKey::PIN_ON_PURCHASE, USERSETTINGS_PIN_ON_PURCHASE_KEY},
+         {Exchange::IUserSettingsInspector::SettingsKey::VOICE_GUIDANCE, USERSETTINGS_VOICE_GUIDANCE_KEY},
+         {Exchange::IUserSettingsInspector::SettingsKey::VOICE_GUIDANCE_RATE, USERSETTINGS_VOICE_GUIDANCE_RATE_KEY},
+         {Exchange::IUserSettingsInspector::SettingsKey::VOICE_GUIDANCE_HINTS, USERSETTINGS_VOICE_GUIDANCE_HINTS_KEY}};
 
 SERVICE_REGISTRATION(UserSettingsImplementation, 1, 0);
 
@@ -932,6 +932,7 @@ Core::hresult UserSettingsImplementation::GetMigrationState(const SettingsKey ke
     if (itrInspectorMap == _userSettingsInspectorMap.end())
     {
         LOGINFO("Input key Is Invalid\n");
+        status = Core::ERROR_INVALID_PARAMETER;
     }
     else
     {
@@ -944,13 +945,13 @@ Core::hresult UserSettingsImplementation::GetMigrationState(const SettingsKey ke
             if(Core::ERROR_NOT_EXIST == status || Core::ERROR_UNKNOWN_KEY == status)
             {
                 requiresMigration = true;
-                status = Core::ERROR_NONE;
             }
             else
             {
                 requiresMigration = false;
             }
             LOGINFO("requiresMigration[%d]", requiresMigration);
+            status = Core::ERROR_NONE;
         }
         else
         {
@@ -984,7 +985,6 @@ Core::hresult UserSettingsImplementation::GetMigrationStates(IUserSettingsMigrat
             if(Core::ERROR_NOT_EXIST == status || Core::ERROR_UNKNOWN_KEY == status)
             {
                 requiresMigration = true;
-                status = Core::ERROR_NONE;
             }
             else
             {
@@ -994,6 +994,7 @@ Core::hresult UserSettingsImplementation::GetMigrationStates(IUserSettingsMigrat
             SettingMigrationState.key = uimap->first;
             SettingMigrationState.requiresMigration = requiresMigration;
             SettingMigrationStateList.emplace_back(SettingMigrationState);
+            status = Core::ERROR_NONE;
         }
         states = (Core::Service<RPC::IteratorType<Exchange::IUserSettingsInspector::IUserSettingsMigrationStateIterator>>::Create<Exchange::IUserSettingsInspector::IUserSettingsMigrationStateIterator>(SettingMigrationStateList));
     }
