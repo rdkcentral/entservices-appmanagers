@@ -95,7 +95,7 @@ namespace WPEFramework
             // Invoking Plugin API register to wpeframework
             Exchange::JUserSettings::Register(*this, _userSetting);
 
-           _userSettingsInspector = _userSetting->QueryInterface<Exchange::IUserSettingsInspector>();
+            _userSettingsInspector = _userSetting->QueryInterface<Exchange::IUserSettingsInspector>();
             if (_userSettingsInspector != nullptr)
             {
                 Exchange::JUserSettingsInspector::Register(*this, _userSettingsInspector);
@@ -132,8 +132,13 @@ namespace WPEFramework
         {
             _userSetting->Unregister(&_usersettingsNotification);
             Exchange::JUserSettings::Unregister(*this);
+            Exchange::JUserSettingsInspector::UnRegister(*this);
 
             configure->Release();
+            _userSettingsInspector->Release();
+
+            configure = nullptr;
+            _userSettingsInspector = nullptr;
 
             // Stop processing:
             RPC::IRemoteConnection* connection = service->RemoteConnection(_connectionId);
