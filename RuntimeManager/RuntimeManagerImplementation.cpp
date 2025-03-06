@@ -586,7 +586,7 @@ err_ret:
             return runtimeState;
         }
 
-        Core::hresult RuntimeManagerImplementation::Run(const string& appInstanceId, const string& appPath, const string& runtimePath, IStringIterator* const& envVars, const uint32_t userId, const uint32_t groupId, IValueIterator* const& ports, IStringIterator* const& paths, IStringIterator* const& debugSettings)
+        Core::hresult RuntimeManagerImplementation::Run(const string& appId, const string& appInstanceId, const string& appPath, const string& runtimePath, IStringIterator* const& envVars, const uint32_t userId, const uint32_t groupId, IValueIterator* const& ports, IStringIterator* const& paths, IStringIterator* const& debugSettings)
         {
             Core::hresult status = Core::ERROR_GENERAL;
             RuntimeAppInfo runtimeAppInfo;
@@ -596,6 +596,7 @@ err_ret:
 
             /* Below code to be enabled once dobbySpec generator ticket is ready */
             ApplicationConfiguration config;
+            config.mAppId = appId;
             config.mAppInstanceId = appInstanceId;
             config.mAppPath = {appPath};
             config.mRuntimePath = runtimePath;
@@ -698,6 +699,10 @@ err_ret:
                 if (status == Core::ERROR_NONE)
                 {
                     LOGINFO("Update Info for %s",appInstanceId.c_str());
+                    if (!appId.empty())
+                    {
+                        runtimeAppInfo.appId = std::move(appId);
+                    }
                     runtimeAppInfo.appInstanceId = std::move(appInstanceId);
                     runtimeAppInfo.appPath = std::move(appPath);
                     runtimeAppInfo.runtimePath = std::move(runtimePath);
