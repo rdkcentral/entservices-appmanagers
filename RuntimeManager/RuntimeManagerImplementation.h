@@ -93,6 +93,7 @@ namespace WPEFramework
 
                 typedef struct _RuntimeAppInfo
                 {
+                    std::string appId;
                     std::string appInstanceId;
                     std::string appPath;
                     std::string runtimePath;
@@ -164,7 +165,7 @@ namespace WPEFramework
                 virtual Core::hresult Register(Exchange::IRuntimeManager::INotification *notification) override;
                 virtual Core::hresult Unregister(Exchange::IRuntimeManager::INotification *notification) override;
 
-                virtual Core::hresult Run(const string& appInstanceId, const string& appPath, const string& runtimePath, IStringIterator* const& envVars, const uint32_t userId, const uint32_t groupId, IValueIterator* const& ports, IStringIterator* const& paths, IStringIterator* const& debugSettings);
+                virtual Core::hresult Run(const string& appId, const string& appInstanceId, const string& appPath, const string& runtimePath, IStringIterator* const& envVars, const uint32_t userId, const uint32_t groupId, IValueIterator* const& ports, IStringIterator* const& paths, IStringIterator* const& debugSettings);
                 virtual Core::hresult Hibernate(const string& appInstanceId) override;
                 virtual Core::hresult Wake(const string& appInstanceId, const RuntimeState runtimeState) override;
                 virtual Core::hresult Suspend(const string& appInstanceId) override;
