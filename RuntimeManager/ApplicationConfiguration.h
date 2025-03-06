@@ -28,6 +28,8 @@ namespace Plugin
 {
     struct ApplicationConfiguration
     {
+        std::string mAppId;
+
         std::string mAppInstanceId;
         
         // command to run inside the container, mArgs[0] is application name
