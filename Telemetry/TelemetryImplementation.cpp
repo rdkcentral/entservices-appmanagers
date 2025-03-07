@@ -73,7 +73,6 @@ namespace Plugin {
         LOGINFO("Create TelemetryImplementation Instance");
         TelemetryImplementation::_instance = this;
         Utils::Telemetry::init();
-        InitializePowerManager();
     }
 
     TelemetryImplementation::~TelemetryImplementation()
@@ -354,6 +353,7 @@ namespace Plugin {
         ASSERT(service != nullptr);
         _service = service;
         _service->AddRef();
+        InitializePowerManager();
 
 #ifdef HAS_RBUS        
         activateSystemPluginandGetPrivacyMode();
