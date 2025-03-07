@@ -82,7 +82,7 @@ bool RuntimeManagerHandler::getRuntimeStats(const string& appInstanceId, string&
     return true;
 }
 
-bool RuntimeManagerHandler::run(const string& appInstanceId, const string& appPath, const string& appConfig, const string& runtimeAppId, const string& runtimePath, const string& runtimeConfig, const string& environmentVars, const bool enableDebugger, const string& launchArgs, const string& xdgRuntimeDir, const string& displayName, string& errorReason)
+bool RuntimeManagerHandler::run(const string& appId, const string& appInstanceId, const string& appPath, const string& appConfig, const string& runtimeAppId, const string& runtimePath, const string& runtimeConfig, const string& environmentVars, const bool enableDebugger, const string& launchArgs, const string& xdgRuntimeDir, const string& displayName, string& errorReason)
 {
     JsonArray environmentVarsArray, debugSettingsArray, pathsArray, portsArray;
     // read data from parameters
@@ -132,7 +132,7 @@ bool RuntimeManagerHandler::run(const string& appInstanceId, const string& appPa
     pathsIterator = Core::Service<RPC::StringIterator>::Create<RPC::IStringIterator>(pathsList);
     portsIterator = Core::Service<RPC::ValueIterator>::Create<RPC::IValueIterator>(portsList);
 
-    Core::hresult result = mRuntimeManager->Run(appInstanceId, appPath, runtimePath, environmentVarsIterator, userId, groupId, portsIterator, pathsIterator, debugSettingsIterator);
+    Core::hresult result = mRuntimeManager->Run(appId, appInstanceId, appPath, runtimePath, environmentVarsIterator, userId, groupId, portsIterator, pathsIterator, debugSettingsIterator);
     if (Core::ERROR_NONE != result)
     {
         errorReason = "unable to start running application";
