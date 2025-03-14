@@ -149,11 +149,13 @@ namespace WPEFramework
 
     void USBDevice::Deactivated(RPC::IRemoteConnection* connection)
     {
-        SYSLOG(Logging::Shutdown, (string(_T("USBDevice Deactivated"))));
-        if (connection->Id() == _connectionId) {
-            ASSERT(nullptr != _service);
+        if (connection->Id() == _connectionId)
+        {
+            SYSLOG(Logging::Shutdown, (string(_T("USBDevice Deactivated"))));
+            ASSERT(nullptr != _service)
             Core::IWorkerPool::Instance().Submit(PluginHost::IShell::Job::Create(_service, PluginHost::IShell::DEACTIVATED, PluginHost::IShell::FAILURE));
         }
     }
+
 } // namespace Plugin
 } // namespace WPEFramework
