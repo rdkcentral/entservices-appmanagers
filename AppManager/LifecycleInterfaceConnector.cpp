@@ -41,29 +41,11 @@ namespace WPEFramework
 {
     namespace Plugin
     {
-        class NotificationHandler : public Exchange::ILifecycleManager::INotification {
-
-            public:
-                NotificationHandler(LifecycleInterfaceConnector& parent) : mParent(parent){}
-                ~NotificationHandler(){}
-
-                void OnAppStateChanged(const string& appId, Exchange::ILifecycleManager::LifecycleState state, const string& errorReason)
-                {
-                    mParent.OnAppStateChanged(appId, state, errorReason);
-                }
-
-                BEGIN_INTERFACE_MAP(NotificationHandler)
-                INTERFACE_ENTRY(Exchange::ILifecycleManager::INotification)
-                END_INTERFACE_MAP
-
-            private:
-                LifecycleInterfaceConnector& mParent;
-        };
-
         LifecycleInterfaceConnector* LifecycleInterfaceConnector::_instance = nullptr;
 
         LifecycleInterfaceConnector::LifecycleInterfaceConnector(PluginHost::IShell* service)
 		: mLifecycleManagerRemoteObject(nullptr),
+                  mNotification(*this),
 		  mCurrentservice(nullptr)
         {
             LOGINFO("Create LifecycleInterfaceConnector Instance");
@@ -88,7 +70,6 @@ namespace WPEFramework
         Core::hresult LifecycleInterfaceConnector::createLifecycleManagerRemoteObject()
         {
             Core::hresult status = Core::ERROR_GENERAL;
-            Core::Sink<NotificationHandler> notification(*this);
 
             if (nullptr == mCurrentservice)
             {
@@ -102,7 +83,7 @@ namespace WPEFramework
             {
                 LOGINFO("Created LifecycleManager Remote Object \n");
                 mLifecycleManagerRemoteObject->AddRef();
-                mLifecycleManagerRemoteObject->Register(&notification);
+                mLifecycleManagerRemoteObject->Register(&mNotification);
                 LOGINFO("LifecycleManager notification registered");
                 status = Core::ERROR_NONE;
             }
@@ -114,6 +95,7 @@ namespace WPEFramework
             ASSERT(nullptr != mLifecycleManagerRemoteObject );
             if(mLifecycleManagerRemoteObject )
             {
+                mLifecycleManagerRemoteObject->Unregister(&mNotification);
                 mLifecycleManagerRemoteObject ->Release();
                 mLifecycleManagerRemoteObject = nullptr;
             }
