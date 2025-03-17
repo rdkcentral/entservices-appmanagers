@@ -59,12 +59,10 @@ namespace Plugin {
 
                 void Activated(RPC::IRemoteConnection*) override
                 {
-                    LOGINFO("USBDevice Notification Activated");
                 }
 
                 void Deactivated(RPC::IRemoteConnection *connection) override
                 {
-                   LOGINFO("USBDevice Notification Deactivated");
                    _parent.Deactivated(connection);
                 }
 

@@ -175,7 +175,9 @@ namespace WPEFramework
 
     void USBMassStorage::Deactivated(RPC::IRemoteConnection* connection)
     {
-        if (connection->Id() == _connectionId) {
+        if (connection->Id() == _connectionId)
+        {
+            LOGINFO("USBMassStorage Deactivated");
             ASSERT(nullptr != _service);
             Core::IWorkerPool::Instance().Submit(PluginHost::IShell::Job::Create(_service, PluginHost::IShell::DEACTIVATED, PluginHost::IShell::FAILURE));
         }
@@ -183,12 +185,10 @@ namespace WPEFramework
 
     void USBMassStorage::Notification::Activated(RPC::IRemoteConnection*)
     {
-        LOGINFO("USBMassStorage Notification Activated");
     }
 
     void USBMassStorage::Notification::Deactivated(RPC::IRemoteConnection *connection)
     {
-       LOGINFO("USBMassStorage Notification Deactivated");
        _parent.Deactivated(connection);
     }
 
