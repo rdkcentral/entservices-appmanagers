@@ -1,0 +1,14 @@
+{
+ "locator":"libWPEFrameworkNativeJS.so",
+ "classname":"NativeJS",
+ "precondition":[
+  "Graphics"
+ ],
+ "callsign":"org.rdk.jsruntime",
+ "autostart":false,
+ "configuration":{
+  "root":{
+   "outofprocess":true
+  }
+ }
+}
