@@ -32,6 +32,7 @@ namespace Plugin {
 
     SERVICE_REGISTRATION(StorageManagerImplementation, 1, 0);
     static StorageManagerImplementation::StorageSize gStorageSize;
+    std::mutex StorageManagerImplementation::mStorageSizeLock;
 
     StorageManagerImplementation::StorageManagerImplementation()
     : mStorageManagerImplLock()
@@ -94,6 +95,7 @@ namespace Plugin {
     {
         if (currentFlag == FTW_F && statPtr != nullptr)
         {
+            std::lock_guard<std::mutex> storageSizelock(mStorageSizeLock);
             uint64_t usedBytesForFile = ((uint64_t)statPtr->st_size > ((uint64_t)statPtr->st_blocks * (uint64_t)gStorageSize.blockSize)) ?
                                         ((uint64_t)statPtr->st_blocks *(uint64_t)gStorageSize.blockSize) :
                                         (uint64_t)statPtr->st_size;
@@ -111,14 +113,16 @@ namespace Plugin {
     {
         const int flags = FTW_DEPTH | FTW_MOUNT | FTW_PHYS;
 
-        std::lock_guard<std::mutex> storageSizelock(mStorageSizeLock);
+        std::unique_lock<std::mutex> storageSizelock(mStorageSizeLock);
         gStorageSize.usedBytes = 0;
+        storageSizelock.unlock();
         const int result = nftw(path.c_str(), GetSize, MAX_NUM_OF_FILE_DESCRIPTORS, flags);
 
         if (result == -1)
         {
             LOGERR("nftw returned with [%d]", result);
         }
+        storageSizelock.lock();
         return gStorageSize.usedBytes;
     }
 
@@ -454,10 +458,29 @@ update_storage:
      */
     Core::hresult StorageManagerImplementation::GetStorage(const string& appId, string& path, int32_t& userId, int32_t& groupId, uint32_t& size, uint32_t& used)
     {
-        Core::hresult status = Core::ERROR_NONE;
+        Core::hresult status = Core::ERROR_GENERAL;
+        StorageAppInfo storageInfo;
 
+        std::unique_lock<std::mutex> lock(mStorageManagerImplLock);
         LOGINFO("Entered GetStorage Implementation");
-
+        if(RetrieveAppStorageInfoByAppID(appId,storageInfo))
+        {
+            path     = storageInfo.path;
+            userId   = storageInfo.uid;
+            groupId  = storageInfo.gid;
+            size     = storageInfo.quotaKB;
+            used     = storageInfo.usedKB;
+            if (storageInfo.usedKB > storageInfo.quotaKB)
+            {
+                LOGWARN("Application storage usage exceeded allocation: %s (Allocated: %u KB, Used: %u KB)",storageInfo.path.c_str(), storageInfo.quotaKB, storageInfo.usedKB);
+            }
+            LOGINFO("GetStorage Information path = %s, userId = %d, groupId = %d, size = %u, used = %u ",path.c_str(),userId,groupId,size,used);
+            status = Core::ERROR_NONE;
+        }
+        else
+        {
+            LOGERR("Failed to get the Information of the appId");
+        }
         return status;
     }
 
@@ -496,6 +519,5 @@ update_storage:
 
         return status;
     }
-
 } /* namespace Plugin */
 } /* namespace WPEFramework */
