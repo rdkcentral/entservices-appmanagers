@@ -25,5 +25,7 @@
 #include <plugins/plugins.h>
 #include <tracing/tracing.h>
 
+#define PATH_ENV "STORAGE_MANAGER_PATH"
+
 #undef EXTERNAL
 #define EXTERNAL
