@@ -42,6 +42,26 @@ namespace WPEFramework
     {
         class LifecycleInterfaceConnector
         {
+            private:
+            class NotificationHandler : public Exchange::ILifecycleManager::INotification {
+
+                public:
+                    NotificationHandler(LifecycleInterfaceConnector& parent) : mParent(parent){}
+                    ~NotificationHandler(){}
+
+                    void OnAppStateChanged(const string& appId, Exchange::ILifecycleManager::LifecycleState state, const string& errorReason)
+                    {
+                        mParent.OnAppStateChanged(appId, state, errorReason);
+                    }
+
+                    BEGIN_INTERFACE_MAP(NotificationHandler)
+                    INTERFACE_ENTRY(Exchange::ILifecycleManager::INotification)
+                    END_INTERFACE_MAP
+
+                private:
+                    LifecycleInterfaceConnector& mParent;
+            };
+
                 public/*members*/:
                     static LifecycleInterfaceConnector* _instance;
 
@@ -64,6 +84,7 @@ namespace WPEFramework
                 private:
                     mutable Core::CriticalSection mAdminLock;
                     Exchange::ILifecycleManager *mLifecycleManagerRemoteObject;
+                    Core::Sink<NotificationHandler> mNotification;
                     PluginHost::IShell* mCurrentservice;
         };
     }
