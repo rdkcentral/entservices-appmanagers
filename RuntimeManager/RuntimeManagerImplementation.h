@@ -26,6 +26,7 @@
 #include "tracing/Logging.h"
 #include <mutex>
 #include <interfaces/IOCIContainer.h>
+#include <interfaces/IStorageManager.h>
 #include <condition_variable>
 #include "ApplicationConfiguration.h"
 
@@ -183,6 +184,8 @@ namespace WPEFramework
             private: /* private methods */
                 Core::hresult createOCIContainerPluginObject(Exchange::IOCIContainer*& ociContainerRemoteObject);
                 void releaseOCIContainerPluginObject(Exchange::IOCIContainer*& ociContainerRemoteObject);
+                Core::hresult createStorageManagerPluginObject();
+                void releaseStorageManagerPluginObject();
                 void setRunningState(bool state);
                 bool getRunningState();
                 static bool generate(const ApplicationConfiguration& config, std::string& dobbySpec);
@@ -190,6 +193,7 @@ namespace WPEFramework
                 void updateContainerInfo(OCIRequestType type, const std::string& appInstanceId, const OCIContainerRequest& request, ContainerRequestData& containerReqData);
                 void printContainerInfo();
                 Exchange::IRuntimeManager::RuntimeState getRuntimeState(const string& appInstanceId);
+                Core::hresult getAppStorageInfo(const string& appId, AppStorageInfo& appStorageInfo);
 
             private: /* members */
                 mutable Core::CriticalSection mRuntimeManagerImplLock;
@@ -200,6 +204,7 @@ namespace WPEFramework
                 std::map<std::string, RuntimeAppInfo> mRuntimeAppInfo;
                 std::vector<std::shared_ptr<WPEFramework::Plugin::RuntimeManagerImplementation::OCIContainerRequest>> mContainerRequest;
                 std::condition_variable mContainerQueueCV;
+                Exchange::IStorageManager *mStorageManagerObject;
 
             private: /* internal methods */
                 void dispatchEvent(RuntimeEventType, const JsonValue &params);
