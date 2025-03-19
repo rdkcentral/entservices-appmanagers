@@ -31,7 +31,7 @@ namespace WPEFramework {
 namespace Plugin {
 
     SERVICE_REGISTRATION(StorageManagerImplementation, 1, 0);
-    thread_local static StorageManagerImplementation::StorageSize gStorageSize;
+    static StorageManagerImplementation::StorageSize gStorageSize;
 
     StorageManagerImplementation::StorageManagerImplementation()
     : mStorageManagerImplLock()
@@ -72,7 +72,6 @@ namespace Plugin {
                     LOGWARN("Base storage path is empty. Setting default path: %s", DEFAULT_APP_STORAGE_PATH);
                     mBaseStoragePath = DEFAULT_APP_STORAGE_PATH;  // Fallback path
                 }
-                Core::File file(mBaseStoragePath.c_str());
 
                 Core::SystemInfo::SetEnvironment(PATH_ENV, mBaseStoragePath.c_str());
                 LOGINFO("Base Storage Path Set: %s", mBaseStoragePath.c_str());
@@ -95,10 +94,9 @@ namespace Plugin {
     {
         if (currentFlag == FTW_F && statPtr != nullptr)
         {
-            uint64_t usedBytesForFile = ((uint64_t)statPtr->st_size > (statPtr->st_blocks * gStorageSize.blockSize)) ?
-                                        (statPtr->st_blocks * gStorageSize.blockSize) :
+            uint64_t usedBytesForFile = ((uint64_t)statPtr->st_size > ((uint64_t)statPtr->st_blocks * (uint64_t)gStorageSize.blockSize)) ?
+                                        ((uint64_t)statPtr->st_blocks *(uint64_t)gStorageSize.blockSize) :
                                         (uint64_t)statPtr->st_size;
-
             gStorageSize.usedBytes += usedBytesForFile;
             LOGINFO("path: %s usedBytes: %llu", path, gStorageSize.usedBytes);
         }
@@ -250,7 +248,14 @@ namespace Plugin {
                 /* Store the current storage dev block size */
                 {
                     std::lock_guard<std::mutex> storageSizelock(mStorageSizeLock);
-                    gStorageSize.blockSize = statFs.f_frsize;
+                    if (0 != statFs.f_frsize)
+                    {
+                        gStorageSize.blockSize = statFs.f_frsize;
+                    }
+                    else
+                    {
+                        gStorageSize.blockSize = DEFAULT_STORAGE_DEV_BLOCK_SIZE; /* Fallback to default block size */
+                    }
                 }
 
                 /* Calculate the current available storage in KB */
@@ -322,9 +327,10 @@ namespace Plugin {
             std::unique_lock<std::mutex> lock(mStorageManagerImplLock);
 
             /* Check if the storage mount directory exists or can be created */
-            if (access(mBaseStoragePath.c_str(), F_OK) == -1)
+            if (mkdir(mBaseStoragePath.c_str(), STORAGE_DIR_PERMISSION) != 0)
             {
-                if (mkdir(mBaseStoragePath.c_str(), STORAGE_DIR_PERMISSION) != 0)
+                /* Check if the error is not directory already exists */
+                if (errno != EEXIST)
                 {
                     errorReason = "Failed to create base storage directory: " + appDir;
                     LOGERR("Error creating base storage directory %s", appDir.c_str());
@@ -335,6 +341,21 @@ namespace Plugin {
             /* Check if the appId storageInfo already exists or can be created */
             if (RetrieveAppStorageInfoByAppID(appId, storageInfo))
             {
+                /* Check if the existing storage directory is accessible */
+                if (access(storageInfo.path.c_str(), F_OK) == -1)
+                {
+                    /* Not accessible, need to remove existing storage entry forcibly, recreate it */
+                    if (RemoveAppStorageInfoByAppID(appId))
+                    {
+                        LOGWARN("Storage path for appID[%s] not accessible - forcibly removed!", appDir.c_str());
+                        goto create_storage;
+                    }
+
+                    errorReason = "Failed to remove app storage entry forcibly: " + appDir;
+                    LOGERR("Failed to remove app storage entry forcibly: %s", appDir.c_str());
+                    goto ret_fail;
+                }
+
                 errorReason = "";
                 if (storageInfo.uid == userId && storageInfo.gid == groupId && storageInfo.quotaKB == size)
                 {
@@ -350,24 +371,9 @@ namespace Plugin {
                         (storageInfo.uid != userId || storageInfo.gid != groupId))
                     {
                         /* In this case, only the map entry for UID and GID needs to be updated */
-                        storageInfo.uid = userId;
-                        storageInfo.gid = groupId;
-                        if (CreateAppStorageInfoByAppID(appId, storageInfo))
-                        {
-                            LOGINFO("App storageInfo updated appId: %s userId: %d groupId: %d",
-                                    appId.c_str(), userId, groupId );
-                            path = storageInfo.path;
-                            status = Core::ERROR_NONE;
-                            goto ret_success;
-                        }
-                        else
-                        {
-                            LOGERR("Failed to update storage for appId: %s userId: %d groupId: %d",
-                                    appId.c_str(), userId, groupId );
-                            errorReason = "Failed to update storage for appId: " + appId;
-                            path = "";
-                            goto ret_fail;
-                        }
+                        LOGINFO("App storageInfo appId: %s Update{userId: %d groupId: %d}",
+                               appId.c_str(), userId, groupId );
+                        goto update_storage;
                     }
                     else
                     {
@@ -384,6 +390,7 @@ namespace Plugin {
                 }
             }
 
+create_storage:
             if (!HasEnoughStorageFreeSpace(mBaseStoragePath, size))
             {
                 LOGERR("Insufficient storage space for app [%s]. Requested: %u KB", appId.c_str(), size);
@@ -392,11 +399,14 @@ namespace Plugin {
             }
             else
             {
+update_storage:
                 /* Check if the app storage directory exists or can be created */
                 appDir = mBaseStoragePath + "/" + appId;
-                if (access(appDir.c_str(), F_OK) == -1)
+
+                if (mkdir(appDir.c_str(), STORAGE_DIR_PERMISSION) != 0)
                 {
-                    if (mkdir(appDir.c_str(), STORAGE_DIR_PERMISSION) != 0)
+                    /* Check if the error is not directory already exists */
+                    if (errno != EEXIST)
                     {
                         errorReason = "Failed to create app storage directory: " + appDir;
                         LOGERR("Error creating app storage directory %s", appDir.c_str());
@@ -421,7 +431,7 @@ namespace Plugin {
                 if (CreateAppStorageInfoByAppID(appId, storageInfo))
                 {
                     LOGINFO("Created storage at appDir: %s", appDir.c_str());
-                    path = appDir;
+                    path = std::move(appDir);
                     status = Core::ERROR_NONE;
                     errorReason = "";
                 }
