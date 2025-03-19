@@ -50,7 +50,8 @@ namespace WPEFramework
     StorageManager::StorageManager() :
         mCurrentService(nullptr),
         mConnectionId(0),
-        mStorageManagerImpl(nullptr)
+        mStorageManagerImpl(nullptr),
+        mConfigure(nullptr)
     {
         SYSLOG(Logging::Startup, (_T("StorageManager Constructor")));
     }
@@ -81,10 +82,10 @@ namespace WPEFramework
             }
             else
             {
-                configure = mStorageManagerImpl->QueryInterface<Exchange::IConfiguration>();
-                if (configure != nullptr)
+                mConfigure = mStorageManagerImpl->QueryInterface<Exchange::IConfiguration>();
+                if (mConfigure != nullptr)
                 {
-                    uint32_t result = configure->Configure(mCurrentService);
+                    uint32_t result = mConfigure->Configure(mCurrentService);
                     if(result != Core::ERROR_NONE)
                     {
                         message = _T("mStorageManagerImpl could not be configured");

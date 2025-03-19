@@ -55,7 +55,7 @@ namespace Plugin {
             PluginHost::IShell* mCurrentService{};
             uint32_t mConnectionId{};
             Exchange::IStorageManager* mStorageManagerImpl{};
-            Exchange::IConfiguration* configure;
+            Exchange::IConfiguration* mConfigure{};
 
         public /* constants */:
             static const string SERVICE_NAME;
