@@ -36,7 +36,6 @@ namespace Plugin {
 
     StorageManagerImplementation::StorageManagerImplementation()
     : mStorageManagerImplLock()
-    , mStorageSizeLock()
     , mCurrentservice(nullptr)
     {
         LOGINFO("Create StorageManagerImplementation Instance");
@@ -496,15 +495,131 @@ update_storage:
         return status;
     }
 
+
+    /**
+     * @brief : Callback function used by nftw to delete files and directories
+     *
+     * Deletes files and symbolic links using unlink
+     * and directories using rmdir
+     */
+    int deleteCallback(const char *path, const struct stat *sb, int typeflag, struct FTW *ftwbuf)
+    {
+        int status = 0;
+
+        if (ftwbuf->level == 0)
+        {
+            LOGINFO("Skip deleting root directory: %s", path);
+        }
+        else
+        {
+            switch (typeflag)
+            {
+                case FTW_DP:
+                    if (rmdir(path) != 0)
+                    {
+                        LOGERR("Failed to delete directory: %s, Error: %s", path, strerror(errno));
+                        status = -1;
+                    }
+                    break;
+
+                case FTW_F:
+                case FTW_SL:
+                    if (unlink(path) != 0)
+                    {
+                        LOGERR("Failed to delete file: %s, Error: %s", path, strerror(errno));
+                        status = -1;
+                    }
+                    break;
+
+                default:
+                    LOGERR("Unhandled type: %d for path: %s", typeflag, path);
+                    status = -1;
+                    break;
+            }
+        }
+        return status;
+    }
+
+    /**
+     * @brief : Deletes all entries within the specified directory
+     */
+    Core::hresult StorageManagerImplementation::deleteDirectoryEntries(const string& appId, string& errorReason)
+    {
+        Core::hresult status = Core::ERROR_GENERAL;
+        std::unique_lock<std::mutex> appLock;
+
+        if (!lockAppStorageInfo(appId, appLock))
+        {
+            errorReason = "Storage not found for appId: " + appId;
+        }
+        else
+        {
+        auto it = mStorageAppInfo.find(appId);
+        if(it != mStorageAppInfo.end())
+        {
+            const std::string path = it->second.path;
+            LOGINFO("Clearing App storage path: %s", path.c_str());
+            if (nftw(path.c_str(), deleteCallback, MAX_NUM_OF_FILE_DESCRIPTORS, FTW_DEPTH | FTW_PHYS) != 0)
+            {
+                LOGERR("Failed to clear App storage path: %s",path.c_str());
+                errorReason = "Failed to clear App storage path: " + path;
+            }
+            else
+            {
+                /* Successfully cleared app storage path */
+                it->second.usedKB = 0;
+                errorReason = "";
+                status = Core::ERROR_NONE;
+            }
+        }
+        }
+
+        return status;
+    }
+
+    /**
+     * @brief Locks the storage information for a specific application.
+     *
+     * This function searches for the application ID in the mStorageAppInfo map.
+     * If found, it acquires a lock on the associated storage mutex to ensure
+     * thread-safe access to the application's storage information.
+     */
+    bool StorageManagerImplementation::lockAppStorageInfo(const std::string& appId, std::unique_lock<std::mutex>& appLock)
+    {
+        bool status = false;
+
+        LOGINFO("lockAppStorageInfo");
+
+        auto it = mStorageAppInfo.find(appId);
+        if (it == mStorageAppInfo.end())
+        {
+            LOGERR("App ID %s not found in storage info", appId.c_str());
+        }
+        else
+        {
+            appLock = std::unique_lock<std::mutex>(it->second.storageLock);
+            status = true;
+        }
+        return status;
+    }
+
     /**
      * @brief : Clears storage for a given app id
      */
     Core::hresult StorageManagerImplementation::Clear(const string& appId, string& errorReason)
     {
-        Core::hresult status = Core::ERROR_NONE;
-
+        Core::hresult status = Core::ERROR_GENERAL;
         LOGINFO("Entered Clear Implementation");
+        std::unique_lock<std::mutex> lock(mStorageManagerImplLock);
 
+        if (appId.empty())
+        {
+            errorReason = "Clear called with no appId";
+        }
+        else
+        {
+            status = deleteDirectoryEntries(appId, errorReason);
+        }
         return status;
     }
 
@@ -513,10 +628,56 @@ update_storage:
      */
     Core::hresult StorageManagerImplementation::ClearAll(const string& exemptionAppIds, string& errorReason)
     {
-        Core::hresult status = Core::ERROR_NONE;
-
+        Core::hresult status = Core::ERROR_GENERAL;
+        JsonObject parameters;
         LOGINFO("Entered ClearAll Implementation");
+        std::unique_lock<std::mutex> lock(mStorageManagerImplLock);
 
+        parameters.FromString(exemptionAppIds);
+        const JsonArray exemptedIdsjson = parameters.HasLabel("exemptionAppIds") ? parameters["exemptionAppIds"].Array() : JsonArray();
+        std::list<std::string> exemptedIdsStrList;
+        for (unsigned int i = 0; i < exemptedIdsjson.Length(); i++)
+        {
+            exemptedIdsStrList.push_back(exemptedIdsjson[i].String());
+        }
+
+        DIR* dir = opendir(mBaseStoragePath.c_str());
+        if (!dir)
+        {
+            errorReason = "Failed to open storage directory: " + mBaseStoragePath;
+        }
+        else
+        {
+            bool deletionFailed = false;
+            struct dirent* entry;
+            while ((entry = readdir(dir)) != nullptr)
+            {
+                if (entry->d_type != DT_DIR || strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+                {
+                    continue;
+                }
+
+                string appDirName = entry->d_name;
+                if (std::find(exemptedIdsStrList.begin(), exemptedIdsStrList.end(), appDirName) != exemptedIdsStrList.end())
+                {
+                    LOGINFO("Skipping exempted app directory: %s", appDirName.c_str());
+                    continue;
+                }
+
+                Core::hresult deleteStatus = deleteDirectoryEntries(appDirName, errorReason);
+                if (deleteStatus != Core::ERROR_NONE)
+                {
+                    LOGERR("Error deleting directory entries for: %s", appDirName.c_str());
+                    deletionFailed = true;
+                }
+            }
+            closedir(dir);
+
+            if (!deletionFailed)
+            {
+                status = Core::ERROR_NONE;
+            }
+        }
         return status;
     }
 } /* namespace Plugin */
