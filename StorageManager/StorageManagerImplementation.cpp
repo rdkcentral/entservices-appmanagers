@@ -548,7 +548,7 @@ update_storage:
         Core::hresult status = Core::ERROR_GENERAL;
         std::unique_lock<std::mutex> appLock;
 
-        if (!LockAppStorageInfo(appId, appLock))
+        if (!lockAppStorageInfo(appId, appLock))
         {
             errorReason = "Storage not found for appId: " + appId;
         }
@@ -584,11 +584,11 @@ update_storage:
      * If found, it acquires a lock on the associated storage mutex to ensure
      * thread-safe access to the application's storage information.
      */
-    bool StorageManagerImplementation::LockAppStorageInfo(const std::string& appId, std::unique_lock<std::mutex>& appLock)
+    bool StorageManagerImplementation::lockAppStorageInfo(const std::string& appId, std::unique_lock<std::mutex>& appLock)
     {
         bool status = false;
 
-        LOGINFO("LockAppStorageInfo");
+        LOGINFO("lockAppStorageInfo");
 
         auto it = mStorageAppInfo.find(appId);
         if (it == mStorageAppInfo.end())
