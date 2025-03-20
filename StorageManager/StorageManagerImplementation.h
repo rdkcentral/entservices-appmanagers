@@ -92,7 +92,7 @@ namespace Plugin {
         uint64_t GetDirectorySizeInBytes(const std::string &path);
         static int GetSize(const char *path, const struct stat *statPtr, int currentFlag, struct FTW *internalFtwUsage);
         Core::hresult deleteDirectoryEntries(const string& appId, string& errorReason);
-        bool LockAppStorageInfo(const std::string& appId, std::unique_lock<std::mutex>& appLock);
+        bool lockAppStorageInfo(const std::string& appId, std::unique_lock<std::mutex>& appLock);
 
     private:
         mutable std::mutex mStorageManagerImplLock;
