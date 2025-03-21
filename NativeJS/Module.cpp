@@ -2,7 +2,7 @@
 * If not stated otherwise in this file or this component's LICENSE
 * file the following copyright and licenses apply:
 *
-* Copyright 2024 RDK Management
+* Copyright 2019 RDK Management
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -17,15 +17,6 @@
 * limitations under the License.
 **/
 
-#pragma once
-#ifndef MODULE_NAME
-#define MODULE_NAME Plugin_StorageManager
-#endif
+#include "Module.h"
 
-#include <plugins/plugins.h>
-#include <tracing/tracing.h>
-
-#define PATH_ENV "STORAGE_MANAGER_PATH"
-
-#undef EXTERNAL
-#define EXTERNAL
+MODULE_NAME_DECLARATION(BUILD_REFERENCE)

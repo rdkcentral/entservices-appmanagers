@@ -50,7 +50,8 @@ namespace WPEFramework
     StorageManager::StorageManager() :
         mCurrentService(nullptr),
         mConnectionId(0),
-        mStorageManagerImpl(nullptr)
+        mStorageManagerImpl(nullptr),
+        mConfigure(nullptr)
     {
         SYSLOG(Logging::Startup, (_T("StorageManager Constructor")));
     }
@@ -70,12 +71,10 @@ namespace WPEFramework
         ASSERT(0 == mConnectionId);
 
         SYSLOG(Logging::Startup, (_T("StorageManager::Initialize: PID=%u"), getpid()));
-
         mCurrentService = service;
         if (nullptr != mCurrentService)
         {
             mCurrentService->AddRef();
-
             if (nullptr == (mStorageManagerImpl = mCurrentService->Root<Exchange::IStorageManager>(mConnectionId, 5000, _T("StorageManagerImplementation"))))
             {
                 SYSLOG(Logging::Startup, (_T("StorageManager::Initialize: object creation failed")));
@@ -83,6 +82,19 @@ namespace WPEFramework
             }
             else
             {
+                mConfigure = mStorageManagerImpl->QueryInterface<Exchange::IConfiguration>();
+                if (mConfigure != nullptr)
+                {
+                    uint32_t result = mConfigure->Configure(mCurrentService);
+                    if(result != Core::ERROR_NONE)
+                    {
+                        message = _T("mStorageManagerImpl could not be configured");
+                    }
+                }
+                else
+                {
+                    message = _T("mStorageManagerImpl implementation did not provide a configuration interface");
+                }
                 // Invoking Plugin API register to wpeframework
                 Exchange::JStorageManager::Register(*this, mStorageManagerImpl);
             }

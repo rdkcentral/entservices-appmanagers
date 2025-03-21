@@ -37,6 +37,7 @@ namespace WPEFramework
         , mContainerLock()
         , mCurrentservice(nullptr)
         , mContainerWorkerThread()
+        ,mStorageManagerObject(nullptr)
         {
             LOGINFO("Create RuntimeManagerImplementation Instance");
             if (nullptr == RuntimeManagerImplementation::_instance)
@@ -75,6 +76,11 @@ namespace WPEFramework
             {
                mCurrentservice->Release();
                mCurrentservice = nullptr;
+            }
+
+            if (nullptr != mStorageManagerObject)
+            {
+                releaseStorageManagerPluginObject();
             }
         }
 
@@ -477,6 +483,12 @@ namespace WPEFramework
                 /* Set IsRunning to true */
                 setRunningState(true);
 
+                /* Create Storage Manager Plugin Object */
+                if (Core::ERROR_NONE != createStorageManagerPluginObject())
+                {
+                    LOGERR("Failed to create Storage Manager Object");
+                }
+
                 /* Create the worker thread */
                 try
                 {
@@ -547,6 +559,97 @@ err_ret:
             }
         }
 
+        Core::hresult RuntimeManagerImplementation::createStorageManagerPluginObject()
+        {
+            #define MAX_STORAGE_MANAGER_OBJECT_CREATION_RETRIES 2
+
+            Core::hresult status = Core::ERROR_GENERAL;
+            uint8_t retryCount = 0;
+
+            if (nullptr == mCurrentservice)
+            {
+                LOGERR("mCurrentservice is null");
+            }
+            else
+            {
+                do
+                {
+                    mStorageManagerObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IStorageManager>("org.rdk.StorageManager");
+
+                    if (nullptr == mStorageManagerObject)
+                    {
+                        LOGERR("storageManagerObject is null (Attempt %d)", retryCount + 1);
+                        retryCount++;
+                        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+                    }
+                    else
+                    {
+                        LOGINFO("Successfully created Storage Manager Object");
+                        status = Core::ERROR_NONE;
+                        break;
+                    }
+                } while (retryCount < MAX_STORAGE_MANAGER_OBJECT_CREATION_RETRIES);
+
+                if (status != Core::ERROR_NONE)
+                {
+                    LOGERR("Failed to create Storage Manager Object after %d attempts", MAX_STORAGE_MANAGER_OBJECT_CREATION_RETRIES);
+                }
+            }
+            return status;
+        }
+
+        void RuntimeManagerImplementation::releaseStorageManagerPluginObject()
+        {
+            ASSERT(nullptr != mStorageManagerObject);
+            if(mStorageManagerObject)
+            {
+                LOGINFO("Storage Manager object released\n");
+                mStorageManagerObject->Release();
+                mStorageManagerObject = nullptr;
+            }
+        }
+
+/*
+* @brief : Returns the storage information for a given app id using Storage Manager plugin interface
+*/
+        Core::hresult RuntimeManagerImplementation::getAppStorageInfo(const string& appId, AppStorageInfo& appStorageInfo)
+        {
+            Core::hresult status = Core::ERROR_GENERAL;
+
+            if (appId.empty())
+            {
+                LOGERR("Invalid appId");
+            }
+            else
+            {
+                /* Re-attempting to create Storage Manager Object if the previous attempt failed (i.e., object is null) */
+                if (nullptr == mStorageManagerObject)
+                {
+                    if (Core::ERROR_NONE != createStorageManagerPluginObject())
+                    {
+                        LOGERR("Re-attempt failed to create Storage Manager Object");
+                    }
+                }
+
+                if (nullptr != mStorageManagerObject)
+                {
+                    if (Core::ERROR_NONE == (status = mStorageManagerObject->GetStorage(appId, appStorageInfo.path,
+                        appStorageInfo.userId, appStorageInfo.groupId, appStorageInfo.size, appStorageInfo.used)))
+                    {
+                        LOGINFO("Received Storage Manager info for %s [path %s, userId %d, groupId %d, size %d, used %d]",
+                            appId.c_str(), appStorageInfo.path.c_str(), appStorageInfo.userId,
+                            appStorageInfo.groupId, appStorageInfo.size, appStorageInfo.used);
+                    }
+                    else
+                    {
+                        LOGERR("Failed to get Storage Manager info");
+                    }
+                }
+            }
+
+            return status;
+        }
+
         bool RuntimeManagerImplementation::generate(const ApplicationConfiguration& /*config*/, std::string& dobbySpec)
         {
             ApplicationConfiguration testConfig;
@@ -593,6 +696,7 @@ err_ret:
             std::string xdgRuntimeDir = "";
             std::string waylandDisplay = "";
             std::string dobbySpec;
+            AppStorageInfo appStorageInfo;
 
             /* Below code to be enabled once dobbySpec generator ticket is ready */
             ApplicationConfiguration config;
@@ -663,6 +767,18 @@ err_ret:
                     {
                         break;
                     }
+                }
+            }
+
+            if (!appId.empty())
+            {
+                if (Core::ERROR_NONE == getAppStorageInfo(appId, appStorageInfo))
+                {
+                    config.mAppStorageInfo.path = std::move(appStorageInfo.path);
+                    config.mAppStorageInfo.userId = std::move(appStorageInfo.userId);
+                    config.mAppStorageInfo.groupId = std::move(appStorageInfo.groupId);
+                    config.mAppStorageInfo.size = std::move(appStorageInfo.size);
+                    config.mAppStorageInfo.used = std::move(appStorageInfo.used);
                 }
             }
 

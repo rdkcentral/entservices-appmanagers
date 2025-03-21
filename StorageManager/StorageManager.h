@@ -22,6 +22,7 @@
 #include "Module.h"
 #include <interfaces/json/JStorageManager.h>
 #include <interfaces/IStorageManager.h>
+#include <interfaces/IConfiguration.h>
 
 namespace WPEFramework {
 namespace Plugin {
@@ -54,6 +55,7 @@ namespace Plugin {
             PluginHost::IShell* mCurrentService{};
             uint32_t mConnectionId{};
             Exchange::IStorageManager* mStorageManagerImpl{};
+            Exchange::IConfiguration* mConfigure{};
 
         public /* constants */:
             static const string SERVICE_NAME;
