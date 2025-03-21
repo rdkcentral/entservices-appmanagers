@@ -26,6 +26,16 @@ namespace WPEFramework
 {
 namespace Plugin
 {
+
+    typedef struct _AppStorageInfo
+    {
+        std::string path;
+        int32_t userId;
+        int32_t groupId;
+        uint32_t size;
+        uint32_t used;
+    } AppStorageInfo;
+
     struct ApplicationConfiguration
     {
         std::string mAppId;
@@ -58,6 +68,10 @@ namespace Plugin
 
         // TODO what to do with it?
         std::vector<std::string> mDebugSettings;
+
+        // application storage info - storage path, uid, gid
+        AppStorageInfo mAppStorageInfo;
+
     };
 } /* namespace Plugin */
 } /* namespace WPEFramework */

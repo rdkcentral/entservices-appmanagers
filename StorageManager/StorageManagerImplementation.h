@@ -21,13 +21,49 @@
 
 #include "Module.h"
 #include <interfaces/IStorageManager.h>
+#include <interfaces/IConfiguration.h>
+#include <ftw.h>
+#include <mutex>
 
 namespace WPEFramework {
 namespace Plugin {
 
-    class StorageManagerImplementation : public Exchange::IStorageManager {
+    class StorageManagerImplementation : public Exchange::IStorageManager ,public Exchange::IConfiguration{
+
+        private:
+        class Config : public Core::JSON::Container {
+        private:
+            Config(const Config&) = delete;
+            Config& operator=(const Config&) = delete;
+
+        public:
+            Config()
+                : Core::JSON::Container()
+                {
+                    Add(_T("path"), &Path);
+                }
+
+        public:
+            Core::JSON::String Path;
+        };
 
     public:
+        typedef struct _StorageAppInfo
+        {
+            std::string path;    /* Path to the application's storage */
+            int32_t uid;         /* UID of the user who owns the storage */
+            int32_t gid;         /* GID of the group who owns the storage */
+            uint32_t quotaKB;    /* Quota size in kilobytes for the storage */
+            uint32_t usedKB;     /* Used space in kilobytes for the storage */
+            std::mutex storageLock; /* Mutex for thread safety */
+        } StorageAppInfo;
+
+        typedef struct _StorageSize
+        {
+            uint64_t blockSize = 0;
+            uint64_t usedBytes = 0;
+        } StorageSize;
+
         StorageManagerImplementation();
         ~StorageManagerImplementation() override;
 
@@ -36,6 +72,7 @@ namespace Plugin {
 
         BEGIN_INTERFACE_MAP(StorageManagerImplementation)
         INTERFACE_ENTRY(Exchange::IStorageManager)
+        INTERFACE_ENTRY(Exchange::IConfiguration)
         END_INTERFACE_MAP
 
         Core::hresult CreateStorage(const string& appId, const int32_t& userId, const int32_t& groupId, const uint32_t& size, string& path, string& errorReason) override;
@@ -44,9 +81,26 @@ namespace Plugin {
         Core::hresult Clear(const string& appId, string& errorReason) override;
         Core::hresult ClearAll(const string& exemptionAppIds, string& errorReason) override;
 
-    private:
-        mutable Core::CriticalSection mStorageManagerImplLock;
+        // IConfiguration methods
+        uint32_t Configure(PluginHost::IShell* service) override;
 
+    private:
+        bool CreateAppStorageInfoByAppID(const std::string& appId, StorageAppInfo &storageInfo);
+        bool RetrieveAppStorageInfoByAppID(const string &appId, StorageAppInfo &storageInfo);
+        bool RemoveAppStorageInfoByAppID(const string &appId);
+        bool HasEnoughStorageFreeSpace(const std::string& baseDir, uint32_t requiredSpaceKB);
+        uint64_t GetDirectorySizeInBytes(const std::string &path);
+        static int GetSize(const char *path, const struct stat *statPtr, int currentFlag, struct FTW *internalFtwUsage);
+        Core::hresult deleteDirectoryEntries(const string& appId, string& errorReason);
+        bool lockAppStorageInfo(const std::string& appId, std::unique_lock<std::mutex>& appLock);
+
+    private:
+        mutable std::mutex mStorageManagerImplLock;
+        static std::mutex mStorageSizeLock;
+        std::map<std::string, StorageAppInfo> mStorageAppInfo;  /* Map storing app storage info for each appId */
+        Config _config;
+        PluginHost::IShell* mCurrentservice;
+        std::string mBaseStoragePath;                           /* Base path for the app storage */
     };
 } /* namespace Plugin */
 } /* namespace WPEFramework */
