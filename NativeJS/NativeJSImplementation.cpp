@@ -54,25 +54,34 @@ namespace WPEFramework
                     mNativeJSRenderer->launchApplication(gPendingUrlRequest, moduleSettings);
 		    gPendingUrlRequest = "";
                     gPendingUrlOptionsRequest = "";
-                }		
-                mNativeJSRenderer->run();
-                printf("After launch application execution ... \n"); fflush(stdout);
+                }
+		
+		mNativeJSRenderer->run();
+		
+		printf("After launch application execution ... \n"); fflush(stdout);
+		mNativeJSRenderer.reset()
+
             }, waylandDisplay);
-            mRenderThread.detach();
             return (Core::ERROR_NONE);
         }
 
         uint32_t NativeJSImplementation::Deinitialize()
         {
-            LOGINFO("deinitializing NativeJS process");
-            mNativeJSRenderer->terminate();
-            sleep(2);
-            return (Core::ERROR_NONE);
+           LOGINFO("deinitializing NativeJS process");
+           if (mNativeJSRenderer)
+           {
+               mNativeJSRenderer->terminate();
+               if (mRenderThread.joinable())
+               {
+                   mRenderThread.join();
+               }
+           }
+	   return (Core::ERROR_NONE);
         }
 
         uint32_t NativeJSImplementation::LaunchApplication(const std::string url, const std::string options)
         {
-            LOGINFO();
+            LOGINFO("LaunchApplication invoked");
             if (mNativeJSRenderer)
             {		    
 		std::string optionsVal(options);
@@ -90,7 +99,7 @@ namespace WPEFramework
         }
         uint32_t NativeJSImplementation::DestroyApplication(const std::string url)
         {
-            LOGINFO();
+            LOGINFO("DestroyApplication invoked");
             if (mNativeJSRenderer)
             {		    
                 mNativeJSRenderer->terminateApplication(url);
