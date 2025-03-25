@@ -1,11 +1,5 @@
 name: L1-tests
 
-on:
-  push:
-    branches: [  ]
-  pull_request:
-    branches: [  ]
-
 env:
   BUILD_TYPE: Debug
   THUNDER_REF: "R4.4.1"
