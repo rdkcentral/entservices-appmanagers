@@ -44,9 +44,9 @@ namespace WPEFramework
         LifecycleInterfaceConnector* LifecycleInterfaceConnector::_instance = nullptr;
 
         LifecycleInterfaceConnector::LifecycleInterfaceConnector(PluginHost::IShell* service)
-		: mLifecycleManagerRemoteObject(nullptr),
-                  mNotification(*this),
-		  mCurrentservice(nullptr)
+        : mLifecycleManagerRemoteObject(nullptr),
+          mNotification(*this),
+          mCurrentservice(nullptr)
         {
             LOGINFO("Create LifecycleInterfaceConnector Instance");
             LifecycleInterfaceConnector::_instance = this;
@@ -101,6 +101,30 @@ namespace WPEFramework
             }
         }
 
+        Core::hresult LifecycleInterfaceConnector::isAppLoaded(const string& appId, bool& loaded)
+        {
+            Core::hresult status = Core::ERROR_GENERAL;
+            mAdminLock.Lock();
+            /* Checking if mLifecycleManagerRemoteObject is not valid then create the object */
+            if (nullptr == mLifecycleManagerRemoteObject)
+            {
+                LOGINFO("Create LifecycleManager Remote store object");
+                if (Core::ERROR_NONE != createLifecycleManagerRemoteObject())
+                {
+                    LOGERR("Failed to create LifecycleInterfaceConnector");
+                }
+            }
+            ASSERT (nullptr != mLifecycleManagerRemoteObject);
+
+            if (nullptr != mLifecycleManagerRemoteObject)
+            {
+                status = mLifecycleManagerRemoteObject->IsAppLoaded(appId, loaded);
+            }
+            mAdminLock.Unlock();
+            return status;
+        }
+
+
 /*
  * @brief LaunchApp invokes this to call LifecycleManager API.
  * @Params  : const string& appId , const string& intent , const string& launchArgs
@@ -109,7 +133,7 @@ namespace WPEFramework
         Core::hresult LifecycleInterfaceConnector::launch(const string& appId, const string& intent, const string& launchArgs)
         {
             Core::hresult status = Core::ERROR_GENERAL;
-            AppManagerImplementation::LoadedAppInfo loadedAppInfo;
+            AppManagerImplementation::AppInfo loadedAppInfo;
             AppManagerImplementation*appManagerImplInstance = AppManagerImplementation::getInstance();
 
             string appPath = "";
@@ -159,7 +183,7 @@ namespace WPEFramework
                         /*Insert/update loaded app info*/
                         if (nullptr != appManagerImplInstance)
                         {
-                            appManagerImplInstance->mLoadedAppInfo[appId] = std::move(loadedAppInfo);
+                            appManagerImplInstance->mAppInfo[appId] = std::move(loadedAppInfo);
                         }
                     }
                     else
@@ -176,7 +200,7 @@ namespace WPEFramework
         Core::hresult LifecycleInterfaceConnector::preLoadApp(const string& appId, const string& launchArgs, string& error)
         {
             Core::hresult status = Core::ERROR_GENERAL;
-            AppManagerImplementation::LoadedAppInfo loadedAppInfo;
+            AppManagerImplementation::AppInfo loadedAppInfo;
             AppManagerImplementation *appManagerImplInstance = AppManagerImplementation::getInstance();
 
             string appPath = "";
@@ -223,7 +247,7 @@ namespace WPEFramework
                         /*Insert/update loaded app info*/
                         if (nullptr != appManagerImplInstance)
                         {
-                            appManagerImplInstance->mLoadedAppInfo[appId] = std::move(loadedAppInfo);
+                            appManagerImplInstance->mAppInfo[appId] = std::move(loadedAppInfo);
                         }
                     }
                     else
@@ -252,7 +276,7 @@ namespace WPEFramework
 
             if (nullptr != appManagerImplInstance)
             {
-                for ( std::map<std::string, AppManagerImplementation::LoadedAppInfo>::iterator appIterator = appManagerImplInstance->mLoadedAppInfo.begin(); appIterator != appManagerImplInstance->mLoadedAppInfo.end(); appIterator++)
+                for ( std::map<std::string, AppManagerImplementation::AppInfo>::iterator appIterator = appManagerImplInstance->mAppInfo.begin(); appIterator != appManagerImplInstance->mAppInfo.end(); appIterator++)
                 {
                     if (appIterator->first.compare(appId) == 0)
                     {
@@ -310,7 +334,7 @@ namespace WPEFramework
             mAdminLock.Lock();
             if (nullptr != appManagerImplInstance)
             {
-                for ( std::map<std::string, AppManagerImplementation::LoadedAppInfo>::iterator appIterator = appManagerImplInstance->mLoadedAppInfo.begin(); appIterator != appManagerImplInstance->mLoadedAppInfo.end(); appIterator++)
+                for ( std::map<std::string, AppManagerImplementation::AppInfo>::iterator appIterator = appManagerImplInstance->mAppInfo.begin(); appIterator != appManagerImplInstance->mAppInfo.end(); appIterator++)
                 {
                     if (appIterator->first.compare(appId) == 0)
                     {
@@ -334,12 +358,6 @@ namespace WPEFramework
                                     {
                                         LOGERR("UnloadApp failed with an unknown error.");
                                     }
-                                }
-                                else
-                                {
-                                    /* Remove the appId from the database */
-                                    appManagerImplInstance->mLoadedAppInfo.erase(appIterator);
-                                    LOGINFO("AppId %s and its corresponding data removed from database.", appId.c_str());
                                 }
                             }
                         }
@@ -398,10 +416,6 @@ namespace WPEFramework
                     if (!(result == Core::ERROR_NONE && success))
                     {
                         LOGERR("killApp failed, result: %d, success: %d, errorReason: %s", result, success, errorReason.c_str());
-                    }
-                    else // killApp succedded
-                    {
-                        RemoveApp(appId);
                     }
                 }
                 mAdminLock.Unlock();
@@ -481,7 +495,7 @@ namespace WPEFramework
                 JsonArray loadedAppsArray;
                 if (nullptr != appManagerImplInstance)
                 {
-                    for (const auto& appEntry :appManagerImplInstance->mLoadedAppInfo)
+                    for (const auto& appEntry :appManagerImplInstance->mAppInfo)
                     {
                         JsonObject loadedAppObject;
 
@@ -542,7 +556,7 @@ namespace WPEFramework
             mAdminLock.Lock();
             if (nullptr != appManagerImplInstance)
             {
-                for ( std::map<std::string, AppManagerImplementation::LoadedAppInfo>::iterator it = appManagerImplInstance->mLoadedAppInfo.begin(); it != appManagerImplInstance->mLoadedAppInfo.end(); it++)
+                for ( std::map<std::string, AppManagerImplementation::AppInfo>::iterator it = appManagerImplInstance->mAppInfo.begin(); it != appManagerImplInstance->mAppInfo.end(); it++)
                 {
                     if (it->first.compare(appId) == 0)
                     {
@@ -570,8 +584,8 @@ namespace WPEFramework
             if (!appManagerImpl)
                 return {};
 
-            auto it = appManagerImpl->mLoadedAppInfo.find(appId);
-            if (it == appManagerImpl->mLoadedAppInfo.end())
+            auto it = appManagerImpl->mAppInfo.find(appId);
+            if (it == appManagerImpl->mAppInfo.end())
                 return {};
             else
                 return it->second.appInstanceId;
@@ -583,9 +597,9 @@ namespace WPEFramework
             if (!appManagerImpl)
                 return;
 
-            auto it = appManagerImpl->mLoadedAppInfo.find(appId);
-            if (it != appManagerImpl->mLoadedAppInfo.end())
-                appManagerImpl->mLoadedAppInfo.erase(it);
+            auto it = appManagerImpl->mAppInfo.find(appId);
+            if (it != appManagerImpl->mAppInfo.end())
+                appManagerImpl->mAppInfo.erase(it);
             else
                 LOGERR("AppInfo for appId '%s' not found", appId.c_str());
         }      
