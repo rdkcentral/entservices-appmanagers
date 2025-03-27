@@ -79,15 +79,20 @@ namespace WPEFramework {
 
         void NativeJS::Deinitialize(PluginHost::IShell* /* service */)
         {
-            LOGINFO("deinitialzing NativeJS");
-            mNativeJS->Deinitialize();
-            ASSERT(mNativeJS != nullptr);
-            mNativeJS->Release();
-            mNativeJS = nullptr;
-            mService = nullptr;
-            NativeJS::_instance = nullptr;
-            sleep(2);
-        }
+	    LOGINFO("Deinitializing NativeJS instance");	
+            if (mNativeJS != nullptr) {
+
+                Exchange::JNativeJS::Unregister(*this);
+                mNativeJS->Deinitialize();
+
+                mNativeJS->Release();
+                mNativeJS = nullptr;
+                mService = nullptr;
+                NativeJS::_instance = nullptr;
+                LOGINFO("NativeJS deinitialized successfully");
+
+            }
+	}
 
         string NativeJS::Information() const
         {
