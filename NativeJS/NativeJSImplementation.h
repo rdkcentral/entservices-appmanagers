@@ -40,10 +40,10 @@ namespace WPEFramework
         public:
             NativeJSImplementation();
             virtual ~NativeJSImplementation();
-            virtual uint32_t Initialize(const string waylandDisplay) override;
-            virtual uint32_t Deinitialize() override;
-            virtual uint32_t LaunchApplication(const std::string url, const std::string options) override;
-            virtual uint32_t DestroyApplication(const std::string url) override;
+            virtual Core::hresult Initialize(const string waylandDisplay) override;
+            virtual Core::hresult Deinitialize() override;
+            virtual Core::hresult LaunchApplication(const std::string url, const std::string options) override;
+            virtual Core::hresult DestroyApplication(const std::string url) override;
 
             BEGIN_INTERFACE_MAP(NativeJSImplementation)
             INTERFACE_ENTRY(Exchange::INativeJS)
