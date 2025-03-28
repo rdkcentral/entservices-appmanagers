@@ -30,6 +30,8 @@ AppManagerImplementation::AppManagerImplementation()
 , mAppManagerNotification()
 , mLifecycleInterfaceConnector(nullptr)
 , mPersistentStoreRemoteStoreObject(nullptr)
+, mPackageManagerHandlerObject(nullptr)
+, mPackageManagerInstallerObject(nullptr)
 , mCurrentservice(nullptr)
 {
     LOGINFO("Create AppManagerImplementation Instance");
@@ -55,7 +57,7 @@ AppManagerImplementation::~AppManagerImplementation()
         mLifecycleInterfaceConnector = nullptr;
     }
     releasePersistentStoreRemoteStoreObject();
-
+    releasePackageManagerObject();
     if (nullptr != mCurrentservice)
     {
        mCurrentservice->Release();
@@ -154,6 +156,15 @@ uint32_t AppManagerImplementation::Configure(PluginHost::IShell* service)
             LOGINFO("created createPersistentStoreRemoteStoreObject");
         }
 
+        if (Core::ERROR_NONE != createPackageManagerObject())
+        {
+            LOGERR("Failed to create createPackageManagerObject");
+        }
+        else
+        {
+            LOGINFO("created createPackageManagerObject");
+        }
+
         result = Core::ERROR_NONE;
     }
     else
@@ -194,6 +205,244 @@ void AppManagerImplementation::releasePersistentStoreRemoteStoreObject()
     }
 }
 
+Core::hresult AppManagerImplementation::createPackageManagerObject()
+{
+    Core::hresult status = Core::ERROR_GENERAL;
+
+    if (nullptr == mCurrentservice)
+    {
+        LOGERR("mCurrentservice is null \n");
+    }
+    else if (nullptr == (mPackageManagerHandlerObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IPackageHandler>("org.rdk.PackageManagerRDKEMS")))
+    {
+        LOGERR("mPackageManagerHandlerObject is null \n");
+    }
+    else if (nullptr == (mPackageManagerInstallerObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IPackageInstaller>("org.rdk.PackageManagerRDKEMS")))
+    {
+        LOGERR("mPackageManagerInstallerObject is null \n");
+    }
+    else
+    {
+        LOGINFO("created PackageManager Object\n");
+        status = Core::ERROR_NONE;
+    }
+    return status;
+}
+
+void AppManagerImplementation::releasePackageManagerObject()
+{
+    ASSERT(nullptr != mPackageManagerHandlerObject);
+    if(mPackageManagerHandlerObject)
+    {
+        mPackageManagerHandlerObject->Release();
+        mPackageManagerHandlerObject = nullptr;
+    }
+    ASSERT(nullptr != mPackageManagerInstallerObject);
+    if(mPackageManagerInstallerObject)
+    {
+        mPackageManagerInstallerObject->Release();
+        mPackageManagerInstallerObject = nullptr;
+    }
+}
+
+bool AppManagerImplementation::createOrUpdatePackageInfoByAppId(const string& appId, PackageInfo &packageData)
+{
+    bool result = false;
+    if( packageData.version.empty() || packageData.unpackedPath.empty())
+    {
+        LOGWARN("AppId[%s] unpacked path is empty! or version is empty ", appId.c_str());
+    }
+    else
+    {
+        /* Check if the appId exists in the map */
+        auto it = mAppInfo.find(appId);
+        if (it != mAppInfo.end())
+        {
+            /* Update existing entry (PackageInfo inside LoadedAppInfo) */
+            it->second.packageInfo.version         = packageData.version;
+            it->second.packageInfo.lockId          = packageData.lockId;
+            it->second.packageInfo.unpackedPath    = packageData.unpackedPath;
+            it->second.packageInfo.configMetadata  = packageData.configMetadata;
+            it->second.packageInfo.appMetadata     = packageData.appMetadata;
+
+            LOGINFO("Existing package entry updated for appId: %s " \
+                    "version: %s lockId: %d unpackedPath: %s configMetadata: %s appMetadata: %s",
+                    appId.c_str(), it->second.packageInfo.version.c_str(),
+                    it->second.packageInfo.lockId, it->second.packageInfo.unpackedPath.c_str(),
+                    it->second.packageInfo.configMetadata.c_str(), it->second.packageInfo.appMetadata.c_str());
+        }
+        else
+        {
+            /* Create new entry (PackageInfo inside LoadedAppInfo) */
+            mAppInfo[appId].packageInfo.version         = packageData.version;
+            mAppInfo[appId].packageInfo.lockId          = packageData.lockId;
+            mAppInfo[appId].packageInfo.unpackedPath    = packageData.unpackedPath;
+            mAppInfo[appId].packageInfo.configMetadata  = packageData.configMetadata;
+            mAppInfo[appId].packageInfo.appMetadata     = packageData.appMetadata;
+
+            LOGINFO("Created new package entry for appId: %s " \
+                    "version: %s lockId: %d unpackedPath: %s configMetadata: %s appMetadata: %s",
+                    appId.c_str(), mAppInfo[appId].packageInfo.version.c_str(),
+                    mAppInfo[appId].packageInfo.lockId, mAppInfo[appId].packageInfo.unpackedPath.c_str(),
+                    mAppInfo[appId].packageInfo.configMetadata.c_str(), mAppInfo[appId].packageInfo.appMetadata.c_str());
+        }
+        result = true;
+    }
+
+    return result;
+}
+
+
+bool AppManagerImplementation::fetchPackageInfoByAppId(const string& appId, PackageInfo &packageData)
+{
+        bool result = false;
+        auto it = mAppInfo.find(appId);
+        if (it != mAppInfo.end())
+        {
+            packageData.version           = it->second.packageInfo.version;
+            packageData.lockId            = it->second.packageInfo.lockId;
+            packageData.unpackedPath      = it->second.packageInfo.unpackedPath;
+            packageData.configMetadata    = it->second.packageInfo.configMetadata;
+            packageData.appMetadata       = it->second.packageInfo.appMetadata;
+            LOGINFO("Fetching package entry updated for appId: %s " \
+                    "version: %s lockId: %d unpackedPath: %s configMetadata: %s appMetadata: %s",
+                    appId.c_str(), packageData.version.c_str(), packageData.lockId, packageData.unpackedPath.c_str(), packageData.configMetadata.c_str(), packageData.appMetadata.c_str());
+            result = true;
+        }
+        return result;
+}
+
+bool AppManagerImplementation::removeAppInfoByAppId(const string &appId)
+{
+    bool result = false;
+
+    /* Check if appId StorageInfo is found, erase it */
+    auto it = mAppInfo.find(appId);
+    if (it != mAppInfo.end())
+    {
+        LOGINFO("Existing package entry updated for appId: %s " \
+                "version: %s lockId: %d unpackedPath: %s configMetadata: %s appMetadata: %s",
+                appId.c_str(), it->second.packageInfo.version.c_str(), it->second.packageInfo.lockId, it->second.packageInfo.unpackedPath.c_str(), it->second.packageInfo.configMetadata.c_str(), it->second.packageInfo.appMetadata.c_str());
+        mAppInfo.erase(appId);
+        result = true;
+    } 
+    else
+    {
+        LOGWARN("AppId[%s] PackageInfo not found", appId.c_str());
+    }
+    return result;
+}
+
+Core::hresult AppManagerImplementation::packageLock(const string& appId, PackageInfo &packageData, Exchange::IPackageHandler::LockReason lockReason)
+{
+        Core::hresult status = Core::ERROR_GENERAL;
+        bool result = false;
+        Exchange::IPackageInstaller::IPackageIterator* packages;
+        bool loaded = true;
+
+        if (nullptr != mLifecycleInterfaceConnector)
+        {
+            status = mLifecycleInterfaceConnector->isAppLoaded(appId, loaded);
+        }
+        if(!loaded && status == Core::ERROR_NONE)
+        {
+            if (nullptr != mPackageManagerInstallerObject)
+            {
+                status = mPackageManagerInstallerObject->ListPackages(packages);
+                if (status == Core::ERROR_NONE)
+                {
+                    while (packages != nullptr )
+                    {
+                        WPEFramework::Exchange::IPackageInstaller::Package package;
+                        if (!packages->Next(package))
+                        {
+                            LOGERR("Failed to get next package");
+                            break;
+                        }
+
+                        /* Check if the packageId matches the provided appId */
+                        if (!package.packageId.empty() && package.packageId == appId)
+                        {
+                            /* If it matches, store the version */
+                            packageData.version = std::string(package.version);
+                            break;  /* Exit the loop after finding the matching package */
+                        }
+                    }
+                    if ((nullptr != mPackageManagerHandlerObject) && (!packageData.version.empty()))
+                    {
+                        status = mPackageManagerHandlerObject->Lock(appId, packageData.version, lockReason, packageData.lockId, packageData.unpackedPath, packageData.configMetadata, packageData.appMetadata );
+                        if(status == Core::ERROR_NONE)
+                        {
+                            LOGINFO("Fetching package entry updated for appId: %s " \
+                            "version: %s lockId: %d unpackedPath: %s configMetadata: %s appMetadata: %s",
+                            appId.c_str(), packageData.version.c_str(), packageData.lockId, packageData.unpackedPath.c_str(), packageData.configMetadata.c_str(), packageData.appMetadata.c_str());
+                            result = createOrUpdatePackageInfoByAppId(appId, packageData);
+                            if (false == result)
+                            {
+                                LOGERR("Failed to createOrUpdate the PackageInfo");
+                                status = Core::ERROR_GENERAL;
+                            }
+                        }
+                        else
+                        {
+                            LOGERR("Failed to PackageManager Lock");
+                        }
+                    }
+                    else
+                    {
+                        LOGERR("PackageManager handler is %s", (nullptr != mPackageManagerHandlerObject) ? "valid, but package version is empty" : "null");
+                        status = Core::ERROR_GENERAL;
+                    }
+                }
+                else
+                {
+                    LOGERR("Failed to get the ListPackages");
+                }
+            }
+            else
+            {
+                LOGERR("PackageManager Installer is %s", ((nullptr != mPackageManagerInstallerObject) ? "valid": "null"));
+                status = Core::ERROR_GENERAL;
+            }
+        }
+        return status;
+}
+
+Core::hresult AppManagerImplementation::packageUnLock(const string& appId)
+{
+        Core::hresult status = Core::ERROR_GENERAL;
+        bool result = false;
+        auto it = mAppInfo.find(appId);
+        if (it != mAppInfo.end())
+        {
+            if (nullptr != mPackageManagerHandlerObject)
+            {
+                status = mPackageManagerHandlerObject->Unlock(appId, it->second.packageInfo.version);
+                if(status == Core::ERROR_NONE)
+                {
+                    result = removeAppInfoByAppId(appId);
+                    if(false == result)
+                    {
+                        LOGERR("Failed to remove the AppInfo");
+                        status = Core::ERROR_GENERAL;
+                    }
+                }
+                else
+                {
+                    LOGERR("Failed to PackageManager Unlock ");
+                }
+            }
+            else
+            {
+                LOGERR("PackageManager handler is %s",((nullptr != mPackageManagerHandlerObject) ? "valid": "null"));
+            }
+        }
+        else
+        {
+            LOGERR("AppId not found in map to get the version");
+        }
+        return status;
+}
 /*
  * @brief Launch App requested by client.
  * @Params[in]  : const string& appId , const string& intent, const string& launchArgs
@@ -203,13 +452,18 @@ void AppManagerImplementation::releasePersistentStoreRemoteStoreObject()
 Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const string& intent , const string& launchArgs)
 {
     Core::hresult status = Core::ERROR_GENERAL;
-
+    PackageInfo packageData;
+    Exchange::IPackageHandler::LockReason lockReason = Exchange::IPackageHandler::LockReason::LAUNCH;
     LOGINFO(" LaunchApp enter with appId %s", appId.c_str());
 
     mAdminLock.Lock();
     if (nullptr != mLifecycleInterfaceConnector)
     {
-        status = mLifecycleInterfaceConnector->launch(appId, intent, launchArgs);
+        status = packageLock(appId, packageData, lockReason);
+        if (status == Core::ERROR_NONE)
+        {
+            status = mLifecycleInterfaceConnector->launch(appId, intent, launchArgs);
+        }
     }
     mAdminLock.Unlock();
 
@@ -277,6 +531,10 @@ Core::hresult AppManagerImplementation::TerminateApp(const string& appId )
         if (nullptr != mLifecycleInterfaceConnector)
         {
             status = mLifecycleInterfaceConnector->terminateApp(appId);
+            if(status == Core::ERROR_NONE)
+            {
+                status = packageUnLock(appId);
+            }
         }
         mAdminLock.Unlock();
     }
@@ -297,6 +555,10 @@ Core::hresult AppManagerImplementation::KillApp(const string& appId)
     if (nullptr != mLifecycleInterfaceConnector)
     {
         status = mLifecycleInterfaceConnector->killApp(appId);
+        if(status == Core::ERROR_NONE)
+        {
+            status = packageUnLock(appId);
+        }
     }
     mAdminLock.Unlock();
 
@@ -349,12 +611,18 @@ Core::hresult AppManagerImplementation::SendIntent(const string& appId , const s
 Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const string& launchArgs ,string& error)
 {
     Core::hresult status = Core::ERROR_GENERAL;
+    PackageInfo packageData;
+    Exchange::IPackageHandler::LockReason lockReason = Exchange::IPackageHandler::LockReason::LAUNCH;
     LOGINFO(" PreloadApp enter with appId %s", appId.c_str());
 
     mAdminLock.Lock();
     if (nullptr != mLifecycleInterfaceConnector)
     {
-        status = mLifecycleInterfaceConnector->preLoadApp(appId, launchArgs, error);
+        status = packageLock(appId, packageData, lockReason);
+        if (status == Core::ERROR_NONE)
+        {
+            status = mLifecycleInterfaceConnector->preLoadApp(appId, launchArgs, error);
+        }
     }
     mAdminLock.Unlock();
 
