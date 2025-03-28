@@ -80,6 +80,7 @@ namespace WPEFramework
                     void OnAppStateChanged(const string& appId, Exchange::ILifecycleManager::LifecycleState state, const string& errorReason);
                     string GetAppInstanceId(const string& appId) const;
                     void RemoveApp(const string& appId);
+                    Core::hresult isAppLoaded(const string& appId, bool& loaded);
 
                 private:
                     mutable Core::CriticalSection mAdminLock;
