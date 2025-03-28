@@ -154,6 +154,19 @@ namespace WPEFramework
             else
             {
                 mAdminLock.Lock();
+                if (nullptr != appManagerImplInstance)
+                {
+                    AppManagerImplementation::PackageInfo packageData;
+                    if(appManagerImplInstance->fetchPackageInfoByAppId(appId, packageData))
+                    {
+                        appPath = packageData.unpackedPath;
+                        LOGINFO("Got PackageAppInfo appPath :[%s]", appPath.c_str());
+                    }
+                    else
+                    {
+                        LOGERR("Couldn't get the package details for appId: %s", appId.c_str());
+                    }
+                }
                 /* Checking if mLifecycleManagerRemoteObject is not valid then create the object */
                 if (nullptr == mLifecycleManagerRemoteObject)
                 {
@@ -221,6 +234,19 @@ namespace WPEFramework
             else
             {
                 mAdminLock.Lock();
+                if (nullptr != appManagerImplInstance)
+                {
+                    AppManagerImplementation::PackageInfo packageData;
+                    if(appManagerImplInstance->fetchPackageInfoByAppId(appId, packageData))
+                    {
+                        appPath = packageData.unpackedPath;
+                        LOGINFO("Got PackageAppInfo appPath :[%s]", appPath.c_str());
+                    }
+                    else
+                    {
+                        LOGERR("Couldn't get the package details for appId: %s", appId.c_str());
+                    }
+                }
                 /* Checking if mLifecycleManagerRemoteObject is not valid then create the object */
                 if (nullptr == mLifecycleManagerRemoteObject)
                 {
@@ -547,6 +573,7 @@ namespace WPEFramework
                 case Exchange::ILifecycleManager::LifecycleState::SUSPENDREQUESTED:
                 case Exchange::ILifecycleManager::LifecycleState::SUSPENDED:
                     newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED;
+                    break;
 
                 default:
                     LOGWARN("Unknown state %u", state);
