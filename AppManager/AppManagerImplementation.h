@@ -24,6 +24,7 @@
 #include <interfaces/IAppManager.h>
 #include <interfaces/IStore2.h>
 #include <interfaces/IConfiguration.h>
+#include <interfaces/IAppPackageManager.h>
 #include "tracing/Logging.h"
 #include <com/com.h>
 #include <core/core.h>
@@ -58,18 +59,28 @@ namespace Plugin {
             APPLICATION_TYPE_SYSTEM
         } ApplicationType;
 
-        typedef struct _LoadedAppInfo
+        typedef struct _PackageInfo
+        {
+            string version = "";
+            uint32_t lockId = 0;
+            string unpackedPath = "" ;
+            string configMetadata = "";
+            string appMetadata = "";
+        } PackageInfo;
+
+        typedef struct _AppInfo
         {
             string appInstanceId;
             string activeSessionId;
             string appIntent;
             ApplicationType type;
+            PackageInfo packageInfo;
             Exchange::IAppManager::AppLifecycleState currentAppState;
             Exchange::ILifecycleManager::LifecycleState currentAppLifecycleState;
             Exchange::IAppManager::AppLifecycleState targetAppState;
-        } LoadedAppInfo;
+        } AppInfo;
 
-        std::map<std::string, LoadedAppInfo> mLoadedAppInfo;
+        std::map<std::string, AppInfo> mAppInfo;
 
         enum EventNames {
             APP_STATE_CHANGED
@@ -136,6 +147,7 @@ namespace Plugin {
         Core::hresult GetMaxHibernatedApps(int32_t& maxHibernatedApps) const override;
         Core::hresult GetMaxHibernatedFlashUsage(int32_t& maxHibernatedFlashUsage) const override;
         Core::hresult GetMaxInactiveRamUsage(int32_t& maxInactiveRamUsage) const override;
+        bool fetchPackageInfoByAppId(const string& appId, PackageInfo &packageData);
 
         // IConfiguration methods
         uint32_t Configure(PluginHost::IShell* service) override;
@@ -143,12 +155,20 @@ namespace Plugin {
     private: /* private methods */
         Core::hresult createPersistentStoreRemoteStoreObject();
         void releasePersistentStoreRemoteStoreObject();
+        Core::hresult createPackageManagerObject();
+        void releasePackageManagerObject();
     private:
         mutable Core::CriticalSection mAdminLock;
         std::list<Exchange::IAppManager::INotification*> mAppManagerNotification;
         LifecycleInterfaceConnector* mLifecycleInterfaceConnector;
         Exchange::IStore2* mPersistentStoreRemoteStoreObject;
+        Exchange::IPackageHandler* mPackageManagerHandlerObject;
+        Exchange::IPackageInstaller* mPackageManagerInstallerObject;
         PluginHost::IShell* mCurrentservice;
+        Core::hresult packageLock(const string& appId, PackageInfo &packageData, Exchange::IPackageHandler::LockReason lockReason);
+        Core::hresult packageUnLock(const string& appId);
+        bool createOrUpdatePackageInfoByAppId(const string& appId, PackageInfo &packageData);
+        bool removeAppInfoByAppId(const string &appId);
 
         void dispatchEvent(EventNames, const JsonObject &params);
         void Dispatch(EventNames event, const JsonObject params);
