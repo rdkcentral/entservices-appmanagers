@@ -21,6 +21,7 @@
 #include "ApplicationConfiguration.h"
 #include "UtilsLogging.h"
 #include <sys/mount.h>
+#include <fstream>
 
 namespace WPEFramework
 {
@@ -53,6 +54,20 @@ bool DobbySpecGenerator::generate(const ApplicationConfiguration& config, string
     LOGINFO("DobbySpecGenerator::generate()");
     resultSpec = "";
 
+    std::ifstream inFile("/tmp/specchange");
+    if (inFile.good())
+    {
+        inFile.open("/tmp/specchange"); //open the input file
+        std::stringstream strStream;
+        strStream << inFile.rdbuf(); //read the file
+        resultSpec = strStream.str(); //str holds the content of the file
+        std::cout << resultSpec << "\n"; //you can do anything with the string!!!
+        inFile.close();
+        JsonObject parameters;
+        parameters.FromString(resultSpec.c_str());
+        return true;
+    }
+   
     Json::Value spec;
     spec["version"] = "1.1";
     spec["cwd"] = APPS_PATH_MOUNT_POINT;
