@@ -246,7 +246,10 @@ namespace Plugin {
         NotifyInstallStatus(packageId, version, InstallState::INSTALLING);
 
         #ifdef USE_LIBPACKAGE
-        packageImpl->Install(packageId, version, fileLocator);
+        packagemanager::Result pmResult = packageImpl->Install(packageId, version, fileLocator);
+        if (pmResult != packagemanager::SUCCESS) {
+            result = Core::ERROR_GENERAL;
+        }
         #endif
 
         NotifyInstallStatus(packageId, version, state);
@@ -262,7 +265,10 @@ namespace Plugin {
         NotifyInstallStatus(packageId, version, InstallState::UNINSTALLING);
 
         #ifdef USE_LIBPACKAGE
-        packageImpl->Uninstall(packageId);
+        packagemanager::Result pmResult = packageImpl->Uninstall(packageId);
+        if (pmResult != packagemanager::SUCCESS) {
+            result = Core::ERROR_GENERAL;
+        }
         #endif
 
         NotifyInstallStatus(packageId, version, InstallState::UNINSTALLED);
@@ -277,25 +283,29 @@ namespace Plugin {
         LOGTRACE();
         #ifdef USE_LIBPACKAGE
         string list;
-        packageImpl->GetList(list);
-        Json::Value jv;
-        Json::Reader reader;
+        packagemanager::Result pmResult = packageImpl->GetList(list);
+        if (pmResult == packagemanager::SUCCESS) {
+            Json::Value jv;
+            Json::Reader reader;
 
         if (reader.parse(list.c_str(), jv) ) {
             if (jv.isArray()) {
                 for (unsigned int i = 0; i < jv.size(); ++i) {
                     Json::Value val = jv[i];
 
-                    Exchange::IPackageInstaller::Package package;
-                    package.packageId = val["packageId"].asString().c_str();
-                    package.version = val["version"].asString().c_str();
-                    package.packageState = InstallState::INSTALLED;
-                    package.sizeKb = 0;         // XXX: getPackageSpaceInKBytes
-                    packageList.emplace_back(package);
+                        Exchange::IPackageInstaller::Package package;
+                        package.packageId = val["packageId"].asString().c_str();
+                        package.version = val["version"].asString().c_str();
+                        package.packageState = InstallState::INSTALLED;
+                        package.sizeKb = 0;         // XXX: getPackageSpaceInKBytes
+                        packageList.emplace_back(package);
+                    }
+                } else {
+                    LOGERR("Invalid json response");
                 }
-            } else {
-                LOGERR("Invalid json response");
             }
+        } else {
+            result = Core::ERROR_GENERAL;
         }
         #endif
 
@@ -370,12 +380,13 @@ namespace Plugin {
         if(isLocked(packageId, version))  {
             ++mLockCount;
         } else {
-            u_int32_t rc = packageImpl->Lock(packageId, version, unpackedPath);
-            if (rc == 0) {
+            packagemanager::Result pmResult = packageImpl->Lock(packageId, version, unpackedPath);
+            if (pmResult == packagemanager::SUCCESS) {
                 lockId = ++mLockCount;
                 LOGDBG("Locked id: %s ver: %s", packageId.c_str(), version.c_str());
             } else {
                 LOGERR("Lock Failed id: %s ver: %s", packageId.c_str(), version.c_str());
+                result = Core::ERROR_GENERAL;
             }
         }
         #endif
@@ -390,12 +401,14 @@ namespace Plugin {
 
         #ifdef USE_LIBPACKAGE
         if (mLockCount) {
-            packageImpl->Unlock(packageId, version);
+            packagemanager::Result pmResult = packageImpl->Unlock(packageId, version);
+            if (pmResult != packagemanager::SUCCESS) {
+                result = Core::ERROR_GENERAL;
+            }
             --mLockCount;
         } else {
             LOGERR("Never Locked (mLockCount is 0) id: %s ver: %s", packageId.c_str(), version.c_str());
         }
-
         #endif
 
         return result;
@@ -409,7 +422,10 @@ namespace Plugin {
         LOGDBG("id: %s ver: %s", packageId.c_str(), version.c_str());
 
         #ifdef USE_LIBPACKAGE
-        packageImpl->GetLockInfo(packageId, version, unpackedPath, locked);
+        packagemanager::Result pmResult = packageImpl->GetLockInfo(packageId, version, unpackedPath, locked);
+        if (pmResult != packagemanager::SUCCESS) {
+            result = Core::ERROR_GENERAL;
+        }
         #endif
 
         return result;
@@ -436,7 +452,7 @@ namespace Plugin {
                     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
                     status = mHttpClient->downloadFile(di->GetUrl(), di->GetFileLocator(), di->GetRateLimit());
                     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
-                    LOGTRACE("Download status=%d code=%ld time=%lld ms", status,
+                    LOGTRACE("Download status=%d code=%ld time=%ld ms", status,
                         mHttpClient->getStatusCode(),
                         std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count());
                     if ( status == HttpClient::Status::Success || mHttpClient->getStatusCode() == 404) {  // XXX: other status codes
@@ -499,7 +515,7 @@ namespace Plugin {
 
     PackageManagerImplementation::DownloadInfoPtr PackageManagerImplementation::getNext() {
         std::lock_guard<std::mutex> lock(mMutex);
-        LOGTRACE("mDownloadQueue.size = %d\n", mDownloadQueue.size());
+        LOGTRACE("mDownloadQueue.size = %ld\n", mDownloadQueue.size());
         if (!mDownloadQueue.empty() && mInprogressDowload == nullptr) {
             mInprogressDowload = mDownloadQueue.front();
             mDownloadQueue.pop_front();
