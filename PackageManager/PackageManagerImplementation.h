@@ -164,16 +164,6 @@ namespace Plugin {
             }
         }
 
-        inline bool isLocked(const string &packageId, const string &version) {
-            bool locked = false;
-            string unpackedPath, configMetadata, gatewayMetadataPath;
-
-            uint32_t rc = GetLockedInfo(packageId, version, unpackedPath, configMetadata, gatewayMetadataPath, locked);
-            LOGINFO("GetLockedInfo rc : %d", rc);
-
-            return locked;
-        }
-
     std::string getInstallReason(InstallState state) {
         switch (state) {
             case InstallState::INSTALLING : return "INSTALLING";
@@ -199,7 +189,7 @@ namespace Plugin {
 
         uint32_t mNextDownloadId;
         DownloadQueue  mDownloadQueue;
-        uint32_t mLockCount = 0;
+        std::map<std::string, int>  mLockCount;
         std::string downloadDir = "/opt/CDL/";
 
         #ifdef USE_LIBPACKAGE
