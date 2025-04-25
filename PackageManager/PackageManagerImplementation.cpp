@@ -479,7 +479,9 @@ namespace Plugin {
         bool locked = false;
         string gatewayMetadataPath;
         uint32_t rc = GetLockedInfo(packageId, version, unpackedPath, configMetadata, gatewayMetadataPath, locked);
-
+#ifndef __DEBUG__
+        (void)rc;
+#endif /* __DEBUG__ */
         if (locked)  {
             lockId = ++mLockCount[packageId];
         } else {
@@ -560,6 +562,10 @@ namespace Plugin {
                     LOGTRACE("Download status=%d code=%ld time=%lld ms", status,
                         mHttpClient->getStatusCode(),
                         std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count());
+#ifndef __DEBUG__
+                    (void)begin;
+                    (void)end;
+#endif /* __DEBUG__ */
                     if ( status == HttpClient::Status::Success || mHttpClient->getStatusCode() == 404) {  // XXX: other status codes
                         break;
                     }
@@ -590,6 +596,9 @@ namespace Plugin {
         std::string jsonstr;
         bool ret = list.ToString(jsonstr);
         LOGTRACE("JsonArray ret=%d liststr=%s", ret, jsonstr.c_str());
+#ifndef __DEBUG__
+        (void)ret;
+#endif /* __DEBUG__ */
 
         mAdminLock.Lock();
         for (auto notification: mDownloaderNotifications) {
@@ -609,6 +618,9 @@ namespace Plugin {
         std::string jsonstr;
         bool ret = list.ToString(jsonstr);
         LOGTRACE("JsonArray ret=%d liststr=%s", ret, jsonstr.c_str());
+#ifndef __DEBUG__
+        (void)ret;
+#endif /* __DEBUG__ */
 
         mAdminLock.Lock();
         for (auto notification: mInstallNotifications) {
