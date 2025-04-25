@@ -476,12 +476,16 @@ namespace Plugin {
         LOGDBG("id: %s ver: %s reason=%d", packageId.c_str(), version.c_str(), lockReason);
 
         #ifdef USE_LIBPACKAGE
-        if(isLocked(packageId, version))  {
-            ++mLockCount;
+        bool locked = false;
+        string gatewayMetadataPath;
+        uint32_t rc = GetLockedInfo(packageId, version, unpackedPath, configMetadata, gatewayMetadataPath, locked);
+
+        if (locked)  {
+            lockId = ++mLockCount[packageId];
         } else {
             packagemanager::Result pmResult = packageImpl->Lock(packageId, version, unpackedPath);
             if (pmResult == packagemanager::SUCCESS) {
-                lockId = ++mLockCount;
+                lockId = ++mLockCount[packageId];
                 LOGDBG("Locked id: %s ver: %s", packageId.c_str(), version.c_str());
             } else {
                 LOGERR("Lock Failed id: %s ver: %s", packageId.c_str(), version.c_str());
@@ -489,6 +493,7 @@ namespace Plugin {
             }
         }
         #endif
+        LOGDBG("id: %s ver: %s lock count:%d", packageId.c_str(), version.c_str(), mLockCount[packageId]);
 
         return result;
     }
@@ -499,16 +504,17 @@ namespace Plugin {
         LOGDBG("id: %s ver: %s", packageId.c_str(), version.c_str());
 
         #ifdef USE_LIBPACKAGE
-        if (mLockCount) {
+        if (mLockCount[packageId]) {
             packagemanager::Result pmResult = packageImpl->Unlock(packageId, version);
             if (pmResult != packagemanager::SUCCESS) {
                 result = Core::ERROR_GENERAL;
             }
-            --mLockCount;
+            --mLockCount[packageId];
         } else {
             LOGERR("Never Locked (mLockCount is 0) id: %s ver: %s", packageId.c_str(), version.c_str());
         }
         #endif
+        LOGDBG("id: %s ver: %s lock count:%d", packageId.c_str(), version.c_str(), mLockCount[packageId]);
 
         return result;
     }
