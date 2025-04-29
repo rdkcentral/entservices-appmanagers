@@ -88,7 +88,7 @@ namespace Plugin {
                 Core::SystemInfo::SetEnvironment(PATH_ENV, mBaseStoragePath.c_str());
                 LOGINFO("Base Storage Path Set: %s", mBaseStoragePath.c_str());
 
-                status = populateAppInfoCacheFromStoragePath(mBaseStoragePath);
+                status = populateAppInfoCacheFromStoragePath();
                 if (Core::ERROR_NONE != status)
                 {
                     LOGERR("populateAppInfoCacheFromStoragePath Failed!!!");
@@ -121,7 +121,7 @@ namespace Plugin {
      * @return              : Core::<StatusCode>
      */
 
-    Core::hresult StorageManagerImplementation::populateAppInfoCacheFromStoragePath(std::string mBaseStoragePath)
+    Core::hresult StorageManagerImplementation::populateAppInfoCacheFromStoragePath()
     {
         Core::hresult status = Core::ERROR_GENERAL;
         std::string errorReason;

@@ -99,7 +99,7 @@ namespace Plugin {
         Core::hresult createPersistentStoreRemoteStoreObject();
         void releasePersistentStoreRemoteStoreObject();
         Core::hresult appQuotaSizeProperty(StorageActionType actionType, const std::string& appId, uint32_t* quotaValue);
-        Core::hresult populateAppInfoCacheFromStoragePath(std::string mBaseStoragePath);
+        Core::hresult populateAppInfoCacheFromStoragePath();
 
         bool createAppStorageInfoByAppID(const std::string& appId, StorageAppInfo &storageInfo);
         bool retrieveAppStorageInfoByAppID(const string &appId, StorageAppInfo &storageInfo);
