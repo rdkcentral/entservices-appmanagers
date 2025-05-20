@@ -208,7 +208,7 @@ namespace Plugin {
         Core::hresult SetVoiceGuidanceHints(const bool hints) override;
         Core::hresult GetVoiceGuidanceHints(bool &hints) const override;
         Core::hresult SetContentPin(const string& contentPin) override;
-        Core::hresult GetContentPin(string& contentPin) override;
+        Core::hresult GetContentPin(string& contentPin) const override;
 
         // IUserSettingsInspector methods
         Core::hresult GetMigrationState(const SettingsKey key, bool &requiresMigration) const override;
