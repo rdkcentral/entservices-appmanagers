@@ -50,6 +50,7 @@
 #define USERSETTINGS_VOICE_GUIDANCE_KEY                       "voiceGuidance"
 #define USERSETTINGS_VOICE_GUIDANCE_RATE_KEY                  "voiceGuidanceRate"
 #define USERSETTINGS_VOICE_GUIDANCE_HINTS_KEY                 "voiceGuidanceHints"
+#define USERSETTINGS_CONTENT_PIN_KEY      ...................."contentPin"
 
 namespace WPEFramework {
 namespace Plugin {
@@ -60,8 +61,8 @@ namespace Plugin {
     public:
         static const std::map<string, string> usersettingsDefaultMap;
         static const std::map<SettingsKey, string> _userSettingsInspectorMap;
-	static const double minVGR;
-	static const double maxVGR;
+        static const double minVGR;
+        static const double maxVGR;
 
     private:
         class Store2Notification : public Exchange::IStore2::INotification {
@@ -126,7 +127,8 @@ namespace Plugin {
             HIGH_CONTRAST_CHANGED,
             VOICE_GUIDANCE_CHANGED,
             VOICE_GUIDANCE_RATE_CHANGED,
-            VOICE_GUIDANCE_HINTS_CHANGED
+            VOICE_GUIDANCE_HINTS_CHANGED,
+            CONTENT_PIN_CHANGED
         };
 
         class EXTERNAL Job : public Core::IDispatch {
