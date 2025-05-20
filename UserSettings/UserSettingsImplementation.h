@@ -50,7 +50,7 @@
 #define USERSETTINGS_VOICE_GUIDANCE_KEY                       "voiceGuidance"
 #define USERSETTINGS_VOICE_GUIDANCE_RATE_KEY                  "voiceGuidanceRate"
 #define USERSETTINGS_VOICE_GUIDANCE_HINTS_KEY                 "voiceGuidanceHints"
-#define USERSETTINGS_CONTENT_PIN_KEY      ...................."contentPin"
+#define USERSETTINGS_CONTENT_PIN_KEY                          "contentPin"
 
 namespace WPEFramework {
 namespace Plugin {
