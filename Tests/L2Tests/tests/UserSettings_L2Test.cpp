@@ -1283,7 +1283,7 @@ TEST_F(UserSettingTest, SetAndGetMethodsUsingJsonRpcConnectionSuccessCase)
     EXPECT_TRUE(result_bool.Value());
     paramsMigrationState.Clear();
 
-    paramsMigrationState["key"] = "CONTENT_PIN_CHANGED";
+    paramsMigrationState["key"] = "CONTENT_PIN";
     status = InvokeServiceMethod("org.rdk.UserSettings", "getContentPin", paramsMigrationState, result_bool);
     EXPECT_EQ(status, Core::ERROR_NONE);
     EXPECT_TRUE(result_bool.Value());
@@ -1878,7 +1878,7 @@ TEST_F(UserSettingTest, SetAndGetMethodsUsingJsonRpcConnectionSuccessCase)
     EXPECT_FALSE(result_bool.Value());
     paramsMigrationState.Clear();
 
-    paramsMigrationState["key"] = "CONTENT_PIN_CHANGED";
+    paramsMigrationState["key"] = "CONTENT_PIN";
     status = InvokeServiceMethod("org.rdk.UserSettings", "getContentPin", paramsMigrationState, result_bool);
     EXPECT_EQ(status, Core::ERROR_NONE);
     EXPECT_FALSE(result_bool.Value());
@@ -2616,7 +2616,7 @@ TEST_F(UserSettingTest,SetAndGetMethodsUsingComRpcConnectionSuccessCase)
                     TEST_LOG("Err: %s", errorMsg.c_str());
                 }
 
-                status = m_usersettings_inspe_plugin->GetMigrationState(Exchange::IUserSettingsInspector::SettingsKey::CONTENT_PIN_CHANGED, requiresMigration);
+                status = m_usersettings_inspe_plugin->GetMigrationState(Exchange::IUserSettingsInspector::SettingsKey::CONTENT_PIN , requiresMigration);
                 EXPECT_EQ(requiresMigration, false);
                 EXPECT_EQ(status,Core::ERROR_NONE);
                 if (status != Core::ERROR_NONE)
