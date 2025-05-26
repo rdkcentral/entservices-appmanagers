@@ -731,425 +731,6 @@ MATCHER_P(MatchRequestStatusDouble, expected, "")
 
 }
 
-/* Activating UserSettings and Persistent store plugins and UserSettings namespace has no entries in db.
-   So that we can verify whether UserSettings plugin is receiving default values from PersistentStore or not*/
-TEST_F(UserSettingTest, VerifyDefaultValues)
-{
-    uint32_t status = Core::ERROR_GENERAL;
-    uint32_t signalled = UserSettings_StateInvalid;
-    Core::Sink<NotificationHandler> notification;
-    bool defaultBooleanValue = true;
-    string defaultStrValue = "eng";
-    double defaultDoubleValue;
-
-    if (CreateUserSettingInterfaceObjectUsingComRPCConnection() != Core::ERROR_NONE)
-    {
-        TEST_LOG("Invalid Client_UserSettings");
-    }
-    else
-    {
-        ASSERT_TRUE(m_controller_usersettings!= nullptr);
-        if (m_controller_usersettings)
-        {
-            ASSERT_TRUE(m_usersettingsplugin!= nullptr);
-            if (m_usersettingsplugin)
-            {
-                m_usersettingsplugin->AddRef();
-                m_usersettingsplugin->Register(&notification);
-
-                /* defaultBooleanValue should get false and the return status is Core::ERROR_NONE */
-                status = m_usersettingsplugin->GetAudioDescription(defaultBooleanValue);
-                EXPECT_EQ(defaultBooleanValue, false);
-                EXPECT_EQ(status,Core::ERROR_NONE);
-                if (status != Core::ERROR_NONE)
-                {
-                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
-                    TEST_LOG("Err: %s", errorMsg.c_str());
-                }
-
-                /* defaultStrValue should get empty string and the return status is Core::ERROR_NONE */
-                status = m_usersettingsplugin->GetPreferredAudioLanguages(defaultStrValue);
-                EXPECT_EQ(defaultStrValue, "");
-                EXPECT_EQ(status,Core::ERROR_NONE);
-                if (status != Core::ERROR_NONE)
-                {
-                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
-                    TEST_LOG("Err: %s", errorMsg.c_str());
-                }
-
-                /* defaultStrValue should get empty string and the return status is Core::ERROR_NONE */
-                status = m_usersettingsplugin->GetPresentationLanguage(defaultStrValue);
-                EXPECT_EQ(defaultStrValue, "");
-                EXPECT_EQ(status,Core::ERROR_NONE);
-                if (status != Core::ERROR_NONE)
-                {
-                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
-                    TEST_LOG("Err: %s", errorMsg.c_str());
-                }
-
-                /* defaultBooleanValue should get false and the return status is Core::ERROR_NONE */
-                status = m_usersettingsplugin->GetCaptions(defaultBooleanValue);
-                EXPECT_EQ(defaultBooleanValue, false);
-                EXPECT_EQ(status,Core::ERROR_NONE);
-                if (status != Core::ERROR_NONE)
-                {
-                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
-                    TEST_LOG("Err: %s", errorMsg.c_str());
-                }
-
-                /* defaultStrValue should get empty string and the return status is Core::ERROR_NONE */
-                status = m_usersettingsplugin->GetPreferredCaptionsLanguages(defaultStrValue);
-                EXPECT_EQ(defaultStrValue, "");
-                EXPECT_EQ(status,Core::ERROR_NONE);
-                if (status != Core::ERROR_NONE)
-                {
-                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
-                    TEST_LOG("Err: %s", errorMsg.c_str());
-                }
-
-                /* defaultStrValue should get "AUTO" and the return status is Core::ERROR_NONE */
-                status = m_usersettingsplugin->GetPreferredClosedCaptionService(defaultStrValue);
-                EXPECT_EQ(defaultStrValue, "AUTO");
-                EXPECT_EQ(status,Core::ERROR_NONE);
-                if (status != Core::ERROR_NONE)
-                {
-                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
-                    TEST_LOG("Err: %s", errorMsg.c_str());
-                }
-
-                 /* defaultBooleanValue should get false and the return status is Core::ERROR_NONE */
-                 status = m_usersettingsplugin->GetPinControl(defaultBooleanValue);
-                 EXPECT_EQ(defaultBooleanValue, false);
-                 EXPECT_EQ(status,Core::ERROR_NONE);
-                 if (status != Core::ERROR_NONE)
-                 {
-                     std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
-                     TEST_LOG("Err: %s", errorMsg.c_str());
-                 }
-
-
-                 /* defaultStrValue should get "" and the return status is Core::ERROR_NONE */
-                 status = m_usersettingsplugin->GetViewingRestrictions(defaultStrValue);
-                 EXPECT_EQ(defaultStrValue, "");
-                 EXPECT_EQ(status,Core::ERROR_NONE);
-                 if (status != Core::ERROR_NONE)
-                 {
-                     std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
-                     TEST_LOG("Err: %s", errorMsg.c_str());
-                 }
-
-                 /* defaultStrValue should get "" and the return status is Core::ERROR_NONE */
-                 status = m_usersettingsplugin->GetViewingRestrictionsWindow(defaultStrValue);
-                 EXPECT_EQ(defaultStrValue, "");
-                 EXPECT_EQ(status,Core::ERROR_NONE);
-                 if (status != Core::ERROR_NONE)
-                 {
-                     std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
-                     TEST_LOG("Err: %s", errorMsg.c_str());
-                 }
-
-                 /* defaultBooleanValue should get false and the return status is Core::ERROR_NONE */
-                 status = m_usersettingsplugin->GetLiveWatershed(defaultBooleanValue);
-                 EXPECT_EQ(defaultBooleanValue, false);
-                 EXPECT_EQ(status,Core::ERROR_NONE);
-                 if (status != Core::ERROR_NONE)
-                 {
-                     std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
-                     TEST_LOG("Err: %s", errorMsg.c_str());
-                 }
-
-                 /* defaultBooleanValue should get false and the return status is Core::ERROR_NONE */
-                 status = m_usersettingsplugin->GetPlaybackWatershed(defaultBooleanValue);
-                 EXPECT_EQ(defaultBooleanValue, false);
-                 EXPECT_EQ(status,Core::ERROR_NONE);
-                 if (status != Core::ERROR_NONE)
-                 {
-                     std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
-                     TEST_LOG("Err: %s", errorMsg.c_str());
-                 }
-
-                 /* defaultBooleanValue should get false and the return status is Core::ERROR_NONE */
-                 status = m_usersettingsplugin->GetBlockNotRatedContent(defaultBooleanValue);
-                 EXPECT_EQ(defaultBooleanValue, false);
-                 EXPECT_EQ(status,Core::ERROR_NONE);
-                 if (status != Core::ERROR_NONE)
-                 {
-                     std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
-                     TEST_LOG("Err: %s", errorMsg.c_str());
-                 }
-
-                 /* defaultBooleanValue should get false and the return status is Core::ERROR_NONE */
-                 status = m_usersettingsplugin->GetPinOnPurchase(defaultBooleanValue);
-                 EXPECT_EQ(defaultBooleanValue, false);
-                 EXPECT_EQ(status,Core::ERROR_NONE);
-                 if (status != Core::ERROR_NONE)
-                 {
-                     std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
-                     TEST_LOG("Err: %s", errorMsg.c_str());
-                 }
-
-                 /* defaultBooleanValue should get false and the return status is Core::ERROR_NONE */
-                 status = m_usersettingsplugin->GetHighContrast(defaultBooleanValue);
-                 EXPECT_EQ(defaultBooleanValue, false);
-                 EXPECT_EQ(status,Core::ERROR_NONE);
-                 if (status != Core::ERROR_NONE)
-                 {
-                     std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
-                     TEST_LOG("Err: %s", errorMsg.c_str());
-                 }
-
-                 /* defaultBooleanValue should get false and the return status is Core::ERROR_NONE */
-                 status = m_usersettingsplugin->GetVoiceGuidance(defaultBooleanValue);
-                 EXPECT_EQ(defaultBooleanValue, false);
-                 EXPECT_EQ(status,Core::ERROR_NONE);
-                 if (status != Core::ERROR_NONE)
-                 {
-                     std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
-                     TEST_LOG("Err: %s", errorMsg.c_str());
-                 }
-
-                 /* defaultDoubleValue should get '1' and the return status is Core::ERROR_NONE */
-                 status = m_usersettingsplugin->GetVoiceGuidanceRate(defaultDoubleValue);
-                 EXPECT_EQ(defaultDoubleValue, 1);
-                 EXPECT_EQ(status,Core::ERROR_NONE);
-                 if (status != Core::ERROR_NONE)
-                 {
-                     std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
-                     TEST_LOG("Err: %s", errorMsg.c_str());
-                 }
-
-                 /* defaultBooleanValue should get false and the return status is Core::ERROR_NONE */
-                 status = m_usersettingsplugin->GetVoiceGuidanceHints(defaultBooleanValue);
-                 EXPECT_EQ(defaultBooleanValue, false);
-                 EXPECT_EQ(status,Core::ERROR_NONE);
-                 if (status != Core::ERROR_NONE)
-                 {
-                     std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
-                     TEST_LOG("Err: %s", errorMsg.c_str());
-                 }
-
-                 /* defaultStrValue should get "" and the return status is Core::ERROR_NONE */
-                 status = m_usersettingsplugin->GetContentPin(defaultStrValue);
-                 EXPECT_EQ(defaultStrValue, "");
-                 EXPECT_EQ(status,Core::ERROR_NONE);
-                 if (status != Core::ERROR_NONE)
-                 {
-                     std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
-                     TEST_LOG("Err: %s", errorMsg.c_str());
-                 }
-
-                 /* Setting Audio Description value as true.So UserSettings namespace has one entry in db.
-                 But we are trying to get PreferredAudioLanguages, which has no entry in db.
-                 So GetPreferredAudioLanguages should return the empty string and the return status
-                 from Persistant store is  Core::ERROR_UNKNOWN_KEY and return status from usersettings is Core::ERROR_NONE */
-                 status = m_usersettingsplugin->SetAudioDescription(defaultBooleanValue);
-                 EXPECT_EQ(status,Core::ERROR_NONE);
-                 if (status != Core::ERROR_NONE)
-                 {
-                     std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
-                     TEST_LOG("Err: %s", errorMsg.c_str());
-                 }
-
-                 signalled = notification.WaitForRequestStatus(JSON_TIMEOUT,UserSettings_onAudioDescriptionChanged);
-                 EXPECT_TRUE(signalled & UserSettings_onAudioDescriptionChanged);
-
-                 /* We are trying to get PreferredAudioLanguages, which has no entry in db.
-                 Persistant store returns status as Core::ERROR_UNKNOWN_KEY to UserSettings 
-                 GetPreferredAudioLanguages should get the empty string.*/
-                status = m_usersettingsplugin->GetPreferredAudioLanguages(defaultStrValue);
-                EXPECT_EQ(defaultStrValue, "");
-                EXPECT_EQ(status,Core::ERROR_NONE);
-                if (status != Core::ERROR_NONE)
-                {
-                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
-                    TEST_LOG("Err: %s", errorMsg.c_str());
-                }
-
-                /* We are trying to get PresentationLanguage, which has no entry in db.
-                Persistant store returns status as Core::ERROR_UNKNOWN_KEY to UserSettings 
-                GetPreferredAudioLanguages should get the empty string.*/
-                status = m_usersettingsplugin->GetPresentationLanguage(defaultStrValue);
-                EXPECT_EQ(defaultStrValue, "");
-                EXPECT_EQ(status,Core::ERROR_NONE);
-                if (status != Core::ERROR_NONE)
-                {
-                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
-                    TEST_LOG("Err: %s", errorMsg.c_str());
-                }
-
-                /* We are trying to get Captions, which has no entry in db.
-                Persistant store returns status as Core::ERROR_UNKNOWN_KEY to UserSettings 
-                GetPreferredAudioLanguages should get the empty string.*/
-                status = m_usersettingsplugin->GetCaptions(defaultBooleanValue);
-                EXPECT_EQ(defaultBooleanValue, false);
-                EXPECT_EQ(status,Core::ERROR_NONE);
-                if (status != Core::ERROR_NONE)
-                {
-                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
-                    TEST_LOG("Err: %s", errorMsg.c_str());
-                }
-
-                /* We are trying to get PreferredCaptionsLanguages, which has no entry in db.
-                Persistant store returns status as Core::ERROR_UNKNOWN_KEY to UserSettings 
-                GetPreferredAudioLanguages should get the empty string.*/
-                status = m_usersettingsplugin->GetPreferredCaptionsLanguages(defaultStrValue);
-                EXPECT_EQ(defaultStrValue, "");
-                EXPECT_EQ(status,Core::ERROR_NONE);
-                if (status != Core::ERROR_NONE)
-                {
-                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
-                    TEST_LOG("Err: %s", errorMsg.c_str());
-                }
-
-                /* We are trying to get PreferredClosedCaptionService, which has no entry in db.
-                Persistant store returns status as Core::ERROR_UNKNOWN_KEY to UserSettings 
-                GetPreferredAudioLanguages should get the empty string.*/
-                status = m_usersettingsplugin->GetPreferredClosedCaptionService(defaultStrValue);
-                EXPECT_EQ(defaultStrValue, "AUTO");
-                EXPECT_EQ(status,Core::ERROR_NONE);
-                if (status != Core::ERROR_NONE)
-                {
-                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
-                    TEST_LOG("Err: %s", errorMsg.c_str());
-                }
-
-                /* defaultBooleanValue should get false and the return status is Core::ERROR_NONE */
-                status = m_usersettingsplugin->GetPinControl(defaultBooleanValue);
-                EXPECT_EQ(defaultBooleanValue, false);
-                EXPECT_EQ(status,Core::ERROR_NONE);
-                if (status != Core::ERROR_NONE)
-                {
-                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
-                    TEST_LOG("Err: %s", errorMsg.c_str());
-                }
-
-                /* defaultStrValue should get "" and the return status is Core::ERROR_NONE */
-                status = m_usersettingsplugin->GetViewingRestrictions(defaultStrValue);
-                EXPECT_EQ(defaultStrValue, "");
-                EXPECT_EQ(status,Core::ERROR_NONE);
-                if (status != Core::ERROR_NONE)
-                {
-                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
-                    TEST_LOG("Err: %s", errorMsg.c_str());
-                }
-
-                /* defaultStrValue should get "" and the return status is Core::ERROR_NONE */
-                status = m_usersettingsplugin->GetViewingRestrictionsWindow(defaultStrValue);
-                EXPECT_EQ(defaultStrValue, "");
-                EXPECT_EQ(status,Core::ERROR_NONE);
-                if (status != Core::ERROR_NONE)
-                {
-                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
-                    TEST_LOG("Err: %s", errorMsg.c_str());
-                }
-
-                /* defaultBooleanValue should get false and the return status is Core::ERROR_NONE */
-                status = m_usersettingsplugin->GetLiveWatershed(defaultBooleanValue);
-                EXPECT_EQ(defaultBooleanValue, false);
-                EXPECT_EQ(status,Core::ERROR_NONE);
-                if (status != Core::ERROR_NONE)
-                {
-                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
-                    TEST_LOG("Err: %s", errorMsg.c_str());
-                }
-
-                /* defaultBooleanValue should get false and the return status is Core::ERROR_NONE */
-                status = m_usersettingsplugin->GetPlaybackWatershed(defaultBooleanValue);
-                EXPECT_EQ(defaultBooleanValue, false);
-                EXPECT_EQ(status,Core::ERROR_NONE);
-                if (status != Core::ERROR_NONE)
-                {
-                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
-                    TEST_LOG("Err: %s", errorMsg.c_str());
-                }
-
-                /* defaultBooleanValue should get false and the return status is Core::ERROR_NONE */
-                status = m_usersettingsplugin->GetBlockNotRatedContent(defaultBooleanValue);
-                EXPECT_EQ(defaultBooleanValue, false);
-                EXPECT_EQ(status,Core::ERROR_NONE);
-                if (status != Core::ERROR_NONE)
-                {
-                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
-                    TEST_LOG("Err: %s", errorMsg.c_str());
-                }
-
-                /* defaultBooleanValue should get false and the return status is Core::ERROR_NONE */
-                status = m_usersettingsplugin->GetPinOnPurchase(defaultBooleanValue);
-                EXPECT_EQ(defaultBooleanValue, false);
-                EXPECT_EQ(status,Core::ERROR_NONE);
-                if (status != Core::ERROR_NONE)
-                {
-                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
-                    TEST_LOG("Err: %s", errorMsg.c_str());
-                }
-
-                /* defaultBooleanValue should get false and the return status is Core::ERROR_NONE */
-                status = m_usersettingsplugin->GetHighContrast(defaultBooleanValue);
-                EXPECT_EQ(defaultBooleanValue, false);
-                EXPECT_EQ(status,Core::ERROR_NONE);
-                if (status != Core::ERROR_NONE)
-                {
-                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
-                    TEST_LOG("Err: %s", errorMsg.c_str());
-                }
-
-                /* defaultBooleanValue should get false and the return status is Core::ERROR_NONE */
-                status = m_usersettingsplugin->GetVoiceGuidance(defaultBooleanValue);
-                EXPECT_EQ(defaultBooleanValue, false);
-                EXPECT_EQ(status,Core::ERROR_NONE);
-                if (status != Core::ERROR_NONE)
-                {
-                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
-                    TEST_LOG("Err: %s", errorMsg.c_str());
-                }
-
-                /* defaultDoubleValue should get '1' and the return status is Core::ERROR_NONE */
-                status = m_usersettingsplugin->GetVoiceGuidanceRate(defaultDoubleValue);
-                EXPECT_EQ(defaultDoubleValue, 1);
-                EXPECT_EQ(status,Core::ERROR_NONE);
-                if (status != Core::ERROR_NONE)
-                {
-                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
-                    TEST_LOG("Err: %s", errorMsg.c_str());
-                }
-
-                /* defaultBooleanValue should get false and the return status is Core::ERROR_NONE */
-                status = m_usersettingsplugin->GetVoiceGuidanceHints(defaultBooleanValue);
-                EXPECT_EQ(defaultBooleanValue, false);
-                EXPECT_EQ(status,Core::ERROR_NONE);
-                if (status != Core::ERROR_NONE)
-                {
-                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
-                    TEST_LOG("Err: %s", errorMsg.c_str());
-                }
-
-                /* defaultStrValue should get "" and the return status is Core::ERROR_NONE */
-                status = m_usersettingsplugin->GetContentPin(defaultStrValue);
-                EXPECT_EQ(defaultStrValue, "");
-                EXPECT_EQ(status,Core::ERROR_NONE);
-                if (status != Core::ERROR_NONE)
-                {
-                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
-                    TEST_LOG("Err: %s", errorMsg.c_str());
-                }
-
-                m_usersettingsplugin->Unregister(&notification);
-                m_usersettingsplugin->Release();
-            }
-            else
-            {
-                TEST_LOG("m_usersettingsplugin is NULL");
-            }
-            m_controller_usersettings->Release();
-        }
-        else
-        {
-            TEST_LOG("m_controller_usersettings is NULL");
-        }
-    }
-}
-
-
 TEST_F(UserSettingTest, SetAndGetMethodsUsingJsonRpcConnectionSuccessCase)
 {
     JSONRPC::LinkType<Core::JSON::IElement> jsonrpc(USERSETTING_CALLSIGN, USERSETTINGL2TEST_CALLSIGN);
@@ -1284,7 +865,7 @@ TEST_F(UserSettingTest, SetAndGetMethodsUsingJsonRpcConnectionSuccessCase)
     paramsMigrationState.Clear();
 
     paramsMigrationState["key"] = "CONTENT_PIN";
-    status = InvokeServiceMethod("org.rdk.UserSettings", "getContentPin", paramsMigrationState, result_bool);
+    status = InvokeServiceMethod("org.rdk.UserSettings", "getMigrationState", paramsMigrationState, result_bool);
     EXPECT_EQ(status, Core::ERROR_NONE);
     EXPECT_TRUE(result_bool.Value());
     paramsMigrationState.Clear();
@@ -1879,7 +1460,7 @@ TEST_F(UserSettingTest, SetAndGetMethodsUsingJsonRpcConnectionSuccessCase)
     paramsMigrationState.Clear();
 
     paramsMigrationState["key"] = "CONTENT_PIN";
-    status = InvokeServiceMethod("org.rdk.UserSettings", "getContentPin", paramsMigrationState, result_bool);
+    status = InvokeServiceMethod("org.rdk.UserSettings", "getMigrationState", paramsMigrationState, result_bool);
     EXPECT_EQ(status, Core::ERROR_NONE);
     EXPECT_FALSE(result_bool.Value());
     paramsMigrationState.Clear();
@@ -1887,6 +1468,424 @@ TEST_F(UserSettingTest, SetAndGetMethodsUsingJsonRpcConnectionSuccessCase)
     status = InvokeServiceMethod("org.rdk.UserSettings", "getMigrationStates", paramsMigrationState, result_json);
     EXPECT_EQ(status, Core::ERROR_NONE);
 
+}
+
+/* Activating UserSettings and Persistent store plugins and UserSettings namespace has no entries in db.
+   So that we can verify whether UserSettings plugin is receiving default values from PersistentStore or not*/
+TEST_F(UserSettingTest, VerifyDefaultValues)
+{
+    uint32_t status = Core::ERROR_GENERAL;
+    uint32_t signalled = UserSettings_StateInvalid;
+    Core::Sink<NotificationHandler> notification;
+    bool defaultBooleanValue = true;
+    string defaultStrValue = "eng";
+    double defaultDoubleValue;
+
+    if (CreateUserSettingInterfaceObjectUsingComRPCConnection() != Core::ERROR_NONE)
+    {
+        TEST_LOG("Invalid Client_UserSettings");
+    }
+    else
+    {
+        ASSERT_TRUE(m_controller_usersettings!= nullptr);
+        if (m_controller_usersettings)
+        {
+            ASSERT_TRUE(m_usersettingsplugin!= nullptr);
+            if (m_usersettingsplugin)
+            {
+                m_usersettingsplugin->AddRef();
+                m_usersettingsplugin->Register(&notification);
+
+                /* defaultBooleanValue should get false and the return status is Core::ERROR_NONE */
+                status = m_usersettingsplugin->GetAudioDescription(defaultBooleanValue);
+                EXPECT_EQ(defaultBooleanValue, false);
+                EXPECT_EQ(status,Core::ERROR_NONE);
+                if (status != Core::ERROR_NONE)
+                {
+                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
+                    TEST_LOG("Err: %s", errorMsg.c_str());
+                }
+
+                /* defaultStrValue should get empty string and the return status is Core::ERROR_NONE */
+                status = m_usersettingsplugin->GetPreferredAudioLanguages(defaultStrValue);
+                EXPECT_EQ(defaultStrValue, "");
+                EXPECT_EQ(status,Core::ERROR_NONE);
+                if (status != Core::ERROR_NONE)
+                {
+                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
+                    TEST_LOG("Err: %s", errorMsg.c_str());
+                }
+
+                /* defaultStrValue should get empty string and the return status is Core::ERROR_NONE */
+                status = m_usersettingsplugin->GetPresentationLanguage(defaultStrValue);
+                EXPECT_EQ(defaultStrValue, "");
+                EXPECT_EQ(status,Core::ERROR_NONE);
+                if (status != Core::ERROR_NONE)
+                {
+                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
+                    TEST_LOG("Err: %s", errorMsg.c_str());
+                }
+
+                /* defaultBooleanValue should get false and the return status is Core::ERROR_NONE */
+                status = m_usersettingsplugin->GetCaptions(defaultBooleanValue);
+                EXPECT_EQ(defaultBooleanValue, false);
+                EXPECT_EQ(status,Core::ERROR_NONE);
+                if (status != Core::ERROR_NONE)
+                {
+                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
+                    TEST_LOG("Err: %s", errorMsg.c_str());
+                }
+
+                /* defaultStrValue should get empty string and the return status is Core::ERROR_NONE */
+                status = m_usersettingsplugin->GetPreferredCaptionsLanguages(defaultStrValue);
+                EXPECT_EQ(defaultStrValue, "");
+                EXPECT_EQ(status,Core::ERROR_NONE);
+                if (status != Core::ERROR_NONE)
+                {
+                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
+                    TEST_LOG("Err: %s", errorMsg.c_str());
+                }
+
+                /* defaultStrValue should get "AUTO" and the return status is Core::ERROR_NONE */
+                status = m_usersettingsplugin->GetPreferredClosedCaptionService(defaultStrValue);
+                EXPECT_EQ(defaultStrValue, "AUTO");
+                EXPECT_EQ(status,Core::ERROR_NONE);
+                if (status != Core::ERROR_NONE)
+                {
+                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
+                    TEST_LOG("Err: %s", errorMsg.c_str());
+                }
+
+                 /* defaultBooleanValue should get false and the return status is Core::ERROR_NONE */
+                 status = m_usersettingsplugin->GetPinControl(defaultBooleanValue);
+                 EXPECT_EQ(defaultBooleanValue, false);
+                 EXPECT_EQ(status,Core::ERROR_NONE);
+                 if (status != Core::ERROR_NONE)
+                 {
+                     std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
+                     TEST_LOG("Err: %s", errorMsg.c_str());
+                 }
+
+
+                 /* defaultStrValue should get "" and the return status is Core::ERROR_NONE */
+                 status = m_usersettingsplugin->GetViewingRestrictions(defaultStrValue);
+                 EXPECT_EQ(defaultStrValue, "");
+                 EXPECT_EQ(status,Core::ERROR_NONE);
+                 if (status != Core::ERROR_NONE)
+                 {
+                     std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
+                     TEST_LOG("Err: %s", errorMsg.c_str());
+                 }
+
+                 /* defaultStrValue should get "" and the return status is Core::ERROR_NONE */
+                 status = m_usersettingsplugin->GetViewingRestrictionsWindow(defaultStrValue);
+                 EXPECT_EQ(defaultStrValue, "");
+                 EXPECT_EQ(status,Core::ERROR_NONE);
+                 if (status != Core::ERROR_NONE)
+                 {
+                     std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
+                     TEST_LOG("Err: %s", errorMsg.c_str());
+                 }
+
+                 /* defaultBooleanValue should get false and the return status is Core::ERROR_NONE */
+                 status = m_usersettingsplugin->GetLiveWatershed(defaultBooleanValue);
+                 EXPECT_EQ(defaultBooleanValue, false);
+                 EXPECT_EQ(status,Core::ERROR_NONE);
+                 if (status != Core::ERROR_NONE)
+                 {
+                     std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
+                     TEST_LOG("Err: %s", errorMsg.c_str());
+                 }
+
+                 /* defaultBooleanValue should get false and the return status is Core::ERROR_NONE */
+                 status = m_usersettingsplugin->GetPlaybackWatershed(defaultBooleanValue);
+                 EXPECT_EQ(defaultBooleanValue, false);
+                 EXPECT_EQ(status,Core::ERROR_NONE);
+                 if (status != Core::ERROR_NONE)
+                 {
+                     std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
+                     TEST_LOG("Err: %s", errorMsg.c_str());
+                 }
+
+                 /* defaultBooleanValue should get false and the return status is Core::ERROR_NONE */
+                 status = m_usersettingsplugin->GetBlockNotRatedContent(defaultBooleanValue);
+                 EXPECT_EQ(defaultBooleanValue, false);
+                 EXPECT_EQ(status,Core::ERROR_NONE);
+                 if (status != Core::ERROR_NONE)
+                 {
+                     std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
+                     TEST_LOG("Err: %s", errorMsg.c_str());
+                 }
+
+                 /* defaultBooleanValue should get false and the return status is Core::ERROR_NONE */
+                 status = m_usersettingsplugin->GetPinOnPurchase(defaultBooleanValue);
+                 EXPECT_EQ(defaultBooleanValue, false);
+                 EXPECT_EQ(status,Core::ERROR_NONE);
+                 if (status != Core::ERROR_NONE)
+                 {
+                     std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
+                     TEST_LOG("Err: %s", errorMsg.c_str());
+                 }
+
+                 /* defaultBooleanValue should get false and the return status is Core::ERROR_NONE */
+                 status = m_usersettingsplugin->GetHighContrast(defaultBooleanValue);
+                 EXPECT_EQ(defaultBooleanValue, false);
+                 EXPECT_EQ(status,Core::ERROR_NONE);
+                 if (status != Core::ERROR_NONE)
+                 {
+                     std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
+                     TEST_LOG("Err: %s", errorMsg.c_str());
+                 }
+
+                 /* defaultBooleanValue should get false and the return status is Core::ERROR_NONE */
+                 status = m_usersettingsplugin->GetVoiceGuidance(defaultBooleanValue);
+                 EXPECT_EQ(defaultBooleanValue, false);
+                 EXPECT_EQ(status,Core::ERROR_NONE);
+                 if (status != Core::ERROR_NONE)
+                 {
+                     std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
+                     TEST_LOG("Err: %s", errorMsg.c_str());
+                 }
+
+                 /* defaultDoubleValue should get '1' and the return status is Core::ERROR_NONE */
+                 status = m_usersettingsplugin->GetVoiceGuidanceRate(defaultDoubleValue);
+                 EXPECT_EQ(defaultDoubleValue, 1);
+                 EXPECT_EQ(status,Core::ERROR_NONE);
+                 if (status != Core::ERROR_NONE)
+                 {
+                     std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
+                     TEST_LOG("Err: %s", errorMsg.c_str());
+                 }
+
+                 /* defaultBooleanValue should get false and the return status is Core::ERROR_NONE */
+                 status = m_usersettingsplugin->GetVoiceGuidanceHints(defaultBooleanValue);
+                 EXPECT_EQ(defaultBooleanValue, false);
+                 EXPECT_EQ(status,Core::ERROR_NONE);
+                 if (status != Core::ERROR_NONE)
+                 {
+                     std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
+                     TEST_LOG("Err: %s", errorMsg.c_str());
+                 }
+
+                 /* defaultStrValue should get "" and the return status is Core::ERROR_NONE */
+                 status = m_usersettingsplugin->GetContentPin(defaultStrValue);
+                 EXPECT_EQ(defaultStrValue, "");
+                 EXPECT_EQ(status,Core::ERROR_NONE);
+                 if (status != Core::ERROR_NONE)
+                 {
+                     std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
+                     TEST_LOG("Err: %s", errorMsg.c_str());
+                 }
+
+                 /* Setting Audio Description value as true.So UserSettings namespace has one entry in db.
+                 But we are trying to get PreferredAudioLanguages, which has no entry in db.
+                 So GetPreferredAudioLanguages should return the empty string and the return status
+                 from Persistant store is  Core::ERROR_UNKNOWN_KEY and return status from usersettings is Core::ERROR_NONE */
+                 status = m_usersettingsplugin->SetAudioDescription(defaultBooleanValue);
+                 EXPECT_EQ(status,Core::ERROR_NONE);
+                 if (status != Core::ERROR_NONE)
+                 {
+                     std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
+                     TEST_LOG("Err: %s", errorMsg.c_str());
+                 }
+
+                 signalled = notification.WaitForRequestStatus(JSON_TIMEOUT,UserSettings_onAudioDescriptionChanged);
+                 EXPECT_TRUE(signalled & UserSettings_onAudioDescriptionChanged);
+
+                 /* We are trying to get PreferredAudioLanguages, which has no entry in db.
+                 Persistant store returns status as Core::ERROR_UNKNOWN_KEY to UserSettings 
+                 GetPreferredAudioLanguages should get the empty string.*/
+                status = m_usersettingsplugin->GetPreferredAudioLanguages(defaultStrValue);
+                EXPECT_EQ(defaultStrValue, "");
+                EXPECT_EQ(status,Core::ERROR_NONE);
+                if (status != Core::ERROR_NONE)
+                {
+                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
+                    TEST_LOG("Err: %s", errorMsg.c_str());
+                }
+
+                /* We are trying to get PresentationLanguage, which has no entry in db.
+                Persistant store returns status as Core::ERROR_UNKNOWN_KEY to UserSettings 
+                GetPreferredAudioLanguages should get the empty string.*/
+                status = m_usersettingsplugin->GetPresentationLanguage(defaultStrValue);
+                EXPECT_EQ(defaultStrValue, "");
+                EXPECT_EQ(status,Core::ERROR_NONE);
+                if (status != Core::ERROR_NONE)
+                {
+                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
+                    TEST_LOG("Err: %s", errorMsg.c_str());
+                }
+
+                /* We are trying to get Captions, which has no entry in db.
+                Persistant store returns status as Core::ERROR_UNKNOWN_KEY to UserSettings 
+                GetPreferredAudioLanguages should get the empty string.*/
+                status = m_usersettingsplugin->GetCaptions(defaultBooleanValue);
+                EXPECT_EQ(defaultBooleanValue, false);
+                EXPECT_EQ(status,Core::ERROR_NONE);
+                if (status != Core::ERROR_NONE)
+                {
+                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
+                    TEST_LOG("Err: %s", errorMsg.c_str());
+                }
+
+                /* We are trying to get PreferredCaptionsLanguages, which has no entry in db.
+                Persistant store returns status as Core::ERROR_UNKNOWN_KEY to UserSettings 
+                GetPreferredAudioLanguages should get the empty string.*/
+                status = m_usersettingsplugin->GetPreferredCaptionsLanguages(defaultStrValue);
+                EXPECT_EQ(defaultStrValue, "");
+                EXPECT_EQ(status,Core::ERROR_NONE);
+                if (status != Core::ERROR_NONE)
+                {
+                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
+                    TEST_LOG("Err: %s", errorMsg.c_str());
+                }
+
+                /* We are trying to get PreferredClosedCaptionService, which has no entry in db.
+                Persistant store returns status as Core::ERROR_UNKNOWN_KEY to UserSettings 
+                GetPreferredAudioLanguages should get the empty string.*/
+                status = m_usersettingsplugin->GetPreferredClosedCaptionService(defaultStrValue);
+                EXPECT_EQ(defaultStrValue, "AUTO");
+                EXPECT_EQ(status,Core::ERROR_NONE);
+                if (status != Core::ERROR_NONE)
+                {
+                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
+                    TEST_LOG("Err: %s", errorMsg.c_str());
+                }
+
+                /* defaultBooleanValue should get false and the return status is Core::ERROR_NONE */
+                status = m_usersettingsplugin->GetPinControl(defaultBooleanValue);
+                EXPECT_EQ(defaultBooleanValue, false);
+                EXPECT_EQ(status,Core::ERROR_NONE);
+                if (status != Core::ERROR_NONE)
+                {
+                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
+                    TEST_LOG("Err: %s", errorMsg.c_str());
+                }
+
+                /* defaultStrValue should get "" and the return status is Core::ERROR_NONE */
+                status = m_usersettingsplugin->GetViewingRestrictions(defaultStrValue);
+                EXPECT_EQ(defaultStrValue, "");
+                EXPECT_EQ(status,Core::ERROR_NONE);
+                if (status != Core::ERROR_NONE)
+                {
+                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
+                    TEST_LOG("Err: %s", errorMsg.c_str());
+                }
+
+                /* defaultStrValue should get "" and the return status is Core::ERROR_NONE */
+                status = m_usersettingsplugin->GetViewingRestrictionsWindow(defaultStrValue);
+                EXPECT_EQ(defaultStrValue, "");
+                EXPECT_EQ(status,Core::ERROR_NONE);
+                if (status != Core::ERROR_NONE)
+                {
+                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
+                    TEST_LOG("Err: %s", errorMsg.c_str());
+                }
+
+                /* defaultBooleanValue should get false and the return status is Core::ERROR_NONE */
+                status = m_usersettingsplugin->GetLiveWatershed(defaultBooleanValue);
+                EXPECT_EQ(defaultBooleanValue, false);
+                EXPECT_EQ(status,Core::ERROR_NONE);
+                if (status != Core::ERROR_NONE)
+                {
+                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
+                    TEST_LOG("Err: %s", errorMsg.c_str());
+                }
+
+                /* defaultBooleanValue should get false and the return status is Core::ERROR_NONE */
+                status = m_usersettingsplugin->GetPlaybackWatershed(defaultBooleanValue);
+                EXPECT_EQ(defaultBooleanValue, false);
+                EXPECT_EQ(status,Core::ERROR_NONE);
+                if (status != Core::ERROR_NONE)
+                {
+                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
+                    TEST_LOG("Err: %s", errorMsg.c_str());
+                }
+
+                /* defaultBooleanValue should get false and the return status is Core::ERROR_NONE */
+                status = m_usersettingsplugin->GetBlockNotRatedContent(defaultBooleanValue);
+                EXPECT_EQ(defaultBooleanValue, false);
+                EXPECT_EQ(status,Core::ERROR_NONE);
+                if (status != Core::ERROR_NONE)
+                {
+                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
+                    TEST_LOG("Err: %s", errorMsg.c_str());
+                }
+
+                /* defaultBooleanValue should get false and the return status is Core::ERROR_NONE */
+                status = m_usersettingsplugin->GetPinOnPurchase(defaultBooleanValue);
+                EXPECT_EQ(defaultBooleanValue, false);
+                EXPECT_EQ(status,Core::ERROR_NONE);
+                if (status != Core::ERROR_NONE)
+                {
+                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
+                    TEST_LOG("Err: %s", errorMsg.c_str());
+                }
+
+                /* defaultBooleanValue should get false and the return status is Core::ERROR_NONE */
+                status = m_usersettingsplugin->GetHighContrast(defaultBooleanValue);
+                EXPECT_EQ(defaultBooleanValue, false);
+                EXPECT_EQ(status,Core::ERROR_NONE);
+                if (status != Core::ERROR_NONE)
+                {
+                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
+                    TEST_LOG("Err: %s", errorMsg.c_str());
+                }
+
+                /* defaultBooleanValue should get false and the return status is Core::ERROR_NONE */
+                status = m_usersettingsplugin->GetVoiceGuidance(defaultBooleanValue);
+                EXPECT_EQ(defaultBooleanValue, false);
+                EXPECT_EQ(status,Core::ERROR_NONE);
+                if (status != Core::ERROR_NONE)
+                {
+                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
+                    TEST_LOG("Err: %s", errorMsg.c_str());
+                }
+
+                /* defaultDoubleValue should get '1' and the return status is Core::ERROR_NONE */
+                status = m_usersettingsplugin->GetVoiceGuidanceRate(defaultDoubleValue);
+                EXPECT_EQ(defaultDoubleValue, 1);
+                EXPECT_EQ(status,Core::ERROR_NONE);
+                if (status != Core::ERROR_NONE)
+                {
+                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
+                    TEST_LOG("Err: %s", errorMsg.c_str());
+                }
+
+                /* defaultBooleanValue should get false and the return status is Core::ERROR_NONE */
+                status = m_usersettingsplugin->GetVoiceGuidanceHints(defaultBooleanValue);
+                EXPECT_EQ(defaultBooleanValue, false);
+                EXPECT_EQ(status,Core::ERROR_NONE);
+                if (status != Core::ERROR_NONE)
+                {
+                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
+                    TEST_LOG("Err: %s", errorMsg.c_str());
+                }
+
+                /* defaultStrValue should get "" and the return status is Core::ERROR_NONE */
+                status = m_usersettingsplugin->GetContentPin(defaultStrValue);
+                EXPECT_EQ(defaultStrValue, "");
+                EXPECT_EQ(status,Core::ERROR_NONE);
+                if (status != Core::ERROR_NONE)
+                {
+                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
+                    TEST_LOG("Err: %s", errorMsg.c_str());
+                }
+
+                m_usersettingsplugin->Unregister(&notification);
+                m_usersettingsplugin->Release();
+            }
+            else
+            {
+                TEST_LOG("m_usersettingsplugin is NULL");
+            }
+            m_controller_usersettings->Release();
+        }
+        else
+        {
+            TEST_LOG("m_controller_usersettings is NULL");
+        }
+    }
 }
 
 TEST_F(UserSettingTest,SetAndGetMethodsUsingComRpcConnectionSuccessCase)
