@@ -123,7 +123,7 @@ bool DobbyInterface::getContainerState(const string& containerId, Exchange::IOCI
     int cd = GetContainerDescriptorFromId(containerId);
     if (cd < 0)
     {
-        state = Exchange::IOCIContainer::ContainerState::INVALID;
+        state = Exchange::IOCIContainer::ContainerState::Invalid;
         return false;
     }
 
@@ -131,34 +131,34 @@ bool DobbyInterface::getContainerState(const string& containerId, Exchange::IOCI
     switch (static_cast<IDobbyProxyEvents::ContainerState>(mDobbyProxy->getContainerState(cd)))
     {
     case IDobbyProxyEvents::ContainerState::Invalid:
-        state = Exchange::IOCIContainer::ContainerState::INVALID;
+        state = Exchange::IOCIContainer::ContainerState::Invalid;
         break;
     case IDobbyProxyEvents::ContainerState::Starting:
-        state = Exchange::IOCIContainer::ContainerState::STARTING;
+        state = Exchange::IOCIContainer::ContainerState::Starting;
         break;
     case IDobbyProxyEvents::ContainerState::Running:
-        state = Exchange::IOCIContainer::ContainerState::RUNNING;
+        state = Exchange::IOCIContainer::ContainerState::Running;
         break;
     case IDobbyProxyEvents::ContainerState::Stopping:
-        state = Exchange::IOCIContainer::ContainerState::STOPPING;
+        state = Exchange::IOCIContainer::ContainerState::Stopping;
         break;
     case IDobbyProxyEvents::ContainerState::Paused:
-        state = Exchange::IOCIContainer::ContainerState::PAUSED;
+        state = Exchange::IOCIContainer::ContainerState::Paused;
         break;
     case IDobbyProxyEvents::ContainerState::Stopped:
-        state = Exchange::IOCIContainer::ContainerState::STOPPED;
+        state = Exchange::IOCIContainer::ContainerState::Stopped;
         break;
     case IDobbyProxyEvents::ContainerState::Hibernating:
-        state = Exchange::IOCIContainer::ContainerState::HIBERNATING;
+        state = Exchange::IOCIContainer::ContainerState::Hibernating;
         break;
     case IDobbyProxyEvents::ContainerState::Hibernated:
-        state = Exchange::IOCIContainer::ContainerState::HIBERNATED;
+        state = Exchange::IOCIContainer::ContainerState::Hibernated;
         break;
     case IDobbyProxyEvents::ContainerState::Awakening:
-        state = Exchange::IOCIContainer::ContainerState::AWAKENING;
+        state = Exchange::IOCIContainer::ContainerState::Awakening;
         break;
     default:
-        state = Exchange::IOCIContainer::ContainerState::INVALID;
+        state = Exchange::IOCIContainer::ContainerState::Invalid;
         break;
     }
 
@@ -360,6 +360,7 @@ bool DobbyInterface::stopContainer(const string& containerId, bool force, string
     int cd = GetContainerDescriptorFromId(id);
     if (cd < 0)
     {
+        errorReason = "Container not found";
         return false;
     }
 
@@ -692,31 +693,31 @@ void DobbyInterface::onContainerStateChanged(int32_t descriptor, const std::stri
     switch (dobbyContainerState)
     {
     case IDobbyProxyEvents::ContainerState::Starting:
-        state = Exchange::IOCIContainer::ContainerState::STARTING;
+        state = Exchange::IOCIContainer::ContainerState::Starting;
         break;
     case IDobbyProxyEvents::ContainerState::Running:
-        state = Exchange::IOCIContainer::ContainerState::RUNNING;
+        state = Exchange::IOCIContainer::ContainerState::Running;
         break;
     case IDobbyProxyEvents::ContainerState::Stopping:
-        state = Exchange::IOCIContainer::ContainerState::STOPPING;
+        state = Exchange::IOCIContainer::ContainerState::Stopping;
         break;
     case IDobbyProxyEvents::ContainerState::Paused:
-        state = Exchange::IOCIContainer::ContainerState::PAUSED;
+        state = Exchange::IOCIContainer::ContainerState::Paused;
         break;
     case IDobbyProxyEvents::ContainerState::Stopped:
-        state = Exchange::IOCIContainer::ContainerState::STOPPED;
+        state = Exchange::IOCIContainer::ContainerState::Stopped;
         break;
     case IDobbyProxyEvents::ContainerState::Hibernating:
-        state = Exchange::IOCIContainer::ContainerState::HIBERNATING;
+        state = Exchange::IOCIContainer::ContainerState::Hibernating;
         break;
     case IDobbyProxyEvents::ContainerState::Hibernated:
-        state = Exchange::IOCIContainer::ContainerState::HIBERNATED;
+        state = Exchange::IOCIContainer::ContainerState::Hibernated;
         break;
     case IDobbyProxyEvents::ContainerState::Awakening:
-        state = Exchange::IOCIContainer::ContainerState::AWAKENING;
+        state = Exchange::IOCIContainer::ContainerState::Awakening;
         break;
     default:
-        state = Exchange::IOCIContainer::ContainerState::INVALID;
+        state = Exchange::IOCIContainer::ContainerState::Invalid;
         break;
     }
     JsonObject params;
