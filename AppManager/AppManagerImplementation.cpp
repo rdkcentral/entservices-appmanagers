@@ -441,7 +441,7 @@ bool AppManagerImplementation::removeAppInfoByAppId(const string &appId)
                 appId.c_str(), it->second.packageInfo.version.c_str(), it->second.packageInfo.lockId, it->second.packageInfo.unpackedPath.c_str(), it->second.packageInfo.appMetadata.c_str());
         mAppInfo.erase(appId);
         result = true;
-    } 
+    }
     else
     {
         LOGWARN("AppId[%s] PackageInfo not found", appId.c_str());
@@ -492,7 +492,8 @@ Core::hresult AppManagerImplementation::packageLock(const string& appId, Package
                 /* Ensure package version is valid before proceeding with the Lock */
                 if ((nullptr != mPackageManagerHandlerObject) && !packageData.version.empty())
                 {
-                    status = mPackageManagerHandlerObject->Lock(appId, packageData.version, lockReason, packageData.lockId, packageData.unpackedPath, packageData.configMetadata, packageData.appMetadata);
+                    Exchange::IPackageHandler::ILockIterator *appMetadata = nullptr;
+                    status = mPackageManagerHandlerObject->Lock(appId, packageData.version, lockReason, packageData.lockId, packageData.unpackedPath, packageData.configMetadata, appMetadata);
                     if (status == Core::ERROR_NONE)
                     {
                         LOGINFO("Fetching package entry updated for appId: %s version: %s lockId: %d unpackedPath: %s appMetadata: %s",
