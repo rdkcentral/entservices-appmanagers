@@ -29,6 +29,10 @@ namespace Plugin {
 
     SERVICE_REGISTRATION(PackageManagerImplementation, 1, 0);
 
+    #define CHECK_CACHE() { if ((packageImpl.get() == nullptr) || (!cacheInitialized)) { \
+        return Core::ERROR_UNAVAILABLE; \
+    }}
+
     PackageManagerImplementation::PackageManagerImplementation()
         : mDownloaderNotifications()
         , mInstallNotifications()
@@ -137,18 +141,7 @@ namespace Plugin {
                 LOGDBG("created dir '%s'", downloadDir.c_str());
             }
 
-            #ifdef USE_LIBPACKAGE
-            packageImpl = packagemanager::IPackageImpl::instance();
-            #endif
-
-            InitializeState();
-            PluginHost::ISubSystem* subSystem = service->SubSystems();
-            if (subSystem != nullptr) {
-                LOGDBG("ISubSystem::INTERNET is %s", subSystem->IsActive(PluginHost::ISubSystem::INTERNET)? "Active" : "Inactive");
-                LOGDBG("ISubSystem::INSTALLATION is %s", subSystem->IsActive(PluginHost::ISubSystem::INSTALLATION)? "Active" : "Inactive");
-            }
             mDownloadThreadPtr = std::unique_ptr<std::thread>(new std::thread(&PackageManagerImplementation::downloader, this, 1));
-
         } else {
             LOGERR("service is null \n");
         }
@@ -199,10 +192,11 @@ namespace Plugin {
     {
         Core::hresult result = Core::ERROR_NONE;
 
-        std::lock_guard<std::mutex> lock(mMutex);
+        if (!mCurrentservice->SubSystems()->IsActive(PluginHost::ISubSystem::INTERNET)) {
+            return Core::ERROR_UNAVAILABLE;
+        }
 
-        // XXX: Check Network here ???
-        // Utils::isPluginActivated(NETWORK_PLUGIN_CALLSIGN)
+        std::lock_guard<std::mutex> lock(mMutex);
 
         DownloadInfoPtr di = DownloadInfoPtr(new DownloadInfo(url, std::to_string(++mNextDownloadId), options.retries, options.rateLimit));
         std::string filename = downloadDir + "package" + di->GetId();
@@ -330,14 +324,16 @@ namespace Plugin {
         Core::hresult result = Core::ERROR_GENERAL;
 
         LOGDBG("Installing '%s' ver:'%s' fileLocator: '%s'", packageId.c_str(), version.c_str(), fileLocator.c_str());
+        CHECK_CACHE()
         if (fileLocator.empty()) {
             return Core::ERROR_INVALID_SIGNATURE;
         }
 
+
         packagemanager::NameValues keyValues;
         struct IPackageInstaller::KeyValue kv;
         while (additionalMetadata->Next(kv) == true) {
-            LOGTRACE("name: %s val: %s", kv.name.c_str(), kv.value.c_str());
+            LOGDBG("name: %s val: %s", kv.name.c_str(), kv.value.c_str());
             keyValues.push_back(std::make_pair(kv.name, kv.value));
         }
 
@@ -397,6 +393,7 @@ namespace Plugin {
         string version = GetVersion(packageId);
 
         LOGDBG("Uninstalling id: '%s' ver: '%s'", packageId.c_str(), version.c_str());
+        CHECK_CACHE()
 
         auto it = mState.find( { packageId, version } );
         if (it != mState.end()) {
@@ -535,6 +532,7 @@ namespace Plugin {
         Core::hresult result = Core::ERROR_NONE;
 
         LOGDBG("id: %s ver: %s reason=%d", packageId.c_str(), version.c_str(), lockReason);
+        CHECK_CACHE()
 
         auto it = mState.find( { packageId, version } );
         if (it != mState.end()) {
@@ -638,6 +636,7 @@ namespace Plugin {
         Core::hresult result = Core::ERROR_NONE;
 
         LOGDBG("id: %s ver: %s", packageId.c_str(), version.c_str());
+        CHECK_CACHE()
 
         auto it = mState.find( { packageId, version } );
         if (it != mState.end()) {
@@ -688,11 +687,17 @@ namespace Plugin {
     void PackageManagerImplementation::InitializeState()
     {
         LOGDBG("entry");
+        PluginHost::ISubSystem* subSystem = mCurrentservice->SubSystems();
+        if (subSystem != nullptr) {
+            subSystem->Set(PluginHost::ISubSystem::NOT_INSTALLATION, nullptr);
+        }
+
         #ifdef USE_LIBPACKAGE
+        packageImpl = packagemanager::IPackageImpl::instance();
+
         packagemanager::ConfigMetadataArray aConfigMetadata;
-        /*packagemanager::Result pmResult = packageImpl->Initialize(configStr, aConfigMetadata);*/
-        /*LOGDBG("aConfigMetadata.count:%ld pmResult=%d", aConfigMetadata.size(), pmResult);*/
-        packageImpl->Initialize(configStr, aConfigMetadata);
+        packagemanager::Result pmResult = packageImpl->Initialize(configStr, aConfigMetadata);
+        LOGDBG("aConfigMetadata.count:%zu pmResult=%d", aConfigMetadata.size(), pmResult);
         for (auto it = aConfigMetadata.begin(); it != aConfigMetadata.end(); ++it ) {
             StateKey key = it->first;
             State state(it->second);
@@ -700,11 +705,17 @@ namespace Plugin {
             mState.insert( { key, state } );
         }
         #endif
+
+        if (subSystem != nullptr) {
+            subSystem->Set(PluginHost::ISubSystem::INSTALLATION, nullptr);
+        }
+        cacheInitialized = true;
         LOGDBG("exit");
     }
 
     void PackageManagerImplementation::downloader(int n)
     {
+        InitializeState();
         while(!done) {
             auto di = getNext();
             if (di == nullptr) {

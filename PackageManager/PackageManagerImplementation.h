@@ -239,6 +239,7 @@ namespace Plugin {
         uint32_t mNextDownloadId;
         DownloadQueue  mDownloadQueue;
         std::map<StateKey, State>  mState;
+        bool cacheInitialized = false;
 
         std::string downloadDir = "/opt/CDL/";
         string configStr;
