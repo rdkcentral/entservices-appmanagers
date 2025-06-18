@@ -22,9 +22,9 @@ set(THUNDER_PORT 9998)
 
 find_package(${NAMESPACE}Plugins REQUIRED)
 
-#if (PLUGIN_ANALYTICS)
-#    set(SRC_FILES ${SRC_FILES} tests/Analytics_L2Test.cpp)
-#endif()
+if (PLUGIN_ANALYTICS)
+    set(SRC_FILES ${SRC_FILES} tests/Analytics_L2Test.cpp)
+endif()
 
 if(PLUGIN_APPMANAGER)
     set(SRC_FILES ${SRC_FILES} tests/AppManager_L2Test.cpp)
