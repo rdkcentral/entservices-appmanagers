@@ -958,7 +958,7 @@ TEST_F(RuntimeManagerTest, SuspendFailsWithPauseContainerError)
 
     EXPECT_EQ(true, createResources());
 
-    EXPECT_CALL(*mociContainerMock, StartContainerFromDobbySpec("com.sky.as.appsyouTube", ::testing::_, "", "/tmp/wst-youTube", ::testing::_, ::testing::_, ::testing::_))
+    EXPECT_CALL(*mociContainerMock, StartContainerFromDobbySpec("com.sky.as.appsyouTube", ::testing::_, "", "/run/user/1001/wst-youTube", ::testing::_, ::testing::_, ::testing::_))
         .WillRepeatedly(::testing::Invoke(
             [&](const string&, const string&, const string&, const string&, int32_t& descriptor, bool& success, string& errorReason) {
                 descriptor = 100;
@@ -1005,7 +1005,7 @@ TEST_F(RuntimeManagerTest, ResumeFailsResumePauseContainerError)
 
     EXPECT_EQ(true, createResources());
 
-    EXPECT_CALL(*mociContainerMock, StartContainerFromDobbySpec("com.sky.as.appsyouTube", ::testing::_, "", "/tmp/wst-youTube", ::testing::_, ::testing::_, ::testing::_))
+    EXPECT_CALL(*mociContainerMock, StartContainerFromDobbySpec("com.sky.as.appsyouTube", ::testing::_, "", "/run/user/1001/wst-youTube", ::testing::_, ::testing::_, ::testing::_))
         .WillRepeatedly(::testing::Invoke(
             [&](const string&, const string&, const string&, const string&, int32_t& descriptor, bool& success, string& errorReason) {
                 descriptor = 100;
