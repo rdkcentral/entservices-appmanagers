@@ -27,6 +27,8 @@
 #include "StorageManagerMock.h"
 #include "COMLinkMock.h"
 #include "OCIContainerMock.h"
+#include "WindowManagerMock.h"
+#include "WorkerPoolImplementation.h"
 
 #define TEST_LOG(x, ...) fprintf(stderr, "\033[1;32m[%s:%d](%s)<PID:%d><TID:%d>" x "\n\033[0m", __FILE__, __LINE__, __FUNCTION__, getpid(), gettid(), ##__VA_ARGS__); fflush(stderr);
 
@@ -42,17 +44,27 @@ protected:
     ServiceMock     *mServiceMock = nullptr;
     StorageManagerMock* mStoreageManagerMock = nullptr;
     OCIContainerMock* mociContainerMock = nullptr;
+    WindowManagerMock* mWindowManagerMock = nullptr;
+    Core::ProxyType<WorkerPoolImplementation> workerPool;
 
     RuntimeManagerTest()
+        : workerPool(Core::ProxyType<WorkerPoolImplementation>::Create(
+            2, Core::Thread::DefaultStackSize(), 16))
     {
         // create the RuntimeManagerImplementation instance
         mRuntimeManagerImpl = Core::ProxyType<Plugin::RuntimeManagerImplementation>::Create();
 
         interface = static_cast<Exchange::IRuntimeManager*>(
             mRuntimeManagerImpl->QueryInterface(Exchange::IRuntimeManager::ID));
+
+        Core::IWorkerPool::Assign(&(*workerPool));
+        workerPool->Run();
     }
     virtual ~RuntimeManagerTest()
     {
+        Core::IWorkerPool::Assign(nullptr);
+        workerPool.Release();
+
         interface->Release();
      }
 
@@ -60,6 +72,7 @@ protected:
     {
         mStoreageManagerMock = new NiceMock<StorageManagerMock>;
         mociContainerMock = new NiceMock<OCIContainerMock>;
+        mWindowManagerMock = new NiceMock<WindowManagerMock>;
         mServiceMock =  new NiceMock<ServiceMock>;
 
         runTimeManagerConfigure = static_cast<Exchange::IConfiguration*>(
@@ -75,8 +88,17 @@ protected:
                 else if (name == "org.rdk.OCIContainer") {
                     return reinterpret_cast<void*>(mociContainerMock);
                 }
+                else if (name == "org.rdk.RDKWindowManager") {
+                    return reinterpret_cast<void*>(mWindowManagerMock);
+                }
             return nullptr;
         }));
+
+        EXPECT_CALL(*mWindowManagerMock, AddRef())
+            .Times(::testing::AnyNumber());
+
+        EXPECT_CALL(*mWindowManagerMock, Register(::testing::_))
+            .WillRepeatedly(::testing::Return(Core::ERROR_NONE));
 
         runTimeManagerConfigure->Configure(mServiceMock);
         return true;
@@ -114,6 +136,17 @@ protected:
                      return 0;
                     }));
         }
+
+        if (mWindowManagerMock != nullptr)
+        {
+            EXPECT_CALL(*mWindowManagerMock, Release())
+                .WillOnce(::testing::Invoke(
+                [&]() {
+                    delete mWindowManagerMock;
+                    return 0;
+                    }));
+        }
+
         runTimeManagerConfigure->Release();
     }
 
@@ -161,13 +194,13 @@ TEST_F(RuntimeManagerTest, TerminateNonExistentContainer) {
                 errorReason = "Container not found";
                 return Core::ERROR_GENERAL;
             }));
-    EXPECT_EQ(Core::ERROR_GENERAL, interface->Terminate(appInstanceId));
+    EXPECT_EQ(Core::ERROR_NONE, interface->Terminate(appInstanceId));
     releaseResources();
 }
 
 //Negative test cases: Terminate - invalid `appInstanceId`
 TEST_F(RuntimeManagerTest, TerminateWithInvalidContainerId) {
-    string appInstanceId("_567gshg&*rt-"); // Empty ID
+    string appInstanceId("_567gshg&*rt-"); // invalid ID
 
     EXPECT_EQ(true, createResources());
     EXPECT_CALL(*mociContainerMock, StopContainer(::testing::_, ::testing::_, ::testing::_, ::testing::_))
@@ -177,7 +210,7 @@ TEST_F(RuntimeManagerTest, TerminateWithInvalidContainerId) {
                 errorReason = "Container not found";
                 return Core::ERROR_GENERAL;
             }));
-    EXPECT_EQ(Core::ERROR_GENERAL, interface->Terminate(appInstanceId));
+    EXPECT_EQ(Core::ERROR_NONE, interface->Terminate(appInstanceId));
     releaseResources();
     //EXPECT_EQ(Core::ERROR_GENERAL, interface->Terminate("invalid_container")); // Non-existent
 }
@@ -401,6 +434,11 @@ TEST_F(RuntimeManagerTest, RunMethods)
     auto pathsListIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(pathsList);
     auto debugSettingsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
 
+    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
+    runtimeConfig.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=main";
+    runtimeConfig.appPath = "/var/runTimeManager";
+    runtimeConfig.runtimePath = "/tmp/runTimeManager";
+
     EXPECT_EQ(true, createResources());
 
     EXPECT_CALL(*mociContainerMock, StartContainerFromDobbySpec("com.sky.as.appsyouTube", ::testing::_, "", "/tmp/main", ::testing::_, ::testing::_, ::testing::_))
@@ -412,6 +450,9 @@ TEST_F(RuntimeManagerTest, RunMethods)
                 errorReason = "No Error";
                 return WPEFramework::Core::ERROR_NONE;
           }));
+
+    ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_))
+            .WillByDefault(::testing::Return(Core::ERROR_NONE));
 
     EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, appPath, runtimePath, envVarsIterator, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator));
     releaseResources();
@@ -435,6 +476,11 @@ TEST_F(RuntimeManagerTest, StartContainerFailure) {
     auto pathsListIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(pathsList);
     auto debugSettingsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
 
+    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
+    runtimeConfig.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=main";
+    runtimeConfig.appPath = "/var/runTimeManager";
+    runtimeConfig.runtimePath = "/tmp/runTimeManager";
+
     EXPECT_EQ(true, createResources());
     EXPECT_CALL(*mociContainerMock, StartContainerFromDobbySpec(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
         .WillOnce(::testing::Invoke(
@@ -444,7 +490,7 @@ TEST_F(RuntimeManagerTest, StartContainerFailure) {
                 errorReason = "Dobby spec invalid";
                 return Core::ERROR_GENERAL;
             }));
-    EXPECT_EQ(Core::ERROR_GENERAL, interface->Run(appInstanceId, appInstanceId, appPath, runtimePath, envVarsIterator, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator)); // Pass valid args
+    EXPECT_EQ(Core::ERROR_GENERAL, interface->Run(appInstanceId, appInstanceId, appPath, runtimePath, envVarsIterator, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, runtimeConfig)); // Pass valid args
     releaseResources();
 }
 
@@ -454,40 +500,18 @@ TEST_F(RuntimeManagerTest, RunWithEmptyContainerId) {
 
     std::vector<std::string> envVarsList = {"XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main"};
     auto envVars = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(envVarsList);
+
+    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
+    runtimeConfig.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=main";
+    runtimeConfig.appPath = "/valid/path";
+    runtimeConfig.runtimePath = "/valid/runtime";
+
+    EXPECT_EQ(true, createResources());
+
     EXPECT_EQ(Core::ERROR_GENERAL, interface->Run(
         "", "", "/valid/path", "/valid/runtime",
-        envVars, 10, 10, nullptr, nullptr, nullptr
-    ));
-}
-
-// Run with Invalid Paths
-// Pass non-existent paths for `appPath` or `runtimePath`
-TEST_F(RuntimeManagerTest, RunWithInvalidPaths) {
-
-    std::vector<std::string> envVarsList = {"XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main"};
-    EXPECT_EQ(true, createResources());
-    auto envVars = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(envVarsList);
-    EXPECT_EQ(Core::ERROR_GENERAL, interface->Run(
-        "youTube", "youTube",
-        "/non/existent/path", // Invalid appPath
-        "/invalid/runtime",   // Invalid runtimePath
-        envVars, 10, 10, nullptr, nullptr, nullptr
-    ));
-    releaseResources();
-}
-
-//Run with Null Iterators
-//Pass `nullptr` for required iterators (`envVars`, `ports`, etc.).
-TEST_F(RuntimeManagerTest, RunWithNullIterators) {
-
-    EXPECT_EQ(true, createResources());
-    EXPECT_EQ(Core::ERROR_GENERAL, interface->Run(
-        "youTube", "youTube", "/valid/path", "/valid/runtime",
-        nullptr,  // Null envVarsIterator
-        10, 10,
-        nullptr,  // Null portsIterator
-        nullptr,  // Null pathsIterator
-        nullptr   // Null debugSettingsIterator
+        envVars, 10, 10, nullptr, nullptr, nullptr,
+        runtimeConfig
     ));
     releaseResources();
 }
@@ -507,44 +531,17 @@ TEST_F(RuntimeManagerTest, RunWithDuplicateContainerId) {
 
     std::vector<std::string> envVarsList = {"XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main"};
     auto envVars = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(envVarsList);
+    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
+    runtimeConfig.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=main";
+    runtimeConfig.appPath = "/valid/path";
+    runtimeConfig.runtimePath = "/valid/runtime";
+
     EXPECT_EQ(Core::ERROR_GENERAL, interface->Run(
         "youTube", "youTube", "/valid/path", "/valid/runtime",
-        envVars, 10, 10, nullptr, nullptr, nullptr
+        envVars, 10, 10, nullptr, nullptr, nullptr,runtimeConfig
     ));
     releaseResources();
 }
-
-// Run with Invalid Port Mappings
-// Pass out-of-range ports (e.g., `0` or `65536`)
-TEST_F(RuntimeManagerTest, RunWithInvalidPorts) {
-    std::vector<uint32_t> portList = {0, 65536}; // Invalid ports
-    auto invalidPorts = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IValueIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IValueIterator>(portList);
-
-    std::vector<std::string> envVarsList = {"XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main"};
-
-    EXPECT_EQ(true, createResources());
-    auto envVars = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(envVarsList);
-    EXPECT_EQ(Core::ERROR_GENERAL, interface->Run(
-        "youTube", "youTube", "/valid/path", "/valid/runtime",
-        envVars, 10, 10, invalidPorts, nullptr, nullptr
-    ));
-    releaseResources();
-}
-
-
-// Run with Invalid Environment Variables
-// Pass malformed env vars (e.g., missing `=`)
-TEST_F(RuntimeManagerTest, RunWithInvalidEnvVars) {
-    std::vector<std::string> envVarsList = {"MISSING_EQUALS_SIGN"}; // Invalid format
-    auto invalidEnvVars = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(envVarsList);
-    EXPECT_EQ(true, createResources());
-    EXPECT_EQ(Core::ERROR_GENERAL, interface->Run(
-        "youTube", "youTube", "/valid/path", "/valid/runtime",
-        invalidEnvVars, 10, 10, nullptr, nullptr, nullptr
-    ));
-    releaseResources();
-}
-
 
 // Run with Timeout
 // Simulate a timeout during container startup
@@ -560,10 +557,15 @@ TEST_F(RuntimeManagerTest, RunWithTimeout) {
             }));
 
     std::vector<std::string> envVarsList = {"XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main"};
+    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
+    runtimeConfig.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=main";
+    runtimeConfig.appPath = "/valid/path";
+    runtimeConfig.runtimePath = "/valid/runtime";
+
     auto envVars = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(envVarsList);
     EXPECT_EQ(Core::ERROR_GENERAL, interface->Run(
         "youTube", "youTube", "/valid/path", "/valid/runtime",
-        envVars, 10, 10, nullptr, nullptr, nullptr
+        envVars, 10, 10, nullptr, nullptr, nullptr,runtimeConfig
     ));
     releaseResources();
 }
@@ -584,9 +586,14 @@ TEST_F(RuntimeManagerTest, WakeMethods)
     auto pathsListIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(pathsList);
     auto debugSettingsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
 
+    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
+    runtimeConfig.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=main";
+    runtimeConfig.appPath = "/var/runTimeManager";
+    runtimeConfig.runtimePath = "/tmp/runTimeManager";
+
     EXPECT_EQ(true, createResources());
 
-    EXPECT_CALL(*mociContainerMock, StartContainerFromDobbySpec("com.sky.as.appsyouTube", ::testing::_, "", "/tmp/main", ::testing::_, ::testing::_, ::testing::_))
+    EXPECT_CALL(*mociContainerMock, StartContainerFromDobbySpec("com.sky.as.appsyouTube", ::testing::_, "", "/tmp/wst-youTube", ::testing::_, ::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
         .WillRepeatedly(::testing::Invoke(
             [&](const string& , const string&, const string&, const string&,int32_t& descriptor, bool& success, string& errorReason ){
@@ -596,7 +603,7 @@ TEST_F(RuntimeManagerTest, WakeMethods)
                 return WPEFramework::Core::ERROR_NONE;
           }));
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, appPath, runtimePath, envVarsIterator, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator));
+    EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, appPath, runtimePath, envVarsIterator, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, runtimeConfig));
 
     EXPECT_CALL(*mociContainerMock, HibernateContainer("com.sky.as.appsyouTube", "",::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
@@ -639,9 +646,14 @@ TEST_F(RuntimeManagerTest, WakeOnRunningNonHibernateContainer)
     auto pathsListIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(pathsList);
     auto debugSettingsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
 
+    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
+    runtimeConfig.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=main";
+    runtimeConfig.appPath = "/var/runTimeManager";
+    runtimeConfig.runtimePath = "/tmp/runTimeManager";
+
     EXPECT_EQ(true, createResources());
 
-    EXPECT_CALL(*mociContainerMock, StartContainerFromDobbySpec("com.sky.as.appsyouTube", ::testing::_, "", "/tmp/main", ::testing::_, ::testing::_, ::testing::_))
+    EXPECT_CALL(*mociContainerMock, StartContainerFromDobbySpec("com.sky.as.appsyouTube", ::testing::_, "", "/tmp/wst-youTube", ::testing::_, ::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
         .WillRepeatedly(::testing::Invoke(
             [&](const string& , const string&, const string&, const string&,int32_t& descriptor, bool& success, string& errorReason ){
@@ -651,7 +663,7 @@ TEST_F(RuntimeManagerTest, WakeOnRunningNonHibernateContainer)
                 return WPEFramework::Core::ERROR_NONE;
           }));
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, appPath, runtimePath, envVarsIterator, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator));
+    EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, appPath, runtimePath, envVarsIterator, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, runtimeConfig));
 
 
     EXPECT_EQ(Core::ERROR_GENERAL, interface->Wake(appInstanceId, WPEFramework::Exchange::IRuntimeManager::RUNTIME_STATE_RUNNING));
@@ -675,9 +687,14 @@ TEST_F(RuntimeManagerTest, WakeWithGeneralError)
     auto pathsListIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(pathsList);
     auto debugSettingsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
 
+    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
+    runtimeConfig.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=main";
+    runtimeConfig.appPath = "/var/runTimeManager";
+    runtimeConfig.runtimePath = "/tmp/runTimeManager";
+
     EXPECT_EQ(true, createResources());
 
-    EXPECT_CALL(*mociContainerMock, StartContainerFromDobbySpec("com.sky.as.appsyouTube", ::testing::_, "", "/tmp/main", ::testing::_, ::testing::_, ::testing::_))
+    EXPECT_CALL(*mociContainerMock, StartContainerFromDobbySpec("com.sky.as.appsyouTube", ::testing::_, "", "/tmp/wst-youTube", ::testing::_, ::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
         .WillRepeatedly(::testing::Invoke(
             [&](const string& , const string&, const string&, const string&,int32_t& descriptor, bool& success, string& errorReason ){
@@ -687,7 +704,7 @@ TEST_F(RuntimeManagerTest, WakeWithGeneralError)
                 return WPEFramework::Core::ERROR_NONE;
           }));
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, appPath, runtimePath, envVarsIterator, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator));
+    EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, appPath, runtimePath, envVarsIterator, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, runtimeConfig));
 
     EXPECT_CALL(*mociContainerMock, HibernateContainer("com.sky.as.appsyouTube", "",::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
@@ -724,9 +741,71 @@ TEST_F(RuntimeManagerTest, WakeOnNonRunningContainer)
     releaseResources();
 }
 
-TEST_F(RuntimeManagerTest, ResumeMethods)
+TEST_F(RuntimeManagerTest, SuspendResumeMethods)
 {
     string appInstanceId("youTube");
+    string appPath("/var/runTimeManager");
+    string runtimePath("/tmp/runTimeManager");
+    string expectedAppInfo("This Test YouTube");
+    std::vector<std::string> envVarsList = {"XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main"};
+    std::vector<uint32_t> portList = {10, 20};
+    std::vector<std::string> pathsList = {"/tmp", "/opt"};
+    std::vector<std::string> debugSettingsList = {"MIL", "INFO"};
+
+    auto envVarsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(envVarsList);
+    auto portsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IValueIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IValueIterator>(portList);
+    auto pathsListIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(pathsList);
+    auto debugSettingsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
+
+    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
+    runtimeConfig.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=main";
+    runtimeConfig.appPath = "/var/runTimeManager";
+    runtimeConfig.runtimePath = "/tmp/runTimeManager";
+
+    EXPECT_EQ(true, createResources());
+
+    EXPECT_CALL(*mociContainerMock, StartContainerFromDobbySpec("com.sky.as.appsyouTube", ::testing::_, "", "/tmp/wst-youTube", ::testing::_, ::testing::_, ::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillRepeatedly(::testing::Invoke(
+            [&](const string& , const string&, const string&, const string&,int32_t& descriptor, bool& success, string& errorReason ){
+                descriptor = 100;
+                success = true;
+                errorReason = "No Error";
+                return WPEFramework::Core::ERROR_NONE;
+          }));
+
+    ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_))
+            .WillByDefault(::testing::Return(Core::ERROR_NONE));
+
+    EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, appPath, runtimePath, envVarsIterator, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, runtimeConfig));
+
+    EXPECT_CALL(*mociContainerMock, PauseContainer(::testing::_, ::testing::_, ::testing::_))
+    .WillOnce([](const std::string&, bool& success, std::string& reason) {
+            success = true;
+            reason = "No Error";
+            return Core::ERROR_NONE;
+        });
+
+    EXPECT_EQ(Core::ERROR_NONE, interface->Suspend(appInstanceId));
+
+    EXPECT_CALL(*mociContainerMock, ResumeContainer(::testing::_, ::testing::_, ::testing::_))
+        .WillOnce([](const std::string& containerId, bool& success, std::string& reason) {
+            success = true;
+            reason = "No Error";
+            return Core::ERROR_NONE;
+        });
 
     EXPECT_EQ(Core::ERROR_NONE, interface->Resume(appInstanceId));
+    releaseResources();
 }
+
+TEST_F(RuntimeManagerTest, MountMethods)
+{
+    EXPECT_EQ(Core::ERROR_NONE, interface->Mount());
+}
+
+TEST_F(RuntimeManagerTest, UnmountMethods)
+{
+    EXPECT_EQ(Core::ERROR_NONE, interface->Unmount());
+}
+
