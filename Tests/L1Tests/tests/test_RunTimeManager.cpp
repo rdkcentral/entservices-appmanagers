@@ -441,7 +441,7 @@ TEST_F(RuntimeManagerTest, RunMethods)
 
     EXPECT_EQ(true, createResources());
 
-    EXPECT_CALL(*mociContainerMock, StartContainerFromDobbySpec("com.sky.as.appsyouTube", ::testing::_, "", "/tmp/main", ::testing::_, ::testing::_, ::testing::_))
+    EXPECT_CALL(*mociContainerMock, StartContainerFromDobbySpec("com.sky.as.appsyouTube", ::testing::_, "", "/tmp/wst-youTube", ::testing::_, ::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
         .WillRepeatedly(::testing::Invoke(
             [&](const string& , const string&, const string&, const string&,int32_t& descriptor, bool& success, string& errorReason ){
@@ -454,7 +454,7 @@ TEST_F(RuntimeManagerTest, RunMethods)
     ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_))
             .WillByDefault(::testing::Return(Core::ERROR_NONE));
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, appPath, runtimePath, envVarsIterator, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator));
+    EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, appPath, runtimePath, envVarsIterator, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, runtimeConfig));
     releaseResources();
 }
 
