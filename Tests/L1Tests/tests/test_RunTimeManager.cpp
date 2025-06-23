@@ -1039,6 +1039,21 @@ TEST_F(RuntimeManagerTest, ResumeFailsResumePauseContainerError)
     releaseResources();
 }
 
+TEST_F(RuntimeManagerTest, CoverOCIContainerEvents)
+{
+    ASSERT_TRUE(createResources());
+
+    JsonObject dummyData;
+    std::string dummyName = "DummyApp";
+
+    mRuntimeManagerImpl->onOCIContainerStartedEvent(dummyName, dummyData);
+    mRuntimeManagerImpl->onOCIContainerStoppedEvent(dummyName, dummyData);
+    mRuntimeManagerImpl->onOCIContainerFailureEvent(dummyName, dummyData);
+    mRuntimeManagerImpl->onOCIContainerStateChangedEvent(dummyName, dummyData);
+
+    releaseResources();
+}
+
 TEST_F(RuntimeManagerTest, MountMethods)
 {
     EXPECT_EQ(Core::ERROR_NONE, interface->Mount());
