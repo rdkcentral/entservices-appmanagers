@@ -242,7 +242,7 @@ TEST_F(StorageManagerTest, CreateGetAndDeleteStorageUsingComRpcSuccess)
     expectedPath = std::string(DEFAULT_APP_STORAGE_PATH) + std::string("/") + appId;
 
     EXPECT_CALL(*p_wrapsImplMock, chown(::testing::_, ::testing::_, ::testing::_))
-        .WillRepeatedly([](const char* path, int32_t owner, int32_t group) -> int {
+        .WillRepeatedly([](const char *path, uid_t owner, gid_t group) -> int {
             // Simulate success
             TEST_LOG("### p_wrapsImplMock chown ###");
             return 0;
