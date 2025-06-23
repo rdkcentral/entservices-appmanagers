@@ -843,6 +843,17 @@ TEST_F(RuntimeManagerTest, WakeOnNonRunningContainer)
     releaseResources();
 }
 
+TEST_F(RuntimeManagerTest, WakeFailsWithEmptyAppInstanceId)
+{
+    string appInstanceId("");
+
+    EXPECT_EQ(true, createResources());
+
+    EXPECT_EQ(Core::ERROR_GENERAL, interface->Wake(appInstanceId, WPEFramework::Exchange::IRuntimeManager::RUNTIME_STATE_RUNNING));
+
+    releaseResources();
+}
+
 TEST_F(RuntimeManagerTest, SuspendResumeMethods)
 {
     string appInstanceId("youTube");
@@ -921,6 +932,109 @@ TEST_F(RuntimeManagerTest, ResumeFailsWithEmptyAppInstanceId)
         .Times(0);
 
     EXPECT_EQ(Core::ERROR_GENERAL, interface->Resume(""));
+
+    releaseResources();
+}
+
+TEST_F(RuntimeManagerTest, SuspendFailsWithPauseContainerError)
+{
+    string appInstanceId("youTube");
+    string appPath("/var/runTimeManager");
+    string runtimePath("/tmp/runTimeManager");
+    std::vector<std::string> envVarsList = {"XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main"};
+    std::vector<uint32_t> portList = {10, 20};
+    std::vector<std::string> pathsList = {"/tmp", "/opt"};
+    std::vector<std::string> debugSettingsList = {"MIL", "INFO"};
+
+    auto envVarsIterator = Core::Service<RPC::IteratorType<Exchange::IRuntimeManager::IStringIterator>>::Create<Exchange::IRuntimeManager::IStringIterator>(envVarsList);
+    auto portsIterator = Core::Service<RPC::IteratorType<Exchange::IRuntimeManager::IValueIterator>>::Create<Exchange::IRuntimeManager::IValueIterator>(portList);
+    auto pathsListIterator = Core::Service<RPC::IteratorType<Exchange::IRuntimeManager::IStringIterator>>::Create<Exchange::IRuntimeManager::IStringIterator>(pathsList);
+    auto debugSettingsIterator = Core::Service<RPC::IteratorType<Exchange::IRuntimeManager::IStringIterator>>::Create<Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
+
+    Exchange::RuntimeConfig runtimeConfig;
+    runtimeConfig.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=main";
+    runtimeConfig.appPath = appPath;
+    runtimeConfig.runtimePath = runtimePath;
+
+    EXPECT_EQ(true, createResources());
+
+    EXPECT_CALL(*mociContainerMock, StartContainerFromDobbySpec("com.sky.as.appsyouTube", ::testing::_, "", "/tmp/wst-youTube", ::testing::_, ::testing::_, ::testing::_))
+        .WillRepeatedly(::testing::Invoke(
+            [&](const string&, const string&, const string&, const string&, int32_t& descriptor, bool& success, string& errorReason) {
+                descriptor = 100;
+                success = true;
+                errorReason = "No Error";
+                return Core::ERROR_NONE;
+            }));
+
+    ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_)).WillByDefault(::testing::Return(Core::ERROR_NONE));
+
+    EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, appPath, runtimePath, envVarsIterator, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, runtimeConfig));
+
+    EXPECT_CALL(*mociContainerMock, PauseContainer(::testing::_, ::testing::_, ::testing::_))
+        .WillOnce([](const std::string&, bool& success, std::string& reason) {
+            success = false;
+            reason = "Mocked failure";
+            return Core::ERROR_GENERAL;
+        });
+
+    EXPECT_EQ(Core::ERROR_GENERAL, interface->Suspend(appInstanceId));
+
+    releaseResources();
+}
+
+TEST_F(RuntimeManagerTest, ResumeFailsResumePauseContainerError)
+{
+    string appInstanceId("youTube");
+    string appPath("/var/runTimeManager");
+    string runtimePath("/tmp/runTimeManager");
+    std::vector<std::string> envVarsList = {"XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main"};
+    std::vector<uint32_t> portList = {10, 20};
+    std::vector<std::string> pathsList = {"/tmp", "/opt"};
+    std::vector<std::string> debugSettingsList = {"MIL", "INFO"};
+
+    auto envVarsIterator = Core::Service<RPC::IteratorType<Exchange::IRuntimeManager::IStringIterator>>::Create<Exchange::IRuntimeManager::IStringIterator>(envVarsList);
+    auto portsIterator = Core::Service<RPC::IteratorType<Exchange::IRuntimeManager::IValueIterator>>::Create<Exchange::IRuntimeManager::IValueIterator>(portList);
+    auto pathsListIterator = Core::Service<RPC::IteratorType<Exchange::IRuntimeManager::IStringIterator>>::Create<Exchange::IRuntimeManager::IStringIterator>(pathsList);
+    auto debugSettingsIterator = Core::Service<RPC::IteratorType<Exchange::IRuntimeManager::IStringIterator>>::Create<Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
+
+    Exchange::RuntimeConfig runtimeConfig;
+    runtimeConfig.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=main";
+    runtimeConfig.appPath = appPath;
+    runtimeConfig.runtimePath = runtimePath;
+
+    EXPECT_EQ(true, createResources());
+
+    EXPECT_CALL(*mociContainerMock, StartContainerFromDobbySpec("com.sky.as.appsyouTube", ::testing::_, "", "/tmp/wst-youTube", ::testing::_, ::testing::_, ::testing::_))
+        .WillRepeatedly(::testing::Invoke(
+            [&](const string&, const string&, const string&, const string&, int32_t& descriptor, bool& success, string& errorReason) {
+                descriptor = 100;
+                success = true;
+                errorReason = "No Error";
+                return Core::ERROR_NONE;
+            }));
+
+    ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_)).WillByDefault(::testing::Return(Core::ERROR_NONE));
+
+    EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, appPath, runtimePath, envVarsIterator, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, runtimeConfig));
+
+    EXPECT_CALL(*mociContainerMock, PauseContainer(::testing::_, ::testing::_, ::testing::_))
+    .WillOnce([](const std::string&, bool& success, std::string& reason) {
+            success = true;
+            reason = "No Error";
+            return Core::ERROR_NONE;
+        });
+
+    EXPECT_EQ(Core::ERROR_NONE, interface->Suspend(appInstanceId));
+
+    EXPECT_CALL(*mociContainerMock, ResumeContainer(::testing::_, ::testing::_, ::testing::_))
+        .WillOnce([](const std::string& containerId, bool& success, std::string& reason) {
+            success = false;
+            reason = "Mocked Failure";
+            return Core::ERROR_GENERAL;
+        });
+
+    EXPECT_EQ(Core::ERROR_GENERAL, interface->Resume(appInstanceId));
 
     releaseResources();
 }
