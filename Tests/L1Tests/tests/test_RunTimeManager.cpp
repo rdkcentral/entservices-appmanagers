@@ -1063,3 +1063,80 @@ TEST_F(RuntimeManagerTest, UnmountMethods)
 {
     EXPECT_EQ(Core::ERROR_NONE, interface->Unmount());
 }
+
+TEST_F(RuntimeManagerTest, RunWithInvalidPaths) {
+
+    std::vector<std::string> envVarsList = {"XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main"};
+    EXPECT_EQ(true, createResources());
+    auto envVars = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(envVarsList);
+
+    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
+    runtimeConfig.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=main";
+    runtimeConfig.appPath = "/non/existent/path";
+    runtimeConfig.runtimePath = "/invalid/runtime";
+
+    EXPECT_EQ(Core::ERROR_NONE, interface->Run(
+        "youTube", "youTube",
+        "/non/existent/path", // Invalid appPath
+        "/invalid/runtime",   // Invalid runtimePath
+        envVars, 10, 10, nullptr, nullptr, nullptr,
+        runtimeConfig
+    ));
+    releaseResources();
+}
+//Run with Null Iterators
+//Pass `nullptr` for required iterators (`envVars`, `ports`, etc.).
+TEST_F(RuntimeManagerTest, RunWithNullIterators) {
+
+    EXPECT_EQ(true, createResources());
+    WPEFramework::Exchange::RuntimeConfig emptyConfig;
+    EXPECT_EQ(Core::ERROR_NONE, interface->Run(
+        "youTube", "youTube", "/valid/path", "/valid/runtime",
+        nullptr,  // Null envVarsIterator
+        10, 10,
+        nullptr,  // Null portsIterator
+        nullptr,  // Null pathsIterator
+        nullptr,   // Null debugSettingsIterator
+        emptyConfig
+    ));
+    releaseResources();
+}
+
+// Run with Invalid Port Mappings
+// Pass out-of-range ports (e.g., `0` or `65536`)
+TEST_F(RuntimeManagerTest, RunWithInvalidPorts) {
+    std::vector<uint32_t> portList = {0, 65536}; // Invalid ports
+    auto invalidPorts = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IValueIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IValueIterator>(portList);
+
+    std::vector<std::string> envVarsList = {"XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main"};
+    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
+    runtimeConfig.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=main";
+    runtimeConfig.appPath = "/valid/path";
+    runtimeConfig.runtimePath = "/valid/runtime";
+
+    EXPECT_EQ(true, createResources());
+    auto envVars = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(envVarsList);
+    EXPECT_EQ(Core::ERROR_NONE, interface->Run(
+        "youTube", "youTube", "/valid/path", "/valid/runtime",
+        envVars, 10, 10, invalidPorts, nullptr, nullptr,runtimeConfig
+    ));
+    releaseResources();
+}
+
+// Run with Invalid Environment Variables
+// Pass malformed env vars (e.g., missing `=`)
+TEST_F(RuntimeManagerTest, RunWithInvalidEnvVars) {
+    std::vector<std::string> envVarsList = {"MISSING_EQUALS_SIGN"}; // Invalid format
+    auto invalidEnvVars = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(envVarsList);
+    EXPECT_EQ(true, createResources());
+    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
+    runtimeConfig.envVariables = "MISSING_EQUALS_SIGN";
+    runtimeConfig.appPath = "/valid/path";
+    runtimeConfig.runtimePath = "/valid/runtime";
+
+    EXPECT_EQ(Core::ERROR_NONE, interface->Run(
+        "youTube", "youTube", "/valid/path", "/valid/runtime",
+        invalidEnvVars, 10, 10, nullptr, nullptr, nullptr,runtimeConfig
+    ));
+    releaseResources();
+}
