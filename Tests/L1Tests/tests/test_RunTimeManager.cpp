@@ -613,8 +613,6 @@ TEST_F(RuntimeManagerTest, RunCreateFkpsMounts)
     std::vector<std::string> pathsList = {"/tmp", "/opt"};
     std::vector<std::string> debugSettingsList = {"MIL", "INFO"};
 
-    TEST_LOG("Pavi enter runmethod");
-
     auto envVarsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(envVarsList);
     auto portsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IValueIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IValueIterator>(portList);
     auto pathsListIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(pathsList);
@@ -639,11 +637,7 @@ TEST_F(RuntimeManagerTest, RunCreateFkpsMounts)
 
     runtimeConfig.fkpsFiles = R"(["test1.fkps"])"; // JSON array of FKPS file
 
-    TEST_LOG("Pavi before createresource");
-
     EXPECT_EQ(true, createResources());
-
-    TEST_LOG("Pavi after createresource");
 
     EXPECT_CALL(*mociContainerMock, StartContainerFromDobbySpec("com.sky.as.appsyouTube", ::testing::_, "", "/run/user/1001/wst-youTube", ::testing::_, ::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
@@ -655,16 +649,10 @@ TEST_F(RuntimeManagerTest, RunCreateFkpsMounts)
                 return WPEFramework::Core::ERROR_NONE;
           }));
 
-    TEST_LOG("Pavi before CreateDisplay");
-
     ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_))
             .WillByDefault(::testing::Return(Core::ERROR_NONE));
 
-    TEST_LOG("Pavi after CreateDisplay");
-
     EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, appPath, runtimePath, envVarsIterator, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, runtimeConfig));
-
-    TEST_LOG("Pavi after Run");
 
     releaseResources();
 }
@@ -677,13 +665,11 @@ TEST_F(RuntimeManagerTest, RunReadfromAIConfigFile)
     const std::string appPath = "/var/testApp";
     const std::string runtimePath = "/tmp/testApp";
 
-    TEST_LOG("Ensure /opt/demo directory exists");
     if (access(configDir.c_str(), F_OK) != 0) {
         int ret = mkdir(configDir.c_str(), 0755);
         ASSERT_EQ(ret, 0) << "Failed to create directory: " << configDir << " (errno: " << errno << ")";
     }
 
-    TEST_LOG("Create dummy config.ini file at /opt/demo/config.ini");
     {
         std::ofstream configFile(configFilePath);
         ASSERT_TRUE(configFile.is_open()) << "Unable to open " << configFilePath << " for writing";
@@ -709,7 +695,6 @@ TEST_F(RuntimeManagerTest, RunReadfromAIConfigFile)
         configFile.close();
     }
 
-    TEST_LOG("Config file created");
     std::vector<std::string> envVarsList = { "XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=wst-test" };
     std::vector<uint32_t> portList = { 1234 };
     std::vector<std::string> pathsList = { "/tmp" };
@@ -725,11 +710,7 @@ TEST_F(RuntimeManagerTest, RunReadfromAIConfigFile)
     runtimeConfig.appPath = appPath;
     runtimeConfig.runtimePath = runtimePath;
 
-    TEST_LOG("Pavi before createresource");
-
     EXPECT_EQ(true, createResources());
-
-    TEST_LOG("Pavi after createresource");
 
     EXPECT_CALL(*mociContainerMock, StartContainerFromDobbySpec(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
         .WillOnce(::testing::Invoke(
