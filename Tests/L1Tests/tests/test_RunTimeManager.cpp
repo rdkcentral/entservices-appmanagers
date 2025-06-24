@@ -1140,3 +1140,70 @@ TEST_F(RuntimeManagerTest, RunWithInvalidEnvVars) {
     ));
     releaseResources();
 }
+
+TEST_F(RuntimeManagerTest, RunCreateFkpsMounts)
+{
+    string appInstanceId("youTube");
+    string appPath("/var/runTimeManager");
+    string runtimePath("/tmp/runTimeManager");
+    string expectedAppInfo("This Test YouTube");
+    std::vector<std::string> envVarsList = {"XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main"};
+    std::vector<uint32_t> portList = {10, 20};
+    std::vector<std::string> pathsList = {"/tmp", "/opt"};
+    std::vector<std::string> debugSettingsList = {"MIL", "INFO"};
+
+    TEST_LOG("Pavi enter runmethod");
+
+    auto envVarsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(envVarsList);
+    auto portsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IValueIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IValueIterator>(portList);
+    auto pathsListIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(pathsList);
+    auto debugSettingsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
+
+    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
+    runtimeConfig.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=main";
+    runtimeConfig.appPath = "/var/runTimeManager";
+    runtimeConfig.runtimePath = "/tmp/runTimeManager";
+
+    std::string fkpsFileName = "test1.fkps";
+    std::string fkpsDir = "/opt/drm";
+    std::string fkpsFullPath = fkpsDir + "/" + fkpsFileName;
+
+    mkdir(fkpsDir.c_str(), 0755); // Ensure /opt/drm exists
+
+    {
+        std::ofstream fkpsFile(fkpsFullPath);
+        ASSERT_TRUE(fkpsFile.is_open()) << "Failed to create FKPS file";
+        fkpsFile << "dummy FKPS content";
+    }
+
+    runtimeConfig.fkpsFiles = R"(["test1.fkps"])"; // JSON array of FKPS file
+
+    TEST_LOG("Pavi before createresource");
+
+    EXPECT_EQ(true, createResources());
+
+    TEST_LOG("Pavi after createresource");
+
+    EXPECT_CALL(*mociContainerMock, StartContainerFromDobbySpec("com.sky.as.appsyouTube", ::testing::_, "", "/run/user/1001/wst-youTube", ::testing::_, ::testing::_, ::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillRepeatedly(::testing::Invoke(
+            [&](const string& , const string&, const string&, const string&,int32_t& descriptor, bool& success, string& errorReason ){
+                descriptor = 100;
+                success = true;
+                errorReason = "No Error";
+                return WPEFramework::Core::ERROR_NONE;
+          }));
+
+    TEST_LOG("Pavi before CreateDisplay");
+
+    ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_))
+            .WillByDefault(::testing::Return(Core::ERROR_NONE));
+
+    TEST_LOG("Pavi after CreateDisplay");
+
+    EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, appPath, runtimePath, envVarsIterator, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, runtimeConfig));
+
+    TEST_LOG("Pavi after Run");
+
+    releaseResources();
+}
