@@ -620,8 +620,25 @@ TEST_F(RuntimeManagerTest, RunReadfromAIConfigFile)
     {
         std::ofstream configFile(configFilePath);
         ASSERT_TRUE(configFile.is_open()) << "Unable to open " << configFilePath << " for writing";
+        configFile << "consoleLogCap=1024\n";
+        configFile << "cores=15\n";
+        configFile << "ramLimit=512\n";
+        configFile << "gpuMemoryLimit=128\n";
+        configFile << "vpuAccessBlacklist=item1,item2\n";
+        configFile << "appsRequiringDBus=app1,app2\n";
+        configFile << "mapiPorts=1234,5678\n";
         configFile << "resourceManagerClientEnabled=true\n";
         configFile << "gstreamerRegistryEnabled=true\n";
+        configFile << "svpEnabled=true\n";
+        configFile << "enableUsbMassStorage=true\n";
+        configFile << "ipv6Enabled=true\n";
+        configFile << "ionDefaultLimit=2048\n";
+        configFile << "dialServerPort=8080\n";
+        configFile << "dialServerPathPrefix=\"/prefix\"\n";
+        configFile << "dialUsn=\"uuid:1234\"\n";
+        configFile << "ionLimits=item1:1000,item2:2000\n";
+        configFile << "preloads=lib1,lib2\n";
+        configFile << "envVariables=VAR1=1,VAR2=2\n";
         configFile.close();
     }
 
