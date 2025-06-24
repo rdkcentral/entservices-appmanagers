@@ -602,6 +602,72 @@ TEST_F(RuntimeManagerTest, RunWithoutCreateDisplay)
     releaseResources();
 }
 
+TEST_F(RuntimeManagerTest, RunReadfromAIConfigFile)
+{
+    const std::string configDir = "/opt/demo";
+    const std::string configFilePath = configDir + "/config.ini";
+    const std::string appInstanceId = "testAppInstance";
+    const std::string appPath = "/var/testApp";
+    const std::string runtimePath = "/tmp/testApp";
+
+    TEST_LOG("Ensure /opt/demo directory exists");
+    if (access(configDir.c_str(), F_OK) != 0) {
+        int ret = mkdir(configDir.c_str(), 0755);
+        ASSERT_EQ(ret, 0) << "Failed to create directory: " << configDir << " (errno: " << errno << ")";
+    }
+
+    TEST_LOG("Create dummy config.ini file at /opt/demo/config.ini");
+    {
+        std::ofstream configFile(configFilePath);
+        ASSERT_TRUE(configFile.is_open()) << "Unable to open " << configFilePath << " for writing";
+        configFile << "resourceManagerClientEnabled=true\n";
+        configFile << "gstreamerRegistryEnabled=true\n";
+        configFile.close();
+    }
+
+    TEST_LOG("Config file created");
+    std::vector<std::string> envVarsList = { "XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=wst-test" };
+    std::vector<uint32_t> portList = { 1234 };
+    std::vector<std::string> pathsList = { "/tmp" };
+    std::vector<std::string> debugSettingsList = { "INFO" };
+
+    auto envVarsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(envVarsList);
+    auto portsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IValueIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IValueIterator>(portList);
+    auto pathsListIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(pathsList);
+    auto debugSettingsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
+
+    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
+    runtimeConfig.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=wst-test";
+    runtimeConfig.appPath = appPath;
+    runtimeConfig.runtimePath = runtimePath;
+
+    TEST_LOG("Pavi before createresource");
+
+    EXPECT_EQ(true, createResources());
+
+    TEST_LOG("Pavi after createresource");
+
+    EXPECT_CALL(*mociContainerMock, StartContainerFromDobbySpec(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .WillOnce(::testing::Invoke(
+            [](const std::string&, const std::string&, const std::string&, const std::string&, int32_t& descriptor, bool& success, std::string& errorReason) {
+                descriptor = 99;
+                success = true;
+                errorReason = "";
+                return Core::ERROR_NONE;
+            }));
+
+    ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_)).WillByDefault(::testing::Return(Core::ERROR_NONE));
+
+    LOGINFO("Calling Run");
+    EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, appPath, runtimePath,
+                                               envVarsIterator, 1000, 1001,
+                                               portsIterator, pathsListIterator, debugSettingsIterator, runtimeConfig));
+
+    // Optional: Clean up the config file after test
+    remove(configFilePath.c_str());
+    releaseResources();
+}
+
 //Failed Container Operations
 TEST_F(RuntimeManagerTest, StartContainerFailure) {
 
