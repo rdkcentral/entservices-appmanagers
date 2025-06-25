@@ -381,7 +381,7 @@ namespace Plugin {
                 NotifyInstallStatus(packageId, version, state);
             }
         } else {
-            LOGERR("Unknown package id: %s ver: %s", packageId.c_str(), version.c_str());
+            LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
         }
 
         return result;
@@ -425,7 +425,7 @@ namespace Plugin {
                 }
             }
         } else {
-            LOGERR("Unknown package id: %s ver: %s", packageId.c_str(), version.c_str());
+            LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
         }
 
         return result;
@@ -433,6 +433,7 @@ namespace Plugin {
 
     Core::hresult PackageManagerImplementation::ListPackages(Exchange::IPackageInstaller::IPackageIterator*& packages)
     {
+        CHECK_CACHE()
         LOGTRACE("entry");
         Core::hresult result = Core::ERROR_NONE;
         std::list<Exchange::IPackageInstaller::Package> packageList;
@@ -455,6 +456,7 @@ namespace Plugin {
 
     Core::hresult PackageManagerImplementation::Config(const string &packageId, const string &version, Exchange::RuntimeConfig& runtimeConfig)
     {
+        CHECK_CACHE()
         LOGDBG();
         Core::hresult result = Core::ERROR_NONE;
 
@@ -473,6 +475,7 @@ namespace Plugin {
     Core::hresult PackageManagerImplementation::PackageState(const string &packageId, const string &version,
         Exchange::IPackageInstaller::InstallState &installState)
     {
+        CHECK_CACHE()
         LOGDBG();
         Core::hresult result = Core::ERROR_NONE;
 
@@ -481,7 +484,8 @@ namespace Plugin {
             auto &state = it->second;
             installState = state.installState;
         } else {
-            LOGERR("Unknown package id: %s ver: %s", packageId.c_str(), version.c_str());
+            LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
+            result = Core::ERROR_GENERAL;
         }
 
         return result;
@@ -578,7 +582,7 @@ namespace Plugin {
 
             LOGDBG("id: %s ver: %s lock count:%d", packageId.c_str(), version.c_str(), state.mLockCount);
         } else {
-            LOGERR("Unknown package id: %s ver: %s", packageId.c_str(), version.c_str());
+            LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
             result = Core::ERROR_BAD_REQUEST;
         }
 
@@ -657,7 +661,7 @@ namespace Plugin {
             #endif
             LOGDBG("id: %s ver: %s lock count:%d", packageId.c_str(), version.c_str(), state.mLockCount);
         } else {
-            LOGERR("Unknown package id: %s ver: %s", packageId.c_str(), version.c_str());
+            LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
             result = Core::ERROR_BAD_REQUEST;
         }
 
@@ -678,7 +682,7 @@ namespace Plugin {
             locked = (state.mLockCount > 0);
             LOGDBG("id: %s ver: %s lock count:%d", packageId.c_str(), version.c_str(), state.mLockCount);
         } else {
-            LOGERR("Unknown package id: %s ver: %s", packageId.c_str(), version.c_str());
+            LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
             result = Core::ERROR_BAD_REQUEST;
         }
         return result;
