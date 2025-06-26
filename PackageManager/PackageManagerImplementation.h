@@ -63,6 +63,7 @@ namespace Plugin {
             string gatewayMetadataPath;
             string unpackedPath;
             FailReason failReason;
+            std::list<Exchange::IPackageHandler::AdditionalLock> additionalLocks;
         };
 
         typedef std::pair<std::string, std::string> StateKey;

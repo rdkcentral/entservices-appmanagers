@@ -557,16 +557,15 @@ namespace Plugin {
                 if (pmResult == packagemanager::SUCCESS) {
                     lockId = ++state.mLockCount;
 
-                    std::list<Exchange::IPackageHandler::AdditionalLock> additionalLocks;
+                    //std::list<Exchange::IPackageHandler::AdditionalLock> additionalLocks;
+                    state.additionalLocks.clear();
                     for (packagemanager::NameValue nv : locks) {
                         Exchange::IPackageHandler::AdditionalLock lock;
                         lock.packageId = nv.first;
                         lock.version = nv.second;
-                        additionalLocks.emplace_back(lock);
+                        state.additionalLocks.emplace_back(lock);
                     }
-
-                    appMetadata = Core::Service<RPC::IteratorType<Exchange::IPackageHandler::ILockIterator>>::Create<Exchange::IPackageHandler::ILockIterator>(additionalLocks);
-
+                    //appMetadata = Core::Service<RPC::IteratorType<Exchange::IPackageHandler::ILockIterator>>::Create<Exchange::IPackageHandler::ILockIterator>(additionalLocks);
                     LOGDBG("Locked id: %s ver: %s", packageId.c_str(), version.c_str());
                 } else {
                     LOGERR("Lock Failed id: %s ver: %s", packageId.c_str(), version.c_str());
@@ -577,6 +576,7 @@ namespace Plugin {
             if (result == Core::ERROR_NONE) {
                 getRuntimeConfig(state.runtimeConfig, runtimeConfig);
                 unpackedPath = state.unpackedPath;
+                appMetadata = Core::Service<RPC::IteratorType<Exchange::IPackageHandler::ILockIterator>>::Create<Exchange::IPackageHandler::ILockIterator>(state.additionalLocks);
             }
             #endif
 
@@ -671,6 +671,7 @@ namespace Plugin {
     Core::hresult PackageManagerImplementation::GetLockedInfo(const string &packageId, const string &version,
         string &unpackedPath, Exchange::RuntimeConfig& runtimeConfig, string& gatewayMetadataPath, bool &locked)
     {
+        CHECK_CACHE()
         Core::hresult result = Core::ERROR_NONE;
 
         LOGDBG("id: %s ver: %s", packageId.c_str(), version.c_str());
