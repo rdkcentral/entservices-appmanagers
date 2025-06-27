@@ -557,7 +557,6 @@ namespace Plugin {
                 if (pmResult == packagemanager::SUCCESS) {
                     lockId = ++state.mLockCount;
 
-                    //std::list<Exchange::IPackageHandler::AdditionalLock> additionalLocks;
                     state.additionalLocks.clear();
                     for (packagemanager::NameValue nv : locks) {
                         Exchange::IPackageHandler::AdditionalLock lock;
@@ -565,8 +564,7 @@ namespace Plugin {
                         lock.version = nv.second;
                         state.additionalLocks.emplace_back(lock);
                     }
-                    //appMetadata = Core::Service<RPC::IteratorType<Exchange::IPackageHandler::ILockIterator>>::Create<Exchange::IPackageHandler::ILockIterator>(additionalLocks);
-                    LOGDBG("Locked id: %s ver: %s", packageId.c_str(), version.c_str());
+                    LOGDBG("Locked id: %s ver: %s additionalLocks=%zu", packageId.c_str(), version.c_str(), state.additionalLocks.size());
                 } else {
                     LOGERR("Lock Failed id: %s ver: %s", packageId.c_str(), version.c_str());
                     result = Core::ERROR_GENERAL;
@@ -589,7 +587,7 @@ namespace Plugin {
         return result;
     }
 
-    // XXX: right way to do this is via copy ctor, when we move Thunder 5.2 and have commone struct RuntimeConfig
+    // XXX: right way to do this is via copy ctor, when we move to Thunder 5.2 and have commone struct RuntimeConfig
     void PackageManagerImplementation::getRuntimeConfig(const Exchange::RuntimeConfig &config, Exchange::RuntimeConfig &runtimeConfig)
     {
         runtimeConfig.dial = config.dial;
