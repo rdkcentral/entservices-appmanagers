@@ -53,7 +53,7 @@ namespace WPEFramework
 	    {
                 ApplicationContext* context = getContext();
                 ApplicationLaunchParams& launchParams = context->getApplicationLaunchParams();
-                ret = runtimeManagerHandler->run(context->getAppId(), context->getAppInstanceId(), launchParams.mAppPath, launchParams.mAppConfig, launchParams.mRuntimeAppId, launchParams.mRuntimePath, launchParams.mRuntimeConfig, launchParams.mEnvironmentVars, launchParams.mEnableDebugger, launchParams.mLaunchArgs, launchParams.mTargetState, launchParams.mRuntimeConfigObject, errorReason);
+                ret = runtimeManagerHandler->run(context->getAppId(), context->getAppInstanceId(), launchParams.mLaunchArgs, launchParams.mTargetState, launchParams.mRuntimeConfigObject, errorReason);
                 printf("MADANA APPLICATION RUN RETURNS [%d] \n", ret);
 		fflush(stdout);
                 ret = true;
@@ -189,11 +189,11 @@ namespace WPEFramework
 */
 
         bool TerminatingState::handle(string& errorReason)
-	{
+        {
             bool success = false;
             RuntimeManagerHandler* runtimeManagerHandler = RequestHandler::getInstance()->getRuntimeManagerHandler();
-	    if (nullptr != runtimeManagerHandler)
-	    {
+            if (nullptr != runtimeManagerHandler)
+            {
                 ApplicationContext* context = getContext();
                 ApplicationKillParams& killParams = context->getApplicationKillParams();
                 if (killParams.mForce)
@@ -204,10 +204,11 @@ namespace WPEFramework
                 {
                     success = runtimeManagerHandler->terminate(context->getAppInstanceId(), errorReason);
                 }
-                //TODO: handle return properly
-                success = true;
+                if(success)
+                {
+                    sem_wait(&context->mAppTerminatingSemaphore);
+                }
             }
-            //TODO: handle return properly	
             return success;
         }
     }
