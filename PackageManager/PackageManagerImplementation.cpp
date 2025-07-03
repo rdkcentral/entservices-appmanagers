@@ -595,6 +595,7 @@ namespace Plugin {
         runtimeConfig.thunder = config.thunder;
         runtimeConfig.systemMemoryLimit = config.systemMemoryLimit;
         runtimeConfig.gpuMemoryLimit = config.gpuMemoryLimit;
+        runtimeConfig.envVariables = config.envVariables;
 
         runtimeConfig.userId = config.userId;
         runtimeConfig.groupId = config.groupId;
@@ -614,6 +615,12 @@ namespace Plugin {
         runtimeConfig.thunder = config.thunder;
         runtimeConfig.systemMemoryLimit = config.systemMemoryLimit;
         runtimeConfig.gpuMemoryLimit = config.gpuMemoryLimit;
+
+        JsonArray vars = JsonArray();
+        for (auto str: config.envVars) {
+            vars.Add(str);
+        }
+        vars.ToString(runtimeConfig.envVariables);
 
         runtimeConfig.userId = config.userId;
         runtimeConfig.groupId = config.groupId;
