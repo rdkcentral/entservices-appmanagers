@@ -277,14 +277,10 @@ protected:
         .WillRepeatedly([&](const string& appInstanceId , const Exchange::ILifecycleManager::LifecycleState targetLifecycleState , const string& launchIntent) {
             return Core::ERROR_NONE;
         });
-        EXPECT_CALL(*mLifecycleManagerMock, SpawnApp(APPMANAGER_APP_ID, ::testing::_, ::testing::_, ::testing::_, ::testing::_,
-                ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_,
-                ::testing::_, launchArgs, ::testing::_, ::testing::_, ::testing::_))
+        EXPECT_CALL(*mLifecycleManagerMock, SpawnApp(APPMANAGER_APP_ID, ::testing::_, ::testing::_, ::testing::_, launchArgs, ::testing::_, ::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
-        .WillOnce([&](const string& appId, const string& appPath, const string& appConfig , const string& runtimeAppId, const string& runtimePath,
-            const string& runtimeConfig, const string& launchIntent, const string& environmentVars, const bool enableDebugger,
-            const Exchange::ILifecycleManager::LifecycleState targetLifecycleState, const Exchange::RuntimeConfig& runtimeConfigObject,
-            const string& launchArgs, string& appInstanceId, string& errorReason, bool& success) {
+        .WillOnce([&](const string& appId, const string& launchIntent, const Exchange::ILifecycleManager::LifecycleState targetLifecycleState,
+            const Exchange::RuntimeConfig& runtimeConfigObject, const string& launchArgs, string& appInstanceId, string& errorReason, bool& success) {
             appInstanceId = APPMANAGER_APP_INSTANCE;
             errorReason = "";
             success = true;
@@ -1135,7 +1131,7 @@ TEST_F(AppManagerTest, StopSystemAppUsingComRpcSuccess)
 }
 
 /*
- * Test Case for TerminateAppUsingComRpcSuccess
+ * Test Case for KillAppUsingComRpcSuccess
  * Setting up AppManager/LifecycleManager/LifecycleManagerState/PersistentStore/PackageManagerRDKEMS Plugin and creating required COM-RPC resources
  * Setting Mock for ListPackages() to simulate getting installed package list
  * Setting Mock for Lock() to simulate lockId and unpacked path
