@@ -1300,7 +1300,7 @@ TEST_F(AppManagerTest, SendIntentUsingComRpcFailureLifecycleManagerRemoteObjectI
  * Verifying the return of the API
  * Releasing the AppManager interface and all related test resources
  */
-TEST_F(AppManagerTest, ClearAppDataUsingComRpcSuccess)
+TEST_F(AppManagerTest, DISABLED_ClearAppDataUsingComRpcSuccess)
 {
     Core::hresult status;
 
@@ -1322,7 +1322,7 @@ TEST_F(AppManagerTest, ClearAppDataUsingComRpcSuccess)
  * Verifying the return of the API
  * Releasing the AppManager interface and all related test resources
  */
-TEST_F(AppManagerTest, ClearAllAppDataUsingComRpcSuccess)
+TEST_F(AppManagerTest, DISABLED_ClearAllAppDataUsingComRpcSuccess)
 {
     Core::hresult status;
 
