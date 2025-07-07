@@ -174,8 +174,8 @@ namespace Plugin {
 
     private:
         string GetVersion(const string &id) {
-            for (auto const& [key, val] : mState) {
-                if (id.compare(key.first) == 0) {
+            for (auto const& [key, state] : mState) {
+                if ((id.compare(key.first) == 0) && (state.installState == InstallState::INSTALLED)) {
                     return key.second;
                 }
             }
