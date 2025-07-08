@@ -150,7 +150,7 @@ add_library(${MODULE_NAME} SHARED ${TEST_SRC})
 
 if (RDK_SERVICES_L1_TEST)
        target_link_options(${MODULE_NAME} PRIVATE "-Wl,-wrap,opendir")
-endif (RDK_SERVICES_L2_TEST)
+endif (RDK_SERVICES_L1_TEST)
 
 include_directories(${TEST_INC})
 
