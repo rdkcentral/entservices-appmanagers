@@ -526,8 +526,8 @@ Core::hresult AppManagerImplementation::packageLock(const string& appId, Package
          it == mAppInfo.end() ||
          (it->second.appNewState != Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED && it->second.appNewState != Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED && it->second.appNewState != Exchange::IAppManager::AppLifecycleState::APP_STATE_HIBERNATED)))
     {
-         /* Fetch list of installed packages */
-        status = fetchAvailablePackages(packageList);
+        /* Fetch list of App packages */
+        status = fetchAppPackageList(packageList);
 
         if (status == Core::ERROR_NONE)
         {
@@ -933,7 +933,7 @@ Core::hresult AppManagerImplementation::SetAppProperty(const string& appId, cons
     return status;
 }
 
-Core::hresult AppManagerImplementation::fetchAvailablePackages(std::vector<WPEFramework::Exchange::IPackageInstaller::Package>& packageList)
+Core::hresult AppManagerImplementation::fetchAppPackageList(std::vector<WPEFramework::Exchange::IPackageInstaller::Package>& packageList)
 {
     Core::hresult status = Core::ERROR_GENERAL;
     packageList.clear();
@@ -991,11 +991,12 @@ Core::hresult AppManagerImplementation::GetInstalledApps(std::string& apps)
 
     mAdminLock.Lock();
 
-    status = fetchAvailablePackages(packageList);
+    status = fetchAppPackageList(packageList);
     if (status == Core::ERROR_NONE)
     {
         for (const auto& pkg : packageList)
         {
+            /* Proceed only if the package is in the INSTALLED state */
             if(pkg.state == Exchange::IPackageInstaller::InstallState::INSTALLED)
             {
                 JsonObject package;
@@ -1043,6 +1044,7 @@ void AppManagerImplementation::checkIsInstalled(const std::string& appId, bool& 
 
     for (const auto& package : packageList)
     {
+        /* Check if the package matches the appId and is in the INSTALLED state */
         if ((!package.packageId.empty()) && (package.packageId == appId) && (package.state == Exchange::IPackageInstaller::InstallState::INSTALLED))
         {
             LOGINFO("%s is installed ",appId.c_str());
@@ -1061,7 +1063,7 @@ Core::hresult AppManagerImplementation::IsInstalled(const std::string& appId, bo
     mAdminLock.Lock();
 
     std::vector<WPEFramework::Exchange::IPackageInstaller::Package> packageList;
-    status = fetchAvailablePackages(packageList);
+    status = fetchAppPackageList(packageList);
     if (status == Core::ERROR_NONE)
     {
         checkIsInstalled(appId, installed, packageList);
