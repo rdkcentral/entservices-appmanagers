@@ -527,7 +527,7 @@ Core::hresult AppManagerImplementation::packageLock(const string& appId, Package
          (it->second.appNewState != Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED && it->second.appNewState != Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED && it->second.appNewState != Exchange::IAppManager::AppLifecycleState::APP_STATE_HIBERNATED)))
     {
          /* Fetch list of installed packages */
-        status = fetchInstalledPackages(packageList);
+        status = fetchAvailablePackages(packageList);
 
         if (status == Core::ERROR_NONE)
         {
@@ -933,7 +933,7 @@ Core::hresult AppManagerImplementation::SetAppProperty(const string& appId, cons
     return status;
 }
 
-Core::hresult AppManagerImplementation::fetchInstalledPackages(std::vector<WPEFramework::Exchange::IPackageInstaller::Package>& packageList)
+Core::hresult AppManagerImplementation::fetchAvailablePackages(std::vector<WPEFramework::Exchange::IPackageInstaller::Package>& packageList)
 {
     Core::hresult status = Core::ERROR_GENERAL;
     packageList.clear();
@@ -991,38 +991,41 @@ Core::hresult AppManagerImplementation::GetInstalledApps(std::string& apps)
 
     mAdminLock.Lock();
 
-    status = fetchInstalledPackages(packageList);
+    status = fetchAvailablePackages(packageList);
     if (status == Core::ERROR_NONE)
     {
         for (const auto& pkg : packageList)
         {
-            JsonObject package;
-            package["appId"] = pkg.packageId;
-            package["versionString"] = pkg.version;
-            package["type"] =getInstallAppType(APPLICATION_TYPE_INTERACTIVE) ;
-            auto it = mAppInfo.find(pkg.packageId);
-            if (it != mAppInfo.end())
+            if(pkg.state == Exchange::IPackageInstaller::InstallState::INSTALLED)
             {
-                const auto& timestamp = it->second.lastActiveStateChangeTime;
-
-                if (strftime(timeData, sizeof(timeData), "%D %T", gmtime(&timestamp.tv_sec)))
+                JsonObject package;
+                package["appId"] = pkg.packageId;
+                package["versionString"] = pkg.version;
+                package["type"] =getInstallAppType(APPLICATION_TYPE_INTERACTIVE) ;
+                auto it = mAppInfo.find(pkg.packageId);
+                if (it != mAppInfo.end())
                 {
-                    std::ostringstream lastActiveTime;
-                    lastActiveTime << timeData << "." << std::setw(9) << std::setfill('0') << timestamp.tv_nsec;
-                    package["lastActiveTime"] = lastActiveTime.str();
+                    const auto& timestamp = it->second.lastActiveStateChangeTime;
+
+                    if (strftime(timeData, sizeof(timeData), "%D %T", gmtime(&timestamp.tv_sec)))
+                    {
+                        std::ostringstream lastActiveTime;
+                        lastActiveTime << timeData << "." << std::setw(9) << std::setfill('0') << timestamp.tv_nsec;
+                        package["lastActiveTime"] = lastActiveTime.str();
+                    }
+                    else
+                    {
+                        package["lastActiveTime"] = "";
+                    }
+                    package["lastActiveIndex"]=it->second.lastActiveIndex;
                 }
                 else
                 {
-                    package["lastActiveTime"] = "";
+                    package["lastActiveTime"] ="";
+                    package["lastActiveIndex"]="";
                 }
-                package["lastActiveIndex"]=it->second.lastActiveIndex;
+                installedAppsArray.Add(package);
             }
-            else
-            {
-                package["lastActiveTime"] ="";
-                package["lastActiveIndex"]="";
-            }
-            installedAppsArray.Add(package);
         }
         installedAppsArray.ToString(apps);
         LOGINFO("getInstalledApps: %s", apps.c_str());
@@ -1040,7 +1043,7 @@ void AppManagerImplementation::checkIsInstalled(const std::string& appId, bool& 
 
     for (const auto& package : packageList)
     {
-        if (!package.packageId.empty() && package.packageId == appId)
+        if ((!package.packageId.empty()) && (package.packageId == appId) && (package.state == Exchange::IPackageInstaller::InstallState::INSTALLED))
         {
             LOGINFO("%s is installed ",appId.c_str());
             installed = true;
@@ -1058,7 +1061,7 @@ Core::hresult AppManagerImplementation::IsInstalled(const std::string& appId, bo
     mAdminLock.Lock();
 
     std::vector<WPEFramework::Exchange::IPackageInstaller::Package> packageList;
-    status = fetchInstalledPackages(packageList);
+    status = fetchAvailablePackages(packageList);
     if (status == Core::ERROR_NONE)
     {
         checkIsInstalled(appId, installed, packageList);
