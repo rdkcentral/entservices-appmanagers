@@ -252,10 +252,10 @@ protected:
     void LaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState state)
     {
         const std::string launchArgs = APPMANAGER_APP_LAUNCHARGS;
-        auto mockIterator = FillPackageIterator(); // Fill the package Info
 
         EXPECT_CALL(*mPackageInstallerMock, ListPackages(::testing::_))
         .WillRepeatedly([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
+            auto mockIterator = FillPackageIterator(); // Fill the package Info
             packages = mockIterator;
             return Core::ERROR_NONE;
         });
@@ -747,7 +747,7 @@ TEST_F(AppManagerTest, LaunchAppUsingComRpcFailureLifecycleManagerRemoteObjectIs
  * Verifying the return of the API
  * Releasing the AppManager interface and all related test resources
  */
-TEST_F(AppManagerTest, DISABLED_PreloadAppUsingComRpcSuccess)
+TEST_F(AppManagerTest, PreloadAppUsingComRpcSuccess)
 {
     Core::hresult status;
     std::string error = "";
