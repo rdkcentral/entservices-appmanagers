@@ -784,6 +784,9 @@ End:
                 return it->second.appInstanceId;
         }
 
+        /* RemoveApp
+         * This function is commented out as it is not used in the current implementation.
+         * If needed, it can be uncommented and used to remove app information from the AppManager.
         void LifecycleInterfaceConnector::RemoveApp(const string& appId)
         {
             AppManagerImplementation* appManagerImpl = AppManagerImplementation::getInstance();
@@ -796,6 +799,7 @@ End:
             else
                 LOGERR("AppInfo for appId '%s' not found", appId.c_str());
         }
+        */
 
         bool LifecycleInterfaceConnector::fileExists(const char* pFileName)
         {

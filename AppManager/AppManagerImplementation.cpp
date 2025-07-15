@@ -62,6 +62,7 @@ AppManagerImplementation::~AppManagerImplementation()
     }
     releasePersistentStoreRemoteStoreObject();
     releasePackageManagerObject();
+    releaseStorageManagerRemoteObject();
     if (nullptr != mCurrentservice)
     {
        mCurrentservice->Release();
@@ -465,6 +466,9 @@ bool AppManagerImplementation::createOrUpdatePackageInfoByAppId(const string& ap
     return result;
 }
 
+/* * Fetch package information by appId
+ * This function is commented out as it is not used in the current implementation.
+ * If needed, it can be uncommented and used to fetch package information for a given appId.
 
 bool AppManagerImplementation::fetchPackageInfoByAppId(const string& appId, PackageInfo &packageData)
 {
@@ -484,6 +488,7 @@ bool AppManagerImplementation::fetchPackageInfoByAppId(const string& appId, Pack
         }
         return result;
 }
+*/
 
 bool AppManagerImplementation::removeAppInfoByAppId(const string &appId)
 {
