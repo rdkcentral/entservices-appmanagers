@@ -574,7 +574,6 @@ TEST_F(AppManagerTest, IsInstalledUsingComRpcSuccess)
 
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
-    //auto mockIterator = FillPackageIterator(); // Fill the package Info
 
     EXPECT_CALL(*mPackageInstallerMock, ListPackages(::testing::_))
     .WillOnce([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
@@ -730,7 +729,6 @@ TEST_F(AppManagerTest, IsInstalledUsingComRpcFailureListPackagesReturnError)
 
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
-    //auto mockIterator = FillPackageIterator(); // Fill the package Info
 
     EXPECT_CALL(*mPackageInstallerMock, ListPackages(::testing::_))
     .WillOnce([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
@@ -907,7 +905,7 @@ TEST_F(AppManagerTest, LaunchAppUsingComRpcFailureEmptyAppID)
     }
 }
 
-/* * Test Case for LaunchAppUsingComRpcFailureEmptyAppID
+/* * Test Case for LaunchAppUsingComRpcSpawnAppFailure
  * Setting up AppManager/LifecycleManager/LifecycleManagerState/PersistentStore/PackageManagerRDKEMS Plugin and creating required JSON-RPC resources
  * Setting Mock for ListPackages() to simulate getting installed package list
  * Setting Mock for Lock() to simulate lockId and unpacked path
@@ -2509,6 +2507,14 @@ TEST_F(AppManagerTest, GetLoadedAppsCOMRPCSuccess)
     std::string apps;
     EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->GetLoadedApps(apps));
     TEST_LOG("GetLoadedAppsSuspendAppSuccess :%s", apps.c_str());
+    EXPECT_EQ(apps, R"([{"appId":"NTV","appInstanceId":"0295effd-2883-44ed-b614-471e3f682762","activeSessionId":"","targetLifecycleState":7,"currentLifecycleState":7},
+        {"appId":"NexTennis","appInstanceId":"0295effd-2883-44ed-b614-471e3f682762","activeSessionId":"","targetLifecycleState":6,"currentLifecycleState":6},
+        {"appId":"uktv","appInstanceId":"67fa75b6-0c85-43d4-a591-fd29e7214be5","activeSessionId":"","targetLifecycleState":5,"currentLifecycleState":5},
+        {"appId":"YouTube","appInstanceId":"12345678-1234-1234-1234-123456789012","activeSessionId":"","targetLifecycleState":4,"currentLifecycleState":4},
+        {"appId":"Netflix","appInstanceId":"87654321-4321-4321-4321-210987654321","activeSessionId":"","targetLifecycleState":3,"currentLifecycleState":3},
+        {"appId":"Spotify","appInstanceId":"abcdefab-cdef-abcd-efab-cdefabcdefab","activeSessionId":"","targetLifecycleState":2,"currentLifecycleState":2},
+        {"appId":"Hulu","appInstanceId":"fedcbafe-dcba-fedc-ba98-7654321fedcb","activeSessionId":"","targetLifecycleState":1,"currentLifecycleState":1},
+        {"appId":"AmazonPrime","appInstanceId":"12345678-90ab-cdef-1234-567890abcdef","activeSessionId":"","targetLifecycleState":0,"currentLifecycleState":0}])");
     if(status == Core::ERROR_NONE)
     {
         releaseResources();
