@@ -56,6 +56,7 @@
 #define APPMANAGER_PACKAGEID        "testPackageID"
 #define APPMANAGER_INSTALLSTATUS_INSTALLED    "INSTALLED"
 #define APPMANAGER_INSTALLSTATUS_UNINSTALLED    "UNINSTALLED"
+#define TEST_JSON_INSTALLED_PACKAGE R"([{"packageId":"YouTube","version":"100.1.30+rialto","state":"INSTALLED"}])"
 
 using ::testing::NiceMock;
 using namespace WPEFramework;
@@ -883,7 +884,7 @@ TEST_F(AppManagerTest, LaunchAppUsingComRpcFailureWrongAppID)
     }
 }
 
-/* * Test Case for LaunchAppUsingComRpcFailurePackageListEmpty
+/* * Test Case for LaunchAppUsingComRpcFailureEmptyAppID
  * Setting up AppManager/LifecycleManager/LifecycleManagerState/PersistentStore/PackageManagerRDKEMS Plugin and creating required JSON-RPC resources
  * Setting Mock for ListPackages() to simulate getting empty package list
  * Verifying the return of the API
@@ -1141,21 +1142,15 @@ TEST_F(AppManagerTest, PreloadAppUsingComRpcFailureLifecycleManagerRemoteObjectI
 TEST_F(AppManagerTest, CloseAppUsingComRpcSuccess)
 {
     Core::hresult status;
-
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
+
     Plugin::AppManagerImplementation::AppInfo appInfo;
     appInfo.appInstanceId = APPMANAGER_APP_INSTANCE;
     appInfo.appNewState = Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED;
     mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
     LaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::PAUSED);
     EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->LaunchApp(APPMANAGER_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS));
-
-    /*TODO: Fix following error
-        ERROR [LifecycleInterfaceConnector.cpp:470] closeApp: Timed out waiting for appId: com.test.app to reach PAUSED state
-
-        EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->CloseApp(APPMANAGER_APP_ID));
-    */
     EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->CloseApp(APPMANAGER_APP_ID));
 
     if(status == Core::ERROR_NONE)
@@ -1181,13 +1176,13 @@ TEST_F(AppManagerTest, CloseAppUsingJSONRpcSuccess)
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
 
-    LaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::PAUSED);
-    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->LaunchApp(APPMANAGER_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS));
     Plugin::AppManagerImplementation::AppInfo appInfo;
     appInfo.appInstanceId = APPMANAGER_APP_INSTANCE;
     appInfo.appNewState = Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED;
     mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
     std::string request = "{\"appId\": \"" + std::string(APPMANAGER_APP_ID) + "\"}";
+    LaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::PAUSED);
+    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->LaunchApp(APPMANAGER_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS));
     EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("closeApp"), request, mJsonRpcResponse));
     TEST_LOG(" mJsonRpcResponse: %s", mJsonRpcResponse.c_str());
 
@@ -1214,25 +1209,22 @@ TEST_F(AppManagerTest, CloseAppUsingComRpcSuspendedStateSuccess)
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
 
+    Plugin::AppManagerImplementation::AppInfo appInfo;
+    appInfo.appInstanceId = APPMANAGER_APP_INSTANCE;
+    appInfo.appNewState = Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED;
+    mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
     LaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::PAUSED);
     ON_CALL(*p_wrapsImplMock, stat(::testing::_, ::testing::_))
         .WillByDefault([](const char* path, struct stat* info) {
             // Simulate a successful stat call
-            TEST_LOG("VEEKSHA stat called with path: %s", path);
             if (info != nullptr) {
-                TEST_LOG("VEEKSHA stat called with info: %p", info);
                 info->st_mode = S_IFREG | 0644; // Regular file with read/write permissions
             }
             // Simulate success
             return 0;
     });
-    Plugin::AppManagerImplementation::AppInfo appInfo;
-    appInfo.appInstanceId = APPMANAGER_APP_INSTANCE;
-    appInfo.appNewState = Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED;
-    mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
 
     EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->LaunchApp(APPMANAGER_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS));
-
     EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->CloseApp(APPMANAGER_APP_ID));
     if(status == Core::ERROR_NONE)
     {
@@ -2477,7 +2469,6 @@ TEST_F(AppManagerTest, GetLoadedAppsJsonRpc)
     });
     // Simulate a JSON-RPC call
     EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("getLoadedApps"), _T("{}"), mJsonRpcResponse));
-    TEST_LOG("GetLoadedAppsJsonRpc :%s", mJsonRpcResponse.c_str());
     EXPECT_STREQ(mJsonRpcResponse.c_str(),
     "\"[{\\\"appId\\\":\\\"NexTennis\\\",\\\"appInstanceId\\\":\\\"0295effd-2883-44ed-b614-471e3f682762\\\",\\\"activeSessionId\\\":\\\"\\\",\\\"targetLifecycleState\\\":8,\\\"currentLifecycleState\\\":8},{\\\"appId\\\":\\\"uktv\\\",\\\"appInstanceId\\\":\\\"67fa75b6-0c85-43d4-a591-fd29e7214be5\\\",\\\"activeSessionId\\\":\\\"\\\",\\\"targetLifecycleState\\\":8,\\\"currentLifecycleState\\\":8}]\"");
      if(status == Core::ERROR_NONE)
@@ -2514,8 +2505,6 @@ TEST_F(AppManagerTest, GetLoadedAppsCOMRPCSuccess)
     });
     std::string apps;
     EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->GetLoadedApps(apps));
-    TEST_LOG("GetLoadedAppsSuspendAppSuccess :%s", apps.c_str());
-    //EXPECT_STREQ(apps, "[{"appId":"NTV","appInstanceId":"0295effd-2883-44ed-b614-471e3f682762","activeSessionId":"","targetLifecycleState":9,"currentLifecycleState":9},{"appId":"NexTennis","appInstanceId":"0295effd-2883-44ed-b614-471e3f682762","activeSessionId":"","targetLifecycleState":8,"currentLifecycleState":8},{"appId":"uktv","appInstanceId":"67fa75b6-0c85-43d4-a591-fd29e7214be5","activeSessionId":"","targetLifecycleState":7,"currentLifecycleState":7},{"appId":"YouTube","appInstanceId":"12345678-1234-1234-1234-123456789012","activeSessionId":"","targetLifecycleState":6,"currentLifecycleState":6},{"appId":"Netflix","appInstanceId":"87654321-4321-4321-4321-210987654321","activeSessionId":"","targetLifecycleState":4,"currentLifecycleState":4},{"appId":"Spotify","appInstanceId":"abcdefab-cdef-abcd-efab-cdefabcdefab","activeSessionId":"","targetLifecycleState":3,"currentLifecycleState":3},{"appId":"Hulu","appInstanceId":"fedcbafe-dcba-fedc-ba98-7654321fedcb","activeSessionId":"","targetLifecycleState":2,"currentLifecycleState":2},{"appId":"AmazonPrime","appInstanceId":"12345678-90ab-cdef-1234-567890abcdef","activeSessionId":"","targetLifecycleState":1,"currentLifecycleState":1}]");
     EXPECT_STREQ(apps.c_str(),
         "[{\"appId\":\"NTV\",\"appInstanceId\":\"0295effd-2883-44ed-b614-471e3f682762\",\"activeSessionId\":\"\",\"targetLifecycleState\":9,\"currentLifecycleState\":9},"
         "{\"appId\":\"NexTennis\",\"appInstanceId\":\"0295effd-2883-44ed-b614-471e3f682762\",\"activeSessionId\":\"\",\"targetLifecycleState\":8,\"currentLifecycleState\":8},"
@@ -2545,10 +2534,10 @@ TEST_F(AppManagerTest, OnAppInstallationStatusChangedSuccess)
 
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
-    std::string Jsonstr = R"([{"packageId":"YouTube","version":"100.1.30+rialto","state":"INSTALLED"}])";
+    
     // Simulate the callback
     ASSERT_NE(mPackageManagerNotification_cb, nullptr) << "PackageManager notification callback is not registered";
-    mPackageManagerNotification_cb->OnAppInstallationStatus(Jsonstr);
+    mPackageManagerNotification_cb->OnAppInstallationStatus(TEST_JSON_INSTALLED_PACKAGE);
     if(status == Core::ERROR_NONE)
     {
         releaseResources();
