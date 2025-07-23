@@ -74,14 +74,16 @@ protected:
     Store2Mock* mStore2Mock = nullptr;
     StorageManagerMock* mStorageManagerMock = nullptr;
     WrapsImplMock *p_wrapsImplMock   = nullptr;
+    Core::JSONRPC::Message message;
 
-    Core::ProxyType<Plugin::AppManager> mAppManagerPlugin;
+
+    Core::ProxyType<Plugin::AppManager> plugin;
     Plugin::AppManagerImplementation *mAppManagerImpl;
     Exchange::IPackageInstaller::INotification* mPackageManagerNotification_cb = nullptr;
     Exchange::ILifecycleManagerState::INotification* mLifecycleManagerStateNotification_cb = nullptr;
     Exchange::IAppManager::INotification* mAppManagerNotification = nullptr;
+    
     Core::ProxyType<WorkerPoolImplementation> workerPool;
-
     Core::JSONRPC::Handler& mJsonRpcHandler;
     DECL_CORE_JSONRPC_CONX connection;
     string mJsonRpcResponse;
@@ -91,14 +93,14 @@ protected:
         mServiceMock = new NiceMock<ServiceMock>;
 
         TEST_LOG("In createAppManagerImpl!");
-        EXPECT_EQ(string(""), mAppManagerPlugin->Initialize(mServiceMock));
+        EXPECT_EQ(string(""), plugin->Initialize(mServiceMock));
         mAppManagerImpl = Plugin::AppManagerImplementation::getInstance();
     }
 
     void releaseAppManagerImpl()
     {
         TEST_LOG("In releaseAppManagerImpl!");
-        mAppManagerPlugin->Deinitialize(mServiceMock);
+        plugin->Deinitialize(mServiceMock);
         delete mServiceMock;
         mAppManagerImpl = nullptr;
     }
@@ -117,7 +119,6 @@ protected:
         Wraps::setImpl(p_wrapsImplMock);
 
         TEST_LOG("In createResources!");
-
         EXPECT_CALL(*mServiceMock, QueryInterfaceByCallsign(::testing::_, ::testing::_))
           .Times(::testing::AnyNumber())
           .WillRepeatedly(::testing::Invoke(
@@ -158,7 +159,7 @@ protected:
                     return Core::ERROR_NONE;
                 }));
 
-        EXPECT_EQ(string(""), mAppManagerPlugin->Initialize(mServiceMock));
+        EXPECT_EQ(string(""), plugin->Initialize(mServiceMock));
         mAppManagerImpl = Plugin::AppManagerImplementation::getInstance();
         TEST_LOG("createResources - All done!");
         status = Core::ERROR_NONE;
@@ -260,17 +261,16 @@ protected:
                      return 0;
             })); 
         }
-        mAppManagerPlugin->Deinitialize(mServiceMock);
+
+        plugin->Deinitialize(mServiceMock);
         delete mServiceMock;
         mAppManagerImpl = nullptr;
     }
-
-
     AppManagerTest()
-    : mAppManagerPlugin(Core::ProxyType<Plugin::AppManager>::Create()),
-      workerPool(Core::ProxyType<WorkerPoolImplementation>::Create(2, Core::Thread::DefaultStackSize(), 16)),
-      mJsonRpcHandler(*mAppManagerPlugin),
-      INIT_CONX(1, 0)
+        : plugin(Core::ProxyType<Plugin::AppManager>::Create()),
+        workerPool(Core::ProxyType<WorkerPoolImplementation>::Create(2, Core::Thread::DefaultStackSize(), 16)),
+        mJsonRpcHandler(*plugin),
+        INIT_CONX(1, 0)
     {
         Core::IWorkerPool::Assign(&(*workerPool));
         workerPool->Run();
@@ -669,7 +669,7 @@ TEST_F(AppManagerTest, IsInstalledUsingComRpcFailurePackageListEmpty)
     // When package list is empty
     EXPECT_CALL(*mPackageInstallerMock, ListPackages(::testing::_))
     .WillOnce([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
-        auto mockIterator = FillPackageIterator(); // Fill the package Info
+        //auto mockIterator = FillPackageIterator(); // Fill the package Info
         packages = nullptr;
         return Core::ERROR_NONE;
     });
@@ -810,17 +810,63 @@ TEST_F(AppManagerTest, LaunchAppUsingJSONRpcSuccess)
 
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
+    Core::Event onAppLifecycleStateChanged(false, true);
+
+    EXPECT_CALL(*mServiceMock, Submit(::testing::_, ::testing::_))
+        .Times(1)
+        .WillOnce(::testing::Invoke(
+            [&](const uint32_t, const Core::ProxyType<Core::JSON::IElement>& json) {
+                TEST_LOG("submit onAppLifecycleStateChanged:");
+                std::string text;
+                EXPECT_TRUE(json->ToString(text));
+                TEST_LOG("onAppLifecycleStateChanged: %s", text.c_str());
+
+                const std::string expectedJson = R"({
+                    "jsonrpc":"2.0",
+                    "method":"org.rdk.AppManager.onAppLifecycleStateChanged",
+                    "params": {
+                        "appId":)" + std::string(APPMANAGER_APP_ID) + R"(,
+                        "appInstanceId":")" + std::string(APPMANAGER_APP_INSTANCE) + R"(",
+                        "newState": "ACTIVE", // I will update this later
+                        "oldState": "PAUSED", // I will update this later
+                        "intent": "start"
+                    }
+                })";
+
+                EXPECT_EQ(text, expectedJson);
+                onAppLifecycleStateChanged.SetEvent();
+
+                return Core::ERROR_NONE;
+            }));
+
+    EVENT_SUBSCRIBE(0, _T("onAppLifecycleStateChanged"), _T("org.rdk.AppManager"), message);
 
     LaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::ACTIVE);
-    std::string request = "{\"appId\": \"" + std::string(APPMANAGER_APP_ID) + "\", \"intent\": \"" + std::string(APPMANAGER_APP_INTENT) + "\", \"launchArgs\": \"" + std::string(APPMANAGER_APP_LAUNCHARGS) + "\"}";
-    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("launchApp"), request, mJsonRpcResponse));
-    TEST_LOG(" mJsonRpcResponse: %s", mJsonRpcResponse.c_str());
+    std::string request = "{\"appId\": \"" + std::string(APPMANAGER_APP_ID) +
+                          "\", \"intent\": \"" + std::string(APPMANAGER_APP_INTENT) +
+                          "\", \"launchArgs\": \"" + std::string(APPMANAGER_APP_LAUNCHARGS) + "\"}";
 
-    if(status == Core::ERROR_NONE)
-    {
+    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("launchApp"), request, mJsonRpcResponse));
+    ASSERT_NE(mLifecycleManagerStateNotification_cb, nullptr)
+        << "LifecycleManagerState notification callback is not registered";
+    mLifecycleManagerStateNotification_cb->OnAppLifecycleStateChanged(
+        APPMANAGER_APP_ID,
+        APPMANAGER_APP_INSTANCE,
+        Exchange::ILifecycleManager::LifecycleState::PAUSED,  // Old state
+        Exchange::ILifecycleManager::LifecycleState::ACTIVE,     // New state
+        "start"
+    );
+    TEST_LOG("VEKSHA");
+    // EXPECT_EQ(Core::ERROR_NONE, onAppLifecycleStateChanged.Lock());
+    EXPECT_EQ(Core::ERROR_NONE, onAppLifecycleStateChanged.Lock(1000));
+    TEST_LOG("mJsonRpcResponse: %s", mJsonRpcResponse.c_str());
+    EVENT_UNSUBSCRIBE(0, _T("onAppLifecycleStateChanged"), _T("org.rdk.AppManager"), message);
+    if (status == Core::ERROR_NONE) {
         releaseResources();
     }
 }
+
+
 
 /* * Test Case for LaunchAppUsingCOMRPCSuspendedSuccess
  * Setting up AppManager/LifecycleManager/LifecycleManagerState/PersistentStore/PackageManagerRDKEMS Plugin and creating required JSON-RPC resources
