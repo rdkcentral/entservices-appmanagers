@@ -122,15 +122,18 @@ Core::hresult AppManagerImplementation::Unregister(Exchange::IAppManager::INotif
 
 void AppManagerImplementation::dispatchEvent(EventNames event, const JsonObject &params)
 {
+    LOGINFO("VEEKSHA AppManagerImplementation::dispatchEvent event %d", static_cast<int>(event));
     Core::IWorkerPool::Instance().Submit(Job::Create(this, event, params));
 }
 
 void AppManagerImplementation::Dispatch(EventNames event, const JsonObject params)
 {
+    LOGINFO("AppManagerImplementation::Dispatch event %d", static_cast<int>(event));
     switch(event)
     {
         case APP_EVENT_LIFECYCLE_STATE_CHANGED:
         {
+            LOGINFO("VEEKSHA APP_EVENT_LIFECYCLE_STATE_CHANGED event received");
             string appId = "";
             string appInstanceId = "";
             AppLifecycleState newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNKNOWN;
@@ -165,6 +168,8 @@ void AppManagerImplementation::Dispatch(EventNames event, const JsonObject param
                 mAdminLock.Lock();
                 for (auto& notification : mAppManagerNotification)
                 {
+                    LOGINFO("VEEKSHA Notify AppLifecycleStateChanged for appId %s, appInstanceId %s, newState %d, oldState %d, errorReason %d",
+                        appId.c_str(), appInstanceId.c_str(), static_cast<int>(newState), static_cast<int>(oldState), static_cast<int>(errorReason));
                     notification->OnAppLifecycleStateChanged(appId, appInstanceId, newState, oldState, errorReason);
                 }
                 mAdminLock.Unlock();
