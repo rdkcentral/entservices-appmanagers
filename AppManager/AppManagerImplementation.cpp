@@ -25,6 +25,7 @@
 
 #define TIME_DATA_SIZE           200
 static bool sRunning = false;
+timespec ts;
 
 namespace WPEFramework {
 namespace Plugin {
@@ -266,8 +267,8 @@ void AppManagerImplementation::Dispatch(EventNames event, const JsonObject param
                 errorReason = static_cast<AppErrorReason>(params["errorReason"].Number());
 		// Log epoch time in ms for UNLOADED lifecycle events
 		if (newState == Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED) {
-                    auto now = std::chrono::system_clock::now();
-                    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+                    clock_gettime(CLOCK_MONOTONIC, &ts);
+		    auto ms =  ((double)(ts.tv_sec * 1000) + ((double)ts.tv_nsec/1000000));
                     LOGINFO("[TIMESTAMP][AppManager][Lifecycle][UNLOADED] EpochMs: %lld appId: %s", static_cast<long long>(ms), appId.c_str());
                 }
 
@@ -1003,8 +1004,8 @@ Core::hresult AppManagerImplementation::TerminateApp(const string& appId )
     time_t requestTime = appManagerTelemetryReporting.getCurrentTimestamp();
 #endif
     {
-        auto now = std::chrono::system_clock::now();
-        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+        clock_gettime(CLOCK_MONOTONIC, &ts);
+	auto ms =  ((double)(ts.tv_sec * 1000) + ((double)ts.tv_nsec/1000000));
         LOGINFO("[TIMESTAMP][AppManager][TerminateApp][RequestStart] EpochMs: %lld", static_cast<long long>(ms));
     }
     LOGINFO(" TerminateApp Entered with appId %s", appId.c_str());
