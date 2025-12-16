@@ -264,6 +264,13 @@ void AppManagerImplementation::Dispatch(EventNames event, const JsonObject param
                 newState = static_cast<AppLifecycleState>(params["newState"].Number());
                 oldState = static_cast<AppLifecycleState>(params["oldState"].Number());
                 errorReason = static_cast<AppErrorReason>(params["errorReason"].Number());
+		// Log epoch time in ms for UNLOADED lifecycle events
+		if (newState == Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED) {
+                    auto now = std::chrono::system_clock::now();
+                    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+                    LOGINFO("[TIMESTAMP][AppManager][Lifecycle][UNLOADED] EpochMs: %lld appId: %s", static_cast<long long>(ms), appId.c_str());
+                }
+
                 mAdminLock.Lock();
                 for (auto& notification : mAppManagerNotification)
                 {
@@ -995,6 +1002,11 @@ Core::hresult AppManagerImplementation::TerminateApp(const string& appId )
     AppManagerTelemetryReporting& appManagerTelemetryReporting =AppManagerTelemetryReporting::getInstance();
     time_t requestTime = appManagerTelemetryReporting.getCurrentTimestamp();
 #endif
+    {
+        auto now = std::chrono::system_clock::now();
+        auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+        LOGINFO("[TIMESTAMP][AppManager][TerminateApp][RequestStart] EpochMs: %lld", static_cast<long long>(ms));
+    }
     LOGINFO(" TerminateApp Entered with appId %s", appId.c_str());
 
     if (!appId.empty())

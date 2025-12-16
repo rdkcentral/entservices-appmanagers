@@ -170,9 +170,13 @@ namespace WPEFramework
                     ++index;
                 }
                 break;
-
+#include <chrono>
                 case RUNTIME_MANAGER_EVENT_CONTAINERSTARTED:
                 {
+			// Log container termination start time
+                    auto now = std::chrono::system_clock::now();
+                    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+                    LOGINFO("[TIMESTAMP][RuntimeManager][ContainerTermination][Start] EpochMs: %lld appInstanceId: %s", static_cast<long long>(ms), appInstanceId.c_str());
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
                     auto it = mRuntimeAppInfo.find(appInstanceId);
                     if (it != mRuntimeAppInfo.end())
@@ -199,6 +203,10 @@ namespace WPEFramework
 
                 case RUNTIME_MANAGER_EVENT_CONTAINERSTOPPED:
                 {
+			// Log container termination end time
+                    auto now = std::chrono::system_clock::now();
+                    auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+                    LOGINFO("[TIMESTAMP][RuntimeManager][ContainerTermination][End] EpochMs: %lld appInstanceId: %s", static_cast<long long>(ms), appInstanceId.c_str());
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
                     auto it = mRuntimeAppInfo.find(appInstanceId);
                     if (it != mRuntimeAppInfo.end())
