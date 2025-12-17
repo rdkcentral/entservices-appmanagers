@@ -55,34 +55,6 @@ if(DISABLE_SECURITY_TOKEN)
     add_definitions(-DDISABLE_SECURITY_TOKEN)
 endif()
 
-if(PLUGIN_USERSETTINGS)
-    add_subdirectory(UserSettings)
-endif()
-
-if(PLUGIN_USB_MASS_STORAGE)
-    add_subdirectory(USBMassStorage)
-endif()
-
-if(PLUGIN_OCICONTAINER)
-    add_subdirectory(OCIContainer)
-endif()
-
-if(PLUGIN_PERSISTENTSTORE)
-    add_subdirectory(PersistentStore)
-endif()
-
-if(PLUGIN_USBDEVICE)
-    add_subdirectory(USBDevice)
-endif()
-
-if(PLUGIN_TELEMETRY)
-    add_subdirectory(Telemetry)
-endif()
-
-if(PLUGIN_MONITOR)
-    add_subdirectory(Monitor)
-endif()
-
 if(PLUGIN_RDKSHELL)
     add_subdirectory(RDKShell)
 endif()
@@ -91,28 +63,12 @@ if(PLUGIN_RUSTADAPTER)
     add_subdirectory(RustAdapter)
 endif()
 
-if(PLUGIN_MESSAGECONTROL)
-    add_subdirectory(MessageControl)
-endif()
-
-if (PLUGIN_RESOURCEMANAGER)
-    add_subdirectory(ResourceManager)
-endif()
-
 if (PLUGIN_ANALYTICS)
     add_subdirectory(Analytics)
 endif()
 
 if(PLUGIN_RDK_WINDOW_MANAGER)
     add_subdirectory(RDKWindowManager)
-endif()
-
-if(PLUGIN_CLOUDSTORE)
-    add_subdirectory(CloudStore)
-endif()
-
-if(PLUGIN_SHAREDSTORAGE)
-    add_subdirectory(SharedStorage)
 endif()
 
 if(PLUGIN_WEBBRIDGE)
@@ -143,10 +99,6 @@ if(PLUGIN_DOWNLOADMANAGER)
     add_subdirectory(DownloadManager)
 endif()
 
-if(PLUGIN_NATIVEJS)
-    add_subdirectory(NativeJS)
-endif()
-
 if(PLUGIN_SCENESET)
     add_subdirectory(SceneSet)
 endif()
@@ -157,22 +109,6 @@ endif()
 
 if(PLUGIN_PREINSTALL_MANAGER)
     add_subdirectory(PreinstallManager)
-endif()
-
-if(PLUGIN_MIGRATION)
-    add_subdirectory(Migration)
-endif()
-
-if(PLUGIN_APPGATEWAY)
-    add_subdirectory(AppGateway)
-endif()
-
-if(PLUGIN_APPNOTIFICATIONS)
-    add_subdirectory(AppNotifications)
-endif()
-
-if(PLUGIN_FBSETTINGS)
-	add_subdirectory(FbSettings)
 endif()
 
 
