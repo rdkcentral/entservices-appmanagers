@@ -55,18 +55,6 @@ if(DISABLE_SECURITY_TOKEN)
     add_definitions(-DDISABLE_SECURITY_TOKEN)
 endif()
 
-if(PLUGIN_RDKSHELL)
-    add_subdirectory(RDKShell)
-endif()
-
-if(PLUGIN_RUSTADAPTER)
-    add_subdirectory(RustAdapter)
-endif()
-
-if (PLUGIN_ANALYTICS)
-    add_subdirectory(Analytics)
-endif()
-
 if(PLUGIN_RDK_WINDOW_MANAGER)
     add_subdirectory(RDKWindowManager)
 endif()
@@ -97,14 +85,6 @@ endif()
 
 if(PLUGIN_DOWNLOADMANAGER)
     add_subdirectory(DownloadManager)
-endif()
-
-if(PLUGIN_SCENESET)
-    add_subdirectory(SceneSet)
-endif()
-
-if(PLUGIN_TELEMETRYMETRICS)
-    add_subdirectory(TelemetryMetrics)
 endif()
 
 if(PLUGIN_PREINSTALL_MANAGER)
