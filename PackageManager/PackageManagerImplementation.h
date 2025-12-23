@@ -30,6 +30,8 @@
 
 #ifdef USE_LIBPACKAGE
 #include <IPackageImpl.h>
+#elif defined(UNIT_TEST)
+#include "IPackageImplDummy.h"
 #endif
 #include <json/json.h>
 
@@ -307,7 +309,9 @@ namespace Plugin {
 
         #ifdef USE_LIBPACKAGE
         std::shared_ptr<packagemanager::IPackageImpl> packageImpl;
-        #endif
+        #elif defined(UNIT_TEST)
+        std::shared_ptr<packagemanager::IPackageImplDummy> packageImpl;
+	#endif
         PluginHost::IShell* mCurrentservice;
         Exchange::IStorageManager* mStorageManagerObject;
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
