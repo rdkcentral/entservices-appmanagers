@@ -115,18 +115,18 @@ jobs:
           path: entservices-deviceanddisplay
           ref: develop
 
-      - name: Checkout entservices-infra
+      - name: Checkout entservices-appmanagers
         if: ${{ inputs.caller_source == 'local' }}
         uses: actions/checkout@v3
         with:
-          path: entservices-infra
+          path: entservices-appmanagers
 
-      - name: Checkout entservices-infra-testframework
+      - name: Checkout entservices-appmanagers-testframework
         if: ${{ inputs.caller_source == 'testframework' }}
         uses: actions/checkout@v3
         with:
-          repository: rdkcentral/entservices-infra
-          path: entservices-infra
+          repository: rdkcentral/entservices-appmanagers
+          path: entservices-appmanagers
           ref: develop
 
       - name: Apply  ThunderTools
@@ -328,11 +328,11 @@ jobs:
           &&
           cmake --install build/mocks
 
-      - name: Build entservices-infra
+      - name: Build entservices-appmanagers
         run: >
           cmake
-          -S "$GITHUB_WORKSPACE/entservices-infra"
-          -B build/entservices-infra
+          -S "$GITHUB_WORKSPACE/entservices-appmanagers"
+          -B build/entservices-appmanagers
           -DCMAKE_TOOLCHAIN_FILE="${{ env.TOOLCHAIN_FILE }}"
           -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/install/usr"
           -DCMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake"
@@ -405,9 +405,9 @@ jobs:
           -DPLUGIN_ANALYTICS_SIFT_URL="127.0.0.1:12345"
           -DPLUGIN_ANALYTICS_EVENTS_MAP="/tmp/AnalyticsEventsMap.json"
           &&
-          cmake --build build/entservices-infra -j8
+          cmake --build build/entservices-appmanagers -j8
           &&
-          cmake --install build/entservices-infra
+          cmake --install build/entservices-appmanagers
 
       - name: Build entservices-testframework
         run: >
@@ -618,7 +618,7 @@ jobs:
           lcov
           -r coverage.info
           '/usr/include/*'
-          '*/build/entservices-infra/_deps/*'
+          '*/build/entservices-appmanagers/_deps/*'
           '*/build/entservices-deviceanddisplay/_deps/*'
           '*/build/entservices-entservices-testframework/_deps/*'
           '*/install/usr/include/*'
@@ -639,11 +639,10 @@ jobs:
         if: ${{ !env.ACT }}
         uses: actions/upload-artifact@v4
         with:
-          name: artifacts-L2-oop-infra
+          name: artifacts-L2-oop-appmanagers
           path: |
             coverage/
             valgrind_log
             rdkL2TestOOPResultsWithoutValgrind.json
             rdkL2TestOOPResultsWithValgrind.json
           if-no-files-found: warn
-
