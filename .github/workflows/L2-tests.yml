@@ -82,7 +82,7 @@ jobs:
           ref: R4.4.3
 
       - name: Checkout entservices-appmanagers
-        if: ${{ inputs.caller_source == 'local' }}
+        #if: ${{ inputs.caller_source == 'local' }}
         uses: actions/checkout@v3
         with:
           path: entservices-appmanagers
