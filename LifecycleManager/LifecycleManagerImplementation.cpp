@@ -754,7 +754,7 @@ namespace WPEFramework
         {
             std::string errorReason("");
             bool success = RequestHandler::getInstance()->updateState(context, context->getTargetLifecycleState(), errorReason);
-            printf("added state transition request [%d] [%s] \n", success, event.c_str());
+            printf("added state transition request [%d] [%s] \n", event.c_str());
             fflush(stdout);
         }
         else
