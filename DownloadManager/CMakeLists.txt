@@ -61,11 +61,10 @@ set_target_properties(${PLUGIN_IMPLEMENTATION} PROPERTIES
         CXX_STANDARD_REQUIRED YES)
 
 if(RDK_SERVICES_L1_TEST)
-    find_package(PkgConfig REQUIRED)
-    pkg_check_modules(JSONCPP REQUIRED jsoncpp)
-    target_include_directories(${MODULE_NAME} PUBLIC ${JSONCPP_INCLUDE_DIRS})
-    target_link_libraries(${MODULE_NAME} PUBLIC ${JSONCPP_LIBRARIES})
-endif()
+    find_path(JSONCPP_INCLUDE_DIR json/json.h PATHS /usr/include/jsoncpp)
+    include_directories(${JSONCPP_INCLUDE_DIR})
+    target_include_directories(${MODULE_NAME} PUBLIC ${JSONCPP_INCLUDE_DIR})
+endif(RDK_SERVICES_L1_TEST)
 
 target_link_libraries(${PLUGIN_IMPLEMENTATION}
     PRIVATE
