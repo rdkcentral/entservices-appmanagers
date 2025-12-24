@@ -16,10 +16,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-
-      - name: Install jsoncpp
-        run: |
-         sudo apt-get install -y libjsoncpp-dev
+        
       - name: native build
         run: |
           sh -x build_dependencies.sh
