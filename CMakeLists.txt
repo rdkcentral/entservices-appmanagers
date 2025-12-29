@@ -28,13 +28,6 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/")
 # Product configuration dir
 set(PRODUCT_CONFIG_DIR "/etc/entservices")
 
-option(COMCAST_CONFIG "Comcast services configuration" ON)
-if(COMCAST_CONFIG)
-    include(services.cmake)
-endif()
-
-option(PLUGIN_OCICONTAINER "Include OCIContainer plugin" OFF)
-
 # Library installation section
 string(TOLOWER ${NAMESPACE} STORAGE_DIRECTORY)
 
@@ -57,10 +50,6 @@ endif()
 
 if(PLUGIN_RDK_WINDOW_MANAGER)
     add_subdirectory(RDKWindowManager)
-endif()
-
-if(PLUGIN_WEBBRIDGE)
-    add_subdirectory(WebBridge)
 endif()
 
 if(PLUGIN_LIFECYCLE_MANAGER)
