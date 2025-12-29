@@ -101,45 +101,15 @@ macro(add_plugin_test plugin_name test_files)
     add_plugin_test_ex(${plugin_opt} "${test_files}" "../../${plugin_name}" "${NAMESPACE}${plugin_name}")
 endmacro()
 
-# PLUGIN_USBDEVICE
-set (USBDEVICE_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/USBDevice ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
-set (USBDEVICE_LIBS ${NAMESPACE}USBDevice ${NAMESPACE}USBDeviceImplementation)
-add_plugin_test_ex(PLUGIN_USBDEVICE tests/test_USBDevice.cpp "${USBDEVICE_INC}" "${USBDEVICE_LIBS}")
-
-# PLUGIN_USB_MASS_STORAGE
-set (USB_MASS_STORAGE_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/USBMassStorage ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
-set (USB_MASS_STORAGE_LIBS ${NAMESPACE}USBMassStorage ${NAMESPACE}USBMassStorageImplementation)
-add_plugin_test_ex(PLUGIN_USB_MASS_STORAGE tests/test_USBMassStorage.cpp "${USB_MASS_STORAGE_INC}" "${USB_MASS_STORAGE_LIBS}")
-
-# PLUGIN_TELEMETRY
-set (TELEMETRY_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/Telemetry ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
-set (TELEMETRY_LIBS ${NAMESPACE}Telemetry ${NAMESPACE}TelemetryImplementation)
-add_plugin_test_ex(PLUGIN_TELEMETRY tests/test_Telemetry.cpp "${TELEMETRY_INC}" "${TELEMETRY_LIBS}")
-
 # PLUGIN_APPMANAGER
 set (APPMANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/AppManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
 set (APPMANAGER_LIBS ${NAMESPACE}AppManager ${NAMESPACE}AppManagerImplementation)
 add_plugin_test_ex(PLUGIN_APPMANAGER tests/test_AppManager.cpp "${APPMANAGER_INC}" "${APPMANAGER_LIBS}")
 
-# PLUGIN_OCICONTAINER
-set (OCICONTAINER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/OCIContainer ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/OCIContainer/stubs)
-set (OCICONTAINER_LIBS ${NAMESPACE}OCIContainer)
-add_plugin_test_ex(PLUGIN_OCICONTAINER tests/test_OCIContainer.cpp "${OCICONTAINER_INC}" "${OCICONTAINER_LIBS}")
-
 # PLUGIN_RUNTIME_MANAGER
 set (RUNTIMEMANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/RuntimeManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
 set (RUNTIMEMANAGER_LIBS ${NAMESPACE}RuntimeManager ${NAMESPACE}RuntimeManagerImplementation)
 add_plugin_test_ex(PLUGIN_RUNTIME_MANAGER tests/test_RunTimeManager.cpp "${RUNTIMEMANAGER_INC}" "${RUNTIMEMANAGER_LIBS}")
-
-
-# PLUGIN_USERSETTINGS
-set (USERSETTINGS_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/UserSettings ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
-set (USERSETTINGS_LIBS ${NAMESPACE}UserSettings ${NAMESPACE}UserSettingsImplementation)
-add_plugin_test_ex(PLUGIN_USERSETTINGS tests/test_UserSettings.cpp "${USERSETTINGS_INC}" "${USERSETTINGS_LIBS}")
-
-# PLUGIN_RESOURCEMANAGER
-set (RESOURCEMANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/ResourceManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
-add_plugin_test_ex(PLUGIN_RESOURCEMANAGER tests/test_ResourceManager.cpp "${RESOURCEMANAGER_INC}" "${NAMESPACE}ResourceManager")
 
 #PLUGIN_STORAGE_MANAGER
 set (STORAGE_MANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/StorageManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
@@ -150,17 +120,6 @@ add_plugin_test_ex(PLUGIN_STORAGE_MANAGER tests/test_StorageManager.cpp "${STORA
 set (LIFECYCLEMANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/LifecycleManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
 set (LIFECYCLEMANAGER_LIBS ${NAMESPACE}LifecycleManager)
 add_plugin_test_ex(PLUGIN_LIFECYCLE_MANAGER tests/test_LifecycleManager.cpp "${LIFECYCLEMANAGER_INC}" "${LIFECYCLEMANAGER_LIBS}")
-
-# PLUGIN_MESSAGECONTROL
-set (MESSAGECONTROL_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/MessageControl ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
-set (MESSAGECONTROL_LIBS ${NAMESPACE}MessageControl)
-add_plugin_test_ex(PLUGIN_MESSAGECONTROL tests/test_MessageControl.cpp "${MESSAGECONTROL_INC}" "${MESSAGECONTROL_LIBS}")
-
-
-# PLUGIN_MIGRATION
-set (MIGRATION_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/Migration ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
-set (MIGRATION_LIBS ${NAMESPACE}Migration ${NAMESPACE}MigrationImplementation)
-add_plugin_test_ex(PLUGIN_MIGRATION tests/test_Migration.cpp "${MIGRATION_INC}" "${MIGRATION_LIBS}")
 
 # PLUGIN_PREINSTALL_MANAGER
 set (PREINSTALL_MANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/PreinstallManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
