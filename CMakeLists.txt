@@ -28,13 +28,6 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/")
 # Product configuration dir
 set(PRODUCT_CONFIG_DIR "/etc/entservices")
 
-option(COMCAST_CONFIG "Comcast services configuration" ON)
-if(COMCAST_CONFIG)
-    include(services.cmake)
-endif()
-
-option(PLUGIN_OCICONTAINER "Include OCIContainer plugin" OFF)
-
 # Library installation section
 string(TOLOWER ${NAMESPACE} STORAGE_DIRECTORY)
 
@@ -55,44 +48,8 @@ if(DISABLE_SECURITY_TOKEN)
     add_definitions(-DDISABLE_SECURITY_TOKEN)
 endif()
 
-if(PLUGIN_PERSISTENTSTORE)
-    add_subdirectory(PersistentStore)
-endif()
-
-if(PLUGIN_MONITOR)
-    add_subdirectory(Monitor)
-endif()
-
-if(PLUGIN_RDKSHELL)
-    add_subdirectory(RDKShell)
-endif()
-
-if(PLUGIN_RUSTADAPTER)
-    add_subdirectory(RustAdapter)
-endif()
-
-if(PLUGIN_MESSAGECONTROL)
-    add_subdirectory(MessageControl)
-endif()
-
-if (PLUGIN_ANALYTICS)
-    add_subdirectory(Analytics)
-endif()
-
 if(PLUGIN_RDK_WINDOW_MANAGER)
     add_subdirectory(RDKWindowManager)
-endif()
-
-if(PLUGIN_CLOUDSTORE)
-    add_subdirectory(CloudStore)
-endif()
-
-if(PLUGIN_SHAREDSTORAGE)
-    add_subdirectory(SharedStorage)
-endif()
-
-if(PLUGIN_WEBBRIDGE)
-    add_subdirectory(WebBridge)
 endif()
 
 if(PLUGIN_LIFECYCLE_MANAGER)
@@ -119,38 +76,9 @@ if(PLUGIN_DOWNLOADMANAGER)
     add_subdirectory(DownloadManager)
 endif()
 
-if(PLUGIN_NATIVEJS)
-    add_subdirectory(NativeJS)
-endif()
-
-if(PLUGIN_SCENESET)
-    add_subdirectory(SceneSet)
-endif()
-
-if(PLUGIN_TELEMETRYMETRICS)
-    add_subdirectory(TelemetryMetrics)
-endif()
-
 if(PLUGIN_PREINSTALL_MANAGER)
     add_subdirectory(PreinstallManager)
 endif()
-
-if(PLUGIN_MIGRATION)
-    add_subdirectory(Migration)
-endif()
-
-if(PLUGIN_APPGATEWAY)
-    add_subdirectory(AppGateway)
-endif()
-
-if(PLUGIN_APPNOTIFICATIONS)
-    add_subdirectory(AppNotifications)
-endif()
-
-if(PLUGIN_FBSETTINGS)
-	add_subdirectory(FbSettings)
-endif()
-
 
 if(WPEFRAMEWORK_CREATE_IPKG_TARGETS)
     set(CPACK_GENERATOR "DEB")
