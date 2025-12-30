@@ -1,8 +1,15 @@
 name: L2-tests
 
 on:
-  push:
-    branches: [ main, develop, 'topic/L1_L2' ]
+  workflow_call:
+    inputs:
+      caller_source:
+        description: "Specifies the source type (e.g., local or test framework) for the workflow."
+        required: true
+        type: string
+    secrets:
+      RDKCM_RDKE:
+        required: true
 
 env:
   BUILD_TYPE: Debug
@@ -81,18 +88,18 @@ jobs:
           path: ThunderTools
           ref: R4.4.3
 
-      - name: Checkout entservices-appmanagers
-        #if: ${{ inputs.caller_source == 'local' }}
+      - name: Checkout entservices-infra
+        if: ${{ inputs.caller_source == 'local' }}
         uses: actions/checkout@v3
         with:
-          path: entservices-appmanagers
+          path: entservices-infra
 
-      - name: Checkout entservices-appmanagers-testframework
+      - name: Checkout entservices-infra-testframework
         if: ${{ inputs.caller_source == 'testframework' }}
         uses: actions/checkout@v3
         with:
-          repository: rdkcentral/entservices-appmanagers
-          path: entservices-appmanagers
+          repository: rdkcentral/entservices-infra
+          path: entservices-infra
           ref: develop
 
       - name: Checkout entservices-deviceanddisplay
@@ -107,15 +114,8 @@ jobs:
         with:
           repository: rdkcentral/entservices-testframework
           path: entservices-testframework
-          ref: topic/L1_L2
-          token: ${{ secrets.RDKCM_RDKE }}
-
-      - name: Checkout entservices-infra
-        uses: actions/checkout@v3
-        with:
-          repository: rdkcentral/entservices-infra
-          path: entservices-infra
           ref: develop
+          token: ${{ secrets.RDKCM_RDKE }}
 
       - name: Checkout googletest
         if: steps.cache.outputs.cache-hit != 'true'
@@ -134,8 +134,8 @@ jobs:
           git remote add origin https://code.rdkcentral.com/r/components/opensource/westeros
           git config core.sparseCheckout true
           git pull --depth=1 origin master
-          mkdir -p $GITHUB_WORKSPACE/entservices-appmanagers/ResourceManager
-          cp essos/essos-resmgr.h $GITHUB_WORKSPACE/entservices-appmanagers/ResourceManager/
+          mkdir -p $GITHUB_WORKSPACE/entservices-infra/ResourceManager
+          cp essos/essos-resmgr.h $GITHUB_WORKSPACE/entservices-infra/ResourceManager/
 
       - name: Apply patches ThunderTools
         run: |  
@@ -415,11 +415,11 @@ jobs:
           &&
           cmake --install build/entservices-deviceanddisplay
 
-      - name: Build entservices-appmanagers
+      - name: Build entservices-infra
         run: >
           cmake
-          -S "$GITHUB_WORKSPACE/entservices-appmanagers"
-          -B build/entservices-appmanagers
+          -S "$GITHUB_WORKSPACE/entservices-infra"
+          -B build/entservices-infra
           -DCMAKE_TOOLCHAIN_FILE="${{ env.TOOLCHAIN_FILE }}"
           -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/install/usr"
           -DCMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake"
@@ -491,18 +491,31 @@ jobs:
           -DCMAKE_DISABLE_FIND_PACKAGE_Udev=ON
           -DCMAKE_DISABLE_FIND_PACKAGE_RFC=ON
           -DCMAKE_DISABLE_FIND_PACKAGE_RBus=ON
+          -DPLUGIN_MIGRATION=ON
+          -DPLUGIN_TELEMETRY=ON
+          -DPLUGIN_USERSETTINGS=ON
+          -DPLUGIN_PERSISTENTSTORE=ON
+          -DPLUGIN_SHAREDSTORAGE=ON
+          -DPLUGIN_RESOURCEMANAGER=ON
+          -DPLUGIN_CLOUDSTORE=ON
+          -DPLUGIN_USBDEVICE=ON
+          -DPLUGIN_USB_MASS_STORAGE=ON
           -DPLUGIN_LIFECYCLEMANAGER=OFF
           -DPLUGIN_APPMANAGER=OFF
+          -DPLUGIN_ANALYTICS=ON
+          -DPLUGIN_ANALYTICS_BACKEND_LIBRARY_NAME="libWPEFrameworkAnalyticsBackendMock.so"
+          -DPLUGIN_ANALYTICS_EVENTS_MAP="/tmp/AnalyticsEventsMap.json"
           -DUSE_THUNDER_R4=ON
           -DPLUGIN_L2Tests=ON
           -DRDK_SERVICE_L2_TEST=ON
           -DPLUGIN_STORAGE_MANAGER=ON
+          -DPLUGIN_OCICONTAINER=ON
           -DDS_FOUND=ON
           -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
           &&
-          cmake --build build/entservices-appmanagers -j6
+          cmake --build build/entservices-infra -j6
           &&
-          cmake --install build/entservices-appmanagers
+          cmake --install build/entservices-infra
 
       - name: Build entservices-testframework
         run: >
@@ -591,93 +604,6 @@ jobs:
           cmake --build build/entservices-testframework -j8
           &&
           cmake --install build/entservices-testframework
-
-      - name: Build entservices-infra
-        run: >
-          cmake
-          -S "$GITHUB_WORKSPACE/entservices-infra"
-          -B build/entservices-infra
-          -DCMAKE_TOOLCHAIN_FILE="${{ env.TOOLCHAIN_FILE }}"
-          -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/install/usr"
-          -DCMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake"
-          -DHIDE_NON_EXTERNAL_SYMBOLS=OFF
-          -DPLUGIN_CLOUDSTORE_URI="localhost:50051"
-          -DCMAKE_CXX_FLAGS="
-          -DEXCEPTIONS_ENABLE=ON
-          -fprofile-arcs
-          -ftest-coverage
-          -DUSE_THUNDER_R4=ON
-          -DTHUNDER_VERSION=4
-          -DTHUNDER_VERSION_MAJOR=4
-          -DTHUNDER_VERSION_MINOR=4
-          -DDEVICE_TYPE=AVOutputTV
-          -DPLUGIN_PERSISTENTSTORE_PATH="/tmp/secure/persistent/rdkservicestore"
-          -DPLUGIN_PERSISTENTSTORE_LEGACYPATH="/tmp/persistent/rdkservicestore"
-          -I $GITHUB_WORKSPACE/entservices-testframework/Tests/headers
-          -I $GITHUB_WORKSPACE/entservices-testframework/Tests/headers/rdk/ds
-          -I $GITHUB_WORKSPACE/entservices-testframework/Tests/headers/rdk/iarmbus
-          -I $GITHUB_WORKSPACE/entservices-testframework/Tests/headers/rdk/iarmmgrs-hal
-          -I $GITHUB_WORKSPACE/entservices-testframework/Tests/headers/systemservices
-          -I $GITHUB_WORKSPACE/entservices-testframework/Tests/headers/systemservices/proc
-          -I $GITHUB_WORKSPACE/entservices-testframework/Tests/headers/libusb
-          -I $GITHUB_WORKSPACE/install/usr/include
-          -I $GITHUB_WORKSPACE/build/mocks
-          -I $GITHUB_WORKSPACE/entservices-testframework/Tests/mocks
-          -I $GITHUB_WORKSPACE/entservices-testframework/Tests/headers/Dobby
-          -I $GITHUB_WORKSPACE/entservices-testframework/Tests/headers/Dobby/Public/Dobby
-          -I $GITHUB_WORKSPACE/entservices-testframework/Tests/headers/Dobby/IpcService
-          -include $GITHUB_WORKSPACE/entservices-testframework/Tests/mocks/devicesettings.h
-          -include $GITHUB_WORKSPACE/entservices-testframework/Tests/mocks/Iarm.h
-          -include $GITHUB_WORKSPACE/entservices-testframework/Tests/mocks/Rfc.h
-          -include $GITHUB_WORKSPACE/entservices-testframework/Tests/mocks/RBus.h
-          -include $GITHUB_WORKSPACE/entservices-testframework/Tests/mocks/Udev.h
-          -include $GITHUB_WORKSPACE/entservices-testframework/Tests/mocks/Wraps.h
-          -include $GITHUB_WORKSPACE/entservices-testframework/Tests/mocks/libusb/libusb.h
-          -include $GITHUB_WORKSPACE/entservices-testframework/Tests/mocks/maintenanceMGR.h
-          -include $GITHUB_WORKSPACE/entservices-testframework/Tests/mocks/pkg.h
-          -include $GITHUB_WORKSPACE/entservices-testframework/Tests/mocks/secure_wrappermock.h
-          -include $GITHUB_WORKSPACE/entservices-testframework/Tests/mocks/wpa_ctrl_mock.h
-          -include $GITHUB_WORKSPACE/entservices-testframework/Tests/mocks/readprocMockInterface.h
-          -include $GITHUB_WORKSPACE/entservices-testframework/Tests/mocks/btmgr.h
-          -include $GITHUB_WORKSPACE/entservices-testframework/Tests/mocks/tr181api.h
-          -include $GITHUB_WORKSPACE/entservices-testframework/Tests/mocks/tvSettings.h
-          -include $GITHUB_WORKSPACE/entservices-testframework/Tests/mocks/tvError.h
-          -include $GITHUB_WORKSPACE/entservices-testframework/Tests/mocks/tvSettingsExtODM.h
-          -include $GITHUB_WORKSPACE/entservices-testframework/Tests/mocks/tvSettingsODM.h
-          -include $GITHUB_WORKSPACE/entservices-testframework/Tests/mocks/tvTypes.h
-          -include $GITHUB_WORKSPACE/entservices-testframework/Tests/mocks/essos-resmgr.h
-          -include $GITHUB_WORKSPACE/entservices-testframework/Tests/mocks/Dobby.h
-          -include $GITHUB_WORKSPACE/entservices-testframework/Tests/mocks/i_omi_proxy.hpp
-          -include $GITHUB_WORKSPACE/entservices-testframework/Tests/mocks/omi_proxy.hpp
-          -include $GITHUB_WORKSPACE/entservices-testframework/Tests/headers/Dobby/DobbyProtocol.h
-          -include $GITHUB_WORKSPACE/entservices-testframework/Tests/headers/Dobby/DobbyProxy.h
-          -include $GITHUB_WORKSPACE/entservices-testframework/Tests/headers/Dobby/Public/Dobby/IDobbyProxy.h
-          -include $GITHUB_WORKSPACE/entservices-testframework/Tests/headers/Dobby/IpcService/IpcFactory.h
-          -Werror -Wall -Wno-unused-result -Wno-deprecated-declarations -Wno-error=format=
-          -DUSE_IARMBUS
-          -DHAS_RBUS
-          -DRDK_SERVICE_L2_TEST
-          -DDISABLE_SECURITY_TOKEN
-          -DENABLE_THERMAL_PROTECTION"
-          -DPLUGIN_PERSISTENTSTORE_PATH="/tmp/secure/persistent/rdkservicestore"
-          -DPLUGIN_PERSISTENTSTORE_LEGACYPATH="/tmp/persistent/rdkservicestore"
-          -DPLUGIN_STORAGE_MANAGER_PATH="/tmp/persistent/storageManager"
-          -DCOMCAST_CONFIG=OFF
-          -DCMAKE_DISABLE_FIND_PACKAGE_DS=ON
-          -DCMAKE_DISABLE_FIND_PACKAGE_IARMBus=ON
-          -DCMAKE_DISABLE_FIND_PACKAGE_Udev=ON
-          -DCMAKE_DISABLE_FIND_PACKAGE_RFC=ON
-          -DCMAKE_DISABLE_FIND_PACKAGE_RBus=ON
-          -DPLUGIN_PERSISTENTSTORE=ON
-          -DUSE_THUNDER_R4=ON
-          -DPLUGIN_L2Tests=ON
-          -DRDK_SERVICE_L2_TEST=ON
-          -DDS_FOUND=ON
-          -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
-          &&
-          cmake --build build/entservices-infra -j6
-          &&
-          cmake --install build/entservices-infra
 
       - name: Set up files
         run: >
@@ -808,12 +734,12 @@ jobs:
           &&
           lcov -c
           -o coverage.info
-          -d build/entservices-appmanagers
+          -d build/entservices-infra
           &&
           lcov
           -r coverage.info
           '/usr/include/*'
-          '*/build/entservices-appmanagers/_deps/*'
+          '*/build/entservices-infra/_deps/*'
           '*/build/entservices-deviceanddisplay/_deps/*'
           '*/build/entservices-entservices-testframework/_deps/*'
           '*/install/usr/include/*'
@@ -828,14 +754,14 @@ jobs:
           &&
           genhtml
           -o coverage
-          -t "entservices-appmanagers coverage"
+          -t "entservices-infra coverage"
           filtered_coverage.info
 
       - name: Upload artifacts
         if: ${{ !env.ACT }}
         uses: actions/upload-artifact@v4
         with:
-          name: artifacts-L2-appmanagers
+          name: artifacts-L2-infra
           path: |
             coverage/
             valgrind_log
