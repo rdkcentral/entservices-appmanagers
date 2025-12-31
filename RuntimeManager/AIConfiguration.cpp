@@ -47,14 +47,7 @@ namespace Plugin
     void AIConfiguration::initialize()
     {
         readFromConfigFile();
-	struct stat st{};
-	if (::stat(AICONFIGURATION_YAML_PATH, &st) == 0) {
-	LOGINFO("AIConfiguration reading from YAML at %s", AICONFIGURATION_YAML_PATH);
-        readFromYamlConfigFile(AICONFIGURATION_YAML_PATH);
-	}
-	else {
-	LOGINFO("YAML file %s not found", AICONFIGURATION_YAML_PATH);
-	}
+        readFromYamlConfigFile();
     }
 
     size_t AIConfiguration::getContainerConsoleLogCap()
@@ -327,8 +320,15 @@ namespace Plugin
         LOGINFO("envVariables: %s", envsStr.c_str());
     }
 
-    void AIConfiguration::readFromYamlConfigFile(const std::string& yamlPath)
+    void AIConfiguration::readFromYamlConfigFile()
     {
+	 struct stat st{};
+    if (::stat(AICONFIGURATION_YAML_PATH, &st) != 0) {
+        LOGINFO("YAML file %s not found", AICONFIGURATION_YAML_PATH);
+        return;
+    }
+    LOGINFO("AIConfiguration reading from YAML at %s", AICONFIGURATION_YAML_PATH);
+
        try {
         YAML::Node root = YAML::LoadFile(yamlPath);
 
@@ -337,23 +337,27 @@ namespace Plugin
             return;
         }
 
-        if (root["preloads"]) {
-            mPreloads.clear();
-            LOGINFO("preloads:");
+        if (root["preloads"]) {	
+	    LOGINFO("preloads (merging with defaults):");
+            std::set<std::string> preloadSet(mPreloads.begin(), mPreloads.end());
             for (const auto& n : root["preloads"]) {
                 std::string val = n.as<std::string>();
-                mPreloads.push_back(val);
-                LOGINFO("  %s", val.c_str());
+                if (preloadSet.find(val) == preloadSet.end()) {
+                    mPreloads.push_back(val);
+                    LOGINFO("  %s", val.c_str());
+                }
             }
         }
 
         if (root["envVariables"]) {
-            mEnvVariables.clear();
-            LOGINFO("envVariables:");
+	    LOGINFO("envVariables (merging with defaults):");
+            std::set<std::string> envSet(mEnvVariables.begin(), mEnvVariables.end());
             for (const auto& n : root["envVariables"]) {
                 std::string val = n.as<std::string>();
-                mEnvVariables.push_back(val);
-                LOGINFO("  %s", val.c_str());
+                if (envSet.find(val) == envSet.end()) {
+                    mEnvVariables.push_back(val);
+                    LOGINFO("  %s", val.c_str());
+		}
             }
         }
         if (root["enableSvp"]) {
