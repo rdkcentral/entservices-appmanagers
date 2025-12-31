@@ -1462,5 +1462,3 @@ TEST_F(AppManagerTest, PreLoadLaunchCloseAppComRpcConnectionSuccessCase)
 }
 
 /* End: Test cases using COM-RPC */
-
-
