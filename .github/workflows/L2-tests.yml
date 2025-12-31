@@ -114,7 +114,7 @@ jobs:
         with:
           repository: rdkcentral/entservices-testframework
           path: entservices-testframework
-          ref: topic/L1_L2
+          ref: develop
           token: ${{ secrets.RDKCM_RDKE }}
 
       - name: Checkout entservices-infra
@@ -583,7 +583,7 @@ jobs:
           -DCMAKE_DISABLE_FIND_PACKAGE_RFC=ON
           -DCMAKE_DISABLE_FIND_PACKAGE_RBus=ON
           -DPLUGIN_LIFECYCLEMANAGER=OFF
-          -DPLUGIN_APPMANAGER=OFF
+          -DPLUGIN_APPMANAGER=ON
           -DUSE_THUNDER_R4=ON
           -DPLUGIN_L2Tests=ON
           -DRDK_SERVICE_L2_TEST=ON
