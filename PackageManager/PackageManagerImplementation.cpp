@@ -30,10 +30,14 @@ namespace Plugin {
 
     SERVICE_REGISTRATION(PackageManagerImplementation, 1, 0);
 
+#ifdef USE_LIBPACKAGE
     #define CHECK_CACHE() { if ((packageImpl.get() == nullptr) || (!cacheInitialized)) { \
         LOGERR("Cache is not initialized!"); \
         return Core::ERROR_UNAVAILABLE; \
     }}
+#else
+    #define CHECK_CACHE() { LOGERR("Cache not supported!"); return Core::ERROR_UNAVAILABLE; }
+#endif
 
     PackageManagerImplementation::PackageManagerImplementation()
         : mDownloaderNotifications()
@@ -817,7 +821,8 @@ namespace Plugin {
         runtimeConfig.runtimePath = config.runtimePath;
     }
 
-    void PackageManagerImplementation::getRuntimeConfig(const packagemanager::ConfigMetaData &config, Exchange::RuntimeConfig &runtimeConfig)
+#ifdef USE_LIBPACKAGE
+    void PackageManagerImplementation::getRuntimeConfig(const ConfigMetaData &config, Exchange::RuntimeConfig &runtimeConfig)
     {
         runtimeConfig.dial = config.dial;
         runtimeConfig.wanLanAccess = config.wanLanAccess;
@@ -848,6 +853,7 @@ namespace Plugin {
         runtimeConfig.command = config.command;
         runtimeConfig.runtimePath = config.runtimePath;
     }
+#endif
 
     Core::hresult PackageManagerImplementation::Unlock(const string &packageId, const string &version)
     {
@@ -1067,7 +1073,7 @@ namespace Plugin {
     }
 
     Core::hresult PackageManagerImplementation::Install(const string &packageId, const string &version,
-        const packagemanager::NameValues &keyValues, const string &fileLocator,
+        const NameValues &keyValues, const string &fileLocator,
         State& state
         )
     {

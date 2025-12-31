@@ -75,14 +75,12 @@ namespace Plugin {
     {
         private:
         class State {
-#ifdef USE_LIBPACKAGE
             class BlockedInstallData {
                 public:
                 string version;
                 NameValues keyValues;
                 string fileLocator;
             };
-#endif
 
             public:
             State() {}
@@ -99,7 +97,9 @@ namespace Plugin {
             string unpackedPath;
             FailReason failReason = Exchange::IPackageInstaller::FailReason::NONE;
             std::list<Exchange::IPackageHandler::AdditionalLock> additionalLocks;
+#ifdef USE_LIBPACKAGE
             BlockedInstallData  blockedInstallData;
+#endif
 
         };
 
