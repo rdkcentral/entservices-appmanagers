@@ -226,7 +226,9 @@ namespace Plugin {
 
     private:
         inline string GetInstalledVersion(const string& id) {
-            for (auto const& [key, state] : mState) {
+            for (auto const& elem : mState) {
+                auto const& key = elem.first;
+                auto const& state = elem.second;
                 if ((id.compare(key.first) == 0) &&
                     (state.installState == InstallState::INSTALLED || state.installState == InstallState::INSTALLATION_BLOCKED || state.installState == InstallState::UNINSTALL_BLOCKED)) {
                     return key.second;
@@ -236,7 +238,9 @@ namespace Plugin {
         }
 
         inline string GetBlockedVersion(const string& id) {
-            for (auto const& [key, state] : mState) {
+            for (auto const& elem : mState) {
+                auto const& key = elem.first;
+                auto const& state = elem.second;
                 if ((id.compare(key.first) == 0) &&
                     (state.installState == InstallState::INSTALLATION_BLOCKED || state.installState == InstallState::UNINSTALL_BLOCKED)) {
                     return key.second;

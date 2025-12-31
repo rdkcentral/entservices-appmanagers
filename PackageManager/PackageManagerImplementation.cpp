@@ -624,7 +624,9 @@ namespace Plugin {
         std::list<Exchange::IPackageInstaller::Package> packageList;
         std::lock_guard<std::recursive_mutex> lock(mtxState);
 
-        for (auto const& [key, state] : mState) {
+        for (auto const& elem : mState) {
+            auto const& key = elem.first;
+            auto const& state = elem.second;
             Exchange::IPackageInstaller::Package package;
             package.packageId = key.first.c_str();
             package.version = key.second.c_str();
