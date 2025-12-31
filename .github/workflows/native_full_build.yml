@@ -9,7 +9,18 @@ on:
 jobs:
   build-entservices-on-pr:
     name: Build entservices-appmanagers component in github rdkcentral
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        compiler: [ gcc, clang ]
+        coverage: [ with-coverage, without-coverage ]
+        exclude:
+          - compiler: clang
+            coverage: with-coverage
+          - compiler: clang
+            coverage: without-coverage
+          - compiler: gcc
+            coverage: without-coverage
     container:
       image: ghcr.io/rdkcentral/docker-rdk-ci:latest
 
