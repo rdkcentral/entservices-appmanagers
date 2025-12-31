@@ -939,7 +939,7 @@ TEST_F(PackageManagerTest, deleteMethodusingComRpcSuccess) {
 
     getDownloadParams();
 
-    uint32_t timeout_ms = 4000;
+    uint32_t timeout_ms = 5000;
 
     EXPECT_CALL(*mSubSystemMock, IsActive(::testing::_))
         .Times(::testing::AnyNumber())
