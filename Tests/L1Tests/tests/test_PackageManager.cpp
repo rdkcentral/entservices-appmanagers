@@ -939,7 +939,9 @@ TEST_F(PackageManagerTest, deleteMethodusingComRpcSuccess) {
 
     getDownloadParams();
 
-    uint32_t timeout_ms = 5000;
+	uri = "https://httpbin.org/bytes/1024";
+
+    uint32_t timeout_ms = 4000;
 
     EXPECT_CALL(*mSubSystemMock, IsActive(::testing::_))
         .Times(::testing::AnyNumber())
