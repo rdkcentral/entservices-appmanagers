@@ -53,6 +53,13 @@
 #define TELEMETRY_MARKER_UNINSTALL_ERROR         "UninstallError_split"
 #endif /* ENABLE_AIMANAGERS_TELEMETRY_METRICS */
 
+#ifdef USE_LIBPACKAGE
+using NameValues = packagemanager::NameValues;
+using ConfigMetaData = packagemanager::ConfigMetaData;
+#else
+using NameValues = std::vector<std::pair<std::string, std::string>>;
+#endif
+
 #define PACKAGE_MANAGER_MARKER_FILE              "/tmp/package_manager_ready"
 
 namespace WPEFramework {
@@ -68,18 +75,22 @@ namespace Plugin {
     {
         private:
         class State {
+#ifdef USE_LIBPACKAGE
             class BlockedInstallData {
                 public:
                 string version;
-                packagemanager::NameValues keyValues;
+                NameValues keyValues;
                 string fileLocator;
             };
+#endif
 
             public:
             State() {}
-            State(const packagemanager::ConfigMetaData &config) {
+#ifdef USE_LIBPACKAGE
+            State(const ConfigMetaData &config) {
                 PackageManagerImplementation::getRuntimeConfig(config, runtimeConfig);
             }
+#endif
             InstallState installState = InstallState::UNINSTALLED;
             bool preInsalled = false;
             uint32_t mLockCount = 0;
@@ -202,7 +213,9 @@ namespace Plugin {
         Core::hresult GetLockedInfo(const string &packageId, const string &version, string &unpackedPath, Exchange::RuntimeConfig& configMetadata,
             string& gatewayMetadataPath, bool &locked) override;
 
-        static void getRuntimeConfig(const packagemanager::ConfigMetaData &config, Exchange::RuntimeConfig &runtimeConfig);
+#ifdef USE_LIBPACKAGE
+        static void getRuntimeConfig(const ConfigMetaData &config, Exchange::RuntimeConfig &runtimeConfig);
+#endif
         static void getRuntimeConfig(const Exchange::RuntimeConfig &config, Exchange::RuntimeConfig &runtimeConfig);
 
         BEGIN_INTERFACE_MAP(PackageManagerImplementation)
@@ -213,9 +226,7 @@ namespace Plugin {
 
     private:
         inline string GetInstalledVersion(const string& id) {
-            for (auto const& elem : mState) {
-                auto const& key = elem.first;
-                auto const& state = elem.second;
+            for (auto const& [key, state] : mState) {
                 if ((id.compare(key.first) == 0) &&
                     (state.installState == InstallState::INSTALLED || state.installState == InstallState::INSTALLATION_BLOCKED || state.installState == InstallState::UNINSTALL_BLOCKED)) {
                     return key.second;
@@ -225,9 +236,7 @@ namespace Plugin {
         }
 
         inline string GetBlockedVersion(const string& id) {
-            for (auto const& elem : mState) {
-                auto const& key = elem.first;
-                auto const& state = elem.second;
+            for (auto const& [key, state] : mState) {
                 if ((id.compare(key.first) == 0) &&
                     (state.installState == InstallState::INSTALLATION_BLOCKED || state.installState == InstallState::UNINSTALL_BLOCKED)) {
                     return key.second;
@@ -236,8 +245,8 @@ namespace Plugin {
             return "";
         }
 
-        inline bool IsInstallBlocked(const string &packageId, const string &version, const packagemanager::NameValues &keyValues, const string &fileLocator);
-        Core::hresult Install(const string &packageId, const string &version, const packagemanager::NameValues &keyValues, const string &fileLocator, State& state);
+        inline bool IsInstallBlocked(const string &packageId, const string &version, const NameValues &keyValues, const string &fileLocator);
+        Core::hresult Install(const string &packageId, const string &version, const NameValues &keyValues, const string &fileLocator, State& state);
 
         void InitializeState();
         void downloader(int n);

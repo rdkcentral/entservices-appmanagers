@@ -469,7 +469,7 @@ namespace Plugin {
         }
         LOGDBG("Installing '%s' ver:'%s' fileLocator: '%s'", packageId.c_str(), version.c_str(), fileLocator.c_str());
 
-        packagemanager::NameValues keyValues;
+        NameValues keyValues;
         if (additionalMetadata != nullptr) {
             struct IPackageInstaller::KeyValue kv;
             while (additionalMetadata->Next(kv) == true) {
@@ -505,9 +505,11 @@ namespace Plugin {
                     if ( installedState.mLockCount ) {
                         LOGWARN("App is locked id: '%s' ver: '%s' count:%d", packageId.c_str(), installedVersion.c_str(), installedState.mLockCount);
                         state.installState = InstallState::INSTALLATION_BLOCKED;
+#ifdef USE_LIBPACKAGE
                         state.blockedInstallData.version = version;
                         state.blockedInstallData.keyValues = keyValues;
                         state.blockedInstallData.fileLocator = fileLocator;
+#endif
                         NotifyInstallStatus(packageId, version, state);
                     }
                 }
