@@ -976,7 +976,9 @@ namespace Plugin {
         #ifndef UNIT_TEST
 	PluginHost::ISubSystem* subSystem = mCurrentservice->SubSystems();
         if (subSystem != nullptr) {
-             subSystem->Set(PluginHost::ISubSystem::NOT_INSTALLATION, nullptr);
+#if THUNDER_VERSION >= 5
+            subSystem->Set(PluginHost::ISubSystem::NOT_INSTALLATION, nullptr);
+#endif
         }
 	#endif
 
@@ -1002,7 +1004,9 @@ namespace Plugin {
 
  	#ifndef UNIT_TEST
         if (subSystem != nullptr) {
-             subSystem->Set(PluginHost::ISubSystem::INSTALLATION, nullptr);
+#if THUNDER_VERSION >= 5
+            subSystem->Set(PluginHost::ISubSystem::INSTALLATION, nullptr);
+#endif
         }
 	#endif
 
