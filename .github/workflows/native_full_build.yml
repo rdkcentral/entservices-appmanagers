@@ -17,6 +17,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Install packages
+        run: |
+          apt update
+          apt install -y libsqlite3-dev libcurl4-openssl-dev valgrind lcov clang libsystemd-dev libboost-all-dev libwebsocketpp-dev meson libcunit1 libcunit1-dev curl protobuf-compiler-grpc libgrpc-dev libgrpc++-dev libjsoncpp-dev
+     
       - name: native build
         run: |
           sh -x build_dependencies.sh
