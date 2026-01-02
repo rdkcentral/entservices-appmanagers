@@ -330,7 +330,7 @@ namespace Plugin
     LOGINFO("AIConfiguration reading from YAML at %s", AICONFIGURATION_YAML_PATH);
 
        try {
-        YAML::Node root = YAML::LoadFile(yamlPath);
+        YAML::Node root = YAML::LoadFile(AICONFIGURATION_YAML_PATH);
 
         if (!root || !root.IsMap()) {
             LOGERR("Invalid YAML format: root must be a mapping");
