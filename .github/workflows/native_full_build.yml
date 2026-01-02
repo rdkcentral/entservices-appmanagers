@@ -28,3 +28,4 @@ jobs:
           sh -x cov_build.sh
         env:
           GITHUB_TOKEN: ${{ secrets.RDKCM_RDKE }}
+          THUNDER_REF: "R4.4.1"
