@@ -4,6 +4,14 @@ set -e
 ##############################
 GITHUB_WORKSPACE="${PWD}"
 ls -la ${GITHUB_WORKSPACE}
+
+# # ############################# 
+#1. Install Dependencies and packages
+
+apt update
+apt install -y libsqlite3-dev libcurl4-openssl-dev valgrind lcov clang libsystemd-dev libboost-all-dev libwebsocketpp-dev meson libcunit1 libcunit1-dev curl protobuf-compiler-grpc libgrpc-dev libgrpc++-dev libunwind-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libjsoncpp-dev
+pip install jsonref
+
 ############################
 # Build entservices-infra
 echo "buliding entservices-appmanagers"
@@ -21,11 +29,11 @@ cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/entservices-appmanagers \
 -DRDK_SERVICES_COVERITY=ON \
 -DRDK_SERVICES_L1_TEST=ON \
 -DDS_FOUND=ON \
--DPLUGIN_LIFECYCLEMANAGER=ON \
+-DPLUGIN_LIFECYCLE_MANAGER=ON \
 -DPLUGIN_APPMANAGER=ON \
 -DPLUGIN_STORAGE_MANAGER=ON \
 -DPLUGIN_PREINSTALL_MANAGER=ON \
--DPLUGIN_TELEMETRYMETRICS=ON \
+-DPLUGIN_TELEMETRY_METRICS=ON \
 -DPLUGIN_DOWNLOADMANAGER=ON \
 -DPLUGIN_RUNTIME_MANAGER=ON \
 -DPLUGIN_PACKAGE_MANAGER=OFF \
