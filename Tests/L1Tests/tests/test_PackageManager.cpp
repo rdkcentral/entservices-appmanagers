@@ -68,6 +68,7 @@ protected:
     StorageManagerMock* mStorageManagerMock = nullptr;
     SubSystemMock* mSubSystemMock = nullptr;
 
+    Core::ProxyType<WorkerPoolImplementation> workerPool;
     Core::ProxyType<Plugin::PackageManager> plugin;
     Core::JSONRPC::Handler& mJsonRpcHandler;
     Core::JSONRPC::Message message;
@@ -79,7 +80,6 @@ protected:
     FactoriesImplementation factoriesImplementation;
 
     Core::ProxyType<Plugin::PackageManagerImplementation> mPackageManagerImpl;
-    Core::ProxyType<WorkerPoolImplementation> workerPool;
 
     Exchange::IPackageDownloader* pkgdownloaderInterface = nullptr;
     Exchange::IPackageInstaller* pkginstallerInterface = nullptr;
