@@ -852,7 +852,6 @@ TEST_F(AppManagerTest, IsInstalledUsingComRpcFailurePackageListEmpty)
     // When package list is empty
     EXPECT_CALL(*mPackageInstallerMock, ListPackages(::testing::_))
     .WillOnce([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
-        auto mockIterator = FillPackageIterator(); // Fill the package Info
         packages = nullptr;
         return Core::ERROR_NONE;
     });

@@ -4,8 +4,16 @@ set -e
 ##############################
 GITHUB_WORKSPACE="${PWD}"
 ls -la ${GITHUB_WORKSPACE}
+
+# # ############################# 
+#1. Install Dependencies and packages
+
+apt update
+apt install -y libsqlite3-dev libcurl4-openssl-dev valgrind lcov clang libsystemd-dev libboost-all-dev libwebsocketpp-dev meson libcunit1 libcunit1-dev curl protobuf-compiler-grpc libgrpc-dev libgrpc++-dev libunwind-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libjsoncpp-dev
+pip install jsonref
+
 ############################
-# Build entservices-infra
+# Build entservices-appmanagers
 echo "buliding entservices-appmanagers"
 
 cd ${GITHUB_WORKSPACE}
@@ -21,10 +29,14 @@ cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/entservices-appmanagers \
 -DRDK_SERVICES_COVERITY=ON \
 -DRDK_SERVICES_L1_TEST=ON \
 -DDS_FOUND=ON \
--DPLUGIN_USBDEVICE=OFF \
--DPLUGIN_USB_MASS_STORAGE=OFF \
--DPLUGIN_OCICONTAINER=OFF \
--DPLUGIN_TELEMETRY=OFF \
+-DPLUGIN_LIFECYCLE_MANAGER=ON \
+-DPLUGIN_APPMANAGER=ON \
+-DPLUGIN_STORAGE_MANAGER=ON \
+-DPLUGIN_PREINSTALL_MANAGER=ON \
+-DPLUGIN_TELEMETRY_METRICS=ON \
+-DPLUGIN_DOWNLOADMANAGER=ON \
+-DPLUGIN_RUNTIME_MANAGER=ON \
+-DPLUGIN_PACKAGE_MANAGER=OFF \
 -DCMAKE_CXX_FLAGS="-DEXCEPTIONS_ENABLE=ON \
 -I ${GITHUB_WORKSPACE}/entservices-testframework/Tests/headers \
 -I ${GITHUB_WORKSPACE}/entservices-testframework/Tests/headers/audiocapturemgr \
