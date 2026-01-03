@@ -13,7 +13,7 @@ apt install -y libsqlite3-dev libcurl4-openssl-dev valgrind lcov clang libsystem
 pip install jsonref
 
 ############################
-# Build entservices-infra
+# Build entservices-appmanagers
 echo "buliding entservices-appmanagers"
 
 cd ${GITHUB_WORKSPACE}
