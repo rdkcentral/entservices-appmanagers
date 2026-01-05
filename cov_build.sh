@@ -4,14 +4,6 @@ set -e
 ##############################
 GITHUB_WORKSPACE="${PWD}"
 ls -la ${GITHUB_WORKSPACE}
-
-# # ############################# 
-#1. Install Dependencies and packages
-
-apt update
-apt install -y libsqlite3-dev libcurl4-openssl-dev valgrind lcov clang libsystemd-dev libboost-all-dev libwebsocketpp-dev meson libcunit1 libcunit1-dev curl protobuf-compiler-grpc libgrpc-dev libgrpc++-dev libunwind-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libjsoncpp-dev
-pip install jsonref
-
 ############################
 # Build entservices-appmanagers
 echo "buliding entservices-appmanagers"
