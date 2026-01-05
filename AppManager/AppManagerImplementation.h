@@ -26,7 +26,7 @@
 #include <interfaces/IConfiguration.h>
 #include <interfaces/IAppPackageManager.h>
 #include <interfaces/IStorageManager.h>
-#include "tracing/Logging.h"
+#include <tracing/Logging.h>
 #include <com/com.h>
 #include <core/core.h>
 #include <plugins/plugins.h>

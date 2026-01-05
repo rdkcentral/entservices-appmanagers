@@ -25,7 +25,7 @@
 #include <interfaces/IAppManager.h>
 #include <interfaces/IConfiguration.h>
 #include "UtilsLogging.h"
-#include "tracing/Logging.h"
+#include <tracing/Logging.h>
 #include <mutex>
 
 namespace WPEFramework {

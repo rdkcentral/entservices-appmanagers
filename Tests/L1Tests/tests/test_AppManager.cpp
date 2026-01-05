@@ -852,7 +852,6 @@ TEST_F(AppManagerTest, IsInstalledUsingComRpcFailurePackageListEmpty)
     // When package list is empty
     EXPECT_CALL(*mPackageInstallerMock, ListPackages(::testing::_))
     .WillOnce([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
-        auto mockIterator = FillPackageIterator(); // Fill the package Info
         packages = nullptr;
         return Core::ERROR_NONE;
     });
@@ -973,6 +972,7 @@ TEST_F(AppManagerTest, LaunchAppUsingComRpcSuccess)
     appInfo.appInstanceId = APPMANAGER_APP_INSTANCE;
     uint32_t signalled = AppManager_StateInvalid;
     appInfo.appNewState = Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
+    appInfo.targetAppState = Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
     mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
 
     /* Register the notification handler */
@@ -1210,6 +1210,10 @@ TEST_F(AppManagerTest, LaunchAppUsingComRpcSpawnAppFailure)
     expectedEvent.appId = APPMANAGER_APP_ID;
     expectedEvent.intent = APPMANAGER_APP_INTENT;
     expectedEvent.source = "";
+    expectedEvent.appInstanceId = APPMANAGER_APP_INSTANCE;
+    expectedEvent.version = "";
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_RUNNING;
+    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE;
     uint32_t signalled = AppManager_StateInvalid;
     Core::Sink<NotificationHandler> notification;
 
@@ -1540,6 +1544,7 @@ TEST_F(AppManagerTest, CloseAppUsingComRpcSuccess)
     Plugin::AppManagerImplementation::AppInfo appInfo;
     appInfo.appInstanceId = APPMANAGER_APP_INSTANCE;
     appInfo.appNewState = Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED;
+    appInfo.targetAppState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED;
     mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
 
     /* Register the notification handler */
@@ -1597,6 +1602,7 @@ TEST_F(AppManagerTest, CloseAppUsingJSONRpcSuccess)
     Plugin::AppManagerImplementation::AppInfo appInfo;
     appInfo.appInstanceId = APPMANAGER_APP_INSTANCE;
     appInfo.appNewState = Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED;
+    appInfo.targetAppState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED;
     mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
     std::string requestClose = "{\"appId\": \"" + std::string(APPMANAGER_APP_ID) + "\"}";
     std::string requestLaunch = "{\"appId\": \"" + std::string(APPMANAGER_APP_ID) +
@@ -1675,6 +1681,7 @@ TEST_F(AppManagerTest, CloseAppUsingComRpcSuspendedStateSuccess)
     Plugin::AppManagerImplementation::AppInfo appInfo;
     appInfo.appInstanceId = APPMANAGER_APP_INSTANCE;
     appInfo.appNewState = Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED;
+    appInfo.targetAppState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED;
     mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
 
     LaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::SUSPENDED);
@@ -1720,7 +1727,10 @@ TEST_F(AppManagerTest, CloseAppUsingComRpcFailureWrongAppID)
     expectedEvent.appId = APPMANAGER_APP_ID;
     expectedEvent.intent = APPMANAGER_APP_INTENT;
     expectedEvent.source = "";
-
+    expectedEvent.appInstanceId = APPMANAGER_APP_INSTANCE;
+    expectedEvent.version = "";
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_RUNNING;
+    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE;
     mAppManagerImpl->Register(&notification);
     notification.SetExpectedEvent(expectedEvent);
     LaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::ACTIVE);
@@ -1760,7 +1770,10 @@ TEST_F(AppManagerTest, CloseAppUsingComRpcFailureSetTargetAppStateReturnError)
     expectedEvent.appId = APPMANAGER_APP_ID;
     expectedEvent.intent = APPMANAGER_APP_INTENT;
     expectedEvent.source = "";
-
+    expectedEvent.appInstanceId = APPMANAGER_APP_INSTANCE;
+    expectedEvent.version = "";
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_RUNNING;
+    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE;
     mAppManagerImpl->Register(&notification);
     notification.SetExpectedEvent(expectedEvent);
     LaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::ACTIVE);
@@ -1825,7 +1838,10 @@ TEST_F(AppManagerTest, TerminateAppUsingComRpcSuccess)
     expectedEvent.appId = APPMANAGER_APP_ID;
     expectedEvent.intent = APPMANAGER_APP_INTENT;
     expectedEvent.source = "";
-
+    expectedEvent.appInstanceId = APPMANAGER_APP_INSTANCE;
+    expectedEvent.version = "";
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_RUNNING;
+    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE;
     mAppManagerImpl->Register(&notification);
     notification.SetExpectedEvent(expectedEvent);
     LaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::ACTIVE);
@@ -2101,7 +2117,10 @@ TEST_F(AppManagerTest, KillAppUsingComRpcSuccess)
     expectedEvent.appId = APPMANAGER_APP_ID;
     expectedEvent.intent = APPMANAGER_APP_INTENT;
     expectedEvent.source = "";
-
+    expectedEvent.appInstanceId = APPMANAGER_APP_INSTANCE;
+    expectedEvent.version = "";
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_RUNNING;
+    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE;
     mAppManagerImpl->Register(&notification);
     notification.SetExpectedEvent(expectedEvent);
     LaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::ACTIVE);
@@ -2252,7 +2271,10 @@ TEST_F(AppManagerTest, KillAppUsingComRpcFailureLifecycleManagerRemoteObjectIsNu
     expectedEvent.appId = APPMANAGER_APP_ID;
     expectedEvent.intent = APPMANAGER_APP_INTENT;
     expectedEvent.source = "";
-
+    expectedEvent.appInstanceId = APPMANAGER_APP_INSTANCE;
+    expectedEvent.version = "";
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_RUNNING;
+    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE;
     mAppManagerImpl->Register(&notification);
     notification.SetExpectedEvent(expectedEvent);
     EXPECT_CALL(*mLifecycleManagerMock, SendIntentToActiveApp(::testing::_, ::testing::_, ::testing::_, ::testing::_))
@@ -3123,6 +3145,11 @@ TEST_F(AppManagerTest, OnAppInstallationStatusChangedSuccess)
     ExpectedAppLifecycleEvent expectedEvent;
     expectedEvent.appId = "YouTube";
     expectedEvent.version = "100.1.30+rialto";
+    expectedEvent.appInstanceId = "";
+    expectedEvent.intent = "";
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED;
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNKNOWN;
+    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE;
     Core::Sink<NotificationHandler> notification;
     mAppManagerImpl->Register(&notification);
     notification.SetExpectedEvent(expectedEvent);
