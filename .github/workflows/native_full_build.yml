@@ -16,7 +16,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-        
       - name: native build
         run: |
           sh -x build_dependencies.sh
