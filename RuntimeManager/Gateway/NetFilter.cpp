@@ -9,6 +9,8 @@
 #include "NetFilterUtils.h"
 #include <list>
 #include <stdarg.h>
+#include <regex>
+#include <cstring>
 
 extern "C" const char *iptc_strerror(int err);
 
@@ -68,6 +70,25 @@ extern "C" void nfSysError(int error, const char *format, ...)
     LOGWARN("%s (%d - %s)", message, error, iptc_strerror(error));
 }
 
+// -----------------------------------------------------------------------------
+/*!
+    \internal
+    Helper callback used to perform a regex match on a comment string.
+ */
+static int regexMatcher(const char *str, void *userData)
+{
+    auto regex = reinterpret_cast<const std::regex*>(userData);
+    if (std::regex_match(str, *regex))
+    {
+        nfDebug("iptables comment %s does match", str);
+        return 0;
+    }
+    else
+    {
+        nfDebug("iptables comment %s doesn't match", str);
+        return 1;
+    }
+}
 
 // -----------------------------------------------------------------------------
 /*!
@@ -79,14 +100,10 @@ extern "C" void nfSysError(int error, const char *format, ...)
  */
 void NetFilter::removeAllRulesMatchingComment(const std::string &commentMatch)
 {
-	/*
-    qCInfo(netFilter) << "removing all iptables rules who's comments match" << commentMatch;
-
+	LOGINFO("removing all iptables rules whose comments match %s", commentMatch.c_str());
     std::lock_guard<NetFilterLock> locker(mLock);
-
-    ::removeAllRulesMatchingComment(regexMatcher,
-                                    const_cast<QRegExp*>(&commentMatch));
-				    */
+    std::regex regex(commentMatch);
+    ::removeAllRulesMatchingComment(regexMatcher, const_cast<std::regex*>(&regex));
 }
 
 // -----------------------------------------------------------------------------
@@ -210,3 +227,4 @@ std::list<NetFilter::PortForward> NetFilter::getContainerPortForwardList(const s
 
     return values;
 }
+
