@@ -885,18 +885,20 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
     LOGINFO(" LaunchApp enter with appId %s", appId.c_str());
 
     mAdminLock.Lock();
-    IsInstalled(appId, installed);
-    if (!installed) {
-        LOGERR("App not installed");
-        return Core::ERROR_GENERAL; // Return immediately!
-    }
     if (appId.empty())
     {
         LOGERR("application Id is empty");
         status = Core::ERROR_INVALID_PARAMETER;
     }
-    else if (nullptr != mLifecycleInterfaceConnector)
-    {
+    else {
+        bool installed = false;
+        Core::hresult result = IsInstalled(appId, installed);
+        if (result != Core::ERROR_NONE || !installed) {
+            LOGERR("App %s is not installed. Cannot launch.", appId.c_str());
+            status = Core::ERROR_GENERAL;
+        }   
+        else if (nullptr != mLifecycleInterfaceConnector)
+        {
         std::shared_ptr<AppManagerRequest> request = std::make_shared<AppManagerRequest>();
 
         if (request != nullptr)
@@ -920,6 +922,7 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
         else
         {
             LOGERR("Failed to perform operation due to no memory");
+        }
         }
     }
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
