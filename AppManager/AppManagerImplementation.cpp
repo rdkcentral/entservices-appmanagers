@@ -885,6 +885,11 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
     LOGINFO(" LaunchApp enter with appId %s", appId.c_str());
 
     mAdminLock.Lock();
+    IsInstalled(appId, installed);
+    if (!installed) {
+        LOGERR("App not installed");
+        return Core::ERROR_GENERAL; // Return immediately!
+    }
     if (appId.empty())
     {
         LOGERR("application Id is empty");
