@@ -299,7 +299,9 @@ protected:
         : plugin(Core::ProxyType<Plugin::AppManager>::Create()),
         workerPool(Core::ProxyType<WorkerPoolImplementation>::Create(2, Core::Thread::DefaultStackSize(), 16)),
         mJsonRpcHandler(*plugin),
-        INIT_CONX(1, 0)
+        INIT_CONX(1, 0),
+        mAppManagerImpl(nullptr),
+        dispatcher(nullptr)
     {
         Core::IWorkerPool::Assign(&(*workerPool));
         workerPool->Run();
