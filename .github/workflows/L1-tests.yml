@@ -85,7 +85,7 @@ jobs:
         run: >
           sudo apt update
           &&
-          sudo apt install -y libsqlite3-dev libcurl4-openssl-dev valgrind lcov clang libsystemd-dev libboost-all-dev libwebsocketpp-dev meson libcunit1 libcunit1-dev curl protobuf-compiler-grpc libgrpc-dev libgrpc++-dev libjsoncpp-dev iptables-dev
+          sudo apt install -y libsqlite3-dev libcurl4-openssl-dev valgrind lcov clang libsystemd-dev libboost-all-dev libwebsocketpp-dev meson libcunit1 libcunit1-dev curl protobuf-compiler-grpc libgrpc-dev libgrpc++-dev libjsoncpp-dev libxtables-dev libip4tc-dev libip6tc-dev
 
       - name: Install GStreamer
         run: |
