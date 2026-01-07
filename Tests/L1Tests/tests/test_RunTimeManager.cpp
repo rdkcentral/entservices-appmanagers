@@ -875,8 +875,8 @@ TEST_F(RuntimeManagerTest, RunReadfromAIConfigFile)
     const std::string configFilePath = configDir + "/config.ini";
     const std::string appInstanceId = "testAppInstance";
 
-    if (access(configDir.c_str(), F_OK) != 0) {
-        int ret = mkdir(configDir.c_str(), 0755);
+    int ret = mkdir(configDir.c_str(), 0755);
+    if (ret != 0 && errno != EEXIST) {
         ASSERT_EQ(ret, 0) << "Failed to create directory: " << configDir << " (errno: " << errno << ")";
     }
 
@@ -1515,7 +1515,7 @@ TEST_F(RuntimeManagerTest, OCIContainerEvents)
     mRuntimeManagerImpl->onOCIContainerStartedEvent(dummyName, dummyData);
     mRuntimeManagerImpl->onOCIContainerStoppedEvent(dummyName, dummyData);
     mRuntimeManagerImpl->onOCIContainerFailureEvent(dummyName, dummyData);
-    mRuntimeManagerImpl->onOCIContainerStateChangedEvent(dummyName, dummyData);
+    mRuntimeManagerImpl->onOCIContainerStateChangedEvent(std::move(dummyName), dummyData);
 
     releaseResources();
 }
