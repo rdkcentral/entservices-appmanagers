@@ -351,7 +351,7 @@ namespace WPEFramework
             Exchange::IPackageInstaller::IPackageIterator *packageList = nullptr;
 
             // fetch installed packages
-            if (mPackageManagerInstallerObject->ListPackages(packageList) != Core::ERROR_NONE && packageList != nullptr)
+            if (mPackageManagerInstallerObject->ListPackages(packageList) != Core::ERROR_NONE || packageList == nullptr)
             {
                 LOGERR("ListPackage is returning Error or Packages is nullptr");
                 return result;
