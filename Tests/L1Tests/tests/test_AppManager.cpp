@@ -973,7 +973,7 @@ TEST_F(AppManagerTest, LaunchAppUsingComRpcSuccess)
     uint32_t signalled = AppManager_StateInvalid;
     appInfo.appNewState = Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
     appInfo.targetAppState = Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
-    mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
+    mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = std::move(appInfo);
 
     /* Register the notification handler */
     mAppManagerImpl->Register(&notification);
@@ -1545,7 +1545,7 @@ TEST_F(AppManagerTest, CloseAppUsingComRpcSuccess)
     appInfo.appInstanceId = APPMANAGER_APP_INSTANCE;
     appInfo.appNewState = Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED;
     appInfo.targetAppState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED;
-    mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
+    mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = std::move(appInfo);
 
     /* Register the notification handler */
     mAppManagerImpl->Register(&notification);
@@ -3067,7 +3067,7 @@ TEST_F(AppManagerTest, GetLoadedAppsJsonRpc)
     std::string nexTennisAppId = "NexTennis";
     appInfo.appInstanceId = nexTennisAppId;
     pkgInfo.type = Plugin::AppManagerImplementation::ApplicationType::APPLICATION_TYPE_INTERACTIVE;
-    appInfo.packageInfo = pkgInfo;
+    appInfo.packageInfo = std::move(pkgInfo);
     mAppManagerImpl->mAppInfo[nexTennisAppId] = appInfo;
     EXPECT_EQ(Core::ERROR_NONE, status);
     EXPECT_CALL(*mLifecycleManagerMock, GetLoadedApps(::testing::_, ::testing::_)

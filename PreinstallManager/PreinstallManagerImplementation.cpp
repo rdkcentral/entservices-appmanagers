@@ -298,7 +298,7 @@ namespace WPEFramework
                 packageInfo.installStatus = "SKIPPED: getConfig failed for [" + filename + "]";
                 // continue; -> so that it is printed as skipped and not go undetected
             }
-            packages.push_back(packageInfo);
+            packages.push_back(std::move(packageInfo));
         }
 
         closedir(dir);
