@@ -298,8 +298,8 @@ protected:
     AppManagerTest()
         : plugin(Core::ProxyType<Plugin::AppManager>::Create()),
         workerPool(Core::ProxyType<WorkerPoolImplementation>::Create(2, Core::Thread::DefaultStackSize(), 16)),
-        mJsonRpcHandler(*plugin),
         dispatcher(nullptr),
+        mJsonRpcHandler(*plugin),
         mAppManagerImpl(nullptr),
         INIT_CONX(1, 0)
         
