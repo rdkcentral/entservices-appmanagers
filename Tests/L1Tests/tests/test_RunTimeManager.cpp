@@ -1515,7 +1515,7 @@ TEST_F(RuntimeManagerTest, OCIContainerEvents)
     mRuntimeManagerImpl->onOCIContainerStartedEvent(dummyName, dummyData);
     mRuntimeManagerImpl->onOCIContainerStoppedEvent(dummyName, dummyData);
     mRuntimeManagerImpl->onOCIContainerFailureEvent(dummyName, dummyData);
-    mRuntimeManagerImpl->onOCIContainerStateChangedEvent(dummyName, dummyData);
+    mRuntimeManagerImpl->onOCIContainerStateChangedEvent(std::move(dummyName), dummyData);
 
     releaseResources();
 }
