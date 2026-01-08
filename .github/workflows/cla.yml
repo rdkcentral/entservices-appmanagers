@@ -18,3 +18,4 @@ jobs:
     uses: rdkcentral/cmf-actions/.github/workflows/cla.yml@v1
     secrets:
       PERSONAL_ACCESS_TOKEN: ${{ secrets.CLA_ASSISTANT }}
+
