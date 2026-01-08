@@ -19,8 +19,9 @@
 
 #pragma once
 
+#include <core/core.h>
 #include <plugins/plugins.h>
-#include <tracing/tracing.h>
+#include <messaging/messaging.h>
 #include <interfaces/definitions.h>
 #include "UtilsLogging.h"
 
