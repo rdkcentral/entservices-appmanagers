@@ -1733,7 +1733,7 @@ TEST_F(AppManagerTest, CloseAppUsingComRpcFailureWrongAppID)
     expectedEvent.source = "";
     expectedEvent.appInstanceId = APPMANAGER_APP_INSTANCE;
     expectedEvent.version = "";
-    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::;
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNKNOWN;
     expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_RUNNING;
     expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE;
     mAppManagerImpl->Register(&notification);
