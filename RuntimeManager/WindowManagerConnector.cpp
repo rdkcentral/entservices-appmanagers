@@ -123,7 +123,7 @@ void WindowManagerConnector::getDisplayInfo(const string& appInstanceId , string
         xdgRuntimeDirFd = open(xdgRuntimeDir, O_CLOEXEC | O_DIRECTORY);
         if (xdgRuntimeDirFd < 0)
         {
-            printf("failed to open XDG_RUNTIME_DIR '%s' %d\n", xdgRuntimeDir, errno);
+            printf("failed to open XDG_RUNTIME_DIR '%s' %d\n", errno);
             fflush(stdout);
         }
         else
