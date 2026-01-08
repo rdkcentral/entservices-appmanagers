@@ -296,11 +296,11 @@ protected:
         mAppManagerImpl = nullptr;
     }
     AppManagerTest()
-        : plugin(Core::ProxyType<Plugin::AppManager>::Create()),
-        workerPool(Core::ProxyType<WorkerPoolImplementation>::Create(2, Core::Thread::DefaultStackSize(), 16)),
-        dispatcher(nullptr),
-        mJsonRpcHandler(*plugin),
+        : dispatcher(nullptr),
+        plugin(Core::ProxyType<Plugin::AppManager>::Create()),
         mAppManagerImpl(nullptr),
+        workerPool(Core::ProxyType<WorkerPoolImplementation>::Create(2, Core::Thread::DefaultStackSize(), 16)),
+        mJsonRpcHandler(*plugin),
         INIT_CONX(1, 0)
         
     {
