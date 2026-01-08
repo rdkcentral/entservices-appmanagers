@@ -22,9 +22,7 @@
 #define MODULE_NAME Plugin_DownloadManager
 #endif
 
-#include <core/core.h>
 #include <plugins/plugins.h>
-#include <messaging/messaging.h>
-
+#include <tracing/tracing.h>
 #undef EXTERNAL
 #define EXTERNAL
