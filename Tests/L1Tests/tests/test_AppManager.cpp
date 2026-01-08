@@ -1215,6 +1215,7 @@ TEST_F(AppManagerTest, LaunchAppUsingComRpcSpawnAppFailure)
     expectedEvent.source = "";
     expectedEvent.appInstanceId = APPMANAGER_APP_INSTANCE;
     expectedEvent.version = "";
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_INVALID;
     expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_RUNNING;
     expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE;
     uint32_t signalled = AppManager_StateInvalid;
