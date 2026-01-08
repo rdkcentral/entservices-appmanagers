@@ -69,5 +69,12 @@ cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/entservices-appmanagers \
 
 
 cmake --build build/entservices-appmanagers --target install
+
+echo "======================================================================================"
+echo "Running Coverity Analysis"
+cov-analyze --dir idir \
+  --disable RW.BAD_TYPE_NAME_REDECLARATION:install/usr/include/WPEFramework/ \
+  --disable RW.ALREADY_DEFINED:install/usr/include/WPEFramework/
+
 echo "======================================================================================"
 exit 0
