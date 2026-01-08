@@ -431,7 +431,9 @@ namespace Plugin {
             {
                 LOGDBG("DM: Waiting for download request...");
                 std::unique_lock<std::mutex> lock(mQueueMutex);
-                mDownloadThreadCV.wait(lock);
+                mDownloadThreadCV.wait(lock, [this]() {
+                    return !mDownloaderRunFlag || !mPriorityDownloadQueue.empty() || !mRegularDownloadQueue.empty();
+                });
                 lock.unlock();
 
                 downloadRequest = pickDownloadJob();
