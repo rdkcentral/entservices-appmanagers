@@ -160,12 +160,6 @@ target_include_directories(${MODULE_NAME}
 
 target_compile_definitions(${MODULE_NAME} PRIVATE UNIT_TEST)
 
-target_include_directories(WPEFrameworkL1TestsIN
-    PRIVATE
-        ${CMAKE_SOURCE_DIR}/../entservices-testframework/Tests/mocks
-        ${CMAKE_SOURCE_DIR}/../entservices-testframework/Tests/mocks/devicesettings
-        ${CMAKE_SOURCE_DIR}/../entservices-testframework/Tests/mocks/thunder
-)
 #install(TARGETS ${PROJECT_NAME} DESTINATION bin)
 
 install(TARGETS ${MODULE_NAME} DESTINATION lib)
