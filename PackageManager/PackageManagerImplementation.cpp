@@ -963,7 +963,7 @@ namespace Plugin {
     void PackageManagerImplementation::InitializeState()
     {
         LOGDBG("entry");
-        #ifndef UNIT_TEST
+        #if !defined(UNIT_TEST) && !defined(ENABLE_NATIVEBUILD)
 	PluginHost::ISubSystem* subSystem = mCurrentservice->SubSystems();
         if (subSystem != nullptr) {
             subSystem->Set(PluginHost::ISubSystem::NOT_INSTALLATION, nullptr);
@@ -990,7 +990,7 @@ namespace Plugin {
         }
         #endif
 
- 	#ifndef UNIT_TEST
+        #if !defined(UNIT_TEST) && !defined(ENABLE_NATIVEBUILD)
         if (subSystem != nullptr) {
             subSystem->Set(PluginHost::ISubSystem::INSTALLATION, nullptr);
         }
