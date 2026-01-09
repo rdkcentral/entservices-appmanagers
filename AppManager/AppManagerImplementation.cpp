@@ -883,7 +883,6 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
     time_t requestTime = appManagerTelemetryReporting.getCurrentTimestamp();
 #endif
     LOGINFO(" LaunchApp enter with appId %s", appId.c_str());
-    bool installed = false;
 
     mAdminLock.Lock();
     if (appId.empty())
