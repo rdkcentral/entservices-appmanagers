@@ -38,7 +38,7 @@ git clone https://$GITHUB_TOKEN@github.com/rdkcentral/entservices-testframework.
 ############################
 # Build Thunder-Tools
 echo "======================================================================================"
-echo "buliding thunderTools"
+echo "building thunderTools"
 cd ThunderTools
 patch -p1 < $GITHUB_WORKSPACE/entservices-testframework/patches/00010-R4.4-Add-support-for-project-dir.patch
 cd -
@@ -56,7 +56,7 @@ cmake --build build/ThunderTools --target install
 ############################
 # Build Thunder
 echo "======================================================================================"
-echo "buliding thunder"
+echo "building thunder"
 
 cd Thunder
 patch -p1 < $GITHUB_WORKSPACE/entservices-testframework/patches/Use_Legact_Alt_Based_On_ThunderTools_R4.4.3.patch
@@ -82,7 +82,7 @@ cmake --build build/Thunder --target install
 ############################
 # Build entservices-apis
 echo "======================================================================================"
-echo "buliding entservices-apis"
+echo "building entservices-apis"
 cd entservices-apis
 rm -rf jsonrpc/DTV.json
 cd ..
