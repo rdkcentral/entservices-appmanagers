@@ -309,7 +309,7 @@ namespace Plugin {
 
         #ifdef USE_LIBPACKAGE
         std::shared_ptr<packagemanager::IPackageImpl> packageImpl;
-        #elif defined(UNIT_TEST)
+        #elif defined(UNIT_TEST) || defined(ENABLE_NATIVEBUILD)
         std::shared_ptr<packagemanager::IPackageImplDummy> packageImpl;
 	#endif
         PluginHost::IShell* mCurrentservice;
