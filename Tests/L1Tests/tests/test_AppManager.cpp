@@ -1607,7 +1607,7 @@ TEST_F(AppManagerTest, CloseAppUsingJSONRpcSuccess)
     appInfo.appInstanceId = APPMANAGER_APP_INSTANCE;
     appInfo.appNewState = Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED;
     appInfo.targetAppState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED;
-    mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
+    mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = std::move(appInfo);
     std::string requestClose = "{\"appId\": \"" + std::string(APPMANAGER_APP_ID) + "\"}";
     std::string requestLaunch = "{\"appId\": \"" + std::string(APPMANAGER_APP_ID) +
                           "\", \"intent\": \"" + std::string(APPMANAGER_APP_INTENT) +
@@ -1686,7 +1686,7 @@ TEST_F(AppManagerTest, CloseAppUsingComRpcSuspendedStateSuccess)
     appInfo.appInstanceId = APPMANAGER_APP_INSTANCE;
     appInfo.appNewState = Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED;
     appInfo.targetAppState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED;
-    mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
+    mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = std::move(appInfo);
 
     LaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::SUSPENDED);
     ON_CALL(*p_wrapsImplMock, stat(::testing::_, ::testing::_))
