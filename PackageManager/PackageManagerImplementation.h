@@ -30,7 +30,7 @@
 
 #ifdef USE_LIBPACKAGE
 #include <IPackageImpl.h>
-#elif defined(UNIT_TEST)
+#elif defined(UNIT_TEST) || defined(ENABLE_NATIVEBUILD)
 #include "IPackageImplDummy.h"
 #endif
 #include <json/json.h>
