@@ -276,6 +276,13 @@ Json::Value DobbySpecGenerator::createEnvVars(const ApplicationConfiguration& co
        env.append("QT_WAYLAND_INPUTDEVICE_INTEGRATION=skyq-input");
        env.append("QT_QPA_PLATFORM=wayland-sky-rdk");
    }
+   env.append("APPLICATION_TOKEN=" + config.mAppInstanceId);
+   std::ifstream inFile("/tmp/uid1");
+   if (inFile.good())
+   {
+       inFile.close();
+       env.append("WAYLAND_DEBUG=" + 1);
+   }
    if (mAIConfiguration->getResourceManagerClientEnabled())
    {
        env.append("ESSRMGR_APPID=" + config.mAppId);
@@ -615,6 +622,7 @@ Json::Value DobbySpecGenerator::createAppServiceSDKPlugin(const ApplicationConfi
         ports.append(port);
     }
     pluginObj["data"]["additionalPorts"] = std::move(ports);
+    pluginObj["data"]["setMenu"] = "local-services-1"; //MADANA HACK HOMEAPP
 
     return pluginObj;
 }
