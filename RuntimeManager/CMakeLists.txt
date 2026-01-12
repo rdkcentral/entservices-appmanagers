@@ -60,8 +60,6 @@ target_link_libraries(${MODULE_NAME}
 install(TARGETS ${MODULE_NAME}
     DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/${STORAGE_DIRECTORY}/plugins)
 
-include_directories(Gateway)
-add_subdirectory(Gateway)
 set (RUNTIMEMANAGER_SOURCES)
 list(APPEND RUNTIMEMANAGER_SOURCES  RuntimeManagerImplementation.cpp)
 list(APPEND RUNTIMEMANAGER_SOURCES  DobbySpecGenerator.cpp)
@@ -91,6 +89,8 @@ endif(AIMANAGERS_TELEMETRY_METRICS_SUPPORT)
 if(RDK_APPMANAGERS_DEBUG)
     message(STATUS "Enable APP Manager debug support")
     add_definitions("-DRDK_APPMANAGERS_DEBUG")
+    include_directories(Gateway)
+    add_subdirectory(Gateway)
 endif()
 
 include_directories(../helpers)
@@ -159,10 +159,13 @@ mark_as_advanced(LIBIPTC_LIBRARY LIBIPTC_INCLUDE_DIR)
 target_link_libraries(${PLUGIN_IMPLEMENTATION} PRIVATE
     CompileSettingsDebug::CompileSettingsDebug ${NAMESPACE}Plugins::${NAMESPACE}Plugins  
     ${PLUGIN_RUNTIME_MANAGER_EXTRA_LIBRARIES}
-    Gateway
     ip4tc
     ip6tc
     )
+
+if(RDK_APPMANAGERS_DEBUG)
+    target_link_libraries(${PLUGIN_IMPLEMENTATION} PRIVATE Gateway)
+endif()
 
 if(RDK_SERVICES_L1_TEST)
     set(JSONCPP_INCLUDE_PATH "/usr/include/jsoncpp" CACHE PATH "Path to jsoncpp includes")
