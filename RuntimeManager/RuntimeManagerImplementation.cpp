@@ -19,8 +19,10 @@
 
 #include "RuntimeManagerImplementation.h"
 #include "DobbySpecGenerator.h"
+#ifdef RDK_APPMANAGERS_DEBUG
 #include "ContainerUtils.h"
 #include "WebInspector.h"
+#endif
 #include <errno.h>
 #include <fstream>
 
