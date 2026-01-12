@@ -158,13 +158,10 @@ mark_as_advanced(LIBIPTC_LIBRARY LIBIPTC_INCLUDE_DIR)
 
 target_link_libraries(${PLUGIN_IMPLEMENTATION} PRIVATE
     CompileSettingsDebug::CompileSettingsDebug ${NAMESPACE}Plugins::${NAMESPACE}Plugins  
-    ${PLUGIN_RUNTIME_MANAGER_EXTRA_LIBRARIES}
-    ip4tc
-    ip6tc
-    )
+    ${PLUGIN_RUNTIME_MANAGER_EXTRA_LIBRARIES})
 
 if(RDK_APPMANAGERS_DEBUG)
-    target_link_libraries(${PLUGIN_IMPLEMENTATION} PRIVATE Gateway)
+    target_link_libraries(${PLUGIN_IMPLEMENTATION} PRIVATE Gateway ip4tc ip6tc)
 endif()
 
 if(RDK_SERVICES_L1_TEST)
