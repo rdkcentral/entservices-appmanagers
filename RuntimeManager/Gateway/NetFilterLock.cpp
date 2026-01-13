@@ -28,8 +28,8 @@ NetFilterLock::NetFilterLock()
 
 NetFilterLock::~NetFilterLock()
 {
-       if ((mLockFd >= 0) && (close(mLockFd) != 0))
-       LOGERR("failed to close lock file: %s", strerror(errno));
+    if ((mLockFd >= 0) && (close(mLockFd) != 0))
+        LOGERR("failed to close lock file: %s", strerror(errno));
 }
 
 void NetFilterLock::lock()
