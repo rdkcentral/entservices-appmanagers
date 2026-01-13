@@ -125,35 +125,35 @@ find_package_handle_standard_args(LIBIPTC
 
 mark_as_advanced(LIBIPTC_LIBRARY LIBIPTC_INCLUDE_DIR)
 
-    if(LIBIPTC_FOUND)
-	        set(LIBIPTC_INCLUDE_DIRS ${LIBIPTC_INCLUDE_DIR})
-		    set(LIBIPTC_LIBRARIES ${LIBIPTC_LIBRARY})
-	    endif()
+if(LIBIPTC_FOUND)
+    set(LIBIPTC_INCLUDE_DIRS ${LIBIPTC_INCLUDE_DIR})
+    set(LIBIPTC_LIBRARIES ${LIBIPTC_LIBRARY})
+endif()
 
-	    if(LIBIPTC_FOUND AND NOT TARGET LibIptc::LibIptc)
-		        add_library(LibIptc::LibIptc SHARED IMPORTED)
-			    set_target_properties(LibIptc::LibIptc PROPERTIES
-				            IMPORTED_LOCATION "${LIBIPTC_LIBRARY}"
-					            INTERFACE_INCLUDE_DIRECTORIES "${LIBIPTC_INCLUDE_DIR}")
-				    endif()
+if(LIBIPTC_FOUND AND NOT TARGET LibIptc::LibIptc)
+    add_library(LibIptc::LibIptc SHARED IMPORTED)
+    set_target_properties(LibIptc::LibIptc PROPERTIES
+        IMPORTED_LOCATION "${LIBIPTC_LIBRARY}"
+        INTERFACE_INCLUDE_DIRECTORIES "${LIBIPTC_INCLUDE_DIR}")
+endif()
 
-				    # IPv4 tables
-				    find_package_handle_standard_args(LIBIP4TC
-					        DEFAULT_MSG LIBIP4TC_LIBRARY LIBIP4TC_INCLUDE_DIR)
+# IPv4 tables
+find_package_handle_standard_args(LIBIP4TC
+	        DEFAULT_MSG LIBIP4TC_LIBRARY LIBIP4TC_INCLUDE_DIR)
 
-					mark_as_advanced(LIBIP4TC_LIBRARY LIBIP4TC_INCLUDE_DIR)
+mark_as_advanced(LIBIP4TC_LIBRARY LIBIP4TC_INCLUDE_DIR)
 
-					if(LIBIP4TC_FOUND)
-						    set(LIBIP4TC_INCLUDE_DIRS ${LIBIP4TC_INCLUDE_DIR})
-						        set(LIBIP4TC_LIBRARIES ${LIBIP4TC_LIBRARY})
-						endif()
+if(LIBIP4TC_FOUND)
+    set(LIBIP4TC_INCLUDE_DIRS ${LIBIP4TC_INCLUDE_DIR})
+    set(LIBIP4TC_LIBRARIES ${LIBIP4TC_LIBRARY})
+endif()
 
-						if(LIBIP4TC_FOUND AND NOT TARGET LibIptc::LibIp4tc)
-							    add_library(LibIptc::LibIp4tc SHARED IMPORTED)
-							        set_target_properties(LibIptc::LibIp4tc PROPERTIES
-									        IMPORTED_LOCATION "${LIBIP4TC_LIBRARY}"
-										        INTERFACE_INCLUDE_DIRECTORIES "${LIBIP4TC_INCLUDE_DIR}")
-									endif()
+if(LIBIP4TC_FOUND AND NOT TARGET LibIptc::LibIp4tc)
+    add_library(LibIptc::LibIp4tc SHARED IMPORTED)
+    set_target_properties(LibIptc::LibIp4tc PROPERTIES
+        IMPORTED_LOCATION "${LIBIP4TC_LIBRARY}"
+        INTERFACE_INCLUDE_DIRECTORIES "${LIBIP4TC_INCLUDE_DIR}")
+endif()
 
 
 target_link_libraries(${PLUGIN_IMPLEMENTATION} PRIVATE

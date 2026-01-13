@@ -253,7 +253,7 @@ uint32_t ContainerUtils::getContainerIpAddress(const std::string &containerId)
 
         if (close(sock) < 0)
         {
-            LOGERR("failed to close ifcase socket");
+            LOGERR("failed to close interface socket");
         }
 
         // finally, get and store the ip address
