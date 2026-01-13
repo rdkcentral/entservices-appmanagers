@@ -490,7 +490,7 @@ namespace Plugin {
                 long httpCode = mHttpClient->getStatusCode();
                 if (status == DownloadManagerHttpClient::Status::Success)
                 {
-                    LOGINFO("DM: Download succeeded (took %lldms): id=%s url=%s file=%s retries=%d rateLimit=%u http_code=%ld",
+                    LOGINFO("DM: Download succeeded (took %lldms): id=%s url=%s file=%s retries=%d rateLimit=%u http_code=%lld",
                     elapsed, downloadRequest->getId().c_str(), downloadRequest->getUrl().c_str(),
                     downloadRequest->getFileLocator().c_str(), downloadRequest->getRetries(),
                     downloadRequest->getRateLimit(), httpCode);
@@ -505,8 +505,8 @@ namespace Plugin {
                     break;
                 }
 
-                LOGDBG("DM: Attempt download (%d/%d): status=%d http_code=%ld elapsed=%lld ms",
-                        attemptCount, downloadRequest->getRetries(), status, httpCode, elapsed);
+                LOGDBG("DM: Attempt download (%d/%d): status=%d http_code=%lld elapsed=%lld ms",
+                    attemptCount, downloadRequest->getRetries(), status, httpCode, elapsed);
             }
 
             if (status != DownloadManagerHttpClient::Status::Success)
