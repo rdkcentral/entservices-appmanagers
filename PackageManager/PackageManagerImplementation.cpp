@@ -811,6 +811,7 @@ namespace Plugin {
         runtimeConfig.appPath = config.appPath;
         runtimeConfig.command = config.command;
         runtimeConfig.runtimePath = config.runtimePath;
+        runtimeConfig.ralfPkgPath = config.ralfPkgPath;
     }
 
     void PackageManagerImplementation::getRuntimeConfig(const packagemanager::ConfigMetaData &config, Exchange::RuntimeConfig &runtimeConfig)
@@ -843,6 +844,7 @@ namespace Plugin {
         runtimeConfig.appPath = config.appPath;
         runtimeConfig.command = config.command;
         runtimeConfig.runtimePath = config.runtimePath;
+        runtimeConfig.ralfPkgPath = config.ralfPkgPath;
     }
 
     Core::hresult PackageManagerImplementation::Unlock(const string &packageId, const string &version)

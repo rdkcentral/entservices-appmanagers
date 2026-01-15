@@ -22,6 +22,11 @@
 #include <errno.h>
 #include <fstream>
 
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED
+#include "ralf/RalfPackageBuilder.h"
+#endif // RALF_PACKAGE_SUPPORT_ENABLED
+
+
 namespace WPEFramework
 {
     namespace Plugin
@@ -219,6 +224,11 @@ namespace WPEFramework
                         (*index)->OnTerminated(appInstanceId);
                         ++index;
                     }
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED
+{                    ralf::RalfPackageBuilder ralfBuilder;
+                    ralfBuilder.unmountOverlayfsIfExists(appInstanceId);
+}
+#endif
                 break;
                 }
 
@@ -229,6 +239,12 @@ namespace WPEFramework
                     (*index)->OnFailure(appInstanceId, error);
                     ++index;
                 }
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED
+                {
+                ralf::RalfPackageBuilder ralfBuilder;
+                ralfBuilder.unmountOverlayfsIfExists(appInstanceId);
+                }
+#endif                
                 break;
 
                 default:
@@ -457,8 +473,14 @@ err_ret:
 
         bool RuntimeManagerImplementation::generate(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject, std::string& dobbySpec)
         {
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED
+            LOGINFO("Generating Ralf Package Config : %s", runtimeConfigObject.ralfPkgPath.c_str());
+            ralf::RalfPackageBuilder ralfBuilder;
+            return ralfBuilder.generateRalfDobbySpec(config, runtimeConfigObject,dobbySpec);
+#else
             DobbySpecGenerator generator;
             return generator.generate(config, runtimeConfigObject, dobbySpec);
+#endif // RALF_PACKAGE_SUPPORT_ENABLED
         }
 
         Exchange::IRuntimeManager::RuntimeState RuntimeManagerImplementation::getRuntimeState(const string& appInstanceId)
@@ -542,9 +564,11 @@ err_ret:
             {
                 uid = 30490;
             }
+            uid = gid = 0;
             config.mUserId = uid;
             config.mGroupId = gid;
-
+            appStorageInfo.userId = uid;
+            appStorageInfo.groupId = gid;
             if (ports)
             {
                 std::uint32_t port;
@@ -588,6 +612,8 @@ err_ret:
                     config.mAppStorageInfo.path = std::move(appStorageInfo.path);
                     config.mAppStorageInfo.userId = userId;
                     config.mAppStorageInfo.groupId = groupId;
+                    config.mAppStorageInfo.userId = uid;
+                    config.mAppStorageInfo.groupId = gid;                    
                     config.mAppStorageInfo.size = std::move(appStorageInfo.size);
                     config.mAppStorageInfo.used = std::move(appStorageInfo.used);
                 }
@@ -620,12 +646,21 @@ err_ret:
             {
                 westerosSocket = xdgRuntimeDir + "/" + waylandDisplay;
                 config.mWesterosSocketPath = westerosSocket;
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED
+               config.mWesterosSocketPath = waylandDisplay;
+#endif //RALF_PACKAGE_SUPPORT_ENABLED
+                LOGINFO("Westeros Socket Path : %s", config.mWesterosSocketPath.c_str());                
             }
 
             bool legacyContainer = true;
 #ifdef RIALTO_IN_DAC_FEATURE_ENABLED
              mRialtoConnector->initialize();
-            if (mRialtoConnector->createAppSession(appId,westerosSocket, appId))
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED                
+                std::string rialtoSessionId = "rlto-" + appInstanceId;
+#else
+                std::string rialtoSessionId = appId
+#endif // RALF_PACKAGE_SUPPORT_ENABLED             
+            if (mRialtoConnector->createAppSession(appId,westerosSocket, rialtoSessionId))
             {
                if (!mRialtoConnector->waitForStateChange(appId,RialtoServerStates::ACTIVE, RIALTO_TIMEOUT_MILLIS))
                 {
@@ -652,7 +687,7 @@ err_ret:
                 notifyParamCheckFailure = true;
             }
             /* Generate dobbySpec */
-            else if (legacyContainer && false == RuntimeManagerImplementation::generate(config, runtimeConfigObject, dobbySpec))
+            else if (false == RuntimeManagerImplementation::generate(config, runtimeConfigObject, dobbySpec))
             {
                 LOGERR("Failed to generate dobbySpec");
                 status = Core::ERROR_GENERAL;
@@ -676,11 +711,18 @@ err_ret:
                         if(legacyContainer)
                             status =  mOciContainerObject->StartContainerFromDobbySpec(containerId, dobbySpec, command, westerosSocket, descriptor, success, errorReason);
                         else
+                        {
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED                            
+                            status = mOciContainerObject->StartContainer(containerId, appPath, command, "", descriptor, success, errorReason);
+#else                        
                             status = mOciContainerObject->StartContainer(containerId, appPath, command, westerosSocket, descriptor, success, errorReason);
-
+#endif // RALF_PACKAGE_SUPPORT_ENABLED                            
+                        }
                         if ((success == false) || (status != Core::ERROR_NONE))
                         {
                             LOGERR("Failed to Run Container %s",errorReason.c_str());
+                            ralf::RalfPackageBuilder ralfBuilder;
+                            ralfBuilder.unmountOverlayfsIfExists(appInstanceId);                            
                         }
                         else
                         {
