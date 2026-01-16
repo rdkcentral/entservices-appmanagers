@@ -738,7 +738,7 @@ namespace Plugin {
         auto it = mState.find( { packageId, version } );
         if (it != mState.end()) {
             auto &state = it->second;
-            #if defined(USE_LIBPACKAGE) || defined(UNIT_TEST)
+        #if defined(USE_LIBPACKAGE) || defined(UNIT_TEST)
  	    string gatewayMetadataPath;
             bool locked = (state.mLockCount > 0);
             LOGDBG("id: %s ver: %s locked: %d", packageId.c_str(), version.c_str(), locked);
@@ -866,6 +866,13 @@ namespace Plugin {
                 LOGDBG("id: %s ver: %s lock count:%d state:%d", packageId.c_str(), version.c_str(),
                     state.mLockCount, (int) state.installState);
                 if (--state.mLockCount == 0) {
+                    packagemanager::Result pmResult = packageImpl->Unlock(packageId, version);
+                    if (pmResult == packagemanager::SUCCESS) {
+                        LOGDBG("Unlock %s:%s Success", packageId.c_str(), version.c_str());
+                    } else {
+                        LOGDBG("Unlock %s:%s Failed", packageId.c_str(), version.c_str());
+                    }
+
                     string blockedVer = GetBlockedVersion(packageId);
                     LOGDBG("blockedVer: %s", blockedVer.c_str());
                     auto itBlocked = mState.find( { packageId, blockedVer } );
@@ -970,7 +977,7 @@ namespace Plugin {
         }
 	#endif
 
-        #if defined (USE_LIBPACKAGE) || defined(UNIT_TEST) || defined(ENABLE_NATIVEBUILD)
+    #if defined (USE_LIBPACKAGE) || defined(UNIT_TEST) || defined(ENABLE_NATIVEBUILD)
 
 	#if defined (USE_LIBPACKAGE)
 	packageImpl = packagemanager::IPackageImpl::instance();
