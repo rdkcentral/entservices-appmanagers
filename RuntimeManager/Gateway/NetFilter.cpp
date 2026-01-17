@@ -100,7 +100,7 @@ static int regexMatcher(const char *str, void *userData)
  */
 void NetFilter::removeAllRulesMatchingComment(const std::string &commentMatch)
 {
-	LOGINFO("removing all iptables rules whose comments match %s", commentMatch.c_str());
+    LOGINFO("removing all iptables rules whose comments match %s", commentMatch.c_str());
     std::lock_guard<NetFilterLock> locker(mLock);
     std::regex regex(commentMatch);
     ::removeAllRulesMatchingComment(regexMatcher, const_cast<std::regex*>(&regex));
