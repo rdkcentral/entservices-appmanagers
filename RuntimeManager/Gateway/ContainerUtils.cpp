@@ -102,10 +102,10 @@ static bool nsEnterWithPid(pid_t pid, int nsType,
     char nsPath[32];
     strcpy(nsName, "net");
 
-    bool success;
+    bool success = false;
 
     // get the namespace of the containered app
-    sprintf(nsPath, "/proc/%d/ns/%s", pid, nsName);
+    snprintf(nsPath, sizeof(nsPath), "/proc/%d/ns/%s", pid, nsName);
     int newNsFd = open(nsPath, O_RDONLY | O_CLOEXEC);
     if (newNsFd < 0)
     {
@@ -114,13 +114,13 @@ static bool nsEnterWithPid(pid_t pid, int nsType,
     }
     else
     {
-	LOGINFO("thread started");
+        LOGINFO("thread started");
         // spawn the thread to run the callback in
         std::thread thread = std::thread(std::bind(&nsThread, newNsFd, nsType, &success, func));
 
         // block until the thread completes
         thread.join();
-	LOGINFO("thread end");
+        LOGINFO("thread end");
     }
 
     // close the namespaces
@@ -146,18 +146,18 @@ static bool nsEnterWithPid(pid_t pid, int nsType,
 static pid_t findContainerPid(const std::string &containerId)
 {
 	
-     LOGINFO("Container IP: %s", containerId.c_str());
+    LOGINFO("Container ID: %s", containerId.c_str());
     const std::string cgroupPath = "/sys/fs/cgroup/memory/" + containerId + "/cgroup.procs";
     int procsFd = open(cgroupPath.c_str(), O_RDONLY | O_CLOEXEC);
     if (procsFd < 0)
     {
         if (errno == ENOENT)
-	{
+        {
             LOGINFO("no cgroup file @ %s", cgroupPath.c_str());
-	}
+        }
         else{
             LOGERR("failed to open cgroup file @ %s", cgroupPath.c_str());
-	}
+        }
 
         return -1;
     }

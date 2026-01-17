@@ -1192,7 +1192,7 @@ err_ret:
 
         void RuntimeManagerImplementation::onOCIContainerStartedEvent(std::string name, JsonObject& data)
         {
-	    LOGINFO("Container name: %s", name.c_str());        
+            LOGINFO("Container name: %s", name.c_str());
             #ifdef RDK_APPMANAGERS_DEBUG
             const in_addr_t addr = ContainerUtils::getContainerIpAddress(name);
             if (addr != 0)
@@ -1235,13 +1235,13 @@ err_ret:
             {
                 LOGERR("Failed to get IP address for container '%s'", name.c_str());
             }
-	    #endif
+            #endif
             dispatchEvent(RuntimeManagerImplementation::RuntimeEventType::RUNTIME_MANAGER_EVENT_CONTAINERSTARTED, data);
         }
 
         void RuntimeManagerImplementation::onOCIContainerStoppedEvent(std::string name, JsonObject& data)
         {
-	    #ifdef RDK_APPMANAGERS_DEBUG
+            #ifdef RDK_APPMANAGERS_DEBUG
             auto it = mWebInspectors.find(name);
             if (it != mWebInspectors.end())
             {
