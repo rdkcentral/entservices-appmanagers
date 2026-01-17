@@ -79,8 +79,6 @@ bool NetFilterLock::try_lock_until(const std::chrono::steady_clock::time_point &
     {
         if (TEMP_FAILURE_RETRY(flock(mLockFd, LOCK_EX | LOCK_NB)) == 0)
             return true;
-
-        //thread::msleep(20);
     }
 
     if (TEMP_FAILURE_RETRY(flock(mLockFd, LOCK_EX | LOCK_NB)) == 0)
