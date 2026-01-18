@@ -883,7 +883,8 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
     time_t requestTime = appManagerTelemetryReporting.getCurrentTimestamp();
 #endif
     LOGINFO(" LaunchApp enter with appId %s", appId.c_str());
-
+    std::vector<WPEFramework::Exchange::IPackageInstaller::Package> packageList;
+    
     mAdminLock.Lock();
     if (appId.empty())
     {
@@ -892,8 +893,11 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
     }
     else {
         bool installed = false;
-        Core::hresult result = IsInstalled(appId, installed);
-        if (result != Core::ERROR_NONE || !installed) {
+        Core::hresult result = fetchAppPackageList(packageList);
+        if (result == Core::ERROR_NONE) {
+            checkIsInstalled(appId, installed, packageList);
+        }
+        if (!installed) {
             LOGERR("App %s is not installed. Cannot launch.", appId.c_str());
             status = Core::ERROR_GENERAL;
         }
