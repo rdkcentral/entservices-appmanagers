@@ -462,10 +462,10 @@ namespace Plugin
                 {
                     long long ramLimit = std::stoll(value);
                     if (ramLimit > SSIZE_MAX) {
-                        LOGERR("ramLimit value %" PRId64 " exceeds SSIZE_MAX (%zd), clamping to SSIZE_MAX", (int64_t)ramLimit, SSIZE_MAX);
+                        LOGERR("ramLimit value %lld exceeds SSIZE_MAX (%zd), clamping to SSIZE_MAX", ramLimit, SSIZE_MAX);
                         mNonHomeAppMemoryLimit = SSIZE_MAX;
                     } else if (ramLimit < 0) {
-                        LOGERR("ramLimit value %" PRId64 " is negative, setting to 0", (int64_t)ramLimit);
+                        LOGERR("ramLimit value %lld is negative, setting to 0", ramLimit);
                         mNonHomeAppMemoryLimit = 0;
                     } else {
                         mNonHomeAppMemoryLimit = static_cast<ssize_t>(ramLimit);
@@ -475,10 +475,10 @@ namespace Plugin
                 {
                     long long gpuLimit = std::stoll(value);
                     if (gpuLimit > SSIZE_MAX) {
-                        LOGERR("gpuMemoryLimit value %" PRId64 " exceeds SSIZE_MAX (%zd), clamping to SSIZE_MAX", (int64_t)gpuLimit, SSIZE_MAX);
+                        LOGERR("gpuMemoryLimit value %lld exceeds SSIZE_MAX (%zd), clamping to SSIZE_MAX", gpuLimit, SSIZE_MAX);
                         mNonHomeAppGpuLimit = SSIZE_MAX;
                     } else if (gpuLimit < 0) {
-                        LOGERR("gpuMemoryLimit value %" PRId64 " is negative, setting to 0", (int64_t)gpuLimit);
+                        LOGERR("gpuMemoryLimit value %lld is negative, setting to 0", gpuLimit);
                         mNonHomeAppGpuLimit = 0;
                     } else {
                         mNonHomeAppGpuLimit = static_cast<ssize_t>(gpuLimit);
