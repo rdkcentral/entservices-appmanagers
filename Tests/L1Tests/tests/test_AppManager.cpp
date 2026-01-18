@@ -1189,6 +1189,35 @@ TEST_F(AppManagerTest, LaunchAppUsingComRpcFailureEmptyAppID)
     }
 }
 
+/* * Test Case for LaunchAppUsingComRpcFailureAppNotInstalled
+ * Setting up AppManager/LifecycleManager/LifecycleManagerState/PersistentStore/PackageManagerRDKEMS Plugin and creating required COM-RPC resources
+ * Setting Mock for ListPackages() to simulate an empty package list (app not installed)
+ * Verifying the return of the API returns Core::ERROR_GENERAL when attempting to launch an uninstalled app
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, LaunchAppUsingComRpcFailureAppNotInstalled)
+{
+    Core::hresult status;
+
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    // Mock ListPackages to return an empty list, simulating that the app is not installed
+    EXPECT_CALL(*mPackageInstallerMock, ListPackages(::testing::_))
+    .WillOnce([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
+        packages = nullptr; // Empty package list
+        return Core::ERROR_NONE;
+    });
+
+    // Attempt to launch an uninstalled app should return ERROR_GENERAL
+    EXPECT_EQ(Core::ERROR_GENERAL, mAppManagerImpl->LaunchApp(APPMANAGER_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS));
+
+    if(status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
 /* * Test Case for LaunchAppUsingComRpcSpawnAppFailure
  * Setting up AppManager/LifecycleManager/LifecycleManagerState/PersistentStore/PackageManagerRDKEMS Plugin and creating required JSON-RPC resources
  * Setting Mock for ListPackages() to simulate getting installed package list
