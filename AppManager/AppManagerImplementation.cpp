@@ -892,7 +892,11 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
     }
     else {
         bool installed = false;
-        Core::hresult result = IsInstalled(appId, installed);
+        std::vector<WPEFramework::Exchange::IPackageInstaller::Package> packageList;
+        Core::hresult result = fetchAppPackageList(packageList);
+        if (result == Core::ERROR_NONE) {
+            checkIsInstalled(appId, installed, packageList);
+        }
         if (result != Core::ERROR_NONE || !installed) {
             LOGERR("App %s is not installed. Cannot launch.", appId.c_str());
             status = Core::ERROR_GENERAL;
