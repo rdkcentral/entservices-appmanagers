@@ -368,7 +368,7 @@ namespace Plugin
             }
             if (root["memoryLimit"]) {
                 uint64_t memLimit = root["memoryLimit"].as<uint64_t>();
-                if (memLimit > static_cast<uint64_t>(SSIZE_MAX)) {
+                if (memLimit > SSIZE_MAX) {
                     LOGERR("memoryLimit value %" PRIu64 " exceeds SSIZE_MAX (%zd), clamping to SSIZE_MAX", memLimit, SSIZE_MAX);
                     mNonHomeAppMemoryLimit = SSIZE_MAX;
                 } else {
@@ -378,7 +378,7 @@ namespace Plugin
             }
             if (root["gpuMemoryLimit"]) {
                 uint64_t gpuLimit = root["gpuMemoryLimit"].as<uint64_t>();
-                if (gpuLimit > static_cast<uint64_t>(SSIZE_MAX)) {
+                if (gpuLimit > SSIZE_MAX) {
                     LOGERR("gpuMemoryLimit value %" PRIu64 " exceeds SSIZE_MAX (%zd), clamping to SSIZE_MAX", gpuLimit, SSIZE_MAX);
                     mNonHomeAppGpuLimit = SSIZE_MAX;
                 } else {
@@ -461,12 +461,12 @@ namespace Plugin
                 else if (key == "ramLimit")
                 {
                     long long ramLimit = std::stoll(value);
-                    if (ramLimit > SSIZE_MAX) {
-                        LOGERR("ramLimit value %lld exceeds SSIZE_MAX (%zd), clamping to SSIZE_MAX", ramLimit, SSIZE_MAX);
-                        mNonHomeAppMemoryLimit = SSIZE_MAX;
-                    } else if (ramLimit < 0) {
+                    if (ramLimit < 0) {
                         LOGERR("ramLimit value %lld is negative, setting to 0", ramLimit);
                         mNonHomeAppMemoryLimit = 0;
+                    } else if (ramLimit > SSIZE_MAX) {
+                        LOGERR("ramLimit value %lld exceeds SSIZE_MAX (%zd), clamping to SSIZE_MAX", ramLimit, SSIZE_MAX);
+                        mNonHomeAppMemoryLimit = SSIZE_MAX;
                     } else {
                         mNonHomeAppMemoryLimit = static_cast<ssize_t>(ramLimit);
                     }
@@ -474,12 +474,12 @@ namespace Plugin
                 else if (key == "gpuMemoryLimit")
                 {
                     long long gpuLimit = std::stoll(value);
-                    if (gpuLimit > SSIZE_MAX) {
-                        LOGERR("gpuMemoryLimit value %lld exceeds SSIZE_MAX (%zd), clamping to SSIZE_MAX", gpuLimit, SSIZE_MAX);
-                        mNonHomeAppGpuLimit = SSIZE_MAX;
-                    } else if (gpuLimit < 0) {
+                    if (gpuLimit < 0) {
                         LOGERR("gpuMemoryLimit value %lld is negative, setting to 0", gpuLimit);
                         mNonHomeAppGpuLimit = 0;
+                    } else if (gpuLimit > SSIZE_MAX) {
+                        LOGERR("gpuMemoryLimit value %lld exceeds SSIZE_MAX (%zd), clamping to SSIZE_MAX", gpuLimit, SSIZE_MAX);
+                        mNonHomeAppGpuLimit = SSIZE_MAX;
                     } else {
                         mNonHomeAppGpuLimit = static_cast<ssize_t>(gpuLimit);
                     }
