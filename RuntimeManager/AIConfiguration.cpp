@@ -322,76 +322,76 @@ namespace Plugin
 
     void AIConfiguration::readFromYamlConfigFile()
     {
-	 struct stat st{};
-    if (::stat(AICONFIGURATION_YAML_PATH, &st) != 0) {
-        LOGINFO("YAML file %s not found", AICONFIGURATION_YAML_PATH);
-        return;
-    }
-    LOGINFO("AIConfiguration reading from YAML at %s", AICONFIGURATION_YAML_PATH);
-
-       try {
-        YAML::Node root = YAML::LoadFile(AICONFIGURATION_YAML_PATH);
-
-        if (!root || !root.IsMap()) {
-            LOGERR("Invalid YAML format: root must be a mapping");
+        struct stat st{};
+        if (::stat(AICONFIGURATION_YAML_PATH, &st) != 0) {
+            LOGINFO("YAML file %s not found", AICONFIGURATION_YAML_PATH);
             return;
         }
+        LOGINFO("AIConfiguration reading from YAML at %s", AICONFIGURATION_YAML_PATH);
 
-        if (root["preloads"]) {	
-	    LOGINFO("preloads (merging with defaults):");
-            //std::set<std::string> preloadSet(mPreloads.begin(), mPreloads.end());
-            for (const auto& n : root["preloads"]) {
-                std::string val = n.as<std::string>();
-             //   if (preloadSet.find(val) == preloadSet.end()) {
+        try {
+            YAML::Node root = YAML::LoadFile(AICONFIGURATION_YAML_PATH);
+
+            if (!root || !root.IsMap()) {
+                LOGERR("Invalid YAML format: root must be a mapping");
+                return;
+            }
+
+            if (root["preloads"]) {
+                LOGINFO("preloads (merging with defaults):");
+                //std::set<std::string> preloadSet(mPreloads.begin(), mPreloads.end());
+                for (const auto& n : root["preloads"]) {
+                    std::string val = n.as<std::string>();
+                    //   if (preloadSet.find(val) == preloadSet.end()) {
                     mPreloads.push_back(val);
                     LOGINFO("  %s", val.c_str());
-              //  }
+                    //  }
+                }
             }
-        }
 
-        if (root["envVariables"]) {
-	    LOGINFO("envVariables (merging with defaults):");
-           // std::set<std::string> envSet(mEnvVariables.begin(), mEnvVariables.end());
-            for (const auto& n : root["envVariables"]) {
-                std::string val = n.as<std::string>();
-             //   if (envSet.find(val) == envSet.end()) {
+            if (root["envVariables"]) {
+                LOGINFO("envVariables (merging with defaults):");
+                // std::set<std::string> envSet(mEnvVariables.begin(), mEnvVariables.end());
+                for (const auto& n : root["envVariables"]) {
+                    std::string val = n.as<std::string>();
+                    //   if (envSet.find(val) == envSet.end()) {
                     mEnvVariables.push_back(val);
                     LOGINFO("  %s", val.c_str());
-		//}
+                    //}
+                }
             }
-        }
-        if (root["enableSvp"]) {
-            mSvpEnabled = root["enableSvp"].as<bool>();
-            LOGINFO("enableSvp: %s", mSvpEnabled ? "true" : "false");
-        }
-        if (root["memoryLimit"]) {
-            mNonHomeAppMemoryLimit = static_cast<ssize_t>(root["memoryLimit"].as<uint64_t>());
-            LOGINFO("memoryLimit: %zd", mNonHomeAppMemoryLimit);
-        }
-        if (root["gpuMemoryLimit"]) {
-            mNonHomeAppGpuLimit = static_cast<ssize_t>(root["gpuMemoryLimit"].as<uint64_t>());
-            LOGINFO("gpuMemoryLimit: %zd", mNonHomeAppGpuLimit);
-        }
-        if (root["ionDefaultQuota"]) {
-            mIonHeapDefaultQuota = root["ionDefaultQuota"].as<size_t>();
-            LOGINFO("ionDefaultQuota: %zu", mIonHeapDefaultQuota);
-        }
-        if (root["svpfiles"]) {
-            mSvpFiles.clear();
-            LOGINFO("svpfiles:");
-            for (const auto& n : root["svpfiles"]) {
-                std::string val = n.as<std::string>();
-                mSvpFiles.push_back(val);
-                LOGINFO("  %s", val.c_str());
+            if (root["enableSvp"]) {
+                mSvpEnabled = root["enableSvp"].as<bool>();
+                LOGINFO("enableSvp: %s", mSvpEnabled ? "true" : "false");
             }
+            if (root["memoryLimit"]) {
+                mNonHomeAppMemoryLimit = static_cast<ssize_t>(root["memoryLimit"].as<uint64_t>());
+                LOGINFO("memoryLimit: %zd", mNonHomeAppMemoryLimit);
+            }
+            if (root["gpuMemoryLimit"]) {
+                mNonHomeAppGpuLimit = static_cast<ssize_t>(root["gpuMemoryLimit"].as<uint64_t>());
+                LOGINFO("gpuMemoryLimit: %zd", mNonHomeAppGpuLimit);
+            }
+            if (root["ionDefaultQuota"]) {
+                mIonHeapDefaultQuota = root["ionDefaultQuota"].as<size_t>();
+                LOGINFO("ionDefaultQuota: %zu", mIonHeapDefaultQuota);
+            }
+            if (root["svpfiles"]) {
+                mSvpFiles.clear();
+                LOGINFO("svpfiles:");
+                for (const auto& n : root["svpfiles"]) {
+                    std::string val = n.as<std::string>();
+                    mSvpFiles.push_back(val);
+                    LOGINFO("  %s", val.c_str());
+                }
+            }
+
+            //printAIConfiguration();
+
+        } catch (const std::exception& ex) {
+            LOGERR("Error parsing YAML: %s", ex.what());
         }
-
-        //printAIConfiguration();
-
-    } catch (const std::exception& ex) {
-        LOGERR("Error parsing YAML: %s", ex.what());
     }
-}
 
     void AIConfiguration::readFromConfigFile()
     {
