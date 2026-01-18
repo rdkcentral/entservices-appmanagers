@@ -883,9 +883,9 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
     time_t requestTime = appManagerTelemetryReporting.getCurrentTimestamp();
 #endif
     LOGINFO(" LaunchApp enter with appId %s", appId.c_str());
-    std::vector<WPEFramework::Exchange::IPackageInstaller::Package> packageList;
     
     mAdminLock.Lock();
+    std::vector<WPEFramework::Exchange::IPackageInstaller::Package> packageList;
     if (appId.empty())
     {
         LOGERR("application Id is empty");
