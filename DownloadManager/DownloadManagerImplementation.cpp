@@ -506,7 +506,7 @@ namespace Plugin {
                 }
 
                 LOGDBG("DM: Attempt download (%d/%d): status=%d http_code=%ld elapsed=%lld ms",
-                        attemptCount, downloadRequest->getRetries(), status, httpCode, elapsed);
+                    attemptCount, downloadRequest->getRetries(), status, httpCode, elapsed);
             }
 
             if (status != DownloadManagerHttpClient::Status::Success)
