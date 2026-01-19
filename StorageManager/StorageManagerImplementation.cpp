@@ -58,6 +58,10 @@ namespace Plugin {
 
     uint32_t StorageManagerImplementation::Configure(PluginHost::IShell* service)
     {
+		// TEST: Force Configure() to fail and trigger the memory leak
+        LOGERR("TEST: Forcing Configure() to fail to reproduce memory leak");
+        return Core::ERROR_GENERAL;
+		
         uint32_t result = Core::ERROR_NONE;
         Core::hresult status = Core::ERROR_GENERAL;
 
