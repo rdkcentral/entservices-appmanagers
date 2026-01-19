@@ -493,7 +493,6 @@ jobs:
           -DPLUGIN_PREINSTALL_MANAGER=ON
           -DPLUGIN_PACKAGE_MANAGER=ON
           -DENABLE_UNIT_TESTS=ON
-          -DRDK_APPMANAGERS_DEBUG=ON
           &&
           cmake --build build/entservices-appmanagers -j8
           &&
@@ -574,7 +573,6 @@ jobs:
           -DPLUGIN_PREINSTALL_MANAGER=ON
           -DPLUGIN_PACKAGE_MANAGER=ON
           -DENABLE_UNIT_TESTS=ON
-          -DRDK_APPMANAGERS_DEBUG=ON
           &&
           cmake --build build/entservices-testframework -j8
           &&
