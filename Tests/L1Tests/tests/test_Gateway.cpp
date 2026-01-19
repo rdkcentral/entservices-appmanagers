@@ -24,6 +24,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <errno.h>
 
 #ifdef RDK_APPMANAGERS_DEBUG
 #include "ContainerUtils.h"
@@ -67,27 +68,6 @@ protected:
             remove(procsFile.c_str());
             rmdir(testCgroupPath.c_str());
         }
-    }
-
-    // Helper function to create a mock cgroup.procs file
-    bool createMockCgroupProcs(pid_t pid)
-    {
-        // Create directory if it doesn't exist
-        if (mkdir(testCgroupPath.c_str(), 0755) != 0 && errno != EEXIST)
-        {
-            return false;
-        }
-
-        std::string procsFile = testCgroupPath + "/cgroup.procs";
-        std::ofstream file(procsFile);
-        if (!file.is_open())
-        {
-            return false;
-        }
-
-        file << pid << std::endl;
-        file.close();
-        return true;
     }
 };
 
