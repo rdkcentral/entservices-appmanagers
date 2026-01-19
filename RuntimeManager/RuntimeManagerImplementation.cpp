@@ -1219,7 +1219,7 @@ err_ret:
                     {
                         mWebInspectors[name] = webInspector;
                         mPortAvailability[debugPort] = true;
-                        LOGINFO("WebInspector attached for container %s on host port %d ", name.c_str(), debugPort);
+                        LOGINFO("WebInspector attached for container %s on host port %d", name.c_str(), debugPort);
                     }
                     else
                     {

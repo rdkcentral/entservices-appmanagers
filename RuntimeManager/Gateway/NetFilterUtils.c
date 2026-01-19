@@ -141,7 +141,7 @@ static bool getEntryInterface(const struct ipt_entry *entry, bool in,
     \internal
 
     Returns the ip address and port of the DNAT target rule.  If the rule
-    doesn't have a DNA target then \c false is returned.
+    doesn't have a DNAT target then \c false is returned.
 
  */
 static bool getEntryDNATDestination(const struct ipt_entry *entry,
@@ -296,7 +296,7 @@ int removeAllRulesMatchingComment(NfCommentMatcher matcher, void *userData)
                     continue;
                 }
 
-                nfInfo("deleting rule at index %d 'from %s:%s'",
+                nfInfo("deleting rule at index %d from '%s:%s'",
                             index, *tableName, chainName);
 
                 // it is safe to delete the entry we're currently
@@ -715,7 +715,7 @@ int openExternalPort(in_port_t port, int protocol, const char *comment)
     struct ipt_entry *outputEntry = createOutputFilterRule(port, protocol, comment);
     if (!outputEntry)
     {
-        nfError("failed to create input filter rule'");
+        nfError("failed to create output filter rule");
         iptc_free(table);
         return -1;
     }
@@ -1048,7 +1048,7 @@ int addContainerHolePunch(const char *bridgeIface, int protocol,
                                                               comment);
         if (!forwardEntry)
         {
-            nfError("failed to create FORWARD filter rule'");
+            nfError("failed to create FORWARD filter rule");
             iptc_free(filterTable);
             return -1;
         }
