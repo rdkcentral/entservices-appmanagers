@@ -107,9 +107,9 @@ set (APPMANAGER_LIBS ${NAMESPACE}AppManager ${NAMESPACE}AppManagerImplementation
 add_plugin_test_ex(PLUGIN_APPMANAGER tests/test_AppManager.cpp "${APPMANAGER_INC}" "${APPMANAGER_LIBS}")
 
 # PLUGIN_RUNTIME_MANAGER
-set (RUNTIMEMANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/RuntimeManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
+set (RUNTIMEMANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/RuntimeManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/RuntimeManager/Gateway ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
 set (RUNTIMEMANAGER_LIBS ${NAMESPACE}RuntimeManager ${NAMESPACE}RuntimeManagerImplementation)
-add_plugin_test_ex(PLUGIN_RUNTIME_MANAGER tests/test_RunTimeManager.cpp "${RUNTIMEMANAGER_INC}" "${RUNTIMEMANAGER_LIBS}")
+add_plugin_test_ex(PLUGIN_RUNTIME_MANAGER "tests/test_RunTimeManager.cpp;tests/test_Gateway.cpp" "${RUNTIMEMANAGER_INC}" "${RUNTIMEMANAGER_LIBS}")
 
 #PLUGIN_STORAGE_MANAGER
 set (STORAGE_MANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/StorageManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
