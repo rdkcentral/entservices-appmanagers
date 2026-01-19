@@ -69,6 +69,11 @@ static bool getEntryComment(const struct ipt_entry *entry, char *buf)
     while (ptr < end)
     {
         const struct xt_entry_match *match = (const struct xt_entry_match*)ptr;
+	if (match->u.match_size == 0 || (ptr + match->u.match_size) > end)
+        {
+            nfError("invalid match size (%hu) would exceed buffer bounds", match->u.match_size);
+            return false;
+        }
         ptr += match->u.match_size;
 
         const char *matchName = match->u.user.name;
@@ -194,7 +199,7 @@ static bool getEntryDNATDestination(const struct ipt_entry *entry,
     \warning This currently ignores range or inverted matches.
 
  */
-bool getEntryTcpUdpMatchPort(const struct ipt_entry *entry, int *protocol,
+static bool getEntryTcpUdpMatchPort(const struct ipt_entry *entry, int *protocol,
                              in_port_t *sourcePort, in_port_t *destPort)
 {
     // check there are any matches
@@ -207,6 +212,11 @@ bool getEntryTcpUdpMatchPort(const struct ipt_entry *entry, int *protocol,
     while (ptr < end)
     {
         const struct xt_entry_match *match = (const struct xt_entry_match*)ptr;
+	if (match->u.match_size == 0 || (ptr + match->u.match_size) > end)
+        {
+            nfError("invalid match size (%hu) would exceed buffer bounds", match->u.match_size);
+            return false;
+        }
         ptr += match->u.match_size;
 
         const char *matchName = match->u.user.name;
