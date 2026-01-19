@@ -9,7 +9,6 @@
 
 #include <cstring>
 #include <thread>
-#include <atomic>
 #include <ext/stdio_filebuf.h>
 
 #include <grp.h>
@@ -49,7 +48,7 @@ namespace Plugin
     namespaces and you don't really want to do this in the main thread.
 
  */
-static void nsThread(int newNsFd, int nsType, std::atomic<bool> *success,
+static void nsThread(int newNsFd, int nsType, bool *success,
                      std::function<void()> &func)
 {
     LOGINFO("nsThread started");
@@ -57,7 +56,7 @@ static void nsThread(int newNsFd, int nsType, std::atomic<bool> *success,
     if (unshare(nsType) != 0)
     {
         LOGERR("failed to unshare");
-        success->store(false, std::memory_order_release);
+        *success = false;
         return;
     }
 
@@ -65,7 +64,7 @@ static void nsThread(int newNsFd, int nsType, std::atomic<bool> *success,
     if (setns(newNsFd, nsType) != 0)
     {
         LOGERR("failed to switch into new namespace");
-        success->store(false, std::memory_order_release);
+        *success = false;
         return;
 
     }
@@ -73,7 +72,7 @@ static void nsThread(int newNsFd, int nsType, std::atomic<bool> *success,
     // execute the caller's function
     func();
 
-    success->store(true, std::memory_order_release);
+    *success = true;
     LOGINFO("nsThread End");
 }
 
