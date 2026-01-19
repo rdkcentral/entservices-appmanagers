@@ -896,10 +896,9 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
         Core::hresult result = fetchAppPackageList(packageList);
         if (result == Core::ERROR_NONE) {
             checkIsInstalled(appId, installed, packageList);
-        }
-        if (!installed) {
-            LOGERR("App %s is not installed. Cannot launch.", appId.c_str());
-            status = Core::ERROR_GENERAL;
+            if (!installed) {
+                LOGERR("App %s is not installed. Cannot launch.", appId.c_str());
+                status = Core::ERROR_GENERAL;}
         }
         else if (nullptr != mLifecycleInterfaceConnector)
         {
