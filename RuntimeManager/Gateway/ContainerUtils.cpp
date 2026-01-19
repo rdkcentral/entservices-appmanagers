@@ -9,6 +9,7 @@
 
 #include <cstring>
 #include <thread>
+#include <atomic>
 #include <ext/stdio_filebuf.h>
 
 #include <grp.h>
@@ -208,7 +209,7 @@ bool ContainerUtils::nsEnterImpl(const std::string &containerId, std::string typ
 // -----------------------------------------------------------------------------
 /*!
     Gets the IPv4 address of the container, which is the IP address assign to
-    the veth0 inside the container.
+    the eth0 inside the container.
 
     This uses the nsEnter function to enter the network namespace of the
     container and then uses ioctls on the `eth0` interface to get it's assigned
