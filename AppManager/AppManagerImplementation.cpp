@@ -890,8 +890,10 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
     {
         if (result == Core::ERROR_INVALID_PARAMETER)
             LOGERR("application Id is empty");
-        else
+            status = result;
+        else if (result == Core::ERROR_GENERAL)
             LOGERR("App %s is not installed. Cannot launch.", appId.c_str());
+            status = result;
     }
     else if (nullptr != mLifecycleInterfaceConnector)
     {
