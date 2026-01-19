@@ -369,8 +369,13 @@ namespace WPEFramework
 
             // Release the iterator after use
             if (packageList) {
+                LOGINFO("Releasing packageList iterator, address: %p", static_cast<void*>(packageList));
                 packageList->Release();
                 packageList = nullptr;
+                LOGINFO("packageList released and set to nullptr");
+            }
+            else {
+                LOGWARN("packageList is already nullptr, skipping release");
             }
             // filter to-be-installed apps
             for (auto toBeInstalledApp = preinstallPackages.begin(); toBeInstalledApp != preinstallPackages.end(); /* skip */)
