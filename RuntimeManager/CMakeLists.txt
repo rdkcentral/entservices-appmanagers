@@ -121,7 +121,7 @@ find_library(LIBIP4TC_LIBRARY NAMES ip4tc libip4tc)
 include(FindPackageHandleStandardArgs)
 
 find_package_handle_standard_args(LIBIPTC
-	    DEFAULT_MSG LIBIPTC_LIBRARY LIBIPTC_INCLUDE_DIR)
+    DEFAULT_MSG LIBIPTC_LIBRARY LIBIPTC_INCLUDE_DIR)
 
 mark_as_advanced(LIBIPTC_LIBRARY LIBIPTC_INCLUDE_DIR)
 
