@@ -69,7 +69,7 @@ static bool getEntryComment(const struct ipt_entry *entry, char *buf)
     while (ptr < end)
     {
         const struct xt_entry_match *match = (const struct xt_entry_match*)ptr;
-	if (match->u.match_size == 0 || (ptr + match->u.match_size) > end)
+        if (match->u.match_size == 0 || (ptr + match->u.match_size) > end)
         {
             nfError("invalid match size (%hu) would exceed buffer bounds", match->u.match_size);
             return false;
@@ -212,7 +212,7 @@ static bool getEntryTcpUdpMatchPort(const struct ipt_entry *entry, int *protocol
     while (ptr < end)
     {
         const struct xt_entry_match *match = (const struct xt_entry_match*)ptr;
-	if (match->u.match_size == 0 || (ptr + match->u.match_size) > end)
+        if (match->u.match_size == 0 || (ptr + match->u.match_size) > end)
         {
             nfError("invalid match size (%hu) would exceed buffer bounds", match->u.match_size);
             return false;
