@@ -892,11 +892,14 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
         status = Core::ERROR_INVALID_PARAMETER;
     }
     else if (result != Core::ERROR_NONE || !installed) {
-          //  LOGERR("App %s is not installed. Cannot launch.", appId.c_str());
-          //  status = Core::ERROR_GENERAL;
-    } 
-    else if (nullptr != mLifecycleInterfaceConnector)
-    {
+        LOGERR("App %s is not installed. Cannot launch.", appId.c_str());
+        status = Core::ERROR_GENERAL;
+    }
+    else if (nullptr == mLifecycleInterfaceConnector) {
+        LOGERR("LifecycleInterfaceConnector is null");
+        status = Core::ERROR_GENERAL;
+    }
+    else {
         std::shared_ptr<AppManagerRequest> request = std::make_shared<AppManagerRequest>();
 
         if (request != nullptr)
