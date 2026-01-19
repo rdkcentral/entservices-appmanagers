@@ -145,7 +145,6 @@ static bool nsEnterWithPid(pid_t pid, int nsType,
  */
 static pid_t findContainerPid(const std::string &containerId)
 {
-	
     LOGINFO("Container ID: %s", containerId.c_str());
     const std::string cgroupPath = "/sys/fs/cgroup/memory/" + containerId + "/cgroup.procs";
     int procsFd = open(cgroupPath.c_str(), O_RDONLY | O_CLOEXEC);

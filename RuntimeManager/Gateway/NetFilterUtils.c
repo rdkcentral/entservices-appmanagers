@@ -697,7 +697,7 @@ int openExternalPort(in_port_t port, int protocol, const char *comment)
     struct ipt_entry *inputEntry = createInputFilterRule(port, protocol, comment);
     if (!inputEntry)
     {
-        nfError("failed to create input filter rule'");
+        nfError("failed to create input filter rule");
         iptc_free(table);
         return -1;
     }
@@ -1008,7 +1008,7 @@ int addContainerHolePunch(const char *bridgeIface, int protocol,
                                                     comment);
         if (!natEntry)
         {
-            nfError("failed to create PREROUTING nat rule'");
+            nfError("failed to create PREROUTING nat rule");
             iptc_free(natTable);
             return -1;
         }
