@@ -48,7 +48,7 @@ namespace Plugin
     namespaces and you don't really want to do this in the main thread.
 
  */
-static void nsThread(int newNsFd, int nsType, bool *success,
+static void nsThread(int newNsFd, int nsType, std::atomic<bool> *success,
                      std::function<void()> &func)
 {
     LOGINFO("nsThread started");
@@ -56,7 +56,7 @@ static void nsThread(int newNsFd, int nsType, bool *success,
     if (unshare(nsType) != 0)
     {
         LOGERR("failed to unshare");
-        *success = false;
+        success->store(false, std::memory_order_release);
         return;
     }
 
@@ -64,7 +64,7 @@ static void nsThread(int newNsFd, int nsType, bool *success,
     if (setns(newNsFd, nsType) != 0)
     {
         LOGERR("failed to switch into new namespace");
-        *success = false;
+        success->store(false, std::memory_order_release);
         return;
 
     }
@@ -72,7 +72,7 @@ static void nsThread(int newNsFd, int nsType, bool *success,
     // execute the caller's function
     func();
 
-    *success = true;
+    success->store(true, std::memory_order_release);
     LOGINFO("nsThread End");
 }
 
@@ -219,11 +219,11 @@ bool ContainerUtils::nsEnterImpl(const std::string &containerId, std::string typ
     internally.
 
  */
-uint32_t ContainerUtils::getContainerIpAddress(const std::string &containerId)
+in_addr_t ContainerUtils::getContainerIpAddress(const std::string &containerId)
 {
     LOGINFO("Container ID: %s", containerId.c_str());
 
-    uint32_t ipv4Addr = 0;
+    in_addr_t ipv4Addr = 0;
 
     // lambda to run on a thread in the context of the container network
     // namespace

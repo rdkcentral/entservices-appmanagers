@@ -716,6 +716,7 @@ int openExternalPort(in_port_t port, int protocol, const char *comment)
     if (!outputEntry)
     {
         nfError("failed to create output filter rule");
+        iptc_delete_num_entry(INPUT, 1, table);
         iptc_free(table);
         return -1;
     }
@@ -723,6 +724,7 @@ int openExternalPort(in_port_t port, int protocol, const char *comment)
     {
         nfSysError(errno, "failed to insert rule into table 'filter'");
         free(outputEntry);
+        iptc_delete_num_entry(INPUT, 1, table);
         iptc_free(table);
         return -1;
     }

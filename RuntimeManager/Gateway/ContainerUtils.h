@@ -29,7 +29,7 @@ public:
         UtsNamespace = 0x20
     };
 
-    static uint32_t getContainerIpAddress(const std::string &containerId);
+    static in_addr_t getContainerIpAddress(const std::string &containerId);
 
 private:
     static bool nsEnterImpl(const std::string &containerId, std::string type,
