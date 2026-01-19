@@ -103,9 +103,9 @@ TEST_F(GatewayTest, GetContainerIpAddress_NonExistentContainer)
 {
     const std::string nonExistentContainer = "non-existent-container-12345";
     
-    in_addr_t ipAddr = ContainerUtils::getContainerIpAddress(nonExistentContainer);
+    uint32_t ipAddr = ContainerUtils::getContainerIpAddress(nonExistentContainer);
     
-    EXPECT_EQ(0, ipAddr) << "Should return 0 for non-existent container";
+    EXPECT_EQ(0U, ipAddr) << "Should return 0 for non-existent container";
 }
 
 /* Test Case for ContainerUtils::getContainerIpAddress with Invalid Container ID
@@ -120,9 +120,9 @@ TEST_F(GatewayTest, GetContainerIpAddress_EmptyContainerId)
 {
     const std::string emptyContainer = "";
     
-    in_addr_t ipAddr = ContainerUtils::getContainerIpAddress(emptyContainer);
+    uint32_t ipAddr = ContainerUtils::getContainerIpAddress(emptyContainer);
     
-    EXPECT_EQ(0, ipAddr) << "Should return 0 for empty container ID";
+    EXPECT_EQ(0U, ipAddr) << "Should return 0 for empty container ID";
 }
 
 /* Test Case for NetFilter::removeAllRulesMatchingComment
