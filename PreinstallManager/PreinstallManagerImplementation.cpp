@@ -367,6 +367,9 @@ namespace WPEFramework
                 // multiple apps possible with same packageId but different version
             }
 
+            // Release the iterator after use
+            packageList->Release();
+            packageList = nullptr;
             // filter to-be-installed apps
             for (auto toBeInstalledApp = preinstallPackages.begin(); toBeInstalledApp != preinstallPackages.end(); /* skip */)
             {
