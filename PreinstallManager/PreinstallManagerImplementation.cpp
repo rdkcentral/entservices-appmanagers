@@ -368,8 +368,10 @@ namespace WPEFramework
             }
 
             // Release the iterator after use
-            packageList->Release();
-            packageList = nullptr;
+            if (packageList) {
+                packageList->Release();
+                packageList = nullptr;
+            }
             // filter to-be-installed apps
             for (auto toBeInstalledApp = preinstallPackages.begin(); toBeInstalledApp != preinstallPackages.end(); /* skip */)
             {
