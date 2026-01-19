@@ -1396,7 +1396,7 @@ Core::hresult AppManagerImplementation::IsInstalled(const std::string& appId, bo
     if(appId.empty())
     {
         LOGERR("appId not present or empty");
-        status == Core::RROR_INVALID_PARAMETER;
+        status = Core::ERROR_INVALID_PARAMETER;
     }
     else
     {
