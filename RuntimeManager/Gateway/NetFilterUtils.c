@@ -50,7 +50,7 @@ struct xt_dnat_info
 
     Returns the comment string for the given iptables \a entry.
 
-    If the entry doesn't have a comment then returns a null QByteArray object.
+    If the entry doesn't have a comment then returns false and leaves \a buf unchanged.
 
  */
 static bool getEntryComment(const struct ipt_entry *entry, char *buf)
