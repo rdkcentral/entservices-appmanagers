@@ -888,12 +888,14 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
     mAdminLock.Lock();
     if (!installed)
     {
-        if (result == Core::ERROR_INVALID_PARAMETER)
+        if (result == Core::ERROR_INVALID_PARAMETER) {
             LOGERR("application Id is empty");
             status = result;
-        else if (result == Core::ERROR_GENERAL)
+        }
+        else if (result == Core::ERROR_GENERAL) {
             LOGERR("App %s is not installed. Cannot launch.", appId.c_str());
             status = result;
+        }
     }
     else if (nullptr != mLifecycleInterfaceConnector)
     {
