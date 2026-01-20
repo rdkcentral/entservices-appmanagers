@@ -899,7 +899,7 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
         LOGERR("LifecycleInterfaceConnector is null");
         status = Core::ERROR_GENERAL;
     }*/
-    else {
+    else if (nullptr != mLifecycleInterfaceConnector) {
         std::shared_ptr<AppManagerRequest> request = std::make_shared<AppManagerRequest>();
 
         if (request != nullptr)
