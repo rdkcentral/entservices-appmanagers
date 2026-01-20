@@ -1306,7 +1306,7 @@ TEST_F(AppManagerTest, LaunchAppUsingComRpcFailureIsAppLoadedReturnError)
  */
 TEST_F(AppManagerTest, LaunchAppUsingComRpcFailureLifecycleManagerRemoteObjectIsNull)
 {
-    Core::hresult status;
+    //Core::hresult status;
     uint32_t signalled = AppManager_StateInvalid;
     Core::Sink<NotificationHandler> notification;
     ExpectedAppLifecycleEvent expectedEvent;
@@ -1319,7 +1319,7 @@ TEST_F(AppManagerTest, LaunchAppUsingComRpcFailureLifecycleManagerRemoteObjectIs
             packages = mockIterator;
             return Core::ERROR_GENERAL;
         });
-    status = mAppManagerImpl->IsInstalled(APPMANAGER_WRONG_APP_ID, installed);
+    mAppManagerImpl->IsInstalled(APPMANAGER_WRONG_APP_ID, installed);
     if (installed) {
     expectedEvent.appId = APPMANAGER_APP_ID;
     expectedEvent.appInstanceId = "";
