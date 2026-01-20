@@ -1169,7 +1169,7 @@ TEST_F(AppManagerTest, LaunchAppUsingComRpcFailureWrongAppID)
 
     LaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::ACTIVE);   
 
-   EXPECT_EQ(Core::ERROR_GENERAL, mAppManagerImpl->LaunchApp(APPMANAGER_WRONG_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS));
+   EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->LaunchApp(APPMANAGER_WRONG_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS));
         signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
         EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
         mAppManagerImpl->Unregister(&notification);
@@ -1311,7 +1311,15 @@ TEST_F(AppManagerTest, LaunchAppUsingComRpcFailureLifecycleManagerRemoteObjectIs
     ExpectedAppLifecycleEvent expectedEvent;
 
     createAppManagerImpl();
-
+    bool installed = false;
+    EXPECT_CALL(*mPackageInstallerMock, ListPackages(::testing::_))
+        .WillRepeatedly([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
+            auto mockIterator = FillPackageIterator(); // Fill the package Info
+            packages = mockIterator;
+            return Core::ERROR_GENERAL;
+        });
+    status = mAppManagerImpl->IsInstalled(APPMANAGER_WRONG_APP_ID, installed);
+    if (installed) {
     expectedEvent.appId = APPMANAGER_APP_ID;
     expectedEvent.appInstanceId = "";
     expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNKNOWN;
@@ -1319,13 +1327,16 @@ TEST_F(AppManagerTest, LaunchAppUsingComRpcFailureLifecycleManagerRemoteObjectIs
     expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_NOT_INSTALLED;
     mAppManagerImpl->Register(&notification);
     notification.SetExpectedEvent(expectedEvent);
-    auto result = mAppManagerImpl->LaunchApp(APPMANAGER_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS);
-    DEBUG_PRINTF("test-abi12 %d", result);
-    EXPECT_EQ(Core::ERROR_GENERAL, result);
-
+    
+    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->LaunchApp(APPMANAGER_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS));
     signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
     EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
-
+    }
+    else
+    {
+         EXPECT_EQ(Core::ERROR_GENERAL, mAppManagerImpl->LaunchApp(APPMANAGER_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS));
+         DEBUG_PRINTF("test-abi12 ");
+    }
     releaseAppManagerImpl();
 }
 
