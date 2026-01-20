@@ -373,7 +373,8 @@ namespace WPEFramework
                 packageList->Release();
                 packageList = nullptr;
                 LOGINFO("packageList released and set to nullptr");
-            }
+                LOGINFO("Releasing packageList iterator, address: %p", static_cast<void*>(packageList));
+             }
             else {
                 LOGWARN("packageList is already nullptr, skipping release");
             }
