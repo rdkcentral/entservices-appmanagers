@@ -1158,13 +1158,28 @@ TEST_F(AppManagerTest, LaunchAppUsingComRpcFailureWrongAppID)
     notification.SetExpectedEvent(expectedEvent);
 
     LaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::ACTIVE);
+     bool installed = false;
+    {
+        // By default your FillPackageIterator() returns com.test.app, so WRONG_APP_ID will be 'not installed'.
+        // If you want to simulate 'installed == true', change this mock to include WRONG_APP_ID.
+        EXPECT_CALL(*mPackageInstallerMock, ListPackages(::testing::_))
+            .WillOnce([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
+                auto mockIterator = FillPackageIterator(); // contains APPMANAGER_APP_ID only
+                packages = mockIterator;
+                return Core::ERROR_NONE;
+            });
+
+        EXPECT_EQ(Core::ERROR_NONE,
+                  mAppManagerImpl->IsInstalled(APPMANAGER_WRONG_APP_ID, installed));
+    }
+
     Core::hresult launchResult = mAppManagerImpl->LaunchApp(APPMANAGER_WRONG_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS);
     DEBUG_PRINTF("test-abi %d", launchResult);
     EXPECT_EQ(Core::ERROR_GENERAL, launchResult);
-
-    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
-    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
-
+    if (installed) {
+        signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+        EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+    }
     if(status == Core::ERROR_NONE)
     {
         releaseResources();
