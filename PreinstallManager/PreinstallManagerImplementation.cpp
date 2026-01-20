@@ -372,14 +372,9 @@ namespace WPEFramework
                 // multiple apps possible with same packageId but different version
             }
 
-            if (packageList) {
-                LOGINFO("Releasing packageList iterator and pointing it to Nullptr");
-                packageList->Release();
-                packageList = nullptr;
-            }
-            else {
-                LOGWARN("packageList is already nullptr, skipping release");
-            }
+            packageList->Release();
+            packageList = nullptr;
+
             // filter to-be-installed apps
             for (auto toBeInstalledApp = preinstallPackages.begin(); toBeInstalledApp != preinstallPackages.end(); /* skip */)
             {
