@@ -356,8 +356,10 @@ namespace WPEFramework
                 LOGERR("ListPackage is returning Error or Packages is nullptr");
                 if (packageList != nullptr)
                 {
+                    LOGINFO("Line:359 Before Releasing packageList iterator, address: %p", static_cast<void*>(packageList));
                     packageList->Release();
                     packageList = nullptr;
+                    LOGINFO("Line:361 After Releasing packageList iterator, address: %p", static_cast<void*>(packageList));
                 }
                 return result;
             }
@@ -372,8 +374,10 @@ namespace WPEFramework
                 // multiple apps possible with same packageId but different version
             }
 
+            LOGINFO("Before Releasing packageList iterator, address: %p", static_cast<void*>(packageList));
             packageList->Release();
             packageList = nullptr;
+            LOGINFO("After Releasing packageList iterator, address: %p", static_cast<void*>(packageList));
 
             // filter to-be-installed apps
             for (auto toBeInstalledApp = preinstallPackages.begin(); toBeInstalledApp != preinstallPackages.end(); /* skip */)
