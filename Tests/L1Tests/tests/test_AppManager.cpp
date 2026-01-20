@@ -1148,7 +1148,11 @@ TEST_F(AppManagerTest, LaunchAppUsingComRpcFailureWrongAppID)
 
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
+    bool installed = false;
+    status = mAppManagerImpl->IsInstalled(APPMANAGER_WRONG_APP_ID, installed);
+    EXPECT_EQ(Core::ERROR_NONE, status);
 
+    if (installed) {
     expectedEvent.appId = APPMANAGER_WRONG_APP_ID;
     expectedEvent.appInstanceId = "";
     expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNKNOWN;
@@ -1158,27 +1162,16 @@ TEST_F(AppManagerTest, LaunchAppUsingComRpcFailureWrongAppID)
     notification.SetExpectedEvent(expectedEvent);
 
     LaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::ACTIVE);
-     bool installed = false;
-    {
-        // By default your FillPackageIterator() returns com.test.app, so WRONG_APP_ID will be 'not installed'.
-        // If you want to simulate 'installed == true', change this mock to include WRONG_APP_ID.
-        EXPECT_CALL(*mPackageInstallerMock, ListPackages(::testing::_))
-            .WillOnce([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
-                auto mockIterator = FillPackageIterator(); // contains APPMANAGER_APP_ID only
-                packages = mockIterator;
-                return Core::ERROR_NONE;
-            });
+   
 
-        EXPECT_EQ(Core::ERROR_NONE,
-                  mAppManagerImpl->IsInstalled(APPMANAGER_WRONG_APP_ID, installed));
-    }
-
-    Core::hresult launchResult = mAppManagerImpl->LaunchApp(APPMANAGER_WRONG_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS);
-    DEBUG_PRINTF("test-abi %d", launchResult);
-    EXPECT_EQ(Core::ERROR_GENERAL, launchResult);
-    if (installed) {
+   EXPECT_EQ(Core::ERROR_GENERAL, mAppManagerImpl->LaunchApp(APPMANAGER_WRONG_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS));
         signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
         EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+        mAppManagerImpl->Unregister(&notification);
+    } else {
+        LaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::ACTIVE);
+        EXPECT_EQ(Core::ERROR_GENERAL, mAppManagerImpl->LaunchApp(APPMANAGER_WRONG_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS));
+        // No event expected if not installed
     }
     if(status == Core::ERROR_NONE)
     {
