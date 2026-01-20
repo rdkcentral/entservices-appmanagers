@@ -40,6 +40,8 @@
 
 
 #define TEST_LOG(x, ...) fprintf(stderr, "\033[1;32m[%s:%d](%s)<PID:%d><TID:%d>" x "\n\033[0m", __FILE__, __LINE__, __FUNCTION__, getpid(), gettid(), ##__VA_ARGS__); fflush(stderr);
+#define DEBUG_PRINTF(fmt, ...) \
+    std::printf("[DEBUG] %s:%d: " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__)
 
 #define TIMEOUT   (80000)
 #define APPMANAGER_APP_ID           "com.test.app"
@@ -1156,6 +1158,7 @@ TEST_F(AppManagerTest, LaunchAppUsingComRpcFailureWrongAppID)
     notification.SetExpectedEvent(expectedEvent);
 
     LaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::ACTIVE);
+    DEBUG_PRINTF("test-abi %d", mAppManagerImpl->LaunchApp(APPMANAGER_WRONG_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS));
     EXPECT_EQ(Core::ERROR_GENERAL, mAppManagerImpl->LaunchApp(APPMANAGER_WRONG_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS));
 
     signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
@@ -1305,7 +1308,7 @@ TEST_F(AppManagerTest, LaunchAppUsingComRpcFailureLifecycleManagerRemoteObjectIs
     expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_NOT_INSTALLED;
     mAppManagerImpl->Register(&notification);
     notification.SetExpectedEvent(expectedEvent);
-
+    DEBUG_PRINTF("test-abi12 %d", mAppManagerImpl->LaunchApp(APPMANAGER_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS));
     EXPECT_EQ(Core::ERROR_GENERAL, mAppManagerImpl->LaunchApp(APPMANAGER_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS));
 
     signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
