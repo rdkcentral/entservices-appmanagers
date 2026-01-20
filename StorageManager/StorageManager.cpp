@@ -123,6 +123,11 @@ namespace WPEFramework
 
     void StorageManager::Deinitialize(PluginHost::IShell* service)
     {
+        // Guard against double-deinitialize
+        if (mCurrentService == nullptr)
+        {
+            return;
+        }
         ASSERT(mCurrentService == service);
 
         SYSLOG(Logging::Shutdown, (string(_T("StorageManager::Deinitialize"))));
