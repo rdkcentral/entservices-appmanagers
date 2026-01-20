@@ -370,7 +370,7 @@ namespace WPEFramework
             // Release the iterator after use
             if (packageList) {
                 LOGINFO("Releasing packageList iterator, address: %p", static_cast<void*>(packageList));
-                uint32_t refCount = packageList->Release();
+                packageList->Release();
                 packageList = nullptr;
                 LOGINFO("packageList released and set to nullptr");
                 LOGINFO("Releasing packageList iterator, address: %p", static_cast<void*>(packageList));
