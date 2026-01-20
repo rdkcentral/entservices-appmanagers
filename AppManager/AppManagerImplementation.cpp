@@ -884,7 +884,8 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
 #endif
     LOGINFO(" LaunchApp enter with appId %s", appId.c_str());
     bool installed = false;
-    Core::hresult result = IsInstalled(appId, installed);
+    //Core::hresult result = IsInstalled(appId, installed);
+    IsInstalled(appId, installed);
     mAdminLock.Lock();
     if (appId.empty())
     {
