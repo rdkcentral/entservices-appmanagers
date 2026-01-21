@@ -897,7 +897,7 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
         status = Core::ERROR_GENERAL;
     }
     else if (result != Core::ERROR_NONE ) {
-        LOGERR("fetchAppPackagelist is returing error.", appId.c_str());
+        LOGERR("fetchAppPackagelist is returing error for app %s.", appId.c_str());
         status = Core::ERROR_GENERAL;
     }
     else if (nullptr == mLifecycleInterfaceConnector) {
