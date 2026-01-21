@@ -89,14 +89,21 @@ namespace WPEFramework
                     if(result != Core::ERROR_NONE)
                     {
                         message = _T("mStorageManagerImpl could not be configured");
+                        mConfigure->Release();
+                        mConfigure = nullptr;
                     }
                 }
                 else
                 {
                     message = _T("mStorageManagerImpl implementation did not provide a configuration interface");
                 }
-                // Invoking Plugin API register to wpeframework
-                Exchange::JStorageManager::Register(*this, mStorageManagerImpl);
+                // Only register if configuration succeeded
+                if (message.empty())
+                {
+                    // Invoking Plugin API register to wpeframework
+                    Exchange::JStorageManager::Register(*this, mStorageManagerImpl);
+                    mRegistered = true;
+                }
             }
         }
         else
@@ -115,6 +122,11 @@ namespace WPEFramework
 
     void StorageManager::Deinitialize(PluginHost::IShell* service)
     {
+        // Guard against double-deinitialize
+        if (mCurrentService == nullptr)
+        {
+            return;
+        }
         ASSERT(mCurrentService == service);
 
         SYSLOG(Logging::Shutdown, (string(_T("StorageManager::Deinitialize"))));
@@ -126,7 +138,12 @@ namespace WPEFramework
         }
         if (nullptr != mStorageManagerImpl)
         {
-            Exchange::JStorageManager::Unregister(*this);
+            // Only unregister if we actually registered
+            if (mRegistered)
+            {
+                Exchange::JStorageManager::Unregister(*this);
+                mRegistered = false;
+            }
 
             // Stop processing:
             RPC::IRemoteConnection* connection = service->RemoteConnection(mConnectionId);
