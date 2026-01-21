@@ -1346,7 +1346,7 @@ TEST_F(AppManagerTest, LaunchAppUsingComRpcFailureLifecycleManagerRemoteObjectIs
 #endif
 TEST_F(AppManagerTest, LaunchAppUsingComRpcFailureLifecycleManagerRemoteObjectIsNull)
 {
-    uint32_t signalled = AppManager_StateInvalid;
+    //uint32_t signalled = AppManager_StateInvalid;
     Core::Sink<NotificationHandler> notification;
     ExpectedAppLifecycleEvent expectedEvent;
 
