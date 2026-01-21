@@ -354,7 +354,7 @@ namespace WPEFramework
             Core::hresult listResult = mPackageManagerInstallerObject->ListPackages(packageList);
             if (listResult != Core::ERROR_NONE || packageList == nullptr)
             {
-                LOGERR("ListPackage is returning Error or Packages is nullptr");
+                 LOGERR("ListPackages failed with result %d or package list is null", static_cast<int32_t>(listResult));
                 if (packageList != nullptr)
                 {
                     packageList->Release();
