@@ -704,6 +704,7 @@ bool AppManagerImplementation::removeAppInfoByAppId(const string &appId)
 {
     bool result = false;
 
+    Core::SafeSyncType<Core::CriticalSection> lock(mAdminLock);
     /* Check if appId StorageInfo is found, erase it */
     auto it = mAppInfo.find(appId);
     if (it != mAppInfo.end())

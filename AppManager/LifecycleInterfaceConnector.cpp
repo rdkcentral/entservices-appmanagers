@@ -78,7 +78,10 @@ namespace WPEFramework
             LifecycleInterfaceConnector::_instance = nullptr;
 
 	    //clear action list
-	    mAppCurrentActionList.clear();
+	    {
+	        Core::SafeSyncType<Core::CriticalSection> lock(mAdminLock);
+	        mAppCurrentActionList.clear();
+	    }
         }
 
         Core::hresult LifecycleInterfaceConnector::createLifecycleManagerRemoteObject()
@@ -869,7 +872,8 @@ End:
                 {
                     if(newAppState == Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED)
 		    {
-                        if (mAppCurrentActionList[appId] == Exchange::IAppManager::AppLifecycleState::APP_STATE_TERMINATING)
+                        auto actionIt = mAppCurrentActionList.find(appId);
+                        if (actionIt != mAppCurrentActionList.end() && actionIt->second == Exchange::IAppManager::AppLifecycleState::APP_STATE_TERMINATING)
 			{
 			    //Normal close: Unlode event from App manager
 			    LOGINFO("Terminate event from plugin");
@@ -881,7 +885,10 @@ End:
 			    LOGINFO("Terminate event due to app crash");
 			    appManagerImplInstance->handleOnAppLifecycleStateChanged(appId, appInstanceId, newAppState, oldAppState, Exchange::IAppManager::AppErrorReason::APP_ERROR_ABORT);
 			}
-			mAppCurrentActionList.erase(appId);
+			if (actionIt != mAppCurrentActionList.end())
+			{
+			    mAppCurrentActionList.erase(actionIt);
+			}
 		    }
 		    else
 		    {
@@ -985,6 +992,7 @@ End:
             if (!appManagerImpl)
                 return;
 
+            Core::SafeSyncType<Core::CriticalSection> lock(mAdminLock);
             auto it = appManagerImpl->mAppInfo.find(appId);
             if (it != appManagerImpl->mAppInfo.end())
             {
