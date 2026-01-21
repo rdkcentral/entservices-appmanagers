@@ -53,6 +53,7 @@ namespace Plugin {
             uint32_t mConnectionId{};
             Exchange::IStorageManager* mStorageManagerImpl{};
             Exchange::IConfiguration* mConfigure{};
+            bool mRegistered{false};
 
         public /* constants */:
             static const string SERVICE_NAME;
