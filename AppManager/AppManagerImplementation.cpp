@@ -884,16 +884,20 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
 #endif
     LOGINFO(" LaunchApp enter with appId %s", appId.c_str());
     bool installed = false;
-    //Core::hresult result = IsInstalled(appId, installed);
-    IsInstalled(appId, installed);
+    Core::hresult result = IsInstalled(appId, installed);
+    //IsInstalled(appId, installed);
     mAdminLock.Lock();
     if (appId.empty())
     {
         LOGERR("application Id is empty");
         status = Core::ERROR_INVALID_PARAMETER;
     }
-    else if ( !installed) {
+    else if (result == Core::ERROR_NONE && !installed) {
         LOGERR("App %s is not installed. Cannot launch.", appId.c_str());
+        status = Core::ERROR_GENERAL;
+    }
+    else if (result != Core::ERROR_NONE ) {
+        LOGERR("fetchAppPackagelist is returing error.", appId.c_str());
         status = Core::ERROR_GENERAL;
     }
     else if (nullptr == mLifecycleInterfaceConnector) {
