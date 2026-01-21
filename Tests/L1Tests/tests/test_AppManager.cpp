@@ -1304,46 +1304,6 @@ TEST_F(AppManagerTest, LaunchAppUsingComRpcFailureIsAppLoadedReturnError)
  * Verifying the return of the API
  * Releasing the AppManager Interface object only
  */
-#if 0
-TEST_F(AppManagerTest, LaunchAppUsingComRpcFailureLifecycleManagerRemoteObjectIsNull)
-{
-    //Core::hresult status;
-    uint32_t signalled = AppManager_StateInvalid;
-    Core::Sink<NotificationHandler> notification;
-    ExpectedAppLifecycleEvent expectedEvent;
-
-    createAppManagerImpl();
-    bool installed = false;
-   /* EXPECT_CALL(*mPackageInstallerMock, ListPackages(::testing::_))
-        .WillRepeatedly([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
-            auto mockIterator = FillPackageIterator(); // Fill the package Info
-            packages = mockIterator;
-            return Core::ERROR_GENERAL;
-        });*/
-    mAppManagerImpl->IsInstalled(APPMANAGER_APP_ID, installed);
-    if (installed) {
-    expectedEvent.appId = APPMANAGER_APP_ID;
-    expectedEvent.appInstanceId = "";
-    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNKNOWN;
-    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED;
-    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_NOT_INSTALLED;
-    mAppManagerImpl->Register(&notification);
-    notification.SetExpectedEvent(expectedEvent);
-    
-    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->LaunchApp(APPMANAGER_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS));
-    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
-    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
-    mAppManagerImpl->Unregister(&notification);
-        DEBUG_PRINTF("test-abi12 installed case");
-    }
-    else
-    {
-         EXPECT_EQ(Core::ERROR_GENERAL, mAppManagerImpl->LaunchApp(APPMANAGER_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS));
-         DEBUG_PRINTF("test-abi12 ");
-    }
-    releaseAppManagerImpl();
-}
-#endif
 TEST_F(AppManagerTest, LaunchAppUsingComRpcFailureLifecycleManagerRemoteObjectIsNull)
 {
     //uint32_t signalled = AppManager_StateInvalid;
