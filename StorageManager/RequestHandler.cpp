@@ -348,6 +348,7 @@ namespace WPEFramework
             }
             else
             {
+                std::unique_lock<std::mutex> lock(mLock);
                 /* Check if the appId exists */
                 auto it = mStorageAppInfo.find(appId);
                 if (it != mStorageAppInfo.end())
@@ -387,6 +388,7 @@ namespace WPEFramework
         {
             bool result = false;
 
+            std::unique_lock<std::mutex> lock(mLock);
             /* Check if the appId exists */
             auto it = mStorageAppInfo.find(appId);
             if (it != mStorageAppInfo.end())
@@ -435,6 +437,7 @@ namespace WPEFramework
         {
             bool result = false;
 
+            std::unique_lock<std::mutex> lock(mLock);
             /* Check if appId StorageInfo is found, erase it */
             auto it = mStorageAppInfo.find(appId);
             if (it != mStorageAppInfo.end())
@@ -485,6 +488,7 @@ namespace WPEFramework
                     /* Calculate the current available storage in KB */
                     curStorageFreeSpaceKB = (static_cast<uint64_t>(statFs.f_bfree) * statFs.f_frsize) / 1024;
 
+                    std::unique_lock<std::mutex> lock(mLock);
                     /* Compute total reserved space for existing applications */
                     for (auto& entry : mStorageAppInfo)
                     {
@@ -802,6 +806,7 @@ namespace WPEFramework
             }
             else
             {
+                std::unique_lock<std::mutex> lock(mLock);
                 auto it = mStorageAppInfo.find(appId);
                 if(it != mStorageAppInfo.end())
                 {
@@ -837,6 +842,7 @@ namespace WPEFramework
 
             LOGINFO("lockAppStorageInfo");
 
+            std::unique_lock<std::mutex> lock(mLock);
             auto it = mStorageAppInfo.find(appId);
             if (it == mStorageAppInfo.end())
             {
@@ -945,3 +951,5 @@ namespace WPEFramework
         }
     }
 }
+
+
