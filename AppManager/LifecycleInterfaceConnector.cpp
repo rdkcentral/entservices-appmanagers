@@ -370,10 +370,11 @@ namespace WPEFramework
 
             if(nullptr != appManagerImplInstance)
             {
-                for(auto appIterator = appManagerImplInstance->mAppInfo.begin(); appIterator != appManagerImplInstance->mAppInfo.end(); ++appIterator)
+                // Use find instead of iteration to avoid iterator invalidation issues
+                auto appIterator = appManagerImplInstance->mAppInfo.find(appId);
+                if(appIterator != appManagerImplInstance->mAppInfo.end())
                 {
-                    if(appIterator->first.compare(appId) == 0)
-                    {
+                        LOGINFO("AppID is found :  %s", appId.c_str());
                         appInstanceId = appIterator->second.appInstanceId;
                         appIntent = appIterator->second.appIntent;
                         isAppLoaded = true;
@@ -382,7 +383,7 @@ namespace WPEFramework
                         {
                             appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_CLOSE);
 
-			    mAppCurrentActionList[appId] = Exchange::IAppManager::AppLifecycleState::APP_STATE_TERMINATING;
+			        mAppCurrentActionList[appId] = Exchange::IAppManager::AppLifecycleState::APP_STATE_TERMINATING;
 
                             status = mLifecycleManagerRemoteObject->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::LifecycleState::PAUSED, appIntent);
 
@@ -477,11 +478,9 @@ namespace WPEFramework
                             appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_CLOSE, AppManagerImplementation::ERROR_INTERNAL);
 #endif
                         }
-
-                        break;
-                    }
                 }
 
+                LOGINFO("isAppLoaded: %d", isAppLoaded);
                 if (!isAppLoaded)
                 {
                     LOGERR("AppId %s not found in database", appId.c_str());
@@ -520,14 +519,16 @@ namespace WPEFramework
             mAdminLock.Lock();
             if (nullptr != appManagerImplInstance)
             {
-                for ( std::map<std::string, AppManagerImplementation::AppInfo>::iterator appIterator = appManagerImplInstance->mAppInfo.begin(); appIterator != appManagerImplInstance->mAppInfo.end(); appIterator++)
+                // Use find instead of iteration to avoid iterator invalidation issues
+                auto appIterator = appManagerImplInstance->mAppInfo.find(appId);
+                if (appIterator != appManagerImplInstance->mAppInfo.end())
                 {
-                    if (appIterator->first.compare(appId) == 0)
-                    {
+                        LOGINFO("AppID is found :  %s", appId.c_str());
                         foundAppId = true;
                         appInstanceId = appIterator->second.appInstanceId;
                         if (nullptr != mLifecycleManagerRemoteObject)
                         {
+                            LOGINFO("mLifecycleManagerRemoteObject is valid");
                             appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_TERMINATE);
 			    mAppCurrentActionList[appId] = Exchange::IAppManager::AppLifecycleState::APP_STATE_TERMINATING;
                             status = mLifecycleManagerRemoteObject->UnloadApp(appInstanceId, errorReason, success);
@@ -539,9 +540,8 @@ namespace WPEFramework
 #endif
                             }
                         }
-                        break;
-                    }
                 }
+                LOGINFO("AppID boolean value is found :  %d", foundAppId);
                 if (!foundAppId)
                 {
                     LOGERR("AppId %s not found in database", appId.c_str());
@@ -819,11 +819,11 @@ End:
             if(nullptr != appManagerImplInstance)
             {
                 Core::SafeSyncType<Core::CriticalSection> lock(mAdminLock);
-                std::map<std::string, AppManagerImplementation::AppInfo>::iterator it;
-                for (it = appManagerImplInstance->mAppInfo.begin(); it != appManagerImplInstance->mAppInfo.end(); ++it)
+                // Use find instead of iteration to avoid iterator invalidation issues
+                auto it = appManagerImplInstance->mAppInfo.find(appId);
+                if (it != appManagerImplInstance->mAppInfo.end() && it->second.appInstanceId.compare(appInstanceId) == 0)
                 {
-                    if((it->first.compare(appId) == 0) && (it->second.appInstanceId.compare(appInstanceId) == 0))
-                    {
+                        LOGINFO("Found App in the database: %s",appId.c_str());
                         it->second.appOldState = oldAppState;
                         it->second.appNewState = newAppState;
                         it->second.appLifecycleState = newState;
@@ -856,8 +856,6 @@ End:
                                 mStateChangedCV.notify_all();
                             }
                         }
-                        break;
-                    }
                 }
                 shouldNotify = ((newAppState == Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING) ||
                                        (newAppState == Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE) ||
@@ -875,6 +873,7 @@ End:
                         auto actionIt = mAppCurrentActionList.find(appId);
                         if (actionIt != mAppCurrentActionList.end() && actionIt->second == Exchange::IAppManager::AppLifecycleState::APP_STATE_TERMINATING)
 			{
+                LOGINFO("App is terminating: %s", appId.c_str());
 			    //Normal close: Unlode event from App manager
 			    LOGINFO("Terminate event from plugin");
 			    appManagerImplInstance->handleOnAppLifecycleStateChanged(appId, appInstanceId, newAppState, oldAppState, Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE);

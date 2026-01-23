@@ -232,6 +232,7 @@ void AppManagerImplementation::dispatchEvent(EventNames event, const JsonObject 
 
 void AppManagerImplementation::Dispatch(EventNames event, const JsonObject params)
 {
+    LOGINFO("AppManagerImplementation::Dispatch method begining");
     string appId = "";
     string appInstanceId = "";
     AppLifecycleState newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNKNOWN;
@@ -245,6 +246,7 @@ void AppManagerImplementation::Dispatch(EventNames event, const JsonObject param
     {
         case APP_EVENT_LIFECYCLE_STATE_CHANGED:
         {
+            LOGINFO("APP_EVENT_LIFECYCLE_STATE_CHANGED state");
             if (!(params.HasLabel("appId") && !(appId = params["appId"].String()).empty()))
             {
                 LOGERR("appId not present or empty");
@@ -279,6 +281,7 @@ void AppManagerImplementation::Dispatch(EventNames event, const JsonObject param
         case APP_EVENT_INSTALLATION_STATUS:
         {
             /* Check if 'packageId' exists and is not empty */
+            LOGINFO("APP_EVENT_INSTALLATION_STATUS state");
             appId = params.HasLabel("packageId") ? params["packageId"].String() : "";
             if (appId.empty())
             {
@@ -316,6 +319,7 @@ void AppManagerImplementation::Dispatch(EventNames event, const JsonObject param
         }
         case APP_EVENT_LAUNCH_REQUEST:
         {
+            LOGINFO("APP_EVENT_LAUNCH_REQUEST state"); 
             appId = params.HasLabel("appId") ? params["appId"].String() : "";
             if (appId.empty())
             {
@@ -344,6 +348,7 @@ void AppManagerImplementation::Dispatch(EventNames event, const JsonObject param
         }
         case APP_EVENT_UNLOADED:
         {
+            LOGINFO("APP_EVENT_UNLOADED state");
             appId = params.HasLabel("appId") ? params["appId"].String() : "";
             if (appId.empty())
             {
