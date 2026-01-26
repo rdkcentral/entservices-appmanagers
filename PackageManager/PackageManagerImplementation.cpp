@@ -567,7 +567,7 @@ namespace Plugin {
                 if (nullptr != mStorageManagerObject) {
                     if(mStorageManagerObject->DeleteStorage(packageId, errorReason) == Core::ERROR_NONE) {
                         LOGINFO("DeleteStorage done");
-                        #if defined(USE_LIBPACKAGE) || defined(UNIT_TEST) || defined(ENABLE_NATIVEBUILD)
+                        #if defined(USE_LIBPACKAGE) || defined(UNIT_TEST)
                         // XXX: what if DeleteStorage() fails, who Uninstall the package
                         packagemanager::Result pmResult = packageImpl->Uninstall(packageId);
                         if (pmResult == packagemanager::SUCCESS) {
@@ -739,7 +739,7 @@ namespace Plugin {
         if (it != mState.end()) {
             auto &state = it->second;
             #if defined(USE_LIBPACKAGE) || defined(UNIT_TEST)
- 	    string gatewayMetadataPath;
+            string gatewayMetadataPath;
             bool locked = (state.mLockCount > 0);
             LOGDBG("id: %s ver: %s locked: %d", packageId.c_str(), version.c_str(), locked);
             if (locked)  {
@@ -822,7 +822,9 @@ namespace Plugin {
         runtimeConfig.gpuMemoryLimit = config.gpuMemoryLimit;
 
         JsonArray vars = JsonArray();
-        for (auto str: config.envVars) {
+        // Issue ID 2: Range-based for loop copies each string instead of referencing
+        // Fix: Use const auto& to avoid copying strings in the loop
+        for (const auto& str: config.envVars) {
             vars.Add(str);
         }
         vars.ToString(runtimeConfig.envVariables);
@@ -843,6 +845,12 @@ namespace Plugin {
         runtimeConfig.appPath = config.appPath;
         runtimeConfig.command = config.command;
         runtimeConfig.runtimePath = config.runtimePath;
+        
+        // Coverity fix 1074: Initialize remaining RuntimeConfig fields
+        runtimeConfig.enableDebugger = false;
+        runtimeConfig.logFileMaxSize = 0;
+        runtimeConfig.mapi = false;
+        runtimeConfig.resourceManagerClientEnabled = false;
     }
 
     Core::hresult PackageManagerImplementation::Unlock(const string &packageId, const string &version)
@@ -874,7 +882,9 @@ namespace Plugin {
                         LOGDBG("blockedVer: '%s' state: %d", blockedVer.c_str(), (unsigned) stateBlocked.installState);
                         stateBlocked.unpackedPath = "";
                         if (stateBlocked.installState == InstallState::INSTALLATION_BLOCKED) {
-                            auto blockedData = stateBlocked.blockedInstallData;
+                            // Issue ID 3: Copying BlockedInstallData structure unnecessarily
+                            // Fix: Use const auto& to reference the data without copying
+                            const auto& blockedData = stateBlocked.blockedInstallData;
                             if (Install(packageId, blockedData.version, blockedData.keyValues, blockedData.fileLocator, stateBlocked) == Core::ERROR_NONE) {
                                 LOGDBG("Blocked package installed. id: %s ver: %s", packageId.c_str(), blockedVer.c_str());
                                 state.installState = InstallState::UNINSTALLED;
@@ -947,8 +957,8 @@ namespace Plugin {
             return Core::ERROR_INVALID_SIGNATURE;
         }
 
-        #if defined(USE_LIBPACKAGE) || defined(UNIT_TEST) || defined(ENABLE_NATIVEBUILD)
-	packagemanager::ConfigMetaData metadata;
+        #if defined(USE_LIBPACKAGE) || defined(UNIT_TEST)
+        packagemanager::ConfigMetaData metadata;
         packagemanager::Result pmResult = packageImpl->GetFileMetadata(fileLocator, id, version, metadata);
         if (pmResult == packagemanager::SUCCESS)
         {
@@ -963,21 +973,21 @@ namespace Plugin {
     void PackageManagerImplementation::InitializeState()
     {
         LOGDBG("entry");
-        #if !defined(UNIT_TEST) && !defined(ENABLE_NATIVEBUILD)
-	PluginHost::ISubSystem* subSystem = mCurrentservice->SubSystems();
+        #ifndef UNIT_TEST
+        PluginHost::ISubSystem* subSystem = mCurrentservice->SubSystems();
         if (subSystem != nullptr) {
             subSystem->Set(PluginHost::ISubSystem::NOT_INSTALLATION, nullptr);
         }
-	#endif
-
-        #if defined (USE_LIBPACKAGE) || defined(UNIT_TEST) || defined(ENABLE_NATIVEBUILD)
-
-	#if defined (USE_LIBPACKAGE)
-	packageImpl = packagemanager::IPackageImpl::instance();
-	#elif defined(UNIT_TEST) || defined(ENABLE_NATIVEBUILD)
-        packageImpl = packagemanager::IPackageImplDummy::instance();
         #endif
 
+        #if defined (USE_LIBPACKAGE) || defined(UNIT_TEST)
+
+        #if defined (USE_LIBPACKAGE)
+        packageImpl = packagemanager::IPackageImpl::instance();
+        #elif defined(UNIT_TEST)
+        packageImpl = packagemanager::IPackageImplDummy::instance();
+        #endif
+        
         packagemanager::ConfigMetadataArray aConfigMetadata;
         packagemanager::Result pmResult = packageImpl->Initialize(configStr, aConfigMetadata);
         LOGDBG("aConfigMetadata.count:%zu pmResult=%d", aConfigMetadata.size(), pmResult);
@@ -989,13 +999,12 @@ namespace Plugin {
             mState.insert( { key, state } );
         }
         #endif
-
-        #if !defined(UNIT_TEST) && !defined(ENABLE_NATIVEBUILD)
+    
+        #ifndef UNIT_TEST
         if (subSystem != nullptr) {
             subSystem->Set(PluginHost::ISubSystem::INSTALLATION, nullptr);
         }
-	#endif
-
+        #endif
         cacheInitialized = true;
          const std::string markerFile = PACKAGE_MANAGER_MARKER_FILE;
             std::ofstream file(markerFile);
@@ -1080,7 +1089,7 @@ namespace Plugin {
             string errorReason = "";
             if(mStorageManagerObject->CreateStorage(packageId, STORAGE_MAX_SIZE, path, errorReason) == Core::ERROR_NONE) {
                 LOGINFO("CreateStorage path [%s]", path.c_str());
-                #if defined(USE_LIBPACKAGE) || defined(UNIT_TEST) || defined(ENABLE_NATIVEBUILD)
+                #if defined(USE_LIBPACKAGE) || defined(UNIT_TEST)
                 packagemanager::ConfigMetaData config;
                 packagemanager::Result pmResult = packageImpl->Install(packageId, version, keyValues, fileLocator, config);
                 if (pmResult == packagemanager::SUCCESS) {
@@ -1088,16 +1097,8 @@ namespace Plugin {
                     state.installState = InstallState::INSTALLED;
                 } else {
                     state.installState = InstallState::INSTALL_FAILURE;
-		    switch (pmResult) {
-    			case packagemanager::Result::VERSION_MISMATCH:
-			        state.failReason = FailReason::PACKAGE_MISMATCH_FAILURE;
-			        break;
-			case packagemanager::Result::PERSISTENCE_FAILURE:
-        			state.failReason = FailReason::PERSISTENCE_FAILURE;
-        			break;
-    			default:
-        			state.failReason = FailReason::SIGNATURE_VERIFICATION_FAILURE;
-    		    }
+                    state.failReason = (pmResult == packagemanager::Result::VERSION_MISMATCH) ?
+                        FailReason::PACKAGE_MISMATCH_FAILURE : FailReason::SIGNATURE_VERIFICATION_FAILURE;
                     LOGERR("Install failed reason %s", getFailReason(state.failReason).c_str());
                 }
                 LOGDBG("Package: %s Version: %s result=%d", packageId.c_str(), version.c_str(), result);
