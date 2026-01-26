@@ -738,10 +738,10 @@ namespace Plugin {
         auto it = mState.find( { packageId, version } );
         if (it != mState.end()) {
             auto &state = it->second;
-        //#if defined(USE_LIBPACKAGE) || defined(UNIT_TEST)
- 	    string gatewayMetadataPath;
+            //#if defined(USE_LIBPACKAGE) || defined(UNIT_TEST)
+ 	        string gatewayMetadataPath;
             bool locked = (state.mLockCount > 0);
-            LOGDBG("id: %s ver: %s locked: %d", packageId.c_str(), version.c_str(), locked);
+            LOGDBG("id: %s ver: %s locked: %d runtimeType: '%s'", packageId.c_str(), version.c_str(), locked, state.runtimeType.c_str());
             if (locked)  {
                 lockId = ++state.mLockCount;
             } else {
@@ -750,23 +750,29 @@ namespace Plugin {
                 packagemanager::Result pmResult = packageImpl->Lock(packageId, version, state.unpackedPath, config, locks);
                 LOGDBG("unpackedPath=%s", unpackedPath.c_str());
                 // save the new config in state
-                getRuntimeConfig(config, state.runtimeConfig);   // XXX: config is unnecessary in Lock ?!
+                getRuntimeConfig(config, state.runtimeConfig);   // XXX: Is config unnecessary in Lock ?!
                 if (pmResult == packagemanager::SUCCESS) {
                     lockId = ++state.mLockCount;
 
                     state.additionalLocks.clear();
+                    #if 1
+                        // when using libpackage-RALF
+                        LockRuntime(state, state.runtimeConfig.runtimePath);
+                    #else
                     for (packagemanager::NameValue nv : locks) {
                         Exchange::IPackageHandler::AdditionalLock lock;
                         lock.packageId = nv.first;
                         lock.version = nv.second;
                         state.additionalLocks.emplace_back(lock);
                     }
+                    #endif
                     LOGDBG("Locked. id: %s ver: %s additionalLocks=%zu", packageId.c_str(), version.c_str(), state.additionalLocks.size());
                 } else {
                     LOGERR("Lock Failed id: %s ver: %s", packageId.c_str(), version.c_str());
                     result = Core::ERROR_GENERAL;
                 }
             }
+            LOGDBG("%s:%s runtimePath: %s", packageId.c_str(), version.c_str(), state.runtimeConfig.runtimePath.c_str());
 
             if (result == Core::ERROR_NONE) {
                 getRuntimeConfig(state.runtimeConfig, runtimeConfig);
@@ -784,6 +790,8 @@ namespace Plugin {
             //#endif
 
             LOGDBG("id: %s ver: %s lock count:%d", packageId.c_str(), version.c_str(), state.mLockCount);
+            LOGDBG("%s:%s runtimePath: %s", packageId.c_str(), version.c_str(), state.runtimeConfig.runtimePath.c_str());
+
         } else {
             LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
             result = Core::ERROR_BAD_REQUEST;
@@ -791,6 +799,41 @@ namespace Plugin {
 
         return result;
     }
+
+
+    Core::hresult PackageManagerImplementation::LockRuntime(State &state, string &runtimePath)
+    {
+        Core::hresult result = Core::ERROR_NONE;
+        const string &packageId = state.runtimeApp.first;
+        const string &version = state.runtimeApp.second;
+        if (!state.runtimeApp.first.empty() && !state.runtimeApp.second.empty()) {
+            LOGDBG("Locking runtine %s:%s", state.runtimeApp.first.c_str(), state.runtimeApp.second.c_str() );
+            packagemanager::ConfigMetaData config;
+            packagemanager::NameValues locks;
+            packagemanager::Result pmResult = packageImpl->Lock(packageId, version, runtimePath, config, locks);
+
+            if (pmResult == packagemanager::Result::SUCCESS) {
+                runtimePath = config.appPath;   // XXX: ugly must fix
+                state.runtimeConfig.command = config.command;
+                LOGDBG("Locked runtime %s:%s path: %s command: %s", packageId.c_str(), version.c_str(), runtimePath.c_str(), config.command.c_str() );
+            } else {
+                LOGERR("Failed to lock runtime %s:%s", packageId.c_str(), version.c_str());
+            }
+
+            // XXX: refactor and call Lock() recursively
+            //result = Lock(packageId, version);
+
+            Exchange::IPackageHandler::AdditionalLock lock;
+            lock.packageId = packageId;
+            lock.version  = version;
+            state.additionalLocks.emplace_back(lock);
+        } else {
+            LOGWARN("No Runtime for %s:%s runtimeType: '%s'", packageId.c_str(), version.c_str(), state.runtimeType.c_str());
+        }
+        return result;
+    }
+
+
 
     // XXX: right way to do this is via copy ctor, when we move to Thunder 5.2 and have common struct RuntimeConfig
     void PackageManagerImplementation::getRuntimeConfig(const Exchange::RuntimeConfig &config, Exchange::RuntimeConfig &runtimeConfig)
@@ -813,6 +856,7 @@ namespace Plugin {
         runtimeConfig.runtimePath = config.runtimePath;
     }
 
+    // copy values from libpackage
     void PackageManagerImplementation::getRuntimeConfig(const packagemanager::ConfigMetaData &config, Exchange::RuntimeConfig &runtimeConfig)
     {
         runtimeConfig.dial = config.dial;
@@ -827,8 +871,8 @@ namespace Plugin {
         }
         vars.ToString(runtimeConfig.envVariables);
 
-        runtimeConfig.userId = config.userId;
-        runtimeConfig.groupId = config.groupId;
+        runtimeConfig.userId = config.userId ? config.userId : userId;  // XXX: should we increment
+        runtimeConfig.groupId = config.groupId ? config.groupId : groupId;
         runtimeConfig.dataImageSize = config.dataImageSize;
 
         JsonArray list = JsonArray();
@@ -989,10 +1033,22 @@ namespace Plugin {
         packagemanager::Result pmResult = packageImpl->Initialize(configStr, aConfigMetadata);
         LOGDBG("aConfigMetadata.count:%zu pmResult=%d", aConfigMetadata.size(), pmResult);
         std::lock_guard<std::recursive_mutex> lock(mtxState);
+        findRuntime(aConfigMetadata);
         for (auto it = aConfigMetadata.begin(); it != aConfigMetadata.end(); ++it ) {
             StateKey key = it->first;
-            State state(it->second);
+            auto config = it->second;
+            //State state(it->second);
+            State state;
+            getRuntimeConfig(config, state.runtimeConfig);
             state.installState = InstallState::INSTALLED;
+            state.runtimeType = config.runtimeType;
+            std::map<std::string, std::pair<std::string, std::string>>::iterator it2 = runtimeMap.find(state.runtimeType);
+            if (it2 != runtimeMap.end()) {
+                state.runtimeApp = it2->second;
+                //LOGDBG("packageId: %s runtimeApp: %s", key.first.c_str(), state.runtimeApp.c_str());
+            } else {
+                LOGDBG("Runtime not found for %s type: %s", key.first.c_str(), state.runtimeType.c_str());
+            }
             mState.insert( { key, state } );
         }
         //#endif
@@ -1014,6 +1070,27 @@ namespace Plugin {
                LOGERR("Failed to create marker file: %s", markerFile.c_str());
             }
         LOGDBG("exit");
+    }
+
+    void PackageManagerImplementation::findRuntime(packagemanager::ConfigMetadataArray& aConfigMetadata)
+    {
+        LOGDBG("entry");
+        for (auto it = aConfigMetadata.begin(); it != aConfigMetadata.end(); ++it ) {
+            packagemanager::ConfigMetadataKey key = it->first;
+            packagemanager::ConfigMetaData config = it->second;
+            if (config.mimeType.find("runtime") == 0) {
+                    std::string type;
+                    auto pos = config.mimeType.find("/");
+                    if (pos != std::string::npos) {
+                        type = config.mimeType.substr(pos+1);
+                    }
+                    LOGDBG("Runtime: '%s' %s", type.c_str(), key.first.c_str() );
+
+                    runtimeMap.insert({type, key});
+            }
+        }
+        LOGDBG("Runtime size: '%zu", runtimeMap.size());
+
     }
 
     void PackageManagerImplementation::downloader(int n)
@@ -1102,8 +1179,11 @@ namespace Plugin {
                         case packagemanager::Result::PERSISTENCE_FAILURE:
                             state.failReason = FailReason::PERSISTENCE_FAILURE;
                             break;
-                        default:
+                        case packagemanager::Result::VERIFICATION_FAILURE:
                             state.failReason = FailReason::SIGNATURE_VERIFICATION_FAILURE;
+                            break;
+                        //default:
+                        //    state.failReason = FailReason::GENERAL_FAILURE;
                     }
                     LOGERR("Install failed reason %s", getFailReason(state.failReason).c_str());
                 }

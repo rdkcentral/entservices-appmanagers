@@ -77,9 +77,9 @@ namespace Plugin {
 
             public:
             State() {}
-            State(const packagemanager::ConfigMetaData &config) {
-                PackageManagerImplementation::getRuntimeConfig(config, runtimeConfig);
-            }
+            //State(const packagemanager::ConfigMetaData &config) {
+            //    PackageManagerImplementation::getRuntimeConfig(config, runtimeConfig);
+            //}
             InstallState installState = InstallState::UNINSTALLED;
             bool preInsalled = false;
             uint32_t mLockCount = 0;
@@ -89,7 +89,8 @@ namespace Plugin {
             FailReason failReason = Exchange::IPackageInstaller::FailReason::NONE;
             std::list<Exchange::IPackageHandler::AdditionalLock> additionalLocks;
             BlockedInstallData  blockedInstallData;
-
+            string runtimeType;                             // blank for runtime package
+            std::pair<std::string, std::string> runtimeApp; // runtime package id & version
         };
 
         typedef std::pair<std::string, std::string> StateKey;
@@ -202,8 +203,11 @@ namespace Plugin {
         Core::hresult GetLockedInfo(const string &packageId, const string &version, string &unpackedPath, Exchange::RuntimeConfig& configMetadata,
             string& gatewayMetadataPath, bool &locked) override;
 
-        static void getRuntimeConfig(const packagemanager::ConfigMetaData &config, Exchange::RuntimeConfig &runtimeConfig);
-        static void getRuntimeConfig(const Exchange::RuntimeConfig &config, Exchange::RuntimeConfig &runtimeConfig);
+        // internal methods
+        void getRuntimeConfig(const packagemanager::ConfigMetaData &config, Exchange::RuntimeConfig &runtimeConfig);
+        void getRuntimeConfig(const Exchange::RuntimeConfig &config, Exchange::RuntimeConfig &runtimeConfig);
+        Core::hresult LockRuntime(State &state, string &unpackedPath);
+
 
         BEGIN_INTERFACE_MAP(PackageManagerImplementation)
             INTERFACE_ENTRY(Exchange::IPackageDownloader)
@@ -279,6 +283,7 @@ namespace Plugin {
         }
     Core::hresult createStorageManagerObject();
     void releaseStorageManagerObject();
+    void findRuntime(packagemanager::ConfigMetadataArray& aConfigMetadata);
 
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
     void recordAndPublishTelemetryData(const std::string& marker, const std::string& appId, time_t requestTime, PackageManagerImplementation::PackageFailureErrorCode errorCode);
@@ -306,6 +311,8 @@ namespace Plugin {
 
         std::string downloadDir = "/opt/CDL/";
         string configStr;
+        uint32_t userId = 30000;
+        uint32_t groupId = 30000;
 
         #if defined(UNIT_TEST) || defined(ENABLE_NATIVEBUILD)
         std::shared_ptr<packagemanager::IPackageImplDummy> packageImpl;
@@ -314,6 +321,7 @@ namespace Plugin {
 	    #endif
         PluginHost::IShell* mCurrentservice;
         Exchange::IStorageManager* mStorageManagerObject;
+        std::map<std::string, std::pair<std::string, std::string>> runtimeMap;
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
         Exchange::ITelemetryMetrics* mTelemetryMetricsObject;
 #endif /* ENABLE_AIMANAGERS_TELEMETRY_METRICS */
