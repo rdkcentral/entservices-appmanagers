@@ -71,6 +71,7 @@ namespace WPEFramework
                 static RequestHandler* mInstance;
                 mutable std::mutex mStorageManagerImplLock;
                 mutable std::mutex mLock;
+                mutable std::mutex mStorageRemoveLock;
                 static std::mutex mStorageSizeLock;
                 Exchange::IStore2* mPersistentStoreRemoteStoreObject;
                 std::map<std::string, StorageAppInfo> mStorageAppInfo;  /* Map storing app storage info for each appId */
@@ -78,4 +79,5 @@ namespace WPEFramework
         };
     } /* namespace Plugin */
 } /* namespace WPEFramework */
+
 
