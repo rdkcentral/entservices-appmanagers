@@ -519,8 +519,9 @@ namespace WPEFramework
                                 /* Update usedKB for apps that existed during first lock with fresh directory size */
                                 entry.second.usedKB = usedIt->second;
                             }
-                            /* Apps added between locks will use their existing usedKB value (0 for new apps,
-                             * or previous value for existing apps). This is safe for reservation calculation. */
+                            /* Apps added between locks will use their existing usedKB value (which will be 0 for
+                             * newly created apps, or the previous calculated value for apps that already existed).
+                             * This is safe for reservation calculation as we're being conservative. */
 
                             /* Ensure applications do not exceed allocated space */
                             if (entry.second.usedKB > entry.second.quotaKB)
