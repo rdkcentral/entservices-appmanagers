@@ -411,7 +411,7 @@ namespace WPEFramework
                 else
                 {
                     /* Not accessible, need to remove existing storage entry forcibly, recreate it */
-                    if (removeAppStorageInfoByAppID(appId))
+                    if (removeAppStorageInfoByAppIDLocked(appId))
                     {
                         LOGWARN("Storage path for appID[%s] not accessible - forcibly removed!", it->second.path.c_str());
                     }
@@ -429,15 +429,14 @@ namespace WPEFramework
         }
 
         /**
-        * @brief : Remove App StorageInfo for the given appId
+        * @brief : Remove App StorageInfo for the given appId (assumes mLock is already held)
         *
         * @return : True if App StorageInfo map is available and erased, false otherwise.
         */
-        bool RequestHandler::removeAppStorageInfoByAppID(const string &appId)
+        bool RequestHandler::removeAppStorageInfoByAppIDLocked(const string &appId)
         {
             bool result = false;
 
-            std::unique_lock<std::mutex> lock(mStorageRemoveLock);
             /* Check if appId StorageInfo is found, erase it */
             auto it = mStorageAppInfo.find(appId);
             if (it != mStorageAppInfo.end())
@@ -454,6 +453,17 @@ namespace WPEFramework
                 LOGWARN("AppId[%s] StorageInfo not found", appId.c_str());
             }
             return result;
+        }
+
+        /**
+        * @brief : Remove App StorageInfo for the given appId
+        *
+        * @return : True if App StorageInfo map is available and erased, false otherwise.
+        */
+        bool RequestHandler::removeAppStorageInfoByAppID(const string &appId)
+        {
+            std::unique_lock<std::mutex> lock(mLock);
+            return removeAppStorageInfoByAppIDLocked(appId);
         }
 
         /**
@@ -951,6 +961,5 @@ namespace WPEFramework
         }
     }
 }
-
 
 
