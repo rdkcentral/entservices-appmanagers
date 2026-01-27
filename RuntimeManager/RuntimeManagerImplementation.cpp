@@ -750,7 +750,7 @@ err_ret:
             // Issue ID:1053 Waiting while holding a lock
             if(!isOCIPluginObjectValid())
             {
-                LOGERR("OCI Plugin object is not valid. Aborting Wake.");
+                LOGERR("OCI Plugin object is not valid. Aborting Hibernate.");
                 return status;
             }
             mRuntimeManagerImplLock.Lock();
@@ -879,7 +879,7 @@ err_ret:
             // Issue ID:1054 Waiting while holding a lock
             if(!isOCIPluginObjectValid())
             {
-                LOGERR("OCI Plugin object is not valid. Aborting Wake.");
+                LOGERR("OCI Plugin object is not valid. Aborting Suspend.");
                 return status;
             }
             mRuntimeManagerImplLock.Lock();
@@ -939,7 +939,7 @@ err_ret:
             // Issue ID:1052 Waiting while holding a lock
             if(!isOCIPluginObjectValid())
             {
-                LOGERR("OCI Plugin object is not valid. Aborting Wake.");
+                LOGERR("OCI Plugin object is not valid. Aborting Resume.");
                 return status;
             }
             mRuntimeManagerImplLock.Lock();

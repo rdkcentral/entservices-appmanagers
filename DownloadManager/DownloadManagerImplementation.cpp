@@ -134,7 +134,6 @@ namespace Plugin {
             else
             {
                 LOGINFO("DM: Download path ready at '%s'", mDownloadPath.c_str());
-                mAdminLock.Unlock();
                 mDownloadThreadPtr = std::unique_ptr<std::thread>(new std::thread(&DownloadManagerImplementation::downloaderRoutine, this, 1));
             }
         }
