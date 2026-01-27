@@ -59,6 +59,7 @@ namespace WPEFramework
                 bool createAppStorageInfoByAppID(const std::string& appId, StorageAppInfo &storageInfo);
                 bool retrieveAppStorageInfoByAppID(const string &appId, StorageAppInfo &storageInfo);
                 bool removeAppStorageInfoByAppID(const string &appId);
+                bool removeAppStorageInfoByAppIDLocked(const string &appId);
                 bool hasEnoughStorageFreeSpace(const std::string& baseDir, uint32_t requiredSpaceKB);
                 uint64_t getDirectorySizeInBytes(const std::string &path);
                 static int getSize(const char *path, const struct stat *statPtr, int currentFlag, struct FTW *internalFtwUsage);
@@ -71,7 +72,6 @@ namespace WPEFramework
                 static RequestHandler* mInstance;
                 mutable std::mutex mStorageManagerImplLock;
                 mutable std::mutex mLock;
-                mutable std::mutex mStorageRemoveLock;
                 static std::mutex mStorageSizeLock;
                 Exchange::IStore2* mPersistentStoreRemoteStoreObject;
                 std::map<std::string, StorageAppInfo> mStorageAppInfo;  /* Map storing app storage info for each appId */
@@ -79,5 +79,4 @@ namespace WPEFramework
         };
     } /* namespace Plugin */
 } /* namespace WPEFramework */
-
 
