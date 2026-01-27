@@ -760,7 +760,7 @@ Core::hresult RDKWindowManagerImplementation::GetApps(string &appsIds) const
     }
     else
     {
-        LOGERR("GetApps Falied");
+        LOGERR("GetApps Failed");
     }
 
     return status;
