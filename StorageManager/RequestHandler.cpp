@@ -487,22 +487,47 @@ namespace WPEFramework
                     /* Calculate the current available storage in KB */
                     curStorageFreeSpaceKB = (static_cast<uint64_t>(statFs.f_bfree) * statFs.f_frsize) / 1024;
 
-                    std::unique_lock<std::mutex> lock(mStorageAppInfoLock);
-                    /* Compute total reserved space for existing applications */
-                    for (auto& entry : mStorageAppInfo)
+                    /* Copy app storage data to avoid holding lock during slow directory size calculation */
+                    std::map<std::string, std::pair<std::string, uint32_t>> appStorageData;
                     {
-                        entry.second.usedKB = static_cast<uint32_t>(getDirectorySizeInBytes(entry.second.path) / 1024);
-
-                        /* Ensure applications do not exceed allocated space */
-                        if (entry.second.usedKB > entry.second.quotaKB)
+                        std::unique_lock<std::mutex> lock(mStorageAppInfoLock);
+                        for (const auto& entry : mStorageAppInfo)
                         {
-                            LOGERR("Application storage usage exceeded allocation: %s (Allocated: %u KB, Used: %u KB)",
-                            entry.second.path.c_str(), entry.second.quotaKB, entry.second.usedKB);
+                            appStorageData[entry.first] = std::make_pair(entry.second.path, entry.second.quotaKB);
                         }
-                        else
+                    }
+
+                    /* Compute directory sizes without holding lock */
+                    std::map<std::string, uint32_t> appUsedKB;
+                    for (const auto& appData : appStorageData)
+                    {
+                        const std::string& appId = appData.first;
+                        const std::string& path = appData.second.first;
+                        appUsedKB[appId] = static_cast<uint32_t>(getDirectorySizeInBytes(path) / 1024);
+                    }
+
+                    /* Update usedKB values and compute total reserved space */
+                    {
+                        std::unique_lock<std::mutex> lock(mStorageAppInfoLock);
+                        for (auto& entry : mStorageAppInfo)
                         {
-                            /* quotaKB is total allocated space for the app, and usedKB is the current usage */
-                            existingAppsReservationSpaceKB += (entry.second.quotaKB - entry.second.usedKB);
+                            auto usedIt = appUsedKB.find(entry.first);
+                            if (usedIt != appUsedKB.end())
+                            {
+                                entry.second.usedKB = usedIt->second;
+
+                                /* Ensure applications do not exceed allocated space */
+                                if (entry.second.usedKB > entry.second.quotaKB)
+                                {
+                                    LOGERR("Application storage usage exceeded allocation: %s (Allocated: %u KB, Used: %u KB)",
+                                    entry.second.path.c_str(), entry.second.quotaKB, entry.second.usedKB);
+                                }
+                                else
+                                {
+                                    /* quotaKB is total allocated space for the app, and usedKB is the current usage */
+                                    existingAppsReservationSpaceKB += (entry.second.quotaKB - entry.second.usedKB);
+                                }
+                            }
                         }
                     }
 
