@@ -437,7 +437,7 @@ namespace WPEFramework
         {
             bool result = false;
 
-            std::unique_lock<std::mutex> lock(mLock);
+            std::unique_lock<std::mutex> lock(mStorageRemoveLock);
             /* Check if appId StorageInfo is found, erase it */
             auto it = mStorageAppInfo.find(appId);
             if (it != mStorageAppInfo.end())
@@ -951,5 +951,6 @@ namespace WPEFramework
         }
     }
 }
+
 
 
