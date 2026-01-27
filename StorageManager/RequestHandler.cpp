@@ -488,12 +488,16 @@ namespace WPEFramework
                     curStorageFreeSpaceKB = (static_cast<uint64_t>(statFs.f_bfree) * statFs.f_frsize) / 1024;
 
                     /* Copy app storage data to avoid holding lock during slow directory size calculation */
-                    std::map<std::string, std::pair<std::string, uint32_t>> appStorageData;
+                    struct AppData {
+                        std::string path;
+                        uint32_t quotaKB;
+                    };
+                    std::map<std::string, AppData> appStorageData;
                     {
                         std::unique_lock<std::mutex> lock(mStorageAppInfoLock);
                         for (const auto& entry : mStorageAppInfo)
                         {
-                            appStorageData[entry.first] = std::make_pair(entry.second.path, entry.second.quotaKB);
+                            appStorageData[entry.first] = {entry.second.path, entry.second.quotaKB};
                         }
                     }
 
@@ -501,9 +505,7 @@ namespace WPEFramework
                     std::map<std::string, uint32_t> appUsedKB;
                     for (const auto& appData : appStorageData)
                     {
-                        const std::string& appId = appData.first;
-                        const std::string& path = appData.second.first;
-                        appUsedKB[appId] = static_cast<uint32_t>(getDirectorySizeInBytes(path) / 1024);
+                        appUsedKB[appData.first] = static_cast<uint32_t>(getDirectorySizeInBytes(appData.second.path) / 1024);
                     }
 
                     /* Update usedKB values and compute total reserved space */
@@ -514,10 +516,11 @@ namespace WPEFramework
                             auto usedIt = appUsedKB.find(entry.first);
                             if (usedIt != appUsedKB.end())
                             {
-                                /* Update usedKB for apps that existed during first lock */
+                                /* Update usedKB for apps that existed during first lock with fresh directory size */
                                 entry.second.usedKB = usedIt->second;
                             }
-                            /* For apps added between locks, use existing usedKB (may be stale but safe) */
+                            /* Apps added between locks will use their existing usedKB value (0 for new apps,
+                             * or previous value for existing apps). This is safe for reservation calculation. */
 
                             /* Ensure applications do not exceed allocated space */
                             if (entry.second.usedKB > entry.second.quotaKB)
