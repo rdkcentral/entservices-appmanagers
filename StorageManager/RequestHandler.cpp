@@ -514,19 +514,21 @@ namespace WPEFramework
                             auto usedIt = appUsedKB.find(entry.first);
                             if (usedIt != appUsedKB.end())
                             {
+                                /* Update usedKB for apps that existed during first lock */
                                 entry.second.usedKB = usedIt->second;
+                            }
+                            /* For apps added between locks, use existing usedKB (may be stale but safe) */
 
-                                /* Ensure applications do not exceed allocated space */
-                                if (entry.second.usedKB > entry.second.quotaKB)
-                                {
-                                    LOGERR("Application storage usage exceeded allocation: %s (Allocated: %u KB, Used: %u KB)",
-                                    entry.second.path.c_str(), entry.second.quotaKB, entry.second.usedKB);
-                                }
-                                else
-                                {
-                                    /* quotaKB is total allocated space for the app, and usedKB is the current usage */
-                                    existingAppsReservationSpaceKB += (entry.second.quotaKB - entry.second.usedKB);
-                                }
+                            /* Ensure applications do not exceed allocated space */
+                            if (entry.second.usedKB > entry.second.quotaKB)
+                            {
+                                LOGERR("Application storage usage exceeded allocation: %s (Allocated: %u KB, Used: %u KB)",
+                                entry.second.path.c_str(), entry.second.quotaKB, entry.second.usedKB);
+                            }
+                            else
+                            {
+                                /* quotaKB is total allocated space for the app, and usedKB is the current usage */
+                                existingAppsReservationSpaceKB += (entry.second.quotaKB - entry.second.usedKB);
                             }
                         }
                     }
