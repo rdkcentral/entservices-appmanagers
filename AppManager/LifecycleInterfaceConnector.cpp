@@ -514,7 +514,7 @@ namespace WPEFramework
             /* Retrieve the appId from the parameters object */
             LOGINFO("AppId retrieved: %s", appId.c_str());
 
-            mAdminLock.Lock();
+            appManagerImplInstance->mAdminLock.Lock();
             if (nullptr != appManagerImplInstance)
             {
                 // Use find instead of iteration to avoid iterator invalidation issues
@@ -552,7 +552,7 @@ namespace WPEFramework
                 appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_TERMINATE, AppManagerImplementation::ERROR_INTERNAL);
 #endif
             }
-            mAdminLock.Unlock();
+            appManagerImplInstance->mAdminLock.Unlock();
             return status;
         }
 
@@ -813,7 +813,7 @@ End:
 
             if(nullptr != appManagerImplInstance)
             {
-                Core::SafeSyncType<Core::CriticalSection> lock(mAdminLock);
+                Core::SafeSyncType<Core::CriticalSection> lock(appManagerImplInstance->mAdminLock);
                 // Use find instead of iteration to avoid iterator invalidation issues
                 auto it = appManagerImplInstance->mAppInfo.find(appId);
                 if (it != appManagerImplInstance->mAppInfo.end() && it->second.appInstanceId.compare(appInstanceId) == 0)
