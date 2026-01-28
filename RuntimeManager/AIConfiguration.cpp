@@ -24,6 +24,8 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <climits>
+#include <inttypes.h>
 #include <sys/stat.h>
 #include <yaml-cpp/yaml.h>
 
@@ -365,11 +367,23 @@ namespace Plugin
                 LOGINFO("enableSvp: %s", mSvpEnabled ? "true" : "false");
             }
             if (root["memoryLimit"]) {
-                mNonHomeAppMemoryLimit = static_cast<ssize_t>(root["memoryLimit"].as<uint64_t>());
+                uint64_t memLimit = root["memoryLimit"].as<uint64_t>();
+                if (memLimit > SSIZE_MAX) {
+                    LOGERR("memoryLimit value %" PRIu64 " exceeds SSIZE_MAX (%zd), clamping to SSIZE_MAX", memLimit, SSIZE_MAX);
+                    mNonHomeAppMemoryLimit = SSIZE_MAX;
+                } else {
+                    mNonHomeAppMemoryLimit = static_cast<ssize_t>(memLimit);
+                }
                 LOGINFO("memoryLimit: %zd", mNonHomeAppMemoryLimit);
             }
             if (root["gpuMemoryLimit"]) {
-                mNonHomeAppGpuLimit = static_cast<ssize_t>(root["gpuMemoryLimit"].as<uint64_t>());
+                uint64_t gpuLimit = root["gpuMemoryLimit"].as<uint64_t>();
+                if (gpuLimit > SSIZE_MAX) {
+                    LOGERR("gpuMemoryLimit value %" PRIu64 " exceeds SSIZE_MAX (%zd), clamping to SSIZE_MAX", gpuLimit, SSIZE_MAX);
+                    mNonHomeAppGpuLimit = SSIZE_MAX;
+                } else {
+                    mNonHomeAppGpuLimit = static_cast<ssize_t>(gpuLimit);
+                }
                 LOGINFO("gpuMemoryLimit: %zd", mNonHomeAppGpuLimit);
             }
             if (root["ionDefaultQuota"]) {
@@ -446,11 +460,29 @@ namespace Plugin
                 }
                 else if (key == "ramLimit")
                 {
-                    mNonHomeAppMemoryLimit = static_cast<ssize_t>(std::stoll(value));
+                    long long ramLimit = std::stoll(value);
+                    if (ramLimit < 0) {
+                        LOGERR("ramLimit value %lld is negative, setting to 0", ramLimit);
+                        mNonHomeAppMemoryLimit = 0;
+                    } else if (ramLimit > SSIZE_MAX) {
+                        LOGERR("ramLimit value %lld exceeds SSIZE_MAX (%zd), clamping to SSIZE_MAX", ramLimit, SSIZE_MAX);
+                        mNonHomeAppMemoryLimit = SSIZE_MAX;
+                    } else {
+                        mNonHomeAppMemoryLimit = static_cast<ssize_t>(ramLimit);
+                    }
                 }
                 else if (key == "gpuMemoryLimit")
                 {
-                    mNonHomeAppGpuLimit = static_cast<ssize_t>(std::stoll(value));
+                    long long gpuLimit = std::stoll(value);
+                    if (gpuLimit < 0) {
+                        LOGERR("gpuMemoryLimit value %lld is negative, setting to 0", gpuLimit);
+                        mNonHomeAppGpuLimit = 0;
+                    } else if (gpuLimit > SSIZE_MAX) {
+                        LOGERR("gpuMemoryLimit value %lld exceeds SSIZE_MAX (%zd), clamping to SSIZE_MAX", gpuLimit, SSIZE_MAX);
+                        mNonHomeAppGpuLimit = SSIZE_MAX;
+                    } else {
+                        mNonHomeAppGpuLimit = static_cast<ssize_t>(gpuLimit);
+                    }
                 }
                 else if (key == "vpuAccessBlacklist")
                 {
