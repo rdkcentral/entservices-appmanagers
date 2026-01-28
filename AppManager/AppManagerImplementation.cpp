@@ -1659,5 +1659,24 @@ bool AppManagerImplementation::checkInstallUninstallBlock(const std::string& app
     LOGINFO("checkInstallUninstallBlock: appId=%s duplicateCount=%d blocked=%d", appId.c_str(), duplicateCount, blocked);
     return blocked;
 }
+bool AppManagerImplementation::getAppinfo(const string& appId,AppInfo &appData){
+    mAdminLock.Lock();
+    auto it = mAppInfo.find(appId);
+    bool found =false;
+    if((it != mAppInfo.end()))
+    {
+        appData=it->second;
+        LOGINFO("Fetched appData for appId %s", appId.c_str());
+         found = true;
+    }
+    else
+    {
+        LOGERR("Failed to fetch appData for appId %s", appId.c_str());
+    }
+    mAdminLock.Unlock();
+    return found;
+   
+}
+
 } /* namespace Plugin */
 } /* namespace WPEFramework */
