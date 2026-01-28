@@ -645,6 +645,7 @@ namespace WPEFramework
             }
 
             bool legacyContainer = true;
+            bool ralfSupport = false;
 #ifdef RIALTO_IN_DAC_FEATURE_ENABLED
             {
                 legacyContainer = false;
@@ -653,7 +654,7 @@ namespace WPEFramework
 
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
                 rialtoSocket = "rlto-" + appInstanceId;
-                legacyContainer = true;
+                ralfSupport = true;
 #endif // RALF_PACKAGE_SUPPORT_ENABLED
                 if (mRialtoConnector->createAppSession(appId, westerosSocket, rialtoSocket))
                 {
@@ -681,15 +682,19 @@ namespace WPEFramework
                 errorCode = "ERROR_CREATE_DISPLAY";
                 notifyParamCheckFailure = true;
             }
-            /* Generate dobbySpec */
-            else if (legacyContainer && false == RuntimeManagerImplementation::generate(config, runtimeConfigObject, dobbySpec))
+            /* Generate dobbySpec only if legacyContainer or ralfSupport is true */
+            else if (legacyContainer || ralfSupport)
             {
-                LOGERR("Failed to generate dobbySpec");
-                status = Core::ERROR_GENERAL;
-                errorCode = "ERROR_DOBBY_SPEC";
-                notifyParamCheckFailure = true;
+                if(false == RuntimeManagerImplementation::generate(config, runtimeConfigObject, dobbySpec))
+                {
+                    LOGERR("Failed to generate dobbySpec");
+                    status = Core::ERROR_GENERAL;
+                    errorCode = "ERROR_DOBBY_SPEC";
+                    notifyParamCheckFailure = true;
+                }
             }
-            else
+
+            if(notifyParamCheckFailure == false)
             {
                 /* Generated dobbySpec */
                 LOGINFO("Generated dobbySpec: %s", dobbySpec.c_str());
@@ -698,9 +703,10 @@ namespace WPEFramework
                         xdgRuntimeDir.c_str(), waylandDisplay.c_str());
                 std::string command = "";
                 std::string appPath = runtimeConfigObject.unpackedPath;
-#ifdef RALF_PACKAGE_SUPPORT_ENABLED
-                appPath = dobbySpec; // In Ralf package, dobbySpec contains the path to the generated dobby spec file
-#endif //RALF_PACKAGE_SUPPORT_ENABLED                 
+                if(ralfSupport)
+                {
+                    appPath = dobbySpec; // In Ralf package, dobbySpec contains the path to the generated dobby spec file
+                }
                 if (isOCIPluginObjectValid())
                 {
                     string containerId = getContainerId(appInstanceId);
@@ -708,20 +714,25 @@ namespace WPEFramework
                     {
                         if (legacyContainer)
                             status = mOciContainerObject->StartContainerFromDobbySpec(containerId, dobbySpec, command, westerosSocket, descriptor, success, errorReason);
-                        else
-#ifdef RALF_PACKAGE_SUPPORT_ENABLED
+                        else if (ralfSupport)
+                        {
+                            LOGINFO("Starting  container in RALF mode");
+                            //For RALF we are not mounting the westeros socket from the dobby. It can be done from RALF itself.
                             status = mOciContainerObject->StartContainer(containerId, appPath, command, "", descriptor, success, errorReason);
-#else                        
+                        }
+                        else
+                        {
+                            LOGINFO("Starting  container in 1.0 mode");
                             status = mOciContainerObject->StartContainer(containerId, appPath, command, westerosSocket, descriptor, success, errorReason);
-#endif // RALF_PACKAGE_SUPPORT_ENABLED                            
-
+                        }
                         if ((success == false) || (status != Core::ERROR_NONE))
                         {
                             LOGERR("Failed to Run Container %s", errorReason.c_str());
-#ifdef RALF_PACKAGE_SUPPORT_ENABLED
-                            ralf::RalfPackageBuilder ralfBuilder;
-                            ralfBuilder.unmountOverlayfsIfExists(appInstanceId);
-#endif // RALF_PACKAGE_SUPPORT_ENABLED
+                            if(ralfSupport)
+                            {
+                                ralf::RalfPackageBuilder ralfBuilder;
+                                ralfBuilder.unmountOverlayfsIfExists(appInstanceId);
+                            }
                         }
                         else
                         {
