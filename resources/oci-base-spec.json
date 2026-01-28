@@ -1,6 +1,14 @@
 {
     "ociVersion": "1.0.1",
     "hostname": "rdkdobby",
+    "hooks": {},
+    "annotations": {
+        "org.opencontainers.image.architecture": "arm",
+        "org.opencontainers.image.author": "support@rdkcentral.com",
+        "org.opencontainers.image.os": "linux",
+        "run.oci.hooks.stderr": "/dev/stderr",
+        "run.oci.hooks.stdout": "/dev/stdout"
+    },
     "root": {
         "path": "rootfs",
         "readonly": true
@@ -100,8 +108,7 @@
                 "noexec",
                 "newinstance",
                 "ptmxmode=0666",
-                "mode=0620",
-                "gid=5"
+                "mode=0620"
             ]
         },
         {
@@ -162,20 +169,8 @@
         }
     ],
     "linux": {
-        "uidMappings": [
-            {
-                "hostID": 30000,
-                "containerID": 0,
-                "size": 1
-            }
-        ],
-        "gidMappings": [
-            {
-                "hostID": 30000,
-                "containerID": 0,
-                "size": 10
-            }
-        ],
+        "uidMappings": [],
+        "gidMappings": [],
         "devices": [],
         "resources": {
             "devices": [
@@ -223,5 +218,22 @@
             "/proc/sysrq-trigger"
         ],
         "rootfsPropagation": "slave"
+    },
+    "rdkPlugins": {
+        "logging": {
+            "required": true,
+            "data": {
+                "sink": "file",
+                "fileOptions": {
+                    "path": "/opt/logs/dacapp.log"
+                }
+            }
+        },
+        "networking": {
+            "required": true,
+            "data": {
+                "type": "open"
+            }
+        }
     }
 }
