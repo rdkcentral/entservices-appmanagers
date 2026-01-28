@@ -39,6 +39,7 @@ AppManagerImplementation::AppManagerImplementation()
 , mPersistentStoreRemoteStoreObject(nullptr)
 , mPackageManagerHandlerObject(nullptr)
 , mPackageManagerInstallerObject(nullptr)
+, mStorageManagerRemoteObject(nullptr) // Fix for Coverity issue 1087 - UNINIT_CTOR: Initialize mStorageManagerRemoteObject
 , mCurrentservice(nullptr)
 , mPackageManagerNotification(*this)
 , mAppManagerWorkerThread()
@@ -109,14 +110,17 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
     while (sRunning)
     {
         std::shared_ptr<AppManagerRequest> request = nullptr;
+    {
         std::unique_lock<std::mutex> lock(mAppManagerLock);
         mAppRequestListCV.wait(lock, [this] {return !mAppRequestList.empty() || !sRunning;});
 
-        if (!mAppRequestList.empty() && sRunning)
-        {
-            Core::hresult status = Core::ERROR_GENERAL;
-            request = mAppRequestList.front();
-            mAppRequestList.pop_front();
+        if (!sRunning || mAppRequestList.empty())
+            continue;
+
+        request = mAppRequestList.front();
+        mAppRequestList.pop_front();
+    }
+   
 
             if (request != nullptr)
             {
@@ -135,7 +139,9 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                                 PackageInfo packageData;
                                 Exchange::IPackageHandler::LockReason lockReason = Exchange::IPackageHandler::LockReason::LAUNCH;
 
-                                status = packageLock(appId, packageData, lockReason);
+                                // Fix for Coverity issues 342, 343 (ORDER_REVERSAL)
+                                // Release mAppManagerLock before calling packageLock to avoid lock ordering issues
+                                Core::hresult status = packageLock(appId, packageData, lockReason);
                                 if (status == Core::ERROR_NONE)
                                 {
                                     WPEFramework::Exchange::RuntimeConfig runtimeConfig = packageData.configMetadata;
@@ -188,7 +194,7 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                     break; /* defult*/
                 }
             }
-        }
+
     }
     {
         std::lock_guard<std::mutex> lock(mAppManagerLock);
@@ -902,7 +908,9 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
             if (request->mRequestParam != nullptr)
             {
                 mAppManagerLock.lock();
-                mAppRequestList.push_back(request);
+                // Issue ID 21: Variable copied when it could be moved
+                // Fix: Use std::move to transfer ownership instead of copying
+                mAppRequestList.push_back(std::move(request));
                 mAppManagerLock.unlock();
                 mAppRequestListCV.notify_one();
                 status = Core::ERROR_NONE;
@@ -1125,7 +1133,9 @@ Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const s
             if (request->mRequestParam != nullptr)
             {
                 mAppManagerLock.lock();
-                mAppRequestList.push_back(request);
+                // Issue ID 22: Variable copied when it could be moved
+                // Fix: Use std::move to transfer ownership instead of copying
+                mAppRequestList.push_back(std::move(request));
                 mAppManagerLock.unlock();
                 mAppRequestListCV.notify_one();
                 status = Core::ERROR_NONE;
@@ -1601,9 +1611,11 @@ void AppManagerImplementation::getCustomValues(WPEFramework::Exchange::RuntimeCo
 
         if (aipathchange)
         {
-            runtimeConfig.appPath = apppath;
-            runtimeConfig.runtimePath = runtimepath;
-            runtimeConfig.command = command;
+            // Issue IDs 23, 24, 25: Variables copied when they could be moved
+            // Fix: Use std::move to transfer ownership instead of copying
+            runtimeConfig.appPath = std::move(apppath);
+            runtimeConfig.runtimePath = std::move(runtimepath);
+            runtimeConfig.command = std::move(command);
             runtimeConfig.appType = 1;
             runtimeConfig.resourceManagerClientEnabled = true;
         }
