@@ -728,11 +728,12 @@ namespace WPEFramework
                         if ((success == false) || (status != Core::ERROR_NONE))
                         {
                             LOGERR("Failed to Run Container %s", errorReason.c_str());
-                            if(ralfSupport)
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED
                             {
                                 ralf::RalfPackageBuilder ralfBuilder;
                                 ralfBuilder.unmountOverlayfsIfExists(appInstanceId);
                             }
+#endif // RALF_PACKAGE_SUPPORT_ENABLED
                         }
                         else
                         {
