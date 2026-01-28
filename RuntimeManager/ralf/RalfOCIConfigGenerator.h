@@ -28,7 +28,7 @@ namespace ralf
     class RalfOCIConfigGenerator
     {
     public:
-        RalfOCIConfigGenerator(const std::string &configFilePath, const std::vector<RalfPkgInfoPair> &ralfPackages) : mRalfPackages(ralfPackages),mConfigFilePath(configFilePath) {}
+        RalfOCIConfigGenerator(const std::string &configFilePath, const std::vector<RalfPkgInfoPair> &ralfPackages) : mRalfPackages(ralfPackages), mConfigFilePath(configFilePath) {}
         virtual ~RalfOCIConfigGenerator() {}
         /**
          * Generates the OCI config JSON for the RALF application instance.
@@ -45,7 +45,6 @@ namespace ralf
          * @param graphicsConfigNode The graphics configuration JSON node.
          */
         bool applyGraphicsConfigToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &graphicsConfigNode);
-
 
         bool generateHooksForOCIConfig(Json::Value &ociConfigRootNode);
         bool generateHooksForOCIConfig(Json::Value &ociConfigRootNode, const std::string &operation);
@@ -84,7 +83,14 @@ namespace ralf
          * @param source The source path of the mount.
          * @param destination The destination path of the mount.
          */
-         void addMountEntry(Json::Value &ociConfigRootNode, const std::string &source, const std::string &destination);
+        void addMountEntry(Json::Value &ociConfigRootNode, const std::string &source, const std::string &destination);
+        /**
+         * Add device node entries from graphics config to OCI config.
+         * @param ociConfigRootNode The root node of the OCI config JSON.
+         * @param graphicsDevNode The devNode configuration JSON node.
+         * @return true if device nodes were added successfully, false otherwise.
+         */
+        bool addDeviceNodeEntriesToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &graphicsDevNode);
         /**
          * The vector of Ralf package details as pairs of mount point and metadata path.
          */
