@@ -984,7 +984,7 @@ End:
             if (!appManagerImpl)
                 return;
 
-            Core::SafeSyncType<Core::CriticalSection> lock(mAdminLock);
+            mAdminLock.Lock();
             auto it = appManagerImpl->mAppInfo.find(appId);
             if (it != appManagerImpl->mAppInfo.end())
             {
@@ -995,6 +995,7 @@ End:
             {
                 LOGERR("AppInfo for appId '%s' not found", appId.c_str());
             }
+            mAdminLock.Unlock();
         }
 
         bool LifecycleInterfaceConnector::fileExists(const char* pFileName)
