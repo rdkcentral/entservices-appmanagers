@@ -63,6 +63,12 @@ namespace WPEFramework
                 delete state;
 	    }
 	    mState = nullptr;
+
+	    //Destroy the semaphores that are initialized in the constructor to ensure proper resource cleanup.
+	    sem_destroy(&mReachedLoadingStateSemaphore);
+	    sem_destroy(&mAppReadySemaphore);
+	    sem_destroy(&mFirstFrameAfterResumeSemaphore);
+
         }
 
         void ApplicationContext::setAppInstanceId(std::string& id)
