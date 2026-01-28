@@ -135,8 +135,9 @@ namespace ralf
         addMountEntry(ociConfigRootNode, appStoragePath, homePath);
         LOGDBG("Mounted application storage path %s to container HOME %s\n", appStoragePath.c_str(), homePath.c_str());
 
-        //Finally add rialto path to the environment variables if RIALTO_IN_DAC_FEATURE_ENABLED is defined
-        std::string rialtoSocketPath = "/tmp/rlto-" + appConfig.mAppInstanceId;;
+        // Finally add rialto path to the environment variables if RIALTO_IN_DAC_FEATURE_ENABLED is defined
+        std::string rialtoSocketPath = "/tmp/rlto-" + appConfig.mAppInstanceId;
+        ;
         ociConfigRootNode["process"]["env"].append("RIALTO_SOCKET_PATH=" + rialtoSocketPath);
         LOGDBG("Added RIALTO_SOCKET environment variable with value %s\n", rialtoSocketPath.c_str());
         addMountEntry(ociConfigRootNode, rialtoSocketPath, rialtoSocketPath);
@@ -194,12 +195,9 @@ namespace ralf
         mountEntry["destination"] = destination;
         mountEntry["type"] = "bind";
 
-        Json::Value mountOptions(Json::arrayValue); 
+        Json::Value mountOptions(Json::arrayValue);
         mountOptions.append("rbind");
         mountOptions.append("rw");
-/*        mountOptions.append("nosuid");
-        mountOptions.append("nodev");
-        mountOptions.append("noexec");*/
         mountEntry["options"] = mountOptions;
 
         ociConfigRootNode["mounts"].append(mountEntry);
@@ -232,6 +230,7 @@ namespace ralf
         }
         return status;
     }
+
     bool RalfOCIConfigGenerator::applyGraphicsConfigToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &graphicsConfigNode)
     {
         bool status = false;
@@ -246,54 +245,98 @@ namespace ralf
             ],
             "groupIds": [
             "video"
-            ]
+            ],
+    "files": [
+      {
+        "type": "bind",
+        "source": "/tmp/nxserver_ipc",
+        "destination": "/tmp/nxserver_ipc"
+      }
+    ]
             }
         }
 
         We need to get the devNodes and groupIds and apply them to the OCI config json structure.
         */
         // Check if vendorGpuSupport/devNodes exists
-        if (graphicsConfigNode.isMember("vendorGpuSupport") && graphicsConfigNode["vendorGpuSupport"].isMember("devNodes"))
+        if (graphicsConfigNode.isMember("vendorGpuSupport"))
         {
-            const Json::Value &devNodes = graphicsConfigNode["vendorGpuSupport"]["devNodes"];
-            for (Json::Value::ArrayIndex i = 0; i < devNodes.size(); ++i)
+            if (graphicsConfigNode["vendorGpuSupport"].isMember("devNodes"))
             {
-                std::string devNodePath = devNodes[i].asString();
-                unsigned int majorNum = 0, minorNum = 0;
-                char devType = '\0';
-                if (getDevNodeMajorMinor(devNodePath, majorNum, minorNum, devType))
+                const Json::Value &devNodes = graphicsConfigNode["vendorGpuSupport"]["devNodes"];
+                status = addDeviceNodeEntriesToOCIConfig(ociConfigRootNode, devNodes);
+            }
+            else
+            {
+                LOGWARN("No vendorGpuSupport/devNodes found in graphics config\n");
+            }
+            // Now get the file that needs to be mapped, this is optional.
+            if (graphicsConfigNode["vendorGpuSupport"].isMember("files"))
+            {
+                const Json::Value &files = graphicsConfigNode["vendorGpuSupport"]["files"];
+                for (Json::Value::ArrayIndex i = 0; i < files.size(); ++i)
                 {
-                    Json::Value deviceNode;
-                    deviceNode["path"] = devNodePath;
-                    deviceNode["type"] = std::string(1, devType);
-                    deviceNode["major"] = majorNum;
-                    deviceNode["minor"] = minorNum;
-
-                    ociConfigRootNode["linux"]["devices"].append(deviceNode);
-
-                    // Add in the resources devices section as well
-                    Json::Value resourceDevice;
-                    resourceDevice["type"] = std::string(1, devType);
-                    resourceDevice["major"] = majorNum;
-                    resourceDevice["minor"] = minorNum;
-                    resourceDevice["access"] = "rwm";
-                    resourceDevice["allow"] = true;
-                    ociConfigRootNode["linux"]["resources"]["devices"].append(resourceDevice);
-                    LOGDBG("Added device node to OCI config: %s (type=%c, major=%u, minor=%u)\n", devNodePath.c_str(), devType, majorNum, minorNum);
-                }
-                else
-                {
-                    LOGWARN("Failed to get major/minor for device node: %s\n", devNodePath.c_str());
+                    const Json::Value &fileEntry = files[i];
+                    if (fileEntry.isMember("source") && fileEntry.isMember("destination"))
+                    {
+                        std::string sourcePath = fileEntry["source"].asString();
+                        std::string destPath = fileEntry["destination"].asString();
+                        addMountEntry(ociConfigRootNode, sourcePath, destPath);
+                        LOGDBG("Added graphics file mount from %s to %s\n", sourcePath.c_str(), destPath.c_str());
+                    }
+                    else
+                    {
+                        LOGWARN("Invalid file entry in graphics config, missing source or destination\n");
+                    }
                 }
             }
-            status = true;
+            else
+            {
+                LOGWARN("No vendorGpuSupport/files found in graphics config\n");
+            }
         }
         else
         {
-            LOGWARN("No vendorGpuSupport/devNodes found in graphics config\n");
+            LOGWARN("No vendorGpuSupport found in graphics config.\n");
         }
         return status;
     }
+    bool RalfOCIConfigGenerator::addDeviceNodeEntriesToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &graphicsDevNode)
+    {
+        bool status = graphicsDevNode.size() > 0 ? true : false; // If no entries, return true.
+        for (Json::Value::ArrayIndex i = 0; i < graphicsDevNode.size(); ++i)
+        {
+            std::string devNodePath = graphicsDevNode[i].asString();
+            unsigned int majorNum = 0, minorNum = 0;
+            char devType = '\0';
+            if (getDevNodeMajorMinor(devNodePath, majorNum, minorNum, devType))
+            {
+                Json::Value deviceNode;
+                deviceNode["path"] = devNodePath;
+                deviceNode["type"] = std::string(1, devType);
+                deviceNode["major"] = majorNum;
+                deviceNode["minor"] = minorNum;
+
+                ociConfigRootNode["linux"]["devices"].append(deviceNode);
+
+                // Add in the resources devices section as well
+                Json::Value resourceDevice;
+                resourceDevice["type"] = std::string(1, devType);
+                resourceDevice["major"] = majorNum;
+                resourceDevice["minor"] = minorNum;
+                resourceDevice["access"] = "rwm";
+                resourceDevice["allow"] = true;
+                ociConfigRootNode["linux"]["resources"]["devices"].append(resourceDevice);
+                LOGDBG("Added device node to OCI config: %s (type=%c, major=%u, minor=%u)\n", devNodePath.c_str(), devType, majorNum, minorNum);
+            }
+            else
+            {
+                LOGWARN("Failed to get major/minor for device node: %s\n", devNodePath.c_str());
+            }
+        }
+        return status;
+    }
+
     bool RalfOCIConfigGenerator::applyRalfPackageConfigToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &ralfPackageConfigNode)
     {
         bool status = true;
