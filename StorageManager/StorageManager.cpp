@@ -89,6 +89,8 @@ namespace WPEFramework
                     if(result != Core::ERROR_NONE)
                     {
                         message = _T("mStorageManagerImpl could not be configured");
+                        mConfigure->Release();
+                        mConfigure = nullptr;
                     }
                 }
                 else
