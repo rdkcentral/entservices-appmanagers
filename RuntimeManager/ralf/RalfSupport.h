@@ -27,18 +27,18 @@
 namespace ralf
 {
     /**
-     * Function to create directories recursively, with default persmissions 0755
+     * Function to create directories recursively, with default permissions 0777
      * @param path The directory path to create
      * @return true on success, false on failure
      */
     bool create_directories(const std::string &path, int uid = 0, int gid = 0);
     /**
      * Given the Ralf package configuration data, parse and extract package metadata paths and mount paths
-     * @param configData The Ralf package configuration data in JSON format
+     * @param configData The path to the Ralf package configuration file
      * @param packages [out parameter] A vector of pairs containing package metadata paths and mount paths
      * @return true on success, false on failure
      */
-    bool parseRalPkgInfo(const std::string &configData, std::vector<std::pair<std::string, std::string> > &packages);
+    bool parseRalPkgInfo(const std::string &configData, std::vector<RalfPkgInfoPair> &packages);
     /**
      * Function to read JSON data from a file
      * @param filePath The path to the JSON file

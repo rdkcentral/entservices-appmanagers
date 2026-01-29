@@ -11,5 +11,5 @@ namespace ralf
     const std::string RALF_OVERLAYFS_TYPE = "overlay";
     const std::string RALF_APP_ROOTFS_DIR = "/tmp/ralf/";
 
-    typedef std::pair<std::string, std::string> RalfPkgInfoPair; // <mountPoint, packageMetadataJsonPath>
+    typedef std::pair<std::string, std::string> RalfPkgInfoPair; // <packageMetadataJsonPath, mountPoint>
 } // namespace ralf

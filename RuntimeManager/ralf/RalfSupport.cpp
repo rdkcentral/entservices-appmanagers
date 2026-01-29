@@ -113,30 +113,7 @@ namespace ralf
         }
         return true;
     }
-    bool setDirOwnership(const std::string &path, uid_t ownerUid, gid_t ownerGid, bool recursive)
-    {
-        if (recursive)
-        {
-            // Recursively change ownership
-            std::string command = "chown -R " + std::to_string(ownerUid) + ":" + std::to_string(ownerGid) + " " + path;
-            int ret = system(command.c_str());
-            if (ret != 0)
-            {
-                LOGERR("Failed to recursively change ownership of %s to %d:%d\n", path.c_str(), ownerUid, ownerGid);
-                return false;
-            }
-        }
-        else
-        {
-            // Change ownership of the directory only
-            if (chown(path.c_str(), ownerUid, ownerGid) != 0)
-            {
-                LOGERR("Failed to change ownership of %s to %d:%d\n", path.c_str(), ownerUid, ownerGid);
-                return false;
-            }
-        }
-        return true;
-    }
+
     /**
      * Function to read JSON data from a file
      * @param filePath The path to the JSON file
@@ -175,11 +152,13 @@ namespace ralf
         std::string baseDir = RALF_APP_ROOTFS_DIR + appInstanceId;
         std::string appRootfsDir = baseDir + "/rootfs";
         std::string workSubDir = baseDir + "/work";
+        std::string upperSubDir = baseDir + "/upper";
         create_directories(appRootfsDir, uid, gid);
         create_directories(workSubDir, uid, gid);
+        create_directories(upperSubDir, uid, gid);
 
         // Now we can mount the overlay filesystem
-        std::string options = "lowerdir=" + pkgmountPaths + ",upperdir=" + appRootfsDir + ",workdir=" + workSubDir;
+        std::string options = "lowerdir=" + pkgmountPaths + ",upperdir=" + upperSubDir + ",workdir=" + workSubDir;
         LOGDBG("Mounting overlayfs with options: %s\n", options.c_str());
 
         if (mount(RALF_OVERLAYFS_TYPE.c_str(), appRootfsDir.c_str(), RALF_OVERLAYFS_TYPE.c_str(), 0, options.c_str()) != 0)
@@ -188,7 +167,6 @@ namespace ralf
             return false;
         }
         ociRootfsPath = baseDir;
-        ;
         return true;
     }
 
@@ -201,8 +179,9 @@ namespace ralf
             majorNum = major(st.st_rdev);
             minorNum = minor(st.st_rdev);
             devType = S_ISBLK(st.st_mode) ? 'b' : (S_ISCHR(st.st_mode) ? 'c' : '\0');
+            return true;
         }
-        return true;
+        return false;
     }
     bool checkIfPathExists(const std::string &path)
     {
