@@ -867,7 +867,6 @@ End:
                         auto actionIt = mAppCurrentActionList.find(appId);
                         if (actionIt != mAppCurrentActionList.end() && actionIt->second == Exchange::IAppManager::AppLifecycleState::APP_STATE_TERMINATING)
 			{
-                LOGINFO("App is terminating: %s", appId.c_str());
 			    //Normal close: Unlode event from App manager
 			    LOGINFO("Terminate event from plugin");
 			    appManagerImplInstance->handleOnAppLifecycleStateChanged(appId, appInstanceId, newAppState, oldAppState, Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE);
