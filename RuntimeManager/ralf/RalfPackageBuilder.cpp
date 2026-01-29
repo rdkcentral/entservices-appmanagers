@@ -53,7 +53,6 @@ namespace ralf
         LOGDBG("Extracted %d Ralf packages from config\n", (int)mRalfPackages.size());
         // Step two: Generate overlay OCI rootfs package for the application instance
         std::string ociRootfsPath;
-        ;
         status = generateOCIRootfsPackage(config.mAppInstanceId, config.mUserId, config.mGroupId, ociRootfsPath);
         if (!status)
         {
