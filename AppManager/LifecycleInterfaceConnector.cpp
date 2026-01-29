@@ -78,7 +78,10 @@ namespace WPEFramework
             LifecycleInterfaceConnector::_instance = nullptr;
 
 	    //clear action list
-	    mAppCurrentActionList.clear();
+	    {
+	        Core::SafeSyncType<Core::CriticalSection> lock(mAdminLock);
+	        mAppCurrentActionList.clear();
+	    }
         }
 
         Core::hresult LifecycleInterfaceConnector::createLifecycleManagerRemoteObject()
@@ -169,6 +172,9 @@ namespace WPEFramework
             string appInstanceId = "";
             string errorReason = "";
             bool success = true;
+            AppManagerImplementation::AppInfo appInfo;     // local snapshot
+            bool isAppfound = appManagerImplInstance->getAppinfo(appId, appInfo);
+
             Exchange::ILifecycleManager::LifecycleState state = Exchange::ILifecycleManager::LifecycleState::UNLOADED;
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             AppManagerTelemetryReporting& appManagerTelemetryReporting =AppManagerTelemetryReporting::getInstance();
@@ -197,22 +203,21 @@ namespace WPEFramework
                     status = isAppLoaded(appId, loaded);
                     if (appManagerImplInstance != nullptr)
                     {
-                        auto it = appManagerImplInstance->mAppInfo.find(appId);
                         if ((loaded == true) &&
                             (Core::ERROR_NONE == status) &&
-                            (it != appManagerImplInstance->mAppInfo.end()) &&
-                            (it->second.appNewState == Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED))
+                            (isAppfound == true) &&
+                            (appInfo.appNewState == Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED))
                         {
                             appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_RESUME);
                             state = Exchange::ILifecycleManager::LifecycleState::ACTIVE;
-                            LOGINFO("launchApp appInstanceId %s", it->second.appInstanceId.c_str());
-                            status = mLifecycleManagerRemoteObject->SetTargetAppState(it->second.appInstanceId, state, intent);
+                            LOGINFO("launchApp appInstanceId %s", appInfo.appInstanceId.c_str());
+                            status = mLifecycleManagerRemoteObject->SetTargetAppState(appInfo.appInstanceId, state, intent);
 
                             if (status == Core::ERROR_NONE)
                             {
                                 LOGINFO("Update App Info");
-                                it->second.targetAppState = Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
-                                it->second.appIntent = intent;
+                                appInfo.targetAppState = Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
+                                appInfo.appIntent = intent;
                             }
                             else
                             {
@@ -239,10 +244,10 @@ namespace WPEFramework
                             if (status == Core::ERROR_NONE)
                             {
                                 LOGINFO("Update App Info");
-                                it->second.appInstanceId   = std::move(appInstanceId);
-                                it->second.appIntent       = intent;
-                                it->second.packageInfo.type = AppManagerImplementation::APPLICATION_TYPE_INTERACTIVE;
-                                it->second.targetAppState  =    (state == Exchange::ILifecycleManager::LifecycleState::SUSPENDED)
+                                appInfo.appInstanceId   = std::move(appInstanceId);
+                                appInfo.appIntent       = intent;
+                                appInfo.packageInfo.type = AppManagerImplementation::APPLICATION_TYPE_INTERACTIVE;
+                                appInfo.targetAppState  =    (state == Exchange::ILifecycleManager::LifecycleState::SUSPENDED)
                                                                                                                                            ? Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED
                                                                                                                                            : Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
                             }
