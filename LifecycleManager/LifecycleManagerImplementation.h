@@ -114,7 +114,7 @@ namespace WPEFramework
                 virtual Core::hresult UnloadApp(const string& appInstanceId, string& errorReason, bool& success) override;
                 virtual Core::hresult KillApp(const string& appInstanceId, string& errorReason, bool& success) override;
                 virtual Core::hresult SendIntentToActiveApp(const string& appInstanceId, const string& intent, string& errorReason, bool& success) override;
-
+                virtual Core::hresult HelloName(const string& name) override;
                 /* ILifecycleManagerState methods  */
                 /** Register notification interface */
                 virtual Core::hresult Register(Exchange::ILifecycleManagerState::INotification *notification) override;
