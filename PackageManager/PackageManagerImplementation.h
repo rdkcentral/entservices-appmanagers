@@ -28,10 +28,10 @@
 #include <fstream>
 #include <cstdio>
 
-#ifdef USE_LIBPACKAGE
-#include <IPackageImpl.h>
-#elif defined(UNIT_TEST) || defined(ENABLE_NATIVEBUILD)
+#if defined(UNIT_TEST) || defined(ENABLE_NATIVEBUILD)
 #include "IPackageImplDummy.h"
+#else
+#include <IPackageImpl.h>
 #endif
 #include <json/json.h>
 
@@ -307,11 +307,11 @@ namespace Plugin {
         std::string downloadDir = "/opt/CDL/";
         string configStr;
 
-        #ifdef USE_LIBPACKAGE
-        std::shared_ptr<packagemanager::IPackageImpl> packageImpl;
-        #elif defined(UNIT_TEST) || defined(ENABLE_NATIVEBUILD)
+        #if defined(UNIT_TEST) || defined(ENABLE_NATIVEBUILD)
         std::shared_ptr<packagemanager::IPackageImplDummy> packageImpl;
-	#endif
+        #else
+        std::shared_ptr<packagemanager::IPackageImpl> packageImpl;
+	    #endif
         PluginHost::IShell* mCurrentservice;
         Exchange::IStorageManager* mStorageManagerObject;
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
