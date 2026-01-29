@@ -278,6 +278,7 @@ namespace Plugin {
                 case FailReason::PACKAGE_MISMATCH_FAILURE : return "PACKAGE_MISMATCH_FAILURE";
                 case FailReason::INVALID_METADATA_FAILURE : return "INVALID_METADATA_FAILURE";
                 case FailReason::PERSISTENCE_FAILURE : return "PERSISTENCE_FAILURE";
+                case FailReason::GENERAL_FAILURE: return "UNKNOWN;";
                 default: return "NONE";
             }
         }
