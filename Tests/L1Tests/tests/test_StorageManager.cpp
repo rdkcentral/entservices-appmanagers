@@ -897,7 +897,7 @@ TEST_F(StorageManagerTest, Initialize_ConfigureFails_ReleaseAndNullCalled) {
     EXPECT_NO_THROW(plugin->Deinitialize(&service));
     // Re-initialize for other tests
     plugin->Initialize(&service);
-} 2
+} 
 
 /*
     Test: Initialize success - mConfigure is properly set
@@ -912,7 +912,7 @@ TEST_F(StorageManagerTest, Initialize_Success_mConfigureSet) {
     
     // mConfigure is properly initialized, no errors
     // This confirms the code path where Configure() succeeds
-} 2
+} 
 
 
 /*
