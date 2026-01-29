@@ -253,6 +253,7 @@ namespace WPEFramework
                                                                                                                                            : Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
                             
                                 appManagerImplInstance->UpdateAppInfo(appId, appInfo);
+                            }
                             else
                             {
                                 LOGERR("spawnApp failed");
