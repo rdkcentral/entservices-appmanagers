@@ -78,7 +78,10 @@ namespace WPEFramework
             LifecycleInterfaceConnector::_instance = nullptr;
 
 	    //clear action list
-	    mAppCurrentActionList.clear();
+	    {
+	        Core::SafeSyncType<Core::CriticalSection> lock(mAdminLock);
+	        mAppCurrentActionList.clear();
+	    }
         }
 
         Core::hresult LifecycleInterfaceConnector::createLifecycleManagerRemoteObject()
@@ -367,10 +370,10 @@ namespace WPEFramework
 
             if(nullptr != appManagerImplInstance)
             {
-                for(auto appIterator = appManagerImplInstance->mAppInfo.begin(); appIterator != appManagerImplInstance->mAppInfo.end(); ++appIterator)
+                // Use find instead of iteration to avoid iterator invalidation issues
+                auto appIterator = appManagerImplInstance->mAppInfo.find(appId);
+                if(appIterator != appManagerImplInstance->mAppInfo.end())
                 {
-                    if(appIterator->first.compare(appId) == 0)
-                    {
                         appInstanceId = appIterator->second.appInstanceId;
                         appIntent = appIterator->second.appIntent;
                         isAppLoaded = true;
@@ -474,9 +477,6 @@ namespace WPEFramework
                             appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_CLOSE, AppManagerImplementation::ERROR_INTERNAL);
 #endif
                         }
-
-                        break;
-                    }
                 }
 
                 if (!isAppLoaded)
@@ -517,10 +517,10 @@ namespace WPEFramework
             mAdminLock.Lock();
             if (nullptr != appManagerImplInstance)
             {
-                for ( std::map<std::string, AppManagerImplementation::AppInfo>::iterator appIterator = appManagerImplInstance->mAppInfo.begin(); appIterator != appManagerImplInstance->mAppInfo.end(); appIterator++)
+                // Use find instead of iteration to avoid iterator invalidation issues
+                auto appIterator = appManagerImplInstance->mAppInfo.find(appId);
+                if (appIterator != appManagerImplInstance->mAppInfo.end())
                 {
-                    if (appIterator->first.compare(appId) == 0)
-                    {
                         foundAppId = true;
                         appInstanceId = appIterator->second.appInstanceId;
                         if (nullptr != mLifecycleManagerRemoteObject)
@@ -536,8 +536,6 @@ namespace WPEFramework
 #endif
                             }
                         }
-                        break;
-                    }
                 }
                 if (!foundAppId)
                 {
@@ -816,11 +814,10 @@ End:
             if(nullptr != appManagerImplInstance)
             {
                 Core::SafeSyncType<Core::CriticalSection> lock(mAdminLock);
-                std::map<std::string, AppManagerImplementation::AppInfo>::iterator it;
-                for (it = appManagerImplInstance->mAppInfo.begin(); it != appManagerImplInstance->mAppInfo.end(); ++it)
+                // Use find instead of iteration to avoid iterator invalidation issues
+                auto it = appManagerImplInstance->mAppInfo.find(appId);
+                if (it != appManagerImplInstance->mAppInfo.end() && it->second.appInstanceId.compare(appInstanceId) == 0)
                 {
-                    if((it->first.compare(appId) == 0) && (it->second.appInstanceId.compare(appInstanceId) == 0))
-                    {
                         it->second.appOldState = oldAppState;
                         it->second.appNewState = newAppState;
                         it->second.appLifecycleState = newState;
@@ -853,8 +850,6 @@ End:
                                 mStateChangedCV.notify_all();
                             }
                         }
-                        break;
-                    }
                 }
                 shouldNotify = ((newAppState == Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING) ||
                                        (newAppState == Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE) ||
@@ -869,8 +864,10 @@ End:
                 {
                     if(newAppState == Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED)
 		    {
-                        if (mAppCurrentActionList[appId] == Exchange::IAppManager::AppLifecycleState::APP_STATE_TERMINATING)
+                        auto actionIt = mAppCurrentActionList.find(appId);
+                        if (actionIt != mAppCurrentActionList.end() && actionIt->second == Exchange::IAppManager::AppLifecycleState::APP_STATE_TERMINATING)
 			{
+                LOGINFO("App is terminating: %s", appId.c_str());
 			    //Normal close: Unlode event from App manager
 			    LOGINFO("Terminate event from plugin");
 			    appManagerImplInstance->handleOnAppLifecycleStateChanged(appId, appInstanceId, newAppState, oldAppState, Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE);
