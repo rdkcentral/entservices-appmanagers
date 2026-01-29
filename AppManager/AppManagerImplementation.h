@@ -67,7 +67,7 @@ namespace Plugin {
             string unpackedPath = "" ;
             WPEFramework::Exchange::RuntimeConfig configMetadata;
             string appMetadata = "";
-            ApplicationType type;
+            ApplicationType type = APPLICATION_TYPE_UNKNOWN;
         } PackageInfo;
 
         enum CurrentAction {
@@ -112,7 +112,7 @@ namespace Plugin {
             timespec lastActiveStateChangeTime;
             uint32_t lastActiveIndex;
             string appIntent;
-            Exchange::IAppManager::AppLifecycleState targetAppState;
+            Exchange::IAppManager::AppLifecycleState targetAppState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNKNOWN;
             Exchange::IAppManager::AppLifecycleState appOldState;
             /* Current Action*/
             CurrentAction currentAction = APP_ACTION_NONE;
