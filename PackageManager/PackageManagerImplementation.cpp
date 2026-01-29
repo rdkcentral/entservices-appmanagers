@@ -110,6 +110,13 @@ namespace Plugin {
         return result;
     }
 
+    Core::hresult HelloName(const string& name , const string& result/*@out*/)
+    {
+        LOGINFO("Hello %s", name.c_str());
+        result = "Hello " + name;
+        return Core::ERROR_NONE;
+    }
+
     Core::hresult PackageManagerImplementation::Initialize(PluginHost::IShell* service)
     {
         Core::hresult result = Core::ERROR_GENERAL;
