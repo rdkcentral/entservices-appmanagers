@@ -232,19 +232,16 @@ void AppManagerImplementation::dispatchEvent(EventNames event, const JsonObject 
 
 void AppManagerImplementation::Dispatch(EventNames event, const JsonObject params)
 {
-    string appId = "";
-    string appInstanceId = "";
-    AppLifecycleState newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNKNOWN;
-    AppLifecycleState oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNKNOWN;
-    AppErrorReason errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE;
-    string version = "";
-    string installStatus = "";
-    string intent = "";
-    string source = "";
     switch(event)
     {
         case APP_EVENT_LIFECYCLE_STATE_CHANGED:
         {
+            string appId = "";
+            string appInstanceId = "";
+            AppLifecycleState newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNKNOWN;
+            AppLifecycleState oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNKNOWN;
+            AppErrorReason errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE;
+
             if (!(params.HasLabel("appId") && !(appId = params["appId"].String()).empty()))
             {
                 LOGERR("appId not present or empty");
@@ -278,6 +275,9 @@ void AppManagerImplementation::Dispatch(EventNames event, const JsonObject param
         }
         case APP_EVENT_INSTALLATION_STATUS:
         {
+            string appId = "";
+            string version = "";
+            string installStatus = "";
             /* Check if 'packageId' exists and is not empty */
             appId = params.HasLabel("packageId") ? params["packageId"].String() : "";
             if (appId.empty())
@@ -316,6 +316,10 @@ void AppManagerImplementation::Dispatch(EventNames event, const JsonObject param
         }
         case APP_EVENT_LAUNCH_REQUEST:
         {
+            string appId = "";
+            string intent = "";
+            string source = "";
+
             appId = params.HasLabel("appId") ? params["appId"].String() : "";
             if (appId.empty())
             {
@@ -344,6 +348,9 @@ void AppManagerImplementation::Dispatch(EventNames event, const JsonObject param
         }
         case APP_EVENT_UNLOADED:
         {
+            string appId = "";
+            string appInstanceId = "";
+
             appId = params.HasLabel("appId") ? params["appId"].String() : "";
             if (appId.empty())
             {
@@ -697,7 +704,6 @@ bool AppManagerImplementation::removeAppInfoByAppId(const string &appId)
 {
     bool result = false;
 
-    Core::SafeSyncType<Core::CriticalSection> lock(mAdminLock);
     /* Check if appId StorageInfo is found, erase it */
     auto it = mAppInfo.find(appId);
     if (it != mAppInfo.end())
@@ -1659,24 +1665,5 @@ bool AppManagerImplementation::checkInstallUninstallBlock(const std::string& app
     LOGINFO("checkInstallUninstallBlock: appId=%s duplicateCount=%d blocked=%d", appId.c_str(), duplicateCount, blocked);
     return blocked;
 }
-bool AppManagerImplementation::getAppinfo(const string& appId,AppInfo &appData){
-    mAdminLock.Lock();
-    auto it = mAppInfo.find(appId);
-    bool found =false;
-    if((it != mAppInfo.end()))
-    {
-        appData=it->second;
-        LOGINFO("Fetched appData for appId %s", appId.c_str());
-         found = true;
-    }
-    else
-    {
-        LOGERR("Failed to fetch appData for appId %s", appId.c_str());
-    }
-    mAdminLock.Unlock();
-    return found;
-   
-}
-
 } /* namespace Plugin */
 } /* namespace WPEFramework */

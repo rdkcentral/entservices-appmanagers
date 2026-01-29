@@ -233,7 +233,6 @@ namespace Plugin {
 
         // IConfiguration methods
         uint32_t Configure(PluginHost::IShell* service) override;
-        bool getAppinfo(const string& appId,AppInfo &appData);
 
     private: /* private methods */
         Core::hresult createPersistentStoreRemoteStoreObject();
