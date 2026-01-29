@@ -172,6 +172,7 @@ namespace WPEFramework
             string appInstanceId = "";
             string errorReason = "";
             bool success = true;
+            bool isAppLoaded = false;
             Exchange::ILifecycleManager::LifecycleState state = Exchange::ILifecycleManager::LifecycleState::UNLOADED;
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             AppManagerTelemetryReporting& appManagerTelemetryReporting =AppManagerTelemetryReporting::getInstance();
@@ -200,11 +201,18 @@ namespace WPEFramework
                     status = isAppLoaded(appId, loaded);
                     if (appManagerImplInstance != nullptr)
                     {
-                        auto it = appManagerImplInstance->mAppInfo.find(appId);
-                        if ((loaded == true) &&
-                            (Core::ERROR_NONE == status) &&
-                            (it != appManagerImplInstance->mAppInfo.end()) &&
-                            (it->second.appNewState == Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED))
+                        isAppLoaded = appManagerImplInstance->SearchAppId(appId);
+                        bool isSuspended = appManagerImplInstance->getAppinfo(appId,
+                        [&](AppInfo& info) -> bool
+                        {
+                            if (info.appNewState ==
+                                Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED)
+                            {
+                                return true;   // condition matched
+                            }
+                            return false;      // condition not matched
+                        });
+                        if ((loaded == true) && (Core::ERROR_NONE == status) &&(isAppLoaded) &&(isSuspended))
                         {
                             appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_RESUME);
                             state = Exchange::ILifecycleManager::LifecycleState::ACTIVE;
@@ -242,12 +250,12 @@ namespace WPEFramework
                             if (status == Core::ERROR_NONE)
                             {
                                 LOGINFO("Update App Info");
-                                it->second.appInstanceId   = std::move(appInstanceId);
-                                it->second.appIntent       = intent;
-                                it->second.packageInfo.type = AppManagerImplementation::APPLICATION_TYPE_INTERACTIVE;
-                                it->second.targetAppState  =    (state == Exchange::ILifecycleManager::LifecycleState::SUSPENDED)
-                                                                                                                                           ? Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED
-                                                                                                                                           : Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
+                                appManagerImplInstance->WithAppInfo(appId, [&](AppInfo& info) {
+                                    info.appInstanceId = std::move(appInstanceId);
+                                    info.appIntent = intent;
+                                    info.packageInfo.type = AppManagerImplementation::APPLICATION_TYPE_INTERACTIVE;
+                                    info.targetAppState =    (state == Exchange::ILifecycleManager::LifecycleState::SUSPENDED) ? Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED : Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
+                                });                                             
                             }
                             else
                             {

@@ -230,6 +230,8 @@ namespace Plugin {
         void handleOnAppUnloaded(const string& appId, const string& appInstanceId);
         void handleOnAppLaunchRequest(const string& appId, const string& intent, const string& source);
         std::string getInstallAppType(ApplicationType type);
+        bool getAppinfo(const string& appId, std::function<void(AppInfo&)> appData);
+        bool SearchAppId(const string& appId);
 
         // IConfiguration methods
         uint32_t Configure(PluginHost::IShell* service) override;
