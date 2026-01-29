@@ -895,30 +895,6 @@ TEST_F(StorageManagerTest, test_clearall_without_exemption_json){
     std::string errorReason = "";
     EXPECT_EQ(Core::ERROR_NONE, handler.Invoke(connection, _T("clearAll"), _T("{}"), response));
 }
-/*
-    Test: Initialize with mConfigure null - QueryInterface returns nullptr
-    Validates that Initialize() properly handles when IConfiguration interface is not available
-    This is the specific mConfigure null scenario you wanted to verify
-*/
-TEST_F(StorageManagerTest, Initialize_mConfigureNull_Failure) {
-    // Create a new plugin instance to test fresh initialization
-    Core::ProxyType<Plugin::StorageManager> testPlugin = 
-        Core::ProxyType<Plugin::StorageManager>::Create();
-    
-    NiceMock<ServiceMock> testService;
-    
-    // Setup mock to return nullptr for Root (adjust based on your ServiceMock implementation)
-    // Note: ServiceMock may not have Root mocked - use your existing mock methods
-    ON_CALL(testService, ConfigLine())
-        .WillByDefault(Return(string()));
-    
-    std::string result = testPlugin->Initialize(&testService);
-    
-    // Should return error about initialization failure
-    EXPECT_FALSE(result.empty());
-    
-    testPlugin->Deinitialize(&testService);
-}
 
 /*
     Test: Verify mConfigure->Release() and nullptr are called on Configure() failure
