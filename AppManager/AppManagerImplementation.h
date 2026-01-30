@@ -231,6 +231,23 @@ namespace Plugin {
         void handleOnAppLaunchRequest(const string& appId, const string& intent, const string& source);
         std::string getInstallAppType(ApplicationType type);
 
+        bool SearchAppId(const string& appId);
+        bool SetAppIntent(const std::string& appId,const std::string& intent);
+        bool SetTargetState(const std::string& appId, Exchange::IAppManager::AppLifecycleState targetState);
+        bool SetAppInstanceId(const std::string& appId,const std::string& appInstanceId);
+        bool SetPackageInfo(const std::string& appId, const PackageInfo& packageData);
+        bool SetOldState(const std::string& appId, Exchange::IAppManager::AppLifecycleState oldState);
+        bool SetNewState(const std::string& appId, Exchange::IAppManager::AppLifecycleState newState);
+        bool SetlastActiveStateChangeTime(const std::string& appId, const timespec& time);
+        bool SetlastActiveIndex(const std::string& appId, const uint32_t& index);
+        bool setPackageInfoType(const std::string& appId, ApplicationType type);
+        std::string getAppInstanceId(const std::string& appId) const;
+        Exchange::IAppManager::AppLifecycleState getappNewState(const std::string& appId) const;
+        Exchange::IAppManager::AppLifecycleState getTargetState(const std::string& appId) const;
+        Exchange::IAppManager::AppLifecycleState getAppOldState(const std::string& appId) const;
+        PackageInfo getPackageInfo(const std::string& appId) const;
+        std::string getActiveSessionId(const std::string& appId) const;
+
         // IConfiguration methods
         uint32_t Configure(PluginHost::IShell* service) override;
 
