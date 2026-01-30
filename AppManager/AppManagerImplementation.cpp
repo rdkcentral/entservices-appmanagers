@@ -883,12 +883,19 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
     time_t requestTime = appManagerTelemetryReporting.getCurrentTimestamp();
 #endif
     LOGINFO(" LaunchApp enter with appId %s", appId.c_str());
-
+    bool installed = false;
+    Core::hresult result = IsInstalled(appId, installed);
     mAdminLock.Lock();
-    if (appId.empty())
+    if (!installed)
     {
-        LOGERR("application Id is empty");
-        status = Core::ERROR_INVALID_PARAMETER;
+        if (result == Core::ERROR_INVALID_PARAMETER) {
+            LOGERR("application Id is empty");
+            status = result;
+        }
+        else if (result == Core::ERROR_GENERAL) {
+            LOGERR("App %s is not installed. Cannot launch.", appId.c_str());
+            status = result;
+        }
     }
     else if (nullptr != mLifecycleInterfaceConnector)
     {
@@ -1393,6 +1400,7 @@ Core::hresult AppManagerImplementation::IsInstalled(const std::string& appId, bo
     if(appId.empty())
     {
         LOGERR("appId not present or empty");
+        status = Core::ERROR_INVALID_PARAMETER;
     }
     else
     {
