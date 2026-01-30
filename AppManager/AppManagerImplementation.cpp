@@ -883,15 +883,25 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
     time_t requestTime = appManagerTelemetryReporting.getCurrentTimestamp();
 #endif
     LOGINFO(" LaunchApp enter with appId %s", appId.c_str());
-
+    
     mAdminLock.Lock();
+    std::vector<WPEFramework::Exchange::IPackageInstaller::Package> packageList;
     if (appId.empty())
     {
         LOGERR("application Id is empty");
         status = Core::ERROR_INVALID_PARAMETER;
     }
-    else if (nullptr != mLifecycleInterfaceConnector)
-    {
+    else {
+        bool installed = false;
+        Core::hresult result = fetchAppPackageList(packageList);
+        if (result == Core::ERROR_NONE) {
+            checkIsInstalled(appId, installed, packageList);
+            if (!installed) {
+                LOGERR("App %s is not installed. Cannot launch.", appId.c_str());
+                status = Core::ERROR_GENERAL;}
+        }
+        else if (nullptr != mLifecycleInterfaceConnector)
+        {
         std::shared_ptr<AppManagerRequest> request = std::make_shared<AppManagerRequest>();
 
         if (request != nullptr)
@@ -916,6 +926,7 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
         {
             LOGERR("Failed to perform operation due to no memory");
         }
+    }
     }
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
     if(status == Core::ERROR_NONE)
