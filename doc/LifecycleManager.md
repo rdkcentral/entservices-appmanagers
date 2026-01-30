@@ -2,7 +2,7 @@
 
 > Application Lifecycle State Machine
 
-[← Back to Main](./README.md) | [← Previous: AppManager](./AppManager.md)
+[← Back to Main](../README.md) | [← Previous: AppManager](./AppManager.md)
 
 ---
 
@@ -303,5 +303,5 @@ Emitted on every state transition with:
 
 ---
 
-[← Back to Main](./README.md) | [Next: RuntimeManager →](./RuntimeManager.md)
+[← Back to Main](../README.md) | [Next: RuntimeManager →](./RuntimeManager.md)
 

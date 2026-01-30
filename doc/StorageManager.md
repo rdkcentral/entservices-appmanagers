@@ -2,7 +2,7 @@
 
 > Application Storage Allocation & Management
 
-[← Back to Main](./README.md) | [← Previous: DownloadManager](./DownloadManager.md)
+[← Back to Main](../README.md) | [← Previous: DownloadManager](./DownloadManager.md)
 
 ---
 
@@ -186,5 +186,5 @@ Loaded from `StorageManager.config`:
 
 ---
 
-[← Back to Main](./README.md) | [Next: PreinstallManager →](./PreinstallManager.md)
+[← Back to Main](../README.md) | [Next: PreinstallManager →](./PreinstallManager.md)
 

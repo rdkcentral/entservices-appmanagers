@@ -2,7 +2,7 @@
 
 > Container Runtime & Execution Management
 
-[← Back to Main](./README.md) | [← Previous: LifecycleManager](./LifecycleManager.md)
+[← Back to Main](../README.md) | [← Previous: LifecycleManager](./LifecycleManager.md)
 
 ---
 
@@ -258,5 +258,5 @@ RuntimeManager generates OCI-compliant container specifications including:
 
 ---
 
-[← Back to Main](./README.md) | [Next: PackageManager →](./PackageManager.md)
+[← Back to Main](../README.md) | [Next: PackageManager →](./PackageManager.md)
 

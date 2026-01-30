@@ -2,7 +2,7 @@
 
 > Application Package Lifecycle Management
 
-[← Back to Main](./README.md) | [← Previous: RuntimeManager](./RuntimeManager.md)
+[← Back to Main](../README.md) | [← Previous: RuntimeManager](./RuntimeManager.md)
 
 ---
 
@@ -243,5 +243,5 @@ Package locking prevents uninstallation while an application is running. When Ap
 
 ---
 
-[← Back to Main](./README.md) | [Next: DownloadManager →](./DownloadManager.md)
+[← Back to Main](../README.md) | [Next: DownloadManager →](./DownloadManager.md)
 

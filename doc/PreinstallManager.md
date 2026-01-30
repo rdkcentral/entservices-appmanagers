@@ -2,7 +2,7 @@
 
 > Pre-installed Application Management
 
-[← Back to Main](./README.md) | [← Previous: StorageManager](./StorageManager.md)
+[← Back to Main](../README.md) | [← Previous: StorageManager](./StorageManager.md)
 
 ---
 
@@ -174,5 +174,5 @@ Loaded from `PreinstallManager.config`:
 
 ---
 
-[← Back to Main](./README.md) | [Next: RDKWindowManager →](./RDKWindowManager.md)
+[← Back to Main](../README.md) | [Next: RDKWindowManager →](./RDKWindowManager.md)
 

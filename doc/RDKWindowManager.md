@@ -2,7 +2,7 @@
 
 > Display & Window Management for RDK Platform
 
-[← Back to Main](./README.md) | [← Previous: PreinstallManager](./PreinstallManager.md)
+[← Back to Main](../README.md) | [← Previous: PreinstallManager](./PreinstallManager.md)
 
 ---
 
@@ -192,5 +192,5 @@ flowchart TD
 
 ---
 
-[← Back to Main](./README.md) | [Next: TelemetryMetrics →](./TelemetryMetrics.md)
+[← Back to Main](../README.md) | [Next: TelemetryMetrics →](./TelemetryMetrics.md)
 

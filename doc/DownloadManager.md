@@ -2,7 +2,7 @@
 
 > HTTP Download Service with Queue Management
 
-[← Back to Main](./README.md) | [← Previous: PackageManager](./PackageManager.md)
+[← Back to Main](../README.md) | [← Previous: PackageManager](./PackageManager.md)
 
 ---
 
@@ -237,5 +237,5 @@ DownloadManager uses a dedicated worker thread (`downloaderRoutine`) that:
 
 ---
 
-[← Back to Main](./README.md) | [Next: StorageManager →](./StorageManager.md)
+[← Back to Main](../README.md) | [Next: StorageManager →](./StorageManager.md)
 
