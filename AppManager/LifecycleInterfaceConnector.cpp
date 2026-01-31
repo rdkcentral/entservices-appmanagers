@@ -509,12 +509,10 @@ namespace WPEFramework
             mAdminLock.Lock();
             if (nullptr != appManagerImplInstance)
             {
-                for ( std::map<std::string, AppManagerImplementation::AppInfo>::iterator appIterator = appManagerImplInstance->mAppInfo.begin(); appIterator != appManagerImplInstance->mAppInfo.end(); appIterator++)
-                {
-                    if (appIterator->first.compare(appId) == 0)
+                if(appManagerImplInstance->SearchAppId(appId))
                     {
                         foundAppId = true;
-                        appInstanceId = appIterator->second.appInstanceId;
+                        appInstanceId = appManagerImplInstance->getAppInstanceId(appId);
                         if (nullptr != mLifecycleManagerRemoteObject)
                         {
                             appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_TERMINATE);
@@ -528,9 +526,7 @@ namespace WPEFramework
 #endif
                             }
                         }
-                        break;
                     }
-                }
                 if (!foundAppId)
                 {
                     LOGERR("AppId %s not found in database", appId.c_str());
@@ -549,6 +545,7 @@ namespace WPEFramework
             mAdminLock.Unlock();
             return status;
         }
+
 
         /* Kill App invokes it */
         Core::hresult LifecycleInterfaceConnector::killApp(const string& appId)
