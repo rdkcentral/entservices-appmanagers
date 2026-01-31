@@ -240,12 +240,11 @@ namespace Plugin {
         bool SetNewState(const std::string& appId, Exchange::IAppManager::AppLifecycleState newState);
         bool SetlastActiveStateChangeTime(const std::string& appId, const timespec& time);
         bool SetlastActiveIndex(const std::string& appId, const uint32_t& index);
-        bool setPackageInfoType(const std::string& appId, ApplicationType type);
+        bool SetPackageInfoType(const std::string& appId, ApplicationType type);
         std::string getAppInstanceId(const std::string& appId) const;
         Exchange::IAppManager::AppLifecycleState getappNewState(const std::string& appId) const;
         Exchange::IAppManager::AppLifecycleState getTargetState(const std::string& appId) const;
         Exchange::IAppManager::AppLifecycleState getAppOldState(const std::string& appId) const;
-        PackageInfo getPackageInfo(const std::string& appId) const;
         std::string getActiveSessionId(const std::string& appId) const;
 
         // IConfiguration methods
