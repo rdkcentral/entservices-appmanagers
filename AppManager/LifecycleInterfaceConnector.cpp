@@ -200,19 +200,19 @@ namespace WPEFramework
                         auto it = appManagerImplInstance->mAppInfo.find(appId);
                         if ((loaded == true) &&
                             (Core::ERROR_NONE == status) &&
-                            (it != appManagerImplInstance->mAppInfo.end()) &&
-                            (it->second.appNewState == Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED))
+                            (appManagerImplInstance->SearchApp(appId)) &&
+                            (appManagerImplInstance->getappNewState(appId) == Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED))
                         {
                             appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_RESUME);
                             state = Exchange::ILifecycleManager::LifecycleState::ACTIVE;
-                            LOGINFO("launchApp appInstanceId %s", it->second.appInstanceId.c_str());
-                            status = mLifecycleManagerRemoteObject->SetTargetAppState(it->second.appInstanceId, state, intent);
+                            LOGINFO("launchApp appInstanceId %s", appManagerImplInstance->getappInstanceId(appId).c_str());
+                            status = mLifecycleManagerRemoteObject->SetTargetAppState(appManagerImplInstance->getappInstanceId(appId), state, intent);
 
                             if (status == Core::ERROR_NONE)
                             {
                                 LOGINFO("Update App Info");
-                                it->second.targetAppState = Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
-                                it->second.appIntent = intent;
+                                appManagerImplInstance->SetTargetState(appId, Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE);
+                                appManagerImplInstance->SetAppIntent(appId, intent);
                             }
                             else
                             {
@@ -239,12 +239,12 @@ namespace WPEFramework
                             if (status == Core::ERROR_NONE)
                             {
                                 LOGINFO("Update App Info");
-                                it->second.appInstanceId   = std::move(appInstanceId);
-                                it->second.appIntent       = intent;
-                                it->second.packageInfo.type = AppManagerImplementation::APPLICATION_TYPE_INTERACTIVE;
-                                it->second.targetAppState  =    (state == Exchange::ILifecycleManager::LifecycleState::SUSPENDED)
-                                                                                                                                           ? Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED
-                                                                                                                                           : Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
+                                appManagerImplInstance->SetAppInstanceId(appId, appInstanceId);
+                                appManagerImplInstance->SetTargetState(appId, (state == Exchange::ILifecycleManager::LifecycleState::SUSPENDED)
+                                                                                                                            ? Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED
+                                                                                                                            : Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE);
+                                appManagerImplInstance->SetAppIntent(appId, intent);
+                                appManagerImplInstance->SetPackageInfoType(appId, AppManagerImplementation::APPLICATION_TYPE_INTERACTIVE);
                             }
                             else
                             {
