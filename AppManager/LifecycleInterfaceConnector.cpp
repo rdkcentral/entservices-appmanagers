@@ -323,11 +323,11 @@ namespace WPEFramework
                         /*Insert/update loaded app info*/
                         if (nullptr != appManagerImplInstance)
                         {
-                            appManagerImplInstance->mAppInfo[appId].appInstanceId   = std::move(appInstanceId);
-                            appManagerImplInstance->mAppInfo[appId].packageInfo.type = AppManagerImplementation::APPLICATION_TYPE_INTERACTIVE;
-                            appManagerImplInstance->mAppInfo[appId].targetAppState  =    (state == Exchange::ILifecycleManager::LifecycleState::SUSPENDED)
-                                                                                                                                       ? Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED
-                                                                                                                                       : Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED;
+                            appManagerImplInstance->SetAppInstanceId(appId, std::move(appInstanceId));
+                            appManagerImplInstance->SetPackageInfoType(appId, AppManagerImplementation::APPLICATION_TYPE_INTERACTIVE);
+                            appManagerImplInstance->SetTargetAppState(appId, (state == Exchange::ILifecycleManager::LifecycleState::SUSPENDED)
+                                                                                           ? Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED
+                                                                                           : Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED);
                         }
                     }
                     else
