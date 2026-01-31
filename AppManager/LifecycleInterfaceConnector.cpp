@@ -197,7 +197,6 @@ namespace WPEFramework
                     status = isAppLoaded(appId, loaded);
                     if (appManagerImplInstance != nullptr)
                     {
-                        auto it = appManagerImplInstance->mAppInfo.find(appId);
                         if ((loaded == true) &&
                             (Core::ERROR_NONE == status) &&
                             (appManagerImplInstance->SearchApp(appId)) &&
