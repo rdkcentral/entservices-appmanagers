@@ -199,13 +199,13 @@ namespace WPEFramework
                     {
                         if ((loaded == true) &&
                             (Core::ERROR_NONE == status) &&
-                            (appManagerImplInstance->SearchApp(appId)) &&
+                            (appManagerImplInstance->SearchAppId(appId)) &&
                             (appManagerImplInstance->getappNewState(appId) == Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED))
                         {
                             appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_RESUME);
                             state = Exchange::ILifecycleManager::LifecycleState::ACTIVE;
-                            LOGINFO("launchApp appInstanceId %s", appManagerImplInstance->getappInstanceId(appId).c_str());
-                            status = mLifecycleManagerRemoteObject->SetTargetAppState(appManagerImplInstance->getappInstanceId(appId), state, intent);
+                            LOGINFO("launchApp appInstanceId %s", appManagerImplInstance->getAppInstanceId(appId).c_str());
+                            status = mLifecycleManagerRemoteObject->SetTargetAppState(appManagerImplInstance->getAppInstanceId(appId), state, intent);
 
                             if (status == Core::ERROR_NONE)
                             {
@@ -325,7 +325,7 @@ namespace WPEFramework
                         {
                             appManagerImplInstance->SetAppInstanceId(appId, std::move(appInstanceId));
                             appManagerImplInstance->SetPackageInfoType(appId, AppManagerImplementation::APPLICATION_TYPE_INTERACTIVE);
-                            appManagerImplInstance->SetTargetAppState(appId, (state == Exchange::ILifecycleManager::LifecycleState::SUSPENDED)
+                            appManagerImplInstance->SetTargetState(appId, (state == Exchange::ILifecycleManager::LifecycleState::SUSPENDED)
                                                                                            ? Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED
                                                                                            : Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED);
                         }
@@ -366,14 +366,11 @@ namespace WPEFramework
 
             if(nullptr != appManagerImplInstance)
             {
-                for(auto appIterator = appManagerImplInstance->mAppInfo.begin(); appIterator != appManagerImplInstance->mAppInfo.end(); ++appIterator)
+                if(appManagerImplInstance->SearchAppId(appId))
                 {
-                    if(appIterator->first.compare(appId) == 0)
-                    {
-                        appInstanceId = appIterator->second.appInstanceId;
-                        appIntent = appIterator->second.appIntent;
-                        isAppLoaded = true;
-
+                    appInstanceId = appManagerImplInstance->getAppInstanceId(appId);
+                    appIntent = appManagerImplInstance->getAppIntent(appId);
+                    isAppLoaded = true;
                         if(nullptr != mLifecycleManagerRemoteObject)
                         {
                             appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_CLOSE);
@@ -394,14 +391,13 @@ namespace WPEFramework
                                 }
 
                                 mAdminLock.Lock();
-                                auto it = appManagerImplInstance->mAppInfo.find(appId);
-                                if(it != appManagerImplInstance->mAppInfo.end() &&
-                                    it->second.appNewState == Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED)
+                                if(appManagerImplInstance->SearchAppId(appId) &&
+                                    appManagerImplInstance->getappNewState(appId) == Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED)
                                 {
                                     mAppIdAwaitingPause.clear();
 
-                                    auto retryIt = appManagerImplInstance->mAppInfo.find(appId);
-                                    if (retryIt != appManagerImplInstance->mAppInfo.end())
+                                    //Retry logic for suspend/hibernate/unload
+                                    if (appManagerImplInstance->SearchAppId(appId))
                                     {	
 					    // Check for install/uninstall block.
 					bool installUninstallBlocked = appManagerImplInstance->checkInstallUninstallBlock(appId);
@@ -417,13 +413,13 @@ namespace WPEFramework
 					else if (fileExists(SUSPEND_POLICY_FILE))
                                         {
                                             LOGINFO("App with AppId: %s is suspendable", appId.c_str());
-                                            retryIt->second.targetAppState = Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED;
+                                            appManagerImplInstance->SetTargetState(appId, Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED);
                                             status = mLifecycleManagerRemoteObject->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::LifecycleState::SUSPENDED, appIntent);
 
                                             if (status == Core::ERROR_NONE && fileExists(HIBERNATE_POLICY_FILE))
                                             {
                                                 LOGINFO("App with AppId: %s is hibernatable", appId.c_str());
-                                                retryIt->second.targetAppState = Exchange::IAppManager::AppLifecycleState::APP_STATE_HIBERNATED;
+                                                appManagerImplInstance->SetTargetState(appId, Exchange::IAppManager::AppLifecycleState::APP_STATE_HIBERNATED);
                                                 status = mLifecycleManagerRemoteObject->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::LifecycleState::HIBERNATED, appIntent);
 
                                                 if (status != Core::ERROR_NONE)
@@ -473,9 +469,6 @@ namespace WPEFramework
                             appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_CLOSE, AppManagerImplementation::ERROR_INTERNAL);
 #endif
                         }
-
-                        break;
-                    }
                 }
 
                 if (!isAppLoaded)

@@ -1866,5 +1866,20 @@ std::string AppManagerImplementation::getActiveSessionId(const std::string& appI
     mAdminLock.Unlock();
     return sessionId;
 }
+
+std::string AppManagerImplementation::getAppIntent(const std::string& appId) const{
+    std::string intent = "";
+    mAdminLock.Lock();
+    auto it = mAppInfo.find(appId);
+    if (it != mAppInfo.end()) {
+        intent = it->second.appIntent;
+        LOGINFO("getAppIntent: App %s intent fetched", appId.c_str());
+    }
+    else {
+        LOGERR("getAppIntent: App %s not found", appId.c_str());
+    }
+    mAdminLock.Unlock();
+    return intent;
+}
 } /* namespace Plugin */
 } /* namespace WPEFramework */

@@ -246,6 +246,7 @@ namespace Plugin {
         Exchange::IAppManager::AppLifecycleState getTargetState(const std::string& appId) const;
         Exchange::IAppManager::AppLifecycleState getAppOldState(const std::string& appId) const;
         std::string getActiveSessionId(const std::string& appId) const;
+        std::string getAppIntent(const std::string& appId) const;
 
         // IConfiguration methods
         uint32_t Configure(PluginHost::IShell* service) override;
