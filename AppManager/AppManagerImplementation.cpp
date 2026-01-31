@@ -1778,19 +1778,21 @@ bool AppManagerImplementation::SetNewState(const std::string& appId, Exchange::I
 }
 
 bool AppManagerImplementation::SetPackageInfoType(const std::string& appId, ApplicationType type){
-    AppManagerImplementation* appManager = AppManagerImplementation::getInstance();
     mAdminLock.Lock();
+    bool isAppFound = false;
     auto it = mAppInfo.find(appId);
     if (it != mAppInfo.end()) {
         it->second.packageInfo.type = type;
+        isAppFound = true;
         LOGINFO("SetPackageInfoType: App %s packageInfo type set", appId.c_str());
     }
     else{
         LOGERR("SetPackageInfoType: App %s not found", appId.c_str());
-        return false;
     }
     mAdminLock.Unlock();
+    return isAppFound;
 }
+
 std::string AppManagerImplementation::getAppInstanceId(const std::string& appId) const{
     std::string instanceId = "";
     mAdminLock.Lock();
@@ -1844,7 +1846,7 @@ Exchange::IAppManager::AppLifecycleState AppManagerImplementation::getAppOldStat
         LOGINFO("getAppOldState: App %s oldState fetched", appId.c_str());
     }
     else {
-        LOGERR("getTargetState: App %s not found", appId.c_str());
+        LOGERR("getAppOldState: App %s not found", appId.c_str());
     }
     mAdminLock.Unlock();
     return AppoldState;
