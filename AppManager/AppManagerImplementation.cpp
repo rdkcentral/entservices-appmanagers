@@ -1752,16 +1752,6 @@ bool AppManagerImplementation::SetNewState(const std::string& appId, Exchange::I
 }
 
 
-bool AppManagerImplementation::SetAppIntent(const std::string& appId, const std::string& intent){
-    AppManagerImplementation* appManager = AppManagerImplementation::getInstance();
-    if(appManager != nullptr){
-        return appManager->SetAppIntent(appId, intent);
-    }
-    else{
-        LOGERR("AppManagerImplementation instance is null");
-        return false;
-    }
-}
  bool AppManagerImplementation::SetlastActiveStateChangeTime(const std::string& appId, const timespec& time){
     mAdminLock.Lock();
     bool isAppFound = false;
