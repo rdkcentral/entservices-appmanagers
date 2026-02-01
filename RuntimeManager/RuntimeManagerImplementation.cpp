@@ -319,7 +319,7 @@ namespace WPEFramework
                 {
                     LOGERR("mOciContainerObject is null (Attempt %d)", retryCount + 1);
                     retryCount++;
-                    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+                    //std::this_thread::sleep_for(std::chrono::milliseconds(200)); sleep while holding lock
                 }
                 else
                 {
@@ -385,7 +385,7 @@ err_ret:
                     {
                         LOGERR("storageManagerObject is null (Attempt %d)", retryCount + 1);
                         retryCount++;
-                        std::this_thread::sleep_for(std::chrono::milliseconds(200));
+                        //std::this_thread::sleep_for(std::chrono::milliseconds(200)); sleep while holding lock
                     }
                     else
                     {
