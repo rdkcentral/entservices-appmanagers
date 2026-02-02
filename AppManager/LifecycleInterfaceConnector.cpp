@@ -575,7 +575,7 @@ namespace WPEFramework
             if (nullptr != mLifecycleManagerRemoteObject)
             {
                 mAdminLock.Lock();
-                string appInstanceId = GetAppInstanceId(appId);
+                string appInstanceId = appManagerImplInstance->getAppInstanceId(appId);
                 if (appInstanceId.empty())
                 {
                     LOGERR("appInstanceId not found for appId '%s'", appId.c_str());
@@ -636,7 +636,8 @@ namespace WPEFramework
             if (nullptr != mLifecycleManagerRemoteObject)
             {
                 mAdminLock.Lock();
-                string appInstanceId = GetAppInstanceId(appId);
+                AppManagerImplementation* appManagerImplInstance = AppManagerImplementation::getInstance();
+                string appInstanceId = appManagerImplInstance->getAppInstanceId(appId);
                 if (appInstanceId.empty())
                 {
                     LOGERR("appInstanceId not found for appId '%s'", appId.c_str());
@@ -707,22 +708,21 @@ namespace WPEFramework
                     JsonObject loadedAppsObject = loadedAppsJsonArray[i].Object();
                     string appId = loadedAppsObject.HasLabel("appId")?loadedAppsObject["appId"].String():"";
                     LOGINFO("Loaded appId: %s", appId.c_str());
-                    auto& appInfo = appManagerImplInstance->mAppInfo[appId];
 
                     Exchange::IAppManager::LoadedAppInfo loadedAppInfo = {};
 		    loadedAppInfo.appId = appId;
-                    loadedAppInfo.type = appManagerImplInstance->getInstallAppType(appInfo.packageInfo.type);
-		    loadedAppInfo.appInstanceId = appInfo.appInstanceId = loadedAppsObject.HasLabel("appInstanceID")?loadedAppsObject["appInstanceID"].String():"";
-		    loadedAppInfo.activeSessionId = appInfo.activeSessionId = loadedAppsObject.HasLabel("activeSessionId")?loadedAppsObject["activeSessionId"].String():"";
+             loadedAppInfo.type = appManagerImplInstance->getPackageInfoType(appId);
+            loadedAppInfo.appInstanceId = appManagerImplInstance->getAppInstanceId(appId) = loadedAppsObject.HasLabel("appInstanceID")?loadedAppsObject["appInstanceID"].String():"";
+            loadedAppInfo.activeSessionId = appManagerImplInstance->getActiveSessionId(appId) = loadedAppsObject.HasLabel("activeSessionId")?loadedAppsObject["activeSessionId"].String():"";
 
-		    appInfo.targetAppState = mapAppLifecycleState(
+            appManagerImplInstance->SetTargetState(appId, mapAppLifecycleState(
                     static_cast<Exchange::ILifecycleManager::LifecycleState>(
-                            getIntJsonField(loadedAppsObject, "targetLifecycleState")));
-                    loadedAppInfo.targetLifecycleState = appInfo.targetAppState;
-                    appInfo.appNewState = mapAppLifecycleState(
+                            getIntJsonField(loadedAppsObject, "targetLifecycleState"))));
+            loadedAppInfo.targetLifecycleState = appManagerImplInstance->getTargetState(appId);
+            appManagerImplInstance->SetAppNewState(appId, mapAppLifecycleState(
                         static_cast<Exchange::ILifecycleManager::LifecycleState>(
-                            getIntJsonField(loadedAppsObject, "lifecycleState")));
-                    loadedAppInfo.lifecycleState = appInfo.appNewState;
+                            getIntJsonField(loadedAppsObject, "lifecycleState"))));
+            loadedAppInfo.lifecycleState = appManagerImplInstance->getappNewState(appId);
 
                     //Add loaded info
 		    loadedAppInfoList.push_back(loadedAppInfo);
@@ -786,7 +786,7 @@ End:
             return result;
         }
 
-        void LifecycleInterfaceConnector::OnAppLifecycleStateChanged(const string& appId, const string& appInstanceId, const Exchange::ILifecycleManager::LifecycleState oldState, const Exchange::ILifecycleManager::LifecycleState newState, const string& navigationIntent)
+         void LifecycleInterfaceConnector::OnAppLifecycleStateChanged(const string& appId, const string& appInstanceId, const Exchange::ILifecycleManager::LifecycleState oldState, const Exchange::ILifecycleManager::LifecycleState newState, const string& navigationIntent)
         {
             AppManagerImplementation*appManagerImplInstance = AppManagerImplementation::getInstance();
             Exchange::IAppManager::AppLifecycleState oldAppState = mapAppLifecycleState(oldState);
@@ -805,15 +805,12 @@ End:
             if(nullptr != appManagerImplInstance)
             {
                 Core::SafeSyncType<Core::CriticalSection> lock(mAdminLock);
-                std::map<std::string, AppManagerImplementation::AppInfo>::iterator it;
-                for (it = appManagerImplInstance->mAppInfo.begin(); it != appManagerImplInstance->mAppInfo.end(); ++it)
-                {
-                    if((it->first.compare(appId) == 0) && (it->second.appInstanceId.compare(appInstanceId) == 0))
+                    if(appManagerImplInstance->SearchAppId(appId) && (appManagerImplInstance->getAppInstanceId(appId).compare(appInstanceId) == 0))
                     {
-                        it->second.appOldState = oldAppState;
-                        it->second.appNewState = newAppState;
-                        it->second.appLifecycleState = newState;
-                        it->second.appIntent = navigationIntent;
+                        appManagerImplInstance->SetAppOldState(appId, oldAppState);
+                        appManagerImplInstance->SetAppNewState(appId, newAppState);
+                        appManagerImplInstance->SetAppIntent(appId, navigationIntent);
+                        appManagerImplInstance->SetAppLifecycleState(appId, newState);
 
                         if (oldState == Exchange::ILifecycleManager::LifecycleState::ACTIVE ||
                             newState == Exchange::ILifecycleManager::LifecycleState::ACTIVE)
@@ -821,7 +818,7 @@ End:
                             struct timespec stateChangeTime;
                             if (timespec_get(&stateChangeTime, TIME_UTC) != 0)
                             {
-                                it->second.lastActiveStateChangeTime = stateChangeTime;
+                                appManagerImplInstance->SetlastActiveStateChangeTime(appId, stateChangeTime);
                             }
                             else
                             {
@@ -832,7 +829,7 @@ End:
                         if (newState == Exchange::ILifecycleManager::LifecycleState::ACTIVE)
                         {
                             gAppsActiveCounter++;
-                            it->second.lastActiveIndex = gAppsActiveCounter;
+                            appManagerImplInstance->SetlastActiveIndex(appId, gAppsActiveCounter);
                         }
                         if (newAppState == Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED)
                         {
@@ -842,9 +839,8 @@ End:
                                 mStateChangedCV.notify_all();
                             }
                         }
-                        break;
-                    }
                 }
+            }
                 shouldNotify = ((newAppState == Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING) ||
                                        (newAppState == Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE) ||
                                        (newAppState == Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED) ||
@@ -886,10 +882,10 @@ End:
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
                 AppManagerTelemetryReporting::getInstance().reportTelemetryDataOnStateChange(appId, newState);
 #endif
-            }
         }
+       
 
-        void LifecycleInterfaceConnector::OnAppStateChanged(const string& appId, Exchange::ILifecycleManager::LifecycleState state, const string& errorReason)
+       void LifecycleInterfaceConnector::OnAppStateChanged(const string& appId, Exchange::ILifecycleManager::LifecycleState state, const string& errorReason)
         {
             string appInstanceId = "";
             Exchange::IAppManager::AppLifecycleState currentAppState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED;
@@ -905,11 +901,10 @@ End:
             {
                 if (!appId.empty())
                 {
-                    auto it = appManagerImplInstance->mAppInfo.find(appId);
-                    if(it != appManagerImplInstance->mAppInfo.end())
+                    if(appManagerImplInstance->SearchAppId(appId))
                     {
-                        appInstanceId = it->second.appInstanceId;
-                        currentAppState = it->second.appNewState;
+                        appInstanceId = appManagerImplInstance->getAppInstanceId(appId);
+                        currentAppState = appManagerImplInstance->getappNewState(appId);
                     }
                     else
                     {
@@ -950,22 +945,6 @@ End:
                 }
             }
             return errorCode;
-        }
-
-        /* Returns appInstanceId for appId. Does not synchronize access to LoadedAppInfo.
-         * Caller should take care about the synchronization.
-         */
-        string LifecycleInterfaceConnector::GetAppInstanceId(const string& appId) const
-        {
-            AppManagerImplementation* appManagerImpl = AppManagerImplementation::getInstance();
-            if (!appManagerImpl)
-                return {};
-
-            auto it = appManagerImpl->mAppInfo.find(appId);
-            if (it == appManagerImpl->mAppInfo.end())
-                return {};
-            else
-                return it->second.appInstanceId;
         }
 
         void LifecycleInterfaceConnector::removeAppInfoByAppId(const string& appId)
