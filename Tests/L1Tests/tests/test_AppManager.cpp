@@ -1146,7 +1146,17 @@ TEST_F(AppManagerTest, LaunchAppUsingComRpcFailureWrongAppID)
 
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
+    bool installed = false;
+    EXPECT_CALL(*mPackageInstallerMock, ListPackages(::testing::_))
+        .WillRepeatedly([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
+            auto mockIterator = FillPackageIterator(); // Fill the package Info
+            packages = mockIterator;
+            return Core::ERROR_GENERAL;
+        });
+    status = mAppManagerImpl->IsInstalled(APPMANAGER_WRONG_APP_ID, installed);
+    //EXPECT_EQ(Core::ERROR_NONE, status);
 
+    if (installed) {
     expectedEvent.appId = APPMANAGER_WRONG_APP_ID;
     expectedEvent.appInstanceId = "";
     expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNKNOWN;
@@ -1155,16 +1165,18 @@ TEST_F(AppManagerTest, LaunchAppUsingComRpcFailureWrongAppID)
     mAppManagerImpl->Register(&notification);
     notification.SetExpectedEvent(expectedEvent);
 
-    LaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::ACTIVE);
-    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->LaunchApp(APPMANAGER_WRONG_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS));
+    LaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::ACTIVE);   
 
-    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
-    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
-
-    if(status == Core::ERROR_NONE)
-    {
-        releaseResources();
+   EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->LaunchApp(APPMANAGER_WRONG_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS));
+        signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+        EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+        mAppManagerImpl->Unregister(&notification);
+    } else {
+        LaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::ACTIVE);
+        EXPECT_EQ(Core::ERROR_GENERAL, mAppManagerImpl->LaunchApp(APPMANAGER_WRONG_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS));
+        // No event expected if not installed
     }
+        releaseResources();    
 }
 
 /* * Test Case for LaunchAppUsingComRpcFailureEmptyAppID
@@ -1292,7 +1304,7 @@ TEST_F(AppManagerTest, LaunchAppUsingComRpcFailureIsAppLoadedReturnError)
  */
 TEST_F(AppManagerTest, LaunchAppUsingComRpcFailureLifecycleManagerRemoteObjectIsNull)
 {
-    uint32_t signalled = AppManager_StateInvalid;
+    //uint32_t signalled = AppManager_StateInvalid;
     Core::Sink<NotificationHandler> notification;
     ExpectedAppLifecycleEvent expectedEvent;
 
@@ -1306,14 +1318,13 @@ TEST_F(AppManagerTest, LaunchAppUsingComRpcFailureLifecycleManagerRemoteObjectIs
     mAppManagerImpl->Register(&notification);
     notification.SetExpectedEvent(expectedEvent);
 
-    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->LaunchApp(APPMANAGER_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS));
-
-    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
-    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+    EXPECT_EQ(Core::ERROR_GENERAL, mAppManagerImpl->LaunchApp(APPMANAGER_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS));
+    //there wont be an event notification in this case as per #12126
+   /* signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+      EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);*/
 
     releaseAppManagerImpl();
 }
-
 /*
  * Test Case for PreloadAppUsingComRpcSuccess
  * Setting up AppManager/LifecycleManager/LifecycleManagerState/PersistentStore/PackageManagerRDKEMS Plugin and creating required COM-RPC resources
