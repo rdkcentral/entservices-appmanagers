@@ -1771,7 +1771,7 @@ std::string AppManagerImplementation::getAppInstanceId(const std::string& appId)
         mAdminLock.Lock();
         bool isAppFound = false;
         if (SearchAppId(appId)) {
-            mAppInfo[appId].packageInfo = getInstallAppType(packageData);
+            mAppInfo[appId].packageInfo = packageData;
             isAppFound = true;
             LOGINFO("SetPackageInfo: App %s packageInfo set", appId.c_str());
         }
@@ -1870,17 +1870,17 @@ std::string AppManagerImplementation::getAppInstanceId(const std::string& appId)
     }
 
     std::string AppManagerImplementation::getPackageInfoType(const std::string& appId) const{
-        ApplicationType appType = ApplicationType::APPLICATION_TYPE_UNKNOWN;
+        std::string appType = "";
         mAdminLock.Lock();
         auto it = mAppInfo.find(appId);
         if (it != mAppInfo.end()) {
-            appType = it->second.packageInfo.type;
+            appType = getInstallAppType(it->second.packageInfo.type);
         }
         else {
             LOGERR("getPackageInfoType: App %s not found", appId.c_str());
         }
         mAdminLock.Unlock();
-        return getInstallAppType(appType);
+        return appType;
     }
  
 /* Setter and Getter for the PackageInfoType */
