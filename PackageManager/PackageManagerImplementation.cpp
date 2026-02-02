@@ -638,6 +638,18 @@ namespace Plugin {
         return result;
     }
 
+    Core::hresult PackageManagerImplementation::DumpInfo()
+    {
+        CHECK_CACHE()
+        LOGINFO("Dumping PackageManager State:");
+
+        #if defined(USE_LIBPACKAGE) || defined(UNIT_TEST)
+        packageImpl->DumpInfo();
+        #endif
+
+        return Core::ERROR_NONE;
+    }
+
     Core::hresult PackageManagerImplementation::Config(const string &packageId, const string &version, Exchange::RuntimeConfig& runtimeConfig)
     {
         CHECK_CACHE()
