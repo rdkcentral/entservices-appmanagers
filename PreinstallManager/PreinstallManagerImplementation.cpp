@@ -351,9 +351,15 @@ namespace WPEFramework
             Exchange::IPackageInstaller::IPackageIterator *packageList = nullptr;
 
             // fetch installed packages
-            if (mPackageManagerInstallerObject->ListPackages(packageList) != Core::ERROR_NONE && packageList != nullptr)
+            Core::hresult listResult = mPackageManagerInstallerObject->ListPackages(packageList);
+            if (listResult != Core::ERROR_NONE || packageList == nullptr)
             {
-                LOGERR("ListPackage is returning Error or Packages is nullptr");
+                 LOGERR("ListPackages failed or package list is null");
+                if (packageList != nullptr)
+                {
+                    packageList->Release();
+                    packageList = nullptr;
+                }
                 return result;
             }
 
@@ -366,6 +372,9 @@ namespace WPEFramework
                 // todo check for installState if needed
                 // multiple apps possible with same packageId but different version
             }
+
+            packageList->Release();
+            packageList = nullptr;
 
             // filter to-be-installed apps
             for (auto toBeInstalledApp = preinstallPackages.begin(); toBeInstalledApp != preinstallPackages.end(); /* skip */)
