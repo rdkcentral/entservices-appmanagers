@@ -191,7 +191,7 @@ namespace Plugin {
 
         Core::hresult Register(Exchange::IPackageInstaller::INotification *sink) override;
         Core::hresult Unregister(Exchange::IPackageInstaller::INotification *sink) override;
-        Core::hresult DumpInfo() override;
+        Core::hresult DumpInfo(string& dump) override;
 
         // IPackageHandler methods
         Core::hresult Lock(const string &packageId, const string &version, const Exchange::IPackageHandler::LockReason &lockReason,

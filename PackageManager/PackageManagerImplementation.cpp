@@ -638,13 +638,13 @@ namespace Plugin {
         return result;
     }
 
-    Core::hresult PackageManagerImplementation::DumpInfo()
+    Core::hresult PackageManagerImplementation::DumpInfo(string& dump)
     {
         CHECK_CACHE()
         LOGINFO("Dumping PackageManager State:");
 
         #if defined(USE_LIBPACKAGE) || defined(UNIT_TEST)
-        packageImpl->DumpInfo();
+        packageImpl->Dump(dump);
         #endif
 
         return Core::ERROR_NONE;
