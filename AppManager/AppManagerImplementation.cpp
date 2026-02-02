@@ -1771,7 +1771,7 @@ std::string AppManagerImplementation::getAppInstanceId(const std::string& appId)
         mAdminLock.Lock();
         bool isAppFound = false;
         if (SearchAppId(appId)) {
-            mAppInfo[appId].packageInfo = packageData;
+            mAppInfo[appId].packageInfo = getInstallAppType(packageData);
             isAppFound = true;
             LOGINFO("SetPackageInfo: App %s packageInfo set", appId.c_str());
         }
