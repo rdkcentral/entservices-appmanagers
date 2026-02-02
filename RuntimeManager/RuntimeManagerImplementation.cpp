@@ -1246,7 +1246,7 @@ err_ret:
         {
             /* End time for telemetry */
             time_t currentTime = getCurrentTimestamp();
-            LOGERR("End time for %s: %lu", marker.c_str(), currentTime);
+            LOGINFO("End time for %s: %lu", marker.c_str(), currentTime);
 
             JsonObject jsonParam;
             std::string telemetryMetrics = "";
