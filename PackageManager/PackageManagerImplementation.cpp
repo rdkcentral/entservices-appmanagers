@@ -643,9 +643,60 @@ namespace Plugin {
         CHECK_CACHE()
         LOGINFO("Dumping PackageManager State:");
 
+
         #if defined(USE_LIBPACKAGE) || defined(UNIT_TEST)
         packageImpl->Dump(dump);
         #endif
+
+        std::string downloadInfo;
+        JsonObject downloaderInfo;
+
+        // Download threads count (always 1 thread)
+        downloaderInfo["downloadThreads"] = 1;
+
+        std::lock_guard<std::mutex> lock(mMutex);
+
+        // Requests in Progress
+        JsonArray inProgressArray;
+        if (mInprogressDownload != nullptr)
+        {
+            JsonObject inProgressObj;
+            inProgressObj["id"] = mInprogressDownload->GetId();
+            inProgressObj["url"] = mInprogressDownload->GetUrl();
+            inProgressObj["fileLocator"] = mInprogressDownload->GetFileLocator();
+            inProgressObj["rateLimit"] = static_cast<int>(mInprogressDownload->GetRateLimit());
+            inProgressObj["retries"] = mInprogressDownload->GetRetries();
+
+            if (mHttpClient)
+            {
+                uint8_t progress = mHttpClient->getProgress();
+                inProgressObj["progress"] = progress;
+            }
+
+            inProgressArray.Add(inProgressObj);
+        }
+        downloaderInfo["inProgress"] = inProgressArray;
+
+        // Requests Pending
+        JsonArray pendingArray;
+        for (const auto &request : mDownloadQueue)
+        {
+            JsonObject pendingObj;
+            pendingObj["id"] = request->GetId();
+            pendingObj["url"] = request->GetUrl();
+            pendingObj["fileLocator"] = request->GetFileLocator();
+            pendingObj["rateLimit"] = static_cast<int>(request->GetRateLimit());
+            pendingObj["retries"] = request->GetRetries();
+            pendingArray.Add(pendingObj);
+        }
+        downloaderInfo["pending"] = pendingArray;
+
+        if (!downloaderInfo.ToString(downloadInfo))
+        {
+            LOGERR("Failed to stringify download info to JSON");
+        }
+
+        dump += downloadInfo;
 
         return Core::ERROR_NONE;
     }
