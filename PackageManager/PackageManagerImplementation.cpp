@@ -807,7 +807,7 @@ namespace Plugin {
         const string &packageId = state.runtimeApp.first;
         const string &version = state.runtimeApp.second;
         if (!state.runtimeApp.first.empty() && !state.runtimeApp.second.empty()) {
-            LOGDBG("Locking runtine %s:%s", state.runtimeApp.first.c_str(), state.runtimeApp.second.c_str() );
+            LOGDBG("Locking runtime %s:%s", state.runtimeApp.first.c_str(), state.runtimeApp.second.c_str() );
             packagemanager::ConfigMetaData config;
             packagemanager::NameValues locks;
             packagemanager::Result pmResult = packageImpl->Lock(packageId, version, runtimePath, config, locks);
