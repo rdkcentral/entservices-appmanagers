@@ -379,10 +379,11 @@ namespace Plugin
                 mIonHeapDefaultQuota = root["ionDefaultQuota"].as<size_t>();
                 LOGINFO("ionDefaultQuota: %zu", mIonHeapDefaultQuota);
             }
-            if (root["svpfiles"]) {
+            YAML::Node svpNode = root["svpfiles"];
+            if (svpNode.IsDefined() && svpNode.IsSequence()) {
                 mSvpFiles.clear();
                 LOGINFO("svpfiles:");
-                for (const auto& n : root["svpfiles"]) {
+                for (const auto& n : svpNode) {
                     std::string val = n.as<std::string>();
                     mSvpFiles.push_back(val);
                     LOGINFO("  %s", val.c_str());
