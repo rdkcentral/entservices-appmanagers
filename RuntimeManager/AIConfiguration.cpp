@@ -379,9 +379,20 @@ namespace Plugin
                     }
                 }
             }
-            if (root["gpuMemoryLimit"]) {
-                mNonHomeAppGpuLimit = static_cast<ssize_t>(root["gpuMemoryLimit"].as<uint64_t>());
-                LOGINFO("gpuMemoryLimit: %zd", mNonHomeAppGpuLimit);
+            {
+                YAML::Node gpuNode = root["gpuMemoryLimit"];
+                if (gpuNode.IsDefined()) {
+                    if (gpuNode.IsScalar()) {
+                        try {
+                            mNonHomeAppGpuLimit = static_cast<ssize_t>(gpuNode.as<uint64_t>());
+                            LOGINFO("gpuMemoryLimit: %zd", mNonHomeAppGpuLimit);
+                        } catch (const YAML::Exception& e) {
+                            LOGERR("Invalid gpuMemoryLimit value in YAML: %s", e.what());
+                        }
+                    } else {
+                        LOGERR("Invalid YAML type for gpuMemoryLimit: expected scalar");
+                    }
+                }
             }
             if (root["ionDefaultQuota"]) {
                 mIonHeapDefaultQuota = root["ionDefaultQuota"].as<size_t>();
