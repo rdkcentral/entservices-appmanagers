@@ -349,10 +349,11 @@ namespace Plugin
                 }
             }
 
-            if (root["envVariables"]) {
+            YAML::Node envVariablesNode = root["envVariables"];
+            if (envVariablesNode.IsDefined() && envVariablesNode.IsSequence()) {
                 LOGINFO("envVariables (merging with defaults):");
                 // std::set<std::string> envSet(mEnvVariables.begin(), mEnvVariables.end());
-                for (const auto& n : root["envVariables"]) {
+                for (const auto& n : envVariablesNode) {
                     std::string val = n.as<std::string>();
                     //   if (envSet.find(val) == envSet.end()) {
                     mEnvVariables.push_back(val);
