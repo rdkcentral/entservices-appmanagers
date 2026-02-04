@@ -748,7 +748,7 @@ namespace Plugin {
                 packagemanager::ConfigMetaData config;
                 packagemanager::NameValues locks;
                 packagemanager::Result pmResult = packageImpl->Lock(packageId, version, state.unpackedPath, config, locks);
-                LOGDBG("unpackedPath=%s", unpackedPath.c_str());
+                LOGDBG("unpackedPath: %s PackageImpl::Lock result: %d", unpackedPath.c_str(), pmResult);
                 // save the new config in state
                 getRuntimeConfig(config, state.runtimeConfig);   // XXX: Is config unnecessary in Lock ?!
                 if (pmResult == packagemanager::SUCCESS) {
@@ -796,7 +796,7 @@ namespace Plugin {
             LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
             result = Core::ERROR_BAD_REQUEST;
         }
-
+        LOGDBG("result: %" PRIu32, result);
         return result;
     }
 
