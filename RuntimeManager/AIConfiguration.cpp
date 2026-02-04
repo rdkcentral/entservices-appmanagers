@@ -367,9 +367,17 @@ namespace Plugin
                 mSvpEnabled = enableSvpNode.as<bool>(mSvpEnabled);
                 LOGINFO("enableSvp: %s", mSvpEnabled ? "true" : "false");
             }
-            if (root["memoryLimit"]) {
-                mNonHomeAppMemoryLimit = static_cast<ssize_t>(root["memoryLimit"].as<uint64_t>());
-                LOGINFO("memoryLimit: %zd", mNonHomeAppMemoryLimit);
+            {
+                const YAML::Node memoryLimitNode = root["memoryLimit"];
+                if (memoryLimitNode.IsDefined() && memoryLimitNode.IsScalar()) {
+                    try {
+                        const uint64_t memoryLimitValue = memoryLimitNode.as<uint64_t>();
+                        mNonHomeAppMemoryLimit = static_cast<ssize_t>(memoryLimitValue);
+                        LOGINFO("memoryLimit: %zd", mNonHomeAppMemoryLimit);
+                    } catch (const YAML::BadConversion& e) {
+                        LOGERR("Invalid value for memoryLimit in YAML: %s", e.what());
+                    }
+                }
             }
             if (root["gpuMemoryLimit"]) {
                 mNonHomeAppGpuLimit = static_cast<ssize_t>(root["gpuMemoryLimit"].as<uint64_t>());
