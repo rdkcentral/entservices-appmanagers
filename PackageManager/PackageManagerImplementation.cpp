@@ -643,12 +643,24 @@ namespace Plugin {
         CHECK_CACHE()
         LOGINFO("Dumping PackageManager State:");
 
+        JsonObject rootObj;
 
         #if defined(USE_LIBPACKAGE) || defined(UNIT_TEST)
-        packageImpl->Dump(dump);
+        std::string packageDump;
+        packageImpl->Dump(packageDump);
+        
+        // Parse the package dump JSON and add it to root object
+        JsonObject packageInfo;
+        if (packageInfo.FromString(packageDump))
+        {
+            rootObj["packageInfo"] = packageInfo;
+        }
+        else
+        {
+            LOGERR("Failed to parse package dump JSON");
+        }
         #endif
 
-        std::string downloadInfo;
         JsonObject downloaderInfo;
 
         // Download threads count (always 1 thread)
@@ -691,12 +703,12 @@ namespace Plugin {
         }
         downloaderInfo["pending"] = pendingArray;
 
-        if (!downloaderInfo.ToString(downloadInfo))
-        {
-            LOGERR("Failed to stringify download info to JSON");
-        }
+        rootObj["downloaderInfo"] = downloaderInfo;
 
-        dump += downloadInfo;
+        if (!rootObj.ToString(dump))
+        {
+            LOGERR("Failed to stringify dump info to JSON");
+        }
 
         return Core::ERROR_NONE;
     }
