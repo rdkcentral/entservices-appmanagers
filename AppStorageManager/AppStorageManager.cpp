@@ -47,7 +47,7 @@ namespace WPEFramework
      **/
     SERVICE_REGISTRATION(AppStorageManager, STORAGE_MANAGER_API_VERSION_NUMBER_MAJOR, STORAGE_MANAGER_API_VERSION_NUMBER_MINOR, STORAGE_MANAGER_API_VERSION_NUMBER_PATCH);
 
-    StorageManager::AppStorageManager() :
+    AppStorageManager::AppStorageManager() :
         mCurrentService(nullptr),
         mConnectionId(0),
         mStorageManagerImpl(nullptr),
@@ -56,7 +56,7 @@ namespace WPEFramework
         SYSLOG(Logging::Startup, (_T("AppStorageManager Constructor")));
     }
 
-    StorageManager::~AppStorageManager()
+    AppStorageManager::~AppStorageManager()
     {
         SYSLOG(Logging::Shutdown, (string(_T("AppStorageManager Destructor"))));
     }
@@ -98,7 +98,7 @@ namespace WPEFramework
                     message = _T("mStorageManagerImpl implementation did not provide a configuration interface");
                 }
                 // Invoking Plugin API register to wpeframework
-                Exchange::JStorageManager::Register(*this, mStorageManagerImpl);
+                Exchange::JAppStorageManager::Register(*this, mStorageManagerImpl);
             }
         }
         else
@@ -128,7 +128,7 @@ namespace WPEFramework
         }
         if (nullptr != mStorageManagerImpl)
         {
-            Exchange::JStorageManager::Unregister(*this);
+            Exchange::JAppStorageManager::Unregister(*this);
 
             // Stop processing:
             RPC::IRemoteConnection* connection = service->RemoteConnection(mConnectionId);
