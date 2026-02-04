@@ -386,7 +386,7 @@ namespace Plugin
                         try {
                             mNonHomeAppGpuLimit = static_cast<ssize_t>(gpuNode.as<uint64_t>());
                             LOGINFO("gpuMemoryLimit: %zd", mNonHomeAppGpuLimit);
-                        } catch (const YAML::Exception& e) {
+                        } catch (const YAML::BadConversion& e) {
                             LOGERR("Invalid gpuMemoryLimit value in YAML: %s", e.what());
                         }
                     } else {
