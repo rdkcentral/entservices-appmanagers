@@ -65,7 +65,7 @@ if(PLUGIN_RUNTIME_MANAGER)
 endif()
 
 if(PLUGIN_APP_STORAGE_MANAGER)
-	add_subdirectory(StorageManager)
+	add_subdirectory(AppStorageManager)
 endif()
 
 if(PLUGIN_PACKAGE_MANAGER)
