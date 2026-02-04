@@ -113,7 +113,7 @@ separate_arguments(RUNTIME_MANAGER_INCLUDES)
 include_directories(BEFORE ${RUNTIME_MANAGER_INCLUDES})
 
 target_link_libraries(${PLUGIN_IMPLEMENTATION} PRIVATE
-    CompileSettingsDebug::CompileSettingsDebug ${NAMESPACE}Plugins::${NAMESPACE}Plugins  
+    CompileSettingsDebug::CompileSettingsDebug ${NAMESPACE}Plugins::${NAMESPACE}Plugins
     ${PLUGIN_RUNTIME_MANAGER_EXTRA_LIBRARIES} yaml-cpp)
 
 if(RDK_SERVICES_L1_TEST)
