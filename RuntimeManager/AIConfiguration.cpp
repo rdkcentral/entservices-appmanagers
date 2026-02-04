@@ -394,9 +394,18 @@ namespace Plugin
                     }
                 }
             }
-            if (root["ionDefaultQuota"]) {
-                mIonHeapDefaultQuota = root["ionDefaultQuota"].as<size_t>();
-                LOGINFO("ionDefaultQuota: %zu", mIonHeapDefaultQuota);
+            {
+                YAML::Node ionDefaultQuotaNode = root["ionDefaultQuota"];
+                if (ionDefaultQuotaNode && ionDefaultQuotaNode.IsScalar()) {
+                    try {
+                        mIonHeapDefaultQuota = ionDefaultQuotaNode.as<size_t>();
+                        LOGINFO("ionDefaultQuota: %zu", mIonHeapDefaultQuota);
+                    } catch (const YAML::BadConversion &e) {
+                        LOGERR("Invalid value for ionDefaultQuota in YAML configuration: %s", e.what());
+                    }
+                } else if (ionDefaultQuotaNode) {
+                    LOGERR("ionDefaultQuota is present in YAML configuration but is not a scalar value");
+                }
             }
             YAML::Node svpNode = root["svpfiles"];
             if (svpNode.IsDefined() && svpNode.IsSequence()) {
