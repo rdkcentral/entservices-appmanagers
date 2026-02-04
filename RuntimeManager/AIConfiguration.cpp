@@ -360,8 +360,10 @@ namespace Plugin
                     //}
                 }
             }
-            if (root["enableSvp"]) {
-                mSvpEnabled = root["enableSvp"].as<bool>();
+            YAML::Node enableSvpNode = root["enableSvp"];
+            if (enableSvpNode.IsDefined() && enableSvpNode.IsScalar()) {
+                // Use the existing value of mSvpEnabled as a fallback to avoid exceptions on bad input
+                mSvpEnabled = enableSvpNode.as<bool>(mSvpEnabled);
                 LOGINFO("enableSvp: %s", mSvpEnabled ? "true" : "false");
             }
             if (root["memoryLimit"]) {
