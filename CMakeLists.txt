@@ -64,7 +64,7 @@ if(PLUGIN_RUNTIME_MANAGER)
 	add_subdirectory(RuntimeManager)
 endif()
 
-if(PLUGIN_STORAGE_MANAGER)
+if(PLUGIN_APP_STORAGE_MANAGER)
 	add_subdirectory(StorageManager)
 endif()
 
