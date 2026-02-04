@@ -336,12 +336,12 @@ namespace Plugin
                 LOGERR("Invalid YAML format: root must be a mapping");
                 return;
             }
-
-            if (root["preloads"]) {
-                LOGINFO("preloads (merging with defaults):");
-                //std::set<std::string> preloadSet(mPreloads.begin(), mPreloads.end());
-                for (const auto& n : root["preloads"]) {
-                    std::string val = n.as<std::string>();
+			
+			const YAML::Node preloads = root["preloads"];
+			if (preloads.IsDefined() && preloads.IsSequence()) {
+				LOGINFO("preloads (merging with defaults):");
+    			for (const auto& item : preloads) {
+                    std::string val = item.as<std::string>();
                     //   if (preloadSet.find(val) == preloadSet.end()) {
                     mPreloads.push_back(val);
                     LOGINFO("  %s", val.c_str());
