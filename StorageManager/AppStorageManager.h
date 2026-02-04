@@ -21,25 +21,25 @@
 
 #include "Module.h"
 #include <interfaces/json/JStorageManager.h>
-#include <interfaces/IStorageManager.h>
+#include <interfaces/IAppStorageManager.h>
 #include <interfaces/IConfiguration.h>
 
 namespace WPEFramework {
 namespace Plugin {
 
-    class StorageManager: public PluginHost::IPlugin, public PluginHost::JSONRPC
+    class AppStorageManager: public PluginHost::IPlugin, public PluginHost::JSONRPC
     {
         public:
-            StorageManager(const StorageManager&) = delete;
-            StorageManager& operator=(const StorageManager&) = delete;
+            AppStorageManager(const AppStorageManager&) = delete;
+            AppStorageManager& operator=(const AppStorageManager&) = delete;
 
-            StorageManager();
-            virtual ~StorageManager();
+            AppStorageManager();
+            virtual ~AppStorageManager();
 
-            BEGIN_INTERFACE_MAP(StorageManager)
+            BEGIN_INTERFACE_MAP(AppStorageManager)
             INTERFACE_ENTRY(PluginHost::IPlugin)
             INTERFACE_ENTRY(PluginHost::IDispatcher)
-            INTERFACE_AGGREGATE(Exchange::IStorageManager, mStorageManagerImpl)
+            INTERFACE_AGGREGATE(Exchange::IAppStorageManager, mStorageManagerImpl)
             END_INTERFACE_MAP
 
             //  IPlugin methods
@@ -51,7 +51,7 @@ namespace Plugin {
         private:
             PluginHost::IShell* mCurrentService{};
             uint32_t mConnectionId{};
-            Exchange::IStorageManager* mStorageManagerImpl{};
+            Exchange::IAppStorageManager* mStorageManagerImpl{};
             Exchange::IConfiguration* mConfigure{};
 
         public /* constants */:
