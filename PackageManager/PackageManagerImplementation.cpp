@@ -18,7 +18,7 @@
 **/
 
 #include <chrono>
-#include <inttypes.h> // Required for PRIu64
+#include <cinttypes> // Required for PRIu64
 
 #include "PackageManagerImplementation.h"
 
@@ -1089,7 +1089,7 @@ namespace Plugin {
                     runtimeMap.insert({type, key});
             }
         }
-        LOGDBG("Runtime size: '%zu", runtimeMap.size());
+        LOGDBG("Runtime size: %zu", runtimeMap.size());
 
     }
 
