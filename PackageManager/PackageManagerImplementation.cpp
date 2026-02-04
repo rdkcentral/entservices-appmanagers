@@ -198,7 +198,7 @@ namespace Plugin {
 
         if (nullptr == mCurrentservice) {
             LOGERR("mCurrentservice is null \n");
-        } else if (nullptr == (mStorageManagerObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IStorageManager>("org.rdk.StorageManager"))) {
+        } else if (nullptr == (mStorageManagerObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IAppStorageManager>("org.rdk.AppStorageManager"))) {
             LOGERR("mStorageManagerObject is null \n");
         } else {
             LOGINFO("created StorageManager Object\n");
