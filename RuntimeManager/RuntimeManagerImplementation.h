@@ -26,7 +26,7 @@
 #include "tracing/Logging.h"
 #include <mutex>
 #include <interfaces/IOCIContainer.h>
-#include <interfaces/IStorageManager.h>
+#include <interfaces/IAppStorageManager.h>
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
 #include <interfaces/ITelemetryMetrics.h>
 #endif
@@ -223,7 +223,7 @@ namespace WPEFramework
                 Exchange::IOCIContainer* mOciContainerObject;
                 std::list<Exchange::IRuntimeManager::INotification*> mRuntimeManagerNotification;
                 std::map<std::string, RuntimeAppInfo> mRuntimeAppInfo;
-                Exchange::IStorageManager *mStorageManagerObject;
+                Exchange::IAppStorageManager *mStorageManagerObject;
                 WindowManagerConnector* mWindowManagerConnector;
                 DobbyEventListener *mDobbyEventListener;
                 UserIdManager* mUserIdManager;

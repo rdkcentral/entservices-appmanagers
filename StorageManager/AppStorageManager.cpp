@@ -18,16 +18,16 @@
 */
 
 
-#include "StorageManager.h"
+#include "AppStorageManager.h"
 
-const string WPEFramework::Plugin::StorageManager::SERVICE_NAME = "org.rdk.StorageManager";
+const string WPEFramework::Plugin::AppStorageManager::SERVICE_NAME = "org.rdk.AppStorageManager";
 
 namespace WPEFramework
 {
 
     namespace {
 
-        static Plugin::Metadata<Plugin::StorageManager> metadata(
+        static Plugin::Metadata<Plugin::AppStorageManager> metadata(
             // Version (Major, Minor, Patch)
             STORAGE_MANAGER_API_VERSION_NUMBER_MAJOR, STORAGE_MANAGER_API_VERSION_NUMBER_MINOR, STORAGE_MANAGER_API_VERSION_NUMBER_PATCH,
             // Preconditions
@@ -43,25 +43,25 @@ namespace WPEFramework
     {
 
     /*
-     *Register StorageManager module as wpeframework plugin
+     *Register AppStorageManager module as wpeframework plugin
      **/
-    SERVICE_REGISTRATION(StorageManager, STORAGE_MANAGER_API_VERSION_NUMBER_MAJOR, STORAGE_MANAGER_API_VERSION_NUMBER_MINOR, STORAGE_MANAGER_API_VERSION_NUMBER_PATCH);
+    SERVICE_REGISTRATION(AppStorageManager, STORAGE_MANAGER_API_VERSION_NUMBER_MAJOR, STORAGE_MANAGER_API_VERSION_NUMBER_MINOR, STORAGE_MANAGER_API_VERSION_NUMBER_PATCH);
 
-    StorageManager::StorageManager() :
+    StorageManager::AppStorageManager() :
         mCurrentService(nullptr),
         mConnectionId(0),
         mStorageManagerImpl(nullptr),
         mConfigure(nullptr)
     {
-        SYSLOG(Logging::Startup, (_T("StorageManager Constructor")));
+        SYSLOG(Logging::Startup, (_T("AppStorageManager Constructor")));
     }
 
-    StorageManager::~StorageManager()
+    StorageManager::~AppStorageManager()
     {
-        SYSLOG(Logging::Shutdown, (string(_T("StorageManager Destructor"))));
+        SYSLOG(Logging::Shutdown, (string(_T("AppStorageManager Destructor"))));
     }
 
-    const string StorageManager::Initialize(PluginHost::IShell* service)
+    const string AppStorageManager::Initialize(PluginHost::IShell* service)
     {
         string message="";
 
@@ -70,15 +70,15 @@ namespace WPEFramework
         ASSERT(nullptr == mStorageManagerImpl);
         ASSERT(0 == mConnectionId);
 
-        SYSLOG(Logging::Startup, (_T("StorageManager::Initialize: PID=%u"), getpid()));
+        SYSLOG(Logging::Startup, (_T("AppStorageManager::Initialize: PID=%u"), getpid()));
         mCurrentService = service;
         if (nullptr != mCurrentService)
         {
             mCurrentService->AddRef();
-            if (nullptr == (mStorageManagerImpl = mCurrentService->Root<Exchange::IStorageManager>(mConnectionId, 5000, _T("StorageManagerImplementation"))))
+            if (nullptr == (mStorageManagerImpl = mCurrentService->Root<Exchange::IAppStorageManager>(mConnectionId, 5000, _T("StorageManagerImplementation"))))
             {
-                SYSLOG(Logging::Startup, (_T("StorageManager::Initialize: object creation failed")));
-                message = _T("StorageManager plugin could not be initialised");
+                SYSLOG(Logging::Startup, (_T("AppStorageManager::Initialize: object creation failed")));
+                message = _T("AppStorageManager plugin could not be initialised");
             }
             else
             {
@@ -101,8 +101,8 @@ namespace WPEFramework
         }
         else
         {
-            SYSLOG(Logging::Startup, (_T("StorageManager::Initialize: service is not valid")));
-            message = _T("StorageManager plugin could not be initialised");
+            SYSLOG(Logging::Startup, (_T("AppStorageManager::Initialize: service is not valid")));
+            message = _T("AppStorageManager plugin could not be initialised");
         }
 
         if (0 != message.length())
@@ -113,11 +113,11 @@ namespace WPEFramework
         return message;
     }
 
-    void StorageManager::Deinitialize(PluginHost::IShell* service)
+    void AppStorageManager::Deinitialize(PluginHost::IShell* service)
     {
         ASSERT(mCurrentService == service);
 
-        SYSLOG(Logging::Shutdown, (string(_T("StorageManager::Deinitialize"))));
+        SYSLOG(Logging::Shutdown, (string(_T("AppStorageManager::Deinitialize"))));
 
         if (mConfigure != nullptr)
         {
@@ -132,7 +132,7 @@ namespace WPEFramework
             RPC::IRemoteConnection* connection = service->RemoteConnection(mConnectionId);
             //VARIABLE_IS_NOT_USED uint32_t result = mStorageManagerImpl->Release();
             if (mStorageManagerImpl->Release() != Core::ERROR_DESTRUCTION_SUCCEEDED) {
-                SYSLOG(Logging::Shutdown, (_T("StorageManager Plugin is not properly destructed.")));
+                SYSLOG(Logging::Shutdown, (_T("AppStorageManager Plugin is not properly destructed.")));
             }
 
             mStorageManagerImpl = nullptr;
@@ -157,10 +157,10 @@ namespace WPEFramework
         mConnectionId = 0;
         mCurrentService->Release();
         mCurrentService = nullptr;
-        SYSLOG(Logging::Shutdown, (string(_T("StorageManager de-initialised"))));
+        SYSLOG(Logging::Shutdown, (string(_T("AppStorageManager de-initialised"))));
     }
 
-    string StorageManager::Information() const
+    string AppStorageManager::Information() const
     {
         // No additional info to report
         return (string());
