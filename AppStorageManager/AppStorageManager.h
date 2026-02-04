@@ -20,7 +20,7 @@
 #pragma once
 
 #include "Module.h"
-#include <interfaces/json/JStorageManager.h>
+#include <interfaces/json/JAppStorageManager.h>
 #include <interfaces/IAppStorageManager.h>
 #include <interfaces/IConfiguration.h>
 
