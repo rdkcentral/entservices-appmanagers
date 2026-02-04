@@ -110,7 +110,7 @@ namespace Plugin {
         return result;
     }
 
-    Core::hresult HelloName(const string& name , string& result/*@out*/)
+    Core::hresult PackageManagerImplementation::HelloName(const string& name , string& result/*@out*/)
     {
         LOGINFO("Hello %s", name.c_str());
         result = "Hello " + name;
