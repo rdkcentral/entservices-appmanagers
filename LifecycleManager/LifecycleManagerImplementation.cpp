@@ -428,12 +428,6 @@ namespace WPEFramework
             status = Core::ERROR_NONE;
             return status;
         }
-        Core::hresult LifecycleManagerImplementation::HelloName(const string& name)
-        {
-            Core::hresult status = Core::ERROR_NONE;
-            printf("Hello + %s from LifecycleManagerImplementation \n", name.c_str());
-            return status;
-        }
         Core::hresult LifecycleManagerImplementation::Register(Exchange::ILifecycleManagerState::INotification *notification)
         {
             ASSERT (nullptr != notification);
