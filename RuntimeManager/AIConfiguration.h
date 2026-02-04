@@ -63,7 +63,7 @@ namespace Plugin
             void readFromCustomData();
             void readFromConfigFile();
 			void readFromYamlConfigFile();
-            std::list<std::string>readGlobalEnv() const;
+            std::list<std::string> readGlobalEnv() const;
 
             size_t mConsoleLogCap;
             std::bitset<32> mAppsCpuSet;        // cores
