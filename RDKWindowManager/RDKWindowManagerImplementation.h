@@ -148,7 +148,7 @@ namespace Plugin {
         Core::hresult RenderReady(const string& client, bool &status) const override;
         Core::hresult EnableDisplayRender(const string& client, bool enable) override;
         Core::hresult GetLastKeyInfo(uint32_t &keyCode, uint32_t &modifiers, uint64_t &timestampInSeconds) const override;
-        Core::hresult SetZOrder(const string& appInstanceId, int32_t zOrder) override;
+        Core::hresult SetZOrder(const string& appInstanceId,const int32_t zOrder) override;
         Core::hresult GetZOrder(const string& appInstanceId, int32_t &zOrder) override;
         Core::hresult StartVncServer() override;
         Core::hresult StopVncServer() override;

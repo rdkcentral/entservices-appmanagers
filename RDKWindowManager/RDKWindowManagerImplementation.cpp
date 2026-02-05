@@ -2014,7 +2014,7 @@ Core::hresult RDKWindowManagerImplementation::GetLastKeyInfo(uint32_t &keyCode, 
  * @param[in] zOrder           : integer zorder of an app
  * @return    Core::<StatusCode>: Core::ERROR_NONE on success, Core::ERROR_GENERAL on failure
  */
-Core::hresult RDKWindowManagerImplementation::SetZOrder(const string &appInstanceId, int32_t zOrder)
+Core::hresult RDKWindowManagerImplementation::SetZOrder(const string &appInstanceId,const int32_t zOrder)
 {
     Core::hresult status = Core::ERROR_GENERAL;
     bool lockAcquired = false;
