@@ -20,9 +20,6 @@
 #include <chrono>
 
 #include "PreinstallManagerImplementation.h"
-#ifndef WIDGET_PACKAGE_NAME
-#define WIDGET_PACKAGE_NAME "package.ralf" // default for RDK Community
-#endif
 
 namespace WPEFramework
 {
