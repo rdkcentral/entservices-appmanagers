@@ -25,16 +25,12 @@ set(PLUGIN_PREINSTALL_MANAGER_MODE "Off" CACHE STRING "Controls if the plugin sh
 set(PLUGIN_PREINSTALL_MANAGER_AUTOSTART false CACHE STRING "Automatically start start PreinstallManager plugin")
 set(PLUGIN_PREINSTALL_MANAGER_APP_PREINSTALL_DIRECTORY "" CACHE STRING "Directory path for preinstall packages")
 set(PLUGIN_PREINSTALL_MANAGER_EXTRA_LIBRARIES "")
+set(WIDGET_PACKAGE_NAME "package.ralf" CACHE STRING "Widget package filename")
 
 add_definitions(-DPREINSTALL_MANAGER_API_VERSION_NUMBER_MAJOR=1)
 add_definitions(-DPREINSTALL_MANAGER_API_VERSION_NUMBER_MINOR=0)
 add_definitions(-DPREINSTALL_MANAGER_API_VERSION_NUMBER_PATCH=0)
-
-if(ENABLE_RALF)
-    add_compile_definitions(WIDGET_PACKAGE_NAME="package.ralf")
-else()
-    add_compile_definitions(WIDGET_PACKAGE_NAME="package.wgt")
-endif()
+add_compile_definitions(WIDGET_PACKAGE_NAME="${WIDGET_PACKAGE_NAME}")
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
