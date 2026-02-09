@@ -20,7 +20,9 @@
 #include <chrono>
 
 #include "PreinstallManagerImplementation.h"
-
+#ifndef WIDGET_PACKAGE_NAME
+#define WIDGET_PACKAGE_NAME "package.ralf" // default for RDK Community
+#endif
 
 namespace WPEFramework
 {
@@ -291,7 +293,7 @@ namespace WPEFramework
             std::string filepath = mAppPreinstallDirectory + "/" + filename;
 
             PackageInfo packageInfo;
-            packageInfo.fileLocator = filepath + "/package.wgt";
+            packageInfo.fileLocator = filepath + "/" WIDGET_PACKAGE_NAME;
             LOGDBG("Found package folder: %s", filepath.c_str());
             if (mPackageManagerInstallerObject->GetConfigForPackage(packageInfo.fileLocator, packageInfo.packageId, packageInfo.version, packageInfo.configMetadata) == Core::ERROR_NONE)
             {
