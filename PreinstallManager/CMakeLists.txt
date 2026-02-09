@@ -25,13 +25,12 @@ set(PLUGIN_PREINSTALL_MANAGER_MODE "Off" CACHE STRING "Controls if the plugin sh
 set(PLUGIN_PREINSTALL_MANAGER_AUTOSTART false CACHE STRING "Automatically start start PreinstallManager plugin")
 set(PLUGIN_PREINSTALL_MANAGER_APP_PREINSTALL_DIRECTORY "" CACHE STRING "Directory path for preinstall packages")
 set(PLUGIN_PREINSTALL_MANAGER_EXTRA_LIBRARIES "")
-set(PLUGIN_PREINSTALL_MANAGER_PACKAGE_WIDGET_NAME "ON" CACHE STRING "Widget package file name (package.ralf for RDK Community, package.wgt for ENTOS)")
 
 add_definitions(-DPREINSTALL_MANAGER_API_VERSION_NUMBER_MAJOR=1)
 add_definitions(-DPREINSTALL_MANAGER_API_VERSION_NUMBER_MINOR=0)
 add_definitions(-DPREINSTALL_MANAGER_API_VERSION_NUMBER_PATCH=0)
 
-if(PLUGIN_PREINSTALL_MANAGER_PACKAGE_WIDGET_NAME)
+if(ENABLE_RALF)
     add_compile_definitions(WIDGET_PACKAGE_NAME="package.ralf")
 else()
     add_compile_definitions(WIDGET_PACKAGE_NAME="package.wgt")
