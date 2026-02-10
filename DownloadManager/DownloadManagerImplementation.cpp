@@ -35,6 +35,9 @@ namespace Plugin {
         , mDownloadId(DOWNLOADER_DOWNLOAD_ID_START)
         , mDownloadPath(DOWNLOADER_DEFAULT_PATH_LOCATION)
         , mCurrentservice(nullptr)
+#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
+        , mTelemetryMetricsObject(nullptr)
+#endif
     {
         LOGINFO("DM: ctor DownloadManagerImplementation: %p", this);
         mHttpClient = std::unique_ptr<DownloadManagerHttpClient>(new DownloadManagerHttpClient);
@@ -132,6 +135,20 @@ namespace Plugin {
                 LOGINFO("DM: Download path ready at '%s'", mDownloadPath.c_str());
                 mDownloadThreadPtr = std::unique_ptr<std::thread>(new std::thread(&DownloadManagerImplementation::downloaderRoutine, this, 1));
             }
+            
+#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
+            // Initialize telemetry metrics object
+            mTelemetryLock.Lock();
+            if (nullptr == (mTelemetryMetricsObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::ITelemetryMetrics>("org.rdk.TelemetryMetrics")))
+            {
+                LOGERR("DM: Failed to create TelemetryMetricsObject\n");
+            }
+            else
+            {
+                LOGINFO("DM: Created TelemetryMetrics Object");
+            }
+            mTelemetryLock.Unlock();
+#endif
         }
         else
         {
@@ -175,6 +192,16 @@ namespace Plugin {
 
         mCurrentservice->Release();
         mCurrentservice = nullptr;
+        
+#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
+        mTelemetryLock.Lock();
+        if (mTelemetryMetricsObject != nullptr)
+        {
+            mTelemetryMetricsObject->Release();
+            mTelemetryMetricsObject = nullptr;
+        }
+        mTelemetryLock.Unlock();
+#endif
 
         return result;
     }
@@ -457,6 +484,10 @@ namespace Plugin {
                     downloadRequest->getFileLocator().c_str(), downloadRequest->getRetries(),
                     downloadRequest->getRateLimit());
 
+#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
+            time_t downloadStartTime = getCurrentTimestamp();
+#endif
+
             for (int i = 0; i < downloadRequest->getRetries(); ++i)
             {
                 attemptCount = i + 1;
@@ -515,17 +546,35 @@ namespace Plugin {
                        attemptCount, downloadRequest->getRetries(), downloadRequest->getId().c_str(), status);
             }
 
+#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
+            // Record download telemetry
+            time_t downloadEndTime = getCurrentTimestamp();
+            int64_t totalDownloadTime = downloadEndTime - downloadStartTime;
+#endif
+
             DownloadReason reason = static_cast<DownloadReason>(DOWNLOAD_REASON_NONE);
             switch (status)
             {
                 case DownloadManagerHttpClient::Status::DiskError:
                     reason = DownloadReason::DISK_PERSISTENCE_FAILURE;
                     LOGERR("DM: Download failed due to disk error: id=%s", downloadRequest->getId().c_str());
+#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
+                    recordDownloadTelemetry(downloadRequest->getId(), downloadRequest->getUrl(), totalDownloadTime, false, "DISK_PERSISTENCE_FAILURE");
+#endif
                     break;
 
                 case DownloadManagerHttpClient::Status::HttpError:
                     reason = DownloadReason::DOWNLOAD_FAILURE;
                     LOGERR("DM: Download failed due to HTTP error: id=%s", downloadRequest->getId().c_str());
+#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
+                    recordDownloadTelemetry(downloadRequest->getId(), downloadRequest->getUrl(), totalDownloadTime, false, "DOWNLOAD_FAILURE");
+#endif
+                    break;
+
+                case DownloadManagerHttpClient::Status::Success:
+#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
+                    recordDownloadTelemetry(downloadRequest->getId(), downloadRequest->getUrl(), totalDownloadTime, true);
+#endif
                     break;
 
                 default:
@@ -595,6 +644,58 @@ namespace Plugin {
         }
         return mCurrentDownload;
     }
+
+#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
+    time_t DownloadManagerImplementation::getCurrentTimestamp()
+    {
+        timespec ts;
+        clock_gettime(CLOCK_MONOTONIC, &ts);
+        return ((time_t)(ts.tv_sec * 1000) + ((time_t)ts.tv_nsec/1000000));
+    }
+
+    void DownloadManagerImplementation::recordDownloadTelemetry(const string& downloadId, const string& url, int64_t downloadTime, bool success, const string& errorReason)
+    {
+        JsonObject jsonParam;
+        std::string telemetryMetrics = "";
+        std::string markerName = "";
+
+        mTelemetryLock.Lock();
+        if (nullptr == mTelemetryMetricsObject)
+        {
+            LOGERR("DM: TelemetryMetricsObject is null, cannot record telemetry");
+            mTelemetryLock.Unlock();
+            return;
+        }
+
+        jsonParam["downloadId"] = downloadId;
+        jsonParam["url"] = url;
+
+        if (success)
+        {
+            // Record successful download time
+            jsonParam["downloadTime"] = static_cast<int>(downloadTime);
+            markerName = TELEMETRY_MARKER_DOWNLOAD_TIME;
+            LOGINFO("DM: Recording download success telemetry: id=%s time=%lldms", downloadId.c_str(), downloadTime);
+        }
+        else
+        {
+            // Record download error
+            jsonParam["errorReason"] = errorReason;
+            jsonParam["downloadTime"] = static_cast<int>(downloadTime);
+            markerName = TELEMETRY_MARKER_DOWNLOAD_ERROR;
+            LOGINFO("DM: Recording download error telemetry: id=%s error=%s", downloadId.c_str(), errorReason.c_str());
+        }
+
+        jsonParam.ToString(telemetryMetrics);
+        if (!telemetryMetrics.empty())
+        {
+            mTelemetryMetricsObject->Record(downloadId, telemetryMetrics, markerName);
+            mTelemetryMetricsObject->Publish(downloadId, markerName);
+        }
+        
+        mTelemetryLock.Unlock();
+    }
+#endif
 
 } // namespace Plugin
 } // namespace WPEFramework
