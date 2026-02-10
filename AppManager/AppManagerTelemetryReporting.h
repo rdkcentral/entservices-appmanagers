@@ -27,6 +27,8 @@
 #define TELEMETRY_MARKER_CLOSE_TIME                          "AppCloseTime_split"
 #define TELEMETRY_MARKER_CLOSE_ERROR                         "AppCloseError_split"
 #define TELEMETRY_MARKER_APP_CRASHED                         "AppCrashed_split"
+#define TELEMETRY_MARKER_DOWNLOAD_TIME                       "DownloadTime_split"
+#define TELEMETRY_MARKER_DOWNLOAD_ERROR                      "DownloadError_split"
 
 namespace WPEFramework
 {
@@ -43,6 +45,7 @@ class AppManagerTelemetryReporting
         void reportTelemetryData(const std::string& appId, AppManagerImplementation::CurrentAction currentAction);
         void reportTelemetryDataOnStateChange(const string& appId, const Exchange::ILifecycleManager::LifecycleState newState);
         void reportTelemetryErrorData(const std::string& appId, AppManagerImplementation::CurrentAction currentAction, AppManagerImplementation::CurrentActionError errorCode);
+        void reportAppCrashedTelemetry(const std::string& appId, const std::string& appInstanceId,  const std::string& crashReason);
         void initialize(PluginHost::IShell* service);
 
     private /*methods*/:

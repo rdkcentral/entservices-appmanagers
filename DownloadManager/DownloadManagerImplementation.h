@@ -34,6 +34,12 @@
 
 #include "DownloadManagerHttpClient.h"
 
+#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
+#define TELEMETRY_MARKER_DOWNLOAD_TIME                       "DownloadTime_split"
+#define TELEMETRY_MARKER_DOWNLOAD_ERROR                      "DownloadError_split"
+#include <interfaces/ITelemetryMetrics.h>
+#endif
+
 #define DOWNLOAD_REASON_NONE    (0xFF)
 
 namespace WPEFramework {
@@ -131,6 +137,11 @@ namespace Plugin {
         void downloaderRoutine(int waitTime);
         void notifyDownloadStatus(const string& id, const string& locator, const DownloadReason status);
 
+#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
+        void recordDownloadTelemetry(const string& downloadId, const string& url, int64_t downloadTime, bool success, const string& errorReason = "");
+        time_t getCurrentTimestamp();
+#endif
+
         DownloadInfoPtr pickDownloadJob(void);
         int nextRetryDuration(int n) {
             const double goldenRatio = (1 + std::sqrt(5)) / 2.0;
@@ -169,6 +180,11 @@ namespace Plugin {
         std::string     mDownloadPath;
 
         PluginHost::IShell* mCurrentservice;
+        
+#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
+        Exchange::ITelemetryMetrics* mTelemetryMetricsObject;
+        mutable Core::CriticalSection mTelemetryLock;
+#endif
     };
 } // namespace Plugin
 } // namespace WPEFramework

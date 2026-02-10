@@ -139,6 +139,9 @@ namespace Plugin
         else
         {
             LOGERR("Failed to report telemetry data as appId/currentAction or mTelemetryMetricsObject is not valid");
+            LOGERR("appId %s currentAction %d", appId.c_str(), currentAction);
+            LOGERR("it != appManagerImplInstance->mAppInfo.end() %d", (it != appManagerImplInstance->mAppInfo.end()));
+            LOGERR("nullptr != mTelemetryMetricsObject %d", (nullptr != mTelemetryMetricsObject));
         }
     }
 
@@ -168,6 +171,15 @@ namespace Plugin
                     {
                         jsonParam["totalLaunchTime"] = (int)(currentTime - it->second.currentActionTime);
                         jsonParam["launchType"] = ((AppManagerImplementation::APPLICATION_TYPE_INTERACTIVE == it->second.packageInfo.type)?"LAUNCH_INTERACTIVE":"START_SYSTEM");
+                        // Add runtime information
+                        if (!it->second.packageInfo.configMetadata.runtimePath.empty())
+                        {
+                            jsonParam["runtimeId"] = it->second.packageInfo.configMetadata.runtimePath;
+                        }
+                        if (!it->second.packageInfo.configMetadata.runtimePath.empty())
+                        {
+                            jsonParam["runtimeVersion"] = it->second.packageInfo.configMetadata.runtimePath;
+                        }
                         markerName = TELEMETRY_MARKER_LAUNCH_TIME;
                     }
                 break;
@@ -176,6 +188,15 @@ namespace Plugin
                     {
                         jsonParam["totalLaunchTime"] = (int)(currentTime - it->second.currentActionTime);
                         jsonParam["launchType"] = ((AppManagerImplementation::APPLICATION_TYPE_INTERACTIVE == it->second.packageInfo.type)?"PRELOAD_INTERACTIVE":"START_SYSTEM");
+                        // Add runtime information
+                        if (!it->second.packageInfo.configMetadata.runtimePath.empty())
+                        {
+                            jsonParam["runtimeId"] = it->second.packageInfo.configMetadata.runtimePath;
+                        }
+                        if (!it->second.packageInfo.configMetadata.runtimePath.empty())
+                        {
+                            jsonParam["runtimeVersion"] = it->second.packageInfo.configMetadata.runtimePath;
+                        }
                         markerName = TELEMETRY_MARKER_LAUNCH_TIME;
                     }
                 break;
@@ -254,6 +275,39 @@ namespace Plugin
                 mTelemetryMetricsObject->Record(appId, telemetryMetrics, markerName);
                 mTelemetryMetricsObject->Publish(appId, markerName);
             }
+        }
+    }
+
+    void AppManagerTelemetryReporting::reportAppCrashedTelemetry(const std::string& appId, const std::string& appInstanceId, const std::string& crashReason)
+    {
+        JsonObject jsonParam;
+        std::string telemetryMetrics = "";
+
+        LOGINFO("Received app crash data for appId %s appInstanceId %s crashReason %s", appId.c_str(), appInstanceId.c_str(), crashReason.c_str());
+
+        if(nullptr == mTelemetryMetricsObject) /*mTelemetryMetricsObject is null retry to create*/
+        {
+            if(Core::ERROR_NONE != createTelemetryMetricsPluginObject())
+            {
+                LOGERR("Failed to create TelemetryMetricsObject\n");
+            }
+        }
+
+        if(nullptr != mTelemetryMetricsObject)
+        {
+            jsonParam["appId"] = appId;
+            jsonParam["appInstanceId"] = appInstanceId;
+            jsonParam["crashReason"] = crashReason;
+            jsonParam.ToString(telemetryMetrics);
+            if(!telemetryMetrics.empty())
+            {
+                mTelemetryMetricsObject->Record(appId, telemetryMetrics, TELEMETRY_MARKER_APP_CRASHED);
+                mTelemetryMetricsObject->Publish(appId, TELEMETRY_MARKER_APP_CRASHED);
+            }
+        }
+        else
+        {
+            LOGERR("Failed to report crash telemetry - mTelemetryMetricsObject is not valid");
         }
     }
 
