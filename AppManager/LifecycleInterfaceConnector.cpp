@@ -880,6 +880,15 @@ End:
 			    //Upnormal close: No unload event from app manager
 			    LOGINFO("Terminate event due to app crash");
 			    appManagerImplInstance->handleOnAppLifecycleStateChanged(appId, appInstanceId, newAppState, oldAppState, Exchange::IAppManager::AppErrorReason::APP_ERROR_ABORT);
+#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
+			    // Report crash telemetry
+			    auto it = appManagerImplInstance->mAppInfo.find(appId);
+			    if(it != appManagerImplInstance->mAppInfo.end())
+			    {
+                    std::string crashReason = "Terminated unexpectedly";
+			        AppManagerTelemetryReporting::getInstance().reportAppCrashedTelemetry(appId, appInstanceId, crashReason);
+			    }
+#endif
 			}
 			mAppCurrentActionList.erase(appId);
 		    }
