@@ -22,7 +22,7 @@ set(THUNDER_PORT 9998)
 
 find_package(${NAMESPACE}Plugins REQUIRED)
 
-if(PLUGIN_STORAGE_MANAGER)
+if(PLUGIN_APP_STORAGE_MANAGER)
     set(SRC_FILES ${SRC_FILES} tests/StorageManager_L2Test.cpp)
 endif()
 
