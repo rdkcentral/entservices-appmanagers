@@ -78,6 +78,19 @@ namespace ralf
      */
     bool checkIfPathExists(const std::string &path);
 
+    /**
+     * Function to unmount the overlay filesystem for a given app instance ID
+     * @param overlayfsMountPath The mount path of the overlay filesystem to unmount
+     * @return true on success, false on failure
+     */
     bool unmountOverlayfs(const std::string &overlayfsMountPath);
+
+    /**
+     * Given a group name, this function will return the corresponding group ID.
+     * @param grpName : Input group name.
+     * @param gid : out parameter - The group ID.
+     * @return true if successful, false otherwise.
+     */
+    bool getGroupId(const std::string &grpName, uint32_t &gid);
 
 } // namespace ralf
