@@ -36,6 +36,8 @@
 #include <cerrno>
 #include <fstream>
 #include <sstream>
+#include <grp.h> //For group related functions
+
 namespace ralf
 {
 
@@ -86,7 +88,7 @@ namespace ralf
                         return false;
                     }
                 }
-            }            
+            }
 
             if (next_pos == std::string::npos)
                 break;
@@ -146,7 +148,7 @@ namespace ralf
         return status;
     }
 
-    bool generateOCIRootfs(const std::string appInstanceId, const std::string &pkgmountPaths,const  int uid, const int gid,  std::string &ociRootfsPath)
+    bool generateOCIRootfs(const std::string appInstanceId, const std::string &pkgmountPaths, const int uid, const int gid, std::string &ociRootfsPath)
     {
         // Let us create a directory for app as RALF_APP_ROOTFS_DIR/appInstanceId
         std::string baseDir = RALF_APP_ROOTFS_DIR + appInstanceId;
@@ -195,6 +197,17 @@ namespace ralf
             LOGERR("Error unmounting overlayfs at %s: %s\n", overlayfsMountPath.c_str(), strerror(errno));
             return false;
         }
+        return true;
+    }
+    bool getGroupId(const std::string &grpName, uint32_t &gid)
+    {
+        struct group *grp = getgrnam(grpName.c_str());
+        if (grp == NULL)
+        {
+            LOGERR("Group %s not found\n", grpName.c_str());
+            return false;
+        }
+        gid = grp->gr_gid;
         return true;
     }
 

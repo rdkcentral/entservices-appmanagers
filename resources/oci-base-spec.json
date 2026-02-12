@@ -5,9 +5,7 @@
     "annotations": {
         "org.opencontainers.image.architecture": "arm",
         "org.opencontainers.image.author": "support@rdkcentral.com",
-        "org.opencontainers.image.os": "linux",
-        "run.oci.hooks.stderr": "/dev/stderr",
-        "run.oci.hooks.stdout": "/dev/stdout"
+        "org.opencontainers.image.os": "linux"
     },
     "root": {
         "path": "rootfs",
@@ -180,7 +178,7 @@
                 }
             ],
             "memory": {
-                "limit": 209715200
+                "limit": 524288000
             },
             "cpu": {
                 "cpus": "1,2,3"

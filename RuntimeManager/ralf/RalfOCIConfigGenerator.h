@@ -91,6 +91,23 @@ namespace ralf
          * @return true if device nodes were added successfully, false otherwise.
          */
         bool addDeviceNodeEntriesToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &graphicsDevNode);
+
+        /**
+         * Mount storage path for the application in the OCI config and export the location as an environment variable.
+         * @param ociConfigRootNode The root node of the OCI config JSON.
+         * @param appStoragePath The storage path for the application in the host.
+         * @return true if storage path was added successfully, false otherwise.
+         */
+
+        bool addAppStorageToOCIConfig(Json::Value &ociConfigRootNode, const std::string &appStoragePath);
+        /**
+         * Add additional environmental variables as defined in specification.
+         * @param ociConfigRootNode The root node of the OCI config JSON.
+         * @param runtimeConfigObject The runtime configuration object containing the environment variables to be added.
+         * @param appConfig The application configuration containing the environment variables to be added.
+         * @return true if environment variables were added successfully, false otherwise.
+         */
+        bool addAdditionalEnvVariablesToOCIConfig(Json::Value &ociConfigRootNode, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject, const WPEFramework::Plugin::ApplicationConfiguration &appConfig);
         /**
          * The vector of Ralf package details as pairs of mount point and metadata path.
          */

@@ -28,6 +28,8 @@
 
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
 #include "ralf/RalfPackageBuilder.h"
+#define RALF_USER_GROUP 30000
+#define RALF_USER_ID 30000
 #endif // RALF_PACKAGE_SUPPORT_ENABLED
 
 namespace WPEFramework
@@ -553,19 +555,17 @@ namespace WPEFramework
 
             uid_t uid = mUserIdManager->getUserId(appId);
             gid_t gid = mUserIdManager->getAppsGid();
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED
+            // In Ralf package, all apps will run with the same ralf user and group
+            uid = RALF_USER_ID;
+            gid = RALF_USER_GROUP;
+#endif
 
             std::ifstream inFile("/tmp/specchange");
             if (inFile.good())
             {
                 uid = 30490;
             }
-#ifdef RALF_PACKAGE_SUPPORT_ENABLED
-            {
-                uid = gid = 0;
-                appStorageInfo.userId = uid;
-                appStorageInfo.groupId = gid;
-            }
-#endif // RALF_PACKAGE_SUPPORT_ENABLED
             config.mUserId = uid;
             config.mGroupId = gid;
 
@@ -605,13 +605,24 @@ namespace WPEFramework
 
             if (!appId.empty())
             {
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED
+                // RALF uses one userid groupid for all apps.
+                appStorageInfo.userId = RALF_USER_ID;
+                appStorageInfo.groupId = RALF_USER_GROUP;
+#else
                 appStorageInfo.userId = userId;
                 appStorageInfo.groupId = groupId;
+#endif //RALF_PACKAGE_SUPPORT_ENABLED
                 if (Core::ERROR_NONE == getAppStorageInfo(appId, appStorageInfo))
                 {
                     config.mAppStorageInfo.path = std::move(appStorageInfo.path);
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED
+                    config.mAppStorageInfo.userId = RALF_USER_ID;
+                    config.mAppStorageInfo.groupId = RALF_USER_GROUP;
+#else
                     config.mAppStorageInfo.userId = userId;
                     config.mAppStorageInfo.groupId = groupId;
+#endif // RALF_PACKAGE_SUPPORT_ENABLED
                     config.mAppStorageInfo.size = std::move(appStorageInfo.size);
                     config.mAppStorageInfo.used = std::move(appStorageInfo.used);
                 }
@@ -643,13 +654,10 @@ namespace WPEFramework
             {
                 westerosSocket = xdgRuntimeDir + "/" + waylandDisplay;
                 config.mWesterosSocketPath = westerosSocket;
-#ifdef RALF_PACKAGE_SUPPORT_ENABLED
-               config.mWesterosSocketPath = waylandDisplay;
-#endif //RALF_PACKAGE_SUPPORT_ENABLED
             }
 
+            // To indicate containers used by Widget
             bool legacyContainer = true;
-            bool ralfSupport = false;
 #ifdef RIALTO_IN_DAC_FEATURE_ENABLED
             {
                 legacyContainer = false;
@@ -657,8 +665,9 @@ namespace WPEFramework
                 std::string rialtoSocket = appId;
 
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
+                // Adding a prefix to the rialto socket to avoid any conflict with existing sockets as
+                // RALF package will create a socket with the name same as appInstanceId.
                 rialtoSocket = "rlto-" + appInstanceId;
-                ralfSupport = true;
 #endif // RALF_PACKAGE_SUPPORT_ENABLED
                 if (mRialtoConnector->createAppSession(appId, westerosSocket, rialtoSocket))
                 {
@@ -672,7 +681,7 @@ namespace WPEFramework
                 {
                     LOGWARN(" Rialto app session not ready. ");
                     status = Core::ERROR_GENERAL;
-                }                
+                }
             }
 #endif // RIALTO_IN_DAC_FEATURE_ENABLED
             LOGINFO("legacyContainer: %s", legacyContainer ? "true" : "false");
@@ -686,19 +695,15 @@ namespace WPEFramework
                 errorCode = "ERROR_CREATE_DISPLAY";
                 notifyParamCheckFailure = true;
             }
-            /* Generate dobbySpec only if legacyContainer or ralfSupport is true */
-            else if (legacyContainer || ralfSupport)
+            /* Generate dobbySpec only if legacyContainer is true */
+            else if (false == RuntimeManagerImplementation::generate(config, runtimeConfigObject, dobbySpec))
             {
-                if(false == RuntimeManagerImplementation::generate(config, runtimeConfigObject, dobbySpec))
-                {
-                    LOGERR("Failed to generate dobbySpec");
-                    status = Core::ERROR_GENERAL;
-                    errorCode = "ERROR_DOBBY_SPEC";
-                    notifyParamCheckFailure = true;
-                }
+                LOGERR("Failed to generate dobbySpec");
+                status = Core::ERROR_GENERAL;
+                errorCode = "ERROR_DOBBY_SPEC";
+                notifyParamCheckFailure = true;
             }
-
-            if(notifyParamCheckFailure == false)
+            else
             {
                 /* Generated dobbySpec */
                 LOGINFO("Generated dobbySpec: %s", dobbySpec.c_str());
@@ -707,9 +712,10 @@ namespace WPEFramework
                         xdgRuntimeDir.c_str(), waylandDisplay.c_str());
                 std::string command = "";
                 std::string appPath = runtimeConfigObject.unpackedPath;
-                if(ralfSupport)
+                // In Ralf package, dobbySpec contains the path to the generated dobby spec file
+                if (!legacyContainer)
                 {
-                    appPath = dobbySpec; // In Ralf package, dobbySpec contains the path to the generated dobby spec file
+                    appPath = dobbySpec;
                 }
                 if (isOCIPluginObjectValid())
                 {
@@ -718,17 +724,14 @@ namespace WPEFramework
                     {
                         if (legacyContainer)
                             status = mOciContainerObject->StartContainerFromDobbySpec(containerId, dobbySpec, command, westerosSocket, descriptor, success, errorReason);
-                        else if (ralfSupport)
-                        {
-                            LOGINFO("Starting  container in RALF mode");
-                            //For RALF we are not mounting the westeros socket from the dobby. It can be done from RALF itself.
-                            status = mOciContainerObject->StartContainer(containerId, appPath, command, "", descriptor, success, errorReason);
-                        }
                         else
                         {
-                            LOGINFO("Starting  container in 1.0 mode");
-                            status = mOciContainerObject->StartContainer(containerId, appPath, command, westerosSocket, descriptor, success, errorReason);
+                            LOGINFO("Starting  container in RALF mode");
+                            // For RALF we are not mounting the westeros socket from  dobby. It can be done from RALF itself.
+                            // Hence passing the westeros socket path as empty and relying on RALF to mount it inside the container.
+                            status = mOciContainerObject->StartContainer(containerId, appPath, command, "", descriptor, success, errorReason);
                         }
+
                         if ((success == false) || (status != Core::ERROR_NONE))
                         {
                             LOGERR("Failed to Run Container %s", errorReason.c_str());
@@ -1246,7 +1249,7 @@ namespace WPEFramework
         void RuntimeManagerImplementation::onOCIContainerStartedEvent(std::string name, JsonObject &data)
         {
             LOGINFO("Container name: %s", name.c_str());
-            #ifdef RDK_APPMANAGERS_DEBUG
+#ifdef RDK_APPMANAGERS_DEBUG
             const in_addr_t addr = ContainerUtils::getContainerIpAddress(name);
             if (addr != 0)
             {
@@ -1288,13 +1291,13 @@ namespace WPEFramework
             {
                 LOGERR("Failed to get IP address for container '%s'", name.c_str());
             }
-            #endif
+#endif
             dispatchEvent(RuntimeManagerImplementation::RuntimeEventType::RUNTIME_MANAGER_EVENT_CONTAINERSTARTED, data);
         }
 
         void RuntimeManagerImplementation::onOCIContainerStoppedEvent(std::string name, JsonObject &data)
         {
-            #ifdef RDK_APPMANAGERS_DEBUG
+#ifdef RDK_APPMANAGERS_DEBUG
             auto it = mWebInspectors.find(name);
             if (it != mWebInspectors.end())
             {
@@ -1304,7 +1307,7 @@ namespace WPEFramework
                 mPortAvailability[freedPort] = false;
                 LOGINFO("Debug port %d flag reset to available for reuse", freedPort);
             }
-            #endif
+#endif
             dispatchEvent(RuntimeManagerImplementation::RuntimeEventType::RUNTIME_MANAGER_EVENT_CONTAINERSTOPPED, data);
         }
 
