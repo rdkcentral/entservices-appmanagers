@@ -3257,3 +3257,599 @@ TEST_F(AppManagerTest, handleOnAppUnloadedUsingComRpcSuccess)
         releaseResources();
     }
 }
+
+/*
+ * Test Case for OnAppLifecycleStateChanged_AllStateTransitions
+ * Verifying all possible lifecycle state transitions
+ * Testing state mapping for each lifecycle state
+ * Verifying notification is triggered for each transition
+ */
+TEST_F(AppManagerTest, OnAppLifecycleStateChanged_AllStateTransitions)
+{
+    Core::hresult status;
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    Core::Sink<NotificationHandler> notification;
+    mAppManagerImpl->Register(&notification);
+
+    // Test UNLOADED -> LOADING
+    ExpectedAppLifecycleEvent expectedEvent;
+    expectedEvent.appId = APPMANAGER_APP_ID;
+    expectedEvent.appInstanceId = APPMANAGER_APP_INSTANCE;
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED;
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING;
+    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE;
+    notification.SetExpectedEvent(expectedEvent);
+    mAppManagerImpl->handleOnAppLifecycleStateChanged(APPMANAGER_APP_ID, APPMANAGER_APP_INSTANCE,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED,
+        Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE);
+    uint32_t signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+
+    // Test LOADING -> ACTIVE
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING;
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
+    notification.SetExpectedEvent(expectedEvent);
+    mAppManagerImpl->handleOnAppLifecycleStateChanged(APPMANAGER_APP_ID, APPMANAGER_APP_INSTANCE,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING,
+        Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE);
+    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+
+    // Test ACTIVE -> PAUSED
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED;
+    notification.SetExpectedEvent(expectedEvent);
+    mAppManagerImpl->handleOnAppLifecycleStateChanged(APPMANAGER_APP_ID, APPMANAGER_APP_INSTANCE,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE,
+        Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE);
+    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+
+    // Test PAUSED -> SUSPENDED
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED;
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED;
+    notification.SetExpectedEvent(expectedEvent);
+    mAppManagerImpl->handleOnAppLifecycleStateChanged(APPMANAGER_APP_ID, APPMANAGER_APP_INSTANCE,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED,
+        Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE);
+    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+
+    // Test SUSPENDED -> HIBERNATED
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED;
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_HIBERNATED;
+    notification.SetExpectedEvent(expectedEvent);
+    mAppManagerImpl->handleOnAppLifecycleStateChanged(APPMANAGER_APP_ID, APPMANAGER_APP_INSTANCE,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_HIBERNATED,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED,
+        Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE);
+    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+
+    // Test HIBERNATED -> UNLOADED
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_HIBERNATED;
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED;
+    notification.SetExpectedEvent(expectedEvent);
+    mAppManagerImpl->handleOnAppLifecycleStateChanged(APPMANAGER_APP_ID, APPMANAGER_APP_INSTANCE,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_HIBERNATED,
+        Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE);
+    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+
+    mAppManagerImpl->Unregister(&notification);
+    if(status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for OnAppLifecycleStateChanged_AllErrorReasons
+ * Testing notification with different error reasons
+ * Verifying error reason mapping works correctly
+ */
+TEST_F(AppManagerTest, OnAppLifecycleStateChanged_AllErrorReasons)
+{
+    Core::hresult status;
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    Core::Sink<NotificationHandler> notification;
+    mAppManagerImpl->Register(&notification);
+
+    // Test APP_ERROR_NONE
+    ExpectedAppLifecycleEvent expectedEvent;
+    expectedEvent.appId = APPMANAGER_APP_ID;
+    expectedEvent.appInstanceId = APPMANAGER_APP_INSTANCE;
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED;
+    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE;
+    notification.SetExpectedEvent(expectedEvent);
+    mAppManagerImpl->handleOnAppLifecycleStateChanged(APPMANAGER_APP_ID, APPMANAGER_APP_INSTANCE,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE,
+        Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE);
+    uint32_t signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+
+    // Test APP_ERROR_ABORT
+    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_ABORT;
+    notification.SetExpectedEvent(expectedEvent);
+    mAppManagerImpl->handleOnAppLifecycleStateChanged(APPMANAGER_APP_ID, APPMANAGER_APP_INSTANCE,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE,
+        Exchange::IAppManager::AppErrorReason::APP_ERROR_ABORT);
+    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+
+    // Test APP_ERROR_CREATE_DISPLAY
+    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_CREATE_DISPLAY;
+    notification.SetExpectedEvent(expectedEvent);
+    mAppManagerImpl->handleOnAppLifecycleStateChanged(APPMANAGER_APP_ID, APPMANAGER_APP_INSTANCE,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE,
+        Exchange::IAppManager::AppErrorReason::APP_ERROR_CREATE_DISPLAY);
+    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+
+    // Test APP_ERROR_DOBBY_SPEC
+    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_DOBBY_SPEC;
+    notification.SetExpectedEvent(expectedEvent);
+    mAppManagerImpl->handleOnAppLifecycleStateChanged(APPMANAGER_APP_ID, APPMANAGER_APP_INSTANCE,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE,
+        Exchange::IAppManager::AppErrorReason::APP_ERROR_DOBBY_SPEC);
+    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+
+    // Test APP_ERROR_INVALID_PARAM
+    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_INVALID_PARAM;
+    notification.SetExpectedEvent(expectedEvent);
+    mAppManagerImpl->handleOnAppLifecycleStateChanged(APPMANAGER_APP_ID, APPMANAGER_APP_INSTANCE,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE,
+        Exchange::IAppManager::AppErrorReason::APP_ERROR_INVALID_PARAM);
+    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+
+    // Test APP_ERROR_UNKNOWN
+    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_UNKNOWN;
+    notification.SetExpectedEvent(expectedEvent);
+    mAppManagerImpl->handleOnAppLifecycleStateChanged(APPMANAGER_APP_ID, APPMANAGER_APP_INSTANCE,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE,
+        Exchange::IAppManager::AppErrorReason::APP_ERROR_UNKNOWN);
+    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+
+    mAppManagerImpl->Unregister(&notification);
+    if(status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for OnAppLifecycleStateChanged_InitializingState
+ * Testing INITIALIZING state transition
+ */
+TEST_F(AppManagerTest, OnAppLifecycleStateChanged_InitializingState)
+{
+    Core::hresult status;
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    Core::Sink<NotificationHandler> notification;
+    mAppManagerImpl->Register(&notification);
+
+    ExpectedAppLifecycleEvent expectedEvent;
+    expectedEvent.appId = APPMANAGER_APP_ID;
+    expectedEvent.appInstanceId = APPMANAGER_APP_INSTANCE;
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING;
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_INITIALIZING;
+    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE;
+    notification.SetExpectedEvent(expectedEvent);
+    
+    mAppManagerImpl->handleOnAppLifecycleStateChanged(APPMANAGER_APP_ID, APPMANAGER_APP_INSTANCE,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_INITIALIZING,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING,
+        Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE);
+    
+    uint32_t signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+
+    mAppManagerImpl->Unregister(&notification);
+    if(status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for OnAppLifecycleStateChanged_TerminatingState
+ * Testing TERMINATING state transition
+ */
+TEST_F(AppManagerTest, OnAppLifecycleStateChanged_TerminatingState)
+{
+    Core::hresult status;
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    Core::Sink<NotificationHandler> notification;
+    mAppManagerImpl->Register(&notification);
+
+    ExpectedAppLifecycleEvent expectedEvent;
+    expectedEvent.appId = APPMANAGER_APP_ID;
+    expectedEvent.appInstanceId = APPMANAGER_APP_INSTANCE;
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_TERMINATING;
+    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE;
+    notification.SetExpectedEvent(expectedEvent);
+    
+    mAppManagerImpl->handleOnAppLifecycleStateChanged(APPMANAGER_APP_ID, APPMANAGER_APP_INSTANCE,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_TERMINATING,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE,
+        Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE);
+    
+    uint32_t signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+
+    mAppManagerImpl->Unregister(&notification);
+    if(status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for MultipleNotifications_Sequential
+ * Testing multiple sequential notification events
+ */
+TEST_F(AppManagerTest, MultipleNotifications_Sequential)
+{
+    Core::hresult status;
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    Core::Sink<NotificationHandler> notification;
+    mAppManagerImpl->Register(&notification);
+
+    // First notification
+    ExpectedAppLifecycleEvent expectedEvent;
+    expectedEvent.appId = APPMANAGER_APP_ID;
+    expectedEvent.appInstanceId = APPMANAGER_APP_INSTANCE;
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED;
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING;
+    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE;
+    notification.SetExpectedEvent(expectedEvent);
+    mAppManagerImpl->handleOnAppLifecycleStateChanged(APPMANAGER_APP_ID, APPMANAGER_APP_INSTANCE,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED,
+        Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE);
+    uint32_t signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+
+    // Second notification
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING;
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
+    notification.SetExpectedEvent(expectedEvent);
+    mAppManagerImpl->handleOnAppLifecycleStateChanged(APPMANAGER_APP_ID, APPMANAGER_APP_INSTANCE,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING,
+        Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE);
+    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+
+    // Third notification
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED;
+    notification.SetExpectedEvent(expectedEvent);
+    mAppManagerImpl->handleOnAppLifecycleStateChanged(APPMANAGER_APP_ID, APPMANAGER_APP_INSTANCE,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE,
+        Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE);
+    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+
+    mAppManagerImpl->Unregister(&notification);
+    if(status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for NotificationRegistrationUnregistration
+ * Testing notification registration and unregistration
+ */
+TEST_F(AppManagerTest, NotificationRegistrationUnregistration)
+{
+    Core::hresult status;
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    Core::Sink<NotificationHandler> notification;
+    
+    // Register notification
+    mAppManagerImpl->Register(&notification);
+
+    // Test notification works after registration
+    ExpectedAppLifecycleEvent expectedEvent;
+    expectedEvent.appId = APPMANAGER_APP_ID;
+    expectedEvent.appInstanceId = APPMANAGER_APP_INSTANCE;
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED;
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
+    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE;
+    notification.SetExpectedEvent(expectedEvent);
+    
+    mAppManagerImpl->handleOnAppLifecycleStateChanged(APPMANAGER_APP_ID, APPMANAGER_APP_INSTANCE,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED,
+        Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE);
+    
+    uint32_t signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+
+    // Unregister notification
+    mAppManagerImpl->Unregister(&notification);
+
+    if(status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for OnAppLifecycleStateChanged_WithIntent
+ * Testing notification with navigation intent
+ */
+TEST_F(AppManagerTest, OnAppLifecycleStateChanged_WithIntent)
+{
+    Core::hresult status;
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    Core::Sink<NotificationHandler> notification;
+    mAppManagerImpl->Register(&notification);
+
+    ExpectedAppLifecycleEvent expectedEvent;
+    expectedEvent.appId = APPMANAGER_APP_ID;
+    expectedEvent.appInstanceId = APPMANAGER_APP_INSTANCE;
+    expectedEvent.intent = APPMANAGER_APP_INTENT;
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED;
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
+    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE;
+    notification.SetExpectedEvent(expectedEvent);
+    
+    mAppManagerImpl->handleOnAppLifecycleStateChanged(APPMANAGER_APP_ID, APPMANAGER_APP_INSTANCE,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED,
+        Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE);
+    
+    uint32_t signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+
+    mAppManagerImpl->Unregister(&notification);
+    if(status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for OnAppUnloaded_MultipleApps
+ * Testing unload notification for multiple apps
+ */
+TEST_F(AppManagerTest, OnAppUnloaded_MultipleApps)
+{
+    Core::hresult status;
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    Core::Sink<NotificationHandler> notification;
+    mAppManagerImpl->Register(&notification);
+
+    // First app unloaded
+    ExpectedAppLifecycleEvent expectedEvent;
+    expectedEvent.appId = APPMANAGER_APP_ID;
+    expectedEvent.appInstanceId = APPMANAGER_APP_INSTANCE;
+    notification.SetExpectedEvent(expectedEvent);
+    mAppManagerImpl->handleOnAppUnloaded(APPMANAGER_APP_ID, APPMANAGER_APP_INSTANCE);
+    uint32_t signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppUnloaded);
+    EXPECT_TRUE(signalled & AppManager_onAppUnloaded);
+
+    // Second app unloaded
+    expectedEvent.appId = "com.second.app";
+    expectedEvent.appInstanceId = "secondAppInstance";
+    notification.SetExpectedEvent(expectedEvent);
+    mAppManagerImpl->handleOnAppUnloaded("com.second.app", "secondAppInstance");
+    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppUnloaded);
+    EXPECT_TRUE(signalled & AppManager_onAppUnloaded);
+
+    mAppManagerImpl->Unregister(&notification);
+    if(status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for OnAppLifecycleStateChanged_EmptyAppInstanceId
+ * Testing notification with empty app instance ID
+ */
+TEST_F(AppManagerTest, OnAppLifecycleStateChanged_EmptyAppInstanceId)
+{
+    Core::hresult status;
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    Core::Sink<NotificationHandler> notification;
+    mAppManagerImpl->Register(&notification);
+
+    ExpectedAppLifecycleEvent expectedEvent;
+    expectedEvent.appId = APPMANAGER_APP_ID;
+    expectedEvent.appInstanceId = "";
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED;
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
+    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE;
+    notification.SetExpectedEvent(expectedEvent);
+    
+    mAppManagerImpl->handleOnAppLifecycleStateChanged(APPMANAGER_APP_ID, "",
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED,
+        Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE);
+    
+    uint32_t signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+
+    mAppManagerImpl->Unregister(&notification);
+    if(status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for OnAppLifecycleStateChanged_SameStateTransition
+ * Testing notification when old and new states are the same
+ */
+TEST_F(AppManagerTest, OnAppLifecycleStateChanged_SameStateTransition)
+{
+    Core::hresult status;
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    Core::Sink<NotificationHandler> notification;
+    mAppManagerImpl->Register(&notification);
+
+    ExpectedAppLifecycleEvent expectedEvent;
+    expectedEvent.appId = APPMANAGER_APP_ID;
+    expectedEvent.appInstanceId = APPMANAGER_APP_INSTANCE;
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
+    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE;
+    notification.SetExpectedEvent(expectedEvent);
+    
+    mAppManagerImpl->handleOnAppLifecycleStateChanged(APPMANAGER_APP_ID, APPMANAGER_APP_INSTANCE,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE,
+        Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE);
+    
+    uint32_t signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+
+    mAppManagerImpl->Unregister(&notification);
+    if(status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for OnAppLifecycleStateChanged_RapidStateChanges
+ * Testing rapid state changes in succession
+ */
+TEST_F(AppManagerTest, OnAppLifecycleStateChanged_RapidStateChanges)
+{
+    Core::hresult status;
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    Core::Sink<NotificationHandler> notification;
+    mAppManagerImpl->Register(&notification);
+
+    ExpectedAppLifecycleEvent expectedEvent;
+    expectedEvent.appId = APPMANAGER_APP_ID;
+    expectedEvent.appInstanceId = APPMANAGER_APP_INSTANCE;
+    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE;
+
+    // Rapid transitions: UNLOADED -> LOADING -> ACTIVE -> PAUSED -> ACTIVE
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED;
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING;
+    notification.SetExpectedEvent(expectedEvent);
+    mAppManagerImpl->handleOnAppLifecycleStateChanged(APPMANAGER_APP_ID, APPMANAGER_APP_INSTANCE,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED,
+        Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE);
+    uint32_t signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING;
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
+    notification.SetExpectedEvent(expectedEvent);
+    mAppManagerImpl->handleOnAppLifecycleStateChanged(APPMANAGER_APP_ID, APPMANAGER_APP_INSTANCE,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING,
+        Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE);
+    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED;
+    notification.SetExpectedEvent(expectedEvent);
+    mAppManagerImpl->handleOnAppLifecycleStateChanged(APPMANAGER_APP_ID, APPMANAGER_APP_INSTANCE,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE,
+        Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE);
+    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED;
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
+    notification.SetExpectedEvent(expectedEvent);
+    mAppManagerImpl->handleOnAppLifecycleStateChanged(APPMANAGER_APP_ID, APPMANAGER_APP_INSTANCE,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED,
+        Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE);
+    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+
+    mAppManagerImpl->Unregister(&notification);
+    if(status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for OnAppLifecycleStateChanged_AbortErrorDuringLaunch
+ * Testing ABORT error during app launch
+ */
+TEST_F(AppManagerTest, OnAppLifecycleStateChanged_AbortErrorDuringLaunch)
+{
+    Core::hresult status;
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    Core::Sink<NotificationHandler> notification;
+    mAppManagerImpl->Register(&notification);
+
+    ExpectedAppLifecycleEvent expectedEvent;
+    expectedEvent.appId = APPMANAGER_APP_ID;
+    expectedEvent.appInstanceId = APPMANAGER_APP_INSTANCE;
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING;
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED;
+    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_ABORT;
+    notification.SetExpectedEvent(expectedEvent);
+    
+    mAppManagerImpl->handleOnAppLifecycleStateChanged(APPMANAGER_APP_ID, APPMANAGER_APP_INSTANCE,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING,
+        Exchange::IAppManager::AppErrorReason::APP_ERROR_ABORT);
+    
+    uint32_t signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+
+    mAppManagerImpl->Unregister(&notification);
+    if(status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
