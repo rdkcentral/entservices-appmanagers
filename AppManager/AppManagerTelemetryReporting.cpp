@@ -278,12 +278,12 @@ namespace Plugin
         }
     }
 
-    void AppManagerTelemetryReporting::reportAppCrashedTelemetry(const std::string& appId, const std::string& appInstanceId, const std::string& appVersion)
+    void AppManagerTelemetryReporting::reportAppCrashedTelemetry(const std::string& appId, const std::string& appInstanceId, const std::string& crashReason)
     {
         JsonObject jsonParam;
         std::string telemetryMetrics = "";
 
-        LOGINFO("Received app crash data for appId %s appInstanceId %s", appId.c_str(), appInstanceId.c_str());
+        LOGINFO("Received app crash data for appId %s appInstanceId %s crashReason %s", appId.c_str(), appInstanceId.c_str(), crashReason.c_str());
 
         if(nullptr == mTelemetryMetricsObject) /*mTelemetryMetricsObject is null retry to create*/
         {
@@ -297,7 +297,7 @@ namespace Plugin
         {
             jsonParam["appId"] = appId;
             jsonParam["appInstanceId"] = appInstanceId;
-            jsonParam["appVersion"] = appVersion;
+            jsonParam["crashReason"] = crashReason;
             jsonParam.ToString(telemetryMetrics);
             if(!telemetryMetrics.empty())
             {
