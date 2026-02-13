@@ -32,6 +32,10 @@
 #include <rdkwindowmanager/include/rdkwindowmanager.h>
 #include <rdkwindowmanager/include/linuxkeys.h>
 
+#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
+#include <interfaces/ITelemetryMetrics.h>
+#endif
+
 namespace WPEFramework {
 namespace Plugin {
 
@@ -182,6 +186,13 @@ namespace Plugin {
         std::list<Exchange::IRDKWindowManager::INotification*> mRDKWindowManagerNotification;
         PluginHost::IShell* mService{};
         std::shared_ptr<RdkWindowManager::RdkWindowManagerEventListener> mEventListener;
+
+#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
+        Exchange::ITelemetryMetrics* mTelemetryMetricsObject;
+        mutable Core::CriticalSection mTelemetryLock;
+        void recordDisplayTelemetry(const string& client, int duration, bool isCreate);
+        time_t getCurrentTimestamp();
+#endif
 
         friend class Job;
     };
