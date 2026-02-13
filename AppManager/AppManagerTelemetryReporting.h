@@ -45,7 +45,7 @@ class AppManagerTelemetryReporting
         void reportTelemetryData(const std::string& appId, AppManagerImplementation::CurrentAction currentAction);
         void reportTelemetryDataOnStateChange(const string& appId, const Exchange::ILifecycleManager::LifecycleState newState);
         void reportTelemetryErrorData(const std::string& appId, AppManagerImplementation::CurrentAction currentAction, AppManagerImplementation::CurrentActionError errorCode);
-        void reportAppCrashedTelemetry(const std::string& appId, const std::string& appInstanceId, const std::string& appVersion);
+        void reportAppCrashedTelemetry(const std::string& appId, const std::string& appInstanceId,  const std::string& crashReason);
         void initialize(PluginHost::IShell* service);
 
     private /*methods*/:
