@@ -291,7 +291,7 @@ namespace WPEFramework
             std::string filepath = mAppPreinstallDirectory + "/" + filename;
 
             PackageInfo packageInfo;
-            packageInfo.fileLocator = filepath + "/package.ralf";
+            packageInfo.fileLocator = filepath + "/package.wgt";
             LOGDBG("Found package folder: %s", filepath.c_str());
             if (mPackageManagerInstallerObject->GetConfigForPackage(packageInfo.fileLocator, packageInfo.packageId, packageInfo.version, packageInfo.configMetadata) == Core::ERROR_NONE)
             {
