@@ -560,6 +560,19 @@ namespace WPEFramework
                         LOGERR("Error creating base storage directory %s", mBaseStoragePath.c_str());
                         goto ret_fail;
                     }
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED
+                    {
+                        // We need to ensure that the base storage path has default group permissions for ralph.
+                        // This is now hardcoded to 30000, but it should be dynamically retieved in future.
+                        // TODO: Retrieve dynamically
+                        if (chown(mBaseStoragePath.c_str(), -1, 30000) != 0)
+                        {
+                            LOGERR("Failed to set group ownership for base storage directory %s", mBaseStoragePath.c_str());
+                            errorReason = "Failed to set group ownership for base storage directory: " + mBaseStoragePath;
+                            goto ret_fail;
+                        }
+                    }
+#endif // RALF_PACKAGE_SUPPORT_ENABLED
                 }
 
                 /* Check if the appId storageInfo already exists or can be created */
