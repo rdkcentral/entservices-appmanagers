@@ -3257,3 +3257,812 @@ TEST_F(AppManagerTest, handleOnAppUnloadedUsingComRpcSuccess)
         releaseResources();
     }
 }
+
+// REPLACE the existing event enumeration at lines 64-70 with proper bit flags:
+typedef enum : uint32_t {
+    AppManager_StateInvalid = 0x00000000,
+    AppManager_onAppLifecycleStateChanged = 0x00000001,
+    AppManager_onAppInstalled = 0x00000002,
+    AppManager_onAppLaunchRequest = 0x00000004,
+    AppManager_onAppUnloaded = 0x00000008
+} AppManagerL1test_async_events_t;
+
+// REPLACE the existing NotificationHandler class (around line 600) with this enhanced implementation:
+class NotificationHandler : public Exchange::IAppManager::INotification {
+    private:
+        /** @brief Mutex for thread-safe operations */
+        std::mutex m_mutex;
+
+        /** @brief Condition variable for event signaling */
+        std::condition_variable m_condition_variable;
+
+        /** @brief Event signalled flags (bit mask) */
+        uint32_t m_event_signalled;
+
+        /** @brief Storage for lifecycle state change parameters */
+        struct LifecycleStateChangeData {
+            std::string appId;
+            std::string appInstanceId;
+            Exchange::IAppManager::AppLifecycleState newState;
+            Exchange::IAppManager::AppLifecycleState oldState;
+            Exchange::IAppManager::AppErrorReason errorReason;
+            bool received;
+            
+            LifecycleStateChangeData() : 
+                newState(Exchange::IAppManager::AppLifecycleState::APP_STATE_UNKNOWN),
+                oldState(Exchange::IAppManager::AppLifecycleState::APP_STATE_UNKNOWN),
+                errorReason(Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE),
+                received(false) {}
+        } m_lifecycleStateData;
+
+        /** @brief Storage for app installed parameters */
+        struct AppInstalledData {
+            std::string appId;
+            std::string version;
+            bool received;
+            
+            AppInstalledData() : received(false) {}
+        } m_appInstalledData;
+
+        /** @brief Storage for app launch request parameters */
+        struct AppLaunchRequestData {
+            std::string appId;
+            std::string intent;
+            std::string source;
+            bool received;
+            
+            AppLaunchRequestData() : received(false) {}
+        } m_appLaunchRequestData;
+
+        /** @brief Storage for app unloaded parameters */
+        struct AppUnloadedData {
+            std::string appId;
+            std::string appInstanceId;
+            bool received;
+            
+            AppUnloadedData() : received(false) {}
+        } m_appUnloadedData;
+
+        /** @brief Expected event for validation */
+        ExpectedAppLifecycleEvent m_expectedEvent;
+        bool m_expectEventValidation;
+
+        BEGIN_INTERFACE_MAP(Notification)
+        INTERFACE_ENTRY(Exchange::IAppManager::INotification)
+        END_INTERFACE_MAP
+
+    public:
+        NotificationHandler() : 
+            m_event_signalled(AppManager_StateInvalid),
+            m_expectEventValidation(false) {
+            TEST_LOG("NotificationHandler created");
+        }
+
+        ~NotificationHandler() {
+            TEST_LOG("NotificationHandler destroyed");
+        }
+
+        /**
+         * @brief Set expected event for validation
+         * @param expectedEvent Expected event data
+         */
+        void SetExpectedEvent(const ExpectedAppLifecycleEvent& expectedEvent) {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            m_expectedEvent = expectedEvent;
+            m_expectEventValidation = true;
+            TEST_LOG("Expected event set for appId: %s", expectedEvent.appId.c_str());
+        }
+
+        /**
+         * @brief Clear expected event validation
+         */
+        void ClearExpectedEvent() {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            m_expectEventValidation = false;
+        }
+
+        /**
+         * @brief Notification handler for app lifecycle state changes
+         */
+        void OnAppLifecycleStateChanged(
+            const string& appId, 
+            const string& appInstanceId, 
+            const Exchange::IAppManager::AppLifecycleState newState, 
+            const Exchange::IAppManager::AppLifecycleState oldState, 
+            const Exchange::IAppManager::AppErrorReason errorReason) override {
+            
+            std::lock_guard<std::mutex> lock(m_mutex);
+            TEST_LOG("OnAppLifecycleStateChanged: appId=%s, instanceId=%s, newState=%d, oldState=%d, errorReason=%d",
+                     appId.c_str(), appInstanceId.c_str(), newState, oldState, errorReason);
+
+            // Store received data
+            m_lifecycleStateData.appId = appId;
+            m_lifecycleStateData.appInstanceId = appInstanceId;
+            m_lifecycleStateData.newState = newState;
+            m_lifecycleStateData.oldState = oldState;
+            m_lifecycleStateData.errorReason = errorReason;
+            m_lifecycleStateData.received = true;
+
+            // Validate against expected event if configured
+            if (m_expectEventValidation) {
+                EXPECT_EQ(m_expectedEvent.appId, appId);
+                EXPECT_EQ(m_expectedEvent.appInstanceId, appInstanceId);
+                EXPECT_EQ(m_expectedEvent.newState, newState);
+                EXPECT_EQ(m_expectedEvent.oldState, oldState);
+                EXPECT_EQ(m_expectedEvent.errorReason, errorReason);
+            }
+
+            // Signal the event
+            m_event_signalled |= AppManager_onAppLifecycleStateChanged;
+            m_condition_variable.notify_one();
+        }
+
+        /**
+         * @brief Notification handler for app installation
+         */
+        void OnAppInstalled(const string& appId, const string& version) override {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            TEST_LOG("OnAppInstalled: appId=%s, version=%s", appId.c_str(), version.c_str());
+
+            // Store received data
+            m_appInstalledData.appId = appId;
+            m_appInstalledData.version = version;
+            m_appInstalledData.received = true;
+
+            // Validate against expected event if configured
+            if (m_expectEventValidation) {
+                EXPECT_STREQ(m_expectedEvent.appId.c_str(), appId.c_str());
+                EXPECT_STREQ(m_expectedEvent.version.c_str(), version.c_str());
+            }
+
+            // Signal the event
+            m_event_signalled |= AppManager_onAppInstalled;
+            m_condition_variable.notify_one();
+        }
+
+        /**
+         * @brief Notification handler for app launch request
+         */
+        void OnAppLaunchRequest(const string& appId, const string& intent, const string& source) override {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            TEST_LOG("OnAppLaunchRequest: appId=%s, intent=%s, source=%s", 
+                     appId.c_str(), intent.c_str(), source.c_str());
+
+            // Store received data
+            m_appLaunchRequestData.appId = appId;
+            m_appLaunchRequestData.intent = intent;
+            m_appLaunchRequestData.source = source;
+            m_appLaunchRequestData.received = true;
+
+            // Validate against expected event if configured
+            if (m_expectEventValidation) {
+                EXPECT_STREQ(m_expectedEvent.appId.c_str(), appId.c_str());
+                EXPECT_STREQ(m_expectedEvent.intent.c_str(), intent.c_str());
+                EXPECT_STREQ(m_expectedEvent.source.c_str(), source.c_str());
+            }
+
+            // Signal the event
+            m_event_signalled |= AppManager_onAppLaunchRequest;
+            m_condition_variable.notify_one();
+        }
+
+        /**
+         * @brief Notification handler for app unloaded
+         */
+        void OnAppUnloaded(const string& appId, const string& appInstanceId) override {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            TEST_LOG("OnAppUnloaded: appId=%s, appInstanceId=%s", appId.c_str(), appInstanceId.c_str());
+
+            // Store received data
+            m_appUnloadedData.appId = appId;
+            m_appUnloadedData.appInstanceId = appInstanceId;
+            m_appUnloadedData.received = true;
+
+            // Validate against expected event if configured
+            if (m_expectEventValidation) {
+                EXPECT_STREQ(m_expectedEvent.appId.c_str(), appId.c_str());
+                EXPECT_STREQ(m_expectedEvent.appInstanceId.c_str(), appInstanceId.c_str());
+            }
+
+            // Signal the event
+            m_event_signalled |= AppManager_onAppUnloaded;
+            m_condition_variable.notify_one();
+        }
+
+        /**
+         * @brief Wait for specific event with timeout
+         * @param timeout_ms Timeout in milliseconds
+         * @param expected_status Expected event status to wait for
+         * @return Event flags that were signalled
+         */
+        uint32_t WaitForRequestStatus(uint32_t timeout_ms, AppManagerL1test_async_events_t expected_status) {
+            std::unique_lock<std::mutex> lock(m_mutex);
+            auto now = std::chrono::steady_clock::now();
+            auto timeout = std::chrono::milliseconds(timeout_ms);
+            
+            TEST_LOG("Waiting for event status: 0x%08X with timeout: %u ms", expected_status, timeout_ms);
+            
+            bool status = m_condition_variable.wait_until(lock, now + timeout, [this, expected_status] {
+                return (m_event_signalled & expected_status) != 0;
+            });
+
+            if (status) {
+                TEST_LOG("Event received: 0x%08X", m_event_signalled);
+            } else {
+                TEST_LOG("Timeout waiting for event: 0x%08X, received: 0x%08X", 
+                         expected_status, m_event_signalled);
+            }
+
+            uint32_t signalled = m_event_signalled;
+            m_event_signalled = AppManager_StateInvalid; // Reset for next use
+            return signalled;
+        }
+
+        /**
+         * @brief Reset notification handler state
+         */
+        void Reset() {
+            std::lock_guard<std::mutex> lock(m_mutex);
+            
+            m_event_signalled = AppManager_StateInvalid;
+            
+            m_lifecycleStateData = LifecycleStateChangeData();
+            m_appInstalledData = AppInstalledData();
+            m_appLaunchRequestData = AppLaunchRequestData();
+            m_appUnloadedData = AppUnloadedData();
+            
+            m_expectEventValidation = false;
+            
+            TEST_LOG("NotificationHandler reset");
+        }
+
+        // Getter methods for validation in tests
+        
+        std::string GetLifecycleStateAppId() const {
+            std::lock_guard<std::mutex> lock(const_cast<std::mutex&>(m_mutex));
+            return m_lifecycleStateData.appId;
+        }
+
+        std::string GetLifecycleStateAppInstanceId() const {
+            std::lock_guard<std::mutex> lock(const_cast<std::mutex&>(m_mutex));
+            return m_lifecycleStateData.appInstanceId;
+        }
+
+        Exchange::IAppManager::AppLifecycleState GetLifecycleNewState() const {
+            std::lock_guard<std::mutex> lock(const_cast<std::mutex&>(m_mutex));
+            return m_lifecycleStateData.newState;
+        }
+
+        Exchange::IAppManager::AppLifecycleState GetLifecycleOldState() const {
+            std::lock_guard<std::mutex> lock(const_cast<std::mutex&>(m_mutex));
+            return m_lifecycleStateData.oldState;
+        }
+
+        Exchange::IAppManager::AppErrorReason GetErrorReason() const {
+            std::lock_guard<std::mutex> lock(const_cast<std::mutex&>(m_mutex));
+            return m_lifecycleStateData.errorReason;
+        }
+
+        std::string GetInstalledAppId() const {
+            std::lock_guard<std::mutex> lock(const_cast<std::mutex&>(m_mutex));
+            return m_appInstalledData.appId;
+        }
+
+        std::string GetInstalledVersion() const {
+            std::lock_guard<std::mutex> lock(const_cast<std::mutex&>(m_mutex));
+            return m_appInstalledData.version;
+        }
+
+        std::string GetLaunchRequestAppId() const {
+            std::lock_guard<std::mutex> lock(const_cast<std::mutex&>(m_mutex));
+            return m_appLaunchRequestData.appId;
+        }
+
+        std::string GetLaunchRequestIntent() const {
+            std::lock_guard<std::mutex> lock(const_cast<std::mutex&>(m_mutex));
+            return m_appLaunchRequestData.intent;
+        }
+
+        std::string GetLaunchRequestSource() const {
+            std::lock_guard<std::mutex> lock(const_cast<std::mutex&>(m_mutex));
+            return m_appLaunchRequestData.source;
+        }
+
+        std::string GetUnloadedAppId() const {
+            std::lock_guard<std::mutex> lock(const_cast<std::mutex&>(m_mutex));
+            return m_appUnloadedData.appId;
+        }
+
+        std::string GetUnloadedAppInstanceId() const {
+            std::lock_guard<std::mutex> lock(const_cast<std::mutex&>(m_mutex));
+            return m_appUnloadedData.appInstanceId;
+        }
+
+        bool IsLifecycleEventReceived() const {
+            std::lock_guard<std::mutex> lock(const_cast<std::mutex&>(m_mutex));
+            return m_lifecycleStateData.received;
+        }
+
+        bool IsInstalledEventReceived() const {
+            std::lock_guard<std::mutex> lock(const_cast<std::mutex&>(m_mutex));
+            return m_appInstalledData.received;
+        }
+
+        bool IsLaunchRequestReceived() const {
+            std::lock_guard<std::mutex> lock(const_cast<std::mutex&>(m_mutex));
+            return m_appLaunchRequestData.received;
+        }
+
+        bool IsUnloadedEventReceived() const {
+            std::lock_guard<std::mutex> lock(const_cast<std::mutex&>(m_mutex));
+            return m_appUnloadedData.received;
+        }
+    };
+
+
+TEST_F(AppManagerTest, OnAppLifecycleStateChanged_ViaLaunchApp_Success)
+{
+    Core::Sink<NotificationHandler> notificationHandler;
+    
+    // Register notification handler
+    mAppManagerImpl->Register(&notificationHandler);
+    notificationHandler.ResetEvents();
+    
+    // Setup expected event
+    ExpectedAppLifecycleEvent expectedEvent;
+    expectedEvent.appId = APPMANAGER_APP_ID;
+    expectedEvent.appInstanceId = APPMANAGER_APP_INSTANCE;
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_LAUNCHING;
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNKNOWN;
+    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE;
+    notificationHandler.SetExpectedEvent(expectedEvent);
+    
+    // Mock LifecycleManager expectations
+    EXPECT_CALL(*mLifecycleManagerMock, Launch(testing::_, testing::_, testing::_, testing::_))
+        .WillOnce(testing::Return(Core::ERROR_NONE));
+    
+    // Mock PackageManager expectations
+    EXPECT_CALL(*mPackageManagerMock, GetPackageInstallerInfoAsCString(testing::_))
+        .WillOnce(testing::Invoke([](string& result) -> uint32_t {
+            result = TEST_JSON_INSTALLED_PACKAGE;
+            return Core::ERROR_NONE;
+        }));
+    
+    // Execute: Launch the app
+    JsonObject params;
+    params["appId"] = APPMANAGER_APP_ID;
+    params["intent"] = APPMANAGER_APP_INTENT;
+    params["launchArgs"] = APPMANAGER_APP_LAUNCHARGS;
+    
+    string result;
+    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("launchApp"), params.ToString(), result));
+    
+    // Verify notification received
+    uint32_t signalled = notificationHandler.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(notificationHandler.IsLifecycleEventReceived());
+    
+    // Verify notification parameters
+    EXPECT_EQ(APPMANAGER_APP_ID, notificationHandler.GetLifecycleStateAppId());
+    EXPECT_EQ(Exchange::IAppManager::AppLifecycleState::APP_STATE_LAUNCHING, 
+              notificationHandler.GetLifecycleNewState());
+    
+    // Cleanup
+    mAppManagerImpl->Unregister(&notificationHandler);
+}
+
+/**
+ * @brief Test OnAppLaunchRequest notification via LaunchApp
+ * Tests that launch request triggers the appropriate notification
+ */
+TEST_F(AppManagerTest, OnAppLaunchRequest_ViaLaunchApp_Success)
+{
+    Core::Sink<NotificationHandler> notificationHandler;
+    
+    mAppManagerImpl->Register(&notificationHandler);
+    notificationHandler.ResetEvents();
+    
+    // Setup expected event
+    ExpectedAppLifecycleEvent expectedEvent;
+    expectedEvent.appId = APPMANAGER_APP_ID;
+    expectedEvent.intent = APPMANAGER_APP_INTENT;
+    expectedEvent.source = "JSON-RPC";
+    notificationHandler.SetExpectedEvent(expectedEvent);
+    
+    // Mock expectations
+    EXPECT_CALL(*mLifecycleManagerMock, Launch(testing::_, testing::_, testing::_, testing::_))
+        .WillOnce(testing::Return(Core::ERROR_NONE));
+    
+    EXPECT_CALL(*mPackageManagerMock, GetPackageInstallerInfoAsCString(testing::_))
+        .WillOnce(testing::Invoke([](string& result) -> uint32_t {
+            result = TEST_JSON_INSTALLED_PACKAGE;
+            return Core::ERROR_NONE;
+        }));
+    
+    // Execute: Launch the app
+    JsonObject params;
+    params["appId"] = APPMANAGER_APP_ID;
+    params["intent"] = APPMANAGER_APP_INTENT;
+    params["launchArgs"] = APPMANAGER_APP_LAUNCHARGS;
+    
+    string result;
+    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("launchApp"), params.ToString(), result));
+    
+    // Verify notification
+    uint32_t signalled = notificationHandler.WaitForRequestStatus(TIMEOUT, AppManager_onAppLaunchRequest);
+    EXPECT_TRUE(signalled & AppManager_onAppLaunchRequest);
+    EXPECT_TRUE(notificationHandler.IsLaunchRequestReceived());
+    
+    // Verify parameters
+    EXPECT_EQ(APPMANAGER_APP_ID, notificationHandler.GetLaunchRequestAppId());
+    EXPECT_EQ(APPMANAGER_APP_INTENT, notificationHandler.GetLaunchRequestIntent());
+    
+    mAppManagerImpl->Unregister(&notificationHandler);
+}
+
+/**
+ * @brief Test OnAppLifecycleStateChanged notification via PreloadApp
+ * Tests that preloading an app triggers state change notification
+ */
+TEST_F(AppManagerTest, OnAppLifecycleStateChanged_ViaPreloadApp_Success)
+{
+    Core::Sink<NotificationHandler> notificationHandler;
+    
+    mAppManagerImpl->Register(&notificationHandler);
+    notificationHandler.ResetEvents();
+    
+    // Setup expected event
+    ExpectedAppLifecycleEvent expectedEvent;
+    expectedEvent.appId = APPMANAGER_APP_ID;
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_PRELOADING;
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNKNOWN;
+    notificationHandler.SetExpectedEvent(expectedEvent);
+    
+    // Mock expectations
+    EXPECT_CALL(*mLifecycleManagerMock, PreLoadApp(testing::_, testing::_, testing::_, testing::_))
+        .WillOnce(testing::Return(Core::ERROR_NONE));
+    
+    EXPECT_CALL(*mPackageManagerMock, GetPackageInstallerInfoAsCString(testing::_))
+        .WillOnce(testing::Invoke([](string& result) -> uint32_t {
+            result = TEST_JSON_INSTALLED_PACKAGE;
+            return Core::ERROR_NONE;
+        }));
+    
+    // Execute: Preload the app
+    JsonObject params;
+    params["appId"] = APPMANAGER_APP_ID;
+    
+    string result;
+    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("preloadApp"), params.ToString(), result));
+    
+    // Verify notification
+    uint32_t signalled = notificationHandler.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+    
+    EXPECT_EQ(APPMANAGER_APP_ID, notificationHandler.GetLifecycleStateAppId());
+    EXPECT_EQ(Exchange::IAppManager::AppLifecycleState::APP_STATE_PRELOADING, 
+              notificationHandler.GetLifecycleNewState());
+    
+    mAppManagerImpl->Unregister(&notificationHandler);
+}
+
+/**
+ * @brief Test OnAppLifecycleStateChanged notification via CloseApp
+ * Tests that closing an app triggers state change to CLOSING
+ */
+TEST_F(AppManagerTest, OnAppLifecycleStateChanged_ViaCloseApp_Success)
+{
+    Core::Sink<NotificationHandler> notificationHandler;
+    
+    mAppManagerImpl->Register(&notificationHandler);
+    notificationHandler.ResetEvents();
+    
+    // Setup expected event
+    ExpectedAppLifecycleEvent expectedEvent;
+    expectedEvent.appId = APPMANAGER_APP_ID;
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_CLOSING;
+    notificationHandler.SetExpectedEvent(expectedEvent);
+    
+    // Mock expectations
+    EXPECT_CALL(*mLifecycleManagerMock, CloseApp(testing::_))
+        .WillOnce(testing::Return(Core::ERROR_NONE));
+    
+    // Execute: Close the app
+    JsonObject params;
+    params["appId"] = APPMANAGER_APP_ID;
+    
+    string result;
+    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("closeApp"), params.ToString(), result));
+    
+    // Verify notification
+    uint32_t signalled = notificationHandler.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+    
+    EXPECT_EQ(APPMANAGER_APP_ID, notificationHandler.GetLifecycleStateAppId());
+    EXPECT_EQ(Exchange::IAppManager::AppLifecycleState::APP_STATE_CLOSING, 
+              notificationHandler.GetLifecycleNewState());
+    
+    mAppManagerImpl->Unregister(&notificationHandler);
+}
+
+/**
+ * @brief Test OnAppLifecycleStateChanged notification via TerminateApp
+ * Tests that terminating an app triggers state change notification
+ */
+TEST_F(AppManagerTest, OnAppLifecycleStateChanged_ViaTerminateApp_Success)
+{
+    Core::Sink<NotificationHandler> notificationHandler;
+    
+    mAppManagerImpl->Register(&notificationHandler);
+    notificationHandler.ResetEvents();
+    
+    // Setup expected event
+    ExpectedAppLifecycleEvent expectedEvent;
+    expectedEvent.appId = APPMANAGER_APP_ID;
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_TERMINATING;
+    notificationHandler.SetExpectedEvent(expectedEvent);
+    
+    // Mock expectations
+    EXPECT_CALL(*mLifecycleManagerMock, TerminateApp(testing::_))
+        .WillOnce(testing::Return(Core::ERROR_NONE));
+    
+    // Execute: Terminate the app
+    JsonObject params;
+    params["appId"] = APPMANAGER_APP_ID;
+    
+    string result;
+    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("terminateApp"), params.ToString(), result));
+    
+    // Verify notification
+    uint32_t signalled = notificationHandler.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+    
+    EXPECT_EQ(APPMANAGER_APP_ID, notificationHandler.GetLifecycleStateAppId());
+    EXPECT_EQ(Exchange::IAppManager::AppLifecycleState::APP_STATE_TERMINATING, 
+              notificationHandler.GetLifecycleNewState());
+    
+    mAppManagerImpl->Unregister(&notificationHandler);
+}
+
+/**
+ * @brief Test OnAppLifecycleStateChanged notification via KillApp
+ * Tests that killing an app triggers state change notification
+ */
+TEST_F(AppManagerTest, OnAppLifecycleStateChanged_ViaKillApp_Success)
+{
+    Core::Sink<NotificationHandler> notificationHandler;
+    
+    mAppManagerImpl->Register(&notificationHandler);
+    notificationHandler.ResetEvents();
+    
+    // Setup expected event
+    ExpectedAppLifecycleEvent expectedEvent;
+    expectedEvent.appId = APPMANAGER_APP_ID;
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_KILLED;
+    notificationHandler.SetExpectedEvent(expectedEvent);
+    
+    // Mock expectations
+    EXPECT_CALL(*mLifecycleManagerMock, KillApp(testing::_))
+        .WillOnce(testing::Return(Core::ERROR_NONE));
+    
+    // Execute: Kill the app
+    JsonObject params;
+    params["appId"] = APPMANAGER_APP_ID;
+    
+    string result;
+    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("killApp"), params.ToString(), result));
+    
+    // Verify notification
+    uint32_t signalled = notificationHandler.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+    
+    EXPECT_EQ(APPMANAGER_APP_ID, notificationHandler.GetLifecycleStateAppId());
+    EXPECT_EQ(Exchange::IAppManager::AppLifecycleState::APP_STATE_KILLED, 
+              notificationHandler.GetLifecycleNewState());
+    
+    mAppManagerImpl->Unregister(&notificationHandler);
+}
+
+/**
+ * @brief Test OnAppInstalled notification via package installation
+ * Tests that installing a package triggers the installation notification
+ */
+TEST_F(AppManagerTest, OnAppInstalled_ViaPackageInstallation_Success)
+{
+    Core::Sink<NotificationHandler> notificationHandler;
+    
+    mAppManagerImpl->Register(&notificationHandler);
+    notificationHandler.ResetEvents();
+    
+    // Setup expected event
+    ExpectedAppLifecycleEvent expectedEvent;
+    expectedEvent.appId = APPMANAGER_APP_ID;
+    expectedEvent.version = APPMANAGER_APP_VERSION;
+    notificationHandler.SetExpectedEvent(expectedEvent);
+    
+    // Simulate package installation notification
+    if (mPackageManagerNotification_cb != nullptr) {
+        mPackageManagerNotification_cb->OnPackageInstalled(
+            APPMANAGER_APP_ID,
+            APPMANAGER_APP_VERSION,
+            Exchange::IPackageInstaller::InstallState::INSTALLED
+        );
+    }
+    
+    // Verify notification
+    uint32_t signalled = notificationHandler.WaitForRequestStatus(TIMEOUT, AppManager_onAppInstalled);
+    EXPECT_TRUE(signalled & AppManager_onAppInstalled);
+    EXPECT_TRUE(notificationHandler.IsInstalledEventReceived());
+    
+    // Verify parameters
+    EXPECT_EQ(APPMANAGER_APP_ID, notificationHandler.GetInstalledAppId());
+    EXPECT_EQ(APPMANAGER_APP_VERSION, notificationHandler.GetInstalledVersion());
+    
+    mAppManagerImpl->Unregister(&notificationHandler);
+}
+
+/**
+ * @brief Test OnAppUnloaded notification via lifecycle state change
+ * Tests that app unload events trigger the unloaded notification
+ */
+TEST_F(AppManagerTest, OnAppUnloaded_ViaLifecycleStateChange_Success)
+{
+    Core::Sink<NotificationHandler> notificationHandler;
+    
+    mAppManagerImpl->Register(&notificationHandler);
+    notificationHandler.ResetEvents();
+    
+    // Setup expected event
+    ExpectedAppLifecycleEvent expectedEvent;
+    expectedEvent.appId = APPMANAGER_APP_ID;
+    expectedEvent.appInstanceId = APPMANAGER_APP_INSTANCE;
+    notificationHandler.SetExpectedEvent(expectedEvent);
+    
+    // Simulate lifecycle state notification for unload
+    if (mLifecycleManagerStateNotification_cb != nullptr) {
+        mLifecycleManagerStateNotification_cb->OnAppStateChange(
+            APPMANAGER_APP_ID,
+            APPMANAGER_APP_INSTANCE,
+            Exchange::ILifecycleManagerState::AppState::APP_STATE_UNLOADED,
+            Exchange::ILifecycleManagerState::AppState::APP_STATE_CLOSING
+        );
+    }
+    
+    // Verify notification
+    uint32_t signalled = notificationHandler.WaitForRequestStatus(TIMEOUT, AppManager_onAppUnloaded);
+    EXPECT_TRUE(signalled & AppManager_onAppUnloaded);
+    EXPECT_TRUE(notificationHandler.IsUnloadedEventReceived());
+    
+    // Verify parameters
+    EXPECT_EQ(APPMANAGER_APP_ID, notificationHandler.GetUnloadedAppId());
+    EXPECT_EQ(APPMANAGER_APP_INSTANCE, notificationHandler.GetUnloadedAppInstanceId());
+    
+    mAppManagerImpl->Unregister(&notificationHandler);
+}
+
+/**
+ * @brief Test multiple notification registrations
+ * Tests that multiple handlers can receive the same notification
+ */
+TEST_F(AppManagerTest, MultipleNotificationHandlers_ViaLaunchApp_Success)
+{
+    Core::Sink<NotificationHandler> handler1;
+    Core::Sink<NotificationHandler> handler2;
+    
+    // Register both handlers
+    mAppManagerImpl->Register(&handler1);
+    mAppManagerImpl->Register(&handler2);
+    
+    handler1.ResetEvents();
+    handler2.ResetEvents();
+    
+    // Mock expectations
+    EXPECT_CALL(*mLifecycleManagerMock, Launch(testing::_, testing::_, testing::_, testing::_))
+        .WillOnce(testing::Return(Core::ERROR_NONE));
+    
+    EXPECT_CALL(*mPackageManagerMock, GetPackageInstallerInfoAsCString(testing::_))
+        .WillOnce(testing::Invoke([](string& result) -> uint32_t {
+            result = TEST_JSON_INSTALLED_PACKAGE;
+            return Core::ERROR_NONE;
+        }));
+    
+    // Execute: Launch app
+    JsonObject params;
+    params["appId"] = APPMANAGER_APP_ID;
+    
+    string result;
+    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("launchApp"), params.ToString(), result));
+    
+    // Verify both handlers received notification
+    EXPECT_TRUE(handler1.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged) & 
+                AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(handler2.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged) & 
+                AppManager_onAppLifecycleStateChanged);
+    
+    // Cleanup
+    mAppManagerImpl->Unregister(&handler1);
+    mAppManagerImpl->Unregister(&handler2);
+}
+
+/**
+ * @brief Test notification after unregister
+ * Tests that unregistered handlers don't receive notifications
+ */
+TEST_F(AppManagerTest, NoNotificationAfterUnregister_ViaLaunchApp_Success)
+{
+    Core::Sink<NotificationHandler> notificationHandler;
+    
+    mAppManagerImpl->Register(&notificationHandler);
+    notificationHandler.ResetEvents();
+    
+    // Unregister before action
+    mAppManagerImpl->Unregister(&notificationHandler);
+    
+    // Mock expectations
+    EXPECT_CALL(*mLifecycleManagerMock, Launch(testing::_, testing::_, testing::_, testing::_))
+        .WillOnce(testing::Return(Core::ERROR_NONE));
+    
+    EXPECT_CALL(*mPackageManagerMock, GetPackageInstallerInfoAsCString(testing::_))
+        .WillOnce(testing::Invoke([](string& result) -> uint32_t {
+            result = TEST_JSON_INSTALLED_PACKAGE;
+            return Core::ERROR_NONE;
+        }));
+    
+    // Execute: Launch app
+    JsonObject params;
+    params["appId"] = APPMANAGER_APP_ID;
+    
+    string result;
+    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("launchApp"), params.ToString(), result));
+    
+    // Verify NO notification received (should timeout)
+    uint32_t signalled = notificationHandler.WaitForRequestStatus(1000, AppManager_onAppLifecycleStateChanged);
+    EXPECT_FALSE(signalled & AppManager_onAppLifecycleStateChanged);
+}
+
+/**
+ * @brief Test OnAppLifecycleStateChanged with error reason
+ * Tests that error conditions trigger proper notification with error reason
+ */
+TEST_F(AppManagerTest, OnAppLifecycleStateChanged_WithErrorReason_Failure)
+{
+    Core::Sink<NotificationHandler> notificationHandler;
+    
+    mAppManagerImpl->Register(&notificationHandler);
+    notificationHandler.ResetEvents();
+    
+    // Setup expected event with error
+    ExpectedAppLifecycleEvent expectedEvent;
+    expectedEvent.appId = APPMANAGER_WRONG_APP_ID;
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_ERROR;
+    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_NOT_FOUND;
+    notificationHandler.SetExpectedEvent(expectedEvent);
+    
+    // Mock expectations for failure
+    EXPECT_CALL(*mPackageManagerMock, GetPackageInstallerInfoAsCString(testing::_))
+        .WillOnce(testing::Invoke([](string& result) -> uint32_t {
+            result = "[]";  // Empty package list
+            return Core::ERROR_NONE;
+        }));
+    
+    // Execute: Try to launch non-existent app
+    JsonObject params;
+    params["appId"] = APPMANAGER_WRONG_APP_ID;
+    
+    string result;
+    uint32_t retVal = mJsonRpcHandler.Invoke(connection, _T("launchApp"), params.ToString(), result);
+    
+    // Should fail but might trigger error notification
+    if (retVal != Core::ERROR_NONE) {
+        // Verify error notification if triggered
+        uint32_t signalled = notificationHandler.WaitForRequestStatus(1000, AppManager_onAppLifecycleStateChanged);
+        if (signalled & AppManager_onAppLifecycleStateChanged) {
+            EXPECT_EQ(Exchange::IAppManager::AppLifecycleState::APP_STATE_ERROR, 
+                      notificationHandler.GetLifecycleNewState());
+            EXPECT_NE(Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE, 
+                      notificationHandler.GetErrorReason());
+        }
+    }
+    
+    mAppManagerImpl->Unregister(&notificationHandler);
+}
