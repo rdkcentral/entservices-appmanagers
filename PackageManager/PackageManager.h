@@ -23,7 +23,9 @@
 
 #include <interfaces/json/JPackageDownloader.h>
 #include <interfaces/json/JPackageInstaller.h>
+#ifndef RDK_SERVICES_L1_TEST
 #include <interfaces/json/JPackageHandler.h>
+#endif
 #include <interfaces/json/JsonData_PackageDownloader.h>
 #include <interfaces/json/JsonData_PackageInstaller.h>
 
