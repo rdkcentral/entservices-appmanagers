@@ -83,7 +83,9 @@ namespace Plugin
 
             mPackageHandler = mPackageDownloader->QueryInterface<Exchange::IPackageHandler>();
             if (mPackageHandler != nullptr) {
+#ifndef RDK_SERVICES_L1_TEST
                 Exchange::JPackageHandler::Register(*this, mPackageHandler);
+#endif
             } else {
                 LOGERR("Failed to get instance of IPackageHandler");
             }
@@ -104,7 +106,9 @@ namespace Plugin
             mService->Unregister(&mNotificationSink);
 
             if (mPackageHandler != nullptr) {
+#ifndef RDK_SERVICES_L1_TEST
                 Exchange::JPackageHandler::Unregister(*this);
+#endif
             }
 
             if (mPackageInstaller != nullptr) {
