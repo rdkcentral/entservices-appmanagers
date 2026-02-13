@@ -44,6 +44,10 @@ add_library(${MODULE_NAME} SHARED
         StorageManager.cpp
         Module.cpp
 )
+if(RALF_PACKAGE_SUPPORT)
+    message(STATUS "RALF_PACKAGE_SUPPORT is enabled")
+    add_definitions(-DRALF_PACKAGE_SUPPORT_ENABLED)
+endif(RALF_PACKAGE_SUPPORT)
 
 set_target_properties(${MODULE_NAME} PROPERTIES
         CXX_STANDARD 11

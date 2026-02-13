@@ -23,6 +23,7 @@
 #include "RalfSupport.h"
 #include <fstream>
 
+#define PERSIST_STORAGE_PATH "/data"
 namespace ralf
 {
 
@@ -98,8 +99,8 @@ namespace ralf
         // set hostname to appid
         ociConfigRootNode["hostname"] = appConfig.mAppId;
 
-        // Set cwd as /home/root
-        ociConfigRootNode["process"]["cwd"] = "/home/root";
+        // Set cwd as /tmp
+        ociConfigRootNode["process"]["cwd"] = "/tmp";
 
         // Set uidMappings
         Json::Value uidMapping;
@@ -124,11 +125,14 @@ namespace ralf
         // Need to mount bind  XDG_RUNTIME_DIR/WAYLAND_DISPLAY from host to container
         addMountEntry(ociConfigRootNode, appConfig.mWesterosSocketPath, appConfig.mWesterosSocketPath);
 
-        // Home by default will be set to /home/root in the OCI config.
-        std::string appStoragePath = appConfig.mAppStorageInfo.path;
-        std::string homePath = "/home/root"; // Default HOME path
+        // Home by default will be set to PERSIST_STORAGE_PATH in the OCI config.
+        std::string homePath = PERSIST_STORAGE_PATH; // Default HOME path
         ociConfigRootNode["process"]["env"].append("HOME=" + homePath);
+
+        // Mount persistent storage path
+        std::string appStoragePath = appConfig.mAppStorageInfo.path;
         addAppStorageToOCIConfig(ociConfigRootNode, appStoragePath);
+
         // Finally add rialto path to the environment variables
         std::string rialtoSocketPath = "/tmp/rlto-" + appConfig.mAppInstanceId;
         ociConfigRootNode["process"]["env"].append("RIALTO_SOCKET_PATH=" + rialtoSocketPath);
@@ -140,8 +144,9 @@ namespace ralf
     bool RalfOCIConfigGenerator::addAppStorageToOCIConfig(Json::Value &ociConfigRootNode, const std::string &appStoragePath)
     {
         bool status = false;
-        // We will mount application storage to /home/root/appstorage and set PERSIST_STORAGE_PATH environment variable to it.
-        std::string containerStoragePath = "/home/root/appstorage";
+        // We will mount application storage to /home/root/appstorage and
+        // set PERSIST_STORAGE_PATH environment variable to it.
+        std::string containerStoragePath = PERSIST_STORAGE_PATH;
         addMountEntry(ociConfigRootNode, appStoragePath, containerStoragePath);
         ociConfigRootNode["process"]["env"].append("PERSIST_STORAGE_PATH=" + containerStoragePath);
         LOGDBG("Added application storage mount from %s to %s and set PERSIST_STORAGE_PATH environment variable\n", appStoragePath.c_str(), containerStoragePath.c_str());
