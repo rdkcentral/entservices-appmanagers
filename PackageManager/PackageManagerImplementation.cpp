@@ -565,29 +565,34 @@ namespace Plugin {
                 }
                 ASSERT (nullptr != mStorageManagerObject);
                 if (nullptr != mStorageManagerObject) {
-                    if(mStorageManagerObject->DeleteStorage(packageId, errorReason) == Core::ERROR_NONE) {
-                        LOGINFO("DeleteStorage done");
-                        #if defined(USE_LIBPACKAGE) || defined(UNIT_TEST)
-                        // XXX: what if DeleteStorage() fails, who Uninstall the package
-                        packagemanager::Result pmResult = packageImpl->Uninstall(packageId);
-                        if (pmResult == packagemanager::SUCCESS) {
-                            result = Core::ERROR_NONE;
+                     // PRIMARY: Uninstall the application from the installed list
+                    #if defined(USE_LIBPACKAGE) || defined(UNIT_TEST) || defined(ENABLE_NATIVEBUILD)
+                    packagemanager::Result pmResult = packageImpl->Uninstall(packageId);
+                    if (pmResult == packagemanager::SUCCESS) {
+                        result = Core::ERROR_NONE;
+                        LOGINFO("Package uninstalled successfully: %s", packageId.c_str());
+                        
+                        // SECONDARY: Delete storage if it exists (optional cleanup)
+                        Core::hresult storageResult = mStorageManagerObject->DeleteStorage(packageId, errorReason);
+                        if (storageResult == Core::ERROR_NONE) {
+                            LOGINFO("Storage deleted successfully for: %s", packageId.c_str());
+                        } else if (errorReason.find("AppId not found in storage") != string::npos) {
+                            // Storage doesn't exist - normal for legacy apps (no error)
+                            LOGINFO("No storage found for legacy app: %s", packageId.c_str());
                         } else {
+                            // Real storage deletion error - log but don't fail the uninstall
+                            LOGWARN("Storage deletion issue for %s: %s", packageId.c_str(), errorReason.c_str());
+                        }
+                    } else {
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
                             packageFailureErrorCode = (pmResult == packagemanager::Result::VERSION_MISMATCH) ?
                                 PackageManagerImplementation::PackageFailureErrorCode::ERROR_PACKAGE_MISMATCH_FAILURE : PackageManagerImplementation::PackageFailureErrorCode::ERROR_SIGNATURE_VERIFICATION_FAILURE;
 #endif /* ENABLE_AIMANAGERS_TELEMETRY_METRICS */
-                        }
-                        #endif
-                        state.installState = InstallState::UNINSTALLED;
-                        NotifyInstallStatus(packageId, version, state);
-                    } else {
-                        LOGERR("DeleteStorage failed with result :%d errorReason [%s]", result, errorReason.c_str());
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-                        packageFailureErrorCode = PackageManagerImplementation::PackageFailureErrorCode::ERROR_PERSISTENCE_FAILURE;
-#endif /* ENABLE_AIMANAGERS_TELEMETRY_METRICS */
-
+                       LOGERR("Package uninstall failed for: %s", packageId.c_str());
                     }
+                    #endif
+                    state.installState = InstallState::UNINSTALLED;
+                    NotifyInstallStatus(packageId, version, state);
                 }
             } else {
                 state.installState = InstallState::UNINSTALLING;
