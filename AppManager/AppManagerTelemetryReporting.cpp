@@ -139,6 +139,9 @@ namespace Plugin
         else
         {
             LOGERR("Failed to report telemetry data as appId/currentAction or mTelemetryMetricsObject is not valid");
+            LOGERR("appId %s currentAction %d", appId.c_str(), currentAction);
+            LOGERR("it != appManagerImplInstance->mAppInfo.end() %d", (it != appManagerImplInstance->mAppInfo.end()));
+            LOGERR("nullptr != mTelemetryMetricsObject %d", (nullptr != mTelemetryMetricsObject));
         }
     }
 
