@@ -886,7 +886,7 @@ End:
 			    if(it != appManagerImplInstance->mAppInfo.end())
 			    {
                     std::string crashReason = "Terminated unexpectedly";
-			        AppManagerTelemetryReporting::getInstance().reportAppCrashedTelemetry(appId, appInstanceId, it->second.crashReason);
+			        AppManagerTelemetryReporting::getInstance().reportAppCrashedTelemetry(appId, appInstanceId, crashReason);
 			    }
 #endif
 			}
