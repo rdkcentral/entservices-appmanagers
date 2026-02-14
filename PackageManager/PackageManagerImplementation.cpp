@@ -570,26 +570,33 @@ namespace Plugin {
                     packagemanager::Result pmResult = packageImpl->Uninstall(packageId);
                     if (pmResult == packagemanager::SUCCESS) {
                         result = Core::ERROR_NONE;
+                        errorReason = "";
                         LOGINFO("Package uninstalled successfully: %s", packageId.c_str());
                         
                         // SECONDARY: Delete storage if it exists (optional cleanup)
-                        Core::hresult storageResult = mStorageManagerObject->DeleteStorage(packageId, errorReason);
+                        string storageErrorReason = "";
+                        Core::hresult storageResult = mStorageManagerObject->DeleteStorage(packageId, storageErrorReason);
                         if (storageResult == Core::ERROR_NONE) {
                             LOGINFO("Storage deleted successfully for: %s", packageId.c_str());
-                        } else if (errorReason.find("AppId not found in storage") != string::npos) {
+                        } else if (storageErrorReason.find("AppId not found in storage") != string::npos) {
                             // Storage doesn't exist - normal for legacy apps (no error)
-                            LOGINFO("No storage found for legacy app: %s", packageId.c_str());
+                            LOGINFO("No storage found for legacy app: %s (expected for pre-storage-tracking apps)", packageId.c_str());
                         } else {
                             // Real storage deletion error - log but don't fail the uninstall
-                            LOGWARN("Storage deletion issue for %s: %s", packageId.c_str(), errorReason.c_str());
+                            LOGWARN("Storage deletion issue for %s: %s", packageId.c_str(), storageErrorReason.c_str());
                         }
                     } else {
+                        result = Core::ERROR_GENERAL;
+                        errorReason = "Package uninstall failed";
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
                             packageFailureErrorCode = (pmResult == packagemanager::Result::VERSION_MISMATCH) ?
                                 PackageManagerImplementation::PackageFailureErrorCode::ERROR_PACKAGE_MISMATCH_FAILURE : PackageManagerImplementation::PackageFailureErrorCode::ERROR_SIGNATURE_VERIFICATION_FAILURE;
 #endif /* ENABLE_AIMANAGERS_TELEMETRY_METRICS */
                        LOGERR("Package uninstall failed for: %s", packageId.c_str());
                     }
+                    #else
+                    result = Core::ERROR_NONE;
+                    errorReason = "";
                     #endif
                     state.installState = InstallState::UNINSTALLED;
                     NotifyInstallStatus(packageId, version, state);
@@ -603,9 +610,11 @@ namespace Plugin {
                 NotifyInstallStatus(packageId, version, state);
             } // mLockCount == 0
         } else {
-            LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
+            LOGINFO("Package: %s not found in installed applications list", packageId.c_str());
+            result = Core::ERROR_NONE;
+            errorReason = "";
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-            packageFailureErrorCode = PackageManagerImplementation::PackageFailureErrorCode::ERROR_VERSION_NOT_FOUND;
+            packageFailureErrorCode = PackageManagerImplementation::PackageFailureErrorCode::ERROR_NONE;
 #endif /* ENABLE_AIMANAGERS_TELEMETRY_METRICS */
 
         }
@@ -618,7 +627,6 @@ namespace Plugin {
 #endif /* ENABLE_AIMANAGERS_TELEMETRY_METRICS */
         return result;
     }
-
     Core::hresult PackageManagerImplementation::ListPackages(Exchange::IPackageInstaller::IPackageIterator*& packages)
     {
         CHECK_CACHE()
