@@ -11,7 +11,6 @@ When adding a new plugin in `CMakeLists.txt`, you **must** also update the follo
 - **CI Workflow Files:**  
   - `L1-tests.yml`
   - `L2-tests.yml`
-  - `L2-tests-oop.yml`
 - **Coverity Build Script:**  
   - `cov_build.sh`
 
@@ -59,9 +58,9 @@ When adding a new plugin in `CMakeLists.txt`, you **must** also update the follo
            run: |
              ctest
    ```
-   Repeat similar additions in `L2-tests.yml` and `L2-tests-oop.yml`.
+   Repeat similar additions in `L2-tests.yml`.
 
 **Summary:**  
 Whenever a new plugin is registered via `CMakeLists.txt`, always update:
 - `cov_build.sh` (add plugin flag to Coverity scan build step)
-- All test CI workflows (`L1-tests.yml`, `L2-tests.yml`, `L2-tests-oop.yml`) to include your plugin flag so that your plugin’s code quality and tests are assured!
+- All test CI workflows (`L1-tests.yml`, `L2-tests.yml`) to include your plugin flag so that your plugin’s code quality and tests are assured!
