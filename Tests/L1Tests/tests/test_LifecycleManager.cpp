@@ -1499,4 +1499,20 @@ TEST_F(LifecycleManagerTest, windowManagerEvent_onReady)
     EXPECT_TRUE(event_signal & LifecycleManager_onWindowManagerEvent);
 
     releaseResources();
-} 
+}
+
+
+TEST_F(LifecycleManagerTest, registerNotification_multipleTimes)
+{
+    createResources();
+
+    Core::Sink<NotificationTest> notification;
+
+    // TC-33: Register the same notification multiple times
+    EXPECT_EQ(Core::ERROR_NONE, interface->Register(&notification));
+    EXPECT_EQ(Core::ERROR_NONE, interface->Register(&notification));
+
+    EXPECT_EQ(Core::ERROR_NONE, interface->Unregister(&notification));
+
+    releaseResources();
+}
