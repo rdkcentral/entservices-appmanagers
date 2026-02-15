@@ -74,7 +74,7 @@ void Initialize(PluginHost::IShell* service) override {
         if (target != nullptr) {
             // If the plugin is found and ACTIVATED, register immediately
             if (target->State() == PluginHost::IShell::ACTIVATED) {
-                printf("LOG: Initial check found %s active. Registering events.\n", callsign.c_str());
+                SYSLOG(Logging::Notification, ("Initial check found %s active. Registering events.", callsign.c_str()));
                 
                 // Use the multi-target registration method
                 RegisterWithTarget(callsign, target); 
