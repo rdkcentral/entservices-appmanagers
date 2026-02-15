@@ -266,15 +266,6 @@ protected:
         mWindowManagerMock = new NiceMock<WindowManagerMock>;
 
         mLifecycleManagerConfigure = static_cast<Exchange::IConfiguration*>(mLifecycleManagerImpl->QueryInterface(Exchange::IConfiguration::ID));
-		
-        ON_CALL(*mWindowManagerMock, SetZOrder(::testing::_, ::testing::_))
-        .WillByDefault(::testing::Return(Core::ERROR_NONE));
-        ON_CALL(*mWindowManagerMock, GetZOrder(::testing::_, ::testing::_))
-        .WillByDefault(::testing::Return(Core::ERROR_NONE));
-        ON_CALL(*mWindowManagerMock, StartVncServer())
-        .WillByDefault(::testing::Return(Core::ERROR_NONE));
-        ON_CALL(*mWindowManagerMock, StopVncServer())
-        .WillByDefault(::testing::Return(Core::ERROR_NONE));
 
         EXPECT_CALL(*mServiceMock, QueryInterfaceByCallsign(::testing::_, ::testing::_))
           .Times(::testing::AnyNumber())
