@@ -52,7 +52,7 @@ namespace ralf
         }
 
         // Now apply each Ralf package configuration
-        for (auto ralfPkgInfo : mRalfPackages)
+        for (const auto& ralfPkgInfo : mRalfPackages)
         {
             Json::Value ralfPackageConfigNode;
             if (!JsonFromFile(ralfPkgInfo.first, ralfPackageConfigNode))
@@ -242,7 +242,7 @@ namespace ralf
 
     bool RalfOCIConfigGenerator::applyGraphicsConfigToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &graphicsConfigNode)
     {
-        bool status = false;
+        bool status = true;
 
         // We need to get the devNodes and groupIds and apply them to the OCI config json structure.
 
@@ -327,6 +327,9 @@ namespace ralf
         RUNTIME_CONFIG_OVERRIDES_JSON,APP_CONFIG_OVERRIDES_JSON,APP_PROVIDER_ID,
         CLIENT_CERT_KEY, CLIENT_CERT,LOG_LEVEL,STORAGE_LIMIT,GPU_MEMORY_LIMIT,
         CPU_MEMORY_LIMIT, DIAL_FRIENDLY_NAME, DIAL_ENABLED,
+
+        TODO: We will need to define how to get the values for these environment variables. 
+        RDKEMW-13998
         */
 
         return status;
@@ -385,19 +388,7 @@ namespace ralf
         }
 
         // Apply permissions if exists
-        if (ralfPackageConfigNode.isMember("permissions"))
-        {
-            const Json::Value &permissions = ralfPackageConfigNode["permissions"];
-            for (Json::Value::ArrayIndex i = 0; i < permissions.size(); ++i)
-            {
-                ociConfigRootNode["linux"]["capabilities"].append(permissions[i]);
-                LOGDBG("Applied permission %s to OCI config\n", permissions[i].asString().c_str());
-            }
-        }
-        else
-        {
-            LOGWARN("No permissions found in Ralf package config\n");
-        }
+        //TODO tracked under RDKEMW-13995
 
         // Apply configurations if exists
         if (ralfPackageConfigNode.isMember("configurations"))

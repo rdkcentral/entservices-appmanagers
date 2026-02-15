@@ -93,4 +93,12 @@ namespace ralf
      */
     bool getGroupId(const std::string &grpName, uint32_t &gid);
 
+    /**
+     * This function will return user id and group id for the Ralf user.
+     * @param userId : out parameter - The user ID.
+     * @param groupId : out parameter - The group ID.
+     * @return true if successful, false otherwise.
+     */
+    bool getRalfUserInfo(uid_t &userId, gid_t &groupId);
+
 } // namespace ralf

@@ -92,7 +92,7 @@ namespace ralf
         else
         {
             LOGDBG("No overlayfs mount exists at path: %s\n", overlayMountPath.c_str());
-            status = true;
+            status = false;
         }
         return status;
     }

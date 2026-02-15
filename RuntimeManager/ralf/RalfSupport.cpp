@@ -38,6 +38,8 @@
 #include <sstream>
 #include <grp.h> //For group related functions
 
+#include <pwd.h> //For getting user id and group id of ralf user
+
 namespace ralf
 {
 
@@ -80,7 +82,7 @@ namespace ralf
                     }
                 }
                 // Set ownership if uid and gid are provided
-                if (uid != 0 || gid != 0)
+                if (uid != 0 && gid != 0)
                 {
                     if (chown(current_path.c_str(), uid, gid) != 0)
                     {
@@ -208,6 +210,18 @@ namespace ralf
             return false;
         }
         gid = grp->gr_gid;
+        return true;
+    }
+    bool getRalfUserInfo(uid_t &userId, gid_t &groupId)
+    {
+        struct passwd *pwd = getpwnam(RALF_USER_NAME.c_str());
+        if (pwd == nullptr)
+        {
+            std::cerr << "[libPackage] Failed to get user info for user: " << RALF_USER_NAME << std::endl;
+            return false;
+        }
+        userId = pwd->pw_uid;
+        groupId = pwd->pw_gid;
         return true;
     }
 
