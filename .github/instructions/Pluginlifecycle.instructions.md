@@ -138,8 +138,10 @@ void HdcpProfile::Deinitialize(PluginHost::IShell* service) {
         ....
         // Release interface
         RPC::IRemoteConnection* connection = service->RemoteConnection(_connectionId);
-        connection->Terminate();
-        connection->Release();
+        if (connection != nullptr) {
+            connection->Terminate();
+            connection->Release();
+        }
         ....
     }
     ...
