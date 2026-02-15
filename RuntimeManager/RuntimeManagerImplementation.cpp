@@ -28,8 +28,7 @@
 
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
 #include "ralf/RalfPackageBuilder.h"
-#define RALF_USER_GROUP 30000
-#define RALF_USER_ID 30000
+#include "ralf/RalfSupport.h"
 #endif // RALF_PACKAGE_SUPPORT_ENABLED
 
 namespace WPEFramework
@@ -557,10 +556,11 @@ namespace WPEFramework
             gid_t gid = mUserIdManager->getAppsGid();
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
             // In Ralf package, all apps will run with the same ralf user and group
-            uid = RALF_USER_ID;
-            gid = RALF_USER_GROUP;
+            if (!ralf::getRalfUserInfo(uid, gid))
+            {
+                LOGERR("Failed to get Ralf user info. This can lead to failure in launching the app. uid: %d, gid: %d", uid, gid);
+            }
 #endif
-
             std::ifstream inFile("/tmp/specchange");
             if (inFile.good())
             {
@@ -607,8 +607,8 @@ namespace WPEFramework
             {
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
                 // RALF uses one userid groupid for all apps.
-                appStorageInfo.userId = RALF_USER_ID;
-                appStorageInfo.groupId = RALF_USER_GROUP;
+                appStorageInfo.userId = uid;
+                appStorageInfo.groupId = gid;
 #else
                 appStorageInfo.userId = userId;
                 appStorageInfo.groupId = groupId;
@@ -617,8 +617,8 @@ namespace WPEFramework
                 {
                     config.mAppStorageInfo.path = std::move(appStorageInfo.path);
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
-                    config.mAppStorageInfo.userId = RALF_USER_ID;
-                    config.mAppStorageInfo.groupId = RALF_USER_GROUP;
+                    config.mAppStorageInfo.userId = uid;
+                    config.mAppStorageInfo.groupId = gid;
 #else
                     config.mAppStorageInfo.userId = userId;
                     config.mAppStorageInfo.groupId = groupId;

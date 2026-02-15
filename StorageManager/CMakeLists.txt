@@ -44,10 +44,7 @@ add_library(${MODULE_NAME} SHARED
         StorageManager.cpp
         Module.cpp
 )
-if(RALF_PACKAGE_SUPPORT)
-    message(STATUS "RALF_PACKAGE_SUPPORT is enabled")
-    add_definitions(-DRALF_PACKAGE_SUPPORT_ENABLED)
-endif(RALF_PACKAGE_SUPPORT)
+
 
 set_target_properties(${MODULE_NAME} PROPERTIES
         CXX_STANDARD 11
@@ -64,10 +61,19 @@ target_link_libraries(${MODULE_NAME}
 install(TARGETS ${MODULE_NAME}
     DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/${STORAGE_DIRECTORY}/plugins)
 
-add_library(${PLUGIN_IMPLEMENTATION} SHARED
-    StorageManagerImplementation.cpp
-    RequestHandler.cpp
-    Module.cpp)
+set (STORAGEMANAGER_SOURCES)
+list(APPEND STORAGEMANAGER_SOURCES  StorageManagerImplementation.cpp)
+list(APPEND STORAGEMANAGER_SOURCES  RequestHandler.cpp)
+list(APPEND STORAGEMANAGER_SOURCES  Module.cpp)
+
+if(RALF_PACKAGE_SUPPORT)
+    message(STATUS "RALF_PACKAGE_SUPPORT is enabled")
+    add_definitions(-DRALF_PACKAGE_SUPPORT_ENABLED)
+    list(APPEND STORAGEMANAGER_SOURCES  ../RuntimeManager/ralf/RalfSupport.cpp)
+endif(RALF_PACKAGE_SUPPORT)
+
+
+add_library(${PLUGIN_IMPLEMENTATION} SHARED ${STORAGEMANAGER_SOURCES})
 
 if(AIMANAGERS_TELEMETRY_METRICS_SUPPORT)
     message(STATUS "TELEMETRY_METRICS_SUPPORT is enabled")

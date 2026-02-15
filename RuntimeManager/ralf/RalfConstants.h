@@ -10,6 +10,7 @@ namespace ralf
     const std::string RALF_GRAPHICS_LAYER_CONFIG = RALF_GRAPHICS_LAYER_PATH + "config.json";
     const std::string RALF_OVERLAYFS_TYPE = "overlay";
     const std::string RALF_APP_ROOTFS_DIR = "/tmp/ralf/";
+    const std::string RALF_USER_NAME = "ralf";
 
     typedef std::pair<std::string, std::string> RalfPkgInfoPair; // <packageMetadataJsonPath, mountPoint>
 } // namespace ralf
