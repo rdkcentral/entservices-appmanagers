@@ -24,7 +24,7 @@ Every plugin must implement:
 ```cpp
 const string HdcpProfile::Initialize(PluginHost::IShell* service) {
     .....
-    if (_hdcpProfile != nullptr) {
+    if (nullptr != _hdcpProfile) {
         ...
         Exchange::IConfiguration* configure = _hdcpProfile->QueryInterface<Exchange::IConfiguration>();
         ...
@@ -39,7 +39,7 @@ const string HdcpProfile::Initialize(PluginHost::IShell* service) {
 
     Example: _service->Register(&_hdcpProfileNotification);
 
-  - Target Plugin Interface (_hdcpProfile): Use _hdcpProfile->Register(listener) to receive the plugin's specific custom events (e.g., onProfileChanged).This registration serves as the internal bridge that captures C++ events from the implementation, allowing the plugin to translate and broadcast them as JSON-RPC notifications to external subscribers.
+  - Target Plugin Interface (_hdcpProfile): Use _hdcpProfile->Register(listener) to receive the plugin's specific custom events (e.g., onProfileChanged). This registration serves as the internal bridge that captures C++ events from the implementation, allowing the plugin to translate and broadcast them as JSON-RPC notifications to external subscribers.
 
     Example: _hdcpProfile->Register(&_hdcpProfileNotification);
 
@@ -66,11 +66,11 @@ const string HdcpProfile::Initialize(PluginHost::IShell* service) {
 ```cpp
 Core::hresult NativeJSImplementation::Initialize(string waylandDisplay)
 {   
-    std::cout << "initialize called on nativejs implementation " << std::endl;
+    LOG_INFO("initialize called on nativejs implementation");
     mRenderThread = std::thread([=](std::string waylandDisplay) {
         mNativeJSRenderer = std::make_shared<NativeJSRenderer>(waylandDisplay);
         mNativeJSRenderer->run();    
-        std::cout << "After launch application execution ... " << std::endl;
+        LOG_INFO("After launch application execution ...");
         mNativeJSRenderer.reset();
     }, waylandDisplay);
     return (Core::ERROR_NONE);
@@ -138,8 +138,10 @@ void HdcpProfile::Deinitialize(PluginHost::IShell* service) {
         ....
         // Release interface
         RPC::IRemoteConnection* connection = service->RemoteConnection(_connectionId);
-        connection->Terminate();
-        connection->Release();
+        if (connection != nullptr) {
+            connection->Terminate();
+            connection->Release();
+        }
         ....
     }
     ...
