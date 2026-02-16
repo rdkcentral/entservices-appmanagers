@@ -66,11 +66,11 @@ const string HdcpProfile::Initialize(PluginHost::IShell* service) {
 ```cpp
 Core::hresult NativeJSImplementation::Initialize(string waylandDisplay)
 {   
-    std::cout << "initialize called on nativejs implementation " << std::endl;
+    LOG_INFO("initialize called on nativejs implementation");
     mRenderThread = std::thread([=](std::string waylandDisplay) {
         mNativeJSRenderer = std::make_shared<NativeJSRenderer>(waylandDisplay);
         mNativeJSRenderer->run();    
-        std::cout << "After launch application execution ... " << std::endl;
+        LOG_INFO("After launch application execution ...");
         mNativeJSRenderer.reset();
     }, waylandDisplay);
     return (Core::ERROR_NONE);
