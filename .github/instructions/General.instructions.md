@@ -1,5 +1,5 @@
 ---
-applyTo: "**/**Implementation.cpp,**/**Implementation.h,**/**.cpp,**/**.h"
+applyTo: "**/*Implementation.cpp,**/*Implementation.h,**/*.cpp,**/*.h"
 ---
 
 # Instruction Summary
