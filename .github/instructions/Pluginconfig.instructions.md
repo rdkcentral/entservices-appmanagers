@@ -19,7 +19,7 @@ applyTo: "**/*.config,**/*.conf.in"
 
 ### Plugin Mode Determination
 
-If the plugin's mode is set to OFF, it is treated as in-process.
+If the plugin's mode is set to Off, it is treated as in-process.
 
 If no mode is specified, the plugin defaults to in-process.
 
