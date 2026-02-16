@@ -680,8 +680,7 @@ namespace Plugin {
         else
         {
             // Record download error
-            jsonParam["errorReason"] = errorReason;
-            jsonParam["downloadTime"] = static_cast<int>(downloadTime);
+            jsonParam["errorCode"] = errorReason;
             markerName = TELEMETRY_MARKER_DOWNLOAD_ERROR;
             LOGINFO("DM: Recording download error telemetry: id=%s error=%s", downloadId.c_str(), errorReason.c_str());
         }
