@@ -322,9 +322,10 @@ All plugins must use the `SYSLOG` macros for logging purposes for Initialize, Co
 ```cpp
 const string MyPlugin::Initialize(PluginHost::IShell* service) {
     SYSLOG(Logging::Notification, (_T("[%s] Initialize entry"), __FUNCTION__));
+    string message;
     ...
     SYSLOG(Logging::Notification, (_T("[%s] Initialize exit"), __FUNCTION__));
-    return string();
+    return message;
 }
 
 void MyPlugin::Deinitialize(PluginHost::IShell* service) {
