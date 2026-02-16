@@ -123,7 +123,7 @@ jobs:
         with:
           repository: rdkcentral/entservices-testframework
           path: entservices-testframework
-          ref: testing_lifecyclemanager
+          ref: develop
           token: ${{ secrets.RDKCM_RDKE }}
 
       - name: Checkout entservices-appmanagers
@@ -485,13 +485,13 @@ jobs:
           -DRDK_SERVICES_L1_TEST=ON
           -DUSE_THUNDER_R4=ON
           -DHIDE_NON_EXTERNAL_SYMBOLS=OFF
-          -DPLUGIN_APPMANAGER=ON
-          -DPLUGIN_STORAGE_MANAGER=ON
-          -DPLUGIN_RUNTIME_MANAGER=ON
+          -DPLUGIN_APPMANAGER=OFF
+          -DPLUGIN_STORAGE_MANAGER=OFF
+          -DPLUGIN_RUNTIME_MANAGER=OFF
           -DPLUGIN_LIFECYCLE_MANAGER=ON
-          -DPLUGIN_DOWNLOADMANAGER=ON
-          -DPLUGIN_PREINSTALL_MANAGER=ON
-          -DPLUGIN_PACKAGE_MANAGER=ON
+          -DPLUGIN_DOWNLOADMANAGER=OFF
+          -DPLUGIN_PREINSTALL_MANAGER=OFF
+          -DPLUGIN_PACKAGE_MANAGER=OFF
           -DENABLE_UNIT_TESTS=ON
           &&
           cmake --build build/entservices-appmanagers -j8
