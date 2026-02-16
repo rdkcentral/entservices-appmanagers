@@ -20,12 +20,18 @@
 #include "WindowManagerConnector.h"
 #include <fstream>
 #include <random>
+#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
+#include "RuntimeManagerImplementation.h"
+#endif
 
 namespace WPEFramework {
 namespace Plugin {
 
 WindowManagerConnector::WindowManagerConnector()
 : mWindowManager(nullptr), mWindowManagerNotification(*this)
+#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
+, mRuntimeManager(nullptr)
+#endif
 {
     LOGINFO("Create WindowManagerConnector Instance");
 }
@@ -35,7 +41,11 @@ WindowManagerConnector::~WindowManagerConnector()
     LOGINFO("Delete WindowManagerConnector Instance");
 }
 
+#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
+bool WindowManagerConnector::initializePlugin(PluginHost::IShell* service, class RuntimeManagerImplementation* runtimeManager)
+#else
 bool WindowManagerConnector::initializePlugin(PluginHost::IShell* service)
+#endif
 {
     bool ret = false;
     if (nullptr == service)
@@ -50,6 +60,9 @@ bool WindowManagerConnector::initializePlugin(PluginHost::IShell* service)
     {
         LOGINFO("Created WindowManager Object \n");
         mWindowManager->AddRef();
+#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
+        mRuntimeManager = runtimeManager;
+#endif
         ret = true;
         mPluginInitialized = true;
         Core::hresult registerResult = mWindowManager->Register(&mWindowManagerNotification);
@@ -174,6 +187,21 @@ void WindowManagerConnector::getDisplayInfo(const string& appInstanceId , string
 void WindowManagerConnector::WindowManagerNotification::OnUserInactivity(const double minutes)
 {
 }
+
+#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
+void WindowManagerConnector::WindowManagerNotification::OnDisconnected(const std::string& client)
+{
+    _parent.onWindowManagerDisconnected(client);
+}
+
+void WindowManagerConnector::onWindowManagerDisconnected(const std::string& client)
+{
+    if (nullptr != mRuntimeManager)
+    {
+        mRuntimeManager->onWindowManagerDisconnected(client);
+    }
+}
+#endif
 
 } // namespace Plugin
 } // namespace WPEFramework
