@@ -57,11 +57,11 @@ echo "==========================================================================
 echo "building thunder"
 
 cd Thunder
-patch -p1 < $GITHUB_WORKSPACE/patches/Use_Legact_Alt_Based_On_ThunderTools_R4.4.3.patch
-patch -p1 < $GITHUB_WORKSPACE/patches/error_code_R4_4.patch
-patch -p1 < $GITHUB_WORKSPACE/patches/1004-Add-support-for-project-dir.patch
-patch -p1 < $GITHUB_WORKSPACE/patches/RDKEMW-733-Add-ENTOS-IDS.patch
-patch -p1 < $GITHUB_WORKSPACE/patches/Jsonrpc_dynamic_error_handling.patch
+patch -p1 < $GITHUB_WORKSPACE/Tests/patches/Use_Legact_Alt_Based_On_ThunderTools_R4.4.3.patch
+patch -p1 < $GITHUB_WORKSPACE/Tests/patches/error_code_R4_4.patch
+patch -p1 < $GITHUB_WORKSPACE/Tests/patches/1004-Add-support-for-project-dir.patch
+patch -p1 < $GITHUB_WORKSPACE/Tests/patches/RDKEMW-733-Add-ENTOS-IDS.patch
+patch -p1 < $GITHUB_WORKSPACE/Tests/patches/Jsonrpc_dynamic_error_handling.patch
 cd -
 
 cmake -G Ninja -S Thunder -B build/Thunder \
