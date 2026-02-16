@@ -210,6 +210,11 @@ namespace WPEFramework
                 virtual void onOCIContainerFailureEvent(std::string name, JsonObject& data) override;
                 virtual void onOCIContainerStateChangedEvent(std::string name, JsonObject& data) override;
 
+#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
+                // WindowManager event handler
+                void onWindowManagerDisconnected(const std::string& client);
+#endif
+
             private: /* private methods */
                 Core::hresult createOCIContainerPluginObject();
                 void releaseOCIContainerPluginObject();
@@ -249,7 +254,7 @@ namespace WPEFramework
                 void notifyParameterCheckFailure(const string& appInstanceId, const string& errorCode);
 
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-                void recordTelemetryData(const std::string& marker, const std::string& appId, uint64_t requestTime);
+                void recordTelemetryData(const std::string& marker, const std::string& appId, uint64_t requestTime, const std::string& fieldName = "");
                 TelemetryMarker getTelemetryMarker(const std::string& marker);
                 time_t getCurrentTimestamp();
 #endif
