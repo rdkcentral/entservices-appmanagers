@@ -23,7 +23,7 @@ If the plugin's mode is set to Off, it is treated as in-process.
 
 If no mode is specified, the plugin defaults to in-process.
 
-If the mode is explicitly set to LOCAL, the plugin runs out-of-process.
+If the mode is explicitly set to Local, the plugin runs out-of-process.
 
 The plugin mode is configured in the plugin's CMakeLists.txt file.
 
