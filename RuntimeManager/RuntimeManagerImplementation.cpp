@@ -23,6 +23,7 @@
 #include "ContainerUtils.h"
 #include "WebInspector.h"
 #endif
+#include <chrono>
 #include <errno.h>
 #include <fstream>
 
@@ -1299,9 +1300,9 @@ err_ret:
 
         time_t RuntimeManagerImplementation::getCurrentTimestamp()
         {
-            timespec ts;
-            clock_gettime(CLOCK_MONOTONIC, &ts);
-            return (((time_t)ts.tv_sec * 1000) + ((time_t)ts.tv_nsec / 1000000));
+            return static_cast<time_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now().time_since_epoch()
+            ).count());
         }
 
         RuntimeManagerImplementation::TelemetryMarker RuntimeManagerImplementation::getTelemetryMarker(const std::string& marker)
