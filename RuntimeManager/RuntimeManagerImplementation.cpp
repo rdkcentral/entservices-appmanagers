@@ -695,7 +695,7 @@ namespace WPEFramework
                 errorCode = "ERROR_CREATE_DISPLAY";
                 notifyParamCheckFailure = true;
             }
-            /* Generate dobbySpec only if legacyContainer is true */
+            /* Generate dobbySpec for the selected container mode (legacy or non-legacy) */
             else if (false == RuntimeManagerImplementation::generate(config, runtimeConfigObject, dobbySpec))
             {
                 LOGERR("Failed to generate dobbySpec");
