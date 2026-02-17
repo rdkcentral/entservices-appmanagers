@@ -104,11 +104,11 @@ namespace Plugin
 
             switch(currentAction)
             {
-                case AppManagerImplementation::APP_ACTION_LAUNCH:
-                case AppManagerImplementation::APP_ACTION_PRELOAD:
-                    jsonParam["appManagerLaunchTime"] = (int)(currentTime - it->second.currentActionTime);
-                    markerName = TELEMETRY_MARKER_LAUNCH_TIME;
-                break;
+                // case AppManagerImplementation::APP_ACTION_LAUNCH:
+                // case AppManagerImplementation::APP_ACTION_PRELOAD:
+                //     jsonParam["appManagerLaunchTime"] = (int)(currentTime - it->second.currentActionTime);
+                //     markerName = TELEMETRY_MARKER_LAUNCH_TIME;
+                // break;
                 case AppManagerImplementation::APP_ACTION_CLOSE:
                     if ((Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED != it->second.targetAppState) &&
                         (Exchange::IAppManager::AppLifecycleState::APP_STATE_HIBERNATED != it->second.targetAppState))
@@ -139,9 +139,7 @@ namespace Plugin
         else
         {
             LOGERR("Failed to report telemetry data as appId/currentAction or mTelemetryMetricsObject is not valid");
-            LOGERR("appId %s currentAction %d", appId.c_str(), currentAction);
-            LOGERR("it != appManagerImplInstance->mAppInfo.end() %d", (it != appManagerImplInstance->mAppInfo.end()));
-            LOGERR("nullptr != mTelemetryMetricsObject %d", (nullptr != mTelemetryMetricsObject));
+            LOGDBG("appId=%s currentAction=%d appInfoFound=%d telemetryObjValid=%d", appId.c_str(), currentAction, (it != appManagerImplInstance->mAppInfo.end()), (nullptr != mTelemetryMetricsObject));
         }
     }
 
@@ -308,6 +306,26 @@ namespace Plugin
         else
         {
             LOGERR("Failed to report crash telemetry - mTelemetryMetricsObject is not valid");
+        }
+    }
+
+    void AppManagerTelemetryReporting::recordLaunchTime(const std::string& appId, int launchTimeMs)
+    {
+        JsonObject jsonParam;
+        std::string telemetryMetrics = "";
+        std::string markerName = TELEMETRY_MARKER_LAUNCH_TIME;
+        jsonParam["appManagerLaunchTime"] = launchTimeMs;
+        if (nullptr != mTelemetryMetricsObject)
+        {
+            jsonParam.ToString(telemetryMetrics);
+            if (!telemetryMetrics.empty())
+            {
+                mTelemetryMetricsObject->Record(appId, telemetryMetrics, markerName);
+            }
+        }
+        else
+        {
+            LOGERR("Failed to record launch time telemetry - mTelemetryMetricsObject is not valid");
         }
     }
 
