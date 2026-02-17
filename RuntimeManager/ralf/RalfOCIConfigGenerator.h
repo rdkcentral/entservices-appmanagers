@@ -34,7 +34,6 @@ namespace ralf
          * Generates the OCI config JSON for the RALF application instance.
          * @param config The application configuration.
          * @param runtimeConfigObject The runtime configuration.
-         * @param configFilePath The path where the OCI config file will be saved.
          */
         bool generateRalfOCIConfig(const WPEFramework::Plugin::ApplicationConfiguration &config, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject);
 
