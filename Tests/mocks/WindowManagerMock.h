@@ -54,7 +54,10 @@ public:
     MOCK_METHOD(WPEFramework::Core::hresult, RenderReady, (const string& client, bool &status), (const, override));
     MOCK_METHOD(WPEFramework::Core::hresult, EnableDisplayRender, (const string& client, bool enable), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, GetLastKeyInfo, (uint32_t &keyCode, uint32_t &modifiers, uint64_t &timestampInSeconds), (const, override));
-
+    MOCK_METHOD(WPEFramework::Core::hresult, SetZOrder, (const string& appInstanceId, const int32_t zOrder), (override));
+    MOCK_METHOD(WPEFramework::Core::hresult, GetZOrder, (const string& appInstanceId, int32_t &zOrder), (override));
+    MOCK_METHOD(WPEFramework::Core::hresult, StartVncServer, (), (override));
+    MOCK_METHOD(WPEFramework::Core::hresult, StopVncServer, (), (override));
     MOCK_METHOD(void, AddRef, (), (const, override));
     MOCK_METHOD(uint32_t, Release, (), (const, override));
     MOCK_METHOD(void*, QueryInterface, (const uint32_t interfaceNumber), (override));
