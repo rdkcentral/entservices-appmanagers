@@ -18,6 +18,7 @@
 */
 
 #include "RDKWindowManagerImplementation.h"
+#include <chrono>
 #include <sys/prctl.h>
 #include <mutex>
 #include <boost/filesystem.hpp>
@@ -2187,9 +2188,9 @@ Core::hresult RDKWindowManagerImplementation::StopVncServer()
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
 time_t RDKWindowManagerImplementation::getCurrentTimestamp()
 {
-    timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return ((time_t)(ts.tv_sec * 1000) + ((time_t)ts.tv_nsec/1000000));
+    return static_cast<time_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()
+    ).count());
 }
 
 void RDKWindowManagerImplementation::recordDisplayTelemetry(const string& client, int duration, bool isCreate)
