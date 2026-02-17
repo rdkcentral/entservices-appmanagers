@@ -2,8 +2,8 @@
 #include <gtest/gtest.h>
 #include <string>
 #include <cstring>
-#include "StorageManager.h"
-#include "StorageManagerImplementation.h"
+#include "AppStorageManager.h"
+#include "AppStorageManagerImplementation.h"
 #include "ServiceMock.h"
 #include "Store2Mock.h"
 #include "WrapsMock.h"
@@ -22,13 +22,13 @@ using namespace WPEFramework;
 class StorageManagerTest : public ::testing::Test {
     protected:
         //JSONRPC
-        Core::ProxyType<Plugin::StorageManager> plugin; // create a proxy object
+        Core::ProxyType<Plugin::AppStorageManager> plugin; // create a proxy object
         Core::JSONRPC::Handler& handler;
         Core::JSONRPC::Context connection; // create a JSONRPC context
         string response; // create a string to hold the response
         Exchange::IConfiguration* storageManagerConfigure; // create a pointer to IConfiguration
         //comrpc 
-        Exchange::IStorageManager* interface; // create a pointer to IStorageManager
+        Exchange::IAppStorageManager* interface; // create a pointer to IAppStorageManager
         NiceMock<ServiceMock> service; // an instance of mock service object
         Core::ProxyType<Plugin::StorageManagerImplementation> StorageManagerImplementation; // declare an proxy object
         ServiceMock  *p_serviceMock  = nullptr;
@@ -37,7 +37,7 @@ class StorageManagerTest : public ::testing::Test {
         Store2Mock* mStore2Mock = nullptr;
 
         StorageManagerTest():
-        plugin(Core::ProxyType<Plugin::StorageManager>::Create()),
+        plugin(Core::ProxyType<Plugin::AppStorageManager>::Create()),
         handler(*plugin),
         connection(0,1,"")
         {
@@ -115,8 +115,8 @@ class StorageManagerTest : public ::testing::Test {
                 return nullptr;
             }));
 
-            interface = static_cast<Exchange::IStorageManager*>(
-                StorageManagerImplementation->QueryInterface(Exchange::IStorageManager::ID));
+            interface = static_cast<Exchange::IAppStorageManager*>(
+                StorageManagerImplementation->QueryInterface(Exchange::IAppStorageManager::ID));
 
             storageManagerConfigure = static_cast<Exchange::IConfiguration*>(
             StorageManagerImplementation->QueryInterface(Exchange::IConfiguration::ID));
