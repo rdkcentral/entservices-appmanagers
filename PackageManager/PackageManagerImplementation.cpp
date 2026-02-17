@@ -219,9 +219,9 @@ namespace Plugin {
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
     time_t PackageManagerImplementation::getCurrentTimestamp()
     {
-        timespec ts;
-        clock_gettime(CLOCK_MONOTONIC, &ts);
-        return (((time_t)ts.tv_sec * 1000) + ((time_t)ts.tv_nsec / 1000000));
+        return static_cast<time_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now().time_since_epoch()
+        ).count());
     }
 
     void PackageManagerImplementation::recordAndPublishTelemetryData(const std::string& marker, const std::string& appId,

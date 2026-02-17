@@ -21,6 +21,7 @@
 #include "StorageManagerImplementation.h"
 #include "UtilsLogging.h"
 #include "RequestHandler.h"
+#include <chrono>
 #include <sys/statvfs.h>
 
 #define DEFAULT_APP_STORAGE_PATH        "/opt/persistent/storageManager"
@@ -127,9 +128,9 @@ namespace Plugin {
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
     static time_t getCurrentTimestamp()
     {
-        timespec ts;
-        clock_gettime(CLOCK_MONOTONIC, &ts);
-        return (((time_t)ts.tv_sec * 1000) + ((time_t)ts.tv_nsec/1000000));
+        return static_cast<time_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now().time_since_epoch()
+        ).count());
     }
 #endif
 
