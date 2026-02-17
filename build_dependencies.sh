@@ -38,7 +38,7 @@ git clone --branch main https://github.com/rdkcentral/entservices-apis.git
 echo "======================================================================================"
 echo "building thunderTools"
 cd ThunderTools
-patch -p1 < $GITHUB_WORKSPACE/entservices-appmanagers/Tests/patches/00010-R4.4-Add-support-for-project-dir.patch
+patch -p1 < $GITHUB_WORKSPACE/Tests/patches/00010-R4.4-Add-support-for-project-dir.patch
 cd -
 
 
@@ -57,11 +57,11 @@ echo "==========================================================================
 echo "building thunder"
 
 cd Thunder
-patch -p1 < $GITHUB_WORKSPACE/entservices-appmanagers/Tests/patches/Use_Legact_Alt_Based_On_ThunderTools_R4.4.3.patch
-patch -p1 < $GITHUB_WORKSPACE/entservices-appmanagers/Tests/patches/error_code_R4_4.patch
-patch -p1 < $GITHUB_WORKSPACE/entservices-appmanagers/Tests/patches/1004-Add-support-for-project-dir.patch
-patch -p1 < $GITHUB_WORKSPACE/entservices-appmanagers/Tests/patches/RDKEMW-733-Add-ENTOS-IDS.patch
-patch -p1 < $GITHUB_WORKSPACE/entservices-appmanagers/Tests/patches/Jsonrpc_dynamic_error_handling.patch
+patch -p1 < $GITHUB_WORKSPACE/Tests/patches/Use_Legact_Alt_Based_On_ThunderTools_R4.4.3.patch
+patch -p1 < $GITHUB_WORKSPACE/Tests/patches/error_code_R4_4.patch
+patch -p1 < $GITHUB_WORKSPACE/Tests/patches/1004-Add-support-for-project-dir.patch
+patch -p1 < $GITHUB_WORKSPACE/Tests/patches/RDKEMW-733-Add-ENTOS-IDS.patch
+patch -p1 < $GITHUB_WORKSPACE/Tests/patches/Jsonrpc_dynamic_error_handling.patch
 cd -
 
 cmake -G Ninja -S Thunder -B build/Thunder \
@@ -97,7 +97,7 @@ cmake --build build/entservices-apis --target install
 ############################
 # generating extrnal headers
 cd $GITHUB_WORKSPACE
-cd entservices-appmanagers/Tests
+cd Tests
 echo " Empty mocks creation to avoid compilation errors"
 echo "======================================================================================"
 mkdir -p headers
