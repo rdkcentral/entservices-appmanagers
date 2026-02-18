@@ -77,10 +77,20 @@ namespace WPEFramework
                         bool success = StateHandler::changeState(*request, errorReason);
                         if (!success)
                         {
-                            printf("ERROR IN STATE TRANSITION ... %s\n",errorReason.c_str());
+                            printf("MADANA ERROR IN STATE TRANSITION ... %s\n",errorReason.c_str());
 			    fflush(stdout);
                             //TODO: Decide on what to do on state transition error
-                            break;
+                            if (request->mTargetState == Exchange::ILifecycleManager::LifecycleState::INITIALIZING)
+                            {
+                                printf("MADANA STATE TRANSITION FAILURE ... [%d][%d]\n", request->mContext->getCurrentLifecycleState(), request->mTargetState);
+                                fflush(stdout);
+                               std::shared_ptr<StateTransitionRequest> stateTransitionRequest = std::make_shared<StateTransitionRequest>(request->mContext, Exchange::ILifecycleManager::LifecycleState::UNLOADED);
+                                gRequests.push_back(stateTransitionRequest);
+                            }
+                            else
+                            {
+                                break;
+                            }
                         }
                         gRequests.erase(gRequests.begin());
                     }
