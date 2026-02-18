@@ -229,9 +229,19 @@ protected:
         client = "test.client";
         minutes = 24;
         
-        runtimeConfigObject = Exchange::RuntimeConfig{
-            true,true,true,1024,512,"test.env.variables",1,1,1024,true,"test.dial.id","test.command","test.app.type","test.app.path","test.runtime.path","test.logfile.path",1024,"test.log.levels",true,"test.fkps.files","test.firebolt.version",true,"test.unpacked.path"
-        };
+        runtimeConfigObject = Exchange::RuntimeConfig();
+        runtimeConfigObject.envVariables = "test.env.variables";
+        runtimeConfigObject.command = "test.command";
+        runtimeConfigObject.appType = "test.app.type";
+        runtimeConfigObject.appPath = "test.app.path";
+        runtimeConfigObject.runtimePath = "test.runtime.path";
+        runtimeConfigObject.logfilePath = "test.logfile.path";
+        runtimeConfigObject.systemMemoryLimit = 1024;
+        runtimeConfigObject.memoryLimit = 512;
+        runtimeConfigObject.dialId = "test.dial.id";
+        runtimeConfigObject.fkpsFiles = "test.fkps.files";
+        runtimeConfigObject.fireboltVersion = "test.firebolt.version";
+        runtimeConfigObject.unpackedPath = "test.unpacked.path";
 
         // Initialize event parameters and event data
         eventHdlTest.appId = appId;
