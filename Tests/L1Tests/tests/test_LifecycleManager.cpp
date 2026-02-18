@@ -229,9 +229,30 @@ protected:
         client = "test.client";
         minutes = 24;
         
-        runtimeConfigObject = {
-            true,true,true,1024,512,"test.env.variables",1,1,1024,true,"test.dial.id","test.command","test.app.type","test.app.path","test.runtime.path","test.logfile.path",1024,"test.log.levels",true,"test.fkps.files","test.firebolt.version",true,"test.unpacked.path"
-        };
+        runtimeConfigObject.dial = true;
+        runtimeConfigObject.wanLanAccess = true;
+        runtimeConfigObject.thunder = true;
+        runtimeConfigObject.systemMemoryLimit = 1024;
+        runtimeConfigObject.gpuMemoryLimit = 512;
+        runtimeConfigObject.envVariables = "test.env.variables";
+        runtimeConfigObject.userId = 1;
+        runtimeConfigObject.groupId = 1;
+        runtimeConfigObject.dataImageSize = 1024;
+        runtimeConfigObject.resourceManagerClientEnabled = true;
+        runtimeConfigObject.dialId = "test.dial.id";
+        runtimeConfigObject.command = "test.command";
+        runtimeConfigObject.appType = "test.app.type";
+        runtimeConfigObject.appPath = "test.app.path";
+        runtimeConfigObject.runtimePath = "test.runtime.path";
+        runtimeConfigObject.logFilePath = "test.logfile.path";
+        runtimeConfigObject.logFileMaxSize = 1024;
+        runtimeConfigObject.logLevels = "[\"DEBUG\",\"INFO\"]";
+        runtimeConfigObject.mapi = true;
+        runtimeConfigObject.fkpsFiles = "[\"fkps1\",\"fkps2\"]";
+        runtimeConfigObject.ralfPkgPath = "/tmp/ralf";
+        runtimeConfigObject.fireboltVersion = "test.firebolt.version";
+        runtimeConfigObject.enableDebugger = true;
+        runtimeConfigObject.unpackedPath = "test.unpacked.path";
 
         // Initialize event parameters and event data
         eventHdlTest.appId = appId;
