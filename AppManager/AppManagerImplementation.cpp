@@ -270,6 +270,14 @@ void AppManagerImplementation::Dispatch(EventNames event, const JsonObject param
                     notification->OnAppLifecycleStateChanged(appId, appInstanceId, newState, oldState, errorReason);
                 }
                 mAdminLock.Unlock();
+                if ((Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING == oldState) && (Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING == newState))
+	                {
+		                    printf("Transition from loading state failed. killing the application .... \n");
+		                    fflush(stdout);
+		                    Core::hresult status = KillApp(appId);
+		                    printf("kill app status in loading state [%d].... \n", status);
+		                    fflush(stdout);
+		                }
             }
             break;
         }
