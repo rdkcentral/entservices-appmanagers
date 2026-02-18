@@ -235,9 +235,9 @@ protected:
         runtimeConfigObject.appType = "test.app.type";
         runtimeConfigObject.appPath = "test.app.path";
         runtimeConfigObject.runtimePath = "test.runtime.path";
-        runtimeConfigObject.logfilePath = "test.logfile.path";
+        runtimeConfigObject.logFilePath = "test.logfile.path";
         runtimeConfigObject.systemMemoryLimit = 1024;
-        runtimeConfigObject.memoryLimit = 512;
+        runtimeConfigObject.gpuMemoryLimit = 512;
         runtimeConfigObject.dialId = "test.dial.id";
         runtimeConfigObject.fkpsFiles = "test.fkps.files";
         runtimeConfigObject.fireboltVersion = "test.firebolt.version";
