@@ -18,6 +18,7 @@
 set(PLUGIN_NAME PreinstallManager)
 set(MODULE_NAME ${NAMESPACE}${PLUGIN_NAME})
 set(PLUGIN_IMPLEMENTATION ${MODULE_NAME}Implementation)
+option(ENABLE_RALF_SUPPORT "Enable RALF support" OFF)
 
 message("Setup ${MODULE_NAME} v${PROJECT_VERSION}")
 
@@ -29,6 +30,12 @@ set(PLUGIN_PREINSTALL_MANAGER_EXTRA_LIBRARIES "")
 add_definitions(-DPREINSTALL_MANAGER_API_VERSION_NUMBER_MAJOR=1)
 add_definitions(-DPREINSTALL_MANAGER_API_VERSION_NUMBER_MINOR=0)
 add_definitions(-DPREINSTALL_MANAGER_API_VERSION_NUMBER_PATCH=0)
+
+if(ENABLE_RALF_SUPPORT)
+    add_compile_definitions(WIDGET_PACKAGE_NAME="package.ralf")
+else()
+    add_compile_definitions(WIDGET_PACKAGE_NAME="package.wgt")
+endif()
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
