@@ -363,9 +363,6 @@ TEST_F(PackageManagerTest, registeredMethodsusingJsonRpc) {
     EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Exists(_T("listPackages")));
     EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Exists(_T("config")));
     EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Exists(_T("packageState")));
-    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Exists(_T("lock")));
-    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Exists(_T("unlock")));
-    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Exists(_T("getLockedInfo")));
 
 	deinitforJsonRpc();
 }
@@ -1739,26 +1736,6 @@ TEST_F(PackageManagerTest, packageStateusingComRpcSuccess) {
 }
 
 // IPackageHandler methods
-
-/* Test Case for unlock error using JsonRpc
- * 
- * Set up and initialize required JSON-RPC resources, configurations, mocks and expectations
- * Invoke the unlock method using the JSON RPC handler, passing the required parameters
- * Verify unlock method failure by asserting that it returns Core::ERROR_GENERAL
- * Deinitialize the JSON-RPC resources and clean-up related test resources
- */
-
-TEST_F(PackageManagerTest, unlockmethodusingJsonRpcFailure) {
-
-    initforJsonRpc();
-
-    waitforSignal(TIMEOUT_FOR_INIT);
-
-	// TC-42: Failure on unlock using JsonRpc
-    EXPECT_EQ(Core::ERROR_GENERAL, mJsonRpcHandler.Invoke(connection, _T("unlock"), _T("{\"packageId\": \"YouTube\", \"version\": \"100.1.24\"}"), mJsonRpcResponse));
-
-	deinitforJsonRpc();
-}
 
 /* Test Case for unlock failure using ComRpc
  * 
