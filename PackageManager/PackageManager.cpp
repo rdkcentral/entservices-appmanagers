@@ -83,7 +83,6 @@ namespace Plugin
 
             mPackageHandler = mPackageDownloader->QueryInterface<Exchange::IPackageHandler>();
             if (mPackageHandler != nullptr) {
-                Exchange::JPackageHandler::Register(*this, mPackageHandler);
             } else {
                 LOGERR("Failed to get instance of IPackageHandler");
             }
@@ -102,10 +101,6 @@ namespace Plugin
         if (mService != nullptr) {
             ASSERT(mService == service);
             mService->Unregister(&mNotificationSink);
-
-            if (mPackageHandler != nullptr) {
-                Exchange::JPackageHandler::Unregister(*this);
-            }
 
             if (mPackageInstaller != nullptr) {
                 mPackageInstaller->Unregister(&mNotificationSink);
