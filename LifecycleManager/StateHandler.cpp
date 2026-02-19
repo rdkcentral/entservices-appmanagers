@@ -52,9 +52,9 @@ namespace WPEFramework
 		   delete currentState;
                 }
                 else
-	        {
-                   delete newState;
-	        }		
+		{
+		    delete newState;
+		}
             }
             return result;
 	}
