@@ -23,6 +23,7 @@
 #include <boost/uuid/uuid_io.hpp>
 #include "IEventHandler.h"
 #include "RequestHandler.h"
+#include "UtilsLogging.h"
 
 namespace WPEFramework
 {
