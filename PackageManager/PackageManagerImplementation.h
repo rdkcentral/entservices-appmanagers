@@ -203,8 +203,6 @@ namespace Plugin {
         Core::hresult GetLockedInfo(const string &packageId, const string &version, string &unpackedPath, Exchange::RuntimeConfig& configMetadata,
             string& gatewayMetadataPath, bool &locked) override;
 
-        Core::hresult StartPreinstall();
-
         // internal methods
         void getRuntimeConfig(const packagemanager::ConfigMetaData &config, Exchange::RuntimeConfig &runtimeConfig);
         void getRuntimeConfig(const Exchange::RuntimeConfig &config, Exchange::RuntimeConfig &runtimeConfig);

@@ -1257,26 +1257,5 @@ namespace Plugin {
         return mInprogressDownload;
     }
 
-    const std::string builtinDir = "/var/sky/packages";
-
-    // IMO there are too many Managers, following 15 lines is most of the PreinstallManager code.
-    // Unless absoultely necessary we should not crate a plugin/Manager.
-    Core::hresult PackageManagerImplementation::StartPreinstall()
-    {
-        std::error_code ec;
-        for (auto const &dirEntry : std::filesystem::directory_iterator(builtinDir, ec)) {
-            string id, version;
-            Exchange::RuntimeConfig config;
-            if (GetConfigForPackage(dirEntry.path().string(), id, version, config)) {
-                Exchange::IPackageInstaller::FailReason failReason;
-                if (Install(id, version, nullptr, dirEntry.path().string(), failReason) == Core::ERROR_NONE) {
-                    LOGDBG("Success");
-                } else {
-                    LOGERR("Failed");
-                }
-            }
-        }
-    }
-
 } // namespace Plugin
 } // namespace WPEFramework
