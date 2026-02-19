@@ -78,7 +78,7 @@ namespace WPEFramework
                         gRequests.erase(gRequests.begin());
                         if (!success)
                         {
-                            printf("ERROR IN STATE TRANSITION ... %s [%d]\n",errorReason.c_str(), gRequests.size());
+                            printf("ERROR IN STATE TRANSITION ... %s \n",errorReason.c_str());
 			    fflush(stdout);
                             //TODO: Decide on what to do on state transition error
                             break;
