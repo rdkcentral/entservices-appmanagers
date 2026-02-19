@@ -214,7 +214,7 @@ namespace WPEFramework
                     }
                     else
                     {
-                        printf("StateHandler::changeState: Failed to change state from %s to %s\n", mStateStrings[oldLifecycleState].c_str(), mStateStrings[statePath[stateIndex]].c_str());
+                        LOGERR("StateHandler::changeState: Failed to change state from %s to %s\n", mStateStrings[oldLifecycleState].c_str(), mStateStrings[statePath[stateIndex]].c_str());
                         sendEvent(context, oldLifecycleState, oldLifecycleState, errorReason);
                         break;
                     }
@@ -305,8 +305,7 @@ namespace WPEFramework
                 Exchange::ILifecycleManager::LifecycleState currentLifecycleState = context->getCurrentLifecycleState();
                 if ((Exchange::ILifecycleManager::LifecycleState::LOADING == currentLifecycleState) && (Exchange::ILifecycleManager::LifecycleState::TERMINATING == lifecycleState))
                 {
-                    printf("Received unload request in loading stage \n");
-                    fflush(stdout);
+                    LOGERR("Received unload request in loading stage");
                     statePath.push_back(Exchange::ILifecycleManager::LifecycleState::LOADING);
                     statePath.push_back(Exchange::ILifecycleManager::LifecycleState::UNLOADED);
                     return true;
