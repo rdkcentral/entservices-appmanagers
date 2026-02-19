@@ -682,10 +682,17 @@ err_ret:
                         else
                             status = mOciContainerObject->StartContainer(containerId, appPath, command, westerosSocket, descriptor, success, errorReason);
 
-                        if ((success == false) || (status != Core::ERROR_NONE))
+                        if (!success)
                         {
-                            LOGERR("Failed to Run Container %s",errorReason.c_str());
-                            status = Core::ERROR_GENERAL;
+                            LOGERR("Failed to Run Container %s", errorReason.c_str());
+                            if (status == Core::ERROR_NONE)
+                            {
+                                status = Core::ERROR_GENERAL;
+                            }
+                        }
+                        else if (status != Core::ERROR_NONE)
+                        {
+                            LOGERR("Failed to Run Container %s", errorReason.c_str());
                         }
                         else
                         {
