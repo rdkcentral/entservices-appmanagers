@@ -509,6 +509,11 @@ err_ret:
         Core::hresult RuntimeManagerImplementation::Run(const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, IValueIterator* const& ports, IStringIterator* const& paths, IStringIterator* const& debugSettings, const WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject)
         {
             Core::hresult status = Core::ERROR_GENERAL;
+            std::ifstream inFileFail("/tmp/fail");
+            if (inFileFail.good())
+            {
+                return status;
+            }
             RuntimeAppInfo runtimeAppInfo;
             std::string xdgRuntimeDir = "";
             std::string waylandDisplay = "";
