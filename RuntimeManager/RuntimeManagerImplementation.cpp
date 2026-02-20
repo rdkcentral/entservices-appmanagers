@@ -732,9 +732,17 @@ namespace WPEFramework
                             status = mOciContainerObject->StartContainer(containerId, appPath, command, "", descriptor, success, errorReason);
                         }
 
-                        if ((success == false) || (status != Core::ERROR_NONE))
+                        if (!success)
                         {
                             LOGERR("Failed to Run Container %s", errorReason.c_str());
+                            if (status == Core::ERROR_NONE)
+                            {
+                                status = Core::ERROR_GENERAL;
+                            }
+                        }
+                        else if (status != Core::ERROR_NONE)
+                        {
+                            LOGERR("Failed to Run Container %s",  errorReason.c_str());
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
                             {
                                 ralf::RalfPackageBuilder ralfBuilder;
