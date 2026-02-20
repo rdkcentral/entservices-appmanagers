@@ -269,6 +269,20 @@ void AppManagerImplementation::Dispatch(EventNames event, const JsonObject param
                 {
                     notification->OnAppLifecycleStateChanged(appId, appInstanceId, newState, oldState, errorReason);
                 }
+                if ((Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING == oldState) && (Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING == newState))
+                {
+                    LOGERR("Transition from loading state failed. Killing the application ....");
+                    Core::hresult status = Core::ERROR_UNAVAILABLE;
+                    if (mLifecycleInterfaceConnector != nullptr)
+                    {
+                        status = mLifecycleInterfaceConnector->killApp(appId);
+                    }
+                    else
+                    {
+                        LOGERR("mLifecycleInterfaceConnector is null, cannot kill app %s", appId.c_str());
+                    }
+                    LOGERR("Kill app status in loading state [%d]....", static_cast<int>(status));
+                }
                 mAdminLock.Unlock();
             }
             break;
