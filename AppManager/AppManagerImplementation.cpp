@@ -140,6 +140,10 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                                 {
                                     WPEFramework::Exchange::RuntimeConfig runtimeConfig = packageData.configMetadata;
                                     runtimeConfig.unpackedPath = packageData.unpackedPath;
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED
+                                    runtimeConfig.userId = packageData.userId;
+                                    runtimeConfig.groupId = packageData.groupId;
+#endif // RALF_PACKAGE_SUPPORT_ENABLED
                                     getCustomValues(runtimeConfig);
                                     string launchArgs = appRequestParam->launchArgs;
 

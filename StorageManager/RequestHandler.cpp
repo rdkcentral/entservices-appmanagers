@@ -10,6 +10,9 @@
 #define DEFAULT_STORAGE_DEV_BLOCK_SIZE  512
 #define STORAGE_DIR_PERMISSION          0755
 
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED
+#include "../RuntimeManager/ralf/RalfSupport.h"
+#endif // RALF_PACKAGE_SUPPORT_ENABLED
 
 namespace WPEFramework
 {
@@ -560,6 +563,20 @@ namespace WPEFramework
                         LOGERR("Error creating base storage directory %s", mBaseStoragePath.c_str());
                         goto ret_fail;
                     }
+
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED
+                    {
+                        // We need to ensure that the base storage path has default group permissions for ralf.
+                        uint32_t ralfGroupId = 0;
+                        ralf::getGroupId(ralf::RALF_USER_NAME, ralfGroupId);
+                        if (chown(mBaseStoragePath.c_str(), -1, ralfGroupId) != 0)
+                        {
+                            LOGERR("Failed to set group ownership for base storage directory %s", mBaseStoragePath.c_str());
+                            errorReason = "Failed to set group ownership for base storage directory: " + mBaseStoragePath;
+                            goto ret_fail;
+                        }
+                    }
+#endif // RALF_PACKAGE_SUPPORT_ENABLED
                 }
 
                 /* Check if the appId storageInfo already exists or can be created */
