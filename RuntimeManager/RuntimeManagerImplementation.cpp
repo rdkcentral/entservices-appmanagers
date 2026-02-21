@@ -383,7 +383,7 @@ err_ret:
             {
                 do
                 {
-                    mStorageManagerObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IStorageManager>("org.rdk.StorageManager");
+                    mStorageManagerObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IAppStorageManager>("org.rdk.AppStorageManager");
 
                     if (nullptr == mStorageManagerObject)
                     {

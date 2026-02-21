@@ -633,7 +633,7 @@ Core::hresult AppManagerImplementation::createStorageManagerRemoteObject()
     {
         do
         {
-            mStorageManagerRemoteObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IStorageManager>("org.rdk.StorageManager");
+            mStorageManagerRemoteObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IAppStorageManager>("org.rdk.AppStorageManager");
 
             if (nullptr == mStorageManagerRemoteObject)
             {
