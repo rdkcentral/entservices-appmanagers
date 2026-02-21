@@ -1,21 +1,21 @@
 /**
-* If not stated otherwise in this file or this component's LICENSE
-* file the following copyright and licenses apply:
-*
-* Copyright 2024 RDK Management
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-* http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-**/
+ * If not stated otherwise in this file or this component's LICENSE
+ * file the following copyright and licenses apply:
+ *
+ * Copyright 2024 RDK Management
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ **/
 
 #include "RuntimeManagerImplementation.h"
 #include "DobbySpecGenerator.h"
@@ -26,24 +26,23 @@
 #include <errno.h>
 #include <fstream>
 
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED
+#include "ralf/RalfPackageBuilder.h"
+#include "ralf/RalfSupport.h"
+#endif // RALF_PACKAGE_SUPPORT_ENABLED
+
 namespace WPEFramework
 {
     namespace Plugin
     {
         SERVICE_REGISTRATION(RuntimeManagerImplementation, 1, 0);
-        RuntimeManagerImplementation* RuntimeManagerImplementation::_instance = nullptr;
+        RuntimeManagerImplementation *RuntimeManagerImplementation::_instance = nullptr;
 
         RuntimeManagerImplementation::RuntimeManagerImplementation()
-        : mRuntimeManagerImplLock()
-        , mCurrentservice(nullptr)
-        , mOciContainerObject(nullptr)
-        , mStorageManagerObject(nullptr)
-        , mWindowManagerConnector(nullptr)
-        , mDobbyEventListener(nullptr)
-        , mUserIdManager(nullptr)
-        , mRuntimeAppPortal("")
+            : mRuntimeManagerImplLock(), mCurrentservice(nullptr), mOciContainerObject(nullptr), mStorageManagerObject(nullptr), mWindowManagerConnector(nullptr), mDobbyEventListener(nullptr), mUserIdManager(nullptr), mRuntimeAppPortal("")
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-        , mTelemetryMetricsObject(nullptr)
+              ,
+              mTelemetryMetricsObject(nullptr)
 #endif
         {
             LOGINFO("Create RuntimeManagerImplementation Instance");
@@ -52,13 +51,13 @@ namespace WPEFramework
                 RuntimeManagerImplementation::_instance = this;
             }
 #ifdef RIALTO_IN_DAC_FEATURE_ENABLED
-        LOGWARN("Creating rialto connector");
-        RialtoConnector *rialtoBridge = new RialtoConnector();
-        mRialtoConnector = std::shared_ptr<RialtoConnector>(rialtoBridge);
+            LOGWARN("Creating rialto connector");
+            RialtoConnector *rialtoBridge = new RialtoConnector();
+            mRialtoConnector = std::shared_ptr<RialtoConnector>(rialtoBridge);
 #endif // RIALTO_IN_DAC_FEATURE_ENABLED
         }
 
-        RuntimeManagerImplementation* RuntimeManagerImplementation::getInstance()
+        RuntimeManagerImplementation *RuntimeManagerImplementation::getInstance()
         {
             return _instance;
         }
@@ -69,15 +68,14 @@ namespace WPEFramework
 
             if (nullptr != mCurrentservice)
             {
-               mCurrentservice->Release();
-               mCurrentservice = nullptr;
+                mCurrentservice->Release();
+                mCurrentservice = nullptr;
             }
 
             if (nullptr != mStorageManagerObject)
             {
                 releaseStorageManagerPluginObject();
             }
-
 
             if (nullptr != mWindowManagerConnector)
             {
@@ -92,7 +90,7 @@ namespace WPEFramework
                 mUserIdManager = nullptr;
             }
 
-            if(nullptr != mOciContainerObject)
+            if (nullptr != mOciContainerObject)
             {
                 releaseOCIContainerPluginObject();
             }
@@ -100,7 +98,7 @@ namespace WPEFramework
 
         Core::hresult RuntimeManagerImplementation::Register(Exchange::IRuntimeManager::INotification *notification)
         {
-            ASSERT (nullptr != notification);
+            ASSERT(nullptr != notification);
 
             Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
 
@@ -115,11 +113,11 @@ namespace WPEFramework
             return Core::ERROR_NONE;
         }
 
-        Core::hresult RuntimeManagerImplementation::Unregister(Exchange::IRuntimeManager::INotification *notification )
+        Core::hresult RuntimeManagerImplementation::Unregister(Exchange::IRuntimeManager::INotification *notification)
         {
             Core::hresult status = Core::ERROR_GENERAL;
 
-            ASSERT (nullptr != notification);
+            ASSERT(nullptr != notification);
 
             Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
 
@@ -149,7 +147,7 @@ namespace WPEFramework
         {
             Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
 
-            std::list<Exchange::IRuntimeManager::INotification*>::const_iterator index(mRuntimeManagerNotification.begin());
+            std::list<Exchange::IRuntimeManager::INotification *>::const_iterator index(mRuntimeManagerNotification.begin());
 
             JsonObject obj = params.Object();
             string appIdFromContainer = obj["containerId"].String();
@@ -163,7 +161,7 @@ namespace WPEFramework
 
             switch (event)
             {
-                case RUNTIME_MANAGER_EVENT_STATECHANGED:
+            case RUNTIME_MANAGER_EVENT_STATECHANGED:
                 while (index != mRuntimeManagerNotification.end())
                 {
                     string containerState = obj["state"];
@@ -175,73 +173,85 @@ namespace WPEFramework
                 }
                 break;
 
-                case RUNTIME_MANAGER_EVENT_CONTAINERSTARTED:
-                {
+            case RUNTIME_MANAGER_EVENT_CONTAINERSTARTED:
+            {
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-                    auto it = mRuntimeAppInfo.find(appInstanceId);
-                    if (it != mRuntimeAppInfo.end())
-                    {
-                        RuntimeAppInfo& appInfo = it->second;
+                auto it = mRuntimeAppInfo.find(appInstanceId);
+                if (it != mRuntimeAppInfo.end())
+                {
+                    RuntimeAppInfo &appInfo = it->second;
 
-                        if (appInfo.requestType == REQUEST_TYPE_LAUNCH)
-                        {
-                            recordTelemetryData(TELEMETRY_MARKER_LAUNCH_TIME, appInfo.appId, appInfo.requestTime);
-                        }
-                    }
-                    else
+                    if (appInfo.requestType == REQUEST_TYPE_LAUNCH)
                     {
-                        LOGERR("RuntimeAppInfo not found for appInstanceId: %s", appInstanceId.c_str());
+                        recordTelemetryData(TELEMETRY_MARKER_LAUNCH_TIME, appInfo.appId, appInfo.requestTime);
                     }
-#endif
-                    while (index != mRuntimeManagerNotification.end())
-                    {
-                        (*index)->OnStarted(appInstanceId);
-                        ++index;
-                    }
-                    break;
                 }
-
-                case RUNTIME_MANAGER_EVENT_CONTAINERSTOPPED:
+                else
                 {
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-                    auto it = mRuntimeAppInfo.find(appInstanceId);
-                    if (it != mRuntimeAppInfo.end())
-                    {
-                        RuntimeAppInfo& appInfo = it->second;
-                        if (appInfo.requestType == REQUEST_TYPE_TERMINATE || appInfo.requestType == REQUEST_TYPE_KILL)
-                        {
-                            recordTelemetryData(TELEMETRY_MARKER_CLOSE_TIME, appInfo.appId, appInfo.requestTime);
-                        }
-                    }
-                    else
-                    {
-                        LOGERR("RuntimeAppInfo not found for appInstanceId: %s", appInstanceId.c_str());
-                    }
+                    LOGERR("RuntimeAppInfo not found for appInstanceId: %s", appInstanceId.c_str());
+                }
 #endif
-                    while (index != mRuntimeManagerNotification.end())
-                    {
-                        (*index)->OnTerminated(appInstanceId);
-                        ++index;
-                    }
+                while (index != mRuntimeManagerNotification.end())
+                {
+                    (*index)->OnStarted(appInstanceId);
+                    ++index;
+                }
                 break;
-                }
+            }
 
-                case RUNTIME_MANAGER_EVENT_CONTAINERFAILED:
+            case RUNTIME_MANAGER_EVENT_CONTAINERSTOPPED:
+            {
+#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
+                auto it = mRuntimeAppInfo.find(appInstanceId);
+                if (it != mRuntimeAppInfo.end())
+                {
+                    RuntimeAppInfo &appInfo = it->second;
+                    if (appInfo.requestType == REQUEST_TYPE_TERMINATE || appInfo.requestType == REQUEST_TYPE_KILL)
+                    {
+                        recordTelemetryData(TELEMETRY_MARKER_CLOSE_TIME, appInfo.appId, appInfo.requestTime);
+                    }
+                }
+                else
+                {
+                    LOGERR("RuntimeAppInfo not found for appInstanceId: %s", appInstanceId.c_str());
+                }
+#endif
+                while (index != mRuntimeManagerNotification.end())
+                {
+                    (*index)->OnTerminated(appInstanceId);
+                    ++index;
+                }
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED
+                {
+                    ralf::RalfPackageBuilder ralfBuilder;
+                    ralfBuilder.unmountOverlayfsIfExists(appInstanceId);
+                }
+#endif // RALF_PACKAGE_SUPPORT_ENABLED
+                break;
+            }
+
+            case RUNTIME_MANAGER_EVENT_CONTAINERFAILED:
                 while (index != mRuntimeManagerNotification.end())
                 {
                     string error = obj["errorCode"].String();
                     (*index)->OnFailure(appInstanceId, error);
                     ++index;
                 }
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED
+                {
+                    ralf::RalfPackageBuilder ralfBuilder;
+                    ralfBuilder.unmountOverlayfsIfExists(appInstanceId);
+                }
+#endif // RALF_PACKAGE_SUPPORT_ENABLED
                 break;
 
-                default:
-                    LOGWARN("Event[%u] not handled", event);
+            default:
+                LOGWARN("Event[%u] not handled", event);
                 break;
             }
         }
 
-        uint32_t RuntimeManagerImplementation::Configure(PluginHost::IShell* service)
+        uint32_t RuntimeManagerImplementation::Configure(PluginHost::IShell *service)
         {
             uint32_t result = Core::ERROR_GENERAL;
 
@@ -301,11 +311,9 @@ namespace WPEFramework
             return result;
         }
 
-
-
         Core::hresult RuntimeManagerImplementation::createOCIContainerPluginObject()
         {
-            #define MAX_OCI_OBJECT_CREATION_RETRIES 2
+#define MAX_OCI_OBJECT_CREATION_RETRIES 2
 
             Core::hresult status = Core::ERROR_GENERAL;
             uint8_t retryCount = 0;
@@ -331,7 +339,7 @@ namespace WPEFramework
                     status = Core::ERROR_NONE;
                     /* Initialize OCIContainerNotification Connector to listen to Dobby Events */
                     mDobbyEventListener = new DobbyEventListener();
-                    if(nullptr != mDobbyEventListener)
+                    if (nullptr != mDobbyEventListener)
                     {
                         if (false == mDobbyEventListener->initialize(mCurrentservice, this, mOciContainerObject))
                         {
@@ -346,14 +354,14 @@ namespace WPEFramework
             {
                 LOGERR("Failed to create OCIContainer Object after %d attempts", MAX_OCI_OBJECT_CREATION_RETRIES);
             }
-err_ret:
+        err_ret:
             return status;
         }
 
         void RuntimeManagerImplementation::releaseOCIContainerPluginObject()
         {
             ASSERT(nullptr != mOciContainerObject);
-            if(mOciContainerObject)
+            if (mOciContainerObject)
             {
                 LOGINFO("releaseOCIContainerPluginObject\n");
                 /* Deinitialize DobbyEventListener */
@@ -370,7 +378,7 @@ err_ret:
 
         Core::hresult RuntimeManagerImplementation::createStorageManagerPluginObject()
         {
-            #define MAX_STORAGE_MANAGER_OBJECT_CREATION_RETRIES 2
+#define MAX_STORAGE_MANAGER_OBJECT_CREATION_RETRIES 2
 
             Core::hresult status = Core::ERROR_GENERAL;
             uint8_t retryCount = 0;
@@ -410,7 +418,7 @@ err_ret:
         void RuntimeManagerImplementation::releaseStorageManagerPluginObject()
         {
             ASSERT(nullptr != mStorageManagerObject);
-            if(mStorageManagerObject)
+            if (mStorageManagerObject)
             {
                 LOGINFO("Storage Manager object released\n");
                 mStorageManagerObject->Release();
@@ -418,10 +426,10 @@ err_ret:
             }
         }
 
-/*
-* @brief : Returns the storage information for a given app id using Storage Manager plugin interface
-*/
-        Core::hresult RuntimeManagerImplementation::getAppStorageInfo(const string& appId, AppStorageInfo& appStorageInfo)
+        /*
+         * @brief : Returns the storage information for a given app id using Storage Manager plugin interface
+         */
+        Core::hresult RuntimeManagerImplementation::getAppStorageInfo(const string &appId, AppStorageInfo &appStorageInfo)
         {
             Core::hresult status = Core::ERROR_GENERAL;
 
@@ -443,11 +451,11 @@ err_ret:
                 if (nullptr != mStorageManagerObject)
                 {
                     if (Core::ERROR_NONE == (status = mStorageManagerObject->GetStorage(appId, appStorageInfo.userId, appStorageInfo.groupId,
-                        appStorageInfo.path, appStorageInfo.size, appStorageInfo.used)))
+                                                                                        appStorageInfo.path, appStorageInfo.size, appStorageInfo.used)))
                     {
                         LOGINFO("Received Storage Manager info for %s [path %s, userId %d, groupId %d, size %d, used %d]",
-                            appId.c_str(), appStorageInfo.path.c_str(), appStorageInfo.userId,
-                            appStorageInfo.groupId, appStorageInfo.size, appStorageInfo.used);
+                                appId.c_str(), appStorageInfo.path.c_str(), appStorageInfo.userId,
+                                appStorageInfo.groupId, appStorageInfo.size, appStorageInfo.used);
                     }
                     else
                     {
@@ -459,13 +467,19 @@ err_ret:
             return status;
         }
 
-        bool RuntimeManagerImplementation::generate(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject, std::string& dobbySpec)
+        bool RuntimeManagerImplementation::generate(const ApplicationConfiguration &config, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject, std::string &dobbySpec)
         {
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED
+            LOGINFO("Generating Ralf Package Config : %s", runtimeConfigObject.ralfPkgPath.c_str());
+            ralf::RalfPackageBuilder ralfBuilder;
+            return ralfBuilder.generateRalfDobbySpec(config, runtimeConfigObject, dobbySpec);
+#else
             DobbySpecGenerator generator;
             return generator.generate(config, runtimeConfigObject, dobbySpec);
+#endif // RALF_PACKAGE_SUPPORT_ENABLED
         }
 
-        Exchange::IRuntimeManager::RuntimeState RuntimeManagerImplementation::getRuntimeState(const string& appInstanceId)
+        Exchange::IRuntimeManager::RuntimeState RuntimeManagerImplementation::getRuntimeState(const string &appInstanceId)
         {
             Exchange::IRuntimeManager::RuntimeState runtimeState = Exchange::IRuntimeManager::RUNTIME_STATE_UNKNOWN;
 
@@ -473,13 +487,13 @@ err_ret:
 
             if (!appInstanceId.empty())
             {
-                if(mRuntimeAppInfo.find(appInstanceId) == mRuntimeAppInfo.end())
+                if (mRuntimeAppInfo.find(appInstanceId) == mRuntimeAppInfo.end())
                 {
-                   LOGERR("Missing appInstanceId[%s] in RuntimeAppInfo", appInstanceId.c_str());
+                    LOGERR("Missing appInstanceId[%s] in RuntimeAppInfo", appInstanceId.c_str());
                 }
                 else
                 {
-                   runtimeState = mRuntimeAppInfo[appInstanceId].containerState;
+                    runtimeState = mRuntimeAppInfo[appInstanceId].containerState;
                 }
             }
             else
@@ -493,10 +507,10 @@ err_ret:
         bool RuntimeManagerImplementation::isOCIPluginObjectValid(void)
         {
             return (mOciContainerObject != nullptr) ||
-                      (createOCIContainerPluginObject() == Core::ERROR_NONE);
+                   (createOCIContainerPluginObject() == Core::ERROR_NONE);
         }
 
-        std::string RuntimeManagerImplementation::getContainerId(const string& appInstanceId)
+        std::string RuntimeManagerImplementation::getContainerId(const string &appInstanceId)
         {
             string containerId = "";
 
@@ -506,7 +520,7 @@ err_ret:
             }
             return containerId;
         }
-        Core::hresult RuntimeManagerImplementation::Run(const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, IValueIterator* const& ports, IStringIterator* const& paths, IStringIterator* const& debugSettings, const WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject)
+        Core::hresult RuntimeManagerImplementation::Run(const string &appId, const string &appInstanceId, const uint32_t userId, const uint32_t groupId, IValueIterator *const &ports, IStringIterator *const &paths, IStringIterator *const &debugSettings, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject)
         {
             Core::hresult status = Core::ERROR_GENERAL;
             RuntimeAppInfo runtimeAppInfo;
@@ -540,7 +554,13 @@ err_ret:
 
             uid_t uid = mUserIdManager->getUserId(appId);
             gid_t gid = mUserIdManager->getAppsGid();
-
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED
+            // In Ralf package, all apps will run with the same ralf user and group
+            if (!ralf::getRalfUserInfo(uid, gid))
+            {
+                LOGERR("Failed to get Ralf user info. This can lead to failure in launching the app. uid: %d, gid: %d", uid, gid);
+            }
+#endif
             std::ifstream inFile("/tmp/specchange");
             if (inFile.good())
             {
@@ -585,25 +605,36 @@ err_ret:
 
             if (!appId.empty())
             {
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED
+                // RALF uses one userid groupid for all apps.
+                appStorageInfo.userId = uid;
+                appStorageInfo.groupId = gid;
+#else
                 appStorageInfo.userId = userId;
                 appStorageInfo.groupId = groupId;
+#endif //RALF_PACKAGE_SUPPORT_ENABLED
                 if (Core::ERROR_NONE == getAppStorageInfo(appId, appStorageInfo))
                 {
                     config.mAppStorageInfo.path = std::move(appStorageInfo.path);
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED
+                    config.mAppStorageInfo.userId = uid;
+                    config.mAppStorageInfo.groupId = gid;
+#else
                     config.mAppStorageInfo.userId = userId;
                     config.mAppStorageInfo.groupId = groupId;
+#endif // RALF_PACKAGE_SUPPORT_ENABLED
                     config.mAppStorageInfo.size = std::move(appStorageInfo.size);
                     config.mAppStorageInfo.used = std::move(appStorageInfo.used);
                 }
             }
 
             /* Creating Display */
-            if(nullptr != mWindowManagerConnector)
+            if (nullptr != mWindowManagerConnector)
             {
 
                 mWindowManagerConnector->getDisplayInfo(appInstanceId, xdgRuntimeDir, waylandDisplay);
                 displayResult = mWindowManagerConnector->createDisplay(appInstanceId, waylandDisplay, uid, gid);
-                if(false == displayResult)
+                if (false == displayResult)
                 {
                     LOGERR("Failed to create display");
                     status = Core::ERROR_GENERAL;
@@ -612,7 +643,6 @@ err_ret:
                 {
                     LOGINFO("Display [%s] created successfully", waylandDisplay.c_str());
                 }
-
             }
             else
             {
@@ -626,37 +656,47 @@ err_ret:
                 config.mWesterosSocketPath = westerosSocket;
             }
 
+            // To indicate containers used by Widget
             bool legacyContainer = true;
 #ifdef RIALTO_IN_DAC_FEATURE_ENABLED
-             mRialtoConnector->initialize();
-            if (mRialtoConnector->createAppSession(appId,westerosSocket, appId))
             {
-               if (!mRialtoConnector->waitForStateChange(appId,RialtoServerStates::ACTIVE, RIALTO_TIMEOUT_MILLIS))
+                legacyContainer = false;
+                mRialtoConnector->initialize();
+                std::string rialtoSocket = appId;
+
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED
+                // Adding a prefix to the rialto socket to avoid any conflict with existing sockets as
+                // RALF package will create a socket with the name same as appInstanceId.
+                rialtoSocket = "rlto-" + appInstanceId;
+#endif // RALF_PACKAGE_SUPPORT_ENABLED
+                if (mRialtoConnector->createAppSession(appId, westerosSocket, rialtoSocket))
                 {
-                  LOGWARN(" Rialto app session not ready. ");
-                  status = Core::ERROR_GENERAL;
+                    if (!mRialtoConnector->waitForStateChange(appId, RialtoServerStates::ACTIVE, RIALTO_TIMEOUT_MILLIS))
+                    {
+                        LOGWARN(" Rialto app session not ready. ");
+                        status = Core::ERROR_GENERAL;
+                    }
+                }
+                else
+                {
+                    LOGWARN(" Rialto app session not ready. ");
+                    status = Core::ERROR_GENERAL;
                 }
             }
-            else
-            {
-               LOGWARN(" Rialto app session not ready. ");
-               status = Core::ERROR_GENERAL;
-            }
-            legacyContainer = false;
 #endif // RIALTO_IN_DAC_FEATURE_ENABLED
             LOGINFO("legacyContainer: %s", legacyContainer ? "true" : "false");
             if (xdgRuntimeDir.empty() || waylandDisplay.empty() || !displayResult)
             {
                 LOGERR("Missing required environment variables: XDG_RUNTIME_DIR=%s, WAYLAND_DISPLAY=%s createDisplay %s",
-                    xdgRuntimeDir.empty() ? "NOT FOUND" : xdgRuntimeDir.c_str(),
-                    waylandDisplay.empty() ? "NOT FOUND" : waylandDisplay.c_str(),
-                    displayResult ? "Success" : "Failed");
+                       xdgRuntimeDir.empty() ? "NOT FOUND" : xdgRuntimeDir.c_str(),
+                       waylandDisplay.empty() ? "NOT FOUND" : waylandDisplay.c_str(),
+                       displayResult ? "Success" : "Failed");
                 status = Core::ERROR_GENERAL;
                 errorCode = "ERROR_CREATE_DISPLAY";
                 notifyParamCheckFailure = true;
             }
-            /* Generate dobbySpec */
-            else if (legacyContainer && false == RuntimeManagerImplementation::generate(config, runtimeConfigObject, dobbySpec))
+            /* Generate dobbySpec for the selected container mode (legacy or non-legacy) */
+            else if (false == RuntimeManagerImplementation::generate(config, runtimeConfigObject, dobbySpec))
             {
                 LOGERR("Failed to generate dobbySpec");
                 status = Core::ERROR_GENERAL;
@@ -669,18 +709,28 @@ err_ret:
                 LOGINFO("Generated dobbySpec: %s", dobbySpec.c_str());
 
                 LOGINFO("Environment Variables: XDG_RUNTIME_DIR=%s, WAYLAND_DISPLAY=%s",
-                     xdgRuntimeDir.c_str(), waylandDisplay.c_str());
+                        xdgRuntimeDir.c_str(), waylandDisplay.c_str());
                 std::string command = "";
                 std::string appPath = runtimeConfigObject.unpackedPath;
-                if(isOCIPluginObjectValid())
+                // In Ralf package, dobbySpec contains the path to the generated dobby spec file
+                if (!legacyContainer)
+                {
+                    appPath = dobbySpec;
+                }
+                if (isOCIPluginObjectValid())
                 {
                     string containerId = getContainerId(appInstanceId);
                     if (!containerId.empty())
                     {
-                        if(legacyContainer)
-                            status =  mOciContainerObject->StartContainerFromDobbySpec(containerId, dobbySpec, command, westerosSocket, descriptor, success, errorReason);
+                        if (legacyContainer)
+                            status = mOciContainerObject->StartContainerFromDobbySpec(containerId, dobbySpec, command, westerosSocket, descriptor, success, errorReason);
                         else
-                            status = mOciContainerObject->StartContainer(containerId, appPath, command, westerosSocket, descriptor, success, errorReason);
+                        {
+                            LOGINFO("Starting  container in RALF mode");
+                            // For RALF we are not mounting the westeros socket from  dobby. It can be done from RALF itself.
+                            // Hence passing the westeros socket path as empty and relying on RALF to mount it inside the container.
+                            status = mOciContainerObject->StartContainer(containerId, appPath, command, "", descriptor, success, errorReason);
+                        }
 
                         if (!success)
                         {
@@ -692,11 +742,17 @@ err_ret:
                         }
                         else if (status != Core::ERROR_NONE)
                         {
-                            LOGERR("Failed to Run Container %s", errorReason.c_str());
+                            LOGERR("Failed to Run Container %s",  errorReason.c_str());
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED
+                            {
+                                ralf::RalfPackageBuilder ralfBuilder;
+                                ralfBuilder.unmountOverlayfsIfExists(appInstanceId);
+                            }
+#endif // RALF_PACKAGE_SUPPORT_ENABLED
                         }
                         else
                         {
-                            LOGINFO("Update Info for %s",appInstanceId.c_str());
+                            LOGINFO("Update Info for %s", appInstanceId.c_str());
                             if (!appId.empty())
                             {
                                 runtimeAppInfo.appId = std::move(appId);
@@ -726,14 +782,14 @@ err_ret:
                 }
             }
             mRuntimeManagerImplLock.Unlock();
-            if(notifyParamCheckFailure)
+            if (notifyParamCheckFailure)
             {
                 notifyParameterCheckFailure(appInstanceId, errorCode);
             }
             return status;
         }
 
-        Core::hresult RuntimeManagerImplementation::Hibernate(const string& appInstanceId)
+        Core::hresult RuntimeManagerImplementation::Hibernate(const string &appInstanceId)
         {
             Core::hresult status = Core::ERROR_GENERAL;
             std::string options = "";
@@ -750,16 +806,16 @@ err_ret:
 
             mRuntimeManagerImplLock.Lock();
 
-            if(isOCIPluginObjectValid())
+            if (isOCIPluginObjectValid())
             {
-               string containerId = getContainerId(appInstanceId);
+                string containerId = getContainerId(appInstanceId);
                 if (!containerId.empty())
                 {
-                    status =  mOciContainerObject->HibernateContainer(containerId, options, success, errorReason);
+                    status = mOciContainerObject->HibernateContainer(containerId, options, success, errorReason);
                     if ((success == false))
                     {
-                        LOGERR("Failed to HibernateContainer %s",errorReason.c_str());
-                        status = Core::ERROR_GENERAL; //todo return proper error code in OCIContainerPlugin
+                        LOGERR("Failed to HibernateContainer %s", errorReason.c_str());
+                        status = Core::ERROR_GENERAL; // todo return proper error code in OCIContainerPlugin
                     }
                     else
                     {
@@ -790,7 +846,7 @@ err_ret:
             return status;
         }
 
-        Core::hresult RuntimeManagerImplementation::Wake(const string& appInstanceId, const RuntimeState runtimeState)
+        Core::hresult RuntimeManagerImplementation::Wake(const string &appInstanceId, const RuntimeState runtimeState)
         {
             Core::hresult status = Core::ERROR_GENERAL;
             std::string errorReason = "";
@@ -805,7 +861,7 @@ err_ret:
 #endif
 
             mRuntimeManagerImplLock.Lock();
-            if(isOCIPluginObjectValid())
+            if (isOCIPluginObjectValid())
             {
                 string containerId = getContainerId(appInstanceId);
                 if (!containerId.empty())
@@ -814,10 +870,10 @@ err_ret:
                     if (Exchange::IRuntimeManager::RUNTIME_STATE_HIBERNATING == currentRuntimeState ||
                         Exchange::IRuntimeManager::RUNTIME_STATE_HIBERNATED == currentRuntimeState)
                     {
-                        status =  mOciContainerObject->WakeupContainer(containerId, success, errorReason);
+                        status = mOciContainerObject->WakeupContainer(containerId, success, errorReason);
                         if ((success == false) || (status != Core::ERROR_NONE))
                         {
-                            LOGERR("Failed to WakeupContainer %s",errorReason.c_str());
+                            LOGERR("Failed to WakeupContainer %s", errorReason.c_str());
                         }
                         else
                         {
@@ -853,7 +909,7 @@ err_ret:
             return status;
         }
 
-        Core::hresult RuntimeManagerImplementation::Suspend(const string& appInstanceId)
+        Core::hresult RuntimeManagerImplementation::Suspend(const string &appInstanceId)
         {
             Core::hresult status = Core::ERROR_GENERAL;
             std::string errorReason = "";
@@ -869,16 +925,16 @@ err_ret:
 
             mRuntimeManagerImplLock.Lock();
 
-            if(isOCIPluginObjectValid())
+            if (isOCIPluginObjectValid())
             {
                 string containerId = getContainerId(appInstanceId);
 
                 if (!containerId.empty())
                 {
-                    status =  mOciContainerObject->PauseContainer(containerId, success, errorReason);
+                    status = mOciContainerObject->PauseContainer(containerId, success, errorReason);
                     if ((success == false) || (status != Core::ERROR_NONE))
                     {
-                        LOGERR("Failed to PauseContainer %s",errorReason.c_str());
+                        LOGERR("Failed to PauseContainer %s", errorReason.c_str());
                     }
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
                     else
@@ -908,7 +964,7 @@ err_ret:
             return status;
         }
 
-        Core::hresult RuntimeManagerImplementation::Resume(const string& appInstanceId)
+        Core::hresult RuntimeManagerImplementation::Resume(const string &appInstanceId)
         {
             Core::hresult status = Core::ERROR_GENERAL;
             std::string errorReason = "";
@@ -923,16 +979,16 @@ err_ret:
 #endif
 
             mRuntimeManagerImplLock.Lock();
-            if(isOCIPluginObjectValid())
+            if (isOCIPluginObjectValid())
             {
                 string containerId = getContainerId(appInstanceId);
 
                 if (!containerId.empty())
                 {
-                    status =  mOciContainerObject->ResumeContainer(containerId, success, errorReason);
+                    status = mOciContainerObject->ResumeContainer(containerId, success, errorReason);
                     if ((success == false) || (status != Core::ERROR_NONE))
                     {
-                        LOGERR("Failed to ResumeContainer %s",errorReason.c_str());
+                        LOGERR("Failed to ResumeContainer %s", errorReason.c_str());
                     }
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
                     else
@@ -962,7 +1018,7 @@ err_ret:
             return status;
         }
 
-        Core::hresult RuntimeManagerImplementation::Terminate(const string& appInstanceId)
+        Core::hresult RuntimeManagerImplementation::Terminate(const string &appInstanceId)
         {
             Core::hresult status = Core::ERROR_GENERAL;
             std::string errorReason = "";
@@ -987,13 +1043,13 @@ err_ret:
                 LOGERR("Terminate called for unknown appInstanceId: %s, skipping telemetry update", appInstanceId.c_str());
             }
 #endif
-            if(isOCIPluginObjectValid())
+            if (isOCIPluginObjectValid())
             {
                 string containerId = getContainerId(appInstanceId);
 
                 if (!containerId.empty())
                 {
-                    status =  mOciContainerObject->StopContainer(containerId, false, success, errorReason);
+                    status = mOciContainerObject->StopContainer(containerId, false, success, errorReason);
                     if (errorReason.compare("Container not found") == 0)
                     {
                         LOGINFO("Container is not running, no need to StopContainer");
@@ -1002,7 +1058,7 @@ err_ret:
                     }
                     else if ((success == false) || (status != Core::ERROR_NONE))
                     {
-                        LOGERR("StopContainer failed to terminate %s",errorReason.c_str());
+                        LOGERR("StopContainer failed to terminate %s", errorReason.c_str());
                     }
                     else
                     {
@@ -1025,17 +1081,17 @@ err_ret:
 #ifdef RIALTO_IN_DAC_FEATURE_ENABLED
             LOGINFO("Rialto session deactivate on terminate.");
             mRialtoConnector->deactivateSession(mRuntimeAppInfo[appInstanceId].appId);
-            if (!mRialtoConnector->waitForStateChange(mRuntimeAppInfo[appInstanceId].appId,RialtoServerStates::NOT_RUNNING, RIALTO_TIMEOUT_MILLIS))
+            if (!mRialtoConnector->waitForStateChange(mRuntimeAppInfo[appInstanceId].appId, RialtoServerStates::NOT_RUNNING, RIALTO_TIMEOUT_MILLIS))
             {
-               LOGERR("Rialto session state change failed when changing to not running.");
-               status = Core::ERROR_GENERAL;
+                LOGERR("Rialto session state change failed when changing to not running.");
+                status = Core::ERROR_GENERAL;
             }
 #endif // RIALTO_IN_DAC_FEATURE_ENABLED
             mRuntimeManagerImplLock.Unlock();
             return status;
         }
 
-        Core::hresult RuntimeManagerImplementation::Kill(const string& appInstanceId)
+        Core::hresult RuntimeManagerImplementation::Kill(const string &appInstanceId)
         {
             Core::hresult status = Core::ERROR_GENERAL;
             std::string errorReason = "";
@@ -1060,16 +1116,16 @@ err_ret:
                 LOGERR("Kill called for unknown appInstanceId: %s, skipping telemetry update", appInstanceId.c_str());
             }
 #endif
-            if(isOCIPluginObjectValid())
+            if (isOCIPluginObjectValid())
             {
                 string containerId = getContainerId(appInstanceId);
 
                 if (!containerId.empty())
                 {
-                    status =  mOciContainerObject->StopContainer(containerId, true, success, errorReason);
+                    status = mOciContainerObject->StopContainer(containerId, true, success, errorReason);
                     if ((success == false) || (status != Core::ERROR_NONE))
                     {
-                        LOGERR("Failed to StopContainer for Kill %s",errorReason.c_str());
+                        LOGERR("Failed to StopContainer for Kill %s", errorReason.c_str());
                     }
                     else
                     {
@@ -1092,17 +1148,17 @@ err_ret:
 #ifdef RIALTO_IN_DAC_FEATURE_ENABLED
             LOGINFO("Rialto Session deactivate on kill..");
             mRialtoConnector->deactivateSession(mRuntimeAppInfo[appInstanceId].appId);
-            if (!mRialtoConnector->waitForStateChange(mRuntimeAppInfo[appInstanceId].appId,RialtoServerStates::NOT_RUNNING, RIALTO_TIMEOUT_MILLIS))
+            if (!mRialtoConnector->waitForStateChange(mRuntimeAppInfo[appInstanceId].appId, RialtoServerStates::NOT_RUNNING, RIALTO_TIMEOUT_MILLIS))
             {
-               LOGERR("Rialto session state change failed when changing to not running ");
-               status = Core::ERROR_GENERAL;
+                LOGERR("Rialto session state change failed when changing to not running ");
+                status = Core::ERROR_GENERAL;
             }
 #endif // RIALTO_IN_DAC_FEATURE_ENABLED
             mRuntimeManagerImplLock.Unlock();
             return status;
         }
 
-        Core::hresult RuntimeManagerImplementation::GetInfo(const string& appInstanceId, string& info)
+        Core::hresult RuntimeManagerImplementation::GetInfo(const string &appInstanceId, string &info)
         {
             Core::hresult status = Core::ERROR_GENERAL;
             LOGINFO("Entered GetInfo Implementation");
@@ -1111,16 +1167,16 @@ err_ret:
 
             mRuntimeManagerImplLock.Lock();
 
-            if(isOCIPluginObjectValid())
+            if (isOCIPluginObjectValid())
             {
                 string containerId = getContainerId(appInstanceId);
 
                 if (!containerId.empty())
                 {
-                    status =  mOciContainerObject->GetContainerInfo(containerId, info, success, errorReason);
+                    status = mOciContainerObject->GetContainerInfo(containerId, info, success, errorReason);
                     if ((success == false) || (status != Core::ERROR_NONE))
                     {
-                        LOGERR("Failed to GetContainerInfo %s",errorReason.c_str());
+                        LOGERR("Failed to GetContainerInfo %s", errorReason.c_str());
                     }
                     else
                     {
@@ -1140,7 +1196,7 @@ err_ret:
             return status;
         }
 
-        Core::hresult RuntimeManagerImplementation::Annotate(const string& appInstanceId, const string& key, const string& value)
+        Core::hresult RuntimeManagerImplementation::Annotate(const string &appInstanceId, const string &key, const string &value)
         {
             Core::hresult status = Core::ERROR_GENERAL;
             std::string errorReason = "";
@@ -1148,7 +1204,7 @@ err_ret:
 
             mRuntimeManagerImplLock.Lock();
 
-            if(isOCIPluginObjectValid())
+            if (isOCIPluginObjectValid())
             {
                 string containerId = getContainerId(appInstanceId);
 
@@ -1160,10 +1216,10 @@ err_ret:
                     }
                     else
                     {
-                        status =  mOciContainerObject->Annotate(containerId, key, value, success, errorReason);
+                        status = mOciContainerObject->Annotate(containerId, key, value, success, errorReason);
                         if ((success == false) || (status != Core::ERROR_NONE))
                         {
-                            LOGERR("Failed to Annotate property key: %s value: %s errorReason %s",key.c_str(), value.c_str(), errorReason.c_str());
+                            LOGERR("Failed to Annotate property key: %s value: %s errorReason %s", key.c_str(), value.c_str(), errorReason.c_str());
                         }
                     }
                 }
@@ -1198,10 +1254,10 @@ err_ret:
             return status;
         }
 
-        void RuntimeManagerImplementation::onOCIContainerStartedEvent(std::string name, JsonObject& data)
+        void RuntimeManagerImplementation::onOCIContainerStartedEvent(std::string name, JsonObject &data)
         {
             LOGINFO("Container name: %s", name.c_str());
-            #ifdef RDK_APPMANAGERS_DEBUG
+#ifdef RDK_APPMANAGERS_DEBUG
             const in_addr_t addr = ContainerUtils::getContainerIpAddress(name);
             if (addr != 0)
             {
@@ -1243,13 +1299,13 @@ err_ret:
             {
                 LOGERR("Failed to get IP address for container '%s'", name.c_str());
             }
-            #endif
+#endif
             dispatchEvent(RuntimeManagerImplementation::RuntimeEventType::RUNTIME_MANAGER_EVENT_CONTAINERSTARTED, data);
         }
 
-        void RuntimeManagerImplementation::onOCIContainerStoppedEvent(std::string name, JsonObject& data)
+        void RuntimeManagerImplementation::onOCIContainerStoppedEvent(std::string name, JsonObject &data)
         {
-            #ifdef RDK_APPMANAGERS_DEBUG
+#ifdef RDK_APPMANAGERS_DEBUG
             auto it = mWebInspectors.find(name);
             if (it != mWebInspectors.end())
             {
@@ -1259,21 +1315,21 @@ err_ret:
                 mPortAvailability[freedPort] = false;
                 LOGINFO("Debug port %d flag reset to available for reuse", freedPort);
             }
-            #endif
+#endif
             dispatchEvent(RuntimeManagerImplementation::RuntimeEventType::RUNTIME_MANAGER_EVENT_CONTAINERSTOPPED, data);
         }
 
-        void RuntimeManagerImplementation::onOCIContainerFailureEvent(std::string name, JsonObject& data)
+        void RuntimeManagerImplementation::onOCIContainerFailureEvent(std::string name, JsonObject &data)
         {
             dispatchEvent(RuntimeManagerImplementation::RuntimeEventType::RUNTIME_MANAGER_EVENT_CONTAINERFAILED, data);
         }
 
-        void RuntimeManagerImplementation::onOCIContainerStateChangedEvent(std::string name, JsonObject& data)
+        void RuntimeManagerImplementation::onOCIContainerStateChangedEvent(std::string name, JsonObject &data)
         {
             dispatchEvent(RuntimeManagerImplementation::RuntimeEventType::RUNTIME_MANAGER_EVENT_STATECHANGED, data);
         }
 
-        void RuntimeManagerImplementation::notifyParameterCheckFailure(const string& appInstanceId, const string& errorCode)
+        void RuntimeManagerImplementation::notifyParameterCheckFailure(const string &appInstanceId, const string &errorCode)
         {
             JsonObject data;
             data["containerId"] = getContainerId(appInstanceId);
@@ -1291,7 +1347,7 @@ err_ret:
             return (((time_t)ts.tv_sec * 1000) + ((time_t)ts.tv_nsec / 1000000));
         }
 
-        RuntimeManagerImplementation::TelemetryMarker RuntimeManagerImplementation::getTelemetryMarker(const std::string& marker)
+        RuntimeManagerImplementation::TelemetryMarker RuntimeManagerImplementation::getTelemetryMarker(const std::string &marker)
         {
             if (marker == TELEMETRY_MARKER_LAUNCH_TIME)
                 return TELEMETRY_MARKER_LAUNCH;
@@ -1309,7 +1365,7 @@ err_ret:
                 return TELEMETRY_MARKER_UNKNOWN;
         }
 
-        void RuntimeManagerImplementation::recordTelemetryData(const std::string& marker, const std::string& appId, uint64_t requestTime)
+        void RuntimeManagerImplementation::recordTelemetryData(const std::string &marker, const std::string &appId, uint64_t requestTime)
         {
             /* End time for telemetry */
             time_t currentTime = getCurrentTimestamp();
@@ -1322,36 +1378,36 @@ err_ret:
             TelemetryMarker telemetryMarker = getTelemetryMarker(marker);
 
             /* Determine the telemetry JSON key */
-            switch(telemetryMarker)
+            switch (telemetryMarker)
             {
-                case TELEMETRY_MARKER_RESUME:
-                    jsonParam["runtimeManagerResumeTime"] = duration;
-                    break;
-                case TELEMETRY_MARKER_SUSPEND:
-                    jsonParam["runtimeManagerSuspendTime"] = duration;
-                    break;
-                case TELEMETRY_MARKER_HIBERNATE:
-                    jsonParam["runtimeManagerHibernateTime"] = duration;
-                    break;
-                case TELEMETRY_MARKER_WAKE:
-                    jsonParam["runtimeManagerWakeTime"] = duration;
-                    break;
-                case TELEMETRY_MARKER_LAUNCH:
-                    jsonParam["runtimeManagerRunTime"] = duration;
-                    break;
-                case TELEMETRY_MARKER_CLOSE:
-                    jsonParam["runtimeManagerTerminateTime"] = duration;
-                    break;
-                default:
-                    LOGERR("Unknown telemetry marker: %s", marker.c_str());
-                    return;
+            case TELEMETRY_MARKER_RESUME:
+                jsonParam["runtimeManagerResumeTime"] = duration;
+                break;
+            case TELEMETRY_MARKER_SUSPEND:
+                jsonParam["runtimeManagerSuspendTime"] = duration;
+                break;
+            case TELEMETRY_MARKER_HIBERNATE:
+                jsonParam["runtimeManagerHibernateTime"] = duration;
+                break;
+            case TELEMETRY_MARKER_WAKE:
+                jsonParam["runtimeManagerWakeTime"] = duration;
+                break;
+            case TELEMETRY_MARKER_LAUNCH:
+                jsonParam["runtimeManagerRunTime"] = duration;
+                break;
+            case TELEMETRY_MARKER_CLOSE:
+                jsonParam["runtimeManagerTerminateTime"] = duration;
+                break;
+            default:
+                LOGERR("Unknown telemetry marker: %s", marker.c_str());
+                return;
             }
             jsonParam["appId"] = appId;
             jsonParam.ToString(telemetryMetrics);
 
-            if(nullptr != mTelemetryMetricsObject)
+            if (nullptr != mTelemetryMetricsObject)
             {
-                LOGINFO("Record appId %s marker %s start time %d",appId.c_str(), marker.c_str(), duration);
+                LOGINFO("Record appId %s marker %s start time %d", appId.c_str(), marker.c_str(), duration);
                 mTelemetryMetricsObject->Record(appId, telemetryMetrics, marker);
             }
         }
