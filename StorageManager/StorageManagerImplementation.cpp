@@ -28,7 +28,6 @@
 
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
 #define TELEMETRY_MARKER_LAUNCH_TIME    "OverallLaunchTime_split"
-#define TELEMETRY_MARKER_CLOSE_TIME     "AppCloseTime_split"
 #endif
 
 namespace WPEFramework {
@@ -211,12 +210,7 @@ namespace Plugin {
         LOGINFO("Entered DeleteStorage Implementation");
         Core::hresult status = Core::ERROR_GENERAL;
         RequestHandler& handler = RequestHandler::getInstance();
-        
-        #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-            /* Get current timestamp at the start of deleteStorage for telemetry */
-            time_t requestTime = getCurrentTimestamp();
-        #endif
-        
+
         if (appId.empty())
         {
             errorReason = "AppId is empty";
@@ -230,26 +224,7 @@ namespace Plugin {
         {
             LOGINFO("Storage deleted successfully for appId: %s", appId.c_str());
         }
-        
-        #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-            if (status == Core::ERROR_NONE)
-            {
-                JsonObject jsonParam;
-                std::string telemetryMetrics = "";
-                /* Get current timestamp at the end of deleteStorage for Telemetry */
-                time_t currentTime = getCurrentTimestamp();
-                int duration = static_cast<int>(currentTime - requestTime);
-                jsonParam["storageManagerTime"] = duration;
-                jsonParam["appId"] = appId;
-                jsonParam.ToString(telemetryMetrics);
-                if(nullptr != mTelemetryMetricsObject)
-                {
-                    LOGINFO("Record appId %s storageManagerTime %d",appId.c_str(),duration);
-                    mTelemetryMetricsObject->Record(appId, telemetryMetrics, TELEMETRY_MARKER_CLOSE_TIME);
-                }
-            }
-        #endif
-        
+
         return status;
     }
 
