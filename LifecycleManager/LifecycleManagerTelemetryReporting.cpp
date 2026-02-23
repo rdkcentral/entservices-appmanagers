@@ -141,10 +141,6 @@ namespace Plugin
                     {
                         /*Telemetry reporting - launch case*/
                         jsonParam["lifecycleManagerSpawnTime"] = (int)(currentTime - requestTime);
-                        if (data.HasLabel("runtimeManagerRunTime"))
-                        {
-                            jsonParam["runtimeManagerRunTime"] = data["runtimeManagerRunTime"].Number();
-                        }
                         jsonParam.ToString(telemetryMetrics);
                         markerName = TELEMETRY_MARKER_LAUNCH_TIME;
                         mTelemetryMetricsObject->Record(appId, telemetryMetrics, markerName);
@@ -155,10 +151,6 @@ namespace Plugin
                     {
                         /*Telemetry reporting - close case*/
                         jsonParam["lifecycleManagerSetTargetStateTime"] = (int)(currentTime - requestTime);
-                        if (data.HasLabel("runtimeManagerTerminateTime"))
-                        {
-                            jsonParam["runtimeManagerTerminateTime"] = data["runtimeManagerTerminateTime"].Number();
-                        }
                         jsonParam.ToString(telemetryMetrics);
                         markerName = TELEMETRY_MARKER_CLOSE_TIME;
                         mTelemetryMetricsObject->Record(appId, telemetryMetrics, markerName);
@@ -204,24 +196,6 @@ namespace Plugin
                 jsonParam["appId"] = appId;
                 jsonParam["appInstanceId"] = context->getAppInstanceId();
                 jsonParam["lifecycleManagerSetTargetStateTime"] = (int)(currentTime - requestTime);
-                
-                /* Include runtime manager timing data if available */
-                if (data.HasLabel("runtimeManagerSuspendTime"))
-                {
-                    jsonParam["runtimeManagerSuspendTime"] = data["runtimeManagerSuspendTime"].Number();
-                }
-                if (data.HasLabel("runtimeManagerResumeTime"))
-                {
-                    jsonParam["runtimeManagerResumeTime"] = data["runtimeManagerResumeTime"].Number();
-                }
-                if (data.HasLabel("runtimeManagerHibernateTime"))
-                {
-                    jsonParam["runtimeManagerHibernateTime"] = data["runtimeManagerHibernateTime"].Number();
-                }
-                if (data.HasLabel("runtimeManagerWakeTime"))
-                {
-                    jsonParam["runtimeManagerWakeTime"] = data["runtimeManagerWakeTime"].Number();
-                }
                 
                 jsonParam.ToString(telemetryMetrics);
                 if(!telemetryMetrics.empty())
