@@ -886,6 +886,7 @@ namespace Plugin {
         runtimeConfig.appPath = config.appPath;
         runtimeConfig.command = config.command;
         runtimeConfig.runtimePath = config.runtimePath;
+        runtimeConfig.ralfPkgPath = config.ralfPkgPath;
     }
 
     void PackageManagerImplementation::getRuntimeConfig(const packagemanager::ConfigMetaData &config, Exchange::RuntimeConfig &runtimeConfig)
@@ -918,6 +919,7 @@ namespace Plugin {
         runtimeConfig.appPath = config.appPath;
         runtimeConfig.command = config.command;
         runtimeConfig.runtimePath = config.runtimePath;
+        runtimeConfig.ralfPkgPath = config.ralfPkgPath;
     }
 
     Core::hresult PackageManagerImplementation::Unlock(const string &packageId, const string &version)
@@ -940,6 +942,11 @@ namespace Plugin {
             if (state.mLockCount) {
                 LOGDBG("id: %s ver: %s lock count:%d state:%d", packageId.c_str(), version.c_str(),
                     state.mLockCount, (int) state.installState);
+                packagemanager::Result pmResult = packageImpl->Unlock(packageId, version);
+                if (pmResult != packagemanager::SUCCESS) {
+                    LOGERR("Unlock Failed id: %s ver: %s", packageId.c_str(), version.c_str());
+                    result = Core::ERROR_GENERAL;
+                }
                 if (--state.mLockCount == 0) {
                     string blockedVer = GetBlockedVersion(packageId);
                     LOGDBG("blockedVer: %s", blockedVer.c_str());
