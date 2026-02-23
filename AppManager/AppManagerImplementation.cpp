@@ -920,7 +920,8 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
         {
             LOGINFO("LaunchApp enter with appId %s", appId.c_str());
             request->mRequestAction = APP_ACTION_LAUNCH;
-            request->mRequestParam = std::make_shared<AppLaunchRequestParam>(AppLaunchRequestParam{appId, launchArgs, intent});            if (request->mRequestParam != nullptr)
+            request->mRequestParam = std::make_shared<AppLaunchRequestParam>(AppLaunchRequestParam{appId, launchArgs, intent});
+            if (request->mRequestParam != nullptr)
             {
                 mAppManagerLock.lock();
                 mAppRequestList.push_back(request);
@@ -939,8 +940,11 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
         }
     }
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-    time_t launchEndTime = appManagerTelemetryReporting.getCurrentTimestamp();
-    appManagerTelemetryReporting.recordLaunchTime(appId, (int)(launchEndTime - launchStartTime));
+    if (status == Core::ERROR_NONE)
+    {
+        time_t launchEndTime = appManagerTelemetryReporting.getCurrentTimestamp();
+        appManagerTelemetryReporting.recordLaunchTime(appId, (int)(launchEndTime - launchStartTime));
+    }
 #endif
     mAdminLock.Unlock();
 
@@ -1120,6 +1124,7 @@ Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const s
     Core::hresult status = Core::ERROR_GENERAL;
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
     AppManagerTelemetryReporting& appManagerTelemetryReporting = AppManagerTelemetryReporting::getInstance();
+    time_t launchStartTime = appManagerTelemetryReporting.getCurrentTimestamp();
 #endif
     LOGINFO(" PreloadApp enter with appId %s", appId.c_str());
 
@@ -1162,7 +1167,8 @@ Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const s
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
     if(status == Core::ERROR_NONE)
     {
-        appManagerTelemetryReporting.reportTelemetryData(appId, AppManagerImplementation::APP_ACTION_PRELOAD);
+        time_t launchEndTime = appManagerTelemetryReporting.getCurrentTimestamp();
+        appManagerTelemetryReporting.recordLaunchTime(appId, (int)(launchEndTime - launchStartTime));
     }
 #endif
     mAdminLock.Unlock();
