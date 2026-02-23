@@ -358,6 +358,33 @@ jobs:
           -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/install/usr"
           -DCMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake"
           -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+          -DCMAKE_CXX_FLAGS="
+          -DEXCEPTIONS_ENABLE=ON
+          -DUSE_THUNDER_R4=ON
+          -DTHUNDER_VERSION=4
+          -DTHUNDER_VERSION_MAJOR=4
+          -DTHUNDER_VERSION_MINOR=4
+          -DRDK_SERVICES_L1_TEST
+          -I $GITHUB_WORKSPACE/Tests/headers
+          -I $GITHUB_WORKSPACE/Tests
+          -I $GITHUB_WORKSPACE/helpers
+          -I $GITHUB_WORKSPACE/Thunder/Source
+          -I $GITHUB_WORKSPACE/Thunder/Source/core
+          -I $GITHUB_WORKSPACE/install/usr/include
+          -include $GITHUB_WORKSPACE/Tests/mocks/devicesettings.h
+          -include $GITHUB_WORKSPACE/Tests/mocks/Iarm.h
+          -include $GITHUB_WORKSPACE/Tests/mocks/Rfc.h
+          -include $GITHUB_WORKSPACE/Tests/mocks/RBus.h
+          -include $GITHUB_WORKSPACE/Tests/mocks/Telemetry.h
+          -include $GITHUB_WORKSPACE/Tests/mocks/Udev.h
+          -include $GITHUB_WORKSPACE/Tests/mocks/maintenanceMGR.h
+          -include $GITHUB_WORKSPACE/Tests/mocks/pkg.h
+          -include $GITHUB_WORKSPACE/Tests/mocks/secure_wrappermock.h
+          -include $GITHUB_WORKSPACE/Tests/mocks/wpa_ctrl_mock.h
+          -include $GITHUB_WORKSPACE/Tests/mocks/readprocMockInterface.h
+          -include $GITHUB_WORKSPACE/Tests/mocks/gdialservice.h
+          --coverage
+          -Wall"
           &&
           cmake --build build/mocks -j8
           &&
