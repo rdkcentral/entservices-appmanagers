@@ -138,7 +138,7 @@ namespace Plugin {
         void notifyDownloadStatus(const string& id, const string& locator, const DownloadReason status);
 
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-        void recordDownloadTelemetry(const string& downloadId, const string& url, int64_t downloadTime, bool success, const string& errorReason = "");
+        void recordDownloadTelemetry(const string& downloadId, int64_t downloadTime, bool success, int errorCode = 0);
         time_t getCurrentTimestamp();
 #endif
 
