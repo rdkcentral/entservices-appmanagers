@@ -845,7 +845,7 @@ namespace Plugin {
         runtimeConfig.command = config.command;
         runtimeConfig.runtimePath = config.runtimePath;
         runtimeConfig.ralfPkgPath = config.ralfPkgPath;
-        
+
         // Set runtimeId and runtimeVersion from packageId and version if available
         if (!packageId.empty()) {
             runtimeConfig.runtimeId = packageId;

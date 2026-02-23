@@ -81,7 +81,7 @@ namespace Plugin {
                 PackageManagerImplementation::getRuntimeConfig(config, runtimeConfig, packageId, version);
             }
             InstallState installState = InstallState::UNINSTALLED;
-            bool preInsalled = false;
+            bool preInstalled = false;
             uint32_t mLockCount = 0;
             Exchange::RuntimeConfig runtimeConfig;
             string gatewayMetadataPath;
