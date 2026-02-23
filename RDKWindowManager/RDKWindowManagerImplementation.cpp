@@ -2210,13 +2210,13 @@ void RDKWindowManagerImplementation::recordDisplayTelemetry(const string& client
     if (isCreate)
     {
         jsonParam["windowManagerCreateDisplayTime"] = duration;
-        markerName = "OverallLaunchTime_split";
+        markerName = TELEMETRY_MARKER_LAUNCH_TIME;
         LOGINFO("RDKWindowManager: Recording createDisplay telemetry: client=%s time=%dms", client.c_str(), duration);
     }
     else
     {
         jsonParam["windowManagerDestroyTime"] = duration;
-        markerName = "AppCloseTime_split";
+        markerName = TELEMETRY_MARKER_CLOSE_TIME;
         LOGINFO("RDKWindowManager: Recording destroyDisplay telemetry: client=%s time=%dms", client.c_str(), duration);
     }
 
