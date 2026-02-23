@@ -750,7 +750,7 @@ namespace Plugin {
                 packagemanager::Result pmResult = packageImpl->Lock(packageId, version, state.unpackedPath, config, locks);
                 LOGDBG("unpackedPath=%s", unpackedPath.c_str());
                 // save the new config in state
-                getRuntimeConfig(config, state.runtimeConfig);   // XXX: config is unnecessary in Lock ?!
+                getRuntimeConfig(config, state.runtimeConfig, packageId, version);   // XXX: config is unnecessary in Lock ?!
                 if (pmResult == packagemanager::SUCCESS) {
                     lockId = ++state.mLockCount;
 
@@ -814,7 +814,7 @@ namespace Plugin {
         runtimeConfig.ralfPkgPath = config.ralfPkgPath;
     }
 
-    void PackageManagerImplementation::getRuntimeConfig(const packagemanager::ConfigMetaData &config, Exchange::RuntimeConfig &runtimeConfig)
+    void PackageManagerImplementation::getRuntimeConfig(const packagemanager::ConfigMetaData &config, Exchange::RuntimeConfig &runtimeConfig, const string &packageId, const string &version)
     {
         runtimeConfig.dial = config.dial;
         runtimeConfig.wanLanAccess = config.wanLanAccess;
@@ -845,6 +845,14 @@ namespace Plugin {
         runtimeConfig.command = config.command;
         runtimeConfig.runtimePath = config.runtimePath;
         runtimeConfig.ralfPkgPath = config.ralfPkgPath;
+        
+        // Set runtimeId and runtimeVersion from packageId and version if available
+        if (!packageId.empty()) {
+            runtimeConfig.runtimeId = packageId;
+        }
+        if (!version.empty()) {
+            runtimeConfig.runtimeVersion = version;
+        }
     }
 
     Core::hresult PackageManagerImplementation::Unlock(const string &packageId, const string &version)
@@ -959,7 +967,7 @@ namespace Plugin {
         packagemanager::Result pmResult = packageImpl->GetFileMetadata(fileLocator, id, version, metadata);
         if (pmResult == packagemanager::SUCCESS)
         {
-            getRuntimeConfig(metadata, config);
+            getRuntimeConfig(metadata, config, id, version);
             result = Core::ERROR_NONE;
         }
         #endif
@@ -991,7 +999,7 @@ namespace Plugin {
         std::lock_guard<std::recursive_mutex> lock(mtxState);
         for (auto it = aConfigMetadata.begin(); it != aConfigMetadata.end(); ++it ) {
             StateKey key = it->first;
-            State state(it->second);
+            State state(it->second, key.first, key.second);
             state.installState = InstallState::INSTALLED;
             mState.insert( { key, state } );
         }

@@ -77,8 +77,8 @@ namespace Plugin {
 
             public:
             State() {}
-            State(const packagemanager::ConfigMetaData &config) {
-                PackageManagerImplementation::getRuntimeConfig(config, runtimeConfig);
+            State(const packagemanager::ConfigMetaData &config, const string &packageId = "", const string &version = "") {
+                PackageManagerImplementation::getRuntimeConfig(config, runtimeConfig, packageId, version);
             }
             InstallState installState = InstallState::UNINSTALLED;
             bool preInsalled = false;
@@ -202,7 +202,7 @@ namespace Plugin {
         Core::hresult GetLockedInfo(const string &packageId, const string &version, string &unpackedPath, Exchange::RuntimeConfig& configMetadata,
             string& gatewayMetadataPath, bool &locked) override;
 
-        static void getRuntimeConfig(const packagemanager::ConfigMetaData &config, Exchange::RuntimeConfig &runtimeConfig);
+        static void getRuntimeConfig(const packagemanager::ConfigMetaData &config, Exchange::RuntimeConfig &runtimeConfig, const string &packageId = "", const string &version = "");
         static void getRuntimeConfig(const Exchange::RuntimeConfig &config, Exchange::RuntimeConfig &runtimeConfig);
 
         BEGIN_INTERFACE_MAP(PackageManagerImplementation)
