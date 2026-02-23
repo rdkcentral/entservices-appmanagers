@@ -219,11 +219,21 @@ namespace Plugin {
             LOGERR("DM: Download failed - no internet! url=%s priority=%d retries=%u rateLimit=%u",
                    url.c_str(), options.priority, options.retries, options.rateLimit);
             result = Core::ERROR_UNAVAILABLE;
+#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
+            if (mTelemetryMetricsObject) {
+                recordDownloadTelemetry("NO_INTERNET", 0, false, static_cast<int>(DownloadReason::DOWNLOAD_FAILURE));
+            }
+#endif
         }
         else if (url.empty())
         {
             LOGERR("DM: Download failed - empty URL! priority=%d retries=%u rateLimit=%u",
                    options.priority, options.retries, options.rateLimit);
+#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
+            if (mTelemetryMetricsObject) {
+                recordDownloadTelemetry("EMPTY_URL", 0, false, static_cast<int>(DownloadReason::DOWNLOAD_FAILURE));
+            }
+#endif
         }
         else
         {
@@ -548,8 +558,7 @@ namespace Plugin {
 
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             // Record download telemetry
-            time_t downloadEndTime = getCurrentTimestamp();
-            int64_t totalDownloadTime = downloadEndTime - downloadStartTime;
+            int64_t totalDownloadTime = getCurrentTimestamp() - downloadStartTime;
 #endif
 
             DownloadReason reason = static_cast<DownloadReason>(DOWNLOAD_REASON_NONE);
@@ -559,7 +568,7 @@ namespace Plugin {
                     reason = DownloadReason::DISK_PERSISTENCE_FAILURE;
                     LOGERR("DM: Download failed due to disk error: id=%s", downloadRequest->getId().c_str());
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-                    recordDownloadTelemetry(downloadRequest->getId(), downloadRequest->getUrl(), totalDownloadTime, false, "DISK_PERSISTENCE_FAILURE");
+                    recordDownloadTelemetry(downloadRequest->getId(), totalDownloadTime, false, static_cast<int>(DownloadReason::DISK_PERSISTENCE_FAILURE));
 #endif
                     break;
 
@@ -567,13 +576,13 @@ namespace Plugin {
                     reason = DownloadReason::DOWNLOAD_FAILURE;
                     LOGERR("DM: Download failed due to HTTP error: id=%s", downloadRequest->getId().c_str());
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-                    recordDownloadTelemetry(downloadRequest->getId(), downloadRequest->getUrl(), totalDownloadTime, false, "DOWNLOAD_FAILURE");
+                    recordDownloadTelemetry(downloadRequest->getId(), totalDownloadTime, false, static_cast<int>(DownloadReason::DOWNLOAD_FAILURE));
 #endif
                     break;
 
                 case DownloadManagerHttpClient::Status::Success:
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-                    recordDownloadTelemetry(downloadRequest->getId(), downloadRequest->getUrl(), totalDownloadTime, true);
+                    recordDownloadTelemetry(downloadRequest->getId(), totalDownloadTime, true, 0);
 #endif
                     break;
 
@@ -653,7 +662,7 @@ namespace Plugin {
         ).count());
     }
 
-    void DownloadManagerImplementation::recordDownloadTelemetry(const string& downloadId, const string& url, int64_t downloadTime, bool success, const string& errorReason)
+    void DownloadManagerImplementation::recordDownloadTelemetry(const string& downloadId, int64_t downloadTime, bool success, int errorCode)
     {
         JsonObject jsonParam;
         std::string telemetryMetrics = "";
@@ -667,22 +676,16 @@ namespace Plugin {
             return;
         }
 
-        jsonParam["downloadId"] = downloadId;
-        jsonParam["url"] = url;
-
-        if (success)
-        {
-            // Record successful download time
+        if (success) {
             jsonParam["downloadTime"] = static_cast<int>(downloadTime);
+            jsonParam["markerName"] = TELEMETRY_MARKER_DOWNLOAD_TIME;
             markerName = TELEMETRY_MARKER_DOWNLOAD_TIME;
-            LOGINFO("DM: Recording download success telemetry: id=%s time=%lldms", downloadId.c_str(), downloadTime);
-        }
-        else
-        {
-            // Record download error
-            jsonParam["errorCode"] = errorReason;
+            LOGINFO("DM: Recording download success telemetry: time=%lldms", downloadTime);
+        } else {
+            jsonParam["errorCode"] = errorCode;
+            jsonParam["markerName"] = TELEMETRY_MARKER_DOWNLOAD_ERROR;
             markerName = TELEMETRY_MARKER_DOWNLOAD_ERROR;
-            LOGINFO("DM: Recording download error telemetry: id=%s error=%s", downloadId.c_str(), errorReason.c_str());
+            LOGINFO("DM: Recording download error telemetry: errorCode=%d", errorCode);
         }
 
         jsonParam.ToString(telemetryMetrics);
@@ -691,7 +694,6 @@ namespace Plugin {
             mTelemetryMetricsObject->Record(downloadId, telemetryMetrics, markerName);
             mTelemetryMetricsObject->Publish(downloadId, markerName);
         }
-        
         mTelemetryLock.Unlock();
     }
 #endif
