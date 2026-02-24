@@ -893,7 +893,11 @@ Core::hresult RDKWindowManagerImplementation::RemoveKeyIntercept(const string &c
         JsonArray modifiersArray;
         if (!modifiers.empty())
         {
-            modifiersArray.FromString(modifiers);
+            if (!modifiersArray.FromString(modifiers))
+            {
+                LOGERR("failed to parse modifiers JSON string: '%s'", modifiers.c_str());
+                return status;
+            }
         }
 
         if (false == removeKeyIntercept(keyCode, modifiersArray, clientId))
