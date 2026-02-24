@@ -349,7 +349,7 @@ jobs:
       - name: Build mocks
         run: >
           cmake
-          -S "$GITHUB_WORKSPACE/Tests/mocks"
+          -S "$GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks"
           -B build/mocks
           -DBUILD_SHARED_LIBS=ON
           -DRDK_SERVICES_L1_TEST=ON
@@ -365,24 +365,24 @@ jobs:
           -DTHUNDER_VERSION_MAJOR=4
           -DTHUNDER_VERSION_MINOR=4
           -DRDK_SERVICES_L1_TEST
-          -I $GITHUB_WORKSPACE/Tests/headers
-          -I $GITHUB_WORKSPACE/Tests
-          -I $GITHUB_WORKSPACE/helpers
+          -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/headers
+          -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests
+          -I $GITHUB_WORKSPACE/entservices-appmanagers/helpers
           -I $GITHUB_WORKSPACE/Thunder/Source
           -I $GITHUB_WORKSPACE/Thunder/Source/core
           -I $GITHUB_WORKSPACE/install/usr/include
-          -include $GITHUB_WORKSPACE/Tests/mocks/devicesettings.h
-          -include $GITHUB_WORKSPACE/Tests/mocks/Iarm.h
-          -include $GITHUB_WORKSPACE/Tests/mocks/Rfc.h
-          -include $GITHUB_WORKSPACE/Tests/mocks/RBus.h
-          -include $GITHUB_WORKSPACE/Tests/mocks/Telemetry.h
-          -include $GITHUB_WORKSPACE/Tests/mocks/Udev.h
-          -include $GITHUB_WORKSPACE/Tests/mocks/maintenanceMGR.h
-          -include $GITHUB_WORKSPACE/Tests/mocks/pkg.h
-          -include $GITHUB_WORKSPACE/Tests/mocks/secure_wrappermock.h
-          -include $GITHUB_WORKSPACE/Tests/mocks/wpa_ctrl_mock.h
-          -include $GITHUB_WORKSPACE/Tests/mocks/readprocMockInterface.h
-          -include $GITHUB_WORKSPACE/Tests/mocks/gdialservice.h
+          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/devicesettings.h
+          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/Iarm.h
+          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/Rfc.h
+          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/RBus.h
+          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/Telemetry.h
+          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/Udev.h
+          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/maintenanceMGR.h
+          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/pkg.h
+          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/secure_wrappermock.h
+          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/wpa_ctrl_mock.h
+          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/readprocMockInterface.h
+          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/gdialservice.h
           --coverage
           -Wall"
           &&
