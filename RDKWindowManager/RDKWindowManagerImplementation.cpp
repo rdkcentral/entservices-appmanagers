@@ -2220,7 +2220,7 @@ void RDKWindowManagerImplementation::recordDisplayTelemetry(const string& client
         LOGINFO("RDKWindowManager: Recording destroyDisplay telemetry: client=%s time=%dms", client.c_str(), duration);
     }
 
-    jsonParam["client"] = client;
+    // jsonParam["client"] = client;
     jsonParam.ToString(telemetryMetrics);
     if (!telemetryMetrics.empty())
     {
