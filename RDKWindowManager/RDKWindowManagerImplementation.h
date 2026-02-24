@@ -134,7 +134,7 @@ namespace Plugin {
         Core::hresult AddKeyListener(const string &keyListeners) override;
         Core::hresult RemoveKeyListener(const string &keyListeners) override;
         Core::hresult InjectKey(uint32_t keyCode, const string &modifiers) override;
-        Core::hresult GenerateKey(const string& keys, const string& client) override;
+        Core::hresult GenerateKey(const string& client, uint32_t &keyCode, const string &modifiers, uint32_t &duration) override;
         Core::hresult EnableInactivityReporting(const bool enable) override;;
         Core::hresult SetInactivityInterval(const uint32_t interval) override;
         Core::hresult ResetInactivityTime() override;
