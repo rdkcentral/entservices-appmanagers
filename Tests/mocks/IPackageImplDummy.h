@@ -64,6 +64,7 @@ namespace packagemanager
         ApplicationType appType;
         std::string appPath;
         std::string runtimePath;
+        std::string ralfPkgPath;
 
         std::string logFilePath;
         uint32_t logFileMaxSize;
