@@ -837,6 +837,7 @@ namespace Plugin {
         runtimeConfig.appPath = config.appPath;
         runtimeConfig.command = config.command;
         runtimeConfig.runtimePath = config.runtimePath;
+        runtimeConfig.ralfPkgPath = config.ralfPkgPath;
     }
 
     // copy values from libpackage
@@ -870,6 +871,7 @@ namespace Plugin {
         runtimeConfig.appPath = config.appPath;
         runtimeConfig.command = config.command;
         runtimeConfig.runtimePath = config.runtimePath;
+        runtimeConfig.ralfPkgPath = config.ralfPkgPath;
     }
 
     Core::hresult PackageManagerImplementation::Unlock(const string &packageId, const string &version)
