@@ -214,6 +214,7 @@ class PackageManagerImplementation
         Core::hresult LockRuntime(State &state, string &unpackedPath);
         Core::hresult LockPackage(const string &packageId, const string &version, const Exchange::IPackageHandler::LockReason &lockReason,
             uint32_t &lockId, string &unpackedPath, packagemanager::ConfigMetaData &config, packagemanager::NameValues &locks);
+        Core::hresult UnlockPackage(const string &packageId, const string &version);
 
         inline string GetInstalledVersion(const string& id) {
             for (auto const& [key, state] : mState) {

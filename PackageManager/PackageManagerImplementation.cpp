@@ -884,21 +884,23 @@ namespace Plugin {
         LOGDBG("id: %s ver: %s", packageId.c_str(), version.c_str());
         CHECK_CACHE()
 
-        std::lock_guard<std::recursive_mutex> lock(mtxState);
-        auto it = mState.find( { packageId, version } );
-        if (it != mState.end()) {
-            auto &state = it->second;
-            //#if defined(USE_LIBPACKAGE) || defined(UNIT_TEST)
-            if (state.mLockCount) {
-                LOGDBG("id: %s ver: %s lock count:%d state:%d", packageId.c_str(), version.c_str(),
-                    state.mLockCount, (int) state.installState);
-                if (--state.mLockCount == 0) {
-                    packagemanager::Result pmResult = packageImpl->Unlock(packageId, version);
-                    if (pmResult == packagemanager::SUCCESS) {
-                        LOGDBG("Unlock %s:%s Success", packageId.c_str(), version.c_str());
-                    } else {
-                        LOGDBG("Unlock %s:%s Failed", packageId.c_str(), version.c_str());
-                    }
+        //std::lock_guard<std::recursive_mutex> lock(mtxState);
+        //auto it = mState.find( { packageId, version } );
+        //if (it != mState.end()) {
+        //    auto &state = it->second;
+        //    //#if defined(USE_LIBPACKAGE) || defined(UNIT_TEST)
+        //    if (state.mLockCount) {
+        //        LOGDBG("id: %s ver: %s lock count:%d state:%d", packageId.c_str(), version.c_str(),
+        //            state.mLockCount, (int) state.installState);
+        //        if (--state.mLockCount == 0) {
+        //            packagemanager::Result pmResult = packageImpl->Unlock(packageId, version);
+        //            if (pmResult == packagemanager::SUCCESS) {
+        //                LOGDBG("Unlock %s:%s Success", packageId.c_str(), version.c_str());
+        //            } else {
+        //                LOGERR("Unlock %s:%s Failed", packageId.c_str(), version.c_str());
+        //            }
+
+        result = UnlockPackage(packageId, version);
 
                     string blockedVer = GetBlockedVersion(packageId);
                     LOGDBG("blockedVer: %s", blockedVer.c_str());
@@ -911,7 +913,7 @@ namespace Plugin {
                             auto blockedData = stateBlocked.blockedInstallData;
                             if (Install(packageId, blockedData.version, blockedData.keyValues, blockedData.fileLocator, stateBlocked) == Core::ERROR_NONE) {
                                 LOGDBG("Blocked package installed. id: %s ver: %s", packageId.c_str(), blockedVer.c_str());
-                                state.installState = InstallState::UNINSTALLED;
+// ???                               state.installState = InstallState::UNINSTALLED;
                             } else {
                                 LOGERR("Blocked package installtion failed id: %s ver: %s", packageId.c_str(), blockedVer.c_str());
                             }
@@ -924,17 +926,17 @@ namespace Plugin {
                             }
                         }
                     }
-                }
-            } else {
-                LOGERR("Never Locked (mLockCount is 0) id: %s ver: %s", packageId.c_str(), version.c_str());
-                result = Core::ERROR_GENERAL;
-            }
-            //#endif
-            LOGDBG("id: %s ver: %s lock count:%d", packageId.c_str(), version.c_str(), state.mLockCount);
-        } else {
-            LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
-            result = Core::ERROR_BAD_REQUEST;
-        }
+        //        }
+        //    } else {
+        //        LOGERR("Never Locked (mLockCount is 0) id: %s ver: %s", packageId.c_str(), version.c_str());
+        //        result = Core::ERROR_GENERAL;
+        //    }
+        //    //#endif
+        //    LOGDBG("id: %s ver: %s lock count:%d", packageId.c_str(), version.c_str(), state.mLockCount);
+        //} else {
+        //    LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
+        //    result = Core::ERROR_BAD_REQUEST;
+        //}
 
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
         if (Core::ERROR_NONE == result)
@@ -945,6 +947,41 @@ namespace Plugin {
                                                        PackageManagerImplementation::PackageFailureErrorCode::ERROR_NONE);
         }
 #endif /* ENABLE_AIMANAGERS_TELEMETRY_METRICS */
+
+        return result;
+    }
+
+    Core::hresult PackageManagerImplementation::UnlockPackage(const string &packageId, const string &version)
+    {
+        Core::hresult result = Core::ERROR_NONE;
+        std::lock_guard<std::recursive_mutex> lock(mtxState);
+        auto it = mState.find( { packageId, version } );
+        if (it != mState.end()) {
+            auto &state = it->second;
+            if (state.mLockCount) {
+                LOGDBG("id: %s ver: %s lock count:%d state:%d", packageId.c_str(), version.c_str(),
+                    state.mLockCount, (int) state.installState);
+                if (--state.mLockCount == 0) {
+                    packagemanager::Result pmResult = packageImpl->Unlock(packageId, version);
+                    if (pmResult == packagemanager::SUCCESS) {
+                        LOGDBG("Unlock %s:%s Success", packageId.c_str(), version.c_str());
+                    } else {
+                        LOGERR("Unlock %s:%s Failed", packageId.c_str(), version.c_str());
+                    }
+
+
+
+                }
+            } else {
+                LOGERR("Never Locked (mLockCount is 0) id: %s ver: %s", packageId.c_str(), version.c_str());
+                result = Core::ERROR_GENERAL;
+            }
+            LOGDBG("id: %s ver: %s lock count:%d", packageId.c_str(), version.c_str(), state.mLockCount);
+        } else {
+            LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
+            result = Core::ERROR_BAD_REQUEST;
+        }
+
 
         return result;
     }
