@@ -103,13 +103,6 @@ namespace Plugin
             ASSERT(mService == service);
             mService->Unregister(&mNotificationSink);
 
-<<<<<<< HEAD
-            if (mPackageHandler != nullptr) {
-                //Exchange::JPackageHandler::Unregister(*this);
-            }
-
-=======
->>>>>>> 63b99e7bba8e48af63e44b7ac0f3357ecf928d8f
             if (mPackageInstaller != nullptr) {
                 mPackageInstaller->Unregister(&mNotificationSink);
                 Exchange::JPackageInstaller::Unregister(*this);
