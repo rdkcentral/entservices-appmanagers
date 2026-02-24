@@ -58,6 +58,7 @@ endif(AIMANAGERS_TELEMETRY_METRICS_SUPPORT)
 
 target_include_directories(${MODULE_NAME} PRIVATE
     ../helpers
+    ../TelemetryMetrics
     ${CURL_INCLUDE_DIR}
     ${CMAKE_SYSROOT}${CMAKE_INSTALL_PREFIX}/include/${NAMESPACE}/interfaces
     )

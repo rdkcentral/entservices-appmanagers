@@ -74,7 +74,7 @@ add_library(${PLUGIN_IMPLEMENTATION} SHARED
     ${PLUGIN_APP_MANAGER_IMPLEMENTATION_SOURCES}
 )
 
-include_directories(../helpers)
+include_directories(../helpers ../TelemetryMetrics)
 
 set_target_properties(${PLUGIN_IMPLEMENTATION} PROPERTIES
         CXX_STANDARD 11

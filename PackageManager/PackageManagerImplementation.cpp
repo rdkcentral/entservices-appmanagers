@@ -225,7 +225,8 @@ namespace Plugin {
     }
 
     void PackageManagerImplementation::recordAndPublishTelemetryData(const std::string& marker, const std::string& appId,
-                                                                     time_t requestTime, PackageManagerImplementation::PackageFailureErrorCode errorCode)
+                                                                     time_t requestTime, PackageManagerImplementation::PackageFailureErrorCode errorCode,
+                                                                     const std::string& runtimeId, const std::string& runtimeVersion)
     {
         std::string telemetryMetrics = "";
         JsonObject jsonParam;
@@ -253,6 +254,8 @@ namespace Plugin {
 
                 if (marker == TELEMETRY_MARKER_LAUNCH_TIME) {
                     jsonParam["packageManagerLockTime"] = duration;
+                    jsonParam["runtimeId"] = runtimeId;
+                    jsonParam["runtimeVersion"] = runtimeVersion;
                     publish = false;
                 }
                 else if (marker == TELEMETRY_MARKER_CLOSE_TIME) {
@@ -760,6 +763,7 @@ namespace Plugin {
                         lock.packageId = nv.first;
                         lock.version = nv.second;
                         state.additionalLocks.emplace_back(lock);
+                        LOGDBG("additional lock packageId: %s version: %s", lock.packageId.c_str(), lock.version.c_str());
                     }
                     LOGDBG("Locked. id: %s ver: %s additionalLocks=%zu", packageId.c_str(), version.c_str(), state.additionalLocks.size());
                 } else {
@@ -777,7 +781,9 @@ namespace Plugin {
                 recordAndPublishTelemetryData(TELEMETRY_MARKER_LAUNCH_TIME,
                                                             packageId,
                                                             requestTime,
-                                                            PackageManagerImplementation::PackageFailureErrorCode::ERROR_NONE);
+                                                            PackageManagerImplementation::PackageFailureErrorCode::ERROR_NONE,
+                                                            state.additionalLocks.empty() ? "" : state.additionalLocks.front().packageId,
+                                                            state.additionalLocks.empty() ? "" : state.additionalLocks.front().version);
 #endif /* ENABLE_AIMANAGERS_TELEMETRY_METRICS */
 
             }
