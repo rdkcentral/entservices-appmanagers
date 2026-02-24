@@ -35,13 +35,13 @@ string(TOLOWER ${NAMESPACE} STORAGE_DIRECTORY)
 include(CmakeHelperFunctions)
 
 if(RDK_SERVICE_L2_TEST)
-    add_subdirectory(Tests/L2Tests)
+    add_subdirectory(Tests/mocks/L2Tests)
 endif()
 
 option(DISABLE_SECURITY_TOKEN "Disable security token" OFF)
 
 if(RDK_SERVICES_L1_TEST)
-    add_subdirectory(Tests/L1Tests)
+    add_subdirectory(Tests/mocks/L1Tests)
 endif()
 
 if(DISABLE_SECURITY_TOKEN)
