@@ -35,9 +35,8 @@
 #include "DownloadManagerHttpClient.h"
 
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-#define TELEMETRY_MARKER_DOWNLOAD_TIME                       "DownloadTime_split"
-#define TELEMETRY_MARKER_DOWNLOAD_ERROR                      "DownloadError_split"
 #include <interfaces/ITelemetryMetrics.h>
+#include "RDKAppMgrTelemetryMarkers.h"
 #endif
 
 #define DOWNLOAD_REASON_NONE    (0xFF)

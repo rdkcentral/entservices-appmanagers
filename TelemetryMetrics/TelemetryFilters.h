@@ -22,22 +22,7 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
-
-#define TELEMETRY_MARKER_DOWNLOAD_TIME                  "DownloadTime_split"
-#define TELEMETRY_MARKER_DOWNLOAD_ERROR               "DownloadError_split"
-#define TELEMETRY_MARKER_INSTALL_TIME                       "InstallTime_split"
-#define TELEMETRY_MARKER_INSTALL_ERROR                    "InstallError_split"
-#define TELEMETRY_MARKER_UNINSTALL_TIME                  "UninstallTime_split"
-#define TELEMETRY_MARKER_UNINSTALL_ERROR               "UninstallError_split"
-#define TELEMETRY_MARKER_LAUNCH_TIME                       "OverallLaunchTime_split"
-#define TELEMETRY_MARKER_LAUNCH_ERROR                    "AppLaunchError_split"
-#define TELEMETRY_MARKER_CLOSE_TIME                         "AppCloseTime_split"
-#define TELEMETRY_MARKER_CLOSE_ERROR                      "AppCloseError_split"
-#define TELEMETRY_MARKER_SUSPEND_TIME                     "SuspendTime_split"
-#define TELEMETRY_MARKER_RESUME_TIME                      "ResumeTime_split"
-#define TELEMETRY_MARKER_HIBERNATE_TIME                 "HibernateTime_split"
-#define TELEMETRY_MARKER_WAKE_TIME                          "WakeTime_split"
-#define TELEMETRY_MARKER_APP_CRASHED                      "AppCrashed_split"
+#include "RDKAppMgrTelemetryMarkers.h"
 
 
 static const std::unordered_map<std::string, std::unordered_set<std::string>> markerFilters = {

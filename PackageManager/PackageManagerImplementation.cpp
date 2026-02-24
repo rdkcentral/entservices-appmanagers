@@ -226,7 +226,8 @@ namespace Plugin {
     }
 
     void PackageManagerImplementation::recordAndPublishTelemetryData(const std::string& marker, const std::string& appId,
-                                                                     time_t requestTime, PackageManagerImplementation::PackageFailureErrorCode errorCode)
+                                                                     time_t requestTime, PackageManagerImplementation::PackageFailureErrorCode errorCode,
+                                                                     const std::string& runtimeId, const std::string& runtimeVersion)
     {
         std::string telemetryMetrics = "";
         JsonObject jsonParam;
@@ -254,6 +255,8 @@ namespace Plugin {
 
                 if (marker == TELEMETRY_MARKER_LAUNCH_TIME) {
                     jsonParam["packageManagerLockTime"] = duration;
+                    jsonParam["runtimeId"] = runtimeId;
+                    jsonParam["runtimeVersion"] = runtimeVersion;
                     publish = false;
                 }
                 else if (marker == TELEMETRY_MARKER_CLOSE_TIME) {
@@ -775,7 +778,9 @@ namespace Plugin {
                 recordAndPublishTelemetryData(TELEMETRY_MARKER_LAUNCH_TIME,
                                                             packageId,
                                                             requestTime,
-                                                            PackageManagerImplementation::PackageFailureErrorCode::ERROR_NONE);
+                                                            PackageManagerImplementation::PackageFailureErrorCode::ERROR_NONE,
+                                                            rtPackageId.empty() ? "" : rtPackageId,
+                                                            rtVersion.empty() ? "" : rtVersion);
                 #endif /* ENABLE_AIMANAGERS_TELEMETRY_METRICS */
 
                 LOGDBG("Locked. id: %s ver: %s additionalLocks=%zu", packageId.c_str(), version.c_str(), state.additionalLocks.size());

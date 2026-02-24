@@ -60,7 +60,8 @@ add_library(${PLUGIN_IMPLEMENTATION} SHARED
     DownloadManagerHttpClient.cpp)
 
 include_directories(
-   ../helpers)
+   ../helpers
+   ../TelemetryMetrics)
 
 set_target_properties(${PLUGIN_IMPLEMENTATION} PROPERTIES
         CXX_STANDARD 11
