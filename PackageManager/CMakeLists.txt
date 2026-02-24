@@ -76,7 +76,7 @@ if(RDK_SERVICES_L1_TEST)
     endif()
     target_include_directories(${MODULE_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/Tests/mocks)
     target_include_directories(${MODULE_NAME} PUBLIC ${JSONCPP_INCLUDE_DIR})
-    target_link_libraries(${MODULE_NAME} PUBLIC ${JSONCPP_LIBRARY}
+    target_link_libraries(${MODULE_NAME} PUBLIC ${JSONCPP_LIBRARY})
 endif()
 
 option(ENABLE_UNIT_TESTS "Enable unit tests" OFF)
