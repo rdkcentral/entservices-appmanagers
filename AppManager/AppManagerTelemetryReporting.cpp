@@ -170,15 +170,6 @@ namespace Plugin
                     {
                         jsonParam["totalLaunchTime"] = (int)(currentTime - it->second.currentActionTime);
                         jsonParam["launchType"] = ((AppManagerImplementation::APPLICATION_TYPE_INTERACTIVE == it->second.packageInfo.type)?"LAUNCH_INTERACTIVE":"START_SYSTEM");
-                        // Add runtime information
-                        if (!it->second.packageInfo.configMetadata.runtimePath.empty())
-                        {
-                            jsonParam["runtimeId"] = it->second.packageInfo.configMetadata.runtimePath;
-                        }
-                        if (!it->second.packageInfo.configMetadata.runtimePath.empty())
-                        {
-                            jsonParam["runtimeVersion"] = it->second.packageInfo.configMetadata.runtimePath;
-                        }
                         markerName = TELEMETRY_MARKER_LAUNCH_TIME;
                     }
                 break;

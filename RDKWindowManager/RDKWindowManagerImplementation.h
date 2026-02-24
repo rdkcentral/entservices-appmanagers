@@ -34,8 +34,7 @@
 
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
 #include <interfaces/ITelemetryMetrics.h>
-#define TELEMETRY_MARKER_LAUNCH_TIME                         "OverallLaunchTime_split"
-#define TELEMETRY_MARKER_CLOSE_TIME                          "AppCloseTime_split"
+#include "RDKAppMgrTelemetryMarkers.h"
 #endif
 
 namespace WPEFramework {

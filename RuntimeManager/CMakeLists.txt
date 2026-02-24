@@ -106,7 +106,7 @@ if(RDK_APPMANAGERS_DEBUG)
     add_subdirectory(Gateway)
 endif()
 
-include_directories(../helpers)
+include_directories(../helpers ../TelemetryMetrics)
 
 set_target_properties(${PLUGIN_IMPLEMENTATION} PROPERTIES
         CXX_STANDARD 11

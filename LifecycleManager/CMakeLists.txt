@@ -77,7 +77,7 @@ endif()
 install(TARGETS ${MODULE_NAME}
     DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/${STORAGE_DIRECTORY}/plugins)
 
-include_directories(../helpers)
+include_directories(../helpers ../TelemetryMetrics)
 
 set(LIFECYCLE_MANAGER_INCLUDES $ENV{LIFECYCLE_MANAGER_INCLUDES})
 separate_arguments(LIFECYCLE_MANAGER_INCLUDES)
