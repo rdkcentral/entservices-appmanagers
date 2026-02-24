@@ -798,6 +798,22 @@ Core::hresult AppManagerImplementation::packageLock(const string& appId, Package
                     status = mPackageManagerHandlerObject->Lock(appId, packageData.version, lockReason, packageData.lockId, packageData.unpackedPath, packageData.configMetadata, appMetadata);
                     if (status == Core::ERROR_NONE)
                     {
+                        //populate AppMetadata
+                        JsonArray appMetadataArray;
+                        if (appMetadata != nullptr)
+                        {
+                            Exchange::IPackageHandler::AdditionalLock additionalLock;
+                            while (appMetadata->Next(additionalLock))
+                            {
+                                JsonObject lockEntry;
+                                lockEntry["packageId"] = additionalLock.packageId;
+                                lockEntry["version"] = additionalLock.version;
+                                appMetadataArray.Add(lockEntry);
+                            }
+                            appMetadata->Release();
+                            appMetadata = nullptr;
+                        }
+                        appMetadataArray.ToString(packageData.appMetadata);
                         LOGINFO("Fetching package entry updated for appId: %s version: %s lockId: %d unpackedPath: %s appMetadata: %s",
                                  appId.c_str(), packageData.version.c_str(), packageData.lockId, packageData.unpackedPath.c_str(), packageData.appMetadata.c_str());
                         result = createOrUpdatePackageInfoByAppId(appId, packageData);
