@@ -383,7 +383,7 @@ testIntercept1()
     expectedResult='null'
     testAPI "injectKeyAfterAddKeyIntercept" "$inputParams" "$expectedResult"
 
-    inputParams='{"jsonrpc":"2.0","id":"3","method": "org.rdk.RDKWindowManager.removeKeyIntercept", "params":{"intercept":"{\"keyCode\":65,\"modifiers\": [\"shift\"],\"client\":\"googletestapp\"}"}}'
+    inputParams='{"jsonrpc":"2.0","id":"3","method": "org.rdk.RDKWindowManager.removeKeyIntercept", "params":{"client":"googletestapp", "keyCode":65, "modifiers":"[\"shift\"]"}}'
     expectedResult='null'
     testAPI "removeKeyIntercept" "$inputParams" "$expectedResult"
 
@@ -412,7 +412,7 @@ testIntercept2()
 
     sleep 25s
 
-    inputParams='{"jsonrpc":"2.0","id":"3","method": "org.rdk.RDKWindowManager.removeKeyIntercept", "params":{"intercept":"{\"keyCode\":66,\"modifiers\": [\"shift\"],\"client\":\"googletestapp\"}"}}'
+    inputParams='{"jsonrpc":"2.0","id":"3","method": "org.rdk.RDKWindowManager.removeKeyIntercept", "params":{"client":"googletestapp", "keyCode":66, "modifiers":"[\"shift\"]"}}'
     expectedResult='null'
     testAPI "removeKeyIntercept" "$inputParams" "$expectedResult"
 
@@ -455,7 +455,7 @@ testIntercept3()
         sleep 2s
     done
 
-    inputParams='{"jsonrpc":"2.0","id":"3","method": "org.rdk.RDKWindowManager.removeKeyIntercept", "params":{"intercept":"{\"keyCode\":67,\"modifiers\": [\"shift\"],\"client\":\"westerostest\"}"}}'
+    inputParams='{"jsonrpc":"2.0","id":"3","method": "org.rdk.RDKWindowManager.removeKeyIntercept", "params":{"client":"westerostest", "keyCode":67, "modifiers":"[\"shift\"]"}}'
     expectedResult='null'
     testAPI "removeKeyIntercept" "$inputParams" "$expectedResult"
 
@@ -496,7 +496,7 @@ testIntercept4()
 
     sleep $testAppTimeOut
 
-    inputParams='{"jsonrpc":"2.0","id":"3","method": "org.rdk.RDKWindowManager.removeKeyIntercept", "params":{"intercept":"{\"keyCode\":67,\"modifiers\": [\"shift\"],\"client\":\"westerostest\"}"}}'
+    inputParams='{"jsonrpc":"2.0","id":"3","method": "org.rdk.RDKWindowManager.removeKeyIntercept", "params":{"client":"westerostest", "keyCode":67, "modifiers":"[\"shift\"]"}}'
     expectedResult='null'
     testAPI "removeKeyIntercept" "$inputParams" "$expectedResult"
 
@@ -575,7 +575,7 @@ testIntercepts()
 
     sleep $testAppTimeOut
 
-    inputParams='{"jsonrpc":"2.0","id":"3","method": "org.rdk.RDKWindowManager.removeKeyIntercept", "params":{"intercept":"{\"keyCode\":79,\"modifiers\": [],\"client\":\"westerostest\"}"}}'
+    inputParams='{"jsonrpc":"2.0","id":"3","method": "org.rdk.RDKWindowManager.removeKeyIntercept", "params":{"client":"westerostest", "keyCode":79, "modifiers":"[]"}}'
     expectedResult='null'
     testAPI "removeKeyIntercept" "$inputParams" "$expectedResult"
 
