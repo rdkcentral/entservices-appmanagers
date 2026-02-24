@@ -719,14 +719,12 @@ namespace Plugin {
     }
 
     // IPackageHandler methods
-    Core::hresult PackageManagerImplementation::Lock(const string &packageId, const string &version,
-        const Exchange::IPackageHandler::LockReason &lockReason,
-        uint32_t &lockId, string &unpackedPath, Exchange::RuntimeConfig& runtimeConfig,
-        Exchange::IPackageHandler::ILockIterator*& appMetadata
+    Core::hresult PackageManagerImplementation::Lock(
+        const string &packageId, const string &version, const Exchange::IPackageHandler::LockReason &lockReason,
+        uint32_t &lockId, string &unpackedPath, Exchange::RuntimeConfig& runtimeConfig, Exchange::IPackageHandler::ILockIterator*& appMetadata
         )
     {
         Core::hresult result = Core::ERROR_NONE;
-
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
         /* Get current timestamp at the start of Lock for telemetry */
         time_t requestTime = getCurrentTimestamp();
@@ -736,105 +734,89 @@ namespace Plugin {
         CHECK_CACHE()
 
         std::lock_guard<std::recursive_mutex> lock(mtxState);
+        packagemanager::ConfigMetaData config;
+        packagemanager::NameValues locks;
+        result = LockPackage(packageId, version, lockReason, lockId, unpackedPath, config, locks);
+        if (result == packagemanager::SUCCESS) {
+            // Lock Runtime
+            auto it = mState.find( { packageId, version } );
+            if (it != mState.end()) {
+                auto &state = it->second;
+                state.additionalLocks.clear();
+                const string &packageId = state.runtimeApp.first;
+                const string &version = state.runtimeApp.second;
+                LOGDBG("Locking runtime %s:%s", state.runtimeApp.first.c_str(), state.runtimeApp.second.c_str() );
+
+                uint32_t lockId = 0;
+                string unpackedPath;
+                result = LockPackage(packageId, version, lockReason, lockId, unpackedPath, config, locks);
+                if (result == packagemanager::SUCCESS) {
+                    Exchange::IPackageHandler::AdditionalLock lock;
+                    lock.packageId = packageId;
+                    lock.version  = version;
+                    state.additionalLocks.emplace_back(lock);
+                }
+                LOGDBG("Locked. id: %s ver: %s additionalLocks=%zu", packageId.c_str(), version.c_str(), state.additionalLocks.size());
+
+                #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
+                recordAndPublishTelemetryData(TELEMETRY_MARKER_LAUNCH_TIME,
+                                                            packageId,
+                                                            requestTime,
+                                                            PackageManagerImplementation::PackageFailureErrorCode::ERROR_NONE);
+                #endif /* ENABLE_AIMANAGERS_TELEMETRY_METRICS */
+
+                getRuntimeConfig(state.runtimeConfig, runtimeConfig);
+                unpackedPath = state.unpackedPath;
+                appMetadata = Core::Service<RPC::IteratorType<Exchange::IPackageHandler::ILockIterator>>::Create<Exchange::IPackageHandler::ILockIterator>(state.additionalLocks);
+                LOGDBG("id: %s ver: %s lock count:%d", packageId.c_str(), version.c_str(), state.mLockCount);
+                LOGDBG("%s:%s runtimePath: %s", packageId.c_str(), version.c_str(), state.runtimeConfig.runtimePath.c_str());
+            } else {
+                LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());    // This should never happen
+            }
+        }
+
+        LOGDBG("result: %" PRIu32, result);
+        return result;
+    }
+
+    Core::hresult PackageManagerImplementation::LockPackage(
+        const string &packageId, const string &version, const Exchange::IPackageHandler::LockReason &lockReason,
+        uint32_t &lockId, string &unpackedPath, packagemanager::ConfigMetaData &config, packagemanager::NameValues &locks
+        )
+    {
+        Core::hresult result = Core::ERROR_NONE;
+
+        std::lock_guard<std::recursive_mutex> lock(mtxState);
         auto it = mState.find( { packageId, version } );
         if (it != mState.end()) {
             auto &state = it->second;
-            //#if defined(USE_LIBPACKAGE) || defined(UNIT_TEST)
- 	        string gatewayMetadataPath;
             bool locked = (state.mLockCount > 0);
             LOGDBG("id: %s ver: %s locked: %d runtimeType: '%s'", packageId.c_str(), version.c_str(), locked, state.runtimeType.c_str());
             if (locked)  {
                 lockId = ++state.mLockCount;
             } else {
-                packagemanager::ConfigMetaData config;
-                packagemanager::NameValues locks;
                 packagemanager::Result pmResult = packageImpl->Lock(packageId, version, state.unpackedPath, config, locks);
                 LOGDBG("unpackedPath: %s PackageImpl::Lock result: %d", unpackedPath.c_str(), pmResult);
                 // save the new config in state
                 getRuntimeConfig(config, state.runtimeConfig);   // XXX: Is config unnecessary in Lock ?!
                 if (pmResult == packagemanager::SUCCESS) {
                     lockId = ++state.mLockCount;
-
-                    state.additionalLocks.clear();
-                    #if 1
-                        // when using libpackage-RALF
-                        LockRuntime(state, state.runtimeConfig.runtimePath);
-                    #else
-                    for (packagemanager::NameValue nv : locks) {
-                        Exchange::IPackageHandler::AdditionalLock lock;
-                        lock.packageId = nv.first;
-                        lock.version = nv.second;
-                        state.additionalLocks.emplace_back(lock);
-                    }
-                    #endif
+                    //state.additionalLocks.clear();
+                    //LockRuntime(state, state.runtimeConfig.runtimePath);
                     LOGDBG("Locked. id: %s ver: %s additionalLocks=%zu", packageId.c_str(), version.c_str(), state.additionalLocks.size());
                 } else {
                     LOGERR("Lock Failed id: %s ver: %s", packageId.c_str(), version.c_str());
                     result = Core::ERROR_GENERAL;
                 }
             }
-            LOGDBG("%s:%s runtimePath: %s", packageId.c_str(), version.c_str(), state.runtimeConfig.runtimePath.c_str());
-
-            if (result == Core::ERROR_NONE) {
-                getRuntimeConfig(state.runtimeConfig, runtimeConfig);
-                unpackedPath = state.unpackedPath;
-                appMetadata = Core::Service<RPC::IteratorType<Exchange::IPackageHandler::ILockIterator>>::Create<Exchange::IPackageHandler::ILockIterator>(state.additionalLocks);
-
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-                recordAndPublishTelemetryData(TELEMETRY_MARKER_LAUNCH_TIME,
-                                                            packageId,
-                                                            requestTime,
-                                                            PackageManagerImplementation::PackageFailureErrorCode::ERROR_NONE);
-#endif /* ENABLE_AIMANAGERS_TELEMETRY_METRICS */
-
-            }
-            //#endif
-
-            LOGDBG("id: %s ver: %s lock count:%d", packageId.c_str(), version.c_str(), state.mLockCount);
-            LOGDBG("%s:%s runtimePath: %s", packageId.c_str(), version.c_str(), state.runtimeConfig.runtimePath.c_str());
-
         } else {
             LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
             result = Core::ERROR_BAD_REQUEST;
         }
+
         LOGDBG("result: %" PRIu32, result);
         return result;
     }
-
-
-    Core::hresult PackageManagerImplementation::LockRuntime(State &state, string &runtimePath)
-    {
-        Core::hresult result = Core::ERROR_NONE;
-        const string &packageId = state.runtimeApp.first;
-        const string &version = state.runtimeApp.second;
-        if (!state.runtimeApp.first.empty() && !state.runtimeApp.second.empty()) {
-            LOGDBG("Locking runtime %s:%s", state.runtimeApp.first.c_str(), state.runtimeApp.second.c_str() );
-            packagemanager::ConfigMetaData config;
-            packagemanager::NameValues locks;
-            packagemanager::Result pmResult = packageImpl->Lock(packageId, version, runtimePath, config, locks);
-
-            if (pmResult == packagemanager::Result::SUCCESS) {
-                runtimePath = config.appPath;   // XXX: ugly must fix
-                state.runtimeConfig.command = config.command;
-                LOGDBG("Locked runtime %s:%s path: %s command: %s", packageId.c_str(), version.c_str(), runtimePath.c_str(), config.command.c_str() );
-            } else {
-                LOGERR("Failed to lock runtime %s:%s", packageId.c_str(), version.c_str());
-            }
-
-            // XXX: refactor and call Lock() recursively
-            //result = Lock(packageId, version);
-
-            Exchange::IPackageHandler::AdditionalLock lock;
-            lock.packageId = packageId;
-            lock.version  = version;
-            state.additionalLocks.emplace_back(lock);
-        } else {
-            LOGWARN("No Runtime for %s:%s runtimeType: '%s'", packageId.c_str(), version.c_str(), state.runtimeType.c_str());
-        }
-        return result;
-    }
-
-
 
     // XXX: right way to do this is via copy ctor, when we move to Thunder 5.2 and have common struct RuntimeConfig
     void PackageManagerImplementation::getRuntimeConfig(const Exchange::RuntimeConfig &config, Exchange::RuntimeConfig &runtimeConfig)

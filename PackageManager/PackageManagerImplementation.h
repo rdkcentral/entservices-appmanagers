@@ -61,12 +61,12 @@ namespace Plugin {
     typedef Exchange::IPackageInstaller::InstallState InstallState;
     typedef Exchange::IPackageInstaller::FailReason FailReason;
 
-    class PackageManagerImplementation
+class PackageManagerImplementation
     : public Exchange::IPackageDownloader
     , public Exchange::IPackageInstaller
     , public Exchange::IPackageHandler
-    {
-        private:
+{
+    private:
         class State {
             class BlockedInstallData {
                 public:
@@ -81,7 +81,6 @@ namespace Plugin {
             //    PackageManagerImplementation::getRuntimeConfig(config, runtimeConfig);
             //}
             InstallState installState = InstallState::UNINSTALLED;
-            bool preInsalled = false;
             uint32_t mLockCount = 0;
             Exchange::RuntimeConfig runtimeConfig;
             string gatewayMetadataPath;
@@ -203,12 +202,6 @@ namespace Plugin {
         Core::hresult GetLockedInfo(const string &packageId, const string &version, string &unpackedPath, Exchange::RuntimeConfig& configMetadata,
             string& gatewayMetadataPath, bool &locked) override;
 
-        // internal methods
-        void getRuntimeConfig(const packagemanager::ConfigMetaData &config, Exchange::RuntimeConfig &runtimeConfig);
-        void getRuntimeConfig(const Exchange::RuntimeConfig &config, Exchange::RuntimeConfig &runtimeConfig);
-        Core::hresult LockRuntime(State &state, string &unpackedPath);
-
-
         BEGIN_INTERFACE_MAP(PackageManagerImplementation)
             INTERFACE_ENTRY(Exchange::IPackageDownloader)
             INTERFACE_ENTRY(Exchange::IPackageInstaller)
@@ -216,6 +209,12 @@ namespace Plugin {
         END_INTERFACE_MAP
 
     private:
+        void getRuntimeConfig(const packagemanager::ConfigMetaData &config, Exchange::RuntimeConfig &runtimeConfig);
+        void getRuntimeConfig(const Exchange::RuntimeConfig &config, Exchange::RuntimeConfig &runtimeConfig);
+        Core::hresult LockRuntime(State &state, string &unpackedPath);
+        Core::hresult LockPackage(const string &packageId, const string &version, const Exchange::IPackageHandler::LockReason &lockReason,
+            uint32_t &lockId, string &unpackedPath, packagemanager::ConfigMetaData &config, packagemanager::NameValues &locks);
+
         inline string GetInstalledVersion(const string& id) {
             for (auto const& [key, state] : mState) {
                 if ((id.compare(key.first) == 0) &&
@@ -290,7 +289,6 @@ namespace Plugin {
     void recordAndPublishTelemetryData(const std::string& marker, const std::string& appId, time_t requestTime, PackageManagerImplementation::PackageFailureErrorCode errorCode);
     time_t getCurrentTimestamp();
 #endif /* ENABLE_AIMANAGERS_TELEMETRY_METRICS */
-
 
     private:
         mutable Core::CriticalSection mAdminLock;
