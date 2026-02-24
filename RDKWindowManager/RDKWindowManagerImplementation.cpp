@@ -1084,37 +1084,31 @@ Core::hresult RDKWindowManagerImplementation::InjectKey(uint32_t keyCode, const 
  * @keys[in] keys:keyCode,modifiers,delay , @client[in] for the client
  * @return ERROR_NONE if success , ERROR_GENERAL if failure.
  */
-Core::hresult RDKWindowManagerImplementation::GenerateKey(const string& keys, const string& client)
+Core::hresult RDKWindowManagerImplementation::GenerateKey(const string& client, uint32_t &keyCode, const string &modifiers, uint32_t &duration)
 {
     Core::hresult status = Core::ERROR_GENERAL;
     JsonObject parameters;
+    
+	LOGINFO("keys :%s", keys.c_str());
+	parameters.FromString(keys);
+	if (!parameters.HasLabel("keys"))
+	{
+		LOGERR("please specify keyInputs");
+	}
+	else
+	{
+		const JsonArray keyInputs = parameters["keys"].Array();
 
-    if (keys.empty())
-    {
-        LOGERR("keys is empty");
-    }
-    else
-    {
-        LOGINFO("keys :%s", keys.c_str());
-        parameters.FromString(keys);
-        if (!parameters.HasLabel("keys"))
-        {
-            LOGERR("please specify keyInputs");
-        }
-        else
-        {
-            const JsonArray keyInputs = parameters["keys"].Array();
-
-            if (false == generateKey(client, keyInputs))
-            {
-                LOGERR("failed to generate keys");
-            }
-            else
-            {
-                status = Core::ERROR_NONE;
-            }
-        }
-    }
+		if (false == generateKey(client, keyInputs))
+		{
+			LOGERR("failed to generate keys");
+		}
+		else
+		{
+			status = Core::ERROR_NONE;
+		}
+	}
+   
     return status;
 }
 
