@@ -1087,26 +1087,55 @@ Core::hresult RDKWindowManagerImplementation::InjectKey(uint32_t keyCode, const 
 Core::hresult RDKWindowManagerImplementation::GenerateKey(const string& client, uint32_t &keyCode, const string &modifiers, uint32_t &duration)
 {
     Core::hresult status = Core::ERROR_GENERAL;
-    JsonObject parameters;
+    JsonArray modifiersJsonArray;
+	uint32_t flags = 0;
     
-	LOGINFO("keys :%s", keys.c_str());
-	parameters.FromString(keys);
-	if (!parameters.HasLabel("keys"))
+	LOGINFO("client :%s  modifiers :%s", client.c_str(), modifiers.c_str());
+	if (client.empty())
 	{
-		LOGERR("please specify keyInputs");
+		LOGERR("please specify clientId");
+	}
+	else if (modifiers.empty())
+	{
+		LOGERR("please specify modifiers");		
 	}
 	else
 	{
-		const JsonArray keyInputs = parameters["keys"].Array();
-
-		if (false == generateKey(client, keyInputs))
+		if (!modifiersJsonArray.FromString(modifiers))
 		{
-			LOGERR("failed to generate keys");
+			LOGERR("failed to parse modifiers JSON string: '%s'", modifiers.c_str());
 		}
 		else
 		{
-			status = Core::ERROR_NONE;
+			for (unsigned int k=0; k<modifiersJsonArray.Length(); k++) 
+			{
+                flags |= getKeyFlag(modifiersJsonArray[k].String());
+            }
 		}
+		if(duration)
+		{
+			sleep(duration);
+		}
+		lockAcquired = lockRdkWindowManagerMutex();
+		if (lockAcquired)
+		{
+			bool targetFound = false;
+			if (client != "")
+			{
+				std::vector<std::string> clientList;
+				RdkWindowManager::CompositorController::getClients(clientList);
+				if (std::find(clientList.begin(), clientList.end(), client) != clientList.end())
+				{
+					targetFound = true;
+				}				
+			}
+			if (targetFound || client == "")
+			{
+				ret = RdkWindowManager::CompositorController::generateKey(client, keyCode, flags, "");
+			}
+			gRdkWindowManagerMutex.unlock();
+		}
+		
 	}
    
     return status;
