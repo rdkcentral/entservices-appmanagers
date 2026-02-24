@@ -130,7 +130,7 @@ namespace Plugin {
         Core::hresult GetApps(string &appsIds) const override;
         Core::hresult AddKeyIntercept(const string &intercept) override;
         Core::hresult AddKeyIntercepts(const string &intercepts) override;
-        Core::hresult RemoveKeyIntercept(const string &intercept) override;
+        Core::hresult RemoveKeyIntercept(const string &clientId, uint32_t keyCode, const string &modifiers) override;
         Core::hresult AddKeyListener(const string &keyListeners) override;
         Core::hresult RemoveKeyListener(const string &keyListeners) override;
         Core::hresult InjectKey(uint32_t keyCode, const string &modifiers) override;
