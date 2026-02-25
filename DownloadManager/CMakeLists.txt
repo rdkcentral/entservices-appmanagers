@@ -60,8 +60,11 @@ add_library(${PLUGIN_IMPLEMENTATION} SHARED
     DownloadManagerHttpClient.cpp)
 
 include_directories(
-   ../helpers
-   ../TelemetryMetrics)
+   ../helpers)
+
+if(AIMANAGERS_TELEMETRY_METRICS_SUPPORT)
+    include_directories(../TelemetryMetrics)
+endif(AIMANAGERS_TELEMETRY_METRICS_SUPPORT)
 
 set_target_properties(${PLUGIN_IMPLEMENTATION} PROPERTIES
         CXX_STANDARD 11
