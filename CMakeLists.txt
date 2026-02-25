@@ -41,6 +41,7 @@ endif()
 option(DISABLE_SECURITY_TOKEN "Disable security token" OFF)
 
 if(RDK_SERVICES_L1_TEST)
+    message(STATUS ">>> L1Tests subdirectory is being added <<<")
     add_subdirectory(Tests/L1Tests)
 endif()
 
