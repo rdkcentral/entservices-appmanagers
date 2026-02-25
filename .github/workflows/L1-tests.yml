@@ -570,6 +570,10 @@ jobs:
           echo "Listing install/usr/bin"
           ls -la $GITHUB_WORKSPACE/install/usr/bin
 
+      - name: Print workspace
+        run: |
+          echo "GITHUB_WORKSPACE = $GITHUB_WORKSPACE"
+          ls -la $GITHUB_WORKSPACE
       - name: Run unit tests without valgrind
         run: >
           PATH=$GITHUB_WORKSPACE/install/usr/bin:${PATH}
