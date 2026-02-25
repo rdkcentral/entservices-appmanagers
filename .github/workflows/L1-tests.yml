@@ -234,7 +234,7 @@ jobs:
       - name: Generate external headers
         # Empty headers to mute errors
         run: >
-          cd "$GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/Tests/"
+          cd "$GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework"
           &&
           mkdir -p
           headers
