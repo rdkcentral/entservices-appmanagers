@@ -215,6 +215,7 @@ class PackageManagerImplementation
         Core::hresult LockPackage(const string &packageId, const string &version, const Exchange::IPackageHandler::LockReason &lockReason,
             uint32_t &lockId, string &unpackedPath, packagemanager::ConfigMetaData &config, packagemanager::NameValues &locks);
         Core::hresult UnlockPackage(const string &packageId, const string &version);
+        Core::hresult processBlockedPackage(const string &packageId);
 
         inline string GetInstalledVersion(const string& id) {
             for (auto const& [key, state] : mState) {
@@ -284,7 +285,7 @@ class PackageManagerImplementation
         }
     Core::hresult createStorageManagerObject();
     void releaseStorageManagerObject();
-    void findRuntime(packagemanager::ConfigMetadataArray& aConfigMetadata);
+    void populateRuntime(packagemanager::ConfigMetadataArray& aConfigMetadata);
 
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
     void recordAndPublishTelemetryData(const std::string& marker, const std::string& appId, time_t requestTime, PackageManagerImplementation::PackageFailureErrorCode errorCode);
