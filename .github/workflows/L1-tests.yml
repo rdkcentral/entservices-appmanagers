@@ -477,7 +477,7 @@ jobs:
           cmake --build build/entservices-appmanagers -j8
           &&
           cmake --install build/entservices-appmanagers
-          echo "Install exit code: $?"
+    
       - name: Set up files
         run: >
           sudo mkdir -p -m 777
