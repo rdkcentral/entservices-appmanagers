@@ -341,7 +341,7 @@ jobs:
       - name: Build mocks
         run: >
           cmake
-          -S "$GITHUB_WORKSPACE/Tests/testframework/mocks"
+          -S "$GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks"
           -B build/mocks
           -DBUILD_SHARED_LIBS=ON
           -DRDK_SERVICES_L1_TEST=ON
@@ -357,45 +357,33 @@ jobs:
           -DTHUNDER_VERSION_MAJOR=4
           -DTHUNDER_VERSION_MINOR=4
           -DRDK_SERVICES_L1_TEST
-          -I $GITHUB_WORKSPACE/Tests/testframework/headers
-          -I $GITHUB_WORKSPACE/Tests/testframework/headers/audiocapturemgr
-          -I $GITHUB_WORKSPACE/Tests/testframework/headers/rdk/ds
-          -I $GITHUB_WORKSPACE/Tests/testframework/headers/rdk/iarmbus
-          -I $GITHUB_WORKSPACE/Tests/testframework/headers/rdk/iarmmgrs-hal
-          -I $GITHUB_WORKSPACE/Tests/testframework/headers/ccec/drivers
-          -I $GITHUB_WORKSPACE/Tests/testframework/headers/network
-          -I $GITHUB_WORKSPACE/Tests/testframework
-          -I $GITHUB_WORKSPACE/helpers
+          -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/headers
+          -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/headers/audiocapturemgr
+          -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/headers/rdk/ds
+          -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/headers/rdk/iarmbus
+          -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/headers/rdk/iarmmgrs-hal
+          -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/headers/ccec/drivers
+          -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/headers/network
+          -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework
+          -I $GITHUB_WORKSPACE/entservices-appmanagers/helpers
           -I $GITHUB_WORKSPACE/Thunder/Source
           -I $GITHUB_WORKSPACE/Thunder/Source/core
           -I $GITHUB_WORKSPACE/install/usr/include
           -I ./usr/include/libdrm
-          -include $GITHUB_WORKSPACE/Tests/testframework/mocks/devicesettings.h
-          -include $GITHUB_WORKSPACE/Tests/testframework/mocks/Iarm.h
-          -include $GITHUB_WORKSPACE/Tests/testframework/mocks/Rfc.h
-          -include $GITHUB_WORKSPACE/Tests/testframework/mocks/RBus.h
-          -include $GITHUB_WORKSPACE/Tests/testframework/mocks/Telemetry.h
-          -include $GITHUB_WORKSPACE/Tests/testframework/mocks/Udev.h
-          -include $GITHUB_WORKSPACE/Tests/testframework/mocks/maintenanceMGR.h
-          -include $GITHUB_WORKSPACE/Tests/testframework/mocks/pkg.h
-          -include $GITHUB_WORKSPACE/Tests/testframework/mocks/secure_wrappermock.h
-          -include $GITHUB_WORKSPACE/Tests/testframework/mocks/wpa_ctrl_mock.h
-          -include $GITHUB_WORKSPACE/Tests/testframework/mocks/readprocMockInterface.h
-          -include $GITHUB_WORKSPACE/Tests/testframework/mocks/gdialservice.h
+          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/devicesettings.h
+          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/Iarm.h
+          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/Rfc.h
+          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/RBus.h
+          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/Telemetry.h
+          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/Udev.h
+          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/maintenanceMGR.h
+          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/pkg.h
+          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/secure_wrappermock.h
+          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/wpa_ctrl_mock.h
+          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/readprocMockInterface.h
+          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/gdialservice.h
           --coverage
-          -Wall -Wno-unused-result -Wno-deprecated-declarations -Wno-error=format=
-          -Wl,-wrap,system -Wl,-wrap,popen -Wl,-wrap,syslog -Wl,-wrap,v_secure_system -Wl,-wrap,v_secure_popen -Wl,-wrap,v_secure_pclose -Wl,-wrap,unlink -Wl,-wrap,v_secure_system -Wl,-wrap,pclose -Wl,-wrap,setmntent -Wl,-wrap,getmntent
-          -DENABLE_TELEMETRY_LOGGING
-          -DUSE_IARMBUS
-          -DENABLE_SYSTEM_GET_STORE_DEMO_LINK
-          -DENABLE_DEEP_SLEEP
-          -DENABLE_SET_WAKEUP_SRC_CONFIG
-          -DENABLE_THERMAL_PROTECTION
-          -DUSE_DRM_SCREENCAPTURE
-          -DHAS_API_SYSTEM
-          -DHAS_API_POWERSTATE
-          -DHAS_RBUS
-          -DENABLE_DEVICE_MANUFACTURER_INFO"
+          -Wall"
           &&
           cmake --build build/mocks -j8
           &&
