@@ -370,18 +370,18 @@ jobs:
           -I $GITHUB_WORKSPACE/Thunder/Source/core
           -I $GITHUB_WORKSPACE/install/usr/include
           -I ./usr/include/libdrm
-          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/devicesettings.h
-          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/Iarm.h
-          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/Rfc.h
-          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/RBus.h
-          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/Telemetry.h
-          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/Udev.h
-          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/maintenanceMGR.h
-          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/pkg.h
-          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/secure_wrappermock.h
-          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/wpa_ctrl_mock.h
-          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/readprocMockInterface.h
-          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/gdialservice.h
+          -include $GITHUB_WORKSPACE/Tests/testframework/mocks/devicesettings.h
+          -include $GITHUB_WORKSPACE/Tests/testframework/mocks/Iarm.h
+          -include $GITHUB_WORKSPACE/Tests/testframework/mocks/Rfc.h
+          -include $GITHUB_WORKSPACE/Tests/testframework/mocks/RBus.h
+          -include $GITHUB_WORKSPACE/Tests/testframework/mocks/Telemetry.h
+          -include $GITHUB_WORKSPACE/Tests/testframework/mocks/Udev.h
+          -include $GITHUB_WORKSPACE/Tests/testframework/mocks/maintenanceMGR.h
+          -include $GITHUB_WORKSPACE/Tests/testframework/mocks/pkg.h
+          -include $GITHUB_WORKSPACE/Tests/testframework/mocks/secure_wrappermock.h
+          -include $GITHUB_WORKSPACE/Tests/testframework/mocks/wpa_ctrl_mock.h
+          -include $GITHUB_WORKSPACE/Tests/testframework/mocks/readprocMockInterface.h
+          -include $GITHUB_WORKSPACE/Tests/testframework/mocks/gdialservice.h
           --coverage
           -Wall -Wno-unused-result -Wno-deprecated-declarations -Wno-error=format=
           -Wl,-wrap,system -Wl,-wrap,popen -Wl,-wrap,syslog -Wl,-wrap,v_secure_system -Wl,-wrap,v_secure_popen -Wl,-wrap,v_secure_pclose -Wl,-wrap,unlink -Wl,-wrap,v_secure_system -Wl,-wrap,pclose -Wl,-wrap,setmntent -Wl,-wrap,getmntent
