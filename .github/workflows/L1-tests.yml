@@ -685,9 +685,9 @@ jobs:
           '/usr/include/*'
           '*/build/entservices-appmanagers/_deps/*'
           '*/install/usr/include/*'
-          '*/Tests/headers/*'
-          '*/Tests/mocks/*'
-          '*/Tests/L1Tests/tests/*'
+          '*/Tests/testframework/headers/*'
+          '*/Tests/testframework/mocks/*'
+          '*/Tests/testframework/L1Tests/tests/*'
           '*/Thunder/*'
           -o filtered_coverage.info
           &&
