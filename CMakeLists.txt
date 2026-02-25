@@ -34,6 +34,11 @@ string(TOLOWER ${NAMESPACE} STORAGE_DIRECTORY)
 # for writing pc and config files
 include(CmakeHelperFunctions)
 
+# Add mocks subdirectory if either L1 or L2 tests are enabled
+if(RDK_SERVICE_L2_TEST OR RDK_SERVICES_L1_TEST)
+    add_subdirectory(Tests/mocks)
+endif()
+
 if(RDK_SERVICE_L2_TEST)
     add_subdirectory(Tests/mocks/L2Tests)
 endif()
