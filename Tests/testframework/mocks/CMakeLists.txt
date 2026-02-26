@@ -1,173 +1,72 @@
-###
-# Copyright 2024 RDK Management
-# Licensed under the Apache License, Version 2.0
-###
+# If not stated otherwise in this file or this component's LICENSE file the
+# following copyright and licenses apply:
+#
+# Copyright 2025 RDK Management
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+# http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
-cmake_minimum_required(VERSION 3.8)
-project(RdkServicesL1Test)
+set(PLUGIN_NAME MockSecManagerPlugin)
+#set(MODULE_NAME ${PLUGIN_NAME})
+set(MODULE_NAME ${NAMESPACE}${PLUGIN_NAME})
 
-set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(PLUGIN_MOCKSECMANAGERPLUGIN_AUTOSTART "false" CACHE STRING "Automatically start MockSecManager plugin")
+set(PLUGIN_MOCKSECMANAGERPLUGIN_STARTUPORDER "50" CACHE STRING "To configure startup order of Mock SecManager plugin")
 
-# ================================
-# Dependencies
-# ================================
-
+# Find required packages
 find_package(${NAMESPACE}Plugins REQUIRED)
-find_package(GTest REQUIRED)
+find_package(${NAMESPACE}Definitions REQUIRED)
 
-# ================================
-# Base Test Sources
-# ================================
-
-set(TEST_SRC
-    test_JSON.cpp
+# Build the main plugin that runs inside the WPEFramework daemon
+add_library(${MODULE_NAME} SHARED
+    MockSecManagerPlugin.cpp
+    Module.cpp
 )
 
-set(TEST_LIB
+# Include directories
+target_include_directories(${MODULE_NAME} PRIVATE ${IARMBUS_INCLUDE_DIRS} ../../../helpers ../../Tests/mocks )
+
+# Link libraries
+target_link_libraries(${MODULE_NAME}
+    PRIVATE
     ${NAMESPACE}Plugins::${NAMESPACE}Plugins
+    ${NAMESPACE}Definitions::${NAMESPACE}Definitions
 )
 
-set(TEST_INC
-    ${CMAKE_SOURCE_DIR}/helpers
+find_library(MOCKACCESSOR_LIBRARIES NAMES MockAccessor)
+if (MOCKACCESSOR_LIBRARIES)
+    message ("Found MockAccessor library - ${MOCKACCESSOR_LIBRARIES}")
+    target_link_libraries(${MODULE_NAME} PRIVATE ${MOCKACCESSOR_LIBRARIES})
+else (MOCKACCESSOR_LIBRARIES)
+     message ("Require ${MOCKACCESSOR_LIBRARIES} library")
+endif (MOCKACCESSOR_LIBRARIES)
+
+find_library(TESTMOCKLIB_LIBRARIES NAMES TestMocklib)
+message ("linking mock libraries ${TESTMOCKLIB_LIBRARIES} library")
+target_link_libraries(${MODULE_NAME} PRIVATE ${TESTMOCKLIB_LIBRARIES})
+target_link_options(${MODULE_NAME} PRIVATE -Wl,--wrap,open -Wl,--wrap,mkdir -Wl,--wrap,mount -Wl,--wrap,umount -Wl,--wrap,ioctl -Wl,--wrap,statvfs -Wl,--wrap,statfs -Wl,--wrap,stat  -Wl,--wrap,rmdir)
+
+install(TARGETS
+    ${MODULE_NAME}
+    DESTINATION
+    lib/${STORAGE_DIRECTORY}/plugins
 )
 
-# ================================
-# Plugin Test Helper Macros
-# ================================
-
-macro(add_plugin_test_ex plugin_opt plugin_test_sources_str plugin_includes_str plugin_libs_str)
-
-    if(${plugin_opt})
-        message(STATUS "${plugin_opt}=ON")
-
-        foreach(item ${plugin_test_sources_str})
-            list(APPEND TEST_SRC ${item})
-        endforeach()
-
-        foreach(item ${plugin_includes_str})
-            list(APPEND TEST_INC ${item})
-        endforeach()
-
-        foreach(item ${plugin_libs_str})
-            list(APPEND TEST_LIB ${item})
-        endforeach()
-    else()
-        message(STATUS "${plugin_opt}=OFF")
-    endif()
-
-endmacro()
-
-macro(add_plugin_test plugin_name test_files)
-
-    string(TOUPPER "${plugin_name}" plugin_option)
-    set(plugin_opt "PLUGIN_${plugin_option}")
-
-    add_plugin_test_ex(
-        ${plugin_opt}
-        "${test_files}"
-        "../../${plugin_name}"
-        "${NAMESPACE}${plugin_name}"
-    )
-
-endmacro()
-
-# ================================
-# Executable
-# ================================
-
-add_executable(${PROJECT_NAME} ${TEST_SRC})
-
-# ================================
-# Always Link Core Mock Library
-# ================================
-
-target_link_libraries(${PROJECT_NAME}
-    PRIVATE
-        TestMocklib
+set_target_properties(${MODULE_NAME} PROPERTIES
+    CXX_STANDARD 11
+    CXX_STANDARD_REQUIRED YES
 )
 
-# ================================
-# Conditional Mock Libraries (TARGET-BASED LINKING)
-# ================================
+target_compile_definitions(${MODULE_NAME} PRIVATE MODULE_NAME=Plugin_${PLUGIN_NAME})
 
-if(PLUGIN_DEVICEDIAGNOSTICS OR PLUGIN_USERPREFERENCES OR
-   PLUGIN_WAREHOUSE OR PLUGIN_DEVICEINFO OR
-   PLUGIN_DISPLAYINFO OR PLUGIN_DISPLAYSETTINGS OR
-   PLUGIN_FRAMERATE OR PLUGIN_POWERMANAGER OR
-   PLUGIN_SYSTEMSERVICES)
-
-    target_link_libraries(${PROJECT_NAME} PRIVATE WPEFrameworkL1TestsDD)
-endif()
-
-if(PLUGIN_PRIVACY OR PLUGIN_PLAYBACKSYNC OR PLUGIN_AUTHSERVICE)
-    target_link_libraries(${PROJECT_NAME} PRIVATE WPEFrameworkL1TestsCPC)
-endif()
-
-if(PLUGIN_USBDEVICE OR PLUGIN_USB_MASS_STORAGE OR
-   PLUGIN_OCICONTAINER OR PLUGIN_APPMANAGER OR
-   PLUGIN_STORAGE_MANAGER)
-
-    target_link_libraries(${PROJECT_NAME} PRIVATE WPEFrameworkL1TestsIN)
-endif()
-
-if(PLUGIN_FIRMWAREUPDATE OR PLUGIN_MAINTENANCEMANAGER OR PLUGIN_PACKAGER)
-    target_link_libraries(${PROJECT_NAME} PRIVATE WPEFrameworkL1TestsSU)
-endif()
-
-if(PLUGIN_AVINPUT OR PLUGIN_AVOUTPUT OR
-   PLUGIN_HDMICECSOURCE OR PLUGIN_HDMICECSINK OR
-   PLUGIN_HDCPPROFILE OR PLUGIN_HDMIINPUT)
-
-    target_link_libraries(${PROJECT_NAME} PRIVATE WPEFrameworkL1TestsIO)
-endif()
-
-if(PLUGIN_MIRACAST OR PLUGIN_XCAST)
-    target_link_libraries(${PROJECT_NAME} PRIVATE WPEFrameworkL1TestsCA)
-endif()
-
-if(PLUGIN_MOTION_DETECTION OR PLUGIN_FRONTPANEL)
-    target_link_libraries(${PROJECT_NAME} PRIVATE WPEFrameworkL1TestsPE)
-endif()
-
-if(PLUGIN_SCREENCAPTURE OR PLUGIN_SYSTEMAUDIOPLAYER OR
-   PLUGIN_TEXTTOSPEECH OR PLUGIN_UNIFIEDCASMANAGEMENT)
-
-    target_link_libraries(${PROJECT_NAME} PRIVATE WPEFrameworkL1TestsMD)
-endif()
-
-# ================================
-# GoogleTest Integration
-# ================================
-
-include(GoogleTest)
-
-target_link_libraries(${PROJECT_NAME}
-    PRIVATE
-        gtest
-        gtest_main
-        gmock
-        ${TEST_LIB}
-)
-
-# ================================
-# Include Directories
-# ================================
-
-target_include_directories(${PROJECT_NAME}
-    PRIVATE
-        ${TEST_INC}
-        ${CMAKE_CURRENT_SOURCE_DIR}
-        ${CMAKE_SOURCE_DIR}/Tests/mocks
-        ${CMAKE_SOURCE_DIR}/Tests/mocks/devicesettings
-        ${CMAKE_SOURCE_DIR}/Tests/mocks/thunder
-        ${CMAKE_SOURCE_DIR}/Tests/mocks/libusb
-        ${CMAKE_SOURCE_DIR}/OCIContainer/stubs
-        ${CMAKE_SOURCE_DIR}/../Thunder/Source/plugins
-)
-
-# ================================
-# Install
-# ================================
-
-install(TARGETS ${PROJECT_NAME} DESTINATION bin)
+# Write configuration
+write_config(${PLUGIN_NAME})
