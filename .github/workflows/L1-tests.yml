@@ -140,6 +140,9 @@ jobs:
           path: googletest
           ref: v1.15.0
 
+      - name: Set source directory
+        run: echo "SRC_DIR=$GITHUB_WORKSPACE/entservices-appmanagers" >> $GITHUB_ENV
+
       # Fetching only the required essos-resmgr.h file from the Westeros repo to avoid full repo clone and to remove header file dependency
       - name: Fetch only essos-resmgr.h from Westeros repo using sparse-checkout
         run: |
@@ -149,13 +152,13 @@ jobs:
           git remote add origin https://code.rdkcentral.com/r/components/opensource/westeros
           git config core.sparseCheckout true
           git pull --depth=1 origin master
-          mkdir -p $GITHUB_WORKSPACE/entservices-appmanagers/ResourceManager
-          cp essos/essos-resmgr.h $GITHUB_WORKSPACE/entservices-appmanagers/ResourceManager/
+          mkdir -p $SRC_DIR/ResourceManager
+          cp essos/essos-resmgr.h $SRC_DIR/ResourceManager/
 
       - name: Apply patches ThunderTools
         run: |  
           cd $GITHUB_WORKSPACE/ThunderTools
-          patch -p1 < $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/patches/00010-R4.4-Add-support-for-project-dir.patch
+          patch -p1 < $SRC_DIR/Tests/testframework/patches/00010-R4.4-Add-support-for-project-dir.patch
           cd -
 
       - name: Build ThunderTools
@@ -176,11 +179,11 @@ jobs:
       - name: Apply patches Thunder
         run: |
           cd $GITHUB_WORKSPACE/Thunder
-          patch -p1 < $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/patches/Use_Legact_Alt_Based_On_ThunderTools_R4.4.3.patch
-          patch -p1 < $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/patches/error_code_R4_4.patch
-          patch -p1 < $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/patches/1004-Add-support-for-project-dir.patch
-          patch -p1 < $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/patches/RDKEMW-733-Add-ENTOS-IDS.patch
-          patch -p1 < $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/patches/Jsonrpc_dynamic_error_handling.patch
+          patch -p1 < $SRC_DIR/Tests/testframework/patches/Use_Legact_Alt_Based_On_ThunderTools_R4.4.3.patch
+          patch -p1 < $SRC_DIR/Tests/testframework/patches/error_code_R4_4.patch
+          patch -p1 < $SRC_DIR/Tests/testframework/patches/1004-Add-support-for-project-dir.patch
+          patch -p1 < $SRC_DIR/Tests/testframework/patches/RDKEMW-733-Add-ENTOS-IDS.patch
+          patch -p1 < $SRC_DIR/Tests/testframework/patches/Jsonrpc_dynamic_error_handling.patch
           cd -
 
       - name: Build Thunder
@@ -215,7 +218,7 @@ jobs:
       - name: Apply patches entservices-apis
         run: |
           cd $GITHUB_WORKSPACE/entservices-apis
-          patch -p1 < $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/patches/RDKEMW-1007.patch
+          patch -p1 < $SRC_DIR/Tests/testframework/patches/RDKEMW-1007.patch
           cd -
 
       - name: Build entservices-apis
@@ -234,7 +237,7 @@ jobs:
       - name: Generate external headers
         # Empty headers to mute errors
         run: >
-          cd "$GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework"
+          cd "$SRC_DIR/Tests/testframework"
           &&
           mkdir -p
           headers
@@ -314,11 +317,11 @@ jobs:
 
       - name: Set clang toolchain
         if: ${{ matrix.compiler == 'clang' }}
-        run: echo "TOOLCHAIN_FILE=$GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/clang.cmake" >> $GITHUB_ENV
+        run: echo "TOOLCHAIN_FILE=$SRC_DIR/Tests/testframework/clang.cmake" >> $GITHUB_ENV
 
       - name: Set gcc/with-coverage toolchain
         if: ${{ matrix.compiler == 'gcc' && matrix.coverage == 'with-coverage' && !env.ACT }}
-        run: echo "TOOLCHAIN_FILE=$GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/gcc-with-coverage.cmake" >> $GITHUB_ENV
+        run: echo "TOOLCHAIN_FILE=$SRC_DIR/Tests/testframework/gcc-with-coverage.cmake" >> $GITHUB_ENV
 
       - name: Build googletest
         if: steps.cache.outputs.cache-hit != 'true'
@@ -341,7 +344,7 @@ jobs:
       - name: Build mocks
         run: >
           cmake
-          -S "$GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks"
+          -S "$SRC_DIR/Tests/testframework/mocks"
           -B build/mocks
           -DBUILD_SHARED_LIBS=ON
           -DRDK_SERVICES_L1_TEST=ON
@@ -357,31 +360,31 @@ jobs:
           -DTHUNDER_VERSION_MAJOR=4
           -DTHUNDER_VERSION_MINOR=4
           -DRDK_SERVICES_L1_TEST
-          -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/headers
-          -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/headers/audiocapturemgr
-          -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/headers/rdk/ds
-          -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/headers/rdk/iarmbus
-          -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/headers/rdk/iarmmgrs-hal
-          -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/headers/ccec/drivers
-          -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/headers/network
-          -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework
-          -I $GITHUB_WORKSPACE/entservices-appmanagers/helpers
+          -I $SRC_DIR/Tests/testframework/headers
+          -I $SRC_DIR/Tests/testframework/headers/audiocapturemgr
+          -I $SRC_DIR/Tests/testframework/headers/rdk/ds
+          -I $SRC_DIR/Tests/testframework/headers/rdk/iarmbus
+          -I $SRC_DIR/Tests/testframework/headers/rdk/iarmmgrs-hal
+          -I $SRC_DIR/Tests/testframework/headers/ccec/drivers
+          -I $SRC_DIR/Tests/testframework/headers/network
+          -I $SRC_DIR/Tests/testframework
+          -I $SRC_DIR/helpers
           -I $GITHUB_WORKSPACE/Thunder/Source
           -I $GITHUB_WORKSPACE/Thunder/Source/core
           -I $GITHUB_WORKSPACE/install/usr/include
           -I ./usr/include/libdrm
-          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/devicesettings.h
-          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/Iarm.h
-          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/Rfc.h
-          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/RBus.h
-          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/Telemetry.h
-          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/Udev.h
-          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/maintenanceMGR.h
-          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/pkg.h
-          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/secure_wrappermock.h
-          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/wpa_ctrl_mock.h
-          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/readprocMockInterface.h
-          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/gdialservice.h
+          -include $SRC_DIR/Tests/testframework/mocks/devicesettings.h
+          -include $SRC_DIR/Tests/testframework/mocks/Iarm.h
+          -include $SRC_DIR/Tests/testframework/mocks/Rfc.h
+          -include $SRC_DIR/Tests/testframework/mocks/RBus.h
+          -include $SRC_DIR/Tests/testframework/mocks/Telemetry.h
+          -include $SRC_DIR/Tests/testframework/mocks/Udev.h
+          -include $SRC_DIR/Tests/testframework/mocks/maintenanceMGR.h
+          -include $SRC_DIR/Tests/testframework/mocks/pkg.h
+          -include $SRC_DIR/Tests/testframework/mocks/secure_wrappermock.h
+          -include $SRC_DIR/Tests/testframework/mocks/wpa_ctrl_mock.h
+          -include $SRC_DIR/Tests/testframework/mocks/readprocMockInterface.h
+          -include $SRC_DIR/Tests/testframework/mocks/gdialservice.h
           --coverage
           -Wall"
           &&
@@ -402,7 +405,7 @@ jobs:
       - name: Build entservices-appmanagers
         run: >
           cmake -G Ninja
-          -S "$GITHUB_WORKSPACE/entservices-appmanagers"
+          -S "$SRC_DIR"
           -B build/entservices-appmanagers
           -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/install/usr"
           -DCMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake"
@@ -415,40 +418,40 @@ jobs:
           -DTHUNDER_VERSION_MAJOR=4
           -DTHUNDER_VERSION_MINOR=4
           -DRDK_SERVICES_L1_TEST
-          -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/headers
-          -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/headers/audiocapturemgr
-          -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/headers/rdk/ds
-          -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/headers/rdk/iarmbus
-          -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/headers/rdk/iarmmgrs-hal
-          -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/headers/ccec/drivers
-          -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/headers/network
-          -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/headers/libusb
-          -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/headers
-          -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/headers/Dobby
-          -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/headers/Dobby/Public/Dobby
-          -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/headers/Dobby/IpcService
+          -I $SRC_DIR/Tests/testframework/headers
+          -I $SRC_DIR/Tests/testframework/headers/audiocapturemgr
+          -I $SRC_DIR/Tests/testframework/headers/rdk/ds
+          -I $SRC_DIR/Tests/testframework/headers/rdk/iarmbus
+          -I $SRC_DIR/Tests/testframework/headers/rdk/iarmmgrs-hal
+          -I $SRC_DIR/Tests/testframework/headers/ccec/drivers
+          -I $SRC_DIR/Tests/testframework/headers/network
+          -I $SRC_DIR/Tests/testframework/headers/libusb
+          -I $SRC_DIR/Tests/testframework/headers
+          -I $SRC_DIR/Tests/testframework/headers/Dobby
+          -I $SRC_DIR/Tests/testframework/headers/Dobby/Public/Dobby
+          -I $SRC_DIR/Tests/testframework/headers/Dobby/IpcService
           -I $GITHUB_WORKSPACE/Thunder/Source
           -I $GITHUB_WORKSPACE/Thunder/Source/core
           -I $GITHUB_WORKSPACE/install/usr/include
           -I $GITHUB_WORKSPACE/install/usr/include/WPEFramework
-          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/devicesettings.h
-          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/Iarm.h
-          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/libusb/libusb.h
-          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/Rfc.h
-          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/RBus.h
-          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/Telemetry.h
-          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/Udev.h
-          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/maintenanceMGR.h
-          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/pkg.h
-          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/secure_wrappermock.h
-          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/wpa_ctrl_mock.h
-          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/readprocMockInterface.h
-          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/gdialservice.h
-          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/Dobby.h
-          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/headers/Dobby/DobbyProtocol.h
-          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/headers/Dobby/DobbyProxy.h
-          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/headers/Dobby/Public/Dobby/IDobbyProxy.h
-          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/headers/Dobby/IpcService/IpcFactory.h
+          -include $SRC_DIR/Tests/testframework/mocks/devicesettings.h
+          -include $SRC_DIR/Tests/testframework/mocks/Iarm.h
+          -include $SRC_DIR/Tests/testframework/mocks/libusb/libusb.h
+          -include $SRC_DIR/Tests/testframework/mocks/Rfc.h
+          -include $SRC_DIR/Tests/testframework/mocks/RBus.h
+          -include $SRC_DIR/Tests/testframework/mocks/Telemetry.h
+          -include $SRC_DIR/Tests/testframework/mocks/Udev.h
+          -include $SRC_DIR/Tests/testframework/mocks/maintenanceMGR.h
+          -include $SRC_DIR/Tests/testframework/mocks/pkg.h
+          -include $SRC_DIR/Tests/testframework/mocks/secure_wrappermock.h
+          -include $SRC_DIR/Tests/testframework/mocks/wpa_ctrl_mock.h
+          -include $SRC_DIR/Tests/testframework/mocks/readprocMockInterface.h
+          -include $SRC_DIR/Tests/testframework/mocks/gdialservice.h
+          -include $SRC_DIR/Tests/testframework/mocks/Dobby.h
+          -include $SRC_DIR/Tests/testframework/headers/Dobby/DobbyProtocol.h
+          -include $SRC_DIR/Tests/testframework/headers/Dobby/DobbyProxy.h
+          -include $SRC_DIR/Tests/testframework/headers/Dobby/Public/Dobby/IDobbyProxy.h
+          -include $SRC_DIR/Tests/testframework/headers/Dobby/IpcService/IpcFactory.h
           --coverage
           -Wall -Wno-unused-result -Wno-deprecated-declarations -Wno-error=format=
           -Wl,-wrap,system -Wl,-wrap,popen -Wl,-wrap,syslog -Wl,-wrap,v_secure_system -Wl,-wrap,v_secure_popen -Wl,-wrap,v_secure_pclose -Wl,-wrap,unlink
@@ -614,7 +617,7 @@ jobs:
       - name: Generate coverage
         if: ${{ matrix.coverage == 'with-coverage' && !env.ACT }}
         run: >
-          cp $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/L1Tests/.lcovrc_l1 ~/.lcovrc
+          cp $SRC_DIR/Tests/testframework/L1Tests/.lcovrc_l1 ~/.lcovrc
           &&
           lcov -c
           -o coverage.info
