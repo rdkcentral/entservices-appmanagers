@@ -1,8 +1,8 @@
-
-# If not stated otherwise in this file or this component's LICENSE file the
-# following copyright and licenses apply:
+###
+# If not stated otherwise in this file or this component's LICENSE
+# file the following copyright and licenses apply:
 #
-# Copyright 2020 RDK Management
+# Copyright 2024 RDK Management
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+###
 
 cmake_minimum_required(VERSION 3.8)
 project(RdkServicesL1Test)
@@ -102,7 +103,7 @@ macro(add_plugin_test plugin_name test_files)
     string(TOUPPER "${plugin_name}" plugin_option)
     set(plugin_opt "PLUGIN_${plugin_option}")
 
-    add_plugin_test_ex(${plugin_opt} "${test_files}" "${CMAKE_SOURCE_DIR}/${plugin_name}" "${NAMESPACE}${plugin_name}")
+    add_plugin_test_ex(${plugin_opt} "${test_files}" "../../${plugin_name}" "${NAMESPACE}${plugin_name}")
 endmacro()
 
 add_executable(${PROJECT_NAME} ${TEST_SRC})
