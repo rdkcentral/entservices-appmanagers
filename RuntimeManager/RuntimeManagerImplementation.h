@@ -154,11 +154,7 @@ namespace WPEFramework
                     public:
                         static Core::ProxyType<Core::IDispatch> Create(RuntimeManagerImplementation *mRuntimeManagerImpl, RuntimeEventType event, JsonValue params)
                         {
-#ifndef  USE_THUNDER_R4
-                            return (Core::proxy_cast<Core::IDispatch>(Core::ProxyType<Job>::Create(mRuntimeManagerImpl, event, params)));
-#else
                             return (Core::ProxyType<Core::IDispatch>(Core::ProxyType<Job>::Create(mRuntimeManagerImpl, event, params)));
-#endif
                         }
 
                         virtual void Dispatch()
