@@ -62,6 +62,7 @@ namespace Plugin
         private:
             void readFromCustomData();
             void readFromConfigFile();
+			void readFromYamlConfigFile();
             std::list<std::string>readGlobalEnv() const;
 
             size_t mConsoleLogCap;
@@ -85,6 +86,7 @@ namespace Plugin
             // system configuration
             std::list<std::string> mPreloads;
             std::list<std::string> mEnvVariables;
+	    std::list<std::string> mSvpFiles;
     };
 } /* namespace Plugin */
 } /* namespace WPEFramework */
