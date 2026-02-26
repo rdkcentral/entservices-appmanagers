@@ -1811,7 +1811,7 @@ TEST_F(AppManagerTest, CloseAppUsingComRpcFailureLifecycleManagerRemoteObjectIsN
  * Setting Mock for Lock() to simulate lockId and unpacked path
  * Setting Mock for IsAppLoaded() to simulate the package is loaded or not
  * Setting Mock for SetTargetAppState() to simulate setting the state
- * Setting Mock for SpawnApp() to simulate spawning a app and gettign the appinstance id
+ * Setting Mock for SpawnApp() to simulate spawning a app and getting the appinstance id
  * Calling LaunchApp first so that all the prerequisite will be filled
  * Setting Mock for UnloadApp() to simulate unloading the app
  * Verifying the return of the API
@@ -1853,7 +1853,7 @@ TEST_F(AppManagerTest, TerminateAppUsingComRpcSuccess)
  * Setting Mock for Lock() to simulate lockId and unpacked path
  * Setting Mock for IsAppLoaded() to simulate the package is loaded or not
  * Setting Mock for SetTargetAppState() to simulate setting the state
- * Setting Mock for SpawnApp() to simulate spawning a app and gettign the appinstance id
+ * Setting Mock for SpawnApp() to simulate spawning a app and getting the appinstance id
  * Calling LaunchApp first so that all the prerequisite will be filled
  * Setting Mock for UnloadApp() to simulate unloading the app
  * Verifying the return of the API
@@ -2113,10 +2113,6 @@ TEST_F(AppManagerTest, KillAppUsingComRpcSuccess)
     EXPECT_TRUE(signalled & AppManager_onAppLaunchRequest);
     SetupUnloadApp();
 
-    EXPECT_CALL(*mPackageManagerMock, Unlock(APPMANAGER_APP_ID, ::testing::_))
-    .WillOnce([&](const string &packageId, const string &version) {
-        return Core::ERROR_NONE;
-    });
     EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->KillApp(APPMANAGER_APP_ID));
 
     mAppManagerImpl->Unregister(&notification);
