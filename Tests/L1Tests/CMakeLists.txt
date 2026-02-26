@@ -32,7 +32,7 @@ set (TEST_LIB
     ${NAMESPACE}Plugins::${NAMESPACE}Plugins
 )
 
-set (TEST_INC ../../helpers)
+set (TEST_INC ${CMAKE_SOURCE_DIR}/helpers)
 
 #########################################################################################
 # add_plugin_test_ex: Macro to add plugin tests, it will append to TEST_SRC, TEST_INC,
@@ -98,41 +98,41 @@ macro(add_plugin_test plugin_name test_files)
     string(TOUPPER "${plugin_name}" plugin_option)
     set(plugin_opt "PLUGIN_${plugin_option}")
 
-    add_plugin_test_ex(${plugin_opt} "${test_files}" "../../${plugin_name}" "${NAMESPACE}${plugin_name}")
+    add_plugin_test_ex(${plugin_opt} "${test_files}" "${CMAKE_SOURCE_DIR}/${plugin_name}" "${NAMESPACE}${plugin_name}")
 endmacro()
 
 # PLUGIN_APPMANAGER
-set (APPMANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/AppManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
+set (APPMANAGER_INC ${CMAKE_SOURCE_DIR}/AppManager ${CMAKE_SOURCE_DIR}/helpers)
 set (APPMANAGER_LIBS ${NAMESPACE}AppManager ${NAMESPACE}AppManagerImplementation)
 add_plugin_test_ex(PLUGIN_APPMANAGER tests/test_AppManager.cpp "${APPMANAGER_INC}" "${APPMANAGER_LIBS}")
 
 # PLUGIN_RUNTIME_MANAGER
-set (RUNTIMEMANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/RuntimeManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
+set (RUNTIMEMANAGER_INC ${CMAKE_SOURCE_DIR}/RuntimeManager ${CMAKE_SOURCE_DIR}/helpers)
 set (RUNTIMEMANAGER_LIBS ${NAMESPACE}RuntimeManager ${NAMESPACE}RuntimeManagerImplementation)
 add_plugin_test_ex(PLUGIN_RUNTIME_MANAGER tests/test_RunTimeManager.cpp "${RUNTIMEMANAGER_INC}" "${RUNTIMEMANAGER_LIBS}")
 
 #PLUGIN_STORAGE_MANAGER
-set (STORAGE_MANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/StorageManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
+set (STORAGE_MANAGER_INC ${CMAKE_SOURCE_DIR}/StorageManager ${CMAKE_SOURCE_DIR}/helpers)
 set (STORAGE_MANAGER_LIBS ${NAMESPACE}StorageManager ${NAMESPACE}StorageManagerImplementation)
 add_plugin_test_ex(PLUGIN_STORAGE_MANAGER tests/test_StorageManager.cpp "${STORAGE_MANAGER_INC}" "${STORAGE_MANAGER_LIBS}")
 
 # PLUGIN_LIFECYCLE_MANAGER
-set (LIFECYCLEMANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/LifecycleManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
+set (LIFECYCLEMANAGER_INC ${CMAKE_SOURCE_DIR}/LifecycleManager ${CMAKE_SOURCE_DIR}/helpers)
 set (LIFECYCLEMANAGER_LIBS ${NAMESPACE}LifecycleManager)
 add_plugin_test_ex(PLUGIN_LIFECYCLE_MANAGER tests/test_LifecycleManager.cpp "${LIFECYCLEMANAGER_INC}" "${LIFECYCLEMANAGER_LIBS}")
 
 # PLUGIN_PREINSTALL_MANAGER
-set (PREINSTALL_MANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/PreinstallManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
+set (PREINSTALL_MANAGER_INC ${CMAKE_SOURCE_DIR}/PreinstallManager ${CMAKE_SOURCE_DIR}/helpers)
 set (PREINSTALL_MANAGER_LIBS ${NAMESPACE}PreinstallManager ${NAMESPACE}PreinstallManagerImplementation)
 add_plugin_test_ex(PLUGIN_PREINSTALL_MANAGER tests/test_PreinstallManager.cpp "${PREINSTALL_MANAGER_INC}" "${PREINSTALL_MANAGER_LIBS}")
 
 # PLUGIN_PACKAGE_MANAGER
-set (PACKAGEMANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/PackageManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
+set (PACKAGEMANAGER_INC ${CMAKE_SOURCE_DIR}/PackageManager ${CMAKE_SOURCE_DIR}/helpers)
 set (PACKAGEMANAGER_LIBS ${NAMESPACE}PackageManagerRDKEMS)
 add_plugin_test_ex(PLUGIN_PACKAGE_MANAGER tests/test_PackageManager.cpp "${PACKAGEMANAGER_INC}" "${PACKAGEMANAGER_LIBS}")
 
 #PLUGIN_DOWNLOAD_MANAGER
-set (DOWNLOADMANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/DownloadManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
+set (DOWNLOADMANAGER_INC ${CMAKE_SOURCE_DIR}/DownloadManager ${CMAKE_SOURCE_DIR}/helpers)
 set (DOWNLOADMANAGER_LIBS ${NAMESPACE}DownloadManager ${NAMESPACE}DownloadManagerImplementation)
 add_plugin_test_ex(PLUGIN_DOWNLOADMANAGER tests/test_DownloadManager.cpp "${DOWNLOADMANAGER_INC}" "${DOWNLOADMANAGER_LIBS}")
 
@@ -155,7 +155,6 @@ target_include_directories(${MODULE_NAME}
         ${CMAKE_SOURCE_DIR}/Tests/testframework/mocks
         ${CMAKE_SOURCE_DIR}/Tests/testframework/mocks/devicesettings
         ${CMAKE_SOURCE_DIR}/Tests/testframework/mocks/thunder
-        ${CMAKE_SOURCE_DIR}/../Thunder/Source/plugins
         )
 
 target_compile_definitions(${MODULE_NAME} PRIVATE UNIT_TEST)
