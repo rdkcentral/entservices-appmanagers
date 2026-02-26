@@ -33,7 +33,11 @@ add_library(${MODULE_NAME} SHARED
 )
 
 # Include directories
-target_include_directories(${MODULE_NAME} PRIVATE ${IARMBUS_INCLUDE_DIRS} ../../../helpers ../../Tests/mocks )
+target_include_directories(${PROJECT_NAME}
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/Tests/testframework/mocks
+        ${CMAKE_SOURCE_DIR}/Tests/testframework/headers
+)
 
 # Link libraries
 target_link_libraries(${MODULE_NAME}
