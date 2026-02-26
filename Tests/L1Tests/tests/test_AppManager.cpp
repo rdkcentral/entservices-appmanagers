@@ -1814,7 +1814,6 @@ TEST_F(AppManagerTest, CloseAppUsingComRpcFailureLifecycleManagerRemoteObjectIsN
  * Setting Mock for SpawnApp() to simulate spawning a app and gettign the appinstance id
  * Calling LaunchApp first so that all the prerequisite will be filled
  * Setting Mock for UnloadApp() to simulate unloading the app
- * Setting Mock for Unlock() to simulate reset the lock flag
  * Verifying the return of the API
  * Releasing the AppManager interface and all related test resources
  */
@@ -1857,7 +1856,6 @@ TEST_F(AppManagerTest, TerminateAppUsingComRpcSuccess)
  * Setting Mock for SpawnApp() to simulate spawning a app and gettign the appinstance id
  * Calling LaunchApp first so that all the prerequisite will be filled
  * Setting Mock for UnloadApp() to simulate unloading the app
- * Setting Mock for Unlock() to simulate reset the lock flag
  * Verifying the return of the API
  * Releasing the AppManager interface and all related test resources
  */
