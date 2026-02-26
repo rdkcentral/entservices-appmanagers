@@ -101,4 +101,10 @@ namespace ralf
      */
     bool getRalfUserInfo(uid_t &userId, gid_t &groupId);
 
+    /**
+     * Function to parse memory size strings (e.g., "512M", "2G") into bytes.
+     * @param str The memory size string to parse.
+     * @return The memory size in bytes, or 0 on failure.
+     */
+    uint64_t parseMemorySize(const std::string &str);
 } // namespace ralf
