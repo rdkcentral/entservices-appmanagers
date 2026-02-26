@@ -114,6 +114,12 @@ namespace WPEFramework {
                         Exchange::JRDKWindowManager::Event::OnBlur(_parent, appInstanceId);
                     }
 
+                    void OnScreenshotComplete(const bool success, const string& imageData) override
+                    {
+                        LOGINFO("OnScreenshotComplete success: %s, imageData size: %zu", success ? "true" : "false", imageData.length());
+                        Exchange::JRDKWindowManager::Event::OnScreenshotComplete(_parent, success, imageData);
+                    }
+
                 private:
                     RDKWindowManager& _parent;
             };
