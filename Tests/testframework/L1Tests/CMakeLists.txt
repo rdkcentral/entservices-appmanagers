@@ -36,7 +36,7 @@ set (TEST_LIB
 
 set(ENTSERVICES_REPO_L1TEST_LIB_PATH ${CMAKE_INSTALL_PREFIX}/lib)
 
-set (TEST_INC ../../helpers)
+set (TEST_INC ${CMAKE_SOURCE_DIR}/helpers)
 
 #########################################################################################
 # add_plugin_test_ex: Macro to add plugin tests, it will append to TEST_SRC, TEST_INC,
@@ -102,7 +102,7 @@ macro(add_plugin_test plugin_name test_files)
     string(TOUPPER "${plugin_name}" plugin_option)
     set(plugin_opt "PLUGIN_${plugin_option}")
 
-    add_plugin_test_ex(${plugin_opt} "${test_files}" "../../${plugin_name}" "${NAMESPACE}${plugin_name}")
+    add_plugin_test_ex(${plugin_opt} "${test_files}" "${CMAKE_SOURCE_DIR}/${plugin_name}" "${NAMESPACE}${plugin_name}")
 endmacro()
 
 add_executable(${PROJECT_NAME} ${TEST_SRC})
@@ -168,12 +168,12 @@ target_include_directories(${PROJECT_NAME}
         PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
         $<INSTALL_INTERFACE:include>
-        ../mocks
-        ../mocks/devicesettings
-        ../mocks/thunder
-        ../mocks/libusb
-        ${CMAKE_CURRENT_SOURCE_DIR}/../../OCIContainer/stubs
-        ../../../Thunder/Source/plugins
+        ${CMAKE_CURRENT_SOURCE_DIR}/../mocks
+        ${CMAKE_CURRENT_SOURCE_DIR}/../mocks/devicesettings
+        ${CMAKE_CURRENT_SOURCE_DIR}/../mocks/thunder
+        ${CMAKE_CURRENT_SOURCE_DIR}/../mocks/libusb
+        ${CMAKE_SOURCE_DIR}/OCIContainer/stubs
+        ${CMAKE_SOURCE_DIR}/../Thunder/Source/plugins
         )
 
 install(TARGETS ${PROJECT_NAME} DESTINATION bin)

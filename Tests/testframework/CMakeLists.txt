@@ -36,9 +36,6 @@ endif()
 
 if(RDK_SERVICES_L1_TEST)
     include(l1tests.cmake)
-endif()
-
-if(RDK_SERVICES_L1_TEST)
     add_subdirectory(L1Tests)
 endif()
 
