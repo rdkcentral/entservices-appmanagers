@@ -236,16 +236,20 @@ void AppManagerImplementation::dispatchEvent(EventNames event, const JsonObject 
 
 void AppManagerImplementation::Dispatch(EventNames event, const JsonObject params)
 {
+    string appId = "";
+    string appInstanceId = "";
+    AppLifecycleState newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNKNOWN;
+    AppLifecycleState oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNKNOWN;
+    AppErrorReason errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE;
+    string version = "";
+    string installStatus = "";
+    string intent = "";
+    string source = "";
     switch(event)
     {
         case APP_EVENT_LIFECYCLE_STATE_CHANGED:
         {
-            string appId = "";
-            string appInstanceId = "";
-            AppLifecycleState newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNKNOWN;
-            AppLifecycleState oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNKNOWN;
-            AppErrorReason errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE;
-
+            LOGINFO("APP_EVENT_LIFECYCLE_STATE_CHANGED state");
             if (!(params.HasLabel("appId") && !(appId = params["appId"].String()).empty()))
             {
                 LOGERR("appId not present or empty");
@@ -293,9 +297,6 @@ void AppManagerImplementation::Dispatch(EventNames event, const JsonObject param
         }
         case APP_EVENT_INSTALLATION_STATUS:
         {
-            string appId = "";
-            string version = "";
-            string installStatus = "";
             /* Check if 'packageId' exists and is not empty */
             appId = params.HasLabel("packageId") ? params["packageId"].String() : "";
             if (appId.empty())
@@ -334,10 +335,6 @@ void AppManagerImplementation::Dispatch(EventNames event, const JsonObject param
         }
         case APP_EVENT_LAUNCH_REQUEST:
         {
-            string appId = "";
-            string intent = "";
-            string source = "";
-
             appId = params.HasLabel("appId") ? params["appId"].String() : "";
             if (appId.empty())
             {
@@ -366,9 +363,6 @@ void AppManagerImplementation::Dispatch(EventNames event, const JsonObject param
         }
         case APP_EVENT_UNLOADED:
         {
-            string appId = "";
-            string appInstanceId = "";
-
             appId = params.HasLabel("appId") ? params["appId"].String() : "";
             if (appId.empty())
             {
@@ -1695,6 +1689,245 @@ bool AppManagerImplementation::checkInstallUninstallBlock(const std::string& app
     }
     LOGINFO("checkInstallUninstallBlock: appId=%s duplicateCount=%d blocked=%d", appId.c_str(), duplicateCount, blocked);
     return blocked;
+}
+
+bool AppManagerImplementation::SearchAppId(const string& appId){
+    auto it = mAppInfo.find(appId);
+    bool found =false;
+    if((it != mAppInfo.end()))
+    {
+        LOGINFO("AppId %s found", appId.c_str());
+        found = true;
+    }
+    else
+    {
+        LOGERR("AppId %s not found", appId.c_str());
+    }
+    return found;
+}
+bool AppManagerImplementation::SetAppIntent(const std::string& appId, const std::string& intent)
+{
+    mAdminLock.Lock();
+    bool isAppFound = false;
+    if (SearchAppId(appId)) {
+        mAppInfo[appId].appIntent = intent;
+        isAppFound = true;
+        LOGINFO("SetAppIntent: App %s intent set to %s", appId.c_str(), intent.c_str());
+    }
+    mAdminLock.Unlock();
+    return isAppFound;
+}
+
+bool AppManagerImplementation::SetAppInstanceId(const std::string& appId, const std::string& instanceId)
+{
+    mAdminLock.Lock();
+    bool isAppFound = false;
+    if (SearchAppId(appId)) {
+        mAppInfo[appId].appInstanceId = instanceId;
+        isAppFound = true;
+        LOGINFO("SetAppInstanceId: App %s instanceId set to %s", appId.c_str(), instanceId.c_str());
+    }
+    
+    mAdminLock.Unlock();
+    return isAppFound;
+}
+bool AppManagerImplementation::SetTargetState(const std::string& appId, Exchange::IAppManager::AppLifecycleState targetState)
+{
+    mAdminLock.Lock();
+    bool isAppFound = false;
+    if (SearchAppId(appId)) {
+        mAppInfo[appId].targetAppState = targetState;
+        isAppFound = true;
+        LOGINFO("SetTargetState: App %s targetState set", appId.c_str());
+    }
+    mAdminLock.Unlock();
+    return isAppFound;
+}
+bool AppManagerImplementation::SetPackageInfo(const std::string& appId, const PackageInfo& packageData){
+    mAdminLock.Lock();
+    bool isAppFound = false;
+    if (SearchAppId(appId)) {
+        mAppInfo[appId].packageInfo = packageData;
+        isAppFound = true;
+        LOGINFO("SetPackageInfo: App %s packageInfo set", appId.c_str());
+    }
+    mAdminLock.Unlock();
+    return isAppFound;
+}
+
+bool AppManagerImplementation::SetOldState(const std::string& appId, Exchange::IAppManager::AppLifecycleState oldState)
+{
+    mAdminLock.Lock();
+    bool isAppFound = false;
+    auto it = mAppInfo.find(appId);
+    if (it != mAppInfo.end()) {
+        it->second.appOldState = oldState;
+        isAppFound = true;
+        LOGINFO("SetOldState: App %s oldState set", appId.c_str());
+    }
+    mAdminLock.Unlock();
+    return isAppFound;
+}
+bool AppManagerImplementation::SetNewState(const std::string& appId, Exchange::IAppManager::AppLifecycleState newState)
+{
+    mAdminLock.Lock();
+    bool isAppFound = false;
+    auto it = mAppInfo.find(appId);
+    if (it != mAppInfo.end()) {
+        it->second.appNewState = newState;
+        isAppFound = true;
+        LOGINFO("SetNewState: App %s newState set", appId.c_str());
+    }
+    mAdminLock.Unlock();
+    return isAppFound;
+}
+bool AppManagerImplementation::SetLifecycleState(const std::string& appId, Exchange::ILifecycleManager::LifecycleState lifecycleState){
+    mAdminLock.Lock();
+    bool isAppFound = false;
+    auto it = mAppInfo.find(appId);
+    if (it != mAppInfo.end()) {
+        it->second.lifecycleState = lifecycleState;
+        isAppFound = true;
+        LOGINFO("SetLifecycleState: App %s lifecycleState set", appId.c_str());
+    }
+    mAdminLock.Unlock();
+    return isAppFound;
+}
+
+bool AppManagerImplementation::SetAppIntent(const std::string& appId, const std::string& intent){
+    AppManagerImplementation* appManager = AppManagerImplementation::getInstance();
+    if(appManager != nullptr){
+        return appManager->SetAppIntent(appId, intent);
+    }
+    else{
+        LOGERR("AppManagerImplementation instance is null");
+        return false;
+    }
+}
+ bool AppManagerImplementation::SetlastActiveStateChangeTime(const std::string& appId, const timespec& time){
+    mAdminLock.Lock();
+    bool isAppFound = false;
+    auto it = mAppInfo.find(appId);
+    if (it != mAppInfo.end()) {
+        it->second.lastActiveStateChangeTime = time;
+        isAppFound = true;
+        LOGINFO("SetlastActiveStateChangeTime: App %s lastActiveStateChangeTime set", appId.c_str());
+    }
+    mAdminLock.Unlock();
+    return isAppFound;
+ }
+ bool AppManagerImplementation::SetlastActiveIndex(const std::string& appId, const uint32_t& index){
+    mAdminLock.Lock();
+    bool isAppFound = false;
+    auto it = mAppInfo.find(appId);
+    if (it != mAppInfo.end()) {
+        it->second.lastActiveIndex = index;
+        isAppFound = true;
+        LOGINFO("SetlastActiveIndex: App %s lastActiveIndex set", appId.c_str());
+    }
+    mAdminLock.Unlock();
+    return isAppFound;
+}
+
+bool AppManagerImplementation::SetPackageInfoType(const std::string& appId, ApplicationType type){
+    AppManagerImplementation* appManager = AppManagerImplementation::getInstance();
+    mAdminLock.Lock();
+    if(appManager != nullptr){
+        PackageInfo packageInfo = appManager->getPackageInfo(appId);
+        packageInfo.type = type;
+        return appManager->SetPackageInfo(appId, packageInfo);
+    }
+    else{
+        LOGERR("AppManagerImplementation instance is null");
+        return false;
+    }
+    mAdminLock.Unlock();
+}
+std::string AppManagerImplementation::getAppInstanceId(const std::string& appId) const{
+    std::string instanceId = "";
+    mAdminLock.Lock();
+    auto it = mAppInfo.find(appId);
+    if (it != mAppInfo.end()) {
+        instanceId = it->second.appInstanceId;
+        LOGINFO("getAppInstanceId: App %s instanceId fetched", appId.c_str());
+    }
+    else {
+        LOGERR("getAppInstanceId: App %s not found", appId.c_str());
+    }
+    mAdminLock.Unlock();
+    return instanceId;
+}
+
+Exchange::IAppManager::AppLifecycleState AppManagerImplementation::getappNewState(const std::string& appId) const{
+    Exchange::IAppManager::AppLifecycleState newState = Exchange::IAppManager::AppLifecycleState::UNKNOWN;
+    mAdminLock.Lock();
+    auto it = mAppInfo.find(appId);
+    if (it != mAppInfo.end()) {
+        newState = it->second.appNewState;
+        LOGINFO("getappNewState: App %s newState fetched", appId.c_str());
+    }
+    else {
+        LOGERR("getappNewState: App %s not found", appId.c_str());
+    }
+    mAdminLock.Unlock();
+    return newState;
+}
+Exchange::IAppManager::AppLifecycleState AppManagerImplementation::getTargetState(const std::string& appId) const{
+    Exchange::IAppManager::AppLifecycleState targetState = Exchange::IAppManager::AppLifecycleState::UNKNOWN;
+    mAdminLock.Lock();
+    auto it = mAppInfo.find(appId);
+    if (it != mAppInfo.end()) {
+        targetState = it->second.targetAppState;
+        LOGINFO("getTargetState: App %s targetState fetched", appId.c_str());
+    }
+    else {
+        LOGERR("getTargetState: App %s not found", appId.c_str());
+    }
+    mAdminLock.Unlock();
+    return targetState;
+}
+
+Exchange::IAppManager::AppLifecycleState AppManagerImplementation::getAppOldState(const std::string& appId) const{
+   Exchange::IAppManager::AppLifecycleState AppoldState = Exchange::IAppManager::AppLifecycleState::UNKNOWN;
+    mAdminLock.Lock();
+    auto it = mAppInfo.find(appId);
+    if (it != mAppInfo.end()) {
+        AppoldState = it->second.appOldState;
+        LOGINFO("getAppOldState: App %s oldState fetched", appId.c_str());
+    }
+    else {
+        LOGERR("getTargetState: App %s not found", appId.c_str());
+    }
+    mAdminLock.Unlock();
+    return AppoldState;
+}
+PackageInfo AppManagerImplementation::getPackageInfo(const std::string& appId) const{
+    PackageInfo packageInfo;
+    mAdminLock.Lock();
+    auto it = mAppInfo.find(appId);
+    if (it != mAppInfo.end()) {
+        packageInfo = it->second.packageInfo;
+        LOGINFO("getPackageInfo: App %s packageInfo fetched", appId.c_str());
+    }
+    else {
+        LOGERR("getPackageInfo: App %s not found", appId.c_str());
+    }
+    mAdminLock.Unlock();
+    return packageInfo;
+}
+std::string AppManagerImplementation::getActiveSessionId(const std::string& appId) const{
+    std::string sessionId = "";
+    mAdminLock.Lock();
+    auto it = mAppInfo.find(appId);
+    if (it != mAppInfo.end()) {
+        sessionId = it->second.activeSessionId;
+        LOGINFO("getActiveSessionId: App %s sessionId fetched", appId.c_str());
+    }
+    else {
+        LOGERR("getActiveSessionId: App %s not found", appId.c_str());
+    }
+    mAdminLock.Unlock();
+    return sessionId;
 }
 } /* namespace Plugin */
 } /* namespace WPEFramework */
