@@ -1034,10 +1034,6 @@ Core::hresult AppManagerImplementation::TerminateApp(const string& appId )
         if (nullptr != mLifecycleInterfaceConnector)
         {
             status = mLifecycleInterfaceConnector->terminateApp(appId);
-            if(status == Core::ERROR_NONE)
-            {
-                status = packageUnLock(appId);
-            }
         }
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
         if(status == Core::ERROR_NONE)
