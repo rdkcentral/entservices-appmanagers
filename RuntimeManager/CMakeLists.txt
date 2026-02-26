@@ -29,6 +29,8 @@ set(PLUGIN_RUNTIME_MANAGER_BASEOCISPEC "../resources/oci-base-spec.json" CACHE S
 option(AIMANAGERS_TELEMETRY_METRICS_SUPPORT "AIMANAGERS_TELEMETRY_METRICS_SUPPORT" OFF)
 option (RALF_PACKAGE_SUPPORT "Enable Ralf Package Support in Runtime Manager" OFF)
 
+option(ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG  "ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG" OFF)
+
 add_definitions(-DRUNTIME_MANAGER_API_VERSION_NUMBER_MAJOR=1)
 add_definitions(-DRUNTIME_MANAGER_API_VERSION_NUMBER_MINOR=0)
 add_definitions(-DRUNTIME_MANAGER_API_VERSION_NUMBER_PATCH=0)
@@ -41,6 +43,11 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 find_package(${NAMESPACE}Plugins REQUIRED)
 find_package(${NAMESPACE}Definitions REQUIRED)
 find_package(CompileSettingsDebug CONFIG REQUIRED)
+
+if(ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG)
+    find_package(yaml-cpp CONFIG REQUIRED)
+    add_definitions("-DENABLE_RDKAPPMANAGERS_RUNTIMECONFIG")
+endif(ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG)
 
 add_library(${MODULE_NAME} SHARED
         RuntimeManager.cpp
@@ -171,8 +178,12 @@ if(RDK_APPMANAGERS_DEBUG)
 endif()
 
 target_link_libraries(${PLUGIN_IMPLEMENTATION} PRIVATE
-    CompileSettingsDebug::CompileSettingsDebug ${NAMESPACE}Plugins::${NAMESPACE}Plugins  
+    CompileSettingsDebug::CompileSettingsDebug ${NAMESPACE}Plugins::${NAMESPACE}Plugins
     ${PLUGIN_RUNTIME_MANAGER_EXTRA_LIBRARIES})
+
+if(ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG)
+    target_link_libraries(${PLUGIN_IMPLEMENTATION} PRIVATE yaml-cpp)
+endif()
 
 if(RDK_APPMANAGERS_DEBUG)
     target_link_libraries(${PLUGIN_IMPLEMENTATION} PRIVATE Gateway ip4tc ip6tc)
