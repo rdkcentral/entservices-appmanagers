@@ -638,6 +638,81 @@ namespace Plugin {
         return result;
     }
 
+    Core::hresult PackageManagerImplementation::DumpInfo(string& dump)
+    {
+        CHECK_CACHE()
+        LOGINFO("Dumping PackageManager State:");
+
+        JsonObject rootObj;
+
+        #if defined(USE_LIBPACKAGE) || defined(UNIT_TEST)
+        std::string packageDump;
+        packageImpl->Dump(packageDump);
+        
+        // Parse the package dump JSON and add it to root object
+        JsonObject packageInfo;
+        if (packageInfo.FromString(packageDump))
+        {
+            rootObj["packageInfo"] = packageInfo;
+        }
+        else
+        {
+            LOGERR("Failed to parse package dump JSON");
+        }
+        #endif
+
+        JsonObject downloaderInfo;
+
+        // Download threads count (always 1 thread)
+        downloaderInfo["downloadThreads"] = 1;
+
+        std::lock_guard<std::mutex> lock(mMutex);
+
+        // Requests in Progress
+        JsonArray inProgressArray;
+        if (mInprogressDownload != nullptr)
+        {
+            JsonObject inProgressObj;
+            inProgressObj["id"] = mInprogressDownload->GetId();
+            inProgressObj["url"] = mInprogressDownload->GetUrl();
+            inProgressObj["fileLocator"] = mInprogressDownload->GetFileLocator();
+            inProgressObj["rateLimit"] = static_cast<int>(mInprogressDownload->GetRateLimit());
+            inProgressObj["retries"] = mInprogressDownload->GetRetries();
+
+            if (mHttpClient)
+            {
+                uint8_t progress = mHttpClient->getProgress();
+                inProgressObj["progress"] = progress;
+            }
+
+            inProgressArray.Add(inProgressObj);
+        }
+        downloaderInfo["inProgress"] = inProgressArray;
+
+        // Requests Pending
+        JsonArray pendingArray;
+        for (const auto &request : mDownloadQueue)
+        {
+            JsonObject pendingObj;
+            pendingObj["id"] = request->GetId();
+            pendingObj["url"] = request->GetUrl();
+            pendingObj["fileLocator"] = request->GetFileLocator();
+            pendingObj["rateLimit"] = static_cast<int>(request->GetRateLimit());
+            pendingObj["retries"] = request->GetRetries();
+            pendingArray.Add(pendingObj);
+        }
+        downloaderInfo["pending"] = pendingArray;
+
+        rootObj["downloaderInfo"] = downloaderInfo;
+
+        if (!rootObj.ToString(dump))
+        {
+            LOGERR("Failed to stringify dump info to JSON");
+        }
+
+        return Core::ERROR_NONE;
+    }
+
     Core::hresult PackageManagerImplementation::Config(const string &packageId, const string &version, Exchange::RuntimeConfig& runtimeConfig)
     {
         CHECK_CACHE()
