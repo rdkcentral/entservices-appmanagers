@@ -2113,10 +2113,6 @@ TEST_F(AppManagerTest, KillAppUsingComRpcSuccess)
     EXPECT_TRUE(signalled & AppManager_onAppLaunchRequest);
     SetupUnloadApp();
 
-    EXPECT_CALL(*mPackageManagerMock, Unlock(APPMANAGER_APP_ID, ::testing::_))
-    .WillOnce([&](const string &packageId, const string &version) {
-        return Core::ERROR_NONE;
-    });
     EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->KillApp(APPMANAGER_APP_ID));
 
     mAppManagerImpl->Unregister(&notification);
