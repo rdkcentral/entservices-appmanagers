@@ -1,188 +1,173 @@
-# If not stated otherwise in this file or this component's LICENSE file the
-# following copyright and licenses apply:
-#
-# Copyright 2025 RDK Management
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-# http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+###
+# Copyright 2024 RDK Management
+# Licensed under the Apache License, Version 2.0
+###
 
 cmake_minimum_required(VERSION 3.8)
+project(RdkServicesL1Test)
 
-if(L2_TEST_OOP_RPC)
-        add_library(MockAccessor SHARED
-            MockAccessor.cpp
-        )
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-    # Include directories for the new MockAccessor
-        target_include_directories(MockAccessor PRIVATE
-            ${CMAKE_CURRENT_SOURCE_DIR}
-            ${CMAKE_INSTALL_PREFIX}/include/WPEFramework/core
-            ${CMAKE_SOURCE_DIR}/helpers
-            ${CMAKE_SOURCE_DIR}/Tests/mocks
-            ${CMAKE_SOURCE_DIR}/Tests/mocks/thunder
-            ${CMAKE_INSTALL_PREFIX}/include
-            ${CMAKE_INSTALL_PREFIX}/include/WPEFramework
-        )
+# ================================
+# Dependencies
+# ================================
 
-    # Set target properties for MockAccessor
-        set_target_properties(MockAccessor PROPERTIES
-            CXX_STANDARD 14
-            CXX_STANDARD_REQUIRED YES)
-    
-    # Install MockAccessor
-        install(TARGETS MockAccessor
-            DESTINATION lib)
-    
-        add_subdirectory(MockProxy)
+find_package(${NAMESPACE}Plugins REQUIRED)
+find_package(GTest REQUIRED)
 
-else(L2_TEST_OOP_RPC)
+# ================================
+# Base Test Sources
+# ================================
 
-    set(MODULE_NAME TestMocklib)
+set(TEST_SRC
+    test_JSON.cpp
+)
 
-    find_package(Protobuf REQUIRED)
-    find_program(GRPC_CPP_PLUGIN grpc_cpp_plugin REQUIRED)
+set(TEST_LIB
+    ${NAMESPACE}Plugins::${NAMESPACE}Plugins
+)
 
-        set(PROTO_DIR ${CMAKE_CURRENT_SOURCE_DIR}/secure_storage)
-        set(PROTO_FILE ${PROTO_DIR}/secure_storage.proto)
-        set(GENERATED_DIR ${CMAKE_CURRENT_BINARY_DIR})
+set(TEST_INC
+    ${CMAKE_SOURCE_DIR}/helpers
+)
 
-        set(GENERATED_PROTO_SRC ${GENERATED_DIR}/secure_storage.pb.cc)
-        set(GENERATED_PROTO_HDR ${GENERATED_DIR}/secure_storage.pb.h)
-        set(GENERATED_GRPC_SRC ${GENERATED_DIR}/secure_storage.grpc.pb.cc)
-        set(GENERATED_GRPC_HDR ${GENERATED_DIR}/secure_storage.grpc.pb.h)
+# ================================
+# Plugin Test Helper Macros
+# ================================
 
-        add_custom_command(
-            OUTPUT ${GENERATED_PROTO_SRC} ${GENERATED_PROTO_HDR}
-            COMMAND ${Protobuf_PROTOC_EXECUTABLE}
-                --proto_path=${PROTO_DIR}
-                --cpp_out=${GENERATED_DIR}
-                ${PROTO_FILE}
-            DEPENDS ${PROTO_FILE}
-            COMMENT "Generating Protobuf source files..."
-            VERBATIM
-        )
+macro(add_plugin_test_ex plugin_opt plugin_test_sources_str plugin_includes_str plugin_libs_str)
 
-        add_custom_command(
-            OUTPUT ${GENERATED_GRPC_SRC} ${GENERATED_GRPC_HDR}
-            COMMAND ${Protobuf_PROTOC_EXECUTABLE}
-                --proto_path=${PROTO_DIR}
-                --grpc_out=${GENERATED_DIR}
-                --plugin=protoc-gen-grpc=${GRPC_CPP_PLUGIN}
-                ${PROTO_FILE}
-            DEPENDS ${PROTO_FILE}
-            COMMENT "Generating gRPC source files..."
-            VERBATIM
-        )
+    if(${plugin_opt})
+        message(STATUS "${plugin_opt}=ON")
 
-    add_custom_target(generate_secure_storage_proto
-        DEPENDS ${GENERATED_PROTO_SRC} ${GENERATED_GRPC_SRC}
-    )
+        foreach(item ${plugin_test_sources_str})
+            list(APPEND TEST_SRC ${item})
+        endforeach()
 
-    set(MODULE_SOURCES 
-        Rfc.cpp
-        Iarm.cpp
-        Wraps.cpp
-        RBus.cpp
-        Telemetry.cpp
-        readprocMockInterface.cpp
-        Udev.cpp
-        libusb.cpp
-        DRMScreenCapture.cpp
-        systemaudioplatform.cpp
-        dsFPD.cpp
-        MfrMock.cpp
-        PowerManagerHalMock.cpp
-        RenderSession.cpp
-        gdialservice.cpp
-        )
+        foreach(item ${plugin_includes_str})
+            list(APPEND TEST_INC ${item})
+        endforeach()
 
-    if(RDK_SERVICES_L1_TEST)
-        list(APPEND MODULE_SOURCES
-            MotionDetection.cpp
-            devicesettings.cpp
-            HdmiCec.cpp
-            thunder/Module.cpp
-            Dobby.cpp
-            rdkshell.cpp
-            opkgMock.cpp
-            PowerManagerMock.cpp
-			tr181api.cpp
-        )
-
-    else(RDK_SERVICES_L1_TEST)
-        list(APPEND MODULE_SOURCES
-	    devicesettings.cpp
-            systemaudioplatform.cpp
-            btmgr.cpp
-	    tvSettings.cpp
-            tr181api.cpp
-            EssRMgr.cpp
-            ${GENERATED_PROTO_SRC}
-            ${GENERATED_GRPC_SRC}
-            SecureStorageServerMock.cpp
-            Dobby.cpp
-            Omi.cpp
-	    HdmiCec.cpp
-	    )
-    if(RDK_SERVICE_CPC_L2_TEST)
-        list(APPEND MODULE_SOURCES
-            sec_security.cpp
-            KeyProvisionObject.cpp
-            KeyProvisionResult.cpp
-            KeyProvisionDirectorySerializer.cpp
-            CredentialUtils.cpp
-            KeyProvisionClient.cpp
-            SecApiProvisioner.cpp
-            )
+        foreach(item ${plugin_libs_str})
+            list(APPEND TEST_LIB ${item})
+        endforeach()
+    else()
+        message(STATUS "${plugin_opt}=OFF")
     endif()
 
-    endif()
+endmacro()
 
-    add_library(${MODULE_NAME} SHARED ${MODULE_SOURCES})
+macro(add_plugin_test plugin_name test_files)
 
-    add_dependencies(${MODULE_NAME} generate_secure_storage_proto)
+    string(TOUPPER "${plugin_name}" plugin_option)
+    set(plugin_opt "PLUGIN_${plugin_option}")
 
-    set_source_files_properties(
-        ${GENERATED_PROTO_SRC} ${GENERATED_GRPC_SRC}
-        PROPERTIES GENERATED TRUE
+    add_plugin_test_ex(
+        ${plugin_opt}
+        "${test_files}"
+        "../../${plugin_name}"
+        "${NAMESPACE}${plugin_name}"
     )
 
-    target_include_directories(${MODULE_NAME} PRIVATE
-        ${CMAKE_CURRENT_BINARY_DIR}
-    )
+endmacro()
 
-    target_link_libraries(${MODULE_NAME} PRIVATE
-        grpc++
-        protobuf
-    )
+# ================================
+# Executable
+# ================================
 
-    target_include_directories(${MODULE_NAME} PRIVATE
-            ${CMAKE_SOURCE_DIR}/Tests/mocks
-            ${CMAKE_SOURCE_DIR}/Tests/mocks/thunder
-            ${CMAKE_SOURCE_DIR}/Tests/mocks/devicesettings
-            ${CMAKE_SOURCE_DIR}/Tests/mocks/libusb
-            ${CMAKE_INSTALL_PREFIX}/include
-            ${CMAKE_INSTALL_PREFIX}/include/WPEFramework
-            ${CMAKE_CURRENT_SOURCE_DIR}/../../OCIContainer/stubs
-             ../../../Thunder/Source/plugins
-        )
+add_executable(${PROJECT_NAME} ${TEST_SRC})
 
-    # Set target properties for TestMocklib
-    set_target_properties(${MODULE_NAME} PROPERTIES
-            CXX_STANDARD 14
-            CXX_STANDARD_REQUIRED YES)
+# ================================
+# Always Link Core Mock Library
+# ================================
 
-    # Install TestMocklib
-    install(TARGETS ${MODULE_NAME}
-        DESTINATION lib)
+target_link_libraries(${PROJECT_NAME}
+    PRIVATE
+        TestMocklib
+)
 
-endif(L2_TEST_OOP_RPC)
+# ================================
+# Conditional Mock Libraries (TARGET-BASED LINKING)
+# ================================
+
+if(PLUGIN_DEVICEDIAGNOSTICS OR PLUGIN_USERPREFERENCES OR
+   PLUGIN_WAREHOUSE OR PLUGIN_DEVICEINFO OR
+   PLUGIN_DISPLAYINFO OR PLUGIN_DISPLAYSETTINGS OR
+   PLUGIN_FRAMERATE OR PLUGIN_POWERMANAGER OR
+   PLUGIN_SYSTEMSERVICES)
+
+    target_link_libraries(${PROJECT_NAME} PRIVATE WPEFrameworkL1TestsDD)
+endif()
+
+if(PLUGIN_PRIVACY OR PLUGIN_PLAYBACKSYNC OR PLUGIN_AUTHSERVICE)
+    target_link_libraries(${PROJECT_NAME} PRIVATE WPEFrameworkL1TestsCPC)
+endif()
+
+if(PLUGIN_USBDEVICE OR PLUGIN_USB_MASS_STORAGE OR
+   PLUGIN_OCICONTAINER OR PLUGIN_APPMANAGER OR
+   PLUGIN_STORAGE_MANAGER)
+
+    target_link_libraries(${PROJECT_NAME} PRIVATE WPEFrameworkL1TestsIN)
+endif()
+
+if(PLUGIN_FIRMWAREUPDATE OR PLUGIN_MAINTENANCEMANAGER OR PLUGIN_PACKAGER)
+    target_link_libraries(${PROJECT_NAME} PRIVATE WPEFrameworkL1TestsSU)
+endif()
+
+if(PLUGIN_AVINPUT OR PLUGIN_AVOUTPUT OR
+   PLUGIN_HDMICECSOURCE OR PLUGIN_HDMICECSINK OR
+   PLUGIN_HDCPPROFILE OR PLUGIN_HDMIINPUT)
+
+    target_link_libraries(${PROJECT_NAME} PRIVATE WPEFrameworkL1TestsIO)
+endif()
+
+if(PLUGIN_MIRACAST OR PLUGIN_XCAST)
+    target_link_libraries(${PROJECT_NAME} PRIVATE WPEFrameworkL1TestsCA)
+endif()
+
+if(PLUGIN_MOTION_DETECTION OR PLUGIN_FRONTPANEL)
+    target_link_libraries(${PROJECT_NAME} PRIVATE WPEFrameworkL1TestsPE)
+endif()
+
+if(PLUGIN_SCREENCAPTURE OR PLUGIN_SYSTEMAUDIOPLAYER OR
+   PLUGIN_TEXTTOSPEECH OR PLUGIN_UNIFIEDCASMANAGEMENT)
+
+    target_link_libraries(${PROJECT_NAME} PRIVATE WPEFrameworkL1TestsMD)
+endif()
+
+# ================================
+# GoogleTest Integration
+# ================================
+
+include(GoogleTest)
+
+target_link_libraries(${PROJECT_NAME}
+    PRIVATE
+        gtest
+        gtest_main
+        gmock
+        ${TEST_LIB}
+)
+
+# ================================
+# Include Directories
+# ================================
+
+target_include_directories(${PROJECT_NAME}
+    PRIVATE
+        ${TEST_INC}
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_SOURCE_DIR}/Tests/mocks
+        ${CMAKE_SOURCE_DIR}/Tests/mocks/devicesettings
+        ${CMAKE_SOURCE_DIR}/Tests/mocks/thunder
+        ${CMAKE_SOURCE_DIR}/Tests/mocks/libusb
+        ${CMAKE_SOURCE_DIR}/OCIContainer/stubs
+        ${CMAKE_SOURCE_DIR}/../Thunder/Source/plugins
+)
+
+# ================================
+# Install
+# ================================
+
+install(TARGETS ${PROJECT_NAME} DESTINATION bin)
