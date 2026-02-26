@@ -224,5 +224,38 @@ namespace ralf
         groupId = pwd->pw_gid;
         return true;
     }
+    uint64_t parseMemorySize(const std::string &str)
+    {
+        if (str.empty())
+            return 0;
+
+        const char *ptr = str.c_str();
+        char *endPtr = nullptr;
+
+        uint64_t value = strtoull(ptr, &endPtr, 0);
+
+        if (endPtr == ptr)
+            return 0;
+
+        if (endPtr)
+        {
+            switch (*endPtr)
+            {
+            case 'K':
+            case 'k':
+                return value * 1024;
+            case 'M':
+            case 'm':
+                return value * 1024 * 1024;
+            case 'G':
+            case 'g':
+                return value * 1024 * 1024 * 1024;
+            default:
+                return value;
+            }
+        }
+
+        return value;
+    }
 
 } // namespace ralf
