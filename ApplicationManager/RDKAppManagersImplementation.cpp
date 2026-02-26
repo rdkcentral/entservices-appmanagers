@@ -27,6 +27,10 @@ RDKAppManagersImplementation::RDKAppManagersImplementation()
     , m_running(false)
 {
     SYSLOG(Logging::Startup, (string(_T("RDKAppManagersImplementation Constructor - START"))));
+    if (m_service) {
+        m_service->SetEventHandler(this);
+        m_service->StartStatusListener();
+    }
   /*  
     // Create NetworkService in Thunder mode (nullptr for DBusConnection)
     m_networkService = std::make_unique<NetworkService>(nullptr);
@@ -40,6 +44,11 @@ RDKAppManagersImplementation::RDKAppManagersImplementation()
 }
 RDKAppManagersImplementation::~RDKAppManagersImplementation() {
     SYSLOG(Logging::Shutdown, (string(_T("RDKAppManagersImplementation Destructor"))));
+    if (m_service) {
+        m_service->StopAppManagerListener();
+        m_service->StopStatusListener();
+        m_service.reset();
+    }
    /* 
     // Stop legacy thread
     m_legacyLock.Lock();
@@ -130,6 +139,10 @@ Core::hresult RDKAppManagersImplementation::Request(const uint32_t flags, const 
 
     if (normalizedUrl == "/as/apps/action/launch") {
         status = m_service->LaunchAppRequest(context.appId, context.token, context.mode, context.intent, context.launchArgs, code, responseBody);
+    } else if (normalizedUrl == "/as/apps/status") {
+        responseBody = m_service->GetAppsStatus();
+        code = 200;
+        status = Core::ERROR_NONE;
     } else if (normalizedUrl == "/as/apps/action/reset") {
         status = m_service->ResetAppDataRequest(context.appId, code, responseBody);
     } else if (normalizedUrl == "/as/system/stats") {
@@ -288,142 +301,130 @@ Core::hresult RDKAppManagersImplementation::Config(string& config) {
 // Listener registrations
 Core::hresult RDKAppManagersImplementation::RegisterWebSocketListener(const string& url, const string& clientId, string& listenerId) {
     SYSLOG(Logging::Startup, (_T("RegisterWebSocketListener url=%s clientId=%s"), url.c_str(), clientId.c_str()));
-    /*
     std::lock_guard<std::mutex> lock(m_listenerMutex);
-    
+
     // Generate unique listener ID
     listenerId = "ws-" + std::to_string(++m_listenerIdCounter);
-    
+
     // Store listener registration in-memory
     ListenerInfo info;
     info.listenerId = listenerId;
     info.url = url;
     info.clientId = clientId;
-    
+
     m_wsListeners.push_back(info);
-    
-    SYSLOG(Logging::Startup, (_T("RegisterWebSocketListener success: listenerId=%s, total=%zu"), 
+
+    SYSLOG(Logging::Startup, (_T("RegisterWebSocketListener success: listenerId=%s, total=%zu"),
            listenerId.c_str(), m_wsListeners.size()));
-    */
     return Core::ERROR_NONE;
 }
 Core::hresult RDKAppManagersImplementation::UnregisterWebSocketListener(const string& listenerId) {
     SYSLOG(Logging::Startup, (_T("UnregisterWebSocketListener id=%s"), listenerId.c_str()));
-    /*
     std::lock_guard<std::mutex> lock(m_listenerMutex);
-    
+
     auto it = std::find_if(m_wsListeners.begin(), m_wsListeners.end(),
         [&listenerId](const ListenerInfo& info) {
             return info.listenerId == listenerId;
         });
-    
+
     if (it == m_wsListeners.end()) {
         return Core::ERROR_UNKNOWN_KEY;
     }
-    
+
     m_wsListeners.erase(it);
-    
-    SYSLOG(Logging::Startup, (_T("UnregisterWebSocketListener success, remaining=%zu"), 
+
+    SYSLOG(Logging::Startup, (_T("UnregisterWebSocketListener success, remaining=%zu"),
            m_wsListeners.size()));
-    */
     return Core::ERROR_NONE;
 }
 Core::hresult RDKAppManagersImplementation::RegisterUpdatesListener(const string& url, const string& clientId, string& listenerId) {
     SYSLOG(Logging::Startup, (_T("RegisterUpdatesListener url=%s clientId=%s"), url.c_str(), clientId.c_str()));
-    /*
     std::lock_guard<std::mutex> lock(m_listenerMutex);
-    
+
     // Generate unique listener ID
     listenerId = "http-" + std::to_string(++m_listenerIdCounter);
-    
+
     // Store listener registration in-memory
     ListenerInfo info;
     info.listenerId = listenerId;
     info.url = url;
     info.clientId = clientId;
-    
+
     m_httpListeners.push_back(info);
-    
-    SYSLOG(Logging::Startup, (_T("RegisterUpdatesListener success: listenerId=%s, total=%zu"), 
+
+    SYSLOG(Logging::Startup, (_T("RegisterUpdatesListener success: listenerId=%s, total=%zu"),
            listenerId.c_str(), m_httpListeners.size()));
-    */
     return Core::ERROR_NONE;
 }
 Core::hresult RDKAppManagersImplementation::UnregisterUpdatesListener(const string& listenerId) {
     SYSLOG(Logging::Startup, (_T("UnregisterUpdatesListener id=%s"), listenerId.c_str()));
-    /*
     std::lock_guard<std::mutex> lock(m_listenerMutex);
-    
+
     auto it = std::find_if(m_httpListeners.begin(), m_httpListeners.end(),
         [&listenerId](const ListenerInfo& info) {
             return info.listenerId == listenerId;
         });
-    
+
     if (it == m_httpListeners.end()) {
         return Core::ERROR_UNKNOWN_KEY;
     }
-    
+
     m_httpListeners.erase(it);
-    
-    SYSLOG(Logging::Startup, (_T("UnregisterUpdatesListener success, remaining=%zu"), 
+
+    SYSLOG(Logging::Startup, (_T("UnregisterUpdatesListener success, remaining=%zu"),
            m_httpListeners.size()));
-    */
     return Core::ERROR_NONE;
 }
 Core::hresult RDKAppManagersImplementation::RegisterSysStatusListener(const string& clientId, string& listenerId) {
     SYSLOG(Logging::Startup, (_T("RegisterSysStatusListener clientId=%s"), clientId.c_str()));
-    
-    /*{
+    {
         std::lock_guard<std::mutex> lock(m_listenerMutex);
-        
+
         // Generate unique listener ID
         listenerId = "sys-" + std::to_string(++m_listenerIdCounter);
-        
+
         // Store listener registration in-memory
         ListenerInfo info;
         info.listenerId = listenerId;
         info.url = "";  // SysStatus doesn't use URL
         info.clientId = clientId;
-        
+
         m_sysListeners.push_back(info);
-        
-        SYSLOG(Logging::Startup, (_T("RegisterSysStatusListener success: listenerId=%s, total=%zu"), 
+
+        SYSLOG(Logging::Startup, (_T("RegisterSysStatusListener success: listenerId=%s, total=%zu"),
                listenerId.c_str(), m_sysListeners.size()));
-        
+
         // Send cached status to new listener immediately (mirrors D-Bus behavior)
         if (!m_cachedSysStatus.empty()) {
-            SYSLOG(Logging::Startup, (_T("RegisterSysStatusListener - Sending cached status to new listener: %s"), 
+            SYSLOG(Logging::Startup, (_T("RegisterSysStatusListener - Sending cached status to new listener: %s"),
                    m_cachedSysStatus.c_str()));
         }
     }
-    
+
     // Send cached status immediately if available (outside lock to avoid deadlock)
     if (!m_cachedSysStatus.empty()) {
         NotifySysStatusUpdate(m_cachedSysStatus);
     }
-    */
     return Core::ERROR_NONE;
 }
 Core::hresult RDKAppManagersImplementation::UnregisterSysStatusListener(const string& listenerId)
 {
     SYSLOG(Logging::Startup, (_T("UnregisterSysStatusListener id=%s"), listenerId.c_str()));
-    /*
     std::lock_guard<std::mutex> lock(m_listenerMutex);
-    
+
     auto it = std::find_if(m_sysListeners.begin(), m_sysListeners.end(),
         [&listenerId](const ListenerInfo& info) {
             return info.listenerId == listenerId;
         });
-    
+
     if (it == m_sysListeners.end()) {
         return Core::ERROR_UNKNOWN_KEY;
     }
-    
+
     m_sysListeners.erase(it);
-    
-    SYSLOG(Logging::Startup, (_T("UnregisterSysStatusListener success, remaining=%zu"), 
+
+    SYSLOG(Logging::Startup, (_T("UnregisterSysStatusListener success, remaining=%zu"),
            m_sysListeners.size()));
-   */ 
     return Core::ERROR_NONE;
 }
 // Listener observer management
@@ -651,6 +652,7 @@ uint32_t RDKAppManagersImplementation::Configure(PluginHost::IShell* shell) {
 
         if (m_service != nullptr) {
                 m_service->SetShell(m_shell);
+        m_service->StartAppManagerListener(m_shell);
         }
 
     /*
@@ -757,3 +759,4 @@ void RDKAppManagersImplementation::LegacyMain() {
 */
 } // namespace Plugin
 } // namespace WPEFramework
+

@@ -26,7 +26,7 @@ namespace Thunder {
 namespace WPEFramework {
 namespace Plugin {
 
-// One class implements all ApplicationService interfaces
+// One class implements all ApplicationService interfaces and IEventHandler
 class RDKAppManagersImplementation
     : public Exchange::IApplicationServiceRequest
     , public Exchange::IApplicationServiceConfig
@@ -35,7 +35,8 @@ class RDKAppManagersImplementation
     , public Exchange::IApplicationServiceSystemSettings
     , public Exchange::IApplicationServiceTestPreferences
     , public Exchange::IApplicationServiceDiagnostics
-    , public Exchange::IConfiguration {
+    , public Exchange::IConfiguration
+    , public IEventHandler {
 public:
     RDKAppManagersImplementation(const RDKAppManagersImplementation&) = delete;
     RDKAppManagersImplementation& operator=(const RDKAppManagersImplementation&) = delete;
@@ -73,8 +74,8 @@ public:
     Core::hresult Register(IApplicationServiceListener::INotification* notification) override;
     Core::hresult Unregister(IApplicationServiceListener::INotification* notification) override;
 
-    // Called by NetworkController via callback when events occur
-    void NotifyWebSocketUpdate(const std::string& url, const std::string& message);
+    // IEventHandler (callback from RDKAppManagersService)
+    void NotifyWebSocketUpdate(const std::string& url, const std::string& message) override;
     void NotifyHttpUpdate(const std::string& url, uint32_t code);
     void NotifySysStatusUpdate(const std::string& status);
 
@@ -141,3 +142,4 @@ private:
 
 } // namespace Plugin
 } // namespace WPEFramework
+

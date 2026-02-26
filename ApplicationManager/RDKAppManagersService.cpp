@@ -1,21 +1,279 @@
 #include "RDKAppManagersService.h"
 #include "RDKAppManagersServiceUtils.h"
+#include "Module.h"
 
+#include <chrono>
 #include <ctime>
 #include <json/json.h>
 #include <memory>
+#include <thread>
 
 namespace WPEFramework {
 namespace Plugin {
 
 RDKAppManagersService::RDKAppManagersService(PluginHost::IShell* shell)
 	: m_shell(shell)
+	, m_eventHandler(nullptr)
+	, m_wsConnection(nullptr)
+	, m_listenerRunning(false)
+	, m_appManager(nullptr)
+	, m_windowManager(nullptr)
+	, m_appManagerNotification(*this)
 {
+}
+
+RDKAppManagersService::~RDKAppManagersService()
+{
+	StopStatusListener();
+	StopEventListener();
+	StopAppManagerListener();
 }
 
 void RDKAppManagersService::SetShell(PluginHost::IShell* shell)
 {
 	m_shell = shell;
+}
+
+void RDKAppManagersService::SetEventHandler(IEventHandler* handler)
+{
+	m_eventHandler = handler;
+}
+
+void RDKAppManagersService::NotifyWebSocket(const std::string& url, const std::string& message)
+{
+	if (m_eventHandler) {
+		m_eventHandler->NotifyWebSocketUpdate(url, message);
+	}
+}
+
+void RDKAppManagersService::StartStatusListener()
+{
+	std::lock_guard<std::mutex> lock(m_statusMutex);
+
+	if (!m_appsStatus) {
+		// Create AppsStatus with a lambda that calls our NotifyWebSocket
+		m_appsStatus = std::make_unique<AppsStatus>(
+			[this](const std::string& url, const std::string& message) {
+				this->NotifyWebSocket(url, message);
+			}
+		);
+
+		// Set IAppManager interface if available
+		if (m_appManager) {
+			m_appsStatus->SetAppManager(m_appManager);
+		}
+	}
+}
+
+void RDKAppManagersService::StopStatusListener()
+{
+	std::lock_guard<std::mutex> lock(m_statusMutex);
+
+	if (m_appsStatus) {
+		m_appsStatus.reset();
+	}
+}
+
+void RDKAppManagersService::ProcessThunderEvent(const std::string& eventName, const std::string& eventData)
+{
+	std::lock_guard<std::mutex> lock(m_statusMutex);
+
+	if (!m_appsStatus) {
+		return;
+	}
+
+	// Build JSON-RPC notification format expected by AppsStatus
+	Json::Value notification;
+	notification["method"] = eventName;
+
+	// Parse event data as params
+	Json::CharReaderBuilder readBuilder;
+	readBuilder["collectComments"] = false;
+	std::unique_ptr<Json::CharReader> reader(readBuilder.newCharReader());
+	std::string errors;
+
+	if (reader->parse(eventData.c_str(), eventData.c_str() + eventData.length(), &notification["params"], &errors)) {
+		Json::StreamWriterBuilder writer;
+		writer["indentation"] = "";
+		std::string notificationJson = Json::writeString(writer, notification);
+
+		m_appsStatus->HandleThunderEvent(notificationJson);
+	}
+}
+
+std::string RDKAppManagersService::GetAppsStatus() const
+{
+	std::lock_guard<std::mutex> lock(m_statusMutex);
+
+	if (m_appsStatus) {
+		return m_appsStatus->GetCurrentStatus();
+	}
+
+	return R"({"apps":[]})";
+}
+
+bool RDKAppManagersService::IsListenerActive() const
+{
+	std::lock_guard<std::mutex> lock(m_statusMutex);
+	return m_appsStatus != nullptr;
+}
+
+// WebSocket event listener implementation
+void RDKAppManagersService::StartEventListener()
+{
+	std::lock_guard<std::mutex> lock(m_listenerMutex);
+
+	if (m_listenerRunning) {
+		return;
+	}
+
+	m_listenerRunning = true;
+	m_listenerThread = std::thread(&RDKAppManagersService::EventListenerThread, this);
+}
+
+void RDKAppManagersService::StopEventListener()
+{
+	{
+		std::lock_guard<std::mutex> lock(m_listenerMutex);
+		if (!m_listenerRunning) {
+			return;
+		}
+		m_listenerRunning = false;
+	}
+
+	if (m_listenerThread.joinable()) {
+		m_listenerThread.join();
+	}
+}
+
+void RDKAppManagersService::EventListenerThread()
+{
+	// Events are received via COM-RPC callbacks through AppManagerNotification
+	try {
+		while (m_listenerRunning) {
+			std::this_thread::sleep_for(std::chrono::milliseconds(500));
+		}
+	} catch (const std::exception&) {
+	}
+}
+
+void RDKAppManagersService::OnEventMessageReceived(const std::string& message)
+{
+	// Parse the JSON-RPC notification
+	Json::CharReaderBuilder readBuilder;
+	readBuilder["collectComments"] = false;
+	std::unique_ptr<Json::CharReader> reader(readBuilder.newCharReader());
+	Json::Value notification;
+	std::string errors;
+
+	if (!reader->parse(message.c_str(), message.c_str() + message.length(), &notification, &errors)) {
+		return;
+	}
+
+	// Extract method name and params
+	if (notification.isMember("method")) {
+		std::string method = notification["method"].asString();
+
+		// Extract event name from method (e.g., "rdkappmanagers.onAppLaunchRequest" -> "onAppLaunchRequest")
+		size_t dotPos = method.find('.');
+		std::string eventName = (dotPos != std::string::npos) ? method.substr(dotPos + 1) : method;
+
+		// Get params as JSON string
+		std::string eventData = "{}";
+		if (notification.isMember("params")) {
+			Json::StreamWriterBuilder writer;
+			writer["indentation"] = "";
+			eventData = Json::writeString(writer, notification["params"]);
+		}
+
+		// Route to ProcessThunderEvent
+		ProcessThunderEvent(eventName, eventData);
+	}
+}
+
+// AppManager RPC Listener Implementation
+bool RDKAppManagersService::StartAppManagerListener(PluginHost::IShell* shell)
+{
+	if (!shell) {
+		return false;
+	}
+
+	// Query the AppManager plugin interface
+	m_appManager = shell->QueryInterfaceByCallsign<Exchange::IAppManager>("org.rdk.AppManager");
+	if (!m_appManager) {
+		return false;
+	}
+
+	// Register for notifications
+	Core::hresult result = m_appManager->Register(&m_appManagerNotification);
+	if (result != Core::ERROR_NONE) {
+		m_appManager->Release();
+		m_appManager = nullptr;
+		return false;
+	}
+
+	// Query the RDKWindowManager interface for system stats
+	m_windowManager = shell->QueryInterfaceByCallsign<Exchange::IRDKWindowManager>("org.rdk.RDKWindowManager");
+
+	// Pass IAppManager to AppsStatus if it exists
+	std::lock_guard<std::mutex> lock(m_statusMutex);
+	if (m_appsStatus) {
+		m_appsStatus->SetAppManager(m_appManager);
+	}
+
+	return true;
+}
+
+void RDKAppManagersService::StopAppManagerListener()
+{
+	if (m_appManager) {
+		m_appManager->Unregister(&m_appManagerNotification);
+		m_appManager->Release();
+		m_appManager = nullptr;
+	}
+
+	if (m_windowManager) {
+		m_windowManager->Release();
+		m_windowManager = nullptr;
+	}
+}
+
+void RDKAppManagersService::SendAppManagerEvent(const std::string& eventName, const Json::Value& params)
+{
+	ProcessThunderEvent(eventName, Json::writeString(Json::StreamWriterBuilder(), params));
+}
+
+std::string RDKAppManagersService::LifecycleStateToString(Exchange::IAppManager::AppLifecycleState state)
+{
+	switch (state) {
+		case Exchange::IAppManager::APP_STATE_UNKNOWN:       return "APP_STATE_UNKNOWN";
+		case Exchange::IAppManager::APP_STATE_UNLOADED:      return "APP_STATE_UNLOADED";
+		case Exchange::IAppManager::APP_STATE_LOADING:       return "APP_STATE_LOADING";
+		case Exchange::IAppManager::APP_STATE_INITIALIZING:  return "APP_STATE_INITIALIZING";
+		case Exchange::IAppManager::APP_STATE_PAUSED:        return "APP_STATE_PAUSED";
+		case Exchange::IAppManager::APP_STATE_RUNNING:       return "APP_STATE_RUNNING";
+		case Exchange::IAppManager::APP_STATE_ACTIVE:        return "APP_STATE_ACTIVE";
+		case Exchange::IAppManager::APP_STATE_SUSPENDED:     return "APP_STATE_SUSPENDED";
+		case Exchange::IAppManager::APP_STATE_HIBERNATED:    return "APP_STATE_HIBERNATED";
+		case Exchange::IAppManager::APP_STATE_TERMINATING:   return "APP_STATE_TERMINATING";
+		default:                                              return "UNKNOWN";
+	}
+}
+
+std::string RDKAppManagersService::ErrorReasonToString(Exchange::IAppManager::AppErrorReason reason)
+{
+	switch (reason) {
+		case Exchange::IAppManager::APP_ERROR_NONE:           return "APP_ERROR_NONE";
+		case Exchange::IAppManager::APP_ERROR_UNKNOWN:        return "APP_ERROR_UNKNOWN";
+		case Exchange::IAppManager::APP_ERROR_STATE_TIMEOUT:  return "APP_ERROR_STATE_TIMEOUT";
+		case Exchange::IAppManager::APP_ERROR_ABORT:          return "APP_ERROR_ABORT";
+		case Exchange::IAppManager::APP_ERROR_INVALID_PARAM:  return "APP_ERROR_INVALID_PARAM";
+		case Exchange::IAppManager::APP_ERROR_CREATE_DISPLAY: return "APP_ERROR_CREATE_DISPLAY";
+		case Exchange::IAppManager::APP_ERROR_DOBBY_SPEC:     return "APP_ERROR_DOBBY_SPEC";
+		case Exchange::IAppManager::APP_ERROR_NOT_INSTALLED:  return "APP_ERROR_NOT_INSTALLED";
+		case Exchange::IAppManager::APP_ERROR_PACKAGE_LOCK:   return "APP_ERROR_PACKAGE_LOCK";
+		default:                                               return "UNKNOWN";
+	}
 }
 
 Core::hresult RDKAppManagersService::DispatchMappedRequest(const std::vector<std::string>& methods,
@@ -426,6 +684,56 @@ Core::hresult RDKAppManagersService::ResetAppDataRequest(const std::string& appI
 	return status;
 }
 
+// AppManagerNotification implementation
+void RDKAppManagersService::AppManagerNotification::OnAppInstalled(const string& appId, const string& version)
+{
+	Json::Value params;
+	params["appId"] = appId;
+	params["version"] = version;
+	_parent.SendAppManagerEvent("onAppInstalled", params);
+}
+
+void RDKAppManagersService::AppManagerNotification::OnAppUninstalled(const string& appId)
+{
+	Json::Value params;
+	params["appId"] = appId;
+	_parent.SendAppManagerEvent("onAppUninstalled", params);
+}
+
+void RDKAppManagersService::AppManagerNotification::OnAppLifecycleStateChanged(
+	const string& appId, const string& appInstanceId,
+	const Exchange::IAppManager::AppLifecycleState newState,
+	const Exchange::IAppManager::AppLifecycleState oldState,
+	const Exchange::IAppManager::AppErrorReason errorReason)
+{
+	Json::Value params;
+	params["appId"] = appId;
+	params["appInstanceId"] = appInstanceId;
+	params["newState"] = RDKAppManagersService::LifecycleStateToString(newState);
+	params["previousState"] = RDKAppManagersService::LifecycleStateToString(oldState);
+	params["errorReason"] = RDKAppManagersService::ErrorReasonToString(errorReason);
+	_parent.SendAppManagerEvent("onAppLifecycleStateChanged", params);
+}
+
+void RDKAppManagersService::AppManagerNotification::OnAppLaunchRequest(
+	const string& appId, const string& intent, const string& source)
+{
+	Json::Value params;
+	params["appId"] = appId;
+	params["intent"] = intent;
+	params["source"] = source;
+	_parent.SendAppManagerEvent("onAppLaunchRequest", params);
+}
+
+void RDKAppManagersService::AppManagerNotification::OnAppUnloaded(const string& appId, const string& appInstanceId)
+{
+	Json::Value params;
+	params["appId"] = appId;
+	params["appInstanceId"] = appInstanceId;
+	_parent.SendAppManagerEvent("onAppUnloaded", params);
+}
+
 } // namespace Plugin
 } // namespace WPEFramework
+
 
