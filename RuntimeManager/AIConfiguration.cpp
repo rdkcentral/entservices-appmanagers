@@ -24,8 +24,10 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#ifdef ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG
 #include <sys/stat.h>
 #include <yaml-cpp/yaml.h>
+#endif
 
 #define AICONFIGURATION_INI_PATH "/opt/demo/config.ini"
 #define AICONFIGURATION_YAML_PATH "/opt/rdkappmanagers.yaml"
@@ -322,6 +324,7 @@ namespace Plugin
 
     void AIConfiguration::readFromYamlConfigFile()
     {
+#ifdef ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG
         struct stat st{};
         if (::stat(AICONFIGURATION_YAML_PATH, &st) != 0) {
             LOGINFO("YAML file %s not found", AICONFIGURATION_YAML_PATH);
@@ -423,6 +426,9 @@ namespace Plugin
         } catch (const std::exception& ex) {
             LOGERR("Error parsing YAML: %s", ex.what());
         }
+#else
+	LOGERR("NO distro feature enable_rdkappmanagers_runtimeconfig is enabled to support yaml read");
+#endif
     }
 
     void AIConfiguration::readFromConfigFile()
