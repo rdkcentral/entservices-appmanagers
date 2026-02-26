@@ -201,7 +201,7 @@ namespace WPEFramework
                     memset(timeData, 0, sizeof(timeData));
                     memset(timeDataExpanded, 0, sizeof(timeDataExpanded));
                     strftime(timeData, sizeof timeData, "%D %T", gmtime(&lastStateChangeTime.tv_sec));
-                    sprintf(timeDataExpanded, "%s.%09ld", timeData, lastStateChangeTime.tv_nsec);
+                    sprintf(timeDataExpanded, "%s.%09ld", lastStateChangeTime.tv_nsec);
                     appData["lifecycleState"] = (uint32_t) context->getCurrentLifecycleState();
                     appData["timeOfLastLifecycleStateChange"] = string(timeDataExpanded);
                     appData["activeSessionId"] = context->getActiveSessionId();
