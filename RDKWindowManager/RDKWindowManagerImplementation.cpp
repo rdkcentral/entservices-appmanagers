@@ -2240,9 +2240,9 @@ Core::hresult RDKWindowManagerImplementation::GetScreenshot()
             gScreenshotSize = 0;
         }
         gNeedsScreenshot = true;
+        status = Core::ERROR_NONE;
         gRdkWindowManagerMutex.unlock();
         
-        status = Core::ERROR_NONE;
         LOGINFO("Screenshot request queued");
     }
     else
