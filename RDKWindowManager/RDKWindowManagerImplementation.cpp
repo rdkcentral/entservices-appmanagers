@@ -302,7 +302,7 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
                       if (stat("/tmp/screenshot", &st) == 0)
                       {
                           uint32_t width, height;
-                          CompositorContoller::getScreenResolution(width, height);
+                          CompositorController::getScreenResolution(width, height);
                           writePNG("/tmp/rdkappmanagers.ppm", gScreenshotData, width, height);
                           LOGINFO("Screenshot dumped to /tmp/rdkappmanagers.ppm (triggered by /tmp/screenshot)");
                       }
