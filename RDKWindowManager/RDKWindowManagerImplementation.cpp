@@ -635,7 +635,7 @@ void RDKWindowManagerImplementation::Dispatch(Event event, const JsonValue param
 
         case RDK_WINDOW_MANAGER_EVENT_SCREENSHOT_COMPLETE:
         {
-            const bool success = params.Boolean();
+            const bool success = params["success"].Boolean();
             LOGINFO("RDKWindowManager Dispatch OnScreenshotComplete success: %s", success ? "true" : "false");
             notifyScreenshotComplete(success);
             break;
@@ -1538,7 +1538,7 @@ Core::hresult RDKWindowManagerImplementation::SetVisible(const std::string &clie
 /**
  * @brief Gets the visibility of the specified client with given appInstanceId or name.
  *
- * This function read the visibility of the client identified by its appInstanceId/name.
+ * This function reads the visibility of the client identified by its appInstanceId/name.
  *
  * @param[in] client            : client name or Application instance ID
  * @param[out] visible          : boolean indicating the visibility status: `true` for visible, `false` for hide.
