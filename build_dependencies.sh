@@ -97,7 +97,7 @@ cmake --build build/entservices-apis --target install
 ############################
 # generating extrnal headers
 cd $GITHUB_WORKSPACE
-cd entservices-appmanagers/Tests/testframework
+cd Tests/testframework
 echo " Empty mocks creation to avoid compilation errors"
 echo "======================================================================================"
 mkdir -p headers
