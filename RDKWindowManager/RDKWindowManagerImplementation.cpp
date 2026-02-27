@@ -2244,20 +2244,28 @@ Core::hresult RDKWindowManagerImplementation::StopVncServer()
  */
 Core::hresult RDKWindowManagerImplementation::GetScreenshot()
 {
-    Core::hresult status = Core::ERROR_NONE;
+    Core::hresult status = Core::ERROR_GENERAL;
 
-    gRdkWindowManagerMutex.lock();
-    // Reset previous screenshot data if any
-    if (gScreenshotData)
+    bool lockAcquired = lockRdkWindowManagerMutex();
+    if (lockAcquired)
     {
-        free(gScreenshotData);
-        gScreenshotData = nullptr;
-        gScreenshotSize = 0;
+        // Reset previous screenshot data if any
+        if (gScreenshotData)
+        {
+            free(gScreenshotData);
+            gScreenshotData = nullptr;
+            gScreenshotSize = 0;
+        }
+        gNeedsScreenshot = true;
+        status = Core::ERROR_NONE;
+        gRdkWindowManagerMutex.unlock();
+        
+        LOGINFO("Screenshot request queued");
     }
-    gNeedsScreenshot = true;
-    gRdkWindowManagerMutex.unlock();
-
-    LOGINFO("Screenshot request queued");
+    else
+    {
+        LOGERR("Failed to acquire lock for screenshot request");
+    }
 
     return status;
 }
