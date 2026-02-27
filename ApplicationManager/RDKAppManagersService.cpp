@@ -76,9 +76,12 @@ void RDKAppManagersService::StopStatusListener()
 
 void RDKAppManagersService::ProcessThunderEvent(const std::string& eventName, const std::string& eventData)
 {
+	SYSLOG(Logging::Startup, (_T("RDKAppManagersService::ProcessThunderEvent - eventName=%s eventData=%s"), eventName.c_str(), eventData.c_str()));
+	
 	std::lock_guard<std::mutex> lock(m_statusMutex);
 
 	if (!m_appsStatus) {
+		SYSLOG(Logging::Startup, (string(_T("RDKAppManagersService::ProcessThunderEvent - m_appsStatus is null, returning"))));
 		return;
 	}
 
@@ -97,7 +100,10 @@ void RDKAppManagersService::ProcessThunderEvent(const std::string& eventName, co
 		writer["indentation"] = "";
 		std::string notificationJson = Json::writeString(writer, notification);
 
+		SYSLOG(Logging::Startup, (_T("RDKAppManagersService::ProcessThunderEvent - Calling HandleThunderEvent with: %s"), notificationJson.c_str()));
 		m_appsStatus->HandleThunderEvent(notificationJson);
+	} else {
+		SYSLOG(Logging::Startup, (_T("RDKAppManagersService::ProcessThunderEvent - Failed to parse eventData: %s"), errors.c_str()));
 	}
 }
 
@@ -194,23 +200,32 @@ void RDKAppManagersService::OnEventMessageReceived(const std::string& message)
 // AppManager RPC Listener Implementation
 bool RDKAppManagersService::StartAppManagerListener(PluginHost::IShell* shell)
 {
+	SYSLOG(Logging::Startup, (string(_T("RDKAppManagersService::StartAppManagerListener - START"))));
+	
 	if (!shell) {
+		SYSLOG(Logging::Startup, (string(_T("RDKAppManagersService::StartAppManagerListener - shell is null"))));
 		return false;
 	}
 
 	// Query the AppManager plugin interface
 	m_appManager = shell->QueryInterfaceByCallsign<Exchange::IAppManager>("org.rdk.AppManager");
 	if (!m_appManager) {
+		SYSLOG(Logging::Startup, (string(_T("RDKAppManagersService::StartAppManagerListener - Failed to get IAppManager interface"))));
 		return false;
 	}
+
+	SYSLOG(Logging::Startup, (string(_T("RDKAppManagersService::StartAppManagerListener - Got IAppManager interface"))));
 
 	// Register for notifications
 	Core::hresult result = m_appManager->Register(&m_appManagerNotification);
 	if (result != Core::ERROR_NONE) {
+		SYSLOG(Logging::Startup, (_T("RDKAppManagersService::StartAppManagerListener - Register failed: %d"), result));
 		m_appManager->Release();
 		m_appManager = nullptr;
 		return false;
 	}
+
+	SYSLOG(Logging::Startup, (string(_T("RDKAppManagersService::StartAppManagerListener - Successfully registered for AppManager notifications"))));
 
 	// Query the RDKWindowManager interface for system stats
 	m_windowManager = shell->QueryInterfaceByCallsign<Exchange::IRDKWindowManager>("org.rdk.RDKWindowManager");
@@ -687,6 +702,7 @@ Core::hresult RDKAppManagersService::ResetAppDataRequest(const std::string& appI
 // AppManagerNotification implementation
 void RDKAppManagersService::AppManagerNotification::OnAppInstalled(const string& appId, const string& version)
 {
+	SYSLOG(Logging::Startup, (_T("AppManagerNotification::OnAppInstalled called - appId=%s version=%s"), appId.c_str(), version.c_str()));
 	Json::Value params;
 	params["appId"] = appId;
 	params["version"] = version;
@@ -695,6 +711,7 @@ void RDKAppManagersService::AppManagerNotification::OnAppInstalled(const string&
 
 void RDKAppManagersService::AppManagerNotification::OnAppUninstalled(const string& appId)
 {
+	SYSLOG(Logging::Startup, (_T("AppManagerNotification::OnAppUninstalled called - appId=%s"), appId.c_str()));
 	Json::Value params;
 	params["appId"] = appId;
 	_parent.SendAppManagerEvent("onAppUninstalled", params);
@@ -706,6 +723,7 @@ void RDKAppManagersService::AppManagerNotification::OnAppLifecycleStateChanged(
 	const Exchange::IAppManager::AppLifecycleState oldState,
 	const Exchange::IAppManager::AppErrorReason errorReason)
 {
+	SYSLOG(Logging::Startup, (_T("AppManagerNotification::OnAppLifecycleStateChanged called - appId=%s state=%s"), appId.c_str(), RDKAppManagersService::LifecycleStateToString(newState).c_str()));
 	Json::Value params;
 	params["appId"] = appId;
 	params["appInstanceId"] = appInstanceId;
@@ -717,7 +735,8 @@ void RDKAppManagersService::AppManagerNotification::OnAppLifecycleStateChanged(
 
 void RDKAppManagersService::AppManagerNotification::OnAppLaunchRequest(
 	const string& appId, const string& intent, const string& source)
-{
+{SYSLOG(Logging::Startup, (_T("AppManagerNotification::OnAppLaunchRequest called - appId=%s source=%s"), appId.c_str(), source.c_str()));
+	
 	Json::Value params;
 	params["appId"] = appId;
 	params["intent"] = intent;
@@ -726,7 +745,8 @@ void RDKAppManagersService::AppManagerNotification::OnAppLaunchRequest(
 }
 
 void RDKAppManagersService::AppManagerNotification::OnAppUnloaded(const string& appId, const string& appInstanceId)
-{
+{SYSLOG(Logging::Startup, (_T("AppManagerNotification::OnAppUnloaded called - appId=%s"), appId.c_str()));
+	
 	Json::Value params;
 	params["appId"] = appId;
 	params["appInstanceId"] = appInstanceId;

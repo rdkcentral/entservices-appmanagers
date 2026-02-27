@@ -10,8 +10,6 @@
 namespace {
 const char* APP_STATE_UNKNOWN = "APP_STATE_UNKNOWN";
 const char* APP_STATE_ACTIVE = "APP_STATE_ACTIVE";
-const char* APP_STATE_INACTIVE = "APP_STATE_INACTIVE";
-const char* APP_STATE_SUSPENDED = "APP_STATE_SUSPENDED";
 } // anonymous namespace
 
 namespace WPEFramework {
@@ -182,6 +180,7 @@ void AppsStatus::processNotification(const Json::Value& notification, bool ignor
 	std::string source;
 	std::string state;
 	std::string previousState;
+	std::string appInstanceId = params.isMember("appInstanceId") ? params["appInstanceId"].asString() : "";
 
 	// Handle specific events
 	if (method.find("onAppLaunchRequest") != std::string::npos) {
@@ -224,6 +223,7 @@ void AppsStatus::processNotification(const Json::Value& notification, bool ignor
 		}
 	}
 	else if (method.find("onAppUnloaded") != std::string::npos) {
+		ignoreStatusCheck = true;
 		SYSLOG(Logging::Startup, (_T("AppsStatus - onAppUnloaded: appId=%s"), appId.c_str()));
 	}
 
@@ -231,12 +231,12 @@ void AppsStatus::processNotification(const Json::Value& notification, bool ignor
 	std::lock_guard<std::mutex> lock(m_statusMutex);
 
 	// Handle app removal events
-	if (method.find("onAppUnloaded") != std::string::npos || 
+	if (method.find("onAppUnloaded") != std::string::npos ||
 		method.find("onAppUninstalled") != std::string::npos) {
 		if (m_status.erase(appId)) {
 			SYSLOG(Logging::Startup, (_T("AppsStatus - Removed app: %s"), appId.c_str()));
 		}
-	} 
+	}
 	else if (!ignoreStatusCheck) {
 		// Add or update app in status map
 		auto it = m_status.find(appId);
@@ -251,6 +251,10 @@ void AppsStatus::processNotification(const Json::Value& notification, bool ignor
 
 		Json::Value& appEntry = it->second;
 		appEntry["appId"] = appId;
+		if (!appInstanceId.empty()) {
+			appEntry["activeSessionId"] = appInstanceId;
+			appEntry["runningSessionId"] = appInstanceId;
+		}
 
 		if (!source.empty()) {
 			appEntry["launchMethod"] = source;
@@ -261,19 +265,16 @@ void AppsStatus::processNotification(const Json::Value& notification, bool ignor
 			if (state == APP_STATE_ACTIVE) {
 				appEntry["status"] = "VISIBLE";
 				appEntry["fireboltStatus"] = "FOREGROUND";
-			} else if (state == APP_STATE_INACTIVE) {
+			} else {
 				appEntry["status"] = "RUNNING";
-				appEntry["fireboltStatus"] = "INACTIVE";
-			} else if (state == APP_STATE_SUSPENDED) {
-				appEntry["status"] = "SUSPENDED";
-				appEntry["fireboltStatus"] = "SUSPENDED";
+				appEntry["fireboltStatus"] = "FOREGROUND";
 			}
 		}
 
 		SYSLOG(Logging::Startup, (_T("AppsStatus - Updated app: %s"), appId.c_str()));
 	}
 
-	// Broadcast updated status
+	// Broadcast updated status (even for install/uninstall/unload events)
 	updateAppsStatusWebSocket();
 }
 

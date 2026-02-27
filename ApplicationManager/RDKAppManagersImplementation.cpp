@@ -564,29 +564,44 @@ Core::hresult RDKAppManagersImplementation::SetDiagContexts(const string& contex
 // Notification methods called by NetworkController via callback
 void RDKAppManagersImplementation::NotifyWebSocketUpdate(const std::string& url, const std::string& message) {
     SYSLOG(Logging::Startup, (_T("NotifyWebSocketUpdate url=%s"), url.c_str()));
+    SYSLOG(Logging::Startup, (_T("NotifyWebSocketUpdate - mNotifications.size()=%zu m_wsListeners.size()=%zu"), 
+           mNotifications.size(), m_wsListeners.size()));
     
-    // Check if any Thunder clients are listening to this URL
+    // Always notify all Thunder JSON-RPC observers (mNotifications)
+    // These are clients that called the "register" JSON-RPC method
+    bool notifiedJsonRpcObservers = false;
+    for (auto* observer : mNotifications) {
+        if (observer) {
+            SYSLOG(Logging::Startup, (_T("[EVENT] NotifyWebSocketUpdate- calling observer->OnNotifyWebSocketUpdate for URL :%s "), url.c_str()));
+            observer->OnNotifyWebSocketUpdate(url, message);
+            notifiedJsonRpcObservers = true;
+        }
+    }
+
+    // Also check for explicit WebSocket listeners (HTTP-based registration via registerWebSocketListener)
+    // This is a separate mechanism from JSON-RPC observers
     {
         std::lock_guard<std::mutex> lock(m_listenerMutex);
         
-        bool hasListeners = std::any_of(m_wsListeners.begin(), m_wsListeners.end(),
-            [&url](const ListenerInfo& info) {
-                return info.url == url;
-            });
-        
-        if (!hasListeners) {
-            SYSLOG(Logging::Startup, (_T("[EVENT] NotifyWebSocketUpdate- NO listeners for URL :%s - SKIPPING"), url.c_str()));
-            // No one is listening, skip notification
-            return;
+        if (!m_wsListeners.empty()) {
+            bool hasListeners = std::any_of(m_wsListeners.begin(), m_wsListeners.end(),
+                [&url](const ListenerInfo& info) {
+                    return info.url == url;
+                });
+            
+            if (hasListeners) {
+                SYSLOG(Logging::Startup, (_T("[EVENT] NotifyWebSocketUpdate- Found matching WebSocket listener for URL :%s"), url.c_str()));
+                // Could notify explicit listeners here if needed
+            } else {
+                SYSLOG(Logging::Startup, (_T("[EVENT] NotifyWebSocketUpdate- No WebSocket listeners for URL :%s"), url.c_str()));
+            }
         }
     }
     
-    // Notify all Thunder observers (ASNetwork plugin notification sinks)
-    for (auto* observer : mNotifications) {
-        if (observer) {
-            SYSLOG(Logging::Startup, (_T("[EVENT] NotifyWebSocketUpdate- listeners for URL :%s "), url.c_str()));
-            observer->OnNotifyWebSocketUpdate(url, message);
-        }
+    if (notifiedJsonRpcObservers) {
+        SYSLOG(Logging::Startup, (_T("[EVENT] NotifyWebSocketUpdate- Successfully notified JSON-RPC observers for URL :%s"), url.c_str()));
+    } else {
+        SYSLOG(Logging::Startup, (_T("[EVENT] NotifyWebSocketUpdate- WARNING: No JSON-RPC observers registered for URL :%s"), url.c_str()));
     }
 }
 
