@@ -259,6 +259,8 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
               if (gNeedsScreenshot)
               {
                   gNeedsScreenshot = false;
+                  // Note: CompositorController::screenShot() allocates memory for gScreenshotData
+                  // that must be freed by the caller using free()
                   bool success = CompositorController::screenShot(gScreenshotData, gScreenshotSize);
                   
                   gScreenshotSuccess = success;
