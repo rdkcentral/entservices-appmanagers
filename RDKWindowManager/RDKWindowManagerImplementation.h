@@ -57,6 +57,18 @@ namespace Plugin {
         int32_t mGroupId;
     };
 
+    struct ScreenshotResult
+    {
+        ScreenshotResult(bool success, std::string imageData)
+            : mSuccess(success)
+            , mImageData(std::move(imageData))
+        {
+        }
+
+        bool mSuccess;
+        std::string mImageData;
+    };
+
     class RDKWindowManagerImplementation : public Exchange::IRDKWindowManager{
     public:
         RDKWindowManagerImplementation();
@@ -172,7 +184,7 @@ namespace Plugin {
         bool setInactivityInterval(const uint32_t interval);
         bool resetInactivityTime();
 
-        void notifyScreenshotComplete(bool success);
+        void notifyScreenshotComplete(bool success, const std::string& imageData);
 
         void dispatchEvent(Event event, const JsonValue &params);
         void Dispatch(Event event, const JsonValue params);
