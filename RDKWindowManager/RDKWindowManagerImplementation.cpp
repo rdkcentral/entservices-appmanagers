@@ -619,8 +619,12 @@ void RDKWindowManagerImplementation::Dispatch(Event event, const JsonValue param
             break;
 
         case RDK_WINDOW_MANAGER_EVENT_SCREENSHOT_COMPLETE:
-            LOGINFO("RDKWindowManager Dispatch OnScreenshotComplete success: %s", gScreenshotSuccess ? "true" : "false");
-            notifyScreenshotComplete(gScreenshotSuccess);
+        {
+            std::lock_guard<std::mutex> lock(gRdkWindowManagerMutex);
+            bool success = gScreenshotSuccess;
+            LOGINFO("RDKWindowManager Dispatch OnScreenshotComplete success: %s", success ? "true" : "false");
+            notifyScreenshotComplete(success);
+        }
             break;
 
          default:
