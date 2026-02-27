@@ -2227,7 +2227,7 @@ Core::hresult RDKWindowManagerImplementation::StopVncServer()
  */
 Core::hresult RDKWindowManagerImplementation::GetScreenshot()
 {
-    Core::hresult status = Core::ERROR_NONE;
+    Core::hresult status = Core::ERROR_GENERAL;
 
     bool lockAcquired = lockRdkWindowManagerMutex();
     if (lockAcquired)
@@ -2241,9 +2241,14 @@ Core::hresult RDKWindowManagerImplementation::GetScreenshot()
         }
         gNeedsScreenshot = true;
         gRdkWindowManagerMutex.unlock();
+        
+        status = Core::ERROR_NONE;
+        LOGINFO("Screenshot request queued");
     }
-
-    LOGINFO("Screenshot request queued");
+    else
+    {
+        LOGERR("Failed to acquire lock for screenshot request");
+    }
 
     return status;
 }
