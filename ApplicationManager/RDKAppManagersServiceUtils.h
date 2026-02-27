@@ -28,7 +28,6 @@ public:
         std::map<std::string, std::string> runtimeParams;
     };
 
-    static std::string EscapeJson(const std::string& input);
     static std::string UrlDecode(const std::string& value);
     static std::map<std::string, std::string> ParseQueryParams(const std::string& query);
     static bool getParamValue(const std::map<std::string, std::string>& params, const std::string& key, std::string& value);

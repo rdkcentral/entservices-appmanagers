@@ -9,52 +9,6 @@
 namespace WPEFramework {
 namespace Plugin {
 
-std::string RDKAppManagersServiceUtils::EscapeJson(const std::string& input)
-{
-    std::string escaped;
-    escaped.reserve(input.size());
-
-    for (unsigned char value : input) {
-        if (value == static_cast<unsigned char>('"')) {
-            escaped += "\\\"";
-            continue;
-        }
-
-        if (value == static_cast<unsigned char>('\\')) {
-            escaped += "\\\\";
-            continue;
-        }
-
-        if (value >= 0x20) {
-            escaped += static_cast<char>(value);
-            continue;
-        }
-
-        switch (value) {
-        case '\n':
-            escaped += "\\n";
-            break;
-        case '\r':
-            escaped += "\\r";
-            break;
-        case '\t':
-            escaped += "\\t";
-            break;
-        case '\b':
-            escaped += "\\b";
-            break;
-        case '\f':
-            escaped += "\\f";
-            break;
-        default:
-            escaped += "?";
-            break;
-        }
-    }
-
-    return escaped;
-}
-
 std::string RDKAppManagersServiceUtils::UrlDecode(const std::string& value)
 {
     std::string output;
@@ -185,7 +139,13 @@ std::string RDKAppManagersServiceUtils::GetJsonStringField(const std::string& js
 
 std::string RDKAppManagersServiceUtils::BuildErrorResponse(const std::string& message)
 {
-    return std::string("{\"success\":false,\"error\":\"") + EscapeJson(message) + "\"}";
+    Json::Value errorResponse;
+    errorResponse["success"] = false;
+    errorResponse["error"] = message;
+
+    Json::StreamWriterBuilder writerBuilder;
+    writerBuilder["indentation"] = "";
+    return Json::writeString(writerBuilder, errorResponse);
 }
 
 std::pair<std::string, std::string> RDKAppManagersServiceUtils::NormalizeUrlAndExtractQuery(const std::string& url, const std::string& queryParams)
@@ -342,8 +302,14 @@ RDKAppManagersServiceUtils::RequestContext RDKAppManagersServiceUtils::BuildRequ
 void RDKAppManagersServiceUtils::EnsureErrorResponse(const Core::hresult status, const std::string& normalizedUrl, std::string& responseBody)
 {
     if (status != Core::ERROR_NONE && responseBody.empty()) {
-        responseBody = std::string("{\"success\":false,\"url\":\"") + EscapeJson(normalizedUrl) +
-            "\",\"status\":" + std::to_string(status) + "}";
+        Json::Value errorResponse;
+        errorResponse["success"] = false;
+        errorResponse["url"] = normalizedUrl;
+        errorResponse["status"] = static_cast<Json::Value::Int>(status);
+
+        Json::StreamWriterBuilder writerBuilder;
+        writerBuilder["indentation"] = "";
+        responseBody = Json::writeString(writerBuilder, errorResponse);
     }
 }
 

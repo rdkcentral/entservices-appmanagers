@@ -248,8 +248,14 @@ Core::hresult RDKAppManagersService::LaunchAppRequest(const std::string& appId, 
 		status = appManager->PreloadApp(appId, launchArgs, preloadError);
 		if (status == Core::ERROR_NONE) {
 			code = 200;
-			responseBody = std::string("{\"success\":true,\"appId\":\"") + RDKAppManagersServiceUtils::EscapeJson(appId) + "\",\"mode\":\"" +
-				RDKAppManagersServiceUtils::EscapeJson(mode) + "\"}";
+			Json::Value successResponse;
+			successResponse["success"] = true;
+			successResponse["appId"] = appId;
+			successResponse["mode"] = mode;
+
+			Json::StreamWriterBuilder writerBuilder;
+			writerBuilder["indentation"] = "";
+			responseBody = Json::writeString(writerBuilder, successResponse);
 		} else {
 			responseBody = RDKAppManagersServiceUtils::BuildErrorResponse(preloadError.empty() ? "Preload failed" : preloadError);
 		}
@@ -261,7 +267,13 @@ Core::hresult RDKAppManagersService::LaunchAppRequest(const std::string& appId, 
 		status = appManager->LaunchApp(appId, resolvedIntent, launchArgs);
 		if (status == Core::ERROR_NONE) {
 			code = 200;
-			responseBody = std::string("{\"success\":true,\"appId\":\"") + RDKAppManagersServiceUtils::EscapeJson(appId) + "\"}";
+			Json::Value successResponse;
+			successResponse["success"] = true;
+			successResponse["appId"] = appId;
+
+			Json::StreamWriterBuilder writerBuilder;
+			writerBuilder["indentation"] = "";
+			responseBody = Json::writeString(writerBuilder, successResponse);
 		} else {
 			responseBody = RDKAppManagersServiceUtils::BuildErrorResponse("Launch failed");
 		}
@@ -294,7 +306,13 @@ Core::hresult RDKAppManagersService::CloseAppRequest(const std::string& appId, u
 	Core::hresult status = appManager->CloseApp(appId);
 	if (status == Core::ERROR_NONE) {
 		code = 200;
-		responseBody = std::string("{\"success\":true,\"appId\":\"") + RDKAppManagersServiceUtils::EscapeJson(appId) + "\"}";
+		Json::Value successResponse;
+		successResponse["success"] = true;
+		successResponse["appId"] = appId;
+
+		Json::StreamWriterBuilder writerBuilder;
+		writerBuilder["indentation"] = "";
+		responseBody = Json::writeString(writerBuilder, successResponse);
 	} else {
 		responseBody = RDKAppManagersServiceUtils::BuildErrorResponse("Close app failed");
 	}
@@ -326,7 +344,13 @@ Core::hresult RDKAppManagersService::KillAppRequest(const std::string& appId, ui
 	Core::hresult status = appManager->KillApp(appId);
 	if (status == Core::ERROR_NONE) {
 		code = 200;
-		responseBody = std::string("{\"success\":true,\"appId\":\"") + RDKAppManagersServiceUtils::EscapeJson(appId) + "\"}";
+		Json::Value successResponse;
+		successResponse["success"] = true;
+		successResponse["appId"] = appId;
+
+		Json::StreamWriterBuilder writerBuilder;
+		writerBuilder["indentation"] = "";
+		responseBody = Json::writeString(writerBuilder, successResponse);
 	} else {
 		responseBody = RDKAppManagersServiceUtils::BuildErrorResponse("Kill app failed");
 	}
@@ -358,7 +382,13 @@ Core::hresult RDKAppManagersService::FocusAppRequest(const std::string& client, 
 	Core::hresult status = windowManager->SetFocus(client);
 	if (status == Core::ERROR_NONE) {
 		code = 200;
-		responseBody = std::string("{\"success\":true,\"client\":\"") + RDKAppManagersServiceUtils::EscapeJson(client) + "\"}";
+		Json::Value successResponse;
+		successResponse["success"] = true;
+		successResponse["client"] = client;
+
+		Json::StreamWriterBuilder writerBuilder;
+		writerBuilder["indentation"] = "";
+		responseBody = Json::writeString(writerBuilder, successResponse);
 	} else {
 		responseBody = RDKAppManagersServiceUtils::BuildErrorResponse("Set focus failed");
 	}
@@ -458,14 +488,26 @@ Core::hresult RDKAppManagersService::ResetAppDataRequest(const std::string& appI
 		status = storageManager->Clear(appId, errorReason);
 		if (status == Core::ERROR_NONE) {
 			code = 200;
-			responseBody = std::string("{\"success\":true,\"appId\":\"") + RDKAppManagersServiceUtils::EscapeJson(appId) + "\"}";
+			Json::Value successResponse;
+			successResponse["success"] = true;
+			successResponse["appId"] = appId;
+
+			Json::StreamWriterBuilder writerBuilder;
+			writerBuilder["indentation"] = "";
+			responseBody = Json::writeString(writerBuilder, successResponse);
 		}
 	} else {
 		const std::string exemptApps = "[\"epg_test_id\"]";
 		status = storageManager->ClearAll(exemptApps, errorReason);
 		if (status == Core::ERROR_NONE) {
 			code = 200;
-			responseBody = "{\"success\":true,\"scope\":\"all\"}";
+			Json::Value successResponse;
+			successResponse["success"] = true;
+			successResponse["scope"] = "all";
+
+			Json::StreamWriterBuilder writerBuilder;
+			writerBuilder["indentation"] = "";
+			responseBody = Json::writeString(writerBuilder, successResponse);
 		}
 	}
 

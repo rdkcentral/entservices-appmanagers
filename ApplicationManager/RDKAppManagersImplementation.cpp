@@ -2,6 +2,7 @@
 #include "RDKAppManagersServiceUtils.h"
 #include "SystemSettings.h"
 #include "TestPreferences.h"
+#include <json/json.h>
 #include <vector>
 #include <map>
 #include <cctype>
@@ -14,7 +15,7 @@ SERVICE_REGISTRATION(RDKAppManagersImplementation, 1, 0, 0);
 namespace WPEFramework {
 namespace Plugin {
 
-RDKAppManagersImplementation::RDKAppManagersImplementation() 
+RDKAppManagersImplementation::RDKAppManagersImplementation()
     : m_listenerIdCounter(0)
     , m_shell(nullptr)
     , m_service(std::make_unique<RDKAppManagersService>(nullptr))
@@ -106,8 +107,15 @@ Core::hresult RDKAppManagersImplementation::Request(const uint32_t flags, const 
         status = m_service->GetSystemStatsRequest(code, responseBody);
     } else {
         code = 404;
-        responseBody = std::string("{\"success\":false,\"error\":\"Unsupported URL\",\"url\":\"") + RDKAppManagersServiceUtils::EscapeJson(url) +
-                       "\",\"normalizedUrl\":\"" + RDKAppManagersServiceUtils::EscapeJson(normalizedUrl) + "\"}";
+        Json::Value errorResponse;
+        errorResponse["success"] = false;
+        errorResponse["error"] = "Unsupported URL";
+        errorResponse["url"] = url;
+        errorResponse["normalizedUrl"] = normalizedUrl;
+
+        Json::StreamWriterBuilder writerBuilder;
+        writerBuilder["indentation"] = "";
+        responseBody = Json::writeString(writerBuilder, errorResponse);
         SYSLOG(Logging::Error, (_T("Request mapping not found for url=%s normalized=%s"), url.c_str(), normalizedUrl.c_str()));
         return Core::ERROR_NONE;
     }

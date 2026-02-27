@@ -20,8 +20,9 @@ set(MODULE_NAME ${NAMESPACE}${PLUGIN_NAME})
 set(PLUGIN_IMPLEMENTATION ${MODULE_NAME}Implementation)
 
 
-set(PLUGIN_RDKAPPMANAGERS_AUTOSTART "false" CACHE STRING "Automatically start RDKAppmanagers plugin")
-set(PLUGIN_RDKAPPMANAGERS_STARTUPORDER "51" CACHE STRING "To configure startup order of RDKAppmanagers plugin")
+set(PLUGIN_RDKAPPMANAGERS_AUTOSTART "false" CACHE STRING "Automatically start RDKAppManagers plugin")
+set(PLUGIN_RDKAPPMANAGERS_STARTUPORDER "51" CACHE STRING "To configure startup order of RDKAppManagers plugin")
+set(PLUGIN_RDKAPPMANAGERS_MODE "Off" CACHE STRING "Controls if the plugin runs in process, out of process, or remote")
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
