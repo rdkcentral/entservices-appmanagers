@@ -169,7 +169,6 @@ else(L2_TEST_OOP_RPC)
         ${CMAKE_CURRENT_SOURCE_DIR}/libusb
         ${CMAKE_CURRENT_SOURCE_DIR}/interfaces
         ${CMAKE_CURRENT_SOURCE_DIR}/secure_storage
-        ${CMAKE_CURRENT_SOURCE_DIR}/../../../helpers
         ${CMAKE_INSTALL_PREFIX}/include
         ${CMAKE_INSTALL_PREFIX}/include/WPEFramework
     )
