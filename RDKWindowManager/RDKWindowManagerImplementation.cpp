@@ -272,9 +272,11 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
                   
                   if (RDKWindowManagerImplementation::_instance)
                   {
+                      JsonObject params;
+                      params["success"] = success;
                       RDKWindowManagerImplementation::_instance->dispatchEvent(
                           RDKWindowManagerImplementation::Event::RDK_WINDOW_MANAGER_EVENT_SCREENSHOT_COMPLETE,
-                          JsonValue());
+                          params);
                   }
               }
 
