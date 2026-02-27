@@ -79,6 +79,8 @@ namespace ralf
         addFireboltEndPointToConfig(ociConfigRootNode, runtimeConfigObject.envVariables);
         // Finally save the modified OCI config to file
         return saveOCIConfigToFile(ociConfigRootNode, config.mUserId, config.mGroupId);
+    }
+
     bool RalfOCIConfigGenerator::applyRuntimeAndAppConfigToOCIConfig(Json::Value &ociConfigRootNode, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject, const WPEFramework::Plugin::ApplicationConfiguration &appConfig)
     {
         bool status = true;
@@ -98,9 +100,6 @@ namespace ralf
         // set hostname to appid
         ociConfigRootNode[HOSTNAME] = appConfig.mAppId;
 
-        // Set cwd as /tmp //TODO RDKEMW-14332
-        ociConfigRootNode[PROCESS][CWD] = "/tmp";
-
         // Set uidMappings
         Json::Value uidMapping;
         uidMapping[CONTAINER_ID] = 0;
@@ -116,17 +115,20 @@ namespace ralf
         ociConfigRootNode[LINUX][GID_MAPPINGS].append(gidMapping);
 
         // Set westeros environment variable
-        // mWesterosSocketPath has XDG_RUNTIME_DIR/WAYLAND_DISPLAY, we need to set WAYLAND_DISPLAY env variable to just the display name (i.e. the last part of the path) because that is what westeros expects.
+        // mWesterosSocketPath has XDG_RUNTIME_DIR/WAYLAND_DISPLAY, we need to set WAYLAND_DISPLAY env variable to just the display
+        // name (i.e. the last part of the path) because that is what westeros expects.
         std::string waylandDisplay = appConfig.mWesterosSocketPath.substr(appConfig.mWesterosSocketPath.find_last_of("/") + 1);
-        ociConfigRootNode[PROCESS][ENV].append("WAYLAND_DISPLAY=" + waylandDisplay);
-        ociConfigRootNode[PROCESS][ENV].append("XDG_RUNTIME_DIR=/tmp"); // Keep it consistent with what is set in DobbyPluginLauncher for Ralf package. DobbyPluginLauncher will bind mount /tmp from host to container and westeros socket will be created inside /tmp in the container.
+        addToEnvironment(ociConfigRootNode, "WAYLAND_DISPLAY", waylandDisplay);
+        // Keep it consistent with what is set in DobbyPluginLauncher for Ralf package.
+        // DobbyPluginLauncher will bind mount /tmp from host to container and westeros socket will be created inside /tmp in the container.
+        addToEnvironment(ociConfigRootNode, "XDG_RUNTIME_DIR", "/tmp");
 
         // Need to mount bind  XDG_RUNTIME_DIR/WAYLAND_DISPLAY from host to container
         addMountEntry(ociConfigRootNode, appConfig.mWesterosSocketPath, appConfig.mWesterosSocketPath);
 
         // Home by default will be set to PERSIST_STORAGE_PATH in the OCI config.
         std::string homePath = PERSIST_STORAGE_PATH; // Default HOME path
-        ociConfigRootNode[PROCESS][ENV].append("HOME=" + homePath);
+        addToEnvironment(ociConfigRootNode, "HOME", homePath);
 
         // Mount persistent storage path
         std::string appStoragePath = appConfig.mAppStorageInfo.path;
@@ -134,69 +136,7 @@ namespace ralf
 
         // Finally add rialto path to the environment variables
         std::string rialtoSocketPath = "/tmp/rlto-" + appConfig.mAppInstanceId;
-        ociConfigRootNode[PROCESS][ENV].append("RIALTO_SOCKET_PATH=" + rialtoSocketPath);
-        LOGDBG("Added RIALTO_SOCKET environment variable with value %s\n", rialtoSocketPath.c_str());
-        addMountEntry(ociConfigRootNode, rialtoSocketPath, rialtoSocketPath);
-        LOGDBG("Mounted rialto socket path %s to container path %s\n", rialtoSocketPath.c_str(), rialtoSocketPath.c_str());
-        return status;
-    }
-    }
-    bool RalfOCIConfigGenerator::applyRuntimeAndAppConfigToOCIConfig(Json::Value &ociConfigRootNode, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject, const WPEFramework::Plugin::ApplicationConfiguration &appConfig)
-    {
-        bool status = true;
-        // Set user and group ID
-        ociConfigRootNode[PROCESS][USER][UID] = 0; // Run as root inside container
-        ociConfigRootNode[PROCESS][USER][GID] = 0; // Run as root group inside container
-        ociConfigRootNode[PROCESS][USER][ADDITIONAL_GIDS] = Json::Value(Json::arrayValue);
-
-        // Add video group
-        uint32_t videoGid = 44;
-        if (!getGroupId("video", videoGid))
-        {
-            LOGWARN("Failed to get GID for video group, using default GID 44");
-        }
-        ociConfigRootNode[PROCESS][USER][ADDITIONAL_GIDS].append(videoGid); // video group
-
-        // set hostname to appid
-        ociConfigRootNode[HOSTNAME] = appConfig.mAppId;
-
-        // Set cwd as /tmp //TODO RDKEMW-14332
-        ociConfigRootNode[PROCESS][CWD] = "/tmp";
-
-        // Set uidMappings
-        Json::Value uidMapping;
-        uidMapping[CONTAINER_ID] = 0;
-        uidMapping[HOST_ID] = appConfig.mUserId;
-        uidMapping[SIZE] = 1;
-        ociConfigRootNode[LINUX][UID_MAPPINGS].append(uidMapping);
-
-        // set gidMappings also
-        Json::Value gidMapping;
-        gidMapping[CONTAINER_ID] = 0;
-        gidMapping[HOST_ID] = appConfig.mGroupId;
-        gidMapping[SIZE] = 1;
-        ociConfigRootNode[LINUX][GID_MAPPINGS].append(gidMapping);
-
-        // Set westeros environment variable
-        // mWesterosSocketPath has XDG_RUNTIME_DIR/WAYLAND_DISPLAY, we need to set WAYLAND_DISPLAY env variable to just the display name (i.e. the last part of the path) because that is what westeros expects.
-        std::string waylandDisplay = appConfig.mWesterosSocketPath.substr(appConfig.mWesterosSocketPath.find_last_of("/") + 1);
-        ociConfigRootNode[PROCESS][ENV].append("WAYLAND_DISPLAY=" + waylandDisplay);
-        ociConfigRootNode[PROCESS][ENV].append("XDG_RUNTIME_DIR=/tmp"); // Keep it consistent with what is set in DobbyPluginLauncher for Ralf package. DobbyPluginLauncher will bind mount /tmp from host to container and westeros socket will be created inside /tmp in the container.
-
-        // Need to mount bind  XDG_RUNTIME_DIR/WAYLAND_DISPLAY from host to container
-        addMountEntry(ociConfigRootNode, appConfig.mWesterosSocketPath, appConfig.mWesterosSocketPath);
-
-        // Home by default will be set to PERSIST_STORAGE_PATH in the OCI config.
-        std::string homePath = PERSIST_STORAGE_PATH; // Default HOME path
-        ociConfigRootNode[PROCESS][ENV].append("HOME=" + homePath);
-
-        // Mount persistent storage path
-        std::string appStoragePath = appConfig.mAppStorageInfo.path;
-        addAppStorageToOCIConfig(ociConfigRootNode, appStoragePath);
-
-        // Finally add rialto path to the environment variables
-        std::string rialtoSocketPath = "/tmp/rlto-" + appConfig.mAppInstanceId;
-        ociConfigRootNode[PROCESS][ENV].append("RIALTO_SOCKET_PATH=" + rialtoSocketPath);
+        addToEnvironment(ociConfigRootNode, "RIALTO_SOCKET_PATH", rialtoSocketPath);
         LOGDBG("Added RIALTO_SOCKET environment variable with value %s\n", rialtoSocketPath.c_str());
         addMountEntry(ociConfigRootNode, rialtoSocketPath, rialtoSocketPath);
         LOGDBG("Mounted rialto socket path %s to container path %s\n", rialtoSocketPath.c_str(), rialtoSocketPath.c_str());
@@ -209,7 +149,7 @@ namespace ralf
         // set PERSIST_STORAGE_PATH environment variable to it.
         std::string containerStoragePath = PERSIST_STORAGE_PATH;
         addMountEntry(ociConfigRootNode, appStoragePath, containerStoragePath);
-        ociConfigRootNode[PROCESS][ENV].append("PERSIST_STORAGE_PATH=" + containerStoragePath);
+        addToEnvironment(ociConfigRootNode, "PERSIST_STORAGE_PATH", containerStoragePath);
         LOGDBG("Added application storage mount from %s to %s and set PERSIST_STORAGE_PATH environment variable\n", appStoragePath.c_str(), containerStoragePath.c_str());
         status = true;
         return status;
@@ -483,8 +423,46 @@ namespace ralf
         {
             status = addMemoryConfigToOCIConfig(ociConfigRootNode, configNode, packageType);
         }
+        // Add APP_PACKAGE_VERSION environment variable from application config to OCI config
+        if (packageType == PKG_TYPE_APPLICATION)
+        {
+            addAppPackageVersionToConfig(ociConfigRootNode, manifestRootNode);
+        }
 
         return status;
+    }
+    bool RalfOCIConfigGenerator::addAppPackageVersionToConfig(Json::Value &ociConfigRootNode, Json::Value &manifestRootNode)
+    {
+        // Identifies the application package version. This value is used for logging, debugging, and version-specific behavior.
+        // It must be derived from the version and versionName fields retrieved from the package metadata and formatted as 'versionName_version'.
+
+        std::string version = manifestRootNode[VERSION].asString();
+        std::string versionName = manifestRootNode[VERSION_NAME].asString();
+        if (version.empty() || versionName.empty())
+        {
+            LOGERR("Version or versionName is missing in the manifest\n");
+            return false;
+        }
+        std::string appPackageVersion = versionName + "_" + version;
+
+        addToEnvironment(ociConfigRootNode, "APP_PACKAGE_VERSION", appPackageVersion);
+        return true;
+    }
+    bool RalfOCIConfigGenerator::addStorageConfigToOCIConfig(Json::Value &ociConfigRootNode, Json::Value &configNode)
+    {
+        if (configNode.isMember(STORAGE_CONFIG_URN) && configNode[STORAGE_CONFIG_URN].isObject())
+        {
+            Json::Value storageConfig = configNode[STORAGE_CONFIG_URN];
+            // Check if maxLocalStorage is defined
+            if (storageConfig.isMember(MAX_LOCAL_STORAGE) && storageConfig[MAX_LOCAL_STORAGE].isString())
+            {
+                std::string maxLocalStorage = storageConfig[MAX_LOCAL_STORAGE].asString();
+                addToEnvironment(ociConfigRootNode, "STORAGE_LIMIT", "" + parseMemorySize(maxLocalStorage));
+                LOGDBG("Applied max local storage to OCI config: %s\n", maxLocalStorage.c_str());
+                return true;
+            }
+        }
+        return false;
     }
     bool RalfOCIConfigGenerator::addMemoryConfigToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &configNode, const std::string &packageType)
     {
@@ -509,9 +487,10 @@ namespace ralf
             {
                 //[LINUX][RESOURCES][MEMORY][MEMORY_LIMIT] exists in oci-base-spec file.
                 // We need to convert the value from memoryConfig[SYSTEM_MEMORY] to the to bytes
-                uint64_t memoryLimit = ralf::parseMemorySize(memoryConfig[SYSTEM_MEMORY].asString());
+                uint64_t memoryLimit = parseMemorySize(memoryConfig[SYSTEM_MEMORY].asString());
                 ociConfigRootNode[LINUX][RESOURCES][MEMORY][MEMORY_LIMIT] = memoryLimit;
                 LOGDBG("Applied system memory limit to OCI config: %llu\n", memoryLimit);
+                addToEnvironment(ociConfigRootNode, "CPU_MEMORY_LIMIT", std::to_string(memoryLimit));
             }
             // TODO not sure what to do with GPU memory for now
             status = true;
@@ -551,7 +530,6 @@ namespace ralf
                 }
             }
         }
-
         LOGWARN("FIREBOLT_ENDPOINT environment variable not found in runtime config\n");
         return false;
     }
@@ -567,7 +545,7 @@ namespace ralf
             std::string overrideJsonStr = Json::writeString(writer, overrideNode);
             std::string envVarKey = packageType == PKG_TYPE_APPLICATION ? APP_CONFIG_OVERRIDES_ENV_KEY : RUNTIME_CONFIG_OVERRIDES_ENV_KEY;
             std::string envVar = envVarKey + "=" + overrideJsonStr;
-            ociConfigRootNode[PROCESS][ENV].append(envVar);
+            addToEnvironment(ociConfigRootNode, envVarKey, overrideJsonStr);
             LOGDBG("Added config overrides to OCI config as environment variable: %s\n", envVar.c_str());
             status = true;
         }
@@ -577,5 +555,13 @@ namespace ralf
         }
 
         return status;
+    }
+    void RalfOCIConfigGenerator::addToEnvironment(Json::Value &ociConfigRootNode, const std::string &key, const std::string &value)
+    {
+        // The lib32-entservices-rdkappmanagers/resources/oci-base-spec.json file has env variable already defined. So skipping the checks
+        // for processs/ENV and directly appending the new environment variable.
+        std::string envVar = key + "=" + value;
+        ociConfigRootNode[PROCESS][ENV].append(envVar);
+        LOGDBG("Added environment variable to OCI config: %s\n", envVar.c_str());
     }
 } // namespace ralf
