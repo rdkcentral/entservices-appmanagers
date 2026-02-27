@@ -9,13 +9,70 @@ namespace WPEFramework {
 namespace Plugin {
 
 RDKAppManagersService::RDKAppManagersService(PluginHost::IShell* shell)
-	: m_shell(shell)
+	: m_shell(nullptr)
+	, m_appManager(nullptr)
+	, m_windowManager(nullptr)
+	, m_storageManager(nullptr)
 {
+	SetShell(shell);
+}
+
+RDKAppManagersService::~RDKAppManagersService()
+{
+	ReleaseInterfaces();
 }
 
 void RDKAppManagersService::SetShell(PluginHost::IShell* shell)
 {
+	if (m_shell != shell) {
+		ReleaseInterfaces();
+	}
 	m_shell = shell;
+}
+
+void RDKAppManagersService::ReleaseInterfaces()
+{
+	if (m_appManager != nullptr) {
+		m_appManager->Release();
+		m_appManager = nullptr;
+	}
+
+	if (m_windowManager != nullptr) {
+		m_windowManager->Release();
+		m_windowManager = nullptr;
+	}
+
+	if (m_storageManager != nullptr) {
+		m_storageManager->Release();
+		m_storageManager = nullptr;
+	}
+}
+
+Exchange::IAppManager* RDKAppManagersService::GetAppManager()
+{
+	if (m_appManager == nullptr && m_shell != nullptr) {
+		m_appManager = m_shell->QueryInterfaceByCallsign<Exchange::IAppManager>("org.rdk.AppManager");
+	}
+
+	return m_appManager;
+}
+
+Exchange::IRDKWindowManager* RDKAppManagersService::GetWindowManager()
+{
+	if (m_windowManager == nullptr && m_shell != nullptr) {
+		m_windowManager = m_shell->QueryInterfaceByCallsign<Exchange::IRDKWindowManager>("org.rdk.RDKWindowManager");
+	}
+
+	return m_windowManager;
+}
+
+Exchange::IStorageManager* RDKAppManagersService::GetStorageManager()
+{
+	if (m_storageManager == nullptr && m_shell != nullptr) {
+		m_storageManager = m_shell->QueryInterfaceByCallsign<Exchange::IStorageManager>("org.rdk.StorageManager");
+	}
+
+	return m_storageManager;
 }
 
 Core::hresult RDKAppManagersService::DispatchMappedRequest(const std::vector<std::string>& methods,
@@ -138,7 +195,7 @@ Core::hresult RDKAppManagersService::GetInstalledAppsRequest(uint32_t& code, std
 		return Core::ERROR_GENERAL;
 	}
 
-	Exchange::IAppManager* appManager = m_shell->QueryInterfaceByCallsign<Exchange::IAppManager>("org.rdk.AppManager");
+	Exchange::IAppManager* appManager = GetAppManager();
 	if (appManager == nullptr) {
 		responseBody = RDKAppManagersServiceUtils::BuildErrorResponse("org.rdk.AppManager interface unavailable");
 		return Core::ERROR_GENERAL;
@@ -146,7 +203,6 @@ Core::hresult RDKAppManagersService::GetInstalledAppsRequest(uint32_t& code, std
 
 	std::string apps;
 	Core::hresult status = appManager->GetInstalledApps(apps);
-	appManager->Release();
 
 	if (status == Core::ERROR_NONE) {
 		code = 200;
@@ -180,7 +236,7 @@ Core::hresult RDKAppManagersService::LaunchAppRequest(const std::string& appId, 
 		return Core::ERROR_GENERAL;
 	}
 
-	Exchange::IAppManager* appManager = m_shell->QueryInterfaceByCallsign<Exchange::IAppManager>("org.rdk.AppManager");
+	Exchange::IAppManager* appManager = GetAppManager();
 	if (appManager == nullptr) {
 		responseBody = RDKAppManagersServiceUtils::BuildErrorResponse("org.rdk.AppManager interface unavailable");
 		return Core::ERROR_GENERAL;
@@ -211,7 +267,6 @@ Core::hresult RDKAppManagersService::LaunchAppRequest(const std::string& appId, 
 		}
 	}
 
-	appManager->Release();
 	return status;
 }
 
@@ -230,14 +285,13 @@ Core::hresult RDKAppManagersService::CloseAppRequest(const std::string& appId, u
 		return Core::ERROR_GENERAL;
 	}
 
-	Exchange::IAppManager* appManager = m_shell->QueryInterfaceByCallsign<Exchange::IAppManager>("org.rdk.AppManager");
+	Exchange::IAppManager* appManager = GetAppManager();
 	if (appManager == nullptr) {
 		responseBody = RDKAppManagersServiceUtils::BuildErrorResponse("org.rdk.AppManager interface unavailable");
 		return Core::ERROR_GENERAL;
 	}
 
 	Core::hresult status = appManager->CloseApp(appId);
-	appManager->Release();
 	if (status == Core::ERROR_NONE) {
 		code = 200;
 		responseBody = std::string("{\"success\":true,\"appId\":\"") + RDKAppManagersServiceUtils::EscapeJson(appId) + "\"}";
@@ -263,14 +317,13 @@ Core::hresult RDKAppManagersService::KillAppRequest(const std::string& appId, ui
 		return Core::ERROR_GENERAL;
 	}
 
-	Exchange::IAppManager* appManager = m_shell->QueryInterfaceByCallsign<Exchange::IAppManager>("org.rdk.AppManager");
+	Exchange::IAppManager* appManager = GetAppManager();
 	if (appManager == nullptr) {
 		responseBody = RDKAppManagersServiceUtils::BuildErrorResponse("org.rdk.AppManager interface unavailable");
 		return Core::ERROR_GENERAL;
 	}
 
 	Core::hresult status = appManager->KillApp(appId);
-	appManager->Release();
 	if (status == Core::ERROR_NONE) {
 		code = 200;
 		responseBody = std::string("{\"success\":true,\"appId\":\"") + RDKAppManagersServiceUtils::EscapeJson(appId) + "\"}";
@@ -296,14 +349,13 @@ Core::hresult RDKAppManagersService::FocusAppRequest(const std::string& client, 
 		return Core::ERROR_GENERAL;
 	}
 
-	Exchange::IRDKWindowManager* windowManager = m_shell->QueryInterfaceByCallsign<Exchange::IRDKWindowManager>("org.rdk.RDKWindowManager");
+	Exchange::IRDKWindowManager* windowManager = GetWindowManager();
 	if (windowManager == nullptr) {
 		responseBody = RDKAppManagersServiceUtils::BuildErrorResponse("org.rdk.RDKWindowManager interface unavailable");
 		return Core::ERROR_GENERAL;
 	}
 
 	Core::hresult status = windowManager->SetFocus(client);
-	windowManager->Release();
 	if (status == Core::ERROR_NONE) {
 		code = 200;
 		responseBody = std::string("{\"success\":true,\"client\":\"") + RDKAppManagersServiceUtils::EscapeJson(client) + "\"}";
@@ -323,7 +375,7 @@ Core::hresult RDKAppManagersService::GetSystemStatsRequest(uint32_t& code, std::
 		return Core::ERROR_GENERAL;
 	}
 
-	Exchange::IRDKWindowManager* windowManager = m_shell->QueryInterfaceByCallsign<Exchange::IRDKWindowManager>("org.rdk.RDKWindowManager");
+	Exchange::IRDKWindowManager* windowManager = GetWindowManager();
 	if (windowManager == nullptr) {
 		responseBody = RDKAppManagersServiceUtils::BuildErrorResponse("org.rdk.RDKWindowManager interface unavailable");
 		return Core::ERROR_GENERAL;
@@ -334,7 +386,6 @@ Core::hresult RDKAppManagersService::GetSystemStatsRequest(uint32_t& code, std::
 		uint32_t modifiers = 0;
 		uint64_t timestampInSeconds = 0;
 		Core::hresult status = windowManager->GetLastKeyInfo(keyCode, modifiers, timestampInSeconds);
-		windowManager->Release();
 
 		if (status != Core::ERROR_NONE) {
 			Json::Value statsResponse;
@@ -395,7 +446,7 @@ Core::hresult RDKAppManagersService::ResetAppDataRequest(const std::string& appI
 		return Core::ERROR_GENERAL;
 	}
 
-	Exchange::IStorageManager* storageManager = m_shell->QueryInterfaceByCallsign<Exchange::IStorageManager>("org.rdk.StorageManager");
+	Exchange::IStorageManager* storageManager = GetStorageManager();
 	if (storageManager == nullptr) {
 		responseBody = RDKAppManagersServiceUtils::BuildErrorResponse("org.rdk.StorageManager interface unavailable");
 		return Core::ERROR_GENERAL;
@@ -422,7 +473,6 @@ Core::hresult RDKAppManagersService::ResetAppDataRequest(const std::string& appI
 		responseBody = RDKAppManagersServiceUtils::BuildErrorResponse(errorReason.empty() ? "Reset app data failed" : errorReason);
 	}
 
-	storageManager->Release();
 	return status;
 }
 

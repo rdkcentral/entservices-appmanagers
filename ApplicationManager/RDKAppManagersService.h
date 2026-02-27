@@ -14,6 +14,7 @@ namespace Plugin {
 class RDKAppManagersService {
 public:
 	explicit RDKAppManagersService(PluginHost::IShell* shell = nullptr);
+	~RDKAppManagersService();
 
 	void SetShell(PluginHost::IShell* shell);
 
@@ -32,7 +33,15 @@ public:
 		uint32_t& code, std::string& responseBody);
 
 private:
+	void ReleaseInterfaces();
+	Exchange::IAppManager* GetAppManager();
+	Exchange::IRDKWindowManager* GetWindowManager();
+	Exchange::IStorageManager* GetStorageManager();
+
 	PluginHost::IShell* m_shell;
+	Exchange::IAppManager* m_appManager;
+	Exchange::IRDKWindowManager* m_windowManager;
+	Exchange::IStorageManager* m_storageManager;
 };
 
 } // namespace Plugin

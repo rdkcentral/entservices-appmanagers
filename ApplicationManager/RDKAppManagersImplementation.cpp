@@ -148,282 +148,90 @@ Core::hresult RDKAppManagersImplementation::Request(const uint32_t flags, const 
         url.c_str(), normalizedUrl.c_str(), status, code));
 
     return Core::ERROR_NONE;
-    // return m_thunderHandlers->request(flags,url,headers,queryParams,body,code,responseHeaders,responseBody);
 }
 
 // Config
 Core::hresult RDKAppManagersImplementation::Config(string& config) {
     SYSLOG(Logging::Startup, (string(_T("RDKAppManagersImplementation::Config requestt"))));
-
-    /*
     config = R"JSON(
 {
-  "providesSystemStatus" : true,
-  "domain": "/network",
-  "uris": [
-    {
-      "path": "/as/network/wireless/scan/status",
-      "method": "ws",
-      "thread": "AS_WS_NTW_SCAN"
-    },
-    {
-      "path": "/as/network/status",
-      "method": "ws",
-      "thread": "AS_WS_NTW"
-    },
-    {
-      "path": "/as/network/action/enable",
-      "method": "post",
-      "expectsBody": false
-    },
-    {
-      "path": "/as/network/action/disable",
-      "method": "post",
-      "expectsBody": false
-    },
-    {
-      "path": "/as/network/action/startautoconnect",
-      "method": "post",
-      "expectsBody": false
-    },
-    {
-      "path": "/as/network/action/cancelautoconnect",
-      "method": "post",
-      "expectsBody": false
-    },
-    {
-      "path": "/as/network/action/connect",
-      "method": "post",
-      "expectsBody": false
-    },
-    {
-      "path": "/as/network/wireless/action/scanstart",
-      "method": "post",
-      "expectsBody": false
-    },
-    {
-      "path": "/as/network/wireless/action/scanstop",
-      "method": "post",
-      "expectsBody": false
-    },
-    {
-      "path": "/as/network/stats",
-      "method": "get",
-      "expectsBody": false
-    },
-    {
-      "path": "/as/network/action/reset",
-      "method": "post",
-      "expectsBody": false
-    },
-    {
-      "path": "/as/network/action/startlnfconnect",
-      "method": "post",
-      "expectsBody": false
-    },
-    {
-      "path": "/as/network/action/cancellnfconnect",
-      "method": "post",
-      "expectsBody": false
-    },
-    {
-      "path": "/as/network/ipconfig/settings",
-      "method": "get",
-      "expectsBody": false
-    },
-    {
-      "path": "/as/network/ipconfig/settings",
-      "method": "post",
-      "expectsBody": true
-    },
-    {
-      "path": "PingUrl",
-      "method": "dbusmethod",
-      "expectedInputArgs": "sus",
-      "expectedOutputArgs": "us"
-    },
-    {
-      "path": "PingRouter",
-      "method": "dbusmethod",
-      "expectedInputArgs": "s",
-      "expectedOutputArgs": "us"
-    },
-    {
-      "path": "GetSTBIpAddress",
-      "method": "dbusmethod",
-      "expectedOutputArgs": "us"
-    },
-    {
-      "path": "GetActiveConnectedInterface",
-      "method": "dbusmethod",
-      "expectedOutputArgs": "us"
-    },
-    {
-      "path": "MoveToLowPowerMode",
-      "method": "dbusmethod",
-      "expectedOutputArgs": "us"
-    },
-    {
-      "path": "RestoreFromLowPowerMode",
-      "method": "dbusmethod",
-      "expectedOutputArgs": "us"
-    },
-    {
-      "path": "MoveToActiveStandbyMode",
-      "method": "dbusmethod",
-      "expectedOutputArgs": "us"
-    },
-    {
-      "path": "RestoreFromActiveStandbyMode",
-      "method": "dbusmethod",
-      "expectedOutputArgs": "us"
-    }
-  ]
+    "providesSystemStatus" : true,
+    "domain": "/apps",
+    "uris": [
+        {
+            "path": "/as/apps/status",
+            "method": "ws",
+            "thread": "AS_WS_APPS"
+        },
+        {
+            "path": "/as/apps",
+            "method": "get"
+        },
+        {
+            "path": "/as/apps/action/launch",
+            "method": "post",
+            "expectsBody": true
+        },
+        {
+            "path": "/as/apps/action/close",
+            "method": "post"
+        },
+        {
+            "path": "/as/apps/action/kill",
+            "method": "post"
+        },
+        {
+            "path": "/as/system/stats",
+            "method": "get"
+        },
+        {
+            "path": "/as/apps/action/focus",
+            "method": "post"
+        },
+        {
+            "path": "/as/apps/action/reset",
+            "method": "post"
+        }
+    ],
+    "systemSettings": [
+        "appCatalogueURI",
+        "apps.datamigration.enable",
+        "apps.enforcepin",
+        "apps.softcat.enable",
+        "system.devicelocation",
+        "system.acceptcasting"
+    ]
 }
 )JSON";
-    */
+
     return Core::ERROR_NONE;
 }
 
 // Listener registrations
 Core::hresult RDKAppManagersImplementation::RegisterWebSocketListener(const string& url, const string& clientId, string& listenerId) {
     SYSLOG(Logging::Startup, (_T("RegisterWebSocketListener url=%s clientId=%s"), url.c_str(), clientId.c_str()));
-    /*
-    std::lock_guard<std::mutex> lock(m_listenerMutex);
-    
-    // Generate unique listener ID
-    listenerId = "ws-" + std::to_string(++m_listenerIdCounter);
-    
-    // Store listener registration in-memory
-    ListenerInfo info;
-    info.listenerId = listenerId;
-    info.url = url;
-    info.clientId = clientId;
-    
-    m_wsListeners.push_back(info);
-    
-    SYSLOG(Logging::Startup, (_T("RegisterWebSocketListener success: listenerId=%s, total=%zu"), 
-           listenerId.c_str(), m_wsListeners.size()));
-    */
     return Core::ERROR_NONE;
 }
 Core::hresult RDKAppManagersImplementation::UnregisterWebSocketListener(const string& listenerId) {
     SYSLOG(Logging::Startup, (_T("UnregisterWebSocketListener id=%s"), listenerId.c_str()));
-    /*
-    std::lock_guard<std::mutex> lock(m_listenerMutex);
-    
-    auto it = std::find_if(m_wsListeners.begin(), m_wsListeners.end(),
-        [&listenerId](const ListenerInfo& info) {
-            return info.listenerId == listenerId;
-        });
-    
-    if (it == m_wsListeners.end()) {
-        return Core::ERROR_UNKNOWN_KEY;
-    }
-    
-    m_wsListeners.erase(it);
-    
-    SYSLOG(Logging::Startup, (_T("UnregisterWebSocketListener success, remaining=%zu"), 
-           m_wsListeners.size()));
-    */
     return Core::ERROR_NONE;
 }
 Core::hresult RDKAppManagersImplementation::RegisterUpdatesListener(const string& url, const string& clientId, string& listenerId) {
     SYSLOG(Logging::Startup, (_T("RegisterUpdatesListener url=%s clientId=%s"), url.c_str(), clientId.c_str()));
-    /*
-    std::lock_guard<std::mutex> lock(m_listenerMutex);
-    
-    // Generate unique listener ID
-    listenerId = "http-" + std::to_string(++m_listenerIdCounter);
-    
-    // Store listener registration in-memory
-    ListenerInfo info;
-    info.listenerId = listenerId;
-    info.url = url;
-    info.clientId = clientId;
-    
-    m_httpListeners.push_back(info);
-    
-    SYSLOG(Logging::Startup, (_T("RegisterUpdatesListener success: listenerId=%s, total=%zu"), 
-           listenerId.c_str(), m_httpListeners.size()));
-    */
     return Core::ERROR_NONE;
 }
 Core::hresult RDKAppManagersImplementation::UnregisterUpdatesListener(const string& listenerId) {
     SYSLOG(Logging::Startup, (_T("UnregisterUpdatesListener id=%s"), listenerId.c_str()));
-    /*
-    std::lock_guard<std::mutex> lock(m_listenerMutex);
-    
-    auto it = std::find_if(m_httpListeners.begin(), m_httpListeners.end(),
-        [&listenerId](const ListenerInfo& info) {
-            return info.listenerId == listenerId;
-        });
-    
-    if (it == m_httpListeners.end()) {
-        return Core::ERROR_UNKNOWN_KEY;
-    }
-    
-    m_httpListeners.erase(it);
-    
-    SYSLOG(Logging::Startup, (_T("UnregisterUpdatesListener success, remaining=%zu"), 
-           m_httpListeners.size()));
-    */
     return Core::ERROR_NONE;
 }
 Core::hresult RDKAppManagersImplementation::RegisterSysStatusListener(const string& clientId, string& listenerId) {
     SYSLOG(Logging::Startup, (_T("RegisterSysStatusListener clientId=%s"), clientId.c_str()));
     
-    /*{
-        std::lock_guard<std::mutex> lock(m_listenerMutex);
-        
-        // Generate unique listener ID
-        listenerId = "sys-" + std::to_string(++m_listenerIdCounter);
-        
-        // Store listener registration in-memory
-        ListenerInfo info;
-        info.listenerId = listenerId;
-        info.url = "";  // SysStatus doesn't use URL
-        info.clientId = clientId;
-        
-        m_sysListeners.push_back(info);
-        
-        SYSLOG(Logging::Startup, (_T("RegisterSysStatusListener success: listenerId=%s, total=%zu"), 
-               listenerId.c_str(), m_sysListeners.size()));
-        
-        // Send cached status to new listener immediately (mirrors D-Bus behavior)
-        if (!m_cachedSysStatus.empty()) {
-            SYSLOG(Logging::Startup, (_T("RegisterSysStatusListener - Sending cached status to new listener: %s"), 
-                   m_cachedSysStatus.c_str()));
-        }
-    }
-    
-    // Send cached status immediately if available (outside lock to avoid deadlock)
-    if (!m_cachedSysStatus.empty()) {
-        NotifySysStatusUpdate(m_cachedSysStatus);
-    }
-    */
     return Core::ERROR_NONE;
 }
 Core::hresult RDKAppManagersImplementation::UnregisterSysStatusListener(const string& listenerId)
 {
     SYSLOG(Logging::Startup, (_T("UnregisterSysStatusListener id=%s"), listenerId.c_str()));
-    /*
-    std::lock_guard<std::mutex> lock(m_listenerMutex);
-    
-    auto it = std::find_if(m_sysListeners.begin(), m_sysListeners.end(),
-        [&listenerId](const ListenerInfo& info) {
-            return info.listenerId == listenerId;
-        });
-    
-    if (it == m_sysListeners.end()) {
-        return Core::ERROR_UNKNOWN_KEY;
-    }
-    
-    m_sysListeners.erase(it);
-    
-    SYSLOG(Logging::Startup, (_T("UnregisterSysStatusListener success, remaining=%zu"), 
-           m_sysListeners.size()));
-   */ 
     return Core::ERROR_NONE;
 }
 // Listener observer management
@@ -640,7 +448,6 @@ void RDKAppManagersImplementation::NotifySysStatusUpdate(const std::string& stat
     }
 }
 
-
 uint32_t RDKAppManagersImplementation::Configure(PluginHost::IShell* shell) {
         ASSERT(shell != nullptr);
         if (m_shell != nullptr) {
@@ -689,7 +496,6 @@ Core::hresult RDKAppManagersImplementation::TestTriggerWebSocketEvent(const stri
     SYSLOG(Logging::Startup, (_T("[TEST] TestTriggerWebSocketEvent url=%s message=%s"), 
            url.c_str(), message.c_str()));
     
-    // Directly call the notification method to simulate NetworkController callback
     NotifyWebSocketUpdate(url, message);
     
     return Core::ERROR_NONE;
