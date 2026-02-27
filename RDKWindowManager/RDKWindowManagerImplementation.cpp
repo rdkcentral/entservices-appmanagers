@@ -19,9 +19,7 @@
 
 #include "RDKWindowManagerImplementation.h"
 #include <sys/prctl.h>
-#include <sys/stat.h>
 #include <mutex>
-#include <fstream>
 #include <boost/filesystem.hpp>
 #include <boost/format.hpp>
 #include <rdkwindowmanager/include/compositorcontroller.h>
@@ -37,32 +35,6 @@ using namespace Utils;
 
 extern int gCurrentFramerate;
 static bool sRunning = true;
-
-// Helper function to write PNG file from RGBA data
-static void writePNG(const char* filename, uint8_t* data, uint32_t width, uint32_t height)
-{
-    std::ofstream file(filename, std::ios::binary);
-    if (!file.is_open())
-    {
-        LOGERR("Failed to open file for writing: %s", filename);
-        return;
-    }
-
-    // Write simple PPM format (easier than PNG, no external library needed)
-    // Convert RGBA to RGB by stripping alpha channel
-    file << "P6\n" << width << " " << height << "\n255\n";
-    
-    for (uint32_t i = 0; i < width * height; i++)
-    {
-        file.put(data[i * 4]);     // R
-        file.put(data[i * 4 + 1]); // G
-        file.put(data[i * 4 + 2]); // B
-        // Skip alpha channel (data[i * 4 + 3])
-    }
-    
-    file.close();
-    LOGINFO("Screenshot dumped to %s", filename);
-}
 
 #define ANY_KEY                  65536
 #define KEYCODE_INVALID          -1
@@ -296,16 +268,6 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
                   {
                       // Encode the screenshot data as base64
                       Utils::String::imageEncoder(gScreenshotData, gScreenshotSize, true, gScreenshotImageData);
-                      
-                      // Check if /tmp/screenshot exists and dump to file if it does
-                      struct stat st;
-                      if (stat("/tmp/screenshot", &st) == 0)
-                      {
-                          uint32_t width, height;
-                          CompositorController::getScreenResolution(width, height);
-                          writePNG("/tmp/rdkappmanagers.ppm", gScreenshotData, width, height);
-                          LOGINFO("Screenshot dumped to /tmp/rdkappmanagers.ppm (triggered by /tmp/screenshot)");
-                      }
                   }
                   
                   if (RDKWindowManagerImplementation::_instance)
@@ -2287,7 +2249,6 @@ void RDKWindowManagerImplementation::notifyScreenshotComplete(bool success)
 {
     LOGINFO("Screenshot capture %s, imageData size: %zu bytes", success ? "succeeded" : "failed", gScreenshotImageData.length());
     
-    Core::CriticalSection::Lock lock(mAdminLock);
     for (auto* notification : mRDKWindowManagerNotification)
     {
         notification->OnScreenshotComplete(success, gScreenshotImageData);
