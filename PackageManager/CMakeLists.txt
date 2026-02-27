@@ -87,7 +87,7 @@ endif()
 install(TARGETS ${MODULE_NAME}
     DESTINATION lib/${STORAGE_DIRECTORY}/plugins)
 
-set(PLUGIN_PACKAGEMANAGER_MODE "Local" CACHE STRING "Controls if the plugin should run in its own process, in process or remote")
+set(PLUGIN_PACKAGEMANAGER_MODE "Off" CACHE STRING "Controls if the plugin should run in its own process, in process or remote")
 set(PLUGIN_PACKAGEMANAGER_AUTOSTART "false" CACHE STRING "Deactivated PackageManager plugin")
 #write_config()
 write_config(INSTALL_NAME ${PLUGIN_NAME}.json)

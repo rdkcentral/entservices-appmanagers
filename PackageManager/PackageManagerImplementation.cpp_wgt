@@ -19,7 +19,6 @@
 
 #include <chrono>
 #include <cinttypes> // Required for PRIu64
-#include <filesystem>
 
 #include "PackageManagerImplementation.h"
 
@@ -316,7 +315,7 @@ namespace Plugin {
         std::lock_guard<std::mutex> lock(mMutex);
 
         DownloadInfoPtr di = DownloadInfoPtr(new DownloadInfo(url, std::to_string(++mNextDownloadId), options.retries, options.rateLimit));
-        std::string filename = downloadDir + "package" + di->GetId();
+        std::string filename = downloadDir + "package" + di->GetId() + ".wgt";
         di->SetFileLocator(filename);
         if (options.priority) {
             mDownloadQueue.push_front(di);
@@ -490,16 +489,15 @@ namespace Plugin {
 
         NotifyInstallStatus(packageId, version, state);
         string installedVersion = GetInstalledVersion(packageId);
-        StateKey installedKey { "", "" };
         if (installedVersion.empty()) {
             // No other versions
             bNewEntry = true;
         } else {
             if (installedVersion.compare(version) == 0) {
-                LOGINFO("Same version already installed, upgrading");
+                // Same version already installed, upgrading
             } else {
                 // different version
-                installedKey  = { packageId, installedVersion };
+                StateKey installedKey { packageId, installedVersion };
                 auto it = mState.find( installedKey );
                 bNewEntry = true;
                 if (it != mState.end()) {
@@ -518,10 +516,6 @@ namespace Plugin {
 
         if (state.installState == InstallState::INSTALLING) {
             result = Install(packageId, version, keyValues, fileLocator, state);
-            if ((result == Core::ERROR_NONE) && (!installedVersion.empty())) {
-                setState(packageId, installedVersion, InstallState::UNINSTALLED);
-            }
-
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
              if (result != Core::ERROR_NONE) {
                 packageFailureErrorCode = (state.failReason == FailReason::PACKAGE_MISMATCH_FAILURE)
@@ -605,7 +599,6 @@ namespace Plugin {
             } // mLockCount == 0
         } else {
             LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
-            result = Core::ERROR_BAD_REQUEST;
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             packageFailureErrorCode = PackageManagerImplementation::PackageFailureErrorCode::ERROR_VERSION_NOT_FOUND;
 #endif /* ENABLE_AIMANAGERS_TELEMETRY_METRICS */
@@ -659,9 +652,10 @@ namespace Plugin {
                 getRuntimeConfig(state.runtimeConfig, runtimeConfig);
                 result = Core::ERROR_NONE;
             }
-        } else {
+        }
+        if (result == Core::ERROR_GENERAL) {
             LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
-            result = Core::ERROR_BAD_REQUEST;
+
         }
 
         return result;
@@ -682,7 +676,7 @@ namespace Plugin {
             LOGDBG("id: '%s' ver: '%s' state: %s", packageId.c_str(), version.c_str(), getInstallState(installState).c_str());
         } else {
             LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
-            result = Core::ERROR_BAD_REQUEST;
+            result = Core::ERROR_GENERAL;
         }
 
         return result;
@@ -724,12 +718,14 @@ namespace Plugin {
     }
 
     // IPackageHandler methods
-    Core::hresult PackageManagerImplementation::Lock(
-        const string &packageId, const string &version, const Exchange::IPackageHandler::LockReason &lockReason,
-        uint32_t &lockId, string &unpackedPath, Exchange::RuntimeConfig& runtimeConfig, Exchange::IPackageHandler::ILockIterator*& appMetadata
+    Core::hresult PackageManagerImplementation::Lock(const string &packageId, const string &version,
+        const Exchange::IPackageHandler::LockReason &lockReason,
+        uint32_t &lockId, string &unpackedPath, Exchange::RuntimeConfig& runtimeConfig,
+        Exchange::IPackageHandler::ILockIterator*& appMetadata
         )
     {
         Core::hresult result = Core::ERROR_NONE;
+
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
         /* Get current timestamp at the start of Lock for telemetry */
         time_t requestTime = getCurrentTimestamp();
@@ -739,95 +735,105 @@ namespace Plugin {
         CHECK_CACHE()
 
         std::lock_guard<std::recursive_mutex> lock(mtxState);
-        packagemanager::ConfigMetaData config;      // XXX: cleanup
-        packagemanager::NameValues locks;
-        result = LockPackage(packageId, version, lockReason, lockId, unpackedPath, config, locks);
-        if (result == packagemanager::SUCCESS) {
-            // Lock Runtime
-            auto it = mState.find( { packageId, version } );
-            if (it != mState.end()) {
-                auto &state = it->second;
-
-                state.additionalLocks.clear();
-                const string &rtPackageId = state.runtimeApp.first;
-                const string &rtVersion = state.runtimeApp.second;
-                if (!rtPackageId.empty() && !rtVersion.empty()) {
-                    uint32_t lockId = 0;
-                    string rtUnpackedPath;
-                    //LOGDBG("Locking runtime '%s:%s'", rtPackageId.c_str(), rtVersion.c_str() );
-                    result = LockPackage(rtPackageId, rtVersion, lockReason, lockId, rtUnpackedPath, config, locks);
-                    if (result == packagemanager::SUCCESS) {
-                        Exchange::IPackageHandler::AdditionalLock lock;
-                        lock.packageId = rtPackageId;
-                        lock.version  = rtVersion;
-                        state.additionalLocks.emplace_back(lock);
-                        state.runtimeConfig.runtimePath = config.runtimePath;   // XXX: find better way
-                        LOGDBG("Locked runtime. id: %s:%s ", rtPackageId.c_str(), rtVersion.c_str());
-                    }
-                } else {
-                    LOGDBG("No runtime for '%s:%s'", packageId.c_str(), version.c_str());
-                }
-                #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-                recordAndPublishTelemetryData(TELEMETRY_MARKER_LAUNCH_TIME,
-                                                            packageId,
-                                                            requestTime,
-                                                            PackageManagerImplementation::PackageFailureErrorCode::ERROR_NONE);
-                #endif /* ENABLE_AIMANAGERS_TELEMETRY_METRICS */
-
-                LOGDBG("Locked. id: %s ver: %s additionalLocks=%zu", packageId.c_str(), version.c_str(), state.additionalLocks.size());
-                getRuntimeConfig(state.runtimeConfig, runtimeConfig);
-                unpackedPath = state.unpackedPath;
-                appMetadata = Core::Service<RPC::IteratorType<Exchange::IPackageHandler::ILockIterator>>::Create<Exchange::IPackageHandler::ILockIterator>(state.additionalLocks);
-                LOGDBG("id: %s ver: %s lock count:%d", packageId.c_str(), version.c_str(), state.mLockCount);
-                LOGDBG("%s:%s appPath: %s runtimePath: %s", packageId.c_str(), version.c_str(),
-                    state.runtimeConfig.appPath.c_str(), state.runtimeConfig.runtimePath.c_str());
-
-            } else {
-                LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());    // This should never happen
-            }
-        }
-
-        LOGDBG("result: %" PRIu32, result);
-        return result;
-    }
-
-    Core::hresult PackageManagerImplementation::LockPackage(
-        const string &packageId, const string &version, const Exchange::IPackageHandler::LockReason &lockReason,
-        uint32_t &lockId, string &unpackedPath, packagemanager::ConfigMetaData &config, packagemanager::NameValues &locks
-        )
-    {
-        Core::hresult result = Core::ERROR_NONE;
-
-        std::lock_guard<std::recursive_mutex> lock(mtxState);
         auto it = mState.find( { packageId, version } );
         if (it != mState.end()) {
             auto &state = it->second;
+            //#if defined(USE_LIBPACKAGE) || defined(UNIT_TEST)
+ 	        string gatewayMetadataPath;
             bool locked = (state.mLockCount > 0);
             LOGDBG("id: %s ver: %s locked: %d runtimeType: '%s'", packageId.c_str(), version.c_str(), locked, state.runtimeType.c_str());
             if (locked)  {
                 lockId = ++state.mLockCount;
-                config.runtimePath = state.runtimeConfig.runtimePath;
             } else {
-                packagemanager::Result pmResult = packageImpl->Lock(packageId, version, unpackedPath, config, locks);
+                packagemanager::ConfigMetaData config;
+                packagemanager::NameValues locks;
+                packagemanager::Result pmResult = packageImpl->Lock(packageId, version, state.unpackedPath, config, locks);
                 LOGDBG("unpackedPath: %s PackageImpl::Lock result: %d", unpackedPath.c_str(), pmResult);
+                // save the new config in state
+                getRuntimeConfig(config, state.runtimeConfig);   // XXX: Is config unnecessary in Lock ?!
                 if (pmResult == packagemanager::SUCCESS) {
-                    // save the new config in state
-                    getRuntimeConfig(config, state.runtimeConfig);
                     lockId = ++state.mLockCount;
+
+                    state.additionalLocks.clear();
+                    #if 1
+                        // when using libpackage-RALF
+                        LockRuntime(state, state.runtimeConfig.runtimePath);
+                    #else
+                    for (packagemanager::NameValue nv : locks) {
+                        Exchange::IPackageHandler::AdditionalLock lock;
+                        lock.packageId = nv.first;
+                        lock.version = nv.second;
+                        state.additionalLocks.emplace_back(lock);
+                    }
+                    #endif
                     LOGDBG("Locked. id: %s ver: %s additionalLocks=%zu", packageId.c_str(), version.c_str(), state.additionalLocks.size());
                 } else {
                     LOGERR("Lock Failed id: %s ver: %s", packageId.c_str(), version.c_str());
                     result = Core::ERROR_GENERAL;
                 }
             }
-            LOGERR("Package: '%s:%s' lock count: %" PRIu32, packageId.c_str(), version.c_str(), state.mLockCount);
+            LOGDBG("%s:%s runtimePath: %s", packageId.c_str(), version.c_str(), state.runtimeConfig.runtimePath.c_str());
+
+            if (result == Core::ERROR_NONE) {
+                getRuntimeConfig(state.runtimeConfig, runtimeConfig);
+                unpackedPath = state.unpackedPath;
+                appMetadata = Core::Service<RPC::IteratorType<Exchange::IPackageHandler::ILockIterator>>::Create<Exchange::IPackageHandler::ILockIterator>(state.additionalLocks);
+
+#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
+                recordAndPublishTelemetryData(TELEMETRY_MARKER_LAUNCH_TIME,
+                                                            packageId,
+                                                            requestTime,
+                                                            PackageManagerImplementation::PackageFailureErrorCode::ERROR_NONE);
+#endif /* ENABLE_AIMANAGERS_TELEMETRY_METRICS */
+
+            }
+            //#endif
+
+            LOGDBG("id: %s ver: %s lock count:%d", packageId.c_str(), version.c_str(), state.mLockCount);
+            LOGDBG("%s:%s runtimePath: %s", packageId.c_str(), version.c_str(), state.runtimeConfig.runtimePath.c_str());
+
         } else {
             LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
             result = Core::ERROR_BAD_REQUEST;
         }
-
+        LOGDBG("result: %" PRIu32, result);
         return result;
     }
+
+
+    Core::hresult PackageManagerImplementation::LockRuntime(State &state, string &runtimePath)
+    {
+        Core::hresult result = Core::ERROR_NONE;
+        const string &packageId = state.runtimeApp.first;
+        const string &version = state.runtimeApp.second;
+        if (!state.runtimeApp.first.empty() && !state.runtimeApp.second.empty()) {
+            LOGDBG("Locking runtime %s:%s", state.runtimeApp.first.c_str(), state.runtimeApp.second.c_str() );
+            packagemanager::ConfigMetaData config;
+            packagemanager::NameValues locks;
+            packagemanager::Result pmResult = packageImpl->Lock(packageId, version, runtimePath, config, locks);
+
+            if (pmResult == packagemanager::Result::SUCCESS) {
+                runtimePath = config.appPath;   // XXX: ugly must fix
+                state.runtimeConfig.command = config.command;
+                LOGDBG("Locked runtime %s:%s path: %s command: %s", packageId.c_str(), version.c_str(), runtimePath.c_str(), config.command.c_str() );
+            } else {
+                LOGERR("Failed to lock runtime %s:%s", packageId.c_str(), version.c_str());
+            }
+
+            // XXX: refactor and call Lock() recursively
+            //result = Lock(packageId, version);
+
+            Exchange::IPackageHandler::AdditionalLock lock;
+            lock.packageId = packageId;
+            lock.version  = version;
+            state.additionalLocks.emplace_back(lock);
+        } else {
+            LOGWARN("No Runtime for %s:%s runtimeType: '%s'", packageId.c_str(), version.c_str(), state.runtimeType.c_str());
+        }
+        return result;
+    }
+
+
 
     // XXX: right way to do this is via copy ctor, when we move to Thunder 5.2 and have common struct RuntimeConfig
     void PackageManagerImplementation::getRuntimeConfig(const Exchange::RuntimeConfig &config, Exchange::RuntimeConfig &runtimeConfig)
@@ -848,7 +854,6 @@ namespace Plugin {
         runtimeConfig.appPath = config.appPath;
         runtimeConfig.command = config.command;
         runtimeConfig.runtimePath = config.runtimePath;
-        runtimeConfig.ralfPkgPath = config.ralfPkgPath;
     }
 
     // copy values from libpackage
@@ -866,7 +871,7 @@ namespace Plugin {
         }
         vars.ToString(runtimeConfig.envVariables);
 
-        runtimeConfig.userId = config.userId ? config.userId : userId;  // XXX: should we increment (Userid/Groupid management RDKEMW-13259)
+        runtimeConfig.userId = config.userId ? config.userId : userId;  // XXX: should we increment
         runtimeConfig.groupId = config.groupId ? config.groupId : groupId;
         runtimeConfig.dataImageSize = config.dataImageSize;
 
@@ -882,32 +887,67 @@ namespace Plugin {
         runtimeConfig.appPath = config.appPath;
         runtimeConfig.command = config.command;
         runtimeConfig.runtimePath = config.runtimePath;
-        runtimeConfig.ralfPkgPath = config.ralfPkgPath;
     }
 
     Core::hresult PackageManagerImplementation::Unlock(const string &packageId, const string &version)
     {
+        Core::hresult result = Core::ERROR_NONE;
+
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
         /* Get current timestamp at the start of Lock for telemetry */
         time_t requestTime = getCurrentTimestamp();
 #endif /* ENABLE_AIMANAGERS_TELEMETRY_METRICS */
-        Core::hresult result = Core::ERROR_NONE;
+
         LOGDBG("id: %s ver: %s", packageId.c_str(), version.c_str());
         CHECK_CACHE()
 
+        std::lock_guard<std::recursive_mutex> lock(mtxState);
         auto it = mState.find( { packageId, version } );
         if (it != mState.end()) {
             auto &state = it->second;
-            result = UnlockPackage(packageId, version);
-            processBlockedPackage(packageId, version);
+            //#if defined(USE_LIBPACKAGE) || defined(UNIT_TEST)
+            if (state.mLockCount) {
+                LOGDBG("id: %s ver: %s lock count:%d state:%d", packageId.c_str(), version.c_str(),
+                    state.mLockCount, (int) state.installState);
+                if (--state.mLockCount == 0) {
+                    packagemanager::Result pmResult = packageImpl->Unlock(packageId, version);
+                    if (pmResult == packagemanager::SUCCESS) {
+                        LOGDBG("Unlock %s:%s Success", packageId.c_str(), version.c_str());
+                    } else {
+                        LOGDBG("Unlock %s:%s Failed", packageId.c_str(), version.c_str());
+                    }
 
-            const string &rtPackageId = state.runtimeApp.first;
-            if (!rtPackageId.empty()) {
-                const string &rtVersion = state.runtimeApp.second;
-                LOGDBG("Unlocking runtime %s:%s", rtPackageId.c_str(), rtVersion.c_str() );
-                result = UnlockPackage(rtPackageId, rtVersion);
-                processBlockedPackage(rtPackageId, rtVersion);
+                    string blockedVer = GetBlockedVersion(packageId);
+                    LOGDBG("blockedVer: %s", blockedVer.c_str());
+                    auto itBlocked = mState.find( { packageId, blockedVer } );
+                    if (itBlocked != mState.end()) {
+                        auto &stateBlocked = itBlocked->second;
+                        LOGDBG("blockedVer: '%s' state: %d", blockedVer.c_str(), (unsigned) stateBlocked.installState);
+                        stateBlocked.unpackedPath = "";
+                        if (stateBlocked.installState == InstallState::INSTALLATION_BLOCKED) {
+                            auto blockedData = stateBlocked.blockedInstallData;
+                            if (Install(packageId, blockedData.version, blockedData.keyValues, blockedData.fileLocator, stateBlocked) == Core::ERROR_NONE) {
+                                LOGDBG("Blocked package installed. id: %s ver: %s", packageId.c_str(), blockedVer.c_str());
+                                state.installState = InstallState::UNINSTALLED;
+                            } else {
+                                LOGERR("Blocked package installtion failed id: %s ver: %s", packageId.c_str(), blockedVer.c_str());
+                            }
+                        } else if (stateBlocked.installState == InstallState::UNINSTALL_BLOCKED) {
+                            string errorReason;
+                            if (Uninstall(packageId, errorReason) == Core::ERROR_NONE) {
+                                LOGDBG("Blocked package uninstalled id: %s ver: %s", packageId.c_str(), blockedVer.c_str());
+                            } else {
+                                LOGERR("Blocked package uninstall failed id: %s ver: %s", packageId.c_str(), blockedVer.c_str());
+                            }
+                        }
+                    }
+                }
+            } else {
+                LOGERR("Never Locked (mLockCount is 0) id: %s ver: %s", packageId.c_str(), version.c_str());
+                result = Core::ERROR_GENERAL;
             }
+            //#endif
+            LOGDBG("id: %s ver: %s lock count:%d", packageId.c_str(), version.c_str(), state.mLockCount);
         } else {
             LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
             result = Core::ERROR_BAD_REQUEST;
@@ -923,75 +963,6 @@ namespace Plugin {
         }
 #endif /* ENABLE_AIMANAGERS_TELEMETRY_METRICS */
 
-        return result;
-    }
-
-    Core::hresult PackageManagerImplementation::UnlockPackage(const string &packageId, const string &version)
-    {
-        Core::hresult result = Core::ERROR_NONE;
-        std::lock_guard<std::recursive_mutex> lock(mtxState);
-        auto it = mState.find( { packageId, version } );
-        if (it != mState.end()) {
-            auto &state = it->second;
-            if (state.mLockCount) {
-                LOGDBG("id: %s ver: %s lock count:%d state:%d", packageId.c_str(), version.c_str(),
-                    state.mLockCount, (int) state.installState);
-                if (--state.mLockCount == 0) {
-                    packagemanager::Result pmResult = packageImpl->Unlock(packageId, version);
-                    if (pmResult == packagemanager::SUCCESS) {
-                        LOGDBG("Unlock %s:%s Success", packageId.c_str(), version.c_str());
-                    } else {
-                        LOGERR("Unlock %s:%s Failed", packageId.c_str(), version.c_str());
-                    }
-                    state.runtimeConfig.runtimePath = "";
-                }
-            } else {
-                LOGERR("Never Locked (mLockCount is 0) id: %s ver: %s", packageId.c_str(), version.c_str());
-                result = Core::ERROR_GENERAL;
-            }
-            LOGDBG("id: %s ver: %s lock count:%d", packageId.c_str(), version.c_str(), state.mLockCount);
-        } else {
-            LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
-            result = Core::ERROR_BAD_REQUEST;
-        }
-
-        return result;
-    }
-
-    Core::hresult PackageManagerImplementation::processBlockedPackage(const string &packageId, const string &version)
-    {
-        Core::hresult result = Core::ERROR_NONE;
-        string blockedVer = GetBlockedVersion(packageId);
-
-        auto it = mState.find( { packageId, version } );
-        if (it != mState.end() && it->second.mLockCount) {
-            LOGINFO("Package %s:%s is still locked", packageId.c_str(), version.c_str());
-            return result;
-        }
-        auto itBlocked = mState.find( { packageId, blockedVer } );
-        if (itBlocked != mState.end()) {
-            auto &stateBlocked = itBlocked->second;
-            LOGDBG("blockedVer: '%s' state: %d", blockedVer.c_str(), (unsigned) stateBlocked.installState);
-            stateBlocked.unpackedPath = "";
-            if (stateBlocked.installState == InstallState::INSTALLATION_BLOCKED) {
-                auto blockedData = stateBlocked.blockedInstallData;
-                if (Install(packageId, blockedData.version, blockedData.keyValues, blockedData.fileLocator, stateBlocked) == Core::ERROR_NONE) {
-                    LOGDBG("Blocked package installed. id: %s ver: %s", packageId.c_str(), blockedVer.c_str());
-                    if (version.compare(blockedVer)) {  // different version(s)
-                        setState(packageId, version, InstallState::UNINSTALLED);
-                    }
-                } else {
-                    LOGERR("Blocked package installtion failed id: %s ver: %s", packageId.c_str(), blockedVer.c_str());
-                }
-            } else if (stateBlocked.installState == InstallState::UNINSTALL_BLOCKED) {
-                string errorReason;
-                if (Uninstall(packageId, errorReason) == Core::ERROR_NONE) {
-                    LOGDBG("Blocked package uninstalled id: %s ver: %s", packageId.c_str(), blockedVer.c_str());
-                } else {
-                    LOGERR("Blocked package uninstall failed id: %s ver: %s", packageId.c_str(), blockedVer.c_str());
-                }
-            }
-        }
         return result;
     }
 
@@ -1051,6 +1022,7 @@ namespace Plugin {
 	    #endif
 
         //#if defined (USE_LIBPACKAGE) || defined(UNIT_TEST) || defined(ENABLE_NATIVEBUILD)
+
 	    #if defined(UNIT_TEST) || defined(ENABLE_NATIVEBUILD)
         packageImpl = packagemanager::IPackageImplDummy::instance();
         #else
@@ -1061,7 +1033,7 @@ namespace Plugin {
         packagemanager::Result pmResult = packageImpl->Initialize(configStr, aConfigMetadata);
         LOGDBG("aConfigMetadata.count:%zu pmResult=%d", aConfigMetadata.size(), pmResult);
         std::lock_guard<std::recursive_mutex> lock(mtxState);
-        populateRuntime(aConfigMetadata);
+        findRuntime(aConfigMetadata);
         for (auto it = aConfigMetadata.begin(); it != aConfigMetadata.end(); ++it ) {
             StateKey key = it->first;
             auto config = it->second;
@@ -1100,7 +1072,7 @@ namespace Plugin {
         LOGDBG("exit");
     }
 
-    void PackageManagerImplementation::populateRuntime(packagemanager::ConfigMetadataArray& aConfigMetadata)
+    void PackageManagerImplementation::findRuntime(packagemanager::ConfigMetadataArray& aConfigMetadata)
     {
         LOGDBG("entry");
         for (auto it = aConfigMetadata.begin(); it != aConfigMetadata.end(); ++it ) {
@@ -1118,6 +1090,7 @@ namespace Plugin {
             }
         }
         LOGDBG("Runtime size: %zu", runtimeMap.size());
+
     }
 
     void PackageManagerImplementation::downloader(int n)
@@ -1189,7 +1162,7 @@ namespace Plugin {
         if (nullptr != mStorageManagerObject) {
             string path = "";
             string errorReason = "";
-            if(mStorageManagerObject->CreateStorage(packageId, STORAGE_MAX_SIZE, path, errorReason) == Core::ERROR_NONE) {
+            if (mStorageManagerObject->CreateStorage(packageId, STORAGE_MAX_SIZE, path, errorReason) == Core::ERROR_NONE) {
                 LOGINFO("CreateStorage path [%s]", path.c_str());
                 //#if defined(USE_LIBPACKAGE) || defined(UNIT_TEST) || defined(ENABLE_NATIVEBUILD)
                 packagemanager::ConfigMetaData config;

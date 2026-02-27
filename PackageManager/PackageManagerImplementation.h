@@ -28,10 +28,10 @@
 #include <fstream>
 #include <cstdio>
 
-#ifdef USE_LIBPACKAGE
-#include <IPackageImpl.h>
-#elif defined(UNIT_TEST) || defined(ENABLE_NATIVEBUILD)
+#if defined(UNIT_TEST) || defined(ENABLE_NATIVEBUILD)
 #include "IPackageImplDummy.h"
+#else
+#include <IPackageImpl.h>
 #endif
 #include <json/json.h>
 
@@ -61,12 +61,12 @@ namespace Plugin {
     typedef Exchange::IPackageInstaller::InstallState InstallState;
     typedef Exchange::IPackageInstaller::FailReason FailReason;
 
-    class PackageManagerImplementation
+class PackageManagerImplementation
     : public Exchange::IPackageDownloader
     , public Exchange::IPackageInstaller
     , public Exchange::IPackageHandler
-    {
-        private:
+{
+    private:
         class State {
             class BlockedInstallData {
                 public:
@@ -77,11 +77,10 @@ namespace Plugin {
 
             public:
             State() {}
-            State(const packagemanager::ConfigMetaData &config) {
-                PackageManagerImplementation::getRuntimeConfig(config, runtimeConfig);
-            }
+            //State(const packagemanager::ConfigMetaData &config) {
+            //    PackageManagerImplementation::getRuntimeConfig(config, runtimeConfig);
+            //}
             InstallState installState = InstallState::UNINSTALLED;
-            bool preInsalled = false;
             uint32_t mLockCount = 0;
             Exchange::RuntimeConfig runtimeConfig;
             string gatewayMetadataPath;
@@ -89,7 +88,8 @@ namespace Plugin {
             FailReason failReason = Exchange::IPackageInstaller::FailReason::NONE;
             std::list<Exchange::IPackageHandler::AdditionalLock> additionalLocks;
             BlockedInstallData  blockedInstallData;
-
+            string runtimeType;                             // blank for runtime package
+            std::pair<std::string, std::string> runtimeApp; // runtime package id & version
         };
 
         typedef std::pair<std::string, std::string> StateKey;
@@ -202,9 +202,6 @@ namespace Plugin {
         Core::hresult GetLockedInfo(const string &packageId, const string &version, string &unpackedPath, Exchange::RuntimeConfig& configMetadata,
             string& gatewayMetadataPath, bool &locked) override;
 
-        static void getRuntimeConfig(const packagemanager::ConfigMetaData &config, Exchange::RuntimeConfig &runtimeConfig);
-        static void getRuntimeConfig(const Exchange::RuntimeConfig &config, Exchange::RuntimeConfig &runtimeConfig);
-
         BEGIN_INTERFACE_MAP(PackageManagerImplementation)
             INTERFACE_ENTRY(Exchange::IPackageDownloader)
             INTERFACE_ENTRY(Exchange::IPackageInstaller)
@@ -212,6 +209,23 @@ namespace Plugin {
         END_INTERFACE_MAP
 
     private:
+        void getRuntimeConfig(const packagemanager::ConfigMetaData &config, Exchange::RuntimeConfig &runtimeConfig);
+        void getRuntimeConfig(const Exchange::RuntimeConfig &config, Exchange::RuntimeConfig &runtimeConfig);
+        Core::hresult LockRuntime(State &state, string &unpackedPath);
+        Core::hresult LockPackage(const string &packageId, const string &version, const Exchange::IPackageHandler::LockReason &lockReason,
+            uint32_t &lockId, string &unpackedPath, packagemanager::ConfigMetaData &config, packagemanager::NameValues &locks);
+        Core::hresult UnlockPackage(const string &packageId, const string &version);
+        Core::hresult processBlockedPackage(const string &packageId, const string &version);
+
+        void setState(const string &packageId, const string &version, InstallState newState) {
+            std::lock_guard<std::recursive_mutex> lock(mtxState);
+            auto it = mState.find( { packageId, version} );
+            if (it != mState.end()) {
+                it->second.installState = newState;
+                LOGDBG("Setting InstallState %s for %s:%s", getInstallState(newState).c_str(), packageId.c_str(), version.c_str());
+            }
+        }
+
         inline string GetInstalledVersion(const string& id) {
             for (auto const& [key, state] : mState) {
                 if ((id.compare(key.first) == 0) &&
@@ -274,17 +288,18 @@ namespace Plugin {
                 case FailReason::PACKAGE_MISMATCH_FAILURE : return "PACKAGE_MISMATCH_FAILURE";
                 case FailReason::INVALID_METADATA_FAILURE : return "INVALID_METADATA_FAILURE";
                 case FailReason::PERSISTENCE_FAILURE : return "PERSISTENCE_FAILURE";
+                case FailReason::GENERAL_FAILURE: return "UNKNOWN;";
                 default: return "NONE";
             }
         }
     Core::hresult createStorageManagerObject();
     void releaseStorageManagerObject();
+    void populateRuntime(packagemanager::ConfigMetadataArray& aConfigMetadata);
 
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
     void recordAndPublishTelemetryData(const std::string& marker, const std::string& appId, time_t requestTime, PackageManagerImplementation::PackageFailureErrorCode errorCode);
     time_t getCurrentTimestamp();
 #endif /* ENABLE_AIMANAGERS_TELEMETRY_METRICS */
-
 
     private:
         mutable Core::CriticalSection mAdminLock;
@@ -306,14 +321,17 @@ namespace Plugin {
 
         std::string downloadDir = "/opt/CDL/";
         string configStr;
+        uint32_t userId = 30000;
+        uint32_t groupId = 30000;
 
-        #ifdef USE_LIBPACKAGE
-        std::shared_ptr<packagemanager::IPackageImpl> packageImpl;
-        #elif defined(UNIT_TEST) || defined(ENABLE_NATIVEBUILD)
+        #if defined(UNIT_TEST) || defined(ENABLE_NATIVEBUILD)
         std::shared_ptr<packagemanager::IPackageImplDummy> packageImpl;
-	#endif
+        #else
+        std::shared_ptr<packagemanager::IPackageImpl> packageImpl;
+	    #endif
         PluginHost::IShell* mCurrentservice;
         Exchange::IStorageManager* mStorageManagerObject;
+        std::map<std::string, std::pair<std::string, std::string>> runtimeMap;
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
         Exchange::ITelemetryMetrics* mTelemetryMetricsObject;
 #endif /* ENABLE_AIMANAGERS_TELEMETRY_METRICS */
