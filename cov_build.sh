@@ -67,7 +67,10 @@ cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/entservices-appmanagers \
 -DUSE_DRM_SCREENCAPTURE -DHAS_API_SYSTEM -DHAS_API_POWERSTATE \
 -DHAS_RBUS -DDISABLE_SECURITY_TOKEN -DENABLE_DEVICE_MANUFACTURER_INFO -DUSE_THUNDER_R4=ON -DTHUNDER_VERSION=4 -DTHUNDER_VERSION_MAJOR=4 -DTHUNDER_VERSION_MINOR=4 -DENABLE_NATIVEBUILD=ON" \
 
-
+- name: Debug workspace
+  run: |
+    echo "GITHUB_WORKSPACE=$GITHUB_WORKSPACE"
+    ls -R $GITHUB_WORKSPACE/Tests/testframework/mocks || true
 cmake --build build/entservices-appmanagers --target install
 echo "======================================================================================"
 exit 0
