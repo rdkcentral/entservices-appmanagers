@@ -1507,7 +1507,7 @@ Core::hresult RDKWindowManagerImplementation::SetFocus(const string &client)
  * This function controls the visibility of the client identified by its appInstanceId/name.
  *
  * @param[in] client            : client name or Application instance ID
- * @param[in] visible           : boolean indicating the visibility status: `true` for visible, `false` for hide.
+ * @param[in] visible           : boolean indicating the visibility status: `true` for visible, `false` for hidden.
  * @return    Core::<StatusCode>: Core::ERROR_NONE on success, Core::ERROR_GENERAL on failure
  */
 Core::hresult RDKWindowManagerImplementation::SetVisible(const std::string &client, bool visible)
@@ -1546,7 +1546,7 @@ Core::hresult RDKWindowManagerImplementation::SetVisible(const std::string &clie
  * This function reads the visibility of the client identified by its appInstanceId/name.
  *
  * @param[in] client            : client name or Application instance ID
- * @param[out] visible          : boolean indicating the visibility status: `true` for visible, `false` for hide.
+ * @param[out] visible          : boolean indicating the visibility status: `true` for visible, `false` for hidden.
  * @return    Core::<StatusCode>: Core::ERROR_NONE on success, Core::ERROR_GENERAL on failure
  */
 Core::hresult RDKWindowManagerImplementation::GetVisibility(const std::string &client, bool &visible)
