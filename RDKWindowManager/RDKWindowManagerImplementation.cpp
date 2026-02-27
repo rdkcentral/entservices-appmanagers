@@ -268,6 +268,11 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
                   {
                       // Encode the screenshot data as base64
                       Utils::String::imageEncoder(gScreenshotData, gScreenshotSize, true, gScreenshotImageData);
+                      
+                      // Free the buffer immediately after encoding to avoid retaining large allocations
+                      free(gScreenshotData);
+                      gScreenshotData = nullptr;
+                      gScreenshotSize = 0;
                   }
                   
                   if (RDKWindowManagerImplementation::_instance)
@@ -354,6 +359,14 @@ Core::hresult RDKWindowManagerImplementation::Deinitialize(PluginHost::IShell* s
         }
     }
     gCreateDisplayRequests.clear();
+    
+    // Clean up screenshot buffer if any
+    if (gScreenshotData)
+    {
+        free(gScreenshotData);
+        gScreenshotData = nullptr;
+        gScreenshotSize = 0;
+    }
 
     gRdkWindowManagerMutex.unlock();
 
