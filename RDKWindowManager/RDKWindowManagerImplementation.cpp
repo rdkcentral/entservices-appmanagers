@@ -2230,16 +2230,16 @@ Core::hresult RDKWindowManagerImplementation::GetScreenshot()
     Core::hresult status = Core::ERROR_NONE;
 
     bool lockAcquired = lockRdkWindowManagerMutex();
-    // Reset previous screenshot data if any
-    if (gScreenshotData)
-    {
-        free(gScreenshotData);
-        gScreenshotData = nullptr;
-        gScreenshotSize = 0;
-    }
-    gNeedsScreenshot = true;
     if (lockAcquired)
     {
+        // Reset previous screenshot data if any
+        if (gScreenshotData)
+        {
+            free(gScreenshotData);
+            gScreenshotData = nullptr;
+            gScreenshotSize = 0;
+        }
+        gNeedsScreenshot = true;
         gRdkWindowManagerMutex.unlock();
     }
 
