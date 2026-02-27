@@ -2286,12 +2286,15 @@ Core::hresult RDKWindowManagerImplementation::GetScreenshot()
         gNeedsScreenshot = true;
         status = Core::ERROR_NONE;
         gRdkWindowManagerMutex.unlock();
-        
-        LOGINFO("Screenshot request queued");
     }
     else
     {
         LOGERR("Failed to acquire lock for screenshot request");
+    }
+    
+    if (lockAcquired)
+    {
+        LOGINFO("Screenshot request queued");
     }
 
     return status;
