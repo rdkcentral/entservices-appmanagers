@@ -2229,7 +2229,7 @@ Core::hresult RDKWindowManagerImplementation::GetScreenshot()
 {
     Core::hresult status = Core::ERROR_NONE;
 
-    gRdkWindowManagerMutex.lock();
+    bool lockAcquired = lockRdkWindowManagerMutex();
     // Reset previous screenshot data if any
     if (gScreenshotData)
     {
@@ -2238,7 +2238,10 @@ Core::hresult RDKWindowManagerImplementation::GetScreenshot()
         gScreenshotSize = 0;
     }
     gNeedsScreenshot = true;
-    gRdkWindowManagerMutex.unlock();
+    if (lockAcquired)
+    {
+        gRdkWindowManagerMutex.unlock();
+    }
 
     LOGINFO("Screenshot request queued");
 
