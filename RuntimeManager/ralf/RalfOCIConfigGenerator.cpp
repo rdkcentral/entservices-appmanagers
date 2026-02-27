@@ -77,6 +77,8 @@ namespace ralf
         }
         // Add FIREBOLT_ENDPOINT environment variable from runtime config to OCI config if it exists
         addFireboltEndPointToConfig(ociConfigRootNode, runtimeConfigObject.envVariables);
+        // /rootdir is a 10MB tmpfs, so we need to ensure that the application has enough space for its working directory.
+        addToEnvironment(ociConfigRootNode, "TEMP_STORAGE_PATH", "/rootdir");
         // Finally save the modified OCI config to file
         return saveOCIConfigToFile(ociConfigRootNode, config.mUserId, config.mGroupId);
     }
