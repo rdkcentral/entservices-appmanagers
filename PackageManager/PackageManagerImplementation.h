@@ -217,6 +217,15 @@ class PackageManagerImplementation
         Core::hresult UnlockPackage(const string &packageId, const string &version);
         Core::hresult processBlockedPackage(const string &packageId, const string &version);
 
+        void setState(const string &packageId, const string &version, InstallState newState) {
+            std::lock_guard<std::recursive_mutex> lock(mtxState);
+            auto it = mState.find( { packageId, version} );
+            if (it != mState.end()) {
+                it->second.installState = newState;
+                LOGDBG("Setting InstallState %s for %s:%s", getInstallState(newState).c_str(), packageId.c_str(), version.c_str());
+            }
+        }
+
         inline string GetInstalledVersion(const string& id) {
             for (auto const& [key, state] : mState) {
                 if ((id.compare(key.first) == 0) &&

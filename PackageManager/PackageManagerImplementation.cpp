@@ -490,15 +490,16 @@ namespace Plugin {
 
         NotifyInstallStatus(packageId, version, state);
         string installedVersion = GetInstalledVersion(packageId);
+        StateKey installedKey { "", "" };
         if (installedVersion.empty()) {
             // No other versions
             bNewEntry = true;
         } else {
             if (installedVersion.compare(version) == 0) {
-                // Same version already installed, upgrading
+                LOGINFO("Same version already installed, upgrading");
             } else {
                 // different version
-                StateKey installedKey { packageId, installedVersion };
+                installedKey  = { packageId, installedVersion };
                 auto it = mState.find( installedKey );
                 bNewEntry = true;
                 if (it != mState.end()) {
@@ -517,6 +518,10 @@ namespace Plugin {
 
         if (state.installState == InstallState::INSTALLING) {
             result = Install(packageId, version, keyValues, fileLocator, state);
+            if ((result == Core::ERROR_NONE) && (!installedVersion.empty())) {
+                setState(packageId, installedVersion, InstallState::UNINSTALLED);
+            }
+
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
              if (result != Core::ERROR_NONE) {
                 packageFailureErrorCode = (state.failReason == FailReason::PACKAGE_MISMATCH_FAILURE)
@@ -972,11 +977,8 @@ namespace Plugin {
                 auto blockedData = stateBlocked.blockedInstallData;
                 if (Install(packageId, blockedData.version, blockedData.keyValues, blockedData.fileLocator, stateBlocked) == Core::ERROR_NONE) {
                     LOGDBG("Blocked package installed. id: %s ver: %s", packageId.c_str(), blockedVer.c_str());
-                    auto it = mState.find( { packageId, version } );
-                    if (version.compare(blockedVer) && (it != mState.end())) {
-                        auto &state = it->second;
-                        state.installState = InstallState::UNINSTALLED;    // mark the old version as uninstalled
-                        LOGDBG("Setting InstallState::UNINSTALLED for %s:%s", packageId.c_str(), version.c_str());
+                    if (version.compare(blockedVer)) {  // different version(s)
+                        setState(packageId, version, InstallState::UNINSTALLED);
                     }
                 } else {
                     LOGERR("Blocked package installtion failed id: %s ver: %s", packageId.c_str(), blockedVer.c_str());
