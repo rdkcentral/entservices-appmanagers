@@ -873,69 +873,45 @@ Core::hresult RDKWindowManagerImplementation::AddKeyIntercepts(const string &int
 /* @brief RemoveKeyIntercept of the client.
  * Intercept key is removed from that client
  *
- * @intercept[in] : JSON String format with client/callSign, keyCode, modifiers
+ * @clientId[in] : The client identifier
+ * @keyCode[in] : The key code to remove
+ * @modifiers[in] : Modifier keys like ctrl, alt, shift
  * @return ERROR_NONE if success , ERROR_GENERAL if failure.
  */
-Core::hresult RDKWindowManagerImplementation::RemoveKeyIntercept(const string &intercept)
+Core::hresult RDKWindowManagerImplementation::RemoveKeyIntercept(const string &clientId, uint32_t keyCode, const string &modifiers)
 {
     Core::hresult status = Core::ERROR_GENERAL;
-    JsonObject parameters;
 
-    if (intercept.empty())
+    if (clientId.empty())
     {
-        LOGERR("intercept is empty");
+        LOGERR("clientId is empty");
     }
     else
     {
-        LOGINFO("intercept :%s", intercept.c_str());
-        parameters.FromString(intercept);
+        LOGINFO("clientId: %s, keyCode: %u, modifiers: %s", clientId.c_str(), keyCode, modifiers.c_str());
 
-        if (!parameters.HasLabel("keyCode"))
+        JsonArray modifiersArray;
+        if (!modifiers.empty())
         {
-            LOGERR("please specify keyCode");
+            if (!modifiersArray.FromString(modifiers))
+            {
+                LOGERR("failed to parse modifiers JSON string: '%s'", modifiers.c_str());
+                return status;
+            }
         }
-        else if (!parameters.HasLabel("client") && !parameters.HasLabel("callsign"))
+
+        if (false == removeKeyIntercept(keyCode, modifiersArray, clientId))
         {
-            LOGERR("please specify client or callsign");
+            LOGERR("failed to remove key intercept");
         }
         else
         {
-            /* optional param */
-            const JsonArray modifiers = parameters.HasLabel("modifiers") ? parameters["modifiers"].Array() : JsonArray();
-
-            uint32_t keyCode = parameters["keyCode"].Number();
-            /* check for * parameter */
-            JsonValue keyCodeValue = parameters["keyCode"];
-            if (keyCodeValue.Content() == JsonValue::type::STRING)
-            {
-                std::string keyCodeStringValue = parameters["keyCode"].String();
-                if (keyCodeStringValue.compare("*") == 0)
-                {
-                    keyCode = 255;
-                }
-            }
-            string client = "";
-            if (parameters.HasLabel("client"))
-            {
-                client = parameters["client"].String();
-            }
-            else
-            {
-                client = parameters["callsign"].String();
-            }
-            if (false == removeKeyIntercept(keyCode, modifiers, client))
-            {
-                LOGERR("failed to remove key intercept");
-            }
-            else
-            {
-                status = Core::ERROR_NONE;
-            }
+            LOGINFO("successfully removed key intercept for clientId: %s, keyCode: %u", clientId.c_str(), keyCode);
+            status = Core::ERROR_NONE;
         }
     }
     return status;
 }
-
 
 /* @brief AddKeyListener for the client.
  * A method to handle key events ,enabling custom actions when specific keys are injected/pressed for that client
