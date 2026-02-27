@@ -103,7 +103,7 @@ bool RuntimeManagerHandler::run(const string& appId, const string& appInstanceId
     portsList.push_back(mFireboltAccessPort);
 
     std::stringstream ss;
-    ss << "FIREBOLT_ENDPOINT=http://127.0.0.1:" << mFireboltAccessPort << "?session=" << appInstanceId;
+    ss << "FIREBOLT_ENDPOINT=ws://127.0.0.1:" << mFireboltAccessPort << "?session=" << appInstanceId;
     string fireboltEndPoint(ss.str());
     envNewArray.Add(fireboltEndPoint);
 
