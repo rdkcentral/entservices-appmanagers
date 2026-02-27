@@ -113,10 +113,10 @@ namespace ralf
          */
         bool addAdditionalEnvVariablesToOCIConfig(Json::Value &ociConfigRootNode, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject, const WPEFramework::Plugin::ApplicationConfiguration &appConfig);
         /**
-         * Reads the environment variable string from WPEFramework::Exchange::RuntimeConfig.envVariables and pushes it to OCI config.
-         * We are specifically looking to update FIREBOLT_ENDPOINT environment variable here.
+         * Reads the environment variables JSON array string from WPEFramework::Exchange::RuntimeConfig.envVariables and pushes them to OCI config.
+         * We are specifically looking to update the FIREBOLT_ENDPOINT environment variable here.
          * @param ociConfigRootNode The root node of the OCI config JSON.
-         * @param envVar The environment variable string in the format "KEY=VALUE".
+         * @param envVar The serialized JSON array string of environment variables (e.g. "[\"KEY=VALUE\", ...]") as provided by RuntimeConfig.envVariables.
          * @return true if the environment variable was added successfully, false otherwise.
          */
         bool addFireboltEndPointToConfig(Json::Value &ociConfigRootNode, const std::string &envVar);
