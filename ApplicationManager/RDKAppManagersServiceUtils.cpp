@@ -14,21 +14,40 @@ std::string RDKAppManagersServiceUtils::EscapeJson(const std::string& input)
     std::string escaped;
     escaped.reserve(input.size());
 
-    for (const char value : input) {
+    for (unsigned char value : input) {
+        if (value == static_cast<unsigned char>('"')) {
+            escaped += "\\\"";
+            continue;
+        }
+
+        if (value == static_cast<unsigned char>('\\')) {
+            escaped += "\\\\";
+            continue;
+        }
+
+        if (value >= 0x20) {
+            escaped += static_cast<char>(value);
+            continue;
+        }
+
         switch (value) {
-        case '"': escaped += "\\\""; break;
-        case '\\': escaped += "\\\\"; break;
-        case '\b': escaped += "\\b"; break;
-        case '\f': escaped += "\\f"; break;
-        case '\n': escaped += "\\n"; break;
-        case '\r': escaped += "\\r"; break;
-        case '\t': escaped += "\\t"; break;
+        case '\n':
+            escaped += "\\n";
+            break;
+        case '\r':
+            escaped += "\\r";
+            break;
+        case '\t':
+            escaped += "\\t";
+            break;
+        case '\b':
+            escaped += "\\b";
+            break;
+        case '\f':
+            escaped += "\\f";
+            break;
         default:
-            if (static_cast<unsigned char>(value) < 0x20) {
-                escaped += "?";
-            } else {
-                escaped += value;
-            }
+            escaped += "?";
             break;
         }
     }
