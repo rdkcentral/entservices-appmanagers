@@ -82,4 +82,10 @@ namespace ralf
 
     constexpr const char *RUNTIME_CONFIG_OVERRIDES_ENV_KEY = "RUNTIME_CONFIG_OVERRIDES_JSON";
     constexpr const char *APP_CONFIG_OVERRIDES_ENV_KEY = "APP_CONFIG_OVERRIDES_JSON";
+
+    //500 MB is the default RAM given to an application. Tied to ../resources/oci-base.json
+    //Any change to this should be matching with that file.
+    constexpr const char * DEFULT_RAM_LIMIT = "524288000";
+    //100 MB is the default storage given to an application. This needs to be addressed properly.
+    constexpr const char * DEFULT_STORAGE_LIMIT = "1073741824";
 } // namespace ralf
