@@ -419,11 +419,17 @@ namespace ralf
         if (packageType == PKG_TYPE_APPLICATION || packageType == PKG_TYPE_RUNTIME)
         {
             status = addConfigOVerridesToOCIConfig(ociConfigRootNode, configNode, packageType);
+            LOGDBG("Applied config overrides to OCI config ? %s\n", status ? "true" : "false");
         }
         // Apply "urn:rdk:config:memory", reserved
         if (packageType == PKG_TYPE_APPLICATION || packageType == PKG_TYPE_RUNTIME)
         {
+
             status = addMemoryConfigToOCIConfig(ociConfigRootNode, configNode, packageType);
+            LOGDBG("Applied memory config to OCI config ? %s\n", status ? "true" : "false");
+
+            status = addStorageConfigToOCIConfig(ociConfigRootNode, configNode);
+            LOGDBG("Applied storage config to OCI config ? %s\n", status ? "true" : "false");
         }
         // Add APP_PACKAGE_VERSION environment variable from application config to OCI config
         if (packageType == PKG_TYPE_APPLICATION)
@@ -464,6 +470,9 @@ namespace ralf
                 return true;
             }
         }
+        LOGWARN("Storage configuration not found in the config node. Setting default values\n");
+        addToEnvironment(ociConfigRootNode, "STORAGE_LIMIT", DEFULT_STORAGE_LIMIT);
+
         return false;
     }
     bool RalfOCIConfigGenerator::addMemoryConfigToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &configNode, const std::string &packageType)
@@ -480,7 +489,6 @@ namespace ralf
             linux.memory.limits
         */
 
-        bool status = false;
         // Implementation for adding memory configuration
         if (configNode.isMember(MEMORY_CONFIG_URN) && configNode[MEMORY_CONFIG_URN].isObject())
         {
@@ -493,11 +501,15 @@ namespace ralf
                 ociConfigRootNode[LINUX][RESOURCES][MEMORY][MEMORY_LIMIT] = memoryLimit;
                 LOGDBG("Applied system memory limit to OCI config: %llu\n", memoryLimit);
                 addToEnvironment(ociConfigRootNode, "CPU_MEMORY_LIMIT", std::to_string(memoryLimit));
+                return true;
             }
             // TODO not sure what to do with GPU memory for now
-            status = true;
         }
-        return status;
+
+        LOGWARN("Memory configuration not found in the config node. Setting default values\n");
+        addToEnvironment(ociConfigRootNode, "CPU_MEMORY_LIMIT", DEFULT_RAM_LIMIT);
+
+        return false;
     }
     bool RalfOCIConfigGenerator::addFireboltEndPointToConfig(Json::Value &ociConfigRootNode, const std::string &envVar)
     {

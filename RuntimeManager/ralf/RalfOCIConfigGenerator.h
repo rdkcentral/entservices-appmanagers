@@ -139,7 +139,7 @@ namespace ralf
          * @param ociConfigRootNode The root node of the OCI config JSON.
          * @param configNode The config node containing the memory configuration.
          * @param packageType The type of the Ralf package (e.g., "application" or "runtime").
-         * @return true if the memory configuration was added successfully, false otherwise.
+         * @return true if the memory configuration was added from package, false if default value is addded .
          */
 
         bool addMemoryConfigToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &configNode, const std::string &packageType);
@@ -168,7 +168,7 @@ namespace ralf
          * field as this environment variable.
          * @param ociConfigRootNode The root node of the OCI config JSON.
          * @param manifestRootNode The root node of the manifest JSON containing the storage information.
-         * @return true if the storage configuration was added successfully, false otherwise.
+         * @return true if the storage configuration was added from package, false if default value is addded.
          */
         bool addStorageConfigToOCIConfig(Json::Value &ociConfigRootNode, Json::Value &manifestRootNode);
 
