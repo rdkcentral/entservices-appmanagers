@@ -633,13 +633,24 @@ void RDKWindowManagerImplementation::Dispatch(Event event, const JsonValue param
 
         case RDK_WINDOW_MANAGER_EVENT_SCREENSHOT_COMPLETE:
         {
-            std::lock_guard<std::mutex> lock(gRdkWindowManagerMutex);
-            if (!gScreenshotResultQueue.empty())
+            bool success = false;
+            std::string imageData;
+            bool hasResult = false;
+            
             {
-                std::shared_ptr<ScreenshotResult> result = gScreenshotResultQueue.front();
-                gScreenshotResultQueue.pop();
-                bool success = result->mSuccess;
-                std::string imageData = result->mImageData;
+                std::lock_guard<std::mutex> lock(gRdkWindowManagerMutex);
+                if (!gScreenshotResultQueue.empty())
+                {
+                    std::shared_ptr<ScreenshotResult> result = gScreenshotResultQueue.front();
+                    gScreenshotResultQueue.pop();
+                    success = result->mSuccess;
+                    imageData = std::move(result->mImageData);
+                    hasResult = true;
+                }
+            }
+            
+            if (hasResult)
+            {
                 LOGINFO("RDKWindowManager Dispatch OnScreenshotComplete success: %s", success ? "true" : "false");
                 notifyScreenshotComplete(success, imageData);
             }
