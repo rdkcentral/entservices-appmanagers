@@ -44,13 +44,7 @@
 
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
 #include <interfaces/ITelemetryMetrics.h>
-
-#define TELEMETRY_MARKER_LAUNCH_TIME             "OverallLaunchTime_split"
-#define TELEMETRY_MARKER_CLOSE_TIME              "AppCloseTime_split"
-#define TELEMETRY_MARKER_INSTALL_TIME            "InstallTime_split"
-#define TELEMETRY_MARKER_INSTALL_ERROR           "InstallError_split"
-#define TELEMETRY_MARKER_UNINSTALL_TIME          "UninstallTime_split"
-#define TELEMETRY_MARKER_UNINSTALL_ERROR         "UninstallError_split"
+#include "RDKAppMgrTelemetryMarkers.h"
 #endif /* ENABLE_AIMANAGERS_TELEMETRY_METRICS */
 
 #define PACKAGE_MANAGER_MARKER_FILE              "/tmp/package_manager_ready"
@@ -281,7 +275,8 @@ namespace Plugin {
     void releaseStorageManagerObject();
 
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-    void recordAndPublishTelemetryData(const std::string& marker, const std::string& appId, time_t requestTime, PackageManagerImplementation::PackageFailureErrorCode errorCode);
+    void recordAndPublishTelemetryData(const std::string& marker, const std::string& appId, time_t requestTime, PackageManagerImplementation::PackageFailureErrorCode errorCode,
+                                       const std::string& runtimeId = "", const std::string& runtimeVersion = "");
     time_t getCurrentTimestamp();
 #endif /* ENABLE_AIMANAGERS_TELEMETRY_METRICS */
 

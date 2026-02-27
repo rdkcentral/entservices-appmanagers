@@ -62,6 +62,12 @@ target_include_directories(${MODULE_NAME} PRIVATE
     ${CMAKE_SYSROOT}${CMAKE_INSTALL_PREFIX}/include/${NAMESPACE}/interfaces
     )
 
+if(AIMANAGERS_TELEMETRY_METRICS_SUPPORT)
+    target_include_directories(${MODULE_NAME} PRIVATE
+        ../TelemetryMetrics
+    )
+endif(AIMANAGERS_TELEMETRY_METRICS_SUPPORT)
+
 target_link_libraries(${MODULE_NAME} PRIVATE
     ${NAMESPACE}Definitions::${NAMESPACE}Definitions
     ${NAMESPACE}Plugins::${NAMESPACE}Plugins

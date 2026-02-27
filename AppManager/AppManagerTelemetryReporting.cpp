@@ -20,6 +20,7 @@
 #include "AppManagerTelemetryReporting.h"
 #include "UtilsLogging.h"
 #include "tracing/Logging.h"
+#include <chrono>
 
 namespace WPEFramework
 {
@@ -54,9 +55,9 @@ namespace Plugin
 
     time_t AppManagerTelemetryReporting::getCurrentTimestamp()
     {
-        timespec ts;
-        clock_gettime(CLOCK_MONOTONIC, &ts);
-        return ((time_t)(ts.tv_sec * 1000) + ((time_t)ts.tv_nsec/1000000));
+        return static_cast<time_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now().time_since_epoch()
+        ).count());
     }
 
     Core::hresult AppManagerTelemetryReporting::createTelemetryMetricsPluginObject()
@@ -104,11 +105,11 @@ namespace Plugin
 
             switch(currentAction)
             {
-                case AppManagerImplementation::APP_ACTION_LAUNCH:
-                case AppManagerImplementation::APP_ACTION_PRELOAD:
-                    jsonParam["appManagerLaunchTime"] = (int)(currentTime - it->second.currentActionTime);
-                    markerName = TELEMETRY_MARKER_LAUNCH_TIME;
-                break;
+                // case AppManagerImplementation::APP_ACTION_LAUNCH:
+                // case AppManagerImplementation::APP_ACTION_PRELOAD:
+                //     jsonParam["appManagerLaunchTime"] = (int)(currentTime - it->second.currentActionTime);
+                //     markerName = TELEMETRY_MARKER_LAUNCH_TIME;
+                // break;
                 case AppManagerImplementation::APP_ACTION_CLOSE:
                     if ((Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED != it->second.targetAppState) &&
                         (Exchange::IAppManager::AppLifecycleState::APP_STATE_HIBERNATED != it->second.targetAppState))
@@ -139,6 +140,7 @@ namespace Plugin
         else
         {
             LOGERR("Failed to report telemetry data as appId/currentAction or mTelemetryMetricsObject is not valid");
+            LOGDBG("appId=%s currentAction=%d appInfoFound=%d telemetryObjValid=%d", appId.c_str(), currentAction, (it != appManagerImplInstance->mAppInfo.end()), (nullptr != mTelemetryMetricsObject));
         }
     }
 
@@ -254,6 +256,59 @@ namespace Plugin
                 mTelemetryMetricsObject->Record(appId, telemetryMetrics, markerName);
                 mTelemetryMetricsObject->Publish(appId, markerName);
             }
+        }
+    }
+
+    void AppManagerTelemetryReporting::reportAppCrashedTelemetry(const std::string& appId, const std::string& appInstanceId, const std::string& crashReason)
+    {
+        JsonObject jsonParam;
+        std::string telemetryMetrics = "";
+
+        LOGINFO("Received app crash data for appId %s appInstanceId %s crashReason %s", appId.c_str(), appInstanceId.c_str(), crashReason.c_str());
+
+        if(nullptr == mTelemetryMetricsObject) /*mTelemetryMetricsObject is null retry to create*/
+        {
+            if(Core::ERROR_NONE != createTelemetryMetricsPluginObject())
+            {
+                LOGERR("Failed to create TelemetryMetricsObject\n");
+            }
+        }
+
+        if(nullptr != mTelemetryMetricsObject)
+        {
+            jsonParam["appId"] = appId;
+            jsonParam["appInstanceId"] = appInstanceId;
+            jsonParam["crashReason"] = crashReason;
+            jsonParam.ToString(telemetryMetrics);
+            if(!telemetryMetrics.empty())
+            {
+                mTelemetryMetricsObject->Record(appId, telemetryMetrics, TELEMETRY_MARKER_APP_CRASHED);
+                mTelemetryMetricsObject->Publish(appId, TELEMETRY_MARKER_APP_CRASHED);
+            }
+        }
+        else
+        {
+            LOGERR("Failed to report crash telemetry - mTelemetryMetricsObject is not valid");
+        }
+    }
+
+    void AppManagerTelemetryReporting::recordLaunchTime(const std::string& appId, int launchTimeMs)
+    {
+        JsonObject jsonParam;
+        std::string telemetryMetrics = "";
+        std::string markerName = TELEMETRY_MARKER_LAUNCH_TIME;
+        jsonParam["appManagerLaunchTime"] = launchTimeMs;
+        if (nullptr != mTelemetryMetricsObject)
+        {
+            jsonParam.ToString(telemetryMetrics);
+            if (!telemetryMetrics.empty())
+            {
+                mTelemetryMetricsObject->Record(appId, telemetryMetrics, markerName);
+            }
+        }
+        else
+        {
+            LOGERR("Failed to record launch time telemetry - mTelemetryMetricsObject is not valid");
         }
     }
 
