@@ -2238,16 +2238,17 @@ Core::hresult RDKWindowManagerImplementation::GetScreenshot()
 {
     Core::hresult status = Core::ERROR_NONE;
 
-    gRdkWindowManagerMutex.lock();
-    // Reset previous screenshot data if any
-    if (gScreenshotData)
     {
-        free(gScreenshotData);
-        gScreenshotData = nullptr;
-        gScreenshotSize = 0;
+        std::lock_guard<std::mutex> lock(gRdkWindowManagerMutex);
+        // Reset previous screenshot data if any
+        if (gScreenshotData)
+        {
+            free(gScreenshotData);
+            gScreenshotData = nullptr;
+            gScreenshotSize = 0;
+        }
+        gNeedsScreenshot = true;
     }
-    gNeedsScreenshot = true;
-    gRdkWindowManagerMutex.unlock();
 
     LOGINFO("Screenshot request queued");
 
