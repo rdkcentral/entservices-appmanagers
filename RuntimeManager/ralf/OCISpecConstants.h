@@ -32,7 +32,6 @@ namespace ralf
     constexpr const char *GID = "gid";
     constexpr const char *ADDITIONAL_GIDS = "additionalGids";
     constexpr const char *HOSTNAME = "hostname";
-    constexpr const char *CWD = "cwd";
     constexpr const char *LINUX = "linux";
     constexpr const char *UID_MAPPINGS = "uidMappings";
     constexpr const char *GID_MAPPINGS = "gidMappings";
@@ -74,6 +73,12 @@ namespace ralf
     constexpr const char *SYSTEM_MEMORY = "system";
     constexpr const char *MEMORY_LIMIT = "limit";
     constexpr const char *MEMORY = "memory";
+
+    constexpr const char *VERSION = "version";
+    constexpr const char *VERSION_NAME = "versionName";
+
+    constexpr const char *STORAGE_CONFIG_URN = "urn:rdk:config:storage";
+    constexpr const char *MAX_LOCAL_STORAGE = "maxLocalStorage";
 
     constexpr const char *RUNTIME_CONFIG_OVERRIDES_ENV_KEY = "RUNTIME_CONFIG_OVERRIDES_JSON";
     constexpr const char *APP_CONFIG_OVERRIDES_ENV_KEY = "APP_CONFIG_OVERRIDES_JSON";
