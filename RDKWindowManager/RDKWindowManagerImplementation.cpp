@@ -259,6 +259,9 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
               if (gNeedsScreenshot)
               {
                   gNeedsScreenshot = false;
+                  // Ensure screenshot globals are in a known safe state before capture
+                  gScreenshotData = nullptr;
+                  gScreenshotSize = 0;
                   bool success = CompositorController::screenShot(gScreenshotData, gScreenshotSize);
                   
                   gScreenshotSuccess = success;
@@ -1526,7 +1529,7 @@ Core::hresult RDKWindowManagerImplementation::SetVisible(const std::string &clie
 /**
  * @brief Gets the visibility of the specified client with given appInstanceId or name.
  *
- * This function read the visibility of the client identified by its appInstanceId/name.
+ * This function reads the visibility of the client identified by its appInstanceId/name.
  *
  * @param[in] client            : client name or Application instance ID
  * @param[out] visible          : boolean indicating the visibility status: `true` for visible, `false` for hide.
