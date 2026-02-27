@@ -279,9 +279,15 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
                   
                   if (RDKWindowManagerImplementation::_instance)
                   {
+                      JsonObject eventParams;
+                      eventParams["success"] = JsonValue(gScreenshotSuccess);
+                      if (gScreenshotSuccess && !gScreenshotImageData.empty())
+                      {
+                          eventParams["imageData"] = JsonValue(gScreenshotImageData);
+                      }
                       RDKWindowManagerImplementation::_instance->dispatchEvent(
                           RDKWindowManagerImplementation::Event::RDK_WINDOW_MANAGER_EVENT_SCREENSHOT_COMPLETE,
-                          JsonValue());
+                          eventParams);
                   }
               }
 
