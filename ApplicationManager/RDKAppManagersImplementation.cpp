@@ -2,11 +2,6 @@
 #include "RDKAppManagersServiceUtils.h"
 #include "SystemSettings.h"
 #include "TestPreferences.h"
-//#include "NetworkService.h"
-//#include "Controllers/inc/NetworkController.h"
-//#include "sky/log.h"
-//#include "sky/eventloop.h"
-//#include "dbusconnection.h"
 #include <vector>
 #include <map>
 #include <cctype>
@@ -23,37 +18,12 @@ RDKAppManagersImplementation::RDKAppManagersImplementation()
     : m_listenerIdCounter(0)
     , m_shell(nullptr)
     , m_service(std::make_unique<RDKAppManagersService>(nullptr))
-    , m_legacyEventLoop(nullptr)
-    , m_running(false)
 {
     SYSLOG(Logging::Startup, (string(_T("RDKAppManagersImplementation Constructor - START"))));
-  /*  
-    // Create NetworkService in Thunder mode (nullptr for DBusConnection)
-    m_networkService = std::make_unique<NetworkService>(nullptr);
-    
-    // Create Thunder handlers
-    m_thunderHandlers = std::make_unique<ASThunder::Thunder::NetworkServiceThunderHandlers>(
-        m_networkService.get()
-    );
-    */
     SYSLOG(Logging::Startup, (string(_T("RDKAppManagersImplementation Constructor - END"))));
 }
 RDKAppManagersImplementation::~RDKAppManagersImplementation() {
     SYSLOG(Logging::Shutdown, (string(_T("RDKAppManagersImplementation Destructor"))));
-   /* 
-    // Stop legacy thread
-    m_legacyLock.Lock();
-    if (m_running && m_legacyEventLoop) {
-        m_legacyEventLoop->quit(1);
-    }
-    m_legacyLock.Unlock();
-    
-    if (m_legacyThread.joinable()) {
-        m_legacyThread.detach();
-      //  LOG_MIL("RDKAppmanagersImplementation: Destructor thread.detach() returned");
-
-    }
-    */
     // Cleanup resources
     if (m_shell != nullptr) {
         m_shell->Release();
@@ -359,93 +329,29 @@ Core::hresult RDKAppManagersImplementation::SetTestPreference(const string& name
 Core::hresult RDKAppManagersImplementation::GetDiagContexts(string& contexts) {
     SYSLOG(Logging::Startup, (string(_T("GetDiagContexts"))));
     return Core::ERROR_NONE;
-//    return m_thunderHandlers->getDiagContexts(contexts);
 }
+
+
 Core::hresult RDKAppManagersImplementation::SetDiagContexts(const string& contexts, uint32_t& updated) {
     SYSLOG(Logging::Startup, (_T("SetDiagContexts ctx.len=%zu"), contexts.size()));
     return Core::ERROR_NONE;
-    //return m_thunderHandlers->setDiagContexts(contexts, updated);
 }
 
 
-// Notification methods called by NetworkController via callback
+
 void RDKAppManagersImplementation::NotifyWebSocketUpdate(const std::string& url, const std::string& message) {
     SYSLOG(Logging::Startup, (_T("NotifyWebSocketUpdate url=%s"), url.c_str()));
     
-    // Check if any Thunder clients are listening to this URL
-    {
-        std::lock_guard<std::mutex> lock(m_listenerMutex);
-        
-        bool hasListeners = std::any_of(m_wsListeners.begin(), m_wsListeners.end(),
-            [&url](const ListenerInfo& info) {
-                return info.url == url;
-            });
-        
-        if (!hasListeners) {
-            SYSLOG(Logging::Startup, (_T("[EVENT] NotifyWebSocketUpdate- NO listeners for URL :%s - SKIPPING"), url.c_str()));
-            // No one is listening, skip notification
-            return;
-        }
-    }
-    
-    // Notify all Thunder observers (ASNetwork plugin notification sinks)
-    for (auto* observer : mNotifications) {
-        if (observer) {
-            SYSLOG(Logging::Startup, (_T("[EVENT] NotifyWebSocketUpdate- listeners for URL :%s "), url.c_str()));
-            observer->OnNotifyWebSocketUpdate(url, message);
-        }
-    }
 }
 
 void RDKAppManagersImplementation::NotifyHttpUpdate(const std::string& url, uint32_t code) {
     SYSLOG(Logging::Startup, (_T("NotifyHttpUpdate url=%s code=%u"), url.c_str(), code));
     
-    {
-        std::lock_guard<std::mutex> lock(m_listenerMutex);
-        
-        bool hasListeners = std::any_of(m_httpListeners.begin(), m_httpListeners.end(),
-            [&url](const ListenerInfo& info) {
-                return info.url == url;
-            });
-        
-        if (!hasListeners) {
-            SYSLOG(Logging::Startup, (_T("[EVENT] NotifyHttpUpdate- NO listeners for URL :%s - SKIPPING"), url.c_str()));
-            return;
-        }
-    }
-
-    // FIXME: Dispatch job instead
-    for (auto* observer : mNotifications) {
-        if (observer) {
-            SYSLOG(Logging::Startup, (_T("[EVENT] NotifyHttpUpdate- listeners for URL :%s "), url.c_str()));
-            observer->OnNotifyHttpUpdate(url, code);
-        }
-    }
 }
 
 void RDKAppManagersImplementation::NotifySysStatusUpdate(const std::string& status) {
     SYSLOG(Logging::Startup, (_T("NotifySysStatusUpdate")));
     
-    {
-        std::lock_guard<std::mutex> lock(m_listenerMutex);
-        
-        // Cache the status for new listeners (mirrors D-Bus implementation)
-        m_cachedSysStatus = status;
-        SYSLOG(Logging::Startup, (_T("NotifySysStatusUpdate - Cached status: %s"), status.c_str()));
-        
-        if (m_sysListeners.empty()) {
-            SYSLOG(Logging::Startup, (_T("[EVENT] NotifySysStatusUpdate- NO listeners for URL :%s - SKIPPING"), status.c_str()));
-            return;
-        }
-    }
-    
-    // FIXME: Dispatch job instead
-    for (auto* observer : mNotifications) {
-        if (observer) {
-            SYSLOG(Logging::Startup, (_T("[EVENT] NotifySysStatusUpdate- listeners for URL :%s "), status.c_str()));
-            observer->OnNotifySysStatusUpdate(status);
-        }
-    }
 }
 
 uint32_t RDKAppManagersImplementation::Configure(PluginHost::IShell* shell) {
@@ -460,34 +366,6 @@ uint32_t RDKAppManagersImplementation::Configure(PluginHost::IShell* shell) {
                 m_service->SetShell(m_shell);
         }
 
-    /*
-
-    // Start legacy D-Bus thread for service-to-service communication
-    m_running = true;
-    m_legacyThread = std::thread(&ASNetworkImplementation::LegacyMain, this);
-
-    // Register callbacks with NetworkController
-    auto controller = m_networkService->getNetworkController();
-    if (controller) {
-        controller->SetThunderNotificationCallback(
-            [this](const std::string& url, const std::string& message) {
-                this->NotifyWebSocketUpdate(url, message);
-            }
-        );
-
-        controller->SetThunderHttpCallback(
-            [this](const std::string& url, uint32_t code) {
-                this->NotifyHttpUpdate(url, code);
-            }
-        );
-        
-        controller->SetThunderSysStatusCallback(
-            [this](const std::string& status) {
-                this->NotifySysStatusUpdate(status);
-            }
-        );
-    }
-*/
     return Core::ERROR_NONE;
 }
 
@@ -518,48 +396,5 @@ Core::hresult RDKAppManagersImplementation::TestTriggerSysStatusEvent(const stri
     
     return Core::ERROR_NONE;
 }
-/*
-// LegacyMain - Runs D-Bus event loop in separate thread
-void RDKAppManagersImplementation::LegacyMain() {
-    LOG_MIL("ASNetworkImplementation: Starting Legacy D-Bus Main Loop");
-
-    // 1. Create Event Loop
-    EventLoop eventLoop;
-
-    // Store pointer so we can quit it from destructor
-    m_legacyLock.Lock();
-    m_legacyEventLoop = &eventLoop;
-    m_legacyLock.Unlock();
-
-    // 2. Connect to System Bus
-    DBusConnection dbusConn = DBusConnection::systemBus(eventLoop);
-
-    if (!dbusConn.isConnected()) {
-        LOG_FATAL("ASNetworkImplementation: failed to connect to system bus");
-        return;
-    }
-
-    // 3. Register Service Name
-    if (!dbusConn.registerName("com.sky.as.network")) {
-        LOG_FATAL("ASNetworkImplementation: failed to acquire service name 'com.sky.as.network'");
-        return;
-    }
-
-    // 4. Instantiate the D-Bus NetworkService
-    //NetworkService dbusService(&dbusConn);
-
-    SYSLOG("ASNetworkImplementation: D-Bus NetworkService instance created, entering exec()");
-
-    // 5. Run Event Loop
-    //eventLoop.exec();
-
-    LOG_MIL("ASNetworkImplementation: Legacy D-Bus Main Loop exited");
-
-    // Cleanup pointer
-    m_legacyLock.Lock();
-    m_legacyEventLoop = nullptr;
-    m_legacyLock.Unlock();
-}
-*/
 } // namespace Plugin
 } // namespace WPEFramework

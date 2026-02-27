@@ -14,15 +14,8 @@
 #include <memory>
 
 // Forward declarations
-//class NetworkService;
 class EventLoop;
-/*
-namespace ASThunder {
-namespace Thunder {
-    class NetworkServiceThunderHandlers;
-}
-}
-*/
+
 namespace WPEFramework {
 namespace Plugin {
 
@@ -102,8 +95,6 @@ public:
     uint32_t Configure(PluginHost::IShell* shell) override;
 
 private:
-    // Legacy D-Bus thread for service-to-service communication
-    void LegacyMain();
     
     std::mutex mNotificationMutex;
     std::list<Exchange::IApplicationServiceListener::INotification*> mNotifications;
@@ -122,21 +113,10 @@ private:
     uint32_t m_listenerIdCounter = 0;
     mutable std::mutex m_listenerMutex;
     
-    // Cache for system status (mirrors D-Bus implementation behavior)
-    std::string m_cachedSysStatus;
-/*
-    std::unique_ptr<NetworkService> m_networkService;
-    std::unique_ptr<ASThunder::Thunder::NetworkServiceThunderHandlers> m_thunderHandlers;
-*/
     // Thunder plugin shell
     PluginHost::IShell* m_shell;
     std::unique_ptr<RDKAppManagersService> m_service;
 
-    // Legacy D-Bus thread management
-    std::thread m_legacyThread;
-    EventLoop* m_legacyEventLoop;
-    Core::CriticalSection m_legacyLock;
-    bool m_running;
 };
 
 } // namespace Plugin
