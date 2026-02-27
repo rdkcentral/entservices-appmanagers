@@ -657,9 +657,12 @@ void RDKWindowManagerImplementation::Dispatch(Event event, const JsonValue param
             break;
 
         case RDK_WINDOW_MANAGER_EVENT_SCREENSHOT_COMPLETE:
-            LOGINFO("RDKWindowManager Dispatch OnScreenshotComplete success: %s", gScreenshotSuccess ? "true" : "false");
-            notifyScreenshotComplete(gScreenshotSuccess);
+        {
+            const bool success = params.Boolean();
+            LOGINFO("RDKWindowManager Dispatch OnScreenshotComplete success: %s", success ? "true" : "false");
+            notifyScreenshotComplete(success);
             break;
+        }
 
          default:
              LOGWARN("Event[%u] not handled", event);
@@ -2267,16 +2270,17 @@ Core::hresult RDKWindowManagerImplementation::GetScreenshot()
 {
     Core::hresult status = Core::ERROR_NONE;
 
-    gRdkWindowManagerMutex.lock();
-    // Reset previous screenshot data if any
-    if (gScreenshotData)
     {
-        free(gScreenshotData);
-        gScreenshotData = nullptr;
-        gScreenshotSize = 0;
+        std::lock_guard<std::mutex> lock(gRdkWindowManagerMutex);
+        // Reset previous screenshot data if any
+        if (gScreenshotData)
+        {
+            free(gScreenshotData);
+            gScreenshotData = nullptr;
+            gScreenshotSize = 0;
+        }
+        gNeedsScreenshot = true;
     }
-    gNeedsScreenshot = true;
-    gRdkWindowManagerMutex.unlock();
 
     LOGINFO("Screenshot request queued");
 
