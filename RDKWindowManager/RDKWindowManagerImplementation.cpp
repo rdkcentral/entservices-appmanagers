@@ -2287,7 +2287,6 @@ void RDKWindowManagerImplementation::notifyScreenshotComplete(bool success)
 {
     LOGINFO("Screenshot capture %s, imageData size: %zu bytes", success ? "succeeded" : "failed", gScreenshotImageData.length());
     
-    Core::CriticalSection::Lock lock(mAdminLock);
     for (auto* notification : mRDKWindowManagerNotification)
     {
         notification->OnScreenshotComplete(success, gScreenshotImageData);
