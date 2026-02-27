@@ -165,6 +165,41 @@ target_link_directories(${PROJECT_NAME} PUBLIC ${CMAKE_INSTALL_PREFIX}/lib ${CMA
 
 target_link_libraries(${PROJECT_NAME} gtest_main gmock gtest ${TEST_LIB})
 
+# Add linker wrap options for TestMocklib wrapped functions
+target_link_options(${PROJECT_NAME} PRIVATE
+    -Wl,--wrap,system
+    -Wl,--wrap,popen
+    -Wl,--wrap,pclose
+    -Wl,--wrap,syslog
+    -Wl,--wrap,v_secure_system
+    -Wl,--wrap,v_secure_popen
+    -Wl,--wrap,v_secure_pclose
+    -Wl,--wrap,unlink
+    -Wl,--wrap,open
+    -Wl,--wrap,opendir
+    -Wl,--wrap,readdir
+    -Wl,--wrap,closedir
+    -Wl,--wrap,mkdir
+    -Wl,--wrap,rmdir
+    -Wl,--wrap,stat
+    -Wl,--wrap,access
+    -Wl,--wrap,chown
+    -Wl,--wrap,nftw
+    -Wl,--wrap,statvfs
+    -Wl,--wrap,statfs
+    -Wl,--wrap,mount
+    -Wl,--wrap,umount
+    -Wl,--wrap,ioctl
+    -Wl,--wrap,setmntent
+    -Wl,--wrap,getmntent
+    -Wl,--wrap,wpa_ctrl_open
+    -Wl,--wrap,wpa_ctrl_request
+    -Wl,--wrap,wpa_ctrl_close
+    -Wl,--wrap,wpa_ctrl_pending
+    -Wl,--wrap,wpa_ctrl_recv
+    -Wl,--wrap,wpa_ctrl_attach
+)
+
 target_include_directories(${PROJECT_NAME}
         PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
