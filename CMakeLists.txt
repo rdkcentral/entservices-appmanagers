@@ -84,6 +84,10 @@ if(PLUGIN_TELEMETRYMETRICS)
     add_subdirectory(TelemetryMetrics)
 endif()
 
+# if(PLUGIN_RDKAPPMANAGERS_LITE)
+    add_subdirectory(RequestManagerLite)
+# endif(PLUGIN_RDKAPPMANAGERS_LITE)
+
 if(WPEFRAMEWORK_CREATE_IPKG_TARGETS)
     set(CPACK_GENERATOR "DEB")
     set(CPACK_DEB_COMPONENT_INSTALL ON)
