@@ -20,6 +20,7 @@
 #include "RDKWindowManagerImplementation.h"
 #include <sys/prctl.h>
 #include <mutex>
+#include <queue>
 #include <boost/filesystem.hpp>
 #include <boost/format.hpp>
 #include <rdkwindowmanager/include/compositorcontroller.h>
@@ -82,10 +83,7 @@ static std::mutex gRdkWindowManagerMutex;
 static std::thread shellThread;
 static std::vector<std::shared_ptr<CreateDisplayRequest>> gCreateDisplayRequests;
 static bool gNeedsScreenshot = false;
-static uint8_t* gScreenshotData = nullptr;
-static uint32_t gScreenshotSize = 0;
-static std::string gScreenshotImageData;
-static bool gScreenshotSuccess = false;
+static std::queue<std::shared_ptr<ScreenshotResult>> gScreenshotResultQueue;
 
 CreateDisplayRequest::CreateDisplayRequest(std::string client, std::string displayName, uint32_t displayWidth, uint32_t displayHeight, bool virtualDisplayEnabled,
                                            uint32_t virtualWidth, uint32_t virtualHeight, bool topmost, bool focus, int32_t ownerId, int32_t groupId)
@@ -259,29 +257,25 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
               if (gNeedsScreenshot)
               {
                   gNeedsScreenshot = false;
-                  // Note: CompositorController::screenShot() allocates memory for gScreenshotData
-                  // that must be freed by the caller using free()
-                  bool success = CompositorController::screenShot(gScreenshotData, gScreenshotSize);
+                  uint8_t* screenshotData = nullptr;
+                  uint32_t screenshotSize = 0;
+                  bool success = CompositorController::screenShot(screenshotData, screenshotSize);
                   
-                  gScreenshotSuccess = success;
-                  gScreenshotImageData.clear();
+                  std::string screenshotImageData;
                   
-                  if (success && gScreenshotData && gScreenshotSize > 0)
+                  if (success && screenshotData && screenshotSize > 0)
                   {
                       // Encode the screenshot data as base64
-                      bool encoded = Utils::String::imageEncoder(gScreenshotData, gScreenshotSize, true, gScreenshotImageData);
-                      if (!encoded)
-                      {
-                          LOGERR("Failed to encode screenshot data using imageEncoder");
-                          gScreenshotSuccess = false;
-                          gScreenshotImageData.clear();
-                      }
+                      Utils::String::imageEncoder(screenshotData, screenshotSize, true, screenshotImageData);
                       
                       // Free the buffer immediately after encoding to avoid retaining large allocations
-                      free(gScreenshotData);
-                      gScreenshotData = nullptr;
-                      gScreenshotSize = 0;
+                      free(screenshotData);
+                      screenshotData = nullptr;
+                      screenshotSize = 0;
                   }
+                  
+                  // Store the result in a queue for thread-safe access
+                  gScreenshotResultQueue.push(std::make_shared<ScreenshotResult>(success, screenshotImageData));
                   
                   if (RDKWindowManagerImplementation::_instance)
                   {
@@ -368,12 +362,10 @@ Core::hresult RDKWindowManagerImplementation::Deinitialize(PluginHost::IShell* s
     }
     gCreateDisplayRequests.clear();
     
-    // Clean up screenshot buffer if any
-    if (gScreenshotData)
+    // Clean up pending screenshot results if any
+    while (!gScreenshotResultQueue.empty())
     {
-        free(gScreenshotData);
-        gScreenshotData = nullptr;
-        gScreenshotSize = 0;
+        gScreenshotResultQueue.pop();
     }
 
     gRdkWindowManagerMutex.unlock();
@@ -641,10 +633,31 @@ void RDKWindowManagerImplementation::Dispatch(Event event, const JsonValue param
 
         case RDK_WINDOW_MANAGER_EVENT_SCREENSHOT_COMPLETE:
         {
-            std::lock_guard<std::mutex> lock(gRdkWindowManagerMutex);
-            bool success = gScreenshotSuccess;
-            LOGINFO("RDKWindowManager Dispatch OnScreenshotComplete success: %s", success ? "true" : "false");
-            notifyScreenshotComplete(success);
+            bool success = false;
+            std::string imageData;
+            bool hasResult = false;
+            
+            {
+                std::lock_guard<std::mutex> lock(gRdkWindowManagerMutex);
+                if (!gScreenshotResultQueue.empty())
+                {
+                    std::shared_ptr<ScreenshotResult> result = gScreenshotResultQueue.front();
+                    gScreenshotResultQueue.pop();
+                    success = result->mSuccess;
+                    imageData = std::move(result->mImageData);
+                    hasResult = true;
+                }
+            }
+            
+            if (hasResult)
+            {
+                LOGINFO("RDKWindowManager Dispatch OnScreenshotComplete success: %s", success ? "true" : "false");
+                notifyScreenshotComplete(success, imageData);
+            }
+            else
+            {
+                LOGERR("RDKWindowManager Dispatch OnScreenshotComplete called but no pending result");
+            }
         }
             break;
 
@@ -2257,13 +2270,6 @@ Core::hresult RDKWindowManagerImplementation::GetScreenshot()
     bool lockAcquired = lockRdkWindowManagerMutex();
     if (lockAcquired)
     {
-        // Reset previous screenshot data if any
-        if (gScreenshotData)
-        {
-            free(gScreenshotData);
-            gScreenshotData = nullptr;
-            gScreenshotSize = 0;
-        }
         gNeedsScreenshot = true;
         status = Core::ERROR_NONE;
         gRdkWindowManagerMutex.unlock();
@@ -2278,13 +2284,13 @@ Core::hresult RDKWindowManagerImplementation::GetScreenshot()
     return status;
 }
 
-void RDKWindowManagerImplementation::notifyScreenshotComplete(bool success)
+void RDKWindowManagerImplementation::notifyScreenshotComplete(bool success, const std::string& imageData)
 {
-    LOGINFO("Screenshot capture %s, imageData size: %zu bytes", success ? "succeeded" : "failed", gScreenshotImageData.length());
+    LOGINFO("Screenshot capture %s, imageData size: %zu bytes", success ? "succeeded" : "failed", imageData.length());
     
     for (auto* notification : mRDKWindowManagerNotification)
     {
-        notification->OnScreenshotComplete(success, gScreenshotImageData);
+        notification->OnScreenshotComplete(success, imageData);
     }
 }
 
