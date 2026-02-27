@@ -287,6 +287,9 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
               if (gNeedsScreenshot)
               {
                   gNeedsScreenshot = false;
+                  // Ensure screenshot globals are in a known safe state before capture
+                  gScreenshotData = nullptr;
+                  gScreenshotSize = 0;
                   bool success = CompositorController::screenShot(gScreenshotData, gScreenshotSize);
                   
                   gScreenshotSuccess = success;
