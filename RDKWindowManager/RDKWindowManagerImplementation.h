@@ -25,7 +25,6 @@
 #include "tracing/Logging.h"
 #include <vector>
 #include <thread>
-#include <fstream>
 #include <com/com.h>
 #include <core/core.h>
 #include <rdkwindowmanager/include/rdkwindowmanagerevents.h>
