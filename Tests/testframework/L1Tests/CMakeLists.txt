@@ -107,7 +107,7 @@ macro(add_plugin_test plugin_name test_files)
 endmacro()
 
 add_executable(${PROJECT_NAME} ${TEST_SRC})
-target_link_libraries(${PROJECT_NAME} TestMocklib)
+
 
 # PLUGIN_FRAMERATE and  PLUGIN_USERPREFERENCES and PLUGIN_WAREHOUSE and PLUGIN_DEVICEINFO
 if(PLUGIN_DEVICEDIAGNOSTICS OR PLUGIN_USERPREFERENCES OR PLUGIN_WAREHOUSE OR PLUGIN_DEVICEINFO OR PLUGIN_DISPLAYINFO OR PLUGIN_DISPLAYSETTINGS OR PLUGIN_FRAMERATE OR PLUGIN_POWERMANAGER OR PLUGIN_SYSTEMSERVICES)
@@ -165,40 +165,8 @@ target_link_directories(${PROJECT_NAME} PUBLIC ${CMAKE_INSTALL_PREFIX}/lib ${CMA
 
 target_link_libraries(${PROJECT_NAME} gtest_main gmock gtest ${TEST_LIB})
 
-# Add linker wrap options for TestMocklib wrapped functions
-target_link_options(${PROJECT_NAME} PRIVATE
-    -Wl,--wrap,system
-    -Wl,--wrap,popen
-    -Wl,--wrap,pclose
-    -Wl,--wrap,syslog
-    -Wl,--wrap,v_secure_system
-    -Wl,--wrap,v_secure_popen
-    -Wl,--wrap,v_secure_pclose
-    -Wl,--wrap,unlink
-    -Wl,--wrap,open
-    -Wl,--wrap,opendir
-    -Wl,--wrap,readdir
-    -Wl,--wrap,closedir
-    -Wl,--wrap,mkdir
-    -Wl,--wrap,rmdir
-    -Wl,--wrap,stat
-    -Wl,--wrap,access
-    -Wl,--wrap,chown
-    -Wl,--wrap,nftw
-    -Wl,--wrap,statvfs
-    -Wl,--wrap,statfs
-    -Wl,--wrap,mount
-    -Wl,--wrap,umount
-    -Wl,--wrap,ioctl
-    -Wl,--wrap,setmntent
-    -Wl,--wrap,getmntent
-    -Wl,--wrap,wpa_ctrl_open
-    -Wl,--wrap,wpa_ctrl_request
-    -Wl,--wrap,wpa_ctrl_close
-    -Wl,--wrap,wpa_ctrl_pending
-    -Wl,--wrap,wpa_ctrl_recv
-    -Wl,--wrap,wpa_ctrl_attach
-)
+# Link TestMocklib LAST with --whole-archive to ensure all wrapped functions are available
+target_link_libraries(${PROJECT_NAME} -Wl,--whole-archive TestMocklib -Wl,--no-whole-archive)
 
 target_include_directories(${PROJECT_NAME}
         PUBLIC
