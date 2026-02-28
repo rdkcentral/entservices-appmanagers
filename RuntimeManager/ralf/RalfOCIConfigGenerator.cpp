@@ -398,23 +398,22 @@ namespace ralf
 
     bool RalfOCIConfigGenerator::applyConfigurationToOCIConfig(Json::Value &ociConfigRootNode, Json::Value &manifestRootNode)
     {
-        bool status = false;
         if (!addEntryPointToOCIConfig(ociConfigRootNode, manifestRootNode))
         {
             LOGERR("Failed to apply Ralf Entry point for package");
-            return status;
+            return false;
         }
-        status = true;
-        // Check if configuraton node exists.
+        // Everything else is optional. Sp return value will be true.
+        //  Check if configuraton node exists.
         if (!manifestRootNode.isMember(CONFIGURATION) || !manifestRootNode[CONFIGURATION].isObject())
         {
             LOGWARN("No configurations found in Ralf package manifest config.\n");
-            return status; // Just return true since this is not a fatal error.
+            return true; // Just return true since this is not a fatal error.
         }
-
+        bool status = true;
         Json::Value configNode = manifestRootNode[CONFIGURATION];
-
         std::string packageType;
+
         if (manifestRootNode.isMember(PACKAGE_TYPE) && manifestRootNode[PACKAGE_TYPE].isString())
         {
             packageType = manifestRootNode[PACKAGE_TYPE].asString();
@@ -428,7 +427,6 @@ namespace ralf
         // Apply "urn:rdk:config:memory", reserved
         if (packageType == PKG_TYPE_APPLICATION || packageType == PKG_TYPE_RUNTIME)
         {
-
             status = addMemoryConfigToOCIConfig(ociConfigRootNode, configNode, packageType);
             LOGDBG("Applied memory config to OCI config ? %s\n", status ? "true" : "false");
 
@@ -441,7 +439,7 @@ namespace ralf
             addAppPackageVersionToConfig(ociConfigRootNode, manifestRootNode);
         }
 
-        return status;
+        return true;
     }
     bool RalfOCIConfigGenerator::addAppPackageVersionToConfig(Json::Value &ociConfigRootNode, Json::Value &manifestRootNode)
     {
