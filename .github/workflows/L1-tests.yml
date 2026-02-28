@@ -121,12 +121,15 @@ jobs:
       - name: Checkout entservices-appmanagers
         #if: ${{ inputs.caller_source == 'local' }}
         uses: actions/checkout@v3
+        with:
+          path: entservices-appmanagers
 
       - name: Checkout entservices-appmanagers-testframework
         if: ${{ inputs.caller_source == 'testframework' }}
         uses: actions/checkout@v3
         with:
           repository: rdkcentral/entservices-appmanagers
+          path: entservices-appmanagers
           ref: develop
 
       - name: Checkout googletest
