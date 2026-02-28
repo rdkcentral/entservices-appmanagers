@@ -168,7 +168,7 @@ namespace ralf
          * field as this environment variable.
          * @param ociConfigRootNode The root node of the OCI config JSON.
          * @param manifestRootNode The root node of the manifest JSON containing the storage information.
-         * @return true if the storage configuration was added from package, false if default value is addded.
+         * @return true if the storage configuration was added from package, false if default value is added.
          */
         bool addStorageConfigToOCIConfig(Json::Value &ociConfigRootNode, Json::Value &manifestRootNode);
 
