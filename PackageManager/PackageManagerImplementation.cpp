@@ -509,6 +509,15 @@ namespace Plugin {
                         state.blockedInstallData.keyValues = keyValues;
                         state.blockedInstallData.fileLocator = fileLocator;
                         NotifyInstallStatus(packageId, version, state);
+                    } else {
+                        // Uninstall the old version before installing the new one
+                        LOGINFO("Uninstalling old version id: '%s' ver: '%s' before installing new version: '%s'", 
+                                packageId.c_str(), installedVersion.c_str(), version.c_str());
+                        string uninstallError;
+                        if (Uninstall(packageId, uninstallError) != Core::ERROR_NONE) {
+                            LOGERR("Failed to uninstall old version id: '%s' ver: '%s' error: %s", 
+                                   packageId.c_str(), installedVersion.c_str(), uninstallError.c_str());
+                        }
                     }
                 }
             }
