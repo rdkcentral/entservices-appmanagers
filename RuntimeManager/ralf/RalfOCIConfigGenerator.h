@@ -124,14 +124,14 @@ namespace ralf
         /**
          * Adds configuration overrides from the Ralf package config to the OCI config JSON.
          * As per the current specification, these are expected to be added as environment variables in the OCI config.
-         * The environemnt variable key will be APP_CONFIG_OVERRIDES_JSON or RUNTIME_CONFIG_OVERRIDES_JSON depending
+         * The environment variable key will be APP_CONFIG_OVERRIDES_JSON or RUNTIME_CONFIG_OVERRIDES_JSON depending
          * on the source of the config overrides. The value will be the serialized JSON string of the config overrides.
          * @param ociConfigRootNode The root node of the OCI config JSON.
          * @param configNode  The config node containing the overrides.
          * @param packageType The type of the Ralf package (e.g., "application" or "runtime").
          * @return true if the configuration overrides were added successfully, false otherwise.
          */
-        bool addConfigOVerridesToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &configNode, const std::string &packageType);
+        bool addConfigOverridesToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &configNode, const std::string &packageType);
 
         /**
          * Adds memory configuration from the Ralf package config to the OCI config JSON.
@@ -139,7 +139,7 @@ namespace ralf
          * @param ociConfigRootNode The root node of the OCI config JSON.
          * @param configNode The config node containing the memory configuration.
          * @param packageType The type of the Ralf package (e.g., "application" or "runtime").
-         * @return true if the memory configuration was added from package, false if default value is addded .
+         * @return true if the memory configuration was added from package, false if default value is added.
          */
 
         bool addMemoryConfigToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &configNode, const std::string &packageType);

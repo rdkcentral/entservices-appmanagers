@@ -60,7 +60,11 @@ namespace ralf
                 LOGERR("Failed to load Ralf package config JSON from file: %s", ralfPkgInfo.first.c_str());
                 return false;
             }
-            applyConfigurationToOCIConfig(ociConfigRootNode, ralfPackageConfigNode);
+            if (!applyConfigurationToOCIConfig(ociConfigRootNode, ralfPackageConfigNode))
+            {
+                LOGERR("Failed to apply Ralf package config to OCI config for file: %s", ralfPkgInfo.first.c_str());
+                return false;
+            }
             // Apply permissions if exists
             // TODO tracked under RDKEMW-13995
         }
@@ -418,7 +422,7 @@ namespace ralf
         // Apply APP_CONFIG_OVERRIDES_JSON/RUNTIME_CONFIG_OVERRIDES_JSON variables
         if (packageType == PKG_TYPE_APPLICATION || packageType == PKG_TYPE_RUNTIME)
         {
-            status = addConfigOVerridesToOCIConfig(ociConfigRootNode, configNode, packageType);
+            status = addConfigOverridesToOCIConfig(ociConfigRootNode, configNode, packageType);
             LOGDBG("Applied config overrides to OCI config ? %s\n", status ? "true" : "false");
         }
         // Apply "urn:rdk:config:memory", reserved
@@ -465,13 +469,18 @@ namespace ralf
             if (storageConfig.isMember(MAX_LOCAL_STORAGE) && storageConfig[MAX_LOCAL_STORAGE].isString())
             {
                 std::string maxLocalStorage = storageConfig[MAX_LOCAL_STORAGE].asString();
-                addToEnvironment(ociConfigRootNode, "STORAGE_LIMIT", "" + parseMemorySize(maxLocalStorage));
-                LOGDBG("Applied max local storage to OCI config: %s\n", maxLocalStorage.c_str());
-                return true;
+                uint64_t storageLimit = parseMemorySize(maxLocalStorage);
+                if (storageLimit > 0)
+                {
+                    addToEnvironment(ociConfigRootNode, "STORAGE_LIMIT", std::to_string(storageLimit));
+                    LOGDBG("Applied max local storage to OCI config: %s (bytes: %llu)\n", maxLocalStorage.c_str(), storageLimit);
+                    return true;
+                }
+                LOGWARN("Invalid maxLocalStorage value '%s'. Using default storage limit\n", maxLocalStorage.c_str());
             }
         }
         LOGWARN("Storage configuration not found in the config node. Setting default values\n");
-        addToEnvironment(ociConfigRootNode, "STORAGE_LIMIT", DEFULT_STORAGE_LIMIT);
+        addToEnvironment(ociConfigRootNode, "STORAGE_LIMIT", DEFAULT_STORAGE_LIMIT);
 
         return false;
     }
@@ -496,18 +505,29 @@ namespace ralf
             if (memoryConfig.isMember(SYSTEM_MEMORY) && memoryConfig[SYSTEM_MEMORY].isString())
             {
                 //[LINUX][RESOURCES][MEMORY][MEMORY_LIMIT] exists in oci-base-spec file.
-                // We need to convert the value from memoryConfig[SYSTEM_MEMORY] to the to bytes
-                uint64_t memoryLimit = parseMemorySize(memoryConfig[SYSTEM_MEMORY].asString());
-                ociConfigRootNode[LINUX][RESOURCES][MEMORY][MEMORY_LIMIT] = memoryLimit;
-                LOGDBG("Applied system memory limit to OCI config: %llu\n", memoryLimit);
-                addToEnvironment(ociConfigRootNode, "CPU_MEMORY_LIMIT", std::to_string(memoryLimit));
-                return true;
+                // We need to convert the value from memoryConfig[SYSTEM_MEMORY] to bytes.
+                const std::string systemMemoryStr = memoryConfig[SYSTEM_MEMORY].asString();
+                uint64_t memoryLimit = parseMemorySize(systemMemoryStr);
+                if (memoryLimit > 0)
+                {
+                    ociConfigRootNode[LINUX][RESOURCES][MEMORY][MEMORY_LIMIT] = memoryLimit;
+                    LOGDBG("Applied system memory limit to OCI config: %llu\n", memoryLimit);
+                    addToEnvironment(ociConfigRootNode, "CPU_MEMORY_LIMIT", std::to_string(memoryLimit));
+                    return true;
+                }
+                else
+                {
+                    // Treat a 0 parse result as invalid: keep base-spec limit and use default for env.
+                    LOGWARN("Invalid system memory configuration '%s'; keeping base-spec limit and using default CPU_MEMORY_LIMIT\n", systemMemoryStr.c_str());
+                    addToEnvironment(ociConfigRootNode, "CPU_MEMORY_LIMIT", DEFAULT_RAM_LIMIT);
+                    return false;
+                }
             }
             // TODO not sure what to do with GPU memory for now
         }
 
         LOGWARN("Memory configuration not found in the config node. Setting default values\n");
-        addToEnvironment(ociConfigRootNode, "CPU_MEMORY_LIMIT", DEFULT_RAM_LIMIT);
+        addToEnvironment(ociConfigRootNode, "CPU_MEMORY_LIMIT", DEFAULT_RAM_LIMIT);
 
         return false;
     }
@@ -524,7 +544,7 @@ namespace ralf
         std::unique_ptr<Json::CharReader> reader(readerBuilder.newCharReader());
         if (!reader->parse(envVar.c_str(), envVar.c_str() + envVar.size(), &envVarsNode, &errs))
         {
-            LOGERR("Failed to parse env variables JSON string: %s, error: %s\n", envVar.c_str(), errs.c_str());
+            LOGERR("Failed to parse env variables JSON string, error: %s\n", errs.c_str());
             return false;
         }
 
@@ -535,7 +555,8 @@ namespace ralf
                 if (envEntry.isString())
                 {
                     std::string envPair = envEntry.asString();
-                    if (envPair.rfind("FIREBOLT_ENDPOINT=", 0) == 0)
+                    std::string fireboltPrefix = std::string(FIREBOLT_ENDPOINT_ENV_KEY) + "=";
+                    if (envPair.rfind(fireboltPrefix, 0) == 0)
                     {
                         ociConfigRootNode[PROCESS][ENV].append(envPair);
                         LOGDBG("Added FIREBOLT_ENDPOINT environment variable: %s\n", envPair.c_str());
@@ -548,7 +569,7 @@ namespace ralf
         return false;
     }
 
-    bool RalfOCIConfigGenerator::addConfigOVerridesToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &configNode, const std::string &packageType)
+    bool RalfOCIConfigGenerator::addConfigOverridesToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &configNode, const std::string &packageType)
     {
         bool status = false;
         if (configNode.isMember(CONFIG_OVERRIDES_URN) && configNode[CONFIG_OVERRIDES_URN].isObject())
@@ -572,10 +593,22 @@ namespace ralf
     }
     void RalfOCIConfigGenerator::addToEnvironment(Json::Value &ociConfigRootNode, const std::string &key, const std::string &value)
     {
-        // The lib32-entservices-rdkappmanagers/resources/oci-base-spec.json file has env variable already defined. So skipping the checks
-        // for processs/ENV and directly appending the new environment variable.
+        // Ensure process/ENV exists and is an array before appending the new environment variable.
         std::string envVar = key + "=" + value;
-        ociConfigRootNode[PROCESS][ENV].append(envVar);
+
+        Json::Value &processNode = ociConfigRootNode[PROCESS];
+        if (!processNode.isObject())
+        {
+            processNode = Json::Value(Json::objectValue);
+        }
+
+        Json::Value &envNode = processNode[ENV];
+        if (!envNode.isArray())
+        {
+            envNode = Json::Value(Json::arrayValue);
+        }
+
+        envNode.append(envVar);
         LOGDBG("Added environment variable to OCI config: %s\n", envVar.c_str());
     }
 } // namespace ralf
