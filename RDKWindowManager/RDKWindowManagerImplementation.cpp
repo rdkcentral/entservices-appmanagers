@@ -277,11 +277,9 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
                   
                   if (RDKWindowManagerImplementation::_instance)
                   {
-                      JsonObject params;
-                      params["success"] = success;
                       RDKWindowManagerImplementation::_instance->dispatchEvent(
                           RDKWindowManagerImplementation::Event::RDK_WINDOW_MANAGER_EVENT_SCREENSHOT_COMPLETE,
-                          params);
+                          JsonValue(success));
                   }
               }
 
@@ -635,7 +633,7 @@ void RDKWindowManagerImplementation::Dispatch(Event event, const JsonValue param
 
         case RDK_WINDOW_MANAGER_EVENT_SCREENSHOT_COMPLETE:
         {
-            const bool success = params["success"].Boolean();
+            const bool success = params.Boolean();
             LOGINFO("RDKWindowManager Dispatch OnScreenshotComplete success: %s", success ? "true" : "false");
             notifyScreenshotComplete(success);
             break;
