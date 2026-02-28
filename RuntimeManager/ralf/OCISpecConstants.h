@@ -86,6 +86,6 @@ namespace ralf
     // 500 MB is the default RAM given to an application. Tied to resources/oci-base-spec.json
     // Any change to this should match that file.
     constexpr const char *DEFAULT_RAM_LIMIT = "524288000";
-    // 100 MB is the default storage given to an application.
-    constexpr const char *DEFAULT_STORAGE_LIMIT = "104857600";
+    // 1 GiB (1073741824 bytes) is the default storage given to an application.
+    constexpr const char *DEFAULT_STORAGE_LIMIT = "1073741824";
 } // namespace ralf
