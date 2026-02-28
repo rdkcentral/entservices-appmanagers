@@ -137,9 +137,6 @@ jobs:
           path: googletest
           ref: v1.15.0
 
-      - name: Set source directory
-        run: echo "SRC_DIR=$GITHUB_WORKSPACE" >> $GITHUB_ENV
-
       # Fetching only the required essos-resmgr.h file from the Westeros repo to avoid full repo clone and to remove header file dependency
       - name: Fetch only essos-resmgr.h from Westeros repo using sparse-checkout
         run: |
@@ -613,7 +610,7 @@ jobs:
       - name: Generate coverage
         if: ${{ matrix.coverage == 'with-coverage' && !env.ACT }}
         run: >
-          cp $SRC_DIR/Tests/testframework/L1Tests/.lcovrc_l1 ~/.lcovrc
+          cp $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/L1Tests/.lcovrc_l1 ~/.lcovrc
           &&
           lcov -c
           -o coverage.info
