@@ -403,8 +403,8 @@ namespace ralf
             LOGERR("Failed to apply Ralf Entry point for package");
             return false;
         }
-        // Everything else is optional. Sp return value will be true.
-        //  Check if configuraton node exists.
+        // Everything else is optional. So return value will be true.
+        //  Check if configuration node exists.
         if (!manifestRootNode.isMember(CONFIGURATION) || !manifestRootNode[CONFIGURATION].isObject())
         {
             LOGWARN("No configurations found in Ralf package manifest config.\n");
