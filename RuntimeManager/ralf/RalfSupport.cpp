@@ -232,30 +232,59 @@ namespace ralf
         const char *ptr = str.c_str();
         char *endPtr = nullptr;
 
-        uint64_t value = strtoull(ptr, &endPtr, 0);
+        // Parse only decimal digits for the numeric component.
+        uint64_t value = strtoull(ptr, &endPtr, 10);
 
+        // No digits parsed -> failure.
         if (endPtr == ptr)
             return 0;
 
-        if (endPtr)
+        // If we reached the end of the string, there is no suffix.
+        if (*endPtr == '\0')
+            return value;
+
+        // Validate and interpret the suffix.
+        const char *suffix = endPtr;
+        size_t rem = strlen(suffix);
+
+        // Valid suffixes:
+        //   "K" / "k" [optional "B"/"b"]
+        //   "M" / "m" [optional "B"/"b"]
+        //   "G" / "g" [optional "B"/"b"]
+        if (rem != 1 && rem != 2)
+            return 0;
+
+        char unit = suffix[0];
+        uint64_t multiplier = 1;
+
+        switch (unit)
         {
-            switch (*endPtr)
-            {
-            case 'K':
-            case 'k':
-                return value * 1024;
-            case 'M':
-            case 'm':
-                return value * 1024 * 1024;
-            case 'G':
-            case 'g':
-                return value * 1024 * 1024 * 1024;
-            default:
-                return value;
-            }
+        case 'K':
+        case 'k':
+            multiplier = 1024ULL;
+            break;
+        case 'M':
+        case 'm':
+            multiplier = 1024ULL * 1024ULL;
+            break;
+        case 'G':
+        case 'g':
+            multiplier = 1024ULL * 1024ULL * 1024ULL;
+            break;
+        default:
+            // Unknown unit.
+            return 0;
         }
 
-        return value;
+        // If there is a second character in the suffix, it must be 'B' or 'b'.
+        if (rem == 2)
+        {
+            char second = suffix[1];
+            if (second != 'B' && second != 'b')
+                return 0;
+        }
+
+        return value * multiplier;
     }
 
 } // namespace ralf
