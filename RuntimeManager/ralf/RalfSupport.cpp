@@ -224,5 +224,67 @@ namespace ralf
         groupId = pwd->pw_gid;
         return true;
     }
+    uint64_t parseMemorySize(const std::string &str)
+    {
+        if (str.empty())
+            return 0;
+
+        const char *ptr = str.c_str();
+        char *endPtr = nullptr;
+
+        // Parse only decimal digits for the numeric component.
+        uint64_t value = strtoull(ptr, &endPtr, 10);
+
+        // No digits parsed -> failure.
+        if (endPtr == ptr)
+            return 0;
+
+        // If we reached the end of the string, there is no suffix.
+        if (*endPtr == '\0')
+            return value;
+
+        // Validate and interpret the suffix.
+        const char *suffix = endPtr;
+        size_t rem = strlen(suffix);
+
+        // Valid suffixes:
+        //   "K" / "k" [optional "B"/"b"]
+        //   "M" / "m" [optional "B"/"b"]
+        //   "G" / "g" [optional "B"/"b"]
+        if (rem != 1 && rem != 2)
+            return 0;
+
+        char unit = suffix[0];
+        uint64_t multiplier = 1;
+
+        switch (unit)
+        {
+        case 'K':
+        case 'k':
+            multiplier = 1024ULL;
+            break;
+        case 'M':
+        case 'm':
+            multiplier = 1024ULL * 1024ULL;
+            break;
+        case 'G':
+        case 'g':
+            multiplier = 1024ULL * 1024ULL * 1024ULL;
+            break;
+        default:
+            // Unknown unit.
+            return 0;
+        }
+
+        // If there is a second character in the suffix, it must be 'B' or 'b'.
+        if (rem == 2)
+        {
+            char second = suffix[1];
+            if (second != 'B' && second != 'b')
+                return 0;
+        }
+
+        return value * multiplier;
+    }
 
 } // namespace ralf
