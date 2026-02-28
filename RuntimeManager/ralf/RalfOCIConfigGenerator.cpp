@@ -575,6 +575,7 @@ namespace ralf
             // We will serialize the override JSON object and add it as an environment variable in OCI config
             Json::Value overrideNode = configNode[CONFIG_OVERRIDES_URN];
             Json::StreamWriterBuilder writer;
+            writer["indentation"] = ""; // Produce compact JSON without whitespace for environment variable
             std::string overrideJsonStr = Json::writeString(writer, overrideNode);
             std::string envVarKey = packageType == PKG_TYPE_APPLICATION ? APP_CONFIG_OVERRIDES_ENV_KEY : RUNTIME_CONFIG_OVERRIDES_ENV_KEY;
             std::string envVar = envVarKey + "=" + overrideJsonStr;
