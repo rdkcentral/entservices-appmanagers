@@ -102,7 +102,6 @@ else(L2_TEST_OOP_RPC)
         Udev.cpp
         libusb.cpp
         DRMScreenCapture.cpp
-        systemaudioplatform.cpp
         dsFPD.cpp
         MfrMock.cpp
         PowerManagerHalMock.cpp
@@ -126,7 +125,6 @@ else(L2_TEST_OOP_RPC)
     else(RDK_SERVICES_L1_TEST)
         list(APPEND MODULE_SOURCES
 	    devicesettings.cpp
-            systemaudioplatform.cpp
             btmgr.cpp
 	    tvSettings.cpp
             tr181api.cpp

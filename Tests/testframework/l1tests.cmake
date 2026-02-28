@@ -133,7 +133,6 @@ set(EMPTY_HEADERS
         ${BASEDIR}/systemservices/proc/readproc.h
         ${BASEDIR}/systemservices/secure_wrapper.h
         ${BASEDIR}/wpa_ctrl.h
-        ${BASEDIR}/systemaudioplatform.h
         ${BASEDIR}/edid-parser.hpp
         )
 

@@ -71,7 +71,6 @@ L2TestMocks::L2TestMocks()
    p_rdkloggerImplMock = new NiceMock <RdkLoggerMilestoneImplMock>;
    p_drmScreenCaptureApiImplMock = new NiceMock<DRMScreenCaptureApiImplMock>;
    p_dsFPDMock = new NiceMock <dsFPDMock>;
-   p_systemAudioPlatformAPIMock = new NiceMock<SystemAudioPlatformAPIMock>;
    p_renderSessionMock = new NiceMock <RenderSessionMock>;
    p_dobbyProxyMock = new NiceMock <DobbyProxyMock>;
    p_ipcservicemock  = new NiceMock <IpcServiceMock>;
@@ -122,7 +121,6 @@ L2TestMocks::L2TestMocks()
     EssRMgrApi::setImpl(p_essRMgrMock);
     DRMScreenCaptureApi::getInstance().impl = p_drmScreenCaptureApiImplMock;
     dsFPDApi::setImpl(p_dsFPDMock);
-    SystemAudioPlatformMockImpl::setImpl(p_systemAudioPlatformAPIMock);
 
     device::AudioOutputPort::setImpl(p_audioOutputPortMock);
     device::AudioStereoMode::setImpl(p_audioStereoModeMock);
@@ -197,7 +195,6 @@ L2TestMocks::~L2TestMocks()
    EssRMgrApi::setImpl(nullptr);
    DRMScreenCaptureApi::getInstance().impl = nullptr;
    dsFPDApi::setImpl(nullptr);
-   SystemAudioPlatformMockImpl::setImpl(nullptr);
    device::AudioOutputPort::setImpl(nullptr);
    device::AudioStereoMode::setImpl(nullptr);
    device::AudioOutputPort::setImpl(nullptr);
@@ -439,11 +436,6 @@ L2TestMocks::~L2TestMocks()
       p_drmScreenCaptureApiImplMock = nullptr;
    }
 
-   if (p_systemAudioPlatformAPIMock != nullptr)
-   {
-      delete p_systemAudioPlatformAPIMock;
-      p_systemAudioPlatformAPIMock = nullptr;
-   }
 
    if (p_renderSessionMock != nullptr)
    {
