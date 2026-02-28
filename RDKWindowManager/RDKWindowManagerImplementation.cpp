@@ -81,6 +81,11 @@ uint32_t getKeyFlag(std::string modifier)
 static std::mutex gRdkWindowManagerMutex;
 static std::thread shellThread;
 static std::vector<std::shared_ptr<CreateDisplayRequest>> gCreateDisplayRequests;
+static bool gNeedsScreenshot = false;
+static uint8_t* gScreenshotData = nullptr;
+static uint32_t gScreenshotSize = 0;
+static std::string gScreenshotImageData;
+static bool gScreenshotSuccess = false;
 
 CreateDisplayRequest::CreateDisplayRequest(std::string client, std::string displayName, uint32_t displayWidth, uint32_t displayHeight, bool virtualDisplayEnabled,
                                            uint32_t virtualWidth, uint32_t virtualHeight, bool topmost, bool focus, int32_t ownerId, int32_t groupId)
@@ -251,6 +256,33 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
                   }
               }
 
+              if (gNeedsScreenshot)
+              {
+                  gNeedsScreenshot = false;
+                  bool success = CompositorController::screenShot(gScreenshotData, gScreenshotSize);
+                  
+                  gScreenshotSuccess = success;
+                  gScreenshotImageData.clear();
+                  
+                  if (success && gScreenshotData && gScreenshotSize > 0)
+                  {
+                      // Encode the screenshot data as base64
+                      Utils::String::imageEncoder(gScreenshotData, gScreenshotSize, true, gScreenshotImageData);
+                      
+                      // Free the buffer immediately after encoding to avoid retaining memory
+                      free(gScreenshotData);
+                      gScreenshotData = nullptr;
+                      gScreenshotSize = 0;
+                  }
+                  
+                  if (RDKWindowManagerImplementation::_instance)
+                  {
+                      RDKWindowManagerImplementation::_instance->dispatchEvent(
+                          RDKWindowManagerImplementation::Event::RDK_WINDOW_MANAGER_EVENT_SCREENSHOT_COMPLETE,
+                          JsonValue(success));
+                  }
+              }
+
               RdkWindowManager::draw();
               RdkWindowManager::update();
               isRunning = sRunning;
@@ -327,6 +359,14 @@ Core::hresult RDKWindowManagerImplementation::Deinitialize(PluginHost::IShell* s
         }
     }
     gCreateDisplayRequests.clear();
+
+    // Clean up any remaining screenshot buffer
+    if (gScreenshotData)
+    {
+        free(gScreenshotData);
+        gScreenshotData = nullptr;
+        gScreenshotSize = 0;
+    }
 
     gRdkWindowManagerMutex.unlock();
 
@@ -590,6 +630,14 @@ void RDKWindowManagerImplementation::Dispatch(Event event, const JsonValue param
                 ++index;
             }
             break;
+
+        case RDK_WINDOW_MANAGER_EVENT_SCREENSHOT_COMPLETE:
+        {
+            const bool success = params.Boolean();
+            LOGINFO("RDKWindowManager Dispatch OnScreenshotComplete success: %s", success ? "true" : "false");
+            notifyScreenshotComplete(success);
+            break;
+        }
 
          default:
              LOGWARN("Event[%u] not handled", event);
@@ -1485,6 +1533,45 @@ Core::hresult RDKWindowManagerImplementation::SetVisible(const std::string &clie
     return status;
 }
 
+/**
+ * @brief Gets the visibility of the specified client with given appInstanceId or name.
+ *
+ * This function reads the visibility of the client identified by its appInstanceId/name.
+ *
+ * @param[in] client            : client name or Application instance ID
+ * @param[out] visible          : boolean indicating the visibility status: `true` for visible, `false` for hide.
+ * @return    Core::<StatusCode>: Core::ERROR_NONE on success, Core::ERROR_GENERAL on failure
+ */
+Core::hresult RDKWindowManagerImplementation::GetVisibility(const std::string &client, bool &visible)
+{
+    Core::hresult status = Core::ERROR_GENERAL;
+    bool lockAcquired = false;
+
+    if (client.empty())
+    {
+        LOGERR("GetVisibility: client is empty");
+    }
+    else
+    {
+        lockAcquired = lockRdkWindowManagerMutex();
+        if (true == RdkWindowManager::CompositorController::getVisibility(client, visible))
+        {
+            LOGINFO("GetVisibility: client:%s visible:%d", client.c_str(), visible);
+            status = Core::ERROR_NONE;
+        }
+        else
+        {
+            LOGERR("GetVisibility: Failed to get visibility of client '%s'", client.c_str());
+        }
+
+        if (lockAcquired)
+        {
+            gRdkWindowManagerMutex.unlock();
+        }
+    }
+    return status;
+}
+
 /***
  * @brief Create the display window.
  * Creates a display for the specified client using the configuration parameters.
@@ -2143,6 +2230,46 @@ Core::hresult RDKWindowManagerImplementation::StopVncServer()
     }
 
     return status;
+}
+
+/**
+ * @brief Captures a screenshot of the current compositor output.
+ *
+ * This method initiates a screenshot capture. The actual capture is performed asynchronously
+ * in the shellThread, and the OnScreenshotComplete event is triggered when done with the
+ * base64 encoded image data.
+ *
+ * @return    : Core::<StatusCode> (Core::ERROR_NONE on success, Core::ERROR_GENERAL on failure)
+ */
+Core::hresult RDKWindowManagerImplementation::GetScreenshot()
+{
+    Core::hresult status = Core::ERROR_NONE;
+
+    {
+        std::lock_guard<std::mutex> lock(gRdkWindowManagerMutex);
+        // Reset previous screenshot data if any
+        if (gScreenshotData)
+        {
+            free(gScreenshotData);
+            gScreenshotData = nullptr;
+            gScreenshotSize = 0;
+        }
+        gNeedsScreenshot = true;
+    }
+
+    LOGINFO("Screenshot request queued");
+
+    return status;
+}
+
+void RDKWindowManagerImplementation::notifyScreenshotComplete(bool success)
+{
+    LOGINFO("Screenshot capture %s, imageData size: %zu bytes", success ? "succeeded" : "failed", gScreenshotImageData.length());
+    
+    for (auto* notification : mRDKWindowManagerNotification)
+    {
+        notification->OnScreenshotComplete(success, gScreenshotImageData);
+    }
 }
 
 } /* namespace Plugin */
