@@ -496,28 +496,26 @@ namespace Plugin {
             if (installedVersion.compare(version) == 0) {
                 // Same version already installed, upgrading
             } else {
-                // different version
-                StateKey installedKey { packageId, installedVersion };
-                auto it = mState.find( installedKey );
+                // different version - check if any version of this package is locked
                 bNewEntry = true;
-                if (it != mState.end()) {
-                    State &installedState = it->second;
-                    if ( installedState.mLockCount ) {
-                        LOGWARN("App is locked id: '%s' ver: '%s' count:%d", packageId.c_str(), installedVersion.c_str(), installedState.mLockCount);
-                        state.installState = InstallState::INSTALLATION_BLOCKED;
-                        state.blockedInstallData.version = version;
-                        state.blockedInstallData.keyValues = keyValues;
-                        state.blockedInstallData.fileLocator = fileLocator;
-                        NotifyInstallStatus(packageId, version, state);
-                    } else {
-                        // Uninstall the old version before installing the new one
-                        LOGINFO("Uninstalling old version id: '%s' ver: '%s' before installing new version: '%s'", 
-                                packageId.c_str(), installedVersion.c_str(), version.c_str());
-                        string uninstallError;
-                        if (Uninstall(packageId, uninstallError) != Core::ERROR_NONE) {
-                            LOGERR("Failed to uninstall old version id: '%s' ver: '%s' error: %s", 
-                                   packageId.c_str(), installedVersion.c_str(), uninstallError.c_str());
-                        }
+                string lockedVersion;
+                uint32_t lockCount = 0;
+                if (IsAnyVersionLocked(packageId, lockedVersion, lockCount)) {
+                    LOGWARN("App is locked id: '%s' ver: '%s' count:%d, blocking installation of version: '%s'", 
+                            packageId.c_str(), lockedVersion.c_str(), lockCount, version.c_str());
+                    state.installState = InstallState::INSTALLATION_BLOCKED;
+                    state.blockedInstallData.version = version;
+                    state.blockedInstallData.keyValues = keyValues;
+                    state.blockedInstallData.fileLocator = fileLocator;
+                    NotifyInstallStatus(packageId, version, state);
+                } else {
+                    // Uninstall the old version before installing the new one
+                    LOGINFO("Uninstalling old version id: '%s' ver: '%s' before installing new version: '%s'", 
+                            packageId.c_str(), installedVersion.c_str(), version.c_str());
+                    string uninstallError;
+                    if (Uninstall(packageId, uninstallError) != Core::ERROR_NONE) {
+                        LOGERR("Failed to uninstall old version id: '%s' ver: '%s' error: %s", 
+                               packageId.c_str(), installedVersion.c_str(), uninstallError.c_str());
                     }
                 }
             }

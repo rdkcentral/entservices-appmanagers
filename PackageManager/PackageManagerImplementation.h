@@ -232,6 +232,17 @@ namespace Plugin {
             return "";
         }
 
+        inline bool IsAnyVersionLocked(const string& id, string& lockedVersion, uint32_t& lockCount) {
+            for (auto const& [key, state] : mState) {
+                if ((id == key.first) && (state.mLockCount > 0)) {
+                    lockedVersion = key.second;
+                    lockCount = state.mLockCount;
+                    return true;
+                }
+            }
+            return false;
+        }
+
         inline bool IsInstallBlocked(const string &packageId, const string &version, const packagemanager::NameValues &keyValues, const string &fileLocator);
         Core::hresult Install(const string &packageId, const string &version, const packagemanager::NameValues &keyValues, const string &fileLocator, State& state);
 
