@@ -232,9 +232,11 @@ namespace Plugin {
             return "";
         }
 
-        inline bool IsAnyVersionLocked(const string& id) {
+        inline bool IsAnyVersionLocked(const string& id, string& lockedVersion, uint32_t& lockCount) {
             for (auto const& [key, state] : mState) {
-                if ((id.compare(key.first) == 0) && (state.mLockCount > 0)) {
+                if ((id == key.first) && (state.mLockCount > 0)) {
+                    lockedVersion = key.second;
+                    lockCount = state.mLockCount;
                     return true;
                 }
             }

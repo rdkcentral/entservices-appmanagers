@@ -498,8 +498,11 @@ namespace Plugin {
             } else {
                 // different version - check if any version of this package is locked
                 bNewEntry = true;
-                if (IsAnyVersionLocked(packageId)) {
-                    LOGWARN("App is locked id: '%s', blocking installation of version: '%s'", packageId.c_str(), version.c_str());
+                string lockedVersion;
+                uint32_t lockCount = 0;
+                if (IsAnyVersionLocked(packageId, lockedVersion, lockCount)) {
+                    LOGWARN("App is locked id: '%s' ver: '%s' count:%d, blocking installation of version: '%s'", 
+                            packageId.c_str(), lockedVersion.c_str(), lockCount, version.c_str());
                     state.installState = InstallState::INSTALLATION_BLOCKED;
                     state.blockedInstallData.version = version;
                     state.blockedInstallData.keyValues = keyValues;
