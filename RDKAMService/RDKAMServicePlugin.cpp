@@ -27,11 +27,11 @@ RDKAMService::RDKAMService()
     , _testPrefs(nullptr)
     , _diagnostics(nullptr)
     , _notificationSink(this) {
-    SYSLOG(Logging::Startup, (_T("RDKAMService Constructor")));
+    SYSLOG(Logging::Startup, (string(_T("RDKAMService Constructor"))));
 }
 
 RDKAMService::~RDKAMService() {
-    SYSLOG(Logging::Shutdown, (_T("RDKAMService Destructor")));
+    SYSLOG(Logging::Shutdown, (string(_T("RDKAMService Destructor"))));
 }
 
 const string RDKAMService::Initialize(PluginHost::IShell* service) {
@@ -41,7 +41,7 @@ const string RDKAMService::Initialize(PluginHost::IShell* service) {
     ASSERT(_service == nullptr);
     ASSERT(_connectionId == 0);
 
-    SYSLOG(Logging::Startup, (_T("RDKAMService::Initialize: PID=%u"), getpid())));
+    SYSLOG(Logging::Startup, (_T("RDKAMService::Initialize: PID=%u"), getpid()));
     SYSLOG(Logging::Startup, (_T("[DEBUG-TRACE-01] RDKAMService::Initialize - START")));
 
     _service = service;
@@ -110,7 +110,7 @@ const string RDKAMService::Initialize(PluginHost::IShell* service) {
 void RDKAMService::Deinitialize(PluginHost::IShell* service) {
     ASSERT(_service == service);
 
-    SYSLOG(Logging::Shutdown, (_T("RDKAMService Deinitialize")));
+    SYSLOG(Logging::Shutdown, (string(_T("RDKAMService Deinitialize"))));
 
     _service->Unregister(&_notificationSink);
 
@@ -164,4 +164,3 @@ void RDKAMService::Deactivated(RPC::IRemoteConnection* connection) {
 
 } // namespace Plugin
 } // namespace WPEFramework
-

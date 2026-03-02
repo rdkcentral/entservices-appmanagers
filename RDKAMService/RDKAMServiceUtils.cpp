@@ -176,18 +176,18 @@ std::map<std::string, RDKAMServiceUtils::RouteEntry> RDKAMServiceUtils::LoadRequ
 {
     std::map<std::string, RouteEntry> routes;
 
-    std::string configPath = "/etc/RDKAMService_plugin.json";
+    std::string configPath = "/etc/rdkamservice_plugin.json";
     std::ifstream configFile(configPath);
     if (!configFile.is_open()) {
-        configPath = "RDKAMService_plugin.json";
+        configPath = "rdkamservice_plugin.json";
         configFile.open(configPath);
     }
     if (!configFile.is_open()) {
-        configPath = "/etc/RDKAMService.json";
+        configPath = "/etc/rdkappmanagers.json";
         configFile.open(configPath);
     }
     if (!configFile.is_open()) {
-        configPath = "RDKAMService.json";
+        configPath = "rdkappmanagers.json";
         configFile.open(configPath);
     }
 

@@ -26,11 +26,6 @@ RDKAMServiceHandler::RDKAMServiceHandler(PluginHost::IShell* shell)
 
 RDKAMServiceHandler::~RDKAMServiceHandler()
 {
-	ReleaseInterfaces();
-}
-
-RDKAMServiceHandler::~RDKAMServiceHandler()
-{
 	StopStatusListener();
 	StopEventListener();
 	StopAppManagerListener();
@@ -86,12 +81,12 @@ void RDKAMServiceHandler::StopStatusListener()
 
 void RDKAMServiceHandler::ProcessThunderEvent(const std::string& eventName, const std::string& eventData)
 {
-	SYSLOG(Logging::Startup, (_T("RDKAMServiceHandler::ProcessThunderEvent - eventName=%s eventData=%s", eventName.c_str(), eventData.c_str())));
+	SYSLOG(Logging::Startup, ("RDKAMServiceHandler::ProcessThunderEvent - eventName=%s eventData=%s", eventName.c_str(), eventData.c_str()));
 	
 	std::lock_guard<std::mutex> lock(m_statusMutex);
 
 	if (!m_appsStatus) {
-		SYSLOG(Logging::Startup, (_T("RDKAMServiceHandler::ProcessThunderEvent - m_appsStatus is null, returning")));
+		SYSLOG(Logging::Startup, (string(_T("RDKAMServiceHandler::ProcessThunderEvent - m_appsStatus is null, returning"))));
 		return;
 	}
 
@@ -110,10 +105,10 @@ void RDKAMServiceHandler::ProcessThunderEvent(const std::string& eventName, cons
 		writer["indentation"] = "";
 		std::string notificationJson = Json::writeString(writer, notification);
 
-		SYSLOG(Logging::Startup, (_T("RDKAMServiceHandler::ProcessThunderEvent - Calling HandleThunderEvent with: %s", notificationJson.c_str())));
+		SYSLOG(Logging::Startup, ("RDKAMServiceHandler::ProcessThunderEvent - Calling HandleThunderEvent with: %s", notificationJson.c_str()));
 		m_appsStatus->HandleThunderEvent(notificationJson);
 	} else {
-		SYSLOG(Logging::Startup, (_T("RDKAMServiceHandler::ProcessThunderEvent - Failed to parse eventData: %s", errors.c_str())));
+		SYSLOG(Logging::Startup, ("RDKAMServiceHandler::ProcessThunderEvent - Failed to parse eventData: %s", errors.c_str()));
 	}
 }
 
@@ -190,7 +185,7 @@ void RDKAMServiceHandler::OnEventMessageReceived(const std::string& message)
 	if (notification.isMember("method")) {
 		std::string method = notification["method"].asString();
 
-		// Extract event name from method (e.g., "RDKAMService.onAppLaunchRequest" -> "onAppLaunchRequest")
+		// Extract event name from method (e.g., "rdkappmanagers.onAppLaunchRequest" -> "onAppLaunchRequest")
 		size_t dotPos = method.find('.');
 		std::string eventName = (dotPos != std::string::npos) ? method.substr(dotPos + 1) : method;
 
@@ -210,32 +205,32 @@ void RDKAMServiceHandler::OnEventMessageReceived(const std::string& message)
 // AppManager RPC Listener Implementation
 bool RDKAMServiceHandler::StartAppManagerListener(PluginHost::IShell* shell)
 {
-	SYSLOG(Logging::Startup, (_T("RDKAMServiceHandler::StartAppManagerListener - START")));
+	SYSLOG(Logging::Startup, (string(_T("RDKAMServiceHandler::StartAppManagerListener - START"))));
 	
 	if (!shell) {
-		SYSLOG(Logging::Startup, (_T("RDKAMServiceHandler::StartAppManagerListener - shell is null")));
+		SYSLOG(Logging::Startup, (string(_T("RDKAMServiceHandler::StartAppManagerListener - shell is null"))));
 		return false;
 	}
 
 	// Query the AppManager plugin interface
 	m_appManager = shell->QueryInterfaceByCallsign<Exchange::IAppManager>("org.rdk.AppManager");
 	if (!m_appManager) {
-		SYSLOG(Logging::Startup, (_T("RDKAMServiceHandler::StartAppManagerListener - Failed to get IAppManager interface")));
+		SYSLOG(Logging::Startup, (string(_T("RDKAMServiceHandler::StartAppManagerListener - Failed to get IAppManager interface"))));
 		return false;
 	}
 
-	SYSLOG(Logging::Startup, (_T("RDKAMServiceHandler::StartAppManagerListener - Got IAppManager interface")));
+	SYSLOG(Logging::Startup, (string(_T("RDKAMServiceHandler::StartAppManagerListener - Got IAppManager interface"))));
 
 	// Register for notifications
 	Core::hresult result = m_appManager->Register(&m_appManagerNotification);
 	if (result != Core::ERROR_NONE) {
-		SYSLOG(Logging::Startup, (_T("RDKAMServiceHandler::StartAppManagerListener - Register failed: %d", result)));
+		SYSLOG(Logging::Startup, (_T("RDKAMServiceHandler::StartAppManagerListener - Register failed: %d"), result));
 		m_appManager->Release();
 		m_appManager = nullptr;
 		return false;
 	}
 
-	SYSLOG(Logging::Startup, (_T("RDKAMServiceHandler::StartAppManagerListener - Successfully registered for AppManager notifications")));
+	SYSLOG(Logging::Startup, (string(_T("RDKAMServiceHandler::StartAppManagerListener - Successfully registered for AppManager notifications"))));
 
 	// Query the RDKWindowManager interface for system stats
 	m_windowManager = shell->QueryInterfaceByCallsign<Exchange::IRDKWindowManager>("org.rdk.RDKWindowManager");
@@ -299,6 +294,8 @@ std::string RDKAMServiceHandler::ErrorReasonToString(Exchange::IAppManager::AppE
 		case Exchange::IAppManager::APP_ERROR_PACKAGE_LOCK:   return "APP_ERROR_PACKAGE_LOCK";
 		default:                                               return "UNKNOWN";
 	}
+}
+
 void RDKAMServiceHandler::ReleaseInterfaces()
 {
 	if (m_appManager != nullptr) {
@@ -790,7 +787,7 @@ Core::hresult RDKAMServiceHandler::ResetAppDataRequest(const std::string& appId,
 // AppManagerNotification implementation
 void RDKAMServiceHandler::AppManagerNotification::OnAppInstalled(const string& appId, const string& version)
 {
-	SYSLOG(Logging::Startup, (_T("AppManagerNotification::OnAppInstalled called - appId=%s version=%s", appId.c_str(), version.c_str())));
+	SYSLOG(Logging::Startup, ("AppManagerNotification::OnAppInstalled called - appId=%s version=%s", appId.c_str(), version.c_str()));
 	Json::Value params;
 	params["appId"] = appId;
 	params["version"] = version;
@@ -799,7 +796,7 @@ void RDKAMServiceHandler::AppManagerNotification::OnAppInstalled(const string& a
 
 void RDKAMServiceHandler::AppManagerNotification::OnAppUninstalled(const string& appId)
 {
-	SYSLOG(Logging::Startup, (_T("AppManagerNotification::OnAppUninstalled called - appId=%s", appId.c_str())));
+	SYSLOG(Logging::Startup, ("AppManagerNotification::OnAppUninstalled called - appId=%s", appId.c_str()));
 	Json::Value params;
 	params["appId"] = appId;
 	_parent.SendAppManagerEvent("onAppUninstalled", params);
@@ -811,7 +808,7 @@ void RDKAMServiceHandler::AppManagerNotification::OnAppLifecycleStateChanged(
 	const Exchange::IAppManager::AppLifecycleState oldState,
 	const Exchange::IAppManager::AppErrorReason errorReason)
 {
-	SYSLOG(Logging::Startup, (_T("AppManagerNotification::OnAppLifecycleStateChanged called - appId=%s state=%s", appId.c_str(), RDKAMServiceHandler::LifecycleStateToString(newState).c_str())));
+	SYSLOG(Logging::Startup, ("AppManagerNotification::OnAppLifecycleStateChanged called - appId=%s state=%s", appId.c_str(), RDKAMServiceHandler::LifecycleStateToString(newState).c_str()));
 	Json::Value params;
 	params["appId"] = appId;
 	params["appInstanceId"] = appInstanceId;
@@ -823,7 +820,7 @@ void RDKAMServiceHandler::AppManagerNotification::OnAppLifecycleStateChanged(
 
 void RDKAMServiceHandler::AppManagerNotification::OnAppLaunchRequest(
 	const string& appId, const string& intent, const string& source)
-{SYSLOG(Logging::Startup, (_T("AppManagerNotification::OnAppLaunchRequest called - appId=%s source=%s", appId.c_str(), source.c_str())));
+{SYSLOG(Logging::Startup, ("AppManagerNotification::OnAppLaunchRequest called - appId=%s source=%s", appId.c_str(), source.c_str()));
 	
 	Json::Value params;
 	params["appId"] = appId;
@@ -833,7 +830,7 @@ void RDKAMServiceHandler::AppManagerNotification::OnAppLaunchRequest(
 }
 
 void RDKAMServiceHandler::AppManagerNotification::OnAppUnloaded(const string& appId, const string& appInstanceId)
-{SYSLOG(Logging::Startup, (_T("AppManagerNotification::OnAppUnloaded called - appId=%s", appId.c_str())));
+{SYSLOG(Logging::Startup, ("AppManagerNotification::OnAppUnloaded called - appId=%s", appId.c_str()));
 	
 	Json::Value params;
 	params["appId"] = appId;
@@ -843,6 +840,7 @@ void RDKAMServiceHandler::AppManagerNotification::OnAppUnloaded(const string& ap
 
 } // namespace Plugin
 } // namespace WPEFramework
+
 
 
 

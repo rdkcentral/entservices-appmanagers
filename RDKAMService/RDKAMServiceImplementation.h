@@ -123,4 +123,3 @@ private:
 } // namespace Plugin
 } // namespace WPEFramework
 
-

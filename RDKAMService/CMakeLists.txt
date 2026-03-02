@@ -53,7 +53,6 @@ add_library(${PLUGIN_IMPLEMENTATION} SHARED
     RDKAMServiceImplementation.cpp
     RDKAMServiceHandler.cpp
     RDKAMServiceUtils.cpp
-    AppsStatus.cpp
     SystemSettings.cpp
     TestPreferences.cpp
     Module.cpp
@@ -90,6 +89,5 @@ if(RDK_SERVICES_L1_TEST)
 endif(RDK_SERVICES_L1_TEST)
 
 write_config(${PLUGIN_NAME})
-
 
 

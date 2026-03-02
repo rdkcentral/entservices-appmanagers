@@ -7,4 +7,3 @@
     [ "/as/apps/action/reset", [ "org.rdk.StorageManager.clear", "org.rdk.StorageManager.clearAll" ], { "appId": "$appId$" } ],
     [ "/as/system/stats", "org.rdk.RDKWindowManager.getLastKeyPress", {} ]
 ]
-

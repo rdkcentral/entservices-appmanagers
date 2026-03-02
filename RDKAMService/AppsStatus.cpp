@@ -20,7 +20,7 @@ AppsStatus::AppsStatus(WebSocketNotifyCallback notifyCb)
 	, m_uninstallCb(nullptr)
 	, m_appManager(nullptr)
 {
-	SYSLOG(Logging::Startup, (_T("AppsStatus Constructor")));
+	SYSLOG(Logging::Startup, (string(_T("AppsStatus Constructor"))));
 
 	// Initialize semaphore for synchronous uninstall
 	sem_init(&m_uninstallSem, 0, 0);
@@ -44,13 +44,13 @@ AppsStatus::AppsStatus(WebSocketNotifyCallback notifyCb)
 
 AppsStatus::~AppsStatus()
 {
-	SYSLOG(Logging::Startup, (_T("AppsStatus Destructor")));
+	SYSLOG(Logging::Shutdown, (string(_T("AppsStatus Destructor"))));
 	sem_destroy(&m_uninstallSem);
 }
 
 void AppsStatus::SetAppManager(Exchange::IAppManager* appManager)
 {
-	SYSLOG(Logging::Startup, (_T("AppsStatus::SetAppManager - %p"), appManager)));
+	SYSLOG(Logging::Startup, (_T("AppsStatus::SetAppManager - %p"), appManager));
 	m_appManager = appManager;
     
 	// Initialize apps status when AppManager is set
@@ -88,19 +88,19 @@ void AppsStatus::notifyUninstallEvent()
 
 void AppsStatus::registerForEvents()
 {
-	SYSLOG(Logging::Startup, (_T("AppsStatus::registerForEvents - Events now registered via COM-RPC in RDKAMService")));
-    
-	// Event registration is now handled by RDKAMService::StartAppManagerListener()
+	SYSLOG(Logging::Startup, (string(_T("AppsStatus::registerForEvents - Events now registered via COM-RPC in RDKAMServiceHandler"))));
+
+	// Event registration is now handled by RDKAMServiceHandler::StartAppManagerListener()
 	// which registers AppManagerNotification callbacks directly via IAppManager COM-RPC interface.
 	// This method is kept for compatibility but does nothing.
 }
 
 void AppsStatus::initializeAppsStatus()
 {
-	SYSLOG(Logging::Startup, (_T("AppsStatus::initializeAppsStatus - Getting loaded apps")));
+	SYSLOG(Logging::Startup, (string(_T("AppsStatus::initializeAppsStatus - Getting loaded apps"))));
 
 	if (!m_appManager) {
-		SYSLOG(Logging::Startup, (_T("AppsStatus::initializeAppsStatus - No IAppManager interface, starting empty")));
+		SYSLOG(Logging::Startup, (string(_T("AppsStatus::initializeAppsStatus - No IAppManager interface, starting empty"))));
 		return;
 	}
 
@@ -109,7 +109,7 @@ void AppsStatus::initializeAppsStatus()
 	Core::hresult result = m_appManager->GetLoadedApps(appsIter);
     
 	if (result != Core::ERROR_NONE || !appsIter) {
-		SYSLOG(Logging::Error, (_T("AppsStatus::initializeAppsStatus - getLoadedApps failed, starting empty")));
+		SYSLOG(Logging::Startup, (_T("AppsStatus::initializeAppsStatus - getLoadedApps failed, starting empty")));
 		return;
 	}
 
@@ -142,7 +142,8 @@ void AppsStatus::initializeAppsStatus()
 		newEntry["status"] = (appInfo.lifecycleState == Exchange::IAppManager::APP_STATE_ACTIVE) ? "VISIBLE" : "RUNNING";
         
 		m_status[appId] = newEntry;
-		SYSLOG(Logging::Startup, (_T("AppsStatus::initializeAppsStatus - Initialized app: %s state=%s"), appId.c_str(), lifecycleState.c_str())));
+		SYSLOG(Logging::Startup, (_T("AppsStatus::initializeAppsStatus - Initialized app: %s state=%s"), 
+			   appId.c_str(), lifecycleState.c_str()));
 	}
     
 	appsIter->Release();
@@ -153,7 +154,7 @@ void AppsStatus::initializeAppsStatus()
 
 void AppsStatus::HandleThunderEvent(const std::string& eventJson)
 {
-	SYSLOG(Logging::Startup, (_T("AppsStatus::HandleThunderEvent - %s"), eventJson.c_str())));
+	SYSLOG(Logging::Startup, (_T("AppsStatus::HandleThunderEvent - %s"), eventJson.c_str()));
 
 	Json::Value notification;
 	std::string errors;
@@ -163,7 +164,7 @@ void AppsStatus::HandleThunderEvent(const std::string& eventJson)
 			processNotification(notification);
 		}
 	} else {
-		SYSLOG(Logging::Error, (_T("AppsStatus::HandleThunderEvent - Parse error: %s"), errors.c_str())));
+		SYSLOG(Logging::Startup, (_T("AppsStatus::HandleThunderEvent - Parse error: %s"), errors.c_str()));
 	}
 }
 
@@ -173,7 +174,8 @@ void AppsStatus::processNotification(const Json::Value& notification, bool ignor
 	Json::Value params = notification["params"];
 	std::string appId = params["appId"].asString();
 
-	SYSLOG(Logging::Startup, (_T("AppsStatus::processNotification - method=%s appId=%s ignoreStatusCheck=%d"), method.c_str(), appId.c_str(), ignoreStatusCheck)));
+	SYSLOG(Logging::Startup, (_T("AppsStatus::processNotification - method=%s appId=%s ignoreStatusCheck=%d"), 
+		   method.c_str(), appId.c_str(), ignoreStatusCheck));
 
 	std::string source;
 	std::string state;
@@ -189,12 +191,14 @@ void AppsStatus::processNotification(const Json::Value& notification, bool ignor
 		if (m_jsonReader->parse(intentStr.c_str(), intentStr.c_str() + intentStr.length(), &intent, &errors)) {
 			source = intent["context"]["source"].asString();
 		}
-		SYSLOG(Logging::Startup, (_T("AppsStatus - onAppLaunchRequest: appId=%s source=%s"), appId.c_str(), source.c_str())));
+		SYSLOG(Logging::Startup, (_T("AppsStatus - onAppLaunchRequest: appId=%s source=%s"), 
+			   appId.c_str(), source.c_str()));
 	} 
 	else if (method.find("onAppLifecycleStateChanged") != std::string::npos) {
 		state = params["newState"].asString();
 		previousState = params["previousState"].asString();
-		SYSLOG(Logging::Startup, (_T("AppsStatus - onAppLifecycleStateChanged: appId=%s state=%s prev=%s"), appId.c_str(), state.c_str(), previousState.c_str())));
+		SYSLOG(Logging::Startup, (_T("AppsStatus - onAppLifecycleStateChanged: appId=%s state=%s prev=%s"), 
+			   appId.c_str(), state.c_str(), previousState.c_str()));
         
 		// Check ignoreStatusCheck conditions (as per reference microservice)
 		// Ignore if state is APP_STATE_UNKNOWN
@@ -206,12 +210,12 @@ void AppsStatus::processNotification(const Json::Value& notification, bool ignor
 	else if (method.find("onAppInstalled") != std::string::npos) {
 		// New app installed - ignore status check, just add to list
 		ignoreStatusCheck = true;
-		SYSLOG(Logging::Startup, (_T("AppsStatus - onAppInstalled: appId=%s"), appId.c_str())));
+		SYSLOG(Logging::Startup, (_T("AppsStatus - onAppInstalled: appId=%s"), appId.c_str()));
 	}
 	else if (method.find("onAppUninstalled") != std::string::npos) {
 		// App uninstalled - ignore status check, remove from list
 		ignoreStatusCheck = true;
-		SYSLOG(Logging::Startup, (_T("AppsStatus - onAppUninstalled: appId=%s"), appId.c_str())));
+		SYSLOG(Logging::Startup, (_T("AppsStatus - onAppUninstalled: appId=%s"), appId.c_str()));
         
 		// Notify uninstall waiters
 		if (!m_pendingUninstallPackage.empty()) {
@@ -220,7 +224,7 @@ void AppsStatus::processNotification(const Json::Value& notification, bool ignor
 	}
 	else if (method.find("onAppUnloaded") != std::string::npos) {
 		ignoreStatusCheck = true;
-		SYSLOG(Logging::Startup, (_T("AppsStatus - onAppUnloaded: appId=%s"), appId.c_str())));
+		SYSLOG(Logging::Startup, (_T("AppsStatus - onAppUnloaded: appId=%s"), appId.c_str()));
 	}
 
 	// Lock for status map access
@@ -230,7 +234,7 @@ void AppsStatus::processNotification(const Json::Value& notification, bool ignor
 	if (method.find("onAppUnloaded") != std::string::npos ||
 		method.find("onAppUninstalled") != std::string::npos) {
 		if (m_status.erase(appId)) {
-			SYSLOG(Logging::Startup, (_T("AppsStatus - Removed app: %s"), appId.c_str())));
+			SYSLOG(Logging::Startup, (_T("AppsStatus - Removed app: %s"), appId.c_str()));
 		}
 	}
 	else if (!ignoreStatusCheck) {
@@ -267,7 +271,7 @@ void AppsStatus::processNotification(const Json::Value& notification, bool ignor
 			}
 		}
 
-		SYSLOG(Logging::Startup, (_T("AppsStatus - Updated app: %s"), appId.c_str())));
+		SYSLOG(Logging::Startup, (_T("AppsStatus - Updated app: %s"), appId.c_str()));
 	}
 
 	// Broadcast updated status (even for install/uninstall/unload events)
@@ -294,7 +298,8 @@ void AppsStatus::updateAppsStatusWebSocket()
 	ss << "\n] }";
 
 	std::string payload = ss.str();
-	SYSLOG(Logging::Startup, (_T("AppsStatus::updateAppsStatusWebSocket - Broadcasting to %d clients"), static_cast<int>(m_status.size()))));
+	SYSLOG(Logging::Startup, (_T("AppsStatus::updateAppsStatusWebSocket - Broadcasting to %d clients"), 
+		   static_cast<int>(m_status.size())));
 
 	if (m_notifyCb) {
 		m_notifyCb(wsUrl, payload);
@@ -324,5 +329,4 @@ std::string AppsStatus::GetCurrentStatus() const
 
 } // namespace Plugin
 } // namespace WPEFramework
-
 

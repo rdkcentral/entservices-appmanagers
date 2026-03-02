@@ -96,4 +96,3 @@ std::string SystemSettings::ToJson() const
 
 } // namespace Plugin
 } // namespace WPEFramework
-

@@ -58,24 +58,24 @@ private:
         END_INTERFACE_MAP
 
         void Activated(RPC::IRemoteConnection*) override {
-            SYSLOG(Logging::Startup, (_T("RDKAMService Notification Activated")));
+            SYSLOG(Logging::Startup, (string(_T("RDKAMService Notification Activated"))));
         }
         void Deactivated(RPC::IRemoteConnection* connection) override {
-            SYSLOG(Logging::Shutdown, (_T("RDKAMService Notification Deactivated")));
+            SYSLOG(Logging::Shutdown, (string(_T("RDKAMService Notification Deactivated"))));
             _parent.Deactivated(connection);
         }
 
         // Listener events
         void OnNotifyWebSocketUpdate(const string& url, const string& message) override {
-            SYSLOG(Logging::Startup, (_T("OnNotifyWebSocketUpdate url=%s"), url.c_str())));
+            SYSLOG(Logging::Startup, (_T("OnNotifyWebSocketUpdate url=%s"), url.c_str()));
             Exchange::JApplicationServiceListener::Event::OnNotifyWebSocketUpdate(_parent, url, message);
         }
         void OnNotifyHttpUpdate(const string& url, const uint32_t code) override {
-            SYSLOG(Logging::Startup, (_T("OnNotifyHttpUpdate url=%s code=%u"), url.c_str(), code)));
+            SYSLOG(Logging::Startup, (_T("OnNotifyHttpUpdate url=%s code=%u"), url.c_str(), code));
             Exchange::JApplicationServiceListener::Event::OnNotifyHttpUpdate(_parent, url, code);
         }
         void OnNotifySysStatusUpdate(const string& status) override {
-            SYSLOG(Logging::Startup, (_T("OnNotifySysStatusUpdate status=%s"), status.c_str())));
+            SYSLOG(Logging::Startup, (_T("OnNotifySysStatusUpdate status=%s"), status.c_str()));
             Exchange::JApplicationServiceListener::Event::OnNotifySysStatusUpdate(_parent, status);
         }
 
@@ -103,4 +103,3 @@ private:
 
 } // namespace Plugin
 } // namespace WPEFramework
-

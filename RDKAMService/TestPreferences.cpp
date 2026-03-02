@@ -81,4 +81,3 @@ std::string TestPreferences::ToJson() const
 
 } // namespace Plugin
 } // namespace WPEFramework
-

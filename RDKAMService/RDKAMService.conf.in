@@ -1,6 +1,6 @@
 autostart = "@PLUGIN_RDKAMSERVICE_AUTOSTART@"
 precondition = ["Platform"]
-callsign = "org.rdk.@PLUGIN_NAME@"
+callsign = "org.rdk.RDKAMService"
 startuporder = "@PLUGIN_RDKAMSERVICE_STARTUPORDER@"
 
 configuration = JSON()
