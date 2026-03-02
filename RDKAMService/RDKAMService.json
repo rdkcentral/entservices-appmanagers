@@ -1,10 +1,10 @@
 {
     "info": {
-        "class": "RDKAppManagers",
-        "service": "RDKAppManagers",
+        "class": "RDKAMService",
+        "service": "RDKAMService",
         "version": "1.0",
-        "locator": "RDKAppManagers",
-        "description": "Thunder plugin for RDKAppManagers control."
+        "locator": "RDKAMService",
+        "description": "Thunder plugin for RDKAMService control."
     },
     "interface": [
         "IPlugin",

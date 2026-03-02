@@ -17,20 +17,20 @@
 namespace WPEFramework {
 namespace Plugin {
 
-class RDKAppManagers : public PluginHost::IPlugin, public PluginHost::JSONRPC {
+class RDKAMService : public PluginHost::IPlugin, public PluginHost::JSONRPC {
 public:
-    RDKAppManagers(const RDKAppManagers&) = delete;
-    RDKAppManagers& operator=(const RDKAppManagers&) = delete;
+    RDKAMService(const RDKAMService&) = delete;
+    RDKAMService& operator=(const RDKAMService&) = delete;
 
-    RDKAppManagers();
-    ~RDKAppManagers() override;
+    RDKAMService();
+    ~RDKAMService() override;
 
     // IPlugin
     const string Initialize(PluginHost::IShell* service) override;
     void Deinitialize(PluginHost::IShell* service) override;
     string Information() const override;
 
-    BEGIN_INTERFACE_MAP(RDKAppManagers)
+    BEGIN_INTERFACE_MAP(RDKAMService)
         INTERFACE_ENTRY(PluginHost::IPlugin)
         INTERFACE_ENTRY(PluginHost::IDispatcher)
         INTERFACE_AGGREGATE(Exchange::IApplicationServiceRequest, _request)
@@ -46,7 +46,7 @@ private:
     class Notification : public RPC::IRemoteConnection::INotification,
                          public Exchange::IApplicationServiceListener::INotification {
     public:
-        explicit Notification(RDKAppManagers* parent)
+        explicit Notification(RDKAMService* parent)
             : _parent(*parent) {
             ASSERT(parent != nullptr);
         }
@@ -58,10 +58,10 @@ private:
         END_INTERFACE_MAP
 
         void Activated(RPC::IRemoteConnection*) override {
-            SYSLOG(Logging::Startup, (string(_T("RDKAppManagers Notification Activated"))));
+            SYSLOG(Logging::Startup, (string(_T("RDKAMService Notification Activated"))));
         }
         void Deactivated(RPC::IRemoteConnection* connection) override {
-            SYSLOG(Logging::Shutdown, (string(_T("RDKAppManagers Notification Deactivated"))));
+            SYSLOG(Logging::Shutdown, (string(_T("RDKAMService Notification Deactivated"))));
             _parent.Deactivated(connection);
         }
 
@@ -80,7 +80,7 @@ private:
         }
 
     private:
-        RDKAppManagers& _parent;
+        RDKAMService& _parent;
     };
 
     void Deactivated(RPC::IRemoteConnection* connection);

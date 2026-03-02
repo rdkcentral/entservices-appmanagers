@@ -10,7 +10,7 @@
 namespace WPEFramework {
 namespace Plugin {
 
-class RDKAppManagersServiceUtils {
+class RDKAMServiceUtils {
 public:
     struct RouteEntry {
         std::vector<std::string> methods;

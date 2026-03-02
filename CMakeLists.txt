@@ -84,8 +84,8 @@ if(PLUGIN_TELEMETRYMETRICS)
     add_subdirectory(TelemetryMetrics)
 endif()
 
-if(PLUGIN_RDKAPPMANAGERS)
-    add_subdirectory(ApplicationManager)
+if(PLUGIN_RDKAMSERVICE)
+    add_subdirectory(RDKAMService)
 endif()
 
 if(WPEFRAMEWORK_CREATE_IPKG_TARGETS)

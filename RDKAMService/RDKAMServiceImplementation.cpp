@@ -1,5 +1,5 @@
-#include "RDKAppManagersImplementation.h"
-#include "RDKAppManagersServiceUtils.h"
+#include "RDKAMServiceImplementation.h"
+#include "RDKAMServiceUtils.h"
 #include "SystemSettings.h"
 #include "TestPreferences.h"
 #include <json/json.h>
@@ -10,41 +10,41 @@
 using namespace WPEFramework;
 using namespace WPEFramework::Plugin;
 
-SERVICE_REGISTRATION(RDKAppManagersImplementation, 1, 0, 0);
+SERVICE_REGISTRATION(RDKAMServiceImplementation, 1, 0, 0);
 
 namespace WPEFramework {
 namespace Plugin {
 
-RDKAppManagersImplementation::RDKAppManagersImplementation()
+RDKAMServiceImplementation::RDKAMServiceImplementation()
     : m_listenerIdCounter(0)
     , m_shell(nullptr)
-    , m_service(std::make_unique<RDKAppManagersService>(nullptr))
+    , m_service(std::make_unique<RDKAMServiceHandler>(nullptr))
 {
-    SYSLOG(Logging::Startup, (string(_T("RDKAppManagersImplementation Constructor - START"))));
-    SYSLOG(Logging::Startup, (string(_T("RDKAppManagersImplementation Constructor - END"))));
+    SYSLOG(Logging::Startup, (string(_T("RDKAMServiceImplementation Constructor - START"))));
+    SYSLOG(Logging::Startup, (string(_T("RDKAMServiceImplementation Constructor - END"))));
 }
-RDKAppManagersImplementation::~RDKAppManagersImplementation() {
-    SYSLOG(Logging::Shutdown, (string(_T("RDKAppManagersImplementation Destructor"))));
+RDKAMServiceImplementation::~RDKAMServiceImplementation() {
+    SYSLOG(Logging::Shutdown, (string(_T("RDKAMServiceImplementation Destructor"))));
     // Cleanup resources
     if (m_shell != nullptr) {
         m_shell->Release();
         m_shell = nullptr;
     }
     
-    SYSLOG(Logging::Shutdown, (string(_T("RDKAppManagersImplementation Destroyed"))));
+    SYSLOG(Logging::Shutdown, (string(_T("RDKAMServiceImplementation Destroyed"))));
 }
 
 // Request
-Core::hresult RDKAppManagersImplementation::Request(const uint32_t flags, const string& url, const string& headers,
+Core::hresult RDKAMServiceImplementation::Request(const uint32_t flags, const string& url, const string& headers,
                                                const string& queryParams, const string& body,
                                                uint32_t& code, string& responseHeaders, string& responseBody) {
-    SYSLOG(Logging::Startup, (_T("RDKAppManagersImplementation::Request - flags=%u, url=%s"), 
+    SYSLOG(Logging::Startup, (_T("RDKAMServiceImplementation::Request - flags=%u, url=%s"), 
         flags, url.c_str()));
     SYSLOG(Logging::Startup, (_T("  headers='%s'"), headers.c_str()));
     SYSLOG(Logging::Startup, (_T("  queryParams='%s' (length=%zu)"), queryParams.c_str(), queryParams.length()));
     SYSLOG(Logging::Startup, (_T("  body='%s'"), body.c_str()));
 
-    const std::pair<std::string, std::string> urlInfo = RDKAppManagersServiceUtils::NormalizeUrlAndExtractQuery(url, queryParams);
+    const std::pair<std::string, std::string> urlInfo = RDKAMServiceUtils::NormalizeUrlAndExtractQuery(url, queryParams);
     const std::string& normalizedUrl = urlInfo.first;
     const std::string& effectiveQueryParams = urlInfo.second;
 
@@ -69,21 +69,21 @@ Core::hresult RDKAppManagersImplementation::Request(const uint32_t flags, const 
 
     if (m_shell == nullptr || m_service == nullptr) {
         code = 503;
-        responseBody = RDKAppManagersServiceUtils::BuildErrorResponse("Service shell is not configured");
+        responseBody = RDKAMServiceUtils::BuildErrorResponse("Service shell is not configured");
         SYSLOG(Logging::Error, (_T("Request failed: shell/service is not configured")));
         return Core::ERROR_NONE;
     }
 
-    const RDKAppManagersServiceUtils::RequestContext context = RDKAppManagersServiceUtils::BuildRequestContext(normalizedUrl, effectiveQueryParams, body);
+    const RDKAMServiceUtils::RequestContext context = RDKAMServiceUtils::BuildRequestContext(normalizedUrl, effectiveQueryParams, body);
 
     Core::hresult status = Core::ERROR_NONE;
     code = 500;
 
-    static const std::map<std::string, RDKAppManagersServiceUtils::RouteEntry> requestMap = RDKAppManagersServiceUtils::LoadRequestMap();
+    static const std::map<std::string, RDKAMServiceUtils::RouteEntry> requestMap = RDKAMServiceUtils::LoadRequestMap();
 
     if (!isMethodAllowedForUrl(normalizedUrl)) {
         code = 405;
-        responseBody = RDKAppManagersServiceUtils::BuildErrorResponse("Method not allowed");
+        responseBody = RDKAMServiceUtils::BuildErrorResponse("Method not allowed");
         SYSLOG(Logging::Error, (_T("Method not allowed for url=%s normalized=%s flags=%u"), url.c_str(), normalizedUrl.c_str(), flags));
         return Core::ERROR_NONE;
     }
@@ -91,7 +91,7 @@ Core::hresult RDKAppManagersImplementation::Request(const uint32_t flags, const 
     const auto routeIt = requestMap.find(normalizedUrl);
     if (routeIt != requestMap.end()) {
         status = m_service->DispatchMappedRequest(routeIt->second.methods, routeIt->second.params, context.runtimeParams, code, responseBody);
-        RDKAppManagersServiceUtils::EnsureErrorResponse(status, normalizedUrl, responseBody);
+        RDKAMServiceUtils::EnsureErrorResponse(status, normalizedUrl, responseBody);
 
         SYSLOG(Logging::Startup, (_T("Request executed url=%s normalized=%s methodCount=%zu status=%u code=%u"),
             url.c_str(), normalizedUrl.c_str(), routeIt->second.methods.size(), status, code));
@@ -120,7 +120,7 @@ Core::hresult RDKAppManagersImplementation::Request(const uint32_t flags, const 
         return Core::ERROR_NONE;
     }
 
-    RDKAppManagersServiceUtils::EnsureErrorResponse(status, normalizedUrl, responseBody);
+    RDKAMServiceUtils::EnsureErrorResponse(status, normalizedUrl, responseBody);
 
     SYSLOG(Logging::Startup, (_T("Request executed by explicit handler url=%s normalized=%s status=%u code=%u"),
         url.c_str(), normalizedUrl.c_str(), status, code));
@@ -129,8 +129,8 @@ Core::hresult RDKAppManagersImplementation::Request(const uint32_t flags, const 
 }
 
 // Config
-Core::hresult RDKAppManagersImplementation::Config(string& config) {
-    SYSLOG(Logging::Startup, (string(_T("RDKAppManagersImplementation::Config requestt"))));
+Core::hresult RDKAMServiceImplementation::Config(string& config) {
+    SYSLOG(Logging::Startup, (string(_T("RDKAMServiceImplementation::Config requestt"))));
     config = R"JSON(
 {
     "providesSystemStatus" : true,
@@ -186,34 +186,34 @@ Core::hresult RDKAppManagersImplementation::Config(string& config) {
 }
 
 // Listener registrations
-Core::hresult RDKAppManagersImplementation::RegisterWebSocketListener(const string& url, const string& clientId, string& listenerId) {
+Core::hresult RDKAMServiceImplementation::RegisterWebSocketListener(const string& url, const string& clientId, string& listenerId) {
     SYSLOG(Logging::Startup, (_T("RegisterWebSocketListener url=%s clientId=%s"), url.c_str(), clientId.c_str()));
     return Core::ERROR_NONE;
 }
-Core::hresult RDKAppManagersImplementation::UnregisterWebSocketListener(const string& listenerId) {
+Core::hresult RDKAMServiceImplementation::UnregisterWebSocketListener(const string& listenerId) {
     SYSLOG(Logging::Startup, (_T("UnregisterWebSocketListener id=%s"), listenerId.c_str()));
     return Core::ERROR_NONE;
 }
-Core::hresult RDKAppManagersImplementation::RegisterUpdatesListener(const string& url, const string& clientId, string& listenerId) {
+Core::hresult RDKAMServiceImplementation::RegisterUpdatesListener(const string& url, const string& clientId, string& listenerId) {
     SYSLOG(Logging::Startup, (_T("RegisterUpdatesListener url=%s clientId=%s"), url.c_str(), clientId.c_str()));
     return Core::ERROR_NONE;
 }
-Core::hresult RDKAppManagersImplementation::UnregisterUpdatesListener(const string& listenerId) {
+Core::hresult RDKAMServiceImplementation::UnregisterUpdatesListener(const string& listenerId) {
     SYSLOG(Logging::Startup, (_T("UnregisterUpdatesListener id=%s"), listenerId.c_str()));
     return Core::ERROR_NONE;
 }
-Core::hresult RDKAppManagersImplementation::RegisterSysStatusListener(const string& clientId, string& listenerId) {
+Core::hresult RDKAMServiceImplementation::RegisterSysStatusListener(const string& clientId, string& listenerId) {
     SYSLOG(Logging::Startup, (_T("RegisterSysStatusListener clientId=%s"), clientId.c_str()));
     
     return Core::ERROR_NONE;
 }
-Core::hresult RDKAppManagersImplementation::UnregisterSysStatusListener(const string& listenerId)
+Core::hresult RDKAMServiceImplementation::UnregisterSysStatusListener(const string& listenerId)
 {
     SYSLOG(Logging::Startup, (_T("UnregisterSysStatusListener id=%s"), listenerId.c_str()));
     return Core::ERROR_NONE;
 }
 // Listener observer management
-Core::hresult RDKAppManagersImplementation::Register(IApplicationServiceListener::INotification* notification) {
+Core::hresult RDKAMServiceImplementation::Register(IApplicationServiceListener::INotification* notification) {
     ASSERT(nullptr != notification);
     std::unique_lock<std::mutex> lock(mNotificationMutex);
     // Make sure we can't register the same notification callback multiple times
@@ -225,7 +225,7 @@ Core::hresult RDKAppManagersImplementation::Register(IApplicationServiceListener
     }
     return Core::ERROR_NONE;
 }
-Core::hresult RDKAppManagersImplementation::Unregister(IApplicationServiceListener::INotification* notification) {
+Core::hresult RDKAMServiceImplementation::Unregister(IApplicationServiceListener::INotification* notification) {
     Core::hresult status = Core::ERROR_GENERAL;
     ASSERT(nullptr != notification);
     std::unique_lock<std::mutex> lock(mNotificationMutex);
@@ -245,14 +245,14 @@ Core::hresult RDKAppManagersImplementation::Unregister(IApplicationServiceListen
     return status;
 }
 // SystemInfo
-Core::hresult RDKAppManagersImplementation::GetSystemInfo(string& info) {
+Core::hresult RDKAMServiceImplementation::GetSystemInfo(string& info) {
     SYSLOG(Logging::Startup, (string(_T("GetSystemInfo"))));
     info = "{}";
     return Core::ERROR_NONE;
 }
 
 // SystemSettings
-Core::hresult RDKAppManagersImplementation::GetSystemSetting(const string& name, string& value) {
+Core::hresult RDKAMServiceImplementation::GetSystemSetting(const string& name, string& value) {
     SYSLOG(Logging::Startup, (_T("GetSystemSetting name=%s"), name.c_str()));
 
     std::string lowerName(name);
@@ -273,7 +273,7 @@ Core::hresult RDKAppManagersImplementation::GetSystemSetting(const string& name,
 
     return Core::ERROR_NONE;
 }
-Core::hresult RDKAppManagersImplementation::SetSystemSetting(const string& name, const string& value) {
+Core::hresult RDKAMServiceImplementation::SetSystemSetting(const string& name, const string& value) {
     SYSLOG(Logging::Startup, (_T("SetSystemSetting name=%s"), name.c_str()));
 
     std::string lowerName(name);
@@ -293,7 +293,7 @@ Core::hresult RDKAppManagersImplementation::SetSystemSetting(const string& name,
 }
 
 // TestPreferences
-Core::hresult RDKAppManagersImplementation::GetTestPreference(const string& name, string& value) {
+Core::hresult RDKAMServiceImplementation::GetTestPreference(const string& name, string& value) {
     SYSLOG(Logging::Startup, (_T("GetTestPreference name=%s"), name.c_str()));
 
     std::string lowerName(name);
@@ -314,7 +314,7 @@ Core::hresult RDKAppManagersImplementation::GetTestPreference(const string& name
 
     return Core::ERROR_NONE;
 }
-Core::hresult RDKAppManagersImplementation::SetTestPreference(const string& name, const string& value, const uint32_t pin) {
+Core::hresult RDKAMServiceImplementation::SetTestPreference(const string& name, const string& value, const uint32_t pin) {
     SYSLOG(Logging::Startup, (_T("SetTestPreference name=%s"), name.c_str()));
 
     std::string lowerName(name);
@@ -334,35 +334,35 @@ Core::hresult RDKAppManagersImplementation::SetTestPreference(const string& name
     return Core::ERROR_NONE;
 }
 
-Core::hresult RDKAppManagersImplementation::GetDiagContexts(string& contexts) {
+Core::hresult RDKAMServiceImplementation::GetDiagContexts(string& contexts) {
     SYSLOG(Logging::Startup, (string(_T("GetDiagContexts"))));
     return Core::ERROR_NONE;
 }
 
 
-Core::hresult RDKAppManagersImplementation::SetDiagContexts(const string& contexts, uint32_t& updated) {
+Core::hresult RDKAMServiceImplementation::SetDiagContexts(const string& contexts, uint32_t& updated) {
     SYSLOG(Logging::Startup, (_T("SetDiagContexts ctx.len=%zu"), contexts.size()));
     return Core::ERROR_NONE;
 }
 
 
 
-void RDKAppManagersImplementation::NotifyWebSocketUpdate(const std::string& url, const std::string& message) {
+void RDKAMServiceImplementation::NotifyWebSocketUpdate(const std::string& url, const std::string& message) {
     SYSLOG(Logging::Startup, (_T("NotifyWebSocketUpdate url=%s"), url.c_str()));
     
 }
 
-void RDKAppManagersImplementation::NotifyHttpUpdate(const std::string& url, uint32_t code) {
+void RDKAMServiceImplementation::NotifyHttpUpdate(const std::string& url, uint32_t code) {
     SYSLOG(Logging::Startup, (_T("NotifyHttpUpdate url=%s code=%u"), url.c_str(), code));
     
 }
 
-void RDKAppManagersImplementation::NotifySysStatusUpdate(const std::string& status) {
+void RDKAMServiceImplementation::NotifySysStatusUpdate(const std::string& status) {
     SYSLOG(Logging::Startup, (_T("NotifySysStatusUpdate")));
     
 }
 
-uint32_t RDKAppManagersImplementation::Configure(PluginHost::IShell* shell) {
+uint32_t RDKAMServiceImplementation::Configure(PluginHost::IShell* shell) {
         ASSERT(shell != nullptr);
 
         if (m_shell != shell) {
@@ -381,7 +381,7 @@ uint32_t RDKAppManagersImplementation::Configure(PluginHost::IShell* shell) {
 }
 
 // Test/Debug methods - manually trigger events for testing
-Core::hresult RDKAppManagersImplementation::TestTriggerWebSocketEvent(const string& url, const string& message) {
+Core::hresult RDKAMServiceImplementation::TestTriggerWebSocketEvent(const string& url, const string& message) {
     SYSLOG(Logging::Startup, (_T("[TEST] TestTriggerWebSocketEvent url=%s message=%s"), 
            url.c_str(), message.c_str()));
     
@@ -390,7 +390,7 @@ Core::hresult RDKAppManagersImplementation::TestTriggerWebSocketEvent(const stri
     return Core::ERROR_NONE;
 }
 
-Core::hresult RDKAppManagersImplementation::TestTriggerHttpEvent(const string& url, uint32_t code) {
+Core::hresult RDKAMServiceImplementation::TestTriggerHttpEvent(const string& url, uint32_t code) {
     SYSLOG(Logging::Startup, (_T("[TEST] TestTriggerHttpEvent url=%s code=%u"), 
            url.c_str(), code));
     
@@ -399,7 +399,7 @@ Core::hresult RDKAppManagersImplementation::TestTriggerHttpEvent(const string& u
     return Core::ERROR_NONE;
 }
 
-Core::hresult RDKAppManagersImplementation::TestTriggerSysStatusEvent(const string& status) {
+Core::hresult RDKAMServiceImplementation::TestTriggerSysStatusEvent(const string& status) {
     SYSLOG(Logging::Startup, (_T("[TEST] TestTriggerSysStatusEvent status=%s"), 
            status.c_str()));
     

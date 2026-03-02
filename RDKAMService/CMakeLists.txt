@@ -15,14 +15,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(PLUGIN_NAME RDKAppManagers)
+set(PLUGIN_NAME RDKAMService)
 set(MODULE_NAME ${NAMESPACE}${PLUGIN_NAME})
 set(PLUGIN_IMPLEMENTATION ${MODULE_NAME}Implementation)
 
 
-set(PLUGIN_RDKAPPMANAGERS_AUTOSTART "false" CACHE STRING "Automatically start RDKAppManagers plugin")
-set(PLUGIN_RDKAPPMANAGERS_STARTUPORDER "51" CACHE STRING "To configure startup order of RDKAppManagers plugin")
-set(PLUGIN_RDKAPPMANAGERS_MODE "Off" CACHE STRING "Controls if the plugin runs in process, out of process, or remote")
+set(PLUGIN_RDKAMSERVICE_AUTOSTART "false" CACHE STRING "Automatically start RDKAMService plugin")
+set(PLUGIN_RDKAMSERVICE_STARTUPORDER "51" CACHE STRING "To configure startup order of RDKAMService plugin")
+set(PLUGIN_RDKAMSERVICE_MODE "Off" CACHE STRING "Controls if the plugin runs in process, out of process, or remote")
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
@@ -31,7 +31,7 @@ find_package(${NAMESPACE}Definitions REQUIRED)
 find_package(CompileSettingsDebug CONFIG REQUIRED)
 
 add_library(${MODULE_NAME} SHARED
-    RDKAppManagersPlugin.cpp
+    RDKAMServicePlugin.cpp
     Module.cpp
 )
 set_target_properties(${MODULE_NAME} PROPERTIES
@@ -50,9 +50,9 @@ install(TARGETS ${MODULE_NAME}
 
 # Add implementation library 
 add_library(${PLUGIN_IMPLEMENTATION} SHARED
-    RDKAppManagersImplementation.cpp
-    RDKAppManagersService.cpp
-    RDKAppManagersServiceUtils.cpp
+    RDKAMServiceImplementation.cpp
+    RDKAMServiceHandler.cpp
+    RDKAMServiceUtils.cpp
     SystemSettings.cpp
     TestPreferences.cpp
     Module.cpp
@@ -78,7 +78,7 @@ endif()
 install(TARGETS ${PLUGIN_IMPLEMENTATION}
     DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/${STORAGE_DIRECTORY}/plugins)
 
-install(FILES rdkappmanagers_plugin.json
+install(FILES rdkamservice_plugin.json
     DESTINATION /etc)
 
 

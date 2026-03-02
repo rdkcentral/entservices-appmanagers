@@ -2,7 +2,7 @@
 set -euo pipefail
 
 JSONRPC_URL="${JSONRPC_URL:-http://localhost:9998/jsonrpc}"
-PLUGIN_METHOD="org.rdk.RDKAppManagers.1.request"
+PLUGIN_METHOD="org.rdk.RDKAMService.1.request"
 APP_ID="${1:-xumo}"
 FALLBACK_APP_ID="${FALLBACK_APP_ID:-YouTube}"
 DELAY_SEC="${DELAY_SEC:-${COMMAND_DELAY_SEC:-${STATEFUL_DELAY_SEC:-1}}}"
@@ -147,27 +147,27 @@ call_get_loaded_apps 28 "stateful-fallback-after-kill"
 
 # getSystemSetting(name="") -> fetch all system settings
 call "getSystemSetting(all)" \
-'{"jsonrpc":"2.0","id":200,"method":"org.rdk.RDKAppManagers.1.getSystemSetting","params":{"name":""}}'
+'{"jsonrpc":"2.0","id":200,"method":"org.rdk.RDKAMService.1.getSystemSetting","params":{"name":""}}'
 
 # getSystemSetting(name)
 call "getSystemSetting(${SYSTEM_SETTING_KEY})" \
-'{"jsonrpc":"2.0","id":201,"method":"org.rdk.RDKAppManagers.1.getSystemSetting","params":{"name":"'"${SYSTEM_SETTING_KEY}"'"}}'
+'{"jsonrpc":"2.0","id":201,"method":"org.rdk.RDKAMService.1.getSystemSetting","params":{"name":"'"${SYSTEM_SETTING_KEY}"'"}}'
 
 # setSystemSetting(name, value)
 call "setSystemSetting(${SYSTEM_SETTING_KEY}=${SYSTEM_SETTING_VALUE})" \
-'{"jsonrpc":"2.0","id":202,"method":"org.rdk.RDKAppManagers.1.setSystemSetting","params":{"name":"'"${SYSTEM_SETTING_KEY}"'","value":"'"${SYSTEM_SETTING_VALUE}"'"}}'
+'{"jsonrpc":"2.0","id":202,"method":"org.rdk.RDKAMService.1.setSystemSetting","params":{"name":"'"${SYSTEM_SETTING_KEY}"'","value":"'"${SYSTEM_SETTING_VALUE}"'"}}'
 
 # getTestPreference(name="") -> fetch all test preferences
 call "getTestPreference(all)" \
-'{"jsonrpc":"2.0","id":203,"method":"org.rdk.RDKAppManagers.1.getTestPreference","params":{"name":""}}'
+'{"jsonrpc":"2.0","id":203,"method":"org.rdk.RDKAMService.1.getTestPreference","params":{"name":""}}'
 
 # getTestPreference(name)
 call "getTestPreference(${TEST_PREF_KEY})" \
-'{"jsonrpc":"2.0","id":204,"method":"org.rdk.RDKAppManagers.1.getTestPreference","params":{"name":"'"${TEST_PREF_KEY}"'"}}'
+'{"jsonrpc":"2.0","id":204,"method":"org.rdk.RDKAMService.1.getTestPreference","params":{"name":"'"${TEST_PREF_KEY}"'"}}'
 
 # setTestPreference(name, value, pin)
 call "setTestPreference(${TEST_PREF_KEY}=${TEST_PREF_VALUE}, pin=${TEST_PREF_PIN})" \
-'{"jsonrpc":"2.0","id":205,"method":"org.rdk.RDKAppManagers.1.setTestPreference","params":{"name":"'"${TEST_PREF_KEY}"'","value":"'"${TEST_PREF_VALUE}"'","pin":'"${TEST_PREF_PIN}"'}}'
+'{"jsonrpc":"2.0","id":205,"method":"org.rdk.RDKAMService.1.setTestPreference","params":{"name":"'"${TEST_PREF_KEY}"'","value":"'"${TEST_PREF_VALUE}"'","pin":'"${TEST_PREF_PIN}"'}}'
 
 echo
 

@@ -1,5 +1,5 @@
-#include "RDKAppManagersService.h"
-#include "RDKAppManagersServiceUtils.h"
+#include "RDKAMServiceHandler.h"
+#include "RDKAMServiceUtils.h"
 
 #include <ctime>
 #include <json/json.h>
@@ -8,7 +8,7 @@
 namespace WPEFramework {
 namespace Plugin {
 
-RDKAppManagersService::RDKAppManagersService(PluginHost::IShell* shell)
+RDKAMServiceHandler::RDKAMServiceHandler(PluginHost::IShell* shell)
 	: m_shell(nullptr)
 	, m_appManager(nullptr)
 	, m_windowManager(nullptr)
@@ -17,12 +17,12 @@ RDKAppManagersService::RDKAppManagersService(PluginHost::IShell* shell)
 	SetShell(shell);
 }
 
-RDKAppManagersService::~RDKAppManagersService()
+RDKAMServiceHandler::~RDKAMServiceHandler()
 {
 	ReleaseInterfaces();
 }
 
-void RDKAppManagersService::SetShell(PluginHost::IShell* shell)
+void RDKAMServiceHandler::SetShell(PluginHost::IShell* shell)
 {
 	if (m_shell != shell) {
 		ReleaseInterfaces();
@@ -30,7 +30,7 @@ void RDKAppManagersService::SetShell(PluginHost::IShell* shell)
 	m_shell = shell;
 }
 
-void RDKAppManagersService::ReleaseInterfaces()
+void RDKAMServiceHandler::ReleaseInterfaces()
 {
 	if (m_appManager != nullptr) {
 		m_appManager->Release();
@@ -48,7 +48,7 @@ void RDKAppManagersService::ReleaseInterfaces()
 	}
 }
 
-Exchange::IAppManager* RDKAppManagersService::GetAppManager()
+Exchange::IAppManager* RDKAMServiceHandler::GetAppManager()
 {
 	if (m_appManager == nullptr && m_shell != nullptr) {
 		m_appManager = m_shell->QueryInterfaceByCallsign<Exchange::IAppManager>("org.rdk.AppManager");
@@ -57,7 +57,7 @@ Exchange::IAppManager* RDKAppManagersService::GetAppManager()
 	return m_appManager;
 }
 
-Exchange::IRDKWindowManager* RDKAppManagersService::GetWindowManager()
+Exchange::IRDKWindowManager* RDKAMServiceHandler::GetWindowManager()
 {
 	if (m_windowManager == nullptr && m_shell != nullptr) {
 		m_windowManager = m_shell->QueryInterfaceByCallsign<Exchange::IRDKWindowManager>("org.rdk.RDKWindowManager");
@@ -66,7 +66,7 @@ Exchange::IRDKWindowManager* RDKAppManagersService::GetWindowManager()
 	return m_windowManager;
 }
 
-Exchange::IStorageManager* RDKAppManagersService::GetStorageManager()
+Exchange::IStorageManager* RDKAMServiceHandler::GetStorageManager()
 {
 	if (m_storageManager == nullptr && m_shell != nullptr) {
 		m_storageManager = m_shell->QueryInterfaceByCallsign<Exchange::IStorageManager>("org.rdk.StorageManager");
@@ -75,7 +75,7 @@ Exchange::IStorageManager* RDKAppManagersService::GetStorageManager()
 	return m_storageManager;
 }
 
-Core::hresult RDKAppManagersService::DispatchMappedRequest(const std::vector<std::string>& methods,
+Core::hresult RDKAMServiceHandler::DispatchMappedRequest(const std::vector<std::string>& methods,
 	const std::map<std::string, std::string>& paramTemplate,
 	const std::map<std::string, std::string>& runtimeParams,
 	uint32_t& code, std::string& responseBody)
@@ -179,25 +179,25 @@ Core::hresult RDKAppManagersService::DispatchMappedRequest(const std::vector<std
 
 	if (!executed) {
 		code = 404;
-		responseBody = RDKAppManagersServiceUtils::BuildErrorResponse("No mapped method executed");
+		responseBody = RDKAMServiceUtils::BuildErrorResponse("No mapped method executed");
 		return Core::ERROR_NOT_SUPPORTED;
 	}
 
 	return status;
 }
 
-Core::hresult RDKAppManagersService::GetInstalledAppsRequest(uint32_t& code, std::string& responseBody)
+Core::hresult RDKAMServiceHandler::GetInstalledAppsRequest(uint32_t& code, std::string& responseBody)
 {
 	code = 500;
 	if (m_shell == nullptr) {
 		code = 503;
-		responseBody = RDKAppManagersServiceUtils::BuildErrorResponse("Service shell is not configured");
+		responseBody = RDKAMServiceUtils::BuildErrorResponse("Service shell is not configured");
 		return Core::ERROR_GENERAL;
 	}
 
 	Exchange::IAppManager* appManager = GetAppManager();
 	if (appManager == nullptr) {
-		responseBody = RDKAppManagersServiceUtils::BuildErrorResponse("org.rdk.AppManager interface unavailable");
+		responseBody = RDKAMServiceUtils::BuildErrorResponse("org.rdk.AppManager interface unavailable");
 		return Core::ERROR_GENERAL;
 	}
 
@@ -208,13 +208,13 @@ Core::hresult RDKAppManagersService::GetInstalledAppsRequest(uint32_t& code, std
 		code = 200;
 		responseBody = apps.empty() ? "{}" : apps;
 	} else {
-		responseBody = RDKAppManagersServiceUtils::BuildErrorResponse("Failed to get installed apps");
+		responseBody = RDKAMServiceUtils::BuildErrorResponse("Failed to get installed apps");
 	}
 
 	return status;
 }
 
-Core::hresult RDKAppManagersService::LaunchAppRequest(const std::string& appId, const std::string& token, const std::string& mode,
+Core::hresult RDKAMServiceHandler::LaunchAppRequest(const std::string& appId, const std::string& token, const std::string& mode,
 													  const std::string& intent, const std::string& launchArgs,
 													  uint32_t& code, std::string& responseBody)
 {
@@ -226,19 +226,19 @@ Core::hresult RDKAppManagersService::LaunchAppRequest(const std::string& appId, 
 
 	if (appId.empty()) {
 		code = 400;
-		responseBody = RDKAppManagersServiceUtils::BuildErrorResponse("Missing appId");
+		responseBody = RDKAMServiceUtils::BuildErrorResponse("Missing appId");
 		return Core::ERROR_INVALID_INPUT_LENGTH;
 	}
 
 	if (m_shell == nullptr) {
 		code = 503;
-		responseBody = RDKAppManagersServiceUtils::BuildErrorResponse("Service shell is not configured");
+		responseBody = RDKAMServiceUtils::BuildErrorResponse("Service shell is not configured");
 		return Core::ERROR_GENERAL;
 	}
 
 	Exchange::IAppManager* appManager = GetAppManager();
 	if (appManager == nullptr) {
-		responseBody = RDKAppManagersServiceUtils::BuildErrorResponse("org.rdk.AppManager interface unavailable");
+		responseBody = RDKAMServiceUtils::BuildErrorResponse("org.rdk.AppManager interface unavailable");
 		return Core::ERROR_GENERAL;
 	}
 
@@ -257,7 +257,7 @@ Core::hresult RDKAppManagersService::LaunchAppRequest(const std::string& appId, 
 			writerBuilder["indentation"] = "";
 			responseBody = Json::writeString(writerBuilder, successResponse);
 		} else {
-			responseBody = RDKAppManagersServiceUtils::BuildErrorResponse(preloadError.empty() ? "Preload failed" : preloadError);
+			responseBody = RDKAMServiceUtils::BuildErrorResponse(preloadError.empty() ? "Preload failed" : preloadError);
 		}
 	} else {
 		std::string resolvedIntent = intent;
@@ -275,31 +275,31 @@ Core::hresult RDKAppManagersService::LaunchAppRequest(const std::string& appId, 
 			writerBuilder["indentation"] = "";
 			responseBody = Json::writeString(writerBuilder, successResponse);
 		} else {
-			responseBody = RDKAppManagersServiceUtils::BuildErrorResponse("Launch failed");
+			responseBody = RDKAMServiceUtils::BuildErrorResponse("Launch failed");
 		}
 	}
 
 	return status;
 }
 
-Core::hresult RDKAppManagersService::CloseAppRequest(const std::string& appId, uint32_t& code, std::string& responseBody)
+Core::hresult RDKAMServiceHandler::CloseAppRequest(const std::string& appId, uint32_t& code, std::string& responseBody)
 {
 	code = 500;
 	if (appId.empty()) {
 		code = 400;
-		responseBody = RDKAppManagersServiceUtils::BuildErrorResponse("Missing appId");
+		responseBody = RDKAMServiceUtils::BuildErrorResponse("Missing appId");
 		return Core::ERROR_INVALID_INPUT_LENGTH;
 	}
 
 	if (m_shell == nullptr) {
 		code = 503;
-		responseBody = RDKAppManagersServiceUtils::BuildErrorResponse("Service shell is not configured");
+		responseBody = RDKAMServiceUtils::BuildErrorResponse("Service shell is not configured");
 		return Core::ERROR_GENERAL;
 	}
 
 	Exchange::IAppManager* appManager = GetAppManager();
 	if (appManager == nullptr) {
-		responseBody = RDKAppManagersServiceUtils::BuildErrorResponse("org.rdk.AppManager interface unavailable");
+		responseBody = RDKAMServiceUtils::BuildErrorResponse("org.rdk.AppManager interface unavailable");
 		return Core::ERROR_GENERAL;
 	}
 
@@ -314,30 +314,30 @@ Core::hresult RDKAppManagersService::CloseAppRequest(const std::string& appId, u
 		writerBuilder["indentation"] = "";
 		responseBody = Json::writeString(writerBuilder, successResponse);
 	} else {
-		responseBody = RDKAppManagersServiceUtils::BuildErrorResponse("Close app failed");
+		responseBody = RDKAMServiceUtils::BuildErrorResponse("Close app failed");
 	}
 
 	return status;
 }
 
-Core::hresult RDKAppManagersService::KillAppRequest(const std::string& appId, uint32_t& code, std::string& responseBody)
+Core::hresult RDKAMServiceHandler::KillAppRequest(const std::string& appId, uint32_t& code, std::string& responseBody)
 {
 	code = 500;
 	if (appId.empty()) {
 		code = 400;
-		responseBody = RDKAppManagersServiceUtils::BuildErrorResponse("Missing appId");
+		responseBody = RDKAMServiceUtils::BuildErrorResponse("Missing appId");
 		return Core::ERROR_INVALID_INPUT_LENGTH;
 	}
 
 	if (m_shell == nullptr) {
 		code = 503;
-		responseBody = RDKAppManagersServiceUtils::BuildErrorResponse("Service shell is not configured");
+		responseBody = RDKAMServiceUtils::BuildErrorResponse("Service shell is not configured");
 		return Core::ERROR_GENERAL;
 	}
 
 	Exchange::IAppManager* appManager = GetAppManager();
 	if (appManager == nullptr) {
-		responseBody = RDKAppManagersServiceUtils::BuildErrorResponse("org.rdk.AppManager interface unavailable");
+		responseBody = RDKAMServiceUtils::BuildErrorResponse("org.rdk.AppManager interface unavailable");
 		return Core::ERROR_GENERAL;
 	}
 
@@ -352,30 +352,30 @@ Core::hresult RDKAppManagersService::KillAppRequest(const std::string& appId, ui
 		writerBuilder["indentation"] = "";
 		responseBody = Json::writeString(writerBuilder, successResponse);
 	} else {
-		responseBody = RDKAppManagersServiceUtils::BuildErrorResponse("Kill app failed");
+		responseBody = RDKAMServiceUtils::BuildErrorResponse("Kill app failed");
 	}
 
 	return status;
 }
 
-Core::hresult RDKAppManagersService::FocusAppRequest(const std::string& client, uint32_t& code, std::string& responseBody)
+Core::hresult RDKAMServiceHandler::FocusAppRequest(const std::string& client, uint32_t& code, std::string& responseBody)
 {
 	code = 500;
 	if (client.empty()) {
 		code = 400;
-		responseBody = RDKAppManagersServiceUtils::BuildErrorResponse("Missing client/appId");
+		responseBody = RDKAMServiceUtils::BuildErrorResponse("Missing client/appId");
 		return Core::ERROR_INVALID_INPUT_LENGTH;
 	}
 
 	if (m_shell == nullptr) {
 		code = 503;
-		responseBody = RDKAppManagersServiceUtils::BuildErrorResponse("Service shell is not configured");
+		responseBody = RDKAMServiceUtils::BuildErrorResponse("Service shell is not configured");
 		return Core::ERROR_GENERAL;
 	}
 
 	Exchange::IRDKWindowManager* windowManager = GetWindowManager();
 	if (windowManager == nullptr) {
-		responseBody = RDKAppManagersServiceUtils::BuildErrorResponse("org.rdk.RDKWindowManager interface unavailable");
+		responseBody = RDKAMServiceUtils::BuildErrorResponse("org.rdk.RDKWindowManager interface unavailable");
 		return Core::ERROR_GENERAL;
 	}
 
@@ -390,24 +390,24 @@ Core::hresult RDKAppManagersService::FocusAppRequest(const std::string& client, 
 		writerBuilder["indentation"] = "";
 		responseBody = Json::writeString(writerBuilder, successResponse);
 	} else {
-		responseBody = RDKAppManagersServiceUtils::BuildErrorResponse("Set focus failed");
+		responseBody = RDKAMServiceUtils::BuildErrorResponse("Set focus failed");
 	}
 
 	return status;
 }
 
-Core::hresult RDKAppManagersService::GetSystemStatsRequest(uint32_t& code, std::string& responseBody)
+Core::hresult RDKAMServiceHandler::GetSystemStatsRequest(uint32_t& code, std::string& responseBody)
 {
 	code = 500;
 	if (m_shell == nullptr) {
 		code = 503;
-		responseBody = RDKAppManagersServiceUtils::BuildErrorResponse("Service shell is not configured");
+		responseBody = RDKAMServiceUtils::BuildErrorResponse("Service shell is not configured");
 		return Core::ERROR_GENERAL;
 	}
 
 	Exchange::IRDKWindowManager* windowManager = GetWindowManager();
 	if (windowManager == nullptr) {
-		responseBody = RDKAppManagersServiceUtils::BuildErrorResponse("org.rdk.RDKWindowManager interface unavailable");
+		responseBody = RDKAMServiceUtils::BuildErrorResponse("org.rdk.RDKWindowManager interface unavailable");
 		return Core::ERROR_GENERAL;
 	}
 
@@ -467,18 +467,18 @@ Core::hresult RDKAppManagersService::GetSystemStatsRequest(uint32_t& code, std::
 	}
 }
 
-Core::hresult RDKAppManagersService::ResetAppDataRequest(const std::string& appId, uint32_t& code, std::string& responseBody)
+Core::hresult RDKAMServiceHandler::ResetAppDataRequest(const std::string& appId, uint32_t& code, std::string& responseBody)
 {
 	code = 500;
 	if (m_shell == nullptr) {
 		code = 503;
-		responseBody = RDKAppManagersServiceUtils::BuildErrorResponse("Service shell is not configured");
+		responseBody = RDKAMServiceUtils::BuildErrorResponse("Service shell is not configured");
 		return Core::ERROR_GENERAL;
 	}
 
 	Exchange::IStorageManager* storageManager = GetStorageManager();
 	if (storageManager == nullptr) {
-		responseBody = RDKAppManagersServiceUtils::BuildErrorResponse("org.rdk.StorageManager interface unavailable");
+		responseBody = RDKAMServiceUtils::BuildErrorResponse("org.rdk.StorageManager interface unavailable");
 		return Core::ERROR_GENERAL;
 	}
 
@@ -512,7 +512,7 @@ Core::hresult RDKAppManagersService::ResetAppDataRequest(const std::string& appI
 	}
 
 	if (status != Core::ERROR_NONE) {
-		responseBody = RDKAppManagersServiceUtils::BuildErrorResponse(errorReason.empty() ? "Reset app data failed" : errorReason);
+		responseBody = RDKAMServiceUtils::BuildErrorResponse(errorReason.empty() ? "Reset app data failed" : errorReason);
 	}
 
 	return status;

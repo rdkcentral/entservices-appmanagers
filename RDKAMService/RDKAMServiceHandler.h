@@ -11,10 +11,10 @@
 namespace WPEFramework {
 namespace Plugin {
 
-class RDKAppManagersService {
+class RDKAMServiceHandler {
 public:
-	explicit RDKAppManagersService(PluginHost::IShell* shell = nullptr);
-	~RDKAppManagersService();
+	explicit RDKAMServiceHandler(PluginHost::IShell* shell = nullptr);
+	~RDKAMServiceHandler();
 
 	void SetShell(PluginHost::IShell* shell);
 

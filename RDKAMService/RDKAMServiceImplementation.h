@@ -6,7 +6,7 @@
 #include <interfaces/IConfiguration.h>
 #include "tracing/Logging.h"
 #include "UtilsLogging.h"
-#include "RDKAppManagersService.h"
+#include "RDKAMServiceHandler.h"
 #include <mutex>
 #include <vector>
 #include <algorithm>
@@ -20,7 +20,7 @@ namespace WPEFramework {
 namespace Plugin {
 
 // One class implements all ApplicationService interfaces
-class RDKAppManagersImplementation
+class RDKAMServiceImplementation
     : public Exchange::IApplicationServiceRequest
     , public Exchange::IApplicationServiceConfig
     , public Exchange::IApplicationServiceListener
@@ -30,13 +30,13 @@ class RDKAppManagersImplementation
     , public Exchange::IApplicationServiceDiagnostics
     , public Exchange::IConfiguration {
 public:
-    RDKAppManagersImplementation(const RDKAppManagersImplementation&) = delete;
-    RDKAppManagersImplementation& operator=(const RDKAppManagersImplementation&) = delete;
+    RDKAMServiceImplementation(const RDKAMServiceImplementation&) = delete;
+    RDKAMServiceImplementation& operator=(const RDKAMServiceImplementation&) = delete;
 
-    RDKAppManagersImplementation();
-    ~RDKAppManagersImplementation() override;
+    RDKAMServiceImplementation();
+    ~RDKAMServiceImplementation() override;
 
-    BEGIN_INTERFACE_MAP(RDKAppManagersImplementation)
+    BEGIN_INTERFACE_MAP(RDKAMServiceImplementation)
         INTERFACE_ENTRY(Exchange::IApplicationServiceRequest)
         INTERFACE_ENTRY(Exchange::IApplicationServiceConfig)
         INTERFACE_ENTRY(Exchange::IApplicationServiceListener)
@@ -115,7 +115,7 @@ private:
     
     // Thunder plugin shell
     PluginHost::IShell* m_shell;
-    std::unique_ptr<RDKAppManagersService> m_service;
+    std::unique_ptr<RDKAMServiceHandler> m_service;
 
 };
 

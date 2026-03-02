@@ -1,4 +1,4 @@
-#include "RDKAppManagersPlugin.h"
+#include "RDKAMServicePlugin.h"
 #include <interfaces/IConfiguration.h>
 
 #define API_VERSION_NUMBER_MAJOR 1
@@ -7,16 +7,16 @@
 
 namespace WPEFramework {
 namespace {
-    static Plugin::Metadata<Plugin::RDKAppManagers> metadata(
+    static Plugin::Metadata<Plugin::RDKAMService> metadata(
         API_VERSION_NUMBER_MAJOR, API_VERSION_NUMBER_MINOR, API_VERSION_NUMBER_PATCH,
         {}, {}, {}
     );
 }
 namespace Plugin {
 
-SERVICE_REGISTRATION(RDKAppManagers, API_VERSION_NUMBER_MAJOR, API_VERSION_NUMBER_MINOR, API_VERSION_NUMBER_PATCH);
+SERVICE_REGISTRATION(RDKAMService, API_VERSION_NUMBER_MAJOR, API_VERSION_NUMBER_MINOR, API_VERSION_NUMBER_PATCH);
 
-RDKAppManagers::RDKAppManagers()
+RDKAMService::RDKAMService()
     : _service(nullptr)
     , _connectionId(0)
     , _request(nullptr)
@@ -27,44 +27,44 @@ RDKAppManagers::RDKAppManagers()
     , _testPrefs(nullptr)
     , _diagnostics(nullptr)
     , _notificationSink(this) {
-    SYSLOG(Logging::Startup, (string(_T("RDKAppManagers Constructor"))));
+    SYSLOG(Logging::Startup, (string(_T("RDKAMService Constructor"))));
 }
 
-RDKAppManagers::~RDKAppManagers() {
-    SYSLOG(Logging::Shutdown, (string(_T("RDKAppManagers Destructor"))));
+RDKAMService::~RDKAMService() {
+    SYSLOG(Logging::Shutdown, (string(_T("RDKAMService Destructor"))));
 }
 
-const string RDKAppManagers::Initialize(PluginHost::IShell* service) {
+const string RDKAMService::Initialize(PluginHost::IShell* service) {
     string message;
 
     ASSERT(service != nullptr);
     ASSERT(_service == nullptr);
     ASSERT(_connectionId == 0);
 
-    SYSLOG(Logging::Startup, (_T("RDKAppManagers::Initialize: PID=%u"), getpid()));
-    SYSLOG(Logging::Startup, (_T("[DEBUG-TRACE-01] RDKAppManagers::Initialize - START")));
+    SYSLOG(Logging::Startup, (_T("RDKAMService::Initialize: PID=%u"), getpid()));
+    SYSLOG(Logging::Startup, (_T("[DEBUG-TRACE-01] RDKAMService::Initialize - START")));
 
     _service = service;
     _service->AddRef();
     _service->Register(&_notificationSink);
 
-    SYSLOG(Logging::Startup, (_T("[DEBUG-TRACE-02] RDKAppManagers - Before Root<IApplicationServiceRequest>")));
+    SYSLOG(Logging::Startup, (_T("[DEBUG-TRACE-02] RDKAMService - Before Root<IApplicationServiceRequest>")));
 
     // Root a single implementation and query other interfaces from it
-    _request = _service->Root<Exchange::IApplicationServiceRequest>(_connectionId, RPC::CommunicationTimeOut, _T("RDKAppManagersImplementation"));
-    SYSLOG(Logging::Startup, (_T("[DEBUG-TRACE-03] RDKAppManagers - After Root<IApplicationServiceRequest>")));
+    _request = _service->Root<Exchange::IApplicationServiceRequest>(_connectionId, RPC::CommunicationTimeOut, _T("RDKAMServiceImplementation"));
+    SYSLOG(Logging::Startup, (_T("[DEBUG-TRACE-03] RDKAMService - After Root<IApplicationServiceRequest>")));
     if (_request != nullptr) {
 
         // Configure the implementation with the shell (starts DBus thread)
-        SYSLOG(Logging::Startup, (_T("[DEBUG-TRACE-03a] RDKAppManagers - Querying IConfiguration interface")));
+        SYSLOG(Logging::Startup, (_T("[DEBUG-TRACE-03a] RDKAMService - Querying IConfiguration interface")));
         auto configConnection = _request->QueryInterface<Exchange::IConfiguration>();
         if (configConnection != nullptr) {
-            SYSLOG(Logging::Startup, (_T("[DEBUG-TRACE-03b] RDKAppManagers - Calling Configure() on IConfiguration")));
+            SYSLOG(Logging::Startup, (_T("[DEBUG-TRACE-03b] RDKAMService - Calling Configure() on IConfiguration")));
             configConnection->Configure(service);
-            SYSLOG(Logging::Startup, (_T("[DEBUG-TRACE-03c] RDKAppManagers - Configure() returned")));
+            SYSLOG(Logging::Startup, (_T("[DEBUG-TRACE-03c] RDKAMService - Configure() returned")));
             configConnection->Release();
         } else {
-            SYSLOG(Logging::Error, (_T("[ERROR] RDKAppManagers - IConfiguration interface is NULL!")));
+            SYSLOG(Logging::Error, (_T("[ERROR] RDKAMService - IConfiguration interface is NULL!")));
         }
         // Optionally allow implementation to initialize with the shell via a custom method if needed
         // Query other interfaces
@@ -97,7 +97,7 @@ const string RDKAppManagers::Initialize(PluginHost::IShell* service) {
             Exchange::JApplicationServiceDiagnostics::Register(*this, _diagnostics);
         }
     } else {
-        message = _T("RDKAppManagers could not be instantiated.");
+        message = _T("RDKAMService could not be instantiated.");
     }
 
     if (!message.empty()) {
@@ -107,10 +107,10 @@ const string RDKAppManagers::Initialize(PluginHost::IShell* service) {
     return message;
 }
 
-void RDKAppManagers::Deinitialize(PluginHost::IShell* service) {
+void RDKAMService::Deinitialize(PluginHost::IShell* service) {
     ASSERT(_service == service);
 
-    SYSLOG(Logging::Shutdown, (string(_T("RDKAppManagers Deinitialize"))));
+    SYSLOG(Logging::Shutdown, (string(_T("RDKAMService Deinitialize"))));
 
     _service->Unregister(&_notificationSink);
 
@@ -151,11 +151,11 @@ void RDKAppManagers::Deinitialize(PluginHost::IShell* service) {
     _service = nullptr;
 }
 
-string RDKAppManagers::Information() const {
+string RDKAMService::Information() const {
     return string();
 }
 
-void RDKAppManagers::Deactivated(RPC::IRemoteConnection* connection) {
+void RDKAMService::Deactivated(RPC::IRemoteConnection* connection) {
     if (connection->Id() == _connectionId) {
         ASSERT(_service != nullptr);
         Core::IWorkerPool::Instance().Submit(PluginHost::IShell::Job::Create(_service, PluginHost::IShell::DEACTIVATED, PluginHost::IShell::FAILURE));

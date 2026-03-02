@@ -1,4 +1,4 @@
-#include "RDKAppManagersServiceUtils.h"
+#include "RDKAMServiceUtils.h"
 
 #include <json/json.h>
 #include <sstream>
@@ -9,7 +9,7 @@
 namespace WPEFramework {
 namespace Plugin {
 
-std::string RDKAppManagersServiceUtils::UrlDecode(const std::string& value)
+std::string RDKAMServiceUtils::UrlDecode(const std::string& value)
 {
     std::string output;
     output.reserve(value.size());
@@ -35,7 +35,7 @@ std::string RDKAppManagersServiceUtils::UrlDecode(const std::string& value)
     return output;
 }
 
-std::map<std::string, std::string> RDKAppManagersServiceUtils::ParseQueryParams(const std::string& query)
+std::map<std::string, std::string> RDKAMServiceUtils::ParseQueryParams(const std::string& query)
 {
     std::map<std::string, std::string> parsed;
 
@@ -95,7 +95,7 @@ std::map<std::string, std::string> RDKAppManagersServiceUtils::ParseQueryParams(
     return parsed;
 }
 
-bool RDKAppManagersServiceUtils::getParamValue(const std::map<std::string, std::string>& params, const std::string& key, std::string& value)
+bool RDKAMServiceUtils::getParamValue(const std::map<std::string, std::string>& params, const std::string& key, std::string& value)
 {
     const auto it = params.find(key);
     if (it != params.end()) {
@@ -106,13 +106,13 @@ bool RDKAppManagersServiceUtils::getParamValue(const std::map<std::string, std::
     return false;
 }
 
-bool RDKAppManagersServiceUtils::getParamValue(const std::string& query, const std::string& key, std::string& value)
+bool RDKAMServiceUtils::getParamValue(const std::string& query, const std::string& key, std::string& value)
 {
     const std::map<std::string, std::string> params = ParseQueryParams(query);
     return getParamValue(params, key, value);
 }
 
-std::string RDKAppManagersServiceUtils::GetJsonStringField(const std::string& json, const std::string& key)
+std::string RDKAMServiceUtils::GetJsonStringField(const std::string& json, const std::string& key)
 {
     if (json.empty()) {
         return "";
@@ -137,7 +137,7 @@ std::string RDKAppManagersServiceUtils::GetJsonStringField(const std::string& js
     return "";
 }
 
-std::string RDKAppManagersServiceUtils::BuildErrorResponse(const std::string& message)
+std::string RDKAMServiceUtils::BuildErrorResponse(const std::string& message)
 {
     Json::Value errorResponse;
     errorResponse["success"] = false;
@@ -148,7 +148,7 @@ std::string RDKAppManagersServiceUtils::BuildErrorResponse(const std::string& me
     return Json::writeString(writerBuilder, errorResponse);
 }
 
-std::pair<std::string, std::string> RDKAppManagersServiceUtils::NormalizeUrlAndExtractQuery(const std::string& url, const std::string& queryParams)
+std::pair<std::string, std::string> RDKAMServiceUtils::NormalizeUrlAndExtractQuery(const std::string& url, const std::string& queryParams)
 {
     std::string normalizedUrl = url;
     std::string queryFromUrl;
@@ -172,7 +172,7 @@ std::pair<std::string, std::string> RDKAppManagersServiceUtils::NormalizeUrlAndE
     return { normalizedUrl, queryParams.empty() ? queryFromUrl : queryParams };
 }
 
-std::map<std::string, RDKAppManagersServiceUtils::RouteEntry> RDKAppManagersServiceUtils::LoadRequestMap()
+std::map<std::string, RDKAMServiceUtils::RouteEntry> RDKAMServiceUtils::LoadRequestMap()
 {
     std::map<std::string, RouteEntry> routes;
 
@@ -242,7 +242,7 @@ std::map<std::string, RDKAppManagersServiceUtils::RouteEntry> RDKAppManagersServ
     return routes;
 }
 
-RDKAppManagersServiceUtils::RequestContext RDKAppManagersServiceUtils::BuildRequestContext(const std::string& normalizedUrl, const std::string& effectiveQueryParams, const std::string& body)
+RDKAMServiceUtils::RequestContext RDKAMServiceUtils::BuildRequestContext(const std::string& normalizedUrl, const std::string& effectiveQueryParams, const std::string& body)
 {
     RequestContext context;
     context.normalizedUrl = normalizedUrl;
@@ -299,7 +299,7 @@ RDKAppManagersServiceUtils::RequestContext RDKAppManagersServiceUtils::BuildRequ
     return context;
 }
 
-void RDKAppManagersServiceUtils::EnsureErrorResponse(const Core::hresult status, const std::string& normalizedUrl, std::string& responseBody)
+void RDKAMServiceUtils::EnsureErrorResponse(const Core::hresult status, const std::string& normalizedUrl, std::string& responseBody)
 {
     if (status != Core::ERROR_NONE && responseBody.empty()) {
         Json::Value errorResponse;
