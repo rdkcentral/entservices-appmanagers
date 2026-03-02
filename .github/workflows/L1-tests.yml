@@ -283,7 +283,7 @@ jobs:
           -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/headers/rdk/iarmmgrs-hal
           -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/headers/ccec/drivers
           -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/headers/network
-          -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework
+          -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests
           -I $GITHUB_WORKSPACE/entservices-appmanagers/helpers
           -I $GITHUB_WORKSPACE/Thunder/Source
           -I $GITHUB_WORKSPACE/Thunder/Source/core
