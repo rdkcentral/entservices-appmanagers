@@ -116,7 +116,7 @@ void RDKAppManagers::Deinitialize(PluginHost::IShell* service) {
 
     // Unregister listener notifications first
     if (_listener != nullptr) {
-        // _listener->Unregister(&_notificationSink);
+        _listener->Unregister(&_notificationSink);
     }
 
 

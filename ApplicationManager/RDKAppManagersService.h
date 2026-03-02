@@ -68,6 +68,7 @@ public:
 		uint32_t& code, std::string& responseBody);
 
 private:
+
 	class AppManagerNotification : public Exchange::IAppManager::INotification {
 	public:
 		explicit AppManagerNotification(RDKAppManagersService& parent)
@@ -126,6 +127,15 @@ private:
 	Exchange::IAppManager* m_appManager;
 	Exchange::IRDKWindowManager* m_windowManager;
 	Core::Sink<AppManagerNotification> m_appManagerNotification;
+
+	void ReleaseInterfaces();
+	Exchange::IAppManager* GetAppManager();
+	Exchange::IRDKWindowManager* GetWindowManager();
+	Exchange::IStorageManager* GetStorageManager();
+
+	PluginHost::IShell* m_shell;
+	Exchange::IStorageManager* m_storageManager;
+
 };
 
 } // namespace Plugin

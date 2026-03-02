@@ -5,21 +5,30 @@ JSONRPC_URL="${JSONRPC_URL:-http://localhost:9998/jsonrpc}"
 PLUGIN_METHOD="org.rdk.RDKAppManagers.1.request"
 APP_ID="${1:-xumo}"
 FALLBACK_APP_ID="${FALLBACK_APP_ID:-YouTube}"
-STATEFUL_DELAY_SEC="${STATEFUL_DELAY_SEC:-3}"
+DELAY_SEC="${DELAY_SEC:-${COMMAND_DELAY_SEC:-${STATEFUL_DELAY_SEC:-1}}}"
 
 SYSTEM_SETTING_KEY="${SYSTEM_SETTING_KEY:-system.acceptcasting}"
 SYSTEM_SETTING_VALUE="${SYSTEM_SETTING_VALUE:-true}"
 TEST_PREF_KEY="${TEST_PREF_KEY:-forceallappslaunchable}"
 TEST_PREF_VALUE="${TEST_PREF_VALUE:-true}"
 TEST_PREF_PIN="${TEST_PREF_PIN:-0}"
+LAST_RESPONSE=""
+LAST_APP_INSTANCE_ID=""
 
 call() {
   local title="$1"
   local payload="$2"
+  local response
   echo
   echo "===== ${title} ====="
-  curl -sS -H "Content-Type: application/json" -X POST -d "$payload" "$JSONRPC_URL"
+  response=$(curl -sS -H "Content-Type: application/json" -X POST -d "$payload" "$JSONRPC_URL")
+  echo "$response"
+  LAST_RESPONSE="$response"
   echo
+  if [[ "${DELAY_SEC}" != "0" ]]; then
+    echo "sleep ${DELAY_SEC}s"
+    sleep "${DELAY_SEC}"
+  fi
 }
 
 json_escape() {
@@ -54,22 +63,43 @@ EOF
   call "${url}" "$payload"
 }
 
+call_get_loaded_apps() {
+  local id="$1"
+  local tag="$2"
+  call "getLoadedApps(${tag})" \
+'{"jsonrpc":"2.0","id":'"${id}"',"method":"org.rdk.AppManager.1.getLoadedApps","params":{}}'
+
+  LAST_APP_INSTANCE_ID=$(printf '%s' "${LAST_RESPONSE}" | sed -n 's/.*"appInstanceId":"\([^"]*\)".*/\1/p' | head -n1)
+  if [[ -n "${LAST_APP_INSTANCE_ID}" ]]; then
+    echo "using appInstanceId for focus: ${LAST_APP_INSTANCE_ID}"
+  else
+    echo "appInstanceId not found, focus will use appId"
+  fi
+}
+
 # ------------------------------
 # Request() endpoint tests
 # ------------------------------
-call_request 1 1 "/as/apps" "{}" ""
+# call_request 1 1 "/as/apps" "{}" ""
+#
+# QP_LAUNCH='{"appId":"'"${APP_ID}"'"}'
+# LAUNCH_BODY='{"mode":"","intent":"{\\"action\\":\\"launch\\",\\"context\\":{\\"source\\":\\"voice\\"}}","launchArgs":""}'
+# call_request 2 2 "/as/apps/action/launch" "$QP_LAUNCH" "$LAUNCH_BODY"
+# call_get_loaded_apps 20 "after-launch"
+#
+# QP_APP='{"appId":"'"${APP_ID}"'"}'
+# call_request 3 2 "/as/apps/action/close" "$QP_APP" ""
+# call_get_loaded_apps 21 "after-close"
+# call_request 4 2 "/as/apps/action/kill" "$QP_APP" ""
+# call_get_loaded_apps 22 "after-kill"
+# call_request 5 2 "/as/apps/action/focus" "$QP_APP" ""
+# call_request 6 2 "/as/apps/action/reset" "$QP_APP" ""
+# call_request 7 2 "/as/apps/action/reset" "{}" ""
+# call_request 8 1 "/as/system/stats" "{}" ""
 
 QP_LAUNCH='{"appId":"'"${APP_ID}"'"}'
 LAUNCH_BODY='{"mode":"","intent":"{\\"action\\":\\"launch\\",\\"context\\":{\\"source\\":\\"voice\\"}}","launchArgs":""}'
-call_request 2 2 "/as/apps/action/launch" "$QP_LAUNCH" "$LAUNCH_BODY"
-
 QP_APP='{"appId":"'"${APP_ID}"'"}'
-call_request 3 2 "/as/apps/action/close" "$QP_APP" ""
-call_request 4 2 "/as/apps/action/kill" "$QP_APP" ""
-call_request 5 2 "/as/apps/action/focus" "$QP_APP" ""
-call_request 6 2 "/as/apps/action/reset" "$QP_APP" ""
-call_request 7 2 "/as/apps/action/reset" "{}" ""
-call_request 8 1 "/as/system/stats" "{}" ""
 
 # ------------------------------
 # Stateful operation checks
@@ -79,11 +109,18 @@ call_request 8 1 "/as/system/stats" "{}" ""
 echo
 echo "===== stateful-sequence(primary:${APP_ID}) ====="
 call_request 9 2 "/as/apps/action/launch" "$QP_LAUNCH" "$LAUNCH_BODY"
-echo "sleep ${STATEFUL_DELAY_SEC}s"
-sleep "${STATEFUL_DELAY_SEC}"
-call_request 10 2 "/as/apps/action/focus" "$QP_APP" ""
+call_get_loaded_apps 23 "stateful-primary-after-launch"
+QP_FOCUS_PRIMARY="$QP_APP"
+if [[ -n "${LAST_APP_INSTANCE_ID}" ]]; then
+  QP_FOCUS_PRIMARY='{"appId":"'"${LAST_APP_INSTANCE_ID}"'"}'
+fi
+echo "sleep ${DELAY_SEC}s"
+sleep "${DELAY_SEC}"
+call_request 10 2 "/as/apps/action/focus" "$QP_FOCUS_PRIMARY" ""
 call_request 11 2 "/as/apps/action/close" "$QP_APP" ""
+call_get_loaded_apps 24 "stateful-primary-after-close"
 call_request 12 2 "/as/apps/action/kill" "$QP_APP" ""
+call_get_loaded_apps 25 "stateful-primary-after-kill"
 
 QP_FALLBACK='{"appId":"'"${FALLBACK_APP_ID}"'"}'
 LAUNCH_BODY_FALLBACK='{"mode":"","intent":"{\\"action\\":\\"launch\\",\\"context\\":{\\"source\\":\\"voice\\"}}","launchArgs":""}'
@@ -91,11 +128,18 @@ LAUNCH_BODY_FALLBACK='{"mode":"","intent":"{\\"action\\":\\"launch\\",\\"context
 echo
 echo "===== stateful-sequence(fallback:${FALLBACK_APP_ID}) ====="
 call_request 13 2 "/as/apps/action/launch" "$QP_FALLBACK" "$LAUNCH_BODY_FALLBACK"
-echo "sleep ${STATEFUL_DELAY_SEC}s"
-sleep "${STATEFUL_DELAY_SEC}"
-call_request 14 2 "/as/apps/action/focus" "$QP_FALLBACK" ""
+call_get_loaded_apps 26 "stateful-fallback-after-launch"
+QP_FOCUS_FALLBACK="$QP_FALLBACK"
+if [[ -n "${LAST_APP_INSTANCE_ID}" ]]; then
+  QP_FOCUS_FALLBACK='{"appId":"'"${LAST_APP_INSTANCE_ID}"'"}'
+fi
+echo "sleep ${DELAY_SEC}s"
+sleep "${DELAY_SEC}"
+call_request 14 2 "/as/apps/action/focus" "$QP_FOCUS_FALLBACK" ""
 call_request 15 2 "/as/apps/action/close" "$QP_FALLBACK" ""
+call_get_loaded_apps 27 "stateful-fallback-after-close"
 call_request 16 2 "/as/apps/action/kill" "$QP_FALLBACK" ""
+call_get_loaded_apps 28 "stateful-fallback-after-kill"
 
 # ------------------------------
 # TestPreferences / SystemSettings interface tests
