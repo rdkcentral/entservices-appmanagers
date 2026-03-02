@@ -364,11 +364,14 @@ void RDKAppManagersImplementation::NotifySysStatusUpdate(const std::string& stat
 
 uint32_t RDKAppManagersImplementation::Configure(PluginHost::IShell* shell) {
         ASSERT(shell != nullptr);
-        if (m_shell != nullptr) {
-                m_shell->Release();
+
+        if (m_shell != shell) {
+                if (m_shell != nullptr) {
+                        m_shell->Release();
+                }
+                m_shell = shell;
+                m_shell->AddRef();
         }
-        m_shell = shell;
-        m_shell->AddRef();
 
         if (m_service != nullptr) {
                 m_service->SetShell(m_shell);
