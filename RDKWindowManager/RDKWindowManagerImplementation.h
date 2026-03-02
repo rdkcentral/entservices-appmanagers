@@ -129,7 +129,7 @@ namespace Plugin {
         Core::hresult CreateDisplay(const string &displayParams) override;
         Core::hresult GetApps(string &appsIds) const override;
         Core::hresult AddKeyIntercept(const string &intercept) override;
-        Core::hresult AddKeyIntercepts(const string &intercepts) override;
+	Core::hresult AddKeyIntercepts(const string &clientId, const string &intercepts) override;
         Core::hresult RemoveKeyIntercept(const string &intercept) override;
         Core::hresult AddKeyListener(const string &keyListeners) override;
         Core::hresult RemoveKeyListener(const string &keyListeners) override;
@@ -161,7 +161,7 @@ namespace Plugin {
                            const bool topmost = false, const bool focus = false, const int32_t ownerId = 0, int32_t groupId=0);
         bool getClients(JsonArray& clients);
         bool addKeyIntercept(const uint32_t& keyCode, const JsonArray& modifiers, const string& client, const bool& focusOnly , const bool& propagate);
-        bool addKeyIntercepts(const JsonArray& intercepts);
+	bool addKeyIntercepts(const string& clientId, const JsonArray& intercepts);
         bool removeKeyIntercept(const uint32_t& keyCode, const JsonArray& modifiers, const string& client);
         bool addKeyListeners(const string& client, const JsonArray& listeners);
         bool removeKeyListeners(const string& client, const JsonArray& listeners);
