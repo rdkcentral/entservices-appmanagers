@@ -11,22 +11,22 @@
 namespace WPEFramework {
 namespace Plugin {
 
-class RDKAppManagersLite
+class RDKAMServiceLite
     : public PluginHost::IPlugin
     , public PluginHost::JSONRPC {
 public:
-    RDKAppManagersLite(const RDKAppManagersLite&)            = delete;
-    RDKAppManagersLite& operator=(const RDKAppManagersLite&) = delete;
+    RDKAMServiceLite(const RDKAMServiceLite&)            = delete;
+    RDKAMServiceLite& operator=(const RDKAMServiceLite&) = delete;
 
-    RDKAppManagersLite();
-    ~RDKAppManagersLite() override;
+    RDKAMServiceLite();
+    ~RDKAMServiceLite() override;
 
 
     const string Initialize(PluginHost::IShell* service) override;
     void         Deinitialize(PluginHost::IShell* service) override;
     string       Information() const override;
 
-    BEGIN_INTERFACE_MAP(RDKAppManagersLite)
+    BEGIN_INTERFACE_MAP(RDKAMServiceLite)
         INTERFACE_ENTRY(PluginHost::IPlugin)
         INTERFACE_ENTRY(PluginHost::IDispatcher)
         INTERFACE_AGGREGATE(Exchange::IApplicationServiceRequest,  _request)
@@ -39,7 +39,7 @@ private:
         : public RPC::IRemoteConnection::INotification
         , public Exchange::IApplicationServiceListener::INotification {
     public:
-        explicit Notification(RDKAppManagersLite* parent)
+        explicit Notification(RDKAMServiceLite* parent)
             : _parent(*parent) {
             ASSERT(parent != nullptr);
         }
@@ -51,10 +51,10 @@ private:
         END_INTERFACE_MAP
 
         void Activated(RPC::IRemoteConnection*) override {
-            LOGINFO("RDKAppManagersLite remote connection Activated");
+            LOGINFO("RDKAMServiceLite remote connection Activated");
         }
         void Deactivated(RPC::IRemoteConnection* connection) override {
-            LOGINFO("RDKAppManagersLite remote connection Deactivated");
+            LOGINFO("RDKAMServiceLite remote connection Deactivated");
             _parent.Deactivated(connection);
         }
 
@@ -64,7 +64,7 @@ private:
         void OnNotifySysStatusUpdate(const string& status) override;
 
     private:
-        RDKAppManagersLite& _parent;
+        RDKAMServiceLite& _parent;
     };
 
     void Deactivated(RPC::IRemoteConnection* connection);

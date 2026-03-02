@@ -1,4 +1,4 @@
-#include "RDKAppManagersLite.h"
+#include "RDKAMServiceLite.h"
 
 #define API_VERSION_NUMBER_MAJOR 1
 #define API_VERSION_NUMBER_MINOR 0
@@ -6,7 +6,7 @@
 
 namespace WPEFramework {
 namespace {
-    static Plugin::Metadata<Plugin::RDKAppManagersLite> metadata(
+    static Plugin::Metadata<Plugin::RDKAMServiceLite> metadata(
         API_VERSION_NUMBER_MAJOR,
         API_VERSION_NUMBER_MINOR,
         API_VERSION_NUMBER_PATCH,
@@ -16,26 +16,26 @@ namespace {
 
 namespace Plugin {
 
-SERVICE_REGISTRATION(RDKAppManagersLite,
+SERVICE_REGISTRATION(RDKAMServiceLite,
     API_VERSION_NUMBER_MAJOR,
     API_VERSION_NUMBER_MINOR,
     API_VERSION_NUMBER_PATCH);
 
-RDKAppManagersLite::RDKAppManagersLite()
+RDKAMServiceLite::RDKAMServiceLite()
     : _service(nullptr)
     , _connectionId(0)
     , _request(nullptr)
     , _config(nullptr)
     , _listener(nullptr)
     , _notificationSink(this) {
-    LOGINFO("RDKAppManagersLite constructor");
+    LOGINFO("RDKAMServiceLite constructor");
 }
 
-RDKAppManagersLite::~RDKAppManagersLite() {
-    LOGINFO("RDKAppManagersLite destructor");
+RDKAMServiceLite::~RDKAMServiceLite() {
+    LOGINFO("RDKAMServiceLite destructor");
 }
 
-const string RDKAppManagersLite::Initialize(PluginHost::IShell* service) {
+const string RDKAMServiceLite::Initialize(PluginHost::IShell* service) {
     string message;
 
     ASSERT(service != nullptr);
@@ -45,13 +45,13 @@ const string RDKAppManagersLite::Initialize(PluginHost::IShell* service) {
     _service->AddRef();
     _service->Register(&_notificationSink);
 
-    LOGINFO("RDKAppManagersLite::Initialize – PID=%u", getpid());
+    LOGINFO("RDKAMServiceLite::Initialize – PID=%u", getpid());
 
     // Instantiate the out-of-process (or in-process) implementation
     _request = _service->Root<Exchange::IApplicationServiceRequest>(
         _connectionId,
         RPC::CommunicationTimeOut,
-        _T("RDKAppManagersLiteImplementation"));
+        _T("RDKAMServiceLiteImplementation"));
 
     if (_request != nullptr) {
         // Query the other two interfaces from the single root object
@@ -68,12 +68,12 @@ const string RDKAppManagersLite::Initialize(PluginHost::IShell* service) {
         if (_config   != nullptr) Exchange::JApplicationServiceConfig::Register(*this, _config);
         if (_listener != nullptr) Exchange::JApplicationServiceListener::Register(*this, _listener);
 
-        LOGINFO("RDKAppManagersLite interfaces acquired - config=%s listener=%s",
+        LOGINFO("RDKAMServiceLite interfaces acquired - config=%s listener=%s",
             _config   != nullptr ? "OK" : "NULL",
             _listener != nullptr ? "OK" : "NULL");
     } else {
-        message = _T("RDKAppManagersLiteImplementation could not be instantiated.");
-        LOGERR("RDKAppManagersLite::Initialize – %s", message.c_str());
+        message = _T("RDKAMServiceLiteImplementation could not be instantiated.");
+        LOGERR("RDKAMServiceLite::Initialize – %s", message.c_str());
     }
 
     if (!message.empty()) {
@@ -83,10 +83,10 @@ const string RDKAppManagersLite::Initialize(PluginHost::IShell* service) {
     return message;
 }
 
-void RDKAppManagersLite::Deinitialize(PluginHost::IShell* service) {
+void RDKAMServiceLite::Deinitialize(PluginHost::IShell* service) {
     ASSERT(_service == service);
 
-    LOGINFO("RDKAppManagersLite::Deinitialize");
+    LOGINFO("RDKAMServiceLite::Deinitialize");
 
     Exchange::JApplicationServiceRequest::Unregister(*this);
     Exchange::JApplicationServiceConfig::Unregister(*this);
@@ -112,11 +112,11 @@ void RDKAppManagersLite::Deinitialize(PluginHost::IShell* service) {
     _connectionId = 0;
 }
 
-string RDKAppManagersLite::Information() const {
+string RDKAMServiceLite::Information() const {
     return string();
 }
 
-void RDKAppManagersLite::Deactivated(RPC::IRemoteConnection* connection) {
+void RDKAMServiceLite::Deactivated(RPC::IRemoteConnection* connection) {
     if (_connectionId == connection->Id()) {
         ASSERT(_service != nullptr);
         Core::IWorkerPool::Instance().Submit(
@@ -127,19 +127,19 @@ void RDKAppManagersLite::Deactivated(RPC::IRemoteConnection* connection) {
 }
 
 // Notification methods – forward events to JSONRPC subscribers
-void RDKAppManagersLite::Notification::OnNotifyWebSocketUpdate(
+void RDKAMServiceLite::Notification::OnNotifyWebSocketUpdate(
     const string& url, const string& message) {
     LOGINFO("OnNotifyWebSocketUpdate url=%s", url.c_str());
     Exchange::JApplicationServiceListener::Event::OnNotifyWebSocketUpdate(_parent, url, message);
 }
 
-void RDKAppManagersLite::Notification::OnNotifyHttpUpdate(
+void RDKAMServiceLite::Notification::OnNotifyHttpUpdate(
     const string& url, const uint32_t code) {
     LOGINFO("OnNotifyHttpUpdate url=%s code=%u", url.c_str(), code);
     Exchange::JApplicationServiceListener::Event::OnNotifyHttpUpdate(_parent, url, code);
 }
 
-void RDKAppManagersLite::Notification::OnNotifySysStatusUpdate(const string& status) {
+void RDKAMServiceLite::Notification::OnNotifySysStatusUpdate(const string& status) {
     LOGINFO("OnNotifySysStatusUpdate status=%s", status.c_str());
     Exchange::JApplicationServiceListener::Event::OnNotifySysStatusUpdate(_parent, status);
 }

@@ -1,4 +1,5 @@
-#include "RDKAppManagersLiteImplementation.h"
+#include "RDKAMServiceLiteImplementation.h"
+#include "RDKAMServiceLiteUtils.h"
 
 #include <fnmatch.h>
 #include <cctype>
@@ -11,100 +12,20 @@ using namespace WPEFramework::Plugin;
 
 // Register the implementation class with Thunder's object factory so that the
 // plugin host can instantiate it out-of-process (or in-process when mode=Local).
-SERVICE_REGISTRATION(RDKAppManagersLiteImplementation, 1, 0, 0);
+SERVICE_REGISTRATION(RDKAMServiceLiteImplementation, 1, 0, 0);
 
 namespace WPEFramework {
 namespace Plugin {
 
-namespace {
+using namespace RDKAMServiceLiteUtils;
 
-std::string EscapeJsonString(const std::string& input) {
-    std::ostringstream escaped;
-    escaped << std::hex;
-
-    for (const unsigned char ch : input) {
-        switch (ch) {
-        case '"': escaped << "\\\""; break;
-        case '\\': escaped << "\\\\"; break;
-        case '\b': escaped << "\\b"; break;
-        case '\f': escaped << "\\f"; break;
-        case '\n': escaped << "\\n"; break;
-        case '\r': escaped << "\\r"; break;
-        case '\t': escaped << "\\t"; break;
-        default:
-            if (ch < 0x20) {
-                escaped << "\\u"
-                        << std::setw(4)
-                        << std::setfill('0')
-                        << static_cast<int>(ch);
-            } else {
-                escaped << static_cast<char>(ch);
-            }
-            break;
-        }
-    }
-
-    return escaped.str();
-}
-
-std::string TrimCopy(const std::string& value) {
-    size_t start = 0;
-    while (start < value.size() && std::isspace(static_cast<unsigned char>(value[start])) != 0) {
-        ++start;
-    }
-
-    size_t end = value.size();
-    while (end > start && std::isspace(static_cast<unsigned char>(value[end - 1])) != 0) {
-        --end;
-    }
-
-    return value.substr(start, end - start);
-}
-
-bool HasMeaningfulInput(const std::string& input) {
-    const std::string trimmed = TrimCopy(input);
-    return !trimmed.empty() && trimmed != "{}";
-}
-
-std::string BuildStubResponse(const std::string& fields,
-                              const std::string* queryParams = nullptr,
-                              const std::string* body = nullptr) {
-    std::ostringstream json;
-    json << "{" << fields;
-
-    bool hasEcho = false;
-    if ((queryParams != nullptr) && HasMeaningfulInput(*queryParams)) {
-        json << ",\"echo\":{\"queryParams\":\"" << EscapeJsonString(*queryParams) << "\"";
-        hasEcho = true;
-    }
-
-    if ((body != nullptr) && HasMeaningfulInput(*body)) {
-        if (!hasEcho) {
-            json << ",\"echo\":{";
-            hasEcho = true;
-        } else {
-            json << ",";
-        }
-        json << "\"body\":\"" << EscapeJsonString(*body) << "\"";
-    }
-
-    if (hasEcho) {
-        json << "}";
-    }
-
-    json << "}";
-    return json.str();
-}
-
-} // namespace
-
-RDKAppManagersLiteImplementation::RDKAppManagersLiteImplementation()
+RDKAMServiceLiteImplementation::RDKAMServiceLiteImplementation()
     : _listenerIdCounter(0) {
-    LOGINFO("RDKAppManagersLiteImplementation created");
+    LOGINFO("RDKAMServiceLiteImplementation created");
 }
 
-RDKAppManagersLiteImplementation::~RDKAppManagersLiteImplementation() {
-    LOGINFO("RDKAppManagersLiteImplementation destroyed");
+RDKAMServiceLiteImplementation::~RDKAMServiceLiteImplementation() {
+    LOGINFO("RDKAMServiceLiteImplementation destroyed");
     std::lock_guard<std::mutex> guard(_lock);
     for (auto* n : _notifications) {
         n->Release();
@@ -112,7 +33,7 @@ RDKAppManagersLiteImplementation::~RDKAppManagersLiteImplementation() {
     _notifications.clear();
 }
 
-Core::hresult RDKAppManagersLiteImplementation::Request(
+Core::hresult RDKAMServiceLiteImplementation::Request(
     const uint32_t flags,
     const string&  url,
     const string&  headers,
@@ -122,7 +43,7 @@ Core::hresult RDKAppManagersLiteImplementation::Request(
     string&        responseHeaders,
     string&        responseBody) {
 
-    LOGINFO("RDKAppManagersLite::Request flags=0x%x url=%s", flags, url.c_str());
+    LOGINFO("RDKAMServiceLite::Request flags=0x%x url=%s", flags, url.c_str());
 
     responseHeaders = "Content-Type: application/json";
 
@@ -215,7 +136,7 @@ Core::hresult RDKAppManagersLiteImplementation::Request(
     // Catch-all – 404
     code         = 404;
     responseBody = std::string(R"({"success":false,"error":"Not Found","url":")") + url + "\"}";    
-    LOGERR("RDKAppManagersLite::Request – no route for url=%s flags=0x%x", url.c_str(), flags);
+    LOGERR("RDKAMServiceLite::Request – no route for url=%s flags=0x%x", url.c_str(), flags);
     return Core::ERROR_NONE;
 }
 
@@ -223,11 +144,11 @@ Core::hresult RDKAppManagersLiteImplementation::Request(
 // IApplicationServiceConfig
 // ===========================================================================
 
-Core::hresult RDKAppManagersLiteImplementation::Config(string& config) {
-    LOGINFO("RDKAppManagersLite::Config");
+Core::hresult RDKAMServiceLiteImplementation::Config(string& config) {
+    LOGINFO("RDKAMServiceLite::Config");
 
     config = R"({
-  "service": "RDKAppManagersLite",
+  "service": "RDKAMServiceLite",
   "version": "1.0.0",
   "endpoints": [
     "POST /as/apps/action/refresh",
@@ -277,17 +198,17 @@ Core::hresult RDKAppManagersLiteImplementation::Config(string& config) {
 // App lifecycle stubs
 // ===========================================================================
 
-Core::hresult RDKAppManagersLiteImplementation::HandleAppsRefresh(
+Core::hresult RDKAMServiceLiteImplementation::HandleAppsRefresh(
     uint32_t& code, string& responseBody) {
-    LOGINFO("RDKAppManagersLite::HandleAppsRefresh");
+    LOGINFO("RDKAMServiceLite::HandleAppsRefresh");
     code = 200;
     responseBody = R"({"status":"success","message":"[stubbed] refresh completed"})";
     return Core::ERROR_NONE;
 }
 
-Core::hresult RDKAppManagersLiteImplementation::HandleAppsSubscriptionLaunch(
+Core::hresult RDKAMServiceLiteImplementation::HandleAppsSubscriptionLaunch(
     const string& body, uint32_t& code, string& responseBody) {
-    LOGINFO("RDKAppManagersLite::HandleAppsSubscriptionLaunch");
+    LOGINFO("RDKAMServiceLite::HandleAppsSubscriptionLaunch");
     code = 200;
     responseBody = BuildStubResponse(
         "\"status\":\"success\",\"message\":\"[stubbed] subscription launch completed\"",
@@ -296,9 +217,9 @@ Core::hresult RDKAppManagersLiteImplementation::HandleAppsSubscriptionLaunch(
     return Core::ERROR_NONE;
 }
 
-Core::hresult RDKAppManagersLiteImplementation::HandleAppsSubscriptionReturn(
+Core::hresult RDKAMServiceLiteImplementation::HandleAppsSubscriptionReturn(
     const string& body, uint32_t& code, string& responseBody) {
-    LOGINFO("RDKAppManagersLite::HandleAppsSubscriptionReturn");
+    LOGINFO("RDKAMServiceLite::HandleAppsSubscriptionReturn");
     code = 200;
     responseBody = BuildStubResponse(
         "\"status\":\"success\",\"message\":\"[stubbed] subscription return completed\"",
@@ -307,9 +228,9 @@ Core::hresult RDKAppManagersLiteImplementation::HandleAppsSubscriptionReturn(
     return Core::ERROR_NONE;
 }
 
-Core::hresult RDKAppManagersLiteImplementation::HandleAppsLaunchRequest(
+Core::hresult RDKAMServiceLiteImplementation::HandleAppsLaunchRequest(
     const string& queryParams, uint32_t& code, string& responseBody) {
-    LOGINFO("RDKAppManagersLite::HandleAppsLaunchRequest");
+    LOGINFO("RDKAMServiceLite::HandleAppsLaunchRequest");
     code = 200;
     responseBody = BuildStubResponse(
         "\"status\":\"success\",\"message\":\"[stubbed] launch request completed\"",
@@ -318,9 +239,9 @@ Core::hresult RDKAppManagersLiteImplementation::HandleAppsLaunchRequest(
     return Core::ERROR_NONE;
 }
 
-Core::hresult RDKAppManagersLiteImplementation::HandleAppsInactivePriority(
+Core::hresult RDKAMServiceLiteImplementation::HandleAppsInactivePriority(
     bool isPost, const string& body, uint32_t& code, string& responseBody) {
-    LOGINFO("RDKAppManagersLite::HandleAppsInactivePriority isPost=%d", (int)isPost);
+    LOGINFO("RDKAMServiceLite::HandleAppsInactivePriority isPost=%d", (int)isPost);
     code = 200;
     if (isPost)
         responseBody = BuildStubResponse(
@@ -332,25 +253,25 @@ Core::hresult RDKAppManagersLiteImplementation::HandleAppsInactivePriority(
     return Core::ERROR_NONE;
 }
 
-Core::hresult RDKAppManagersLiteImplementation::HandleAppsTokens(
+Core::hresult RDKAMServiceLiteImplementation::HandleAppsTokens(
     uint32_t& code, string& responseBody) {
-    LOGINFO("RDKAppManagersLite::HandleAppsTokens");
+    LOGINFO("RDKAMServiceLite::HandleAppsTokens");
     code = 200;
     responseBody = R"({"tokens":[],"message":"[stubbed]"})";
     return Core::ERROR_NONE;
 }
 
-Core::hresult RDKAppManagersLiteImplementation::HandleSystemTakeFocus(
+Core::hresult RDKAMServiceLiteImplementation::HandleSystemTakeFocus(
     uint32_t& code, string& responseBody) {
-    LOGINFO("RDKAppManagersLite::HandleSystemTakeFocus");
+    LOGINFO("RDKAMServiceLite::HandleSystemTakeFocus");
     code = 200;
     responseBody = R"({"status":"success","message":"[stubbed] focus taken"})";
     return Core::ERROR_NONE;
 }
 
-Core::hresult RDKAppManagersLiteImplementation::HandleAppsAnalyticsSubmit(
+Core::hresult RDKAMServiceLiteImplementation::HandleAppsAnalyticsSubmit(
     const string& body, uint32_t& code, string& responseBody) {
-    LOGINFO("RDKAppManagersLite::HandleAppsAnalyticsSubmit");
+    LOGINFO("RDKAMServiceLite::HandleAppsAnalyticsSubmit");
     code = 200;
     responseBody = BuildStubResponse(
         "\"status\":\"success\",\"message\":\"[stubbed] analytics submitted\"",
@@ -359,9 +280,9 @@ Core::hresult RDKAppManagersLiteImplementation::HandleAppsAnalyticsSubmit(
     return Core::ERROR_NONE;
 }
 
-Core::hresult RDKAppManagersLiteImplementation::HandleAppsHeartbeat(
+Core::hresult RDKAMServiceLiteImplementation::HandleAppsHeartbeat(
     const string& body, uint32_t& code, string& responseBody) {
-    LOGINFO("RDKAppManagersLite::HandleAppsHeartbeat");
+    LOGINFO("RDKAMServiceLite::HandleAppsHeartbeat");
     code = 200;
     responseBody = BuildStubResponse(
         "\"status\":\"success\",\"message\":\"[stubbed] heartbeat received\"",
@@ -370,9 +291,9 @@ Core::hresult RDKAppManagersLiteImplementation::HandleAppsHeartbeat(
     return Core::ERROR_NONE;
 }
 
-Core::hresult RDKAppManagersLiteImplementation::HandleAppsEnable(
+Core::hresult RDKAMServiceLiteImplementation::HandleAppsEnable(
     const string& body, uint32_t& code, string& responseBody) {
-    LOGINFO("RDKAppManagersLite::HandleAppsEnable");
+    LOGINFO("RDKAMServiceLite::HandleAppsEnable");
     code = 200;
     responseBody = BuildStubResponse(
         "\"status\":\"success\",\"message\":\"[stubbed] app enabled\"",
@@ -381,9 +302,9 @@ Core::hresult RDKAppManagersLiteImplementation::HandleAppsEnable(
     return Core::ERROR_NONE;
 }
 
-Core::hresult RDKAppManagersLiteImplementation::HandleAppsDisable(
+Core::hresult RDKAMServiceLiteImplementation::HandleAppsDisable(
     const string& body, uint32_t& code, string& responseBody) {
-    LOGINFO("RDKAppManagersLite::HandleAppsDisable");
+    LOGINFO("RDKAMServiceLite::HandleAppsDisable");
     code = 200;
     responseBody = BuildStubResponse(
         "\"status\":\"success\",\"message\":\"[stubbed] app disabled\"",
@@ -392,17 +313,17 @@ Core::hresult RDKAppManagersLiteImplementation::HandleAppsDisable(
     return Core::ERROR_NONE;
 }
 
-Core::hresult RDKAppManagersLiteImplementation::HandleAppsRefreshCert(
+Core::hresult RDKAMServiceLiteImplementation::HandleAppsRefreshCert(
     uint32_t& code, string& responseBody) {
-    LOGINFO("RDKAppManagersLite::HandleAppsRefreshCert");
+    LOGINFO("RDKAMServiceLite::HandleAppsRefreshCert");
     code = 200;
     responseBody = R"({"status":"success","message":"[stubbed] certificate refreshed"})";
     return Core::ERROR_NONE;
 }
 
-Core::hresult RDKAppManagersLiteImplementation::HandleAppsIntent(
+Core::hresult RDKAMServiceLiteImplementation::HandleAppsIntent(
     const string& body, uint32_t& code, string& responseBody) {
-    LOGINFO("RDKAppManagersLite::HandleAppsIntent");
+    LOGINFO("RDKAMServiceLite::HandleAppsIntent");
     code = 200;
     responseBody = BuildStubResponse(
         "\"status\":\"success\",\"message\":\"[stubbed] app intent received\"",
@@ -411,9 +332,9 @@ Core::hresult RDKAppManagersLiteImplementation::HandleAppsIntent(
     return Core::ERROR_NONE;
 }
 
-Core::hresult RDKAppManagersLiteImplementation::HandleAppsLock(
+Core::hresult RDKAMServiceLiteImplementation::HandleAppsLock(
     const string& body, uint32_t& code, string& responseBody) {
-    LOGINFO("RDKAppManagersLite::HandleAppsLock");
+    LOGINFO("RDKAMServiceLite::HandleAppsLock");
     code = 200;
     responseBody = BuildStubResponse(
         "\"success\":false,\"message\":\"[stubbed] PIN control lock\"",
@@ -422,9 +343,9 @@ Core::hresult RDKAppManagersLiteImplementation::HandleAppsLock(
     return Core::ERROR_NONE;
 }
 
-Core::hresult RDKAppManagersLiteImplementation::HandleAppsUnlock(
+Core::hresult RDKAMServiceLiteImplementation::HandleAppsUnlock(
     const string& body, uint32_t& code, string& responseBody) {
-    LOGINFO("RDKAppManagersLite::HandleAppsUnlock");
+    LOGINFO("RDKAMServiceLite::HandleAppsUnlock");
     code = 200;
     responseBody = BuildStubResponse(
         "\"success\":false,\"message\":\"[stubbed] PIN control unlock\"",
@@ -437,17 +358,17 @@ Core::hresult RDKAppManagersLiteImplementation::HandleAppsUnlock(
 // Netflix stubs
 // ===========================================================================
 
-Core::hresult RDKAppManagersLiteImplementation::HandleAppsNetflix(
+Core::hresult RDKAMServiceLiteImplementation::HandleAppsNetflix(
     uint32_t& code, string& responseBody) {
-    LOGINFO("RDKAppManagersLite::HandleAppsNetflix");
+    LOGINFO("RDKAMServiceLite::HandleAppsNetflix");
     code = 200;
     responseBody = R"({"status":"success","message":"[stubbed] Netflix app info"})";
     return Core::ERROR_NONE;
 }
 
-Core::hresult RDKAppManagersLiteImplementation::HandleNetflixUpdateCookie(
+Core::hresult RDKAMServiceLiteImplementation::HandleNetflixUpdateCookie(
     const string& body, uint32_t& code, string& responseBody) {
-    LOGINFO("RDKAppManagersLite::HandleNetflixUpdateCookie");
+    LOGINFO("RDKAMServiceLite::HandleNetflixUpdateCookie");
     code = 200;
     responseBody = BuildStubResponse(
         "\"status\":\"success\",\"message\":\"[stubbed] Netflix cookie updated\"",
@@ -456,9 +377,9 @@ Core::hresult RDKAppManagersLiteImplementation::HandleNetflixUpdateCookie(
     return Core::ERROR_NONE;
 }
 
-Core::hresult RDKAppManagersLiteImplementation::HandleNetflixUpdateToken(
+Core::hresult RDKAMServiceLiteImplementation::HandleNetflixUpdateToken(
     const string& body, uint32_t& code, string& responseBody) {
-    LOGINFO("RDKAppManagersLite::HandleNetflixUpdateToken");
+    LOGINFO("RDKAMServiceLite::HandleNetflixUpdateToken");
     code = 200;
     responseBody = BuildStubResponse(
         "\"status\":\"success\",\"message\":\"[stubbed] Netflix token updated\"",
@@ -467,9 +388,9 @@ Core::hresult RDKAppManagersLiteImplementation::HandleNetflixUpdateToken(
     return Core::ERROR_NONE;
 }
 
-Core::hresult RDKAppManagersLiteImplementation::HandleNetflixRestore(
+Core::hresult RDKAMServiceLiteImplementation::HandleNetflixRestore(
     uint32_t& code, string& responseBody) {
-    LOGINFO("RDKAppManagersLite::HandleNetflixRestore");
+    LOGINFO("RDKAMServiceLite::HandleNetflixRestore");
     code = 200;
     responseBody = R"({"status":"success","message":"[stubbed] Netflix restored"})";
     return Core::ERROR_NONE;
@@ -479,9 +400,9 @@ Core::hresult RDKAppManagersLiteImplementation::HandleNetflixRestore(
 // Secure storage stubs (token-scoped)
 // ===========================================================================
 
-Core::hresult RDKAppManagersLiteImplementation::HandleSecStorageGet(
+Core::hresult RDKAMServiceLiteImplementation::HandleSecStorageGet(
     const string& queryParams, uint32_t& code, string& responseBody) {
-    LOGINFO("RDKAppManagersLite::HandleSecStorageGet params=%s", queryParams.c_str());
+    LOGINFO("RDKAMServiceLite::HandleSecStorageGet params=%s", queryParams.c_str());
     // TODO: forward to Thunder SecureStorage plugin using scope/key/token from queryParams
     code = 200;
     responseBody = BuildStubResponse(
@@ -491,9 +412,9 @@ Core::hresult RDKAppManagersLiteImplementation::HandleSecStorageGet(
     return Core::ERROR_NONE;
 }
 
-Core::hresult RDKAppManagersLiteImplementation::HandleSecStorageSet(
+Core::hresult RDKAMServiceLiteImplementation::HandleSecStorageSet(
     const string& queryParams, const string& body, uint32_t& code, string& responseBody) {
-    LOGINFO("RDKAppManagersLite::HandleSecStorageSet params=%s", queryParams.c_str());
+    LOGINFO("RDKAMServiceLite::HandleSecStorageSet params=%s", queryParams.c_str());
     // TODO: forward to Thunder SecureStorage plugin using scope/key/token/ttl from queryParams, value from body
     code = 200;
     responseBody = BuildStubResponse(
@@ -503,9 +424,9 @@ Core::hresult RDKAppManagersLiteImplementation::HandleSecStorageSet(
     return Core::ERROR_NONE;
 }
 
-Core::hresult RDKAppManagersLiteImplementation::HandleSecStorageClear(
+Core::hresult RDKAMServiceLiteImplementation::HandleSecStorageClear(
     const string& queryParams, uint32_t& code, string& responseBody) {
-    LOGINFO("RDKAppManagersLite::HandleSecStorageClear params=%s", queryParams.c_str());
+    LOGINFO("RDKAMServiceLite::HandleSecStorageClear params=%s", queryParams.c_str());
     // TODO: delete key or entire namespace depending on whether key param is present
     code = 200;
     responseBody = BuildStubResponse(
@@ -519,9 +440,9 @@ Core::hresult RDKAppManagersLiteImplementation::HandleSecStorageClear(
 // Secure storage stubs (appId-scoped)
 // ===========================================================================
 
-Core::hresult RDKAppManagersLiteImplementation::HandleSecStorageAppGet(
+Core::hresult RDKAMServiceLiteImplementation::HandleSecStorageAppGet(
     const string& queryParams, uint32_t& code, string& responseBody) {
-    LOGINFO("RDKAppManagersLite::HandleSecStorageAppGet params=%s", queryParams.c_str());
+    LOGINFO("RDKAMServiceLite::HandleSecStorageAppGet params=%s", queryParams.c_str());
     // TODO: forward to Thunder SecureStorage using scope/key/appId from queryParams
     code = 200;
     responseBody = BuildStubResponse(
@@ -531,9 +452,9 @@ Core::hresult RDKAppManagersLiteImplementation::HandleSecStorageAppGet(
     return Core::ERROR_NONE;
 }
 
-Core::hresult RDKAppManagersLiteImplementation::HandleSecStorageAppSet(
+Core::hresult RDKAMServiceLiteImplementation::HandleSecStorageAppSet(
     const string& queryParams, const string& body, uint32_t& code, string& responseBody) {
-    LOGINFO("RDKAppManagersLite::HandleSecStorageAppSet params=%s", queryParams.c_str());
+    LOGINFO("RDKAMServiceLite::HandleSecStorageAppSet params=%s", queryParams.c_str());
     // TODO: forward to Thunder SecureStorage using scope/key/appId/ttl from queryParams, value from body
     code = 200;
     responseBody = BuildStubResponse(
@@ -543,9 +464,9 @@ Core::hresult RDKAppManagersLiteImplementation::HandleSecStorageAppSet(
     return Core::ERROR_NONE;
 }
 
-Core::hresult RDKAppManagersLiteImplementation::HandleSecStorageAppClear(
+Core::hresult RDKAMServiceLiteImplementation::HandleSecStorageAppClear(
     const string& queryParams, uint32_t& code, string& responseBody) {
-    LOGINFO("RDKAppManagersLite::HandleSecStorageAppClear params=%s", queryParams.c_str());
+    LOGINFO("RDKAMServiceLite::HandleSecStorageAppClear params=%s", queryParams.c_str());
     // TODO: delete key or entire appId namespace depending on whether key param is present
     code = 200;
     responseBody = BuildStubResponse(
@@ -559,27 +480,27 @@ Core::hresult RDKAppManagersLiteImplementation::HandleSecStorageAppClear(
 // Test / debug stubs
 // ===========================================================================
 
-Core::hresult RDKAppManagersLiteImplementation::HandleTestGetEpgToken(
+Core::hresult RDKAMServiceLiteImplementation::HandleTestGetEpgToken(
     uint32_t& code, string& responseBody) {
-    LOGINFO("RDKAppManagersLite::HandleTestGetEpgToken");
+    LOGINFO("RDKAMServiceLite::HandleTestGetEpgToken");
     // TODO: get home app ID, check it is running, return its token
     code = 200;
     responseBody = R"({"status":"success","token":"test-epg-token-12345","message":"[stubbed]"})";
     return Core::ERROR_NONE;
 }
 
-Core::hresult RDKAppManagersLiteImplementation::HandleTestInactiveApps(
+Core::hresult RDKAMServiceLiteImplementation::HandleTestInactiveApps(
     uint32_t& code, string& responseBody) {
-    LOGINFO("RDKAppManagersLite::HandleTestInactiveApps");
+    LOGINFO("RDKAMServiceLite::HandleTestInactiveApps");
     // TODO: query app manager for suspended/hibernated GUI apps
     code = 200;
     responseBody = R"({"status":"success","inactiveApps":[{"id":"netflix","status":"suspended"},{"id":"youtube","status":"hibernated"}],"message":"[stubbed]"})";
     return Core::ERROR_NONE;
 }
 
-Core::hresult RDKAppManagersLiteImplementation::HandleTestAppLaunchDetails(
+Core::hresult RDKAMServiceLiteImplementation::HandleTestAppLaunchDetails(
     const string& url, uint32_t& code, string& responseBody) {
-    LOGINFO("RDKAppManagersLite::HandleTestAppLaunchDetails url=%s", url.c_str());
+    LOGINFO("RDKAMServiceLite::HandleTestAppLaunchDetails url=%s", url.c_str());
     static const std::regex matcher("^\\/as\\/test\\/apps\\/([a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12})\\/launchdetails$");
     std::smatch match;
     if (!std::regex_match(url, match, matcher) || match.size() != 2) {
@@ -595,9 +516,9 @@ Core::hresult RDKAppManagersLiteImplementation::HandleTestAppLaunchDetails(
     return Core::ERROR_NONE;
 }
 
-Core::hresult RDKAppManagersLiteImplementation::HandleTestNetflixSetEsn(
+Core::hresult RDKAMServiceLiteImplementation::HandleTestNetflixSetEsn(
     const string& body, uint32_t& code, string& responseBody) {
-    LOGINFO("RDKAppManagersLite::HandleTestNetflixSetEsn");
+    LOGINFO("RDKAMServiceLite::HandleTestNetflixSetEsn");
     code = 200;
     responseBody = BuildStubResponse(
         "\"status\":\"success\",\"message\":\"[stubbed] Netflix ESN set\"",
@@ -606,9 +527,9 @@ Core::hresult RDKAppManagersLiteImplementation::HandleTestNetflixSetEsn(
     return Core::ERROR_NONE;
 }
 
-Core::hresult RDKAppManagersLiteImplementation::HandleTestNetflixSetUserLoggedIn(
+Core::hresult RDKAMServiceLiteImplementation::HandleTestNetflixSetUserLoggedIn(
     const string& body, uint32_t& code, string& responseBody) {
-    LOGINFO("RDKAppManagersLite::HandleTestNetflixSetUserLoggedIn");
+    LOGINFO("RDKAMServiceLite::HandleTestNetflixSetUserLoggedIn");
     code = 200;
     responseBody = BuildStubResponse(
         "\"status\":\"success\",\"message\":\"[stubbed] Netflix user logged-in status set\"",
@@ -617,15 +538,15 @@ Core::hresult RDKAppManagersLiteImplementation::HandleTestNetflixSetUserLoggedIn
     return Core::ERROR_NONE;
 }
 
-Core::hresult RDKAppManagersLiteImplementation::HandleTestTriggerSampleEvents(
+Core::hresult RDKAMServiceLiteImplementation::HandleTestTriggerSampleEvents(
     uint32_t& code, string& responseBody) {
-    LOGINFO("RDKAppManagersLite::HandleTestTriggerSampleEvents");
+    LOGINFO("RDKAMServiceLite::HandleTestTriggerSampleEvents");
 
     const string wsUrl     = "/as/test/events/ws";
-    const string wsMessage = R"({"event":"sample-ws-update","source":"RDKAppManagersLite"})";
+    const string wsMessage = R"({"event":"sample-ws-update","source":"RDKAMServiceLite"})";
     const string httpUrl   = "/as/test/events/http";
     const uint32_t httpCode = 200;
-    const string sysStatus = R"({"status":"ok","source":"RDKAppManagersLite"})";
+    const string sysStatus = R"({"status":"ok","source":"RDKAMServiceLite"})";
 
     NotifyWebSocketUpdate(wsUrl, wsMessage);
     NotifyHttpUpdate(httpUrl, httpCode);
@@ -640,9 +561,9 @@ Core::hresult RDKAppManagersLiteImplementation::HandleTestTriggerSampleEvents(
 // WebSocket event helpers
 // ===========================================================================
 
-void RDKAppManagersLiteImplementation::SendIntentEvent(
+void RDKAMServiceLiteImplementation::SendIntentEvent(
     const string& token, const string& appId) {
-    LOGINFO("RDKAppManagersLite::SendIntentEvent token=%s appId=%s",
+    LOGINFO("RDKAMServiceLite::SendIntentEvent token=%s appId=%s",
         token.c_str(), appId.c_str());
     const string wsUrl = "/as/apps/" + token + "/intents";
     const string payload = R"({"appIntent":{"action":"launch","uri":"netflix://watch/80057281","extras":{"contentId":"80057281","source":"voice"}}})";
@@ -650,8 +571,8 @@ void RDKAppManagersLiteImplementation::SendIntentEvent(
     NotifyWebSocketUpdate(wsUrl, payload);
 }
 
-void RDKAppManagersLiteImplementation::SendAppUpdateEvent(const string& uuid) {
-    LOGINFO("RDKAppManagersLite::SendAppUpdateEvent uuid=%s", uuid.c_str());
+void RDKAMServiceLiteImplementation::SendAppUpdateEvent(const string& uuid) {
+    LOGINFO("RDKAMServiceLite::SendAppUpdateEvent uuid=%s", uuid.c_str());
     const string wsUrl = "/as/test/apps/" + uuid + "/updates";
     std::ostringstream payload;
     payload << R"({"appupdates":{"launchdetails":)" << std::time(nullptr) << "}}";
@@ -663,7 +584,7 @@ void RDKAppManagersLiteImplementation::SendAppUpdateEvent(const string& uuid) {
 // IApplicationServiceListener – registration
 // ===========================================================================
 
-Core::hresult RDKAppManagersLiteImplementation::Register(
+Core::hresult RDKAMServiceLiteImplementation::Register(
     Exchange::IApplicationServiceListener::INotification* notification) {
 
     ASSERT(notification != nullptr);
@@ -673,13 +594,13 @@ Core::hresult RDKAppManagersLiteImplementation::Register(
     if (it == _notifications.end()) {
         notification->AddRef();
         _notifications.push_back(notification);
-        LOGINFO("RDKAppManagersLite - notification registered (total=%zu)",
+        LOGINFO("RDKAMServiceLite - notification registered (total=%zu)",
             _notifications.size());
     }
     return Core::ERROR_NONE;
 }
 
-Core::hresult RDKAppManagersLiteImplementation::Unregister(
+Core::hresult RDKAMServiceLiteImplementation::Unregister(
     Exchange::IApplicationServiceListener::INotification* notification) {
 
     ASSERT(notification != nullptr);
@@ -689,7 +610,7 @@ Core::hresult RDKAppManagersLiteImplementation::Unregister(
     if (it != _notifications.end()) {
         (*it)->Release();
         _notifications.erase(it);
-        LOGINFO("RDKAppManagersLite - notification unregistered (total=%zu)",
+        LOGINFO("RDKAMServiceLite - notification unregistered (total=%zu)",
             _notifications.size());
     }
     return Core::ERROR_NONE;
@@ -699,7 +620,7 @@ Core::hresult RDKAppManagersLiteImplementation::Unregister(
 // Listener slot registration helpers
 // ---------------------------------------------------------------------------
 
-Core::hresult RDKAppManagersLiteImplementation::RegisterWebSocketListener(
+Core::hresult RDKAMServiceLiteImplementation::RegisterWebSocketListener(
     const string& url, const string& clientId, string& listenerId) {
 
     std::lock_guard<std::mutex> guard(_lock);
@@ -711,14 +632,14 @@ Core::hresult RDKAppManagersLiteImplementation::RegisterWebSocketListener(
     return Core::ERROR_NONE;
 }
 
-Core::hresult RDKAppManagersLiteImplementation::UnregisterWebSocketListener(
+Core::hresult RDKAMServiceLiteImplementation::UnregisterWebSocketListener(
     const string& listenerId) {
 
     LOGINFO("UnregisterWebSocketListener id=%s", listenerId.c_str());
     return Core::ERROR_NONE;
 }
 
-Core::hresult RDKAppManagersLiteImplementation::RegisterUpdatesListener(
+Core::hresult RDKAMServiceLiteImplementation::RegisterUpdatesListener(
     const string& url, const string& clientId, string& listenerId) {
 
     std::lock_guard<std::mutex> guard(_lock);
@@ -730,14 +651,14 @@ Core::hresult RDKAppManagersLiteImplementation::RegisterUpdatesListener(
     return Core::ERROR_NONE;
 }
 
-Core::hresult RDKAppManagersLiteImplementation::UnregisterUpdatesListener(
+Core::hresult RDKAMServiceLiteImplementation::UnregisterUpdatesListener(
     const string& listenerId) {
 
     LOGINFO("UnregisterUpdatesListener id=%s", listenerId.c_str());
     return Core::ERROR_NONE;
 }
 
-Core::hresult RDKAppManagersLiteImplementation::RegisterSysStatusListener(
+Core::hresult RDKAMServiceLiteImplementation::RegisterSysStatusListener(
     const string& clientId, string& listenerId) {
 
     std::lock_guard<std::mutex> guard(_lock);
@@ -749,7 +670,7 @@ Core::hresult RDKAppManagersLiteImplementation::RegisterSysStatusListener(
     return Core::ERROR_NONE;
 }
 
-Core::hresult RDKAppManagersLiteImplementation::UnregisterSysStatusListener(
+Core::hresult RDKAMServiceLiteImplementation::UnregisterSysStatusListener(
     const string& listenerId) {
 
     LOGINFO("UnregisterSysStatusListener id=%s", listenerId.c_str());
@@ -760,7 +681,7 @@ Core::hresult RDKAppManagersLiteImplementation::UnregisterSysStatusListener(
 // Internal event fan-out helpers
 // ---------------------------------------------------------------------------
 
-void RDKAppManagersLiteImplementation::NotifyWebSocketUpdate(
+void RDKAMServiceLiteImplementation::NotifyWebSocketUpdate(
     const string& url, const string& message) {
 
     std::lock_guard<std::mutex> guard(_lock);
@@ -769,7 +690,7 @@ void RDKAppManagersLiteImplementation::NotifyWebSocketUpdate(
     }
 }
 
-void RDKAppManagersLiteImplementation::NotifyHttpUpdate(
+void RDKAMServiceLiteImplementation::NotifyHttpUpdate(
     const string& url, uint32_t code) {
 
     std::lock_guard<std::mutex> guard(_lock);
@@ -778,7 +699,7 @@ void RDKAppManagersLiteImplementation::NotifyHttpUpdate(
     }
 }
 
-void RDKAppManagersLiteImplementation::NotifySysStatusUpdate(const string& status) {
+void RDKAMServiceLiteImplementation::NotifySysStatusUpdate(const string& status) {
     std::lock_guard<std::mutex> guard(_lock);
     for (auto* n : _notifications) {
         n->OnNotifySysStatusUpdate(status);

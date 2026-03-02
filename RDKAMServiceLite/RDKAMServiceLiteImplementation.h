@@ -13,26 +13,26 @@
 namespace WPEFramework {
 namespace Plugin {
 
-// RDKAppManagersLiteImplementation
+// RDKAMServiceLiteImplementation
 //
-// Single concrete class that satisfies all three RDKAppManagersLite interfaces:
+// Single concrete class that satisfies all three RDKAMServiceLite interfaces:
 //   • IApplicationServiceRequest  – HTTP-style request dispatch
 //   • IApplicationServiceConfig   – static service configuration
 //   • IApplicationServiceListener – listener registration + event fan-out
-class RDKAppManagersLiteImplementation
+class RDKAMServiceLiteImplementation
     : public Exchange::IApplicationServiceRequest
     , public Exchange::IApplicationServiceConfig
     , public Exchange::IApplicationServiceListener {
 
 public:
-    RDKAppManagersLiteImplementation(const RDKAppManagersLiteImplementation&)            = delete;
-    RDKAppManagersLiteImplementation& operator=(const RDKAppManagersLiteImplementation&) = delete;
+    RDKAMServiceLiteImplementation(const RDKAMServiceLiteImplementation&)            = delete;
+    RDKAMServiceLiteImplementation& operator=(const RDKAMServiceLiteImplementation&) = delete;
 
-    RDKAppManagersLiteImplementation();
-    ~RDKAppManagersLiteImplementation() override;
+    RDKAMServiceLiteImplementation();
+    ~RDKAMServiceLiteImplementation() override;
 
     // Thunder COM interface map
-    BEGIN_INTERFACE_MAP(RDKAppManagersLiteImplementation)
+    BEGIN_INTERFACE_MAP(RDKAMServiceLiteImplementation)
         INTERFACE_ENTRY(Exchange::IApplicationServiceRequest)
         INTERFACE_ENTRY(Exchange::IApplicationServiceConfig)
         INTERFACE_ENTRY(Exchange::IApplicationServiceListener)

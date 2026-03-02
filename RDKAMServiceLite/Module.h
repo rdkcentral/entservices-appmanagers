@@ -1,7 +1,7 @@
 #pragma once
 
 #ifndef MODULE_NAME
-#define MODULE_NAME Plugin_RDKAppManagersLite
+#define MODULE_NAME Plugin_RDKAMServiceLite
 #endif
 
 #include <plugins/plugins.h>

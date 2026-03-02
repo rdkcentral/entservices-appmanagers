@@ -15,16 +15,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(PLUGIN_NAME RDKAppManagersLite)
+set(PLUGIN_NAME RDKAMServiceLite)
 set(MODULE_NAME ${NAMESPACE}${PLUGIN_NAME})
 set(PLUGIN_IMPLEMENTATION ${MODULE_NAME}Implementation)
 
-set(PLUGIN_RDKAPPMANAGERS_LITE_MODE "Off" CACHE STRING
+set(PLUGIN_RDKAMSERVICE_LITE_MODE "Off" CACHE STRING
     "Controls if the plugin should run in its own process, in process or remote")
-set(PLUGIN_RDKAPPMANAGERS_LITE_AUTOSTART "false" CACHE STRING
-    "Automatically start RDKAppManagersLite plugin")
-set(PLUGIN_RDKAPPMANAGERS_LITE_STARTUPORDER "55" CACHE STRING
-    "Startup order for RDKAppManagersLite plugin")
+set(PLUGIN_RDKAMSERVICE_LITE_AUTOSTART "false" CACHE STRING
+    "Automatically start RDKAMServiceLite plugin")
+set(PLUGIN_RDKAMSERVICE_LITE_STARTUPORDER "55" CACHE STRING
+    "Startup order for RDKAMServiceLite plugin")
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
@@ -38,7 +38,7 @@ include_directories(../helpers)
 # Plugin (thin proxy) shared library
 # ---------------------------------------------------------------------------
 add_library(${MODULE_NAME} SHARED
-    RDKAppManagersLite.cpp
+    RDKAMServiceLite.cpp
     Module.cpp)
 
 set_target_properties(${MODULE_NAME} PROPERTIES
@@ -58,7 +58,7 @@ install(TARGETS ${MODULE_NAME}
 # Implementation shared library (runs out-of-process in "Off" mode)
 # ---------------------------------------------------------------------------
 add_library(${PLUGIN_IMPLEMENTATION} SHARED
-    RDKAppManagersLiteImplementation.cpp
+    RDKAMServiceLiteImplementation.cpp
     Module.cpp)
 
 set_target_properties(${PLUGIN_IMPLEMENTATION} PROPERTIES
