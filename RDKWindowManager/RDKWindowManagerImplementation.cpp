@@ -880,32 +880,36 @@ Core::hresult RDKWindowManagerImplementation::AddKeyIntercept(const string &inte
     return status;
 }
 
-/* @brief AddKeyIntercepts for the clients.
- * A method to add mutiple key interceptors  to enabling blocking of several keys for mutiple client
- * @intercepts[in] : JSON String format with client/callSign, keyCode, modifiers
+/* @brief AddKeyIntercepts for the client.
+ * A method to add mutiple key interceptors to enable blocking of several keys for a client
+ * @clientId[in] : The client identifier (client ID, callsign, or application name)
+ * @intercepts[in] : JSON String array containing keyCode, modifiers, focusOnly, propagate
  * @return ERROR_NONE if success , ERROR_GENERAL if failure.
  */
-Core::hresult RDKWindowManagerImplementation::AddKeyIntercepts(const string &intercepts)
+Core::hresult RDKWindowManagerImplementation::AddKeyIntercepts(const string &clientId, const string &intercepts)
 {
     Core::hresult status = Core::ERROR_GENERAL;
-    JsonObject parameters;
+    JsonArray keyIntercepts;
 
-    if (intercepts.empty())
+    if (clientId.empty())
+    {
+        LOGERR("clientId is empty");
+    }
+    else if (intercepts.empty())
     {
         LOGERR("intercepts is empty");
     }
     else
     {
-        LOGINFO("intercepts :%s", intercepts.c_str());
-        parameters.FromString(intercepts);
-        if (!parameters.HasLabel("intercepts"))
+        LOGINFO("clientId: %s, intercepts: %s", clientId.c_str(), intercepts.c_str());
+
+        if (!keyIntercepts.FromString(intercepts))
         {
-            LOGERR("please specify intercepts");
+            LOGERR("failed to parse intercepts JSON array");
         }
         else
         {
-            const JsonArray keyIntercepts = parameters["intercepts"].Array();
-            if (false == addKeyIntercepts(keyIntercepts))
+            if (false == addKeyIntercepts(clientId, keyIntercepts))
             {
                 LOGERR("failed to add some key intercepts due to missing parameters or wrong format");
             }
@@ -1656,7 +1660,7 @@ bool RDKWindowManagerImplementation::addKeyIntercept(const uint32_t& keyCode, co
     return ret;
 }
 
-bool RDKWindowManagerImplementation::addKeyIntercepts(const JsonArray& intercepts)
+bool RDKWindowManagerImplementation::addKeyIntercepts(const string& clientId, const JsonArray& intercepts)
 {
     bool ret = false;
     for (unsigned int i=0; i<intercepts.Length(); i++)
@@ -1667,41 +1671,28 @@ bool RDKWindowManagerImplementation::addKeyIntercepts(const JsonArray& intercept
             continue;
         }
         const JsonObject& interceptEntry = intercepts[i].Object();
-        if (!interceptEntry.HasLabel("keys") || !interceptEntry.HasLabel("client"))
+        if (!interceptEntry.HasLabel("keyCode"))
         {
-            LOGWARN("ignoring entry %d due to missing client or keys parameter",i+1);
+            LOGWARN("ignoring entry %d due to missing keyCode parameter",i+1);
             continue;
         }
-        const JsonArray& keys = interceptEntry["keys"].Array();
-        std::string client = interceptEntry["client"].String();
-        for (unsigned int k=0; k<keys.Length(); k++)
+
+        const uint32_t keyCode = interceptEntry["keyCode"].Number();
+        const JsonArray modifiers = interceptEntry.HasLabel("modifiers") ? interceptEntry["modifiers"].Array() : JsonArray();
+
+        bool focusOnly = false;
+        bool propagate = false;
+        if (interceptEntry.HasLabel("focusOnly"))
         {
-            if (!(keys[k].Content() == JsonValue::type::OBJECT))
-            {
-                LOGWARN("ignoring key  %d in entry  %d due to wrong format", k+1, i+1);
-                continue;
-            }
-            const JsonObject& keyEntry = keys[k].Object();
-            if (!keyEntry.HasLabel("keyCode"))
-            {
-                LOGWARN("ignoring key  %d in entry  %d due to missing key code parameter ", k+1, i+1);
-                continue;
-            }
-	    bool focusOnly = false;
-            bool propagate = false;
-            if (interceptEntry.HasLabel("focusOnly"))
-            {
-               focusOnly = interceptEntry["focusOnly"].Boolean();
-            }
-            if (interceptEntry.HasLabel("propagate"))
-            {
-                propagate = interceptEntry["propagate"].Boolean();
-            }
-            const JsonArray modifiers = keyEntry.HasLabel("modifiers") ? keyEntry["modifiers"].Array() : JsonArray();
-            const uint32_t keyCode = keyEntry["keyCode"].Number();
-            LOGINFO("addKeyIntercepts: focusOnly - %d  propagate - %d ",focusOnly, propagate);
-	    ret = addKeyIntercept(keyCode, modifiers, client, focusOnly, propagate);
+            focusOnly = interceptEntry["focusOnly"].Boolean();
         }
+        if (interceptEntry.HasLabel("propagate"))
+        {
+            propagate = interceptEntry["propagate"].Boolean();
+        }
+
+        LOGINFO("addKeyIntercepts: keyCode - %d, focusOnly - %d, propagate - %d", keyCode, focusOnly, propagate);
+        ret = addKeyIntercept(keyCode, modifiers, clientId, focusOnly, propagate);
     }
     return ret;
 }
