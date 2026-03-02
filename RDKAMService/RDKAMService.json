@@ -1,0 +1,21 @@
+{
+    "info": {
+        "class": "RDKAMService",
+        "service": "RDKAMService",
+        "version": "1.0",
+        "locator": "RDKAMService",
+        "description": "Thunder plugin for RDKAMService control."
+    },
+    "interface": [
+        "IPlugin",
+        "IDispatcher",
+        "IApplicationServiceRequest",
+        "IApplicationServiceConfig",
+        "IApplicationServiceListener",
+        "IApplicationServiceSystemInfo",
+        "IApplicationServiceSystemSettings",
+        "IApplicationServiceTestPreferences",
+        "IApplicationServiceDiagnostics"
+    ]
+}
+
