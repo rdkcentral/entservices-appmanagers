@@ -1575,7 +1575,7 @@ bool RDKWindowManagerImplementation::addKeyIntercept(const uint32_t& keyCode, co
 
 bool RDKWindowManagerImplementation::addKeyIntercepts(const string& clientId, const JsonArray& intercepts)
 {
-    bool ret = false;
+    bool ret = true;
     for (unsigned int i=0; i<intercepts.Length(); i++)
     {
         if (!(intercepts[i].Content() == JsonValue::type::OBJECT))
@@ -1605,7 +1605,11 @@ bool RDKWindowManagerImplementation::addKeyIntercepts(const string& clientId, co
         }
 
         LOGINFO("addKeyIntercepts: keyCode - %d, focusOnly - %d, propagate - %d", keyCode, focusOnly, propagate);
-        ret = addKeyIntercept(keyCode, modifiers, clientId, focusOnly, propagate);
+        if (!addKeyIntercept(keyCode, modifiers, clientId, focusOnly, propagate))
+        {
+            LOGERR("failed to add key intercept for keyCode %d", keyCode);
+            ret = false;
+        }
     }
     return ret;
 }
