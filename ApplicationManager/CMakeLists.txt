@@ -53,6 +53,7 @@ add_library(${PLUGIN_IMPLEMENTATION} SHARED
     RDKAppManagersImplementation.cpp
     RDKAppManagersService.cpp
     RDKAppManagersServiceUtils.cpp
+    AppsStatus.cpp
     SystemSettings.cpp
     TestPreferences.cpp
     Module.cpp
