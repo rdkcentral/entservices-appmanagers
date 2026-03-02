@@ -27,11 +27,11 @@ RDKAMService::RDKAMService()
     , _testPrefs(nullptr)
     , _diagnostics(nullptr)
     , _notificationSink(this) {
-    LOGINFO("RDKAMService Constructor");
+    SYSLOG(Logging::Startup, (_T("RDKAMService Constructor")));
 }
 
 RDKAMService::~RDKAMService() {
-    LOGINFO("RDKAMService Destructor");
+    SYSLOG(Logging::Shutdown, (_T("RDKAMService Destructor")));
 }
 
 const string RDKAMService::Initialize(PluginHost::IShell* service) {
@@ -41,30 +41,30 @@ const string RDKAMService::Initialize(PluginHost::IShell* service) {
     ASSERT(_service == nullptr);
     ASSERT(_connectionId == 0);
 
-    LOGINFO("RDKAMService::Initialize: PID=%u", getpid());
-    LOGINFO("[DEBUG-TRACE-01] RDKAMService::Initialize - START");
+    SYSLOG(Logging::Startup, (_T("RDKAMService::Initialize: PID=%u"), getpid())));
+    SYSLOG(Logging::Startup, (_T("[DEBUG-TRACE-01] RDKAMService::Initialize - START")));
 
     _service = service;
     _service->AddRef();
     _service->Register(&_notificationSink);
 
-    LOGINFO("[DEBUG-TRACE-02] RDKAMService - Before Root<IApplicationServiceRequest>");
+    SYSLOG(Logging::Startup, (_T("[DEBUG-TRACE-02] RDKAMService - Before Root<IApplicationServiceRequest>")));
 
     // Root a single implementation and query other interfaces from it
     _request = _service->Root<Exchange::IApplicationServiceRequest>(_connectionId, RPC::CommunicationTimeOut, _T("RDKAMServiceImplementation"));
-    LOGINFO("[DEBUG-TRACE-03] RDKAMService - After Root<IApplicationServiceRequest>");
+    SYSLOG(Logging::Startup, (_T("[DEBUG-TRACE-03] RDKAMService - After Root<IApplicationServiceRequest>")));
     if (_request != nullptr) {
 
         // Configure the implementation with the shell (starts DBus thread)
-        LOGINFO("[DEBUG-TRACE-03a] RDKAMService - Querying IConfiguration interface");
+        SYSLOG(Logging::Startup, (_T("[DEBUG-TRACE-03a] RDKAMService - Querying IConfiguration interface")));
         auto configConnection = _request->QueryInterface<Exchange::IConfiguration>();
         if (configConnection != nullptr) {
-            LOGINFO("[DEBUG-TRACE-03b] RDKAMService - Calling Configure() on IConfiguration");
+            SYSLOG(Logging::Startup, (_T("[DEBUG-TRACE-03b] RDKAMService - Calling Configure() on IConfiguration")));
             configConnection->Configure(service);
-            LOGINFO("[DEBUG-TRACE-03c] RDKAMService - Configure() returned");
+            SYSLOG(Logging::Startup, (_T("[DEBUG-TRACE-03c] RDKAMService - Configure() returned")));
             configConnection->Release();
         } else {
-            LOGERR("[ERROR] RDKAMService - IConfiguration interface is NULL!");
+            SYSLOG(Logging::Error, (_T("[ERROR] RDKAMService - IConfiguration interface is NULL!")));
         }
         // Optionally allow implementation to initialize with the shell via a custom method if needed
         // Query other interfaces
@@ -110,7 +110,7 @@ const string RDKAMService::Initialize(PluginHost::IShell* service) {
 void RDKAMService::Deinitialize(PluginHost::IShell* service) {
     ASSERT(_service == service);
 
-    LOGINFO("RDKAMService Deinitialize");
+    SYSLOG(Logging::Shutdown, (_T("RDKAMService Deinitialize")));
 
     _service->Unregister(&_notificationSink);
 

@@ -192,7 +192,7 @@ std::map<std::string, RDKAMServiceUtils::RouteEntry> RDKAMServiceUtils::LoadRequ
     }
 
     if (!configFile.is_open()) {
-        LOGERR("Request map config not found");
+        SYSLOG(Logging::Error, (_T("Request map config not found")));
         return routes;
     }
 
@@ -200,7 +200,7 @@ std::map<std::string, RDKAMServiceUtils::RouteEntry> RDKAMServiceUtils::LoadRequ
     Json::Value root;
     std::string parseErrors;
     if (!Json::parseFromStream(reader, configFile, &root, &parseErrors) || !root.isArray()) {
-        LOGERR("Failed to parse request map config '%s': %s", configPath.c_str(), parseErrors.c_str());
+        SYSLOG(Logging::Error, (_T("Failed to parse request map config '%s': %s"), configPath.c_str(), parseErrors.c_str()));
         return routes;
     }
 
@@ -238,7 +238,7 @@ std::map<std::string, RDKAMServiceUtils::RouteEntry> RDKAMServiceUtils::LoadRequ
         }
     }
 
-    LOGINFO("Loaded request map from %s, total routes=%zu", configPath.c_str(), routes.size());
+    SYSLOG(Logging::Startup, (_T("Loaded request map from %s, total routes=%zu"), configPath.c_str(), routes.size()));
     return routes;
 }
 
