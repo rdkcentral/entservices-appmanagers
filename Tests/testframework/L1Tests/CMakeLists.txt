@@ -1,8 +1,8 @@
-###
-# If not stated otherwise in this file or this component's LICENSE
-# file the following copyright and licenses apply:
+
+# If not stated otherwise in this file or this component's LICENSE file the
+# following copyright and licenses apply:
 #
-# Copyright 2024 RDK Management
+# Copyright 2020 RDK Management
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-###
 
 cmake_minimum_required(VERSION 3.8)
 project(RdkServicesL1Test)
@@ -37,7 +36,7 @@ set (TEST_LIB
 
 set(ENTSERVICES_REPO_L1TEST_LIB_PATH ${CMAKE_INSTALL_PREFIX}/lib)
 
-set (TEST_INC ${CMAKE_SOURCE_DIR}/helpers)
+set (TEST_INC ../../helpers)
 
 #########################################################################################
 # add_plugin_test_ex: Macro to add plugin tests, it will append to TEST_SRC, TEST_INC,
@@ -103,11 +102,11 @@ macro(add_plugin_test plugin_name test_files)
     string(TOUPPER "${plugin_name}" plugin_option)
     set(plugin_opt "PLUGIN_${plugin_option}")
 
-    add_plugin_test_ex(${plugin_opt} "${test_files}" "${CMAKE_SOURCE_DIR}/${plugin_name}" "${NAMESPACE}${plugin_name}")
+    add_plugin_test_ex(${plugin_opt} "${test_files}" "../../${plugin_name}" "${NAMESPACE}${plugin_name}")
 endmacro()
 
 add_executable(${PROJECT_NAME} ${TEST_SRC})
-
+target_link_libraries(${PROJECT_NAME} "${ENTSERVICES_REPO_L1TEST_LIB_PATH}/libTestMocklib.so")
 
 # PLUGIN_FRAMERATE and  PLUGIN_USERPREFERENCES and PLUGIN_WAREHOUSE and PLUGIN_DEVICEINFO
 if(PLUGIN_DEVICEDIAGNOSTICS OR PLUGIN_USERPREFERENCES OR PLUGIN_WAREHOUSE OR PLUGIN_DEVICEINFO OR PLUGIN_DISPLAYINFO OR PLUGIN_DISPLAYSETTINGS OR PLUGIN_FRAMERATE OR PLUGIN_POWERMANAGER OR PLUGIN_SYSTEMSERVICES)
@@ -125,7 +124,7 @@ endif()
 # PLUGIN_USBDEVICE and PLUGIN_USB_MASS_STORAGE and PLUGIN_OCICONTAINER and PLUGIN_APPMANAGER and PLUGIN_STORAGE_MANAGER
 if(PLUGIN_USBDEVICE OR PLUGIN_USB_MASS_STORAGE OR PLUGIN_OCICONTAINER OR PLUGIN_APPMANAGER OR PLUGIN_STORAGE_MANAGER)
     message(STATUS "linking libWPEFrameworkL1TestsIN to RdkServicesL1Test target")
-    target_link_libraries(${PROJECT_NAME} ${NAMESPACE}L1TestsIN)
+    target_link_libraries(${PROJECT_NAME} "${ENTSERVICES_REPO_L1TEST_LIB_PATH}/libWPEFrameworkL1TestsIN.so")
 endif()
 
 # PLUGIN_FIRMWAREUPDATE and PLUGIN_MAINTENANCEMANAGER and PLUGIN_PACKAGER
@@ -165,17 +164,16 @@ target_link_directories(${PROJECT_NAME} PUBLIC ${CMAKE_INSTALL_PREFIX}/lib ${CMA
 
 target_link_libraries(${PROJECT_NAME} gtest_main gmock gtest ${TEST_LIB})
 
-# Link TestMocklib LAST with --whole-archive to ensure all wrapped functions are available
-target_link_libraries(${PROJECT_NAME} -Wl,--whole-archive TestMocklib -Wl,--no-whole-archive)
-
 target_include_directories(${PROJECT_NAME}
         PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
         $<INSTALL_INTERFACE:include>
-        ${CMAKE_CURRENT_SOURCE_DIR}/../mocks
-        ${CMAKE_CURRENT_SOURCE_DIR}/../mocks/devicesettings
-        ${CMAKE_CURRENT_SOURCE_DIR}/../mocks/thunder
-        ${CMAKE_CURRENT_SOURCE_DIR}/../mocks/libusb
+        ../mocks
+        ../mocks/devicesettings
+        ../mocks/thunder
+        ../mocks/libusb
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../OCIContainer/stubs
+        ../../../Thunder/Source/plugins
         )
 
 install(TARGETS ${PROJECT_NAME} DESTINATION bin)

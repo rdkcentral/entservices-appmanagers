@@ -56,6 +56,7 @@ set(EMPTY_HEADERS
          ${BASEDIR}/systemservices/proc/readproc.h
          ${BASEDIR}/systemservices/secure_wrapper.h
          ${BASEDIR}/libudev.h
+         ${BASEDIR}/systemaudioplatform.h
          ${BASEDIR}/rdk/ds/dsTypes.h
          ${BASEDIR}/rdk/ds/hdmiIn.hpp
          ${BASEDIR}/rdk/ds/compositeIn.hpp

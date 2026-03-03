@@ -17,37 +17,34 @@
 
 cmake_minimum_required(VERSION 3.8)
 
-# When building standalone, need to set up project and find WPEFramework
-if(NOT PROJECT_NAME)
-    project(TestMocks)
-    find_package(WPEFramework REQUIRED)
-endif()
+project(TestMocks)
 
 if(L2_TEST_OOP_RPC)
-    add_library(MockAccessor SHARED
-        MockAccessor.cpp
-    )
+        add_library(MockAccessor SHARED
+            MockAccessor.cpp
+        )
 
-    # Include directories for MockAccessor
-    target_include_directories(MockAccessor PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}
-        ${CMAKE_INSTALL_PREFIX}/include/WPEFramework/core
-        ${CMAKE_CURRENT_SOURCE_DIR}/../..
-        ${CMAKE_CURRENT_SOURCE_DIR}/thunder
-        ${CMAKE_INSTALL_PREFIX}/include
-        ${CMAKE_INSTALL_PREFIX}/include/WPEFramework
-    )
+    # Include directories for the new MockAccessor
+        target_include_directories(MockAccessor PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}
+            ${CMAKE_INSTALL_PREFIX}/include/WPEFramework/core
+            ${CMAKE_SOURCE_DIR}/helpers
+            ${CMAKE_SOURCE_DIR}/Tests/mocks
+            ${CMAKE_SOURCE_DIR}/Tests/mocks/thunder
+            ${CMAKE_INSTALL_PREFIX}/include
+            ${CMAKE_INSTALL_PREFIX}/include/WPEFramework
+        )
 
     # Set target properties for MockAccessor
-    set_target_properties(MockAccessor PROPERTIES
-        CXX_STANDARD 14
-        CXX_STANDARD_REQUIRED YES)
+        set_target_properties(MockAccessor PROPERTIES
+            CXX_STANDARD 14
+            CXX_STANDARD_REQUIRED YES)
     
     # Install MockAccessor
-    install(TARGETS MockAccessor
-        DESTINATION lib)
+        install(TARGETS MockAccessor
+            DESTINATION lib)
     
-    add_subdirectory(MockProxy)
+        add_subdirectory(MockProxy)
 
 else(L2_TEST_OOP_RPC)
 
@@ -100,54 +97,24 @@ else(L2_TEST_OOP_RPC)
         Telemetry.cpp
         readprocMockInterface.cpp
         Udev.cpp
-        libusb.cpp
-        DRMScreenCapture.cpp
-        dsFPD.cpp
-        MfrMock.cpp
-        PowerManagerHalMock.cpp
-        RenderSession.cpp
-        gdialservice.cpp
         )
 
     if(RDK_SERVICES_L1_TEST)
         list(APPEND MODULE_SOURCES
-            MotionDetection.cpp
             devicesettings.cpp
-            HdmiCec.cpp
             thunder/Module.cpp
             Dobby.cpp
-            rdkshell.cpp
-            opkgMock.cpp
             PowerManagerMock.cpp
 			tr181api.cpp
         )
 
     else(RDK_SERVICES_L1_TEST)
         list(APPEND MODULE_SOURCES
-	    devicesettings.cpp
-            btmgr.cpp
-	    tvSettings.cpp
+	        devicesettings.cpp
             tr181api.cpp
-            EssRMgr.cpp
-            ${GENERATED_PROTO_SRC}
-            ${GENERATED_GRPC_SRC}
-            SecureStorageServerMock.cpp
             Dobby.cpp
             Omi.cpp
-	    HdmiCec.cpp
 	    )
-    if(RDK_SERVICE_CPC_L2_TEST)
-        list(APPEND MODULE_SOURCES
-            sec_security.cpp
-            KeyProvisionObject.cpp
-            KeyProvisionResult.cpp
-            KeyProvisionDirectorySerializer.cpp
-            CredentialUtils.cpp
-            KeyProvisionClient.cpp
-            SecApiProvisioner.cpp
-            )
-    endif()
-
     endif()
 
     add_library(${MODULE_NAME} SHARED ${MODULE_SOURCES})
@@ -161,15 +128,6 @@ else(L2_TEST_OOP_RPC)
 
     target_include_directories(${MODULE_NAME} PRIVATE
         ${CMAKE_CURRENT_BINARY_DIR}
-        ${CMAKE_CURRENT_SOURCE_DIR}
-        ${CMAKE_CURRENT_SOURCE_DIR}/thunder
-        ${CMAKE_CURRENT_SOURCE_DIR}/devicesettings
-        ${CMAKE_CURRENT_SOURCE_DIR}/libusb
-        ${CMAKE_CURRENT_SOURCE_DIR}/interfaces
-        ${CMAKE_CURRENT_SOURCE_DIR}/secure_storage
-        ${CMAKE_CURRENT_SOURCE_DIR}/../../../helpers
-        ${CMAKE_INSTALL_PREFIX}/include
-        ${CMAKE_INSTALL_PREFIX}/include/WPEFramework
     )
 
     target_link_libraries(${MODULE_NAME} PRIVATE
@@ -177,10 +135,21 @@ else(L2_TEST_OOP_RPC)
         protobuf
     )
 
+    target_include_directories(${MODULE_NAME} PRIVATE
+            ${CMAKE_SOURCE_DIR}/Tests/mocks
+            ${CMAKE_SOURCE_DIR}/Tests/mocks/thunder
+            ${CMAKE_SOURCE_DIR}/Tests/mocks/devicesettings
+            ${CMAKE_SOURCE_DIR}/Tests/mocks/libusb
+            ${CMAKE_INSTALL_PREFIX}/include
+            ${CMAKE_INSTALL_PREFIX}/include/WPEFramework
+            ${CMAKE_CURRENT_SOURCE_DIR}/../../OCIContainer/stubs
+             ../../../Thunder/Source/plugins
+        )
+
     # Set target properties for TestMocklib
     set_target_properties(${MODULE_NAME} PROPERTIES
-        CXX_STANDARD 14
-        CXX_STANDARD_REQUIRED YES)
+            CXX_STANDARD 14
+            CXX_STANDARD_REQUIRED YES)
 
     # Install TestMocklib
     install(TARGETS ${MODULE_NAME}

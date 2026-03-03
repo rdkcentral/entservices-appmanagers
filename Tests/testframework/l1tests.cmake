@@ -21,7 +21,8 @@ message("Building for unit tests...")
 
 message("Generating empty headers to suppress compiler errors")
 
-set(BASEDIR ${CMAKE_CURRENT_SOURCE_DIR}/headers)
+file(GLOB BASEDIR Tests)
+set(BASEDIR ${BASEDIR}/headers)
 set(EMPTY_HEADERS_DIRS
         ${BASEDIR}
         ${BASEDIR}/audiocapturemgr
@@ -133,6 +134,7 @@ set(EMPTY_HEADERS
         ${BASEDIR}/systemservices/proc/readproc.h
         ${BASEDIR}/systemservices/secure_wrapper.h
         ${BASEDIR}/wpa_ctrl.h
+        ${BASEDIR}/systemaudioplatform.h
         ${BASEDIR}/edid-parser.hpp
         )
 
@@ -151,7 +153,7 @@ include_directories(${EMPTY_HEADERS_DIRS})
 
 message("Adding compiler and linker options for all targets")
 
-set(BASEDIR ${CMAKE_CURRENT_SOURCE_DIR}/mocks)
+file(GLOB BASEDIR Tests/mocks)
 set(FAKE_HEADERS
         ${BASEDIR}/devicesettings.h
         ${BASEDIR}/Iarm.h

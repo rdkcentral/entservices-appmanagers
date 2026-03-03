@@ -56,6 +56,7 @@
 #include "RdkLoggerMilestoneMock.h"
 #include "DRMScreenCaptureMock.h"
 #include "dsFPDMock.h"
+#include "systemaudioplatformmock.h"
 #include "RenderSessionMock.h"
 #include "DobbyMock.h"
 #include "OmiMock.h"
@@ -114,6 +115,7 @@ protected:
         RdkLoggerMilestoneImplMock *p_rdkloggerImplMock = nullptr;
         DRMScreenCaptureApiImplMock *p_drmScreenCaptureApiImplMock = nullptr;
 	dsFPDMock *p_dsFPDMock = nullptr;
+        SystemAudioPlatformAPIMock *p_systemAudioPlatformAPIMock = nullptr;
         RenderSessionMock *p_renderSessionMock = nullptr;
         DobbyProxyMock *p_dobbyProxyMock = nullptr;
         IpcServiceMock    *p_ipcservicemock = nullptr;
