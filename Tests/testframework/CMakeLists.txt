@@ -39,7 +39,7 @@ if(RDK_SERVICES_L1_TEST)
 endif()
 
 if(RDK_SERVICES_L1_TEST)
-    add_subdirectory(Tests/L1Tests)
+    add_subdirectory(../L1Tests ${CMAKE_CURRENT_BINARY_DIR}/L1Tests)
 endif()
 
 if(RDK_SERVICE_L2_TEST)
