@@ -56,7 +56,6 @@ typedef unsigned int drm_magic_t;
 typedef unsigned int drm_handle_t;
 typedef unsigned int drm_drawable_t;
 
-
 #include <libdrm/xf86drmMode.h>
 #include <libdrm/drm_mode.h>
 #include <libdrm/xf86drm.h>

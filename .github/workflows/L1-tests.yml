@@ -288,7 +288,7 @@ jobs:
           -I $GITHUB_WORKSPACE/Thunder/Source
           -I $GITHUB_WORKSPACE/Thunder/Source/core
           -I $GITHUB_WORKSPACE/install/usr/include
-          -I /usr/include/libdrm
+          -I ./usr/include/libdrm
           -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/devicesettings.h
           -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/Iarm.h
           -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/mocks/Rfc.h
