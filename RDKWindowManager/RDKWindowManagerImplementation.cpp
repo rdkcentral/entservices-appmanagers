@@ -881,7 +881,7 @@ Core::hresult RDKWindowManagerImplementation::AddKeyIntercept(const string &inte
 }
 
 /* @brief AddKeyIntercepts for the client.
- * A method to add mutiple key interceptors to enable blocking of several keys for a client
+ * A method to add multiple key interceptors,enabling blocking of several keys for a client
  * @clientId[in] : The client identifier (client ID, callsign, or application name)
  * @intercepts[in] : JSON String array containing keyCode, modifiers, focusOnly, propagate
  * @return ERROR_NONE if success , ERROR_GENERAL if failure.
@@ -1662,7 +1662,8 @@ bool RDKWindowManagerImplementation::addKeyIntercept(const uint32_t& keyCode, co
 
 bool RDKWindowManagerImplementation::addKeyIntercepts(const string& clientId, const JsonArray& intercepts)
 {
-    bool ret = false;
+    bool allSucceeded = true;
+    bool atleastOneProcessed = false;
     for (unsigned int i=0; i<intercepts.Length(); i++)
     {
         if (!(intercepts[i].Content() == JsonValue::type::OBJECT))
@@ -1691,10 +1692,20 @@ bool RDKWindowManagerImplementation::addKeyIntercepts(const string& clientId, co
             propagate = interceptEntry["propagate"].Boolean();
         }
 
-        LOGINFO("addKeyIntercepts: keyCode - %d, focusOnly - %d, propagate - %d", keyCode, focusOnly, propagate);
-        ret = addKeyIntercept(keyCode, modifiers, clientId, focusOnly, propagate);
+        LOGINFO("addKeyIntercepts: keyCode - %u, focusOnly - %d, propagate - %d", keyCode, focusOnly, propagate);
+        bool result = addKeyIntercept(keyCode, modifiers, clientId, focusOnly, propagate);
+        if (result)
+        {
+            atleastOneProcessed = true;
+        }
+        else
+        {
+            LOGWARN("Failed to add key intercept for keyCode: %d", keyCode);
+            allSucceeded = false;
+        }
     }
-    return ret;
+    
+    return atleastOneProcessed && allSucceeded;
 }
 
 bool RDKWindowManagerImplementation::removeKeyIntercept(const uint32_t& keyCode, const JsonArray& modifiers, const string& client)
