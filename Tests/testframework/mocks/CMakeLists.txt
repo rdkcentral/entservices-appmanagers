@@ -17,6 +17,8 @@
 
 cmake_minimum_required(VERSION 3.8)
 
+project(TestMocks)
+
 if(L2_TEST_OOP_RPC)
         add_library(MockAccessor SHARED
             MockAccessor.cpp
