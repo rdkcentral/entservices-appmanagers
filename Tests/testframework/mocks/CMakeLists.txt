@@ -101,7 +101,6 @@ else(L2_TEST_OOP_RPC)
 
     if(RDK_SERVICES_L1_TEST)
         list(APPEND MODULE_SOURCES
-            devicesettings.cpp
             thunder/Module.cpp
             Dobby.cpp
             PowerManagerMock.cpp
@@ -110,8 +109,6 @@ else(L2_TEST_OOP_RPC)
 
     else(RDK_SERVICES_L1_TEST)
         list(APPEND MODULE_SOURCES
-	        devicesettings.cpp
-            tr181api.cpp
             Dobby.cpp
             Omi.cpp
 	    )
