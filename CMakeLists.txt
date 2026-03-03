@@ -84,9 +84,9 @@ if(PLUGIN_TELEMETRYMETRICS)
     add_subdirectory(TelemetryMetrics)
 endif()
 
-if(PLUGIN_RDKAMSERVICE)
+# if(PLUGIN_RDKAMSERVICE)
     add_subdirectory(RDKAMService)
-endif()
+# endif()
 
 if(WPEFRAMEWORK_CREATE_IPKG_TARGETS)
     set(CPACK_GENERATOR "DEB")
