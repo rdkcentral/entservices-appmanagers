@@ -115,8 +115,6 @@ else(L2_TEST_OOP_RPC)
 	    )
     endif()
 
-    endif()
-
     add_library(${MODULE_NAME} SHARED ${MODULE_SOURCES})
 
     add_dependencies(${MODULE_NAME} generate_secure_storage_proto)
