@@ -108,14 +108,6 @@ jobs:
           repository: rdkcentral/entservices-deviceanddisplay
           path: entservices-deviceanddisplay
           ref: develop
-         
-      - name: Checkout entservices-testframework
-        uses: actions/checkout@v3
-        with:
-          repository: rdkcentral/entservices-testframework
-          path: entservices-testframework
-          ref: develop
-          token: ${{ secrets.RDKCM_RDKE }}
 
       - name: Checkout entservices-infra
         uses: actions/checkout@v3
@@ -147,7 +139,7 @@ jobs:
       - name: Apply patches ThunderTools
         run: |  
           cd $GITHUB_WORKSPACE/ThunderTools
-          patch -p1 < $GITHUB_WORKSPACE/entservices-testframework/patches/00010-R4.4-Add-support-for-project-dir.patch
+          patch -p1 < $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/patches/00010-R4.4-Add-support-for-project-dir.patch
           cd -
 
       - name: Build ThunderTools
@@ -167,11 +159,11 @@ jobs:
       - name: Apply patches Thunder
         run: |
           cd $GITHUB_WORKSPACE/Thunder
-          patch -p1 < $GITHUB_WORKSPACE/entservices-testframework/patches/Use_Legact_Alt_Based_On_ThunderTools_R4.4.3.patch
-          patch -p1 < $GITHUB_WORKSPACE/entservices-testframework/patches/error_code_R4_4.patch
-          patch -p1 < $GITHUB_WORKSPACE/entservices-testframework/patches/1004-Add-support-for-project-dir.patch
-          patch -p1 < $GITHUB_WORKSPACE/entservices-testframework/patches/RDKEMW-733-Add-ENTOS-IDS.patch
-          patch -p1 < $GITHUB_WORKSPACE/entservices-testframework/patches/Jsonrpc_dynamic_error_handling.patch
+          patch -p1 < $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/patches/Use_Legact_Alt_Based_On_ThunderTools_R4.4.3.patch
+          patch -p1 < $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/patches/error_code_R4_4.patch
+          patch -p1 < $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/patches/1004-Add-support-for-project-dir.patch
+          patch -p1 < $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/patches/RDKEMW-733-Add-ENTOS-IDS.patch
+          patch -p1 < $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/patches/Jsonrpc_dynamic_error_handling.patch
           cd -
       - name: Build Thunder
         run: >
@@ -202,7 +194,7 @@ jobs:
       - name: Apply patches entservices-apis
         run: |
           cd $GITHUB_WORKSPACE/entservices-apis
-          patch -p1 < $GITHUB_WORKSPACE/entservices-testframework/patches/RDKEMW-1007.patch
+          patch -p1 < $GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/patches/RDKEMW-1007.patch
           cd -    
 
       - name: Build entservices-apis
@@ -221,7 +213,7 @@ jobs:
       - name: Generate external headers
         # Empty headers to mute errors
         run: >
-          cd "$GITHUB_WORKSPACE/entservices-testframework/Tests/"
+          cd "$GITHUB_WORKSPACE/entservices-appmanagers/Tests/testframework/"
           &&
           mkdir -p
           headers
