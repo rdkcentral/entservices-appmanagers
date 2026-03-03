@@ -95,54 +95,24 @@ else(L2_TEST_OOP_RPC)
         Telemetry.cpp
         readprocMockInterface.cpp
         Udev.cpp
-        libusb.cpp
-        DRMScreenCapture.cpp
-        systemaudioplatform.cpp
-        dsFPD.cpp
-        MfrMock.cpp
-        PowerManagerHalMock.cpp
-        RenderSession.cpp
-        gdialservice.cpp
         )
 
     if(RDK_SERVICES_L1_TEST)
         list(APPEND MODULE_SOURCES
-            MotionDetection.cpp
             devicesettings.cpp
-            HdmiCec.cpp
             thunder/Module.cpp
             Dobby.cpp
-            rdkshell.cpp
-            opkgMock.cpp
             PowerManagerMock.cpp
 			tr181api.cpp
         )
 
     else(RDK_SERVICES_L1_TEST)
         list(APPEND MODULE_SOURCES
-	    devicesettings.cpp
-            systemaudioplatform.cpp
-            btmgr.cpp
-	    tvSettings.cpp
+	        devicesettings.cpp
             tr181api.cpp
-            EssRMgr.cpp
-            ${GENERATED_PROTO_SRC}
-            ${GENERATED_GRPC_SRC}
-            SecureStorageServerMock.cpp
             Dobby.cpp
             Omi.cpp
-	    HdmiCec.cpp
 	    )
-    if(RDK_SERVICE_CPC_L2_TEST)
-        list(APPEND MODULE_SOURCES
-            sec_security.cpp
-            KeyProvisionObject.cpp
-            KeyProvisionResult.cpp
-            KeyProvisionDirectorySerializer.cpp
-            CredentialUtils.cpp
-            KeyProvisionClient.cpp
-            SecApiProvisioner.cpp
-            )
     endif()
 
     endif()
