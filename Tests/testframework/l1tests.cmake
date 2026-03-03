@@ -33,9 +33,6 @@ set(EMPTY_HEADERS_DIRS
         ${BASEDIR}/ccec/drivers/iarmbus
         ${BASEDIR}/ccec/host
         ${BASEDIR}/network
-        ${BASEDIR}/Dobby
-        ${BASEDIR}/Dobby/Public/Dobby
-        ${BASEDIR}/Dobby/IpcService
         ${BASEDIR}/websocket
         ${BASEDIR}/rdk/iarmmgrs
         ${BASEDIR}/rdkshell
@@ -105,10 +102,6 @@ set(EMPTY_HEADERS
         ${BASEDIR}/rbus.h
         ${BASEDIR}/telemetry_busmessage_sender.h
         ${BASEDIR}/motionDetector.h
-        ${BASEDIR}/Dobby/DobbyProtocol.h
-        ${BASEDIR}/Dobby/DobbyProxy.h
-        ${BASEDIR}/Dobby/Public/Dobby/IDobbyProxy.h
-        ${BASEDIR}/Dobby/IpcService/IpcFactory.h
         ${BASEDIR}/ccec/FrameListener.hpp
         ${BASEDIR}/ccec/Connection.hpp
         ${BASEDIR}/ccec/Assert.hpp
