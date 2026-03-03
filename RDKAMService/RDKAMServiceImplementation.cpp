@@ -50,11 +50,10 @@ RDKAMServiceImplementation::~RDKAMServiceImplementation() {
 Core::hresult RDKAMServiceImplementation::Request(const uint32_t flags, const string& url, const string& headers,
                                                const string& queryParams, const string& body,
                                                uint32_t& code, string& responseHeaders, string& responseBody) {
-    SYSLOG(Logging::Startup, ("RDKAMServiceImplementation::Request - flags=%u, url=%s"), 
-        flags, url.c_str()));
-    SYSLOG(Logging::Startup, ("  headers='%s'"), headers.c_str()));
-    SYSLOG(Logging::Startup, ("  queryParams='%s' (length=%zu)"), queryParams.c_str(), queryParams.length()));
-    SYSLOG(Logging::Startup, ("  body='%s'"), body.c_str()));
+    SYSLOG(Logging::Startup, (_T("RDKAMServiceImplementation::Request - flags=%u, url=%s"), flags, url.c_str()));
+    SYSLOG(Logging::Startup, (_T("  headers='%s'"), headers.c_str()));
+    SYSLOG(Logging::Startup, (_T("  queryParams='%s' (length=%zu)"), queryParams.c_str(), queryParams.length()));
+    SYSLOG(Logging::Startup, (_T("  body='%s'"), body.c_str()));
 
     const std::pair<std::string, std::string> urlInfo = RDKAMServiceUtils::NormalizeUrlAndExtractQuery(url, queryParams);
     const std::string& normalizedUrl = urlInfo.first;
@@ -96,7 +95,7 @@ Core::hresult RDKAMServiceImplementation::Request(const uint32_t flags, const st
     if (!isMethodAllowedForUrl(normalizedUrl)) {
         code = 405;
         responseBody = RDKAMServiceUtils::BuildErrorResponse("Method not allowed");
-        SYSLOG(Logging::Error, ("Method not allowed for url=%s normalized=%s flags=%u"), url.c_str(), normalizedUrl.c_str(), flags));
+        SYSLOG(Logging::Error, (_T("Method not allowed for url=%s normalized=%s flags=%u"), url.c_str(), normalizedUrl.c_str(), flags));
         return Core::ERROR_NONE;
     }
 
@@ -105,8 +104,7 @@ Core::hresult RDKAMServiceImplementation::Request(const uint32_t flags, const st
         status = m_service->DispatchMappedRequest(routeIt->second.methods, routeIt->second.params, context.runtimeParams, code, responseBody);
         RDKAMServiceUtils::EnsureErrorResponse(status, normalizedUrl, responseBody);
 
-        SYSLOG(Logging::Startup, ("Request executed url=%s normalized=%s methodCount=%zu status=%u code=%u"),
-            url.c_str(), normalizedUrl.c_str(), routeIt->second.methods.size(), status, code));
+        SYSLOG(Logging::Startup, (_T("Request executed url=%s normalized=%s methodCount=%zu status=%u code=%u"), url.c_str(), normalizedUrl.c_str(), routeIt->second.methods.size(), status, code));
 
         return Core::ERROR_NONE;
     }
@@ -132,14 +130,13 @@ Core::hresult RDKAMServiceImplementation::Request(const uint32_t flags, const st
         Json::StreamWriterBuilder writerBuilder;
         writerBuilder["indentation"] = "";
         responseBody = Json::writeString(writerBuilder, errorResponse);
-        SYSLOG(Logging::Error, ("Request mapping not found for url=%s normalized=%s"), url.c_str(), normalizedUrl.c_str()));
+        SYSLOG(Logging::Error, (_T("Request mapping not found for url=%s normalized=%s"), url.c_str(), normalizedUrl.c_str()));
         return Core::ERROR_NONE;
     }
 
     RDKAMServiceUtils::EnsureErrorResponse(status, normalizedUrl, responseBody);
 
-    SYSLOG(Logging::Startup, ("Request executed by explicit handler url=%s normalized=%s status=%u code=%u"),
-        url.c_str(), normalizedUrl.c_str(), status, code));
+    SYSLOG(Logging::Startup, (_T("Request executed by explicit handler url=%s normalized=%s status=%u code=%u"), url.c_str(), normalizedUrl.c_str(), status, code));
 
     return Core::ERROR_NONE;
 }
@@ -203,7 +200,7 @@ Core::hresult RDKAMServiceImplementation::Config(string& config) {
 
 // Listener registrations
 Core::hresult RDKAMServiceImplementation::RegisterWebSocketListener(const string& url, const string& clientId, string& listenerId) {
-    SYSLOG(Logging::Startup, ("RegisterWebSocketListener url=%s clientId=%s"), url.c_str(), clientId.c_str()));
+    SYSLOG(Logging::Startup, (_T("RegisterWebSocketListener url=%s clientId=%s"), url.c_str(), clientId.c_str()));
     std::lock_guard<std::mutex> lock(m_listenerMutex);
 
     // Generate unique listener ID
@@ -217,12 +214,11 @@ Core::hresult RDKAMServiceImplementation::RegisterWebSocketListener(const string
 
     m_wsListeners.push_back(info);
 
-    SYSLOG(Logging::Startup, ("RegisterWebSocketListener success: listenerId=%s, total=%zu"),
-           listenerId.c_str(), m_wsListeners.size()));
+    SYSLOG(Logging::Startup, (_T("RegisterWebSocketListener success: listenerId=%s, total=%zu"), listenerId.c_str(), m_wsListeners.size()));
     return Core::ERROR_NONE;
 }
 Core::hresult RDKAMServiceImplementation::UnregisterWebSocketListener(const string& listenerId) {
-    SYSLOG(Logging::Startup, ("UnregisterWebSocketListener id=%s"), listenerId.c_str()));
+    SYSLOG(Logging::Startup, (_T("UnregisterWebSocketListener id=%s"), listenerId.c_str()));
     std::lock_guard<std::mutex> lock(m_listenerMutex);
 
     auto it = std::find_if(m_wsListeners.begin(), m_wsListeners.end(),
@@ -236,12 +232,11 @@ Core::hresult RDKAMServiceImplementation::UnregisterWebSocketListener(const stri
 
     m_wsListeners.erase(it);
 
-    SYSLOG(Logging::Startup, ("UnregisterWebSocketListener success, remaining=%zu"),
-           m_wsListeners.size()));
+    SYSLOG(Logging::Startup, (_T("UnregisterWebSocketListener success, remaining=%zu"), m_wsListeners.size()));
     return Core::ERROR_NONE;
 }
 Core::hresult RDKAMServiceImplementation::RegisterUpdatesListener(const string& url, const string& clientId, string& listenerId) {
-    SYSLOG(Logging::Startup, ("RegisterUpdatesListener url=%s clientId=%s"), url.c_str(), clientId.c_str()));
+    SYSLOG(Logging::Startup, (_T("RegisterUpdatesListener url=%s clientId=%s"), url.c_str(), clientId.c_str()));
     std::lock_guard<std::mutex> lock(m_listenerMutex);
 
     // Generate unique listener ID
@@ -255,12 +250,11 @@ Core::hresult RDKAMServiceImplementation::RegisterUpdatesListener(const string& 
 
     m_httpListeners.push_back(info);
 
-    SYSLOG(Logging::Startup, ("RegisterUpdatesListener success: listenerId=%s, total=%zu"),
-           listenerId.c_str(), m_httpListeners.size()));
+    SYSLOG(Logging::Startup, (_T("RegisterUpdatesListener success: listenerId=%s, total=%zu"), listenerId.c_str(), m_httpListeners.size()));
     return Core::ERROR_NONE;
 }
 Core::hresult RDKAMServiceImplementation::UnregisterUpdatesListener(const string& listenerId) {
-    SYSLOG(Logging::Startup, ("UnregisterUpdatesListener id=%s"), listenerId.c_str()));
+    SYSLOG(Logging::Startup, (_T("UnregisterUpdatesListener id=%s"), listenerId.c_str()));
     std::lock_guard<std::mutex> lock(m_listenerMutex);
 
     auto it = std::find_if(m_httpListeners.begin(), m_httpListeners.end(),
@@ -274,12 +268,12 @@ Core::hresult RDKAMServiceImplementation::UnregisterUpdatesListener(const string
 
     m_httpListeners.erase(it);
 
-    SYSLOG(Logging::Startup, ("UnregisterUpdatesListener success, remaining=%zu"),
+    SYSLOG(Logging::Startup, (_T("UnregisterUpdatesListener success, remaining=%zu"),
            m_httpListeners.size()));
     return Core::ERROR_NONE;
 }
 Core::hresult RDKAMServiceImplementation::RegisterSysStatusListener(const string& clientId, string& listenerId) {
-    SYSLOG(Logging::Startup, ("RegisterSysStatusListener clientId=%s"), clientId.c_str()));
+    SYSLOG(Logging::Startup, (_T("RegisterSysStatusListener clientId=%s"), clientId.c_str()));
     {
         std::lock_guard<std::mutex> lock(m_listenerMutex);
 
@@ -294,13 +288,12 @@ Core::hresult RDKAMServiceImplementation::RegisterSysStatusListener(const string
 
         m_sysListeners.push_back(info);
 
-        SYSLOG(Logging::Startup, ("RegisterSysStatusListener success: listenerId=%s, total=%zu"),
+        SYSLOG(Logging::Startup, (_T("RegisterSysStatusListener success: listenerId=%s, total=%zu"),
                listenerId.c_str(), m_sysListeners.size()));
 
         // Send cached status to new listener immediately (mirrors D-Bus behavior)
         if (!m_cachedSysStatus.empty()) {
-            SYSLOG(Logging::Startup, ("RegisterSysStatusListener - Sending cached status to new listener: %s"),
-                   m_cachedSysStatus.c_str()));
+            SYSLOG(Logging::Startup, (_T("RegisterSysStatusListener - Sending cached status to new listener: %s"), m_cachedSysStatus.c_str()));
         }
     }
 
@@ -312,7 +305,7 @@ Core::hresult RDKAMServiceImplementation::RegisterSysStatusListener(const string
 }
 Core::hresult RDKAMServiceImplementation::UnregisterSysStatusListener(const string& listenerId)
 {
-    SYSLOG(Logging::Startup, ("UnregisterSysStatusListener id=%s"), listenerId.c_str()));
+    SYSLOG(Logging::Startup, (_T("UnregisterSysStatusListener id=%s"), listenerId.c_str()));
     std::lock_guard<std::mutex> lock(m_listenerMutex);
 
     auto it = std::find_if(m_sysListeners.begin(), m_sysListeners.end(),
@@ -326,8 +319,7 @@ Core::hresult RDKAMServiceImplementation::UnregisterSysStatusListener(const stri
 
     m_sysListeners.erase(it);
 
-    SYSLOG(Logging::Startup, ("UnregisterSysStatusListener success, remaining=%zu"),
-           m_sysListeners.size()));
+    SYSLOG(Logging::Startup, (_T("UnregisterSysStatusListener success, remaining=%zu"), m_sysListeners.size()));
     return Core::ERROR_NONE;
 }
 // Listener observer management
@@ -371,7 +363,7 @@ Core::hresult RDKAMServiceImplementation::GetSystemInfo(string& info) {
 
 // SystemSettings
 Core::hresult RDKAMServiceImplementation::GetSystemSetting(const string& name, string& value) {
-    SYSLOG(Logging::Startup, ("GetSystemSetting name=%s"), name.c_str()));
+    SYSLOG(Logging::Startup, (_T("GetSystemSetting name=%s"), name.c_str()));
 
     std::string lowerName(name);
     std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(),
@@ -392,7 +384,7 @@ Core::hresult RDKAMServiceImplementation::GetSystemSetting(const string& name, s
     return Core::ERROR_NONE;
 }
 Core::hresult RDKAMServiceImplementation::SetSystemSetting(const string& name, const string& value) {
-    SYSLOG(Logging::Startup, ("SetSystemSetting name=%s"), name.c_str()));
+    SYSLOG(Logging::Startup, (_T("SetSystemSetting name=%s"), name.c_str()));
 
     std::string lowerName(name);
     std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(),
@@ -412,7 +404,7 @@ Core::hresult RDKAMServiceImplementation::SetSystemSetting(const string& name, c
 
 // TestPreferences
 Core::hresult RDKAMServiceImplementation::GetTestPreference(const string& name, string& value) {
-    SYSLOG(Logging::Startup, ("GetTestPreference name=%s"), name.c_str()));
+    SYSLOG(Logging::Startup, (_T("GetTestPreference name=%s"), name.c_str()));
 
     std::string lowerName(name);
     std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(),
@@ -433,7 +425,7 @@ Core::hresult RDKAMServiceImplementation::GetTestPreference(const string& name, 
     return Core::ERROR_NONE;
 }
 Core::hresult RDKAMServiceImplementation::SetTestPreference(const string& name, const string& value, const uint32_t pin) {
-    SYSLOG(Logging::Startup, ("SetTestPreference name=%s"), name.c_str()));
+    SYSLOG(Logging::Startup, (_T("SetTestPreference name=%s"), name.c_str()));
 
     std::string lowerName(name);
     std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(),
@@ -459,15 +451,15 @@ Core::hresult RDKAMServiceImplementation::GetDiagContexts(string& contexts) {
 
 
 Core::hresult RDKAMServiceImplementation::SetDiagContexts(const string& contexts, uint32_t& updated) {
-    SYSLOG(Logging::Startup, ("SetDiagContexts ctx.len=%zu"), contexts.size()));
+    SYSLOG(Logging::Startup, (_T("SetDiagContexts ctx.len=%zu"), contexts.size()));
     return Core::ERROR_NONE;
 }
 
 
 
 void RDKAMServiceImplementation::NotifyWebSocketUpdate(const std::string& url, const std::string& message) {
-    SYSLOG(Logging::Startup, ("NotifyWebSocketUpdate url=%s"), url.c_str()));
-    SYSLOG(Logging::Startup, ("NotifyWebSocketUpdate - mNotifications.size()=%zu m_wsListeners.size()=%zu"), 
+    SYSLOG(Logging::Startup, (_T("NotifyWebSocketUpdate url=%s"), url.c_str()));
+    SYSLOG(Logging::Startup, (_T("NotifyWebSocketUpdate - mNotifications.size()=%zu m_wsListeners.size()=%zu"), 
            mNotifications.size(), m_wsListeners.size()));
     
     // Always notify all Thunder JSON-RPC observers (mNotifications)
@@ -475,7 +467,7 @@ void RDKAMServiceImplementation::NotifyWebSocketUpdate(const std::string& url, c
     bool notifiedJsonRpcObservers = false;
     for (auto* observer : mNotifications) {
         if (observer) {
-            SYSLOG(Logging::Startup, ("[EVENT] NotifyWebSocketUpdate- calling observer->OnNotifyWebSocketUpdate for URL :%s "), url.c_str()));
+            SYSLOG(Logging::Startup, (_T("[EVENT] NotifyWebSocketUpdate- calling observer->OnNotifyWebSocketUpdate for URL :%s "), url.c_str()));
             observer->OnNotifyWebSocketUpdate(url, message);
             notifiedJsonRpcObservers = true;
         }
@@ -493,23 +485,23 @@ void RDKAMServiceImplementation::NotifyWebSocketUpdate(const std::string& url, c
                 });
             
             if (hasListeners) {
-                SYSLOG(Logging::Startup, ("[EVENT] NotifyWebSocketUpdate- Found matching WebSocket listener for URL :%s"), url.c_str()));
+                SYSLOG(Logging::Startup, (_T("[EVENT] NotifyWebSocketUpdate- Found matching WebSocket listener for URL :%s"), url.c_str()));
                 // Could notify explicit listeners here if needed
             } else {
-                SYSLOG(Logging::Startup, ("[EVENT] NotifyWebSocketUpdate- No WebSocket listeners for URL :%s"), url.c_str()));
+                SYSLOG(Logging::Startup, (_T("[EVENT] NotifyWebSocketUpdate- No WebSocket listeners for URL :%s"), url.c_str()));
             }
         }
     }
     
     if (notifiedJsonRpcObservers) {
-        SYSLOG(Logging::Startup, ("[EVENT] NotifyWebSocketUpdate- Successfully notified JSON-RPC observers for URL :%s"), url.c_str()));
+        SYSLOG(Logging::Startup, (_T("[EVENT] NotifyWebSocketUpdate- Successfully notified JSON-RPC observers for URL :%s"), url.c_str()));
     } else {
-        SYSLOG(Logging::Startup, ("[EVENT] NotifyWebSocketUpdate- WARNING: No JSON-RPC observers registered for URL :%s"), url.c_str()));
+        SYSLOG(Logging::Startup, (_T("[EVENT] NotifyWebSocketUpdate- WARNING: No JSON-RPC observers registered for URL :%s"), url.c_str()));
     }
 }
 
 void RDKAMServiceImplementation::NotifyHttpUpdate(const std::string& url, uint32_t code) {
-    SYSLOG(Logging::Startup, ("NotifyHttpUpdate url=%s code=%u"), url.c_str(), code));
+    SYSLOG(Logging::Startup, (_T("NotifyHttpUpdate url=%s code=%u"), url.c_str(), code));
     
 }
 
@@ -536,7 +528,7 @@ uint32_t RDKAMServiceImplementation::Configure(PluginHost::IShell* shell) {
 
 // Test/Debug methods - manually trigger events for testing
 Core::hresult RDKAMServiceImplementation::TestTriggerWebSocketEvent(const string& url, const string& message) {
-    SYSLOG(Logging::Startup, ("[TEST] TestTriggerWebSocketEvent url=%s message=%s"), 
+    SYSLOG(Logging::Startup, (_T("[TEST] TestTriggerWebSocketEvent url=%s message=%s"), 
            url.c_str(), message.c_str()));
     
     NotifyWebSocketUpdate(url, message);
@@ -545,7 +537,7 @@ Core::hresult RDKAMServiceImplementation::TestTriggerWebSocketEvent(const string
 }
 
 Core::hresult RDKAMServiceImplementation::TestTriggerHttpEvent(const string& url, uint32_t code) {
-    SYSLOG(Logging::Startup, ("[TEST] TestTriggerHttpEvent url=%s code=%u"), 
+    SYSLOG(Logging::Startup, (_T("[TEST] TestTriggerHttpEvent url=%s code=%u"), 
            url.c_str(), code));
     
     NotifyHttpUpdate(url, code);
@@ -554,7 +546,7 @@ Core::hresult RDKAMServiceImplementation::TestTriggerHttpEvent(const string& url
 }
 
 Core::hresult RDKAMServiceImplementation::TestTriggerSysStatusEvent(const string& status) {
-    SYSLOG(Logging::Startup, ("[TEST] TestTriggerSysStatusEvent status=%s"), 
+    SYSLOG(Logging::Startup, (_T("[TEST] TestTriggerSysStatusEvent status=%s"), 
            status.c_str()));
     
     NotifySysStatusUpdate(status);
@@ -563,6 +555,9 @@ Core::hresult RDKAMServiceImplementation::TestTriggerSysStatusEvent(const string
 }
 } // namespace Plugin
 } // namespace WPEFramework
+
+
+
 
 
 

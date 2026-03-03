@@ -142,8 +142,7 @@ void AppsStatus::initializeAppsStatus()
 		newEntry["status"] = (appInfo.lifecycleState == Exchange::IAppManager::APP_STATE_ACTIVE) ? "VISIBLE" : "RUNNING";
         
 		m_status[appId] = newEntry;
-		SYSLOG(Logging::Startup, (_T("AppsStatus::initializeAppsStatus - Initialized app: %s state=%s"), 
-			   appId.c_str(), lifecycleState.c_str()));
+		SYSLOG(Logging::Startup, (_T("AppsStatus::initializeAppsStatus - Initialized app: %s state=%s"), appId.c_str(), lifecycleState.c_str()));
 	}
     
 	appsIter->Release();
@@ -174,8 +173,7 @@ void AppsStatus::processNotification(const Json::Value& notification, bool ignor
 	Json::Value params = notification["params"];
 	std::string appId = params["appId"].asString();
 
-	SYSLOG(Logging::Startup, (_T("AppsStatus::processNotification - method=%s appId=%s ignoreStatusCheck=%d"), 
-		   method.c_str(), appId.c_str(), ignoreStatusCheck));
+	SYSLOG(Logging::Startup, (_T("AppsStatus::processNotification - method=%s appId=%s ignoreStatusCheck=%d"), method.c_str(), appId.c_str(), ignoreStatusCheck));
 
 	std::string source;
 	std::string state;
@@ -191,14 +189,12 @@ void AppsStatus::processNotification(const Json::Value& notification, bool ignor
 		if (m_jsonReader->parse(intentStr.c_str(), intentStr.c_str() + intentStr.length(), &intent, &errors)) {
 			source = intent["context"]["source"].asString();
 		}
-		SYSLOG(Logging::Startup, (_T("AppsStatus - onAppLaunchRequest: appId=%s source=%s"), 
-			   appId.c_str(), source.c_str()));
+		SYSLOG(Logging::Startup, (_T("AppsStatus - onAppLaunchRequest: appId=%s source=%s"), appId.c_str(), source.c_str()));
 	} 
 	else if (method.find("onAppLifecycleStateChanged") != std::string::npos) {
 		state = params["newState"].asString();
 		previousState = params["previousState"].asString();
-		SYSLOG(Logging::Startup, (_T("AppsStatus - onAppLifecycleStateChanged: appId=%s state=%s prev=%s"), 
-			   appId.c_str(), state.c_str(), previousState.c_str()));
+		SYSLOG(Logging::Startup, (_T("AppsStatus - onAppLifecycleStateChanged: appId=%s state=%s prev=%s"), appId.c_str(), state.c_str(), previousState.c_str()));
         
 		// Check ignoreStatusCheck conditions (as per reference microservice)
 		// Ignore if state is APP_STATE_UNKNOWN
@@ -298,8 +294,7 @@ void AppsStatus::updateAppsStatusWebSocket()
 	ss << "\n] }";
 
 	std::string payload = ss.str();
-	SYSLOG(Logging::Startup, (_T("AppsStatus::updateAppsStatusWebSocket - Broadcasting to %d clients"), 
-		   static_cast<int>(m_status.size())));
+	SYSLOG(Logging::Startup, (_T("AppsStatus::updateAppsStatusWebSocket - Broadcasting to %d clients"), static_cast<int>(m_status.size())));
 
 	if (m_notifyCb) {
 		m_notifyCb(wsUrl, payload);
@@ -329,4 +324,5 @@ std::string AppsStatus::GetCurrentStatus() const
 
 } // namespace Plugin
 } // namespace WPEFramework
+
 

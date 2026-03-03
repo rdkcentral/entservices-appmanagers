@@ -133,7 +133,6 @@ private:
 	Exchange::IRDKWindowManager* GetWindowManager();
 	Exchange::IStorageManager* GetStorageManager();
 
-	PluginHost::IShell* m_shell;
 	Exchange::IStorageManager* m_storageManager;
 
 };

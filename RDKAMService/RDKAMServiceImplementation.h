@@ -113,6 +113,10 @@ private:
     
     uint32_t m_listenerIdCounter = 0;
     mutable std::mutex m_listenerMutex;
+
+     // System status cache
+    std::string m_cachedSysStatus;
+    
     
     // Thunder plugin shell
     PluginHost::IShell* m_shell;
