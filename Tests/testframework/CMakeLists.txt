@@ -36,6 +36,7 @@ endif()
 
 if(RDK_SERVICES_L1_TEST)
     include(l1tests.cmake)
+    add_subdirectory(mocks)
     add_subdirectory(L1Tests)
 endif()
 
@@ -43,7 +44,7 @@ endif()
 
 if(RDK_SERVICE_L2_TEST)
     if(L2_TEST_OOP_RPC)
-        # add_subdirectory(mocks/MockPlugin)
+        add_subdirectory(mocks/MockPlugin)
     endif()
     add_subdirectory(L2Tests/L2TestsPlugin)
     add_subdirectory(L2Tests)

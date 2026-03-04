@@ -25,18 +25,6 @@
 #include "Wraps.h"
 
 extern "C" FILE* __real_setmntent(const char* command, const char* type);
-extern "C" struct mntent* __real_getmntent(FILE* pipe);
-extern "C" int __real_access(const char* pathname, int mode);
-extern "C" int __real_rmdir(const char* pathname);
-extern "C" DIR* __real_opendir(const char* pathname);
-extern "C" int __real_closedir(DIR* dirp);
-extern "C" int __real_mkdir(const char* path, mode_t mode);
-extern "C" struct dirent* __real_readdir(DIR* dirp);
-extern "C" int __real_chown(const char *path, uid_t owner, gid_t group);
-extern "C" int __real_nftw(const char* dirpath, int (*fn)(const char*, const struct stat*, int, struct FTW*), int nopenfd, int flags);
-extern "C" int __real_open(const char* pathname, int flags, mode_t mode);
-extern "C" int __real_stat(const char* path, struct stat* info);
-extern "C" int __real_statvfs(const char* path, struct statvfs* buf);
 
 #undef curl_easy_setopt
 #undef curl_easy_getinfo
@@ -54,78 +42,6 @@ public:
         .WillByDefault(::testing::Invoke(
             [&](const char* command, const char* type) -> FILE* {
                 return __real_setmntent(command, type);
-            }));
-        
-        ON_CALL(*this, getmntent(::testing::_))
-        .WillByDefault(::testing::Invoke(
-            [&](FILE* pipe) -> struct mntent* {
-                return __real_getmntent(pipe);
-            }));
-        
-        ON_CALL(*this, access(::testing::_, ::testing::_))
-        .WillByDefault(::testing::Invoke(
-            [&](const char* pathname, int mode) -> int {
-                return __real_access(pathname, mode);
-            }));
-        
-        ON_CALL(*this, rmdir(::testing::_))
-        .WillByDefault(::testing::Invoke(
-            [&](const char* pathname) -> int {
-                return __real_rmdir(pathname);
-            }));
-        
-        ON_CALL(*this, opendir(::testing::_))
-        .WillByDefault(::testing::Invoke(
-            [&](const char* pathname) -> DIR* {
-                return __real_opendir(pathname);
-            }));
-        
-        ON_CALL(*this, closedir(::testing::_))
-        .WillByDefault(::testing::Invoke(
-            [&](DIR* dirp) -> int {
-                return __real_closedir(dirp);
-            }));
-        
-        ON_CALL(*this, mkdir(::testing::_, ::testing::_))
-        .WillByDefault(::testing::Invoke(
-            [&](const char* path, mode_t mode) -> int {
-                return __real_mkdir(path, mode);
-            }));
-        
-        ON_CALL(*this, readdir(::testing::_))
-        .WillByDefault(::testing::Invoke(
-            [&](DIR* dirp) -> struct dirent* {
-                return __real_readdir(dirp);
-            }));
-        
-        ON_CALL(*this, chown(::testing::_, ::testing::_, ::testing::_))
-        .WillByDefault(::testing::Invoke(
-            [&](const char *path, uid_t owner, gid_t group) -> int {
-                return __real_chown(path, owner, group);
-            }));
-        
-        ON_CALL(*this, nftw(::testing::_, ::testing::_, ::testing::_, ::testing::_))
-        .WillByDefault(::testing::Invoke(
-            [&](const char* dirpath, int (*fn)(const char*, const struct stat*, int, struct FTW*), int nopenfd, int flags) -> int {
-                return __real_nftw(dirpath, fn, nopenfd, flags);
-            }));
-        
-        ON_CALL(*this, open(::testing::_, ::testing::_, ::testing::_))
-        .WillByDefault(::testing::Invoke(
-            [&](const char* pathname, int flags, mode_t mode) -> int {
-                return __real_open(pathname, flags, mode);
-            }));
-        
-        ON_CALL(*this, stat(::testing::_, ::testing::_))
-        .WillByDefault(::testing::Invoke(
-            [&](const char* path, struct stat* info) -> int {
-                return __real_stat(path, info);
-            }));
-        
-        ON_CALL(*this, statvfs(::testing::_, ::testing::_))
-        .WillByDefault(::testing::Invoke(
-            [&](const char* path, struct statvfs* buf) -> int {
-                return __real_statvfs(path, buf);
             }));
     }
     virtual ~WrapsImplMock() = default;

@@ -105,10 +105,12 @@ macro(add_plugin_test plugin_name test_files)
     add_plugin_test_ex(${plugin_opt} "${test_files}" "../../${plugin_name}" "${NAMESPACE}${plugin_name}")
 endmacro()
 
-# Add Wraps.cpp directly to executable so wrap mechanism works correctly
+# Add Wraps.cpp to the executable so wrap mechanism works correctly
 list(APPEND TEST_SRC ../mocks/Wraps.cpp)
 
 add_executable(${PROJECT_NAME} ${TEST_SRC})
+
+# Link TestMocklib normally (it no longer contains Wraps.cpp for L1 tests)
 target_link_libraries(${PROJECT_NAME} TestMocklib)
 
 # Add wrap flags for the executable to create __real_* symbols and export them for shared libraries

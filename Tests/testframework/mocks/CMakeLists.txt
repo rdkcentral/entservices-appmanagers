@@ -92,12 +92,16 @@ else(L2_TEST_OOP_RPC)
     set(MODULE_SOURCES 
         Rfc.cpp
         Iarm.cpp
-        Wraps.cpp
         RBus.cpp
         Telemetry.cpp
         readprocMockInterface.cpp
         Udev.cpp
         )
+
+    # Add Wraps.cpp only for L2 tests; for L1 tests it's compiled into the executable
+    if(NOT RDK_SERVICES_L1_TEST)
+        list(APPEND MODULE_SOURCES Wraps.cpp)
+    endif()
 
     if(RDK_SERVICES_L1_TEST)
         list(APPEND MODULE_SOURCES
@@ -128,24 +132,21 @@ else(L2_TEST_OOP_RPC)
 
     target_include_directories(${MODULE_NAME} PRIVATE
         ${CMAKE_CURRENT_BINARY_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/thunder
+        ${CMAKE_CURRENT_SOURCE_DIR}/devicesettings
+        ${CMAKE_CURRENT_SOURCE_DIR}/libusb
+        ${CMAKE_CURRENT_SOURCE_DIR}/interfaces
+        ${CMAKE_CURRENT_SOURCE_DIR}/secure_storage
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../../helpers
+        ${CMAKE_INSTALL_PREFIX}/include
+        ${CMAKE_INSTALL_PREFIX}/include/WPEFramework
     )
 
     target_link_libraries(${MODULE_NAME} PRIVATE
         grpc++
         protobuf
     )
-
-    target_include_directories(${MODULE_NAME} PRIVATE
-            ${CMAKE_SOURCE_DIR}/helpers
-            ${CMAKE_SOURCE_DIR}/Tests/mocks
-            ${CMAKE_SOURCE_DIR}/Tests/mocks/thunder
-            ${CMAKE_SOURCE_DIR}/Tests/mocks/devicesettings
-            ${CMAKE_SOURCE_DIR}/Tests/mocks/libusb
-            ${CMAKE_INSTALL_PREFIX}/include
-            ${CMAKE_INSTALL_PREFIX}/include/WPEFramework
-            ${CMAKE_SOURCE_DIR}/OCIContainer/stubs
-            ${CMAKE_SOURCE_DIR}/Thunder/Source/plugins
-        )
 
     # Set target properties for TestMocklib
     set_target_properties(${MODULE_NAME} PROPERTIES
