@@ -108,53 +108,35 @@ endmacro()
 add_executable(${PROJECT_NAME} ${TEST_SRC})
 target_link_libraries(${PROJECT_NAME} TestMocklib)
 
-# PLUGIN_FRAMERATE and  PLUGIN_USERPREFERENCES and PLUGIN_WAREHOUSE and PLUGIN_DEVICEINFO
-if(PLUGIN_DEVICEDIAGNOSTICS OR PLUGIN_USERPREFERENCES OR PLUGIN_WAREHOUSE OR PLUGIN_DEVICEINFO OR PLUGIN_DISPLAYINFO OR PLUGIN_DISPLAYSETTINGS OR PLUGIN_FRAMERATE OR PLUGIN_POWERMANAGER OR PLUGIN_SYSTEMSERVICES)
-    message(STATUS "linking libWPEFrameworkL1TestsDD to RdkServicesL1Test target")
-    target_link_libraries(${PROJECT_NAME} ${NAMESPACE}L1TestsDD)
-endif()
+# Add wrap flags for mocked system calls
+target_link_options(${PROJECT_NAME} PRIVATE 
+    -Wl,--wrap,system
+    -Wl,--wrap,popen
+    -Wl,--wrap,syslog
+    -Wl,--wrap,v_secure_popen
+    -Wl,--wrap,v_secure_pclose
+    -Wl,--wrap,unlink
+    -Wl,--wrap,v_secure_system
+    -Wl,--wrap,pclose
+    -Wl,--wrap,access
+    -Wl,--wrap,rmdir
+    -Wl,--wrap,closedir
+    -Wl,--wrap,mkdir
+    -Wl,--wrap,readdir
+    -Wl,--wrap,chown
+    -Wl,--wrap,nftw
+    -Wl,--wrap,open
+    -Wl,--wrap,opendir
+    -Wl,--wrap,stat
+    -Wl,--wrap,statvfs
+    -Wl,--wrap,setmntent
+    -Wl,--wrap,getmntent
+)
 
-#PLUGIN_PRIVACY and PLUGIN_PLAYBACKSYNC and PLUGIN_AUTHSERVICE
-if(PLUGIN_PRIVACY OR PLUGIN_PLAYBACKSYNC OR PLUGIN_AUTHSERVICE)
-    message(STATUS "linking libWPEFrameworkL1TestsCPC to RdkServicesL1Test target")
-    target_link_libraries(${PROJECT_NAME} ${NAMESPACE}L1TestsCPC)
-endif()
-
-
-# PLUGIN_USBDEVICE and PLUGIN_USB_MASS_STORAGE and PLUGIN_OCICONTAINER and PLUGIN_APPMANAGER and PLUGIN_STORAGE_MANAGER
-if(PLUGIN_USBDEVICE OR PLUGIN_USB_MASS_STORAGE OR PLUGIN_OCICONTAINER OR PLUGIN_APPMANAGER OR PLUGIN_STORAGE_MANAGER)
+# AppManager plugins: AppManager, LifecycleManager, StorageManager, RuntimeManager, DownloadManager, PreinstallManager, PackageManager
+if(PLUGIN_APPMANAGER OR PLUGIN_LIFECYCLE_MANAGER OR PLUGIN_STORAGE_MANAGER OR PLUGIN_RUNTIME_MANAGER OR PLUGIN_DOWNLOADMANAGER OR PLUGIN_PREINSTALL_MANAGER OR PLUGIN_PACKAGE_MANAGER)
     message(STATUS "linking libWPEFrameworkL1TestsIN to RdkServicesL1Test target")
     target_link_libraries(${PROJECT_NAME} ${NAMESPACE}L1TestsIN)
-endif()
-
-# PLUGIN_FIRMWAREUPDATE and PLUGIN_MAINTENANCEMANAGER and PLUGIN_PACKAGER
-if(PLUGIN_FIRMWAREUPDATE OR PLUGIN_MAINTENANCEMANAGER OR PLUGIN_PACKAGER)
-    message(STATUS "linking libWPEFrameworkL1TestsSU to RdkServicesL1Test target")
-    target_link_libraries(${PROJECT_NAME} ${NAMESPACE}L1TestsSU)
-endif()
-
-#PLUGIN_AVINPUT and PLUGIN_AVOUTPUT and PLUGIN_HDMICECSOURCE and PLUGIN_HDMICECSINK and PLUGIN_HDCPPROFILE and PLUGIN_HDMIINPUT 
-if(PLUGIN_AVINPUT OR PLUGIN_AVOUTPUT OR PLUGIN_HDMICECSOURCE OR PLUGIN_HDMICECSINK OR PLUGIN_HDCPPROFILE OR PLUGIN_HDMIINPUT)
-    message(STATUS "linking libWPEFrameworkL1TestsIO to RdkServicesL1Test target")
-    target_link_libraries(${PROJECT_NAME} ${NAMESPACE}L1TestsIO)
-endif()
-
-#PLUGIN_MIRACAST and PLUGIN_XCAST
-if(PLUGIN_MIRACAST OR PLUGIN_XCAST)
-    message(STATUS "linking libWPEFrameworkL1TestsCA to RdkServicesL1Test target")
-    target_link_libraries(${PROJECT_NAME} ${NAMESPACE}L1TestsCA)
-endif()
-
-#PLUGIN_MOTION_DETECTION and PLUGIN_FRONTPANEL
-if(PLUGIN_MOTION_DETECTION OR PLUGIN_FRONTPANEL)
-    message(STATUS "linking libWPEFrameworkL1TestsPE to RdkServicesL1Test target")
-    target_link_libraries(${PROJECT_NAME} ${NAMESPACE}L1TestsPE)
-endif()
-
-#PLUGIN_SCREENCAPTURE and PLUGIN_SYSTEMAUDIOPLAYER and TEXTTOSPEECH and UNIFIEDCASMANAGEMENT
-if(PLUGIN_SCREENCAPTURE OR PLUGIN_SYSTEMAUDIOPLAYER OR PLUGIN_TEXTTOSPEECH OR PLUGIN_UNIFIEDCASMANAGEMENT)
-    message(STATUS "linking libWPEFrameworkL1TestsMD to RdkServicesL1Test target")
-    target_link_libraries(${PROJECT_NAME} ${NAMESPACE}L1TestsMD)
 endif()
 
 include(GoogleTest)
