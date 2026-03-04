@@ -144,6 +144,9 @@ target_link_directories(${MODULE_NAME} PUBLIC ${CMAKE_INSTALL_PREFIX}/lib ${CMAK
 
 target_link_libraries(${MODULE_NAME} ${TEST_LIB} TestMocklib)
 
+# Allow undefined symbols for __real_* functions which are resolved by the executable with wrap flags
+target_link_options(${MODULE_NAME} PRIVATE -Wl,--allow-shlib-undefined)
+
 target_include_directories(${MODULE_NAME}
         PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>

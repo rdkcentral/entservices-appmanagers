@@ -151,6 +151,9 @@ else(L2_TEST_OOP_RPC)
             CXX_STANDARD 14
             CXX_STANDARD_REQUIRED YES)
 
+    # Allow undefined symbols for __real_* functions which are resolved by the executable with wrap flags
+    target_link_options(${MODULE_NAME} PRIVATE -Wl,--allow-shlib-undefined)
+
     # Install TestMocklib
     install(TARGETS ${MODULE_NAME}
         DESTINATION lib)
