@@ -33,7 +33,7 @@ namespace WPEFramework
     PreinstallManagerImplementation::PreinstallManagerImplementation()
         : mAdminLock(), mAppPreinstallDirectory(""), mPreinstallManagerNotifications(), mCurrentservice(nullptr),
           mPackageManagerInstallerObject(nullptr), mPackageManagerNotification(*this),
-          mPreinstallState(State::NOT_STARTED), mExpectedPackagesCount(0), mInstalledPackagesCount(0)
+                    mPreinstallState(State::NOT_STARTED)
     {
         LOGINFO("Create PreinstallManagerImplementation Instance");
         if (nullptr == PreinstallManagerImplementation::_instance)
@@ -194,24 +194,6 @@ namespace WPEFramework
             JsonObject eventDetails;
             eventDetails["jsonresponse"] = jsonresponse;
             dispatchEvent(PREINSTALL_MANAGER_APP_INSTALLATION_STATUS, eventDetails);
-
-            // Track installation progress
-            mAdminLock.Lock();
-            mInstalledPackagesCount++;
-            LOGINFO("Installation status received: %d/%d packages", mInstalledPackagesCount, mExpectedPackagesCount);
-            
-            // Check if all packages have been processed
-            if ((mExpectedPackagesCount > 0) && (mInstalledPackagesCount == mExpectedPackagesCount))
-            {
-                LOGINFO("All packages processed. Setting state to COMPLETED");
-                mPreinstallState = State::COMPLETED;
-                mAdminLock.Unlock();
-                sendOnCompleteEvent();
-            }
-            else
-            {
-                mAdminLock.Unlock();
-            }
         }
         else
         {
@@ -394,6 +376,9 @@ namespace WPEFramework
         if (preinstallPackages.empty())
         {
             LOGINFO("No packages to preinstall. Sending OnComplete event");
+            mAdminLock.Lock();
+            mPreinstallState = State::COMPLETED;
+            mAdminLock.Unlock();
             sendOnCompleteEvent();
             result = Core::ERROR_NONE;
             return result;
@@ -477,10 +462,9 @@ namespace WPEFramework
         int  totalApps    = preinstallPackages.size();
         // std::list<std::string> failedAppsList;
 
-        // Reset counters and set state to IN_PROGRESS
+        // Set state to IN_PROGRESS before processing install calls.
         mAdminLock.Lock();
-        mExpectedPackagesCount = 0;
-        mInstalledPackagesCount = 0;
+        mPreinstallState = State::IN_PROGRESS;
         mAdminLock.Unlock();
 
         for (auto &pkg : preinstallPackages)
@@ -509,16 +493,6 @@ namespace WPEFramework
 
 
             Core::hresult installResult = mPackageManagerInstallerObject->Install(pkg.packageId, pkg.version, additionalMetadata, pkg.fileLocator, failReason);
-            
-            // Set state to IN_PROGRESS and increment expected count when Install is called
-            mAdminLock.Lock();
-            if (mPreinstallState == State::NOT_STARTED)
-            {
-                LOGINFO("Setting preinstall state to IN_PROGRESS");
-                mPreinstallState = State::IN_PROGRESS;
-            }
-            mExpectedPackagesCount++;
-            mAdminLock.Unlock();
             
             if (installResult != Core::ERROR_NONE)
             {
@@ -549,12 +523,11 @@ namespace WPEFramework
         //cleanup
         releasePackageManagerObject();
 
-        // Send OnComplete event if all packages failed or list became empty after filtering
-        if (totalApps == 0 || failedApps == totalApps)
-        {
-            LOGINFO("All packages failed or no packages to install. Sending OnComplete event");
-            sendOnCompleteEvent();
-        }
+        // Install is synchronous: completion must be sent after all Install() calls return.
+        mAdminLock.Lock();
+        mPreinstallState = State::COMPLETED;
+        mAdminLock.Unlock();
+        sendOnCompleteEvent();
 
         if(!installError)
         {
