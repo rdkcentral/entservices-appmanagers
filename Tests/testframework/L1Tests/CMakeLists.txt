@@ -108,45 +108,6 @@ endmacro()
 add_executable(${PROJECT_NAME} ${TEST_SRC})
 target_link_libraries(${PROJECT_NAME} TestMocklib)
 
-# Add wrap flags for mocked system calls and export symbols for shared libraries
-target_link_options(${PROJECT_NAME} PRIVATE 
-    -Wl,--export-dynamic
-    -Wl,--wrap,system
-    -Wl,--wrap,popen
-    -Wl,--wrap,syslog
-    -Wl,--wrap,v_secure_popen
-    -Wl,--wrap,v_secure_pclose
-    -Wl,--wrap,unlink
-    -Wl,--wrap,v_secure_system
-    -Wl,--wrap,pclose
-    -Wl,--wrap,access
-    -Wl,--wrap,rmdir
-    -Wl,--wrap,closedir
-    -Wl,--wrap,mkdir
-    -Wl,--wrap,readdir
-    -Wl,--wrap,chown
-    -Wl,--wrap,nftw
-    -Wl,--wrap,open
-    -Wl,--wrap,opendir
-    -Wl,--wrap,stat
-    -Wl,--wrap,statvfs
-    -Wl,--wrap,setmntent
-    -Wl,--wrap,getmntent
-    -Wl,--undefined=__wrap_opendir
-    -Wl,--undefined=__wrap_readdir
-    -Wl,--undefined=__wrap_closedir
-    -Wl,--undefined=__wrap_access
-    -Wl,--undefined=__wrap_rmdir
-    -Wl,--undefined=__wrap_mkdir
-    -Wl,--undefined=__wrap_chown
-    -Wl,--undefined=__wrap_nftw
-    -Wl,--undefined=__wrap_open
-    -Wl,--undefined=__wrap_stat
-    -Wl,--undefined=__wrap_statvfs
-    -Wl,--undefined=__wrap_setmntent
-    -Wl,--undefined=__wrap_getmntent
-)
-
 # AppManager plugins: AppManager, LifecycleManager, StorageManager, RuntimeManager, DownloadManager, PreinstallManager, PackageManager
 if(PLUGIN_APPMANAGER OR PLUGIN_LIFECYCLE_MANAGER OR PLUGIN_STORAGE_MANAGER OR PLUGIN_RUNTIME_MANAGER OR PLUGIN_DOWNLOADMANAGER OR PLUGIN_PREINSTALL_MANAGER OR PLUGIN_PACKAGE_MANAGER)
     message(STATUS "linking libWPEFrameworkL1TestsIN to RdkServicesL1Test target")
