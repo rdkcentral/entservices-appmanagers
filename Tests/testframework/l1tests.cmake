@@ -162,13 +162,8 @@ set(FAKE_HEADERS
         ${BASEDIR}/Udev.h
         ${BASEDIR}/MotionDetection.h
         ${BASEDIR}/Dobby.h
-        ${BASEDIR}/rdkshell.h
-        ${BASEDIR}/RdkLoggerMilestone.h
-        ${BASEDIR}/wpa_ctrl_mock.h
         ${BASEDIR}/secure_wrappermock.h
         ${BASEDIR}/readprocMockInterface.h
-        ${BASEDIR}/libusb/libusb.h
-        ${BASEDIR}/tr181api.h
         ${BASEDIR}/Wraps.h
         )
 
