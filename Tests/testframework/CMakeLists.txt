@@ -36,6 +36,7 @@ endif()
 
 if(RDK_SERVICES_L1_TEST)
     include(l1tests.cmake)
+    add_subdirectory(L1Tests)
 endif()
 
 # L1Tests is added from root CMakeLists.txt, not here
