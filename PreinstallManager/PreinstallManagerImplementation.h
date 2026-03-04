@@ -188,7 +188,7 @@ namespace WPEFramework
             PluginHost::IShell *mCurrentservice;
             Exchange::IPackageInstaller* mPackageManagerInstallerObject;
             Core::Sink<PackageManagerNotification> mPackageManagerNotification;
-            State mState;
+            State mPreinstallState;
             uint32_t mExpectedPackagesCount;
             uint32_t mInstalledPackagesCount;
             void dispatchEvent(EventNames, const JsonObject &params);
