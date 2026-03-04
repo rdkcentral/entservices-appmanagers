@@ -136,14 +136,15 @@ else(L2_TEST_OOP_RPC)
     )
 
     target_include_directories(${MODULE_NAME} PRIVATE
+            ${CMAKE_SOURCE_DIR}/helpers
             ${CMAKE_SOURCE_DIR}/Tests/mocks
             ${CMAKE_SOURCE_DIR}/Tests/mocks/thunder
             ${CMAKE_SOURCE_DIR}/Tests/mocks/devicesettings
             ${CMAKE_SOURCE_DIR}/Tests/mocks/libusb
             ${CMAKE_INSTALL_PREFIX}/include
             ${CMAKE_INSTALL_PREFIX}/include/WPEFramework
-            ${CMAKE_CURRENT_SOURCE_DIR}/../../OCIContainer/stubs
-             ../../../Thunder/Source/plugins
+            ${CMAKE_SOURCE_DIR}/OCIContainer/stubs
+            ${CMAKE_SOURCE_DIR}/Thunder/Source/plugins
         )
 
     # Set target properties for TestMocklib
