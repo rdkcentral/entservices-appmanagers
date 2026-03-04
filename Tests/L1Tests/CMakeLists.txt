@@ -138,15 +138,11 @@ add_plugin_test_ex(PLUGIN_DOWNLOADMANAGER tests/test_DownloadManager.cpp "${DOWN
 
 add_library(${MODULE_NAME} SHARED ${TEST_SRC})
 
-if (RDK_SERVICES_L1_TEST)
-    target_link_options(${MODULE_NAME} PRIVATE "-Wl,-wrap,opendir")
-endif (RDK_SERVICES_L1_TEST)
-
 include_directories(${TEST_INC})
 
 target_link_directories(${MODULE_NAME} PUBLIC ${CMAKE_INSTALL_PREFIX}/lib ${CMAKE_INSTALL_PREFIX}/lib/wpeframework/plugins)
 
-target_link_libraries(${MODULE_NAME} ${TEST_LIB})
+target_link_libraries(${MODULE_NAME} ${TEST_LIB} TestMocklib)
 
 target_include_directories(${MODULE_NAME}
         PUBLIC

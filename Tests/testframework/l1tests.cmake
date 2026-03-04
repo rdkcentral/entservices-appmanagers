@@ -86,7 +86,7 @@ endforeach ()
 
 add_compile_options(-Wall -Werror)
 
-add_link_options(-Wl,-wrap,system -Wl,-wrap,popen -Wl,-wrap,syslog -Wl,-wrap,v_secure_popen -Wl,-wrap,v_secure_pclose -Wl,-wrap,unlink -Wl,-wrap,v_secure_system -Wl,-wrap,pclose)
+add_link_options(-Wl,-wrap,system -Wl,-wrap,popen -Wl,-wrap,syslog -Wl,-wrap,v_secure_popen -Wl,-wrap,v_secure_pclose -Wl,-wrap,unlink -Wl,-wrap,v_secure_system -Wl,-wrap,pclose -Wl,-wrap,access -Wl,-wrap,rmdir -Wl,-wrap,closedir -Wl,-wrap,mkdir -Wl,-wrap,readdir -Wl,-wrap,chown -Wl,-wrap,nftw -Wl,-wrap,open -Wl,-wrap,opendir -Wl,-wrap,stat -Wl,-wrap,statvfs -Wl,-wrap,setmntent -Wl,-wrap,getmntent)
 
 add_definitions(
         -DENABLE_TELEMETRY_LOGGING
