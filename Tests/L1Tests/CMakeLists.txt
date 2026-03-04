@@ -138,6 +138,31 @@ add_plugin_test_ex(PLUGIN_DOWNLOADMANAGER tests/test_DownloadManager.cpp "${DOWN
 
 add_library(${MODULE_NAME} SHARED ${TEST_SRC})
 
+target_link_options(${MODULE_NAME} PRIVATE
+    -Wl,--wrap,system
+    -Wl,--wrap,popen
+    -Wl,--wrap,syslog
+    -Wl,--wrap,v_secure_popen
+    -Wl,--wrap,v_secure_pclose
+    -Wl,--wrap,unlink
+    -Wl,--wrap,v_secure_system
+    -Wl,--wrap,pclose
+    -Wl,--wrap,access
+    -Wl,--wrap,rmdir
+    -Wl,--wrap,closedir
+    -Wl,--wrap,mkdir
+    -Wl,--wrap,readdir
+    -Wl,--wrap,chown
+    -Wl,--wrap,nftw
+    -Wl,--wrap,open
+    -Wl,--wrap,opendir
+    -Wl,--wrap,stat
+    -Wl,--wrap,statvfs
+    -Wl,--wrap,setmntent
+    -Wl,--wrap,getmntent
+    -Wl,--allow-shlib-undefined
+)
+
 include_directories(${TEST_INC})
 
 target_link_directories(${MODULE_NAME} PUBLIC ${CMAKE_INSTALL_PREFIX}/lib ${CMAKE_INSTALL_PREFIX}/lib/wpeframework/plugins)
@@ -145,7 +170,7 @@ target_link_directories(${MODULE_NAME} PUBLIC ${CMAKE_INSTALL_PREFIX}/lib ${CMAK
 target_link_libraries(${MODULE_NAME} ${TEST_LIB} TestMocklib)
 
 # Allow undefined symbols for __real_* functions which are resolved by the executable with wrap flags
-target_link_options(${MODULE_NAME} PRIVATE -Wl,--wrap=opendir,--allow-shlib-undefined)
+target_link_options(${MODULE_NAME} PRIVATE -Wl,--allow-shlib-undefined)
 
 target_include_directories(${MODULE_NAME}
         PUBLIC

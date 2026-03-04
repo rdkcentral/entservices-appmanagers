@@ -105,8 +105,37 @@ macro(add_plugin_test plugin_name test_files)
     add_plugin_test_ex(${plugin_opt} "${test_files}" "../../${plugin_name}" "${NAMESPACE}${plugin_name}")
 endmacro()
 
+# Add Wraps.cpp directly to executable so wrap mechanism works correctly
+list(APPEND TEST_SRC ../mocks/Wraps.cpp)
+
 add_executable(${PROJECT_NAME} ${TEST_SRC})
 target_link_libraries(${PROJECT_NAME} TestMocklib)
+
+# Add wrap flags for the executable to create __real_* symbols and export them for shared libraries
+target_link_options(${PROJECT_NAME} PRIVATE 
+    -Wl,--export-dynamic
+    -Wl,--wrap,system
+    -Wl,--wrap,popen
+    -Wl,--wrap,syslog
+    -Wl,--wrap,v_secure_popen
+    -Wl,--wrap,v_secure_pclose
+    -Wl,--wrap,unlink
+    -Wl,--wrap,v_secure_system
+    -Wl,--wrap,pclose
+    -Wl,--wrap,access
+    -Wl,--wrap,rmdir
+    -Wl,--wrap,closedir
+    -Wl,--wrap,mkdir
+    -Wl,--wrap,readdir
+    -Wl,--wrap,chown
+    -Wl,--wrap,nftw
+    -Wl,--wrap,open
+    -Wl,--wrap,opendir
+    -Wl,--wrap,stat
+    -Wl,--wrap,statvfs
+    -Wl,--wrap,setmntent
+    -Wl,--wrap,getmntent
+)
 
 # AppManager plugins: AppManager, LifecycleManager, StorageManager, RuntimeManager, DownloadManager, PreinstallManager, PackageManager
 if(PLUGIN_APPMANAGER OR PLUGIN_LIFECYCLE_MANAGER OR PLUGIN_STORAGE_MANAGER OR PLUGIN_RUNTIME_MANAGER OR PLUGIN_DOWNLOADMANAGER OR PLUGIN_PREINSTALL_MANAGER OR PLUGIN_PACKAGE_MANAGER)
