@@ -32,7 +32,8 @@ namespace WPEFramework
 
     PreinstallManagerImplementation::PreinstallManagerImplementation()
         : mAdminLock(), mAppPreinstallDirectory(""), mPreinstallManagerNotifications(), mCurrentservice(nullptr),
-          mPackageManagerInstallerObject(nullptr), mPackageManagerNotification(*this)
+          mPackageManagerInstallerObject(nullptr), mPackageManagerNotification(*this),
+          mPreinstallState(PreinstallState::NOT_STARTED), mExpectedPackagesCount(0), mInstalledPackagesCount(0)
     {
         LOGINFO("Create PreinstallManagerImplementation Instance");
         if (nullptr == PreinstallManagerImplementation::_instance)
@@ -161,6 +162,17 @@ namespace WPEFramework
             for (auto notification : mPreinstallManagerNotifications)
             {
                 notification->OnAppInstallationStatus(jsonresponse);
+            }
+            mAdminLock.Unlock();
+            break;
+        }
+        case PREINSTALL_MANAGER_ONCOMPLETE:
+        {
+            LOGINFO("Sending OnComplete event");
+            mAdminLock.Lock();
+            for (auto notification : mPreinstallManagerNotifications)
+            {
+                notification->OnComplete();
                 LOGTRACE();
             }
             mAdminLock.Unlock();
@@ -182,11 +194,39 @@ namespace WPEFramework
             JsonObject eventDetails;
             eventDetails["jsonresponse"] = jsonresponse;
             dispatchEvent(PREINSTALL_MANAGER_APP_INSTALLATION_STATUS, eventDetails);
+
+            // Track installation progress
+            mAdminLock.Lock();
+            mInstalledPackagesCount++;
+            LOGINFO("Installation status received: %d/%d packages", mInstalledPackagesCount, mExpectedPackagesCount);
+            
+            // Check if all packages have been processed
+            if ((mExpectedPackagesCount > 0) && (mInstalledPackagesCount == mExpectedPackagesCount))
+            {
+                LOGINFO("All packages processed. Setting state to COMPLETED");
+                mPreinstallState = PreinstallState::COMPLETED;
+                mAdminLock.Unlock();
+                sendOnCompleteEvent();
+            }
+            else
+            {
+                mAdminLock.Unlock();
+            }
         }
         else
         {
             LOGERR("jsonresponse string from package manager is empty");
         }
+    }
+
+    /**
+     * Send OnComplete event to all registered listeners
+     */
+    void PreinstallManagerImplementation::sendOnCompleteEvent()
+    {
+        LOGINFO("Sending OnComplete event");
+        JsonObject eventDetails; // OnComplete doesn't need any params
+        dispatchEvent(PREINSTALL_MANAGER_ONCOMPLETE, eventDetails);
     }
 
     Core::hresult PreinstallManagerImplementation::createPackageManagerObject()
@@ -350,6 +390,15 @@ namespace WPEFramework
             return result;
         }
 
+        // Check if the packages list is empty
+        if (preinstallPackages.empty())
+        {
+            LOGINFO("No packages to preinstall. Sending OnComplete event");
+            sendOnCompleteEvent();
+            result = Core::ERROR_NONE;
+            return result;
+        }
+
         if (!forceInstall)  // if false, we need to check installed packages
         {
             LOGWARN("forceInstall is disabled");
@@ -409,7 +458,6 @@ namespace WPEFramework
                                     toBeInstalledApp->version.c_str(),
                                     installedVersion.c_str());
                     }
-                    // todo uninstall older version if needed
                 }
 
                 if (remove)
@@ -428,6 +476,12 @@ namespace WPEFramework
         int  failedApps   = 0;
         int  totalApps    = preinstallPackages.size();
         // std::list<std::string> failedAppsList;
+
+        // Reset counters and set state to IN_PROGRESS
+        mAdminLock.Lock();
+        mExpectedPackagesCount = 0;
+        mInstalledPackagesCount = 0;
+        mAdminLock.Unlock();
 
         for (auto &pkg : preinstallPackages)
         {
@@ -455,6 +509,17 @@ namespace WPEFramework
 
 
             Core::hresult installResult = mPackageManagerInstallerObject->Install(pkg.packageId, pkg.version, additionalMetadata, pkg.fileLocator, failReason);
+            
+            // Set state to IN_PROGRESS and increment expected count when Install is called
+            mAdminLock.Lock();
+            if (mPreinstallState == PreinstallState::NOT_STARTED)
+            {
+                LOGINFO("Setting preinstall state to IN_PROGRESS");
+                mPreinstallState = PreinstallState::IN_PROGRESS;
+            }
+            mExpectedPackagesCount++;
+            mAdminLock.Unlock();
+            
             if (installResult != Core::ERROR_NONE)
             {
                 LOGERR("Failed to install package: %s, version: %s, failReason: %s", pkg.packageId.c_str(), pkg.version.c_str(), getFailReason(failReason).c_str());
@@ -484,12 +549,34 @@ namespace WPEFramework
         //cleanup
         releasePackageManagerObject();
 
+        // Send OnComplete event if all packages failed or list became empty after filtering
+        if (totalApps == 0 || failedApps == totalApps)
+        {
+            LOGINFO("All packages failed or no packages to install. Sending OnComplete event");
+            sendOnCompleteEvent();
+        }
+
         if(!installError)
         {
             result = Core::ERROR_NONE; // return error if any app install fails todo required??
         }
 
         return result;
+    }
+
+    /*
+     * @brief Provides the state of preinstallation process
+     * @Params[in]  : PreinstallState& state
+     * @Params[out] : PreinstallState& state - Value can be NOT_STARTED/IN_PROGRESS/COMPLETED
+     * @return      : Core::hresult
+     */
+    Core::hresult PreinstallManagerImplementation::PreinstallState(PreinstallState& state)
+    {
+        LOGINFO("PreinstallState API called");
+        mAdminLock.Lock();
+        state = mPreinstallState;
+        mAdminLock.Unlock();
+        return Core::ERROR_NONE;
     }
 
     } /* namespace Plugin */

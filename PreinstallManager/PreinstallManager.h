@@ -77,6 +77,12 @@ namespace WPEFramework
                     Exchange::JPreinstallManager::Event::OnAppInstallationStatus(_parent, jsonresponse);
                 }
 
+                void OnComplete() override
+                {
+                    LOGINFO("PreinstallManager on OnComplete");
+                    Exchange::JPreinstallManager::Event::OnComplete(_parent);
+                }
+
             private:
                 PreinstallManager &_parent;
             };

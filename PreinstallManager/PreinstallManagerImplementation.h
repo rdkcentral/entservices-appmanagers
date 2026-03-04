@@ -88,7 +88,8 @@ namespace WPEFramework
 
             enum EventNames {
             PREINSTALL_MANAGER_UNKNOWN = 0,
-            PREINSTALL_MANAGER_APP_INSTALLATION_STATUS
+            PREINSTALL_MANAGER_APP_INSTALLATION_STATUS,
+            PREINSTALL_MANAGER_ONCOMPLETE
             };
 
             typedef Exchange::IPackageInstaller::InstallState InstallState;
@@ -165,7 +166,9 @@ namespace WPEFramework
             Core::hresult Register(Exchange::IPreinstallManager::INotification *notification) override;
             Core::hresult Unregister(Exchange::IPreinstallManager::INotification *notification) override;
             Core::hresult StartPreinstall(bool forceInstall) override;
+            Core::hresult PreinstallState(PreinstallState& state) override;
             void handleOnAppInstallationStatus(const std::string &jsonresponse);
+            void sendOnCompleteEvent();
 
             // // IConfiguration methods
             uint32_t Configure(PluginHost::IShell *service) override;
@@ -185,6 +188,9 @@ namespace WPEFramework
             PluginHost::IShell *mCurrentservice;
             Exchange::IPackageInstaller* mPackageManagerInstallerObject;
             Core::Sink<PackageManagerNotification> mPackageManagerNotification;
+            PreinstallState mPreinstallState;
+            uint32_t mExpectedPackagesCount;
+            uint32_t mInstalledPackagesCount;
             void dispatchEvent(EventNames, const JsonObject &params);
             void Dispatch(EventNames event, const JsonObject params);
             friend class Job;
