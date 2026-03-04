@@ -132,6 +132,19 @@ target_link_options(${PROJECT_NAME} PRIVATE
     -Wl,--wrap,statvfs
     -Wl,--wrap,setmntent
     -Wl,--wrap,getmntent
+    -Wl,--undefined=__wrap_opendir
+    -Wl,--undefined=__wrap_readdir
+    -Wl,--undefined=__wrap_closedir
+    -Wl,--undefined=__wrap_access
+    -Wl,--undefined=__wrap_rmdir
+    -Wl,--undefined=__wrap_mkdir
+    -Wl,--undefined=__wrap_chown
+    -Wl,--undefined=__wrap_nftw
+    -Wl,--undefined=__wrap_open
+    -Wl,--undefined=__wrap_stat
+    -Wl,--undefined=__wrap_statvfs
+    -Wl,--undefined=__wrap_setmntent
+    -Wl,--undefined=__wrap_getmntent
 )
 
 # AppManager plugins: AppManager, LifecycleManager, StorageManager, RuntimeManager, DownloadManager, PreinstallManager, PackageManager
