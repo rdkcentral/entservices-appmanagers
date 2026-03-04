@@ -108,8 +108,9 @@ endmacro()
 add_executable(${PROJECT_NAME} ${TEST_SRC})
 target_link_libraries(${PROJECT_NAME} TestMocklib)
 
-# Add wrap flags for mocked system calls
+# Add wrap flags for mocked system calls and export symbols for shared libraries
 target_link_options(${PROJECT_NAME} PRIVATE 
+    -Wl,--export-dynamic
     -Wl,--wrap,system
     -Wl,--wrap,popen
     -Wl,--wrap,syslog
