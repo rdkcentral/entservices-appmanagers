@@ -388,16 +388,6 @@ jobs:
           &&
           cmake --install build/mocks
 
-      - name: Check if TestMocklib is generated
-        run: |
-          echo "Searching for libWPEFrameworkL1TestsIN.so..."
-          find build -name "libWPEFrameworkL1TestsIN.so" || true
-
-      - name: Check if TestMocklib is generated
-        run: |
-          echo "Searching for libTestMocklib.so..."
-          find build -name "libTestMocklib.so" || true
-
       - name: Build entservices-appmanagers
         run: >
           cmake -G Ninja
@@ -477,7 +467,7 @@ jobs:
           -DPLUGIN_PACKAGE_MANAGER=ON
           -DENABLE_UNIT_TESTS=ON
           &&
-          cmake --build build/entservices-appmanagers -j8 -v
+          cmake --build build/entservices-appmanagers -j8
           &&
           cmake --install build/entservices-appmanagers
     
