@@ -90,6 +90,19 @@ set(STORAGE_MANAGER_INCLUDES $ENV{STORAGE_MANAGER_INCLUDES})
 separate_arguments(STORAGE_MANAGER_INCLUDES)
 include_directories(BEFORE ${STORAGE_MANAGER_INCLUDES})
 
+if (RDK_SERVICES_L1_TEST)
+    if (TARGET TestMocklib)
+        message ("[StorageManager L1] linking TestMocklib")
+        target_link_libraries(${PLUGIN_IMPLEMENTATION} PRIVATE TestMocklib)
+        target_link_options(${PLUGIN_IMPLEMENTATION} PRIVATE
+            "-Wl,--wrap=opendir" "-Wl,--wrap=closedir" "-Wl,--wrap=readdir"
+            "-Wl,--wrap=access" "-Wl,--wrap=rmdir" "-Wl,--wrap=mkdir"
+            "-Wl,--wrap=chown" "-Wl,--wrap=stat" "-Wl,--wrap=nftw"
+            "-Wl,--wrap=open" "-Wl,--wrap=unlink" "-Wl,--wrap=statvfs"
+            "-Wl,--allow-shlib-undefined")
+    endif (TARGET TestMocklib)
+endif (RDK_SERVICES_L1_TEST)
+
 if (RDK_SERVICE_L2_TEST)
    find_library(TESTMOCKLIB_LIBRARIES NAMES TestMocklib)
    if (TESTMOCKLIB_LIBRARIES)

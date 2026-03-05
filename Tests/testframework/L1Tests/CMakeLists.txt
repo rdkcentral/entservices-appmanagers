@@ -107,6 +107,14 @@ endmacro()
 
 add_executable(${PROJECT_NAME} ${TEST_SRC})
 
+target_link_options(${PROJECT_NAME} PRIVATE
+    "-Wl,--wrap=opendir" "-Wl,--wrap=closedir" "-Wl,--wrap=readdir"
+    "-Wl,--wrap=access" "-Wl,--wrap=rmdir" "-Wl,--wrap=mkdir"
+    "-Wl,--wrap=chown" "-Wl,--wrap=stat" "-Wl,--wrap=nftw"
+    "-Wl,--wrap=open" "-Wl,--wrap=unlink" "-Wl,--wrap=statvfs"
+    "-Wl,--wrap=setmntent"
+    "-Wl,--export-dynamic" "-Wl,--no-as-needed")
+
 
 # PLUGIN_FRAMERATE and  PLUGIN_USERPREFERENCES and PLUGIN_WAREHOUSE and PLUGIN_DEVICEINFO
 if(PLUGIN_DEVICEDIAGNOSTICS OR PLUGIN_USERPREFERENCES OR PLUGIN_WAREHOUSE OR PLUGIN_DEVICEINFO OR PLUGIN_DISPLAYINFO OR PLUGIN_DISPLAYSETTINGS OR PLUGIN_FRAMERATE OR PLUGIN_POWERMANAGER OR PLUGIN_SYSTEMSERVICES)

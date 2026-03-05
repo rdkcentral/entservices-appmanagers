@@ -53,6 +53,7 @@ namespace WPEFramework
                 Core::hresult DeleteStorage(const string& appId, string& errorReason);
                 Core::hresult Clear(const string& appId, string& errorReason);
                 Core::hresult ClearAll(const string& exemptionAppIds, string& errorReason);
+                void clearStorageInfo(); /* Test helper: clears the in-memory app storage map */
 
             private:
 
