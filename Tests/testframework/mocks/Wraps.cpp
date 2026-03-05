@@ -353,16 +353,8 @@ int Wraps::v_secure_system(const char *command, va_list args)
 
 int Wraps::unlink(const char* filePath)
 {
-    int result = -1;
-    if (impl != nullptr)
-    {
-        result = impl->unlink(filePath);
-    }
-    else
-    {
-        result = ::unlink(filePath);
-    }
-    return result;
+    EXPECT_NE(impl, nullptr);
+    return impl->unlink(filePath);
 }
 
 ssize_t Wraps::readlink(const char *pathname, char *buf, size_t bufsiz)
@@ -377,16 +369,8 @@ int Wraps::ioctl(int fd,unsigned long request,void* arg)
 }
 int Wraps::statvfs(const char* path,struct statvfs* buf)
 {
-    int result = -1;
-    if (impl != nullptr)
-    {
-        result = impl->statvfs(path, buf);
-    }
-    else
-    {
-        result = ::statvfs(path, buf);
-    }
-    return result;
+    EXPECT_NE(impl, nullptr);
+    return impl->statvfs(path,buf);
 }
 int Wraps::statfs(const char* path, struct statfs* buf)
 {
@@ -400,16 +384,8 @@ std::istream& Wraps::getline(std::istream& is, std::string& line)
 }
 int Wraps::mkdir(const char* path, mode_t mode)
 {
-    int result = -1;
-    if (impl != nullptr)
-    {
-        result = impl->mkdir(path, mode);
-    }
-    else
-    {
-        result = ::mkdir(path, mode);
-    }
-    return result;
+    EXPECT_NE(impl, nullptr);
+    return impl->mkdir(path,mode);
 }
 int Wraps::mount(const char* source, const char* target, const char* filesystemtype, unsigned long mountflags, const void* data)
 {
@@ -451,16 +427,8 @@ int Wraps::umount(const char* path)
 }
 int Wraps::rmdir(const char* pathname)
 {
-    int result = -1;
-    if (impl != nullptr)
-    {
-        result = impl->rmdir(pathname);
-    }
-    else
-    {
-        result = ::rmdir(pathname);
-    }
-    return result;
+    EXPECT_NE(impl, nullptr);
+    return impl->rmdir(pathname);
 }
 
 time_t Wraps::time(time_t* arg)
@@ -471,44 +439,20 @@ time_t Wraps::time(time_t* arg)
 
 int Wraps::access(const char* pathname, int mode)
 {
-    int result = -1;
-    if (impl != nullptr)
-    {
-        result = impl->access(pathname, mode);
-    }
-    else
-    {
-        result = ::access(pathname, mode);
-    }
-    return result;
+    EXPECT_NE(impl, nullptr);
+    return impl->access(pathname, mode);
 }
 
 int Wraps::chown(const char *path, uid_t owner, gid_t group)
 {
-    int result = -1;
-    if (impl != nullptr)
-    {
-        result = impl->chown(path, owner, group);
-    }
-    else
-    {
-        result = ::chown(path, owner, group);
-    }
-    return result;
+    EXPECT_NE(impl, nullptr);
+    return impl->chown(path, owner, group);
 }
 
 int Wraps::nftw(const char* dirpath,int (*fn)(const char*, const struct stat*, int, struct FTW*),int nopenfd, int flags)
 {
-    int result = -1;
-    if (impl != nullptr)
-    {
-        result = impl->nftw(dirpath, fn, nopenfd, flags);
-    }
-    else
-    {
-        result = ::nftw(dirpath, fn, nopenfd, flags);
-    }
-    return result;
+    EXPECT_NE(impl, nullptr);
+    return impl->nftw(dirpath, fn, nopenfd, flags);
 }
 
 DIR* Wraps::opendir(const char* pathname)
@@ -527,30 +471,14 @@ DIR* Wraps::opendir(const char* pathname)
 
 struct dirent* Wraps::readdir(DIR* dirp)
 {
-    struct dirent* result = nullptr;
-    if (impl != nullptr)
-    {
-        result = impl->readdir(dirp);
-    }
-    else
-    {
-        result = ::readdir(dirp);
-    }
-    return result;
+    EXPECT_NE(impl, nullptr);
+    return impl->readdir(dirp);
 }
 
 int Wraps::closedir(DIR* dirp)
 {
-    int result = -1;
-    if (impl != nullptr)
-    {
-        result = impl->closedir(dirp);
-    }
-    else
-    {
-        result = ::closedir(dirp);
-    }
-    return result;
+    EXPECT_NE(impl, nullptr);
+    return impl->closedir(dirp);
 }
 CURLcode Wraps::curl_easy_setopt(CURL* curl, CURLoption option, void* param)
 {
