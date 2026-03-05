@@ -140,6 +140,7 @@ else(L2_TEST_OOP_RPC)
             ${CMAKE_SOURCE_DIR}/Tests/mocks/thunder
             ${CMAKE_SOURCE_DIR}/Tests/mocks/devicesettings
             ${CMAKE_SOURCE_DIR}/Tests/mocks/libusb
+            ${CMAKE_SOURCE_DIR}/helpers
             ${CMAKE_INSTALL_PREFIX}/include
             ${CMAKE_INSTALL_PREFIX}/include/WPEFramework
             ${CMAKE_CURRENT_SOURCE_DIR}/../../OCIContainer/stubs
