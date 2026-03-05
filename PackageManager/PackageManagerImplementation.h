@@ -38,7 +38,7 @@
 #include "Module.h"
 #include "UtilsLogging.h"
 #include <interfaces/IAppPackageManager.h>
-#include <interfaces/IStorageManager.h>
+#include <interfaces/IAppStorageManager.h>
 
 #include "HttpClient.h"
 
@@ -330,7 +330,7 @@ class PackageManagerImplementation
         std::shared_ptr<packagemanager::IPackageImpl> packageImpl;
 	    #endif
         PluginHost::IShell* mCurrentservice;
-        Exchange::IStorageManager* mStorageManagerObject;
+        Exchange::IAppStorageManager* mStorageManagerObject;
         std::map<std::string, std::pair<std::string, std::string>> runtimeMap;
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
         Exchange::ITelemetryMetrics* mTelemetryMetricsObject;
