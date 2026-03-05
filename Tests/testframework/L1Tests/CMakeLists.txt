@@ -106,7 +106,27 @@ macro(add_plugin_test plugin_name test_files)
 endmacro()
 
 add_executable(${PROJECT_NAME} ${TEST_SRC})
-target_link_libraries(${PROJECT_NAME} TestMocklib)
+
+# Add wrap flags for the test executable to resolve wrapped symbols
+if (RDK_SERVICES_L1_TEST)
+    target_link_options(${PROJECT_NAME} PRIVATE 
+        "-Wl,--wrap=opendir"
+        "-Wl,--wrap=closedir"
+        "-Wl,--wrap=readdir"
+        "-Wl,--wrap=access"
+        "-Wl,--wrap=rmdir"
+        "-Wl,--wrap=mkdir"
+        "-Wl,--wrap=chown"
+        "-Wl,--wrap=stat"
+        "-Wl,--wrap=nftw"
+        "-Wl,--wrap=open"
+        "-Wl,--wrap=unlink"
+        "-Wl,--wrap=statvfs"
+        "-Wl,--wrap=setmntent"
+        "-Wl,--export-dynamic"
+        "-Wl,--no-as-needed"
+    )
+endif()
 
 # PLUGIN_FRAMERATE and  PLUGIN_USERPREFERENCES and PLUGIN_WAREHOUSE and PLUGIN_DEVICEINFO
 if(PLUGIN_DEVICEDIAGNOSTICS OR PLUGIN_USERPREFERENCES OR PLUGIN_WAREHOUSE OR PLUGIN_DEVICEINFO OR PLUGIN_DISPLAYINFO OR PLUGIN_DISPLAYSETTINGS OR PLUGIN_FRAMERATE OR PLUGIN_POWERMANAGER OR PLUGIN_SYSTEMSERVICES)
@@ -163,6 +183,9 @@ include_directories(${TEST_INC})
 target_link_directories(${PROJECT_NAME} PUBLIC ${CMAKE_INSTALL_PREFIX}/lib ${CMAKE_INSTALL_PREFIX}/lib/wpeframework/plugins)
 
 target_link_libraries(${PROJECT_NAME} gtest_main gmock gtest ${TEST_LIB})
+
+# Link TestMocklib last to provide wrapped symbol implementations
+target_link_libraries(${PROJECT_NAME} TestMocklib)
 
 target_include_directories(${PROJECT_NAME}
         PUBLIC
