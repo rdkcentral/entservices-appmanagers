@@ -160,12 +160,7 @@ include_directories(${TEST_INC})
 
 target_link_directories(${MODULE_NAME} PUBLIC ${CMAKE_INSTALL_PREFIX}/lib ${CMAKE_INSTALL_PREFIX}/lib/wpeframework/plugins)
 
-if(TARGET TestMocklib)
-	target_link_libraries(${MODULE_NAME} ${TEST_LIB} TestMocklib)
-	add_dependencies(${MODULE_NAME} TestMocklib)
-else()
-	target_link_libraries(${MODULE_NAME} ${TEST_LIB})
-endif()
+target_link_libraries(${MODULE_NAME} ${TEST_LIB} TestMocklib)
 
 target_include_directories(${MODULE_NAME}
         PUBLIC

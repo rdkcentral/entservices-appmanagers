@@ -40,10 +40,6 @@ if(RDK_SERVICE_L2_TEST)
     add_subdirectory(Tests/L2Tests)
 endif()
 
-if(RDK_SERVICES_L1_TEST)
-    add_subdirectory(Tests/testframework)
-endif()
-
 option(DISABLE_SECURITY_TOKEN "Disable security token" OFF)
 
 if(DISABLE_SECURITY_TOKEN)
@@ -88,6 +84,7 @@ endif()
 
 if(RDK_SERVICES_L1_TEST)
     add_subdirectory(Tests/L1Tests)
+    add_subdirectory(Tests/testframework)
 endif()
 
 if(WPEFRAMEWORK_CREATE_IPKG_TARGETS)
