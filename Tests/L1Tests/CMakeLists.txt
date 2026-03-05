@@ -139,22 +139,7 @@ add_plugin_test_ex(PLUGIN_DOWNLOADMANAGER tests/test_DownloadManager.cpp "${DOWN
 add_library(${MODULE_NAME} SHARED ${TEST_SRC})
 
 if (RDK_SERVICES_L1_TEST)
-    target_link_options(${MODULE_NAME} PRIVATE 
-        "-Wl,--wrap=opendir"
-        "-Wl,--wrap=closedir"
-        "-Wl,--wrap=readdir"
-        "-Wl,--wrap=access"
-        "-Wl,--wrap=rmdir"
-        "-Wl,--wrap=mkdir"
-        "-Wl,--wrap=chown"
-        "-Wl,--wrap=stat"
-        "-Wl,--wrap=nftw"
-        "-Wl,--wrap=open"
-        "-Wl,--wrap=unlink"
-        "-Wl,--wrap=statvfs"
-        "-Wl,--wrap=setmntent"
-        "-Wl,--allow-shlib-undefined"
-    )
+    target_link_options(${MODULE_NAME} PRIVATE "-Wl,-wrap,opendir")
 endif (RDK_SERVICES_L1_TEST)
 
 include_directories(${TEST_INC})
@@ -177,4 +162,4 @@ target_compile_definitions(${MODULE_NAME} PRIVATE UNIT_TEST)
 #install(TARGETS ${PROJECT_NAME} DESTINATION bin)
 
 install(TARGETS ${MODULE_NAME} DESTINATION lib)
-write_config(PLUGINS ${PLUGIN_NAME})
+write_config(${PLUGIN_NAME})

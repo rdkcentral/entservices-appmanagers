@@ -36,7 +36,7 @@ set (TEST_LIB
 
 set(ENTSERVICES_REPO_L1TEST_LIB_PATH ${CMAKE_INSTALL_PREFIX}/lib)
 
-set (TEST_INC ../../helpers)
+set (TEST_INC ${CMAKE_SOURCE_DIR}/helpers)
 
 #########################################################################################
 # add_plugin_test_ex: Macro to add plugin tests, it will append to TEST_SRC, TEST_INC,
@@ -102,38 +102,22 @@ macro(add_plugin_test plugin_name test_files)
     string(TOUPPER "${plugin_name}" plugin_option)
     set(plugin_opt "PLUGIN_${plugin_option}")
 
-    add_plugin_test_ex(${plugin_opt} "${test_files}" "../../${plugin_name}" "${NAMESPACE}${plugin_name}")
+    add_plugin_test_ex(${plugin_opt} "${test_files}" "${CMAKE_SOURCE_DIR}/${plugin_name}" "${NAMESPACE}${plugin_name}")
 endmacro()
 
 add_executable(${PROJECT_NAME} ${TEST_SRC})
 
-# Add wrap flags to resolve wrapped symbols from shared libraries
-target_link_options(${PROJECT_NAME} PRIVATE 
-    "-Wl,--wrap=opendir"
-    "-Wl,--wrap=closedir"
-    "-Wl,--wrap=readdir"
-    "-Wl,--wrap=access"
-    "-Wl,--wrap=rmdir"
-    "-Wl,--wrap=mkdir"
-    "-Wl,--wrap=chown"
-    "-Wl,--wrap=stat"
-    "-Wl,--wrap=nftw"
-    "-Wl,--wrap=open"
-    "-Wl,--wrap=unlink"
-    "-Wl,--wrap=statvfs"
-    "-Wl,--wrap=setmntent"
-)
 
 # PLUGIN_FRAMERATE and  PLUGIN_USERPREFERENCES and PLUGIN_WAREHOUSE and PLUGIN_DEVICEINFO
 if(PLUGIN_DEVICEDIAGNOSTICS OR PLUGIN_USERPREFERENCES OR PLUGIN_WAREHOUSE OR PLUGIN_DEVICEINFO OR PLUGIN_DISPLAYINFO OR PLUGIN_DISPLAYSETTINGS OR PLUGIN_FRAMERATE OR PLUGIN_POWERMANAGER OR PLUGIN_SYSTEMSERVICES)
     message(STATUS "linking libWPEFrameworkL1TestsDD to RdkServicesL1Test target")
-    target_link_libraries(${PROJECT_NAME} ${NAMESPACE}L1TestsDD)
+    target_link_libraries(${PROJECT_NAME} "${ENTSERVICES_REPO_L1TEST_LIB_PATH}/libWPEFrameworkL1TestsDD.so")
 endif()
 
 #PLUGIN_PRIVACY and PLUGIN_PLAYBACKSYNC and PLUGIN_AUTHSERVICE
 if(PLUGIN_PRIVACY OR PLUGIN_PLAYBACKSYNC OR PLUGIN_AUTHSERVICE)
     message(STATUS "linking libWPEFrameworkL1TestsCPC to RdkServicesL1Test target")
-    target_link_libraries(${PROJECT_NAME} ${NAMESPACE}L1TestsCPC)
+    target_link_libraries(${PROJECT_NAME} "${ENTSERVICES_REPO_L1TEST_LIB_PATH}/libWPEFrameworkL1TestsCPC.so")
 endif()
 
 
@@ -146,19 +130,19 @@ endif()
 # PLUGIN_FIRMWAREUPDATE and PLUGIN_MAINTENANCEMANAGER and PLUGIN_PACKAGER
 if(PLUGIN_FIRMWAREUPDATE OR PLUGIN_MAINTENANCEMANAGER OR PLUGIN_PACKAGER)
     message(STATUS "linking libWPEFrameworkL1TestsSU to RdkServicesL1Test target")
-    target_link_libraries(${PROJECT_NAME} ${NAMESPACE}L1TestsSU)
+    target_link_libraries(${PROJECT_NAME} "${ENTSERVICES_REPO_L1TEST_LIB_PATH}/libWPEFrameworkL1TestsSU.so")
 endif()
 
 #PLUGIN_AVINPUT and PLUGIN_AVOUTPUT and PLUGIN_HDMICECSOURCE and PLUGIN_HDMICECSINK and PLUGIN_HDCPPROFILE and PLUGIN_HDMIINPUT 
 if(PLUGIN_AVINPUT OR PLUGIN_AVOUTPUT OR PLUGIN_HDMICECSOURCE OR PLUGIN_HDMICECSINK OR PLUGIN_HDCPPROFILE OR PLUGIN_HDMIINPUT)
     message(STATUS "linking libWPEFrameworkL1TestsIO to RdkServicesL1Test target")
-    target_link_libraries(${PROJECT_NAME} ${NAMESPACE}L1TestsIO)
+    target_link_libraries(${PROJECT_NAME} "${ENTSERVICES_REPO_L1TEST_LIB_PATH}/libWPEFrameworkL1TestsIO.so")
 endif()
 
 #PLUGIN_MIRACAST and PLUGIN_XCAST
 if(PLUGIN_MIRACAST OR PLUGIN_XCAST)
     message(STATUS "linking libWPEFrameworkL1TestsCA to RdkServicesL1Test target")
-    target_link_libraries(${PROJECT_NAME} ${NAMESPACE}L1TestsCA)
+    target_link_libraries(${PROJECT_NAME} "${ENTSERVICES_REPO_L1TEST_LIB_PATH}/libWPEFrameworkL1TestsCA.so")
 endif()
 
 #PLUGIN_MOTION_DETECTION and PLUGIN_FRONTPANEL
@@ -170,7 +154,7 @@ endif()
 #PLUGIN_SCREENCAPTURE and PLUGIN_SYSTEMAUDIOPLAYER and TEXTTOSPEECH and UNIFIEDCASMANAGEMENT
 if(PLUGIN_SCREENCAPTURE OR PLUGIN_SYSTEMAUDIOPLAYER OR PLUGIN_TEXTTOSPEECH OR PLUGIN_UNIFIEDCASMANAGEMENT)
     message(STATUS "linking libWPEFrameworkL1TestsMD to RdkServicesL1Test target")
-    target_link_libraries(${PROJECT_NAME} ${NAMESPACE}L1TestsMD)
+    target_link_libraries(${PROJECT_NAME} "${ENTSERVICES_REPO_L1TEST_LIB_PATH}/libWPEFrameworkL1TestsMD.so")
 endif()
 
 include(GoogleTest)
@@ -187,12 +171,10 @@ target_include_directories(${PROJECT_NAME}
         PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
         $<INSTALL_INTERFACE:include>
-        ../mocks
-        ../mocks/devicesettings
-        ../mocks/thunder
-        ../mocks/libusb
-        ${CMAKE_CURRENT_SOURCE_DIR}/../../OCIContainer/stubs
-        ../../../Thunder/Source/plugins
+        ${CMAKE_CURRENT_SOURCE_DIR}/../mocks
+        ${CMAKE_CURRENT_SOURCE_DIR}/../mocks/devicesettings
+        ${CMAKE_CURRENT_SOURCE_DIR}/../mocks/thunder
+        ${CMAKE_CURRENT_SOURCE_DIR}/../mocks/libusb
         )
 
 install(TARGETS ${PROJECT_NAME} DESTINATION bin)

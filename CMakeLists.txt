@@ -19,8 +19,6 @@
 
 cmake_minimum_required(VERSION 3.3)
 
-project(EntservicesAppmanagers)
-
 find_package(WPEFramework)
 
 # All packages that did not deliver a CMake Find script (and some deprecated scripts that need to be removed)
@@ -41,6 +39,7 @@ if(RDK_SERVICE_L2_TEST)
 endif()
 
 if(RDK_SERVICES_L1_TEST)
+    add_subdirectory(Tests/L1Tests)
     add_subdirectory(Tests/testframework)
 endif()
 
@@ -84,10 +83,6 @@ endif()
 
 if(PLUGIN_TELEMETRYMETRICS)
     add_subdirectory(TelemetryMetrics)
-endif()
-
-if(RDK_SERVICES_L1_TEST)
-    add_subdirectory(Tests/L1Tests)
 endif()
 
 if(WPEFRAMEWORK_CREATE_IPKG_TARGETS)
