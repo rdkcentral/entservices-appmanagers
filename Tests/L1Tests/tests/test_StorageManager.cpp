@@ -148,8 +148,6 @@ class StorageManagerTest : public ::testing::Test {
         virtual void TearDown()
         {
             ASSERT_TRUE(interface != nullptr);
-            // Clear the singleton RequestHandler map so each test starts with a clean state
-            RequestHandler::getInstance().clearStorageInfo();
         }
     };
 
@@ -600,8 +598,7 @@ TEST_F(StorageManagerTest, DeleteStorage_rmdirFilure){
 
     EXPECT_CALL(*p_wrapsImplMock, rmdir(::testing::_))
         .WillRepeatedly([](const char* pathname) {
-            // Simulate failure with EEXIST so strerror() returns "File exists"
-            errno = EEXIST;
+            // Simulate failure
             return -1;
     });
 
@@ -804,7 +801,7 @@ TEST_F(StorageManagerTest, test_clearall_failure_json){
     std::string path = "";
     std::string errorReason = "";
     std::string wrappedJson = "{\"exemptionAppIds\": \"[\\\"testexempt\\\"]\"}";
-    int callCount = 0;
+    static int callCount = 0;
 
     // mock the mkdir function to always return success
     EXPECT_CALL(*p_wrapsImplMock, mkdir(::testing::_, ::testing::_))

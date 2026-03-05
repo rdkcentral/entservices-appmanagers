@@ -86,16 +86,6 @@ include_directories(BEFORE ${APP_MANAGER_INCLUDES})
 target_link_libraries(${PLUGIN_IMPLEMENTATION} PRIVATE
     CompileSettingsDebug::CompileSettingsDebug ${NAMESPACE}Plugins::${NAMESPACE}Plugins  ${PLUGIN_APP_MANAGER_EXTRA_LIBRARIES})
 
-if (RDK_SERVICES_L1_TEST)
-    if (TARGET TestMocklib)
-        message ("[AppManager L1] linking TestMocklib")
-        target_link_libraries(${PLUGIN_IMPLEMENTATION} PRIVATE TestMocklib)
-        target_link_options(${PLUGIN_IMPLEMENTATION} PRIVATE
-            "-Wl,--wrap=stat"
-            "-Wl,--allow-shlib-undefined")
-    endif (TARGET TestMocklib)
-endif (RDK_SERVICES_L1_TEST)
-
 install(TARGETS ${PLUGIN_IMPLEMENTATION}
     DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/${STORAGE_DIRECTORY}/plugins)
 

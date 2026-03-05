@@ -960,11 +960,5 @@ namespace WPEFramework
             mBaseStoragePath = path;
             LOGINFO("Base Storage Path Set: %s", mBaseStoragePath.c_str());
         }
-
-        void RequestHandler::clearStorageInfo()
-        {
-            std::unique_lock<std::mutex> lock(mStorageManagerImplLock);
-            mStorageAppInfo.clear();
-        }
     }
 }
