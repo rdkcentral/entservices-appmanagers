@@ -164,6 +164,9 @@ target_link_directories(${PROJECT_NAME} PUBLIC ${CMAKE_INSTALL_PREFIX}/lib ${CMA
 
 target_link_libraries(${PROJECT_NAME} gtest_main gmock gtest ${TEST_LIB})
 
+# Link TestMocklib LAST with --whole-archive to ensure all wrapped functions are available
+target_link_libraries(${PROJECT_NAME} -Wl,--whole-archive TestMocklib -Wl,--no-whole-archive)
+
 target_include_directories(${PROJECT_NAME}
         PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
