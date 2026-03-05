@@ -79,16 +79,16 @@ flowchart LR
 
 | Module | Description | Documentation |
 |--------|-------------|---------------|
-| **AppManager** | Primary API for application management. Orchestrates app lifecycle operations. | [View →](./doc/AppManager.md) |
-| **LifecycleManager** | State machine for application lifecycle transitions. | [View →](./doc/LifecycleManager.md) |
-| **RuntimeManager** | Container runtime using Dobby OCI. Handles execution and hibernation. | [View →](./doc/RuntimeManager.md) |
-| **PackageManager** | Package download, installation, locking, and uninstallation. | [View →](./doc/PackageManager.md) |
-| **DownloadManager** | HTTP downloads with priority queuing and rate limiting. | [View →](./doc/DownloadManager.md) |
-| **StorageManager** | Application-specific storage allocation and management. | [View →](./doc/StorageManager.md) |
-| **PreinstallManager** | Pre-installed application scanning and installation. | [View →](./doc/PreinstallManager.md) |
-| **RDKWindowManager** | Display creation, focus control, and key intercepts. | [View →](./doc/RDKWindowManager.md) |
-| **TelemetryMetrics** | Performance metrics and analytics collection. | [View →](./doc/TelemetryMetrics.md) |
-| **WebBridge** | WebSocket bridge for JSON-RPC communication. | [View →](./doc/WebBridge.md) |
+| **AppManager** | Primary API for application management. Orchestrates app lifecycle operations. | [View →](./AppManager/AppManager.md) |
+| **LifecycleManager** | State machine for application lifecycle transitions. | [View →](./LifecycleManager/LifecycleManager.md) |
+| **RuntimeManager** | Container runtime using Dobby OCI. Handles execution and hibernation. | [View →](./RuntimeManager/RuntimeManager.md) |
+| **PackageManager** | Package download, installation, locking, and uninstallation. | [View →](./PackageManager/PackageManager.md) |
+| **DownloadManager** | HTTP downloads with priority queuing and rate limiting. | [View →](./DownloadManager/DownloadManager.md) |
+| **StorageManager** | Application-specific storage allocation and management. | [View →](./StorageManager/StorageManager.md) |
+| **PreinstallManager** | Pre-installed application scanning and installation. | [View →](./PreinstallManager/PreinstallManager.md) |
+| **RDKWindowManager** | Display creation, focus control, and key intercepts. | [View →](./RDKWindowManager/RDKWindowManager.md) |
+| **TelemetryMetrics** | Performance metrics and analytics collection. | [View →](./TelemetryMetrics/TelemetryMetrics.md) |
+| **WebBridge** | WebSocket bridge for JSON-RPC communication. | [View →](./WebBridge/WebBridge.md) |
 
 ---
 
