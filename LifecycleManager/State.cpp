@@ -54,9 +54,11 @@ namespace WPEFramework
                 ApplicationContext* context = getContext();
                 ApplicationLaunchParams& launchParams = context->getApplicationLaunchParams();
                 ret = runtimeManagerHandler->run(context->getAppId(), context->getAppInstanceId(), launchParams.mLaunchArgs, launchParams.mTargetState, launchParams.mRuntimeConfigObject, errorReason);
-                ret = true;
-                context->mPendingEventName = "onAppRunning";
-                context->mPendingStateTransition = true;
+                if (ret)
+                {
+                    context->mPendingEventName = "onAppRunning";
+                    context->mPendingStateTransition = true;
+                }
 	    }
             return ret;
         }
