@@ -153,7 +153,6 @@ if (RDK_SERVICES_L1_TEST)
         "-Wl,--wrap=unlink"
         "-Wl,--wrap=statvfs"
         "-Wl,--wrap=setmntent"
-        "-Wl,--allow-shlib-undefined"
     )
 endif (RDK_SERVICES_L1_TEST)
 
