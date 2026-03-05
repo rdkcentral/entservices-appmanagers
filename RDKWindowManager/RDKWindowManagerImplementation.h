@@ -105,11 +105,7 @@ namespace Plugin {
 
        public:
             static Core::ProxyType<Core::IDispatch> Create(RDKWindowManagerImplementation *rdkWindowManagerImplementation, Event event, JsonValue params) {
-#ifndef USE_THUNDER_R4
-                return (Core::proxy_cast<Core::IDispatch>(Core::ProxyType<Job>::Create(rdkWindowManagerImplementation, event, params)));
-#else
                 return (Core::ProxyType<Core::IDispatch>(Core::ProxyType<Job>::Create(rdkWindowManagerImplementation, event, params)));
-#endif
             }
 
             virtual void Dispatch() {

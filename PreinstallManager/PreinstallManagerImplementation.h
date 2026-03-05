@@ -143,11 +143,7 @@ namespace WPEFramework
             public:
                 static Core::ProxyType<Core::IDispatch> Create(PreinstallManagerImplementation *preinstallManagerImplementation, EventNames event, JsonObject params)
                 {
-#ifndef USE_THUNDER_R4
-                    return (Core::proxy_cast<Core::IDispatch>(Core::ProxyType<Job>::Create(preinstallManagerImplementation, event, params)));
-#else
                     return (Core::ProxyType<Core::IDispatch>(Core::ProxyType<Job>::Create(preinstallManagerImplementation, event, params)));
-#endif
                 }
 
                 virtual void Dispatch()
