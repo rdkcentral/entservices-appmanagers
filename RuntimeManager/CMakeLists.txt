@@ -108,6 +108,10 @@ endif()
 
 include_directories(../helpers)
 
+if(AIMANAGERS_TELEMETRY_METRICS_SUPPORT)
+    include_directories(../TelemetryMetrics)
+endif(AIMANAGERS_TELEMETRY_METRICS_SUPPORT)
+
 set_target_properties(${PLUGIN_IMPLEMENTATION} PROPERTIES
         CXX_STANDARD 11
         CXX_STANDARD_REQUIRED YES)

@@ -46,12 +46,7 @@ class WebInspector;
 #define RIALTO_TIMEOUT_MILLIS 5000
 #endif
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-#define TELEMETRY_MARKER_LAUNCH_TIME                         "OverallLaunchTime_split"
-#define TELEMETRY_MARKER_CLOSE_TIME                          "AppCloseTime_split"
-#define TELEMETRY_MARKER_SUSPEND_TIME                        "SuspendTime_split"
-#define TELEMETRY_MARKER_RESUME_TIME                         "ResumeTime_split"
-#define TELEMETRY_MARKER_HIBERNATE_TIME                      "HibernateTime_split"
-#define TELEMETRY_MARKER_WAKE_TIME                           "WakeTime_split"
+#include "RDKAppMgrTelemetryMarkers.h"
 #endif
 
 namespace WPEFramework
@@ -210,6 +205,11 @@ namespace WPEFramework
                 virtual void onOCIContainerFailureEvent(std::string name, JsonObject& data) override;
                 virtual void onOCIContainerStateChangedEvent(std::string name, JsonObject& data) override;
 
+#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
+                // WindowManager event handler
+                void onWindowManagerDisconnected(const std::string& client);
+#endif
+
             private: /* private methods */
                 Core::hresult createOCIContainerPluginObject();
                 void releaseOCIContainerPluginObject();
@@ -249,7 +249,7 @@ namespace WPEFramework
                 void notifyParameterCheckFailure(const string& appInstanceId, const string& errorCode);
 
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-                void recordTelemetryData(const std::string& marker, const std::string& appId, uint64_t requestTime);
+                void recordTelemetryData(const std::string& marker, const std::string& appId, uint64_t requestTime, const std::string& fieldName = "");
                 TelemetryMarker getTelemetryMarker(const std::string& marker);
                 time_t getCurrentTimestamp();
 #endif
