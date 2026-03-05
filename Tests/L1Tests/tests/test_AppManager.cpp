@@ -162,7 +162,7 @@ protected:
                     }
                 } else if (name == "org.rdk.PersistentStore") {
                    return reinterpret_cast<void*>(mStore2Mock);
-                } else if (name == "org.rdk.StorageManager") {
+                } else if (name == "org.rdk.AppStorageManager") {
                     return reinterpret_cast<void*>(mStorageManagerMock);
                 } else if (name == "org.rdk.PackageManagerRDKEMS") {
                     if (id == Exchange::IPackageHandler::ID) {
