@@ -615,7 +615,6 @@ Core::hresult RDKWindowManagerImplementation::CreateDisplay(const std::string &c
 
     LOGINFO("MADANA GOPAL CreateDisplay params: clientId:%s, displayName:%s, displayWidth:%u, displayHeight:%u, virtualDisplay:%u, virtualWidth:%u, virtualHeight:%u, ownerId:%u, groupId:%u, topmost:%u, focus:%u",
             clientId.c_str(), displayName.c_str(), displayWidth, displayHeight, virtualDisplay, virtualWidth, virtualHeight, ownerId, groupId, topmost, focus);
->>>>>>> fb03344d85db1a315311dbcbc1b66a1a701485f0
     result = createDisplay(clientId, displayName, displayWidth, displayHeight,
                            virtualDisplay, virtualWidth, virtualHeight, topmost, focus, ownerId, groupId);
 
@@ -1415,7 +1414,7 @@ Core::hresult RDKWindowManagerImplementation::SetVisible(const std::string &clie
  * @focus[in]         : Optional - focus is required or not
  * @return            : Optional - true/false
  */
-bool RDKWindowManagerImplementation::createDisplay(const string& client, const string& displayName, const uint32_t displayWidth, const uint32_t displayHeight,
+bool RDKWindowManagerImplementation::createDisplay(const string& client, const string& displayName, const uint32_t displayWidth, const uint32_t displayHeight, bool virtualDisplay,
                                                    const uint32_t virtualWidth, const uint32_t virtualHeight,
                                                    const bool topmost, const bool focus, const uint32_t ownerId, uint32_t groupId)
 {
