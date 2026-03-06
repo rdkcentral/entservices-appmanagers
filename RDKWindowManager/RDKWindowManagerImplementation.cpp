@@ -615,7 +615,7 @@ Core::hresult RDKWindowManagerImplementation::CreateDisplay(const std::string &c
 
     LOGINFO("MADANA GOPAL CreateDisplay params: clientId:%s, displayName:%s, displayWidth:%u, displayHeight:%u, virtualDisplay:%u, virtualWidth:%u, virtualHeight:%u, ownerId:%u, groupId:%u, topmost:%u, focus:%u",
             clientId.c_str(), displayName.c_str(), displayWidth, displayHeight, virtualDisplay, virtualWidth, virtualHeight, ownerId, groupId, topmost, focus);
-
+>>>>>>> fb03344d85db1a315311dbcbc1b66a1a701485f0
     result = createDisplay(clientId, displayName, displayWidth, displayHeight,
                            virtualDisplay, virtualWidth, virtualHeight, topmost, focus, ownerId, groupId);
 
