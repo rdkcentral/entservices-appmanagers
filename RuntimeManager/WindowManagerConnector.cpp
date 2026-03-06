@@ -93,7 +93,7 @@ bool WindowManagerConnector::createDisplay(const string& appInstanceId , const s
     
     LOGINFO("Creating display [%s] for application [%s] \n", displayName.c_str(), appInstanceId.c_str());
 
-    Core::hresult result = mWindowManager->CreateDisplay(appInstanceId, displayName, displayWidth, displayHeight, virtualDisplay, virtualWidth, virtualHeight, userId, groupId, topmost, focus)
+    Core::hresult result = mWindowManager->CreateDisplay(appInstanceId, displayName, displayWidth, displayHeight, virtualDisplay, virtualWidth, virtualHeight, userId, groupId, topmost, focus);
     if (Core::ERROR_NONE != result)
     {
         LOGERR("Failed to create display for application [%s] error [%d] \n",appInstanceId.c_str(), result);
