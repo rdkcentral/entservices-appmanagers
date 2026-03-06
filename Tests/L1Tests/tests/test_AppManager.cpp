@@ -451,16 +451,11 @@ protected:
         });
     }
 
-    void UnloadAppAndUnlock()
+    void SetupUnloadApp()
     {
         EXPECT_CALL(*mLifecycleManagerMock, UnloadApp(::testing::_, ::testing::_, ::testing::_))
         .WillRepeatedly([&](const string& appInstanceId, string& errorReason, bool& success) {
             success = true;
-            return Core::ERROR_NONE;
-        });
-
-        EXPECT_CALL(*mPackageManagerMock, Unlock(APPMANAGER_APP_ID, ::testing::_))
-        .WillOnce([&](const string &packageId, const string &version) {
             return Core::ERROR_NONE;
         });
     }
@@ -1816,10 +1811,9 @@ TEST_F(AppManagerTest, CloseAppUsingComRpcFailureLifecycleManagerRemoteObjectIsN
  * Setting Mock for Lock() to simulate lockId and unpacked path
  * Setting Mock for IsAppLoaded() to simulate the package is loaded or not
  * Setting Mock for SetTargetAppState() to simulate setting the state
- * Setting Mock for SpawnApp() to simulate spawning a app and gettign the appinstance id
+ * Setting Mock for SpawnApp() to simulate spawning a app and getting the appinstance id
  * Calling LaunchApp first so that all the prerequisite will be filled
  * Setting Mock for UnloadApp() to simulate unloading the app
- * Setting Mock for Unlock() to simulate reset the lock flag
  * Verifying the return of the API
  * Releasing the AppManager interface and all related test resources
  */
@@ -1842,7 +1836,7 @@ TEST_F(AppManagerTest, TerminateAppUsingComRpcSuccess)
     EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->LaunchApp(APPMANAGER_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS));
     signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLaunchRequest);
     EXPECT_TRUE(signalled & AppManager_onAppLaunchRequest);
-    UnloadAppAndUnlock();
+    SetupUnloadApp();
 
     EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->TerminateApp(APPMANAGER_APP_ID));
 
@@ -1859,10 +1853,9 @@ TEST_F(AppManagerTest, TerminateAppUsingComRpcSuccess)
  * Setting Mock for Lock() to simulate lockId and unpacked path
  * Setting Mock for IsAppLoaded() to simulate the package is loaded or not
  * Setting Mock for SetTargetAppState() to simulate setting the state
- * Setting Mock for SpawnApp() to simulate spawning a app and gettign the appinstance id
+ * Setting Mock for SpawnApp() to simulate spawning a app and getting the appinstance id
  * Calling LaunchApp first so that all the prerequisite will be filled
  * Setting Mock for UnloadApp() to simulate unloading the app
- * Setting Mock for Unlock() to simulate reset the lock flag
  * Verifying the return of the API
  * Releasing the AppManager interface and all related test resources
  */
@@ -1893,7 +1886,7 @@ TEST_F(AppManagerTest, TerminateAppUsingJSONRpcSuccess)
     EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("launchApp"), requestLaunch, mJsonRpcResponse));
     EXPECT_EQ(Core::ERROR_NONE, onAppLaunchRequest.Lock());
     EVENT_UNSUBSCRIBE(0, _T("onAppLaunchRequest"), _T("org.rdk.AppManager"), message);
-    UnloadAppAndUnlock();
+    SetupUnloadApp();
 
     std::string request = "{\"appId\": \"" + std::string(APPMANAGER_APP_ID) + "\"}";
     EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("terminateApp"), request, mJsonRpcResponse));
@@ -2118,7 +2111,8 @@ TEST_F(AppManagerTest, KillAppUsingComRpcSuccess)
     EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->LaunchApp(APPMANAGER_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS));
     signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLaunchRequest);
     EXPECT_TRUE(signalled & AppManager_onAppLaunchRequest);
-    UnloadAppAndUnlock();
+    SetupUnloadApp();
+
     EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->KillApp(APPMANAGER_APP_ID));
 
     mAppManagerImpl->Unregister(&notification);
