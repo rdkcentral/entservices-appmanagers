@@ -111,10 +111,10 @@ set (RUNTIMEMANAGER_INC ${CMAKE_SOURCE_DIR}/RuntimeManager ${CMAKE_SOURCE_DIR}/h
 set (RUNTIMEMANAGER_LIBS ${NAMESPACE}RuntimeManager ${NAMESPACE}RuntimeManagerImplementation)
 add_plugin_test_ex(PLUGIN_RUNTIME_MANAGER tests/test_RunTimeManager.cpp "${RUNTIMEMANAGER_INC}" "${RUNTIMEMANAGER_LIBS}")
 
-#PLUGIN_STORAGE_MANAGER
-set (STORAGE_MANAGER_INC ${CMAKE_SOURCE_DIR}/StorageManager ${CMAKE_SOURCE_DIR}/helpers)
-set (STORAGE_MANAGER_LIBS ${NAMESPACE}StorageManager ${NAMESPACE}StorageManagerImplementation)
-add_plugin_test_ex(PLUGIN_STORAGE_MANAGER tests/test_StorageManager.cpp "${STORAGE_MANAGER_INC}" "${STORAGE_MANAGER_LIBS}")
+#PLUGIN_APP_STORAGE_MANAGER
+set (STORAGE_MANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/AppStorageManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
+set (STORAGE_MANAGER_LIBS ${NAMESPACE}AppStorageManager ${NAMESPACE}AppStorageManagerImplementation)
+add_plugin_test_ex(PLUGIN_APP_STORAGE_MANAGER tests/test_AppStorageManager.cpp "${STORAGE_MANAGER_INC}" "${STORAGE_MANAGER_LIBS}")
 
 # PLUGIN_LIFECYCLE_MANAGER
 set (LIFECYCLEMANAGER_INC ${CMAKE_SOURCE_DIR}/LifecycleManager ${CMAKE_SOURCE_DIR}/helpers)

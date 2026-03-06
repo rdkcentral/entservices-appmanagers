@@ -459,7 +459,7 @@ jobs:
           -DUSE_THUNDER_R4=ON
           -DHIDE_NON_EXTERNAL_SYMBOLS=OFF
           -DPLUGIN_APPMANAGER=ON
-          -DPLUGIN_STORAGE_MANAGER=ON
+          -DPLUGIN_APP_STORAGE_MANAGER=ON
           -DPLUGIN_RUNTIME_MANAGER=ON
           -DPLUGIN_LIFECYCLE_MANAGER=ON
           -DPLUGIN_DOWNLOADMANAGER=ON
@@ -470,7 +470,7 @@ jobs:
           cmake --build build/entservices-appmanagers -j8
           &&
           cmake --install build/entservices-appmanagers
-    
+
       - name: Set up files
         run: >
           sudo mkdir -p -m 777
