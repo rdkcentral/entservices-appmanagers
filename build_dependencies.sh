@@ -152,7 +152,7 @@ touch rdk/iarmmgrs-hal/sysMgr.h
 touch network/wifiSrvMgrIarmIf.h
 touch network/netsrvmgrIarm.h
 touch libudev.h
-touch libusb/libusb.h
+touch libusb.h
 touch rfcapi.h
 touch rbus.h
 touch telemetry_busmessage_sender.h
