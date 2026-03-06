@@ -20,12 +20,12 @@
 #pragma once
 
 #include <gmock/gmock.h>
-#include <interfaces/IStorageManager.h>
+#include <interfaces/IAppStorageManager.h>
 
-using ::WPEFramework::Exchange::IStorageManager;
+using ::WPEFramework::Exchange::IAppStorageManager;
 using namespace WPEFramework;
 
-class StorageManagerMock : public IStorageManager {
+class StorageManagerMock : public IAppStorageManager {
 public:
     StorageManagerMock() = default;
     virtual ~StorageManagerMock() = default;
