@@ -73,6 +73,7 @@ namespace packagemanager
 
         std::string fireboltVersion;
         bool enableDebugger;
+        std::string ralfPkgPath;
     };
 
     typedef std::pair<std::string, std::string> ConfigMetadataKey;
