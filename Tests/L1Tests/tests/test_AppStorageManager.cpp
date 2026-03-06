@@ -3,7 +3,7 @@
 #include <string>
 #include <cstring>
 #include "AppStorageManager.h"
-#include "StorageManagerImplementation.h"
+#include "AppStorageManagerImplementation.h"
 #include "ServiceMock.h"
 #include "Store2Mock.h"
 #include "WrapsMock.h"
