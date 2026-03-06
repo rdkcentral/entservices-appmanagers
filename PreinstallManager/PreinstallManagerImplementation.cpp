@@ -173,7 +173,7 @@ namespace WPEFramework
      */
     void PreinstallManagerImplementation::sendOnCompleteEvent()
     {
-        LOGINFO("Sending OnComplete event");
+        LOGINFO("Dispatching OnComplete event");
         JsonObject eventDetails; // OnComplete doesn't need any params
         dispatchEvent(PREINSTALL_MANAGER_ONCOMPLETE, eventDetails);
     }
