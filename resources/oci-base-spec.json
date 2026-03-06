@@ -23,7 +23,7 @@
             "additionalGids": []
         },
         "args": [],
-        "cwd": "/home",
+        "cwd": "/rootdir",
         "env": [
             "PATH=/usr/sbin:/usr/bin:/sbin:/bin"
         ],
@@ -163,6 +163,17 @@
                 "nosuid",
                 "nodev",
                 "noexec"
+            ]
+        },
+        {
+            "destination": "/rootdir",
+            "type": "tmpfs",
+            "source": "tmpfs",
+            "options": [
+                "nosuid",
+                "noexec",
+                "nodev",
+                "size=10240k"
             ]
         }
     ],
