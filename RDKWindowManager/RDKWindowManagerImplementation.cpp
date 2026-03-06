@@ -603,116 +603,30 @@ void RDKWindowManagerImplementation::Dispatch(Event event, const JsonValue param
  * @brief Create the display window.
  * Creates a display for the specified client using the configuration parameters.
  *
- * @displayParams[in] : JSON String format with client/callSign, displayName, displayWidth, displayHeight,
- *                      virtualDisplay,virtualWidth,virtualHeight,topmost,focus
- *                      Ex:{\"callsign\": \"org.rdk.YouTube\",\"displayName\": \"test1\",\"displayWidth\": 1920,\"displayHeight\": 1080,
+ * Ex:{\"clientId\": \"org.rdk.YouTube\",\"displayName\": \"test1\",\"displayWidth\": 1920,\"displayHeight\": 1080,
  *                          \"virtualDisplay\": true,\"virtualWidth\": 1920,\"virtualHeight\": 1080,\"topmost\": false,\"focus\": false, \"ownerId\": 30001,  \"groupId\": 30000}
  * @return            : Core::<StatusCode>
  */
-Core::hresult RDKWindowManagerImplementation::CreateDisplay(const string &displayParams)
+Core::hresult RDKWindowManagerImplementation::CreateDisplay(const std::string &clientId, const std::string &displayName, uint32_t displayWidth, uint32_t displayHeight, bool virtualDisplay, uint32_t virtualWidth, uint32_t virtualHeight, uint32_t ownerId, uint32_t groupId, bool topmost, bool focus)
 {
     Core::hresult status = Core::ERROR_GENERAL;
     bool result = true;
     JsonObject parameters;
 
-    if (displayParams.empty())
+    LOGINFO("MADANA GOPAL CreateDisplay params: clientId:%s, displayName:%s, displayWidth:%u, displayHeight:%u, virtualDisplay:%u, virtualWidth:%u, virtualHeight:%u, ownerId:%u, groupId:%u, topmost:%u, focus:%u",
+            clientId.c_str(), displayName.c_str(), displayWidth, displayHeight, virtualDisplay, virtualWidth, virtualHeight, ownerId, groupId, topmost, focus);
+
+    result = createDisplay(clientId, displayName, displayWidth, displayHeight,
+                           virtualDisplay, virtualWidth, virtualHeight, topmost, focus, ownerId, groupId);
+
+    if (false == result)
     {
-        LOGERR("displayParams is empty");
+        LOGERR("failed to create display : %s, displayName:%s, displayWidth:%u, displayHeight:%u, virtualDisplay:%u, virtualWidth:%u, virtualHeight:%u, topmost:%u, focus:%u, ownerId: %d, groupId: %d",
+               clientId.c_str(), displayName.c_str(), displayWidth, displayHeight, virtualDisplay, virtualWidth, virtualHeight, topmost, focus, ownerId, groupId);
     }
     else
     {
-        LOGINFO("displayParams :%s", displayParams.c_str());
-
-        parameters.FromString(displayParams);
-
-        if (!parameters.HasLabel("client") && !parameters.HasLabel("callsign"))
-        {
-            LOGERR("client or callsign");
-        }
-        else
-        {
-            string client = "";
-            if (parameters.HasLabel("client"))
-            {
-                client = parameters["client"].String();
-            }
-            else
-            {
-                client = parameters["callsign"].String();
-            }
-
-            string displayName("");
-            if (parameters.HasLabel("displayName"))
-            {
-                displayName = parameters["displayName"].String();
-            }
-
-            uint32_t displayWidth = 0;
-            if (parameters.HasLabel("displayWidth"))
-            {
-                displayWidth = parameters["displayWidth"].Number();
-            }
-
-            uint32_t displayHeight = 0;
-            if (parameters.HasLabel("displayHeight"))
-            {
-                displayHeight = parameters["displayHeight"].Number();
-            }
-
-            bool virtualDisplay = false;
-            if (parameters.HasLabel("virtualDisplay"))
-            {
-                virtualDisplay = parameters["virtualDisplay"].Boolean();
-            }
-
-            uint32_t virtualWidth = 0;
-            if (parameters.HasLabel("virtualWidth"))
-            {
-                virtualWidth = parameters["virtualWidth"].Number();
-            }
-
-            uint32_t virtualHeight = 0;
-            if (parameters.HasLabel("virtualHeight"))
-            {
-                virtualHeight = parameters["virtualHeight"].Number();
-            }
-
-            bool topmost = false;
-            if (parameters.HasLabel("topmost"))
-            {
-                topmost = parameters["topmost"].Boolean();
-            }
-
-            bool focus = false;
-            if (parameters.HasLabel("focus"))
-            {
-                focus = parameters["focus"].Boolean();
-            }
-
-            int32_t ownerId = 0;
-            if (parameters.HasLabel("ownerId"))
-            {
-                ownerId = parameters["ownerId"].Number();
-            }
-
-            int32_t groupId = 0;
-            if (parameters.HasLabel("groupId"))
-            {
-                groupId = parameters["groupId"].Number();
-            }
-            result = createDisplay(client, displayName, displayWidth, displayHeight,
-                                   virtualDisplay, virtualWidth, virtualHeight, topmost, focus, ownerId, groupId);
-
-            if (false == result)
-            {
-                LOGERR("failed to create display : %s, displayName:%s, displayWidth:%u, displayHeight:%u, virtualDisplay:%u, virtualWidth:%u, virtualHeight:%u, topmost:%u, focus:%u, ownerId: %d, groupId: %d",
-                       client.c_str(), displayName.c_str(), displayWidth, displayHeight, virtualDisplay, virtualWidth, virtualHeight, topmost, focus, ownerId, groupId);
-            }
-            else
-            {
-                status = Core::ERROR_NONE;
-            }
-        }
+        status = Core::ERROR_NONE;
     }
     return status;
 }
@@ -1502,8 +1416,8 @@ Core::hresult RDKWindowManagerImplementation::SetVisible(const std::string &clie
  * @return            : Optional - true/false
  */
 bool RDKWindowManagerImplementation::createDisplay(const string& client, const string& displayName, const uint32_t displayWidth, const uint32_t displayHeight,
-                                                   const bool virtualDisplay, const uint32_t virtualWidth, const uint32_t virtualHeight,
-                                                   const bool topmost, const bool focus, const int32_t ownerId, int32_t groupId)
+                                                   const uint32_t virtualWidth, const uint32_t virtualHeight,
+                                                   const bool topmost, const bool focus, const uint32_t ownerId, uint32_t groupId)
 {
     bool ret = false;
 
