@@ -100,10 +100,10 @@ namespace ralf
         return true;
     }
 
-    bool parseRalPkgInfo(const std::string &pkgInfoFile, std::vector<RalfPkgInfoPair> &packages)
+    bool parseRalPkgInfo(const std::string &configFilePath, std::vector<RalfPkgInfoPair> &packages)
     {
         Json::Value root;
-        JsonFromFile(pkgInfoFile, root);
+        JsonFromFile(configFilePath, root);
         if (!root.isMember("packages"))
         {
             LOGERR("Ralf package config JSON does not contain 'packages' field\n");
@@ -285,6 +285,12 @@ namespace ralf
         }
 
         return value * multiplier;
+    }
+    std::string serializeJsonNode(const Json::Value &node)
+    {
+        Json::StreamWriterBuilder writer;
+        writer["indentation"] = ""; // No indentation
+        return Json::writeString(writer, node);
     }
 
 } // namespace ralf

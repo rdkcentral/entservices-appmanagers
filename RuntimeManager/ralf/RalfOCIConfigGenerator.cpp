@@ -573,14 +573,22 @@ namespace ralf
         if (configNode.isMember(CONFIG_OVERRIDES_URN) && configNode[CONFIG_OVERRIDES_URN].isObject())
         {
             // We will serialize the override JSON object and add it as an environment variable in OCI config
+            // If there is a node named application, make it as APP_CONFIG_OVERRIDES_ENV_KEY,
             Json::Value overrideNode = configNode[CONFIG_OVERRIDES_URN];
-            Json::StreamWriterBuilder writer;
-            writer["indentation"] = ""; // Produce compact JSON without whitespace for environment variable
-            std::string overrideJsonStr = Json::writeString(writer, overrideNode);
-            std::string envVarKey = packageType == PKG_TYPE_APPLICATION ? APP_CONFIG_OVERRIDES_ENV_KEY : RUNTIME_CONFIG_OVERRIDES_ENV_KEY;
-            std::string envVar = envVarKey + "=" + overrideJsonStr;
-            addToEnvironment(ociConfigRootNode, envVarKey, overrideJsonStr);
-            LOGDBG("Added config overrides to OCI config as environment variable: %s\n", envVar.c_str());
+
+            if (overrideNode.isMember(PKG_TYPE_APPLICATION) && overrideNode[PKG_TYPE_APPLICATION].isObject())
+            {
+                std::string overrideJsonStr = serializeJsonNode(overrideNode[PKG_TYPE_APPLICATION]);
+                addToEnvironment(ociConfigRootNode, APP_CONFIG_OVERRIDES_ENV_KEY, overrideJsonStr);
+                LOGDBG("Added application config overrides to OCI config as environment variable: %s=%s\n", APP_CONFIG_OVERRIDES_ENV_KEY, overrideJsonStr.c_str());
+            }
+            // RUNTIME_CONFIG_OVERRIDES_ENV_KEY  should be filled with the "runtime" node if it exists,
+            if (overrideNode.isMember(PKG_TYPE_RUNTIME) && overrideNode[PKG_TYPE_RUNTIME].isObject())
+            {
+                std::string overrideJsonStr = serializeJsonNode(overrideNode[PKG_TYPE_RUNTIME]);
+                addToEnvironment(ociConfigRootNode, RUNTIME_CONFIG_OVERRIDES_ENV_KEY, overrideJsonStr);
+                LOGDBG("Added runtime config overrides to OCI config as environment variable: %s=%s\n", RUNTIME_CONFIG_OVERRIDES_ENV_KEY, overrideJsonStr.c_str());
+            }
             status = true;
         }
         else

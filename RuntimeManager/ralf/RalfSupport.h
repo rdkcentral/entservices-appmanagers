@@ -27,22 +27,24 @@
 namespace ralf
 {
     /**
-     * Function to create directories recursively, with default permissions 0777
+     * Function to create directories recursively, with mode 0777 (subject to umask)
      * @param path The directory path to create
+     * @param uid The user ID to set as owner of the created directories (default: 0)
+     * @param gid The group ID to set as owner of the created directories (default: 0)
      * @return true on success, false on failure
      */
     bool create_directories(const std::string &path, int uid = 0, int gid = 0);
     /**
-     * Given the Ralf package configuration data, parse and extract package metadata paths and mount paths
-     * @param configData The path to the Ralf package configuration file
+     * Given the Ralf package configuration file, parse and extract package metadata paths and mount paths
+     * @param configFilePath The path to the Ralf package configuration file
      * @param packages [out parameter] A vector of pairs containing package metadata paths and mount paths
      * @return true on success, false on failure
      */
-    bool parseRalPkgInfo(const std::string &configData, std::vector<RalfPkgInfoPair> &packages);
+    bool parseRalPkgInfo(const std::string &configFilePath, std::vector<RalfPkgInfoPair> &packages);
     /**
      * Function to read JSON data from a file
      * @param filePath The path to the JSON file
-     * @param jsonData [out parameter] The parsed JSON data
+     * @param rootNode [out parameter] The parsed JSON data
      * @return true on success, false on failure
      */
     bool JsonFromFile(const std::string &filePath, Json::Value &rootNode);
@@ -107,4 +109,11 @@ namespace ralf
      * @return The memory size in bytes, or 0 on failure.
      */
     uint64_t parseMemorySize(const std::string &str);
+
+    /**
+     * Function to serialize a Json::Value node into a formatted JSON string. This is useful for logging and debugging purposes.
+     * @param node The Json::Value node to serialize.
+     * @return A formatted JSON string representation of the node.
+     */
+    std::string serializeJsonNode(const Json::Value &node);
 } // namespace ralf

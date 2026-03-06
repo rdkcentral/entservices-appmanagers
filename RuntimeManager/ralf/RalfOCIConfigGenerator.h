@@ -34,6 +34,7 @@ namespace ralf
          * Generates the OCI config JSON for the RALF application instance.
          * @param config The application configuration.
          * @param runtimeConfigObject The runtime configuration.
+         * @return true if the OCI config was generated successfully, false otherwise.
          */
         bool generateRalfOCIConfig(const WPEFramework::Plugin::ApplicationConfiguration &config, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject);
 
@@ -42,10 +43,23 @@ namespace ralf
          * Applies the graphics configuration to the OCI config JSON.
          * @param ociConfigRootNode The root node of the OCI config JSON.
          * @param graphicsConfigNode The graphics configuration JSON node.
+         * @return true if the graphics configuration was applied successfully, false otherwise.
          */
         bool applyGraphicsConfigToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &graphicsConfigNode);
 
+        /**
+         * Generates the default hooks section in the OCI config JSON.
+         * @param ociConfigRootNode The root node of the OCI config JSON.
+         * @return true if the hooks were generated successfully, false otherwise.
+         */
         bool generateHooksForOCIConfig(Json::Value &ociConfigRootNode);
+        /**
+         * Generates the hooks section in the OCI config JSON for a specific lifecycle operation.
+         * @param ociConfigRootNode The root node of the OCI config JSON.
+         * @param operation The lifecycle operation name for which hooks are generated, as defined by the OCI Runtime
+         *        Specification (e.g., "createRuntime", "createContainer", "startContainer", "poststart", "poststop").
+         * @return true if the hooks were generated successfully, false otherwise.
+         */
         bool generateHooksForOCIConfig(Json::Value &ociConfigRootNode, const std::string &operation);
 
         /**
