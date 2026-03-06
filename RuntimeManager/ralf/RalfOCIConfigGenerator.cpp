@@ -421,7 +421,7 @@ namespace ralf
         // Apply APP_CONFIG_OVERRIDES_JSON/RUNTIME_CONFIG_OVERRIDES_JSON variables
         if (packageType == PKG_TYPE_APPLICATION || packageType == PKG_TYPE_RUNTIME)
         {
-            status = addConfigOverridesToOCIConfig(ociConfigRootNode, configNode, packageType);
+            status = addConfigOverridesToOCIConfig(ociConfigRootNode, configNode);
             LOGDBG("Applied config overrides to OCI config ? %s\n", status ? "true" : "false");
         }
         // Apply "urn:rdk:config:memory", reserved
@@ -567,21 +567,34 @@ namespace ralf
         return false;
     }
 
-    bool RalfOCIConfigGenerator::addConfigOverridesToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &configNode, const std::string &packageType)
+    bool RalfOCIConfigGenerator::addConfigOverridesToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &configNode)
     {
         bool status = false;
         if (configNode.isMember(CONFIG_OVERRIDES_URN) && configNode[CONFIG_OVERRIDES_URN].isObject())
         {
-            // We will serialize the override JSON object and add it as an environment variable in OCI config
+            // Serialize each override sub-object and export it as a separate environment variable in OCI config.
+            // If an "application" node is present, store its serialized JSON under APP_CONFIG_OVERRIDES_ENV_KEY.
             Json::Value overrideNode = configNode[CONFIG_OVERRIDES_URN];
-            Json::StreamWriterBuilder writer;
-            writer["indentation"] = ""; // Produce compact JSON without whitespace for environment variable
-            std::string overrideJsonStr = Json::writeString(writer, overrideNode);
-            std::string envVarKey = packageType == PKG_TYPE_APPLICATION ? APP_CONFIG_OVERRIDES_ENV_KEY : RUNTIME_CONFIG_OVERRIDES_ENV_KEY;
-            std::string envVar = envVarKey + "=" + overrideJsonStr;
-            addToEnvironment(ociConfigRootNode, envVarKey, overrideJsonStr);
-            LOGDBG("Added config overrides to OCI config as environment variable: %s\n", envVar.c_str());
-            status = true;
+
+            if (overrideNode.isMember(PKG_TYPE_APPLICATION) && overrideNode[PKG_TYPE_APPLICATION].isObject())
+            {
+                std::string overrideJsonStr = serializeJsonNode(overrideNode[PKG_TYPE_APPLICATION]);
+                addToEnvironment(ociConfigRootNode, APP_CONFIG_OVERRIDES_ENV_KEY, overrideJsonStr);
+                LOGDBG("Added application config overrides to OCI config as environment variable: %s\n", APP_CONFIG_OVERRIDES_ENV_KEY);
+                status = true;
+            }
+            // If a "runtime" node is present, store its serialized JSON under RUNTIME_CONFIG_OVERRIDES_ENV_KEY.
+            if (overrideNode.isMember(PKG_TYPE_RUNTIME) && overrideNode[PKG_TYPE_RUNTIME].isObject())
+            {
+                std::string overrideJsonStr = serializeJsonNode(overrideNode[PKG_TYPE_RUNTIME]);
+                addToEnvironment(ociConfigRootNode, RUNTIME_CONFIG_OVERRIDES_ENV_KEY, overrideJsonStr);
+                LOGDBG("Added runtime config overrides to OCI config as environment variable: %s\n", RUNTIME_CONFIG_OVERRIDES_ENV_KEY);
+                status = true;
+            }
+            if (!status)
+            {
+                LOGWARN("Config overrides node found but contains no 'application' or 'runtime' sub-objects\n");
+            }
         }
         else
         {
