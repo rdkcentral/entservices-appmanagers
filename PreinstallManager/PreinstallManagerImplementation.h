@@ -146,7 +146,6 @@ namespace WPEFramework
             Core::hresult Unregister(Exchange::IPreinstallManager::INotification *notification) override;
             Core::hresult StartPreinstall(bool forceInstall) override;
             Core::hresult PreinstallState(State& state) override;
-            void sendOnCompleteEvent();
 
             // // IConfiguration methods
             uint32_t Configure(PluginHost::IShell *service) override;
@@ -155,6 +154,7 @@ namespace WPEFramework
             Core::hresult createPackageManagerObject(Exchange::IPackageInstaller*& packageInstaller);
             void releasePackageManagerObject(Exchange::IPackageInstaller*& packageInstaller);
             void installPackages(std::list<PackageInfo> preinstallPackages);
+            void sendOnCompleteEvent();
             bool isValidSemVer(const std::string &version);
             bool isNewerVersion(const std::string &v1, const std::string &v2);
             bool readPreinstallDirectory(Exchange::IPackageInstaller* packageInstaller, std::list<PackageInfo> &packages);
