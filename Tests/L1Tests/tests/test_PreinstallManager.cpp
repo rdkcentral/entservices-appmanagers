@@ -410,10 +410,25 @@ TEST_F(PreinstallManagerTest, OnCompleteEventNotification)
             notificationPromise.set_value();
         }));
     
+    // Set up opendir to return a fake non-null DIR* (simulates an accessible but empty directory)
+    DIR* const fakeDirPtr = reinterpret_cast<DIR*>(1);
+    ON_CALL(*p_wrapsImplMock, opendir(::testing::_))
+        .WillByDefault(::testing::Return(fakeDirPtr));
+
+    // Set up readdir to immediately return nullptr (no entries → empty directory)
+    ON_CALL(*p_wrapsImplMock, readdir(::testing::_))
+        .WillByDefault(::testing::Return(static_cast<struct dirent*>(nullptr)));
+
+    // Set up closedir to succeed
+    ON_CALL(*p_wrapsImplMock, closedir(::testing::_))
+        .WillByDefault(::testing::Return(0));
+
     mPreinstallManagerImpl->Register(mockNotification.operator->());
-    
-    // Trigger the OnComplete event via the public StartPreinstall API
-    Core::hresult result = mPreinstallManagerImpl->StartPreinstall();
+
+    // Trigger the OnComplete event via the public StartPreinstall API.
+    // With forceInstall=true and an empty directory, preinstallPackages is empty and
+    // OnComplete is fired (via worker pool) before returning ERROR_NONE.
+    Core::hresult result = mPreinstallManagerImpl->StartPreinstall(true);
     EXPECT_EQ(Core::ERROR_NONE, result);
     
     // Wait for the asynchronous notification (with timeout)
