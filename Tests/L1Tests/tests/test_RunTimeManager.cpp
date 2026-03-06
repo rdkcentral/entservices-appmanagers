@@ -84,7 +84,7 @@ protected:
           .Times(::testing::AnyNumber())
           .WillRepeatedly(::testing::Invoke(
               [&](const uint32_t, const std::string& name) -> void* {
-                if (name == "org.rdk.StorageManager") {
+                if (name == "org.rdk.AppStorageManager") {
                     return reinterpret_cast<void*>(mStoreageManagerMock);
                 }
                 else if (name == "org.rdk.OCIContainer") {

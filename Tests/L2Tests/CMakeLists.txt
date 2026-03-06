@@ -22,8 +22,8 @@ set(THUNDER_PORT 9998)
 
 find_package(${NAMESPACE}Plugins REQUIRED)
 
-if(PLUGIN_STORAGE_MANAGER)
-    set(SRC_FILES ${SRC_FILES} tests/StorageManager_L2Test.cpp)
+if(PLUGIN_APP_STORAGE_MANAGER)
+    set(SRC_FILES ${SRC_FILES} tests/AppStorageManager_L2Test.cpp)
 endif()
 
 add_library(${MODULE_NAME} SHARED ${SRC_FILES})

@@ -20,7 +20,7 @@
 #pragma once
 
 #include "Module.h"
-#include <interfaces/IStorageManager.h>
+#include <interfaces/IAppStorageManager.h>
 #include <interfaces/IConfiguration.h>
 #include <interfaces/IStore2.h>
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
@@ -32,7 +32,7 @@
 namespace WPEFramework {
 namespace Plugin {
 
-    class StorageManagerImplementation : public Exchange::IStorageManager ,public Exchange::IConfiguration{
+    class StorageManagerImplementation : public Exchange::IAppStorageManager ,public Exchange::IConfiguration{
 
         private:
         class Config : public Core::JSON::Container {
@@ -60,7 +60,7 @@ namespace Plugin {
         StorageManagerImplementation& operator=(const StorageManagerImplementation&) = delete;
 
         BEGIN_INTERFACE_MAP(StorageManagerImplementation)
-        INTERFACE_ENTRY(Exchange::IStorageManager)
+        INTERFACE_ENTRY(Exchange::IAppStorageManager)
         INTERFACE_ENTRY(Exchange::IConfiguration)
         END_INTERFACE_MAP
 

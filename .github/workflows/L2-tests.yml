@@ -410,7 +410,7 @@ jobs:
           -DENABLE_THERMAL_PROTECTION"
           -DPLUGIN_PERSISTENTSTORE_PATH="/tmp/secure/persistent/rdkservicestore"
           -DPLUGIN_PERSISTENTSTORE_LEGACYPATH="/tmp/persistent/rdkservicestore"
-          -DPLUGIN_STORAGE_MANAGER_PATH="/tmp/persistent/storageManager"
+          -DPLUGIN_APP_STORAGE_MANAGER_PATH="/tmp/persistent/storageManager"
           -DCOMCAST_CONFIG=OFF
           -DCMAKE_DISABLE_FIND_PACKAGE_DS=ON
           -DCMAKE_DISABLE_FIND_PACKAGE_IARMBus=ON
@@ -575,7 +575,7 @@ jobs:
           -DENABLE_THERMAL_PROTECTION"
           -DPLUGIN_PERSISTENTSTORE_PATH="/tmp/secure/persistent/rdkservicestore"
           -DPLUGIN_PERSISTENTSTORE_LEGACYPATH="/tmp/persistent/rdkservicestore"
-          -DPLUGIN_STORAGE_MANAGER_PATH="/tmp/persistent/storageManager"
+          -DPLUGIN_APP_STORAGE_MANAGER_PATH="/tmp/persistent/storageManager"
           -DCOMCAST_CONFIG=OFF
           -DCMAKE_DISABLE_FIND_PACKAGE_DS=ON
           -DCMAKE_DISABLE_FIND_PACKAGE_IARMBus=ON
@@ -587,7 +587,7 @@ jobs:
           -DUSE_THUNDER_R4=ON
           -DPLUGIN_L2Tests=ON
           -DRDK_SERVICE_L2_TEST=ON
-          -DPLUGIN_STORAGE_MANAGER=ON
+          -DPLUGIN_APP_STORAGE_MANAGER=ON
           -DDS_FOUND=ON
           -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
           &&
@@ -658,7 +658,7 @@ jobs:
           -DCMAKE_DISABLE_FIND_PACKAGE_RBus=ON
           -DPLUGIN_LIFECYCLEMANAGER=OFF
           -DPLUGIN_APPMANAGER=OFF
-          -DPLUGIN_STORAGE_MANAGER=ON
+          -DPLUGIN_APP_STORAGE_MANAGER=ON
           -DUSE_THUNDER_R4=ON
           -DPLUGIN_L2Tests=ON
           -DRDK_SERVICE_L2_TEST=ON
