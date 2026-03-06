@@ -526,6 +526,19 @@ namespace WPEFramework
 
         }
 
+        // Check if all packages were filtered out after forceInstall=false filtering
+        if (preinstallPackages.empty())
+        {
+            LOGINFO("No packages to preinstall after filtering. Sending OnComplete event");
+            mAdminLock.Lock();
+            mPreinstallState = State::COMPLETED;
+            mAdminLock.Unlock();
+            releasePackageManagerObject(packageInstaller);
+            sendOnCompleteEvent();
+            result = Core::ERROR_NONE;
+            return result;
+        }
+
         releasePackageManagerObject(packageInstaller);
 
         try
