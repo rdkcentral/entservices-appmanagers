@@ -148,8 +148,7 @@ target_link_directories(${MODULE_NAME} PUBLIC ${CMAKE_INSTALL_PREFIX}/lib ${CMAK
 
 target_link_libraries(${MODULE_NAME} ${TEST_LIB})
 
-target_include_directories(${PROJECT_NAME}
-    PRIVATE
+target_include_directories(${MODULE_NAME} PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../mocks
 )
 
