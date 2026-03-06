@@ -405,8 +405,9 @@ TEST_F(PreinstallManagerTest, OnCompleteEventNotification)
     
     mPreinstallManagerImpl->Register(mockNotification.operator->());
     
-    // Trigger the OnComplete event directly
-    mPreinstallManagerImpl->sendOnCompleteEvent();
+    // Trigger the OnComplete event via the public StartPreinstall API
+    Core::hresult result = mPreinstallManagerImpl->StartPreinstall();
+    EXPECT_EQ(Core::ERROR_NONE, result);
     
     // Wait for the asynchronous notification (with timeout)
     auto status = notificationFuture.wait_for(std::chrono::seconds(2));
