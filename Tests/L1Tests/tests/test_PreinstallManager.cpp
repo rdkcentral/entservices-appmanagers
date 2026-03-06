@@ -88,6 +88,13 @@ protected:
             return nullptr;
         }));
 
+        EXPECT_CALL(*mPackageInstallerMock, Register(::testing::_))
+            .Times(::testing::AnyNumber())
+            .WillRepeatedly(::testing::Invoke(
+                [&](Exchange::IPackageInstaller::INotification* notification) {
+                    mPackageInstallerNotification_cb = notification;
+                    return static_cast<uint32_t>(Core::ERROR_NONE);
+                }));
         ON_CALL(*p_wrapsImplMock, stat(::testing::_, ::testing::_))
         .WillByDefault(::testing::Return(-1));
         
