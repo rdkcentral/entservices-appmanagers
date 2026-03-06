@@ -38,7 +38,7 @@ namespace Plugin {
     struct CreateDisplayRequest
     {
         CreateDisplayRequest(std::string client, std::string displayName, uint32_t displayWidth=0, uint32_t displayHeight=0, bool virtualDisplayEnabled=false,
-                             uint32_t virtualWidth=0, uint32_t virtualHeight=0, bool topmost = false, bool focus = false, int32_t ownerId = 0, int32_t groupId = 0);
+                             uint32_t virtualWidth=0, uint32_t virtualHeight=0, bool topmost = false, bool focus = false, uint32_t ownerId = 0, uint32_t groupId = 0);
 
         ~CreateDisplayRequest();
 
@@ -53,8 +53,8 @@ namespace Plugin {
         bool mFocus;
         sem_t mSemaphore;
         bool mResult;
-        int32_t mOwnerId;
-        int32_t mGroupId;
+        uint32_t mOwnerId;
+        uint32_t mGroupId;
     };
 
     class RDKWindowManagerImplementation : public Exchange::IRDKWindowManager{
@@ -126,7 +126,7 @@ namespace Plugin {
         Core::hresult Deinitialize(PluginHost::IShell* service) override;
         Core::hresult Register(INotification *notification) override;
         Core::hresult Unregister(INotification *notification) override;
-        Core::hresult CreateDisplay(const std::string &clientId, const std::string &displayName, uint32_t displayWidth, uint32_t displayHeight, bool virtualDisplay, uint32_t virtualWidth, uint32_t virtualHeight, uint32_t ownerId, uint32_t groupId, bool topmost, bool focus) override;
+        Core::hresult CreateDisplay(const std::string &clientId, const std::string &displayName, const uint32_t displayWidth, const uint32_t displayHeight, const bool virtualDisplay, const uint32_t virtualWidth, const uint32_t virtualHeight, const uint32_t ownerId, const uint32_t groupId, const bool topmost, const bool focus) override;
         Core::hresult GetApps(string &appsIds) const override;
         Core::hresult AddKeyIntercept(const string &intercept) override;
         Core::hresult AddKeyIntercepts(const string &intercepts) override;
@@ -156,7 +156,7 @@ namespace Plugin {
     private: /*internal methods*/
         bool createDisplay(const string& client, const string& displayName, const uint32_t displayWidth = 0, const uint32_t displayHeight = 0,
                            const bool virtualDisplay = false, const uint32_t virtualWidth = 0, const uint32_t virtualHeight = 0,
-                           const bool topmost = false, const bool focus = false, const int32_t ownerId = 0, int32_t groupId=0);
+                           const bool topmost = false, const bool focus = false, const uint32_t ownerId = 0, const uint32_t groupId=0);
         bool getClients(JsonArray& clients);
         bool addKeyIntercept(const uint32_t& keyCode, const JsonArray& modifiers, const string& client, const bool& focusOnly , const bool& propagate);
         bool addKeyIntercepts(const JsonArray& intercepts);

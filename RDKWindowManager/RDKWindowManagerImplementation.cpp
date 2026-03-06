@@ -83,7 +83,7 @@ static std::thread shellThread;
 static std::vector<std::shared_ptr<CreateDisplayRequest>> gCreateDisplayRequests;
 
 CreateDisplayRequest::CreateDisplayRequest(std::string client, std::string displayName, uint32_t displayWidth, uint32_t displayHeight, bool virtualDisplayEnabled,
-                                           uint32_t virtualWidth, uint32_t virtualHeight, bool topmost, bool focus, int32_t ownerId, int32_t groupId)
+                                           uint32_t virtualWidth, uint32_t virtualHeight, bool topmost, bool focus, uint32_t ownerId, uint32_t groupId)
 : mClient(std::move(client))
 , mDisplayName(std::move(displayName))
 , mDisplayWidth(displayWidth)
@@ -607,7 +607,7 @@ void RDKWindowManagerImplementation::Dispatch(Event event, const JsonValue param
  *                          \"virtualDisplay\": true,\"virtualWidth\": 1920,\"virtualHeight\": 1080,\"topmost\": false,\"focus\": false, \"ownerId\": 30001,  \"groupId\": 30000}
  * @return            : Core::<StatusCode>
  */
-Core::hresult RDKWindowManagerImplementation::CreateDisplay(const std::string &clientId, const std::string &displayName, uint32_t displayWidth, uint32_t displayHeight, bool virtualDisplay, uint32_t virtualWidth, uint32_t virtualHeight, uint32_t ownerId, uint32_t groupId, bool topmost, bool focus)
+Core::hresult RDKWindowManagerImplementation::CreateDisplay(const std::string &clientId, const std::string &displayName, const uint32_t displayWidth, const uint32_t displayHeight, const bool virtualDisplay, const uint32_t virtualWidth, const uint32_t virtualHeight, const uint32_t ownerId, const uint32_t groupId, const bool topmost, const bool focus)
 {
     Core::hresult status = Core::ERROR_GENERAL;
     bool result = true;
@@ -615,6 +615,7 @@ Core::hresult RDKWindowManagerImplementation::CreateDisplay(const std::string &c
 
     LOGINFO("MADANA GOPAL CreateDisplay params: clientId:%s, displayName:%s, displayWidth:%u, displayHeight:%u, virtualDisplay:%u, virtualWidth:%u, virtualHeight:%u, ownerId:%u, groupId:%u, topmost:%u, focus:%u",
             clientId.c_str(), displayName.c_str(), displayWidth, displayHeight, virtualDisplay, virtualWidth, virtualHeight, ownerId, groupId, topmost, focus);
+
     result = createDisplay(clientId, displayName, displayWidth, displayHeight,
                            virtualDisplay, virtualWidth, virtualHeight, topmost, focus, ownerId, groupId);
 
@@ -1414,9 +1415,9 @@ Core::hresult RDKWindowManagerImplementation::SetVisible(const std::string &clie
  * @focus[in]         : Optional - focus is required or not
  * @return            : Optional - true/false
  */
-bool RDKWindowManagerImplementation::createDisplay(const string& client, const string& displayName, const uint32_t displayWidth, const uint32_t displayHeight, bool virtualDisplay,
+bool RDKWindowManagerImplementation::createDisplay(const string& client, const string& displayName, const uint32_t displayWidth, const uint32_t displayHeight, const bool virtualDisplay,
                                                    const uint32_t virtualWidth, const uint32_t virtualHeight,
-                                                   const bool topmost, const bool focus, const uint32_t ownerId, uint32_t groupId)
+                                                   const bool topmost, const bool focus, const uint32_t ownerId, const uint32_t groupId)
 {
     bool ret = false;
 
