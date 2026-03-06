@@ -28,12 +28,13 @@ namespace ralf
 {
     /**
      * Function to create directories recursively, with mode 0777 (subject to umask).
-     * If non-zero uid/gid values are provided, ownership of the created directories
-     * will be set accordingly; a value of 0 for either uid or gid leaves the
-     * corresponding ownership unchanged.
+     * If both uid and gid are non-zero, ownership of the created directories will be
+     * set accordingly. If either uid or gid is 0, no ownership changes are performed.
      * @param path The directory path to create
-     * @param uid The user ID to set as owner of the created directories (default: 0 = leave unchanged)
-     * @param gid The group ID to set as owner of the created directories (default: 0 = leave unchanged)
+     * @param uid The user ID to set as owner of the created directories
+     *            (default: 0 = do not change ownership)
+     * @param gid The group ID to set as owner of the created directories
+     *            (default: 0 = do not change ownership)
      * @return true on success, false on failure
      */
     bool create_directories(const std::string &path, int uid = 0, int gid = 0);
@@ -114,9 +115,10 @@ namespace ralf
     uint64_t parseMemorySize(const std::string &str);
 
     /**
-     * Function to serialize a Json::Value node into a JSON string. This is useful for logging and debugging purposes.
+     * Function to serialize a Json::Value node into a compact JSON string without extra
+     * whitespace or indentation. This is useful for logging and debugging purposes.
      * @param node The Json::Value node to serialize.
-     * @return A JSON string representation of the node.
+     * @return A compact JSON string representation of the node.
      */
     std::string serializeJsonNode(const Json::Value &node);
 } // namespace ralf
