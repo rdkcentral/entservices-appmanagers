@@ -15,14 +15,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set(PLUGIN_NAME StorageManager)
+set(PLUGIN_NAME AppStorageManager)
 set(MODULE_NAME ${NAMESPACE}${PLUGIN_NAME})
 set(PLUGIN_IMPLEMENTATION ${MODULE_NAME}Implementation)
 
-set(PLUGIN_STORAGE_MANAGER_MODE "Off" CACHE STRING "Controls if the plugin should run in its own process, in process or remote")
-set(PLUGIN_STORAGE_MANAGER_AUTOSTART false CACHE STRING "Automatically start StorageManager plugin")
-set(PLUGIN_STORAGE_MANAGER_EXTRA_LIBRARIES "")
-set(PLUGIN_STORAGE_MANAGER_STARTUPORDER "" CACHE STRING "Automatically start StorageManager plugin")
+set(PLUGIN_APP_STORAGE_MANAGER_MODE "Off" CACHE STRING "Controls if the plugin should run in its own process, in process or remote")
+set(PLUGIN_APP_STORAGE_MANAGER_AUTOSTART false CACHE STRING "Automatically start AppStorageManager plugin")
+set(PLUGIN_APP_STORAGE_MANAGER_EXTRA_LIBRARIES "")
+set(PLUGIN_APP_STORAGE_MANAGER_STARTUPORDER "" CACHE STRING "Automatically start AppStorageManager plugin")
 
 option(AIMANAGERS_TELEMETRY_METRICS_SUPPORT "AIMANAGERS_TELEMETRY_METRICS_SUPPORT" OFF)
 
@@ -31,8 +31,8 @@ add_definitions(-DSTORAGE_MANAGER_API_VERSION_NUMBER_MINOR=0)
 add_definitions(-DSTORAGE_MANAGER_API_VERSION_NUMBER_PATCH=0)
 
 set(STORAGE_MANAGER_IMPLEMENTATION ${PLUGIN_NAME}Implementation)
-add_definitions(-DPLUGIN_STORAGE_MANAGER_IMPLEMENTATION_NAME="${STORAGE_MANAGER_IMPLEMENTATION}")
-set(PLUGIN_STORAGE_MANAGER_PATH "/opt/persistent/storageManager" CACHE STRING "Path")
+add_definitions(-DPLUGIN_APP_STORAGE_MANAGER_IMPLEMENTATION_NAME="${STORAGE_MANAGER_IMPLEMENTATION}")
+set(PLUGIN_APP_STORAGE_MANAGER_PATH "/opt/persistent/storageManager" CACHE STRING "Path")
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
@@ -41,7 +41,7 @@ find_package(${NAMESPACE}Definitions REQUIRED)
 find_package(CompileSettingsDebug CONFIG REQUIRED)
 
 add_library(${MODULE_NAME} SHARED
-        StorageManager.cpp
+        AppStorageManager.cpp
         Module.cpp
 )
 
@@ -50,7 +50,7 @@ set_target_properties(${MODULE_NAME} PROPERTIES
         CXX_STANDARD 11
         CXX_STANDARD_REQUIRED YES)
 
-set_source_files_properties(StorageManager.cpp PROPERTIES COMPILE_FLAGS "-fexceptions")
+set_source_files_properties(AppStorageManager.cpp PROPERTIES COMPILE_FLAGS "-fexceptions")
 
 target_link_libraries(${MODULE_NAME}
     PRIVATE
@@ -62,7 +62,7 @@ install(TARGETS ${MODULE_NAME}
     DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/${STORAGE_DIRECTORY}/plugins)
 
 set (STORAGEMANAGER_SOURCES)
-list(APPEND STORAGEMANAGER_SOURCES  StorageManagerImplementation.cpp)
+list(APPEND STORAGEMANAGER_SOURCES  AppStorageManagerImplementation.cpp)
 list(APPEND STORAGEMANAGER_SOURCES  RequestHandler.cpp)
 list(APPEND STORAGEMANAGER_SOURCES  Module.cpp)
 
@@ -106,7 +106,7 @@ if (RDK_SERVICE_L2_TEST)
 endif (RDK_SERVICES_L2_TEST)
 
 target_link_libraries(${PLUGIN_IMPLEMENTATION} PRIVATE
-    CompileSettingsDebug::CompileSettingsDebug ${NAMESPACE}Plugins::${NAMESPACE}Plugins  ${PLUGIN_STORAGE_MANAGER_EXTRA_LIBRARIES})
+    CompileSettingsDebug::CompileSettingsDebug ${NAMESPACE}Plugins::${NAMESPACE}Plugins  ${PLUGIN_APP_STORAGE_MANAGER_EXTRA_LIBRARIES})
 
 install(TARGETS ${PLUGIN_IMPLEMENTATION}
     DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/${STORAGE_DIRECTORY}/plugins)
