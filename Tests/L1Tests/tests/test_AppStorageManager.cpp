@@ -28,9 +28,9 @@ class StorageManagerTest : public ::testing::Test {
         string response; // create a string to hold the response
         Exchange::IConfiguration* storageManagerConfigure; // create a pointer to IConfiguration
         //comrpc 
-        Exchange::IStorageManager* interface; // create a pointer to IStorageManager
+        Exchange::IAppStorageManager* interface; // create a pointer to IAppStorageManager
         NiceMock<ServiceMock> service; // an instance of mock service object
-        Core::ProxyType<Plugin::StorageManagerImplementation> StorageManagerImplementation; // declare an proxy object
+        Core::ProxyType<Plugin::AppStorageManagerImplementation> StorageManagerImplementation; // declare an proxy object
         ServiceMock  *p_serviceMock  = nullptr;
         WrapsImplMock *p_wrapsImplMock   = nullptr;
 
@@ -115,8 +115,8 @@ class StorageManagerTest : public ::testing::Test {
                 return nullptr;
             }));
 
-            interface = static_cast<Exchange::IStorageManager*>(
-                StorageManagerImplementation->QueryInterface(Exchange::IStorageManager::ID));
+            interface = static_cast<Exchange::IAppStorageManager*>(
+                StorageManagerImplementation->QueryInterface(Exchange::IAppStorageManager::ID));
 
             storageManagerConfigure = static_cast<Exchange::IConfiguration*>(
             StorageManagerImplementation->QueryInterface(Exchange::IConfiguration::ID));
