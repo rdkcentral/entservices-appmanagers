@@ -47,7 +47,7 @@
 using ::testing::NiceMock;
 using namespace WPEFramework;
 using testing::StrictMock;
-using ::WPEFramework::Exchange::IStorageManager;
+using ::WPEFramework::Exchange::IAppStorageManager;
 
 class StorageManagerTest : public L2TestMocks {
 protected:
@@ -67,8 +67,8 @@ public:
        Core::ProxyType<RPC::InvokeServerType<1, 0, 4>> mEngineStorageManager;
        Core::ProxyType<RPC::CommunicatorClient> mClientStorageManager;
 
-        /** @brief Pointer to the IStorageManager interface */
-        Exchange::IStorageManager *mStorageManagerPlugin;
+        /** @brief Pointer to the IAppStorageManager interface */
+        Exchange::IAppStorageManager *mStorageManagerPlugin;
 };
 
 StorageManagerTest:: StorageManagerTest():L2TestMocks()
@@ -119,7 +119,7 @@ uint32_t StorageManagerTest::CreateStorageManagerInterfaceObjectUsingComRPCConne
         mControllerStorageManager = mClientStorageManager->Open<PluginHost::IShell>(_T(STORAGEMANAGER_CALLSIGN), ~0, 3000);
         if (mControllerStorageManager)
         {
-            mStorageManagerPlugin = mControllerStorageManager->QueryInterface<Exchange::IStorageManager>();
+            mStorageManagerPlugin = mControllerStorageManager->QueryInterface<Exchange::IAppStorageManager>();
             return_value = Core::ERROR_NONE;
         }
     }
