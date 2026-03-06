@@ -24,7 +24,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <fstream>
-#include <interfaces/IStorageManager.h>
+#include <interfaces/IAppStorageManager.h>
 #include <string>
 #include <sys/stat.h>
 #include <sys/types.h>
