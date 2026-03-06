@@ -32,7 +32,7 @@ namespace WPEFramework
 
     PreinstallManagerImplementation::PreinstallManagerImplementation()
         : mAdminLock(), mAppPreinstallDirectory(""), mPreinstallManagerNotifications(), mCurrentservice(nullptr),
-                    mPreinstallState(State::NOT_STARTED), mInstallThread()
+          mPreinstallState(State::NOT_STARTED), mInstallThread()
     {
         LOGINFO("Create PreinstallManagerImplementation Instance");
         if (nullptr == PreinstallManagerImplementation::_instance)
