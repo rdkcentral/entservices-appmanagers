@@ -84,10 +84,6 @@ if(PLUGIN_TELEMETRYMETRICS)
     add_subdirectory(TelemetryMetrics)
 endif()
 
-target_include_directories(${PROJECT_NAME}
-    PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/mocks
-)
 
 if(WPEFRAMEWORK_CREATE_IPKG_TARGETS)
     set(CPACK_GENERATOR "DEB")
