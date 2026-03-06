@@ -30,7 +30,7 @@ class StorageManagerTest : public ::testing::Test {
         //comrpc 
         Exchange::IAppStorageManager* interface; // create a pointer to IAppStorageManager
         NiceMock<ServiceMock> service; // an instance of mock service object
-        Core::ProxyType<Plugin::StorageManagerImplementation> StorageManagerImplementation; // declare an proxy object
+        Core::ProxyType<Plugin::StorageManagerImplementation> StorageManagerImplementation; // declare proxy object
         ServiceMock  *p_serviceMock  = nullptr;
         WrapsImplMock *p_wrapsImplMock   = nullptr;
 
