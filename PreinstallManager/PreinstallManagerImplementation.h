@@ -31,6 +31,7 @@
 #include <plugins/plugins.h>
 #include <mutex>
 #include <map>
+#include <thread>
 
 namespace WPEFramework
 {
@@ -88,33 +89,11 @@ namespace WPEFramework
 
             enum EventNames {
             PREINSTALL_MANAGER_UNKNOWN = 0,
-            PREINSTALL_MANAGER_APP_INSTALLATION_STATUS,
             PREINSTALL_MANAGER_ONCOMPLETE
             };
 
             typedef Exchange::IPackageInstaller::InstallState InstallState;
             typedef Exchange::IPackageInstaller::FailReason FailReason;
-
-        private:
-        class PackageManagerNotification : public Exchange::IPackageInstaller::INotification {
-
-        public:
-            PackageManagerNotification(PreinstallManagerImplementation& parent) : mParent(parent){}
-            ~PackageManagerNotification(){}
-
-        void OnAppInstallationStatus(const string& jsonresponse)
-        {
-            // LOGINFO("Received Installation Status event from PackageManager");
-            mParent.handleOnAppInstallationStatus(jsonresponse);
-        }
-
-        BEGIN_INTERFACE_MAP(PackageManagerNotification)
-        INTERFACE_ENTRY(Exchange::IPackageInstaller::INotification)
-        END_INTERFACE_MAP
-
-        private:
-            PreinstallManagerImplementation& mParent;
-        };
 
         private:
             class EXTERNAL Job : public Core::IDispatch
@@ -167,18 +146,18 @@ namespace WPEFramework
             Core::hresult Unregister(Exchange::IPreinstallManager::INotification *notification) override;
             Core::hresult StartPreinstall(bool forceInstall) override;
             Core::hresult PreinstallState(State& state) override;
-            void handleOnAppInstallationStatus(const std::string &jsonresponse);
             void sendOnCompleteEvent();
 
             // // IConfiguration methods
             uint32_t Configure(PluginHost::IShell *service) override;
 
         private: /* private methods */
-            Core::hresult createPackageManagerObject();
-            void releasePackageManagerObject();
+            Core::hresult createPackageManagerObject(Exchange::IPackageInstaller*& packageInstaller);
+            void releasePackageManagerObject(Exchange::IPackageInstaller*& packageInstaller);
+            void installPackages(std::list<PackageInfo> preinstallPackages);
             bool isValidSemVer(const std::string &version);
             bool isNewerVersion(const std::string &v1, const std::string &v2);
-            bool readPreinstallDirectory(std::list<PackageInfo> &packages);
+            bool readPreinstallDirectory(Exchange::IPackageInstaller* packageInstaller, std::list<PackageInfo> &packages);
             string getFailReason(FailReason reason);
 
         private:
@@ -186,9 +165,8 @@ namespace WPEFramework
             std::string mAppPreinstallDirectory;
             std::list<Exchange::IPreinstallManager::INotification*> mPreinstallManagerNotifications;
             PluginHost::IShell *mCurrentservice;
-            Exchange::IPackageInstaller* mPackageManagerInstallerObject;
-            Core::Sink<PackageManagerNotification> mPackageManagerNotification;
             State mPreinstallState;
+            std::thread mInstallThread;
             void dispatchEvent(EventNames, const JsonObject &params);
             void Dispatch(EventNames event, const JsonObject params);
             friend class Job;

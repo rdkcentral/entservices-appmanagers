@@ -32,8 +32,7 @@ namespace WPEFramework
 
     PreinstallManagerImplementation::PreinstallManagerImplementation()
         : mAdminLock(), mAppPreinstallDirectory(""), mPreinstallManagerNotifications(), mCurrentservice(nullptr),
-          mPackageManagerInstallerObject(nullptr), mPackageManagerNotification(*this),
-                    mPreinstallState(State::NOT_STARTED)
+                    mPreinstallState(State::NOT_STARTED), mInstallThread()
     {
         LOGINFO("Create PreinstallManagerImplementation Instance");
         if (nullptr == PreinstallManagerImplementation::_instance)
@@ -50,15 +49,17 @@ namespace WPEFramework
     PreinstallManagerImplementation::~PreinstallManagerImplementation()
     {
         LOGINFO("Delete PreinstallManagerImplementation Instance");
+
+        if (mInstallThread.joinable())
+        {
+            mInstallThread.join();
+        }
+
         _instance = nullptr;
         if (nullptr != mCurrentservice)
         {
             mCurrentservice->Release();
             mCurrentservice = nullptr;
-        }
-        if (nullptr != mPackageManagerInstallerObject)
-        {
-            releasePackageManagerObject();
         }
     }
 
@@ -149,23 +150,6 @@ namespace WPEFramework
     {
         switch (event)
         {
-        case PREINSTALL_MANAGER_APP_INSTALLATION_STATUS:
-        {
-            if( params.HasLabel("jsonresponse") == false)
-            {
-                LOGERR("jsonresponse not found in params");
-                break;
-            }
-            std::string jsonresponse = params["jsonresponse"].String();
-            LOGINFO("Sending OnAppInstallationStatus event : %s", jsonresponse.c_str());
-            mAdminLock.Lock();
-            for (auto notification : mPreinstallManagerNotifications)
-            {
-                notification->OnAppInstallationStatus(jsonresponse);
-            }
-            mAdminLock.Unlock();
-            break;
-        }
         case PREINSTALL_MANAGER_ONCOMPLETE:
         {
             LOGINFO("Sending OnComplete event");
@@ -185,23 +169,6 @@ namespace WPEFramework
     }
 
     /**
-     * Pass on the AppInstallationStatus event from package manager to all registered listeners
-     */
-    void PreinstallManagerImplementation::handleOnAppInstallationStatus(const std::string &jsonresponse)
-    {
-        if (!jsonresponse.empty())
-        {
-            JsonObject eventDetails;
-            eventDetails["jsonresponse"] = jsonresponse;
-            dispatchEvent(PREINSTALL_MANAGER_APP_INSTALLATION_STATUS, eventDetails);
-        }
-        else
-        {
-            LOGERR("jsonresponse string from package manager is empty");
-        }
-    }
-
-    /**
      * Send OnComplete event to all registered listeners
      */
     void PreinstallManagerImplementation::sendOnCompleteEvent()
@@ -211,36 +178,34 @@ namespace WPEFramework
         dispatchEvent(PREINSTALL_MANAGER_ONCOMPLETE, eventDetails);
     }
 
-    Core::hresult PreinstallManagerImplementation::createPackageManagerObject()
+    Core::hresult PreinstallManagerImplementation::createPackageManagerObject(Exchange::IPackageInstaller*& packageInstaller)
     {
         Core::hresult status = Core::ERROR_GENERAL;
+        packageInstaller = nullptr;
 
         if (nullptr == mCurrentservice)
         {
             LOGERR("mCurrentservice is null \n");
         }
-        else if (nullptr == (mPackageManagerInstallerObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IPackageInstaller>("org.rdk.PackageManagerRDKEMS")))
+        else if (nullptr == (packageInstaller = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IPackageInstaller>("org.rdk.PackageManagerRDKEMS")))
         {
-            LOGERR("mPackageManagerInstallerObject is null \n");
+            LOGERR("PackageManager installer object is null \n");
         }
         else
         {
             LOGINFO("created PackageInstaller Object\n");
-            mPackageManagerInstallerObject->AddRef();
-            mPackageManagerInstallerObject->Register(&mPackageManagerNotification);
+            packageInstaller->AddRef();
             status = Core::ERROR_NONE;
         }
         return status;
     }
 
-    void PreinstallManagerImplementation::releasePackageManagerObject()
+    void PreinstallManagerImplementation::releasePackageManagerObject(Exchange::IPackageInstaller*& packageInstaller)
     {
-        ASSERT(nullptr != mPackageManagerInstallerObject);
-        if (mPackageManagerInstallerObject)
+        if (packageInstaller)
         {
-            mPackageManagerInstallerObject->Unregister(&mPackageManagerNotification);
-            mPackageManagerInstallerObject->Release();
-            mPackageManagerInstallerObject = nullptr;
+            packageInstaller->Release();
+            packageInstaller = nullptr;
         }
     }
 
@@ -291,9 +256,9 @@ namespace WPEFramework
      * Traverse the preinstall directory and populate the list of packages to be preinstalled,
      * also fetches the package details
      */
-    bool PreinstallManagerImplementation::readPreinstallDirectory(std::list<PackageInfo> &packages)
+    bool PreinstallManagerImplementation::readPreinstallDirectory(Exchange::IPackageInstaller* packageInstaller, std::list<PackageInfo> &packages)
     {
-        ASSERT(nullptr != mPackageManagerInstallerObject);
+        ASSERT(nullptr != packageInstaller);
         DIR *dir = opendir(mAppPreinstallDirectory.c_str());
         if (!dir)
         {
@@ -315,7 +280,7 @@ namespace WPEFramework
             PackageInfo packageInfo;
             packageInfo.fileLocator = filepath;
             LOGDBG("Found package folder: %s", filepath.c_str());
-            if (mPackageManagerInstallerObject->GetConfigForPackage(packageInfo.fileLocator, packageInfo.packageId, packageInfo.version, packageInfo.configMetadata) == Core::ERROR_NONE)
+            if (packageInstaller->GetConfigForPackage(packageInfo.fileLocator, packageInfo.packageId, packageInfo.version, packageInfo.configMetadata) == Core::ERROR_NONE)
             {
                 LOGINFO("Found package: %s, version: %s", packageInfo.packageId.c_str(), packageInfo.version.c_str());
             }
@@ -342,6 +307,86 @@ namespace WPEFramework
         }
     }
 
+    void PreinstallManagerImplementation::installPackages(std::list<PackageInfo> preinstallPackages)
+    {
+        Exchange::IPackageInstaller* packageInstaller = nullptr;
+        mAdminLock.Lock();
+        mPreinstallState = State::IN_PROGRESS;
+        mAdminLock.Unlock();
+
+        if (Core::ERROR_NONE != createPackageManagerObject(packageInstaller))
+        {
+            LOGERR("Failed to create PackageManagerObject for install");
+            mAdminLock.Lock();
+            mPreinstallState = State::COMPLETED;
+            mAdminLock.Unlock();
+            sendOnCompleteEvent();
+            return;
+        }
+
+        auto installStart = std::chrono::steady_clock::now();
+        bool installError = false;
+        int failedApps = 0;
+        const int totalApps = preinstallPackages.size();
+
+        for (auto &pkg : preinstallPackages)
+        {
+            if ((pkg.packageId.empty() || pkg.version.empty() || pkg.fileLocator.empty()))
+            {
+                LOGERR("Skipping invalid package with empty fields: %s", pkg.fileLocator.empty() ? "NULL" : pkg.fileLocator.c_str());
+                if (pkg.installStatus.empty())
+                {
+                    pkg.installStatus = "FAILED: empty fields";
+                }
+                pkg.fileLocator = pkg.fileLocator.empty() ? "NULL" : pkg.fileLocator;
+                pkg.packageId = pkg.packageId.empty() ? pkg.fileLocator : pkg.packageId;
+                pkg.version = pkg.version.empty() ? "NULL" : pkg.version;
+                failedApps++;
+                continue;
+            }
+
+            LOGINFO("Installing package: %s, version: %s", pkg.packageId.c_str(), pkg.version.c_str());
+
+            FailReason failReason;
+            Exchange::IPackageInstaller::IKeyValueIterator* additionalMetadata = nullptr;
+            Core::hresult installResult = packageInstaller->Install(pkg.packageId, pkg.version, additionalMetadata, pkg.fileLocator, failReason);
+
+            if (installResult != Core::ERROR_NONE)
+            {
+                LOGERR("Failed to install package: %s, version: %s, failReason: %s", pkg.packageId.c_str(), pkg.version.c_str(), getFailReason(failReason).c_str());
+                installError = true;
+                failedApps++;
+                pkg.installStatus = "FAILED: reason " + getFailReason(failReason);
+                continue;
+            }
+
+            LOGINFO("Successfully installed package: %s, version: %s, fileLocator: %s", pkg.packageId.c_str(), pkg.version.c_str(), pkg.fileLocator.c_str());
+            pkg.installStatus = "SUCCESS";
+        }
+
+        const auto installEnd = std::chrono::steady_clock::now();
+        const auto installDuration = std::chrono::duration_cast<std::chrono::seconds>(installEnd - installStart).count();
+        const auto installDurationMs = std::chrono::duration_cast<std::chrono::milliseconds>(installEnd - installStart).count();
+        LOGDBG("Process completed in %lld seconds (%lld ms)", installDuration, installDurationMs);
+        LOGINFO("Installation summary: %d/%d packages installed successfully. %d apps failed.", totalApps - failedApps, totalApps, failedApps);
+        for (const auto &pkg : preinstallPackages)
+        {
+            LOGINFO("Package: %s [version:%s]............status:[ %s ]", pkg.packageId.c_str(), pkg.version.c_str(), pkg.installStatus.c_str());
+        }
+
+        releasePackageManagerObject(packageInstaller);
+
+        mAdminLock.Lock();
+        mPreinstallState = State::COMPLETED;
+        mAdminLock.Unlock();
+
+        if (installError)
+        {
+            LOGWARN("Preinstall completed with failures");
+        }
+        sendOnCompleteEvent();
+    }
+
     /*
      * @brief Checks the preinstall directory for packages to be preinstalled and installs them as needed.
      * @Params[in]  : bool forceInstall
@@ -351,24 +396,47 @@ namespace WPEFramework
     Core::hresult PreinstallManagerImplementation::StartPreinstall(bool forceInstall)
     {
         Core::hresult result = Core::ERROR_GENERAL;
-        auto installStart = std::chrono::steady_clock::now(); // for measuring duration taken
+        bool shouldJoinPreviousThread = false;
+        Exchange::IPackageInstaller* packageInstaller = nullptr;
 
-        if (nullptr == mPackageManagerInstallerObject)
+        mAdminLock.Lock();
+        if (mInstallThread.joinable())
         {
-            LOGINFO("Create PackageManager Remote store object");
-            if (Core::ERROR_NONE != createPackageManagerObject())
+            if (mPreinstallState != State::COMPLETED)
             {
-                LOGERR("Failed to create PackageManagerObject");
+                mAdminLock.Unlock();
+                LOGERR("Preinstall is already in progress");
                 return result;
             }
+            shouldJoinPreviousThread = true;
         }
-        ASSERT(nullptr != mPackageManagerInstallerObject);
+        else if (mPreinstallState == State::IN_PROGRESS)
+        {
+            mAdminLock.Unlock();
+            LOGERR("Preinstall is already in progress");
+            return result;
+        }
+        mAdminLock.Unlock();
+
+        if (shouldJoinPreviousThread)
+        {
+            mInstallThread.join();
+        }
+
+        LOGINFO("Create PackageManager object for preinstall listing");
+        if (Core::ERROR_NONE != createPackageManagerObject(packageInstaller))
+        {
+            LOGERR("Failed to create PackageManagerObject");
+            return result;
+        }
+        ASSERT(nullptr != packageInstaller);
 
         // read the preinstall directory and populate packages
         std::list<PackageInfo> preinstallPackages; // all apps in preinstall directory
-        if (!readPreinstallDirectory(preinstallPackages))
+        if (!readPreinstallDirectory(packageInstaller, preinstallPackages))
         {
             LOGERR("Failed to read preinstall directory");
+            releasePackageManagerObject(packageInstaller);
             return result;
         }
 
@@ -379,6 +447,7 @@ namespace WPEFramework
             mAdminLock.Lock();
             mPreinstallState = State::COMPLETED;
             mAdminLock.Unlock();
+            releasePackageManagerObject(packageInstaller);
             sendOnCompleteEvent();
             result = Core::ERROR_NONE;
             return result;
@@ -390,7 +459,7 @@ namespace WPEFramework
             Exchange::IPackageInstaller::IPackageIterator *packageList = nullptr;
 
             // fetch installed packages
-            Core::hresult listResult = mPackageManagerInstallerObject->ListPackages(packageList);
+            Core::hresult listResult = packageInstaller->ListPackages(packageList);
             if (listResult != Core::ERROR_NONE || packageList == nullptr)
             {
                  LOGERR("ListPackages failed or package list is null");
@@ -399,6 +468,7 @@ namespace WPEFramework
                     packageList->Release();
                     packageList = nullptr;
                 }
+                releasePackageManagerObject(packageInstaller);
                 return result;
             }
 
@@ -456,84 +526,21 @@ namespace WPEFramework
             }
 
         }
-        // install the apps
-        bool installError = false;
-        int  failedApps   = 0;
-        int  totalApps    = preinstallPackages.size();
-        // std::list<std::string> failedAppsList;
 
-        // Set state to IN_PROGRESS before processing install calls.
-        mAdminLock.Lock();
-        mPreinstallState = State::IN_PROGRESS;
-        mAdminLock.Unlock();
+        releasePackageManagerObject(packageInstaller);
 
-        for (auto &pkg : preinstallPackages)
+        try
         {
-            if((pkg.packageId.empty() || pkg.version.empty() || pkg.fileLocator.empty()) /*&& !forceInstall */) // force install anyway
-            {
-                LOGERR("Skipping invalid package with empty fields: %s", pkg.fileLocator.empty() ? "NULL" : pkg.fileLocator.c_str());
-                if(pkg.installStatus.empty()) // do not overwrite if already set to skipped
-                {
-                    pkg.installStatus = "FAILED: empty fields";
-                }
-                //populate empty fields to avoid null errors
-                pkg.fileLocator = pkg.fileLocator.empty() ? "NULL" : pkg.fileLocator;
-                pkg.packageId = pkg.packageId.empty() ? pkg.fileLocator : pkg.packageId; // use fileLocator if packageId is empty for logging
-                pkg.version = pkg.version.empty() ? "NULL" : pkg.version;
-                // installError = true; //required??
-                failedApps++;
-                continue; // do not install with empty fields
-            }
-
-            LOGINFO("Installing package: %s, version: %s", pkg.packageId.c_str(), pkg.version.c_str());
-
-            FailReason failReason;
-            Exchange::IPackageInstaller::IKeyValueIterator* additionalMetadata = nullptr; // todo add additionalMetadata if needed
-                // additionalMetadata = Core::Service<RPC::IteratorType<Exchange::IPackageInstaller::IKeyValueIterator>>::Create<Exchange::IPackageInstaller::IKeyValueIterator>(keyValues);
-
-
-            Core::hresult installResult = mPackageManagerInstallerObject->Install(pkg.packageId, pkg.version, additionalMetadata, pkg.fileLocator, failReason);
-            
-            if (installResult != Core::ERROR_NONE)
-            {
-                LOGERR("Failed to install package: %s, version: %s, failReason: %s", pkg.packageId.c_str(), pkg.version.c_str(), getFailReason(failReason).c_str());
-                installError = true;
-                failedApps++;
-                // failedAppsList.push_back(pkg.packageId + "_" + pkg.version);
-                pkg.installStatus = "FAILED: reason " + getFailReason(failReason);
-                continue;
-            }
-            else
-            {
-                LOGINFO("Successfully installed package: %s, version: %s, fileLocator: %s", pkg.packageId.c_str(), pkg.version.c_str(), pkg.fileLocator.c_str());
-                pkg.installStatus = "SUCCESS";
-            }
+            mInstallThread = std::thread(&PreinstallManagerImplementation::installPackages, this, std::move(preinstallPackages));
+            result = Core::ERROR_NONE;
         }
-        auto installEnd = std::chrono::steady_clock::now();
-        auto installDuration = std::chrono::duration_cast<std::chrono::seconds>(installEnd - installStart).count();
-        auto installDurationMs = std::chrono::duration_cast<std::chrono::milliseconds>(installEnd - installStart).count();
-        LOGDBG("Process completed in %lld seconds (%lld ms)", installDuration, installDurationMs);
-        LOGINFO("Installation summary: %d/%d packages installed successfully. %d apps failed.", totalApps - failedApps, totalApps, failedApps);
-        // print package wise result
-        for (const auto &pkg : preinstallPackages)
+        catch (...)
         {
-            LOGINFO("Package: %s [version:%s]............status:[ %s ]", pkg.packageId.c_str(), pkg.version.c_str(), pkg.installStatus.c_str());
+            LOGERR("Failed to start preinstall worker thread");
+            mAdminLock.Lock();
+            mPreinstallState = State::NOT_STARTED;
+            mAdminLock.Unlock();
         }
-
-        //cleanup
-        releasePackageManagerObject();
-
-        // Install is synchronous: completion must be sent after all Install() calls return.
-        mAdminLock.Lock();
-        mPreinstallState = State::COMPLETED;
-        mAdminLock.Unlock();
-        sendOnCompleteEvent();
-
-        if(!installError)
-        {
-            result = Core::ERROR_NONE; // return error if any app install fails todo required??
-        }
-
         return result;
     }
 
