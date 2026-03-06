@@ -14,3 +14,14 @@ All notable changes to this RDK Service will be documented in this file.
 
 * Changes in CHANGELOG should be updated when commits are added to the main or release branches. There should be one CHANGELOG entry per JIRA Ticket. This is not enforced on sprint branches since there could be multiple changes for the same JIRA ticket during development. 
 
+## [Unreleased]
+
+### Changed
+* **BREAKING CHANGE**: Updated FIREBOLT_ENDPOINT environment variable protocol from HTTP to WebSocket (ws://)
+  * The FIREBOLT_ENDPOINT now uses WebSocket protocol: `ws://127.0.0.1:<port>?session=<appInstanceId>`
+  * Previously used HTTP protocol: `http://127.0.0.1:<port>?session=<appInstanceId>`
+  * **Migration**: Applications that consume the FIREBOLT_ENDPOINT environment variable must update their connection logic to use WebSocket protocol instead of HTTP. This includes:
+    * Changing HTTP client libraries to WebSocket client libraries
+    * Updating connection establishment code to use WebSocket handshake
+    * Modifying message handling to work with WebSocket frames instead of HTTP request/response
+
