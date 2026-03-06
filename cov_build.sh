@@ -30,19 +30,19 @@ cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/entservices-appmanagers \
 -DPLUGIN_RUNTIME_MANAGER=ON \
 -DPLUGIN_PACKAGE_MANAGER=ON \
 -DCMAKE_CXX_FLAGS="-DEXCEPTIONS_ENABLE=ON \
--I ${GITHUB_WORKSPACE}/entservices-appmanagers/Tests/mocks \
--I ${GITHUB_WORKSPACE}/entservices-appmanagers/Tests/mocks/thunder \
+-I ${GITHUB_WORKSPACE}/Tests/mocks \
+-I ${GITHUB_WORKSPACE}/Tests/mocks/thunder \
 -I /usr/include/libdrm \
--include ${GITHUB_WORKSPACE}/entservices-appmanagers/Tests/mocks/Iarm.h \
--include ${GITHUB_WORKSPACE}/entservices-appmanagers/Tests/mocks/Rfc.h \
--include ${GITHUB_WORKSPACE}/entservices-appmanagers/Tests/mocks/RBus.h \
--include ${GITHUB_WORKSPACE}/entservices-appmanagers/Tests/mocks/Telemetry.h \
--include ${GITHUB_WORKSPACE}/entservices-appmanagers/Tests/mocks/Udev.h \
--include ${GITHUB_WORKSPACE}/entservices-appmanagers/Tests/mocks/pkg.h \
--include ${GITHUB_WORKSPACE}/entservices-appmanagers/Tests/mocks/maintenanceMGR.h \
--include ${GITHUB_WORKSPACE}/entservices-appmanagers/Tests/mocks/secure_wrappermock.h \
--include ${GITHUB_WORKSPACE}/entservices-appmanagers/Tests/mocks/libusb/libusb.h \
--include ${GITHUB_WORKSPACE}/entservices-appmanagers/Tests/mocks/Dobby.h \
+-include ${GITHUB_WORKSPACE}/Tests/mocks/Iarm.h \
+-include ${GITHUB_WORKSPACE}/Tests/mocks/Rfc.h \
+-include ${GITHUB_WORKSPACE}/Tests/mocks/RBus.h \
+-include ${GITHUB_WORKSPACE}/Tests/mocks/Telemetry.h \
+-include ${GITHUB_WORKSPACE}/Tests/mocks/Udev.h \
+-include ${GITHUB_WORKSPACE}/Tests/mocks/pkg.h \
+-include ${GITHUB_WORKSPACE}/Tests/mocks/maintenanceMGR.h \
+-include ${GITHUB_WORKSPACE}/Tests/mocks/secure_wrappermock.h \
+-include ${GITHUB_WORKSPACE}/Tests/mocks/libusb/libusb.h \
+-include ${GITHUB_WORKSPACE}/Tests/mocks/Dobby.h \
 -Wall -Werror -Wno-error=format \
 -Wl,-wrap,system -Wl,-wrap,popen -Wl,-wrap,syslog \
 -DENABLE_TELEMETRY_LOGGING -DUSE_IARMBUS \
