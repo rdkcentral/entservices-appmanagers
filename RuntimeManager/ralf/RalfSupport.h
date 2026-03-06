@@ -111,9 +111,9 @@ namespace ralf
     uint64_t parseMemorySize(const std::string &str);
 
     /**
-     * Function to serialize a Json::Value node into a formatted JSON string. This is useful for logging and debugging purposes.
+     * Function to serialize a Json::Value node into a JSON string. This is useful for logging and debugging purposes.
      * @param node The Json::Value node to serialize.
-     * @return A formatted JSON string representation of the node.
+     * @return A JSON string representation of the node.
      */
     std::string serializeJsonNode(const Json::Value &node);
 } // namespace ralf
