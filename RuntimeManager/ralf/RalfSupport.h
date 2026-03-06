@@ -27,10 +27,13 @@
 namespace ralf
 {
     /**
-     * Function to create directories recursively, with mode 0777 (subject to umask)
+     * Function to create directories recursively, with mode 0777 (subject to umask).
+     * If non-zero uid/gid values are provided, ownership of the created directories
+     * will be set accordingly; a value of 0 for either uid or gid leaves the
+     * corresponding ownership unchanged.
      * @param path The directory path to create
-     * @param uid The user ID to set as owner of the created directories (default: 0)
-     * @param gid The group ID to set as owner of the created directories (default: 0)
+     * @param uid The user ID to set as owner of the created directories (default: 0 = leave unchanged)
+     * @param gid The group ID to set as owner of the created directories (default: 0 = leave unchanged)
      * @return true on success, false on failure
      */
     bool create_directories(const std::string &path, int uid = 0, int gid = 0);
