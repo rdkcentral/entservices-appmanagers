@@ -580,14 +580,14 @@ namespace ralf
             {
                 std::string overrideJsonStr = serializeJsonNode(overrideNode[PKG_TYPE_APPLICATION]);
                 addToEnvironment(ociConfigRootNode, APP_CONFIG_OVERRIDES_ENV_KEY, overrideJsonStr);
-                LOGDBG("Added application config overrides to OCI config as environment variable: %s=%s\n", APP_CONFIG_OVERRIDES_ENV_KEY, overrideJsonStr.c_str());
+                LOGDBG("Added application config overrides to OCI config as environment variable: %s\n", APP_CONFIG_OVERRIDES_ENV_KEY);
             }
             // RUNTIME_CONFIG_OVERRIDES_ENV_KEY  should be filled with the "runtime" node if it exists,
             if (overrideNode.isMember(PKG_TYPE_RUNTIME) && overrideNode[PKG_TYPE_RUNTIME].isObject())
             {
                 std::string overrideJsonStr = serializeJsonNode(overrideNode[PKG_TYPE_RUNTIME]);
                 addToEnvironment(ociConfigRootNode, RUNTIME_CONFIG_OVERRIDES_ENV_KEY, overrideJsonStr);
-                LOGDBG("Added runtime config overrides to OCI config as environment variable: %s=%s\n", RUNTIME_CONFIG_OVERRIDES_ENV_KEY, overrideJsonStr.c_str());
+                LOGDBG("Added runtime config overrides to OCI config as environment variable: %s\n", RUNTIME_CONFIG_OVERRIDES_ENV_KEY);
             }
             status = true;
         }
