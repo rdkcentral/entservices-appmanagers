@@ -2,7 +2,7 @@
 #include <gtest/gtest.h>
 #include <string>
 #include <cstring>
-#include "StorageManager.h"
+#include "AppStorageManager.h"
 #include "StorageManagerImplementation.h"
 #include "ServiceMock.h"
 #include "Store2Mock.h"
