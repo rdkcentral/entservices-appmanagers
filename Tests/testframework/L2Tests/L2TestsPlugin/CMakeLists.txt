@@ -39,7 +39,15 @@ target_compile_definitions(${MODULE_NAME}
             MODULE_NAME=Plugin_${PLUGIN_NAME}
             THUNDER_PORT="${THUNDER_PORT}")
 
-target_compile_options(${MODULE_NAME} PRIVATE -Wno-error)
+target_link_options(${MODULE_NAME} PRIVATE
+    -Wl,--wrap=mkdir
+    -Wl,--wrap=rmdir
+    -Wl,--wrap=nftw
+    -Wl,--wrap=opendir
+    -Wl,--wrap=readdir
+    -Wl,--wrap=closedir
+    -Wl,--wrap=stat
+)
 
 if(PLUGIN_DEVICEDIAGNOSTICS OR PLUGIN_USERPREFERENCES OR PLUGIN_WAREHOUSE OR PLUGIN_DISPLAYSETTINGS OR PLUGIN_POWERMANAGER OR PLUGIN_SYSTEMSERVICES OR PLUGIN_DEVICEINFO)
     target_link_libraries(${MODULE_NAME} PRIVATE ${CMAKE_INSTALL_PREFIX}/lib/libWPEFrameworkL2TestsDD.so)

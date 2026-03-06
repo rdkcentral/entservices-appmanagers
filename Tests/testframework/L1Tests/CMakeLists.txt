@@ -34,6 +34,16 @@ set (TEST_LIB
     ${NAMESPACE}Plugins::${NAMESPACE}Plugins
   )
 
+target_link_options(${PROJECT_NAME} PRIVATE
+    -Wl,--wrap=mkdir
+    -Wl,--wrap=rmdir
+    -Wl,--wrap=nftw
+    -Wl,--wrap=opendir
+    -Wl,--wrap=readdir
+    -Wl,--wrap=closedir
+    -Wl,--wrap=stat
+)
+
 set(ENTSERVICES_REPO_L1TEST_LIB_PATH ${CMAKE_INSTALL_PREFIX}/lib)
 
 set (TEST_INC ${CMAKE_SOURCE_DIR}/helpers)

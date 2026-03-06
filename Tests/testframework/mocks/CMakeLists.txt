@@ -117,6 +117,16 @@ else(L2_TEST_OOP_RPC)
 	    )
     endif()
 
+    target_link_options(${PROJECT_NAME} PRIVATE
+    -Wl,--wrap=mkdir
+    -Wl,--wrap=rmdir
+    -Wl,--wrap=nftw
+    -Wl,--wrap=opendir
+    -Wl,--wrap=readdir
+    -Wl,--wrap=closedir
+    -Wl,--wrap=stat
+    )
+    
     add_library(${MODULE_NAME} SHARED ${MODULE_SOURCES})
 
     add_dependencies(${MODULE_NAME} generate_secure_storage_proto)

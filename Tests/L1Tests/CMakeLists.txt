@@ -138,9 +138,15 @@ add_plugin_test_ex(PLUGIN_DOWNLOADMANAGER tests/test_DownloadManager.cpp "${DOWN
 
 add_library(${MODULE_NAME} SHARED ${TEST_SRC})
 
-if (RDK_SERVICES_L1_TEST)
-    target_link_options(${MODULE_NAME} PRIVATE "-Wl,-wrap,opendir")
-endif (RDK_SERVICES_L1_TEST)
+target_link_options(${PROJECT_NAME} PRIVATE
+    -Wl,--wrap=mkdir
+    -Wl,--wrap=rmdir
+    -Wl,--wrap=nftw
+    -Wl,--wrap=opendir
+    -Wl,--wrap=readdir
+    -Wl,--wrap=closedir
+    -Wl,--wrap=stat
+)
 
 include_directories(${TEST_INC})
 
