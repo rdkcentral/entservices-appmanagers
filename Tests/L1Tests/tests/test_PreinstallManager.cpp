@@ -88,13 +88,6 @@ protected:
             return nullptr;
         }));
 
-        EXPECT_CALL(*mPackageInstallerMock, Register(::testing::_))
-            .WillOnce(::testing::Invoke(
-                [&](Exchange::IPackageInstaller::INotification* notification) {
-                    mPackageInstallerNotification_cb = notification;
-                    return Core::ERROR_NONE;
-                }));
-
         ON_CALL(*p_wrapsImplMock, stat(::testing::_, ::testing::_))
         .WillByDefault(::testing::Return(-1));
         
@@ -220,6 +213,7 @@ public:
     virtual ~MockNotificationTest() = default;
     
     MOCK_METHOD(void, OnAppInstallationStatus, (const string& jsonresponse), (override));
+    MOCK_METHOD(void, OnComplete, (), (override));
     MOCK_METHOD(void, AddRef, (), (const, override));
     MOCK_METHOD(uint32_t, Release, (), (const, override));
 
@@ -385,13 +379,13 @@ TEST_F(PreinstallManagerTest, StartPreinstallFailsWhenPackageManagerUnavailable)
 }
 
 /**
- * @brief Test notification handling for app installation status
+ * @brief Test OnComplete event notification
  *
  * @details Test verifies that:
- * - Notification callbacks are properly triggered
- * - Installation status is handled correctly
+ * - OnComplete notification callbacks are properly triggered via sendOnCompleteEvent
+ * - All registered listeners receive the OnComplete event
  */
-TEST_F(PreinstallManagerTest, HandleAppInstallationStatusNotification)
+TEST_F(PreinstallManagerTest, OnCompleteEventNotification)
 {
     ASSERT_EQ(Core::ERROR_NONE, createResources());
     
@@ -402,8 +396,8 @@ TEST_F(PreinstallManagerTest, HandleAppInstallationStatusNotification)
     std::promise<void> notificationPromise;
     std::future<void> notificationFuture = notificationPromise.get_future();
     
-    // Expect the notification method to be called and signal completion
-    EXPECT_CALL(*mockNotification, OnAppInstallationStatus(::testing::_))
+    // Expect the OnComplete method to be called and signal completion
+    EXPECT_CALL(*mockNotification, OnComplete())
         .Times(1)
         .WillOnce(::testing::InvokeWithoutArgs([&notificationPromise]() {
             notificationPromise.set_value();
@@ -411,18 +405,35 @@ TEST_F(PreinstallManagerTest, HandleAppInstallationStatusNotification)
     
     mPreinstallManagerImpl->Register(mockNotification.operator->());
     
-    // Simulate installation status notification
-    string testJsonResponse = R"({"packageId":"testApp","version":"1.0.0","status":"SUCCESS"})";
-    
-    // Call the handler directly since it's a friend class
-    mPreinstallManagerImpl->handleOnAppInstallationStatus(testJsonResponse);
+    // Trigger the OnComplete event directly
+    mPreinstallManagerImpl->sendOnCompleteEvent();
     
     // Wait for the asynchronous notification (with timeout)
     auto status = notificationFuture.wait_for(std::chrono::seconds(2));
-    EXPECT_EQ(std::future_status::ready, status) << "Notification was not received within timeout";
+    EXPECT_EQ(std::future_status::ready, status) << "OnComplete notification was not received within timeout";
     
     // Cleanup
     mPreinstallManagerImpl->Unregister(mockNotification.operator->());
+    releaseResources();
+}
+
+/**
+ * @brief Test PreinstallState API
+ *
+ * @details Test verifies that:
+ * - PreinstallState returns the current state of preinstall
+ * - Initial state is NOT_STARTED
+ */
+TEST_F(PreinstallManagerTest, PreinstallStateInitiallyNotStarted)
+{
+    ASSERT_EQ(Core::ERROR_NONE, createResources());
+    
+    Exchange::IPreinstallManager::State state;
+    Core::hresult result = mPreinstallManagerImpl->PreinstallState(state);
+    
+    EXPECT_EQ(Core::ERROR_NONE, result);
+    EXPECT_EQ(Exchange::IPreinstallManager::State::NOT_STARTED, state);
+    
     releaseResources();
 }
 
