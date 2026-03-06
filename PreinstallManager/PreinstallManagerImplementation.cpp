@@ -194,7 +194,6 @@ namespace WPEFramework
         else
         {
             LOGINFO("created PackageInstaller Object\n");
-            packageInstaller->AddRef();
             status = Core::ERROR_NONE;
         }
         return status;
