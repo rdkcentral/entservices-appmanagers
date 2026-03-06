@@ -127,7 +127,6 @@ namespace Plugin {
         Core::hresult Register(INotification *notification) override;
         Core::hresult Unregister(INotification *notification) override;
         Core::hresult CreateDisplay(const std::string &clientId, const std::string &displayName, uint32_t displayWidth, uint32_t displayHeight, bool virtualDisplay, uint32_t virtualWidth, uint32_t virtualHeight, uint32_t ownerId, uint32_t groupId, bool topmost, bool focus) override;
-        Core::hresult CreateDisplay(const string &displayParams) override;
         Core::hresult GetApps(string &appsIds) const override;
         Core::hresult AddKeyIntercept(const string &intercept) override;
         Core::hresult AddKeyIntercepts(const string &intercepts) override;
