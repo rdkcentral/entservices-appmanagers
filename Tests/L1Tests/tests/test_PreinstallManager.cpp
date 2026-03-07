@@ -419,7 +419,6 @@ TEST_F(PreinstallManagerTest, OnCompleteEventNotification)
     
     // Cleanup
     mPreinstallManagerImpl->Unregister(mockNotification.operator->());
-    releaseResources();
 }
 
 /**
