@@ -34,6 +34,7 @@ namespace ralf
          * Generates the OCI config JSON for the RALF application instance.
          * @param config The application configuration.
          * @param runtimeConfigObject The runtime configuration.
+         * @return true if the OCI config was generated successfully, false otherwise.
          */
         bool generateRalfOCIConfig(const WPEFramework::Plugin::ApplicationConfiguration &config, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject);
 
@@ -42,21 +43,32 @@ namespace ralf
          * Applies the graphics configuration to the OCI config JSON.
          * @param ociConfigRootNode The root node of the OCI config JSON.
          * @param graphicsConfigNode The graphics configuration JSON node.
+         * @return true if the graphics configuration was applied successfully, false otherwise.
          */
         bool applyGraphicsConfigToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &graphicsConfigNode);
 
+        /**
+         * Generates the default hooks section in the OCI config JSON.
+         * @param ociConfigRootNode The root node of the OCI config JSON.
+         * @return true if the hooks were generated successfully, false otherwise.
+         */
         bool generateHooksForOCIConfig(Json::Value &ociConfigRootNode);
+        /**
+         * Generates the hooks section in the OCI config JSON for a specific lifecycle operation.
+         * @param ociConfigRootNode The root node of the OCI config JSON.
+         * @param operation The lifecycle operation name for which hooks are generated, as defined by the OCI Runtime
+         *        Specification (e.g., "createRuntime", "createContainer", "startContainer", "poststart", "poststop").
+         * @return true if the hooks were generated successfully, false otherwise.
+         */
         bool generateHooksForOCIConfig(Json::Value &ociConfigRootNode, const std::string &operation);
 
         /**
-         * Applies the configuration options from the Ralf package to the OCI config JSON.
-         * The following parameters are expected to be applied:
-         * entryPoint, permissions and configurations
+         * Applies the entrypoint options from the Ralf package to the OCI config JSON.
          * @param ociConfigRootNode The root node of the OCI config JSON.
          * @param ralfPackageConfigNode The Ralf package configuration JSON node.
          * @return true if the configuration options were applied successfully, false otherwise.
          */
-        bool applyRalfPackageConfigToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &ralfPackageConfigNode);
+        bool addEntryPointToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &ralfPackageConfigNode);
 
         /**
          * Saves the OCI config JSON to mConfigFilePath.
@@ -76,6 +88,13 @@ namespace ralf
          */
         bool applyRuntimeAndAppConfigToOCIConfig(Json::Value &ociConfigRootNode, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject, const WPEFramework::Plugin::ApplicationConfiguration &config);
 
+        /**
+         * Applies the configuration from the package config to the OCI config JSON.
+         * @param ociConfigRootNode The root node of the OCI config JSON.
+         * @param manifestRootNode The manifest root node.
+         * @return true if the configuration was applied successfully, false otherwise.
+         */
+        bool applyConfigurationToOCIConfig(Json::Value &ociConfigRootNode, Json::Value &manifestRootNode);
         /**
          * Adds a mount entry to the OCI config JSON.
          * @param ociConfigRootNode The root node of the OCI config JSON.
@@ -107,6 +126,65 @@ namespace ralf
          * @return true if environment variables were added successfully, false otherwise.
          */
         bool addAdditionalEnvVariablesToOCIConfig(Json::Value &ociConfigRootNode, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject, const WPEFramework::Plugin::ApplicationConfiguration &appConfig);
+        /**
+         * Reads the environment variables JSON array string from WPEFramework::Exchange::RuntimeConfig.envVariables and pushes them to OCI config.
+         * We are specifically looking to update the FIREBOLT_ENDPOINT environment variable here.
+         * @param ociConfigRootNode The root node of the OCI config JSON.
+         * @param envVar The serialized JSON array string of environment variables (e.g. "[\"KEY=VALUE\", ...]") as provided by RuntimeConfig.envVariables.
+         * @return true if the environment variable was added successfully, false otherwise.
+         */
+        bool addFireboltEndPointToConfig(Json::Value &ociConfigRootNode, const std::string &envVar);
+
+        /**
+         * Adds configuration overrides from the Ralf package config to the OCI config JSON.
+         * As per the current specification, these are expected to be added as environment variables in the OCI config.
+         * If an "application" sub-object is present in the overrides, it is serialized under APP_CONFIG_OVERRIDES_JSON.
+         * If a "runtime" sub-object is present, it is serialized under RUNTIME_CONFIG_OVERRIDES_JSON.
+         * @param ociConfigRootNode The root node of the OCI config JSON.
+         * @param configNode  The config node containing the overrides.
+         * @return true if at least one config override env var was added, false otherwise.
+         */
+        bool addConfigOverridesToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &configNode);
+
+        /**
+         * Adds memory configuration from the Ralf package config to the OCI config JSON.
+         * if packageType is "application", it will override any configuration that runtime written.
+         * @param ociConfigRootNode The root node of the OCI config JSON.
+         * @param configNode The config node containing the memory configuration.
+         * @param packageType The type of the Ralf package (e.g., "application" or "runtime").
+         * @return true if the memory configuration was added from package, false if default value is added.
+         */
+
+        bool addMemoryConfigToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &configNode, const std::string &packageType);
+        /**
+         * Adds a key-value pair to the environment section of the OCI config JSON.
+         * @param ociConfigRootNode The root node of the OCI config JSON.
+         * @param key The environment variable key.
+         * @param value The environment variable value.
+         */
+        void addToEnvironment(Json::Value &ociConfigRootNode, const std::string &key, const std::string &value);
+
+        /**
+         * Adds the application package version to the OCI config as an environment variable named APP_PACKAGE_VERSION.
+         * Identifies the application package version. This value is used for logging, debugging, and version-specific behavior.
+         * It must be derived from the version and versionName fields retrieved from the package metadata and formatted as 'versionName_version'.
+         * @param ociConfigRootNode The root node of the OCI config JSON.
+         * @param manifestRootNode The root node of the manifest JSON containing the version information.
+         * @return true if the version was added successfully, false otherwise.
+         */
+        bool addAppPackageVersionToConfig(Json::Value &ociConfigRootNode, Json::Value &manifestRootNode);
+
+        /**
+         * Add the storage configuration from the Ralf package config to the OCI config JSON.
+         * Specifies the maximum local storage (in MB) allocated to the container. The runtime manager MUST
+         * retrieve urn:rdk:config:storage from the package metadata and set the value of the maxLocalStorage
+         * field as this environment variable.
+         * @param ociConfigRootNode The root node of the OCI config JSON.
+         * @param manifestRootNode The root node of the manifest JSON containing the storage information.
+         * @return true if the storage configuration was added from package, false if default value is added.
+         */
+        bool addStorageConfigToOCIConfig(Json::Value &ociConfigRootNode, Json::Value &manifestRootNode);
+
         /**
          * The vector of Ralf package details as pairs of mount point and metadata path.
          */
