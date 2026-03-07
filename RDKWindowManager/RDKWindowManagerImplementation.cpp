@@ -649,11 +649,20 @@ void RDKWindowManagerImplementation::Dispatch(Event event, const JsonValue param
 
 /***
  * @brief Create the display window.
- * Creates a display for the specified client using the configuration parameters.
+ * Creates a display for the specified client using the provided configuration parameters.
  *
- * Ex:{\"clientId\": \"org.rdk.YouTube\",\"displayName\": \"test1\",\"displayWidth\": 1920,\"displayHeight\": 1080,
- *                          \"virtualDisplay\": true,\"virtualWidth\": 1920,\"virtualHeight\": 1080,\"topmost\": false,\"focus\": false, \"ownerId\": 30001,  \"groupId\": 30000}
- * @return            : Core::<StatusCode>
+ * @param clientId        : Unique identifier of the client application (e.g. "org.rdk.YouTube").
+ * @param displayName     : Name to assign to the created display (e.g. "test1").
+ * @param displayWidth    : Width of the display in pixels.
+ * @param displayHeight   : Height of the display in pixels.
+ * @param virtualDisplay  : When true, creates a virtual (off-screen) display.
+ * @param virtualWidth    : Width of the virtual display in pixels.
+ * @param virtualHeight   : Height of the virtual display in pixels.
+ * @param ownerId         : Wayland client PID that owns the display surface.
+ * @param groupId         : Group identifier used to associate related surfaces.
+ * @param topmost         : When true, the display surface is rendered above all others.
+ * @param focus           : When true, the display surface receives input focus on creation.
+ * @return Core::ERROR_NONE on success, Core::ERROR_GENERAL on failure.
  */
 Core::hresult RDKWindowManagerImplementation::CreateDisplay(const string &clientId, const string &displayName, const uint32_t displayWidth, const uint32_t displayHeight, const bool virtualDisplay, const uint32_t virtualWidth, const uint32_t virtualHeight, const uint32_t ownerId, const uint32_t groupId, const bool topmost, const bool focus)
 {
