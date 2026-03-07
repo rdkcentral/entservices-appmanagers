@@ -23,6 +23,7 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(${NAMESPACE}Plugins REQUIRED)
+find_package(GTest REQUIRED)
 
 set (TEST_SRC
     tests/test_UtilsFile.cpp
@@ -152,13 +153,41 @@ target_include_directories(${MODULE_NAME}
         PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
         $<INSTALL_INTERFACE:include>
-        ${CMAKE_SOURCE_DIR}/../entservices-testframework/Tests/mocks
-        ${CMAKE_SOURCE_DIR}/../entservices-testframework/Tests/mocks/devicesettings
-        ${CMAKE_SOURCE_DIR}/../entservices-testframework/Tests/mocks/thunder
+        ${CMAKE_SOURCE_DIR}/Tests/mocks
+        ${CMAKE_SOURCE_DIR}/Tests/mocks/devicesettings
+        ${CMAKE_SOURCE_DIR}/Tests/mocks/thunder
         ${CMAKE_SOURCE_DIR}/../Thunder/Source/plugins
         )
 
 target_compile_definitions(${MODULE_NAME} PRIVATE UNIT_TEST)
+
+if (RDK_SERVICES_L1_TEST)
+    add_executable(RdkServicesL1Test test_JSON.cpp)
+
+    target_link_directories(RdkServicesL1Test PUBLIC ${CMAKE_INSTALL_PREFIX}/lib ${CMAKE_INSTALL_PREFIX}/lib/wpeframework/plugins)
+
+    target_link_libraries(RdkServicesL1Test
+        "${CMAKE_INSTALL_PREFIX}/lib/libTestMocklib.so"
+        ${MODULE_NAME}
+        gtest_main
+        gmock
+        gtest
+        ${TEST_LIB}
+    )
+
+    target_include_directories(RdkServicesL1Test
+        PUBLIC
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+        $<INSTALL_INTERFACE:include>
+        ${CMAKE_SOURCE_DIR}/Tests/mocks
+        ${CMAKE_SOURCE_DIR}/Tests/mocks/devicesettings
+        ${CMAKE_SOURCE_DIR}/Tests/mocks/thunder
+        ${CMAKE_SOURCE_DIR}/Tests/mocks/libusb
+        ${CMAKE_SOURCE_DIR}/../Thunder/Source/plugins
+    )
+
+    install(TARGETS RdkServicesL1Test DESTINATION bin)
+endif ()
 
 #install(TARGETS ${PROJECT_NAME} DESTINATION bin)
 

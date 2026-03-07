@@ -30,35 +30,35 @@ cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/entservices-appmanagers \
 -DPLUGIN_RUNTIME_MANAGER=ON \
 -DPLUGIN_PACKAGE_MANAGER=ON \
 -DCMAKE_CXX_FLAGS="-DEXCEPTIONS_ENABLE=ON \
--I ${GITHUB_WORKSPACE}/entservices-testframework/Tests/headers \
--I ${GITHUB_WORKSPACE}/entservices-testframework/Tests/headers/audiocapturemgr \
--I ${GITHUB_WORKSPACE}/entservices-testframework/Tests/headers/rdk/ds \
--I ${GITHUB_WORKSPACE}/entservices-testframework/Tests/headers/rdk/iarmbus \
--I ${GITHUB_WORKSPACE}/entservices-testframework/Tests/headers/rdk/iarmmgrs-hal \
--I ${GITHUB_WORKSPACE}/entservices-testframework/Tests/headers/ccec/drivers \
--I ${GITHUB_WORKSPACE}/entservices-testframework/Tests/headers/network \
--I ${GITHUB_WORKSPACE}/entservices-testframework/Tests/headers/libusb \
--I ${GITHUB_WORKSPACE}/entservices-testframework/Tests/headers/Dobby \
--I ${GITHUB_WORKSPACE}/entservices-testframework/Tests/headers/Dobby/Public/Dobby \
--I ${GITHUB_WORKSPACE}/entservices-testframework/Tests/headers/Dobby/IpcService \
--I ${GITHUB_WORKSPACE}/entservices-testframework/Tests/mocks \
--I ${GITHUB_WORKSPACE}/entservices-testframework/Tests/mocks/thunder \
+-I ${GITHUB_WORKSPACE}/entservices-appmanagers/Tests/headers \
+-I ${GITHUB_WORKSPACE}/entservices-appmanagers/Tests/headers/audiocapturemgr \
+-I ${GITHUB_WORKSPACE}/entservices-appmanagers/Tests/headers/rdk/ds \
+-I ${GITHUB_WORKSPACE}/entservices-appmanagers/Tests/headers/rdk/iarmbus \
+-I ${GITHUB_WORKSPACE}/entservices-appmanagers/Tests/headers/rdk/iarmmgrs-hal \
+-I ${GITHUB_WORKSPACE}/entservices-appmanagers/Tests/headers/ccec/drivers \
+-I ${GITHUB_WORKSPACE}/entservices-appmanagers/Tests/headers/network \
+-I ${GITHUB_WORKSPACE}/entservices-appmanagers/Tests/headers/libusb \
+-I ${GITHUB_WORKSPACE}/entservices-appmanagers/Tests/headers/Dobby \
+-I ${GITHUB_WORKSPACE}/entservices-appmanagers/Tests/headers/Dobby/Public/Dobby \
+-I ${GITHUB_WORKSPACE}/entservices-appmanagers/Tests/headers/Dobby/IpcService \
+-I ${GITHUB_WORKSPACE}/entservices-appmanagers/Tests/mocks \
+-I ${GITHUB_WORKSPACE}/entservices-appmanagers/Tests/mocks/thunder \
 -I /usr/include/libdrm \
--include ${GITHUB_WORKSPACE}/entservices-testframework/Tests/mocks/devicesettings.h \
--include ${GITHUB_WORKSPACE}/entservices-testframework/Tests/mocks/Iarm.h \
--include ${GITHUB_WORKSPACE}/entservices-testframework/Tests/mocks/Rfc.h \
--include ${GITHUB_WORKSPACE}/entservices-testframework/Tests/mocks/RBus.h \
--include ${GITHUB_WORKSPACE}/entservices-testframework/Tests/mocks/Telemetry.h \
--include ${GITHUB_WORKSPACE}/entservices-testframework/Tests/mocks/Udev.h \
--include ${GITHUB_WORKSPACE}/entservices-testframework/Tests/mocks/pkg.h \
--include ${GITHUB_WORKSPACE}/entservices-testframework/Tests/mocks/maintenanceMGR.h \
--include ${GITHUB_WORKSPACE}/entservices-testframework/Tests/mocks/secure_wrappermock.h \
--include ${GITHUB_WORKSPACE}/entservices-testframework/Tests/mocks/libusb/libusb.h \
--include ${GITHUB_WORKSPACE}/entservices-testframework/Tests/mocks/Dobby.h \
--include ${GITHUB_WORKSPACE}/entservices-testframework/Tests/headers/Dobby/DobbyProtocol.h \
--include ${GITHUB_WORKSPACE}/entservices-testframework/Tests/headers/Dobby/DobbyProxy.h \
--include ${GITHUB_WORKSPACE}/entservices-testframework/Tests/headers/Dobby/Public/Dobby/IDobbyProxy.h \
--include ${GITHUB_WORKSPACE}/entservices-testframework/Tests/headers/Dobby/IpcService/IpcFactory.h \
+-include ${GITHUB_WORKSPACE}/entservices-appmanagers/Tests/mocks/devicesettings.h \
+-include ${GITHUB_WORKSPACE}/entservices-appmanagers/Tests/mocks/Iarm.h \
+-include ${GITHUB_WORKSPACE}/entservices-appmanagers/Tests/mocks/Rfc.h \
+-include ${GITHUB_WORKSPACE}/entservices-appmanagers/Tests/mocks/RBus.h \
+-include ${GITHUB_WORKSPACE}/entservices-appmanagers/Tests/mocks/Telemetry.h \
+-include ${GITHUB_WORKSPACE}/entservices-appmanagers/Tests/mocks/Udev.h \
+-include ${GITHUB_WORKSPACE}/entservices-appmanagers/Tests/mocks/pkg.h \
+-include ${GITHUB_WORKSPACE}/entservices-appmanagers/Tests/mocks/maintenanceMGR.h \
+-include ${GITHUB_WORKSPACE}/entservices-appmanagers/Tests/mocks/secure_wrappermock.h \
+-include ${GITHUB_WORKSPACE}/entservices-appmanagers/Tests/mocks/libusb/libusb.h \
+-include ${GITHUB_WORKSPACE}/entservices-appmanagers/Tests/mocks/Dobby.h \
+-include ${GITHUB_WORKSPACE}/entservices-appmanagers/Tests/headers/Dobby/DobbyProtocol.h \
+-include ${GITHUB_WORKSPACE}/entservices-appmanagers/Tests/headers/Dobby/DobbyProxy.h \
+-include ${GITHUB_WORKSPACE}/entservices-appmanagers/Tests/headers/Dobby/Public/Dobby/IDobbyProxy.h \
+-include ${GITHUB_WORKSPACE}/entservices-appmanagers/Tests/headers/Dobby/IpcService/IpcFactory.h \
 -Wall -Werror -Wno-error=format \
 -Wl,-wrap,system -Wl,-wrap,popen -Wl,-wrap,syslog \
 -DENABLE_TELEMETRY_LOGGING -DUSE_IARMBUS \

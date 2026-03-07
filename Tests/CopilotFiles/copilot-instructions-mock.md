@@ -74,7 +74,7 @@ Before generating mocks, complete this verification checklist:
 
 2. **Existing Mock Verification**
     - **FIRST: Check if complete mock already exists** - do not regenerate unnecessarily
-    - Search `entservices-testframework/Tests/mocks/` directory comprehensively
+    - Search `entservices-appmanagers/Tests/mocks/` directory comprehensively
     - **CRITICAL - Verify a file is actually a mock by checking ALL three criteria**:
         1. Filename contains "Mock" (e.g., `LibraryMock.h`, `HostMock.h`)
         2. File contains `#include <gmock/gmock.h>`
@@ -90,13 +90,13 @@ Before generating mocks, complete this verification checklist:
         3. **A wrapper file is NOT a mock file** - it does not meet the 3 criteria above (no "Mock" in filename, no gmock include, no MOCK_METHOD declarations)
         4. A separate mock file with MOCK_METHOD declarations is required
         5. Example: `Iarm.h` defines `IarmBusImpl` interface → Must have `IarmBusMock.h` with `IarmBusImplMock` class
-    - Verify that Thunder-specific mocks exist in `entservices-testframework/Tests/mocks/thunder/`
+    - Verify that Thunder-specific mocks exist in `entservices-appmanagers/Tests/mocks/thunder/`
     - Do not generate mocks for dependencies that already have mock implementations
     - **CRITICAL**: Examine at least 3-5 existing mock files in the repository to understand the exact structure, patterns, and conventions used
     - Ensure generated mocks match the style and structure of existing mocks (do NOT assume or invent patterns)
 
 3. **Mock Design and Implementation**
-    - Before generating any mock, examine multiple existing mocks in `entservices-testframework/Tests/mocks/` to identify the repository's patterns
+    - Before generating any mock, examine multiple existing mocks in `entservices-appmanagers/Tests/mocks/` to identify the repository's patterns
     - **Compare method counts**: If similar existing mocks have significantly more methods than your source, investigate for completeness
     - Follow the established patterns found in the existing mock files (not assumed patterns)
     - Use Google Mock (gmock) framework with MOCK_METHOD macros
@@ -167,7 +167,7 @@ Understanding when to group multiple mock classes in one file:
 
 ### Repository Pattern Analysis (REQUIRED FIRST STEP)
 Before generating any mock, you MUST:
-1. List and examine at least 3-5 similar mock files from `entservices-testframework/Tests/mocks/`
+1. List and examine at least 3-5 similar mock files from `entservices-appmanagers/Tests/mocks/`
 2. Document the patterns you observe:
    - How are namespaces handled? (using declarations, fully qualified, etc.)
    - What's the naming convention? (Mock prefix, suffix, etc.)
