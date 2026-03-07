@@ -668,7 +668,7 @@ Core::hresult RDKWindowManagerImplementation::CreateDisplay(const string &client
 
     if (false == result)
     {
-        LOGERR("failed to create display : %s, displayName:%s, displayWidth:%u, displayHeight:%u, virtualDisplay:%u, virtualWidth:%u, virtualHeight:%u, topmost:%u, focus:%u, ownerId: %d, groupId: %d",
+        LOGERR("failed to create display : %s, displayName:%s, displayWidth:%u, displayHeight:%u, virtualDisplay:%u, virtualWidth:%u, virtualHeight:%u, topmost:%u, focus:%u, ownerId: %u, groupId: %u",
                clientId.c_str(), displayName.c_str(), displayWidth, displayHeight, virtualDisplay, virtualWidth, virtualHeight, topmost, focus, ownerId, groupId);
     }
     else
