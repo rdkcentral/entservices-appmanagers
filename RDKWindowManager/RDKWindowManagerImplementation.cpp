@@ -1487,13 +1487,14 @@ Core::hresult RDKWindowManagerImplementation::GetVisibility(const std::string &c
  * @client[in]        : client/callsign, Ex: westerostest, org.rdk.YouTube
  * @displayName[in]   : Optional - Name of the display
  * @displayWidth[in]  : Optional - width of the creating display
- * @displayWidth[in]  : Optional - width of the creating display
  * @displayHeight[in] : Optional - height of the creating display
  * @virtualDisplay[in]: Optional - virtual display is required or not
  * @virtualWidth[in]  : Optional - width of the virtual display
  * @virtualHeight[in] : Optional - height of the virtual display
  * @topmost[in]       : Optional - topmost is required or not true/false
  * @focus[in]         : Optional - focus is required or not
+ * @ownerId[in]       : Optional - owner identifier for the display
+ * @groupId[in]       : Optional - group identifier for the display
  * @return            : Optional - true/false
  */
 bool RDKWindowManagerImplementation::createDisplay(const string& client, const string& displayName, const uint32_t displayWidth, const uint32_t displayHeight, const bool virtualDisplay,
