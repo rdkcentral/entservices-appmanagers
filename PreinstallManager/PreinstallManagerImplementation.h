@@ -89,7 +89,7 @@ namespace WPEFramework
 
             enum EventNames {
             PREINSTALL_MANAGER_UNKNOWN = 0,
-            PREINSTALL_MANAGER_ONCOMPLETE
+            PREINSTALL_MANAGER_ONPREINSTALLATIONCOMPLETE
             };
 
             typedef Exchange::IPackageInstaller::InstallState InstallState;
@@ -154,7 +154,7 @@ namespace WPEFramework
             Core::hresult createPackageManagerObject(Exchange::IPackageInstaller*& packageInstaller);
             void releasePackageManagerObject(Exchange::IPackageInstaller*& packageInstaller);
             void installPackages(std::list<PackageInfo> preinstallPackages);
-            void sendOnCompleteEvent();
+            void sendOnPreInstallationCompleteEvent();
             bool isValidSemVer(const std::string &version);
             bool isNewerVersion(const std::string &v1, const std::string &v2);
             bool readPreinstallDirectory(Exchange::IPackageInstaller* packageInstaller, std::list<PackageInfo> &packages);
