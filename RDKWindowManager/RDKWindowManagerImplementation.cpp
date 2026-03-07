@@ -679,7 +679,7 @@ Core::hresult RDKWindowManagerImplementation::CreateDisplay(const string &client
             clientId.c_str(), displayName.c_str(), displayWidth, displayHeight, virtualDisplay, virtualWidth, virtualHeight, ownerId, groupId, topmost, focus);
 
     result = createDisplay(clientId, displayName, displayWidth, displayHeight,
-                           virtualDisplay, virtualWidth, virtualHeight, topmost, focus, ownerId, groupId);
+                           virtualDisplay, virtualWidth, virtualHeight, ownerId, groupId, topmost, focus);
 
     if (false == result)
     {
