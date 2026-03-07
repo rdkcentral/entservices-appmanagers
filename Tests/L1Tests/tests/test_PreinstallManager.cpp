@@ -201,7 +201,6 @@ public:
     MockNotificationTest() = default;
     virtual ~MockNotificationTest() = default;
     
-    MOCK_METHOD(void, OnAppInstallationStatus, (const string& jsonresponse), (override));
     MOCK_METHOD(void, OnComplete, (), (override));
     MOCK_METHOD(void, AddRef, (), (const, override));
     MOCK_METHOD(uint32_t, Release, (), (const, override));
