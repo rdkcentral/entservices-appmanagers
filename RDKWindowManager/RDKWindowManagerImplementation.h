@@ -158,7 +158,7 @@ namespace Plugin {
     private: /*internal methods*/
         bool createDisplay(const string& client, const string& displayName, const uint32_t displayWidth = 0, const uint32_t displayHeight = 0,
                            const bool virtualDisplay = false, const uint32_t virtualWidth = 0, const uint32_t virtualHeight = 0,
-                           const bool topmost = false, const bool focus = false, const uint32_t ownerId = 0, const uint32_t groupId=0);
+                           const uint32_t ownerId = 0, const uint32_t groupId = 0, const bool topmost = false, const bool focus = false);
         bool getClients(JsonArray& clients);
         bool addKeyIntercept(const uint32_t& keyCode, const JsonArray& modifiers, const string& client, const bool& focusOnly , const bool& propagate);
         bool addKeyIntercepts(const string& clientId, const JsonArray& intercepts);
