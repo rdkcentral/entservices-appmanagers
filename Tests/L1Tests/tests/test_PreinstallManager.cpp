@@ -55,8 +55,6 @@ protected:
 
     Core::ProxyType<Plugin::PreinstallManager> plugin;
     Plugin::PreinstallManagerImplementation *mPreinstallManagerImpl;
-    Exchange::IPackageInstaller::INotification* mPackageInstallerNotification_cb = nullptr;
-
     Core::ProxyType<WorkerPoolImplementation> workerPool;
 
 
@@ -88,13 +86,6 @@ protected:
             return nullptr;
         }));
 
-        EXPECT_CALL(*mPackageInstallerMock, Register(::testing::_))
-            .Times(::testing::AnyNumber())
-            .WillRepeatedly(::testing::Invoke(
-                [&](Exchange::IPackageInstaller::INotification* notification) {
-                    mPackageInstallerNotification_cb = notification;
-                    return static_cast<uint32_t>(Core::ERROR_NONE);
-                }));
         ON_CALL(*p_wrapsImplMock, stat(::testing::_, ::testing::_))
         .WillByDefault(::testing::Return(-1));
         
@@ -109,15 +100,6 @@ protected:
     void releaseResources()
     {
         TEST_LOG("In releaseResources!");
-
-        if (mPackageInstallerMock != nullptr && mPackageInstallerNotification_cb != nullptr)
-        {
-            ON_CALL(*mPackageInstallerMock, Unregister(::testing::_))
-                .WillByDefault(::testing::Invoke([&]() {
-                    return 0;
-                }));
-            mPackageInstallerNotification_cb = nullptr;
-        }
 
         if (mPackageInstallerMock != nullptr)
         {
