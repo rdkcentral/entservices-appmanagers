@@ -669,7 +669,13 @@ Core::hresult RDKWindowManagerImplementation::CreateDisplay(const string &client
     Core::hresult status = Core::ERROR_GENERAL;
     bool result = true;
 
-    LOGINFO("MADANA GOPAL CreateDisplay params: clientId:%s, displayName:%s, displayWidth:%u, displayHeight:%u, virtualDisplay:%u, virtualWidth:%u, virtualHeight:%u, ownerId:%u, groupId:%u, topmost:%u, focus:%u",
+    if (clientId.empty())
+    {
+        LOGERR("CreateDisplay: clientId is empty");
+        return status;
+    }
+
+    LOGINFO("CreateDisplay params: clientId:%s, displayName:%s, displayWidth:%u, displayHeight:%u, virtualDisplay:%u, virtualWidth:%u, virtualHeight:%u, ownerId:%u, groupId:%u, topmost:%u, focus:%u",
             clientId.c_str(), displayName.c_str(), displayWidth, displayHeight, virtualDisplay, virtualWidth, virtualHeight, ownerId, groupId, topmost, focus);
 
     result = createDisplay(clientId, displayName, displayWidth, displayHeight,
