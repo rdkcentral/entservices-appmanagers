@@ -86,7 +86,7 @@ bool WindowManagerConnector::createDisplay(const string& appInstanceId , const s
         LOGERR("WindowManagerConnector is not initialized \n");
         return false;
     }
-    uint32_t displayWidth=1920, displayHeight=1080;
+    uint32_t displayWidth=0, displayHeight=0;
     uint32_t virtualWidth=0, virtualHeight=0;
     bool virtualDisplay=false;
     bool topmost=false, focus=false;
