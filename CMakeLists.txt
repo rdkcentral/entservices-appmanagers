@@ -41,6 +41,7 @@ endif()
 option(DISABLE_SECURITY_TOKEN "Disable security token" OFF)
 
 if(RDK_SERVICES_L1_TEST)
+    find_package(GTest REQUIRED)
     add_subdirectory(Tests/L1Tests)
 endif()
 
