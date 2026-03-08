@@ -232,6 +232,16 @@ jobs:
           &&
           cmake --install build/entservices-apis
 
+      - name: Generate external headers
+        # Empty headers to mute errors
+        run: >
+          mkdir -p
+          headers
+          headers/rdk/ds
+          &&
+          touch
+          rdk/ds/host.hpp
+
       - name: Set clang toolchain
         if: ${{ matrix.compiler == 'clang' }}
         run: echo "TOOLCHAIN_FILE=$GITHUB_WORKSPACE/entservices-appmanagers/Tests/clang.cmake" >> $GITHUB_ENV
@@ -243,8 +253,6 @@ jobs:
       - name: Build googletest
         if: steps.cache.outputs.cache-hit != 'true'
         run: >
-          touch
-          rdk/ds/host.hpp
           cmake -G Ninja
           -S "$GITHUB_WORKSPACE/googletest"
           -B build/googletest
