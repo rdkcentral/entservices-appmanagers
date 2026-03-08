@@ -752,18 +752,22 @@ namespace Plugin {
                 const string &rtPackageId = state.runtimeApp.first;
                 const string &rtVersion = state.runtimeApp.second;
                 if (!rtPackageId.empty() && !rtVersion.empty()) {
-                    uint32_t lockId = 0;
                     string rtUnpackedPath;
-                    //LOGDBG("Locking runtime '%s:%s'", rtPackageId.c_str(), rtVersion.c_str() );
+                    Exchange::IPackageHandler::AdditionalLock lock;
+                    lock.packageId = rtPackageId;
+                    lock.version  = rtVersion;
+                    state.additionalLocks.emplace_back(lock);
+
+                    #ifdef USE_LIBPACKAGE_RALF
+                    uint32_t lockId = 0;
                     result = LockPackage(rtPackageId, rtVersion, lockReason, lockId, rtUnpackedPath, config, locks);
                     if (result == packagemanager::SUCCESS) {
-                        Exchange::IPackageHandler::AdditionalLock lock;
-                        lock.packageId = rtPackageId;
-                        lock.version  = rtVersion;
-                        state.additionalLocks.emplace_back(lock);
                         state.runtimeConfig.runtimePath = config.runtimePath;   // XXX: find better way
                         LOGDBG("Locked runtime. id: %s:%s ", rtPackageId.c_str(), rtVersion.c_str());
                     }
+                    #else
+                        LOGWARN("Not runtime locking in old libpackage");
+                    #endif
                 } else {
                     LOGDBG("No runtime for '%s:%s'", packageId.c_str(), version.c_str());
                 }
