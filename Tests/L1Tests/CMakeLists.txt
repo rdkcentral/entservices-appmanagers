@@ -23,7 +23,6 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(${NAMESPACE}Plugins REQUIRED)
-find_package(GTest REQUIRED)
 
 set (TEST_SRC
     tests/test_UtilsFile.cpp
@@ -164,28 +163,7 @@ target_include_directories(${MODULE_NAME}
 
 target_compile_definitions(${MODULE_NAME} PRIVATE UNIT_TEST)
 
+#install(TARGETS ${PROJECT_NAME} DESTINATION bin)
+
 install(TARGETS ${MODULE_NAME} DESTINATION lib)
-
-##############################################################################
-# RdkServicesL1Test - standalone test runner executable
-# Links all test shared libraries and provides the gtest main() entry point.
-##############################################################################
-add_executable(RdkServicesL1Test runner.cpp)
-
-target_link_directories(RdkServicesL1Test PUBLIC
-        ${CMAKE_INSTALL_PREFIX}/lib
-        ${CMAKE_INSTALL_PREFIX}/lib/wpeframework/plugins
-)
-
-target_link_libraries(RdkServicesL1Test
-        GTest::gmock_main
-        ${MODULE_NAME}
-)
-
-target_include_directories(RdkServicesL1Test
-        PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-        $<INSTALL_INTERFACE:include>
-)
-
-install(TARGETS RdkServicesL1Test DESTINATION bin)
+write_config(${PLUGIN_NAME})
