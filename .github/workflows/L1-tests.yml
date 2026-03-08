@@ -233,14 +233,53 @@ jobs:
           cmake --install build/entservices-apis
 
       - name: Generate external headers
-        # Empty headers to mute errors
+        # Empty stub headers to satisfy include paths
         run: >
+          cd "$GITHUB_WORKSPACE/entservices-appmanagers/Tests/"
+          &&
           mkdir -p
           headers
+          headers/audiocapturemgr
           headers/rdk/ds
+          headers/rdk/iarmbus
+          headers/rdk/iarmmgrs-hal
+          headers/ccec/drivers
+          headers/network
+          headers/libusb
+          headers/Dobby
+          headers/Dobby/Public/Dobby
+          headers/Dobby/IpcService
+          &&
+          cd headers
           &&
           touch
           rdk/ds/host.hpp
+          rdk/ds/videoOutputPort.hpp
+          rdk/ds/videoOutputPortType.hpp
+          rdk/ds/videoOutputPortConfig.hpp
+          rdk/ds/videoResolution.hpp
+          rdk/ds/audioOutputPort.hpp
+          rdk/ds/audioOutputPortType.hpp
+          rdk/ds/audioOutputPortConfig.hpp
+          rdk/ds/sleepMode.hpp
+          rdk/ds/frontPanelConfig.hpp
+          rdk/ds/frontPanelTextDisplay.hpp
+          rdk/ds/hdmiIn.hpp
+          rdk/ds/compositeIn.hpp
+          rdk/ds/exception.hpp
+          rdk/ds/dsError.h
+          rdk/ds/dsMgr.h
+          rdk/ds/manager.hpp
+          rdk/ds/dsTypes.h
+          rdk/ds/dsUtl.h
+          rdk/ds/pixelResolution.hpp
+          rdk/iarmbus/libIARM.h
+          rdk/iarmbus/libIBus.h
+          rdk/iarmbus/libIBusDaemon.h
+          rdk/iarmbus/iarmUtil.h
+          rdk/iarmmgrs-hal/mfrMgr.h
+          rdk/iarmmgrs-hal/pwrMgr.h
+          rdk/iarmmgrs-hal/sysMgr.h
 
       - name: Set clang toolchain
         if: ${{ matrix.compiler == 'clang' }}
