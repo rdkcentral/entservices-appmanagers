@@ -22,7 +22,7 @@ using namespace WPEFramework;
 class StorageManagerTest : public ::testing::Test {
     protected:
         //JSONRPC
-        Core::ProxyType<Plugin::StorageManager> plugin; // create a proxy object
+        Core::ProxyType<Plugin::AppStorageManager> plugin; // create a proxy object
         Core::JSONRPC::Handler& handler;
         Core::JSONRPC::Context connection; // create a JSONRPC context
         string response; // create a string to hold the response
@@ -37,11 +37,11 @@ class StorageManagerTest : public ::testing::Test {
         Store2Mock* mStore2Mock = nullptr;
 
         StorageManagerTest():
-        plugin(Core::ProxyType<Plugin::StorageManager>::Create()),
+        plugin(Core::ProxyType<Plugin::AppStorageManager>::Create()),
         handler(*plugin),
         connection(0,1,"")
         {
-            StorageManagerImplementation = Core::ProxyType<Plugin::StorageManagerImplementation>::Create();
+            StorageManagerImplementation = Core::ProxyType<Plugin::AppStorageManagerImplementation>::Create();
             mStore2Mock = new NiceMock<Store2Mock>;
 
             p_wrapsImplMock  = new NiceMock <WrapsImplMock>;
