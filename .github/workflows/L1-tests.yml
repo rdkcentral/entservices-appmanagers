@@ -243,6 +243,8 @@ jobs:
       - name: Build googletest
         if: steps.cache.outputs.cache-hit != 'true'
         run: >
+          touch
+          rdk/ds/host.hpp
           cmake -G Ninja
           -S "$GITHUB_WORKSPACE/googletest"
           -B build/googletest
