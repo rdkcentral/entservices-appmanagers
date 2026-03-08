@@ -17,13 +17,12 @@
 
 cmake_minimum_required(VERSION 3.8)
 set(PLUGIN_NAME L1TestsIN)
-set(MODULE_NAME RdkServicesL1Test)
+set(MODULE_NAME ${NAMESPACE}${PLUGIN_NAME})
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(${NAMESPACE}Plugins REQUIRED)
-find_package(GTest REQUIRED)
 
 set (TEST_SRC
     tests/test_UtilsFile.cpp
@@ -31,7 +30,6 @@ set (TEST_SRC
 
 set (TEST_LIB
     ${NAMESPACE}Plugins::${NAMESPACE}Plugins
-    GTest::gmock_main
 )
 
 set (TEST_INC ../../helpers)
@@ -138,7 +136,7 @@ set (DOWNLOADMANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/Download
 set (DOWNLOADMANAGER_LIBS ${NAMESPACE}DownloadManager ${NAMESPACE}DownloadManagerImplementation)
 add_plugin_test_ex(PLUGIN_DOWNLOADMANAGER tests/test_DownloadManager.cpp "${DOWNLOADMANAGER_INC}" "${DOWNLOADMANAGER_LIBS}")
 
-add_executable(${MODULE_NAME} ${TEST_SRC})
+add_library(${MODULE_NAME} SHARED ${TEST_SRC})
 
 if (RDK_SERVICES_L1_TEST)
     target_link_options(${MODULE_NAME} PRIVATE "-Wl,-wrap,opendir")
@@ -165,4 +163,7 @@ target_include_directories(${MODULE_NAME}
 
 target_compile_definitions(${MODULE_NAME} PRIVATE UNIT_TEST)
 
-install(TARGETS ${MODULE_NAME} DESTINATION bin)
+#install(TARGETS ${PROJECT_NAME} DESTINATION bin)
+
+install(TARGETS ${MODULE_NAME} DESTINATION lib)
+write_config(${PLUGIN_NAME})
