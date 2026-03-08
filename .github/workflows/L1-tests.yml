@@ -491,16 +491,13 @@ jobs:
           echo "PATH=$PATH"
           echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH"
 
-          echo "Locating test binary..."
-          which RdkServicesL1Test
+          echo "Searching for test binary..."
+          find $GITHUB_WORKSPACE -name RdkServicesL1Test 2>/dev/null || true
 
           echo "Running unit tests..."
           RdkServicesL1Test
 
-          echo "Copying test results..."
           cp rdkL1TestResults.json "$GITHUB_WORKSPACE/rdkL1TestResultsWithoutValgrind.json"
-
-          echo "Cleaning temporary files..."
           rm -f rdkL1TestResults.json
 
       - name: Run unit tests with valgrind
