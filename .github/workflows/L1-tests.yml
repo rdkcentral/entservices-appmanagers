@@ -324,6 +324,7 @@ jobs:
           -DTHUNDER_VERSION_MAJOR=4
           -DTHUNDER_VERSION_MINOR=4
           -DRDK_SERVICES_L1_TEST
+          -DBUILD_L1_TESTS_SHARED_MODULE=OFF
           -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/headers
           -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/headers/audiocapturemgr
           -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/headers/rdk/ds
