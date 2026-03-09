@@ -176,7 +176,8 @@ If the notifying plugin supports only JSON-RPC, then use a specialized smart lin
 
 #define NETWORK_MANAGER_CALLSIGN "org.rdk.NetworkManager"
 
-void Initialize(PluginHost::IShell* service) override {
+const string Initialize(PluginHost::IShell* service) override {
+    string message;
     
     // ... other initialization code ...
     
@@ -195,8 +196,14 @@ void Initialize(PluginHost::IShell* service) override {
             query
         );
         
-        subscribeToEvents();
+        if (nullptr == m_networkmanager) {
+            message = _T("Failed to create NetworkManager SmartLinkType");
+        } else {
+            subscribeToEvents();
+        }
     }
+    
+    return message; // Empty string on success
 }
 
 void Network::subscribeToEvents(void) {
