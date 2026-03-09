@@ -123,8 +123,8 @@ void StateChange(PluginHost::IShell* plugin) override {
     else if (plugin->State() == PluginHost::IShell::ACTIVATED) {
         
         // Use a list/set of monitored callsigns (e.g., {"Audio", "Network", "Input"})
-        // Assuming 'isMonitoredPlugin(callsign)' is a method that checks your watchlist
-        if (isMonitoredPlugin(callsign)) {
+        // Check if this callsign is in our monitored list
+        if (std::find(MonitoredCallsigns.begin(), MonitoredCallsigns.end(), callsign) != MonitoredCallsigns.end()) {
             
             // Check if we are already connected (not found in the map)
             if (_targetPlugins.find(callsign) == _targetPlugins.end()) {
