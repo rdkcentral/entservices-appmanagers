@@ -27,6 +27,7 @@ find_package(GTest REQUIRED)
 
 set (TEST_SRC
     tests/test_UtilsFile.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mocks/Wraps.cpp
 )
 
 set (TEST_LIB
@@ -178,6 +179,25 @@ endif()
 target_link_libraries(${TEST_RUNNER_NAME} gtest_main gmock gtest ${TEST_LIB})
 
 target_compile_definitions(${TEST_RUNNER_NAME} PRIVATE UNIT_TEST)
+
+target_link_options(${TEST_RUNNER_NAME} PRIVATE
+    -Wl,--wrap,system
+    -Wl,--wrap,popen
+    -Wl,--wrap,pclose
+    -Wl,--wrap,setmntent
+    -Wl,--wrap,unlink
+    -Wl,--wrap,statvfs
+    -Wl,--wrap,mkdir
+    -Wl,--wrap,stat
+    -Wl,--wrap,open
+    -Wl,--wrap,rmdir
+    -Wl,--wrap,access
+    -Wl,--wrap,chown
+    -Wl,--wrap,nftw
+    -Wl,--wrap,opendir
+    -Wl,--wrap,readdir
+    -Wl,--wrap,closedir
+)
 
 target_include_directories(${TEST_RUNNER_NAME}
         PUBLIC
