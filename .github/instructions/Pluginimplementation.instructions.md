@@ -149,7 +149,11 @@ void RegisterWithTarget(const string& callsign, PluginHost::IShell* plugin) {
     
     if (newPtr != nullptr) {
         // 2. Register the callback
-        newPtr->Register(this->QueryInterface<Exchange::IMyTargetPluginEvents>());
+        Exchange::IMyTargetPluginEvents* eventInterface = this->QueryInterface<Exchange::IMyTargetPluginEvents>();
+        if (eventInterface != nullptr) {
+            newPtr->Register(eventInterface);
+            eventInterface->Release();
+        }
         
         // 3. Store the new pointer in the map, indexed by callsign
         _targetPlugins[callsign] = newPtr; 
