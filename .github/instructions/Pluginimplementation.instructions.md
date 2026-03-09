@@ -319,7 +319,7 @@ void MyPlugin::DoSomething() {
 ### Bootstrap Logging
 ### Requirement
 
-All plugins must use the `SYSLOG` macros for logging purposes for Initialize, Configure and Deinitialize methods. Direct usage of printf, std::cout, or other logging mechanisms is not allowed. First line and last line of Initialize, Configure and Deinitialize methods must log the entry and exit of the method respectively.
+All plugins must use the `SYSLOG` macros for logging purposes for Initialize, Configure, and Deinitialize methods. Direct usage of printf, std::cout, or other logging mechanisms is not allowed. First line and last line of Initialize, Configure, and Deinitialize methods must log the entry and exit of the method respectively.
 
 ### Example
 
