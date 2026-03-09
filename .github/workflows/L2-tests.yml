@@ -333,7 +333,7 @@ jobs:
           -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/RBus.h
           -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/Udev.h
           -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/Wraps.h
-          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/libusb/libusb.h
+          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/libusb.h
           -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/maintenanceMGR.h
           -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/pkg.h
           -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/secure_wrappermock.h
