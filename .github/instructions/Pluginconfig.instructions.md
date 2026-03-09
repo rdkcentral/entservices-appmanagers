@@ -6,7 +6,7 @@ applyTo: "**/*.config,**/*.conf.in"
 
 ### Requirement
 
-- Each plugin must define <PluginName>.conf.in file that includes the following mandatory properties:
+- Each plugin must define `<PluginName>.conf.in` file that includes the following mandatory properties:
 
   - **autostart**: Indicates whether the plugin should start automatically when the framework boots. This should be set to false by default.
 
@@ -31,7 +31,7 @@ The plugin mode is configured in the plugin's CMakeLists.txt file.
 
 ### Example
 
-<PluginName>.conf.in
+`<PluginName>.conf.in`
 
 ```
 precondition = ["Platform"]
