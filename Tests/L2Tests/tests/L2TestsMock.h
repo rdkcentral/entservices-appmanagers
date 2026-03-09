@@ -24,57 +24,9 @@
 #include <gmock/gmock.h>
 #include "UtilsJsonRpc.h"
 
-#include "IarmBusMock.h"
-#include "RfcApiMock.h"
-#include "readprocMock.h"
-#include "readprocMockInterface.h"
+// Only include mocks available in entservices-appmanagers
 #include "WrapsMock.h"
-#include "RBusMock.h"
 #include "TelemetryMock.h"
-#include "VideoOutputPortConfigMock.h"
-#include "VideoOutputPortMock.h"
-#include "HostMock.h"
-#include "ManagerMock.h"
-#include "UdevMock.h"
-#include "btmgrMock.h"
-#include "HdmiInputMock.h"
-#include "libUSBMock.h"
-#include "devicesettings.h"
-#include "tvSettingsMock.h"
-#include "Tr181ApiMock.h"
-#include "AudioOutputPortMock.h"
-#include "AudioStereoModeMock.h"
-#include "VideoDeviceMock.h"
-#include "VideoDFCMock.h"
-#include "DisplayMock.h"
-#include "ManagerMock.h"
-#include "VideoResolutionMock.h"
-#include "FrontPanelConfigMock.h"
-#include "AudioOutputPortTypeMock.h"
-#include "VideoOutputPortTypeMock.h"
-#include "EssRMgrMock.h"
-#include "RdkLoggerMilestoneMock.h"
-#include "DRMScreenCaptureMock.h"
-#include "dsFPDMock.h"
-#include "systemaudioplatformmock.h"
-#include "RenderSessionMock.h"
-#include "DobbyMock.h"
-#include "OmiMock.h"
-#include "PowerManagerHalMock.h"
-#include "MfrMock.h"
-#include "FrontPanelIndicatorMock.h"
-#include "HdmiCecMock.h"
-#include "ColorMock.h"
-
-
-#ifdef RDK_SERVICE_CPC_L2_TEST
-#include "sec_securityMock.h"
-#include "KeyProvisionObjectMock.h"
-#include "KeyProvisionDirectorySerializerMock.h"
-#include "CredentialUtilsMock.h"
-#include "KeyProvisionClientMock.h"
-#include "SecApiProvisionerMock.h"
-#endif 
 
 
 
@@ -83,58 +35,9 @@ using namespace WPEFramework;
 
 class L2TestMocks : public ::testing::Test {
 protected:
-        RfcApiImplMock   *p_rfcApiImplMock = nullptr ;
-        RfcApi           *p_rfcApi         = nullptr ;
-        IarmBusImplMock  *p_iarmBusImplMock = nullptr ;
-        readprocImplMock *p_readprocImplMock = nullptr ;
-        ProcImpl         *p_procImpl           = nullptr ;
-        WrapsImplMock    *p_wrapsImplMock = nullptr ;
-        HostImplMock     *p_hostImplMock = nullptr ;
-        VideoOutputPortConfigImplMock *p_videoOutputPortConfigImplMock = nullptr ;
-        ManagerImplMock  *p_managerImplMock = nullptr ;
-        VideoOutputPortMock *p_videoOutputPortMock = nullptr;
-        UdevImplMock     *p_udevImplMock = nullptr ;
-        RBusApiImplMock *p_rBusApiImplMock = nullptr;
-        TelemetryApiImplMock   *p_telemetryApiImplMock = nullptr ;
-        BtmgrImplMock *p_btmgrImplMock = nullptr;
-        HdmiInputImplMock   *p_hdmiInputImplMock = nullptr ;
-        libUSBImplMock   *p_libUSBApiImplMock = nullptr ;
-        TvSettingsImplMock   *p_tvSettingsImplMock = nullptr ;
-        Tr181ApiImplMock *p_tr181ApiImplMock = nullptr ;
-        AudioOutputPortMock *p_audioOutputPortMock = nullptr;
-        AudioStereoModeMock *p_audioStereoModeMock = nullptr;
-        VideoDeviceMock *p_videoDeviceMock = nullptr;
-        VideoDFCMock *p_videoDFCMock = nullptr;
-        DisplayMock  *p_displayMock = nullptr ;
-        VideoResolutionMock      *p_videoResolutionMock = nullptr ;
-        FrontPanelConfigMock   *p_frontPanelConfigImplMock = nullptr;
-        FrontPanelIndicatorMock *p_frontPanelIndicatorMock = nullptr;
-        AudioOutputPortTypeMock        *p_audioOutputPortTypeMock = nullptr ;
-        VideoOutputPortTypeMock        *p_videoOutputPortTypeMock = nullptr ;
-	EssRMgrMock      *p_essRMgrMock = nullptr;
-        RdkLoggerMilestoneImplMock *p_rdkloggerImplMock = nullptr;
-        DRMScreenCaptureApiImplMock *p_drmScreenCaptureApiImplMock = nullptr;
-	dsFPDMock *p_dsFPDMock = nullptr;
-        SystemAudioPlatformAPIMock *p_systemAudioPlatformAPIMock = nullptr;
-        RenderSessionMock *p_renderSessionMock = nullptr;
-        DobbyProxyMock *p_dobbyProxyMock = nullptr;
-        IpcServiceMock    *p_ipcservicemock = nullptr;
-        MockOmiProxy *p_mockOmiProxy = nullptr;
-        PowerManagerHalMock *p_powerManagerHalMock = nullptr;
-        mfrMock *p_mfrMock = nullptr;
-	ConnectionImplMock *p_connectionMock = nullptr;
-        LibCCECImplMock *p_libCCECMock = nullptr;
-        MessageEncoderMock *p_messageEncoderMock = nullptr;
-        MessageDecoderMock *p_messageDecoderMock = nullptr;
-        ColorMock *p_colorImplMock = nullptr ;
-#ifdef RDK_SERVICE_CPC_L2_TEST        
-        SecSecurityApiImplMock *p_secSecurityApiImplMock  = nullptr ;
-        KeyProvisionObjectImplMock *p_keyProvisionObjectImplMock  = nullptr ;
-        secclient::KeyProvisionDirectorySerializerImplMock* p_keyProvisionDirectorySerializerImplMock = nullptr;
-        secclient::CredentialUtilsImplMock* p_credentialUtilsImplMock = nullptr;
-        secclient::KeyProvisionClientImplMock* p_keyProvisionClientImplMock = nullptr;
-        secclient::SecApiProvisionerImplMock* p_secApiProvisionerImplMock = nullptr;
-#endif        
+        // Mocks available in entservices-appmanagers
+        WrapsImplMock        *p_wrapsImplMock        = nullptr;
+        TelemetryApiImplMock *p_telemetryApiImplMock = nullptr;
 
         std::string thunder_address;
 

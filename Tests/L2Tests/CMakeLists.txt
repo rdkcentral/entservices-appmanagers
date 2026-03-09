@@ -124,6 +124,7 @@ set(ENTSERVICES_INC
     ../../../entservices-connectivity/helpers)
 
 target_include_directories(${MODULE_NAME} PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
     ../../helpers
     tests/
     ../mocks
@@ -185,6 +186,7 @@ if(SRC_FILES_IN)
     endif (MOCKACCESSOR_LIBRARIES)
 
     target_include_directories(${MODULE_NAME_IN} PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
         tests/
         ../../helpers
         ../mocks
