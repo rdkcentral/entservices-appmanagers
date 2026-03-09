@@ -42,7 +42,7 @@ When adding a new plugin in `CMakeLists.txt`, you **must** also update the follo
 
 3. **Update Test Workflow YAMLs**
 
-   Ensure each test workflow references your new plugin using the **DPLUGIN_<PLUGINNAME>** CMake flag in their build/test step. For example, in `L1-tests.yml`:
+   Ensure each test workflow references your new plugin using the **-DPLUGIN_<PLUGINNAME>** CMake flag in their build/test step. For example, in `L1-tests.yml`:
    ```yaml
    jobs:
      build-test:
