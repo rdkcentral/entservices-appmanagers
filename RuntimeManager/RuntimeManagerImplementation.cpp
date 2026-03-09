@@ -723,7 +723,8 @@ namespace WPEFramework
                 {
                     appPath = dobbySpec;
                 }
-                if (isOCIPluginObjectValid())
+                 mRuntimeManagerImplLock.Unlock();
+                if(!isOCIPluginObjectValid())
                 {
                     LOGERR("OCI Plugin object is not valid. Aborting Run.");
                     return status;
