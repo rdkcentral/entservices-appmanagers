@@ -69,7 +69,7 @@ namespace WPEFramework {
 
     namespace Plugin {
         // Register HdcpProfile service with Thunder
-        SERVICE_REGISTRATION(HdcpProfile,API_VERSION_NUMBER_MAJOR,API_VERSION_NUMBER_MINOR,API_VERSION_NUMBER_PATCH);
+        SERVICE_REGISTRATION(HdcpProfile, API_VERSION_NUMBER_MAJOR, API_VERSION_NUMBER_MINOR, API_VERSION_NUMBER_PATCH);
     }
 }
 ```
