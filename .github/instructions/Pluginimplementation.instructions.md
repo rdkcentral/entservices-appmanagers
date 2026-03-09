@@ -56,7 +56,8 @@ const std::vector<std::string> MonitoredCallsigns = {
     "InputTargetPlugin"
 };
 
-void Initialize(PluginHost::IShell* service) override {
+const string Initialize(PluginHost::IShell* service) override {
+    string message;
     
     _service = service;
     _service->AddRef();
@@ -71,7 +72,7 @@ void Initialize(PluginHost::IShell* service) override {
         // Query the framework for the current instance of the target plugin
         PluginHost::IShell* target = _service->QueryInterfaceByCallsign<PluginHost::IShell>(callsign.c_str());
         
-        if (target != nullptr) {
+        if (nullptr != target) {
             // If the plugin is found and ACTIVATED, register immediately
             if (target->State() == PluginHost::IShell::ACTIVATED) {
                 SYSLOG(Logging::Notification, ("Initial check found %s active. Registering events.", callsign.c_str()));
@@ -84,6 +85,8 @@ void Initialize(PluginHost::IShell* service) override {
             target->Release();
         }
     }
+    
+    return message; // Empty string on success
 }
 ```
 
