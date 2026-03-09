@@ -6,6 +6,8 @@ applyTo: "**/*Implementation.cpp,**/*Implementation.h,**/*.cpp,**/*.h"
   1. [Critical Logging](https://github.com/rdkcentral/entservices-appmanagers/blob/develop/.github/instructions/General.instructions.md#critical-logging)
   2. [Recoverable Error Reporting](https://github.com/rdkcentral/entservices-appmanagers/blob/develop/.github/instructions/General.instructions.md#recoverable-error-reporting)
   3. [YODA Notation in conditionals](https://github.com/rdkcentral/entservices-appmanagers/blob/develop/.github/instructions/General.instructions.md#yoda-notation-in-conditionals)
+  4. [Avoiding Public Member Variables](https://github.com/rdkcentral/entservices-appmanagers/blob/develop/.github/instructions/General.instructions.md#avoiding-public-member-variables)
+  5. [Using nullptr instead of NULL](https://github.com/rdkcentral/entservices-appmanagers/blob/develop/.github/instructions/General.instructions.md#using-nullptr-instead-of-null)
 
 ### Critical Logging
 ### Requirement
