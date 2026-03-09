@@ -185,6 +185,7 @@ target_link_options(${TEST_RUNNER_NAME} PRIVATE
     -Wl,--wrap,popen
     -Wl,--wrap,pclose
     -Wl,--wrap,setmntent
+    -Wl,--wrap,getmntent
     -Wl,--wrap,unlink
     -Wl,--wrap,statvfs
     -Wl,--wrap,mkdir
