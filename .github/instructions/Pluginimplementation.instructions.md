@@ -104,7 +104,7 @@ void StateChange(PluginHost::IShell* plugin) override {
         auto it = _targetPlugins.find(callsign);
         
         if (it != _targetPlugins.end()) {
-            printf("LOG: %s DEACTIVATED. Releasing interface.\n", callsign.c_str());
+            SYSLOG(Logging::Notification, (_T("%s DEACTIVATED. Releasing interface."), callsign.c_str()));
             
             // Unregister and Release the specific pointer for this callsign
             Exchange::IMyTargetPluginEvents* eventInterface = this->QueryInterface<Exchange::IMyTargetPluginEvents>();
@@ -129,7 +129,7 @@ void StateChange(PluginHost::IShell* plugin) override {
             // Check if we are already connected (not found in the map)
             if (_targetPlugins.find(callsign) == _targetPlugins.end()) {
                 
-                printf("LOG: %s ACTIVATED. Establishing new COM-RPC link.\n", callsign.c_str());
+                SYSLOG(Logging::Notification, (_T("%s ACTIVATED. Establishing new COM-RPC link."), callsign.c_str()));
                 
                 // Call the helper method to get the new pointer and register
                 RegisterWithTarget(callsign, plugin);
