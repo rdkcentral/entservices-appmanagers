@@ -1,6 +1,10 @@
 name: L1-tests
 
 on:
+  push:
+    branches: [ main, develop, 'sprint/**', 'release/**', 'topic/**', 'feature/L1_RuntimeManager' ]
+  pull_request:
+    branches: [ main, develop, 'sprint/**', 'release/**', 'topic/**' ]
   workflow_call:
     inputs:
       caller_source:
