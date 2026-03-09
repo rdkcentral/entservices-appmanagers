@@ -107,7 +107,11 @@ void StateChange(PluginHost::IShell* plugin) override {
             printf("LOG: %s DEACTIVATED. Releasing interface.\n", callsign.c_str());
             
             // Unregister and Release the specific pointer for this callsign
-            it->second->Unregister(this->QueryInterface<Exchange::IMyTargetPluginEvents>());
+            Exchange::IMyTargetPluginEvents* eventInterface = this->QueryInterface<Exchange::IMyTargetPluginEvents>();
+            if (eventInterface != nullptr) {
+                it->second->Unregister(eventInterface);
+                eventInterface->Release();
+            }
             it->second->Release();
             
             // Remove the entry from the map
