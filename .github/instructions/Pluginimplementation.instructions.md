@@ -253,7 +253,7 @@ void MyPlugin::setNumber() {
 
 ```cpp
 void MyPlugin::Initialize() {
-    _otherPlugin = shell->QueryInterfaceByCallsign<WPEFramework::Exchange::IOtherPlugin>();
+    _otherPlugin = shell->QueryInterfaceByCallsign<WPEFramework::Exchange::IOtherPlugin>("org.rdk.OtherPlugin");
 }
 
 void MyPlugin::Deinitialize() {
@@ -286,7 +286,7 @@ For cases where a Thunder plugin needs to communicate frequently with another pl
 ```cpp
 void MyPlugin::Initialize() {
     lock_guard<mutex> lock(_pluginMutex);
-    _otherPlugin = shell->QueryInterfaceByCallsign<WPEFramework::Exchange::IOtherPlugin>();
+    _otherPlugin = shell->QueryInterfaceByCallsign<WPEFramework::Exchange::IOtherPlugin>("org.rdk.OtherPlugin");
 }
 
 void MyPlugin::Deinitialize() {
@@ -309,7 +309,7 @@ void MyPlugin::DoSomething() {
 
 ```cpp
 void MyPlugin::Initialize() {
-    _otherPlugin = shell->QueryInterfaceByCallsign<WPEFramework::Exchange::IOtherPlugin>();
+    _otherPlugin = shell->QueryInterfaceByCallsign<WPEFramework::Exchange::IOtherPlugin>("org.rdk.OtherPlugin");
 }
 
 void MyPlugin::Deinitialize() {
