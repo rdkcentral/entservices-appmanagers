@@ -22,6 +22,7 @@
 #include <thread>
 #include <mutex>
 #include <vector>
+#include "UtilsLogging.h"
 
 namespace WPEFramework
 {
@@ -75,14 +76,13 @@ namespace WPEFramework
                         }
                         std::string errorReason;
                         bool success = StateHandler::changeState(*request, errorReason);
+                        gRequests.erase(gRequests.begin());
                         if (!success)
                         {
-                            printf("ERROR IN STATE TRANSITION ... %s\n",errorReason.c_str());
-			    fflush(stdout);
+                            LOGERR("ERROR IN STATE TRANSITION ... %s \n",errorReason.c_str());
                             //TODO: Decide on what to do on state transition error
                             break;
                         }
-                        gRequests.erase(gRequests.begin());
                     }
                     gRequestMutex.unlock();
                     sem_wait(&gRequestSemaphore);
