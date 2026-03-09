@@ -43,6 +43,26 @@ namespace WPEFramework
         class PreinstallManagerImplementation : public Exchange::IPreinstallManager, public Exchange::IConfiguration
         {
 
+        private:
+            class Configuration : public Core::JSON::Container {
+                public:
+                    Configuration()
+                        : Core::JSON::Container()
+                        , appPreinstallDirectory()
+                    {
+                        Add(_T("appPreinstallDirectory"), &appPreinstallDirectory);
+                    }
+                    ~Configuration() = default;
+
+                    Configuration(Configuration&&) = delete;
+                    Configuration(const Configuration&) = delete;
+                    Configuration& operator=(Configuration&&) = delete;
+                    Configuration& operator=(const Configuration&) = delete;
+
+                public:
+                    Core::JSON::String appPreinstallDirectory;
+            };
+
         public:
             PreinstallManagerImplementation();
             ~PreinstallManagerImplementation() override;
@@ -160,6 +180,7 @@ namespace WPEFramework
 
         private:
             mutable Core::CriticalSection mAdminLock;
+            std::string mAppPreinstallDirectory;
             std::list<Exchange::IPreinstallManager::INotification*> mPreinstallManagerNotifications;
             PluginHost::IShell *mCurrentservice;
             Exchange::IPackageInstaller* mPackageManagerInstallerObject;

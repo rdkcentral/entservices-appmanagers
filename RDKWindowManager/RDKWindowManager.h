@@ -72,6 +72,54 @@ namespace WPEFramework {
                         Exchange::JRDKWindowManager::Event::OnUserInactivity(_parent, minutes);
                     }
 
+                    void OnDisconnected(const std::string& client) override
+                    {
+                        LOGINFO("OnDisconnected");
+                        Exchange::JRDKWindowManager::Event::OnDisconnected(_parent, client);
+                    }
+
+                    void OnReady(const std::string &client) override
+                    {
+                        LOGINFO("OnReady for client %s", client.c_str());
+                        Exchange::JRDKWindowManager::Event::OnReady(_parent, client);
+                    }
+
+                    void OnConnected(const std::string& appInstanceId) override
+                    {
+                        LOGINFO("OnConnected for appInstanceId %s", appInstanceId.c_str());
+                        Exchange::JRDKWindowManager::Event::OnConnected(_parent, appInstanceId);
+                    }
+
+                    void OnVisible(const std::string& appInstanceId) override
+                    {
+                        LOGINFO("OnVisible for appInstanceId %s", appInstanceId.c_str());
+                        Exchange::JRDKWindowManager::Event::OnVisible(_parent, appInstanceId);
+                    }
+
+                    void OnHidden(const std::string& appInstanceId) override
+                    {
+                        LOGINFO("OnHidden for appInstanceId %s", appInstanceId.c_str());
+                        Exchange::JRDKWindowManager::Event::OnHidden(_parent, appInstanceId);
+                    }
+
+                    void OnFocus(const std::string& appInstanceId) override
+                    {
+                        LOGINFO("OnFocus for appInstanceId %s", appInstanceId.c_str());
+                        Exchange::JRDKWindowManager::Event::OnFocus(_parent, appInstanceId);
+                    }
+
+                    void OnBlur(const std::string& appInstanceId) override
+                    {
+                        LOGINFO("OnBlur for appInstanceId %s", appInstanceId.c_str());
+                        Exchange::JRDKWindowManager::Event::OnBlur(_parent, appInstanceId);
+                    }
+
+                    void OnScreenshotComplete(const bool success, const std::string& imageData) override
+                    {
+                        LOGINFO("OnScreenshotComplete success: %s, imageData size: %zu", success ? "true" : "false", imageData.length());
+                        Exchange::JRDKWindowManager::Event::OnScreenshotComplete(_parent, success, imageData);
+                    }
+
                 private:
                     RDKWindowManager& _parent;
             };

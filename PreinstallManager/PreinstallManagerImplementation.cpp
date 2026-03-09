@@ -21,7 +21,6 @@
 
 #include "PreinstallManagerImplementation.h"
 
-#define AI_PREINSTALL_DIRECTORY "/opt/preinstall" //temporary directory for preinstall packages
 
 namespace WPEFramework
 {
@@ -32,7 +31,7 @@ namespace WPEFramework
     PreinstallManagerImplementation *PreinstallManagerImplementation::_instance = nullptr;
 
     PreinstallManagerImplementation::PreinstallManagerImplementation()
-        : mAdminLock(), mPreinstallManagerNotifications(), mCurrentservice(nullptr),
+        : mAdminLock(), mAppPreinstallDirectory(""), mPreinstallManagerNotifications(), mCurrentservice(nullptr),
           mPackageManagerInstallerObject(nullptr), mPackageManagerNotification(*this)
     {
         LOGINFO("Create PreinstallManagerImplementation Instance");
@@ -122,6 +121,13 @@ namespace WPEFramework
         {
             mCurrentservice = service;
             mCurrentservice->AddRef();
+            PreinstallManagerImplementation::Configuration config;
+            config.FromString(service->ConfigLine());
+            if (!config.appPreinstallDirectory.Value().empty())
+            {
+                mAppPreinstallDirectory = config.appPreinstallDirectory.Value();
+            }
+            LOGINFO("appPreinstallDirectory=%s", mAppPreinstallDirectory.c_str());
             result = Core::ERROR_NONE;
             LOGINFO("PreinstallManagerImplementation service configured successfully");
         }
@@ -266,11 +272,10 @@ namespace WPEFramework
     bool PreinstallManagerImplementation::readPreinstallDirectory(std::list<PackageInfo> &packages)
     {
         ASSERT(nullptr != mPackageManagerInstallerObject);
-        std::string preinstallDir = AI_PREINSTALL_DIRECTORY;
-        DIR *dir = opendir(preinstallDir.c_str());
+        DIR *dir = opendir(mAppPreinstallDirectory.c_str());
         if (!dir)
         {
-            LOGINFO("Failed to open directory: %s", preinstallDir.c_str());
+            LOGINFO("Failed to open directory: %s", mAppPreinstallDirectory.c_str());
             return false;
         }
 
@@ -283,10 +288,10 @@ namespace WPEFramework
             if (filename == "." || filename == "..")
                 continue;
 
-            std::string filepath = preinstallDir + "/" + filename;
+            std::string filepath = mAppPreinstallDirectory + "/" + filename;
 
             PackageInfo packageInfo;
-            packageInfo.fileLocator = filepath + "/package.wgt";
+            packageInfo.fileLocator = filepath;
             LOGDBG("Found package folder: %s", filepath.c_str());
             if (mPackageManagerInstallerObject->GetConfigForPackage(packageInfo.fileLocator, packageInfo.packageId, packageInfo.version, packageInfo.configMetadata) == Core::ERROR_NONE)
             {
@@ -355,9 +360,15 @@ namespace WPEFramework
             // Issue ID 296: Dereference after null check
             // Fix: Check null before dereferencing and fix logic operator from && to ||
             // fetch installed packages
-            if (mPackageManagerInstallerObject->ListPackages(packageList) != Core::ERROR_NONE || packageList == nullptr)
+            Core::hresult listResult = mPackageManagerInstallerObject->ListPackages(packageList);
+            if (listResult != Core::ERROR_NONE || packageList == nullptr)
             {
-                LOGERR("ListPackage is returning Error or Packages is nullptr");
+                 LOGERR("ListPackages failed or package list is null");
+                if (packageList != nullptr)
+                {
+                    packageList->Release();
+                    packageList = nullptr;
+                }
                 return result;
             }
 
@@ -370,6 +381,9 @@ namespace WPEFramework
                 // todo check for installState if needed
                 // multiple apps possible with same packageId but different version
             }
+
+            packageList->Release();
+            packageList = nullptr;
 
             // filter to-be-installed apps
             for (auto toBeInstalledApp = preinstallPackages.begin(); toBeInstalledApp != preinstallPackages.end(); /* skip */)

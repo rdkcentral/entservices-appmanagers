@@ -146,6 +146,10 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                                 {
                                     WPEFramework::Exchange::RuntimeConfig runtimeConfig = packageData.configMetadata;
                                     runtimeConfig.unpackedPath = packageData.unpackedPath;
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED
+                                    runtimeConfig.userId = packageData.userId;
+                                    runtimeConfig.groupId = packageData.groupId;
+#endif // RALF_PACKAGE_SUPPORT_ENABLED
                                     getCustomValues(runtimeConfig);
                                     string launchArgs = appRequestParam->launchArgs;
 
@@ -274,6 +278,20 @@ void AppManagerImplementation::Dispatch(EventNames event, const JsonObject param
                 for (auto& notification : mAppManagerNotification)
                 {
                     notification->OnAppLifecycleStateChanged(appId, appInstanceId, newState, oldState, errorReason);
+                }
+                if ((Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING == oldState) && (Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING == newState))
+                {
+                    LOGERR("Transition from loading state failed. Killing the application ....");
+                    Core::hresult status = Core::ERROR_UNAVAILABLE;
+                    if (mLifecycleInterfaceConnector != nullptr)
+                    {
+                        status = mLifecycleInterfaceConnector->killApp(appId);
+                    }
+                    else
+                    {
+                        LOGERR("mLifecycleInterfaceConnector is null, cannot kill app %s", appId.c_str());
+                    }
+                    LOGERR("Kill app status in loading state [%d]....", static_cast<int>(status));
                 }
                 mAdminLock.Unlock();
             }
@@ -625,7 +643,7 @@ Core::hresult AppManagerImplementation::createStorageManagerRemoteObject()
     {
         do
         {
-            mStorageManagerRemoteObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IStorageManager>("org.rdk.StorageManager");
+            mStorageManagerRemoteObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IAppStorageManager>("org.rdk.AppStorageManager");
 
             if (nullptr == mStorageManagerRemoteObject)
             {
@@ -889,15 +907,28 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
     time_t requestTime = appManagerTelemetryReporting.getCurrentTimestamp();
 #endif
     LOGINFO(" LaunchApp enter with appId %s", appId.c_str());
-
+    bool installed = false;
+    Core::hresult result = IsInstalled(appId, installed);
+    //IsInstalled(appId, installed);
     mAdminLock.Lock();
     if (appId.empty())
     {
         LOGERR("application Id is empty");
         status = Core::ERROR_INVALID_PARAMETER;
     }
-    else if (nullptr != mLifecycleInterfaceConnector)
-    {
+    else if (result == Core::ERROR_NONE && !installed) {
+        LOGERR("App %s is not installed. Cannot launch.", appId.c_str());
+        status = Core::ERROR_GENERAL;
+    }
+    else if (result != Core::ERROR_NONE ) {
+        LOGERR("fetchAppPackagelist is returing error for app %s.", appId.c_str());
+        status = Core::ERROR_GENERAL;
+    }
+    else if (nullptr == mLifecycleInterfaceConnector) {
+        LOGERR("LifecycleInterfaceConnector is null");
+        status = Core::ERROR_GENERAL;
+    }
+    else if (nullptr != mLifecycleInterfaceConnector) {
         std::shared_ptr<AppManagerRequest> request = std::make_shared<AppManagerRequest>();
 
         if (request != nullptr)
@@ -1011,10 +1042,6 @@ Core::hresult AppManagerImplementation::TerminateApp(const string& appId )
         if (nullptr != mLifecycleInterfaceConnector)
         {
             status = mLifecycleInterfaceConnector->terminateApp(appId);
-            if(status == Core::ERROR_NONE)
-            {
-                status = packageUnLock(appId);
-            }
         }
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
         if(status == Core::ERROR_NONE)
@@ -1045,10 +1072,6 @@ Core::hresult AppManagerImplementation::KillApp(const string& appId)
     if (nullptr != mLifecycleInterfaceConnector)
     {
         status = mLifecycleInterfaceConnector->killApp(appId);
-        if(status == Core::ERROR_NONE)
-        {
-            status = packageUnLock(appId);
-        }
     }
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
     if(status == Core::ERROR_NONE)
