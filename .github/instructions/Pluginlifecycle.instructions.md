@@ -8,9 +8,9 @@ applyTo: "**/*.cpp,**/*.h"
 
 Every plugin must implement:
 
-- Initialize(IShell* service) → Called when the plugin is activated.
+- const string Initialize(PluginHost::IShell* service) → Called when the plugin is activated and returns an error message on failure (empty string on success).
 
-- Deinitialize(IShell* service) → Called when the plugin is deactivated.
+- void Deinitialize(PluginHost::IShell* service) → Called when the plugin is deactivated.
 
 ### Initialization
 
