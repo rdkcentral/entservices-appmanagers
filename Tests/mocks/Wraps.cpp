@@ -30,7 +30,23 @@
 #include <gmock/gmock.h>
 #include <dirent.h>
 
-extern "C" int __real_open(const char* pathname, int flags,int mode=0);
+extern "C" int __real_open(const char* pathname, int flags, int mode=0);
+extern "C" int __real_system(const char* command);
+extern "C" FILE* __real_popen(const char* command, const char* type);
+extern "C" int __real_pclose(FILE* pipe);
+extern "C" FILE* __real_setmntent(const char* command, const char* type);
+extern "C" struct mntent* __real_getmntent(FILE* pipe);
+extern "C" int __real_unlink(const char* filePath);
+extern "C" int __real_statvfs(const char* path, struct statvfs* buf);
+extern "C" int __real_mkdir(const char* path, mode_t mode);
+extern "C" int __real_stat(const char* path, struct stat* info);
+extern "C" int __real_rmdir(const char* pathname);
+extern "C" int __real_access(const char* pathname, int mode);
+extern "C" int __real_chown(const char* path, uid_t owner, gid_t group);
+extern "C" DIR* __real_opendir(const char* pathname);
+extern "C" struct dirent* __real_readdir(DIR* dirp);
+extern "C" int __real_closedir(DIR* dirp);
+extern "C" int __real_nftw(const char* dirpath, int (*fn)(const char*, const struct stat*, int, struct FTW*), int nopenfd, int flags);
 
 extern "C" int __wrap_system(const char* command)
 {
@@ -263,20 +279,23 @@ Wraps& Wraps::getInstance()
 
 int Wraps::system(const char* command)
 {
-    EXPECT_NE(impl, nullptr);
-    return impl->system(command);
+    if (impl != nullptr)
+        return impl->system(command);
+    return __real_system(command);
 }
 
 FILE* Wraps::popen(const char* command, const char* type)
 {
-    EXPECT_NE(impl, nullptr);
-    return impl->popen(command, type);
+    if (impl != nullptr)
+        return impl->popen(command, type);
+    return __real_popen(command, type);
 }
 
 int Wraps::pclose(FILE* pipe)
 {
-    EXPECT_NE(impl, nullptr);
-    return impl->pclose(pipe);
+    if (impl != nullptr)
+        return impl->pclose(pipe);
+    return __real_pclose(pipe);
 }
 
 void Wraps::syslog(int pri, const char* fmt, va_list args)
@@ -287,14 +306,16 @@ void Wraps::syslog(int pri, const char* fmt, va_list args)
 
 FILE* Wraps::setmntent(const char* command, const char* type)
 {
-    EXPECT_NE(impl, nullptr);
-    return impl->setmntent(command,type);
+    if (impl != nullptr)
+        return impl->setmntent(command, type);
+    return __real_setmntent(command, type);
 }
 
 struct mntent* Wraps::getmntent(FILE* pipe)
 {
-    EXPECT_NE(impl, nullptr);
-    return impl->getmntent(pipe);
+    if (impl != nullptr)
+        return impl->getmntent(pipe);
+    return __real_getmntent(pipe);
 }
 
 struct wpa_ctrl* Wraps::wpa_ctrl_open(const char *ctrl_path)
@@ -353,8 +374,9 @@ int Wraps::v_secure_system(const char *command, va_list args)
 
 int Wraps::unlink(const char* filePath)
 {
-    EXPECT_NE(impl, nullptr);
-    return impl->unlink(filePath);
+    if (impl != nullptr)
+        return impl->unlink(filePath);
+    return __real_unlink(filePath);
 }
 
 ssize_t Wraps::readlink(const char *pathname, char *buf, size_t bufsiz)
@@ -369,8 +391,9 @@ int Wraps::ioctl(int fd,unsigned long request,void* arg)
 }
 int Wraps::statvfs(const char* path,struct statvfs* buf)
 {
-    EXPECT_NE(impl, nullptr);
-    return impl->statvfs(path,buf);
+    if (impl != nullptr)
+        return impl->statvfs(path, buf);
+    return __real_statvfs(path, buf);
 }
 int Wraps::statfs(const char* path, struct statfs* buf)
 {
@@ -384,8 +407,9 @@ std::istream& Wraps::getline(std::istream& is, std::string& line)
 }
 int Wraps::mkdir(const char* path, mode_t mode)
 {
-    EXPECT_NE(impl, nullptr);
-    return impl->mkdir(path,mode);
+    if (impl != nullptr)
+        return impl->mkdir(path, mode);
+    return __real_mkdir(path, mode);
 }
 int Wraps::mount(const char* source, const char* target, const char* filesystemtype, unsigned long mountflags, const void* data)
 {
@@ -402,7 +426,7 @@ int Wraps::stat(const char* path, struct stat* info)
     }
     else
     {
-        result = ::stat(path, info);
+        result = __real_stat(path, info);
     }
     //return impl->stat(path,info);
     return result;
@@ -416,7 +440,7 @@ int Wraps::open(const char* pathname, int flags, mode_t mode)
     }
     else
     {
-        result =::open(pathname, flags, mode);
+        result = __real_open(pathname, flags, mode);
     }
     return result; 
 }
@@ -427,8 +451,9 @@ int Wraps::umount(const char* path)
 }
 int Wraps::rmdir(const char* pathname)
 {
-    EXPECT_NE(impl, nullptr);
-    return impl->rmdir(pathname);
+    if (impl != nullptr)
+        return impl->rmdir(pathname);
+    return __real_rmdir(pathname);
 }
 
 time_t Wraps::time(time_t* arg)
@@ -439,20 +464,23 @@ time_t Wraps::time(time_t* arg)
 
 int Wraps::access(const char* pathname, int mode)
 {
-    EXPECT_NE(impl, nullptr);
-    return impl->access(pathname, mode);
+    if (impl != nullptr)
+        return impl->access(pathname, mode);
+    return __real_access(pathname, mode);
 }
 
 int Wraps::chown(const char *path, uid_t owner, gid_t group)
 {
-    EXPECT_NE(impl, nullptr);
-    return impl->chown(path, owner, group);
+    if (impl != nullptr)
+        return impl->chown(path, owner, group);
+    return __real_chown(path, owner, group);
 }
 
 int Wraps::nftw(const char* dirpath,int (*fn)(const char*, const struct stat*, int, struct FTW*),int nopenfd, int flags)
 {
-    EXPECT_NE(impl, nullptr);
-    return impl->nftw(dirpath, fn, nopenfd, flags);
+    if (impl != nullptr)
+        return impl->nftw(dirpath, fn, nopenfd, flags);
+    return __real_nftw(dirpath, fn, nopenfd, flags);
 }
 
 DIR* Wraps::opendir(const char* pathname)
@@ -464,21 +492,23 @@ DIR* Wraps::opendir(const char* pathname)
     }
     else
     {
-        result =::opendir(pathname);
+        result = __real_opendir(pathname);
     }
     return result;
 }
 
 struct dirent* Wraps::readdir(DIR* dirp)
 {
-    EXPECT_NE(impl, nullptr);
-    return impl->readdir(dirp);
+    if (impl != nullptr)
+        return impl->readdir(dirp);
+    return __real_readdir(dirp);
 }
 
 int Wraps::closedir(DIR* dirp)
 {
-    EXPECT_NE(impl, nullptr);
-    return impl->closedir(dirp);
+    if (impl != nullptr)
+        return impl->closedir(dirp);
+    return __real_closedir(dirp);
 }
 CURLcode Wraps::curl_easy_setopt(CURL* curl, CURLoption option, void* param)
 {
