@@ -38,7 +38,7 @@
 #include "Module.h"
 #include "UtilsLogging.h"
 #include <interfaces/IAppPackageManager.h>
-#include <interfaces/IStorageManager.h>
+#include <interfaces/IAppStorageManager.h>
 
 #include "HttpClient.h"
 
@@ -313,7 +313,7 @@ namespace Plugin {
         std::shared_ptr<packagemanager::IPackageImplDummy> packageImpl;
 	#endif
         PluginHost::IShell* mCurrentservice;
-        Exchange::IStorageManager* mStorageManagerObject;
+        Exchange::IAppStorageManager* mStorageManagerObject;
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
         Exchange::ITelemetryMetrics* mTelemetryMetricsObject;
 #endif /* ENABLE_AIMANAGERS_TELEMETRY_METRICS */

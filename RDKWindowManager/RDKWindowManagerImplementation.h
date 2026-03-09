@@ -25,7 +25,6 @@
 #include "tracing/Logging.h"
 #include <vector>
 #include <thread>
-#include <fstream>
 #include <com/com.h>
 #include <core/core.h>
 #include <rdkwindowmanager/include/rdkwindowmanagerevents.h>
@@ -79,7 +78,8 @@ namespace Plugin {
                 RDK_WINDOW_MANAGER_EVENT_APPLICATION_VISIBLE,
                 RDK_WINDOW_MANAGER_EVENT_APPLICATION_HIDDEN,
                 RDK_WINDOW_MANAGER_EVENT_APPLICATION_FOCUS,
-                RDK_WINDOW_MANAGER_EVENT_APPLICATION_BLUR
+                RDK_WINDOW_MANAGER_EVENT_APPLICATION_BLUR,
+                RDK_WINDOW_MANAGER_EVENT_SCREENSHOT_COMPLETE
             };
 
         class EXTERNAL Job : public Core::IDispatch {
@@ -129,8 +129,8 @@ namespace Plugin {
         Core::hresult CreateDisplay(const string &displayParams) override;
         Core::hresult GetApps(string &appsIds) const override;
         Core::hresult AddKeyIntercept(const string &intercept) override;
-        Core::hresult AddKeyIntercepts(const string &intercepts) override;
-        Core::hresult RemoveKeyIntercept(const string &intercept) override;
+        Core::hresult AddKeyIntercepts(const string &clientId, const string &intercepts) override;
+        Core::hresult RemoveKeyIntercept(const string &clientId, uint32_t keyCode, const string &modifiers) override;
         Core::hresult AddKeyListener(const string &keyListeners) override;
         Core::hresult RemoveKeyListener(const string &keyListeners) override;
         Core::hresult InjectKey(uint32_t keyCode, const string &modifiers) override;
@@ -145,6 +145,7 @@ namespace Plugin {
         Core::hresult KeyRepeatConfig(const string &input, const string &keyConfig) override;
         Core::hresult SetFocus(const string &client) override;
         Core::hresult SetVisible(const std::string &client, bool visible) override;
+        Core::hresult GetVisibility(const std::string &client, bool &visible) override;
         Core::hresult RenderReady(const string& client, bool &status) const override;
         Core::hresult EnableDisplayRender(const string& client, bool enable) override;
         Core::hresult GetLastKeyInfo(uint32_t &keyCode, uint32_t &modifiers, uint64_t &timestampInSeconds) const override;
@@ -152,6 +153,7 @@ namespace Plugin {
         Core::hresult GetZOrder(const string& appInstanceId, int32_t &zOrder) override;
         Core::hresult StartVncServer() override;
         Core::hresult StopVncServer() override;
+        Core::hresult GetScreenshot() override;
 
     private: /*internal methods*/
         bool createDisplay(const string& client, const string& displayName, const uint32_t displayWidth = 0, const uint32_t displayHeight = 0,
@@ -159,7 +161,7 @@ namespace Plugin {
                            const bool topmost = false, const bool focus = false, const int32_t ownerId = 0, int32_t groupId=0);
         bool getClients(JsonArray& clients);
         bool addKeyIntercept(const uint32_t& keyCode, const JsonArray& modifiers, const string& client, const bool& focusOnly , const bool& propagate);
-        bool addKeyIntercepts(const JsonArray& intercepts);
+        bool addKeyIntercepts(const string& clientId, const JsonArray& intercepts);
         bool removeKeyIntercept(const uint32_t& keyCode, const JsonArray& modifiers, const string& client);
         bool addKeyListeners(const string& client, const JsonArray& listeners);
         bool removeKeyListeners(const string& client, const JsonArray& listeners);
@@ -168,6 +170,8 @@ namespace Plugin {
         bool enableInactivityReporting(const bool enable);
         bool setInactivityInterval(const uint32_t interval);
         bool resetInactivityTime();
+
+        void notifyScreenshotComplete(bool success);
 
         void dispatchEvent(Event event, const JsonValue &params);
         void Dispatch(Event event, const JsonValue params);
