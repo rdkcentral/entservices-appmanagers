@@ -21,7 +21,6 @@
 
 #include "DownloadManagerImplementation.h"
 
-#define DOWNLOADER_DEFAULT_PATH_LOCATION    "/opt/CDL/"
 #define DOWNLOADER_DOWNLOAD_ID_START        (2000)
 
 namespace WPEFramework {
@@ -33,7 +32,7 @@ namespace Plugin {
         : mDownloadManagerNotification()
         , mDownloaderRunFlag(true)
         , mDownloadId(DOWNLOADER_DOWNLOAD_ID_START)
-        , mDownloadPath(DOWNLOADER_DEFAULT_PATH_LOCATION)
+        , mDownloadPath("")
         , mCurrentservice(nullptr)
     {
         LOGINFO("DM: ctor DownloadManagerImplementation: %p", this);
@@ -116,6 +115,7 @@ namespace Plugin {
             {
                 mDownloadPath = config.downloadDir;
             }
+            LOGINFO("DM: downloadDir=%s", mDownloadPath.c_str());
             if (config.downloadId.IsSet() == true)
             {
                 mDownloadId = static_cast<uint32_t>(config.downloadId.Value());
