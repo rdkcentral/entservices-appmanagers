@@ -177,6 +177,7 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE/entservices-apis
           patch -p1 < $GITHUB_WORKSPACE/entservices-appmanagers/Tests/patches/RDKEMW-1007.patch
+          grep -q 'ID_APPSTORAGEMANAGER' apis/Ids.h || sed -i 's@    }; // enum IDS@        ID_APPSTORAGEMANAGER                         = ID_ENTOS_OFFSET + 0x4A0,\n        ID_APPSTORAGEMANAGER_NOTIFICATION            = ID_APPSTORAGEMANAGER + 1,\n\n    }; // enum IDS@' apis/Ids.h
           cd -    
 
       - name: Build entservices-apis
