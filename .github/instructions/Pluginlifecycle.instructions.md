@@ -254,7 +254,7 @@ void HdcpProfile::Deinitialize(PluginHost::IShell* service) {
 
 ### Deactivated
 
-Each plugin should implement the deactivated method. In Deactivated, it should be checked if remote connectionId matches the plugin's connectionId. If it matches the plugin's connectionId, the plugin should submit a deactivation job to handle the out-of-process failure gracefully.
+Each plugin should implement the Deactivated method. In Deactivated, it should be checked if remote connectionId matches the plugin's connectionId. If it matches the plugin's connectionId, the plugin should submit a deactivation job to handle the out-of-process failure gracefully.
 
 ### Example
 
