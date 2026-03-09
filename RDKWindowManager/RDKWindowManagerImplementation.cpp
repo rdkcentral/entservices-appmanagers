@@ -1491,10 +1491,10 @@ Core::hresult RDKWindowManagerImplementation::GetVisibility(const std::string &c
  * @virtualDisplay[in]: Optional - virtual display is required or not
  * @virtualWidth[in]  : Optional - width of the virtual display
  * @virtualHeight[in] : Optional - height of the virtual display
- * @topmost[in]       : Optional - topmost is required or not true/false
- * @focus[in]         : Optional - focus is required or not
  * @ownerId[in]       : Optional - owner identifier for the display
  * @groupId[in]       : Optional - group identifier for the display
+ * @topmost[in]       : Optional - topmost is required or not true/false
+ * @focus[in]         : Optional - focus is required or not
  * @return            : Optional - true/false
  */
 bool RDKWindowManagerImplementation::createDisplay(const string& client, const string& displayName, const uint32_t displayWidth, const uint32_t displayHeight, const bool virtualDisplay, const uint32_t virtualWidth, const uint32_t virtualHeight, const uint32_t ownerId, const uint32_t groupId, const bool topmost, const bool focus)
