@@ -617,7 +617,7 @@ namespace WPEFramework
                 appStorageInfo.userId = userId;
                 appStorageInfo.groupId = groupId;
 #endif //RALF_PACKAGE_SUPPORT_ENABLED
-                if (Core::ERROR_NONE == getAppStorageInfo(appId, appStorageInfo))
+                if (Core::ERROR_NONE == getAppStorageInfo(appIdForStorage, appStorageInfo))
                 {
                     config.mAppStorageInfo.path = std::move(appStorageInfo.path);
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
