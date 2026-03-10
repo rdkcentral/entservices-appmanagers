@@ -22,7 +22,7 @@ set(PLUGIN_IMPLEMENTATION ${MODULE_NAME}Implementation)
 set(PLUGIN_DOWNLOADMANAGER_MODE "Off" CACHE STRING "Controls if the plugin should run in its own process, in process or remote")
 set(PLUGIN_DOWNLOADMANAGER_AUTOSTART "false" CACHE STRING "Automatically start Download Manager plugin")
 set(PLUGIN_DOWNLOADMANAGER_STARTUPORDER "" CACHE STRING "Automatically start Download Manager plugin")
-set(PLUGIN_DOWNLOADMANAGER_DOWNLOAD_DIR "/opt/CDL/" CACHE STRING "Setting Default Download directory path")
+set(PLUGIN_DOWNLOADMANAGER_DOWNLOAD_DIR "" CACHE STRING "Directory path for download packages")
 set(PLUGIN_DOWNLOADMANAGER_DOWNLOAD_ID "2000" CACHE STRING "Setting Default Download id")
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
