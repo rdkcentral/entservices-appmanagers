@@ -299,6 +299,15 @@ jobs:
           &&
           cmake --install build/googletest
 
+      - name: Search for ID_APPSTORAGEMANAGER
+        run: |
+          echo "===== Searching for ID_APPSTORAGEMANAGER in repository ====="
+          grep -rn "ID_APPSTORAGEMANAGER" . || true
+
+          echo "===== Searching specifically in Ids.h files ====="
+          find . -name "Ids.h" -exec grep -n "ID_APPSTORAGEMANAGER" {} \; || true
+
+
       - name: Build entservices-appmanagers
         run: >
           cmake

@@ -41,7 +41,7 @@
 #define STORAGE_AVAILABLE_BLOCKS   500000; // Available blocks
 
 #define JSON_TIMEOUT   (1000)
-#define STORAGEMANAGER_CALLSIGN  _T("org.rdk.StorageManager")
+#define STORAGEMANAGER_CALLSIGN  _T("org.rdk.AppStorageManager")
 #define STORAGEMANAGERL2TEST_CALLSIGN _T("L2tests.1")
 
 using ::testing::NiceMock;
