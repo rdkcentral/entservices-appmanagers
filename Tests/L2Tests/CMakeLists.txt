@@ -210,13 +210,14 @@ if(SRC_FILES_IN)
 endif()
 
 # =============================================================================
-# Part 3: L2TestsIN - Appmanagers-specific L2 test library
-#         (linked into the main L2Tests plugin at runtime)
+# Part 3: RdkServicesL2Test - Out-of-process test runner executable
+#         Spawns WPEFramework and invokes the L2Tests plugin via JSON-RPC.
+#         Timeout matches the reference framework (ref/entservices-testframework).
 # =============================================================================
 set(TEST_RUNNER_NAME RdkServicesL2Test)
 
 if(NOT TEST_COMPLETION_TIMEOUT)
-    set(TEST_COMPLETION_TIMEOUT 600000)
+    set(TEST_COMPLETION_TIMEOUT 900000)
 endif()
 
 add_executable(${TEST_RUNNER_NAME}
@@ -255,7 +256,9 @@ target_compile_definitions(${TEST_RUNNER_NAME}
 target_include_directories(${TEST_RUNNER_NAME}
         PRIVATE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/tests>
         ${CMAKE_INSTALL_PREFIX}/include/WPEFramework
+        ${CMAKE_INSTALL_PREFIX}/include
         )
 
 install(TARGETS ${TEST_RUNNER_NAME} DESTINATION bin)
