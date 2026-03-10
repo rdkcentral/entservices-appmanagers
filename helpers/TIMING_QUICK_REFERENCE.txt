@@ -1,0 +1,147 @@
+╔════════════════════════════════════════════════════════════════════════════╗
+║                  RDK APP MANAGERS TIMING - QUICK REFERENCE                  ║
+╚════════════════════════════════════════════════════════════════════════════╝
+
+┌─ BUILDING WITH TIMING ─────────────────────────────────────────────────────┐
+│                                                                              │
+│  Enable timing during CMake configuration:                                  │
+│  $ cmake -DENABLE_RDKAPPMANAGERS_DEBUG=ON -B build                          │
+│  $ cmake --build build                                                      │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌─ INSTRUMENTING NEW APIS ───────────────────────────────────────────────────┐
+│                                                                              │
+│  1. Include the header in your implementation file:                         │
+│     #include "RDKAppManagersDebugTime.h"                                    │
+│                                                                              │
+│  2. Add timing macro at the start of any API method:                        │
+│     Core::hresult MyPlugin::MyAPI(const string& param) {                    │
+│         RDKAPPMANAGERS_DEBUG_TIME_SCOPE("MyPlugin", "MyAPI");               │
+│         // ... rest of implementation                                       │
+│     }                                                                        │
+│                                                                              │
+│  That's it! The macro handles entry/exit logging automatically.             │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌─ ANALYZING TIMING LOGS ────────────────────────────────────────────────────┐
+│                                                                              │
+│  Basic analysis:                                                            │
+│  $ python helpers/rdkappmanagers_time_analyzer.py wpeframework.log          │
+│                                                                              │
+│  Focus on specific plugin interactions:                                     │
+│  $ python helpers/rdkappmanagers_time_analyzer.py wpeframework.log \        │
+│           --plugin-a AppManager --plugin-b LifecycleManager                 │
+│                                                                              │
+│  Verbose output with individual call details:                               │
+│  $ python helpers/rdkappmanagers_time_analyzer.py wpeframework.log \        │
+│           --verbose                                                          │
+│                                                                              │
+│  Save report to file:                                                       │
+│  $ python helpers/rdkappmanagers_time_analyzer.py wpeframework.log \        │
+│           --output report.txt                                                │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌─ LOG FORMAT ───────────────────────────────────────────────────────────────┐
+│                                                                              │
+│  ENTRY event:                                                               │
+│  [RDKAPPMANAGERS_TIMING] ENTRY plugin=AppManager api=LaunchApp \            │
+│                          timestamp=1710073696123456 thread=0x7f8a4b2c3d00   │
+│                                                                              │
+│  EXIT event:                                                                │
+│  [RDKAPPMANAGERS_TIMING] EXIT plugin=AppManager api=LaunchApp \             │
+│                         timestamp=1710073696236123 duration_us=112667 \     │
+│                         thread=0x7f8a4b2c3d00                               │
+│                                                                              │
+│  • timestamp: Microseconds since epoch                                      │
+│  • duration_us: API execution time in microseconds (EXIT only)              │
+│  • thread: Thread ID where API was called                                   │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌─ METRICS PROVIDED ─────────────────────────────────────────────────────────┐
+│                                                                              │
+│  1. API Execution Time                                                      │
+│     • Min, Max, Average, Median duration for each API                       │
+│     • Number of invocations                                                 │
+│     • Identifies slow APIs                                                  │
+│                                                                              │
+│  2. Cross-Plugin Call Latency                                               │
+│     • Call Start Delta: Time from caller ENTRY → callee ENTRY               │
+│       (measures COM-RPC overhead)                                           │
+│     • Callee Duration: Time spent in called API                             │
+│     • Return Delta: Total time from caller ENTRY → callee EXIT              │
+│       (measures total cross-plugin call time)                               │
+│                                                                              │
+│  3. Thread-Based Call Flow                                                  │
+│     • Tracks nested calls within same thread                                │
+│     • Identifies call chains and dependencies                               │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌─ CURRENTLY INSTRUMENTED PLUGINS ───────────────────────────────────────────┐
+│                                                                              │
+│  ✓ AppManager          (10 APIs)                                            │
+│  ✓ LifecycleManager    (7 APIs)                                             │
+│  ✓ RuntimeManager      (5 APIs)                                             │
+│  ✓ PackageManager      (5 APIs)                                             │
+│  ✓ DownloadManager     (5 APIs)                                             │
+│  ✓ PreinstallManager   (1 API)                                              │
+│  ✓ StorageManager      (4 APIs)                                             │
+│  ✓ TelemetryMetrics    (2 APIs)                                             │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌─ VERIFICATION ─────────────────────────────────────────────────────────────┐
+│                                                                              │
+│  Check instrumentation status:                                              │
+│  $ python helpers/check_instrumentation.py                                  │
+│                                                                              │
+│  Test with sample log:                                                      │
+│  $ python helpers/rdkappmanagers_time_analyzer.py \                         │
+│           helpers/sample_wpeframework.txt                                    │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌─ PERFORMANCE IMPACT ───────────────────────────────────────────────────────┐
+│                                                                              │
+│  When DISABLED (default):                                                   │
+│    • Zero overhead - macro expands to no-op                                 │
+│    • No code generation                                                     │
+│                                                                              │
+│  When ENABLED:                                                              │
+│    • ~1-2 microseconds per API call                                         │
+│    • Negligible for performance analysis                                    │
+│    • Log I/O buffered by existing infrastructure                            │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌─ TROUBLESHOOTING ──────────────────────────────────────────────────────────┐
+│                                                                              │
+│  No timing logs appearing?                                                  │
+│  → Verify ENABLE_RDKAPPMANAGERS_DEBUG is defined during build               │
+│  → Check log level includes INFO messages                                   │
+│                                                                              │
+│  Analyzer finds no events?                                                  │
+│  → Verify log file contains [RDKAPPMANAGERS_TIMING] entries                 │
+│  → Test with sample_wpeframework.txt first                                  │
+│                                                                              │
+│  Missing cross-plugin data?                                                 │
+│  → Ensure all plugins built with instrumentation                            │
+│  → Use --verbose to see partial data                                        │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌─ FILES ────────────────────────────────────────────────────────────────────┐
+│                                                                              │
+│  helpers/RDKAppManagersDebugTime.h         - Core timing header             │
+│  helpers/rdkappmanagers_time_analyzer.py   - Analysis tool                  │
+│  helpers/check_instrumentation.py          - Verification tool              │
+│  helpers/TIMING_INFRASTRUCTURE.md          - Detailed documentation         │
+│  helpers/sample_wpeframework.txt           - Sample log for testing         │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+                          Last Updated: March 10, 2026

@@ -1,0 +1,28 @@
+240310-12:34:56.123456 [RDKAPPMANAGERS_TIMING] ENTRY plugin=AppManager api=LaunchApp timestamp=1710073696123456 thread=0x7f8a4b2c3d00
+240310-12:34:56.125123 [RDKAPPMANAGERS_TIMING] ENTRY plugin=LifecycleManager api=SpawnApp timestamp=1710073696125123 thread=0x7f8a4b2c3d00
+240310-12:34:56.126789 [RDKAPPMANAGERS_TIMING] ENTRY plugin=RuntimeManager api=Run timestamp=1710073696126789 thread=0x7f8a4b2c3d00
+240310-12:34:56.234567 [RDKAPPMANAGERS_TIMING] EXIT plugin=RuntimeManager api=Run timestamp=1710073696234567 duration_us=107778 thread=0x7f8a4b2c3d00
+240310-12:34:56.235890 [RDKAPPMANAGERS_TIMING] EXIT plugin=LifecycleManager api=SpawnApp timestamp=1710073696235890 duration_us=110767 thread=0x7f8a4b2c3d00
+240310-12:34:56.236123 [RDKAPPMANAGERS_TIMING] EXIT plugin=AppManager api=LaunchApp timestamp=1710073696236123 duration_us=112667 thread=0x7f8a4b2c3d00
+240310-12:34:57.456789 [RDKAPPMANAGERS_TIMING] ENTRY plugin=AppManager api=GetLoadedApps timestamp=1710073697456789 thread=0x7f8a4c3d4e00
+240310-12:34:57.457234 [RDKAPPMANAGERS_TIMING] ENTRY plugin=LifecycleManager api=GetLoadedApps timestamp=1710073697457234 thread=0x7f8a4c3d4e00
+240310-12:34:57.458901 [RDKAPPMANAGERS_TIMING] EXIT plugin=LifecycleManager api=GetLoadedApps timestamp=1710073697458901 duration_us=1667 thread=0x7f8a4c3d4e00
+240310-12:34:57.459012 [RDKAPPMANAGERS_TIMING] EXIT plugin=AppManager api=GetLoadedApps timestamp=1710073697459012 duration_us=2223 thread=0x7f8a4c3d4e00
+240310-12:34:58.123456 [RDKAPPMANAGERS_TIMING] ENTRY plugin=AppManager api=CloseApp timestamp=1710073698123456 thread=0x7f8a4b2c3d00
+240310-12:34:58.124123 [RDKAPPMANAGERS_TIMING] ENTRY plugin=LifecycleManager api=UnloadApp timestamp=1710073698124123 thread=0x7f8a4b2c3d00
+240310-12:34:58.145678 [RDKAPPMANAGERS_TIMING] EXIT plugin=LifecycleManager api=UnloadApp timestamp=1710073698145678 duration_us=21555 thread=0x7f8a4b2c3d00
+240310-12:34:58.146234 [RDKAPPMANAGERS_TIMING] EXIT plugin=AppManager api=CloseApp timestamp=1710073698146234 duration_us=22778 thread=0x7f8a4b2c3d00
+240310-12:35:00.234567 [RDKAPPMANAGERS_TIMING] ENTRY plugin=PackageManager api=Download timestamp=1710073700234567 thread=0x7f8a4d4e5f00
+240310-12:35:00.235123 [RDKAPPMANAGERS_TIMING] ENTRY plugin=DownloadManager api=Download timestamp=1710073700235123 thread=0x7f8a4d4e5f00
+240310-12:35:01.456789 [RDKAPPMANAGERS_TIMING] EXIT plugin=DownloadManager api=Download timestamp=1710073701456789 duration_us=1221666 thread=0x7f8a4d4e5f00
+240310-12:35:01.457234 [RDKAPPMANAGERS_TIMING] EXIT plugin=PackageManager api=Download timestamp=1710073701457234 duration_us=1222667 thread=0x7f8a4d4e5f00
+240310-12:35:02.123456 [RDKAPPMANAGERS_TIMING] ENTRY plugin=StorageManager api=CreateStorage timestamp=1710073702123456 thread=0x7f8a4e5f6a00
+240310-12:35:02.156789 [RDKAPPMANAGERS_TIMING] EXIT plugin=StorageManager api=CreateStorage timestamp=1710073702156789 duration_us=33333 thread=0x7f8a4e5f6a00
+240310-12:35:03.234567 [RDKAPPMANAGERS_TIMING] ENTRY plugin=TelemetryMetrics api=Record timestamp=1710073703234567 thread=0x7f8a4f6a7b00
+240310-12:35:03.235890 [RDKAPPMANAGERS_TIMING] EXIT plugin=TelemetryMetrics api=Record timestamp=1710073703235890 duration_us=1323 thread=0x7f8a4f6a7b00
+240310-12:35:04.456789 [RDKAPPMANAGERS_TIMING] ENTRY plugin=AppManager api=LaunchApp timestamp=1710073704456789 thread=0x7f8a4b2c3d00
+240310-12:35:04.458123 [RDKAPPMANAGERS_TIMING] ENTRY plugin=LifecycleManager api=SpawnApp timestamp=1710073704458123 thread=0x7f8a4b2c3d00
+240310-12:35:04.459456 [RDKAPPMANAGERS_TIMING] ENTRY plugin=RuntimeManager api=Run timestamp=1710073704459456 thread=0x7f8a4b2c3d00
+240310-12:35:04.567890 [RDKAPPMANAGERS_TIMING] EXIT plugin=RuntimeManager api=Run timestamp=1710073704567890 duration_us=108434 thread=0x7f8a4b2c3d00
+240310-12:35:04.568234 [RDKAPPMANAGERS_TIMING] EXIT plugin=LifecycleManager api=SpawnApp timestamp=1710073704568234 duration_us=110111 thread=0x7f8a4b2c3d00
+240310-12:35:04.568567 [RDKAPPMANAGERS_TIMING] EXIT plugin=AppManager api=LaunchApp timestamp=1710073704568567 duration_us=111778 thread=0x7f8a4b2c3d00
