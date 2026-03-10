@@ -221,15 +221,15 @@ endif()
 set(TEST_RUNNER_NAME RdkServicesL2Test)
 
 add_executable(${TEST_RUNNER_NAME}
-        L2testController.cpp
-        L2testController.h
-        Module.cpp
+        tests/L2testController.cpp
+        tests/L2testController.h
+        tests/Module.cpp
         )
 
 set_source_files_properties(
-L2testController.cpp
-L2testController.h
-Module.cpp
+tests/L2testController.cpp
+tests/L2testController.h
+tests/Module.cpp
 PROPERTIES COMPILE_FLAGS "-fexceptions")
 
 target_link_libraries(${TEST_RUNNER_NAME}
