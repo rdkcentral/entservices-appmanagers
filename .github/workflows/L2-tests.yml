@@ -477,8 +477,7 @@ jobs:
       - name: Download pact_verifier_cli
         run: |
           export PATH="$GITHUB_WORKSPACE/install/usr/bin:${PATH}"
-          chmod +x $GITHUB_WORKSPACE/entservices-appmanagers/Tests/L2Tests/pact/install-verifier-cli.sh
-          $GITHUB_WORKSPACE/entservices-appmanagers/Tests/L2Tests/pact/install-verifier-cli.sh
+          bash $GITHUB_WORKSPACE/entservices-appmanagers/Tests/L2Tests/pact/install-verifier-cli.sh
 
       - name: Run unit tests without valgrind
         run: >
