@@ -215,6 +215,10 @@ endif()
 # =============================================================================
 set(TEST_RUNNER_NAME RdkServicesL2Test)
 
+if(NOT TEST_COMPLETION_TIMEOUT)
+    set(TEST_COMPLETION_TIMEOUT 600000)
+endif()
+
 add_executable(${TEST_RUNNER_NAME}
         tests/L2testController.cpp
         tests/L2testController.h

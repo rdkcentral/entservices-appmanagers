@@ -377,7 +377,7 @@ jobs:
           -DDS_FOUND=ON
           -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
           &&
-          cmake --build build/entservices-appmanagers -j1
+          cmake --build build/entservices-appmanagers -j6
           &&
           cmake --install build/entservices-appmanagers
 
