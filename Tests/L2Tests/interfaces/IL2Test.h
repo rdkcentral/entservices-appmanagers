@@ -20,13 +20,12 @@
 #pragma once
 
 #include <com/com.h>
-
-// ID_L2TEST_CONTROLLER is reserved in entservices-apis apis/Ids.h:
+// ID_L2TEST_CONTROLLER is defined in entservices-apis apis/Ids.h (topic/rdkemw-13235+):
 //   ID_L2TEST_CONTROLLER = ID_ENTOS_OFFSET + 0x270
-// IL2Test.h has NOT been added to entservices-apis; it lives here locally.
-#ifndef ID_L2TEST_CONTROLLER
-#define ID_L2TEST_CONTROLLER (RPC::IDS::ID_EXTERNAL_CC_INTERFACE_OFFSET + 0x270)
-#endif
+// Include interfaces/Ids.h to get the enum member directly.
+// DO NOT #define it as a macro — that would corrupt the enum in Ids.h
+// when Ids.h is included later in the same translation unit.
+#include <interfaces/Ids.h>
 
 namespace WPEFramework {
 namespace Exchange {
