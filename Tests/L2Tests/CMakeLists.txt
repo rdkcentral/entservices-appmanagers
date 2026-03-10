@@ -32,21 +32,11 @@ set(SRC_FILES
     tests/L2Tests.cpp
     tests/L2TestsMock.cpp)
 
-if(PLUGIN_APPMANAGER)
-    set(SRC_FILES ${SRC_FILES} tests/AppManager_L2Test.cpp)
-endif()
-
-if(PLUGIN_APP_STORAGE_MANAGER)
-    set(SRC_FILES ${SRC_FILES} tests/AppStorageManager_L2Test.cpp)
-endif()
+# NOTE: AppManager and AppStorageManager test files are compiled exclusively
+# into WPEFrameworkL2TestsIN (Part 2) to avoid duplicate symbols when
+# WPEFrameworkL2Tests links against WPEFrameworkL2TestsIN.
 
 add_library(${MODULE_NAME} SHARED ${SRC_FILES})
-
-set_source_files_properties(
-        L2testController.cpp
-        L2testController.h
-        Module.cpp
-        PROPERTIES COMPILE_FLAGS "-fexceptions")
 
 
 set_target_properties(${MODULE_NAME} PROPERTIES
@@ -227,9 +217,9 @@ add_executable(${TEST_RUNNER_NAME}
         )
 
 set_source_files_properties(
-tests/L2testController.cpp
-tests/L2testController.h
-tests/Module.cpp
+    tests/L2testController.cpp
+    tests/L2testController.h
+    tests/Module.cpp
 PROPERTIES COMPILE_FLAGS "-fexceptions")
 
 target_link_libraries(${TEST_RUNNER_NAME}
