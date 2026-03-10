@@ -23,6 +23,7 @@ set(PLUGIN_NAME L2Tests)
 set(MODULE_NAME ${NAMESPACE}${PLUGIN_NAME})
 set(THUNDER_PORT 9998)
 
+
 find_package(${NAMESPACE}Plugins REQUIRED)
 find_package(GTest REQUIRED)
 
@@ -40,6 +41,13 @@ if(PLUGIN_APP_STORAGE_MANAGER)
 endif()
 
 add_library(${MODULE_NAME} SHARED ${SRC_FILES})
+
+set_source_files_properties(
+        L2testController.cpp
+        L2testController.h
+        Module.cpp
+        PROPERTIES COMPILE_FLAGS "-fexceptions")
+
 
 set_target_properties(${MODULE_NAME} PROPERTIES
         CXX_STANDARD 17
@@ -205,3 +213,50 @@ if(SRC_FILES_IN)
         add_dependencies(${MODULE_NAME} ${MODULE_NAME_IN})
     endif()
 endif()
+
+# =============================================================================
+# Part 3: L2TestsIN - Appmanagers-specific L2 test library
+#         (linked into the main L2Tests plugin at runtime)
+# =============================================================================
+set(TEST_RUNNER_NAME RdkServicesL2Test)
+
+add_executable(${TEST_RUNNER_NAME}
+        L2testController.cpp
+        L2testController.h
+        Module.cpp
+        )
+
+set_source_files_properties(
+L2testController.cpp
+L2testController.h
+Module.cpp
+PROPERTIES COMPILE_FLAGS "-fexceptions")
+
+target_link_libraries(${TEST_RUNNER_NAME}
+        ${CMAKE_INSTALL_PREFIX}/lib/libWPEFrameworkCore.so
+        ${CMAKE_INSTALL_PREFIX}/lib/libWPEFrameworkCOM.so
+        ${CMAKE_INSTALL_PREFIX}/lib/libWPEFrameworkPlugins.so
+        ${CMAKE_INSTALL_PREFIX}/lib/libWPEFrameworkMessaging.so
+        )
+
+if (USE_THUNDER_R4)
+target_link_libraries(${TEST_RUNNER_NAME} ${CMAKE_INSTALL_PREFIX}/lib/libWPEFrameworkWebSocket.so)
+else ()
+target_link_libraries(${TEST_RUNNER_NAME} ${CMAKE_INSTALL_PREFIX}/lib/libWPEFrameworkProtocols.so)
+target_link_libraries(${TEST_RUNNER_NAME} ${CMAKE_INSTALL_PREFIX}/lib/libWPEFrameworkTracing.so)
+endif (USE_THUNDER_R4)
+
+target_compile_definitions(${TEST_RUNNER_NAME}
+                             PRIVATE
+                             CMAKE_INSTALL_PREFIX="${CMAKE_INSTALL_PREFIX}"
+                             THUNDER_PORT="${THUNDER_PORT}"
+                             TEST_COMPLETION_TIMEOUT=${TEST_COMPLETION_TIMEOUT}
+                           )
+
+target_include_directories(${TEST_RUNNER_NAME}
+        PRIVATE
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+        ${CMAKE_INSTALL_PREFIX}/include/WPEFramework
+        )
+
+install(TARGETS ${TEST_RUNNER_NAME} DESTINATION bin)
