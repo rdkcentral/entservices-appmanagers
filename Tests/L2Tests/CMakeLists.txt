@@ -172,7 +172,11 @@ if(SRC_FILES_IN)
                 THUNDER_PORT="${THUNDER_PORT}")
 
     target_compile_options(${MODULE_NAME_IN} PRIVATE -Wno-error)
-    target_link_libraries(${MODULE_NAME_IN} PRIVATE ${NAMESPACE}Plugins::${NAMESPACE}Plugins)
+    target_link_directories(${MODULE_NAME_IN} PRIVATE
+        ${CMAKE_INSTALL_PREFIX}/lib)
+    target_link_libraries(${MODULE_NAME_IN} PRIVATE
+        ${NAMESPACE}Plugins::${NAMESPACE}Plugins
+        gtest gmock)
 
     if (NOT L2_TEST_OOP_RPC)
         if (TESTMOCKLIB_LIBRARIES)
@@ -192,7 +196,8 @@ if(SRC_FILES_IN)
         ../mocks/thunder
         ../mocks/devicesettings
         ../mocks/MockPlugin
-        ${CMAKE_INSTALL_PREFIX}/include)
+        ${CMAKE_INSTALL_PREFIX}/include
+        ${CMAKE_INSTALL_PREFIX}/include/WPEFramework)
 
     install(TARGETS ${MODULE_NAME_IN} DESTINATION lib)
 
