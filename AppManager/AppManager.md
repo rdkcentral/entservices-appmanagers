@@ -2,7 +2,7 @@
 
 > Primary API for Application Lifecycle Management
 
-[← Back to Main](../README.md)
+[← Back to Main](../README.md) | [Next: LifecycleManager →](../LifecycleManager/LifecycleManager.md)
 
 ---
 
