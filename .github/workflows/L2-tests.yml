@@ -480,12 +480,30 @@ jobs:
           bash $GITHUB_WORKSPACE/entservices-appmanagers/Tests/L2Tests/pact/install-verifier-cli.sh
 
       - name: Run unit tests without valgrind
-        run: >
-          PATH=$GITHUB_WORKSPACE/install/usr/bin:${PATH}
-          LD_LIBRARY_PATH=$GITHUB_WORKSPACE/install/usr/lib:$GITHUB_WORKSPACE/install/usr/lib/wpeframework/plugins:${LD_LIBRARY_PATH}
-          RdkServicesL2Test &&
-          cp -rf $(pwd)/rdkL2TestResults.json $GITHUB_WORKSPACE/rdkL2TestResultsWithoutValgrind.json &&
-          rm -rf $(pwd)/rdkL2TestResults.json
+        run: |
+          set -euo pipefail
+
+          echo "Configuring runtime environment..."
+
+          export PATH="$GITHUB_WORKSPACE/install/usr/bin:${PATH}"
+          export LD_LIBRARY_PATH="$GITHUB_WORKSPACE/install/usr/lib:$GITHUB_WORKSPACE/install/usr/lib/wpeframework/plugins:${LD_LIBRARY_PATH:-}"
+          export GTEST_OUTPUT="json:$(pwd)/rdkL2TestResults.json"
+
+          echo "Searching for test binary..."
+          TEST_BIN=$(find $GITHUB_WORKSPACE -name RdkServicesL2Test -type f | head -n 1)
+
+          if [ -z "$TEST_BIN" ]; then
+            echo "ERROR: RdkServicesL2Test binary not found!"
+            exit 1
+          fi
+
+          echo "Using test binary: $TEST_BIN"
+
+          echo "Running unit tests..."
+          "$TEST_BIN"
+
+          cp rdkL2TestResults.json "$GITHUB_WORKSPACE/rdkL2TestResultsWithoutValgrind.json"
+          rm -f rdkL2TestResults.json
 
       - name: Run unit tests with valgrind
         if: ${{ !env.ACT }}
