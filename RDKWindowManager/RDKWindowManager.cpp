@@ -18,6 +18,7 @@
 **/
 
 #include "RDKWindowManager.h"
+#include "RDKAppManagersDebugTime.h"
 
 const string WPEFramework::Plugin::RDKWindowManager::SERVICE_NAME = "org.rdk.RDKWindowManager";
 
@@ -62,6 +63,7 @@ namespace WPEFramework {
 
         const string RDKWindowManager::Initialize(PluginHost::IShell* service )
         {
+            RDKAPPMANAGERS_DEBUG_TIME_SCOPE("RDKWindowManager", "PluginInitialize");
             uint32_t result = Core::ERROR_GENERAL;
             string retStatus = "";
 
@@ -118,6 +120,7 @@ namespace WPEFramework {
 
         void RDKWindowManager::Deinitialize(PluginHost::IShell* service)
         {
+            RDKAPPMANAGERS_DEBUG_TIME_SCOPE("RDKWindowManager", "PluginDeinitialize");
             SYSLOG(Logging::Startup, (_T("RDKWindowManager::Deinitialize: PID=%u"), getpid()));
 
             ASSERT(mCurrentService == service);

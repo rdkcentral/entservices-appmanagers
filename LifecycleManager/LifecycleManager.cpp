@@ -19,6 +19,7 @@
 
 #include "LifecycleManager.h"
 #include <interfaces/IConfiguration.h>
+#include "RDKAppManagersDebugTime.h"
 
 const string WPEFramework::Plugin::LifecycleManager::SERVICE_NAME = "org.rdk.LifecycleManager";
 
@@ -61,6 +62,7 @@ namespace WPEFramework
 
         const string LifecycleManager::Initialize(PluginHost::IShell* service )
         {
+            RDKAPPMANAGERS_DEBUG_TIME_SCOPE("LifecycleManager", "Initialize");
             //uint32_t result = Core::ERROR_GENERAL;
             string retStatus = "";
             ASSERT(nullptr != service);
@@ -95,6 +97,7 @@ namespace WPEFramework
 
         void LifecycleManager::Deinitialize(PluginHost::IShell* service)
         {
+            RDKAPPMANAGERS_DEBUG_TIME_SCOPE("LifecycleManager", "Deinitialize");
             SYSLOG(Logging::Startup, (_T("LifecycleManager::Deinitialize: PID=%u"), getpid()));
             ASSERT(_service == service);
             if (mLifecycleManagerState != nullptr)

@@ -20,6 +20,7 @@
 #include <chrono>
 
 #include "PreinstallManagerImplementation.h"
+#include "RDKAppManagersDebugTime.h"
 
 #define AI_PREINSTALL_DIRECTORY "/opt/preinstall" //temporary directory for preinstall packages
 
@@ -323,6 +324,7 @@ namespace WPEFramework
      */
     Core::hresult PreinstallManagerImplementation::StartPreinstall(bool forceInstall)
     {
+        RDKAPPMANAGERS_DEBUG_TIME_SCOPE("PreinstallManager", "StartPreinstall");
         Core::hresult result = Core::ERROR_GENERAL;
         auto installStart = std::chrono::steady_clock::now(); // for measuring duration taken
 

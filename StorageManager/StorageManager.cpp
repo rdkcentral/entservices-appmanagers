@@ -19,6 +19,7 @@
 
 
 #include "StorageManager.h"
+#include "RDKAppManagersDebugTime.h"
 
 const string WPEFramework::Plugin::StorageManager::SERVICE_NAME = "org.rdk.StorageManager";
 
@@ -63,6 +64,7 @@ namespace WPEFramework
 
     const string StorageManager::Initialize(PluginHost::IShell* service)
     {
+        RDKAPPMANAGERS_DEBUG_TIME_SCOPE("StorageManager", "Initialize");
         string message="";
 
         ASSERT(nullptr != service);
@@ -117,6 +119,7 @@ namespace WPEFramework
 
     void StorageManager::Deinitialize(PluginHost::IShell* service)
     {
+        RDKAPPMANAGERS_DEBUG_TIME_SCOPE("StorageManager", "Deinitialize");
         ASSERT(mCurrentService == service);
 
         SYSLOG(Logging::Shutdown, (string(_T("StorageManager::Deinitialize"))));

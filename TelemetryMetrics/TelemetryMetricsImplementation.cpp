@@ -21,6 +21,7 @@
 #include "TelemetryMetricsImplementation.h"
 #include "UtilsLogging.h"
 #include "TelemetryFilters.h"
+#include "RDKAppManagersDebugTime.h"
 
 
 namespace WPEFramework {
@@ -65,6 +66,7 @@ namespace Plugin {
  */
     Core::hresult TelemetryMetricsImplementation::Record(const std::string& id, const std::string& metrics, const std::string& markerName)
     {
+        RDKAPPMANAGERS_DEBUG_TIME_SCOPE("TelemetryMetrics", "Record");
         Core::hresult status = Core::ERROR_GENERAL;
 
         /* Create JSON parser builder and CharReader for parsing JSON strings */
@@ -139,6 +141,7 @@ namespace Plugin {
  */
     Core::hresult TelemetryMetricsImplementation::Publish(const std::string& id, const std::string& markerName)
     {
+        RDKAPPMANAGERS_DEBUG_TIME_SCOPE("TelemetryMetrics", "Publish");
         Core::hresult status = Core::ERROR_GENERAL;
 
         std::string recordId = generateRecordId(id, markerName);

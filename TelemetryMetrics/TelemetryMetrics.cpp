@@ -19,6 +19,7 @@
 
 
 #include "TelemetryMetrics.h"
+#include "RDKAppManagersDebugTime.h"
 
 const string WPEFramework::Plugin::TelemetryMetrics::SERVICE_NAME = "org.rdk.TelemetryMetrics";
 
@@ -62,6 +63,7 @@ namespace WPEFramework
 
     const string TelemetryMetrics::Initialize(PluginHost::IShell* service)
     {
+        RDKAPPMANAGERS_DEBUG_TIME_SCOPE("TelemetryMetrics", "Initialize");
         string message="";
 
         ASSERT(nullptr != service);
@@ -96,6 +98,7 @@ namespace WPEFramework
 
     void TelemetryMetrics::Deinitialize(PluginHost::IShell* service)
     {
+        RDKAPPMANAGERS_DEBUG_TIME_SCOPE("TelemetryMetrics", "Deinitialize");
         ASSERT(mCurrentService == service);
 
         SYSLOG(Logging::Shutdown, (string(_T("TelemetryMetrics::Deinitialize"))));

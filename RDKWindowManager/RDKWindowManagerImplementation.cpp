@@ -28,6 +28,7 @@
 #include "UtilsJsonRpc.h"
 #include "UtilsUnused.h"
 #include "UtilsString.h"
+#include "RDKAppManagersDebugTime.h"
 
 using namespace std;
 using namespace RdkWindowManager;
@@ -182,6 +183,7 @@ std::string toLower(const std::string& clientName)
 
 Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* service)
 {
+    RDKAPPMANAGERS_DEBUG_TIME_SCOPE("RDKWindowManager", "Initialize");
     Core::hresult result = Core::ERROR_NONE;
 
     ASSERT(nullptr != service);
@@ -277,6 +279,7 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
 
 Core::hresult RDKWindowManagerImplementation::Deinitialize(PluginHost::IShell* service)
 {
+    RDKAPPMANAGERS_DEBUG_TIME_SCOPE("RDKWindowManager", "Deinitialize");
     Core::hresult result = Core::ERROR_NONE;
 
     ASSERT(nullptr != service);
@@ -611,6 +614,7 @@ void RDKWindowManagerImplementation::Dispatch(Event event, const JsonValue param
  */
 Core::hresult RDKWindowManagerImplementation::CreateDisplay(const string &displayParams)
 {
+    RDKAPPMANAGERS_DEBUG_TIME_SCOPE("RDKWindowManager", "CreateDisplay");
     Core::hresult status = Core::ERROR_GENERAL;
     bool result = true;
     JsonObject parameters;
@@ -727,6 +731,7 @@ Core::hresult RDKWindowManagerImplementation::CreateDisplay(const string &displa
  */
 Core::hresult RDKWindowManagerImplementation::GetApps(string &appsIds) const
 {
+    RDKAPPMANAGERS_DEBUG_TIME_SCOPE("RDKWindowManager", "GetApps");
     Core::hresult status = Core::ERROR_GENERAL;
     bool retValue = false;
     std::vector<std::string> clientList;
@@ -774,6 +779,7 @@ Core::hresult RDKWindowManagerImplementation::GetApps(string &appsIds) const
  */
 Core::hresult RDKWindowManagerImplementation::AddKeyIntercept(const string &intercept)
 {
+    RDKAPPMANAGERS_DEBUG_TIME_SCOPE("RDKWindowManager", "AddKeyIntercept");
     Core::hresult status = Core::ERROR_GENERAL;
     JsonObject parameters;
 
@@ -839,6 +845,7 @@ Core::hresult RDKWindowManagerImplementation::AddKeyIntercept(const string &inte
  */
 Core::hresult RDKWindowManagerImplementation::AddKeyIntercepts(const string &intercepts)
 {
+    RDKAPPMANAGERS_DEBUG_TIME_SCOPE("RDKWindowManager", "AddKeyIntercepts");
     Core::hresult status = Core::ERROR_GENERAL;
     JsonObject parameters;
 
@@ -878,6 +885,7 @@ Core::hresult RDKWindowManagerImplementation::AddKeyIntercepts(const string &int
  */
 Core::hresult RDKWindowManagerImplementation::RemoveKeyIntercept(const string &intercept)
 {
+    RDKAPPMANAGERS_DEBUG_TIME_SCOPE("RDKWindowManager", "RemoveKeyIntercept");
     Core::hresult status = Core::ERROR_GENERAL;
     JsonObject parameters;
 
@@ -945,6 +953,7 @@ Core::hresult RDKWindowManagerImplementation::RemoveKeyIntercept(const string &i
  */
 Core::hresult RDKWindowManagerImplementation::AddKeyListener(const string &keyListeners)
 {
+    RDKAPPMANAGERS_DEBUG_TIME_SCOPE("RDKWindowManager", "AddKeyListener");
     Core::hresult status = Core::ERROR_GENERAL;
     JsonObject parameters;
 
@@ -998,6 +1007,7 @@ Core::hresult RDKWindowManagerImplementation::AddKeyListener(const string &keyLi
  */
 Core::hresult RDKWindowManagerImplementation::RemoveKeyListener(const string &keyListeners)
 {
+    RDKAPPMANAGERS_DEBUG_TIME_SCOPE("RDKWindowManager", "RemoveKeyListener");
     Core::hresult status = Core::ERROR_GENERAL;
     JsonObject parameters;
 

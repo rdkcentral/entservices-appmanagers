@@ -26,6 +26,7 @@
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
 #include "LifecycleManagerTelemetryReporting.h"
 #endif
+#include "RDKAppManagersDebugTime.h"
 
 namespace WPEFramework
 {
@@ -184,6 +185,7 @@ namespace WPEFramework
         
         Core::hresult LifecycleManagerImplementation::GetLoadedApps(const bool verbose, string& apps)
         {
+            RDKAPPMANAGERS_DEBUG_TIME_SCOPE("LifecycleManager", "GetLoadedApps");
             Core::hresult status = Core::ERROR_NONE;
             JsonArray appsInformation;
             std::list<ApplicationContext*>::iterator iter = mLoadedApplications.end();
@@ -234,6 +236,7 @@ namespace WPEFramework
         
         Core::hresult LifecycleManagerImplementation::IsAppLoaded(const string& appId, bool& loaded) const
         {
+            RDKAPPMANAGERS_DEBUG_TIME_SCOPE("LifecycleManager", "IsAppLoaded");
             Core::hresult status = Core::ERROR_NONE;
             loaded = false;
             ApplicationContext* context = getContext("", appId);
@@ -246,6 +249,7 @@ namespace WPEFramework
         
         Core::hresult LifecycleManagerImplementation::SpawnApp(const string& appId, const string& launchIntent, const LifecycleState targetLifecycleState, const WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject, const string& launchArgs, string& appInstanceId, string& errorReason, bool& success)
         {
+	    RDKAPPMANAGERS_DEBUG_TIME_SCOPE("LifecycleManager", "SpawnApp");
 	    // Launches an app.  This will be an asynchronous call.
             // Notifies appropriate API Gateway when an app is about to be loaded
             // Lifecycle manager will create the appInstanceId once the app is loaded.  Ripple is responsible for creating a token. 
@@ -287,6 +291,7 @@ namespace WPEFramework
         
         Core::hresult LifecycleManagerImplementation::SetTargetAppState(const string& appInstanceId, const LifecycleState targetLifecycleState, const string& launchIntent)
         {
+            RDKAPPMANAGERS_DEBUG_TIME_SCOPE("LifecycleManager", "SetTargetAppState");
             // Moves a currently loaded app between states
             Core::hresult status = Core::ERROR_NONE;
             ApplicationContext* context = getContext(appInstanceId, "");
@@ -336,6 +341,7 @@ namespace WPEFramework
         
         Core::hresult LifecycleManagerImplementation::UnloadApp(const string& appInstanceId, string& errorReason, bool& success)
         {
+            RDKAPPMANAGERS_DEBUG_TIME_SCOPE("LifecycleManager", "UnloadApp");
             // Begins a graceful shutdown of the app.  Moves the app through the lifecycle states till it ultimately ends in app container being terminated.
             // This is an asynchronous call, clients should use the onAppStateChange event to determine when the app is actually terminated.
             // This moves an app to the unloaded state
@@ -371,6 +377,7 @@ namespace WPEFramework
         
         Core::hresult LifecycleManagerImplementation::KillApp(const string& appInstanceId, string& errorReason, bool& success)
         {
+            RDKAPPMANAGERS_DEBUG_TIME_SCOPE("LifecycleManager", "KillApp");
             Core::hresult status = Core::ERROR_NONE;
             ApplicationContext* context = getContext(appInstanceId, "");
             time_t requestTime =0;
@@ -396,6 +403,7 @@ namespace WPEFramework
         
         Core::hresult LifecycleManagerImplementation::SendIntentToActiveApp(const string& appInstanceId, const string& intent, string& errorReason, bool& success)
         {
+            RDKAPPMANAGERS_DEBUG_TIME_SCOPE("LifecycleManager", "SendIntentToActiveApp");
             // Sends arguments to a launched app.  This API is used for sending deeplinks to an application.  This can only be sent to an active app.  This method does nothing if the app is not active, and an errorReason is returned.
             Core::hresult status = Core::ERROR_NONE;
             ApplicationContext* context = getContext(appInstanceId, "");

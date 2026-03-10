@@ -19,6 +19,7 @@
 
 #include "PackageManager.h"
 #include <interfaces/IConfiguration.h>
+#include "RDKAppManagersDebugTime.h"
 
 namespace WPEFramework {
 
@@ -50,6 +51,7 @@ namespace Plugin
 
     const string PackageManager::Initialize(PluginHost::IShell * service)
     {
+        RDKAPPMANAGERS_DEBUG_TIME_SCOPE("PackageManager", "Initialize");
         string message;
 
         ASSERT(service != nullptr);
@@ -98,6 +100,7 @@ namespace Plugin
 
     void PackageManager::Deinitialize(PluginHost::IShell* service VARIABLE_IS_NOT_USED)
     {
+        RDKAPPMANAGERS_DEBUG_TIME_SCOPE("PackageManager", "Deinitialize");
         LOGINFO();
         if (mService != nullptr) {
             ASSERT(mService == service);

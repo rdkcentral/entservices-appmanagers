@@ -18,6 +18,7 @@
 **/
 
 #include "DownloadManager.h"
+#include "RDKAppManagersDebugTime.h"
 
 namespace WPEFramework {
 
@@ -47,6 +48,7 @@ namespace Plugin
 
     const string DownloadManager::Initialize(PluginHost::IShell * service)
     {
+        RDKAPPMANAGERS_DEBUG_TIME_SCOPE("DownloadManager", "Initialize");
         string message;
 
         ASSERT(service != nullptr);
@@ -80,6 +82,7 @@ namespace Plugin
 
     void DownloadManager::Deinitialize(PluginHost::IShell* service)
     {
+        RDKAPPMANAGERS_DEBUG_TIME_SCOPE("DownloadManager", "Deinitialize");
         LOGINFO();
         if (mService != nullptr)
         {

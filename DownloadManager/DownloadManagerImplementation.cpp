@@ -20,6 +20,7 @@
 #include <chrono>
 
 #include "DownloadManagerImplementation.h"
+#include "RDKAppManagersDebugTime.h"
 
 #define DOWNLOADER_DEFAULT_PATH_LOCATION    "/opt/CDL/"
 #define DOWNLOADER_DOWNLOAD_ID_START        (2000)
@@ -184,6 +185,7 @@ namespace Plugin {
         const Exchange::IDownloadManager::Options &options,
         string &downloadId)
     {
+        RDKAPPMANAGERS_DEBUG_TIME_SCOPE("DownloadManager", "Download");
         Core::hresult result = Core::ERROR_GENERAL;
 
         mAdminLock.Lock();
@@ -242,6 +244,7 @@ namespace Plugin {
 
     Core::hresult DownloadManagerImplementation::Pause(const string &downloadId)
     {
+        RDKAPPMANAGERS_DEBUG_TIME_SCOPE("DownloadManager", "Pause");
         Core::hresult result = Core::ERROR_GENERAL;
 
         mAdminLock.Lock();
@@ -272,6 +275,7 @@ namespace Plugin {
 
     Core::hresult DownloadManagerImplementation::Resume(const string &downloadId)
     {
+        RDKAPPMANAGERS_DEBUG_TIME_SCOPE("DownloadManager", "Resume");
         Core::hresult result = Core::ERROR_GENERAL;
 
         mAdminLock.Lock();
@@ -302,6 +306,7 @@ namespace Plugin {
 
     Core::hresult DownloadManagerImplementation::Cancel(const string &downloadId)
     {
+        RDKAPPMANAGERS_DEBUG_TIME_SCOPE("DownloadManager", "Cancel");
         Core::hresult result = Core::ERROR_GENERAL;
 
         mAdminLock.Lock();
@@ -333,6 +338,7 @@ namespace Plugin {
 
     Core::hresult DownloadManagerImplementation::Delete(const string &fileLocator)
     {
+        RDKAPPMANAGERS_DEBUG_TIME_SCOPE("DownloadManager", "Delete");
         Core::hresult result = Core::ERROR_GENERAL;
 
         mAdminLock.Lock();

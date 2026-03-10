@@ -25,6 +25,7 @@
 #endif
 #include <errno.h>
 #include <fstream>
+#include "RDKAppManagersDebugTime.h"
 
 namespace WPEFramework
 {
@@ -508,6 +509,7 @@ err_ret:
         }
         Core::hresult RuntimeManagerImplementation::Run(const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, IValueIterator* const& ports, IStringIterator* const& paths, IStringIterator* const& debugSettings, const WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject)
         {
+            RDKAPPMANAGERS_DEBUG_TIME_SCOPE("RuntimeManager", "Run");
             Core::hresult status = Core::ERROR_GENERAL;
             RuntimeAppInfo runtimeAppInfo;
             std::string xdgRuntimeDir = "";
@@ -727,6 +729,7 @@ err_ret:
 
         Core::hresult RuntimeManagerImplementation::Hibernate(const string& appInstanceId)
         {
+            RDKAPPMANAGERS_DEBUG_TIME_SCOPE("RuntimeManager", "Hibernate");
             Core::hresult status = Core::ERROR_GENERAL;
             std::string options = "";
             std::string errorReason = "";
@@ -784,6 +787,7 @@ err_ret:
 
         Core::hresult RuntimeManagerImplementation::Wake(const string& appInstanceId, const RuntimeState runtimeState)
         {
+            RDKAPPMANAGERS_DEBUG_TIME_SCOPE("RuntimeManager", "Wake");
             Core::hresult status = Core::ERROR_GENERAL;
             std::string errorReason = "";
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
@@ -847,6 +851,7 @@ err_ret:
 
         Core::hresult RuntimeManagerImplementation::Suspend(const string& appInstanceId)
         {
+            RDKAPPMANAGERS_DEBUG_TIME_SCOPE("RuntimeManager", "Suspend");
             Core::hresult status = Core::ERROR_GENERAL;
             std::string errorReason = "";
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
@@ -902,6 +907,7 @@ err_ret:
 
         Core::hresult RuntimeManagerImplementation::Resume(const string& appInstanceId)
         {
+            RDKAPPMANAGERS_DEBUG_TIME_SCOPE("RuntimeManager", "Resume");
             Core::hresult status = Core::ERROR_GENERAL;
             std::string errorReason = "";
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS

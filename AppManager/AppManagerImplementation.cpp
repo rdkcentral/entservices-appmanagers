@@ -22,6 +22,7 @@
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
 #include "AppManagerTelemetryReporting.h"
 #endif
+#include "RDKAppManagersDebugTime.h"
 
 #define TIME_DATA_SIZE           200
 static bool sRunning = false;
@@ -877,6 +878,7 @@ Core::hresult AppManagerImplementation::packageUnLock(const string& appId)
  */
 Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const string& intent , const string& launchArgs)
 {
+    RDKAPPMANAGERS_DEBUG_TIME_SCOPE("AppManager", "LaunchApp");
     Core::hresult status = Core::ERROR_GENERAL;
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
     AppManagerTelemetryReporting& appManagerTelemetryReporting =AppManagerTelemetryReporting::getInstance();
@@ -958,6 +960,7 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
  */
 Core::hresult AppManagerImplementation::CloseApp(const string& appId)
 {
+    RDKAPPMANAGERS_DEBUG_TIME_SCOPE("AppManager", "CloseApp");
     Core::hresult status = Core::ERROR_GENERAL;
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
     AppManagerTelemetryReporting& appManagerTelemetryReporting =AppManagerTelemetryReporting::getInstance();
@@ -1003,6 +1006,7 @@ Core::hresult AppManagerImplementation::CloseApp(const string& appId)
  */
 Core::hresult AppManagerImplementation::TerminateApp(const string& appId )
 {
+    RDKAPPMANAGERS_DEBUG_TIME_SCOPE("AppManager", "TerminateApp");
     Core::hresult status = Core::ERROR_GENERAL;
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
     AppManagerTelemetryReporting& appManagerTelemetryReporting =AppManagerTelemetryReporting::getInstance();
@@ -1039,6 +1043,7 @@ Core::hresult AppManagerImplementation::TerminateApp(const string& appId )
 
 Core::hresult AppManagerImplementation::KillApp(const string& appId)
 {
+    RDKAPPMANAGERS_DEBUG_TIME_SCOPE("AppManager", "KillApp");
     Core::hresult status = Core::ERROR_NONE;
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
     AppManagerTelemetryReporting& appManagerTelemetryReporting =AppManagerTelemetryReporting::getInstance();
@@ -1070,6 +1075,7 @@ Core::hresult AppManagerImplementation::KillApp(const string& appId)
 
 Core::hresult AppManagerImplementation::GetLoadedApps(Exchange::IAppManager::ILoadedAppInfoIterator*& appData)
 {
+    RDKAPPMANAGERS_DEBUG_TIME_SCOPE("AppManager", "GetLoadedApps");
     Core::hresult status = Core::ERROR_GENERAL;
     LOGINFO("GetLoadedApps Entered");
     mAdminLock.Lock();
@@ -1085,6 +1091,7 @@ Core::hresult AppManagerImplementation::GetLoadedApps(Exchange::IAppManager::ILo
 
 Core::hresult AppManagerImplementation::SendIntent(const string& appId , const string& intent)
 {
+    RDKAPPMANAGERS_DEBUG_TIME_SCOPE("AppManager", "SendIntent");
     Core::hresult status = Core::ERROR_NONE;
 
     LOGINFO("SendIntent entered with appId '%s' and intent '%s'", appId.c_str(), intent.c_str());
@@ -1112,6 +1119,7 @@ Core::hresult AppManagerImplementation::SendIntent(const string& appId , const s
  */
 Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const string& launchArgs ,string& error)
 {
+    RDKAPPMANAGERS_DEBUG_TIME_SCOPE("AppManager", "PreloadApp");
     Core::hresult status = Core::ERROR_GENERAL;
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
     AppManagerTelemetryReporting& appManagerTelemetryReporting = AppManagerTelemetryReporting::getInstance();
@@ -1180,6 +1188,7 @@ Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const s
  */
 Core::hresult AppManagerImplementation::GetAppProperty(const string& appId , const string& key , string& value )
 {
+    RDKAPPMANAGERS_DEBUG_TIME_SCOPE("AppManager", "GetAppProperty");
     LOGINFO("GetAppProperty Entered");
     Core::hresult status = Core::ERROR_GENERAL;
     uint32_t ttl = 0;
@@ -1236,6 +1245,7 @@ Core::hresult AppManagerImplementation::GetAppProperty(const string& appId , con
  */
 Core::hresult AppManagerImplementation::SetAppProperty(const string& appId, const string& key, const string& value)
 {
+    RDKAPPMANAGERS_DEBUG_TIME_SCOPE("AppManager", "SetAppProperty");
     Core::hresult status = Core::ERROR_GENERAL;
 
     if (appId.empty())
@@ -1325,6 +1335,7 @@ std::string AppManagerImplementation::getInstallAppType(ApplicationType type)
 
 Core::hresult AppManagerImplementation::GetInstalledApps(std::string& apps)
 {
+    RDKAPPMANAGERS_DEBUG_TIME_SCOPE("AppManager", "GetInstalledApps");
     Core::hresult status = Core::ERROR_GENERAL;
     apps.clear();
     std::vector<WPEFramework::Exchange::IPackageInstaller::Package> packageList;

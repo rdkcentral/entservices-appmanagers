@@ -21,6 +21,7 @@
 #include <inttypes.h> // Required for PRIu64
 
 #include "PackageManagerImplementation.h"
+#include "RDKAppManagersDebugTime.h"
 
 /* Until we don't get it from Package configuration, use size as 1MB */
 #define STORAGE_MAX_SIZE 1024
@@ -306,6 +307,7 @@ namespace Plugin {
         const Exchange::IPackageDownloader::Options &options,
         Exchange::IPackageDownloader::DownloadId &downloadId)
     {
+        RDKAPPMANAGERS_DEBUG_TIME_SCOPE("PackageManager", "Download");
         Core::hresult result = Core::ERROR_NONE;
 
         if (!mCurrentservice->SubSystems()->IsActive(PluginHost::ISubSystem::INTERNET)) {
@@ -331,6 +333,7 @@ namespace Plugin {
 
     Core::hresult PackageManagerImplementation::Pause(const string &downloadId)
     {
+        RDKAPPMANAGERS_DEBUG_TIME_SCOPE("PackageManager", "Pause");
         Core::hresult result = Core::ERROR_NONE;
 
         LOGDBG("Pausing '%s'", downloadId.c_str());
@@ -351,6 +354,7 @@ namespace Plugin {
 
     Core::hresult PackageManagerImplementation::Resume(const string &downloadId)
     {
+        RDKAPPMANAGERS_DEBUG_TIME_SCOPE("PackageManager", "Resume");
         Core::hresult result = Core::ERROR_NONE;
 
         LOGDBG("Resuming '%s'", downloadId.c_str());
@@ -371,6 +375,7 @@ namespace Plugin {
 
     Core::hresult PackageManagerImplementation::Cancel(const string &downloadId)
     {
+        RDKAPPMANAGERS_DEBUG_TIME_SCOPE("PackageManager", "Cancel");
         Core::hresult result = Core::ERROR_NONE;
 
         LOGDBG("Cancelling '%s'", downloadId.c_str());
@@ -392,6 +397,7 @@ namespace Plugin {
 
     Core::hresult PackageManagerImplementation::Delete(const string &fileLocator)
     {
+        RDKAPPMANAGERS_DEBUG_TIME_SCOPE("PackageManager", "Delete");
         Core::hresult result = Core::ERROR_NONE;
 
         if ((mInprogressDownload.get() != nullptr) && (fileLocator.compare(mInprogressDownload->GetFileLocator()) == 0)) {

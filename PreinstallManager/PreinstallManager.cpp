@@ -18,6 +18,7 @@
  */
 
 #include "PreinstallManager.h"
+#include "RDKAppManagersDebugTime.h"
 
 const string WPEFramework::Plugin::PreinstallManager::SERVICE_NAME = "org.rdk.PreinstallManager";
 
@@ -69,6 +70,7 @@ namespace WPEFramework
 
         const string PreinstallManager::Initialize(PluginHost::IShell *service)
         {
+            RDKAPPMANAGERS_DEBUG_TIME_SCOPE("PreinstallManager", "Initialize");
             string message = "";
 
             ASSERT(nullptr != service);
@@ -124,6 +126,7 @@ namespace WPEFramework
 
         void PreinstallManager::Deinitialize(PluginHost::IShell *service)
         {
+            RDKAPPMANAGERS_DEBUG_TIME_SCOPE("PreinstallManager", "Deinitialize");
             ASSERT(mCurrentService == service);
 
             SYSLOG(Logging::Shutdown, (string(_T("PreinstallManager::Deinitialize"))));

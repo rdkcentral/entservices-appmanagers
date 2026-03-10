@@ -18,6 +18,7 @@
  */
 
 #include "WebBridge.h"
+#include "RDKAppManagersDebugTime.h"
 
 #define API_VERSION_NUMBER_MAJOR 1
 #define API_VERSION_NUMBER_MINOR 0
@@ -71,6 +72,7 @@ namespace Plugin {
     // -------------------------------------------------------------------------------------------------------
     const string WebBridge::Initialize(PluginHost::IShell* service) /* override */
     {
+        RDKAPPMANAGERS_DEBUG_TIME_SCOPE("WebBridge", "Initialize");
         ASSERT(_service == nullptr);
         ASSERT(service != nullptr);
 
@@ -89,6 +91,7 @@ namespace Plugin {
 
     void WebBridge::Deinitialize(PluginHost::IShell* service) /* override */
     {
+        RDKAPPMANAGERS_DEBUG_TIME_SCOPE("WebBridge", "Deinitialize");
         ASSERT(_service == service);
 
         _service = nullptr;

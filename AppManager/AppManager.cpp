@@ -18,6 +18,7 @@
 */
 
 #include "AppManager.h"
+#include "RDKAppManagersDebugTime.h"
 
 const string WPEFramework::Plugin::AppManager::SERVICE_NAME = "org.rdk.AppManager";
 
@@ -71,6 +72,7 @@ namespace WPEFramework
 
     const string AppManager::Initialize(PluginHost::IShell* service)
     {
+        RDKAPPMANAGERS_DEBUG_TIME_SCOPE("AppManager", "Initialize");
         string message="";
 
         ASSERT(nullptr != service);
@@ -126,6 +128,7 @@ namespace WPEFramework
 
     void AppManager::Deinitialize(PluginHost::IShell* service)
     {
+        RDKAPPMANAGERS_DEBUG_TIME_SCOPE("AppManager", "Deinitialize");
         ASSERT(mCurrentService == service);
 
         SYSLOG(Logging::Shutdown, (string(_T("AppManager::Deinitialize"))));

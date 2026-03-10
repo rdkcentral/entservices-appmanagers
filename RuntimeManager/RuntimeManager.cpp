@@ -18,6 +18,7 @@
 **/
 
 #include "RuntimeManager.h"
+#include "RDKAppManagersDebugTime.h"
 
 const string WPEFramework::Plugin::RuntimeManager::SERVICE_NAME = "org.rdk.RuntimeManager";
 
@@ -62,6 +63,7 @@ namespace WPEFramework
 
         const string RuntimeManager::Initialize(PluginHost::IShell* service )
         {
+            RDKAPPMANAGERS_DEBUG_TIME_SCOPE("RuntimeManager", "Initialize");
             string retMessage = "";
 
             ASSERT(nullptr != service);
@@ -111,6 +113,7 @@ namespace WPEFramework
 
         void RuntimeManager::Deinitialize(PluginHost::IShell* service)
         {
+            RDKAPPMANAGERS_DEBUG_TIME_SCOPE("RuntimeManager", "Deinitialize");
             ASSERT(mCurrentService == service);
 
             SYSLOG(Logging::Shutdown, (string(_T("RuntimeManager::Deinitialize"))));
