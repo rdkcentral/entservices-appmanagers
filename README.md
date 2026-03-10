@@ -84,7 +84,7 @@ flowchart LR
 | **RuntimeManager** | Container runtime using Dobby OCI. Handles execution and hibernation. | [View →](./RuntimeManager/RuntimeManager.md) |
 | **PackageManager** | Package download, installation, locking, and uninstallation. | [View →](./PackageManager/PackageManager.md) |
 | **DownloadManager** | HTTP downloads with priority queuing and rate limiting. | [View →](./DownloadManager/DownloadManager.md) |
-| **StorageManager** | Application-specific storage allocation and management. | [View →](./StorageManager/StorageManager.md) |
+| **AppStorageManager** | Application-specific storage allocation and management. | [View →](./AppStorageManager/AppStorageManager.md) |
 | **PreinstallManager** | Pre-installed application scanning and installation. | [View →](./PreinstallManager/PreinstallManager.md) |
 | **RDKWindowManager** | Display creation, focus control, and key intercepts. | [View →](./RDKWindowManager/RDKWindowManager.md) |
 | **TelemetryMetrics** | Performance metrics and analytics collection. | [View →](./TelemetryMetrics/TelemetryMetrics.md) |
@@ -98,10 +98,10 @@ flowchart LR
 |------|-----|-------------|
 | AppManager | LifecycleManager | `SpawnApp`, `SetTargetAppState`, `UnloadApp`, `KillApp` |
 | AppManager | PackageManager | `Lock`, `Unlock`, `ListPackages` |
-| AppManager | StorageManager | `Clear`, `ClearAll` |
+| AppManager | AppStorageManager | `Clear`, `ClearAll` |
 | LifecycleManager | RuntimeManager | `Run`, `Suspend`, `Resume`, `Hibernate`, `Wake`, `Terminate` |
 | RuntimeManager | RDKWindowManager | `CreateDisplay`, `DestroyDisplay` |
-| PackageManager | StorageManager | `CreateStorage`, `DeleteStorage` |
+| PackageManager | AppStorageManager | `CreateStorage`, `DeleteStorage` |
 | PackageManager | DownloadManager | `Download`, `Cancel`, `GetProgress` |
 | PreinstallManager | PackageManager | `Install` (pre-installed apps) |
 
@@ -189,7 +189,7 @@ make install
 | `LifecycleManager.config` | Lifecycle state timeouts |
 | `RuntimeManager.config` | Container runtime paths |
 | `PackageManager.conf` | Download directory settings |
-| `StorageManager.config` | Storage path configuration |
+| `AppStorageManager.config` | Storage path configuration |
 
 ---
 
@@ -202,7 +202,7 @@ entservices-appmanagers/
 ├── RuntimeManager/          OCI container management
 ├── PackageManager/          Package installation
 ├── DownloadManager/         HTTP download service
-├── StorageManager/          App storage management
+├── AppStorageManager/          App storage management
 ├── PreinstallManager/       Pre-installed apps
 ├── RDKWindowManager/        Display management
 ├── TelemetryMetrics/        Metrics collection

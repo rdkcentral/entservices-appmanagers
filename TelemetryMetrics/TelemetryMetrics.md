@@ -2,7 +2,8 @@
 
 > Performance Metrics & Analytics Collection
 
-[← Back to Main](../README.md) | [← Previous: RDKWindowManager](./RDKWindowManager.md)
+[← Back to Main](../README.md) | [← Previous: RDKWindowManager](../RDKWindowManager/RDKWindowManager.md)
+
 
 ---
 
@@ -201,5 +202,6 @@ public:
 
 ---
 
-[← Back to Main](../README.md) | [Next: WebBridge →](./WebBridge.md)
+[← Back to Main](../README.md) | [Next: WebBridge →](../WebBridge/WebBridge.md)
+
 

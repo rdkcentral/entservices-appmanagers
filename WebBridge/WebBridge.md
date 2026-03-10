@@ -2,7 +2,8 @@
 
 > WebSocket Bridge for JSON-RPC Communication
 
-[← Back to Main](../README.md) | [← Previous: TelemetryMetrics](./TelemetryMetrics.md)
+[← Back to Main](../README.md) | [← Previous: TelemetryMetrics](../TelemetryMetrics/TelemetryMetrics.md)
+
 
 ---
 
@@ -273,5 +274,5 @@ flowchart LR
 
 ---
 
-[← Back to Main](../README.md)
+[← Back to Main](../README.md) | [← Previous: TelemetryMetrics](../TelemetryMetrics/TelemetryMetrics.md)
 
