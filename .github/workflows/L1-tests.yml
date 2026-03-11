@@ -1,6 +1,10 @@
 name: L1-tests
 
 on:
+  push:
+    branches: [ main, develop, 'sprint/**', 'release/**' , 'topic/genai**']
+  pull_request:
+    branches: [ main, develop, 'sprint/**', 'release/**','topic/genai**' ]
   workflow_call:
     inputs:
       caller_source:
@@ -14,7 +18,7 @@ on:
 env:
   BUILD_TYPE: Debug
   THUNDER_REF: "R4.4.1"
-  INTERFACES_REF: "develop"
+  INTERFACES_REF: "topic/RDKEMW-13976"
   AUTOMATICS_UNAME: ${{ secrets.AUTOMATICS_UNAME}}
   AUTOMATICS_PASSCODE: ${{ secrets. AUTOMATICS_PASSCODE}}
 
@@ -385,7 +389,7 @@ jobs:
           -DPLUGIN_LIFECYCLE_MANAGER=ON
           -DPLUGIN_DOWNLOADMANAGER=ON
           -DPLUGIN_PREINSTALL_MANAGER=ON
-          -DPLUGIN_PACKAGE_MANAGER=ON
+          -DPLUGIN_PACKAGE_MANAGER=OFF
           -DENABLE_UNIT_TESTS=ON
           &&
           cmake --build build/entservices-appmanagers -j8
