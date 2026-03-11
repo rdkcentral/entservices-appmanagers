@@ -198,8 +198,7 @@ protected:
             delete mSubSystemMock;
             mSubSystemMock = nullptr;
         }
-    }
-   // mStorageManagerMock is deleted by the WillOnce lambda in deinitforComRpc()
+		 // mStorageManagerMock is deleted by the WillOnce lambda in deinitforComRpc()
         // when Install was called (which creates mStorageManagerObject). For tests that
         // never call Install, the mock was never deleted — clean it up here.
         if(mStorageManagerMock != nullptr)
@@ -207,6 +206,8 @@ protected:
             delete mStorageManagerMock;
             mStorageManagerMock = nullptr;
         }
+    }
+  
 
     void deinitforJsonRpc() 
     {
