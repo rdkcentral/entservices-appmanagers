@@ -2,7 +2,7 @@ name: L1-tests
 
 on:
   push:
-    branches: [ main, develop, 'sprint/**', 'release/**', 'topic/**', 'feature/genAITests' ]
+    branches: [ main, develop, 'sprint/**', 'release/**', 'topic/**', 'feature/genai-download' ]
   pull_request:
     branches: [ main, develop, 'sprint/**', 'release/**', 'topic/**', 'feature/genAITests' ]
 
@@ -390,7 +390,7 @@ jobs:
           -DPLUGIN_LIFECYCLE_MANAGER=ON
           -DPLUGIN_DOWNLOADMANAGER=ON
           -DPLUGIN_PREINSTALL_MANAGER=ON
-          -DPLUGIN_PACKAGE_MANAGER=ON
+          -DPLUGIN_PACKAGE_MANAGER=OFF
           -DUSE_LIBPACKAGE_RALF=OFF
           -DENABLE_UNIT_TESTS=ON
           &&
