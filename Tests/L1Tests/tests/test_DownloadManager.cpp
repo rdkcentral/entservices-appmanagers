@@ -553,6 +553,8 @@ TEST_F(DownloadManagerImplementationTest, UnregisterNotificationNotFound) {
     Core::hresult initResult = impl->Initialize(mServiceMock);
     EXPECT_EQ(Core::ERROR_NONE, initResult) << "Initialize should succeed";
 
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
     // Stack-allocated notification: never registered with impl, so std::find will not
     // locate it and the else branch at lines 92-93 is taken.  No virtual dispatch
     // occurs on this pointer inside the failure path of Unregister.
@@ -572,6 +574,8 @@ TEST_F(DownloadManagerImplementationTest, DeleteExistingFile) {
 
     Core::hresult initResult = impl->Initialize(mServiceMock);
     EXPECT_EQ(Core::ERROR_NONE, initResult) << "Initialize should succeed";
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
     // Create a temporary file that will be deleted by the plugin
     const string tempFilePath = "/tmp/test_dm_delete_target.bin";
@@ -595,6 +599,9 @@ TEST_F(DownloadManagerImplementationTest, RateLimitNoActiveDownload) {
 
     Core::hresult initResult = impl->Initialize(mServiceMock);
     EXPECT_EQ(Core::ERROR_NONE, initResult) << "Initialize should succeed";
+
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
     // Call RateLimit with no queued or active download - mCurrentDownload is null
     // The condition (!downloadId.empty() && mCurrentDownload != nullptr && mHttpClient) is false
