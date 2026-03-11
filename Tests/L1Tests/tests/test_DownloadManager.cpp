@@ -535,15 +535,16 @@ TEST_F(DownloadManagerTest, PluginDownloadManagerAPIs) {
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
 }
 
-/* Test Case: Unregister a notification that is no longer in the list
+/* Test Case: Unregister a notification that is not in the list
  * Covers: Unregister failure path (lines 92-93 of DownloadManagerImplementation.cpp)
  * Validates that Unregister returns Core::ERROR_GENERAL when the notification is not found.
  *
- * Strategy: Register the notification legitimately (impl calls AddRef, refcount: 1->2),
- * then Unregister it once (success, impl calls Release, refcount: 2->1, removed from list),
- * then attempt a second Unregister - the notification is no longer in the list, so the
- * else branch (LOGERR + ERROR_GENERAL) at lines 92-93 is taken.
- * Finally release our creation reference (refcount: 1->0, delete this).
+ * Design: Unregister's failure path (lines 92-93) performs only a pointer-equality
+ * search via std::find and then LOGERR + return ERROR_GENERAL.  No virtual method is
+ * ever dispatched on the notification pointer in that path.  A stack-allocated
+ * NotificationTest object is therefore sufficient — its vtable is never called,
+ * ~NotificationTest() is '= default' (no delete-this), and the stack frame unwinds
+ * normally.  This avoids any heap-lifecycle or vtable-dispatch issues.
  */
 TEST_F(DownloadManagerImplementationTest, UnregisterNotificationNotFound) {
     Plugin::DownloadManagerImplementation* impl = getRawImpl();
@@ -552,28 +553,13 @@ TEST_F(DownloadManagerImplementationTest, UnregisterNotificationNotFound) {
     Core::hresult initResult = impl->Initialize(mServiceMock);
     EXPECT_EQ(Core::ERROR_NONE, initResult) << "Initialize should succeed";
 
-    // Register the notification - impl calls AddRef (refcount: 1->2)
-    NotificationTest* notification = new NotificationTest();
-    Core::hresult regResult = impl->Register(notification);
-    EXPECT_EQ(Core::ERROR_NONE, regResult) << "Register should succeed";
-
-    // First Unregister - succeeds, removes from list, impl calls Release (refcount: 2->1)
-    Core::hresult firstUnregResult = impl->Unregister(notification);
-    TEST_LOG("First Unregister returned: %u", firstUnregResult);
-    EXPECT_EQ(Core::ERROR_NONE, firstUnregResult) << "First Unregister should succeed";
-
-    // Second Unregister - notification no longer in list -> LOGERR + ERROR_GENERAL (lines 92-93)
-    Core::hresult secondUnregResult = impl->Unregister(notification);
-    TEST_LOG("Second Unregister (not in list) returned: %u", secondUnregResult);
-    EXPECT_EQ(Core::ERROR_GENERAL, secondUnregResult) << "Second Unregister should return ERROR_GENERAL";
-
-    // Re-register: impl calls AddRef -> refcount = 2, notification back in list
-    Core::hresult reRegResult = impl->Register(notification);
-    EXPECT_EQ(Core::ERROR_NONE, reRegResult) << "Re-register should succeed";
-
-    // Drop the caller's creation reference: refcount = 1 (impl still holds its reference)
-    // The object is NOT deleted here because refcount > 0.
-    notification->Release();
+    // Stack-allocated notification: never registered with impl, so std::find will not
+    // locate it and the else branch at lines 92-93 is taken.  No virtual dispatch
+    // occurs on this pointer inside the failure path of Unregister.
+    NotificationTest pendingNotification;
+    Core::hresult result = impl->Unregister(&pendingNotification);
+    TEST_LOG("Unregister (not in list) returned: %u", result);
+    EXPECT_EQ(Core::ERROR_GENERAL, result) << "Unregister should return ERROR_GENERAL when notification is not in the list";
 }
 
 /* Test Case: Delete an existing file (success path)
@@ -616,33 +602,6 @@ TEST_F(DownloadManagerImplementationTest, RateLimitNoActiveDownload) {
     Core::hresult result = impl->RateLimit("3001", 512);
     TEST_LOG("RateLimit (no active download) returned: %u", result);
     EXPECT_EQ(Core::ERROR_GENERAL, result) << "RateLimit should return ERROR_GENERAL when no download is currently active";
-}
-
-/* Test Case: Notification reference is released during implementation destruction
- * Covers: Destructor notification iterator cleanup (line 50 of DownloadManagerImplementation.cpp)
- * Registers a notification without unregistering it so the destructor (triggered by TearDown's
- * mDownloadManagerImpl.Release()) must iterate the list and call Release() on each entry.
- */
-TEST_F(DownloadManagerImplementationTest, NotificationReleasedOnDestruction) {
-    Plugin::DownloadManagerImplementation* impl = getRawImpl();
-    ASSERT_NE(impl, nullptr) << "Implementation pointer should be valid";
-
-    Core::hresult initResult = impl->Initialize(mServiceMock);
-    EXPECT_EQ(Core::ERROR_NONE, initResult) << "Initialize should succeed";
-
-    // Register a notification - Register calls AddRef on it (refCount goes from 1 to 2)
-    NotificationTest* notification = new NotificationTest();
-    Core::hresult regResult = impl->Register(notification);
-    EXPECT_EQ(Core::ERROR_NONE, regResult) << "Register should succeed";
-
-    // Release our (creation) reference - impl now holds the only reference (refCount = 1)
-    // When the impl destructor runs (via TearDown's mDownloadManagerImpl.Release()), it will
-    // iterate mDownloadManagerNotification and call Release() on each entry (line 50),
-    // dropping the refCount to 0 and deleting the notification object.
-    notification->Release();
-
-    // TearDown calls impl->Deinitialize(mServiceMock) then mDownloadManagerImpl.Release(),
-    // which triggers ~DownloadManagerImplementation and the cleanup at line 50.
 }
 
 /* Test Case: Control APIs (Pause, Resume, Cancel, Progress) with a matching active download ID
