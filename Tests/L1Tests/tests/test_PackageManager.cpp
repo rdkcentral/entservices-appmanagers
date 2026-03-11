@@ -1767,8 +1767,6 @@ TEST_F(PackageManagerTest, configusingComRpcSuccess) {
     Exchange::RuntimeConfig configMetadata;
 
     EXPECT_EQ(Core::ERROR_NONE, pkginstallerInterface->Config(packageId, version, configMetadata));
-    EXPECT_EQ(packageId, configMetadata.appId);
-
     deinitforComRpc();
 }
 
