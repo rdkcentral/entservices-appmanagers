@@ -21,7 +21,6 @@
 
 #include "RuntimeManager.h"
 #include "RuntimeManagerImplementation.h"
-#include "devicesettings/HostMock.h"
 #include "ServiceMock.h"
 #include "ThunderPortability.h"
 #include "StorageManagerMock.h"
