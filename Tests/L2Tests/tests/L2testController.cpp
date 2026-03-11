@@ -427,15 +427,34 @@ int main(int argc, char **argv)
     L2TEST_LOG("PerformL2Tests from Test Controller");
     status = L2testobj->PerformL2Tests(params, response);
 
-    if (status == Core::ERROR_NONE) {
-        L2TEST_LOG("L2 tests completed successfully: %s", response.c_str());
+    // The plugin always returns Core::ERROR_NONE so that Thunder R4 serializes the
+    // @out response parameter back.  The actual gtest pass/fail is encoded in the
+    // JSON response as {"status":N} where 0 == all tests passed.
+    int testStatus = 0;
+    if (status == Core::ERROR_NONE && !response.empty()) {
+        // Parse {"status":N} from the response
+        size_t pos = response.find("\"status\":");
+        if (pos != std::string::npos) {
+            try {
+                testStatus = std::stoi(response.substr(pos + 9));
+            } catch (...) {
+                testStatus = 1; // Malformed response — treat as failure
+            }
+        }
+        if (testStatus == 0) {
+            L2TEST_LOG("L2 tests completed successfully: %s", response.c_str());
+        } else {
+            L2TEST_LOG("L2 tests failed with gtest status: %d, response: %s", testStatus, response.c_str());
+        }
     } else {
-        L2TEST_LOG("L2 tests failed: %d, response: %s", status, response.c_str());
+        // COM-RPC call itself failed (plugin not reachable / framework error)
+        L2TEST_LOG("L2 tests COM-RPC call failed: status=%d, response: %s", status, response.c_str());
+        testStatus = (status != Core::ERROR_NONE) ? (int)status : 1;
     }
 
     L2testobj->releaseClient();
     L2TEST_LOG("Stopping Thunder...");
     L2testobj->StopThunder();
-    return (status == Core::ERROR_NONE ? EXIT_SUCCESS_CODE : EXIT_TEST_EXECUTION_FAILURE);
+    return (testStatus == 0 ? EXIT_SUCCESS_CODE : EXIT_TEST_EXECUTION_FAILURE);
 
 }

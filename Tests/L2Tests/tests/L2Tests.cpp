@@ -83,7 +83,7 @@ Core::hresult L2Tests::PerformL2Tests(const string& parameters, string& response
     oss << "{\"status\":" << status << "}";
     response = oss.str();
 
-    return (status == 0) ? Core::ERROR_NONE : Core::ERROR_GENERAL;
+    return Core::ERROR_NONE;
 }
 
 } // namespace Plugin
