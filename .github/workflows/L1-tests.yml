@@ -2,7 +2,7 @@ name: L1-tests
 
 on:
   push:
-    branches: [ main, develop, 'sprint/**', 'release/**' , 'topic/genai**']
+    branches: [ main, develop, 'sprint/**', 'release/**' , 'topic/genai**', 'feature/genai-downloadmanager']
   pull_request:
     branches: [ main, develop, 'sprint/**', 'release/**','topic/genai**' ]
   workflow_call:
