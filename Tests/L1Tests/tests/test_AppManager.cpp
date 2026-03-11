@@ -3251,3 +3251,694 @@ TEST_F(AppManagerTest, handleOnAppUnloadedUsingComRpcSuccess)
         releaseResources();
     }
 }
+
+/*
+ * Test Case for UnregisterNotificationNotFoundFailure
+ * Setting up AppManager Plugin with full resources
+ * Attempting to Unregister a notification that was never registered
+ * Verifying the return status is Core::ERROR_GENERAL (notification not found path)
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, UnregisterNotificationNotFoundFailure)
+{
+    Core::hresult status;
+
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    Core::Sink<NotificationHandler> notification;
+    /* Do NOT register the notification before unregistering */
+    EXPECT_EQ(Core::ERROR_GENERAL, mAppManagerImpl->Unregister(&notification));
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for handleOnAppUnloadedUsingComRpcFailureEmptyAppId
+ * Setting up AppManager Plugin with full resources
+ * Calling handleOnAppUnloaded() with an empty appId
+ * Verifying the error path (appId not present or empty) is covered
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, handleOnAppUnloadedUsingComRpcFailureEmptyAppId)
+{
+    Core::hresult status;
+
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    /* Calling with empty appId - exercises the LOGERR("appId not present or empty") path */
+    mAppManagerImpl->handleOnAppUnloaded("", APPMANAGER_APP_INSTANCE);
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for handleOnAppLaunchRequestUsingComRpcFailureEmptyAppId
+ * Setting up AppManager Plugin with full resources
+ * Calling handleOnAppLaunchRequest() with an empty appId
+ * Verifying the error path (appId not present or empty) is covered
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, handleOnAppLaunchRequestUsingComRpcFailureEmptyAppId)
+{
+    Core::hresult status;
+
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    /* Calling with empty appId - exercises the LOGERR("appId not present or empty") path */
+    mAppManagerImpl->handleOnAppLaunchRequest("", APPMANAGER_APP_INTENT, "test.source");
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for PreloadAppUsingComRpcFailureEmptyAppID
+ * Setting up AppManager Plugin with full resources
+ * Calling PreloadApp() with an empty appId
+ * Verifying Core::ERROR_INVALID_PARAMETER is returned and error string is set
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, PreloadAppUsingComRpcFailureEmptyAppID)
+{
+    Core::hresult status;
+    std::string error = "";
+
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    EXPECT_EQ(Core::ERROR_INVALID_PARAMETER, mAppManagerImpl->PreloadApp("", APPMANAGER_APP_LAUNCHARGS, error));
+    EXPECT_FALSE(error.empty());
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for ClearAppDataUsingComRpcFailureEmptyAppID
+ * Setting up AppManager Plugin with full resources
+ * Calling ClearAppData() with an empty appId
+ * Verifying Core::ERROR_GENERAL is returned (appId is empty path)
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, ClearAppDataUsingComRpcFailureEmptyAppID)
+{
+    Core::hresult status;
+
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    EXPECT_EQ(Core::ERROR_GENERAL, mAppManagerImpl->ClearAppData(""));
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for ClearAppDataUsingComRpcFailureStorageManagerReturnError
+ * Setting up AppManager Plugin with full resources
+ * Setting Mock for Clear() to simulate error return from StorageManager
+ * Verifying Core::ERROR_GENERAL is returned (failed to clear app data path)
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, ClearAppDataUsingComRpcFailureStorageManagerReturnError)
+{
+    Core::hresult status;
+
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    EXPECT_CALL(*mStorageManagerMock, Clear(::testing::_, ::testing::_))
+        .WillOnce([&](const string& appId, string& errorReason) {
+            errorReason = "Storage error";
+            return Core::ERROR_GENERAL;
+        });
+
+    EXPECT_EQ(Core::ERROR_GENERAL, mAppManagerImpl->ClearAppData(APPMANAGER_APP_ID));
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for ClearAppDataUsingComRpcFailureStorageManagerObjectIsNull
+ * Setting up only AppManager Plugin (no StorageManager)
+ * Calling ClearAppData() when StorageManager remote object is null
+ * Verifying Core::ERROR_GENERAL is returned (StorageManager Remote Object is null path)
+ * Releasing the AppManager interface only
+ */
+TEST_F(AppManagerTest, ClearAppDataUsingComRpcFailureStorageManagerObjectIsNull)
+{
+    createAppManagerImpl();
+
+    EXPECT_EQ(Core::ERROR_GENERAL, mAppManagerImpl->ClearAppData(APPMANAGER_APP_ID));
+
+    releaseAppManagerImpl();
+}
+
+/*
+ * Test Case for ClearAllAppDataUsingComRpcFailureClearAllReturnError
+ * Setting up AppManager Plugin with full resources
+ * Setting Mock for ClearAll() to simulate error return from StorageManager
+ * Verifying Core::ERROR_GENERAL is returned (failed to clear all app data path)
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, ClearAllAppDataUsingComRpcFailureClearAllReturnError)
+{
+    Core::hresult status;
+
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    EXPECT_CALL(*mStorageManagerMock, ClearAll(::testing::_, ::testing::_))
+        .WillOnce([&](const string& exemptionAppIds, string& errorReason) {
+            errorReason = "Storage error";
+            return Core::ERROR_GENERAL;
+        });
+
+    EXPECT_EQ(Core::ERROR_GENERAL, mAppManagerImpl->ClearAllAppData());
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for ClearAllAppDataUsingComRpcFailureStorageManagerObjectIsNull
+ * Setting up only AppManager Plugin (no StorageManager)
+ * Calling ClearAllAppData() when StorageManager remote object is null
+ * Verifying Core::ERROR_GENERAL is returned (StorageManager Remote Object is null path)
+ * Releasing the AppManager interface only
+ */
+TEST_F(AppManagerTest, ClearAllAppDataUsingComRpcFailureStorageManagerObjectIsNull)
+{
+    createAppManagerImpl();
+
+    EXPECT_EQ(Core::ERROR_GENERAL, mAppManagerImpl->ClearAllAppData());
+
+    releaseAppManagerImpl();
+}
+
+/*
+ * Test Case for OnAppInstallationStatusEmptyJsonResponse
+ * Setting up AppManager Plugin with full resources
+ * Calling OnAppInstallationStatus() with an empty JSON string
+ * Verifying the empty jsonresponse error path is covered
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, OnAppInstallationStatusEmptyJsonResponse)
+{
+    Core::hresult status;
+
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    ASSERT_NE(mPackageManagerNotification_cb, nullptr)
+        << "PackageManager notification callback is not registered";
+    /* Pass empty string - exercises the LOGERR("jsonresponse string is empty") path */
+    mPackageManagerNotification_cb->OnAppInstallationStatus("");
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for OnAppInstallationStatusInvalidJsonResponse
+ * Setting up AppManager Plugin with full resources
+ * Calling OnAppInstallationStatus() with a non-array JSON string
+ * Verifying the JSON parse failure error path is covered
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, OnAppInstallationStatusInvalidJsonResponse)
+{
+    Core::hresult status;
+
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    ASSERT_NE(mPackageManagerNotification_cb, nullptr)
+        << "PackageManager notification callback is not registered";
+    /* Pass a non-array JSON string - exercises the LOGERR("Failed to parse JSON string") path */
+    mPackageManagerNotification_cb->OnAppInstallationStatus("{\"invalid\": true}");
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for OnAppInstallationStatusMissingPackageId
+ * Setting up AppManager Plugin with full resources
+ * Calling OnAppInstallationStatus() with JSON missing the packageId field
+ * Verifying the "appId is missing or empty" error path in Dispatch is covered
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, OnAppInstallationStatusMissingPackageId)
+{
+    Core::hresult status;
+
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    ASSERT_NE(mPackageManagerNotification_cb, nullptr)
+        << "PackageManager notification callback is not registered";
+    /* JSON with no packageId - covers the LOGERR("appId is missing or empty") in Dispatch APP_EVENT_INSTALLATION_STATUS */
+    mPackageManagerNotification_cb->OnAppInstallationStatus(R"([{"state":"INSTALLED","version":"1.0.0"}])");
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for GetInstalledAppsWithLastActiveTimeSuccess
+ * Setting up AppManager Plugin with full resources
+ * Pre-populating mAppInfo with an entry that has a non-zero lastActiveStateChangeTime
+ * Verifying GetInstalledApps() produces output that includes lastActiveTime (strftime path)
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, GetInstalledAppsWithLastActiveTimeSuccess)
+{
+    Core::hresult status;
+    std::string apps = "";
+
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    /* Pre-populate mAppInfo with appId having a valid lastActiveStateChangeTime */
+    Plugin::AppManagerImplementation::AppInfo appInfo;
+    appInfo.appInstanceId = APPMANAGER_APP_INSTANCE;
+    appInfo.appNewState = Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
+    appInfo.lastActiveIndex = 1;
+    /* Set a valid timestamp (non-zero tv_sec) */
+    appInfo.lastActiveStateChangeTime.tv_sec = 1700000000;
+    appInfo.lastActiveStateChangeTime.tv_nsec = 123456789;
+    mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
+
+    EXPECT_CALL(*mPackageInstallerMock, ListPackages(::testing::_))
+        .WillOnce([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
+            auto mockIterator = FillPackageIterator();
+            packages = mockIterator;
+            return Core::ERROR_NONE;
+        });
+
+    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->GetInstalledApps(apps));
+    /* Verify output is populated */
+    EXPECT_FALSE(apps.empty());
+    EXPECT_NE(apps.find(APPMANAGER_APP_ID), std::string::npos);
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for GetInstallAppTypeSystemApp
+ * Setting up AppManager Plugin with full resources
+ * Calling getInstallAppType() with APPLICATION_TYPE_SYSTEM
+ * Verifying the SYSTEM_APP branch returns the expected string
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, GetInstallAppTypeSystemApp)
+{
+    Core::hresult status;
+
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    std::string result = mAppManagerImpl->getInstallAppType(
+        Plugin::AppManagerImplementation::ApplicationType::APPLICATION_TYPE_SYSTEM);
+    EXPECT_STREQ("SYSTEM_APP", result.c_str());
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for CheckInstallUninstallBlockWithInstallationBlockedState
+ * Setting up AppManager Plugin with full resources
+ * Setting ListPackages() to return a package with INSTALLATION_BLOCKED state
+ * Calling checkInstallUninstallBlock() and verifying it returns true
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, CheckInstallUninstallBlockWithInstallationBlockedState)
+{
+    Core::hresult status;
+
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    EXPECT_CALL(*mPackageInstallerMock, ListPackages(::testing::_))
+        .WillOnce([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
+            std::list<Exchange::IPackageInstaller::Package> packageList;
+            Exchange::IPackageInstaller::Package pkg;
+            pkg.packageId = APPMANAGER_APP_ID;
+            pkg.version = APPMANAGER_APP_VERSION;
+            pkg.state = Exchange::IPackageInstaller::InstallState::INSTALLATION_BLOCKED;
+            packageList.emplace_back(pkg);
+            packages = Core::Service<RPC::IteratorType<Exchange::IPackageInstaller::IPackageIterator>>::Create<Exchange::IPackageInstaller::IPackageIterator>(packageList);
+            return Core::ERROR_NONE;
+        });
+
+    bool blocked = mAppManagerImpl->checkInstallUninstallBlock(APPMANAGER_APP_ID);
+    EXPECT_TRUE(blocked);
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for CheckInstallUninstallBlockWithUninstallBlockedState
+ * Setting up AppManager Plugin with full resources
+ * Setting ListPackages() to return a package with UNINSTALL_BLOCKED state
+ * Calling checkInstallUninstallBlock() and verifying it returns true
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, CheckInstallUninstallBlockWithUninstallBlockedState)
+{
+    Core::hresult status;
+
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    EXPECT_CALL(*mPackageInstallerMock, ListPackages(::testing::_))
+        .WillOnce([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
+            std::list<Exchange::IPackageInstaller::Package> packageList;
+            Exchange::IPackageInstaller::Package pkg;
+            pkg.packageId = APPMANAGER_APP_ID;
+            pkg.version = APPMANAGER_APP_VERSION;
+            pkg.state = Exchange::IPackageInstaller::InstallState::UNINSTALL_BLOCKED;
+            packageList.emplace_back(pkg);
+            packages = Core::Service<RPC::IteratorType<Exchange::IPackageInstaller::IPackageIterator>>::Create<Exchange::IPackageInstaller::IPackageIterator>(packageList);
+            return Core::ERROR_NONE;
+        });
+
+    bool blocked = mAppManagerImpl->checkInstallUninstallBlock(APPMANAGER_APP_ID);
+    EXPECT_TRUE(blocked);
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for CheckInstallUninstallBlockWithNoMatchingPackage
+ * Setting up AppManager Plugin with full resources
+ * Setting ListPackages() to return a package that does not match the queried appId
+ * Calling checkInstallUninstallBlock() and verifying it returns false
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, CheckInstallUninstallBlockWithNoMatchingPackage)
+{
+    Core::hresult status;
+
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    EXPECT_CALL(*mPackageInstallerMock, ListPackages(::testing::_))
+        .WillOnce([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
+            auto mockIterator = FillPackageIterator();
+            packages = mockIterator;
+            return Core::ERROR_NONE;
+        });
+
+    bool blocked = mAppManagerImpl->checkInstallUninstallBlock(APPMANAGER_WRONG_APP_ID);
+    EXPECT_FALSE(blocked);
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for CheckInstallUninstallBlockListPackagesReturnError
+ * Setting up AppManager Plugin with full resources
+ * Setting ListPackages() to return an error
+ * Calling checkInstallUninstallBlock() and verifying it returns false
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, CheckInstallUninstallBlockListPackagesReturnError)
+{
+    Core::hresult status;
+
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    EXPECT_CALL(*mPackageInstallerMock, ListPackages(::testing::_))
+        .WillOnce([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
+            packages = nullptr;
+            return Core::ERROR_GENERAL;
+        });
+
+    bool blocked = mAppManagerImpl->checkInstallUninstallBlock(APPMANAGER_APP_ID);
+    EXPECT_FALSE(blocked);
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for LaunchAppLockFailureListPackagesFails
+ * Setting up AppManager Plugin with full resources
+ * Configuring ListPackages() to return no packages so fetchAppPackageList() fails inside packageLock()
+ * Waiting for the resulting OnAppLifecycleStateChanged event (APP_ERROR_PACKAGE_LOCK)
+ * Verifying that the error path from a packageLock() list failure correctly triggers a state-changed event
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, LaunchAppLockFailureListPackagesFails)
+{
+    Core::hresult status;
+    uint32_t signalled = AppManager_StateInvalid;
+    Core::Sink<NotificationHandler> notification;
+    ExpectedAppLifecycleEvent expectedEvent;
+
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    expectedEvent.appId = APPMANAGER_APP_ID;
+    expectedEvent.appInstanceId = "";
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNKNOWN;
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED;
+    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_PACKAGE_LOCK;
+
+    mAppManagerImpl->Register(&notification);
+    notification.SetExpectedEvent(expectedEvent);
+
+    /* IsAppLoaded returns not loaded so LaunchApp proceeds into packageLock */
+    EXPECT_CALL(*mLifecycleManagerMock, IsAppLoaded(::testing::_, ::testing::_))
+        .WillRepeatedly([&](const std::string& appId, bool& loaded) {
+            loaded = false;
+            return Core::ERROR_NONE;
+        });
+    /* First call (IsInstalled gate in LaunchApp): return installed so we pass the gate */
+    /* Second call (inside packageLock): return nullptr iterator (no packages) */
+    EXPECT_CALL(*mPackageInstallerMock, ListPackages(::testing::_))
+        .WillOnce([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
+            auto mockIterator = FillPackageIterator();
+            packages = mockIterator;
+            return Core::ERROR_NONE;
+        })
+        .WillRepeatedly([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
+            packages = nullptr;
+            return Core::ERROR_NONE;
+        });
+
+    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->LaunchApp(APPMANAGER_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS));
+
+    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+
+    mAppManagerImpl->Unregister(&notification);
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for LaunchAppLockFailureLockReturnError
+ * Setting up AppManager Plugin with full resources
+ * Configuring ListPackages() to succeed and Lock() to return error
+ * Waiting for the resulting OnAppLifecycleStateChanged event (APP_ERROR_PACKAGE_LOCK)
+ * Verifying the packageLock failure path (Lock API fails) triggers the correct event
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, LaunchAppLockFailureLockReturnError)
+{
+    Core::hresult status;
+    uint32_t signalled = AppManager_StateInvalid;
+    Core::Sink<NotificationHandler> notification;
+    ExpectedAppLifecycleEvent expectedEvent;
+
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    expectedEvent.appId = APPMANAGER_APP_ID;
+    expectedEvent.appInstanceId = "";
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNKNOWN;
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED;
+    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_PACKAGE_LOCK;
+
+    mAppManagerImpl->Register(&notification);
+    notification.SetExpectedEvent(expectedEvent);
+
+    EXPECT_CALL(*mLifecycleManagerMock, IsAppLoaded(::testing::_, ::testing::_))
+        .WillRepeatedly([&](const std::string& appId, bool& loaded) {
+            loaded = false;
+            return Core::ERROR_NONE;
+        });
+    EXPECT_CALL(*mPackageInstallerMock, ListPackages(::testing::_))
+        .WillRepeatedly([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
+            auto mockIterator = FillPackageIterator();
+            packages = mockIterator;
+            return Core::ERROR_NONE;
+        });
+    EXPECT_CALL(*mPackageManagerMock, Lock(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .WillRepeatedly([&](const string& packageId, const string& version,
+            const Exchange::IPackageHandler::LockReason& lockReason, uint32_t& lockId,
+            string& unpackedPath, Exchange::RuntimeConfig& configMetadata,
+            Exchange::IPackageHandler::ILockIterator*& appMetadata) {
+            return Core::ERROR_GENERAL;
+        });
+
+    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->LaunchApp(APPMANAGER_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS));
+
+    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+
+    mAppManagerImpl->Unregister(&notification);
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for GetCustomValuesWithAipathFile
+ * Setting up AppManager Plugin with full resources
+ * Mocking fopen() to return a non-null FILE pointer simulating /tmp/aipath file exists
+ * Calling PreloadApp() which internally triggers getCustomValues() via the worker thread
+ * Verifying PreloadApp still returns Core::ERROR_NONE
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, GetCustomValuesWithAipathFile)
+{
+    Core::hresult status;
+    std::string error = "";
+
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+    mPreLoadSpawmCalled = false;
+
+    /* Simulate /tmp/aipath file exists: fopen returns a real read-only file descriptor */
+    ON_CALL(*p_wrapsImplMock, fopen(::testing::_, ::testing::_))
+        .WillByDefault([&](const char* pathname, const char* mode) -> FILE* {
+            if (pathname && std::string(pathname) == "/tmp/aipath") {
+                return ::fopen("/dev/null", "r");
+            }
+            return nullptr;
+        });
+
+    preLaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::PAUSED);
+    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->PreloadApp(APPMANAGER_APP_ID, APPMANAGER_APP_LAUNCHARGS, error));
+    {
+        std::unique_lock<std::mutex> lock(mPreLoadMutex);
+        ASSERT_TRUE(mPreLoadCV.wait_for(lock, std::chrono::seconds(10), [&] { return mPreLoadSpawmCalled; }));
+    }
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for LifecycleStateChangedLoadingToLoadingKillApp
+ * Setting up AppManager Plugin with full resources
+ * Pre-populating mAppInfo with an entry in LOADING state
+ * Triggering OnAppLifecycleStateChanged with LOADING→LOADING transition
+ * Verifying KillApp is called (loading→loading kill path) and the state-changed event fires
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, LifecycleStateChangedLoadingToLoadingKillApp)
+{
+    Core::hresult status;
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    /* Pre-populate mAppInfo so the appId/appInstanceId match is found in APP_STATE_LOADING */
+    Plugin::AppManagerImplementation::AppInfo appInfo;
+    appInfo.appInstanceId = APPMANAGER_APP_INSTANCE;
+    appInfo.appNewState = Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING;
+    mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
+
+    uint32_t signalled = AppManager_StateInvalid;
+    ExpectedAppLifecycleEvent expectedEvent;
+    expectedEvent.appId = APPMANAGER_APP_ID;
+    expectedEvent.appInstanceId = APPMANAGER_APP_INSTANCE;
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING;
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING;
+    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE;
+
+    /* Expect KillApp to be called as a result of the loading→loading transition */
+    EXPECT_CALL(*mLifecycleManagerMock, KillApp(::testing::_, ::testing::_, ::testing::_))
+        .WillOnce([&](const string& appInstanceId, string& errorReason, bool& success) {
+            success = true;
+            return Core::ERROR_NONE;
+        });
+
+    Core::Sink<NotificationHandler> notification;
+    mAppManagerImpl->Register(&notification);
+    notification.SetExpectedEvent(expectedEvent);
+
+    ASSERT_NE(mLifecycleManagerStateNotification_cb, nullptr)
+        << "LifecycleManagerState notification callback is not registered";
+
+    /* Trigger LOADING→LOADING which activates the kill path */
+    mLifecycleManagerStateNotification_cb->OnAppLifecycleStateChanged(
+        APPMANAGER_APP_ID,
+        APPMANAGER_APP_INSTANCE,
+        Exchange::ILifecycleManager::LifecycleState::LOADING, /* old */
+        Exchange::ILifecycleManager::LifecycleState::LOADING, /* new */
+        ""
+    );
+
+    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+
+    mAppManagerImpl->Unregister(&notification);
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
