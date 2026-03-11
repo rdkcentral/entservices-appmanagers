@@ -535,9 +535,15 @@ TEST_F(DownloadManagerTest, PluginDownloadManagerAPIs) {
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
 }
 
-/* Test Case: Unregister a notification that was never registered
+/* Test Case: Unregister a notification that is no longer in the list
  * Covers: Unregister failure path (lines 92-93 of DownloadManagerImplementation.cpp)
  * Validates that Unregister returns Core::ERROR_GENERAL when the notification is not found.
+ *
+ * Strategy: Register the notification legitimately (impl calls AddRef, refcount: 1->2),
+ * then Unregister it once (success, impl calls Release, refcount: 2->1, removed from list),
+ * then attempt a second Unregister - the notification is no longer in the list, so the
+ * else branch (LOGERR + ERROR_GENERAL) at lines 92-93 is taken.
+ * Finally release our creation reference (refcount: 1->0, delete this).
  */
 TEST_F(DownloadManagerImplementationTest, UnregisterNotificationNotFound) {
     Plugin::DownloadManagerImplementation* impl = getRawImpl();
@@ -546,15 +552,22 @@ TEST_F(DownloadManagerImplementationTest, UnregisterNotificationNotFound) {
     Core::hresult initResult = impl->Initialize(mServiceMock);
     EXPECT_EQ(Core::ERROR_NONE, initResult) << "Initialize should succeed";
 
-    // Create a notification that is never registered with the impl
+    // Register the notification - impl calls AddRef (refcount: 1->2)
     NotificationTest* notification = new NotificationTest();
+    Core::hresult regResult = impl->Register(notification);
+    EXPECT_EQ(Core::ERROR_NONE, regResult) << "Register should succeed";
 
-    // Attempt to unregister a notification that was never registered - should return ERROR_GENERAL
-    Core::hresult result = impl->Unregister(notification);
-    TEST_LOG("Unregister (not registered) returned: %u", result);
-    EXPECT_EQ(Core::ERROR_GENERAL, result) << "Unregister should return ERROR_GENERAL when notification is not in the list";
+    // First Unregister - succeeds, removes from list, impl calls Release (refcount: 2->1)
+    Core::hresult firstUnregResult = impl->Unregister(notification);
+    TEST_LOG("First Unregister returned: %u", firstUnregResult);
+    EXPECT_EQ(Core::ERROR_NONE, firstUnregResult) << "First Unregister should succeed";
 
-    // Release our reference to the notification (never AddRef'd by impl since Register was never called)
+    // Second Unregister - notification no longer in list -> LOGERR + ERROR_GENERAL (lines 92-93)
+    Core::hresult secondUnregResult = impl->Unregister(notification);
+    TEST_LOG("Second Unregister (not in list) returned: %u", secondUnregResult);
+    EXPECT_EQ(Core::ERROR_GENERAL, secondUnregResult) << "Second Unregister should return ERROR_GENERAL";
+
+    // Release our creation reference (refcount: 1->0 -> delete this)
     notification->Release();
 }
 
