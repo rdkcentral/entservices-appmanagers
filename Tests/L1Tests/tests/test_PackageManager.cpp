@@ -337,6 +337,27 @@ class NotificationTest : public Exchange::IPackageDownloader::INotification,
         }
     };
 
+class DownloaderNotificationMock : public Exchange::IPackageDownloader::INotification {
+public:
+    DownloaderNotificationMock() = default;
+    ~DownloaderNotificationMock() override = default;
+
+    MOCK_METHOD(void, OnAppDownloadStatus, (Exchange::IPackageDownloader::IPackageInfoIterator* const), (override));
+    MOCK_METHOD(void, AddRef, (), (const, override));
+    MOCK_METHOD(uint32_t, Release, (), (const, override));
+    MOCK_METHOD(void*, QueryInterface, (const uint32_t), (override));
+};
+
+class InstallerNotificationMock : public Exchange::IPackageInstaller::INotification {
+public:
+    InstallerNotificationMock() = default;
+    ~InstallerNotificationMock() override = default;
+
+    MOCK_METHOD(void, OnAppInstallationStatus, (const string&), (override));
+    MOCK_METHOD(void, AddRef, (), (const, override));
+    MOCK_METHOD(uint32_t, Release, (), (const, override));
+    MOCK_METHOD(void*, QueryInterface, (const uint32_t), (override));
+};
 /* Test Case for verifying registered methods using JsonRpc
  * 
  * Set up and initialize required JSON-RPC resources, configurations, mocks and expectations
@@ -1734,6 +1755,154 @@ TEST_F(PackageManagerTest, packageStateusingComRpcSuccess) {
 
 	deinitforComRpc();
 }
+
+TEST_F(PackageManagerTest, configusingComRpcSuccess) {
+
+    initforComRpc();
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    string packageId = "YouTube";
+    string version = "100.1.24";
+    Exchange::RuntimeConfig configMetadata;
+
+    EXPECT_EQ(Core::ERROR_NONE, pkginstallerInterface->Config(packageId, version, configMetadata));
+    EXPECT_EQ(packageId, configMetadata.appId);
+
+    deinitforComRpc();
+}
+
+TEST_F(PackageManagerTest, configusingComRpcFailureUnknownPackage) {
+
+    initforComRpc();
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    string packageId = "UnknownPackage";
+    string version = "1.0.0";
+    Exchange::RuntimeConfig configMetadata;
+
+    EXPECT_EQ(Core::ERROR_BAD_REQUEST, pkginstallerInterface->Config(packageId, version, configMetadata));
+
+    deinitforComRpc();
+}
+
+TEST_F(PackageManagerTest, getConfigForPackageusingComRpcInvalidSignature) {
+
+    initforComRpc();
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    string packageId;
+    string version;
+    Exchange::RuntimeConfig configMetadata;
+
+    EXPECT_EQ(Core::ERROR_INVALID_SIGNATURE, pkghandlerInterface->GetConfigForPackage("", packageId, version, configMetadata));
+
+    deinitforComRpc();
+}
+
+TEST_F(PackageManagerTest, downloadNotificationRegisterAndUnregisterusingComRpc) {
+
+    initforComRpc();
+
+    auto downloaderNotification = new NiceMock<DownloaderNotificationMock>();
+
+    EXPECT_CALL(*downloaderNotification, AddRef())
+        .Times(1);
+
+    EXPECT_CALL(*downloaderNotification, Release())
+        .Times(1)
+        .WillOnce(::testing::Return(0));
+
+    EXPECT_EQ(Core::ERROR_NONE, pkgdownloaderInterface->Register(downloaderNotification));
+    EXPECT_EQ(Core::ERROR_NONE, pkgdownloaderInterface->Unregister(downloaderNotification));
+
+    delete downloaderNotification;
+
+    deinitforComRpc();
+}
+
+TEST_F(PackageManagerTest, downloadNotificationUnregisterWithoutRegisterusingComRpcFailure) {
+
+    initforComRpc();
+
+    auto downloaderNotification = new NiceMock<DownloaderNotificationMock>();
+
+    EXPECT_EQ(Core::ERROR_GENERAL, pkgdownloaderInterface->Unregister(downloaderNotification));
+
+    delete downloaderNotification;
+
+    deinitforComRpc();
+}
+
+TEST_F(PackageManagerTest, installNotificationRegisterAndUnregisterusingComRpc) {
+
+    initforComRpc();
+
+    auto installerNotification = new NiceMock<InstallerNotificationMock>();
+
+    EXPECT_CALL(*installerNotification, AddRef())
+        .Times(1);
+
+    EXPECT_CALL(*installerNotification, Release())
+        .Times(1)
+        .WillOnce(::testing::Return(0));
+
+    EXPECT_EQ(Core::ERROR_NONE, pkginstallerInterface->Register(installerNotification));
+    EXPECT_EQ(Core::ERROR_NONE, pkginstallerInterface->Unregister(installerNotification));
+
+    delete installerNotification;
+
+    deinitforComRpc();
+}
+
+TEST_F(PackageManagerTest, installNotificationUnregisterWithoutRegisterusingComRpcFailure) {
+
+    initforComRpc();
+
+    auto installerNotification = new NiceMock<InstallerNotificationMock>();
+
+    EXPECT_EQ(Core::ERROR_GENERAL, pkginstallerInterface->Unregister(installerNotification));
+
+    delete installerNotification;
+
+    deinitforComRpc();
+}
+
+TEST_F(PackageManagerTest, lockGetLockedInfoAndUnlockusingComRpcSuccess) {
+
+    initforComRpc();
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    string packageId = "YouTube";
+    string version = "100.1.24";
+    uint32_t lockId = 0;
+    string unpackedPath;
+    Exchange::RuntimeConfig configMetadata;
+    Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
+
+    EXPECT_EQ(Core::ERROR_NONE, pkghandlerInterface->Lock(packageId, version,
+        Exchange::IPackageHandler::LockReason::LAUNCH, lockId, unpackedPath, configMetadata, appMetadata));
+    EXPECT_EQ(lockId, 1);
+
+    string gatewayMetadataPath;
+    bool locked = false;
+    EXPECT_EQ(Core::ERROR_NONE, pkghandlerInterface->GetLockedInfo(packageId, version,
+        unpackedPath, configMetadata, gatewayMetadataPath, locked));
+    EXPECT_TRUE(locked);
+
+    EXPECT_EQ(Core::ERROR_NONE, pkghandlerInterface->Unlock(packageId, version));
+
+    if (appMetadata != nullptr) {
+        appMetadata->Release();
+        appMetadata = nullptr;
+    }
+
+    deinitforComRpc();
+}
+
 
 // IPackageHandler methods
 
