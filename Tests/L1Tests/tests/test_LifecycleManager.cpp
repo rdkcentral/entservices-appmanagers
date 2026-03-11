@@ -1830,6 +1830,10 @@ TEST_F(LifecycleManagerTest, closeApp_withKillFailure)
     // because state transitions are queued asynchronously; KillApp() does not propagate the Kill() error
     EXPECT_EQ(Core::ERROR_NONE, stateInterface->CloseApp(appId, Exchange::ILifecycleManagerState::AppCloseReason::USER_EXIT));
 
+    // Wait for the async LOADING→UNLOADED Dispatch worker-pool job to complete before teardown
+    // (every working CloseApp test follows this same synchronisation pattern)
+    onStateChangeEventSignal();
+
     releaseResources();
 }
 
@@ -1862,9 +1866,11 @@ TEST_F(LifecycleManagerTest, setTargetAppState_withInvalidTargetState)
 
     onStateChangeEventSignal();
 
-    // TC-40: Pass LOADING as the target state — hits the default branch (invalid target)
-    // RequestHandler::updateState() always returns true (async queue), so ERROR_NONE is returned
-    EXPECT_EQ(Core::ERROR_NONE, interface->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::LifecycleState::LOADING, ""));
+    // TC-40: Pass UNLOADED as the target state — hits the default branch (UNLOADED is not
+    // in the PAUSED/SUSPENDED/HIBERNATED/ACTIVE cases).  isValidTransition(LOADING, UNLOADED)
+    // returns false (empty predecessor list) so StateHandler::changeState exits immediately
+    // with no Dispatch job and no async side-effects.
+    EXPECT_EQ(Core::ERROR_NONE, interface->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::LifecycleState::UNLOADED, ""));
 
     releaseResources();
 }
