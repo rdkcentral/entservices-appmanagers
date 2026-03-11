@@ -21,6 +21,8 @@
 
 #include "RuntimeManager.h"
 #include "RuntimeManagerImplementation.h"
+#include "AIConfiguration.h"
+#include "WindowManagerConnector.h"
 #include "ServiceMock.h"
 #include "ThunderPortability.h"
 #include "StorageManagerMock.h"
@@ -29,12 +31,66 @@
 #include "WindowManagerMock.h"
 #include "WorkerPoolImplementation.h"
 #include <fstream>
+#include <atomic>
+#include <chrono>
+#include <thread>
 
 #define TEST_LOG(x, ...) fprintf(stderr, "\033[1;32m[%s:%d](%s)<PID:%d><TID:%d>" x "\n\033[0m", __FILE__, __LINE__, __FUNCTION__, getpid(), gettid(), ##__VA_ARGS__); fflush(stderr);
 #define TEST_APP_CONTAINER_ID "com.sky.as.appsyouTube"
 
 using namespace WPEFramework;
 using ::testing::NiceMock;
+
+class RuntimeManagerNotificationProbe : public Exchange::IRuntimeManager::INotification {
+public:
+    std::atomic<int> startedCount{0};
+    std::atomic<int> terminatedCount{0};
+    std::atomic<int> failureCount{0};
+    std::atomic<int> stateChangedCount{0};
+    mutable std::atomic<uint32_t> refCount{1};
+
+    void OnStarted(const string& appInstanceId) override
+    {
+        (void)appInstanceId;
+        startedCount++;
+    }
+
+    void OnTerminated(const string& appInstanceId) override
+    {
+        (void)appInstanceId;
+        terminatedCount++;
+    }
+
+    void OnFailure(const string& appInstanceId, const string& error) override
+    {
+        (void)appInstanceId;
+        (void)error;
+        failureCount++;
+    }
+
+    void OnStateChanged(const string& appInstanceId, Exchange::IRuntimeManager::RuntimeState state) override
+    {
+        (void)appInstanceId;
+        (void)state;
+        stateChangedCount++;
+    }
+
+    void AddRef() const override
+    {
+        refCount++;
+    }
+
+    uint32_t Release() const override
+    {
+        return --refCount;
+    }
+
+    ~RuntimeManagerNotificationProbe() override = default;
+
+    BEGIN_INTERFACE_MAP(RuntimeManagerNotificationProbe)
+    INTERFACE_ENTRY(Exchange::IRuntimeManager::INotification)
+    END_INTERFACE_MAP
+};
 
 class RuntimeManagerTest : public ::testing::Test {
 protected:
@@ -98,8 +154,8 @@ protected:
         EXPECT_CALL(*mWindowManagerMock, AddRef())
             .Times(::testing::AnyNumber());
 
-        EXPECT_CALL(*mWindowManagerMock, Register(::testing::_))
-            .WillRepeatedly(::testing::Return(Core::ERROR_NONE));
+        ON_CALL(*mWindowManagerMock, Register(::testing::_))
+            .WillByDefault(::testing::Return(Core::ERROR_NONE));
 
         // Mock ConfigLine to return the runtime app portal configuration
         ON_CALL(*mServiceMock, ConfigLine())
@@ -1515,6 +1571,128 @@ TEST_F(RuntimeManagerTest, OCIContainerEvents)
     mRuntimeManagerImpl->onOCIContainerStoppedEvent(dummyName, dummyData);
     mRuntimeManagerImpl->onOCIContainerFailureEvent(dummyName, dummyData);
     mRuntimeManagerImpl->onOCIContainerStateChangedEvent(dummyName, dummyData);
+
+    releaseResources();
+}
+
+/* Test: RuntimeManagerRegisterUnregisterNotification
+ *
+ * Purpose: Cover RuntimeManagerImplementation Register/Unregister success path.
+ */
+TEST_F(RuntimeManagerTest, RuntimeManagerRegisterUnregisterNotification)
+{
+    RuntimeManagerNotificationProbe probe;
+
+    EXPECT_EQ(Core::ERROR_NONE, interface->Register(&probe));
+    EXPECT_EQ(Core::ERROR_NONE, interface->Unregister(&probe));
+}
+
+/* Test: RuntimeManagerUnregisterNotificationNotFound
+ *
+ * Purpose: Cover Unregister() not-found branch.
+ */
+TEST_F(RuntimeManagerTest, RuntimeManagerUnregisterNotificationNotFound)
+{
+    RuntimeManagerNotificationProbe probe;
+
+    EXPECT_EQ(Core::ERROR_GENERAL, interface->Unregister(&probe));
+}
+
+/* Test: RuntimeManagerGetInstance
+ *
+ * Purpose: Cover RuntimeManagerImplementation::getInstance().
+ */
+TEST_F(RuntimeManagerTest, RuntimeManagerGetInstance)
+{
+    EXPECT_NE(nullptr, Plugin::RuntimeManagerImplementation::getInstance());
+}
+
+/* Test: AIConfigurationGettersCoverage
+ *
+ * Purpose: Cover currently uncovered AIConfiguration getters.
+ */
+TEST_F(RuntimeManagerTest, AIConfigurationGettersCoverage)
+{
+    Plugin::AIConfiguration config;
+    config.initialize();
+
+    volatile ssize_t memLimit = config.getNonHomeAppMemoryLimit();
+    volatile ssize_t gpuLimit = config.getNonHomeAppGpuLimit();
+    volatile bool gstRegistryEnabled = config.getGstreamerRegistryEnabled();
+    volatile bool svpEnabled = config.getSvpEnabled();
+    volatile bool usbMassStorageEnabled = config.getEnableUsbMassStorage();
+
+    (void)memLimit;
+    (void)gpuLimit;
+    (void)gstRegistryEnabled;
+    (void)svpEnabled;
+    (void)usbMassStorageEnabled;
+
+    SUCCEED();
+}
+
+/* Test: WindowManagerConnectorIsPluginInitialized
+ *
+ * Purpose: Cover WindowManagerConnector::isPluginInitialized().
+ */
+TEST_F(RuntimeManagerTest, WindowManagerConnectorIsPluginInitialized)
+{
+    Plugin::WindowManagerConnector connector;
+    EXPECT_FALSE(connector.isPluginInitialized());
+}
+
+/* Test: DobbyEventListenerCallbacksThroughOCINotification
+ *
+ * Purpose: Cover DobbyEventListener OCI callback methods by invoking captured notification sink.
+ */
+TEST_F(RuntimeManagerTest, DobbyEventListenerCallbacksThroughOCINotification)
+{
+    Exchange::IOCIContainer::INotification* ociNotification = nullptr;
+    RuntimeManagerNotificationProbe probe;
+
+    ASSERT_TRUE(createResources());
+
+    EXPECT_CALL(*mociContainerMock, Register(::testing::_))
+        .WillRepeatedly(::testing::DoAll(::testing::SaveArg<0>(&ociNotification), ::testing::Return(Core::ERROR_NONE)));
+
+    ASSERT_EQ(Core::ERROR_NONE, runTimeManagerConfigure->Configure(mServiceMock));
+    ASSERT_NE(nullptr, ociNotification);
+
+    EXPECT_EQ(Core::ERROR_NONE, interface->Register(&probe));
+
+    ociNotification->OnContainerStarted("container.1", "app.started");
+    ociNotification->OnContainerStopped("container.1", "app.stopped");
+    ociNotification->OnContainerFailed("container.1", "app.failed", 42);
+    ociNotification->OnContainerStateChanged("container.1", Exchange::IOCIContainer::ContainerState::RUNNING);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    EXPECT_GE(probe.startedCount.load(), 1);
+    EXPECT_GE(probe.terminatedCount.load(), 1);
+    EXPECT_GE(probe.failureCount.load(), 1);
+    EXPECT_GE(probe.stateChangedCount.load(), 1);
+
+    EXPECT_EQ(Core::ERROR_NONE, interface->Unregister(&probe));
+    releaseResources();
+}
+
+/* Test: WindowManagerOnUserInactivityCallbackCoverage
+ *
+ * Purpose: Cover WindowManagerNotification::OnUserInactivity() via captured window notification sink.
+ */
+TEST_F(RuntimeManagerTest, WindowManagerOnUserInactivityCallbackCoverage)
+{
+    Exchange::IRDKWindowManager::INotification* windowNotification = nullptr;
+
+    ASSERT_TRUE(createResources());
+
+    EXPECT_CALL(*mWindowManagerMock, Register(::testing::_))
+        .WillRepeatedly(::testing::DoAll(::testing::SaveArg<0>(&windowNotification), ::testing::Return(Core::ERROR_NONE)));
+
+    ASSERT_EQ(Core::ERROR_NONE, runTimeManagerConfigure->Configure(mServiceMock));
+    ASSERT_NE(nullptr, windowNotification);
+
+    windowNotification->OnUserInactivity(3.0);
 
     releaseResources();
 }
