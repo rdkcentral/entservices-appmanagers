@@ -23,6 +23,8 @@
 #include <condition_variable>
 #include <memory>
 #include <atomic>
+#include <cerrno>
+#include <unistd.h>
 
 #include "DownloadManager.h"
 #include "DownloadManagerImplementation.h"
@@ -709,5 +711,121 @@ TEST_F(DownloadManagerImplementationTest, ActiveDownloadControlAndDeleteInProgre
     }
 
     // Allow time for the downloader thread to process the cancellation and complete the job
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+}
+
+/* Test Case: Download retry logic - nextRetryDuration, retry wait, and cancelled() check
+ *
+ * Covers (DownloadManagerImplementation.cpp):
+ *   - Lines 465-468: retry wait entry (i > 0): nextRetryDuration call + LOGDBG
+ *   - Lines 470-474: cancelled() check returns true during retry sleep -> break
+ *   - Lines 508-509: LOGDBG at end of first failed iteration (non-404, non-success)
+ *
+ * Covers (DownloadManagerImplementation.h):
+ *   - Lines 135-138: nextRetryDuration() function body (called when i > 0)
+ *   - Line 90:       DownloadInfo::cancelled() function body
+ *
+ * Strategy: Queue a 2-retry download to http://127.0.0.1:1/ (always connection-refused).
+ * At i=0 curl fails instantly (COULDNT_CONNECT, httpCode=0, not 404, not success) so the
+ * loop fall-through at lines 508-509 is reached.  The thread then enters the retry wait
+ * for i=1, calling nextRetryDuration (lines 135-138 in .h) and sleeping ~2 seconds (lines
+ * 465-468).  Cancel() is called while the thread sleeps, setting isCancelled=true.  When
+ * the sleep expires, cancelled() (line 90 in .h) returns true and the break at lines 470-474
+ * is executed.  TearDown's Deinitialize joins the thread after the retry sleep expires.
+ */
+TEST_F(DownloadManagerImplementationTest, DownloadRetryLogicWithCancellation) {
+    Plugin::DownloadManagerImplementation* impl = getRawImpl();
+    ASSERT_NE(impl, nullptr) << "Implementation pointer should be valid";
+
+    Core::hresult initResult = impl->Initialize(mServiceMock);
+    EXPECT_EQ(Core::ERROR_NONE, initResult) << "Initialize should succeed";
+
+    // Allow the downloader thread to start and reach condition_variable::wait().
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+    // Queue a 2-retry download to a connection-refused endpoint so the first attempt
+    // fails instantly (COULDNT_CONNECT) without reaching 404-check, triggering lines 508-509,
+    // and then the retry wait path (i=1) calls nextRetryDuration (lines 135-138 in .h).
+    Exchange::IDownloadManager::Options retryOptions;
+    retryOptions.priority = false;
+    retryOptions.retries = 2;
+    retryOptions.rateLimit = 0;
+
+    string downloadId;
+    Core::hresult dlResult = impl->Download("http://127.0.0.1:1/retry_test.bin", retryOptions, downloadId);
+    EXPECT_EQ(Core::ERROR_NONE, dlResult) << "Download should be queued successfully";
+    EXPECT_FALSE(downloadId.empty()) << "Should receive valid downloadId";
+    TEST_LOG("Retry-logic download queued with id: %s", downloadId.c_str());
+
+    // Wait for i=0 (first curl attempt) to complete.  Connection-refused returns in
+    // milliseconds.  After i=0, the thread enters nextRetryDuration + sleep_for(~2s).
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+
+    // Cancel while the thread is sleeping in the retry wait.
+    // Sets mCurrentDownload->isCancelled = true via DownloadInfo::cancel().
+    // When the ~2s sleep finishes, cancelled() (line 90 in .h) returns true and
+    // the break at lines 470-474 fires, skipping the second download attempt.
+    Core::hresult cancelResult = impl->Cancel(downloadId);
+    TEST_LOG("Cancel (during retry sleep, id=%s) returned: %u", downloadId.c_str(), cancelResult);
+    // ERROR_NONE = Cancel matched the active download (isCancelled set).
+    // ERROR_GENERAL = timing miss (first attempt already reset mCurrentDownload); both acceptable.
+}
+
+/* Test Case: Download DiskError when the download directory is absent during fopen
+ *
+ * Covers (DownloadManagerImplementation.cpp):
+ *   - Lines 521-524: DiskError case in the status switch
+ *                    (reason = DISK_PERSISTENCE_FAILURE + LOGERR + break)
+ *
+ * Covers (DownloadManagerImplementation.h):
+ *   - Line 145: getDownloadReason(DISK_PERSISTENCE_FAILURE) -> "DISK_PERSISTENCE_FAILURE"
+ *
+ * Also re-exercises lines 508-509 (non-404, non-success LOGDBG) via the single failed attempt.
+ *
+ * Strategy: Override ConfigLine to use a test-unique directory, call Initialize (which creates
+ * the directory and starts the downloader thread), then immediately remove the directory.
+ * When the thread calls downloadFile(), fopen() returns NULL (ENOENT) -> Status::DiskError.
+ * The switch in downloaderRoutine takes the DiskError case (lines 521-524), sets the reason
+ * to DISK_PERSISTENCE_FAILURE, and calls notifyDownloadStatus which in turn calls
+ * getDownloadReason(DISK_PERSISTENCE_FAILURE) covering line 145 in .h.
+ */
+TEST_F(DownloadManagerImplementationTest, DownloadDiskErrorOnFopenFailure) {
+    Plugin::DownloadManagerImplementation* impl = getRawImpl();
+    ASSERT_NE(impl, nullptr) << "Implementation pointer should be valid";
+
+    // Use a test-unique directory so it can be cleanly removed without side-effects.
+    const string diskTestDir = "/tmp/dm_disktest_fopen/";
+    EXPECT_CALL(*mServiceMock, ConfigLine())
+        .WillRepeatedly(::testing::Return(
+            "{\"downloadDir\":\"/tmp/dm_disktest_fopen/\",\"downloadId\":5000}"));
+
+    Core::hresult initResult = impl->Initialize(mServiceMock);
+    EXPECT_EQ(Core::ERROR_NONE, initResult) << "Initialize should succeed and create the download directory";
+
+    // Allow the downloader thread to start and reach condition_variable::wait().
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+    // Remove the download directory (Initialize just created it empty, so rmdir succeeds).
+    // After removal, fopen("/tmp/dm_disktest_fopen/package5001", "wb") returns NULL.
+    int rcRm = rmdir(diskTestDir.c_str());
+    TEST_LOG("rmdir(%s) returned %d (errno=%d)", diskTestDir.c_str(), rcRm, errno);
+    EXPECT_EQ(0, rcRm) << "rmdir should succeed on the freshly created, empty download directory";
+
+    // Queue a single-attempt download.  The thread picks it up; downloadFile() calls
+    // fopen on the now-missing path -> NULL -> Status::DiskError.
+    // The switch in downloaderRoutine takes lines 521-524, sets DISK_PERSISTENCE_FAILURE,
+    // and notifyDownloadStatus calls getDownloadReason (line 145 in .h).
+    Exchange::IDownloadManager::Options diskErrOptions;
+    diskErrOptions.priority = false;
+    diskErrOptions.retries = 1;
+    diskErrOptions.rateLimit = 0;
+
+    string downloadId;
+    Core::hresult dlResult = impl->Download("http://127.0.0.1:1/disktest.bin", diskErrOptions, downloadId);
+    EXPECT_EQ(Core::ERROR_NONE, dlResult) << "Download should be queued for processing";
+    TEST_LOG("DiskError path download queued with id: %s", downloadId.c_str());
+
+    // Allow time for the thread to process: fopen fails -> DiskError ->
+    // switch case lines 521-524 -> notifyDownloadStatus with DISK_PERSISTENCE_FAILURE.
     std::this_thread::sleep_for(std::chrono::milliseconds(300));
 }
