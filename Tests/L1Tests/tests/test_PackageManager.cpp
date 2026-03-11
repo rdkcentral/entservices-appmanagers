@@ -1795,7 +1795,7 @@ TEST_F(PackageManagerTest, getConfigForPackageusingComRpcInvalidSignature) {
     string version;
     Exchange::RuntimeConfig configMetadata;
 
-    EXPECT_EQ(Core::ERROR_INVALID_SIGNATURE, pkghandlerInterface->GetConfigForPackage("", packageId, version, configMetadata));
+    EXPECT_EQ(Core::ERROR_INVALID_SIGNATURE, pkginstallerInterface->GetConfigForPackage("", packageId, version, configMetadata));
 
     deinitforComRpc();
 }
