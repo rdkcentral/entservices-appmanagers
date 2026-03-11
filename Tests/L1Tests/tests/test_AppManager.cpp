@@ -3730,7 +3730,8 @@ TEST_F(AppManagerTest, CheckInstallUninstallBlockListPackagesReturnError)
 /*
  * Test Case for LaunchAppLockFailureListPackagesFails
  * Setting up AppManager Plugin with full resources
- * Configuring ListPackages() to return no packages so fetchAppPackageList() fails inside packageLock()
+ * Configuring ListPackages() to succeed on the first and third call, and return nullptr on the second call
+ * so fetchAppPackageList() fails inside packageLock(), while the IsInstalled() error-path check returns installed=true
  * Waiting for the resulting OnAppLifecycleStateChanged event (APP_ERROR_PACKAGE_LOCK)
  * Verifying that the error path from a packageLock() list failure correctly triggers a state-changed event
  * Releasing the AppManager interface and all related test resources
@@ -3761,15 +3762,21 @@ TEST_F(AppManagerTest, LaunchAppLockFailureListPackagesFails)
             return Core::ERROR_NONE;
         });
     /* First call (IsInstalled gate in LaunchApp): return installed so we pass the gate */
-    /* Second call (inside packageLock): return nullptr iterator (no packages) */
+    /* Second call (inside packageLock fetchAppPackageList): return nullptr to trigger lock failure */
+    /* Third call (IsInstalled in error path): return installed so APP_ERROR_PACKAGE_LOCK is used */
     EXPECT_CALL(*mPackageInstallerMock, ListPackages(::testing::_))
         .WillOnce([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
             auto mockIterator = FillPackageIterator();
             packages = mockIterator;
             return Core::ERROR_NONE;
         })
-        .WillRepeatedly([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
+        .WillOnce([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
             packages = nullptr;
+            return Core::ERROR_NONE;
+        })
+        .WillRepeatedly([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
+            auto mockIterator = FillPackageIterator();
+            packages = mockIterator;
             return Core::ERROR_NONE;
         });
 
