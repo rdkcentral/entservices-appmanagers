@@ -167,10 +167,18 @@ namespace Plugin {
     {
         Core::hresult result = Core::ERROR_NONE;
         LOGINFO();
+		  // Make Deinitialize idempotent and defensive against double teardown
+        if (mIsDeinitialized == true) {
+            LOGINFO("Deinitialize called more than once, ignoring");
+            return result;
+        }
+        mIsDeinitialized = true;
 
         done = true;
         cv.notify_one();
-        mDownloadThreadPtr->join();
+		 if (mDownloadThreadPtr && mDownloadThreadPtr->joinable()) {
+             mDownloadThreadPtr->join();
+	}
 
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
         if (nullptr != mTelemetryMetricsObject)
@@ -186,10 +194,14 @@ namespace Plugin {
     } else {
         LOGERR("Failed to delete marker file: %s (errno=%d)", markerFile.c_str(), errno);
     }
-
+		// Release storage manager object HERE (before TearDown deletes the mock)
+        // so the destructor doesn't try to release an already-deleted mock
+        releaseStorageManagerObject();
+		
+        if (mCurrentservice != nullptr) {
         mCurrentservice->Release();
         mCurrentservice = nullptr;
-
+		}
         return result;
     }
 
@@ -210,7 +222,7 @@ namespace Plugin {
 
     void PackageManagerImplementation::releaseStorageManagerObject()
     {
-        ASSERT(nullptr != mStorageManagerObject);
+        // Guard: only release if not null (may have been released in Deinitialize already)
         if(mStorageManagerObject) {
             mStorageManagerObject->Release();
             mStorageManagerObject = nullptr;

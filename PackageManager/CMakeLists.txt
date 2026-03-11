@@ -32,7 +32,6 @@ if (USE_LIBPACKAGE_RALF)
     add_definitions(-DUSE_LIBPACKAGE_RALF)
 endif()
 
-include_directories(${SYSROOT_PATH}/${CMAKE_INSTALL_PREFIX}/include/Package)
 set(LIB_PACKAGE_LIBRARY "${SYSROOT_PATH}/${CMAKE_INSTALL_PREFIX}/lib/libPackage.so")
 
 option(AIMANAGERS_TELEMETRY_METRICS_SUPPORT "AIMANAGERS_TELEMETRY_METRICS_SUPPORT" OFF)
@@ -65,12 +64,21 @@ target_include_directories(${MODULE_NAME} PRIVATE
     ${CMAKE_SYSROOT}${CMAKE_INSTALL_PREFIX}/include/${NAMESPACE}/interfaces
     )
 
+if(NOT (RDK_SERVICES_L1_TEST OR ENABLE_UNIT_TESTS OR ENABLE_NATIVEBUILD))
+    target_include_directories(${MODULE_NAME} PRIVATE
+        ${SYSROOT_PATH}/${CMAKE_INSTALL_PREFIX}/include/Package
+    )
+endif()
+
+
 target_link_libraries(${MODULE_NAME} PRIVATE
     ${NAMESPACE}Definitions::${NAMESPACE}Definitions
     ${NAMESPACE}Plugins::${NAMESPACE}Plugins
     ${CURL_LIBRARY}
-    ${LIB_PACKAGE_LIBRARY}
     )
+if(NOT (RDK_SERVICES_L1_TEST OR ENABLE_UNIT_TESTS OR ENABLE_NATIVEBUILD))
+    target_link_libraries(${MODULE_NAME} PRIVATE ${LIB_PACKAGE_LIBRARY})
+endif()
 
 if(RDK_SERVICES_L1_TEST)
     find_package( JsonCpp REQUIRED)
@@ -83,7 +91,7 @@ if(RDK_SERVICES_L1_TEST)
 endif()
 
 option(ENABLE_UNIT_TESTS "Enable unit tests" OFF)
-if(ENABLE_UNIT_TESTS)
+if(ENABLE_UNIT_TESTS OR RDK_SERVICES_L1_TEST OR ENABLE_NATIVEBUILD)
   target_compile_definitions(${MODULE_NAME} PRIVATE UNIT_TEST)
 endif()
 
