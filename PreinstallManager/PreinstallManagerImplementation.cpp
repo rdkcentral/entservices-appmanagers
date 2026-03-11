@@ -152,11 +152,11 @@ namespace WPEFramework
         {
         case PREINSTALL_MANAGER_ONPREINSTALLATIONCOMPLETE:
         {
-            LOGINFO("Sending OnPreInstallationComplete event");
+            LOGINFO("Sending OnPreinstallationComplete event");
             mAdminLock.Lock();
             for (auto notification : mPreinstallManagerNotifications)
             {
-                notification->OnPreInstallationComplete();
+                notification->OnPreinstallationComplete();
                 LOGTRACE();
             }
             mAdminLock.Unlock();
@@ -169,12 +169,12 @@ namespace WPEFramework
     }
 
     /**
-     * Send OnPreInstallationComplete event to all registered listeners
+     * Send OnPreinstallationComplete event to all registered listeners
      */
-    void PreinstallManagerImplementation::sendOnPreInstallationCompleteEvent()
+    void PreinstallManagerImplementation::sendOnPreinstallationCompleteEvent()
     {
-        LOGINFO("Dispatching OnPreInstallationComplete event");
-        JsonObject eventDetails; // OnPreInstallationComplete doesn't need any params
+        LOGINFO("Dispatching OnPreinstallationComplete event");
+        JsonObject eventDetails; // OnPreinstallationComplete doesn't need any params
         dispatchEvent(PREINSTALL_MANAGER_ONPREINSTALLATIONCOMPLETE, eventDetails);
     }
 
@@ -319,7 +319,7 @@ namespace WPEFramework
             mAdminLock.Lock();
             mPreinstallState = State::COMPLETED;
             mAdminLock.Unlock();
-            sendOnPreInstallationCompleteEvent();
+            sendOnPreinstallationCompleteEvent();
             return;
         }
 
@@ -383,7 +383,7 @@ namespace WPEFramework
         {
             LOGWARN("Preinstall completed with failures");
         }
-        sendOnPreInstallationCompleteEvent();
+        sendOnPreinstallationCompleteEvent();
     }
 
     /*
@@ -442,12 +442,12 @@ namespace WPEFramework
         // Check if the packages list is empty
         if (preinstallPackages.empty())
         {
-            LOGINFO("No packages to preinstall. Sending OnPreInstallationComplete event");
+            LOGINFO("No packages to preinstall. Sending OnPreinstallationComplete event");
             mAdminLock.Lock();
             mPreinstallState = State::COMPLETED;
             mAdminLock.Unlock();
             releasePackageManagerObject(packageInstaller);
-            sendOnPreInstallationCompleteEvent();
+            sendOnPreinstallationCompleteEvent();
             result = Core::ERROR_NONE;
             return result;
         }
@@ -529,12 +529,12 @@ namespace WPEFramework
         // Check if all packages were filtered out after forceInstall=false filtering
         if (preinstallPackages.empty())
         {
-            LOGINFO("No packages to preinstall after filtering. Sending OnPreInstallationComplete event");
+            LOGINFO("No packages to preinstall after filtering. Sending OnPreinstallationComplete event");
             mAdminLock.Lock();
             mPreinstallState = State::COMPLETED;
             mAdminLock.Unlock();
             releasePackageManagerObject(packageInstaller);
-            sendOnPreInstallationCompleteEvent();
+            sendOnPreinstallationCompleteEvent();
             result = Core::ERROR_NONE;
             return result;
         }
