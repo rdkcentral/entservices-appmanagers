@@ -568,21 +568,23 @@ TEST_F(DownloadManagerTest, PluginQueryInterfaceSupportedAndUnsupported) {
     ASSERT_NE(nullptr, rawPlugin) << "Raw plugin pointer must be non-null";
 
     // ---- INTERFACE_ENTRY(PluginHost::IPlugin) -- line 89 --------------------------------
-    // QueryInterface<IPlugin> internally calls QueryInterface(PluginHost::IPlugin::ID).
-    // The INTERFACE_ENTRY macro AddRefs and returns 'this' cast to IPlugin.
-    PluginHost::IPlugin* iPlugin = rawPlugin->QueryInterface<PluginHost::IPlugin>();
+    // BEGIN_INTERFACE_MAP generates virtual void* QueryInterface(uint32_t).
+    // Call with the well-known interface ID and cast the returned void*.
+    // The INTERFACE_ENTRY macro AddRefs and returns 'this' for a matching ID.
+    PluginHost::IPlugin* iPlugin =
+        reinterpret_cast<PluginHost::IPlugin*>(rawPlugin->QueryInterface(PluginHost::IPlugin::ID));
     EXPECT_NE(nullptr, iPlugin)
-        << "QueryInterface<IPlugin> must succeed: INTERFACE_ENTRY is present in BEGIN_INTERFACE_MAP";
+        << "QueryInterface(IPlugin::ID) must succeed: INTERFACE_ENTRY is present in BEGIN_INTERFACE_MAP";
     if (nullptr != iPlugin) {
         iPlugin->Release();
     }
 
     // ---- INTERFACE_ENTRY(PluginHost::IDispatcher) -- line 90 ----------------------------
     // DownloadManager inherits PluginHost::JSONRPC which implements IDispatcher.
-    // The INTERFACE_ENTRY macro AddRefs and returns 'this' cast to IDispatcher.
-    PluginHost::IDispatcher* iDispatcher = rawPlugin->QueryInterface<PluginHost::IDispatcher>();
+    PluginHost::IDispatcher* iDispatcher =
+        reinterpret_cast<PluginHost::IDispatcher*>(rawPlugin->QueryInterface(PluginHost::IDispatcher::ID));
     EXPECT_NE(nullptr, iDispatcher)
-        << "QueryInterface<IDispatcher> must succeed: INTERFACE_ENTRY is present in BEGIN_INTERFACE_MAP";
+        << "QueryInterface(IDispatcher::ID) must succeed: INTERFACE_ENTRY is present in BEGIN_INTERFACE_MAP";
     if (nullptr != iDispatcher) {
         iDispatcher->Release();
     }
@@ -590,8 +592,9 @@ TEST_F(DownloadManagerTest, PluginQueryInterfaceSupportedAndUnsupported) {
     // ---- INTERFACE_AGGREGATE(Exchange::IDownloadManager, mDownloadManagerImpl) -- line 91 -
     // mDownloadManagerImpl is null until Initialize() assigns the COM-RPC remote object.
     // INTERFACE_AGGREGATE delegates to the aggregate pointer; when null the macro returns null.
-    Exchange::IDownloadManager* iDm = rawPlugin->QueryInterface<Exchange::IDownloadManager>();
-    TEST_LOG("QueryInterface<IDownloadManager> (pre-Initialize): %p", static_cast<void*>(iDm));
+    Exchange::IDownloadManager* iDm =
+        reinterpret_cast<Exchange::IDownloadManager*>(rawPlugin->QueryInterface(Exchange::IDownloadManager::ID));
+    TEST_LOG("QueryInterface(IDownloadManager::ID) (pre-Initialize): %p", static_cast<void*>(iDm));
     // Do not EXPECT_EQ(nullptr, ...) -- if an implementation is available it is non-null; just
     // ensure a valid pointer is released to avoid leaks.
     if (nullptr != iDm) {
