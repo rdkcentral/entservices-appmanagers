@@ -154,7 +154,7 @@ namespace WPEFramework
             Core::hresult createPackageManagerObject(Exchange::IPackageInstaller*& packageInstaller);
             void releasePackageManagerObject(Exchange::IPackageInstaller*& packageInstaller);
             void installPackages(std::list<PackageInfo> preinstallPackages);
-            void sendOnPreInstallationCompleteEvent();
+            void sendOnPreinstallationCompleteEvent();
             bool isValidSemVer(const std::string &version);
             bool isNewerVersion(const std::string &v1, const std::string &v2);
             bool readPreinstallDirectory(Exchange::IPackageInstaller* packageInstaller, std::list<PackageInfo> &packages);
