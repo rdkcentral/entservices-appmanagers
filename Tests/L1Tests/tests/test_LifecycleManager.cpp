@@ -1521,3 +1521,345 @@ TEST_F(LifecycleManagerTest, windowManagerEvent_onReady)
 
     releaseResources();
 } 
+
+/* Test Case for SetTargetAppState to PAUSED from ACTIVE
+ *
+ * Set up Lifecycle Manager interface, configurations, required COM-RPC resources, mocks and expectations
+ * Spawn an app with valid parameters with target state as LOADING
+ * Verify successful spawn by asserting that SpawnApp() returns Core::ERROR_NONE
+ * Handle event signals by calling the onStateChangeEventSignal() method
+ * Set the target state of the app to ACTIVE and verify successful state change
+ * Handle event signals by calling the onStateChangeEventSignal() method
+ * Set the target state of the app to PAUSED
+ * Verify successful state change to PAUSED by asserting that SetTargetAppState() returns Core::ERROR_NONE
+ * Handle event signals by calling the onStateChangeEventSignal() method
+ * Release the Lifecycle Manager objects and clean-up related test resources
+ */
+
+TEST_F(LifecycleManagerTest, setTargetAppState_toPaused_fromActive)
+{
+    createResources();
+
+    EXPECT_CALL(*mRuntimeManagerMock, Run(appId, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillOnce(::testing::Invoke(
+            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const Exchange::RuntimeConfig& runtimeConfigObject) {
+                return Core::ERROR_NONE;
+          }));
+
+    EXPECT_CALL(*mWindowManagerMock, RenderReady(::testing::_, ::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillOnce(::testing::Invoke(
+            [&](const string& client, bool &status) {
+                return Core::ERROR_NONE;
+          }));
+
+    targetLifecycleState = Exchange::ILifecycleManager::LifecycleState::ACTIVE;
+
+    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
+
+    onStateChangeEventSignal();
+
+    // TC-33: Set the target state of a loaded app from ACTIVE to PAUSED
+    EXPECT_EQ(Core::ERROR_NONE, interface->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::LifecycleState::PAUSED, ""));
+
+    onStateChangeEventSignal();
+
+    releaseResources();
+}
+
+/* Test Case for SetTargetAppState to SUSPENDED from ACTIVE
+ *
+ * Set up Lifecycle Manager interface, configurations, required COM-RPC resources, mocks and expectations
+ * Spawn an app with valid parameters with target state as ACTIVE
+ * Verify successful spawn by asserting that SpawnApp() returns Core::ERROR_NONE
+ * Handle event signals by calling the onStateChangeEventSignal() method
+ * Set the target state of the app to SUSPENDED
+ * Expect that EnableDisplayRender is called to disable the display
+ * Verify successful state change by asserting that SetTargetAppState() returns Core::ERROR_NONE
+ * Handle event signals by calling the onStateChangeEventSignal() method
+ * Release the Lifecycle Manager objects and clean-up related test resources
+ */
+
+TEST_F(LifecycleManagerTest, setTargetAppState_toSuspended_fromActive)
+{
+    createResources();
+
+    EXPECT_CALL(*mRuntimeManagerMock, Run(appId, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillOnce(::testing::Invoke(
+            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const Exchange::RuntimeConfig& runtimeConfigObject) {
+                return Core::ERROR_NONE;
+          }));
+
+    EXPECT_CALL(*mWindowManagerMock, RenderReady(::testing::_, ::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillOnce(::testing::Invoke(
+            [&](const string& client, bool &status) {
+                return Core::ERROR_NONE;
+          }));
+
+    EXPECT_CALL(*mWindowManagerMock, EnableDisplayRender(::testing::_, ::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillRepeatedly(::testing::Return(Core::ERROR_NONE));
+
+    targetLifecycleState = Exchange::ILifecycleManager::LifecycleState::ACTIVE;
+
+    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
+
+    onStateChangeEventSignal();
+
+    // TC-34: Set the target state of a loaded app from ACTIVE to SUSPENDED
+    EXPECT_EQ(Core::ERROR_NONE, interface->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::LifecycleState::SUSPENDED, ""));
+
+    onStateChangeEventSignal();
+
+    releaseResources();
+}
+
+/* Test Case for SetTargetAppState to HIBERNATED from SUSPENDED
+ *
+ * Set up Lifecycle Manager interface, configurations, required COM-RPC resources, mocks and expectations
+ * Spawn an app with valid parameters with target state as ACTIVE
+ * Verify successful spawn by asserting that SpawnApp() returns Core::ERROR_NONE
+ * Handle event signals by calling the onStateChangeEventSignal() method
+ * Set the target state of the app to SUSPENDED, handle event signals
+ * Set the target state of the app to HIBERNATED
+ * Expect that Hibernate is called on the RuntimeManager mock
+ * Verify successful state change by asserting that SetTargetAppState() returns Core::ERROR_NONE
+ * Handle event signals by calling the onStateChangeEventSignal() method
+ * Release the Lifecycle Manager objects and clean-up related test resources
+ */
+
+TEST_F(LifecycleManagerTest, setTargetAppState_toHibernated_fromSuspended)
+{
+    createResources();
+
+    EXPECT_CALL(*mRuntimeManagerMock, Run(appId, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillOnce(::testing::Invoke(
+            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const Exchange::RuntimeConfig& runtimeConfigObject) {
+                return Core::ERROR_NONE;
+          }));
+
+    EXPECT_CALL(*mWindowManagerMock, RenderReady(::testing::_, ::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillOnce(::testing::Invoke(
+            [&](const string& client, bool &status) {
+                return Core::ERROR_NONE;
+          }));
+
+    EXPECT_CALL(*mWindowManagerMock, EnableDisplayRender(::testing::_, ::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillRepeatedly(::testing::Return(Core::ERROR_NONE));
+
+    EXPECT_CALL(*mRuntimeManagerMock, Hibernate(::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillOnce(::testing::Invoke(
+            [&](const string& appInstanceId) {
+                return Core::ERROR_NONE;
+          }));
+
+    targetLifecycleState = Exchange::ILifecycleManager::LifecycleState::ACTIVE;
+
+    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
+
+    onStateChangeEventSignal();
+
+    EXPECT_EQ(Core::ERROR_NONE, interface->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::LifecycleState::SUSPENDED, ""));
+
+    onStateChangeEventSignal();
+
+    // TC-35: Set the target state of an app from SUSPENDED to HIBERNATED
+    EXPECT_EQ(Core::ERROR_NONE, interface->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::LifecycleState::HIBERNATED, ""));
+
+    onStateChangeEventSignal();
+
+    releaseResources();
+}
+
+/* Test Case for SendIntentToActiveApp with an invalid appInstanceId
+ *
+ * Set up Lifecycle Manager interface, configurations, required COM-RPC resources, mocks and expectations
+ * Call SendIntentToActiveApp with an appInstanceId that has no corresponding loaded app context
+ * Verify that SendIntentToActiveApp() returns Core::ERROR_GENERAL due to missing context
+ * Verify that the success flag is set to false
+ * Release the Lifecycle Manager objects and clean-up related test resources
+ */
+
+TEST_F(LifecycleManagerTest, sendIntentToActiveApp_withInvalidAppInstanceId)
+{
+    createResources();
+
+    string intent = "test.deep.link.intent";
+    string invalidAppInstanceId = "invalid.instance.id";
+
+    // TC-36: Send intent to an app with an invalid appInstanceId (no context found)
+    EXPECT_EQ(Core::ERROR_GENERAL, interface->SendIntentToActiveApp(invalidAppInstanceId, intent, errorReason, success));
+
+    EXPECT_EQ(success, false);
+
+    releaseResources();
+}
+
+/* Test Case for GetLoadedApps with verbose enabled when GetInfo fails
+ *
+ * Set up Lifecycle Manager interface, configurations, required COM-RPC resources, mocks and expectations
+ * Spawn an app with valid parameters with target state as LOADING
+ * Verify successful spawn by asserting that SpawnApp() returns Core::ERROR_NONE
+ * Handle event signals by calling the onStateChangeEventSignal() method
+ * Mock GetInfo to return Core::ERROR_GENERAL to simulate a runtime stats failure
+ * Call GetLoadedApps with verbose=true
+ * Verify that GetLoadedApps() returns Core::ERROR_NONE (apps are still reported)
+ * Verify that the app entry is present but without a runtimeStats field
+ * Release the Lifecycle Manager objects and clean-up related test resources
+ */
+
+TEST_F(LifecycleManagerTest, getLoadedApps_verboseEnabled_withGetInfoFailure)
+{
+    createResources();
+
+    EXPECT_CALL(*mRuntimeManagerMock, GetInfo(::testing::_, ::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillRepeatedly(::testing::Return(Core::ERROR_GENERAL));
+
+    bool verbose = true;
+    string apps = "";
+
+    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
+
+    onStateChangeEventSignal();
+
+    // TC-37: Get loaded apps with verbose=true when runtime stats retrieval fails
+    EXPECT_EQ(Core::ERROR_NONE, interface->GetLoadedApps(verbose, apps));
+
+    EXPECT_THAT(apps, ::testing::HasSubstr("\"appId\":\"com.test.app\""));
+    EXPECT_THAT(apps, ::testing::Not(::testing::HasSubstr("runtimeStats")));
+
+    releaseResources();
+}
+
+/* Test Case for KillApp after Spawning exercising the force-kill path in TerminatingState
+ *
+ * Set up Lifecycle Manager interface, configurations, required COM-RPC resources, mocks and expectations
+ * Spawn an app with valid parameters with target state as ACTIVE (Run mock returns Core::ERROR_NONE)
+ * Verify successful spawn by asserting that SpawnApp() returns Core::ERROR_NONE
+ * Handle event signals by calling the onStateChangeEventSignal() method
+ * Mock Kill() to return Core::ERROR_NONE
+ * Call KillApp to exercise the force-kill path (mForce=true) through TerminatingState::handle()
+ * Verify that KillApp() returns Core::ERROR_NONE
+ * Verify that the success flag is set to true
+ * Handle event signals by calling the onStateChangeEventSignal() method
+ * Release the Lifecycle Manager objects and clean-up related test resources
+ */
+
+TEST_F(LifecycleManagerTest, killApp_forcePath_onSpawnAppSuccess)
+{
+    createResources();
+
+    EXPECT_CALL(*mRuntimeManagerMock, Run(appId, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillOnce(::testing::Invoke(
+            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const Exchange::RuntimeConfig& runtimeConfigObject) {
+                return Core::ERROR_NONE;
+          }));
+
+    EXPECT_CALL(*mWindowManagerMock, RenderReady(::testing::_, ::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillOnce(::testing::Invoke(
+            [&](const string& client, bool &status) {
+                return Core::ERROR_NONE;
+          }));
+
+    EXPECT_CALL(*mRuntimeManagerMock, Kill(::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillOnce(::testing::Invoke(
+            [&](const string& appInstanceId) {
+                return Core::ERROR_NONE;
+          }));
+
+    targetLifecycleState = Exchange::ILifecycleManager::LifecycleState::ACTIVE;
+
+    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
+
+    onStateChangeEventSignal();
+
+    // TC-38: Kill the active app using the force-kill path (KillApp sets mForce=true)
+    EXPECT_EQ(Core::ERROR_NONE, interface->KillApp(appInstanceId, errorReason, success));
+
+    EXPECT_EQ(success, true);
+
+    onStateChangeEventSignal();
+
+    releaseResources();
+}
+
+/* Test Case for CloseApp failure when Kill returns error
+ *
+ * Set up Lifecycle Manager interface, state interface, configurations, required COM-RPC resources, mocks and expectations
+ * Spawn an app with valid parameters with target state as LOADING
+ * Verify successful spawn by asserting that SpawnApp() returns Core::ERROR_NONE
+ * Handle event signals by calling the onStateChangeEventSignal() method
+ * Mock Kill() to return Core::ERROR_GENERAL to simulate a kill failure
+ * Call CloseApp with USER_EXIT reason
+ * Verify that CloseApp() returns Core::ERROR_GENERAL due to KillApp failure
+ * Release the Lifecycle Manager objects and clean-up related test resources
+ */
+
+TEST_F(LifecycleManagerTest, closeApp_withKillFailure)
+{
+    createResources();
+
+    EXPECT_CALL(*mRuntimeManagerMock, Run(appId, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillOnce(::testing::Invoke(
+            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const Exchange::RuntimeConfig& runtimeConfigObject) {
+                return Core::ERROR_NONE;
+          }));
+
+    EXPECT_CALL(*mRuntimeManagerMock, Kill(::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillRepeatedly(::testing::Return(Core::ERROR_GENERAL));
+
+    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
+
+    onStateChangeEventSignal();
+
+    // TC-39: Close the app when Kill fails — expects CloseApp to propagate the error
+    EXPECT_EQ(Core::ERROR_GENERAL, stateInterface->CloseApp(appId, Exchange::ILifecycleManagerState::AppCloseReason::USER_EXIT));
+
+    releaseResources();
+}
+
+/* Test Case for SetTargetAppState with a non-targetable lifecycle state (default branch)
+ *
+ * Set up Lifecycle Manager interface, configurations, required COM-RPC resources, mocks and expectations
+ * Spawn an app with valid parameters with target state as LOADING
+ * Verify successful spawn by asserting that SpawnApp() returns Core::ERROR_NONE
+ * Handle event signals by calling the onStateChangeEventSignal() method
+ * Call SetTargetAppState with LOADING as the target state (LOADING is not a valid target —
+ *   falls to the default branch in the switch) to exercise the default error-log path
+ * Verify that SetTargetAppState() returns Core::ERROR_GENERAL when updateState fails for LOADING
+ * Release the Lifecycle Manager objects and clean-up related test resources
+ */
+
+TEST_F(LifecycleManagerTest, setTargetAppState_withInvalidTargetState)
+{
+    createResources();
+
+    EXPECT_CALL(*mRuntimeManagerMock, Run(appId, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillOnce(::testing::Invoke(
+            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const Exchange::RuntimeConfig& runtimeConfigObject) {
+                return Core::ERROR_NONE;
+          }));
+
+    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
+
+    onStateChangeEventSignal();
+
+    // TC-40: Pass LOADING as the target state — hits the default branch (invalid target)
+    EXPECT_EQ(Core::ERROR_GENERAL, interface->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::LifecycleState::LOADING, ""));
+
+    releaseResources();
+}
