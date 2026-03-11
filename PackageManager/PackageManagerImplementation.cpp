@@ -1214,7 +1214,7 @@ namespace Plugin {
                             state.failReason = FailReason::SIGNATURE_VERIFICATION_FAILURE;
                             break;
                         default:
-                            state.failReason = FailReason::NONE;
+                            state.failReason = FailReason::GENERAL_FAILURE;
                     }
                     LOGERR("Install failed reason %s", getFailReason(state.failReason).c_str());
                 }
