@@ -567,7 +567,12 @@ TEST_F(DownloadManagerImplementationTest, UnregisterNotificationNotFound) {
     TEST_LOG("Second Unregister (not in list) returned: %u", secondUnregResult);
     EXPECT_EQ(Core::ERROR_GENERAL, secondUnregResult) << "Second Unregister should return ERROR_GENERAL";
 
-    // Release our creation reference (refcount: 1->0 -> delete this)
+    // Re-register: impl calls AddRef -> refcount = 2, notification back in list
+    Core::hresult reRegResult = impl->Register(notification);
+    EXPECT_EQ(Core::ERROR_NONE, reRegResult) << "Re-register should succeed";
+
+    // Drop the caller's creation reference: refcount = 1 (impl still holds its reference)
+    // The object is NOT deleted here because refcount > 0.
     notification->Release();
 }
 
