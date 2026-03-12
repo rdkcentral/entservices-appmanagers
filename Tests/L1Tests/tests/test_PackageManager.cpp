@@ -886,7 +886,6 @@ TEST_F(PackageManagerTest, cancelMethodusingComRpcFailure) {
 	deinitforComRpc();
 }
 
-
 /* Test Case for delete failed using JsonRpc
  * 
  * Set up and initialize required JSON-RPC resources, configurations, mocks and expectations
@@ -904,7 +903,6 @@ TEST_F(PackageManagerTest, deleteMethodusingJsonRpcFailure) {
 
 	deinitforJsonRpc();
 }
-
 
 /* Test Case for delete download failure using ComRpc
  *
@@ -2082,7 +2080,7 @@ TEST_F(PackageManagerTest, getConfigForPackageusingComRpcEmptyFileLocator) {
     waitforSignal(TIMEOUT_FOR_INIT);
 
     // TC-52: GetConfigForPackage method failure - empty fileLocator
-    EXPECT_EQ(Core::ERROR_INVALID_SIGNATURE, pkghandlerInterface->GetConfigForPackage(fileLocator, id, version, config));
+    EXPECT_EQ(Core::ERROR_INVALID_SIGNATURE, pkginstallerInterface->GetConfigForPackage(fileLocator, id, version, config));
 
     deinitforComRpc();
 }
@@ -2116,7 +2114,7 @@ TEST_F(PackageManagerTest, lockMethodusingComRpcSuccess) {
     string unpackedPath;
     Exchange::RuntimeConfig runtimeConfig;
     Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
-    Exchange::IPackageHandler::LockReason lockReason = Exchange::IPackageHandler::LockReason::APPLICATION;
+    Exchange::IPackageHandler::LockReason lockReason = Exchange::IPackageHandler::LockReason::LAUNCH;
 
     auto additionalMetadata = Core::Service<RPC::IteratorType<Exchange::IPackageInstaller::IKeyValueIterator>>::Create<Exchange::IPackageInstaller::IKeyValueIterator>(kv);
 
@@ -2184,7 +2182,7 @@ TEST_F(PackageManagerTest, lockMethodusingComRpcPackageNotFound) {
     string unpackedPath;
     Exchange::RuntimeConfig runtimeConfig;
     Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
-    Exchange::IPackageHandler::LockReason lockReason = Exchange::IPackageHandler::LockReason::APPLICATION;
+    Exchange::IPackageHandler::LockReason lockReason = Exchange::IPackageHandler::LockReason::LAUNCH;
 
     waitforSignal(TIMEOUT_FOR_INIT);
 
@@ -2221,7 +2219,7 @@ TEST_F(PackageManagerTest, unlockMethodusingComRpcSuccess) {
     string unpackedPath;
     Exchange::RuntimeConfig runtimeConfig;
     Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
-    Exchange::IPackageHandler::LockReason lockReason = Exchange::IPackageHandler::LockReason::APPLICATION;
+    Exchange::IPackageHandler::LockReason lockReason = Exchange::IPackageHandler::LockReason::LAUNCH;
 
     auto additionalMetadata = Core::Service<RPC::IteratorType<Exchange::IPackageInstaller::IKeyValueIterator>>::Create<Exchange::IPackageInstaller::IKeyValueIterator>(kv);
 
@@ -2443,5 +2441,4 @@ TEST_F(PackageManagerTest, installerNotificationUnregisterWithoutRegisterusingCo
 
     deinitforComRpc();
 }
-
 
