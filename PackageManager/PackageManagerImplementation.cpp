@@ -194,6 +194,10 @@ namespace Plugin {
     } else {
         LOGERR("Failed to delete marker file: %s (errno=%d)", markerFile.c_str(), errno);
     }
+		// Release storage manager object HERE (before TearDown deletes the mock)
+        // so the destructor doesn't try to release an already-deleted mock
+        releaseStorageManagerObject();
+		
         if (mCurrentservice != nullptr) {
         mCurrentservice->Release();
         mCurrentservice = nullptr;
@@ -218,7 +222,7 @@ namespace Plugin {
 
     void PackageManagerImplementation::releaseStorageManagerObject()
     {
-        ASSERT(nullptr != mStorageManagerObject);
+        // Guard: only release if not null (may have been released in Deinitialize already)
         if(mStorageManagerObject) {
             mStorageManagerObject->Release();
             mStorageManagerObject = nullptr;
