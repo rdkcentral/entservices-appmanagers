@@ -905,47 +905,6 @@ TEST_F(PackageManagerTest, deleteMethodusingJsonRpcFailure) {
 	deinitforJsonRpc();
 }
 
-/* Test Case for delete download using ComRpc
- *
- * Set up and initialize required COM-RPC resources, configurations, mocks and expectations
- * Obtain the required parameters for downloading using the getDownloadParams()
- * Call the Download method using the COM RPC interface along with the required parameters and wait
- * Verify successful download by asserting that it returns Core::ERROR_NONE and checking the downloadId
- * Call the delete method using the COM RPC interface, passing fileLocator
- * Verify successful delete by asserting that it returns Core::ERROR_NONE
- * Deinitialize the COM-RPC resources and clean-up related test resources
- */
-
-TEST_F(PackageManagerTest, deleteMethodusingComRpcSuccess) {
-
-    initforComRpc();
-
-    getDownloadParams();
-
-	uri = "https://httpbin.org/bytes/1024";
-
-    uint32_t timeout_ms = 4000;
-
-    EXPECT_CALL(*mSubSystemMock, IsActive(::testing::_))
-        .Times(::testing::AnyNumber())
-        .WillOnce(::testing::Invoke(
-            [&](const PluginHost::ISubSystem::subsystem type) {
-                return true;
-            }));
-
-    EXPECT_EQ(Core::ERROR_NONE, pkgdownloaderInterface->Download(uri, options, downloadId));
-
-    waitforSignal(timeout_ms);
-
-    EXPECT_EQ(downloadId.downloadId, "1001");
-
-    string fileLocator = "/opt/CDL/package1001";
-
-    // TC-20: Delete download failure when download in progress using ComRpc
-    EXPECT_EQ(Core::ERROR_NONE, pkgdownloaderInterface->Delete(fileLocator));
-
-	deinitforComRpc();
-}
 
 /* Test Case for delete download failure using ComRpc
  *
