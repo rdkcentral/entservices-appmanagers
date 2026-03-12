@@ -311,6 +311,7 @@ class PackageManagerImplementation
         std::condition_variable cv;
         std::unique_ptr<std::thread> mDownloadThreadPtr;
         bool done = false;
+        bool mIsDeinitialized = false;
         DownloadInfoPtr mInprogressDownload;
 
         uint32_t mNextDownloadId;
