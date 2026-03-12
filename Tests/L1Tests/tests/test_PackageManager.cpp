@@ -1818,10 +1818,10 @@ TEST_F(PackageManagerTest, lockGetLockedInfoAndUnlockusingComRpcSuccess) {
 
     EXPECT_EQ(Core::ERROR_NONE, pkghandlerInterface->Unlock(packageId, version));
 
-    if (appMetadata != nullptr) {
-        appMetadata->Release();
-        appMetadata = nullptr;
-    }
+
+    appMetadata->Release();
+    appMetadata = nullptr;
+
 
     deinitforComRpc();
 }
