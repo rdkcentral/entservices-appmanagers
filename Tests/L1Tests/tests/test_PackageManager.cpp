@@ -198,7 +198,8 @@ protected:
             delete mSubSystemMock;
             mSubSystemMock = nullptr;
         }
-		 // mStorageManagerMock is deleted by the WillOnce lambda in deinitforComRpc()
+
+        // mStorageManagerMock is deleted by the WillOnce lambda in deinitforComRpc()
         // when Install was called (which creates mStorageManagerObject). For tests that
         // never call Install, the mock was never deleted — clean it up here.
         if(mStorageManagerMock != nullptr)
@@ -207,7 +208,6 @@ protected:
             mStorageManagerMock = nullptr;
         }
     }
-  
 
     void deinitforJsonRpc() 
     {
@@ -222,12 +222,7 @@ protected:
         dispatcher->Release();
 
         plugin->Deinitialize(mServiceMock);
-        
-        if(mStorageManagerMock != nullptr)
-        {
-            delete mStorageManagerMock;
-            mStorageManagerMock = nullptr;
-        }
+        // mStorageManagerMock cleanup is handled in TearDown()
     }
 
     void deinitforComRpc()
@@ -235,13 +230,18 @@ protected:
         EXPECT_CALL(*mServiceMock, Release())
           .Times(::testing::AnyNumber());
 
-        EXPECT_CALL(*mStorageManagerMock, Release())
-          .WillOnce(::testing::Invoke(
-                [&]() {
-                     delete mStorageManagerMock;
-                     mStorageManagerMock = nullptr;
-                     return 0;
-            }));
+        // Release() is only called if mStorageManagerObject was created (i.e. Install was called).
+        // Use AnyNumber() so tests that never call Install() do not produce unsatisfied expectations.
+        if (mStorageManagerMock != nullptr) {
+            EXPECT_CALL(*mStorageManagerMock, Release())
+              .Times(::testing::AnyNumber())
+              .WillRepeatedly(::testing::Invoke(
+                    [&]() {
+                         delete mStorageManagerMock;
+                         mStorageManagerMock = nullptr;
+                         return 0;
+                }));
+        }
 
         // Deinitialize the plugin for COM-RPC
         pkgdownloaderInterface->Deinitialize(mServiceMock);
@@ -367,6 +367,7 @@ public:
     MOCK_METHOD(uint32_t, Release, (), (const, override));
     MOCK_METHOD(void*, QueryInterface, (const uint32_t), (override));
 };
+
 /* Test Case for verifying registered methods using JsonRpc
  * 
  * Set up and initialize required JSON-RPC resources, configurations, mocks and expectations
@@ -1776,6 +1777,7 @@ TEST_F(PackageManagerTest, configusingComRpcSuccess) {
     Exchange::RuntimeConfig configMetadata;
 
     EXPECT_EQ(Core::ERROR_NONE, pkginstallerInterface->Config(packageId, version, configMetadata));
+
     deinitforComRpc();
 }
 
@@ -1910,7 +1912,6 @@ TEST_F(PackageManagerTest, lockGetLockedInfoAndUnlockusingComRpcSuccess) {
     deinitforComRpc();
 }
 
-
 // IPackageHandler methods
 
 /* Test Case for unlock failure using ComRpc
@@ -1935,3 +1936,4 @@ TEST_F(PackageManagerTest, unlockmethodusingComRpcFailure) {
 
 	deinitforComRpc();
 }
+
