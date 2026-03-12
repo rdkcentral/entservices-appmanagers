@@ -1680,3 +1680,768 @@ TEST_F(PackageManagerTest, packageStateusingComRpcSuccess) {
 	deinitforComRpc();
 }
 
+/* Test Case for Pause with wrong downloadId using ComRpc - ERROR_UNKNOWN_KEY path
+ *
+ * Set up and initialize required COM-RPC resources, configurations, mocks and expectations
+ * Start a download and wait for it to be in progress
+ * Call the pause method using the COM RPC interface with a wrong downloadId
+ * Verify pause method returns ERROR_UNKNOWN_KEY
+ * Deinitialize the COM-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, pauseMethodusingComRpcWrongDownloadId) {
+
+    initforComRpc();
+
+    getDownloadParams();
+
+    EXPECT_CALL(*mSubSystemMock, IsActive(::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillRepeatedly(::testing::Invoke(
+            [&](const PluginHost::ISubSystem::subsystem type) {
+                return true;
+            }));
+
+    EXPECT_EQ(Core::ERROR_NONE, pkgdownloaderInterface->Download(uri, options, downloadId));
+
+    waitforSignal(TIMEOUT_FOR_PAUSE);
+
+    EXPECT_EQ(downloadId.downloadId, "1001");
+
+    // TC-42: Pause with wrong downloadId returns ERROR_UNKNOWN_KEY
+    string wrongDownloadId = "9999";
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, pkgdownloaderInterface->Pause(wrongDownloadId));
+
+    // Cancel the actual download
+    string downloadIdStr = "1001";
+    EXPECT_EQ(Core::ERROR_NONE, pkgdownloaderInterface->Cancel(downloadIdStr));
+
+    deinitforComRpc();
+}
+
+/* Test Case for Resume with wrong downloadId using ComRpc - ERROR_UNKNOWN_KEY path
+ *
+ * Set up and initialize required COM-RPC resources, configurations, mocks and expectations
+ * Start a download and wait for it to be in progress
+ * Call the resume method using the COM RPC interface with a wrong downloadId
+ * Verify resume method returns ERROR_UNKNOWN_KEY
+ * Deinitialize the COM-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, resumeMethodusingComRpcWrongDownloadId) {
+
+    initforComRpc();
+
+    getDownloadParams();
+
+    EXPECT_CALL(*mSubSystemMock, IsActive(::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillRepeatedly(::testing::Invoke(
+            [&](const PluginHost::ISubSystem::subsystem type) {
+                return true;
+            }));
+
+    EXPECT_EQ(Core::ERROR_NONE, pkgdownloaderInterface->Download(uri, options, downloadId));
+
+    waitforSignal(TIMEOUT_FOR_PAUSE);
+
+    EXPECT_EQ(downloadId.downloadId, "1001");
+
+    // TC-43: Resume with wrong downloadId returns ERROR_UNKNOWN_KEY
+    string wrongDownloadId = "9999";
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, pkgdownloaderInterface->Resume(wrongDownloadId));
+
+    // Cancel the actual download
+    string downloadIdStr = "1001";
+    EXPECT_EQ(Core::ERROR_NONE, pkgdownloaderInterface->Cancel(downloadIdStr));
+
+    deinitforComRpc();
+}
+
+/* Test Case for Cancel with wrong downloadId using ComRpc - ERROR_UNKNOWN_KEY path
+ *
+ * Set up and initialize required COM-RPC resources, configurations, mocks and expectations
+ * Start a download and wait for it to be in progress
+ * Call the cancel method using the COM RPC interface with a wrong downloadId
+ * Verify cancel method returns ERROR_UNKNOWN_KEY
+ * Deinitialize the COM-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, cancelMethodusingComRpcWrongDownloadId) {
+
+    initforComRpc();
+
+    getDownloadParams();
+
+    EXPECT_CALL(*mSubSystemMock, IsActive(::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillRepeatedly(::testing::Invoke(
+            [&](const PluginHost::ISubSystem::subsystem type) {
+                return true;
+            }));
+
+    EXPECT_EQ(Core::ERROR_NONE, pkgdownloaderInterface->Download(uri, options, downloadId));
+
+    waitforSignal(TIMEOUT_FOR_PAUSE);
+
+    EXPECT_EQ(downloadId.downloadId, "1001");
+
+    // TC-44: Cancel with wrong downloadId returns ERROR_UNKNOWN_KEY
+    string wrongDownloadId = "9999";
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, pkgdownloaderInterface->Cancel(wrongDownloadId));
+
+    // Cancel the actual download
+    string downloadIdStr = "1001";
+    EXPECT_EQ(Core::ERROR_NONE, pkgdownloaderInterface->Cancel(downloadIdStr));
+
+    deinitforComRpc();
+}
+
+/* Test Case for RateLimit with wrong downloadId using ComRpc - ERROR_UNKNOWN_KEY path
+ *
+ * Set up and initialize required COM-RPC resources, configurations, mocks and expectations
+ * Start a download and wait for it to be in progress
+ * Call the rateLimit method using the COM RPC interface with a wrong downloadId
+ * Verify rateLimit method returns ERROR_UNKNOWN_KEY
+ * Deinitialize the COM-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, rateLimitusingComRpcWrongDownloadId) {
+
+    initforComRpc();
+
+    getDownloadParams();
+
+    EXPECT_CALL(*mSubSystemMock, IsActive(::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillRepeatedly(::testing::Invoke(
+            [&](const PluginHost::ISubSystem::subsystem type) {
+                return true;
+            }));
+
+    uint64_t limit = 1024;
+
+    EXPECT_EQ(Core::ERROR_NONE, pkgdownloaderInterface->Download(uri, options, downloadId));
+
+    waitforSignal(TIMEOUT_FOR_PAUSE);
+
+    EXPECT_EQ(downloadId.downloadId, "1001");
+
+    // TC-45: RateLimit with wrong downloadId returns ERROR_UNKNOWN_KEY
+    string wrongDownloadId = "9999";
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, pkgdownloaderInterface->RateLimit(wrongDownloadId, limit));
+
+    // Cancel the actual download
+    string downloadIdStr = "1001";
+    EXPECT_EQ(Core::ERROR_NONE, pkgdownloaderInterface->Cancel(downloadIdStr));
+
+    deinitforComRpc();
+}
+
+/* Test Case for Config method success using ComRpc
+ *
+ * Set up and initialize required COM-RPC resources, configurations, mocks and expectations
+ * Install a package first
+ * Call the Config method using the COM RPC interface
+ * Verify Config method returns Core::ERROR_NONE
+ * Deinitialize the COM-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, configusingComRpcSuccess) {
+
+    initforComRpc();
+
+    getDownloadParams();
+
+    uri = "https://httpbin.org/bytes/1024";
+
+    uint32_t timeout_ms = 3000;
+
+    string packageId = "YouTube";
+    string version = "100.1.24";
+    string fileLocator = "/opt/CDL/package1001";
+    Exchange::IPackageInstaller::FailReason reason = Exchange::IPackageInstaller::FailReason::NONE;
+    list<Exchange::IPackageInstaller::KeyValue> kv = { {"testapp", "2"} };
+    Exchange::RuntimeConfig runtimeConfig;
+
+    auto additionalMetadata = Core::Service<RPC::IteratorType<Exchange::IPackageInstaller::IKeyValueIterator>>::Create<Exchange::IPackageInstaller::IKeyValueIterator>(kv);
+
+    EXPECT_CALL(*mSubSystemMock, IsActive(::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillRepeatedly(::testing::Invoke(
+            [&](const PluginHost::ISubSystem::subsystem type) {
+                return true;
+            }));
+
+    EXPECT_CALL(*mStorageManagerMock, CreateStorage(::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillOnce(::testing::Invoke(
+            [&](const string& appId, const uint32_t &size, string& path, string &errorReason) {
+                return Core::ERROR_NONE;
+            }));
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    EXPECT_EQ(Core::ERROR_NONE, pkgdownloaderInterface->Download(uri, options, downloadId));
+
+    EXPECT_EQ(downloadId.downloadId, "1001");
+
+    waitforSignal(TIMEOUT);
+
+    EXPECT_EQ(Core::ERROR_NONE, pkginstallerInterface->Install(packageId, version, additionalMetadata, fileLocator, reason));
+
+    waitforSignal(timeout_ms);
+
+    // TC-46: Config method success
+    EXPECT_EQ(Core::ERROR_NONE, pkginstallerInterface->Config(packageId, version, runtimeConfig));
+
+    deinitforComRpc();
+}
+
+/* Test Case for Config method failure when package not found using ComRpc
+ *
+ * Set up and initialize required COM-RPC resources, configurations, mocks and expectations
+ * Call the Config method using the COM RPC interface with non-existent package
+ * Verify Config method returns Core::ERROR_BAD_REQUEST
+ * Deinitialize the COM-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, configusingComRpcPackageNotFound) {
+
+    initforComRpc();
+
+    string packageId = "NonExistentPackage";
+    string version = "1.0.0";
+    Exchange::RuntimeConfig runtimeConfig;
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    // TC-47: Config method failure - package not found
+    EXPECT_EQ(Core::ERROR_BAD_REQUEST, pkginstallerInterface->Config(packageId, version, runtimeConfig));
+
+    deinitforComRpc();
+}
+
+/* Test Case for PackageState method failure when package not found using ComRpc
+ *
+ * Set up and initialize required COM-RPC resources, configurations, mocks and expectations
+ * Call the PackageState method using the COM RPC interface with non-existent package
+ * Verify PackageState method returns Core::ERROR_BAD_REQUEST
+ * Deinitialize the COM-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, packageStateusingComRpcPackageNotFound) {
+
+    initforComRpc();
+
+    string packageId = "NonExistentPackage";
+    string version = "1.0.0";
+    Exchange::IPackageInstaller::InstallState state = Exchange::IPackageInstaller::InstallState::INSTALLING;
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    // TC-48: PackageState method failure - package not found
+    EXPECT_EQ(Core::ERROR_BAD_REQUEST, pkginstallerInterface->PackageState(packageId, version, state));
+
+    deinitforComRpc();
+}
+
+/* Test Case for Uninstall method failure when package not found using ComRpc
+ *
+ * Set up and initialize required COM-RPC resources, configurations, mocks and expectations
+ * Call the Uninstall method using the COM RPC interface with non-existent package
+ * Verify Uninstall method returns Core::ERROR_BAD_REQUEST
+ * Deinitialize the COM-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, uninstallusingComRpcPackageNotFound) {
+
+    initforComRpc();
+
+    string packageId = "NonExistentPackage";
+    string errorReason;
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    // TC-49: Uninstall method failure - package not found
+    EXPECT_EQ(Core::ERROR_BAD_REQUEST, pkginstallerInterface->Uninstall(packageId, errorReason));
+
+    deinitforComRpc();
+}
+
+/* Test Case for GetLockedInfo method success using ComRpc
+ *
+ * Set up and initialize required COM-RPC resources, configurations, mocks and expectations
+ * Install a package first
+ * Call the GetLockedInfo method using the COM RPC interface
+ * Verify GetLockedInfo method returns Core::ERROR_NONE
+ * Deinitialize the COM-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, getLockedInfousingComRpcSuccess) {
+
+    initforComRpc();
+
+    getDownloadParams();
+
+    uri = "https://httpbin.org/bytes/1024";
+
+    uint32_t timeout_ms = 3000;
+
+    string packageId = "YouTube";
+    string version = "100.1.24";
+    string fileLocator = "/opt/CDL/package1001";
+    Exchange::IPackageInstaller::FailReason reason = Exchange::IPackageInstaller::FailReason::NONE;
+    list<Exchange::IPackageInstaller::KeyValue> kv = { {"testapp", "2"} };
+    string unpackedPath;
+    Exchange::RuntimeConfig runtimeConfig;
+    string gatewayMetadataPath;
+    bool locked = false;
+
+    auto additionalMetadata = Core::Service<RPC::IteratorType<Exchange::IPackageInstaller::IKeyValueIterator>>::Create<Exchange::IPackageInstaller::IKeyValueIterator>(kv);
+
+    EXPECT_CALL(*mSubSystemMock, IsActive(::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillRepeatedly(::testing::Invoke(
+            [&](const PluginHost::ISubSystem::subsystem type) {
+                return true;
+            }));
+
+    EXPECT_CALL(*mStorageManagerMock, CreateStorage(::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillOnce(::testing::Invoke(
+            [&](const string& appId, const uint32_t &size, string& path, string &errorReason) {
+                return Core::ERROR_NONE;
+            }));
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    EXPECT_EQ(Core::ERROR_NONE, pkgdownloaderInterface->Download(uri, options, downloadId));
+
+    EXPECT_EQ(downloadId.downloadId, "1001");
+
+    waitforSignal(TIMEOUT);
+
+    EXPECT_EQ(Core::ERROR_NONE, pkginstallerInterface->Install(packageId, version, additionalMetadata, fileLocator, reason));
+
+    waitforSignal(timeout_ms);
+
+    // TC-50: GetLockedInfo method success
+    EXPECT_EQ(Core::ERROR_NONE, pkghandlerInterface->GetLockedInfo(packageId, version, unpackedPath, runtimeConfig, gatewayMetadataPath, locked));
+
+    // Package should not be locked since we haven't called Lock
+    EXPECT_FALSE(locked);
+
+    deinitforComRpc();
+}
+
+/* Test Case for GetLockedInfo method failure when package not found using ComRpc
+ *
+ * Set up and initialize required COM-RPC resources, configurations, mocks and expectations
+ * Call the GetLockedInfo method using the COM RPC interface with non-existent package
+ * Verify GetLockedInfo method returns Core::ERROR_BAD_REQUEST
+ * Deinitialize the COM-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, getLockedInfousingComRpcPackageNotFound) {
+
+    initforComRpc();
+
+    string packageId = "NonExistentPackage";
+    string version = "1.0.0";
+    string unpackedPath;
+    Exchange::RuntimeConfig runtimeConfig;
+    string gatewayMetadataPath;
+    bool locked = false;
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    // TC-51: GetLockedInfo method failure - package not found
+    EXPECT_EQ(Core::ERROR_BAD_REQUEST, pkghandlerInterface->GetLockedInfo(packageId, version, unpackedPath, runtimeConfig, gatewayMetadataPath, locked));
+
+    deinitforComRpc();
+}
+
+/* Test Case for GetConfigForPackage method failure with empty fileLocator using ComRpc
+ *
+ * Set up and initialize required COM-RPC resources, configurations, mocks and expectations
+ * Call the GetConfigForPackage method using the COM RPC interface with empty fileLocator
+ * Verify GetConfigForPackage method returns Core::ERROR_INVALID_SIGNATURE
+ * Deinitialize the COM-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, getConfigForPackageusingComRpcEmptyFileLocator) {
+
+    initforComRpc();
+
+    string fileLocator = "";
+    string id;
+    string version;
+    Exchange::RuntimeConfig config;
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    // TC-52: GetConfigForPackage method failure - empty fileLocator
+    EXPECT_EQ(Core::ERROR_INVALID_SIGNATURE, pkghandlerInterface->GetConfigForPackage(fileLocator, id, version, config));
+
+    deinitforComRpc();
+}
+
+/* Test Case for Lock method success using ComRpc
+ *
+ * Set up and initialize required COM-RPC resources, configurations, mocks and expectations
+ * Install a package first
+ * Call the Lock method using the COM RPC interface
+ * Verify Lock method returns Core::ERROR_NONE
+ * Verify locked package with GetLockedInfo
+ * Deinitialize the COM-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, lockMethodusingComRpcSuccess) {
+
+    initforComRpc();
+
+    getDownloadParams();
+
+    uri = "https://httpbin.org/bytes/1024";
+
+    uint32_t timeout_ms = 3000;
+
+    string packageId = "YouTube";
+    string version = "100.1.24";
+    string fileLocator = "/opt/CDL/package1001";
+    Exchange::IPackageInstaller::FailReason reason = Exchange::IPackageInstaller::FailReason::NONE;
+    list<Exchange::IPackageInstaller::KeyValue> kv = { {"testapp", "2"} };
+    uint32_t lockId = 0;
+    string unpackedPath;
+    Exchange::RuntimeConfig runtimeConfig;
+    Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
+    Exchange::IPackageHandler::LockReason lockReason = Exchange::IPackageHandler::LockReason::APPLICATION;
+
+    auto additionalMetadata = Core::Service<RPC::IteratorType<Exchange::IPackageInstaller::IKeyValueIterator>>::Create<Exchange::IPackageInstaller::IKeyValueIterator>(kv);
+
+    EXPECT_CALL(*mSubSystemMock, IsActive(::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillRepeatedly(::testing::Invoke(
+            [&](const PluginHost::ISubSystem::subsystem type) {
+                return true;
+            }));
+
+    EXPECT_CALL(*mStorageManagerMock, CreateStorage(::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillOnce(::testing::Invoke(
+            [&](const string& appId, const uint32_t &size, string& path, string &errorReason) {
+                return Core::ERROR_NONE;
+            }));
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    EXPECT_EQ(Core::ERROR_NONE, pkgdownloaderInterface->Download(uri, options, downloadId));
+
+    EXPECT_EQ(downloadId.downloadId, "1001");
+
+    waitforSignal(TIMEOUT);
+
+    EXPECT_EQ(Core::ERROR_NONE, pkginstallerInterface->Install(packageId, version, additionalMetadata, fileLocator, reason));
+
+    waitforSignal(timeout_ms);
+
+    // TC-53: Lock method success
+    EXPECT_EQ(Core::ERROR_NONE, pkghandlerInterface->Lock(packageId, version, lockReason, lockId, unpackedPath, runtimeConfig, appMetadata));
+
+    // Verify lockId is valid (should be 1 for first lock)
+    EXPECT_EQ(lockId, 1u);
+
+    // Verify package is now locked using GetLockedInfo
+    string gatewayMetadataPath;
+    bool locked = false;
+    EXPECT_EQ(Core::ERROR_NONE, pkghandlerInterface->GetLockedInfo(packageId, version, unpackedPath, runtimeConfig, gatewayMetadataPath, locked));
+    EXPECT_TRUE(locked);
+
+    // Release appMetadata if created
+    if (appMetadata != nullptr) {
+        appMetadata->Release();
+    }
+
+    deinitforComRpc();
+}
+
+/* Test Case for Lock method failure when package not found using ComRpc
+ *
+ * Set up and initialize required COM-RPC resources, configurations, mocks and expectations
+ * Call the Lock method using the COM RPC interface with non-existent package
+ * Verify Lock method returns Core::ERROR_BAD_REQUEST
+ * Deinitialize the COM-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, lockMethodusingComRpcPackageNotFound) {
+
+    initforComRpc();
+
+    string packageId = "NonExistentPackage";
+    string version = "1.0.0";
+    uint32_t lockId = 0;
+    string unpackedPath;
+    Exchange::RuntimeConfig runtimeConfig;
+    Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
+    Exchange::IPackageHandler::LockReason lockReason = Exchange::IPackageHandler::LockReason::APPLICATION;
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    // TC-54: Lock method failure - package not found
+    EXPECT_EQ(Core::ERROR_BAD_REQUEST, pkghandlerInterface->Lock(packageId, version, lockReason, lockId, unpackedPath, runtimeConfig, appMetadata));
+
+    deinitforComRpc();
+}
+
+/* Test Case for Unlock method success using ComRpc
+ *
+ * Set up and initialize required COM-RPC resources, configurations, mocks and expectations
+ * Install a package, Lock it, then Unlock it
+ * Verify Unlock method returns Core::ERROR_NONE
+ * Deinitialize the COM-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, unlockMethodusingComRpcSuccess) {
+
+    initforComRpc();
+
+    getDownloadParams();
+
+    uri = "https://httpbin.org/bytes/1024";
+
+    uint32_t timeout_ms = 3000;
+
+    string packageId = "YouTube";
+    string version = "100.1.24";
+    string fileLocator = "/opt/CDL/package1001";
+    Exchange::IPackageInstaller::FailReason reason = Exchange::IPackageInstaller::FailReason::NONE;
+    list<Exchange::IPackageInstaller::KeyValue> kv = { {"testapp", "2"} };
+    uint32_t lockId = 0;
+    string unpackedPath;
+    Exchange::RuntimeConfig runtimeConfig;
+    Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
+    Exchange::IPackageHandler::LockReason lockReason = Exchange::IPackageHandler::LockReason::APPLICATION;
+
+    auto additionalMetadata = Core::Service<RPC::IteratorType<Exchange::IPackageInstaller::IKeyValueIterator>>::Create<Exchange::IPackageInstaller::IKeyValueIterator>(kv);
+
+    EXPECT_CALL(*mSubSystemMock, IsActive(::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillRepeatedly(::testing::Invoke(
+            [&](const PluginHost::ISubSystem::subsystem type) {
+                return true;
+            }));
+
+    EXPECT_CALL(*mStorageManagerMock, CreateStorage(::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillOnce(::testing::Invoke(
+            [&](const string& appId, const uint32_t &size, string& path, string &errorReason) {
+                return Core::ERROR_NONE;
+            }));
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    EXPECT_EQ(Core::ERROR_NONE, pkgdownloaderInterface->Download(uri, options, downloadId));
+
+    EXPECT_EQ(downloadId.downloadId, "1001");
+
+    waitforSignal(TIMEOUT);
+
+    EXPECT_EQ(Core::ERROR_NONE, pkginstallerInterface->Install(packageId, version, additionalMetadata, fileLocator, reason));
+
+    waitforSignal(timeout_ms);
+
+    // Lock the package first
+    EXPECT_EQ(Core::ERROR_NONE, pkghandlerInterface->Lock(packageId, version, lockReason, lockId, unpackedPath, runtimeConfig, appMetadata));
+    EXPECT_EQ(lockId, 1u);
+
+    // Release appMetadata if created
+    if (appMetadata != nullptr) {
+        appMetadata->Release();
+    }
+
+    // TC-55: Unlock method success
+    EXPECT_EQ(Core::ERROR_NONE, pkghandlerInterface->Unlock(packageId, version));
+
+    // Verify package is now unlocked
+    string gatewayMetadataPath;
+    bool locked = false;
+    EXPECT_EQ(Core::ERROR_NONE, pkghandlerInterface->GetLockedInfo(packageId, version, unpackedPath, runtimeConfig, gatewayMetadataPath, locked));
+    EXPECT_FALSE(locked);
+
+    deinitforComRpc();
+}
+
+/* Test Case for Unlock method failure when package not found using ComRpc
+ *
+ * Set up and initialize required COM-RPC resources, configurations, mocks and expectations
+ * Call the Unlock method using the COM RPC interface with non-existent package
+ * Verify Unlock method returns Core::ERROR_BAD_REQUEST
+ * Deinitialize the COM-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, unlockMethodusingComRpcPackageNotFound) {
+
+    initforComRpc();
+
+    string packageId = "NonExistentPackage";
+    string version = "1.0.0";
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    // TC-56: Unlock method failure - package not found
+    EXPECT_EQ(Core::ERROR_BAD_REQUEST, pkghandlerInterface->Unlock(packageId, version));
+
+    deinitforComRpc();
+}
+
+/* Test Case for Delete success using ComRpc
+ *
+ * Set up and initialize required COM-RPC resources, configurations, mocks and expectations
+ * Download a file first
+ * Wait for download to complete
+ * Delete the downloaded file
+ * Verify Delete method returns Core::ERROR_NONE
+ * Deinitialize the COM-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, deleteMethodusingComRpcSuccess) {
+
+    initforComRpc();
+
+    getDownloadParams();
+
+    uri = "https://httpbin.org/bytes/1024";
+
+    EXPECT_CALL(*mSubSystemMock, IsActive(::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillRepeatedly(::testing::Invoke(
+            [&](const PluginHost::ISubSystem::subsystem type) {
+                return true;
+            }));
+
+    EXPECT_EQ(Core::ERROR_NONE, pkgdownloaderInterface->Download(uri, options, downloadId));
+
+    EXPECT_EQ(downloadId.downloadId, "1001");
+
+    // Wait for download to complete
+    waitforSignal(TIMEOUT);
+
+    // TC-57: Delete method success
+    string fileLocator = "/opt/CDL/package1001";
+    
+    // Create a temp file to test delete
+    std::ofstream tempFile(fileLocator);
+    tempFile << "test content";
+    tempFile.close();
+
+    EXPECT_EQ(Core::ERROR_NONE, pkgdownloaderInterface->Delete(fileLocator));
+
+    deinitforComRpc();
+}
+
+/* Test Case for Downloader notification register and unregister using ComRpc
+ *
+ * Set up and initialize required COM-RPC resources, configurations, mocks and expectations
+ * Register a downloader notification
+ * Verify registration returns Core::ERROR_NONE
+ * Unregister the notification
+ * Verify unregistration returns Core::ERROR_NONE
+ * Deinitialize the COM-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, downloaderNotificationRegisterUnregisterusingComRpc) {
+
+    initforComRpc();
+
+    NiceMock<DownloaderNotificationMock> notification;
+
+    EXPECT_CALL(notification, AddRef())
+        .Times(::testing::AnyNumber());
+    
+    EXPECT_CALL(notification, Release())
+        .Times(::testing::AnyNumber())
+        .WillRepeatedly(::testing::Return(0));
+
+    // TC-58: Register downloader notification
+    EXPECT_EQ(Core::ERROR_NONE, pkgdownloaderInterface->Register(&notification));
+
+    // TC-59: Unregister downloader notification
+    EXPECT_EQ(Core::ERROR_NONE, pkgdownloaderInterface->Unregister(&notification));
+
+    deinitforComRpc();
+}
+
+/* Test Case for Installer notification register and unregister using ComRpc
+ *
+ * Set up and initialize required COM-RPC resources, configurations, mocks and expectations
+ * Register an installer notification
+ * Verify registration returns Core::ERROR_NONE
+ * Unregister the notification
+ * Verify unregistration returns Core::ERROR_NONE
+ * Deinitialize the COM-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, installerNotificationRegisterUnregisterusingComRpc) {
+
+    initforComRpc();
+
+    NiceMock<InstallerNotificationMock> notification;
+
+    EXPECT_CALL(notification, AddRef())
+        .Times(::testing::AnyNumber());
+    
+    EXPECT_CALL(notification, Release())
+        .Times(::testing::AnyNumber())
+        .WillRepeatedly(::testing::Return(0));
+
+    // TC-60: Register installer notification
+    EXPECT_EQ(Core::ERROR_NONE, pkginstallerInterface->Register(&notification));
+
+    // TC-61: Unregister installer notification
+    EXPECT_EQ(Core::ERROR_NONE, pkginstallerInterface->Unregister(&notification));
+
+    deinitforComRpc();
+}
+
+/* Test Case for Downloader notification unregister without register using ComRpc
+ *
+ * Set up and initialize required COM-RPC resources, configurations, mocks and expectations
+ * Unregister a notification that was never registered
+ * Verify unregistration returns Core::ERROR_GENERAL
+ * Deinitialize the COM-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, downloaderNotificationUnregisterWithoutRegisterusingComRpc) {
+
+    initforComRpc();
+
+    NiceMock<DownloaderNotificationMock> notification;
+
+    // TC-62: Unregister downloader notification without register
+    EXPECT_EQ(Core::ERROR_GENERAL, pkgdownloaderInterface->Unregister(&notification));
+
+    deinitforComRpc();
+}
+
+/* Test Case for Installer notification unregister without register using ComRpc
+ *
+ * Set up and initialize required COM-RPC resources, configurations, mocks and expectations
+ * Unregister a notification that was never registered
+ * Verify unregistration returns Core::ERROR_GENERAL
+ * Deinitialize the COM-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, installerNotificationUnregisterWithoutRegisterusingComRpc) {
+
+    initforComRpc();
+
+    NiceMock<InstallerNotificationMock> notification;
+
+    // TC-63: Unregister installer notification without register
+    EXPECT_EQ(Core::ERROR_GENERAL, pkginstallerInterface->Unregister(&notification));
+
+    deinitforComRpc();
+}
+
+
