@@ -758,7 +758,8 @@ namespace WPEFramework
                                 runtimeAppInfo.appId = std::move(appId);
                             }
                             runtimeAppInfo.appInstanceId = std::move(appInstanceId);
-                            runtimeAppInfo.descriptor = std::move(descriptor);
+                            // Coverity fix: USE_AFTER_MOVE - Don't move primitive types, just assign
+                            runtimeAppInfo.descriptor = descriptor;
                             runtimeAppInfo.containerState = Exchange::IRuntimeManager::RUNTIME_STATE_STARTING;
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
                             /* Store request time and type in runtime app info map */
@@ -766,7 +767,9 @@ namespace WPEFramework
                             runtimeAppInfo.requestType = REQUEST_TYPE_LAUNCH;
 #endif
                             /* Insert/update runtime app info */
-                            mRuntimeAppInfo[runtimeAppInfo.appInstanceId] = std::move(runtimeAppInfo);
+                            // Coverity fix: USE_AFTER_MOVE - Save key before moving object to avoid accessing moved-from object
+                            string instanceId = runtimeAppInfo.appInstanceId;
+                            mRuntimeAppInfo[instanceId] = std::move(runtimeAppInfo);
                         }
                     }
                     else
