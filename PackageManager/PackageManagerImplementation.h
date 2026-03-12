@@ -283,7 +283,7 @@ class PackageManagerImplementation
         }
 
         string getFailReason(FailReason reason) {
-            switch (reason)
+            switch (reason) {
                 case FailReason::SIGNATURE_VERIFICATION_FAILURE : return "SIGNATURE_VERIFICATION_FAILURE";
                 case FailReason::PACKAGE_MISMATCH_FAILURE : return "PACKAGE_MISMATCH_FAILURE";
                 case FailReason::INVALID_METADATA_FAILURE : return "INVALID_METADATA_FAILURE";
