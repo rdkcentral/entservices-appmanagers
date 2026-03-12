@@ -3172,8 +3172,8 @@ TEST_F(AppManagerTest, OnApplicationStateChangedSuccess)
         Exchange::ILifecycleManager::LifecycleState::TERMINATING,   // New state
         "start"
     );
-    /* Ensure that the OnAppLifecycleStateChanged callback is not called/invoked */
-    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    /* TERMINATING state has shouldNotify=0, so no async job is dispatched and
+     * OnAppLifecycleStateChanged callback is never invoked. No need to wait. */
     EXPECT_FALSE(signalled & AppManager_onAppLifecycleStateChanged);
 
     mAppManagerImpl->Unregister(&notification);
@@ -3522,9 +3522,20 @@ TEST_F(AppManagerTest, OnAppInstallationStatusMissingPackageId)
 
     ASSERT_NE(mPackageManagerNotification_cb, nullptr)
         << "PackageManager notification callback is not registered";
+
+    uint32_t signalled = AppManager_StateInvalid;
+    Core::Sink<NotificationHandler> notification;
+    mAppManagerImpl->Register(&notification);
+
     /* JSON with no packageId - covers the LOGERR("appId is missing or empty") in Dispatch APP_EVENT_INSTALLATION_STATUS */
     mPackageManagerNotification_cb->OnAppInstallationStatus(R"([{"state":"INSTALLED","version":"1.0.0"}])");
 
+    /* Wait for the async Job to complete; empty appId means no notification fires.
+     * Timeout ensures ~Job() has decremented the mAppManagerImpl refcount. */
+    signalled = notification.WaitForRequestStatus(500, AppManager_onAppInstalled);
+    EXPECT_FALSE(signalled & AppManager_onAppInstalled);
+
+    mAppManagerImpl->Unregister(&notification);
     if (status == Core::ERROR_NONE)
     {
         releaseResources();
@@ -3963,6 +3974,10 @@ TEST_F(AppManagerTest, DispatchLifecycleEventEmptyAppId)
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
 
+    uint32_t signalled = AppManager_StateInvalid;
+    Core::Sink<NotificationHandler> notification;
+    mAppManagerImpl->Register(&notification);
+
     /* Empty appId passed through handleOnAppLifecycleStateChanged -> dispatchEvent ->
      * Dispatch, where the non-empty check at L251 fires the LOGERR path */
     mAppManagerImpl->handleOnAppLifecycleStateChanged(
@@ -3972,9 +3987,13 @@ TEST_F(AppManagerTest, DispatchLifecycleEventEmptyAppId)
         Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING,
         Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE);
 
-    /* Brief delay to allow the worker thread to dispatch */
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    /* Wait for the worker thread to dispatch and fully release its Job reference.
+     * Empty appId means no notification fires; the timeout ensures ~Job() has
+     * decremented the mAppManagerImpl refcount before releaseResources() runs. */
+    signalled = notification.WaitForRequestStatus(500, AppManager_onAppLifecycleStateChanged);
+    EXPECT_FALSE(signalled & AppManager_onAppLifecycleStateChanged);
 
+    mAppManagerImpl->Unregister(&notification);
     if (status == Core::ERROR_NONE)
     {
         releaseResources();
@@ -3997,10 +4016,25 @@ TEST_F(AppManagerTest, OnAppInstallationStatusInstalledEmptyVersion)
     ASSERT_NE(mPackageManagerNotification_cb, nullptr)
         << "PackageManager notification callback is not registered";
 
-    /* JSON with INSTALLED state but no version field - exercises L316 LOGERR path */
+    uint32_t signalled = AppManager_StateInvalid;
+    ExpectedAppLifecycleEvent expectedEvent;
+    expectedEvent.appId = "com.test.app";
+    expectedEvent.version = "";
+    Core::Sink<NotificationHandler> notification;
+    mAppManagerImpl->Register(&notification);
+    notification.SetExpectedEvent(expectedEvent);
+
+    /* JSON with INSTALLED state but no version field - exercises L316 LOGERR path.
+     * Note: OnAppInstalled("com.test.app", "") is still dispatched after the LOGERR. */
     mPackageManagerNotification_cb->OnAppInstallationStatus(
         R"([{"packageId":"com.test.app","state":"INSTALLED"}])");
 
+    /* Wait for the async Job to complete and release its mAppManagerImpl reference
+     * before releaseResources() tears down the mocks. */
+    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppInstalled);
+    EXPECT_TRUE(signalled & AppManager_onAppInstalled);
+
+    mAppManagerImpl->Unregister(&notification);
     if (status == Core::ERROR_NONE)
     {
         releaseResources();
@@ -4023,10 +4057,20 @@ TEST_F(AppManagerTest, OnAppInstallationStatusUninstalled)
     ASSERT_NE(mPackageManagerNotification_cb, nullptr)
         << "PackageManager notification callback is not registered";
 
-    /* JSON with UNINSTALLED state - exercises L321-324 path */
+    uint32_t signalled = AppManager_StateInvalid;
+    Core::Sink<NotificationHandler> notification;
+    mAppManagerImpl->Register(&notification);
+
+    /* JSON with UNINSTALLED state - exercises L321-324 path, calls OnAppUninstalled */
     mPackageManagerNotification_cb->OnAppInstallationStatus(
         R"([{"packageId":"com.test.app","state":"UNINSTALLED"}])");
 
+    /* Wait for the async Job to complete and release its mAppManagerImpl reference.
+     * OnAppUninstalled fires but is not tracked; timeout ensures ~Job() has run. */
+    signalled = notification.WaitForRequestStatus(500, AppManager_onAppInstalled);
+    EXPECT_FALSE(signalled & AppManager_onAppInstalled);
+
+    mAppManagerImpl->Unregister(&notification);
     if (status == Core::ERROR_NONE)
     {
         releaseResources();
@@ -4049,10 +4093,20 @@ TEST_F(AppManagerTest, OnAppInstallationStatusUnknownStatus)
     ASSERT_NE(mPackageManagerNotification_cb, nullptr)
         << "PackageManager notification callback is not registered";
 
-    /* JSON with unknown status ("PENDING") - exercises L328 LOGWARN path */
+    uint32_t signalled = AppManager_StateInvalid;
+    Core::Sink<NotificationHandler> notification;
+    mAppManagerImpl->Register(&notification);
+
+    /* JSON with unknown status ("PENDING") - exercises L328 LOGWARN path, no notification fired */
     mPackageManagerNotification_cb->OnAppInstallationStatus(
         R"([{"packageId":"com.test.app","state":"PENDING"}])");
 
+    /* Wait for the async Job to complete and release its mAppManagerImpl reference.
+     * No notification fires for unknown status; timeout ensures ~Job() has run. */
+    signalled = notification.WaitForRequestStatus(500, AppManager_onAppInstalled);
+    EXPECT_FALSE(signalled & AppManager_onAppInstalled);
+
+    mAppManagerImpl->Unregister(&notification);
     if (status == Core::ERROR_NONE)
     {
         releaseResources();
@@ -4072,9 +4126,24 @@ TEST_F(AppManagerTest, HandleOnAppLaunchRequestEmptyIntent)
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
 
-    /* Non-empty appId, empty intent - exercises L351 LOGERR path */
+    uint32_t signalled = AppManager_StateInvalid;
+    ExpectedAppLifecycleEvent expectedEvent;
+    expectedEvent.appId = APPMANAGER_APP_ID;
+    expectedEvent.intent = "";
+    expectedEvent.source = "test.source";
+    Core::Sink<NotificationHandler> notification;
+    mAppManagerImpl->Register(&notification);
+    notification.SetExpectedEvent(expectedEvent);
+
+    /* Non-empty appId, empty intent - exercises L351 LOGERR path;
+     * OnAppLaunchRequest is still dispatched after the LOGERR. */
     mAppManagerImpl->handleOnAppLaunchRequest(APPMANAGER_APP_ID, "", "test.source");
 
+    /* Wait for the async Job to complete before releasing resources */
+    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLaunchRequest);
+    EXPECT_TRUE(signalled & AppManager_onAppLaunchRequest);
+
+    mAppManagerImpl->Unregister(&notification);
     if (status == Core::ERROR_NONE)
     {
         releaseResources();
