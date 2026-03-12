@@ -61,6 +61,7 @@ install(TARGETS ${MODULE_NAME}
 set(PLUGIN_APP_MANAGER_IMPLEMENTATION_SOURCES
     AppManagerImplementation.cpp
     LifecycleInterfaceConnector.cpp
+    MemoryMonitor.cpp
     Module.cpp)
 
 if (AIMANAGERS_TELEMETRY_METRICS_SUPPORT)
