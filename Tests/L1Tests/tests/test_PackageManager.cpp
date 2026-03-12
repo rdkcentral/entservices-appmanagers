@@ -2296,9 +2296,8 @@ TEST_F(PackageManagerTest, unlockMethodusingComRpcPackageNotFound) {
 /* Test Case for Delete success using ComRpc
  *
  * Set up and initialize required COM-RPC resources, configurations, mocks and expectations
- * Download a file first
- * Wait for download to complete
- * Delete the downloaded file
+ * Create a temp file
+ * Delete the file
  * Verify Delete method returns Core::ERROR_NONE
  * Deinitialize the COM-RPC resources and clean-up related test resources
  */
@@ -2307,29 +2306,13 @@ TEST_F(PackageManagerTest, deleteMethodusingComRpcSuccess) {
 
     initforComRpc();
 
-    getDownloadParams();
-
-    uri = "https://httpbin.org/bytes/1024";
-
-    EXPECT_CALL(*mSubSystemMock, IsActive(::testing::_))
-        .Times(::testing::AnyNumber())
-        .WillRepeatedly(::testing::Invoke(
-            [&](const PluginHost::ISubSystem::subsystem type) {
-                return true;
-            }));
-
-    EXPECT_EQ(Core::ERROR_NONE, pkgdownloaderInterface->Download(uri, options, downloadId));
-
-    EXPECT_EQ(downloadId.downloadId, "1001");
-
-    // Wait for download to complete
-    waitforSignal(TIMEOUT);
-
     // TC-57: Delete method success
-    string fileLocator = "/opt/CDL/package1001";
+    // Use a unique temp file path that won't conflict with any downloads
+    string fileLocator = "/tmp/test_delete_file_" + std::to_string(getpid());
     
     // Create a temp file to test delete
     std::ofstream tempFile(fileLocator);
+    ASSERT_TRUE(tempFile.is_open()) << "Failed to create temp file for delete test";
     tempFile << "test content";
     tempFile.close();
 
