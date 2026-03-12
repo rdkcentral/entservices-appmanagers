@@ -1111,7 +1111,7 @@ End:
 
         bool LifecycleInterfaceConnector::fileExists(const char* pFileName)
         {
-            bool isRegular = false;
+            bool isRegular = true; //TODO: For now allow suspending and hibernating apps  false;
 
             if (pFileName != nullptr)
             {
