@@ -62,6 +62,14 @@ class LifecycleManagerImplementationTest : public LifecycleManagerImplementation
  */
 class LifecycleManagerShellTest : public LifecycleManager {
     public:
+        /* LifecycleManager inherits Core::IReferenceCounted pure virtuals through
+         * PluginHost::IPlugin / JSONRPC.  In production the SERVICE_REGISTRATION
+         * wrapper (Core::ServiceType<>) provides the implementation.  For unit
+         * tests we supply stubs so that this subclass is concrete and can be
+         * stack-allocated without calling Initialize(). */
+        void AddRef() const override {}
+        uint32_t Release() const override { return 1; }
+
         void notificationActivated(RPC::IRemoteConnection* conn)
         {
             mLifecycleManagerStateNotification.Activated(conn);
