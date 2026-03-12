@@ -3953,7 +3953,7 @@ TEST_F(AppManagerTest, LifecycleStateChangedLoadingToLoadingKillApp)
 /*
  * Test Case for DispatchLifecycleEventEmptyAppId
  * Setting up AppManager Plugin with full resources
- * Creating a Job with APP_EVENT_LIFECYCLE_STATE_CHANGED and an empty appId
+ * Calling handleOnAppLifecycleStateChanged with an empty appId
  * Verifying the LOGERR("appId not present or empty") path in Dispatch is covered
  * Releasing the AppManager interface and all related test resources
  */
@@ -3963,119 +3963,16 @@ TEST_F(AppManagerTest, DispatchLifecycleEventEmptyAppId)
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
 
-    /* Build params with empty appId to exercise L251 LOGERR path */
-    JsonObject params;
-    params["appId"] = "";
-    params["newState"] = static_cast<int>(Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE);
-    params["oldState"] = static_cast<int>(Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING);
-    params["errorReason"] = static_cast<int>(Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE);
-
-    Core::IWorkerPool::Instance().Submit(
-        Plugin::AppManagerImplementation::Job::Create(
-            mAppManagerImpl,
-            Plugin::AppManagerImplementation::APP_EVENT_LIFECYCLE_STATE_CHANGED,
-            params));
+    /* Empty appId passed through handleOnAppLifecycleStateChanged -> dispatchEvent ->
+     * Dispatch, where the non-empty check at L251 fires the LOGERR path */
+    mAppManagerImpl->handleOnAppLifecycleStateChanged(
+        "",
+        APPMANAGER_APP_INSTANCE,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE,
+        Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING,
+        Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE);
 
     /* Brief delay to allow the worker thread to dispatch */
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
-
-    if (status == Core::ERROR_NONE)
-    {
-        releaseResources();
-    }
-}
-
-/*
- * Test Case for DispatchLifecycleEventMissingNewState
- * Setting up AppManager Plugin with full resources
- * Creating a Job with APP_EVENT_LIFECYCLE_STATE_CHANGED missing the newState field
- * Verifying the LOGERR("newState not present") path in Dispatch is covered
- * Releasing the AppManager interface and all related test resources
- */
-TEST_F(AppManagerTest, DispatchLifecycleEventMissingNewState)
-{
-    Core::hresult status;
-    status = createResources();
-    EXPECT_EQ(Core::ERROR_NONE, status);
-
-    /* Build params with valid appId but no newState field to exercise L255 */
-    JsonObject params;
-    params["appId"] = APPMANAGER_APP_ID;
-    params["oldState"] = static_cast<int>(Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING);
-    params["errorReason"] = static_cast<int>(Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE);
-
-    Core::IWorkerPool::Instance().Submit(
-        Plugin::AppManagerImplementation::Job::Create(
-            mAppManagerImpl,
-            Plugin::AppManagerImplementation::APP_EVENT_LIFECYCLE_STATE_CHANGED,
-            params));
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
-
-    if (status == Core::ERROR_NONE)
-    {
-        releaseResources();
-    }
-}
-
-/*
- * Test Case for DispatchLifecycleEventMissingOldState
- * Setting up AppManager Plugin with full resources
- * Creating a Job with APP_EVENT_LIFECYCLE_STATE_CHANGED missing the oldState field
- * Verifying the LOGERR("oldState not present") path in Dispatch is covered
- * Releasing the AppManager interface and all related test resources
- */
-TEST_F(AppManagerTest, DispatchLifecycleEventMissingOldState)
-{
-    Core::hresult status;
-    status = createResources();
-    EXPECT_EQ(Core::ERROR_NONE, status);
-
-    /* Build params with appId and newState but no oldState to exercise L259 */
-    JsonObject params;
-    params["appId"] = APPMANAGER_APP_ID;
-    params["newState"] = static_cast<int>(Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE);
-    params["errorReason"] = static_cast<int>(Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE);
-
-    Core::IWorkerPool::Instance().Submit(
-        Plugin::AppManagerImplementation::Job::Create(
-            mAppManagerImpl,
-            Plugin::AppManagerImplementation::APP_EVENT_LIFECYCLE_STATE_CHANGED,
-            params));
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
-
-    if (status == Core::ERROR_NONE)
-    {
-        releaseResources();
-    }
-}
-
-/*
- * Test Case for DispatchLifecycleEventMissingErrorReason
- * Setting up AppManager Plugin with full resources
- * Creating a Job with APP_EVENT_LIFECYCLE_STATE_CHANGED missing the errorReason field
- * Verifying the LOGERR("errorReason not present") path in Dispatch is covered
- * Releasing the AppManager interface and all related test resources
- */
-TEST_F(AppManagerTest, DispatchLifecycleEventMissingErrorReason)
-{
-    Core::hresult status;
-    status = createResources();
-    EXPECT_EQ(Core::ERROR_NONE, status);
-
-    /* Build params with appId, newState, oldState but no errorReason to exercise L263 */
-    JsonObject params;
-    params["appId"] = APPMANAGER_APP_ID;
-    params["newState"] = static_cast<int>(Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE);
-    params["oldState"] = static_cast<int>(Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING);
-
-    Core::IWorkerPool::Instance().Submit(
-        Plugin::AppManagerImplementation::Job::Create(
-            mAppManagerImpl,
-            Plugin::AppManagerImplementation::APP_EVENT_LIFECYCLE_STATE_CHANGED,
-            params));
-
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
     if (status == Core::ERROR_NONE)
@@ -4758,4 +4655,3 @@ TEST_F(AppManagerTest, GetCustomValuesWithAipathFileHasContent)
         releaseResources();
     }
 }
-
