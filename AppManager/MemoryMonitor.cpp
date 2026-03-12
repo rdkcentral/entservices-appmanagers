@@ -29,6 +29,7 @@ MemoryMonitor::MemoryMonitor(AppManagerImplementation* parent)
     , _running(false)
     , _pending(false)
     , _completed(false)
+    , _reconciliationSuccess(false)
     , _targetRAMKB(0)
     , _waitingTargetState(Exchange::IAppManager::AppLifecycleState::APP_STATE_UNKNOWN)
 {
@@ -82,7 +83,7 @@ void MemoryMonitor::RequestReconciliation(const string& appId, uint32_t targetRA
     _cv.notify_one();
 }
 
-void MemoryMonitor::RequestReconciliationAndWait(const string& appId, uint32_t targetRAMKB)
+bool MemoryMonitor::RequestReconciliationAndWait(const string& appId, uint32_t targetRAMKB)
 {
     /* Serialize concurrent blocking callers so only one waits at a time */
     std::unique_lock<std::mutex> blockLock(_blockingMutex);
@@ -93,6 +94,7 @@ void MemoryMonitor::RequestReconciliationAndWait(const string& appId, uint32_t t
         _targetRAMKB = targetRAMKB;
         _pending = true;
         _completed = false;
+        _reconciliationSuccess = false;
         LOGINFO("[MemoryMonitor] Reconciliation requested (blocking) for appId: %s, target: %u KB",
                 appId.c_str(), targetRAMKB);
         _cv.notify_one();
@@ -102,8 +104,10 @@ void MemoryMonitor::RequestReconciliationAndWait(const string& appId, uint32_t t
     std::unique_lock<std::mutex> completionLock(_completionMutex);
     _completionCv.wait(completionLock, [this] { return _completed || !_running.load(); });
 
-    LOGINFO("[MemoryMonitor] Blocking reconciliation completed. Final MemAvailable: %u KB",
-            _parent->ReadMemAvailable());
+    bool success = _reconciliationSuccess;
+    LOGINFO("[MemoryMonitor] Blocking reconciliation completed (success=%s). Final MemAvailable: %u KB",
+            success ? "true" : "false", _parent->ReadMemAvailable());
+    return success;
 }
 
 void MemoryMonitor::OnAppStateChanged(const string& appId, Exchange::IAppManager::AppLifecycleState newState)
@@ -135,11 +139,12 @@ void MemoryMonitor::MonitorLoop()
         uint32_t target = _targetRAMKB;
         lock.unlock();
 
-        ExecuteSequentialReclamation(activeId, target);
+        bool success = ExecuteSequentialReclamation(activeId, target);
 
         /* Signal any blocking caller that the cycle is complete */
         {
             std::lock_guard<std::mutex> completionLock(_completionMutex);
+            _reconciliationSuccess = success;
             _completed = true;
         }
         _completionCv.notify_all();
@@ -147,7 +152,7 @@ void MemoryMonitor::MonitorLoop()
     LOGINFO("[MemoryMonitor] MonitorLoop exited");
 }
 
-void MemoryMonitor::ExecuteSequentialReclamation(const string& activeId, uint32_t targetRAMKB)
+bool MemoryMonitor::ExecuteSequentialReclamation(const string& activeId, uint32_t targetRAMKB)
 {
     uint32_t current = _parent->ReadMemAvailable();
     LOGINFO("[MemoryMonitor] RAM Reconciliation Started. Active: %s, Target: %u KB, Current Available: %u KB",
@@ -160,7 +165,7 @@ void MemoryMonitor::ExecuteSequentialReclamation(const string& activeId, uint32_
     {
         LOGINFO("[MemoryMonitor] Memory already sufficient (%u KB >= %u KB). No action needed.",
                 current, targetRAMKB);
-        return;
+        return true;
     }
 
     /* Phase 1: Kill HIBERNATED apps (oldest first) */
@@ -168,7 +173,7 @@ void MemoryMonitor::ExecuteSequentialReclamation(const string& activeId, uint32_
     {
         LOGINFO("[MemoryMonitor] RAM target met after Phase 1 (Kill Hibernated).");
         LOGINFO("[MemoryMonitor] RAM Reconciliation Finished. Final MemAvailable: %u KB", _parent->ReadMemAvailable());
-        return;
+        return true;
     }
 
     /* Phase 2: Hibernate SUSPENDED apps (oldest first) */
@@ -176,13 +181,20 @@ void MemoryMonitor::ExecuteSequentialReclamation(const string& activeId, uint32_
     {
         LOGINFO("[MemoryMonitor] RAM target met after Phase 2 (Hibernate Suspended).");
         LOGINFO("[MemoryMonitor] RAM Reconciliation Finished. Final MemAvailable: %u KB", _parent->ReadMemAvailable());
-        return;
+        return true;
     }
 
     /* Phase 3: Suspend PAUSED apps (oldest first) */
-    Resolve(Exchange::IAppManager::APP_STATE_PAUSED, "SUSPEND", targetRAMKB, activeId);
+    if (Resolve(Exchange::IAppManager::APP_STATE_PAUSED, "SUSPEND", targetRAMKB, activeId))
+    {
+        LOGINFO("[MemoryMonitor] RAM target met after Phase 3 (Suspend Paused).");
+        LOGINFO("[MemoryMonitor] RAM Reconciliation Finished. Final MemAvailable: %u KB", _parent->ReadMemAvailable());
+        return true;
+    }
 
-    LOGINFO("[MemoryMonitor] RAM Reconciliation Finished. Final MemAvailable: %u KB", _parent->ReadMemAvailable());
+    LOGWARN("[MemoryMonitor] RAM Reconciliation FAILED. Target: %u KB, Final MemAvailable: %u KB",
+            targetRAMKB, _parent->ReadMemAvailable());
+    return false;
 }
 
 bool MemoryMonitor::Resolve(Exchange::IAppManager::AppLifecycleState state,
