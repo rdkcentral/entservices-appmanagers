@@ -96,6 +96,8 @@ namespace WPEFramework
                     Core::hresult closeApp(const string& appId);
                     Core::hresult terminateApp(const string& appId);
                     Core::hresult killApp(const string& appId);
+                    Core::hresult hibernateApp(const string& appId);
+                    Core::hresult suspendApp(const string& appId);
                     Core::hresult sendIntent(const string& appId, const string& intent);
                     Core::hresult getLoadedApps(Exchange::IAppManager::ILoadedAppInfoIterator*& apps);
                     void OnAppLifecycleStateChanged(const string& appId, const string& appInstanceId, const Exchange::ILifecycleManager::LifecycleState newState, const Exchange::ILifecycleManager::LifecycleState oldState, const string& navigationIntent);

@@ -623,6 +623,118 @@ namespace WPEFramework
             return result;
         }
 
+        /* Hibernate App - Sets target state to HIBERNATED via SetTargetAppState */
+        Core::hresult LifecycleInterfaceConnector::hibernateApp(const string& appId)
+        {
+            LOGINFO("[SystemMemoryMonitor] hibernateApp entered for appId: %s", appId.c_str());
+            Core::hresult status = Core::ERROR_GENERAL;
+            AppManagerImplementation* appManagerImplInstance = AppManagerImplementation::getInstance();
+
+            if (appId.empty())
+            {
+                LOGERR("appId is empty");
+                return status;
+            }
+
+            if (nullptr == mLifecycleManagerRemoteObject)
+            {
+                LOGINFO("Create LifecycleManager Remote object");
+                if (Core::ERROR_NONE != createLifecycleManagerRemoteObject())
+                {
+                    LOGERR("Failed to create LifecycleInterfaceConnector");
+                    return status;
+                }
+            }
+
+            ASSERT(nullptr != mLifecycleManagerRemoteObject);
+            if (nullptr != mLifecycleManagerRemoteObject && nullptr != appManagerImplInstance)
+            {
+                mAdminLock.Lock();
+                auto it = appManagerImplInstance->mAppInfo.find(appId);
+                if (it != appManagerImplInstance->mAppInfo.end())
+                {
+                    string appInstanceId = it->second.appInstanceId;
+                    string appIntent = it->second.appIntent;
+
+                    appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_HIBERNATE);
+                    it->second.targetAppState = Exchange::IAppManager::AppLifecycleState::APP_STATE_HIBERNATED;
+
+                    status = mLifecycleManagerRemoteObject->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::LifecycleState::HIBERNATED, appIntent);
+                    if (status != Core::ERROR_NONE)
+                    {
+                        LOGERR("[SystemMemoryMonitor] SetTargetAppState HIBERNATED failed for appId: %s", appId.c_str());
+                    }
+                    else
+                    {
+                        LOGINFO("[SystemMemoryMonitor] SetTargetAppState HIBERNATED succeeded for appId: %s", appId.c_str());
+                    }
+                }
+                else
+                {
+                    LOGERR("[SystemMemoryMonitor] appId %s not found in mAppInfo", appId.c_str());
+                }
+                mAdminLock.Unlock();
+            }
+
+            return status;
+        }
+
+        /* Suspend App - Sets target state to SUSPENDED via SetTargetAppState */
+        Core::hresult LifecycleInterfaceConnector::suspendApp(const string& appId)
+        {
+            LOGINFO("[SystemMemoryMonitor] suspendApp entered for appId: %s", appId.c_str());
+            Core::hresult status = Core::ERROR_GENERAL;
+            AppManagerImplementation* appManagerImplInstance = AppManagerImplementation::getInstance();
+
+            if (appId.empty())
+            {
+                LOGERR("appId is empty");
+                return status;
+            }
+
+            if (nullptr == mLifecycleManagerRemoteObject)
+            {
+                LOGINFO("Create LifecycleManager Remote object");
+                if (Core::ERROR_NONE != createLifecycleManagerRemoteObject())
+                {
+                    LOGERR("Failed to create LifecycleInterfaceConnector");
+                    return status;
+                }
+            }
+
+            ASSERT(nullptr != mLifecycleManagerRemoteObject);
+            if (nullptr != mLifecycleManagerRemoteObject && nullptr != appManagerImplInstance)
+            {
+                mAdminLock.Lock();
+                auto it = appManagerImplInstance->mAppInfo.find(appId);
+                if (it != appManagerImplInstance->mAppInfo.end())
+                {
+                    string appInstanceId = it->second.appInstanceId;
+                    string appIntent = it->second.appIntent;
+
+                    appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_SUSPEND);
+                    it->second.targetAppState = Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED;
+
+                    status = mLifecycleManagerRemoteObject->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::LifecycleState::SUSPENDED, appIntent);
+                    if (status != Core::ERROR_NONE)
+                    {
+                        LOGERR("[SystemMemoryMonitor] SetTargetAppState SUSPENDED failed for appId: %s", appId.c_str());
+                    }
+                    else
+                    {
+                        LOGINFO("[SystemMemoryMonitor] SetTargetAppState SUSPENDED succeeded for appId: %s", appId.c_str());
+                    }
+                }
+                else
+                {
+                    LOGERR("[SystemMemoryMonitor] appId %s not found in mAppInfo", appId.c_str());
+                }
+                mAdminLock.Unlock();
+            }
+
+            return status;
+        }
+
         /* Send Intent invokes it */
         Core::hresult LifecycleInterfaceConnector::sendIntent(const string& appId, const string& intent)
         {

@@ -33,9 +33,15 @@
 #include "LifecycleInterfaceConnector.h"
 #include <interfaces/IPackageManager.h>
 #include <map>
+#include <memory>
+#include <vector>
+#include <time.h>
 
 namespace WPEFramework {
 namespace Plugin {
+
+    /* Forward declaration */
+    class MemoryMonitor;
 
     class AppManagerImplementation : public Exchange::IAppManager, public Exchange::IConfiguration {
 
@@ -116,6 +122,7 @@ namespace Plugin {
             Exchange::IAppManager::AppLifecycleState appOldState;
             /* Current Action*/
             CurrentAction currentAction = APP_ACTION_NONE;
+            bool wasPreloaded = false;   /* true if app was loaded via PreloadApp (not LaunchApp) */
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             time_t currentActionTime;
 #endif
@@ -231,6 +238,20 @@ namespace Plugin {
         void handleOnAppLaunchRequest(const string& appId, const string& intent, const string& source);
         std::string getInstallAppType(ApplicationType type);
 
+        /* MemoryMonitor helper methods */
+        uint32_t ReadMemAvailable();
+        void LogManagedAppsSnapshot();
+        std::vector<string> GetSortedCandidates(Exchange::IAppManager::AppLifecycleState state);
+        struct timespec GetAppStateTime(const string& appId);
+        long GetElapsedTimeSeconds(struct timespec startTime);
+        Exchange::IAppManager::AppLifecycleState GetAppState(const string& appId);
+        Core::hresult HibernateApp(const string& appId);
+        Core::hresult SuspendApp(const string& appId);
+        bool IsPreloadedApp(const string& appId);
+        bool IsHibernationSupported();
+        static uint32_t ParseMemorySizeToKB(const string& memStr);
+        bool GetAppMemoryConfig(const string& appId, uint32_t& launchTargetKB, uint32_t& preloadTargetKB);
+
         // IConfiguration methods
         uint32_t Configure(PluginHost::IShell* service) override;
 
@@ -256,6 +277,7 @@ namespace Plugin {
         std::mutex mAppManagerLock;
         std::condition_variable mAppRequestListCV;
         std::list<std::shared_ptr<AppManagerRequest>> mAppRequestList;
+        std::unique_ptr<MemoryMonitor> mMemoryMonitor;
         Core::hresult fetchAppPackageList(std::vector<WPEFramework::Exchange::IPackageInstaller::Package>& packageList);
         void checkIsInstalled(const std::string& appId, bool& installed, const std::vector<WPEFramework::Exchange::IPackageInstaller::Package>& packageList);
         Core::hresult packageLock(const string& appId, PackageInfo &packageData, Exchange::IPackageHandler::LockReason lockReason);
