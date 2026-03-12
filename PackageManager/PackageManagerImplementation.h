@@ -283,13 +283,13 @@ class PackageManagerImplementation
         }
 
         string getFailReason(FailReason reason) {
-            switch (reason) {
-				case FailReason::GENERAL_FAILURE : return "GENERAL_FAILURE";
+            switch (reason)
                 case FailReason::SIGNATURE_VERIFICATION_FAILURE : return "SIGNATURE_VERIFICATION_FAILURE";
                 case FailReason::PACKAGE_MISMATCH_FAILURE : return "PACKAGE_MISMATCH_FAILURE";
                 case FailReason::INVALID_METADATA_FAILURE : return "INVALID_METADATA_FAILURE";
                 case FailReason::PERSISTENCE_FAILURE : return "PERSISTENCE_FAILURE";
-                default: return "UNKNOWN";
+                case FailReason::GENERAL_FAILURE: return "UNKNOWN;";
+                default: return "NONE";
             }
         }
     Core::hresult createStorageManagerObject();
