@@ -3949,3 +3949,813 @@ TEST_F(AppManagerTest, LifecycleStateChangedLoadingToLoadingKillApp)
         releaseResources();
     }
 }
+
+/*
+ * Test Case for DispatchLifecycleEventEmptyAppId
+ * Setting up AppManager Plugin with full resources
+ * Creating a Job with APP_EVENT_LIFECYCLE_STATE_CHANGED and an empty appId
+ * Verifying the LOGERR("appId not present or empty") path in Dispatch is covered
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, DispatchLifecycleEventEmptyAppId)
+{
+    Core::hresult status;
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    /* Build params with empty appId to exercise L251 LOGERR path */
+    JsonObject params;
+    params["appId"] = "";
+    params["newState"] = static_cast<int>(Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE);
+    params["oldState"] = static_cast<int>(Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING);
+    params["errorReason"] = static_cast<int>(Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE);
+
+    Core::IWorkerPool::Instance().Submit(
+        Plugin::AppManagerImplementation::Job::Create(
+            mAppManagerImpl,
+            Plugin::AppManagerImplementation::APP_EVENT_LIFECYCLE_STATE_CHANGED,
+            params));
+
+    /* Brief delay to allow the worker thread to dispatch */
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for DispatchLifecycleEventMissingNewState
+ * Setting up AppManager Plugin with full resources
+ * Creating a Job with APP_EVENT_LIFECYCLE_STATE_CHANGED missing the newState field
+ * Verifying the LOGERR("newState not present") path in Dispatch is covered
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, DispatchLifecycleEventMissingNewState)
+{
+    Core::hresult status;
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    /* Build params with valid appId but no newState field to exercise L255 */
+    JsonObject params;
+    params["appId"] = APPMANAGER_APP_ID;
+    params["oldState"] = static_cast<int>(Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING);
+    params["errorReason"] = static_cast<int>(Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE);
+
+    Core::IWorkerPool::Instance().Submit(
+        Plugin::AppManagerImplementation::Job::Create(
+            mAppManagerImpl,
+            Plugin::AppManagerImplementation::APP_EVENT_LIFECYCLE_STATE_CHANGED,
+            params));
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for DispatchLifecycleEventMissingOldState
+ * Setting up AppManager Plugin with full resources
+ * Creating a Job with APP_EVENT_LIFECYCLE_STATE_CHANGED missing the oldState field
+ * Verifying the LOGERR("oldState not present") path in Dispatch is covered
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, DispatchLifecycleEventMissingOldState)
+{
+    Core::hresult status;
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    /* Build params with appId and newState but no oldState to exercise L259 */
+    JsonObject params;
+    params["appId"] = APPMANAGER_APP_ID;
+    params["newState"] = static_cast<int>(Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE);
+    params["errorReason"] = static_cast<int>(Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE);
+
+    Core::IWorkerPool::Instance().Submit(
+        Plugin::AppManagerImplementation::Job::Create(
+            mAppManagerImpl,
+            Plugin::AppManagerImplementation::APP_EVENT_LIFECYCLE_STATE_CHANGED,
+            params));
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for DispatchLifecycleEventMissingErrorReason
+ * Setting up AppManager Plugin with full resources
+ * Creating a Job with APP_EVENT_LIFECYCLE_STATE_CHANGED missing the errorReason field
+ * Verifying the LOGERR("errorReason not present") path in Dispatch is covered
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, DispatchLifecycleEventMissingErrorReason)
+{
+    Core::hresult status;
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    /* Build params with appId, newState, oldState but no errorReason to exercise L263 */
+    JsonObject params;
+    params["appId"] = APPMANAGER_APP_ID;
+    params["newState"] = static_cast<int>(Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE);
+    params["oldState"] = static_cast<int>(Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING);
+
+    Core::IWorkerPool::Instance().Submit(
+        Plugin::AppManagerImplementation::Job::Create(
+            mAppManagerImpl,
+            Plugin::AppManagerImplementation::APP_EVENT_LIFECYCLE_STATE_CHANGED,
+            params));
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for OnAppInstallationStatusInstalledEmptyVersion
+ * Setting up AppManager Plugin with full resources
+ * Calling OnAppInstallationStatus() with state INSTALLED but no version field
+ * Verifying the LOGERR("version is empty for installed app") path (L316) is covered
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, OnAppInstallationStatusInstalledEmptyVersion)
+{
+    Core::hresult status;
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    ASSERT_NE(mPackageManagerNotification_cb, nullptr)
+        << "PackageManager notification callback is not registered";
+
+    /* JSON with INSTALLED state but no version field - exercises L316 LOGERR path */
+    mPackageManagerNotification_cb->OnAppInstallationStatus(
+        R"([{"packageId":"com.test.app","state":"INSTALLED"}])");
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for OnAppInstallationStatusUninstalled
+ * Setting up AppManager Plugin with full resources
+ * Calling OnAppInstallationStatus() with state UNINSTALLED
+ * Verifying the OnAppUninstalled notification path (L321-324) is covered
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, OnAppInstallationStatusUninstalled)
+{
+    Core::hresult status;
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    ASSERT_NE(mPackageManagerNotification_cb, nullptr)
+        << "PackageManager notification callback is not registered";
+
+    /* JSON with UNINSTALLED state - exercises L321-324 path */
+    mPackageManagerNotification_cb->OnAppInstallationStatus(
+        R"([{"packageId":"com.test.app","state":"UNINSTALLED"}])");
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for OnAppInstallationStatusUnknownStatus
+ * Setting up AppManager Plugin with full resources
+ * Calling OnAppInstallationStatus() with an unknown install status
+ * Verifying the LOGWARN("install status") path (L328) is covered
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, OnAppInstallationStatusUnknownStatus)
+{
+    Core::hresult status;
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    ASSERT_NE(mPackageManagerNotification_cb, nullptr)
+        << "PackageManager notification callback is not registered";
+
+    /* JSON with unknown status ("PENDING") - exercises L328 LOGWARN path */
+    mPackageManagerNotification_cb->OnAppInstallationStatus(
+        R"([{"packageId":"com.test.app","state":"PENDING"}])");
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for HandleOnAppLaunchRequestEmptyIntent
+ * Setting up AppManager Plugin with full resources
+ * Calling handleOnAppLaunchRequest() with a valid appId but empty intent
+ * Verifying the LOGERR("intent is empty for Launch app") path (L351) is covered
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, HandleOnAppLaunchRequestEmptyIntent)
+{
+    Core::hresult status;
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    /* Non-empty appId, empty intent - exercises L351 LOGERR path */
+    mAppManagerImpl->handleOnAppLaunchRequest(APPMANAGER_APP_ID, "", "test.source");
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for HandleOnAppUnloadedEmptyInstanceId
+ * Setting up AppManager Plugin with full resources
+ * Calling handleOnAppUnloaded() with valid appId but empty appInstanceId
+ * Verifying the LOGERR("appInstanceId is empty for Unloaded app") path (L382) is covered
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, HandleOnAppUnloadedEmptyInstanceId)
+{
+    Core::hresult status;
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    /* Non-empty appId, empty appInstanceId - exercises L382 LOGERR path */
+    mAppManagerImpl->handleOnAppUnloaded(APPMANAGER_APP_ID, "");
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for PackageUnlockEntryFoundUnlockSuccess
+ * Setting up AppManager Plugin with full resources
+ * Pre-populating mAppInfo with an entry matching appId/appInstanceId
+ * Verifying packageUnLock calls Unlock() and mAppInfo entry is removed (L729-732, L861-863)
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, PackageUnlockEntryFoundUnlockSuccess)
+{
+    Core::hresult status;
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    /* Pre-populate mAppInfo so that packageUnLock finds the entry */
+    Plugin::AppManagerImplementation::AppInfo appInfo;
+    appInfo.appInstanceId = APPMANAGER_APP_INSTANCE;
+    appInfo.packageInfo.version = APPMANAGER_APP_VERSION;
+    mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
+
+    EXPECT_CALL(*mPackageManagerMock, Unlock(APPMANAGER_APP_ID, APPMANAGER_APP_VERSION))
+        .WillOnce([&](const string& packageId, const string& version) {
+            return Core::ERROR_NONE;
+        });
+
+    /* handleOnAppUnloaded triggers packageUnLock then removeAppInfoByAppId */
+    mAppManagerImpl->handleOnAppUnloaded(APPMANAGER_APP_ID, APPMANAGER_APP_INSTANCE);
+
+    /* mAppInfo entry should have been removed */
+    EXPECT_EQ(0u, mAppManagerImpl->mAppInfo.count(APPMANAGER_APP_ID));
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for PackageUnlockEntryFoundUnlockFails
+ * Setting up AppManager Plugin with full resources
+ * Pre-populating mAppInfo with a matching entry
+ * Verifying LOGERR("Failed to PackageManager Unlock") path (L865-867) is covered
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, PackageUnlockEntryFoundUnlockFails)
+{
+    Core::hresult status;
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    /* Pre-populate mAppInfo so packageUnLock finds the entry */
+    Plugin::AppManagerImplementation::AppInfo appInfo;
+    appInfo.appInstanceId = APPMANAGER_APP_INSTANCE;
+    appInfo.packageInfo.version = APPMANAGER_APP_VERSION;
+    mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
+
+    EXPECT_CALL(*mPackageManagerMock, Unlock(APPMANAGER_APP_ID, APPMANAGER_APP_VERSION))
+        .WillOnce([&](const string& packageId, const string& version) {
+            return Core::ERROR_GENERAL;
+        });
+
+    /* handleOnAppUnloaded triggers packageUnLock - Unlock returns error covering L865-867 */
+    mAppManagerImpl->handleOnAppUnloaded(APPMANAGER_APP_ID, APPMANAGER_APP_INSTANCE);
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for PackageUnlockHandlerNull
+ * Setting up AppManager Plugin without PackageManager mock (mPackageManagerHandlerObject == null)
+ * Pre-populating mAppInfo with a matching entry
+ * Verifying the LOGERR("PackageManager handler is null") path (L875) is covered
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, PackageUnlockHandlerNull)
+{
+    /* Use createAppManagerImpl() so mPackageManagerHandlerObject remains null */
+    createAppManagerImpl();
+
+    /* Pre-populate mAppInfo so packageUnLock finds the entry (null handler path) */
+    Plugin::AppManagerImplementation::AppInfo appInfo;
+    appInfo.appInstanceId = APPMANAGER_APP_INSTANCE;
+    appInfo.packageInfo.version = APPMANAGER_APP_VERSION;
+    mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
+
+    /* handleOnAppUnloaded triggers packageUnLock -> null handler -> L875 LOGERR */
+    mAppManagerImpl->handleOnAppUnloaded(APPMANAGER_APP_ID, APPMANAGER_APP_INSTANCE);
+
+    releaseAppManagerImpl();
+}
+
+/*
+ * Test Case for CloseAppEmptyAppId
+ * Setting up AppManager Plugin with full resources
+ * Calling CloseApp() with an empty appId
+ * Verifying the LOGERR("appId is empty") error path (L1004) is covered
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, CloseAppEmptyAppId)
+{
+    Core::hresult status;
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    /* Empty appId - exercises L1004 LOGERR path */
+    EXPECT_EQ(Core::ERROR_GENERAL, mAppManagerImpl->CloseApp(""));
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for AppManagerInformation
+ * Setting up AppManager Plugin with full resources
+ * Calling Information() on the plugin
+ * Verifying it returns an empty string (L176-179)
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, AppManagerInformation)
+{
+    Core::hresult status;
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    EXPECT_EQ(string(""), plugin->Information());
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for LICMapAppLifecycleStateUnloaded
+ * Setting up AppManager Plugin with full resources
+ * Pre-populating mAppInfo and triggering OnAppLifecycleStateChanged with LOADING->UNLOADED
+ * Verifying mapAppLifecycleState UNLOADED path (L760-763) is covered
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, LICMapAppLifecycleStateUnloaded)
+{
+    Core::hresult status;
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    /* Pre-populate mAppInfo so the appId/appInstanceId match is found */
+    Plugin::AppManagerImplementation::AppInfo appInfo;
+    appInfo.appInstanceId = APPMANAGER_APP_INSTANCE;
+    appInfo.appNewState = Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING;
+    mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
+
+    ASSERT_NE(mLifecycleManagerStateNotification_cb, nullptr)
+        << "LifecycleManagerState notification callback is not registered";
+
+    /* LOADING -> UNLOADED triggers mapAppLifecycleState(UNLOADED) path */
+    mLifecycleManagerStateNotification_cb->OnAppLifecycleStateChanged(
+        APPMANAGER_APP_ID,
+        APPMANAGER_APP_INSTANCE,
+        Exchange::ILifecycleManager::LifecycleState::LOADING,   /* old */
+        Exchange::ILifecycleManager::LifecycleState::UNLOADED,  /* new */
+        ""
+    );
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for LICMapAppLifecycleStateInitializing
+ * Setting up AppManager Plugin with full resources
+ * Pre-populating mAppInfo and triggering OnAppLifecycleStateChanged with LOADING->INITIALIZING
+ * Verifying mapAppLifecycleState INITIALIZING path (L776-779) is covered
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, LICMapAppLifecycleStateInitializing)
+{
+    Core::hresult status;
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    Plugin::AppManagerImplementation::AppInfo appInfo;
+    appInfo.appInstanceId = APPMANAGER_APP_INSTANCE;
+    appInfo.appNewState = Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING;
+    mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
+
+    ASSERT_NE(mLifecycleManagerStateNotification_cb, nullptr)
+        << "LifecycleManagerState notification callback is not registered";
+
+    /* LOADING -> INITIALIZING triggers mapAppLifecycleState(INITIALIZING) path */
+    mLifecycleManagerStateNotification_cb->OnAppLifecycleStateChanged(
+        APPMANAGER_APP_ID,
+        APPMANAGER_APP_INSTANCE,
+        Exchange::ILifecycleManager::LifecycleState::LOADING,       /* old */
+        Exchange::ILifecycleManager::LifecycleState::INITIALIZING,  /* new */
+        ""
+    );
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for LICMapAppLifecycleStateSuspended
+ * Setting up AppManager Plugin with full resources
+ * Pre-populating mAppInfo and triggering OnAppLifecycleStateChanged with ACTIVE->SUSPENDED
+ * Verifying mapAppLifecycleState SUSPENDED path (L780-783) is covered
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, LICMapAppLifecycleStateSuspended)
+{
+    Core::hresult status;
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    Plugin::AppManagerImplementation::AppInfo appInfo;
+    appInfo.appInstanceId = APPMANAGER_APP_INSTANCE;
+    appInfo.appNewState = Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
+    mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
+
+    ASSERT_NE(mLifecycleManagerStateNotification_cb, nullptr)
+        << "LifecycleManagerState notification callback is not registered";
+
+    /* ACTIVE -> SUSPENDED triggers mapAppLifecycleState(SUSPENDED) path */
+    mLifecycleManagerStateNotification_cb->OnAppLifecycleStateChanged(
+        APPMANAGER_APP_ID,
+        APPMANAGER_APP_INSTANCE,
+        Exchange::ILifecycleManager::LifecycleState::ACTIVE,    /* old */
+        Exchange::ILifecycleManager::LifecycleState::SUSPENDED, /* new */
+        ""
+    );
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for LICMapAppLifecycleStateUnknown
+ * Setting up AppManager Plugin with full resources
+ * Triggering OnAppLifecycleStateChanged with an out-of-range state value
+ * Verifying the default/unknown state path (L792-795) in mapAppLifecycleState is covered
+ * Also verifying the early-return path (L809-813) when newAppState is UNKNOWN
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, LICMapAppLifecycleStateUnknown)
+{
+    Core::hresult status;
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    ASSERT_NE(mLifecycleManagerStateNotification_cb, nullptr)
+        << "LifecycleManagerState notification callback is not registered";
+
+    /* Cast an out-of-range value to LifecycleState to trigger the default branch */
+    const auto unknownState = static_cast<Exchange::ILifecycleManager::LifecycleState>(999);
+
+    mLifecycleManagerStateNotification_cb->OnAppLifecycleStateChanged(
+        APPMANAGER_APP_ID,
+        APPMANAGER_APP_INSTANCE,
+        Exchange::ILifecycleManager::LifecycleState::ACTIVE, /* old */
+        unknownState,                                        /* new - triggers default+early return */
+        ""
+    );
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for LICOnAppStateChangedWithErrorReason
+ * Setting up AppManager Plugin with full resources
+ * Pre-populating mAppInfo with an entry for the appId
+ * Calling LifecycleInterfaceConnector::OnAppStateChanged with a non-empty errorReason
+ * Verifying the errorReason handling path (L931-937) and mapErrorReason (L941-963) are covered
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, LICOnAppStateChangedWithErrorReason)
+{
+    Core::hresult status;
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    /* Pre-populate mAppInfo so the appId lookup succeeds (covers L920-924) */
+    Plugin::AppManagerImplementation::AppInfo appInfo;
+    appInfo.appInstanceId = APPMANAGER_APP_INSTANCE;
+    appInfo.appNewState = Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
+    mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
+
+    ASSERT_NE(Plugin::LifecycleInterfaceConnector::_instance, nullptr)
+        << "LifecycleInterfaceConnector instance is not set";
+
+    /* Call with non-empty errorReason to exercise L931-937 and mapErrorReason */
+    Plugin::LifecycleInterfaceConnector::_instance->OnAppStateChanged(
+        APPMANAGER_APP_ID,
+        Exchange::ILifecycleManager::LifecycleState::ACTIVE,
+        "ERROR_CREATE_DISPLAY");
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for LICOnAppStateChangedAppIdNotFound
+ * Setting up AppManager Plugin with full resources
+ * Calling LifecycleInterfaceConnector::OnAppStateChanged with an appId not in mAppInfo
+ * Verifying the LOGERR("appId not found in database") path (L927) is covered
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, LICOnAppStateChangedAppIdNotFound)
+{
+    Core::hresult status;
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    /* mAppInfo is empty - appId lookup fails, covering L927 LOGERR path */
+    ASSERT_NE(Plugin::LifecycleInterfaceConnector::_instance, nullptr)
+        << "LifecycleInterfaceConnector instance is not set";
+
+    Plugin::LifecycleInterfaceConnector::_instance->OnAppStateChanged(
+        APPMANAGER_APP_ID,
+        Exchange::ILifecycleManager::LifecycleState::ACTIVE,
+        "ERROR_DOBBY_SPEC");
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for LICOnAppStateChangedMapErrorReasonInvalidParam
+ * Setting up AppManager Plugin with full resources
+ * Pre-populating mAppInfo and calling OnAppStateChanged with ERROR_INVALID_PARAM
+ * Verifying the mapErrorReason ERROR_INVALID_PARAM branch (L954-956) is covered
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, LICOnAppStateChangedMapErrorReasonInvalidParam)
+{
+    Core::hresult status;
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    Plugin::AppManagerImplementation::AppInfo appInfo;
+    appInfo.appInstanceId = APPMANAGER_APP_INSTANCE;
+    appInfo.appNewState = Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
+    mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
+
+    ASSERT_NE(Plugin::LifecycleInterfaceConnector::_instance, nullptr)
+        << "LifecycleInterfaceConnector instance is not set";
+
+    /* ERROR_INVALID_PARAM exercises the third branch in mapErrorReason */
+    Plugin::LifecycleInterfaceConnector::_instance->OnAppStateChanged(
+        APPMANAGER_APP_ID,
+        Exchange::ILifecycleManager::LifecycleState::ACTIVE,
+        "ERROR_INVALID_PARAM");
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for LICOnAppStateChangedMapErrorReasonUnknown
+ * Setting up AppManager Plugin with full resources
+ * Pre-populating mAppInfo and calling OnAppStateChanged with an unrecognized errorReason
+ * Verifying the mapErrorReason fallback (L958-961) APP_ERROR_UNKNOWN path is covered
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, LICOnAppStateChangedMapErrorReasonUnknown)
+{
+    Core::hresult status;
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    Plugin::AppManagerImplementation::AppInfo appInfo;
+    appInfo.appInstanceId = APPMANAGER_APP_INSTANCE;
+    appInfo.appNewState = Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
+    mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
+
+    ASSERT_NE(Plugin::LifecycleInterfaceConnector::_instance, nullptr)
+        << "LifecycleInterfaceConnector instance is not set";
+
+    /* Unrecognized error string exercises the else/fallback branch in mapErrorReason */
+    Plugin::LifecycleInterfaceConnector::_instance->OnAppStateChanged(
+        APPMANAGER_APP_ID,
+        Exchange::ILifecycleManager::LifecycleState::ACTIVE,
+        "ERROR_UNKNOWN_REASON");
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for LICRemoveAppInfoByAppIdFound
+ * Setting up AppManager Plugin with full resources
+ * Pre-populating mAppInfo and calling LifecycleInterfaceConnector::removeAppInfoByAppId
+ * Verifying the entry-found removal path (L989-993) in LIC removeAppInfoByAppId is covered
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, LICRemoveAppInfoByAppIdFound)
+{
+    Core::hresult status;
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    /* Pre-populate mAppInfo so the lookup finds the entry */
+    Plugin::AppManagerImplementation::AppInfo appInfo;
+    appInfo.appInstanceId = APPMANAGER_APP_INSTANCE;
+    mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
+
+    ASSERT_NE(Plugin::LifecycleInterfaceConnector::_instance, nullptr)
+        << "LifecycleInterfaceConnector instance is not set";
+
+    /* Directly call the LIC removeAppInfoByAppId to exercise the found path */
+    Plugin::LifecycleInterfaceConnector::_instance->removeAppInfoByAppId(APPMANAGER_APP_ID);
+
+    /* Entry should have been erased */
+    EXPECT_EQ(0u, mAppManagerImpl->mAppInfo.count(APPMANAGER_APP_ID));
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for LICRemoveAppInfoByAppIdNotFound
+ * Setting up AppManager Plugin with full resources
+ * Calling LifecycleInterfaceConnector::removeAppInfoByAppId with an unknown appId
+ * Verifying the LOGERR("AppInfo for appId not found") path (L996) is covered
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, LICRemoveAppInfoByAppIdNotFound)
+{
+    Core::hresult status;
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    ASSERT_NE(Plugin::LifecycleInterfaceConnector::_instance, nullptr)
+        << "LifecycleInterfaceConnector instance is not set";
+
+    /* mAppInfo is empty - exercises the LOGERR("AppInfo for appId not found") path */
+    Plugin::LifecycleInterfaceConnector::_instance->removeAppInfoByAppId(APPMANAGER_APP_INSTANCE);
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for AppManagerImplRemoveAppInfoByAppIdFound
+ * Setting up AppManager Plugin with full resources
+ * Pre-populating mAppInfo and calling AppManagerImplementation::handleOnAppUnloaded
+ * Verifying the removeAppInfoByAppId entry-found path (L729-733) is covered
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, AppManagerImplRemoveAppInfoByAppIdFound)
+{
+    Core::hresult status;
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    /* Pre-populate mAppInfo for the appId */
+    Plugin::AppManagerImplementation::AppInfo appInfo;
+    appInfo.appInstanceId = APPMANAGER_APP_INSTANCE;
+    appInfo.packageInfo.version = APPMANAGER_APP_VERSION;
+    mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
+
+    EXPECT_CALL(*mPackageManagerMock, Unlock(APPMANAGER_APP_ID, APPMANAGER_APP_VERSION))
+        .WillOnce([&](const string& packageId, const string& version) {
+            return Core::ERROR_NONE;
+        });
+
+    /* Calling handleOnAppUnloaded triggers Dispatch(APP_EVENT_UNLOADED)
+     * which calls packageUnLock and then removeAppInfoByAppId(appId) */
+    mAppManagerImpl->handleOnAppUnloaded(APPMANAGER_APP_ID, APPMANAGER_APP_INSTANCE);
+
+    /* Verify the entry has been removed */
+    EXPECT_EQ(0u, mAppManagerImpl->mAppInfo.count(APPMANAGER_APP_ID));
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for GetCustomValuesWithAipathFileHasContent
+ * Setting up AppManager Plugin with full resources
+ * Mocking fopen to return a populated temp file for /tmp/aipath
+ * Calling PreloadApp() to trigger getCustomValues with file content (L1597-1631)
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, GetCustomValuesWithAipathFileHasContent)
+{
+    Core::hresult status;
+    std::string error = "";
+
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    /* Configure fopen mock to return a real temp file with 3 lines of content */
+    ON_CALL(*p_wrapsImplMock, fopen(::testing::_, ::testing::_))
+        .WillByDefault([&](const char* pathname, const char* mode) -> FILE* {
+            if (nullptr != pathname && std::string(pathname) == "/tmp/aipath") {
+                FILE* tmp = tmpfile();
+                if (nullptr != tmp) {
+                    fputs("/app/custom/path\n/runtime/custom/path\ncustom-launch-command\n", tmp);
+                    rewind(tmp);
+                }
+                return tmp;
+            }
+            return nullptr;
+        });
+
+    preLaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::PAUSED);
+    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->PreloadApp(APPMANAGER_APP_ID, APPMANAGER_APP_LAUNCHARGS, error));
+    {
+        std::unique_lock<std::mutex> lock(mPreLoadMutex);
+        ASSERT_TRUE(mPreLoadCV.wait_for(lock, std::chrono::seconds(10), [&] { return mPreLoadSpawmCalled; }));
+    }
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
