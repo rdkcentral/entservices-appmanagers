@@ -79,8 +79,9 @@ namespace Plugin {
          *        (before actual launch) to ensure memory is available.
          * @param appId   The app that needs memory cleared for.
          * @param targetRAMKB  The target MemoryAvailable in KB.
+         * @return true if MemoryAvailable >= targetRAMKB after reclamation, false otherwise.
          */
-        void RequestReconciliationAndWait(const string& appId, uint32_t targetRAMKB);
+        bool RequestReconciliationAndWait(const string& appId, uint32_t targetRAMKB);
 
         /**
          * @brief Called by AppManagerImplementation::handleOnAppLifecycleStateChanged
@@ -101,8 +102,9 @@ namespace Plugin {
          * @brief Execute the sequential reclamation phases for the active app.
          * @param activeId The app ID that triggered the reclamation.
          * @param targetRAMKB  The required MemoryAvailable threshold in KB.
+         * @return true if MemoryAvailable >= targetRAMKB after all phases.
          */
-        void ExecuteSequentialReclamation(const string& activeId, uint32_t targetRAMKB);
+        bool ExecuteSequentialReclamation(const string& activeId, uint32_t targetRAMKB);
 
         /**
          * @brief Try to resolve memory pressure by transitioning apps in the given state.
@@ -137,6 +139,7 @@ namespace Plugin {
         std::atomic<bool> _running;
         bool _pending;
         bool _completed;
+        bool _reconciliationSuccess;
         string _activeAppId;
         uint32_t _targetRAMKB;
         string _waitingAppId;

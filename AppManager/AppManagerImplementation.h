@@ -275,6 +275,7 @@ namespace Plugin {
         Core::Sink<PackageManagerNotification> mPackageManagerNotification;
         std::thread mAppManagerWorkerThread;
         std::mutex mAppManagerLock;
+        std::mutex mReconciliationLock;
         std::condition_variable mAppRequestListCV;
         std::list<std::shared_ptr<AppManagerRequest>> mAppRequestList;
         std::unique_ptr<MemoryMonitor> mMemoryMonitor;

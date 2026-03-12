@@ -1197,15 +1197,26 @@ Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const s
     /* MemoryMonitor: Blocking pre-preload memory preparation.
      * Ensures sufficient MemoryAvailable (from /proc/meminfo) before scheduling the preload.
      * Uses maxSuspendedSystemMemory from app config as the target.
-     * Blocks until the required memory is available or all reclamation options are exhausted. */
-    if (mMemoryMonitor)
+     * Blocks until the required memory is available or all reclamation options are exhausted.
+     * mReconciliationLock ensures only one thread runs a blocking reconciliation at a time.
+     * NOTE: mAdminLock must NOT be held here — MemoryMonitor thread calls back into
+     *       methods (GetSortedCandidates, KillApp, etc.) that acquire mAdminLock. */
     {
-        uint32_t launchTargetKB = 0;
-        uint32_t preloadTargetKB = 0;
-        GetAppMemoryConfig(appId, launchTargetKB, preloadTargetKB);
-        LOGINFO("[MemoryMonitor] Triggering pre-preload blocking reconciliation for appId %s, target %u KB",
-                appId.c_str(), preloadTargetKB);
-        mMemoryMonitor->RequestReconciliationAndWait(appId, preloadTargetKB);
+        std::lock_guard<std::mutex> reconLock(mReconciliationLock);
+        if (mMemoryMonitor)
+        {
+            uint32_t launchTargetKB = 0;
+            uint32_t preloadTargetKB = 0;
+            GetAppMemoryConfig(appId, launchTargetKB, preloadTargetKB);
+            LOGINFO("[MemoryMonitor] Triggering pre-preload blocking reconciliation for appId %s, target %u KB",
+                    appId.c_str(), preloadTargetKB);
+            if (!mMemoryMonitor->RequestReconciliationAndWait(appId, preloadTargetKB))
+            {
+                LOGERR("[MemoryMonitor] Failed to reclaim sufficient memory for preload of appId %s", appId.c_str());
+                error = "Insufficient memory for preload";
+                return Core::ERROR_GENERAL;
+            }
+        }
     }
 
     mAdminLock.Lock();
@@ -2079,6 +2090,11 @@ bool AppManagerImplementation::GetAppMemoryConfig(const string& appId, uint32_t&
         LOGERR("[MemoryMonitor] GetAppMemoryConfig: appId is empty");
         return false;
     }
+
+    // TODO: for now return defaults
+    LOGINFO("[MemoryMonitor] GetAppMemoryConfig: appId %s final launchTargetKB=%u KB, preloadTargetKB=%u KB",
+            appId.c_str(), launchTargetKB, preloadTargetKB);
+    return true;
 
     /* Step 1: Get the app version from the installed packages list */
     std::string version;
