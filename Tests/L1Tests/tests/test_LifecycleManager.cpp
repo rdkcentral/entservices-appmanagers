@@ -53,6 +53,41 @@ class LifecycleManagerImplementationTest : public LifecycleManagerImplementation
             return LifecycleManagerImplementation::getContext(appInstanceId, appId);
         }
 };
+
+/**
+ * LifecycleManagerShellTest exposes the private Notification sink methods of
+ * LifecycleManager so that L1 tests can exercise the inline functions defined
+ * in LifecycleManager.h without calling Initialize() or Deinitialize().
+ * LifecycleManager.h declares this class as a friend.
+ */
+class LifecycleManagerShellTest : public LifecycleManager {
+    public:
+        void notificationActivated(RPC::IRemoteConnection* conn)
+        {
+            mLifecycleManagerStateNotification.Activated(conn);
+        }
+
+        void notificationDeactivated(RPC::IRemoteConnection* conn)
+        {
+            mLifecycleManagerStateNotification.Deactivated(conn);
+        }
+
+        void notificationOnAppLifecycleStateChanged(
+            const std::string& appId,
+            const std::string& appInstanceId,
+            Exchange::ILifecycleManager::LifecycleState oldState,
+            Exchange::ILifecycleManager::LifecycleState newState,
+            const std::string& navigationIntent)
+        {
+            mLifecycleManagerStateNotification.OnAppLifecycleStateChanged(
+                appId, appInstanceId, oldState, newState, navigationIntent);
+        }
+
+        void* notificationQueryInterface(uint32_t id)
+        {
+            return mLifecycleManagerStateNotification.QueryInterface(id);
+        }
+};
 } // namespace Plugin
 } // namespace WPEFramework
 
@@ -1873,4 +1908,181 @@ TEST_F(LifecycleManagerTest, setTargetAppState_withInvalidTargetState)
     EXPECT_EQ(Core::ERROR_NONE, interface->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::LifecycleState::UNLOADED, ""));
 
     releaseResources();
+}
+
+/* Test Case for LifecycleManager plugin shell constructor and destructor
+ *
+ * Instantiate a LifecycleManagerShellTest object (a subclass of LifecycleManager).
+ * The LifecycleManager constructor creates the mLifecycleManagerStateNotification (Core::Sink<Notification>)
+ * which in turn invokes Notification::Notification().  The destructor reverses this.
+ * These together cover LifecycleManager.cpp lines 48-60 (ctor/dtor) and
+ * LifecycleManager.h lines 46-54 (Notification ctor/dtor).
+ */
+
+TEST_F(LifecycleManagerTest, lifecycleManager_constructorDestructor)
+{
+    // TC-41: Instantiate and destroy the LifecycleManager plugin shell.
+    // This covers LifecycleManager::LifecycleManager(), LifecycleManager::~LifecycleManager(),
+    // Notification::Notification(LifecycleManager*) and Notification::~Notification() from
+    // LifecycleManager.h and LifecycleManager.cpp at 0% hit count.
+    {
+        Plugin::LifecycleManagerShellTest shell;
+        // shell goes out of scope here — dtor called
+    }
+}
+
+/* Test Case for LifecycleManager::Information()
+ *
+ * Instantiate a LifecycleManagerShellTest and call Information().
+ * Expected: the returned string contains the plugin service name.
+ * Covers LifecycleManager.cpp lines 131-133 (Information() body).
+ */
+
+TEST_F(LifecycleManagerTest, lifecycleManager_information)
+{
+    Plugin::LifecycleManagerShellTest shell;
+
+    // TC-42: Information() must return a JSON-like string containing the service name.
+    string info = shell.Information();
+
+    EXPECT_THAT(info, ::testing::HasSubstr("org.rdk.LifecycleManager"));
+}
+
+/* Test Case for LifecycleManager::QueryInterface() for IPlugin
+ *
+ * Instantiate a LifecycleManagerShellTest and call QueryInterface for IPlugin.
+ * Expected: a non-null pointer is returned (the shell itself).
+ * Covers LifecycleManager.h lines 92-97 (BEGIN_INTERFACE_MAP / INTERFACE_ENTRY IPlugin path).
+ */
+
+TEST_F(LifecycleManagerTest, lifecycleManager_queryInterface_iPlugin)
+{
+    Plugin::LifecycleManagerShellTest shell;
+
+    // TC-43: QueryInterface for IPlugin returns the shell object itself (non-null).
+    // INTERFACE_ENTRY(PluginHost::IPlugin) is the first entry — no AGGREGATE is traversed.
+    void* result = shell.QueryInterface(PluginHost::IPlugin::ID);
+
+    EXPECT_NE(result, nullptr);
+
+    if (nullptr != result)
+    {
+        static_cast<PluginHost::IPlugin*>(result)->Release();
+    }
+}
+
+/* Test Case for LifecycleManager::QueryInterface() for IDispatcher
+ *
+ * Instantiate a LifecycleManagerShellTest and call QueryInterface for IDispatcher.
+ * Expected: a non-null pointer is returned.
+ * Covers the INTERFACE_ENTRY(PluginHost::IDispatcher) branch of LifecycleManager.h lines 92-97.
+ */
+
+TEST_F(LifecycleManagerTest, lifecycleManager_queryInterface_iDispatcher)
+{
+    Plugin::LifecycleManagerShellTest shell;
+
+    // TC-43b: QueryInterface for IDispatcher exercises the second INTERFACE_ENTRY.
+    void* result = shell.QueryInterface(PluginHost::IDispatcher::ID);
+
+    EXPECT_NE(result, nullptr);
+
+    if (nullptr != result)
+    {
+        static_cast<PluginHost::IDispatcher*>(result)->Release();
+    }
+}
+
+/* Test Case for Notification::QueryInterface
+ *
+ * Instantiate a LifecycleManagerShellTest and call notificationQueryInterface() which
+ * forwards to Core::Sink<Notification>::QueryInterface.
+ * Expected: querying ILifecycleManagerState::INotification returns a non-null pointer.
+ * Covers LifecycleManager.h lines 56-59 (Notification::BEGIN_INTERFACE_MAP block).
+ */
+
+TEST_F(LifecycleManagerTest, lifecycleManager_notification_queryInterface)
+{
+    Plugin::LifecycleManagerShellTest shell;
+
+    // TC-44: Notification implements ILifecycleManagerState::INotification — must be non-null.
+    void* result = shell.notificationQueryInterface(
+        Exchange::ILifecycleManagerState::INotification::ID);
+
+    EXPECT_NE(result, nullptr);
+
+    if (nullptr != result)
+    {
+        static_cast<Core::IUnknown*>(result)->Release();
+    }
+
+    // Also verify the RPC::IRemoteConnection::INotification interface entry.
+    void* rpcResult = shell.notificationQueryInterface(
+        RPC::IRemoteConnection::INotification::ID);
+
+    EXPECT_NE(rpcResult, nullptr);
+
+    if (nullptr != rpcResult)
+    {
+        static_cast<Core::IUnknown*>(rpcResult)->Release();
+    }
+}
+
+/* Test Case for Notification::Activated
+ *
+ * Instantiate a LifecycleManagerShellTest and call notificationActivated(nullptr).
+ * Notification::Activated() only logs and returns; a null connection pointer is safe here.
+ * Expected: the call completes without error.
+ * Covers LifecycleManager.h lines 61-64 (Notification::Activated body).
+ */
+
+TEST_F(LifecycleManagerTest, lifecycleManager_notification_activated)
+{
+    Plugin::LifecycleManagerShellTest shell;
+
+    // TC-45: Activated() logs and returns — passing nullptr is safe and exercises all lines.
+    shell.notificationActivated(nullptr);
+}
+
+/* Test Case for Notification::Deactivated
+ *
+ * Instantiate a LifecycleManagerShellTest and call notificationDeactivated(nullptr).
+ * Notification::Deactivated() only logs and returns.
+ * Expected: the call completes without error.
+ * Covers LifecycleManager.h lines 66-69 (Notification::Deactivated body).
+ */
+
+TEST_F(LifecycleManagerTest, lifecycleManager_notification_deactivated)
+{
+    Plugin::LifecycleManagerShellTest shell;
+
+    // TC-46: Deactivated() logs and returns — passing nullptr is safe and exercises all lines.
+    shell.notificationDeactivated(nullptr);
+}
+
+/* Test Case for Notification::OnAppLifecycleStateChanged
+ *
+ * Instantiate a LifecycleManagerShellTest and call notificationOnAppLifecycleStateChanged()
+ * directly.  This method logs and then calls
+ * Exchange::JLifecycleManagerState::Event::OnAppLifecycleStateChanged which issues a
+ * JSON-RPC Notify on the parent shell.  Because the shell has no registered subscribers
+ * (Initialize() has not been called), the Notify() call is a safe no-op.
+ * Expected: the call completes without error.
+ * Covers LifecycleManager.h lines 71-79 (Notification::OnAppLifecycleStateChanged body).
+ */
+
+TEST_F(LifecycleManagerTest, lifecycleManager_notification_onAppLifecycleStateChanged)
+{
+    Plugin::LifecycleManagerShellTest shell;
+
+    // TC-47: Directly invoke OnAppLifecycleStateChanged — exercises the LOGINFO and the
+    // JLifecycleManagerState::Event dispatch path.  The shell has no JSON-RPC subscribers
+    // so the event is silently discarded after the LOGINFO.
+    shell.notificationOnAppLifecycleStateChanged(
+        "com.test.app",
+        "app-instance-001",
+        Exchange::ILifecycleManager::LifecycleState::UNLOADED,
+        Exchange::ILifecycleManager::LifecycleState::LOADING,
+        "test.launch.intent"
+    );
 }
