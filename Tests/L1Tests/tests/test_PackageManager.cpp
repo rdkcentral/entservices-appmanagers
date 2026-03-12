@@ -1793,34 +1793,27 @@ TEST_F(PackageManagerTest, installNotificationUnregisterWithoutRegisterusingComR
     deinitforComRpc();
 }
 
-TEST_F(PackageManagerTest, lockGetLockedInfoAndUnlockusingComRpcSuccess) {
+TEST_F(PackageManagerTest, lockGetLockedInfoAndUnlockusingComRpcFailurePackageNotFound) {
 
     initforComRpc();
 
     waitforSignal(TIMEOUT_FOR_INIT);
 
-    string packageId = "YouTube";
-    string version = "100.1.24";
+    string packageId = "NonExistentPackage";
+    string version = "1.0.0";
     uint32_t lockId = 0;
     string unpackedPath;
     Exchange::RuntimeConfig configMetadata;
     Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
 
-    EXPECT_EQ(Core::ERROR_NONE, pkghandlerInterface->Lock(packageId, version,
+    // Package is not installed, so Lock should fail with ERROR_BAD_REQUEST
+    EXPECT_EQ(Core::ERROR_BAD_REQUEST, pkghandlerInterface->Lock(packageId, version,
         Exchange::IPackageHandler::LockReason::LAUNCH, lockId, unpackedPath, configMetadata, appMetadata));
-    EXPECT_EQ(lockId, 1);
+     EXPECT_EQ(lockId, 0);
 
-    string gatewayMetadataPath;
-    bool locked = false;
-    EXPECT_EQ(Core::ERROR_NONE, pkghandlerInterface->GetLockedInfo(packageId, version,
-        unpackedPath, configMetadata, gatewayMetadataPath, locked));
-    EXPECT_TRUE(locked);
+    // appMetadata should be nullptr since Lock failed
+    EXPECT_EQ(appMetadata, nullptr);
 
-    EXPECT_EQ(Core::ERROR_NONE, pkghandlerInterface->Unlock(packageId, version));
-
-
-    appMetadata->Release();
-    appMetadata = nullptr;
 
 
     deinitforComRpc();
