@@ -4094,8 +4094,24 @@ TEST_F(AppManagerTest, HandleOnAppUnloadedEmptyInstanceId)
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
 
+    uint32_t signalled = AppManager_StateInvalid;
+    ExpectedAppLifecycleEvent expectedEvent;
+    expectedEvent.appId = APPMANAGER_APP_ID;
+    expectedEvent.appInstanceId = "";
+
+    /* Register notification to synchronize with the async worker-pool Job */
+    Core::Sink<NotificationHandler> notification;
+    mAppManagerImpl->Register(&notification);
+    notification.SetExpectedEvent(expectedEvent);
+
     /* Non-empty appId, empty appInstanceId - exercises L382 LOGERR path */
     mAppManagerImpl->handleOnAppUnloaded(APPMANAGER_APP_ID, "");
+
+    /* Wait for OnAppUnloaded to be dispatched before releasing resources */
+    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppUnloaded);
+    EXPECT_TRUE(signalled & AppManager_onAppUnloaded);
+
+    mAppManagerImpl->Unregister(&notification);
 
     if (status == Core::ERROR_NONE)
     {
@@ -4127,12 +4143,23 @@ TEST_F(AppManagerTest, PackageUnlockEntryFoundUnlockSuccess)
             return Core::ERROR_NONE;
         });
 
+    uint32_t signalled = AppManager_StateInvalid;
+    ExpectedAppLifecycleEvent expectedEvent;
+    expectedEvent.appId = APPMANAGER_APP_ID;
+    expectedEvent.appInstanceId = APPMANAGER_APP_INSTANCE;
+
+    Core::Sink<NotificationHandler> notification;
+    mAppManagerImpl->Register(&notification);
+    notification.SetExpectedEvent(expectedEvent);
+
     /* handleOnAppUnloaded triggers packageUnLock then removeAppInfoByAppId */
     mAppManagerImpl->handleOnAppUnloaded(APPMANAGER_APP_ID, APPMANAGER_APP_INSTANCE);
 
+    /* Wait for OnAppUnloaded to be dispatched before checking results */
+    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppUnloaded);
+    EXPECT_TRUE(signalled & AppManager_onAppUnloaded);
 
-    /* Wait for the worker pool job to dispatch and complete asynchronously */
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    mAppManagerImpl->Unregister(&notification);
 
     /* mAppInfo entry should have been removed */
     EXPECT_EQ(0u, mAppManagerImpl->mAppInfo.count(APPMANAGER_APP_ID));
@@ -4167,8 +4194,23 @@ TEST_F(AppManagerTest, PackageUnlockEntryFoundUnlockFails)
             return Core::ERROR_GENERAL;
         });
 
+    uint32_t signalled = AppManager_StateInvalid;
+    ExpectedAppLifecycleEvent expectedEvent;
+    expectedEvent.appId = APPMANAGER_APP_ID;
+    expectedEvent.appInstanceId = APPMANAGER_APP_INSTANCE;
+
+    Core::Sink<NotificationHandler> notification;
+    mAppManagerImpl->Register(&notification);
+    notification.SetExpectedEvent(expectedEvent);
+
     /* handleOnAppUnloaded triggers packageUnLock - Unlock returns error covering L865-867 */
     mAppManagerImpl->handleOnAppUnloaded(APPMANAGER_APP_ID, APPMANAGER_APP_INSTANCE);
+
+    /* Wait for OnAppUnloaded to complete before releasing resources */
+    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppUnloaded);
+    EXPECT_TRUE(signalled & AppManager_onAppUnloaded);
+
+    mAppManagerImpl->Unregister(&notification);
 
     if (status == Core::ERROR_NONE)
     {
@@ -4194,13 +4236,23 @@ TEST_F(AppManagerTest, PackageUnlockHandlerNull)
     appInfo.packageInfo.version = APPMANAGER_APP_VERSION;
     mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
 
+    uint32_t signalled = AppManager_StateInvalid;
+    ExpectedAppLifecycleEvent expectedEvent;
+    expectedEvent.appId = APPMANAGER_APP_ID;
+    expectedEvent.appInstanceId = APPMANAGER_APP_INSTANCE;
+
+    Core::Sink<NotificationHandler> notification;
+    mAppManagerImpl->Register(&notification);
+    notification.SetExpectedEvent(expectedEvent);
+
     /* handleOnAppUnloaded triggers packageUnLock -> null handler -> L875 LOGERR */
     mAppManagerImpl->handleOnAppUnloaded(APPMANAGER_APP_ID, APPMANAGER_APP_INSTANCE);
 
-    /* Wait for the worker pool job to finish before tearing down so the Job's
-     * Release() on AppManagerImplementation happens before Deinitialize(), preventing
-     * the destructor being called on the worker thread after mServiceMock is deleted. */
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    /* Wait for OnAppUnloaded so the Job's AddRef is released before mServiceMock is deleted */
+    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppUnloaded);
+    EXPECT_TRUE(signalled & AppManager_onAppUnloaded);
+
+    mAppManagerImpl->Unregister(&notification);
 
     releaseAppManagerImpl();
 }
@@ -4270,6 +4322,18 @@ TEST_F(AppManagerTest, LICMapAppLifecycleStateUnloaded)
     ASSERT_NE(mLifecycleManagerStateNotification_cb, nullptr)
         << "LifecycleManagerState notification callback is not registered";
 
+    uint32_t signalled = AppManager_StateInvalid;
+    ExpectedAppLifecycleEvent expectedEvent;
+    expectedEvent.appId = APPMANAGER_APP_ID;
+    expectedEvent.appInstanceId = APPMANAGER_APP_INSTANCE;
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED;
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING;
+    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_ABORT;
+
+    Core::Sink<NotificationHandler> notification;
+    mAppManagerImpl->Register(&notification);
+    notification.SetExpectedEvent(expectedEvent);
+
     /* LOADING -> UNLOADED triggers mapAppLifecycleState(UNLOADED) path */
     mLifecycleManagerStateNotification_cb->OnAppLifecycleStateChanged(
         APPMANAGER_APP_ID,
@@ -4279,7 +4343,11 @@ TEST_F(AppManagerTest, LICMapAppLifecycleStateUnloaded)
         ""
     );
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    /* Wait for APP_EVENT_UNLOADED (the last of the two dispatched jobs) */
+    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppUnloaded);
+    EXPECT_TRUE(signalled & AppManager_onAppUnloaded);
+
+    mAppManagerImpl->Unregister(&notification);
 
     if (status == Core::ERROR_NONE)
     {
@@ -4317,8 +4385,6 @@ TEST_F(AppManagerTest, LICMapAppLifecycleStateInitializing)
         ""
     );
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
-
     if (status == Core::ERROR_NONE)
     {
         releaseResources();
@@ -4346,6 +4412,18 @@ TEST_F(AppManagerTest, LICMapAppLifecycleStateSuspended)
     ASSERT_NE(mLifecycleManagerStateNotification_cb, nullptr)
         << "LifecycleManagerState notification callback is not registered";
 
+    uint32_t signalled = AppManager_StateInvalid;
+    ExpectedAppLifecycleEvent expectedEvent;
+    expectedEvent.appId = APPMANAGER_APP_ID;
+    expectedEvent.appInstanceId = APPMANAGER_APP_INSTANCE;
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED;
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
+    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE;
+
+    Core::Sink<NotificationHandler> notification;
+    mAppManagerImpl->Register(&notification);
+    notification.SetExpectedEvent(expectedEvent);
+
     /* ACTIVE -> SUSPENDED triggers mapAppLifecycleState(SUSPENDED) path */
     mLifecycleManagerStateNotification_cb->OnAppLifecycleStateChanged(
         APPMANAGER_APP_ID,
@@ -4355,7 +4433,11 @@ TEST_F(AppManagerTest, LICMapAppLifecycleStateSuspended)
         ""
     );
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    /* Wait for OnAppLifecycleStateChanged to be dispatched before releasing resources */
+    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+
+    mAppManagerImpl->Unregister(&notification);
 
     if (status == Core::ERROR_NONE)
     {
@@ -4391,8 +4473,6 @@ TEST_F(AppManagerTest, LICMapAppLifecycleStateUnknown)
         ""
     );
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
-
     if (status == Core::ERROR_NONE)
     {
         releaseResources();
@@ -4422,11 +4502,29 @@ TEST_F(AppManagerTest, LICOnAppStateChangedWithErrorReason)
     ASSERT_NE(Plugin::LifecycleInterfaceConnector::_instance, nullptr)
         << "LifecycleInterfaceConnector instance is not set";
 
+    uint32_t signalled = AppManager_StateInvalid;
+    ExpectedAppLifecycleEvent expectedEvent;
+    expectedEvent.appId = APPMANAGER_APP_ID;
+    expectedEvent.appInstanceId = APPMANAGER_APP_INSTANCE;
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED;
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
+    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_CREATE_DISPLAY;
+
+    Core::Sink<NotificationHandler> notification;
+    mAppManagerImpl->Register(&notification);
+    notification.SetExpectedEvent(expectedEvent);
+
     /* Call with non-empty errorReason to exercise L931-937 and mapErrorReason */
     Plugin::LifecycleInterfaceConnector::_instance->OnAppStateChanged(
         APPMANAGER_APP_ID,
         Exchange::ILifecycleManager::LifecycleState::ACTIVE,
         "ERROR_CREATE_DISPLAY");
+
+    /* Wait for OnAppLifecycleStateChanged to be dispatched before releasing resources */
+    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+
+    mAppManagerImpl->Unregister(&notification);
 
     if (status == Core::ERROR_NONE)
     {
@@ -4451,10 +4549,28 @@ TEST_F(AppManagerTest, LICOnAppStateChangedAppIdNotFound)
     ASSERT_NE(Plugin::LifecycleInterfaceConnector::_instance, nullptr)
         << "LifecycleInterfaceConnector instance is not set";
 
+    uint32_t signalled = AppManager_StateInvalid;
+    ExpectedAppLifecycleEvent expectedEvent;
+    expectedEvent.appId = APPMANAGER_APP_ID;
+    expectedEvent.appInstanceId = "";
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED;
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED;
+    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_DOBBY_SPEC;
+
+    Core::Sink<NotificationHandler> notification;
+    mAppManagerImpl->Register(&notification);
+    notification.SetExpectedEvent(expectedEvent);
+
     Plugin::LifecycleInterfaceConnector::_instance->OnAppStateChanged(
         APPMANAGER_APP_ID,
         Exchange::ILifecycleManager::LifecycleState::ACTIVE,
         "ERROR_DOBBY_SPEC");
+
+    /* Wait for OnAppLifecycleStateChanged to be dispatched before releasing resources */
+    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+
+    mAppManagerImpl->Unregister(&notification);
 
     if (status == Core::ERROR_NONE)
     {
@@ -4483,11 +4599,29 @@ TEST_F(AppManagerTest, LICOnAppStateChangedMapErrorReasonInvalidParam)
     ASSERT_NE(Plugin::LifecycleInterfaceConnector::_instance, nullptr)
         << "LifecycleInterfaceConnector instance is not set";
 
+    uint32_t signalled = AppManager_StateInvalid;
+    ExpectedAppLifecycleEvent expectedEvent;
+    expectedEvent.appId = APPMANAGER_APP_ID;
+    expectedEvent.appInstanceId = APPMANAGER_APP_INSTANCE;
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED;
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
+    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_INVALID_PARAM;
+
+    Core::Sink<NotificationHandler> notification;
+    mAppManagerImpl->Register(&notification);
+    notification.SetExpectedEvent(expectedEvent);
+
     /* ERROR_INVALID_PARAM exercises the third branch in mapErrorReason */
     Plugin::LifecycleInterfaceConnector::_instance->OnAppStateChanged(
         APPMANAGER_APP_ID,
         Exchange::ILifecycleManager::LifecycleState::ACTIVE,
         "ERROR_INVALID_PARAM");
+
+    /* Wait for OnAppLifecycleStateChanged to be dispatched before releasing resources */
+    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+
+    mAppManagerImpl->Unregister(&notification);
 
     if (status == Core::ERROR_NONE)
     {
@@ -4516,11 +4650,29 @@ TEST_F(AppManagerTest, LICOnAppStateChangedMapErrorReasonUnknown)
     ASSERT_NE(Plugin::LifecycleInterfaceConnector::_instance, nullptr)
         << "LifecycleInterfaceConnector instance is not set";
 
+    uint32_t signalled = AppManager_StateInvalid;
+    ExpectedAppLifecycleEvent expectedEvent;
+    expectedEvent.appId = APPMANAGER_APP_ID;
+    expectedEvent.appInstanceId = APPMANAGER_APP_INSTANCE;
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED;
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
+    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_UNKNOWN;
+
+    Core::Sink<NotificationHandler> notification;
+    mAppManagerImpl->Register(&notification);
+    notification.SetExpectedEvent(expectedEvent);
+
     /* Unrecognized error string exercises the else/fallback branch in mapErrorReason */
     Plugin::LifecycleInterfaceConnector::_instance->OnAppStateChanged(
         APPMANAGER_APP_ID,
         Exchange::ILifecycleManager::LifecycleState::ACTIVE,
         "ERROR_UNKNOWN_REASON");
+
+    /* Wait for OnAppLifecycleStateChanged to be dispatched before releasing resources */
+    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+
+    mAppManagerImpl->Unregister(&notification);
 
     if (status == Core::ERROR_NONE)
     {
@@ -4610,14 +4762,24 @@ TEST_F(AppManagerTest, AppManagerImplRemoveAppInfoByAppIdFound)
             return Core::ERROR_NONE;
         });
 
+    uint32_t signalled = AppManager_StateInvalid;
+    ExpectedAppLifecycleEvent expectedEvent;
+    expectedEvent.appId = APPMANAGER_APP_ID;
+    expectedEvent.appInstanceId = APPMANAGER_APP_INSTANCE;
+
+    Core::Sink<NotificationHandler> notification;
+    mAppManagerImpl->Register(&notification);
+    notification.SetExpectedEvent(expectedEvent);
+
     /* Calling handleOnAppUnloaded triggers Dispatch(APP_EVENT_UNLOADED)
      * which calls packageUnLock and then removeAppInfoByAppId(appId) */
     mAppManagerImpl->handleOnAppUnloaded(APPMANAGER_APP_ID, APPMANAGER_APP_INSTANCE);
 
+    /* Wait for OnAppUnloaded to be dispatched before checking results */
+    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppUnloaded);
+    EXPECT_TRUE(signalled & AppManager_onAppUnloaded);
 
-    /* Wait for the worker pool job to dispatch and complete asynchronously */
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
-
+    mAppManagerImpl->Unregister(&notification);
 
     /* Verify the entry has been removed */
     EXPECT_EQ(0u, mAppManagerImpl->mAppInfo.count(APPMANAGER_APP_ID));
@@ -4669,3 +4831,4 @@ TEST_F(AppManagerTest, GetCustomValuesWithAipathFileHasContent)
         releaseResources();
     }
 }
+
