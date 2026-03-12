@@ -4130,6 +4130,10 @@ TEST_F(AppManagerTest, PackageUnlockEntryFoundUnlockSuccess)
     /* handleOnAppUnloaded triggers packageUnLock then removeAppInfoByAppId */
     mAppManagerImpl->handleOnAppUnloaded(APPMANAGER_APP_ID, APPMANAGER_APP_INSTANCE);
 
+
+    /* Wait for the worker pool job to dispatch and complete asynchronously */
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
     /* mAppInfo entry should have been removed */
     EXPECT_EQ(0u, mAppManagerImpl->mAppInfo.count(APPMANAGER_APP_ID));
 
@@ -4192,6 +4196,11 @@ TEST_F(AppManagerTest, PackageUnlockHandlerNull)
 
     /* handleOnAppUnloaded triggers packageUnLock -> null handler -> L875 LOGERR */
     mAppManagerImpl->handleOnAppUnloaded(APPMANAGER_APP_ID, APPMANAGER_APP_INSTANCE);
+
+    /* Wait for the worker pool job to finish before tearing down so the Job's
+     * Release() on AppManagerImplementation happens before Deinitialize(), preventing
+     * the destructor being called on the worker thread after mServiceMock is deleted. */
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
     releaseAppManagerImpl();
 }
@@ -4604,6 +4613,11 @@ TEST_F(AppManagerTest, AppManagerImplRemoveAppInfoByAppIdFound)
     /* Calling handleOnAppUnloaded triggers Dispatch(APP_EVENT_UNLOADED)
      * which calls packageUnLock and then removeAppInfoByAppId(appId) */
     mAppManagerImpl->handleOnAppUnloaded(APPMANAGER_APP_ID, APPMANAGER_APP_INSTANCE);
+
+
+    /* Wait for the worker pool job to dispatch and complete asynchronously */
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
 
     /* Verify the entry has been removed */
     EXPECT_EQ(0u, mAppManagerImpl->mAppInfo.count(APPMANAGER_APP_ID));
