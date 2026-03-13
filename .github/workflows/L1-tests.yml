@@ -85,7 +85,7 @@ jobs:
         run: >
           sudo apt update
           &&
-          sudo apt install -y libsqlite3-dev libcurl4-openssl-dev valgrind lcov clang libsystemd-dev libboost-all-dev libwebsocketpp-dev meson libcunit1 libcunit1-dev curl protobuf-compiler-grpc libgrpc-dev libgrpc++-dev libjsoncpp-dev libxtables-dev libip4tc-dev libip6tc-dev gdb
+          sudo apt install -y libsqlite3-dev libcurl4-openssl-dev valgrind lcov clang libsystemd-dev libboost-all-dev libwebsocketpp-dev meson libcunit1 libcunit1-dev curl protobuf-compiler-grpc libgrpc-dev libgrpc++-dev libjsoncpp-dev libxtables-dev libip4tc-dev libip6tc-dev 
 
       - name: Install GStreamer
         run: |
@@ -498,13 +498,8 @@ jobs:
 
           echo "Using test binary: $TEST_BIN"
 
-          echo "Running unit tests under gdb..."
-          gdb -q -batch \
-            -ex "set pagination off" \
-            -ex "run" \
-            -ex "bt full" \
-            -ex "info registers" \
-            -ex "quit" --args "$TEST_BIN"
+          echo "Running unit tests "
+          "$TEST_BIN"
 
           cp rdkL1TestResults.json "$GITHUB_WORKSPACE/rdkL1TestResultsWithoutValgrind.json"
           rm -f rdkL1TestResults.json
