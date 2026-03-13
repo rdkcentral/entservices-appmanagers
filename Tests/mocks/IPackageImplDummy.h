@@ -36,7 +36,8 @@ namespace packagemanager
         SUCCESS,
         FAILED,
         VERSION_MISMATCH,
-        PERSISTENCE_FAILURE
+        PERSISTENCE_FAILURE,
+        VERIFICATION_FAILURE
     };
 
     typedef enum : uint8_t
@@ -74,6 +75,8 @@ namespace packagemanager
         std::string fireboltVersion;
         bool enableDebugger;
         std::string ralfPkgPath;
+        std::string runtimeType;
+        std::string mimeType;
     };
 
     typedef std::pair<std::string, std::string> ConfigMetadataKey;
