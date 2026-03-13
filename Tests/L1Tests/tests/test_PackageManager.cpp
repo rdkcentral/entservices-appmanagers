@@ -26,6 +26,7 @@
 #include <mutex>
 #include <chrono>
 #include <condition_variable>
+#include <atomic>
 
 #include "PackageManager.h"
 #include "PackageManagerImplementation.h"
@@ -114,12 +115,25 @@ protected:
     // Destructor
     virtual ~PackageManagerTest() override
     {
-        pkgdownloaderInterface->Release();
-        pkginstallerInterface->Release();
-        pkghandlerInterface->Release();
+        // Release interfaces in proper order
+        if (pkgdownloaderInterface != nullptr) {
+            pkgdownloaderInterface->Release();
+            pkgdownloaderInterface = nullptr;
+        }
+        if (pkginstallerInterface != nullptr) {
+            pkginstallerInterface->Release();
+            pkginstallerInterface = nullptr;
+        }
+        if (pkghandlerInterface != nullptr) {
+            pkghandlerInterface->Release();
+            pkghandlerInterface = nullptr;
+        }
+
+        // Explicitly release implementation before worker pool
+        mPackageManagerImpl.Release();
         
         Core::IWorkerPool::Assign(nullptr);
-		workerPool.Release();
+        workerPool.Release();
     }
 	
 	void SetUp() override 
@@ -232,15 +246,11 @@ protected:
 
         // Release() is only called if mStorageManagerObject was created (i.e. Install was called).
         // Use AnyNumber() so tests that never call Install() do not produce unsatisfied expectations.
+        // Note: Don't delete in the lambda to avoid double-free - TearDown() handles cleanup.
         if (mStorageManagerMock != nullptr) {
             EXPECT_CALL(*mStorageManagerMock, Release())
               .Times(::testing::AnyNumber())
-              .WillRepeatedly(::testing::Invoke(
-                    [&]() {
-                         delete mStorageManagerMock;
-                         mStorageManagerMock = nullptr;
-                         return 0;
-                }));
+              .WillRepeatedly(::testing::Return(0));
         }
 
         // Deinitialize the plugin for COM-RPC
@@ -256,13 +266,12 @@ protected:
 class NotificationTest : public Exchange::IPackageDownloader::INotification, 
                          public Exchange::IPackageInstaller::INotification
 {
-    private:
+    public:
         BEGIN_INTERFACE_MAP(NotificationTest)
         INTERFACE_ENTRY(Exchange::IPackageDownloader::INotification)
         INTERFACE_ENTRY(Exchange::IPackageInstaller::INotification)
         END_INTERFACE_MAP
 
-    public:
         /** @brief Mutex */
         std::mutex m_mutex;
 
@@ -274,8 +283,22 @@ class NotificationTest : public Exchange::IPackageDownloader::INotification,
 
         StatusParams m_status_param;
 
+    private:
+        mutable std::atomic<uint32_t> m_refCount{1};
+
+    public:
         NotificationTest(){}
         ~NotificationTest(){}
+
+        void AddRef() const override {
+            m_refCount++;
+        }
+
+        uint32_t Release() const override {
+            uint32_t result = --m_refCount;
+            // Don't delete - stack allocated in tests
+            return result;
+        }
 
         void SetStatusParams(const StatusParams& statusParam)
         {
@@ -2424,3 +2447,4 @@ TEST_F(PackageManagerTest, installerNotificationUnregisterWithoutRegisterusingCo
 
     deinitforComRpc();
 }
+
