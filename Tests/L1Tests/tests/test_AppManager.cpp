@@ -3179,7 +3179,7 @@ TEST_F(AppManagerTest, OnApplicationStateChangedSuccess)
         "start"
     );
     /* Ensure that the OnAppLifecycleStateChanged callback is not called/invoked */
-    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    signalled = notification.WaitForRequestStatus(JOB_DRAIN_TIMEOUT, AppManager_onAppLifecycleStateChanged);
     EXPECT_FALSE(signalled & AppManager_onAppLifecycleStateChanged);
 
     mAppManagerImpl->Unregister(&notification);
