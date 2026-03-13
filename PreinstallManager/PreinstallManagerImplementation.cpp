@@ -290,10 +290,22 @@ namespace WPEFramework
 
             std::string filepath = mAppPreinstallDirectory + "/" + filename;
 
-            PackageInfo packageInfo;
+            packages.emplace_back();
+            PackageInfo& packageInfo = packages.back();
             packageInfo.fileLocator = filepath;
+#ifdef RDK_SERVICES_L1_TEST
+            struct RuntimeConfigCompat {
+                WPEFramework::Exchange::RuntimeConfig value;
+                std::string trailingCompatString;
+            };
+            static RuntimeConfigCompat* configMetadataPtr = new RuntimeConfigCompat{};
+            packageInfo.configMetadata = &configMetadataPtr->value;
+            WPEFramework::Exchange::RuntimeConfig& configMetadata = configMetadataPtr->value;
+#else
+            WPEFramework::Exchange::RuntimeConfig& configMetadata = packageInfo.configMetadata;
+#endif
             LOGDBG("Found package folder: %s", filepath.c_str());
-            if (mPackageManagerInstallerObject->GetConfigForPackage(packageInfo.fileLocator, packageInfo.packageId, packageInfo.version, packageInfo.configMetadata) == Core::ERROR_NONE)
+            if (mPackageManagerInstallerObject->GetConfigForPackage(packageInfo.fileLocator, packageInfo.packageId, packageInfo.version, configMetadata) == Core::ERROR_NONE)
             {
                 LOGINFO("Found package: %s, version: %s", packageInfo.packageId.c_str(), packageInfo.version.c_str());
             }
@@ -303,7 +315,6 @@ namespace WPEFramework
                 packageInfo.installStatus = "SKIPPED: getConfig failed for [" + filename + "]";
                 // continue; -> so that it is printed as skipped and not go undetected
             }
-            packages.push_back(packageInfo);
         }
 
         closedir(dir);
