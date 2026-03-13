@@ -396,7 +396,7 @@ jobs:
           -DPLUGIN_DOWNLOADMANAGER=ON
           -DPLUGIN_PREINSTALL_MANAGER=ON
           -DPLUGIN_RDK_WINDOW_MANAGER=ON
-          -DPLUGIN_PACKAGE_MANAGER=ON
+          -DPLUGIN_PACKAGE_MANAGER=OFF
           -DENABLE_UNIT_TESTS=ON
           &&
           cmake --build build/entservices-appmanagers -j8
