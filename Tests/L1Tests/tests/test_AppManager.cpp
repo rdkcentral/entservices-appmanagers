@@ -3162,6 +3162,7 @@ TEST_F(AppManagerTest, OnApplicationStateChangedSuccess)
     Core::hresult status;
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
+    uint32_t signalled = AppManager_StateInvalid;
     Core::Sink<NotificationHandler> notification;
     mAppManagerImpl->Register(&notification);
 
