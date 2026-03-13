@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main, develop, 'sprint/**', 'release/**' , 'topic/genai**']
   pull_request:
-    branches: [ main, develop, 'sprint/**', 'release/**','topic/genai**' ]
+    branches: [ main, develop, 'sprint/**', 'release/**','feature/genAITests' ]
   workflow_call:
     inputs:
       caller_source:
@@ -18,7 +18,7 @@ on:
 env:
   BUILD_TYPE: Debug
   THUNDER_REF: "R4.4.1"
-  INTERFACES_REF: "topic/RDKEMW-13976"
+  INTERFACES_REF: "develop"
   AUTOMATICS_UNAME: ${{ secrets.AUTOMATICS_UNAME}}
   AUTOMATICS_PASSCODE: ${{ secrets. AUTOMATICS_PASSCODE}}
 
@@ -212,9 +212,7 @@ jobs:
         with:
           repository: rdkcentral/entservices-apis
           path: entservices-apis
-          #ref: ${{env.INTERFACES_REF}}
-          ref: topic/RDKEMW-13976
-          #token : ${{ secrets.RDKCM_RDKE }}
+          ref: ${{env.INTERFACES_REF}}
           run: rm -rf $GITHUB_WORKSPACE/entservices-apis/jsonrpc/DTV.json
 
       - name: Apply patches entservices-apis
@@ -253,6 +251,7 @@ jobs:
           headers/Dobby
           headers/Dobby/Public/Dobby
           headers/Dobby/IpcService
+          headers/rdkwindowmanager/include
           &&
           cd headers
           &&
@@ -284,6 +283,12 @@ jobs:
           rdk/iarmmgrs-hal/mfrMgr.h
           rdk/iarmmgrs-hal/pwrMgr.h
           rdk/iarmmgrs-hal/sysMgr.h
+          rdkwindowmanager/include/rdkwindowmanagerevents.h
+          rdkwindowmanager/include/rdkwindowmanager.h
+          rdkwindowmanager/include/linuxkeys.h
+          rdkwindowmanager/include/compositorcontroller.h
+          rdkwindowmanager/include/application.h
+          rdkwindowmanager/include/logger.h
 
       - name: Set clang toolchain
         if: ${{ matrix.compiler == 'clang' }}
@@ -357,6 +362,7 @@ jobs:
           -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/wpa_ctrl_mock.h
           -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/readprocMockInterface.h
           -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/gdialservice.h
+          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/RdkWindowManager.h
           --coverage
           -Wall -Wno-unused-result -Wno-deprecated-declarations -Wno-error=format=
           -Wl,-wrap,system -Wl,-wrap,popen -Wl,-wrap,syslog -Wl,-wrap,v_secure_system -Wl,-wrap,v_secure_popen -Wl,-wrap,v_secure_pclose -Wl,-wrap,unlink
@@ -389,6 +395,7 @@ jobs:
           -DPLUGIN_LIFECYCLE_MANAGER=ON
           -DPLUGIN_DOWNLOADMANAGER=ON
           -DPLUGIN_PREINSTALL_MANAGER=ON
+          -DPLUGIN_RDK_WINDOW_MANAGER=ON
           -DPLUGIN_PACKAGE_MANAGER=ON
           -DENABLE_UNIT_TESTS=ON
           &&
