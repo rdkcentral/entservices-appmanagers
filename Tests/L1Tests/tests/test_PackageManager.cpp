@@ -26,7 +26,6 @@
 #include <mutex>
 #include <chrono>
 #include <condition_variable>
-#include <atomic>
 
 #include "PackageManager.h"
 #include "PackageManagerImplementation.h"
@@ -115,25 +114,12 @@ protected:
     // Destructor
     virtual ~PackageManagerTest() override
     {
-        // Release interfaces in proper order
-        if (pkgdownloaderInterface != nullptr) {
-            pkgdownloaderInterface->Release();
-            pkgdownloaderInterface = nullptr;
-        }
-        if (pkginstallerInterface != nullptr) {
-            pkginstallerInterface->Release();
-            pkginstallerInterface = nullptr;
-        }
-        if (pkghandlerInterface != nullptr) {
-            pkghandlerInterface->Release();
-            pkghandlerInterface = nullptr;
-        }
-
-        // Explicitly release implementation before worker pool
-        mPackageManagerImpl.Release();
+        pkgdownloaderInterface->Release();
+        pkginstallerInterface->Release();
+        pkghandlerInterface->Release();
         
         Core::IWorkerPool::Assign(nullptr);
-        workerPool.Release();
+		workerPool.Release();
     }
 	
 	void SetUp() override 
@@ -246,11 +232,15 @@ protected:
 
         // Release() is only called if mStorageManagerObject was created (i.e. Install was called).
         // Use AnyNumber() so tests that never call Install() do not produce unsatisfied expectations.
-        // Note: Don't delete in the lambda to avoid double-free - TearDown() handles cleanup.
         if (mStorageManagerMock != nullptr) {
             EXPECT_CALL(*mStorageManagerMock, Release())
               .Times(::testing::AnyNumber())
-              .WillRepeatedly(::testing::Return(0));
+              .WillRepeatedly(::testing::Invoke(
+                    [&]() {
+                         delete mStorageManagerMock;
+                         mStorageManagerMock = nullptr;
+                         return 0;
+                }));
         }
 
         // Deinitialize the plugin for COM-RPC
@@ -266,12 +256,13 @@ protected:
 class NotificationTest : public Exchange::IPackageDownloader::INotification, 
                          public Exchange::IPackageInstaller::INotification
 {
-    public:
+    private:
         BEGIN_INTERFACE_MAP(NotificationTest)
         INTERFACE_ENTRY(Exchange::IPackageDownloader::INotification)
         INTERFACE_ENTRY(Exchange::IPackageInstaller::INotification)
         END_INTERFACE_MAP
 
+    public:
         /** @brief Mutex */
         std::mutex m_mutex;
 
@@ -283,22 +274,8 @@ class NotificationTest : public Exchange::IPackageDownloader::INotification,
 
         StatusParams m_status_param;
 
-    private:
-        mutable std::atomic<uint32_t> m_refCount{1};
-
-    public:
         NotificationTest(){}
         ~NotificationTest(){}
-
-        void AddRef() const override {
-            m_refCount++;
-        }
-
-        uint32_t Release() const override {
-            uint32_t result = --m_refCount;
-            // Don't delete - stack allocated in tests
-            return result;
-        }
 
         void SetStatusParams(const StatusParams& statusParam)
         {
@@ -518,10 +495,6 @@ TEST_F(PackageManagerTest, downloadMethodsusingComRpcSuccess) {
     waitforSignal(TIMEOUT);
 
     EXPECT_EQ(downloadId.downloadId, "1001");
-
-    // Cancel the download before cleanup to prevent stack smashing
-    string downloadIdStr = "1001";
-    pkgdownloaderInterface->Cancel(downloadIdStr);
 
 	deinitforComRpc();
 }
@@ -1385,10 +1358,6 @@ TEST_F(PackageManagerTest, installusingComRpcInvalidSignature) {
 
     waitforSignal(timeout_ms);
 
-    // Cancel any pending download before cleanup to prevent stack smashing
-    string downloadIdStr = "1001";
-    pkgdownloaderInterface->Cancel(downloadIdStr);
-
 	deinitforComRpc();   
 }
 
@@ -1498,10 +1467,6 @@ TEST_F(PackageManagerTest, uninstallusingComRpcSuccess) {
     
 	waitforSignal(timeout_ms);
 
-    // Cancel any pending download before cleanup to prevent stack smashing
-    string downloadIdStr = "1001";
-    pkgdownloaderInterface->Cancel(downloadIdStr);
-
 	deinitforComRpc();
 }
 
@@ -1604,10 +1569,6 @@ TEST_F(PackageManagerTest, listPackagesusingComRpcSuccess) {
 
 	// TC-39: list packages using ComRpc
     EXPECT_EQ(Core::ERROR_NONE, pkginstallerInterface->ListPackages(packages));
-
-    // Cancel any pending download before cleanup to prevent stack smashing
-    string downloadIdStr = "1001";
-    pkgdownloaderInterface->Cancel(downloadIdStr);
 
 	deinitforComRpc();
 }
@@ -1713,10 +1674,6 @@ TEST_F(PackageManagerTest, packageStateusingComRpcSuccess) {
 
 	timeout_ms = 1000;
     waitforSignal(timeout_ms);
-
-    // Cancel any pending download before cleanup to prevent stack smashing
-    string downloadIdStr = "1001";
-    pkgdownloaderInterface->Cancel(downloadIdStr);
 
 	deinitforComRpc();
 }
@@ -1879,6 +1836,90 @@ TEST_F(PackageManagerTest, rateLimitusingComRpcWrongDownloadId) {
     deinitforComRpc();
 }
 
+/* Test Case for Config method success using ComRpc
+ *
+ * Set up and initialize required COM-RPC resources, configurations, mocks and expectations
+ * Install a package first
+ * Call the Config method using the COM RPC interface
+ * Verify Config method returns Core::ERROR_NONE
+ * Deinitialize the COM-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, configusingComRpcSuccess) {
+
+    initforComRpc();
+
+    getDownloadParams();
+
+    uri = "https://httpbin.org/bytes/1024";
+
+    uint32_t timeout_ms = 3000;
+
+    string packageId = "YouTube";
+    string version = "100.1.24";
+    string fileLocator = "/opt/CDL/package1001";
+    Exchange::IPackageInstaller::FailReason reason = Exchange::IPackageInstaller::FailReason::NONE;
+    list<Exchange::IPackageInstaller::KeyValue> kv = { {"testapp", "2"} };
+    Exchange::RuntimeConfig runtimeConfig;
+
+    auto additionalMetadata = Core::Service<RPC::IteratorType<Exchange::IPackageInstaller::IKeyValueIterator>>::Create<Exchange::IPackageInstaller::IKeyValueIterator>(kv);
+
+    EXPECT_CALL(*mSubSystemMock, IsActive(::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillRepeatedly(::testing::Invoke(
+            [&](const PluginHost::ISubSystem::subsystem type) {
+                return true;
+            }));
+
+    EXPECT_CALL(*mStorageManagerMock, CreateStorage(::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillOnce(::testing::Invoke(
+            [&](const string& appId, const uint32_t &size, string& path, string &errorReason) {
+                return Core::ERROR_NONE;
+            }));
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    EXPECT_EQ(Core::ERROR_NONE, pkgdownloaderInterface->Download(uri, options, downloadId));
+
+    EXPECT_EQ(downloadId.downloadId, "1001");
+
+    waitforSignal(TIMEOUT);
+
+    EXPECT_EQ(Core::ERROR_NONE, pkginstallerInterface->Install(packageId, version, additionalMetadata, fileLocator, reason));
+
+    waitforSignal(timeout_ms);
+
+    // TC-46: Config method success
+    EXPECT_EQ(Core::ERROR_NONE, pkginstallerInterface->Config(packageId, version, runtimeConfig));
+
+    deinitforComRpc();
+}
+
+/* Test Case for Config method failure when package not found using ComRpc
+ *
+ * Set up and initialize required COM-RPC resources, configurations, mocks and expectations
+ * Call the Config method using the COM RPC interface with non-existent package
+ * Verify Config method returns Core::ERROR_BAD_REQUEST
+ * Deinitialize the COM-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, configusingComRpcPackageNotFound) {
+
+    initforComRpc();
+
+    string packageId = "NonExistentPackage";
+    string version = "1.0.0";
+    Exchange::RuntimeConfig runtimeConfig;
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    // TC-47: Config method failure - package not found
+    EXPECT_EQ(Core::ERROR_BAD_REQUEST, pkginstallerInterface->Config(packageId, version, runtimeConfig));
+
+    deinitforComRpc();
+}
+
 /* Test Case for PackageState method failure when package not found using ComRpc
  *
  * Set up and initialize required COM-RPC resources, configurations, mocks and expectations
@@ -1922,6 +1963,309 @@ TEST_F(PackageManagerTest, uninstallusingComRpcPackageNotFound) {
 
     // TC-49: Uninstall method failure - package not found
     EXPECT_EQ(Core::ERROR_BAD_REQUEST, pkginstallerInterface->Uninstall(packageId, errorReason));
+
+    deinitforComRpc();
+}
+
+/* Test Case for GetLockedInfo method success using ComRpc
+ *
+ * Set up and initialize required COM-RPC resources, configurations, mocks and expectations
+ * Install a package first
+ * Call the GetLockedInfo method using the COM RPC interface
+ * Verify GetLockedInfo method returns Core::ERROR_NONE
+ * Deinitialize the COM-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, getLockedInfousingComRpcSuccess) {
+
+    initforComRpc();
+
+    getDownloadParams();
+
+    uri = "https://httpbin.org/bytes/1024";
+
+    uint32_t timeout_ms = 3000;
+
+    string packageId = "YouTube";
+    string version = "100.1.24";
+    string fileLocator = "/opt/CDL/package1001";
+    Exchange::IPackageInstaller::FailReason reason = Exchange::IPackageInstaller::FailReason::NONE;
+    list<Exchange::IPackageInstaller::KeyValue> kv = { {"testapp", "2"} };
+    string unpackedPath;
+    Exchange::RuntimeConfig runtimeConfig;
+    string gatewayMetadataPath;
+    bool locked = false;
+
+    auto additionalMetadata = Core::Service<RPC::IteratorType<Exchange::IPackageInstaller::IKeyValueIterator>>::Create<Exchange::IPackageInstaller::IKeyValueIterator>(kv);
+
+    EXPECT_CALL(*mSubSystemMock, IsActive(::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillRepeatedly(::testing::Invoke(
+            [&](const PluginHost::ISubSystem::subsystem type) {
+                return true;
+            }));
+
+    EXPECT_CALL(*mStorageManagerMock, CreateStorage(::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillOnce(::testing::Invoke(
+            [&](const string& appId, const uint32_t &size, string& path, string &errorReason) {
+                return Core::ERROR_NONE;
+            }));
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    EXPECT_EQ(Core::ERROR_NONE, pkgdownloaderInterface->Download(uri, options, downloadId));
+
+    EXPECT_EQ(downloadId.downloadId, "1001");
+
+    waitforSignal(TIMEOUT);
+
+    EXPECT_EQ(Core::ERROR_NONE, pkginstallerInterface->Install(packageId, version, additionalMetadata, fileLocator, reason));
+
+    waitforSignal(timeout_ms);
+
+    // TC-50: GetLockedInfo method success
+    EXPECT_EQ(Core::ERROR_NONE, pkghandlerInterface->GetLockedInfo(packageId, version, unpackedPath, runtimeConfig, gatewayMetadataPath, locked));
+
+    // Package should not be locked since we haven't called Lock
+    EXPECT_FALSE(locked);
+
+    deinitforComRpc();
+}
+
+/* Test Case for GetLockedInfo method failure when package not found using ComRpc
+ *
+ * Set up and initialize required COM-RPC resources, configurations, mocks and expectations
+ * Call the GetLockedInfo method using the COM RPC interface with non-existent package
+ * Verify GetLockedInfo method returns Core::ERROR_BAD_REQUEST
+ * Deinitialize the COM-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, getLockedInfousingComRpcPackageNotFound) {
+
+    initforComRpc();
+
+    string packageId = "NonExistentPackage";
+    string version = "1.0.0";
+    string unpackedPath;
+    Exchange::RuntimeConfig runtimeConfig;
+    string gatewayMetadataPath;
+    bool locked = false;
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    // TC-51: GetLockedInfo method failure - package not found
+    EXPECT_EQ(Core::ERROR_BAD_REQUEST, pkghandlerInterface->GetLockedInfo(packageId, version, unpackedPath, runtimeConfig, gatewayMetadataPath, locked));
+
+    deinitforComRpc();
+}
+
+/* Test Case for GetConfigForPackage method failure with empty fileLocator using ComRpc
+ *
+ * Set up and initialize required COM-RPC resources, configurations, mocks and expectations
+ * Call the GetConfigForPackage method using the COM RPC interface with empty fileLocator
+ * Verify GetConfigForPackage method returns Core::ERROR_INVALID_SIGNATURE
+ * Deinitialize the COM-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, getConfigForPackageusingComRpcEmptyFileLocator) {
+
+    initforComRpc();
+
+    string fileLocator = "";
+    string id;
+    string version;
+    Exchange::RuntimeConfig config;
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    // TC-52: GetConfigForPackage method failure - empty fileLocator
+    EXPECT_EQ(Core::ERROR_INVALID_SIGNATURE, pkginstallerInterface->GetConfigForPackage(fileLocator, id, version, config));
+
+    deinitforComRpc();
+}
+
+/* Test Case for Lock method success using ComRpc
+ *
+ * Set up and initialize required COM-RPC resources, configurations, mocks and expectations
+ * Install a package first
+ * Call the Lock method using the COM RPC interface
+ * Verify Lock method returns Core::ERROR_NONE
+ * Verify locked package with GetLockedInfo
+ * Deinitialize the COM-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, lockMethodusingComRpcSuccess) {
+
+    initforComRpc();
+
+    getDownloadParams();
+
+    uri = "https://httpbin.org/bytes/1024";
+
+    uint32_t timeout_ms = 3000;
+
+    string packageId = "YouTube";
+    string version = "100.1.24";
+    string fileLocator = "/opt/CDL/package1001";
+    Exchange::IPackageInstaller::FailReason reason = Exchange::IPackageInstaller::FailReason::NONE;
+    list<Exchange::IPackageInstaller::KeyValue> kv = { {"testapp", "2"} };
+    uint32_t lockId = 0;
+    string unpackedPath;
+    Exchange::RuntimeConfig runtimeConfig;
+    Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
+    Exchange::IPackageHandler::LockReason lockReason = Exchange::IPackageHandler::LockReason::LAUNCH;
+
+    auto additionalMetadata = Core::Service<RPC::IteratorType<Exchange::IPackageInstaller::IKeyValueIterator>>::Create<Exchange::IPackageInstaller::IKeyValueIterator>(kv);
+
+    EXPECT_CALL(*mSubSystemMock, IsActive(::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillRepeatedly(::testing::Invoke(
+            [&](const PluginHost::ISubSystem::subsystem type) {
+                return true;
+            }));
+
+    EXPECT_CALL(*mStorageManagerMock, CreateStorage(::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillOnce(::testing::Invoke(
+            [&](const string& appId, const uint32_t &size, string& path, string &errorReason) {
+                return Core::ERROR_NONE;
+            }));
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    EXPECT_EQ(Core::ERROR_NONE, pkgdownloaderInterface->Download(uri, options, downloadId));
+
+    EXPECT_EQ(downloadId.downloadId, "1001");
+
+    waitforSignal(TIMEOUT);
+
+    EXPECT_EQ(Core::ERROR_NONE, pkginstallerInterface->Install(packageId, version, additionalMetadata, fileLocator, reason));
+
+    waitforSignal(timeout_ms);
+
+    // TC-53: Lock method success
+    EXPECT_EQ(Core::ERROR_NONE, pkghandlerInterface->Lock(packageId, version, lockReason, lockId, unpackedPath, runtimeConfig, appMetadata));
+
+    // Verify lockId is valid (should be 1 for first lock)
+    EXPECT_EQ(lockId, 1u);
+
+    // Verify package is now locked using GetLockedInfo
+    string gatewayMetadataPath;
+    bool locked = false;
+    EXPECT_EQ(Core::ERROR_NONE, pkghandlerInterface->GetLockedInfo(packageId, version, unpackedPath, runtimeConfig, gatewayMetadataPath, locked));
+    EXPECT_TRUE(locked);
+
+    // Release appMetadata if created
+    if (appMetadata != nullptr) {
+        appMetadata->Release();
+    }
+
+    deinitforComRpc();
+}
+
+/* Test Case for Lock method failure when package not found using ComRpc
+ *
+ * Set up and initialize required COM-RPC resources, configurations, mocks and expectations
+ * Call the Lock method using the COM RPC interface with non-existent package
+ * Verify Lock method returns Core::ERROR_BAD_REQUEST
+ * Deinitialize the COM-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, lockMethodusingComRpcPackageNotFound) {
+
+    initforComRpc();
+
+    string packageId = "NonExistentPackage";
+    string version = "1.0.0";
+    uint32_t lockId = 0;
+    string unpackedPath;
+    Exchange::RuntimeConfig runtimeConfig;
+    Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
+    Exchange::IPackageHandler::LockReason lockReason = Exchange::IPackageHandler::LockReason::LAUNCH;
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    // TC-54: Lock method failure - package not found
+    EXPECT_EQ(Core::ERROR_BAD_REQUEST, pkghandlerInterface->Lock(packageId, version, lockReason, lockId, unpackedPath, runtimeConfig, appMetadata));
+
+    deinitforComRpc();
+}
+
+/* Test Case for Unlock method success using ComRpc
+ *
+ * Set up and initialize required COM-RPC resources, configurations, mocks and expectations
+ * Install a package, Lock it, then Unlock it
+ * Verify Unlock method returns Core::ERROR_NONE
+ * Deinitialize the COM-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, unlockMethodusingComRpcSuccess) {
+
+    initforComRpc();
+
+    getDownloadParams();
+
+    uri = "https://httpbin.org/bytes/1024";
+
+    uint32_t timeout_ms = 3000;
+
+    string packageId = "YouTube";
+    string version = "100.1.24";
+    string fileLocator = "/opt/CDL/package1001";
+    Exchange::IPackageInstaller::FailReason reason = Exchange::IPackageInstaller::FailReason::NONE;
+    list<Exchange::IPackageInstaller::KeyValue> kv = { {"testapp", "2"} };
+    uint32_t lockId = 0;
+    string unpackedPath;
+    Exchange::RuntimeConfig runtimeConfig;
+    Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
+    Exchange::IPackageHandler::LockReason lockReason = Exchange::IPackageHandler::LockReason::LAUNCH;
+
+    auto additionalMetadata = Core::Service<RPC::IteratorType<Exchange::IPackageInstaller::IKeyValueIterator>>::Create<Exchange::IPackageInstaller::IKeyValueIterator>(kv);
+
+    EXPECT_CALL(*mSubSystemMock, IsActive(::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillRepeatedly(::testing::Invoke(
+            [&](const PluginHost::ISubSystem::subsystem type) {
+                return true;
+            }));
+
+    EXPECT_CALL(*mStorageManagerMock, CreateStorage(::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillOnce(::testing::Invoke(
+            [&](const string& appId, const uint32_t &size, string& path, string &errorReason) {
+                return Core::ERROR_NONE;
+            }));
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    EXPECT_EQ(Core::ERROR_NONE, pkgdownloaderInterface->Download(uri, options, downloadId));
+
+    EXPECT_EQ(downloadId.downloadId, "1001");
+
+    waitforSignal(TIMEOUT);
+
+    EXPECT_EQ(Core::ERROR_NONE, pkginstallerInterface->Install(packageId, version, additionalMetadata, fileLocator, reason));
+
+    waitforSignal(timeout_ms);
+
+    // Lock the package first
+    EXPECT_EQ(Core::ERROR_NONE, pkghandlerInterface->Lock(packageId, version, lockReason, lockId, unpackedPath, runtimeConfig, appMetadata));
+    EXPECT_EQ(lockId, 1u);
+
+    // Release appMetadata if created
+    if (appMetadata != nullptr) {
+        appMetadata->Release();
+    }
+
+    // TC-55: Unlock method success
+    EXPECT_EQ(Core::ERROR_NONE, pkghandlerInterface->Unlock(packageId, version));
+
+    // Verify package is now unlocked
+    string gatewayMetadataPath;
+    bool locked = false;
+    EXPECT_EQ(Core::ERROR_NONE, pkghandlerInterface->GetLockedInfo(packageId, version, unpackedPath, runtimeConfig, gatewayMetadataPath, locked));
+    EXPECT_FALSE(locked);
 
     deinitforComRpc();
 }
@@ -2080,4 +2424,742 @@ TEST_F(PackageManagerTest, installerNotificationUnregisterWithoutRegisterusingCo
 
     deinitforComRpc();
 }
+/* Test Case for config method success using JsonRpc
+ *
+ * Set up and initialize required JSON-RPC resources, configurations, mocks and expectations
+ * Invoke the download method, install method to set up a package
+ * Invoke the config method using the JSON RPC handler
+ * Verify config method success by asserting that it returns Core::ERROR_NONE
+ * Deinitialize the JSON-RPC resources and clean-up related test resources
+ */
 
+TEST_F(PackageManagerTest, configusingJsonRpcSuccess) {
+
+    initforJsonRpc();
+
+    EXPECT_CALL(*mSubSystemMock, IsActive(::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillRepeatedly(::testing::Invoke(
+            [&](const PluginHost::ISubSystem::subsystem type) {
+                return true;
+            }));
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("download"), _T("{\"url\": \"https://httpbin.org/bytes/1024\"}"), mJsonRpcResponse));
+
+    waitforSignal(TIMEOUT);
+
+    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("install"), _T("{\"packageId\": \"YouTube\", \"version\": \"100.1.24\", \"additionalMetadata\": [{\"name\": \"testApp\", \"value\": \"2\"}], \"fileLocator\": \"/opt/CDL/package1001\"}"), mJsonRpcResponse));
+
+    waitforSignal(TIMEOUT_FOR_INSTALL);
+
+    // TC-64: Config method success using JsonRpc
+    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("config"), _T("{\"packageId\": \"YouTube\", \"version\": \"100.1.24\"}"), mJsonRpcResponse));
+
+    deinitforJsonRpc();
+}
+
+/* Test Case for config method failure when package not found using JsonRpc
+ *
+ * Set up and initialize required JSON-RPC resources, configurations, mocks and expectations
+ * Invoke the config method using the JSON RPC handler with non-existent package
+ * Verify config method failure by asserting that it returns Core::ERROR_BAD_REQUEST
+ * Deinitialize the JSON-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, configusingJsonRpcPackageNotFound) {
+
+    initforJsonRpc();
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    // TC-65: Config method failure - package not found using JsonRpc
+    EXPECT_EQ(Core::ERROR_BAD_REQUEST, mJsonRpcHandler.Invoke(connection, _T("config"), _T("{\"packageId\": \"NonExistentPackage\", \"version\": \"1.0.0\"}"), mJsonRpcResponse));
+
+    deinitforJsonRpc();
+}
+
+/* Test Case for packageState method failure when package not found using JsonRpc
+ *
+ * Set up and initialize required JSON-RPC resources, configurations, mocks and expectations
+ * Invoke the packageState method using the JSON RPC handler with non-existent package
+ * Verify packageState method failure by asserting that it returns Core::ERROR_BAD_REQUEST
+ * Deinitialize the JSON-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, packageStateusingJsonRpcPackageNotFound) {
+
+    initforJsonRpc();
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    // TC-66: PackageState method failure - package not found using JsonRpc
+    EXPECT_EQ(Core::ERROR_BAD_REQUEST, mJsonRpcHandler.Invoke(connection, _T("packageState"), _T("{\"packageId\": \"NonExistentPackage\", \"version\": \"1.0.0\"}"), mJsonRpcResponse));
+
+    deinitforJsonRpc();
+}
+
+/* Test Case for listPackages method when no packages installed using JsonRpc
+ *
+ * Set up and initialize required JSON-RPC resources, configurations, mocks and expectations
+ * Invoke the listPackages method using the JSON RPC handler without any packages installed
+ * Verify listPackages method success by asserting that it returns Core::ERROR_NONE
+ * Deinitialize the JSON-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, listPackagesusingJsonRpcNoPackages) {
+
+    initforJsonRpc();
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    // TC-67: ListPackages method when no packages installed using JsonRpc
+    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("listPackages"), _T("{\"packages\": {}}"), mJsonRpcResponse));
+
+    deinitforJsonRpc();
+}
+
+/* Test Case for download with retry option using JsonRpc
+ *
+ * Set up and initialize required JSON-RPC resources, configurations, mocks and expectations
+ * Invoke the download method using the JSON RPC handler with retries option
+ * Verify that the download method is invoked successfully by asserting that it returns Core::ERROR_NONE
+ * Deinitialize the JSON-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, downloadMethodWithRetriesusingJsonRpc) {
+
+    initforJsonRpc();
+
+    Core::Event onAppDownloadStatus(false, true);
+
+    EXPECT_CALL(*mSubSystemMock, IsActive(::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillRepeatedly(::testing::Invoke(
+            [&](const PluginHost::ISubSystem::subsystem type) {
+                return true;
+            }));
+
+    EXPECT_CALL(*mServiceMock, Submit(::testing::_, ::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillOnce(::testing::Invoke(
+            [&](const uint32_t, const Core::ProxyType<Core::JSON::IElement>& json) {
+                onAppDownloadStatus.SetEvent();
+                return Core::ERROR_NONE;
+            }));
+
+    EVENT_SUBSCRIBE(0, _T("onAppDownloadStatus"), _T("org.rdk.PackageManagerRDKEMS"), message);
+
+    // TC-68: Download with retries option using JsonRpc
+    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("download"), _T("{\"url\": \"https://httpbin.org/bytes/1024\", \"retries\": 5}"), mJsonRpcResponse));
+
+    EXPECT_EQ(Core::ERROR_NONE, onAppDownloadStatus.Lock());
+    EVENT_UNSUBSCRIBE(0, _T("onAppDownloadStatus"), _T("org.rdk.PackageManagerRDKEMS"), message);
+
+    EXPECT_NE(mJsonRpcResponse.find("1001"), std::string::npos);
+
+    deinitforJsonRpc();
+}
+
+/* Test Case for download with rate limit option using JsonRpc
+ *
+ * Set up and initialize required JSON-RPC resources, configurations, mocks and expectations
+ * Invoke the download method using the JSON RPC handler with rateLimit option
+ * Verify that the download method is invoked successfully by asserting that it returns Core::ERROR_NONE
+ * Deinitialize the JSON-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, downloadMethodWithRateLimitusingJsonRpc) {
+
+    initforJsonRpc();
+
+    Core::Event onAppDownloadStatus(false, true);
+
+    EXPECT_CALL(*mSubSystemMock, IsActive(::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillRepeatedly(::testing::Invoke(
+            [&](const PluginHost::ISubSystem::subsystem type) {
+                return true;
+            }));
+
+    EXPECT_CALL(*mServiceMock, Submit(::testing::_, ::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillOnce(::testing::Invoke(
+            [&](const uint32_t, const Core::ProxyType<Core::JSON::IElement>& json) {
+                onAppDownloadStatus.SetEvent();
+                return Core::ERROR_NONE;
+            }));
+
+    EVENT_SUBSCRIBE(0, _T("onAppDownloadStatus"), _T("org.rdk.PackageManagerRDKEMS"), message);
+
+    // TC-69: Download with rate limit option using JsonRpc
+    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("download"), _T("{\"url\": \"https://httpbin.org/bytes/1024\", \"rateLimit\": 1024}"), mJsonRpcResponse));
+
+    EXPECT_EQ(Core::ERROR_NONE, onAppDownloadStatus.Lock());
+    EVENT_UNSUBSCRIBE(0, _T("onAppDownloadStatus"), _T("org.rdk.PackageManagerRDKEMS"), message);
+
+    EXPECT_NE(mJsonRpcResponse.find("1001"), std::string::npos);
+
+    deinitforJsonRpc();
+}
+
+/* Test Case for multiple downloads queued using ComRpc
+ *
+ * Set up and initialize required COM-RPC resources, configurations, mocks and expectations
+ * Call the Download method multiple times using the COM RPC interface
+ * Verify each download request returns Core::ERROR_NONE with unique downloadId
+ * Cancel all downloads for cleanup
+ * Deinitialize the COM-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, multipleDownloadsQueuedusingComRpc) {
+
+    initforComRpc();
+
+    getDownloadParams();
+
+    uri = "https://httpbin.org/bytes/1024";
+
+    Exchange::IPackageDownloader::DownloadId downloadId1;
+    Exchange::IPackageDownloader::DownloadId downloadId2;
+
+    EXPECT_CALL(*mSubSystemMock, IsActive(::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillRepeatedly(::testing::Invoke(
+            [&](const PluginHost::ISubSystem::subsystem type) {
+                return true;
+            }));
+
+    // TC-70: Multiple downloads queued using ComRpc
+    EXPECT_EQ(Core::ERROR_NONE, pkgdownloaderInterface->Download(uri, options, downloadId1));
+    EXPECT_EQ(downloadId1.downloadId, "1001");
+
+    EXPECT_EQ(Core::ERROR_NONE, pkgdownloaderInterface->Download("https://httpbin.org/bytes/2048", options, downloadId2));
+    EXPECT_EQ(downloadId2.downloadId, "1002");
+
+    // Cancel downloads for cleanup
+    pkgdownloaderInterface->Cancel(downloadId1.downloadId);
+    pkgdownloaderInterface->Cancel(downloadId2.downloadId);
+
+    deinitforComRpc();
+}
+
+/* Test Case for uninstall method failure when package not found using JsonRpc
+ *
+ * Set up and initialize required JSON-RPC resources, configurations, mocks and expectations
+ * Invoke the uninstall method using the JSON RPC handler with non-existent package
+ * Verify uninstall method failure by asserting that it returns Core::ERROR_BAD_REQUEST
+ * Deinitialize the JSON-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, uninstallusingJsonRpcPackageNotFound) {
+
+    initforJsonRpc();
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    // TC-71: Uninstall method failure - package not found using JsonRpc
+    EXPECT_EQ(Core::ERROR_BAD_REQUEST, mJsonRpcHandler.Invoke(connection, _T("uninstall"), _T("{\"packageId\": \"NonExistentPackage\"}"), mJsonRpcResponse));
+
+    deinitforJsonRpc();
+}
+
+/* Test Case for delete success using JsonRpc
+ *
+ * Set up and initialize required JSON-RPC resources, configurations, mocks and expectations
+ * Download a file first, then delete it
+ * Verify delete method success by asserting that it returns Core::ERROR_NONE
+ * Deinitialize the JSON-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, deleteMethodusingJsonRpcSuccess) {
+
+    initforJsonRpc();
+
+    EXPECT_CALL(*mSubSystemMock, IsActive(::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillRepeatedly(::testing::Invoke(
+            [&](const PluginHost::ISubSystem::subsystem type) {
+                return true;
+            }));
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    // Create a temp file to test delete
+    string fileLocator = "/tmp/test_delete_file_jsonrpc_" + std::to_string(getpid());
+    std::ofstream tempFile(fileLocator);
+    ASSERT_TRUE(tempFile.is_open()) << "Failed to create temp file for delete test";
+    tempFile << "test content";
+    tempFile.close();
+
+    // TC-72: Delete method success using JsonRpc
+    string deleteParams = "{\"fileLocator\": \"" + fileLocator + "\"}";
+    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("delete"), deleteParams.c_str(), mJsonRpcResponse));
+
+    deinitforJsonRpc();
+}
+
+/* Test Case for rateLimit method failure with invalid downloadId using JsonRpc
+ *
+ * Set up and initialize required JSON-RPC resources, configurations, mocks and expectations
+ * Invoke the rateLimit method using the JSON RPC handler with invalid downloadId
+ * Verify rateLimit method failure by asserting that it returns Core::ERROR_GENERAL
+ * Deinitialize the JSON-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, rateLimitusingJsonRpcInvalidDownloadId) {
+
+    initforJsonRpc();
+
+    // TC-73: RateLimit method failure - invalid downloadId using JsonRpc
+    EXPECT_EQ(Core::ERROR_GENERAL, mJsonRpcHandler.Invoke(connection, _T("rateLimit"), _T("{\"downloadId\": \"9999\", \"limit\": 1024}"), mJsonRpcResponse));
+
+    deinitforJsonRpc();
+}
+
+/* Test Case for download with priority option using ComRpc
+ *
+ * Set up and initialize required COM-RPC resources, configurations, mocks and expectations
+ * Call the Download method using the COM RPC interface with priority set to true
+ * Verify successful download request by asserting that it returns Core::ERROR_NONE
+ * Deinitialize the COM-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, downloadWithPriorityusingComRpc) {
+
+    initforComRpc();
+
+    getDownloadParams();
+
+    uri = "https://httpbin.org/bytes/1024";
+    options.priority = true;
+    options.retries = 3;
+    options.rateLimit = 2048;
+
+    EXPECT_CALL(*mSubSystemMock, IsActive(::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillRepeatedly(::testing::Invoke(
+            [&](const PluginHost::ISubSystem::subsystem type) {
+                return true;
+            }));
+
+    // TC-74: Download with priority option using ComRpc
+    EXPECT_EQ(Core::ERROR_NONE, pkgdownloaderInterface->Download(uri, options, downloadId));
+
+    waitforSignal(TIMEOUT);
+
+    EXPECT_EQ(downloadId.downloadId, "1001");
+
+    deinitforComRpc();
+}
+
+/* Test Case for install with empty additionalMetadata using ComRpc
+ *
+ * Set up and initialize required COM-RPC resources, configurations, mocks and expectations
+ * Download a package first
+ * Call the Install method with empty additionalMetadata
+ * Verify successful install by asserting that it returns Core::ERROR_NONE
+ * Deinitialize the COM-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, installWithEmptyMetadatausingComRpc) {
+
+    initforComRpc();
+
+    getDownloadParams();
+
+    uri = "https://httpbin.org/bytes/1024";
+
+    string packageId = "TestApp";
+    string version = "1.0.0";
+    string fileLocator = "/opt/CDL/package1001";
+    Exchange::IPackageInstaller::FailReason reason = Exchange::IPackageInstaller::FailReason::NONE;
+    list<Exchange::IPackageInstaller::KeyValue> emptyKv = {};
+
+    auto additionalMetadata = Core::Service<RPC::IteratorType<Exchange::IPackageInstaller::IKeyValueIterator>>::Create<Exchange::IPackageInstaller::IKeyValueIterator>(emptyKv);
+
+    EXPECT_CALL(*mSubSystemMock, IsActive(::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillRepeatedly(::testing::Invoke(
+            [&](const PluginHost::ISubSystem::subsystem type) {
+                return true;
+            }));
+
+    EXPECT_CALL(*mStorageManagerMock, CreateStorage(::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillOnce(::testing::Invoke(
+            [&](const string& appId, const uint32_t &size, string& path, string &errorReason) {
+                return Core::ERROR_NONE;
+            }));
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    EXPECT_EQ(Core::ERROR_NONE, pkgdownloaderInterface->Download(uri, options, downloadId));
+
+    EXPECT_EQ(downloadId.downloadId, "1001");
+
+    waitforSignal(TIMEOUT);
+
+    // TC-75: Install with empty additionalMetadata using ComRpc
+    EXPECT_EQ(Core::ERROR_NONE, pkginstallerInterface->Install(packageId, version, additionalMetadata, fileLocator, reason));
+
+    deinitforComRpc();
+}
+
+/* Test Case for getStorageInformation using JsonRpc with valid response
+ *
+ * Set up and initialize required JSON-RPC resources, configurations, mocks and expectations
+ * Invoke the getStorageInformation method using the JSON RPC handler
+ * Verify getStorageInformation returns valid response with quota and used fields
+ * Deinitialize the JSON-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, getStorageInformationValidResponseusingJsonRpc) {
+
+    initforJsonRpc();
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    // TC-76: GetStorageInformation with valid response using JsonRpc
+    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("getStorageInformation"), _T("{}"), mJsonRpcResponse));
+
+    // Verify response contains quotaKB and usedKB fields
+    EXPECT_NE(mJsonRpcResponse.find("quotaKB"), std::string::npos);
+    EXPECT_NE(mJsonRpcResponse.find("usedKB"), std::string::npos);
+
+    deinitforJsonRpc();
+}
+
+/* Test Case for pause method with empty downloadId using JsonRpc
+ *
+ * Set up and initialize required JSON-RPC resources, configurations, mocks and expectations
+ * Invoke the pause method using the JSON RPC handler with empty downloadId
+ * Verify pause method failure by asserting that it returns Core::ERROR_GENERAL
+ * Deinitialize the JSON-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, pauseMethodEmptyDownloadIdusingJsonRpc) {
+
+    initforJsonRpc();
+
+    // TC-77: Pause method failure with empty downloadId using JsonRpc
+    EXPECT_EQ(Core::ERROR_GENERAL, mJsonRpcHandler.Invoke(connection, _T("pause"), _T("{\"downloadId\": \"\"}"), mJsonRpcResponse));
+
+    deinitforJsonRpc();
+}
+
+/* Test Case for resume method with empty downloadId using JsonRpc
+ *
+ * Set up and initialize required JSON-RPC resources, configurations, mocks and expectations
+ * Invoke the resume method using the JSON RPC handler with empty downloadId
+ * Verify resume method failure by asserting that it returns Core::ERROR_GENERAL
+ * Deinitialize the JSON-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, resumeMethodEmptyDownloadIdusingJsonRpc) {
+
+    initforJsonRpc();
+
+    // TC-78: Resume method failure with empty downloadId using JsonRpc
+    EXPECT_EQ(Core::ERROR_GENERAL, mJsonRpcHandler.Invoke(connection, _T("resume"), _T("{\"downloadId\": \"\"}"), mJsonRpcResponse));
+
+    deinitforJsonRpc();
+}
+
+/* Test Case for cancel method with empty downloadId using JsonRpc
+ *
+ * Set up and initialize required JSON-RPC resources, configurations, mocks and expectations
+ * Invoke the cancel method using the JSON RPC handler with empty downloadId
+ * Verify cancel method failure by asserting that it returns Core::ERROR_GENERAL
+ * Deinitialize the JSON-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, cancelMethodEmptyDownloadIdusingJsonRpc) {
+
+    initforJsonRpc();
+
+    // TC-79: Cancel method failure with empty downloadId using JsonRpc
+    EXPECT_EQ(Core::ERROR_GENERAL, mJsonRpcHandler.Invoke(connection, _T("cancel"), _T("{\"downloadId\": \"\"}"), mJsonRpcResponse));
+
+    deinitforJsonRpc();
+}
+
+/* Test Case for download method with empty URL using JsonRpc
+ *
+ * Set up and initialize required JSON-RPC resources, configurations, mocks and expectations
+ * Invoke the download method using the JSON RPC handler with empty URL
+ * Verify download method failure by asserting that it returns error
+ * Deinitialize the JSON-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, downloadMethodEmptyUrlusingJsonRpc) {
+
+    initforJsonRpc();
+
+    EXPECT_CALL(*mSubSystemMock, IsActive(::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillRepeatedly(::testing::Invoke(
+            [&](const PluginHost::ISubSystem::subsystem type) {
+                return true;
+            }));
+
+    // TC-80: Download method with empty URL using JsonRpc
+    EXPECT_NE(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("download"), _T("{\"url\": \"\"}"), mJsonRpcResponse));
+
+    deinitforJsonRpc();
+}
+
+/* Test Case for install method with empty packageId using JsonRpc
+ *
+ * Set up and initialize required JSON-RPC resources, configurations, mocks and expectations
+ * Invoke the install method using the JSON RPC handler with empty packageId
+ * Verify install method failure
+ * Deinitialize the JSON-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, installMethodEmptyPackageIdusingJsonRpc) {
+
+    initforJsonRpc();
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    // TC-81: Install method with empty packageId using JsonRpc
+    EXPECT_EQ(Core::ERROR_INVALID_SIGNATURE, mJsonRpcHandler.Invoke(connection, _T("install"), _T("{\"packageId\": \"\", \"version\": \"1.0.0\", \"additionalMetadata\": [], \"fileLocator\": \"/opt/CDL/package1001\"}"), mJsonRpcResponse));
+
+    deinitforJsonRpc();
+}
+
+/* Test Case for install method with empty version using JsonRpc
+ *
+ * Set up and initialize required JSON-RPC resources, configurations, mocks and expectations
+ * Invoke the install method using the JSON RPC handler with empty version
+ * Verify install method failure
+ * Deinitialize the JSON-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, installMethodEmptyVersionusingJsonRpc) {
+
+    initforJsonRpc();
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    // TC-82: Install method with empty version using JsonRpc
+    EXPECT_EQ(Core::ERROR_INVALID_SIGNATURE, mJsonRpcHandler.Invoke(connection, _T("install"), _T("{\"packageId\": \"TestApp\", \"version\": \"\", \"additionalMetadata\": [], \"fileLocator\": \"/opt/CDL/package1001\"}"), mJsonRpcResponse));
+
+    deinitforJsonRpc();
+}
+
+/* Test Case for pause empty downloadId using ComRpc
+ *
+ * Set up and initialize required COM-RPC resources, configurations, mocks and expectations
+ * Call the Pause method using the COM RPC interface with empty downloadId
+ * Verify Pause method failure by asserting that it returns Core::ERROR_GENERAL
+ * Deinitialize the COM-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, pauseEmptyDownloadIdusingComRpc) {
+
+    initforComRpc();
+
+    string emptyDownloadId = "";
+
+    // TC-83: Pause with empty downloadId using ComRpc
+    EXPECT_EQ(Core::ERROR_GENERAL, pkgdownloaderInterface->Pause(emptyDownloadId));
+
+    deinitforComRpc();
+}
+
+/* Test Case for resume empty downloadId using ComRpc
+ *
+ * Set up and initialize required COM-RPC resources, configurations, mocks and expectations
+ * Call the Resume method using the COM RPC interface with empty downloadId
+ * Verify Resume method failure by asserting that it returns Core::ERROR_GENERAL
+ * Deinitialize the COM-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, resumeEmptyDownloadIdusingComRpc) {
+
+    initforComRpc();
+
+    string emptyDownloadId = "";
+
+    // TC-84: Resume with empty downloadId using ComRpc
+    EXPECT_EQ(Core::ERROR_GENERAL, pkgdownloaderInterface->Resume(emptyDownloadId));
+
+    deinitforComRpc();
+}
+
+/* Test Case for cancel empty downloadId using ComRpc
+ *
+ * Set up and initialize required COM-RPC resources, configurations, mocks and expectations
+ * Call the Cancel method using the COM RPC interface with empty downloadId
+ * Verify Cancel method failure by asserting that it returns Core::ERROR_GENERAL
+ * Deinitialize the COM-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, cancelEmptyDownloadIdusingComRpc) {
+
+    initforComRpc();
+
+    string emptyDownloadId = "";
+
+    // TC-85: Cancel with empty downloadId using ComRpc
+    EXPECT_EQ(Core::ERROR_GENERAL, pkgdownloaderInterface->Cancel(emptyDownloadId));
+
+    deinitforComRpc();
+}
+
+/* Test Case for progress empty downloadId using ComRpc
+ *
+ * Set up and initialize required COM-RPC resources, configurations, mocks and expectations
+ * Call the Progress method using the COM RPC interface with empty downloadId
+ * Verify Progress method failure by asserting that it returns Core::ERROR_GENERAL
+ * Deinitialize the COM-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, progressEmptyDownloadIdusingComRpc) {
+
+    initforComRpc();
+
+    string emptyDownloadId = "";
+    Exchange::IPackageDownloader::ProgressInfo progressInfo;
+
+    // TC-86: Progress with empty downloadId using ComRpc
+    EXPECT_EQ(Core::ERROR_GENERAL, pkgdownloaderInterface->Progress(emptyDownloadId, progressInfo));
+
+    deinitforComRpc();
+}
+
+/* Test Case for rateLimit empty downloadId using ComRpc
+ *
+ * Set up and initialize required COM-RPC resources, configurations, mocks and expectations
+ * Call the RateLimit method using the COM RPC interface with empty downloadId
+ * Verify RateLimit method failure by asserting that it returns Core::ERROR_GENERAL
+ * Deinitialize the COM-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, rateLimitEmptyDownloadIdusingComRpc) {
+
+    initforComRpc();
+
+    string emptyDownloadId = "";
+    uint64_t limit = 1024;
+
+    // TC-87: RateLimit with empty downloadId using ComRpc
+    EXPECT_EQ(Core::ERROR_GENERAL, pkgdownloaderInterface->RateLimit(emptyDownloadId, limit));
+
+    deinitforComRpc();
+}
+
+/* Test Case for install with nullptr additionalMetadata using ComRpc
+ *
+ * Set up and initialize required COM-RPC resources, configurations, mocks and expectations
+ * Download a package first
+ * Call the Install method with nullptr additionalMetadata
+ * Verify install behavior with nullptr
+ * Deinitialize the COM-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, installWithNullptrMetadatausingComRpc) {
+
+    initforComRpc();
+
+    getDownloadParams();
+
+    uri = "https://httpbin.org/bytes/1024";
+
+    string packageId = "NullMetaApp";
+    string version = "1.0.0";
+    string fileLocator = "/opt/CDL/package1001";
+    Exchange::IPackageInstaller::FailReason reason = Exchange::IPackageInstaller::FailReason::NONE;
+
+    EXPECT_CALL(*mSubSystemMock, IsActive(::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillRepeatedly(::testing::Invoke(
+            [&](const PluginHost::ISubSystem::subsystem type) {
+                return true;
+            }));
+
+    EXPECT_CALL(*mStorageManagerMock, CreateStorage(::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillOnce(::testing::Invoke(
+            [&](const string& appId, const uint32_t &size, string& path, string &errorReason) {
+                return Core::ERROR_NONE;
+            }));
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    EXPECT_EQ(Core::ERROR_NONE, pkgdownloaderInterface->Download(uri, options, downloadId));
+
+    EXPECT_EQ(downloadId.downloadId, "1001");
+
+    waitforSignal(TIMEOUT);
+
+    // TC-88: Install with nullptr additionalMetadata using ComRpc
+    EXPECT_EQ(Core::ERROR_NONE, pkginstallerInterface->Install(packageId, version, nullptr, fileLocator, reason));
+
+    deinitforComRpc();
+}
+
+/* Test Case for uninstall with empty packageId using ComRpc
+ *
+ * Set up and initialize required COM-RPC resources, configurations, mocks and expectations
+ * Call the Uninstall method using the COM RPC interface with empty packageId
+ * Verify Uninstall method failure
+ * Deinitialize the COM-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, uninstallEmptyPackageIdusingComRpc) {
+
+    initforComRpc();
+
+    string emptyPackageId = "";
+    string errorReason;
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    // TC-89: Uninstall with empty packageId using ComRpc
+    EXPECT_EQ(Core::ERROR_BAD_REQUEST, pkginstallerInterface->Uninstall(emptyPackageId, errorReason));
+
+    deinitforComRpc();
+}
+
+/* Test Case for download with all options using ComRpc
+ *
+ * Set up and initialize required COM-RPC resources, configurations, mocks and expectations
+ * Call the Download method using the COM RPC interface with all options set
+ * Verify successful download request by asserting that it returns Core::ERROR_NONE
+ * Deinitialize the COM-RPC resources and clean-up related test resources
+ */
+
+TEST_F(PackageManagerTest, downloadWithAllOptionsusingComRpc) {
+
+    initforComRpc();
+
+    getDownloadParams();
+
+    uri = "https://httpbin.org/bytes/1024";
+    options.priority = true;
+    options.retries = 5;
+    options.rateLimit = 4096;
+
+    EXPECT_CALL(*mSubSystemMock, IsActive(::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillRepeatedly(::testing::Invoke(
+            [&](const PluginHost::ISubSystem::subsystem type) {
+                return true;
+            }));
+
+    // TC-90: Download with all options using ComRpc
+    EXPECT_EQ(Core::ERROR_NONE, pkgdownloaderInterface->Download(uri, options, downloadId));
+
+    waitforSignal(TIMEOUT);
+
+    EXPECT_EQ(downloadId.downloadId, "1001");
+
+    // Cancel for cleanup
+    pkgdownloaderInterface->Cancel(downloadId.downloadId);
+
+    deinitforComRpc();
+}
