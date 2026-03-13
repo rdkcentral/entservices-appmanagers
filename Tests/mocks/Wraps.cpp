@@ -30,6 +30,8 @@
 #include <gmock/gmock.h>
 #include <dirent.h>
 
+int gCurrentFramerate = 60;
+
 extern "C" int __real_open(const char* pathname, int flags, int mode=0);
 extern "C" int __real_system(const char* command);
 extern "C" FILE* __real_popen(const char* command, const char* type);
