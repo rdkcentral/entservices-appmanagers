@@ -3157,6 +3157,8 @@ TEST_F(AppManagerTest, OnAppInstallationStatusChangedSuccess)
  */
 TEST_F(AppManagerTest, OnApplicationStateChangedSuccess)
 {
+    constexpr uint32_t NO_EVENT_TIMEOUT_MS = 5000;
+
     Core::hresult status;
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
@@ -3173,12 +3175,9 @@ TEST_F(AppManagerTest, OnApplicationStateChangedSuccess)
         Exchange::ILifecycleManager::LifecycleState::TERMINATING,   // New state
         "start"
     );
-    /* TERMINATING state has shouldNotify=0, so no async job is dispatched and
-     * OnAppLifecycleStateChanged callback is never invoked. No need to wait. */
-    {
-        std::lock_guard<std::mutex> lock(notification.m_mutex);
-        EXPECT_EQ(0u, notification.m_event_signalled & AppManager_onAppLifecycleStateChanged);
-    }
+    /* Ensure that the OnAppLifecycleStateChanged callback is not called/invoked */
+    signalled = notification.WaitForRequestStatus(NO_EVENT_TIMEOUT_MS, AppManager_onAppLifecycleStateChanged);
+    EXPECT_FALSE(signalled & AppManager_onAppLifecycleStateChanged);
 
     mAppManagerImpl->Unregister(&notification);
     if(status == Core::ERROR_NONE) {
