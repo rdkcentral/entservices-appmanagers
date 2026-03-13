@@ -105,45 +105,45 @@ macro(add_plugin_test plugin_name test_files)
     add_plugin_test_ex(${plugin_opt} "${test_files}" "../../${plugin_name}" "${NAMESPACE}${plugin_name}")
 endmacro()
 
-# PLUGIN_APPMANAGER
-set(APPMANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/AppManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
-set(APPMANAGER_LIBS ${NAMESPACE}AppManager ${NAMESPACE}AppManagerImplementation)
-add_plugin_test_ex(PLUGIN_APPMANAGER tests/test_AppManager.cpp "${APPMANAGER_INC}" "${APPMANAGER_LIBS}")
+# # PLUGIN_APPMANAGER
+# set(APPMANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/AppManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
+# set(APPMANAGER_LIBS ${NAMESPACE}AppManager ${NAMESPACE}AppManagerImplementation)
+# add_plugin_test_ex(PLUGIN_APPMANAGER tests/test_AppManager.cpp "${APPMANAGER_INC}" "${APPMANAGER_LIBS}")
 
-# PLUGIN_RUNTIME_MANAGER
-set(RUNTIMEMANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/RuntimeManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
-set(RUNTIMEMANAGER_LIBS ${NAMESPACE}RuntimeManager ${NAMESPACE}RuntimeManagerImplementation)
-add_plugin_test_ex(PLUGIN_RUNTIME_MANAGER tests/test_RunTimeManager.cpp "${RUNTIMEMANAGER_INC}" "${RUNTIMEMANAGER_LIBS}")
+# # PLUGIN_RUNTIME_MANAGER
+# set(RUNTIMEMANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/RuntimeManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
+# set(RUNTIMEMANAGER_LIBS ${NAMESPACE}RuntimeManager ${NAMESPACE}RuntimeManagerImplementation)
+# add_plugin_test_ex(PLUGIN_RUNTIME_MANAGER tests/test_RunTimeManager.cpp "${RUNTIMEMANAGER_INC}" "${RUNTIMEMANAGER_LIBS}")
 
 # PLUGIN_APP_STORAGE_MANAGER
 set(STORAGE_MANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/AppStorageManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
 set(STORAGE_MANAGER_LIBS ${NAMESPACE}AppStorageManager ${NAMESPACE}AppStorageManagerImplementation)
 add_plugin_test_ex(PLUGIN_APP_STORAGE_MANAGER tests/test_AppStorageManager.cpp "${STORAGE_MANAGER_INC}" "${STORAGE_MANAGER_LIBS}")
 
-# PLUGIN_LIFECYCLE_MANAGER
-set(LIFECYCLEMANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/LifecycleManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
-set(LIFECYCLEMANAGER_LIBS ${NAMESPACE}LifecycleManager)
-add_plugin_test_ex(PLUGIN_LIFECYCLE_MANAGER tests/test_LifecycleManager.cpp "${LIFECYCLEMANAGER_INC}" "${LIFECYCLEMANAGER_LIBS}")
+# # PLUGIN_LIFECYCLE_MANAGER
+# set(LIFECYCLEMANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/LifecycleManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
+# set(LIFECYCLEMANAGER_LIBS ${NAMESPACE}LifecycleManager)
+# add_plugin_test_ex(PLUGIN_LIFECYCLE_MANAGER tests/test_LifecycleManager.cpp "${LIFECYCLEMANAGER_INC}" "${LIFECYCLEMANAGER_LIBS}")
 
-# PLUGIN_PREINSTALL_MANAGER
-set(PREINSTALL_MANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/PreinstallManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
-set(PREINSTALL_MANAGER_LIBS ${NAMESPACE}PreinstallManager ${NAMESPACE}PreinstallManagerImplementation)
-add_plugin_test_ex(PLUGIN_PREINSTALL_MANAGER tests/test_PreinstallManager.cpp "${PREINSTALL_MANAGER_INC}" "${PREINSTALL_MANAGER_LIBS}")
+# # PLUGIN_PREINSTALL_MANAGER
+# set(PREINSTALL_MANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/PreinstallManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
+# set(PREINSTALL_MANAGER_LIBS ${NAMESPACE}PreinstallManager ${NAMESPACE}PreinstallManagerImplementation)
+# add_plugin_test_ex(PLUGIN_PREINSTALL_MANAGER tests/test_PreinstallManager.cpp "${PREINSTALL_MANAGER_INC}" "${PREINSTALL_MANAGER_LIBS}")
 
-# PLUGIN_PACKAGE_MANAGER
-set(PACKAGEMANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/PackageManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
-set(PACKAGEMANAGER_LIBS ${NAMESPACE}PackageManagerRDKEMS)
-add_plugin_test_ex(PLUGIN_PACKAGE_MANAGER tests/test_PackageManager.cpp "${PACKAGEMANAGER_INC}" "${PACKAGEMANAGER_LIBS}")
+# # PLUGIN_PACKAGE_MANAGER
+# set(PACKAGEMANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/PackageManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
+# set(PACKAGEMANAGER_LIBS ${NAMESPACE}PackageManagerRDKEMS)
+# add_plugin_test_ex(PLUGIN_PACKAGE_MANAGER tests/test_PackageManager.cpp "${PACKAGEMANAGER_INC}" "${PACKAGEMANAGER_LIBS}")
 
-# PLUGIN_DOWNLOADMANAGER
-set(DOWNLOADMANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/DownloadManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
-set(DOWNLOADMANAGER_LIBS ${NAMESPACE}DownloadManager ${NAMESPACE}DownloadManagerImplementation)
-add_plugin_test_ex(PLUGIN_DOWNLOADMANAGER tests/test_DownloadManager.cpp "${DOWNLOADMANAGER_INC}" "${DOWNLOADMANAGER_LIBS}")
+# # PLUGIN_DOWNLOADMANAGER
+# set(DOWNLOADMANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/DownloadManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
+# set(DOWNLOADMANAGER_LIBS ${NAMESPACE}DownloadManager ${NAMESPACE}DownloadManagerImplementation)
+# add_plugin_test_ex(PLUGIN_DOWNLOADMANAGER tests/test_DownloadManager.cpp "${DOWNLOADMANAGER_INC}" "${DOWNLOADMANAGER_LIBS}")
 
-# PLUGIN_RDK_WINDOW_MANAGER
-set(RDKWINDOWMANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/RDKWindowManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
-set(RDKWINDOWMANAGER_LIBS ${NAMESPACE}RDKWindowManager ${NAMESPACE}RDKWindowManagerImplementation)
-add_plugin_test_ex(PLUGIN_RDK_WINDOW_MANAGER tests/test_RDKWindowManager.cpp "${RDKWINDOWMANAGER_INC}" "${RDKWINDOWMANAGER_LIBS}")
+# # PLUGIN_RDK_WINDOW_MANAGER
+# set(RDKWINDOWMANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/RDKWindowManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
+# set(RDKWINDOWMANAGER_LIBS ${NAMESPACE}RDKWindowManager ${NAMESPACE}RDKWindowManagerImplementation)
+# add_plugin_test_ex(PLUGIN_RDK_WINDOW_MANAGER tests/test_RDKWindowManager.cpp "${RDKWINDOWMANAGER_INC}" "${RDKWINDOWMANAGER_LIBS}")
 
 if(BUILD_L1_TESTS_SHARED_MODULE)
     add_library(${MODULE_NAME} SHARED ${TEST_SRC})

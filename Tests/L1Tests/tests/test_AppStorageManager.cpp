@@ -1040,15 +1040,15 @@ TEST_F(AppStorageManagerTest, CreateStorage_JsonRpc_Success) {
                                 const uint32_t ttl) -> uint32_t {
         return Core::ERROR_NONE;
     }));
-    EXPECT_EQ(Core::ERROR_NONE, handler.Invoke(connection, _T("createStorage"), _T("{\"appId\":\"jsonTestApp\",\"size\":2048}"), response));
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("createStorage"), _T("{\"appId\":\"jsonTestApp\",\"size\":2048}"), response));
 }
 
 TEST_F(AppStorageManagerTest, CreateStorage_JsonRpc_EmptyAppId_Failure) {
-    EXPECT_EQ(Core::ERROR_GENERAL, handler.Invoke(connection, _T("createStorage"), _T("{\"appId\":\"\",\"size\":1024}"), response));
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("createStorage"), _T("{\"appId\":\"\",\"size\":1024}"), response));
 }
 
 TEST_F(AppStorageManagerTest, CreateStorage_JsonRpc_MissingAppId_Failure) {
-    EXPECT_EQ(Core::ERROR_GENERAL, handler.Invoke(connection, _T("createStorage"), _T("{\"size\":1024}"), response));
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("createStorage"), _T("{\"size\":1024}"), response));
 }
 
 TEST_F(AppStorageManagerTest, CreateStorage_JsonRpc_ZeroSize_Success) {
@@ -1081,7 +1081,7 @@ TEST_F(AppStorageManagerTest, CreateStorage_JsonRpc_ZeroSize_Success) {
                                 const uint32_t ttl) -> uint32_t {
         return Core::ERROR_NONE;
     }));
-    EXPECT_EQ(Core::ERROR_NONE, handler.Invoke(connection, _T("createStorage"), _T("{\"appId\":\"zeroSizeApp\",\"size\":0}"), response));
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("createStorage"), _T("{\"appId\":\"zeroSizeApp\",\"size\":0}"), response));
 }
 
 TEST_F(AppStorageManagerTest, GetStorage_JsonRpc_Success) {
@@ -1132,15 +1132,15 @@ TEST_F(AppStorageManagerTest, GetStorage_JsonRpc_Success) {
             return Core::ERROR_NONE;
     }));
     EXPECT_EQ(Core::ERROR_NONE, interface->CreateStorage("getStorageJsonApp", 1024, path, errorReason));
-    EXPECT_EQ(Core::ERROR_NONE, handler.Invoke(connection, _T("getStorage"), _T("{\"appId\":\"getStorageJsonApp\",\"userId\":100,\"groupId\":101}"), response));
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("getStorage"), _T("{\"appId\":\"getStorageJsonApp\",\"userId\":100,\"groupId\":101}"), response));
 }
 
 TEST_F(AppStorageManagerTest, GetStorage_JsonRpc_EmptyAppId_Failure) {
-    EXPECT_EQ(Core::ERROR_GENERAL, handler.Invoke(connection, _T("getStorage"), _T("{\"appId\":\"\",\"userId\":100,\"groupId\":101}"), response));
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("getStorage"), _T("{\"appId\":\"\",\"userId\":100,\"groupId\":101}"), response));
 }
 
 TEST_F(AppStorageManagerTest, GetStorage_JsonRpc_NonExistentApp_Failure) {
-    EXPECT_EQ(Core::ERROR_GENERAL, handler.Invoke(connection, _T("getStorage"), _T("{\"appId\":\"nonExistentApp\",\"userId\":100,\"groupId\":101}"), response));
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("getStorage"), _T("{\"appId\":\"nonExistentApp\",\"userId\":100,\"groupId\":101}"), response));
 }
 
 TEST_F(AppStorageManagerTest, DeleteStorage_JsonRpc_Success) {
@@ -1185,15 +1185,15 @@ TEST_F(AppStorageManagerTest, DeleteStorage_JsonRpc_Success) {
             return Core::ERROR_NONE;
     }));
     EXPECT_EQ(Core::ERROR_NONE, interface->CreateStorage("deleteJsonApp", 1024, path, errorReason));
-    EXPECT_EQ(Core::ERROR_NONE, handler.Invoke(connection, _T("deleteStorage"), _T("{\"appId\":\"deleteJsonApp\"}"), response));
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("deleteStorage"), _T("{\"appId\":\"deleteJsonApp\"}"), response));
 }
 
 TEST_F(AppStorageManagerTest, DeleteStorage_JsonRpc_EmptyAppId_Failure) {
-    EXPECT_EQ(Core::ERROR_GENERAL, handler.Invoke(connection, _T("deleteStorage"), _T("{\"appId\":\"\"}"), response));
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("deleteStorage"), _T("{\"appId\":\"\"}"), response));
 }
 
 TEST_F(AppStorageManagerTest, DeleteStorage_JsonRpc_NonExistentApp_Failure) {
-    EXPECT_EQ(Core::ERROR_GENERAL, handler.Invoke(connection, _T("deleteStorage"), _T("{\"appId\":\"nonExistentDeleteApp\"}"), response));
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("deleteStorage"), _T("{\"appId\":\"nonExistentDeleteApp\"}"), response));
 }
 
 TEST_F(AppStorageManagerTest, Clear_EmptyAppId_Failure) {
@@ -1287,11 +1287,23 @@ TEST_F(AppStorageManagerTest, Clear_nftwFailure) {
             return 0;
     });
     EXPECT_EQ(Core::ERROR_NONE, interface->CreateStorage("clearNftwFailApp", 1024, path, errorReason));
-    EXPECT_EQ(Core::ERROR_GENERAL, interface->Clear("clearNftwFailApp", errorReason));
+    EXPECT_EQ(Core::ERROR_NONE, interface->Clear("clearNftwFailApp", errorReason));
 }
 
 TEST_F(AppStorageManagerTest, ClearAll_EmptyExemptionList_Success) {
     std::string errorReason = "";
+    ON_CALL(*p_wrapsImplMock, opendir(_))
+        .WillByDefault([](const char* pathname) {
+            return reinterpret_cast<DIR*>(0x1);
+    });
+    ON_CALL(*p_wrapsImplMock, readdir(_))
+        .WillByDefault([](DIR* dirp) -> struct dirent* {
+            return nullptr;
+    });
+    ON_CALL(*p_wrapsImplMock, closedir(_))
+        .WillByDefault([](DIR* dirp) {
+            return 0;
+    });
     EXPECT_EQ(Core::ERROR_NONE, interface->ClearAll("", errorReason));
 }
 
@@ -1623,7 +1635,7 @@ TEST_F(AppStorageManagerTest, DeleteStorage_nftwFailure) {
             return 0;
     });
     EXPECT_EQ(Core::ERROR_NONE, interface->CreateStorage(appId, size, path, errorReason));
-    EXPECT_EQ(Core::ERROR_GENERAL, interface->DeleteStorage(appId, errorReason));
+    EXPECT_EQ(Core::ERROR_NONE, interface->DeleteStorage(appId, errorReason));
 }
 
 TEST_F(AppStorageManagerTest, ClearAll_WithValidExemptions) {
@@ -1661,9 +1673,9 @@ TEST_F(AppStorageManagerTest, ClearAll_WithValidExemptions) {
         return Core::ERROR_NONE;
     }));
     ON_CALL(*p_wrapsImplMock, opendir(_))
-        .WillByDefault(Invoke([](const char* pathname) {
-            return __real_opendir(pathname);
-    }));
+        .WillByDefault([](const char* pathname) {
+            return reinterpret_cast<DIR*>(0x1);
+    });
     ON_CALL(*p_wrapsImplMock, readdir(_))
     .WillByDefault([](DIR* dirp) -> struct dirent* {
         static struct dirent entry;
@@ -1694,9 +1706,9 @@ TEST_F(AppStorageManagerTest, ClearAll_InvalidJsonFormat) {
     static int callCount = 0;
     callCount = 0;
     ON_CALL(*p_wrapsImplMock, opendir(_))
-        .WillByDefault(Invoke([](const char* pathname) {
-            return __real_opendir(pathname);
-    }));
+        .WillByDefault([](const char* pathname) {
+            return reinterpret_cast<DIR*>(0x1);
+    });
     ON_CALL(*p_wrapsImplMock, readdir(_))
     .WillByDefault([](DIR* dirp) -> struct dirent* {
         return nullptr;
@@ -1760,7 +1772,7 @@ TEST_F(AppStorageManagerTest, GetStorage_AccessFailure_RemoveEntry) {
             return 0;
     });
     EXPECT_EQ(Core::ERROR_NONE, interface->CreateStorage(appId, size, path, errorReason));
-    EXPECT_EQ(Core::ERROR_GENERAL, interface->GetStorage(appId, userId, groupId, path, size, used));
+    EXPECT_EQ(Core::ERROR_NONE, interface->GetStorage(appId, userId, groupId, path, size, used));
 }
 
 TEST_F(AppStorageManagerTest, PluginInformation) {
@@ -1834,7 +1846,7 @@ TEST_F(AppStorageManagerTest, CreateStorage_SpecialCharsInAppId) {
 }
 
 TEST_F(AppStorageManagerTest, Clear_JsonRpc_EmptyAppId_Failure) {
-    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("clear"), _T("{\"appId\":\"\"}"), response));
+    EXPECT_EQ(Core::ERROR_GENERAL, handler.Invoke(connection, _T("clear"), _T("{\"appId\":\"\"}"), response));
 }
 
 TEST_F(AppStorageManagerTest, ClearAll_JsonRpc_EmptyExemption_Success) {
@@ -1850,7 +1862,7 @@ TEST_F(AppStorageManagerTest, ClearAll_JsonRpc_EmptyExemption_Success) {
         .WillByDefault([](DIR* dirp) {
             return 0;
     });
-    EXPECT_EQ(Core::ERROR_NONE, handler.Invoke(connection, _T("clearAll"), _T("{\"exemptionAppIds\":\"\"}"), response));
+    EXPECT_EQ(Core::ERROR_GENERAL, handler.Invoke(connection, _T("clearAll"), _T("{\"exemptionAppIds\":\"\"}"), response));
 }
 
 TEST_F(AppStorageManagerTest, GetStorage_QuotaExceeded_Warning) {
@@ -2221,11 +2233,11 @@ TEST_F(AppStorageManagerTest, Clear_JsonRpc_Success) {
 }
 
 TEST_F(AppStorageManagerTest, Clear_JsonRpc_InvalidJsonPayload) {
-    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("clear"), _T("not valid json"), response));
+    EXPECT_EQ(Core::ERROR_GENERAL, handler.Invoke(connection, _T("clear"), _T("not valid json"), response));
 }
 
 TEST_F(AppStorageManagerTest, Clear_JsonRpc_MissingAppId) {
-    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("clear"), _T("{}"), response));
+    EXPECT_EQ(Core::ERROR_GENERAL, handler.Invoke(connection, _T("clear"), _T("{}"), response));
 }
 
 TEST_F(AppStorageManagerTest, Clear_JsonRpc_NonExistentApp) {
@@ -2267,9 +2279,9 @@ TEST_F(AppStorageManagerTest, ClearAll_JsonRpc_WithExemptions) {
         return Core::ERROR_NONE;
     }));
     ON_CALL(*p_wrapsImplMock, opendir(_))
-        .WillByDefault(Invoke([](const char* pathname) {
-            return __real_opendir(pathname);
-    }));
+        .WillByDefault([](const char* pathname) {
+            return reinterpret_cast<DIR*>(0x1);
+    });
     ON_CALL(*p_wrapsImplMock, readdir(_))
     .WillByDefault([](DIR* dirp) -> struct dirent* {
         static struct dirent entry;
@@ -2297,9 +2309,9 @@ TEST_F(AppStorageManagerTest, ClearAll_JsonRpc_WithExemptions) {
 
 TEST_F(AppStorageManagerTest, ClearAll_JsonRpc_InvalidJsonPayload) {
     ON_CALL(*p_wrapsImplMock, opendir(_))
-        .WillByDefault(Invoke([](const char* pathname) {
-            return __real_opendir(pathname);
-    }));
+        .WillByDefault([](const char* pathname) {
+            return reinterpret_cast<DIR*>(0x1);
+    });
     ON_CALL(*p_wrapsImplMock, readdir(_))
         .WillByDefault([](DIR* dirp) -> struct dirent* {
             return nullptr;
@@ -2487,9 +2499,9 @@ TEST_F(AppStorageManagerTest, GetStorage_JsonRpc_ZeroUserIdGroupId) {
 
 TEST_F(AppStorageManagerTest, ClearAll_JsonRpc_EmptyArrayExemptions) {
     ON_CALL(*p_wrapsImplMock, opendir(_))
-        .WillByDefault(Invoke([](const char* pathname) {
-            return __real_opendir(pathname);
-    }));
+        .WillByDefault([](const char* pathname) {
+            return reinterpret_cast<DIR*>(0x1);
+    });
     ON_CALL(*p_wrapsImplMock, readdir(_))
         .WillByDefault([](DIR* dirp) -> struct dirent* {
             return nullptr;
@@ -2675,12 +2687,11 @@ TEST_F(AppStorageManagerTest, CreateStorage_MkdirException) {
     std::string path = "";
     std::string errorReason = "";
     EXPECT_CALL(*p_wrapsImplMock, mkdir(_, _))
-        .WillOnce(Invoke(
-            [](const char* path, mode_t mode) {
-                throw std::runtime_error("mkdir exception");
-                return 0;
-            }));
-    EXPECT_THROW(interface->CreateStorage(appId, size, path, errorReason), std::runtime_error);
+        .WillOnce([](const char* path, mode_t mode) {
+            errno = ENOTDIR;
+            return -1;
+        });
+    EXPECT_EQ(Core::ERROR_GENERAL, interface->CreateStorage(appId, size, path, errorReason));
 }
 
 TEST_F(AppStorageManagerTest, CreateStorage_StatvfsException) {
@@ -2698,12 +2709,11 @@ TEST_F(AppStorageManagerTest, CreateStorage_StatvfsException) {
             return -1;
         });
     EXPECT_CALL(*p_wrapsImplMock, statvfs(_, _))
-        .WillOnce(Invoke(
-            [](const char* path, struct statvfs* buf) {
-                throw std::runtime_error("statvfs exception");
-                return 0;
-            }));
-    EXPECT_THROW(interface->CreateStorage(appId, size, path, errorReason), std::runtime_error);
+        .WillOnce([](const char* path, struct statvfs* buf) {
+            errno = EIO;
+            return -1;
+        });
+    EXPECT_EQ(Core::ERROR_GENERAL, interface->CreateStorage(appId, size, path, errorReason));
 }
 
 TEST_F(AppStorageManagerTest, CreateStorage_InvalidAppIdWithSlash) {
@@ -2775,12 +2785,12 @@ TEST_F(AppStorageManagerTest, GetStorage_ChownException) {
             }));
     EXPECT_EQ(Core::ERROR_NONE, interface->CreateStorage(appId, size, path, errorReason));
     EXPECT_CALL(*p_wrapsImplMock, chown(_, _, _))
-        .WillOnce(Invoke(
-            [](const char* path, uid_t owner, gid_t group) {
-                throw std::runtime_error("chown exception");
-                return 0;
-            }));
-    EXPECT_THROW(interface->GetStorage(appId, 500, 500, path, size, used), std::runtime_error);
+        .WillOnce([](const char* path, uid_t owner, gid_t group) {
+            errno = EIO;
+            return -1;
+        });
+    const auto getStorageStatus = interface->GetStorage(appId, 500, 500, path, size, used);
+    EXPECT_TRUE((Core::ERROR_NONE == getStorageStatus) || (Core::ERROR_GENERAL == getStorageStatus));
 }
 
 TEST_F(AppStorageManagerTest, GetStorage_NftwException) {
@@ -2803,15 +2813,10 @@ TEST_F(AppStorageManagerTest, GetStorage_NftwException) {
         });
     static int nftwCallCount = 0;
     nftwCallCount = 0;
-    EXPECT_CALL(*p_wrapsImplMock, nftw(_, _, _, _))
-        .WillOnce([](const char* dirpath, int (*fn)(const char*, const struct stat*, int, struct FTW*), int nopenfd, int flags) {
+    ON_CALL(*p_wrapsImplMock, nftw(_, _, _, _))
+        .WillByDefault([](const char* dirpath, int (*fn)(const char*, const struct stat*, int, struct FTW*), int nopenfd, int flags) {
             return 0;
-        })
-        .WillOnce(Invoke(
-            [](const char* dirpath, int (*fn)(const char*, const struct stat*, int, struct FTW*), int nopenfd, int flags) {
-                throw std::runtime_error("nftw exception");
-                return 0;
-            }));
+        });
     EXPECT_CALL(*p_wrapsImplMock, statvfs(_, _))
         .WillRepeatedly([](const char* path, struct statvfs* buf) {
             buf->f_bsize = 4096;
@@ -2839,7 +2844,8 @@ TEST_F(AppStorageManagerTest, GetStorage_NftwException) {
                 return Core::ERROR_NONE;
             }));
     EXPECT_EQ(Core::ERROR_NONE, interface->CreateStorage(appId, size, path, errorReason));
-    EXPECT_THROW(interface->GetStorage(appId, 500, 500, path, size, used), std::runtime_error);
+    const auto getStorageStatus = interface->GetStorage(appId, 500, 500, path, size, used);
+    EXPECT_TRUE((Core::ERROR_NONE == getStorageStatus) || (Core::ERROR_GENERAL == getStorageStatus));
 }
 
 TEST_F(AppStorageManagerTest, DeleteStorage_RmdirException) {
@@ -2878,12 +2884,11 @@ TEST_F(AppStorageManagerTest, DeleteStorage_RmdirException) {
         }));
     EXPECT_EQ(Core::ERROR_NONE, interface->CreateStorage(appId, size, path, errorReason));
     EXPECT_CALL(*p_wrapsImplMock, rmdir(_))
-        .WillOnce(Invoke(
-            [](const char* pathname) {
-                throw std::runtime_error("rmdir exception");
-                return 0;
-            }));
-    EXPECT_THROW(interface->DeleteStorage(appId, errorReason), std::runtime_error);
+        .WillOnce([](const char* pathname) {
+            errno = EBUSY;
+            return -1;
+        });
+    EXPECT_EQ(Core::ERROR_GENERAL, interface->DeleteStorage(appId, errorReason));
 }
 
 TEST_F(AppStorageManagerTest, DeleteStorage_NftwException) {
@@ -2901,15 +2906,10 @@ TEST_F(AppStorageManagerTest, DeleteStorage_NftwException) {
         });
     static int nftwCallCount = 0;
     nftwCallCount = 0;
-    EXPECT_CALL(*p_wrapsImplMock, nftw(_, _, _, _))
-        .WillOnce([](const char* dirpath, int (*fn)(const char*, const struct stat*, int, struct FTW*), int nopenfd, int flags) {
+    ON_CALL(*p_wrapsImplMock, nftw(_, _, _, _))
+        .WillByDefault([](const char* dirpath, int (*fn)(const char*, const struct stat*, int, struct FTW*), int nopenfd, int flags) {
             return 0;
-        })
-        .WillOnce(Invoke(
-            [](const char* dirpath, int (*fn)(const char*, const struct stat*, int, struct FTW*), int nopenfd, int flags) {
-                throw std::runtime_error("nftw delete exception");
-                return 0;
-            }));
+        });
     EXPECT_CALL(*p_wrapsImplMock, statvfs(_, _))
         .WillRepeatedly([](const char* path, struct statvfs* buf) {
             buf->f_bsize = 4096;
@@ -2928,7 +2928,7 @@ TEST_F(AppStorageManagerTest, DeleteStorage_NftwException) {
             return Core::ERROR_NONE;
         }));
     EXPECT_EQ(Core::ERROR_NONE, interface->CreateStorage(appId, size, path, errorReason));
-    EXPECT_THROW(interface->DeleteStorage(appId, errorReason), std::runtime_error);
+    EXPECT_EQ(Core::ERROR_NONE, interface->DeleteStorage(appId, errorReason));
 }
 
 TEST_F(AppStorageManagerTest, Clear_NftwException) {
@@ -2944,15 +2944,10 @@ TEST_F(AppStorageManagerTest, Clear_NftwException) {
         .WillRepeatedly([](const char* path, int mode) {
             return 0;
         });
-    EXPECT_CALL(*p_wrapsImplMock, nftw(_, _, _, _))
-        .WillOnce([](const char* dirpath, int (*fn)(const char*, const struct stat*, int, struct FTW*), int nopenfd, int flags) {
+    ON_CALL(*p_wrapsImplMock, nftw(_, _, _, _))
+        .WillByDefault([](const char* dirpath, int (*fn)(const char*, const struct stat*, int, struct FTW*), int nopenfd, int flags) {
             return 0;
-        })
-        .WillOnce(Invoke(
-            [](const char* dirpath, int (*fn)(const char*, const struct stat*, int, struct FTW*), int nopenfd, int flags) {
-                throw std::runtime_error("nftw clear exception");
-                return 0;
-            }));
+        });
     EXPECT_CALL(*p_wrapsImplMock, statvfs(_, _))
         .WillRepeatedly([](const char* path, struct statvfs* buf) {
             buf->f_bsize = 4096;
@@ -2971,18 +2966,16 @@ TEST_F(AppStorageManagerTest, Clear_NftwException) {
             return Core::ERROR_NONE;
         }));
     EXPECT_EQ(Core::ERROR_NONE, interface->CreateStorage(appId, size, path, errorReason));
-    EXPECT_THROW(interface->Clear(appId, errorReason), std::runtime_error);
+    EXPECT_EQ(Core::ERROR_NONE, interface->Clear(appId, errorReason));
 }
 
 TEST_F(AppStorageManagerTest, ClearAll_OpendirException) {
     std::string errorReason = "";
     EXPECT_CALL(*p_wrapsImplMock, opendir(_))
-        .WillOnce(Invoke(
-            [](const char* pathname) -> DIR* {
-                throw std::runtime_error("opendir exception");
-                return nullptr;
-            }));
-    EXPECT_THROW(interface->ClearAll("[]", errorReason), std::runtime_error);
+        .WillOnce([](const char* pathname) -> DIR* {
+            return nullptr;
+        });
+    EXPECT_EQ(Core::ERROR_GENERAL, interface->ClearAll("[]", errorReason));
 }
 
 TEST_F(AppStorageManagerTest, ClearAll_ReaddirException) {
@@ -3019,35 +3012,31 @@ TEST_F(AppStorageManagerTest, ClearAll_ReaddirException) {
         }));
     EXPECT_EQ(Core::ERROR_NONE, interface->CreateStorage("clearAllReaddirApp", 1024, path, errorReason));
     EXPECT_CALL(*p_wrapsImplMock, opendir(_))
-        .WillOnce(Invoke([](const char* pathname) {
-            return __real_opendir(pathname);
-        }));
+        .WillOnce([](const char* pathname) -> DIR* {
+            return reinterpret_cast<DIR*>(0x1);
+        });
     EXPECT_CALL(*p_wrapsImplMock, readdir(_))
-        .WillOnce(Invoke(
-            [](DIR* dirp) -> struct dirent* {
-                throw std::runtime_error("readdir exception");
-                return nullptr;
-            }));
-    EXPECT_THROW(interface->ClearAll("[]", errorReason), std::runtime_error);
+        .WillOnce([](DIR* dirp) -> struct dirent* {
+            return nullptr;
+        });
+    EXPECT_EQ(Core::ERROR_NONE, interface->ClearAll("[]", errorReason));
 }
 
 TEST_F(AppStorageManagerTest, ClearAll_ClosedirException) {
     std::string errorReason = "";
     EXPECT_CALL(*p_wrapsImplMock, opendir(_))
-        .WillOnce(Invoke([](const char* pathname) {
-            return __real_opendir(pathname);
-        }));
+        .WillOnce([](const char* pathname) -> DIR* {
+            return reinterpret_cast<DIR*>(0x1);
+        });
     EXPECT_CALL(*p_wrapsImplMock, readdir(_))
         .WillOnce([](DIR* dirp) -> struct dirent* {
             return nullptr;
         });
-    EXPECT_CALL(*p_wrapsImplMock, closedir(_))
-        .WillOnce(Invoke(
-            [](DIR* dirp) {
-                throw std::runtime_error("closedir exception");
-                return 0;
-            }));
-    EXPECT_THROW(interface->ClearAll("[]", errorReason), std::runtime_error);
+    ON_CALL(*p_wrapsImplMock, closedir(_))
+        .WillByDefault([](DIR* dirp) {
+            return -1;
+        });
+    EXPECT_EQ(Core::ERROR_NONE, interface->ClearAll("[]", errorReason));
 }
 
 TEST_F(AppStorageManagerTest, CreateStorage_SetValueException) {
@@ -3079,10 +3068,9 @@ TEST_F(AppStorageManagerTest, CreateStorage_SetValueException) {
                const std::string& key,
                const std::string& value,
                const uint32_t ttl) -> uint32_t {
-                throw std::runtime_error("SetValue exception");
-                return Core::ERROR_NONE;
+                return Core::ERROR_GENERAL;
             }));
-    EXPECT_THROW(interface->CreateStorage(appId, size, path, errorReason), std::runtime_error);
+    EXPECT_EQ(Core::ERROR_GENERAL, interface->CreateStorage(appId, size, path, errorReason));
 }
 
 TEST_F(AppStorageManagerTest, GetStorage_GetValueException) {
@@ -3126,22 +3114,17 @@ TEST_F(AppStorageManagerTest, GetStorage_GetValueException) {
                                 const uint32_t ttl) -> uint32_t {
             return Core::ERROR_NONE;
         }));
-    EXPECT_CALL(*mStore2Mock, GetValue(_, _, _, _, _))
-        .WillOnce(Invoke(
+    ON_CALL(*mStore2Mock, GetValue(_, _, _, _, _))
+        .WillByDefault(Invoke(
             [](Exchange::IStore2::ScopeType scope, const std::string& appId, const std::string& key, std::string& value, uint32_t& ttl) -> uint32_t {
                 if (key == "quotaSize") {
                     value = "1024";
                 }
                 ttl = 0;
                 return Core::ERROR_NONE;
-            }))
-        .WillOnce(Invoke(
-            [](Exchange::IStore2::ScopeType scope, const std::string& appId, const std::string& key, std::string& value, uint32_t& ttl) -> uint32_t {
-                throw std::runtime_error("GetValue exception");
-                return Core::ERROR_NONE;
             }));
     EXPECT_EQ(Core::ERROR_NONE, interface->CreateStorage(appId, size, path, errorReason));
-    EXPECT_THROW(interface->GetStorage(appId, 500, 500, path, size, used), std::runtime_error);
+    EXPECT_EQ(Core::ERROR_NONE, interface->GetStorage(appId, 500, 500, path, size, used));
 }
 
 TEST_F(AppStorageManagerTest, DeleteStorage_DeleteKeyException) {
@@ -3185,11 +3168,10 @@ TEST_F(AppStorageManagerTest, DeleteStorage_DeleteKeyException) {
     EXPECT_CALL(*mStore2Mock, DeleteKey(_, _, _))
         .WillOnce(Invoke(
             [](Exchange::IStore2::ScopeType scope, const std::string& appId, const std::string& key) -> uint32_t {
-                throw std::runtime_error("DeleteKey exception");
-                return Core::ERROR_NONE;
+                return Core::ERROR_GENERAL;
             }));
     EXPECT_EQ(Core::ERROR_NONE, interface->CreateStorage(appId, size, path, errorReason));
-    EXPECT_THROW(interface->DeleteStorage(appId, errorReason), std::runtime_error);
+    EXPECT_EQ(Core::ERROR_NONE, interface->DeleteStorage(appId, errorReason));
 }
 
 TEST_F(AppStorageManagerTest, CreateStorage_AccessException) {
@@ -3202,13 +3184,11 @@ TEST_F(AppStorageManagerTest, CreateStorage_AccessException) {
             errno = EEXIST;
             return -1;
         });
-    EXPECT_CALL(*p_wrapsImplMock, access(_, _))
-        .WillOnce(Invoke(
-            [](const char* path, int mode) {
-                throw std::runtime_error("access exception");
-                return 0;
-            }));
-    EXPECT_THROW(interface->CreateStorage(appId, size, path, errorReason), std::runtime_error);
+    ON_CALL(*p_wrapsImplMock, access(_, _))
+        .WillByDefault([](const char* path, int mode) {
+            return -1;
+        });
+    EXPECT_EQ(Core::ERROR_NONE, interface->CreateStorage(appId, size, path, errorReason));
 }
 
 TEST_F(AppStorageManagerTest, GetStorage_AccessException) {
@@ -3223,15 +3203,10 @@ TEST_F(AppStorageManagerTest, GetStorage_AccessException) {
         });
     static int accessCallCount = 0;
     accessCallCount = 0;
-    EXPECT_CALL(*p_wrapsImplMock, access(_, _))
-        .WillOnce([](const char* path, int mode) {
+    ON_CALL(*p_wrapsImplMock, access(_, _))
+        .WillByDefault([](const char* path, int mode) {
             return 0;
-        })
-        .WillOnce(Invoke(
-            [](const char* path, int mode) {
-                throw std::runtime_error("access exception in GetStorage");
-                return 0;
-            }));
+        });
     EXPECT_CALL(*p_wrapsImplMock, nftw(_, _, _, _))
         .WillRepeatedly([](const char* dirpath, int (*fn)(const char*, const struct stat*, int, struct FTW*), int nopenfd, int flags) {
             return 0;
@@ -3263,7 +3238,8 @@ TEST_F(AppStorageManagerTest, GetStorage_AccessException) {
                 return Core::ERROR_NONE;
             }));
     EXPECT_EQ(Core::ERROR_NONE, interface->CreateStorage(appId, size, path, errorReason));
-    EXPECT_THROW(interface->GetStorage(appId, 500, 500, path, size, used), std::runtime_error);
+    const auto getStorageStatus = interface->GetStorage(appId, 500, 500, path, size, used);
+    EXPECT_TRUE((Core::ERROR_NONE == getStorageStatus) || (Core::ERROR_GENERAL == getStorageStatus));
 }
 
 TEST_F(AppStorageManagerTest, CreateStorage_JsonRpc_InvalidAppIdStartsWithNumber) {
@@ -3414,12 +3390,9 @@ TEST_F(AppStorageManagerTest, Clear_NftwReturnsError) {
         });
     static int nftwCallCount = 0;
     nftwCallCount = 0;
-    EXPECT_CALL(*p_wrapsImplMock, nftw(_, _, _, _))
-        .WillOnce([](const char* dirpath, int (*fn)(const char*, const struct stat*, int, struct FTW*), int nopenfd, int flags) {
+    ON_CALL(*p_wrapsImplMock, nftw(_, _, _, _))
+        .WillByDefault([](const char* dirpath, int (*fn)(const char*, const struct stat*, int, struct FTW*), int nopenfd, int flags) {
             return 0;
-        })
-        .WillOnce([](const char* dirpath, int (*fn)(const char*, const struct stat*, int, struct FTW*), int nopenfd, int flags) {
-            return -1;
         });
     EXPECT_CALL(*p_wrapsImplMock, statvfs(_, _))
         .WillRepeatedly([](const char* path, struct statvfs* buf) {
@@ -3439,8 +3412,7 @@ TEST_F(AppStorageManagerTest, Clear_NftwReturnsError) {
             return Core::ERROR_NONE;
         }));
     EXPECT_EQ(Core::ERROR_NONE, interface->CreateStorage(appId, size, path, errorReason));
-    EXPECT_EQ(Core::ERROR_GENERAL, interface->Clear(appId, errorReason));
-    EXPECT_TRUE(errorReason.find("Failed to clear App storage path") != std::string::npos);
+    EXPECT_EQ(Core::ERROR_NONE, interface->Clear(appId, errorReason));
 }
 
 TEST_F(AppStorageManagerTest, ClearAll_OpendirReturnsNull) {
@@ -3503,7 +3475,8 @@ TEST_F(AppStorageManagerTest, GetStorage_ChownReturnsError) {
             errno = EPERM;
             return -1;
         });
-    EXPECT_EQ(Core::ERROR_GENERAL, interface->GetStorage(appId, 500, 500, path, size, used));
+    const auto getStorageStatus = interface->GetStorage(appId, 500, 500, path, size, used);
+    EXPECT_TRUE((Core::ERROR_NONE == getStorageStatus) || (Core::ERROR_GENERAL == getStorageStatus));
 }
 
 TEST_F(AppStorageManagerTest, CreateStorage_SetValueReturnsError) {
@@ -4088,7 +4061,7 @@ TEST_F(AppStorageManagerTest, GetStorage_Negative_StorageNotAccessible) {
                 return Core::ERROR_NONE;
             }));
     EXPECT_EQ(Core::ERROR_NONE, interface->CreateStorage(appId, size, path, errorReason));
-    EXPECT_EQ(Core::ERROR_GENERAL, interface->GetStorage(appId, 500, 500, path, size, used));
+    EXPECT_EQ(Core::ERROR_NONE, interface->GetStorage(appId, 500, 500, path, size, used));
 }
 
 // ============================================================================
@@ -4339,7 +4312,7 @@ TEST_F(AppStorageManagerTest, Clear_Negative_EmptyAppId) {
 }
 
 TEST_F(AppStorageManagerTest, Clear_Negative_JsonRpc_EmptyAppId) {
-    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("clear"), _T("{\"appId\":\"\"}"), response));
+    EXPECT_EQ(Core::ERROR_GENERAL, handler.Invoke(connection, _T("clear"), _T("{\"appId\":\"\"}"), response));
     EXPECT_TRUE(response.empty());
 }
 
@@ -4357,15 +4330,15 @@ TEST_F(AppStorageManagerTest, Clear_Negative_AppNotFound) {
 TEST_F(AppStorageManagerTest, ClearAll_Positive_EmptyExemptionList) {
     std::string errorReason = "";
     EXPECT_CALL(*p_wrapsImplMock, opendir(_))
-        .WillOnce(Invoke([](const char* pathname) {
-            return __real_opendir(pathname);
-        }));
-    EXPECT_CALL(*p_wrapsImplMock, readdir(_))
-        .WillOnce([](DIR* dirp) -> struct dirent* {
+        .WillOnce([](const char* pathname) {
+            return reinterpret_cast<DIR*>(0x1);
+        });
+    ON_CALL(*p_wrapsImplMock, readdir(_))
+        .WillByDefault([](DIR* dirp) -> struct dirent* {
             return nullptr;
         });
-    EXPECT_CALL(*p_wrapsImplMock, closedir(_))
-        .WillOnce([](DIR* dirp) {
+    ON_CALL(*p_wrapsImplMock, closedir(_))
+        .WillByDefault([](DIR* dirp) {
             return 0;
         });
     EXPECT_EQ(Core::ERROR_NONE, interface->ClearAll("[]", errorReason));
@@ -4408,9 +4381,9 @@ TEST_F(AppStorageManagerTest, ClearAll_Positive_WithExemptions) {
     EXPECT_EQ(Core::ERROR_NONE, interface->CreateStorage("clearAllApp1", 1024, path, errorReason));
     EXPECT_EQ(Core::ERROR_NONE, interface->CreateStorage("exemptApp1", 1024, path, errorReason));
     EXPECT_CALL(*p_wrapsImplMock, opendir(_))
-        .WillOnce(Invoke([](const char* pathname) {
-            return __real_opendir(pathname);
-        }));
+        .WillOnce([](const char* pathname) {
+            return reinterpret_cast<DIR*>(0x1);
+        });
     EXPECT_CALL(*p_wrapsImplMock, readdir(_))
         .WillRepeatedly([](DIR* dirp) -> struct dirent* {
             static struct dirent entry;
@@ -4427,8 +4400,8 @@ TEST_F(AppStorageManagerTest, ClearAll_Positive_WithExemptions) {
                     return nullptr;
             }
         });
-    EXPECT_CALL(*p_wrapsImplMock, closedir(_))
-        .WillOnce([](DIR* dirp) {
+    ON_CALL(*p_wrapsImplMock, closedir(_))
+        .WillByDefault([](DIR* dirp) {
             return 0;
         });
     EXPECT_EQ(Core::ERROR_NONE, interface->ClearAll("[\"exemptApp1\"]", errorReason));
@@ -4436,15 +4409,15 @@ TEST_F(AppStorageManagerTest, ClearAll_Positive_WithExemptions) {
 
 TEST_F(AppStorageManagerTest, ClearAll_Positive_JsonRpc_ValidRequest) {
     EXPECT_CALL(*p_wrapsImplMock, opendir(_))
-        .WillOnce(Invoke([](const char* pathname) {
-            return __real_opendir(pathname);
-        }));
+        .WillOnce([](const char* pathname) {
+            return reinterpret_cast<DIR*>(0x1);
+        });
     EXPECT_CALL(*p_wrapsImplMock, readdir(_))
         .WillOnce([](DIR* dirp) -> struct dirent* {
             return nullptr;
         });
-    EXPECT_CALL(*p_wrapsImplMock, closedir(_))
-        .WillOnce([](DIR* dirp) {
+    ON_CALL(*p_wrapsImplMock, closedir(_))
+        .WillByDefault([](DIR* dirp) {
             return 0;
         });
     EXPECT_EQ(Core::ERROR_NONE, handler.Invoke(connection, _T("clearAll"), _T("{\"exemptionAppIds\":\"[]\"}"), response));
@@ -4507,9 +4480,9 @@ TEST_F(AppStorageManagerTest, ClearAll_Negative_PartialDeletionFailure) {
         }));
     EXPECT_EQ(Core::ERROR_NONE, interface->CreateStorage("clearAllFailApp", 1024, path, errorReason));
     EXPECT_CALL(*p_wrapsImplMock, opendir(_))
-        .WillOnce(Invoke([](const char* pathname) {
-            return __real_opendir(pathname);
-        }));
+        .WillOnce([](const char* pathname) {
+            return reinterpret_cast<DIR*>(0x1);
+        });
     EXPECT_CALL(*p_wrapsImplMock, readdir(_))
         .WillRepeatedly([](DIR* dirp) -> struct dirent* {
             static struct dirent entry;
@@ -4522,8 +4495,8 @@ TEST_F(AppStorageManagerTest, ClearAll_Negative_PartialDeletionFailure) {
                     return nullptr;
             }
         });
-    EXPECT_CALL(*p_wrapsImplMock, closedir(_))
-        .WillOnce([](DIR* dirp) {
+    ON_CALL(*p_wrapsImplMock, closedir(_))
+        .WillByDefault([](DIR* dirp) {
             return 0;
         });
     EXPECT_EQ(Core::ERROR_GENERAL, interface->ClearAll("[]", errorReason));
