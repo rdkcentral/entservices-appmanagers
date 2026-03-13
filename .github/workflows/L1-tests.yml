@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main, develop, 'sprint/**', 'release/**' , 'topic/genai**']
   pull_request:
-    branches: [ main, develop, 'sprint/**', 'release/**','topic/genai**' ]
+    branches: [ main, develop, 'sprint/**', 'release/**','feature/genAITests' ]
   workflow_call:
     inputs:
       caller_source:
@@ -18,7 +18,7 @@ on:
 env:
   BUILD_TYPE: Debug
   THUNDER_REF: "R4.4.1"
-  INTERFACES_REF: "topic/RDKEMW-13976"
+  INTERFACES_REF: "develop"
   AUTOMATICS_UNAME: ${{ secrets.AUTOMATICS_UNAME}}
   AUTOMATICS_PASSCODE: ${{ secrets. AUTOMATICS_PASSCODE}}
 
@@ -89,15 +89,7 @@ jobs:
         run: >
           sudo apt update
           &&
-          sudo apt install -y libsqlite3-dev libcurl4-openssl-dev valgrind lcov clang libsystemd-dev libboost-all-dev libwebsocketpp-dev meson libcunit1 libcunit1-dev curl protobuf-compiler-grpc libgrpc-dev libgrpc++-dev libjsoncpp-dev libxtables-dev libip4tc-dev libip6tc-dev gdb
-
-      - name: Configure core dumps
-        run: |
-          ulimit -c unlimited
-          sudo sysctl -w kernel.core_pattern=/tmp/core.%e.%p.%t
-          sudo mkdir -p /tmp/cores
-          sudo chmod 777 /tmp/cores
-          echo "Core dump configuration complete"
+          sudo apt install -y libsqlite3-dev libcurl4-openssl-dev valgrind lcov clang libsystemd-dev libboost-all-dev libwebsocketpp-dev meson libcunit1 libcunit1-dev curl protobuf-compiler-grpc libgrpc-dev libgrpc++-dev libjsoncpp-dev libxtables-dev libip4tc-dev libip6tc-dev 
 
       - name: Install GStreamer
         run: |
@@ -220,9 +212,7 @@ jobs:
         with:
           repository: rdkcentral/entservices-apis
           path: entservices-apis
-          #ref: ${{env.INTERFACES_REF}}
-          ref: topic/rdkemw-13235
-          #token : ${{ secrets.RDKCM_RDKE }}
+          ref: ${{env.INTERFACES_REF}}
           run: rm -rf $GITHUB_WORKSPACE/entservices-apis/jsonrpc/DTV.json
 
       - name: Apply patches entservices-apis
@@ -261,6 +251,7 @@ jobs:
           headers/Dobby
           headers/Dobby/Public/Dobby
           headers/Dobby/IpcService
+          headers/rdkwindowmanager/include
           &&
           cd headers
           &&
@@ -292,6 +283,12 @@ jobs:
           rdk/iarmmgrs-hal/mfrMgr.h
           rdk/iarmmgrs-hal/pwrMgr.h
           rdk/iarmmgrs-hal/sysMgr.h
+          rdkwindowmanager/include/rdkwindowmanagerevents.h
+          rdkwindowmanager/include/rdkwindowmanager.h
+          rdkwindowmanager/include/linuxkeys.h
+          rdkwindowmanager/include/compositorcontroller.h
+          rdkwindowmanager/include/application.h
+          rdkwindowmanager/include/logger.h
 
       - name: Set clang toolchain
         if: ${{ matrix.compiler == 'clang' }}
@@ -365,6 +362,7 @@ jobs:
           -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/wpa_ctrl_mock.h
           -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/readprocMockInterface.h
           -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/gdialservice.h
+          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/RdkWindowManager.h
           --coverage
           -Wall -Wno-unused-result -Wno-deprecated-declarations -Wno-error=format=
           -Wl,-wrap,system -Wl,-wrap,popen -Wl,-wrap,syslog -Wl,-wrap,v_secure_system -Wl,-wrap,v_secure_popen -Wl,-wrap,v_secure_pclose -Wl,-wrap,unlink
@@ -397,7 +395,8 @@ jobs:
           -DPLUGIN_LIFECYCLE_MANAGER=ON
           -DPLUGIN_DOWNLOADMANAGER=ON
           -DPLUGIN_PREINSTALL_MANAGER=ON
-          -DPLUGIN_PACKAGE_MANAGER=OFF
+          -DPLUGIN_RDK_WINDOW_MANAGER=ON
+          -DPLUGIN_PACKAGE_MANAGER=ON
           -DENABLE_UNIT_TESTS=ON
           &&
           cmake --build build/entservices-appmanagers -j8
@@ -493,10 +492,9 @@ jobs:
 
       - name: Run unit tests without valgrind
         run: |
-          set +e
+          set -euo pipefail
 
           echo "Configuring runtime environment..."
-          ulimit -c unlimited
 
           export LD_LIBRARY_PATH="$GITHUB_WORKSPACE/install/usr/lib:$GITHUB_WORKSPACE/install/usr/lib/wpeframework/plugins:${LD_LIBRARY_PATH:-}"
           export GTEST_OUTPUT="json:$(pwd)/rdkL1TestResults.json"
@@ -511,24 +509,11 @@ jobs:
 
           echo "Using test binary: $TEST_BIN"
 
-          echo "Running unit tests..."
+            echo "Running unit tests"
           "$TEST_BIN"
-          TEST_EXIT_CODE=$?
 
-          # Check for core dumps and analyze with GDB
-          for corefile in /tmp/core.* core*; do
-            if [ -f "$corefile" ]; then
-              echo "=== Core dump detected: $corefile ==="
-              echo "--- GDB Backtrace ---"
-              gdb -batch -ex "bt full" -ex "info registers" -ex "info threads" -ex "thread apply all bt full" "$TEST_BIN" "$corefile" 2>/dev/null || true
-              cp "$corefile" "$GITHUB_WORKSPACE/" 2>/dev/null || true
-            fi
-          done
-
-          cp rdkL1TestResults.json "$GITHUB_WORKSPACE/rdkL1TestResultsWithoutValgrind.json" 2>/dev/null || true
+          cp rdkL1TestResults.json "$GITHUB_WORKSPACE/rdkL1TestResultsWithoutValgrind.json"
           rm -f rdkL1TestResults.json
-
-          exit $TEST_EXIT_CODE
 
       - name: Run unit tests with valgrind
         if: ${{ !env.ACT }}
@@ -582,5 +567,4 @@ jobs:
             valgrind_log
             rdkL1TestResultsWithoutValgrind.json
             rdkL1TestResultsWithValgrind.json
-          if-no-files-found: warn  core.*
-          
+          if-no-files-found: warn
