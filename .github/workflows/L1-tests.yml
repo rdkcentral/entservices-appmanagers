@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main, develop, 'sprint/**', 'release/**' , 'topic/genai**']
   pull_request:
-    branches: [ main, develop, 'sprint/**', 'release/**','topic/genai**' ]
+    branches: [ main, develop, 'sprint/**', 'release/**','feature/genAITests' ]
   workflow_call:
     inputs:
       caller_source:
