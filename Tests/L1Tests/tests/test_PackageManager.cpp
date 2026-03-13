@@ -519,6 +519,10 @@ TEST_F(PackageManagerTest, downloadMethodsusingComRpcSuccess) {
 
     EXPECT_EQ(downloadId.downloadId, "1001");
 
+    // Cancel the download before cleanup to prevent stack smashing
+    string downloadIdStr = "1001";
+    pkgdownloaderInterface->Cancel(downloadIdStr);
+
 	deinitforComRpc();
 }
 
@@ -1381,6 +1385,10 @@ TEST_F(PackageManagerTest, installusingComRpcInvalidSignature) {
 
     waitforSignal(timeout_ms);
 
+    // Cancel any pending download before cleanup to prevent stack smashing
+    string downloadIdStr = "1001";
+    pkgdownloaderInterface->Cancel(downloadIdStr);
+
 	deinitforComRpc();   
 }
 
@@ -1490,6 +1498,10 @@ TEST_F(PackageManagerTest, uninstallusingComRpcSuccess) {
     
 	waitforSignal(timeout_ms);
 
+    // Cancel any pending download before cleanup to prevent stack smashing
+    string downloadIdStr = "1001";
+    pkgdownloaderInterface->Cancel(downloadIdStr);
+
 	deinitforComRpc();
 }
 
@@ -1592,6 +1604,10 @@ TEST_F(PackageManagerTest, listPackagesusingComRpcSuccess) {
 
 	// TC-39: list packages using ComRpc
     EXPECT_EQ(Core::ERROR_NONE, pkginstallerInterface->ListPackages(packages));
+
+    // Cancel any pending download before cleanup to prevent stack smashing
+    string downloadIdStr = "1001";
+    pkgdownloaderInterface->Cancel(downloadIdStr);
 
 	deinitforComRpc();
 }
@@ -1697,6 +1713,10 @@ TEST_F(PackageManagerTest, packageStateusingComRpcSuccess) {
 
 	timeout_ms = 1000;
     waitforSignal(timeout_ms);
+
+    // Cancel any pending download before cleanup to prevent stack smashing
+    string downloadIdStr = "1001";
+    pkgdownloaderInterface->Cancel(downloadIdStr);
 
 	deinitforComRpc();
 }
@@ -1916,6 +1936,10 @@ TEST_F(PackageManagerTest, configusingComRpcSuccess) {
     // TC-46: Config method success
     EXPECT_EQ(Core::ERROR_NONE, pkginstallerInterface->Config(packageId, version, runtimeConfig));
 
+    // Cancel any pending download before cleanup to prevent stack smashing
+    string downloadIdStr = "1001";
+    pkgdownloaderInterface->Cancel(downloadIdStr);
+
     deinitforComRpc();
 }
 
@@ -2053,6 +2077,10 @@ TEST_F(PackageManagerTest, getLockedInfousingComRpcSuccess) {
     // Package should not be locked since we haven't called Lock
     EXPECT_FALSE(locked);
 
+    // Cancel any pending download before cleanup to prevent stack smashing
+    string downloadIdStr = "1001";
+    pkgdownloaderInterface->Cancel(downloadIdStr);
+
     deinitforComRpc();
 }
 
@@ -2184,6 +2212,10 @@ TEST_F(PackageManagerTest, lockMethodusingComRpcSuccess) {
         appMetadata->Release();
     }
 
+    // Cancel any pending download before cleanup to prevent stack smashing
+    string downloadIdStr = "1001";
+    pkgdownloaderInterface->Cancel(downloadIdStr);
+
     deinitforComRpc();
 }
 
@@ -2289,6 +2321,10 @@ TEST_F(PackageManagerTest, unlockMethodusingComRpcSuccess) {
     bool locked = false;
     EXPECT_EQ(Core::ERROR_NONE, pkghandlerInterface->GetLockedInfo(packageId, version, unpackedPath, runtimeConfig, gatewayMetadataPath, locked));
     EXPECT_FALSE(locked);
+
+    // Cancel any pending download before cleanup to prevent stack smashing
+    string downloadIdStr = "1001";
+    pkgdownloaderInterface->Cancel(downloadIdStr);
 
     deinitforComRpc();
 }
