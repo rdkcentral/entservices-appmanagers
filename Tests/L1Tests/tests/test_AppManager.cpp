@@ -65,8 +65,8 @@ typedef enum : uint32_t {
     AppManager_StateInvalid = 0x00000000,
     AppManager_onAppLifecycleStateChanged = 0x00000001,
     AppManager_onAppInstalled = 0x00000002,
-    AppManager_onAppLaunchRequest = 0x00000003,
-    AppManager_onAppUnloaded = 0x00000004
+    AppManager_onAppLaunchRequest = 0x00000004,
+    AppManager_onAppUnloaded = 0x00000008
 } AppManagerL1test_async_events_t;
 
 struct ExpectedAppLifecycleEvent {
@@ -3158,23 +3158,22 @@ TEST_F(AppManagerTest, OnApplicationStateChangedSuccess)
     Core::hresult status;
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
-    uint32_t signalled = AppManager_StateInvalid;
     Core::Sink<NotificationHandler> notification;
     mAppManagerImpl->Register(&notification);
 
     ASSERT_NE(mLifecycleManagerStateNotification_cb, nullptr)
         << "LifecycleManagerState notification callback is not registered";
-    
+
     mLifecycleManagerStateNotification_cb->OnAppLifecycleStateChanged(
         "YouTube",
         "12345678-1234-1234-1234-123456789012",
-        Exchange::ILifecycleManager::LifecycleState::ACTIVE,      // Old state
+        Exchange::ILifecycleManager::LifecycleState::ACTIVE,        // Old state
         Exchange::ILifecycleManager::LifecycleState::TERMINATING,   // New state
         "start"
     );
     /* TERMINATING state has shouldNotify=0, so no async job is dispatched and
      * OnAppLifecycleStateChanged callback is never invoked. No need to wait. */
-    EXPECT_FALSE(signalled & AppManager_onAppLifecycleStateChanged);
+    EXPECT_FALSE(notification.m_event_signalled & AppManager_onAppLifecycleStateChanged);
 
     mAppManagerImpl->Unregister(&notification);
     if(status == Core::ERROR_NONE) {
@@ -3878,13 +3877,24 @@ TEST_F(AppManagerTest, GetCustomValuesWithAipathFile)
     EXPECT_EQ(Core::ERROR_NONE, status);
     mPreLoadSpawmCalled = false;
 
-    /* Simulate /tmp/aipath file exists: fopen returns a real read-only file descriptor */
+    /* Simulate /tmp/aipath file exists: fopen returns a real read-only file descriptor
+     * backed by a temporary file that contains at least one non-empty line.
+     */
+    FILE* aipathFile = ::tmpfile();
+    ASSERT_NE(aipathFile, nullptr);
+    /* Write minimal non-empty content so getCustomValues() does not operate on empty strings. */
+    std::fputs("key=value\n", aipathFile);
+    std::fflush(aipathFile);
+    std::rewind(aipathFile);
+
     ON_CALL(*p_wrapsImplMock, fopen(::testing::_, ::testing::_))
         .WillByDefault([&](const char* pathname, const char* mode) -> FILE* {
-            if (pathname && std::string(pathname) == "/tmp/aipath") {
-                return ::fopen("/dev/null", "r");
+            if ((nullptr != pathname) && (std::string(pathname) == "/tmp/aipath")) {
+                /* Return the prepared temporary file for /tmp/aipath. */
+                return aipathFile;
             }
-            return nullptr;
+            /* Delegate to the real fopen for all other paths. */
+            return ::fopen(pathname, mode);
         });
 
     preLaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::PAUSED);
