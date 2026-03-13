@@ -140,6 +140,10 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                                 {
                                     WPEFramework::Exchange::RuntimeConfig runtimeConfig = packageData.configMetadata;
                                     runtimeConfig.unpackedPath = packageData.unpackedPath;
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED
+                                    runtimeConfig.userId = packageData.userId;
+                                    runtimeConfig.groupId = packageData.groupId;
+#endif // RALF_PACKAGE_SUPPORT_ENABLED
                                     getCustomValues(runtimeConfig);
                                     string launchArgs = appRequestParam->launchArgs;
 
@@ -268,6 +272,20 @@ void AppManagerImplementation::Dispatch(EventNames event, const JsonObject param
                 for (auto& notification : mAppManagerNotification)
                 {
                     notification->OnAppLifecycleStateChanged(appId, appInstanceId, newState, oldState, errorReason);
+                }
+                if ((Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING == oldState) && (Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING == newState))
+                {
+                    LOGERR("Transition from loading state failed. Killing the application ....");
+                    Core::hresult status = Core::ERROR_UNAVAILABLE;
+                    if (mLifecycleInterfaceConnector != nullptr)
+                    {
+                        status = mLifecycleInterfaceConnector->killApp(appId);
+                    }
+                    else
+                    {
+                        LOGERR("mLifecycleInterfaceConnector is null, cannot kill app %s", appId.c_str());
+                    }
+                    LOGERR("Kill app status in loading state [%d]....", static_cast<int>(status));
                 }
                 mAdminLock.Unlock();
             }
@@ -619,7 +637,7 @@ Core::hresult AppManagerImplementation::createStorageManagerRemoteObject()
     {
         do
         {
-            mStorageManagerRemoteObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IStorageManager>("org.rdk.StorageManager");
+            mStorageManagerRemoteObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IAppStorageManager>("org.rdk.AppStorageManager");
 
             if (nullptr == mStorageManagerRemoteObject)
             {
@@ -1016,10 +1034,6 @@ Core::hresult AppManagerImplementation::TerminateApp(const string& appId )
         if (nullptr != mLifecycleInterfaceConnector)
         {
             status = mLifecycleInterfaceConnector->terminateApp(appId);
-            if(status == Core::ERROR_NONE)
-            {
-                status = packageUnLock(appId);
-            }
         }
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
         if(status == Core::ERROR_NONE)
@@ -1050,10 +1064,6 @@ Core::hresult AppManagerImplementation::KillApp(const string& appId)
     if (nullptr != mLifecycleInterfaceConnector)
     {
         status = mLifecycleInterfaceConnector->killApp(appId);
-        if(status == Core::ERROR_NONE)
-        {
-            status = packageUnLock(appId);
-        }
     }
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
     if(status == Core::ERROR_NONE)
