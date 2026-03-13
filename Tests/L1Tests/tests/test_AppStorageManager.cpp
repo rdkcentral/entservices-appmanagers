@@ -1248,6 +1248,8 @@ TEST_F(AppStorageManagerTest, Clear_Success) {
 TEST_F(AppStorageManagerTest, Clear_nftwFailure) {
     std::string path = "";
     std::string errorReason = "";
+    static int nftwCallCount = 0;
+    nftwCallCount = 0;
     EXPECT_CALL(*p_wrapsImplMock, mkdir(_, _))
         .WillRepeatedly([](const char* path, mode_t mode) {
             return 0;
@@ -1273,12 +1275,16 @@ TEST_F(AppStorageManagerTest, Clear_nftwFailure) {
                                 const uint32_t ttl) -> uint32_t {
         return Core::ERROR_NONE;
     }));
-    EXPECT_CALL(*p_wrapsImplMock, nftw(_, _, _, _))
-        .WillOnce([](const char* dirpath, int (*fn)(const char*, const struct stat*, int, struct FTW*), int nopenfd, int flags) {
+    ON_CALL(*p_wrapsImplMock, nftw(_, _, _, _))
+        .WillByDefault([](const char* dirpath, int (*fn)(const char*, const struct stat*, int, struct FTW*), int nopenfd, int flags) {
+            std::string path(dirpath);
+            if (path.find("clearNftwFailApp") != std::string::npos) {
+                nftwCallCount++;
+                if (nftwCallCount > 1) {
+                    return -1;  // Fail on second call for this app
+                }
+            }
             return 0;
-        })
-        .WillOnce([](const char* dirpath, int (*fn)(const char*, const struct stat*, int, struct FTW*), int nopenfd, int flags) {
-            return -1;
     });
     EXPECT_EQ(Core::ERROR_NONE, interface->CreateStorage("clearNftwFailApp", 1024, path, errorReason));
     EXPECT_EQ(Core::ERROR_GENERAL, interface->Clear("clearNftwFailApp", errorReason));
@@ -1578,6 +1584,8 @@ TEST_F(AppStorageManagerTest, DeleteStorage_nftwFailure) {
     uint32_t size = 1024;
     std::string errorReason = "";
     std::string path = "";
+    static int nftwCallCount = 0;
+    nftwCallCount = 0;
     EXPECT_CALL(*p_wrapsImplMock, mkdir(_, _))
         .WillRepeatedly([](const char* path, mode_t mode) {
             return 0;
@@ -1603,12 +1611,16 @@ TEST_F(AppStorageManagerTest, DeleteStorage_nftwFailure) {
                                 const uint32_t ttl) -> uint32_t {
         return Core::ERROR_NONE;
     }));
-    EXPECT_CALL(*p_wrapsImplMock, nftw(_, _, _, _))
-        .WillOnce([](const char* dirpath, int (*fn)(const char*, const struct stat*, int, struct FTW*), int nopenfd, int flags) {
+    ON_CALL(*p_wrapsImplMock, nftw(_, _, _, _))
+        .WillByDefault([](const char* dirpath, int (*fn)(const char*, const struct stat*, int, struct FTW*), int nopenfd, int flags) {
+            std::string path(dirpath);
+            if (path.find("deleteNftwFailApp") != std::string::npos) {
+                nftwCallCount++;
+                if (nftwCallCount > 1) {
+                    return -1;  // Fail on second call for this app
+                }
+            }
             return 0;
-        })
-        .WillOnce([](const char* dirpath, int (*fn)(const char*, const struct stat*, int, struct FTW*), int nopenfd, int flags) {
-            return -1;
     });
     EXPECT_EQ(Core::ERROR_NONE, interface->CreateStorage(appId, size, path, errorReason));
     EXPECT_EQ(Core::ERROR_GENERAL, interface->DeleteStorage(appId, errorReason));
@@ -1704,8 +1716,8 @@ TEST_F(AppStorageManagerTest, GetStorage_AccessFailure_RemoveEntry) {
     uint32_t groupId = 101;
     std::string path = "";
     uint32_t used = 0;
-    static int accessCallCount = 0;
-    accessCallCount = 0;
+    static int accessCallCountForApp = 0;
+    accessCallCountForApp = 0;
     EXPECT_CALL(*p_wrapsImplMock, mkdir(_, _))
         .WillRepeatedly([](const char* path, mode_t mode) {
             return 0;
@@ -1736,12 +1748,16 @@ TEST_F(AppStorageManagerTest, GetStorage_AccessFailure_RemoveEntry) {
         [](Exchange::IStore2::ScopeType scope, const std::string& appId, const std::string& key) -> uint32_t {
             return Core::ERROR_NONE;
     }));
-    EXPECT_CALL(*p_wrapsImplMock, access(_, _))
-        .WillRepeatedly([](const char* path, int mode) {
-            if (accessCallCount++ < 2) {
-                return 0;
+    ON_CALL(*p_wrapsImplMock, access(_, _))
+        .WillByDefault([](const char* pathStr, int mode) {
+            std::string path(pathStr);
+            if (path.find("accessFailApp") != std::string::npos) {
+                accessCallCountForApp++;
+                if (accessCallCountForApp > 2) {
+                    return -1;  // Fail after initial successful calls
+                }
             }
-            return -1;
+            return 0;
     });
     EXPECT_EQ(Core::ERROR_NONE, interface->CreateStorage(appId, size, path, errorReason));
     EXPECT_EQ(Core::ERROR_GENERAL, interface->GetStorage(appId, userId, groupId, path, size, used));
