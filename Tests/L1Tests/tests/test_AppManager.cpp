@@ -23,6 +23,7 @@
 #include <string>
 #include <vector>
 #include <cstdio>
+#include <mutex>
 
 #include "AppManager.h"
 #include "AppManagerImplementation.h"
@@ -42,6 +43,7 @@
 #define TEST_LOG(x, ...) fprintf(stderr, "\033[1;32m[%s:%d](%s)<PID:%d><TID:%d>" x "\n\033[0m", __FILE__, __LINE__, __FUNCTION__, getpid(), gettid(), ##__VA_ARGS__); fflush(stderr);
 
 #define TIMEOUT   (50000)
+#define DRAIN_TIMEOUT   (500)
 #define APPMANAGER_APP_ID           "com.test.app"
 #define APPMANAGER_EMPTY_APP_ID     ""
 #define APPMANAGER_APP_VERSION      "1.2.8"
@@ -3173,7 +3175,10 @@ TEST_F(AppManagerTest, OnApplicationStateChangedSuccess)
     );
     /* TERMINATING state has shouldNotify=0, so no async job is dispatched and
      * OnAppLifecycleStateChanged callback is never invoked. No need to wait. */
-    EXPECT_FALSE(notification.m_event_signalled & AppManager_onAppLifecycleStateChanged);
+    {
+        std::lock_guard<std::mutex> lock(notification.m_mutex);
+        EXPECT_EQ(0u, notification.m_event_signalled & AppManager_onAppLifecycleStateChanged);
+    }
 
     mAppManagerImpl->Unregister(&notification);
     if(status == Core::ERROR_NONE) {
@@ -3531,7 +3536,7 @@ TEST_F(AppManagerTest, OnAppInstallationStatusMissingPackageId)
 
     /* Wait for the async Job to complete; empty appId means no notification fires.
      * Timeout ensures ~Job() has decremented the mAppManagerImpl refcount. */
-    signalled = notification.WaitForRequestStatus(500, AppManager_onAppInstalled);
+    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppInstalled);
     EXPECT_FALSE(signalled & AppManager_onAppInstalled);
 
     mAppManagerImpl->Unregister(&notification);
@@ -4000,7 +4005,7 @@ TEST_F(AppManagerTest, DispatchLifecycleEventEmptyAppId)
     /* Wait for the worker thread to dispatch and fully release its Job reference.
      * Empty appId means no notification fires; the timeout ensures ~Job() has
      * decremented the mAppManagerImpl refcount before releaseResources() runs. */
-    signalled = notification.WaitForRequestStatus(500, AppManager_onAppLifecycleStateChanged);
+    signalled = notification.WaitForRequestStatus(DRAIN_TIMEOUT, AppManager_onAppLifecycleStateChanged);
     EXPECT_FALSE(signalled & AppManager_onAppLifecycleStateChanged);
 
     mAppManagerImpl->Unregister(&notification);
@@ -4077,7 +4082,7 @@ TEST_F(AppManagerTest, OnAppInstallationStatusUninstalled)
 
     /* Wait for the async Job to complete and release its mAppManagerImpl reference.
      * OnAppUninstalled fires but is not tracked; timeout ensures ~Job() has run. */
-    signalled = notification.WaitForRequestStatus(500, AppManager_onAppInstalled);
+    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppInstalled);
     EXPECT_FALSE(signalled & AppManager_onAppInstalled);
 
     mAppManagerImpl->Unregister(&notification);
@@ -4113,7 +4118,7 @@ TEST_F(AppManagerTest, OnAppInstallationStatusUnknownStatus)
 
     /* Wait for the async Job to complete and release its mAppManagerImpl reference.
      * No notification fires for unknown status; timeout ensures ~Job() has run. */
-    signalled = notification.WaitForRequestStatus(500, AppManager_onAppInstalled);
+    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppInstalled);
     EXPECT_FALSE(signalled & AppManager_onAppInstalled);
 
     mAppManagerImpl->Unregister(&notification);
@@ -4892,7 +4897,8 @@ TEST_F(AppManagerTest, GetCustomValuesWithAipathFileHasContent)
                 }
                 return tmp;
             }
-            return nullptr;
+            /* Delegate to real fopen for all other paths to keep the mock narrowly scoped */
+            return ::fopen(pathname, mode);
         });
 
     preLaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::PAUSED);
