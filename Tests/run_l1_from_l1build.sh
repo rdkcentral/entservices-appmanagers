@@ -12,7 +12,7 @@ INSTALL_ROOT="${L1_ROOT}/install/usr"
 
 THUNDER_REF="R4.4.1"
 THUNDERTOOLS_REF="R4.4.3"
-ENTSERVICES_APIS_REF="topic/RDKEMW-13976"
+ENTSERVICES_APIS_REF="develop"
 GTEST_REF="v1.15.0"
 JSONCPP_REF="1.9.5"
 
@@ -26,6 +26,29 @@ clone_if_missing() {
     if [[ ! -d "${target_dir}/.git" ]]; then
         git clone --branch "${ref}" --depth 1 "${repo_url}" "${target_dir}"
     fi
+}
+
+apply_patch_once() {
+    local target_dir="$1"
+    local patch_file="$2"
+
+    if [[ ! -f "${patch_file}" ]]; then
+        echo "ERROR: Patch file not found: ${patch_file}"
+        exit 1
+    fi
+
+    if patch -d "${target_dir}" -p1 --dry-run < "${patch_file}" >/dev/null 2>&1; then
+        echo "Applying patch: $(basename "${patch_file}")"
+        patch -d "${target_dir}" -p1 < "${patch_file}"
+        return 0
+    fi
+
+    if patch -d "${target_dir}" -R -p1 --dry-run < "${patch_file}" >/dev/null 2>&1; then
+        echo "Patch already applied, skipping: $(basename "${patch_file}")"
+        return 0
+    fi
+
+    echo "WARNING: Patch cannot be applied cleanly (possibly drift/conflict): ${patch_file}"
 }
 
 resolve_jsoncpp_include() {
@@ -159,15 +182,15 @@ clone_if_missing "https://github.com/rdkcentral/entservices-apis.git" "${SRC_ROO
 clone_if_missing "https://github.com/google/googletest.git" "${SRC_ROOT}/googletest" "${GTEST_REF}"
 
 echo "[2/8] Applying workflow patches"
-patch -d "${SRC_ROOT}/ThunderTools" -p1 < "${REPO_ROOT}/Tests/patches/00010-R4.4-Add-support-for-project-dir.patch" || true
+apply_patch_once "${SRC_ROOT}/ThunderTools" "${REPO_ROOT}/Tests/patches/00010-R4.4-Add-support-for-project-dir.patch"
 
-patch -d "${SRC_ROOT}/Thunder" -p1 < "${REPO_ROOT}/Tests/patches/Use_Legact_Alt_Based_On_ThunderTools_R4.4.3.patch" || true
-patch -d "${SRC_ROOT}/Thunder" -p1 < "${REPO_ROOT}/Tests/patches/error_code_R4_4.patch" || true
-patch -d "${SRC_ROOT}/Thunder" -p1 < "${REPO_ROOT}/Tests/patches/1004-Add-support-for-project-dir.patch" || true
-patch -d "${SRC_ROOT}/Thunder" -p1 < "${REPO_ROOT}/Tests/patches/RDKEMW-733-Add-ENTOS-IDS.patch" || true
-patch -d "${SRC_ROOT}/Thunder" -p1 < "${REPO_ROOT}/Tests/patches/Jsonrpc_dynamic_error_handling.patch" || true
+apply_patch_once "${SRC_ROOT}/Thunder" "${REPO_ROOT}/Tests/patches/Use_Legact_Alt_Based_On_ThunderTools_R4.4.3.patch"
+apply_patch_once "${SRC_ROOT}/Thunder" "${REPO_ROOT}/Tests/patches/error_code_R4_4.patch"
+apply_patch_once "${SRC_ROOT}/Thunder" "${REPO_ROOT}/Tests/patches/1004-Add-support-for-project-dir.patch"
+apply_patch_once "${SRC_ROOT}/Thunder" "${REPO_ROOT}/Tests/patches/RDKEMW-733-Add-ENTOS-IDS.patch"
+apply_patch_once "${SRC_ROOT}/Thunder" "${REPO_ROOT}/Tests/patches/Jsonrpc_dynamic_error_handling.patch"
 
-patch -d "${SRC_ROOT}/entservices-apis" -p1 < "${REPO_ROOT}/Tests/patches/RDKEMW-1007.patch" || true
+apply_patch_once "${SRC_ROOT}/entservices-apis" "${REPO_ROOT}/Tests/patches/RDKEMW-1007.patch"
 
 echo "[3/8] Building ThunderTools"
 cmake -G Ninja \
@@ -220,45 +243,57 @@ cmake --build "${BUILD_ROOT}/googletest" -j"$(nproc)"
 cmake --install "${BUILD_ROOT}/googletest"
 
 echo "[7/8] Preparing generated external headers"
-mkdir -p \
-    "${REPO_ROOT}/Tests/headers/audiocapturemgr" \
-    "${REPO_ROOT}/Tests/headers/rdk/ds" \
-    "${REPO_ROOT}/Tests/headers/rdk/iarmbus" \
-    "${REPO_ROOT}/Tests/headers/rdk/iarmmgrs-hal" \
-    "${REPO_ROOT}/Tests/headers/ccec/drivers" \
-    "${REPO_ROOT}/Tests/headers/network" \
-    "${REPO_ROOT}/Tests/headers/libusb" \
-    "${REPO_ROOT}/Tests/headers/Dobby/Public/Dobby" \
+HEADER_DIRS=(
+    "${REPO_ROOT}/Tests/headers/audiocapturemgr"
+    "${REPO_ROOT}/Tests/headers/rdk/ds"
+    "${REPO_ROOT}/Tests/headers/rdk/iarmbus"
+    "${REPO_ROOT}/Tests/headers/rdk/iarmmgrs-hal"
+    "${REPO_ROOT}/Tests/headers/ccec/drivers"
+    "${REPO_ROOT}/Tests/headers/network"
+    "${REPO_ROOT}/Tests/headers/libusb"
+    "${REPO_ROOT}/Tests/headers/Dobby/Public/Dobby"
     "${REPO_ROOT}/Tests/headers/Dobby/IpcService"
+)
 
-touch \
-    "${REPO_ROOT}/Tests/headers/rdk/ds/host.hpp" \
-    "${REPO_ROOT}/Tests/headers/rdk/ds/videoOutputPort.hpp" \
-    "${REPO_ROOT}/Tests/headers/rdk/ds/videoOutputPortType.hpp" \
-    "${REPO_ROOT}/Tests/headers/rdk/ds/videoOutputPortConfig.hpp" \
-    "${REPO_ROOT}/Tests/headers/rdk/ds/videoResolution.hpp" \
-    "${REPO_ROOT}/Tests/headers/rdk/ds/audioOutputPort.hpp" \
-    "${REPO_ROOT}/Tests/headers/rdk/ds/audioOutputPortType.hpp" \
-    "${REPO_ROOT}/Tests/headers/rdk/ds/audioOutputPortConfig.hpp" \
-    "${REPO_ROOT}/Tests/headers/rdk/ds/sleepMode.hpp" \
-    "${REPO_ROOT}/Tests/headers/rdk/ds/frontPanelConfig.hpp" \
-    "${REPO_ROOT}/Tests/headers/rdk/ds/frontPanelTextDisplay.hpp" \
-    "${REPO_ROOT}/Tests/headers/rdk/ds/hdmiIn.hpp" \
-    "${REPO_ROOT}/Tests/headers/rdk/ds/compositeIn.hpp" \
-    "${REPO_ROOT}/Tests/headers/rdk/ds/exception.hpp" \
-    "${REPO_ROOT}/Tests/headers/rdk/ds/dsError.h" \
-    "${REPO_ROOT}/Tests/headers/rdk/ds/dsMgr.h" \
-    "${REPO_ROOT}/Tests/headers/rdk/ds/manager.hpp" \
-    "${REPO_ROOT}/Tests/headers/rdk/ds/dsTypes.h" \
-    "${REPO_ROOT}/Tests/headers/rdk/ds/dsUtl.h" \
-    "${REPO_ROOT}/Tests/headers/rdk/ds/pixelResolution.hpp" \
-    "${REPO_ROOT}/Tests/headers/rdk/iarmbus/libIARM.h" \
-    "${REPO_ROOT}/Tests/headers/rdk/iarmbus/libIBus.h" \
-    "${REPO_ROOT}/Tests/headers/rdk/iarmbus/libIBusDaemon.h" \
-    "${REPO_ROOT}/Tests/headers/rdk/iarmbus/iarmUtil.h" \
-    "${REPO_ROOT}/Tests/headers/rdk/iarmmgrs-hal/mfrMgr.h" \
-    "${REPO_ROOT}/Tests/headers/rdk/iarmmgrs-hal/pwrMgr.h" \
+for header_dir in "${HEADER_DIRS[@]}"; do
+    mkdir -p "${header_dir}"
+done
+
+HEADER_STUBS=(
+    "${REPO_ROOT}/Tests/headers/rdk/ds/host.hpp"
+    "${REPO_ROOT}/Tests/headers/rdk/ds/videoOutputPort.hpp"
+    "${REPO_ROOT}/Tests/headers/rdk/ds/videoOutputPortType.hpp"
+    "${REPO_ROOT}/Tests/headers/rdk/ds/videoOutputPortConfig.hpp"
+    "${REPO_ROOT}/Tests/headers/rdk/ds/videoResolution.hpp"
+    "${REPO_ROOT}/Tests/headers/rdk/ds/audioOutputPort.hpp"
+    "${REPO_ROOT}/Tests/headers/rdk/ds/audioOutputPortType.hpp"
+    "${REPO_ROOT}/Tests/headers/rdk/ds/audioOutputPortConfig.hpp"
+    "${REPO_ROOT}/Tests/headers/rdk/ds/sleepMode.hpp"
+    "${REPO_ROOT}/Tests/headers/rdk/ds/frontPanelConfig.hpp"
+    "${REPO_ROOT}/Tests/headers/rdk/ds/frontPanelTextDisplay.hpp"
+    "${REPO_ROOT}/Tests/headers/rdk/ds/hdmiIn.hpp"
+    "${REPO_ROOT}/Tests/headers/rdk/ds/compositeIn.hpp"
+    "${REPO_ROOT}/Tests/headers/rdk/ds/exception.hpp"
+    "${REPO_ROOT}/Tests/headers/rdk/ds/dsError.h"
+    "${REPO_ROOT}/Tests/headers/rdk/ds/dsMgr.h"
+    "${REPO_ROOT}/Tests/headers/rdk/ds/manager.hpp"
+    "${REPO_ROOT}/Tests/headers/rdk/ds/dsTypes.h"
+    "${REPO_ROOT}/Tests/headers/rdk/ds/dsUtl.h"
+    "${REPO_ROOT}/Tests/headers/rdk/ds/pixelResolution.hpp"
+    "${REPO_ROOT}/Tests/headers/rdk/iarmbus/libIARM.h"
+    "${REPO_ROOT}/Tests/headers/rdk/iarmbus/libIBus.h"
+    "${REPO_ROOT}/Tests/headers/rdk/iarmbus/libIBusDaemon.h"
+    "${REPO_ROOT}/Tests/headers/rdk/iarmbus/iarmUtil.h"
+    "${REPO_ROOT}/Tests/headers/rdk/iarmmgrs-hal/mfrMgr.h"
+    "${REPO_ROOT}/Tests/headers/rdk/iarmmgrs-hal/pwrMgr.h"
     "${REPO_ROOT}/Tests/headers/rdk/iarmmgrs-hal/sysMgr.h"
+)
+
+for header_stub in "${HEADER_STUBS[@]}"; do
+    if [[ ! -e "${header_stub}" ]]; then
+        : > "${header_stub}"
+    fi
+done
 
 echo "[8/8] Building entservices-appmanagers L1 tests in l1build"
 cmake -G Ninja \
