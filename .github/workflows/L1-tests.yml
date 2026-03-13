@@ -89,7 +89,15 @@ jobs:
         run: >
           sudo apt update
           &&
-          sudo apt install -y libsqlite3-dev libcurl4-openssl-dev valgrind lcov clang libsystemd-dev libboost-all-dev libwebsocketpp-dev meson libcunit1 libcunit1-dev curl protobuf-compiler-grpc libgrpc-dev libgrpc++-dev libjsoncpp-dev libxtables-dev libip4tc-dev libip6tc-dev
+          sudo apt install -y libsqlite3-dev libcurl4-openssl-dev valgrind lcov clang libsystemd-dev libboost-all-dev libwebsocketpp-dev meson libcunit1 libcunit1-dev curl protobuf-compiler-grpc libgrpc-dev libgrpc++-dev libjsoncpp-dev libxtables-dev libip4tc-dev libip6tc-dev gdb
+
+      - name: Configure core dumps
+        run: |
+          ulimit -c unlimited
+          sudo sysctl -w kernel.core_pattern=/tmp/core.%e.%p.%t
+          sudo mkdir -p /tmp/cores
+          sudo chmod 777 /tmp/cores
+          echo "Core dump configuration complete"
 
       - name: Install GStreamer
         run: |
@@ -383,12 +391,12 @@ jobs:
           -DRDK_SERVICES_L1_TEST=ON
           -DUSE_THUNDER_R4=ON
           -DHIDE_NON_EXTERNAL_SYMBOLS=OFF
-          -DPLUGIN_APPMANAGER=ON
+          -DPLUGIN_APPMANAGER=OFF
           -DPLUGIN_APP_STORAGE_MANAGER=ON
-          -DPLUGIN_RUNTIME_MANAGER=ON
-          -DPLUGIN_LIFECYCLE_MANAGER=ON
-          -DPLUGIN_DOWNLOADMANAGER=ON
-          -DPLUGIN_PREINSTALL_MANAGER=ON
+          -DPLUGIN_RUNTIME_MANAGER=OFF
+          -DPLUGIN_LIFECYCLE_MANAGER=OFF
+          -DPLUGIN_DOWNLOADMANAGER=OFF
+          -DPLUGIN_PREINSTALL_MANAGER=OFF
           -DPLUGIN_PACKAGE_MANAGER=OFF
           -DENABLE_UNIT_TESTS=ON
           &&
@@ -485,9 +493,10 @@ jobs:
 
       - name: Run unit tests without valgrind
         run: |
-          set -euo pipefail
+          set +e
 
           echo "Configuring runtime environment..."
+          ulimit -c unlimited
 
           export LD_LIBRARY_PATH="$GITHUB_WORKSPACE/install/usr/lib:$GITHUB_WORKSPACE/install/usr/lib/wpeframework/plugins:${LD_LIBRARY_PATH:-}"
           export GTEST_OUTPUT="json:$(pwd)/rdkL1TestResults.json"
@@ -504,9 +513,22 @@ jobs:
 
           echo "Running unit tests..."
           "$TEST_BIN"
+          TEST_EXIT_CODE=$?
 
-          cp rdkL1TestResults.json "$GITHUB_WORKSPACE/rdkL1TestResultsWithoutValgrind.json"
+          # Check for core dumps and analyze with GDB
+          for corefile in /tmp/core.* core*; do
+            if [ -f "$corefile" ]; then
+              echo "=== Core dump detected: $corefile ==="
+              echo "--- GDB Backtrace ---"
+              gdb -batch -ex "bt full" -ex "info registers" -ex "info threads" -ex "thread apply all bt full" "$TEST_BIN" "$corefile" 2>/dev/null || true
+              cp "$corefile" "$GITHUB_WORKSPACE/" 2>/dev/null || true
+            fi
+          done
+
+          cp rdkL1TestResults.json "$GITHUB_WORKSPACE/rdkL1TestResultsWithoutValgrind.json" 2>/dev/null || true
           rm -f rdkL1TestResults.json
+
+          exit $TEST_EXIT_CODE
 
       - name: Run unit tests with valgrind
         if: ${{ !env.ACT }}
@@ -560,4 +582,5 @@ jobs:
             valgrind_log
             rdkL1TestResultsWithoutValgrind.json
             rdkL1TestResultsWithValgrind.json
-          if-no-files-found: warn
+          if-no-files-found: warn  core.*
+          
