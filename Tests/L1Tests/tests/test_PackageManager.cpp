@@ -27,6 +27,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <atomic>
+#include <memory>
 
 #include "PackageManager.h"
 #include "PackageManagerImplementation.h"
@@ -1903,7 +1904,9 @@ TEST_F(PackageManagerTest, configusingComRpcSuccess) {
     string fileLocator = "/opt/CDL/package1001";
     Exchange::IPackageInstaller::FailReason reason = Exchange::IPackageInstaller::FailReason::NONE;
     list<Exchange::IPackageInstaller::KeyValue> kv = { {"testapp", "2"} };
-    Exchange::RuntimeConfig runtimeConfig;
+    // Use heap allocation for RuntimeConfig to avoid potential stack corruption
+    auto runtimeConfigPtr = std::make_unique<Exchange::RuntimeConfig>();
+    Exchange::RuntimeConfig& runtimeConfig = *runtimeConfigPtr;
 
     auto additionalMetadata = Core::Service<RPC::IteratorType<Exchange::IPackageInstaller::IKeyValueIterator>>::Create<Exchange::IPackageInstaller::IKeyValueIterator>(kv);
 
@@ -1957,7 +1960,9 @@ TEST_F(PackageManagerTest, configusingComRpcPackageNotFound) {
 
     string packageId = "NonExistentPackage";
     string version = "1.0.0";
-    Exchange::RuntimeConfig runtimeConfig;
+    // Use heap allocation for RuntimeConfig to avoid potential stack corruption
+    auto runtimeConfigPtr = std::make_unique<Exchange::RuntimeConfig>();
+    Exchange::RuntimeConfig& runtimeConfig = *runtimeConfigPtr;
 
     waitforSignal(TIMEOUT_FOR_INIT);
 
@@ -2039,7 +2044,9 @@ TEST_F(PackageManagerTest, getLockedInfousingComRpcSuccess) {
     Exchange::IPackageInstaller::FailReason reason = Exchange::IPackageInstaller::FailReason::NONE;
     list<Exchange::IPackageInstaller::KeyValue> kv = { {"testapp", "2"} };
     string unpackedPath;
-    Exchange::RuntimeConfig runtimeConfig;
+    // Use heap allocation for RuntimeConfig to avoid potential stack corruption
+    auto runtimeConfigPtr = std::make_unique<Exchange::RuntimeConfig>();
+    Exchange::RuntimeConfig& runtimeConfig = *runtimeConfigPtr;
     string gatewayMetadataPath;
     bool locked = false;
 
@@ -2099,7 +2106,9 @@ TEST_F(PackageManagerTest, getLockedInfousingComRpcPackageNotFound) {
     string packageId = "NonExistentPackage";
     string version = "1.0.0";
     string unpackedPath;
-    Exchange::RuntimeConfig runtimeConfig;
+    // Use heap allocation for RuntimeConfig to avoid potential stack corruption
+    auto runtimeConfigPtr = std::make_unique<Exchange::RuntimeConfig>();
+    Exchange::RuntimeConfig& runtimeConfig = *runtimeConfigPtr;
     string gatewayMetadataPath;
     bool locked = false;
 
@@ -2126,7 +2135,9 @@ TEST_F(PackageManagerTest, getConfigForPackageusingComRpcEmptyFileLocator) {
     string fileLocator = "";
     string id;
     string version;
-    Exchange::RuntimeConfig config;
+    // Use heap allocation for RuntimeConfig to avoid potential stack corruption
+    auto configPtr = std::make_unique<Exchange::RuntimeConfig>();
+    Exchange::RuntimeConfig& config = *configPtr;
 
     waitforSignal(TIMEOUT_FOR_INIT);
 
@@ -2163,7 +2174,9 @@ TEST_F(PackageManagerTest, lockMethodusingComRpcSuccess) {
     list<Exchange::IPackageInstaller::KeyValue> kv = { {"testapp", "2"} };
     uint32_t lockId = 0;
     string unpackedPath;
-    Exchange::RuntimeConfig runtimeConfig;
+    // Use heap allocation for RuntimeConfig to avoid potential stack corruption
+    auto runtimeConfigPtr = std::make_unique<Exchange::RuntimeConfig>();
+    Exchange::RuntimeConfig& runtimeConfig = *runtimeConfigPtr;
     Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
     Exchange::IPackageHandler::LockReason lockReason = Exchange::IPackageHandler::LockReason::LAUNCH;
 
@@ -2235,7 +2248,9 @@ TEST_F(PackageManagerTest, lockMethodusingComRpcPackageNotFound) {
     string version = "1.0.0";
     uint32_t lockId = 0;
     string unpackedPath;
-    Exchange::RuntimeConfig runtimeConfig;
+    // Use heap allocation for RuntimeConfig to avoid potential stack corruption
+    auto runtimeConfigPtr = std::make_unique<Exchange::RuntimeConfig>();
+    Exchange::RuntimeConfig& runtimeConfig = *runtimeConfigPtr;
     Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
     Exchange::IPackageHandler::LockReason lockReason = Exchange::IPackageHandler::LockReason::LAUNCH;
 
@@ -2272,7 +2287,9 @@ TEST_F(PackageManagerTest, unlockMethodusingComRpcSuccess) {
     list<Exchange::IPackageInstaller::KeyValue> kv = { {"testapp", "2"} };
     uint32_t lockId = 0;
     string unpackedPath;
-    Exchange::RuntimeConfig runtimeConfig;
+    // Use heap allocation for RuntimeConfig to avoid potential stack corruption
+    auto runtimeConfigPtr = std::make_unique<Exchange::RuntimeConfig>();
+    Exchange::RuntimeConfig& runtimeConfig = *runtimeConfigPtr;
     Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
     Exchange::IPackageHandler::LockReason lockReason = Exchange::IPackageHandler::LockReason::LAUNCH;
 
