@@ -168,28 +168,50 @@ bool MemoryMonitor::ExecuteSequentialReclamation(const string& activeId, uint32_
         return true;
     }
 
-    /* Phase 1: Kill HIBERNATED apps (oldest first) */
-    if (Resolve(Exchange::IAppManager::APP_STATE_HIBERNATED, "KILL", targetRAMKB, activeId))
+    /*
+     * Iterate through all 3 phases: Phase1 -> Phase2 -> Phase3.
+     * After each full pass, if any app was transitioned or killed, repeat.
+     * If no action was taken in a full pass, stop (nothing more can be done).
+     */
+    int iteration = 0;
+    while(true)
     {
-        LOGINFO("[MemoryMonitor] RAM target met after Phase 1 (Kill Hibernated).");
-        LOGINFO("[MemoryMonitor] RAM Reconciliation Finished. Final MemAvailable: %u KB", _parent->ReadMemAvailable());
-        return true;
-    }
+        int actionsPerformed = 0;
 
-    /* Phase 2: Hibernate SUSPENDED apps (oldest first) */
-    if (Resolve(Exchange::IAppManager::APP_STATE_SUSPENDED, "HIBERNATE", targetRAMKB, activeId))
-    {
-        LOGINFO("[MemoryMonitor] RAM target met after Phase 2 (Hibernate Suspended).");
-        LOGINFO("[MemoryMonitor] RAM Reconciliation Finished. Final MemAvailable: %u KB", _parent->ReadMemAvailable());
-        return true;
-    }
+        LOGINFO("[MemoryMonitor] Reclamation pass %d", iteration + 1);
 
-    /* Phase 3: Suspend PAUSED apps (oldest first) */
-    if (Resolve(Exchange::IAppManager::APP_STATE_PAUSED, "SUSPEND", targetRAMKB, activeId))
-    {
-        LOGINFO("[MemoryMonitor] RAM target met after Phase 3 (Suspend Paused).");
-        LOGINFO("[MemoryMonitor] RAM Reconciliation Finished. Final MemAvailable: %u KB", _parent->ReadMemAvailable());
-        return true;
+        /* Phase 1: Kill HIBERNATED apps (longest-in-state first) */
+        if (Resolve(Exchange::IAppManager::APP_STATE_HIBERNATED, "KILL", targetRAMKB, activeId, actionsPerformed))
+        {
+            LOGINFO("[MemoryMonitor] RAM target met after Phase 1 (Kill Hibernated), pass %d.", iteration + 1);
+            LOGINFO("[MemoryMonitor] RAM Reconciliation Finished. Final MemAvailable: %u KB", _parent->ReadMemAvailable());
+            return true;
+        }
+
+        /* Phase 2: Hibernate SUSPENDED apps (longest-in-state first) */
+        if (Resolve(Exchange::IAppManager::APP_STATE_SUSPENDED, "HIBERNATE", targetRAMKB, activeId, actionsPerformed))
+        {
+            LOGINFO("[MemoryMonitor] RAM target met after Phase 2 (Hibernate Suspended), pass %d.", iteration + 1);
+            LOGINFO("[MemoryMonitor] RAM Reconciliation Finished. Final MemAvailable: %u KB", _parent->ReadMemAvailable());
+            return true;
+        }
+
+        /* Phase 3: Suspend PAUSED apps (longest-in-state first) */
+        if (Resolve(Exchange::IAppManager::APP_STATE_PAUSED, "SUSPEND", targetRAMKB, activeId, actionsPerformed))
+        {
+            LOGINFO("[MemoryMonitor] RAM target met after Phase 3 (Suspend Paused), pass %d.", iteration + 1);
+            LOGINFO("[MemoryMonitor] RAM Reconciliation Finished. Final MemAvailable: %u KB", _parent->ReadMemAvailable());
+            return true;
+        }
+
+        if (actionsPerformed == 0)
+        {
+            LOGINFO("[MemoryMonitor] No actions performed in pass %d — nothing more to reclaim.", iteration + 1);
+            break;
+        }
+
+        LOGINFO("[MemoryMonitor] Pass %d performed %d action(s), target not met yet — repeating phases.",
+                iteration + 1, actionsPerformed);
     }
 
     LOGWARN("[MemoryMonitor] RAM Reconciliation FAILED. Target: %u KB, Final MemAvailable: %u KB",
@@ -200,7 +222,8 @@ bool MemoryMonitor::ExecuteSequentialReclamation(const string& activeId, uint32_
 bool MemoryMonitor::Resolve(Exchange::IAppManager::AppLifecycleState state,
                                    const string& action,
                                    uint32_t targetRAMKB,
-                                   const string& ignoreId)
+                                   const string& ignoreId,
+                                   int& actionsPerformed)
 {
     std::vector<string> candidates = _parent->GetSortedCandidates(state);
 
@@ -219,10 +242,10 @@ bool MemoryMonitor::Resolve(Exchange::IAppManager::AppLifecycleState state,
         struct timespec ts = _parent->GetAppStateTime(appId);
         long elapsed = _parent->GetElapsedTimeSeconds(ts);
 
-        LOGINFO("[MemoryMonitor] DECISION: Selecting %s for %s. Reason: Oldest app in state %d. Time in state: %ld seconds.",
+        LOGINFO("[MemoryMonitor] DECISION: Selecting %s for %s. Reason: Longest in state %d (%ld seconds).",
                 appId.c_str(), action.c_str(), static_cast<int>(state), elapsed);
 
-        Exchange::IAppManager::AppLifecycleState nextState;
+        Exchange::IAppManager::AppLifecycleState nextState = state;
 
         if (action == "KILL")
         {
@@ -236,22 +259,33 @@ bool MemoryMonitor::Resolve(Exchange::IAppManager::AppLifecycleState state,
             _parent->KillApp(appId);
             nextState = Exchange::IAppManager::APP_STATE_UNLOADED;
         }
-        else if (action == "HIBERNATE")
+        else if (action == "HIBERNATE" && _parent->isAppHibernatable(appId) == true)
         {
             _parent->HibernateApp(appId);
             nextState = Exchange::IAppManager::APP_STATE_HIBERNATED;
         }
-        else /* SUSPEND */
+        else if (action == "SUSPEND" && _parent->isAppSuspendable(appId) == true)
         {
             _parent->SuspendApp(appId);
             nextState = Exchange::IAppManager::APP_STATE_SUSPENDED;
         }
+
+        if (nextState == state)
+        {
+            LOGINFO("[MemoryMonitor] No valid action taken for %s (action: %s), skipping.",
+                    appId.c_str(), action.c_str());
+            continue;
+        }
+
+        actionsPerformed++;
 
         /* Wait for the state transition instead of sleeping */
         if (WaitForState(appId, nextState))
         {
             LOGINFO("[MemoryMonitor] Successfully transitioned %s to target state %d.",
                     appId.c_str(), static_cast<int>(nextState));
+            // Give artifical extra time after state change to allow memory to stabilize before checking MemAvailable again
+            std::this_thread::sleep_for(std::chrono::seconds(5));
         }
         else
         {
@@ -261,7 +295,14 @@ bool MemoryMonitor::Resolve(Exchange::IAppManager::AppLifecycleState state,
 
         if (_parent->ReadMemAvailable() >= targetRAMKB)
         {
+            LOGINFO("[MemoryMonitor] Target RAM %u KB reached. Current MemAvailable: %u KB",
+                    targetRAMKB, _parent->ReadMemAvailable());
             return true;
+        }
+        else
+        {
+            LOGINFO("[MemoryMonitor] Target RAM %u KB not yet reached after transitioning %s. Current MemAvailable: %u KB",
+                    targetRAMKB, appId.c_str(), _parent->ReadMemAvailable());
         }
     }
     return false;

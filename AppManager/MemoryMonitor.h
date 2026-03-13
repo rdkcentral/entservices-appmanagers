@@ -112,12 +112,14 @@ namespace Plugin {
          * @param action   The action string: "KILL", "HIBERNATE", or "SUSPEND".
          * @param targetRAMKB  The required MemoryAvailable threshold in KB.
          * @param ignoreId The app ID to not touch (the active foreground app).
+         * @param actionsPerformed [out] Incremented for each app that was transitioned or killed.
          * @return true if MemoryAvailable >= targetRAMKB after resolution.
          */
         bool Resolve(Exchange::IAppManager::AppLifecycleState state,
                      const string& action,
                      uint32_t targetRAMKB,
-                     const string& ignoreId);
+                     const string& ignoreId,
+                     int& actionsPerformed);
 
         /**
          * @brief Wait for a specific app to reach the target state with a timeout.
@@ -145,7 +147,7 @@ namespace Plugin {
         string _waitingAppId;
         Exchange::IAppManager::AppLifecycleState _waitingTargetState;
 
-        static constexpr int STATE_WAIT_TIMEOUT_SECONDS = 6;
+        static constexpr int STATE_WAIT_TIMEOUT_SECONDS = 10;
     };
 
 } /* namespace Plugin */

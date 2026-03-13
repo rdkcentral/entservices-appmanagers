@@ -29,6 +29,7 @@
 #include <list>
 #include <unistd.h>
 #include <plugins/System.h>
+#include <set>
 
 #include <interfaces/ILifecycleManager.h>
 #include "AppManagerImplementation.h"
@@ -221,12 +222,13 @@ namespace WPEFramework
                         }
                         else
                         {
-                            if (fileExists(SUSPEND_POLICY_FILE) == true)
-                            {
-                                appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_SUSPEND);
-                                state = Exchange::ILifecycleManager::LifecycleState::SUSPENDED;
-                            }
-                            else
+                            //FIXME: Launch should end up ti ACTVATED state
+                            // if (fileExists(SUSPEND_POLICY_FILE) == true)
+                            // {
+                            //     appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_SUSPEND);
+                            //     state = Exchange::ILifecycleManager::LifecycleState::SUSPENDED;
+                            // }
+                            // else
                             {
                                 appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_LAUNCH);
                                 state = Exchange::ILifecycleManager::LifecycleState::ACTIVE;
@@ -306,7 +308,7 @@ namespace WPEFramework
                 ASSERT (nullptr != mLifecycleManagerRemoteObject);
                 if (nullptr != mLifecycleManagerRemoteObject)
                 {
-                    if (fileExists(SUSPEND_POLICY_FILE) == true)
+                    if (/*fileExists(SUSPEND_POLICY_FILE)*/ isAppSuspendable(appId) == true)
                     {
                         appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_SUSPEND);
                         state = Exchange::ILifecycleManager::LifecycleState::SUSPENDED;
@@ -415,13 +417,13 @@ namespace WPEFramework
 						mAdminLock.Lock();
 					}
                                         /* Found the AppInfo; apply suspend/hibernate/unload logic */
-					else if (fileExists(SUSPEND_POLICY_FILE))
+					else if (/*fileExists(SUSPEND_POLICY_FILE)*/ isAppSuspendable(appId) == true)
                                         {
                                             LOGINFO("App with AppId: %s is suspendable", appId.c_str());
                                             retryIt->second.targetAppState = Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED;
                                             status = mLifecycleManagerRemoteObject->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::LifecycleState::SUSPENDED, appIntent);
 
-                                            if (status == Core::ERROR_NONE && fileExists(HIBERNATE_POLICY_FILE))
+                                            if (status == Core::ERROR_NONE && /*fileExists(HIBERNATE_POLICY_FILE)*/ isAppHibernatable(appId) == true)
                                             {
                                                 LOGINFO("App with AppId: %s is hibernatable", appId.c_str());
                                                 retryIt->second.targetAppState = Exchange::IAppManager::AppLifecycleState::APP_STATE_HIBERNATED;
@@ -948,7 +950,21 @@ End:
                             }
                             else
                             {
-                                LOGERR("Unable to update the active state change time for appInstanceId: %s", appInstanceId.c_str());
+                                LOGERR("Unable to update the state change time for appInstanceId: %s", appInstanceId.c_str());
+                            }
+                        }
+                        else if (newState == Exchange::ILifecycleManager::LifecycleState::LOADING
+                            && it->second.lastActiveStateChangeTime.tv_sec == 0)
+                        {
+                            // capture first load if app will never become active - preload case
+                            struct timespec currentTime;
+                            if (timespec_get(&currentTime, TIME_UTC) != 0)
+                            {
+                                it->second.loadTime = currentTime;
+                            }
+                            else
+                            {
+                                LOGERR("Unable to update the state change time for appInstanceId: %s", appInstanceId.c_str());
                             }
                         }
 
@@ -1111,7 +1127,7 @@ End:
 
         bool LifecycleInterfaceConnector::fileExists(const char* pFileName)
         {
-            bool isRegular = true; //TODO: For now allow suspending and hibernating apps  false;
+            bool isRegular = false;
 
             if (pFileName != nullptr)
             {
@@ -1139,6 +1155,18 @@ End:
             }
 
             return isRegular;
+        }
+
+        bool LifecycleInterfaceConnector::isAppSuspendable(const string& appId)
+        {
+            std::set<string> suspendableApps = {"Netflix", "YouTube", "AppleTV", "Xumo", "PrimeVideo"};
+            return suspendableApps.find(appId) != suspendableApps.end();
+        }
+
+        bool LifecycleInterfaceConnector::isAppHibernatable(const string& appId)
+        {
+            std::set<string> hibernatableApps = {"Netflix", "YouTube", "Xumo"};
+            return hibernatableApps.find(appId) != hibernatableApps.end();
         }
      } /* namespace Plugin */
 } /* namespace WPEFramework */

@@ -116,6 +116,7 @@ namespace Plugin {
             Exchange::IAppManager::AppLifecycleState appNewState;
             Exchange::ILifecycleManager::LifecycleState appLifecycleState;
             timespec lastActiveStateChangeTime;
+            timespec loadTime;
             uint32_t lastActiveIndex;
             string appIntent;
             Exchange::IAppManager::AppLifecycleState targetAppState;
@@ -248,7 +249,8 @@ namespace Plugin {
         Core::hresult HibernateApp(const string& appId);
         Core::hresult SuspendApp(const string& appId);
         bool IsPreloadedApp(const string& appId);
-        bool IsHibernationSupported();
+        bool isAppSuspendable(const string& appId);
+        bool isAppHibernatable(const string& appId);
         static uint32_t ParseMemorySizeToKB(const string& memStr);
         bool GetAppMemoryConfig(const string& appId, uint32_t& launchTargetKB, uint32_t& preloadTargetKB);
 

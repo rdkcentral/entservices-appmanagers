@@ -21,7 +21,7 @@
 #include <fstream>
 #include <sstream>
 #include <algorithm>
-#include <sys/stat.h>   /* for stat(), S_ISREG - used by IsHibernationSupported() */
+#include <set>
 #include "AppManagerImplementation.h"
 #include "MemoryMonitor.h"
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
@@ -1804,21 +1804,47 @@ uint32_t AppManagerImplementation::ReadMemAvailable()
 void AppManagerImplementation::LogManagedAppsSnapshot()
 {
     mAdminLock.Lock();
+    auto stateToString = [](Exchange::IAppManager::AppLifecycleState state) -> std::string {
+        switch (state) {
+            case Exchange::IAppManager::AppLifecycleState::APP_STATE_UNKNOWN:        return "UNKNOWN";
+            case Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED:        return "UNLOADED";
+            case Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING:         return "LOADING";
+            case Exchange::IAppManager::AppLifecycleState::APP_STATE_INITIALIZING:    return "INITIALIZING";
+            case Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED:         return "PAUSED";
+            case Exchange::IAppManager::AppLifecycleState::APP_STATE_RUNNING:        return "RUNNING";
+            case Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE:         return "ACTIVE";
+            case Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED:      return "SUSPENDED";
+            case Exchange::IAppManager::AppLifecycleState::APP_STATE_HIBERNATED:     return "HIBERNATED";
+            case Exchange::IAppManager::AppLifecycleState::APP_STATE_TERMINATING:    return "TERMINATING";
+            default:                                              return "INVALID";
+        }
+    };
     LOGINFO("[MemoryMonitor] --- Managed Apps Snapshot ---");
     for (const auto& entry : mAppInfo)
     {
-        long elapsed = GetElapsedTimeSeconds(entry.second.lastActiveStateChangeTime);
-        LOGINFO("  - App: %s, State: %d, Seconds in state: %ld",
-                entry.first.c_str(), static_cast<int>(entry.second.appNewState), elapsed);
+
+        long elapsed = 0;
+        if (entry.second.lastActiveStateChangeTime.tv_sec != 0)
+        {
+            elapsed = GetElapsedTimeSeconds(entry.second.lastActiveStateChangeTime);
+        }
+        else if (entry.second.loadTime.tv_sec != 0)
+        {
+            LOGWARN("[MemoryMonitor] App %s has zero lastActiveStateChangeTime, using loadTime for elapsed calculation", entry.first.c_str());
+            elapsed = GetElapsedTimeSeconds(entry.second.loadTime);
+        }
+        LOGINFO(" [MemoryMonitor] - App: %s, State: %s, Secs since last state change: %ld",
+                entry.first.c_str(), stateToString(entry.second.appNewState).c_str(), elapsed);
     }
     LOGINFO("[MemoryMonitor] ------------------------------");
     mAdminLock.Unlock();
 }
 
 /*
- * @brief Get sorted list of app IDs in the given state, oldest first (by lastActiveStateChangeTime).
+ * @brief Get sorted list of app IDs in the given state, sorted by greatest
+ *        elapsed time since last state change (longest-in-state first).
  * @param state The lifecycle state to filter by.
- * @return Vector of app IDs sorted oldest-first.
+ * @return Vector of app IDs sorted longest-in-state first.
  */
 std::vector<string> AppManagerImplementation::GetSortedCandidates(Exchange::IAppManager::AppLifecycleState state)
 {
@@ -1829,12 +1855,20 @@ std::vector<string> AppManagerImplementation::GetSortedCandidates(Exchange::IApp
     {
         if (entry.second.appNewState == state)
         {
-            candidates.push_back(std::make_pair(entry.first, entry.second.lastActiveStateChangeTime));
+            if (entry.second.lastActiveStateChangeTime.tv_sec == 0)
+            {
+                LOGWARN("[MemoryMonitor] App %s has zero lastActiveStateChangeTime, using loadTime", entry.first.c_str());
+                candidates.push_back(std::make_pair(entry.first, entry.second.loadTime));
+            }
+            else
+            {
+                candidates.push_back(std::make_pair(entry.first, entry.second.lastActiveStateChangeTime));
+            }
         }
     }
     mAdminLock.Unlock();
 
-    /* Sort by time, oldest first (smallest tv_sec first) */
+    /* Sort by time, oldest first (smallest tv_sec = longest elapsed = reclaim first) */
     std::sort(candidates.begin(), candidates.end(),
         [](const std::pair<string, struct timespec>& a, const std::pair<string, struct timespec>& b) {
             if (a.second.tv_sec != b.second.tv_sec)
@@ -1983,16 +2017,16 @@ bool AppManagerImplementation::IsPreloadedApp(const string& appId)
     return result;
 }
 
-/*
- * @brief Check if hibernation is supported on this platform.
- *        Hibernation support is determined by the existence of a policy file:
- *        /tmp/AI2.0Hibernatable  (same mechanism used by LifecycleInterfaceConnector).
- * @return true if hibernation is supported.
- */
-bool AppManagerImplementation::IsHibernationSupported()
+bool AppManagerImplementation::isAppSuspendable(const string &appId)
 {
-    struct stat fileStat;
-    return (stat("/tmp/AI2.0Hibernatable", &fileStat) == 0 && S_ISREG(fileStat.st_mode));
+    std::set<string> suspendableApps = {"Netflix", "YouTube", "AppleTV", "Xumo", "PrimeVideo"};
+    return suspendableApps.find(appId) != suspendableApps.end();
+}
+
+bool AppManagerImplementation::isAppHibernatable(const string &appId)
+{
+    std::set<string> hibernatableApps = {"Netflix", "YouTube", "Xumo"};
+    return hibernatableApps.find(appId) != hibernatableApps.end();
 }
 
 /*
@@ -2070,8 +2104,8 @@ uint32_t AppManagerImplementation::ParseMemorySizeToKB(const string& memStr)
 bool AppManagerImplementation::GetAppMemoryConfig(const string& appId, uint32_t& launchTargetKB, uint32_t& preloadTargetKB)
 {
     /* Defaults */
-    const uint32_t DEFAULT_LAUNCH_TARGET_KB  = 256 * 1024;  /* 256 MB */
-    const uint32_t DEFAULT_PRELOAD_TARGET_KB = 16 * 1024;   /* 16 MB  */
+    const uint32_t DEFAULT_LAUNCH_TARGET_KB  = 512 * 1024;  /* 512 MB */
+    const uint32_t DEFAULT_PRELOAD_TARGET_KB = 350 * 1024;   /* 350 MB  */
     launchTargetKB  = DEFAULT_LAUNCH_TARGET_KB;
     preloadTargetKB = DEFAULT_PRELOAD_TARGET_KB;
 
@@ -2083,7 +2117,7 @@ bool AppManagerImplementation::GetAppMemoryConfig(const string& appId, uint32_t&
         return false;
     }
 
-    // TODO: for now return defaults
+    // TODO: for now return defaults with higher limits, otherwise for too small limits kernel OOO panic
     LOGINFO("[MemoryMonitor] GetAppMemoryConfig: appId %s final launchTargetKB=%u KB, preloadTargetKB=%u KB",
             appId.c_str(), launchTargetKB, preloadTargetKB);
     return true;
