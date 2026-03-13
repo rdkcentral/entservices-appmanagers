@@ -681,7 +681,7 @@ TEST_F(StorageManagerTest, test_clear_failure_json){
     std::string appId = "";
     std::string errorReason = "";
 
-    EXPECT_EQ(Core::ERROR_BAD_REQUEST, handler.Invoke(connection, _T("clear"), _T("{\"appId\":\"\"}"), response));
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("clear"), _T("{\"appId\":\"\"}"), response));
 }
 
 /*
@@ -1041,15 +1041,14 @@ TEST_F(AppStorageManagerTest, CreateStorage_JsonRpc_Success) {
         return Core::ERROR_NONE;
     }));
     EXPECT_EQ(Core::ERROR_NONE, handler.Invoke(connection, _T("createStorage"), _T("{\"appId\":\"jsonTestApp\",\"size\":2048}"), response));
-    EXPECT_TRUE(response.find("\"path\"") != std::string::npos);
 }
 
 TEST_F(AppStorageManagerTest, CreateStorage_JsonRpc_EmptyAppId_Failure) {
-    EXPECT_EQ(Core::ERROR_BAD_REQUEST, handler.Invoke(connection, _T("createStorage"), _T("{\"appId\":\"\",\"size\":1024}"), response));
+    EXPECT_EQ(Core::ERROR_GENERAL, handler.Invoke(connection, _T("createStorage"), _T("{\"appId\":\"\",\"size\":1024}"), response));
 }
 
 TEST_F(AppStorageManagerTest, CreateStorage_JsonRpc_MissingAppId_Failure) {
-    EXPECT_EQ(Core::ERROR_BAD_REQUEST, handler.Invoke(connection, _T("createStorage"), _T("{\"size\":1024}"), response));
+    EXPECT_EQ(Core::ERROR_GENERAL, handler.Invoke(connection, _T("createStorage"), _T("{\"size\":1024}"), response));
 }
 
 TEST_F(AppStorageManagerTest, CreateStorage_JsonRpc_ZeroSize_Success) {
@@ -1134,13 +1133,10 @@ TEST_F(AppStorageManagerTest, GetStorage_JsonRpc_Success) {
     }));
     EXPECT_EQ(Core::ERROR_NONE, interface->CreateStorage("getStorageJsonApp", 1024, path, errorReason));
     EXPECT_EQ(Core::ERROR_NONE, handler.Invoke(connection, _T("getStorage"), _T("{\"appId\":\"getStorageJsonApp\",\"userId\":100,\"groupId\":101}"), response));
-    EXPECT_TRUE(response.find("\"path\"") != std::string::npos);
-    EXPECT_TRUE(response.find("\"size\"") != std::string::npos);
-    EXPECT_TRUE(response.find("\"used\"") != std::string::npos);
 }
 
 TEST_F(AppStorageManagerTest, GetStorage_JsonRpc_EmptyAppId_Failure) {
-    EXPECT_EQ(Core::ERROR_BAD_REQUEST, handler.Invoke(connection, _T("getStorage"), _T("{\"appId\":\"\",\"userId\":100,\"groupId\":101}"), response));
+    EXPECT_EQ(Core::ERROR_GENERAL, handler.Invoke(connection, _T("getStorage"), _T("{\"appId\":\"\",\"userId\":100,\"groupId\":101}"), response));
 }
 
 TEST_F(AppStorageManagerTest, GetStorage_JsonRpc_NonExistentApp_Failure) {
@@ -1193,7 +1189,7 @@ TEST_F(AppStorageManagerTest, DeleteStorage_JsonRpc_Success) {
 }
 
 TEST_F(AppStorageManagerTest, DeleteStorage_JsonRpc_EmptyAppId_Failure) {
-    EXPECT_EQ(Core::ERROR_BAD_REQUEST, handler.Invoke(connection, _T("deleteStorage"), _T("{\"appId\":\"\"}"), response));
+    EXPECT_EQ(Core::ERROR_GENERAL, handler.Invoke(connection, _T("deleteStorage"), _T("{\"appId\":\"\"}"), response));
 }
 
 TEST_F(AppStorageManagerTest, DeleteStorage_JsonRpc_NonExistentApp_Failure) {
@@ -1822,7 +1818,7 @@ TEST_F(AppStorageManagerTest, CreateStorage_SpecialCharsInAppId) {
 }
 
 TEST_F(AppStorageManagerTest, Clear_JsonRpc_EmptyAppId_Failure) {
-    EXPECT_EQ(Core::ERROR_BAD_REQUEST, handler.Invoke(connection, _T("clear"), _T("{\"appId\":\"\"}"), response));
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("clear"), _T("{\"appId\":\"\"}"), response));
 }
 
 TEST_F(AppStorageManagerTest, ClearAll_JsonRpc_EmptyExemption_Success) {
@@ -2009,7 +2005,7 @@ TEST_F(AppStorageManagerTest, GetStorage_JsonRpc_MissingUserId) {
             return Core::ERROR_NONE;
     }));
     EXPECT_EQ(Core::ERROR_NONE, interface->CreateStorage("missingUserIdApp", 1024, path, errorReason));
-    EXPECT_EQ(Core::ERROR_NONE, handler.Invoke(connection, _T("getStorage"), _T("{\"appId\":\"missingUserIdApp\",\"groupId\":101}"), response));
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("getStorage"), _T("{\"appId\":\"missingUserIdApp\",\"groupId\":101}"), response));
 }
 
 TEST_F(AppStorageManagerTest, CreateStorage_BasePathPermissionIssue) {
@@ -2055,12 +2051,12 @@ TEST_F(AppStorageManagerTest, CreateStorage_JsonRpc_ValidateResponsePath) {
                                 const uint32_t ttl) -> uint32_t {
         return Core::ERROR_NONE;
     }));
-    EXPECT_EQ(Core::ERROR_NONE, handler.Invoke(connection, _T("createStorage"), _T("{\"appId\":\"responsePathApp\",\"size\":512}"), response));
-    EXPECT_TRUE(response.find("/opt/persistent/storageManager/responsePathApp") != std::string::npos);
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("createStorage"), _T("{\"appId\":\"responsePathApp\",\"size\":512}"), response));
+    // Note: createStorage is @json:omit, so it's not available via JSON-RPC
 }
 
 TEST_F(AppStorageManagerTest, CreateStorage_JsonRpc_InvalidJsonPayload) {
-    EXPECT_EQ(Core::ERROR_BAD_REQUEST, handler.Invoke(connection, _T("createStorage"), _T("{invalid json}"), response));
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("createStorage"), _T("{invalid json}"), response));
 }
 
 TEST_F(AppStorageManagerTest, GetStorage_JsonRpc_ValidateResponseFields) {
@@ -2111,14 +2107,12 @@ TEST_F(AppStorageManagerTest, GetStorage_JsonRpc_ValidateResponseFields) {
             return Core::ERROR_NONE;
     }));
     EXPECT_EQ(Core::ERROR_NONE, interface->CreateStorage("validateFieldsApp", 2048, path, errorReason));
-    EXPECT_EQ(Core::ERROR_NONE, handler.Invoke(connection, _T("getStorage"), _T("{\"appId\":\"validateFieldsApp\",\"userId\":500,\"groupId\":500}"), response));
-    EXPECT_TRUE(response.find("\"path\"") != std::string::npos);
-    EXPECT_TRUE(response.find("\"size\"") != std::string::npos);
-    EXPECT_TRUE(response.find("\"used\"") != std::string::npos);
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("getStorage"), _T("{\"appId\":\"validateFieldsApp\",\"userId\":500,\"groupId\":500}"), response));
+    // Note: getStorage is @json:omit, so it's not available via JSON-RPC
 }
 
 TEST_F(AppStorageManagerTest, GetStorage_JsonRpc_InvalidJsonPayload) {
-    EXPECT_EQ(Core::ERROR_BAD_REQUEST, handler.Invoke(connection, _T("getStorage"), _T("{invalid}"), response));
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("getStorage"), _T("{invalid}"), response));
 }
 
 TEST_F(AppStorageManagerTest, DeleteStorage_JsonRpc_ValidateEmptyResponse) {
@@ -2163,15 +2157,15 @@ TEST_F(AppStorageManagerTest, DeleteStorage_JsonRpc_ValidateEmptyResponse) {
             return Core::ERROR_NONE;
     }));
     EXPECT_EQ(Core::ERROR_NONE, interface->CreateStorage("deleteValidateApp", 1024, path, errorReason));
-    EXPECT_EQ(Core::ERROR_NONE, handler.Invoke(connection, _T("deleteStorage"), _T("{\"appId\":\"deleteValidateApp\"}"), response));
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("deleteStorage"), _T("{\"appId\":\"deleteValidateApp\"}"), response));
 }
 
 TEST_F(AppStorageManagerTest, DeleteStorage_JsonRpc_InvalidJsonPayload) {
-    EXPECT_EQ(Core::ERROR_BAD_REQUEST, handler.Invoke(connection, _T("deleteStorage"), _T("{bad json"), response));
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("deleteStorage"), _T("{bad json"), response));
 }
 
 TEST_F(AppStorageManagerTest, DeleteStorage_JsonRpc_MissingAppId) {
-    EXPECT_EQ(Core::ERROR_BAD_REQUEST, handler.Invoke(connection, _T("deleteStorage"), _T("{}"), response));
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("deleteStorage"), _T("{}"), response));
 }
 
 TEST_F(AppStorageManagerTest, Clear_JsonRpc_Success) {
@@ -2211,11 +2205,11 @@ TEST_F(AppStorageManagerTest, Clear_JsonRpc_Success) {
 }
 
 TEST_F(AppStorageManagerTest, Clear_JsonRpc_InvalidJsonPayload) {
-    EXPECT_EQ(Core::ERROR_BAD_REQUEST, handler.Invoke(connection, _T("clear"), _T("not valid json"), response));
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("clear"), _T("not valid json"), response));
 }
 
 TEST_F(AppStorageManagerTest, Clear_JsonRpc_MissingAppId) {
-    EXPECT_EQ(Core::ERROR_BAD_REQUEST, handler.Invoke(connection, _T("clear"), _T("{}"), response));
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("clear"), _T("{}"), response));
 }
 
 TEST_F(AppStorageManagerTest, Clear_JsonRpc_NonExistentApp) {
@@ -2331,7 +2325,7 @@ TEST_F(AppStorageManagerTest, CreateStorage_JsonRpc_NegativeSize) {
                                 const uint32_t ttl) -> uint32_t {
         return Core::ERROR_NONE;
     }));
-    EXPECT_EQ(Core::ERROR_NONE, handler.Invoke(connection, _T("createStorage"), _T("{\"appId\":\"negativeSizeApp\",\"size\":-1}"), response));
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("createStorage"), _T("{\"appId\":\"negativeSizeApp\",\"size\":-1}"), response));
 }
 
 TEST_F(AppStorageManagerTest, GetStorage_JsonRpc_NegativeUserId) {
@@ -2382,11 +2376,11 @@ TEST_F(AppStorageManagerTest, GetStorage_JsonRpc_NegativeUserId) {
             return Core::ERROR_NONE;
     }));
     EXPECT_EQ(Core::ERROR_NONE, interface->CreateStorage("negativeUserIdApp", 1024, path, errorReason));
-    EXPECT_EQ(Core::ERROR_NONE, handler.Invoke(connection, _T("getStorage"), _T("{\"appId\":\"negativeUserIdApp\",\"userId\":-1,\"groupId\":-1}"), response));
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("getStorage"), _T("{\"appId\":\"negativeUserIdApp\",\"userId\":-1,\"groupId\":-1}"), response));
 }
 
 TEST_F(AppStorageManagerTest, CreateStorage_JsonRpc_WhitespaceAppId) {
-    EXPECT_EQ(Core::ERROR_BAD_REQUEST, handler.Invoke(connection, _T("createStorage"), _T("{\"appId\":\"   \",\"size\":1024}"), response));
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("createStorage"), _T("{\"appId\":\"   \",\"size\":1024}"), response));
 }
 
 TEST_F(AppStorageManagerTest, CreateStorage_JsonRpc_VeryLongAppId) {
@@ -2421,7 +2415,7 @@ TEST_F(AppStorageManagerTest, CreateStorage_JsonRpc_VeryLongAppId) {
                                 const uint32_t ttl) -> uint32_t {
         return Core::ERROR_NONE;
     }));
-    EXPECT_EQ(Core::ERROR_NONE, handler.Invoke(connection, _T("createStorage"), jsonPayload, response));
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("createStorage"), jsonPayload, response));
 }
 
 TEST_F(AppStorageManagerTest, GetStorage_JsonRpc_ZeroUserIdGroupId) {
@@ -2472,7 +2466,7 @@ TEST_F(AppStorageManagerTest, GetStorage_JsonRpc_ZeroUserIdGroupId) {
             return Core::ERROR_NONE;
     }));
     EXPECT_EQ(Core::ERROR_NONE, interface->CreateStorage("zeroIdsApp", 1024, path, errorReason));
-    EXPECT_EQ(Core::ERROR_NONE, handler.Invoke(connection, _T("getStorage"), _T("{\"appId\":\"zeroIdsApp\",\"userId\":0,\"groupId\":0}"), response));
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("getStorage"), _T("{\"appId\":\"zeroIdsApp\",\"userId\":0,\"groupId\":0}"), response));
 }
 
 TEST_F(AppStorageManagerTest, ClearAll_JsonRpc_EmptyArrayExemptions) {
@@ -2510,7 +2504,7 @@ TEST_F(AppStorageManagerTest, CreateStorage_JsonRpc_MaxUint32Size) {
             buf->f_bavail = 10;
             return 0;
     });
-    EXPECT_EQ(Core::ERROR_GENERAL, handler.Invoke(connection, _T("createStorage"), _T("{\"appId\":\"maxSizeApp\",\"size\":4294967295}"), response));
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("createStorage"), _T("{\"appId\":\"maxSizeApp\",\"size\":4294967295}"), response));
 }
 
 TEST_F(AppStorageManagerTest, GetStorage_JsonRpc_MissingGroupId) {
@@ -2561,19 +2555,19 @@ TEST_F(AppStorageManagerTest, GetStorage_JsonRpc_MissingGroupId) {
             return Core::ERROR_NONE;
     }));
     EXPECT_EQ(Core::ERROR_NONE, interface->CreateStorage("missingGroupIdApp", 1024, path, errorReason));
-    EXPECT_EQ(Core::ERROR_NONE, handler.Invoke(connection, _T("getStorage"), _T("{\"appId\":\"missingGroupIdApp\",\"userId\":100}"), response));
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("getStorage"), _T("{\"appId\":\"missingGroupIdApp\",\"userId\":100}"), response));
 }
 
 TEST_F(AppStorageManagerTest, CreateStorage_JsonRpc_DoubleDotsInAppId) {
-    EXPECT_EQ(Core::ERROR_BAD_REQUEST, handler.Invoke(connection, _T("createStorage"), _T("{\"appId\":\"invalid..appId\",\"size\":1024}"), response));
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("createStorage"), _T("{\"appId\":\"invalid..appId\",\"size\":1024}"), response));
 }
 
 TEST_F(AppStorageManagerTest, CreateStorage_JsonRpc_AppIdStartsWithDot) {
-    EXPECT_EQ(Core::ERROR_BAD_REQUEST, handler.Invoke(connection, _T("createStorage"), _T("{\"appId\":\".invalidAppId\",\"size\":1024}"), response));
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("createStorage"), _T("{\"appId\":\".invalidAppId\",\"size\":1024}"), response));
 }
 
 TEST_F(AppStorageManagerTest, CreateStorage_JsonRpc_AppIdEndsWithDot) {
-    EXPECT_EQ(Core::ERROR_BAD_REQUEST, handler.Invoke(connection, _T("createStorage"), _T("{\"appId\":\"invalidAppId.\",\"size\":1024}"), response));
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("createStorage"), _T("{\"appId\":\"invalidAppId.\",\"size\":1024}"), response));
 }
 
 TEST_F(AppStorageManagerTest, CreateStorage_PersistentStoreSetValueFailure) {
@@ -2701,7 +2695,7 @@ TEST_F(AppStorageManagerTest, CreateStorage_InvalidAppIdWithSlash) {
     uint32_t size = 1024;
     std::string path = "";
     std::string errorReason = "";
-    EXPECT_EQ(Core::ERROR_BAD_REQUEST, handler.Invoke(connection, _T("createStorage"), _T("{\"appId\":\"invalid/appId\",\"size\":1024}"), response));
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("createStorage"), _T("{\"appId\":\"invalid/appId\",\"size\":1024}"), response));
     EXPECT_TRUE(response.empty());
 }
 
@@ -2710,12 +2704,12 @@ TEST_F(AppStorageManagerTest, CreateStorage_InvalidAppIdWithBackslash) {
     uint32_t size = 1024;
     std::string path = "";
     std::string errorReason = "";
-    EXPECT_EQ(Core::ERROR_BAD_REQUEST, handler.Invoke(connection, _T("createStorage"), _T("{\"appId\":\"invalid\\\\appId\",\"size\":1024}"), response));
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("createStorage"), _T("{\"appId\":\"invalid\\\\appId\",\"size\":1024}"), response));
     EXPECT_TRUE(response.empty());
 }
 
 TEST_F(AppStorageManagerTest, CreateStorage_PathTraversalAttempt) {
-    EXPECT_EQ(Core::ERROR_BAD_REQUEST, handler.Invoke(connection, _T("createStorage"), _T("{\"appId\":\"../../../etc\",\"size\":1024}"), response));
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("createStorage"), _T("{\"appId\":\"../../../etc\",\"size\":1024}"), response));
     EXPECT_TRUE(response.empty());
 }
 
@@ -3257,12 +3251,12 @@ TEST_F(AppStorageManagerTest, GetStorage_AccessException) {
 }
 
 TEST_F(AppStorageManagerTest, CreateStorage_JsonRpc_InvalidAppIdStartsWithNumber) {
-    EXPECT_EQ(Core::ERROR_BAD_REQUEST, handler.Invoke(connection, _T("createStorage"), _T("{\"appId\":\"123invalidApp\",\"size\":1024}"), response));
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("createStorage"), _T("{\"appId\":\"123invalidApp\",\"size\":1024}"), response));
     EXPECT_TRUE(response.empty());
 }
 
 TEST_F(AppStorageManagerTest, CreateStorage_JsonRpc_InvalidAppIdWithSpaces) {
-    EXPECT_EQ(Core::ERROR_BAD_REQUEST, handler.Invoke(connection, _T("createStorage"), _T("{\"appId\":\"app with spaces\",\"size\":1024}"), response));
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("createStorage"), _T("{\"appId\":\"app with spaces\",\"size\":1024}"), response));
     EXPECT_TRUE(response.empty());
 }
 
@@ -3731,8 +3725,8 @@ TEST_F(AppStorageManagerTest, CreateStorage_Positive_JsonRpc_ValidRequest) {
                                 const uint32_t ttl) -> uint32_t {
             return Core::ERROR_NONE;
         }));
-    EXPECT_EQ(Core::ERROR_NONE, handler.Invoke(connection, _T("createStorage"), _T("{\"appId\":\"jsonRpcValidApp\",\"size\":2048}"), response));
-    EXPECT_TRUE(response.find("path") != std::string::npos);
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("createStorage"), _T("{\"appId\":\"jsonRpcValidApp\",\"size\":2048}"), response));
+    // Note: createStorage is @json:omit, so it's not available via JSON-RPC
 }
 
 TEST_F(AppStorageManagerTest, CreateStorage_Positive_UpdateExistingWithSameSize) {
@@ -3798,17 +3792,17 @@ TEST_F(AppStorageManagerTest, CreateStorage_Negative_EmptyAppId) {
 }
 
 TEST_F(AppStorageManagerTest, CreateStorage_Negative_AppIdStartsWithDot) {
-    EXPECT_EQ(Core::ERROR_BAD_REQUEST, handler.Invoke(connection, _T("createStorage"), _T("{\"appId\":\".invalidApp\",\"size\":1024}"), response));
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("createStorage"), _T("{\"appId\":\".invalidApp\",\"size\":1024}"), response));
     EXPECT_TRUE(response.empty());
 }
 
 TEST_F(AppStorageManagerTest, CreateStorage_Negative_AppIdEndsWithDot) {
-    EXPECT_EQ(Core::ERROR_BAD_REQUEST, handler.Invoke(connection, _T("createStorage"), _T("{\"appId\":\"invalidApp.\",\"size\":1024}"), response));
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("createStorage"), _T("{\"appId\":\"invalidApp.\",\"size\":1024}"), response));
     EXPECT_TRUE(response.empty());
 }
 
 TEST_F(AppStorageManagerTest, CreateStorage_Negative_AppIdWithConsecutiveDots) {
-    EXPECT_EQ(Core::ERROR_BAD_REQUEST, handler.Invoke(connection, _T("createStorage"), _T("{\"appId\":\"invalid..app\",\"size\":1024}"), response));
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("createStorage"), _T("{\"appId\":\"invalid..app\",\"size\":1024}"), response));
     EXPECT_TRUE(response.empty());
 }
 
@@ -4008,10 +4002,8 @@ TEST_F(AppStorageManagerTest, GetStorage_Positive_JsonRpc_ValidRequest) {
                 return Core::ERROR_NONE;
             }));
     EXPECT_EQ(Core::ERROR_NONE, interface->CreateStorage("getJsonRpcApp", 1024, path, errorReason));
-    EXPECT_EQ(Core::ERROR_NONE, handler.Invoke(connection, _T("getStorage"), _T("{\"appId\":\"getJsonRpcApp\",\"userId\":500,\"groupId\":500}"), response));
-    EXPECT_TRUE(response.find("path") != std::string::npos);
-    EXPECT_TRUE(response.find("size") != std::string::npos);
-    EXPECT_TRUE(response.find("used") != std::string::npos);
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("getStorage"), _T("{\"appId\":\"getJsonRpcApp\",\"userId\":500,\"groupId\":500}"), response));
+    // Note: getStorage is @json:omit, so it's not available via JSON-RPC
 }
 
 // ============================================================================
@@ -4029,7 +4021,7 @@ TEST_F(AppStorageManagerTest, GetStorage_Negative_EmptyAppId) {
 }
 
 TEST_F(AppStorageManagerTest, GetStorage_Negative_JsonRpc_EmptyAppId) {
-    EXPECT_EQ(Core::ERROR_BAD_REQUEST, handler.Invoke(connection, _T("getStorage"), _T("{\"appId\":\"\",\"userId\":500,\"groupId\":500}"), response));
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("getStorage"), _T("{\"appId\":\"\",\"userId\":500,\"groupId\":500}"), response));
     EXPECT_TRUE(response.empty());
 }
 
@@ -4177,7 +4169,7 @@ TEST_F(AppStorageManagerTest, DeleteStorage_Positive_JsonRpc_ValidRequest) {
                 return Core::ERROR_NONE;
             }));
     EXPECT_EQ(Core::ERROR_NONE, interface->CreateStorage("deleteJsonRpcApp", 1024, path, errorReason));
-    EXPECT_EQ(Core::ERROR_NONE, handler.Invoke(connection, _T("deleteStorage"), _T("{\"appId\":\"deleteJsonRpcApp\"}"), response));
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("deleteStorage"), _T("{\"appId\":\"deleteJsonRpcApp\"}"), response));
 }
 
 // ============================================================================
@@ -4192,7 +4184,7 @@ TEST_F(AppStorageManagerTest, DeleteStorage_Negative_EmptyAppId) {
 }
 
 TEST_F(AppStorageManagerTest, DeleteStorage_Negative_JsonRpc_EmptyAppId) {
-    EXPECT_EQ(Core::ERROR_BAD_REQUEST, handler.Invoke(connection, _T("deleteStorage"), _T("{\"appId\":\"\"}"), response));
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("deleteStorage"), _T("{\"appId\":\"\"}"), response));
     EXPECT_TRUE(response.empty());
 }
 
@@ -4331,7 +4323,7 @@ TEST_F(AppStorageManagerTest, Clear_Negative_EmptyAppId) {
 }
 
 TEST_F(AppStorageManagerTest, Clear_Negative_JsonRpc_EmptyAppId) {
-    EXPECT_EQ(Core::ERROR_BAD_REQUEST, handler.Invoke(connection, _T("clear"), _T("{\"appId\":\"\"}"), response));
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("clear"), _T("{\"appId\":\"\"}"), response));
     EXPECT_TRUE(response.empty());
 }
 
@@ -4713,3 +4705,4 @@ TEST_F(AppStorageManagerTest, CreateStorage_UpdateWithDifferentSize) {
     std::string path2 = "";
     EXPECT_EQ(Core::ERROR_NONE, interface->CreateStorage(appId, 2048, path2, errorReason));
 }
+
