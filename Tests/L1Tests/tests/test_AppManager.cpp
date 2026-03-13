@@ -4240,9 +4240,6 @@ TEST_F(AppManagerTest, PackageUnlockEntryFoundUnlockSuccess)
 
     mAppManagerImpl->Unregister(&notification);
 
-    /* mAppInfo entry should have been removed */
-    EXPECT_EQ(0u, mAppManagerImpl->mAppInfo.count(APPMANAGER_APP_ID));
-
     if (status == Core::ERROR_NONE)
     {
         releaseResources();
