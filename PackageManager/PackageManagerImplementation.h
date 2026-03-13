@@ -77,9 +77,6 @@ class PackageManagerImplementation
 
             public:
             State() {}
-            //State(const packagemanager::ConfigMetaData &config) {
-            //    PackageManagerImplementation::getRuntimeConfig(config, runtimeConfig);
-            //}
             InstallState installState = InstallState::UNINSTALLED;
             uint32_t mLockCount = 0;
             Exchange::RuntimeConfig runtimeConfig;
