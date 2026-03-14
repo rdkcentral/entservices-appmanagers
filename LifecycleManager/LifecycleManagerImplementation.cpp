@@ -245,7 +245,7 @@ namespace WPEFramework
             ApplicationContext* context = getContext("", appId);
             bool firstLaunch = false;
             time_t requestTime = 0;
-            requestTime = LifecycleManagerTelemetryReporting::getInstance().timestampMs();
+            requestTime = LifecycleManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
             mAdminLock.Lock();
             if (nullptr == context)
 	    {
@@ -281,7 +281,7 @@ namespace WPEFramework
             Core::hresult status = Core::ERROR_NONE;
             ApplicationContext* context = getContext(appInstanceId, "");
             time_t requestTime = 0;
-            requestTime = LifecycleManagerTelemetryReporting::getInstance().timestampMs();
+            requestTime = LifecycleManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
             if (nullptr == context)
 	    {
                 status = Core::ERROR_GENERAL;
@@ -330,7 +330,7 @@ namespace WPEFramework
             Core::hresult status = Core::ERROR_NONE;
             ApplicationContext* context = getContext(appInstanceId, "");
             time_t requestTime = 0;
-            requestTime = LifecycleManagerTelemetryReporting::getInstance().timestampMs();
+            requestTime = LifecycleManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
             if (nullptr == context)
 	    {
                 status = Core::ERROR_GENERAL;
@@ -360,7 +360,7 @@ namespace WPEFramework
             Core::hresult status = Core::ERROR_NONE;
             ApplicationContext* context = getContext(appInstanceId, "");
             time_t requestTime =0;
-            requestTime = LifecycleManagerTelemetryReporting::getInstance().timestampMs();
+            requestTime = LifecycleManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
 
             if (nullptr == context)
 	    {

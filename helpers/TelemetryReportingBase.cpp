@@ -33,7 +33,7 @@ TelemetryReportingBase::~TelemetryReportingBase()
     resetTelemetryClient();
 }
 
-time_t TelemetryReportingBase::timestampMs() const
+time_t TelemetryReportingBase::getCurrentTimestampMs() const
 {
     return currentTimestampMs();
 }
@@ -97,7 +97,7 @@ Core::hresult TelemetryReportingBase::recordTelemetry(const std::string& appId, 
     if (!ensureTelemetryClient()) {
         return Core::ERROR_GENERAL;
     }
-    return telemetryClient().record(appId, telemetryMetrics, marker);
+    return getTelemetryClient().record(appId, telemetryMetrics, marker);
 }
 
 Core::hresult TelemetryReportingBase::recordTelemetry(const std::string& appId, const JsonObject& jsonParam, const std::string& marker)
@@ -114,7 +114,7 @@ Core::hresult TelemetryReportingBase::publishTelemetry(const std::string& appId,
     if (!ensureTelemetryClient()) {
         return Core::ERROR_GENERAL;
     }
-    return telemetryClient().publish(appId, marker);
+    return getTelemetryClient().publish(appId, marker);
 }
 
 Core::hresult TelemetryReportingBase::recordAndPublishTelemetry(const std::string& appId, const JsonObject& jsonParam, const std::string& marker, bool publish)
@@ -126,7 +126,7 @@ Core::hresult TelemetryReportingBase::recordAndPublishTelemetry(const std::strin
     return status;
 }
 
-TelemetryMetricsClient& TelemetryReportingBase::telemetryClient()
+TelemetryMetricsClient& TelemetryReportingBase::getTelemetryClient()
 {
     return mTelemetryMetrics;
 }

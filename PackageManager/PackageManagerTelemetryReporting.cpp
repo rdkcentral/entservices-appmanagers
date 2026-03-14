@@ -20,13 +20,6 @@
 #include "PackageManagerTelemetryReporting.h"
 #include "UtilsLogging.h"
 
-#define TELEMETRY_MARKER_LAUNCH_TIME    "OverallLaunchTime_split"
-#define TELEMETRY_MARKER_CLOSE_TIME     "AppCloseTime_split"
-#define TELEMETRY_MARKER_INSTALL_TIME   "InstallTime_split"
-#define TELEMETRY_MARKER_INSTALL_ERROR  "InstallError_split"
-#define TELEMETRY_MARKER_UNINSTALL_TIME "UninstallTime_split"
-#define TELEMETRY_MARKER_UNINSTALL_ERROR "UninstallError_split"
-
 namespace WPEFramework {
 namespace Plugin {
 

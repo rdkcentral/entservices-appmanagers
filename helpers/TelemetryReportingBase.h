@@ -20,6 +20,7 @@
 #pragma once
 
 #include "Module.h"
+#include "TelemetryMarkers.h"
 #include "UtilsTelemetryMetrics.h"
 
 namespace WPEFramework {
@@ -30,7 +31,7 @@ class TelemetryReportingBase {
 public:
     TelemetryReportingBase(const TelemetryReportingBase&) = delete;
     TelemetryReportingBase& operator=(const TelemetryReportingBase&) = delete;
-    time_t timestampMs() const;
+    time_t getCurrentTimestampMs() const;
 
 protected:
     TelemetryReportingBase();
@@ -51,7 +52,7 @@ protected:
     Core::hresult recordTelemetry(const std::string& appId, const JsonObject& jsonParam, const std::string& marker);
     Core::hresult publishTelemetry(const std::string& appId, const std::string& marker);
     Core::hresult recordAndPublishTelemetry(const std::string& appId, const JsonObject& jsonParam, const std::string& marker, bool publish);
-    TelemetryMetricsClient& telemetryClient();
+    TelemetryMetricsClient& getTelemetryClient();
 
 private:
     PluginHost::IShell* mCurrentservice;

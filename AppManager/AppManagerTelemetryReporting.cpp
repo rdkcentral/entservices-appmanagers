@@ -98,7 +98,7 @@ namespace Plugin
                 jsonParam.ToString(telemetryMetrics);
                 if(!telemetryMetrics.empty())
                 {
-                    telemetryClient().record(appId, telemetryMetrics, markerName);
+                    getTelemetryClient().record(appId, telemetryMetrics, markerName);
                 }
             }
         }
@@ -165,8 +165,8 @@ namespace Plugin
                 jsonParam.ToString(telemetryMetrics);
                 if(!telemetryMetrics.empty())
                 {
-                    telemetryClient().record(appId, telemetryMetrics, markerName);
-                    telemetryClient().publish(appId, markerName);
+                    getTelemetryClient().record(appId, telemetryMetrics, markerName);
+                    getTelemetryClient().publish(appId, markerName);
                 }
             }
         }
@@ -211,8 +211,8 @@ namespace Plugin
             jsonParam.ToString(telemetryMetrics);
             if(!telemetryMetrics.empty())
             {
-                telemetryClient().record(appId, telemetryMetrics, markerName);
-                telemetryClient().publish(appId, markerName);
+                getTelemetryClient().record(appId, telemetryMetrics, markerName);
+                getTelemetryClient().publish(appId, markerName);
             }
         }
     }

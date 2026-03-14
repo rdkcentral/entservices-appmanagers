@@ -100,7 +100,7 @@ namespace Plugin
                         jsonParam["lifecycleManagerSpawnTime"] = (int)(currentTime - requestTime);
                         jsonParam.ToString(telemetryMetrics);
                         markerName = TELEMETRY_MARKER_LAUNCH_TIME;
-                        telemetryClient().record(appId, telemetryMetrics, markerName);
+                        getTelemetryClient().record(appId, telemetryMetrics, markerName);
                     }
                 break;
                 case REQUEST_TYPE_TERMINATE:
@@ -110,7 +110,7 @@ namespace Plugin
                         jsonParam["lifecycleManagerSetTargetStateTime"] = (int)(currentTime - requestTime);
                         jsonParam.ToString(telemetryMetrics);
                         markerName = TELEMETRY_MARKER_CLOSE_TIME;
-                        telemetryClient().record(appId, telemetryMetrics, markerName);
+                        getTelemetryClient().record(appId, telemetryMetrics, markerName);
                     }
                     else if(Exchange::ILifecycleManager::LifecycleState::SUSPENDED == newLifecycleState)
                     {
@@ -156,8 +156,8 @@ namespace Plugin
                 jsonParam.ToString(telemetryMetrics);
                 if(!telemetryMetrics.empty())
                 {
-                    telemetryClient().record(appId, telemetryMetrics, markerName);
-                    telemetryClient().publish(appId, markerName);
+                    getTelemetryClient().record(appId, telemetryMetrics, markerName);
+                    getTelemetryClient().publish(appId, markerName);
                 }
             }
         }

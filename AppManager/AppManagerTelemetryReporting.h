@@ -20,13 +20,8 @@
 #pragma once
 
 #include "AppManagerImplementation.h"
+#include "TelemetryMarkers.h"
 #include "TelemetryReportingBase.h"
-
-#define TELEMETRY_MARKER_LAUNCH_TIME                         "OverallLaunchTime_split"
-#define TELEMETRY_MARKER_LAUNCH_ERROR                        "AppLaunchError_split"
-#define TELEMETRY_MARKER_CLOSE_TIME                          "AppCloseTime_split"
-#define TELEMETRY_MARKER_CLOSE_ERROR                         "AppCloseError_split"
-#define TELEMETRY_MARKER_APP_CRASHED                         "AppCrashed_split"
 
 namespace WPEFramework
 {

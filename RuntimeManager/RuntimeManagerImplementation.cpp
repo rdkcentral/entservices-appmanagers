@@ -1281,7 +1281,7 @@ namespace WPEFramework
 
         time_t RuntimeManagerImplementation::getCurrentTimestamp()
         {
-            return RuntimeManagerTelemetryReporting::getInstance().timestampMs();
+            return RuntimeManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
         }
 
         void RuntimeManagerImplementation::recordTelemetryData(const std::string &marker, const std::string &appId, uint64_t requestTime)

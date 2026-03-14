@@ -873,7 +873,7 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
 {
     Core::hresult status = Core::ERROR_GENERAL;
     AppManagerTelemetryReporting& appManagerTelemetryReporting =AppManagerTelemetryReporting::getInstance();
-    time_t requestTime = appManagerTelemetryReporting.timestampMs();
+    time_t requestTime = appManagerTelemetryReporting.getCurrentTimestampMs();
     LOGINFO(" LaunchApp enter with appId %s", appId.c_str());
     bool installed = false;
     Core::hresult result = IsInstalled(appId, installed);
@@ -950,7 +950,7 @@ Core::hresult AppManagerImplementation::CloseApp(const string& appId)
 {
     Core::hresult status = Core::ERROR_GENERAL;
     AppManagerTelemetryReporting& appManagerTelemetryReporting =AppManagerTelemetryReporting::getInstance();
-    time_t requestTime = appManagerTelemetryReporting.timestampMs();
+    time_t requestTime = appManagerTelemetryReporting.getCurrentTimestampMs();
     LOGINFO("CloseApp Entered with appId %s", appId.c_str());
 
     if (!appId.empty())
@@ -991,7 +991,7 @@ Core::hresult AppManagerImplementation::TerminateApp(const string& appId )
 {
     Core::hresult status = Core::ERROR_GENERAL;
     AppManagerTelemetryReporting& appManagerTelemetryReporting =AppManagerTelemetryReporting::getInstance();
-    time_t requestTime = appManagerTelemetryReporting.timestampMs();
+    time_t requestTime = appManagerTelemetryReporting.getCurrentTimestampMs();
     LOGINFO(" TerminateApp Entered with appId %s", appId.c_str());
 
     if (!appId.empty())
@@ -1019,7 +1019,7 @@ Core::hresult AppManagerImplementation::KillApp(const string& appId)
 {
     Core::hresult status = Core::ERROR_NONE;
     AppManagerTelemetryReporting& appManagerTelemetryReporting =AppManagerTelemetryReporting::getInstance();
-    time_t requestTime = appManagerTelemetryReporting.timestampMs();
+    time_t requestTime = appManagerTelemetryReporting.getCurrentTimestampMs();
     LOGINFO("KillApp entered appId: '%s'", appId.c_str());
 
     mAdminLock.Lock();
@@ -1084,7 +1084,7 @@ Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const s
 {
     Core::hresult status = Core::ERROR_GENERAL;
     AppManagerTelemetryReporting& appManagerTelemetryReporting = AppManagerTelemetryReporting::getInstance();
-    time_t requestTime = appManagerTelemetryReporting.timestampMs();
+    time_t requestTime = appManagerTelemetryReporting.getCurrentTimestampMs();
     LOGINFO(" PreloadApp enter with appId %s", appId.c_str());
 
     mAdminLock.Lock();

@@ -34,6 +34,7 @@
 #include "DobbyEventListener.h"
 #include "UserIdManager.h"
 #include "RuntimeManagerTelemetryReporting.h"
+#include "TelemetryMarkers.h"
 
 #ifdef RDK_APPMANAGERS_DEBUG
 class WebInspector;
@@ -43,12 +44,6 @@ class WebInspector;
 #include "RialtoConnector.h"
 #define RIALTO_TIMEOUT_MILLIS 5000
 #endif
-#define TELEMETRY_MARKER_LAUNCH_TIME                         "OverallLaunchTime_split"
-#define TELEMETRY_MARKER_CLOSE_TIME                          "AppCloseTime_split"
-#define TELEMETRY_MARKER_SUSPEND_TIME                        "SuspendTime_split"
-#define TELEMETRY_MARKER_RESUME_TIME                         "ResumeTime_split"
-#define TELEMETRY_MARKER_HIBERNATE_TIME                      "HibernateTime_split"
-#define TELEMETRY_MARKER_WAKE_TIME                           "WakeTime_split"
 
 namespace WPEFramework
 {

@@ -20,13 +20,6 @@
 #include "RuntimeManagerTelemetryReporting.h"
 #include "UtilsLogging.h"
 
-#define TELEMETRY_MARKER_LAUNCH_TIME    "OverallLaunchTime_split"
-#define TELEMETRY_MARKER_CLOSE_TIME     "AppCloseTime_split"
-#define TELEMETRY_MARKER_SUSPEND_TIME   "SuspendTime_split"
-#define TELEMETRY_MARKER_RESUME_TIME    "ResumeTime_split"
-#define TELEMETRY_MARKER_HIBERNATE_TIME "HibernateTime_split"
-#define TELEMETRY_MARKER_WAKE_TIME      "WakeTime_split"
-
 namespace WPEFramework {
 namespace Plugin {
 

@@ -20,8 +20,6 @@
 #include "AppStorageManagerTelemetryReporting.h"
 #include "UtilsLogging.h"
 
-#define TELEMETRY_MARKER_LAUNCH_TIME "OverallLaunchTime_split"
-
 namespace WPEFramework {
 namespace Plugin {
 

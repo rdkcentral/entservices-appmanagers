@@ -37,17 +37,11 @@
 
 #include "Module.h"
 #include "UtilsLogging.h"
+#include "TelemetryMarkers.h"
 #include <interfaces/IAppPackageManager.h>
 #include <interfaces/IAppStorageManager.h>
 
 #include "HttpClient.h"
-
-#define TELEMETRY_MARKER_LAUNCH_TIME             "OverallLaunchTime_split"
-#define TELEMETRY_MARKER_CLOSE_TIME              "AppCloseTime_split"
-#define TELEMETRY_MARKER_INSTALL_TIME            "InstallTime_split"
-#define TELEMETRY_MARKER_INSTALL_ERROR           "InstallError_split"
-#define TELEMETRY_MARKER_UNINSTALL_TIME          "UninstallTime_split"
-#define TELEMETRY_MARKER_UNINSTALL_ERROR         "UninstallError_split"
 
 #define PACKAGE_MANAGER_MARKER_FILE              "/tmp/package_manager_ready"
 
