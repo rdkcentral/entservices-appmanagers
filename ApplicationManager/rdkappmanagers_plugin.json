@@ -1,0 +1,9 @@
+[
+    [ "/as/apps", "org.rdk.AppManager.getInstalledApps", {} ],
+    [ "/as/apps/action/launch", "org.rdk.AppManager.launchApp", { "appId": "$appId$", "token": "$token$", "mode": "$mode$", "intent": "$intent$", "launchArgs": "$launchArgs$" } ],
+    [ "/as/apps/action/close", "org.rdk.AppManager.closeApp", { "appId": "$appId$" } ],
+    [ "/as/apps/action/kill", "org.rdk.AppManager.killApp", { "appId": "$appId$" } ],
+    [ "/as/apps/action/focus", "org.rdk.RDKWindowManager.setFocus", { "client": "$appId$" } ],
+    [ "/as/apps/action/reset", [ "org.rdk.StorageManager.clear", "org.rdk.StorageManager.clearAll" ], { "appId": "$appId$" } ],
+    [ "/as/system/stats", "org.rdk.RDKWindowManager.getLastKeyPress", {} ]
+]

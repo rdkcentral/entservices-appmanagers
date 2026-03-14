@@ -1,0 +1,11 @@
+autostart = "@PLUGIN_RDKAPPMANAGERS_AUTOSTART@"
+precondition = ["Platform"]
+callsign = "org.rdk.@PLUGIN_NAME@"
+startuporder = "@PLUGIN_RDKAPPMANAGERS_STARTUPORDER@"
+
+configuration = JSON()
+
+root = JSON()
+root.add("mode", "@PLUGIN_RDKAPPMANAGERS_MODE@")
+root.add("locator", "lib@PLUGIN_IMPLEMENTATION@.so")
+configuration.add("root", root)

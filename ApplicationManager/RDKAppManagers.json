@@ -1,0 +1,20 @@
+{
+    "info": {
+        "class": "RDKAppManagers",
+        "service": "RDKAppManagers",
+        "version": "1.0",
+        "locator": "RDKAppManagers",
+        "description": "Thunder plugin for RDKAppManagers control."
+    },
+    "interface": [
+        "IPlugin",
+        "IDispatcher",
+        "IApplicationServiceRequest",
+        "IApplicationServiceConfig",
+        "IApplicationServiceListener",
+        "IApplicationServiceSystemInfo",
+        "IApplicationServiceSystemSettings",
+        "IApplicationServiceTestPreferences",
+        "IApplicationServiceDiagnostics"
+    ]
+}
