@@ -34,6 +34,9 @@ target_link_libraries(${HELPERS_LIBRARY_NAME}
         ${NAMESPACE}Plugins::${NAMESPACE}Plugins
         ${NAMESPACE}Definitions::${NAMESPACE}Definitions)
 
+target_compile_definitions(${HELPERS_LIBRARY_NAME}
+    PRIVATE MODULE_NAME=AppManagersHelpers)
+
 if(AIMANAGERS_TELEMETRY_METRICS_SUPPORT)
     target_compile_definitions(${HELPERS_LIBRARY_NAME}
         PUBLIC ENABLE_AIMANAGERS_TELEMETRY_METRICS)
