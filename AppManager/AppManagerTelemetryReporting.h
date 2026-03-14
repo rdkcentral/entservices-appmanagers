@@ -20,7 +20,7 @@
 #pragma once
 
 #include "AppManagerImplementation.h"
-#include <interfaces/ITelemetryMetrics.h>
+#include "TelemetryReportingBase.h"
 
 #define TELEMETRY_MARKER_LAUNCH_TIME                         "OverallLaunchTime_split"
 #define TELEMETRY_MARKER_LAUNCH_ERROR                        "AppLaunchError_split"
@@ -33,13 +33,12 @@ namespace WPEFramework
 namespace Plugin
 {
 
-class AppManagerTelemetryReporting
+class AppManagerTelemetryReporting : public Utils::TelemetryReportingBase
 {
     public /*methods*/:
         AppManagerTelemetryReporting(const AppManagerTelemetryReporting&) = delete;
         AppManagerTelemetryReporting& operator=(const AppManagerTelemetryReporting&) = delete;
         static AppManagerTelemetryReporting& getInstance();
-        time_t getCurrentTimestamp();
         void reportTelemetryData(const std::string& appId, AppManagerImplementation::CurrentAction currentAction);
         void reportTelemetryDataOnStateChange(const string& appId, const Exchange::ILifecycleManager::LifecycleState newState);
         void reportTelemetryErrorData(const std::string& appId, AppManagerImplementation::CurrentAction currentAction, AppManagerImplementation::CurrentActionError errorCode);
@@ -48,12 +47,8 @@ class AppManagerTelemetryReporting
     private /*methods*/:
         AppManagerTelemetryReporting();
         ~AppManagerTelemetryReporting();
-        Core::hresult createTelemetryMetricsPluginObject();
 
     private /*members*/:
-        mutable Core::CriticalSection mAdminLock;
-        Exchange::ITelemetryMetrics* mTelemetryMetricsObject;
-        PluginHost::IShell* mCurrentservice;
 };
 
 } /* namespace Plugin */

@@ -40,10 +40,8 @@ namespace WPEFramework
         , mMostRecentIntent("")
         , mState(nullptr)
         , mStateChangeId(0)
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
         , mRequestTime(0)
         , mRequestType(REQUEST_TYPE_NONE)
-#endif
         {
             mState = (void*) new UnloadedState(this);
             sem_init(&mReachedLoadingStateSemaphore, 0, 0);
@@ -122,15 +120,11 @@ namespace WPEFramework
 
         void ApplicationContext::setRequestTime(time_t requestTime)
         {
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             mRequestTime = requestTime;
-#endif
         }
         void ApplicationContext::setRequestType(RequestType requestType)
         {
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             mRequestType = requestType;
-#endif
         }
 
 
@@ -192,20 +186,12 @@ namespace WPEFramework
 
         time_t ApplicationContext::getRequestTime()
         {
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             return mRequestTime;
-#else
-            return 0;
-#endif
         }
 
         RequestType ApplicationContext::getRequestType()
         {
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             return mRequestType;
-#else
-            return REQUEST_TYPE_NONE;
-#endif
         }
     } /* namespace Plugin */
 } /* namespace WPEFramework */

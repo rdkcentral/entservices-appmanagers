@@ -64,6 +64,7 @@ install(TARGETS ${MODULE_NAME}
 
 set (RUNTIMEMANAGER_SOURCES)
 list(APPEND RUNTIMEMANAGER_SOURCES  RuntimeManagerImplementation.cpp)
+list(APPEND RUNTIMEMANAGER_SOURCES  RuntimeManagerTelemetryReporting.cpp)
 list(APPEND RUNTIMEMANAGER_SOURCES  DobbySpecGenerator.cpp)
 list(APPEND RUNTIMEMANAGER_SOURCES  WindowManagerConnector.cpp)
 list(APPEND RUNTIMEMANAGER_SOURCES  DobbyEventListener.cpp)
@@ -96,7 +97,6 @@ endif(RALF_PACKAGE_SUPPORT)
 
 if(AIMANAGERS_TELEMETRY_METRICS_SUPPORT)
     message(STATUS "AIMANAGERS_TELEMETRY_METRICS_SUPPORT is enabled")
-    add_definitions(-DENABLE_AIMANAGERS_TELEMETRY_METRICS)
 endif(AIMANAGERS_TELEMETRY_METRICS_SUPPORT)
 
 if(RDK_APPMANAGERS_DEBUG)
@@ -171,6 +171,7 @@ if(RDK_APPMANAGERS_DEBUG)
 endif()
 
 target_link_libraries(${PLUGIN_IMPLEMENTATION} PRIVATE
+    AppManagersHelpers
     CompileSettingsDebug::CompileSettingsDebug ${NAMESPACE}Plugins::${NAMESPACE}Plugins  
     ${PLUGIN_RUNTIME_MANAGER_EXTRA_LIBRARIES})
 

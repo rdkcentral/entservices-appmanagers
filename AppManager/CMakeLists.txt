@@ -61,14 +61,8 @@ install(TARGETS ${MODULE_NAME}
 set(PLUGIN_APP_MANAGER_IMPLEMENTATION_SOURCES
     AppManagerImplementation.cpp
     LifecycleInterfaceConnector.cpp
-    Module.cpp)
-
-if (AIMANAGERS_TELEMETRY_METRICS_SUPPORT)
-list( APPEND PLUGIN_APP_MANAGER_IMPLEMENTATION_SOURCES
     AppManagerTelemetryReporting.cpp
-)
-add_definitions(-DENABLE_AIMANAGERS_TELEMETRY_METRICS)		
-endif (AIMANAGERS_TELEMETRY_METRICS_SUPPORT)	
+    Module.cpp)
 
 add_library(${PLUGIN_IMPLEMENTATION} SHARED
     ${PLUGIN_APP_MANAGER_IMPLEMENTATION_SOURCES}
@@ -87,7 +81,7 @@ if (RDK_SERVICES_L1_TEST)
 	target_link_options(${PLUGIN_IMPLEMENTATION} PRIVATE -Wl,--wrap,stat)
 endif (RDK_SERVICES_L1_TEST)
 target_link_libraries(${PLUGIN_IMPLEMENTATION} PRIVATE
-    CompileSettingsDebug::CompileSettingsDebug ${NAMESPACE}Plugins::${NAMESPACE}Plugins  ${PLUGIN_APP_MANAGER_EXTRA_LIBRARIES})
+    CompileSettingsDebug::CompileSettingsDebug ${NAMESPACE}Plugins::${NAMESPACE}Plugins AppManagersHelpers ${PLUGIN_APP_MANAGER_EXTRA_LIBRARIES})
 
 install(TARGETS ${PLUGIN_IMPLEMENTATION}
     DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/${STORAGE_DIRECTORY}/plugins)
