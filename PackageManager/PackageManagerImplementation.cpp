@@ -477,7 +477,6 @@ namespace Plugin {
                 if (nullptr != mStorageManagerObject) {
                     if(mStorageManagerObject->DeleteStorage(packageId, errorReason) == Core::ERROR_NONE) {
                         LOGINFO("DeleteStorage done");
-                        //#if defined(USE_LIBPACKAGE) || defined(UNIT_TEST) || defined(ENABLE_NATIVEBUILD)
                         // XXX: what if DeleteStorage() fails, who Uninstall the package
                         packagemanager::Result pmResult = packageImpl->Uninstall(packageId);
                         if (pmResult == packagemanager::SUCCESS) {
@@ -486,7 +485,6 @@ namespace Plugin {
                             packageFailureErrorCode = (pmResult == packagemanager::Result::VERSION_MISMATCH) ?
                                 PackageManagerImplementation::PackageFailureErrorCode::ERROR_PACKAGE_MISMATCH_FAILURE : PackageManagerImplementation::PackageFailureErrorCode::ERROR_SIGNATURE_VERIFICATION_FAILURE;
                         }
-                        //#endif
                         state.installState = InstallState::UNINSTALLED;
                         NotifyInstallStatus(packageId, version, state);
                     } else {
@@ -919,7 +917,6 @@ namespace Plugin {
             return Core::ERROR_INVALID_SIGNATURE;
         }
 
-        //#if defined(USE_LIBPACKAGE) || defined(UNIT_TEST) || defined(ENABLE_NATIVEBUILD)
 	    packagemanager::ConfigMetaData metadata;
         packagemanager::Result pmResult = packageImpl->GetFileMetadata(fileLocator, id, version, metadata);
         if (pmResult == packagemanager::SUCCESS)
@@ -927,7 +924,6 @@ namespace Plugin {
             getRuntimeConfig(metadata, config);
             result = Core::ERROR_NONE;
         }
-        //#endif
         return result;
     }
 
@@ -942,7 +938,6 @@ namespace Plugin {
         }
 	    #endif
 
-        //#if defined (USE_LIBPACKAGE) || defined(UNIT_TEST) || defined(ENABLE_NATIVEBUILD)
 	    #if defined(UNIT_TEST) || defined(ENABLE_NATIVEBUILD)
         packageImpl = packagemanager::IPackageImplDummy::instance();
         #else
@@ -971,7 +966,6 @@ namespace Plugin {
             }
             mState.insert( { key, state } );
         }
-        //#endif
 
         #if !defined(UNIT_TEST) && !defined(ENABLE_NATIVEBUILD)
         if (subSystem != nullptr) {
@@ -1083,7 +1077,6 @@ namespace Plugin {
             string errorReason = "";
             if(mStorageManagerObject->CreateStorage(packageId, STORAGE_MAX_SIZE, path, errorReason) == Core::ERROR_NONE) {
                 LOGINFO("CreateStorage path [%s]", path.c_str());
-                //#if defined(USE_LIBPACKAGE) || defined(UNIT_TEST) || defined(ENABLE_NATIVEBUILD)
                 packagemanager::ConfigMetaData config;
                 packagemanager::Result pmResult = packageImpl->Install(packageId, version, keyValues, fileLocator, config);
                 if (pmResult == packagemanager::SUCCESS) {
@@ -1108,7 +1101,6 @@ namespace Plugin {
                 }
                 LOGDBG("Package: %s Version: %s result=%d", packageId.c_str(), version.c_str(), result);
                 NotifyInstallStatus(packageId, version, state);
-                //#endif
             } else {
                 LOGERR("CreateStorage failed with result :%d errorReason [%s]", result, errorReason.c_str());
                 state.failReason = FailReason::PERSISTENCE_FAILURE;
