@@ -41,27 +41,27 @@ AppStorageManagerTelemetryReporting& AppStorageManagerTelemetryReporting::getIns
 
 void AppStorageManagerTelemetryReporting::initialize(PluginHost::IShell* service)
 {
-    SetService(service);
-    if (Core::ERROR_NONE != InitializeTelemetryClient()) {
+    setService(service);
+    if (Core::ERROR_NONE != initializeTelemetryClient()) {
         LOGERR("TelemetryMetrics client initialization failed");
     }
 }
 
 void AppStorageManagerTelemetryReporting::reset()
 {
-    ResetTelemetryClient();
+    resetTelemetryClient();
 }
 
 void AppStorageManagerTelemetryReporting::recordGetStorageTelemetry(const std::string& appId, uint64_t requestTime)
 {
     JsonObject jsonParam;
-    int duration = DurationSinceMs(requestTime);
+    int duration = durationSinceMs(requestTime);
 
     jsonParam["storageManagerLaunchTime"] = duration;
     jsonParam["appId"] = appId;
 
     LOGINFO("Record appId %s storageManagerLaunchTime %d", appId.c_str(), duration);
-    if (Core::ERROR_NONE != RecordTelemetry(appId, jsonParam, TELEMETRY_MARKER_LAUNCH_TIME)) {
+    if (Core::ERROR_NONE != recordTelemetry(appId, jsonParam, TELEMETRY_MARKER_LAUNCH_TIME)) {
         LOGERR("Failed to record telemetry for appId %s", appId.c_str());
     }
 }

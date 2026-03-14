@@ -30,103 +30,103 @@ TelemetryReportingBase::TelemetryReportingBase()
 
 TelemetryReportingBase::~TelemetryReportingBase()
 {
-    ResetTelemetryClient();
+    resetTelemetryClient();
 }
 
-time_t TelemetryReportingBase::TimestampMs() const
+time_t TelemetryReportingBase::timestampMs() const
 {
-    return CurrentTimestampMs();
+    return currentTimestampMs();
 }
 
-void TelemetryReportingBase::SetService(PluginHost::IShell* service)
+void TelemetryReportingBase::setService(PluginHost::IShell* service)
 {
     mCurrentservice = service;
 }
 
-PluginHost::IShell* TelemetryReportingBase::GetService() const
+PluginHost::IShell* TelemetryReportingBase::getService() const
 {
     return mCurrentservice;
 }
 
-Core::hresult TelemetryReportingBase::InitializeTelemetryClient()
+Core::hresult TelemetryReportingBase::initializeTelemetryClient()
 {
     if (nullptr == mCurrentservice) {
         return Core::ERROR_GENERAL;
     }
-    return mTelemetryMetrics.Initialize(mCurrentservice);
+    return mTelemetryMetrics.initialize(mCurrentservice);
 }
 
-bool TelemetryReportingBase::EnsureTelemetryClient()
+bool TelemetryReportingBase::ensureTelemetryClient()
 {
-    if (!mTelemetryMetrics.IsAvailable()) {
-        InitializeTelemetryClient();
+    if (!mTelemetryMetrics.isAvailable()) {
+        initializeTelemetryClient();
     }
-    return mTelemetryMetrics.IsAvailable();
+    return mTelemetryMetrics.isAvailable();
 }
 
-bool TelemetryReportingBase::IsTelemetryClientAvailable() const
+bool TelemetryReportingBase::isTelemetryClientAvailable() const
 {
-    return mTelemetryMetrics.IsAvailable();
+    return mTelemetryMetrics.isAvailable();
 }
 
-void TelemetryReportingBase::ResetTelemetryClient()
+void TelemetryReportingBase::resetTelemetryClient()
 {
-    mTelemetryMetrics.Reset();
+    mTelemetryMetrics.reset();
     mCurrentservice = nullptr;
 }
 
-time_t TelemetryReportingBase::CurrentTimestampMs() const
+time_t TelemetryReportingBase::currentTimestampMs() const
 {
     timespec ts;
     clock_gettime(CLOCK_MONOTONIC, &ts);
     return (((time_t)ts.tv_sec * 1000) + ((time_t)ts.tv_nsec / 1000000));
 }
 
-int TelemetryReportingBase::DurationSinceMs(uint64_t requestTimeMs) const
+int TelemetryReportingBase::durationSinceMs(uint64_t requestTimeMs) const
 {
-    return static_cast<int>(CurrentTimestampMs() - requestTimeMs);
+    return static_cast<int>(currentTimestampMs() - requestTimeMs);
 }
 
-bool TelemetryReportingBase::BuildTelemetryPayload(const JsonObject& jsonParam, std::string& telemetryMetrics) const
+bool TelemetryReportingBase::buildTelemetryPayload(const JsonObject& jsonParam, std::string& telemetryMetrics) const
 {
     return jsonParam.ToString(telemetryMetrics);
 }
 
-Core::hresult TelemetryReportingBase::RecordTelemetry(const std::string& appId, const std::string& telemetryMetrics, const std::string& marker)
+Core::hresult TelemetryReportingBase::recordTelemetry(const std::string& appId, const std::string& telemetryMetrics, const std::string& marker)
 {
-    if (!EnsureTelemetryClient()) {
+    if (!ensureTelemetryClient()) {
         return Core::ERROR_GENERAL;
     }
-    return TelemetryClient().Record(appId, telemetryMetrics, marker);
+    return telemetryClient().record(appId, telemetryMetrics, marker);
 }
 
-Core::hresult TelemetryReportingBase::RecordTelemetry(const std::string& appId, const JsonObject& jsonParam, const std::string& marker)
+Core::hresult TelemetryReportingBase::recordTelemetry(const std::string& appId, const JsonObject& jsonParam, const std::string& marker)
 {
     std::string telemetryMetrics;
-    if (!BuildTelemetryPayload(jsonParam, telemetryMetrics)) {
+    if (!buildTelemetryPayload(jsonParam, telemetryMetrics)) {
         return Core::ERROR_GENERAL;
     }
-    return RecordTelemetry(appId, telemetryMetrics, marker);
+    return recordTelemetry(appId, telemetryMetrics, marker);
 }
 
-Core::hresult TelemetryReportingBase::PublishTelemetry(const std::string& appId, const std::string& marker)
+Core::hresult TelemetryReportingBase::publishTelemetry(const std::string& appId, const std::string& marker)
 {
-    if (!EnsureTelemetryClient()) {
+    if (!ensureTelemetryClient()) {
         return Core::ERROR_GENERAL;
     }
-    return TelemetryClient().Publish(appId, marker);
+    return telemetryClient().publish(appId, marker);
 }
 
-Core::hresult TelemetryReportingBase::RecordAndPublishTelemetry(const std::string& appId, const JsonObject& jsonParam, const std::string& marker, bool publish)
+Core::hresult TelemetryReportingBase::recordAndPublishTelemetry(const std::string& appId, const JsonObject& jsonParam, const std::string& marker, bool publish)
 {
-    Core::hresult status = RecordTelemetry(appId, jsonParam, marker);
+    Core::hresult status = recordTelemetry(appId, jsonParam, marker);
     if ((Core::ERROR_NONE == status) && publish) {
-        status = PublishTelemetry(appId, marker);
+        status = publishTelemetry(appId, marker);
     }
     return status;
 }
 
-TelemetryMetricsClient& TelemetryReportingBase::TelemetryClient()
+TelemetryMetricsClient& TelemetryReportingBase::telemetryClient()
 {
     return mTelemetryMetrics;
 }

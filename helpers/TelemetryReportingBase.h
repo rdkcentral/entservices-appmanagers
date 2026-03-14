@@ -30,28 +30,28 @@ class TelemetryReportingBase {
 public:
     TelemetryReportingBase(const TelemetryReportingBase&) = delete;
     TelemetryReportingBase& operator=(const TelemetryReportingBase&) = delete;
-    time_t TimestampMs() const;
+    time_t timestampMs() const;
 
 protected:
     TelemetryReportingBase();
     virtual ~TelemetryReportingBase();
 
-    void SetService(PluginHost::IShell* service);
-    PluginHost::IShell* GetService() const;
+    void setService(PluginHost::IShell* service);
+    PluginHost::IShell* getService() const;
 
-    Core::hresult InitializeTelemetryClient();
-    bool EnsureTelemetryClient();
-    bool IsTelemetryClientAvailable() const;
-    void ResetTelemetryClient();
+    Core::hresult initializeTelemetryClient();
+    bool ensureTelemetryClient();
+    bool isTelemetryClientAvailable() const;
+    void resetTelemetryClient();
 
-    time_t CurrentTimestampMs() const;
-    int DurationSinceMs(uint64_t requestTimeMs) const;
-    bool BuildTelemetryPayload(const JsonObject& jsonParam, std::string& telemetryMetrics) const;
-    Core::hresult RecordTelemetry(const std::string& appId, const std::string& telemetryMetrics, const std::string& marker);
-    Core::hresult RecordTelemetry(const std::string& appId, const JsonObject& jsonParam, const std::string& marker);
-    Core::hresult PublishTelemetry(const std::string& appId, const std::string& marker);
-    Core::hresult RecordAndPublishTelemetry(const std::string& appId, const JsonObject& jsonParam, const std::string& marker, bool publish);
-    TelemetryMetricsClient& TelemetryClient();
+    time_t currentTimestampMs() const;
+    int durationSinceMs(uint64_t requestTimeMs) const;
+    bool buildTelemetryPayload(const JsonObject& jsonParam, std::string& telemetryMetrics) const;
+    Core::hresult recordTelemetry(const std::string& appId, const std::string& telemetryMetrics, const std::string& marker);
+    Core::hresult recordTelemetry(const std::string& appId, const JsonObject& jsonParam, const std::string& marker);
+    Core::hresult publishTelemetry(const std::string& appId, const std::string& marker);
+    Core::hresult recordAndPublishTelemetry(const std::string& appId, const JsonObject& jsonParam, const std::string& marker, bool publish);
+    TelemetryMetricsClient& telemetryClient();
 
 private:
     PluginHost::IShell* mCurrentservice;

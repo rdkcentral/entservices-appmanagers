@@ -44,8 +44,8 @@ namespace Plugin
     void LifecycleManagerTelemetryReporting::initialize(PluginHost::IShell* service)
     {
         ASSERT(nullptr != service);
-        SetService(service);
-        if(Core::ERROR_NONE != InitializeTelemetryClient())
+        setService(service);
+        if(Core::ERROR_NONE != initializeTelemetryClient())
         {
             LOGERR("Failed to create TelemetryMetricsObject\n");
         }
@@ -64,7 +64,7 @@ namespace Plugin
         std::string markerName = "";
         bool shouldPublish = false;
 
-        if(!EnsureTelemetryClient())
+        if(!ensureTelemetryClient())
         {
             LOGERR("Failed to create TelemetryMetricsObject\n");
         }
@@ -73,7 +73,7 @@ namespace Plugin
         {
             LOGERR("context is nullptr");
         }
-        else if (!IsTelemetryClientAvailable())
+        else if (!isTelemetryClientAvailable())
         {
             LOGERR("TelemetryMetrics client is not valid");
         }
@@ -85,7 +85,7 @@ namespace Plugin
         {
             requestType = context->getRequestType();
             requestTime = context->getRequestTime();
-            currentTime = CurrentTimestampMs();
+            currentTime = currentTimestampMs();
             targetLifecycleState = context->getTargetLifecycleState();
             newLifecycleState = static_cast<Exchange::ILifecycleManager::LifecycleState>(data["newLifecycleState"].Number());
             LOGINFO("Received state change for appId %s newLifecycleState %d requestType %d", appId.c_str(), newLifecycleState, requestType);
@@ -100,7 +100,7 @@ namespace Plugin
                         jsonParam["lifecycleManagerSpawnTime"] = (int)(currentTime - requestTime);
                         jsonParam.ToString(telemetryMetrics);
                         markerName = TELEMETRY_MARKER_LAUNCH_TIME;
-                        TelemetryClient().Record(appId, telemetryMetrics, markerName);
+                        telemetryClient().record(appId, telemetryMetrics, markerName);
                     }
                 break;
                 case REQUEST_TYPE_TERMINATE:
@@ -110,7 +110,7 @@ namespace Plugin
                         jsonParam["lifecycleManagerSetTargetStateTime"] = (int)(currentTime - requestTime);
                         jsonParam.ToString(telemetryMetrics);
                         markerName = TELEMETRY_MARKER_CLOSE_TIME;
-                        TelemetryClient().Record(appId, telemetryMetrics, markerName);
+                        telemetryClient().record(appId, telemetryMetrics, markerName);
                     }
                     else if(Exchange::ILifecycleManager::LifecycleState::SUSPENDED == newLifecycleState)
                     {
@@ -156,8 +156,8 @@ namespace Plugin
                 jsonParam.ToString(telemetryMetrics);
                 if(!telemetryMetrics.empty())
                 {
-                    TelemetryClient().Record(appId, telemetryMetrics, markerName);
-                    TelemetryClient().Publish(appId, markerName);
+                    telemetryClient().record(appId, telemetryMetrics, markerName);
+                    telemetryClient().publish(appId, markerName);
                 }
             }
         }

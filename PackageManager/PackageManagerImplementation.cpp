@@ -201,7 +201,7 @@ namespace Plugin {
 
     time_t PackageManagerImplementation::getCurrentTimestamp()
     {
-        return PackageManagerTelemetryReporting::getInstance().TimestampMs();
+        return PackageManagerTelemetryReporting::getInstance().timestampMs();
     }
 
     void PackageManagerImplementation::recordAndPublishTelemetryData(const std::string& marker, const std::string& appId,

@@ -43,8 +43,8 @@ namespace Plugin
     void AppManagerTelemetryReporting::initialize(PluginHost::IShell* service)
     {
         ASSERT(nullptr != service);
-        SetService(service);
-        if(Core::ERROR_NONE != InitializeTelemetryClient())
+        setService(service);
+        if(Core::ERROR_NONE != initializeTelemetryClient())
         {
             LOGERR("Failed to create TelemetryMetricsObject\n");
         }
@@ -55,16 +55,16 @@ namespace Plugin
         JsonObject jsonParam;
         std::string telemetryMetrics = "";
         std::string markerName = "";
-        time_t currentTime = CurrentTimestampMs();
+        time_t currentTime = currentTimestampMs();
         AppManagerImplementation*appManagerImplInstance = AppManagerImplementation::getInstance();
 
-        if(!EnsureTelemetryClient())
+        if(!ensureTelemetryClient())
         {
             LOGERR("Failed to create TelemetryMetricsObject\n");
         }
 
         auto it = appManagerImplInstance->mAppInfo.find(appId);
-        if((it != appManagerImplInstance->mAppInfo.end()) && (currentAction == it->second.currentAction) && IsTelemetryClientAvailable())
+        if((it != appManagerImplInstance->mAppInfo.end()) && (currentAction == it->second.currentAction) && isTelemetryClientAvailable())
         {
             LOGINFO("Received data for appId %s current action %d ",appId.c_str(), currentAction);
 
@@ -98,7 +98,7 @@ namespace Plugin
                 jsonParam.ToString(telemetryMetrics);
                 if(!telemetryMetrics.empty())
                 {
-                    TelemetryClient().Record(appId, telemetryMetrics, markerName);
+                    telemetryClient().record(appId, telemetryMetrics, markerName);
                 }
             }
         }
@@ -113,16 +113,16 @@ namespace Plugin
         JsonObject jsonParam;
         std::string telemetryMetrics = "";
         std::string markerName = "";
-        time_t currentTime = CurrentTimestampMs();
+        time_t currentTime = currentTimestampMs();
         AppManagerImplementation*appManagerImplInstance = AppManagerImplementation::getInstance();
 
-        if(!EnsureTelemetryClient())
+        if(!ensureTelemetryClient())
         {
             LOGERR("Failed to create TelemetryMetricsObject\n");
         }
 
         auto it = appManagerImplInstance->mAppInfo.find(appId);
-        if((it != appManagerImplInstance->mAppInfo.end()) && IsTelemetryClientAvailable())
+        if((it != appManagerImplInstance->mAppInfo.end()) && isTelemetryClientAvailable())
         {
             switch(it->second.currentAction)
             {
@@ -165,8 +165,8 @@ namespace Plugin
                 jsonParam.ToString(telemetryMetrics);
                 if(!telemetryMetrics.empty())
                 {
-                    TelemetryClient().Record(appId, telemetryMetrics, markerName);
-                    TelemetryClient().Publish(appId, markerName);
+                    telemetryClient().record(appId, telemetryMetrics, markerName);
+                    telemetryClient().publish(appId, markerName);
                 }
             }
         }
@@ -184,7 +184,7 @@ namespace Plugin
 
         LOGINFO("Received data for appId %s current action %d app errorCode %d",appId.c_str(), currentAction, errorCode);
 
-        if(!EnsureTelemetryClient())
+        if(!ensureTelemetryClient())
         {
             LOGERR("Failed to create TelemetryMetricsObject\n");
         }
@@ -205,14 +205,14 @@ namespace Plugin
             break;
         }
 
-        if(!markerName.empty() && IsTelemetryClientAvailable())
+        if(!markerName.empty() && isTelemetryClientAvailable())
         {
             jsonParam["errorCode"] = (int)errorCode;
             jsonParam.ToString(telemetryMetrics);
             if(!telemetryMetrics.empty())
             {
-                TelemetryClient().Record(appId, telemetryMetrics, markerName);
-                TelemetryClient().Publish(appId, markerName);
+                telemetryClient().record(appId, telemetryMetrics, markerName);
+                telemetryClient().publish(appId, markerName);
             }
         }
     }

@@ -46,24 +46,24 @@ RuntimeManagerTelemetryReporting& RuntimeManagerTelemetryReporting::getInstance(
 
 void RuntimeManagerTelemetryReporting::initialize(PluginHost::IShell* service)
 {
-    SetService(service);
-    if (Core::ERROR_NONE != InitializeTelemetryClient()) {
+    setService(service);
+    if (Core::ERROR_NONE != initializeTelemetryClient()) {
         LOGERR("TelemetryMetrics client init failed");
     }
 }
 
 void RuntimeManagerTelemetryReporting::reset()
 {
-    ResetTelemetryClient();
+    resetTelemetryClient();
 }
 
 void RuntimeManagerTelemetryReporting::recordTelemetryData(const std::string& marker, const std::string& appId, uint64_t requestTime)
 {
-    time_t currentTime = CurrentTimestampMs();
+    time_t currentTime = currentTimestampMs();
     LOGINFO("End time for %s: %lu", marker.c_str(), currentTime);
 
     JsonObject jsonParam;
-    int duration = DurationSinceMs(requestTime);
+    int duration = durationSinceMs(requestTime);
 
     if (marker == TELEMETRY_MARKER_RESUME_TIME) {
         jsonParam["runtimeManagerResumeTime"] = duration;
@@ -85,7 +85,7 @@ void RuntimeManagerTelemetryReporting::recordTelemetryData(const std::string& ma
     jsonParam["appId"] = appId;
 
     LOGINFO("Record appId %s marker %s start time %d", appId.c_str(), marker.c_str(), duration);
-    if (Core::ERROR_NONE != RecordTelemetry(appId, jsonParam, marker)) {
+    if (Core::ERROR_NONE != recordTelemetry(appId, jsonParam, marker)) {
         LOGERR("Failed to record telemetry for appId %s marker %s", appId.c_str(), marker.c_str());
     }
 }

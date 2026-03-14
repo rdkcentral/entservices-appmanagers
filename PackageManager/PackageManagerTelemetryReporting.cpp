@@ -46,15 +46,15 @@ PackageManagerTelemetryReporting& PackageManagerTelemetryReporting::getInstance(
 
 void PackageManagerTelemetryReporting::initialize(PluginHost::IShell* service)
 {
-    SetService(service);
-    if (Core::ERROR_NONE != InitializeTelemetryClient()) {
+    setService(service);
+    if (Core::ERROR_NONE != initializeTelemetryClient()) {
         LOGERR("TelemetryMetrics client initialization failed");
     }
 }
 
 void PackageManagerTelemetryReporting::reset()
 {
-    ResetTelemetryClient();
+    resetTelemetryClient();
 }
 
 void PackageManagerTelemetryReporting::recordAndPublishTelemetryData(const std::string& marker,
@@ -72,14 +72,14 @@ void PackageManagerTelemetryReporting::recordAndPublishTelemetryData(const std::
         return;
     }
 
-    if (!EnsureTelemetryClient()) {
+    if (!ensureTelemetryClient()) {
         LOGINFO("TelemetryMetrics client unavailable, retry initialization");
         LOGERR("TelemetryMetrics client is still unavailable");
         return;
     }
 
-    time_t currentTime = CurrentTimestampMs();
-    duration = DurationSinceMs(requestTime);
+    time_t currentTime = currentTimestampMs();
+    duration = durationSinceMs(requestTime);
     LOGINFO("End time for %s: %lu", marker.c_str(), currentTime);
 
     if (marker == TELEMETRY_MARKER_LAUNCH_TIME) {
@@ -103,7 +103,7 @@ void PackageManagerTelemetryReporting::recordAndPublishTelemetryData(const std::
         jsonParam["appId"] = appId;
 
         LOGINFO("Record appId %s marker %s duration %d", appId.c_str(), marker.c_str(), duration);
-        if (Core::ERROR_NONE != RecordAndPublishTelemetry(appId, jsonParam, marker, publish)) {
+        if (Core::ERROR_NONE != recordAndPublishTelemetry(appId, jsonParam, marker, publish)) {
             LOGERR("Telemetry Record/Publish Failed");
         }
     }

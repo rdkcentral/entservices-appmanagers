@@ -40,7 +40,7 @@ TelemetryMetricsClient::~TelemetryMetricsClient()
     // Shared telemetry interface is process-wide and intentionally retained.
 }
 
-Core::hresult TelemetryMetricsClient::Initialize(PluginHost::IShell* service,
+Core::hresult TelemetryMetricsClient::initialize(PluginHost::IShell* service,
     const std::string& callsign)
 {
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
@@ -66,7 +66,7 @@ Core::hresult TelemetryMetricsClient::Initialize(PluginHost::IShell* service,
 #endif
 }
 
-Core::hresult TelemetryMetricsClient::Ensure(PluginHost::IShell* service,
+Core::hresult TelemetryMetricsClient::ensure(PluginHost::IShell* service,
     const std::string& callsign)
 {
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
@@ -75,15 +75,15 @@ Core::hresult TelemetryMetricsClient::Ensure(PluginHost::IShell* service,
         return Core::ERROR_NONE;
     }
 #endif
-    return Initialize(service, callsign);
+    return initialize(service, callsign);
 }
 
-void TelemetryMetricsClient::Reset()
+void TelemetryMetricsClient::reset()
 {
     // No-op for shared instance to avoid cross-plugin invalidation.
 }
 
-bool TelemetryMetricsClient::IsAvailable() const
+bool TelemetryMetricsClient::isAvailable() const
 {
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
     return (gTelemetryMetricsObject != nullptr);
@@ -92,12 +92,12 @@ bool TelemetryMetricsClient::IsAvailable() const
 #endif
 }
 
-Core::hresult TelemetryMetricsClient::Record(const std::string& appId,
+Core::hresult TelemetryMetricsClient::record(const std::string& appId,
     const std::string& telemetryPayload,
     const std::string& marker)
 {
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-    return RecordTelemetry(gTelemetryMetricsObject, appId, telemetryPayload, marker);
+    return recordTelemetry(gTelemetryMetricsObject, appId, telemetryPayload, marker);
 #else
     (void)appId;
     (void)telemetryPayload;
@@ -106,11 +106,11 @@ Core::hresult TelemetryMetricsClient::Record(const std::string& appId,
 #endif
 }
 
-Core::hresult TelemetryMetricsClient::Publish(const std::string& appId,
+Core::hresult TelemetryMetricsClient::publish(const std::string& appId,
     const std::string& marker)
 {
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-    return PublishTelemetry(gTelemetryMetricsObject, appId, marker);
+    return publishTelemetry(gTelemetryMetricsObject, appId, marker);
 #else
     (void)appId;
     (void)marker;

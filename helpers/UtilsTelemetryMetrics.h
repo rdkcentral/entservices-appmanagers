@@ -28,7 +28,7 @@ namespace Plugin {
 namespace Utils {
 
 template<typename TelemetryMetricsObjectType>
-inline Core::hresult RecordTelemetry(TelemetryMetricsObjectType* telemetryMetricsObject,
+inline Core::hresult recordTelemetry(TelemetryMetricsObjectType* telemetryMetricsObject,
     const std::string& appId,
     const std::string& telemetryPayload,
     const std::string& marker)
@@ -48,7 +48,7 @@ inline Core::hresult RecordTelemetry(TelemetryMetricsObjectType* telemetryMetric
 }
 
 template<typename TelemetryMetricsObjectType>
-inline Core::hresult PublishTelemetry(TelemetryMetricsObjectType* telemetryMetricsObject,
+inline Core::hresult publishTelemetry(TelemetryMetricsObjectType* telemetryMetricsObject,
     const std::string& appId,
     const std::string& marker)
 {
@@ -70,21 +70,21 @@ public:
     TelemetryMetricsClient() = default;
     ~TelemetryMetricsClient();
 
-    Core::hresult Initialize(PluginHost::IShell* service,
+    Core::hresult initialize(PluginHost::IShell* service,
         const std::string& callsign = "org.rdk.TelemetryMetrics");
 
-    Core::hresult Ensure(PluginHost::IShell* service,
+    Core::hresult ensure(PluginHost::IShell* service,
         const std::string& callsign = "org.rdk.TelemetryMetrics");
 
-    void Reset();
+    void reset();
 
-    bool IsAvailable() const;
+    bool isAvailable() const;
 
-    Core::hresult Record(const std::string& appId,
+    Core::hresult record(const std::string& appId,
         const std::string& telemetryPayload,
         const std::string& marker);
 
-    Core::hresult Publish(const std::string& appId,
+    Core::hresult publish(const std::string& appId,
         const std::string& marker);
 };
 
