@@ -23,16 +23,20 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(${NAMESPACE}Plugins REQUIRED)
+find_package(GTest REQUIRED)
 
 set (TEST_SRC
     tests/test_UtilsFile.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../mocks/Wraps.cpp
 )
 
 set (TEST_LIB
     ${NAMESPACE}Plugins::${NAMESPACE}Plugins
 )
 
-set (TEST_INC ../../helpers)
+set(TEST_INC ../../helpers)
+set(TEST_RUNNER_NAME RdkServicesL1Test)
+option(BUILD_L1_TESTS_SHARED_MODULE "Build legacy L1 tests shared module" OFF)
 
 #########################################################################################
 # add_plugin_test_ex: Macro to add plugin tests, it will append to TEST_SRC, TEST_INC,
@@ -102,65 +106,112 @@ macro(add_plugin_test plugin_name test_files)
 endmacro()
 
 # PLUGIN_APPMANAGER
-set (APPMANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/AppManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
-set (APPMANAGER_LIBS ${NAMESPACE}AppManager ${NAMESPACE}AppManagerImplementation)
+set(APPMANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/AppManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
+set(APPMANAGER_LIBS ${NAMESPACE}AppManager ${NAMESPACE}AppManagerImplementation)
 add_plugin_test_ex(PLUGIN_APPMANAGER tests/test_AppManager.cpp "${APPMANAGER_INC}" "${APPMANAGER_LIBS}")
 
 # PLUGIN_RUNTIME_MANAGER
-set (RUNTIMEMANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/RuntimeManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
-set (RUNTIMEMANAGER_LIBS ${NAMESPACE}RuntimeManager ${NAMESPACE}RuntimeManagerImplementation)
+set(RUNTIMEMANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/RuntimeManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
+set(RUNTIMEMANAGER_LIBS ${NAMESPACE}RuntimeManager ${NAMESPACE}RuntimeManagerImplementation)
 add_plugin_test_ex(PLUGIN_RUNTIME_MANAGER tests/test_RunTimeManager.cpp "${RUNTIMEMANAGER_INC}" "${RUNTIMEMANAGER_LIBS}")
 
-#PLUGIN_APP_STORAGE_MANAGER
-set (STORAGE_MANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/AppStorageManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
-set (STORAGE_MANAGER_LIBS ${NAMESPACE}AppStorageManager ${NAMESPACE}AppStorageManagerImplementation)
+# PLUGIN_APP_STORAGE_MANAGER
+set(STORAGE_MANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/AppStorageManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
+set(STORAGE_MANAGER_LIBS ${NAMESPACE}AppStorageManager ${NAMESPACE}AppStorageManagerImplementation)
 add_plugin_test_ex(PLUGIN_APP_STORAGE_MANAGER tests/test_AppStorageManager.cpp "${STORAGE_MANAGER_INC}" "${STORAGE_MANAGER_LIBS}")
 
 # PLUGIN_LIFECYCLE_MANAGER
-set (LIFECYCLEMANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/LifecycleManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
-set (LIFECYCLEMANAGER_LIBS ${NAMESPACE}LifecycleManager)
+set(LIFECYCLEMANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/LifecycleManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
+set(LIFECYCLEMANAGER_LIBS ${NAMESPACE}LifecycleManager)
 add_plugin_test_ex(PLUGIN_LIFECYCLE_MANAGER tests/test_LifecycleManager.cpp "${LIFECYCLEMANAGER_INC}" "${LIFECYCLEMANAGER_LIBS}")
 
 # PLUGIN_PREINSTALL_MANAGER
-set (PREINSTALL_MANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/PreinstallManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
-set (PREINSTALL_MANAGER_LIBS ${NAMESPACE}PreinstallManager ${NAMESPACE}PreinstallManagerImplementation)
+set(PREINSTALL_MANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/PreinstallManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
+set(PREINSTALL_MANAGER_LIBS ${NAMESPACE}PreinstallManager ${NAMESPACE}PreinstallManagerImplementation)
 add_plugin_test_ex(PLUGIN_PREINSTALL_MANAGER tests/test_PreinstallManager.cpp "${PREINSTALL_MANAGER_INC}" "${PREINSTALL_MANAGER_LIBS}")
 
 # PLUGIN_PACKAGE_MANAGER
-set (PACKAGEMANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/PackageManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
-set (PACKAGEMANAGER_LIBS ${NAMESPACE}PackageManagerRDKEMS)
+set(PACKAGEMANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/PackageManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
+set(PACKAGEMANAGER_LIBS ${NAMESPACE}PackageManagerRDKEMS)
 add_plugin_test_ex(PLUGIN_PACKAGE_MANAGER tests/test_PackageManager.cpp "${PACKAGEMANAGER_INC}" "${PACKAGEMANAGER_LIBS}")
 
-#PLUGIN_DOWNLOAD_MANAGER
-set (DOWNLOADMANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/DownloadManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
-set (DOWNLOADMANAGER_LIBS ${NAMESPACE}DownloadManager ${NAMESPACE}DownloadManagerImplementation)
+# PLUGIN_DOWNLOADMANAGER
+set(DOWNLOADMANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/DownloadManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
+set(DOWNLOADMANAGER_LIBS ${NAMESPACE}DownloadManager ${NAMESPACE}DownloadManagerImplementation)
 add_plugin_test_ex(PLUGIN_DOWNLOADMANAGER tests/test_DownloadManager.cpp "${DOWNLOADMANAGER_INC}" "${DOWNLOADMANAGER_LIBS}")
 
-add_library(${MODULE_NAME} SHARED ${TEST_SRC})
+if(BUILD_L1_TESTS_SHARED_MODULE)
+    add_library(${MODULE_NAME} SHARED ${TEST_SRC})
+endif()
 
-if (RDK_SERVICES_L1_TEST)
-    target_link_options(${MODULE_NAME} PRIVATE "-Wl,-wrap,opendir")
-endif (RDK_SERVICES_L1_TEST)
+add_executable(${TEST_RUNNER_NAME} ${TEST_SRC})
 
 include_directories(${TEST_INC})
 
-target_link_directories(${MODULE_NAME} PUBLIC ${CMAKE_INSTALL_PREFIX}/lib ${CMAKE_INSTALL_PREFIX}/lib/wpeframework/plugins)
+if(BUILD_L1_TESTS_SHARED_MODULE)
+    target_link_directories(${MODULE_NAME} PUBLIC ${CMAKE_INSTALL_PREFIX}/lib ${CMAKE_INSTALL_PREFIX}/lib/wpeframework/plugins)
+endif()
+target_link_directories(${TEST_RUNNER_NAME} PUBLIC ${CMAKE_INSTALL_PREFIX}/lib ${CMAKE_INSTALL_PREFIX}/lib/wpeframework/plugins)
 
-target_link_libraries(${MODULE_NAME} ${TEST_LIB})
+if(BUILD_L1_TESTS_SHARED_MODULE)
+    target_link_libraries(${MODULE_NAME} ${TEST_LIB})
 
-target_include_directories(${MODULE_NAME}
+    target_include_directories(${MODULE_NAME} PRIVATE
+            ${CMAKE_CURRENT_SOURCE_DIR}/../mocks
+    )
+
+    target_include_directories(${MODULE_NAME}
+            PUBLIC
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+            $<INSTALL_INTERFACE:include>
+            ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/Tests/mocks
+            ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/Tests/mocks/thunder
+            ${CMAKE_SOURCE_DIR}/../Thunder/Source/plugins
+    )
+
+    target_compile_definitions(${MODULE_NAME} PRIVATE UNIT_TEST)
+
+    if(RDK_SERVICES_L1_TEST)
+        target_link_options(${MODULE_NAME} PRIVATE "-Wl,-wrap,opendir")
+    endif()
+endif()
+
+target_link_libraries(${TEST_RUNNER_NAME} gtest_main gmock gtest ${TEST_LIB})
+
+target_compile_definitions(${TEST_RUNNER_NAME} PRIVATE UNIT_TEST)
+
+target_link_options(${TEST_RUNNER_NAME} PRIVATE
+    -Wl,--wrap,system
+    -Wl,--wrap,popen
+    -Wl,--wrap,pclose
+    -Wl,--wrap,setmntent
+    -Wl,--wrap,getmntent
+    -Wl,--wrap,unlink
+    -Wl,--wrap,statvfs
+    -Wl,--wrap,mkdir
+    -Wl,--wrap,stat
+    -Wl,--wrap,open
+    -Wl,--wrap,rmdir
+    -Wl,--wrap,access
+    -Wl,--wrap,chown
+    -Wl,--wrap,nftw
+    -Wl,--wrap,opendir
+    -Wl,--wrap,readdir
+    -Wl,--wrap,closedir
+)
+
+target_include_directories(${TEST_RUNNER_NAME}
         PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
         $<INSTALL_INTERFACE:include>
-        ${CMAKE_SOURCE_DIR}/../entservices-testframework/Tests/mocks
-        ${CMAKE_SOURCE_DIR}/../entservices-testframework/Tests/mocks/devicesettings
-        ${CMAKE_SOURCE_DIR}/../entservices-testframework/Tests/mocks/thunder
+        ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/Tests/mocks
+        ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/Tests/mocks/thunder
         ${CMAKE_SOURCE_DIR}/../Thunder/Source/plugins
-        )
+)
 
-target_compile_definitions(${MODULE_NAME} PRIVATE UNIT_TEST)
+install(TARGETS ${TEST_RUNNER_NAME} DESTINATION bin)
 
-#install(TARGETS ${PROJECT_NAME} DESTINATION bin)
-
-install(TARGETS ${MODULE_NAME} DESTINATION lib)
-write_config(${PLUGIN_NAME})
+if(BUILD_L1_TESTS_SHARED_MODULE)
+    install(TARGETS ${MODULE_NAME} DESTINATION lib)
+    write_config(${PLUGIN_NAME})
+endif()
