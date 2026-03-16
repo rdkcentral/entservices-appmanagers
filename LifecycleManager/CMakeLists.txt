@@ -72,7 +72,9 @@ endif()
 install(TARGETS ${MODULE_NAME}
     DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/${STORAGE_DIRECTORY}/plugins)
 
-include_directories(../helpers)
+target_include_directories(${MODULE_NAME}
+	PRIVATE
+		${CMAKE_CURRENT_SOURCE_DIR}/../helpers)
 
 set(LIFECYCLE_MANAGER_INCLUDES $ENV{LIFECYCLE_MANAGER_INCLUDES})
 separate_arguments(LIFECYCLE_MANAGER_INCLUDES)

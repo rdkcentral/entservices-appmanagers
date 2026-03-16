@@ -106,7 +106,9 @@ if(RDK_APPMANAGERS_DEBUG)
     add_subdirectory(Gateway)
 endif()
 
-include_directories(../helpers)
+target_include_directories(${PLUGIN_IMPLEMENTATION}
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../helpers)
 
 set_target_properties(${PLUGIN_IMPLEMENTATION} PROPERTIES
         CXX_STANDARD 11

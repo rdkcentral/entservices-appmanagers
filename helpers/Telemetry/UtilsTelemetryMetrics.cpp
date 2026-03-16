@@ -28,6 +28,15 @@ namespace WPEFramework {
 namespace Plugin {
 namespace Utils {
 
+bool isTelemetryMetricsEnabled()
+{
+#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
+    return true;
+#else
+    return false;
+#endif
+}
+
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
 namespace {
     Exchange::ITelemetryMetrics* gTelemetryMetricsObject = nullptr;
