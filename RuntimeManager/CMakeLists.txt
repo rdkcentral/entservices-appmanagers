@@ -55,9 +55,8 @@ add_library(${MODULE_NAME} SHARED
 )
 
 if(ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG)
-    # Define the macro at directory scope so it also applies to ${PLUGIN_IMPLEMENTATION}
-    add_compile_definitions(ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG)
     target_compile_definitions(${MODULE_NAME} PRIVATE ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG)
+    target_compile_definitions(${PLUGIN_IMPLEMENTATION} PRIVATE ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG)
 endif()
 
 set_target_properties(${MODULE_NAME} PROPERTIES
