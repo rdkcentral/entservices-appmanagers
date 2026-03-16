@@ -21,16 +21,19 @@ set(PLUGIN_NAME ${PROJECT_NAME}RDKEMS)
 set(MODULE_NAME ${NAMESPACE}${PLUGIN_NAME})
 message("Setup ${MODULE_NAME}")
 
+option(USE_LIBPACKAGE_RALF "USE_LIBPACKAGE_RALF" OFF)
+
 # XXX: ../cmake/FindCurl.cmake is bad
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/;${CMAKE_MODULE_PATH}")
 message("CMAKE_MODULE_PATH=${CMAKE_MODULE_PATH}")
 
-if (LIB_PACKAGE)
-    message("LIB_PACKAGE=${LIB_PACKAGE}")
-    add_compile_options ( -DUSE_LIBPACKAGE )
-    include_directories(${SYSROOT_PATH}/${CMAKE_INSTALL_PREFIX}/include/Package)
-    set(LIB_PACKAGE_LIBRARY "${SYSROOT_PATH}/${CMAKE_INSTALL_PREFIX}/lib/libPackage.so")
+if (USE_LIBPACKAGE_RALF)
+    message("USE_LIBPACKAGE_RALF=${USE_LIBPACKAGE_RALF}")
+    add_definitions(-DUSE_LIBPACKAGE_RALF)
 endif()
+
+include_directories(${SYSROOT_PATH}/${CMAKE_INSTALL_PREFIX}/include/Package)
+set(LIB_PACKAGE_LIBRARY "${SYSROOT_PATH}/${CMAKE_INSTALL_PREFIX}/lib/libPackage.so")
 
 option(AIMANAGERS_TELEMETRY_METRICS_SUPPORT "AIMANAGERS_TELEMETRY_METRICS_SUPPORT" OFF)
 
@@ -74,7 +77,7 @@ if(RDK_SERVICES_L1_TEST)
     if (JSONCPP_FOUND)
     message("Yay, found jsoncpp inc=${JSONCPP_INCLUDE_DIRS} lib=${JSONCPP_LIBRARY}")
     endif()
-    target_include_directories(${MODULE_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/../entservices-testframework/Tests/mocks)
+    target_include_directories(${MODULE_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/Tests/mocks)
     target_include_directories(${MODULE_NAME} PUBLIC ${JSONCPP_INCLUDE_DIR})
     target_link_libraries(${MODULE_NAME} PUBLIC ${JSONCPP_LIBRARY})
 endif()
@@ -87,7 +90,8 @@ endif()
 install(TARGETS ${MODULE_NAME}
     DESTINATION lib/${STORAGE_DIRECTORY}/plugins)
 
-set(PLUGIN_PACKAGEMANAGER_MODE "Local" CACHE STRING "Controls if the plugin should run in its own process, in process or remote")
+set(PLUGIN_PACKAGEMANAGER_MODE "Off" CACHE STRING "Controls if the plugin should run in its own process, in process or remote")
 set(PLUGIN_PACKAGEMANAGER_AUTOSTART "false" CACHE STRING "Deactivated PackageManager plugin")
+set(PLUGIN_PACKAGEMANAGER_DOWNLOAD_DIR "" CACHE STRING "Directory path for package download")
 #write_config()
 write_config(INSTALL_NAME ${PLUGIN_NAME}.json)
