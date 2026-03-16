@@ -40,9 +40,9 @@ namespace Plugin {
      * sequential memory reclamation using the Linux MemoryAvailable metric from
      * /proc/meminfo. Handles RAM-only pressure by executing a specific order of
      * operations:
-     *   Phase 1: Kill HIBERNATED apps (oldest first)
-     *   Phase 2: Hibernate SUSPENDED apps (oldest first)
-     *   Phase 3: Suspend PAUSED apps (oldest first)
+     *   Phase 1: Terminate PAUSED apps (oldest first, skip preloaded)
+     *   Phase 2: Terminate SUSPENDED apps (oldest first, skip preloaded)
+     *   Phase 3: Terminate HIBERNATED apps (oldest first, skip preloaded)
      *
      * RAM Target Registry:
      *   - Launch Target: configuration.urn:rdk:config:memory.system (e.g. "256M")
@@ -107,12 +107,12 @@ namespace Plugin {
         bool ExecuteSequentialReclamation(const string& activeId, uint32_t targetRAMKB);
 
         /**
-         * @brief Try to resolve memory pressure by transitioning apps in the given state.
+         * @brief Try to resolve memory pressure by terminating apps in the given state.
          * @param state    The lifecycle state of candidate apps.
-         * @param action   The action string: "KILL", "HIBERNATE", or "SUSPEND".
+         * @param action   The action string: "TERMINATE".
          * @param targetRAMKB  The required MemoryAvailable threshold in KB.
          * @param ignoreId The app ID to not touch (the active foreground app).
-         * @param actionsPerformed [out] Incremented for each app that was transitioned or killed.
+         * @param actionsPerformed [out] Incremented for each app that was terminated.
          * @return true if MemoryAvailable >= targetRAMKB after resolution.
          */
         bool Resolve(Exchange::IAppManager::AppLifecycleState state,

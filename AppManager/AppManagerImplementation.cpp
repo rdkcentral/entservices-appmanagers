@@ -23,6 +23,7 @@
 #include <algorithm>
 #include <set>
 #include "AppManagerImplementation.h"
+#include "AppPolicyConfig.h"
 #include "MemoryMonitor.h"
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
 #include "AppManagerTelemetryReporting.h"
@@ -1186,28 +1187,21 @@ Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const s
         return Core::ERROR_INVALID_PARAMETER;
     }
 
-    /* MemoryMonitor: Blocking pre-preload memory preparation.
-     * Ensures sufficient MemoryAvailable (from /proc/meminfo) before scheduling the preload.
-     * Uses maxSuspendedSystemMemory from app config as the target.
-     * Blocks until the required memory is available or all reclamation options are exhausted.
-     * mReconciliationLock ensures only one thread runs a blocking reconciliation at a time.
-     * NOTE: mAdminLock must NOT be held here — MemoryMonitor thread calls back into
-     *       methods (GetSortedCandidates, KillApp, etc.) that acquire mAdminLock. */
+    /* PreloadApp: no termination/reconciliation — just check current MemAvailable.
+     * If there is not enough memory available, refuse the preload immediately. */
     {
-        std::lock_guard<std::mutex> reconLock(mReconciliationLock);
-        if (mMemoryMonitor)
+        uint32_t launchTargetKB = 0;
+        uint32_t preloadTargetKB = 0;
+        GetAppMemoryConfig(appId, launchTargetKB, preloadTargetKB);
+        uint32_t currentMemAvailKB = ReadMemAvailable();
+        LOGINFO("[MemoryMonitor] PreloadApp memory check for appId %s: required %u KB, available %u KB",
+                appId.c_str(), preloadTargetKB, currentMemAvailKB);
+        if (currentMemAvailKB < preloadTargetKB)
         {
-            uint32_t launchTargetKB = 0;
-            uint32_t preloadTargetKB = 0;
-            GetAppMemoryConfig(appId, launchTargetKB, preloadTargetKB);
-            LOGINFO("[MemoryMonitor] Triggering pre-preload blocking reconciliation for appId %s, target %u KB",
-                    appId.c_str(), preloadTargetKB);
-            if (!mMemoryMonitor->RequestReconciliationAndWait(appId, preloadTargetKB))
-            {
-                LOGERR("[MemoryMonitor] Failed to reclaim sufficient memory for preload of appId %s", appId.c_str());
-                error = "Insufficient memory for preload";
-                return Core::ERROR_GENERAL;
-            }
+            LOGERR("[MemoryMonitor] Insufficient memory for preload of appId %s (required %u KB, available %u KB)",
+                   appId.c_str(), preloadTargetKB, currentMemAvailKB);
+            error = "Insufficient memory for preload";
+            return Core::ERROR_GENERAL;
         }
     }
 
@@ -1833,7 +1827,7 @@ void AppManagerImplementation::LogManagedAppsSnapshot()
             LOGWARN("[MemoryMonitor] App %s has zero lastActiveStateChangeTime, using loadTime for elapsed calculation", entry.first.c_str());
             elapsed = GetElapsedTimeSeconds(entry.second.loadTime);
         }
-        LOGINFO(" [MemoryMonitor] - App: %s, State: %s, Secs since last state change: %ld",
+        LOGINFO(" [MemoryMonitor] - App: %s, State: %s, Secs since last ACTIVE state: %ld",
                 entry.first.c_str(), stateToString(entry.second.appNewState).c_str(), elapsed);
     }
     LOGINFO("[MemoryMonitor] ------------------------------");
@@ -2017,17 +2011,7 @@ bool AppManagerImplementation::IsPreloadedApp(const string& appId)
     return result;
 }
 
-bool AppManagerImplementation::isAppSuspendable(const string &appId)
-{
-    std::set<string> suspendableApps = {"Netflix", "YouTube", "AppleTV", "Xumo", "PrimeVideo"};
-    return suspendableApps.find(appId) != suspendableApps.end();
-}
 
-bool AppManagerImplementation::isAppHibernatable(const string &appId)
-{
-    std::set<string> hibernatableApps = {"Netflix", "YouTube", "Xumo"};
-    return hibernatableApps.find(appId) != hibernatableApps.end();
-}
 
 /*
  * @brief Parse a memory size string (e.g. "256M", "16M", "1G", "512K") to KB.
@@ -2104,8 +2088,8 @@ uint32_t AppManagerImplementation::ParseMemorySizeToKB(const string& memStr)
 bool AppManagerImplementation::GetAppMemoryConfig(const string& appId, uint32_t& launchTargetKB, uint32_t& preloadTargetKB)
 {
     /* Defaults */
-    const uint32_t DEFAULT_LAUNCH_TARGET_KB  = 512 * 1024;  /* 512 MB */
-    const uint32_t DEFAULT_PRELOAD_TARGET_KB = 350 * 1024;   /* 350 MB  */
+    const uint32_t DEFAULT_LAUNCH_TARGET_KB  = 2400 * 1024;  /* 2400MB */
+    const uint32_t DEFAULT_PRELOAD_TARGET_KB = 2500 * 1024;   /* 2500 MB  */
     launchTargetKB  = DEFAULT_LAUNCH_TARGET_KB;
     preloadTargetKB = DEFAULT_PRELOAD_TARGET_KB;
 

@@ -170,7 +170,9 @@ bool MemoryMonitor::ExecuteSequentialReclamation(const string& activeId, uint32_
 
     /*
      * Iterate through all 3 phases: Phase1 -> Phase2 -> Phase3.
-     * After each full pass, if any app was transitioned or killed, repeat.
+     * All phases terminate (kill) apps in the given state, oldest first.
+     * Preloaded apps are never terminated.
+     * After each full pass, if any app was terminated, repeat.
      * If no action was taken in a full pass, stop (nothing more can be done).
      */
     int iteration = 0;
@@ -180,26 +182,26 @@ bool MemoryMonitor::ExecuteSequentialReclamation(const string& activeId, uint32_
 
         LOGINFO("[MemoryMonitor] Reclamation pass %d", iteration + 1);
 
-        /* Phase 1: Kill HIBERNATED apps (longest-in-state first) */
-        if (Resolve(Exchange::IAppManager::APP_STATE_HIBERNATED, "KILL", targetRAMKB, activeId, actionsPerformed))
+        /* Phase 1: Terminate PAUSED apps (longest-in-state first, skip preloaded) */
+        if (Resolve(Exchange::IAppManager::APP_STATE_PAUSED, "TERMINATE", targetRAMKB, activeId, actionsPerformed))
         {
-            LOGINFO("[MemoryMonitor] RAM target met after Phase 1 (Kill Hibernated), pass %d.", iteration + 1);
+            LOGINFO("[MemoryMonitor] RAM target met after Phase 1 (Terminate Paused), pass %d.", iteration + 1);
             LOGINFO("[MemoryMonitor] RAM Reconciliation Finished. Final MemAvailable: %u KB", _parent->ReadMemAvailable());
             return true;
         }
 
-        /* Phase 2: Hibernate SUSPENDED apps (longest-in-state first) */
-        if (Resolve(Exchange::IAppManager::APP_STATE_SUSPENDED, "HIBERNATE", targetRAMKB, activeId, actionsPerformed))
+        /* Phase 2: Terminate SUSPENDED apps (longest-in-state first, skip preloaded) */
+        if (Resolve(Exchange::IAppManager::APP_STATE_SUSPENDED, "TERMINATE", targetRAMKB, activeId, actionsPerformed))
         {
-            LOGINFO("[MemoryMonitor] RAM target met after Phase 2 (Hibernate Suspended), pass %d.", iteration + 1);
+            LOGINFO("[MemoryMonitor] RAM target met after Phase 2 (Terminate Suspended), pass %d.", iteration + 1);
             LOGINFO("[MemoryMonitor] RAM Reconciliation Finished. Final MemAvailable: %u KB", _parent->ReadMemAvailable());
             return true;
         }
 
-        /* Phase 3: Suspend PAUSED apps (longest-in-state first) */
-        if (Resolve(Exchange::IAppManager::APP_STATE_PAUSED, "SUSPEND", targetRAMKB, activeId, actionsPerformed))
+        /* Phase 3: Terminate HIBERNATED apps (longest-in-state first, skip preloaded) */
+        if (Resolve(Exchange::IAppManager::APP_STATE_HIBERNATED, "TERMINATE", targetRAMKB, activeId, actionsPerformed))
         {
-            LOGINFO("[MemoryMonitor] RAM target met after Phase 3 (Suspend Paused), pass %d.", iteration + 1);
+            LOGINFO("[MemoryMonitor] RAM target met after Phase 3 (Terminate Hibernated), pass %d.", iteration + 1);
             LOGINFO("[MemoryMonitor] RAM Reconciliation Finished. Final MemAvailable: %u KB", _parent->ReadMemAvailable());
             return true;
         }
@@ -242,40 +244,18 @@ bool MemoryMonitor::Resolve(Exchange::IAppManager::AppLifecycleState state,
         struct timespec ts = _parent->GetAppStateTime(appId);
         long elapsed = _parent->GetElapsedTimeSeconds(ts);
 
-        LOGINFO("[MemoryMonitor] DECISION: Selecting %s for %s. Reason: Longest in state %d (%ld seconds).",
-                appId.c_str(), action.c_str(), static_cast<int>(state), elapsed);
+        LOGINFO("[MemoryMonitor] DECISION: Selecting %s for %s. Reason: Last in ACTIVE state %ld seconds ago.",
+                appId.c_str(), action.c_str(), elapsed);
 
-        Exchange::IAppManager::AppLifecycleState nextState = state;
-
-        if (action == "KILL")
+        if (appId == "com.entos.flutter_ref_app")
         {
-            /* Preloaded apps must not be terminated — only hibernate is allowed */
-            if (_parent->IsPreloadedApp(appId))
-            {
-                LOGINFO("[MemoryMonitor] Skipping KILL for preloaded app %s (only hibernation allowed for preloaded apps)",
-                        appId.c_str());
-                continue;
-            }
-            _parent->KillApp(appId);
-            nextState = Exchange::IAppManager::APP_STATE_UNLOADED;
-        }
-        else if (action == "HIBERNATE" && _parent->isAppHibernatable(appId) == true)
-        {
-            _parent->HibernateApp(appId);
-            nextState = Exchange::IAppManager::APP_STATE_HIBERNATED;
-        }
-        else if (action == "SUSPEND" && _parent->isAppSuspendable(appId) == true)
-        {
-            _parent->SuspendApp(appId);
-            nextState = Exchange::IAppManager::APP_STATE_SUSPENDED;
-        }
-
-        if (nextState == state)
-        {
-            LOGINFO("[MemoryMonitor] No valid action taken for %s (action: %s), skipping.",
-                    appId.c_str(), action.c_str());
+            LOGINFO("[MemoryMonitor] Skipping TERMINATE for special app %s (protected from termination)",
+                    appId.c_str());
             continue;
         }
+
+        _parent->KillApp(appId);
+        Exchange::IAppManager::AppLifecycleState nextState = Exchange::IAppManager::APP_STATE_UNLOADED;
 
         actionsPerformed++;
 
