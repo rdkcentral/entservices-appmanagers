@@ -24,6 +24,7 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <set>
 #ifdef ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG
 #include <climits>
 #include <cinttypes>
@@ -363,11 +364,15 @@ namespace Plugin
             const YAML::Node preloads = root["preloads"];
             if (preloads.IsDefined() && preloads.IsSequence()) {
                 LOGINFO("preloads (merging with defaults):");
+                std::set<std::string> preloadSet(mPreloads.begin(), mPreloads.end());
                 for (const auto& item : preloads) {
                     try {
                         std::string val = item.as<std::string>();
-                        mPreloads.push_back(val);
-                        LOGINFO("  %s", val.c_str());
+                        if (0 == preloadSet.count(val)) {
+                            mPreloads.push_back(val);
+                            preloadSet.insert(val);
+                            LOGINFO("  %s", val.c_str());
+                        }
                     } catch (const YAML::BadConversion& ex) {
                         LOGWARN("Invalid preload entry in YAML, skipping: %s", ex.what());
                     }
@@ -377,14 +382,15 @@ namespace Plugin
             YAML::Node envVariablesNode = root["envVariables"];
             if (envVariablesNode.IsDefined() && envVariablesNode.IsSequence()) {
                 LOGINFO("envVariables (merging with defaults):");
-                // std::set<std::string> envSet(mEnvVariables.begin(), mEnvVariables.end());
+                std::set<std::string> envSet(mEnvVariables.begin(), mEnvVariables.end());
                 for (const auto& n : envVariablesNode) {
                     try {
                         std::string val = n.as<std::string>();
-                        //   if (envSet.find(val) == envSet.end()) {
-                        mEnvVariables.push_back(val);
-                        LOGINFO("  %s", val.c_str());
-                        //}
+                        if (0 == envSet.count(val)) {
+                            mEnvVariables.push_back(val);
+                            envSet.insert(val);
+                            LOGINFO("  %s", val.c_str());
+                        }
                     } catch (const YAML::BadConversion& ex) {
                         LOGWARN("Invalid envVariables entry in YAML, skipping: %s", ex.what());
                     }
