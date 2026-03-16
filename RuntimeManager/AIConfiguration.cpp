@@ -47,6 +47,7 @@ namespace Plugin
         , mNonHomeAppMemoryLimit(0)
         , mNonHomeAppGpuLimit(0)
         , mVpuAccessBlacklist()
+        , mSvpEnabled(false)
     {
         // Initialize primitive members with safe defaults; configuration files may override these.
         mResourceManagerClientEnabled = false;
@@ -55,10 +56,6 @@ namespace Plugin
         mIPv6Enabled = false;
         mIonHeapDefaultQuota = 0;
         mDialServerPort = 0;
-#ifdef ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG
-        // Ensure SVP flag has a defined default before YAML/INI parsing uses it as a fallback
-        mSvpEnabled = false;
-#endif
     }
 
     AIConfiguration::~AIConfiguration()
