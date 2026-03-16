@@ -54,6 +54,7 @@ namespace Plugin
             std::string getDialUsn() const;
             std::map<std::string, size_t> getIonHeapQuotas() const;
             void printAIConfiguration();
+            std::list<std::string> getSvpFiles() const;
 
             // system configuration
             std::list<std::string> getPreloads() const;
