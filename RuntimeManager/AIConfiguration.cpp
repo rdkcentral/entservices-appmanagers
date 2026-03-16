@@ -427,7 +427,11 @@ namespace Plugin
             LOGERR("Error parsing YAML: %s", ex.what());
         }
 #else
-	LOGERR("NO distro feature enable_rdkappmanagers_runtimeconfig is enabled to support yaml read");
+        static bool runtimeConfigFeatureWarningLogged = false;
+        if (false == runtimeConfigFeatureWarningLogged) {
+            LOGWARN("NO distro feature enable_rdkappmanagers_runtimeconfig is enabled to support yaml read");
+            runtimeConfigFeatureWarningLogged = true;
+        }
 #endif
     }
 
