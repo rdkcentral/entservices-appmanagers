@@ -386,7 +386,7 @@ namespace Plugin
                 if (memoryLimitNode.IsDefined() && memoryLimitNode.IsScalar()) {
                     try {
                         const uint64_t memoryLimitValue = memoryLimitNode.as<uint64_t>();
-                        if (memoryLimitValue > static_cast<uint64_t>(SSIZE_MAX)) {
+                        if (static_cast<uint64_t>(SSIZE_MAX) < memoryLimitValue) {
                             LOGERR("memoryLimit value %" PRIu64 " exceeds SSIZE_MAX; ignoring", memoryLimitValue);
                         } else {
                             mNonHomeAppMemoryLimit = static_cast<ssize_t>(memoryLimitValue);
@@ -402,8 +402,13 @@ namespace Plugin
                 if (gpuNode.IsDefined()) {
                     if (gpuNode.IsScalar()) {
                         try {
-                            mNonHomeAppGpuLimit = static_cast<ssize_t>(gpuNode.as<uint64_t>());
-                            LOGINFO("gpuMemoryLimit: %zd", mNonHomeAppGpuLimit);
+                            const uint64_t gpuMemoryLimitValue = gpuNode.as<uint64_t>();
+                            if (static_cast<uint64_t>(SSIZE_MAX) < gpuMemoryLimitValue) {
+                                LOGERR("gpuMemoryLimit value %" PRIu64 " exceeds SSIZE_MAX; ignoring", gpuMemoryLimitValue);
+                            } else {
+                                mNonHomeAppGpuLimit = static_cast<ssize_t>(gpuMemoryLimitValue);
+                                LOGINFO("gpuMemoryLimit: %zd", mNonHomeAppGpuLimit);
+                            }
                         } catch (const YAML::BadConversion& e) {
                             LOGERR("Invalid gpuMemoryLimit value in YAML: %s", e.what());
                         }
