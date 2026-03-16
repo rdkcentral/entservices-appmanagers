@@ -186,7 +186,6 @@ target_link_libraries(${PLUGIN_IMPLEMENTATION} PRIVATE
     ${PLUGIN_RUNTIME_MANAGER_EXTRA_LIBRARIES})
 
 if(ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG)
-    find_package(yaml-cpp REQUIRED)
     target_link_libraries(${PLUGIN_IMPLEMENTATION} PRIVATE yaml-cpp::yaml-cpp)
 endif()
 
