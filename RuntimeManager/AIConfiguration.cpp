@@ -404,13 +404,13 @@ namespace Plugin
                     try {
                         const uint64_t memoryLimitValue = memoryLimitNode.as<uint64_t>();
                         if (static_cast<uint64_t>(SSIZE_MAX) < memoryLimitValue) {
-                            LOGERR("memoryLimit value %" PRIu64 " exceeds SSIZE_MAX; ignoring", memoryLimitValue);
+                            LOGWARN("memoryLimit value %" PRIu64 " exceeds SSIZE_MAX; ignoring", memoryLimitValue);
                         } else {
                             mNonHomeAppMemoryLimit = static_cast<ssize_t>(memoryLimitValue);
                             LOGINFO("memoryLimit: %zd", mNonHomeAppMemoryLimit);
                         }
                     } catch (const YAML::BadConversion& e) {
-                        LOGERR("Invalid value for memoryLimit in YAML: %s", e.what());
+                        LOGWARN("Invalid value for memoryLimit in YAML: %s", e.what());
                     }
                 }
             }
@@ -421,16 +421,16 @@ namespace Plugin
                         try {
                             const uint64_t gpuMemoryLimitValue = gpuNode.as<uint64_t>();
                             if (static_cast<uint64_t>(SSIZE_MAX) < gpuMemoryLimitValue) {
-                                LOGERR("gpuMemoryLimit value %" PRIu64 " exceeds SSIZE_MAX; ignoring", gpuMemoryLimitValue);
+                                LOGWARN("gpuMemoryLimit value %" PRIu64 " exceeds SSIZE_MAX; ignoring", gpuMemoryLimitValue);
                             } else {
                                 mNonHomeAppGpuLimit = static_cast<ssize_t>(gpuMemoryLimitValue);
                                 LOGINFO("gpuMemoryLimit: %zd", mNonHomeAppGpuLimit);
                             }
                         } catch (const YAML::BadConversion& e) {
-                            LOGERR("Invalid gpuMemoryLimit value in YAML: %s", e.what());
+                            LOGWARN("Invalid gpuMemoryLimit value in YAML: %s", e.what());
                         }
                     } else {
-                        LOGERR("Invalid YAML type for gpuMemoryLimit: expected scalar");
+                        LOGWARN("Invalid YAML type for gpuMemoryLimit: expected scalar");
                     }
                 }
             }
@@ -441,10 +441,10 @@ namespace Plugin
                         mIonHeapDefaultQuota = ionDefaultQuotaNode.as<size_t>();
                         LOGINFO("ionDefaultQuota: %zu", mIonHeapDefaultQuota);
                     } catch (const YAML::BadConversion &e) {
-                        LOGERR("Invalid value for ionDefaultQuota in YAML configuration: %s", e.what());
+                        LOGWARN("Invalid value for ionDefaultQuota in YAML configuration: %s", e.what());
                     }
                 } else if (ionDefaultQuotaNode) {
-                    LOGERR("ionDefaultQuota is present in YAML configuration but is not a scalar value");
+                    LOGWARN("ionDefaultQuota is present in YAML configuration but is not a scalar value");
                 }
             }
             YAML::Node svpNode = root["svpfiles"];
@@ -457,7 +457,7 @@ namespace Plugin
                         mSvpFiles.push_back(val);
                         LOGINFO("  %s", val.c_str());
                     } catch (const YAML::BadConversion& e) {
-                        LOGERR("Invalid entry in svpfiles sequence in YAML configuration: %s", e.what());
+                        LOGWARN("Invalid entry in svpfiles sequence in YAML configuration: %s", e.what());
                     }
                 }
             }
