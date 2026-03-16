@@ -349,7 +349,7 @@ namespace Plugin
             YAML::Node root = YAML::LoadFile(AICONFIGURATION_YAML_PATH);
 
             if (!root || !root.IsMap()) {
-                LOGERR("Invalid YAML format: root must be a mapping");
+                LOGWARN("Invalid YAML format: root must be a mapping");
                 return;
             }
 
@@ -458,7 +458,7 @@ namespace Plugin
             //printAIConfiguration();
 
         } catch (const std::exception& ex) {
-            LOGERR("Error parsing YAML: %s", ex.what());
+            LOGWARN("Error parsing YAML: %s", ex.what());
         }
 #endif
     }
