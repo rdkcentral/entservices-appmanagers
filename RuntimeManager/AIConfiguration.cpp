@@ -415,9 +415,13 @@ namespace Plugin
                 mSvpFiles.clear();
                 LOGINFO("svpfiles:");
                 for (const auto& n : svpNode) {
-                    std::string val = n.as<std::string>();
-                    mSvpFiles.push_back(val);
-                    LOGINFO("  %s", val.c_str());
+                    try {
+                        std::string val = n.as<std::string>();
+                        mSvpFiles.push_back(val);
+                        LOGINFO("  %s", val.c_str());
+                    } catch (const YAML::BadConversion& e) {
+                        LOGERR("Invalid entry in svpfiles sequence in YAML configuration: %s", e.what());
+                    }
                 }
             }
 
