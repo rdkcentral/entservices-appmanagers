@@ -341,11 +341,11 @@ namespace Plugin
                 LOGERR("Invalid YAML format: root must be a mapping");
                 return;
             }
-			
-			const YAML::Node preloads = root["preloads"];
-			if (preloads.IsDefined() && preloads.IsSequence()) {
-				LOGINFO("preloads (merging with defaults):");
-    			for (const auto& item : preloads) {
+
+            const YAML::Node preloads = root["preloads"];
+            if (preloads.IsDefined() && preloads.IsSequence()) {
+                LOGINFO("preloads (merging with defaults):");
+                for (const auto& item : preloads) {
                     std::string val = item.as<std::string>();
                     //   if (preloadSet.find(val) == preloadSet.end()) {
                     mPreloads.push_back(val);
