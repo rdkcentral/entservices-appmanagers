@@ -48,6 +48,10 @@ set_target_properties(${MODULE_NAME} PROPERTIES
 
 set_source_files_properties(RDKWindowManager.cpp PROPERTIES COMPILE_FLAGS "-fexceptions")
 
+target_include_directories(${MODULE_NAME}
+        PRIVATE
+                ${CMAKE_CURRENT_SOURCE_DIR}/../helpers)
+
 target_link_libraries(${MODULE_NAME}
     PRIVATE
         CompileSettingsDebug::CompileSettingsDebug
