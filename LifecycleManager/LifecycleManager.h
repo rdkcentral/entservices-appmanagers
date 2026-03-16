@@ -113,6 +113,7 @@ namespace WPEFramework
                 Exchange::ILifecycleManager* mLifecycleManagerImplementation;
                 Exchange::ILifecycleManagerState* mLifecycleManagerState;
                 Core::Sink<Notification> mLifecycleManagerStateNotification;
+                friend class LifecycleManagerShellTest;
         };
     } /* namespace Plugin */
 } /* namespace WPEFramework */
