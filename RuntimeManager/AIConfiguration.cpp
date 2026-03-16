@@ -51,7 +51,9 @@ namespace Plugin
     void AIConfiguration::initialize()
     {
         readFromConfigFile();
+#ifdef ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG
         readFromYamlConfigFile();
+#endif
     }
 
     size_t AIConfiguration::getContainerConsoleLogCap()
@@ -435,12 +437,6 @@ namespace Plugin
 
         } catch (const std::exception& ex) {
             LOGERR("Error parsing YAML: %s", ex.what());
-        }
-#else
-        static bool runtimeConfigFeatureWarningLogged = false;
-        if (false == runtimeConfigFeatureWarningLogged) {
-            LOGWARN("NO distro feature enable_rdkappmanagers_runtimeconfig is enabled to support yaml read");
-            runtimeConfigFeatureWarningLogged = true;
         }
 #endif
     }
