@@ -55,7 +55,7 @@ add_library(${MODULE_NAME} SHARED
 )
 
 if(ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG)
-    add_compile_definitions(ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG)
+    target_compile_definitions(${MODULE_NAME} PRIVATE ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG)
 endif()
 
 set_target_properties(${MODULE_NAME} PROPERTIES
