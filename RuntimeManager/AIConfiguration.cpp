@@ -366,10 +366,8 @@ namespace Plugin
                 for (const auto& item : preloads) {
                     try {
                         std::string val = item.as<std::string>();
-                        //   if (preloadSet.find(val) == preloadSet.end()) {
                         mPreloads.push_back(val);
                         LOGINFO("  %s", val.c_str());
-                        //  }
                     } catch (const YAML::BadConversion& ex) {
                         LOGWARN("Invalid preload entry in YAML, skipping: %s", ex.what());
                     }
