@@ -47,6 +47,13 @@ namespace Plugin
         , mNonHomeAppGpuLimit(0)
         , mVpuAccessBlacklist()
     {
+        // Initialize primitive members with safe defaults; configuration files may override these.
+        mResourceManagerClientEnabled = false;
+        mGstreamerRegistryEnabled = false;
+        mEnableUsbMassStorage = false;
+        mIPv6Enabled = false;
+        mIonHeapDefaultQuota = 0;
+        mDialServerPort = 0;
 #ifdef ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG
         // Ensure SVP flag has a defined default before YAML/INI parsing uses it as a fallback
         mSvpEnabled = false;
