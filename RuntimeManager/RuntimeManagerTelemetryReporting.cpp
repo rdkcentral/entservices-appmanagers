@@ -52,6 +52,10 @@ void RuntimeManagerTelemetryReporting::reset()
 
 void RuntimeManagerTelemetryReporting::recordTelemetryData(const std::string& marker, const std::string& appId, uint64_t requestTime)
 {
+    if (!Utils::isTelemetryMetricsEnabled()) {
+        return;
+    }
+
     time_t currentTime = currentTimestampMs();
     LOGINFO("End time for %s: %lu", marker.c_str(), currentTime);
 

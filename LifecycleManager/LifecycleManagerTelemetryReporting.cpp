@@ -53,6 +53,10 @@ namespace Plugin
 
     void LifecycleManagerTelemetryReporting::reportTelemetryDataOnStateChange(ApplicationContext* context, const JsonObject &data)
     {
+        if (!Utils::isTelemetryMetricsEnabled()) {
+            return;
+        }
+
         string appId = "";
         RequestType requestType = REQUEST_TYPE_NONE;
         time_t requestTime = 0;

@@ -21,12 +21,13 @@ find_package(${NAMESPACE}Plugins REQUIRED)
 find_package(${NAMESPACE}Definitions REQUIRED)
 
 add_library(${HELPERS_LIBRARY_NAME} SHARED
-    UtilsTelemetryMetrics.cpp
-    TelemetryReportingBase.cpp)
+    Telemetry/UtilsTelemetryMetrics.cpp
+    Telemetry/TelemetryReportingBase.cpp)
 
 target_include_directories(${HELPERS_LIBRARY_NAME}
     PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/Telemetry
         ${CMAKE_SYSROOT}${CMAKE_INSTALL_PREFIX}/include/${NAMESPACE}/interfaces)
 
 target_link_libraries(${HELPERS_LIBRARY_NAME}

@@ -52,6 +52,10 @@ void AppStorageManagerTelemetryReporting::reset()
 
 void AppStorageManagerTelemetryReporting::recordGetStorageTelemetry(const std::string& appId, uint64_t requestTime)
 {
+    if (!Utils::isTelemetryMetricsEnabled()) {
+        return;
+    }
+
     JsonObject jsonParam;
     int duration = durationSinceMs(requestTime);
 

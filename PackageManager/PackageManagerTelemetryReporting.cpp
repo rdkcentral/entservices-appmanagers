@@ -55,6 +55,10 @@ void PackageManagerTelemetryReporting::recordAndPublishTelemetryData(const std::
     uint64_t requestTime,
     int errorCode)
 {
+    if (!Utils::isTelemetryMetricsEnabled()) {
+        return;
+    }
+
     JsonObject jsonParam;
     int duration = 0;
     bool shouldProcessMarker = true;

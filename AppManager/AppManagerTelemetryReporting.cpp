@@ -52,6 +52,10 @@ namespace Plugin
 
     void AppManagerTelemetryReporting::reportTelemetryData(const std::string& appId, AppManagerImplementation::CurrentAction currentAction)
     {
+        if (!Utils::isTelemetryMetricsEnabled()) {
+            return;
+        }
+
         JsonObject jsonParam;
         std::string telemetryMetrics = "";
         std::string markerName = "";
@@ -110,6 +114,10 @@ namespace Plugin
 
     void AppManagerTelemetryReporting::reportTelemetryDataOnStateChange(const string& appId, const Exchange::ILifecycleManager::LifecycleState newState)
     {
+        if (!Utils::isTelemetryMetricsEnabled()) {
+            return;
+        }
+
         JsonObject jsonParam;
         std::string telemetryMetrics = "";
         std::string markerName = "";
@@ -178,6 +186,10 @@ namespace Plugin
 
     void AppManagerTelemetryReporting::reportTelemetryErrorData(const std::string& appId, AppManagerImplementation::CurrentAction currentAction, AppManagerImplementation::CurrentActionError errorCode)
     {
+        if (!Utils::isTelemetryMetricsEnabled()) {
+            return;
+        }
+
         JsonObject jsonParam;
         std::string telemetryMetrics = "";
         std::string markerName = "";

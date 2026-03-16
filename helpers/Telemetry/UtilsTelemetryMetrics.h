@@ -27,6 +27,8 @@ namespace WPEFramework {
 namespace Plugin {
 namespace Utils {
 
+bool isTelemetryMetricsEnabled();
+
 template<typename TelemetryMetricsObjectType>
 inline Core::hresult recordTelemetry(TelemetryMetricsObjectType* telemetryMetricsObject,
     const std::string& appId,
