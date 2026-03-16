@@ -355,11 +355,15 @@ namespace Plugin
             if (preloads.IsDefined() && preloads.IsSequence()) {
                 LOGINFO("preloads (merging with defaults):");
                 for (const auto& item : preloads) {
-                    std::string val = item.as<std::string>();
-                    //   if (preloadSet.find(val) == preloadSet.end()) {
-                    mPreloads.push_back(val);
-                    LOGINFO("  %s", val.c_str());
-                    //  }
+                    try {
+                        std::string val = item.as<std::string>();
+                        //   if (preloadSet.find(val) == preloadSet.end()) {
+                        mPreloads.push_back(val);
+                        LOGINFO("  %s", val.c_str());
+                        //  }
+                    } catch (const YAML::BadConversion& ex) {
+                        LOGWARN("Invalid preload entry in YAML, skipping: %s", ex.what());
+                    }
                 }
             }
 
@@ -368,11 +372,15 @@ namespace Plugin
                 LOGINFO("envVariables (merging with defaults):");
                 // std::set<std::string> envSet(mEnvVariables.begin(), mEnvVariables.end());
                 for (const auto& n : envVariablesNode) {
-                    std::string val = n.as<std::string>();
-                    //   if (envSet.find(val) == envSet.end()) {
-                    mEnvVariables.push_back(val);
-                    LOGINFO("  %s", val.c_str());
-                    //}
+                    try {
+                        std::string val = n.as<std::string>();
+                        //   if (envSet.find(val) == envSet.end()) {
+                        mEnvVariables.push_back(val);
+                        LOGINFO("  %s", val.c_str());
+                        //}
+                    } catch (const YAML::BadConversion& ex) {
+                        LOGWARN("Invalid envVariables entry in YAML, skipping: %s", ex.what());
+                    }
                 }
             }
             YAML::Node enableSvpNode = root["enableSvp"];
