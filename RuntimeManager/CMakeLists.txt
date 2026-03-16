@@ -45,14 +45,18 @@ find_package(CompileSettingsDebug CONFIG REQUIRED)
 
 if(ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG)
     find_package(yaml-cpp CONFIG REQUIRED)
-    add_definitions(-DENABLE_RDKAPPMANAGERS_RUNTIMECONFIG)
-    add_definitions("-DENABLE_RDKAPPMANAGERS_RUNTIMECONFIG")
 endif(ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG)
+
+
 
 add_library(${MODULE_NAME} SHARED
         RuntimeManager.cpp
         Module.cpp
 )
+
+if(ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG)
+    target_compile_definitions(${MODULE_NAME} PRIVATE ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG)
+endif()
 
 set_target_properties(${MODULE_NAME} PROPERTIES
         CXX_STANDARD 11
