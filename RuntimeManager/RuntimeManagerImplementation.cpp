@@ -72,6 +72,7 @@ namespace WPEFramework
 
             if (nullptr != mTelemetryMetricsObject)
             {
+                LOGINFO("Releasing TelemetryMetrics object");
                 mTelemetryMetricsObject->Release();
                 mTelemetryMetricsObject = nullptr;
             }

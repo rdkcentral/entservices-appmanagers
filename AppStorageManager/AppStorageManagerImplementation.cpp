@@ -47,6 +47,7 @@ namespace Plugin {
 
         if (nullptr != mTelemetryMetricsObject)
         {
+            LOGINFO("Releasing TelemetryMetrics object");
             mTelemetryMetricsObject->Release();
             mTelemetryMetricsObject = nullptr;
         }

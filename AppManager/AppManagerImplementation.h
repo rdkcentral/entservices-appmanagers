@@ -105,15 +105,15 @@ namespace Plugin {
             /* From PackageManager */
             PackageInfo packageInfo;
             /* App launch params*/
-            Exchange::IAppManager::AppLifecycleState appNewState;
-            Exchange::ILifecycleManager::LifecycleState appLifecycleState;
-            timespec lastActiveStateChangeTime;
-            uint32_t lastActiveIndex;
+            Exchange::IAppManager::AppLifecycleState appNewState {Exchange::IAppManager::APP_STATE_UNKNOWN};
+            Exchange::ILifecycleManager::LifecycleState appLifecycleState {Exchange::ILifecycleManager::LifecycleState::UNLOADED};
+            timespec lastActiveStateChangeTime {0, 0};
+            uint32_t lastActiveIndex {0};
             string appIntent;
-            Exchange::IAppManager::AppLifecycleState targetAppState;
-            Exchange::IAppManager::AppLifecycleState appOldState;
+            Exchange::IAppManager::AppLifecycleState targetAppState {Exchange::IAppManager::APP_STATE_UNKNOWN};
+            Exchange::IAppManager::AppLifecycleState appOldState {Exchange::IAppManager::APP_STATE_UNKNOWN};
             /* Current Action*/
-            CurrentAction currentAction = APP_ACTION_NONE;
+            CurrentAction currentAction {APP_ACTION_NONE};
             time_t currentActionTime {0};
         } AppInfo;
 
