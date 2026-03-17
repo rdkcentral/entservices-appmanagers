@@ -1740,6 +1740,7 @@ TEST_F(PackageManagerTest, packageStateusingComRpcSuccess) {
 TEST_F(PackageManagerTest, uninstallusingJsonRpcFailurePackageNotFound) {
 
     initforJsonRpc();
+    waitforSignal(TIMEOUT_FOR_INIT);
 
     EXPECT_EQ(Core::ERROR_BAD_REQUEST, mJsonRpcHandler.Invoke(connection, _T("uninstall"), _T("{\"packageId\": \"UnknownApp\"}"), mJsonRpcResponse));
     EXPECT_TRUE(mJsonRpcResponse.empty() || mJsonRpcResponse == "{}");
@@ -1750,6 +1751,7 @@ TEST_F(PackageManagerTest, uninstallusingJsonRpcFailurePackageNotFound) {
 TEST_F(PackageManagerTest, configusingJsonRpcFailurePackageNotFound) {
 
     initforJsonRpc();
+    waitforSignal(TIMEOUT_FOR_INIT);
 
     EXPECT_EQ(Core::ERROR_BAD_REQUEST, mJsonRpcHandler.Invoke(connection, _T("config"), _T("{\"packageId\": \"UnknownApp\", \"version\": \"0.0.1\"}"), mJsonRpcResponse));
     EXPECT_TRUE(mJsonRpcResponse.empty() || mJsonRpcResponse == "{}");
@@ -1760,6 +1762,7 @@ TEST_F(PackageManagerTest, configusingJsonRpcFailurePackageNotFound) {
 TEST_F(PackageManagerTest, packageStateusingJsonRpcFailurePackageNotFound) {
 
     initforJsonRpc();
+    waitforSignal(TIMEOUT_FOR_INIT);
 
     EXPECT_EQ(Core::ERROR_BAD_REQUEST, mJsonRpcHandler.Invoke(connection, _T("packageState"), _T("{\"packageId\": \"UnknownApp\", \"version\": \"0.0.1\"}"), mJsonRpcResponse));
     EXPECT_TRUE(mJsonRpcResponse.empty() || mJsonRpcResponse == "{}");
@@ -1770,6 +1773,7 @@ TEST_F(PackageManagerTest, packageStateusingJsonRpcFailurePackageNotFound) {
 TEST_F(PackageManagerTest, listPackagesusingJsonRpcEmptyState) {
 
     initforJsonRpc();
+    waitforSignal(TIMEOUT_FOR_INIT);
 
     EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("listPackages"), _T("{}"), mJsonRpcResponse));
     EXPECT_NE(mJsonRpcResponse.find("["), std::string::npos);
