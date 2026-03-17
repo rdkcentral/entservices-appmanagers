@@ -516,8 +516,8 @@ jobs:
             -ex "info registers" \
             -ex "quit" --args "$TEST_BIN"
 
-          //  echo "Running unit tests"
-          //"$TEST_BIN"
+          
+          
 
           cp rdkL1TestResults.json "$GITHUB_WORKSPACE/rdkL1TestResultsWithoutValgrind.json"
           rm -f rdkL1TestResults.json
