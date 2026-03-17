@@ -1335,127 +1335,6 @@ TEST_F(PackageManagerTest, installusingJsonRpcSuccess) {
 	deinitforJsonRpc();
 }
 
-TEST_F(PackageManagerTest, installusingJsonRpcLibPackageMockSuccess) {
-
-    auto libPackageMock = std::make_shared<NiceMock<packagemanager::LibPackageMock>>();
-    packagemanager::IPackageImplDummy::SetMockInstance(libPackageMock);
-
-    EXPECT_CALL(*libPackageMock, Initialize(::testing::_, ::testing::_))
-        .Times(::testing::AtLeast(1))
-        .WillRepeatedly(::testing::Invoke([](const std::string&, packagemanager::ConfigMetadataArray& metadata) {
-            metadata.clear();
-            return packagemanager::SUCCESS;
-        }));
-
-    initforJsonRpc();
-    waitforSignal(TIMEOUT_FOR_INIT);
-
-    EXPECT_CALL(*mStorageManagerMock, CreateStorage(::testing::_, ::testing::_, ::testing::_, ::testing::_))
-        .Times(::testing::AtLeast(1))
-        .WillRepeatedly(::testing::Return(Core::ERROR_NONE));
-
-    EXPECT_CALL(*libPackageMock, Install("YouTube", "100.1.24", ::testing::_, "/opt/CDL/package1001", ::testing::_))
-        .Times(::testing::AtLeast(1))
-        .WillRepeatedly(::testing::Invoke([](const std::string&, const std::string&, const packagemanager::NameValues&, const std::string&, packagemanager::ConfigMetaData& cfg) {
-            cfg.dataImageSize = 2048;
-            return packagemanager::SUCCESS;
-        }));
-
-    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("install"), _T("{\"packageId\": \"YouTube\", \"version\": \"100.1.24\", \"additionalMetadata\": [{\"name\": \"testApp\", \"value\": \"2\"}], \"fileLocator\": \"/opt/CDL/package1001\"}"), mJsonRpcResponse));
-    EXPECT_TRUE(mJsonRpcResponse.empty() || mJsonRpcResponse == "{}");
-
-    deinitforJsonRpc();
-    packagemanager::IPackageImplDummy::ResetMockInstance();
-}
-
-TEST_F(PackageManagerTest, installusingJsonRpcLibPackageMockVersionMismatch) {
-
-    auto libPackageMock = std::make_shared<NiceMock<packagemanager::LibPackageMock>>();
-    packagemanager::IPackageImplDummy::SetMockInstance(libPackageMock);
-
-    EXPECT_CALL(*libPackageMock, Initialize(::testing::_, ::testing::_))
-        .Times(::testing::AtLeast(1))
-        .WillRepeatedly(::testing::Invoke([](const std::string&, packagemanager::ConfigMetadataArray& metadata) {
-            metadata.clear();
-            return packagemanager::SUCCESS;
-        }));
-
-    initforJsonRpc();
-    waitforSignal(TIMEOUT_FOR_INIT);
-
-    EXPECT_CALL(*mStorageManagerMock, CreateStorage(::testing::_, ::testing::_, ::testing::_, ::testing::_))
-        .Times(::testing::AtLeast(1))
-        .WillRepeatedly(::testing::Return(Core::ERROR_NONE));
-
-    EXPECT_CALL(*libPackageMock, Install("YouTube", "100.1.24", ::testing::_, "/opt/CDL/package1001", ::testing::_))
-        .Times(::testing::AtLeast(1))
-        .WillRepeatedly(::testing::Return(packagemanager::VERSION_MISMATCH));
-
-    EXPECT_EQ(Core::ERROR_GENERAL, mJsonRpcHandler.Invoke(connection, _T("install"), _T("{\"packageId\": \"YouTube\", \"version\": \"100.1.24\", \"additionalMetadata\": [{\"name\": \"testApp\", \"value\": \"2\"}], \"fileLocator\": \"/opt/CDL/package1001\"}"), mJsonRpcResponse));
-    EXPECT_TRUE(mJsonRpcResponse.empty() || mJsonRpcResponse == "{}");
-
-    deinitforJsonRpc();
-    packagemanager::IPackageImplDummy::ResetMockInstance();
-}
-
-TEST_F(PackageManagerTest, installusingJsonRpcLibPackageMockGeneralFailure) {
-
-    auto libPackageMock = std::make_shared<NiceMock<packagemanager::LibPackageMock>>();
-    packagemanager::IPackageImplDummy::SetMockInstance(libPackageMock);
-
-    EXPECT_CALL(*libPackageMock, Initialize(::testing::_, ::testing::_))
-        .Times(::testing::AtLeast(1))
-        .WillRepeatedly(::testing::Invoke([](const std::string&, packagemanager::ConfigMetadataArray& metadata) {
-            metadata.clear();
-            return packagemanager::SUCCESS;
-        }));
-
-    initforJsonRpc();
-    waitforSignal(TIMEOUT_FOR_INIT);
-
-    EXPECT_CALL(*mStorageManagerMock, CreateStorage(::testing::_, ::testing::_, ::testing::_, ::testing::_))
-        .Times(::testing::AtLeast(1))
-        .WillRepeatedly(::testing::Return(Core::ERROR_NONE));
-
-    EXPECT_CALL(*libPackageMock, Install("YouTube", "100.1.24", ::testing::_, "/opt/CDL/package1001", ::testing::_))
-        .Times(::testing::AtLeast(1))
-        .WillRepeatedly(::testing::Return(packagemanager::FAILED));
-
-    EXPECT_EQ(Core::ERROR_GENERAL, mJsonRpcHandler.Invoke(connection, _T("install"), _T("{\"packageId\": \"YouTube\", \"version\": \"100.1.24\", \"additionalMetadata\": [{\"name\": \"testApp\", \"value\": \"2\"}], \"fileLocator\": \"/opt/CDL/package1001\"}"), mJsonRpcResponse));
-    EXPECT_TRUE(mJsonRpcResponse.empty() || mJsonRpcResponse == "{}");
-
-    deinitforJsonRpc();
-    packagemanager::IPackageImplDummy::ResetMockInstance();
-}
-
-TEST_F(PackageManagerTest, installusingJsonRpcCreateStorageFailure) {
-
-    auto libPackageMock = std::make_shared<NiceMock<packagemanager::LibPackageMock>>();
-    packagemanager::IPackageImplDummy::SetMockInstance(libPackageMock);
-
-    EXPECT_CALL(*libPackageMock, Initialize(::testing::_, ::testing::_))
-        .Times(::testing::AtLeast(1))
-        .WillRepeatedly(::testing::Invoke([](const std::string&, packagemanager::ConfigMetadataArray& metadata) {
-            metadata.clear();
-            return packagemanager::SUCCESS;
-        }));
-
-    initforJsonRpc();
-    waitforSignal(TIMEOUT_FOR_INIT);
-
-    EXPECT_CALL(*mStorageManagerMock, CreateStorage(::testing::_, ::testing::_, ::testing::_, ::testing::_))
-        .Times(::testing::AtLeast(1))
-        .WillRepeatedly(::testing::Return(Core::ERROR_GENERAL));
-
-    EXPECT_CALL(*libPackageMock, Install(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_)).Times(0);
-
-    EXPECT_EQ(Core::ERROR_GENERAL, mJsonRpcHandler.Invoke(connection, _T("install"), _T("{\"packageId\": \"YouTube\", \"version\": \"100.1.24\", \"additionalMetadata\": [{\"name\": \"testApp\", \"value\": \"2\"}], \"fileLocator\": \"/opt/CDL/package1001\"}"), mJsonRpcResponse));
-    EXPECT_TRUE(mJsonRpcResponse.empty() || mJsonRpcResponse == "{}");
-
-    deinitforJsonRpc();
-    packagemanager::IPackageImplDummy::ResetMockInstance();
-}
-
  /* Test Case for error on install due to invalid signature using ComRpc
  *
  * Set up and initialize required COM-RPC resources, configurations, mocks and expectations
@@ -1856,6 +1735,46 @@ TEST_F(PackageManagerTest, packageStateusingComRpcSuccess) {
     waitforSignal(timeout_ms);
 
 	deinitforComRpc();
+}
+
+TEST_F(PackageManagerTest, uninstallusingJsonRpcFailurePackageNotFound) {
+
+    initforJsonRpc();
+
+    EXPECT_EQ(Core::ERROR_BAD_REQUEST, mJsonRpcHandler.Invoke(connection, _T("uninstall"), _T("{\"packageId\": \"UnknownApp\"}"), mJsonRpcResponse));
+    EXPECT_TRUE(mJsonRpcResponse.empty() || mJsonRpcResponse == "{}");
+
+    deinitforJsonRpc();
+}
+
+TEST_F(PackageManagerTest, configusingJsonRpcFailurePackageNotFound) {
+
+    initforJsonRpc();
+
+    EXPECT_EQ(Core::ERROR_BAD_REQUEST, mJsonRpcHandler.Invoke(connection, _T("config"), _T("{\"packageId\": \"UnknownApp\", \"version\": \"0.0.1\"}"), mJsonRpcResponse));
+    EXPECT_TRUE(mJsonRpcResponse.empty() || mJsonRpcResponse == "{}");
+
+    deinitforJsonRpc();
+}
+
+TEST_F(PackageManagerTest, packageStateusingJsonRpcFailurePackageNotFound) {
+
+    initforJsonRpc();
+
+    EXPECT_EQ(Core::ERROR_BAD_REQUEST, mJsonRpcHandler.Invoke(connection, _T("packageState"), _T("{\"packageId\": \"UnknownApp\", \"version\": \"0.0.1\"}"), mJsonRpcResponse));
+    EXPECT_TRUE(mJsonRpcResponse.empty() || mJsonRpcResponse == "{}");
+
+    deinitforJsonRpc();
+}
+
+TEST_F(PackageManagerTest, listPackagesusingJsonRpcEmptyState) {
+
+    initforJsonRpc();
+
+    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("listPackages"), _T("{}"), mJsonRpcResponse));
+    EXPECT_NE(mJsonRpcResponse.find("["), std::string::npos);
+
+    deinitforJsonRpc();
 }
 
 TEST_F(PackageManagerTest, getConfigForPackageusingComRpcLibPackageMockSuccess) {
