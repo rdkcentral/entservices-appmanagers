@@ -52,6 +52,10 @@ set_target_properties(${MODULE_NAME} PROPERTIES
 
 set_source_files_properties(AppStorageManager.cpp PROPERTIES COMPILE_FLAGS "-fexceptions")
 
+target_include_directories(${MODULE_NAME}
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../helpers)
+
 target_link_libraries(${MODULE_NAME}
     PRIVATE
         CompileSettingsDebug::CompileSettingsDebug
@@ -63,6 +67,7 @@ install(TARGETS ${MODULE_NAME}
 
 set (STORAGEMANAGER_SOURCES)
 list(APPEND STORAGEMANAGER_SOURCES  AppStorageManagerImplementation.cpp)
+list(APPEND STORAGEMANAGER_SOURCES  AppStorageManagerTelemetryReporting.cpp)
 list(APPEND STORAGEMANAGER_SOURCES  RequestHandler.cpp)
 list(APPEND STORAGEMANAGER_SOURCES  Module.cpp)
 
@@ -77,10 +82,11 @@ add_library(${PLUGIN_IMPLEMENTATION} SHARED ${STORAGEMANAGER_SOURCES})
 
 if(AIMANAGERS_TELEMETRY_METRICS_SUPPORT)
     message(STATUS "TELEMETRY_METRICS_SUPPORT is enabled")
-    add_definitions(-DENABLE_AIMANAGERS_TELEMETRY_METRICS)
 endif(AIMANAGERS_TELEMETRY_METRICS_SUPPORT)
 
-include_directories(../helpers)
+target_include_directories(${PLUGIN_IMPLEMENTATION}
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../helpers)
 
 set_target_properties(${PLUGIN_IMPLEMENTATION} PROPERTIES
         CXX_STANDARD 11
@@ -106,7 +112,7 @@ if (RDK_SERVICE_L2_TEST)
 endif (RDK_SERVICES_L2_TEST)
 
 target_link_libraries(${PLUGIN_IMPLEMENTATION} PRIVATE
-    CompileSettingsDebug::CompileSettingsDebug ${NAMESPACE}Plugins::${NAMESPACE}Plugins  ${PLUGIN_APP_STORAGE_MANAGER_EXTRA_LIBRARIES})
+    CompileSettingsDebug::CompileSettingsDebug ${NAMESPACE}Plugins::${NAMESPACE}Plugins AppManagersHelpers ${PLUGIN_APP_STORAGE_MANAGER_EXTRA_LIBRARIES})
 
 install(TARGETS ${PLUGIN_IMPLEMENTATION}
     DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/${STORAGE_DIRECTORY}/plugins)
