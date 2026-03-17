@@ -19,6 +19,8 @@
 
 #include "TelemetryReportingBase.h"
 
+#include <limits>
+
 namespace WPEFramework {
 namespace Plugin {
 namespace Utils {
@@ -84,7 +86,14 @@ time_t TelemetryReportingBase::currentTimestampMs() const
 
 int TelemetryReportingBase::durationSinceMs(uint64_t requestTimeMs) const
 {
-    return static_cast<int>(currentTimestampMs() - requestTimeMs);
+    int64_t diff = static_cast<int64_t>(currentTimestampMs()) - static_cast<int64_t>(requestTimeMs);
+    if (diff > static_cast<int64_t>(std::numeric_limits<int>::max())) {
+        return std::numeric_limits<int>::max();
+    }
+    if (diff < static_cast<int64_t>(std::numeric_limits<int>::min())) {
+        return std::numeric_limits<int>::min();
+    }
+    return static_cast<int>(diff);
 }
 
 bool TelemetryReportingBase::buildTelemetryPayload(const JsonObject& jsonParam, std::string& telemetryMetrics) const
