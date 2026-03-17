@@ -1871,7 +1871,7 @@ protected:
         ON_CALL(*mInstaller, Register(::testing::_)).WillByDefault(::testing::Return(Core::ERROR_NONE));
         ON_CALL(*mInstaller, Unregister(::testing::_)).WillByDefault(::testing::Return(Core::ERROR_NONE));
 
-        ON_CALL(*mStorageManager, DeleteStorage(::testing::_, ::testing::_)).WillByDefault(::testing::Return(Core::ERROR_NONE));
+        ON_CALL(mStorageManager, DeleteStorage(::testing::_, ::testing::_)).WillByDefault(::testing::Return(Core::ERROR_NONE));
 
         PluginHost::IFactories::Assign(&mFactories);
         mDispatcher = static_cast<PLUGINHOST_DISPATCHER*>(mPlugin->QueryInterface(PLUGINHOST_DISPATCHER_ID));
