@@ -19,6 +19,7 @@
 
 #include "RuntimeManagerTelemetryReporting.h"
 #include "UtilsLogging.h"
+#include <inttypes.h>
 
 namespace WPEFramework {
 namespace Plugin {
@@ -57,7 +58,7 @@ void RuntimeManagerTelemetryReporting::recordTelemetryData(const std::string& ma
     }
 
     time_t currentTime = currentTimestampMs();
-    LOGINFO("End time for %s: %lu", marker.c_str(), currentTime);
+    LOGINFO("End time for %s: %" PRIuMAX, marker.c_str(), static_cast<uintmax_t>(currentTime));
 
     JsonObject jsonParam;
     int duration = durationSinceMs(requestTime);
