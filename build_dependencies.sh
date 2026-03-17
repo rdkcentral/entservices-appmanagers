@@ -35,6 +35,8 @@ git clone --branch main https://github.com/rdkcentral/entservices-apis.git
 
 git clone https://$GITHUB_TOKEN@github.com/rdkcentral/entservices-testframework.git
 
+git clone -b develop https://github.com/rdkcentral/libPackage.git
+
 ############################
 # Build Thunder-Tools
 echo "======================================================================================"
@@ -78,6 +80,18 @@ cmake -G Ninja -S Thunder -B build/Thunder \
 
 cmake --build build/Thunder --target install
 
+
+############################
+# Build libPackage
+echo "======================================================================================"
+echo "building libPackage"
+
+cmake -S libPackage -B build/libPackage \
+    -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/install/usr" \
+    -DCMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" \
+    -DGENERIC_CMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" \
+
+cmake --build build/libPackage --target install
 
 ############################
 # Build entservices-apis
