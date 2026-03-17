@@ -82,7 +82,6 @@ namespace Plugin {
             APP_ACTION_KILL,
         };
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
         enum CurrentActionError{
             ERROR_NONE,
             ERROR_INVALID_PARAMS,
@@ -97,7 +96,6 @@ namespace Plugin {
             ERROR_KILL_APP,
             ERROR_SET_TARGET_APP_STATE
         };
-#endif
 
         typedef struct _AppInfo
         {
@@ -116,9 +114,7 @@ namespace Plugin {
             Exchange::IAppManager::AppLifecycleState appOldState;
             /* Current Action*/
             CurrentAction currentAction = APP_ACTION_NONE;
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-            time_t currentActionTime;
-#endif
+            time_t currentActionTime {0};
         } AppInfo;
 
         std::map<std::string, AppInfo> mAppInfo;
@@ -273,9 +269,7 @@ namespace Plugin {
 
     public: /* public methods */
         void updateCurrentAction(const std::string& appId, CurrentAction action);
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
         void updateCurrentActionTime(const std::string& appId, time_t currentActionTime, CurrentAction currentAction);
-#endif
     bool checkInstallUninstallBlock(const std::string& appId);
     };
 } /* namespace Plugin */

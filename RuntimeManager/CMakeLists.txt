@@ -25,8 +25,6 @@ set(PLUGIN_RUNTIME_MANAGER_EXTRA_LIBRARIES "")
 set(PLUGIN_RUNTIME_MANAGER_STARTUPORDER "" CACHE STRING "Automatically start RuntimeManager plugin")
 set(PLUGIN_RUNTIME_APP_PORTAL "" CACHE STRING "Runtime application portal identifier")
 set(PLUGIN_RUNTIME_MANAGER_BASEOCISPEC "../resources/oci-base-spec.json" CACHE STRING "Bare minimum OCI spec for runtime manager")
-
-option(AIMANAGERS_TELEMETRY_METRICS_SUPPORT "AIMANAGERS_TELEMETRY_METRICS_SUPPORT" OFF)
 option (RALF_PACKAGE_SUPPORT "Enable Ralf Package Support in Runtime Manager" OFF)
 
 add_definitions(-DRUNTIME_MANAGER_API_VERSION_NUMBER_MAJOR=1)
@@ -93,11 +91,6 @@ if(RALF_PACKAGE_SUPPORT)
 
     target_link_libraries(${PLUGIN_IMPLEMENTATION} PRIVATE ${NAMESPACE}Plugins::${NAMESPACE}Plugins jsoncpp )
 endif(RALF_PACKAGE_SUPPORT)
-
-if(AIMANAGERS_TELEMETRY_METRICS_SUPPORT)
-    message(STATUS "AIMANAGERS_TELEMETRY_METRICS_SUPPORT is enabled")
-    add_definitions(-DENABLE_AIMANAGERS_TELEMETRY_METRICS)
-endif(AIMANAGERS_TELEMETRY_METRICS_SUPPORT)
 
 if(RDK_APPMANAGERS_DEBUG)
     message(STATUS "Enable APP Manager debug support")
