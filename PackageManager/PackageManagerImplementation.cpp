@@ -752,6 +752,7 @@ namespace Plugin {
                 auto &state = it->second;
 
                 state.additionalLocks.clear();
+                string runtimeId,runtimeVersion;
                 const string &rtPackageId = state.runtimeApp.first;
                 const string &rtVersion = state.runtimeApp.second;
                 if (!rtPackageId.empty() && !rtVersion.empty()) {
@@ -771,16 +772,29 @@ namespace Plugin {
                     #else
                         LOGWARN("Not runtime locking in old libpackage");
                     #endif
+                    runtimeId = rtPackageId;
+                    runtimeVersion = rtVersion;
                 } else {
-                    LOGDBG("No runtime for '%s:%s'", packageId.c_str(), version.c_str());
+                    LOGDBG("No runtime for '%s:%s' , trying to fetch from additionalLocks", packageId.c_str(), version.c_str());
+                    if (!locks.empty())
+                    {
+                        packagemanager::NameValue nv = locks[0];
+                        runtimeId = nv.first;
+                        runtimeVersion = nv.second;
+                        LOGDBG("additional lock packageId: %s version: %s", runtimeId.c_str(), runtimeVersion.c_str());
+                    }
+                    else
+                    {
+                        LOGWARN("No additional locks found for '%s:%s'", packageId.c_str(), version.c_str());
+                    }
                 }
                 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
                 recordAndPublishTelemetryData(TELEMETRY_MARKER_LAUNCH_TIME,
                                                             packageId,
                                                             requestTime,
                                                             PackageManagerImplementation::PackageFailureErrorCode::ERROR_NONE,
-                                                            rtPackageId.empty() ? "" : rtPackageId,
-                                                            rtVersion.empty() ? "" : rtVersion);
+                                                            runtimeId.empty() ? "" : runtimeId,
+                                                            runtimeVersion.empty() ? "" : runtimeVersion);
                 #endif /* ENABLE_AIMANAGERS_TELEMETRY_METRICS */
 
                 LOGDBG("Locked. id: %s ver: %s additionalLocks=%zu", packageId.c_str(), version.c_str(), state.additionalLocks.size());
