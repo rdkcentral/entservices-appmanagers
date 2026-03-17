@@ -932,12 +932,12 @@ void DobbySpecGenerator::createFkpsMounts(const ApplicationConfiguration& config
         {
             if (errno == ENOENT)
             {
-                printf("missing FKPS file '%s', won't map into container",
+                LOGWARN("missing FKPS file '%s', won't map into container",
                        fkpsFilePath.c_str());
             }
             else
             {
-                printf("failed to open FKPS file '%s' (%d)",
+                LOGERR("failed to open FKPS file '%s' (errno=%d)",
                        fkpsFilePath.c_str(), errno);
             }
             continue;
@@ -945,7 +945,7 @@ void DobbySpecGenerator::createFkpsMounts(const ApplicationConfiguration& config
         struct stat details;
         if (fstat(fd, &details) != 0)
         {
-            printf("failed to stat FKPS file '%s' (%d)\n",
+            LOGERR("failed to stat FKPS file '%s' (errno=%d)",
                    fkpsFilePath.c_str(), errno);
             close(fd);
             continue;
@@ -955,7 +955,7 @@ void DobbySpecGenerator::createFkpsMounts(const ApplicationConfiguration& config
         if ((details.st_gid != config.mGroupId) &&
             (fchown(fd, -1, config.mGroupId) != 0))
         {
-            printf("failed to change group owner of '%s' %d",
+            LOGERR("failed to change group owner of '%s' (errno=%d)",
                              fkpsFilePath.c_str(), errno);
         }
 
@@ -963,7 +963,7 @@ void DobbySpecGenerator::createFkpsMounts(const ApplicationConfiguration& config
         if (((details.st_mode & S_IRGRP) != S_IRGRP) &&
             (fchmod(fd, ((details.st_mode | S_IRGRP) & ALLPERMS)) != 0))
         {
-            printf("failed to set file permissions to 0%03o for '%s' %d",
+            LOGERR("failed to set file permissions to 0%03o for '%s' (errno=%d)",
                              ((details.st_mode & ~S_IRWXG) | S_IRGRP), fkpsFilePath.c_str(), errno);
         }
         close(fd);
@@ -1053,13 +1053,13 @@ Json::Value DobbySpecGenerator::createResourceManagerMount(const ApplicationConf
             if ((details.st_gid != config.mGroupId) &&
                 (fchown(fd, -1, config.mGroupId) != 0))
             {
-                printf("failed to change group owner of '%s'", resmgrMountSource.c_str());
+                LOGERR("failed to change group owner of '%s' (errno=%d)", resmgrMountSource.c_str(), errno);
             }
 
             // and that the group perms are set to 0770
             if (fchmod(fd, 0770) != 0)
             {
-                printf("failed to set file permissions to 0770 for '%s'", resmgrMountSource.c_str());
+                LOGERR("failed to set file permissions to 0770 for '%s' (errno=%d)", resmgrMountSource.c_str(), errno);
             }
         }
         close(fd);
@@ -1083,16 +1083,14 @@ std::string DobbySpecGenerator::encodeURL(std::string url) const
       }
       else
       {
-          printf("curl_easy_escape() failed");
-          fflush(stdout);
+          LOGERR("curl_easy_escape() failed");
       }
 
       curl_easy_cleanup(curl);
     }
     else
     {
-        printf("curl_easy_init() failed");
-        fflush(stdout);
+        LOGERR("curl_easy_init() failed");
     }
 
     return encodedUrl;
@@ -1100,8 +1098,7 @@ std::string DobbySpecGenerator::encodeURL(std::string url) const
 
 void DobbySpecGenerator::addHolePunchPortToSpec(Json::Value &spec, in_port_t port) const
 {
-printf("Adding hole punching port %hu for app", port);
-    fflush(stdout);
+    LOGINFO("Adding hole punching port %hu for app", port);
 
     static Json::Value nullValue(Json::nullValue);
 
