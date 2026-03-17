@@ -53,6 +53,10 @@ set_target_properties(${MODULE_NAME} PROPERTIES
 
 set_source_files_properties(RuntimeManager.cpp PROPERTIES COMPILE_FLAGS "-fexceptions")
 
+target_include_directories(${MODULE_NAME}
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../helpers)
+
 target_link_libraries(${MODULE_NAME}
     PRIVATE
         CompileSettingsDebug::CompileSettingsDebug
@@ -64,6 +68,7 @@ install(TARGETS ${MODULE_NAME}
 
 set (RUNTIMEMANAGER_SOURCES)
 list(APPEND RUNTIMEMANAGER_SOURCES  RuntimeManagerImplementation.cpp)
+list(APPEND RUNTIMEMANAGER_SOURCES  RuntimeManagerTelemetryReporting.cpp)
 list(APPEND RUNTIMEMANAGER_SOURCES  DobbySpecGenerator.cpp)
 list(APPEND RUNTIMEMANAGER_SOURCES  WindowManagerConnector.cpp)
 list(APPEND RUNTIMEMANAGER_SOURCES  DobbyEventListener.cpp)
@@ -96,7 +101,6 @@ endif(RALF_PACKAGE_SUPPORT)
 
 if(AIMANAGERS_TELEMETRY_METRICS_SUPPORT)
     message(STATUS "AIMANAGERS_TELEMETRY_METRICS_SUPPORT is enabled")
-    add_definitions(-DENABLE_AIMANAGERS_TELEMETRY_METRICS)
 endif(AIMANAGERS_TELEMETRY_METRICS_SUPPORT)
 
 if(RDK_APPMANAGERS_DEBUG)
@@ -106,7 +110,9 @@ if(RDK_APPMANAGERS_DEBUG)
     add_subdirectory(Gateway)
 endif()
 
-include_directories(../helpers)
+target_include_directories(${PLUGIN_IMPLEMENTATION}
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../helpers)
 
 set_target_properties(${PLUGIN_IMPLEMENTATION} PROPERTIES
         CXX_STANDARD 11
@@ -171,6 +177,7 @@ if(RDK_APPMANAGERS_DEBUG)
 endif()
 
 target_link_libraries(${PLUGIN_IMPLEMENTATION} PRIVATE
+    AppManagersHelpers
     CompileSettingsDebug::CompileSettingsDebug ${NAMESPACE}Plugins::${NAMESPACE}Plugins  
     ${PLUGIN_RUNTIME_MANAGER_EXTRA_LIBRARIES})
 

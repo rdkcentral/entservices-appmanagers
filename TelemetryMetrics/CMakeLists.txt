@@ -61,7 +61,10 @@ add_library(${PLUGIN_IMPLEMENTATION} SHARED
     TelemetryMetricsImplementation.cpp
     Module.cpp)
 
-include_directories(../helpers)
+target_include_directories(${PLUGIN_IMPLEMENTATION}
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/..
+        ${CMAKE_CURRENT_SOURCE_DIR}/../helpers)
 
 set_target_properties(${PLUGIN_IMPLEMENTATION} PROPERTIES
         CXX_STANDARD 11
