@@ -25,6 +25,7 @@
 #include <condition_variable>
 #include <atomic>
 #include <vector>
+#include <map>
 #include <interfaces/IAppManager.h>
 
 namespace WPEFramework {
@@ -40,6 +41,8 @@ namespace Plugin {
      * sequential memory reclamation using the Linux MemoryAvailable metric from
      * /proc/meminfo. Handles RAM-only pressure by executing a specific order of
      * operations:
+     *   Pre-Phase 1: Suspend PAUSED apps (if suspendable, oldest first)
+     *   Pre-Phase 2: Hibernate SUSPENDED apps (if hibernatable & delay elapsed, oldest first)
      *   Phase 1: Terminate PAUSED apps (oldest first, skip preloaded)
      *   Phase 2: Terminate SUSPENDED apps (oldest first, skip preloaded)
      *   Phase 3: Terminate HIBERNATED apps (oldest first, skip preloaded)
@@ -70,8 +73,9 @@ namespace Plugin {
          * @brief Request a memory reconciliation cycle for the given app (async).
          * @param appId   The app that needs memory cleared for.
          * @param targetRAMKB  The target MemoryAvailable in KB.
+         * @param allowTermination If true, termination phases are enabled; if false, only suspend/hibernate.
          */
-        void RequestReconciliation(const string& appId, uint32_t targetRAMKB);
+        void RequestReconciliation(const string& appId, uint32_t targetRAMKB, bool allowTermination = true);
 
         /**
          * @brief Request a memory reconciliation cycle and block until it completes.
@@ -79,9 +83,10 @@ namespace Plugin {
          *        (before actual launch) to ensure memory is available.
          * @param appId   The app that needs memory cleared for.
          * @param targetRAMKB  The target MemoryAvailable in KB.
+         * @param allowTermination If true, termination phases are enabled; if false, only suspend/hibernate.
          * @return true if MemoryAvailable >= targetRAMKB after reclamation, false otherwise.
          */
-        bool RequestReconciliationAndWait(const string& appId, uint32_t targetRAMKB);
+        bool RequestReconciliationAndWait(const string& appId, uint32_t targetRAMKB, bool allowTermination = true);
 
         /**
          * @brief Called by AppManagerImplementation::handleOnAppLifecycleStateChanged
@@ -102,9 +107,10 @@ namespace Plugin {
          * @brief Execute the sequential reclamation phases for the active app.
          * @param activeId The app ID that triggered the reclamation.
          * @param targetRAMKB  The required MemoryAvailable threshold in KB.
+         * @param allowTermination If false, only suspend/hibernate phases run (no kill).
          * @return true if MemoryAvailable >= targetRAMKB after all phases.
          */
-        bool ExecuteSequentialReclamation(const string& activeId, uint32_t targetRAMKB);
+        bool ExecuteSequentialReclamation(const string& activeId, uint32_t targetRAMKB, bool allowTermination);
 
         /**
          * @brief Try to resolve memory pressure by terminating apps in the given state.
@@ -120,6 +126,29 @@ namespace Plugin {
                      uint32_t targetRAMKB,
                      const string& ignoreId,
                      int& actionsPerformed);
+
+        /**
+         * @brief Pre-phase: Move PAUSED apps to SUSPENDED (if the app supports it).
+         * @param targetRAMKB  The required MemoryAvailable threshold in KB.
+         * @param ignoreId The app ID to not touch.
+         * @param actionsPerformed [out] Incremented for each app suspended.
+         * @return true if MemoryAvailable >= targetRAMKB.
+         */
+        bool ResolveSuspend(uint32_t targetRAMKB,
+                            const string& ignoreId,
+                            int& actionsPerformed);
+
+        /**
+         * @brief Pre-phase: Move SUSPENDED apps to HIBERNATED (if supported and
+         *        the hibernate delay has elapsed since the app entered SUSPENDED).
+         * @param targetRAMKB  The required MemoryAvailable threshold in KB.
+         * @param ignoreId The app ID to not touch.
+         * @param actionsPerformed [out] Incremented for each app hibernated.
+         * @return true if MemoryAvailable >= targetRAMKB.
+         */
+        bool ResolveHibernate(uint32_t targetRAMKB,
+                              const string& ignoreId,
+                              int& actionsPerformed);
 
         /**
          * @brief Wait for a specific app to reach the target state with a timeout.
@@ -144,8 +173,12 @@ namespace Plugin {
         bool _reconciliationSuccess;
         string _activeAppId;
         uint32_t _targetRAMKB;
+        bool _allowTermination;
         string _waitingAppId;
         Exchange::IAppManager::AppLifecycleState _waitingTargetState;
+
+        /* Tracks when each app entered SUSPENDED state (for hibernate delay) */
+        std::map<string, struct timespec> _suspendedTimestamps;
 
         static constexpr int STATE_WAIT_TIMEOUT_SECONDS = 10;
     };

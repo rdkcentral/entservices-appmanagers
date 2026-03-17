@@ -50,6 +50,13 @@ namespace Plugin {
             return hibernatableApps.find(appId) != hibernatableApps.end();
         }
 
+        static int GetHibernateDelayTimeSeconds(const std::string& appId)
+        {
+            // For demonstration, return 30 seconds for all apps - sky AS default
+            // In a real implementation, this could be based on app-specific policies.
+            return 30;
+        }
+
     private:
         AppPolicyConfig() = delete;
     };

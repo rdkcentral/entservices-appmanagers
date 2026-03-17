@@ -223,13 +223,12 @@ namespace WPEFramework
                         }
                         else
                         {
-                            //FIXME: Launch should end up ti ACTVATED state
-                            // if (fileExists(SUSPEND_POLICY_FILE) == true)
-                            // {
-                            //     appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_SUSPEND);
-                            //     state = Exchange::ILifecycleManager::LifecycleState::SUSPENDED;
-                            // }
-                            // else
+                            if (fileExists(SUSPEND_POLICY_FILE) == true)
+                            {
+                                appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_SUSPEND);
+                                state = Exchange::ILifecycleManager::LifecycleState::SUSPENDED;
+                            }
+                            else
                             {
                                 appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_LAUNCH);
                                 state = Exchange::ILifecycleManager::LifecycleState::ACTIVE;
@@ -309,7 +308,7 @@ namespace WPEFramework
                 ASSERT (nullptr != mLifecycleManagerRemoteObject);
                 if (nullptr != mLifecycleManagerRemoteObject)
                 {
-                    if (/*fileExists(SUSPEND_POLICY_FILE)*/ AppPolicyConfig::IsAppSuspendable(appId) == true)
+                    if (fileExists(SUSPEND_POLICY_FILE))
                     {
                         appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_SUSPEND);
                         state = Exchange::ILifecycleManager::LifecycleState::SUSPENDED;
@@ -417,36 +416,14 @@ namespace WPEFramework
 						LOGINFO("TerminateApp returned status: %d", terminateStatus);
 						mAdminLock.Lock();
 					}
-                                        /* Found the AppInfo; apply suspend/hibernate/unload logic */
-					else if (/*fileExists(SUSPEND_POLICY_FILE)*/ AppPolicyConfig::IsAppSuspendable(appId) == true)
-                                        {
-                                            LOGINFO("App with AppId: %s is suspendable", appId.c_str());
-                                            retryIt->second.targetAppState = Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED;
-                                            status = mLifecycleManagerRemoteObject->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::LifecycleState::SUSPENDED, appIntent);
-
-                                            if (status == Core::ERROR_NONE && /*fileExists(HIBERNATE_POLICY_FILE)*/ AppPolicyConfig::IsAppHibernatable(appId) == true)
-                                            {
-                                                LOGINFO("App with AppId: %s is hibernatable", appId.c_str());
-                                                retryIt->second.targetAppState = Exchange::IAppManager::AppLifecycleState::APP_STATE_HIBERNATED;
-                                                LOGINFO("App with AppId: %s hibernating in 10 seconds", appId.c_str());
-                                                mAdminLock.Unlock();
-                                                sleep(10);
-                                                mAdminLock.Lock();
-                                                status = mLifecycleManagerRemoteObject->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::LifecycleState::HIBERNATED, appIntent);
-                                                LOGINFO("App with AppId: %s hibernation triggered", appId.c_str());
-                                                if (status != Core::ERROR_NONE)
-                                                {
-                                                    LOGERR("Failed to apply hibernate policy for appId: %s", appId.c_str());
-                                                }
-                                            }
-                                            else if (status != Core::ERROR_NONE)
-                                            {
-                                                LOGERR("Failed to apply suspend policy for appId: %s", appId.c_str());
-                                            }
-                                        }
                                         else
                                         {
-                                            LOGINFO("App with AppId: %s is non suspendable. Keeping app in Paused state", appId.c_str());
+                                            /* App stays in PAUSED state after close.
+                                             * MemoryMonitor will handle suspend/hibernate/terminate
+                                             * transitions as needed during memory reclamation. */
+                                            LOGINFO("App with AppId: %s closed — remaining in PAUSED state. "
+                                                    "MemoryMonitor will manage further lifecycle transitions.",
+                                                    appId.c_str());
                                         }
                                     }
                                     else

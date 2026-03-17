@@ -163,14 +163,14 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
 
                                     if (action == APP_ACTION_LAUNCH)
                                     {
-                                        /* TODO: Mark app as user-launched (not preloaded) ?? */
-                                        // mAdminLock.Lock();
-                                        // mAppInfo[appId].wasPreloaded = false;
-                                        // mAdminLock.Unlock();
+                                        /* No lon*/
+                                        mAdminLock.Lock();
+                                        mAppInfo[appId].wasPreloaded = false;
+                                        mAdminLock.Unlock();
 
                                         status = mLifecycleInterfaceConnector->launch(appId, appRequestParam->intent, launchArgs, runtimeConfig);
                                         LOGINFO("Application Launch from thread returns with status %d", status);
-
+                                        LogManagedAppsSnapshot();
                                         if (status != Core::ERROR_NONE)
                                         {
                                             LOGERR("launch failed status %d", status);
@@ -1038,6 +1038,8 @@ Core::hresult AppManagerImplementation::CloseApp(const string& appId)
         if (nullptr != mLifecycleInterfaceConnector)
         {
             status = mLifecycleInterfaceConnector->closeApp(appId);
+            sleep(5); //give some time to lifecycle manager to update the app state to running and send the snapshot, if not received already before closing the app. This
+            LogManagedAppsSnapshot();
         }
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
         if(status == Core::ERROR_NONE)
@@ -1187,21 +1189,27 @@ Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const s
         return Core::ERROR_INVALID_PARAMETER;
     }
 
-    /* PreloadApp: no termination/reconciliation — just check current MemAvailable.
-     * If there is not enough memory available, refuse the preload immediately. */
+    /* PreloadApp: blocking reconciliation with suspend/hibernate only (no termination).
+     * Ensures sufficient MemoryAvailable before scheduling the preload.
+     * Preloaded apps can only be suspended and hibernated, never terminated.
+     * mReconciliationLock ensures only one thread runs a blocking reconciliation at a time.
+     * NOTE: mAdminLock must NOT be held here — MemoryMonitor thread calls back into
+     *       methods (GetSortedCandidates, SuspendApp, HibernateApp, etc.) that acquire mAdminLock. */
     {
-        uint32_t launchTargetKB = 0;
-        uint32_t preloadTargetKB = 0;
-        GetAppMemoryConfig(appId, launchTargetKB, preloadTargetKB);
-        uint32_t currentMemAvailKB = ReadMemAvailable();
-        LOGINFO("[MemoryMonitor] PreloadApp memory check for appId %s: required %u KB, available %u KB",
-                appId.c_str(), preloadTargetKB, currentMemAvailKB);
-        if (currentMemAvailKB < preloadTargetKB)
+        std::lock_guard<std::mutex> reconLock(mReconciliationLock);
+        if (mMemoryMonitor)
         {
-            LOGERR("[MemoryMonitor] Insufficient memory for preload of appId %s (required %u KB, available %u KB)",
-                   appId.c_str(), preloadTargetKB, currentMemAvailKB);
-            error = "Insufficient memory for preload";
-            return Core::ERROR_GENERAL;
+            uint32_t launchTargetKB = 0;
+            uint32_t preloadTargetKB = 0;
+            GetAppMemoryConfig(appId, launchTargetKB, preloadTargetKB);
+            LOGINFO("[MemoryMonitor] Triggering pre-preload blocking reconciliation for appId %s, target %u KB (no termination)",
+                    appId.c_str(), preloadTargetKB);
+            if (!mMemoryMonitor->RequestReconciliationAndWait(appId, preloadTargetKB, false /* allowTermination */))
+            {
+                LOGERR("[MemoryMonitor] Failed to reclaim sufficient memory for preload of appId %s", appId.c_str());
+                error = "Insufficient memory for preload";
+                return Core::ERROR_GENERAL;
+            }
         }
     }
 
@@ -1814,6 +1822,7 @@ void AppManagerImplementation::LogManagedAppsSnapshot()
         }
     };
     LOGINFO("[MemoryMonitor] --- Managed Apps Snapshot ---");
+    LOGINFO("[MemoryMonitor] MemAvailable: %u MB", ReadMemAvailable() / 1024);
     for (const auto& entry : mAppInfo)
     {
 
@@ -2088,7 +2097,7 @@ uint32_t AppManagerImplementation::ParseMemorySizeToKB(const string& memStr)
 bool AppManagerImplementation::GetAppMemoryConfig(const string& appId, uint32_t& launchTargetKB, uint32_t& preloadTargetKB)
 {
     /* Defaults */
-    const uint32_t DEFAULT_LAUNCH_TARGET_KB  = 2400 * 1024;  /* 2400MB */
+    const uint32_t DEFAULT_LAUNCH_TARGET_KB  = 2400 * 1024;  /* 2400 MB */
     const uint32_t DEFAULT_PRELOAD_TARGET_KB = 2500 * 1024;   /* 2500 MB  */
     launchTargetKB  = DEFAULT_LAUNCH_TARGET_KB;
     preloadTargetKB = DEFAULT_PRELOAD_TARGET_KB;
