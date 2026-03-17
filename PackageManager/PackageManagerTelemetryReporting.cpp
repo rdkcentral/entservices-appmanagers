@@ -70,8 +70,7 @@ void PackageManagerTelemetryReporting::recordAndPublishTelemetryData(const std::
     }
 
     if (!ensureTelemetryClient()) {
-        LOGINFO("TelemetryMetrics client unavailable, retry initialization");
-        LOGERR("TelemetryMetrics client is still unavailable");
+        LOGWARN("TelemetryMetrics client unavailable; telemetry marker '%s' not recorded", marker.c_str());
         return;
     }
 
