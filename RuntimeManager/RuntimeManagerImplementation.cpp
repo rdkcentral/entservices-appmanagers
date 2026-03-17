@@ -709,6 +709,12 @@ namespace WPEFramework
                 errorCode = "ERROR_DOBBY_SPEC";
                 notifyParamCheckFailure = true;
             }
+            else if(!isOCIPluginObjectValid())
+            {
+                LOGERR("OCI Plugin object is not valid. Aborting Run.");
+                errorCode = "ERROR_OCI_INVALID";
+                notifyParamCheckFailure = true;
+            }
             else
             {
                 /* Generated dobbySpec */
@@ -723,13 +729,6 @@ namespace WPEFramework
                 {
                     appPath = dobbySpec;
                 }
-                 mRuntimeManagerImplLock.Unlock();
-                if(!isOCIPluginObjectValid())
-                {
-                    LOGERR("OCI Plugin object is not valid. Aborting Run.");
-                    return status;
-                }
-                    mRuntimeManagerImplLock.Lock();
                     string containerId = getContainerId(appInstanceId);
                     if (!containerId.empty())
                     {
@@ -786,11 +785,6 @@ namespace WPEFramework
                         errorCode = "ERROR_INVALID_PARAM";
                         notifyParamCheckFailure = true;
                     }
-                // }
-                // else
-                // {
-                //     LOGERR("OCI Plugin object is not valid. Aborting Run.");
-                // }
             }
             mRuntimeManagerImplLock.Unlock();
             if (notifyParamCheckFailure)
@@ -814,16 +808,15 @@ namespace WPEFramework
             /* Get current timestamp at the start of hibernate for telemetry */
             time_t requestTime = getCurrentTimestamp();
 #endif
-            // Issue ID:1053 Waiting while holding a lock
+
+            mRuntimeManagerImplLock.Lock();
+
             if(!isOCIPluginObjectValid())
             {
+                mRuntimeManagerImplLock.Unlock();
                 LOGERR("OCI Plugin object is not valid. Aborting Hibernate.");
                 return status;
             }
-            mRuntimeManagerImplLock.Lock();
-
-            // if(isOCIPluginObjectValid())
-            // {
                string containerId = getContainerId(appInstanceId);
                 if (!containerId.empty())
                 {
@@ -848,11 +841,6 @@ namespace WPEFramework
                 {
                     LOGERR("appInstanceId is not found or mOciContainerObject is not ready");
                 }
-            // }
-            // else
-            // {
-            //     LOGERR("OCI Plugin object is not valid. Aborting Hibernate.");
-            // }
             mRuntimeManagerImplLock.Unlock();
 
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
@@ -875,15 +863,15 @@ namespace WPEFramework
             /* Get current timestamp at the start of wake for telemetry */
             time_t requestTime = getCurrentTimestamp();
 #endif
-            // Issue ID:1051 Waiting while holding a lock
+
+            mRuntimeManagerImplLock.Lock();
+
             if(!isOCIPluginObjectValid())
             {
+                mRuntimeManagerImplLock.Unlock();
                 LOGERR("OCI Plugin object is not valid. Aborting Wake.");
                 return status;
             }
-            mRuntimeManagerImplLock.Lock();
-            //if(isOCIPluginObjectValid())
-            //{
                 string containerId = getContainerId(appInstanceId);
                 if (!containerId.empty())
                 {
@@ -916,11 +904,6 @@ namespace WPEFramework
                 {
                     LOGERR("appInstanceId is not found ");
                 }
-            //}
-            //else
-            // {
-            //     LOGERR("OCI Plugin object is not valid. Aborting Wake.");
-            // }
             mRuntimeManagerImplLock.Unlock();
 
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
@@ -943,16 +926,15 @@ namespace WPEFramework
             /* Get current timestamp at the start of suspend for telemetry */
             time_t requestTime = getCurrentTimestamp();
 #endif
-            // Issue ID:1054 Waiting while holding a lock
+
+            mRuntimeManagerImplLock.Lock();
+
             if(!isOCIPluginObjectValid())
             {
+                mRuntimeManagerImplLock.Unlock();
                 LOGERR("OCI Plugin object is not valid. Aborting Suspend.");
                 return status;
             }
-            mRuntimeManagerImplLock.Lock();
-
-            // if(isOCIPluginObjectValid())
-            // {
                 string containerId = getContainerId(appInstanceId);
 
                 if (!containerId.empty())
@@ -976,11 +958,6 @@ namespace WPEFramework
                 {
                     LOGERR("appInstanceId is not found ");
                 }
-            // }
-            // else
-            // {
-            //     LOGERR("OCI Plugin object is not valid. Aborting Suspend.");
-            // }
             mRuntimeManagerImplLock.Unlock();
 
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
@@ -1003,15 +980,15 @@ namespace WPEFramework
             /* Get current timestamp at the start of resume for telemetry */
             time_t requestTime = getCurrentTimestamp();
 #endif
-            // Issue ID:1052 Waiting while holding a lock
+
+            mRuntimeManagerImplLock.Lock();
+
             if(!isOCIPluginObjectValid())
             {
+                mRuntimeManagerImplLock.Unlock();
                 LOGERR("OCI Plugin object is not valid. Aborting Resume.");
                 return status;
             }
-            mRuntimeManagerImplLock.Lock();
-            // if(isOCIPluginObjectValid())
-            // {
                 string containerId = getContainerId(appInstanceId);
 
                 if (!containerId.empty())
@@ -1035,11 +1012,6 @@ namespace WPEFramework
                 {
                     LOGERR("appInstanceId is empty ");
                 }
-            //}
-            // else
-            // {
-            //     LOGERR("OCI Plugin object is not valid. Aborting Resume.");
-            // }
             mRuntimeManagerImplLock.Unlock();
 
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
@@ -1059,13 +1031,15 @@ namespace WPEFramework
             /* Get current timestamp at the start of terminate for telemetry */
             time_t requestTime = getCurrentTimestamp();
 #endif
-            // Issue ID:1057 Waiting while holding a lock
+
+            mRuntimeManagerImplLock.Lock();
+
             if(!isOCIPluginObjectValid())
             {
+                mRuntimeManagerImplLock.Unlock();
                 LOGERR("OCI Plugin object is not valid. Aborting Terminate.");
                 return status;
             }
-            mRuntimeManagerImplLock.Lock();
 
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             auto it = mRuntimeAppInfo.find(appInstanceId);
@@ -1109,11 +1083,6 @@ namespace WPEFramework
                 {
                     LOGERR("appInstanceId is not found");
                 }
-            // }
-            // else
-            // {
-            //     LOGERR("OCI Plugin object is not valid. Aborting Terminate.");
-            // }
 #ifdef RIALTO_IN_DAC_FEATURE_ENABLED
             LOGINFO("Rialto session deactivate on terminate.");
             mRialtoConnector->deactivateSession(mRuntimeAppInfo[appInstanceId].appId);
@@ -1137,14 +1106,15 @@ namespace WPEFramework
             /* Get current timestamp at the start of terminate for telemetry */
             time_t requestTime = getCurrentTimestamp();
 #endif
-            // Issue ID:1058 Waiting while holding a lock
+
+            mRuntimeManagerImplLock.Lock();
+
             if(!isOCIPluginObjectValid())
             {
+                mRuntimeManagerImplLock.Unlock();
                 LOGERR("OCI Plugin object is not valid. Aborting Kill.");
                 return status;
             }
-
-            mRuntimeManagerImplLock.Lock();
 
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             auto it = mRuntimeAppInfo.find(appInstanceId);
@@ -1182,11 +1152,6 @@ namespace WPEFramework
                 {
                     LOGERR("appInstanceId is not found");
                 }
-            // }
-            // else
-            // {
-            //     LOGERR("OCI Plugin object is not valid. Aborting Kill.");
-            // }
 #ifdef RIALTO_IN_DAC_FEATURE_ENABLED
             LOGINFO("Rialto Session deactivate on kill..");
             mRialtoConnector->deactivateSession(mRuntimeAppInfo[appInstanceId].appId);
@@ -1207,16 +1172,14 @@ namespace WPEFramework
             std::string errorReason = "";
             bool success = false;
 
-            // Issue ID:1055 Waiting while holding a lock
+            mRuntimeManagerImplLock.Lock();
+
             if(!isOCIPluginObjectValid())
             {
+                mRuntimeManagerImplLock.Unlock();
                 LOGERR("OCI Plugin object is not valid. Aborting GetInfo.");
                 return status;
             }
-            mRuntimeManagerImplLock.Lock();
-
-            // if(isOCIPluginObjectValid())
-            // {
                 string containerId = getContainerId(appInstanceId);
 
                 if (!containerId.empty())
@@ -1235,11 +1198,6 @@ namespace WPEFramework
                 {
                     LOGERR("appInstanceId is not found or mOciContainerObject is not ready");
                 }
-            // }
-            // else
-            // {
-            //     LOGERR("OCI Plugin object is not valid. Aborting GetInfo.");
-            // }
             mRuntimeManagerImplLock.Unlock();
             return status;
         }
@@ -1249,18 +1207,15 @@ namespace WPEFramework
             Core::hresult status = Core::ERROR_GENERAL;
             std::string errorReason = "";
             bool success = false;
-            
-            // Issue ID:1056 Waiting while holding a lock
-            if(!isOCIPluginObjectValid())
-            {
-                LOGERR("OCI Plugin object is not valid. Aborting Annotate.");
-                return status;
-            }
 
             mRuntimeManagerImplLock.Lock();
 
-            // if(isOCIPluginObjectValid())
-            // {
+            if(!isOCIPluginObjectValid())
+            {
+                mRuntimeManagerImplLock.Unlock();
+                LOGERR("OCI Plugin object is not valid. Aborting Annotate.");
+                return status;
+            }
                 string containerId = getContainerId(appInstanceId);
 
                 if (!containerId.empty())
@@ -1282,11 +1237,6 @@ namespace WPEFramework
                 {
                     LOGERR("appInstanceId is empty ");
                 }
-            // }
-            // else
-            // {
-            //     LOGERR("OCI Plugin object is not valid. Aborting GetInfo.");
-            // }
             mRuntimeManagerImplLock.Unlock();
             return status;
         }
