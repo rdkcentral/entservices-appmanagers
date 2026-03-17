@@ -35,6 +35,8 @@ git clone --branch main https://github.com/rdkcentral/entservices-apis.git
 
 git clone https://$GITHUB_TOKEN@github.com/rdkcentral/entservices-testframework.git
 
+git clone -b develop https://github.com/rdkcentral/eshelpers.git
+
 git clone -b develop https://github.com/rdkcentral/libPackage.git
 
 ############################
@@ -92,6 +94,8 @@ cmake -S libPackage -B build/libPackage \
     -DGENERIC_CMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" \
 
 cmake --build build/libPackage --target install
+
+cp eshelpers/packager/IPackageImpl.h $GITHUB_WORKSPACE/install/usr/include/.
 
 ############################
 # Build entservices-apis
