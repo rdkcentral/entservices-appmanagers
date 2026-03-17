@@ -76,7 +76,7 @@ void PackageManagerTelemetryReporting::recordAndPublishTelemetryData(const std::
 
     time_t currentTime = currentTimestampMs();
     duration = durationSinceMs(requestTime);
-    LOGINFO("End time for %s: %lu", marker.c_str(), currentTime);
+    LOGINFO("End time for %s: %llu", marker.c_str(), static_cast<unsigned long long>(currentTime));
 
     if (marker == TELEMETRY_MARKER_LAUNCH_TIME) {
         jsonParam["packageManagerLockTime"] = duration;
