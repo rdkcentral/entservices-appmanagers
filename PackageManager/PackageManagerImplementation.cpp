@@ -78,6 +78,10 @@ namespace Plugin {
     Core::hresult PackageManagerImplementation::Register(Exchange::IPackageDownloader::INotification* notification)
     {
         LOGINFO();
+         if (notification == nullptr) {  
+            LOGERR("Register called with nullptr notification");
+            return Core::ERROR_GENERAL;
+        }
         ASSERT(notification != nullptr);
 
         mAdminLock.Lock();
@@ -95,6 +99,10 @@ namespace Plugin {
     Core::hresult PackageManagerImplementation::Unregister(Exchange::IPackageDownloader::INotification* notification)
     {
         LOGINFO();
+        if (notification == nullptr) {  
+            LOGERR("Unregister called with nullptr notification");
+            return Core::ERROR_GENERAL;
+        }
         ASSERT(notification != nullptr);
         Core::hresult result = Core::ERROR_NONE;
 
@@ -167,10 +175,18 @@ namespace Plugin {
     {
         Core::hresult result = Core::ERROR_NONE;
         LOGINFO();
+        // Make Deinitialize idempotent and defensive against double teardown
+        if (mIsDeinitialized == true) { 
+            LOGINFO("Deinitialize called more than once, ignoring");
+            return result;
+        }
+        mIsDeinitialized = true;
 
         done = true;
         cv.notify_one();
-        mDownloadThreadPtr->join();
+         if (mDownloadThreadPtr && mDownloadThreadPtr->joinable()) {
+             mDownloadThreadPtr->join();
+	}
 
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
         if (nullptr != mTelemetryMetricsObject)
@@ -186,10 +202,14 @@ namespace Plugin {
     } else {
         LOGERR("Failed to delete marker file: %s (errno=%d)", markerFile.c_str(), errno);
     }
-
+        // Release storage manager object HERE (before TearDown deletes the mock)
+        // so the destructor doesn't try to release an already-deleted mock 
+        releaseStorageManagerObject();
+		
+        if (mCurrentservice != nullptr) {
         mCurrentservice->Release();
         mCurrentservice = nullptr;
-
+        }
         return result;
     }
 
@@ -210,7 +230,7 @@ namespace Plugin {
 
     void PackageManagerImplementation::releaseStorageManagerObject()
     {
-        ASSERT(nullptr != mStorageManagerObject);
+       //Guard: only release if not null(may have been released in Deinitialize already)
         if(mStorageManagerObject) {
             mStorageManagerObject->Release();
             mStorageManagerObject = nullptr;
@@ -693,6 +713,10 @@ namespace Plugin {
         Core::hresult result = Core::ERROR_NONE;
 
         LOGINFO();
+         if (notification == nullptr) {  
+            LOGERR("Register called with nullptr notification");
+            return Core::ERROR_GENERAL;
+        }
         ASSERT(notification != nullptr);
         mAdminLock.Lock();
         ASSERT(std::find(mInstallNotifications.begin(), mInstallNotifications.end(), notification) == mInstallNotifications.end());
@@ -709,6 +733,10 @@ namespace Plugin {
         Core::hresult result = Core::ERROR_NONE;
 
         LOGINFO();
+        if (notification == nullptr) {  
+            LOGERR("Unregister called with nullptr notification");
+            return Core::ERROR_GENERAL;
+        }
         mAdminLock.Lock();
         auto item = std::find(mInstallNotifications.begin(), mInstallNotifications.end(), notification);
         if (item != mInstallNotifications.end()) {
@@ -1244,7 +1272,9 @@ namespace Plugin {
 
         mAdminLock.Lock();
         for (auto notification: mDownloaderNotifications) {
-            notification->OnAppDownloadStatus(packageInfoIterator);
+            if (notification != nullptr) {  
+                notification->OnAppDownloadStatus(packageInfoIterator);
+            }
             LOGTRACE();
         }
         mAdminLock.Unlock();
@@ -1270,7 +1300,9 @@ namespace Plugin {
         LOGDBG("id: '%s; ver: '%s' state: %s", id.c_str(), version.c_str(), getInstallState(state.installState).c_str());
         mAdminLock.Lock();
         for (auto notification: mInstallNotifications) {
-            notification->OnAppInstallationStatus(jsonstr);
+             if (notification != nullptr) {  
+                notification->OnAppInstallationStatus(jsonstr);
+            }
             LOGTRACE();
         }
         mAdminLock.Unlock();
