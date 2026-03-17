@@ -23,9 +23,6 @@
 #include <interfaces/IAppStorageManager.h>
 #include <interfaces/IConfiguration.h>
 #include <interfaces/IStore2.h>
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-#include <interfaces/ITelemetryMetrics.h>
-#endif
 #include <ftw.h>
 #include <mutex>
 
@@ -77,9 +74,6 @@ namespace Plugin {
 
         Config _config;
         PluginHost::IShell* mCurrentservice;
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-        Exchange::ITelemetryMetrics* mTelemetryMetricsObject;
-#endif
         std::string mBaseStoragePath;                           /* Base path for the app storage */
     };
 } /* namespace Plugin */

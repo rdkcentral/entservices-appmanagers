@@ -20,39 +20,28 @@
 #pragma once
 
 #include "ApplicationContext.h"
-#include <interfaces/ITelemetryMetrics.h>
-
-#define TELEMETRY_MARKER_LAUNCH_TIME                         "OverallLaunchTime_split"
-#define TELEMETRY_MARKER_CLOSE_TIME                          "AppCloseTime_split"
-#define TELEMETRY_MARKER_SUSPEND_TIME                        "SuspendTime_split"
-#define TELEMETRY_MARKER_RESUME_TIME                         "ResumeTime_split"
-#define TELEMETRY_MARKER_HIBERNATE_TIME                      "HibernateTime_split"
-#define TELEMETRY_MARKER_WAKE_TIME                           "WakeTime_split"
+#include "TelemetryMarkers.h"
+#include "TelemetryReportingBase.h"
 
 namespace WPEFramework
 {
 namespace Plugin
 {
 
-class LifecycleManagerTelemetryReporting
+class LifecycleManagerTelemetryReporting : public Utils::TelemetryReportingBase
 {
     public /*methods*/:
         LifecycleManagerTelemetryReporting(const LifecycleManagerTelemetryReporting&) = delete;
         LifecycleManagerTelemetryReporting& operator=(const LifecycleManagerTelemetryReporting&) = delete;
         static LifecycleManagerTelemetryReporting& getInstance();
         void reportTelemetryDataOnStateChange(ApplicationContext* context, const JsonObject &data);
-        time_t getCurrentTimestamp();
         void initialize(PluginHost::IShell* service);
 
     private /*methods*/:
         LifecycleManagerTelemetryReporting();
         ~LifecycleManagerTelemetryReporting();
-        Core::hresult createTelemetryMetricsPluginObject();
 
     private /*members*/:
-        mutable Core::CriticalSection mAdminLock;
-        Exchange::ITelemetryMetrics* mTelemetryMetricsObject;
-        PluginHost::IShell* mCurrentservice;
 };
 
 } /* namespace Plugin */

@@ -49,6 +49,10 @@ set_target_properties(${MODULE_NAME} PROPERTIES
 
 set_source_files_properties(AppManager.cpp PROPERTIES COMPILE_FLAGS "-fexceptions")
 
+target_include_directories(${MODULE_NAME}
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../helpers)
+
 target_link_libraries(${MODULE_NAME}
     PRIVATE
         CompileSettingsDebug::CompileSettingsDebug
@@ -61,20 +65,16 @@ install(TARGETS ${MODULE_NAME}
 set(PLUGIN_APP_MANAGER_IMPLEMENTATION_SOURCES
     AppManagerImplementation.cpp
     LifecycleInterfaceConnector.cpp
-    Module.cpp)
-
-if (AIMANAGERS_TELEMETRY_METRICS_SUPPORT)
-list( APPEND PLUGIN_APP_MANAGER_IMPLEMENTATION_SOURCES
     AppManagerTelemetryReporting.cpp
-)
-add_definitions(-DENABLE_AIMANAGERS_TELEMETRY_METRICS)		
-endif (AIMANAGERS_TELEMETRY_METRICS_SUPPORT)	
+    Module.cpp)
 
 add_library(${PLUGIN_IMPLEMENTATION} SHARED
     ${PLUGIN_APP_MANAGER_IMPLEMENTATION_SOURCES}
 )
 
-include_directories(../helpers)
+target_include_directories(${PLUGIN_IMPLEMENTATION}
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../helpers)
 
 set_target_properties(${PLUGIN_IMPLEMENTATION} PROPERTIES
         CXX_STANDARD 11
@@ -87,7 +87,7 @@ if (RDK_SERVICES_L1_TEST)
 	target_link_options(${PLUGIN_IMPLEMENTATION} PRIVATE -Wl,--wrap,stat)
 endif (RDK_SERVICES_L1_TEST)
 target_link_libraries(${PLUGIN_IMPLEMENTATION} PRIVATE
-    CompileSettingsDebug::CompileSettingsDebug ${NAMESPACE}Plugins::${NAMESPACE}Plugins  ${PLUGIN_APP_MANAGER_EXTRA_LIBRARIES})
+    CompileSettingsDebug::CompileSettingsDebug ${NAMESPACE}Plugins::${NAMESPACE}Plugins AppManagersHelpers ${PLUGIN_APP_MANAGER_EXTRA_LIBRARIES})
 
 install(TARGETS ${PLUGIN_IMPLEMENTATION}
     DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/${STORAGE_DIRECTORY}/plugins)

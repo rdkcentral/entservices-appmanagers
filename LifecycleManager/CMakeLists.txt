@@ -38,6 +38,7 @@ set(PLUGIN_LIFECYCLE_MANAGER_SOURCES
 	LifecycleManager.cpp
 	LifecycleManagerImplementation.cpp
 	Module.cpp
+	LifecycleManagerTelemetryReporting.cpp
 	ApplicationContext.cpp
 	RequestHandler.cpp
 	RuntimeManagerHandler.cpp
@@ -45,13 +46,6 @@ set(PLUGIN_LIFECYCLE_MANAGER_SOURCES
 	State.cpp
 	StateHandler.cpp
 	StateTransitionHandler.cpp)
-
-if (AIMANAGERS_TELEMETRY_METRICS_SUPPORT)
-list( APPEND PLUGIN_LIFECYCLE_MANAGER_SOURCES
-	LifecycleManagerTelemetryReporting.cpp
-)
-add_definitions(-DENABLE_AIMANAGERS_TELEMETRY_METRICS)		
-endif (AIMANAGERS_TELEMETRY_METRICS_SUPPORT)
 
 add_library(${MODULE_NAME} SHARED
     ${PLUGIN_LIFECYCLE_MANAGER_SOURCES}
@@ -66,6 +60,7 @@ set_source_files_properties(LifecycleManager.cpp PROPERTIES COMPILE_FLAGS "-fexc
 target_link_libraries(${MODULE_NAME}
     PRIVATE
         CompileSettingsDebug::CompileSettingsDebug
+		AppManagersHelpers
         ${NAMESPACE}Plugins::${NAMESPACE}Plugins
         ${NAMESPACE}Definitions::${NAMESPACE}Definitions)
 
@@ -77,7 +72,9 @@ endif()
 install(TARGETS ${MODULE_NAME}
     DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/${STORAGE_DIRECTORY}/plugins)
 
-include_directories(../helpers)
+target_include_directories(${MODULE_NAME}
+	PRIVATE
+		${CMAKE_CURRENT_SOURCE_DIR}/../helpers)
 
 set(LIFECYCLE_MANAGER_INCLUDES $ENV{LIFECYCLE_MANAGER_INCLUDES})
 separate_arguments(LIFECYCLE_MANAGER_INCLUDES)
