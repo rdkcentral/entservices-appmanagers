@@ -22,7 +22,33 @@
 #include <interfaces/IAppPackageManager.h>
 
 using ::WPEFramework::Exchange::IPackageHandler;
+using ::WPEFramework::Exchange::IPackageDownloader;
 using ::WPEFramework::Exchange::IPackageInstaller;
+
+class PackageDownloaderMock : public IPackageDownloader {
+public:
+    PackageDownloaderMock() = default;
+    virtual ~PackageDownloaderMock() = default;
+
+    MOCK_METHOD(WPEFramework::Core::hresult, Download, (const string& url, const WPEFramework::Exchange::IPackageDownloader::Options& options, WPEFramework::Exchange::IPackageDownloader::DownloadId& downloadId), (override));
+    MOCK_METHOD(WPEFramework::Core::hresult, Pause, (const string& downloadId), (override));
+    MOCK_METHOD(WPEFramework::Core::hresult, Resume, (const string& downloadId), (override));
+    MOCK_METHOD(WPEFramework::Core::hresult, Cancel, (const string& downloadId), (override));
+    MOCK_METHOD(WPEFramework::Core::hresult, Delete, (const string& fileLocator), (override));
+    MOCK_METHOD(WPEFramework::Core::hresult, Progress, (const string& downloadId, WPEFramework::Exchange::IPackageDownloader::ProgressInfo& progress), (override));
+    MOCK_METHOD(WPEFramework::Core::hresult, GetStorageInformation, (uint32_t& quotaKB, uint32_t& usedKB), (override));
+    MOCK_METHOD(WPEFramework::Core::hresult, RateLimit, (const string& downloadId, const uint64_t& limit), (override));
+
+    MOCK_METHOD(WPEFramework::Core::hresult, Register, (WPEFramework::Exchange::IPackageDownloader::INotification* notification), (override));
+    MOCK_METHOD(WPEFramework::Core::hresult, Unregister, (WPEFramework::Exchange::IPackageDownloader::INotification* notification), (override));
+
+    MOCK_METHOD(WPEFramework::Core::hresult, Initialize, (WPEFramework::PluginHost::IShell* service), (override));
+    MOCK_METHOD(WPEFramework::Core::hresult, Deinitialize, (WPEFramework::PluginHost::IShell* service), (override));
+
+    MOCK_METHOD(void, AddRef, (), (const, override));
+    MOCK_METHOD(uint32_t, Release, (), (const, override));
+    MOCK_METHOD(void*, QueryInterface, (const uint32_t interfaceNummer), (override));
+};
 
 class PackageManagerMock : public IPackageHandler {
 public:
@@ -58,3 +84,4 @@ public:
     MOCK_METHOD(void*, QueryInterface, (const uint32_t interfaceNummer), (override));
 
 };
+

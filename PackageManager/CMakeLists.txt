@@ -34,6 +34,11 @@ endif()
 
 include_directories(${SYSROOT_PATH}/${CMAKE_INSTALL_PREFIX}/include/Package)
 set(LIB_PACKAGE_LIBRARY "${SYSROOT_PATH}/${CMAKE_INSTALL_PREFIX}/lib/libPackage.so")
+set(PACKAGEMANAGER_EXTERNAL_LIBS ${LIB_PACKAGE_LIBRARY})
+
+if(RDK_SERVICES_L1_TEST OR ENABLE_UNIT_TESTS)
+    set(PACKAGEMANAGER_EXTERNAL_LIBS "")
+endif()
 
 option(AIMANAGERS_TELEMETRY_METRICS_SUPPORT "AIMANAGERS_TELEMETRY_METRICS_SUPPORT" OFF)
 
@@ -69,7 +74,7 @@ target_link_libraries(${MODULE_NAME} PRIVATE
     ${NAMESPACE}Definitions::${NAMESPACE}Definitions
     ${NAMESPACE}Plugins::${NAMESPACE}Plugins
     ${CURL_LIBRARY}
-    ${LIB_PACKAGE_LIBRARY}
+    ${PACKAGEMANAGER_EXTERNAL_LIBS}
     )
 
 if(RDK_SERVICES_L1_TEST)
@@ -85,6 +90,10 @@ endif()
 option(ENABLE_UNIT_TESTS "Enable unit tests" OFF)
 if(ENABLE_UNIT_TESTS)
   target_compile_definitions(${MODULE_NAME} PRIVATE UNIT_TEST)
+endif()
+
+if(RDK_SERVICES_L1_TEST)
+    target_compile_definitions(${MODULE_NAME} PRIVATE UNIT_TEST)
 endif()
 
 install(TARGETS ${MODULE_NAME}

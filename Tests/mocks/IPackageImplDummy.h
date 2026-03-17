@@ -36,7 +36,8 @@ namespace packagemanager
         SUCCESS,
         FAILED,
         VERSION_MISMATCH,
-        PERSISTENCE_FAILURE
+        PERSISTENCE_FAILURE,
+        VERIFICATION_FAILURE
     };
 
     typedef enum : uint8_t
@@ -74,6 +75,8 @@ namespace packagemanager
         std::string fireboltVersion;
         bool enableDebugger;
         std::string ralfPkgPath;
+        std::string runtimeType;
+        std::string mimeType;
     };
 
     typedef std::pair<std::string, std::string> ConfigMetadataKey;
@@ -120,9 +123,30 @@ namespace packagemanager
         
         virtual Result GetFileMetadata(const std::string &fileLocator, std::string &packageId, std::string &version, ConfigMetaData &configMetadata) { return SUCCESS; }
 
+        static void SetMockInstance(const std::shared_ptr<packagemanager::IPackageImplDummy>& mock)
+        {
+            MockInstance() = mock;
+        }
+
+        static void ResetMockInstance()
+        {
+            MockInstance().reset();
+        }
+
         static std::shared_ptr<packagemanager::IPackageImplDummy> instance() {
-                return std::make_shared<packagemanager::IPackageImplDummy>();
+            if (MockInstance()) {
+                return MockInstance();
+            }
+            return std::make_shared<packagemanager::IPackageImplDummy>();
+        }
+
+    private:
+        static std::shared_ptr<packagemanager::IPackageImplDummy>& MockInstance()
+        {
+            static std::shared_ptr<packagemanager::IPackageImplDummy> s_mockInstance;
+            return s_mockInstance;
         }
     };
 
 }
+

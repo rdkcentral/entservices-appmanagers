@@ -20,6 +20,7 @@
 #include <gtest/gtest.h>
 #include <mntent.h>
 #include <fstream>
+#include <memory>
 #include <string>
 #include <vector>
 #include <cstdio>
@@ -29,6 +30,8 @@
 
 #include "PackageManager.h"
 #include "PackageManagerImplementation.h"
+#include "PackageManagerMock.h"
+#include "LibPackageMock.h"
 #include "StorageManagerMock.h"
 #include "ISubSystemMock.h"
 #include "ServiceMock.h"
@@ -1759,3 +1762,270 @@ TEST_F(PackageManagerTest, unlockmethodusingComRpcFailure) {
 
 	deinitforComRpc();
 }
+
+class PackageManagerJsonRpcMockedTest : public ::testing::Test {
+protected:
+    Core::ProxyType<WorkerPoolImplementation> mWorkerPool;
+    Core::ProxyType<Plugin::PackageManager> mPlugin;
+    Core::JSONRPC::Handler& mHandler;
+    DECL_CORE_JSONRPC_CONX connection;
+    std::string mResponse;
+
+    FactoriesImplementation mFactories;
+    NiceMock<ServiceMock> mService;
+    NiceMock<COMLinkMock> mComLink;
+    NiceMock<SubSystemMock> mSubsystem;
+    NiceMock<StorageManagerMock> mStorageManager;
+
+    NiceMock<PackageDownloaderMock>* mDownloader;
+    NiceMock<PackageInstallerMock>* mInstaller;
+    NiceMock<PackageManagerMock>* mPackageHandler;
+    std::shared_ptr<NiceMock<packagemanager::LibPackageMock>> mLibPackageMock;
+
+    PLUGINHOST_DISPATCHER* mDispatcher;
+
+    PackageManagerJsonRpcMockedTest()
+        : mWorkerPool(Core::ProxyType<WorkerPoolImplementation>::Create(2, Core::Thread::DefaultStackSize(), 16))
+        , mPlugin(Core::ProxyType<Plugin::PackageManager>::Create())
+        , mHandler(*mPlugin)
+        , INIT_CONX(7, 0)
+        , mDownloader(nullptr)
+        , mInstaller(nullptr)
+        , mPackageHandler(nullptr)
+        , mDispatcher(nullptr)
+    {
+        Core::IWorkerPool::Assign(&(*mWorkerPool));
+        mWorkerPool->Run();
+    }
+
+    ~PackageManagerJsonRpcMockedTest() override
+    {
+        Core::IWorkerPool::Assign(nullptr);
+        mWorkerPool.Release();
+    }
+
+    Exchange::IPackageInstaller::IPackageIterator* BuildPackageIterator(const std::list<Exchange::IPackageInstaller::Package>& packages)
+    {
+        return Core::Service<RPC::IteratorType<Exchange::IPackageInstaller::IPackageIterator>>::Create<Exchange::IPackageInstaller::IPackageIterator>(packages);
+    }
+
+    void SetUp() override
+    {
+        mDownloader = new NiceMock<PackageDownloaderMock>();
+        mInstaller = new NiceMock<PackageInstallerMock>();
+        mPackageHandler = new NiceMock<PackageManagerMock>();
+        mLibPackageMock = std::make_shared<NiceMock<packagemanager::LibPackageMock>>();
+        packagemanager::IPackageImplDummy::SetMockInstance(mLibPackageMock);
+
+        ON_CALL(mService, AddRef()).WillByDefault(::testing::Return());
+        ON_CALL(mService, Release()).WillByDefault(::testing::Return(1u));
+        ON_CALL(mService, ConfigLine()).WillByDefault(::testing::Return("{\"downloadDir\":\"/opt/CDL/\"}"));
+        ON_CALL(mService, Callsign()).WillByDefault(::testing::Return("org.rdk.PackageManagerRDKEMS"));
+        ON_CALL(mService, Locator()).WillByDefault(::testing::Return("PackageManager"));
+        ON_CALL(mService, COMLink()).WillByDefault(::testing::Return(&mComLink));
+        ON_CALL(mService, SubSystems()).WillByDefault(::testing::Return(&mSubsystem));
+        ON_CALL(mService, Register(::testing::_)).WillByDefault(::testing::Return());
+        ON_CALL(mService, Unregister(::testing::_)).WillByDefault(::testing::Return());
+        ON_CALL(mService, QueryInterfaceByCallsign(::testing::_, ::testing::_))
+            .WillByDefault(::testing::Invoke([this](const uint32_t, const std::string& callsign) -> void* {
+                if (callsign == "org.rdk.AppStorageManager") {
+                    return reinterpret_cast<void*>(&mStorageManager);
+                }
+                return nullptr;
+            }));
+
+        ON_CALL(mComLink, RemoteConnection(::testing::_)).WillByDefault(::testing::Return(nullptr));
+#ifdef USE_THUNDER_R4
+        ON_CALL(mComLink, Instantiate(::testing::_, ::testing::_, ::testing::_))
+            .WillByDefault(::testing::Invoke([this](const WPEFramework::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
+                connectionId = 1;
+                return mDownloader;
+            }));
+#else
+        ON_CALL(mComLink, Instantiate(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+            .WillByDefault(::testing::Invoke([this](const WPEFramework::RPC::Object&, const uint32_t, uint32_t& connectionId, const string&, const string&) -> void* {
+                connectionId = 1;
+                return mDownloader;
+            }));
+#endif
+
+        ON_CALL(*mDownloader, AddRef()).WillByDefault(::testing::Return());
+        ON_CALL(*mDownloader, Release()).WillByDefault(::testing::Return(Core::ERROR_DESTRUCTION_SUCCEEDED));
+        ON_CALL(*mDownloader, Initialize(::testing::_)).WillByDefault(::testing::Return(Core::ERROR_NONE));
+        ON_CALL(*mDownloader, Deinitialize(::testing::_)).WillByDefault(::testing::Return(Core::ERROR_NONE));
+        ON_CALL(*mDownloader, Register(::testing::_)).WillByDefault(::testing::Return(Core::ERROR_NONE));
+        ON_CALL(*mDownloader, Unregister(::testing::_)).WillByDefault(::testing::Return(Core::ERROR_NONE));
+        ON_CALL(*mDownloader, QueryInterface(::testing::_))
+            .WillByDefault(::testing::Invoke([this](const uint32_t interfaceId) -> void* {
+                if (interfaceId == Exchange::IPackageInstaller::ID) {
+                    return static_cast<Exchange::IPackageInstaller*>(mInstaller);
+                }
+                if (interfaceId == Exchange::IPackageHandler::ID) {
+                    return static_cast<Exchange::IPackageHandler*>(mPackageHandler);
+                }
+                return nullptr;
+            }));
+
+        ON_CALL(*mInstaller, AddRef()).WillByDefault(::testing::Return());
+        ON_CALL(*mInstaller, Release()).WillByDefault(::testing::Return(1u));
+        ON_CALL(*mInstaller, Register(::testing::_)).WillByDefault(::testing::Return(Core::ERROR_NONE));
+        ON_CALL(*mInstaller, Unregister(::testing::_)).WillByDefault(::testing::Return(Core::ERROR_NONE));
+
+        ON_CALL(*mStorageManager, DeleteStorage(::testing::_, ::testing::_)).WillByDefault(::testing::Return(Core::ERROR_NONE));
+
+        PluginHost::IFactories::Assign(&mFactories);
+        mDispatcher = static_cast<PLUGINHOST_DISPATCHER*>(mPlugin->QueryInterface(PLUGINHOST_DISPATCHER_ID));
+        mDispatcher->Activate(&mService);
+        EXPECT_EQ(std::string(""), mPlugin->Initialize(&mService));
+    }
+
+    void TearDown() override
+    {
+        EXPECT_CALL(*mInstaller, Unregister(::testing::_)).Times(1).WillOnce(::testing::Return(Core::ERROR_NONE));
+        EXPECT_CALL(*mDownloader, Unregister(::testing::_)).Times(1).WillOnce(::testing::Return(Core::ERROR_NONE));
+        EXPECT_CALL(*mDownloader, Release()).Times(1).WillOnce(::testing::Return(Core::ERROR_DESTRUCTION_SUCCEEDED));
+
+        mPlugin->Deinitialize(&mService);
+
+        mDispatcher->Deactivate();
+        mDispatcher->Release();
+        PluginHost::IFactories::Assign(nullptr);
+
+        delete mPackageHandler;
+        mPackageHandler = nullptr;
+        delete mInstaller;
+        mInstaller = nullptr;
+        delete mDownloader;
+        mDownloader = nullptr;
+
+        packagemanager::IPackageImplDummy::ResetMockInstance();
+        mLibPackageMock.reset();
+    }
+};
+
+TEST_F(PackageManagerJsonRpcMockedTest, JsonRpc_Mocked_DownloadSuccess)
+{
+    EXPECT_CALL(*mDownloader, Download(::testing::_, ::testing::_, ::testing::_))
+        .WillOnce(::testing::Invoke([](const string&, const Exchange::IPackageDownloader::Options&, Exchange::IPackageDownloader::DownloadId& downloadId) {
+            downloadId.downloadId = "2001";
+            return Core::ERROR_NONE;
+        }));
+
+    EXPECT_EQ(Core::ERROR_NONE, mHandler.Invoke(connection, _T("download"), _T("{\"url\":\"https://example.com/pkg.ipk\"}"), mResponse));
+    EXPECT_THAT(mResponse, ::testing::HasSubstr("\"downloadId\":\"2001\""));
+}
+
+TEST_F(PackageManagerJsonRpcMockedTest, JsonRpc_Mocked_DownloadFailure)
+{
+    EXPECT_CALL(*mDownloader, Download(::testing::_, ::testing::_, ::testing::_)).WillOnce(::testing::Return(Core::ERROR_GENERAL));
+    EXPECT_EQ(Core::ERROR_GENERAL, mHandler.Invoke(connection, _T("download"), _T("{\"url\":\"https://example.com/pkg.ipk\"}"), mResponse));
+}
+
+TEST_F(PackageManagerJsonRpcMockedTest, JsonRpc_Mocked_PauseResumeCancel)
+{
+    EXPECT_CALL(*mDownloader, Pause("2001")).WillOnce(::testing::Return(Core::ERROR_NONE));
+    EXPECT_CALL(*mDownloader, Resume("2001")).WillOnce(::testing::Return(Core::ERROR_NONE));
+    EXPECT_CALL(*mDownloader, Cancel("2001")).WillOnce(::testing::Return(Core::ERROR_NONE));
+
+    EXPECT_EQ(Core::ERROR_NONE, mHandler.Invoke(connection, _T("pause"), _T("{\"downloadId\":\"2001\"}"), mResponse));
+    EXPECT_EQ(Core::ERROR_NONE, mHandler.Invoke(connection, _T("resume"), _T("{\"downloadId\":\"2001\"}"), mResponse));
+    EXPECT_EQ(Core::ERROR_NONE, mHandler.Invoke(connection, _T("cancel"), _T("{\"downloadId\":\"2001\"}"), mResponse));
+}
+
+TEST_F(PackageManagerJsonRpcMockedTest, JsonRpc_Mocked_DeleteProgressRateLimit)
+{
+    EXPECT_CALL(*mDownloader, Delete("/opt/CDL/package2001")).WillOnce(::testing::Return(Core::ERROR_NONE));
+    EXPECT_CALL(*mDownloader, Progress("2001", ::testing::_))
+        .WillOnce(::testing::Invoke([](const string&, Exchange::IPackageDownloader::ProgressInfo& progress) {
+            progress.progress = 90;
+            return Core::ERROR_NONE;
+        }));
+    EXPECT_CALL(*mDownloader, RateLimit("2001", 1024)).WillOnce(::testing::Return(Core::ERROR_NONE));
+
+    EXPECT_EQ(Core::ERROR_NONE, mHandler.Invoke(connection, _T("delete"), _T("{\"fileLocator\":\"/opt/CDL/package2001\"}"), mResponse));
+    EXPECT_EQ(Core::ERROR_NONE, mHandler.Invoke(connection, _T("progress"), _T("{\"downloadId\":\"2001\"}"), mResponse));
+    EXPECT_THAT(mResponse, ::testing::HasSubstr("\"progress\":90"));
+    EXPECT_EQ(Core::ERROR_NONE, mHandler.Invoke(connection, _T("rateLimit"), _T("{\"downloadId\":\"2001\",\"limit\":1024}"), mResponse));
+}
+
+TEST_F(PackageManagerJsonRpcMockedTest, JsonRpc_Mocked_GetStorageInformation)
+{
+    EXPECT_CALL(*mDownloader, GetStorageInformation(::testing::_, ::testing::_))
+        .WillOnce(::testing::Invoke([](uint32_t& quotaKB, uint32_t& usedKB) {
+            quotaKB = 4096;
+            usedKB = 1024;
+            return Core::ERROR_NONE;
+        }));
+
+    EXPECT_EQ(Core::ERROR_NONE, mHandler.Invoke(connection, _T("getStorageInformation"), _T("{}"), mResponse));
+    EXPECT_THAT(mResponse, ::testing::HasSubstr("\"quotaKB\":4096"));
+    EXPECT_THAT(mResponse, ::testing::HasSubstr("\"usedKB\":1024"));
+}
+
+TEST_F(PackageManagerJsonRpcMockedTest, JsonRpc_Mocked_InstallUninstallWithLibpackage)
+{
+    EXPECT_CALL(*mLibPackageMock, Initialize(::testing::_, ::testing::_))
+        .WillOnce(::testing::Invoke([](const std::string&, packagemanager::ConfigMetadataArray& metadata) {
+            packagemanager::ConfigMetaData cfg{};
+            cfg.dataImageSize = 2048;
+            metadata.insert({{"YouTube", "100.1.24"}, cfg});
+            return packagemanager::SUCCESS;
+        }));
+
+    EXPECT_CALL(*mLibPackageMock, Install("YouTube", "100.1.24", ::testing::_, "/opt/CDL/package2001", ::testing::_))
+        .WillOnce(::testing::Return(packagemanager::SUCCESS));
+
+    EXPECT_CALL(*mInstaller, Install("YouTube", "100.1.24", ::testing::_, "/opt/CDL/package2001", ::testing::_))
+        .WillOnce(::testing::Invoke([](const string&, const string&, Exchange::IPackageInstaller::IKeyValueIterator* const&, const string&, Exchange::IPackageInstaller::FailReason& failReason) {
+            failReason = Exchange::IPackageInstaller::FailReason::NONE;
+            return Core::ERROR_NONE;
+        }));
+
+    EXPECT_EQ(Core::ERROR_NONE, mHandler.Invoke(connection, _T("install"), _T("{\"packageId\":\"YouTube\",\"version\":\"100.1.24\",\"additionalMetadata\":[],\"fileLocator\":\"/opt/CDL/package2001\"}"), mResponse));
+
+    EXPECT_CALL(*mLibPackageMock, Uninstall("YouTube")).WillOnce(::testing::Return(packagemanager::SUCCESS));
+    EXPECT_CALL(*mInstaller, Uninstall("YouTube", ::testing::_))
+        .WillOnce(::testing::Invoke([](const string&, string& errorReason) {
+            errorReason.clear();
+            return Core::ERROR_NONE;
+        }));
+
+    EXPECT_EQ(Core::ERROR_NONE, mHandler.Invoke(connection, _T("uninstall"), _T("{\"packageId\":\"YouTube\"}"), mResponse));
+}
+
+TEST_F(PackageManagerJsonRpcMockedTest, JsonRpc_Mocked_ListPackagesConfigPackageState)
+{
+    EXPECT_CALL(*mInstaller, ListPackages(::testing::_))
+        .WillOnce(::testing::Invoke([this](Exchange::IPackageInstaller::IPackageIterator*& packages) {
+            std::list<Exchange::IPackageInstaller::Package> packageList;
+            Exchange::IPackageInstaller::Package packageA;
+            packageA.packageId = "YouTube";
+            packageA.version = "100.1.24";
+            packageA.state = Exchange::IPackageInstaller::InstallState::INSTALLED;
+            packageA.sizeKb = 2048;
+            packageList.emplace_back(packageA);
+            packages = BuildPackageIterator(packageList);
+            return Core::ERROR_NONE;
+        }));
+
+    EXPECT_CALL(*mInstaller, Config("YouTube", "100.1.24", ::testing::_))
+        .WillOnce(::testing::Invoke([](const string&, const string&, Exchange::RuntimeConfig& configMetadata) {
+            configMetadata.dataImageSize = 2048;
+            return Core::ERROR_NONE;
+        }));
+
+    EXPECT_CALL(*mInstaller, PackageState("YouTube", "100.1.24", ::testing::_))
+        .WillOnce(::testing::Invoke([](const string&, const string&, Exchange::IPackageInstaller::InstallState& state) {
+            state = Exchange::IPackageInstaller::InstallState::INSTALLED;
+            return Core::ERROR_NONE;
+        }));
+
+    EXPECT_EQ(Core::ERROR_NONE, mHandler.Invoke(connection, _T("listPackages"), _T("{}"), mResponse));
+    EXPECT_THAT(mResponse, ::testing::HasSubstr("YouTube"));
+
+    EXPECT_EQ(Core::ERROR_NONE, mHandler.Invoke(connection, _T("config"), _T("{\"packageId\":\"YouTube\",\"version\":\"100.1.24\"}"), mResponse));
+    EXPECT_THAT(mResponse, ::testing::HasSubstr("\"dataImageSize\":2048"));
+
+    EXPECT_EQ(Core::ERROR_NONE, mHandler.Invoke(connection, _T("packageState"), _T("{\"packageId\":\"YouTube\",\"version\":\"100.1.24\"}"), mResponse));
+}
+
