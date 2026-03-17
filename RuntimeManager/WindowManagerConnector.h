@@ -47,6 +47,9 @@ namespace Plugin {
                 END_INTERFACE_MAP
 
                 virtual void OnUserInactivity(const double minutes) override;
+#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
+                virtual void OnDisconnected(const std::string& client) override;
+#endif
 
             private:
                 WindowManagerConnector& _parent;
@@ -60,15 +63,25 @@ namespace Plugin {
             WindowManagerConnector& operator=(const WindowManagerConnector&) = delete;
 
         public:
-            bool initializePlugin(PluginHost::IShell* service); //, IEventHandler* eventHandler
+#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
+            bool initializePlugin(PluginHost::IShell* service, class RuntimeManagerImplementation* runtimeManager);
+#else
+            bool initializePlugin(PluginHost::IShell* service);
+#endif
             void releasePlugin();
             bool createDisplay(const string& appInstanceId , const string& displayName, const uint32_t& userId, const uint32_t& groupId);
             bool isPluginInitialized();
-            void getDisplayInfo(const string& appInstanceId , string& xdgRuntimeDir , string& waylandDisplayName);\
+            void getDisplayInfo(const string& appInstanceId , string& xdgRuntimeDir , string& waylandDisplayName);
+#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
+            void onWindowManagerDisconnected(const std::string& client);
+#endif
         private:
             Exchange::IRDKWindowManager* mWindowManager;
             Core::Sink<WindowManagerNotification> mWindowManagerNotification;
             bool mPluginInitialized = false;
+#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
+            class RuntimeManagerImplementation* mRuntimeManager;
+#endif
     };
 } // namespace Plugin
 } // namespace WPEFramework

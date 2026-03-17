@@ -220,13 +220,14 @@ namespace Plugin {
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
     time_t PackageManagerImplementation::getCurrentTimestamp()
     {
-        timespec ts;
-        clock_gettime(CLOCK_MONOTONIC, &ts);
-        return (((time_t)ts.tv_sec * 1000) + ((time_t)ts.tv_nsec / 1000000));
+        return static_cast<time_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now().time_since_epoch()
+        ).count());
     }
 
     void PackageManagerImplementation::recordAndPublishTelemetryData(const std::string& marker, const std::string& appId,
-                                                                     time_t requestTime, PackageManagerImplementation::PackageFailureErrorCode errorCode)
+                                                                     time_t requestTime, PackageManagerImplementation::PackageFailureErrorCode errorCode,
+                                                                     const std::string& runtimeId, const std::string& runtimeVersion)
     {
         std::string telemetryMetrics = "";
         JsonObject jsonParam;
@@ -254,6 +255,8 @@ namespace Plugin {
 
                 if (marker == TELEMETRY_MARKER_LAUNCH_TIME) {
                     jsonParam["packageManagerLockTime"] = duration;
+                    jsonParam["runtimeId"] = runtimeId;
+                    jsonParam["runtimeVersion"] = runtimeVersion;
                     publish = false;
                 }
                 else if (marker == TELEMETRY_MARKER_CLOSE_TIME) {
@@ -749,6 +752,7 @@ namespace Plugin {
                 auto &state = it->second;
 
                 state.additionalLocks.clear();
+                string runtimeId,runtimeVersion;
                 const string &rtPackageId = state.runtimeApp.first;
                 const string &rtVersion = state.runtimeApp.second;
                 if (!rtPackageId.empty() && !rtVersion.empty()) {
@@ -768,14 +772,29 @@ namespace Plugin {
                     #else
                         LOGWARN("Not runtime locking in old libpackage");
                     #endif
+                    runtimeId = rtPackageId;
+                    runtimeVersion = rtVersion;
                 } else {
-                    LOGDBG("No runtime for '%s:%s'", packageId.c_str(), version.c_str());
+                    LOGDBG("No runtime for '%s:%s' , trying to fetch from additionalLocks", packageId.c_str(), version.c_str());
+                    if (!locks.empty())
+                    {
+                        packagemanager::NameValue nv = locks[0];
+                        runtimeId = nv.first;
+                        runtimeVersion = nv.second;
+                        LOGDBG("additional lock packageId: %s version: %s", runtimeId.c_str(), runtimeVersion.c_str());
+                    }
+                    else
+                    {
+                        LOGWARN("No additional locks found for '%s:%s'", packageId.c_str(), version.c_str());
+                    }
                 }
                 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
                 recordAndPublishTelemetryData(TELEMETRY_MARKER_LAUNCH_TIME,
                                                             packageId,
                                                             requestTime,
-                                                            PackageManagerImplementation::PackageFailureErrorCode::ERROR_NONE);
+                                                            PackageManagerImplementation::PackageFailureErrorCode::ERROR_NONE,
+                                                            runtimeId.empty() ? "" : runtimeId,
+                                                            runtimeVersion.empty() ? "" : runtimeVersion);
                 #endif /* ENABLE_AIMANAGERS_TELEMETRY_METRICS */
 
                 LOGDBG("Locked. id: %s ver: %s additionalLocks=%zu", packageId.c_str(), version.c_str(), state.additionalLocks.size());
