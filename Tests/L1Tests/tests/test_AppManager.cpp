@@ -3887,8 +3887,11 @@ TEST_F(AppManagerTest, GetCustomValuesWithAipathFile)
      */
     FILE* aipathFile = ::tmpfile();
     ASSERT_NE(aipathFile, nullptr);
-    /* Write minimal non-empty content so getCustomValues() does not operate on empty strings. */
-    std::fputs("key=value\n", aipathFile);
+    /* Write three newline-terminated lines (apppath/runtimepath/command) so getCustomValues() */
+    /* can safely call pop_back() on each non-empty string.                        */
+    std::fputs("/opt/test/app/path\n", aipathFile);       /* apppath    */
+    std::fputs("/opt/test/runtime/path\n", aipathFile);   /* runtimepath */
+    std::fputs("test_command --arg\n", aipathFile);       /* command    */
     std::fflush(aipathFile);
     std::rewind(aipathFile);
 
