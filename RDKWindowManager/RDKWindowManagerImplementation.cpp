@@ -658,8 +658,8 @@ void RDKWindowManagerImplementation::Dispatch(Event event, const JsonValue param
  * @param virtualDisplay  : When true, creates a virtual (off-screen) display.
  * @param virtualWidth    : Width of the virtual display in pixels.
  * @param virtualHeight   : Height of the virtual display in pixels.
- * @param ownerId         : Wayland client PID that owns the display surface.
- * @param groupId         : Group identifier used to associate related surfaces.
+ * @param ownerId         : Linux user ID (UID) associated with the client that owns the display surface.
+ * @param groupId         : Linux group ID (GID) associated with the client or surfaces for access/grouping.
  * @param topmost         : When true, the display surface is rendered above all others.
  * @param focus           : When true, the display surface receives input focus on creation.
  * @return Core::ERROR_NONE on success, Core::ERROR_GENERAL on failure.
