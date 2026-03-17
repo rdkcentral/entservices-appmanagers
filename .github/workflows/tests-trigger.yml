@@ -6,7 +6,7 @@ on:
   push:
     branches: [ main, develop, 'sprint/**', 'release/**', 'topic/genai**']
   pull_request:
-    branches: [ main, develop, 'sprint/**', 'release/**', 'feature/genAITests']]
+    branches: [ main, develop, 'sprint/**', 'release/**','feature/genAITests']]
 
 jobs:
   trigger-L1:
