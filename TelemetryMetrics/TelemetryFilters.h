@@ -22,7 +22,8 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
-#include "RDKAppMgrTelemetryMarkers.h"
+
+#include "helpers/Telemetry/TelemetryMarkers.h"
 
 
 static const std::unordered_map<std::string, std::unordered_set<std::string>> markerFilters = {

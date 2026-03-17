@@ -20,15 +20,11 @@
 
 #include "AppStorageManagerImplementation.h"
 #include "UtilsLogging.h"
+#include "AppStorageManagerTelemetryReporting.h"
 #include "RequestHandler.h"
-#include <chrono>
 #include <sys/statvfs.h>
 
 #define DEFAULT_APP_STORAGE_PATH        "/opt/persistent/storageManager"
-
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-#define TELEMETRY_MARKER_LAUNCH_TIME    "OverallLaunchTime_split"
-#endif
 
 namespace WPEFramework {
 namespace Plugin {
@@ -37,9 +33,6 @@ namespace Plugin {
 
     StorageManagerImplementation::StorageManagerImplementation()
     : mCurrentservice(nullptr)
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-    , mTelemetryMetricsObject(nullptr)
-#endif
     {
         LOGINFO("Create StorageManagerImplementation Instance");
     }
@@ -47,6 +40,7 @@ namespace Plugin {
     StorageManagerImplementation::~StorageManagerImplementation()
     {
         LOGINFO("Delete StorageManagerImplementation Instance");
+        AppStorageManagerTelemetryReporting::getInstance().reset();
         RequestHandler& handler = RequestHandler::getInstance();
         handler.releasePersistentStoreRemoteStoreObject();
 
@@ -90,16 +84,7 @@ namespace Plugin {
                     LOGINFO("created createPersistentStoreRemoteStoreObject");
                 }
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-                if (nullptr == (mTelemetryMetricsObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::ITelemetryMetrics>("org.rdk.TelemetryMetrics")))
-                {
-                    LOGERR("mTelemetryMetricsObject is null \n");
-                }
-                else
-                {
-                    LOGINFO("created TelemetryMetrics Object");
-                }
-#endif
+                AppStorageManagerTelemetryReporting::getInstance().initialize(mCurrentservice);
 
                 Core::SystemInfo::SetEnvironment(PATH_ENV, mBaseStoragePath.c_str());
                 LOGINFO("Base Storage Path Set: %s", mBaseStoragePath.c_str());
@@ -123,15 +108,6 @@ namespace Plugin {
 
         return result;
     }
-
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-    static time_t getCurrentTimestamp()
-    {
-        return static_cast<time_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::steady_clock::now().time_since_epoch()
-        ).count());
-    }
-#endif
 
     /**
      * @brief : Creates storage for a given app id and returns the storage path
@@ -166,12 +142,10 @@ namespace Plugin {
         Core::hresult status = Core::ERROR_GENERAL;
         RequestHandler& handler = RequestHandler::getInstance();
 
-        #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-            JsonObject jsonParam;
-            std::string telemetryMetrics = "";
 	    /* Get current timestamp at the start of getStorage for telemetry */
-            time_t requestTime = getCurrentTimestamp();
-        #endif
+        timespec ts;
+        clock_gettime(CLOCK_MONOTONIC, &ts);
+        uint64_t requestTime = (((uint64_t)ts.tv_sec * 1000) + ((uint64_t)ts.tv_nsec / 1000000));
 
         if (appId.empty())
         {
@@ -186,19 +160,7 @@ namespace Plugin {
             LOGINFO("Storage retreived successfully for appId: %s", appId.c_str());
         }
 
-        #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-            /* Get current timestamp at the end of getStorage for Telemetry */
-            time_t currentTime = getCurrentTimestamp();
-            int duration = static_cast<int>(currentTime - requestTime);
-            jsonParam["storageManagerLaunchTime"] = duration;
-            jsonParam["appId"] = appId;
-            jsonParam.ToString(telemetryMetrics);
-            if(nullptr != mTelemetryMetricsObject)
-            {
-		LOGINFO("Record appId %s storageManagerLaunchTime %d",appId.c_str(),duration);
-                mTelemetryMetricsObject->Record(appId, telemetryMetrics, TELEMETRY_MARKER_LAUNCH_TIME);
-            }
-        #endif
+        AppStorageManagerTelemetryReporting::getInstance().recordGetStorageTelemetry(appId, requestTime);
         return status;
     }
 
@@ -210,7 +172,6 @@ namespace Plugin {
         LOGINFO("Entered DeleteStorage Implementation");
         Core::hresult status = Core::ERROR_GENERAL;
         RequestHandler& handler = RequestHandler::getInstance();
-
         if (appId.empty())
         {
             errorReason = "AppId is empty";
@@ -224,7 +185,6 @@ namespace Plugin {
         {
             LOGINFO("Storage deleted successfully for appId: %s", appId.c_str());
         }
-
         return status;
     }
 

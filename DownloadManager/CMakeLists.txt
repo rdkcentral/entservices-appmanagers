@@ -38,7 +38,6 @@ add_library(${MODULE_NAME} SHARED
 
 if(AIMANAGERS_TELEMETRY_METRICS_SUPPORT)
     message(STATUS "TELEMETRY_METRICS_SUPPORT is enabled")
-    add_definitions(-DENABLE_AIMANAGERS_TELEMETRY_METRICS)
 endif(AIMANAGERS_TELEMETRY_METRICS_SUPPORT)
 
 set_target_properties(${MODULE_NAME} PROPERTIES
@@ -56,15 +55,13 @@ install(TARGETS ${MODULE_NAME}
 
 add_library(${PLUGIN_IMPLEMENTATION} SHARED
     DownloadManagerImplementation.cpp
+    DownloadManagerTelemetryReporting.cpp
     Module.cpp
     DownloadManagerHttpClient.cpp)
 
-include_directories(
-   ../helpers)
-
-if(AIMANAGERS_TELEMETRY_METRICS_SUPPORT)
-    include_directories(../TelemetryMetrics)
-endif(AIMANAGERS_TELEMETRY_METRICS_SUPPORT)
+target_include_directories(${PLUGIN_IMPLEMENTATION}
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../helpers)
 
 set_target_properties(${PLUGIN_IMPLEMENTATION} PROPERTIES
         CXX_STANDARD 11
@@ -79,7 +76,8 @@ endif(RDK_SERVICES_L1_TEST)
 target_link_libraries(${PLUGIN_IMPLEMENTATION}
     PRIVATE
         CompileSettingsDebug::CompileSettingsDebug
-        ${NAMESPACE}Plugins::${NAMESPACE}Plugins)
+        ${NAMESPACE}Plugins::${NAMESPACE}Plugins
+        AppManagersHelpers)
 
 install(TARGETS ${PLUGIN_IMPLEMENTATION}
     DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/${STORAGE_DIRECTORY}/plugins)

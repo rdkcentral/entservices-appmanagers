@@ -30,7 +30,6 @@ add_definitions(-DRDK_WINDOW_MANAGER_API_VERSION_NUMBER_PATCH=0)
 
 set(RDK_WINDOW_MANAGER_IMPLEMENTATION ${PLUGIN_NAME}Implementation)
 add_definitions(-DPLUGIN_RDK_WINDOW_MANAGER_IMPLEMENTATION_NAME="${RDK_WINDOW_MANAGER_IMPLEMENTATION}")
-option(AIMANAGERS_TELEMETRY_METRICS_SUPPORT "AIMANAGERS_TELEMETRY_METRICS_SUPPORT" OFF)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
@@ -42,16 +41,16 @@ add_library(${MODULE_NAME} SHARED
         RDKWindowManager.cpp
         Module.cpp
 )
-if(AIMANAGERS_TELEMETRY_METRICS_SUPPORT)
-    message(STATUS "TELEMETRY_METRICS_SUPPORT is enabled")
-    add_definitions(-DENABLE_AIMANAGERS_TELEMETRY_METRICS)
-endif(AIMANAGERS_TELEMETRY_METRICS_SUPPORT)
 
 set_target_properties(${MODULE_NAME} PROPERTIES
         CXX_STANDARD 11
         CXX_STANDARD_REQUIRED YES)
 
 set_source_files_properties(RDKWindowManager.cpp PROPERTIES COMPILE_FLAGS "-fexceptions")
+
+target_include_directories(${MODULE_NAME}
+        PRIVATE
+                ${CMAKE_CURRENT_SOURCE_DIR}/../helpers)
 
 target_link_libraries(${MODULE_NAME}
     PRIVATE
@@ -64,13 +63,12 @@ install(TARGETS ${MODULE_NAME}
 
 add_library(${PLUGIN_IMPLEMENTATION} SHARED
     RDKWindowManagerImplementation.cpp
+        RDKWindowManagerTelemetryReporting.cpp
     Module.cpp)
 
-include_directories(../helpers)
-
-if(AIMANAGERS_TELEMETRY_METRICS_SUPPORT)
-        include_directories(../TelemetryMetrics)
-endif(AIMANAGERS_TELEMETRY_METRICS_SUPPORT)
+target_include_directories(${PLUGIN_IMPLEMENTATION}
+        PRIVATE
+                ${CMAKE_CURRENT_SOURCE_DIR}/../helpers)
 
 set_target_properties(${PLUGIN_IMPLEMENTATION} PROPERTIES
         CXX_STANDARD 11
@@ -82,10 +80,10 @@ include_directories(BEFORE ${RDK_WINDOW_MANAGER_INCLUDES})
 
 if (NOT RDK_SERVICES_TEST)
         target_link_libraries(${PLUGIN_IMPLEMENTATION} PRIVATE
-        CompileSettingsDebug::CompileSettingsDebug ${NAMESPACE}Plugins::${NAMESPACE}Plugins -lrdkwindowmanager ${PLUGIN_RDK_WINDOW_MANAGER_EXTRA_LIBRARIES})
+        CompileSettingsDebug::CompileSettingsDebug ${NAMESPACE}Plugins::${NAMESPACE}Plugins AppManagersHelpers -lrdkwindowmanager ${PLUGIN_RDK_WINDOW_MANAGER_EXTRA_LIBRARIES})
 else(RDK_SERVICES_TEST)
         target_link_libraries(${PLUGIN_IMPLEMENTATION} PRIVATE
-        CompileSettingsDebug::CompileSettingsDebug ${NAMESPACE}Plugins::${NAMESPACE}Plugins ${PLUGIN_RDK_WINDOW_MANAGER_EXTRA_LIBRARIES})
+        CompileSettingsDebug::CompileSettingsDebug ${NAMESPACE}Plugins::${NAMESPACE}Plugins AppManagersHelpers ${PLUGIN_RDK_WINDOW_MANAGER_EXTRA_LIBRARIES})
 endif(RDK_SERVICES_TEST)
 
 install(TARGETS ${PLUGIN_IMPLEMENTATION}

@@ -29,6 +29,7 @@
 #include "UtilsJsonRpc.h"
 #include "UtilsUnused.h"
 #include "UtilsString.h"
+#include "TelemetryMarkers.h"
 
 using namespace std;
 using namespace RdkWindowManager;
@@ -50,9 +51,6 @@ RDKWindowManagerImplementation* RDKWindowManagerImplementation::_instance = null
 RDKWindowManagerImplementation::RDKWindowManagerImplementation()
 : mAdminLock()
 , mService(nullptr)
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-, mTelemetryMetricsObject(nullptr)
-#endif
 {
     LOGINFO("Create RDKWindowManagerImplementation Instance");
     RDKWindowManagerImplementation::_instance = this;
@@ -221,19 +219,7 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
 
         enableInactivityReporting(true);
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-        // Initialize telemetry metrics object
-        mTelemetryLock.Lock();
-        if (nullptr == (mTelemetryMetricsObject = mService->QueryInterfaceByCallsign<WPEFramework::Exchange::ITelemetryMetrics>("org.rdk.TelemetryMetrics")))
-        {
-            LOGERR("RDKWindowManager: Failed to create TelemetryMetricsObject\n");
-        }
-        else
-        {
-            LOGINFO("RDKWindowManager: Created TelemetryMetrics Object");
-        }
-        mTelemetryLock.Unlock();
-#endif
+        RDKWindowManagerTelemetryReporting::getInstance().initialize(mService);
 
         static PluginHost::IShell* pluginService = nullptr;
         pluginService = mService;
@@ -364,15 +350,7 @@ Core::hresult RDKWindowManagerImplementation::Deinitialize(PluginHost::IShell* s
     CompositorController::setEventListener(nullptr);
     mEventListener = nullptr;
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-    mTelemetryLock.Lock();
-    if (mTelemetryMetricsObject != nullptr)
-    {
-        mTelemetryMetricsObject->Release();
-        mTelemetryMetricsObject = nullptr;
-    }
-    mTelemetryLock.Unlock();
-#endif
+    RDKWindowManagerTelemetryReporting::getInstance().reset();
 
     gRdkWindowManagerMutex.lock();
     for (unsigned int i=0; i<gCreateDisplayRequests.size(); i++)
@@ -776,21 +754,17 @@ Core::hresult RDKWindowManagerImplementation::CreateDisplay(const string &displa
             {
                 groupId = parameters["groupId"].Number();
             }
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-            time_t startTime = getCurrentTimestamp();
-#endif
+
+            uint64_t startTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
 
             result = createDisplay(client, displayName, displayWidth, displayHeight,
                                    virtualDisplay, virtualWidth, virtualHeight, topmost, focus, ownerId, groupId);
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             if (true == result)
             {
-                time_t endTime = getCurrentTimestamp();
-                int duration = static_cast<int>(endTime - startTime);
-                recordDisplayTelemetry(client, duration, true);
+                int duration = RDKWindowManagerTelemetryReporting::getInstance().durationSinceMs(startTime);
+                RDKWindowManagerTelemetryReporting::getInstance().recordDisplayTelemetry(client, duration, true);
             }
-#endif
 
             if (false == result)
             {
@@ -2250,52 +2224,6 @@ Core::hresult RDKWindowManagerImplementation::StopVncServer()
 
     return status;
 }
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-time_t RDKWindowManagerImplementation::getCurrentTimestamp()
-{
-    return static_cast<time_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::steady_clock::now().time_since_epoch()
-    ).count());
-}
-
-void RDKWindowManagerImplementation::recordDisplayTelemetry(const string& client, int duration, bool isCreate)
-{
-    JsonObject jsonParam;
-    std::string telemetryMetrics = "";
-    std::string markerName = "";
-
-    mTelemetryLock.Lock();
-    if (nullptr == mTelemetryMetricsObject)
-    {
-        LOGERR("RDKWindowManager: TelemetryMetricsObject is null, cannot record telemetry");
-        mTelemetryLock.Unlock();
-        return;
-    }
-
-    if (isCreate)
-    {
-        jsonParam["windowManagerCreateDisplayTime"] = duration;
-        markerName = TELEMETRY_MARKER_LAUNCH_TIME;
-        LOGINFO("RDKWindowManager: Recording createDisplay telemetry: client=%s time=%dms", client.c_str(), duration);
-    }
-    else
-    {
-        jsonParam["windowManagerDestroyTime"] = duration;
-        markerName = TELEMETRY_MARKER_CLOSE_TIME;
-        LOGINFO("RDKWindowManager: Recording destroyDisplay telemetry: client=%s time=%dms", client.c_str(), duration);
-    }
-
-    // jsonParam["client"] = client;
-    jsonParam.ToString(telemetryMetrics);
-    if (!telemetryMetrics.empty())
-    {
-        mTelemetryMetricsObject->Record(client, telemetryMetrics, markerName);
-    }
-    
-    mTelemetryLock.Unlock();
-}
-#endif
-
 /**
  * @brief Captures a screenshot of the current compositor output.
  *

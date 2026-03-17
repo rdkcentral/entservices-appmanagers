@@ -20,37 +20,30 @@
 #pragma once
 
 #include "AppManagerImplementation.h"
-#include <interfaces/ITelemetryMetrics.h>
-#include "RDKAppMgrTelemetryMarkers.h"
+#include "TelemetryMarkers.h"
+#include "TelemetryReportingBase.h"
 
 namespace WPEFramework
 {
 namespace Plugin
 {
 
-class AppManagerTelemetryReporting
+class AppManagerTelemetryReporting : public Utils::TelemetryReportingBase
 {
     public /*methods*/:
         AppManagerTelemetryReporting(const AppManagerTelemetryReporting&) = delete;
         AppManagerTelemetryReporting& operator=(const AppManagerTelemetryReporting&) = delete;
         static AppManagerTelemetryReporting& getInstance();
-        time_t getCurrentTimestamp();
         void reportTelemetryData(const std::string& appId, AppManagerImplementation::CurrentAction currentAction);
-        void recordLaunchTime(const std::string& appId, int launchTimeMs);
         void reportTelemetryDataOnStateChange(const string& appId, const Exchange::ILifecycleManager::LifecycleState newState);
         void reportTelemetryErrorData(const std::string& appId, AppManagerImplementation::CurrentAction currentAction, AppManagerImplementation::CurrentActionError errorCode);
-        void reportAppCrashedTelemetry(const std::string& appId, const std::string& appInstanceId,  const std::string& crashReason);
         void initialize(PluginHost::IShell* service);
 
     private /*methods*/:
         AppManagerTelemetryReporting();
         ~AppManagerTelemetryReporting();
-        Core::hresult createTelemetryMetricsPluginObject();
 
     private /*members*/:
-        mutable Core::CriticalSection mAdminLock;
-        Exchange::ITelemetryMetrics* mTelemetryMetricsObject;
-        PluginHost::IShell* mCurrentservice;
 };
 
 } /* namespace Plugin */

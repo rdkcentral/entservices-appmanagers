@@ -20,33 +20,28 @@
 #pragma once
 
 #include "ApplicationContext.h"
-#include <interfaces/ITelemetryMetrics.h>
-#include "RDKAppMgrTelemetryMarkers.h"
+#include "TelemetryMarkers.h"
+#include "TelemetryReportingBase.h"
 
 namespace WPEFramework
 {
 namespace Plugin
 {
 
-class LifecycleManagerTelemetryReporting
+class LifecycleManagerTelemetryReporting : public Utils::TelemetryReportingBase
 {
     public /*methods*/:
         LifecycleManagerTelemetryReporting(const LifecycleManagerTelemetryReporting&) = delete;
         LifecycleManagerTelemetryReporting& operator=(const LifecycleManagerTelemetryReporting&) = delete;
         static LifecycleManagerTelemetryReporting& getInstance();
         void reportTelemetryDataOnStateChange(ApplicationContext* context, const JsonObject &data);
-        time_t getCurrentTimestamp();
         void initialize(PluginHost::IShell* service);
 
     private /*methods*/:
         LifecycleManagerTelemetryReporting();
         ~LifecycleManagerTelemetryReporting();
-        Core::hresult createTelemetryMetricsPluginObject();
 
     private /*members*/:
-        mutable Core::CriticalSection mAdminLock;
-        Exchange::ITelemetryMetrics* mTelemetryMetricsObject;
-        PluginHost::IShell* mCurrentservice;
 };
 
 } /* namespace Plugin */
