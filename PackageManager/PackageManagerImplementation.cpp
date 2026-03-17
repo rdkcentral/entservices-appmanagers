@@ -78,6 +78,10 @@ namespace Plugin {
     Core::hresult PackageManagerImplementation::Register(Exchange::IPackageDownloader::INotification* notification)
     {
         LOGINFO();
+        if (notification == nullptr) {
+            LOGERR("Register called with nullptr notification");
+            return Core::ERROR_GENERAL;
+        }
         ASSERT(notification != nullptr);
 
         mAdminLock.Lock();
@@ -95,6 +99,10 @@ namespace Plugin {
     Core::hresult PackageManagerImplementation::Unregister(Exchange::IPackageDownloader::INotification* notification)
     {
         LOGINFO();
+        if (notification == nullptr) {
+            LOGERR("Unregister called with nullptr notification");
+            return Core::ERROR_GENERAL;
+        }
         ASSERT(notification != nullptr);
         Core::hresult result = Core::ERROR_NONE;
 
@@ -705,6 +713,10 @@ namespace Plugin {
         Core::hresult result = Core::ERROR_NONE;
 
         LOGINFO();
+        if (notification == nullptr) {
+            LOGERR("Register called with nullptr notification");
+            return Core::ERROR_GENERAL;
+        }
         ASSERT(notification != nullptr);
         mAdminLock.Lock();
         ASSERT(std::find(mInstallNotifications.begin(), mInstallNotifications.end(), notification) == mInstallNotifications.end());
@@ -721,6 +733,10 @@ namespace Plugin {
         Core::hresult result = Core::ERROR_NONE;
 
         LOGINFO();
+        if (notification == nullptr) {
+            LOGERR("Unregister called with nullptr notification");
+            return Core::ERROR_GENERAL;
+        }
         mAdminLock.Lock();
         auto item = std::find(mInstallNotifications.begin(), mInstallNotifications.end(), notification);
         if (item != mInstallNotifications.end()) {
@@ -1256,7 +1272,9 @@ namespace Plugin {
 
         mAdminLock.Lock();
         for (auto notification: mDownloaderNotifications) {
-            notification->OnAppDownloadStatus(packageInfoIterator);
+            if (notification != nullptr) {
+                notification->OnAppDownloadStatus(packageInfoIterator);
+            }
             LOGTRACE();
         }
         mAdminLock.Unlock();
@@ -1282,7 +1300,9 @@ namespace Plugin {
         LOGDBG("id: '%s; ver: '%s' state: %s", id.c_str(), version.c_str(), getInstallState(state.installState).c_str());
         mAdminLock.Lock();
         for (auto notification: mInstallNotifications) {
-            notification->OnAppInstallationStatus(jsonstr);
+            if (notification != nullptr) {
+                notification->OnAppInstallationStatus(jsonstr);
+            }
             LOGTRACE();
         }
         mAdminLock.Unlock();
@@ -1301,3 +1321,4 @@ namespace Plugin {
 
 } // namespace Plugin
 } // namespace WPEFramework
+
