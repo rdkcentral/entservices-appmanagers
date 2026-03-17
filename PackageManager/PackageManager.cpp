@@ -83,6 +83,7 @@ namespace Plugin
 
             mPackageHandler = mPackageDownloader->QueryInterface<Exchange::IPackageHandler>();
             if (mPackageHandler != nullptr) {
+                //Exchange::JPackageHandler::Register(*this, mPackageHandler);
             } else {
                 LOGERR("Failed to get instance of IPackageHandler");
             }
