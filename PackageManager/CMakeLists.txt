@@ -47,6 +47,7 @@ endif()
 add_library(${MODULE_NAME} SHARED
     PackageManager.cpp
     PackageManagerImplementation.cpp
+    PackageManagerTelemetryReporting.cpp
     Module.cpp
     HttpClient.cpp)
 
@@ -56,7 +57,6 @@ endif()
 
 if(AIMANAGERS_TELEMETRY_METRICS_SUPPORT)
     message(STATUS "TELEMETRY_METRICS_SUPPORT is enabled")
-    add_definitions(-DENABLE_AIMANAGERS_TELEMETRY_METRICS)
 endif(AIMANAGERS_TELEMETRY_METRICS_SUPPORT)
 
 target_include_directories(${MODULE_NAME} PRIVATE
@@ -66,6 +66,7 @@ target_include_directories(${MODULE_NAME} PRIVATE
     )
 
 target_link_libraries(${MODULE_NAME} PRIVATE
+    AppManagersHelpers
     ${NAMESPACE}Definitions::${NAMESPACE}Definitions
     ${NAMESPACE}Plugins::${NAMESPACE}Plugins
     ${CURL_LIBRARY}
