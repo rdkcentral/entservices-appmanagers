@@ -21,6 +21,12 @@ jobs:
 
       - name: Checkout code
         uses: actions/checkout@v3
+
+      - name: Install libarchive
+        run: |
+          apt-get update
+          apt-get install -y libarchive-dev
+
       - name: native build
         run: |
           sh -x build_dependencies.sh
