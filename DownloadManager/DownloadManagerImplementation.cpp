@@ -114,7 +114,7 @@ namespace Plugin {
             // Issue ID 327: Data race condition - mDownloadPath accessed without mutex protection
             // Fix: Protect mDownloadPath initialization with mAdminLock before thread creation
             {
-                std::lock_guard<std::mutex> adminLock(mAdminLock);
+		Core::SafeSyncType<Core::CriticalSection> adminLock(mAdminLock);
                 if (true == config.downloadDir.IsSet())
                 {
                     mDownloadPath = config.downloadDir;
