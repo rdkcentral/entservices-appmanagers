@@ -265,7 +265,7 @@ namespace WPEFramework
 
                 /* Create Window Manager Plugin Object */
                 mWindowManagerConnector = new WindowManagerConnector();
-                if (false == mWindowManagerConnector->initializePlugin(service))
+                if (false == mWindowManagerConnector->initializePlugin(service, this))
                 {
                     LOGERR("Failed to create Window Manager Connector Object");
                 }
@@ -1284,9 +1284,24 @@ namespace WPEFramework
             return RuntimeManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
         }
 
-        void RuntimeManagerImplementation::recordTelemetryData(const std::string &marker, const std::string &appId, uint64_t requestTime)
+        void RuntimeManagerImplementation::onWindowManagerDisconnected(const std::string& client)
         {
-            RuntimeManagerTelemetryReporting::getInstance().recordTelemetryData(marker, appId, requestTime);
+            mRuntimeManagerImplLock.Lock();
+            auto it = mRuntimeAppInfo.find(client);
+            if (it != mRuntimeAppInfo.end())
+            {
+                RuntimeAppInfo& appInfo = it->second;
+                if (appInfo.requestType == REQUEST_TYPE_TERMINATE || appInfo.requestType == REQUEST_TYPE_KILL)
+                {
+                    recordTelemetryData(TELEMETRY_MARKER_CLOSE_TIME, appInfo.appId, appInfo.requestTime, "windowManagerDestroyTime");
+                }
+            }
+            mRuntimeManagerImplLock.Unlock();
+        }
+
+        void RuntimeManagerImplementation::recordTelemetryData(const std::string &marker, const std::string &appId, uint64_t requestTime, const std::string& fieldName)
+        {
+            RuntimeManagerTelemetryReporting::getInstance().recordTelemetryData(marker, appId, requestTime, fieldName);
         }
     } /* namespace Plugin */
 } /* namespace WPEFramework */

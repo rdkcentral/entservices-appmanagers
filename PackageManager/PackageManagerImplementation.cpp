@@ -205,13 +205,16 @@ namespace Plugin {
     }
 
     void PackageManagerImplementation::recordAndPublishTelemetryData(const std::string& marker, const std::string& appId,
-                                                                     time_t requestTime, PackageManagerImplementation::PackageFailureErrorCode errorCode)
+                                                                     time_t requestTime, PackageManagerImplementation::PackageFailureErrorCode errorCode,
+                                                                     const std::string& runtimeId, const std::string& runtimeVersion)
     {
         PackageManagerTelemetryReporting::getInstance().recordAndPublishTelemetryData(
             marker,
             appId,
             requestTime,
-            static_cast<int>(errorCode));
+            static_cast<int>(errorCode),
+            runtimeId,
+            runtimeVersion);
     }
 
     // IPackageDownloader methods
@@ -641,6 +644,7 @@ namespace Plugin {
                 auto &state = it->second;
 
                 state.additionalLocks.clear();
+                string runtimeId, runtimeVersion;
                 const string &rtPackageId = state.runtimeApp.first;
                 const string &rtVersion = state.runtimeApp.second;
                 if (!rtPackageId.empty() && !rtVersion.empty()) {
@@ -660,13 +664,28 @@ namespace Plugin {
                     #else
                         LOGWARN("Not runtime locking in old libpackage");
                     #endif
+                    runtimeId = rtPackageId;
+                    runtimeVersion = rtVersion;
                 } else {
-                    LOGDBG("No runtime for '%s:%s'", packageId.c_str(), version.c_str());
+                    LOGDBG("No runtime for '%s:%s' , trying to fetch from additionalLocks", packageId.c_str(), version.c_str());
+                    if (!locks.empty())
+                    {
+                        packagemanager::NameValue nv = locks[0];
+                        runtimeId = nv.first;
+                        runtimeVersion = nv.second;
+                        LOGDBG("additional lock packageId: %s version: %s", runtimeId.c_str(), runtimeVersion.c_str());
+                    }
+                    else
+                    {
+                        LOGWARN("No additional locks found for '%s:%s'", packageId.c_str(), version.c_str());
+                    }
                 }
                 recordAndPublishTelemetryData(TELEMETRY_MARKER_LAUNCH_TIME,
                                                             packageId,
                                                             requestTime,
-                                                            PackageManagerImplementation::PackageFailureErrorCode::ERROR_NONE);
+                                                            PackageManagerImplementation::PackageFailureErrorCode::ERROR_NONE,
+                                                            runtimeId.empty() ? "" : runtimeId,
+                                                            runtimeVersion.empty() ? "" : runtimeVersion);
 
                 LOGDBG("Locked. id: %s ver: %s additionalLocks=%zu", packageId.c_str(), version.c_str(), state.additionalLocks.size());
                 getRuntimeConfig(state.runtimeConfig, runtimeConfig);

@@ -297,6 +297,7 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
         });
 
         LOGINFO("RDKWindowManagerImplementation::Initialized");
+        RDKWindowManagerTelemetryReporting::getInstance().initialize(service);
     }
     else
     {
@@ -371,6 +372,7 @@ Core::hresult RDKWindowManagerImplementation::Deinitialize(PluginHost::IShell* s
     gRdkWindowManagerMutex.unlock();
 
     LOGINFO("RDKWindowManagerImplementation::Deinitialized");
+    RDKWindowManagerTelemetryReporting::getInstance().reset();
 
     return (result);
 }
@@ -748,6 +750,7 @@ Core::hresult RDKWindowManagerImplementation::CreateDisplay(const string &displa
             {
                 groupId = parameters["groupId"].Number();
             }
+            time_t displayStartTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
             result = createDisplay(client, displayName, displayWidth, displayHeight,
                                    virtualDisplay, virtualWidth, virtualHeight, topmost, focus, ownerId, groupId);
 
@@ -758,6 +761,9 @@ Core::hresult RDKWindowManagerImplementation::CreateDisplay(const string &displa
             }
             else
             {
+                time_t displayEndTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
+                int duration = static_cast<int>(displayEndTime - displayStartTime);
+                RDKWindowManagerTelemetryReporting::getInstance().recordCreateDisplayTelemetry(client, duration);
                 status = Core::ERROR_NONE;
             }
         }
