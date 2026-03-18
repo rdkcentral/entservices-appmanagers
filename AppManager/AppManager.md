@@ -24,7 +24,7 @@ The **AppManager** is the primary entry point for all application lifecycle oper
 |--------|---------|
 | LifecycleManager | State machine for app lifecycle transitions |
 | PackageManager | Package lock/unlock during app execution |
-| StorageManager | Clear app data operations |
+| AppStorageManager (org.rdk.AppStorageManager / IAppStorageManager) | Clear app data operations |
 | PersistentStore | App property storage |
 
 ---
@@ -42,7 +42,7 @@ graph TB
     subgraph "External Plugins"
         D[LifecycleManager]
         E[PackageManager]
-        F[StorageManager]
+        F[AppStorageManager<br/>(org.rdk.AppStorageManager)]
         G[PersistentStore]
     end
 
