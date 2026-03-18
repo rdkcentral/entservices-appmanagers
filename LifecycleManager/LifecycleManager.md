@@ -2,7 +2,7 @@
 
 > Application Lifecycle State Machine
 
-[← Back to Main](../README.md) | [Next: RuntimeManager →](../RuntimeManager/RuntimeManager.md)
+[← Previous: AppManager](../AppManager/AppManager.md) | [← Back to Main](../README.md) | [Next: RuntimeManager →](../RuntimeManager/RuntimeManager.md)
 
 ---
 
