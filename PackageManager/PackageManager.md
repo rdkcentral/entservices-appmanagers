@@ -159,8 +159,8 @@ struct LockInfo {
 | Method | Purpose |
 |--------|---------|
 | `Download(url, options, downloadId)` | Download package from URL with specified options, returning a download handle |
-| `CancelDownload(downloadId)` | Cancel in-progress download identified by handle |
-| `GetDownloadStatus(downloadId)` | Get download progress for a given download handle |
+| `Cancel(downloadId)` | Cancel in-progress download identified by handle |
+| `Progress(downloadId, ...)` | Get download progress for a given download handle |
 
 ### IPackageInstaller Interface
 
