@@ -188,12 +188,12 @@ LifecycleManager/
 
 | Method | Purpose |
 |--------|---------|
-| `SpawnApp(appId, launchIntent, targetState, config, launchArgs)` | Create new application instance and start container |
-| `SetTargetAppState(appInstanceId, targetState, launchIntent)` | Request state transition for existing app |
-| `UnloadApp(appInstanceId)` | Clean shutdown of application (graceful termination) |
-| `KillApp(appInstanceId)` | Force terminate application (SIGKILL) |
-| `GetLoadedApps(verbose)` | Get JSON list of loaded applications |
-| `IsAppLoaded(appId)` | Check if app is currently loaded |
+| `SpawnApp(appId, launchIntent, targetState, config, launchArgs) -> (success, appInstanceId, errorReason)` | Create new application instance and start container. Returns a success flag, the new `appInstanceId` on success, and an `errorReason` string on failure. |
+| `SetTargetAppState(appInstanceId, targetState, launchIntent) -> (success, errorReason)` | Request state transition for existing app. Returns a success flag and an `errorReason` string on failure. |
+| `UnloadApp(appInstanceId) -> (success, errorReason)` | Clean shutdown of application (graceful termination). Returns a success flag and an `errorReason` string on failure. |
+| `KillApp(appInstanceId) -> (success, errorReason)` | Force terminate application (SIGKILL). Returns a success flag and an `errorReason` string on failure. |
+| `GetLoadedApps(verbose) -> (success, appsJson, errorReason)` | Get JSON list of loaded applications. Returns a success flag, a JSON structure describing loaded apps, and an `errorReason` string on failure. |
+| `IsAppLoaded(appId) -> (success, isLoaded, appInstanceId, errorReason)` | Check if app is currently loaded. Returns a success flag, an `isLoaded` boolean, the corresponding `appInstanceId` when loaded, and an `errorReason` string on failure. |
 
 ### ILifecycleManagerState Interface
 
