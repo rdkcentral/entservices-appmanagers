@@ -67,10 +67,8 @@ classDiagram
     class TelemetryMetricsImplementation {
         -list~Metric~ mMetricBuffer
         -mutex mMutex
-        +Record(metricName, value, appId) hresult
-        +RecordWithTimestamp(name, value, timestamp) hresult
-        +Publish() hresult
-        +SetEnabled(enabled) hresult
+        +Record(id, metricsJson, name) hresult
+        +Publish(id, name) hresult
     }
 
     class Metric {
@@ -83,8 +81,8 @@ classDiagram
 
     class ITelemetryMetrics {
         <<interface>>
-        +Record(name, value) hresult
-        +Publish() hresult
+        +Record(id, metricsJson, name) hresult
+        +Publish(id, name) hresult
     }
 
     TelemetryMetricsImplementation ..|> ITelemetryMetrics
@@ -114,10 +112,8 @@ TelemetryMetrics/
 
 | Method | Purpose |
 |--------|---------|
-| `Record(metricName, value, appId)` | Record a metric with current timestamp |
-| `RecordWithTimestamp(name, value, timestamp)` | Record a metric with specific timestamp |
-| `Publish()` | Publish buffered metrics to backend |
-| `SetEnabled(enabled)` | Enable/disable telemetry collection |
+| `Record(id, metricsJson, name)` | Record a metrics JSON payload for a given id and metric name |
+| `Publish(id, name)` | Publish recorded metrics for the given id and metric name |
 
 ---
 
