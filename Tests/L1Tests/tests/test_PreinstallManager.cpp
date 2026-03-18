@@ -84,8 +84,25 @@ protected:
     Plugin::PreinstallManagerImplementation *mPreinstallManagerImpl;
     Core::ProxyType<WorkerPoolImplementation> workerPool;
 
-    ~PreinstallManagerTest() override = default;
+    ~PreinstallManagerTest() override;
+
+    Core::hresult createResources()
+    {
+        Core::hresult status = Core::ERROR_GENERAL;
+        mServiceMock = new NiceMock<ServiceMock>;
         mPackageInstallerMock = new NiceMock<PackageInstallerMock>;
+        p_wrapsImplMock = new NiceMock<WrapsImplMock>;
+        Wraps::setImpl(p_wrapsImplMock);
+
+        PluginHost::IFactories::Assign(&factoriesImplementation);
+        dispatcher = static_cast<PLUGINHOST_DISPATCHER*>(
+        plugin->QueryInterface(PLUGINHOST_DISPATCHER_ID));
+        dispatcher->Activate(mServiceMock);
+        TEST_LOG("In createResources!");
+
+        EXPECT_CALL(*mServiceMock, QueryInterfaceByCallsign(::testing::_, ::testing::_))
+          .Times(::testing::AnyNumber())
+          .WillRepeatedly(::testing::Invoke(
               [&](const uint32_t id, const std::string& name) -> void* {
                 if (name == "org.rdk.PackageManagerRDKEMS") {
                     if (id == Exchange::IPackageInstaller::ID) {
@@ -384,7 +401,7 @@ TEST_F(PreinstallManagerTest, StartPreinstallFailsWhenPackageManagerUnavailable)
  */
 TEST_F(PreinstallManagerTest, OnPreinstallationCompleteEventNotification)
 {
-    ResourcesGuard resourcesGuard;
+    ResourcesGuard resourcesGuard(*this);
     ASSERT_EQ(Core::ERROR_NONE, resourcesGuard.Result());
     
     auto mockNotification = Core::ProxyType<MockNotificationTest>::Create();
@@ -439,7 +456,7 @@ TEST_F(PreinstallManagerTest, OnPreinstallationCompleteEventNotification)
  */
 TEST_F(PreinstallManagerTest, PreinstallStateInitiallyNotStarted)
 {
-    ResourcesGuard resourcesGuard;
+    ResourcesGuard resourcesGuard(*this);
     ASSERT_EQ(Core::ERROR_NONE, resourcesGuard.Result());
     
     Exchange::IPreinstallManager::State state;
@@ -458,7 +475,7 @@ TEST_F(PreinstallManagerTest, PreinstallStateInitiallyNotStarted)
  */
 TEST_F(PreinstallManagerTest, QueryInterface)
 {
-    ResourcesGuard resourcesGuard;
+    ResourcesGuard resourcesGuard(*this);
     ASSERT_EQ(Core::ERROR_NONE, resourcesGuard.Result());
     
     // Test querying IPreinstallManager interface
