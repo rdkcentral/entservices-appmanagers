@@ -174,8 +174,8 @@ struct LockInfo {
 
 | Method | Purpose |
 |--------|---------|
-| `Lock(packageId, version, lockOptions, lockHandle)` | Lock a specific package version to prevent uninstall during app execution, returning a lock handle and related info |
-| `Unlock(packageId, version, lockHandle)` | Release a previously acquired package lock after app terminates |
+| `Lock(packageId, version, lockOptions)` | Lock a specific package version to prevent uninstall during app execution, returning a lockId and related info |
+| `Unlock(packageId, version)` | Release a previously acquired package lock for the specified package version |
 | `GetMetadata(packageId, version)` | Get application/package metadata JSON for a specific package version |
 | `ListPackages()` | List all installed packages |
 
