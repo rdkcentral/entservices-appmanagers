@@ -201,7 +201,7 @@ sequenceDiagram
 ```json
 {
     "jsonrpc": "2.0",
-    "method": "AppManager.onAppLifecycleStateChanged",
+    "method": "org.rdk.AppManager.1.onAppLifecycleStateChanged",
     "params": {
         "appId": "com.example.app",
         "newState": "ACTIVE",
