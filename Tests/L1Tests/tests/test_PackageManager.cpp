@@ -189,6 +189,8 @@ protected:
 
     void TearDown() override
     {
+        packagemanager::IPackageImplDummy::ResetMockInstance();
+
         // Clean up mocks
 		if (mServiceMock != nullptr)
         {
@@ -1988,14 +1990,19 @@ TEST_F(PackageManagerTest, getConfigForPackageusingComRpcLibPackageMockException
 
     EXPECT_CALL(*libPackageMock, GetFileMetadata(fileLocator, ::testing::_, ::testing::_, ::testing::_))
         .WillOnce(::testing::Invoke([](const std::string&, std::string& id, std::string& ver, packagemanager::ConfigMetaData& metadata) {
-            throw std::runtime_error("Test exception");
-            id = "";
-            ver = "";
-            metadata.dataImageSize = 0;
+            try {
+                throw std::runtime_error("Test exception");
+            } catch (const std::exception&) {
+                id = "";
+                ver = "";
+                metadata.dataImageSize = 0;
+            }
             return packagemanager::FAILED;
         }));
 
-    EXPECT_ANY_THROW(pkginstallerInterface->GetConfigForPackage(fileLocator, packageId, version, config));
+    EXPECT_EQ(Core::ERROR_GENERAL, pkginstallerInterface->GetConfigForPackage(fileLocator, packageId, version, config));
+    EXPECT_TRUE(packageId.empty());
+    EXPECT_TRUE(version.empty());
 
     deinitforComRpc();
     packagemanager::IPackageImplDummy::ResetMockInstance();
@@ -2029,12 +2036,16 @@ TEST_F(PackageManagerTest, installusingComRpcLibPackageMockException) {
 
     EXPECT_CALL(*libPackageMock, Install(packageId, version, ::testing::_, fileLocator, ::testing::_))
         .WillOnce(::testing::Invoke([](const std::string&, const std::string&, const packagemanager::NameValues&, const std::string&, packagemanager::ConfigMetaData& metadata) {
-            throw std::runtime_error("Test exception");
-            metadata.dataImageSize = 0;
+            try {
+                throw std::runtime_error("Test exception");
+            } catch (const std::exception&) {
+                metadata.dataImageSize = 0;
+            }
             return packagemanager::FAILED;
         }));
 
-    EXPECT_ANY_THROW(pkginstallerInterface->Install(packageId, version, additionalMetadata, fileLocator, reason));
+    EXPECT_EQ(Core::ERROR_GENERAL, pkginstallerInterface->Install(packageId, version, additionalMetadata, fileLocator, reason));
+    EXPECT_EQ(Exchange::IPackageInstaller::FailReason::GENERAL_FAILURE, reason);
 
     deinitforComRpc();
     packagemanager::IPackageImplDummy::ResetMockInstance();
