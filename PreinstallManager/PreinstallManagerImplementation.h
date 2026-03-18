@@ -29,6 +29,7 @@
 #include <com/com.h>
 #include <core/core.h>
 #include <plugins/plugins.h>
+#include <atomic>
 #include <mutex>
 #include <map>
 #include <thread>
@@ -166,6 +167,7 @@ namespace WPEFramework
             std::list<Exchange::IPreinstallManager::INotification*> mPreinstallManagerNotifications;
             PluginHost::IShell *mCurrentservice;
             State mPreinstallState;
+            std::atomic<bool> mStopInstall;
             std::thread mInstallThread;
             void dispatchEvent(EventNames, const JsonObject &params);
             void Dispatch(EventNames event, const JsonObject params);
