@@ -57,11 +57,11 @@ classDiagram
     class AppStorageManagerImplementation {
         -string mStorageBasePath
         -map~string,StorageInfo~ mStorageMap
-        +CreateStorage(appId, type) hresult
+        +CreateStorage(appId, quota) hresult
         +GetStorage(appId) StoragePath
         +DeleteStorage(appId) hresult
         +Clear(appId) hresult
-        +ClearAll() hresult
+        +ClearAll(exemptionAppIds) hresult
     }
 
     class StorageInfo {
@@ -73,11 +73,11 @@ classDiagram
 
     class IAppStorageManager {
         <<interface>>
-        +CreateStorage(appId, type) hresult
+        +CreateStorage(appId, quota) hresult
         +GetStorage(appId) string
         +DeleteStorage(appId) hresult
         +Clear(appId) hresult
-        +ClearAll() hresult
+        +ClearAll(exemptionAppIds) hresult
     }
 
     AppStorageManagerImplementation ..|> IAppStorageManager
@@ -109,11 +109,11 @@ AppStorageManager/
 
 | Method | Purpose |
 |--------|---------|
-| `CreateStorage(appId, type)` | Create storage directory for an application |
+| `CreateStorage(appId, quota)` | Create a storage directory for an application with the specified quota |
 | `GetStorage(appId)` | Get the storage path for an application |
 | `DeleteStorage(appId)` | Remove all storage for an application |
 | `Clear(appId)` | Clear app data but keep storage allocated |
-| `ClearAll()` | Clear data for all applications |
+| `ClearAll(exemptionAppIds)` | Clear data for all applications, optionally exempting those listed in `exemptionAppIds` |
 
 ---
 
