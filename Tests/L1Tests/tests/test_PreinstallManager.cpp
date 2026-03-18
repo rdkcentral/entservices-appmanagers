@@ -427,9 +427,9 @@ TEST_F(PreinstallManagerTest, OnPreinstallationCompleteEventNotification)
     std::future<void> notificationFuture = notificationPromise.get_future();
     
     // Expect the OnPreinstallationComplete method to be called and signal completion
-    EXPECT_CALL(*mockNotification, OnPreinstallationComplete())
+    EXPECT_CALL(*mockNotification, OnPreinstallationComplete(::testing::_))
         .Times(1)
-        .WillOnce(::testing::InvokeWithoutArgs([&notificationPromise]() {
+        .WillOnce(::testing::Invoke([&notificationPromise](auto) {
             notificationPromise.set_value();
         }));
     
