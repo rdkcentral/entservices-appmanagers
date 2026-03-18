@@ -45,6 +45,31 @@ extern "C" DIR* __real_opendir(const char* pathname);
 using ::testing::NiceMock;
 using namespace WPEFramework;
 
+namespace {
+
+class ResourcesGuard {
+public:
+    ResourcesGuard()
+        : _result(createResources())
+    {
+    }
+
+    ~ResourcesGuard()
+    {
+        releaseResources();
+    }
+
+    Core::hresult Result() const
+    {
+        return _result;
+    }
+
+private:
+    Core::hresult _result;
+};
+
+} // namespace
+
 class PreinstallManagerTest : public ::testing::Test {
 protected:
     ServiceMock* mServiceMock = nullptr;
@@ -375,7 +400,8 @@ TEST_F(PreinstallManagerTest, StartPreinstallFailsWhenPackageManagerUnavailable)
  */
 TEST_F(PreinstallManagerTest, OnPreinstallationCompleteEventNotification)
 {
-    ASSERT_EQ(Core::ERROR_NONE, createResources());
+    ResourcesGuard resourcesGuard;
+    ASSERT_EQ(Core::ERROR_NONE, resourcesGuard.Result());
     
     auto mockNotification = Core::ProxyType<MockNotificationTest>::Create();
     testing::Mock::AllowLeak(mockNotification.operator->()); // Allow leak since ProxyType manages lifecycle
@@ -418,7 +444,6 @@ TEST_F(PreinstallManagerTest, OnPreinstallationCompleteEventNotification)
     
     // Cleanup
     mPreinstallManagerImpl->Unregister(mockNotification.operator->());
-    releaseResources();
 }
 
 /**
@@ -430,15 +455,14 @@ TEST_F(PreinstallManagerTest, OnPreinstallationCompleteEventNotification)
  */
 TEST_F(PreinstallManagerTest, PreinstallStateInitiallyNotStarted)
 {
-    ASSERT_EQ(Core::ERROR_NONE, createResources());
+    ResourcesGuard resourcesGuard;
+    ASSERT_EQ(Core::ERROR_NONE, resourcesGuard.Result());
     
     Exchange::IPreinstallManager::State state;
     Core::hresult result = mPreinstallManagerImpl->GetPreinstallState(state);
     
     EXPECT_EQ(Core::ERROR_NONE, result);
     EXPECT_EQ(Exchange::IPreinstallManager::State::NOT_STARTED, state);
-    
-    releaseResources();
 }
 
 /**
@@ -450,7 +474,8 @@ TEST_F(PreinstallManagerTest, PreinstallStateInitiallyNotStarted)
  */
 TEST_F(PreinstallManagerTest, QueryInterface)
 {
-    ASSERT_EQ(Core::ERROR_NONE, createResources());
+    ResourcesGuard resourcesGuard;
+    ASSERT_EQ(Core::ERROR_NONE, resourcesGuard.Result());
     
     // Test querying IPreinstallManager interface
     Exchange::IPreinstallManager* preinstallInterface = 
@@ -462,6 +487,4 @@ TEST_F(PreinstallManagerTest, QueryInterface)
     if (preinstallInterface != nullptr) {
         preinstallInterface->Release();
     }
-    
-    releaseResources();
 }
