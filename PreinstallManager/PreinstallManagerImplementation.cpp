@@ -541,6 +541,11 @@ namespace WPEFramework
 
         releasePackageManagerObject(packageInstaller);
 
+        // Set state to IN_PROGRESS before starting the worker thread to avoid race with GetPreinstallState()
+        mAdminLock.Lock();
+        mPreinstallState = State::IN_PROGRESS;
+        mAdminLock.Unlock();
+
         try
         {
             mInstallThread = std::thread(&PreinstallManagerImplementation::installPackages, this, std::move(preinstallPackages));
