@@ -137,19 +137,19 @@ sequenceDiagram
     participant Plugin as Target Plugin
 
     Note over WebApp,Plugin: Method Invocation
-    WebApp->>WebBridge: {"jsonrpc":"2.0","id":1,"method":"AppManager.LaunchApp","params":{...}}
+    WebApp->>WebBridge: {"jsonrpc":"2.0","id":1,"method":"org.rdk.AppManager.1.LaunchApp","params":{...}}
     WebBridge->>Plugin: Invoke(LaunchApp, params)
     Plugin-->>WebBridge: result
     WebBridge-->>WebApp: {"jsonrpc":"2.0","id":1,"result":{...}}
 
     Note over WebApp,Plugin: Event Subscription
-    WebApp->>WebBridge: {"jsonrpc":"2.0","id":2,"method":"AppManager.register","params":{"event":"onAppLifecycleStateChanged"}}
+    WebApp->>WebBridge: {"jsonrpc":"2.0","id":2,"method":"org.rdk.AppManager.1.register","params":{"event":"onAppLifecycleStateChanged"}}
     WebBridge->>WebBridge: Add observer
     WebBridge-->>WebApp: {"jsonrpc":"2.0","id":2,"result":0}
 
     Note over WebApp,Plugin: Event Notification
     Plugin->>WebBridge: OnAppLifecycleStateChanged event
-    WebBridge-->>WebApp: {"jsonrpc":"2.0","method":"AppManager.onAppLifecycleStateChanged","params":{...}}
+    WebBridge-->>WebApp: {"jsonrpc":"2.0","method":"org.rdk.AppManager.1.onAppLifecycleStateChanged","params":{...}}
 ```
 
 ---
