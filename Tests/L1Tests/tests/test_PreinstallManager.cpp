@@ -484,7 +484,7 @@ TEST_F(PreinstallManagerTest, QueryInterface)
     
     EXPECT_TRUE(preinstallInterface != nullptr);
     
-    if (preinstallInterface != nullptr) {
+    if (nullptr != preinstallInterface) {
         preinstallInterface->Release();
     }
 }
