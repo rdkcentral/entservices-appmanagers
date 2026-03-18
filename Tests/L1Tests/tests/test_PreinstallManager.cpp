@@ -432,7 +432,7 @@ TEST_F(PreinstallManagerTest, PreinstallStateInitiallyNotStarted)
     ASSERT_EQ(Core::ERROR_NONE, createResources());
     
     Exchange::IPreinstallManager::State state;
-    Core::hresult result = mPreinstallManagerImpl->PreinstallState(state);
+    Core::hresult result = mPreinstallManagerImpl->GetPreinstallState(state);
     
     EXPECT_EQ(Core::ERROR_NONE, result);
     EXPECT_EQ(Exchange::IPreinstallManager::State::NOT_STARTED, state);
