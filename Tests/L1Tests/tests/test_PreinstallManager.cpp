@@ -84,25 +84,8 @@ protected:
     Plugin::PreinstallManagerImplementation *mPreinstallManagerImpl;
     Core::ProxyType<WorkerPoolImplementation> workerPool;
 
-    ~PreinstallManagerTest() override;
-
-    Core::hresult createResources()
-    {
-        Core::hresult status = Core::ERROR_GENERAL;
-        mServiceMock = new NiceMock<ServiceMock>;
+    ~PreinstallManagerTest() override = default;
         mPackageInstallerMock = new NiceMock<PackageInstallerMock>;
-        p_wrapsImplMock = new NiceMock<WrapsImplMock>;
-        Wraps::setImpl(p_wrapsImplMock);
-
-        PluginHost::IFactories::Assign(&factoriesImplementation);
-        dispatcher = static_cast<PLUGINHOST_DISPATCHER*>(
-        plugin->QueryInterface(PLUGINHOST_DISPATCHER_ID));
-        dispatcher->Activate(mServiceMock);
-        TEST_LOG("In createResources!");
-
-        EXPECT_CALL(*mServiceMock, QueryInterfaceByCallsign(::testing::_, ::testing::_))
-          .Times(::testing::AnyNumber())
-          .WillRepeatedly(::testing::Invoke(
               [&](const uint32_t id, const std::string& name) -> void* {
                 if (name == "org.rdk.PackageManagerRDKEMS") {
                     if (id == Exchange::IPackageInstaller::ID) {
