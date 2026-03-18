@@ -88,6 +88,13 @@ cmake --build build/Thunder --target install
 echo "======================================================================================"
 echo "building libPackage"
 
+if [ -f "${GITHUB_WORKSPACE}/eshelpers/packager/IPackageImpl.h" ]; then
+    cp "${GITHUB_WORKSPACE}/eshelpers/packager/IPackageImpl.h" "${GITHUB_WORKSPACE}/libPackage/include/legacy/IPackageImpl.h"
+else
+    echo "Missing required header: ${GITHUB_WORKSPACE}/eshelpers/packager/IPackageImpl.h"
+    exit 1
+fi
+
 cmake -S libPackage -B build/libPackage \
     -DCMAKE_INCLUDE_PATH="${GITHUB_WORKSPACE}/eshelpers/packager" \
     -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/install/usr" \
