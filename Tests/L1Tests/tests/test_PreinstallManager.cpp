@@ -384,8 +384,8 @@ TEST_F(PreinstallManagerTest, OnCompleteEventNotification)
     std::promise<void> notificationPromise;
     std::future<void> notificationFuture = notificationPromise.get_future();
     
-    // Expect the OnComplete method to be called and signal completion
-    EXPECT_CALL(*mockNotification, OnComplete())
+    // Expect the OnPreinstallationComplete method to be called and signal completion
+    EXPECT_CALL(*mockNotification, OnPreinstallationComplete())
         .Times(1)
         .WillOnce(::testing::InvokeWithoutArgs([&notificationPromise]() {
             notificationPromise.set_value();
@@ -414,7 +414,7 @@ TEST_F(PreinstallManagerTest, OnCompleteEventNotification)
     
     // Wait for the asynchronous notification (with timeout)
     auto status = notificationFuture.wait_for(std::chrono::seconds(2));
-    EXPECT_EQ(std::future_status::ready, status) << "OnComplete notification was not received within timeout";
+    EXPECT_EQ(std::future_status::ready, status) << "OnPreinstallationComplete notification was not received within timeout";
     
     // Cleanup
     mPreinstallManagerImpl->Unregister(mockNotification.operator->());
