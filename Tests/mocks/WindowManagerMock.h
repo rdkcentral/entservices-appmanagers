@@ -35,8 +35,8 @@ public:
     MOCK_METHOD(WPEFramework::Core::hresult, CreateDisplay, (const string& displayParams), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, GetApps, (string& appsIds), (const, override));
     MOCK_METHOD(WPEFramework::Core::hresult, AddKeyIntercept, (const string &intercept), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, AddKeyIntercepts, (const string &intercepts), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, RemoveKeyIntercept, (const string &intercept), (override));
+    MOCK_METHOD(WPEFramework::Core::hresult, AddKeyIntercepts, (const string &clientId, const string &intercepts), (override));
+    MOCK_METHOD(WPEFramework::Core::hresult, RemoveKeyIntercept, (const string &clientId, uint32_t keyCode, const string &modifiers), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, AddKeyListener, (const string &keyListeners), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, RemoveKeyListener, (const string &keyListeners), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, InjectKey, (uint32_t keyCode, const string &modifiers), (override));
@@ -51,6 +51,10 @@ public:
     MOCK_METHOD(WPEFramework::Core::hresult, KeyRepeatConfig, (const string &input, const string &keyConfig), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, SetFocus, (const string &client), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, SetVisible, (const std::string &client, bool visible), (override));
+
+=======
+    MOCK_METHOD(WPEFramework::Core::hresult, GetVisibility, (const std::string &client, bool &visible), (override));
+>>>>>>> 02b9bd3ba62c212a59c55b32e418ac0999ca28a8
     MOCK_METHOD(WPEFramework::Core::hresult, RenderReady, (const string& client, bool &status), (const, override));
     MOCK_METHOD(WPEFramework::Core::hresult, EnableDisplayRender, (const string& client, bool enable), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, GetLastKeyInfo, (uint32_t &keyCode, uint32_t &modifiers, uint64_t &timestampInSeconds), (const, override));
@@ -58,6 +62,7 @@ public:
     MOCK_METHOD(WPEFramework::Core::hresult, GetZOrder, (const string& appInstanceId, int32_t &zOrder), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, StartVncServer, (), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, StopVncServer, (), (override));
+    MOCK_METHOD(WPEFramework::Core::hresult, GetScreenshot, (), (override));
     MOCK_METHOD(void, AddRef, (), (const, override));
     MOCK_METHOD(uint32_t, Release, (), (const, override));
     MOCK_METHOD(void*, QueryInterface, (const uint32_t interfaceNumber), (override));
@@ -73,6 +78,15 @@ class WindowManagerNotificationMock : public IRDKWindowManager::INotification {
     MOCK_METHOD(void, OnUserInactivity, (const double minutes), (override));
     MOCK_METHOD(void, OnDisconnected, (const std::string& client), (override));
     MOCK_METHOD(void, OnReady, (const std::string& client), (override));
+    MOCK_METHOD(void, OnConnected, (const std::string& client), (override));
+    MOCK_METHOD(void, OnVisible, (const std::string& client), (override));
+    MOCK_METHOD(void, OnHidden, (const std::string& client), (override));
+    MOCK_METHOD(void, OnFocus, (const std::string& client), (override));
+    MOCK_METHOD(void, OnBlur, (const std::string& client), (override));
+    MOCK_METHOD(void, OnScreenshotComplete, (const bool success, const std::string& imageData), (override));
+    MOCK_METHOD(void, AddRef, (), (const, override));
+    MOCK_METHOD(uint32_t, Release, (), (const, override));
+    MOCK_METHOD(void*, QueryInterface, (const uint32_t interfaceNumber), (override));
 };
 
 

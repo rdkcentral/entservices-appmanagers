@@ -140,6 +140,12 @@ set(DOWNLOADMANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/DownloadM
 set(DOWNLOADMANAGER_LIBS ${NAMESPACE}DownloadManager ${NAMESPACE}DownloadManagerImplementation)
 add_plugin_test_ex(PLUGIN_DOWNLOADMANAGER tests/test_DownloadManager.cpp "${DOWNLOADMANAGER_INC}" "${DOWNLOADMANAGER_LIBS}")
 
+
+# PLUGIN_RDK_WINDOW_MANAGER
+set(RDKWINDOWMANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/RDKWindowManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
+set(RDKWINDOWMANAGER_LIBS ${NAMESPACE}RDKWindowManager ${NAMESPACE}RDKWindowManagerImplementation)
+add_plugin_test_ex(PLUGIN_RDK_WINDOW_MANAGER tests/test_RDKWindowManager.cpp "${RDKWINDOWMANAGER_INC}" "${RDKWINDOWMANAGER_LIBS}")
+
 if(BUILD_L1_TESTS_SHARED_MODULE)
     add_library(${MODULE_NAME} SHARED ${TEST_SRC})
 endif()
