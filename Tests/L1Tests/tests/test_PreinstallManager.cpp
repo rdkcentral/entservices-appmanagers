@@ -84,24 +84,7 @@ protected:
     Plugin::PreinstallManagerImplementation *mPreinstallManagerImpl;
     Core::ProxyType<WorkerPoolImplementation> workerPool;
 
-    ~PreinstallManagerTest() override
-    {
-        if (nullptr != mPackageInstallerMock) {
-            delete mPackageInstallerMock;
-            mPackageInstallerMock = nullptr;
-        }
-
-        if (nullptr != mServiceMock) {
-            delete mServiceMock;
-            mServiceMock = nullptr;
-        }
-
-        if (nullptr != p_wrapsImplMock) {
-            Wraps::setImpl(nullptr);
-            delete p_wrapsImplMock;
-            p_wrapsImplMock = nullptr;
-        }
-    }
+    ~PreinstallManagerTest() override;
 
     Core::hresult createResources()
     {
