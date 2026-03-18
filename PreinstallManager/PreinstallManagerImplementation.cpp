@@ -20,6 +20,7 @@
 #include <chrono>
 #include <thread>
 #include <utility>
+#include <cstddef>
 
 #include "PreinstallManagerImplementation.h"
 
@@ -329,8 +330,8 @@ namespace WPEFramework
 
         auto installStart = std::chrono::steady_clock::now();
         bool installError = false;
-        int failedApps = 0;
-        const int totalApps = preinstallPackages.size();
+        size_t failedApps = 0;
+        const size_t totalApps = preinstallPackages.size();
 
         for (auto &pkg : preinstallPackages)
         {
@@ -379,7 +380,7 @@ namespace WPEFramework
         const auto installDuration = std::chrono::duration_cast<std::chrono::seconds>(installEnd - installStart).count();
         const auto installDurationMs = std::chrono::duration_cast<std::chrono::milliseconds>(installEnd - installStart).count();
         LOGDBG("Process completed in %lld seconds (%lld ms)", installDuration, installDurationMs);
-        LOGINFO("Installation summary: %d/%d packages installed successfully. %d apps failed.", totalApps - failedApps, totalApps, failedApps);
+        LOGINFO("Installation summary: %zu/%zu packages installed successfully. %zu apps failed.", (totalApps - failedApps), totalApps, failedApps);
         for (const auto &pkg : preinstallPackages)
         {
             LOGINFO("Package: %s [version:%s]............status:[ %s ]", pkg.packageId.c_str(), pkg.version.c_str(), pkg.installStatus.c_str());
