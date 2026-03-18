@@ -370,7 +370,7 @@ TEST_F(PreinstallManagerTest, StartPreinstallFailsWhenPackageManagerUnavailable)
  * @brief Test OnComplete event notification
  *
  * @details Test verifies that:
- * - OnComplete notification callbacks are properly triggered via sendOnCompleteEvent
+ * - OnComplete notification callbacks are properly triggered via sendOnPreinstallationCompleteEvent
  * - All registered listeners receive the OnComplete event
  */
 TEST_F(PreinstallManagerTest, OnCompleteEventNotification)
