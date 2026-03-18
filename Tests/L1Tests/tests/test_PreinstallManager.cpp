@@ -242,7 +242,7 @@ public:
     MockNotificationTest() = default;
     virtual ~MockNotificationTest() = default;
     
-    MOCK_METHOD(void, OnPreinstallationComplete, (const string& packageId, const string& version), (override));
+    MOCK_METHOD(void, OnPreinstallationComplete, (), (override));
     MOCK_METHOD(void, AddRef, (), (const, override));
     MOCK_METHOD(uint32_t, Release, (), (const, override));
 

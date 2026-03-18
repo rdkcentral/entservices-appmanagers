@@ -122,7 +122,7 @@ namespace WPEFramework
     uint32_t PreinstallManagerImplementation::Configure(PluginHost::IShell* service)
     {
         uint32_t result = Core::ERROR_GENERAL;
-        if (service != nullptr)
+        if (nullptr != service)
         {
             mCurrentservice = service;
             mCurrentservice->AddRef();
@@ -478,7 +478,7 @@ namespace WPEFramework
             WPEFramework::Exchange::IPackageInstaller::Package package;
             std::unordered_map<std::string, std::string> existingApps; // packageId -> version
 
-            while (packageList->Next(package) && package.state == InstallState::INSTALLED) // only consider installed apps
+            while (packageList->Next(package) && InstallState::INSTALLED == package.state) // only consider installed apps
             {
                 existingApps[package.packageId] = package.version;
                 // todo check for installState if needed
