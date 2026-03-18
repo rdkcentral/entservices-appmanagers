@@ -122,7 +122,7 @@ namespace WPEFramework
     uint32_t PreinstallManagerImplementation::Configure(PluginHost::IShell* service)
     {
         uint32_t result = Core::ERROR_GENERAL;
-        if (service != nullptr)
+        if (nullptr != service)
         {
             mCurrentservice = service;
             mCurrentservice->AddRef();
