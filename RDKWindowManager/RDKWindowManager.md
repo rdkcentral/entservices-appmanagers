@@ -121,11 +121,11 @@ RDKWindowManager/
 
 | Method | Purpose |
 |--------|---------|
-| `CreateDisplay(displayName, config)` | Create a new Wayland display for an application |
-| `DestroyDisplay(displayName)` | Destroy a Wayland display when app terminates |
-| `SetFocus(displayName)` | Give focus to a specific display/application |
-| `AddKeyIntercept(displayName, keyCode)` | Add key code to intercept list for app |
-| `RemoveKeyIntercept(displayName, keyCode)` | Remove key code from intercept list |
+| `CreateDisplay(displayParamsJson)` | Create a new Wayland display for an application (parameters encoded as JSON) |
+| `DestroyDisplay(displayParamsJson)` | Destroy a Wayland display when app terminates (parameters encoded as JSON) |
+| `SetFocus(focusParamsJson)` | Give focus to a specific display/application (parameters encoded as JSON) |
+| `AddKeyIntercept(interceptParamsJson)` | Add key code to intercept list for an app (parameters encoded as JSON) |
+| `RemoveKeyIntercept(interceptParamsJson)` | Remove key code from intercept list (parameters encoded as JSON) |
 | `GetInactivityTime()` | Get time since last user input |
 
 ---
@@ -139,17 +139,17 @@ sequenceDiagram
     participant Compositor
 
     Note over RTM,Compositor: App Launch
-    RTM->>WM: CreateDisplay("app-display", config)
+    RTM->>WM: CreateDisplay(displayParamsJson)
     WM->>Compositor: Create Wayland Display
     Compositor-->>WM: display socket
     WM-->>RTM: "wayland-app-display"
 
     Note over RTM,Compositor: App Sets Focus
-    RTM->>WM: SetFocus("app-display")
+    RTM->>WM: SetFocus(focusParamsJson)
     WM->>Compositor: BringToFront()
 
     Note over RTM,Compositor: App Terminates
-    RTM->>WM: DestroyDisplay("app-display")
+    RTM->>WM: DestroyDisplay(displayParamsJson)
     WM->>Compositor: Destroy Display
     WM-->>RTM: success
 ```
