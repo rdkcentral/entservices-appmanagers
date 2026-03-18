@@ -407,7 +407,7 @@ namespace WPEFramework
             if (State::COMPLETED != mPreinstallState)
             {
                 mAdminLock.Unlock();
-                LOGERR("Preinstall is already in progress");
+                LOGWARN("Preinstall is already in progress");
                 return result;
             }
             // Take ownership of the previous install thread so only this caller can join it.
@@ -416,7 +416,7 @@ namespace WPEFramework
         else if (State::IN_PROGRESS == mPreinstallState)
         {
             mAdminLock.Unlock();
-            LOGERR("Preinstall is already in progress");
+            LOGWARN("Preinstall is already in progress");
             return result;
         }
         mAdminLock.Unlock();
