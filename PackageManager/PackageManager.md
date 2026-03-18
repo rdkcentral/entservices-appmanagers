@@ -148,9 +148,9 @@ struct LockInfo {
 
 | Method | Purpose |
 |--------|---------|
-| `Download(url, appId, downloadLocation)` | Download package from URL |
-| `CancelDownload(appId)` | Cancel in-progress download |
-| `GetDownloadStatus(appId)` | Get download progress |
+| `Download(url, options, downloadId)` | Download package from URL with specified options, returning a download handle |
+| `CancelDownload(downloadId)` | Cancel in-progress download identified by handle |
+| `GetDownloadStatus(downloadId)` | Get download progress for a given download handle |
 
 ### IPackageInstaller Interface
 
@@ -164,9 +164,9 @@ struct LockInfo {
 
 | Method | Purpose |
 |--------|---------|
-| `Lock(appId)` | Lock package to prevent uninstall during app execution |
-| `Unlock(lockId)` | Release package lock after app terminates |
-| `GetMetadata(appId)` | Get application metadata JSON |
+| `Lock(packageId, version, lockOptions, lockHandle)` | Lock a specific package version to prevent uninstall during app execution, returning a lock handle and related info |
+| `Unlock(packageId, version, lockHandle)` | Release a previously acquired package lock after app terminates |
+| `GetMetadata(packageId, version)` | Get application/package metadata JSON for a specific package version |
 | `ListPackages()` | List all installed packages |
 
 ---
@@ -202,15 +202,15 @@ sequenceDiagram
     participant PkgMgr as PackageManager
 
     Note over AppMgr,PkgMgr: App Launch
-    AppMgr->>PkgMgr: Lock(appId)
-    PkgMgr->>PkgMgr: Create LockInfo, refCount=1
-    PkgMgr-->>AppMgr: lockId, unpackedPath, config
+    AppMgr->>PkgMgr: Lock(packageId, version, lockOptions, lockHandle)
+    PkgMgr->>PkgMgr: Create/Update LockInfo for (packageId, version), refCount=1
+    PkgMgr-->>AppMgr: lockHandle, unpackedPath, config
 
     Note over AppMgr,PkgMgr: App Running...
 
     Note over AppMgr,PkgMgr: App Terminate
-    AppMgr->>PkgMgr: Unlock(lockId)
-    PkgMgr->>PkgMgr: refCount--, if 0 remove lock
+    AppMgr->>PkgMgr: Unlock(packageId, version, lockHandle)
+    PkgMgr->>PkgMgr: refCount--, if 0 remove LockInfo for (packageId, version)
     PkgMgr-->>AppMgr: success
 ```
 
@@ -230,7 +230,7 @@ flowchart TD
 
 ## Package Locking
 
-Package locking prevents uninstallation while an application is running. When AppManager launches an app, it first locks the package. The lock is released when the app terminates.
+Package locking prevents uninstallation while an application is running. When AppManager launches an app, it first locks the corresponding package (identified by `packageId` and `version`). The lock is released using the returned `lockHandle` when the app terminates.
 
 ### Lock States
 
@@ -240,7 +240,7 @@ Package locking prevents uninstallation while an application is running. When Ap
 | One app instance | 1 | No |
 | Multiple instances | N | No |
 
-> **Important:** Always ensure `Unlock()` is called in all termination paths (normal, crash, kill) to prevent package lock leaks.
+> **Important:** Always ensure `Unlock(packageId, version, lockHandle)` is called in all termination paths (normal, crash, kill) to prevent package lock leaks.
 
 ---
 
