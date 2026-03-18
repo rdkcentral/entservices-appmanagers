@@ -171,8 +171,7 @@ Loaded from `AppStorageManager.config`:
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `storagepath` | `/opt/appdata` | Base storage directory |
-| `defaultQuota` | (unlimited) | Default storage quota per app |
+| `path` | `/opt/appdata` | Base storage directory for application data |
 
 ---
 
