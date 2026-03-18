@@ -74,10 +74,9 @@ namespace Plugin
 
             switch(currentAction)
             {
+                // APP_ACTION_LAUNCH and APP_ACTION_PRELOAD appManagerLaunchTime is now recorded via recordLaunchTime()
                 case AppManagerImplementation::APP_ACTION_LAUNCH:
                 case AppManagerImplementation::APP_ACTION_PRELOAD:
-                    jsonParam["appManagerLaunchTime"] = (int)(currentTime - it->second.currentActionTime);
-                    markerName = TELEMETRY_MARKER_LAUNCH_TIME;
                 break;
                 case AppManagerImplementation::APP_ACTION_CLOSE:
                     if ((Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED != it->second.targetAppState) &&
@@ -226,6 +225,57 @@ namespace Plugin
                 getTelemetryClient().record(appId, telemetryMetrics, markerName);
                 getTelemetryClient().publish(appId, markerName);
             }
+        }
+    }
+
+    void AppManagerTelemetryReporting::recordLaunchTime(const std::string& appId, int launchTimeMs)
+    {
+        if (!Utils::isTelemetryMetricsEnabled()) {
+            return;
+        }
+
+        if (!ensureTelemetryClient())
+        {
+            LOGERR("Failed to create TelemetryMetrics client");
+            return;
+        }
+
+        JsonObject jsonParam;
+        jsonParam["appManagerLaunchTime"] = launchTimeMs;
+
+        std::string telemetryMetrics;
+        jsonParam.ToString(telemetryMetrics);
+        if (!telemetryMetrics.empty())
+        {
+            getTelemetryClient().record(appId, telemetryMetrics, TELEMETRY_MARKER_LAUNCH_TIME);
+        }
+    }
+
+    void AppManagerTelemetryReporting::reportAppCrashedTelemetry(const std::string& appId, const std::string& appInstanceId, const std::string& crashReason)
+    {
+        if (!Utils::isTelemetryMetricsEnabled()) {
+            return;
+        }
+
+        LOGINFO("Received app crash data for appId %s appInstanceId %s crashReason %s", appId.c_str(), appInstanceId.c_str(), crashReason.c_str());
+
+        if (!ensureTelemetryClient())
+        {
+            LOGERR("Failed to create TelemetryMetrics client");
+            return;
+        }
+
+        JsonObject jsonParam;
+        jsonParam["appId"] = appId;
+        jsonParam["appInstanceId"] = appInstanceId;
+        jsonParam["crashReason"] = crashReason;
+
+        std::string telemetryMetrics;
+        jsonParam.ToString(telemetryMetrics);
+        if (!telemetryMetrics.empty())
+        {
+            getTelemetryClient().record(appId, telemetryMetrics, TELEMETRY_MARKER_APP_CRASHED);
+            getTelemetryClient().publish(appId, TELEMETRY_MARKER_APP_CRASHED);
         }
     }
 

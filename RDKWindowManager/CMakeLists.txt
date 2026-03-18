@@ -63,6 +63,7 @@ install(TARGETS ${MODULE_NAME}
 
 add_library(${PLUGIN_IMPLEMENTATION} SHARED
     RDKWindowManagerImplementation.cpp
+    RDKWindowManagerTelemetryReporting.cpp
     Module.cpp)
 
 target_include_directories(${PLUGIN_IMPLEMENTATION}
@@ -79,10 +80,10 @@ include_directories(BEFORE ${RDK_WINDOW_MANAGER_INCLUDES})
 
 if (NOT RDK_SERVICES_TEST AND NOT RDK_SERVICES_L1_TEST)
         target_link_libraries(${PLUGIN_IMPLEMENTATION} PRIVATE
-        CompileSettingsDebug::CompileSettingsDebug ${NAMESPACE}Plugins::${NAMESPACE}Plugins -lrdkwindowmanager ${PLUGIN_RDK_WINDOW_MANAGER_EXTRA_LIBRARIES})
+        CompileSettingsDebug::CompileSettingsDebug ${NAMESPACE}Plugins::${NAMESPACE}Plugins -lrdkwindowmanager AppManagersHelpers ${PLUGIN_RDK_WINDOW_MANAGER_EXTRA_LIBRARIES})
 else()
         target_link_libraries(${PLUGIN_IMPLEMENTATION} PRIVATE
-        CompileSettingsDebug::CompileSettingsDebug ${NAMESPACE}Plugins::${NAMESPACE}Plugins ${PLUGIN_RDK_WINDOW_MANAGER_EXTRA_LIBRARIES})
+        CompileSettingsDebug::CompileSettingsDebug ${NAMESPACE}Plugins::${NAMESPACE}Plugins AppManagersHelpers ${PLUGIN_RDK_WINDOW_MANAGER_EXTRA_LIBRARIES})
 endif()
 
 install(TARGETS ${PLUGIN_IMPLEMENTATION}

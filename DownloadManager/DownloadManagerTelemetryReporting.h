@@ -25,25 +25,21 @@
 namespace WPEFramework {
 namespace Plugin {
 
-class PackageManagerTelemetryReporting : public Utils::TelemetryReportingBase {
+class DownloadManagerTelemetryReporting : public Utils::TelemetryReportingBase {
 public:
-    PackageManagerTelemetryReporting(const PackageManagerTelemetryReporting&) = delete;
-    PackageManagerTelemetryReporting& operator=(const PackageManagerTelemetryReporting&) = delete;
+    DownloadManagerTelemetryReporting(const DownloadManagerTelemetryReporting&) = delete;
+    DownloadManagerTelemetryReporting& operator=(const DownloadManagerTelemetryReporting&) = delete;
 
-    static PackageManagerTelemetryReporting& getInstance();
+    static DownloadManagerTelemetryReporting& getInstance();
 
     void initialize(PluginHost::IShell* service);
     void reset();
-    void recordAndPublishTelemetryData(const std::string& marker,
-        const std::string& appId,
-        uint64_t requestTime,
-        int errorCode,
-        const std::string& runtimeId = "",
-        const std::string& runtimeVersion = "");
+    void recordDownloadTimeTelemetry(const std::string& downloadId, int64_t downloadTimeMs);
+    void recordDownloadErrorTelemetry(const std::string& downloadId, int errorCode);
 
 private:
-    PackageManagerTelemetryReporting();
-    ~PackageManagerTelemetryReporting();
+    DownloadManagerTelemetryReporting();
+    ~DownloadManagerTelemetryReporting();
 };
 
 } // namespace Plugin

@@ -223,8 +223,11 @@ namespace WPEFramework
                 void Dispatch(RuntimeEventType event, const JsonValue params);
                 void notifyParameterCheckFailure(const string& appInstanceId, const string& errorCode);
 
-                void recordTelemetryData(const std::string& marker, const std::string& appId, uint64_t requestTime);
+                void recordTelemetryData(const std::string& marker, const std::string& appId, uint64_t requestTime, const std::string& fieldName = "");
                 time_t getCurrentTimestamp();
+
+                // WindowManager event handler
+                void onWindowManagerDisconnected(const std::string& client);
 
                 friend class Job;
 

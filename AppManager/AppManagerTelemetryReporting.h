@@ -35,8 +35,10 @@ class AppManagerTelemetryReporting : public Utils::TelemetryReportingBase
         AppManagerTelemetryReporting& operator=(const AppManagerTelemetryReporting&) = delete;
         static AppManagerTelemetryReporting& getInstance();
         void reportTelemetryData(const std::string& appId, AppManagerImplementation::CurrentAction currentAction);
+        void recordLaunchTime(const std::string& appId, int launchTimeMs);
         void reportTelemetryDataOnStateChange(const string& appId, const Exchange::ILifecycleManager::LifecycleState newState);
         void reportTelemetryErrorData(const std::string& appId, AppManagerImplementation::CurrentAction currentAction, AppManagerImplementation::CurrentActionError errorCode);
+        void reportAppCrashedTelemetry(const std::string& appId, const std::string& appInstanceId, const std::string& crashReason);
         void initialize(PluginHost::IShell* service);
 
     private /*methods*/:
