@@ -35,7 +35,7 @@ graph TB
     subgraph "TelemetryMetrics Module"
         TM[TelemetryMetrics<br/>Plugin]
         TMI[TelemetryMetricsImplementation]
-        MB[Metric Buffer]
+        MR[Metrics Record<br/>(unordered_map)]
     end
 
     subgraph "Clients"
@@ -53,7 +53,7 @@ graph TB
     LCM -->|Record| TM
     PM -->|Record| TM
     TM --> TMI
-    TMI --> MB
+    TMI --> MR
     TMI -->|Publish| TS
     TS --> Analytics
 ```
@@ -65,18 +65,10 @@ graph TB
 ```mermaid
 classDiagram
     class TelemetryMetricsImplementation {
-        -list~Metric~ mMetricBuffer
-        -mutex mMutex
+        -unordered_map<string, Json::Value> mMetricsRecord
+        -std::mutex mMutex
         +Record(metricName, value, appId) hresult
         +Publish(id, name) hresult
-    }
-
-    class Metric {
-        +string name
-        +string value
-        +string appId
-        +uint64_t timestamp
-        +MetricType type
     }
 
     class ITelemetryMetrics {
@@ -86,7 +78,6 @@ classDiagram
     }
 
     TelemetryMetricsImplementation ..|> ITelemetryMetrics
-    TelemetryMetricsImplementation --> Metric
 ```
 
 ### API Reference (Summary)
