@@ -26,7 +26,7 @@ The **AppStorageManager** provides application-specific persistent storage alloc
 graph TB
     subgraph "AppStorageManager Module"
         ASM[AppStorageManager<br/>Plugin]
-        ASMI[AppStorageManagerImplementation]
+        ASMI[StorageManagerImplementation]
         RH[RequestHandler]
     end
 
@@ -54,34 +54,24 @@ graph TB
 
 ```mermaid
 classDiagram
-    class AppStorageManagerImplementation {
-        -string mStorageBasePath
-        -map~string,StorageInfo~ mStorageMap
-        +CreateStorage(appId, quota) hresult
-        +GetStorage(appId) StoragePath
-        +DeleteStorage(appId) hresult
-        +Clear(appId) hresult
-        +ClearAll(exemptionAppIds) hresult
-    }
-
-    class StorageInfo {
-        +string appId
-        +string storagePath
-        +uint64_t quota
-        +uint64_t usedBytes
+    class StorageManagerImplementation {
+        +CreateStorage(...)
+        +GetStorage(...)
+        +DeleteStorage(...)
+        +Clear(...)
+        +ClearAll(...)
     }
 
     class IAppStorageManager {
         <<interface>>
-        +CreateStorage(appId, quota) hresult
-        +GetStorage(appId) string
-        +DeleteStorage(appId) hresult
-        +Clear(appId) hresult
-        +ClearAll(exemptionAppIds) hresult
+        +CreateStorage(...)
+        +GetStorage(...)
+        +DeleteStorage(...)
+        +Clear(...)
+        +ClearAll(...)
     }
 
-    AppStorageManagerImplementation ..|> IAppStorageManager
-    AppStorageManagerImplementation --> StorageInfo: manages
+    StorageManagerImplementation ..|> IAppStorageManager
 ```
 
 ---
