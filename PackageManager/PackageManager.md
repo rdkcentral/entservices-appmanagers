@@ -65,7 +65,7 @@ classDiagram
         -map~string,PackageState~ mPackages
         -map~uint32_t,LockInfo~ mLocks
         -IDownloadManager* mDownloadManager
-        -IStorageManager* mStorageManager
+        -IAppStorageManager* mStorageManagerObject
         +Download(url, appId) hresult
         +Install(appId) hresult
         +Uninstall(appId) hresult
