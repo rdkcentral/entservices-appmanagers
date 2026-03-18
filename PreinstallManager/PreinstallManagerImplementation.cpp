@@ -350,7 +350,7 @@ namespace WPEFramework
             Exchange::IPackageInstaller::IKeyValueIterator* additionalMetadata = nullptr;
             Core::hresult installResult = packageInstaller->Install(pkg.packageId, pkg.version, additionalMetadata, pkg.fileLocator, failReason);
 
-            if (installResult != Core::ERROR_NONE)
+            if (Core::ERROR_NONE != installResult)
             {
                 LOGERR("Failed to install package: %s, version: %s, failReason: %s", pkg.packageId.c_str(), pkg.version.c_str(), getFailReason(failReason).c_str());
                 installError = true;
