@@ -51,7 +51,7 @@ void RuntimeManagerTelemetryReporting::reset()
     resetTelemetryClient();
 }
 
-void RuntimeManagerTelemetryReporting::recordTelemetryData(const std::string& marker, const std::string& appId, uint64_t requestTime)
+void RuntimeManagerTelemetryReporting::recordTelemetryData(const std::string& marker, const std::string& appId, uint64_t requestTime, const std::string& fieldName)
 {
     if (!Utils::isTelemetryMetricsEnabled()) {
         return;
@@ -63,7 +63,12 @@ void RuntimeManagerTelemetryReporting::recordTelemetryData(const std::string& ma
     JsonObject jsonParam;
     int duration = durationSinceMs(requestTime);
 
-    if (marker == TELEMETRY_MARKER_RESUME_TIME) {
+    /* If custom field name provided, use it directly */
+    if (!fieldName.empty())
+    {
+        jsonParam[fieldName.c_str()] = duration;
+    }
+    else if (marker == TELEMETRY_MARKER_RESUME_TIME) {
         jsonParam["runtimeManagerResumeTime"] = duration;
     } else if (marker == TELEMETRY_MARKER_SUSPEND_TIME) {
         jsonParam["runtimeManagerSuspendTime"] = duration;
