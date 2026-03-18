@@ -55,20 +55,20 @@ graph TB
 ```mermaid
 classDiagram
     class StorageManagerImplementation {
-        +CreateStorage(...)
-        +GetStorage(...)
-        +DeleteStorage(...)
-        +Clear(...)
-        +ClearAll(...)
+        +CreateStorage(appId, size, path, errorReason)
+        +GetStorage(appId, userId, groupId, path, size, used, errorReason)
+        +DeleteStorage(appId, errorReason)
+        +Clear(appId, userId, groupId, errorReason)
+        +ClearAll(errorReason)
     }
 
     class IAppStorageManager {
         <<interface>>
-        +CreateStorage(...)
-        +GetStorage(...)
-        +DeleteStorage(...)
-        +Clear(...)
-        +ClearAll(...)
+        +CreateStorage(appId, size, path, errorReason)
+        +GetStorage(appId, userId, groupId, path, size, used, errorReason)
+        +DeleteStorage(appId, errorReason)
+        +Clear(appId, userId, groupId, errorReason)
+        +ClearAll(errorReason)
     }
 
     StorageManagerImplementation ..|> IAppStorageManager
