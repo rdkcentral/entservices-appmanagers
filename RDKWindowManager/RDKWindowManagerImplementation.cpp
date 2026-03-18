@@ -267,7 +267,7 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
                   if (success && gScreenshotData && gScreenshotSize > 0)
                   {
                       // Encode the screenshot data as base64
-                      Utils::String::imageEncoder(gScreenshotData, gScreenshotSize, true, gScreenshotImageData);
+                      ::Utils::String::imageEncoder(gScreenshotData, gScreenshotSize, true, gScreenshotImageData);
                       
                       // Free the buffer immediately after encoding to avoid retaining memory
                       free(gScreenshotData);
