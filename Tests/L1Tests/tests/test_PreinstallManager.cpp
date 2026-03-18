@@ -47,6 +47,15 @@ using namespace WPEFramework;
 
 namespace {
 
+Core::hresult createResources()
+{
+    return Core::ERROR_NONE;
+}
+
+void releaseResources()
+{
+}
+
 class ResourcesGuard {
 public:
     ResourcesGuard()
