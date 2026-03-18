@@ -27,6 +27,7 @@
 #include <mutex>
 #include <chrono>
 #include <condition_variable>
+#include <stdexcept>
 
 #include "PackageManager.h"
 #include "PackageManagerImplementation.h"
@@ -1328,9 +1329,13 @@ TEST_F(PackageManagerTest, installusingJsonRpcSuccess) {
 	EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("download"), _T("{\"url\": \"https://httpbin.org/bytes/1024\"}"), mJsonRpcResponse));
 
 	waitforSignal(TIMEOUT);
-	
+
+    const std::string fileLocator = "/opt/CDL/package1001";
+    ASSERT_FALSE(fileLocator.empty());
+    const std::string installPayload = std::string("{\"packageId\": \"YouTube\", \"version\": \"100.1.24\", \"additionalMetadata\": [{\"name\": \"testApp\", \"value\": \"2\"}], \"fileLocator\": \"") + fileLocator + "\"}";
+
     // TC-33: Install using JsonRpc
-    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("install"), _T("{\"packageId\": \"YouTube\", \"version\": \"100.1.24\", \"additionalMetadata\": [{\"name\": \"testApp\", \"value\": \"2\"}], \"fileLocator\": \"/opt/CDL/package1001\"}"), mJsonRpcResponse));
+    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("install"), installPayload, mJsonRpcResponse));
 
 	deinitforJsonRpc();
 }
@@ -1385,6 +1390,7 @@ TEST_F(PackageManagerTest, installusingComRpcInvalidSignature) {
     string packageId = "YouTube";
     string version = "100.1.24";
     string fileLocator = "/opt/CDL/package1001";
+    ASSERT_FALSE(fileLocator.empty());
     Exchange::IPackageInstaller::FailReason reason = Exchange::IPackageInstaller::FailReason::NONE;
     list<Exchange::IPackageInstaller::KeyValue> kv = { {"testapp", "2"} };
 
@@ -1448,7 +1454,11 @@ TEST_F(PackageManagerTest, uninstallusingJsonRpcSuccess) {
 
 	waitforSignal(TIMEOUT);
 
-    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("install"), _T("{\"packageId\": \"YouTube\", \"version\": \"100.1.24\", \"additionalMetadata\": [{\"name\": \"testApp\", \"value\": \"2\"}], \"fileLocator\": \"/opt/CDL/package1001\"}"), mJsonRpcResponse));
+    const std::string fileLocator = "/opt/CDL/package1001";
+    ASSERT_FALSE(fileLocator.empty());
+    const std::string installPayload = std::string("{\"packageId\": \"YouTube\", \"version\": \"100.1.24\", \"additionalMetadata\": [{\"name\": \"testApp\", \"value\": \"2\"}], \"fileLocator\": \"") + fileLocator + "\"}";
+
+    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("install"), installPayload, mJsonRpcResponse));
 
 	waitforSignal(TIMEOUT_FOR_INSTALL);
 	
@@ -1483,6 +1493,7 @@ TEST_F(PackageManagerTest, uninstallusingComRpcSuccess) {
     string errorReason = "no error";
     string version = "100.1.24";
     string fileLocator = "/opt/CDL/package1001";
+    ASSERT_FALSE(fileLocator.empty());
     Exchange::IPackageInstaller::FailReason reason = Exchange::IPackageInstaller::FailReason::NONE;
     list<Exchange::IPackageInstaller::KeyValue> kv = { {"testapp", "2"} };
 
@@ -1557,7 +1568,11 @@ TEST_F(PackageManagerTest, listPackagesusingJsonRpcSuccess) {
 
 	waitforSignal(TIMEOUT);
 
-    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("install"), _T("{\"packageId\": \"YouTube\", \"version\": \"100.1.24\", \"additionalMetadata\": [{\"name\": \"testApp\", \"value\": \"2\"}], \"fileLocator\": \"/opt/CDL/package1001\"}"), mJsonRpcResponse));
+    const std::string fileLocator = "/opt/CDL/package1001";
+    ASSERT_FALSE(fileLocator.empty());
+    const std::string installPayload = std::string("{\"packageId\": \"YouTube\", \"version\": \"100.1.24\", \"additionalMetadata\": [{\"name\": \"testApp\", \"value\": \"2\"}], \"fileLocator\": \"") + fileLocator + "\"}";
+
+    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("install"), installPayload, mJsonRpcResponse));
 
 	waitforSignal(TIMEOUT_FOR_INSTALL);
 	
@@ -1591,6 +1606,7 @@ TEST_F(PackageManagerTest, listPackagesusingComRpcSuccess) {
 	string packageId = "YouTube";
 	string version = "100.1.24";
     string fileLocator = "/opt/CDL/package1001";
+    ASSERT_FALSE(fileLocator.empty());
     Exchange::IPackageInstaller::FailReason reason = Exchange::IPackageInstaller::FailReason::NONE;
 	list<Exchange::IPackageInstaller::KeyValue> kv = { {"testapp", "2"} };
 	
@@ -1660,7 +1676,11 @@ TEST_F(PackageManagerTest, packageStateusingJsonRpcSuccess) {
 
 	waitforSignal(TIMEOUT);
 
-    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("install"), _T("{\"packageId\": \"YouTube\", \"version\": \"100.1.24\", \"additionalMetadata\": [{\"name\": \"testApp\", \"value\": \"2\"}], \"fileLocator\": \"/opt/CDL/package1001\"}"), mJsonRpcResponse));
+    const std::string fileLocator = "/opt/CDL/package1001";
+    ASSERT_FALSE(fileLocator.empty());
+    const std::string installPayload = std::string("{\"packageId\": \"YouTube\", \"version\": \"100.1.24\", \"additionalMetadata\": [{\"name\": \"testApp\", \"value\": \"2\"}], \"fileLocator\": \"") + fileLocator + "\"}";
+
+    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("install"), installPayload, mJsonRpcResponse));
 
 	waitforSignal(TIMEOUT_FOR_INSTALL);
 	
@@ -1694,6 +1714,7 @@ TEST_F(PackageManagerTest, packageStateusingComRpcSuccess) {
     string packageId = "YouTube";
     string version = "100.1.24";
     string fileLocator = "/opt/CDL/package1001";
+    ASSERT_FALSE(fileLocator.empty());
     Exchange::IPackageInstaller::FailReason reason = Exchange::IPackageInstaller::FailReason::NONE;
     list<Exchange::IPackageInstaller::KeyValue> kv = { {"testapp", "2"} };
     Exchange::IPackageInstaller::InstallState state = Exchange::IPackageInstaller::InstallState::INSTALLING;
@@ -1862,6 +1883,7 @@ TEST_F(PackageManagerTest, installusingComRpcLibPackageMockVersionMismatch) {
     std::string packageId = "YouTube";
     std::string version = "100.1.24";
     std::string fileLocator = "/opt/CDL/package1001";
+    ASSERT_FALSE(fileLocator.empty());
     Exchange::IPackageInstaller::FailReason reason = Exchange::IPackageInstaller::FailReason::NONE;
     std::list<Exchange::IPackageInstaller::KeyValue> kv = { {"testapp", "2"} };
     auto additionalMetadata = Core::Service<RPC::IteratorType<Exchange::IPackageInstaller::IKeyValueIterator>>::Create<Exchange::IPackageInstaller::IKeyValueIterator>(kv);
@@ -1874,6 +1896,145 @@ TEST_F(PackageManagerTest, installusingComRpcLibPackageMockVersionMismatch) {
         .WillOnce(::testing::Return(packagemanager::VERSION_MISMATCH));
 
     EXPECT_EQ(Core::ERROR_GENERAL, pkginstallerInterface->Install(packageId, version, additionalMetadata, fileLocator, reason));
+
+    deinitforComRpc();
+    packagemanager::IPackageImplDummy::ResetMockInstance();
+}
+
+TEST_F(PackageManagerTest, pauseMethodusingJsonRpcUnknownKeyFailure) {
+
+    initforJsonRpc();
+
+    EXPECT_CALL(*mSubSystemMock, IsActive(::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillOnce(::testing::Invoke(
+            [&](const PluginHost::ISubSystem::subsystem type) {
+                return true;
+            }));
+
+    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("download"), _T("{\"url\": \"https://www.examplefile.com/file-download/328\"}"), mJsonRpcResponse));
+
+    waitforSignal(TIMEOUT_FOR_PAUSE);
+    EXPECT_NE(mJsonRpcResponse.find("1001"), std::string::npos);
+
+    mJsonRpcResponse.clear();
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, mJsonRpcHandler.Invoke(connection, _T("pause"), _T("{\"downloadId\": \"9999\"}"), mJsonRpcResponse));
+    EXPECT_TRUE(mJsonRpcResponse.empty() || mJsonRpcResponse == "{}");
+
+    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("cancel"), _T("{\"downloadId\": \"1001\"}"), mJsonRpcResponse));
+
+    deinitforJsonRpc();
+}
+
+TEST_F(PackageManagerTest, cancelMethodusingJsonRpcUnknownKeyFailure) {
+
+    initforJsonRpc();
+
+    EXPECT_CALL(*mSubSystemMock, IsActive(::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillOnce(::testing::Invoke(
+            [&](const PluginHost::ISubSystem::subsystem type) {
+                return true;
+            }));
+
+    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("download"), _T("{\"url\": \"https://www.examplefile.com/file-download/328\"}"), mJsonRpcResponse));
+
+    waitforSignal(TIMEOUT_FOR_PAUSE);
+    EXPECT_NE(mJsonRpcResponse.find("1001"), std::string::npos);
+
+    mJsonRpcResponse.clear();
+    EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, mJsonRpcHandler.Invoke(connection, _T("cancel"), _T("{\"downloadId\": \"9999\"}"), mJsonRpcResponse));
+    EXPECT_TRUE(mJsonRpcResponse.empty() || mJsonRpcResponse == "{}");
+
+    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("cancel"), _T("{\"downloadId\": \"1001\"}"), mJsonRpcResponse));
+
+    deinitforJsonRpc();
+}
+
+TEST_F(PackageManagerTest, getConfigForPackageusingComRpcInvalidSignature) {
+
+    initforComRpc();
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    std::string fileLocator = "";
+    std::string packageId;
+    std::string version;
+    Exchange::RuntimeConfig config{};
+
+    EXPECT_EQ(Core::ERROR_INVALID_SIGNATURE, pkginstallerInterface->GetConfigForPackage(fileLocator, packageId, version, config));
+
+    deinitforComRpc();
+}
+
+TEST_F(PackageManagerTest, getConfigForPackageusingComRpcLibPackageMockException) {
+
+    auto libPackageMock = std::make_shared<NiceMock<packagemanager::LibPackageMock>>();
+    packagemanager::IPackageImplDummy::SetMockInstance(libPackageMock);
+
+    EXPECT_CALL(*libPackageMock, Initialize(::testing::_, ::testing::_))
+        .WillOnce(::testing::Invoke([](const std::string&, packagemanager::ConfigMetadataArray& metadata) {
+            metadata.clear();
+            return packagemanager::SUCCESS;
+        }));
+
+    initforComRpc();
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    std::string fileLocator = "/opt/CDL/package1001";
+    ASSERT_FALSE(fileLocator.empty());
+    std::string packageId;
+    std::string version;
+    Exchange::RuntimeConfig config{};
+
+    EXPECT_CALL(*libPackageMock, GetFileMetadata(fileLocator, ::testing::_, ::testing::_, ::testing::_))
+        .WillOnce(::testing::Invoke([](const std::string&, std::string& id, std::string& ver, packagemanager::ConfigMetaData& metadata) {
+            throw std::runtime_error("Test exception");
+            id = "";
+            ver = "";
+            metadata.dataImageSize = 0;
+            return packagemanager::FAILED;
+        }));
+
+    EXPECT_ANY_THROW(pkginstallerInterface->GetConfigForPackage(fileLocator, packageId, version, config));
+
+    deinitforComRpc();
+    packagemanager::IPackageImplDummy::ResetMockInstance();
+}
+
+TEST_F(PackageManagerTest, installusingComRpcLibPackageMockException) {
+
+    auto libPackageMock = std::make_shared<NiceMock<packagemanager::LibPackageMock>>();
+    packagemanager::IPackageImplDummy::SetMockInstance(libPackageMock);
+
+    EXPECT_CALL(*libPackageMock, Initialize(::testing::_, ::testing::_))
+        .WillOnce(::testing::Invoke([](const std::string&, packagemanager::ConfigMetadataArray& metadata) {
+            metadata.clear();
+            return packagemanager::SUCCESS;
+        }));
+
+    initforComRpc();
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    std::string packageId = "YouTube";
+    std::string version = "100.1.24";
+    std::string fileLocator = "/opt/CDL/package1001";
+    ASSERT_FALSE(fileLocator.empty());
+    Exchange::IPackageInstaller::FailReason reason = Exchange::IPackageInstaller::FailReason::NONE;
+    std::list<Exchange::IPackageInstaller::KeyValue> kv = { {"testapp", "2"} };
+    auto additionalMetadata = Core::Service<RPC::IteratorType<Exchange::IPackageInstaller::IKeyValueIterator>>::Create<Exchange::IPackageInstaller::IKeyValueIterator>(kv);
+
+    EXPECT_CALL(*mStorageManagerMock, CreateStorage(::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillOnce(::testing::Return(Core::ERROR_NONE));
+
+    EXPECT_CALL(*libPackageMock, Install(packageId, version, ::testing::_, fileLocator, ::testing::_))
+        .WillOnce(::testing::Invoke([](const std::string&, const std::string&, const packagemanager::NameValues&, const std::string&, packagemanager::ConfigMetaData& metadata) {
+            throw std::runtime_error("Test exception");
+            metadata.dataImageSize = 0;
+            return packagemanager::FAILED;
+        }));
+
+    EXPECT_ANY_THROW(pkginstallerInterface->Install(packageId, version, additionalMetadata, fileLocator, reason));
 
     deinitforComRpc();
     packagemanager::IPackageImplDummy::ResetMockInstance();
