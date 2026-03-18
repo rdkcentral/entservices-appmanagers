@@ -46,41 +46,34 @@ using ::testing::NiceMock;
 using namespace WPEFramework;
 
 namespace {
-
-Core::hresult createResources()
-{
-    return Core::ERROR_NONE;
-}
-
-void releaseResources()
-{
-}
-
-class ResourcesGuard {
-public:
-    ResourcesGuard()
-        : _result(createResources())
-    {
-    }
-
-    ~ResourcesGuard()
-    {
-        releaseResources();
-    }
-
-    Core::hresult Result() const
-    {
-        return _result;
-    }
-
-private:
-    Core::hresult _result;
-};
-
 } // namespace
 
 class PreinstallManagerTest : public ::testing::Test {
 protected:
+    class ResourcesGuard {
+    public:
+        explicit ResourcesGuard(PreinstallManagerTest& owner)
+            : _owner(owner)
+            , _result(Core::ERROR_NONE)
+        {
+            _result = _owner.createResources();
+        }
+
+        ~ResourcesGuard()
+        {
+            _owner.releaseResources();
+        }
+
+        Core::hresult Result() const
+        {
+            return _result;
+        }
+
+    private:
+        PreinstallManagerTest& _owner;
+        Core::hresult _result;
+    };
+
     ServiceMock* mServiceMock = nullptr;
     PackageInstallerMock* mPackageInstallerMock = nullptr;
     WrapsImplMock *p_wrapsImplMock = nullptr;
