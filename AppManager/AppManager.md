@@ -24,7 +24,7 @@ The **AppManager** is the primary entry point for all application lifecycle oper
 |--------|---------|
 | LifecycleManager | State machine for app lifecycle transitions |
 | PackageManager | Package lock/unlock during app execution |
-| StorageManager | Clear app data operations |
+| AppStorageManager | Clear app data operations |
 | PersistentStore | App property storage |
 
 ---
