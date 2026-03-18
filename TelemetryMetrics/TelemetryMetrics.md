@@ -152,7 +152,7 @@ sequenceDiagram
 
     Note over App,Backend: App Becomes ACTIVE
     App->>App: Stop Timer
-    App->>TM: Record("OverallLaunchTime_split", duration, appId)
+    App->>TM: Record(appId, duration, "OverallLaunchTime_split")
     TM->>TM: Buffer Metric
 
     Note over App,Backend: Periodic Publish
