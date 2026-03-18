@@ -367,13 +367,13 @@ TEST_F(PreinstallManagerTest, StartPreinstallFailsWhenPackageManagerUnavailable)
 }
 
 /**
- * @brief Test OnComplete event notification
+ * @brief Test OnPreinstallationComplete event notification
  *
  * @details Test verifies that:
- * - OnComplete notification callbacks are properly triggered via sendOnCompleteEvent
- * - All registered listeners receive the OnComplete event
+ * - OnPreinstallationComplete notification callbacks are properly triggered via sendOnPreinstallationCompleteEvent
+ * - All registered listeners receive the OnPreinstallationComplete event
  */
-TEST_F(PreinstallManagerTest, OnCompleteEventNotification)
+TEST_F(PreinstallManagerTest, OnPreinstallationCompleteEventNotification)
 {
     ASSERT_EQ(Core::ERROR_NONE, createResources());
     
@@ -406,9 +406,9 @@ TEST_F(PreinstallManagerTest, OnCompleteEventNotification)
 
     mPreinstallManagerImpl->Register(mockNotification.operator->());
 
-    // Trigger the OnComplete event via the public StartPreinstall API.
+    // Trigger the OnPreinstallationComplete event via the public StartPreinstall API.
     // With forceInstall=true and an empty directory, preinstallPackages is empty and
-    // OnComplete is fired (via worker pool) before returning ERROR_NONE.
+    // OnPreinstallationComplete is fired (via worker pool) before returning ERROR_NONE.
     Core::hresult result = mPreinstallManagerImpl->StartPreinstall(true);
     EXPECT_EQ(Core::ERROR_NONE, result);
     
