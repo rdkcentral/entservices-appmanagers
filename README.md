@@ -209,8 +209,7 @@ entservices-appmanagers/
 ├── WebBridge/               WebSocket JSON-RPC bridge
 ├── helpers/                 Shared utilities
 ├── Tests/                   L1/L2 test suites
-├── CMakeLists.txt           Main build file
-└── doc/                     Documentation (you are here)
+└── CMakeLists.txt           Main build file
 ```
 
 ---
