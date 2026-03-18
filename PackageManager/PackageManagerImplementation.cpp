@@ -78,10 +78,6 @@ namespace Plugin {
     Core::hresult PackageManagerImplementation::Register(Exchange::IPackageDownloader::INotification* notification)
     {
         LOGINFO();
-         if (notification == nullptr) {  
-            LOGERR("Register called with nullptr notification");
-            return Core::ERROR_GENERAL;
-        }
         ASSERT(notification != nullptr);
 
         mAdminLock.Lock();
@@ -99,10 +95,6 @@ namespace Plugin {
     Core::hresult PackageManagerImplementation::Unregister(Exchange::IPackageDownloader::INotification* notification)
     {
         LOGINFO();
-        if (notification == nullptr) {  
-            LOGERR("Unregister called with nullptr notification");
-            return Core::ERROR_GENERAL;
-        }
         ASSERT(notification != nullptr);
         Core::hresult result = Core::ERROR_NONE;
 
@@ -124,47 +116,55 @@ namespace Plugin {
         Core::hresult result = Core::ERROR_GENERAL;
         LOGINFO("entry");
 
-        if (service != nullptr) {
-            mCurrentservice = service;
-            mCurrentservice->AddRef();
-            if (Core::ERROR_NONE != createStorageManagerObject()) {
-                LOGERR("Failed to create createStorageManagerObject");
-            } else {
-                LOGINFO("created createStorageManagerObject");
-                result = Core::ERROR_NONE;
-            }
+        try {
+            if (service != nullptr) {
+                mCurrentservice = service;
+                mCurrentservice->AddRef();
+                if (Core::ERROR_NONE != createStorageManagerObject()) {
+                    LOGERR("Failed to create createStorageManagerObject");
+                } else {
+                    LOGINFO("created createStorageManagerObject");
+                    result = Core::ERROR_NONE;
+                }
 
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-            if (nullptr == (mTelemetryMetricsObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::ITelemetryMetrics>("org.rdk.TelemetryMetrics")))
-            {
-                LOGERR("mTelemetryMetricsObject is null \n");
-            }
-            else
-            {
-                LOGINFO("created TelemetryMetrics Object");
-            }
+                if (nullptr == (mTelemetryMetricsObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::ITelemetryMetrics>("org.rdk.TelemetryMetrics")))
+                {
+                    LOGERR("mTelemetryMetricsObject is null \n");
+                }
+                else
+                {
+                    LOGINFO("created TelemetryMetrics Object");
+                }
 #endif /* ENABLE_AIMANAGERS_TELEMETRY_METRICS */
 
-            configStr = service->ConfigLine().c_str();
-            LOGINFO("ConfigLine=%s", service->ConfigLine().c_str());
-            PackageManagerImplementation::Configuration config;
-            config.FromString(service->ConfigLine());
-            downloadDir = config.downloadDir;
-            LOGINFO("downloadDir=%s", downloadDir.c_str());
+                configStr = service->ConfigLine().c_str();
+                LOGINFO("ConfigLine=%s", service->ConfigLine().c_str());
+                PackageManagerImplementation::Configuration config;
+                config.FromString(service->ConfigLine());
+                downloadDir = config.downloadDir;
+                LOGINFO("downloadDir=%s", downloadDir.c_str());
 
-            //std::filesystem::create_directories(path);        // XXX: need C++17
-            int rc = mkdir(downloadDir.c_str(), 0777);
-            if (rc) {
-                if (errno != EEXIST) {
-                    LOGERR("Failed to create dir '%s' rc: %d errno=%d", downloadDir.c_str(), rc, errno);
+                //std::filesystem::create_directories(path);        // XXX: need C++17
+                int rc = mkdir(downloadDir.c_str(), 0777);
+                if (rc) {
+                    if (errno != EEXIST) {
+                        LOGERR("Failed to create dir '%s' rc: %d errno=%d", downloadDir.c_str(), rc, errno);
+                    }
+                } else {
+                    LOGDBG("created dir '%s'", downloadDir.c_str());
                 }
-            } else {
-                LOGDBG("created dir '%s'", downloadDir.c_str());
-            }
 
-            mDownloadThreadPtr = std::unique_ptr<std::thread>(new std::thread(&PackageManagerImplementation::downloader, this, 1));
-        } else {
-            LOGERR("service is null \n");
+                mDownloadThreadPtr = std::unique_ptr<std::thread>(new std::thread(&PackageManagerImplementation::downloader, this, 1));
+            } else {
+                LOGERR("service is null \n");
+            }
+        } catch (const std::exception& ex) {
+            LOGERR("Exception in Initialize: %s", ex.what());
+            result = Core::ERROR_GENERAL;
+        } catch (...) {
+            LOGERR("Unknown exception in Initialize");
+            result = Core::ERROR_GENERAL;
         }
 
         LOGINFO("exit");
@@ -175,41 +175,43 @@ namespace Plugin {
     {
         Core::hresult result = Core::ERROR_NONE;
         LOGINFO();
-        // Make Deinitialize idempotent and defensive against double teardown
-        if (mIsDeinitialized == true) { 
-            LOGINFO("Deinitialize called more than once, ignoring");
-            return result;
-        }
-        mIsDeinitialized = true;
 
-        done = true;
-        cv.notify_one();
-         if (mDownloadThreadPtr && mDownloadThreadPtr->joinable()) {
-             mDownloadThreadPtr->join();
-	}
+        try {
+            done = true;
+            cv.notify_one();
+            
+            // Safely join the download thread
+            if (mDownloadThreadPtr != nullptr && mDownloadThreadPtr->joinable()) {
+                mDownloadThreadPtr->join();
+            }
 
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-        if (nullptr != mTelemetryMetricsObject)
-        {
-            LOGINFO("TelemetryMetrics object released\n");
-            mTelemetryMetricsObject->Release();
-            mTelemetryMetricsObject = nullptr;
-        }
+            if (nullptr != mTelemetryMetricsObject)
+            {
+                LOGINFO("TelemetryMetrics object released\n");
+                mTelemetryMetricsObject->Release();
+                mTelemetryMetricsObject = nullptr;
+            }
 #endif /* ENABLE_AIMANAGERS_TELEMETRY_METRICS */
-         const std::string markerFile = PACKAGE_MANAGER_MARKER_FILE;
-    if (std::remove(markerFile.c_str()) == 0) {
-        LOGINFO("Deleted marker file: %s", markerFile.c_str());
-    } else {
-        LOGERR("Failed to delete marker file: %s (errno=%d)", markerFile.c_str(), errno);
-    }
-        // Release storage manager object HERE (before TearDown deletes the mock)
-        // so the destructor doesn't try to release an already-deleted mock 
-        releaseStorageManagerObject();
-		
-        if (mCurrentservice != nullptr) {
-        mCurrentservice->Release();
-        mCurrentservice = nullptr;
+             const std::string markerFile = PACKAGE_MANAGER_MARKER_FILE;
+        if (std::remove(markerFile.c_str()) == 0) {
+            LOGINFO("Deleted marker file: %s", markerFile.c_str());
+        } else {
+            LOGERR("Failed to delete marker file: %s (errno=%d)", markerFile.c_str(), errno);
         }
+
+            if (mCurrentservice != nullptr) {
+                mCurrentservice->Release();
+                mCurrentservice = nullptr;
+            }
+        } catch (const std::exception& ex) {
+            LOGERR("Exception in Deinitialize: %s", ex.what());
+            result = Core::ERROR_GENERAL;
+        } catch (...) {
+            LOGERR("Unknown exception in Deinitialize");
+            result = Core::ERROR_GENERAL;
+        }
+
         return result;
     }
 
@@ -230,7 +232,7 @@ namespace Plugin {
 
     void PackageManagerImplementation::releaseStorageManagerObject()
     {
-       //Guard: only release if not null(may have been released in Deinitialize already)
+        ASSERT(nullptr != mStorageManagerObject);
         if(mStorageManagerObject) {
             mStorageManagerObject->Release();
             mStorageManagerObject = nullptr;
@@ -713,10 +715,6 @@ namespace Plugin {
         Core::hresult result = Core::ERROR_NONE;
 
         LOGINFO();
-         if (notification == nullptr) {  
-            LOGERR("Register called with nullptr notification");
-            return Core::ERROR_GENERAL;
-        }
         ASSERT(notification != nullptr);
         mAdminLock.Lock();
         ASSERT(std::find(mInstallNotifications.begin(), mInstallNotifications.end(), notification) == mInstallNotifications.end());
@@ -733,10 +731,6 @@ namespace Plugin {
         Core::hresult result = Core::ERROR_NONE;
 
         LOGINFO();
-        if (notification == nullptr) {  
-            LOGERR("Unregister called with nullptr notification");
-            return Core::ERROR_GENERAL;
-        }
         mAdminLock.Lock();
         auto item = std::find(mInstallNotifications.begin(), mInstallNotifications.end(), notification);
         if (item != mInstallNotifications.end()) {
@@ -1272,9 +1266,7 @@ namespace Plugin {
 
         mAdminLock.Lock();
         for (auto notification: mDownloaderNotifications) {
-            if (notification != nullptr) {  
-                notification->OnAppDownloadStatus(packageInfoIterator);
-            }
+            notification->OnAppDownloadStatus(packageInfoIterator);
             LOGTRACE();
         }
         mAdminLock.Unlock();
@@ -1300,9 +1292,7 @@ namespace Plugin {
         LOGDBG("id: '%s; ver: '%s' state: %s", id.c_str(), version.c_str(), getInstallState(state.installState).c_str());
         mAdminLock.Lock();
         for (auto notification: mInstallNotifications) {
-             if (notification != nullptr) {  
-                notification->OnAppInstallationStatus(jsonstr);
-            }
+            notification->OnAppInstallationStatus(jsonstr);
             LOGTRACE();
         }
         mAdminLock.Unlock();
@@ -1321,3 +1311,4 @@ namespace Plugin {
 
 } // namespace Plugin
 } // namespace WPEFramework
+

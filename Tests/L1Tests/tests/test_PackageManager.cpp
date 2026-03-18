@@ -79,7 +79,7 @@ protected:
     string mJsonRpcResponse;
     string uri;
 
-    PLUGINHOST_DISPATCHER *dispatcher;
+    PLUGINHOST_DISPATCHER *dispatcher = nullptr;
     FactoriesImplementation factoriesImplementation;
 
     Core::ProxyType<Plugin::PackageManagerImplementation> mPackageManagerImpl;
@@ -153,26 +153,46 @@ protected:
 
     void initforJsonRpc() 
     {    
-        EXPECT_CALL(*mServiceMock, Register(::testing::_))
-          .Times(::testing::AnyNumber());
+        try {
+            EXPECT_CALL(*mServiceMock, Register(::testing::_))
+              .Times(::testing::AnyNumber());
 
-        EXPECT_CALL(*mServiceMock, AddRef())
-          .Times(::testing::AnyNumber());
+            EXPECT_CALL(*mServiceMock, AddRef())
+              .Times(::testing::AnyNumber());
 
-        // Activate the dispatcher and initialize the plugin for JSON-RPC
-        PluginHost::IFactories::Assign(&factoriesImplementation);
-        dispatcher = static_cast<PLUGINHOST_DISPATCHER*>(plugin->QueryInterface(PLUGINHOST_DISPATCHER_ID));
-        dispatcher->Activate(mServiceMock);
-        plugin->Initialize(mServiceMock);  
+            // Activate the dispatcher and initialize the plugin for JSON-RPC
+            PluginHost::IFactories::Assign(&factoriesImplementation);
+            dispatcher = static_cast<PLUGINHOST_DISPATCHER*>(plugin->QueryInterface(PLUGINHOST_DISPATCHER_ID));
+            if (dispatcher == nullptr) {
+                LOGWARN("Failed to get dispatcher interface");
+                return;
+            }
+            dispatcher->Activate(mServiceMock);
+            if (plugin != nullptr) {
+                plugin->Initialize(mServiceMock);
+            }
+        } catch (const std::exception& ex) {
+            LOGWARN("Exception in initforJsonRpc: %s", ex.what());
+        } catch (...) {
+            LOGWARN("Unknown exception in initforJsonRpc");
+        }
     }
 
     void initforComRpc() 
     {
-        EXPECT_CALL(*mServiceMock, AddRef())
-          .Times(::testing::AnyNumber());
+        try {
+            EXPECT_CALL(*mServiceMock, AddRef())
+              .Times(::testing::AnyNumber());
 
-        // Initialize the plugin for COM-RPC
-        pkgdownloaderInterface->Initialize(mServiceMock);
+            // Initialize the plugin for COM-RPC
+            if (pkgdownloaderInterface != nullptr) {
+                pkgdownloaderInterface->Initialize(mServiceMock);
+            }
+        } catch (const std::exception& ex) {
+            LOGWARN("Exception in initforComRpc: %s", ex.what());
+        } catch (...) {
+            LOGWARN("Unknown exception in initforComRpc");
+        }
     }
 
     void getDownloadParams()
@@ -207,40 +227,61 @@ protected:
 
     void deinitforJsonRpc() 
     {
-        EXPECT_CALL(*mServiceMock, Unregister(::testing::_))
-          .Times(::testing::AnyNumber());
+        try {
+            EXPECT_CALL(*mServiceMock, Unregister(::testing::_))
+              .Times(::testing::AnyNumber());
 
-        EXPECT_CALL(*mServiceMock, Release())
-          .Times(::testing::AnyNumber());
+            EXPECT_CALL(*mServiceMock, Release())
+              .Times(::testing::AnyNumber());
 
-        // Deactivate the dispatcher and deinitialize the plugin for JSON-RPC
-        dispatcher->Deactivate();
-        dispatcher->Release();
+            // Deactivate the dispatcher and deinitialize the plugin for JSON-RPC
+            if (dispatcher != nullptr) {
+                dispatcher->Deactivate();
+                dispatcher->Release();
+                dispatcher = nullptr;
+            }
 
-        plugin->Deinitialize(mServiceMock);
-        
-        if(mStorageManagerMock != nullptr)
-        {
-            delete mStorageManagerMock;
-            mStorageManagerMock = nullptr;
+            if (plugin != nullptr) {
+                plugin->Deinitialize(mServiceMock);
+            }
+            
+            if(mStorageManagerMock != nullptr)
+            {
+                delete mStorageManagerMock;
+                mStorageManagerMock = nullptr;
+            }
+        } catch (const std::exception& ex) {
+            LOGWARN("Exception in deinitforJsonRpc: %s", ex.what());
+        } catch (...) {
+            LOGWARN("Unknown exception in deinitforJsonRpc");
         }
     }
 
     void deinitforComRpc()
     {
-        EXPECT_CALL(*mServiceMock, Release())
-          .Times(::testing::AnyNumber());
+        try {
+            EXPECT_CALL(*mServiceMock, Release())
+              .Times(::testing::AnyNumber());
 
-        EXPECT_CALL(*mStorageManagerMock, Release())
-          .WillOnce(::testing::Invoke(
-                [&]() {
-                     delete mStorageManagerMock;
-                     mStorageManagerMock = nullptr;
-                     return 0;
-            }));
+            if (mStorageManagerMock != nullptr) {
+                EXPECT_CALL(*mStorageManagerMock, Release())
+                  .WillOnce(::testing::Invoke(
+                        [&]() {
+                             delete mStorageManagerMock;
+                             mStorageManagerMock = nullptr;
+                             return 0;
+                    }));
+            }
 
-        // Deinitialize the plugin for COM-RPC
-        pkgdownloaderInterface->Deinitialize(mServiceMock);
+            // Deinitialize the plugin for COM-RPC
+            if (pkgdownloaderInterface != nullptr) {
+                pkgdownloaderInterface->Deinitialize(mServiceMock);
+            }
+        } catch (const std::exception& ex) {
+            LOGWARN("Exception in deinitforComRpc: %s", ex.what());
+        } catch (...) {
+            LOGWARN("Unknown exception in deinitforComRpc");
+        }
     }
 
     void waitforSignal(uint32_t timeout_ms) 

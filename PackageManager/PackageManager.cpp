@@ -99,44 +99,50 @@ namespace Plugin
     void PackageManager::Deinitialize(PluginHost::IShell* service VARIABLE_IS_NOT_USED)
     {
         LOGINFO();
-        if (mService != nullptr) {
-            ASSERT(mService == service);
-            mService->Unregister(&mNotificationSink);
+        try {
+            if (mService != nullptr) {
+                ASSERT(mService == service);
+                mService->Unregister(&mNotificationSink);
 
-            if (mPackageInstaller != nullptr) {
-                mPackageInstaller->Unregister(&mNotificationSink);
-                Exchange::JPackageInstaller::Unregister(*this);
-                mPackageInstaller->Release();
-                mPackageInstaller = nullptr;
-            }
-
-            if (mPackageHandler != nullptr) {
-                mPackageHandler->Release();
-                mPackageHandler = nullptr;
-            }
-
-            if (mPackageDownloader != nullptr) {
-                mPackageDownloader->Unregister(&mNotificationSink);
-                Exchange::JPackageDownloader::Unregister(*this);
-
-                RPC::IRemoteConnection* connection(mService->RemoteConnection(mConnectionId));
-                if (mPackageDownloader->Release() != Core::ERROR_DESTRUCTION_SUCCEEDED) {
-                    LOGERR("PackageManager Plugin is not properly destructed. %d", mConnectionId);
+                if (mPackageInstaller != nullptr) {
+                    mPackageInstaller->Unregister(&mNotificationSink);
+                    Exchange::JPackageInstaller::Unregister(*this);
+                    mPackageInstaller->Release();
+                    mPackageInstaller = nullptr;
                 }
-                mPackageDownloader = nullptr;
 
-                // The connection can disappear in the meantime...
-                if (connection != nullptr) {
-                    // But if it did not dissapear in the meantime, forcefully terminate it. Shoot to kill :-)
-                    connection->Terminate();
-                    connection->Release();
+                if (mPackageHandler != nullptr) {
+                    mPackageHandler->Release();
+                    mPackageHandler = nullptr;
                 }
-            }
 
-            mService->Release();
-            mService = nullptr;
-            mConnectionId = 0;
-            SYSLOG(Logging::Shutdown, (string(_T("PackageManager de-initialised"))));
+                if (mPackageDownloader != nullptr) {
+                    mPackageDownloader->Unregister(&mNotificationSink);
+                    Exchange::JPackageDownloader::Unregister(*this);
+
+                    RPC::IRemoteConnection* connection(mService->RemoteConnection(mConnectionId));
+                    if (mPackageDownloader->Release() != Core::ERROR_DESTRUCTION_SUCCEEDED) {
+                        LOGERR("PackageManager Plugin is not properly destructed. %d", mConnectionId);
+                    }
+                    mPackageDownloader = nullptr;
+
+                    // The connection can disappear in the meantime...
+                    if (connection != nullptr) {
+                        // But if it did not dissapear in the meantime, forcefully terminate it. Shoot to kill :-)
+                        connection->Terminate();
+                        connection->Release();
+                    }
+                }
+
+                mService->Release();
+                mService = nullptr;
+                mConnectionId = 0;
+                SYSLOG(Logging::Shutdown, (string(_T("PackageManager de-initialised"))));
+            }
+        } catch (const std::exception& ex) {
+            LOGERR("Exception in Deinitialize: %s", ex.what());
+        } catch (...) {
+            LOGERR("Unknown exception in Deinitialize");
         }
     }
 
@@ -184,3 +190,4 @@ namespace Plugin
     }
 } // namespace Plugin
 } // namespace WPEFramework
+
