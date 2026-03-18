@@ -67,13 +67,13 @@ classDiagram
     class TelemetryMetricsImplementation {
         -unordered_map<string, Json::Value> mMetricsRecord
         -std::mutex mMutex
-        +Record(metricName, value, appId) hresult
+        +Record(id, metrics, name) hresult
         +Publish(id, name) hresult
     }
 
     class ITelemetryMetrics {
         <<interface>>
-        +Record(metricName, value, appId) hresult
+        +Record(id, metrics, name) hresult
         +Publish(id, name) hresult
     }
 
@@ -82,10 +82,10 @@ classDiagram
 
 ### API Reference (Summary)
 
-- `Record(metricName, value, appId) -> hresult`  
-  - `metricName` (string, required): Logical name of the metric (e.g., `"AppLaunchTime"`).
-  - `value` (string, required): Recorded metric value (e.g., `"1234"` ms, `"true"`, `"ERROR_TIMEOUT"`).
-  - `appId` (string, required): Identifier of the app that the metric is associated with.
+- `Record(id, metrics, name) -> hresult`  
+  - `id` (string, required): Identifier for the metric record (e.g., a unique event or metric ID).
+  - `metrics` (string, required): Metric payload or value(s) to be recorded (e.g., `"1234"` ms, `"true"`, `"ERROR_TIMEOUT"`).
+  - `name` (string, required): Logical name associated with the metric (for example, an app or feature name).
 - `Publish(id, name) -> hresult`  
   - As defined by the TelemetryMetrics implementation; not modified by this document.
 
