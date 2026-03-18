@@ -147,7 +147,7 @@ typedef struct _RuntimeAppInfo {
 
 | Method | Purpose |
 |--------|---------|
-| `Run(appInstanceId, config)` | Start application in OCI container |
+| `Run(appId, appInstanceId, userId, groupId, portMappings, mountPaths, debugSettings, runtimeConfig)` | Start application in an OCI container with the specified identity, networking, filesystem mounts, debug options, and runtime configuration |
 | `Suspend(appInstanceId)` | Pause container (SIGSTOP to all processes) |
 | `Resume(appInstanceId)` | Resume suspended container (SIGCONT) |
 | `Hibernate(appInstanceId)` | Checkpoint container to disk using CRIU |
