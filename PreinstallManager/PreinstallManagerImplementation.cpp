@@ -18,6 +18,8 @@
  */
 
 #include <chrono>
+#include <thread>
+#include <utility>
 
 #include "PreinstallManagerImplementation.h"
 
@@ -395,21 +397,22 @@ namespace WPEFramework
     Core::hresult PreinstallManagerImplementation::StartPreinstall(bool forceInstall)
     {
         Core::hresult result = Core::ERROR_GENERAL;
-        bool shouldJoinPreviousThread = false;
+        std::thread previousInstallThread;
         Exchange::IPackageInstaller* packageInstaller = nullptr;
 
         mAdminLock.Lock();
         if (mInstallThread.joinable())
         {
-            if (mPreinstallState != State::COMPLETED)
+            if (State::COMPLETED != mPreinstallState)
             {
                 mAdminLock.Unlock();
                 LOGERR("Preinstall is already in progress");
                 return result;
             }
-            shouldJoinPreviousThread = true;
+            // Take ownership of the previous install thread so only this caller can join it.
+            previousInstallThread = std::move(mInstallThread);
         }
-        else if (mPreinstallState == State::IN_PROGRESS)
+        else if (State::IN_PROGRESS == mPreinstallState)
         {
             mAdminLock.Unlock();
             LOGERR("Preinstall is already in progress");
@@ -417,9 +420,9 @@ namespace WPEFramework
         }
         mAdminLock.Unlock();
 
-        if (shouldJoinPreviousThread)
+        if (previousInstallThread.joinable())
         {
-            mInstallThread.join();
+            previousInstallThread.join();
         }
 
         LOGINFO("Create PackageManager object for preinstall listing");
