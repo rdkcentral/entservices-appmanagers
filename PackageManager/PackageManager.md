@@ -24,7 +24,7 @@ The **PackageManager** handles the complete lifecycle of application packages in
 | Module | Purpose |
 |--------|---------|
 | DownloadManager | HTTP download operations |
-| StorageManager | App storage allocation |
+| AppStorageManager | App storage allocation |
 
 ---
 
@@ -42,7 +42,7 @@ graph TB
 
     subgraph "External Services"
         DLMgr[DownloadManager]
-        StorMgr[StorageManager]
+        StorMgr[AppStorageManager]
         FS[FileSystem]
     end
 
@@ -65,7 +65,7 @@ classDiagram
         -map~string,PackageState~ mPackages
         -map~uint32_t,LockInfo~ mLocks
         -IDownloadManager* mDownloadManager
-        -IStorageManager* mStorageManager
+        -Exchange::IAppStorageManager* mStorageManager
         +Download(url, appId) hresult
         +Install(appId) hresult
         +Uninstall(appId) hresult
