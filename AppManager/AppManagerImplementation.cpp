@@ -130,12 +130,17 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                             if (auto appRequestParam = std::static_pointer_cast<AppLaunchRequestParam>(request->mRequestParam))
                             {
                                 string appId = appRequestParam->appId;
+                                // Capture timestamp before packageLock to include packageManager lock time
+                                AppManagerTelemetryReporting& appManagerTelemetryReporting = AppManagerTelemetryReporting::getInstance();
+                                time_t actualStartTime = appManagerTelemetryReporting.getCurrentTimestampMs();
                                 PackageInfo packageData;
                                 Exchange::IPackageHandler::LockReason lockReason = Exchange::IPackageHandler::LockReason::LAUNCH;
 
                                 status = packageLock(appId, packageData, lockReason);
                                 if (status == Core::ERROR_NONE)
                                 {
+                                    // Update timestamp after packageLock succeeds (app entry now exists in mAppInfo)
+                                    updateCurrentActionTime(appId, actualStartTime, action);
                                     WPEFramework::Exchange::RuntimeConfig runtimeConfig = packageData.configMetadata;
                                     runtimeConfig.unpackedPath = packageData.unpackedPath;
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
@@ -783,6 +788,22 @@ Core::hresult AppManagerImplementation::packageLock(const string& appId, Package
                     status = mPackageManagerHandlerObject->Lock(appId, packageData.version, lockReason, packageData.lockId, packageData.unpackedPath, packageData.configMetadata, appMetadata);
                     if (status == Core::ERROR_NONE)
                     {
+                        //populate AppMetadata
+                        JsonArray appMetadataArray;
+                        if (appMetadata != nullptr)
+                        {
+                            Exchange::IPackageHandler::AdditionalLock additionalLock;
+                            while (appMetadata->Next(additionalLock))
+                            {
+                                JsonObject lockEntry;
+                                lockEntry["packageId"] = additionalLock.packageId;
+                                lockEntry["version"] = additionalLock.version;
+                                appMetadataArray.Add(lockEntry);
+                            }
+                            appMetadata->Release();
+                            appMetadata = nullptr;
+                        }
+                        appMetadataArray.ToString(packageData.appMetadata);
                         LOGINFO("Fetching package entry updated for appId: %s version: %s lockId: %d unpackedPath: %s appMetadata: %s",
                                  appId.c_str(), packageData.version.c_str(), packageData.lockId, packageData.unpackedPath.c_str(), packageData.appMetadata.c_str());
                         result = createOrUpdatePackageInfoByAppId(appId, packageData);
@@ -873,7 +894,7 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
 {
     Core::hresult status = Core::ERROR_GENERAL;
     AppManagerTelemetryReporting& appManagerTelemetryReporting =AppManagerTelemetryReporting::getInstance();
-    time_t requestTime = appManagerTelemetryReporting.getCurrentTimestampMs();
+    time_t launchStartTime = appManagerTelemetryReporting.getCurrentTimestampMs();
     LOGINFO(" LaunchApp enter with appId %s", appId.c_str());
     bool installed = false;
     Core::hresult result = IsInstalled(appId, installed);
@@ -924,8 +945,8 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
     }
     if(status == Core::ERROR_NONE)
     {
-        updateCurrentActionTime(appId, requestTime, AppManagerImplementation::APP_ACTION_LAUNCH);
-        appManagerTelemetryReporting.reportTelemetryData(appId, AppManagerImplementation::APP_ACTION_LAUNCH);
+        time_t launchEndTime = appManagerTelemetryReporting.getCurrentTimestampMs();
+        appManagerTelemetryReporting.recordLaunchTime(appId, (int)(launchEndTime - launchStartTime));
     }
     mAdminLock.Unlock();
 
@@ -1084,7 +1105,7 @@ Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const s
 {
     Core::hresult status = Core::ERROR_GENERAL;
     AppManagerTelemetryReporting& appManagerTelemetryReporting = AppManagerTelemetryReporting::getInstance();
-    time_t requestTime = appManagerTelemetryReporting.getCurrentTimestampMs();
+    time_t launchStartTime = appManagerTelemetryReporting.getCurrentTimestampMs();
     LOGINFO(" PreloadApp enter with appId %s", appId.c_str());
 
     mAdminLock.Lock();
@@ -1125,8 +1146,8 @@ Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const s
     }
     if(status == Core::ERROR_NONE)
     {
-        updateCurrentActionTime(appId, requestTime, AppManagerImplementation::APP_ACTION_PRELOAD);
-        appManagerTelemetryReporting.reportTelemetryData(appId, AppManagerImplementation::APP_ACTION_PRELOAD);
+        time_t launchEndTime = appManagerTelemetryReporting.getCurrentTimestampMs();
+        appManagerTelemetryReporting.recordLaunchTime(appId, (int)(launchEndTime - launchStartTime));
     }
     mAdminLock.Unlock();
 
@@ -1604,14 +1625,16 @@ void AppManagerImplementation::updateCurrentAction(const std::string& appId, Cur
 void AppManagerImplementation::updateCurrentActionTime(const std::string& appId, time_t currentActionTime, CurrentAction currentAction)
 {
     auto it = mAppInfo.find(appId);
-    if((it != mAppInfo.end()) && (currentAction == it->second.currentAction))
+    if(it != mAppInfo.end())
     {
+        // Set the action and timestamp together to avoid mismatch issues
+        it->second.currentAction = currentAction;
         it->second.currentActionTime = currentActionTime;
-        LOGINFO("Updated currentActionTime for appId %s", appId.c_str());
+        LOGINFO("Updated currentAction=%d and currentActionTime for appId %s", static_cast<int>(currentAction), appId.c_str());
     }
     else
     {
-        LOGERR("Failed to updating currentActionTime for appId %s", appId.c_str());
+        LOGERR("Failed to updating currentActionTime for appId %s - app not found", appId.c_str());
     }
 }
 

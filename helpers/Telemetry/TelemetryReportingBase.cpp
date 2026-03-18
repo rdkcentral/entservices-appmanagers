@@ -18,6 +18,7 @@
 */
 
 #include "TelemetryReportingBase.h"
+#include <chrono>
 
 namespace WPEFramework {
 namespace Plugin {
@@ -77,9 +78,9 @@ void TelemetryReportingBase::resetTelemetryClient()
 
 time_t TelemetryReportingBase::currentTimestampMs() const
 {
-    timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return (((time_t)ts.tv_sec * 1000) + ((time_t)ts.tv_nsec / 1000000));
+    return static_cast<time_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()
+    ).count());
 }
 
 int TelemetryReportingBase::durationSinceMs(uint64_t requestTimeMs) const

@@ -142,10 +142,8 @@ namespace Plugin {
         Core::hresult status = Core::ERROR_GENERAL;
         RequestHandler& handler = RequestHandler::getInstance();
 
-	    /* Get current timestamp at the start of getStorage for telemetry */
-        timespec ts;
-        clock_gettime(CLOCK_MONOTONIC, &ts);
-        uint64_t requestTime = (((uint64_t)ts.tv_sec * 1000) + ((uint64_t)ts.tv_nsec / 1000000));
+        /* Get current timestamp at the start of getStorage for telemetry */
+        uint64_t requestTime = AppStorageManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
 
         if (appId.empty())
         {

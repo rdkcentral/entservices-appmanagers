@@ -25,25 +25,20 @@
 namespace WPEFramework {
 namespace Plugin {
 
-class PackageManagerTelemetryReporting : public Utils::TelemetryReportingBase {
+class RDKWindowManagerTelemetryReporting : public Utils::TelemetryReportingBase {
 public:
-    PackageManagerTelemetryReporting(const PackageManagerTelemetryReporting&) = delete;
-    PackageManagerTelemetryReporting& operator=(const PackageManagerTelemetryReporting&) = delete;
+    RDKWindowManagerTelemetryReporting(const RDKWindowManagerTelemetryReporting&) = delete;
+    RDKWindowManagerTelemetryReporting& operator=(const RDKWindowManagerTelemetryReporting&) = delete;
 
-    static PackageManagerTelemetryReporting& getInstance();
+    static RDKWindowManagerTelemetryReporting& getInstance();
 
     void initialize(PluginHost::IShell* service);
     void reset();
-    void recordAndPublishTelemetryData(const std::string& marker,
-        const std::string& appId,
-        uint64_t requestTime,
-        int errorCode,
-        const std::string& runtimeId = "",
-        const std::string& runtimeVersion = "");
+    void recordCreateDisplayTelemetry(const std::string& client, int durationMs);
 
 private:
-    PackageManagerTelemetryReporting();
-    ~PackageManagerTelemetryReporting();
+    RDKWindowManagerTelemetryReporting();
+    ~RDKWindowManagerTelemetryReporting();
 };
 
 } // namespace Plugin
