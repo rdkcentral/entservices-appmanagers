@@ -30,6 +30,9 @@ jobs:
   L0-tests:
     name: Build and run RuntimeManager L0 tests
     runs-on: ubuntu-22.04
+
+    steps:
+      - name: Set up cache
         if: ${{ !env.ACT }}
         id: cache
         uses: actions/cache@v3
