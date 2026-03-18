@@ -90,6 +90,7 @@ classDiagram
         +DestroyDisplay() hresult
         +SetFocus() hresult
         +AddKeyIntercept() hresult
+        +RemoveKeyIntercept() hresult
         +GetInactivityTime() uint32_t
     }
 
