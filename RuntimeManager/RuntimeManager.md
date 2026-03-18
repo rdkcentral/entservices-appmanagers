@@ -68,7 +68,7 @@ classDiagram
         -IOCIContainer* mOciContainerRemoteObject
         -WindowManagerConnector* mWindowManagerConnector
         -DobbyEventListener* mDobbyEventListener
-        +Run(appInstanceId, config) hresult
+        +Run(appId, appInstanceId, userId, groupId, ports, paths, debugSettings, runtimeConfig) hresult
         +Suspend(appInstanceId) hresult
         +Resume(appInstanceId) hresult
         +Hibernate(appInstanceId) hresult
