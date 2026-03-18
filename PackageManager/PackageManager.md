@@ -24,7 +24,7 @@ The **PackageManager** handles the complete lifecycle of application packages in
 | Module | Purpose |
 |--------|---------|
 | DownloadManager | HTTP download operations |
-| StorageManager | App storage allocation |
+| AppStorageManager | App storage allocation |
 
 ---
 
