@@ -573,7 +573,7 @@ namespace Plugin {
                 if (nullptr != mStorageManagerObject) {
                     if(mStorageManagerObject->DeleteStorage(packageId, errorReason) == Core::ERROR_NONE) {
                         LOGINFO("DeleteStorage done");
-                        //#if defined(USE_LIBPACKAGE) || defined(UNIT_TEST) || defined(ENABLE_NATIVEBUILD)
+                        //#if defined(USE_LIBPACKAGE) || defined(UNIT_TEST)
                         // XXX: what if DeleteStorage() fails, who Uninstall the package
                         packagemanager::Result pmResult = packageImpl->Uninstall(packageId);
                         if (pmResult == packagemanager::SUCCESS) {
@@ -1031,7 +1031,7 @@ namespace Plugin {
             return Core::ERROR_INVALID_SIGNATURE;
         }
 
-        //#if defined(USE_LIBPACKAGE) || defined(UNIT_TEST) || defined(ENABLE_NATIVEBUILD)
+        //#if defined(USE_LIBPACKAGE) || defined(UNIT_TEST)
 	    packagemanager::ConfigMetaData metadata;
         packagemanager::Result pmResult = packageImpl->GetFileMetadata(fileLocator, id, version, metadata);
         if (pmResult == packagemanager::SUCCESS)
@@ -1047,15 +1047,15 @@ namespace Plugin {
     void PackageManagerImplementation::InitializeState()
     {
         LOGDBG("entry");
-        #if !defined(UNIT_TEST) && !defined(ENABLE_NATIVEBUILD)
+        #if !defined(UNIT_TEST)
 	    PluginHost::ISubSystem* subSystem = mCurrentservice->SubSystems();
         if (subSystem != nullptr) {
             subSystem->Set(PluginHost::ISubSystem::NOT_INSTALLATION, nullptr);
         }
 	    #endif
 
-        //#if defined (USE_LIBPACKAGE) || defined(UNIT_TEST) || defined(ENABLE_NATIVEBUILD)
-	    #if defined(UNIT_TEST) || defined(ENABLE_NATIVEBUILD)
+        //#if defined (USE_LIBPACKAGE) || defined(UNIT_TEST)
+	    #if defined(UNIT_TEST)
         packageImpl = packagemanager::IPackageImplDummy::instance();
         #else
 	    packageImpl = packagemanager::IPackageImpl::instance();
@@ -1195,7 +1195,7 @@ namespace Plugin {
             string errorReason = "";
             if(mStorageManagerObject->CreateStorage(packageId, STORAGE_MAX_SIZE, path, errorReason) == Core::ERROR_NONE) {
                 LOGINFO("CreateStorage path [%s]", path.c_str());
-                //#if defined(USE_LIBPACKAGE) || defined(UNIT_TEST) || defined(ENABLE_NATIVEBUILD)
+                //#if defined(USE_LIBPACKAGE) || defined(UNIT_TEST)
                 packagemanager::ConfigMetaData config;
                 packagemanager::Result pmResult = packageImpl->Install(packageId, version, keyValues, fileLocator, config);
                 if (pmResult == packagemanager::SUCCESS) {
