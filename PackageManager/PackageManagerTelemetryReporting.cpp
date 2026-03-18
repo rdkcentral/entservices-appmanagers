@@ -53,7 +53,9 @@ void PackageManagerTelemetryReporting::reset()
 void PackageManagerTelemetryReporting::recordAndPublishTelemetryData(const std::string& marker,
     const std::string& appId,
     uint64_t requestTime,
-    int errorCode)
+    int errorCode,
+    const std::string& runtimeId,
+    const std::string& runtimeVersion)
 {
     if (!Utils::isTelemetryMetricsEnabled()) {
         return;
@@ -80,6 +82,8 @@ void PackageManagerTelemetryReporting::recordAndPublishTelemetryData(const std::
 
     if (marker == TELEMETRY_MARKER_LAUNCH_TIME) {
         jsonParam["packageManagerLockTime"] = duration;
+        jsonParam["runtimeId"] = runtimeId;
+        jsonParam["runtimeVersion"] = runtimeVersion;
         publish = false;
     } else if (marker == TELEMETRY_MARKER_CLOSE_TIME) {
         jsonParam["packageManagerUnlockTime"] = duration;

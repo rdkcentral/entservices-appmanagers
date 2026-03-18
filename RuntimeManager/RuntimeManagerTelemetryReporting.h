@@ -34,7 +34,7 @@ public:
 
     void initialize(PluginHost::IShell* service);
     void reset();
-    void recordTelemetryData(const std::string& marker, const std::string& appId, uint64_t requestTime);
+    void recordTelemetryData(const std::string& marker, const std::string& appId, uint64_t requestTime, const std::string& fieldName = "");
 
 private:
     RuntimeManagerTelemetryReporting();
