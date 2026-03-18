@@ -34,7 +34,7 @@ namespace WPEFramework
 
     PreinstallManagerImplementation::PreinstallManagerImplementation()
         : mAdminLock(), mAppPreinstallDirectory(""), mPreinstallManagerNotifications(), mCurrentservice(nullptr),
-          mPreinstallState(State::NOT_STARTED), mInstallThread()
+          mPreinstallState(State::NOT_STARTED), mStopInstall(false), mInstallThread()
     {
         LOGINFO("Create PreinstallManagerImplementation Instance");
         if (nullptr == PreinstallManagerImplementation::_instance)
@@ -52,6 +52,7 @@ namespace WPEFramework
     {
         LOGINFO("Delete PreinstallManagerImplementation Instance");
 
+        mStopInstall = true;
         if (mInstallThread.joinable())
         {
             LOGWARN("mInstallThread still joinable in destructor; joining to ensure clean shutdown");
@@ -333,6 +334,14 @@ namespace WPEFramework
 
         for (auto &pkg : preinstallPackages)
         {
+            // Check stop flag between installations. Note: if Install() is blocking,
+            // shutdown will be delayed until the current installation completes.
+            if (mStopInstall.load())
+            {
+                LOGWARN("Stop requested; aborting remaining package installations");
+                break;
+            }
+
             if ((pkg.packageId.empty() || pkg.version.empty() || pkg.fileLocator.empty()))
             {
                 LOGERR("Skipping invalid package with empty fields: %s", pkg.fileLocator.empty() ? "NULL" : pkg.fileLocator.c_str());
@@ -545,11 +554,13 @@ namespace WPEFramework
 
         releasePackageManagerObject(packageInstaller);
 
-        // Set state to IN_PROGRESS before starting the worker thread to avoid race with GetPreinstallState()
+        // Set state to IN_PROGRESS and reset stop flag before starting the worker thread,
+        // both under the lock to avoid a race where the destructor sets mStopInstall=true
+        // between the reset and the thread launch.
         mAdminLock.Lock();
+        mStopInstall = false;
         mPreinstallState = State::IN_PROGRESS;
         mAdminLock.Unlock();
-
         try
         {
             mInstallThread = std::thread(&PreinstallManagerImplementation::installPackages, this, std::move(preinstallPackages));
