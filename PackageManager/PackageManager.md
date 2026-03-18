@@ -24,7 +24,7 @@ The **PackageManager** handles the complete lifecycle of application packages in
 | Module | Purpose |
 |--------|---------|
 | DownloadManager | HTTP download operations |
-| AppStorageManager | App storage allocation |
+| org.rdk.AppStorageManager (IAppStorageManager) | App storage allocation |
 
 ---
 
@@ -42,7 +42,7 @@ graph TB
 
     subgraph "External Services"
         DLMgr[DownloadManager]
-        StorMgr[AppStorageManager]
+        StorMgr[org.rdk.AppStorageManager<br/>IAppStorageManager]
         FS[FileSystem]
     end
 
