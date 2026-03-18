@@ -3157,8 +3157,6 @@ TEST_F(AppManagerTest, OnAppInstallationStatusChangedSuccess)
  */
 TEST_F(AppManagerTest, OnApplicationStateChangedSuccess)
 {
-    constexpr uint32_t NO_EVENT_TIMEOUT_MS = 5000;
-
     Core::hresult status;
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
@@ -3177,7 +3175,7 @@ TEST_F(AppManagerTest, OnApplicationStateChangedSuccess)
         "start"
     );
     /* Ensure that the OnAppLifecycleStateChanged callback is not called/invoked */
-    signalled = notification.WaitForRequestStatus(NO_EVENT_TIMEOUT_MS, AppManager_onAppLifecycleStateChanged);
+    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
     EXPECT_FALSE(signalled & AppManager_onAppLifecycleStateChanged);
 
     mAppManagerImpl->Unregister(&notification);

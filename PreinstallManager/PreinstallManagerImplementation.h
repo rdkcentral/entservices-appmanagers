@@ -82,11 +82,7 @@ namespace WPEFramework
                 string fileLocator;
                 string packageId;
                 string version;
-#ifdef RDK_SERVICES_L1_TEST
-                WPEFramework::Exchange::RuntimeConfig* configMetadata;
-#else
                 WPEFramework::Exchange::RuntimeConfig configMetadata;
-#endif
                 string installStatus; // optional field to store install status for logging purpose
             } PackageInfo;
 
