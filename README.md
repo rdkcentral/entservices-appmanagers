@@ -23,7 +23,7 @@ graph TB
     subgraph "Core Services"
         LCM[LifecycleManager]
         PkgMgr[PackageManager]
-        StorMgr[StorageManager]
+        StorMgr[AppStorageManager]
         Telemetry[TelemetryMetrics]
     end
 
