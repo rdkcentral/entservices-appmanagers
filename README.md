@@ -23,7 +23,7 @@ graph TB
     subgraph "Core Services"
         LCM[LifecycleManager]
         PkgMgr[PackageManager]
-        StorMgr[StorageManager]
+        AppStorMgr[AppStorageManager]
         Telemetry[TelemetryMetrics]
     end
 
@@ -44,16 +44,16 @@ graph TB
     Client --> AppMgr
     AppMgr --> LCM
     AppMgr --> PkgMgr
-    AppMgr --> StorMgr
+    AppMgr --> AppStorMgr
     AppMgr --> Telemetry
     LCM --> RTM
     LCM --> WinMgr
     PkgMgr --> DLMgr
-    PkgMgr --> StorMgr
+    PkgMgr --> AppStorMgr
     PreMgr --> PkgMgr
     RTM --> Dobby
     RTM --> WinMgr
-    StorMgr --> FS
+    AppStorMgr --> FS
     DLMgr --> Network
     AppMgr --> PStore
 ```
