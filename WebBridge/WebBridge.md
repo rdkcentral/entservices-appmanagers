@@ -101,14 +101,17 @@ classDiagram
 WebBridge/
 ├── WebBridge.cpp              Plugin implementation
 ├── WebBridge.h                Plugin class definition
-├── Module.cpp/h               Module registration
+├── WebBridge.md               Plugin documentation (this file)
+├── Module.cpp                 Module registration implementation
+├── Module.h                   Module registration header
 ├── CMakeLists.txt             Build configuration
 ├── WebBridge.config           Runtime configuration
-├── js/
-│   ├── WebBridgeClient.js     JavaScript client library
-│   └── WebBridgeSDK.js        SDK wrapper
-└── docs/
-    └── API.md                 API documentation
+├── CHANGELOG.md               Change history
+└── js/
+    ├── WebBridgeClient.js     JavaScript client library
+    ├── WebBridgeSDK.js        SDK wrapper
+    ├── WebBridgeServer.js     JavaScript server example
+    └── calc_server.html       Calculator server demo page
 ```
 
 ---
