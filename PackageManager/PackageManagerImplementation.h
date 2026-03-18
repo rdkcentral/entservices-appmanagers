@@ -309,7 +309,7 @@ class PackageManagerImplementation
         uint32_t userId = 30000;
         uint32_t groupId = 30000;
 
-        #if defined(UNIT_TEST) || defined(ENABLE_NATIVEBUILD)
+        #if defined(UNIT_TEST)
         std::shared_ptr<packagemanager::IPackageImplDummy> packageImpl;
         #else
         std::shared_ptr<packagemanager::IPackageImpl> packageImpl;
