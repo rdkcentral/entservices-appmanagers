@@ -1,5 +1,5 @@
 callsign = "org.rdk.L1TestsIN"
-autostart = false
+autostart = False
 
 configuration = JSON()
 
