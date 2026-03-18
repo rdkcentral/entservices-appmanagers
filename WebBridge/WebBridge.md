@@ -107,11 +107,9 @@ WebBridge/
 ├── CMakeLists.txt             Build configuration
 ├── WebBridge.config           Runtime configuration
 ├── CHANGELOG.md               Change history
-└── js/
-    ├── WebBridgeClient.js     JavaScript client library
-    ├── WebBridgeSDK.js        SDK wrapper
-    ├── WebBridgeServer.js     JavaScript server example
-    └── calc_server.html       Calculator server demo page
+└── js/                        JavaScript clients, SDKs, and demos
+    ├── *.js                   JavaScript client libraries and examples
+    └── *.html                 Demo pages
 ```
 
 ---
