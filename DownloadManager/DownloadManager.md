@@ -59,13 +59,13 @@ classDiagram
         -DownloadManagerHttpClient* mHttpClient
         -thread mDownloaderThread
         -mutex mMutex
-        +Download(id, url, dest, priority) hresult
-        +Pause(id) hresult
-        +Resume(id) hresult
-        +Cancel(id) hresult
-        +Delete(id) hresult
-        +GetProgress(id) DownloadProgress
-        +SetRateLimit(bytesPerSec) hresult
+        +Download(url, options, downloadId) hresult
+        +Pause(downloadId) hresult
+        +Resume(downloadId) hresult
+        +Cancel(downloadId) hresult
+        +Delete(downloadId) hresult
+        +Progress(downloadId) DownloadProgress
+        +RateLimit(downloadId, limit) hresult
     }
 
     class DownloadInfo {
