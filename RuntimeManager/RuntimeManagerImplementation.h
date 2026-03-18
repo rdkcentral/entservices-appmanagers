@@ -229,6 +229,7 @@ namespace WPEFramework
                 // WindowManager event handler
                 void onWindowManagerDisconnected(const std::string& client);
 
+                friend class WindowManagerConnector;
                 friend class Job;
 
             public/*members*/:
