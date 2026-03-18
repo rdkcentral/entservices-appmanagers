@@ -72,7 +72,7 @@ classDiagram
         +Suspend(appInstanceId) hresult
         +Resume(appInstanceId) hresult
         +Hibernate(appInstanceId) hresult
-        +Wake(appInstanceId) hresult
+        +Wake(appInstanceId, runtimeState) hresult
         +Terminate(appInstanceId) hresult
         +Kill(appInstanceId) hresult
     }
