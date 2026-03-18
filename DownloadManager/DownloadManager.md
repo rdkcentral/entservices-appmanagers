@@ -140,13 +140,13 @@ enum DownloadPriority {
 
 | Method | Purpose |
 |--------|---------|
-| `Download(downloadId, url, destPath, priority)` | Queue a new download |
+| `Download(url, options, downloadId)` | Queue a new download |
 | `Pause(downloadId)` | Pause an active download |
 | `Resume(downloadId)` | Resume a paused download |
 | `Cancel(downloadId)` | Cancel a download |
 | `Delete(downloadId)` | Delete a completed download file |
 | `GetProgress(downloadId)` | Get current download progress |
-| `SetRateLimit(bytesPerSecond)` | Set global download rate limit |
+| `RateLimit(downloadId, limit)` | Set per-download rate limit |
 
 ---
 
