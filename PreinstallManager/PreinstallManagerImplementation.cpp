@@ -21,6 +21,7 @@
 #include <thread>
 #include <utility>
 #include <cstddef>
+#include <unordered_map>
 
 #include "PreinstallManagerImplementation.h"
 
