@@ -24,7 +24,7 @@ The **RuntimeManager** manages OCI container lifecycle using Dobby. It handles a
 |--------|---------|
 | Dobby (IOCIContainer) | OCI container runtime |
 | RDKWindowManager | Wayland display creation |
-| StorageManager | App storage paths |
+| AppStorageManager | App storage paths |
 
 ---
 
@@ -44,7 +44,7 @@ graph TB
     subgraph "External Services"
         Dobby[Dobby<br/>IOCIContainer]
         WinMgr[RDKWindowManager]
-        StorMgr[StorageManager]
+        StorMgr[AppStorageManager]
     end
 
     RTM --> RTMI
