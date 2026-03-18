@@ -87,11 +87,6 @@ jobs:
           &&
           sudo apt install -y libsqlite3-dev libcurl4-openssl-dev valgrind lcov clang libsystemd-dev libboost-all-dev libwebsocketpp-dev meson libcunit1 libcunit1-dev curl protobuf-compiler-grpc libgrpc-dev libgrpc++-dev libjsoncpp-dev libxtables-dev libip4tc-dev libip6tc-dev
 
-      - name: Install GStreamer
-        run: |
-           sudo apt update
-           sudo apt install -y libunwind-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
-
       - name: Build trower-base64
         run: |
             if [ ! -d "trower-base64" ]; then
@@ -347,7 +342,6 @@ jobs:
           -I $GITHUB_WORKSPACE/install/usr/include
           -I $GITHUB_WORKSPACE/install/usr/include/WPEFramework
           -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/Iarm.h
-          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/libusb.h
           -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/Rfc.h
           -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/RBus.h
           -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/Telemetry.h
@@ -358,7 +352,6 @@ jobs:
           -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/wpa_ctrl_mock.h
           -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/readprocMockInterface.h
           -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/gdialservice.h
-          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/RdkWindowManager.h
           --coverage
           -Wall -Wno-unused-result -Wno-deprecated-declarations -Wno-error=format=
           -Wl,-wrap,system -Wl,-wrap,popen -Wl,-wrap,syslog -Wl,-wrap,v_secure_system -Wl,-wrap,v_secure_popen -Wl,-wrap,v_secure_pclose -Wl,-wrap,unlink
