@@ -43,7 +43,6 @@ cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/entservices-appmanagers \
 -include ${GITHUB_WORKSPACE}/Tests/mocks/pkg.h \
 -include ${GITHUB_WORKSPACE}/Tests/mocks/maintenanceMGR.h \
 -include ${GITHUB_WORKSPACE}/Tests/mocks/secure_wrappermock.h \
--include ${GITHUB_WORKSPACE}/Tests/mocks/Dobby.h \
 -Wall -Werror -Wno-error=format \
 -Wl,-wrap,system -Wl,-wrap,popen -Wl,-wrap,syslog \
 -DENABLE_TELEMETRY_LOGGING -DUSE_IARMBUS \
