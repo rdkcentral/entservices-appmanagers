@@ -67,7 +67,7 @@ classDiagram
     class TelemetryMetricsImplementation {
         -list~Metric~ mMetricBuffer
         -mutex mMutex
-        +Record(id, metricsJson, name) hresult
+        +Record(metricName, value, appId) hresult
         +Publish(id, name) hresult
     }
 
@@ -81,13 +81,22 @@ classDiagram
 
     class ITelemetryMetrics {
         <<interface>>
-        +Record(id, metricsJson, name) hresult
+        +Record(metricName, value, appId) hresult
         +Publish(id, name) hresult
     }
 
     TelemetryMetricsImplementation ..|> ITelemetryMetrics
     TelemetryMetricsImplementation --> Metric
 ```
+
+### API Reference (Summary)
+
+- `Record(metricName, value, appId) -> hresult`  
+  - `metricName` (string, required): Logical name of the metric (e.g., `"AppLaunchTime"`).
+  - `value` (string, required): Recorded metric value (e.g., `"1234"` ms, `"true"`, `"ERROR_TIMEOUT"`).
+  - `appId` (string, required): Identifier of the app that the metric is associated with.
+- `Publish(id, name) -> hresult`  
+  - As defined by the TelemetryMetrics implementation; not modified by this document.
 
 ---
 
