@@ -186,10 +186,6 @@ if(RDK_APPMANAGERS_DEBUG)
 endif()
 
 if(RDK_SERVICES_L1_TEST)
-    set(JSONCPP_INCLUDE_PATH "/usr/include/jsoncpp" CACHE PATH "Path to jsoncpp includes")
-    target_include_directories(${PLUGIN_IMPLEMENTATION}
-        PRIVATE
-            ${JSONCPP_INCLUDE_PATH})
     target_link_libraries(${PLUGIN_IMPLEMENTATION} PRIVATE jsoncpp curl)
 endif()
 

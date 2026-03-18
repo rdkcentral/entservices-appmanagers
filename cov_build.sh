@@ -44,6 +44,7 @@ cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/entservices-appmanagers \
 -I ${GITHUB_WORKSPACE}/entservices-testframework/Tests/mocks \
 -I ${GITHUB_WORKSPACE}/entservices-testframework/Tests/mocks/thunder \
 -I ${GITHUB_WORKSPACE}/eshelpers/packager \
+-I /usr/include/jsoncpp \
 -I /usr/include/libdrm \
 -include ${GITHUB_WORKSPACE}/eshelpers/packager/IPackageImpl.h \
 -include ${GITHUB_WORKSPACE}/entservices-testframework/Tests/mocks/devicesettings.h \
