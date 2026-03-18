@@ -54,7 +54,8 @@ namespace WPEFramework
 
         if (mInstallThread.joinable())
         {
-            mInstallThread.join();
+            LOGWARN("mInstallThread still joinable in destructor; detaching to avoid blocking destruction");
+            mInstallThread.detach();
         }
 
         _instance = nullptr;
