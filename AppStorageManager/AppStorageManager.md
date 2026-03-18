@@ -99,11 +99,11 @@ AppStorageManager/
 
 | Method | Purpose |
 |--------|---------|
-| `CreateStorage(appId, quota)` | Create a storage directory for an application with the specified quota |
-| `GetStorage(appId)` | Get the storage path for an application |
-| `DeleteStorage(appId)` | Remove all storage for an application |
-| `Clear(appId)` | Clear app data but keep storage allocated |
-| `ClearAll(exemptionAppIds)` | Clear data for all applications, optionally exempting those listed in `exemptionAppIds` |
+| `CreateStorage(appId, quota, outPath, outSize, outUsed, outErrorReason)` | Create a storage directory for an application with the specified quota and return its path, configured size, current used space, and any error reason |
+| `GetStorage(appId, outPath, outSize, outUsed, outErrorReason)` | Get the storage path, configured size, current used space, and any error reason for an application |
+| `DeleteStorage(appId, outErrorReason)` | Remove all storage for an application and return any error reason |
+| `Clear(appId, outErrorReason)` | Clear app data but keep storage allocated, returning any error reason |
+| `ClearAll(exemptionAppIds, outErrorReason)` | Clear data for all applications, optionally exempting those listed in `exemptionAppIds`, and return any error reason |
 
 ---
 
