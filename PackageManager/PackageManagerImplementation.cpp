@@ -938,7 +938,7 @@ namespace Plugin {
         }
 	    #endif
 
-	    #if defined(UNIT_TEST) || defined(ENABLE_NATIVEBUILD)
+	    #if defined(UNIT_TEST)
         packageImpl = packagemanager::IPackageImplDummy::instance();
         #else
 	    packageImpl = packagemanager::IPackageImpl::instance();
