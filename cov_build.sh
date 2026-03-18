@@ -32,7 +32,9 @@ cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/entservices-appmanagers \
 -DCMAKE_CXX_FLAGS="-DEXCEPTIONS_ENABLE=ON \
 -I ${GITHUB_WORKSPACE}/Tests/mocks \
 -I ${GITHUB_WORKSPACE}/Tests/mocks/thunder \
+-I /usr/include/jsoncpp \
 -I /usr/include/libdrm \
+-include ${GITHUB_WORKSPACE}/eshelpers/packager/IPackageImpl.h \
 -include ${GITHUB_WORKSPACE}/Tests/mocks/Iarm.h \
 -include ${GITHUB_WORKSPACE}/Tests/mocks/Rfc.h \
 -include ${GITHUB_WORKSPACE}/Tests/mocks/RBus.h \
