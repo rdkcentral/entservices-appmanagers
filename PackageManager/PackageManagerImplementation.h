@@ -28,7 +28,7 @@
 #include <fstream>
 #include <cstdio>
 
-#if defined(UNIT_TEST) || defined(ENABLE_NATIVEBUILD)
+#if defined(UNIT_TEST)
 #include "IPackageImplDummy.h"
 #else
 #include <IPackageImpl.h>
