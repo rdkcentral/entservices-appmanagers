@@ -459,10 +459,10 @@ namespace WPEFramework
 
             // fetch installed packages
             Core::hresult listResult = packageInstaller->ListPackages(packageList);
-            if (listResult != Core::ERROR_NONE || packageList == nullptr)
+            if (Core::ERROR_NONE != listResult || nullptr == packageList)
             {
                  LOGERR("ListPackages failed or package list is null");
-                if (packageList != nullptr)
+                if (nullptr != packageList)
                 {
                     packageList->Release();
                     packageList = nullptr;
