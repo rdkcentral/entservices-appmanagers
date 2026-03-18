@@ -66,7 +66,7 @@ graph TB
 flowchart LR
     A[AppManager] -->|SpawnApp| B[LifecycleManager]
     A -->|Lock/Unlock| C[PackageManager]
-    A -->|Clear| D[StorageManager]
+    A -->|Clear| D[AppStorageManager]
     B -->|Run/Suspend/Terminate| E[RuntimeManager]
     E -->|CreateDisplay| F[RDKWindowManager]
     C -->|Download| G[DownloadManager]
