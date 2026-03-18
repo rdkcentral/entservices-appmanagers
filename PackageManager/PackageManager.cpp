@@ -106,6 +106,13 @@ namespace Plugin
             if (mPackageInstaller != nullptr) {
                 mPackageInstaller->Unregister(&mNotificationSink);
                 Exchange::JPackageInstaller::Unregister(*this);
+                mPackageInstaller->Release();
+                mPackageInstaller = nullptr;
+            }
+
+            if (mPackageHandler != nullptr) {
+                mPackageHandler->Release();
+                mPackageHandler = nullptr;
             }
 
             if (mPackageDownloader != nullptr) {
