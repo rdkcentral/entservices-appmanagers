@@ -1,6 +1,9 @@
 name: L1-tests
 
 on:
+  push:
+    branches:
+      - feature/genai123
   workflow_call:
     inputs:
       caller_source:
