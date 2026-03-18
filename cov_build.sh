@@ -19,7 +19,7 @@ cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/entservices-appmanagers \
 -DCMAKE_DISABLE_FIND_PACKAGE_DS=ON \
 -DCOMCAST_CONFIG=OFF \
 -DRDK_SERVICES_COVERITY=ON \
--DRDK_SERVICES_L1_TEST=ON \
+-DRDK_SERVICES_L1_TEST=OFF \
 -DDS_FOUND=ON \
 -DPLUGIN_LIFECYCLE_MANAGER=ON \
 -DPLUGIN_APPMANAGER=ON \
@@ -43,7 +43,10 @@ cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/entservices-appmanagers \
 -I ${GITHUB_WORKSPACE}/entservices-testframework/Tests/headers/Dobby/IpcService \
 -I ${GITHUB_WORKSPACE}/entservices-testframework/Tests/mocks \
 -I ${GITHUB_WORKSPACE}/entservices-testframework/Tests/mocks/thunder \
+-I ${GITHUB_WORKSPACE}/eshelpers/packager \
+-I /usr/include/jsoncpp \
 -I /usr/include/libdrm \
+-include ${GITHUB_WORKSPACE}/eshelpers/packager/IPackageImpl.h \
 -include ${GITHUB_WORKSPACE}/entservices-testframework/Tests/mocks/devicesettings.h \
 -include ${GITHUB_WORKSPACE}/entservices-testframework/Tests/mocks/Iarm.h \
 -include ${GITHUB_WORKSPACE}/entservices-testframework/Tests/mocks/Rfc.h \

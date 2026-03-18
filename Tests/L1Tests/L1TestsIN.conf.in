@@ -1,0 +1,9 @@
+callsign = "org.rdk.L1TestsIN"
+autostart = False
+
+configuration = JSON()
+
+rootobject = JSON()
+rootobject.add("mode", "Off")
+rootobject.add("locator", "lib@MODULE_NAME@.so")
+configuration.add("root", rootobject)

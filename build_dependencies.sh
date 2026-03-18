@@ -35,6 +35,10 @@ git clone --branch main https://github.com/rdkcentral/entservices-apis.git
 
 git clone https://$GITHUB_TOKEN@github.com/rdkcentral/entservices-testframework.git
 
+git clone -b develop https://github.com/rdkcentral/eshelpers.git
+
+git clone -b develop https://github.com/rdkcentral/libPackage.git
+
 ############################
 # Build Thunder-Tools
 echo "======================================================================================"
@@ -78,6 +82,28 @@ cmake -G Ninja -S Thunder -B build/Thunder \
 
 cmake --build build/Thunder --target install
 
+
+############################
+# Build libPackage
+echo "======================================================================================"
+echo "building libPackage"
+
+if [ -f "${GITHUB_WORKSPACE}/eshelpers/packager/IPackageImpl.h" ]; then
+    cp "${GITHUB_WORKSPACE}/eshelpers/packager/IPackageImpl.h" "${GITHUB_WORKSPACE}/libPackage/include/legacy/IPackageImpl.h"
+else
+    echo "Missing required header: ${GITHUB_WORKSPACE}/eshelpers/packager/IPackageImpl.h"
+    exit 1
+fi
+
+cmake -S libPackage -B build/libPackage \
+    -DCMAKE_INCLUDE_PATH="${GITHUB_WORKSPACE}/eshelpers/packager" \
+    -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/install/usr" \
+    -DCMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" \
+    -DGENERIC_CMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" \
+
+cmake --build build/libPackage --target install
+
+#cp eshelpers/packager/IPackageImpl.h $GITHUB_WORKSPACE/install/usr/include/.
 
 ############################
 # Build entservices-apis
