@@ -82,14 +82,30 @@ protected:
     Plugin::PreinstallManagerImplementation *mPreinstallManagerImpl;
     Core::ProxyType<WorkerPoolImplementation> workerPool;
 
+    ~PreinstallManagerTest() override
+    {
+        if (nullptr != mPackageInstallerMock) {
+            delete mPackageInstallerMock;
+            mPackageInstallerMock = nullptr;
+        }
 
+        if (nullptr != mServiceMock) {
+            delete mServiceMock;
+            mServiceMock = nullptr;
+        }
+
+        if (nullptr != p_wrapsImplMock) {
+            Wraps::setImpl(nullptr);
+            delete p_wrapsImplMock;
+            p_wrapsImplMock = nullptr;
+        }
+    }
 
     Core::hresult createResources()
     {
         Core::hresult status = Core::ERROR_GENERAL;
         mServiceMock = new NiceMock<ServiceMock>;
         mPackageInstallerMock = new NiceMock<PackageInstallerMock>;
-        testing::Mock::AllowLeak(mPackageInstallerMock); // Allow leak since mock lifecycle is managed by test framework
         p_wrapsImplMock = new NiceMock<WrapsImplMock>;
         Wraps::setImpl(p_wrapsImplMock);
 
