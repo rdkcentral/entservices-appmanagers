@@ -66,7 +66,13 @@ classDiagram
         -map~uint32_t,LockInfo~ mLocks
         -IDownloadManager* mDownloadManager
         -Exchange::IAppStorageManager* mStorageManager
-        +Download(url, appId) hresult
+        +Download(url, options, downloadId) hresult
+        +Pause(downloadId) hresult
+        +Resume(downloadId) hresult
+        +Cancel(downloadId) hresult
+        +Delete(downloadId) hresult
+        +SetRateLimit(downloadId, limitKbps) hresult
+        +GetProgress(downloadId) DownloadProgress
         +Install(appId) hresult
         +Uninstall(appId) hresult
         +Lock(appId) hresult
@@ -76,9 +82,13 @@ classDiagram
 
     class IPackageDownloader {
         <<interface>>
-        +Download(url, appId) hresult
-        +CancelDownload(appId) hresult
-        +GetDownloadStatus(appId) Status
+        +Download(url, options, downloadId) hresult
+        +Pause(downloadId) hresult
+        +Resume(downloadId) hresult
+        +Cancel(downloadId) hresult
+        +Delete(downloadId) hresult
+        +SetRateLimit(downloadId, limitKbps) hresult
+        +GetProgress(downloadId) DownloadProgress
     }
 
     class IPackageInstaller {
