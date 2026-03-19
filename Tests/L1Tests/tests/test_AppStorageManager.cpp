@@ -1690,8 +1690,6 @@ TEST_F(AppStorageManagerTest, ClearAll_WithValidExemptions) {
 
 TEST_F(AppStorageManagerTest, ClearAll_InvalidJsonFormat) {
     std::string errorReason = "";
-    static int callCount = 0;
-    callCount = 0;
     ON_CALL(*p_wrapsImplMock, opendir(_))
         .WillByDefault([](const char* pathname) {
             return reinterpret_cast<DIR*>(0x1);
@@ -2607,7 +2605,6 @@ TEST_F(AppStorageManagerTest, GetStorage_PersistentStoreGetValueFailure) {
     uint32_t size = 1024;
     std::string path = "";
     std::string errorReason = "";
-    uint32_t used = 0;
     EXPECT_CALL(*p_wrapsImplMock, mkdir(_, _))
         .WillRepeatedly([](const char* path, mode_t mode) {
             return 0;
@@ -2689,7 +2686,6 @@ TEST_F(AppStorageManagerTest, CreateStorage_StatvfsException) {
 
 TEST_F(AppStorageManagerTest, CreateStorage_InvalidAppIdWithSlash) {
     std::string appId = "invalid/appId";
-    uint32_t size = 1024;
     std::string path = "";
     std::string errorReason = "";
     EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("createStorage"), _T("{\"appId\":\"invalid/appId\",\"size\":1024}"), response));
@@ -2698,7 +2694,6 @@ TEST_F(AppStorageManagerTest, CreateStorage_InvalidAppIdWithSlash) {
 
 TEST_F(AppStorageManagerTest, CreateStorage_InvalidAppIdWithBackslash) {
     std::string appId = "invalid\\appId";
-    uint32_t size = 1024;
     std::string path = "";
     std::string errorReason = "";
     EXPECT_EQ(Core::ERROR_UNKNOWN_KEY, handler.Invoke(connection, _T("createStorage"), _T("{\"appId\":\"invalid\\\\appId\",\"size\":1024}"), response));
@@ -2770,20 +2765,14 @@ TEST_F(AppStorageManagerTest, GetStorage_NftwException) {
     std::string path = "";
     std::string errorReason = "";
     uint32_t used = 0;
-    static int mkdirCallCount = 0;
-    mkdirCallCount = 0;
     EXPECT_CALL(*p_wrapsImplMock, mkdir(_, _))
         .WillRepeatedly([](const char* path, mode_t mode) {
             return 0;
         });
-    static int accessCallCount = 0;
-    accessCallCount = 0;
     EXPECT_CALL(*p_wrapsImplMock, access(_, _))
         .WillRepeatedly([](const char* path, int mode) {
             return 0;
         });
-    static int nftwCallCount = 0;
-    nftwCallCount = 0;
     ON_CALL(*p_wrapsImplMock, nftw(_, _, _, _))
         .WillByDefault([](const char* dirpath, int (*fn)(const char*, const struct stat*, int, struct FTW*), int nopenfd, int flags) {
             return 0;
@@ -2875,8 +2864,6 @@ TEST_F(AppStorageManagerTest, DeleteStorage_NftwException) {
         .WillRepeatedly([](const char* path, int mode) {
             return 0;
         });
-    static int nftwCallCount = 0;
-    nftwCallCount = 0;
     ON_CALL(*p_wrapsImplMock, nftw(_, _, _, _))
         .WillByDefault([](const char* dirpath, int (*fn)(const char*, const struct stat*, int, struct FTW*), int nopenfd, int flags) {
             return 0;
