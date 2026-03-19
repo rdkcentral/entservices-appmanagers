@@ -427,7 +427,7 @@ uint32_t Test_Comp_MultipleNotificationsReceiveDispatchedEvent()
         "com.multi.app",
         "inst-multi",
         WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_RUNNING,
-        WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADED,
+        WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING,
         WPEFramework::Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE);
 
     std::this_thread::sleep_for(std::chrono::milliseconds(150));

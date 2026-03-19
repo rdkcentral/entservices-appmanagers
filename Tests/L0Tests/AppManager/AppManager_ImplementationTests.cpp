@@ -731,7 +731,7 @@ uint32_t Test_Impl_HandleOnAppLifecycleStateChangedDispatchesNotification()
         "com.test.app",
         "inst-123",
         WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_RUNNING,
-        WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADED,
+        WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING,
         WPEFramework::Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE);
 
     // Allow worker-pool thread to execute the dispatched Job

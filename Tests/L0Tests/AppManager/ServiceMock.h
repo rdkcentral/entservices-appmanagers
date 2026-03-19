@@ -211,8 +211,8 @@ public:
 
     void Register(WPEFramework::PluginHost::IPlugin::INotification*) override {}
     void Unregister(WPEFramework::PluginHost::IPlugin::INotification*) override {}
-    void Register(WPEFramework::RPC::IRemoteConnection::INotification*) override {}
-    void Unregister(const WPEFramework::RPC::IRemoteConnection::INotification*) override {}
+    void Register(WPEFramework::RPC::IRemoteConnection::INotification*) {}
+    void Unregister(const WPEFramework::RPC::IRemoteConnection::INotification*) {}
 
     WPEFramework::RPC::IRemoteConnection* RemoteConnection(const uint32_t) const
     {
