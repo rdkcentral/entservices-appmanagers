@@ -13,6 +13,7 @@ cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/entservices-appmanagers \
 -DUSE_THUNDER_R4=ON \
 -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/install/usr" \
 -DCMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" \
+-DCMAKE_PREFIX_PATH="/usr;${GITHUB_WORKSPACE}/eshelpers" \
 -DCMAKE_VERBOSE_MAKEFILE=ON \
 -DCMAKE_DISABLE_FIND_PACKAGE_IARMBus=ON \
 -DCMAKE_DISABLE_FIND_PACKAGE_RFC=ON \
@@ -32,9 +33,6 @@ cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/entservices-appmanagers \
 -DCMAKE_CXX_FLAGS="-DEXCEPTIONS_ENABLE=ON \
 -I ${GITHUB_WORKSPACE}/Tests/mocks \
 -I ${GITHUB_WORKSPACE}/Tests/mocks/thunder \
--I /usr/include/jsoncpp \
--I /usr/include/libdrm \
--I ${GITHUB_WORKSPACE}/eshelpers/packager \
 -include ${GITHUB_WORKSPACE}/Tests/mocks/Iarm.h \
 -include ${GITHUB_WORKSPACE}/Tests/mocks/Rfc.h \
 -include ${GITHUB_WORKSPACE}/Tests/mocks/RBus.h \
