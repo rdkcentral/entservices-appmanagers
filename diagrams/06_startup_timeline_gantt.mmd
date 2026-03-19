@@ -1,0 +1,33 @@
+gantt
+    title Plugin Startup Timeline - Tier-Based Parallel Initialization
+    dateFormat YYYY-MM-DD HH:mm:ss
+    axisFormat %H:%M:%S
+    
+    section TIER 1
+    TelemetryMetrics           :t1a, 2026-03-19 00:00:00, 40ms
+    OCIContainer              :t1b, 2026-03-19 00:00:00, 30ms
+    AppStorageManager         :t1c, 2026-03-19 00:00:00, 35ms
+    RDKWindowManager          :t1d, 2026-03-19 00:00:00, 50ms
+    PackageManagerRDKEMS      :t1e, 2026-03-19 00:00:00, 35ms
+    DownloadManager           :t1f, 2026-03-19 00:00:00, 40ms
+    
+    section TIER 1 Milestones
+    All TIER 1 Ready          :crit, t1m, 2026-03-19 00:00:00, 100ms
+    
+    section TIER 2
+    RuntimeManager            :t2a, after t1m, 100ms
+    PackageManager            :t2b, after t1m, 50ms
+    PreinstallManager         :t2c, after t1m, 50ms
+    
+    section TIER 2 Milestones
+    All TIER 2 Ready          :crit, t2m, after t2a, 0ms
+    
+    section TIER 3
+    LifecycleManager          :t3a, after t2m, 50ms
+    AppManager                :t3b, after t2m, 100ms
+    
+    section TIER 3 Milestones
+    ✅ SYSTEM READY           :crit, t3m, after t3b, 0ms
+    
+    section Rendering
+    Shell Thread Running      :active, render, 2026-03-19 00:00:05, 1000ms

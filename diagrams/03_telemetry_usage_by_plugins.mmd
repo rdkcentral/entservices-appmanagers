@@ -1,0 +1,53 @@
+graph TB
+    subgraph TM["🎯 TelemetryMetrics<br/>(org.rdk.TelemetryMetrics)<br/>Central Service"]
+        TMI["Record(id, metrics, name)<br/>Publish(id, name)"]
+    end
+    
+    subgraph T1["TIER 1 - Bootstrap"]
+        TelMet["TelemetryMetrics<br/>(Provider)"]
+    end
+    
+    subgraph T2["TIER 2 - Integration"]
+        RT["RuntimeManager<br/>Uses: Lazy-load<br/>Records:<br/>- Container started<br/>- Container stopped<br/>- Container state changed"]
+        PM["PackageManager<br/>Uses: Lazy-load<br/>Records:<br/>- Download time<br/>- Download errors"]
+        PIM["PreinstallManager"]
+    end
+    
+    subgraph T3["TIER 3 - Application"]
+        LM["LifecycleManager<br/>Uses: Lazy-load<br/>Records:<br/>- Launch time<br/>- Close time<br/>- State transitions"]
+        AM["AppManager<br/>Uses: Eager-load<br/>Records:<br/>- App launch time<br/>- App close time<br/>- App crashes<br/>- App errors"]
+    end
+    
+    subgraph UTIL["TIER 1 & 2 - Utilities"]
+        DM["DownloadManager<br/>Uses: Lazy-load<br/>Records:<br/>- Download metrics<br/>- Download errors"]
+        RWM["RDKWindowManager<br/>Uses: Eager-load<br/>Records:<br/>- Display creation time"]
+    end
+    
+    TelMet -->|Global Cache<br/>static gTelemetryMetricsObject| TM
+    
+    RT -->|ensureTelemetryClient()<br/>on first record()| TM
+    PM -->|ensureTelemetryClient()<br/>on first record()| TM
+    LM -->|ensureTelemetryClient()<br/>on first record()| TM
+    AM -->|immediate access<br/>eager loaded| TM
+    DM -->|ensureTelemetryClient()<br/>on first record()| TM
+    RWM -->|immediate access<br/>eager loaded| TM
+    
+    TM -->|Record/Publish| Events["📊 Telemetry Bus<br/>Data Forwarding"]
+    
+    Events -->|Serialization| MarkerDB["Telemetry Markers:<br/>- MARKER_LAUNCH_TIME<br/>- MARKER_CLOSE_TIME<br/>- MARKER_DOWNLOAD_TIME<br/>- MARKER_APP_CRASHED<br/>- etc."]
+    
+    MarkerDB --> External["📤 External Systems<br/>Analytics<br/>Monitoring<br/>Logging"]
+    
+    style TM fill:#FFD700
+    style T1 fill:#FFE4B5
+    style T2 fill:#B5D8FF
+    style T3 fill:#D8B5FF
+    style UTIL fill:#E8DAEF
+    style Events fill:#98FB98
+    style External fill:#87CEEB
+    style RT fill:#E3F2FD
+    style AM fill:#E3F2FD
+    style RWM fill:#E3F2FD
+    style LM fill:#E3F2FD
+    style PM fill:#E3F2FD
+    style DM fill:#E3F2FD

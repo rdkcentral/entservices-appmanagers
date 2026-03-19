@@ -1,0 +1,60 @@
+graph TB
+    subgraph WM["🔵 RDKWindowManager<br/>Independent Provider<br/>Tier 1 - Bootstrap"]
+        WMInit["Initialize():<br/>• Shell thread launch<br/>• Event listener setup<br/>• Telemetry (optional)"]
+        WMCore["Core Functionality:<br/>• CreateDisplay()<br/>• Screenshot()<br/>• Inactivity reporting"]
+        WMThread["Shell Thread:<br/>while(isRunning) {<br/>  Draw, Update, Sleep<br/>}"]
+    end
+    
+    subgraph TM["🟡 TelemetryMetrics<br/>Tier 1 - Bootstrap"]
+        TMService["ITelemetryMetrics<br/>Record(id, metrics)<br/>Publish(id, name)"]
+    end
+    
+    subgraph RT["🟢 RuntimeManager<br/>Tier 2 - Integration"]
+        RTInit["Initialize():<br/>Query OCIContainer ✓<br/>Query AppStorageManager ✓<br/>Create WindowManagerConnector"]
+        RTConnect["WindowManagerConnector:<br/>QueryInterfaceByCallsign<br/>org.rdk.RDKWindowManager"]
+        RTListen["Register listener:<br/>WindowManagerNotification"]
+    end
+    
+    subgraph LM["🟣 LifecycleManager<br/>Tier 3 - Application"]
+        LMInit["Initialize():<br/>Query RuntimeManager ✓<br/>Query RDKWindowManager ✓"]
+        LMHandler["WindowManagerHandler:<br/>OnUserInactivity()<br/>OnDisconnected()"]
+        LMListen["Register listener:<br/>WindowManagerNotification"]
+    end
+    
+    subgraph Other["Other Plugins"]
+        PM["PackageManager"]
+        PIM["PreinstallManager"]
+        DM["DownloadManager"]
+        AM["AppManager"]
+    end
+    
+    WMInit -->|Eager-load attempt| TM
+    TM -.->|Success or<br/>Graceful failure| WMInit
+    
+    WMCore -->|First telemetry call| TM
+    WMCore -->|Runtime requests<br/>CreateDisplay| RTConnect
+    
+    WMThread -->|Continues<br/>independently| WMCore
+    
+    RTConnect -->|Lazy-load<br/>TelemetryMetrics| TM
+    RTConnect -->|Register| RTListen
+    RTListen -->|Listen to| WMCore
+    
+    LMInit -->|Queries| RTConnect
+    LMInit -->|Queries| WMCore
+    LMHandler -->|Listen to inactivity| WMCore
+    LMListen -->|Register| LMHandler
+    
+    RTConnect -->|Notifies<br/>state changes| LMHandler
+    
+    Other -->|Lazy-load<br/>TelemetryMetrics| TM
+    
+    style WM fill:#87CEEB
+    style TM fill:#FFD700
+    style RT fill:#B5D8FF
+    style LM fill:#D8B5FF
+    style Other fill:#E0E0E0
+    style RTConnect fill:#98FB98
+    style RTListen fill:#FFE4B5
+    style LMHandler fill:#FFE4B5
+    style LMListen fill:#FFE4B5

@@ -1,0 +1,115 @@
+sequenceDiagram
+    participant Thunder as Thunder Framework
+    participant WM as RDKWindowManager
+    participant TM as TelemetryMetrics
+    participant ST as Shell Thread
+    participant TClient as TelemetryClient
+    participant Cache as Global Cache<br/>gTelemetryMetricsObject
+    
+    Thunder->>WM: Initialize(PluginHost::IShell*)
+    activate WM
+    
+    WM->>WM: mService = service
+    WM->>WM: mService->AddRef()
+    WM->>WM: Create event listener
+    WM->>WM: enableInactivityReporting()
+    
+    WM->>ST: Launch shell thread<br/>std::thread([=]() { })
+    activate ST
+    note over ST: Shell thread runs<br/>independently in background
+    
+    WM->>WM: TelemetryReporting::init(service)
+    
+    rect rgb(200, 150, 255)
+        note over WM,TClient: Telemetry Initialization (Non-blocking)
+        WM->>TClient: initialize(mCurrentservice)
+        activate TClient
+        
+        TClient->>Cache: Lock gTelemetryLock
+        activate Cache
+        
+        TClient->>Cache: Check: gTelemetryMetricsObject?
+        alt TelemetryMetrics Already Cached
+            TClient->>Cache: Use existing
+            TClient->>Cache: Unlock
+            deactivate Cache
+            TClient->>WM: Return ERROR_NONE
+        else TelemetryMetrics Not Cached
+            deactivate Cache
+            TClient->>TM: QueryInterfaceByCallsign
+            activate TM
+            alt TelemetryMetrics Available
+                TM-->>TClient: Interface found ✓
+            else TelemetryMetrics Not Available
+                TM-->>TClient: null (Not ready yet)
+            end
+            deactivate TM
+            
+            TClient->>Cache: Lock gTelemetryLock
+            activate Cache
+            TClient->>Cache: gTelemetryMetricsObject = result
+            TClient->>Cache: Unlock
+            deactivate Cache
+            
+            TClient->>WM: Return Core::ERROR_NONE
+        end
+    end
+    
+    deactivate TClient
+    
+    WM->>WM: Return Core::ERROR_NONE
+    deactivate WM
+    
+    Thunder->>Thunder: Continue to next plugin
+    
+    par ST Rendering Loop
+        ST->>ST: while(isRunning) {
+        ST->>ST: • Lock gRdkWindowManagerMutex
+        ST->>ST: • Process display requests
+        ST->>ST: • CompositorController::draw()
+        ST->>ST: • CompositorController::update()
+        ST->>ST: • Unlock mutex
+        ST->>ST: • usleep for frame rate
+        ST->>ST: }
+    end
+    
+    note over WM,ST: Optional: TelemetryMetrics starts later
+    Thunder->>TM: TelemetryMetrics.Initialize()
+    activate TM
+    TM-->>Thunder: Ready
+    deactivate TM
+    
+    par Later: First Telemetry Call from WM
+        WM->>TClient: recordTelemetry(appId, metrics)
+        activate TClient
+        
+        TClient->>TClient: ensureTelemetryClient()
+        TClient->>Cache: Check: isAvailable()?
+        
+        alt Cache Empty (First time after TM started)
+            TClient->>Cache: Lock
+            TClient->>TM: QueryInterfaceByCallsign
+            activate TM
+            TM-->>TClient: Interface found ✓
+            deactivate TM
+            TClient->>Cache: Cache it
+            TClient->>Cache: Unlock
+        else Already Cached (Fast path)
+            TClient->>Cache: Use cached<br/>~<1ms
+        end
+        
+        TClient->>TM: Record(appId, metrics)
+        TM-->>TClient: Success
+        TClient->>WM: Telemetry recorded ✓
+        deactivate TClient
+    end
+    
+    ST->>ST: Continue rendering loop
+    
+    note over WM,ST: ✅ All complete - No blocking!
+    
+    style WM fill:#B5D8FF
+    style ST fill:#D8B5FF
+    style TM fill:#FFD700
+    style TClient fill:#E8DAEF
+    style Cache fill:#98FB98

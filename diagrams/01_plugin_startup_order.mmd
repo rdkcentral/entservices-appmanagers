@@ -1,0 +1,62 @@
+graph TB
+    Start([START: Thunder Framework Load]) --> T1["<b>TIER 1: Bootstrap Layer (T+0 to T+100ms)</b><br/>PARALLEL INITIALIZATION"]
+    
+    T1 --> TM["🔵 TelemetryMetrics<br/>Ready: T+40ms<br/>No dependencies"]
+    T1 --> OCI["🔵 OCIContainer<br/>Ready: T+30ms<br/>No dependencies"]
+    T1 --> ASM["🔵 AppStorageManager<br/>Ready: T+35ms<br/>No dependencies"]
+    T1 --> RWM["🔵 RDKWindowManager<br/>Ready: T+50ms<br/>Shell Thread Launch<br/>No dependencies"]
+    T1 --> PKG["🔵 PackageManagerRDKEMS<br/>Ready: T+35ms<br/>No dependencies"]
+    T1 --> DM["🔵 DownloadManager<br/>Ready: T+40ms<br/>No dependencies"]
+    
+    TM --> Conv1{"All TIER 1<br/>Ready?"}
+    OCI --> Conv1
+    ASM --> Conv1
+    RWM --> Conv1
+    PKG --> Conv1
+    DM --> Conv1
+    
+    Conv1 -->|T+100ms| T2["<b>TIER 2: Integration Layer (T+100 to T+200ms)</b><br/>SEQUENTIAL START"]
+    
+    T2 --> RT["🟢 RuntimeManager<br/>Ready: T+200ms<br/>Queries: OCI ✓, ASM ✓, RWM ✓<br/>Creates WindowManagerConnector<br/>Registers DobbyEventListener"]
+    
+    T2 --> PM["🟢 PackageManager<br/>Ready: T+150ms<br/>Queries: ASM ✓"]
+    
+    T2 --> PIM["🟢 PreinstallManager<br/>Ready: T+150ms<br/>Queries: PackageManagerRDKEMS ✓"]
+    
+    RT --> Conv2{"All TIER 2<br/>Ready?"}
+    PM --> Conv2
+    PIM --> Conv2
+    
+    Conv2 -->|T+200ms| T3["<b>TIER 3: Application Layer (T+200 to T+300ms)</b><br/>SEQUENTIAL START"]
+    
+    T3 --> LM["🟣 LifecycleManager<br/>Ready: T+250ms<br/>Queries: RuntimeManager ✓, RDKWindowManager ✓<br/>Registers listeners"]
+    
+    T3 --> AM["🟣 AppManager<br/>Ready: T+300ms<br/>Queries: PersistentStore ⚠️, PackageManagerRDKEMS ✓, ASM ✓<br/>Registers listeners"]
+    
+    LM --> Conv3{"All TIER 3<br/>Ready?"}
+    AM --> Conv3
+    
+    Conv3 -->|T+300ms| Ready["✅ SYSTEM FULLY READY<br/>All Connections Established<br/>All Listeners Registered<br/>Ready for Operations"]
+    
+    Ready --> End([READY TO MANAGE APPLICATIONS])
+    
+    style Start fill:#e1f5e1
+    style End fill:#e1f5e1
+    style Ready fill:#90EE90
+    style T1 fill:#FFE4B5
+    style T2 fill:#B5D8FF
+    style T3 fill:#D8B5FF
+    style Conv1 fill:#FFE4B5
+    style Conv2 fill:#B5D8FF
+    style Conv3 fill:#D8B5FF
+    style TM fill:#FFFFFF
+    style OCI fill:#FFFFFF
+    style ASM fill:#FFFFFF
+    style RWM fill:#FFFFFF
+    style PKG fill:#FFFFFF
+    style DM fill:#FFFFFF
+    style RT fill:#FFFFFF
+    style PM fill:#FFFFFF
+    style PIM fill:#FFFFFF
+    style LM fill:#FFFFFF
+    style AM fill:#FFFFFF

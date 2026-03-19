@@ -1,0 +1,78 @@
+graph TB
+    Start([Plugin Initialize]) --> Check{"Is Telemetry<br/>Enabled?<br/>ENABLE_AIMANAGERS_TELEMETRY_METRICS"}
+    
+    Check -->|No| Disabled["⚠️ DISABLED<br/>All telemetry calls are NO-OP<br/>isTelemetryMetricsEnabled() = false"]
+    
+    Check -->|Yes| Init["🔄 Plugin Initialization<br/>Call setService(IShell*)<br/>Store PluginHost::IShell pointer"]
+    
+    Disabled --> End1([Continue Without Telemetry])
+    
+    Init --> EagerInit{"Initialize Method<br/>Called?"}
+    
+    EagerInit -->|RDKWindowManager<br/>AppManager<br/>LifecycleManager| EagerPath["✓ EAGER INITIALIZATION<br/>➤ initializeTelemetryClient()"]
+    
+    EagerInit -->|Other Plugins| LazyPath["✓ LAZY INITIALIZATION<br/>➤ Defer to first use"]
+    
+    EagerPath --> EagerQuery["Lock: std::mutex gTelemetryLock<br/>➜ Check global cache<br/>   gTelemetryMetricsObject?"]
+    
+    EagerQuery -->|Cached| EagerUsed["✅ USE CACHED<br/>Set mTelemetryMetrics.available = true<br/>Return Core::ERROR_NONE<br/>Unlock"]
+    
+    EagerQuery -->|Not Cached| EagerQI["🔍 QueryInterfaceByCallsign<br/>SERVICE_NAME = 'org.rdk.TelemetryMetrics'<br/>gTelemetryMetricsObject = Query result"]
+    
+    EagerQI -->|Found| EagerFound["✅ FOUND<br/>Cache stored (static singleton)<br/>Unlock<br/>Ready for telemetry"]
+    
+    EagerQI -->|Not Found| EagerNotFound["❌ NOT FOUND<br/>gTelemetryMetricsObject = nullptr<br/>Unlock<br/>Log Error: TelemetryMetrics initialization failed"]
+    
+    EagerFound --> Ready1["Return Core::ERROR_NONE<br/>Plugin continues normally"]
+    EagerNotFound --> Ready1
+    EagerUsed --> Ready1
+    
+    LazyPath --> FirstUse["recordTelemetry()<br/>recordAndPublishTelemetry()<br/>first call"]
+    
+    FirstUse --> LazyEnsure["ensureTelemetryClient()<br/>Check: isAvailable()?"]
+    
+    LazyEnsure -->|Available| LazyUse["✅ AVAILABLE<br/>Use cached gTelemetryMetricsObject<br/>Record telemetry<br/>~0.5ms"]
+    
+    LazyEnsure -->|Not Available| LazyInit["Initialize now<br/>Lock + QueryInterfaceByCallsign<br/>Same as eager flow"]
+    
+    LazyInit -->|Success| LazyFound["✅ FOUND & CACHED<br/>Record telemetry<br/>~3-5ms<br/>Unlock"]
+    
+    LazyInit -->|Failed| LazyNotFound["❌ NOT FOUND<br/>Return error gracefully<br/>No telemetry recorded<br/>Application continues"]
+    
+    LazyUse --> Ready2["Telemetry Recorded ✓"]
+    LazyFound --> Ready2
+    LazyNotFound --> Ready2
+    
+    Ready1 --> TelemetryReady["⏱️ TELEMETRY READY<br/>Service record()"]
+    
+    Ready2 --> TelemetryReady
+    
+    TelemetryReady --> RecordFlow["recordTelemetry<br/>Parameters:<br/>- appId<br/>- jsonParam<br/>- marker"]
+    
+    RecordFlow --> RecordStep["Create JsonObject<br/>Add metrics data<br/>Convert to string"]
+    
+    RecordStep --> PublishChoice{"Publish?"}
+    
+    PublishChoice -->|Only Record| OnlyRecord["getTelemetryClient().record<br/>gTelemetryMetricsObject->Record()<br/>Data stored in TelemetryMetrics"]
+    
+    PublishChoice -->|Record + Publish| RecordAndPub["getTelemetryClient().record()<br/>+ getTelemetryClient().publish()<br/>Data stored AND sent to bus"]
+    
+    OnlyRecord --> Success["✅ TELEMETRY RECORDED"]
+    RecordAndPub --> Success
+    
+    Success --> UserConsume["External Systems Receive<br/>Telemetry Data<br/>via message bus"]
+    
+    UserConsume --> End2([Telemetry Processing Complete])
+    
+    style Start fill:#90EE90
+    style End1 fill:#FFB6C6
+    style End2 fill:#90EE90
+    style Check fill:#FFE4B5
+    style Init fill:#B5D8FF
+    style Disabled fill:#FFB6C6
+    style EagerPath fill:#D8B5FF
+    style LazyPath fill:#D8B5FF
+    style EagerQuery fill:#E8DAEF
+    style LazyEnsure fill:#E8DAEF
+    style TelemetryReady fill:#90EE90
+    style Success fill:#90EE90
