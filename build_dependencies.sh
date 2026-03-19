@@ -87,8 +87,11 @@ cmake --build build/Thunder --target install
 echo "======================================================================================"
 echo "building libPackage"
 
+LEGACY_DIR="${GITHUB_WORKSPACE}/libPackage/include/legacy"
+mkdir -p "${LEGACY_DIR}"
+
 if [ -f "${GITHUB_WORKSPACE}/eshelpers/packager/IPackageImpl.h" ]; then
-    cp "${GITHUB_WORKSPACE}/eshelpers/packager/IPackageImpl.h" "${GITHUB_WORKSPACE}/libPackage/include/legacy/IPackageImpl.h"
+    cp "${GITHUB_WORKSPACE}/eshelpers/packager/IPackageImpl.h" "${LEGACY_DIR}/IPackageImpl.h"
 else
     echo "Missing required header: ${GITHUB_WORKSPACE}/eshelpers/packager/IPackageImpl.h"
     exit 1
