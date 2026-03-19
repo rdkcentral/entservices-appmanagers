@@ -41,7 +41,7 @@
 
 using WPEFramework::Core::ERROR_GENERAL;
 using WPEFramework::Core::ERROR_NONE;
-using WPEFramework::Plugin::PreinstallManagerImplementation;
+using PreinstallManagerImplementation = L0Test::ConcretePreinstallImpl;
 using InstallState = WPEFramework::Exchange::IPackageInstaller::InstallState;
 using FailReason   = WPEFramework::Exchange::IPackageInstaller::FailReason;
 

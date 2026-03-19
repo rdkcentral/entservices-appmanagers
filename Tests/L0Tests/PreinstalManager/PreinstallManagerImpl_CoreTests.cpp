@@ -38,7 +38,9 @@
 
 using WPEFramework::Core::ERROR_GENERAL;
 using WPEFramework::Core::ERROR_NONE;
-using WPEFramework::Plugin::PreinstallManagerImplementation;
+// Thunder R4.4.1: BEGIN_INTERFACE_MAP omits AddRef/Release → base is abstract.
+// ConcretePreinstallImpl adds them; alias keeps all test code unchanged.
+using PreinstallManagerImplementation = L0Test::ConcretePreinstallImpl;
 
 namespace {
 

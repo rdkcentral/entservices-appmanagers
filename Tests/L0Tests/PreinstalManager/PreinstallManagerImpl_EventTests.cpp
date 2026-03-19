@@ -45,7 +45,7 @@
 #include "common/L0Expect.hpp"
 
 using WPEFramework::Core::ERROR_NONE;
-using WPEFramework::Plugin::PreinstallManagerImplementation;
+using PreinstallManagerImplementation = L0Test::ConcretePreinstallImpl;
 
 // ============================================================
 // PM-EVT-001

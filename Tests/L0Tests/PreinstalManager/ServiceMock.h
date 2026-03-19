@@ -36,6 +36,7 @@
 #include <interfaces/IPreinstallManager.h>
 #include <interfaces/IAppPackageManager.h>
 #include <interfaces/IConfiguration.h>
+#include "PreinstallManagerImplementation.h"
 
 namespace L0Test {
 
@@ -589,22 +590,38 @@ public:
         return nullptr;
     }
 
-    // ==== Plugin notification registration ====
-    void Register(WPEFramework::PluginHost::IPlugin::INotification*) override   {}
-    void Unregister(WPEFramework::PluginHost::IPlugin::INotification*) override {}
-
-    // ==== RPC connection notification registration ====
-    // PreinstallManager::Initialize calls service->Register(&mPreinstallManagerNotification).
-    // Capture the pointer so tests can simulate remote process events.
-    void Register(WPEFramework::RPC::IRemoteConnection::INotification* notif) override
+    // ==== Plugin / RPC notification registration ====
+    // In Thunder R4, RPC::IRemoteConnection::INotification IS-A IPlugin::INotification,
+    // so IShell::Register(IPlugin::INotification*) is the only virtual overload.
+    // PreinstallManager::Initialize calls service->Register(&mPreinstallManagerNotification)
+    // which routes here. We use QueryInterface to extract the RPC handle so that
+    // deactivated tests can call capturedRpcNotification->Deactivated().
+    void Register(WPEFramework::PluginHost::IPlugin::INotification* notif) override
     {
-        registerRpcNotifCalls.fetch_add(1, std::memory_order_relaxed);
-        capturedRpcNotification = notif;
+        if (notif != nullptr) {
+            void* rpc = notif->QueryInterface(
+                WPEFramework::RPC::IRemoteConnection::INotification::ID);
+            if (rpc != nullptr) {
+                capturedRpcNotification = static_cast<
+                    WPEFramework::RPC::IRemoteConnection::INotification*>(rpc);
+                // Release the QI ref — capturedRpcNotification is a non-owning pointer.
+                capturedRpcNotification->Release();
+                registerRpcNotifCalls.fetch_add(1, std::memory_order_relaxed);
+            }
+        }
     }
 
-    void Unregister(const WPEFramework::RPC::IRemoteConnection::INotification*) override
+    void Unregister(WPEFramework::PluginHost::IPlugin::INotification* notif) override
     {
-        unregisterRpcNotifCalls.fetch_add(1, std::memory_order_relaxed);
+        if (notif != nullptr) {
+            void* rpc = notif->QueryInterface(
+                WPEFramework::RPC::IRemoteConnection::INotification::ID);
+            if (rpc != nullptr) {
+                static_cast<WPEFramework::RPC::IRemoteConnection::INotification*>(rpc)
+                    ->Release();
+                unregisterRpcNotifCalls.fetch_add(1, std::memory_order_relaxed);
+            }
+        }
     }
 
     // ==== RemoteConnection — returns nullptr (no OOP in L0) ====
@@ -805,11 +822,49 @@ public:
 
     uint32_t Id() const override { return _id; }
     void Terminate() override {}
-    void* Acquire(const uint32_t, const WPEFramework::Core::TUID, const uint32_t) override { return nullptr; }
 
 private:
     mutable std::atomic<uint32_t> _refCount;
     uint32_t _id;
+};
+
+// ============================================================
+// ConcretePreinstallImpl
+// Concrete, ref-counted subclass of PreinstallManagerImplementation.
+// In Thunder R4.4.1, BEGIN_INTERFACE_MAP does NOT implement AddRef/Release
+// (those remain pure-virtual from Core::IReferenceCounted), so the base
+// class is abstract and cannot be directly constructed.  Use this wrapper
+// in all L0 impl-level tests that need a live implementation object.
+// ============================================================
+class ConcretePreinstallImpl final : public WPEFramework::Plugin::PreinstallManagerImplementation {
+public:
+    ConcretePreinstallImpl()
+        : _refCount(1)
+    {
+    }
+
+    ~ConcretePreinstallImpl() override = default;
+
+    ConcretePreinstallImpl(const ConcretePreinstallImpl&) = delete;
+    ConcretePreinstallImpl& operator=(const ConcretePreinstallImpl&) = delete;
+
+    void AddRef() const override
+    {
+        _refCount.fetch_add(1, std::memory_order_relaxed);
+    }
+
+    uint32_t Release() const override
+    {
+        const uint32_t n = _refCount.fetch_sub(1, std::memory_order_acq_rel) - 1;
+        if (0U == n) {
+            delete this;
+            return WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED;
+        }
+        return WPEFramework::Core::ERROR_NONE;
+    }
+
+private:
+    mutable std::atomic<uint32_t> _refCount;
 };
 
 // ============================================================
