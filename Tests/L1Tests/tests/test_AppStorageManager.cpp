@@ -3062,8 +3062,6 @@ TEST_F(AppStorageManagerTest, GetStorage_GetValueException) {
         .WillRepeatedly([](const char* path, uid_t owner, gid_t group) {
             return 0;
         });
-    static int setValueCallCount = 0;
-    setValueCallCount = 0;
     EXPECT_CALL(*mStore2Mock, SetValue(_, _, _, _, _))
         .WillRepeatedly(Invoke([](Exchange::IStore2::ScopeType scope,
                                 const std::string& appId,
@@ -3142,8 +3140,6 @@ TEST_F(AppStorageManagerTest, GetStorage_AccessException) {
         .WillRepeatedly([](const char* path, mode_t mode) {
             return 0;
         });
-    static int accessCallCount = 0;
-    accessCallCount = 0;
     ON_CALL(*p_wrapsImplMock, access(_, _))
         .WillByDefault([](const char* path, int mode) {
             return 0;
@@ -3329,8 +3325,6 @@ TEST_F(AppStorageManagerTest, Clear_NftwReturnsError) {
         .WillRepeatedly([](const char* path, int mode) {
             return 0;
         });
-    static int nftwCallCount = 0;
-    nftwCallCount = 0;
     ON_CALL(*p_wrapsImplMock, nftw(_, _, _, _))
         .WillByDefault([](const char* dirpath, int (*fn)(const char*, const struct stat*, int, struct FTW*), int nopenfd, int flags) {
             return 0;
@@ -4853,7 +4847,7 @@ TEST_F(AppStorageManagerTest, ClearAll_SkipsDotDirectories) {
             return reinterpret_cast<DIR*>(0x1);
         });
     ON_CALL(*p_wrapsImplMock, readdir(_))
-        .WillByDefault([&dotEntry, &dotDotEntry](DIR* dirp) -> struct dirent* {
+        .WillByDefault([](DIR* dirp) -> struct dirent* {
             readCount++;
             if (readCount == 1) return &dotEntry;
             if (readCount == 2) return &dotDotEntry;
@@ -4880,7 +4874,7 @@ TEST_F(AppStorageManagerTest, ClearAll_SkipsNonDirectoryEntries) {
             return reinterpret_cast<DIR*>(0x1);
         });
     ON_CALL(*p_wrapsImplMock, readdir(_))
-        .WillByDefault([&fileEntry](DIR* dirp) -> struct dirent* {
+        .WillByDefault([](DIR* dirp) -> struct dirent* {
             readCount++;
             if (readCount == 1) return &fileEntry;
             return nullptr;
@@ -5123,7 +5117,7 @@ TEST_F(AppStorageManagerTest, ClearAll_WithExemptedApps) {
             return reinterpret_cast<DIR*>(0x1);
         });
     ON_CALL(*p_wrapsImplMock, readdir(_))
-        .WillByDefault([&exemptEntry](DIR* dirp) -> struct dirent* {
+        .WillByDefault([](DIR* dirp) -> struct dirent* {
             clearAllReadCount++;
             if (clearAllReadCount == 1) return &exemptEntry;
             return nullptr;
