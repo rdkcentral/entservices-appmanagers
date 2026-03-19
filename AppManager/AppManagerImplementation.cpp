@@ -29,6 +29,7 @@ static bool sRunning = false;
 namespace WPEFramework {
 namespace Plugin {
 
+
 SERVICE_REGISTRATION(AppManagerImplementation, 1, 0);
 AppManagerImplementation* AppManagerImplementation::_instance = nullptr;
 
