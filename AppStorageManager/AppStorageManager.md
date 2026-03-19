@@ -56,19 +56,19 @@ graph TB
 classDiagram
     class StorageManagerImplementation {
         +CreateStorage(appId, size, path, errorReason)
-        +GetStorage(appId, userId, groupId, path, size, used, errorReason)
+        +GetStorage(appId, userId, groupId, path, size, used)
         +DeleteStorage(appId, errorReason)
-        +Clear(appId, userId, groupId, errorReason)
-        +ClearAll(errorReason)
+        +Clear(appId, errorReason)
+        +ClearAll(exemptionAppIds, errorReason)
     }
 
     class IAppStorageManager {
         <<interface>>
         +CreateStorage(appId, size, path, errorReason)
-        +GetStorage(appId, userId, groupId, path, size, used, errorReason)
+        +GetStorage(appId, userId, groupId, path, size, used)
         +DeleteStorage(appId, errorReason)
-        +Clear(appId, userId, groupId, errorReason)
-        +ClearAll(errorReason)
+        +Clear(appId, errorReason)
+        +ClearAll(exemptionAppIds, errorReason)
     }
 
     StorageManagerImplementation ..|> IAppStorageManager
@@ -99,8 +99,8 @@ AppStorageManager/
 
 | Method | Purpose |
 |--------|---------|
-| `CreateStorage(appId, quota, outPath, outSize, outUsed, outErrorReason)` | Create a storage directory for an application with the specified quota and return its path, configured size, current used space, and any error reason |
-| `GetStorage(appId, outPath, outSize, outUsed, outErrorReason)` | Get the storage path, configured size, current used space, and any error reason for an application |
+| `CreateStorage(appId, size, outPath, outErrorReason)` | Create a storage directory for an application with the specified size quota and return its path and any error reason |
+| `GetStorage(appId, userId, groupId, outPath, outSize, outUsed)` | Get the storage path, configured size, and current used space for an application; `userId` and `groupId` specify the ownership context for the storage query |
 | `DeleteStorage(appId, outErrorReason)` | Remove all storage for an application and return any error reason |
 | `Clear(appId, outErrorReason)` | Clear app data but keep storage allocated, returning any error reason |
 | `ClearAll(exemptionAppIds, outErrorReason)` | Clear data for all applications, optionally exempting those listed in `exemptionAppIds`, and return any error reason |
