@@ -64,6 +64,15 @@ ${COMPILE_SETTINGS_DEBUG_ARG:+${COMPILE_SETTINGS_DEBUG_ARG}} \
 -DHAS_RBUS -DDISABLE_SECURITY_TOKEN -DENABLE_DEVICE_MANUFACTURER_INFO -DUSE_THUNDER_R4=ON -DTHUNDER_VERSION=4 -DTHUNDER_VERSION_MAJOR=4 -DTHUNDER_VERSION_MINOR=4 -DENABLE_NATIVEBUILD=ON" \
 
 
+# Ensure generated Ninja compile rules cannot force hidden visibility.
+BUILD_DIR="${GITHUB_WORKSPACE}/build/entservices-appmanagers"
+if [ -d "${BUILD_DIR}" ]; then
+	find "${BUILD_DIR}" -type f \( -name "*.ninja" -o -name "flags.make" \) | while read -r build_file; do
+		perl -pi -e 's/-fvisibility=hidden/-fvisibility=default/g' "${build_file}"
+		perl -pi -e 's/\s*-fvisibility-inlines-hidden\s*/ /g' "${build_file}"
+	done
+fi
+
 cmake --build build/entservices-appmanagers --target install
 echo "======================================================================================"
 exit 0
