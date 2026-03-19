@@ -31,9 +31,12 @@ namespace ralf
     {
         // Let us extract the mount points.
         std::string packageLayers = RALF_GRAPHICS_LAYER_ROOTFS;
-        for (const auto &package : mRalfPackages)
+        // RDKEMW-15736 We need to reverse iterate to maintain the correct order of layers
+        // see https://docs.kernel.org/filesystems/overlayfs.html#multiple-lower-layers for more details.
+
+        for (auto package = mRalfPackages.crbegin(); package != mRalfPackages.crend(); ++package)
         {
-            packageLayers += ":" + package.second; // Append mount paths
+            packageLayers += ":" + package->second; // Append mount paths
         }
         // Create OCI rootfs package based on parsed data
         return generateOCIRootfs(appInstanceId, packageLayers, uid, gid, ociRootfsPath);
