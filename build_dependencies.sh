@@ -94,7 +94,7 @@ else
     exit 1
 fi
 
-cmake -S libPackage -B build/libPackage \
+cmake -G Ninja -S libPackage -B build/libPackage \
     -DCMAKE_INCLUDE_PATH="${GITHUB_WORKSPACE}/eshelpers/packager" \
     -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/install/usr" \
     -DCMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" \
