@@ -22,6 +22,7 @@
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
 #include "AppManagerTelemetryReporting.h"
 #endif
+#include "PerfMetrics.h"
 
 #define TIME_DATA_SIZE           200
 static bool sRunning = false;
@@ -88,6 +89,7 @@ AppManagerImplementation::~AppManagerImplementation()
  */
 Core::hresult AppManagerImplementation::Register(Exchange::IAppManager::INotification *notification)
 {
+    RDKAPPMANAGERS_PERF_SCOPE("AppManager:Register");
     ASSERT (nullptr != notification);
 
     mAdminLock.Lock();
@@ -205,6 +207,7 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
  */
 Core::hresult AppManagerImplementation::Unregister(Exchange::IAppManager::INotification *notification )
 {
+    RDKAPPMANAGERS_PERF_SCOPE("AppManager:Unregister");
     Core::hresult status = Core::ERROR_GENERAL;
 
     ASSERT (nullptr != notification);
@@ -786,6 +789,7 @@ Core::hresult AppManagerImplementation::packageLock(const string& appId, Package
                 if ((nullptr != mPackageManagerHandlerObject) && !packageData.version.empty())
                 {
                     Exchange::IPackageHandler::ILockIterator *appMetadata = nullptr;
+                    RDKAPPMANAGERS_PERF_CALL("AppManager:packageLock", "PackageManager:Lock");
                     status = mPackageManagerHandlerObject->Lock(appId, packageData.version, lockReason, packageData.lockId, packageData.unpackedPath, packageData.configMetadata, appMetadata);
                     if (status == Core::ERROR_NONE)
                     {
@@ -860,6 +864,7 @@ Core::hresult AppManagerImplementation::packageUnLock(const string& appId)
         {
             if (nullptr != mPackageManagerHandlerObject)
             {
+                RDKAPPMANAGERS_PERF_CALL("AppManager:packageUnLock", "PackageManager:Unlock");
                 status = mPackageManagerHandlerObject->Unlock(appId, it->second.packageInfo.version);
 
                 if(Core::ERROR_NONE != status)
@@ -895,6 +900,7 @@ Core::hresult AppManagerImplementation::packageUnLock(const string& appId)
  */
 Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const string& intent , const string& launchArgs)
 {
+    RDKAPPMANAGERS_PERF_SCOPE("AppManager:LaunchApp");
     Core::hresult status = Core::ERROR_GENERAL;
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
     AppManagerTelemetryReporting& appManagerTelemetryReporting =AppManagerTelemetryReporting::getInstance();
@@ -976,6 +982,7 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
  */
 Core::hresult AppManagerImplementation::CloseApp(const string& appId)
 {
+    RDKAPPMANAGERS_PERF_SCOPE("AppManager:CloseApp");
     Core::hresult status = Core::ERROR_GENERAL;
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
     AppManagerTelemetryReporting& appManagerTelemetryReporting =AppManagerTelemetryReporting::getInstance();
@@ -1021,6 +1028,7 @@ Core::hresult AppManagerImplementation::CloseApp(const string& appId)
  */
 Core::hresult AppManagerImplementation::TerminateApp(const string& appId )
 {
+    RDKAPPMANAGERS_PERF_SCOPE("AppManager:TerminateApp");
     Core::hresult status = Core::ERROR_GENERAL;
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
     AppManagerTelemetryReporting& appManagerTelemetryReporting =AppManagerTelemetryReporting::getInstance();
@@ -1053,6 +1061,7 @@ Core::hresult AppManagerImplementation::TerminateApp(const string& appId )
 
 Core::hresult AppManagerImplementation::KillApp(const string& appId)
 {
+    RDKAPPMANAGERS_PERF_SCOPE("AppManager:KillApp");
     Core::hresult status = Core::ERROR_NONE;
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
     AppManagerTelemetryReporting& appManagerTelemetryReporting =AppManagerTelemetryReporting::getInstance();
@@ -1080,6 +1089,7 @@ Core::hresult AppManagerImplementation::KillApp(const string& appId)
 
 Core::hresult AppManagerImplementation::GetLoadedApps(Exchange::IAppManager::ILoadedAppInfoIterator*& appData)
 {
+    RDKAPPMANAGERS_PERF_SCOPE("AppManager:GetLoadedApps");
     Core::hresult status = Core::ERROR_GENERAL;
     LOGINFO("GetLoadedApps Entered");
     mAdminLock.Lock();
@@ -1095,6 +1105,7 @@ Core::hresult AppManagerImplementation::GetLoadedApps(Exchange::IAppManager::ILo
 
 Core::hresult AppManagerImplementation::SendIntent(const string& appId , const string& intent)
 {
+    RDKAPPMANAGERS_PERF_SCOPE("AppManager:SendIntent");
     Core::hresult status = Core::ERROR_NONE;
 
     LOGINFO("SendIntent entered with appId '%s' and intent '%s'", appId.c_str(), intent.c_str());
@@ -1122,6 +1133,7 @@ Core::hresult AppManagerImplementation::SendIntent(const string& appId , const s
  */
 Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const string& launchArgs ,string& error)
 {
+    RDKAPPMANAGERS_PERF_SCOPE("AppManager:PreloadApp");
     Core::hresult status = Core::ERROR_GENERAL;
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
     AppManagerTelemetryReporting& appManagerTelemetryReporting = AppManagerTelemetryReporting::getInstance();
@@ -1190,6 +1202,7 @@ Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const s
  */
 Core::hresult AppManagerImplementation::GetAppProperty(const string& appId , const string& key , string& value )
 {
+    RDKAPPMANAGERS_PERF_SCOPE("AppManager:GetAppProperty");
     LOGINFO("GetAppProperty Entered");
     Core::hresult status = Core::ERROR_GENERAL;
     uint32_t ttl = 0;
@@ -1216,6 +1229,7 @@ Core::hresult AppManagerImplementation::GetAppProperty(const string& appId , con
         ASSERT (nullptr != mPersistentStoreRemoteStoreObject);
         if (nullptr != mPersistentStoreRemoteStoreObject)
         {
+            RDKAPPMANAGERS_PERF_CALL("AppManager:GetAppProperty", "PersistentStore:GetValue");
             status = mPersistentStoreRemoteStoreObject->GetValue(Exchange::IStore2::ScopeType::DEVICE, appId, key, value, ttl);
             LOGINFO("Key[%s] value[%s] status[%d]", key.c_str(), value.c_str(), status);
             if (Core::ERROR_NONE != status)
@@ -1246,6 +1260,7 @@ Core::hresult AppManagerImplementation::GetAppProperty(const string& appId , con
  */
 Core::hresult AppManagerImplementation::SetAppProperty(const string& appId, const string& key, const string& value)
 {
+    RDKAPPMANAGERS_PERF_SCOPE("AppManager:SetAppProperty");
     Core::hresult status = Core::ERROR_GENERAL;
 
     if (appId.empty())
@@ -1273,6 +1288,7 @@ Core::hresult AppManagerImplementation::SetAppProperty(const string& appId, cons
         ASSERT (nullptr != mPersistentStoreRemoteStoreObject);
         if (nullptr != mPersistentStoreRemoteStoreObject)
         {
+            RDKAPPMANAGERS_PERF_CALL("AppManager:SetAppProperty", "PersistentStore:SetValue");
             status = mPersistentStoreRemoteStoreObject->SetValue(Exchange::IStore2::ScopeType::DEVICE, appId, key, value, 0);
         }
         else
@@ -1302,6 +1318,7 @@ Core::hresult AppManagerImplementation::fetchAppPackageList(std::vector<WPEFrame
     {
         Exchange::IPackageInstaller::IPackageIterator* packages = nullptr;
 
+        RDKAPPMANAGERS_PERF_CALL("AppManager:fetchAppPackageList", "PackageManager:ListPackages");
         if (mPackageManagerInstallerObject->ListPackages(packages) != Core::ERROR_NONE || packages == nullptr)
         {
             LOGERR("ListPackage is returning Error or Packages is nullptr");
@@ -1335,6 +1352,7 @@ std::string AppManagerImplementation::getInstallAppType(ApplicationType type)
 
 Core::hresult AppManagerImplementation::GetInstalledApps(std::string& apps)
 {
+    RDKAPPMANAGERS_PERF_SCOPE("AppManager:GetInstalledApps");
     Core::hresult status = Core::ERROR_GENERAL;
     apps.clear();
     std::vector<WPEFramework::Exchange::IPackageInstaller::Package> packageList;
@@ -1409,6 +1427,7 @@ void AppManagerImplementation::checkIsInstalled(const std::string& appId, bool& 
 
 Core::hresult AppManagerImplementation::IsInstalled(const std::string& appId, bool& installed)
 {
+    RDKAPPMANAGERS_PERF_SCOPE("AppManager:IsInstalled");
     Core::hresult status = Core::ERROR_GENERAL;
     installed = false;
 
@@ -1458,6 +1477,7 @@ Core::hresult AppManagerImplementation::StopSystemApp(const string& appId)
 
 Core::hresult AppManagerImplementation::ClearAppData(const string& appId)
 {
+    RDKAPPMANAGERS_PERF_SCOPE("AppManager:ClearAppData");
     Core::hresult status = Core::ERROR_NONE;
 
     LOGINFO("ClearAppData Entered");
@@ -1473,6 +1493,7 @@ Core::hresult AppManagerImplementation::ClearAppData(const string& appId)
     if (nullptr != mStorageManagerRemoteObject)
     {
         std::string errorReason;
+        RDKAPPMANAGERS_PERF_CALL("AppManager:ClearAppData", "AppStorageManager:Clear");
         status = mStorageManagerRemoteObject->Clear(appId,errorReason);
         if (status != Core::ERROR_NONE)
         {
@@ -1491,6 +1512,7 @@ Core::hresult AppManagerImplementation::ClearAppData(const string& appId)
 
 Core::hresult AppManagerImplementation::ClearAllAppData()
 {
+    RDKAPPMANAGERS_PERF_SCOPE("AppManager:ClearAllAppData");
     Core::hresult status = Core::ERROR_NONE;
 
     LOGINFO("ClearAllAppData Entered");
@@ -1500,6 +1522,7 @@ Core::hresult AppManagerImplementation::ClearAllAppData()
     {
         std::string errorReason;
         std::string exemptedAppIds = "";
+        RDKAPPMANAGERS_PERF_CALL("AppManager:ClearAllAppData", "AppStorageManager:ClearAll");
         status = mStorageManagerRemoteObject->ClearAll(exemptedAppIds,errorReason);
         if (status != Core::ERROR_NONE)
         {
@@ -1690,3 +1713,4 @@ bool AppManagerImplementation::checkInstallUninstallBlock(const std::string& app
 }
 } /* namespace Plugin */
 } /* namespace WPEFramework */
+

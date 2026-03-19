@@ -20,6 +20,7 @@
 #include <chrono>
 
 #include "DownloadManagerImplementation.h"
+#include "PerfMetrics.h"
 
 #define DOWNLOADER_DOWNLOAD_ID_START        (2000)
 
@@ -56,6 +57,7 @@ namespace Plugin {
 
     Core::hresult DownloadManagerImplementation::Register(Exchange::IDownloadManager::INotification* notification)
     {
+        RDKAPPMANAGERS_PERF_SCOPE("DownloadManager:Register");
         LOGINFO("entry");
         ASSERT(notification != nullptr);
 
@@ -75,6 +77,7 @@ namespace Plugin {
 
     Core::hresult DownloadManagerImplementation::Unregister(Exchange::IDownloadManager::INotification* notification)
     {
+        RDKAPPMANAGERS_PERF_SCOPE("DownloadManager:Unregister");
         LOGINFO();
         ASSERT(notification != nullptr);
         Core::hresult result = Core::ERROR_NONE;
@@ -99,6 +102,7 @@ namespace Plugin {
 
     Core::hresult DownloadManagerImplementation::Initialize(PluginHost::IShell* service)
     {
+        RDKAPPMANAGERS_PERF_SCOPE("DownloadManager:Initialize");
         Core::hresult result = Core::ERROR_NONE;
         LOGINFO("entry");
 
@@ -145,6 +149,7 @@ namespace Plugin {
 
     Core::hresult DownloadManagerImplementation::Deinitialize(PluginHost::IShell* service)
     {
+        RDKAPPMANAGERS_PERF_SCOPE("DownloadManager:Deinitialize");
         Core::hresult result = Core::ERROR_NONE;
         LOGINFO();
 
@@ -184,6 +189,7 @@ namespace Plugin {
         const Exchange::IDownloadManager::Options &options,
         string &downloadId)
     {
+        RDKAPPMANAGERS_PERF_SCOPE("DownloadManager:Download");
         Core::hresult result = Core::ERROR_GENERAL;
 
         mAdminLock.Lock();
@@ -242,6 +248,7 @@ namespace Plugin {
 
     Core::hresult DownloadManagerImplementation::Pause(const string &downloadId)
     {
+        RDKAPPMANAGERS_PERF_SCOPE("DownloadManager:Pause");
         Core::hresult result = Core::ERROR_GENERAL;
 
         mAdminLock.Lock();
@@ -272,6 +279,7 @@ namespace Plugin {
 
     Core::hresult DownloadManagerImplementation::Resume(const string &downloadId)
     {
+        RDKAPPMANAGERS_PERF_SCOPE("DownloadManager:Resume");
         Core::hresult result = Core::ERROR_GENERAL;
 
         mAdminLock.Lock();
@@ -302,6 +310,7 @@ namespace Plugin {
 
     Core::hresult DownloadManagerImplementation::Cancel(const string &downloadId)
     {
+        RDKAPPMANAGERS_PERF_SCOPE("DownloadManager:Cancel");
         Core::hresult result = Core::ERROR_GENERAL;
 
         mAdminLock.Lock();
@@ -333,6 +342,7 @@ namespace Plugin {
 
     Core::hresult DownloadManagerImplementation::Delete(const string &fileLocator)
     {
+        RDKAPPMANAGERS_PERF_SCOPE("DownloadManager:Delete");
         Core::hresult result = Core::ERROR_GENERAL;
 
         mAdminLock.Lock();
@@ -360,6 +370,7 @@ namespace Plugin {
 
     Core::hresult DownloadManagerImplementation::Progress(const string &downloadId, uint8_t &percent)
     {
+        RDKAPPMANAGERS_PERF_SCOPE("DownloadManager:Progress");
         Core::hresult result = Core::ERROR_GENERAL;
 
         mAdminLock.Lock();
@@ -388,6 +399,7 @@ namespace Plugin {
 
     Core::hresult DownloadManagerImplementation::GetStorageDetails(uint32_t &quotaKB, uint32_t &usedKB)
     {
+        RDKAPPMANAGERS_PERF_SCOPE("DownloadManager:GetStorageDetails");
         Core::hresult result = Core::ERROR_NONE;
         /* TODO: Stub - behaves the same as the existing package manager for now */
         return result;
@@ -395,6 +407,7 @@ namespace Plugin {
 
     Core::hresult DownloadManagerImplementation::RateLimit(const string &downloadId, const uint32_t &limit)
     {
+        RDKAPPMANAGERS_PERF_SCOPE("DownloadManager:RateLimit");
         Core::hresult result = Core::ERROR_GENERAL;
 
         mAdminLock.Lock();
@@ -598,3 +611,4 @@ namespace Plugin {
 
 } // namespace Plugin
 } // namespace WPEFramework
+

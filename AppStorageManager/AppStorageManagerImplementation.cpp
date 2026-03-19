@@ -21,6 +21,7 @@
 #include "AppStorageManagerImplementation.h"
 #include "UtilsLogging.h"
 #include "RequestHandler.h"
+#include "PerfMetrics.h"
 #include <sys/statvfs.h>
 
 #define DEFAULT_APP_STORAGE_PATH        "/opt/persistent/storageManager"
@@ -137,6 +138,7 @@ namespace Plugin {
      */
     Core::hresult StorageManagerImplementation::CreateStorage(const std::string& appId, const uint32_t& size, std::string& path, std::string& errorReason)
     {
+        RDKAPPMANAGERS_PERF_SCOPE("AppStorageManager:CreateStorage");
         LOGINFO("Entered CreateStorage Implementation appId: %s", appId.c_str());
         Core::hresult status = Core::ERROR_GENERAL;
         RequestHandler& handler = RequestHandler::getInstance();
@@ -161,6 +163,7 @@ namespace Plugin {
      */
     Core::hresult StorageManagerImplementation::GetStorage(const string& appId, const int32_t& userId, const int32_t& groupId, string& path, uint32_t& size, uint32_t& used)
     {
+        RDKAPPMANAGERS_PERF_SCOPE("AppStorageManager:GetStorage");
         LOGINFO("Entered GetStorage Implementation");
         Core::hresult status = Core::ERROR_GENERAL;
         RequestHandler& handler = RequestHandler::getInstance();
@@ -206,6 +209,7 @@ namespace Plugin {
      */
     Core::hresult StorageManagerImplementation::DeleteStorage(const string& appId, string& errorReason)
     {
+        RDKAPPMANAGERS_PERF_SCOPE("AppStorageManager:DeleteStorage");
         LOGINFO("Entered DeleteStorage Implementation");
         Core::hresult status = Core::ERROR_GENERAL;
         RequestHandler& handler = RequestHandler::getInstance();
@@ -230,6 +234,7 @@ namespace Plugin {
      */
     Core::hresult StorageManagerImplementation::Clear(const string& appId, string& errorReason)
     {
+        RDKAPPMANAGERS_PERF_SCOPE("AppStorageManager:Clear");
         LOGINFO("Entered Clear Implementation");
         Core::hresult status = Core::ERROR_GENERAL;
         RequestHandler& handler = RequestHandler::getInstance();
@@ -255,6 +260,7 @@ namespace Plugin {
      */
     Core::hresult StorageManagerImplementation::ClearAll(const string& exemptionAppIds, string& errorReason)
     {
+        RDKAPPMANAGERS_PERF_SCOPE("AppStorageManager:ClearAll");
         LOGINFO("Entered ClearAll Implementation");
         Core::hresult status = Core::ERROR_GENERAL;
         JsonObject parameters;
@@ -272,3 +278,4 @@ namespace Plugin {
     }
 } /* namespace Plugin */
 } /* namespace WPEFramework */
+

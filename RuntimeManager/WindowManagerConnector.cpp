@@ -18,6 +18,7 @@
 */
 
 #include "WindowManagerConnector.h"
+#include "PerfMetrics.h"
 #include <fstream>
 #include <random>
 
@@ -97,6 +98,7 @@ bool WindowManagerConnector::createDisplay(const string& appInstanceId , const s
 
     LOGINFO("Creating display [%s] for application [%s] with params [%s] \n", displayName.c_str(), appInstanceId.c_str(), displayParamsString.c_str());//remove
 
+    RDKAPPMANAGERS_PERF_CALL("RuntimeManager:createDisplay", "RDKWindowManager:CreateDisplay");
     Core::hresult result = mWindowManager->CreateDisplay(displayParamsString);
     if (Core::ERROR_NONE != result)
     {
@@ -177,3 +179,4 @@ void WindowManagerConnector::WindowManagerNotification::OnUserInactivity(const d
 
 } // namespace Plugin
 } // namespace WPEFramework
+

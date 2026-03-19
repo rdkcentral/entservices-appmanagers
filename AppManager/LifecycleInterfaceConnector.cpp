@@ -33,6 +33,7 @@
 #include <interfaces/ILifecycleManager.h>
 #include "AppManagerImplementation.h"
 #include "UtilsString.h"
+#include "PerfMetrics.h"
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
 #include "AppManagerTelemetryReporting.h"
 #endif
@@ -206,6 +207,7 @@ namespace WPEFramework
                             appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_RESUME);
                             state = Exchange::ILifecycleManager::LifecycleState::ACTIVE;
                             LOGINFO("launchApp appInstanceId %s", it->second.appInstanceId.c_str());
+                            RDKAPPMANAGERS_PERF_CALL("AppManager:setTargetAppState", "LifecycleManager:SetTargetAppState");
                             status = mLifecycleManagerRemoteObject->SetTargetAppState(it->second.appInstanceId, state, intent);
 
                             if (status == Core::ERROR_NONE)
@@ -234,6 +236,7 @@ namespace WPEFramework
                                 appManagerImplInstance->handleOnAppLaunchRequest(appId, intent, source);
                             }
                             LOGINFO("spawnApp called ,state %u",state);
+                            RDKAPPMANAGERS_PERF_CALL("AppManager:launch", "LifecycleManager:SpawnApp");
                             status = mLifecycleManagerRemoteObject->SpawnApp(appId, intent, state, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success);
 
                             if (status == Core::ERROR_NONE)
@@ -316,6 +319,7 @@ namespace WPEFramework
                         appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_PRELOAD);
                         state = Exchange::ILifecycleManager::LifecycleState::PAUSED;
                     }
+                    RDKAPPMANAGERS_PERF_CALL("AppManager:preLoadApp", "LifecycleManager:SpawnApp");
                     status = mLifecycleManagerRemoteObject->SpawnApp(appId, intent, state, runtimeConfigObject, launchArgs, appInstanceId, error, success);
                     if (status == Core::ERROR_NONE)
                     {
@@ -381,6 +385,7 @@ namespace WPEFramework
 
 			    mAppCurrentActionList[appId] = Exchange::IAppManager::AppLifecycleState::APP_STATE_TERMINATING;
 
+                            RDKAPPMANAGERS_PERF_CALL("AppManager:setTargetAppState", "LifecycleManager:SetTargetAppState");
                             status = mLifecycleManagerRemoteObject->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::LifecycleState::PAUSED, appIntent);
 
                             if(status == Core::ERROR_NONE)
@@ -419,12 +424,14 @@ namespace WPEFramework
                                         {
                                             LOGINFO("App with AppId: %s is suspendable", appId.c_str());
                                             retryIt->second.targetAppState = Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED;
+                                            RDKAPPMANAGERS_PERF_CALL("AppManager:setTargetAppState", "LifecycleManager:SetTargetAppState");
                                             status = mLifecycleManagerRemoteObject->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::LifecycleState::SUSPENDED, appIntent);
 
                                             if (status == Core::ERROR_NONE && fileExists(HIBERNATE_POLICY_FILE))
                                             {
                                                 LOGINFO("App with AppId: %s is hibernatable", appId.c_str());
                                                 retryIt->second.targetAppState = Exchange::IAppManager::AppLifecycleState::APP_STATE_HIBERNATED;
+                                                RDKAPPMANAGERS_PERF_CALL("AppManager:setTargetAppState", "LifecycleManager:SetTargetAppState");
                                                 status = mLifecycleManagerRemoteObject->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::LifecycleState::HIBERNATED, appIntent);
 
                                                 if (status != Core::ERROR_NONE)
@@ -527,6 +534,7 @@ namespace WPEFramework
                         {
                             appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_TERMINATE);
 			    mAppCurrentActionList[appId] = Exchange::IAppManager::AppLifecycleState::APP_STATE_TERMINATING;
+                            RDKAPPMANAGERS_PERF_CALL("AppManager:terminateApp", "LifecycleManager:UnloadApp");
                             status = mLifecycleManagerRemoteObject->UnloadApp(appInstanceId, errorReason, success);
                             if (status != Core::ERROR_NONE)
                             {
@@ -601,6 +609,7 @@ namespace WPEFramework
 
                     appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_KILL);
 		    mAppCurrentActionList[appId] = Exchange::IAppManager::AppLifecycleState::APP_STATE_TERMINATING;
+                    RDKAPPMANAGERS_PERF_CALL("AppManager:killApp", "LifecycleManager:KillApp");
                     result = mLifecycleManagerRemoteObject->KillApp(appInstanceId, errorReason, success);
 
                     if (!(result == Core::ERROR_NONE && success))
@@ -657,6 +666,7 @@ namespace WPEFramework
                     string errorReason{};
                     bool success{};
 
+                    RDKAPPMANAGERS_PERF_CALL("AppManager:sendIntent", "LifecycleManager:SendIntentToActiveApp");
                     result = mLifecycleManagerRemoteObject->SendIntentToActiveApp(appInstanceId, intent, errorReason, success);
 
                     if (!(result == Core::ERROR_NONE && success))
@@ -695,6 +705,7 @@ namespace WPEFramework
                 JsonArray loadedAppsArray;
                 string loadedApps = "";
                 LOGINFO("Get Loaded Apps");
+                RDKAPPMANAGERS_PERF_CALL("AppManager:getLoadedApps", "LifecycleManager:GetLoadedApps");
                 result = mLifecycleManagerRemoteObject->GetLoadedApps(false, loadedApps);
                 // Parse the string into a JSON array
                 JsonArray loadedAppsJsonArray;
@@ -1030,3 +1041,4 @@ End:
         }
      } /* namespace Plugin */
 } /* namespace WPEFramework */
+

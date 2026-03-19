@@ -28,6 +28,7 @@
 #include "UtilsJsonRpc.h"
 #include "UtilsUnused.h"
 #include "UtilsString.h"
+#include "PerfMetrics.h"
 
 using namespace std;
 using namespace RdkWindowManager;
@@ -187,6 +188,7 @@ std::string toLower(const std::string& clientName)
 
 Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* service)
 {
+    RDKAPPMANAGERS_PERF_SCOPE("RDKWindowManager:Initialize");
     Core::hresult result = Core::ERROR_NONE;
 
     ASSERT(nullptr != service);
@@ -309,6 +311,7 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
 
 Core::hresult RDKWindowManagerImplementation::Deinitialize(PluginHost::IShell* service)
 {
+    RDKAPPMANAGERS_PERF_SCOPE("RDKWindowManager:Deinitialize");
     Core::hresult result = Core::ERROR_NONE;
 
     ASSERT(nullptr != service);
@@ -380,6 +383,7 @@ Core::hresult RDKWindowManagerImplementation::Deinitialize(PluginHost::IShell* s
  */
 Core::hresult RDKWindowManagerImplementation::Register(INotification *notification)
 {
+    RDKAPPMANAGERS_PERF_SCOPE("RDKWindowManager:Register");
     ASSERT (nullptr != notification);
 
     mAdminLock.Lock();
@@ -402,6 +406,7 @@ Core::hresult RDKWindowManagerImplementation::Register(INotification *notificati
  */
 Core::hresult RDKWindowManagerImplementation::Unregister(INotification *notification )
 {
+    RDKAPPMANAGERS_PERF_SCOPE("RDKWindowManager:Unregister");
     Core::hresult status = Core::ERROR_GENERAL;
 
     ASSERT (nullptr != notification);
@@ -659,6 +664,7 @@ void RDKWindowManagerImplementation::Dispatch(Event event, const JsonValue param
  */
 Core::hresult RDKWindowManagerImplementation::CreateDisplay(const string &displayParams)
 {
+    RDKAPPMANAGERS_PERF_SCOPE("RDKWindowManager:CreateDisplay");
     Core::hresult status = Core::ERROR_GENERAL;
     bool result = true;
     JsonObject parameters;
@@ -775,6 +781,7 @@ Core::hresult RDKWindowManagerImplementation::CreateDisplay(const string &displa
  */
 Core::hresult RDKWindowManagerImplementation::GetApps(string &appsIds) const
 {
+    RDKAPPMANAGERS_PERF_SCOPE("RDKWindowManager:GetApps");
     Core::hresult status = Core::ERROR_GENERAL;
     bool retValue = false;
     std::vector<std::string> clientList;
@@ -822,6 +829,7 @@ Core::hresult RDKWindowManagerImplementation::GetApps(string &appsIds) const
  */
 Core::hresult RDKWindowManagerImplementation::AddKeyIntercept(const string &intercept)
 {
+    RDKAPPMANAGERS_PERF_SCOPE("RDKWindowManager:AddKeyIntercept");
     Core::hresult status = Core::ERROR_GENERAL;
     JsonObject parameters;
 
@@ -888,6 +896,7 @@ Core::hresult RDKWindowManagerImplementation::AddKeyIntercept(const string &inte
  */
 Core::hresult RDKWindowManagerImplementation::AddKeyIntercepts(const string &clientId, const string &intercepts)
 {
+    RDKAPPMANAGERS_PERF_SCOPE("RDKWindowManager:AddKeyIntercepts");
     Core::hresult status = Core::ERROR_GENERAL;
     JsonArray keyIntercepts;
 
@@ -932,6 +941,7 @@ Core::hresult RDKWindowManagerImplementation::AddKeyIntercepts(const string &cli
  */
 Core::hresult RDKWindowManagerImplementation::RemoveKeyIntercept(const string &clientId, uint32_t keyCode, const string &modifiers)
 {
+    RDKAPPMANAGERS_PERF_SCOPE("RDKWindowManager:RemoveKeyIntercept");
     Core::hresult status = Core::ERROR_GENERAL;
 
     if (clientId.empty())
@@ -973,6 +983,7 @@ Core::hresult RDKWindowManagerImplementation::RemoveKeyIntercept(const string &c
  */
 Core::hresult RDKWindowManagerImplementation::AddKeyListener(const string &keyListeners)
 {
+    RDKAPPMANAGERS_PERF_SCOPE("RDKWindowManager:AddKeyListener");
     Core::hresult status = Core::ERROR_GENERAL;
     JsonObject parameters;
 
@@ -1026,6 +1037,7 @@ Core::hresult RDKWindowManagerImplementation::AddKeyListener(const string &keyLi
  */
 Core::hresult RDKWindowManagerImplementation::RemoveKeyListener(const string &keyListeners)
 {
+    RDKAPPMANAGERS_PERF_SCOPE("RDKWindowManager:RemoveKeyListener");
     Core::hresult status = Core::ERROR_GENERAL;
     JsonObject parameters;
 
@@ -1079,6 +1091,7 @@ Core::hresult RDKWindowManagerImplementation::RemoveKeyListener(const string &ke
  */
 Core::hresult RDKWindowManagerImplementation::InjectKey(uint32_t keyCode, const string &modifiers)
 {
+    RDKAPPMANAGERS_PERF_SCOPE("RDKWindowManager:InjectKey");
     Core::hresult status = Core::ERROR_GENERAL;
     JsonObject parameters;
     JsonArray keyModifiers = JsonArray();
@@ -1114,6 +1127,7 @@ Core::hresult RDKWindowManagerImplementation::InjectKey(uint32_t keyCode, const 
  */
 Core::hresult RDKWindowManagerImplementation::GenerateKey(const string& keys, const string& client)
 {
+    RDKAPPMANAGERS_PERF_SCOPE("RDKWindowManager:GenerateKey");
     Core::hresult status = Core::ERROR_GENERAL;
     JsonObject parameters;
 
@@ -1154,6 +1168,7 @@ Core::hresult RDKWindowManagerImplementation::GenerateKey(const string& keys, co
 */
 Core::hresult RDKWindowManagerImplementation::EnableInactivityReporting(const bool enable)
 {
+    RDKAPPMANAGERS_PERF_SCOPE("RDKWindowManager:EnableInactivityReporting");
     Core::hresult status = Core::ERROR_GENERAL;
 
     LOGINFO("EnableInactivityReporting Entered");
@@ -1176,6 +1191,7 @@ Core::hresult RDKWindowManagerImplementation::EnableInactivityReporting(const bo
 */
 Core::hresult RDKWindowManagerImplementation::SetInactivityInterval(const uint32_t interval)
 {
+    RDKAPPMANAGERS_PERF_SCOPE("RDKWindowManager:SetInactivityInterval");
     Core::hresult status = Core::ERROR_GENERAL;
 
     LOGINFO("SetInactivityInterval Entered");
@@ -1197,6 +1213,7 @@ Core::hresult RDKWindowManagerImplementation::SetInactivityInterval(const uint32
 */
 Core::hresult RDKWindowManagerImplementation::ResetInactivityTime()
 {
+    RDKAPPMANAGERS_PERF_SCOPE("RDKWindowManager:ResetInactivityTime");
     Core::hresult status = Core::ERROR_GENERAL;
 
     LOGINFO("ResetInactivityTime Entered");
@@ -1221,6 +1238,7 @@ Core::hresult RDKWindowManagerImplementation::ResetInactivityTime()
  */
 Core::hresult RDKWindowManagerImplementation::EnableKeyRepeats(bool enable)
 {
+    RDKAPPMANAGERS_PERF_SCOPE("RDKWindowManager:EnableKeyRepeats");
     Core::hresult status = Core::ERROR_GENERAL;
     bool lockAcquired = false;
 
@@ -1250,6 +1268,7 @@ Core::hresult RDKWindowManagerImplementation::EnableKeyRepeats(bool enable)
  */
 Core::hresult RDKWindowManagerImplementation::GetKeyRepeatsEnabled(bool &keyRepeat) const
 {
+    RDKAPPMANAGERS_PERF_SCOPE("RDKWindowManager:GetKeyRepeatsEnabled");
     Core::hresult status = Core::ERROR_GENERAL;
     bool lockAcquired = false;
 
@@ -1279,6 +1298,7 @@ Core::hresult RDKWindowManagerImplementation::GetKeyRepeatsEnabled(bool &keyRepe
  */
 Core::hresult RDKWindowManagerImplementation::IgnoreKeyInputs(bool ignore)
 {
+    RDKAPPMANAGERS_PERF_SCOPE("RDKWindowManager:IgnoreKeyInputs");
     Core::hresult status = Core::ERROR_GENERAL;
     bool lockAcquired = false;
 
@@ -1309,6 +1329,7 @@ Core::hresult RDKWindowManagerImplementation::IgnoreKeyInputs(bool ignore)
  */
 Core::hresult RDKWindowManagerImplementation::EnableInputEvents(const string &clients, bool enable)
 {
+    RDKAPPMANAGERS_PERF_SCOPE("RDKWindowManager:EnableInputEvents");
     Core::hresult status = Core::ERROR_GENERAL;
     bool result = true;
     JsonObject parameters;
@@ -1390,6 +1411,7 @@ Core::hresult RDKWindowManagerImplementation::EnableInputEvents(const string &cl
  */
 Core::hresult RDKWindowManagerImplementation::KeyRepeatConfig(const string &input, const string &keyConfig)
 {
+    RDKAPPMANAGERS_PERF_SCOPE("RDKWindowManager:KeyRepeatConfig");
     Core::hresult status = Core::ERROR_GENERAL;
     bool enabled = false;
     int32_t initialDelay = 0;
@@ -1442,6 +1464,7 @@ Core::hresult RDKWindowManagerImplementation::KeyRepeatConfig(const string &inpu
  */
 Core::hresult RDKWindowManagerImplementation::SetFocus(const string &client)
 {
+    RDKAPPMANAGERS_PERF_SCOPE("RDKWindowManager:SetFocus");
     Core::hresult status = Core::ERROR_GENERAL;
     bool lockAcquired = false;
     bool ret = false;
@@ -1485,6 +1508,7 @@ Core::hresult RDKWindowManagerImplementation::SetFocus(const string &client)
  */
 Core::hresult RDKWindowManagerImplementation::SetVisible(const std::string &client, bool visible)
 {
+    RDKAPPMANAGERS_PERF_SCOPE("RDKWindowManager:SetVisible");
     Core::hresult status = Core::ERROR_GENERAL;
     bool lockAcquired = false;
 
@@ -1524,6 +1548,7 @@ Core::hresult RDKWindowManagerImplementation::SetVisible(const std::string &clie
  */
 Core::hresult RDKWindowManagerImplementation::GetVisibility(const std::string &client, bool &visible)
 {
+    RDKAPPMANAGERS_PERF_SCOPE("RDKWindowManager:GetVisibility");
     Core::hresult status = Core::ERROR_GENERAL;
     bool lockAcquired = false;
 
@@ -1981,6 +2006,7 @@ bool RDKWindowManagerImplementation::resetInactivityTime()
  */
 Core::hresult RDKWindowManagerImplementation::RenderReady(const string& client,bool &status) const
 {
+    RDKAPPMANAGERS_PERF_SCOPE("RDKWindowManager:RenderReady");
     Core::hresult retStatus  = Core::ERROR_GENERAL;
     bool lockAcquired = false;
 
@@ -2013,6 +2039,7 @@ Core::hresult RDKWindowManagerImplementation::RenderReady(const string& client,b
  */
 Core::hresult RDKWindowManagerImplementation::EnableDisplayRender(const string& client, bool enable)
 {
+    RDKAPPMANAGERS_PERF_SCOPE("RDKWindowManager:EnableDisplayRender");
     Core::hresult retStatus = Core::ERROR_GENERAL;
     bool lockAcquired = false;
     if(client.empty())
@@ -2052,6 +2079,7 @@ Core::hresult RDKWindowManagerImplementation::EnableDisplayRender(const string& 
  */
 Core::hresult RDKWindowManagerImplementation::GetLastKeyInfo(uint32_t &keyCode, uint32_t &modifiers, uint64_t &timestampInSeconds) const
 {
+    RDKAPPMANAGERS_PERF_SCOPE("RDKWindowManager:GetLastKeyInfo");
     Core::hresult retStatus = Core::ERROR_NONE;
     
     LOGINFO("RDKWindowManager GetLastKeyInfo called");
@@ -2081,6 +2109,7 @@ Core::hresult RDKWindowManagerImplementation::GetLastKeyInfo(uint32_t &keyCode, 
  */
 Core::hresult RDKWindowManagerImplementation::SetZOrder(const string &appInstanceId, int32_t zOrder)
 {
+    RDKAPPMANAGERS_PERF_SCOPE("RDKWindowManager:SetZOrder");
     Core::hresult status = Core::ERROR_GENERAL;
     bool lockAcquired = false;
 
@@ -2120,6 +2149,7 @@ Core::hresult RDKWindowManagerImplementation::SetZOrder(const string &appInstanc
  */
 Core::hresult RDKWindowManagerImplementation::GetZOrder(const string &appInstanceId, int32_t &zOrder)
 {
+    RDKAPPMANAGERS_PERF_SCOPE("RDKWindowManager:GetZOrder");
     Core::hresult status = Core::ERROR_GENERAL;
     bool lockAcquired = false;
 
@@ -2158,6 +2188,7 @@ Core::hresult RDKWindowManagerImplementation::GetZOrder(const string &appInstanc
  */
 Core::hresult RDKWindowManagerImplementation::StartVncServer()
 {
+    RDKAPPMANAGERS_PERF_SCOPE("RDKWindowManager:StartVncServer");
     Core::hresult status = Core::ERROR_GENERAL;
     bool lockAcquired = lockRdkWindowManagerMutex();
 
@@ -2189,6 +2220,7 @@ Core::hresult RDKWindowManagerImplementation::StartVncServer()
  */
 Core::hresult RDKWindowManagerImplementation::StopVncServer()
 {
+    RDKAPPMANAGERS_PERF_SCOPE("RDKWindowManager:StopVncServer");
     Core::hresult status = Core::ERROR_GENERAL;
     bool lockAcquired = lockRdkWindowManagerMutex();
 
@@ -2221,6 +2253,7 @@ Core::hresult RDKWindowManagerImplementation::StopVncServer()
  */
 Core::hresult RDKWindowManagerImplementation::GetScreenshot()
 {
+    RDKAPPMANAGERS_PERF_SCOPE("RDKWindowManager:GetScreenshot");
     Core::hresult status = Core::ERROR_NONE;
 
     {
@@ -2252,3 +2285,4 @@ void RDKWindowManagerImplementation::notifyScreenshotComplete(bool success)
 
 } /* namespace Plugin */
 } /* namespace WPEFramework */
+

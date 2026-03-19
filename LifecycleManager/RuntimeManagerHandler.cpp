@@ -18,6 +18,7 @@
 */
 
 #include "RuntimeManagerHandler.h"
+#include "PerfMetrics.h"
 #include "UtilsLogging.h"
 #include "tracing/Logging.h"
 #include <sstream>
@@ -73,6 +74,7 @@ void RuntimeManagerHandler::deinitialize()
 
 bool RuntimeManagerHandler::getRuntimeStats(const string& appInstanceId, string& info)
 {
+    RDKAPPMANAGERS_PERF_CALL("LifecycleManager:getInfo", "RuntimeManager:GetInfo");
     Core::hresult result = mRuntimeManager->GetInfo(appInstanceId, info);
     if (Core::ERROR_NONE != result)
     {
@@ -133,6 +135,7 @@ bool RuntimeManagerHandler::run(const string& appId, const string& appInstanceId
     pathsIterator = Core::Service<RPC::StringIterator>::Create<RPC::IStringIterator>(pathsList);
     portsIterator = Core::Service<RPC::ValueIterator>::Create<RPC::IValueIterator>(portsList);
 
+    RDKAPPMANAGERS_PERF_CALL("LifecycleManager:run", "RuntimeManager:Run");
     Core::hresult result = mRuntimeManager->Run(appId, appInstanceId, userId, groupId, portsIterator, pathsIterator, debugSettingsIterator, runtimeConfigObject);
     if (Core::ERROR_NONE != result)
     {
@@ -144,6 +147,7 @@ bool RuntimeManagerHandler::run(const string& appId, const string& appInstanceId
 
 bool RuntimeManagerHandler::kill(const string& appInstanceId, string& errorReason)
 {
+    RDKAPPMANAGERS_PERF_CALL("LifecycleManager:kill", "RuntimeManager:Kill");
     Core::hresult result = mRuntimeManager->Kill(appInstanceId);
     if (Core::ERROR_NONE != result)
     {
@@ -155,6 +159,7 @@ bool RuntimeManagerHandler::kill(const string& appInstanceId, string& errorReaso
 
 bool RuntimeManagerHandler::terminate(const string& appInstanceId, string& errorReason)
 {
+    RDKAPPMANAGERS_PERF_CALL("LifecycleManager:terminate", "RuntimeManager:Terminate");
     Core::hresult result = mRuntimeManager->Terminate(appInstanceId);
     if (Core::ERROR_NONE != result)
     {
@@ -166,6 +171,7 @@ bool RuntimeManagerHandler::terminate(const string& appInstanceId, string& error
 
 bool RuntimeManagerHandler::suspend(const string& appInstanceId, string& errorReason)
 {
+    RDKAPPMANAGERS_PERF_CALL("LifecycleManager:suspend", "RuntimeManager:Suspend");
     Core::hresult result = mRuntimeManager->Suspend(appInstanceId);
     if (Core::ERROR_NONE != result)
     {
@@ -177,6 +183,7 @@ bool RuntimeManagerHandler::suspend(const string& appInstanceId, string& errorRe
 
 bool RuntimeManagerHandler::resume(const string& appInstanceId, string& errorReason)
 {
+    RDKAPPMANAGERS_PERF_CALL("LifecycleManager:resume", "RuntimeManager:Resume");
     Core::hresult result = mRuntimeManager->Resume(appInstanceId);
     if (Core::ERROR_NONE != result)
     {
@@ -188,6 +195,7 @@ bool RuntimeManagerHandler::resume(const string& appInstanceId, string& errorRea
 
 bool RuntimeManagerHandler::hibernate(const string& appInstanceId, string& errorReason)
 {
+    RDKAPPMANAGERS_PERF_CALL("LifecycleManager:hibernate", "RuntimeManager:Hibernate");
     Core::hresult result = mRuntimeManager->Hibernate(appInstanceId);
     if (Core::ERROR_NONE != result)
     {
@@ -208,6 +216,7 @@ bool RuntimeManagerHandler::wake(const string& appInstanceId, Exchange::ILifecyc
     {
         runtimeState = Exchange::IRuntimeManager::RuntimeState::RUNTIME_STATE_RUNNING;
     }
+    RDKAPPMANAGERS_PERF_CALL("LifecycleManager:wake", "RuntimeManager:Wake");
     Core::hresult result = mRuntimeManager->Wake(appInstanceId, runtimeState);
     if (Core::ERROR_NONE != result)
     {
@@ -261,3 +270,4 @@ void RuntimeManagerHandler::onEvent(JsonObject& data)
 
 } // namespace Plugin
 } // namespace WPEFramework
+

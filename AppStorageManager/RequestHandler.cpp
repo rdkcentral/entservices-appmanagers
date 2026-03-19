@@ -3,6 +3,7 @@
 #include <mutex>
 #include "RequestHandler.h"
 #include "UtilsLogging.h"
+#include "PerfMetrics.h"
 #include <interfaces/IStore2.h>
 #include <sys/statvfs.h>
 
@@ -237,6 +238,7 @@ namespace WPEFramework
                         {
                             case SET:
                             {
+                                RDKAPPMANAGERS_PERF_CALL("AppStorageManager:handleQuotaOps", "PersistentStore:SetValue");
                                 status = mPersistentStoreRemoteStoreObject->SetValue(Exchange::IStore2::ScopeType::DEVICE, appId, key, std::to_string(*quotaValue), 0);
                                 if (Core::ERROR_NONE != status)
                                 {
@@ -252,6 +254,7 @@ namespace WPEFramework
                             case GET:
                             {
                                 std::string quotaSize;
+                                RDKAPPMANAGERS_PERF_CALL("AppStorageManager:handleQuotaOps", "PersistentStore:GetValue");
                                 status = mPersistentStoreRemoteStoreObject->GetValue(Exchange::IStore2::ScopeType::DEVICE, appId, key, quotaSize, ttl);
                                 if (Core::ERROR_NONE != status)
                                 {
@@ -267,6 +270,7 @@ namespace WPEFramework
 
                             case DELETE:
                             {
+                                RDKAPPMANAGERS_PERF_CALL("AppStorageManager:handleQuotaOps", "PersistentStore:DeleteKey");
                                 status = mPersistentStoreRemoteStoreObject->DeleteKey(Exchange::IStore2::ScopeType::DEVICE, appId, key);
                                 if (Core::ERROR_NONE != status)
                                 {
@@ -962,3 +966,4 @@ namespace WPEFramework
         }
     }
 }
+

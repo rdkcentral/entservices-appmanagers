@@ -19,6 +19,7 @@
 
 #include "RuntimeManagerImplementation.h"
 #include "DobbySpecGenerator.h"
+#include "PerfMetrics.h"
 #ifdef RDK_APPMANAGERS_DEBUG
 #include "ContainerUtils.h"
 #include "WebInspector.h"
@@ -98,6 +99,7 @@ namespace WPEFramework
 
         Core::hresult RuntimeManagerImplementation::Register(Exchange::IRuntimeManager::INotification *notification)
         {
+            RDKAPPMANAGERS_PERF_SCOPE("RuntimeManager:Register");
             ASSERT(nullptr != notification);
 
             Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
@@ -115,6 +117,7 @@ namespace WPEFramework
 
         Core::hresult RuntimeManagerImplementation::Unregister(Exchange::IRuntimeManager::INotification *notification)
         {
+            RDKAPPMANAGERS_PERF_SCOPE("RuntimeManager:Unregister");
             Core::hresult status = Core::ERROR_GENERAL;
 
             ASSERT(nullptr != notification);
@@ -450,6 +453,7 @@ namespace WPEFramework
 
                 if (nullptr != mStorageManagerObject)
                 {
+                    RDKAPPMANAGERS_PERF_CALL("RuntimeManager:getAppStorageInfo", "AppStorageManager:GetStorage");
                     if (Core::ERROR_NONE == (status = mStorageManagerObject->GetStorage(appId, appStorageInfo.userId, appStorageInfo.groupId,
                                                                                         appStorageInfo.path, appStorageInfo.size, appStorageInfo.used)))
                     {
@@ -522,6 +526,7 @@ namespace WPEFramework
         }
         Core::hresult RuntimeManagerImplementation::Run(const string &appId, const string &appInstanceId, const uint32_t userId, const uint32_t groupId, IValueIterator *const &ports, IStringIterator *const &paths, IStringIterator *const &debugSettings, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject)
         {
+            RDKAPPMANAGERS_PERF_SCOPE("RuntimeManager:Run");
             Core::hresult status = Core::ERROR_GENERAL;
             RuntimeAppInfo runtimeAppInfo;
             std::string xdgRuntimeDir = "";
@@ -723,12 +728,16 @@ namespace WPEFramework
                     if (!containerId.empty())
                     {
                         if (legacyContainer)
+                        {
+                            RDKAPPMANAGERS_PERF_CALL("RuntimeManager:Run", "OCIContainer:StartContainerFromDobbySpec");
                             status = mOciContainerObject->StartContainerFromDobbySpec(containerId, dobbySpec, command, westerosSocket, descriptor, success, errorReason);
+                        }
                         else
                         {
                             LOGINFO("Starting  container in RALF mode");
                             // For RALF we are not mounting the westeros socket from  dobby. It can be done from RALF itself.
                             // Hence passing the westeros socket path as empty and relying on RALF to mount it inside the container.
+                            RDKAPPMANAGERS_PERF_CALL("RuntimeManager:Run", "OCIContainer:StartContainer");
                             status = mOciContainerObject->StartContainer(containerId, appPath, command, "", descriptor, success, errorReason);
                         }
 
@@ -791,6 +800,7 @@ namespace WPEFramework
 
         Core::hresult RuntimeManagerImplementation::Hibernate(const string &appInstanceId)
         {
+            RDKAPPMANAGERS_PERF_SCOPE("RuntimeManager:Hibernate");
             Core::hresult status = Core::ERROR_GENERAL;
             std::string options = "";
             std::string errorReason = "";
@@ -811,6 +821,7 @@ namespace WPEFramework
                 string containerId = getContainerId(appInstanceId);
                 if (!containerId.empty())
                 {
+                    RDKAPPMANAGERS_PERF_CALL("RuntimeManager:Hibernate", "OCIContainer:HibernateContainer");
                     status = mOciContainerObject->HibernateContainer(containerId, options, success, errorReason);
                     if ((success == false))
                     {
@@ -848,6 +859,7 @@ namespace WPEFramework
 
         Core::hresult RuntimeManagerImplementation::Wake(const string &appInstanceId, const RuntimeState runtimeState)
         {
+            RDKAPPMANAGERS_PERF_SCOPE("RuntimeManager:Wake");
             Core::hresult status = Core::ERROR_GENERAL;
             std::string errorReason = "";
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
@@ -870,6 +882,7 @@ namespace WPEFramework
                     if (Exchange::IRuntimeManager::RUNTIME_STATE_HIBERNATING == currentRuntimeState ||
                         Exchange::IRuntimeManager::RUNTIME_STATE_HIBERNATED == currentRuntimeState)
                     {
+                        RDKAPPMANAGERS_PERF_CALL("RuntimeManager:Wake", "OCIContainer:WakeupContainer");
                         status = mOciContainerObject->WakeupContainer(containerId, success, errorReason);
                         if ((success == false) || (status != Core::ERROR_NONE))
                         {
@@ -911,6 +924,7 @@ namespace WPEFramework
 
         Core::hresult RuntimeManagerImplementation::Suspend(const string &appInstanceId)
         {
+            RDKAPPMANAGERS_PERF_SCOPE("RuntimeManager:Suspend");
             Core::hresult status = Core::ERROR_GENERAL;
             std::string errorReason = "";
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
@@ -931,6 +945,7 @@ namespace WPEFramework
 
                 if (!containerId.empty())
                 {
+                    RDKAPPMANAGERS_PERF_CALL("RuntimeManager:Suspend", "OCIContainer:PauseContainer");
                     status = mOciContainerObject->PauseContainer(containerId, success, errorReason);
                     if ((success == false) || (status != Core::ERROR_NONE))
                     {
@@ -966,6 +981,7 @@ namespace WPEFramework
 
         Core::hresult RuntimeManagerImplementation::Resume(const string &appInstanceId)
         {
+            RDKAPPMANAGERS_PERF_SCOPE("RuntimeManager:Resume");
             Core::hresult status = Core::ERROR_GENERAL;
             std::string errorReason = "";
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
@@ -985,6 +1001,7 @@ namespace WPEFramework
 
                 if (!containerId.empty())
                 {
+                    RDKAPPMANAGERS_PERF_CALL("RuntimeManager:Resume", "OCIContainer:ResumeContainer");
                     status = mOciContainerObject->ResumeContainer(containerId, success, errorReason);
                     if ((success == false) || (status != Core::ERROR_NONE))
                     {
@@ -1020,6 +1037,7 @@ namespace WPEFramework
 
         Core::hresult RuntimeManagerImplementation::Terminate(const string &appInstanceId)
         {
+            RDKAPPMANAGERS_PERF_SCOPE("RuntimeManager:Terminate");
             Core::hresult status = Core::ERROR_GENERAL;
             std::string errorReason = "";
             bool success = false;
@@ -1049,6 +1067,7 @@ namespace WPEFramework
 
                 if (!containerId.empty())
                 {
+                    RDKAPPMANAGERS_PERF_CALL("RuntimeManager:Terminate", "OCIContainer:StopContainer");
                     status = mOciContainerObject->StopContainer(containerId, false, success, errorReason);
                     if (errorReason.compare("Container not found") == 0)
                     {
@@ -1093,6 +1112,7 @@ namespace WPEFramework
 
         Core::hresult RuntimeManagerImplementation::Kill(const string &appInstanceId)
         {
+            RDKAPPMANAGERS_PERF_SCOPE("RuntimeManager:Kill");
             Core::hresult status = Core::ERROR_GENERAL;
             std::string errorReason = "";
             bool success = false;
@@ -1122,6 +1142,7 @@ namespace WPEFramework
 
                 if (!containerId.empty())
                 {
+                    RDKAPPMANAGERS_PERF_CALL("RuntimeManager:Kill", "OCIContainer:StopContainer");
                     status = mOciContainerObject->StopContainer(containerId, true, success, errorReason);
                     if ((success == false) || (status != Core::ERROR_NONE))
                     {
@@ -1160,6 +1181,7 @@ namespace WPEFramework
 
         Core::hresult RuntimeManagerImplementation::GetInfo(const string &appInstanceId, string &info)
         {
+            RDKAPPMANAGERS_PERF_SCOPE("RuntimeManager:GetInfo");
             Core::hresult status = Core::ERROR_GENERAL;
             LOGINFO("Entered GetInfo Implementation");
             std::string errorReason = "";
@@ -1173,6 +1195,7 @@ namespace WPEFramework
 
                 if (!containerId.empty())
                 {
+                    RDKAPPMANAGERS_PERF_CALL("RuntimeManager:GetInfo", "OCIContainer:GetContainerInfo");
                     status = mOciContainerObject->GetContainerInfo(containerId, info, success, errorReason);
                     if ((success == false) || (status != Core::ERROR_NONE))
                     {
@@ -1198,6 +1221,7 @@ namespace WPEFramework
 
         Core::hresult RuntimeManagerImplementation::Annotate(const string &appInstanceId, const string &key, const string &value)
         {
+            RDKAPPMANAGERS_PERF_SCOPE("RuntimeManager:Annotate");
             Core::hresult status = Core::ERROR_GENERAL;
             std::string errorReason = "";
             bool success = false;
@@ -1216,6 +1240,7 @@ namespace WPEFramework
                     }
                     else
                     {
+                        RDKAPPMANAGERS_PERF_CALL("RuntimeManager:Annotate", "OCIContainer:AnnotateContainer");
                         status = mOciContainerObject->Annotate(containerId, key, value, success, errorReason);
                         if ((success == false) || (status != Core::ERROR_NONE))
                         {
@@ -1238,6 +1263,7 @@ namespace WPEFramework
 
         Core::hresult RuntimeManagerImplementation::Mount()
         {
+            RDKAPPMANAGERS_PERF_SCOPE("RuntimeManager:Mount");
             Core::hresult status = Core::ERROR_NONE;
 
             LOGINFO("Mount Implementation - Stub!");
@@ -1247,6 +1273,7 @@ namespace WPEFramework
 
         Core::hresult RuntimeManagerImplementation::Unmount()
         {
+            RDKAPPMANAGERS_PERF_SCOPE("RuntimeManager:Unmount");
             Core::hresult status = Core::ERROR_NONE;
 
             LOGINFO("Unmount Implementation - Stub!");
@@ -1414,3 +1441,4 @@ namespace WPEFramework
 #endif
     } /* namespace Plugin */
 } /* namespace WPEFramework */
+

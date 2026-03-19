@@ -40,12 +40,22 @@ endif()
 
 option(DISABLE_SECURITY_TOKEN "Disable security token" OFF)
 
+option(ENABLE_RDKAPPMANAGERS_PERFMETRICS "Enable RDKAppManagers COM-RPC performance metrics" OFF)
+
+if(DEFINED enable_rdkappmanagers_perfmetrics)
+    set(ENABLE_RDKAPPMANAGERS_PERFMETRICS ${enable_rdkappmanagers_perfmetrics} CACHE BOOL "Enable RDKAppManagers COM-RPC performance metrics" FORCE)
+endif()
+
 if(RDK_SERVICES_L1_TEST)
     add_subdirectory(Tests/L1Tests)
 endif()
 
 if(DISABLE_SECURITY_TOKEN)
     add_definitions(-DDISABLE_SECURITY_TOKEN)
+endif()
+
+if(ENABLE_RDKAPPMANAGERS_PERFMETRICS)
+    add_definitions(-DENABLE_RDKAPPMANAGERS_PERFMETRICS)
 endif()
 
 if(PLUGIN_RDK_WINDOW_MANAGER)
@@ -98,3 +108,4 @@ if(WPEFRAMEWORK_CREATE_IPKG_TARGETS)
 
     include(CPack)
 endif()
+

@@ -22,6 +22,7 @@
 #include <filesystem>
 
 #include "PackageManagerImplementation.h"
+#include "PerfMetrics.h"
 
 /* Until we don't get it from Package configuration, use size as 1MB */
 #define STORAGE_MAX_SIZE 1024
@@ -77,6 +78,7 @@ namespace Plugin {
 
     Core::hresult PackageManagerImplementation::Register(Exchange::IPackageDownloader::INotification* notification)
     {
+        RDKAPPMANAGERS_PERF_SCOPE("PackageManager:Register");
         LOGINFO();
         ASSERT(notification != nullptr);
 
@@ -94,6 +96,7 @@ namespace Plugin {
 
     Core::hresult PackageManagerImplementation::Unregister(Exchange::IPackageDownloader::INotification* notification)
     {
+        RDKAPPMANAGERS_PERF_SCOPE("PackageManager:Unregister");
         LOGINFO();
         ASSERT(notification != nullptr);
         Core::hresult result = Core::ERROR_NONE;
@@ -113,6 +116,7 @@ namespace Plugin {
 
     Core::hresult PackageManagerImplementation::Initialize(PluginHost::IShell* service)
     {
+        RDKAPPMANAGERS_PERF_SCOPE("PackageManager:Initialize");
         Core::hresult result = Core::ERROR_GENERAL;
         LOGINFO("entry");
 
@@ -165,6 +169,7 @@ namespace Plugin {
 
     Core::hresult PackageManagerImplementation::Deinitialize(PluginHost::IShell* service)
     {
+        RDKAPPMANAGERS_PERF_SCOPE("PackageManager:Deinitialize");
         Core::hresult result = Core::ERROR_NONE;
         LOGINFO();
 
@@ -307,6 +312,7 @@ namespace Plugin {
         const Exchange::IPackageDownloader::Options &options,
         Exchange::IPackageDownloader::DownloadId &downloadId)
     {
+        RDKAPPMANAGERS_PERF_SCOPE("PackageManager:Download");
         Core::hresult result = Core::ERROR_NONE;
 
         if (!mCurrentservice->SubSystems()->IsActive(PluginHost::ISubSystem::INTERNET)) {
@@ -332,6 +338,7 @@ namespace Plugin {
 
     Core::hresult PackageManagerImplementation::Pause(const string &downloadId)
     {
+        RDKAPPMANAGERS_PERF_SCOPE("PackageManager:Pause");
         Core::hresult result = Core::ERROR_NONE;
 
         LOGDBG("Pausing '%s'", downloadId.c_str());
@@ -352,6 +359,7 @@ namespace Plugin {
 
     Core::hresult PackageManagerImplementation::Resume(const string &downloadId)
     {
+        RDKAPPMANAGERS_PERF_SCOPE("PackageManager:Resume");
         Core::hresult result = Core::ERROR_NONE;
 
         LOGDBG("Resuming '%s'", downloadId.c_str());
@@ -372,6 +380,7 @@ namespace Plugin {
 
     Core::hresult PackageManagerImplementation::Cancel(const string &downloadId)
     {
+        RDKAPPMANAGERS_PERF_SCOPE("PackageManager:Cancel");
         Core::hresult result = Core::ERROR_NONE;
 
         LOGDBG("Cancelling '%s'", downloadId.c_str());
@@ -393,6 +402,7 @@ namespace Plugin {
 
     Core::hresult PackageManagerImplementation::Delete(const string &fileLocator)
     {
+        RDKAPPMANAGERS_PERF_SCOPE("PackageManager:Delete");
         Core::hresult result = Core::ERROR_NONE;
 
         if ((mInprogressDownload.get() != nullptr) && (fileLocator.compare(mInprogressDownload->GetFileLocator()) == 0)) {
@@ -453,6 +463,7 @@ namespace Plugin {
         IPackageInstaller::IKeyValueIterator* const& additionalMetadata,
         const string &fileLocator, Exchange::IPackageInstaller::FailReason &failReason)
     {
+        RDKAPPMANAGERS_PERF_SCOPE("PackageManager:Install");
         Core::hresult result = Core::ERROR_GENERAL;
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
         PackageManagerImplementation::PackageFailureErrorCode packageFailureErrorCode = PackageManagerImplementation::PackageFailureErrorCode::ERROR_NONE;
@@ -546,6 +557,7 @@ namespace Plugin {
 
     Core::hresult PackageManagerImplementation::Uninstall(const string &packageId, string &errorReason )
     {
+        RDKAPPMANAGERS_PERF_SCOPE("PackageManager:Uninstall");
         Core::hresult result = Core::ERROR_GENERAL;
         string version = GetInstalledVersion(packageId);
 
@@ -571,6 +583,7 @@ namespace Plugin {
                 }
                 ASSERT (nullptr != mStorageManagerObject);
                 if (nullptr != mStorageManagerObject) {
+                    RDKAPPMANAGERS_PERF_CALL("PackageManager:Uninstall", "AppStorageManager:DeleteStorage");
                     if(mStorageManagerObject->DeleteStorage(packageId, errorReason) == Core::ERROR_NONE) {
                         LOGINFO("DeleteStorage done");
                         //#if defined(USE_LIBPACKAGE) || defined(UNIT_TEST) || defined(ENABLE_NATIVEBUILD)
@@ -623,6 +636,7 @@ namespace Plugin {
 
     Core::hresult PackageManagerImplementation::ListPackages(Exchange::IPackageInstaller::IPackageIterator*& packages)
     {
+        RDKAPPMANAGERS_PERF_SCOPE("PackageManager:ListPackages");
         CHECK_CACHE()
         LOGTRACE("entry");
         Core::hresult result = Core::ERROR_NONE;
@@ -647,6 +661,7 @@ namespace Plugin {
 
     Core::hresult PackageManagerImplementation::Config(const string &packageId, const string &version, Exchange::RuntimeConfig& runtimeConfig)
     {
+        RDKAPPMANAGERS_PERF_SCOPE("PackageManager:Config");
         CHECK_CACHE()
         LOGDBG("id: '%s' ver: '%s'", packageId.c_str(), version.c_str());
         Core::hresult result = Core::ERROR_GENERAL;
@@ -670,6 +685,7 @@ namespace Plugin {
     Core::hresult PackageManagerImplementation::PackageState(const string &packageId, const string &version,
         Exchange::IPackageInstaller::InstallState &installState)
     {
+        RDKAPPMANAGERS_PERF_SCOPE("PackageManager:PackageState");
         CHECK_CACHE()
         LOGDBG("id: '%s' ver: '%s'", packageId.c_str(), version.c_str());
         Core::hresult result = Core::ERROR_NONE;
@@ -690,6 +706,7 @@ namespace Plugin {
 
     Core::hresult PackageManagerImplementation::Register(Exchange::IPackageInstaller::INotification *notification)
     {
+        RDKAPPMANAGERS_PERF_SCOPE("PackageManager:RegisterInstaller");
         Core::hresult result = Core::ERROR_NONE;
 
         LOGINFO();
@@ -706,6 +723,7 @@ namespace Plugin {
     }
 
     Core::hresult PackageManagerImplementation::Unregister(Exchange::IPackageInstaller::INotification *notification) {
+        RDKAPPMANAGERS_PERF_SCOPE("PackageManager:UnregisterInstaller");
         Core::hresult result = Core::ERROR_NONE;
 
         LOGINFO();
@@ -729,6 +747,7 @@ namespace Plugin {
         uint32_t &lockId, string &unpackedPath, Exchange::RuntimeConfig& runtimeConfig, Exchange::IPackageHandler::ILockIterator*& appMetadata
         )
     {
+        RDKAPPMANAGERS_PERF_SCOPE("PackageManager:Lock");
         Core::hresult result = Core::ERROR_NONE;
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
         /* Get current timestamp at the start of Lock for telemetry */
@@ -891,6 +910,7 @@ namespace Plugin {
 
     Core::hresult PackageManagerImplementation::Unlock(const string &packageId, const string &version)
     {
+        RDKAPPMANAGERS_PERF_SCOPE("PackageManager:Unlock");
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
         /* Get current timestamp at the start of Lock for telemetry */
         time_t requestTime = getCurrentTimestamp();
@@ -1023,6 +1043,7 @@ namespace Plugin {
 
     Core::hresult PackageManagerImplementation::GetConfigForPackage(const string &fileLocator, string& id, string &version, Exchange::RuntimeConfig& config)
     {
+        RDKAPPMANAGERS_PERF_SCOPE("PackageManager:GetConfigForPackage");
         CHECK_CACHE()
         Core::hresult result = Core::ERROR_GENERAL;
 
@@ -1182,6 +1203,7 @@ namespace Plugin {
         State& state
         )
     {
+        RDKAPPMANAGERS_PERF_SCOPE("PackageManager:Install");
         Core::hresult result = Core::ERROR_GENERAL;
 
         if (nullptr == mStorageManagerObject) { // XXX: Delayed instantiation is a bad idea
@@ -1193,6 +1215,7 @@ namespace Plugin {
         if (nullptr != mStorageManagerObject) {
             string path = "";
             string errorReason = "";
+            RDKAPPMANAGERS_PERF_CALL("PackageManager:Install", "AppStorageManager:CreateStorage");
             if(mStorageManagerObject->CreateStorage(packageId, STORAGE_MAX_SIZE, path, errorReason) == Core::ERROR_NONE) {
                 LOGINFO("CreateStorage path [%s]", path.c_str());
                 //#if defined(USE_LIBPACKAGE) || defined(UNIT_TEST) || defined(ENABLE_NATIVEBUILD)
@@ -1289,3 +1312,4 @@ namespace Plugin {
 
 } // namespace Plugin
 } // namespace WPEFramework
+

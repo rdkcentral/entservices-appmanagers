@@ -20,6 +20,7 @@
 #include <chrono>
 
 #include "PreinstallManagerImplementation.h"
+#include "PerfMetrics.h"
 
 
 namespace WPEFramework
@@ -66,6 +67,7 @@ namespace WPEFramework
      */
     Core::hresult PreinstallManagerImplementation::Register(Exchange::IPreinstallManager::INotification *notification)
     {
+        RDKAPPMANAGERS_PERF_SCOPE("PreinstallManager:Register");
         ASSERT(nullptr != notification);
 
         mAdminLock.Lock();
@@ -87,6 +89,7 @@ namespace WPEFramework
      */
     Core::hresult PreinstallManagerImplementation::Unregister(Exchange::IPreinstallManager::INotification *notification)
     {
+        RDKAPPMANAGERS_PERF_SCOPE("PreinstallManager:Unregister");
         Core::hresult status = Core::ERROR_GENERAL;
 
         ASSERT(nullptr != notification);
@@ -293,6 +296,7 @@ namespace WPEFramework
             PackageInfo packageInfo;
             packageInfo.fileLocator = filepath;
             LOGDBG("Found package folder: %s", filepath.c_str());
+            RDKAPPMANAGERS_PERF_CALL("PreinstallManager:readPreinstallDirectory", "PackageManager:GetConfigForPackage");
             if (mPackageManagerInstallerObject->GetConfigForPackage(packageInfo.fileLocator, packageInfo.packageId, packageInfo.version, packageInfo.configMetadata) == Core::ERROR_NONE)
             {
                 LOGINFO("Found package: %s, version: %s", packageInfo.packageId.c_str(), packageInfo.version.c_str());
@@ -328,6 +332,7 @@ namespace WPEFramework
      */
     Core::hresult PreinstallManagerImplementation::StartPreinstall(bool forceInstall)
     {
+        RDKAPPMANAGERS_PERF_SCOPE("PreinstallManager:StartPreinstall");
         Core::hresult result = Core::ERROR_GENERAL;
         auto installStart = std::chrono::steady_clock::now(); // for measuring duration taken
 
@@ -356,6 +361,7 @@ namespace WPEFramework
             Exchange::IPackageInstaller::IPackageIterator *packageList = nullptr;
 
             // fetch installed packages
+            RDKAPPMANAGERS_PERF_CALL("PreinstallManager:StartPreinstall", "PackageManager:ListPackages");
             Core::hresult listResult = mPackageManagerInstallerObject->ListPackages(packageList);
             if (listResult != Core::ERROR_NONE || packageList == nullptr)
             {
@@ -454,6 +460,7 @@ namespace WPEFramework
                 // additionalMetadata = Core::Service<RPC::IteratorType<Exchange::IPackageInstaller::IKeyValueIterator>>::Create<Exchange::IPackageInstaller::IKeyValueIterator>(keyValues);
 
 
+            RDKAPPMANAGERS_PERF_CALL("PreinstallManager:StartPreinstall", "PackageManager:Install");
             Core::hresult installResult = mPackageManagerInstallerObject->Install(pkg.packageId, pkg.version, additionalMetadata, pkg.fileLocator, failReason);
             if (installResult != Core::ERROR_NONE)
             {
@@ -494,3 +501,4 @@ namespace WPEFramework
 
     } /* namespace Plugin */
 } /* namespace WPEFramework */
+
