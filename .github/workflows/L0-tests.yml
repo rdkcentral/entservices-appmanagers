@@ -336,7 +336,7 @@ jobs:
             -DWPEFrameworkPlugins_DIR="$GITHUB_WORKSPACE/install/usr/lib/cmake/WPEFrameworkPlugins" \
             -DDISABLE_SECURITY_TOKEN=ON \
             -DUSE_THUNDER_R4=ON \
-            -DPLUGIN_RUNTIME_MANAGER=ON \
+            -DPLUGIN_RUNTIME_MANAGER=OFF \
             -DPLUGIN_PREINSTALL_MANAGER=ON \
             -DPLUGIN_APPMANAGER=OFF \
             -DPLUGIN_APP_STORAGE_MANAGER=OFF \
