@@ -2,9 +2,9 @@ name: L0-tests
 
 on:
   push:
-    branches: [ main, develop, topic/genai-runtime_L0 ]
+    branches: [ main, develop, topic/genai-runtime_L0, topic/genai-appmanagers_L0 ]
   pull_request:
-    branches: [ main, develop, topic/genai-runtime_L0 ]
+    branches: [ main, develop, topic/genai-runtime_L0, topic/genai-appmanagers_L0 ]
   workflow_call:
     inputs:
       caller_source:
@@ -373,7 +373,29 @@ jobs:
 
           cmake --build build/entservices-appmanagers-l0tests-only --target runtimemanager_l0test -- -j"$(nproc)"
 
-      - name: Run L0 tests
+      - name: Build AppManager L0 tests (Tests/L0Tests/AppManager)
+        run: |
+          set -euo pipefail
+
+          rm -rf "$GITHUB_WORKSPACE/build/appmanager-l0tests"
+
+          export CMAKE_PREFIX_PATH="$GITHUB_WORKSPACE/install/usr${CMAKE_PREFIX_PATH:+:$CMAKE_PREFIX_PATH}"
+          export CMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake${CMAKE_MODULE_PATH:+:$CMAKE_MODULE_PATH}"
+          export PREFIX="$GITHUB_WORKSPACE/install/usr"
+
+          cmake -G Ninja \
+            -S "$GITHUB_WORKSPACE/Tests/L0Tests/AppManager" \
+            -B build/appmanager-l0tests \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_PREFIX_PATH="$CMAKE_PREFIX_PATH" \
+            -DCMAKE_MODULE_PATH="$CMAKE_MODULE_PATH" \
+            -DGENERIC_CMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" \
+            -DPREFIX="$PREFIX" \
+            -DAPPMGR_ENABLE_COVERAGE=ON
+
+          cmake --build build/appmanager-l0tests --target appmanager_l0test -- -j"$(nproc)"
+
+      - name: Run RuntimeManager L0 tests
         id: run_l0_tests
         continue-on-error: true
         run: |
@@ -396,15 +418,44 @@ jobs:
 
           exit "$test_rc"
 
+      - name: Run AppManager L0 tests
+        id: run_appmanager_l0_tests
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+
+          export PATH="$GITHUB_WORKSPACE/install/usr/bin:${PATH}"
+          export LD_LIBRARY_PATH="$GITHUB_WORKSPACE/install/usr/lib:$GITHUB_WORKSPACE/install/usr/lib/wpeframework:$GITHUB_WORKSPACE/install/usr/lib/wpeframework/plugins:${LD_LIBRARY_PATH:-}"
+
+          test_bin="build/appmanager-l0tests/appmanager_l0test"
+          test -x "$test_bin"
+
+          set +e
+          "$test_bin" 2>&1 | tee appmanager-l0-test.log
+          test_rc=$?
+          set -e
+
+          echo "==== AppManager Failed test cases (run step) ===="
+          grep -E '^\[  FAILED  \]' appmanager-l0-test.log || true
+          grep -E '^FAIL:' appmanager-l0-test.log || true
+
+          exit "$test_rc"
+
       - name: Summarize failed tests
         if: ${{ always() }}
         run: |
           set -euo pipefail
           if [ -f l0-test.log ]; then
-            echo "==== Failed test cases (if any) ===="
+            echo "==== RuntimeManager Failed test cases (if any) ===="
             grep -E '^\[  FAILED  \]' l0-test.log || echo "No explicit [ FAILED ] lines found"
           else
             echo "l0-test.log not found"
+          fi
+          if [ -f appmanager-l0-test.log ]; then
+            echo "==== AppManager Failed test cases (if any) ===="
+            grep -E '^\[  FAILED  \]' appmanager-l0-test.log || echo "No explicit [ FAILED ] lines found"
+          else
+            echo "appmanager-l0-test.log not found"
           fi
 
       - name: Run L0 tests under gdb (opt-in on failure)
@@ -415,30 +466,50 @@ jobs:
           export PATH="$GITHUB_WORKSPACE/install/usr/bin:${PATH}"
           export LD_LIBRARY_PATH="$GITHUB_WORKSPACE/install/usr/lib:$GITHUB_WORKSPACE/install/usr/lib/wpeframework:$GITHUB_WORKSPACE/install/usr/lib/wpeframework/plugins:${LD_LIBRARY_PATH:-}"
 
-          test_bin="build/entservices-appmanagers-l0tests-only/runtimemanager_l0test"
-          test -x "$test_bin"
+          rt_bin="build/entservices-appmanagers-l0tests-only/runtimemanager_l0test"
+          if [ -x "$rt_bin" ]; then
+            gdb -q -batch -ex "set pagination off" -ex "run" -ex "bt full" --args "$rt_bin" | tee l0-test-gdb.log
+          fi
 
-          gdb -q -batch -ex "set pagination off" -ex "run" -ex "bt full" --args "$test_bin" | tee l0-test-gdb.log
+          am_bin="build/appmanager-l0tests/appmanager_l0test"
+          if [ -x "$am_bin" ]; then
+            gdb -q -batch -ex "set pagination off" -ex "run" -ex "bt full" --args "$am_bin" | tee appmanager-l0-test-gdb.log
+          fi
 
       - name: Fail workflow if tests failed
         if: ${{ always() }}
         env:
           RUN_L0_TESTS_OUTCOME: ${{ steps.run_l0_tests.outcome }}
+          RUN_APPMANAGER_L0_TESTS_OUTCOME: ${{ steps.run_appmanager_l0_tests.outcome }}
         run: |
           set -euo pipefail
           failed=0
 
           if [ "${RUN_L0_TESTS_OUTCOME}" != "success" ]; then
-            echo "L0 test execution step failed (non-zero exit)"
+            echo "RuntimeManager L0 test execution step failed (non-zero exit)"
+            failed=1
+          fi
+
+          if [ "${RUN_APPMANAGER_L0_TESTS_OUTCOME}" != "success" ]; then
+            echo "AppManager L0 test execution step failed (non-zero exit)"
             failed=1
           fi
 
           if [ -f l0-test.log ]; then
-            echo "==== Failed test cases (final gate) ===="
+            echo "==== RuntimeManager Failed test cases (final gate) ===="
             grep -E '^\[  FAILED  \]' l0-test.log || true
             grep -E '^FAIL:' l0-test.log || true
           else
             echo "l0-test.log not found in final gate"
+            failed=1
+          fi
+
+          if [ -f appmanager-l0-test.log ]; then
+            echo "==== AppManager Failed test cases (final gate) ===="
+            grep -E '^\[  FAILED  \]' appmanager-l0-test.log || true
+            grep -E '^FAIL:' appmanager-l0-test.log || true
+          else
+            echo "appmanager-l0-test.log not found in final gate"
             failed=1
           fi
 
@@ -447,49 +518,46 @@ jobs:
           fi
 
       - name: Generate coverage report (lcov + HTML via genhtml)
+        if: ${{ matrix.coverage != 'without-coverage' && !env.ACT }}
         continue-on-error: true
-        run: |
-          set -euo pipefail
-
-          ARTIFACT_ROOT="$GITHUB_WORKSPACE"
-          rm -rf "$ARTIFACT_ROOT/coverage-html" coverage.info filtered_coverage.info || true
-          mkdir -p "$ARTIFACT_ROOT/coverage-html"
-
-          build_dir="$GITHUB_WORKSPACE/build/entservices-appmanagers-l0tests-only"
-
-          lcov -c -o coverage.info -d "$build_dir" || true
-
-          if [ ! -s coverage.info ]; then
-            echo "coverage.info missing/empty; skipping filtering + HTML generation"
-            exit 0
-          fi
-
-          lcov \
-            -r coverage.info \
-            '/usr/include/*' \
-            '*/install/usr/include/*' \
-            '*/Tests/L0Tests/*' \
-            '*/Thunder/*' \
-            -o filtered_coverage.info || true
-
-          if [ ! -s filtered_coverage.info ]; then
-            echo "filtered_coverage.info missing/empty; skipping HTML generation"
-            exit 0
-          fi
-
-          genhtml \
-            -o "$ARTIFACT_ROOT/coverage-html" \
-            -t "entservices-appmanagers RuntimeManager L0 coverage" \
-            filtered_coverage.info || true
+        run: >
+          cp $GITHUB_WORKSPACE/Tests/L1Tests/.lcovrc_l1 ~/.lcovrc
+          &&
+          lcov -c
+          -o rt_coverage.info
+          -d build/entservices-appmanagers-l0tests-only
+          &&
+          lcov -c
+          -o am_coverage.info
+          -d build/appmanager-l0tests
+          &&
+          lcov
+          --add-tracefile rt_coverage.info
+          --add-tracefile am_coverage.info
+          -o coverage.info
+          &&
+          lcov
+          -r coverage.info
+          '/usr/include/*'
+          '*/install/usr/include/*'
+          '*/Tests/L0Tests/*'
+          '*/Thunder/*'
+          -o filtered_coverage.info
+          &&
+          genhtml
+          -o coverage
+          -t "entservices-appmanagers L0 coverage"
+          filtered_coverage.info
 
       - name: Upload artifacts
         if: ${{ !env.ACT }}
         uses: actions/upload-artifact@v4
         with:
-          name: artifacts-L0-runtimemanager
+          name: artifacts-L0-appmanagers
           path: |
-            coverage-html/
+            coverage/
             coverage.info
             filtered_coverage.info
             l0-test.log
+            appmanager-l0-test.log
           if-no-files-found: warn
