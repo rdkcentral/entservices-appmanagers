@@ -10,11 +10,25 @@ echo "building entservices-appmanagers"
 
 cd ${GITHUB_WORKSPACE}
 PREFIX_PATH="${CMAKE_PREFIX_PATH:+${CMAKE_PREFIX_PATH};}${GITHUB_WORKSPACE}/install/usr;${GITHUB_WORKSPACE}/eshelpers;/usr"
+
+# Coverity workflow only: make CompileSettingsDebug export symbols for direct test linking.
+COMPILE_SETTINGS_DIR="${GITHUB_WORKSPACE}/install/usr/lib/cmake/CompileSettingsDebug"
+if [ -d "${COMPILE_SETTINGS_DIR}" ]; then
+	find "${COMPILE_SETTINGS_DIR}" -type f -name "*.cmake" | while read -r cmake_file; do
+		perl -pi -e 's/-fvisibility=hidden/-fvisibility=default/g' "${cmake_file}"
+		perl -pi -e 's/\s*-fvisibility-inlines-hidden\s*/ /g' "${cmake_file}"
+	done
+	COMPILE_SETTINGS_DEBUG_ARG="-DCompileSettingsDebug_DIR=${COMPILE_SETTINGS_DIR}"
+else
+	COMPILE_SETTINGS_DEBUG_ARG=""
+fi
+
 cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/entservices-appmanagers \
 -DUSE_THUNDER_R4=ON \
 -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/install/usr" \
 -DCMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" \
 -DCMAKE_PREFIX_PATH="${PREFIX_PATH}" \
+${COMPILE_SETTINGS_DEBUG_ARG:+${COMPILE_SETTINGS_DEBUG_ARG}} \
 -DCMAKE_DISABLE_FIND_PACKAGE_IARMBus=ON \
 -DCMAKE_DISABLE_FIND_PACKAGE_RFC=ON \
 -DCMAKE_DISABLE_FIND_PACKAGE_DS=ON \
