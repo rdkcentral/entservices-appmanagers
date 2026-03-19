@@ -74,6 +74,6 @@ target_link_libraries(${PLUGIN_IMPLEMENTATION}
 install(TARGETS ${PLUGIN_IMPLEMENTATION}
     DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/${STORAGE_DIRECTORY}/plugins)
 
-write_config(PLUGINS ${PLUGIN_NAME})
+write_config(${PLUGIN_NAME})
 
 
