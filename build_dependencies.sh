@@ -98,7 +98,7 @@ cmake -S libPackage -B build/libPackage \
     -DCMAKE_INCLUDE_PATH="${GITHUB_WORKSPACE}/eshelpers/packager" \
     -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/install/usr" \
     -DCMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" \
-    -DGENERIC_CMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" \
+    -DGENERIC_CMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake"
 
 cmake --build build/libPackage --target install
 
@@ -113,7 +113,7 @@ cd ..
 cmake -G Ninja -S entservices-apis  -B build/entservices-apis \
     -DEXCEPTIONS_ENABLE=ON \
     -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/install/usr" \
-    -DCMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" \
+    -DCMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake"
 
 cmake --build build/entservices-apis --target install
 
