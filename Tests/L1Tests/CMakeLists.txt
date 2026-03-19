@@ -122,7 +122,7 @@ add_plugin_test_ex(PLUGIN_APP_STORAGE_MANAGER tests/test_AppStorageManager.cpp "
 
 # PLUGIN_LIFECYCLE_MANAGER
 set(LIFECYCLEMANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/LifecycleManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
-set(LIFECYCLEMANAGER_LIBS ${NAMESPACE}LifecycleManager)
+set(LIFECYCLEMANAGER_LIBS ${NAMESPACE}LifecycleManager ${NAMESPACE}Definitions)
 add_plugin_test_ex(PLUGIN_LIFECYCLE_MANAGER tests/test_LifecycleManager.cpp "${LIFECYCLEMANAGER_INC}" "${LIFECYCLEMANAGER_LIBS}")
 
 # PLUGIN_PREINSTALL_MANAGER
