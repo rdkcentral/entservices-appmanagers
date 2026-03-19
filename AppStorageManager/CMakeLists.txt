@@ -94,7 +94,7 @@ if (RDK_SERVICES_L1_TEST)
 	target_link_options(${PLUGIN_IMPLEMENTATION} PRIVATE -Wl,--wrap,open -Wl,--wrap,mkdir -Wl,--wrap,access -Wl,--wrap,nftw -Wl,--wrap,statvfs -Wl,--wrap,rmdir -Wl,--wrap,chown -Wl,--wrap,opendir -Wl,--wrap,readdir -Wl,--wrap,stat -Wl,--wrap,closedir)
 endif (RDK_SERVICES_L1_TEST)
 
-if (RDK_SERVICE_L2_TEST)
+if (RDK_SERVICES_L2_TEST)
    find_library(TESTMOCKLIB_LIBRARIES NAMES TestMocklib)
    if (TESTMOCKLIB_LIBRARIES)
        message ("linking mock libraries ${TESTMOCKLIB_LIBRARIES} library")
@@ -111,4 +111,4 @@ target_link_libraries(${PLUGIN_IMPLEMENTATION} PRIVATE
 install(TARGETS ${PLUGIN_IMPLEMENTATION}
     DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/${STORAGE_DIRECTORY}/plugins)
 
-write_config(${PLUGIN_NAME})
+write_config(PLUGINS ${PLUGIN_NAME})
