@@ -836,7 +836,8 @@ End:
 			    appManagerImplInstance->handleOnAppLifecycleStateChanged(appId, appInstanceId, newAppState, oldAppState, Exchange::IAppManager::AppErrorReason::APP_ERROR_ABORT);
 			    // Report crash telemetry
 			    auto crashIt = appManagerImplInstance->mAppInfo.find(appId);
-			    if(nullptr != crashIt->second.appInstanceId.c_str() && crashIt != appManagerImplInstance->mAppInfo.end())
+			    if (appManagerImplInstance->mAppInfo.end() != crashIt &&
+			        false == crashIt->second.appInstanceId.empty())
 			    {
                     std::string crashReason = "Terminated unexpectedly";
 			        AppManagerTelemetryReporting::getInstance().reportAppCrashedTelemetry(appId, appInstanceId, crashReason);
