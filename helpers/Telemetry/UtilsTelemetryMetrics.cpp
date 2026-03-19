@@ -21,6 +21,7 @@
 
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
 #include <interfaces/ITelemetryMetrics.h>
+#include <atomic>
 #include <mutex>
 #endif
 
@@ -39,7 +40,7 @@ bool isTelemetryMetricsEnabled()
 
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
 namespace {
-    Exchange::ITelemetryMetrics* gTelemetryMetricsObject = nullptr;
+    std::atomic<Exchange::ITelemetryMetrics*> gTelemetryMetricsObject{nullptr};
     std::mutex gTelemetryLock;
 }
 #endif
@@ -55,7 +56,7 @@ Core::hresult TelemetryMetricsClient::initialize(PluginHost::IShell* service,
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
     std::lock_guard<std::mutex> lock(gTelemetryLock);
 
-    if (gTelemetryMetricsObject != nullptr)
+    if (gTelemetryMetricsObject.load(std::memory_order_acquire) != nullptr)
     {
         return Core::ERROR_NONE;
     }
@@ -65,9 +66,9 @@ Core::hresult TelemetryMetricsClient::initialize(PluginHost::IShell* service,
         return Core::ERROR_GENERAL;
     }
 
-    gTelemetryMetricsObject = service->QueryInterfaceByCallsign<WPEFramework::Exchange::ITelemetryMetrics>(callsign.c_str());
+    gTelemetryMetricsObject.store(service->QueryInterfaceByCallsign<WPEFramework::Exchange::ITelemetryMetrics>(callsign.c_str()), std::memory_order_release);
 
-    return (gTelemetryMetricsObject != nullptr) ? Core::ERROR_NONE : Core::ERROR_GENERAL;
+    return (gTelemetryMetricsObject.load(std::memory_order_acquire) != nullptr) ? Core::ERROR_NONE : Core::ERROR_GENERAL;
 #else
     (void)service;
     (void)callsign;
@@ -79,7 +80,7 @@ Core::hresult TelemetryMetricsClient::ensure(PluginHost::IShell* service,
     const std::string& callsign)
 {
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-    if (gTelemetryMetricsObject != nullptr)
+    if (gTelemetryMetricsObject.load(std::memory_order_acquire) != nullptr)
     {
         return Core::ERROR_NONE;
     }
@@ -95,7 +96,7 @@ void TelemetryMetricsClient::reset()
 bool TelemetryMetricsClient::isAvailable() const
 {
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-    return (gTelemetryMetricsObject != nullptr);
+    return (gTelemetryMetricsObject.load(std::memory_order_acquire) != nullptr);
 #else
     return true;
 #endif
@@ -106,7 +107,7 @@ Core::hresult TelemetryMetricsClient::record(const std::string& appId,
     const std::string& marker)
 {
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-    return recordTelemetry(gTelemetryMetricsObject, appId, telemetryPayload, marker);
+    return recordTelemetry(gTelemetryMetricsObject.load(std::memory_order_acquire), appId, telemetryPayload, marker);
 #else
     (void)appId;
     (void)telemetryPayload;
@@ -119,7 +120,7 @@ Core::hresult TelemetryMetricsClient::publish(const std::string& appId,
     const std::string& marker)
 {
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-    return publishTelemetry(gTelemetryMetricsObject, appId, marker);
+    return publishTelemetry(gTelemetryMetricsObject.load(std::memory_order_acquire), appId, marker);
 #else
     (void)appId;
     (void)marker;
