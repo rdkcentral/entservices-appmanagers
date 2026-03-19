@@ -25,7 +25,7 @@ jobs:
       - name: Install packages
         run: |
           apt-get update
-          apt-get install -y libarchive-dev libjsoncpp-dev
+          apt-get install -y libarchive-dev
 
       - name: native build
         run: |
