@@ -106,6 +106,33 @@ namespace WPEFramework
 
             public /* members */:
                 static LifecycleManager* sInstance;
+#ifdef UNIT_TEST
+            /* Accessor methods exposed only for unit testing, so that
+             * LifecycleManagerShellTest can exercise Notification callbacks
+             * without requiring a friend declaration. */
+            void NotificationActivated(RPC::IRemoteConnection* conn)
+            {
+                mLifecycleManagerStateNotification.Activated(conn);
+            }
+            void NotificationDeactivated(RPC::IRemoteConnection* conn)
+            {
+                mLifecycleManagerStateNotification.Deactivated(conn);
+            }
+            void NotificationOnAppLifecycleStateChanged(
+                const string& appId,
+                const string& appInstanceId,
+                const Exchange::ILifecycleManager::LifecycleState oldState,
+                const Exchange::ILifecycleManager::LifecycleState newState,
+                const string& navigationIntent)
+            {
+                mLifecycleManagerStateNotification.OnAppLifecycleStateChanged(
+                    appId, appInstanceId, oldState, newState, navigationIntent);
+            }
+            void* NotificationQueryInterface(uint32_t id)
+            {
+                return mLifecycleManagerStateNotification.QueryInterface(id);
+            }
+#endif
 
 	    private: /* members */
                 PluginHost::IShell* _service{};
@@ -113,7 +140,6 @@ namespace WPEFramework
                 Exchange::ILifecycleManager* mLifecycleManagerImplementation;
                 Exchange::ILifecycleManagerState* mLifecycleManagerState;
                 Core::Sink<Notification> mLifecycleManagerStateNotification;
-                friend class LifecycleManagerShellTest;
         };
     } /* namespace Plugin */
 } /* namespace WPEFramework */

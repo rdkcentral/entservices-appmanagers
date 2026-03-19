@@ -72,12 +72,12 @@ class LifecycleManagerShellTest : public LifecycleManager {
 
         void notificationActivated(RPC::IRemoteConnection* conn)
         {
-            mLifecycleManagerStateNotification.Activated(conn);
+            NotificationActivated(conn);
         }
 
         void notificationDeactivated(RPC::IRemoteConnection* conn)
         {
-            mLifecycleManagerStateNotification.Deactivated(conn);
+           NotificationDeactivated(conn);
         }
 
         void notificationOnAppLifecycleStateChanged(
@@ -87,13 +87,12 @@ class LifecycleManagerShellTest : public LifecycleManager {
             Exchange::ILifecycleManager::LifecycleState newState,
             const std::string& navigationIntent)
         {
-            mLifecycleManagerStateNotification.OnAppLifecycleStateChanged(
-                appId, appInstanceId, oldState, newState, navigationIntent);
+            NotificationOnAppLifecycleStateChanged(appId, appInstanceId, oldState, newState, navigationIntent);
         }
 
         void* notificationQueryInterface(uint32_t id)
         {
-            return mLifecycleManagerStateNotification.QueryInterface(id);
+            return NotificationQueryInterface(id);
         }
 };
 } // namespace Plugin
