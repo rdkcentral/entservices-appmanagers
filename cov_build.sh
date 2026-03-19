@@ -35,7 +35,6 @@ cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/entservices-appmanagers \
 -I /usr/include/jsoncpp \
 -I /usr/include/libdrm \
 -I ${GITHUB_WORKSPACE}/eshelpers/packager \
--include ${GITHUB_WORKSPACE}/eshelpers/packager/IPackageImpl.h \
 -include ${GITHUB_WORKSPACE}/Tests/mocks/Iarm.h \
 -include ${GITHUB_WORKSPACE}/Tests/mocks/Rfc.h \
 -include ${GITHUB_WORKSPACE}/Tests/mocks/RBus.h \
