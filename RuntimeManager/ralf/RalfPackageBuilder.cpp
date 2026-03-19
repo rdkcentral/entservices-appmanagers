@@ -32,7 +32,7 @@ namespace ralf
         // Let us extract the mount points.
         std::string packageLayers = RALF_GRAPHICS_LAYER_ROOTFS;
         // RDKEMW-15736 We need to reverse iterate to maintain the correct order of layers
-        //see https://docs.kernel.org/filesystems/overlayfs.html#multiple-lower-layers for more details.
+        // see https://docs.kernel.org/filesystems/overlayfs.html#multiple-lower-layers for more details.
 
         for (auto package = mRalfPackages.crbegin(); package != mRalfPackages.crend(); ++package)
         {
@@ -90,7 +90,6 @@ namespace ralf
             {
                 LOGDBG("Successfully unmounted overlayfs at path: %s\n", overlayMountPath.c_str());
                 status = true;
-                //TODO We need to remove the overlayfs directory as well?
             }
         }
         else
