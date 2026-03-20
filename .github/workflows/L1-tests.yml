@@ -326,6 +326,7 @@ jobs:
           -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/headers/network
           -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/headers/libusb
           -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests
+          -I $GITHUB_WORKSPACE/entservices-appmanagers/helpers/Telemetry
           -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/headers/Dobby
           -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/headers/Dobby/Public/Dobby
           -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/headers/Dobby/IpcService
