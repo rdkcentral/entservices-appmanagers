@@ -47,6 +47,7 @@ ${COMPILE_SETTINGS_DEBUG_ARG:+${COMPILE_SETTINGS_DEBUG_ARG}} \
 -DCMAKE_CXX_FLAGS="-fvisibility=default -DEXCEPTIONS_ENABLE=ON \
 -I ${GITHUB_WORKSPACE}/Tests/mocks \
 -I ${GITHUB_WORKSPACE}/Tests/mocks/thunder \
+-I ${GITHUB_WORKSPACE}/helpers/Telemetry \
 -include ${GITHUB_WORKSPACE}/Tests/mocks/Iarm.h \
 -include ${GITHUB_WORKSPACE}/Tests/mocks/Rfc.h \
 -include ${GITHUB_WORKSPACE}/Tests/mocks/RBus.h \
