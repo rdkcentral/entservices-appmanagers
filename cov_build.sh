@@ -16,7 +16,7 @@ COMPILE_SETTINGS_DIR="${GITHUB_WORKSPACE}/install/usr/lib/cmake/CompileSettingsD
 if [ -d "${COMPILE_SETTINGS_DIR}" ]; then
 	find "${COMPILE_SETTINGS_DIR}" -type f -name "*.cmake" | while read -r cmake_file; do
 		perl -pi -e 's/-fvisibility=hidden/-fvisibility=default/g' "${cmake_file}"
-		perl -pi -e 's/\s*-fvisibility-inlines-hidden\s*/ /g' "${cmake_file}"
+		perl -pi -e 's/[ \t]*-fvisibility-inlines-hidden[ \t]*/ /g' "${cmake_file}"
 	done
 	COMPILE_SETTINGS_DEBUG_ARG="-DCompileSettingsDebug_DIR=${COMPILE_SETTINGS_DIR}"
 else
@@ -47,6 +47,7 @@ ${COMPILE_SETTINGS_DEBUG_ARG:+${COMPILE_SETTINGS_DEBUG_ARG}} \
 -DCMAKE_CXX_FLAGS="-fvisibility=default -DEXCEPTIONS_ENABLE=ON \
 -I ${GITHUB_WORKSPACE}/Tests/mocks \
 -I ${GITHUB_WORKSPACE}/Tests/mocks/thunder \
+-I ${GITHUB_WORKSPACE}/helpers/Telemetry \
 -include ${GITHUB_WORKSPACE}/Tests/mocks/Iarm.h \
 -include ${GITHUB_WORKSPACE}/Tests/mocks/Rfc.h \
 -include ${GITHUB_WORKSPACE}/Tests/mocks/RBus.h \
@@ -64,12 +65,13 @@ ${COMPILE_SETTINGS_DEBUG_ARG:+${COMPILE_SETTINGS_DEBUG_ARG}} \
 -DHAS_RBUS -DDISABLE_SECURITY_TOKEN -DENABLE_DEVICE_MANUFACTURER_INFO -DUSE_THUNDER_R4=ON -DTHUNDER_VERSION=4 -DTHUNDER_VERSION_MAJOR=4 -DTHUNDER_VERSION_MINOR=4 -DENABLE_NATIVEBUILD=ON" \
 
 
+
 # Ensure generated Ninja compile rules cannot force hidden visibility.
 BUILD_DIR="${GITHUB_WORKSPACE}/build/entservices-appmanagers"
 if [ -d "${BUILD_DIR}" ]; then
 	find "${BUILD_DIR}" -type f \( -name "*.ninja" -o -name "flags.make" \) | while read -r build_file; do
 		perl -pi -e 's/-fvisibility=hidden/-fvisibility=default/g' "${build_file}"
-		perl -pi -e 's/\s*-fvisibility-inlines-hidden\s*/ /g' "${build_file}"
+		perl -pi -e 's/[ \t]*-fvisibility-inlines-hidden[ \t]*/ /g' "${build_file}"
 	done
 fi
 

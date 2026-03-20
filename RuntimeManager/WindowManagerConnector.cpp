@@ -18,6 +18,7 @@
 */
 
 #include "WindowManagerConnector.h"
+#include "RuntimeManagerImplementation.h"
 #include <fstream>
 #include <random>
 
@@ -25,7 +26,7 @@ namespace WPEFramework {
 namespace Plugin {
 
 WindowManagerConnector::WindowManagerConnector()
-: mWindowManager(nullptr), mWindowManagerNotification(*this)
+: mWindowManager(nullptr), mWindowManagerNotification(*this), mRuntimeManager(nullptr)
 {
     LOGINFO("Create WindowManagerConnector Instance");
 }
@@ -35,7 +36,7 @@ WindowManagerConnector::~WindowManagerConnector()
     LOGINFO("Delete WindowManagerConnector Instance");
 }
 
-bool WindowManagerConnector::initializePlugin(PluginHost::IShell* service)
+bool WindowManagerConnector::initializePlugin(PluginHost::IShell* service, class RuntimeManagerImplementation* runtimeManager)
 {
     bool ret = false;
     if (nullptr == service)
@@ -50,6 +51,7 @@ bool WindowManagerConnector::initializePlugin(PluginHost::IShell* service)
     {
         LOGINFO("Created WindowManager Object \n");
         mWindowManager->AddRef();
+        mRuntimeManager = runtimeManager;
         ret = true;
         mPluginInitialized = true;
         Core::hresult registerResult = mWindowManager->Register(&mWindowManagerNotification);
@@ -173,6 +175,19 @@ void WindowManagerConnector::getDisplayInfo(const string& appInstanceId , string
 
 void WindowManagerConnector::WindowManagerNotification::OnUserInactivity(const double minutes)
 {
+}
+
+void WindowManagerConnector::WindowManagerNotification::OnDisconnected(const std::string& client)
+{
+    _parent.onWindowManagerDisconnected(client);
+}
+
+void WindowManagerConnector::onWindowManagerDisconnected(const std::string& client)
+{
+    if (nullptr != mRuntimeManager)
+    {
+        mRuntimeManager->onWindowManagerDisconnected(client);
+    }
 }
 
 } // namespace Plugin
