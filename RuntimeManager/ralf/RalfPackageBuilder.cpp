@@ -89,6 +89,12 @@ namespace ralf
             else
             {
                 LOGDBG("Successfully unmounted overlayfs at path: %s\n", overlayMountPath.c_str());
+                //RDKEMW-15795 : Let us remove the mount path directory as well
+                std::string ralfAppDir = RALF_APP_ROOTFS_DIR + appInstanceId;
+                if (!removeDirectoryRecursively(ralfAppDir))
+                {
+                    LOGERR("Failed to remove ralf app directory: %s, error: \n", ralfAppDir.c_str());
+                }
                 status = true;
             }
         }
