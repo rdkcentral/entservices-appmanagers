@@ -33,7 +33,18 @@ namespace WPEFramework
 {
 namespace Plugin
 {
+    // Fix for Coverity issue 1078 - UNINIT_CTOR: Initialize all member variables in constructor
     AIConfiguration::AIConfiguration()
+        : mConsoleLogCap(0)
+        , mNonHomeAppMemoryLimit(0)
+        , mNonHomeAppGpuLimit(0)
+        , mResourceManagerClientEnabled(false)
+        , mGstreamerRegistryEnabled(false)
+        , mSvpEnabled(false)
+        , mEnableUsbMassStorage(false)
+        , mIPv6Enabled(false)
+        , mIonHeapDefaultQuota(0)
+        , mDialServerPort(0)
     {
     }
 
@@ -377,15 +388,21 @@ namespace Plugin
                 }
                 else if (key == "vpuAccessBlacklist")
                 {
-                    mVpuAccessBlacklist = parseStringArray(key, value);
+                    // Issue IDs 46, 47: Variable copied when it could be moved
+                    // Fix: Use std::move on parameter to avoid copy when value is no longer needed
+                    mVpuAccessBlacklist = parseStringArray(std::move(key), std::move(value));
                 }
                 else if (key == "appsRequiringDBus")
                 {
-                    mAppsRequiringDBus = parseStringArray(key, value);
+                    // Issue IDs 48, 49: Variable copied when it could be moved
+                    // Fix: Use std::move on parameter to avoid copy when value is no longer needed
+                    mAppsRequiringDBus = parseStringArray(std::move(key), std::move(value));
                 }
                 else if (key == "mapiPorts")
                 {
-                    mMapiPorts = parseIntArray(value);
+                    // Issue ID 50: Variable copied when it could be moved
+                    // Fix: Use std::move on parameter to avoid copy when value is no longer needed
+                    mMapiPorts = parseIntArray(std::move(value));
                 }
                 else if (key == "resourceManagerClientEnabled")
                 {
@@ -422,7 +439,9 @@ namespace Plugin
                     {
                         value = value.substr(1, value.size() - 2);
                     }
-                    mDialServerPathPrefix = value;
+                    // Issue IDs 51, 52: Variable copied when it could be moved
+                    // Fix: Use std::move to transfer ownership when value is no longer needed
+                    mDialServerPathPrefix = std::move(value);
                 }
                 else if (key == "dialUsn")
                 {
@@ -431,19 +450,25 @@ namespace Plugin
                     {
                         value = value.substr(1, value.size() - 2);
                     }
-                    mDialUsn = value;
+                    // Issue IDs 53, 54: Variable copied when it could be moved
+                    // Fix: Use std::move to transfer ownership when value is no longer needed
+                    mDialUsn = std::move(value);
                 }
                 else if (key == "ionLimits")
                 {
-                    mIonHeapQuotas = parseIonLimits(value);
+                    // Issue IDs 55, 56: Variable copied when it could be moved
+                    // Fix: Use std::move on parameter to avoid copy when value is no longer needed
+                    mIonHeapQuotas = parseIonLimits(std::move(value));
                 }
                 else if (key == "preloads")
                 {
-                    mPreloads = parseStringArray(key, value);
+                    // Issue ID 57: Variable copied when it could be moved
+                    // Fix: Use std::move on parameters to avoid copy when value is no longer needed
+                    mPreloads = parseStringArray(std::move(key), std::move(value));
                 }
                 else if (key == "envVariables")
                 {
-                    mEnvVariables = parseStringArray(key, value);
+                    mEnvVariables = parseStringArray(std::move(key), std::move(value));
                 }
             }
         }

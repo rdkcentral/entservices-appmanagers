@@ -111,15 +111,22 @@ namespace Plugin {
             DownloadManagerImplementation::Configuration config;
             config.FromString(service->ConfigLine());
 
-            if (config.downloadDir.IsSet() == true)
+            // Issue ID 327: Data race condition - mDownloadPath accessed without mutex protection
+            // Fix: Protect mDownloadPath initialization with mAdminLock before thread creation
             {
-                mDownloadPath = config.downloadDir;
+		Core::SafeSyncType<Core::CriticalSection> adminLock(mAdminLock);
+                if (true == config.downloadDir.IsSet())
+                {
+                    mDownloadPath = config.downloadDir;
+                }
             }
             LOGINFO("DM: downloadDir=%s", mDownloadPath.c_str());
-            if (config.downloadId.IsSet() == true)
+            if (true == config.downloadId.IsSet())
             {
+                std::lock_guard<std::mutex> lock(mQueueMutex);
                 mDownloadId = static_cast<uint32_t>(config.downloadId.Value());
             }
+            // Coverity fix: 1140 - Unlock before mkdir to avoid holding lock during I/O
 
             int rc = mkdir(mDownloadPath.c_str(), 0777);
             if (rc != 0 && errno != EEXIST)
@@ -426,21 +433,19 @@ namespace Plugin {
     {
         while (mDownloaderRunFlag)
         {
-            DownloadInfoPtr downloadRequest = pickDownloadJob();
-            while (downloadRequest == nullptr && mDownloaderRunFlag)
+            DownloadInfoPtr downloadRequest = nullptr;
+            // Issue ID 5: Condition checked outside lock, then wait called - race condition can cause indefinite wait
+            // Coverity fix: 1139 - Acquire lock once and use it for both check and wait
+            // Fix: Use predicate-based wait to check condition atomically with the wait
             {
-                LOGDBG("DM: Waiting for download request...");
                 std::unique_lock<std::mutex> lock(mQueueMutex);
-                mDownloadThreadCV.wait(lock);
-                lock.unlock();
+                mDownloadThreadCV.wait(lock, [&] {
+                    return !mDownloaderRunFlag || !mPriorityDownloadQueue.empty() || !mRegularDownloadQueue.empty();
+                });
+                if (!mDownloaderRunFlag)
+                    break;
 
                 downloadRequest = pickDownloadJob();
-            }
-
-            if (false == mDownloaderRunFlag)
-            {
-                LOGINFO("DM: Downloader is shutting down - exiting thread!");
-                break;
             }
 
             if (!downloadRequest)
@@ -506,7 +511,7 @@ namespace Plugin {
                 }
 
                 LOGDBG("DM: Attempt download (%d/%d): status=%d http_code=%ld elapsed=%lld ms",
-                    attemptCount, downloadRequest->getRetries(), status, httpCode, elapsed);
+                        attemptCount, downloadRequest->getRetries(), status, httpCode, elapsed);
             }
 
             if (status != DownloadManagerHttpClient::Status::Success)
@@ -568,7 +573,8 @@ namespace Plugin {
 
     DownloadManagerImplementation::DownloadInfoPtr DownloadManagerImplementation::pickDownloadJob(void)
     {
-        std::lock_guard<std::mutex> lock(mQueueMutex);
+        // removeming lock to prevent double lock pickDownload is being called while holding lock itself
+        //std::lock_guard<std::mutex> lock(mQueueMutex);
         if ((!mPriorityDownloadQueue.empty() || !mRegularDownloadQueue.empty()) && mCurrentDownload == nullptr)
         {
             if (!mPriorityDownloadQueue.empty())
