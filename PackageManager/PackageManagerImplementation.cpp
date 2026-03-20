@@ -764,6 +764,14 @@ namespace Plugin {
                     if (result == packagemanager::SUCCESS) {
                         state.runtimeConfig.runtimePath = config.runtimePath;   // XXX: find better way
                         LOGDBG("Locked runtime. id: %s:%s ", rtPackageId.c_str(), rtVersion.c_str());
+                    } else {
+                        LOGERR("Failed to lock runtime. Rolling back app lock for %s:%s", packageId.c_str(), version.c_str());
+                        Core::hresult unlockResult = UnlockPackage(packageId, version);
+                        if (unlockResult != Core::ERROR_NONE) {
+                            LOGERR("Rollback app unlock failed for %s:%s", packageId.c_str(), version.c_str());
+                        }
+                        state.additionalLocks.clear();
+                        return result;
                     }
                     #else
                         LOGWARN("Not runtime locking in old libpackage");

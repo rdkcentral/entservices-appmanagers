@@ -1293,6 +1293,57 @@ TEST_F(AppManagerTest, LaunchAppUsingComRpcFailureIsAppLoadedReturnError)
 }
 
 /*
+ * Test Case for LaunchAppUsingComRpcFailurePackageInfoUpdateRollbackUnlock
+ * Setting up AppManager/LifecycleManager/PackageManager resources and creating required COM-RPC resources
+ * Simulating successful PackageManager Lock with empty unpacked path to force createOrUpdatePackageInfoByAppId failure
+ * Verifying PackageManager Unlock is called for rollback and lifecycle error notification is sent
+ */
+TEST_F(AppManagerTest, LaunchAppUsingComRpcFailurePackageInfoUpdateRollbackUnlock)
+{
+    Core::hresult status;
+    uint32_t signalled = AppManager_StateInvalid;
+    Core::Sink<NotificationHandler> notification;
+    ExpectedAppLifecycleEvent expectedEvent;
+
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    expectedEvent.appId = APPMANAGER_APP_ID;
+    expectedEvent.appInstanceId = "";
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNKNOWN;
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED;
+    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_PACKAGE_LOCK;
+    mAppManagerImpl->Register(&notification);
+    notification.SetExpectedEvent(expectedEvent);
+
+    LaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::ACTIVE);
+
+    EXPECT_CALL(*mPackageManagerMock, Lock(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+    .WillOnce([&](const string &, const string &, const Exchange::IPackageHandler::LockReason &, uint32_t &lockId,
+                  string &unpackedPath, Exchange::RuntimeConfig &, Exchange::IPackageHandler::ILockIterator *&appMetadata) {
+        lockId = 7;
+        unpackedPath = "";
+        appMetadata = nullptr;
+        return Core::ERROR_NONE;
+    });
+
+    EXPECT_CALL(*mPackageManagerMock, Unlock(APPMANAGER_APP_ID, APPMANAGER_APP_VERSION))
+    .Times(1)
+    .WillOnce(::testing::Return(Core::ERROR_NONE));
+
+    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->LaunchApp(APPMANAGER_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS));
+
+    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+
+    mAppManagerImpl->Unregister(&notification);
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
  * Test Case for LaunchAppUsingComRpcFailureLifecycleManagerRemoteObjectIsNull
  * Setting up only AppManager Plugin and creating required COM-RPC resources
  * LifecycleManager Interface object is not created and hence the API should return error
