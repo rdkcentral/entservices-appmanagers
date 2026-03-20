@@ -147,7 +147,7 @@ Follow these naming conventions for C++ identifiers to maintain consistency and 
 - **Global variables**: Prefix with `g` and use `camelCase` (e.g., `gPluginRegistry`, `gDefaultConfig`)
 - **Local variables**: Use `camelCase` (e.g., `localCounter`, `resultCode`)
 - **Function parameters**: Use `camelCase` for all function parameters, including class member functions (e.g., `pluginId`, `configPath`, `newValue`)
-- **Member functions**: Use `PascalCase` (e.g., `InitializePlugin()`, `GetStatus()`, `SetValue()`)
+- **Member functions and global functions**: Use `camelCase` (e.g., `initializePlugin()`, `getStatus()`, `setValue()`)
 - **Constant names**: Use `UPPER_SNAKE_CASE` (e.g., `MAX_BUFFER_SIZE`, `DEFAULT_TIMEOUT`)
 
 ### Example
@@ -159,16 +159,16 @@ private:
     static int sMaxPlugins;        // Static member variable
     
 public:
-    void RegisterPlugin(int pluginId) {     // Function parameter: camelCase
+    void registerPlugin(int pluginId) {     // Member function: camelCase
         int localCounter = 0;      // Local variable: camelCase
         mPluginCount++;
     }
     
-    int GetPluginCount() const {   // Member function: PascalCase
+    int getPluginCount() const {   // Member function: camelCase
         return mPluginCount;
     }
     
-    void SetValue(int newValue) {  // Setter with parameter: camelCase
+    void setValue(int newValue) {  // Member function: camelCase
         mPluginCount = newValue;
     }
 };
@@ -176,6 +176,10 @@ public:
 int PluginManager::sMaxPlugins = 100;      // Static member variable
 int gGlobalPluginId = 0;                   // Global variable: g prefix + camelCase
 const int MAX_RETRY_COUNT = 3;             // Constant: UPPER_SNAKE_CASE
+
+void initializeSystem() {                  // Global function: camelCase
+    // function body
+}
 ```
 
 ### Incorrect Example
@@ -187,16 +191,16 @@ private:
     static int maxPlugins;         // WRONG: missing 's' prefix (should be sMaxPlugins)
     
 public:
-    void registerPlugin(int PluginId) {     // WRONG: should be RegisterPlugin with camelCase param pluginId
+    void RegisterPlugin(int PluginId) {     // WRONG: should be registerPlugin with camelCase param pluginId
         int LocalCounter = 0;      // WRONG: should be localCounter
         pluginCount++;
     }
     
-    int getPluginCount() const {   // WRONG: should be GetPluginCount (PascalCase)
+    int GetPluginCount() const {   // WRONG: should be getPluginCount (camelCase)
         return pluginCount;
     }
     
-    void setvalue(int value) {     // WRONG: should be SetValue
+    void SetValue(int value) {     // WRONG: should be setValue
         pluginCount = value;
     }
 };
