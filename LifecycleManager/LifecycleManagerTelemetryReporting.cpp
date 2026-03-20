@@ -51,6 +51,11 @@ namespace Plugin
         }
     }
 
+    void LifecycleManagerTelemetryReporting::reset()
+    {
+        resetTelemetryClient();
+    }
+
     void LifecycleManagerTelemetryReporting::reportTelemetryDataOnStateChange(ApplicationContext* context, const JsonObject &data)
     {
         if (!Utils::isTelemetryMetricsEnabled()) {

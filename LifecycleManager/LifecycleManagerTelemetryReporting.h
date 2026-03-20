@@ -36,6 +36,7 @@ class LifecycleManagerTelemetryReporting : public Utils::TelemetryReportingBase
         static LifecycleManagerTelemetryReporting& getInstance();
         void reportTelemetryDataOnStateChange(ApplicationContext* context, const JsonObject &data);
         void initialize(PluginHost::IShell* service);
+        void reset();
 
     private /*methods*/:
         LifecycleManagerTelemetryReporting();

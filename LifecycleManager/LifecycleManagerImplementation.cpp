@@ -59,6 +59,7 @@ namespace WPEFramework
             {
                 LOGERR("Exception in LifecycleManagerImplementation::terminate: %s", e.what());
             }
+            LifecycleManagerTelemetryReporting::getInstance().reset();
             if (mService != nullptr)
             {
                mService->Release();
