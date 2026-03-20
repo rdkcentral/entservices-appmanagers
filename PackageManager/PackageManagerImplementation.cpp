@@ -573,7 +573,6 @@ namespace Plugin {
                 if (nullptr != mStorageManagerObject) {
                     if(mStorageManagerObject->DeleteStorage(packageId, errorReason) == Core::ERROR_NONE) {
                         LOGINFO("DeleteStorage done");
-                        //#if defined(USE_LIBPACKAGE) || defined(UNIT_TEST) || defined(ENABLE_NATIVEBUILD)
                         // XXX: what if DeleteStorage() fails, who Uninstall the package
                         packagemanager::Result pmResult = packageImpl->Uninstall(packageId);
                         if (pmResult == packagemanager::SUCCESS) {
@@ -584,7 +583,6 @@ namespace Plugin {
                                 PackageManagerImplementation::PackageFailureErrorCode::ERROR_PACKAGE_MISMATCH_FAILURE : PackageManagerImplementation::PackageFailureErrorCode::ERROR_SIGNATURE_VERIFICATION_FAILURE;
 #endif /* ENABLE_AIMANAGERS_TELEMETRY_METRICS */
                         }
-                        //#endif
                         state.installState = InstallState::UNINSTALLED;
                         NotifyInstallStatus(packageId, version, state);
                     } else {
@@ -778,14 +776,12 @@ namespace Plugin {
                                                             PackageManagerImplementation::PackageFailureErrorCode::ERROR_NONE);
                 #endif /* ENABLE_AIMANAGERS_TELEMETRY_METRICS */
 
-                LOGDBG("Locked. id: %s ver: %s additionalLocks=%zu", packageId.c_str(), version.c_str(), state.additionalLocks.size());
+                LOGDBG("Locked. id: %s ver: %s lock count:%d additionalLocks=%zu", packageId.c_str(), version.c_str(), state.mLockCount, state.additionalLocks.size());
                 getRuntimeConfig(state.runtimeConfig, runtimeConfig);
                 state.unpackedPath = unpackedPath;
                 appMetadata = Core::Service<RPC::IteratorType<Exchange::IPackageHandler::ILockIterator>>::Create<Exchange::IPackageHandler::ILockIterator>(state.additionalLocks);
-                LOGDBG("id: %s ver: %s lock count:%d", packageId.c_str(), version.c_str(), state.mLockCount);
                 LOGDBG("%s:%s appPath: %s runtimePath: %s", packageId.c_str(), version.c_str(),
                     state.runtimeConfig.appPath.c_str(), state.runtimeConfig.runtimePath.c_str());
-
             } else {
                 LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());    // This should never happen
             }
@@ -870,7 +866,7 @@ namespace Plugin {
         }
         vars.ToString(runtimeConfig.envVariables);
 
-        runtimeConfig.userId = config.userId ? config.userId : userId;  // XXX: should we increment (Userid/Groupid management RDKEMW-13259)
+        runtimeConfig.userId = config.userId ? config.userId : userId;
         runtimeConfig.groupId = config.groupId ? config.groupId : groupId;
         runtimeConfig.dataImageSize = config.dataImageSize;
 
@@ -1031,7 +1027,6 @@ namespace Plugin {
             return Core::ERROR_INVALID_SIGNATURE;
         }
 
-        //#if defined(USE_LIBPACKAGE) || defined(UNIT_TEST) || defined(ENABLE_NATIVEBUILD)
 	    packagemanager::ConfigMetaData metadata;
         packagemanager::Result pmResult = packageImpl->GetFileMetadata(fileLocator, id, version, metadata);
         if (pmResult == packagemanager::SUCCESS)
@@ -1039,7 +1034,6 @@ namespace Plugin {
             getRuntimeConfig(metadata, config);
             result = Core::ERROR_NONE;
         }
-        //#endif
         return result;
     }
 
@@ -1054,7 +1048,6 @@ namespace Plugin {
         }
 	    #endif
 
-        //#if defined (USE_LIBPACKAGE) || defined(UNIT_TEST) || defined(ENABLE_NATIVEBUILD)
 	    #if defined(UNIT_TEST) || defined(ENABLE_NATIVEBUILD)
         packageImpl = packagemanager::IPackageImplDummy::instance();
         #else
@@ -1069,7 +1062,6 @@ namespace Plugin {
         for (auto it = aConfigMetadata.begin(); it != aConfigMetadata.end(); ++it ) {
             StateKey key = it->first;
             auto config = it->second;
-            //State state(it->second);
             State state;
             getRuntimeConfig(config, state.runtimeConfig);
             state.installState = InstallState::INSTALLED;
@@ -1083,7 +1075,6 @@ namespace Plugin {
             }
             mState.insert( { key, state } );
         }
-        //#endif
 
         #if !defined(UNIT_TEST) && !defined(ENABLE_NATIVEBUILD)
         if (subSystem != nullptr) {
@@ -1195,7 +1186,6 @@ namespace Plugin {
             string errorReason = "";
             if(mStorageManagerObject->CreateStorage(packageId, STORAGE_MAX_SIZE, path, errorReason) == Core::ERROR_NONE) {
                 LOGINFO("CreateStorage path [%s]", path.c_str());
-                //#if defined(USE_LIBPACKAGE) || defined(UNIT_TEST) || defined(ENABLE_NATIVEBUILD)
                 packagemanager::ConfigMetaData config;
                 packagemanager::Result pmResult = packageImpl->Install(packageId, version, keyValues, fileLocator, config);
                 if (pmResult == packagemanager::SUCCESS) {
@@ -1220,7 +1210,6 @@ namespace Plugin {
                 }
                 LOGDBG("Package: %s Version: %s result=%d", packageId.c_str(), version.c_str(), result);
                 NotifyInstallStatus(packageId, version, state);
-                //#endif
             } else {
                 LOGERR("CreateStorage failed with result :%d errorReason [%s]", result, errorReason.c_str());
                 state.failReason = FailReason::PERSISTENCE_FAILURE;
