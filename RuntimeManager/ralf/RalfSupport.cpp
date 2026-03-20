@@ -292,5 +292,63 @@ namespace ralf
         writer["indentation"] = ""; // No indentation
         return Json::writeString(writer, node);
     }
+    bool removeDirectoryRecursively(const std::string &path)
+    {
+        DIR *dir = opendir(path.c_str());
+        if (dir == nullptr)
+        {
+            LOGERR("Failed to open directory: %s, error: %d\n", path.c_str(), errno);
+            return false;
+        }
+
+        struct dirent *entry;
+        bool status = true;
+
+        while ((entry = readdir(dir)) != nullptr)
+        {
+            // Skip "." and ".."
+            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+                continue;
+
+            std::string entryPath = path + "/" + entry->d_name;
+
+            struct stat entryStat;
+            if (stat(entryPath.c_str(), &entryStat) != 0)
+            {
+                LOGERR("Failed to stat entry: %s, error: %d\n", entryPath.c_str(), errno);
+                status = false;
+                continue;
+            }
+
+            if (S_ISDIR(entryStat.st_mode))
+            {
+                // Recursively remove subdirectory
+                if (!removeDirectoryRecursively(entryPath))
+                {
+                    status = false;
+                }
+            }
+            else
+            {
+                // Remove file
+                if (remove(entryPath.c_str()) != 0)
+                {
+                    LOGERR("Failed to remove file: %s, error: %d\n", entryPath.c_str(), errno);
+                    status = false;
+                }
+            }
+        }
+
+        closedir(dir);
+
+        // Finally, remove the now-empty directory
+        if (rmdir(path.c_str()) != 0)
+        {
+            LOGERR("Failed to remove directory: %s, error: %d\n", path.c_str(), errno);
+            status = false;
+        }
+
+        return status;
+    }
 
 } // namespace ralf
