@@ -1,0 +1,83 @@
+flowchart TD
+    WPE["⚡ wpeframework.service
+    Thunder Base Process
+    All services Require this"]
+
+    PS["🗄️ persistentstore
+    External / Thunder FW
+    Independent"]
+
+    WM["🪟 RDKWindowManager
+    Independent Provider
+    Shell thread · 50ms ready
+    No hard deps in suite"]
+
+    OCI["🐳 OCIContainer
+    Independent Provider
+    Container runtime"]
+
+    SM["📦 AppStorageManager
+    Independent Provider
+    Storage abstraction"]
+
+    PKG["📋 PackageManagerRDKEMS
+    Depends on: AppStorageManager"]
+
+    PRE["🔧 PreinstallManager
+    Depends on: PackageManager
+    Installs home app"]
+
+    RTM["⚙️ RuntimeManager
+    Depends on: AppStorageManager
+    OCIContainer · RDKWindowManager
+    Ordered after: PreinstallManager"]
+
+    LCM["🔄 LifecycleManager
+    Depends on: RuntimeManager
+    RDKWindowManager"]
+
+    APM["🚀 AppManager
+    Depends on: PersistentStore
+    PackageManager
+    Ordered after: LifecycleManager"]
+
+    DLM["⬇️ DownloadManager
+    Independent
+    Ordered after: AppManager"]
+
+    WPE -->|"Requires"| WM
+    WPE -->|"Requires"| OCI
+    WPE -->|"Requires"| SM
+    WPE -->|"Requires (external)"| PS
+
+    WM -.->|"Wants (order only)"| SM
+
+    SM -->|"Requires"| PKG
+
+    PKG -->|"Requires"| PRE
+
+    SM -->|"Requires"| RTM
+    WM -->|"Requires"| RTM
+    OCI -->|"Requires"| RTM
+    PRE -.->|"Wants (order only)"| RTM
+
+    RTM -->|"Requires"| LCM
+    WM -->|"Requires"| LCM
+
+    PS -->|"Requires"| APM
+    PKG -->|"Requires"| APM
+    LCM -.->|"Wants (order only)"| APM
+
+    APM -.->|"Wants (order only)"| DLM
+
+    style WPE fill:#1a1a2e,color:#e0e0ff,stroke:#4444aa,stroke-width:3px
+    style PS fill:#1a2e1a,color:#e0ffe0,stroke:#44aa44,stroke-width:2px
+    style WM fill:#2e1a2e,color:#ffe0ff,stroke:#aa44aa,stroke-width:2px
+    style OCI fill:#2e2e1a,color:#ffffe0,stroke:#aaaa44,stroke-width:2px
+    style SM fill:#2e2e1a,color:#ffffe0,stroke:#aaaa44,stroke-width:2px
+    style PKG fill:#1a2e2e,color:#e0ffff,stroke:#44aaaa,stroke-width:2px
+    style PRE fill:#1a2e2e,color:#e0ffff,stroke:#44aaaa,stroke-width:2px
+    style RTM fill:#2e1a1a,color:#ffe0e0,stroke:#aa4444,stroke-width:3px
+    style LCM fill:#2e1a1a,color:#ffe0e0,stroke:#aa4444,stroke-width:2px
+    style APM fill:#2e1a1a,color:#ffe0e0,stroke:#aa4444,stroke-width:3px
+    style DLM fill:#1a1a1a,color:#d0d0d0,stroke:#666666,stroke-width:2px
