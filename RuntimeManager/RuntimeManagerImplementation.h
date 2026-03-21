@@ -27,9 +27,7 @@
 #include <mutex>
 #include <interfaces/IOCIContainer.h>
 #include <interfaces/IAppStorageManager.h>
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
 #include <interfaces/ITelemetryMetrics.h>
-#endif
 #include <condition_variable>
 #include "ApplicationConfiguration.h"
 #include "WindowManagerConnector.h"
@@ -45,14 +43,12 @@ class WebInspector;
 #include "RialtoConnector.h"
 #define RIALTO_TIMEOUT_MILLIS 5000
 #endif
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
 #define TELEMETRY_MARKER_LAUNCH_TIME                         "OverallLaunchTime_split"
 #define TELEMETRY_MARKER_CLOSE_TIME                          "AppCloseTime_split"
 #define TELEMETRY_MARKER_SUSPEND_TIME                        "SuspendTime_split"
 #define TELEMETRY_MARKER_RESUME_TIME                         "ResumeTime_split"
 #define TELEMETRY_MARKER_HIBERNATE_TIME                      "HibernateTime_split"
 #define TELEMETRY_MARKER_WAKE_TIME                           "WakeTime_split"
-#endif
 
 namespace WPEFramework
 {
@@ -90,7 +86,6 @@ namespace WPEFramework
                     RUNTIME_MANAGER_EVENT_CONTAINERFAILED
                 };
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
                 enum RequestType {
                     REQUEST_TYPE_NONE,
                     REQUEST_TYPE_LAUNCH,
@@ -111,7 +106,6 @@ namespace WPEFramework
                     TELEMETRY_MARKER_HIBERNATE,
                     TELEMETRY_MARKER_WAKE
                 };
-#endif
 
                 typedef struct _RuntimeAppInfo
                 {
@@ -119,10 +113,8 @@ namespace WPEFramework
                     std::string appInstanceId;
                     uint32_t descriptor;
                     Exchange::IRuntimeManager::RuntimeState containerState;
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
                     time_t requestTime = 0;
                     RuntimeManagerImplementation::RequestType requestType = RuntimeManagerImplementation::REQUEST_TYPE_NONE;
-#endif
                 } RuntimeAppInfo;
 
                 class EXTERNAL Job : public Core::IDispatch
@@ -237,9 +229,7 @@ namespace WPEFramework
                 DobbyEventListener *mDobbyEventListener;
                 UserIdManager* mUserIdManager;
                 std::string mRuntimeAppPortal;
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
                 Exchange::ITelemetryMetrics* mTelemetryMetricsObject;
-#endif
 #ifdef  RIALTO_IN_DAC_FEATURE_ENABLED
                 std::shared_ptr<RialtoConnector>  mRialtoConnector;
 #endif // RIALTO_IN_DAC_FEATURE_ENABLED
@@ -249,11 +239,9 @@ namespace WPEFramework
                 void Dispatch(RuntimeEventType event, const JsonValue params);
                 void notifyParameterCheckFailure(const string& appInstanceId, const string& errorCode);
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
                 void recordTelemetryData(const std::string& marker, const std::string& appId, uint64_t requestTime);
                 TelemetryMarker getTelemetryMarker(const std::string& marker);
                 time_t getCurrentTimestamp();
-#endif
 
                 friend class Job;
 

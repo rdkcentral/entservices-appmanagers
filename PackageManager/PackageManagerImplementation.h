@@ -42,7 +42,6 @@
 
 #include "HttpClient.h"
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
 #include <interfaces/ITelemetryMetrics.h>
 
 #define TELEMETRY_MARKER_LAUNCH_TIME             "OverallLaunchTime_split"
@@ -51,7 +50,6 @@
 #define TELEMETRY_MARKER_INSTALL_ERROR           "InstallError_split"
 #define TELEMETRY_MARKER_UNINSTALL_TIME          "UninstallTime_split"
 #define TELEMETRY_MARKER_UNINSTALL_ERROR         "UninstallError_split"
-#endif /* ENABLE_AIMANAGERS_TELEMETRY_METRICS */
 
 #define PACKAGE_MANAGER_MARKER_FILE              "/tmp/package_manager_ready"
 
@@ -151,7 +149,6 @@ class PackageManagerImplementation
         typedef std::list<DownloadInfoPtr> DownloadQueue;
 
     public:
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
         enum PackageFailureErrorCode{
             ERROR_NONE,
             ERROR_SIGNATURE_VERIFICATION_FAILURE,
@@ -160,7 +157,6 @@ class PackageManagerImplementation
             ERROR_PERSISTENCE_FAILURE,
             ERROR_VERSION_NOT_FOUND
         };
-#endif /* ENABLE_AIMANAGERS_TELEMETRY_METRICS */
 
         PackageManagerImplementation();
         virtual ~PackageManagerImplementation();
@@ -296,10 +292,8 @@ class PackageManagerImplementation
     void releaseStorageManagerObject();
     void populateRuntime(packagemanager::ConfigMetadataArray& aConfigMetadata);
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
     void recordAndPublishTelemetryData(const std::string& marker, const std::string& appId, time_t requestTime, PackageManagerImplementation::PackageFailureErrorCode errorCode);
     time_t getCurrentTimestamp();
-#endif /* ENABLE_AIMANAGERS_TELEMETRY_METRICS */
 
     private:
         mutable Core::CriticalSection mAdminLock;
@@ -332,9 +326,7 @@ class PackageManagerImplementation
         PluginHost::IShell* mCurrentservice;
         Exchange::IAppStorageManager* mStorageManagerObject;
         std::map<std::string, std::pair<std::string, std::string>> runtimeMap;
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
         Exchange::ITelemetryMetrics* mTelemetryMetricsObject;
-#endif /* ENABLE_AIMANAGERS_TELEMETRY_METRICS */
     };
 } // namespace Plugin
 } // namespace WPEFramework
