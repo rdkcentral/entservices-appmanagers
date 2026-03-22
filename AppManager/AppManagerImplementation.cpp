@@ -680,38 +680,19 @@ bool AppManagerImplementation::createOrUpdatePackageInfoByAppId(const string& ap
     }
     else
     {
-        /* Check if the appId exists in the map */
-        auto it = mAppInfo.find(appId);
-        if (it != mAppInfo.end())
-        {
-            /* Update existing entry (PackageInfo inside LoadedAppInfo) */
-            it->second.packageInfo.version         = packageData.version;
-            it->second.packageInfo.lockId          = packageData.lockId;
-            it->second.packageInfo.unpackedPath    = packageData.unpackedPath;
-            it->second.packageInfo.configMetadata  = packageData.configMetadata;
-            it->second.packageInfo.appMetadata     = packageData.appMetadata;
-
-            LOGINFO("Existing package entry updated for appId: %s " \
-                    "version: %s lockId: %d unpackedPath: %s appMetadata: %s",
-                    appId.c_str(), it->second.packageInfo.version.c_str(),
-                    it->second.packageInfo.lockId, it->second.packageInfo.unpackedPath.c_str(),
-                    it->second.packageInfo.appMetadata.c_str());
-        }
-        else
-        {
-            /* Create new entry (PackageInfo inside LoadedAppInfo) */
-            mAppInfo[appId].packageInfo.version         = packageData.version;
-            mAppInfo[appId].packageInfo.lockId          = packageData.lockId;
-            mAppInfo[appId].packageInfo.unpackedPath    = packageData.unpackedPath;
-            mAppInfo[appId].packageInfo.configMetadata  = packageData.configMetadata;
-            mAppInfo[appId].packageInfo.appMetadata     = packageData.appMetadata;
-
-            LOGINFO("Created new package entry for appId: %s " \
-                    "version: %s lockId: %d unpackedPath: %s appMetadata: %s",
-                    appId.c_str(), mAppInfo[appId].packageInfo.version.c_str(),
-                    mAppInfo[appId].packageInfo.lockId, mAppInfo[appId].packageInfo.unpackedPath.c_str(),
-                    mAppInfo[appId].packageInfo.appMetadata.c_str());
-        }
+        /* Atomically insert-or-update the PackageInfo for this appId */
+        AppInfoManager::getInstance().upsert(appId, [&](AppInfo& a) {
+            AppManagerTypes::PackageInfo pi = a.getPackageInfo();
+            pi.version        = packageData.version;
+            pi.lockId         = packageData.lockId;
+            pi.unpackedPath   = packageData.unpackedPath;
+            pi.configMetadata = packageData.configMetadata;
+            pi.appMetadata    = packageData.appMetadata;
+            a.setPackageInfo(pi);
+        });
+        LOGINFO("Package entry upserted for appId: %s version: %s lockId: %d unpackedPath: %s appMetadata: %s",
+                appId.c_str(), packageData.version.c_str(), packageData.lockId,
+                packageData.unpackedPath.c_str(), packageData.appMetadata.c_str());
         result = true;
     }
 
@@ -722,14 +703,13 @@ bool AppManagerImplementation::removeAppInfoByAppId(const string &appId)
 {
     bool result = false;
 
-    /* Check if appId StorageInfo is found, erase it */
-    auto it = mAppInfo.find(appId);
-    if (it != mAppInfo.end())
+    AppInfo snap;
+    if (AppInfoManager::getInstance().get(appId, snap))
     {
-        LOGINFO("Existing package entry updated for appId: %s " \
-                "version: %s lockId: %d unpackedPath: %s appMetadata: %s",
-                appId.c_str(), it->second.packageInfo.version.c_str(), it->second.packageInfo.lockId, it->second.packageInfo.unpackedPath.c_str(), it->second.packageInfo.appMetadata.c_str());
-        mAppInfo.erase(appId);
+        const auto& pi = snap.getPackageInfo();
+        LOGINFO("Removing package entry for appId: %s version: %s lockId: %d unpackedPath: %s appMetadata: %s",
+                appId.c_str(), pi.version.c_str(), pi.lockId, pi.unpackedPath.c_str(), pi.appMetadata.c_str());
+        AppInfoManager::getInstance().remove(appId);
         result = true;
     }
     else
@@ -754,13 +734,19 @@ Core::hresult AppManagerImplementation::packageLock(const string& appId, Package
         status = mLifecycleInterfaceConnector->isAppLoaded(appId, loaded);
     }
 
-    /* Check if appId exists in the mAppInfo map */
-    auto it = mAppInfo.find(appId);
+    /* Check if appId exists in the map and read its current state */
+    AppInfo appInfoSnap;
+    bool inMap = AppInfoManager::getInstance().get(appId, appInfoSnap);
+    Exchange::IAppManager::AppLifecycleState currentNewState = inMap
+        ? appInfoSnap.getAppNewState()
+        : Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED;
 
     if ((status == Core::ERROR_NONE) &&
         (!loaded ||
-         it == mAppInfo.end() ||
-         (it->second.appNewState != Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED && it->second.appNewState != Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED && it->second.appNewState != Exchange::IAppManager::AppLifecycleState::APP_STATE_HIBERNATED)))
+         !inMap ||
+         (currentNewState != Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED &&
+          currentNewState != Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED &&
+          currentNewState != Exchange::IAppManager::AppLifecycleState::APP_STATE_HIBERNATED)))
     {
         /* Fetch list of App packages */
         status = fetchAppPackageList(packageList);
@@ -855,12 +841,12 @@ Core::hresult AppManagerImplementation::packageUnLock(const string& appId)
         AppManagerTelemetryReporting& appManagerTelemetryReporting =AppManagerTelemetryReporting::getInstance();
 #endif
 
-        auto it = mAppInfo.find(appId);
-        if (it != mAppInfo.end())
+        const std::string pkgVersion = AppInfoManager::getInstance().getPackageInfoVersion(appId);
+        if (!pkgVersion.empty() || AppInfoManager::getInstance().exists(appId))
         {
             if (nullptr != mPackageManagerHandlerObject)
             {
-                status = mPackageManagerHandlerObject->Unlock(appId, it->second.packageInfo.version);
+                status = mPackageManagerHandlerObject->Unlock(appId, pkgVersion);
 
                 if(Core::ERROR_NONE != status)
                 {
@@ -878,7 +864,7 @@ Core::hresult AppManagerImplementation::packageUnLock(const string& appId)
 #endif
             }
         }
-        else
+        if (!AppInfoManager::getInstance().exists(appId))
         {
             LOGERR("AppId not found in map to get the version");
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
@@ -1363,10 +1349,10 @@ Core::hresult AppManagerImplementation::GetInstalledApps(std::string& apps)
                 package["appId"] = pkg.packageId;
                 package["versionString"] = pkg.version;
                 package["type"] = getInstallAppType(APPLICATION_TYPE_INTERACTIVE);
-                auto it = mAppInfo.find(pkg.packageId);
-                if (it != mAppInfo.end())
+                AppInfo pkgSnap;
+                if (AppInfoManager::getInstance().get(pkg.packageId, pkgSnap))
                 {
-                    const auto& timestamp = it->second.lastActiveStateChangeTime;
+                    const auto& timestamp = pkgSnap.getLastActiveStateChangeTime();
 
                     if (strftime(timeData, sizeof(timeData), "%D %T", gmtime(&timestamp.tv_sec)))
                     {
@@ -1378,7 +1364,7 @@ Core::hresult AppManagerImplementation::GetInstalledApps(std::string& apps)
                     {
                         package["lastActiveTime"] = "";
                     }
-                    package["lastActiveIndex"]=it->second.lastActiveIndex;
+                    package["lastActiveIndex"]=pkgSnap.getLastActiveIndex();
                 }
                 else
                 {
@@ -1642,10 +1628,11 @@ void AppManagerImplementation::getCustomValues(WPEFramework::Exchange::RuntimeCo
 
 void AppManagerImplementation::updateCurrentAction(const std::string& appId, CurrentAction action)
 {
-    auto it = mAppInfo.find(appId);
-    if(it != mAppInfo.end())
+    bool found = AppInfoManager::getInstance().update(appId, [&](AppInfo& a) {
+        a.setCurrentAction(action);
+    });
+    if (found)
     {
-        it->second.currentAction = action;
         LOGINFO("Updated currentAction for appId %s to %d", appId.c_str(), static_cast<int>(action));
     }
     else
@@ -1656,10 +1643,16 @@ void AppManagerImplementation::updateCurrentAction(const std::string& appId, Cur
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
 void AppManagerImplementation::updateCurrentActionTime(const std::string& appId, time_t currentActionTime, CurrentAction currentAction)
 {
-    auto it = mAppInfo.find(appId);
-    if((it != mAppInfo.end()) && (currentAction == it->second.currentAction))
+    bool updated = false;
+    AppInfoManager::getInstance().update(appId, [&](AppInfo& a) {
+        if (currentAction == a.getCurrentAction())
+        {
+            a.setCurrentActionTime(currentActionTime);
+            updated = true;
+        }
+    });
+    if (updated)
     {
-        it->second.currentActionTime = currentActionTime;
         LOGINFO("Updated currentActionTime for appId %s", appId.c_str());
     }
     else

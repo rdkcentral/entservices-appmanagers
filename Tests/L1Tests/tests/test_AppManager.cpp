@@ -26,6 +26,7 @@
 
 #include "AppManager.h"
 #include "AppManagerImplementation.h"
+#include "AppInfoManager.h"
 #include "ServiceMock.h"
 #include "LifecycleManagerMock.h"
 #include "PackageManagerMock.h"
@@ -968,11 +969,11 @@ TEST_F(AppManagerTest, LaunchAppUsingComRpcSuccess)
     expectedEvent.intent = APPMANAGER_APP_INTENT;
     expectedEvent.source = "";
     Core::Sink<NotificationHandler> notification;
-    Plugin::AppManagerImplementation::AppInfo appInfo;
-    appInfo.appInstanceId = APPMANAGER_APP_INSTANCE;
     uint32_t signalled = AppManager_StateInvalid;
-    appInfo.appNewState = Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
-    mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
+    AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [](Plugin::AppInfo& a) {
+        a.setAppInstanceId(APPMANAGER_APP_INSTANCE);
+        a.setAppNewState(Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE);
+    });
 
     /* Register the notification handler */
     mAppManagerImpl->Register(&notification);
@@ -1547,10 +1548,10 @@ TEST_F(AppManagerTest, CloseAppUsingComRpcSuccess)
     expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE;
     uint32_t signalled = AppManager_StateInvalid;
     Core::Sink<NotificationHandler> notification;
-    Plugin::AppManagerImplementation::AppInfo appInfo;
-    appInfo.appInstanceId = APPMANAGER_APP_INSTANCE;
-    appInfo.appNewState = Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED;
-    mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
+    AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [](Plugin::AppInfo& a) {
+        a.setAppInstanceId(APPMANAGER_APP_INSTANCE);
+        a.setAppNewState(Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED);
+    });
 
     /* Register the notification handler */
     mAppManagerImpl->Register(&notification);
@@ -1604,10 +1605,10 @@ TEST_F(AppManagerTest, CloseAppUsingJSONRpcSuccess)
     EXPECT_EQ(Core::ERROR_NONE, status);
     Core::Event onAppLaunchRequest(false, true);
 
-    Plugin::AppManagerImplementation::AppInfo appInfo;
-    appInfo.appInstanceId = APPMANAGER_APP_INSTANCE;
-    appInfo.appNewState = Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED;
-    mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
+    AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [](Plugin::AppInfo& a) {
+        a.setAppInstanceId(APPMANAGER_APP_INSTANCE);
+        a.setAppNewState(Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED);
+    });
     std::string requestClose = "{\"appId\": \"" + std::string(APPMANAGER_APP_ID) + "\"}";
     std::string requestLaunch = "{\"appId\": \"" + std::string(APPMANAGER_APP_ID) +
                           "\", \"intent\": \"" + std::string(APPMANAGER_APP_INTENT) +
@@ -1682,10 +1683,10 @@ TEST_F(AppManagerTest, CloseAppUsingComRpcSuspendedStateSuccess)
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
 
-    Plugin::AppManagerImplementation::AppInfo appInfo;
-    appInfo.appInstanceId = APPMANAGER_APP_INSTANCE;
-    appInfo.appNewState = Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED;
-    mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
+    AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [](Plugin::AppInfo& a) {
+        a.setAppInstanceId(APPMANAGER_APP_INSTANCE);
+        a.setAppNewState(Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED);
+    });
 
     LaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::SUSPENDED);
     ON_CALL(*p_wrapsImplMock, stat(::testing::_, ::testing::_))
@@ -3050,13 +3051,11 @@ TEST_F(AppManagerTest, GetLoadedAppsJsonRpc)
     Core::hresult status;
 
     status = createResources();
-    Plugin::AppManagerImplementation::AppInfo appInfo;
-    Plugin::AppManagerImplementation::PackageInfo pkgInfo;
     std::string nexTennisAppId = "NexTennis";
-    appInfo.appInstanceId = nexTennisAppId;
-    pkgInfo.type = Plugin::AppManagerImplementation::ApplicationType::APPLICATION_TYPE_INTERACTIVE;
-    appInfo.packageInfo = pkgInfo;
-    mAppManagerImpl->mAppInfo[nexTennisAppId] = appInfo;
+    AppInfoManager::getInstance().upsert(nexTennisAppId, [&](Plugin::AppInfo& a) {
+        a.setAppInstanceId(nexTennisAppId);
+        a.setPackageInfoType(Plugin::AppManagerTypes::APPLICATION_TYPE_INTERACTIVE);
+    });
     EXPECT_EQ(Core::ERROR_NONE, status);
     EXPECT_CALL(*mLifecycleManagerMock, GetLoadedApps(::testing::_, ::testing::_)
     ).WillOnce([&](const bool verbose, std::string &apps) {
