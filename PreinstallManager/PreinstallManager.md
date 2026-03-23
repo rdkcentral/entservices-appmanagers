@@ -54,17 +54,10 @@ classDiagram
         -list~string~ mPreinstallPaths
         -IPackageInstaller* mPackageInstaller
         +Configure(config) hresult
-        +ScanAndInstall() hresult
-        +GetPreinstalledApps() list
+        +StartPreinstall(forceInstall : bool) hresult
+        +RegisterPreinstallStatusListener(listener) void
+        +UnregisterPreinstallStatusListener(listenerId) void
     }
-
-    class IPreinstallManager {
-        <<interface>>
-        +ScanAndInstall() hresult
-        +GetPreinstalledApps() list
-    }
-
-    PreinstallManagerImplementation ..|> IPreinstallManager
 ```
 
 ---
