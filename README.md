@@ -102,7 +102,7 @@ flowchart LR
 | LifecycleManager | RuntimeManager | `Run`, `Suspend`, `Resume`, `Hibernate`, `Wake`, `Terminate` |
 | RuntimeManager | RDKWindowManager | `CreateDisplay`, `DestroyDisplay` |
 | PackageManager | AppStorageManager | `CreateStorage`, `DeleteStorage` |
-| PackageManager | DownloadManager | `Download`, `Cancel`, `GetProgress` |
+| PackageManager | DownloadManager | `Download`, `Cancel`, `Progress` |
 | PreinstallManager | PackageManager | `Install` (pre-installed apps) |
 
 ---

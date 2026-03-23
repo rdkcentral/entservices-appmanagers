@@ -66,7 +66,7 @@ graph TB
 classDiagram
     class TelemetryMetricsImplementation {
         -unordered_map<string, Json::Value> mMetricsRecord
-        -std::mutex mMutex
+        -std::mutex mMetricsMutex
         +Record(id, metrics, name) hresult
         +Publish(id, name) hresult
     }
@@ -112,7 +112,7 @@ TelemetryMetrics/
 
 | Method | Purpose |
 |--------|---------|
-| `Record(id, metricsJson, name)` | Record a metrics JSON payload for a given id and metric name |
+| `Record(id, metrics, name)` | Record a metrics payload or value for a given id and metric name |
 | `Publish(id, name)` | Publish recorded metrics for the given id and metric name |
 
 ---
@@ -156,7 +156,7 @@ sequenceDiagram
     TM->>TM: Buffer Metric
 
     Note over App,Backend: Periodic Publish
-    TM->>Backend: Publish()
+    TM->>Backend: Publish(id, name)
     Backend-->>TM: ACK
     TM->>TM: Clear Buffer
 ```

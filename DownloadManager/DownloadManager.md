@@ -144,8 +144,8 @@ enum DownloadPriority {
 | `Pause(downloadId)` | Pause an active download |
 | `Resume(downloadId)` | Resume a paused download |
 | `Cancel(downloadId)` | Cancel a download |
-| `Delete(downloadId)` | Delete a completed download file |
-| `Progress(downloadId)` | Get current download progress |
+| `Delete(fileLocator)` | Delete a completed download file |
+| `Progress(downloadId, percent)` | Get current download progress |
 | `RateLimit(downloadId, bytesPerSecond)` | Set per-download rate limit in bytes per second |
 
 ---
