@@ -13,7 +13,7 @@ The **PackageManager** handles the complete lifecycle of application packages in
 
 ### Core Responsibilities
 
-- **Package Download:** Coordinate with DownloadManager for HTTP downloads
+- **Package Download:** HTTP downloads using internal HttpClient
 - **Installation:** Extract packages, parse manifests, setup storage
 - **Package Locking:** Prevent uninstall while app is running
 - **Metadata Management:** Parse and serve app configuration
@@ -23,7 +23,6 @@ The **PackageManager** handles the complete lifecycle of application packages in
 
 | Module | Purpose |
 |--------|---------|
-| DownloadManager | HTTP download operations |
 | org.rdk.AppStorageManager (IAppStorageManager) | App storage allocation |
 
 ---
@@ -41,7 +40,6 @@ graph TB
     end
 
     subgraph "External Services"
-        DLMgr[DownloadManager]
         StorMgr[org.rdk.AppStorageManager<br/>IAppStorageManager]
         FS[FileSystem]
     end
@@ -50,7 +48,6 @@ graph TB
     PMI -.-> DL
     PMI -.-> INS
     PMI -.-> HDL
-    PMI --> DLMgr
     PMI --> StorMgr
     PMI --> FS
 ```
@@ -62,10 +59,6 @@ graph TB
 ```mermaid
 classDiagram
     class PackageManagerImplementation {
-        -map~string,PackageState~ mPackages
-        -map~uint32_t,LockInfo~ mLocks
-        -IDownloadManager* mDownloadManager
-        -Exchange::IAppStorageManager* mStorageManager
         +Download(url, options, downloadId) hresult
         +Pause(downloadId) hresult
         +Resume(downloadId) hresult
@@ -93,9 +86,14 @@ classDiagram
 
     class IPackageInstaller {
         <<interface>>
-        +Install(appId, path) hresult
-        +Uninstall(appId) hresult
-        +IsInstalled(appId) bool
+        +Install(packageId, version, additionalMetadata, fileLocator, failReason) hresult
+        +Uninstall(packageId, errorReason) hresult
+        +ListPackages(packages) hresult
+        +Config(packageId, version, configMetadata) hresult
+        +PackageState(packageId, version, state) hresult
+        +GetConfigForPackage(fileLocator, id, version, config) hresult
+        +Register(sink) hresult
+        +Unregister(sink) hresult
     }
 
     class IPackageHandler {
@@ -103,7 +101,6 @@ classDiagram
         +Lock(packageId, version, lockReason, lockId, unpackedPath, configMetadata, appMetadata) hresult
         +Unlock(packageId, version) hresult
         +GetLockedInfo(packageId, version, unpackedPath, configMetadata, gatewayMetadataPath, locked) hresult
-        +ListPackages() list
     }
 
     PackageManagerImplementation ..|> IPackageDownloader
@@ -132,22 +129,17 @@ PackageManager/
 
 ## Key Data Structures
 
-```cpp
-struct PackageState {
-    string appId;
-    string version;
-    string installedPath;
-    string downloadPath;
-    PackageStatus status; // DOWNLOADING, INSTALLED, etc.
-    RuntimeConfig config;
-    string appMetadata;
-};
+The runtime data model is implemented in `PackageManagerImplementation.h` and is centered around:
 
-struct LockInfo {
-    uint32_t lockId;
-    string appId;
-    uint32_t refCount;
-};
+- An internal `State` structure that holds per-package information such as install state, lock count, runtime config, unpacked path, and fail reason.
+- An internal `StateMap` that tracks all known packages in memory, keyed by `(packageId, version)`.
+
+Conceptually, the in-memory state can be thought of as:
+
+```cpp
+// Conceptual representation of the in-memory state:
+// map<(packageId, version), State>
+// For the authoritative definition, see PackageManagerImplementation.h.
 ```
 
 ---
@@ -167,9 +159,9 @@ struct LockInfo {
 
 | Method | Purpose |
 |--------|---------|
-| `Install(appId, packagePath, appMetadata)` | Install package: extract, parse manifest, create storage |
+| `Install(packageId, version, additionalMetadata, fileLocator, failReason)` | Install a specific package version from the given `fileLocator`, using `additionalMetadata` (key/value iterator); on failure, `failReason` describes the reason |
 | `Uninstall(appId)` | Uninstall package: remove files, cleanup storage |
-| `IsInstalled(appId)` | Check if package is installed |
+| `ListPackages(packages)` | List all installed packages (returns an iterator over installed package entries) |
 
 ### IPackageHandler Interface
 
@@ -178,7 +170,6 @@ struct LockInfo {
 | `Lock(packageId, version, lockReason, lockId, unpackedPath, configMetadata, appMetadata)` | Lock a specific package version to prevent uninstall during app execution; `lockReason` is an input, `lockId`, `unpackedPath`, `configMetadata`, and `appMetadata` are outputs |
 | `Unlock(packageId, version)` | Release a previously acquired package lock for the specified package version |
 | `GetLockedInfo(packageId, version, unpackedPath, configMetadata, gatewayMetadataPath, locked)` | Get lock state and metadata for a specific package version |
-| `ListPackages()` | List all installed packages |
 
 ---
 
@@ -190,13 +181,13 @@ struct LockInfo {
 sequenceDiagram
     participant Client
     participant PkgMgr as PackageManager
-    participant DLMgr as DownloadManager
+    participant HttpClient
     participant StorMgr as StorageManager
     participant FS as FileSystem
 
     Client->>PkgMgr: Download(url, appId)
-    PkgMgr->>DLMgr: Download(url, destPath)
-    DLMgr-->>PkgMgr: OnDownloadComplete
+    PkgMgr->>HttpClient: downloadFile(url, destPath)
+    HttpClient-->>PkgMgr: download complete
     PkgMgr->>FS: Extract(tarball, destPath)
     PkgMgr->>PkgMgr: Parse manifest.json
     PkgMgr->>StorMgr: CreateStorage(appId)

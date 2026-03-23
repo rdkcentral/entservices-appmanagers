@@ -62,30 +62,30 @@ graph TB
 ```mermaid
 classDiagram
     class WebBridge {
-        -map~uint32_t,ClientInfo~ mClients
-        -map~string,list~Observer~~ mObservers
-        +Initialize(IShell* service) string
-        +Deinitialize(IShell* service) void
-        +Attach(channel) bool
-        +Detach(channel) void
-        +Invoke(channel, request) Core::ProxyType
+        -ObserverMap _observers
+        -PendingMap _pendingRequests
+        +Initialize(service: IShell*) string
+        +Deinitialize(service: IShell*) void
+        +Attach(channel: PluginHost__Channel) bool
+        +Detach(channel: PluginHost__Channel) void
+        +Invoke(token: string, channelId: uint32_t, message: Core__JSONRPC__Message) Core__ProxyType
     }
 
     class IPluginExtended {
         <<interface>>
-        +Attach(channel) bool
-        +Detach(channel) void
+        +Attach(channel: PluginHost__Channel) bool
+        +Detach(channel: PluginHost__Channel) void
     }
 
     class IDispatcher {
         <<interface>>
-        +Invoke(channel, request) ProxyType
+        +Invoke(token: string, channelId: uint32_t, message: Core__JSONRPC__Message) Core__ProxyType
     }
 
     class IWebSocket {
         <<interface>>
-        +OnMessage(data) void
-        +Send(data) void
+        +Inbound(identifier: string) Core__ProxyType
+        +Inbound(id: uint32_t, element: Core__ProxyType) Core__ProxyType
     }
 
     WebBridge ..|> IPluginExtended

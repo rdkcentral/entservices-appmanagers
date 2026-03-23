@@ -51,20 +51,13 @@ graph TB
 ```mermaid
 classDiagram
     class PreinstallManagerImplementation {
-        -list~string~ mPreinstallPaths
-        -IPackageInstaller* mPackageInstaller
-        +Configure(config) hresult
-        +ScanAndInstall() hresult
-        +GetPreinstalledApps() list
+        -string mAppPreinstallDirectory
+        -IPackageInstaller* mPackageManagerInstallerObject
+        +Configure(service : IShell*) uint32_t
+        +StartPreinstall(forceInstall : bool) hresult
+        +Register(notification : IPreinstallManager__INotification*) hresult
+        +Unregister(notification : IPreinstallManager__INotification*) hresult
     }
-
-    class IPreinstallManager {
-        <<interface>>
-        +ScanAndInstall() hresult
-        +GetPreinstalledApps() list
-    }
-
-    PreinstallManagerImplementation ..|> IPreinstallManager
 ```
 
 ---
@@ -90,8 +83,9 @@ PreinstallManager/
 
 | Method | Purpose |
 |--------|---------|
-| `ScanAndInstall()` | Scan preinstall directories and install found packages |
-| `GetPreinstalledApps()` | Get list of preinstalled application IDs |
+| `StartPreinstall(forceInstall: bool)` | Scan preinstall directories and trigger installation of discovered packages (optionally forcing reinstall) |
+| `Register(notification: IPreinstallManager::INotification*)` | Register a notification sink for preinstall events |
+| `Unregister(notification: IPreinstallManager::INotification*)` | Unregister a previously registered notification sink |
 
 ---
 
@@ -105,24 +99,32 @@ sequenceDiagram
     participant PkgMgr as PackageManager
 
     System->>PIM: Plugin Activated
-    PIM->>PIM: Configure(paths)
+    PIM->>PIM: Configure(service)
+    System->>PIM: StartPreinstall(forceInstall)
+    PIM->>PkgMgr: QueryInterfaceByCallsign<IPackageInstaller>
+    PkgMgr-->>PIM: IPackageInstaller*
 
-    loop For each preinstall path
-        PIM->>FS: ScanDirectory(path)
-        FS-->>PIM: List of .tar.gz packages
+    PIM->>FS: opendir(appPreinstallDirectory)
+    FS-->>PIM: Directory entries
 
-        loop For each package
-            PIM->>PkgMgr: IsInstalled(appId)?
-            PkgMgr-->>PIM: installed/not installed
-
-            alt Not Installed
-                PIM->>PkgMgr: Install(appId, packagePath)
-                PkgMgr-->>PIM: success
-            end
-        end
+    loop For each directory entry
+        PIM->>PkgMgr: GetConfigForPackage(fileLocator, packageId, version, configMetadata)
+        PkgMgr-->>PIM: packageId, version, configMetadata
     end
 
-    PIM-->>System: Scan Complete
+    alt forceInstall == false
+        PIM->>PkgMgr: ListPackages(packageList)
+        PkgMgr-->>PIM: packageList (packageId, version, state)
+        PIM->>PIM: Filter: skip packages already installed with same/newer version
+    end
+
+    loop For each package to install
+        PIM->>PkgMgr: Install(packageId, version, additionalMetadata, fileLocator, failReason)
+        PkgMgr-->>PIM: Core::hresult (ERROR_NONE / error + failReason)
+    end
+
+    PIM->>PkgMgr: Release IPackageInstaller
+    PIM-->>System: StartPreinstall complete
 ```
 
 ---

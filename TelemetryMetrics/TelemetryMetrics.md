@@ -66,7 +66,7 @@ graph TB
 classDiagram
     class TelemetryMetricsImplementation {
         -unordered_map<string, Json::Value> mMetricsRecord
-        -std::mutex mMutex
+        -std::mutex mMetricsMutex
         +Record(id, metrics, name) hresult
         +Publish(id, name) hresult
     }
@@ -112,7 +112,7 @@ TelemetryMetrics/
 
 | Method | Purpose |
 |--------|---------|
-| `Record(id, metricsJson, name)` | Record a metrics JSON payload for a given id and metric name |
+| `Record(id, metrics, name)` | Record a metrics payload or value for a given id and metric name |
 | `Publish(id, name)` | Publish recorded metrics for the given id and metric name |
 
 ---
@@ -156,7 +156,7 @@ sequenceDiagram
     TM->>TM: Buffer Metric
 
     Note over App,Backend: Periodic Publish
-    TM->>Backend: Publish()
+    TM->>Backend: Publish(id, name)
     Backend-->>TM: ACK
     TM->>TM: Clear Buffer
 ```
@@ -182,18 +182,16 @@ flowchart TD
 
 ## AppManagerTelemetryReporting
 
-The `AppManagerTelemetryReporting` class in AppManager provides helper methods:
+The `AppManagerTelemetryReporting` helper in **AppManager** is responsible for reporting app-related telemetry (launch/close timings, state changes, errors, etc.) into the TelemetryMetrics pipeline.
+
+At a high level, it exposes methods that wrap telemetry interactions, such as:
 
 ```cpp
-class AppManagerTelemetryReporting {
-public:
-    void recordLaunchStart(const string& appId);
-    void recordLaunchEnd(const string& appId, bool success);
-    void recordCloseStart(const string& appId);
-    void recordCloseEnd(const string& appId);
-    void recordCrash(const string& appId);
-    void recordError(const string& appId, const string& error);
-};
+// See AppManager/AppManagerTelemetryReporting.h for the full, authoritative API.
+
+void reportTelemetryData(...);
+void reportTelemetryDataOnStateChange(...);
+// Additional helpers may exist for other app lifecycle and error events.
 ```
 
 ---

@@ -60,43 +60,51 @@ graph TB
 ```mermaid
 classDiagram
     class RDKWindowManagerImplementation {
-        -map~string,DisplayInfo~ mDisplays
-        -list~ClientInfo~ mClients
-        -InactivityMonitor mInactivityMonitor
-        +CreateDisplay(displayName, config) hresult
-        +DestroyDisplay(displayName) hresult
-        +SetFocus(displayName) hresult
-        +AddKeyIntercept(displayName, keyCode) hresult
-        +RemoveKeyIntercept(displayName, keyCode) hresult
-        +GetInactivityTime() uint32_t
-    }
-
-    class DisplayInfo {
-        +string displayName
-        +string waylandDisplay
-        +bool visible
-        +list~uint32_t~ keyIntercepts
-    }
-
-    class ClientInfo {
-        +string clientId
-        +string displayName
-        +uint32_t pid
+        -CriticalSection mAdminLock
+        -list~INotification*~ mRDKWindowManagerNotification
+        -IShell* mService
+        -shared_ptr~RdkWindowManagerEventListener~ mEventListener
+        +CreateDisplay(displayParams: string) hresult
+        +GetApps(appsIds: string) hresult
+        +SetFocus(client: string) hresult
+        +SetVisible(client: string, visible: bool) hresult
+        +GetVisibility(client: string, visible: bool) hresult
+        +AddKeyIntercept(intercept: string) hresult
+        +AddKeyIntercepts(clientId: string, intercepts: string) hresult
+        +RemoveKeyIntercept(clientId: string, keyCode: uint32_t, modifiers: string) hresult
+        +AddKeyListener(keyListeners: string) hresult
+        +RemoveKeyListener(keyListeners: string) hresult
+        +InjectKey(keyCode: uint32_t, modifiers: string) hresult
+        +EnableInactivityReporting(enable: bool) hresult
+        +SetInactivityInterval(interval: uint32_t) hresult
+        +ResetInactivityTime() hresult
+        +GetLastKeyInfo(keyCode: uint32_t, modifiers: uint32_t, timestampInSeconds: uint64_t) hresult
+        +SetZOrder(appInstanceId: string, zOrder: int32_t) hresult
+        +GetZOrder(appInstanceId: string, zOrder: int32_t) hresult
     }
 
     class IRDKWindowManager {
         <<interface>>
-        +CreateDisplay() hresult
-        +DestroyDisplay() hresult
-        +SetFocus() hresult
-        +AddKeyIntercept() hresult
-        +RemoveKeyIntercept() hresult
-        +GetInactivityTime() uint32_t
+        +CreateDisplay(displayParams: string) hresult
+        +GetApps(appsIds: string) hresult
+        +SetFocus(client: string) hresult
+        +SetVisible(client: string, visible: bool) hresult
+        +GetVisibility(client: string, visible: bool) hresult
+        +AddKeyIntercept(intercept: string) hresult
+        +AddKeyIntercepts(clientId: string, intercepts: string) hresult
+        +RemoveKeyIntercept(clientId: string, keyCode: uint32_t, modifiers: string) hresult
+        +AddKeyListener(keyListeners: string) hresult
+        +RemoveKeyListener(keyListeners: string) hresult
+        +InjectKey(keyCode: uint32_t, modifiers: string) hresult
+        +EnableInactivityReporting(enable: bool) hresult
+        +SetInactivityInterval(interval: uint32_t) hresult
+        +ResetInactivityTime() hresult
+        +GetLastKeyInfo(keyCode: uint32_t, modifiers: uint32_t, timestampInSeconds: uint64_t) hresult
+        +SetZOrder(appInstanceId: string, zOrder: int32_t) hresult
+        +GetZOrder(appInstanceId: string, zOrder: int32_t) hresult
     }
 
     RDKWindowManagerImplementation ..|> IRDKWindowManager
-    RDKWindowManagerImplementation --> DisplayInfo
-    RDKWindowManagerImplementation --> ClientInfo
 ```
 
 ---
@@ -123,11 +131,21 @@ RDKWindowManager/
 | Method | Purpose |
 |--------|---------|
 | `CreateDisplay(displayParamsJson)` | Create a new Wayland display for an application (parameters encoded as JSON) |
-| `DestroyDisplay(displayParamsJson)` | Destroy a Wayland display when app terminates (parameters encoded as JSON) |
-| `SetFocus(focusParamsJson)` | Give focus to a specific display/application (parameters encoded as JSON) |
-| `AddKeyIntercept(interceptParamsJson)` | Add key code to intercept list for an app (parameters encoded as JSON) |
-| `RemoveKeyIntercept(interceptParamsJson)` | Remove key code from intercept list (parameters encoded as JSON) |
-| `GetInactivityTime()` | Get time since last user input |
+| `SetFocus(client)` | Give focus to a specific Wayland client by name |
+| `SetVisible(client, visible)` | Show or hide a specific client's display |
+| `GetVisibility(client, visible)` | Retrieve visibility state of a specific client |
+| `AddKeyIntercept(intercept)` | Add a key intercept entry (JSON-encoded) for an application |
+| `AddKeyIntercepts(clientId, intercepts)` | Add multiple key intercepts for a client |
+| `RemoveKeyIntercept(clientId, keyCode, modifiers)` | Remove a specific key intercept for a client |
+| `AddKeyListener(keyListeners)` | Register key listener(s) for an application |
+| `RemoveKeyListener(keyListeners)` | Unregister key listener(s) |
+| `InjectKey(keyCode, modifiers)` | Inject a key event with specified code and modifiers |
+| `EnableInactivityReporting(enable)` | Enable or disable user inactivity event reporting |
+| `SetInactivityInterval(interval)` | Set the inactivity timeout interval (in seconds) |
+| `ResetInactivityTime()` | Reset the inactivity timer |
+| `GetLastKeyInfo(keyCode, modifiers, timestampInSeconds)` | Retrieve the last key event code, modifiers, and timestamp |
+| `SetZOrder(appInstanceId, zOrder)` | Set the Z-order for a specific application instance |
+| `GetZOrder(appInstanceId, zOrder)` | Get the current Z-order for a specific application instance |
 
 ---
 
