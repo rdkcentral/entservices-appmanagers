@@ -182,18 +182,16 @@ flowchart TD
 
 ## AppManagerTelemetryReporting
 
-The `AppManagerTelemetryReporting` class in AppManager provides helper methods:
+The `AppManagerTelemetryReporting` helper in **AppManager** is responsible for reporting app-related telemetry (launch/close timings, state changes, errors, etc.) into the TelemetryMetrics pipeline.
+
+At a high level, it exposes methods that wrap telemetry interactions, such as:
 
 ```cpp
-class AppManagerTelemetryReporting {
-public:
-    void recordLaunchStart(const string& appId);
-    void recordLaunchEnd(const string& appId, bool success);
-    void recordCloseStart(const string& appId);
-    void recordCloseEnd(const string& appId);
-    void recordCrash(const string& appId);
-    void recordError(const string& appId, const string& error);
-};
+// See AppManager/AppManagerTelemetryReporting.h for the full, authoritative API.
+
+void reportTelemetryData(...);
+void reportTelemetryDataOnStateChange(...);
+// Additional helpers may exist for other app lifecycle and error events.
 ```
 
 ---
