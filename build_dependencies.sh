@@ -10,7 +10,7 @@ cd ${GITHUB_WORKSPACE}
 #1. Install Dependencies and packages
 
 apt update
-apt install -y libsqlite3-dev libcurl4-openssl-dev valgrind lcov clang libsystemd-dev libboost-all-dev libwebsocketpp-dev meson libcunit1 libcunit1-dev curl protobuf-compiler-grpc libgrpc-dev libgrpc++-dev libunwind-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libjsoncpp-dev
+apt install -y libsqlite3-dev libcurl4-openssl-dev valgrind lcov clang libsystemd-dev libboost-all-dev libwebsocketpp-dev meson libcunit1 libcunit1-dev curl protobuf-compiler-grpc libgrpc-dev libgrpc++-dev libunwind-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libjsoncpp-dev libyaml-cpp-dev
 pip install jsonref
 
 ############################
@@ -33,6 +33,10 @@ git clone --branch R4.4.1 https://github.com/rdkcentral/Thunder.git
 
 git clone --branch main https://github.com/rdkcentral/entservices-apis.git
 
+
+git clone -b develop https://github.com/rdkcentral/eshelpers.git
+
+git clone -b develop https://github.com/rdkcentral/libPackage.git
 
 ############################
 # Build Thunder-Tools
@@ -79,6 +83,29 @@ cmake --build build/Thunder --target install
 
 
 ############################
+# Build libPackage
+echo "======================================================================================"
+echo "building libPackage"
+
+LEGACY_DIR="${GITHUB_WORKSPACE}/libPackage/include/legacy"
+mkdir -p "${LEGACY_DIR}"
+
+if [ -f "${GITHUB_WORKSPACE}/eshelpers/packager/IPackageImpl.h" ]; then
+    cp "${GITHUB_WORKSPACE}/eshelpers/packager/IPackageImpl.h" "${LEGACY_DIR}/IPackageImpl.h"
+else
+    echo "Missing required header: ${GITHUB_WORKSPACE}/eshelpers/packager/IPackageImpl.h"
+    exit 1
+fi
+
+cmake -G Ninja -S libPackage -B build/libPackage \
+    -DCMAKE_INCLUDE_PATH="${GITHUB_WORKSPACE}/eshelpers/packager" \
+    -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/install/usr" \
+    -DCMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" \
+    -DGENERIC_CMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake"
+
+cmake --build build/libPackage --target install
+
+############################
 # Build entservices-apis
 echo "======================================================================================"
 echo "building entservices-apis"
@@ -89,7 +116,7 @@ cd ..
 cmake -G Ninja -S entservices-apis  -B build/entservices-apis \
     -DEXCEPTIONS_ENABLE=ON \
     -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/install/usr" \
-    -DCMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" \
+    -DCMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake"
 
 cmake --build build/entservices-apis --target install
 
