@@ -93,9 +93,14 @@ classDiagram
 
     class IPackageInstaller {
         <<interface>>
-        +Install(appId, path) hresult
-        +Uninstall(appId) hresult
-        +IsInstalled(appId) bool
+        +Install(packageId, version, additionalMetadata, fileLocator, failReason) hresult
+        +Uninstall(packageId, errorReason) hresult
+        +ListPackages(packages) hresult
+        +Config(packageId, version, configMetadata) hresult
+        +PackageState(packageId, version, state) hresult
+        +GetConfigForPackage(fileLocator, id, version, config) hresult
+        +Register(sink) hresult
+        +Unregister(sink) hresult
     }
 
     class IPackageHandler {
@@ -103,7 +108,6 @@ classDiagram
         +Lock(packageId, version, lockReason, lockId, unpackedPath, configMetadata, appMetadata) hresult
         +Unlock(packageId, version) hresult
         +GetLockedInfo(packageId, version, unpackedPath, configMetadata, gatewayMetadataPath, locked) hresult
-        +ListPackages() list
     }
 
     PackageManagerImplementation ..|> IPackageDownloader
