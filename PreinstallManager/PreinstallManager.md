@@ -83,8 +83,9 @@ PreinstallManager/
 
 | Method | Purpose |
 |--------|---------|
-| `ScanAndInstall()` | Scan preinstall directories and install found packages |
-| `GetPreinstalledApps()` | Get list of preinstalled application IDs |
+| `StartPreinstall(forceInstall: bool)` | Scan preinstall directories and trigger installation of discovered packages (optionally forcing reinstall) |
+| `Register(notification: IPreinstallManager::INotification*)` | Register a notification sink for preinstall events |
+| `Unregister(notification: IPreinstallManager::INotification*)` | Unregister a previously registered notification sink |
 
 ---
 

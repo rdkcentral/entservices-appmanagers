@@ -59,9 +59,6 @@ graph TB
 ```mermaid
 classDiagram
     class PackageManagerImplementation {
-        -map~string,PackageState~ mPackages
-        -map~uint32_t,LockInfo~ mLocks
-        -Exchange::IAppStorageManager* mStorageManager
         +Download(url, options, downloadId) hresult
         +Pause(downloadId) hresult
         +Resume(downloadId) hresult
@@ -132,22 +129,17 @@ PackageManager/
 
 ## Key Data Structures
 
-```cpp
-struct PackageState {
-    string appId;
-    string version;
-    string installedPath;
-    string downloadPath;
-    PackageStatus status; // DOWNLOADING, INSTALLED, etc.
-    RuntimeConfig config;
-    string appMetadata;
-};
+The runtime data model is implemented in `PackageManagerImplementation.h` and is centered around:
 
-struct LockInfo {
-    uint32_t lockId;
-    string appId;
-    uint32_t refCount;
-};
+- An internal `State` structure that holds per-package information such as install state, lock count, runtime config, unpacked path, and fail reason.
+- An internal `StateMap` that tracks all known packages in memory, keyed by `(packageId, version)`.
+
+Conceptually, the in-memory state can be thought of as:
+
+```cpp
+// Conceptual representation of the in-memory state:
+// map<(packageId, version), State>
+// For the authoritative definition, see PackageManagerImplementation.h.
 ```
 
 ---
@@ -169,6 +161,7 @@ struct LockInfo {
 |--------|---------|
 | `Install(packageId, version, additionalMetadata, fileLocator, failReason)` | Install a specific package version from the given `fileLocator`, using `additionalMetadata` (key/value iterator); on failure, `failReason` describes the reason |
 | `Uninstall(appId)` | Uninstall package: remove files, cleanup storage |
+| `ListPackages(packages)` | List all installed packages (returns an iterator over installed package entries) |
 
 ### IPackageHandler Interface
 
@@ -177,7 +170,6 @@ struct LockInfo {
 | `Lock(packageId, version, lockReason, lockId, unpackedPath, configMetadata, appMetadata)` | Lock a specific package version to prevent uninstall during app execution; `lockReason` is an input, `lockId`, `unpackedPath`, `configMetadata`, and `appMetadata` are outputs |
 | `Unlock(packageId, version)` | Release a previously acquired package lock for the specified package version |
 | `GetLockedInfo(packageId, version, unpackedPath, configMetadata, gatewayMetadataPath, locked)` | Get lock state and metadata for a specific package version |
-| `ListPackages()` | List all installed packages |
 
 ---
 

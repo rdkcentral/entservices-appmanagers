@@ -150,7 +150,7 @@ typedef struct _RuntimeAppInfo {
 | `Suspend(appInstanceId)` | Pause container (SIGSTOP to all processes) |
 | `Resume(appInstanceId)` | Resume suspended container (SIGCONT) |
 | `Hibernate(appInstanceId)` | Checkpoint container to disk using CRIU |
-| `Wake(appInstanceId)` | Restore container from CRIU checkpoint |
+| `Wake(appInstanceId, runtimeState)` | Restore container from CRIU checkpoint and transition it to the requested `runtimeState` (see the `RuntimeState` enum in the implementation for valid values) |
 | `Terminate(appInstanceId)` | Graceful container shutdown (SIGTERM + timeout) |
 | `Kill(appInstanceId)` | Force kill container (SIGKILL) |
 
@@ -223,8 +223,9 @@ sequenceDiagram
     RTM-->>LCM: success
 
     Note over LCM,CRIU: Wake Flow
-    LCM->>RTM: Wake(appInstanceId)
-    RTM->>Dobby: wakeContainer(containerId)
+    LCM->>RTM: Wake(appInstanceId, runtimeState)
+    Note right of LCM: runtimeState loaded from persisted hibernate metadata
+    RTM->>Dobby: wakeContainer(containerId, runtimeState)
     Dobby->>CRIU: restore(checkpoint)
     CRIU-->>Dobby: process restored
     Dobby-->>RTM: wake complete
