@@ -29,7 +29,7 @@ cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/entservices-appmanagers \
 -DPLUGIN_DOWNLOADMANAGER=ON \
 -DPLUGIN_RUNTIME_MANAGER=ON \
 -DPLUGIN_PACKAGE_MANAGER=OFF \
--DCMAKE_CXX_FLAGS="-DEXCEPTIONS_ENABLE=ON \
+-DCMAKE_CXX_FLAGS="-fvisibility=default -DEXCEPTIONS_ENABLE=ON \
 -I ${GITHUB_WORKSPACE}/Tests/mocks \
 -I ${GITHUB_WORKSPACE}/Tests/mocks/thunder \
 -I /usr/include/libdrm \
