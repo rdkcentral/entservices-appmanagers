@@ -156,7 +156,7 @@ sequenceDiagram
     TM->>TM: Buffer Metric
 
     Note over App,Backend: Periodic Publish
-    TM->>Backend: Publish()
+    TM->>Backend: Publish(id, name)
     Backend-->>TM: ACK
     TM->>TM: Clear Buffer
 ```
