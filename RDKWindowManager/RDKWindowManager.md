@@ -60,43 +60,47 @@ graph TB
 ```mermaid
 classDiagram
     class RDKWindowManagerImplementation {
-        -map~string,DisplayInfo~ mDisplays
-        -list~ClientInfo~ mClients
-        -InactivityMonitor mInactivityMonitor
-        +CreateDisplay(displayName, config) hresult
-        +DestroyDisplay(displayName) hresult
-        +SetFocus(displayName) hresult
-        +AddKeyIntercept(displayName, keyCode) hresult
-        +RemoveKeyIntercept(displayName, keyCode) hresult
-        +GetInactivityTime() uint32_t
-    }
-
-    class DisplayInfo {
-        +string displayName
-        +string waylandDisplay
-        +bool visible
-        +list~uint32_t~ keyIntercepts
-    }
-
-    class ClientInfo {
-        +string clientId
-        +string displayName
-        +uint32_t pid
+        -CriticalSection mAdminLock
+        -list~INotification*~ mRDKWindowManagerNotification
+        -IShell* mService
+        -shared_ptr~RdkWindowManagerEventListener~ mEventListener
+        +CreateDisplay(displayParams) hresult
+        +GetApps(appsIds) hresult
+        +SetFocus(client) hresult
+        +SetVisible(client, visible) hresult
+        +GetVisibility(client, visible) hresult
+        +AddKeyIntercept(intercept) hresult
+        +AddKeyIntercepts(clientId, intercepts) hresult
+        +RemoveKeyIntercept(clientId, keyCode, modifiers) hresult
+        +AddKeyListener(keyListeners) hresult
+        +RemoveKeyListener(keyListeners) hresult
+        +InjectKey(keyCode, modifiers) hresult
+        +SetInactivityInterval(interval) hresult
+        +ResetInactivityTime() hresult
+        +GetLastKeyInfo(keyCode, modifiers, timestampInSeconds) hresult
+        +SetZOrder(appInstanceId, zOrder) hresult
+        +GetZOrder(appInstanceId, zOrder) hresult
     }
 
     class IRDKWindowManager {
         <<interface>>
-        +CreateDisplay() hresult
-        +DestroyDisplay() hresult
-        +SetFocus() hresult
-        +AddKeyIntercept() hresult
-        +RemoveKeyIntercept() hresult
-        +GetInactivityTime() uint32_t
+        +CreateDisplay(displayParams) hresult
+        +GetApps(appsIds) hresult
+        +SetFocus(client) hresult
+        +SetVisible(client, visible) hresult
+        +GetVisibility(client, visible) hresult
+        +AddKeyIntercept(intercept) hresult
+        +AddKeyIntercepts(clientId, intercepts) hresult
+        +RemoveKeyIntercept(clientId, keyCode, modifiers) hresult
+        +InjectKey(keyCode, modifiers) hresult
+        +SetInactivityInterval(interval) hresult
+        +ResetInactivityTime() hresult
+        +GetLastKeyInfo(keyCode, modifiers, timestampInSeconds) hresult
+        +SetZOrder(appInstanceId, zOrder) hresult
+        +GetZOrder(appInstanceId, zOrder) hresult
     }
 
     RDKWindowManagerImplementation ..|> IRDKWindowManager
-    RDKWindowManagerImplementation --> DisplayInfo
-    RDKWindowManagerImplementation --> ClientInfo
 ```
 
 ---
