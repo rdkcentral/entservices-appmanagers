@@ -63,8 +63,8 @@ classDiagram
         +Pause(downloadId) hresult
         +Resume(downloadId) hresult
         +Cancel(downloadId) hresult
-        +Delete(downloadId) hresult
-        +Progress(downloadId) DownloadProgress
+        +Delete(fileLocator) hresult
+        +Progress(downloadId, percent) hresult
         +RateLimit(downloadId, limit) hresult
     }
 
