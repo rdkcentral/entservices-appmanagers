@@ -54,6 +54,7 @@ namespace Plugin
             std::string getDialUsn() const;
             std::map<std::string, size_t> getIonHeapQuotas() const;
             void printAIConfiguration();
+            std::list<std::string> getSvpFiles() const;
 
             // system configuration
             std::list<std::string> getPreloads() const;
@@ -62,7 +63,8 @@ namespace Plugin
         private:
             void readFromCustomData();
             void readFromConfigFile();
-            std::list<std::string>readGlobalEnv() const;
+            void readFromYamlConfigFile();
+            std::list<std::string> readGlobalEnv() const;
 
             size_t mConsoleLogCap;
             std::bitset<32> mAppsCpuSet;        // cores
@@ -85,6 +87,7 @@ namespace Plugin
             // system configuration
             std::list<std::string> mPreloads;
             std::list<std::string> mEnvVariables;
+            std::list<std::string> mSvpFiles;
     };
 } /* namespace Plugin */
 } /* namespace WPEFramework */

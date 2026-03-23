@@ -24,8 +24,16 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <set>
+#ifdef ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG
+#include <climits>
+#include <cinttypes>
+#include <sys/stat.h>
+#include <yaml-cpp/yaml.h>
+#endif
 
 #define AICONFIGURATION_INI_PATH "/opt/demo/config.ini"
+#define AICONFIGURATION_YAML_PATH "/opt/rdkappmanagers.yaml"
 
 extern char **environ;
 
@@ -68,6 +76,9 @@ namespace Plugin
     void AIConfiguration::initialize()
     {
         readFromConfigFile();
+#ifdef ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG
+        readFromYamlConfigFile();
+#endif
     }
 
     size_t AIConfiguration::getContainerConsoleLogCap()
@@ -338,6 +349,137 @@ namespace Plugin
         }
         LOGINFO("preloads: %s", preloadsStr.c_str());
         LOGINFO("envVariables: %s", envsStr.c_str());
+    }
+
+    void AIConfiguration::readFromYamlConfigFile()
+    {
+#ifdef ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG
+        struct stat st{};
+        if (::stat(AICONFIGURATION_YAML_PATH, &st) != 0) {
+            LOGINFO("YAML file %s not found", AICONFIGURATION_YAML_PATH);
+            return;
+        }
+        LOGINFO("AIConfiguration reading from YAML at %s", AICONFIGURATION_YAML_PATH);
+
+        try {
+            YAML::Node root = YAML::LoadFile(AICONFIGURATION_YAML_PATH);
+
+            if (!root || !root.IsMap()) {
+                LOGWARN("Invalid YAML format: root must be a mapping");
+                return;
+            }
+
+            const YAML::Node preloads = root["preloads"];
+            if (preloads.IsDefined() && preloads.IsSequence()) {
+                LOGINFO("preloads (merging with defaults):");
+                std::set<std::string> preloadSet(mPreloads.begin(), mPreloads.end());
+                for (const auto& item : preloads) {
+                    try {
+                        std::string val = item.as<std::string>();
+                        if (0 == preloadSet.count(val)) {
+                            mPreloads.push_back(val);
+                            preloadSet.insert(val);
+                            LOGINFO("  %s", val.c_str());
+                        }
+                    } catch (const YAML::BadConversion& ex) {
+                        LOGWARN("Invalid preload entry in YAML, skipping: %s", ex.what());
+                    }
+                }
+            }
+
+            YAML::Node envVariablesNode = root["envVariables"];
+            if (envVariablesNode.IsDefined() && envVariablesNode.IsSequence()) {
+                LOGINFO("envVariables (merging with defaults):");
+                std::set<std::string> envSet(mEnvVariables.begin(), mEnvVariables.end());
+                for (const auto& n : envVariablesNode) {
+                    try {
+                        std::string val = n.as<std::string>();
+                        if (0 == envSet.count(val)) {
+                            mEnvVariables.push_back(val);
+                            envSet.insert(val);
+                            LOGINFO("  %s", val.c_str());
+                        }
+                    } catch (const YAML::BadConversion& ex) {
+                        LOGWARN("Invalid envVariables entry in YAML, skipping: %s", ex.what());
+                    }
+                }
+            }
+            YAML::Node enableSvpNode = root["enableSvp"];
+            if (enableSvpNode.IsDefined() && enableSvpNode.IsScalar()) {
+                // Use the existing value of mSvpEnabled as a fallback to avoid exceptions on bad input
+                mSvpEnabled = enableSvpNode.as<bool>(mSvpEnabled);
+                LOGINFO("enableSvp: %s", mSvpEnabled ? "true" : "false");
+            }
+            {
+                const YAML::Node memoryLimitNode = root["memoryLimit"];
+                if (memoryLimitNode.IsDefined() && memoryLimitNode.IsScalar()) {
+                    try {
+                        const uint64_t memoryLimitValue = memoryLimitNode.as<uint64_t>();
+                        if (static_cast<uint64_t>(SSIZE_MAX) < memoryLimitValue) {
+                            LOGWARN("memoryLimit value %" PRIu64 " exceeds SSIZE_MAX; ignoring", memoryLimitValue);
+                        } else {
+                            mNonHomeAppMemoryLimit = static_cast<ssize_t>(memoryLimitValue);
+                            LOGINFO("memoryLimit: %zd", mNonHomeAppMemoryLimit);
+                        }
+                    } catch (const YAML::BadConversion& e) {
+                        LOGWARN("Invalid value for memoryLimit in YAML: %s", e.what());
+                    }
+                }
+            }
+            {
+                YAML::Node gpuNode = root["gpuMemoryLimit"];
+                if (gpuNode.IsDefined()) {
+                    if (gpuNode.IsScalar()) {
+                        try {
+                            const uint64_t gpuMemoryLimitValue = gpuNode.as<uint64_t>();
+                            if (static_cast<uint64_t>(SSIZE_MAX) < gpuMemoryLimitValue) {
+                                LOGWARN("gpuMemoryLimit value %" PRIu64 " exceeds SSIZE_MAX; ignoring", gpuMemoryLimitValue);
+                            } else {
+                                mNonHomeAppGpuLimit = static_cast<ssize_t>(gpuMemoryLimitValue);
+                                LOGINFO("gpuMemoryLimit: %zd", mNonHomeAppGpuLimit);
+                            }
+                        } catch (const YAML::BadConversion& e) {
+                            LOGWARN("Invalid gpuMemoryLimit value in YAML: %s", e.what());
+                        }
+                    } else {
+                        LOGWARN("Invalid YAML type for gpuMemoryLimit: expected scalar");
+                    }
+                }
+            }
+            {
+                YAML::Node ionDefaultQuotaNode = root["ionDefaultQuota"];
+                if (ionDefaultQuotaNode && ionDefaultQuotaNode.IsScalar()) {
+                    try {
+                        mIonHeapDefaultQuota = ionDefaultQuotaNode.as<size_t>();
+                        LOGINFO("ionDefaultQuota: %zu", mIonHeapDefaultQuota);
+                    } catch (const YAML::BadConversion &e) {
+                        LOGWARN("Invalid value for ionDefaultQuota in YAML configuration: %s", e.what());
+                    }
+                } else if (ionDefaultQuotaNode) {
+                    LOGWARN("ionDefaultQuota is present in YAML configuration but is not a scalar value");
+                }
+            }
+            YAML::Node svpNode = root["svpfiles"];
+            if (svpNode.IsDefined() && svpNode.IsSequence()) {
+                mSvpFiles.clear();
+                LOGINFO("svpfiles:");
+                for (const auto& n : svpNode) {
+                    try {
+                        std::string val = n.as<std::string>();
+                        mSvpFiles.push_back(val);
+                        LOGINFO("  %s", val.c_str());
+                    } catch (const YAML::BadConversion& e) {
+                        LOGWARN("Invalid entry in svpfiles sequence in YAML configuration: %s", e.what());
+                    }
+                }
+            }
+
+            //printAIConfiguration();
+
+        } catch (const std::exception& ex) {
+            LOGWARN("Error parsing YAML: %s", ex.what());
+        }
+#endif
     }
 
     void AIConfiguration::readFromConfigFile()

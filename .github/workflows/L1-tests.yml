@@ -85,12 +85,7 @@ jobs:
         run: >
           sudo apt update
           &&
-          sudo apt install -y libsqlite3-dev libcurl4-openssl-dev valgrind lcov clang libsystemd-dev libboost-all-dev libwebsocketpp-dev meson libcunit1 libcunit1-dev curl protobuf-compiler-grpc libgrpc-dev libgrpc++-dev libjsoncpp-dev libxtables-dev libip4tc-dev libip6tc-dev
-
-      - name: Install GStreamer
-        run: |
-           sudo apt update
-           sudo apt install -y libunwind-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev
+          sudo apt install -y libsqlite3-dev libcurl4-openssl-dev valgrind lcov clang libsystemd-dev libboost-all-dev libwebsocketpp-dev meson libcunit1 libcunit1-dev curl protobuf-compiler-grpc libgrpc-dev libgrpc++-dev libjsoncpp-dev libxtables-dev libip4tc-dev libip6tc-dev libyaml-cpp-dev
 
       - name: Build trower-base64
         run: |
@@ -123,14 +118,6 @@ jobs:
         uses: actions/checkout@v3
         with:
           path: entservices-appmanagers
-
-      - name: Checkout entservices-appmanagers-testframework
-        if: ${{ inputs.caller_source == 'testframework' }}
-        uses: actions/checkout@v3
-        with:
-          repository: rdkcentral/entservices-appmanagers
-          path: entservices-appmanagers
-          ref: develop
 
       - name: Checkout googletest
         if: steps.cache.outputs.cache-hit != 'true'
