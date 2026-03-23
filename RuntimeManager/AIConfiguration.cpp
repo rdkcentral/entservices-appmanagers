@@ -36,7 +36,7 @@ namespace Plugin
     // Fix for Coverity issue 1078 - UNINIT_CTOR: Initialize all member variables in constructor
     AIConfiguration::AIConfiguration()
         : mConsoleLogCap(0)
-        , mNonHomeAppMemoryLimit(0)
+	, mNonHomeAppMemoryLimit(0)
         , mNonHomeAppGpuLimit(0)
         , mResourceManagerClientEnabled(false)
         , mGstreamerRegistryEnabled(false)
@@ -45,8 +45,21 @@ namespace Plugin
         , mIPv6Enabled(false)
         , mIonHeapDefaultQuota(0)
         , mDialServerPort(0)
+        , mAppsCpuSet()
+        , mNonHomeAppMemoryLimit(0)
+        , mNonHomeAppGpuLimit(0)
+        , mVpuAccessBlacklist()
+        , mSvpEnabled(false)
     {
+        // Initialize primitive members with safe defaults; configuration files may override these.
+        mResourceManagerClientEnabled = false;
+        mGstreamerRegistryEnabled = false;
+        mEnableUsbMassStorage = false;
+        mIPv6Enabled = false;
+        mIonHeapDefaultQuota = 0;
+        mDialServerPort = 0;
     }
+
 
     AIConfiguration::~AIConfiguration()
     {
