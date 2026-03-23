@@ -13,7 +13,7 @@ The **PackageManager** handles the complete lifecycle of application packages in
 
 ### Core Responsibilities
 
-- **Package Download:** Coordinate with DownloadManager for HTTP downloads
+- **Package Download:** HTTP downloads using internal HttpClient
 - **Installation:** Extract packages, parse manifests, setup storage
 - **Package Locking:** Prevent uninstall while app is running
 - **Metadata Management:** Parse and serve app configuration
@@ -23,7 +23,6 @@ The **PackageManager** handles the complete lifecycle of application packages in
 
 | Module | Purpose |
 |--------|---------|
-| DownloadManager | HTTP download operations |
 | org.rdk.AppStorageManager (IAppStorageManager) | App storage allocation |
 
 ---
@@ -41,7 +40,6 @@ graph TB
     end
 
     subgraph "External Services"
-        DLMgr[DownloadManager]
         StorMgr[org.rdk.AppStorageManager<br/>IAppStorageManager]
         FS[FileSystem]
     end
@@ -50,7 +48,6 @@ graph TB
     PMI -.-> DL
     PMI -.-> INS
     PMI -.-> HDL
-    PMI --> DLMgr
     PMI --> StorMgr
     PMI --> FS
 ```
@@ -64,7 +61,6 @@ classDiagram
     class PackageManagerImplementation {
         -map~string,PackageState~ mPackages
         -map~uint32_t,LockInfo~ mLocks
-        -IDownloadManager* mDownloadManager
         -Exchange::IAppStorageManager* mStorageManager
         +Download(url, options, downloadId) hresult
         +Pause(downloadId) hresult
@@ -193,13 +189,13 @@ struct LockInfo {
 sequenceDiagram
     participant Client
     participant PkgMgr as PackageManager
-    participant DLMgr as DownloadManager
+    participant HttpClient
     participant StorMgr as StorageManager
     participant FS as FileSystem
 
     Client->>PkgMgr: Download(url, appId)
-    PkgMgr->>DLMgr: Download(url, destPath)
-    DLMgr-->>PkgMgr: OnDownloadComplete
+    PkgMgr->>HttpClient: downloadFile(url, destPath)
+    HttpClient-->>PkgMgr: download complete
     PkgMgr->>FS: Extract(tarball, destPath)
     PkgMgr->>PkgMgr: Parse manifest.json
     PkgMgr->>StorMgr: CreateStorage(appId)
