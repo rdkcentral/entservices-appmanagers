@@ -247,7 +247,7 @@ namespace WPEFramework
                                 AppInfoManager::getInstance().upsert(appId, [&](AppInfo& a) {
                                     a.setAppInstanceId(capturedInstanceId);
                                     a.setAppIntent(intent);
-                                    a.setPackageInfoType(AppManagerTypes::APPLICATION_TYPE_INTERACTIVE);
+                                    a.getPackageInfoMutable().type = AppManagerTypes::APPLICATION_TYPE_INTERACTIVE;
                                     a.setTargetAppState(targetState);
                                 });
                             }
@@ -328,7 +328,7 @@ namespace WPEFramework
                                 : Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED;
                             AppInfoManager::getInstance().upsert(appId, [&](AppInfo& a) {
                                 a.setAppInstanceId(capturedInstanceId);
-                                a.setPackageInfoType(AppManagerTypes::APPLICATION_TYPE_INTERACTIVE);
+                                a.getPackageInfoMutable().type = AppManagerTypes::APPLICATION_TYPE_INTERACTIVE;
                                 a.setTargetAppState(targetState);
                             });
                         }
