@@ -371,7 +371,7 @@ jobs:
             -DPREFIX="$PREFIX" \
             -DAPPMGR_ENABLE_COVERAGE=ON
 
-          cmake --build build/entservices-appmanagers-l0tests-only --target runtimemanager_l0test -- -j"$(nproc)"
+          cmake --build build/entservices-appmanagers-l0tests-only --target appmanagers_l0test -- -j"$(nproc)"
 
       - name: Run L0 tests
         id: run_l0_tests
@@ -382,7 +382,7 @@ jobs:
           export PATH="$GITHUB_WORKSPACE/install/usr/bin:${PATH}"
           export LD_LIBRARY_PATH="$GITHUB_WORKSPACE/install/usr/lib:$GITHUB_WORKSPACE/install/usr/lib/wpeframework:$GITHUB_WORKSPACE/install/usr/lib/wpeframework/plugins:${LD_LIBRARY_PATH:-}"
 
-          test_bin="build/entservices-appmanagers-l0tests-only/runtimemanager_l0test"
+          test_bin="build/entservices-appmanagers-l0tests-only/appmanagers_l0test"
           test -x "$test_bin"
 
           set +e
@@ -415,7 +415,7 @@ jobs:
           export PATH="$GITHUB_WORKSPACE/install/usr/bin:${PATH}"
           export LD_LIBRARY_PATH="$GITHUB_WORKSPACE/install/usr/lib:$GITHUB_WORKSPACE/install/usr/lib/wpeframework:$GITHUB_WORKSPACE/install/usr/lib/wpeframework/plugins:${LD_LIBRARY_PATH:-}"
 
-          test_bin="build/entservices-appmanagers-l0tests-only/runtimemanager_l0test"
+          test_bin="build/entservices-appmanagers-l0tests-only/appmanagers_l0test"
           test -x "$test_bin"
 
           gdb -q -batch -ex "set pagination off" -ex "run" -ex "bt full" --args "$test_bin" | tee l0-test-gdb.log
@@ -479,14 +479,14 @@ jobs:
 
           genhtml \
             -o "$ARTIFACT_ROOT/coverage-html" \
-            -t "entservices-appmanagers RuntimeManager L0 coverage" \
+            -t "entservices-appmanagers AppManagers L0 coverage" \
             filtered_coverage.info || true
 
       - name: Upload artifacts
         if: ${{ !env.ACT }}
         uses: actions/upload-artifact@v4
         with:
-          name: artifacts-L0-runtimemanager
+          name: artifacts-L0-appmanagers
           path: |
             coverage-html/
             coverage.info
