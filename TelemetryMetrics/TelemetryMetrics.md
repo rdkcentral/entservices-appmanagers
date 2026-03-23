@@ -66,7 +66,7 @@ graph TB
 classDiagram
     class TelemetryMetricsImplementation {
         -unordered_map<string, Json::Value> mMetricsRecord
-        -std::mutex mMutex
+        -std::mutex mMetricsMutex
         +Record(id, metrics, name) hresult
         +Publish(id, name) hresult
     }
