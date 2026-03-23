@@ -63,3 +63,22 @@ public:
     MOCK_METHOD(WPEFramework::Core::hresult, StopVncServer, (), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, GetScreenshot, (), (override));
 };
+
+class WindowManagerNotificationMock : public WPEFramework::Exchange::IRDKWindowManager::INotification {
+public:
+    WindowManagerNotificationMock() = default;
+    virtual ~WindowManagerNotificationMock() = default;
+
+    MOCK_METHOD(void, OnUserInactivity, (const double minutes), (override));
+    MOCK_METHOD(void, OnDisconnected, (const std::string& client), (override));
+    MOCK_METHOD(void, OnReady, (const std::string& client), (override));
+    MOCK_METHOD(void, OnConnected, (const std::string& client), (override));
+    MOCK_METHOD(void, OnVisible, (const std::string& client), (override));
+    MOCK_METHOD(void, OnHidden, (const std::string& client), (override));
+    MOCK_METHOD(void, OnFocus, (const std::string& client), (override));
+    MOCK_METHOD(void, OnBlur, (const std::string& client), (override));
+    MOCK_METHOD(void, OnScreenshotComplete, (const bool success, const std::string& imageData), (override));
+    MOCK_METHOD(void, AddRef, (), (const, override));
+    MOCK_METHOD(uint32_t, Release, (), (const, override));
+    MOCK_METHOD(void*, QueryInterface, (const uint32_t interfaceNumber), (override));
+};
