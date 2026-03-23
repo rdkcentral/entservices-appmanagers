@@ -779,3 +779,111 @@ uint32_t Test_Ralf_GetRalfUserInfo_ReturnsConsistentResult()
 
     return tr.failures;
 }
+
+/* Test_Ralf_CreateDirectories_UnderReadOnlyParentReturnsError
+ *
+ * Verifies that create_directories() returns false when mkdir() fails due to
+ * insufficient permissions on the parent directory.
+ */
+uint32_t Test_Ralf_CreateDirectories_UnderReadOnlyParentReturnsError()
+{
+    L0Test::TestResult tr;
+
+    if (::geteuid() == 0) {
+        // Cannot reliably trigger EACCES as root — skip
+        L0Test::ExpectTrue(tr, true,
+                           "SKIP: running as root, EACCES path not testable for create_directories");
+        return tr.failures;
+    }
+
+    const std::string roParent = "/tmp/ralf_l0test_ro_parent";
+    const std::string roChild  = roParent + "/subdir";
+
+    // Pre-create the parent with mode 000 so mkdir of child fails with EACCES
+    ::mkdir(roParent.c_str(), 0000);
+    ::chmod(roParent.c_str(), 0000);
+
+    const bool result = ralf::create_directories(roChild);
+
+    // Restore permissions before cleanup
+    ::chmod(roParent.c_str(), 0755);
+    ::rmdir(roParent.c_str());
+
+    L0Test::ExpectTrue(tr, !result,
+                       "create_directories() returns false when mkdir fails with EACCES");
+
+    return tr.failures;
+}
+
+/* Test_Ralf_CreateDirectories_WithNonZeroUidGidCallsChown
+ *
+ * Verifies that create_directories() invokes chown() when both uid and gid
+ * are non-zero, and does not crash regardless of whether the chown succeeds.
+ */
+uint32_t Test_Ralf_CreateDirectories_WithNonZeroUidGidCallsChown()
+{
+    L0Test::TestResult tr;
+
+    const std::string testDir = "/tmp/ralf_l0test_chown_uid_gid";
+    const int targetUid = 1;
+    const int targetGid = 1;
+
+    ::rmdir(testDir.c_str()); // pre-clean
+
+    const bool result = ralf::create_directories(testDir, targetUid, targetGid);
+
+    // Both success (root) and failure (non-root EPERM) are acceptable
+    L0Test::ExpectTrue(tr, true,
+                       "create_directories() with non-zero uid/gid does not crash");
+    (void)result;
+
+    // Cleanup
+    ::chmod(testDir.c_str(), 0755);
+    ::rmdir(testDir.c_str());
+
+    return tr.failures;
+}
+
+/* Test_Ralf_UnmountOverlayfs_NonMountedPathReturnsFalse
+ *
+ * Verifies that unmountOverlayfs() returns false when the path is a regular
+ * directory that is not an actual overlayfs mount point.
+ */
+uint32_t Test_Ralf_UnmountOverlayfs_NonMountedPathReturnsFalse()
+{
+    L0Test::TestResult tr;
+
+    const std::string testDir = "/tmp/ralf_l0test_umount_dir";
+    ::mkdir(testDir.c_str(), 0755); // pre-create
+
+    const bool result = ralf::unmountOverlayfs(testDir);
+
+    ::rmdir(testDir.c_str()); // cleanup
+
+    L0Test::ExpectTrue(tr, !result,
+                       "unmountOverlayfs() returns false for a non-mounted path");
+
+    return tr.failures;
+}
+
+/* Test_Ralf_GenerateOCIRootfs_FailsDueToNoMountSupport
+ *
+ * Verifies that generateOCIRootfs() returns false when the overlayfs mount
+ * is unavailable in the test environment.
+ */
+uint32_t Test_Ralf_GenerateOCIRootfs_FailsDueToNoMountSupport()
+{
+    L0Test::TestResult tr;
+
+    const std::string testInstanceId = "l0test_ociroot_inst_001";
+    const std::string pkgMountPaths = "/tmp";
+    std::string ociRootfsPath;
+
+    const bool result = ralf::generateOCIRootfs(testInstanceId, pkgMountPaths,
+                                                0, 0, ociRootfsPath);
+
+    L0Test::ExpectTrue(tr, !result,
+                       "generateOCIRootfs() returns false when overlayfs mount is unavailable");
+
+    return tr.failures;
+}

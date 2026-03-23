@@ -615,7 +615,10 @@ uint32_t Test_Impl_RunEmptyAppInstanceId()
     // the impl. The impl is not destroyed until both jobs complete. We must keep the
     // ServiceMock alive until after the impl destructor runs — a stack variable would
     // be dead by then, causing a use-after-free crash.
-    auto* service = new L0Test::ServiceMock();
+    // Static lifetime guarantees the ServiceMock outlives all async worker-pool
+    // jobs (including the impl destructor) without relying on a fixed sleep.
+    static L0Test::ServiceMock serviceMock;
+    auto* service = &serviceMock;
     auto* impl = CreateImpl();
     impl->Configure(service);
 
@@ -628,10 +631,7 @@ uint32_t Test_Impl_RunEmptyAppInstanceId()
                         "Run() with empty appInstanceId returns ERROR_GENERAL");
 
     impl->Release();
-    // Allow all async dispatch jobs and the impl destructor to complete before
-    // deleting the ServiceMock.
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    delete service;
     return tr.failures;
 }
 
@@ -652,7 +652,10 @@ uint32_t Test_Impl_RunNoWindowManagerConnector()
     // mCurrentservice->Release() is called from the impl destructor which runs
     // asynchronously (worker thread, after async jobs complete). The ServiceMock must
     // not be destroyed before the impl is fully gone.
-    auto* service = new L0Test::ServiceMock();
+    // Static lifetime guarantees the ServiceMock outlives all async worker-pool
+    // jobs (including the impl destructor) without relying on a fixed sleep.
+    static L0Test::ServiceMock serviceMock;
+    auto* service = &serviceMock;
     auto* impl = CreateImpl();
     impl->Configure(service);
 
@@ -665,10 +668,7 @@ uint32_t Test_Impl_RunNoWindowManagerConnector()
                         "Run() without WindowManagerConnector returns ERROR_GENERAL");
 
     impl->Release();
-    // Allow all async dispatch jobs and the impl destructor to complete before
-    // deleting the ServiceMock.
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    delete service;
     return tr.failures;
 }
 
@@ -731,6 +731,9 @@ uint32_t Test_Impl_GetInstanceReturnsSelf()
                        "getInstance() returns the most recently constructed instance");
 
     impl->Release();
+    // Clear the dangling _instance pointer so later tests (and any code calling
+    // getInstance()) are not affected by this stale reference.
+    WPEFramework::Plugin::RuntimeManagerImplementation::_instance = nullptr;
     return tr.failures;
 }
 

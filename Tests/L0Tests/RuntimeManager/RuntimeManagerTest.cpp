@@ -149,6 +149,10 @@ extern uint32_t Test_Ralf_GetDevNodeMajorMinor_DevNullReturnsTrue();
 extern uint32_t Test_Ralf_GetGroupId_UnknownGroupReturnsFalse();
 extern uint32_t Test_Ralf_GetGroupId_RootGroupReturnsTrue();
 extern uint32_t Test_Ralf_GetRalfUserInfo_ReturnsConsistentResult();
+extern uint32_t Test_Ralf_CreateDirectories_UnderReadOnlyParentReturnsError();
+extern uint32_t Test_Ralf_CreateDirectories_WithNonZeroUidGidCallsChown();
+extern uint32_t Test_Ralf_UnmountOverlayfs_NonMountedPathReturnsFalse();
+extern uint32_t Test_Ralf_GenerateOCIRootfs_FailsDueToNoMountSupport();
 
 // ── ralf/RalfPackageBuilder tests ─────────────────────────────────────────────
 extern uint32_t Test_RalfPackageBuilder_ConstructionAndDestruction();
@@ -159,6 +163,8 @@ extern uint32_t Test_RalfPackageBuilder_GenerateRalfDobbySpec_NonExistentPkgFile
 extern uint32_t Test_RalfPackageBuilder_GenerateRalfDobbySpec_MalformedPkgFileReturnsFalse();
 extern uint32_t Test_RalfPackageBuilder_GenerateRalfDobbySpec_PkgFileMissingPackagesFieldReturnsFalse();
 extern uint32_t Test_RalfPackageBuilder_GenerateRalfDobbySpec_OutputDobbySpecEmptyOnFailure();
+extern uint32_t Test_RalfPackageBuilder_GenerateRalfDobbySpec_ValidPkgJsonLeadsToOCIAttempt();
+extern uint32_t Test_RalfPackageBuilder_UnmountOverlayfsIfExists_WhenPathExistsTriggerUnmount();
 
 // ── ralf/RalfOCIConfigGenerator tests ────────────────────────────────────────
 extern uint32_t Test_RalfOCIConfigGenerator_ConstructionAndDestruction();
@@ -202,7 +208,6 @@ extern uint32_t Test_NetFilter_GetContainerPortForwardList_ReturnsListType();
 extern uint32_t Test_NetFilter_GetContainerPortForwardList_DefaultIpReturnsListType();
 extern uint32_t Test_NetFilter_PortForward_StructMembersAccessible();
 
-// ── Additional coverage tests ─────────────────────────────────────────────────
 // DobbyEventListener coverage
 extern uint32_t Test_DobbyEventListener_InitializeWithValidOCIContainerSucceeds();
 extern uint32_t Test_DobbyEventListener_InitializeWithRegisterFailureReturnsFalse();
@@ -419,6 +424,10 @@ int main()
         { "Ralf_GetGroupId_UnknownGroupReturnsFalse",                                Test_Ralf_GetGroupId_UnknownGroupReturnsFalse },
         { "Ralf_GetGroupId_RootGroupReturnsTrue",                                    Test_Ralf_GetGroupId_RootGroupReturnsTrue },
         { "Ralf_GetRalfUserInfo_ReturnsConsistentResult",                            Test_Ralf_GetRalfUserInfo_ReturnsConsistentResult },
+        { "Ralf_CreateDirectories_UnderReadOnlyParentReturnsError",                  Test_Ralf_CreateDirectories_UnderReadOnlyParentReturnsError },
+        { "Ralf_CreateDirectories_WithNonZeroUidGidCallsChown",                      Test_Ralf_CreateDirectories_WithNonZeroUidGidCallsChown },
+        { "Ralf_UnmountOverlayfs_NonMountedPathReturnsFalse",                        Test_Ralf_UnmountOverlayfs_NonMountedPathReturnsFalse },
+        { "Ralf_GenerateOCIRootfs_FailsDueToNoMountSupport",                         Test_Ralf_GenerateOCIRootfs_FailsDueToNoMountSupport },
 
         // ── ralf/RalfPackageBuilder tests ────────────────────────────────────
         { "RalfPackageBuilder_ConstructionAndDestruction",                           Test_RalfPackageBuilder_ConstructionAndDestruction },
@@ -429,6 +438,8 @@ int main()
         { "RalfPackageBuilder_GenerateRalfDobbySpec_MalformedPkgFileReturnsFalse",   Test_RalfPackageBuilder_GenerateRalfDobbySpec_MalformedPkgFileReturnsFalse },
         { "RalfPackageBuilder_GenerateRalfDobbySpec_PkgFileMissingPackagesField",    Test_RalfPackageBuilder_GenerateRalfDobbySpec_PkgFileMissingPackagesFieldReturnsFalse },
         { "RalfPackageBuilder_GenerateRalfDobbySpec_OutputDobbySpecEmptyOnFailure",  Test_RalfPackageBuilder_GenerateRalfDobbySpec_OutputDobbySpecEmptyOnFailure },
+        { "RalfPackageBuilder_GenerateRalfDobbySpec_ValidPkgJsonLeadsToOCIAttempt",  Test_RalfPackageBuilder_GenerateRalfDobbySpec_ValidPkgJsonLeadsToOCIAttempt },
+        { "RalfPackageBuilder_UnmountOverlayfsIfExists_WhenPathExistsTriggerUnmount",Test_RalfPackageBuilder_UnmountOverlayfsIfExists_WhenPathExistsTriggerUnmount },
 
         // ── ralf/RalfOCIConfigGenerator tests ────────────────────────────────
         { "RalfOCIConfigGenerator_ConstructionAndDestruction",                       Test_RalfOCIConfigGenerator_ConstructionAndDestruction },
