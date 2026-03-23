@@ -48,13 +48,11 @@ graph TB
     AppMgr --> Telemetry
     LCM --> RTM
     LCM --> WinMgr
-    PkgMgr --> DLMgr
     PkgMgr --> AppStorMgr
     PreMgr --> PkgMgr
     RTM --> Dobby
     RTM --> WinMgr
     AppStorMgr --> FS
-    DLMgr --> Network
     AppMgr --> PStore
 ```
 
@@ -69,7 +67,6 @@ flowchart LR
     A -->|Clear| D[AppStorageManager]
     B -->|Run/Suspend/Terminate| E[RuntimeManager]
     E -->|CreateDisplay| F[RDKWindowManager]
-    C -->|Download| G[DownloadManager]
     H[PreinstallManager] -->|Install| C
 ```
 
@@ -102,7 +99,6 @@ flowchart LR
 | LifecycleManager | RuntimeManager | `Run`, `Suspend`, `Resume`, `Hibernate`, `Wake`, `Terminate` |
 | RuntimeManager | RDKWindowManager | `CreateDisplay`, `DestroyDisplay` |
 | PackageManager | AppStorageManager | `CreateStorage`, `DeleteStorage` |
-| PackageManager | DownloadManager | `Download`, `Cancel`, `Progress` |
 | PreinstallManager | PackageManager | `Install` (pre-installed apps) |
 
 ---

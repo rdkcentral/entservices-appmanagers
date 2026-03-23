@@ -84,8 +84,7 @@ classDiagram
 
     class WindowManagerConnector {
         -IRDKWindowManager* mWindowManager
-        +createDisplay(displayName) bool
-        +destroyDisplay(displayName) void
+        +createDisplay(appInstanceId, displayName, userId, groupId) bool
     }
 
     class DobbyEventListener {

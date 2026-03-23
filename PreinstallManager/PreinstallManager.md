@@ -51,12 +51,12 @@ graph TB
 ```mermaid
 classDiagram
     class PreinstallManagerImplementation {
-        -list~string~ mPreinstallPaths
-        -IPackageInstaller* mPackageInstaller
-        +Configure(config) hresult
+        -string mAppPreinstallDirectory
+        -IPackageInstaller* mPackageManagerInstallerObject
+        +Configure(service : IShell*) uint32_t
         +StartPreinstall(forceInstall : bool) hresult
-        +RegisterPreinstallStatusListener(listener) void
-        +UnregisterPreinstallStatusListener(listenerId) void
+        +Register(notification : IPreinstallManager__INotification*) hresult
+        +Unregister(notification : IPreinstallManager__INotification*) hresult
     }
 ```
 

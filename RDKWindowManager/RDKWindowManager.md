@@ -64,40 +64,44 @@ classDiagram
         -list~INotification*~ mRDKWindowManagerNotification
         -IShell* mService
         -shared_ptr~RdkWindowManagerEventListener~ mEventListener
-        +CreateDisplay(displayParams) hresult
-        +GetApps(appsIds) hresult
-        +SetFocus(client) hresult
-        +SetVisible(client, visible) hresult
-        +GetVisibility(client, visible) hresult
-        +AddKeyIntercept(intercept) hresult
-        +AddKeyIntercepts(clientId, intercepts) hresult
-        +RemoveKeyIntercept(clientId, keyCode, modifiers) hresult
-        +AddKeyListener(keyListeners) hresult
-        +RemoveKeyListener(keyListeners) hresult
-        +InjectKey(keyCode, modifiers) hresult
-        +SetInactivityInterval(interval) hresult
+        +CreateDisplay(displayParams: string) hresult
+        +GetApps(appsIds: string) hresult
+        +SetFocus(client: string) hresult
+        +SetVisible(params: string) hresult
+        +GetVisibility(params: string) hresult
+        +AddKeyIntercept(intercept: string) hresult
+        +AddKeyIntercepts(intercepts: string) hresult
+        +RemoveKeyIntercept(params: string) hresult
+        +AddKeyListener(keyListeners: string) hresult
+        +RemoveKeyListener(keyListeners: string) hresult
+        +InjectKey(params: string) hresult
+        +EnableInactivityReporting(enable: bool) hresult
+        +SetInactivityInterval(interval: uint32_t) hresult
         +ResetInactivityTime() hresult
-        +GetLastKeyInfo(keyCode, modifiers, timestampInSeconds) hresult
-        +SetZOrder(appInstanceId, zOrder) hresult
-        +GetZOrder(appInstanceId, zOrder) hresult
+        +GetLastKeyInfo(params: string) hresult
+        +SetZOrder(params: string) hresult
+        +GetZOrder(params: string) hresult
     }
 
     class IRDKWindowManager {
         <<interface>>
-        +CreateDisplay(displayParams) hresult
-        +GetApps(appsIds) hresult
-        +SetFocus(client) hresult
-        +SetVisible(client, visible) hresult
-        +GetVisibility(client, visible) hresult
-        +AddKeyIntercept(intercept) hresult
-        +AddKeyIntercepts(clientId, intercepts) hresult
-        +RemoveKeyIntercept(clientId, keyCode, modifiers) hresult
-        +InjectKey(keyCode, modifiers) hresult
-        +SetInactivityInterval(interval) hresult
+        +CreateDisplay(displayParams: string) hresult
+        +GetApps(appsIds: string) hresult
+        +SetFocus(client: string) hresult
+        +SetVisible(params: string) hresult
+        +GetVisibility(params: string) hresult
+        +AddKeyIntercept(intercept: string) hresult
+        +AddKeyIntercepts(intercepts: string) hresult
+        +RemoveKeyIntercept(params: string) hresult
+        +AddKeyListener(keyListeners: string) hresult
+        +RemoveKeyListener(keyListeners: string) hresult
+        +InjectKey(params: string) hresult
+        +EnableInactivityReporting(enable: bool) hresult
+        +SetInactivityInterval(interval: uint32_t) hresult
         +ResetInactivityTime() hresult
-        +GetLastKeyInfo(keyCode, modifiers, timestampInSeconds) hresult
-        +SetZOrder(appInstanceId, zOrder) hresult
-        +GetZOrder(appInstanceId, zOrder) hresult
+        +GetLastKeyInfo(params: string) hresult
+        +SetZOrder(params: string) hresult
+        +GetZOrder(params: string) hresult
     }
 
     RDKWindowManagerImplementation ..|> IRDKWindowManager
