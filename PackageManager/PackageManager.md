@@ -167,9 +167,8 @@ struct LockInfo {
 
 | Method | Purpose |
 |--------|---------|
-| `Install(appId, packagePath, appMetadata)` | Install package: extract, parse manifest, create storage |
+| `Install(packageId, version, additionalMetadata, fileLocator, failReason)` | Install a specific package version from the given `fileLocator`, using `additionalMetadata` (key/value iterator); on failure, `failReason` describes the reason |
 | `Uninstall(appId)` | Uninstall package: remove files, cleanup storage |
-| `IsInstalled(appId)` | Check if package is installed |
 
 ### IPackageHandler Interface
 
