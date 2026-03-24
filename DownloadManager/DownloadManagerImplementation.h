@@ -130,7 +130,7 @@ namespace Plugin {
 
         void downloaderRoutine(int waitTime);
         void notifyDownloadStatus(const string& id, const string& locator, const DownloadReason status);
-
+        // PRECONDITION: Caller MUST hold mQueueMutex
         DownloadInfoPtr pickDownloadJob(void);
         int nextRetryDuration(int n) {
             const double goldenRatio = (1 + std::sqrt(5)) / 2.0;
