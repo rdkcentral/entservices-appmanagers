@@ -573,7 +573,7 @@ namespace Plugin {
 
     DownloadManagerImplementation::DownloadInfoPtr DownloadManagerImplementation::pickDownloadJob(void)
     {
-        // removeming lock to prevent double lock pickDownload is being called while holding lock itself
+        // removing lock to prevent double lock: pickDownload is being called while holding the lock itself
         //std::lock_guard<std::mutex> lock(mQueueMutex);
         if ((!mPriorityDownloadQueue.empty() || !mRegularDownloadQueue.empty()) && mCurrentDownload == nullptr)
         {
