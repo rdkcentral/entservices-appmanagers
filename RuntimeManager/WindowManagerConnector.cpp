@@ -86,18 +86,14 @@ bool WindowManagerConnector::createDisplay(const string& appInstanceId , const s
         LOGERR("WindowManagerConnector is not initialized \n");
         return false;
     }
-    JsonObject displayParams;
-    displayParams["client"] = appInstanceId;
-    displayParams["displayName"] = displayName;
+    uint32_t displayWidth=0, displayHeight=0;
+    uint32_t virtualWidth=0, virtualHeight=0;
+    bool virtualDisplay=false;
+    bool topmost=false, focus=false;
+    
+    LOGINFO("Creating display [%s] for application [%s] \n", displayName.c_str(), appInstanceId.c_str());
 
-    displayParams["ownerId"] = userId;
-    displayParams["groupId"] = groupId;
-    string displayParamsString;
-    displayParams.ToString(displayParamsString);
-
-    LOGINFO("Creating display [%s] for application [%s] with params [%s] \n", displayName.c_str(), appInstanceId.c_str(), displayParamsString.c_str());//remove
-
-    Core::hresult result = mWindowManager->CreateDisplay(displayParamsString);
+    Core::hresult result = mWindowManager->CreateDisplay(appInstanceId, displayName, displayWidth, displayHeight, virtualDisplay, virtualWidth, virtualHeight, userId, groupId, topmost, focus);
     if (Core::ERROR_NONE != result)
     {
         LOGERR("Failed to create display for application [%s] error [%d] \n",appInstanceId.c_str(), result);
