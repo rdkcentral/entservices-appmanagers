@@ -393,7 +393,10 @@ namespace WPEFramework
                             {
                                 LOGINFO("Requested PAUSED state for appId: %s. Waiting for PAUSED confirmation...", appId.c_str());
 
-                                mAppIdAwaitingPause = appId;
+                                {
+                                    std::lock_guard<std::mutex> stateLock(mStateMutex);
+                                    mAppIdAwaitingPause = appId;
+                                }
                                 mAdminLock.Unlock();
                                 {
                                     // Issue ID 4: Condition variable wait without proper loop synchronization
@@ -409,7 +412,10 @@ namespace WPEFramework
                                 if(it != appManagerImplInstance->mAppInfo.end() &&
                                     it->second.appNewState == Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED)
                                 {
-                                    mAppIdAwaitingPause.clear();
+                                    {
+                                        std::lock_guard<std::mutex> stateLock(mStateMutex);
+                                        mAppIdAwaitingPause.clear();
+                                    }
 
                                     auto retryIt = appManagerImplInstance->mAppInfo.find(appId);
                                     if (retryIt != appManagerImplInstance->mAppInfo.end())
