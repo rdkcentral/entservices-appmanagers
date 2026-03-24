@@ -1,10 +1,6 @@
 name: L0-tests
 
 on:
-  push:
-    branches: [ main, develop, topic/genai-runtime_L0 ]
-  pull_request:
-    branches: [ main, develop, topic/genai-runtime_L0 ]
   workflow_call:
     inputs:
       caller_source:
