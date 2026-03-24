@@ -1053,8 +1053,6 @@ namespace WPEFramework
                 LOGERR("Terminate called for unknown appInstanceId: %s, skipping telemetry update", appInstanceId.c_str());
             }
 #endif
-            // if(isOCIPluginObjectValid())
-            // {
                 string containerId = getContainerId(appInstanceId);
 
                 if (!containerId.empty())
