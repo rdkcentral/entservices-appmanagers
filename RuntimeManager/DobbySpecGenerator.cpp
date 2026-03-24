@@ -927,7 +927,7 @@ void DobbySpecGenerator::createFkpsMounts(const ApplicationConfiguration& config
         // Fix for Coverity issues 1072, 1073 - TOCTOU: Acceptable risk - stat() used only to check
         // file existence before mount operation, no security-critical operations follow
         // check if the file exists
-        int fd = open(fkpsFilePath.c_str(), O_RDONLY | O_NOFOLLOW);
+        int fd = open(fkpsFilePath.c_str(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC);
         if (fd < 0)
         {
             if (errno == ENOENT)
