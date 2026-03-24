@@ -111,8 +111,7 @@ namespace Plugin {
             DownloadManagerImplementation::Configuration config;
             config.FromString(service->ConfigLine());
 
-            // Issue ID 327: Data race condition - mDownloadPath accessed without mutex protection
-            // Fix: Protect mDownloadPath initialization with mAdminLock before thread creation
+            // Issue ID 327: Data race condition - mDownloadPath accessed without mutex protection            
             {
 		Core::SafeSyncType<Core::CriticalSection> adminLock(mAdminLock);
                 if (true == config.downloadDir.IsSet())
@@ -126,8 +125,6 @@ namespace Plugin {
                 std::lock_guard<std::mutex> lock(mQueueMutex);
                 mDownloadId = static_cast<uint32_t>(config.downloadId.Value());
             }
-            // Coverity fix: 1140 - Unlock before mkdir to avoid holding lock during I/O
-
             int rc = mkdir(mDownloadPath.c_str(), 0777);
             if (rc != 0 && errno != EEXIST)
             {
