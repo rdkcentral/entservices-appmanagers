@@ -2,7 +2,7 @@
 
 ## Scope
 
-- Coverage report analyzed: `artifacts-L0-appmanagers/coverage-html/RuntimeManager/*` (generated on 2026-03-18)
+- Coverage report analyzed: `artifacts-L0-appmanagers/coverage-html/RuntimeManager/*` (generated on 2026-03-23)
 - Source analyzed: `RuntimeManager/*`, `RuntimeManager/Gateway/*`, `RuntimeManager/ralf/*`
 - Existing L0 tests reviewed:
   - `Tests/L0Tests/RuntimeManager/RuntimeManagerTest.cpp` (test runner — 213 total test cases)
@@ -18,21 +18,21 @@
 
 ## Coverage Baseline (RuntimeManager package)
 
-- **Line coverage:** `1091 / 1605` (**68.0%**) — core `RuntimeManager/` only
-- **Function coverage:** `120 / 143` (**83.9%**) — core `RuntimeManager/` only
+- **Line coverage:** `1102 / 1619` (**68.1%**) — core `RuntimeManager/` only
+- **Function coverage:** `120 / 144` (**83.3%**) — core `RuntimeManager/` only
 
 Primary low-coverage files:
 
-1. `DobbySpecGenerator.cpp` — 371/537 lines (69.1%), 26/30 functions (86.7%)
+1. `DobbySpecGenerator.cpp` — 370/537 lines (68.9%), 26/30 functions (86.7%)
 2. `RuntimeManagerImplementation.cpp` — 332/546 lines (60.8%), 29/36 functions (80.6%)
-3. `AIConfiguration.cpp` — 116/214 lines (54.2%), 27/30 functions (90.0%)
+3. `AIConfiguration.cpp` — 128/228 lines (56.1%), 27/31 functions (87.1%)
 4. `DobbyEventListener.h` — 4/7 lines (57.1%), 2/3 functions (66.7%)
 5. `Module.cpp` — 0/1 lines, 0/2 functions
 
 Sub-package coverage (compiled alongside core):
 
 - `RuntimeManager/Gateway/` — 119/665 lines (17.9%), 21/46 functions (45.7%)
-- `RuntimeManager/ralf/` — 139/503 lines (27.6%), 16/38 functions (42.1%)
+- `RuntimeManager/ralf/` — 178/503 lines (35.4%), 19/38 functions (50.0%)
 
 ---
 
@@ -119,7 +119,7 @@ Sub-package coverage (compiled alongside core):
 
 - `chownRecursive()` — requires root privileges
 - `generateOCIRootfs()` success path — requires real filesystem mount support
-
+> **Note (2026-03-23):** `RalfPackageBuilder.cpp` improved from ~75% to 80% (8 uncovered lines) and `RalfSupport.cpp` improved dramatically to 94.4% (8 uncovered lines). The ralf sub-package overall moved from 27.6% to **35.4%** line coverage and from 42.1% to **50.0%** function coverage.
 ---
 
 ## Uncovered Lines (by file)
@@ -156,9 +156,9 @@ Sub-package coverage (compiled alongside core):
   - `attach()` socket `connect()` success branch, `send()` / `recv()` network I/O block, `detach()` socket teardown.
 - `RalfOCIConfigGenerator.cpp`: **309 lines**
   - Entire `generate()` implementation — requires base OCI spec JSON file and graphics config on disk, all internal merge / overlay / mount helpers.
-- `RalfPackageBuilder.cpp`: **24 lines**
+- `RalfPackageBuilder.cpp`: **8 lines**
   - `unmountOverlayfsIfExists()` success branch, `generateRalfDobbySpec()` post-parse OCI config generation steps.
-- `RalfSupport.cpp`: **31 lines**
+- `RalfSupport.cpp`: **8 lines**
   - `chownRecursive()` — requires root privileges, `generateOCIRootfs()` success path — requires real bind-mount capability.
 
 ---

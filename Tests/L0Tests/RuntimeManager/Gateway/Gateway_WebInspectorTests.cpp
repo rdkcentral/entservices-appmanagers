@@ -81,6 +81,7 @@ uint32_t Test_WebInspector_Attach_WithInvalidIpReturnsNullptrOrNonNull()
     // Use loopback address — no real container required
     in_addr_t testIp = ::inet_addr("127.0.0.1");
     auto inspector = WebInspector::attach("com.test.testapp", testIp, 9222);
+    (void)inspector;
 
     // We only verify that the call did not crash; nullptr is the expected
     // result in environments without iptables.
@@ -100,6 +101,7 @@ uint32_t Test_WebInspector_Attach_ZeroIpReturnsNullptrOrNonNull()
     L0Test::TestResult tr;
 
     auto inspector = WebInspector::attach("com.test.zeroip", 0u, 9223);
+    (void)inspector;
     L0Test::ExpectTrue(tr, true,
                        "WebInspector::attach() with zero IP does not crash");
 
@@ -116,6 +118,7 @@ uint32_t Test_WebInspector_Attach_EmptyAppIdDoesNotCrash()
 
     in_addr_t testIp = ::inet_addr("127.0.0.1");
     auto inspector = WebInspector::attach("", testIp, 9224);
+    (void)inspector;
     L0Test::ExpectTrue(tr, true,
                        "WebInspector::attach() with empty appId does not crash");
 
@@ -188,6 +191,7 @@ uint32_t Test_WebInspector_DestructorRunsCleanupWithoutCrash()
     {
         in_addr_t testIp = ::inet_addr("127.0.0.1");
         auto inspector = WebInspector::attach("com.test.dtor", testIp, 9250);
+        (void)inspector;
         // inspector goes out of scope here; destructor called
     }
 

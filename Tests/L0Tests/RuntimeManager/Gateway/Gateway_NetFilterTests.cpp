@@ -299,6 +299,7 @@ uint32_t Test_NetFilter_GetContainerPortForwardList_ReturnsListType()
 
     std::list<NetFilter::PortForward> fwdList =
         NetFilter::getContainerPortForwardList("dobby0", containerIp);
+    (void)fwdList;
 
     // Must not crash; may be empty in test environments
     L0Test::ExpectTrue(tr, true,
@@ -318,6 +319,7 @@ uint32_t Test_NetFilter_GetContainerPortForwardList_DefaultIpReturnsListType()
 
     std::list<NetFilter::PortForward> fwdList =
         NetFilter::getContainerPortForwardList("dobby0");
+    (void)fwdList;
 
     L0Test::ExpectTrue(tr, true,
                        "getContainerPortForwardList() with default IP does not crash");

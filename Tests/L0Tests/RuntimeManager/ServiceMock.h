@@ -145,16 +145,16 @@ public:
     void* QueryInterface(const uint32_t) override { return nullptr; }
     void* QueryInterfaceByCallsign(const uint32_t id, const std::string& callsign) override
     {
-        if (id == WPEFramework::Exchange::IOCIContainer::ID
-            && callsign == "org.rdk.OCIContainer"
-            && _cfg.oci != nullptr)
+        if (WPEFramework::Exchange::IOCIContainer::ID == id
+            && "org.rdk.OCIContainer" == callsign
+            && nullptr != _cfg.oci)
         {
             _cfg.oci->AddRef();
             return static_cast<WPEFramework::Exchange::IOCIContainer*>(_cfg.oci);
         }
-        if (id == WPEFramework::Exchange::IRDKWindowManager::ID
-            && callsign == "org.rdk.RDKWindowManager"
-            && _cfg.wm != nullptr)
+        if (WPEFramework::Exchange::IRDKWindowManager::ID == id
+            && "org.rdk.RDKWindowManager" == callsign
+            && nullptr != _cfg.wm)
         {
             _cfg.wm->AddRef();
             return static_cast<WPEFramework::Exchange::IRDKWindowManager*>(_cfg.wm);
