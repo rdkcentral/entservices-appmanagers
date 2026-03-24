@@ -64,8 +64,8 @@ if(PLUGIN_RUNTIME_MANAGER)
 	add_subdirectory(RuntimeManager)
 endif()
 
-if(PLUGIN_STORAGE_MANAGER)
-	add_subdirectory(StorageManager)
+if(PLUGIN_APP_STORAGE_MANAGER)
+	add_subdirectory(AppStorageManager)
 endif()
 
 if(PLUGIN_PACKAGE_MANAGER)
@@ -83,6 +83,7 @@ endif()
 if(PLUGIN_TELEMETRYMETRICS)
     add_subdirectory(TelemetryMetrics)
 endif()
+
 
 if(WPEFRAMEWORK_CREATE_IPKG_TARGETS)
     set(CPACK_GENERATOR "DEB")

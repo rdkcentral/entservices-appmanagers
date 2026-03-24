@@ -9,11 +9,26 @@ ls -la ${GITHUB_WORKSPACE}
 echo "building entservices-appmanagers"
 
 cd ${GITHUB_WORKSPACE}
+PREFIX_PATH="${CMAKE_PREFIX_PATH:+${CMAKE_PREFIX_PATH};}${GITHUB_WORKSPACE}/install/usr;${GITHUB_WORKSPACE}/eshelpers;/usr"
+
+# Coverity workflow only: make CompileSettingsDebug export symbols for direct test linking.
+COMPILE_SETTINGS_DIR="${GITHUB_WORKSPACE}/install/usr/lib/cmake/CompileSettingsDebug"
+if [ -d "${COMPILE_SETTINGS_DIR}" ]; then
+	find "${COMPILE_SETTINGS_DIR}" -type f -name "*.cmake" | while read -r cmake_file; do
+		perl -pi -e 's/-fvisibility=hidden/-fvisibility=default/g' "${cmake_file}"
+		perl -pi -e 's/\s*-fvisibility-inlines-hidden\s*/ /g' "${cmake_file}"
+	done
+	COMPILE_SETTINGS_DEBUG_ARG="-DCompileSettingsDebug_DIR=${COMPILE_SETTINGS_DIR}"
+else
+	COMPILE_SETTINGS_DEBUG_ARG=""
+fi
+
 cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/entservices-appmanagers \
 -DUSE_THUNDER_R4=ON \
 -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/install/usr" \
 -DCMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" \
--DCMAKE_VERBOSE_MAKEFILE=ON \
+-DCMAKE_PREFIX_PATH="${PREFIX_PATH}" \
+${COMPILE_SETTINGS_DEBUG_ARG:+${COMPILE_SETTINGS_DEBUG_ARG}} \
 -DCMAKE_DISABLE_FIND_PACKAGE_IARMBus=ON \
 -DCMAKE_DISABLE_FIND_PACKAGE_RFC=ON \
 -DCMAKE_DISABLE_FIND_PACKAGE_DS=ON \
@@ -23,42 +38,23 @@ cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/entservices-appmanagers \
 -DDS_FOUND=ON \
 -DPLUGIN_LIFECYCLE_MANAGER=ON \
 -DPLUGIN_APPMANAGER=ON \
--DPLUGIN_STORAGE_MANAGER=ON \
+-DPLUGIN_APP_STORAGE_MANAGER=ON \
 -DPLUGIN_PREINSTALL_MANAGER=ON \
 -DPLUGIN_TELEMETRY_METRICS=ON \
--DPLUGIN_DOWNLOADMANAGER=ON \
+-DPLUGIN_DOWNLOADMANAGER=OFF \
 -DPLUGIN_RUNTIME_MANAGER=ON \
--DPLUGIN_PACKAGE_MANAGER=ON \
--DCMAKE_CXX_FLAGS="-DEXCEPTIONS_ENABLE=ON \
--I ${GITHUB_WORKSPACE}/entservices-testframework/Tests/headers \
--I ${GITHUB_WORKSPACE}/entservices-testframework/Tests/headers/audiocapturemgr \
--I ${GITHUB_WORKSPACE}/entservices-testframework/Tests/headers/rdk/ds \
--I ${GITHUB_WORKSPACE}/entservices-testframework/Tests/headers/rdk/iarmbus \
--I ${GITHUB_WORKSPACE}/entservices-testframework/Tests/headers/rdk/iarmmgrs-hal \
--I ${GITHUB_WORKSPACE}/entservices-testframework/Tests/headers/ccec/drivers \
--I ${GITHUB_WORKSPACE}/entservices-testframework/Tests/headers/network \
--I ${GITHUB_WORKSPACE}/entservices-testframework/Tests/headers/libusb \
--I ${GITHUB_WORKSPACE}/entservices-testframework/Tests/headers/Dobby \
--I ${GITHUB_WORKSPACE}/entservices-testframework/Tests/headers/Dobby/Public/Dobby \
--I ${GITHUB_WORKSPACE}/entservices-testframework/Tests/headers/Dobby/IpcService \
--I ${GITHUB_WORKSPACE}/entservices-testframework/Tests/mocks \
--I ${GITHUB_WORKSPACE}/entservices-testframework/Tests/mocks/thunder \
--I /usr/include/libdrm \
--include ${GITHUB_WORKSPACE}/entservices-testframework/Tests/mocks/devicesettings.h \
--include ${GITHUB_WORKSPACE}/entservices-testframework/Tests/mocks/Iarm.h \
--include ${GITHUB_WORKSPACE}/entservices-testframework/Tests/mocks/Rfc.h \
--include ${GITHUB_WORKSPACE}/entservices-testframework/Tests/mocks/RBus.h \
--include ${GITHUB_WORKSPACE}/entservices-testframework/Tests/mocks/Telemetry.h \
--include ${GITHUB_WORKSPACE}/entservices-testframework/Tests/mocks/Udev.h \
--include ${GITHUB_WORKSPACE}/entservices-testframework/Tests/mocks/pkg.h \
--include ${GITHUB_WORKSPACE}/entservices-testframework/Tests/mocks/maintenanceMGR.h \
--include ${GITHUB_WORKSPACE}/entservices-testframework/Tests/mocks/secure_wrappermock.h \
--include ${GITHUB_WORKSPACE}/entservices-testframework/Tests/mocks/libusb/libusb.h \
--include ${GITHUB_WORKSPACE}/entservices-testframework/Tests/mocks/Dobby.h \
--include ${GITHUB_WORKSPACE}/entservices-testframework/Tests/headers/Dobby/DobbyProtocol.h \
--include ${GITHUB_WORKSPACE}/entservices-testframework/Tests/headers/Dobby/DobbyProxy.h \
--include ${GITHUB_WORKSPACE}/entservices-testframework/Tests/headers/Dobby/Public/Dobby/IDobbyProxy.h \
--include ${GITHUB_WORKSPACE}/entservices-testframework/Tests/headers/Dobby/IpcService/IpcFactory.h \
+-DPLUGIN_PACKAGE_MANAGER=OFF \
+-DCMAKE_CXX_FLAGS="-fvisibility=default -DEXCEPTIONS_ENABLE=ON \
+-I ${GITHUB_WORKSPACE}/Tests/mocks \
+-I ${GITHUB_WORKSPACE}/Tests/mocks/thunder \
+-include ${GITHUB_WORKSPACE}/Tests/mocks/Iarm.h \
+-include ${GITHUB_WORKSPACE}/Tests/mocks/Rfc.h \
+-include ${GITHUB_WORKSPACE}/Tests/mocks/RBus.h \
+-include ${GITHUB_WORKSPACE}/Tests/mocks/Telemetry.h \
+-include ${GITHUB_WORKSPACE}/Tests/mocks/Udev.h \
+-include ${GITHUB_WORKSPACE}/Tests/mocks/pkg.h \
+-include ${GITHUB_WORKSPACE}/Tests/mocks/maintenanceMGR.h \
+-include ${GITHUB_WORKSPACE}/Tests/mocks/secure_wrappermock.h \
 -Wall -Werror -Wno-error=format \
 -Wl,-wrap,system -Wl,-wrap,popen -Wl,-wrap,syslog \
 -DENABLE_TELEMETRY_LOGGING -DUSE_IARMBUS \
@@ -67,6 +63,15 @@ cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/entservices-appmanagers \
 -DUSE_DRM_SCREENCAPTURE -DHAS_API_SYSTEM -DHAS_API_POWERSTATE \
 -DHAS_RBUS -DDISABLE_SECURITY_TOKEN -DENABLE_DEVICE_MANUFACTURER_INFO -DUSE_THUNDER_R4=ON -DTHUNDER_VERSION=4 -DTHUNDER_VERSION_MAJOR=4 -DTHUNDER_VERSION_MINOR=4 -DENABLE_NATIVEBUILD=ON" \
 
+
+# Ensure generated Ninja compile rules cannot force hidden visibility.
+BUILD_DIR="${GITHUB_WORKSPACE}/build/entservices-appmanagers"
+if [ -d "${BUILD_DIR}" ]; then
+	find "${BUILD_DIR}" -type f \( -name "*.ninja" -o -name "flags.make" \) | while read -r build_file; do
+		perl -pi -e 's/-fvisibility=hidden/-fvisibility=default/g' "${build_file}"
+		perl -pi -e 's/\s*-fvisibility-inlines-hidden\s*/ /g' "${build_file}"
+	done
+fi
 
 cmake --build build/entservices-appmanagers --target install
 echo "======================================================================================"
