@@ -652,7 +652,7 @@ namespace Plugin {
 
         JsonObject rootObj;
 
-        #if defined(USE_LIBPACKAGE) || defined(UNIT_TEST)
+        //#if defined(USE_LIBPACKAGE) || defined(UNIT_TEST)
         std::string packageDump;
         packageImpl->Dump(packageDump);
         
@@ -666,7 +666,7 @@ namespace Plugin {
         {
             LOGERR("Failed to parse package dump JSON");
         }
-        #endif
+        //#endif
 
         JsonObject downloaderInfo;
 
