@@ -19,6 +19,7 @@
 
 #include "StateTransitionHandler.h"
 #include "StateHandler.h"
+#include <cstdlib>
 #include <thread>
 #include <mutex>
 #include <vector>
@@ -33,6 +34,14 @@ namespace WPEFramework
         sem_t gRequestSemaphore;
         std::vector<std::shared_ptr<StateTransitionRequest>> gRequests;
         static bool sRunning = true;
+        static bool sInitialized = false;
+
+        namespace {
+            void terminateStateTransitionHandlerAtExit()
+            {
+                StateTransitionHandler::getInstance()->terminate();
+            }
+        }
 
         StateTransitionHandler* StateTransitionHandler::mInstance = nullptr;
 
@@ -55,9 +64,20 @@ namespace WPEFramework
 
         bool StateTransitionHandler::initialize()
 	{
+            gRequestMutex.lock();
+            if (true == sInitialized)
+            {
+                gRequestMutex.unlock();
+                return true;
+            }
+
             sRunning = true;
+            sInitialized = true;
+            gRequestMutex.unlock();
+
             StateHandler::initialize();
             sem_init(&gRequestSemaphore, 0, 0);
+            std::atexit(terminateStateTransitionHandlerAtExit);
             requestHandlerThread = std::thread([=]() {
                 bool isRunning = true;
                 gRequestMutex.lock();
@@ -97,10 +117,28 @@ namespace WPEFramework
 	void StateTransitionHandler::terminate()
 	{
             gRequestMutex.lock();
+            if (false == sInitialized)
+            {
+                gRequestMutex.unlock();
+                return;
+            }
+
             sRunning = false;
+            sInitialized = false;
             gRequestMutex.unlock();
+
             sem_post(&gRequestSemaphore);
-            requestHandlerThread.join();
+
+            if (true == requestHandlerThread.joinable())
+            {
+                requestHandlerThread.join();
+            }
+
+            sem_destroy(&gRequestSemaphore);
+
+	    gRequestMutex.lock();
+            gRequests.clear();
+	    gRequestMutex.unlock();
 	}
 
 	void StateTransitionHandler::addRequest(StateTransitionRequest& request)
