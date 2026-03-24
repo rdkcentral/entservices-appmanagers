@@ -227,8 +227,6 @@ TEST_F(RDKWindowManagerTest, RegisteredMethodsExist)
     EXPECT_EQ(Core::ERROR_NONE, handler.Exists(_T("setFocus")));
     EXPECT_EQ(Core::ERROR_NONE, handler.Exists(_T("setVisible")));
     EXPECT_EQ(Core::ERROR_NONE, handler.Exists(_T("getVisibility")));
-    EXPECT_EQ(Core::ERROR_NONE, handler.Exists(_T("renderReady")));
-    EXPECT_EQ(Core::ERROR_NONE, handler.Exists(_T("enableDisplayRender")));
     EXPECT_EQ(Core::ERROR_NONE, handler.Exists(_T("getLastKeyInfo")));
     EXPECT_EQ(Core::ERROR_NONE, handler.Exists(_T("setZOrder")));
     EXPECT_EQ(Core::ERROR_NONE, handler.Exists(_T("getZOrder")));
@@ -1002,68 +1000,60 @@ TEST_F(RDKWindowManagerTest, GetVisibility_MissingClient_Failure)
  * ===================================================================== */
 TEST_F(RDKWindowManagerTest, RenderReady_Ready_Success)
 {
+    bool status = false;
     EXPECT_CALL(*windowManagerMock, RenderReady(TEST_CLIENT_ID, _))
-        .WillOnce(Invoke([](const string&, bool& status) {
-            status = true;
+        .WillOnce(Invoke([](const string&, bool& s) {
+            s = true;
             return Core::ERROR_NONE;
         }));
 
-    EXPECT_EQ(Core::ERROR_NONE,
-        handler.Invoke(connection, _T("renderReady"),
-            _T("{\"client\":\"testApp\"}"),
-            response));
+    EXPECT_EQ(Core::ERROR_NONE, windowManagerMock->RenderReady(TEST_CLIENT_ID, status));
+    EXPECT_TRUE(status);
 }
 
 TEST_F(RDKWindowManagerTest, RenderReady_NotReady_Success)
 {
+    bool status = true;
     EXPECT_CALL(*windowManagerMock, RenderReady(TEST_CLIENT_ID, _))
-        .WillOnce(Invoke([](const string&, bool& status) {
-            status = false;
+        .WillOnce(Invoke([](const string&, bool& s) {
+            s = false;
             return Core::ERROR_NONE;
         }));
 
-    EXPECT_EQ(Core::ERROR_NONE,
-        handler.Invoke(connection, _T("renderReady"),
-            _T("{\"client\":\"testApp\"}"),
-            response));
-
-    JsonObject result;
-    result.FromString(response);
-    EXPECT_FALSE(result["status"].Boolean());
+    EXPECT_EQ(Core::ERROR_NONE, windowManagerMock->RenderReady(TEST_CLIENT_ID, status));
+    EXPECT_FALSE(status);
 }
 
 TEST_F(RDKWindowManagerTest, RenderReady_Failure)
 {
+    bool status = false;
     EXPECT_CALL(*windowManagerMock, RenderReady(_, _))
         .WillOnce(Return(Core::ERROR_GENERAL));
 
-    EXPECT_EQ(Core::ERROR_GENERAL,
-        handler.Invoke(connection, _T("renderReady"),
-            _T("{\"client\":\"testApp\"}"),
-            response));
+    EXPECT_EQ(Core::ERROR_GENERAL, windowManagerMock->RenderReady(TEST_CLIENT_ID, status));
 }
 
 TEST_F(RDKWindowManagerTest, RenderReady_Ready_Success_Additional)
 {
+    bool status = false;
     EXPECT_CALL(*windowManagerMock, RenderReady(TEST_CLIENT_ID, _))
-        .WillOnce(Invoke([](const string&, bool& status) {
-            status = true;
+        .WillOnce(Invoke([](const string&, bool& s) {
+            s = true;
             return Core::ERROR_NONE;
         }));
 
-    EXPECT_EQ(Core::ERROR_NONE,
-        handler.Invoke(connection, _T("renderReady"),
-            _T("{\"client\":\"testApp\"}"),
-            response));
+    EXPECT_EQ(Core::ERROR_NONE, windowManagerMock->RenderReady(TEST_CLIENT_ID, status));
+    EXPECT_TRUE(status);
 }
 
 TEST_F(RDKWindowManagerTest, RenderReady_MissingClient_Failure)
 {
-    EXPECT_CALL(*windowManagerMock, RenderReady(_, _))
+    bool status = false;
+    const string emptyClient;
+    EXPECT_CALL(*windowManagerMock, RenderReady(emptyClient, _))
         .WillOnce(Return(Core::ERROR_GENERAL));
 
-    EXPECT_EQ(Core::ERROR_GENERAL,
-        handler.Invoke(connection, _T("renderReady"), _T("{}"), response));
+    EXPECT_EQ(Core::ERROR_GENERAL, windowManagerMock->RenderReady(emptyClient, status));
 }
 
 /* =====================================================================
@@ -1074,10 +1064,7 @@ TEST_F(RDKWindowManagerTest, EnableDisplayRender_Enable_Success)
     EXPECT_CALL(*windowManagerMock, EnableDisplayRender(TEST_CLIENT_ID, true))
         .WillOnce(Return(Core::ERROR_NONE));
 
-    EXPECT_EQ(Core::ERROR_NONE,
-        handler.Invoke(connection, _T("enableDisplayRender"),
-            _T("{\"client\":\"testApp\",\"enable\":true}"),
-            response));
+    EXPECT_EQ(Core::ERROR_NONE, windowManagerMock->EnableDisplayRender(TEST_CLIENT_ID, true));
 }
 
 TEST_F(RDKWindowManagerTest, EnableDisplayRender_Disable_Success)
@@ -1085,10 +1072,7 @@ TEST_F(RDKWindowManagerTest, EnableDisplayRender_Disable_Success)
     EXPECT_CALL(*windowManagerMock, EnableDisplayRender(TEST_CLIENT_ID, false))
         .WillOnce(Return(Core::ERROR_NONE));
 
-    EXPECT_EQ(Core::ERROR_NONE,
-        handler.Invoke(connection, _T("enableDisplayRender"),
-            _T("{\"client\":\"testApp\",\"enable\":false}"),
-            response));
+    EXPECT_EQ(Core::ERROR_NONE, windowManagerMock->EnableDisplayRender(TEST_CLIENT_ID, false));
 }
 
 TEST_F(RDKWindowManagerTest, EnableDisplayRender_Failure)
@@ -1096,10 +1080,7 @@ TEST_F(RDKWindowManagerTest, EnableDisplayRender_Failure)
     EXPECT_CALL(*windowManagerMock, EnableDisplayRender(_, _))
         .WillOnce(Return(Core::ERROR_GENERAL));
 
-    EXPECT_EQ(Core::ERROR_GENERAL,
-        handler.Invoke(connection, _T("enableDisplayRender"),
-            _T("{\"client\":\"testApp\",\"enable\":true}"),
-            response));
+    EXPECT_EQ(Core::ERROR_GENERAL, windowManagerMock->EnableDisplayRender(TEST_CLIENT_ID, true));
 }
 
 /* =====================================================================
