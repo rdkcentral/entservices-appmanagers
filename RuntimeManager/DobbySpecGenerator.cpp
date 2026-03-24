@@ -1042,7 +1042,7 @@ Json::Value DobbySpecGenerator::createResourceManagerMount(const ApplicationConf
     struct stat details;
     Json::Value resmgrMount;
     // Fix for Coverity issues 1070, 1071 - TOCTOU: Use open() with fstat() to avoid race condition
-    int fd = open(resmgrMountSource.c_str(), O_RDONLY | O_NOFOLLOW);
+    int fd = open(resmgrMountSource.c_str(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC);
     if (fd >= 0)
     {
         if (fstat(fd, &details) == 0)
