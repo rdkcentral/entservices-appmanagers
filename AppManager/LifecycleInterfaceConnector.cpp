@@ -950,6 +950,7 @@ End:
                         LOGERR("appId not found in database");
                     }
                 }
+                mAdminLock.Unlock();
 
                 if (!errorReason.empty())
                 {
@@ -958,7 +959,6 @@ End:
                         currentAppState, errorCode);
                     LOGINFO("Notified error event for appId %s: currentAppState=%d errorCode %d", appId.c_str(), static_cast<int>(currentAppState), static_cast<int>(errorCode));
                 }
-                mAdminLock.Unlock();
             }
         }
 
