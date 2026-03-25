@@ -25,10 +25,12 @@ public:
                         WPEFramework::Exchange::IRDKWindowManager* wm  = nullptr)
             : oci(oci)
             , wm(wm)
+            , configLine("{}")
         {
         }
         WPEFramework::Exchange::IOCIContainer*     oci;
         WPEFramework::Exchange::IRDKWindowManager* wm;
+        std::string                                configLine;
     };
 
     class COMLinkMock final : public WPEFramework::PluginHost::IShell::ICOMLink {
@@ -116,7 +118,7 @@ public:
     std::string ClassName() const override { return ""; }
     std::string Callsign() const override { return "org.rdk.RuntimeManager"; }
     std::string WebPrefix() const override { return ""; }
-    std::string ConfigLine() const override { return "{}"; }
+    std::string ConfigLine() const override { return _cfg.configLine; }
     std::string PersistentPath() const override { return "/tmp"; }
     std::string VolatilePath() const override { return "/tmp"; }
     std::string DataPath() const override { return "/tmp"; }

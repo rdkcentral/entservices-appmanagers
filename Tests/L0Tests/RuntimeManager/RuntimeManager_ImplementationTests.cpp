@@ -84,9 +84,10 @@ public:
         return nullptr;
     }
 
-    void OnStarted(const std::string& /*appInstanceId*/) override
+    void OnStarted(const std::string& appInstanceId) override
     {
         onStartedCount++;
+        lastAppInstanceId = appInstanceId;
     }
 
     void OnTerminated(const std::string& /*appInstanceId*/) override
@@ -110,6 +111,7 @@ public:
     std::atomic<uint32_t> onTerminatedCount;
     std::atomic<uint32_t> onStateChangedCount;
     std::atomic<uint32_t> onFailureCount;
+    std::string lastAppInstanceId;
 };
 
 /* Creates a fresh RuntimeManagerImplementation instance. */
@@ -1153,15 +1155,20 @@ uint32_t Test_Impl_DispatchPortalPrefixStrippingWithRegisteredNotification()
 {
     L0Test::TestResult tr;
 
+    // Configure ServiceMock with a non-empty runtimeAppPortal so the strip
+    // branch in Dispatch() is actually exercised.
+    L0Test::ServiceMock::Config cfg;
+    cfg.configLine = R"({"runtimeAppPortal":"com.sky.apps."})";
+    L0Test::ServiceMock service(cfg);
+
     auto* impl = CreateImpl();
+    // Configure the impl so it reads runtimeAppPortal from ConfigLine.
+    impl->Configure(&service);
+
     FakeNotification notif;
     impl->Register(&notif);
 
-    // containerId includes a portal prefix that should be stripped.
-    // With the default ServiceMock ConfigLine="{}", mRuntimeAppPortal is empty,
-    // so the whole string is treated as the appInstanceId. The test exercises
-    // the prefix-stripping code path by passing a containerId that starts with
-    // the empty portal (no-op strip) and still reaches the notification loop.
+    // containerId has the portal prefix — Dispatch() should strip it.
     JsonObject obj;
     obj["containerId"] = "com.sky.apps.youTube";
     obj["name"]        = "youTube";
@@ -1172,11 +1179,9 @@ uint32_t Test_Impl_DispatchPortalPrefixStrippingWithRegisteredNotification()
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
     L0Test::ExpectTrue(tr, notif.onStartedCount > 0u,
-                       "OnStarted fires when containerId has portal prefix (empty portal)");
-
-    impl->Unregister(&notif);
-    impl->Release();
-    return tr.failures;
+                       "OnStarted fires when containerId has portal prefix");
+    L0Test::ExpectTrue(tr, notif.lastAppInstanceId == "youTube",
+                       "Portal prefix 'com.sky.apps.' is stripped from containerId");
 }
 
 /* Test_Impl_DispatchMultipleNotificationsAllReceiveStartedEvent
