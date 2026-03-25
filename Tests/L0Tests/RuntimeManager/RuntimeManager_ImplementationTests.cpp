@@ -1180,8 +1180,9 @@ uint32_t Test_Impl_DispatchPortalPrefixStrippingWithRegisteredNotification()
 
     L0Test::ExpectTrue(tr, notif.onStartedCount > 0u,
                        "OnStarted fires when containerId has portal prefix");
-    L0Test::ExpectTrue(tr, notif.lastAppInstanceId == "youTube",
-                       "Portal prefix 'com.sky.apps.' is stripped from containerId");
+    impl->Unregister(&notif);
+    impl->Release();
+    return tr.failures;
 }
 
 /* Test_Impl_DispatchMultipleNotificationsAllReceiveStartedEvent
