@@ -124,6 +124,11 @@ class AppStorageManagerTest : public ::testing::Test {
         }
         virtual ~AppStorageManagerTest() override {
             plugin->Deinitialize(&service);
+            if (interface != nullptr)
+            {
+                interface->Release();
+                interface = nullptr;
+            }
             storageManagerConfigure->Release();
             Wraps::setImpl(nullptr);
             if (p_wrapsImplMock != nullptr)
