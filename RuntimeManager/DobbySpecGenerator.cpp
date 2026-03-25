@@ -45,8 +45,6 @@ DobbySpecGenerator::DobbySpecGenerator(): mIonMemoryPluginData(Json::objectValue
 {
     LOGINFO("DobbySpecGenerator()");
     mAIConfiguration = new AIConfiguration();
-    mAIConfiguration->initialize();
-    initialiseIonHeapsJson();
 //TODO SUPPORT THIS
 /*
     if (mAIConfiguration->getGstreamerRegistryEnabled())
@@ -86,10 +84,13 @@ Json::Value DobbySpecGenerator::getWorkingDir(const ApplicationConfiguration& co
     return Json::Value(workingDir);
 }
 
-bool DobbySpecGenerator::generate(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig, string& resultSpec)
+bool DobbySpecGenerator::generate(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig, const std::string& runtimeConfigFile, string& resultSpec)
 {
     LOGINFO("DobbySpecGenerator::generate()");
     resultSpec = "";
+
+    mAIConfiguration->initialize(runtimeConfigFile);
+    initialiseIonHeapsJson();
 
     std::ifstream inFile("/tmp/specchange");
     if (inFile.good())

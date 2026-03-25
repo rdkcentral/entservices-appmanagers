@@ -66,8 +66,10 @@ namespace WPEFramework
                         Configuration()
                             : Core::JSON::Container()
                             , runtimeAppPortal()
+                            , runtimeConfigFile()
                         {
                             Add(_T("runtimeAppPortal"), &runtimeAppPortal);
+                            Add(_T("runtimeConfigFile"), &runtimeConfigFile);
                         }
                         ~Configuration() = default;
 
@@ -78,6 +80,7 @@ namespace WPEFramework
 
                     public:
                         Core::JSON::String runtimeAppPortal;
+                        Core::JSON::String runtimeConfigFile;
                 };
 
             public:
@@ -204,6 +207,8 @@ namespace WPEFramework
                 // IConfiguration methods
                 uint32_t Configure(PluginHost::IShell* service) override;
 
+                bool generate(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig, std::string& dobbySpec);
+
                 // IEventHandler methods
                 virtual void onOCIContainerStartedEvent(std::string name, JsonObject& data) override;
                 virtual void onOCIContainerStoppedEvent(std::string name, JsonObject& data) override;
@@ -215,7 +220,7 @@ namespace WPEFramework
                 void releaseOCIContainerPluginObject();
                 Core::hresult createStorageManagerPluginObject();
                 void releaseStorageManagerPluginObject();
-                static bool generate(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig, std::string& dobbySpec);
+
                 std::string getContainerId(const string& appInstanceId);
                 bool isOCIPluginObjectValid(void);
                 Exchange::IRuntimeManager::RuntimeState getRuntimeState(const string& appInstanceId);
@@ -237,6 +242,7 @@ namespace WPEFramework
                 DobbyEventListener *mDobbyEventListener;
                 UserIdManager* mUserIdManager;
                 std::string mRuntimeAppPortal;
+                std::string mRuntimeConfigFile;
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
                 Exchange::ITelemetryMetrics* mTelemetryMetricsObject;
 #endif

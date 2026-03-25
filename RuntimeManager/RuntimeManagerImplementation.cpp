@@ -39,7 +39,7 @@ namespace WPEFramework
         RuntimeManagerImplementation *RuntimeManagerImplementation::_instance = nullptr;
 
         RuntimeManagerImplementation::RuntimeManagerImplementation()
-            : mRuntimeManagerImplLock(), mCurrentservice(nullptr), mOciContainerObject(nullptr), mStorageManagerObject(nullptr), mWindowManagerConnector(nullptr), mDobbyEventListener(nullptr), mUserIdManager(nullptr), mRuntimeAppPortal("")
+            : mRuntimeManagerImplLock(), mCurrentservice(nullptr), mOciContainerObject(nullptr), mStorageManagerObject(nullptr), mWindowManagerConnector(nullptr), mDobbyEventListener(nullptr), mUserIdManager(nullptr), mRuntimeAppPortal(""), mRuntimeConfigFile("")
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
               ,
               mTelemetryMetricsObject(nullptr)
@@ -303,6 +303,11 @@ namespace WPEFramework
                     mRuntimeAppPortal = config.runtimeAppPortal.Value();
                 }
                 LOGINFO("runtimeAppPortal=%s", mRuntimeAppPortal.c_str());
+                if (!config.runtimeConfigFile.Value().empty())
+                {
+                    mRuntimeConfigFile = config.runtimeConfigFile.Value();
+                }
+                LOGINFO("runtimeConfigFile=%s", mRuntimeConfigFile.c_str());
             }
             else
             {
@@ -474,8 +479,8 @@ namespace WPEFramework
             ralf::RalfPackageBuilder ralfBuilder;
             return ralfBuilder.generateRalfDobbySpec(config, runtimeConfigObject, dobbySpec);
 #else
-            DobbySpecGenerator generator;
-            return generator.generate(config, runtimeConfigObject, dobbySpec);
+        DobbySpecGenerator generator;
+        return generator.generate(config, runtimeConfigObject, mRuntimeConfigFile, dobbySpec);
 #endif // RALF_PACKAGE_SUPPORT_ENABLED
         }
 
@@ -696,7 +701,7 @@ namespace WPEFramework
                 notifyParamCheckFailure = true;
             }
             /* Generate dobbySpec for the selected container mode (legacy or non-legacy) */
-            else if (false == RuntimeManagerImplementation::generate(config, runtimeConfigObject, dobbySpec))
+            else if (false == generate(config, runtimeConfigObject, dobbySpec))
             {
                 LOGERR("Failed to generate dobbySpec");
                 status = Core::ERROR_GENERAL;
