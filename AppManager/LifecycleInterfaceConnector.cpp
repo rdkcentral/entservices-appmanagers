@@ -867,9 +867,11 @@ End:
                         }
                         if (newAppState == Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED)
                         {
+			    // Issue ID 4: Must hold mStateMutex when accessing mAppIdAwaitingPause
+                            // to maintain consistency with the wait predicate in closeApp()
+                            std::lock_guard<std::mutex> lk(mStateMutex);
                             if (appId == mAppIdAwaitingPause)
                             {
-                                std::lock_guard<std::mutex> lk(mStateMutex);
                                 mStateChangedCV.notify_all();
                             }
                         }

@@ -110,21 +110,20 @@ namespace Plugin {
             LOGINFO("DM: ConfigLine=%s", service->ConfigLine().c_str());
             DownloadManagerImplementation::Configuration config;
             config.FromString(service->ConfigLine());
-
-            // Issue ID 327: Data race condition - mDownloadPath accessed without mutex protection            
+	    // Issue ID 327: Initialize mDownloadPath with same locking pattern as mDownloadId
+            // Use mQueueMutex for consistency since Download() reads it under the same lock
+            if (true == config.downloadDir.IsSet())
             {
-		Core::SafeSyncType<Core::CriticalSection> adminLock(mAdminLock);
-                if (true == config.downloadDir.IsSet())
-                {
-                    mDownloadPath = config.downloadDir;
-                }
-            }
+		std::lock_guard<std::mutex> lock(mQueueMutex);
+                mDownloadPath = config.downloadDir;
+	    }
             LOGINFO("DM: downloadDir=%s", mDownloadPath.c_str());
             if (true == config.downloadId.IsSet())
             {
                 std::lock_guard<std::mutex> lock(mQueueMutex);
                 mDownloadId = static_cast<uint32_t>(config.downloadId.Value());
             }
+	    // Create directory - safe to access without lock as thread hasn't started yet
             int rc = mkdir(mDownloadPath.c_str(), 0777);
             if (rc != 0 && errno != EEXIST)
             {
