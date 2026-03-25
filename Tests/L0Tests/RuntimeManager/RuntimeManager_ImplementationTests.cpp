@@ -86,8 +86,8 @@ public:
 
     void OnStarted(const std::string& appInstanceId) override
     {
-        onStartedCount++;
         lastAppInstanceId = appInstanceId;
+        onStartedCount++;
     }
 
     void OnTerminated(const std::string& /*appInstanceId*/) override
