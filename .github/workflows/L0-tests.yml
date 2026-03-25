@@ -19,7 +19,7 @@ on:
 env:
   BUILD_TYPE: Debug
   THUNDER_REF: "R4.4.1"
-  INTERFACES_REF: "develop"
+  INTERFACES_REF: "topic/RDKEMW-14505"
   ENABLE_GDB: ${{ (inputs.enable_gdb && '1') || '0' }}
 
 jobs:
@@ -382,7 +382,7 @@ jobs:
           test -x "$test_bin"
 
           set +e
-          "$test_bin" --gtest_color=yes 2>&1 | tee l0-test.log
+          "$test_bin" 2>&1 | tee l0-test.log
           test_rc=$?
           set -e
 
@@ -448,8 +448,8 @@ jobs:
           set -euo pipefail
 
           ARTIFACT_ROOT="$GITHUB_WORKSPACE"
-          rm -rf "$ARTIFACT_ROOT/coverage-html" coverage.info filtered_coverage.info || true
-          mkdir -p "$ARTIFACT_ROOT/coverage-html"
+          rm -rf "$ARTIFACT_ROOT/coverage" coverage.info filtered_coverage.info || true
+          mkdir -p "$ARTIFACT_ROOT/coverage"
 
           build_dir="$GITHUB_WORKSPACE/build/entservices-appmanagers-l0tests-only"
 
@@ -474,8 +474,9 @@ jobs:
           fi
 
           genhtml \
-            -o "$ARTIFACT_ROOT/coverage-html" \
+            -o "$ARTIFACT_ROOT/coverage" \
             -t "entservices-appmanagers AppManagers L0 coverage" \
+            --hierarchical \
             filtered_coverage.info || true
 
       - name: Upload artifacts
@@ -484,7 +485,7 @@ jobs:
         with:
           name: artifacts-L0-appmanagers
           path: |
-            coverage-html/
+            coverage/
             coverage.info
             filtered_coverage.info
             l0-test.log

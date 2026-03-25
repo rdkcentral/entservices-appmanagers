@@ -360,7 +360,17 @@ public:
     WPEFramework::Core::hresult Initialize(WPEFramework::PluginHost::IShell* /*service*/) override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult Deinitialize(WPEFramework::PluginHost::IShell* /*service*/) override { return WPEFramework::Core::ERROR_NONE; }
 
-    WPEFramework::Core::hresult CreateDisplay(const string& /*params*/) override
+    WPEFramework::Core::hresult CreateDisplay(const string& /*appInstanceId*/,
+                                              const string& /*displayName*/,
+                                              const uint32_t /*displayWidth*/,
+                                              const uint32_t /*displayHeight*/,
+                                              const bool /*virtualDisplay*/,
+                                              const uint32_t /*virtualWidth*/,
+                                              const uint32_t /*virtualHeight*/,
+                                              const uint32_t /*ownerId*/,
+                                              const uint32_t /*groupId*/,
+                                              const bool /*topmost*/,
+                                              const bool /*focus*/) override
     {
         createDisplayCalls++;
         return _createDisplayReturnCode;
