@@ -476,7 +476,6 @@ jobs:
           genhtml \
             -o "$ARTIFACT_ROOT/coverage" \
             -t "entservices-appmanagers AppManagers L0 coverage" \
-            --hierarchical \
             filtered_coverage.info || true
 
       - name: Upload artifacts
