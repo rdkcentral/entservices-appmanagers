@@ -85,7 +85,7 @@ jobs:
         run: >
           sudo apt update
           &&
-          sudo apt install -y libsqlite3-dev libcurl4-openssl-dev valgrind lcov clang libsystemd-dev libboost-all-dev libwebsocketpp-dev meson libcunit1 libcunit1-dev curl protobuf-compiler-grpc libgrpc-dev libgrpc++-dev libjsoncpp-dev libxtables-dev libip4tc-dev libip6tc-dev libyaml-cpp-dev
+          sudo apt install -y libsqlite3-dev libcurl4-openssl-dev valgrind lcov clang libsystemd-dev libboost-all-dev libwebsocketpp-dev meson libcunit1 libcunit1-dev curl protobuf-compiler-grpc libgrpc-dev libgrpc++-dev libjsoncpp-dev libxtables-dev libip4tc-dev libip6tc-dev libyaml-cpp-dev gdb
 
       - name: Build trower-base64
         run: |
@@ -472,10 +472,7 @@ jobs:
           &&
           ls -l /dev/disk/by-id/usb-JetFlash_Transcend_16GB_UEUIRCXT-0
 
-      - name: Install gdb
-        run: sudo apt install -y gdb
-
-      - name: Run unit tests without valgrind
+      - name: Run unit tests without valgrind with gdb
         run: |
           set -euo pipefail
 
