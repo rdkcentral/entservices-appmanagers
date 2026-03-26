@@ -159,6 +159,27 @@ namespace String {
                                         "0123456789+/";
 
 
+/**
+* @brief Encodes binary data into a Base64-encoded string.
+*
+* This is a general-purpose Base64 encoder (named imageEncoder because it
+* is primarily used to encode raw image/screenshot pixel data for
+* transmission). It converts the input byte array into a Base64 string
+* using the standard alphabet (A–Z, a–z, 0–9, +, /). Input bytes are
+* processed in groups of three: each group of 3 bytes (24 bits) is split
+* into four 6-bit values, each mapped to a Base64 character. If the input
+* length is not a multiple of three, the remaining 1 or 2 bytes are encoded
+* and, when @p padding is true, '=' characters are appended to make the
+* output length a multiple of four (RFC 4648 standard padding).
+*
+* @param[in]  object  Pointer to the byte array to encode.
+* @param[in]  length  Number of bytes in @p object to encode.
+* @param[in]  padding When true, appends '=' padding characters so the
+*                     output length is always a multiple of four.
+* @param[out] result  The Base64-encoded string is appended to this output
+*                     parameter. The caller should clear it before calling
+*                     this function if a fresh result is desired.
+*/
     inline void imageEncoder(const uint8_t object[], const uint32_t length, const bool padding, string& result)
     {
         uint8_t state = 0;
