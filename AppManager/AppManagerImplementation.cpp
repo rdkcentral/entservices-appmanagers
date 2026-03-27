@@ -79,6 +79,12 @@ AppManagerImplementation::~AppManagerImplementation()
        mCurrentservice->Release();
        mCurrentservice = nullptr;
     }
+
+    // Clear all AppInfo entries so stale data does not leak across
+    // plugin deactivate/activate cycles (AppInfoManager is a
+    // process-wide singleton that outlives this instance).
+    AppInfoManager::getInstance().clear();
+    SYSLOG(Logging::Shutdown, (_T("AppManagerImplementation: AppInfoManager cleared")));
 }
 
 /**
