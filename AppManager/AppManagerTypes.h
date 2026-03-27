@@ -31,7 +31,7 @@ namespace AppManagerTypes {
     /**
      * @brief Classifies the application type (interactive vs. system).
      */
-    typedef enum _ApplicationType
+    typedef enum _applicationType
     {
         APPLICATION_TYPE_UNKNOWN     = 0,
         APPLICATION_TYPE_INTERACTIVE = 1,
@@ -41,7 +41,7 @@ namespace AppManagerTypes {
     /**
      * @brief Package metadata obtained from the PackageManager.
      */
-    typedef struct _PackageInfo
+    typedef struct _packageInfo
     {
         std::string version      = "";
         uint32_t    lockId       = 0;
