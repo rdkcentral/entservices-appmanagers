@@ -239,12 +239,13 @@ void AppManagerImplementation::dispatchEvent(EventNames event, const JsonObject 
 
 void AppManagerImplementation::Dispatch(EventNames event, const JsonObject params)
 {
+    string appId = "";
+    string appInstanceId = "";
+
     switch(event)
     {
         case APP_EVENT_LIFECYCLE_STATE_CHANGED:
         {
-            string appId = "";
-            string appInstanceId = "";
             AppLifecycleState newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNKNOWN;
             AppLifecycleState oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNKNOWN;
             AppErrorReason errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE;
@@ -296,7 +297,6 @@ void AppManagerImplementation::Dispatch(EventNames event, const JsonObject param
         }
         case APP_EVENT_INSTALLATION_STATUS:
         {
-            string appId = "";
             string version = "";
             string installStatus = "";
             /* Check if 'packageId' exists and is not empty */
@@ -337,7 +337,6 @@ void AppManagerImplementation::Dispatch(EventNames event, const JsonObject param
         }
         case APP_EVENT_LAUNCH_REQUEST:
         {
-            string appId = "";
             string intent = "";
             string source = "";
 
@@ -369,9 +368,6 @@ void AppManagerImplementation::Dispatch(EventNames event, const JsonObject param
         }
         case APP_EVENT_UNLOADED:
         {
-            string appId = "";
-            string appInstanceId = "";
-
             appId = params.HasLabel("appId") ? params["appId"].String() : "";
             if (appId.empty())
             {
