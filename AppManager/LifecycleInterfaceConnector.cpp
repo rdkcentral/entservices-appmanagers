@@ -22,7 +22,6 @@
 #include "AppInfoManager.h"
 #include <string>
 #include <memory>
-#include <iostream>
 #include <mutex>
 #include <thread>
 #include <fstream>
@@ -794,8 +793,8 @@ End:
                         a.setAppLifecycleState(newState);
                         a.setAppIntent(navigationIntent);
 
-                        if (oldState == Exchange::ILifecycleManager::LifecycleState::ACTIVE ||
-                            newState == Exchange::ILifecycleManager::LifecycleState::ACTIVE)
+                        if (Exchange::ILifecycleManager::LifecycleState::ACTIVE == oldState ||
+                            Exchange::ILifecycleManager::LifecycleState::ACTIVE == newState)
                         {
                             struct timespec stateChangeTime;
                             if(0 != (timespec_get(&stateChangeTime, TIME_UTC)))
