@@ -39,6 +39,7 @@ AppManagerImplementation::AppManagerImplementation()
 , mPersistentStoreRemoteStoreObject(nullptr)
 , mPackageManagerHandlerObject(nullptr)
 , mPackageManagerInstallerObject(nullptr)
+, mStorageManagerRemoteObject(nullptr) 
 , mCurrentservice(nullptr)
 , mPackageManagerNotification(*this)
 , mAppManagerWorkerThread()
@@ -109,14 +110,17 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
     while (sRunning)
     {
         std::shared_ptr<AppManagerRequest> request = nullptr;
+    {
         std::unique_lock<std::mutex> lock(mAppManagerLock);
         mAppRequestListCV.wait(lock, [this] {return !mAppRequestList.empty() || !sRunning;});
 
-        if (!mAppRequestList.empty() && sRunning)
-        {
-            Core::hresult status = Core::ERROR_GENERAL;
-            request = mAppRequestList.front();
-            mAppRequestList.pop_front();
+        if (!sRunning || mAppRequestList.empty())
+            continue;
+
+        request = mAppRequestList.front();
+        mAppRequestList.pop_front();
+    }
+   
 
             if (request != nullptr)
             {
@@ -135,7 +139,7 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                                 PackageInfo packageData;
                                 Exchange::IPackageHandler::LockReason lockReason = Exchange::IPackageHandler::LockReason::LAUNCH;
 
-                                status = packageLock(appId, packageData, lockReason);
+                                Core::hresult status = packageLock(appId, packageData, lockReason);
                                 if (status == Core::ERROR_NONE)
                                 {
                                     WPEFramework::Exchange::RuntimeConfig runtimeConfig = packageData.configMetadata;
@@ -192,7 +196,7 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                     break; /* defult*/
                 }
             }
-        }
+
     }
     {
         std::lock_guard<std::mutex> lock(mAppManagerLock);
@@ -933,7 +937,7 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
             if (request->mRequestParam != nullptr)
             {
                 mAppManagerLock.lock();
-                mAppRequestList.push_back(request);
+                mAppRequestList.push_back(std::move(request));
                 mAppManagerLock.unlock();
                 mAppRequestListCV.notify_one();
                 status = Core::ERROR_NONE;
@@ -1148,7 +1152,7 @@ Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const s
             if (request->mRequestParam != nullptr)
             {
                 mAppManagerLock.lock();
-                mAppRequestList.push_back(request);
+                mAppRequestList.push_back(std::move(request));
                 mAppManagerLock.unlock();
                 mAppRequestListCV.notify_one();
                 status = Core::ERROR_NONE;
@@ -1624,9 +1628,9 @@ void AppManagerImplementation::getCustomValues(WPEFramework::Exchange::RuntimeCo
 
         if (aipathchange)
         {
-            runtimeConfig.appPath = apppath;
-            runtimeConfig.runtimePath = runtimepath;
-            runtimeConfig.command = command;
+            runtimeConfig.appPath = std::move(apppath);
+            runtimeConfig.runtimePath = std::move(runtimepath);
+            runtimeConfig.command = std::move(command);
             runtimeConfig.appType = 1;
             runtimeConfig.resourceManagerClientEnabled = true;
         }

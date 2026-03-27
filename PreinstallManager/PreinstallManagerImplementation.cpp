@@ -303,7 +303,7 @@ namespace WPEFramework
                 packageInfo.installStatus = "SKIPPED: getConfig failed for [" + filename + "]";
                 // continue; -> so that it is printed as skipped and not go undetected
             }
-            packages.push_back(packageInfo);
+            packages.push_back(std::move(packageInfo));
         }
 
         closedir(dir);
@@ -355,7 +355,6 @@ namespace WPEFramework
             LOGWARN("forceInstall is disabled");
             Exchange::IPackageInstaller::IPackageIterator *packageList = nullptr;
 
-            // fetch installed packages
             Core::hresult listResult = mPackageManagerInstallerObject->ListPackages(packageList);
             if (listResult != Core::ERROR_NONE || packageList == nullptr)
             {

@@ -55,7 +55,9 @@ namespace WPEFramework
 
         bool StateTransitionHandler::initialize()
 	{
+            gRequestMutex.lock();
             sRunning = true;
+            gRequestMutex.unlock();
             StateHandler::initialize();
             sem_init(&gRequestSemaphore, 0, 0);
             requestHandlerThread = std::thread([=]() {
@@ -108,7 +110,7 @@ namespace WPEFramework
            //TODO: Pass contect and state as argument to function
 	   std::shared_ptr<StateTransitionRequest> stateTransitionRequest = std::make_shared<StateTransitionRequest>(request.mContext, request.mTargetState);
 	   gRequestMutex.lock();
-           gRequests.push_back(stateTransitionRequest);
+           gRequests.push_back(std::move(stateTransitionRequest));
 	   gRequestMutex.unlock();
            sem_post(&gRequestSemaphore);
 	}

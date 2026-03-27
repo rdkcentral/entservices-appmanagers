@@ -238,13 +238,19 @@ namespace WPEFramework
 
                             if (status == Core::ERROR_NONE)
                             {
+                                // Issue ID 309: Using invalid iterator
+                                // Fix: Re-fetch iterator after SpawnApp call as map may have been modified
                                 LOGINFO("Update App Info");
-                                it->second.appInstanceId   = std::move(appInstanceId);
-                                it->second.appIntent       = intent;
-                                it->second.packageInfo.type = AppManagerImplementation::APPLICATION_TYPE_INTERACTIVE;
-                                it->second.targetAppState  =    (state == Exchange::ILifecycleManager::LifecycleState::SUSPENDED)
-                                                                                                                                           ? Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED
-                                                                                                                                           : Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
+                                auto it_update = appManagerImplInstance->mAppInfo.find(appId);
+                                if (it_update != appManagerImplInstance->mAppInfo.end())
+                                {
+                                    it_update->second.appInstanceId   = std::move(appInstanceId);
+                                    it_update->second.appIntent       = intent;
+                                    it_update->second.packageInfo.type = AppManagerImplementation::APPLICATION_TYPE_INTERACTIVE;
+                                    it_update->second.targetAppState  =    (state == Exchange::ILifecycleManager::LifecycleState::SUSPENDED)
+                                                                                                                                               ? Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED
+                                                                                                                                               : Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
+                                }
                             }
                             else
                             {
@@ -387,11 +393,16 @@ namespace WPEFramework
                             {
                                 LOGINFO("Requested PAUSED state for appId: %s. Waiting for PAUSED confirmation...", appId.c_str());
 
-                                mAppIdAwaitingPause = appId;
+                                {
+                                    std::lock_guard<std::mutex> stateLock(mStateMutex);
+                                    mAppIdAwaitingPause = appId;
+                                }
                                 mAdminLock.Unlock();
                                 {
                                     std::unique_lock<std::mutex> lk(mStateMutex);
-                                    mStateChangedCV.wait_for(lk, std::chrono::milliseconds(PAUSE_STATE_WAITTIME));
+                                    mStateChangedCV.wait_for(lk, std::chrono::milliseconds(PAUSE_STATE_WAITTIME), [this, &appId]() {
+                                        return mAppIdAwaitingPause != appId;
+                                    });
                                 }
 
                                 mAdminLock.Lock();
@@ -399,7 +410,10 @@ namespace WPEFramework
                                 if(it != appManagerImplInstance->mAppInfo.end() &&
                                     it->second.appNewState == Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED)
                                 {
-                                    mAppIdAwaitingPause.clear();
+                                    {
+                                        std::lock_guard<std::mutex> stateLock(mStateMutex);
+                                        mAppIdAwaitingPause.clear();
+                                    }
 
                                     auto retryIt = appManagerImplInstance->mAppInfo.find(appId);
                                     if (retryIt != appManagerImplInstance->mAppInfo.end())
@@ -721,7 +735,7 @@ namespace WPEFramework
                     auto& appInfo = appManagerImplInstance->mAppInfo[appId];
 
                     Exchange::IAppManager::LoadedAppInfo loadedAppInfo = {};
-		    loadedAppInfo.appId = appId;
+		    loadedAppInfo.appId = std::move(appId);
                     loadedAppInfo.type = appManagerImplInstance->getInstallAppType(appInfo.packageInfo.type);
 		    loadedAppInfo.appInstanceId = appInfo.appInstanceId = loadedAppsObject.HasLabel("appInstanceID")?loadedAppsObject["appInstanceID"].String():"";
 		    loadedAppInfo.activeSessionId = appInfo.activeSessionId = loadedAppsObject.HasLabel("activeSessionId")?loadedAppsObject["activeSessionId"].String():"";
@@ -734,9 +748,7 @@ namespace WPEFramework
                         static_cast<Exchange::ILifecycleManager::LifecycleState>(
                             getIntJsonField(loadedAppsObject, "lifecycleState")));
                     loadedAppInfo.lifecycleState = appInfo.appNewState;
-
-                    //Add loaded info
-		    loadedAppInfoList.push_back(loadedAppInfo);
+		    loadedAppInfoList.push_back(std::move(loadedAppInfo));
                 }
 
                 apps = Core::Service<RPC::IteratorType<Exchange::IAppManager::ILoadedAppInfoIterator>> \
@@ -847,9 +859,9 @@ End:
                         }
                         if (newAppState == Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED)
                         {
+                            std::lock_guard<std::mutex> lk(mStateMutex);
                             if (appId == mAppIdAwaitingPause)
                             {
-                                std::lock_guard<std::mutex> lk(mStateMutex);
                                 mStateChangedCV.notify_all();
                             }
                         }
@@ -914,6 +926,7 @@ End:
             }
             else
             {
+                mAdminLock.Lock();
                 if (!appId.empty())
                 {
                     auto it = appManagerImplInstance->mAppInfo.find(appId);
@@ -927,6 +940,7 @@ End:
                         LOGERR("appId not found in database");
                     }
                 }
+                mAdminLock.Unlock();
 
                 if (!errorReason.empty())
                 {
