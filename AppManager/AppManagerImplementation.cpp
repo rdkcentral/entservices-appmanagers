@@ -39,7 +39,7 @@ AppManagerImplementation::AppManagerImplementation()
 , mPersistentStoreRemoteStoreObject(nullptr)
 , mPackageManagerHandlerObject(nullptr)
 , mPackageManagerInstallerObject(nullptr)
-, mStorageManagerRemoteObject(nullptr) // Fix for Coverity issue 1087 - UNINIT_CTOR: Initialize mStorageManagerRemoteObject
+, mStorageManagerRemoteObject(nullptr) 
 , mCurrentservice(nullptr)
 , mPackageManagerNotification(*this)
 , mAppManagerWorkerThread()
@@ -139,8 +139,6 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                                 PackageInfo packageData;
                                 Exchange::IPackageHandler::LockReason lockReason = Exchange::IPackageHandler::LockReason::LAUNCH;
 
-                                // Fix for Coverity issues 342, 343 (ORDER_REVERSAL)
-                                // Release mAppManagerLock before calling packageLock to avoid lock ordering issues
                                 Core::hresult status = packageLock(appId, packageData, lockReason);
                                 if (status == Core::ERROR_NONE)
                                 {
@@ -939,8 +937,6 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
             if (request->mRequestParam != nullptr)
             {
                 mAppManagerLock.lock();
-                // Issue ID 21: Variable copied when it could be moved
-                // Fix: Use std::move to transfer ownership instead of copying
                 mAppRequestList.push_back(std::move(request));
                 mAppManagerLock.unlock();
                 mAppRequestListCV.notify_one();
@@ -1156,8 +1152,6 @@ Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const s
             if (request->mRequestParam != nullptr)
             {
                 mAppManagerLock.lock();
-                // Issue ID 22: Variable copied when it could be moved
-                // Fix: Use std::move to transfer ownership instead of copying
                 mAppRequestList.push_back(std::move(request));
                 mAppManagerLock.unlock();
                 mAppRequestListCV.notify_one();
@@ -1634,8 +1628,6 @@ void AppManagerImplementation::getCustomValues(WPEFramework::Exchange::RuntimeCo
 
         if (aipathchange)
         {
-            // Issue IDs 23, 24, 25: Variables copied when they could be moved
-            // Fix: Use std::move to transfer ownership instead of copying
             runtimeConfig.appPath = std::move(apppath);
             runtimeConfig.runtimePath = std::move(runtimepath);
             runtimeConfig.command = std::move(command);

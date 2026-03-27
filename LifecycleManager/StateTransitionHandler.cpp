@@ -55,8 +55,6 @@ namespace WPEFramework
 
         bool StateTransitionHandler::initialize()
 	{
-            // Issue ID 324: sRunning accessed without mutex in lambda initialization
-            // Fix: Protect sRunning access with mutex lock
             gRequestMutex.lock();
             sRunning = true;
             gRequestMutex.unlock();
@@ -112,8 +110,6 @@ namespace WPEFramework
            //TODO: Pass contect and state as argument to function
 	   std::shared_ptr<StateTransitionRequest> stateTransitionRequest = std::make_shared<StateTransitionRequest>(request.mContext, request.mTargetState);
 	   gRequestMutex.lock();
-           // Issue ID 37: Variable copied when it could be moved
-           // Fix: Use std::move to transfer ownership instead of copying
            gRequests.push_back(std::move(stateTransitionRequest));
 	   gRequestMutex.unlock();
            sem_post(&gRequestSemaphore);

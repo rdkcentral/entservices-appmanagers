@@ -110,8 +110,6 @@ namespace Plugin {
             LOGINFO("DM: ConfigLine=%s", service->ConfigLine().c_str());
             DownloadManagerImplementation::Configuration config;
             config.FromString(service->ConfigLine());
-	    // Issue ID 327: Initialize mDownloadPath with same locking pattern as mDownloadId
-            // Use mQueueMutex for consistency since Download() reads it under the same lock
             if (true == config.downloadDir.IsSet())
             {
 		std::lock_guard<std::mutex> lock(mQueueMutex);
@@ -123,7 +121,6 @@ namespace Plugin {
                 std::lock_guard<std::mutex> lock(mQueueMutex);
                 mDownloadId = static_cast<uint32_t>(config.downloadId.Value());
             }
-	    // Create directory - safe to access without lock as thread hasn't started yet
             int rc = mkdir(mDownloadPath.c_str(), 0777);
             if (rc != 0 && errno != EEXIST)
             {
@@ -430,9 +427,6 @@ namespace Plugin {
         while (mDownloaderRunFlag)
         {
             DownloadInfoPtr downloadRequest = nullptr;
-            // Issue ID 5: Condition checked outside lock, then wait called - race condition can cause indefinite wait
-            // Coverity fix: 1139 - Acquire lock once and use it for both check and wait
-            // Fix: Use predicate-based wait to check condition atomically with the wait
             {
                 std::unique_lock<std::mutex> lock(mQueueMutex);
                 mDownloadThreadCV.wait(lock, [&] {
@@ -569,9 +563,6 @@ namespace Plugin {
 
     DownloadManagerImplementation::DownloadInfoPtr DownloadManagerImplementation::pickDownloadJob(void)
     {
-        // PRECONDITION: Caller MUST hold mQueueMutex
-        // This function accesses mPriorityDownloadQueue, mRegularDownloadQueue, and mCurrentDownload
-        // which are all protected by mQueueMutex
         if ((!mPriorityDownloadQueue.empty() || !mRegularDownloadQueue.empty()) && mCurrentDownload == nullptr)
         {
             if (!mPriorityDownloadQueue.empty())

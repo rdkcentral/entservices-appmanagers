@@ -866,8 +866,6 @@ namespace Plugin {
         runtimeConfig.gpuMemoryLimit = config.gpuMemoryLimit;
 
         JsonArray vars = JsonArray();
-        // Issue ID 2: Range-based for loop copies each string instead of referencing
-        // Fix: Use const auto& to avoid copying strings in the loop
         for (const auto& str: config.envVars) {
             vars.Add(str);
         }
@@ -890,7 +888,6 @@ namespace Plugin {
         runtimeConfig.command = config.command;
         runtimeConfig.runtimePath = config.runtimePath;
 
-        // Coverity fix 1074: Initialize remaining RuntimeConfig fields
         runtimeConfig.enableDebugger = false;
         runtimeConfig.logFileMaxSize = 0;
         runtimeConfig.mapi = false;

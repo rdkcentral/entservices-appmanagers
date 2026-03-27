@@ -399,8 +399,6 @@ namespace WPEFramework
                                 }
                                 mAdminLock.Unlock();
                                 {
-                                    // Issue ID 4: Condition variable wait without proper loop synchronization
-                                    // Fix: Move condition check inside the wait predicate to prevent race condition
                                     std::unique_lock<std::mutex> lk(mStateMutex);
                                     mStateChangedCV.wait_for(lk, std::chrono::milliseconds(PAUSE_STATE_WAITTIME), [this, &appId]() {
                                         return mAppIdAwaitingPause != appId;
@@ -734,8 +732,6 @@ namespace WPEFramework
                     JsonObject loadedAppsObject = loadedAppsJsonArray[i].Object();
                     string appId = loadedAppsObject.HasLabel("appId")?loadedAppsObject["appId"].String():"";
                     LOGINFO("Loaded appId: %s", appId.c_str());
-                    // Fix for Coverity issue 26 (COPY_INSTEAD_OF_MOVE)
-                    // appId is used as map key first, then moved to avoid unnecessary copy
                     auto& appInfo = appManagerImplInstance->mAppInfo[appId];
 
                     Exchange::IAppManager::LoadedAppInfo loadedAppInfo = {};
@@ -752,10 +748,6 @@ namespace WPEFramework
                         static_cast<Exchange::ILifecycleManager::LifecycleState>(
                             getIntJsonField(loadedAppsObject, "lifecycleState")));
                     loadedAppInfo.lifecycleState = appInfo.appNewState;
-
-                    //Add loaded info
-		    // Issue ID 27: Variable copied when it could be moved
-                    // Fix: Use std::move to transfer ownership instead of copying
 		    loadedAppInfoList.push_back(std::move(loadedAppInfo));
                 }
 
@@ -867,8 +859,6 @@ End:
                         }
                         if (newAppState == Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED)
                         {
-			    // Issue ID 4: Must hold mStateMutex when accessing mAppIdAwaitingPause
-                            // to maintain consistency with the wait predicate in closeApp()
                             std::lock_guard<std::mutex> lk(mStateMutex);
                             if (appId == mAppIdAwaitingPause)
                             {
@@ -936,8 +926,6 @@ End:
             }
             else
             {
-                // Issue ID 328: mAppInfo accessed without mAdminLock protection
-                // Fix: Acquire mAdminLock before accessing mAppInfo
                 mAdminLock.Lock();
                 if (!appId.empty())
                 {

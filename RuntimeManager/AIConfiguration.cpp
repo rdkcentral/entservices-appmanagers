@@ -541,20 +541,14 @@ namespace Plugin
                 }
                 else if (key == "vpuAccessBlacklist")
                 {
-                    // Issue IDs 46, 47: Variable copied when it could be moved
-                    // Fix: Use std::move on parameter to avoid copy when value is no longer needed
                     mVpuAccessBlacklist = parseStringArray(std::move(key), std::move(value));
                 }
                 else if (key == "appsRequiringDBus")
                 {
-                    // Issue IDs 48, 49: Variable copied when it could be moved
-                    // Fix: Use std::move on parameter to avoid copy when value is no longer needed
                     mAppsRequiringDBus = parseStringArray(std::move(key), std::move(value));
                 }
                 else if (key == "mapiPorts")
                 {
-                    // Issue ID 50: Variable copied when it could be moved
-                    // Fix: Use std::move on parameter to avoid copy when value is no longer needed
                     mMapiPorts = parseIntArray(std::move(value));
                 }
                 else if (key == "resourceManagerClientEnabled")
@@ -592,8 +586,6 @@ namespace Plugin
                     {
                         value = value.substr(1, value.size() - 2);
                     }
-                    // Issue IDs 51, 52: Variable copied when it could be moved
-                    // Fix: Use std::move to transfer ownership when value is no longer needed
                     mDialServerPathPrefix = std::move(value);
                 }
                 else if (key == "dialUsn")
@@ -603,20 +595,14 @@ namespace Plugin
                     {
                         value = value.substr(1, value.size() - 2);
                     }
-                    // Issue IDs 53, 54: Variable copied when it could be moved
-                    // Fix: Use std::move to transfer ownership when value is no longer needed
                     mDialUsn = std::move(value);
                 }
                 else if (key == "ionLimits")
                 {
-                    // Issue IDs 55, 56: Variable copied when it could be moved
-                    // Fix: Use std::move on parameter to avoid copy when value is no longer needed
                     mIonHeapQuotas = parseIonLimits(std::move(value));
                 }
                 else if (key == "preloads")
                 {
-                    // Issue ID 57: Variable copied when it could be moved
-                    // Fix: Use std::move on parameters to avoid copy when value is no longer needed
                     mPreloads = parseStringArray(std::move(key), std::move(value));
                 }
                 else if (key == "envVariables")

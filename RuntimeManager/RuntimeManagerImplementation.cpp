@@ -331,7 +331,6 @@ namespace WPEFramework
                 {
                     LOGERR("mOciContainerObject is null (Attempt %d)", retryCount + 1);
                     retryCount++;
-                    //std::this_thread::sleep_for(std::chrono::milliseconds(200)); sleep while holding lock
                 }
                 else
                 {
@@ -397,7 +396,6 @@ namespace WPEFramework
                     {
                         LOGERR("storageManagerObject is null (Attempt %d)", retryCount + 1);
                         retryCount++;
-                        //std::this_thread::sleep_for(std::chrono::milliseconds(200)); sleep while holding lock
                     }
                     else
                     {
@@ -603,7 +601,6 @@ namespace WPEFramework
                 LOGERR("envVariables is empty inside Run()");
             }
 
-            // SLEEP (Coverity ID: 1062): Extract appId data and release lock before calling getAppStorageInfo which may make IPC calls to StorageManager
             std::string appIdForStorage = appId;
             mRuntimeManagerImplLock.Unlock();
 

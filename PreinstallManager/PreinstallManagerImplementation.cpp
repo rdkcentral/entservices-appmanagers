@@ -303,8 +303,6 @@ namespace WPEFramework
                 packageInfo.installStatus = "SKIPPED: getConfig failed for [" + filename + "]";
                 // continue; -> so that it is printed as skipped and not go undetected
             }
-            // Issue ID 43: Variable copied when it could be moved
-            // Fix: Use std::move to transfer ownership instead of copying
             packages.push_back(std::move(packageInfo));
         }
 
@@ -357,9 +355,6 @@ namespace WPEFramework
             LOGWARN("forceInstall is disabled");
             Exchange::IPackageInstaller::IPackageIterator *packageList = nullptr;
 
-            // Issue ID 296: Dereference after null check
-            // Fix: Check null before dereferencing and fix logic operator from && to ||
-            // fetch installed packages
             Core::hresult listResult = mPackageManagerInstallerObject->ListPackages(packageList);
             if (listResult != Core::ERROR_NONE || packageList == nullptr)
             {

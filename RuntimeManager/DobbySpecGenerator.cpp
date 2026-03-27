@@ -924,9 +924,6 @@ void DobbySpecGenerator::createFkpsMounts(const ApplicationConfiguration& config
 	std::string fkpsFile = *it;
         const std::string fkpsFilePath = fkpsPathPrefix + fkpsFile;
 
-        // Fix for Coverity issues 1072, 1073: use open() with O_NOFOLLOW and fstat() on the
-        // opened file descriptor to avoid TOCTOU when verifying FKPS files before use
-        // check if the file exists and can be safely opened
         int fd = open(fkpsFilePath.c_str(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC);
         if (fd < 0)
         {
@@ -1041,7 +1038,6 @@ Json::Value DobbySpecGenerator::createResourceManagerMount(const ApplicationConf
 
     struct stat details;
     Json::Value resmgrMount;
-    // Fix for Coverity issues 1070, 1071 - TOCTOU: Use open() with fstat() to avoid race condition
     int fd = open(resmgrMountSource.c_str(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC);
     if (fd >= 0)
     {
