@@ -50,24 +50,56 @@ bool AppInfoManager::get(const std::string& appId, AppInfo& outInfo) const
     return true;
 }
 
-/* ---- Atomic multi-field update (existing entries only) ---- */
+/* ---- Multi-field update (existing entries only) ---- */
 
 bool AppInfoManager::update(const std::string& appId, std::function<void(AppInfo&)> updater)
 {
-    Core::SafeSyncType<Core::CriticalSection> lock(mLock);
-    auto it = mMap.find(appId);
-    if (it == mMap.end())
-        return false;
-    updater(it->second);
+    /* Copy-update-swap: copy the entry under the lock, run the callback
+     * outside the lock (avoiding potential deadlocks), then write back.
+     * Returns false if the entry does not exist at the time of either the
+     * initial lookup or the write-back (e.g. concurrently removed). */
+    AppInfo copy;
+    {
+        Core::SafeSyncType<Core::CriticalSection> lock(mLock);
+        auto it = mMap.find(appId);
+        if (it == mMap.end())
+            return false;
+        copy = it->second;
+    }
+
+    updater(copy);
+
+    {
+        Core::SafeSyncType<Core::CriticalSection> lock(mLock);
+        auto it = mMap.find(appId);
+        if (it == mMap.end())
+            return false;   // entry removed between copy and write-back
+        it->second = std::move(copy);
+    }
     return true;
 }
 
-/* ---- Atomic insert-or-update ---- */
+/* ---- Insert-or-update ---- */
 
 void AppInfoManager::upsert(const std::string& appId, std::function<void(AppInfo&)> updater)
 {
-    Core::SafeSyncType<Core::CriticalSection> lock(mLock);
-    updater(mMap[appId]);   // operator[] default-constructs if absent
+    /* Copy-update-swap: copy (or default-construct) the entry under the lock,
+     * run the callback outside the lock, then write back. */
+    AppInfo copy;
+    {
+        Core::SafeSyncType<Core::CriticalSection> lock(mLock);
+        auto it = mMap.find(appId);
+        if (it != mMap.end())
+            copy = it->second;
+        // else: copy remains default-constructed (same as operator[] default)
+    }
+
+    updater(copy);
+
+    {
+        Core::SafeSyncType<Core::CriticalSection> lock(mLock);
+        mMap[appId] = std::move(copy);
+    }
 }
 
 /* ---- Remove ---- */

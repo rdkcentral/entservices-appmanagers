@@ -43,16 +43,26 @@ namespace Plugin {
  *   AppInfo snap;
  *   if (AppInfoManager::getInstance().get(appId, snap)) { ... }
  *
- * Multi-field atomic update (insert-or-update):
+ * Multi-field update (insert-or-update):
  *   AppInfoManager::getInstance().upsert(appId, [&](AppInfo& a) {
  *       a.setAppInstanceId(instanceId);
  *       a.setTargetAppState(state);
  *   });
  *
- * Multi-field atomic update (existing entry only):
+ * Multi-field update (existing entry only):
  *   AppInfoManager::getInstance().update(appId, [&](AppInfo& a) {
  *       a.setCurrentAction(action);
  *   });
+ *
+ * NOTE: update() and upsert() use a copy-update-swap strategy.
+ * The updater callback is invoked WITHOUT the internal lock held, so
+ * it is safe to call AppInfoManager methods or any other blocking work
+ * from inside the callback without risking a deadlock.
+ * Because the lock is released between the copy and the write-back,
+ * two concurrent calls for the same appId may each overwrite the
+ * other's changes (last-writer-wins).  When strict atomicity is needed
+ * for a single field, use the dedicated convenience setters instead,
+ * which acquire the lock only once and are fully atomic.
  */
 class AppInfoManager
 {
@@ -68,10 +78,12 @@ public:
     /* ---- Bulk atomic read (returns a by-value copy) ---- */
     bool get(const std::string& appId, AppInfo& outInfo) const;
 
-    /* ---- Atomic multi-field update (returns false if appId absent) ---- */
+    /* ---- Multi-field update (returns false if appId absent or concurrently removed).
+     *      Callback is invoked outside the lock (copy-update-swap); see class note. ---- */
     bool update(const std::string& appId, std::function<void(AppInfo&)> updater);
 
-    /* ---- Atomic insert-or-update ---- */
+    /* ---- Insert-or-update.
+     *      Callback is invoked outside the lock (copy-update-swap); see class note. ---- */
     void upsert(const std::string& appId, std::function<void(AppInfo&)> updater);
 
     /* ---- Remove ---- */
