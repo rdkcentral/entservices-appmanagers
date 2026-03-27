@@ -798,7 +798,7 @@ End:
                             newState == Exchange::ILifecycleManager::LifecycleState::ACTIVE)
                         {
                             struct timespec stateChangeTime;
-                            if (timespec_get(&stateChangeTime, TIME_UTC) != 0)
+                            if(0 != (timespec_get(&stateChangeTime, TIME_UTC)))
                             {
                                 a.setLastActiveStateChangeTime(stateChangeTime);
                             }
