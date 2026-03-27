@@ -131,6 +131,7 @@ protected:
     void releaseAppManagerImpl()
     {
         TEST_LOG("In releaseAppManagerImpl!");
+        AppInfoManager::getInstance().clear();
         plugin->Deinitialize(mServiceMock);
         delete mServiceMock;
         mAppManagerImpl = nullptr;
@@ -296,6 +297,7 @@ protected:
         dispatcher->Deactivate();
         dispatcher->Release();
 
+        AppInfoManager::getInstance().clear();
         plugin->Deinitialize(mServiceMock);
         delete mServiceMock;
         mAppManagerImpl = nullptr;
