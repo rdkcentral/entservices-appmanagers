@@ -233,8 +233,8 @@ public:
     void Terminate() override {}
     uint32_t RemoteId() const override { return 0; }
 
-    void Register(INotification*) override {}
-    void Unregister(INotification*) override {}
+    void Register(INotification*) {}
+    void Unregister(INotification*) {}
 
 private:
     uint32_t _id;
@@ -263,13 +263,14 @@ uint32_t Test_PM_Constructor_SetsInstancePointer()
 {
     L0Test::TestResult tr;
     {
-        WPEFramework::Plugin::PreinstallManager pm;
+        auto* pm = WPEFramework::Core::Service<WPEFramework::Plugin::PreinstallManager>::Create<WPEFramework::Plugin::PreinstallManager>();
         L0Test::ExpectTrue(tr,
             WPEFramework::Plugin::PreinstallManager::_instance != nullptr,
             "Constructor sets _instance to non-null");
         L0Test::ExpectTrue(tr,
-            WPEFramework::Plugin::PreinstallManager::_instance == &pm,
+            WPEFramework::Plugin::PreinstallManager::_instance == pm,
             "_instance points to the constructed PreinstallManager object");
+        pm->Release();
     }
     return tr.failures;
 }
@@ -281,8 +282,8 @@ uint32_t Test_PM_Destructor_ClearsInstancePointer()
 {
     L0Test::TestResult tr;
     {
-        WPEFramework::Plugin::PreinstallManager pm;
-        (void)pm;
+        auto* pm = WPEFramework::Core::Service<WPEFramework::Plugin::PreinstallManager>::Create<WPEFramework::Plugin::PreinstallManager>();
+        pm->Release();
     }
     L0Test::ExpectTrue(tr,
         WPEFramework::Plugin::PreinstallManager::_instance == nullptr,

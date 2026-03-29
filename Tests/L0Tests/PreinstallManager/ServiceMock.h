@@ -349,7 +349,7 @@ public:
         void Register(INotification*) override {}
         void Unregister(INotification*) override {}
 
-        WPEFramework::RPC::IRemoteConnection* RemoteConnection(const uint32_t) override
+        WPEFramework::RPC::IRemoteConnection* RemoteConnection(const uint32_t)
         {
             return nullptr;
         }
@@ -473,7 +473,7 @@ public:
     void Register(WPEFramework::PluginHost::IPlugin::INotification*) override {}
     void Unregister(WPEFramework::PluginHost::IPlugin::INotification*) override {}
 
-    WPEFramework::RPC::IRemoteConnection* RemoteConnection(const uint32_t) override
+    WPEFramework::RPC::IRemoteConnection* RemoteConnection(const uint32_t)
     {
         return nullptr;
     }
