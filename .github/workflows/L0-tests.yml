@@ -1,6 +1,10 @@
 name: L0-tests
 
 on:
+  push:
+    branches: [ main, develop, 'sprint/**', 'release/**','topic/L0_preinstall']
+  pull_request:
+    branches: [ main, develop, 'sprint/**', 'release/**','topic/L0_preinstall']
   workflow_call:
     inputs:
       caller_source:
