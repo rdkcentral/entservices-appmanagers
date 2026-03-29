@@ -100,6 +100,12 @@ public:
         return WPEFramework::Core::ERROR_NONE;
     }
 
+    WPEFramework::Core::hresult GetPreinstallState(WPEFramework::Exchange::IPreinstallManager::State& state) override
+    {
+        state = WPEFramework::Exchange::IPreinstallManager::State::NOT_STARTED;
+        return WPEFramework::Core::ERROR_NONE;
+    }
+
 private:
     mutable std::atomic<uint32_t> _refCount;
 };
@@ -164,6 +170,12 @@ public:
 
     WPEFramework::Core::hresult StartPreinstall(bool) override
     {
+        return WPEFramework::Core::ERROR_NONE;
+    }
+
+    WPEFramework::Core::hresult GetPreinstallState(WPEFramework::Exchange::IPreinstallManager::State& state) override
+    {
+        state = WPEFramework::Exchange::IPreinstallManager::State::NOT_STARTED;
         return WPEFramework::Core::ERROR_NONE;
     }
 
