@@ -54,7 +54,7 @@ using string = std::string;
 // Fake IPackageInstaller::IPackageIterator
 // ─────────────────────────────────────────────────────────────────────────────
 
-class FakePackageIterator final : public WPEFramework::Exchange::IPackageInstaller::IPackageIterator {
+class FakePackageIterator : public WPEFramework::Exchange::IPackageInstaller::IPackageIterator {
 public:
     using Package = WPEFramework::Exchange::IPackageInstaller::Package;
 
@@ -124,6 +124,14 @@ public:
         return static_cast<uint32_t>(_packages.size());
     }
 
+    Package Current() const override
+    {
+        if (_index > 0 && _index <= static_cast<uint32_t>(_packages.size())) {
+            return _packages[_index - 1];
+        }
+        return Package {};
+    }
+
 private:
     std::vector<Package> _packages;
     uint32_t _index;
@@ -147,14 +155,14 @@ public:
     };
 
     FakePackageInstaller()
-        : _refCount(1)
+        : installCalls(0)
+        , registerCalls(0)
+        , unregisterCalls(0)
+        , _refCount(1)
         , _listPackagesResult(WPEFramework::Core::ERROR_NONE)
         , _installResult(WPEFramework::Core::ERROR_NONE)
         , _installFailReason(FailReason::NONE)
         , _getConfigResult(WPEFramework::Core::ERROR_NONE)
-        , installCalls(0)
-        , registerCalls(0)
-        , unregisterCalls(0)
     {
     }
 
@@ -221,8 +229,7 @@ public:
             packages = nullptr;
             return _listPackagesResult;
         }
-        packages = WPEFramework::Core::Service<FakePackageIterator>::Create<IPackageIterator>(
-            _listPackagesPackages);
+        packages = new FakePackageIterator(_listPackagesPackages);
         return WPEFramework::Core::ERROR_NONE;
     }
 
@@ -283,6 +290,18 @@ public:
     mutable std::atomic<uint32_t> unregisterCalls;
     std::vector<InstallCall> lastInstallCalls;
 
+protected:
+    // Registered IPackageInstaller::INotification listeners.
+    // Protected so subclasses can trigger callbacks for dispatch-pipeline tests.
+    std::list<INotification*> _notifications;
+
+    void FireNotification(const std::string& json)
+    {
+        for (auto* n : _notifications) {
+            n->OnAppInstallationStatus(json);
+        }
+    }
+
 private:
     mutable std::atomic<uint32_t> _refCount;
     WPEFramework::Core::hresult _listPackagesResult;
@@ -293,7 +312,6 @@ private:
     WPEFramework::Core::hresult _getConfigResult;
     std::string _getConfigPackageId;
     std::string _getConfigVersion;
-    std::list<INotification*> _notifications;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -305,10 +323,16 @@ public:
     using InstantiateHandler = std::function<void*(const WPEFramework::RPC::Object&, const uint32_t, uint32_t&)>;
 
     struct Config {
-        std::string configLine { "{}" };
-        std::string callsign   { "org.rdk.PreinstallManager" };
+        Config()
+            : configLine("{}")
+            , callsign("org.rdk.PreinstallManager")
+            , packageInstaller(nullptr)
+        {
+        }
+        std::string configLine;
+        std::string callsign;
         // optional IPackageInstaller to return for QueryInterfaceByCallsign()
-        WPEFramework::Exchange::IPackageInstaller* packageInstaller { nullptr };
+        WPEFramework::Exchange::IPackageInstaller* packageInstaller;
     };
 
     class COMLinkMock final : public WPEFramework::PluginHost::IShell::ICOMLink {
@@ -449,7 +473,7 @@ public:
     void Register(WPEFramework::PluginHost::IPlugin::INotification*) override {}
     void Unregister(WPEFramework::PluginHost::IPlugin::INotification*) override {}
 
-    WPEFramework::RPC::IRemoteConnection* RemoteConnection(const uint32_t) const override
+    WPEFramework::RPC::IRemoteConnection* RemoteConnection(const uint32_t) override
     {
         return nullptr;
     }

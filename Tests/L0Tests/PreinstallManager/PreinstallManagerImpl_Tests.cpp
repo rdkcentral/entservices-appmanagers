@@ -101,6 +101,29 @@ static bool MakeSubDir(const std::string& parent, const std::string& child)
     return (mkdir(path.c_str(), 0755) == 0);
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// NotifyingInstaller — fires IPackageInstaller::INotification::OnAppInstallationStatus
+// during Install() so the full dispatch pipeline can be tested via StartPreinstall.
+// ─────────────────────────────────────────────────────────────────────────────
+
+class NotifyingInstaller : public L0Test::FakePackageInstaller {
+public:
+    std::string jsonToFire; // set before calling StartPreinstall
+
+    WPEFramework::Core::hresult Install(
+        const std::string& /*packageId*/,
+        const std::string& /*version*/,
+        IKeyValueIterator* const& /*meta*/,
+        const std::string& /*fileLocator*/,
+        FailReason& fr) override
+    {
+        installCalls++;
+        fr = FailReason::NONE;
+        FireNotification(jsonToFire);
+        return WPEFramework::Core::ERROR_NONE;
+    }
+};
+
 } // anonymous namespace
 
 // ═════════════════════════════════════════════════════════════════════════════
@@ -1001,13 +1024,27 @@ uint32_t Test_Impl_GetFailReason_Default_ReturnsNONE()
 uint32_t Test_Impl_HandleOnAppInstallationStatus_ValidJson_DispatchesFired()
 {
     L0Test::TestResult tr;
+
+    NotifyingInstaller installer;
+    const std::string testJson = "{\"appId\":\"com.test\",\"state\":\"INSTALLED\"}";
+    installer.jsonToFire = testJson;
+    WPEFramework::Exchange::IPackageInstaller::Package pkg;
+    pkg.packageId = "com.test";
+    pkg.version = "1.0";
+    installer.SetListPackagesPackages({ pkg });
+
+    std::string tmpDir = MandatoryTmpDir("tc041");
+    L0Test::ServiceMock::Config cfg;
+    cfg.configLine = "{\"appPreinstallDirectory\":\"" + tmpDir + "\"}";
+    cfg.packageInstaller = &installer;
+    L0Test::ServiceMock svc(cfg);
+
     auto* impl = CreateImpl();
+    impl->Configure(&svc);
 
     L0Test::FakePreinstallNotification notif;
     impl->Register(&notif);
-
-    const std::string testJson = "{\"appId\":\"com.test\",\"state\":\"INSTALLED\"}";
-    impl->handleOnAppInstallationStatus(testJson);
+    impl->StartPreinstall(true);
 
     // Allow the worker pool to process the dispatched job
     const int maxWaitMs = 500;
@@ -1025,6 +1062,7 @@ uint32_t Test_Impl_HandleOnAppInstallationStatus_ValidJson_DispatchesFired()
 
     impl->Unregister(&notif);
     impl->Release();
+    RemoveDirContents(tmpDir);
     return tr.failures;
 }
 
@@ -1032,11 +1070,26 @@ uint32_t Test_Impl_HandleOnAppInstallationStatus_ValidJson_DispatchesFired()
 uint32_t Test_Impl_HandleOnAppInstallationStatus_EmptyString_LogsError()
 {
     L0Test::TestResult tr;
+
+    NotifyingInstaller installer;
+    installer.jsonToFire = ""; // empty → handleOnAppInstallationStatus skips dispatch
+    WPEFramework::Exchange::IPackageInstaller::Package pkg;
+    pkg.packageId = "com.test";
+    pkg.version = "1.0";
+    installer.SetListPackagesPackages({ pkg });
+
+    std::string tmpDir = MandatoryTmpDir("tc042");
+    L0Test::ServiceMock::Config cfg;
+    cfg.configLine = "{\"appPreinstallDirectory\":\"" + tmpDir + "\"}";
+    cfg.packageInstaller = &installer;
+    L0Test::ServiceMock svc(cfg);
+
     auto* impl = CreateImpl();
+    impl->Configure(&svc);
+
     L0Test::FakePreinstallNotification notif;
     impl->Register(&notif);
-
-    impl->handleOnAppInstallationStatus("");
+    impl->StartPreinstall(true);
 
     // Allow a brief window to confirm no dispatch occurred
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
@@ -1046,6 +1099,7 @@ uint32_t Test_Impl_HandleOnAppInstallationStatus_EmptyString_LogsError()
 
     impl->Unregister(&notif);
     impl->Release();
+    RemoveDirContents(tmpDir);
     return tr.failures;
 }
 
@@ -1074,15 +1128,26 @@ uint32_t Test_Impl_Dispatch_UnknownEvent_LogsError()
 uint32_t Test_Impl_Dispatch_MissingJsonresponseKey_LogsError()
 {
     L0Test::TestResult tr;
+
+    NotifyingInstaller installer;
+    installer.jsonToFire = "test_payload"; // non-empty → dispatch occurs
+    WPEFramework::Exchange::IPackageInstaller::Package pkg;
+    pkg.packageId = "com.test";
+    pkg.version = "1.0";
+    installer.SetListPackagesPackages({ pkg });
+
+    std::string tmpDir = MandatoryTmpDir("tc044");
+    L0Test::ServiceMock::Config cfg;
+    cfg.configLine = "{\"appPreinstallDirectory\":\"" + tmpDir + "\"}";
+    cfg.packageInstaller = &installer;
+    L0Test::ServiceMock svc(cfg);
+
     auto* impl = CreateImpl();
+    impl->Configure(&svc);
+
     L0Test::FakePreinstallNotification notif;
     impl->Register(&notif);
-
-    // handleOnAppInstallationStatus with non-empty string dispatches a job with
-    // a JsonObject containing "jsonresponse". If we could inject a params object
-    // without the key we'd hit the missing-key branch; in the L0 environment
-    // we verify the happy path does not produce a zero-key dispatch.
-    impl->handleOnAppInstallationStatus("test_payload");
+    impl->StartPreinstall(true);
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     L0Test::ExpectTrue(tr, notif.callCount.load() >= 1u,
@@ -1090,6 +1155,7 @@ uint32_t Test_Impl_Dispatch_MissingJsonresponseKey_LogsError()
 
     impl->Unregister(&notif);
     impl->Release();
+    RemoveDirContents(tmpDir);
     return tr.failures;
 }
 
@@ -1097,15 +1163,30 @@ uint32_t Test_Impl_Dispatch_MissingJsonresponseKey_LogsError()
 uint32_t Test_Impl_Dispatch_MultipleNotifications_AllReceiveEvent()
 {
     L0Test::TestResult tr;
+
+    NotifyingInstaller installer;
+    const std::string testJson = "{\"appId\":\"com.multi\",\"state\":\"INSTALLED\"}";
+    installer.jsonToFire = testJson;
+    WPEFramework::Exchange::IPackageInstaller::Package pkg;
+    pkg.packageId = "com.multi";
+    pkg.version = "1.0";
+    installer.SetListPackagesPackages({ pkg });
+
+    std::string tmpDir = MandatoryTmpDir("tc045");
+    L0Test::ServiceMock::Config cfg;
+    cfg.configLine = "{\"appPreinstallDirectory\":\"" + tmpDir + "\"}";
+    cfg.packageInstaller = &installer;
+    L0Test::ServiceMock svc(cfg);
+
     auto* impl = CreateImpl();
+    impl->Configure(&svc);
 
     L0Test::FakePreinstallNotification notif1;
     L0Test::FakePreinstallNotification notif2;
     impl->Register(&notif1);
     impl->Register(&notif2);
 
-    const std::string testJson = "{\"appId\":\"com.multi\",\"state\":\"INSTALLED\"}";
-    impl->handleOnAppInstallationStatus(testJson);
+    impl->StartPreinstall(true);
 
     // Wait for dispatch
     const int maxWaitMs = 500;
@@ -1125,6 +1206,7 @@ uint32_t Test_Impl_Dispatch_MultipleNotifications_AllReceiveEvent()
     impl->Unregister(&notif1);
     impl->Unregister(&notif2);
     impl->Release();
+    RemoveDirContents(tmpDir);
     return tr.failures;
 }
 
