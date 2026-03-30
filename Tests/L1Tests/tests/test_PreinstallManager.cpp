@@ -413,9 +413,9 @@ TEST_F(PreinstallManagerTest, HandleAppInstallationStatusNotification)
     
     // Simulate installation status notification
     string testJsonResponse = R"({"packageId":"testApp","version":"1.0.0","status":"SUCCESS"})";
-    
-    // Call the handler directly since it's a friend class
-    mPreinstallManagerImpl->handleOnAppInstallationStatus(testJsonResponse);
+
+    // Trigger the notification callback with a valid payload.
+    mockNotification->OnAppInstallationStatus(testJsonResponse);
     
     // Wait for the asynchronous notification (with timeout)
     auto status = notificationFuture.wait_for(std::chrono::seconds(2));

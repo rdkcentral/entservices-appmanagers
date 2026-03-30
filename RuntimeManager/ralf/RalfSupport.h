@@ -121,4 +121,11 @@ namespace ralf
      * @return A compact JSON string representation of the node.
      */
     std::string serializeJsonNode(const Json::Value &node);
+
+    /**
+     * Function to remove a directory and all its contents recursively.
+     * @param path The directory path to remove.
+     * @return true on success, false on failure.
+     */
+    bool removeDirectoryRecursively(const std::string &path);
 } // namespace ralf
