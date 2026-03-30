@@ -2,6 +2,10 @@
 set -x
 set -e
 ##############################
+# Ensure CMake 3.22+ is in PATH (installed by build_dependencies.sh)
+export PATH=/usr/local/bin:$PATH
+cmake --version
+
 GITHUB_WORKSPACE="${PWD}"
 ls -la ${GITHUB_WORKSPACE}
 ############################

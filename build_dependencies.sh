@@ -10,7 +10,7 @@ cd ${GITHUB_WORKSPACE}
 #1. Install Dependencies and packages
 
 apt update
-apt install -y libsqlite3-dev libcurl4-openssl-dev valgrind lcov clang libsystemd-dev libboost-all-dev libwebsocketpp-dev meson libcunit1 libcunit1-dev curl wget protobuf-compiler-grpc libgrpc-dev libgrpc++-dev libunwind-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libjsoncpp-dev libyaml-cpp-dev
+apt install -y libsqlite3-dev libcurl4-openssl-dev valgrind lcov clang libsystemd-dev libboost-all-dev libwebsocketpp-dev meson libcunit1 libcunit1-dev curl wget protobuf-compiler-grpc libgrpc-dev libgrpc++-dev libunwind-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libjsoncpp-dev libyaml-cpp-dev ninja-build
 pip install jsonref
 
 ############################
@@ -46,6 +46,9 @@ fi
 cmake --version
 echo "CMake path: $(which cmake)"
 
+# Ensure /usr/local/bin is in PATH for Coverity environment
+export PATH=/usr/local/bin:$PATH
+
 ############################
 # Build trevor-base64
 if [ ! -d "trower-base64" ]; then
@@ -64,7 +67,7 @@ git clone --branch  R4.4.3 https://github.com/rdkcentral/ThunderTools.git
 
 git clone --branch R4.4.1 https://github.com/rdkcentral/Thunder.git
 
-git clone --branch topic/RDKEMW-14505 https://github.com/rdkcentral/entservices-apis.git
+git clone --branch main https://github.com/rdkcentral/entservices-apis.git
 
 
 git clone -b develop https://github.com/rdkcentral/eshelpers.git
