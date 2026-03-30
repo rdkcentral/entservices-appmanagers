@@ -22,6 +22,7 @@
 #include <mutex>
 #include <boost/filesystem.hpp>
 #include <boost/format.hpp>
+#include <fstream>
 #include <rdkwindowmanager/include/compositorcontroller.h>
 #include <rdkwindowmanager/include/application.h>
 #include <rdkwindowmanager/include/logger.h>
@@ -268,6 +269,17 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
                   {
                       // Encode the screenshot data as base64
                       Utils::String::imageEncoder(gScreenshotData, gScreenshotSize, true, gScreenshotImageData);
+
+                      std::ofstream encodedDumpFile("/tmp/base64encoded", std::ios::out | std::ios::trunc);
+                      if (true == encodedDumpFile.is_open())
+                      {
+                          encodedDumpFile << gScreenshotImageData;
+                          encodedDumpFile.close();
+                      }
+                      else
+                      {
+                          LOGWARN("Failed to open /tmp/base64encoded for writing screenshot data");
+                      }
                       
                       // Free the buffer immediately after encoding to avoid retaining memory
                       free(gScreenshotData);
