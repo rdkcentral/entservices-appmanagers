@@ -216,14 +216,12 @@ AppManagerTypes::ApplicationType AppInfoManager::getPackageInfoType(const std::s
                                : AppManagerTypes::APPLICATION_TYPE_UNKNOWN;
 }
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
 time_t AppInfoManager::getCurrentActionTime(const std::string& appId) const
 {
     Core::SafeSyncType<Core::CriticalSection> lock(mLock);
     auto it = mMap.find(appId);
     return (it != mMap.end()) ? it->second.getCurrentActionTime() : time_t{0};
 }
-#endif
 
 /* ---- Convenience field setters ---- */
 
@@ -329,13 +327,11 @@ void AppInfoManager::setPackageInfoType(const std::string& appId, AppManagerType
     mMap[appId].getPackageInfoMutable().type = type;
 }
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
 void AppInfoManager::setCurrentActionTime(const std::string& appId, time_t t)
 {
     Core::SafeSyncType<Core::CriticalSection> lock(mLock);
     mMap[appId].setCurrentActionTime(t);
 }
-#endif
 
 } // namespace Plugin
 } // namespace WPEFramework

@@ -67,7 +67,6 @@ namespace AppManagerTypes {
         APP_ACTION_KILL      = 8
     };
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
     /**
      * @brief Error codes reported to telemetry for action failures.
      */
@@ -86,7 +85,6 @@ namespace AppManagerTypes {
         ERROR_KILL_APP            = 10,
         ERROR_SET_TARGET_APP_STATE = 11
     };
-#endif
 
 } // namespace AppManagerTypes
 } // namespace Plugin

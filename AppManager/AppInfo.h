@@ -59,9 +59,7 @@ public:
 
     AppManagerTypes::CurrentAction getCurrentAction() const;
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
     time_t getCurrentActionTime() const;
-#endif
 
     /* ----- Setters ----- */
     void setAppInstanceId(const std::string& id);
@@ -80,9 +78,7 @@ public:
 
     void setCurrentAction(AppManagerTypes::CurrentAction action);
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
     void setCurrentActionTime(time_t t);
-#endif
 
 private:
     std::string mAppInstanceId;
@@ -96,9 +92,7 @@ private:
     uint32_t   mLastActiveIndex;
     std::string mAppIntent;
     AppManagerTypes::CurrentAction mCurrentAction;
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
     time_t mCurrentActionTime;
-#endif
 };
 
 } // namespace Plugin

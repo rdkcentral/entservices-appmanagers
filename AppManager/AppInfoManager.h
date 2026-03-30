@@ -106,9 +106,7 @@ public:
     AppManagerTypes::CurrentAction               getCurrentAction(const std::string& appId)   const;
     std::string                                  getPackageInfoVersion(const std::string& appId) const;
     AppManagerTypes::ApplicationType             getPackageInfoType(const std::string& appId)    const;
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
     time_t getCurrentActionTime(const std::string& appId) const;
-#endif
 
     /* ---- Convenience field setters (upserts the entry if absent) ---- */
     void setAppInstanceId(const std::string& appId,   const std::string& id);
@@ -128,9 +126,7 @@ public:
     void setPackageInfoConfigMetadata(const std::string& appId, const Exchange::RuntimeConfig& cfg);
     void setPackageInfoAppMetadata(const std::string& appId,  const std::string& metadata);
     void setPackageInfoType(const std::string& appId,         AppManagerTypes::ApplicationType type);
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
     void setCurrentActionTime(const std::string& appId, time_t t);
-#endif
 
 private:
     AppInfoManager()  = default;

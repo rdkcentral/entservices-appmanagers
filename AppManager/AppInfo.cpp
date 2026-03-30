@@ -34,9 +34,7 @@ AppInfo::AppInfo()
     , mLastActiveIndex(0)
     , mAppIntent("")
     , mCurrentAction(AppManagerTypes::APP_ACTION_NONE)
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
     , mCurrentActionTime(0)
-#endif
 {}
 
 /* ----- Getters ----- */
@@ -58,9 +56,7 @@ const std::string& AppInfo::getAppIntent()               const { return mAppInte
 
 AppManagerTypes::CurrentAction AppInfo::getCurrentAction() const { return mCurrentAction; }
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
 time_t AppInfo::getCurrentActionTime() const { return mCurrentActionTime; }
-#endif
 
 /* ----- Setters ----- */
 
@@ -80,9 +76,7 @@ void AppInfo::setAppIntent(const std::string& intent)          { mAppIntent     
 
 void AppInfo::setCurrentAction(AppManagerTypes::CurrentAction action) { mCurrentAction = action; }
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
 void AppInfo::setCurrentActionTime(time_t t) { mCurrentActionTime = t; }
-#endif
 
 } // namespace Plugin
 } // namespace WPEFramework
