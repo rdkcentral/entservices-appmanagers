@@ -46,6 +46,12 @@ namespace WPEFramework
         return _instance;
     }
 
+    Core::hresult PreinstallManagerImplementation::GetPreinstallState(Exchange::IPreinstallManager::State& state)
+    {
+        state = Exchange::IPreinstallManager::State::NOT_STARTED;
+        return Core::ERROR_NONE;
+    }
+
     PreinstallManagerImplementation::~PreinstallManagerImplementation()
     {
         LOGINFO("Delete PreinstallManagerImplementation Instance");
@@ -473,7 +479,7 @@ namespace WPEFramework
         auto installEnd = std::chrono::steady_clock::now();
         auto installDuration = std::chrono::duration_cast<std::chrono::seconds>(installEnd - installStart).count();
         auto installDurationMs = std::chrono::duration_cast<std::chrono::milliseconds>(installEnd - installStart).count();
-        LOGDBG("Process completed in %lld seconds (%lld ms)", installDuration, installDurationMs);
+        LOGDBG("Process completed in %ld seconds (%ld ms)", installDuration, installDurationMs);
         LOGINFO("Installation summary: %d/%d packages installed successfully. %d apps failed.", totalApps - failedApps, totalApps, failedApps);
         // print package wise result
         for (const auto &pkg : preinstallPackages)

@@ -165,6 +165,7 @@ namespace WPEFramework
             Core::hresult Register(Exchange::IPreinstallManager::INotification *notification) override;
             Core::hresult Unregister(Exchange::IPreinstallManager::INotification *notification) override;
             Core::hresult StartPreinstall(bool forceInstall) override;
+            Core::hresult GetPreinstallState(Exchange::IPreinstallManager::State& state) override;
             void handleOnAppInstallationStatus(const std::string &jsonresponse);
 
             // // IConfiguration methods

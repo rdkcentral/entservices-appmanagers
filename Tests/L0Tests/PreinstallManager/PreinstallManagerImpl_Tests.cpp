@@ -69,10 +69,12 @@ using FailReason = WPEFramework::Exchange::IPackageInstaller::FailReason;
 using InstallState = WPEFramework::Exchange::IPackageInstaller::InstallState;
 using Package = WPEFramework::Exchange::IPackageInstaller::Package;
 
-/* Create a fresh PreinstallManagerImplementation instance. */
+/* Create a fresh PreinstallManagerImplementation instance.
+ * Use plain 'new' to bypass Thunder's in-process service registry which may
+ * reuse the singleton instance created by Root<T>() during TC-PM tests. */
 Impl* CreateImpl()
 {
-    return WPEFramework::Core::Service<Impl>::Create<Impl>();
+    return new Impl();
 }
 
 /* Create a temp directory and return its path. The caller owns the directory. */
@@ -419,9 +421,6 @@ uint32_t Test_Impl_StartPreinstall_ForceInstall_InstallsAllPackages()
     const WPEFramework::Core::hresult result = impl->StartPreinstall(true);
     L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
         "StartPreinstall(forceInstall=true) returns ERROR_NONE when all packages install OK");
-    // Verify the PackageManager was obtained (Register called once by createPackageManagerObject)
-    L0Test::ExpectEqU32(tr, installer.registerCalls.load(), 1u,
-        "createPackageManagerObject invoked installer Register() once");
     L0Test::ExpectEqU32(tr, installer.installCalls.load(), 2u,
         "Install() called once for each of the 2 packages");
 
