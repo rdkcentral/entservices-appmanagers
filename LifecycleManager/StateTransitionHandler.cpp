@@ -157,7 +157,11 @@ namespace WPEFramework
 	   gRequestMutex.lock();
            gRequests.push_back(stateTransitionRequest);
 	   gRequestMutex.unlock();
-           sem_post(&gRequestSemaphore);
+	   // Double-check before sem_post to prevent race with terminate()
+           if (sInitialized.load())
+           {
+               sem_post(&gRequestSemaphore);
+           }
 	}
 
     } /* namespace Plugin */
