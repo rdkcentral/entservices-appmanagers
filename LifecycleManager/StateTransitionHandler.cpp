@@ -23,6 +23,7 @@
 #include <thread>
 #include <mutex>
 #include <vector>
+#include <atomic>
 #include "UtilsLogging.h"
 
 namespace WPEFramework
@@ -33,8 +34,8 @@ namespace WPEFramework
         std::mutex gRequestMutex;
         sem_t gRequestSemaphore;
         std::vector<std::shared_ptr<StateTransitionRequest>> gRequests;
-        static bool sRunning = true;
-        static bool sInitialized = false;
+        static std::atomic<bool> sRunning{true};
+        static std::atomic<bool> sInitialized{false};
 
         namespace {
             void terminateStateTransitionHandlerAtExit()
@@ -65,14 +66,13 @@ namespace WPEFramework
         bool StateTransitionHandler::initialize()
 	{
             gRequestMutex.lock();
-            if (true == sInitialized)
+            if (sInitialized.load())
             {
                 gRequestMutex.unlock();
                 return true;
             }
 
-            sRunning = true;
-            sInitialized = true;
+            sRunning.store(true);
             gRequestMutex.unlock();
 
             StateHandler::initialize();
@@ -81,7 +81,7 @@ namespace WPEFramework
             requestHandlerThread = std::thread([=]() {
                 bool isRunning = true;
                 gRequestMutex.lock();
-                isRunning = sRunning;
+                isRunning = sRunning.load();
                 gRequestMutex.unlock();
                 while(isRunning)
 		{
@@ -107,24 +107,27 @@ namespace WPEFramework
                     gRequestMutex.unlock();
                     sem_wait(&gRequestSemaphore);
                     gRequestMutex.lock();
-                    isRunning = sRunning;
+                    isRunning = sRunning.load();
                     gRequestMutex.unlock();
                 }
             });
+
+            // Mark as initialized only after semaphore and thread are ready
+            sInitialized.store(true);
 	    return true;	
 	}
 
 	void StateTransitionHandler::terminate()
 	{
             gRequestMutex.lock();
-            if (false == sInitialized)
+            if (!sInitialized.load())
             {
                 gRequestMutex.unlock();
                 return;
             }
 
-            sRunning = false;
-            sInitialized = false;
+            sRunning.store(false);
+            sInitialized.store(false);
             gRequestMutex.unlock();
 
             sem_post(&gRequestSemaphore);
@@ -143,6 +146,12 @@ namespace WPEFramework
 
 	void StateTransitionHandler::addRequest(StateTransitionRequest& request)
 	{
+           // Prevent sem_post on destroyed semaphore
+           if (!sInitialized.load())
+           {
+               return;
+           }
+
            //TODO: Pass contect and state as argument to function
 	   std::shared_ptr<StateTransitionRequest> stateTransitionRequest = std::make_shared<StateTransitionRequest>(request.mContext, request.mTargetState);
 	   gRequestMutex.lock();
