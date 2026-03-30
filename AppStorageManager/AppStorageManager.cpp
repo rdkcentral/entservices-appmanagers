@@ -132,6 +132,7 @@ namespace WPEFramework
         }
         if (nullptr != mStorageManagerImpl)
         {
+            do not merge
             Exchange::JAppStorageManager::Unregister(*this);
 
             // Stop processing:
