@@ -14,6 +14,21 @@ apt install -y libsqlite3-dev libcurl4-openssl-dev valgrind lcov clang libsystem
 pip install jsonref
 
 ############################
+# Install CMake 3.22 or higher (required by CMakeLists.txt)
+CMAKE_VERSION="3.22.6"
+CMAKE_DIR="cmake-${CMAKE_VERSION}-linux-x86_64"
+if ! command -v cmake &> /dev/null || [ "$(cmake --version | head -n1 | cut -d' ' -f3 | cut -d'.' -f1,2)" \< "3.22" ]; then
+    echo "Installing CMake ${CMAKE_VERSION}..."
+    wget -q https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/${CMAKE_DIR}.tar.gz
+    tar -xzf ${CMAKE_DIR}.tar.gz
+    cp -r ${CMAKE_DIR}/bin/* /usr/local/bin/
+    cp -r ${CMAKE_DIR}/share/* /usr/local/share/
+    rm -rf ${CMAKE_DIR} ${CMAKE_DIR}.tar.gz
+    echo "CMake ${CMAKE_VERSION} installed successfully"
+fi
+cmake --version
+
+############################
 # Build trevor-base64
 if [ ! -d "trower-base64" ]; then
 git clone https://github.com/xmidt-org/trower-base64.git
