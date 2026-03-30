@@ -70,11 +70,12 @@ using InstallState = WPEFramework::Exchange::IPackageInstaller::InstallState;
 using Package = WPEFramework::Exchange::IPackageInstaller::Package;
 
 /* Create a fresh PreinstallManagerImplementation instance.
- * Use plain 'new' to bypass Thunder's in-process service registry which may
- * reuse the singleton instance created by Root<T>() during TC-PM tests. */
+ * Core::Service<T>::Create<T>() instantiates a concrete Core::ServiceType<T>
+ * (which provides AddRef/Release) and returns it as Impl*, bypassing any COM
+ * proxy layer. Each call produces a fully independent object. */
 Impl* CreateImpl()
 {
-    return new Impl();
+    return WPEFramework::Core::Service<Impl>::Create<Impl>();
 }
 
 /* Create a temp directory and return its path. The caller owns the directory. */
