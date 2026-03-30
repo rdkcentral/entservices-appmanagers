@@ -156,12 +156,13 @@ namespace WPEFramework
 	   std::shared_ptr<StateTransitionRequest> stateTransitionRequest = std::make_shared<StateTransitionRequest>(request.mContext, request.mTargetState);
 	   gRequestMutex.lock();
            gRequests.push_back(stateTransitionRequest);
-	   gRequestMutex.unlock();
 	   // Double-check before sem_post to prevent race with terminate()
+	   // Check sInitialized while holding mutex to prevent race with terminate()
            if (sInitialized.load())
            {
                sem_post(&gRequestSemaphore);
            }
+	   gRequestMutex.unlock();
 	}
 
     } /* namespace Plugin */
