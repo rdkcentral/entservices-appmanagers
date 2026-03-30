@@ -226,3 +226,101 @@ else()
         VERBATIM
     )
 endif()
+
+# =============================================================================
+# PreinstallManager L0 test target
+# =============================================================================
+
+set(PREINSTALL_L0_SOURCES
+    ${CMAKE_SOURCE_DIR}/../../PreinstallManager/Module.cpp
+    ${CMAKE_SOURCE_DIR}/../../PreinstallManager/PreinstallManager.cpp
+    ${CMAKE_SOURCE_DIR}/../../PreinstallManager/PreinstallManagerImplementation.cpp
+    # Test sources
+    PreinstallManager/PreinstallManagerTest.cpp
+    PreinstallManager/PreinstallManager_LifecycleTests.cpp
+    PreinstallManager/PreinstallManagerImpl_Tests.cpp
+    common/L0Bootstrap.cpp
+)
+
+add_executable(preinstall_l0test ${PREINSTALL_L0_SOURCES})
+
+target_compile_definitions(preinstall_l0test PRIVATE
+    MODULE_NAME=PreinstallManager_L0Test
+    USE_THUNDER_R4=1
+    PREINSTALL_MANAGER_API_VERSION_NUMBER_MAJOR=1
+    PREINSTALL_MANAGER_API_VERSION_NUMBER_MINOR=0
+    PREINSTALL_MANAGER_API_VERSION_NUMBER_PATCH=0
+    DISABLE_SECURITY_TOKEN=1
+)
+
+if(APPMGR_ENABLE_COVERAGE)
+    target_compile_options(preinstall_l0test PRIVATE -O0 -g --coverage)
+    target_link_options(preinstall_l0test PRIVATE --coverage)
+endif()
+
+if(APPMGR_ENABLE_WARNINGS)
+    target_compile_options(preinstall_l0test PRIVATE -Wall -Wextra -Wno-unused-parameter)
+endif()
+
+target_include_directories(preinstall_l0test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/PreinstallManager
+    ${CMAKE_CURRENT_SOURCE_DIR}/common
+    ${CMAKE_SOURCE_DIR}/../..
+    ${CMAKE_SOURCE_DIR}/../../PreinstallManager
+    ${CMAKE_SOURCE_DIR}/../../helpers
+    ${PREFIX}/include
+    ${PREFIX}/include/${NAMESPACE}
+)
+
+if(CMAKE_PREFIX_PATH)
+    foreach(_prefix IN LISTS CMAKE_PREFIX_PATH)
+        if(EXISTS "${_prefix}/include")
+            target_include_directories(preinstall_l0test PRIVATE "${_prefix}/include")
+        endif()
+        if(EXISTS "${_prefix}/include/${NAMESPACE}")
+            target_include_directories(preinstall_l0test PRIVATE "${_prefix}/include/${NAMESPACE}")
+        endif()
+    endforeach()
+endif()
+
+if(EXISTS "${PREFIX}/lib")
+    target_link_directories(preinstall_l0test PRIVATE "${PREFIX}/lib")
+endif()
+if(EXISTS "${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins")
+    target_link_directories(preinstall_l0test PRIVATE "${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins")
+endif()
+if(EXISTS "${PREFIX}/lib/plugins")
+    target_link_directories(preinstall_l0test PRIVATE "${PREFIX}/lib/plugins")
+endif()
+
+if(THUNDER_CORE_LIB)
+    target_link_libraries(preinstall_l0test PRIVATE ${THUNDER_CORE_LIB})
+endif()
+if(THUNDER_MESSAGING_LIB)
+    target_link_libraries(preinstall_l0test PRIVATE ${THUNDER_MESSAGING_LIB})
+endif()
+if(THUNDER_PLUGINS_LIB)
+    target_link_libraries(preinstall_l0test PRIVATE ${THUNDER_PLUGINS_LIB})
+endif()
+if(THUNDER_COM_LIB)
+    target_link_libraries(preinstall_l0test PRIVATE ${THUNDER_COM_LIB})
+endif()
+
+target_link_libraries(preinstall_l0test PRIVATE
+    Threads::Threads
+    dl
+    m
+)
+
+set_target_properties(preinstall_l0test PROPERTIES
+    BUILD_RPATH "$ORIGIN;${PREFIX}/lib;${PREFIX}/lib/${STORAGE_DIRECTORY};${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins;${PREFIX}/lib/plugins"
+    INSTALL_RPATH "${PREFIX}/lib;${PREFIX}/lib/${STORAGE_DIRECTORY};${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins;${PREFIX}/lib/plugins"
+)
+
+add_custom_target(run_preinstall
+    DEPENDS preinstall_l0test
+    COMMAND $<TARGET_FILE:preinstall_l0test>
+    COMMENT "Running preinstall_l0test"
+    VERBATIM
+)

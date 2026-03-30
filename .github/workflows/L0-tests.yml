@@ -1,6 +1,10 @@
 name: L0-tests
 
 on:
+  push:
+    branches: [ main, develop, 'sprint/**', 'release/**','topic/L0_preinstall']
+  pull_request:
+    branches: [ main, develop, 'sprint/**', 'release/**','topic/L0_preinstall']
   workflow_call:
     inputs:
       caller_source:
@@ -24,7 +28,7 @@ env:
 
 jobs:
   L0-tests:
-    name: Build and run RuntimeManager L0 tests
+    name: Build and run L0 tests (RuntimeManager + PreinstallManager)
     runs-on: ubuntu-22.04
 
     steps:
@@ -41,7 +45,7 @@ jobs:
             thunder/install
             !thunder/install/etc/WPEFramework/plugins
             !thunder/install/usr/lib/wpeframework/plugins
-          key: ${{ runner.os }}-${{ env.THUNDER_REF }}-${{ env.INTERFACES_REF }}-l0-runtime-1
+          key: ${{ runner.os }}-${{ env.THUNDER_REF }}-${{ env.INTERFACES_REF }}-l0-combined-1
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -52,7 +56,7 @@ jobs:
 
       - name: ACK External Trigger
         run: |
-          echo "Message: External Trigger Received for L0 Tests"
+          echo "Message: External Trigger Received for L0 Tests (RuntimeManager + PreinstallManager)"
           echo "Trigger Source: ${{ inputs.caller_source }}"
 
       - name: Set up CMake
@@ -347,6 +351,44 @@ jobs:
           mkdir -p "$GITHUB_WORKSPACE/install/usr/lib/wpeframework/plugins"
           find build/entservices-appmanagers-l0 -type f \( -name "libRuntimeManager.so*" -o -name "libWPEFrameworkRuntimeManager.so*" -o -name "libWPEFrameworkRuntimeManagerImplementation.so*" -o -name "libRuntimeManagerImplementation.so*" \) -exec cp -f {} "$GITHUB_WORKSPACE/install/usr/lib/wpeframework/plugins/" \; 2>/dev/null || true
 
+      - name: Build PreinstallManager plugin and stage artifacts
+        run: |
+          set -euo pipefail
+
+          rm -rf "$GITHUB_WORKSPACE/build/entservices-appmanagers-l0-preinstall"
+
+          export CMAKE_PREFIX_PATH="$GITHUB_WORKSPACE/install/usr${CMAKE_PREFIX_PATH:+:$CMAKE_PREFIX_PATH}"
+          export CMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake${CMAKE_MODULE_PATH:+:$CMAKE_MODULE_PATH}"
+          export PATH="$GITHUB_WORKSPACE/install/usr/bin:$PATH"
+
+          cmake -G Ninja \
+            -S "$GITHUB_WORKSPACE" \
+            -B build/entservices-appmanagers-l0-preinstall \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="-DUSE_THUNDER_R4 -DTHUNDER_VERSION=4 -DTHUNDER_VERSION_MAJOR=4 -DTHUNDER_VERSION_MINOR=4" \
+            -DCMAKE_PREFIX_PATH="$CMAKE_PREFIX_PATH" \
+            -DCMAKE_MODULE_PATH="$CMAKE_MODULE_PATH" \
+            -DGENERIC_CMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" \
+            -DConfigGenerator_DIR="$GITHUB_WORKSPACE/install/usr/lib/cmake/ConfigGenerator" \
+            -DWPEFrameworkPlugins_DIR="$GITHUB_WORKSPACE/install/usr/lib/cmake/WPEFrameworkPlugins" \
+            -DDISABLE_SECURITY_TOKEN=ON \
+            -DUSE_THUNDER_R4=ON \
+            -DPLUGIN_PREINSTALL_MANAGER=ON \
+            -DPLUGIN_RUNTIME_MANAGER=OFF \
+            -DPLUGIN_APPMANAGER=OFF \
+            -DPLUGIN_APP_STORAGE_MANAGER=OFF \
+            -DPLUGIN_LIFECYCLE_MANAGER=OFF \
+            -DPLUGIN_DOWNLOADMANAGER=OFF \
+            -DPLUGIN_PACKAGE_MANAGER=OFF \
+            -DPLUGIN_RDK_WINDOW_MANAGER=OFF \
+            -DPLUGIN_TELEMETRYMETRICS=OFF \
+            -DCMAKE_VERBOSE_MAKEFILE=ON
+
+          cmake --build build/entservices-appmanagers-l0-preinstall -- -j"$(nproc)"
+
+          mkdir -p "$GITHUB_WORKSPACE/install/usr/lib/wpeframework/plugins"
+          find build/entservices-appmanagers-l0-preinstall -type f \( -name "libPreinstallManager.so*" -o -name "libWPEFrameworkPreinstallManager.so*" -o -name "libWPEFrameworkPreinstallManagerImplementation.so*" -o -name "libPreinstallManagerImplementation.so*" \) -exec cp -f {} "$GITHUB_WORKSPACE/install/usr/lib/wpeframework/plugins/" \; 2>/dev/null || true
+
       - name: Build RuntimeManager L0 tests (Tests/L0Tests)
         run: |
           set -euo pipefail
@@ -368,6 +410,17 @@ jobs:
             -DAPPMGR_ENABLE_COVERAGE=ON
 
           cmake --build build/entservices-appmanagers-l0tests-only --target appmanagers_l0test -- -j"$(nproc)"
+
+      - name: Build PreinstallManager L0 tests (Tests/L0Tests)
+        run: |
+          set -euo pipefail
+
+          export CMAKE_PREFIX_PATH="$GITHUB_WORKSPACE/install/usr${CMAKE_PREFIX_PATH:+:$CMAKE_PREFIX_PATH}"
+          export CMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake${CMAKE_MODULE_PATH:+:$CMAKE_MODULE_PATH}"
+          export PREFIX="$GITHUB_WORKSPACE/install/usr"
+
+          # CMake is already configured in the previous step; just build the new target.
+          cmake --build build/entservices-appmanagers-l0tests-only --target preinstall_l0test -- -j"$(nproc)"
 
       - name: Run L0 tests
         id: run_l0_tests
@@ -416,25 +469,87 @@ jobs:
 
           gdb -q -batch -ex "set pagination off" -ex "run" -ex "bt full" --args "$test_bin" | tee l0-test-gdb.log
 
+      - name: Run PreinstallManager L0 tests
+        id: run_preinstall_l0_tests
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+
+          export PATH="$GITHUB_WORKSPACE/install/usr/bin:${PATH}"
+          export LD_LIBRARY_PATH="$GITHUB_WORKSPACE/install/usr/lib:$GITHUB_WORKSPACE/install/usr/lib/wpeframework:$GITHUB_WORKSPACE/install/usr/lib/wpeframework/plugins:${LD_LIBRARY_PATH:-}"
+
+          test_bin="build/entservices-appmanagers-l0tests-only/preinstall_l0test"
+          test -x "$test_bin"
+
+          set +e
+          "$test_bin" 2>&1 | tee l0-preinstall-test.log
+          test_rc=$?
+          set -e
+
+          echo "==== Failed test cases (run step) ===="
+          grep -E '^\[  FAILED  \]' l0-preinstall-test.log || true
+          grep -E '^FAIL:' l0-preinstall-test.log || true
+
+          exit "$test_rc"
+
+      - name: Summarize failed PreinstallManager tests
+        if: ${{ always() }}
+        run: |
+          set -euo pipefail
+          if [ -f l0-preinstall-test.log ]; then
+            echo "==== Failed test cases (if any) ===="
+            grep -E '^\[  FAILED  \]' l0-preinstall-test.log || echo "No explicit [ FAILED ] lines found"
+          else
+            echo "l0-preinstall-test.log not found"
+          fi
+
+      - name: Run PreinstallManager L0 tests under gdb (opt-in on failure)
+        if: ${{ failure() && env.ENABLE_GDB == '1' }}
+        run: |
+          set -euo pipefail
+
+          export PATH="$GITHUB_WORKSPACE/install/usr/bin:${PATH}"
+          export LD_LIBRARY_PATH="$GITHUB_WORKSPACE/install/usr/lib:$GITHUB_WORKSPACE/install/usr/lib/wpeframework:$GITHUB_WORKSPACE/install/usr/lib/wpeframework/plugins:${LD_LIBRARY_PATH:-}"
+
+          test_bin="build/entservices-appmanagers-l0tests-only/preinstall_l0test"
+          test -x "$test_bin"
+
+          gdb -q -batch -ex "set pagination off" -ex "run" -ex "bt full" --args "$test_bin" | tee l0-preinstall-test-gdb.log
+
       - name: Fail workflow if tests failed
         if: ${{ always() }}
         env:
           RUN_L0_TESTS_OUTCOME: ${{ steps.run_l0_tests.outcome }}
+          RUN_PREINSTALL_L0_TESTS_OUTCOME: ${{ steps.run_preinstall_l0_tests.outcome }}
         run: |
           set -euo pipefail
           failed=0
 
           if [ "${RUN_L0_TESTS_OUTCOME}" != "success" ]; then
-            echo "L0 test execution step failed (non-zero exit)"
+            echo "RuntimeManager L0 test execution step failed (non-zero exit)"
             failed=1
           fi
 
           if [ -f l0-test.log ]; then
-            echo "==== Failed test cases (final gate) ===="
+            echo "==== RuntimeManager: Failed test cases (final gate) ===="
             grep -E '^\[  FAILED  \]' l0-test.log || true
             grep -E '^FAIL:' l0-test.log || true
           else
             echo "l0-test.log not found in final gate"
+            failed=1
+          fi
+
+          if [ "${RUN_PREINSTALL_L0_TESTS_OUTCOME}" != "success" ]; then
+            echo "PreinstallManager L0 test execution step failed (non-zero exit)"
+            failed=1
+          fi
+
+          if [ -f l0-preinstall-test.log ]; then
+            echo "==== PreinstallManager: Failed test cases (final gate) ===="
+            grep -E '^\[  FAILED  \]' l0-preinstall-test.log || true
+            grep -E '^FAIL:' l0-preinstall-test.log || true
+          else
+            echo "l0-preinstall-test.log not found in final gate"
             failed=1
           fi
 
@@ -475,7 +590,7 @@ jobs:
 
           genhtml \
             -o "$ARTIFACT_ROOT/coverage" \
-            -t "entservices-appmanagers AppManagers L0 coverage" \
+            -t "entservices-appmanagers L0 coverage (RuntimeManager + PreinstallManager)" \
             filtered_coverage.info || true
 
       - name: Upload artifacts
@@ -488,4 +603,5 @@ jobs:
             coverage.info
             filtered_coverage.info
             l0-test.log
+            l0-preinstall-test.log
           if-no-files-found: warn

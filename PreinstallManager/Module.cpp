@@ -18,5 +18,16 @@
 */
 
 #include "Module.h"
+#include <interfaces/IPreinstallManager.h>
 
 MODULE_NAME_DECLARATION(BUILD_REFERENCE)
+
+namespace WPEFramework {
+
+ENUM_CONVERSION_BEGIN(Exchange::IPreinstallManager::State)
+    { Exchange::IPreinstallManager::State::NOT_STARTED, _TXT("NOT_STARTED") },
+    { Exchange::IPreinstallManager::State::IN_PROGRESS, _TXT("IN_PROGRESS") },
+    { Exchange::IPreinstallManager::State::COMPLETED,   _TXT("COMPLETED")   },
+ENUM_CONVERSION_END(Exchange::IPreinstallManager::State)
+
+} // namespace WPEFramework
