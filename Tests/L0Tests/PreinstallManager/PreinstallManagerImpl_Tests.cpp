@@ -392,8 +392,15 @@ uint32_t Test_Impl_StartPreinstall_ForceInstall_InstallsAllPackages()
     std::string tmpDir = MandatoryTmpDir("force");
     if (tmpDir.empty()) { return tr.failures; }
 
-    MakeSubDir(tmpDir, "pkg1");
-    MakeSubDir(tmpDir, "pkg2");
+    // Verify directory creation succeeds before relying on it for the test
+    const bool pkg1ok = MakeSubDir(tmpDir, "pkg1");
+    const bool pkg2ok = MakeSubDir(tmpDir, "pkg2");
+    L0Test::ExpectTrue(tr, pkg1ok, "MakeSubDir(pkg1) created successfully");
+    L0Test::ExpectTrue(tr, pkg2ok, "MakeSubDir(pkg2) created successfully");
+    if (!pkg1ok || !pkg2ok) {
+        RemoveDirContents(tmpDir);
+        return tr.failures;
+    }
 
     L0Test::FakePackageInstaller installer;
     installer.SetGetConfigResult(WPEFramework::Core::ERROR_NONE);
@@ -412,6 +419,9 @@ uint32_t Test_Impl_StartPreinstall_ForceInstall_InstallsAllPackages()
     const WPEFramework::Core::hresult result = impl->StartPreinstall(true);
     L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
         "StartPreinstall(forceInstall=true) returns ERROR_NONE when all packages install OK");
+    // Verify the PackageManager was obtained (Register called once by createPackageManagerObject)
+    L0Test::ExpectEqU32(tr, installer.registerCalls.load(), 1u,
+        "createPackageManagerObject invoked installer Register() once");
     L0Test::ExpectEqU32(tr, installer.installCalls.load(), 2u,
         "Install() called once for each of the 2 packages");
 
