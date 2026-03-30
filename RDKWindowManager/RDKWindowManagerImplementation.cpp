@@ -22,6 +22,7 @@
 #include <mutex>
 #include <boost/filesystem.hpp>
 #include <boost/format.hpp>
+#include <fstream>
 #include <rdkwindowmanager/include/compositorcontroller.h>
 #include <rdkwindowmanager/include/application.h>
 #include <rdkwindowmanager/include/logger.h>
@@ -266,8 +267,32 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
                   
                   if (success && gScreenshotData && gScreenshotSize > 0)
                   {
+                      // Dump raw image data before encoding
+                      std::ofstream rawDumpFile("/tmp/screenshot_raw.bin", std::ios::out | std::ios::binary | std::ios::trunc);
+                      if (true == rawDumpFile.is_open())
+                      {
+                          rawDumpFile.write(reinterpret_cast<char*>(gScreenshotData), gScreenshotSize);
+                          rawDumpFile.close();
+                          LOGWARN("Screenshot raw data dumped to /tmp/screenshot_raw.bin (%zu bytes)", gScreenshotSize);
+                      }
+                      else
+                      {
+                          LOGWARN("Failed to open /tmp/screenshot_raw.bin for writing raw screenshot data");
+                      }
+                      
                       // Encode the screenshot data as base64
                       Utils::String::imageEncoder(gScreenshotData, gScreenshotSize, true, gScreenshotImageData);
+
+                      std::ofstream encodedDumpFile("/tmp/base64encoded", std::ios::out | std::ios::trunc);
+                      if (true == encodedDumpFile.is_open())
+                      {
+                          encodedDumpFile << gScreenshotImageData;
+                          encodedDumpFile.close();
+                      }
+                      else
+                      {
+                          LOGWARN("Failed to open /tmp/base64encoded for writing screenshot data");
+                      }
                       
                       // Free the buffer immediately after encoding to avoid retaining memory
                       free(gScreenshotData);
