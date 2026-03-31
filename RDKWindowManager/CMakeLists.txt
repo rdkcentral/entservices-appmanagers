@@ -48,6 +48,10 @@ set_target_properties(${MODULE_NAME} PROPERTIES
 
 set_source_files_properties(RDKWindowManager.cpp PROPERTIES COMPILE_FLAGS "-fexceptions")
 
+target_include_directories(${MODULE_NAME}
+        PRIVATE
+                ${CMAKE_CURRENT_SOURCE_DIR}/../helpers)
+
 target_link_libraries(${MODULE_NAME}
     PRIVATE
         CompileSettingsDebug::CompileSettingsDebug
@@ -59,9 +63,12 @@ install(TARGETS ${MODULE_NAME}
 
 add_library(${PLUGIN_IMPLEMENTATION} SHARED
     RDKWindowManagerImplementation.cpp
+    RDKWindowManagerTelemetryReporting.cpp
     Module.cpp)
 
-include_directories(../helpers)
+target_include_directories(${PLUGIN_IMPLEMENTATION}
+        PRIVATE
+                ${CMAKE_CURRENT_SOURCE_DIR}/../helpers)
 
 set_target_properties(${PLUGIN_IMPLEMENTATION} PROPERTIES
         CXX_STANDARD 11
@@ -73,10 +80,10 @@ include_directories(BEFORE ${RDK_WINDOW_MANAGER_INCLUDES})
 
 if (NOT RDK_SERVICES_TEST AND NOT RDK_SERVICES_L1_TEST)
         target_link_libraries(${PLUGIN_IMPLEMENTATION} PRIVATE
-        CompileSettingsDebug::CompileSettingsDebug ${NAMESPACE}Plugins::${NAMESPACE}Plugins -lrdkwindowmanager ${PLUGIN_RDK_WINDOW_MANAGER_EXTRA_LIBRARIES})
+        CompileSettingsDebug::CompileSettingsDebug ${NAMESPACE}Plugins::${NAMESPACE}Plugins -lrdkwindowmanager AppManagersHelpers ${PLUGIN_RDK_WINDOW_MANAGER_EXTRA_LIBRARIES})
 else()
         target_link_libraries(${PLUGIN_IMPLEMENTATION} PRIVATE
-        CompileSettingsDebug::CompileSettingsDebug ${NAMESPACE}Plugins::${NAMESPACE}Plugins ${PLUGIN_RDK_WINDOW_MANAGER_EXTRA_LIBRARIES})
+        CompileSettingsDebug::CompileSettingsDebug ${NAMESPACE}Plugins::${NAMESPACE}Plugins AppManagersHelpers ${PLUGIN_RDK_WINDOW_MANAGER_EXTRA_LIBRARIES})
 endif()
 
 install(TARGETS ${PLUGIN_IMPLEMENTATION}

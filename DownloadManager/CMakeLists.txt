@@ -50,6 +50,7 @@ install(TARGETS ${MODULE_NAME}
 
 add_library(${PLUGIN_IMPLEMENTATION} SHARED
     DownloadManagerImplementation.cpp
+    DownloadManagerTelemetryReporting.cpp
     Module.cpp
     DownloadManagerHttpClient.cpp)
 
@@ -69,7 +70,8 @@ endif(RDK_SERVICES_L1_TEST)
 target_link_libraries(${PLUGIN_IMPLEMENTATION}
     PRIVATE
         CompileSettingsDebug::CompileSettingsDebug
-        ${NAMESPACE}Plugins::${NAMESPACE}Plugins)
+        ${NAMESPACE}Plugins::${NAMESPACE}Plugins
+        AppManagersHelpers)
 
 install(TARGETS ${PLUGIN_IMPLEMENTATION}
     DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/${STORAGE_DIRECTORY}/plugins)
