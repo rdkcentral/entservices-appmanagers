@@ -21,6 +21,92 @@ cmake_minimum_required(VERSION 3.3)
 
 find_package(WPEFramework)
 
+# Ensure namespace-scoped plugin/definitions targets exist across toolchains
+# that expose either modern imported targets or legacy *_LIBRARIES variables.
+find_package(${NAMESPACE}Plugins REQUIRED)
+find_package(${NAMESPACE}Definitions QUIET)
+if(NOT ${NAMESPACE}Definitions_FOUND)
+    find_package(${NAMESPACE}Cpc_Definitions QUIET)
+endif()
+
+if(NOT TARGET ${NAMESPACE}Plugins::${NAMESPACE}Plugins)
+    foreach(_plugins_candidate
+            ${NAMESPACE}::Plugins
+            Plugins::Plugins
+            ThunderPlugins::ThunderPlugins)
+        if(TARGET ${_plugins_candidate})
+            add_library(${NAMESPACE}Plugins::${NAMESPACE}Plugins ALIAS ${_plugins_candidate})
+            break()
+        endif()
+    endforeach()
+
+    if(NOT TARGET ${NAMESPACE}Plugins::${NAMESPACE}Plugins)
+        add_library(${NAMESPACE}Plugins::${NAMESPACE}Plugins INTERFACE IMPORTED)
+
+        if(DEFINED ${NAMESPACE}Plugins_INCLUDE_DIRS)
+            set_property(TARGET ${NAMESPACE}Plugins::${NAMESPACE}Plugins
+                APPEND PROPERTY
+                INTERFACE_INCLUDE_DIRECTORIES "${${NAMESPACE}Plugins_INCLUDE_DIRS}")
+        endif()
+
+        if(DEFINED ${NAMESPACE}Plugins_LIBRARIES)
+            set_property(TARGET ${NAMESPACE}Plugins::${NAMESPACE}Plugins
+                APPEND PROPERTY
+                INTERFACE_LINK_LIBRARIES "${${NAMESPACE}Plugins_LIBRARIES}")
+        elseif(DEFINED ${NAMESPACE}Plugins_LIBRARY)
+            set_property(TARGET ${NAMESPACE}Plugins::${NAMESPACE}Plugins
+                APPEND PROPERTY
+                INTERFACE_LINK_LIBRARIES "${${NAMESPACE}Plugins_LIBRARY}")
+        endif()
+    endif()
+endif()
+
+if(NOT TARGET ${NAMESPACE}Definitions::${NAMESPACE}Definitions)
+    foreach(_definitions_candidate
+            ${NAMESPACE}::Definitions
+            Definitions::Definitions
+            ${NAMESPACE}Cpc_Definitions::${NAMESPACE}Cpc_Definitions
+            WPEFrameworkCpc_Definitions::WPEFrameworkCpc_Definitions
+            ThunderDefinitions::ThunderDefinitions)
+        if(TARGET ${_definitions_candidate})
+            add_library(${NAMESPACE}Definitions::${NAMESPACE}Definitions ALIAS ${_definitions_candidate})
+            break()
+        endif()
+    endforeach()
+
+    if(NOT TARGET ${NAMESPACE}Definitions::${NAMESPACE}Definitions)
+        add_library(${NAMESPACE}Definitions::${NAMESPACE}Definitions INTERFACE IMPORTED)
+
+        if(DEFINED ${NAMESPACE}Definitions_INCLUDE_DIRS)
+            set_property(TARGET ${NAMESPACE}Definitions::${NAMESPACE}Definitions
+                APPEND PROPERTY
+                INTERFACE_INCLUDE_DIRECTORIES "${${NAMESPACE}Definitions_INCLUDE_DIRS}")
+        elseif(DEFINED ${NAMESPACE}Cpc_Definitions_INCLUDE_DIRS)
+            set_property(TARGET ${NAMESPACE}Definitions::${NAMESPACE}Definitions
+                APPEND PROPERTY
+                INTERFACE_INCLUDE_DIRECTORIES "${${NAMESPACE}Cpc_Definitions_INCLUDE_DIRS}")
+        endif()
+
+        if(DEFINED ${NAMESPACE}Definitions_LIBRARIES)
+            set_property(TARGET ${NAMESPACE}Definitions::${NAMESPACE}Definitions
+                APPEND PROPERTY
+                INTERFACE_LINK_LIBRARIES "${${NAMESPACE}Definitions_LIBRARIES}")
+        elseif(DEFINED ${NAMESPACE}Definitions_LIBRARY)
+            set_property(TARGET ${NAMESPACE}Definitions::${NAMESPACE}Definitions
+                APPEND PROPERTY
+                INTERFACE_LINK_LIBRARIES "${${NAMESPACE}Definitions_LIBRARY}")
+        elseif(DEFINED ${NAMESPACE}Cpc_Definitions_LIBRARIES)
+            set_property(TARGET ${NAMESPACE}Definitions::${NAMESPACE}Definitions
+                APPEND PROPERTY
+                INTERFACE_LINK_LIBRARIES "${${NAMESPACE}Cpc_Definitions_LIBRARIES}")
+        elseif(DEFINED ${NAMESPACE}Cpc_Definitions_LIBRARY)
+            set_property(TARGET ${NAMESPACE}Definitions::${NAMESPACE}Definitions
+                APPEND PROPERTY
+                INTERFACE_LINK_LIBRARIES "${${NAMESPACE}Cpc_Definitions_LIBRARY}")
+        endif()
+    endif()
+endif()
+
 # All packages that did not deliver a CMake Find script (and some deprecated scripts that need to be removed)
 # are located in the cmake directory. Include it in the search.
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/")
@@ -47,6 +133,10 @@ endif()
 if(DISABLE_SECURITY_TOKEN)
     add_definitions(-DDISABLE_SECURITY_TOKEN)
 endif()
+
+option(AIMANAGERS_TELEMETRY_METRICS_SUPPORT "AIMANAGERS_TELEMETRY_METRICS_SUPPORT" OFF)
+
+add_subdirectory(helpers)
 
 if(PLUGIN_RDK_WINDOW_MANAGER)
     add_subdirectory(RDKWindowManager)
@@ -83,6 +173,7 @@ endif()
 if(PLUGIN_TELEMETRYMETRICS)
     add_subdirectory(TelemetryMetrics)
 endif()
+
 
 if(WPEFRAMEWORK_CREATE_IPKG_TARGETS)
     set(CPACK_GENERATOR "DEB")

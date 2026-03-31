@@ -20,40 +20,32 @@
 #pragma once
 
 #include "AppManagerImplementation.h"
-#include <interfaces/ITelemetryMetrics.h>
-
-#define TELEMETRY_MARKER_LAUNCH_TIME                         "OverallLaunchTime_split"
-#define TELEMETRY_MARKER_LAUNCH_ERROR                        "AppLaunchError_split"
-#define TELEMETRY_MARKER_CLOSE_TIME                          "AppCloseTime_split"
-#define TELEMETRY_MARKER_CLOSE_ERROR                         "AppCloseError_split"
-#define TELEMETRY_MARKER_APP_CRASHED                         "AppCrashed_split"
+#include "TelemetryMarkers.h"
+#include "TelemetryReportingBase.h"
 
 namespace WPEFramework
 {
 namespace Plugin
 {
 
-class AppManagerTelemetryReporting
+class AppManagerTelemetryReporting : public Utils::TelemetryReportingBase
 {
     public /*methods*/:
         AppManagerTelemetryReporting(const AppManagerTelemetryReporting&) = delete;
         AppManagerTelemetryReporting& operator=(const AppManagerTelemetryReporting&) = delete;
         static AppManagerTelemetryReporting& getInstance();
-        time_t getCurrentTimestamp();
         void reportTelemetryData(const std::string& appId, AppManagerImplementation::CurrentAction currentAction);
+        void recordLaunchTime(const std::string& appId, int launchTimeMs);
         void reportTelemetryDataOnStateChange(const string& appId, const Exchange::ILifecycleManager::LifecycleState newState);
         void reportTelemetryErrorData(const std::string& appId, AppManagerImplementation::CurrentAction currentAction, AppManagerImplementation::CurrentActionError errorCode);
+        void reportAppCrashedTelemetry(const std::string& appId, const std::string& appInstanceId, const std::string& crashReason);
         void initialize(PluginHost::IShell* service);
 
     private /*methods*/:
         AppManagerTelemetryReporting();
         ~AppManagerTelemetryReporting();
-        Core::hresult createTelemetryMetricsPluginObject();
 
     private /*members*/:
-        mutable Core::CriticalSection mAdminLock;
-        Exchange::ITelemetryMetrics* mTelemetryMetricsObject;
-        PluginHost::IShell* mCurrentservice;
 };
 
 } /* namespace Plugin */

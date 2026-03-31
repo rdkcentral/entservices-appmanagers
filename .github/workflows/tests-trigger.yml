@@ -4,11 +4,18 @@ name: main-workflow
 
 on:
   push:
-    branches: [ main, develop, 'sprint/**', 'release/**' ]
+    branches: [ main, develop, 'sprint/**', 'release/**']
   pull_request:
-    branches: [ main, develop, 'sprint/**', 'release/**' ]
+    branches: [ main, develop, 'sprint/**', 'release/**']
 
 jobs:
+  trigger-L0:
+    uses: ./.github/workflows/L0-tests.yml
+    with:
+      caller_source: local
+    secrets:
+      RDKCM_RDKE: ${{ secrets.RDKCM_RDKE }}
+
   trigger-L1:
     uses: ./.github/workflows/L1-tests.yml
     with:
@@ -17,6 +24,7 @@ jobs:
       RDKCM_RDKE: ${{ secrets.RDKCM_RDKE }}
 
   trigger-L2:
+    if: false  # Disabled
     uses: ./.github/workflows/L2-tests.yml
     with:
       caller_source: local

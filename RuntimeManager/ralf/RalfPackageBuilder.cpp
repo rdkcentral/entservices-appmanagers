@@ -31,9 +31,12 @@ namespace ralf
     {
         // Let us extract the mount points.
         std::string packageLayers = RALF_GRAPHICS_LAYER_ROOTFS;
-        for (const auto &package : mRalfPackages)
+        // RDKEMW-15736 We need to reverse iterate to maintain the correct order of layers
+        // see https://docs.kernel.org/filesystems/overlayfs.html#multiple-lower-layers for more details.
+
+        for (auto package = mRalfPackages.crbegin(); package != mRalfPackages.crend(); ++package)
         {
-            packageLayers += ":" + package.second; // Append mount paths
+            packageLayers += ":" + package->second; // Append mount paths
         }
         // Create OCI rootfs package based on parsed data
         return generateOCIRootfs(appInstanceId, packageLayers, uid, gid, ociRootfsPath);
@@ -73,25 +76,39 @@ namespace ralf
     {
         // We need to unmount the overlayfs mount point if exists
         std::string overlayMountPath = RALF_APP_ROOTFS_DIR + appInstanceId + "/rootfs";
-        LOGDBG("Checking and unmounting overlayfs at path: %s\n", overlayMountPath.c_str());
+        LOGDBG("Checking and unmounting overlayfs at path: %s", overlayMountPath.c_str());
         bool status = checkIfPathExists(overlayMountPath);
         if (status)
         {
-            status = unmountOverlayfs(overlayMountPath);
-            if (!status)
+            bool unmountStatus = unmountOverlayfs(overlayMountPath);
+            if (!unmountStatus)
             {
-                LOGERR("Failed to unmount overlayfs at path: %s\n", overlayMountPath.c_str());
-                status = false;
+                if (EINVAL == errno)
+                {
+                    // Path exists but is not currently mounted (e.g. partial failure) — treat as non-fatal
+                    LOGWARN("Overlayfs at path: %s is not mounted, proceeding with cleanup", overlayMountPath.c_str());
+                    unmountStatus = true;
+                }
+                else
+                {
+                    LOGERR("Failed to unmount overlayfs at path: %s", overlayMountPath.c_str());
+                }
             }
             else
             {
-                LOGDBG("Successfully unmounted overlayfs at path: %s\n", overlayMountPath.c_str());
-                status = true;
+                LOGDBG("Successfully unmounted overlayfs at path: %s", overlayMountPath.c_str());
             }
+            // Always attempt directory cleanup when the app directory exists, regardless of mount state
+            std::string ralfAppDir = RALF_APP_ROOTFS_DIR + appInstanceId;
+            if (!removeDirectoryRecursively(ralfAppDir))
+            {
+                LOGWARN("Failed to remove ralf app directory: %s", ralfAppDir.c_str());
+            }
+            status = unmountStatus;
         }
         else
         {
-            LOGDBG("No overlayfs mount exists at path: %s\n", overlayMountPath.c_str());
+            LOGDBG("No overlayfs mount exists at path: %s", overlayMountPath.c_str());
             status = false;
         }
         return status;

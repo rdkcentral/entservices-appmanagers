@@ -132,6 +132,8 @@ namespace Plugin {
                 LOGINFO("DM: Download path ready at '%s'", mDownloadPath.c_str());
                 mDownloadThreadPtr = std::unique_ptr<std::thread>(new std::thread(&DownloadManagerImplementation::downloaderRoutine, this, 1));
             }
+
+            DownloadManagerTelemetryReporting::getInstance().initialize(service);
         }
         else
         {
@@ -176,6 +178,8 @@ namespace Plugin {
         mCurrentservice->Release();
         mCurrentservice = nullptr;
 
+        DownloadManagerTelemetryReporting::getInstance().reset();
+
         return result;
     }
 
@@ -192,11 +196,13 @@ namespace Plugin {
             LOGERR("DM: Download failed - no internet! url=%s priority=%d retries=%u rateLimit=%u",
                    url.c_str(), options.priority, options.retries, options.rateLimit);
             result = Core::ERROR_UNAVAILABLE;
+            DownloadManagerTelemetryReporting::getInstance().recordDownloadErrorTelemetry("NO_INTERNET", static_cast<int>(DownloadReason::DOWNLOAD_FAILURE));
         }
         else if (url.empty())
         {
             LOGERR("DM: Download failed - empty URL! priority=%d retries=%u rateLimit=%u",
                    options.priority, options.retries, options.rateLimit);
+            DownloadManagerTelemetryReporting::getInstance().recordDownloadErrorTelemetry("EMPTY_URL", static_cast<int>(DownloadReason::DOWNLOAD_FAILURE));
         }
         else
         {
@@ -457,6 +463,8 @@ namespace Plugin {
                     downloadRequest->getFileLocator().c_str(), downloadRequest->getRetries(),
                     downloadRequest->getRateLimit());
 
+            time_t downloadStartTime = DownloadManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
+
             for (int i = 0; i < downloadRequest->getRetries(); ++i)
             {
                 attemptCount = i + 1;
@@ -516,19 +524,23 @@ namespace Plugin {
             }
 
             DownloadReason reason = static_cast<DownloadReason>(DOWNLOAD_REASON_NONE);
+            int64_t totalDownloadTime = DownloadManagerTelemetryReporting::getInstance().getCurrentTimestampMs() - downloadStartTime;
             switch (status)
             {
                 case DownloadManagerHttpClient::Status::DiskError:
                     reason = DownloadReason::DISK_PERSISTENCE_FAILURE;
                     LOGERR("DM: Download failed due to disk error: id=%s", downloadRequest->getId().c_str());
+                    DownloadManagerTelemetryReporting::getInstance().recordDownloadErrorTelemetry(downloadRequest->getId(), static_cast<int>(DownloadReason::DISK_PERSISTENCE_FAILURE));
                     break;
 
                 case DownloadManagerHttpClient::Status::HttpError:
                     reason = DownloadReason::DOWNLOAD_FAILURE;
                     LOGERR("DM: Download failed due to HTTP error: id=%s", downloadRequest->getId().c_str());
+                    DownloadManagerTelemetryReporting::getInstance().recordDownloadErrorTelemetry(downloadRequest->getId(), static_cast<int>(DownloadReason::DOWNLOAD_FAILURE));
                     break;
 
                 default:
+                    DownloadManagerTelemetryReporting::getInstance().recordDownloadTimeTelemetry(downloadRequest->getId(), totalDownloadTime);
                     break; /* Do nothing */
             }
 
