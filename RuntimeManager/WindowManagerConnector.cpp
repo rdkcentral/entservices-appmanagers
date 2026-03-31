@@ -18,6 +18,7 @@
 */
 
 #include "WindowManagerConnector.h"
+#include "RuntimeManagerImplementation.h"
 #include <fstream>
 #include <random>
 
@@ -25,7 +26,7 @@ namespace WPEFramework {
 namespace Plugin {
 
 WindowManagerConnector::WindowManagerConnector()
-: mWindowManager(nullptr), mWindowManagerNotification(*this)
+: mWindowManager(nullptr), mWindowManagerNotification(*this), mRuntimeManager(nullptr)
 {
     LOGINFO("Create WindowManagerConnector Instance");
 }
@@ -35,7 +36,7 @@ WindowManagerConnector::~WindowManagerConnector()
     LOGINFO("Delete WindowManagerConnector Instance");
 }
 
-bool WindowManagerConnector::initializePlugin(PluginHost::IShell* service)
+bool WindowManagerConnector::initializePlugin(PluginHost::IShell* service, class RuntimeManagerImplementation* runtimeManager)
 {
     bool ret = false;
     if (nullptr == service)
@@ -50,6 +51,7 @@ bool WindowManagerConnector::initializePlugin(PluginHost::IShell* service)
     {
         LOGINFO("Created WindowManager Object \n");
         mWindowManager->AddRef();
+        mRuntimeManager = runtimeManager;
         ret = true;
         mPluginInitialized = true;
         Core::hresult registerResult = mWindowManager->Register(&mWindowManagerNotification);
@@ -86,18 +88,14 @@ bool WindowManagerConnector::createDisplay(const string& appInstanceId , const s
         LOGERR("WindowManagerConnector is not initialized \n");
         return false;
     }
-    JsonObject displayParams;
-    displayParams["client"] = appInstanceId;
-    displayParams["displayName"] = displayName;
+    uint32_t displayWidth=0, displayHeight=0;
+    uint32_t virtualWidth=0, virtualHeight=0;
+    bool virtualDisplay=false;
+    bool topmost=false, focus=false;
+    
+    LOGINFO("Creating display [%s] for application [%s] \n", displayName.c_str(), appInstanceId.c_str());
 
-    displayParams["ownerId"] = userId;
-    displayParams["groupId"] = groupId;
-    string displayParamsString;
-    displayParams.ToString(displayParamsString);
-
-    LOGINFO("Creating display [%s] for application [%s] with params [%s] \n", displayName.c_str(), appInstanceId.c_str(), displayParamsString.c_str());//remove
-
-    Core::hresult result = mWindowManager->CreateDisplay(displayParamsString);
+    Core::hresult result = mWindowManager->CreateDisplay(appInstanceId, displayName, displayWidth, displayHeight, virtualDisplay, virtualWidth, virtualHeight, userId, groupId, topmost, focus);
     if (Core::ERROR_NONE != result)
     {
         LOGERR("Failed to create display for application [%s] error [%d] \n",appInstanceId.c_str(), result);
@@ -173,6 +171,19 @@ void WindowManagerConnector::getDisplayInfo(const string& appInstanceId , string
 
 void WindowManagerConnector::WindowManagerNotification::OnUserInactivity(const double minutes)
 {
+}
+
+void WindowManagerConnector::WindowManagerNotification::OnDisconnected(const std::string& client)
+{
+    _parent.onWindowManagerDisconnected(client);
+}
+
+void WindowManagerConnector::onWindowManagerDisconnected(const std::string& client)
+{
+    if (nullptr != mRuntimeManager)
+    {
+        mRuntimeManager->onWindowManagerDisconnected(client);
+    }
 }
 
 } // namespace Plugin

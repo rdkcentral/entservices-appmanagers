@@ -26,7 +26,9 @@
 #include <iostream>
 
 #include <cstring> //for strerror
+#include <cstdio>  //for ::remove
 
+#include <dirent.h>
 #include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -291,6 +293,64 @@ namespace ralf
         Json::StreamWriterBuilder writer;
         writer["indentation"] = ""; // No indentation
         return Json::writeString(writer, node);
+    }
+    bool removeDirectoryRecursively(const std::string &path)
+    {
+        DIR *dir = opendir(path.c_str());
+        if (nullptr == dir)
+        {
+            LOGERR("Failed to open directory: %s, error: %s", path.c_str(), strerror(errno));
+            return false;
+        }
+
+        struct dirent *entry;
+        bool status = true;
+
+        while (nullptr != (entry = readdir(dir)))
+        {
+            // Skip "." and ".."
+            if (strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0)
+                continue;
+
+            std::string entryPath = path + "/" + entry->d_name;
+
+            struct stat entryStat;
+            if (lstat(entryPath.c_str(), &entryStat) != 0)
+            {
+                LOGERR("Failed to stat entry: %s, error: %s", entryPath.c_str(), strerror(errno));
+                status = false;
+                continue;
+            }
+
+            if (S_ISDIR(entryStat.st_mode))
+            {
+                // Recursively remove subdirectory
+                if (!removeDirectoryRecursively(entryPath))
+                {
+                    status = false;
+                }
+            }
+            else
+            {
+                // Remove file or symlink (lstat ensures symlinks to dirs are not recursed into)
+                if (::remove(entryPath.c_str()) != 0)
+                {
+                    LOGERR("Failed to remove file: %s, error: %s", entryPath.c_str(), strerror(errno));
+                    status = false;
+                }
+            }
+        }
+
+        closedir(dir);
+
+        // Finally, remove the now-empty directory
+        if (rmdir(path.c_str()) != 0)
+        {
+            LOGERR("Failed to remove directory: %s, error: %s", path.c_str(), strerror(errno));
+            status = false;
+        }
+
+        return status;
     }
 
 } // namespace ralf

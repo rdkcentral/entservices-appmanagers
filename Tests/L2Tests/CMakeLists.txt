@@ -61,11 +61,11 @@ endif (MOCKACCESSOR_LIBRARIES)
 target_include_directories(
     ${MODULE_NAME} PRIVATE ./
     ../../helpers
-    ../../../entservices-testframework/Tests/mocks
-    ../../../entservices-testframework/Tests/mocks/thunder
-    ../../../entservices-testframework/Tests/mocks/devicesettings
-    ../../../entservices-testframework/Tests/mocks/MockPlugin
-    ../../../entservices-testframework/Tests/L2Tests/L2TestsPlugin
+    ../../../entservices-appmanagers/Tests/mocks
+    ../../../entservices-appmanagers/Tests/mocks/thunder
+    ../../../entservices-appmanagers/Tests/mocks/devicesettings
+    ../../../entservices-appmanagers/Tests/mocks/MockPlugin
+    ../../../entservices-appmanagers/Tests/L2Tests/L2TestsPlugin
     ${CMAKE_INSTALL_PREFIX}/include
     )
 

@@ -534,3 +534,180 @@ TEST_F(DownloadManagerTest, PluginDownloadManagerAPIs) {
     // Allow time for cleanup
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
 }
+
+/* Test Case: Unregister a notification that is not in the list
+ * Covers: Unregister failure path (lines 92-93 of DownloadManagerImplementation.cpp)
+ * Validates that Unregister returns Core::ERROR_GENERAL when the notification is not found.
+ *
+ * Design: Unregister's failure path (lines 92-93) performs only a pointer-equality
+ * search via std::find and then LOGERR + return ERROR_GENERAL.  No virtual method is
+ * ever dispatched on the notification pointer in that path.  A stack-allocated
+ * NotificationTest object is therefore sufficient — its vtable is never called,
+ * ~NotificationTest() is '= default' (no delete-this), and the stack frame unwinds
+ * normally.  This avoids any heap-lifecycle or vtable-dispatch issues.
+ */
+TEST_F(DownloadManagerImplementationTest, UnregisterNotificationNotFound) {
+    Plugin::DownloadManagerImplementation* impl = getRawImpl();
+    ASSERT_NE(impl, nullptr) << "Implementation pointer should be valid";
+
+    Core::hresult initResult = impl->Initialize(mServiceMock);
+    EXPECT_EQ(Core::ERROR_NONE, initResult) << "Initialize should succeed";
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+    // Stack-allocated notification: never registered with impl, so std::find will not
+    // locate it and the else branch at lines 92-93 is taken.  No virtual dispatch
+    // occurs on this pointer inside the failure path of Unregister.
+    NotificationTest pendingNotification;
+    Core::hresult result = impl->Unregister(&pendingNotification);
+    TEST_LOG("Unregister (not in list) returned: %u", result);
+    EXPECT_EQ(Core::ERROR_GENERAL, result) << "Unregister should return ERROR_GENERAL when notification is not in the list";
+}
+
+/* Test Case: Delete an existing file (success path)
+ * Covers: Delete success path (lines 348-349 of DownloadManagerImplementation.cpp)
+ * Validates that Delete returns Core::ERROR_NONE when the file exists and no download is active for it.
+ */
+TEST_F(DownloadManagerImplementationTest, DeleteExistingFile) {
+    Plugin::DownloadManagerImplementation* impl = getRawImpl();
+    ASSERT_NE(impl, nullptr) << "Implementation pointer should be valid";
+
+    Core::hresult initResult = impl->Initialize(mServiceMock);
+    EXPECT_EQ(Core::ERROR_NONE, initResult) << "Initialize should succeed";
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+    // Create a temporary file that will be deleted by the plugin
+    const string tempFilePath = "/tmp/test_dm_delete_target.bin";
+    FILE* fp = fopen(tempFilePath.c_str(), "wb");
+    ASSERT_NE(fp, nullptr) << "Should be able to create temp file for delete test";
+    fclose(fp);
+
+    // Delete the existing file - no active download, so the else branch is taken, remove() succeeds
+    Core::hresult result = impl->Delete(tempFilePath);
+    TEST_LOG("Delete (existing file) returned: %u", result);
+    EXPECT_EQ(Core::ERROR_NONE, result) << "Delete should return ERROR_NONE when file exists and is not actively downloading";
+}
+
+/* Test Case: RateLimit when no download is active
+ * Covers: RateLimit failure path with null mCurrentDownload (line 418 of DownloadManagerImplementation.cpp)
+ * Validates that RateLimit returns Core::ERROR_GENERAL when no download is currently active.
+ */
+TEST_F(DownloadManagerImplementationTest, RateLimitNoActiveDownload) {
+    Plugin::DownloadManagerImplementation* impl = getRawImpl();
+    ASSERT_NE(impl, nullptr) << "Implementation pointer should be valid";
+
+    Core::hresult initResult = impl->Initialize(mServiceMock);
+    EXPECT_EQ(Core::ERROR_NONE, initResult) << "Initialize should succeed";
+
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+    // Call RateLimit with no queued or active download - mCurrentDownload is null
+    // The condition (!downloadId.empty() && mCurrentDownload != nullptr && mHttpClient) is false
+    // because mCurrentDownload is null, so the else branch (line 418 LOGERR) is taken
+    Core::hresult result = impl->RateLimit("3001", 512);
+    TEST_LOG("RateLimit (no active download) returned: %u", result);
+    EXPECT_EQ(Core::ERROR_GENERAL, result) << "RateLimit should return ERROR_GENERAL when no download is currently active";
+}
+
+/* Test Case: Control APIs (Pause, Resume, Cancel, Progress) with a matching active download ID
+ * Also covers: priority queue job selection and DiskError switch case.
+ *
+ * Covers (DownloadManagerImplementation.cpp):
+ *   - Lines 252-253: Pause success path (mHttpClient->pause() + LOGINFO)
+ *   - Lines 282-283: Resume success path (mHttpClient->resume() + LOGINFO)
+ *   - Lines 312-315: Cancel success path (mCurrentDownload->cancel() + mHttpClient->cancel())
+ *   - Lines 370-371: Progress success path (mHttpClient->getProgress() + LOGINFO)
+ *   - Line 342:      Delete in-progress warning (LOGWARN when file is actively downloading)
+ *   - Lines 579-581: Priority queue job selection log in pickDownloadJob
+ *   - Lines 521-524: DiskError switch case when cancel aborts the curl transfer
+ *
+ * Covers (DownloadManagerHttpClient.h inline functions):
+ *   - pause(), resume(), cancel(), getProgress()
+ *
+ * Strategy: Queue a single priority download so the thread picks it up immediately via the
+ * priority queue. Sleep briefly after queuing to give the downloader thread time to call
+ * pickDownloadJob (logging line 579) and enter curl_easy_perform. Then call Pause, Resume,
+ * Progress, Delete (with the download's file locator), and Cancel using the exact downloadId
+ * returned by Download(). Cancel signals bCancel=true; the next progressCb invocation
+ * returns non-zero, which causes curl to abort with CURLE_WRITE_ERROR -> DiskError status
+ * -> lines 521-524 are reached in the switch statement.
+ */
+TEST_F(DownloadManagerImplementationTest, ActiveDownloadControlAndDeleteInProgress) {
+    Plugin::DownloadManagerImplementation* impl = getRawImpl();
+    ASSERT_NE(impl, nullptr) << "Implementation pointer should be valid";
+
+    Core::hresult initResult = impl->Initialize(mServiceMock);
+    EXPECT_EQ(Core::ERROR_NONE, initResult) << "Initialize should succeed";
+
+    // Queue a single high-priority download. The downloader thread wakes immediately and
+    // calls pickDownloadJob(), which takes from the priority queue (line 579 log).
+    Exchange::IDownloadManager::Options priorityOptions;
+    priorityOptions.priority = true;
+    priorityOptions.retries = 1;
+    priorityOptions.rateLimit = 512;
+
+    string activeDownloadId;
+    Core::hresult dlResult = impl->Download("http://example.com/active_test.zip", priorityOptions, activeDownloadId);
+    EXPECT_EQ(Core::ERROR_NONE, dlResult) << "Download should be queued successfully";
+    EXPECT_FALSE(activeDownloadId.empty()) << "Should receive a valid downloadId";
+    TEST_LOG("Priority download queued with id: %s", activeDownloadId.c_str());
+
+    // Construct the expected file locator (mDownloadPath + "package" + id)
+    // mDownloadPath is "/tmp/downloads/" from the fixture ConfigLine
+    const string expectedFileLocator = string("/tmp/downloads/package") + activeDownloadId;
+
+    // Allow the downloader thread time to call pickDownloadJob (setting mCurrentDownload)
+    // and enter curl_easy_perform so mCurrentDownload is non-null and matches activeDownloadId
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+
+    // --- Pause with the matching active download ID ---
+    // If mCurrentDownload == activeDownloadId: calls mHttpClient->pause() (lines 252-253)
+    // If download already finished: returns ERROR_GENERAL (acceptable - timing-dependent)
+    Core::hresult pauseResult = impl->Pause(activeDownloadId);
+    TEST_LOG("Pause (matching id=%s) returned: %u", activeDownloadId.c_str(), pauseResult);
+    // Accept both outcomes; when the match path is taken, pauseResult == ERROR_NONE
+    if (Core::ERROR_NONE == pauseResult) {
+        TEST_LOG("Pause matched active download - success path covered");
+    }
+
+    // --- Resume with the matching active download ID ---
+    // If mCurrentDownload == activeDownloadId: calls mHttpClient->resume() (lines 282-283)
+    Core::hresult resumeResult = impl->Resume(activeDownloadId);
+    TEST_LOG("Resume (matching id=%s) returned: %u", activeDownloadId.c_str(), resumeResult);
+    if (Core::ERROR_NONE == resumeResult) {
+        TEST_LOG("Resume matched active download - success path covered");
+    }
+
+    // --- Progress with the matching active download ID ---
+    // If mCurrentDownload == activeDownloadId: reads mHttpClient->getProgress() (lines 370-371)
+    uint8_t percent = 0xFF;
+    Core::hresult progressResult = impl->Progress(activeDownloadId, percent);
+    TEST_LOG("Progress (matching id=%s) returned: %u, percent: %u", activeDownloadId.c_str(), progressResult, percent);
+    if (Core::ERROR_NONE == progressResult) {
+        TEST_LOG("Progress matched active download - success path covered, percent: %u", percent);
+        EXPECT_LE(percent, 100) << "Progress percent should be 0-100 when active";
+    }
+
+    // --- Delete with the in-progress file locator ---
+    // If mCurrentDownload is active AND fileLocator matches: LOGWARN (line 342)
+    // Otherwise: remove() is attempted on the file locator
+    Core::hresult deleteInProgressResult = impl->Delete(expectedFileLocator);
+    TEST_LOG("Delete (in-progress locator=%s) returned: %u", expectedFileLocator.c_str(), deleteInProgressResult);
+    // When the match is found, result stays ERROR_GENERAL (LOGWARN path, no result assignment)
+    // When not matching, remove() on a non-existent file returns ENOENT -> ERROR_GENERAL as well
+
+    // --- Cancel with the matching active download ID ---
+    // If mCurrentDownload == activeDownloadId: sets isCancelled=true and calls mHttpClient->cancel()
+    // (lines 312-315). bCancel=true causes progressCb to return non-zero -> curl CURLE_WRITE_ERROR
+    // -> DiskError status -> switch case DISK_PERSISTENCE_FAILURE (lines 521-524)
+    Core::hresult cancelResult = impl->Cancel(activeDownloadId);
+    TEST_LOG("Cancel (matching id=%s) returned: %u", activeDownloadId.c_str(), cancelResult);
+    if (Core::ERROR_NONE == cancelResult) {
+        TEST_LOG("Cancel matched active download - success path covered");
+    }
+
+    // Allow time for the downloader thread to process the cancellation and complete the job
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+}

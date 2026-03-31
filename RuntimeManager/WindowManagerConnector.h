@@ -47,6 +47,7 @@ namespace Plugin {
                 END_INTERFACE_MAP
 
                 virtual void OnUserInactivity(const double minutes) override;
+                virtual void OnDisconnected(const std::string& client) override;
 
             private:
                 WindowManagerConnector& _parent;
@@ -60,15 +61,17 @@ namespace Plugin {
             WindowManagerConnector& operator=(const WindowManagerConnector&) = delete;
 
         public:
-            bool initializePlugin(PluginHost::IShell* service); //, IEventHandler* eventHandler
+            bool initializePlugin(PluginHost::IShell* service, class RuntimeManagerImplementation* runtimeManager);
             void releasePlugin();
             bool createDisplay(const string& appInstanceId , const string& displayName, const uint32_t& userId, const uint32_t& groupId);
             bool isPluginInitialized();
-            void getDisplayInfo(const string& appInstanceId , string& xdgRuntimeDir , string& waylandDisplayName);\
+            void getDisplayInfo(const string& appInstanceId , string& xdgRuntimeDir , string& waylandDisplayName);
+            void onWindowManagerDisconnected(const std::string& client);
         private:
             Exchange::IRDKWindowManager* mWindowManager;
             Core::Sink<WindowManagerNotification> mWindowManagerNotification;
             bool mPluginInitialized = false;
+            class RuntimeManagerImplementation* mRuntimeManager;
     };
 } // namespace Plugin
 } // namespace WPEFramework

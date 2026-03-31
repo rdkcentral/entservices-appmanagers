@@ -32,6 +32,22 @@ example: ./bin/act -W .github/workflows/tests-trigger.yml -s GITHUB_TOKEN=<your 
 
 NOTE: By default test-trigger.yml will trigger all tests(L1, L2 and etc) parallely, if you want any one test alone to be triggered/verified then remove the other trigger rules from the tests-trigger.yml
 ```
+
+##### Local L1 run using CMake in l1build (no entservices-testframework checkout) #####
+```
+1. Initial setup + full L1 dependency build + test run:
+	./Tests/run_l1_from_l1build.sh
+
+2. Fast rebuild after code/test updates from current repo working tree:
+	./Tests/rebuild_l1_from_l1build.sh
+
+3. Run only selected tests on rebuild (optional):
+	GTEST_FILTER="PreinstallManagerTest.*" ./Tests/rebuild_l1_from_l1build.sh
+
+4. Results JSON:
+	./l1build/rdkL1TestResults.json
+```
+
 # testframework Repo Handling
 tf-trigger.yml file of testframework repo will get loaded into github action whenever there is a pull or push happens. This file in-turn triggers all individual repos L1, L2, L2-oop tests. testframework repo test can run only in github workflow.
 

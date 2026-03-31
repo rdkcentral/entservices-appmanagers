@@ -31,12 +31,16 @@ namespace Plugin {
     TelemetryMetricsImplementation::TelemetryMetricsImplementation()
     {
         LOGINFO("Create TelemetryMetricsImplementation Instance");
+#ifdef ENABLE_T2_INIT
         t2_init((char *) "TelemetryMetrics");
+#endif
     }
 
     TelemetryMetricsImplementation::~TelemetryMetricsImplementation()
     {
+#ifdef ENABLE_T2_INIT
         t2_uninit();
+#endif
         LOGINFO("Delete TelemetryMetricsImplementation Instance");
     }
 

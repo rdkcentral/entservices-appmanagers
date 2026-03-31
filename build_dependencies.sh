@@ -10,7 +10,7 @@ cd ${GITHUB_WORKSPACE}
 #1. Install Dependencies and packages
 
 apt update
-apt install -y libsqlite3-dev libcurl4-openssl-dev valgrind lcov clang libsystemd-dev libboost-all-dev libwebsocketpp-dev meson libcunit1 libcunit1-dev curl protobuf-compiler-grpc libgrpc-dev libgrpc++-dev libunwind-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libjsoncpp-dev
+apt install -y libsqlite3-dev libcurl4-openssl-dev valgrind lcov clang libsystemd-dev libboost-all-dev libwebsocketpp-dev meson libcunit1 libcunit1-dev curl protobuf-compiler-grpc libgrpc-dev libgrpc++-dev libunwind-dev libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev libjsoncpp-dev libyaml-cpp-dev
 pip install jsonref
 
 ############################
@@ -31,16 +31,19 @@ git clone --branch  R4.4.3 https://github.com/rdkcentral/ThunderTools.git
 
 git clone --branch R4.4.1 https://github.com/rdkcentral/Thunder.git
 
-git clone --branch main https://github.com/rdkcentral/entservices-apis.git
+git clone --branch topic/RDKEMW-14505 https://github.com/rdkcentral/entservices-apis.git
 
-git clone https://$GITHUB_TOKEN@github.com/rdkcentral/entservices-testframework.git
+
+git clone -b develop https://github.com/rdkcentral/eshelpers.git
+
+git clone -b develop https://github.com/rdkcentral/libPackage.git
 
 ############################
 # Build Thunder-Tools
 echo "======================================================================================"
 echo "building thunderTools"
 cd ThunderTools
-patch -p1 < $GITHUB_WORKSPACE/entservices-testframework/patches/00010-R4.4-Add-support-for-project-dir.patch
+patch -p1 < $GITHUB_WORKSPACE/Tests/patches/00010-R4.4-Add-support-for-project-dir.patch
 cd -
 
 
@@ -59,11 +62,11 @@ echo "==========================================================================
 echo "building thunder"
 
 cd Thunder
-patch -p1 < $GITHUB_WORKSPACE/entservices-testframework/patches/Use_Legact_Alt_Based_On_ThunderTools_R4.4.3.patch
-patch -p1 < $GITHUB_WORKSPACE/entservices-testframework/patches/error_code_R4_4.patch
-patch -p1 < $GITHUB_WORKSPACE/entservices-testframework/patches/1004-Add-support-for-project-dir.patch
-patch -p1 < $GITHUB_WORKSPACE/entservices-testframework/patches/RDKEMW-733-Add-ENTOS-IDS.patch
-patch -p1 < $GITHUB_WORKSPACE/entservices-testframework/patches/Jsonrpc_dynamic_error_handling.patch
+patch -p1 < $GITHUB_WORKSPACE/Tests/patches/Use_Legact_Alt_Based_On_ThunderTools_R4.4.3.patch
+patch -p1 < $GITHUB_WORKSPACE/Tests/patches/error_code_R4_4.patch
+patch -p1 < $GITHUB_WORKSPACE/Tests/patches/1004-Add-support-for-project-dir.patch
+patch -p1 < $GITHUB_WORKSPACE/Tests/patches/RDKEMW-733-Add-ENTOS-IDS.patch
+patch -p1 < $GITHUB_WORKSPACE/Tests/patches/Jsonrpc_dynamic_error_handling.patch
 cd -
 
 cmake -G Ninja -S Thunder -B build/Thunder \
@@ -80,6 +83,29 @@ cmake --build build/Thunder --target install
 
 
 ############################
+# Build libPackage
+echo "======================================================================================"
+echo "building libPackage"
+
+LEGACY_DIR="${GITHUB_WORKSPACE}/libPackage/include/legacy"
+mkdir -p "${LEGACY_DIR}"
+
+if [ -f "${GITHUB_WORKSPACE}/eshelpers/packager/IPackageImpl.h" ]; then
+    cp "${GITHUB_WORKSPACE}/eshelpers/packager/IPackageImpl.h" "${LEGACY_DIR}/IPackageImpl.h"
+else
+    echo "Missing required header: ${GITHUB_WORKSPACE}/eshelpers/packager/IPackageImpl.h"
+    exit 1
+fi
+
+cmake -G Ninja -S libPackage -B build/libPackage \
+    -DCMAKE_INCLUDE_PATH="${GITHUB_WORKSPACE}/eshelpers/packager" \
+    -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/install/usr" \
+    -DCMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" \
+    -DGENERIC_CMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake"
+
+cmake --build build/libPackage --target install
+
+############################
 # Build entservices-apis
 echo "======================================================================================"
 echo "building entservices-apis"
@@ -90,7 +116,7 @@ cd ..
 cmake -G Ninja -S entservices-apis  -B build/entservices-apis \
     -DEXCEPTIONS_ENABLE=ON \
     -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/install/usr" \
-    -DCMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" \
+    -DCMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake"
 
 cmake --build build/entservices-apis --target install
 
@@ -99,7 +125,7 @@ cmake --build build/entservices-apis --target install
 ############################
 # generating extrnal headers
 cd $GITHUB_WORKSPACE
-cd entservices-testframework/Tests
+cd Tests
 echo " Empty mocks creation to avoid compilation errors"
 echo "======================================================================================"
 mkdir -p headers
@@ -153,7 +179,7 @@ touch rdk/iarmmgrs-hal/sysMgr.h
 touch network/wifiSrvMgrIarmIf.h
 touch network/netsrvmgrIarm.h
 touch libudev.h
-touch libusb/libusb.h
+touch libusb.h
 touch rfcapi.h
 touch rbus.h
 touch telemetry_busmessage_sender.h

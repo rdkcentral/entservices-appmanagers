@@ -412,13 +412,14 @@ namespace WPEFramework
                 else
                 {
                     /* Not accessible, need to remove existing storage entry forcibly, recreate it */
+                    const string removedPath = it->second.path;
                     if (removeAppStorageInfoByAppID(appId))
                     {
-                        LOGWARN("Storage path for appID[%s] not accessible - forcibly removed!", it->second.path.c_str());
+                        LOGWARN("Storage path for appID[%s] not accessible - forcibly removed!", removedPath.c_str());
                     }
                     else
                     {
-                        LOGERR("Failed to remove app storage entry forcibly: %s", it->second.path.c_str());
+                        LOGERR("Failed to remove app storage entry forcibly: %s", removedPath.c_str());
                     }
                 }
             }
@@ -811,58 +812,32 @@ namespace WPEFramework
         Core::hresult RequestHandler::deleteDirectoryEntries(const string& appId, string& errorReason)
         {
             Core::hresult status = Core::ERROR_GENERAL;
-            std::unique_lock<std::mutex> appLock;
 
-            if (!lockAppStorageInfo(appId, appLock))
-            {
-                errorReason = "Storage not found for appId: " + appId;
-            }
-            else
-            {
-                auto it = mStorageAppInfo.find(appId);
-                if(it != mStorageAppInfo.end())
-                {
-                    const std::string path = it->second.path;
-                    LOGINFO("Clearing App storage path: %s", path.c_str());
-                    if (nftw(path.c_str(), deleteCallback, MAX_NUM_OF_FILE_DESCRIPTORS, FTW_DEPTH | FTW_PHYS) != 0)
-                    {
-                        LOGERR("Failed to clear App storage path: %s",path.c_str());
-                        errorReason = "Failed to clear App storage path: " + path;
-                    }
-                    else
-                    {
-                        /* Successfully cleared app storage path */
-                        it->second.usedKB = 0;
-                        errorReason = "";
-                        status = Core::ERROR_NONE;
-                    }
-                }
-            }
-            return status;
-        }
-
-        /**
-        * @brief Locks the storage information for a specific application.
-        *
-        * This function searches for the application ID in the mStorageAppInfo map.
-        * If found, it acquires a lock on the associated storage mutex to ensure
-        * thread-safe access to the application's storage information.
-        */
-        bool RequestHandler::lockAppStorageInfo(const std::string& appId, std::unique_lock<std::mutex>& appLock)
-        {
-            bool status = false;
-
-            LOGINFO("lockAppStorageInfo");
-
+            /* mStorageManagerImplLock is already held by all callers of this function.
+               No additional per-app lock is needed; using a nested lock here would
+               create an inconsistent lock acquisition order and risk deadlocks. */
             auto it = mStorageAppInfo.find(appId);
             if (it == mStorageAppInfo.end())
             {
-                LOGERR("App ID %s not found in storage info", appId.c_str());
+                errorReason = "Storage not found for appId: " + appId;
+                LOGWARN("App ID %s not found in storage info", appId.c_str());
             }
             else
             {
-                appLock = std::unique_lock<std::mutex>(it->second.storageLock);
-                status = true;
+                const std::string path = it->second.path;
+                LOGINFO("Clearing App storage path: %s", path.c_str());
+                if (nftw(path.c_str(), deleteCallback, MAX_NUM_OF_FILE_DESCRIPTORS, FTW_DEPTH | FTW_PHYS) != 0)
+                {
+                    LOGERR("Failed to clear App storage path: %s", path.c_str());
+                    errorReason = "Failed to clear App storage path: " + path;
+                }
+                else
+                {
+                    /* Successfully cleared app storage path */
+                    it->second.usedKB = 0;
+                    errorReason = "";
+                    status = Core::ERROR_NONE;
+                }
             }
             return status;
         }
