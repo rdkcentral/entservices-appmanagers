@@ -44,6 +44,7 @@
 
 #define TIMEOUT   (50000)
 #define DRAIN_TIMEOUT   (500)
+#define JOB_DRAIN_TIMEOUT   (10000)
 #define APPMANAGER_APP_ID           "com.test.app"
 #define APPMANAGER_EMPTY_APP_ID     ""
 #define APPMANAGER_APP_VERSION      "1.2.8"
@@ -4083,7 +4084,7 @@ TEST_F(AppManagerTest, OnAppInstallationStatusUninstalled)
 
     /* Wait for the async Job to complete and release its mAppManagerImpl reference.
      * OnAppUninstalled fires but is not tracked; timeout ensures ~Job() has run. */
-    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppInstalled);
+    signalled = notification.WaitForRequestStatus(JOB_DRAIN_TIMEOUT, AppManager_onAppInstalled);
     EXPECT_FALSE(signalled & AppManager_onAppInstalled);
 
     mAppManagerImpl->Unregister(&notification);
@@ -4119,7 +4120,7 @@ TEST_F(AppManagerTest, OnAppInstallationStatusUnknownStatus)
 
     /* Wait for the async Job to complete and release its mAppManagerImpl reference.
      * No notification fires for unknown status; timeout ensures ~Job() has run. */
-    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppInstalled);
+    signalled = notification.WaitForRequestStatus(JOB_DRAIN_TIMEOUT, AppManager_onAppInstalled);
     EXPECT_FALSE(signalled & AppManager_onAppInstalled);
 
     mAppManagerImpl->Unregister(&notification);
