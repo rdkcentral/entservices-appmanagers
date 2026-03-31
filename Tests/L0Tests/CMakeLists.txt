@@ -105,6 +105,7 @@ target_include_directories(appmanagers_l0test PRIVATE
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/ralf
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/Gateway
     ${CMAKE_SOURCE_DIR}/../../helpers
+    ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry
     ${PREFIX}/include
     ${PREFIX}/include/${NAMESPACE}
 )
@@ -163,6 +164,7 @@ endif()
 
 target_link_libraries(appmanagers_l0test PRIVATE
     Threads::Threads
+    AppManagersHelpers
     dl
     m
 )
