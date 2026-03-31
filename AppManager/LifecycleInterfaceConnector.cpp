@@ -115,16 +115,22 @@ namespace WPEFramework
 
         void LifecycleInterfaceConnector::releaseLifecycleManagerRemoteObject()
         {
-            ASSERT(nullptr != mLifecycleManagerRemoteObject );
-            if(mLifecycleManagerRemoteObject )
+            if (nullptr == mLifecycleManagerRemoteObject)
+            {
+                LOGERR("Cannot release LifecycleManager object - object is null");
+            }
+            else if(mLifecycleManagerRemoteObject )
             {
                 mLifecycleManagerRemoteObject->Unregister(&mAppStateChangeNotification);
                 mLifecycleManagerRemoteObject ->Release();
                 mLifecycleManagerRemoteObject = nullptr;
             }
 
-            ASSERT(nullptr != mLifecycleManagerStateRemoteObject );
-            if(mLifecycleManagerStateRemoteObject )
+            if (nullptr == mLifecycleManagerStateRemoteObject)
+            {
+                LOGERR("Cannot release LifecycleManagerState object - object is null");
+            }
+            else if(mLifecycleManagerStateRemoteObject )
             {
                 mLifecycleManagerStateRemoteObject->Unregister(&mNotification);
                 mLifecycleManagerStateRemoteObject ->Release();
@@ -142,10 +148,9 @@ namespace WPEFramework
                 LOGINFO("Create LifecycleManager Remote store object");
                 if (Core::ERROR_NONE != createLifecycleManagerRemoteObject())
                 {
-                    LOGERR("Failed to create LifecycleInterfaceConnector");
+                    LOGERR("Failed to create LifecycleInterfaceConnector - LifecycleManager plugin may not be activated");
                 }
             }
-            ASSERT (nullptr != mLifecycleManagerRemoteObject);
 
             if (nullptr != mLifecycleManagerRemoteObject)
             {
@@ -187,10 +192,9 @@ namespace WPEFramework
                     LOGINFO("Create LifecycleManager Remote store object");
                     if (Core::ERROR_NONE != createLifecycleManagerRemoteObject())
                     {
-                        LOGERR("Failed to create LifecycleInterfaceConnector");
+                        LOGERR("Failed to create LifecycleInterfaceConnector - LifecycleManager plugin may not be activated");
                     }
                 }
-                ASSERT (nullptr != mLifecycleManagerRemoteObject);
 
                 if (nullptr != mLifecycleManagerRemoteObject)
                 {
@@ -300,10 +304,9 @@ namespace WPEFramework
                     LOGINFO("Create LifecycleManager Remote store object");
                     if (Core::ERROR_NONE != createLifecycleManagerRemoteObject())
                     {
-                        LOGERR("Failed to create LifecycleInterfaceConnector");
+                        LOGERR("Failed to create LifecycleInterfaceConnector - LifecycleManager plugin may not be activated");
                     }
                 }
-                ASSERT (nullptr != mLifecycleManagerRemoteObject);
                 if (nullptr != mLifecycleManagerRemoteObject)
                 {
                     if (fileExists(SUSPEND_POLICY_FILE) == true)
@@ -579,10 +582,9 @@ namespace WPEFramework
                 LOGINFO("Create LifecycleManager Remote store object");
                 if (Core::ERROR_NONE != createLifecycleManagerRemoteObject())
                 {
-                    LOGERR("Failed to create LifecycleInterfaceConnector");
+                    LOGERR("Failed to create LifecycleInterfaceConnector - LifecycleManager plugin may not be activated");
                 }
             }
-            ASSERT (nullptr != mLifecycleManagerRemoteObject);
             if (nullptr != mLifecycleManagerRemoteObject)
             {
                 mAdminLock.Lock();
@@ -685,11 +687,10 @@ namespace WPEFramework
                 LOGINFO("Create LifecycleManager Remote store object");
                 if (Core::ERROR_NONE != createLifecycleManagerRemoteObject())
                 {
-                    LOGERR("Failed to create LifecycleInterfaceConnector");
+                    LOGERR("Failed to create LifecycleInterfaceConnector - LifecycleManager plugin may not be activated");
                 }
             }
 
-            ASSERT (nullptr != mLifecycleManagerRemoteObject);
             if (nullptr != mLifecycleManagerRemoteObject)
             {
                 JsonArray loadedAppsArray;
