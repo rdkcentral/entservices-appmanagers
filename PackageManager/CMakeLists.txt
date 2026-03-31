@@ -35,8 +35,6 @@ endif()
 include_directories(${SYSROOT_PATH}/${CMAKE_INSTALL_PREFIX}/include/Package)
 set(LIB_PACKAGE_LIBRARY "${SYSROOT_PATH}/${CMAKE_INSTALL_PREFIX}/lib/libPackage.so")
 
-option(AIMANAGERS_TELEMETRY_METRICS_SUPPORT "AIMANAGERS_TELEMETRY_METRICS_SUPPORT" OFF)
-
 find_package(${NAMESPACE}Plugins REQUIRED)
 find_package(${NAMESPACE}Definitions REQUIRED)
 find_package( Curl REQUIRED)
@@ -53,11 +51,6 @@ add_library(${MODULE_NAME} SHARED
 if(BUILD_REFERENCE)
     add_definitions(-DBUILD_REFERENCE=${BUILD_REFERENCE})
 endif()
-
-if(AIMANAGERS_TELEMETRY_METRICS_SUPPORT)
-    message(STATUS "TELEMETRY_METRICS_SUPPORT is enabled")
-    add_definitions(-DENABLE_AIMANAGERS_TELEMETRY_METRICS)
-endif(AIMANAGERS_TELEMETRY_METRICS_SUPPORT)
 
 target_include_directories(${MODULE_NAME} PRIVATE
     ../helpers

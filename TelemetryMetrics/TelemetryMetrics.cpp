@@ -104,11 +104,10 @@ namespace WPEFramework
         {
             // Stop processing:
             RPC::IRemoteConnection* connection = service->RemoteConnection(mConnectionId);
-            //VARIABLE_IS_NOT_USED uint32_t result = mTelemetryMetricsImpl->Release();
-            if (mTelemetryMetricsImpl->Release() != Core::ERROR_DESTRUCTION_SUCCEEDED) {
+            const uint32_t result = mTelemetryMetricsImpl->Release();
+            if (Core::ERROR_DESTRUCTION_SUCCEEDED != result) {
                 SYSLOG(Logging::Shutdown, (_T("TelemetryMetrics Plugin is not properly destructed.")));
             }
-
             mTelemetryMetricsImpl = nullptr;
 
             // It should have been the last reference we are releasing,

@@ -25,9 +25,7 @@
 
 #define DEFAULT_APP_STORAGE_PATH        "/opt/persistent/storageManager"
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
 #define TELEMETRY_MARKER_LAUNCH_TIME    "OverallLaunchTime_split"
-#endif
 
 namespace WPEFramework {
 namespace Plugin {
@@ -36,9 +34,7 @@ namespace Plugin {
 
     StorageManagerImplementation::StorageManagerImplementation()
     : mCurrentservice(nullptr)
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
     , mTelemetryMetricsObject(nullptr)
-#endif
     {
         LOGINFO("Create StorageManagerImplementation Instance");
     }
@@ -48,6 +44,13 @@ namespace Plugin {
         LOGINFO("Delete StorageManagerImplementation Instance");
         RequestHandler& handler = RequestHandler::getInstance();
         handler.releasePersistentStoreRemoteStoreObject();
+
+        if (nullptr != mTelemetryMetricsObject)
+        {
+            LOGINFO("Releasing TelemetryMetrics object");
+            mTelemetryMetricsObject->Release();
+            mTelemetryMetricsObject = nullptr;
+        }
 
         if (nullptr != mCurrentservice)
         {
@@ -89,7 +92,6 @@ namespace Plugin {
                     LOGINFO("created createPersistentStoreRemoteStoreObject");
                 }
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
                 if (nullptr == (mTelemetryMetricsObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::ITelemetryMetrics>("org.rdk.TelemetryMetrics")))
                 {
                     LOGERR("mTelemetryMetricsObject is null \n");
@@ -98,7 +100,6 @@ namespace Plugin {
                 {
                     LOGINFO("created TelemetryMetrics Object");
                 }
-#endif
 
                 Core::SystemInfo::SetEnvironment(PATH_ENV, mBaseStoragePath.c_str());
                 LOGINFO("Base Storage Path Set: %s", mBaseStoragePath.c_str());
@@ -123,14 +124,12 @@ namespace Plugin {
         return result;
     }
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
     static time_t getCurrentTimestamp()
     {
         timespec ts;
         clock_gettime(CLOCK_MONOTONIC, &ts);
         return (((time_t)ts.tv_sec * 1000) + ((time_t)ts.tv_nsec/1000000));
     }
-#endif
 
     /**
      * @brief : Creates storage for a given app id and returns the storage path
@@ -165,12 +164,10 @@ namespace Plugin {
         Core::hresult status = Core::ERROR_GENERAL;
         RequestHandler& handler = RequestHandler::getInstance();
 
-        #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             JsonObject jsonParam;
             std::string telemetryMetrics = "";
 	    /* Get current timestamp at the start of getStorage for telemetry */
             time_t requestTime = getCurrentTimestamp();
-        #endif
 
         if (appId.empty())
         {
@@ -185,7 +182,6 @@ namespace Plugin {
             LOGINFO("Storage retreived successfully for appId: %s", appId.c_str());
         }
 
-        #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             /* Get current timestamp at the end of getStorage for Telemetry */
             time_t currentTime = getCurrentTimestamp();
             int duration = static_cast<int>(currentTime - requestTime);
@@ -197,7 +193,6 @@ namespace Plugin {
 		LOGINFO("Record appId %s storageManagerLaunchTime %d",appId.c_str(),duration);
                 mTelemetryMetricsObject->Record(appId, telemetryMetrics, TELEMETRY_MARKER_LAUNCH_TIME);
             }
-        #endif
         return status;
     }
 

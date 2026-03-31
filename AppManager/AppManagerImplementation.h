@@ -82,7 +82,6 @@ namespace Plugin {
             APP_ACTION_KILL,
         };
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
         enum CurrentActionError{
             ERROR_NONE,
             ERROR_INVALID_PARAMS,
@@ -97,7 +96,6 @@ namespace Plugin {
             ERROR_KILL_APP,
             ERROR_SET_TARGET_APP_STATE
         };
-#endif
 
         typedef struct _AppInfo
         {
@@ -107,18 +105,16 @@ namespace Plugin {
             /* From PackageManager */
             PackageInfo packageInfo;
             /* App launch params*/
-            Exchange::IAppManager::AppLifecycleState appNewState;
-            Exchange::ILifecycleManager::LifecycleState appLifecycleState;
-            timespec lastActiveStateChangeTime;
-            uint32_t lastActiveIndex;
+            Exchange::IAppManager::AppLifecycleState appNewState {Exchange::IAppManager::APP_STATE_UNKNOWN};
+            Exchange::ILifecycleManager::LifecycleState appLifecycleState {Exchange::ILifecycleManager::LifecycleState::UNLOADED};
+            timespec lastActiveStateChangeTime {0, 0};
+            uint32_t lastActiveIndex {0};
             string appIntent;
-            Exchange::IAppManager::AppLifecycleState targetAppState;
-            Exchange::IAppManager::AppLifecycleState appOldState;
+            Exchange::IAppManager::AppLifecycleState targetAppState {Exchange::IAppManager::APP_STATE_UNKNOWN};
+            Exchange::IAppManager::AppLifecycleState appOldState {Exchange::IAppManager::APP_STATE_UNKNOWN};
             /* Current Action*/
-            CurrentAction currentAction = APP_ACTION_NONE;
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-            time_t currentActionTime;
-#endif
+            CurrentAction currentAction {APP_ACTION_NONE};
+            time_t currentActionTime {0};
         } AppInfo;
 
         std::map<std::string, AppInfo> mAppInfo;
@@ -273,9 +269,7 @@ namespace Plugin {
 
     public: /* public methods */
         void updateCurrentAction(const std::string& appId, CurrentAction action);
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
         void updateCurrentActionTime(const std::string& appId, time_t currentActionTime, CurrentAction currentAction);
-#endif
     bool checkInstallUninstallBlock(const std::string& appId);
     };
 } /* namespace Plugin */

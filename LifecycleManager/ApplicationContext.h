@@ -108,10 +108,8 @@ namespace WPEFramework
                 uint32_t mStateChangeId;
                 ApplicationLaunchParams mLaunchParams;
                 ApplicationKillParams mKillParams;
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
                 time_t mRequestTime;
                 RequestType mRequestType;
-#endif
         };
     } /* namespace Plugin */
 } /* namespace WPEFramework */
