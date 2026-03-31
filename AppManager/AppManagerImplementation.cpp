@@ -155,6 +155,8 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                                         if (status != Core::ERROR_NONE)
                                         {
                                             LOGERR("launch failed status %d", status);
+                                            Core::hresult unlockStatus = packageUnLock(appId);
+                                            LOGWARN("package unlock after launch failure for appId %s status %d", appId.c_str(), unlockStatus);
                                         }
                                     }
                                     else if (action == APP_ACTION_PRELOAD)
@@ -166,6 +168,8 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                                         if ((!errorReason.empty()) || (status != Core::ERROR_NONE))
                                         {
                                             LOGERR("preLoadApp failed reason %s status %d", errorReason.c_str(), status);
+                                            Core::hresult unlockStatus = packageUnLock(appId);
+                                            LOGWARN("package unlock after preload failure for appId %s status %d", appId.c_str(), unlockStatus);
                                         }
                                     }
                                 }
@@ -797,6 +801,9 @@ Core::hresult AppManagerImplementation::packageLock(const string& appId, Package
                         if (!result)
                         {
                             LOGERR("Failed to createOrUpdate the PackageInfo");
+                            Core::hresult unlockStatus = mPackageManagerHandlerObject->Unlock(appId, packageData.version);
+                            LOGWARN("Rollback unlock for appId %s version %s returned status %d",
+                                    appId.c_str(), packageData.version.c_str(), unlockStatus);
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
                             appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_LAUNCH, AppManagerImplementation::ERROR_PACKAGE_INVALID);
 #endif
@@ -810,6 +817,12 @@ Core::hresult AppManagerImplementation::packageLock(const string& appId, Package
                         appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_LAUNCH, AppManagerImplementation::ERROR_PACKAGE_LOCK);
 #endif
                         packageData.version.clear();  /* Clear version on failure */
+                    }
+
+                    if (appMetadata != nullptr)
+                    {
+                        appMetadata->Release();
+                        appMetadata = nullptr;
                     }
                 }
                 else

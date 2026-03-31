@@ -1759,3 +1759,54 @@ TEST_F(PackageManagerTest, unlockmethodusingComRpcFailure) {
 
 	deinitforComRpc();
 }
+
+/* Test Case for lock rollback on runtime lock failure using ComRpc
+ *
+ * Initialize COM-RPC resources and seed package state with an already locked app package
+ * Configure runtime dependency to a missing runtime package so runtime lock fails
+ * Verify Lock returns failure and app package lock count is rolled back to original value
+ */
+TEST_F(PackageManagerTest, lockmethodusingComRpcFailureRuntimeLockRollback) {
+
+    initforComRpc();
+
+    const string appId = "com.test.rollback.app";
+    const string version = "1.0.0";
+    const string runtimeId = "com.test.rollback.runtime";
+    const string runtimeVersion = "9.9.9";
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    Plugin::PackageManagerImplementation::State appState;
+    appState.installState = Exchange::IPackageInstaller::InstallState::INSTALLED;
+    appState.mLockCount = 1;
+    appState.runtimeApp = {runtimeId, runtimeVersion};
+
+    {
+        std::lock_guard<std::recursive_mutex> lock(mPackageManagerImpl->mtxState);
+        mPackageManagerImpl->cacheInitialized = true;
+        mPackageManagerImpl->mState[{appId, version}] = appState;
+    }
+
+    uint32_t lockId = 0;
+    string unpackedPath;
+    Exchange::RuntimeConfig runtimeConfig;
+    Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
+
+    Core::hresult status = pkghandlerInterface->Lock(
+        appId, version, Exchange::IPackageHandler::LockReason::LAUNCH,
+        lockId, unpackedPath, runtimeConfig, appMetadata);
+
+    EXPECT_NE(Core::ERROR_NONE, status);
+    EXPECT_EQ(nullptr, appMetadata);
+
+    {
+        std::lock_guard<std::recursive_mutex> lock(mPackageManagerImpl->mtxState);
+        auto it = mPackageManagerImpl->mState.find({appId, version});
+        ASSERT_NE(it, mPackageManagerImpl->mState.end());
+        EXPECT_EQ(1u, it->second.mLockCount);
+    }
+
+    deinitforComRpc();
+}
+
