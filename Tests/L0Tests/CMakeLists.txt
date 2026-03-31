@@ -42,11 +42,14 @@ set(APPMANAGERS_L0_SOURCES
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/Module.cpp
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/RuntimeManager.cpp
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/RuntimeManagerImplementation.cpp
+    ${CMAKE_SOURCE_DIR}/../../RuntimeManager/RuntimeManagerTelemetryReporting.cpp
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/DobbySpecGenerator.cpp
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/WindowManagerConnector.cpp
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/DobbyEventListener.cpp
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/UserIdManager.cpp
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/AIConfiguration.cpp
+    ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry/TelemetryReportingBase.cpp
+    ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry/UtilsTelemetryMetrics.cpp
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/ralf/RalfSupport.cpp
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/ralf/RalfPackageBuilder.cpp
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/ralf/RalfOCIConfigGenerator.cpp
@@ -164,7 +167,6 @@ endif()
 
 target_link_libraries(appmanagers_l0test PRIVATE
     Threads::Threads
-    AppManagersHelpers
     dl
     m
 )
