@@ -267,7 +267,7 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
                   if (success && gScreenshotData && gScreenshotSize > 0)
                   {
                       // Encode the screenshot data as base64
-                      Utils::String::imageEncoder(gScreenshotData, gScreenshotSize, true, gScreenshotImageData);
+                      ::Utils::String::imageEncoder(gScreenshotData, gScreenshotSize, true, gScreenshotImageData);
                       
                       // Free the buffer immediately after encoding to avoid retaining memory
                       free(gScreenshotData);
@@ -297,6 +297,7 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
         });
 
         LOGINFO("RDKWindowManagerImplementation::Initialized");
+        RDKWindowManagerTelemetryReporting::getInstance().initialize(service);
     }
     else
     {
@@ -371,6 +372,7 @@ Core::hresult RDKWindowManagerImplementation::Deinitialize(PluginHost::IShell* s
     gRdkWindowManagerMutex.unlock();
 
     LOGINFO("RDKWindowManagerImplementation::Deinitialized");
+    RDKWindowManagerTelemetryReporting::getInstance().reset();
 
     return (result);
 }
@@ -678,6 +680,7 @@ Core::hresult RDKWindowManagerImplementation::CreateDisplay(const string &client
     LOGINFO("CreateDisplay params: clientId:%s, displayName:%s, displayWidth:%u, displayHeight:%u, virtualDisplay:%d, virtualWidth:%u, virtualHeight:%u, ownerId:%u, groupId:%u, topmost:%d, focus:%d",
             clientId.c_str(), displayName.c_str(), displayWidth, displayHeight, virtualDisplay, virtualWidth, virtualHeight, ownerId, groupId, topmost, focus);
 
+    time_t displayStartTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
     result = createDisplay(clientId, displayName, displayWidth, displayHeight,
                            virtualDisplay, virtualWidth, virtualHeight, ownerId, groupId, topmost, focus);
 
@@ -688,6 +691,9 @@ Core::hresult RDKWindowManagerImplementation::CreateDisplay(const string &client
     }
     else
     {
+        time_t displayEndTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
+        int duration = static_cast<int>(displayEndTime - displayStartTime);
+        RDKWindowManagerTelemetryReporting::getInstance().recordCreateDisplayTelemetry(clientId, duration);
         status = Core::ERROR_NONE;
     }
     return status;

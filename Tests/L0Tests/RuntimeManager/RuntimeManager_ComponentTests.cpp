@@ -548,7 +548,7 @@ uint32_t Test_WindowManagerConnector_InitializeWithNullServiceReturnsFalse()
     L0Test::TestResult tr;
 
     WPEFramework::Plugin::WindowManagerConnector connector;
-    const bool result = connector.initializePlugin(nullptr);
+    const bool result = connector.initializePlugin(nullptr, nullptr);
     L0Test::ExpectTrue(tr, !result,
                        "initializePlugin(nullptr) returns false");
     L0Test::ExpectTrue(tr, !connector.isPluginInitialized(),
@@ -569,7 +569,7 @@ uint32_t Test_WindowManagerConnector_InitializeWithServiceMissingWindowManagerPl
     WPEFramework::Plugin::WindowManagerConnector connector;
     L0Test::ServiceMock service; // QueryInterfaceByCallsign returns nullptr by default
 
-    const bool result = connector.initializePlugin(&service);
+    const bool result = connector.initializePlugin(&service, nullptr);
     L0Test::ExpectTrue(tr, !result,
                        "initializePlugin() returns false when IRDKWindowManager unavailable");
     L0Test::ExpectTrue(tr, !connector.isPluginInitialized(),
@@ -1442,7 +1442,7 @@ uint32_t Test_WindowManagerConnector_InitializeWithValidWindowManagerSucceeds()
     L0Test::ServiceMock service(L0Test::ServiceMock::Config(nullptr, &wm));
     WPEFramework::Plugin::WindowManagerConnector connector;
 
-    const bool result = connector.initializePlugin(&service);
+    const bool result = connector.initializePlugin(&service, nullptr);
 
     L0Test::ExpectTrue(tr, result,
                        "initializePlugin() returns true when IRDKWindowManager is available");
@@ -1469,7 +1469,7 @@ uint32_t Test_WindowManagerConnector_ReleasePluginAfterInitCallsUnregister()
     L0Test::ServiceMock service(L0Test::ServiceMock::Config(nullptr, &wm));
     WPEFramework::Plugin::WindowManagerConnector connector;
 
-    connector.initializePlugin(&service);
+    connector.initializePlugin(&service, nullptr);
     L0Test::ExpectTrue(tr, connector.isPluginInitialized(),
                        "Plugin initialized before releasePlugin()");
 
@@ -1497,7 +1497,7 @@ uint32_t Test_WindowManagerConnector_CreateDisplayAfterInitReturnsTrue()
     L0Test::ServiceMock service(L0Test::ServiceMock::Config(nullptr, &wm));
     WPEFramework::Plugin::WindowManagerConnector connector;
 
-    connector.initializePlugin(&service);
+    connector.initializePlugin(&service, nullptr);
 
     const bool result = connector.createDisplay("youTube", "wst-youTube", 30001u, 30000u);
     L0Test::ExpectTrue(tr, result,
@@ -1523,7 +1523,7 @@ uint32_t Test_WindowManagerConnector_CreateDisplayAfterInitReturnsFalseOnError()
     L0Test::ServiceMock service(L0Test::ServiceMock::Config(nullptr, &wm));
     WPEFramework::Plugin::WindowManagerConnector connector;
 
-    connector.initializePlugin(&service);
+    connector.initializePlugin(&service, nullptr);
 
     const bool result = connector.createDisplay("youTube", "wst-youTube", 30001u, 30000u);
     L0Test::ExpectTrue(tr, !result,
@@ -1547,7 +1547,7 @@ uint32_t Test_WindowManagerConnector_OnUserInactivityDoesNotCrash()
     L0Test::ServiceMock service(L0Test::ServiceMock::Config(nullptr, &wm));
     WPEFramework::Plugin::WindowManagerConnector connector;
 
-    connector.initializePlugin(&service);
+    connector.initializePlugin(&service, nullptr);
 
     // Retrieve the stored notification pointer and fire the event.
     auto* notif = wm.GetStoredNotification();
