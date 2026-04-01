@@ -550,10 +550,14 @@ namespace WPEFramework
             eventData["eventName"] = "onContainerStateChanged";
             dispatchEvent(RuntimeManagerImplementation::RuntimeEventType::RUNTIME_MANAGER_EVENT_STATECHANGED, eventData);
 
-            mRuntimeManagerImplLock.Lock();
-
-            uid_t uid = mUserIdManager->getUserId(appId);
-            gid_t gid = mUserIdManager->getAppsGid();
+             /* Lock briefly to read shared user/group ID state */
+            uid_t uid;
+            gid_t gid;
+            {
+                Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
+                uid = mUserIdManager->getUserId(appId);
+                gid = mUserIdManager->getAppsGid();
+            }
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
             // In Ralf package, all apps will run with the same ralf user and group
             if (!ralf::getRalfUserInfo(uid, gid))
@@ -717,9 +721,20 @@ namespace WPEFramework
                 {
                     appPath = dobbySpec;
                 }
-                if (isOCIPluginObjectValid())
+                /* Lock briefly to validate OCI plugin object and get container ID */
+                bool ociValid = false;
+                string containerId;
                 {
-                    string containerId = getContainerId(appInstanceId);
+                   
+                    
+                    ociValid = isOCIPluginObjectValid();
+                    if (ociValid)
+                    {
+                        containerId = getContainerId(appInstanceId);
+                    }
+                }
+                if (ociValid)
+                {
                     if (!containerId.empty())
                     {
                         if (legacyContainer)
@@ -765,8 +780,11 @@ namespace WPEFramework
                             runtimeAppInfo.requestTime = requestTime;
                             runtimeAppInfo.requestType = REQUEST_TYPE_LAUNCH;
 #endif
-                            /* Insert/update runtime app info */
-                            mRuntimeAppInfo[runtimeAppInfo.appInstanceId] = std::move(runtimeAppInfo);
+                              /* Lock briefly to update shared runtime app info map */
+                            {
+                                Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
+                                mRuntimeAppInfo[runtimeAppInfo.appInstanceId] = std::move(runtimeAppInfo);
+                            }
                         }
                     }
                     else
@@ -781,7 +799,7 @@ namespace WPEFramework
                     LOGERR("OCI Plugin object is not valid. Aborting Run.");
                 }
             }
-            mRuntimeManagerImplLock.Unlock();
+            
             if (notifyParamCheckFailure)
             {
                 notifyParameterCheckFailure(appInstanceId, errorCode);
