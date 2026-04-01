@@ -114,6 +114,12 @@ namespace Plugin {
             if (config.downloadDir.IsSet() == true)
             {
                 mDownloadPath = config.downloadDir;
+
+                // Remove trailing slash (unless path is just "/")
+                if (!mDownloadPath.empty() && mDownloadPath.size() > 1 && '/' == mDownloadPath.back()) {
+                    mDownloadPath.pop_back();
+                }
+                    
             }
             LOGINFO("DM: downloadDir=%s", mDownloadPath.c_str());
             if (config.downloadId.IsSet() == true)
@@ -211,7 +217,13 @@ namespace Plugin {
             DownloadInfoPtr newDownload = std::make_shared<DownloadInfo>(url, downloadIdStr, options.priority, options.retries, options.rateLimit);
             if (newDownload != nullptr)
             {
-                std::string filename = mDownloadPath + "package" + newDownload->getId();
+                std::string filename = "";
+                if ("/" == mDownloadPath) {
+                    filename = mDownloadPath + "package" + newDownload->getId();
+                } else {
+                    filename = mDownloadPath + "/" + "package" + newDownload->getId();
+                }
+
                 newDownload->setFileLocator(filename);
 
                 /* Check the priority download request */
