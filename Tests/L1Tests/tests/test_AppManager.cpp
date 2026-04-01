@@ -491,6 +491,7 @@ class NotificationHandler : public Exchange::IAppManager::INotification {
 
         void OnAppLifecycleStateChanged(const string& appId, const string& appInstanceId, const Exchange::IAppManager::AppLifecycleState newState, const Exchange::IAppManager::AppLifecycleState oldState, const Exchange::IAppManager::AppErrorReason errorReason)
         {
+            std::unique_lock<std::mutex> lock(m_mutex);
             m_event_signalled |= AppManager_onAppLifecycleStateChanged;
             EXPECT_EQ(m_expectedEvent.appId, appId);
             EXPECT_EQ(m_expectedEvent.appInstanceId, appInstanceId);
@@ -3928,6 +3929,7 @@ TEST_F(AppManagerTest, GetCustomValuesWithAipathFile)
 TEST_F(AppManagerTest, LifecycleStateChangedLoadingToLoadingKillApp)
 {
     Core::hresult status;
+    uint32_t signalled = AppManager_StateInvalid;
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
 
@@ -3937,7 +3939,6 @@ TEST_F(AppManagerTest, LifecycleStateChangedLoadingToLoadingKillApp)
     appInfo.appNewState = Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING;
     mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
 
-    uint32_t signalled = AppManager_StateInvalid;
     ExpectedAppLifecycleEvent expectedEvent;
     expectedEvent.appId = APPMANAGER_APP_ID;
     expectedEvent.appInstanceId = APPMANAGER_APP_INSTANCE;
@@ -3970,6 +3971,12 @@ TEST_F(AppManagerTest, LifecycleStateChangedLoadingToLoadingKillApp)
 
     signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
     EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+
+    /* Drain async worker jobs before teardown so Job::~Job() has released
+     * mAppManagerImpl references. Do not wait for UNLOADED here because this
+     * test does not explicitly simulate a second lifecycle callback. */
+    signalled = notification.WaitForRequestStatus(JOB_DRAIN_TIMEOUT, AppManager_onAppInstalled);
+    EXPECT_FALSE(signalled & AppManager_onAppInstalled);
 
     mAppManagerImpl->Unregister(&notification);
     if (status == Core::ERROR_NONE)
