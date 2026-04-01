@@ -517,12 +517,11 @@ namespace WPEFramework
                     LOGERR("AppId %s not found in database", appId.c_str());
                     appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_TERMINATE, AppManagerImplementation::ERROR_INVALID_PARAMS);
                 }
-            }
-            else
-            {
-                LOGERR("appManagerImplInstance is null");
-                appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_TERMINATE, AppManagerImplementation::ERROR_INTERNAL);
-            }
+                else
+                {
+                    LOGERR("appManagerImplInstance is null");
+                    appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_TERMINATE, AppManagerImplementation::ERROR_INTERNAL);
+                }
             mAdminLock.Unlock();
             return status;
         }
@@ -848,14 +847,13 @@ End:
 			    //Upnormal close: No unload event from app manager
 			    LOGINFO("Terminate event due to app crash");
 			    appManagerImplInstance->handleOnAppLifecycleStateChanged(appId, appInstanceId, newAppState, oldAppState, Exchange::IAppManager::AppErrorReason::APP_ERROR_ABORT);
-			    // Report crash telemetry
-			    auto crashIt = appManagerImplInstance->mAppInfo.find(appId);
-			    if (appManagerImplInstance->mAppInfo.end() != crashIt &&
-			        false == crashIt->second.appInstanceId.empty())
-			    {
-                    std::string crashReason = "Terminated unexpectedly";
-			        AppManagerTelemetryReporting::getInstance().reportAppCrashedTelemetry(appId, appInstanceId, crashReason);
-			    }
+                // Report crash telemetry when lifecycle event provides a valid app instance id.
+                const std::string storedInstanceId = AppInfoManager::getInstance().getAppInstanceId(appId);
+                if (false == storedInstanceId.empty())
+                {
+                    std::string crashReason = "Terminate event due to app crash";
+                    AppManagerTelemetryReporting::getInstance().reportAppCrashedTelemetry(appId, storedInstanceId, crashReason);
+                }
 			}
 			mAppCurrentActionList.erase(appId);
 		    }

@@ -60,7 +60,7 @@ namespace Plugin
         JsonObject jsonParam;
         std::string telemetryMetrics = "";
         std::string markerName = "";
-        time_t currentTime = getCurrentTimestamp();
+        time_t currentTime = currentTimestampMs();
 
         if(!ensureTelemetryClient())
         {
@@ -121,7 +121,7 @@ namespace Plugin
         JsonObject jsonParam;
         std::string telemetryMetrics = "";
         std::string markerName = "";
-        time_t currentTime = getCurrentTimestamp();
+        time_t currentTime = currentTimestampMs();
 
         if(!ensureTelemetryClient())
         {
