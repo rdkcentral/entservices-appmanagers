@@ -1,4 +1,4 @@
-﻿cmake_minimum_required(VERSION 3.16)
+cmake_minimum_required(VERSION 3.16)
 
 project(appmanagers_l0test LANGUAGES C CXX)
 
@@ -79,6 +79,7 @@ set(LIFECYCLE_MANAGER_L0_SOURCES
     ${CMAKE_SOURCE_DIR}/../../LifecycleManager/Module.cpp
     ${CMAKE_SOURCE_DIR}/../../LifecycleManager/LifecycleManager.cpp
     ${CMAKE_SOURCE_DIR}/../../LifecycleManager/LifecycleManagerImplementation.cpp
+    ${CMAKE_SOURCE_DIR}/../../LifecycleManager/LifecycleManagerTelemetryReporting.cpp
     ${CMAKE_SOURCE_DIR}/../../LifecycleManager/ApplicationContext.cpp
     ${CMAKE_SOURCE_DIR}/../../LifecycleManager/StateHandler.cpp
     ${CMAKE_SOURCE_DIR}/../../LifecycleManager/State.cpp
@@ -86,6 +87,8 @@ set(LIFECYCLE_MANAGER_L0_SOURCES
     ${CMAKE_SOURCE_DIR}/../../LifecycleManager/StateTransitionHandler.cpp
     ${CMAKE_SOURCE_DIR}/../../LifecycleManager/RuntimeManagerHandler.cpp
     ${CMAKE_SOURCE_DIR}/../../LifecycleManager/WindowManagerHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry/TelemetryReportingBase.cpp
+    ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry/UtilsTelemetryMetrics.cpp
     # Test sources
     LifecycleManager/LifecycleManagerTest.cpp
     LifecycleManager/LifecycleManager_ShellTests.cpp
@@ -155,6 +158,7 @@ if(PLUGIN_RUNTIME_MANAGER)
         ${CMAKE_SOURCE_DIR}/../../RuntimeManager/ralf
         ${CMAKE_SOURCE_DIR}/../../RuntimeManager/Gateway
         ${CMAKE_SOURCE_DIR}/../../helpers
+        ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry
         ${PREFIX}/include
         ${PREFIX}/include/${NAMESPACE}
     )
@@ -205,6 +209,7 @@ if(PLUGIN_LIFECYCLE_MANAGER)
         ${CMAKE_SOURCE_DIR}/../..
         ${CMAKE_SOURCE_DIR}/../../LifecycleManager
         ${CMAKE_SOURCE_DIR}/../../helpers
+        ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry
     )
 
     if(EXISTS "${PREFIX}/lib")
