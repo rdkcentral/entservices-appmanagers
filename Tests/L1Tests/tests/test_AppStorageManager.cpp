@@ -113,6 +113,9 @@ class AppStorageManagerTest : public ::testing::Test {
                 }
                 return nullptr;
             }));
+            
+            ON_CALL(service, ConfigLine())
+                .WillByDefault(Return("{\"path\":\"/opt/persistent/storageManager\"}"));
 
             interface = static_cast<Exchange::IAppStorageManager*>(
                 StorageManagerImplementation->QueryInterface(Exchange::IAppStorageManager::ID));
