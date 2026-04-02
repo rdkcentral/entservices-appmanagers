@@ -152,7 +152,7 @@ uint32_t Test_LCM_InitializeSucceedsWithFakeImpl()
 // Initialize succeeds with the in-process implementation
 // ─────────────────────────────────────────────────────────────────────────────
 
-uint32_t Test_LCM_InitializeFailsWhenImplNull()
+uint32_t Test_LCM_InitializeSucceedsWithInProcessImpl()
 {
     L0Test::TestResult tr;
 

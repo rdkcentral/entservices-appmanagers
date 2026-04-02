@@ -41,12 +41,24 @@
 #include "StateTransitionRequest.h"
 #include "State.h"
 #include "RequestHandler.h"
+#include "UtilsTelemetryMetrics.h"
+#include "LifecycleManagerServiceMock.h"
 #include "common/L0Expect.hpp"
 #include "common/L0TestTypes.hpp"
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Section 3: ApplicationContext
-// ─────────────────────────────────────────────────────────────────────────────
+namespace {
+    // No-op IEventHandler stub used to replace the dangling pointer left by shell-test teardowns.
+    struct StubEventHandler final : public WPEFramework::Plugin::IEventHandler {
+        void onRuntimeManagerEvent(WPEFramework::Core::JSON::VariantContainer&) override {}
+        void onWindowManagerEvent(WPEFramework::Core::JSON::VariantContainer&) override {}
+        void onRippleEvent(std::string, WPEFramework::Core::JSON::VariantContainer&) override {}
+        void onStateChangeEvent(WPEFramework::Core::JSON::VariantContainer&) override {}
+    };
+    static StubEventHandler  gStubEventHandler;
+    static L0Test::FakeRuntimeManager gCtxTestRtm;
+    static L0Test::FakeWindowManager  gCtxTestWm;
+} // namespace
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ApplicationContext constructor initialises state and semaphores
@@ -353,8 +365,16 @@ uint32_t Test_AppCtx_ApplicationKillParamsDefaultConstructor()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Section 4: StateHandler
+// Resets RequestHandler state so StateHandler::sendEvent() fires into a no-op stub
+// instead of the dangling mEventHandler left by shell-test teardowns
 // ─────────────────────────────────────────────────────────────────────────────
+uint32_t Test_RequestHandler_NullifyStaleEventHandler()
+{
+    L0Test::LcmServiceMock mockService(L0Test::LcmServiceMock::Config(&gCtxTestRtm, &gCtxTestWm));
+    WPEFramework::Plugin::RequestHandler::getInstance()->initialize(&mockService, &gStubEventHandler);
+    WPEFramework::Plugin::RequestHandler::getInstance()->terminate();
+    return 0;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // StateHandler::initialize populates state transition map
@@ -1231,6 +1251,78 @@ uint32_t Test_StateHandler_ChangeStateLoadingToTerminatingPath()
         static_cast<uint32_t>(ctx.getCurrentLifecycleState()),
         static_cast<uint32_t>(WPEFramework::Exchange::ILifecycleManager::LifecycleState::UNLOADED),
         "context ends in UNLOADED after LOADING->TERMINATING path");
+
+    return tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TelemetryMetricsClient::isAvailable() returns true without the compile flag
+// ─────────────────────────────────────────────────────────────────────────────
+
+uint32_t Test_TelemetryMetricsClient_IsAvailableReturnsTrue()
+{
+    L0Test::TestResult tr;
+
+    WPEFramework::Plugin::Utils::TelemetryMetricsClient client;
+
+    L0Test::ExpectTrue(tr, client.isAvailable(),
+        "TelemetryMetricsClient::isAvailable() returns true without ENABLE_AIMANAGERS_TELEMETRY_METRICS");
+
+    return tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TelemetryMetricsClient::ensure() delegates to initialize() and returns ERROR_NONE
+// ─────────────────────────────────────────────────────────────────────────────
+
+uint32_t Test_TelemetryMetricsClient_EnsureReturnsErrorNone()
+{
+    L0Test::TestResult tr;
+
+    WPEFramework::Plugin::Utils::TelemetryMetricsClient client;
+    // Without ENABLE_AIMANAGERS_TELEMETRY_METRICS, ensure() calls initialize()
+    // which returns Core::ERROR_NONE regardless of the service pointer.
+    WPEFramework::Core::hresult result = client.ensure(nullptr);
+
+    L0Test::ExpectEqU32(tr, static_cast<uint32_t>(result),
+        static_cast<uint32_t>(WPEFramework::Core::ERROR_NONE),
+        "TelemetryMetricsClient::ensure(nullptr) returns ERROR_NONE without compile flag");
+
+    return tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TelemetryMetricsClient::record() returns ERROR_NONE without the compile flag
+// ─────────────────────────────────────────────────────────────────────────────
+
+uint32_t Test_TelemetryMetricsClient_RecordReturnsErrorNone()
+{
+    L0Test::TestResult tr;
+
+    WPEFramework::Plugin::Utils::TelemetryMetricsClient client;
+    WPEFramework::Core::hresult result = client.record("com.test.app", "{}", "marker");
+
+    L0Test::ExpectEqU32(tr, static_cast<uint32_t>(result),
+        static_cast<uint32_t>(WPEFramework::Core::ERROR_NONE),
+        "TelemetryMetricsClient::record() returns ERROR_NONE without compile flag");
+
+    return tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TelemetryMetricsClient::publish() returns ERROR_NONE without the compile flag
+// ─────────────────────────────────────────────────────────────────────────────
+
+uint32_t Test_TelemetryMetricsClient_PublishReturnsErrorNone()
+{
+    L0Test::TestResult tr;
+
+    WPEFramework::Plugin::Utils::TelemetryMetricsClient client;
+    WPEFramework::Core::hresult result = client.publish("com.test.app", "marker");
+
+    L0Test::ExpectEqU32(tr, static_cast<uint32_t>(result),
+        static_cast<uint32_t>(WPEFramework::Core::ERROR_NONE),
+        "TelemetryMetricsClient::publish() returns ERROR_NONE without compile flag");
 
     return tr.failures;
 }
