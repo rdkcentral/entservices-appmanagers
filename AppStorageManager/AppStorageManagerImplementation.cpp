@@ -24,7 +24,6 @@
 #include "RequestHandler.h"
 #include <sys/statvfs.h>
 
-#define DEFAULT_APP_STORAGE_PATH        "/opt/persistent/storageManager"
 
 namespace WPEFramework {
 namespace Plugin {
@@ -67,12 +66,8 @@ namespace Plugin {
 
                 _config.FromString(configLine);
                 mBaseStoragePath = _config.Path.Value();
+                LOGINFO("BaseStoragePath: %s", mBaseStoragePath.c_str());
                 RequestHandler& handler = RequestHandler::getInstance();
-                if (mBaseStoragePath.empty())
-                {
-                    LOGWARN("Base storage path is empty. Setting default path: %s", DEFAULT_APP_STORAGE_PATH);
-                    mBaseStoragePath = DEFAULT_APP_STORAGE_PATH;  // Fallback path
-                }
                 
                 handler.setCurrentService(mCurrentservice);
                 if (Core::ERROR_NONE != handler.createPersistentStoreRemoteStoreObject())
