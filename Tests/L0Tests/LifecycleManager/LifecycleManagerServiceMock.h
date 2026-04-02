@@ -613,7 +613,10 @@ EnumerateType<WPEFramework::Exchange::ILifecycleManagerState::AppCloseReason>::T
 {
     using ACR = WPEFramework::Exchange::ILifecycleManagerState::AppCloseReason;
     static const EnumerateConversion<ACR> table[] = {
-        { ACR::USER_EXIT, "USER_EXIT" },
+        { ACR::USER_EXIT,         "USER_EXIT"         },
+        { ACR::ERROR,             "ERROR"             },
+        { ACR::KILL_AND_RUN,      "KILL_AND_RUN"      },
+        { ACR::KILL_AND_ACTIVATE, "KILL_AND_ACTIVATE" },
     };
     return (index < (sizeof(table) / sizeof(table[0])) ? &table[index] : nullptr);
 }
