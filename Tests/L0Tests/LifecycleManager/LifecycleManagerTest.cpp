@@ -37,7 +37,7 @@
 extern uint32_t Test_LCM_ConstructorSetsSInstance();
 extern uint32_t Test_LCM_DestructorResetsSInstance();
 extern uint32_t Test_LCM_InitializeSucceedsWithFakeImpl();
-extern uint32_t Test_LCM_InitializeFailsWhenImplNull();
+extern uint32_t Test_LCM_InitializeSucceedsWithInProcessImpl();
 extern uint32_t Test_LCM_InitializeCallsConfigureWhenConfigAvailable();
 extern uint32_t Test_LCM_InitializeRegistersStateNotification();
 extern uint32_t Test_LCM_DeinitializeUnregistersStateNotification();
@@ -116,6 +116,7 @@ extern uint32_t Test_AppCtx_StateRoundTrip();
 extern uint32_t Test_AppCtx_GetCurrentLifecycleStateReturnsUnloadedInitially();
 extern uint32_t Test_AppCtx_ApplicationLaunchParamsDefaultConstructor();
 extern uint32_t Test_AppCtx_ApplicationKillParamsDefaultConstructor();
+extern uint32_t Test_RequestHandler_NullifyStaleEventHandler();
 extern uint32_t Test_StateHandler_InitializePopulatesMap();
 extern uint32_t Test_StateHandler_ChangeStateNullContextReturnsFalse();
 extern uint32_t Test_StateHandler_ChangeStateAlreadyAtTargetReturnsTrue();
@@ -147,6 +148,12 @@ extern uint32_t Test_RequestHandler_GetWindowManagerHandlerReturnsNull();
 extern uint32_t Test_AppCtx_GetRequestTypeDefaultIsNone();
 extern uint32_t Test_StateHandler_ChangeStateLoadingToTerminatingPath();
 
+// ── Telemetry tests (TelemetryMetricsClient) ─────────────────────────────────
+extern uint32_t Test_TelemetryMetricsClient_IsAvailableReturnsTrue();
+extern uint32_t Test_TelemetryMetricsClient_EnsureReturnsErrorNone();
+extern uint32_t Test_TelemetryMetricsClient_RecordReturnsErrorNone();
+extern uint32_t Test_TelemetryMetricsClient_PublishReturnsErrorNone();
+
 int main()
 {
     L0Test::L0BootstrapGuard bootstrap;
@@ -161,7 +168,7 @@ int main()
         { "LCM_ConstructorSetsSInstance",                           Test_LCM_ConstructorSetsSInstance },
         { "LCM_DestructorResetsSInstance",                          Test_LCM_DestructorResetsSInstance },
         { "LCM_InitializeSucceedsWithFakeImpl",                     Test_LCM_InitializeSucceedsWithFakeImpl },
-        { "LCM_InitializeFailsWhenImplNull",                        Test_LCM_InitializeFailsWhenImplNull },
+        { "LCM_InitializeSucceedsWithInProcessImpl",                  Test_LCM_InitializeSucceedsWithInProcessImpl },
         { "LCM_InitializeCallsConfigureWhenConfigAvailable",        Test_LCM_InitializeCallsConfigureWhenConfigAvailable },
         { "LCM_InitializeRegistersStateNotification",               Test_LCM_InitializeRegistersStateNotification },
         { "LCM_DeinitializeUnregistersStateNotification",           Test_LCM_DeinitializeUnregistersStateNotification },
@@ -243,6 +250,7 @@ int main()
         { "AppCtx_GetRequestTypeDefaultIsNone",                     Test_AppCtx_GetRequestTypeDefaultIsNone },
 
         // ── StateHandler tests ───────────────────────────────────────────────
+        { "RequestHandler_NullifyStaleEventHandler",                         Test_RequestHandler_NullifyStaleEventHandler },
         { "StateHandler_InitializePopulatesMap",                             Test_StateHandler_InitializePopulatesMap },
         { "StateHandler_ChangeStateNullContextReturnsFalse",                 Test_StateHandler_ChangeStateNullContextReturnsFalse },
         { "StateHandler_ChangeStateAlreadyAtTargetReturnsTrue",              Test_StateHandler_ChangeStateAlreadyAtTargetReturnsTrue },
@@ -276,20 +284,25 @@ int main()
         { "RequestHandler_LaunchDelegatesToUpdateState",                         Test_RequestHandler_LaunchDelegatesToUpdateState },
         { "RequestHandler_SendIntentStoresIntentOnContext",                       Test_RequestHandler_SendIntentStoresIntentOnContext },
         { "RequestHandler_GetWindowManagerHandlerReturnsNull",                   Test_RequestHandler_GetWindowManagerHandlerReturnsNull },
-
+        // ── Telemetry tests ──────────────────────────────────────────────────
+        { "TelemetryMetricsClient_IsAvailableReturnsTrue",                       Test_TelemetryMetricsClient_IsAvailableReturnsTrue },
+        { "TelemetryMetricsClient_EnsureReturnsErrorNone",                       Test_TelemetryMetricsClient_EnsureReturnsErrorNone },
+        { "TelemetryMetricsClient_RecordReturnsErrorNone",                       Test_TelemetryMetricsClient_RecordReturnsErrorNone },
+        { "TelemetryMetricsClient_PublishReturnsErrorNone",                      Test_TelemetryMetricsClient_PublishReturnsErrorNone },
     };
 
     uint32_t totalFailures = 0;
     uint32_t totalRun = 0;
 
     for (const auto& c : cases) {
+        std::cerr << "[ RUN      ] " << c.name << std::endl;
         const uint32_t f = c.fn();
         totalRun++;
         if (0U < f) {
-            std::cerr << "FAILED [" << c.name << "] failures=" << f << "\n";
+            std::cerr << "[  FAILED  ] " << c.name << " failures=" << f << std::endl;
             totalFailures += f;
         } else {
-            std::cout << "PASSED [" << c.name << "]\n";
+            std::cerr << "[       OK ] " << c.name << std::endl;
         }
     }
 
