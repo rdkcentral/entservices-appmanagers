@@ -25,6 +25,7 @@
 #endif
 #include <errno.h>
 #include <fstream>
+#include <chrono>
 
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
 #include "ralf/RalfPackageBuilder.h"
@@ -539,6 +540,8 @@ namespace WPEFramework
             bool notifyParamCheckFailure = false;
             std::string errorCode = "";
 
+            auto runStartTime = std::chrono::steady_clock::now();
+
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             /* Get current timestamp at the start of run for telemetry */
             time_t requestTime = getCurrentTimestamp();
@@ -550,10 +553,17 @@ namespace WPEFramework
             eventData["eventName"] = "onContainerStateChanged";
             dispatchEvent(RuntimeManagerImplementation::RuntimeEventType::RUNTIME_MANAGER_EVENT_STATECHANGED, eventData);
 
-            mRuntimeManagerImplLock.Lock();
-
-            uid_t uid = mUserIdManager->getUserId(appId);
-            gid_t gid = mUserIdManager->getAppsGid();
+            /* Lock briefly to read shared user/group ID state */
+            uid_t uid;
+            gid_t gid;
+            {
+                auto lockStart = std::chrono::steady_clock::now();
+                Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
+                uid = mUserIdManager->getUserId(appId);
+                gid = mUserIdManager->getAppsGid();
+                auto lockEnd = std::chrono::steady_clock::now();
+                LOGINFO("Run: userId lock held for %lld ms", std::chrono::duration_cast<std::chrono::milliseconds>(lockEnd - lockStart).count());
+            }
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
             // In Ralf package, all apps will run with the same ralf user and group
             if (!ralf::getRalfUserInfo(uid, gid))
@@ -717,9 +727,22 @@ namespace WPEFramework
                 {
                     appPath = dobbySpec;
                 }
-                if (isOCIPluginObjectValid())
+                /* Lock briefly to validate OCI plugin object and get container ID */
+                bool ociValid = false;
+                string containerId;
                 {
-                    string containerId = getContainerId(appInstanceId);
+                    auto lockStart = std::chrono::steady_clock::now();
+                    Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
+                    ociValid = isOCIPluginObjectValid();
+                    if (ociValid)
+                    {
+                        containerId = getContainerId(appInstanceId);
+                    }
+                    auto lockEnd = std::chrono::steady_clock::now();
+                    LOGINFO("Run: ociValidation lock held for %lld ms", std::chrono::duration_cast<std::chrono::milliseconds>(lockEnd - lockStart).count());
+                }
+                if (ociValid)
+                {
                     if (!containerId.empty())
                     {
                         if (legacyContainer)
@@ -765,8 +788,14 @@ namespace WPEFramework
                             runtimeAppInfo.requestTime = requestTime;
                             runtimeAppInfo.requestType = REQUEST_TYPE_LAUNCH;
 #endif
-                            /* Insert/update runtime app info */
-                            mRuntimeAppInfo[runtimeAppInfo.appInstanceId] = std::move(runtimeAppInfo);
+                            /* Lock briefly to update shared runtime app info map */
+                            {
+                                auto lockStart = std::chrono::steady_clock::now();
+                                Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
+                                mRuntimeAppInfo[runtimeAppInfo.appInstanceId] = std::move(runtimeAppInfo);
+                                auto lockEnd = std::chrono::steady_clock::now();
+                                LOGINFO("Run: appInfoUpdate lock held for %lld ms", std::chrono::duration_cast<std::chrono::milliseconds>(lockEnd - lockStart).count());
+                            }
                         }
                     }
                     else
@@ -781,11 +810,12 @@ namespace WPEFramework
                     LOGERR("OCI Plugin object is not valid. Aborting Run.");
                 }
             }
-            mRuntimeManagerImplLock.Unlock();
             if (notifyParamCheckFailure)
             {
                 notifyParameterCheckFailure(appInstanceId, errorCode);
             }
+            auto runEndTime = std::chrono::steady_clock::now();
+            LOGINFO("Run: total duration %lld ms (lock NOT held for blocking ops)", std::chrono::duration_cast<std::chrono::milliseconds>(runEndTime - runStartTime).count());
             return status;
         }
 
