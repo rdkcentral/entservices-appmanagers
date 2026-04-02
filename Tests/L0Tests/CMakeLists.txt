@@ -239,14 +239,12 @@ if(PLUGIN_RUNTIME_MANAGER)
     target_include_directories(runtimemanager_l0test PRIVATE
         ${PREFIX}/include
         ${PREFIX}/include/${NAMESPACE}
-        ${PREFIX}/include/WPEFramework
     )
 endif()
 if(PLUGIN_LIFECYCLE_MANAGER)
     target_include_directories(lifecyclemanager_l0test PRIVATE
         ${PREFIX}/include
         ${PREFIX}/include/${NAMESPACE}
-        ${PREFIX}/include/WPEFramework
     )
 endif()
 
@@ -388,7 +386,16 @@ if(NOT LCOV_EXECUTABLE OR NOT GENHTML_EXECUTABLE)
         VERBATIM
     )
 else()
+    set(COVERAGE_DEPENDS "")
+    if(PLUGIN_RUNTIME_MANAGER)
+        list(APPEND COVERAGE_DEPENDS runtimemanager_l0test)
+    endif()
+    if(PLUGIN_LIFECYCLE_MANAGER)
+        list(APPEND COVERAGE_DEPENDS lifecyclemanager_l0test)
+    endif()
+
     add_custom_target(coverage
+        DEPENDS ${COVERAGE_DEPENDS}
         COMMAND "${LCOV_EXECUTABLE}" -c -o coverage.info -d "${CMAKE_BINARY_DIR}"
         COMMAND "${GENHTML_EXECUTABLE}" -o coverage coverage.info
         WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/.."
