@@ -544,10 +544,10 @@ namespace WPEFramework
                 LOGERR("Failed to get Ralf user info. This can lead to failure in launching the app. uid: %d, gid: %d", uid, gid);
             }
 #endif
-            std::ifstream inFile("/tmp/specchange");
+            std::ifstream inFile("/tmp/uid");
             if (inFile.good())
             {
-                uid = 30490;
+                uid = 30002;
             }
             config.mUserId = uid;
             config.mGroupId = gid;
