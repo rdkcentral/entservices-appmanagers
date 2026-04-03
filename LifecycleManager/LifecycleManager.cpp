@@ -74,6 +74,7 @@ namespace WPEFramework
 	    _service = service;
 	    _service->AddRef(); 
 	    mLifecycleManagerImplementation = _service->Root<Exchange::ILifecycleManager>(mConnectionId, 5000, _T("LifecycleManagerImplementation"));
+            SYSLOG(Logging::Startup, (_T("RefTrace owner=ROOT action=Acquire impl=%p connId=%u"), mLifecycleManagerImplementation, mConnectionId));
             if (nullptr == mLifecycleManagerImplementation)
 	    {
                 retStatus = "error starting lifecyclemanager";
@@ -83,9 +84,11 @@ namespace WPEFramework
 	    if (lifeCycleManagerConfig != nullptr)
 	    {
 	        lifeCycleManagerConfig->Configure(service);
-	        lifeCycleManagerConfig->Release();
+            const uint32_t configRef = lifeCycleManagerConfig->Release();
+                SYSLOG(Logging::Startup, (_T("RefTrace owner=QI_CONFIG action=Release iface=%p ref=%u"), lifeCycleManagerConfig, configRef));
 	    }
             mLifecycleManagerState = mLifecycleManagerImplementation->QueryInterface<Exchange::ILifecycleManagerState>();
+            SYSLOG(Logging::Startup, (_T("RefTrace owner=QI_STATE action=Acquire iface=%p"), mLifecycleManagerState));
 	    ASSERT(mLifecycleManagerState != nullptr);
             mLifecycleManagerState->Register(&mLifecycleManagerStateNotification);
             Exchange::JLifecycleManagerState::Register(*this, mLifecycleManagerState);
@@ -101,7 +104,8 @@ namespace WPEFramework
 	    {
                 mLifecycleManagerState->Unregister(&mLifecycleManagerStateNotification);
                 Exchange::JLifecycleManagerState::Unregister(*this);
-	        mLifecycleManagerState->Release();
+            const uint32_t stateRef = mLifecycleManagerState->Release();
+                SYSLOG(Logging::Startup, (_T("RefTrace owner=QI_STATE action=Release iface=%p ref=%u"), mLifecycleManagerState, stateRef));
 	        mLifecycleManagerState = nullptr;
 	    }
 
@@ -109,7 +113,8 @@ namespace WPEFramework
             {
                 // Stop processing:
                 RPC::IRemoteConnection* connection = service->RemoteConnection(mConnectionId);
-                VARIABLE_IS_NOT_USED uint32_t result = mLifecycleManagerImplementation->Release();
+                uint32_t result = mLifecycleManagerImplementation->Release();
+                SYSLOG(Logging::Startup, (_T("RefTrace owner=ROOT action=Release impl=%p ref=%u"), mLifecycleManagerImplementation, result));
                 mLifecycleManagerImplementation = nullptr;
                 ASSERT(result == Core::ERROR_DESTRUCTION_SUCCEEDED);
                 if (nullptr != connection)

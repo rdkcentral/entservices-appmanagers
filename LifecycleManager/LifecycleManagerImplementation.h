@@ -57,7 +57,8 @@ namespace WPEFramework
 	                {
                             if (mLifecycleManagerImplementation != nullptr)
 	            	    {
-                                mLifecycleManagerImplementation->AddRef();
+                                const uint32_t refCount = mLifecycleManagerImplementation->AddRef();
+                                LOGINFO("RefTrace owner=JOB_CTOR action=AddRef impl=%p ref=%u event=%u", mLifecycleManagerImplementation, refCount, static_cast<uint32_t>(_event));
                             }
                         }
 
@@ -69,7 +70,8 @@ namespace WPEFramework
 	                 {
                              if (mLifecycleManagerImplementation != nullptr)
 	            	     {
-                                 mLifecycleManagerImplementation->Release();
+                                 const uint32_t refCount = mLifecycleManagerImplementation->Release();
+                                 LOGINFO("RefTrace owner=JOB_DTOR action=Release impl=%p ref=%u event=%u", mLifecycleManagerImplementation, refCount, static_cast<uint32_t>(_event));
                              }
                          }
 
