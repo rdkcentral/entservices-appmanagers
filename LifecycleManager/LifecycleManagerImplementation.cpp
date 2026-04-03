@@ -412,7 +412,6 @@ namespace WPEFramework
             status = Core::ERROR_NONE;
             return status;
         }
-
         Core::hresult LifecycleManagerImplementation::Register(Exchange::ILifecycleManagerState::INotification *notification)
         {
             ASSERT (nullptr != notification);
