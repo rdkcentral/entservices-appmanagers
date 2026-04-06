@@ -654,8 +654,8 @@ TEST_F(DownloadManagerImplementationTest, ActiveDownloadControlAndDeleteInProgre
     EXPECT_FALSE(activeDownloadId.empty()) << "Should receive a valid downloadId";
     TEST_LOG("Priority download queued with id: %s", activeDownloadId.c_str());
 
-    // Construct the expected file locator (mDownloadPath + "package" + id)
-    // mDownloadPath is "/tmp/downloads/" from the fixture ConfigLine
+    // Construct the expected file locator (mDownloadPath + "/" + "package" + id)
+    // mDownloadPath is normalized to "/tmp/downloads" (trailing slash removed from "/tmp/downloads/" in ConfigLine)
     const string expectedFileLocator = string("/tmp/downloads/package") + activeDownloadId;
 
     // Allow the downloader thread time to call pickDownloadJob (setting mCurrentDownload)

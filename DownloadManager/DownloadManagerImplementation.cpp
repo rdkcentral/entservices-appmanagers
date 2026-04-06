@@ -115,11 +115,10 @@ namespace Plugin {
             {
                 mDownloadPath = config.downloadDir;
 
-                // Remove trailing slash (unless path is just "/")
-                if (!mDownloadPath.empty() && mDownloadPath.size() > 1 && '/' == mDownloadPath.back()) {
+                // Remove trailing slashes (unless path is just "/")
+                while (mDownloadPath.size() > 1 && '/' == mDownloadPath.back()) {
                     mDownloadPath.pop_back();
                 }
-                    
             }
             LOGINFO("DM: downloadDir=%s", mDownloadPath.c_str());
             if (config.downloadId.IsSet() == true)
@@ -127,16 +126,24 @@ namespace Plugin {
                 mDownloadId = static_cast<uint32_t>(config.downloadId.Value());
             }
 
-            int rc = mkdir(mDownloadPath.c_str(), 0777);
-            if (rc != 0 && errno != EEXIST)
+            if (mDownloadPath.empty())
             {
-                LOGERR("DM: Failed to create Download Path '%s' rc: %d errno=%d", mDownloadPath.c_str(), rc, errno);
+                LOGERR("DM: downloadDir is not configured or empty");
                 result = Core::ERROR_GENERAL;
             }
             else
             {
-                LOGINFO("DM: Download path ready at '%s'", mDownloadPath.c_str());
-                mDownloadThreadPtr = std::unique_ptr<std::thread>(new std::thread(&DownloadManagerImplementation::downloaderRoutine, this, 1));
+                int rc = mkdir(mDownloadPath.c_str(), 0777);
+                if (rc != 0 && errno != EEXIST)
+                {
+                    LOGERR("DM: Failed to create Download Path '%s' rc: %d errno=%d", mDownloadPath.c_str(), rc, errno);
+                    result = Core::ERROR_GENERAL;
+                }
+                else
+                {
+                    LOGINFO("DM: Download path ready at '%s'", mDownloadPath.c_str());
+                    mDownloadThreadPtr = std::unique_ptr<std::thread>(new std::thread(&DownloadManagerImplementation::downloaderRoutine, this, 1));
+                }
             }
 
             DownloadManagerTelemetryReporting::getInstance().initialize(service);
