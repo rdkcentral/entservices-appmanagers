@@ -18,6 +18,7 @@
 **/
 
 #include "AppManagerTelemetryReporting.h"
+#include "AppInfoManager.h"
 #include "UtilsLogging.h"
 #include "tracing/Logging.h"
 
@@ -60,15 +61,15 @@ namespace Plugin
         std::string telemetryMetrics = "";
         std::string markerName = "";
         time_t currentTime = currentTimestampMs();
-        AppManagerImplementation*appManagerImplInstance = AppManagerImplementation::getInstance();
 
         if(!ensureTelemetryClient())
         {
             LOGERR("Failed to create TelemetryMetricsObject\n");
         }
 
-        auto it = appManagerImplInstance->mAppInfo.find(appId);
-        if((it != appManagerImplInstance->mAppInfo.end()) && (currentAction == it->second.currentAction) && isTelemetryClientAvailable())
+        AppInfo telSnap;
+        bool telFound = AppInfoManager::getInstance().get(appId, telSnap);
+        if(telFound && (currentAction == telSnap.getCurrentAction()) && isTelemetryClientAvailable())
         {
             LOGINFO("Received data for appId %s current action %d ",appId.c_str(), currentAction);
 
@@ -79,16 +80,16 @@ namespace Plugin
                 case AppManagerImplementation::APP_ACTION_PRELOAD:
                 break;
                 case AppManagerImplementation::APP_ACTION_CLOSE:
-                    if ((Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED != it->second.targetAppState) &&
-                        (Exchange::IAppManager::AppLifecycleState::APP_STATE_HIBERNATED != it->second.targetAppState))
+                    if ((Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED != telSnap.getTargetAppState()) &&
+                        (Exchange::IAppManager::AppLifecycleState::APP_STATE_HIBERNATED != telSnap.getTargetAppState()))
                     {
-                        jsonParam["appManagerCloseTime"] = (int)(currentTime - it->second.currentActionTime);
+                        jsonParam["appManagerCloseTime"] = (int)(currentTime - telSnap.getCurrentActionTime());
                         markerName = TELEMETRY_MARKER_CLOSE_TIME;
                     }
                 break;
                 case AppManagerImplementation::APP_ACTION_TERMINATE:
                 case AppManagerImplementation::APP_ACTION_KILL:
-                    jsonParam["appManagerCloseTime"] = (int)(currentTime - it->second.currentActionTime);
+                    jsonParam["appManagerCloseTime"] = (int)(currentTime - telSnap.getCurrentActionTime());
                     markerName = TELEMETRY_MARKER_CLOSE_TIME;
                 break;
                 default:
@@ -121,31 +122,31 @@ namespace Plugin
         std::string telemetryMetrics = "";
         std::string markerName = "";
         time_t currentTime = currentTimestampMs();
-        AppManagerImplementation*appManagerImplInstance = AppManagerImplementation::getInstance();
 
         if(!ensureTelemetryClient())
         {
             LOGERR("Failed to create TelemetryMetricsObject\n");
         }
 
-        auto it = appManagerImplInstance->mAppInfo.find(appId);
-        if((it != appManagerImplInstance->mAppInfo.end()) && isTelemetryClientAvailable())
+        AppInfo stateSnap;
+        bool stateFound = AppInfoManager::getInstance().get(appId, stateSnap);
+        if(stateFound && isTelemetryClientAvailable())
         {
-            switch(it->second.currentAction)
+            switch(stateSnap.getCurrentAction())
             {
                 case AppManagerImplementation::APP_ACTION_LAUNCH:
                     if(Exchange::ILifecycleManager::LifecycleState::ACTIVE == newState)
                     {
-                        jsonParam["totalLaunchTime"] = (int)(currentTime - it->second.currentActionTime);
-                        jsonParam["launchType"] = ((AppManagerImplementation::APPLICATION_TYPE_INTERACTIVE == it->second.packageInfo.type)?"LAUNCH_INTERACTIVE":"START_SYSTEM");
+                        jsonParam["totalLaunchTime"] = (int)(currentTime - stateSnap.getCurrentActionTime());
+                        jsonParam["launchType"] = ((AppManagerTypes::APPLICATION_TYPE_INTERACTIVE == stateSnap.getPackageInfo().type)?"LAUNCH_INTERACTIVE":"START_SYSTEM");
                         markerName = TELEMETRY_MARKER_LAUNCH_TIME;
                     }
                 break;
                 case AppManagerImplementation::APP_ACTION_PRELOAD:
                     if(Exchange::ILifecycleManager::LifecycleState::PAUSED == newState)
                     {
-                        jsonParam["totalLaunchTime"] = (int)(currentTime - it->second.currentActionTime);
-                        jsonParam["launchType"] = ((AppManagerImplementation::APPLICATION_TYPE_INTERACTIVE == it->second.packageInfo.type)?"PRELOAD_INTERACTIVE":"START_SYSTEM");
+                        jsonParam["totalLaunchTime"] = (int)(currentTime - stateSnap.getCurrentActionTime());
+                        jsonParam["launchType"] = ((AppManagerTypes::APPLICATION_TYPE_INTERACTIVE == stateSnap.getPackageInfo().type)?"PRELOAD_INTERACTIVE":"START_SYSTEM");
                         markerName = TELEMETRY_MARKER_LAUNCH_TIME;
                     }
                 break;
@@ -154,8 +155,8 @@ namespace Plugin
                 case AppManagerImplementation::APP_ACTION_KILL:
                         if(Exchange::ILifecycleManager::LifecycleState::UNLOADED == newState)
                         {
-                            jsonParam["totalCloseTime"] = (int)(currentTime - it->second.currentActionTime);
-                            jsonParam["closeType"] = ((AppManagerImplementation::APP_ACTION_CLOSE == it->second.currentAction)?"CLOSE":((AppManagerImplementation::APP_ACTION_TERMINATE == it->second.currentAction)?"TERMINATE":"KILL"));
+                            jsonParam["totalCloseTime"] = (int)(currentTime - stateSnap.getCurrentActionTime());
+                            jsonParam["closeType"] = ((AppManagerImplementation::APP_ACTION_CLOSE == stateSnap.getCurrentAction())?"CLOSE":((AppManagerImplementation::APP_ACTION_TERMINATE == stateSnap.getCurrentAction())?"TERMINATE":"KILL"));
                             markerName = TELEMETRY_MARKER_CLOSE_TIME;
                         }
                 break;
@@ -167,8 +168,8 @@ namespace Plugin
             if(!markerName.empty())
             {
                 jsonParam["appId"] = appId;
-                jsonParam["appInstanceId"] = it->second.appInstanceId;
-                jsonParam["appVersion"] = it->second.packageInfo.version;
+                jsonParam["appInstanceId"] = stateSnap.getAppInstanceId();
+                jsonParam["appVersion"] = stateSnap.getPackageInfo().version;
                 jsonParam.ToString(telemetryMetrics);
                 if(!telemetryMetrics.empty())
                 {
