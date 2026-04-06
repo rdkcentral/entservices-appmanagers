@@ -24,7 +24,6 @@ namespace WPEFramework
                     int32_t gid;         /* GID of the group who owns the storage */
                     uint32_t quotaKB;    /* Quota size in kilobytes for the storage */
                     uint32_t usedKB;     /* Used space in kilobytes for the storage */
-                    std::mutex storageLock; /* Mutex for thread safety */
                 } StorageAppInfo;
 
                 typedef struct _StorageSize
@@ -63,7 +62,6 @@ namespace WPEFramework
                 uint64_t getDirectorySizeInBytes(const std::string &path);
                 static int getSize(const char *path, const struct stat *statPtr, int currentFlag, struct FTW *internalFtwUsage);
                 Core::hresult deleteDirectoryEntries(const string& appId, string& errorReason);
-                bool lockAppStorageInfo(const std::string& appId, std::unique_lock<std::mutex>& appLock);
 
                 /*Members*/
                 RequestHandler();
