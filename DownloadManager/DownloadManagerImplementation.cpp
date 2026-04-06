@@ -116,7 +116,7 @@ namespace Plugin {
                 mDownloadPath = config.downloadDir;
 
                 // Remove trailing slashes (unless path is just "/")
-                while (mDownloadPath.size() > 1 && '/' == mDownloadPath.back()) {
+                while (1 < mDownloadPath.size() && '/' == mDownloadPath.back()) {
                     mDownloadPath.pop_back();
                 }
             }
