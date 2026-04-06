@@ -131,6 +131,12 @@ namespace Plugin {
             PackageManagerImplementation::Configuration config;
             config.FromString(service->ConfigLine());
             downloadDir = config.downloadDir;
+
+            // Remove trailing slashes (unless path is just "/")
+            while (!downloadDir.empty() && 1 < downloadDir.size() && '/' == downloadDir.back()) {
+                downloadDir.pop_back();
+            }   
+
             LOGINFO("downloadDir=%s", downloadDir.c_str());
 
             //std::filesystem::create_directories(path);        // XXX: need C++17
@@ -231,7 +237,13 @@ namespace Plugin {
         std::lock_guard<std::mutex> lock(mMutex);
 
         DownloadInfoPtr di = DownloadInfoPtr(new DownloadInfo(url, std::to_string(++mNextDownloadId), options.retries, options.rateLimit));
-        std::string filename = downloadDir + "package" + di->GetId();
+        std::string filename = "";
+        if ("/" == downloadDir) {
+            filename = downloadDir + "package" + di->GetId();
+        } else {
+            filename = downloadDir + "/" + "package" + di->GetId();
+        }
+        
         di->SetFileLocator(filename);
         if (options.priority) {
             mDownloadQueue.push_front(di);
