@@ -29,8 +29,9 @@ namespace WPEFramework
 	}
 
         ApplicationContext::ApplicationContext (std::string appId)
-        : mPendingStateTransition(false)
+        : mPendingStateTransition(false) 
         , mPendingStates()
+        , mPendingOldState(Exchange::ILifecycleManager::LifecycleState::UNLOADED)
         , mPendingEventName("")
         , mAppInstanceId("")
         , mAppId(std::move(appId))

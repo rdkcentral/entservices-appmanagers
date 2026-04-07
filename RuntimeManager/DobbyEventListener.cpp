@@ -37,7 +37,7 @@ namespace WPEFramework {
     namespace Plugin {
 
         DobbyEventListener::DobbyEventListener()
-            : mOCIContainerNotification(this),mEventHandler(nullptr)
+            : mOCIContainerObject(nullptr), mOCIContainerNotification(this), mEventHandler(nullptr)
         {
             LOGINFO("Creating DobbyEventListener instance");
         }
