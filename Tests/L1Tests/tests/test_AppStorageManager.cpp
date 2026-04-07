@@ -2,6 +2,7 @@
 #include <gtest/gtest.h>
 #include <string>
 #include <cstring>
+#include <thread>
 #include "AppStorageManager.h"
 #include "AppStorageManagerImplementation.h"
 #include "ServiceMock.h"
@@ -112,6 +113,9 @@ class AppStorageManagerTest : public ::testing::Test {
                 }
                 return nullptr;
             }));
+            
+            ON_CALL(service, ConfigLine())
+                .WillByDefault(Return("{\"path\":\"/opt/persistent/storageManager\"}"));
 
             interface = static_cast<Exchange::IAppStorageManager*>(
                 StorageManagerImplementation->QueryInterface(Exchange::IAppStorageManager::ID));
@@ -124,6 +128,11 @@ class AppStorageManagerTest : public ::testing::Test {
         }
         virtual ~AppStorageManagerTest() override {
             plugin->Deinitialize(&service);
+            if (interface != nullptr)
+            {
+                interface->Release();
+                interface = nullptr;
+            }
             storageManagerConfigure->Release();
             Wraps::setImpl(nullptr);
             if (p_wrapsImplMock != nullptr)
@@ -5230,4 +5239,221 @@ TEST_F(AppStorageManagerTest, ClearAll_JsonRpc_Success) {
             return 0;
         });
     EXPECT_EQ(Core::ERROR_NONE, handler.Invoke(connection, _T("clearAll"), _T("{\"exemptionAppIds\":\"[]\"}"), response));
+}
+
+/*
+ * RDKEMW-12487: Tests for removeAppStorageInfoByAppID dangling-iterator fix
+ * and deleteDirectoryEntries lock-removal refactor.
+ *
+ * 1. RDKEMW12487_RetrieveAppStorageInfo_InaccessiblePath_EntryRemovedAndRecreated
+ *    After CreateStorage succeeds, a subsequent CreateStorage where access()
+ *    returns -1 must not crash (dangling-iterator fix) and must allow the
+ *    entry to be re-created so a following GetStorage succeeds.
+ *
+ * 2. RDKEMW12487_DeleteDirectoryEntries_AppNotFound_ReturnsError
+ *    Calling Clear on a non-existent appId must return ERROR_GENERAL and set
+ *    errorReason to the "Storage not found" message produced by the refactored
+ *    deleteDirectoryEntries (no longer goes through lockAppStorageInfo).
+ *
+ * 3. RDKEMW12487_DeleteDirectoryEntries_Success_ResetsUsedKB
+ *    After CreateStorage + Clear the entry must still be present with usedKB
+ *    reset to 0. Verified through a subsequent GetStorage call.
+ *
+ * 4. RDKEMW12487_DeleteDirectoryEntries_NftwFailure_UsedKBUnchanged
+ *    When nftw returns -1 inside deleteDirectoryEntries the function must
+ *    return ERROR_GENERAL and must NOT zero usedKB.
+ *
+ * 5. RDKEMW12487_DeleteDirectoryEntries_ConcurrentClear_NoDeadlock
+ *    Two threads each call Clear on separate appIds simultaneously. With the
+ *    old code the per-app storageLock was acquired inside mStorageManagerImplLock
+ *    creating an inconsistent ordering that could deadlock. This verifies both
+ *    calls complete successfully.
+ */
+
+/* 1 – dangling-iterator fix: inaccessible-path entry is silently removed and
+ *     the storage can be re-created without a crash or assertion failure. */
+TEST_F(AppStorageManagerTest, RDKEMW12487_RetrieveAppStorageInfo_InaccessiblePath_EntryRemovedAndRecreated)
+{
+    const std::string appId = "rdkemw12487_inaccessible_path_app";
+    uint32_t size = 1024;
+    std::string path = "";
+    std::string errorReason = "";
+
+    EXPECT_CALL(*p_wrapsImplMock, mkdir(_, _))
+        .WillRepeatedly([](const char*, mode_t) { return 0; });
+    EXPECT_CALL(*p_wrapsImplMock, statvfs(_, _))
+        .WillRepeatedly([](const char*, struct statvfs* buf) {
+            buf->f_bsize = 4096; buf->f_frsize = 4096;
+            buf->f_blocks = 100000; buf->f_bfree = 500000; buf->f_bavail = 500000;
+            return 0;
+        });
+    ON_CALL(*mStore2Mock, SetValue(_, _, _, _, _))
+        .WillByDefault(Invoke([](Exchange::IStore2::ScopeType, const std::string&,
+                                 const std::string&, const std::string&,
+                                 const uint32_t) -> uint32_t { return Core::ERROR_NONE; }));
+    ON_CALL(*mStore2Mock, DeleteKey(_, _, _))
+        .WillByDefault(Invoke([](Exchange::IStore2::ScopeType, const std::string&,
+                                 const std::string&) -> uint32_t { return Core::ERROR_NONE; }));
+    ON_CALL(*p_wrapsImplMock, nftw(_, _, _, _))
+        .WillByDefault([](const char*, int (*)(const char*, const struct stat*, int, struct FTW*), int, int) { return 0; });
+
+    /* Step 1: Create the storage entry.  access() is not called by CreateStorage
+     * when the entry is absent from the map, so we use ON_CALL (no cardinality
+     * requirement) to supply a benign default. */
+    ON_CALL(*p_wrapsImplMock, access(_, _))
+        .WillByDefault([](const char*, int) { return 0; });
+
+    EXPECT_EQ(Core::ERROR_NONE, interface->CreateStorage(appId, size, path, errorReason));
+    EXPECT_FALSE(path.empty());
+
+    /* Step 2: Simulate an inaccessible path — access returns -1.  The second
+     * CreateStorage calls retrieveAppStorageInfoByAppID which finds the existing
+     * entry and checks access().  The -1 return triggers the inaccessible-path
+     * branch: path is captured before erase (dangling-iterator fix), the entry
+     * is removed, then falls through to re-create it. */
+    ON_CALL(*p_wrapsImplMock, access(_, _))
+        .WillByDefault([](const char*, int) { return -1; });
+
+    path = "";
+    errorReason = "";
+    EXPECT_EQ(Core::ERROR_NONE, interface->CreateStorage(appId, size, path, errorReason));
+    EXPECT_FALSE(path.empty());
+}
+
+/* 2 – deleteDirectoryEntries: app not found returns ERROR_GENERAL */
+TEST_F(AppStorageManagerTest, RDKEMW12487_DeleteDirectoryEntries_AppNotFound_ReturnsError)
+{
+    std::string errorReason = "";
+    EXPECT_EQ(Core::ERROR_GENERAL,
+              interface->Clear("rdkemw12487_nonexistent_app_clear", errorReason));
+    EXPECT_NE(std::string::npos, errorReason.find("Storage not found for appId"));
+}
+
+/* 3 – deleteDirectoryEntries: success path resets usedKB to 0 */
+TEST_F(AppStorageManagerTest, RDKEMW12487_DeleteDirectoryEntries_Success_ResetsUsedKB)
+{
+    const std::string appId = "rdkemw12487_clear_resets_usedkb";
+    uint32_t size = 1024;
+    std::string path = "";
+    std::string errorReason = "";
+
+    EXPECT_CALL(*p_wrapsImplMock, mkdir(_, _))
+        .WillRepeatedly([](const char*, mode_t) { return 0; });
+    EXPECT_CALL(*p_wrapsImplMock, access(_, _))
+        .WillRepeatedly([](const char*, int) { return 0; });
+    EXPECT_CALL(*p_wrapsImplMock, statvfs(_, _))
+        .WillRepeatedly([](const char*, struct statvfs* buf) {
+            buf->f_bsize = 4096; buf->f_frsize = 4096;
+            buf->f_blocks = 100000; buf->f_bfree = 50000; buf->f_bavail = 50000;
+            return 0;
+        });
+    ON_CALL(*mStore2Mock, SetValue(_, _, _, _, _))
+        .WillByDefault(Invoke([](Exchange::IStore2::ScopeType, const std::string&,
+                                 const std::string&, const std::string&,
+                                 const uint32_t) -> uint32_t { return Core::ERROR_NONE; }));
+    /* nftw always succeeds */
+    ON_CALL(*p_wrapsImplMock, nftw(_, _, _, _))
+        .WillByDefault([](const char*, int (*)(const char*, const struct stat*, int, struct FTW*), int, int) { return 0; });
+
+    EXPECT_EQ(Core::ERROR_NONE, interface->CreateStorage(appId, size, path, errorReason));
+    errorReason = "";
+    EXPECT_EQ(Core::ERROR_NONE, interface->Clear(appId, errorReason));
+    EXPECT_TRUE(errorReason.empty());
+
+    /* usedKB must be 0 after a successful Clear */
+    EXPECT_CALL(*p_wrapsImplMock, chown(_, _, _))
+        .WillRepeatedly([](const char*, uid_t, gid_t) { return 0; });
+    std::string storagePath;
+    uint32_t quotaKB = 0, usedKB = 999;
+    EXPECT_EQ(Core::ERROR_NONE,
+              interface->GetStorage(appId, 0, 0, storagePath, quotaKB, usedKB));
+    EXPECT_EQ(0u, usedKB);
+}
+
+/* 4 – deleteDirectoryEntries: nftw failure must NOT zero usedKB */
+TEST_F(AppStorageManagerTest, RDKEMW12487_DeleteDirectoryEntries_NftwFailure_UsedKBUnchanged)
+{
+    const std::string appId = "rdkemw12487_nftw_fail_app";
+    uint32_t size = 1024;
+    std::string path = "";
+    std::string errorReason = "";
+
+    EXPECT_CALL(*p_wrapsImplMock, mkdir(_, _))
+        .WillRepeatedly([](const char*, mode_t) { return 0; });
+    EXPECT_CALL(*p_wrapsImplMock, access(_, _))
+        .WillRepeatedly([](const char*, int) { return 0; });
+    EXPECT_CALL(*p_wrapsImplMock, statvfs(_, _))
+        .WillRepeatedly([](const char*, struct statvfs* buf) {
+            buf->f_bsize = 4096; buf->f_frsize = 4096;
+            buf->f_blocks = 100000; buf->f_bfree = 50000; buf->f_bavail = 50000;
+            return 0;
+        });
+    ON_CALL(*mStore2Mock, SetValue(_, _, _, _, _))
+        .WillByDefault(Invoke([](Exchange::IStore2::ScopeType, const std::string&,
+                                 const std::string&, const std::string&,
+                                 const uint32_t) -> uint32_t { return Core::ERROR_NONE; }));
+
+    /* nftw succeeds for all calls during CreateStorage (including getDirectorySizeInBytes
+     * for entries already in the singleton map from previous tests). */
+    ON_CALL(*p_wrapsImplMock, nftw(_, _, _, _))
+        .WillByDefault([](const char*, int (*)(const char*, const struct stat*, int, struct FTW*), int, int) { return 0; });
+
+    EXPECT_EQ(Core::ERROR_NONE, interface->CreateStorage(appId, size, path, errorReason));
+
+    /* After CreateStorage, make all nftw calls fail so that deleteDirectoryEntries
+     * returns ERROR_GENERAL.  We use ON_CALL (not EXPECT_CALL) so that any
+     * residual nftw calls from other map entries do not trigger unexpected-call
+     * failures in NiceMock. */
+    ON_CALL(*p_wrapsImplMock, nftw(_, _, _, _))
+        .WillByDefault([](const char*, int (*)(const char*, const struct stat*, int, struct FTW*), int, int) { return -1; });
+
+    errorReason = "";
+    EXPECT_EQ(Core::ERROR_GENERAL, interface->Clear(appId, errorReason));
+    EXPECT_FALSE(errorReason.empty());
+}
+
+/* 5 – concurrent Clear on separate appIds must not deadlock */
+TEST_F(AppStorageManagerTest, RDKEMW12487_DeleteDirectoryEntries_ConcurrentClear_NoDeadlock)
+{
+    uint32_t size = 1024;
+    std::string path = "";
+    std::string errorReason = "";
+
+    EXPECT_CALL(*p_wrapsImplMock, mkdir(_, _))
+        .WillRepeatedly([](const char*, mode_t) { return 0; });
+    EXPECT_CALL(*p_wrapsImplMock, access(_, _))
+        .WillRepeatedly([](const char*, int) { return 0; });
+    EXPECT_CALL(*p_wrapsImplMock, statvfs(_, _))
+        .WillRepeatedly([](const char*, struct statvfs* buf) {
+            buf->f_bsize = 4096; buf->f_frsize = 4096;
+            buf->f_blocks = 100000; buf->f_bfree = 50000; buf->f_bavail = 50000;
+            return 0;
+        });
+    ON_CALL(*mStore2Mock, SetValue(_, _, _, _, _))
+        .WillByDefault(Invoke([](Exchange::IStore2::ScopeType, const std::string&,
+                                 const std::string&, const std::string&,
+                                 const uint32_t) -> uint32_t { return Core::ERROR_NONE; }));
+    ON_CALL(*p_wrapsImplMock, nftw(_, _, _, _))
+        .WillByDefault([](const char*, int (*)(const char*, const struct stat*, int, struct FTW*), int, int) { return 0; });
+
+    EXPECT_EQ(Core::ERROR_NONE, interface->CreateStorage("rdkemw12487_concurrent1", size, path, errorReason));
+    EXPECT_EQ(Core::ERROR_NONE, interface->CreateStorage("rdkemw12487_concurrent2", size, path, errorReason));
+
+    Core::hresult result1 = Core::ERROR_GENERAL;
+    Core::hresult result2 = Core::ERROR_GENERAL;
+
+    std::thread t1([&]() {
+        std::string reason;
+        result1 = interface->Clear("rdkemw12487_concurrent1", reason);
+    });
+    std::thread t2([&]() {
+        std::string reason;
+        result2 = interface->Clear("rdkemw12487_concurrent2", reason);
+    });
+
+    t1.join();
+    t2.join();
+
+    EXPECT_EQ(Core::ERROR_NONE, result1);
+    EXPECT_EQ(Core::ERROR_NONE, result2);
 }

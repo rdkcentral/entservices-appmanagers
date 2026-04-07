@@ -33,6 +33,8 @@
 #include "LifecycleInterfaceConnector.h"
 #include <interfaces/IPackageManager.h>
 #include <map>
+#include "AppManagerTypes.h"
+#include "AppInfoManager.h"
 
 namespace WPEFramework {
 namespace Plugin {
@@ -53,37 +55,31 @@ namespace Plugin {
         END_INTERFACE_MAP
 
     public:
-        typedef enum _ApplicationType
-        {
-            APPLICATION_TYPE_UNKNOWN = 0,
-            APPLICATION_TYPE_INTERACTIVE,
-            APPLICATION_TYPE_SYSTEM
-        } ApplicationType;
+        /* ----------------------------------------------------------------
+         * Type aliases — kept for backward compatibility with existing
+         * call-sites that use AppManagerImplementation::ApplicationType etc.
+         * The canonical definitions live in AppManagerTypes.h.
+         * ---------------------------------------------------------------- */
+        using ApplicationType = AppManagerTypes::ApplicationType;
+        using PackageInfo     = AppManagerTypes::PackageInfo;
+        using CurrentAction   = AppManagerTypes::CurrentAction;
+        using AppInfo         = Plugin::AppInfo;          ///< Resolved via AppInfo.h
 
-        typedef struct _PackageInfo
-        {
-            string version = "";
-            uint32_t lockId = 0;
-            string unpackedPath = "" ;
-            WPEFramework::Exchange::RuntimeConfig configMetadata;
-            string appMetadata = "";
-            ApplicationType type;
-        } PackageInfo;
+        static constexpr ApplicationType APPLICATION_TYPE_UNKNOWN     = AppManagerTypes::APPLICATION_TYPE_UNKNOWN;
+        static constexpr ApplicationType APPLICATION_TYPE_INTERACTIVE = AppManagerTypes::APPLICATION_TYPE_INTERACTIVE;
+        static constexpr ApplicationType APPLICATION_TYPE_SYSTEM      = AppManagerTypes::APPLICATION_TYPE_SYSTEM;
 
-        enum CurrentAction {
-            APP_ACTION_NONE,
-            APP_ACTION_LAUNCH,
-            APP_ACTION_PRELOAD,
-            APP_ACTION_SUSPEND,
-            APP_ACTION_RESUME,
-            APP_ACTION_CLOSE,
-            APP_ACTION_TERMINATE,
-            APP_ACTION_HIBERNATE,
-            APP_ACTION_KILL,
-        };
+        static constexpr CurrentAction APP_ACTION_NONE      = AppManagerTypes::APP_ACTION_NONE;
+        static constexpr CurrentAction APP_ACTION_LAUNCH    = AppManagerTypes::APP_ACTION_LAUNCH;
+        static constexpr CurrentAction APP_ACTION_PRELOAD   = AppManagerTypes::APP_ACTION_PRELOAD;
+        static constexpr CurrentAction APP_ACTION_SUSPEND   = AppManagerTypes::APP_ACTION_SUSPEND;
+        static constexpr CurrentAction APP_ACTION_RESUME    = AppManagerTypes::APP_ACTION_RESUME;
+        static constexpr CurrentAction APP_ACTION_CLOSE     = AppManagerTypes::APP_ACTION_CLOSE;
+        static constexpr CurrentAction APP_ACTION_TERMINATE = AppManagerTypes::APP_ACTION_TERMINATE;
+        static constexpr CurrentAction APP_ACTION_HIBERNATE = AppManagerTypes::APP_ACTION_HIBERNATE;
+        static constexpr CurrentAction APP_ACTION_KILL      = AppManagerTypes::APP_ACTION_KILL;
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-        enum CurrentActionError{
+         enum CurrentActionError{
             ERROR_NONE,
             ERROR_INVALID_PARAMS,
             ERROR_INTERNAL,
@@ -97,31 +93,6 @@ namespace Plugin {
             ERROR_KILL_APP,
             ERROR_SET_TARGET_APP_STATE
         };
-#endif
-
-        typedef struct _AppInfo
-        {
-            /* From LifecycleManager */
-            string appInstanceId;
-            string activeSessionId;
-            /* From PackageManager */
-            PackageInfo packageInfo;
-            /* App launch params*/
-            Exchange::IAppManager::AppLifecycleState appNewState;
-            Exchange::ILifecycleManager::LifecycleState appLifecycleState;
-            timespec lastActiveStateChangeTime;
-            uint32_t lastActiveIndex;
-            string appIntent;
-            Exchange::IAppManager::AppLifecycleState targetAppState;
-            Exchange::IAppManager::AppLifecycleState appOldState;
-            /* Current Action*/
-            CurrentAction currentAction = APP_ACTION_NONE;
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-            time_t currentActionTime;
-#endif
-        } AppInfo;
-
-        std::map<std::string, AppInfo> mAppInfo;
 
         enum EventNames {
             APP_EVENT_UNKNOWN = 0,
@@ -273,9 +244,7 @@ namespace Plugin {
 
     public: /* public methods */
         void updateCurrentAction(const std::string& appId, CurrentAction action);
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
         void updateCurrentActionTime(const std::string& appId, time_t currentActionTime, CurrentAction currentAction);
-#endif
     bool checkInstallUninstallBlock(const std::string& appId);
     };
 } /* namespace Plugin */

@@ -34,6 +34,7 @@
 #include <interfaces/IDownloadManager.h>
 
 #include "DownloadManagerHttpClient.h"
+#include "DownloadManagerTelemetryReporting.h"
 
 #define DOWNLOAD_REASON_NONE    (0xFF)
 

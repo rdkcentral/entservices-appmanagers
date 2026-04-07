@@ -40,10 +40,6 @@ namespace WPEFramework
 
         RuntimeManagerImplementation::RuntimeManagerImplementation()
             : mRuntimeManagerImplLock(), mCurrentservice(nullptr), mOciContainerObject(nullptr), mStorageManagerObject(nullptr), mWindowManagerConnector(nullptr), mDobbyEventListener(nullptr), mUserIdManager(nullptr), mRuntimeAppPortal("")
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-              ,
-              mTelemetryMetricsObject(nullptr)
-#endif
         {
             LOGINFO("Create RuntimeManagerImplementation Instance");
             if (nullptr == RuntimeManagerImplementation::_instance)
@@ -94,6 +90,8 @@ namespace WPEFramework
             {
                 releaseOCIContainerPluginObject();
             }
+
+            RuntimeManagerTelemetryReporting::getInstance().reset();
         }
 
         Core::hresult RuntimeManagerImplementation::Register(Exchange::IRuntimeManager::INotification *notification)
@@ -175,7 +173,6 @@ namespace WPEFramework
 
             case RUNTIME_MANAGER_EVENT_CONTAINERSTARTED:
             {
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
                 auto it = mRuntimeAppInfo.find(appInstanceId);
                 if (it != mRuntimeAppInfo.end())
                 {
@@ -190,7 +187,6 @@ namespace WPEFramework
                 {
                     LOGERR("RuntimeAppInfo not found for appInstanceId: %s", appInstanceId.c_str());
                 }
-#endif
                 while (index != mRuntimeManagerNotification.end())
                 {
                     (*index)->OnStarted(appInstanceId);
@@ -201,7 +197,6 @@ namespace WPEFramework
 
             case RUNTIME_MANAGER_EVENT_CONTAINERSTOPPED:
             {
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
                 auto it = mRuntimeAppInfo.find(appInstanceId);
                 if (it != mRuntimeAppInfo.end())
                 {
@@ -215,7 +210,6 @@ namespace WPEFramework
                 {
                     LOGERR("RuntimeAppInfo not found for appInstanceId: %s", appInstanceId.c_str());
                 }
-#endif
                 while (index != mRuntimeManagerNotification.end())
                 {
                     (*index)->OnTerminated(appInstanceId);
@@ -262,16 +256,7 @@ namespace WPEFramework
                 mCurrentservice = service;
                 mCurrentservice->AddRef();
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-                if (nullptr == (mTelemetryMetricsObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::ITelemetryMetrics>("org.rdk.TelemetryMetrics")))
-                {
-                    LOGERR("mTelemetryMetricsObject is null \n");
-                }
-                else
-                {
-                    LOGINFO("created TelemetryMetrics Object");
-                }
-#endif
+                RuntimeManagerTelemetryReporting::getInstance().initialize(mCurrentservice);
                 /* Create Storage Manager Plugin Object */
                 if (Core::ERROR_NONE != createStorageManagerPluginObject())
                 {
@@ -280,7 +265,7 @@ namespace WPEFramework
 
                 /* Create Window Manager Plugin Object */
                 mWindowManagerConnector = new WindowManagerConnector();
-                if (false == mWindowManagerConnector->initializePlugin(service))
+                if (false == mWindowManagerConnector->initializePlugin(service, this))
                 {
                     LOGERR("Failed to create Window Manager Connector Object");
                 }
@@ -537,10 +522,8 @@ namespace WPEFramework
             bool notifyParamCheckFailure = false;
             std::string errorCode = "";
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             /* Get current timestamp at the start of run for telemetry */
             time_t requestTime = getCurrentTimestamp();
-#endif
 
             JsonObject eventData;
             eventData["containerId"] = appInstanceId;
@@ -767,11 +750,9 @@ namespace WPEFramework
                             runtimeAppInfo.appInstanceId = appInstanceId;
                             runtimeAppInfo.descriptor = std::move(descriptor);
                             runtimeAppInfo.containerState = Exchange::IRuntimeManager::RUNTIME_STATE_STARTING;
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
                             /* Store request time and type in runtime app info map */
                             runtimeAppInfo.requestTime = requestTime;
                             runtimeAppInfo.requestType = REQUEST_TYPE_LAUNCH;
-#endif
                             /* Insert/update runtime app info */
                             mRuntimeAppInfo[runtimeAppInfo.appInstanceId] = std::move(runtimeAppInfo);
                         }
@@ -796,15 +777,11 @@ namespace WPEFramework
             Core::hresult status = Core::ERROR_GENERAL;
             std::string options = "";
             std::string errorReason = "";
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             std::string appId = "";
-#endif
             bool success = false;
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             /* Get current timestamp at the start of hibernate for telemetry */
             time_t requestTime = getCurrentTimestamp();
-#endif
 
             mRuntimeManagerImplLock.Lock();
 
@@ -828,9 +805,7 @@ namespace WPEFramework
                         if (mRuntimeAppInfo.find(appInstanceId) != mRuntimeAppInfo.end())
                         {
                             mRuntimeAppInfo[appInstanceId].containerState = Exchange::IRuntimeManager::RUNTIME_STATE_HIBERNATING;
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
                             appId = mRuntimeAppInfo[appInstanceId].appId;
-#endif
                         }
                     }
                 }
@@ -840,9 +815,7 @@ namespace WPEFramework
                 }
             mRuntimeManagerImplLock.Unlock();
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             recordTelemetryData(TELEMETRY_MARKER_HIBERNATE_TIME, appId, requestTime);
-#endif
 
             return status;
         }
@@ -851,15 +824,11 @@ namespace WPEFramework
         {
             Core::hresult status = Core::ERROR_GENERAL;
             std::string errorReason = "";
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             std::string appId = "";
-#endif
             bool success = false;
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             /* Get current timestamp at the start of wake for telemetry */
             time_t requestTime = getCurrentTimestamp();
-#endif
 
             mRuntimeManagerImplLock.Lock();
 
@@ -886,9 +855,7 @@ namespace WPEFramework
                             if (mRuntimeAppInfo.find(appInstanceId) != mRuntimeAppInfo.end())
                             {
                                 mRuntimeAppInfo[appInstanceId].containerState = Exchange::IRuntimeManager::RUNTIME_STATE_WAKING;
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
                                 appId = mRuntimeAppInfo[appInstanceId].appId;
-#endif
                             }
                         }
                     }
@@ -903,9 +870,7 @@ namespace WPEFramework
                 }
             mRuntimeManagerImplLock.Unlock();
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             recordTelemetryData(TELEMETRY_MARKER_WAKE_TIME, appId, requestTime);
-#endif
 
             return status;
         }
@@ -914,15 +879,11 @@ namespace WPEFramework
         {
             Core::hresult status = Core::ERROR_GENERAL;
             std::string errorReason = "";
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             std::string appId = "";
-#endif
             bool success = false;
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             /* Get current timestamp at the start of suspend for telemetry */
             time_t requestTime = getCurrentTimestamp();
-#endif
 
             mRuntimeManagerImplLock.Lock();
 
@@ -941,7 +902,6 @@ namespace WPEFramework
                     {
                         LOGERR("Failed to PauseContainer %s", errorReason.c_str());
                     }
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
                     else
                     {
                         if (mRuntimeAppInfo.find(appInstanceId) != mRuntimeAppInfo.end())
@@ -949,7 +909,6 @@ namespace WPEFramework
                             appId = mRuntimeAppInfo[appInstanceId].appId;
                         }
                     }
-#endif
                 }
                 else
                 {
@@ -957,9 +916,7 @@ namespace WPEFramework
                 }
             mRuntimeManagerImplLock.Unlock();
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             recordTelemetryData(TELEMETRY_MARKER_SUSPEND_TIME, appId, requestTime);
-#endif
 
             return status;
         }
@@ -968,15 +925,11 @@ namespace WPEFramework
         {
             Core::hresult status = Core::ERROR_GENERAL;
             std::string errorReason = "";
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             std::string appId = "";
-#endif
             bool success = false;
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             /* Get current timestamp at the start of resume for telemetry */
             time_t requestTime = getCurrentTimestamp();
-#endif
 
             mRuntimeManagerImplLock.Lock();
 
@@ -995,7 +948,6 @@ namespace WPEFramework
                     {
                         LOGERR("Failed to ResumeContainer %s", errorReason.c_str());
                     }
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
                     else
                     {
                         if (mRuntimeAppInfo.find(appInstanceId) != mRuntimeAppInfo.end())
@@ -1003,7 +955,6 @@ namespace WPEFramework
                             appId = mRuntimeAppInfo[appInstanceId].appId;
                         }
                     }
-#endif
                 }
                 else
                 {
@@ -1011,9 +962,7 @@ namespace WPEFramework
                 }
             mRuntimeManagerImplLock.Unlock();
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             recordTelemetryData(TELEMETRY_MARKER_RESUME_TIME, appId, requestTime);
-#endif
 
             return status;
         }
@@ -1024,10 +973,8 @@ namespace WPEFramework
             std::string errorReason = "";
             bool success = false;
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             /* Get current timestamp at the start of terminate for telemetry */
             time_t requestTime = getCurrentTimestamp();
-#endif
 
             mRuntimeManagerImplLock.Lock();
 
@@ -1038,7 +985,6 @@ namespace WPEFramework
                 return status;
             }
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             auto it = mRuntimeAppInfo.find(appInstanceId);
             if (it != mRuntimeAppInfo.end())
             {
@@ -1049,8 +995,7 @@ namespace WPEFramework
             {
                 LOGERR("Terminate called for unknown appInstanceId: %s, skipping telemetry update", appInstanceId.c_str());
             }
-#endif
-                string containerId = getContainerId(appInstanceId);
+            string containerId = getContainerId(appInstanceId);
 
                 if (!containerId.empty())
                 {
@@ -1097,10 +1042,8 @@ namespace WPEFramework
             std::string errorReason = "";
             bool success = false;
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             /* Get current timestamp at the start of terminate for telemetry */
             time_t requestTime = getCurrentTimestamp();
-#endif
 
             mRuntimeManagerImplLock.Lock();
 
@@ -1111,7 +1054,6 @@ namespace WPEFramework
                 return status;
             }
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             auto it = mRuntimeAppInfo.find(appInstanceId);
             if (it != mRuntimeAppInfo.end())
             {
@@ -1122,9 +1064,8 @@ namespace WPEFramework
             {
                 LOGERR("Kill called for unknown appInstanceId: %s, skipping telemetry update", appInstanceId.c_str());
             }
-#endif
-            // if(isOCIPluginObjectValid())
-            // {
+            //if (isOCIPluginObjectValid())
+            //{
                 string containerId = getContainerId(appInstanceId);
 
                 if (!containerId.empty())
@@ -1338,79 +1279,29 @@ namespace WPEFramework
             dispatchEvent(RuntimeManagerImplementation::RuntimeEventType::RUNTIME_MANAGER_EVENT_CONTAINERFAILED, data);
         }
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-
         time_t RuntimeManagerImplementation::getCurrentTimestamp()
         {
-            timespec ts;
-            clock_gettime(CLOCK_MONOTONIC, &ts);
-            return (((time_t)ts.tv_sec * 1000) + ((time_t)ts.tv_nsec / 1000000));
+            return RuntimeManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
         }
 
-        RuntimeManagerImplementation::TelemetryMarker RuntimeManagerImplementation::getTelemetryMarker(const std::string &marker)
+        void RuntimeManagerImplementation::onWindowManagerDisconnected(const std::string& client)
         {
-            if (marker == TELEMETRY_MARKER_LAUNCH_TIME)
-                return TELEMETRY_MARKER_LAUNCH;
-            else if (marker == TELEMETRY_MARKER_CLOSE_TIME)
-                return TELEMETRY_MARKER_CLOSE;
-            else if (marker == TELEMETRY_MARKER_RESUME_TIME)
-                return TELEMETRY_MARKER_RESUME;
-            else if (marker == TELEMETRY_MARKER_SUSPEND_TIME)
-                return TELEMETRY_MARKER_SUSPEND;
-            else if (marker == TELEMETRY_MARKER_HIBERNATE_TIME)
-                return TELEMETRY_MARKER_HIBERNATE;
-            else if (marker == TELEMETRY_MARKER_WAKE_TIME)
-                return TELEMETRY_MARKER_WAKE;
-            else
-                return TELEMETRY_MARKER_UNKNOWN;
+            mRuntimeManagerImplLock.Lock();
+            auto it = mRuntimeAppInfo.find(client);
+            if (it != mRuntimeAppInfo.end())
+            {
+                RuntimeAppInfo& appInfo = it->second;
+                if (appInfo.requestType == REQUEST_TYPE_TERMINATE || appInfo.requestType == REQUEST_TYPE_KILL)
+                {
+                    recordTelemetryData(TELEMETRY_MARKER_CLOSE_TIME, appInfo.appId, appInfo.requestTime, "windowManagerDestroyTime");
+                }
+            }
+            mRuntimeManagerImplLock.Unlock();
         }
 
-        void RuntimeManagerImplementation::recordTelemetryData(const std::string &marker, const std::string &appId, uint64_t requestTime)
+        void RuntimeManagerImplementation::recordTelemetryData(const std::string &marker, const std::string &appId, uint64_t requestTime, const std::string& fieldName)
         {
-            /* End time for telemetry */
-            time_t currentTime = getCurrentTimestamp();
-            LOGINFO("End time for %s: %lu", marker.c_str(), currentTime);
-
-            JsonObject jsonParam;
-            std::string telemetryMetrics = "";
-
-            int duration = static_cast<int>(currentTime - requestTime);
-            TelemetryMarker telemetryMarker = getTelemetryMarker(marker);
-
-            /* Determine the telemetry JSON key */
-            switch (telemetryMarker)
-            {
-            case TELEMETRY_MARKER_RESUME:
-                jsonParam["runtimeManagerResumeTime"] = duration;
-                break;
-            case TELEMETRY_MARKER_SUSPEND:
-                jsonParam["runtimeManagerSuspendTime"] = duration;
-                break;
-            case TELEMETRY_MARKER_HIBERNATE:
-                jsonParam["runtimeManagerHibernateTime"] = duration;
-                break;
-            case TELEMETRY_MARKER_WAKE:
-                jsonParam["runtimeManagerWakeTime"] = duration;
-                break;
-            case TELEMETRY_MARKER_LAUNCH:
-                jsonParam["runtimeManagerRunTime"] = duration;
-                break;
-            case TELEMETRY_MARKER_CLOSE:
-                jsonParam["runtimeManagerTerminateTime"] = duration;
-                break;
-            default:
-                LOGERR("Unknown telemetry marker: %s", marker.c_str());
-                return;
-            }
-            jsonParam["appId"] = appId;
-            jsonParam.ToString(telemetryMetrics);
-
-            if (nullptr != mTelemetryMetricsObject)
-            {
-                LOGINFO("Record appId %s marker %s start time %d", appId.c_str(), marker.c_str(), duration);
-                mTelemetryMetricsObject->Record(appId, telemetryMetrics, marker);
-            }
+            RuntimeManagerTelemetryReporting::getInstance().recordTelemetryData(marker, appId, requestTime, fieldName);
         }
-#endif
     } /* namespace Plugin */
 } /* namespace WPEFramework */
