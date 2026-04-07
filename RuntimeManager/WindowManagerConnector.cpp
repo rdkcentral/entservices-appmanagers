@@ -121,8 +121,7 @@ void WindowManagerConnector::getDisplayInfo(const string& appInstanceId , string
         xdgRuntimeDirFd = open(xdgRuntimeDir, O_CLOEXEC | O_DIRECTORY);
         if (xdgRuntimeDirFd < 0)
         {
-            printf("failed to open XDG_RUNTIME_DIR '%s' %d\n", xdgRuntimeDir, errno);
-            fflush(stdout);
+            LOGERR("failed to open XDG_RUNTIME_DIR '%s' (errno=%d)", xdgRuntimeDir, errno);
         }
         else
         {
@@ -135,8 +134,7 @@ void WindowManagerConnector::getDisplayInfo(const string& appInstanceId , string
         xdgRuntimeDirFd = open("/tmp", O_CLOEXEC | O_DIRECTORY);
         if (xdgRuntimeDirFd < 0)
         {
-            printf("failed to open XDG_RUNTIME_DIR /tmp %d\n", errno);
-            fflush(stdout);
+            LOGERR("failed to open XDG_RUNTIME_DIR /tmp (errno=%d)", errno);
         }
         xdgDirectory = "/tmp";
     }
@@ -150,7 +148,7 @@ void WindowManagerConnector::getDisplayInfo(const string& appInstanceId , string
     {
         // generate name as wst-appInstanceId and sanity check
         string displayName = "wst-" + appInstanceId;
-        if (faccessat(xdgRuntimeDirFd, displayName.c_str(), F_OK, 0) != 0) //todo required for wst-appinstanceid?
+        if (xdgRuntimeDirFd < 0 || faccessat(xdgRuntimeDirFd, displayName.c_str(), F_OK, 0) != 0) //todo required for wst-appinstanceid?
         {
             waylandDisplayName = std::move(displayName);
         }
@@ -160,10 +158,9 @@ void WindowManagerConnector::getDisplayInfo(const string& appInstanceId , string
             waylandDisplayName = "testdisplay";
         }
     }
-    if (close(xdgRuntimeDirFd) < 0)
+    if (xdgRuntimeDirFd >= 0 && close(xdgRuntimeDirFd) < 0)
     {
-        printf("failed to close XDG_RUNTIME_DIR \n");
-        fflush(stdout);
+        LOGERR("failed to close XDG_RUNTIME_DIR (errno=%d)", errno);
     }
 
     LOGINFO("GetDisplayInfo::Returning display name [%s] for display [%s] \n", waylandDisplayName.c_str(), xdgDirectory.c_str());
