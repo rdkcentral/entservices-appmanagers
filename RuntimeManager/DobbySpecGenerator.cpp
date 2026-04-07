@@ -1058,7 +1058,15 @@ Json::Value DobbySpecGenerator::createResourceManagerMount(const ApplicationConf
                 LOGERR("failed to set file permissions to 0770 for '%s' (errno=%d)", resmgrMountSource.c_str(), errno);
             }
         }
+		else
+        {
+            LOGERR("fstat() failed for '%s' (errno=%d)", resmgrMountSource.c_str(), errno);
+        }
         close(fd);
+    }
+	else
+    {
+        LOGERR("failed to open '%s' (errno=%d)", resmgrMountSource.c_str(), errno);
     }
 
     return resmgrMount;
