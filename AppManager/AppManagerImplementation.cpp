@@ -30,6 +30,7 @@ namespace Plugin {
 SERVICE_REGISTRATION(AppManagerImplementation, 1, 0);
 AppManagerImplementation* AppManagerImplementation::_instance = nullptr;
 
+
 AppManagerImplementation::AppManagerImplementation()
 : mAdminLock()
 , mAppManagerNotification()
