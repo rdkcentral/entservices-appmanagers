@@ -702,7 +702,7 @@ namespace WPEFramework
                     });
 
                     Exchange::IAppManager::LoadedAppInfo loadedAppInfo = {};
-		    loadedAppInfo.appId            = std::move(appId);
+		    loadedAppInfo.appId            = appId;
                     loadedAppInfo.type             = appManagerImplInstance->getInstallAppType(
                         AppInfoManager::getInstance().getPackageInfoType(appId));
 		    loadedAppInfo.appInstanceId    = loadedInstanceId;
