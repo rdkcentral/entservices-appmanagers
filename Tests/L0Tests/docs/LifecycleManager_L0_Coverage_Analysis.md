@@ -54,7 +54,7 @@ Primary low-coverage files:
 
 ### `LifecycleManagerImplementation.cpp`
 
-- `LifecycleManagerImplementation::SpawnApp(...)` — full function body (0 hits): context allocation, `setApplicationLaunchParams`, `sempahore wait`, `RequestHandler::getInstance()->launch()` success path
+- `LifecycleManagerImplementation::SpawnApp(...)` — full function body (0 hits): context allocation, `setApplicationLaunchParams`, `semaphore wait`, `RequestHandler::getInstance()->launch()` success path
 - `LifecycleManagerImplementation::SetTargetAppState(...)` success path — context-found branch: entire `switch(targetLifecycleState)` block, `updateState()` call
 - `LifecycleManagerImplementation::UnloadApp(...)` success path — context-found branch: `setRequestType`, `setTargetLifecycleState`, `setApplicationKillParams`, `RequestHandler::terminate()`
 - `LifecycleManagerImplementation::KillApp(...)` success path — context-found branch: same pattern as above
@@ -223,7 +223,7 @@ Primary low-coverage files:
    - Unlocks `WindowManagerNotification` callbacks, `WindowManagerHandler::onEvent()`, and `LifecycleManagerImplementation::handleWindowManagerEvent()` branches.
 
 3. **Cover `SpawnApp()` with a loaded application context**
-   - Directy pre-populate `mLoadedApplications` via a helper (or expose a `setContext()` test hook), then call `SpawnApp()` with a matching appId to exercise the existing-context branch.
+   - Directly pre-populate `mLoadedApplications` via a helper (or expose a `setContext()` test hook), then call `SpawnApp()` with a matching appId to exercise the existing-context branch.
    - Alternatively, add a test that calls `LifecycleManagerImplementation::Configure()` with a mock service that provides both RTM + WM, then calls `SpawnApp()` and waits on `mReachedLoadingStateSemaphore`.
    - Unlocks 35 lines in `SpawnApp()`, plus downstream `SetTargetAppState()`, `UnloadApp()`, `KillApp()` by reusing the inserted context.
 
