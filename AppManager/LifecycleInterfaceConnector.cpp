@@ -381,11 +381,16 @@ namespace WPEFramework
                             {
                                 LOGINFO("Requested PAUSED state for appId: %s. Waiting for PAUSED confirmation...", appId.c_str());
 
-                                mAppIdAwaitingPause = appId;
+                                {
+                                    std::lock_guard<std::mutex> stateLock(mStateMutex);
+                                    mAppIdAwaitingPause = appId;
+                                }
                                 mAdminLock.Unlock();
                                 {
                                     std::unique_lock<std::mutex> lk(mStateMutex);
-                                    mStateChangedCV.wait_for(lk, std::chrono::milliseconds(PAUSE_STATE_WAITTIME));
+                                    mStateChangedCV.wait_for(lk, std::chrono::milliseconds(PAUSE_STATE_WAITTIME), [this, &appId]() {
+                                        return mAppIdAwaitingPause != appId;
+                                    });
                                 }
 
                                 mAdminLock.Lock();
@@ -394,7 +399,10 @@ namespace WPEFramework
                                 if(postWaitFound &&
                                     Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED == postWaitSnap.getAppNewState())
                                 {
-                                    mAppIdAwaitingPause.clear();
+                                    {
+                                        std::lock_guard<std::mutex> stateLock(mStateMutex);
+                                        mAppIdAwaitingPause.clear();
+                                    }
 
                                     if (AppInfoManager::getInstance().exists(appId))
                                     {	
@@ -703,7 +711,7 @@ namespace WPEFramework
                     loadedAppInfo.lifecycleState       = newState;
 
                     //Add loaded info
-		    loadedAppInfoList.push_back(loadedAppInfo);
+		    loadedAppInfoList.push_back(std::move(loadedAppInfo));
                 }
 
                 apps = Core::Service<RPC::IteratorType<Exchange::IAppManager::ILoadedAppInfoIterator>> \
@@ -886,6 +894,7 @@ End:
             }
             else
             {
+                mAdminLock.Lock();
                 if (!appId.empty())
                 {
                     AppInfo snap;
@@ -899,6 +908,7 @@ End:
                         LOGERR("appId not found in database");
                     }
                 }
+                mAdminLock.Unlock();
 
                 if (!errorReason.empty())
                 {

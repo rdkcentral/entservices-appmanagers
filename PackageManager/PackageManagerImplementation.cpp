@@ -1,3 +1,4 @@
+
 /**
 * If not stated otherwise in this file or this component's LICENSE
 * file the following copyright and licenses apply:
@@ -787,7 +788,7 @@ namespace Plugin {
         runtimeConfig.gpuMemoryLimit = config.gpuMemoryLimit;
 
         JsonArray vars = JsonArray();
-        for (auto str: config.envVars) {
+        for (const auto& str: config.envVars) {
             vars.Add(str);
         }
         vars.ToString(runtimeConfig.envVariables);
@@ -808,6 +809,11 @@ namespace Plugin {
         runtimeConfig.appPath = config.appPath;
         runtimeConfig.command = config.command;
         runtimeConfig.runtimePath = config.runtimePath;
+
+        runtimeConfig.enableDebugger = false;
+        runtimeConfig.logFileMaxSize = 0;
+        runtimeConfig.mapi = false;
+        runtimeConfig.resourceManagerClientEnabled = false;
         runtimeConfig.ralfPkgPath = config.ralfPkgPath;
     }
 
