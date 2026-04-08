@@ -21,3 +21,5 @@ Refer: https://github.com/rdkcentral/entservices-appmanagers/blob/develop/.githu
 Refer: https://github.com/rdkcentral/entservices-appmanagers/blob/develop/.github/instructions/PluginOnboardingCompliance.instructions.md#coverity-scan-inclusion-and-test-workflow-updates-for-new-plugins
 
 Refer: https://github.com/rdkcentral/entservices-appmanagers/blob/develop/.github/instructions/General.instructions.md#critical-logging
+
+Refer: https://github.com/rdkcentral/entservices-appmanagers/blob/develop/.github/instructions/General.instructions.md#c-naming-conventions

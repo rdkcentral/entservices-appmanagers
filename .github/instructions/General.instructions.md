@@ -8,6 +8,7 @@ applyTo: "**/*Implementation.cpp,**/*Implementation.h,**/*.cpp,**/*.h"
   3. [YODA Notation in conditionals](https://github.com/rdkcentral/entservices-appmanagers/blob/develop/.github/instructions/General.instructions.md#yoda-notation-in-conditionals)
   4. [Avoiding Public Member Variables](https://github.com/rdkcentral/entservices-appmanagers/blob/develop/.github/instructions/General.instructions.md#avoiding-public-member-variables)
   5. [Using nullptr instead of NULL](https://github.com/rdkcentral/entservices-appmanagers/blob/develop/.github/instructions/General.instructions.md#using-nullptr-instead-of-null)
+  6. [C++ Naming Conventions](https://github.com/rdkcentral/entservices-appmanagers/blob/develop/.github/instructions/General.instructions.md#c-naming-conventions)
 
 ### Critical Logging
 ### Requirement
@@ -133,5 +134,79 @@ int* ptr = NULL;
 if (NULL == ptr) {
     // Handle null pointer
 }
+```
+
+
+### C++ Naming Conventions
+### Requirement
+Follow these naming conventions for C++ identifiers to maintain consistency and readability across the codebase:
+
+- **Class names and types**: Use `PascalCase` (e.g., `MyClass`, `PluginManager`)
+- **Class member variables**: Prefix with `m` and use `camelCase` (e.g., `mPluginCount`, `mIsInitialized`)
+- **Static member variables**: Prefix with `s` and use `camelCase` (e.g., `sMaxRetries`, `sDefaultTimeout`)
+- **Global variables**: Prefix with `g` and use `camelCase` (e.g., `gPluginRegistry`, `gDefaultConfig`)
+- **Local variables**: Use `camelCase` (e.g., `localCounter`, `resultCode`)
+- **Function parameters**: Use `camelCase` for all function parameters, including class member functions (e.g., `pluginId`, `configPath`, `newValue`)
+- **Member functions and global functions**: Use `camelCase` (e.g., `initializePlugin()`, `getStatus()`, `setValue()`)
+- **Constant names**: Use `UPPER_SNAKE_CASE` (e.g., `MAX_BUFFER_SIZE`, `DEFAULT_TIMEOUT`)
+
+### Example
+
+```cpp
+class PluginManager {
+private:
+    int mPluginCount;              // Member variable
+    static int sMaxPlugins;        // Static member variable
+    
+public:
+    void registerPlugin(int pluginId) {     // Member function: camelCase
+        int localCounter = 0;      // Local variable: camelCase
+        mPluginCount++;
+    }
+    
+    int getPluginCount() const {   // Member function: camelCase
+        return mPluginCount;
+    }
+    
+    void setValue(int newValue) {  // Member function: camelCase
+        mPluginCount = newValue;
+    }
+};
+
+int PluginManager::sMaxPlugins = 100;      // Static member variable
+int gGlobalPluginId = 0;                   // Global variable: g prefix + camelCase
+const int MAX_RETRY_COUNT = 3;             // Constant: UPPER_SNAKE_CASE
+
+void initializeSystem() {                  // Global function: camelCase
+    // function body
+}
+```
+
+### Incorrect Example
+
+```cpp
+class PluginManager {              // WRONG: pluginManager (should be PascalCase)
+private:
+    int pluginCount;               // WRONG: missing 'm' prefix (should be mPluginCount)
+    static int maxPlugins;         // WRONG: missing 's' prefix (should be sMaxPlugins)
+    
+public:
+    void RegisterPlugin(int PluginId) {     // WRONG: should be registerPlugin with camelCase param pluginId
+        int LocalCounter = 0;      // WRONG: should be localCounter
+        pluginCount++;
+    }
+    
+    int GetPluginCount() const {   // WRONG: should be getPluginCount (camelCase)
+        return pluginCount;
+    }
+    
+    void SetValue(int value) {     // WRONG: should be setValue
+        pluginCount = value;
+    }
+};
+
+int maxPlugins = 100;              // WRONG: should be sMaxPlugins for static or gMaxPlugins for global
+int global_plugin_id = 0;          // WRONG: should be gGlobalPluginId (g prefix + camelCase)
+const int max_retry_count = 3;     // WRONG: should be MAX_RETRY_COUNT (UPPER_SNAKE_CASE)
 ```
 
