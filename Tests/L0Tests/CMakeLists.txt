@@ -6,9 +6,16 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-option(APPMGR_ENABLE_COVERAGE "Enable coverage flags for appmanagers_l0test" ON)
-option(APPMGR_ENABLE_WARNINGS "Enable additional compiler warnings for appmanagers_l0test" ON)
+option(PLUGIN_RUNTIME_MANAGER   "Build RuntimeManager L0 test target"    ON)
+option(PLUGIN_LIFECYCLE_MANAGER "Build LifecycleManager L0 test target"  ON)
 
+option(APPMGR_ENABLE_COVERAGE "Enable coverage flags for runtimemanager_l0test"      ON)
+option(APPLCM_ENABLE_COVERAGE "Enable coverage flags for lifecyclemanager_l0test"  ON)
+option(L0_ENABLE_WARNINGS     "Enable additional compiler warnings for L0 targets" ON)
+
+# ---------------------------------------------------------------------------
+# Install prefix
+# ---------------------------------------------------------------------------
 if(NOT DEFINED PREFIX OR "${PREFIX}" STREQUAL "")
     if(DEFINED ENV{PREFIX} AND NOT "$ENV{PREFIX}" STREQUAL "")
         set(PREFIX "$ENV{PREFIX}")
@@ -17,12 +24,9 @@ if(NOT DEFINED PREFIX OR "${PREFIX}" STREQUAL "")
     endif()
 endif()
 set(PREFIX "${PREFIX}" CACHE STRING "Install prefix to locate Thunder artifacts" FORCE)
-
 message(STATUS "Using PREFIX='${PREFIX}'")
 
-# Detect Thunder/WPEFramework namespace.  Production CMakeLists derive this
-# via find_package(WPEFramework) which sets NAMESPACE; here we replicate that
-# logic for the standalone test build.
+# Detect Thunder/WPEFramework namespace
 if(NOT DEFINED NAMESPACE OR "${NAMESPACE}" STREQUAL "")
     if(EXISTS "${PREFIX}/include/Thunder")
         set(NAMESPACE "Thunder")
@@ -34,11 +38,10 @@ set(NAMESPACE "${NAMESPACE}" CACHE STRING "Thunder framework namespace (Thunder 
 string(TOLOWER "${NAMESPACE}" STORAGE_DIRECTORY)
 message(STATUS "Using NAMESPACE='${NAMESPACE}', STORAGE_DIRECTORY='${STORAGE_DIRECTORY}'")
 
-# Locate jsoncpp headers (needed by AIConfiguration and DobbySpecGenerator)
-find_path(JSONCPP_INCLUDE_DIR NAMES json/json.h
-    HINTS /usr/include/jsoncpp /usr/local/include/jsoncpp "${PREFIX}/include/jsoncpp")
-
-set(APPMANAGERS_L0_SOURCES
+# ---------------------------------------------------------------------------
+# Source lists
+# ---------------------------------------------------------------------------
+set(RUNTIME_MANAGER_L0_SOURCES
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/Module.cpp
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/RuntimeManager.cpp
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/RuntimeManagerImplementation.cpp
@@ -72,146 +75,308 @@ set(APPMANAGERS_L0_SOURCES
     common/L0Bootstrap.cpp
 )
 
-add_executable(appmanagers_l0test ${APPMANAGERS_L0_SOURCES})
-
-target_compile_definitions(appmanagers_l0test PRIVATE
-    MODULE_NAME=AppManagers_L0Test
-    USE_THUNDER_R4=1
-    RUNTIME_MANAGER_API_VERSION_NUMBER_MAJOR=1
-    RUNTIME_MANAGER_API_VERSION_NUMBER_MINOR=0
-    RUNTIME_MANAGER_API_VERSION_NUMBER_PATCH=0
-    RDK_APPMANAGERS_DEBUG=1
-    RALF_PACKAGE_SUPPORT_ENABLED=1
-    PLUGIN_RUNTIME_MANAGER_IMPLEMENTATION_NAME="RuntimeManagerImplementation"
-    AI_DEBUG=1
-    AI_RELEASE=2
-    AI_BUILD_TYPE=AI_DEBUG
-    DISABLE_SECURITY_TOKEN=1
-    THUNDER_PLATFORM_PC_UNIX=1
+set(LIFECYCLE_MANAGER_L0_SOURCES
+    ${CMAKE_SOURCE_DIR}/../../LifecycleManager/Module.cpp
+    ${CMAKE_SOURCE_DIR}/../../LifecycleManager/LifecycleManager.cpp
+    ${CMAKE_SOURCE_DIR}/../../LifecycleManager/LifecycleManagerImplementation.cpp
+    ${CMAKE_SOURCE_DIR}/../../LifecycleManager/LifecycleManagerTelemetryReporting.cpp
+    ${CMAKE_SOURCE_DIR}/../../LifecycleManager/ApplicationContext.cpp
+    ${CMAKE_SOURCE_DIR}/../../LifecycleManager/StateHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../LifecycleManager/State.cpp
+    ${CMAKE_SOURCE_DIR}/../../LifecycleManager/RequestHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../LifecycleManager/StateTransitionHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../LifecycleManager/RuntimeManagerHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../LifecycleManager/WindowManagerHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry/TelemetryReportingBase.cpp
+    ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry/UtilsTelemetryMetrics.cpp
+    # Test sources
+    LifecycleManager/LifecycleManagerTest.cpp
+    LifecycleManager/LifecycleManager_ShellTests.cpp
+    LifecycleManager/LifecycleManager_ImplementationTests.cpp
+    LifecycleManager/LifecycleManager_ContextTests.cpp
+    common/L0Bootstrap.cpp
 )
 
-if(APPMGR_ENABLE_COVERAGE)
-    target_compile_options(appmanagers_l0test PRIVATE -O0 -g --coverage)
-    target_link_options(appmanagers_l0test PRIVATE --coverage)
+# ---------------------------------------------------------------------------
+# Declare targets
+# ---------------------------------------------------------------------------
+if(PLUGIN_RUNTIME_MANAGER)
+    add_executable(runtimemanager_l0test ${RUNTIME_MANAGER_L0_SOURCES})
+else()
+    message(STATUS "PLUGIN_RUNTIME_MANAGER=OFF; skipping runtimemanager_l0test target")
 endif()
 
-if(APPMGR_ENABLE_WARNINGS)
-    target_compile_options(appmanagers_l0test PRIVATE -Wall -Wextra -Wno-unused-parameter)
+if(PLUGIN_LIFECYCLE_MANAGER)
+    add_executable(lifecyclemanager_l0test ${LIFECYCLE_MANAGER_L0_SOURCES})
+else()
+    message(STATUS "PLUGIN_LIFECYCLE_MANAGER=OFF; skipping lifecyclemanager_l0test target")
 endif()
 
-target_include_directories(appmanagers_l0test PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/RuntimeManager
-    ${CMAKE_CURRENT_SOURCE_DIR}/common
-    ${CMAKE_SOURCE_DIR}/../..
-    ${CMAKE_SOURCE_DIR}/../../RuntimeManager
-    ${CMAKE_SOURCE_DIR}/../../RuntimeManager/ralf
-    ${CMAKE_SOURCE_DIR}/../../RuntimeManager/Gateway
-    ${CMAKE_SOURCE_DIR}/../../helpers
-    ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry
-    ${PREFIX}/include
-    ${PREFIX}/include/${NAMESPACE}
-)
+if(NOT PLUGIN_RUNTIME_MANAGER AND NOT PLUGIN_LIFECYCLE_MANAGER)
+    message(FATAL_ERROR "No L0 target enabled. Enable at least one PLUGIN_RUNTIME_MANAGER or PLUGIN_LIFECYCLE_MANAGER option.")
+endif()
 
-if(JSONCPP_INCLUDE_DIR)
-    target_include_directories(appmanagers_l0test PRIVATE ${JSONCPP_INCLUDE_DIR})
+# ---------------------------------------------------------------------------
+# RuntimeManager target compile options / definitions / includes
+# ---------------------------------------------------------------------------
+if(PLUGIN_RUNTIME_MANAGER)
+    # Locate jsoncpp headers (needed by AIConfiguration and DobbySpecGenerator)
+    find_path(JSONCPP_INCLUDE_DIR NAMES json/json.h
+        HINTS /usr/include/jsoncpp /usr/local/include/jsoncpp "${PREFIX}/include/jsoncpp")
+
+    target_compile_definitions(runtimemanager_l0test PRIVATE
+        MODULE_NAME=RuntimeManager_L0Test
+        USE_THUNDER_R4=1
+        RUNTIME_MANAGER_API_VERSION_NUMBER_MAJOR=1
+        RUNTIME_MANAGER_API_VERSION_NUMBER_MINOR=0
+        RUNTIME_MANAGER_API_VERSION_NUMBER_PATCH=0
+        RDK_APPMANAGERS_DEBUG=1
+        RALF_PACKAGE_SUPPORT_ENABLED=1
+        PLUGIN_RUNTIME_MANAGER_IMPLEMENTATION_NAME="RuntimeManagerImplementation"
+        AI_DEBUG=1
+        AI_RELEASE=2
+        AI_BUILD_TYPE=AI_DEBUG
+        DISABLE_SECURITY_TOKEN=1
+        THUNDER_PLATFORM_PC_UNIX=1
+    )
+
+    if(APPMGR_ENABLE_COVERAGE)
+        target_compile_options(runtimemanager_l0test PRIVATE -O0 -g --coverage)
+        target_link_options(runtimemanager_l0test PRIVATE --coverage)
+    endif()
+
+    if(L0_ENABLE_WARNINGS)
+        target_compile_options(runtimemanager_l0test PRIVATE -Wall -Wextra -Wno-unused-parameter)
+    endif()
+
+    target_include_directories(runtimemanager_l0test PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/RuntimeManager
+        ${CMAKE_CURRENT_SOURCE_DIR}/common
+        ${CMAKE_SOURCE_DIR}/../..
+        ${CMAKE_SOURCE_DIR}/../../RuntimeManager
+        ${CMAKE_SOURCE_DIR}/../../RuntimeManager/ralf
+        ${CMAKE_SOURCE_DIR}/../../RuntimeManager/Gateway
+        ${CMAKE_SOURCE_DIR}/../../helpers
+        ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry
+        ${PREFIX}/include
+        ${PREFIX}/include/${NAMESPACE}
+    )
+
+    if(JSONCPP_INCLUDE_DIR)
+        target_include_directories(runtimemanager_l0test PRIVATE ${JSONCPP_INCLUDE_DIR})
+    endif()
+
+    if(EXISTS "${PREFIX}/lib")
+        target_link_directories(runtimemanager_l0test PRIVATE "${PREFIX}/lib")
+    endif()
+    if(EXISTS "${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins")
+        target_link_directories(runtimemanager_l0test PRIVATE "${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins")
+    endif()
+    if(EXISTS "${PREFIX}/lib/plugins")
+        target_link_directories(runtimemanager_l0test PRIVATE "${PREFIX}/lib/plugins")
+    endif()
+endif()
+
+# ---------------------------------------------------------------------------
+# LifecycleManager target compile options / definitions / includes
+# ---------------------------------------------------------------------------
+if(PLUGIN_LIFECYCLE_MANAGER)
+    target_compile_definitions(lifecyclemanager_l0test PRIVATE
+        MODULE_NAME=LifecycleManager_L0Test
+        USE_THUNDER_R4=1
+        LIFECYCLE_MANAGER_API_VERSION_NUMBER_MAJOR=1
+        LIFECYCLE_MANAGER_API_VERSION_NUMBER_MINOR=0
+        LIFECYCLE_MANAGER_API_VERSION_NUMBER_PATCH=0
+        DISABLE_SECURITY_TOKEN=1
+        THUNDER_PLATFORM_PC_UNIX=1
+        UNIT_TEST=1
+    )
+
+    if(APPLCM_ENABLE_COVERAGE)
+        target_compile_options(lifecyclemanager_l0test PRIVATE -O0 -g --coverage)
+        target_link_options(lifecyclemanager_l0test PRIVATE --coverage)
+    endif()
+
+    if(L0_ENABLE_WARNINGS)
+        target_compile_options(lifecyclemanager_l0test PRIVATE -Wall -Wextra -Wno-unused-parameter)
+    endif()
+
+    target_include_directories(lifecyclemanager_l0test PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/LifecycleManager
+        ${CMAKE_CURRENT_SOURCE_DIR}/common
+        ${CMAKE_SOURCE_DIR}/../..
+        ${CMAKE_SOURCE_DIR}/../../LifecycleManager
+        ${CMAKE_SOURCE_DIR}/../../helpers
+        ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry
+    )
+
+    if(EXISTS "${PREFIX}/lib")
+        target_link_directories(lifecyclemanager_l0test PRIVATE "${PREFIX}/lib")
+    endif()
+    if(EXISTS "${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins")
+        target_link_directories(lifecyclemanager_l0test PRIVATE "${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins")
+    endif()
+    if(EXISTS "${PREFIX}/lib/plugins")
+        target_link_directories(lifecyclemanager_l0test PRIVATE "${PREFIX}/lib/plugins")
+    endif()
+endif()
+
+# ---------------------------------------------------------------------------
+# Thunder / WPEFramework library discovery (shared for both targets)
+# ---------------------------------------------------------------------------
+find_library(THUNDER_CORE_LIB      NAMES ${NAMESPACE}Core      HINTS "${PREFIX}/lib")
+find_library(THUNDER_MESSAGING_LIB NAMES ${NAMESPACE}Messaging HINTS "${PREFIX}/lib")
+find_library(THUNDER_PLUGINS_LIB   NAMES ${NAMESPACE}Plugins   HINTS "${PREFIX}/lib")
+find_library(THUNDER_COM_LIB       NAMES ${NAMESPACE}COM       HINTS "${PREFIX}/lib")
+
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+
+# Fallback include paths for environments without namespace package configs.
+if(PLUGIN_RUNTIME_MANAGER)
+    target_include_directories(runtimemanager_l0test PRIVATE
+        ${PREFIX}/include
+        ${PREFIX}/include/${NAMESPACE}
+    )
+endif()
+if(PLUGIN_LIFECYCLE_MANAGER)
+    target_include_directories(lifecyclemanager_l0test PRIVATE
+        ${PREFIX}/include
+        ${PREFIX}/include/${NAMESPACE}
+    )
 endif()
 
 if(CMAKE_PREFIX_PATH)
     foreach(_prefix IN LISTS CMAKE_PREFIX_PATH)
         if(EXISTS "${_prefix}/include")
-            target_include_directories(appmanagers_l0test PRIVATE "${_prefix}/include")
+            if(PLUGIN_RUNTIME_MANAGER)
+                target_include_directories(runtimemanager_l0test PRIVATE "${_prefix}/include")
+            endif()
+            if(PLUGIN_LIFECYCLE_MANAGER)
+                target_include_directories(lifecyclemanager_l0test PRIVATE "${_prefix}/include")
+            endif()
         endif()
         if(EXISTS "${_prefix}/include/${NAMESPACE}")
-            target_include_directories(appmanagers_l0test PRIVATE "${_prefix}/include/${NAMESPACE}")
+            if(PLUGIN_RUNTIME_MANAGER)
+                target_include_directories(runtimemanager_l0test PRIVATE "${_prefix}/include/${NAMESPACE}")
+            endif()
+            if(PLUGIN_LIFECYCLE_MANAGER)
+                target_include_directories(lifecyclemanager_l0test PRIVATE "${_prefix}/include/${NAMESPACE}")
+            endif()
         endif()
     endforeach()
 endif()
 
-if(EXISTS "${PREFIX}/lib")
-    target_link_directories(appmanagers_l0test PRIVATE "${PREFIX}/lib")
-endif()
-if(EXISTS "${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins")
-    target_link_directories(appmanagers_l0test PRIVATE "${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins")
-endif()
-if(EXISTS "${PREFIX}/lib/plugins")
-    target_link_directories(appmanagers_l0test PRIVATE "${PREFIX}/lib/plugins")
-endif()
+if(PLUGIN_RUNTIME_MANAGER)
+    if(DEFINED THUNDER_CORE_LIB AND THUNDER_CORE_LIB)
+        target_link_libraries(runtimemanager_l0test PRIVATE ${THUNDER_CORE_LIB})
+    endif()
+    if(DEFINED THUNDER_MESSAGING_LIB AND THUNDER_MESSAGING_LIB)
+        target_link_libraries(runtimemanager_l0test PRIVATE ${THUNDER_MESSAGING_LIB})
+    endif()
+    if(DEFINED THUNDER_PLUGINS_LIB AND THUNDER_PLUGINS_LIB)
+        target_link_libraries(runtimemanager_l0test PRIVATE ${THUNDER_PLUGINS_LIB})
+    endif()
+    if(DEFINED THUNDER_COM_LIB AND THUNDER_COM_LIB)
+        target_link_libraries(runtimemanager_l0test PRIVATE ${THUNDER_COM_LIB})
+    endif()
 
-find_library(THUNDER_CORE_LIB NAMES ${NAMESPACE}Core HINTS "${PREFIX}/lib")
-find_library(THUNDER_MESSAGING_LIB NAMES ${NAMESPACE}Messaging HINTS "${PREFIX}/lib")
-find_library(THUNDER_PLUGINS_LIB NAMES ${NAMESPACE}Plugins HINTS "${PREFIX}/lib")
-find_library(THUNDER_COM_LIB NAMES ${NAMESPACE}COM HINTS "${PREFIX}/lib")
-find_library(JSONCPP_LIB NAMES jsoncpp HINTS "${PREFIX}/lib" /usr/lib /usr/local/lib)
-find_library(CURL_LIB NAMES curl HINTS "${PREFIX}/lib" /usr/lib /usr/local/lib)
+    target_link_libraries(runtimemanager_l0test PRIVATE
+        Threads::Threads
+        m
+        dl
+    )
 
-set(THREADS_PREFER_PTHREAD_FLAG ON)
-find_package(Threads REQUIRED)
+    find_library(JSONCPP_LIB  NAMES jsoncpp HINTS "${PREFIX}/lib" /usr/lib /usr/local/lib)
+    find_library(CURL_LIB     NAMES curl    HINTS "${PREFIX}/lib" /usr/lib /usr/local/lib)
+    # Gateway sources require libip4tc and libip6tc (iptables)
+    find_library(LIBIP4TC_LIB NAMES ip4tc libip4tc HINTS /usr/lib /usr/local/lib)
+    find_library(LIBIP6TC_LIB NAMES ip6tc libip6tc HINTS /usr/lib /usr/local/lib)
 
-# Gateway production sources require libip4tc and libip6tc (from iptables).
-find_library(LIBIP4TC_LIB NAMES ip4tc libip4tc HINTS /usr/lib /usr/local/lib)
-find_library(LIBIP6TC_LIB NAMES ip6tc libip6tc HINTS /usr/lib /usr/local/lib)
-
-if(THUNDER_CORE_LIB)
-    target_link_libraries(appmanagers_l0test PRIVATE ${THUNDER_CORE_LIB})
-endif()
-if(THUNDER_MESSAGING_LIB)
-    target_link_libraries(appmanagers_l0test PRIVATE ${THUNDER_MESSAGING_LIB})
-endif()
-if(THUNDER_PLUGINS_LIB)
-    target_link_libraries(appmanagers_l0test PRIVATE ${THUNDER_PLUGINS_LIB})
-endif()
-if(THUNDER_COM_LIB)
-    target_link_libraries(appmanagers_l0test PRIVATE ${THUNDER_COM_LIB})
-endif()
-
-target_link_libraries(appmanagers_l0test PRIVATE
-    Threads::Threads
-    dl
-    m
-)
-
-if(JSONCPP_LIB)
-    target_link_libraries(appmanagers_l0test PRIVATE ${JSONCPP_LIB})
-else()
-    target_link_libraries(appmanagers_l0test PRIVATE jsoncpp)
-endif()
-
-if(CURL_LIB)
-    target_link_libraries(appmanagers_l0test PRIVATE ${CURL_LIB})
-else()
-    target_link_libraries(appmanagers_l0test PRIVATE curl)
+    if(JSONCPP_LIB)
+        target_link_libraries(runtimemanager_l0test PRIVATE ${JSONCPP_LIB})
+    else()
+        target_link_libraries(runtimemanager_l0test PRIVATE jsoncpp)
+    endif()
+    if(CURL_LIB)
+        target_link_libraries(runtimemanager_l0test PRIVATE ${CURL_LIB})
+    else()
+        target_link_libraries(runtimemanager_l0test PRIVATE curl)
+    endif()
+    if(LIBIP4TC_LIB)
+        target_link_libraries(runtimemanager_l0test PRIVATE ${LIBIP4TC_LIB})
+    else()
+        target_link_libraries(runtimemanager_l0test PRIVATE ip4tc)
+    endif()
+    if(LIBIP6TC_LIB)
+        target_link_libraries(runtimemanager_l0test PRIVATE ${LIBIP6TC_LIB})
+    else()
+        target_link_libraries(runtimemanager_l0test PRIVATE ip6tc)
+    endif()
 endif()
 
-# Link ip4tc and ip6tc — required by Gateway/NetFilter.cpp and Gateway/NetFilterUtils.c
-if(LIBIP4TC_LIB)
-    target_link_libraries(appmanagers_l0test PRIVATE ${LIBIP4TC_LIB})
-else()
-    target_link_libraries(appmanagers_l0test PRIVATE ip4tc)
+if(PLUGIN_LIFECYCLE_MANAGER)
+    if(DEFINED THUNDER_CORE_LIB AND THUNDER_CORE_LIB)
+        target_link_libraries(lifecyclemanager_l0test PRIVATE ${THUNDER_CORE_LIB})
+    endif()
+    if(DEFINED THUNDER_MESSAGING_LIB AND THUNDER_MESSAGING_LIB)
+        target_link_libraries(lifecyclemanager_l0test PRIVATE ${THUNDER_MESSAGING_LIB})
+    endif()
+    if(DEFINED THUNDER_PLUGINS_LIB AND THUNDER_PLUGINS_LIB)
+        target_link_libraries(lifecyclemanager_l0test PRIVATE ${THUNDER_PLUGINS_LIB})
+    endif()
+    if(DEFINED THUNDER_COM_LIB AND THUNDER_COM_LIB)
+        target_link_libraries(lifecyclemanager_l0test PRIVATE ${THUNDER_COM_LIB})
+    endif()
+
+    target_link_libraries(lifecyclemanager_l0test PRIVATE
+        Threads::Threads
+        m
+        dl
+    )
 endif()
-if(LIBIP6TC_LIB)
-    target_link_libraries(appmanagers_l0test PRIVATE ${LIBIP6TC_LIB})
-else()
-    target_link_libraries(appmanagers_l0test PRIVATE ip6tc)
+
+# ---------------------------------------------------------------------------
+# Runtime search paths (rpath — tells the OS where to find .so files at runtime)
+# ---------------------------------------------------------------------------
+if(PLUGIN_RUNTIME_MANAGER)
+    set_target_properties(runtimemanager_l0test PROPERTIES
+        BUILD_RPATH   "$ORIGIN;${PREFIX}/lib;${PREFIX}/lib/${STORAGE_DIRECTORY};${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins;${PREFIX}/lib/plugins"
+        INSTALL_RPATH "${PREFIX}/lib;${PREFIX}/lib/${STORAGE_DIRECTORY};${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins;${PREFIX}/lib/plugins"
+    )
 endif()
 
-set_target_properties(appmanagers_l0test PROPERTIES
-    BUILD_RPATH "$ORIGIN;${PREFIX}/lib;${PREFIX}/lib/${STORAGE_DIRECTORY};${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins;${PREFIX}/lib/plugins"
-    INSTALL_RPATH "${PREFIX}/lib;${PREFIX}/lib/${STORAGE_DIRECTORY};${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins;${PREFIX}/lib/plugins"
-)
+if(PLUGIN_LIFECYCLE_MANAGER)
+    set_target_properties(lifecyclemanager_l0test PROPERTIES
+        BUILD_RPATH   "$ORIGIN;${PREFIX}/lib;${PREFIX}/lib/${STORAGE_DIRECTORY};${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins;${PREFIX}/lib/plugins"
+        INSTALL_RPATH "${PREFIX}/lib;${PREFIX}/lib/${STORAGE_DIRECTORY};${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins;${PREFIX}/lib/plugins"
+    )
+endif()
 
-add_custom_target(run
-    DEPENDS appmanagers_l0test
-    COMMAND $<TARGET_FILE:appmanagers_l0test>
-    COMMENT "Running appmanagers_l0test"
-    VERBATIM
-)
+# ---------------------------------------------------------------------------
+# Utility targets
+# ---------------------------------------------------------------------------
+if(PLUGIN_RUNTIME_MANAGER)
+    add_custom_target(run
+        DEPENDS runtimemanager_l0test
+        COMMAND $<TARGET_FILE:runtimemanager_l0test>
+        COMMENT "Running runtimemanager_l0test"
+        VERBATIM
+    )
+endif()
 
-# 'coverage' target.
-# Commands:
-#   lcov -c -o coverage.info -d ${CMAKE_BINARY_DIR}
-#   genhtml -o coverage coverage.info
-find_program(LCOV_EXECUTABLE lcov)
+if(PLUGIN_LIFECYCLE_MANAGER)
+    add_custom_target(run_lifecyclemanager
+        DEPENDS lifecyclemanager_l0test
+        COMMAND $<TARGET_FILE:lifecyclemanager_l0test>
+        COMMENT "Running lifecyclemanager_l0test"
+        VERBATIM
+    )
+endif()
+
+find_program(LCOV_EXECUTABLE    lcov)
 find_program(GENHTML_EXECUTABLE genhtml)
 
 if(NOT LCOV_EXECUTABLE OR NOT GENHTML_EXECUTABLE)
@@ -221,12 +386,20 @@ if(NOT LCOV_EXECUTABLE OR NOT GENHTML_EXECUTABLE)
         VERBATIM
     )
 else()
+    set(COVERAGE_DEPENDS "")
+    if(PLUGIN_RUNTIME_MANAGER)
+        list(APPEND COVERAGE_DEPENDS runtimemanager_l0test)
+    endif()
+    if(PLUGIN_LIFECYCLE_MANAGER)
+        list(APPEND COVERAGE_DEPENDS lifecyclemanager_l0test)
+    endif()
+
     add_custom_target(coverage
-        DEPENDS appmanagers_l0test
+        DEPENDS ${COVERAGE_DEPENDS}
         COMMAND "${LCOV_EXECUTABLE}" -c -o coverage.info -d "${CMAKE_BINARY_DIR}"
         COMMAND "${GENHTML_EXECUTABLE}" -o coverage coverage.info
         WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/.."
-        COMMENT "Generating AppManagers L0 coverage report"
+        COMMENT "Generating coverage report with lcov/genhtml"
         VERBATIM
     )
 endif()
