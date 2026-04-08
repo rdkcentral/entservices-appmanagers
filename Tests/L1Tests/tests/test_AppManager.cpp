@@ -27,6 +27,7 @@
 
 #include "AppManager.h"
 #include "AppManagerImplementation.h"
+#include "AppInfoManager.h"
 #include "ServiceMock.h"
 #include "LifecycleManagerMock.h"
 #include "PackageManagerMock.h"
@@ -84,6 +85,7 @@ struct ExpectedAppLifecycleEvent {
 };
 using ::testing::NiceMock;
 using namespace WPEFramework;
+using namespace WPEFramework::Plugin;
 
 namespace {
 const string callSign = _T("AppManager");
@@ -129,6 +131,7 @@ protected:
     void releaseAppManagerImpl()
     {
         TEST_LOG("In releaseAppManagerImpl!");
+        AppInfoManager::getInstance().clear();
         plugin->Deinitialize(mServiceMock);
         delete mServiceMock;
         mAppManagerImpl = nullptr;
@@ -294,6 +297,7 @@ protected:
         dispatcher->Deactivate();
         dispatcher->Release();
 
+        AppInfoManager::getInstance().clear();
         plugin->Deinitialize(mServiceMock);
         delete mServiceMock;
         mAppManagerImpl = nullptr;
@@ -967,11 +971,11 @@ TEST_F(AppManagerTest, LaunchAppUsingComRpcSuccess)
     expectedEvent.intent = APPMANAGER_APP_INTENT;
     expectedEvent.source = "";
     Core::Sink<NotificationHandler> notification;
-    Plugin::AppManagerImplementation::AppInfo appInfo;
-    appInfo.appInstanceId = APPMANAGER_APP_INSTANCE;
     uint32_t signalled = AppManager_StateInvalid;
-    appInfo.appNewState = Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
-    mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
+    AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [](Plugin::AppInfo& a) {
+        a.setAppInstanceId(APPMANAGER_APP_INSTANCE);
+        a.setAppNewState(Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE);
+    });
 
     /* Register the notification handler */
     mAppManagerImpl->Register(&notification);
@@ -1546,10 +1550,10 @@ TEST_F(AppManagerTest, CloseAppUsingComRpcSuccess)
     expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE;
     uint32_t signalled = AppManager_StateInvalid;
     Core::Sink<NotificationHandler> notification;
-    Plugin::AppManagerImplementation::AppInfo appInfo;
-    appInfo.appInstanceId = APPMANAGER_APP_INSTANCE;
-    appInfo.appNewState = Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED;
-    mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
+    AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [](Plugin::AppInfo& a) {
+        a.setAppInstanceId(APPMANAGER_APP_INSTANCE);
+        a.setAppNewState(Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED);
+    });
 
     /* Register the notification handler */
     mAppManagerImpl->Register(&notification);
@@ -1603,10 +1607,10 @@ TEST_F(AppManagerTest, CloseAppUsingJSONRpcSuccess)
     EXPECT_EQ(Core::ERROR_NONE, status);
     Core::Event onAppLaunchRequest(false, true);
 
-    Plugin::AppManagerImplementation::AppInfo appInfo;
-    appInfo.appInstanceId = APPMANAGER_APP_INSTANCE;
-    appInfo.appNewState = Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED;
-    mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
+    AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [](Plugin::AppInfo& a) {
+        a.setAppInstanceId(APPMANAGER_APP_INSTANCE);
+        a.setAppNewState(Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED);
+    });
     std::string requestClose = "{\"appId\": \"" + std::string(APPMANAGER_APP_ID) + "\"}";
     std::string requestLaunch = "{\"appId\": \"" + std::string(APPMANAGER_APP_ID) +
                           "\", \"intent\": \"" + std::string(APPMANAGER_APP_INTENT) +
@@ -1681,10 +1685,10 @@ TEST_F(AppManagerTest, CloseAppUsingComRpcSuspendedStateSuccess)
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
 
-    Plugin::AppManagerImplementation::AppInfo appInfo;
-    appInfo.appInstanceId = APPMANAGER_APP_INSTANCE;
-    appInfo.appNewState = Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED;
-    mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
+    AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [](Plugin::AppInfo& a) {
+        a.setAppInstanceId(APPMANAGER_APP_INSTANCE);
+        a.setAppNewState(Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED);
+    });
 
     LaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::SUSPENDED);
     ON_CALL(*p_wrapsImplMock, stat(::testing::_, ::testing::_))
@@ -3048,13 +3052,11 @@ TEST_F(AppManagerTest, GetLoadedAppsJsonRpc)
     Core::hresult status;
 
     status = createResources();
-    Plugin::AppManagerImplementation::AppInfo appInfo;
-    Plugin::AppManagerImplementation::PackageInfo pkgInfo;
     std::string nexTennisAppId = "NexTennis";
-    appInfo.appInstanceId = nexTennisAppId;
-    pkgInfo.type = Plugin::AppManagerImplementation::ApplicationType::APPLICATION_TYPE_INTERACTIVE;
-    appInfo.packageInfo = pkgInfo;
-    mAppManagerImpl->mAppInfo[nexTennisAppId] = appInfo;
+    AppInfoManager::getInstance().upsert(nexTennisAppId, [&](AppInfo& a) {
+        a.setAppInstanceId(nexTennisAppId);
+        a.getPackageInfoMutable().type = AppManagerTypes::APPLICATION_TYPE_INTERACTIVE;
+    });
     EXPECT_EQ(Core::ERROR_NONE, status);
     EXPECT_CALL(*mLifecycleManagerMock, GetLoadedApps(::testing::_, ::testing::_)
     ).WillOnce([&](const bool verbose, std::string &apps) {
@@ -3561,15 +3563,17 @@ TEST_F(AppManagerTest, GetInstalledAppsWithLastActiveTimeSuccess)
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
 
-    /* Pre-populate mAppInfo with appId having a valid lastActiveStateChangeTime */
-    Plugin::AppManagerImplementation::AppInfo appInfo;
-    appInfo.appInstanceId = APPMANAGER_APP_INSTANCE;
-    appInfo.appNewState = Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
-    appInfo.lastActiveIndex = 1;
-    /* Set a valid timestamp (non-zero tv_sec) */
-    appInfo.lastActiveStateChangeTime.tv_sec = 1700000000;
-    appInfo.lastActiveStateChangeTime.tv_nsec = 123456789;
-    mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
+    /* Pre-populate AppInfoManager with appId having a valid lastActiveStateChangeTime */
+    AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [](AppInfo& a) {
+        a.setAppInstanceId(APPMANAGER_APP_INSTANCE);
+        a.setAppNewState(Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE);
+        a.setLastActiveIndex(1);
+        /* Set a valid timestamp (non-zero tv_sec) */
+        timespec ts{};
+        ts.tv_sec = 1700000000;
+        ts.tv_nsec = 123456789;
+        a.setLastActiveStateChangeTime(ts);
+    });
 
     EXPECT_CALL(*mPackageInstallerMock, ListPackages(::testing::_))
         .WillOnce([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
@@ -3933,11 +3937,11 @@ TEST_F(AppManagerTest, LifecycleStateChangedLoadingToLoadingKillApp)
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
 
-    /* Pre-populate mAppInfo so the appId/appInstanceId match is found in APP_STATE_LOADING */
-    Plugin::AppManagerImplementation::AppInfo appInfo;
-    appInfo.appInstanceId = APPMANAGER_APP_INSTANCE;
-    appInfo.appNewState = Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING;
-    mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
+    /* Pre-populate AppInfoManager so the appId/appInstanceId match is found in APP_STATE_LOADING */
+    AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [](AppInfo& a) {
+        a.setAppInstanceId(APPMANAGER_APP_INSTANCE);
+        a.setAppNewState(Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING);
+    });
 
     ExpectedAppLifecycleEvent expectedEvent;
     expectedEvent.appId = APPMANAGER_APP_ID;
@@ -4225,11 +4229,11 @@ TEST_F(AppManagerTest, PackageUnlockEntryFoundUnlockSuccess)
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
 
-    /* Pre-populate mAppInfo so that packageUnLock finds the entry */
-    Plugin::AppManagerImplementation::AppInfo appInfo;
-    appInfo.appInstanceId = APPMANAGER_APP_INSTANCE;
-    appInfo.packageInfo.version = APPMANAGER_APP_VERSION;
-    mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
+    /* Pre-populate AppInfoManager so that packageUnLock finds the entry */
+    AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [](AppInfo& a) {
+        a.setAppInstanceId(APPMANAGER_APP_INSTANCE);
+        a.getPackageInfoMutable().version = APPMANAGER_APP_VERSION;
+    });
 
     EXPECT_CALL(*mPackageManagerMock, Unlock(APPMANAGER_APP_ID, APPMANAGER_APP_VERSION))
         .WillOnce([&](const string& packageId, const string& version) {
@@ -4273,11 +4277,11 @@ TEST_F(AppManagerTest, PackageUnlockEntryFoundUnlockFails)
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
 
-    /* Pre-populate mAppInfo so packageUnLock finds the entry */
-    Plugin::AppManagerImplementation::AppInfo appInfo;
-    appInfo.appInstanceId = APPMANAGER_APP_INSTANCE;
-    appInfo.packageInfo.version = APPMANAGER_APP_VERSION;
-    mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
+    /* Pre-populate AppInfoManager so packageUnLock finds the entry */
+    AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [](AppInfo& a) {
+        a.setAppInstanceId(APPMANAGER_APP_INSTANCE);
+        a.getPackageInfoMutable().version = APPMANAGER_APP_VERSION;
+    });
 
     EXPECT_CALL(*mPackageManagerMock, Unlock(APPMANAGER_APP_ID, APPMANAGER_APP_VERSION))
         .WillOnce([&](const string& packageId, const string& version) {
@@ -4320,11 +4324,11 @@ TEST_F(AppManagerTest, PackageUnlockHandlerNull)
     /* Use createAppManagerImpl() so mPackageManagerHandlerObject remains null */
     createAppManagerImpl();
 
-    /* Pre-populate mAppInfo so packageUnLock finds the entry (null handler path) */
-    Plugin::AppManagerImplementation::AppInfo appInfo;
-    appInfo.appInstanceId = APPMANAGER_APP_INSTANCE;
-    appInfo.packageInfo.version = APPMANAGER_APP_VERSION;
-    mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
+    /* Pre-populate AppInfoManager so packageUnLock finds the entry (null handler path) */
+    AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [](AppInfo& a) {
+        a.setAppInstanceId(APPMANAGER_APP_INSTANCE);
+        a.getPackageInfoMutable().version = APPMANAGER_APP_VERSION;
+    });
 
     uint32_t signalled = AppManager_StateInvalid;
     ExpectedAppLifecycleEvent expectedEvent;
@@ -4403,11 +4407,11 @@ TEST_F(AppManagerTest, LICMapAppLifecycleStateUnloaded)
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
 
-    /* Pre-populate mAppInfo so the appId/appInstanceId match is found */
-    Plugin::AppManagerImplementation::AppInfo appInfo;
-    appInfo.appInstanceId = APPMANAGER_APP_INSTANCE;
-    appInfo.appNewState = Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING;
-    mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
+    /* Pre-populate AppInfoManager so the appId/appInstanceId match is found */
+    AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [](AppInfo& a) {
+        a.setAppInstanceId(APPMANAGER_APP_INSTANCE);
+        a.setAppNewState(Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING);
+    });
 
     ASSERT_NE(mLifecycleManagerStateNotification_cb, nullptr)
         << "LifecycleManagerState notification callback is not registered";
@@ -4458,10 +4462,10 @@ TEST_F(AppManagerTest, LICMapAppLifecycleStateInitializing)
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
 
-    Plugin::AppManagerImplementation::AppInfo appInfo;
-    appInfo.appInstanceId = APPMANAGER_APP_INSTANCE;
-    appInfo.appNewState = Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING;
-    mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
+    AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [](AppInfo& a) {
+        a.setAppInstanceId(APPMANAGER_APP_INSTANCE);
+        a.setAppNewState(Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING);
+    });
 
     ASSERT_NE(mLifecycleManagerStateNotification_cb, nullptr)
         << "LifecycleManagerState notification callback is not registered";
@@ -4494,10 +4498,10 @@ TEST_F(AppManagerTest, LICMapAppLifecycleStateSuspended)
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
 
-    Plugin::AppManagerImplementation::AppInfo appInfo;
-    appInfo.appInstanceId = APPMANAGER_APP_INSTANCE;
-    appInfo.appNewState = Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
-    mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
+    AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [](AppInfo& a) {
+        a.setAppInstanceId(APPMANAGER_APP_INSTANCE);
+        a.setAppNewState(Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE);
+    });
 
     ASSERT_NE(mLifecycleManagerStateNotification_cb, nullptr)
         << "LifecycleManagerState notification callback is not registered";
@@ -4583,11 +4587,11 @@ TEST_F(AppManagerTest, LICOnAppStateChangedWithErrorReason)
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
 
-    /* Pre-populate mAppInfo so the appId lookup succeeds (covers L920-924) */
-    Plugin::AppManagerImplementation::AppInfo appInfo;
-    appInfo.appInstanceId = APPMANAGER_APP_INSTANCE;
-    appInfo.appNewState = Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
-    mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
+    /* Pre-populate AppInfoManager so the appId lookup succeeds (covers L920-924) */
+    AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [](AppInfo& a) {
+        a.setAppInstanceId(APPMANAGER_APP_INSTANCE);
+        a.setAppNewState(Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE);
+    });
 
     ASSERT_NE(Plugin::LifecycleInterfaceConnector::_instance, nullptr)
         << "LifecycleInterfaceConnector instance is not set";
@@ -4681,10 +4685,10 @@ TEST_F(AppManagerTest, LICOnAppStateChangedMapErrorReasonInvalidParam)
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
 
-    Plugin::AppManagerImplementation::AppInfo appInfo;
-    appInfo.appInstanceId = APPMANAGER_APP_INSTANCE;
-    appInfo.appNewState = Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
-    mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
+    AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [](AppInfo& a) {
+        a.setAppInstanceId(APPMANAGER_APP_INSTANCE);
+        a.setAppNewState(Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE);
+    });
 
     ASSERT_NE(Plugin::LifecycleInterfaceConnector::_instance, nullptr)
         << "LifecycleInterfaceConnector instance is not set";
@@ -4732,10 +4736,10 @@ TEST_F(AppManagerTest, LICOnAppStateChangedMapErrorReasonUnknown)
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
 
-    Plugin::AppManagerImplementation::AppInfo appInfo;
-    appInfo.appInstanceId = APPMANAGER_APP_INSTANCE;
-    appInfo.appNewState = Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
-    mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
+    AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [](AppInfo& a) {
+        a.setAppInstanceId(APPMANAGER_APP_INSTANCE);
+        a.setAppNewState(Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE);
+    });
 
     ASSERT_NE(Plugin::LifecycleInterfaceConnector::_instance, nullptr)
         << "LifecycleInterfaceConnector instance is not set";
@@ -4783,10 +4787,10 @@ TEST_F(AppManagerTest, LICRemoveAppInfoByAppIdFound)
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
 
-    /* Pre-populate mAppInfo so the lookup finds the entry */
-    Plugin::AppManagerImplementation::AppInfo appInfo;
-    appInfo.appInstanceId = APPMANAGER_APP_INSTANCE;
-    mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
+    /* Pre-populate AppInfoManager so the lookup finds the entry */
+    AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [](AppInfo& a) {
+        a.setAppInstanceId(APPMANAGER_APP_INSTANCE);
+    });
 
     ASSERT_NE(Plugin::LifecycleInterfaceConnector::_instance, nullptr)
         << "LifecycleInterfaceConnector instance is not set";
@@ -4795,7 +4799,7 @@ TEST_F(AppManagerTest, LICRemoveAppInfoByAppIdFound)
     Plugin::LifecycleInterfaceConnector::_instance->removeAppInfoByAppId(APPMANAGER_APP_ID);
 
     /* Entry should have been erased */
-    EXPECT_EQ(0u, mAppManagerImpl->mAppInfo.count(APPMANAGER_APP_ID));
+    EXPECT_FALSE(AppInfoManager::getInstance().exists(APPMANAGER_APP_ID));
 
     if (status == Core::ERROR_NONE)
     {
@@ -4841,11 +4845,11 @@ TEST_F(AppManagerTest, AppManagerImplRemoveAppInfoByAppIdFound)
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
 
-    /* Pre-populate mAppInfo for the appId */
-    Plugin::AppManagerImplementation::AppInfo appInfo;
-    appInfo.appInstanceId = APPMANAGER_APP_INSTANCE;
-    appInfo.packageInfo.version = APPMANAGER_APP_VERSION;
-    mAppManagerImpl->mAppInfo[APPMANAGER_APP_ID] = appInfo;
+    /* Pre-populate AppInfoManager for the appId */
+    AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [](AppInfo& a) {
+        a.setAppInstanceId(APPMANAGER_APP_INSTANCE);
+        a.getPackageInfoMutable().version = APPMANAGER_APP_VERSION;
+    });
 
     EXPECT_CALL(*mPackageManagerMock, Unlock(APPMANAGER_APP_ID, APPMANAGER_APP_VERSION))
         .WillOnce([&](const string& packageId, const string& version) {
@@ -4872,7 +4876,7 @@ TEST_F(AppManagerTest, AppManagerImplRemoveAppInfoByAppIdFound)
     mAppManagerImpl->Unregister(&notification);
 
     /* Verify the entry has been removed */
-    EXPECT_EQ(0u, mAppManagerImpl->mAppInfo.count(APPMANAGER_APP_ID));
+    EXPECT_FALSE(AppInfoManager::getInstance().exists(APPMANAGER_APP_ID));
 
     if (status == Core::ERROR_NONE)
     {
