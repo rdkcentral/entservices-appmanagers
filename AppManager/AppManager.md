@@ -310,3 +310,4 @@ Emitted when an application's lifecycle state changes.
 [← Back to Main](../README.md) | [Next: LifecycleManager →](../LifecycleManager/LifecycleManager.md)
 
 
+
