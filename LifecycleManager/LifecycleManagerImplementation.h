@@ -26,6 +26,8 @@
 #include "IEventHandler.h"
 #include "UtilsLogging.h"
 #include "tracing/Logging.h"
+#include <atomic>
+#include <condition_variable>
 #include <mutex>
 #include "ApplicationContext.h"
 
@@ -57,6 +59,7 @@ namespace WPEFramework
 	                {
                             if (mLifecycleManagerImplementation != nullptr)
 	            	    {
+                                mLifecycleManagerImplementation->incrementPendingJobs();
                                 mLifecycleManagerImplementation->AddRef();
                             }
                         }
@@ -69,6 +72,7 @@ namespace WPEFramework
 	                 {
                              if (mLifecycleManagerImplementation != nullptr)
 	            	     {
+                                 mLifecycleManagerImplementation->decrementPendingJobs();
                                  mLifecycleManagerImplementation->Release();
                              }
                          }
@@ -103,6 +107,10 @@ namespace WPEFramework
                 INTERFACE_ENTRY(Exchange::ILifecycleManagerState)
                 INTERFACE_ENTRY(Exchange::IConfiguration)
 	        END_INTERFACE_MAP
+
+        void incrementPendingJobs();
+        void decrementPendingJobs();
+        void waitForPendingJobs();
 
                 /* ILifecycleManager methods  */
                 virtual Core::hresult Register(Exchange::ILifecycleManager::INotification *notification) override;
@@ -139,6 +147,10 @@ namespace WPEFramework
 	        std::list<Exchange::ILifecycleManagerState::INotification*> mLifecycleManagerStateNotification;
                 std::list<ApplicationContext*> mLoadedApplications;
                 PluginHost::IShell* mService;
+                std::atomic<bool> mTerminating;
+                std::atomic<uint32_t> mPendingJobs;
+                std::mutex mPendingJobsMutex;
+                std::condition_variable mPendingJobsCV;
 	    private: /* internal methods */
                 bool initialize(PluginHost::IShell* service);
                 void terminate();

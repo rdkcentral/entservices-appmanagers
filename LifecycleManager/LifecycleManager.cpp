@@ -107,6 +107,13 @@ namespace WPEFramework
 
             if (nullptr != mLifecycleManagerImplementation)
             {
+                Exchange::IConfiguration* lifeCycleManagerConfig = mLifecycleManagerImplementation->QueryInterface<Exchange::IConfiguration>();
+                if (nullptr != lifeCycleManagerConfig)
+                {
+                    lifeCycleManagerConfig->Configure(nullptr);
+                    lifeCycleManagerConfig->Release();
+                }
+
                 // Stop processing:
                 RPC::IRemoteConnection* connection = service->RemoteConnection(mConnectionId);
                 VARIABLE_IS_NOT_USED uint32_t result = mLifecycleManagerImplementation->Release();

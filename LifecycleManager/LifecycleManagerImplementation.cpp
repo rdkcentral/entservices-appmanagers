@@ -22,6 +22,7 @@
 #include "UtilsJsonRpc.h"
 #include <interfaces/json/JsonData_LifecycleManagerState.h>
 #include <interfaces/json/JLifecycleManagerState.h>
+#include <chrono>
 #include <semaphore.h>
 #include "LifecycleManagerTelemetryReporting.h"
 
@@ -31,7 +32,7 @@ namespace WPEFramework
     {
         SERVICE_REGISTRATION(LifecycleManagerImplementation, 1, 0);
 
-        LifecycleManagerImplementation::LifecycleManagerImplementation(): mLifecycleManagerNotification(), mLifecycleManagerStateNotification(), mLoadedApplications(), mService(nullptr)
+        LifecycleManagerImplementation::LifecycleManagerImplementation(): mLifecycleManagerNotification(), mLifecycleManagerStateNotification(), mLoadedApplications(), mService(nullptr), mTerminating(false), mPendingJobs(0)
         {
             LOGINFO("Create LifecycleManagerImplementation Instance");
         }
@@ -51,6 +52,14 @@ namespace WPEFramework
 
         void LifecycleManagerImplementation::terminate()
         {
+            bool expected = false;
+            if (false == mTerminating.compare_exchange_strong(expected, true))
+            {
+                return;
+            }
+
+            waitForPendingJobs();
+
             try
             {
                 RequestHandler::getInstance()->terminate();
@@ -63,6 +72,34 @@ namespace WPEFramework
             {
                mService->Release();
                mService = nullptr;
+            }
+        }
+
+        void LifecycleManagerImplementation::incrementPendingJobs()
+        {
+            mPendingJobs.fetch_add(1);
+        }
+
+        void LifecycleManagerImplementation::decrementPendingJobs()
+        {
+            const uint32_t previousCount = mPendingJobs.fetch_sub(1);
+            if (1 == previousCount)
+            {
+                std::lock_guard<std::mutex> lock(mPendingJobsMutex);
+                mPendingJobsCV.notify_one();
+            }
+        }
+
+        void LifecycleManagerImplementation::waitForPendingJobs()
+        {
+            std::unique_lock<std::mutex> lock(mPendingJobsMutex);
+            const bool drained = mPendingJobsCV.wait_for(lock, std::chrono::seconds(5), [this]() {
+                return (0 == mPendingJobs.load());
+            });
+
+            if (false == drained)
+            {
+                LOGWARN("Timed out waiting for pending LifecycleManager jobs: %u", mPendingJobs.load());
             }
         }
 
@@ -114,6 +151,12 @@ namespace WPEFramework
         
         void LifecycleManagerImplementation::dispatchEvent(EventNames event, const JsonValue &params)
         {
+            if (true == mTerminating.load())
+            {
+                LOGWARN("Ignoring event dispatch during LifecycleManager shutdown, event=%u", static_cast<uint32_t>(event));
+                return;
+            }
+
             Core::IWorkerPool::Instance().Submit(Job::Create(this, event, params));
         }
         
@@ -513,16 +556,21 @@ namespace WPEFramework
         uint32_t LifecycleManagerImplementation::Configure(PluginHost::IShell* service)
         {
             uint32_t result = Core::ERROR_GENERAL;
-            if (service != nullptr)
+            if (nullptr == service)
             {
-                mService = service;
-                mService->AddRef();
+                terminate();
+                return Core::ERROR_NONE;
             }
-            else
+
+            if (nullptr != mService)
             {
-                LOGERR("service is null \n");
-                return result;
+                LOGWARN("LifecycleManagerImplementation already configured");
+                return Core::ERROR_NONE;
             }
+
+            mService = service;
+            mService->AddRef();
+
             bool ret = initialize(service);
 	    if (ret)
 	    {
