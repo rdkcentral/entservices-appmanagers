@@ -41,10 +41,6 @@ namespace WPEFramework
 
         RuntimeManagerImplementation::RuntimeManagerImplementation()
             : mRuntimeManagerImplLock(), mCurrentservice(nullptr), mOciContainerObject(nullptr), mStorageManagerObject(nullptr), mWindowManagerConnector(nullptr), mDobbyEventListener(nullptr), mUserIdManager(nullptr), mRuntimeAppPortal("")
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-              ,
-              mTelemetryMetricsObject(nullptr)
-#endif
         {
             LOGINFO("Create RuntimeManagerImplementation Instance");
             if (nullptr == RuntimeManagerImplementation::_instance)
@@ -80,12 +76,6 @@ namespace WPEFramework
 
             if (nullptr != mWindowManagerConnector)
             {
-                /* Clear any remaining runtime app info entries */
-                {
-                    Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
-                    mRuntimeAppInfo.clear();
-                }
-
                 mWindowManagerConnector->releasePlugin();
                 delete mWindowManagerConnector;
                 mWindowManagerConnector = nullptr;
@@ -101,6 +91,14 @@ namespace WPEFramework
             {
                 releaseOCIContainerPluginObject();
             }
+
+            /* Clear any remaining runtime app info entries */
+            {
+                Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
+                mRuntimeAppInfo.clear();
+            }
+
+            RuntimeManagerTelemetryReporting::getInstance().reset();
         }
 
         Core::hresult RuntimeManagerImplementation::Register(Exchange::IRuntimeManager::INotification *notification)
@@ -182,7 +180,6 @@ namespace WPEFramework
 
             case RUNTIME_MANAGER_EVENT_CONTAINERSTARTED:
             {
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
                 auto it = mRuntimeAppInfo.find(appInstanceId);
                 if (it != mRuntimeAppInfo.end())
                 {
@@ -197,7 +194,6 @@ namespace WPEFramework
                 {
                     LOGERR("RuntimeAppInfo not found for appInstanceId: %s", appInstanceId.c_str());
                 }
-#endif
                 while (index != mRuntimeManagerNotification.end())
                 {
                     (*index)->OnStarted(appInstanceId);
@@ -208,7 +204,6 @@ namespace WPEFramework
 
             case RUNTIME_MANAGER_EVENT_CONTAINERSTOPPED:
             {
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
                 auto it = mRuntimeAppInfo.find(appInstanceId);
                 if (it != mRuntimeAppInfo.end())
                 {
@@ -222,13 +217,10 @@ namespace WPEFramework
                 {
                     LOGERR("RuntimeAppInfo not found for appInstanceId: %s", appInstanceId.c_str());
                 }
-#endif
                 /* Remove the runtime app info entry to prevent map from growing indefinitely */
                 {
-                    Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
                     mRuntimeAppInfo.erase(appInstanceId);
                 }
-
                 while (index != mRuntimeManagerNotification.end())
                 {
                     (*index)->OnTerminated(appInstanceId);
@@ -244,17 +236,15 @@ namespace WPEFramework
             }
 
             case RUNTIME_MANAGER_EVENT_CONTAINERFAILED:
-                /* Remove the runtime app info entry to prevent map from growing indefinitely */
-                {
-                    Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
-                    mRuntimeAppInfo.erase(appInstanceId);
-                }
-
                 while (index != mRuntimeManagerNotification.end())
                 {
                     string error = obj["errorCode"].String();
                     (*index)->OnFailure(appInstanceId, error);
                     ++index;
+                }
+                /* Remove the runtime app info entry to prevent map from growing indefinitely */
+                {
+                    mRuntimeAppInfo.erase(appInstanceId);
                 }
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
                 {
@@ -281,16 +271,7 @@ namespace WPEFramework
                 mCurrentservice = service;
                 mCurrentservice->AddRef();
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-                if (nullptr == (mTelemetryMetricsObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::ITelemetryMetrics>("org.rdk.TelemetryMetrics")))
-                {
-                    LOGERR("mTelemetryMetricsObject is null \n");
-                }
-                else
-                {
-                    LOGINFO("created TelemetryMetrics Object");
-                }
-#endif
+                RuntimeManagerTelemetryReporting::getInstance().initialize(mCurrentservice);
                 /* Create Storage Manager Plugin Object */
                 if (Core::ERROR_NONE != createStorageManagerPluginObject())
                 {
@@ -299,7 +280,7 @@ namespace WPEFramework
 
                 /* Create Window Manager Plugin Object */
                 mWindowManagerConnector = new WindowManagerConnector();
-                if (false == mWindowManagerConnector->initializePlugin(service))
+                if (false == mWindowManagerConnector->initializePlugin(service, this))
                 {
                     LOGERR("Failed to create Window Manager Connector Object");
                 }
@@ -350,7 +331,6 @@ namespace WPEFramework
                 {
                     LOGERR("mOciContainerObject is null (Attempt %d)", retryCount + 1);
                     retryCount++;
-                    std::this_thread::sleep_for(std::chrono::milliseconds(200));
                 }
                 else
                 {
@@ -416,7 +396,6 @@ namespace WPEFramework
                     {
                         LOGERR("storageManagerObject is null (Attempt %d)", retryCount + 1);
                         retryCount++;
-                        std::this_thread::sleep_for(std::chrono::milliseconds(200));
                     }
                     else
                     {
@@ -557,13 +536,12 @@ namespace WPEFramework
             bool displayResult = false;
             bool notifyParamCheckFailure = false;
             std::string errorCode = "";
+            uid_t uid = 0;
+            gid_t gid = 0;
 
-            auto runStartTime = std::chrono::steady_clock::now();
-
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             /* Get current timestamp at the start of run for telemetry */
             time_t requestTime = getCurrentTimestamp();
-#endif
+            auto runStart = std::chrono::steady_clock::now();
 
             JsonObject eventData;
             eventData["containerId"] = appInstanceId;
@@ -571,17 +549,21 @@ namespace WPEFramework
             eventData["eventName"] = "onContainerStateChanged";
             dispatchEvent(RuntimeManagerImplementation::RuntimeEventType::RUNTIME_MANAGER_EVENT_STATECHANGED, eventData);
 
-            /* Lock briefly to read shared user/group ID state */
-            uid_t uid;
-            gid_t gid;
+            /* Scoped Lock 3: Read initial config from shared state */
             {
                 auto lockStart = std::chrono::steady_clock::now();
                 Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
-                uid = mUserIdManager->getUserId(appId);
-                gid = mUserIdManager->getAppsGid();
+
+                uid_t uidTmp = mUserIdManager->getUserId(appId);
+                gid_t gidTmp = mUserIdManager->getAppsGid();
                 auto lockEnd = std::chrono::steady_clock::now();
-                LOGINFO("Run: userId lock held for %lld ms", std::chrono::duration_cast<std::chrono::milliseconds>(lockEnd - lockStart).count());
+                LOGINFO("Run: initial config read lock held for %lld ms",
+                        std::chrono::duration_cast<std::chrono::milliseconds>(lockEnd - lockStart).count());
+
+                uid = uidTmp;
+                gid = gidTmp;
             }
+
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
             // In Ralf package, all apps will run with the same ralf user and group
             if (!ralf::getRalfUserInfo(uid, gid))
@@ -631,7 +613,9 @@ namespace WPEFramework
                 LOGERR("envVariables is empty inside Run()");
             }
 
-            if (!appId.empty())
+            std::string appIdForStorage = appId;
+
+            if (!appIdForStorage.empty())
             {
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
                 // RALF uses one userid groupid for all apps.
@@ -641,7 +625,7 @@ namespace WPEFramework
                 appStorageInfo.userId = userId;
                 appStorageInfo.groupId = groupId;
 #endif //RALF_PACKAGE_SUPPORT_ENABLED
-                if (Core::ERROR_NONE == getAppStorageInfo(appId, appStorageInfo))
+                if (Core::ERROR_NONE == getAppStorageInfo(appIdForStorage, appStorageInfo))
                 {
                     config.mAppStorageInfo.path = std::move(appStorageInfo.path);
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
@@ -656,7 +640,7 @@ namespace WPEFramework
                 }
             }
 
-            /* Creating Display */
+            /* Creating Display — no lock needed, operates on local/connector state */
             if (nullptr != mWindowManagerConnector)
             {
 
@@ -733,36 +717,42 @@ namespace WPEFramework
             }
             else
             {
-                /* Generated dobbySpec */
-                LOGINFO("Generated dobbySpec: %s", dobbySpec.c_str());
-
-                LOGINFO("Environment Variables: XDG_RUNTIME_DIR=%s, WAYLAND_DISPLAY=%s",
-                        xdgRuntimeDir.c_str(), waylandDisplay.c_str());
-                std::string command = "";
-                std::string appPath = runtimeConfigObject.unpackedPath;
-                // In Ralf package, dobbySpec contains the path to the generated dobby spec file
-                if (!legacyContainer)
-                {
-                    appPath = dobbySpec;
-                }
-                /* Lock briefly to validate OCI plugin object and get container ID */
+                /* Scoped Lock 1: Validate OCI plugin pointer + get container ID — brief read lock */
                 bool ociValid = false;
                 string containerId;
                 {
                     auto lockStart = std::chrono::steady_clock::now();
                     Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
                     ociValid = isOCIPluginObjectValid();
-                    if (ociValid)
-                    {
-                        containerId = getContainerId(appInstanceId);
-                    }
+                    containerId = getContainerId(appInstanceId);
                     auto lockEnd = std::chrono::steady_clock::now();
-                    LOGINFO("Run: ociValidation lock held for %lld ms", std::chrono::duration_cast<std::chrono::milliseconds>(lockEnd - lockStart).count());
+                    LOGINFO("Run: ociValidation lock held for %lld ms",
+                            std::chrono::duration_cast<std::chrono::milliseconds>(lockEnd - lockStart).count());
                 }
-                if (ociValid)
+
+                if (!ociValid)
                 {
+                    LOGERR("OCI Plugin object is not valid. Aborting Run.");
+                    errorCode = "ERROR_OCI_INVALID";
+                    notifyParamCheckFailure = true;
+                }
+                else
+                {
+                    /* Generated dobbySpec */
+                    LOGINFO("Generated dobbySpec: %s", dobbySpec.c_str());
+
+                    LOGINFO("Environment Variables: XDG_RUNTIME_DIR=%s, WAYLAND_DISPLAY=%s",
+                            xdgRuntimeDir.c_str(), waylandDisplay.c_str());
+                    std::string command = "";
+                    std::string appPath = runtimeConfigObject.unpackedPath;
+                    // In Ralf package, dobbySpec contains the path to the generated dobby spec file
+                    if (!legacyContainer)
+                    {
+                        appPath = dobbySpec;
+                    }
                     if (!containerId.empty())
                     {
+                        /* Container start IPC — no lock held during blocking call */
                         if (legacyContainer)
                             status = mOciContainerObject->StartContainerFromDobbySpec(containerId, dobbySpec, command, westerosSocket, descriptor, success, errorReason);
                         else
@@ -793,26 +783,28 @@ namespace WPEFramework
                         }
                         else
                         {
-                            LOGINFO("Update Info for %s", appInstanceId.c_str());
-                            if (!appId.empty())
-                            {
-                                runtimeAppInfo.appId = std::move(appId);
-                            }
-                            runtimeAppInfo.appInstanceId = std::move(appInstanceId);
-                            runtimeAppInfo.descriptor = std::move(descriptor);
-                            runtimeAppInfo.containerState = Exchange::IRuntimeManager::RUNTIME_STATE_STARTING;
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-                            /* Store request time and type in runtime app info map */
-                            runtimeAppInfo.requestTime = requestTime;
-                            runtimeAppInfo.requestType = REQUEST_TYPE_LAUNCH;
-#endif
-                            /* Lock briefly to update shared runtime app info map */
+                            /* Scoped Lock 2: Write new entry into mRuntimeAppInfo after successful container start */
                             {
                                 auto lockStart = std::chrono::steady_clock::now();
                                 Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
+
+                                LOGINFO("Update Info for %s", appInstanceId.c_str());
+                                if (!appId.empty())
+                                {
+                                    runtimeAppInfo.appId = appId;
+                                }
+                                runtimeAppInfo.appInstanceId = appInstanceId;
+                                runtimeAppInfo.descriptor = std::move(descriptor);
+                                runtimeAppInfo.containerState = Exchange::IRuntimeManager::RUNTIME_STATE_STARTING;
+                                /* Store request time and type in runtime app info map */
+                                runtimeAppInfo.requestTime = requestTime;
+                                runtimeAppInfo.requestType = REQUEST_TYPE_LAUNCH;
+                                /* Insert/update runtime app info */
                                 mRuntimeAppInfo[runtimeAppInfo.appInstanceId] = std::move(runtimeAppInfo);
+
                                 auto lockEnd = std::chrono::steady_clock::now();
-                                LOGINFO("Run: appInfoUpdate lock held for %lld ms", std::chrono::duration_cast<std::chrono::milliseconds>(lockEnd - lockStart).count());
+                                LOGINFO("Run: appInfoUpdate lock held for %lld ms",
+                                        std::chrono::duration_cast<std::chrono::milliseconds>(lockEnd - lockStart).count());
                             }
                         }
                     }
@@ -823,17 +815,17 @@ namespace WPEFramework
                         notifyParamCheckFailure = true;
                     }
                 }
-                else
-                {
-                    LOGERR("OCI Plugin object is not valid. Aborting Run.");
-                }
+            }
+
+            {
+                auto runEnd = std::chrono::steady_clock::now();
+                LOGINFO("Run: total duration %lld ms (lock NOT held for blocking ops)",
+                        std::chrono::duration_cast<std::chrono::milliseconds>(runEnd - runStart).count());
             }
             if (notifyParamCheckFailure)
             {
                 notifyParameterCheckFailure(appInstanceId, errorCode);
             }
-            auto runEndTime = std::chrono::steady_clock::now();
-            LOGINFO("Run: total duration %lld ms (lock NOT held for blocking ops)", std::chrono::duration_cast<std::chrono::milliseconds>(runEndTime - runStartTime).count());
             return status;
         }
 
@@ -842,21 +834,21 @@ namespace WPEFramework
             Core::hresult status = Core::ERROR_GENERAL;
             std::string options = "";
             std::string errorReason = "";
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             std::string appId = "";
-#endif
             bool success = false;
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             /* Get current timestamp at the start of hibernate for telemetry */
             time_t requestTime = getCurrentTimestamp();
-#endif
 
             mRuntimeManagerImplLock.Lock();
 
-            if (isOCIPluginObjectValid())
+            if(!isOCIPluginObjectValid())
             {
-                string containerId = getContainerId(appInstanceId);
+                mRuntimeManagerImplLock.Unlock();
+                LOGERR("OCI Plugin object is not valid. Aborting Hibernate.");
+                return status;
+            }
+               string containerId = getContainerId(appInstanceId);
                 if (!containerId.empty())
                 {
                     status = mOciContainerObject->HibernateContainer(containerId, options, success, errorReason);
@@ -870,9 +862,7 @@ namespace WPEFramework
                         if (mRuntimeAppInfo.find(appInstanceId) != mRuntimeAppInfo.end())
                         {
                             mRuntimeAppInfo[appInstanceId].containerState = Exchange::IRuntimeManager::RUNTIME_STATE_HIBERNATING;
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
                             appId = mRuntimeAppInfo[appInstanceId].appId;
-#endif
                         }
                     }
                 }
@@ -880,16 +870,9 @@ namespace WPEFramework
                 {
                     LOGERR("appInstanceId is not found or mOciContainerObject is not ready");
                 }
-            }
-            else
-            {
-                LOGERR("OCI Plugin object is not valid. Aborting Hibernate.");
-            }
             mRuntimeManagerImplLock.Unlock();
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             recordTelemetryData(TELEMETRY_MARKER_HIBERNATE_TIME, appId, requestTime);
-#endif
 
             return status;
         }
@@ -898,19 +881,20 @@ namespace WPEFramework
         {
             Core::hresult status = Core::ERROR_GENERAL;
             std::string errorReason = "";
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             std::string appId = "";
-#endif
             bool success = false;
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             /* Get current timestamp at the start of wake for telemetry */
             time_t requestTime = getCurrentTimestamp();
-#endif
 
             mRuntimeManagerImplLock.Lock();
-            if (isOCIPluginObjectValid())
+
+            if(!isOCIPluginObjectValid())
             {
+                mRuntimeManagerImplLock.Unlock();
+                LOGERR("OCI Plugin object is not valid. Aborting Wake.");
+                return status;
+            }
                 string containerId = getContainerId(appInstanceId);
                 if (!containerId.empty())
                 {
@@ -928,9 +912,7 @@ namespace WPEFramework
                             if (mRuntimeAppInfo.find(appInstanceId) != mRuntimeAppInfo.end())
                             {
                                 mRuntimeAppInfo[appInstanceId].containerState = Exchange::IRuntimeManager::RUNTIME_STATE_WAKING;
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
                                 appId = mRuntimeAppInfo[appInstanceId].appId;
-#endif
                             }
                         }
                     }
@@ -943,16 +925,9 @@ namespace WPEFramework
                 {
                     LOGERR("appInstanceId is not found ");
                 }
-            }
-            else
-            {
-                LOGERR("OCI Plugin object is not valid. Aborting Wake.");
-            }
             mRuntimeManagerImplLock.Unlock();
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             recordTelemetryData(TELEMETRY_MARKER_WAKE_TIME, appId, requestTime);
-#endif
 
             return status;
         }
@@ -961,20 +936,20 @@ namespace WPEFramework
         {
             Core::hresult status = Core::ERROR_GENERAL;
             std::string errorReason = "";
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             std::string appId = "";
-#endif
             bool success = false;
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             /* Get current timestamp at the start of suspend for telemetry */
             time_t requestTime = getCurrentTimestamp();
-#endif
 
             mRuntimeManagerImplLock.Lock();
 
-            if (isOCIPluginObjectValid())
+            if(!isOCIPluginObjectValid())
             {
+                mRuntimeManagerImplLock.Unlock();
+                LOGERR("OCI Plugin object is not valid. Aborting Suspend.");
+                return status;
+            }
                 string containerId = getContainerId(appInstanceId);
 
                 if (!containerId.empty())
@@ -984,7 +959,6 @@ namespace WPEFramework
                     {
                         LOGERR("Failed to PauseContainer %s", errorReason.c_str());
                     }
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
                     else
                     {
                         if (mRuntimeAppInfo.find(appInstanceId) != mRuntimeAppInfo.end())
@@ -992,22 +966,14 @@ namespace WPEFramework
                             appId = mRuntimeAppInfo[appInstanceId].appId;
                         }
                     }
-#endif
                 }
                 else
                 {
                     LOGERR("appInstanceId is not found ");
                 }
-            }
-            else
-            {
-                LOGERR("OCI Plugin object is not valid. Aborting Suspend.");
-            }
             mRuntimeManagerImplLock.Unlock();
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             recordTelemetryData(TELEMETRY_MARKER_SUSPEND_TIME, appId, requestTime);
-#endif
 
             return status;
         }
@@ -1016,19 +982,20 @@ namespace WPEFramework
         {
             Core::hresult status = Core::ERROR_GENERAL;
             std::string errorReason = "";
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             std::string appId = "";
-#endif
             bool success = false;
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             /* Get current timestamp at the start of resume for telemetry */
             time_t requestTime = getCurrentTimestamp();
-#endif
 
             mRuntimeManagerImplLock.Lock();
-            if (isOCIPluginObjectValid())
+
+            if(!isOCIPluginObjectValid())
             {
+                mRuntimeManagerImplLock.Unlock();
+                LOGERR("OCI Plugin object is not valid. Aborting Resume.");
+                return status;
+            }
                 string containerId = getContainerId(appInstanceId);
 
                 if (!containerId.empty())
@@ -1038,7 +1005,6 @@ namespace WPEFramework
                     {
                         LOGERR("Failed to ResumeContainer %s", errorReason.c_str());
                     }
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
                     else
                     {
                         if (mRuntimeAppInfo.find(appInstanceId) != mRuntimeAppInfo.end())
@@ -1046,22 +1012,14 @@ namespace WPEFramework
                             appId = mRuntimeAppInfo[appInstanceId].appId;
                         }
                     }
-#endif
                 }
                 else
                 {
                     LOGERR("appInstanceId is empty ");
                 }
-            }
-            else
-            {
-                LOGERR("OCI Plugin object is not valid. Aborting Resume.");
-            }
             mRuntimeManagerImplLock.Unlock();
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             recordTelemetryData(TELEMETRY_MARKER_RESUME_TIME, appId, requestTime);
-#endif
 
             return status;
         }
@@ -1072,14 +1030,18 @@ namespace WPEFramework
             std::string errorReason = "";
             bool success = false;
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             /* Get current timestamp at the start of terminate for telemetry */
             time_t requestTime = getCurrentTimestamp();
-#endif
 
             mRuntimeManagerImplLock.Lock();
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
+            if(!isOCIPluginObjectValid())
+            {
+                mRuntimeManagerImplLock.Unlock();
+                LOGERR("OCI Plugin object is not valid. Aborting Terminate.");
+                return status;
+            }
+
             auto it = mRuntimeAppInfo.find(appInstanceId);
             if (it != mRuntimeAppInfo.end())
             {
@@ -1090,10 +1052,7 @@ namespace WPEFramework
             {
                 LOGERR("Terminate called for unknown appInstanceId: %s, skipping telemetry update", appInstanceId.c_str());
             }
-#endif
-            if (isOCIPluginObjectValid())
-            {
-                string containerId = getContainerId(appInstanceId);
+            string containerId = getContainerId(appInstanceId);
 
                 if (!containerId.empty())
                 {
@@ -1121,11 +1080,6 @@ namespace WPEFramework
                 {
                     LOGERR("appInstanceId is not found");
                 }
-            }
-            else
-            {
-                LOGERR("OCI Plugin object is not valid. Aborting Terminate.");
-            }
 #ifdef RIALTO_IN_DAC_FEATURE_ENABLED
             LOGINFO("Rialto session deactivate on terminate.");
             mRialtoConnector->deactivateSession(mRuntimeAppInfo[appInstanceId].appId);
@@ -1145,14 +1099,18 @@ namespace WPEFramework
             std::string errorReason = "";
             bool success = false;
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             /* Get current timestamp at the start of terminate for telemetry */
             time_t requestTime = getCurrentTimestamp();
-#endif
 
             mRuntimeManagerImplLock.Lock();
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
+            if(!isOCIPluginObjectValid())
+            {
+                mRuntimeManagerImplLock.Unlock();
+                LOGERR("OCI Plugin object is not valid. Aborting Kill.");
+                return status;
+            }
+
             auto it = mRuntimeAppInfo.find(appInstanceId);
             if (it != mRuntimeAppInfo.end())
             {
@@ -1163,9 +1121,8 @@ namespace WPEFramework
             {
                 LOGERR("Kill called for unknown appInstanceId: %s, skipping telemetry update", appInstanceId.c_str());
             }
-#endif
-            if (isOCIPluginObjectValid())
-            {
+            //if (isOCIPluginObjectValid())
+            //{
                 string containerId = getContainerId(appInstanceId);
 
                 if (!containerId.empty())
@@ -1188,11 +1145,6 @@ namespace WPEFramework
                 {
                     LOGERR("appInstanceId is not found");
                 }
-            }
-            else
-            {
-                LOGERR("OCI Plugin object is not valid. Aborting Kill.");
-            }
 #ifdef RIALTO_IN_DAC_FEATURE_ENABLED
             LOGINFO("Rialto Session deactivate on kill..");
             mRialtoConnector->deactivateSession(mRuntimeAppInfo[appInstanceId].appId);
@@ -1215,8 +1167,12 @@ namespace WPEFramework
 
             mRuntimeManagerImplLock.Lock();
 
-            if (isOCIPluginObjectValid())
+            if(!isOCIPluginObjectValid())
             {
+                mRuntimeManagerImplLock.Unlock();
+                LOGERR("OCI Plugin object is not valid. Aborting GetInfo.");
+                return status;
+            }
                 string containerId = getContainerId(appInstanceId);
 
                 if (!containerId.empty())
@@ -1235,11 +1191,6 @@ namespace WPEFramework
                 {
                     LOGERR("appInstanceId is not found or mOciContainerObject is not ready");
                 }
-            }
-            else
-            {
-                LOGERR("OCI Plugin object is not valid. Aborting GetInfo.");
-            }
             mRuntimeManagerImplLock.Unlock();
             return status;
         }
@@ -1252,8 +1203,12 @@ namespace WPEFramework
 
             mRuntimeManagerImplLock.Lock();
 
-            if (isOCIPluginObjectValid())
+            if(!isOCIPluginObjectValid())
             {
+                mRuntimeManagerImplLock.Unlock();
+                LOGERR("OCI Plugin object is not valid. Aborting Annotate.");
+                return status;
+            }
                 string containerId = getContainerId(appInstanceId);
 
                 if (!containerId.empty())
@@ -1275,11 +1230,6 @@ namespace WPEFramework
                 {
                     LOGERR("appInstanceId is empty ");
                 }
-            }
-            else
-            {
-                LOGERR("OCI Plugin object is not valid. Aborting GetInfo.");
-            }
             mRuntimeManagerImplLock.Unlock();
             return status;
         }
@@ -1386,80 +1336,30 @@ namespace WPEFramework
             dispatchEvent(RuntimeManagerImplementation::RuntimeEventType::RUNTIME_MANAGER_EVENT_CONTAINERFAILED, data);
         }
 
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-
         time_t RuntimeManagerImplementation::getCurrentTimestamp()
         {
-            timespec ts;
-            clock_gettime(CLOCK_MONOTONIC, &ts);
-            return (((time_t)ts.tv_sec * 1000) + ((time_t)ts.tv_nsec / 1000000));
+            return RuntimeManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
         }
 
-        RuntimeManagerImplementation::TelemetryMarker RuntimeManagerImplementation::getTelemetryMarker(const std::string &marker)
+        void RuntimeManagerImplementation::onWindowManagerDisconnected(const std::string& client)
         {
-            if (marker == TELEMETRY_MARKER_LAUNCH_TIME)
-                return TELEMETRY_MARKER_LAUNCH;
-            else if (marker == TELEMETRY_MARKER_CLOSE_TIME)
-                return TELEMETRY_MARKER_CLOSE;
-            else if (marker == TELEMETRY_MARKER_RESUME_TIME)
-                return TELEMETRY_MARKER_RESUME;
-            else if (marker == TELEMETRY_MARKER_SUSPEND_TIME)
-                return TELEMETRY_MARKER_SUSPEND;
-            else if (marker == TELEMETRY_MARKER_HIBERNATE_TIME)
-                return TELEMETRY_MARKER_HIBERNATE;
-            else if (marker == TELEMETRY_MARKER_WAKE_TIME)
-                return TELEMETRY_MARKER_WAKE;
-            else
-                return TELEMETRY_MARKER_UNKNOWN;
+            mRuntimeManagerImplLock.Lock();
+            auto it = mRuntimeAppInfo.find(client);
+            if (it != mRuntimeAppInfo.end())
+            {
+                RuntimeAppInfo& appInfo = it->second;
+                if (appInfo.requestType == REQUEST_TYPE_TERMINATE || appInfo.requestType == REQUEST_TYPE_KILL)
+                {
+                    recordTelemetryData(TELEMETRY_MARKER_CLOSE_TIME, appInfo.appId, appInfo.requestTime, "windowManagerDestroyTime");
+                }
+            }
+            mRuntimeManagerImplLock.Unlock();
         }
 
-        void RuntimeManagerImplementation::recordTelemetryData(const std::string &marker, const std::string &appId, uint64_t requestTime)
+        void RuntimeManagerImplementation::recordTelemetryData(const std::string &marker, const std::string &appId, uint64_t requestTime, const std::string& fieldName)
         {
-            /* End time for telemetry */
-            time_t currentTime = getCurrentTimestamp();
-            LOGINFO("End time for %s: %lu", marker.c_str(), currentTime);
-
-            JsonObject jsonParam;
-            std::string telemetryMetrics = "";
-
-            int duration = static_cast<int>(currentTime - requestTime);
-            TelemetryMarker telemetryMarker = getTelemetryMarker(marker);
-
-            /* Determine the telemetry JSON key */
-            switch (telemetryMarker)
-            {
-            case TELEMETRY_MARKER_RESUME:
-                jsonParam["runtimeManagerResumeTime"] = duration;
-                break;
-            case TELEMETRY_MARKER_SUSPEND:
-                jsonParam["runtimeManagerSuspendTime"] = duration;
-                break;
-            case TELEMETRY_MARKER_HIBERNATE:
-                jsonParam["runtimeManagerHibernateTime"] = duration;
-                break;
-            case TELEMETRY_MARKER_WAKE:
-                jsonParam["runtimeManagerWakeTime"] = duration;
-                break;
-            case TELEMETRY_MARKER_LAUNCH:
-                jsonParam["runtimeManagerRunTime"] = duration;
-                break;
-            case TELEMETRY_MARKER_CLOSE:
-                jsonParam["runtimeManagerTerminateTime"] = duration;
-                break;
-            default:
-                LOGERR("Unknown telemetry marker: %s", marker.c_str());
-                return;
-            }
-            jsonParam["appId"] = appId;
-            jsonParam.ToString(telemetryMetrics);
-
-            if (nullptr != mTelemetryMetricsObject)
-            {
-                LOGINFO("Record appId %s marker %s start time %d", appId.c_str(), marker.c_str(), duration);
-                mTelemetryMetricsObject->Record(appId, telemetryMetrics, marker);
-            }
+            RuntimeManagerTelemetryReporting::getInstance().recordTelemetryData(marker, appId, requestTime, fieldName);
         }
-#endif
     } /* namespace Plugin */
 } /* namespace WPEFramework */
 
