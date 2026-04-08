@@ -114,6 +114,11 @@ namespace Plugin {
             {
 		std::lock_guard<std::mutex> lock(mQueueMutex);
                 mDownloadPath = config.downloadDir;
+              
+                // Remove trailing slashes (unless path is just "/")
+                while (!mDownloadPath.empty() && 1 < mDownloadPath.size() && '/' == mDownloadPath.back()) {
+                    mDownloadPath.pop_back();
+                }
 	    }
             LOGINFO("DM: downloadDir=%s", mDownloadPath.c_str());
             if (true == config.downloadId.IsSet())
@@ -211,7 +216,13 @@ namespace Plugin {
             DownloadInfoPtr newDownload = std::make_shared<DownloadInfo>(url, downloadIdStr, options.priority, options.retries, options.rateLimit);
             if (newDownload != nullptr)
             {
-                std::string filename = mDownloadPath + "package" + newDownload->getId();
+                std::string filename = "";
+                if ("/" == mDownloadPath) {
+                    filename = mDownloadPath + "package" + newDownload->getId();
+                } else {
+                    filename = mDownloadPath + "/" + "package" + newDownload->getId();
+                }
+
                 newDownload->setFileLocator(filename);
 
                 /* Check the priority download request */
