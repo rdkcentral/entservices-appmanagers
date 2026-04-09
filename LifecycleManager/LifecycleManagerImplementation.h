@@ -26,7 +26,6 @@
 #include "IEventHandler.h"
 #include "UtilsLogging.h"
 #include "tracing/Logging.h"
-#include <mutex>
 #include "ApplicationContext.h"
 
 namespace WPEFramework
