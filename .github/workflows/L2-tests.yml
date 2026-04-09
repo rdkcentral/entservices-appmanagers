@@ -2,7 +2,7 @@ name: L2-tests
 
 on:
   push:
-    branches: [ main, develop, 'sprint/**', 'release/**', 'topic/**', 'L2Test' ]
+    branches: [ main, develop, 'sprint/**', 'release/**', 'topic/**', 'topic/L2Test' ]
   pull_request:
     branches: [ main, develop, 'sprint/**', 'release/**', 'topic/**' ]
   workflow_call:
@@ -236,6 +236,7 @@ jobs:
           rdk/iarmmgrs-hal/mfrMgr.h
           rdk/iarmmgrs-hal/pwrMgr.h
           rdk/iarmmgrs-hal/sysMgr.h
+          libusb/libusb.h
           
       - name: Set clang toolchain
         if: ${{ matrix.compiler == 'clang' }}
@@ -303,7 +304,7 @@ jobs:
           -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/RBus.h
           -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/Udev.h
           -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/Wraps.h
-          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/libusb.h
+          -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/headers/libusb/libusb.h
           -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/maintenanceMGR.h
           -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/pkg.h
           -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/secure_wrappermock.h
