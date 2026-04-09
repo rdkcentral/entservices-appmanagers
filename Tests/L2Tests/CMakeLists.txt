@@ -67,6 +67,7 @@ target_include_directories(
     ../../../entservices-appmanagers/Tests/mocks/MockPlugin
     ../../../entservices-appmanagers/Tests/L2Tests/L2TestsPlugin
     ${CMAKE_INSTALL_PREFIX}/include
+    ${CMAKE_INSTALL_PREFIX}/include/${NAMESPACE}
     )
 
 install(TARGETS ${MODULE_NAME} DESTINATION lib)
