@@ -110,7 +110,15 @@ namespace WPEFramework
                 Exchange::IConfiguration* lifeCycleManagerConfig = mLifecycleManagerImplementation->QueryInterface<Exchange::IConfiguration>();
                 if (nullptr != lifeCycleManagerConfig)
                 {
-                    lifeCycleManagerConfig->Configure(nullptr);
+                    // LifecycleManager implementation intentionally uses Configure(nullptr)
+                    // as a deconfiguration/teardown signal during plugin shutdown.
+                    // This is a non-standard IConfiguration usage, so keep it explicit
+                    // and surface failures to aid maintenance and troubleshooting.
+                    const uint32_t configureResult = lifeCycleManagerConfig->Configure(nullptr);
+                    if (Core::ERROR_NONE != configureResult)
+                    {
+                        LOGWARN("LifecycleManager deconfigure hook Configure(nullptr) failed: %u", configureResult);
+                    }
                     lifeCycleManagerConfig->Release();
                 }
 
