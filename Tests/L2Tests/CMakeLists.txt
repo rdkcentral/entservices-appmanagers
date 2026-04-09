@@ -61,6 +61,7 @@ endif (MOCKACCESSOR_LIBRARIES)
 target_include_directories(
     ${MODULE_NAME} PRIVATE ./
     ../../helpers
+    ../headers
     ../../../entservices-appmanagers/Tests/mocks
     ../../../entservices-appmanagers/Tests/mocks/thunder
     ../../../entservices-appmanagers/Tests/mocks/devicesettings
