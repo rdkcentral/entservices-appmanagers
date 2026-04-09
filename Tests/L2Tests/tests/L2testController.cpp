@@ -51,7 +51,7 @@
 
 
 #define FILESYSTEM_SYNC_DELAY_MS         100                            /* Delay for filesystem operations to complete (milliseconds). */
-#define PLUGIN_INIT_DELAY_MS             500                            /* Delay for plugin initialization (milliseconds). */
+#define PLUGIN_INIT_DELAY_MS             2000                           /* Delay for plugin initialization (milliseconds). */
 
 #define EXIT_SUCCESS_CODE                0                              /* Exit code for successful execution. */
 #define EXIT_AUTOSTART_FAILURE           1                              /* Exit code for autostart configuration failure. */
@@ -103,8 +103,8 @@ bool L2testController::StartThunder()
         return false;
     }
 
-    /* Allow time for the server to start. */
-    (void)sleep(1U);
+    /* Allow time for the server to start and initialize COM-RPC interface. */
+    (void)sleep(3U);
 
     /* Configure the JSONRPC connection, as the test starts before WPEFramework. */
     snprintf(address, sizeof(address), "%s:%s", THUNDER_ADDRESS, THUNDER_PORT);
@@ -140,8 +140,8 @@ void L2testController::initClient() {
     if (m_client.IsValid() && m_l2TestInterface)
         return; // Already initialized
 
-    const int MAX_RETRIES = 5;
-    const int RETRY_DELAY_MS = 500;
+    const int MAX_RETRIES = 15;
+    const int RETRY_DELAY_MS = 1000;  // 1 second between retries, up to 15 seconds total
 
     for (int attempt = 1; attempt <= MAX_RETRIES; ++attempt) {
         L2TEST_LOG("COM-RPC client initialization attempt #%d", attempt);
