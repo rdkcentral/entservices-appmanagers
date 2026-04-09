@@ -447,9 +447,12 @@ jobs:
           export GTEST_OUTPUT="json:$(pwd)/rdkL2TestResults.json"
 
           echo "Searching for test binary..."
-          TEST_BIN=$(find $GITHUB_WORKSPACE -name RdkServicesL2Test -type f | head -n 1)
+          TEST_BIN="$GITHUB_WORKSPACE/install/usr/bin/RdkServicesL2Test"
+          if [ ! -x "$TEST_BIN" ]; then
+            TEST_BIN=$(find "$GITHUB_WORKSPACE" -name RdkServicesL2Test -type f | head -n 1 || true)
+          fi
 
-          if [ -z "$TEST_BIN" ]; then
+          if [ -z "$TEST_BIN" ] || [ ! -x "$TEST_BIN" ]; then
             echo "ERROR: RdkServicesL2Test binary not found!"
             exit 1
           fi
@@ -464,9 +467,22 @@ jobs:
 
       - name: Run unit tests with valgrind
         if: ${{ !env.ACT }}
-        run: >
+        run: |
+          set -euo pipefail
+
           PATH=$GITHUB_WORKSPACE/install/usr/bin:${PATH}
-          LD_LIBRARY_PATH=$GITHUB_WORKSPACE/install/usr/lib:$GITHUB_WORKSPACE/install/usr/lib/wpeframework/plugins:${LD_LIBRARY_PATH}
+          LD_LIBRARY_PATH=$GITHUB_WORKSPACE/install/usr/lib:$GITHUB_WORKSPACE/install/usr/lib/wpeframework/plugins:${LD_LIBRARY_PATH:-}
+
+          TEST_BIN="$GITHUB_WORKSPACE/install/usr/bin/RdkServicesL2Test"
+          if [ ! -x "$TEST_BIN" ]; then
+            TEST_BIN=$(find "$GITHUB_WORKSPACE" -name RdkServicesL2Test -type f | head -n 1 || true)
+          fi
+
+          if [ -z "$TEST_BIN" ] || [ ! -x "$TEST_BIN" ]; then
+            echo "ERROR: RdkServicesL2Test binary not found!"
+            exit 1
+          fi
+
           valgrind
           --tool=memcheck
           --log-file=valgrind_log
@@ -474,8 +490,8 @@ jobs:
           --show-reachable=yes
           --track-fds=yes
           --fair-sched=try
-          RdkServicesL2Test &&
-          cp -rf $(pwd)/rdkL2TestResults.json $GITHUB_WORKSPACE/rdkL2TestResultsWithValgrind.json &&
+          "$TEST_BIN"
+          cp -rf $(pwd)/rdkL2TestResults.json $GITHUB_WORKSPACE/rdkL2TestResultsWithValgrind.json
           rm -rf $(pwd)/rdkL2TestResults.json
 
       - name: Generate coverage

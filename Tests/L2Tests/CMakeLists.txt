@@ -19,12 +19,19 @@
 set(PLUGIN_NAME L2TestsIN)
 set(MODULE_NAME ${NAMESPACE}${PLUGIN_NAME})
 set(THUNDER_PORT 9998)
+set(TEST_RUNNER_NAME RdkServicesL2Test)
 
 find_package(${NAMESPACE}Plugins REQUIRED)
+find_package(GTest REQUIRED)
 
 if(PLUGIN_APP_STORAGE_MANAGER)
     set(SRC_FILES ${SRC_FILES} tests/AppStorageManager_L2Test.cpp)
 endif()
+
+set(TEST_SRC
+    ${SRC_FILES}
+    tests/L2TestsMock.cpp
+)
 
 add_library(${MODULE_NAME} SHARED ${SRC_FILES})
 
@@ -39,6 +46,8 @@ target_compile_definitions(${MODULE_NAME}
 
 target_compile_options(${MODULE_NAME} PRIVATE -Wno-error)
 target_link_libraries(${MODULE_NAME} PRIVATE ${NAMESPACE}Plugins::${NAMESPACE}Plugins)
+
+add_executable(${TEST_RUNNER_NAME} ${TEST_SRC})
 
 if (NOT L2_TEST_OOP_RPC)
     find_library(TESTMOCKLIB_LIBRARIES NAMES TestMocklib)
@@ -58,6 +67,18 @@ else (MOCKACCESSOR_LIBRARIES)
      message ("Require ${MOCKACCESSOR_LIBRARIES} library")
 endif (MOCKACCESSOR_LIBRARIES)
 
+if (NOT L2_TEST_OOP_RPC)
+    if (TESTMOCKLIB_LIBRARIES)
+        target_link_libraries(${TEST_RUNNER_NAME} PRIVATE ${TESTMOCKLIB_LIBRARIES})
+    endif (TESTMOCKLIB_LIBRARIES)
+endif (NOT L2_TEST_OOP_RPC)
+
+if (MOCKACCESSOR_LIBRARIES)
+    target_link_libraries(${TEST_RUNNER_NAME} PRIVATE ${MOCKACCESSOR_LIBRARIES})
+endif (MOCKACCESSOR_LIBRARIES)
+
+target_link_libraries(${TEST_RUNNER_NAME} PRIVATE ${NAMESPACE}Plugins::${NAMESPACE}Plugins gtest_main gmock gtest)
+
 target_include_directories(
     ${MODULE_NAME} PRIVATE ./
     ../../helpers
@@ -71,4 +92,17 @@ target_include_directories(
     ${CMAKE_INSTALL_PREFIX}/include/${NAMESPACE}
     )
 
+target_include_directories(
+    ${TEST_RUNNER_NAME} PRIVATE ./
+    ../../helpers
+    ../headers
+    ../../../entservices-appmanagers/Tests/mocks
+    ../../../entservices-appmanagers/Tests/mocks/thunder
+    ../../../entservices-appmanagers/Tests/mocks/devicesettings
+    ../../../entservices-appmanagers/Tests/mocks/MockPlugin
+    ${CMAKE_INSTALL_PREFIX}/include
+    ${CMAKE_INSTALL_PREFIX}/include/${NAMESPACE}
+    )
+
 install(TARGETS ${MODULE_NAME} DESTINATION lib)
+install(TARGETS ${TEST_RUNNER_NAME} DESTINATION bin)
