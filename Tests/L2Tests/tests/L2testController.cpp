@@ -153,7 +153,12 @@ void L2testController::initClient() {
             continue;
         }
 
+        // Some generated configs expose callsign as "L2Tests" while others use "org.rdk.L2Tests".
+        // Try both to make CI robust across packaging variants.
         m_pluginShell = m_client->Open<PluginHost::IShell>(_T("org.rdk.L2Tests"), ~0, TEST_COMPLETION_TIMEOUT);
+        if (nullptr == m_pluginShell) {
+            m_pluginShell = m_client->Open<PluginHost::IShell>(_T("L2Tests"), ~0, TEST_COMPLETION_TIMEOUT);
+        }
         if (!m_pluginShell) {
             L2TEST_LOG("Failed to open IShell, retrying...");
             m_client.Release();

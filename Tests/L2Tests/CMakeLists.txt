@@ -122,6 +122,7 @@ set(ENTSERVICES_INC
 target_include_directories(${MODULE_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}
     ../../helpers
+    ../headers
     tests/
     ../mocks
     ../mocks/thunder
@@ -131,7 +132,8 @@ target_include_directories(${MODULE_NAME} PRIVATE
     ../mocks/MockAuthService
     ../mocks/MockSecManager
     ${ENTSERVICES_INC}
-    ${CMAKE_INSTALL_PREFIX}/include)
+    ${CMAKE_INSTALL_PREFIX}/include
+    ${CMAKE_INSTALL_PREFIX}/include/${NAMESPACE})
 
 install(TARGETS ${MODULE_NAME}
     DESTINATION lib/${STORAGE_DIRECTORY}/plugins)
@@ -187,6 +189,7 @@ if(SRC_FILES_IN)
 
     target_include_directories(${MODULE_NAME_IN} PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
+        ../headers
         tests/
         ../../helpers
         ../mocks
@@ -194,7 +197,8 @@ if(SRC_FILES_IN)
         ../mocks/devicesettings
         ../mocks/MockPlugin
         ${CMAKE_INSTALL_PREFIX}/include
-        ${CMAKE_INSTALL_PREFIX}/include/WPEFramework)
+        ${CMAKE_INSTALL_PREFIX}/include/WPEFramework
+        ${CMAKE_INSTALL_PREFIX}/include/${NAMESPACE})
 
     install(TARGETS ${MODULE_NAME_IN} DESTINATION lib)
 
@@ -254,6 +258,7 @@ target_include_directories(${TEST_RUNNER_NAME}
         PRIVATE
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/tests>
+    ../headers
         ${CMAKE_INSTALL_PREFIX}/include/WPEFramework
         ${CMAKE_INSTALL_PREFIX}/include
         )
