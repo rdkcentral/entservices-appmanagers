@@ -483,14 +483,14 @@ jobs:
             exit 1
           fi
 
-          valgrind
-          --tool=memcheck
-          --log-file=valgrind_log
-          --leak-check=yes
-          --show-reachable=yes
-          --track-fds=yes
-          --fair-sched=try
-          "$TEST_BIN"
+          valgrind \
+            --tool=memcheck \
+            --log-file=valgrind_log \
+            --leak-check=yes \
+            --show-reachable=yes \
+            --track-fds=yes \
+            --fair-sched=try \
+            "$TEST_BIN"
           cp -rf $(pwd)/rdkL2TestResults.json $GITHUB_WORKSPACE/rdkL2TestResultsWithValgrind.json
           rm -rf $(pwd)/rdkL2TestResults.json
 
