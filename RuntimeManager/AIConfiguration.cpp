@@ -41,22 +41,31 @@ namespace WPEFramework
 {
 namespace Plugin
 {
+    // Fix for Coverity issue 1078 - UNINIT_CTOR: Initialize all member variables in constructor
     AIConfiguration::AIConfiguration()
         : mConsoleLogCap(0)
         , mAppsCpuSet()
         , mNonHomeAppMemoryLimit(0)
         , mNonHomeAppGpuLimit(0)
         , mVpuAccessBlacklist()
+        , mAppsRequiringDBus()
+        , mMapiPorts()
+        , mResourceManagerClientEnabled(false)
+        , mGstreamerRegistryEnabled(false)
         , mSvpEnabled(false)
+        , mEnableUsbMassStorage(false)
+        , mIPv6Enabled(false)
+        , mIonHeapDefaultQuota(0)
+        , mDialServerPort(0)
+        , mDialServerPathPrefix()
+        , mDialUsn()
+        , mIonHeapQuotas()
+        , mPreloads()
+        , mEnvVariables()
     {
-        // Initialize primitive members with safe defaults; configuration files may override these.
-        mResourceManagerClientEnabled = false;
-        mGstreamerRegistryEnabled = false;
-        mEnableUsbMassStorage = false;
-        mIPv6Enabled = false;
-        mIonHeapDefaultQuota = 0;
-        mDialServerPort = 0;
+        // All members initialized in initialization list above
     }
+
 
     AIConfiguration::~AIConfiguration()
     {
@@ -532,15 +541,15 @@ namespace Plugin
                 }
                 else if (key == "vpuAccessBlacklist")
                 {
-                    mVpuAccessBlacklist = parseStringArray(key, value);
+                    mVpuAccessBlacklist = parseStringArray(std::move(key), std::move(value));
                 }
                 else if (key == "appsRequiringDBus")
                 {
-                    mAppsRequiringDBus = parseStringArray(key, value);
+                    mAppsRequiringDBus = parseStringArray(std::move(key), std::move(value));
                 }
                 else if (key == "mapiPorts")
                 {
-                    mMapiPorts = parseIntArray(value);
+                    mMapiPorts = parseIntArray(std::move(value));
                 }
                 else if (key == "resourceManagerClientEnabled")
                 {
@@ -577,7 +586,7 @@ namespace Plugin
                     {
                         value = value.substr(1, value.size() - 2);
                     }
-                    mDialServerPathPrefix = value;
+                    mDialServerPathPrefix = std::move(value);
                 }
                 else if (key == "dialUsn")
                 {
@@ -586,19 +595,19 @@ namespace Plugin
                     {
                         value = value.substr(1, value.size() - 2);
                     }
-                    mDialUsn = value;
+                    mDialUsn = std::move(value);
                 }
                 else if (key == "ionLimits")
                 {
-                    mIonHeapQuotas = parseIonLimits(value);
+                    mIonHeapQuotas = parseIonLimits(std::move(value));
                 }
                 else if (key == "preloads")
                 {
-                    mPreloads = parseStringArray(key, value);
+                    mPreloads = parseStringArray(std::move(key), std::move(value));
                 }
                 else if (key == "envVariables")
                 {
-                    mEnvVariables = parseStringArray(key, value);
+                    mEnvVariables = parseStringArray(std::move(key), std::move(value));
                 }
             }
         }

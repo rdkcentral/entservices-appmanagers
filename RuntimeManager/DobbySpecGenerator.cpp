@@ -21,6 +21,9 @@
 #include "ApplicationConfiguration.h"
 #include "UtilsLogging.h"
 #include <sys/mount.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -927,43 +930,49 @@ void DobbySpecGenerator::createFkpsMounts(const ApplicationConfiguration& config
     const std::string fkpsPathPrefix("/opt/drm/");
     for (std::list<std::string>::iterator it=fkpsFiles.begin(); it!=fkpsFiles.end(); ++it)
     {
-	std::string fkpsFile = *it;      
+	std::string fkpsFile = *it;
         const std::string fkpsFilePath = fkpsPathPrefix + fkpsFile;
 
-        // check if the file exists
-        struct stat details;
-        if (stat(fkpsFilePath.c_str(), &details) != 0)
+        int fd = open(fkpsFilePath.c_str(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC);
+        if (fd < 0)
         {
             if (errno == ENOENT)
             {
-                printf("missing FKPS file '%s', won't map into container",
-                            fkpsFilePath.c_str());
+                LOGWARN("missing FKPS file '%s', won't map into container",
+                       fkpsFilePath.c_str());
             }
             else
             {
-                printf("failed to set FKPS file '%s' %d",
-                                 fkpsFilePath.c_str(), errno);
+                LOGERR("failed to open FKPS file '%s' (errno=%d)",
+                       fkpsFilePath.c_str(), errno);
             }
-
+            continue;
+        }
+        struct stat details;
+        if (fstat(fd, &details) != 0)
+        {
+            LOGERR("failed to stat FKPS file '%s' (errno=%d)",
+                   fkpsFilePath.c_str(), errno);
+            close(fd);
             continue;
         }
 
         // check the group owner matches the app
         if ((details.st_gid != config.mGroupId) &&
-            (chown(fkpsFilePath.c_str(), -1, config.mGroupId) != 0))
+            (fchown(fd, -1, config.mGroupId) != 0))
         {
-            printf("failed to change group owner of '%s' %d",
+            LOGERR("failed to change group owner of '%s' (errno=%d)",
                              fkpsFilePath.c_str(), errno);
         }
 
         // and that the group perms are set to r--
         if (((details.st_mode & S_IRGRP) != S_IRGRP) &&
-            (chmod(fkpsFilePath.c_str(), ((details.st_mode | S_IRGRP) & ALLPERMS)) != 0))
+            (fchmod(fd, ((details.st_mode | S_IRGRP) & ALLPERMS)) != 0))
         {
-            printf("failed to set file permissions to 0%03o for '%s' %d",
+            LOGERR("failed to set file permissions to 0%03o for '%s' (errno=%d)",
                              ((details.st_mode & ~S_IRWXG) | S_IRGRP), fkpsFilePath.c_str(), errno);
         }
-
+        close(fd);
         // finally add a bind mount for them
         spec.append(createBindMount(fkpsFilePath, fkpsFilePath,
                                           (MS_BIND | MS_RDONLY | MS_NOSUID | MS_NODEV | MS_NOEXEC)));
@@ -1038,22 +1047,35 @@ Json::Value DobbySpecGenerator::createResourceManagerMount(const ApplicationConf
 
     struct stat details;
     Json::Value resmgrMount;
-    if (stat(resmgrMountSource.c_str(), &details) == 0)
+    int fd = open(resmgrMountSource.c_str(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC);
+    if (fd >= 0)
     {
-        resmgrMount = createBindMount(resmgrMountSource, resmgrMountPoint, mntOptions);
-
-        // check the group owner matches the app
-        if ((details.st_gid != config.mGroupId) &&
-            (chown(resmgrMountSource.c_str(), -1, config.mGroupId) != 0))
+        if (fstat(fd, &details) == 0)
         {
-            printf("failed to change group owner of '%s'", resmgrMountSource.c_str());
-        }
+            resmgrMount = createBindMount(resmgrMountSource, resmgrMountPoint, mntOptions);
 
-        // and that the group perms are set to 0770
-        if (chmod(resmgrMountSource.c_str(), 0770) != 0)
-        {
-            printf("failed to set file permissions to 0770 for '%s'", resmgrMountSource.c_str());
+            // check the group owner matches the app
+            if ((details.st_gid != config.mGroupId) &&
+                (fchown(fd, -1, config.mGroupId) != 0))
+            {
+                LOGERR("failed to change group owner of '%s' (errno=%d)", resmgrMountSource.c_str(), errno);
+            }
+
+            // and that the group perms are set to 0770
+            if (fchmod(fd, 0770) != 0)
+            {
+                LOGERR("failed to set file permissions to 0770 for '%s' (errno=%d)", resmgrMountSource.c_str(), errno);
+            }
         }
+		else
+        {
+            LOGERR("fstat() failed for '%s' (errno=%d)", resmgrMountSource.c_str(), errno);
+        }
+        close(fd);
+    }
+	else
+    {
+        LOGERR("failed to open '%s' (errno=%d)", resmgrMountSource.c_str(), errno);
     }
 
     return resmgrMount;
@@ -1074,16 +1096,14 @@ std::string DobbySpecGenerator::encodeURL(std::string url) const
       }
       else
       {
-          printf("curl_easy_escape() failed");
-          fflush(stdout);
+          LOGERR("curl_easy_escape() failed");
       }
 
       curl_easy_cleanup(curl);
     }
     else
     {
-        printf("curl_easy_init() failed");
-        fflush(stdout);
+        LOGERR("curl_easy_init() failed");
     }
 
     return encodedUrl;
@@ -1091,8 +1111,7 @@ std::string DobbySpecGenerator::encodeURL(std::string url) const
 
 void DobbySpecGenerator::addHolePunchPortToSpec(Json::Value &spec, in_port_t port) const
 {
-printf("Adding hole punching port %hu for app", port);
-    fflush(stdout);
+    LOGINFO("Adding hole punching port %hu for app", port);
 
     static Json::Value nullValue(Json::nullValue);
 
