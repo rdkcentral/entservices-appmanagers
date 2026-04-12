@@ -30,6 +30,7 @@ class L2testController
         ~L2testController() = default;
 
         /** @brief Pipe file to send commands to the WPEFramework process. */
+        Core::ProxyType<RPC::InvokeServerType<1, 0, 4>> m_engine;
         Core::ProxyType<RPC::CommunicatorClient> m_client;
         /** @brief Plugin shell interface for accessing L2Tests plugin. */
         PluginHost::IShell* m_pluginShell = nullptr;

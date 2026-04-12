@@ -52,6 +52,7 @@
 
 #define FILESYSTEM_SYNC_DELAY_MS         100                            /* Delay for filesystem operations to complete (milliseconds). */
 #define PLUGIN_INIT_DELAY_MS             2000                           /* Delay for plugin initialization (milliseconds). */
+#define COMRPC_OPEN_TIMEOUT_MS           3000                           /* Per-attempt timeout for opening IShell over COM-RPC. */
 
 #define EXIT_SUCCESS_CODE                0                              /* Exit code for successful execution. */
 #define EXIT_AUTOSTART_FAILURE           1                              /* Exit code for autostart configuration failure. */
@@ -146,7 +147,8 @@ void L2testController::initClient() {
     for (int attempt = 1; attempt <= MAX_RETRIES; ++attempt) {
         L2TEST_LOG("COM-RPC client initialization attempt #%d", attempt);
 
-        m_client = Core::ProxyType<RPC::CommunicatorClient>::Create(Core::NodeId("/tmp/communicator"));
+        m_engine = Core::ProxyType<RPC::InvokeServerType<1, 0, 4>>::Create();
+        m_client = Core::ProxyType<RPC::CommunicatorClient>::Create(Core::NodeId("/tmp/communicator"), Core::ProxyType<Core::IIPCServer>(m_engine));
         if (!m_client.IsValid()) {
             L2TEST_LOG("Client creation failed, retrying...");
             usleep(RETRY_DELAY_MS * 1000);
@@ -155,9 +157,9 @@ void L2testController::initClient() {
 
         // Some generated configs expose callsign as "L2Tests" while others use "org.rdk.L2Tests".
         // Try both to make CI robust across packaging variants.
-        m_pluginShell = m_client->Open<PluginHost::IShell>(_T("org.rdk.L2Tests"), ~0, TEST_COMPLETION_TIMEOUT);
+        m_pluginShell = m_client->Open<PluginHost::IShell>(_T("org.rdk.L2Tests"), ~0, COMRPC_OPEN_TIMEOUT_MS);
         if (nullptr == m_pluginShell) {
-            m_pluginShell = m_client->Open<PluginHost::IShell>(_T("L2Tests"), ~0, TEST_COMPLETION_TIMEOUT);
+            m_pluginShell = m_client->Open<PluginHost::IShell>(_T("L2Tests"), ~0, COMRPC_OPEN_TIMEOUT_MS);
         }
         if (!m_pluginShell) {
             L2TEST_LOG("Failed to open IShell, retrying...");
@@ -200,7 +202,12 @@ void L2testController::releaseClient() {
     }
 
     if (m_client.IsValid()) {
+        m_client->Close(RPC::CommunicationTimeOut);
         m_client.Release();
+    }
+
+    if (m_engine.IsValid()) {
+        m_engine.Release();
     }
 }
 
