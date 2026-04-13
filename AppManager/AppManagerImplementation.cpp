@@ -739,19 +739,7 @@ Core::hresult AppManagerImplementation::packageLock(const string& appId, Package
         status = mLifecycleInterfaceConnector->isAppLoaded(appId, loaded);
     }
 
-    /* Check if appId exists in the map and read its current state */
-    AppInfo appInfoSnap;
-    bool inMap = AppInfoManager::getInstance().get(appId, appInfoSnap);
-    Exchange::IAppManager::AppLifecycleState currentNewState = inMap
-        ? appInfoSnap.getAppNewState()
-        : Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED;
-
-    if ((status == Core::ERROR_NONE) &&
-        (!loaded ||
-         !inMap ||
-         (currentNewState != Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED &&
-          currentNewState != Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED &&
-          currentNewState != Exchange::IAppManager::AppLifecycleState::APP_STATE_HIBERNATED)))
+    if ((Core::ERROR_NONE == status) && (false == loaded))
     {
         /* Fetch list of App packages */
         status = fetchAppPackageList(packageList);
@@ -821,9 +809,14 @@ Core::hresult AppManagerImplementation::packageLock(const string& appId, Package
             status = Core::ERROR_GENERAL;
         }
     }
+    else if (Core::ERROR_NONE == status)
+    {
+        LOGINFO("Skipping packageLock for appId %s because app is already loaded", appId.c_str());
+        status = Core::ERROR_NONE;
+    }
     else
     {
-        LOGERR("Skipping packageLock for appId %s: ", appId.c_str());
+        LOGERR("Failed to determine loaded state for appId %s", appId.c_str());
     }
 
     return status;
