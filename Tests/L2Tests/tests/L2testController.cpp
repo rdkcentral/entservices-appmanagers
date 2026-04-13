@@ -24,9 +24,11 @@
 #include <sstream>
 #include <string>
 #include <dirent.h>
+#include <array>
 #include "Module.h"
 #include <core/core.h>
 #include <plugins/Configuration.h>
+#include <websocket/JSONRPCLink.h>
 #include "L2testController.h"
 
 #ifndef CMAKE_INSTALL_PREFIX
@@ -211,6 +213,42 @@ void L2testController::releaseClient() {
     }
 }
 
+static Core::hresult PerformL2TestsUsingJsonRpc(const std::string& params, std::string& response)
+{
+    const std::array<const char*, 4> l2Callsings = {
+        "org.rdk.L2Tests",
+        "org.rdk.L2Tests.1",
+        "L2Tests",
+        "L2Tests.1"
+    };
+    const std::array<const char*, 3> methods = {
+        "PerformL2Tests",
+        "performL2Tests",
+        "L2Tests.PerformL2Tests"
+    };
+
+    JsonObject parameters;
+    if (!params.empty()) {
+        parameters.FromString(params);
+    }
+
+    for (const auto* callsign : l2Callsings) {
+        WPEFramework::JSONRPC::LinkType<Core::JSON::IElement> jsonrpc(std::string(callsign), _T("L2TestController.1"));
+        for (const auto* method : methods) {
+            JsonObject result;
+            const uint32_t status = jsonrpc.Invoke<JsonObject, JsonObject>(COMRPC_OPEN_TIMEOUT_MS, std::string(method), parameters, result);
+            if (Core::ERROR_NONE == status) {
+                result.ToString(response);
+                L2TEST_LOG("JSON-RPC fallback succeeded with %s.%s", callsign, method);
+                return Core::ERROR_NONE;
+            }
+        }
+    }
+
+    L2TEST_LOG("JSON-RPC fallback failed for all callsign/method combinations");
+    return Core::ERROR_GENERAL;
+}
+
 //---------------------------------------------
 // Perform L2 tests
 //---------------------------------------------
@@ -219,11 +257,18 @@ Core::hresult L2testController::PerformL2Tests(const std::string& params, std::s
         L2TEST_LOG("COM-RPC client not initialized, initializing now...");
         initClient();
         if (!m_client.IsValid() || !m_l2TestInterface) {
-            return Core::ERROR_GENERAL;
+            L2TEST_LOG("COM-RPC unavailable, trying JSON-RPC fallback");
+            return PerformL2TestsUsingJsonRpc(params, response);
         }
     }
 
-    return m_l2TestInterface->PerformL2Tests(params, response);
+    const Core::hresult status = m_l2TestInterface->PerformL2Tests(params, response);
+    if (Core::ERROR_NONE != status) {
+        L2TEST_LOG("COM-RPC PerformL2Tests failed (%d), trying JSON-RPC fallback", status);
+        return PerformL2TestsUsingJsonRpc(params, response);
+    }
+
+    return status;
 }
 
 /**
