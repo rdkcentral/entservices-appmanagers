@@ -1533,8 +1533,7 @@ bool RDKWindowManagerImplementation::createDisplay(const string& client, const s
         }
         time_t displayEndTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
         const int duration = static_cast<int>(displayEndTime - displayStartTime);
-        LOGINFO("After Semaphore waiting, CreateDisplay timing: clientId:%s start_ms:%lld end_ms:%lld duration_ms:%d status:failed",
-            clientId.c_str(),
+        LOGINFO("After Semaphore waiting, CreateDisplay timing: start_ms:%lld end_ms:%lld duration_ms:%d status:failed",
             static_cast<long long>(displayStartTime),
             static_cast<long long>(displayEndTime),
             duration);
