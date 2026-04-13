@@ -1526,11 +1526,18 @@ bool RDKWindowManagerImplementation::createDisplay(const string& client, const s
         std::shared_ptr<CreateDisplayRequest> request = std::make_shared<CreateDisplayRequest>(client, displayName, displayWidth, displayHeight, virtualDisplay, virtualWidth, virtualHeight, topmost, focus, ownerId, groupId);
         gCreateDisplayRequests.push_back(request);
         gRdkWindowManagerMutex.unlock();
-
+        time_t displayStartTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
         if (-1 == sem_wait(&request->mSemaphore))
         {
             LOGERR("CreateDisplayRequest: sem_wait failed: %s", strerror(errno));
         }
+        time_t displayEndTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
+        const int duration = static_cast<int>(displayEndTime - displayStartTime);
+        LOGINFO("After Semaphore waiting, CreateDisplay timing: clientId:%s start_ms:%lld end_ms:%lld duration_ms:%d status:failed",
+            clientId.c_str(),
+            static_cast<long long>(displayStartTime),
+            static_cast<long long>(displayEndTime),
+            duration);
         ret = request->mResult;
 
         if (ret)
