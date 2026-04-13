@@ -811,6 +811,17 @@ Core::hresult AppManagerImplementation::packageLock(const string& appId, Package
     }
     else if (Core::ERROR_NONE == status)
     {
+        const PackageInfo cachedPackageData = AppInfoManager::getInstance().getPackageInfo(appId);
+        packageData.version = cachedPackageData.version;
+        packageData.lockId = cachedPackageData.lockId;
+        packageData.unpackedPath = cachedPackageData.unpackedPath;
+        packageData.configMetadata = cachedPackageData.configMetadata;
+        packageData.appMetadata = cachedPackageData.appMetadata;
+        packageData.type = cachedPackageData.type;
+        if (packageData.version.empty())
+        {
+            LOGWARN("Skipping packageLock for loaded appId %s, but cached packageData is empty", appId.c_str());
+        }
         LOGINFO("Skipping packageLock for appId %s because app is already loaded", appId.c_str());
         status = Core::ERROR_NONE;
     }
