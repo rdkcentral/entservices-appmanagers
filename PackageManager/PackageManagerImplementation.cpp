@@ -722,7 +722,6 @@ namespace Plugin {
             if (locked)  {
                 lockId = ++state.mLockCount;
                 config.runtimePath = state.runtimeConfig.runtimePath;
-                unpackedPath = state.unpackedPath; // Will retain old path
             } else {
                 packagemanager::Result pmResult = packageImpl->Lock(packageId, version, unpackedPath, config, locks);
                 LOGDBG("unpackedPath: %s PackageImpl::Lock result: %d", unpackedPath.c_str(), pmResult);
