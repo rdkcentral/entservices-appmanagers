@@ -831,7 +831,8 @@ Core::hresult AppManagerImplementation::packageLock(const string& appId, Package
     }
     else
     {
-        LOGERR("Failed to determine loaded state for appId %s", appId.c_str());
+        const char* failureReason = (nullptr == mLifecycleInterfaceConnector) ? "lifecycle connector missing" : "isAppLoaded failed";
+        LOGERR("Failed to determine loaded state for appId %s, status: %d, reason: %s", appId.c_str(), status, failureReason);
     }
 
     return status;
