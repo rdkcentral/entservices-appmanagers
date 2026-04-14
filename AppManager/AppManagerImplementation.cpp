@@ -816,34 +816,8 @@ Core::hresult AppManagerImplementation::packageLock(const string& appId, Package
 
         if (cachedPackageData.version.empty())
         {
-            Core::hresult packageListStatus = fetchAppPackageList(packageList);
-            if (Core::ERROR_NONE == packageListStatus)
-            {
-                checkIsInstalled(appId, installed, packageList);
-                if (true == installed)
-                {
-                    for (const auto& package : packageList)
-                    {
-                        if (!package.packageId.empty() && package.packageId == appId && package.state == Exchange::IPackageInstaller::InstallState::INSTALLED)
-                        {
-                            packageData.version = std::string(package.version);
-                            break;
-                        }
-                    }
-                    LOGWARN("Skipping packageLock for loaded appId %s with empty cache; using installed package version '%s'", appId.c_str(), packageData.version.c_str());
-                    status = Core::ERROR_NONE;
-                }
-                else
-                {
-                    LOGERR("Skipping packageLock for loaded appId %s failed: app not installed and cached packageData is empty", appId.c_str());
-                    status = Core::ERROR_GENERAL;
-                }
-            }
-            else
-            {
-                LOGERR("Skipping packageLock for loaded appId %s failed: unable to fetch package list when cache is empty", appId.c_str());
-                status = Core::ERROR_GENERAL;
-            }
+            LOGERR("Skipping packageLock for loaded appId %s failed: cached packageData is empty", appId.c_str());
+            status = Core::ERROR_GENERAL;
         }
         else
         {
