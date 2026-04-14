@@ -64,6 +64,8 @@ install(TARGETS ${MODULE_NAME}
 	
 set(PLUGIN_APP_MANAGER_IMPLEMENTATION_SOURCES
     AppManagerImplementation.cpp
+    AppInfo.cpp
+    AppInfoManager.cpp
     LifecycleInterfaceConnector.cpp
     AppManagerTelemetryReporting.cpp
     Module.cpp)
