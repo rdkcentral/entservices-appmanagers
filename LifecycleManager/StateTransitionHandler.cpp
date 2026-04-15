@@ -155,9 +155,7 @@ namespace WPEFramework
            //TODO: Pass contect and state as argument to function
 	   std::shared_ptr<StateTransitionRequest> stateTransitionRequest = std::make_shared<StateTransitionRequest>(request.mContext, request.mTargetState);
 	   gRequestMutex.lock();
-           gRequests.push_back(stateTransitionRequest);
-	   // Double-check before sem_post to prevent race with terminate()
-	   // Check sInitialized while holding mutex to prevent race with terminate()
+           gRequests.push_back(std::move(stateTransitionRequest));
            if (sInitialized.load())
            {
                sem_post(&gRequestSemaphore);
