@@ -31,7 +31,7 @@ namespace Utils
         static void init()
         {
 #ifdef ENABLE_TELEMETRY_LOGGING
-            t2_init((char *) "Thunder_Plugins");
+            //t2_init((char *) "Thunder_Plugins");
 #endif
         };
 

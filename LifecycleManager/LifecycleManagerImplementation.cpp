@@ -23,9 +23,7 @@
 #include <interfaces/json/JsonData_LifecycleManagerState.h>
 #include <interfaces/json/JLifecycleManagerState.h>
 #include <semaphore.h>
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
 #include "LifecycleManagerTelemetryReporting.h"
-#endif
 
 namespace WPEFramework
 {
@@ -47,9 +45,7 @@ namespace WPEFramework
         bool LifecycleManagerImplementation::initialize(PluginHost::IShell* service)
         {
             bool ret = RequestHandler::getInstance()->initialize(service, this);
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             LifecycleManagerTelemetryReporting::getInstance().initialize(service);
-#endif
 	    return ret;
         }
 
@@ -134,9 +130,7 @@ namespace WPEFramework
              string appInstanceId(obj["appInstanceId"].String());
              uint32_t oldLifecycleState(obj["oldLifecycleState"].Number());
              string navigationIntent(obj["navigationIntent"].String());
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
              ApplicationContext* context = getContext("", appId);
-#endif
 
              mAdminLock.Lock();
         
@@ -146,9 +140,7 @@ namespace WPEFramework
              switch(event)
              {
                  case LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED:
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
                      LifecycleManagerTelemetryReporting::getInstance().reportTelemetryDataOnStateChange(context, obj);
-#endif
                      handleStateChangeEvent(obj);
                      while (index != mLifecycleManagerNotification.end())
                      {
@@ -253,9 +245,7 @@ namespace WPEFramework
             ApplicationContext* context = getContext("", appId);
             bool firstLaunch = false;
             time_t requestTime = 0;
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-            requestTime = LifecycleManagerTelemetryReporting::getInstance().getCurrentTimestamp();
-#endif
+            requestTime = LifecycleManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
             mAdminLock.Lock();
             if (nullptr == context)
 	    {
@@ -291,9 +281,7 @@ namespace WPEFramework
             Core::hresult status = Core::ERROR_NONE;
             ApplicationContext* context = getContext(appInstanceId, "");
             time_t requestTime = 0;
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-            requestTime = LifecycleManagerTelemetryReporting::getInstance().getCurrentTimestamp();
-#endif
+            requestTime = LifecycleManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
             if (nullptr == context)
 	    {
                 status = Core::ERROR_GENERAL;
@@ -342,9 +330,7 @@ namespace WPEFramework
             Core::hresult status = Core::ERROR_NONE;
             ApplicationContext* context = getContext(appInstanceId, "");
             time_t requestTime = 0;
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-            requestTime = LifecycleManagerTelemetryReporting::getInstance().getCurrentTimestamp();
-#endif
+            requestTime = LifecycleManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
             if (nullptr == context)
 	    {
                 status = Core::ERROR_GENERAL;
@@ -374,9 +360,7 @@ namespace WPEFramework
             Core::hresult status = Core::ERROR_NONE;
             ApplicationContext* context = getContext(appInstanceId, "");
             time_t requestTime =0;
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-            requestTime = LifecycleManagerTelemetryReporting::getInstance().getCurrentTimestamp();
-#endif
+            requestTime = LifecycleManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
 
             if (nullptr == context)
 	    {

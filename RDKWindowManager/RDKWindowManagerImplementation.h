@@ -23,6 +23,7 @@
 #include <interfaces/Ids.h>
 #include <interfaces/IRDKWindowManager.h>
 #include "tracing/Logging.h"
+#include "RDKWindowManagerTelemetryReporting.h"
 #include <vector>
 #include <thread>
 #include <com/com.h>
