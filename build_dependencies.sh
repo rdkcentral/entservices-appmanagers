@@ -42,12 +42,12 @@ if [ "$NEED_CMAKE_INSTALL" = true ]; then
     echo "CMake ${CMAKE_VERSION} installed successfully"
 fi
 
+# Ensure /usr/local/bin is in PATH for Coverity environment
+export PATH=/usr/local/bin:$PATH
+
 # Verify CMake installation
 cmake --version
 echo "CMake path: $(which cmake)"
-
-# Ensure /usr/local/bin is in PATH for Coverity environment
-export PATH=/usr/local/bin:$PATH
 
 ############################
 # Build trevor-base64
