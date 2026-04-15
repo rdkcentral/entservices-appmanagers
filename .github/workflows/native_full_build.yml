@@ -14,10 +14,6 @@ jobs:
       image: ghcr.io/rdkcentral/docker-rdk-ci:latest
 
     steps:
-      - name: Set up CMake
-        uses: jwlawson/actions-setup-cmake@v1.13
-        with:
-          cmake-version: '3.22.x'
 
       - name: Checkout code
         uses: actions/checkout@v3
