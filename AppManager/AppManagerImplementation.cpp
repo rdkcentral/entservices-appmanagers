@@ -738,6 +738,7 @@ bool AppManagerImplementation::removeAppInfoByAppId(const string &appId)
     }
     return result;
 }
+
 Core::hresult AppManagerImplementation::packageLock(const string& appId, PackageInfo &packageData, Exchange::IPackageHandler::LockReason lockReason)
 {
     Core::hresult status = Core::ERROR_GENERAL;
@@ -757,10 +758,7 @@ Core::hresult AppManagerImplementation::packageLock(const string& appId, Package
     /* Check if appId exists in the mAppInfo map */
     auto it = mAppInfo.find(appId);
 
-    if ((status == Core::ERROR_NONE) &&
-        (!loaded ||
-         it == mAppInfo.end() ||
-         (it->second.appNewState != Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED && it->second.appNewState != Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED && it->second.appNewState != Exchange::IAppManager::AppLifecycleState::APP_STATE_HIBERNATED)))
+    if ((Core::ERROR_NONE == status) && (false == loaded))
     {
         /* Fetch list of App packages */
         status = fetchAppPackageList(packageList);
@@ -838,6 +836,28 @@ Core::hresult AppManagerImplementation::packageLock(const string& appId, Package
             appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_LAUNCH, AppManagerImplementation::ERROR_PACKAGE_LIST_FETCH);
 #endif
             status = Core::ERROR_GENERAL;
+        }
+    }
+    else if (Core::ERROR_NONE == status)
+    {
+        if (it != mAppInfo.end())
+        {
+            packageData = it->second.packageInfo;
+            if (packageData.version.empty())
+            {
+                LOGERR("Skipping packageLock for loaded appId %s failed: cached packageData version is empty", appId.c_str());
+                status = Core::ERROR_GENERAL;
+            }
+            else
+            {
+                LOGINFO("Skipping packageLock for appId %s because app is already loaded", appId.c_str());
+                status = Core::ERROR_NONE;
+            }
+        }
+        else
+        {
+           LOGERR("Skipping packageLock for loaded appId %s failed: cached packageData is empty", appId.c_str());
+           status = Core::ERROR_GENERAL;
         }
     }
     else
