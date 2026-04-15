@@ -769,10 +769,6 @@ namespace WPEFramework
                         }
                         else
                         {
-                            /* Scoped Lock 2: Write new entry into mRuntimeAppInfo after successful container start */
-                            {
-                                Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
-
                                 LOGINFO("Update Info for %s", appInstanceId.c_str());
                                 if (!appId.empty())
                                 {
@@ -785,8 +781,10 @@ namespace WPEFramework
                                 runtimeAppInfo.requestTime = requestTime;
                                 runtimeAppInfo.requestType = REQUEST_TYPE_LAUNCH;
                                 /* Insert/update runtime app info */
-                                mRuntimeAppInfo[runtimeAppInfo.appInstanceId] = std::move(runtimeAppInfo);
-                            }
+                                {
+                                    Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
+                                    mRuntimeAppInfo[runtimeAppInfo.appInstanceId] = std::move(runtimeAppInfo);
+                                }
                         }
                     }
                     else
