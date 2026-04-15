@@ -17,6 +17,7 @@
 * limitations under the License.
 */
 
+
 #include "AppManager.h"
 
 const string WPEFramework::Plugin::AppManager::SERVICE_NAME = "org.rdk.AppManager";
