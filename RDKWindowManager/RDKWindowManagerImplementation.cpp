@@ -248,7 +248,15 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
                       gCreateDisplayRequests.erase(gCreateDisplayRequests.begin());
                       continue;
                   }
+                  time_t displayStartTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
                   request->mResult = CompositorController::createDisplay(request->mClient, request->mDisplayName, request->mDisplayWidth, request->mDisplayHeight, request->mVirtualDisplayEnabled, request->mVirtualWidth, request->mVirtualHeight, request->mTopmost, request->mFocus , request->mOwnerId, request->mGroupId);
+                  time_t displayEndTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
+                   const int duration = static_cast<int>(displayEndTime - displayStartTime);
+                LOGINFO("CompositorController::createDisplay, CreateDisplay timing: clientId:%s start_ms:%lld end_ms:%lld duration_ms:%d status:failed",
+                    clientId.c_str(),
+                    static_cast<long long>(displayStartTime),
+                    static_cast<long long>(displayEndTime),
+                    duration);
                   gCreateDisplayRequests.erase(gCreateDisplayRequests.begin());
                   if (0 != sem_post(&request->mSemaphore))
                   {
