@@ -535,8 +535,6 @@ namespace WPEFramework
             bool displayResult = false;
             bool notifyParamCheckFailure = false;
             std::string errorCode = "";
-            uid_t uid = 0;
-            gid_t gid = 0;
 
             /* Get current timestamp at the start of run for telemetry */
             time_t requestTime = getCurrentTimestamp();
@@ -548,14 +546,13 @@ namespace WPEFramework
             dispatchEvent(RuntimeManagerImplementation::RuntimeEventType::RUNTIME_MANAGER_EVENT_STATECHANGED, eventData);
 
             /* Scoped Lock 3: Read initial config from shared state */
+            uid_t uid;
+            gid_t gid;
             {
                 Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
 
-                uid_t uidTmp = mUserIdManager->getUserId(appId);
-                gid_t gidTmp = mUserIdManager->getAppsGid();
-
-                uid = uidTmp;
-                gid = gidTmp;
+                uid = mUserIdManager->getUserId(appId);
+                gid = mUserIdManager->getAppsGid();
             }
 
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
@@ -711,13 +708,12 @@ namespace WPEFramework
             }
             else
             {
-                /* Scoped Lock 1: Validate OCI plugin pointer + get container ID — brief read lock */
+                /* Scoped Lock 1: Validate OCI plugin pointer — brief read lock */
                 bool ociValid = false;
-                string containerId;
+                string containerId = getContainerId(appInstanceId);
                 {
                     Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
                     ociValid = isOCIPluginObjectValid();
-                    containerId = getContainerId(appInstanceId);
                 }
 
                 if (!ociValid)
