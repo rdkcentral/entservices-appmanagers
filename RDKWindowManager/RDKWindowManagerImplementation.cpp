@@ -308,7 +308,7 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
                     duration);
               isRunning = sRunning;
               gRdkWindowManagerMutex.unlock();
-               time_t displayStartTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
+               time_t display_StartTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
               double frameTime = (int)RdkWindowManager::microseconds() - (int)startFrameTime;
               if (frameTime < maxSleepTime)
               {
