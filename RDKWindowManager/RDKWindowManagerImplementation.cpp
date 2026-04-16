@@ -252,11 +252,12 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
                   request->mResult = CompositorController::createDisplay(request->mClient, request->mDisplayName, request->mDisplayWidth, request->mDisplayHeight, request->mVirtualDisplayEnabled, request->mVirtualWidth, request->mVirtualHeight, request->mTopmost, request->mFocus , request->mOwnerId, request->mGroupId);
                   time_t displayEndTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
                    const int duration = static_cast<int>(displayEndTime - displayStartTime);
-                LOGINFO("CompositorController::createDisplay, CreateDisplay timing: start_ms:%lld end_ms:%lld duration_ms:%d status:failed",
+                LOGINFO("CompositorController::createDisplay, CreateDisplay timing: start_ms:%lld end_ms:%lld duration_ms:%d status:%s",
                     static_cast<long long>(displayStartTime),
                     static_cast<long long>(displayEndTime),
-                    duration);
+                    duration, request->mResult ? "success" : "failed");
                   gCreateDisplayRequests.erase(gCreateDisplayRequests.begin());
+                  
                   if (0 != sem_post(&request->mSemaphore))
                   {
                       LOGERR("Failed to release CreateDisplayRequest semaphore: %s", strerror(errno));
@@ -266,7 +267,14 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
               if (gNeedsScreenshot)
               {
                   gNeedsScreenshot = false;
+                   time_t displayStartTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
                   bool success = CompositorController::screenShot(gScreenshotData, gScreenshotSize);
+                   time_t displayEndTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
+                   const int duration = static_cast<int>(displayEndTime - displayStartTime);
+                LOGINFO("CompositorController::screenShot, Screenshot timing: start_ms:%lld end_ms:%lld duration_ms:%d status:%s",
+                    static_cast<long long>(displayStartTime),
+                    static_cast<long long>(displayEndTime),
+                    duration, success ? "success" : "failed");
                   
                   gScreenshotSuccess = success;
                   gScreenshotImageData.clear();
@@ -289,17 +297,30 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
                           JsonValue(success));
                   }
               }
-
+              time_t displayStartTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
               RdkWindowManager::draw();
               RdkWindowManager::update();
+             time_t displayEndTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
+             const int duration = static_cast<int>(displayEndTime - displayStartTime);
+             LOGINFO("RdkWindowManager::draw/update timing: start_ms:%lld end_ms:%lld duration_ms:%d",
+                    static_cast<long long>(displayStartTime),
+                    static_cast<long long>(displayEndTime),
+                    duration);
               isRunning = sRunning;
               gRdkWindowManagerMutex.unlock();
+               time_t displayStartTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
               double frameTime = (int)RdkWindowManager::microseconds() - (int)startFrameTime;
               if (frameTime < maxSleepTime)
               {
                   int sleepTime = (int)maxSleepTime-(int)frameTime;
                   usleep(sleepTime);
               }
+                time_t display_EndTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
+                const int totalFrameDuration = static_cast<int>(display_EndTime - display_StartTime);
+                LOGINFO("Total frame timing: start_ms:%lld end_ms:%lld duration_ms:%d",
+                    static_cast<long long>(display_StartTime),
+                    static_cast<long long>(display_EndTime),
+                    totalFrameDuration);
             }
         });
 
@@ -1540,22 +1561,36 @@ bool RDKWindowManagerImplementation::createDisplay(const string& client, const s
         }
         time_t displayEndTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
         const int duration = static_cast<int>(displayEndTime - displayStartTime);
-        LOGINFO("After Semaphore waiting, CreateDisplay timing: start_ms:%lld end_ms:%lld duration_ms:%d status:failed",
+        LOGINFO("After Semaphore waiting, CreateDisplay timing: start_ms:%lld end_ms:%lld duration_ms:%d status:%s",
             static_cast<long long>(displayStartTime),
             static_cast<long long>(displayEndTime),
-            duration);
+            duration, ret ? "success" : "failed");
         ret = request->mResult;
 
         if (ret)
         {
+            time_t displayStartTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
             lockAcquired = lockRdkWindowManagerMutex();
+            time_t displayEndTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
+            const int duration = static_cast<int>(displayEndTime - displayStartTime);
+            LOGINFO("After lockRdkWindowManagerMutex, CreateDisplay timing: start_ms:%lld end_ms:%lld duration_ms:%d status:%s",
+            static_cast<long long>(displayStartTime),
+            static_cast<long long>(displayEndTime),
+            duration, lockAcquired ? "success" : "failed");
             if (lockAcquired)
             {
+                time_t displayStartTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
                 if (false == RdkWindowManager::CompositorController::addListener(client, mEventListener))
                 {
                     LOGERR("CompositorController::addListener Failed");
                 }
                 gRdkWindowManagerMutex.unlock();
+                time_t displayEndTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
+                const int duration = static_cast<int>(displayEndTime - displayStartTime);
+                LOGINFO("After addListener, CreateDisplay timing: start_ms:%lld end_ms:%lld duration_ms:%d",
+                static_cast<long long>(displayStartTime),
+                static_cast<long long>(displayEndTime),
+                duration);
             }
         }
     }
