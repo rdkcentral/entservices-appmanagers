@@ -281,12 +281,13 @@ namespace WPEFramework
             LOGDBG("Found package folder: %s", filepath.c_str());
 
 #ifdef RDK_SERVICES_L1_TEST
-        WPEFramework::Exchange::RuntimeConfig configMetadata;
+            packageInfo.configMetadata = new WPEFramework::Exchange::RuntimeConfig();
+            auto &configMetadata = *packageInfo.configMetadata;
 #else
             auto &configMetadata = packageInfo.configMetadata;
 #endif
 
-        if (packageInstaller->GetConfigForPackage(
+            if (packageInstaller->GetConfigForPackage(
                     packageInfo.fileLocator,
                     packageInfo.packageId,
                     packageInfo.version,

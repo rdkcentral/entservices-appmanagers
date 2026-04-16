@@ -91,7 +91,31 @@ protected:
 
     void TearDown() override
     {
+        WaitForAsyncPreinstallWork();
         ReleaseResources();
+    }
+
+    void WaitForAsyncPreinstallWork()
+    {
+        if (nullptr == mPreinstallManagerImpl) {
+            return;
+        }
+
+        Plugin::PreinstallManagerImplementation::State state =
+            Plugin::PreinstallManagerImplementation::State::NOT_STARTED;
+
+        for (int attempt = 0; attempt < 50; ++attempt) {
+            if (Core::ERROR_NONE == mPreinstallManagerImpl->GetPreinstallState(state)) {
+                if ((state == Plugin::PreinstallManagerImplementation::State::COMPLETED) ||
+                    (state == Plugin::PreinstallManagerImplementation::State::NOT_STARTED)) {
+                    break;
+                }
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+
+        // Give worker-pool dispatch a short window to execute queued event jobs.
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }
 
     void SetDirectoryEntries(const std::vector<std::string>& entries)
@@ -188,6 +212,8 @@ protected:
 
     void ReleaseResources()
     {
+        WaitForAsyncPreinstallWork();
+
         Wraps::setImpl(nullptr);
 
         if ((nullptr != mPlugin.operator->()) && (nullptr != mServiceMock)) {
@@ -216,6 +242,7 @@ public:
     ~MockNotificationTest() override = default;
 
     MOCK_METHOD(void, OnAppInstallationStatus, (const std::string& jsonresponse), (override));
+    MOCK_METHOD(void, OnPreinstallationComplete, (), (override));
     MOCK_METHOD(void, AddRef, (), (const, override));
     MOCK_METHOD(uint32_t, Release, (), (const, override));
 
@@ -302,7 +329,7 @@ TEST_F(PreinstallManagerTest, ConfigureWithNullServiceReturnsError)
     ReleaseResources();
 }
 
-TEST_F(PreinstallManagerTest, PackageInstallerNotificationSinkForwardsStatus)
+TEST_F(PreinstallManagerTest, StartPreinstallSendsCompletionEventForEmptyDirectory)
 {
     ASSERT_EQ(Core::ERROR_NONE, CreateResources());
 
@@ -313,9 +340,9 @@ TEST_F(PreinstallManagerTest, PackageInstallerNotificationSinkForwardsStatus)
     auto notificationFuture = notificationPromise.get_future();
     std::atomic<bool> promiseSet{false};
 
-    EXPECT_CALL(*mockNotification, OnAppInstallationStatus(_))
+    EXPECT_CALL(*mockNotification, OnPreinstallationComplete())
         .Times(1)
-        .WillOnce(Invoke([&notificationPromise, &promiseSet](const std::string&) {
+        .WillOnce(Invoke([&notificationPromise, &promiseSet]() {
             bool expected = false;
             if (promiseSet.compare_exchange_strong(expected, true)) {
                 notificationPromise.set_value();
@@ -324,20 +351,17 @@ TEST_F(PreinstallManagerTest, PackageInstallerNotificationSinkForwardsStatus)
 
     EXPECT_EQ(Core::ERROR_NONE, mPreinstallManagerImpl->Register(mockNotification.operator->()));
 
-    // StartPreinstall triggers package manager object creation and callback registration.
+    // Empty directory should trigger immediate completion event.
     SetDirectoryEntries({".", ".."});
     EXPECT_EQ(Core::ERROR_NONE, mPreinstallManagerImpl->StartPreinstall(true));
 
-    ASSERT_TRUE(nullptr != mPackageInstallerNotificationCb);
-    mPackageInstallerNotificationCb->OnAppInstallationStatus(R"({"packageId":"sink.path.app","version":"1.0.0","status":"SUCCESS"})");
-
     EXPECT_EQ(std::future_status::ready,
               notificationFuture.wait_for(std::chrono::seconds(2)));
 
     EXPECT_EQ(Core::ERROR_NONE, mPreinstallManagerImpl->Unregister(mockNotification.operator->()));
 }
 
-TEST_F(PreinstallManagerTest, HandleAppInstallationStatusNotification)
+TEST_F(PreinstallManagerTest, StartPreinstallSendsCompletionEventAfterInstall)
 {
     ASSERT_EQ(Core::ERROR_NONE, CreateResources());
 
@@ -348,17 +372,29 @@ TEST_F(PreinstallManagerTest, HandleAppInstallationStatusNotification)
     auto notificationFuture = notificationPromise.get_future();
     std::atomic<bool> promiseSet{false};
 
-    EXPECT_CALL(*mockNotification, OnAppInstallationStatus(_))
+    EXPECT_CALL(*mockNotification, OnPreinstallationComplete())
         .Times(1)
-        .WillOnce(Invoke([&notificationPromise, &promiseSet](const std::string&) {
+        .WillOnce(Invoke([&notificationPromise, &promiseSet]() {
             bool expected = false;
             if (promiseSet.compare_exchange_strong(expected, true)) {
                 notificationPromise.set_value();
             }
         }));
 
+    SetDirectoryEntries({"app1"});
+
+    EXPECT_CALL(*mPackageInstallerMock, GetConfigForPackage(_, _, _, _))
+        .WillOnce(DoAll(
+            SetArgReferee<1>(PREINSTALL_MANAGER_TEST_PACKAGE_ID),
+            SetArgReferee<2>(PREINSTALL_MANAGER_TEST_VERSION),
+            Return(Core::ERROR_NONE)));
+
+    EXPECT_CALL(*mPackageInstallerMock, Install(_, _, _, _, _))
+        .Times(1)
+        .WillOnce(Return(Core::ERROR_NONE));
+
     EXPECT_EQ(Core::ERROR_NONE, mPreinstallManagerImpl->Register(mockNotification.operator->()));
-    mPreinstallManagerImpl->handleOnAppInstallationStatus(R"({"packageId":"testApp","version":"1.0.0","status":"SUCCESS"})");
+    EXPECT_EQ(Core::ERROR_NONE, mPreinstallManagerImpl->StartPreinstall(true));
 
     EXPECT_EQ(std::future_status::ready,
               notificationFuture.wait_for(std::chrono::seconds(2)));
@@ -366,19 +402,57 @@ TEST_F(PreinstallManagerTest, HandleAppInstallationStatusNotification)
     EXPECT_EQ(Core::ERROR_NONE, mPreinstallManagerImpl->Unregister(mockNotification.operator->()));
 }
 
-TEST_F(PreinstallManagerTest, HandleAppInstallationStatusWithEmptyPayload)
+TEST_F(PreinstallManagerTest, StartPreinstallWithoutForceInstallSendsCompletionEventWhenAllFiltered)
 {
     ASSERT_EQ(Core::ERROR_NONE, CreateResources());
 
     auto mockNotification = Core::ProxyType<MockNotificationTest>::Create();
     testing::Mock::AllowLeak(mockNotification.operator->());
 
-    EXPECT_CALL(*mockNotification, OnAppInstallationStatus(_)).Times(0);
+    std::promise<void> notificationPromise;
+    auto notificationFuture = notificationPromise.get_future();
+    std::atomic<bool> promiseSet{false};
+
+    EXPECT_CALL(*mockNotification, OnPreinstallationComplete())
+        .Times(1)
+        .WillOnce(Invoke([&notificationPromise, &promiseSet]() {
+            bool expected = false;
+            if (promiseSet.compare_exchange_strong(expected, true)) {
+                notificationPromise.set_value();
+            }
+        }));
+
+    SetDirectoryEntries({"app1"});
+
+    Exchange::IPackageInstaller::Package installedPackage;
+    installedPackage.packageId = PREINSTALL_MANAGER_TEST_PACKAGE_ID;
+    installedPackage.version = PREINSTALL_MANAGER_TEST_VERSION;
+    installedPackage.state = Exchange::IPackageInstaller::InstallState::INSTALLED;
+
+    EXPECT_CALL(*mPackageInstallerMock, ListPackages(_))
+        .WillOnce(Invoke([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
+            auto iterator = BuildPackageIterator({installedPackage});
+            packages = iterator;
+            return Core::ERROR_NONE;
+        }));
+
+    EXPECT_CALL(*mPackageInstallerMock, GetConfigForPackage(_, _, _, _))
+        .WillOnce(Invoke([](const std::string&,
+                            std::string& id,
+                            std::string& version,
+                            WPEFramework::Exchange::RuntimeConfig&) {
+            id = PREINSTALL_MANAGER_TEST_PACKAGE_ID;
+            version = PREINSTALL_MANAGER_TEST_VERSION;
+            return Core::ERROR_NONE;
+        }));
+
+    EXPECT_CALL(*mPackageInstallerMock, Install(_, _, _, _, _)).Times(0);
 
     EXPECT_EQ(Core::ERROR_NONE, mPreinstallManagerImpl->Register(mockNotification.operator->()));
-    mPreinstallManagerImpl->handleOnAppInstallationStatus("");
+    EXPECT_EQ(Core::ERROR_NONE, mPreinstallManagerImpl->StartPreinstall(false));
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    EXPECT_EQ(std::future_status::ready,
+              notificationFuture.wait_for(std::chrono::seconds(2)));
 
     EXPECT_EQ(Core::ERROR_NONE, mPreinstallManagerImpl->Unregister(mockNotification.operator->()));
     ReleaseResources();
@@ -438,7 +512,20 @@ TEST_F(PreinstallManagerTest, StartPreinstallWithForceInstallInstallFailure)
             return Core::ERROR_GENERAL;
         }));
 
-    EXPECT_EQ(Core::ERROR_GENERAL, mPreinstallManagerImpl->StartPreinstall(true));
+    // StartPreinstall reports worker-thread launch status; install failures are asynchronous.
+    EXPECT_EQ(Core::ERROR_NONE, mPreinstallManagerImpl->StartPreinstall(true));
+
+    Plugin::PreinstallManagerImplementation::State state =
+        Plugin::PreinstallManagerImplementation::State::NOT_STARTED;
+
+    for (int attempt = 0; attempt < 50; ++attempt) {
+        ASSERT_EQ(Core::ERROR_NONE, mPreinstallManagerImpl->GetPreinstallState(state));
+        if (Plugin::PreinstallManagerImplementation::State::COMPLETED == state) {
+            break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    EXPECT_EQ(Plugin::PreinstallManagerImplementation::State::COMPLETED, state);
 
     ReleaseResources();
 }
@@ -658,7 +745,20 @@ TEST_F(PreinstallManagerTest, StartPreinstallInstallFailureWithUnknownFailReason
             return Core::ERROR_GENERAL;
         }));
 
-    EXPECT_EQ(Core::ERROR_GENERAL, mPreinstallManagerImpl->StartPreinstall(true));
+    // StartPreinstall reports worker-thread launch status; install failures are asynchronous.
+    EXPECT_EQ(Core::ERROR_NONE, mPreinstallManagerImpl->StartPreinstall(true));
+
+    Plugin::PreinstallManagerImplementation::State state =
+        Plugin::PreinstallManagerImplementation::State::NOT_STARTED;
+
+    for (int attempt = 0; attempt < 50; ++attempt) {
+        ASSERT_EQ(Core::ERROR_NONE, mPreinstallManagerImpl->GetPreinstallState(state));
+        if (Plugin::PreinstallManagerImplementation::State::COMPLETED == state) {
+            break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    EXPECT_EQ(Plugin::PreinstallManagerImplementation::State::COMPLETED, state);
 
     ReleaseResources();
 }

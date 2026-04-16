@@ -84,7 +84,7 @@ namespace WPEFramework
                 string packageId;
                 string version;
 #ifdef RDK_SERVICES_L1_TEST
-                WPEFramework::Exchange::RuntimeConfig* configMetadata;
+                WPEFramework::Exchange::RuntimeConfig* configMetadata = nullptr;
 #else
                 WPEFramework::Exchange::RuntimeConfig configMetadata;
 #endif
