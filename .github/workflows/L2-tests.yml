@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main, develop, 'sprint/**', 'release/**', 'topic/**', 'topic/L2Test' ]
   pull_request:
-    branches: [ main, develop, 'sprint/**', 'release/**', 'topic/**' ]
+    branches: [ main, develop, 'sprint/**', 'release/**', 'topic/**','topic/L2Test' ]
   workflow_call:
     inputs:
       caller_source:
