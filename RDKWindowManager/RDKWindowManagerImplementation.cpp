@@ -294,18 +294,11 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
                           JsonValue(success));
                   }
               }
-              time_t displayStartTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
-              RdkWindowManager::draw();
-              RdkWindowManager::update();
-             time_t displayEndTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
-             const int duration = static_cast<int>(displayEndTime - displayStartTime);
-             LOGINFO("RdkWindowManager::draw/update timing: start_ms:%lld end_ms:%lld duration_ms:%d",
-                    static_cast<long long>(displayStartTime),
-                    static_cast<long long>(displayEndTime),
-                    duration);
               isRunning = sRunning;
               gRdkWindowManagerMutex.unlock();
 
+              // Signal clients immediately after releasing the mutex so they can proceed
+              // with addListener without waiting for draw()+update() to complete.
               for (const auto& completedRequest : completedRequests)
               {
                   if (0 != sem_post(&completedRequest->mSemaphore))
@@ -314,6 +307,18 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
                   }
               }
               completedRequests.clear();
+
+              gRdkWindowManagerMutex.lock();
+              time_t displayStartTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
+              RdkWindowManager::draw();
+              RdkWindowManager::update();
+              time_t displayEndTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
+              const int duration = static_cast<int>(displayEndTime - displayStartTime);
+              LOGINFO("RdkWindowManager::draw/update timing: start_ms:%lld end_ms:%lld duration_ms:%d",
+                    static_cast<long long>(displayStartTime),
+                    static_cast<long long>(displayEndTime),
+                    duration);
+              gRdkWindowManagerMutex.unlock();
 
                time_t display_StartTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
               double frameTime = (int)RdkWindowManager::microseconds() - (int)startFrameTime;
