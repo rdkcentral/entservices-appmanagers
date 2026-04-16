@@ -238,6 +238,7 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
             while(isRunning) {
               const double maxSleepTime = (1000 / gCurrentFramerate) * 1000;
               double startFrameTime = RdkWindowManager::microseconds();
+              std::vector<std::shared_ptr<CreateDisplayRequest>> completedRequests;
               gRdkWindowManagerMutex.lock();
 
               while (gCreateDisplayRequests.size() > 0)
@@ -251,17 +252,13 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
                   time_t displayStartTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
                   request->mResult = CompositorController::createDisplay(request->mClient, request->mDisplayName, request->mDisplayWidth, request->mDisplayHeight, request->mVirtualDisplayEnabled, request->mVirtualWidth, request->mVirtualHeight, request->mTopmost, request->mFocus , request->mOwnerId, request->mGroupId);
                   time_t displayEndTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
-                   const int duration = static_cast<int>(displayEndTime - displayStartTime);
-                LOGINFO("CompositorController::createDisplay, CreateDisplay timing: start_ms:%lld end_ms:%lld duration_ms:%d status:%s",
-                    static_cast<long long>(displayStartTime),
-                    static_cast<long long>(displayEndTime),
-                    duration, request->mResult ? "success" : "failed");
+                  const int duration = static_cast<int>(displayEndTime - displayStartTime);
+                  LOGINFO("CompositorController::createDisplay, CreateDisplay timing: start_ms:%lld end_ms:%lld duration_ms:%d status:%s",
+                      static_cast<long long>(displayStartTime),
+                      static_cast<long long>(displayEndTime),
+                      duration, request->mResult ? "success" : "failed");
                   gCreateDisplayRequests.erase(gCreateDisplayRequests.begin());
-                  
-                  if (0 != sem_post(&request->mSemaphore))
-                  {
-                      LOGERR("Failed to release CreateDisplayRequest semaphore: %s", strerror(errno));
-                  }
+                  completedRequests.push_back(request);
               }
 
               if (gNeedsScreenshot)
@@ -308,6 +305,16 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
                     duration);
               isRunning = sRunning;
               gRdkWindowManagerMutex.unlock();
+
+              for (const auto& completedRequest : completedRequests)
+              {
+                  if (0 != sem_post(&completedRequest->mSemaphore))
+                  {
+                      LOGERR("Failed to release CreateDisplayRequest semaphore: %s", strerror(errno));
+                  }
+              }
+              completedRequests.clear();
+
                time_t display_StartTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
               double frameTime = (int)RdkWindowManager::microseconds() - (int)startFrameTime;
               if (frameTime < maxSleepTime)
