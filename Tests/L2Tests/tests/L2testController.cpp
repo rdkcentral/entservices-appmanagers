@@ -149,8 +149,7 @@ void L2testController::initClient() {
     for (int attempt = 1; attempt <= MAX_RETRIES; ++attempt) {
         L2TEST_LOG("COM-RPC client initialization attempt #%d", attempt);
 
-        m_engine = Core::ProxyType<RPC::InvokeServerType<1, 0, 4>>::Create();
-        m_client = Core::ProxyType<RPC::CommunicatorClient>::Create(Core::NodeId("/tmp/communicator"), Core::ProxyType<Core::IIPCServer>(m_engine));
+        m_client = Core::ProxyType<RPC::CommunicatorClient>::Create(Core::NodeId("/tmp/communicator"));
         if (!m_client.IsValid()) {
             L2TEST_LOG("Client creation failed, retrying...");
             usleep(RETRY_DELAY_MS * 1000);
@@ -204,12 +203,7 @@ void L2testController::releaseClient() {
     }
 
     if (m_client.IsValid()) {
-        m_client->Close(RPC::CommunicationTimeOut);
         m_client.Release();
-    }
-
-    if (m_engine.IsValid()) {
-        m_engine.Release();
     }
 }
 
@@ -223,8 +217,7 @@ static Core::hresult PerformL2TestsUsingJsonRpc(const std::string& params, std::
     };
     const std::array<const char*, 3> methods = {
         "PerformL2Tests",
-        "performL2Tests",
-        "L2Tests.PerformL2Tests"
+        "performL2Tests"
     };
 
     JsonObject parameters;
@@ -239,6 +232,10 @@ static Core::hresult PerformL2TestsUsingJsonRpc(const std::string& params, std::
             const uint32_t status = jsonrpc.Invoke<JsonObject, JsonObject>(COMRPC_OPEN_TIMEOUT_MS, std::string(method), parameters, result);
             if (Core::ERROR_NONE == status) {
                 result.ToString(response);
+                if (std::string::npos == response.find("\"status\"")) {
+                    L2TEST_LOG("JSON-RPC response missing status for %s.%s: %s", callsign, method, response.c_str());
+                    continue;
+                }
                 L2TEST_LOG("JSON-RPC fallback succeeded with %s.%s", callsign, method);
                 return Core::ERROR_NONE;
             }
@@ -497,6 +494,10 @@ int main(int argc, char **argv)
             } catch (...) {
                 testStatus = 1; // Malformed response — treat as failure
             }
+        } else {
+            // Avoid false success when an unexpected JSON-RPC method returns an empty object.
+            testStatus = 1;
+            L2TEST_LOG("L2 tests response missing status field: %s", response.c_str());
         }
         if (testStatus == 0) {
             L2TEST_LOG("L2 tests completed successfully: %s", response.c_str());
