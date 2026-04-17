@@ -8,9 +8,35 @@ Create a standalone L0 test suite for `RDKWindowManager` in:
 
 using the same test style already established by RuntimeManager L0 tests, while isolating external runtime dependencies on:
 
-- `ref/rdk-window-manager`
+- `rdkcentral/rdk-window-manager`
 
 This plan focuses on deterministic, CI-friendly tests with high branch coverage for plugin lifecycle, JSON-RPC-facing implementation behavior, callback dispatch, and error handling.
+
+---
+
+## Implemented Updates (Current Branch)
+
+The following runner-level updates are now implemented in `Tests/L0Tests/RDKWindowManager/RDKWindowManagerTest.cpp`:
+
+1. Per-test process isolation using `fork()` + `waitpid()`.
+   - Each `Test_*` case runs in a child process to prevent static/global state from leaking across cases.
+   - This directly addresses lifecycle-state coupling observed during early bring-up.
+
+2. Bootstrap moved into child process scope.
+   - `L0Test::L0BootstrapGuard` is created inside the child path (not parent scope), so worker-pool initialization is local to each test process.
+   - This avoids parent/child bootstrap ordering side effects around compositor/listener tests.
+
+3. Child termination uses `std::exit(...)`.
+   - The runner intentionally uses `std::exit` (not `_exit`) after each child case.
+   - This ensures gcov counters are flushed from child processes and fixes missing/zero coverage accounting for forked tests.
+
+4. Runner case matrix expanded and centralized.
+   - The `cases[]` registry now includes the extended implementation tests for display/event variants, intercept/inactivity branches, and error-path matrix coverage.
+   - Case-level pass/fail summary remains deterministic and CI-friendly.
+
+5. Signal-aware failure reporting retained.
+   - The runner distinguishes non-zero exits vs signal terminations (`WIFEXITED`/`WIFSIGNALED`) and prints explicit failure diagnostics.
+   - This improves triage quality for gdb-backed CI runs.
 
 ---
 
@@ -29,8 +55,8 @@ Primary references used for this plan:
 - `RDKWindowManager/RDKWindowManagerImplementation.cpp`
 - `RDKWindowManager/RDKWindowManagerImplementation.h`
 - `RDKWindowManager/CMakeLists.txt`
-- `ref/rdk-window-manager/include/compositorcontroller.h`
-- `ref/rdk-window-manager/include/rdkwindowmanagerevents.h`
+- `rdkcentral/rdk-window-manager/include/compositorcontroller.h`
+- `rdkcentral/rdk-window-manager/include/rdkwindowmanagerevents.h`
 
 ---
 
@@ -47,7 +73,7 @@ Primary references used for this plan:
 
 ---
 
-## Dependency Strategy for `ref/rdk-window-manager`
+## Dependency Strategy for `rdkcentral/rdk-window-manager`
 
 `RDKWindowManagerImplementation.cpp` depends heavily on static methods from `RdkWindowManager::CompositorController` and global functions in the `RdkWindowManager` namespace.
 
@@ -274,7 +300,7 @@ Use short deterministic test timeouts to avoid flakes.
 ## Phase 0: Build plumbing and fakes (must-have)
 
 1. Extend `Tests/L0Tests/CMakeLists.txt` to include RDKWindowManager sources and tests.
-2. Add fake shim for `ref/rdk-window-manager` symbols.
+2. Add fake shim for `rdkcentral/rdk-window-manager` symbols.
 3. Add local `ServiceMock` and interface fakes.
 4. Add basic test runner.
 
