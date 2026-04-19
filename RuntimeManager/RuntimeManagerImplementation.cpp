@@ -547,8 +547,8 @@ namespace WPEFramework
             {
                 uid = 30490;
             }
-            std::ifstream inFile("/tmp/defaulthomeuid");
-            if (inFile.good())
+            std::ifstream inFileHome("/tmp/defaulthomeuid");
+            if (inFileHome.good())
             {
                 uid = 30002;
             }
