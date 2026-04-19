@@ -259,7 +259,7 @@ Json::Value DobbySpecGenerator::createEnvVars(const ApplicationConfiguration& co
    for (unsigned int i = 0; i < envInputArray.Length(); ++i)
    {
        std::string envInputItem = envInputArray[i].String();
-       (envInputArray[i].String());
+       env.append(envInputArray[i].String());
    }
 
    std::list<std::string> configEnvs = mAIConfiguration->getEnvs();
@@ -279,7 +279,7 @@ Json::Value DobbySpecGenerator::createEnvVars(const ApplicationConfiguration& co
        //env.append("QT_WAYLAND_INPUTDEVICE_INTEGRATION=skyq-input");
        env.append("QT_QPA_PLATFORM=wayland-sky-rdk");
    }
-   env.append("APPLICATION_TOKEN=" + config.mAppInstanceId);
+   env.append(std::string("APPLICATION_TOKEN=") + config.mAppInstanceId);
    if (mAIConfiguration->getResourceManagerClientEnabled())
    {
        env.append("ESSRMGR_APPID=" + config.mAppId);
