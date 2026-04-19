@@ -248,7 +248,7 @@ bool DobbySpecGenerator::generate(const ApplicationConfiguration& config, const 
 Json::Value DobbySpecGenerator::createEnvVars(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const
 {
     Json::Value env(Json::arrayValue);
-    (std::string("APPLICATION_NAME=") + config.mAppId);
+    env.append(std::string("APPLICATION_NAME=") + config.mAppId);
     
      //TODO YET TO ANALYZE SUPPORT APPLICATION_LAUNCH_PARAMETERS
      //TODO YET TO ANALYZE SUPPORT APPLICATION_LAUNCH_METHOD
@@ -265,7 +265,7 @@ Json::Value DobbySpecGenerator::createEnvVars(const ApplicationConfiguration& co
    std::list<std::string> configEnvs = mAIConfiguration->getEnvs();
    for (auto it = configEnvs.begin(); it != configEnvs.end(); ++it)
    {
-       (*it);
+       env.append(*it);
    }
 
    if (!config.mWesterosSocketPath.empty())
