@@ -270,8 +270,8 @@ Json::Value DobbySpecGenerator::createEnvVars(const ApplicationConfiguration& co
 
    if (!config.mWesterosSocketPath.empty())
    {
-       ("XDG_RUNTIME_DIR=/tmp");
-       ("WAYLAND_DISPLAY=westeros");
+       env.append("XDG_RUNTIME_DIR=/tmp");
+       env.append("WAYLAND_DISPLAY=westeros");
        env.append("WESTEROS_SINK_VIRTUAL_WIDTH=1920");
        env.append("WESTEROS_SINK_VIRTUAL_HEIGHT=1080");
        env.append("QT_WAYLAND_CLIENT_BUFFER_INTEGRATION=wayland-egl");
