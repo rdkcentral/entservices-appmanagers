@@ -248,7 +248,7 @@ bool DobbySpecGenerator::generate(const ApplicationConfiguration& config, const 
 Json::Value DobbySpecGenerator::createEnvVars(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const
 {
     Json::Value env(Json::arrayValue);
-    env.append(std::string("APPLICATION_NAME=") + config.mAppId);
+    (std::string("APPLICATION_NAME=") + config.mAppId);
     
      //TODO YET TO ANALYZE SUPPORT APPLICATION_LAUNCH_PARAMETERS
      //TODO YET TO ANALYZE SUPPORT APPLICATION_LAUNCH_METHOD
@@ -259,19 +259,19 @@ Json::Value DobbySpecGenerator::createEnvVars(const ApplicationConfiguration& co
    for (unsigned int i = 0; i < envInputArray.Length(); ++i)
    {
        std::string envInputItem = envInputArray[i].String();
-       env.append(envInputArray[i].String());
+       (envInputArray[i].String());
    }
 
    std::list<std::string> configEnvs = mAIConfiguration->getEnvs();
    for (auto it = configEnvs.begin(); it != configEnvs.end(); ++it)
    {
-       env.append(*it);
+       (*it);
    }
 
    if (!config.mWesterosSocketPath.empty())
    {
-       env.append("XDG_RUNTIME_DIR=/tmp");
-       env.append("WAYLAND_DISPLAY=westeros");
+       ("XDG_RUNTIME_DIR=/tmp");
+       ("WAYLAND_DISPLAY=westeros");
        env.append("WESTEROS_SINK_VIRTUAL_WIDTH=1920");
        env.append("WESTEROS_SINK_VIRTUAL_HEIGHT=1080");
        env.append("QT_WAYLAND_CLIENT_BUFFER_INTEGRATION=wayland-egl");
@@ -279,6 +279,7 @@ Json::Value DobbySpecGenerator::createEnvVars(const ApplicationConfiguration& co
        //env.append("QT_WAYLAND_INPUTDEVICE_INTEGRATION=skyq-input");
        env.append("QT_QPA_PLATFORM=wayland-sky-rdk");
    }
+   env.append("APPLICATION_TOKEN=" + config.mAppInstanceId);
    if (mAIConfiguration->getResourceManagerClientEnabled())
    {
        env.append("ESSRMGR_APPID=" + config.mAppId);
