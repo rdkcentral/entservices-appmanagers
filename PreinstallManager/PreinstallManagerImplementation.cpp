@@ -266,11 +266,10 @@ namespace WPEFramework
         }
 
         struct dirent *entry;
-        while ((entry = readdir(dir)) != NULL)
+        while ((entry = readdir(dir)) != nullptr)
         {
             std::string filename(entry->d_name);
 
-            // Skip "." and ".."
             if (filename == "." || filename == "..")
                 continue;
 
@@ -278,18 +277,33 @@ namespace WPEFramework
 
             PackageInfo packageInfo;
             packageInfo.fileLocator = filepath;
+
             LOGDBG("Found package folder: %s", filepath.c_str());
-            if (packageInstaller->GetConfigForPackage(packageInfo.fileLocator, packageInfo.packageId, packageInfo.version, packageInfo.configMetadata) == Core::ERROR_NONE)
+
+#ifdef RDK_SERVICES_L1_TEST
+            packageInfo.configMetadata = new WPEFramework::Exchange::RuntimeConfig();
+            auto &configMetadata = *packageInfo.configMetadata;
+#else
+            auto &configMetadata = packageInfo.configMetadata;
+#endif
+
+            if (packageInstaller->GetConfigForPackage(
+                    packageInfo.fileLocator,
+                    packageInfo.packageId,
+                    packageInfo.version,
+                    configMetadata) == Core::ERROR_NONE)
             {
-                LOGINFO("Found package: %s, version: %s", packageInfo.packageId.c_str(), packageInfo.version.c_str());
+                LOGINFO("Found package: %s, version: %s",
+                        packageInfo.packageId.c_str(),
+                        packageInfo.version.c_str());
             }
             else
             {
                 LOGINFO("Skipping invalid package file: %s", filename.c_str());
                 packageInfo.installStatus = "SKIPPED: getConfig failed for [" + filename + "]";
-                // continue; -> so that it is printed as skipped and not go undetected
             }
-            packages.push_back(std::move(packageInfo));
+
+            packages.emplace_back(std::move(packageInfo));
         }
 
         closedir(dir);
