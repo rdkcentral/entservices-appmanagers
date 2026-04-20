@@ -58,7 +58,7 @@ set(APPMANAGERS_L0_SOURCES
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/Gateway/NetFilterLock.cpp
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/Gateway/ContainerUtils.cpp
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/Gateway/NetFilterUtils.c
-    # Test sources
+    # Test sources — RuntimeManager
     RuntimeManager/RuntimeManagerTest.cpp
     RuntimeManager/RuntimeManager_LifecycleTests.cpp
     RuntimeManager/RuntimeManager_ImplementationTests.cpp
@@ -69,6 +69,19 @@ set(APPMANAGERS_L0_SOURCES
     RuntimeManager/Gateway/Gateway_ContainerUtilsTests.cpp
     RuntimeManager/Gateway/Gateway_WebInspectorTests.cpp
     RuntimeManager/Gateway/Gateway_NetFilterTests.cpp
+    common/L0Bootstrap.cpp
+)
+
+# ── PreinstallManager L0 test sources (separate binary to avoid main() conflict) ──
+set(PREINSTALL_MANAGER_L0_SOURCES
+    ${CMAKE_SOURCE_DIR}/../../PreinstallManager/Module.cpp
+    ${CMAKE_SOURCE_DIR}/../../PreinstallManager/PreinstallManager.cpp
+    ${CMAKE_SOURCE_DIR}/../../PreinstallManager/PreinstallManagerImplementation.cpp
+    # Test sources — PreinstallManager
+    PreinstallManager/PreinstallManagerTest.cpp
+    PreinstallManager/PreinstallManager_LifecycleTests.cpp
+    PreinstallManager/PreinstallManager_ImplementationTests.cpp
+    PreinstallManager/PreinstallManager_ComponentTests.cpp
     common/L0Bootstrap.cpp
 )
 
@@ -207,6 +220,115 @@ add_custom_target(run
     VERBATIM
 )
 
+# ─────────────────────────────────────────────────────────────────────────────
+# preinstall_manager_l0test — standalone L0 test binary for PreinstallManager
+#
+# Uses a separate add_executable to avoid a duplicate main() symbol with the
+# RuntimeManager test binary (appmanagers_l0test).
+# ─────────────────────────────────────────────────────────────────────────────
+add_executable(preinstall_manager_l0test ${PREINSTALL_MANAGER_L0_SOURCES})
+
+target_compile_definitions(preinstall_manager_l0test PRIVATE
+    MODULE_NAME=PreinstallManager_L0Test
+    USE_THUNDER_R4=1
+    PREINSTALL_MANAGER_API_VERSION_NUMBER_MAJOR=1
+    PREINSTALL_MANAGER_API_VERSION_NUMBER_MINOR=0
+    PREINSTALL_MANAGER_API_VERSION_NUMBER_PATCH=0
+    RDK_APPMANAGERS_DEBUG=1
+    PLUGIN_PREINSTALL_MANAGER_IMPLEMENTATION_NAME="PreinstallManagerImplementation"
+    DISABLE_SECURITY_TOKEN=1
+    THUNDER_PLATFORM_PC_UNIX=1
+)
+
+if(APPMGR_ENABLE_COVERAGE)
+    target_compile_options(preinstall_manager_l0test PRIVATE -O0 -g --coverage)
+    target_link_options(preinstall_manager_l0test PRIVATE --coverage)
+endif()
+
+if(APPMGR_ENABLE_WARNINGS)
+    target_compile_options(preinstall_manager_l0test PRIVATE -Wall -Wextra -Wno-unused-parameter)
+endif()
+
+target_include_directories(preinstall_manager_l0test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/PreinstallManager
+    ${CMAKE_CURRENT_SOURCE_DIR}/common
+    ${CMAKE_SOURCE_DIR}/../..
+    ${CMAKE_SOURCE_DIR}/../../PreinstallManager
+    ${CMAKE_SOURCE_DIR}/../../helpers
+    ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry
+    ${PREFIX}/include
+    ${PREFIX}/include/${NAMESPACE}
+)
+
+if(JSONCPP_INCLUDE_DIR)
+    target_include_directories(preinstall_manager_l0test PRIVATE ${JSONCPP_INCLUDE_DIR})
+endif()
+
+if(CMAKE_PREFIX_PATH)
+    foreach(_prefix IN LISTS CMAKE_PREFIX_PATH)
+        if(EXISTS "${_prefix}/include")
+            target_include_directories(preinstall_manager_l0test PRIVATE "${_prefix}/include")
+        endif()
+        if(EXISTS "${_prefix}/include/${NAMESPACE}")
+            target_include_directories(preinstall_manager_l0test PRIVATE "${_prefix}/include/${NAMESPACE}")
+        endif()
+    endforeach()
+endif()
+
+if(EXISTS "${PREFIX}/lib")
+    target_link_directories(preinstall_manager_l0test PRIVATE "${PREFIX}/lib")
+endif()
+if(EXISTS "${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins")
+    target_link_directories(preinstall_manager_l0test PRIVATE "${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins")
+endif()
+if(EXISTS "${PREFIX}/lib/plugins")
+    target_link_directories(preinstall_manager_l0test PRIVATE "${PREFIX}/lib/plugins")
+endif()
+
+if(THUNDER_CORE_LIB)
+    target_link_libraries(preinstall_manager_l0test PRIVATE ${THUNDER_CORE_LIB})
+endif()
+if(THUNDER_MESSAGING_LIB)
+    target_link_libraries(preinstall_manager_l0test PRIVATE ${THUNDER_MESSAGING_LIB})
+endif()
+if(THUNDER_PLUGINS_LIB)
+    target_link_libraries(preinstall_manager_l0test PRIVATE ${THUNDER_PLUGINS_LIB})
+endif()
+if(THUNDER_COM_LIB)
+    target_link_libraries(preinstall_manager_l0test PRIVATE ${THUNDER_COM_LIB})
+endif()
+
+target_link_libraries(preinstall_manager_l0test PRIVATE
+    Threads::Threads
+    dl
+    m
+)
+
+if(JSONCPP_LIB)
+    target_link_libraries(preinstall_manager_l0test PRIVATE ${JSONCPP_LIB})
+else()
+    target_link_libraries(preinstall_manager_l0test PRIVATE jsoncpp)
+endif()
+
+if(CURL_LIB)
+    target_link_libraries(preinstall_manager_l0test PRIVATE ${CURL_LIB})
+else()
+    target_link_libraries(preinstall_manager_l0test PRIVATE curl)
+endif()
+
+set_target_properties(preinstall_manager_l0test PROPERTIES
+    BUILD_RPATH "$ORIGIN;${PREFIX}/lib;${PREFIX}/lib/${STORAGE_DIRECTORY};${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins;${PREFIX}/lib/plugins"
+    INSTALL_RPATH "${PREFIX}/lib;${PREFIX}/lib/${STORAGE_DIRECTORY};${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins;${PREFIX}/lib/plugins"
+)
+
+add_custom_target(run_preinstall
+    DEPENDS preinstall_manager_l0test
+    COMMAND $<TARGET_FILE:preinstall_manager_l0test>
+    COMMENT "Running preinstall_manager_l0test"
+    VERBATIM
+)
+
 # 'coverage' target.
 # Commands:
 #   lcov -c -o coverage.info -d ${CMAKE_BINARY_DIR}
@@ -222,7 +344,7 @@ if(NOT LCOV_EXECUTABLE OR NOT GENHTML_EXECUTABLE)
     )
 else()
     add_custom_target(coverage
-        DEPENDS appmanagers_l0test
+        DEPENDS appmanagers_l0test preinstall_manager_l0test
         COMMAND "${LCOV_EXECUTABLE}" -c -o coverage.info -d "${CMAKE_BINARY_DIR}"
         COMMAND "${GENHTML_EXECUTABLE}" -o coverage coverage.info
         WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/.."
