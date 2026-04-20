@@ -33,6 +33,7 @@
 #include <map>
 #include <thread>
 #include <utility>
+#include <utility>
 
 namespace WPEFramework
 {
@@ -96,6 +97,72 @@ namespace WPEFramework
                         delete configMetadata;
                         configMetadata = nullptr;
                     }
+                }
+
+                _PackageInfo(const _PackageInfo& other)
+                    : fileLocator(other.fileLocator)
+                    , packageId(other.packageId)
+                    , version(other.version)
+                    , configMetadata(nullptr)
+                    , installStatus(other.installStatus)
+                {
+                    if (nullptr != other.configMetadata)
+                    {
+                        configMetadata = new WPEFramework::Exchange::RuntimeConfig(*other.configMetadata);
+                    }
+                }
+
+                _PackageInfo& operator=(const _PackageInfo& other)
+                {
+                    if (this != &other)
+                    {
+                        fileLocator = other.fileLocator;
+                        packageId = other.packageId;
+                        version = other.version;
+                        installStatus = other.installStatus;
+
+                        if (nullptr != configMetadata)
+                        {
+                            delete configMetadata;
+                            configMetadata = nullptr;
+                        }
+
+                        if (nullptr != other.configMetadata)
+                        {
+                            configMetadata = new WPEFramework::Exchange::RuntimeConfig(*other.configMetadata);
+                        }
+                    }
+                    return *this;
+                }
+
+                _PackageInfo(_PackageInfo&& other) noexcept
+                    : fileLocator(std::move(other.fileLocator))
+                    , packageId(std::move(other.packageId))
+                    , version(std::move(other.version))
+                    , configMetadata(other.configMetadata)
+                    , installStatus(std::move(other.installStatus))
+                {
+                    other.configMetadata = nullptr;
+                }
+
+                _PackageInfo& operator=(_PackageInfo&& other) noexcept
+                {
+                    if (this != &other)
+                    {
+                        if (nullptr != configMetadata)
+                        {
+                            delete configMetadata;
+                        }
+
+                        fileLocator = std::move(other.fileLocator);
+                        packageId = std::move(other.packageId);
+                        version = std::move(other.version);
+                        configMetadata = other.configMetadata;
+                        installStatus = std::move(other.installStatus);
+
+                        other.configMetadata = nullptr;
+                    }
+                    return *this;
                 }
 #else
                 WPEFramework::Exchange::RuntimeConfig configMetadata;
