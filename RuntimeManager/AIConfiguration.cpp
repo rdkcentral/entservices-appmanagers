@@ -358,8 +358,8 @@ namespace Plugin
 
         const char* configPath = runtimeConfigFile.c_str();
         struct stat st{};
-        if (::stat(configPath, &st) != 0) {
-            LOGINFO("YAML file %s not found", configPath);
+        if (0 != ::stat(configPath, &st)) {
+            LOGWARN("Configured runtime YAML file %s not found; skipping YAML runtime config overrides", configPath);
             return;
         }
         LOGINFO("AIConfiguration reading from YAML at %s", configPath);
