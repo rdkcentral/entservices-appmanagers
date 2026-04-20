@@ -2,6 +2,9 @@
 set -x
 set -e
 ##############################
+export PATH=/usr/local/bin:$PATH
+cmake --version
+
 GITHUB_WORKSPACE="${PWD}"
 ls -la ${GITHUB_WORKSPACE}
 ############################
