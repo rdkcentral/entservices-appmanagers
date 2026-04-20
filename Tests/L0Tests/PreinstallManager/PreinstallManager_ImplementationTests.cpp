@@ -313,9 +313,10 @@ uint32_t Test_Impl_PIM_QueryInterfaceIPreinstallManager()
 
     auto* impl = CreateImpl();
 
-    auto* iface = impl->QueryInterface<WPEFramework::Exchange::IPreinstallManager>();
+    void* raw = impl->QueryInterface(WPEFramework::Exchange::IPreinstallManager::ID);
+    auto* iface = static_cast<WPEFramework::Exchange::IPreinstallManager*>(raw);
     L0Test::ExpectTrue(tr, iface != nullptr,
-                       "QueryInterface<IPreinstallManager> returns non-null");
+                       "QueryInterface(IPreinstallManager::ID) returns non-null");
 
     if (iface != nullptr) {
         iface->Release();
@@ -329,10 +330,11 @@ uint32_t Test_Impl_PIM_QueryInterfaceIConfiguration()
     L0Test::TestResult tr;
 
     auto* impl = CreateImpl();
-    auto* iface = impl->QueryInterface<WPEFramework::Exchange::IConfiguration>();
 
+    void* raw = impl->QueryInterface(WPEFramework::Exchange::IConfiguration::ID);
+    auto* iface = static_cast<WPEFramework::Exchange::IConfiguration*>(raw);
     L0Test::ExpectTrue(tr, iface != nullptr,
-                       "QueryInterface<IConfiguration> returns non-null");
+                       "QueryInterface(IConfiguration::ID) returns non-null");
 
     if (iface != nullptr) {
         iface->Release();
