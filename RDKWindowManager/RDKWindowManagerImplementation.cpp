@@ -1560,7 +1560,6 @@ bool RDKWindowManagerImplementation::createDisplay(const string& client, const s
 
     if (!isClientExists(client))
     {
-        bool lockAcquired = false;
         std::shared_ptr<CreateDisplayRequest> request;
 
         // Step 1: Queue the request under lock, then wait WITHOUT lock
@@ -1606,7 +1605,6 @@ bool RDKWindowManagerImplementation::createDisplay(const string& client, const s
                     static_cast<long long>(addListenerEnd),
                     static_cast<int>(addListenerEnd - addListenerStart));
             }
-            lockAcquired = true;
         }
     }
     else
