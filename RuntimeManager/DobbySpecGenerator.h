@@ -39,10 +39,10 @@ namespace Plugin
     class DobbySpecGenerator
     {
         public:
-            DobbySpecGenerator();
+            DobbySpecGenerator(AIConfiguration& aiConfiguration);
             virtual ~DobbySpecGenerator();
 
-            bool generate(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig, const std::string& runtimeConfigFile, string& outputJsonString);
+            bool generate(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig, string& outputJsonString);
 
         private:
             Json::Value createEnvVars(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const;

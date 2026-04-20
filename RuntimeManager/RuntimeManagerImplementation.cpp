@@ -39,7 +39,7 @@ namespace WPEFramework
         RuntimeManagerImplementation *RuntimeManagerImplementation::_instance = nullptr;
 
         RuntimeManagerImplementation::RuntimeManagerImplementation()
-            : mRuntimeManagerImplLock(), mCurrentservice(nullptr), mOciContainerObject(nullptr), mStorageManagerObject(nullptr), mWindowManagerConnector(nullptr), mDobbyEventListener(nullptr), mUserIdManager(nullptr), mRuntimeAppPortal(""), mRuntimeConfigFile("")
+            : mRuntimeManagerImplLock(), mCurrentservice(nullptr), mOciContainerObject(nullptr), mStorageManagerObject(nullptr), mWindowManagerConnector(nullptr), mDobbyEventListener(nullptr), mUserIdManager(nullptr), mRuntimeAppPortal(""), mRuntimeConfigFile(""), mAIConfiguration(nullptr)
         {
             LOGINFO("Create RuntimeManagerImplementation Instance");
             if (nullptr == RuntimeManagerImplementation::_instance)
@@ -89,6 +89,12 @@ namespace WPEFramework
             if (nullptr != mOciContainerObject)
             {
                 releaseOCIContainerPluginObject();
+            }
+
+            if (nullptr != mAIConfiguration)
+            {
+                delete mAIConfiguration;
+                mAIConfiguration = nullptr;
             }
 
             RuntimeManagerTelemetryReporting::getInstance().reset();
@@ -293,6 +299,8 @@ namespace WPEFramework
                     mRuntimeConfigFile = config.runtimeConfigFile.Value();
                 }
                 LOGINFO("runtimeConfigFile=%s", mRuntimeConfigFile.c_str());
+                mAIConfiguration = new AIConfiguration();
+                mAIConfiguration->initialize(mRuntimeConfigFile);
             }
             else
             {
@@ -462,8 +470,13 @@ namespace WPEFramework
             ralf::RalfPackageBuilder ralfBuilder;
             return ralfBuilder.generateRalfDobbySpec(config, runtimeConfigObject, dobbySpec);
 #else
-        DobbySpecGenerator generator;
-        return generator.generate(config, runtimeConfigObject, mRuntimeConfigFile, dobbySpec);
+        if (nullptr == mAIConfiguration)
+        {
+            LOGERR("AIConfiguration not initialized");
+            return false;
+        }
+        DobbySpecGenerator generator(*mAIConfiguration);
+        return generator.generate(config, runtimeConfigObject, dobbySpec);
 #endif // RALF_PACKAGE_SUPPORT_ENABLED
         }
 

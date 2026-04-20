@@ -28,6 +28,7 @@
 #include <interfaces/IOCIContainer.h>
 #include <interfaces/IAppStorageManager.h>
 #include <condition_variable>
+#include "AIConfiguration.h"
 #include "ApplicationConfiguration.h"
 #include "WindowManagerConnector.h"
 #include "IEventHandler.h"
@@ -223,6 +224,7 @@ namespace WPEFramework
                 std::shared_ptr<RialtoConnector>  mRialtoConnector;
 #endif // RIALTO_IN_DAC_FEATURE_ENABLED
                 std::string mRuntimeConfigFile;
+                AIConfiguration* mAIConfiguration;
 
             private: /* internal methods */
                 void dispatchEvent(RuntimeEventType, const JsonValue &params);
