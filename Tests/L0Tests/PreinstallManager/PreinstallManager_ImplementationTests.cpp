@@ -40,6 +40,7 @@
 #include <string>
 
 #include "PreinstallManagerImplementation.h"
+#include <interfaces/IPreinstallManager.h>
 #include "ServiceMock.h"
 #include "common/L0Expect.hpp"
 #include "common/L0TestTypes.hpp"
