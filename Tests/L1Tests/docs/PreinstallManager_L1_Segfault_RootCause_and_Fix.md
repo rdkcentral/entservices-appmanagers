@@ -32,14 +32,14 @@
   - Added L1-only guarded `PackageInfo::configMetadata` storage as pointer to avoid value-object teardown in test build:
     - `#ifdef RDK_SERVICES_L1_TEST` -> `RuntimeConfig* configMetadata`
     - `#else` -> `RuntimeConfig configMetadata`
+  - Added explicit L1 cleanup in `PackageInfo` destructor to release allocated `configMetadata`.
 - `PreinstallManager/PreinstallManagerImplementation.cpp`
-  - Replaced `push_back(packageInfo)` with in-place list entry construction:
-    - `packages.emplace_back();`
-    - `PackageInfo& packageInfo = packages.back();`
-  - Added L1-only compatibility metadata backing object and passed that to `GetConfigForPackage`:
-    - static `RuntimeConfigCompat` containing `RuntimeConfig value` plus trailing `std::string`
-    - `packageInfo.configMetadata = &configMetadataPtr->value`
-  - Kept production path unchanged (`RuntimeConfig` value member reference).
+  - In L1 builds, allocates config metadata per package entry before `GetConfigForPackage`:
+    - `packageInfo.configMetadata = new RuntimeConfig();`
+    - passes `*packageInfo.configMetadata` to `GetConfigForPackage`.
+  - Keeps production path unchanged (`RuntimeConfig` value member reference).
+  - Stores entries with move semantics:
+    - `packages.emplace_back(std::move(packageInfo));`
   - Removed unused install `additionalMetadata` local and passed `nullptr` directly to `Install`.
 - `Tests/L1Tests/tests/test_PreinstallManager.cpp`
   - Updated `GetConfigForPackage` expectations in repro tests to deterministic `DoAll(SetArgReferee..., Return(...))`.
@@ -49,7 +49,7 @@
 - Functional behavior remains unchanged for package discovery and install decisions.
 - Production build path remains value-based `RuntimeConfig` storage and metadata flow.
 - L1-specific guarded path isolates test-only instability without changing runtime plugin behavior.
-- The crash path is addressed by removing extra `PackageInfo` copies and avoiding problematic L1 value-object teardown.
+- The crash path is addressed by L1 pointer-based metadata handling plus explicit cleanup in `PackageInfo`.
 
 ## Validation Results
 1. Command executed:

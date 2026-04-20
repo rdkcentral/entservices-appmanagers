@@ -32,6 +32,7 @@
 #include <mutex>
 #include <map>
 #include <thread>
+#include <utility>
 
 namespace WPEFramework
 {
@@ -85,6 +86,17 @@ namespace WPEFramework
                 string version;
 #ifdef RDK_SERVICES_L1_TEST
                 WPEFramework::Exchange::RuntimeConfig* configMetadata = nullptr;
+
+                _PackageInfo() = default;
+
+                ~_PackageInfo()
+                {
+                    if (nullptr != configMetadata)
+                    {
+                        delete configMetadata;
+                        configMetadata = nullptr;
+                    }
+                }
 #else
                 WPEFramework::Exchange::RuntimeConfig configMetadata;
 #endif

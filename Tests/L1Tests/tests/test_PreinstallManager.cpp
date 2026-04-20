@@ -28,6 +28,7 @@
 #include <list>
 #include <string>
 #include <thread>
+#include <utility>
 #include <vector>
 
 #include "COMLinkMock.h"
@@ -424,14 +425,14 @@ TEST_F(PreinstallManagerTest, StartPreinstallWithoutForceInstallSendsCompletionE
 
     SetDirectoryEntries({"app1"});
 
-    Exchange::IPackageInstaller::Package installedPackage;
+    Exchange::IPackageInstaller::Package installedPackage {};
     installedPackage.packageId = PREINSTALL_MANAGER_TEST_PACKAGE_ID;
     installedPackage.version = PREINSTALL_MANAGER_TEST_VERSION;
     installedPackage.state = Exchange::IPackageInstaller::InstallState::INSTALLED;
 
     EXPECT_CALL(*mPackageInstallerMock, ListPackages(_))
         .WillOnce(Invoke([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
-            auto iterator = BuildPackageIterator({installedPackage});
+            auto iterator = BuildPackageIterator({std::move(installedPackage)});
             packages = iterator;
             return Core::ERROR_NONE;
         }));
@@ -557,14 +558,14 @@ TEST_F(PreinstallManagerTest, StartPreinstallWithoutForceInstallSkipsEqualVersio
 
     SetDirectoryEntries({"app1"});
 
-    Exchange::IPackageInstaller::Package installedPackage;
+    Exchange::IPackageInstaller::Package installedPackage {};
     installedPackage.packageId = PREINSTALL_MANAGER_TEST_PACKAGE_ID;
     installedPackage.version = PREINSTALL_MANAGER_TEST_VERSION;
     installedPackage.state = Exchange::IPackageInstaller::InstallState::INSTALLED;
 
     EXPECT_CALL(*mPackageInstallerMock, ListPackages(_))
         .WillOnce(Invoke([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
-            auto iterator = BuildPackageIterator({installedPackage});
+            auto iterator = BuildPackageIterator({std::move(installedPackage)});
             packages = iterator;
             return Core::ERROR_NONE;
         }));
@@ -592,14 +593,14 @@ TEST_F(PreinstallManagerTest, StartPreinstallWithoutForceInstallInstallsNewerVer
 
     SetDirectoryEntries({"app1"});
 
-    Exchange::IPackageInstaller::Package installedPackage;
+    Exchange::IPackageInstaller::Package installedPackage {};
     installedPackage.packageId = PREINSTALL_MANAGER_TEST_PACKAGE_ID;
     installedPackage.version = "0.9.0";
     installedPackage.state = Exchange::IPackageInstaller::InstallState::INSTALLED;
 
     EXPECT_CALL(*mPackageInstallerMock, ListPackages(_))
         .WillOnce(Invoke([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
-            auto iterator = BuildPackageIterator({installedPackage});
+            auto iterator = BuildPackageIterator({std::move(installedPackage)});
             packages = iterator;
             return Core::ERROR_NONE;
         }));
@@ -629,14 +630,14 @@ TEST_F(PreinstallManagerTest, StartPreinstallWithoutForceInstallInvalidInstalled
 
     SetDirectoryEntries({"app1"});
 
-    Exchange::IPackageInstaller::Package installedPackage;
+    Exchange::IPackageInstaller::Package installedPackage {};
     installedPackage.packageId = PREINSTALL_MANAGER_TEST_PACKAGE_ID;
     installedPackage.version = "abc";
     installedPackage.state = Exchange::IPackageInstaller::InstallState::INSTALLED;
 
     EXPECT_CALL(*mPackageInstallerMock, ListPackages(_))
         .WillOnce(Invoke([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
-            auto iterator = BuildPackageIterator({installedPackage});
+            auto iterator = BuildPackageIterator({std::move(installedPackage)});
             packages = iterator;
             return Core::ERROR_NONE;
         }));
@@ -705,12 +706,12 @@ TEST_F(PreinstallManagerTest, StartPreinstallWithoutForceInstallReleasesIterator
 
     SetDirectoryEntries({"app1"});
 
-    Exchange::IPackageInstaller::Package installedPackage;
+    Exchange::IPackageInstaller::Package installedPackage {};
     installedPackage.packageId = PREINSTALL_MANAGER_TEST_PACKAGE_ID;
     installedPackage.version = PREINSTALL_MANAGER_TEST_VERSION;
     installedPackage.state = Exchange::IPackageInstaller::InstallState::INSTALLED;
 
-    auto iterator = BuildPackageIterator({installedPackage});
+    auto iterator = BuildPackageIterator({std::move(installedPackage)});
 
     EXPECT_CALL(*mPackageInstallerMock, ListPackages(_))
         .WillOnce(Invoke([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
