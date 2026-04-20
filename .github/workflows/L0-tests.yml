@@ -24,7 +24,7 @@ env:
 
 jobs:
   L0-tests:
-    name: Build and run RuntimeManager L0 tests
+    name: Build and run AppManagers L0 tests (RuntimeManager + PreinstallManager)
     runs-on: ubuntu-22.04
 
     steps:
@@ -336,7 +336,7 @@ jobs:
             -DPLUGIN_APP_STORAGE_MANAGER=OFF \
             -DPLUGIN_LIFECYCLE_MANAGER=OFF \
             -DPLUGIN_DOWNLOADMANAGER=OFF \
-            -DPLUGIN_PREINSTALL_MANAGER=OFF \
+            -DPLUGIN_PREINSTALL_MANAGER=ON \
             -DPLUGIN_PACKAGE_MANAGER=OFF \
             -DPLUGIN_RDK_WINDOW_MANAGER=OFF \
             -DPLUGIN_TELEMETRYMETRICS=OFF \
@@ -347,7 +347,7 @@ jobs:
           mkdir -p "$GITHUB_WORKSPACE/install/usr/lib/wpeframework/plugins"
           find build/entservices-appmanagers-l0 -type f \( -name "libRuntimeManager.so*" -o -name "libWPEFrameworkRuntimeManager.so*" -o -name "libWPEFrameworkRuntimeManagerImplementation.so*" -o -name "libRuntimeManagerImplementation.so*" \) -exec cp -f {} "$GITHUB_WORKSPACE/install/usr/lib/wpeframework/plugins/" \; 2>/dev/null || true
 
-      - name: Build RuntimeManager L0 tests (Tests/L0Tests)
+      - name: Build AppManagers L0 tests (RuntimeManager + PreinstallManager)
         run: |
           set -euo pipefail
 
@@ -367,9 +367,10 @@ jobs:
             -DPREFIX="$PREFIX" \
             -DAPPMGR_ENABLE_COVERAGE=ON
 
-          cmake --build build/entservices-appmanagers-l0tests-only --target appmanagers_l0test -- -j"$(nproc)"
+          cmake --build build/entservices-appmanagers-l0tests-only --target appmanagers_l0test -- -j"$(nproc)" -v
+          cmake --build build/entservices-appmanagers-l0tests-only --target preinstall_manager_l0test -- -j"$(nproc)" -v
 
-      - name: Run L0 tests
+      - name: Run RuntimeManager L0 tests
         id: run_l0_tests
         continue-on-error: true
         run: |
@@ -392,18 +393,47 @@ jobs:
 
           exit "$test_rc"
 
+      - name: Run PreinstallManager L0 tests
+        id: run_preinstall_l0_tests
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+
+          export PATH="$GITHUB_WORKSPACE/install/usr/bin:${PATH}"
+          export LD_LIBRARY_PATH="$GITHUB_WORKSPACE/install/usr/lib:$GITHUB_WORKSPACE/install/usr/lib/wpeframework:$GITHUB_WORKSPACE/install/usr/lib/wpeframework/plugins:${LD_LIBRARY_PATH:-}"
+
+          test_bin="build/entservices-appmanagers-l0tests-only/preinstall_manager_l0test"
+          test -x "$test_bin"
+
+          set +e
+          "$test_bin" 2>&1 | tee preinstall-l0-test.log
+          test_rc=$?
+          set -e
+
+          echo "==== Failed test cases (PreinstallManager run step) ===="
+          grep -E '^FAIL:' preinstall-l0-test.log || true
+
+          exit "$test_rc"
+
       - name: Summarize failed tests
         if: ${{ always() }}
         run: |
           set -euo pipefail
           if [ -f l0-test.log ]; then
-            echo "==== Failed test cases (if any) ===="
+            echo "==== RuntimeManager — Failed test cases (if any) ===="
             grep -E '^\[  FAILED  \]' l0-test.log || echo "No explicit [ FAILED ] lines found"
+            grep -E '^FAIL:' l0-test.log || true
           else
             echo "l0-test.log not found"
           fi
+          if [ -f preinstall-l0-test.log ]; then
+            echo "==== PreinstallManager — Failed test cases (if any) ===="
+            grep -E '^FAIL:' preinstall-l0-test.log || echo "No FAIL lines found"
+          else
+            echo "preinstall-l0-test.log not found"
+          fi
 
-      - name: Run L0 tests under gdb (opt-in on failure)
+      - name: Run RuntimeManager L0 tests under gdb (opt-in on failure)
         if: ${{ failure() && env.ENABLE_GDB == '1' }}
         run: |
           set -euo pipefail
@@ -416,25 +446,52 @@ jobs:
 
           gdb -q -batch -ex "set pagination off" -ex "run" -ex "bt full" --args "$test_bin" | tee l0-test-gdb.log
 
+      - name: Run PreinstallManager L0 tests under gdb (opt-in on failure)
+        if: ${{ failure() && env.ENABLE_GDB == '1' }}
+        run: |
+          set -euo pipefail
+
+          export PATH="$GITHUB_WORKSPACE/install/usr/bin:${PATH}"
+          export LD_LIBRARY_PATH="$GITHUB_WORKSPACE/install/usr/lib:$GITHUB_WORKSPACE/install/usr/lib/wpeframework:$GITHUB_WORKSPACE/install/usr/lib/wpeframework/plugins:${LD_LIBRARY_PATH:-}"
+
+          test_bin="build/entservices-appmanagers-l0tests-only/preinstall_manager_l0test"
+          test -x "$test_bin"
+
+          gdb -q -batch -ex "set pagination off" -ex "run" -ex "bt full" --args "$test_bin" | tee preinstall-l0-test-gdb.log
+
       - name: Fail workflow if tests failed
         if: ${{ always() }}
         env:
           RUN_L0_TESTS_OUTCOME: ${{ steps.run_l0_tests.outcome }}
+          RUN_PREINSTALL_L0_TESTS_OUTCOME: ${{ steps.run_preinstall_l0_tests.outcome }}
         run: |
           set -euo pipefail
           failed=0
 
           if [ "${RUN_L0_TESTS_OUTCOME}" != "success" ]; then
-            echo "L0 test execution step failed (non-zero exit)"
+            echo "RuntimeManager L0 test execution step failed (non-zero exit)"
+            failed=1
+          fi
+
+          if [ "${RUN_PREINSTALL_L0_TESTS_OUTCOME}" != "success" ]; then
+            echo "PreinstallManager L0 test execution step failed (non-zero exit)"
             failed=1
           fi
 
           if [ -f l0-test.log ]; then
-            echo "==== Failed test cases (final gate) ===="
+            echo "==== RuntimeManager — Failed test cases (final gate) ===="
             grep -E '^\[  FAILED  \]' l0-test.log || true
             grep -E '^FAIL:' l0-test.log || true
           else
             echo "l0-test.log not found in final gate"
+            failed=1
+          fi
+
+          if [ -f preinstall-l0-test.log ]; then
+            echo "==== PreinstallManager — Failed test cases (final gate) ===="
+            grep -E '^FAIL:' preinstall-l0-test.log || true
+          else
+            echo "preinstall-l0-test.log not found in final gate"
             failed=1
           fi
 
@@ -466,6 +523,7 @@ jobs:
             '*/install/usr/include/*' \
             '*/Tests/L0Tests/*' \
             '*/Thunder/*' \
+            '*/entservices-apis/*' \
             -o filtered_coverage.info || true
 
           if [ ! -s filtered_coverage.info ]; then
@@ -475,7 +533,7 @@ jobs:
 
           genhtml \
             -o "$ARTIFACT_ROOT/coverage" \
-            -t "entservices-appmanagers AppManagers L0 coverage" \
+            -t "entservices-appmanagers AppManagers L0 coverage (RuntimeManager + PreinstallManager)" \
             filtered_coverage.info || true
 
       - name: Upload artifacts
@@ -488,4 +546,7 @@ jobs:
             coverage.info
             filtered_coverage.info
             l0-test.log
+            preinstall-l0-test.log
+            l0-test-gdb.log
+            preinstall-l0-test-gdb.log
           if-no-files-found: warn
