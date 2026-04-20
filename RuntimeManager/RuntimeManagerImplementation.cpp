@@ -91,6 +91,12 @@ namespace WPEFramework
                 releaseOCIContainerPluginObject();
             }
 
+            /* Clear any remaining runtime app info entries */
+            {
+                Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
+                mRuntimeAppInfo.clear();
+            }
+
             RuntimeManagerTelemetryReporting::getInstance().reset();
         }
 
@@ -210,6 +216,10 @@ namespace WPEFramework
                 {
                     LOGERR("RuntimeAppInfo not found for appInstanceId: %s", appInstanceId.c_str());
                 }
+                /* Remove the runtime app info entry to prevent map from growing indefinitely */
+                {
+                    mRuntimeAppInfo.erase(appInstanceId);
+                }
                 while (index != mRuntimeManagerNotification.end())
                 {
                     (*index)->OnTerminated(appInstanceId);
@@ -230,6 +240,10 @@ namespace WPEFramework
                     string error = obj["errorCode"].String();
                     (*index)->OnFailure(appInstanceId, error);
                     ++index;
+                }
+                /* Remove the runtime app info entry to prevent map from growing indefinitely */
+                {
+                    mRuntimeAppInfo.erase(appInstanceId);
                 }
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
                 {
@@ -531,10 +545,16 @@ namespace WPEFramework
             eventData["eventName"] = "onContainerStateChanged";
             dispatchEvent(RuntimeManagerImplementation::RuntimeEventType::RUNTIME_MANAGER_EVENT_STATECHANGED, eventData);
 
-            mRuntimeManagerImplLock.Lock();
+            /* Scoped Lock 3: Read initial config from shared state */
+            uid_t uid;
+            gid_t gid;
+            {
+                Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
 
-            uid_t uid = mUserIdManager->getUserId(appId);
-            gid_t gid = mUserIdManager->getAppsGid();
+                uid = mUserIdManager->getUserId(appId);
+                gid = mUserIdManager->getAppsGid();
+            }
+
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
             // In Ralf package, all apps will run with the same ralf user and group
             if (!ralf::getRalfUserInfo(uid, gid))
@@ -585,7 +605,6 @@ namespace WPEFramework
             }
 
             std::string appIdForStorage = appId;
-            mRuntimeManagerImplLock.Unlock();
 
             if (!appIdForStorage.empty())
             {
@@ -612,9 +631,7 @@ namespace WPEFramework
                 }
             }
 
-            mRuntimeManagerImplLock.Lock();
-
-            /* Creating Display */
+            /* Creating Display — no lock needed, operates on local/connector state */
             if (nullptr != mWindowManagerConnector)
             {
 
@@ -689,29 +706,39 @@ namespace WPEFramework
                 errorCode = "ERROR_DOBBY_SPEC";
                 notifyParamCheckFailure = true;
             }
-            else if(!isOCIPluginObjectValid())
-            {
-                LOGERR("OCI Plugin object is not valid. Aborting Run.");
-                errorCode = "ERROR_OCI_INVALID";
-                notifyParamCheckFailure = true;
-            }
             else
             {
-                /* Generated dobbySpec */
-                LOGINFO("Generated dobbySpec: %s", dobbySpec.c_str());
-
-                LOGINFO("Environment Variables: XDG_RUNTIME_DIR=%s, WAYLAND_DISPLAY=%s",
-                        xdgRuntimeDir.c_str(), waylandDisplay.c_str());
-                std::string command = "";
-                std::string appPath = runtimeConfigObject.unpackedPath;
-                // In Ralf package, dobbySpec contains the path to the generated dobby spec file
-                if (!legacyContainer)
+                /* Scoped Lock 1: Validate OCI plugin pointer — brief read lock */
+                bool ociValid = false;
+                string containerId = getContainerId(appInstanceId);
                 {
-                    appPath = dobbySpec;
+                    Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
+                    ociValid = isOCIPluginObjectValid();
                 }
-                    string containerId = getContainerId(appInstanceId);
+
+                if (!ociValid)
+                {
+                    LOGERR("OCI Plugin object is not valid. Aborting Run.");
+                    errorCode = "ERROR_OCI_INVALID";
+                    notifyParamCheckFailure = true;
+                }
+                else
+                {
+                    /* Generated dobbySpec */
+                    LOGINFO("Generated dobbySpec: %s", dobbySpec.c_str());
+
+                    LOGINFO("Environment Variables: XDG_RUNTIME_DIR=%s, WAYLAND_DISPLAY=%s",
+                            xdgRuntimeDir.c_str(), waylandDisplay.c_str());
+                    std::string command = "";
+                    std::string appPath = runtimeConfigObject.unpackedPath;
+                    // In Ralf package, dobbySpec contains the path to the generated dobby spec file
+                    if (!legacyContainer)
+                    {
+                        appPath = dobbySpec;
+                    }
                     if (!containerId.empty())
                     {
+                        /* Container start IPC — no lock held during blocking call */
                         if (legacyContainer)
                             status = mOciContainerObject->StartContainerFromDobbySpec(containerId, dobbySpec, command, westerosSocket, descriptor, success, errorReason);
                         else
@@ -742,19 +769,22 @@ namespace WPEFramework
                         }
                         else
                         {
-                            LOGINFO("Update Info for %s", appInstanceId.c_str());
-                            if (!appId.empty())
-                            {
-                                runtimeAppInfo.appId = appId;
-                            }
-                            runtimeAppInfo.appInstanceId = appInstanceId;
-                            runtimeAppInfo.descriptor = std::move(descriptor);
-                            runtimeAppInfo.containerState = Exchange::IRuntimeManager::RUNTIME_STATE_STARTING;
-                            /* Store request time and type in runtime app info map */
-                            runtimeAppInfo.requestTime = requestTime;
-                            runtimeAppInfo.requestType = REQUEST_TYPE_LAUNCH;
-                            /* Insert/update runtime app info */
-                            mRuntimeAppInfo[runtimeAppInfo.appInstanceId] = std::move(runtimeAppInfo);
+                                LOGINFO("Update Info for %s", appInstanceId.c_str());
+                                if (!appId.empty())
+                                {
+                                    runtimeAppInfo.appId = appId;
+                                }
+                                runtimeAppInfo.appInstanceId = appInstanceId;
+                                runtimeAppInfo.descriptor = std::move(descriptor);
+                                runtimeAppInfo.containerState = Exchange::IRuntimeManager::RUNTIME_STATE_STARTING;
+                                /* Store request time and type in runtime app info map */
+                                runtimeAppInfo.requestTime = requestTime;
+                                runtimeAppInfo.requestType = REQUEST_TYPE_LAUNCH;
+                                /* Insert/update runtime app info */
+                                {
+                                    Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
+                                    mRuntimeAppInfo[runtimeAppInfo.appInstanceId] = std::move(runtimeAppInfo);
+                                }
                         }
                     }
                     else
@@ -763,8 +793,9 @@ namespace WPEFramework
                         errorCode = "ERROR_INVALID_PARAM";
                         notifyParamCheckFailure = true;
                     }
+                }
             }
-            mRuntimeManagerImplLock.Unlock();
+
             if (notifyParamCheckFailure)
             {
                 notifyParameterCheckFailure(appInstanceId, errorCode);
@@ -1305,3 +1336,4 @@ namespace WPEFramework
         }
     } /* namespace Plugin */
 } /* namespace WPEFramework */
+
