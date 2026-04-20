@@ -352,7 +352,7 @@ namespace Plugin
     {
 #ifdef ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG
         if (runtimeConfigFile.empty()) {
-            LOGWARN("runtimeConfigFile is empty; skipping YAML runtime config load");
+            LOGINFO("runtimeConfigFile is empty; skipping YAML runtime config load");
             return;
         }
 
