@@ -620,6 +620,22 @@ uint32_t Test_WindowManagerConnector_GetDisplayInfoWithoutInitDoesNotCrash()
 // ──────────────────────────────────────────────────────────────────────────────
 
 namespace {
+/* Static fixture: shared AIConfiguration instance for all DobbySpecGenerator tests.
+ * Initialized once to avoid repeated file I/O across tests.
+ */
+static WPEFramework::Plugin::AIConfiguration g_aiConfiguration;
+static bool g_aiConfigurationInitialized = false;
+
+/* Helper: gets or initializes the shared AIConfiguration fixture. */
+WPEFramework::Plugin::AIConfiguration& GetAIConfigurationFixture()
+{
+    if (!g_aiConfigurationInitialized) {
+        g_aiConfiguration.initialize();
+        g_aiConfigurationInitialized = true;
+    }
+    return g_aiConfiguration;
+}
+
 /* Helper: creates a minimal valid ApplicationConfiguration. */
 WPEFramework::Plugin::ApplicationConfiguration MakeValidAppConfig()
 {
@@ -652,7 +668,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithValidConfig()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg  = MakeValidAppConfig();
     auto rtCfg   = MakeValidRuntimeConfig();
     std::string spec;
@@ -674,7 +690,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithZeroUserId()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg  = MakeValidAppConfig();
     appCfg.mUserId = 0; // mandatory check will fail
     auto rtCfg   = MakeValidRuntimeConfig();
@@ -695,7 +711,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithEmptyCommand()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfig();
     rtCfg.command.clear(); // mandatory check will fail
@@ -716,7 +732,7 @@ uint32_t Test_DobbySpecGenerator_GenerateSpecContainsVersion()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfig();
     std::string spec;
@@ -738,7 +754,7 @@ uint32_t Test_DobbySpecGenerator_GenerateSpecContainsArgs()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfig();
     std::string spec;
@@ -759,7 +775,7 @@ uint32_t Test_DobbySpecGenerator_GenerateSpecContainsMemLimit()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfig();
     std::string spec;
@@ -781,7 +797,7 @@ uint32_t Test_DobbySpecGenerator_ConstructionAndDestruction()
     L0Test::TestResult tr;
 
     {
-        WPEFramework::Plugin::DobbySpecGenerator gen;
+        WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
         L0Test::ExpectTrue(tr, true, "DobbySpecGenerator constructs without crash");
     }
 
@@ -797,7 +813,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithRuntimePath()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfig();
     rtCfg.runtimePath = "/opt/runtimes/sky";
@@ -820,7 +836,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithoutRuntimePath()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfig();
     rtCfg.runtimePath.clear(); // no runtime path set
@@ -843,7 +859,7 @@ uint32_t Test_DobbySpecGenerator_GenerateSpecContainsCpu()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfig();
     std::string spec;
@@ -864,7 +880,7 @@ uint32_t Test_DobbySpecGenerator_GenerateSpecContainsNetwork()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfig();
     std::string spec;
@@ -885,7 +901,7 @@ uint32_t Test_DobbySpecGenerator_GenerateSpecContainsRdkPlugins()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfig();
     std::string spec;
@@ -907,7 +923,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithMemLimitFromConfig()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfig();
     rtCfg.systemMemoryLimit = 128 * 1024 * 1024; // 128 MB
@@ -1629,7 +1645,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithSpecChangeFile()
         f << "{\"version\":\"1.1\"}";
     }
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfig();
     std::string spec;
@@ -1653,7 +1669,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithWanLanAccessFalse()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfig();
     rtCfg.wanLanAccess = false;
@@ -1676,7 +1692,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithAppPath()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfig();
     rtCfg.appPath = "/opt/app/youTube";
@@ -1699,7 +1715,7 @@ uint32_t Test_DobbySpecGenerator_GenerateThunderPluginEnabled()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfig();
     rtCfg.thunder = true;
@@ -1720,7 +1736,7 @@ uint32_t Test_DobbySpecGenerator_GenerateThunderPluginDisabled()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfig();
     rtCfg.thunder = false;
@@ -1742,7 +1758,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithEmptyWesterosSocket()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     appCfg.mWesterosSocketPath.clear();  // no GUI
     auto rtCfg  = MakeValidRuntimeConfig();
@@ -1766,7 +1782,7 @@ uint32_t Test_DobbySpecGenerator_GenerateSysMemLimitZeroFallsBack()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfig();
     rtCfg.systemMemoryLimit = 0;   // will trigger branch in getSysMemoryLimit
@@ -1791,7 +1807,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithNonEmptyAppPorts()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfig();
     appCfg.mPorts.push_back(8080u);
@@ -1814,7 +1830,7 @@ uint32_t Test_DobbySpecGenerator_GetVpuEnabledReturnsFalseForSystemApp()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfig();
     rtCfg.appType = "SYSTEM";
@@ -1839,7 +1855,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithEnvVariablesInRuntimeConfig()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfig();
     // Provide a JSON array string for envVariables

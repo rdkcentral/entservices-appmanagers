@@ -33,7 +33,6 @@
 #endif
 
 #define AICONFIGURATION_INI_PATH "/opt/demo/config.ini"
-#define AICONFIGURATION_YAML_PATH "/opt/rdkappmanagers.yaml"
 
 extern char **environ;
 
@@ -71,11 +70,11 @@ namespace Plugin
     {
     }
 
-    void AIConfiguration::initialize()
+    void AIConfiguration::initialize(const std::string& runtimeConfigFile)
     {
         readFromConfigFile();
 #ifdef ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG
-        readFromYamlConfigFile();
+        readFromYamlConfigFile(runtimeConfigFile);
 #endif
     }
 
@@ -349,18 +348,24 @@ namespace Plugin
         LOGINFO("envVariables: %s", envsStr.c_str());
     }
 
-    void AIConfiguration::readFromYamlConfigFile()
+    void AIConfiguration::readFromYamlConfigFile(const std::string& runtimeConfigFile)
     {
 #ifdef ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG
-        struct stat st{};
-        if (::stat(AICONFIGURATION_YAML_PATH, &st) != 0) {
-            LOGINFO("YAML file %s not found", AICONFIGURATION_YAML_PATH);
+        if (runtimeConfigFile.empty()) {
+            LOGINFO("runtimeConfigFile is empty; skipping YAML runtime config load");
             return;
         }
-        LOGINFO("AIConfiguration reading from YAML at %s", AICONFIGURATION_YAML_PATH);
+
+        const char* configPath = runtimeConfigFile.c_str();
+        struct stat st{};
+        if (0 != ::stat(configPath, &st)) {
+            LOGWARN("Configured runtime YAML file %s not found; skipping YAML runtime config overrides", configPath);
+            return;
+        }
+        LOGINFO("AIConfiguration reading from YAML at %s", configPath);
 
         try {
-            YAML::Node root = YAML::LoadFile(AICONFIGURATION_YAML_PATH);
+            YAML::Node root = YAML::LoadFile(configPath);
 
             if (!root || !root.IsMap()) {
                 LOGWARN("Invalid YAML format: root must be a mapping");
