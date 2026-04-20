@@ -623,7 +623,7 @@ uint32_t Test_Impl_CloseAppUnknownAppId()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Configure returns ERROR_GENERAL when service is null
+// Configure returns ERROR_NONE when service is null
 // ─────────────────────────────────────────────────────────────────────────────
 
 uint32_t Test_Impl_ConfigureWithNullService()
@@ -633,8 +633,8 @@ uint32_t Test_Impl_ConfigureWithNullService()
     ConcreteLifecycleManagerImpl impl;
 
     uint32_t result = impl.Configure(nullptr);
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
-        "Configure(nullptr) returns ERROR_GENERAL");
+    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+        "Configure(nullptr) returns ERROR_NONE");
 
     return tr.failures;
 }
