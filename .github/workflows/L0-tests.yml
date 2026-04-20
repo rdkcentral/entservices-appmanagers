@@ -336,7 +336,7 @@ jobs:
             -DPLUGIN_APP_STORAGE_MANAGER=OFF \
             -DPLUGIN_LIFECYCLE_MANAGER=OFF \
             -DPLUGIN_DOWNLOADMANAGER=OFF \
-            -DPLUGIN_PREINSTALL_MANAGER=OFF \
+            -DPLUGIN_PREINSTALL_MANAGER=ON \
             -DPLUGIN_PACKAGE_MANAGER=OFF \
             -DPLUGIN_RDK_WINDOW_MANAGER=OFF \
             -DPLUGIN_TELEMETRYMETRICS=OFF \
@@ -367,8 +367,8 @@ jobs:
             -DPREFIX="$PREFIX" \
             -DAPPMGR_ENABLE_COVERAGE=ON
 
-          cmake --build build/entservices-appmanagers-l0tests-only --target appmanagers_l0test -- -j"$(nproc)"
-          cmake --build build/entservices-appmanagers-l0tests-only --target preinstall_manager_l0test -- -j"$(nproc)"
+          cmake --build build/entservices-appmanagers-l0tests-only --target appmanagers_l0test -- -j"$(nproc)" -v
+          cmake --build build/entservices-appmanagers-l0tests-only --target preinstall_manager_l0test -- -j"$(nproc)" -v
 
       - name: Run RuntimeManager L0 tests
         id: run_l0_tests
