@@ -130,14 +130,13 @@ uint32_t Test_RDKWM_Lifecycle_InitializeFailsWhenRootNull()
     });
 
     const std::string status = ps.plugin->Initialize(&ps.service);
-    if (status.empty()) {
-        ps.plugin->Deinitialize(&ps.service);
-        L0Test::ExpectTrue(tr, true,
-            "Initialize may succeed via in-process fallback; Deinitialize invoked");
-    } else {
-        L0Test::ExpectTrue(tr, !status.empty(),
-            "Initialize returns non-empty error when Root() path is unavailable");
-    }
+    L0Test::ExpectTrue(tr, status.empty(),
+        "Initialize succeeds via deterministic in-process fallback when Root() instantiate returns null");
+
+    ps.plugin->Deinitialize(&ps.service);
+
+    L0Test::ExpectTrue(tr, true,
+        "Deinitialize invoked after in-process fallback Initialize");
 
     return tr.failures;
 }

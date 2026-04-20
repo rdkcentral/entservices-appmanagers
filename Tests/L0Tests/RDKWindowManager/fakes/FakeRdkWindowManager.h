@@ -19,6 +19,7 @@ void SetLastKeyResult(bool value, uint32_t keyCode, uint32_t modifiers, uint64_t
 void SetZOrderResult(bool setResult, bool getResult, int32_t zOrder);
 void SetVncResults(bool startResult, bool stopResult);
 void SetKeyRepeatResult(bool enableResult, bool enabledValue);
+void SetGetKeyRepeatsEnabledResult(bool value);
 void SetInputEventsResult(bool value);
 void SetKeyOpsResult(bool addInterceptResult, bool removeInterceptResult, bool addListenerResult, bool removeListenerResult, bool injectResult, bool generateResult);
 void SetScreenshotResult(bool result, const std::string& imageData);

@@ -43,6 +43,7 @@ struct State {
 
     bool enableKeyRepeatResult { true };
     bool keyRepeatsEnabled { true };
+    bool getKeyRepeatsEnabledResult { true };
 
     bool enableInputEventsResult { true };
 
@@ -93,6 +94,7 @@ void Reset()
     S().stopVncResult = true;
     S().enableKeyRepeatResult = true;
     S().keyRepeatsEnabled = true;
+    S().getKeyRepeatsEnabledResult = true;
     S().enableInputEventsResult = true;
     S().addInterceptResult = true;
     S().removeInterceptResult = true;
@@ -173,6 +175,12 @@ void SetKeyRepeatResult(bool enableResult, bool enabledValue)
     std::lock_guard<std::mutex> guard(S().lock);
     S().enableKeyRepeatResult = enableResult;
     S().keyRepeatsEnabled = enabledValue;
+}
+
+void SetGetKeyRepeatsEnabledResult(bool value)
+{
+    std::lock_guard<std::mutex> guard(S().lock);
+    S().getKeyRepeatsEnabledResult = value;
 }
 
 void SetInputEventsResult(bool value)
@@ -434,7 +442,7 @@ bool CompositorController::getKeyRepeatsEnabled(bool& enable)
 {
     std::lock_guard<std::mutex> guard(S().lock);
     enable = S().keyRepeatsEnabled;
-    return true;
+    return S().getKeyRepeatsEnabledResult;
 }
 
 bool CompositorController::ignoreKeyInputs(bool)

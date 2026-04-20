@@ -17,7 +17,12 @@ public:
     FakeNotification()
         : _refCount(1)
         , onConnectedCount(0)
+        , onDisconnectedCount(0)
+        , onReadyCount(0)
         , onVisibleCount(0)
+        , onHiddenCount(0)
+        , onFocusCount(0)
+        , onBlurCount(0)
         , onInactiveCount(0)
         , onScreenshotCount(0)
     {
@@ -53,8 +58,17 @@ public:
         onInactiveCount++;
     }
 
-    void OnDisconnected(const std::string& client) override { (void)client; }
-    void OnReady(const std::string& client) override { (void)client; }
+    void OnDisconnected(const std::string& client) override
+    {
+        lastClient = client;
+        onDisconnectedCount++;
+    }
+
+    void OnReady(const std::string& client) override
+    {
+        lastClient = client;
+        onReadyCount++;
+    }
 
     void OnConnected(const std::string& appInstanceId) override
     {
@@ -68,9 +82,23 @@ public:
         onVisibleCount++;
     }
 
-    void OnHidden(const std::string& appInstanceId) override { (void)appInstanceId; }
-    void OnFocus(const std::string& appInstanceId) override { (void)appInstanceId; }
-    void OnBlur(const std::string& appInstanceId) override { (void)appInstanceId; }
+    void OnHidden(const std::string& appInstanceId) override
+    {
+        lastClient = appInstanceId;
+        onHiddenCount++;
+    }
+
+    void OnFocus(const std::string& appInstanceId) override
+    {
+        lastClient = appInstanceId;
+        onFocusCount++;
+    }
+
+    void OnBlur(const std::string& appInstanceId) override
+    {
+        lastClient = appInstanceId;
+        onBlurCount++;
+    }
     void OnScreenshotComplete(const bool success, const std::string& imageData) override
     {
         lastScreenshotSuccess = success;
@@ -80,7 +108,12 @@ public:
 
     mutable std::atomic<uint32_t> _refCount;
     std::atomic<uint32_t> onConnectedCount;
+    std::atomic<uint32_t> onDisconnectedCount;
+    std::atomic<uint32_t> onReadyCount;
     std::atomic<uint32_t> onVisibleCount;
+    std::atomic<uint32_t> onHiddenCount;
+    std::atomic<uint32_t> onFocusCount;
+    std::atomic<uint32_t> onBlurCount;
     std::atomic<uint32_t> onInactiveCount;
     std::atomic<uint32_t> onScreenshotCount;
     std::string lastClient;
@@ -368,6 +401,12 @@ uint32_t Test_RDKWM_Impl_KeyRepeatAndInputEvents()
     L0Test::ExpectTrue(tr, keyRepeatEnabled == true,
         "GetKeyRepeatsEnabled reflects shim-enabled value");
 
+    L0Test::RDKWMShim::SetGetKeyRepeatsEnabledResult(false);
+    const auto getKeyRepeatFailRc = impl->GetKeyRepeatsEnabled(keyRepeatEnabled);
+    L0Test::ExpectEqU32(tr, getKeyRepeatFailRc, WPEFramework::Core::ERROR_GENERAL,
+        "GetKeyRepeatsEnabled returns ERROR_GENERAL when shim query fails");
+    L0Test::RDKWMShim::SetGetKeyRepeatsEnabledResult(true);
+
     const auto keyRepeatConfigRc = impl->KeyRepeatConfig("keyboard", "{\"enabled\":true,\"initialDelay\":100,\"repeatInterval\":20}");
     L0Test::ExpectEqU32(tr, keyRepeatConfigRc, WPEFramework::Core::ERROR_NONE,
         "KeyRepeatConfig returns ERROR_NONE for valid config");
@@ -473,8 +512,23 @@ uint32_t Test_RDKWM_Impl_CreateDisplayAndEventVariants()
     L0Test::RDKWMShim::EmitOnBlur("org.rdk.test");
 
     WaitUntil([&]() {
-        return notif->onConnectedCount.load() >= 0;
+        return notif->onDisconnectedCount.load() > 0
+            && notif->onReadyCount.load() > 0
+            && notif->onHiddenCount.load() > 0
+            && notif->onFocusCount.load() > 0
+            && notif->onBlurCount.load() > 0;
     });
+
+    L0Test::ExpectTrue(tr, notif->onDisconnectedCount.load() > 0,
+        "OnDisconnected callback fired");
+    L0Test::ExpectTrue(tr, notif->onReadyCount.load() > 0,
+        "OnReady callback fired");
+    L0Test::ExpectTrue(tr, notif->onHiddenCount.load() > 0,
+        "OnHidden callback fired");
+    L0Test::ExpectTrue(tr, notif->onFocusCount.load() > 0,
+        "OnFocus callback fired");
+    L0Test::ExpectTrue(tr, notif->onBlurCount.load() > 0,
+        "OnBlur callback fired");
 
     impl->Unregister(notif);
     notif->Release();
