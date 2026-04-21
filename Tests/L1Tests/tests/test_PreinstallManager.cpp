@@ -31,6 +31,52 @@
 #include <utility>
 #include <vector>
 
+// Keep RuntimeConfig ABI consistent in this TU to prevent weak-symbol
+// destructor interposition from picking a mismatched layout at runtime.
+#ifndef RUNTIME_CONFIG
+#define RUNTIME_CONFIG
+namespace WPEFramework {
+namespace Exchange {
+struct RuntimeConfig {
+    bool dial;
+    bool wanLanAccess;
+    bool thunder;
+    int32_t systemMemoryLimit;
+    int32_t gpuMemoryLimit;
+    std::string envVariables;
+    uint32_t userId;
+    uint32_t groupId;
+    uint32_t dataImageSize;
+
+    bool resourceManagerClientEnabled;
+    std::string dialId;
+    std::string command;
+    std::string appType;
+    std::string appPath;
+    std::string runtimePath;
+
+    std::string logFilePath;
+    uint32_t logFileMaxSize;
+    std::string logLevels;
+    bool mapi;
+    std::string fkpsFiles;
+    std::string ralfPkgPath;
+
+    std::string fireboltVersion;
+    bool enableDebugger;
+
+    ~RuntimeConfig();
+};
+} // namespace Exchange
+} // namespace WPEFramework
+#endif
+
+namespace WPEFramework {
+namespace Exchange {
+RuntimeConfig::~RuntimeConfig() = default;
+} // namespace Exchange
+} // namespace WPEFramework
+
 #include "COMLinkMock.h"
 #include "FactoriesImplementation.h"
 #include "Module.h"
@@ -102,21 +148,29 @@ protected:
             return;
         }
 
-        Plugin::PreinstallManagerImplementation::State state =
-            Plugin::PreinstallManagerImplementation::State::NOT_STARTED;
-
-        for (int attempt = 0; attempt < 50; ++attempt) {
-            if (Core::ERROR_NONE == mPreinstallManagerImpl->GetPreinstallState(state)) {
-                if ((state == Plugin::PreinstallManagerImplementation::State::COMPLETED) ||
-                    (state == Plugin::PreinstallManagerImplementation::State::NOT_STARTED)) {
-                    break;
-                }
-            }
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        }
+        WaitForPreinstallTransitionToComplete(std::chrono::milliseconds(2000));
 
         // Give worker-pool dispatch a short window to execute queued event jobs.
         std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    }
+
+    bool WaitForPreinstallTransitionToComplete(const std::chrono::milliseconds timeout)
+    {
+        const auto start = std::chrono::steady_clock::now();
+        Plugin::PreinstallManagerImplementation::State state =
+            Plugin::PreinstallManagerImplementation::State::NOT_STARTED;
+
+        while (std::chrono::steady_clock::now() - start < timeout) {
+            if (Core::ERROR_NONE == mPreinstallManagerImpl->GetPreinstallState(state)) {
+                if (Plugin::PreinstallManagerImplementation::State::COMPLETED == state) {
+                    return true;
+                }
+            }
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+
+        return false;
     }
 
     void SetDirectoryEntries(const std::vector<std::string>& entries)
@@ -213,8 +267,6 @@ protected:
 
     void ReleaseResources()
     {
-        WaitForAsyncPreinstallWork();
-
         Wraps::setImpl(nullptr);
 
         if ((nullptr != mPlugin.operator->()) && (nullptr != mServiceMock)) {
@@ -456,7 +508,6 @@ TEST_F(PreinstallManagerTest, StartPreinstallWithoutForceInstallSendsCompletionE
               notificationFuture.wait_for(std::chrono::seconds(2)));
 
     EXPECT_EQ(Core::ERROR_NONE, mPreinstallManagerImpl->Unregister(mockNotification.operator->()));
-    ReleaseResources();
 }
 
 TEST_F(PreinstallManagerTest, StartPreinstallWithForceInstallSuccess)
@@ -487,8 +538,6 @@ TEST_F(PreinstallManagerTest, StartPreinstallWithForceInstallSuccess)
         }));
 
     EXPECT_EQ(Core::ERROR_NONE, mPreinstallManagerImpl->StartPreinstall(true));
-
-    ReleaseResources();
 }
 
 TEST_F(PreinstallManagerTest, StartPreinstallWithForceInstallInstallFailure)
@@ -515,20 +564,6 @@ TEST_F(PreinstallManagerTest, StartPreinstallWithForceInstallInstallFailure)
 
     // StartPreinstall reports worker-thread launch status; install failures are asynchronous.
     EXPECT_EQ(Core::ERROR_NONE, mPreinstallManagerImpl->StartPreinstall(true));
-
-    Plugin::PreinstallManagerImplementation::State state =
-        Plugin::PreinstallManagerImplementation::State::NOT_STARTED;
-
-    for (int attempt = 0; attempt < 50; ++attempt) {
-        ASSERT_EQ(Core::ERROR_NONE, mPreinstallManagerImpl->GetPreinstallState(state));
-        if (Plugin::PreinstallManagerImplementation::State::COMPLETED == state) {
-            break;
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    }
-    EXPECT_EQ(Plugin::PreinstallManagerImplementation::State::COMPLETED, state);
-
-    ReleaseResources();
 }
 
 TEST_F(PreinstallManagerTest, StartPreinstallHandlesInvalidPackageFromGetConfig)
@@ -548,8 +583,6 @@ TEST_F(PreinstallManagerTest, StartPreinstallHandlesInvalidPackageFromGetConfig)
     EXPECT_CALL(*mPackageInstallerMock, Install(_, _, _, _, _)).Times(0);
 
     EXPECT_EQ(Core::ERROR_NONE, mPreinstallManagerImpl->StartPreinstall(true));
-
-    ReleaseResources();
 }
 
 TEST_F(PreinstallManagerTest, StartPreinstallWithoutForceInstallSkipsEqualVersion)
@@ -620,8 +653,6 @@ TEST_F(PreinstallManagerTest, StartPreinstallWithoutForceInstallInstallsNewerVer
         .WillOnce(Return(Core::ERROR_NONE));
 
     EXPECT_EQ(Core::ERROR_NONE, mPreinstallManagerImpl->StartPreinstall(false));
-
-    ReleaseResources();
 }
 
 TEST_F(PreinstallManagerTest, StartPreinstallWithoutForceInstallInvalidInstalledVersion)
@@ -748,20 +779,6 @@ TEST_F(PreinstallManagerTest, StartPreinstallInstallFailureWithUnknownFailReason
 
     // StartPreinstall reports worker-thread launch status; install failures are asynchronous.
     EXPECT_EQ(Core::ERROR_NONE, mPreinstallManagerImpl->StartPreinstall(true));
-
-    Plugin::PreinstallManagerImplementation::State state =
-        Plugin::PreinstallManagerImplementation::State::NOT_STARTED;
-
-    for (int attempt = 0; attempt < 50; ++attempt) {
-        ASSERT_EQ(Core::ERROR_NONE, mPreinstallManagerImpl->GetPreinstallState(state));
-        if (Plugin::PreinstallManagerImplementation::State::COMPLETED == state) {
-            break;
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    }
-    EXPECT_EQ(Plugin::PreinstallManagerImplementation::State::COMPLETED, state);
-
-    ReleaseResources();
 }
 
 TEST_F(PreinstallManagerTest, StartPreinstallFailsWhenPackageManagerUnavailable)
