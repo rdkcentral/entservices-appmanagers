@@ -333,7 +333,7 @@ jobs:
             -DPLUGIN_APP_STORAGE_MANAGER=OFF \
             -DPLUGIN_LIFECYCLE_MANAGER=OFF \
             -DPLUGIN_DOWNLOADMANAGER=OFF \
-            -DPLUGIN_PREINSTALL_MANAGER=OFF \
+            -DPLUGIN_PREINSTALL_MANAGER=ON \
             -DPLUGIN_PACKAGE_MANAGER=OFF \
             -DPLUGIN_RDK_WINDOW_MANAGER=OFF \
             -DPLUGIN_TELEMETRYMETRICS=OFF \
@@ -344,7 +344,7 @@ jobs:
           mkdir -p "$GITHUB_WORKSPACE/install/usr/lib/wpeframework/plugins"
           find build/entservices-appmanagers-l0 -type f \( -name "libRuntimeManager.so*" -o -name "libWPEFrameworkRuntimeManager.so*" -o -name "libWPEFrameworkRuntimeManagerImplementation.so*" -o -name "libRuntimeManagerImplementation.so*" \) -exec cp -f {} "$GITHUB_WORKSPACE/install/usr/lib/wpeframework/plugins/" \; 2>/dev/null || true
 
-      - name: Build RuntimeManager and RDKWindowManager L0 tests (Tests/L0Tests)
+      - name: Build RuntimeManager, RDKWindowManager and PreinstallManager L0 tests (Tests/L0Tests)
         run: |
           set -euo pipefail
 
@@ -364,7 +364,7 @@ jobs:
             -DPREFIX="$PREFIX" \
             -DAPPMGR_ENABLE_COVERAGE=ON
 
-          cmake --build build/entservices-appmanagers-l0tests-only --target appmanagers_l0test rdkwindowmanager_l0test -- -j"$(nproc)"
+          cmake --build build/entservices-appmanagers-l0tests-only --target appmanagers_l0test rdkwindowmanager_l0test --target preinstall_manager_l0test -- -j"$(nproc)"
 
       - name: Run L0 tests
         id: run_l0_tests
@@ -376,9 +376,11 @@ jobs:
 
           runtime_test_bin="build/entservices-appmanagers-l0tests-only/appmanagers_l0test"
           rdkwm_test_bin="build/entservices-appmanagers-l0tests-only/rdkwindowmanager_l0test"
-
+	  preinstall_bin="build/entservices-appmanagers-l0tests-only/preinstall_manager_l0test"
+          
           test -x "$runtime_test_bin"
           test -x "$rdkwm_test_bin"
+	  test -x "$preinstall_bin"
 
           run_one_under_gdb() {
             local bin="$1"
@@ -446,17 +448,19 @@ jobs:
 
           runtime_test_rc=0
           rdkwm_test_rc=0
+	  preinstall_test_rc=0
 
           run_one_under_gdb "$runtime_test_bin" l0-runtime-test.log l0-runtime-test-gdb.log || runtime_test_rc=$?
           run_one_under_gdb "$rdkwm_test_bin" l0-rdkwm-test.log l0-rdkwm-test-gdb.log || rdkwm_test_rc=$?
+	   run_one_under_gdb "$preinstall_bin" l0-preinstall-test.log l0-preinstall-test-gdb.log || preinstall_test_rc=$?
 
-          cat l0-runtime-test.log l0-rdkwm-test.log > l0-test.log
+          cat l0-runtime-test.log l0-rdkwm-test.log l0-preinstall-test.log > l0-test.log
 
           echo "==== Failed test cases (run step) ===="
           grep -E '^\[  FAILED  \]' l0-test.log || true
           grep -E '^FAIL:' l0-test.log || true
 
-          if [ "$runtime_test_rc" -ne 0 ] || [ "$rdkwm_test_rc" -ne 0 ]; then
+          if [ "$runtime_test_rc" -ne 0 ] || [ "$rdkwm_test_rc" -ne 0 ] || [ "$preinstall_test_rc" -ne 0 ] ; then
             exit 1
           fi
 
@@ -521,4 +525,6 @@ jobs:
             l0-rdkwm-test.log
             l0-runtime-test-gdb.log
             l0-rdkwm-test-gdb.log
+	    l0-preinstall-test.log
+	    l0-preinstall-test-gdb.log
           if-no-files-found: warn
