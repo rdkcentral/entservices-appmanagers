@@ -248,9 +248,10 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
                 std::vector<std::shared_ptr<CreateDisplayRequest>> pendingRequests;
                 bool needsScreenshot = false;
 
+                // 🔹 Non-blocking wait with 5ms timeout (ensures rendering at ~60Hz even with no requests)
                 {
                     std::unique_lock<std::mutex> lock(gRequestMutex);
-                    gRequestCV.wait(lock, [] {
+                    gRequestCV.wait_for(lock, std::chrono::milliseconds(5), [] {
                         return ((false == gCreateDisplayRequests.empty()) || gNeedsScreenshot || (false == sRunning));
                     });
 
@@ -269,6 +270,7 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
                     gNeedsScreenshot = false;
                 }
 
+                // 🔹 Handle shutdown
                 if (false == isRunning)
                 {
                     for (const auto& request : pendingRequests)
@@ -282,24 +284,35 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
                     break;
                 }
 
-                for (const auto& request : pendingRequests)
+                // 🔹 PRIORITY 1: Process requests FIRST (no lock) — YouTube depends on this
+                if (!pendingRequests.empty())
                 {
-                    time_t displayStartTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
-                    request->mResult = CompositorController::createDisplay(request->mClient, request->mDisplayName, request->mDisplayWidth, request->mDisplayHeight, request->mVirtualDisplayEnabled, request->mVirtualWidth, request->mVirtualHeight, request->mTopmost, request->mFocus , request->mOwnerId, request->mGroupId);
-                    time_t displayEndTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
-                    const int duration = static_cast<int>(displayEndTime - displayStartTime);
-                    LOGINFO("CompositorController::createDisplay, CreateDisplay timing: start_ms:%lld end_ms:%lld duration_ms:%d status:%s",
-                        static_cast<long long>(displayStartTime),
-                        static_cast<long long>(displayEndTime),
-                        duration, request->mResult ? "success" : "failed");
-                    if (0 != sem_post(&request->mSemaphore))
+                    time_t reqProcessStart = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
+                    for (const auto& request : pendingRequests)
                     {
-                        LOGERR("Failed to release CreateDisplayRequest semaphore: %s", strerror(errno));
+                        time_t displayStartTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
+                        LOGINFO("Shell thread: Processing createDisplay request for client:%s", request->mClient.c_str());
+                        request->mResult = CompositorController::createDisplay(request->mClient, request->mDisplayName, request->mDisplayWidth, request->mDisplayHeight, request->mVirtualDisplayEnabled, request->mVirtualWidth, request->mVirtualHeight, request->mTopmost, request->mFocus , request->mOwnerId, request->mGroupId);
+                        time_t displayEndTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
+                        const int duration = static_cast<int>(displayEndTime - displayStartTime);
+                        LOGINFO("CompositorController::createDisplay, CreateDisplay timing: client:%s start_ms:%lld end_ms:%lld duration_ms:%d status:%s",
+                            request->mClient.c_str(),
+                            static_cast<long long>(displayStartTime),
+                            static_cast<long long>(displayEndTime),
+                            duration, request->mResult ? "success" : "failed");
+                        if (0 != sem_post(&request->mSemaphore))
+                        {
+                            LOGERR("Failed to release CreateDisplayRequest semaphore: %s", strerror(errno));
+                        }
                     }
+                    time_t reqProcessEnd = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
+                    LOGINFO("Shell thread: Request processing completed in %lld ms", (long long)(reqProcessEnd - reqProcessStart));
                 }
 
+                // 🔹 PRIORITY 2: Screenshot (short lock)
                 if (needsScreenshot)
                 {
+                    time_t screenshotStart = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
                     std::lock_guard<std::mutex> lock(gRdkWindowManagerMutex);
                     bool success = CompositorController::screenShot(gScreenshotData, gScreenshotSize);
                     gScreenshotSuccess = success;
@@ -319,12 +332,22 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
                             RDKWindowManagerImplementation::Event::RDK_WINDOW_MANAGER_EVENT_SCREENSHOT_COMPLETE,
                             JsonValue(success));
                     }
+                    time_t screenshotEnd = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
+                    LOGINFO("Shell thread: Screenshot completed in %lld ms", (long long)(screenshotEnd - screenshotStart));
                 }
 
+                // 🔥 PRIORITY 3: ALWAYS render (even with no requests) - ensures continuous visual updates
                 {
+                    time_t renderStart = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
                     std::lock_guard<std::mutex> lock(gRenderMutex);
                     RdkWindowManager::draw();
                     RdkWindowManager::update();
+                    time_t renderEnd = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
+                    const int renderDuration = static_cast<int>(renderEnd - renderStart);
+                    if (renderDuration > 20)  // Log if render is taking too long (> 20ms)
+                    {
+                        LOGINFO("Shell thread: Rendering took %d ms (long)", renderDuration);
+                    }
                 }
             }
         });
