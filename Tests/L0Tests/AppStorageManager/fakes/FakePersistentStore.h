@@ -113,8 +113,13 @@ public:
         return WPEFramework::Core::ERROR_NONE;
     }
 
-    void Register(INotification*) override {}
-    void Unregister(INotification*) override {}
+    WPEFramework::Core::hresult Register(INotification*) override {
+        return WPEFramework::Core::ERROR_NONE;
+    }
+
+    WPEFramework::Core::hresult Unregister(INotification*) override {
+        return WPEFramework::Core::ERROR_NONE;
+    }
 
 private:
     std::string MakeKey(ScopeType scope, const string& ns, const string& key) const {
