@@ -552,20 +552,20 @@ if(PLUGIN_LIFECYCLE_MANAGER)
     )
 endif()
 
-if(PLUG
+if(PLUGIN_RDK_WINDOW_MANAGER)
+    add_custom_target(run_rdkwindowmanager
+        DEPENDS rdkwindowmanager_l0test
+        COMMAND $<TARGET_FILE:rdkwindowmanager_l0test>
+        COMMENT "Running rdkwindowmanager_l0test"
+        VERBATIM
+    )
+endif()
 
 if(PLUGIN_APP_STORAGE_MANAGER)
     add_custom_target(run_appstoragemanager
         DEPENDS appstoragemanager_l0test
         COMMAND $<TARGET_FILE:appstoragemanager_l0test>
         COMMENT "Running appstoragemanager_l0test"
-        VERBATIM
-    )
-endif()IN_RDK_WINDOW_MANAGER)
-    add_custom_target(run_rdkwindowmanager
-        DEPENDS rdkwindowmanager_l0test
-        COMMAND $<TARGET_FILE:rdkwindowmanager_l0test>
-        COMMENT "Running rdkwindowmanager_l0test"
         VERBATIM
     )
 endif()
