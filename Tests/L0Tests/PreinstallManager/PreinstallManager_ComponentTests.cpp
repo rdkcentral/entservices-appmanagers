@@ -142,8 +142,7 @@ bool ReleaseAndWaitForDestruction(WPEFramework::Plugin::PreinstallManagerImpleme
         return true;
     }
 
-    L0Test::ExpectTrue(tr, ReleaseAndWaitForDestruction(impl),
-                       "Implementation instance is destroyed before test teardown");
+    impl->Release();
 
     using Clock = std::chrono::steady_clock;
     const auto deadline = Clock::now() + timeout;
