@@ -376,11 +376,11 @@ jobs:
 
           runtime_test_bin="build/entservices-appmanagers-l0tests-only/appmanagers_l0test"
           rdkwm_test_bin="build/entservices-appmanagers-l0tests-only/rdkwindowmanager_l0test"
-	  preinstall_bin="build/entservices-appmanagers-l0tests-only/preinstall_manager_l0test"
+          preinstall_bin="build/entservices-appmanagers-l0tests-only/preinstall_manager_l0test"
           
           test -x "$runtime_test_bin"
           test -x "$rdkwm_test_bin"
-	  test -x "$preinstall_bin"
+          test -x "$preinstall_bin"
 
           run_one_under_gdb() {
             local bin="$1"
@@ -448,11 +448,11 @@ jobs:
 
           runtime_test_rc=0
           rdkwm_test_rc=0
-	  preinstall_test_rc=0
+          preinstall_test_rc=0
 
           run_one_under_gdb "$runtime_test_bin" l0-runtime-test.log l0-runtime-test-gdb.log || runtime_test_rc=$?
           run_one_under_gdb "$rdkwm_test_bin" l0-rdkwm-test.log l0-rdkwm-test-gdb.log || rdkwm_test_rc=$?
-	   run_one_under_gdb "$preinstall_bin" l0-preinstall-test.log l0-preinstall-test-gdb.log || preinstall_test_rc=$?
+          run_one_under_gdb "$preinstall_bin" l0-preinstall-test.log l0-preinstall-test-gdb.log || preinstall_test_rc=$?
 
           cat l0-runtime-test.log l0-rdkwm-test.log l0-preinstall-test.log > l0-test.log
 
@@ -525,6 +525,6 @@ jobs:
             l0-rdkwm-test.log
             l0-runtime-test-gdb.log
             l0-rdkwm-test-gdb.log
-	    l0-preinstall-test.log
-	    l0-preinstall-test-gdb.log
+            l0-preinstall-test.log
+            l0-preinstall-test-gdb.log
           if-no-files-found: warn
