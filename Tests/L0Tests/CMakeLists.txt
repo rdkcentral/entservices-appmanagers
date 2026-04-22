@@ -83,6 +83,10 @@ set(RDKWINDOWMANAGER_L0_SOURCES
     RDKWindowManager/RDKWindowManager_LifecycleTests.cpp
     RDKWindowManager/RDKWindowManager_ImplementationTests.cpp
     RDKWindowManager/fakes/FakeRdkWindowManager.cpp
+    common/L0Bootstrap.cpp
+)
+
+set(PREINSTALL_MANAGER_L0_SOURCES
     ${CMAKE_SOURCE_DIR}/../../PreinstallManager/Module.cpp
     ${CMAKE_SOURCE_DIR}/../../PreinstallManager/PreinstallManager.cpp
     ${CMAKE_SOURCE_DIR}/../../PreinstallManager/PreinstallManagerImplementation.cpp
@@ -409,7 +413,7 @@ else()
         COMMAND "${LCOV_EXECUTABLE}" --zerocounters -d "${CMAKE_BINARY_DIR}"
         COMMAND ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=${PREFIX}/lib:${PREFIX}/lib/${STORAGE_DIRECTORY}:${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins:${PREFIX}/lib/plugins:$ENV{LD_LIBRARY_PATH}" $<TARGET_FILE:appmanagers_l0test>
         COMMAND ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=${PREFIX}/lib:${PREFIX}/lib/${STORAGE_DIRECTORY}:${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins:${PREFIX}/lib/plugins:$ENV{LD_LIBRARY_PATH}" $<TARGET_FILE:rdkwindowmanager_l0test>
-	COMMAND ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=${PREFIX}/lib:${PREFIX}/lib/${STORAGE_DIRECTORY}:${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins:${PREFIX}/lib/plugins:$ENV{LD_LIBRARY_PATH}" $<TARGET_FILE:preinstallmanager_l0test>
+	COMMAND ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=${PREFIX}/lib:${PREFIX}/lib/${STORAGE_DIRECTORY}:${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins:${PREFIX}/lib/plugins:$ENV{LD_LIBRARY_PATH}" $<TARGET_FILE:preinstall_manager_l0test>
         COMMAND "${LCOV_EXECUTABLE}" -c -o coverage.info -d "${CMAKE_BINARY_DIR}"
         COMMAND "${GENHTML_EXECUTABLE}" -o coverage coverage.info
         WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/.."
