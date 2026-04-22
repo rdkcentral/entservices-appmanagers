@@ -130,6 +130,33 @@ bool WaitForNotification(const std::atomic<uint32_t>& counter,
     return false;
 }
 
+/*
+ * Release implementation and wait until singleton is cleared.
+ * This prevents async worker-pool jobs from releasing the final reference only
+ * after test stack objects (e.g. ServiceMock) are destroyed.
+ */
+bool ReleaseAndWaitForDestruction(WPEFramework::Plugin::PreinstallManagerImplementation* impl,
+                                  std::chrono::milliseconds timeout = std::chrono::milliseconds(5000))
+{
+    if (impl == nullptr) {
+        return true;
+    }
+
+    L0Test::ExpectTrue(tr, ReleaseAndWaitForDestruction(impl),
+                       "Implementation instance is destroyed before test teardown");
+
+    using Clock = std::chrono::steady_clock;
+    const auto deadline = Clock::now() + timeout;
+    do {
+        if (WPEFramework::Plugin::PreinstallManagerImplementation::getInstance() == nullptr) {
+            return true;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    } while (Clock::now() < deadline);
+
+    return (WPEFramework::Plugin::PreinstallManagerImplementation::getInstance() == nullptr);
+}
+
 } // namespace
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -162,7 +189,8 @@ uint32_t Test_Comp_PIM_StartPreinstallInvalidDirectoryFails()
     L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
                         "StartPreinstall returns ERROR_GENERAL when directory does not exist");
 
-    impl->Release();
+    L0Test::ExpectTrue(tr, ReleaseAndWaitForDestruction(impl),
+                       "Implementation instance is destroyed before test teardown");
     return tr.failures;
 }
 
@@ -211,7 +239,8 @@ uint32_t Test_Comp_PIM_StartPreinstallEmptyDirSendsCompletionEvent()
     L0Test::ExpectTrue(tr, fired, "OnPreinstallationComplete notification received after empty-dir path");
 
     impl->Unregister(&notif);
-    impl->Release();
+    L0Test::ExpectTrue(tr, ReleaseAndWaitForDestruction(impl),
+                       "Implementation instance is destroyed before test teardown");
     return tr.failures;
 }
 
@@ -275,7 +304,8 @@ uint32_t Test_Comp_PIM_StartPreinstallAlreadyInProgressReturnsError()
 
     // Wait for thread to finish before stack cleanup.
     WaitForCompleted(impl);
-    impl->Release();
+    L0Test::ExpectTrue(tr, ReleaseAndWaitForDestruction(impl),
+                       "Implementation instance is destroyed before test teardown");
     return tr.failures;
 }
 
@@ -341,7 +371,8 @@ uint32_t Test_Comp_PIM_StartPreinstallForceInstallAllPackages()
     L0Test::ExpectTrue(tr, fired, "OnPreinstallationComplete fired after force install");
 
     impl->Unregister(&notif);
-    impl->Release();
+    L0Test::ExpectTrue(tr, ReleaseAndWaitForDestruction(impl),
+                       "Implementation instance is destroyed before test teardown");
     return tr.failures;
 }
 
@@ -411,7 +442,8 @@ uint32_t Test_Comp_PIM_StartPreinstallFiltersOlderVersionWhenNotForce()
     L0Test::ExpectTrue(tr, fired, "OnPreinstallationComplete fired even when no packages installed");
 
     impl->Unregister(&notif);
-    impl->Release();
+    L0Test::ExpectTrue(tr, ReleaseAndWaitForDestruction(impl),
+                       "Implementation instance is destroyed before test teardown");
     return tr.failures;
 }
 
@@ -470,7 +502,8 @@ uint32_t Test_Comp_PIM_StartPreinstallInstallsNewerVersionWhenNotForce()
     L0Test::ExpectEqU32(tr, installer.installCallCount.load(), 1U,
                         "Install() called once because preinstall 3.0.0 > installed 2.0.0");
 
-    impl->Release();
+    L0Test::ExpectTrue(tr, ReleaseAndWaitForDestruction(impl),
+                       "Implementation instance is destroyed before test teardown");
     return tr.failures;
 }
 
@@ -533,7 +566,8 @@ uint32_t Test_Comp_PIM_StartPreinstallEqualVersionFilteredSendsCompletionEvent()
                         "OnPreinstallationComplete fired after all-filtered path");
 
     impl->Unregister(&notif);
-    impl->Release();
+    L0Test::ExpectTrue(tr, ReleaseAndWaitForDestruction(impl),
+                       "Implementation instance is destroyed before test teardown");
     return tr.failures;
 }
 
@@ -579,7 +613,8 @@ uint32_t Test_Comp_PIM_InstallPackagesWithInvalidFieldsSkipsPackage()
     L0Test::ExpectEqU32(tr, installer.installCallCount.load(), 0U,
                         "Install() not called for package with empty fields");
 
-    impl->Release();
+    L0Test::ExpectTrue(tr, ReleaseAndWaitForDestruction(impl),
+                       "Implementation instance is destroyed before test teardown");
     return tr.failures;
 }
 
@@ -637,7 +672,8 @@ uint32_t Test_Comp_PIM_InstallPackagesHandlesInstallFailure()
     L0Test::ExpectTrue(tr, fired, "OnPreinstallationComplete fired even after install failure");
 
     impl->Unregister(&notif);
-    impl->Release();
+    L0Test::ExpectTrue(tr, ReleaseAndWaitForDestruction(impl),
+                       "Implementation instance is destroyed before test teardown");
     return tr.failures;
 }
 
@@ -704,7 +740,8 @@ uint32_t Test_Comp_PIM_GetFailReasonAllEnumsWithoutCrash()
                             static_cast<uint32_t>(WPEFramework::Exchange::IPreinstallManager::State::COMPLETED),
                             "State COMPLETED after install failure with each FailReason");
 
-        impl->Release();
+        L0Test::ExpectTrue(tr, ReleaseAndWaitForDestruction(impl),
+                   "Implementation instance is destroyed before test teardown");
     }
 
     return tr.failures;
@@ -756,7 +793,8 @@ uint32_t Test_Comp_PIM_DispatchFiresPreinstallCompleteOnAllObservers()
     impl->Unregister(&notif1);
     impl->Unregister(&notif2);
     impl->Unregister(&notif3);
-    impl->Release();
+    L0Test::ExpectTrue(tr, ReleaseAndWaitForDestruction(impl),
+                       "Implementation instance is destroyed before test teardown");
     return tr.failures;
 }
 
@@ -827,7 +865,8 @@ uint32_t Test_Comp_PIM_StartPreinstallJoinsPreviousCompletedThread()
     L0Test::ExpectTrue(tr, fired2, "Second run completion notification received");
 
     impl->Unregister(&notif);
-    impl->Release();
+    L0Test::ExpectTrue(tr, ReleaseAndWaitForDestruction(impl),
+                       "Implementation instance is destroyed before test teardown");
     return tr.failures;
 }
 
@@ -894,7 +933,8 @@ uint32_t Test_Comp_PIM_InstallPackagesCreateManagerFails()
     L0Test::ExpectTrue(tr, fired, "OnPreinstallationComplete still fired after installPackages failure");
 
     impl->Unregister(&notif);
-    impl->Release();
+    L0Test::ExpectTrue(tr, ReleaseAndWaitForDestruction(impl),
+                       "Implementation instance is destroyed before test teardown");
     return tr.failures;
 }
 
@@ -938,7 +978,8 @@ uint32_t Test_Comp_PIM_ReadPreinstallDirectorySkipsDotEntries()
     L0Test::ExpectEqU32(tr, getConfigCalls.load(), 1U,
                         "GetConfigForPackage called exactly once (dot entries skipped)");
 
-    impl->Release();
+    L0Test::ExpectTrue(tr, ReleaseAndWaitForDestruction(impl),
+                       "Implementation instance is destroyed before test teardown");
     return tr.failures;
 }
 
@@ -989,7 +1030,8 @@ uint32_t Test_Comp_PIM_StartPreinstallVersionWithSuffixStripped()
     L0Test::ExpectEqU32(tr, installer.installCallCount.load(), 1U,
                         "Install() called once: 1.2.3-beta (stripped 1.2.3) > installed 1.2.2");
 
-    impl->Release();
+    L0Test::ExpectTrue(tr, ReleaseAndWaitForDestruction(impl),
+                       "Implementation instance is destroyed before test teardown");
     return tr.failures;
 }
 
@@ -1048,7 +1090,8 @@ uint32_t Test_Comp_PIM_InvalidVersionDoesNotCrash()
         WaitForCompleted(impl);
     L0Test::ExpectTrue(tr, finishedOrFiltered, "State eventually COMPLETED after invalid version");
 
-    impl->Release();
+    L0Test::ExpectTrue(tr, ReleaseAndWaitForDestruction(impl),
+                       "Implementation instance is destroyed before test teardown");
     return tr.failures;
 }
 
@@ -1086,7 +1129,8 @@ uint32_t Test_Comp_PIM_SendOnPreinstallationCompleteEventEnqueuesJob()
                        "OnPreinstallationComplete fires via worker-pool job (sendOnPreinstallationCompleteEvent)");
 
     impl->Unregister(&notif);
-    impl->Release();
+    L0Test::ExpectTrue(tr, ReleaseAndWaitForDestruction(impl),
+                       "Implementation instance is destroyed before test teardown");
     return tr.failures;
 }
 
@@ -1129,6 +1173,7 @@ uint32_t Test_Comp_PIM_ReadPreinstallDirectoryLoadsValidPackages()
     L0Test::ExpectEqU32(tr, installer.installCallCount.load(), 1U,
                         "Install() called once for the valid package");
 
-    impl->Release();
+    L0Test::ExpectTrue(tr, ReleaseAndWaitForDestruction(impl),
+                       "Implementation instance is destroyed before test teardown");
     return tr.failures;
 }
