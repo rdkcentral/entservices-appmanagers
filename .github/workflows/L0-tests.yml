@@ -432,10 +432,6 @@ jobs:
           }
 
           runtime_test_rc=0
-          lcm_test_rc=0
-          rdkwm_test_rc=0
-          appsm_test_rc=0
-
           appsm_test_rc=0
 
           run_one_under_gdb "$runtime_test_bin" l0-runtime-test.log l0-runtime-test-gdb.log || runtime_test_rc=$?
@@ -443,11 +439,15 @@ jobs:
 
           cat l0-runtime-test.log l0-appsm-test.log > l0-test.log
 
-          if [ "$runtime
+          if [ "$runtime_test_rc" -ne 0 ] || [ "$appsm_test_rc" -ne 0 ]; then
+            exit 1
+          fi
+
+      - name: Summarize failed tests
         if: ${{ always() }}
         run: |
           set -euo pipefail
-          for log in l0-runtime-test.log l0-lcm-test.log l0-rdkwm-test.log l0-appsm-test.log; do
+          for log in l0-runtime-test.log l0-appsm-test.log; do
             if [ -f "$log" ]; then
               echo "==== $log: Failed test cases (if any) ===="
               grep -E '^\[  FAILED  \]' "$log" || echo "No explicit [ FAILED ] lines found"
