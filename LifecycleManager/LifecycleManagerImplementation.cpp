@@ -513,16 +513,21 @@ namespace WPEFramework
         uint32_t LifecycleManagerImplementation::Configure(PluginHost::IShell* service)
         {
             uint32_t result = Core::ERROR_GENERAL;
-            if (service != nullptr)
+            if (nullptr == service)
             {
-                mService = service;
-                mService->AddRef();
+                terminate();
+                return Core::ERROR_NONE;
             }
-            else
+
+            if (nullptr != mService)
             {
-                LOGERR("service is null \n");
-                return result;
+                LOGWARN("LifecycleManagerImplementation already configured");
+                return Core::ERROR_NONE;
             }
+
+            mService = service;
+            mService->AddRef();
+
             bool ret = initialize(service);
 	    if (ret)
 	    {
