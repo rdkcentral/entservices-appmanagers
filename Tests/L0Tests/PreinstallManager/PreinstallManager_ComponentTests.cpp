@@ -789,12 +789,23 @@ uint32_t Test_Comp_PIM_StartPreinstallJoinsPreviousCompletedThread()
     L0Test::ServiceMock service(cfg);
 
     auto* impl = CreateImpl();
+    L0Test::FakePreinstallNotification notif;
+    impl->Register(&notif);
     impl->Configure(&service);
 
     // First run — spawn thread and wait for it to complete.
     const auto r1 = impl->StartPreinstall(true);
     L0Test::ExpectEqU32(tr, r1, WPEFramework::Core::ERROR_NONE, "First StartPreinstall succeeds");
-    WaitForCompleted(impl);
+    const bool completed1 = WaitForCompleted(impl);
+    L0Test::ExpectTrue(tr, completed1, "First run reaches COMPLETED");
+
+    // Wait for first completion dispatch so the queued worker-pool job finishes
+    // before we continue and eventually destroy the implementation/service.
+    const bool fired1 = WaitForNotification(notif.onPreinstallationCompleteCount);
+    L0Test::ExpectTrue(tr, fired1, "First run completion notification received");
+
+    // Observe only the second run's completion dispatch below.
+    notif.onPreinstallationCompleteCount.store(0U);
 
     // Reset call count so we can observe the second run.
     installer.installCallCount.store(0);
@@ -810,6 +821,12 @@ uint32_t Test_Comp_PIM_StartPreinstallJoinsPreviousCompletedThread()
     L0Test::ExpectEqU32(tr, installer.installCallCount.load(), 1U,
                         "Install() called exactly once in second run");
 
+    // Critical synchronization: ensure the second completion dispatch has run
+    // before tearing down impl/service to avoid async lifetime races.
+    const bool fired2 = WaitForNotification(notif.onPreinstallationCompleteCount);
+    L0Test::ExpectTrue(tr, fired2, "Second run completion notification received");
+
+    impl->Unregister(&notif);
     impl->Release();
     return tr.failures;
 }
