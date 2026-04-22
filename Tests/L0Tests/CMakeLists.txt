@@ -202,6 +202,7 @@ find_library(THUNDER_CORE_LIB NAMES ${NAMESPACE}Core HINTS "${PREFIX}/lib")
 find_library(THUNDER_MESSAGING_LIB NAMES ${NAMESPACE}Messaging HINTS "${PREFIX}/lib")
 find_library(THUNDER_PLUGINS_LIB NAMES ${NAMESPACE}Plugins HINTS "${PREFIX}/lib")
 find_library(THUNDER_COM_LIB NAMES ${NAMESPACE}COM HINTS "${PREFIX}/lib")
+find_library(THUNDER_DEFINITIONS_LIB NAMES ${NAMESPACE}Definitions HINTS "${PREFIX}/lib")
 find_library(JSONCPP_LIB NAMES jsoncpp HINTS "${PREFIX}/lib" /usr/lib /usr/local/lib)
 find_library(CURL_LIB NAMES curl HINTS "${PREFIX}/lib" /usr/lib /usr/local/lib)
 
@@ -227,6 +228,10 @@ endif()
 if(THUNDER_COM_LIB)
     target_link_libraries(appmanagers_l0test PRIVATE ${THUNDER_COM_LIB})
     target_link_libraries(rdkwindowmanager_l0test PRIVATE ${THUNDER_COM_LIB})
+endif()
+if(THUNDER_DEFINITIONS_LIB)
+    target_link_libraries(appmanagers_l0test PRIVATE ${THUNDER_DEFINITIONS_LIB})
+    target_link_libraries(rdkwindowmanager_l0test PRIVATE ${THUNDER_DEFINITIONS_LIB})
 endif()
 
 target_link_libraries(appmanagers_l0test PRIVATE
@@ -356,6 +361,9 @@ if(THUNDER_PLUGINS_LIB)
 endif()
 if(THUNDER_COM_LIB)
     target_link_libraries(preinstall_manager_l0test PRIVATE ${THUNDER_COM_LIB})
+endif()
+if(THUNDER_DEFINITIONS_LIB)
+    target_link_libraries(preinstall_manager_l0test PRIVATE ${THUNDER_DEFINITIONS_LIB})
 endif()
 
 target_link_libraries(preinstall_manager_l0test PRIVATE
