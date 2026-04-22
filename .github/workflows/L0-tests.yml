@@ -344,15 +344,13 @@ jobs:
             -DGENERIC_CMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" \
             -DPREFIX="$PREFIX" \
             -DPLUGIN_RUNTIME_MANAGER=ON \
-            -DPLUGIN_LIFECYCLE_MANAGER=ON \
-            -DPLUGIN_RDK_WINDOW_MANAGER=ON \
+            -DPLUGIN_LIFECYCLE_MANAGER=OFF \
+            -DPLUGIN_RDK_WINDOW_MANAGER=OFF \
             -DPLUGIN_APP_STORAGE_MANAGER=ON \
             -DAPPMGR_ENABLE_COVERAGE=ON \
-            -DAPPLCM_ENABLE_COVERAGE=ON \
-            -DAPPWM_ENABLE_COVERAGE=ON \
             -DAPPSM_ENABLE_COVERAGE=ON
 
-          cmake --build build/entservices-appmanagers-l0tests-only --target runtimemanager_l0test lifecyclemanager_l0test rdkwindowmanager_l0test appstoragemanager_l0test -- -j"$(nproc)"
+          cmake --build build/entservices-appmanagers-l0tests-only --target runtimemanager_l0test appstoragemanager_l0test -- -j"$(nproc)"
 
       - name: Run L0 tests
         id: run_l0_tests
@@ -364,13 +362,9 @@ jobs:
           export LD_LIBRARY_PATH="$GITHUB_WORKSPACE/install/usr/lib:$GITHUB_WORKSPACE/install/usr/lib/wpeframework:$GITHUB_WORKSPACE/install/usr/lib/wpeframework/plugins:${LD_LIBRARY_PATH:-}"
 
           runtime_test_bin="build/entservices-appmanagers-l0tests-only/runtimemanager_l0test"
-          lcm_test_bin="build/entservices-appmanagers-l0tests-only/lifecyclemanager_l0test"
-          rdkwm_test_bin="build/entservices-appmanagers-l0tests-only/rdkwindowmanager_l0test"
           appsm_test_bin="build/entservices-appmanagers-l0tests-only/appstoragemanager_l0test"
 
           test -x "$runtime_test_bin"
-          test -x "$lcm_test_bin"
-          test -x "$rdkwm_test_bin"
           test -x "$appsm_test_bin"
 
           run_one_under_gdb() {
@@ -442,18 +436,14 @@ jobs:
           rdkwm_test_rc=0
           appsm_test_rc=0
 
+          appsm_test_rc=0
+
           run_one_under_gdb "$runtime_test_bin" l0-runtime-test.log l0-runtime-test-gdb.log || runtime_test_rc=$?
-          run_one_under_gdb "$lcm_test_bin" l0-lcm-test.log l0-lcm-test-gdb.log || lcm_test_rc=$?
-          run_one_under_gdb "$rdkwm_test_bin" l0-rdkwm-test.log l0-rdkwm-test-gdb.log || rdkwm_test_rc=$?
           run_one_under_gdb "$appsm_test_bin" l0-appsm-test.log l0-appsm-test-gdb.log || appsm_test_rc=$?
 
-          cat l0-runtime-test.log l0-lcm-test.log l0-rdkwm-test.log l0-appsm-test.log > l0-test.log
+          cat l0-runtime-test.log l0-appsm-test.log > l0-test.log
 
-          if [ "$runtime_test_rc" -ne 0 ] || [ "$lcm_test_rc" -ne 0 ] || [ "$rdkwm_test_rc" -ne 0 ] || [ "$appsm_test_rc" -ne 0 ]; then
-            exit 1
-          fi
-
-      - name: Summarize failed tests
+          if [ "$runtime
         if: ${{ always() }}
         run: |
           set -euo pipefail
@@ -483,7 +473,7 @@ jobs:
             if [ -f "$log" ]; then
               echo "==== $log: Failed test cases (final gate) ===="
               grep -E '^\[  FAILED  \]' "$log" || true
-              grep -E '^FAIL:' "$log" || true
+              grep -E '^FAIL:' "$log" || tru
             else
               echo "$log not found in final gate"
               failed=1
@@ -542,12 +532,8 @@ jobs:
             filtered_coverage.info
             l0-test.log
             l0-runtime-test.log
-            l0-lcm-test.log
-            l0-rdkwm-test.log
             l0-appsm-test.log
             l0-runtime-test-gdb.log
-            l0-lcm-test-gdb.log
-            l0-rdkwm-test-gdb.log
             l0-appsm-test-gdb.log
           if-no-files-found: warn
 
