@@ -174,9 +174,9 @@ Primary low-coverage files:
 
 ### 1) IPC handler dispatch path — live notification callbacks required (**Not actionable in L0 without notification injection**)
 
-- `RuntimeManagerHandler::RuntimeManagerNotification::On*()` callbacks (4 functions, ~20 lines): These are COM-RPC notification callbacks that are only invoked when the `FakeRuntimeManager` mock calls `Notification::OnStarted()` / `OnTerminated()` / `OnFailure()` / `OnStateChanged()` on its registered listeners. The current `FakeRuntimeManager` stub in `LifecycleManagerServiceMock.h` stores the registered notification pointer but never calls it back.
-- `WindowManagerHandler::WindowManagerNotification::On*()` callbacks (3 functions, ~18 lines): Same situation for `FakeWindowManager`.
-- Both `onEvent()` dispatchers: unreachable until respective `On*()` callbacks are injected.
+- `RuntimeManagerHandler::RuntimeManagerNotification::On*()` callbacks (4 functions, ~20 lines): These are COM-RPC notification callbacks that would only run if the `FakeRuntimeManager` mock triggered `Notification::OnStarted()` / `OnTerminated()` / `OnFailure()` / `OnStateChanged()` on a registered listener. The current `FakeRuntimeManager` stub in `LifecycleManagerServiceMock.h` records that `Register()` was called, but it does not retain the notification pointer or invoke callbacks.
+- `WindowManagerHandler::WindowManagerNotification::On*()` callbacks (3 functions, ~18 lines): Same situation for `FakeWindowManager`; the current stub tracks registration activity but does not retain the listener pointer or fire notifications.
+- Both `onEvent()` dispatchers: unreachable until the fakes are extended to support notification injection (or equivalent callback triggering) so the respective `On*()` callbacks can be exercised.
 
 ### 2) IRuntimeManager / IRDKWindowManager operation paths — live method dispatch (**Medium complexity**)
 
