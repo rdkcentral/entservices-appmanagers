@@ -1,4 +1,10 @@
-# Capability: Lifecycle Manager
+# Lifecycle Manager
+
+## Overview
+Specification for the Lifecycle Manager capability, which maintains a per-application-instance lifecycle state machine, orchestrates spawn/target-state/unload/kill operations, and publishes state-change notifications to registered observers.
+
+## Description
+The Lifecycle Manager is the authoritative source for application instance lifecycle state on the platform. It enforces a defined state machine per app instance, accepting transition requests from App Manager and rejecting invalid transitions. It coordinates with Runtime Manager and Window Manager to execute spawn, target-state, and unload operations, cleans up context on failure, and notifies all registered observers of state changes. All failures are normalised to the canonical failure taxonomy.
 
 ## Requirements
 
@@ -88,3 +94,70 @@ Given dependency interaction fails with native detail
 When failure is propagated
 Then response includes canonical category
 And preserves native detail as supplemental context
+
+## Architecture / Design
+Design is documented in [openspec/specs/lifecycle-manager/design.md](design.md). Key components:
+- **Plugin facade** (`LifecycleManager.cpp/.h`) — Thunder RPC registration.
+- **Implementation** (`LifecycleManagerImplementation.cpp/.h`) — state machine authority and orchestration.
+- **State / StateHandler / StateTransitionHandler** (`State.cpp/.h`, `StateHandler.h`, `StateTransitionHandler.cpp/.h`) — state machine definitions and transition execution.
+- **ApplicationContext** (`ApplicationContext.cpp/.h`) — per-instance context storage.
+- **RuntimeManagerHandler / WindowManagerHandler** — adapters for dependency service interactions.
+- **Telemetry bridge** (`LifecycleManagerTelemetryReporting.cpp/.h`) — timing markers.
+
+## External Interfaces
+_The LifecycleManager plugin exposes the following Thunder JSON-RPC methods (confirm against generated stubs):_
+- `spawn(appId, runtimeConfig)` → `{instanceId}` or failure
+- `setTargetState(instanceId, targetState)` → success/failure
+- `unload(instanceId)` → success/failure
+- `kill(instanceId)` → success/failure
+- `getState(instanceId)` → `{state}` or failure
+- **Events:** `onLifecycleStateChanged(instanceId, appId, oldState, newState)`
+
+_Confirm exact parameter names and types against the generated Thunder interface definition._
+
+## Performance
+_Not yet defined — add spawn latency and state-transition latency targets when SLAs are established._
+
+## Security
+- Input validation is enforced at the API boundary; requests for unknown instance ids return not-found without leaking state.
+- Force-kill operations are explicitly logged and auditable.
+- _Threat model not yet formal — add as follow-up._
+
+## Versioning & Compatibility
+_Not yet defined — add versioning scheme and backward-compatibility guarantees when the API is stabilised._
+
+## Conformance Testing & Validation
+- **L1 tests:** [Tests/L1Tests/tests/test_LifecycleManager.cpp](../../../Tests/L1Tests/tests/test_LifecycleManager.cpp)
+- _Test documentation not yet written — add as follow-up._
+
+## Covered Code
+- LifecycleManager/LifecycleManager.cpp — `LifecycleManager` (plugin facade)
+- LifecycleManager/LifecycleManager.h — `LifecycleManager`
+- LifecycleManager/LifecycleManagerImplementation.cpp — `LifecycleManagerImplementation`
+- LifecycleManager/LifecycleManagerImplementation.h — `LifecycleManagerImplementation`
+- LifecycleManager/ApplicationContext.cpp — `ApplicationContext`
+- LifecycleManager/ApplicationContext.h — `ApplicationContext`
+- LifecycleManager/State.cpp — state definitions
+- LifecycleManager/State.h — `State`
+- LifecycleManager/StateHandler.h — `StateHandler`
+- LifecycleManager/StateTransitionHandler.cpp — `StateTransitionHandler`
+- LifecycleManager/StateTransitionHandler.h — `StateTransitionHandler`
+- LifecycleManager/RequestHandler.cpp — `RequestHandler`
+- LifecycleManager/RuntimeManagerHandler.cpp — `RuntimeManagerHandler`
+- LifecycleManager/WindowManagerHandler.cpp — `WindowManagerHandler`
+- LifecycleManager/LifecycleManagerTelemetryReporting.cpp — `LifecycleManagerTelemetryReporting`
+- LifecycleManager/Module.cpp, LifecycleManager/Module.h — Thunder module registration
+
+---
+
+## Open Queries
+- State machine diagram (allowed transitions) is in design.md — should be cross-referenced or reproduced here.
+- Performance targets (spawn latency, transition latency) not yet defined.
+- Formal versioning scheme not yet established.
+
+## References
+- [openspec/specs/lifecycle-manager/design.md](design.md)
+- [openspec/specs/lifecycle-manager/requirements.md](requirements.md)
+
+## Change History
+- [2026-04-23] - openspec-templater - Restructured to match spec template.

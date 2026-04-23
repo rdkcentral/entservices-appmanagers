@@ -36,6 +36,7 @@ namespace Plugin
 #endif
 
 # define CLONE_NEWNET   0x40000000      /* New network namespace.  */
+// Spec: runtime-manager
 
 // -----------------------------------------------------------------------------
 /*!

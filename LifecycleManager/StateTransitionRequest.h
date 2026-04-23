@@ -1,3 +1,4 @@
+// Spec: lifecycle-manager
 #ifndef STATE_TRANSITION_REQUEST_H
 #define STATE_TRANSITION_REQUEST_H
 #include "ApplicationContext.h"

@@ -16,6 +16,7 @@
 * See the License for the specific language governing permissions and
 * limitations under the License.
 */
+// Spec: app-manager
 
 #include <iomanip>      /* for std::setw, std::setfill */
 #include "AppManagerImplementation.h"

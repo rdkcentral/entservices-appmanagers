@@ -16,6 +16,7 @@
 * See the License for the specific language governing permissions and
 * limitations under the License.
 */
+// Spec: lifecycle-manager
 
 #pragma once
 #include <interfaces/IRDKWindowManager.h>

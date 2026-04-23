@@ -1,4 +1,10 @@
-# Capability: RDK Window Manager
+# RDK Window Manager
+
+## Overview
+Specification for the RDK Window Manager capability, which manages display/window resource allocation, focus and visibility control, key intercept and listener registration, inactivity reporting, and Z-order management for application instances via a compositor backend.
+
+## Description
+The RDK Window Manager creates and manages display/window resources for application instances using the underlying compositor (rdkwindowmanager/compositorcontroller). It exposes focus, visibility, key intercept, key listener, inactivity reporting, and Z-order controls to clients via a Thunder plugin facade. All compositor interactions are abstracted so that failures from the backend are normalised to the canonical failure taxonomy.
 
 ## Requirements
 
@@ -82,3 +88,65 @@ Given compositor/backend returns native failure detail
 When failure is propagated
 Then canonical category is returned
 And backend detail is preserved as supplemental context
+
+## Architecture / Design
+Design is documented in [openspec/specs/rdk-window-manager/design.md](design.md). Key components:
+- **Plugin facade** (`RDKWindowManager.cpp/.h`) — Thunder RPC registration.
+- **Implementation** (`RDKWindowManagerImplementation.cpp/.h`) — window/display lifecycle, focus, key, and Z-order management.
+- **Telemetry bridge** (`RDKWindowManagerTelemetryReporting.cpp/.h`) — timing markers.
+
+## External Interfaces
+_The RDKWindowManager plugin exposes the following Thunder JSON-RPC methods (confirm against generated stubs):_
+- `createDisplay(appId, displayParams)` → `{displayId}` or failure
+- `destroyDisplay(displayId)` → success/failure
+- `setFocus(clientId)` → success/failure
+- `setVisibility(clientId, visible)` → success/failure
+- `addKeyIntercept(clientId, keyConfig)` → success/failure
+- `removeKeyIntercept(clientId, keyConfig)` → success/failure
+- `addKeyListener(clientId, keyConfig)` → success/failure
+- `removeKeyListener(clientId, keyConfig)` → success/failure
+- `setInactivityInterval(intervalMs)` → success/failure
+- `enableInactivityReporting(enable)` → success/failure
+- `setZOrder(appId, zOrder)` → success/failure
+- **Events:** `onInactivity()`, `onKeyInput(keyEvent)`
+
+_Confirm exact parameter names and types against the generated Thunder interface definition._
+
+## Performance
+_Not yet defined — add display creation latency and focus-switch latency targets when SLAs are established._
+
+## Security
+- Compositor resource access is gated through the Thunder framework access controls.
+- Key intercept registrations from untrusted callers should be validated — policy not yet fully defined.
+- _Threat model partially addressed in design.md Security and Safety section — formalise as follow-up._
+
+## Versioning & Compatibility
+_Not yet defined — add versioning scheme and backward-compatibility guarantees when the API is stabilised._
+
+## Conformance Testing & Validation
+- **L0 tests:** [Tests/L0Tests/RDKWindowManager/](../../../Tests/L0Tests/RDKWindowManager/)
+- **L1 tests:** [Tests/L1Tests/tests/test_RDKWindowManager.cpp](../../../Tests/L1Tests/tests/test_RDKWindowManager.cpp)
+- _Test documentation not yet written — add as follow-up._
+
+## Covered Code
+- RDKWindowManager/RDKWindowManager.cpp — `RDKWindowManager` (plugin facade)
+- RDKWindowManager/RDKWindowManager.h — `RDKWindowManager`
+- RDKWindowManager/RDKWindowManagerImplementation.cpp — `RDKWindowManagerImplementation`
+- RDKWindowManager/RDKWindowManagerImplementation.h — `RDKWindowManagerImplementation`
+- RDKWindowManager/RDKWindowManagerTelemetryReporting.cpp — `RDKWindowManagerTelemetryReporting`
+- RDKWindowManager/Module.cpp, RDKWindowManager/Module.h — Thunder module registration
+
+---
+
+## Open Queries
+- Key intercept authorization policy for untrusted callers needs to be specified.
+- Display parameter schema (resolution, layer, etc.) not yet formally defined.
+- Performance targets not yet defined.
+- Formal versioning scheme not yet established.
+
+## References
+- [openspec/specs/rdk-window-manager/design.md](design.md)
+- [openspec/specs/rdk-window-manager/requirements.md](requirements.md)
+
+## Change History
+- [2026-04-23] - openspec-templater - Restructured to match spec template.

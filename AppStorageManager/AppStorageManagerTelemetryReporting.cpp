@@ -16,6 +16,7 @@
 * See the License for the specific language governing permissions and
 * limitations under the License.
 */
+// Spec: app-storage-manager
 
 #include "AppStorageManagerTelemetryReporting.h"
 #include "UtilsLogging.h"

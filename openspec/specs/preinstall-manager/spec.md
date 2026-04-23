@@ -1,4 +1,10 @@
-# Capability: Preinstall Manager
+# Preinstall Manager
+
+## Overview
+Specification for the Preinstall Manager capability, which discovers application package candidates from configured filesystem directories and triggers their installation via the Package Manager, with support for force/non-force install modes and notification sink registration.
+
+## Description
+The Preinstall Manager scans one or more configured preinstall directories at startup or on demand, evaluates discovered package candidates against preinstall policy (including version/state checks for non-force mode), invokes the Package Manager for eligible candidates, and reports outcomes. It supports notification sink registration for preinstall lifecycle events and uses the canonical failure taxonomy for all error reporting.
 
 ## Requirements
 
@@ -85,3 +91,54 @@ Given package manager API returns native failure detail
 When preinstall propagates failure
 Then canonical category is returned
 And native detail is preserved as supplemental context
+
+## Architecture / Design
+Design is documented in [openspec/specs/preinstall-manager/design.md](design.md). Key components:
+- **Plugin facade** (`PreinstallManager.cpp/.h`) — Thunder RPC registration.
+- **Implementation** (`PreinstallManagerImplementation.cpp/.h`) — directory scan, candidate evaluation, package installation invocation.
+
+## External Interfaces
+_The PreinstallManager plugin exposes the following Thunder JSON-RPC methods (confirm against generated stubs):_
+- `startPreinstall()` → success/failure
+- `registerNotificationSink(sink)` → success/failure
+- `unregisterNotificationSink(sink)` → success/failure
+- **Events:** `onPreinstallComplete(results)`, `onCandidateResult(candidate, status, reason)`
+
+_Confirm exact parameter names and types against the generated Thunder interface definition._
+
+## Performance
+_Not yet defined — add scan latency and throughput targets when SLAs are established._
+
+## Security
+- Preinstall directories are configured at system level; runtime callers cannot supply arbitrary paths.
+- Package installation is delegated to Package Manager which enforces its own validation.
+- _Threat model not yet formal — add as follow-up._
+
+## Versioning & Compatibility
+_Not yet defined — add versioning scheme and backward-compatibility guarantees when the API is stabilised._
+
+## Conformance Testing & Validation
+- **L1 tests:** [Tests/L1Tests/tests/test_PreinstallManager.cpp](../../../Tests/L1Tests/tests/test_PreinstallManager.cpp)
+- _Test documentation not yet written — add as follow-up._
+
+## Covered Code
+- PreinstallManager/PreinstallManager.cpp — `PreinstallManager` (plugin facade)
+- PreinstallManager/PreinstallManager.h — `PreinstallManager`
+- PreinstallManager/PreinstallManagerImplementation.cpp — `PreinstallManagerImplementation`
+- PreinstallManager/PreinstallManagerImplementation.h — `PreinstallManagerImplementation`
+- PreinstallManager/Module.cpp, PreinstallManager/Module.h — Thunder module registration
+
+---
+
+## Open Queries
+- Preinstall directory configuration mechanism (env var, config file, CMake option) is not specified here — cross-reference with build/config documentation.
+- Behaviour when all configured directories are inaccessible needs to be defined (abort vs. empty success).
+- Performance targets not yet defined.
+- Formal versioning scheme not yet established.
+
+## References
+- [openspec/specs/preinstall-manager/design.md](design.md)
+- [openspec/specs/preinstall-manager/requirements.md](requirements.md)
+
+## Change History
+- [2026-04-23] - openspec-templater - Restructured to match spec template.

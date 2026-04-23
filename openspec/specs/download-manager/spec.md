@@ -1,4 +1,10 @@
-# Capability: Download Manager
+# Download Manager
+
+## Overview
+Specification for the Download Manager capability, which provides queued download execution, pause/resume/cancel controls, progress reporting, bandwidth configuration, and transient-failure retry for file transfers.
+
+## Description
+The Download Manager accepts download requests containing a URL and destination context, queues them, and executes them using supported network protocols via `DownloadManagerHttpClient`. It exposes controls to pause, resume, and cancel individual downloads, reports progress, supports configurable bandwidth rate limits, and automatically retries transient failures within a configured budget. All failures are normalised to a canonical failure taxonomy.
 
 ## Requirements
 
@@ -82,3 +88,63 @@ Given network/transport layer returns native failure detail
 When failure is propagated
 Then canonical category is returned
 And native detail is preserved as supplemental context
+
+## Architecture / Design
+Design is documented in [openspec/specs/download-manager/design.md](design.md). Key components:
+- **Plugin facade** (`DownloadManager.cpp/.h`) — Thunder RPC registration.
+- **Implementation** (`DownloadManagerImplementation.cpp/.h`) — queue management, scheduler, and control logic.
+- **HTTP client** (`DownloadManagerHttpClient.cpp/.h`) — network transfer layer.
+- **Telemetry bridge** (`DownloadManagerTelemetryReporting.cpp/.h`) — timing markers.
+
+## External Interfaces
+_The DownloadManager plugin exposes the following Thunder JSON-RPC methods (confirm against generated stubs):_
+- `download(url, destination, [options])` → `{downloadId}` or failure
+- `pause(downloadId)` → success/failure
+- `resume(downloadId)` → success/failure
+- `cancel(downloadId)` → success/failure
+- `getProgress(downloadId)` → `{transferred, total, state}` or failure
+- `setRateLimit(downloadId, bytesPerSecond)` → success/failure
+- **Events:** `onDownloadStateChanged(downloadId, state, reason)`
+
+_Confirm exact parameter names and types against the generated Thunder interface definition._
+
+## Performance
+_Not yet defined — add latency and throughput targets when SLAs are established._
+
+## Security
+- URL inputs are validated at the API boundary to prevent path traversal in destination handling.
+- Destination paths must be within allowed directories; callers cannot escape sandbox.
+- _Threat model not yet formal — add as follow-up._
+
+## Versioning & Compatibility
+_Not yet defined — add versioning scheme and backward-compatibility guarantees when the API is stabilised._
+
+## Conformance Testing & Validation
+- **L1 tests:** [Tests/L1Tests/tests/test_DownloadManager.cpp](../../../Tests/L1Tests/tests/test_DownloadManager.cpp)
+- _Test documentation not yet written — add as follow-up._
+
+## Covered Code
+- DownloadManager/DownloadManager.cpp — `DownloadManager` (plugin facade)
+- DownloadManager/DownloadManager.h — `DownloadManager`
+- DownloadManager/DownloadManagerImplementation.cpp — `DownloadManagerImplementation`
+- DownloadManager/DownloadManagerImplementation.h — `DownloadManagerImplementation`
+- DownloadManager/DownloadManagerHttpClient.cpp — `DownloadManagerHttpClient`
+- DownloadManager/DownloadManagerHttpClient.h — `DownloadManagerHttpClient`
+- DownloadManager/DownloadManagerTelemetryReporting.cpp — `DownloadManagerTelemetryReporting`
+- DownloadManager/DownloadManagerTelemetryReporting.h — `DownloadManagerTelemetryReporting`
+- DownloadManager/Module.cpp, DownloadManager/Module.h — Thunder module registration
+
+---
+
+## Open Queries
+- External interface parameter names and types need verification against generated stubs.
+- Destination path sandboxing rules need formal specification.
+- Performance (download queue latency, throughput) targets not yet defined.
+- Formal versioning scheme not yet established.
+
+## References
+- [openspec/specs/download-manager/design.md](design.md)
+- [openspec/specs/download-manager/requirements.md](requirements.md)
+
+## Change History
+- [2026-04-23] - openspec-templater - Restructured to match spec template.

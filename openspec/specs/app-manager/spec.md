@@ -1,4 +1,10 @@
-# Capability: App Manager
+# App Manager
+
+## Overview
+Specification for the App Manager capability, which orchestrates application lifecycle by coordinating package, lifecycle, and runtime manager dependencies. It manages loading, launching, closing, and terminating applications, maintains loaded application state, emits lifecycle notifications, and exposes app data management operations.
+
+## Description
+The App Manager is the primary orchestrator for application lifecycle on the platform. It accepts client requests to launch, close, terminate, or kill applications identified by app id. For each operation it coordinates with the Package Manager (lock/unlock, metadata), Lifecycle Manager (spawn/target-state/unload), and Storage Manager (clear-data). It tracks per-app context including lifecycle state, emits state-change notifications to subscribers, and normalises all dependency failures into a canonical failure taxonomy before returning responses to callers.
 
 ## Requirements
 
@@ -92,3 +98,71 @@ Given a dependency returns a native error message
 When failure is propagated
 Then canonical category is returned
 And native detail is preserved as supplemental context
+
+## Architecture / Design
+The design is documented in [openspec/specs/app-manager/design.md](design.md). Key components:
+- **Plugin facade** (`AppManager.cpp/.h`) — registers and exposes the Thunder RPC surface.
+- **Orchestrator** (`AppManagerImplementation.cpp/.h`) — coordinates launch/close/terminate/kill workflows and maintains per-app context.
+- **Lifecycle connector** (`LifecycleInterfaceConnector.cpp/.h`) — encapsulates interactions with LifecycleManager; handles lifecycle event callbacks.
+- **App info store** (`AppInfo.cpp/.h`, `AppInfoManager.cpp/.h`) — maintains in-memory app instance state.
+- **Telemetry bridge** (`AppManagerTelemetryReporting.cpp/.h`) — emits launch/state-transition timing markers.
+
+## External Interfaces
+_The AppManager plugin exposes the following Thunder JSON-RPC methods (confirm against generated stubs):_
+- `launch(appId, intent)` → `{instanceId}` or failure
+- `close(appId)` → success/failure
+- `terminate(appId)` → success/failure
+- `kill(appId)` → success/failure
+- `getLoadedApps()` → array of `{appId, instanceId, state}`
+- `clearAppData(appId)` → success/failure
+- **Events:** `onAppStateChanged(appId, instanceId, oldState, newState)`
+
+_Confirm exact parameter names and types against the generated Thunder interface definition._
+
+## Performance
+_Not yet defined — add latency targets for launch, close, and terminate operations when SLAs are established._
+
+## Security
+- Input validation is enforced at the API boundary; unknown app references do not leak internal state.
+- Force-kill operations are explicit API calls and are auditable via logging.
+- No caller authentication is implemented at this layer; access control is delegated to the Thunder framework.
+- _Threat model not yet formal — add as follow-up._
+
+## Versioning & Compatibility
+_Not yet defined — add versioning scheme and backward-compatibility guarantees when the API is stabilised._
+
+## Conformance Testing & Validation
+- **L1 tests:** [Tests/L1Tests/tests/test_AppManager.cpp](../../../Tests/L1Tests/tests/test_AppManager.cpp)
+- **L2 tests:** [Tests/L2Tests/tests/AppManager_L2Test.cpp](../../../Tests/L2Tests/tests/AppManager_L2Test.cpp)
+- _Test documentation (how to run, interpret results) not yet written — add as follow-up._
+
+## Covered Code
+- AppManager/AppManager.cpp — `AppManager` (plugin facade)
+- AppManager/AppManager.h — `AppManager`
+- AppManager/AppManagerImplementation.cpp — `AppManagerImplementation`
+- AppManager/AppManagerImplementation.h — `AppManagerImplementation`
+- AppManager/AppInfo.cpp — `AppInfo`
+- AppManager/AppInfo.h — `AppInfo`
+- AppManager/AppInfoManager.cpp — `AppInfoManager`
+- AppManager/AppInfoManager.h — `AppInfoManager`
+- AppManager/LifecycleInterfaceConnector.cpp — `LifecycleInterfaceConnector`
+- AppManager/LifecycleInterfaceConnector.h — `LifecycleInterfaceConnector`
+- AppManager/AppManagerTelemetryReporting.cpp — `AppManagerTelemetryReporting`
+- AppManager/AppManagerTelemetryReporting.h — `AppManagerTelemetryReporting`
+- AppManager/AppManagerTypes.h — shared type definitions
+- AppManager/Module.cpp, AppManager/Module.h — Thunder module registration
+
+---
+
+## Open Queries
+- External interface parameter names and types need to be verified against generated Thunder stubs.
+- Performance (launch latency, close latency) targets not yet defined.
+- Formal versioning scheme not yet established.
+- Threat model not formalised — follow-up security review needed.
+
+## References
+- [openspec/specs/app-manager/design.md](design.md)
+- [openspec/specs/app-manager/requirements.md](requirements.md)
+
+## Change History
+- [2026-04-23] - openspec-templater - Restructured to match spec template.

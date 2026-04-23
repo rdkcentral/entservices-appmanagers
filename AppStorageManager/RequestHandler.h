@@ -20,6 +20,7 @@ namespace WPEFramework
                 typedef struct _StorageAppInfo
                 {
                     std::string path;    /* Path to the application's storage */
+// Spec: app-storage-manager
                     int32_t uid;         /* UID of the user who owns the storage */
                     int32_t gid;         /* GID of the group who owns the storage */
                     uint32_t quotaKB;    /* Quota size in kilobytes for the storage */

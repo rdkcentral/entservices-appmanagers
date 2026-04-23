@@ -1,4 +1,10 @@
-# Capability: Runtime Manager
+# Runtime Manager
+
+## Overview
+Specification for the Runtime Manager capability, which runs applications in isolated runtime containers (via Dobby/OCI and/or Rialto), provides suspend/resume/hibernate/wake lifecycle controls, handles terminate and force-kill paths, and coordinates with display and storage dependencies during container startup.
+
+## Description
+The Runtime Manager starts applications in isolated OCI containers using Dobby and/or the Rialto backend. It generates container specs (`DobbySpecGenerator`), manages runtime context per app instance, handles suspend/resume/hibernate/wake via backend-specific controls, and provides terminate and kill paths. During startup it coordinates with the Window Manager and storage layer to satisfy runtime dependencies. It listens to container lifecycle events (`DobbyEventListener`) and normalises all failures to the canonical failure taxonomy.
 
 ## Requirements
 
@@ -86,3 +92,77 @@ Given runtime backend or dependency returns native error data
 When failure is returned
 Then canonical category is included
 And native detail is retained as supplemental context
+
+## Architecture / Design
+Design is documented in [openspec/specs/runtime-manager/design.md](design.md). Key components:
+- **Plugin facade** (`RuntimeManager.cpp/.h`) — Thunder RPC registration.
+- **Implementation** (`RuntimeManagerImplementation.cpp/.h`) — container lifecycle orchestration.
+- **DobbySpecGenerator** (`DobbySpecGenerator.cpp/.h`) — generates OCI/Dobby container specifications.
+- **DobbyEventListener** (`DobbyEventListener.cpp/.h`) — receives container lifecycle events.
+- **WindowManagerConnector** (`WindowManagerConnector.cpp/.h`) — integrates with RDKWindowManager.
+- **RialtoConnector** (`RialtoConnector.cpp/.h`) — Rialto backend integration.
+- **Gateway submodules** (`Gateway/ContainerUtils`, `Gateway/NetFilter`, `Gateway/WebInspector`) — networking, inspection, and utility operations.
+- **Ralf submodules** (`ralf/RalfPackageBuilder`, `ralf/RalfOCIConfigGenerator`, `ralf/RalfSupport`) — OCI config generation utilities.
+
+## External Interfaces
+_The RuntimeManager plugin exposes the following Thunder JSON-RPC methods (confirm against generated stubs):_
+- `run(appInstanceId, runtimeConfig)` → success/failure
+- `suspend(appInstanceId)` → success/failure
+- `resume(appInstanceId)` → success/failure
+- `hibernate(appInstanceId)` → success/failure
+- `wake(appInstanceId)` → success/failure
+- `terminate(appInstanceId)` → success/failure
+- `kill(appInstanceId)` → success/failure
+- **Events:** `onContainerStarted(appInstanceId)`, `onContainerStopped(appInstanceId, reason)`
+
+_Confirm exact parameter names and types against the generated Thunder interface definition._
+
+## Performance
+_Not yet defined — add container start latency and suspend/resume latency targets when SLAs are established._
+
+## Security
+- Runtime containers are isolated via Dobby OCI sandboxing; container spec is generated and validated before launch.
+- Network filtering is applied via Gateway/NetFilter to restrict container network access.
+- AI configuration inputs are validated before inclusion in container specs.
+- _Threat model not yet formal — container escape and privilege escalation scenarios should be reviewed._
+
+## Versioning & Compatibility
+_Not yet defined — add versioning scheme and backward-compatibility guarantees when the API is stabilised._
+
+## Conformance Testing & Validation
+- **L0 tests:** [Tests/L0Tests/RuntimeManager/](../../../Tests/L0Tests/RuntimeManager/)
+- **L1 tests:** [Tests/L1Tests/tests/test_RunTimeManager.cpp](../../../Tests/L1Tests/tests/test_RunTimeManager.cpp)
+- _Test documentation not yet written — add as follow-up._
+
+## Covered Code
+- RuntimeManager/RuntimeManager.cpp — `RuntimeManager` (plugin facade)
+- RuntimeManager/RuntimeManager.h — `RuntimeManager`
+- RuntimeManager/RuntimeManagerImplementation.cpp — `RuntimeManagerImplementation`
+- RuntimeManager/RuntimeManagerImplementation.h — `RuntimeManagerImplementation`
+- RuntimeManager/DobbySpecGenerator.cpp — `DobbySpecGenerator`
+- RuntimeManager/DobbyEventListener.cpp — `DobbyEventListener`
+- RuntimeManager/WindowManagerConnector.cpp — `WindowManagerConnector`
+- RuntimeManager/RialtoConnector.cpp — `RialtoConnector`
+- RuntimeManager/AIConfiguration.cpp — `AIConfiguration`
+- RuntimeManager/UserIdManager.cpp — `UserIdManager`
+- RuntimeManager/Gateway/ContainerUtils.cpp — container utilities
+- RuntimeManager/Gateway/NetFilter.cpp — network filtering
+- RuntimeManager/Gateway/WebInspector.cpp — web inspector support
+- RuntimeManager/ralf/RalfPackageBuilder.cpp — OCI package building
+- RuntimeManager/ralf/RalfOCIConfigGenerator.cpp — OCI config generation
+- RuntimeManager/Module.cpp, RuntimeManager/Module.h — Thunder module registration
+
+---
+
+## Open Queries
+- Container escape and privilege escalation threat scenarios should be formally reviewed.
+- Performance targets (container start, suspend/resume) not yet defined.
+- Formal versioning scheme not yet established.
+- AIConfiguration input validation rules need to be explicitly specified.
+
+## References
+- [openspec/specs/runtime-manager/design.md](design.md)
+- [openspec/specs/runtime-manager/requirements.md](requirements.md)
+
+## Change History
+- [2026-04-23] - openspec-templater - Restructured to match spec template.

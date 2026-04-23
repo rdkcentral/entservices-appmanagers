@@ -162,6 +162,7 @@ namespace WPEFramework
         *
         * @return                              : bool
         ***/
+// Spec: app-storage-manager
         bool RequestHandler::isValidAppStorageDirectory(const std::string& dirName)
         {
             if (dirName.empty())

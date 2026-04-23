@@ -25,6 +25,7 @@
     On destruction the firewall forwarding rule is removed.
 
  */
+// Spec: runtime-manager
 
 
 std::shared_ptr<WebInspector> WebInspector::attach(const std::string &appId,

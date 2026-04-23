@@ -1,4 +1,10 @@
-# Capability: PackageManagerRDKEMS
+# Package Manager (RDKEMS)
+
+## Overview
+Specification for the Package Manager (RDKEMS) capability, which manages the full lifecycle of application packages including download, installation, uninstallation, lock/unlock semantics, metadata queries, and storage integration.
+
+## Description
+The Package Manager handles downloading application packages from remote URLs, installing and uninstalling them with validation, preventing uninstallation of in-use packages via lock/unlock semantics, providing metadata and state queries, and coordinating with the App Storage Manager for storage allocation and cleanup. All failures use the canonical failure taxonomy.
 
 ## Requirements
 
@@ -84,3 +90,63 @@ Given installer or downloader returns native failure detail
 When failure is propagated
 Then canonical category is returned
 And native detail is preserved as supplemental context
+
+## Architecture / Design
+Design is documented in [openspec/specs/package-manager-rdkems/design.md](design.md). Key components:
+- **Plugin facade** (`PackageManager.cpp/.h`) — Thunder RPC registration.
+- **Implementation** (`PackageManagerImplementation.cpp/.h`) — download, install, uninstall, lock/unlock orchestration.
+- **HTTP client** (`HttpClient.cpp/.h`) — package download transport.
+- **Telemetry bridge** (`PackageManagerTelemetryReporting.cpp/.h`) — timing markers.
+
+## External Interfaces
+_The PackageManager plugin exposes the following Thunder JSON-RPC methods (confirm against generated stubs):_
+- `downloadPackage(url, options)` → `{downloadId}` or failure
+- `installPackage(packageId, version, metadata)` → success/failure
+- `uninstallPackage(packageId, version)` → success/failure
+- `lockPackage(packageId, version, lockId)` → success/failure
+- `unlockPackage(packageId, version, lockId)` → success/failure
+- `getLockInfo(packageId, version)` → `{locked, locks}` or failure
+- `listPackages()` → array of package records
+
+_Confirm exact parameter names and types against the generated Thunder interface definition._
+
+## Performance
+_Not yet defined — add install/uninstall latency and download throughput targets when SLAs are established._
+
+## Security
+- Package manifest and payload validation is enforced before installation.
+- Lock semantics prevent race conditions between running apps and uninstall requests.
+- Download URLs are validated before use; redirect handling should be constrained.
+- _Threat model not yet formal — security review of package integrity verification is recommended._
+
+## Versioning & Compatibility
+_Not yet defined — add versioning scheme and backward-compatibility guarantees when the API is stabilised._
+
+## Conformance Testing & Validation
+- **L1 tests:** [Tests/L1Tests/tests/test_PackageManager.cpp](../../../Tests/L1Tests/tests/test_PackageManager.cpp)
+- _Test documentation not yet written — add as follow-up._
+
+## Covered Code
+- PackageManager/PackageManager.cpp — `PackageManager` (plugin facade)
+- PackageManager/PackageManager.h — `PackageManager`
+- PackageManager/PackageManagerImplementation.cpp — `PackageManagerImplementation`
+- PackageManager/PackageManagerImplementation.h — `PackageManagerImplementation`
+- PackageManager/HttpClient.cpp — `HttpClient`
+- PackageManager/HttpClient.h — `HttpClient`
+- PackageManager/PackageManagerTelemetryReporting.cpp — `PackageManagerTelemetryReporting`
+- PackageManager/Module.cpp, PackageManager/Module.h — Thunder module registration
+
+---
+
+## Open Queries
+- Package integrity verification (signature checking, hash validation) is mentioned in the security design but requirements are not yet fully specified.
+- Download URL redirect policy needs to be defined.
+- Performance targets not yet defined.
+- Formal versioning scheme not yet established.
+
+## References
+- [openspec/specs/package-manager-rdkems/design.md](design.md)
+- [openspec/specs/package-manager-rdkems/requirements.md](requirements.md)
+
+## Change History
+- [2026-04-23] - openspec-templater - Restructured to match spec template.

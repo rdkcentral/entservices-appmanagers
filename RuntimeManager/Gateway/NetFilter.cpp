@@ -26,6 +26,7 @@ NetFilterLock NetFilter::mLock;
     Exported logging function so can be used by C code in NetFilterUtils.c
 
  */
+// Spec: runtime-manager
 extern "C" void nfDebug(const char *format, ...)
 {
     char message[256];

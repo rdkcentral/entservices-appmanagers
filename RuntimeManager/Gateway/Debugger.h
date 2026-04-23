@@ -16,6 +16,7 @@
     Base class for attached debuggers.
 
  */
+// Spec: runtime-manager
 class Debugger
 {
 public:
