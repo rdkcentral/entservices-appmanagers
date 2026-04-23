@@ -281,7 +281,7 @@ The following L0-specific test infrastructure exists in `Tests/L0Tests/Lifecycle
 
 - `Tests/L0Tests/LifecycleManager/LifecycleManagerServiceMock.h` — service/manager stubs for LifecycleManager L0 tests:
   - `LcmServiceMock` — `PluginHost::IShell` stub that provides `FakeRuntimeManager` and `FakeWindowManager` via `QueryInterfaceByCallsign()`
-  - `FakeRuntimeManager` — `IRuntimeManager` stub with in-memory notification registration; currently stores registered `INotification*` but never calls it back
+  - `FakeRuntimeManager` — `IRuntimeManager` stub; currently accepts `Register(INotification*)` calls but ignores the supplied notification pointer
   - `FakeWindowManager` — `IRDKWindowManager` stub; same pattern
 - `Tests/L0Tests/common/L0Expect.hpp` — lightweight assertion helpers (`ExpectTrue`, `ExpectEqU32`)
 - `Tests/L0Tests/common/L0Bootstrap.hpp` — WPEFramework worker-pool / messaging initialisation guard
