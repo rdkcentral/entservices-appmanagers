@@ -83,8 +83,18 @@ namespace ralf
         addFireboltEndPointToConfig(ociConfigRootNode, runtimeConfigObject.envVariables);
         // /rootdir is a 10MB tmpfs, so we need to ensure that the application has enough space for its working directory.
         addToEnvironment(ociConfigRootNode, "TEMP_STORAGE_PATH", "/rootdir");
+        //Log name update.
+        addLogNameToOCIConfig(ociConfigRootNode, config.mAppStorageInfo.path, config.mAppId);
         // Finally save the modified OCI config to file
         return saveOCIConfigToFile(ociConfigRootNode, config.mUserId, config.mGroupId);
+    }
+
+    void RalfOCIConfigGenerator::addLogNameToOCIConfig(Json::Value &ociConfigRootNode, const std::string appStoragePath, const std::string &mAppId)
+    {
+        // The log file name is hardcoded to /opt/logs/dacapps.log. This needs to be changed in the oci-base-spec.json file.
+        //The entry will be in rdkPlugins->logging->data->fileOptions->path
+        std::string logFilePath = appStoragePath + "/" + mAppId + ".log";
+        ociConfigRootNode[RDKPLUGINS][LOGGING][LOG_DATA][LOG_FILE_OPTIONS][LOG_PATH] = logFilePath;
     }
 
     bool RalfOCIConfigGenerator::applyRuntimeAndAppConfigToOCIConfig(Json::Value &ociConfigRootNode, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject, const WPEFramework::Plugin::ApplicationConfiguration &appConfig)

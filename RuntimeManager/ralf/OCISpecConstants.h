@@ -83,6 +83,13 @@ namespace ralf
     constexpr const char *RUNTIME_CONFIG_OVERRIDES_ENV_KEY = "RUNTIME_CONFIG_OVERRIDES_JSON";
     constexpr const char *APP_CONFIG_OVERRIDES_ENV_KEY = "APP_CONFIG_OVERRIDES_JSON";
 
+    constexpr const char *RDKPLUGINS = "rdkPlugins";
+    constexpr const char *LOGGING = "logging";
+    constexpr const char *LOG_DATA = "data";
+    constexpr const char *LOG_FILE_OPTIONS = "fileOptions";
+    constexpr const char *LOG_PATH = "path";
+
+
     // 500 MB is the default RAM given to an application. Tied to resources/oci-base-spec.json
     // Any change to this should match that file.
     constexpr const char *DEFAULT_RAM_LIMIT = "524288000";
