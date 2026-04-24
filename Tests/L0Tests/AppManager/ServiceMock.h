@@ -510,26 +510,55 @@ public:
         return nullptr;
     }
 
-    WPEFramework::Core::hresult ClearAppData(const string& appId) override
+    WPEFramework::Core::hresult CreateStorage(const string& appId, const uint32_t& size, string& path, string& errorReason) override
     {
+        createStorageCalls++;
+        lastCreateAppId = appId;
+        path = "/storage/" + appId;
+        return _result;
+    }
+
+    WPEFramework::Core::hresult GetStorage(const string& appId, const int32_t& userId, const int32_t& groupId, string& path, uint32_t& size, uint32_t& used) override
+    {
+        getStorageCalls++;
+        path = "/storage/" + appId;
+        size = 1024;
+        used = 512;
+        return _result;
+    }
+
+    WPEFramework::Core::hresult DeleteStorage(const string& appId, string& errorReason) override
+    {
+        deleteStorageCalls++;
+        lastDeleteAppId = appId;
+        return _result;
+    }
+
+    WPEFramework::Core::hresult Clear(const string& appId, string& errorReason) override
+    {
+        clearStorageCalls++;
         lastClearAppId = appId;
-        clearAppDataCalls++;
-        return _clearResult;
+        return _result;
     }
 
-    WPEFramework::Core::hresult ClearAllAppData() override
+    WPEFramework::Core::hresult ClearAll(const string& exemptionAppIds, string& errorReason) override
     {
-        clearAllAppDataCalls++;
-        return _clearResult;
+        clearAllStorageCalls++;
+        return _result;
     }
 
-    void SetClearResult(WPEFramework::Core::hresult r) { _clearResult = r; }
+    void SetResult(WPEFramework::Core::hresult r) { _result = r; }
 
     mutable std::atomic<uint32_t> _refCount;
-    std::atomic<uint32_t> clearAppDataCalls;
-    std::atomic<uint32_t> clearAllAppDataCalls;
+    std::atomic<uint32_t> createStorageCalls;
+    std::atomic<uint32_t> getStorageCalls;
+    std::atomic<uint32_t> deleteStorageCalls;
+    std::atomic<uint32_t> clearStorageCalls;
+    std::atomic<uint32_t> clearAllStorageCalls;
+    string lastCreateAppId;
+    string lastDeleteAppId;
     string lastClearAppId;
-    WPEFramework::Core::hresult _clearResult;
+    WPEFramework::Core::hresult _result;
 };
 
 } // namespace L0Test
