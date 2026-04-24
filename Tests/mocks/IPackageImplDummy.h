@@ -36,7 +36,8 @@ namespace packagemanager
         SUCCESS,
         FAILED,
         VERSION_MISMATCH,
-        PERSISTENCE_FAILURE
+        PERSISTENCE_FAILURE,
+        VERIFICATION_FAILURE
     };
 
     typedef enum : uint8_t
@@ -70,6 +71,8 @@ namespace packagemanager
         std::string logLevels; // json array of strings
         bool mapi;
         std::set<std::string> fkpsFiles;
+        std::string runtimeType;
+        std::string mimeType;
 
         std::string fireboltVersion;
         bool enableDebugger;
@@ -99,6 +102,8 @@ namespace packagemanager
             configMetadata.appPath = "/opt/YouTube";
             configMetadata.appType = packagemanager::ApplicationType::INTERACTIVE;
             configMetadata.fkpsFiles = {"file1","file2","file3"};
+            configMetadata.runtimeType = "";
+            configMetadata.mimeType = "application/vnd.rdk-app.dac.native";
             
             ConfigMetadataKey key {"YouTube", "100.1.24"};
 
