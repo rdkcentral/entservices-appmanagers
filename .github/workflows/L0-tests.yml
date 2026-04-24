@@ -304,8 +304,8 @@ jobs:
             -DUSE_THUNDER_R4=ON \
             -DPLUGIN_RUNTIME_MANAGER=ON \
             -DPLUGIN_APPMANAGER=OFF \
-            -DPLUGIN_APP_STORAGE_MANAGER=OFF \
-            -DPLUGIN_LIFECYCLE_MANAGER=ON \
+            -DPLUGIN_APP_STORAGE_MANAGER=ON \
+            -DPLUGIN_LIFECYCLE_MANAGER=OFF \
             -DPLUGIN_DOWNLOADMANAGER=OFF \
             -DPLUGIN_PREINSTALL_MANAGER=OFF \
             -DPLUGIN_PACKAGE_MANAGER=OFF \
@@ -319,10 +319,8 @@ jobs:
           find build/entservices-appmanagers-l0 -type f \( \
             -name "libRuntimeManager.so*" -o -name "libWPEFrameworkRuntimeManager.so*" -o \
             -name "libWPEFrameworkRuntimeManagerImplementation.so*" -o -name "libRuntimeManagerImplementation.so*" -o \
-            -name "libLifecycleManager.so*" -o -name "libWPEFrameworkLifecycleManager.so*" -o \
-            -name "libWPEFrameworkLifecycleManagerImplementation.so*" -o -name "libLifecycleManagerImplementation.so*" -o \
-            -name "libRDKWindowManager.so*" -o -name "libWPEFrameworkRDKWindowManager.so*" -o \
-            -name "libWPEFrameworkRDKWindowManagerImplementation.so*" -o -name "libRDKWindowManagerImplementation.so*" \
+            -name "libAppStorageManager.so*" -o -name "libWPEFrameworkAppStorageManager.so*" -o \
+            -name "libWPEFrameworkAppStorageManagerImplementation.so*" -o -name "libAppStorageManagerImplementation.so*" \
           \) -exec cp -f {} "$GITHUB_WORKSPACE/install/usr/lib/wpeframework/plugins/" \; 2>/dev/null || true
 
       - name: Build L0 tests (Tests/L0Tests)
