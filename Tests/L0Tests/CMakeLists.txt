@@ -97,9 +97,30 @@ set(PREINSTALL_MANAGER_L0_SOURCES
     common/L0Bootstrap.cpp
 )
 
+set(APPMANAGER_L0_SOURCES
+    ${CMAKE_SOURCE_DIR}/../../AppManager/Module.cpp
+    ${CMAKE_SOURCE_DIR}/../../AppManager/AppManager.cpp
+    ${CMAKE_SOURCE_DIR}/../../AppManager/AppManagerImplementation.cpp
+    ${CMAKE_SOURCE_DIR}/../../AppManager/AppManagerTelemetryReporting.cpp
+    ${CMAKE_SOURCE_DIR}/../../AppManager/AppInfo.cpp
+    ${CMAKE_SOURCE_DIR}/../../AppManager/AppInfoManager.cpp
+    ${CMAKE_SOURCE_DIR}/../../AppManager/LifecycleInterfaceConnector.cpp
+    ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry/TelemetryReportingBase.cpp
+    ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry/UtilsTelemetryMetrics.cpp
+    AppManager/AppManagerTest.cpp
+    AppManager/AppManager_LifecycleTests.cpp
+    AppManager/AppManagerImplementation_CoreTests.cpp
+    AppManager/AppManagerImplementation_ErrorBoundaryTests.cpp
+    AppManager/AppInfo_AppInfoManager_Tests.cpp
+    AppManager/LifecycleInterfaceConnector_Tests.cpp
+    AppManager/AppManagerTelemetryReporting_Tests.cpp
+    common/L0Bootstrap.cpp
+)
+
 add_executable(appmanagers_l0test ${APPMANAGERS_L0_SOURCES})
 add_executable(rdkwindowmanager_l0test ${RDKWINDOWMANAGER_L0_SOURCES})
 add_executable(preinstall_manager_l0test ${PREINSTALL_MANAGER_L0_SOURCES})
+add_executable(appmanager_plugin_l0test ${APPMANAGER_L0_SOURCES})
 
 target_compile_definitions(appmanagers_l0test PRIVATE
     MODULE_NAME=AppManagers_L0Test
@@ -128,16 +149,31 @@ target_compile_definitions(rdkwindowmanager_l0test PRIVATE
     THUNDER_PLATFORM_PC_UNIX=1
 )
 
+target_compile_definitions(appmanager_plugin_l0test PRIVATE
+    MODULE_NAME=appmanager_plugin_l0test
+    USE_THUNDER_R4=1
+    APP_MANAGER_API_VERSION_NUMBER_MAJOR=1
+    APP_MANAGER_API_VERSION_NUMBER_MINOR=0
+    APP_MANAGER_API_VERSION_NUMBER_PATCH=0
+    RDK_APPMANAGERS_DEBUG=1
+    PLUGIN_APP_MANAGER_IMPLEMENTATION_NAME="AppManagerImplementation"
+    DISABLE_SECURITY_TOKEN=1
+    THUNDER_PLATFORM_PC_UNIX=1
+)
+
 if(APPMGR_ENABLE_COVERAGE)
     target_compile_options(appmanagers_l0test PRIVATE -O0 -g --coverage)
     target_link_options(appmanagers_l0test PRIVATE --coverage)
     target_compile_options(rdkwindowmanager_l0test PRIVATE -O0 -g --coverage)
     target_link_options(rdkwindowmanager_l0test PRIVATE --coverage)
+    target_compile_options(appmanager_plugin_l0test PRIVATE -O0 -g --coverage)
+    target_link_options(appmanager_plugin_l0test PRIVATE --coverage)
 endif()
 
 if(APPMGR_ENABLE_WARNINGS)
     target_compile_options(appmanagers_l0test PRIVATE -Wall -Wextra -Wno-unused-parameter)
     target_compile_options(rdkwindowmanager_l0test PRIVATE -Wall -Wextra -Wno-unused-parameter)
+    target_compile_options(appmanager_plugin_l0test PRIVATE -Wall -Wextra -Wno-unused-parameter)
 endif()
 
 target_include_directories(appmanagers_l0test PRIVATE
@@ -167,9 +203,22 @@ target_include_directories(rdkwindowmanager_l0test PRIVATE
     ${PREFIX}/include/${NAMESPACE}
 )
 
+target_include_directories(appmanager_plugin_l0test PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_SOURCE_DIR}/AppManager
+    ${CMAKE_CURRENT_SOURCE_DIR}/common
+    ${CMAKE_SOURCE_DIR}/../..
+    ${CMAKE_SOURCE_DIR}/../../AppManager
+    ${CMAKE_SOURCE_DIR}/../../helpers
+    ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry
+    ${PREFIX}/include
+    ${PREFIX}/include/${NAMESPACE}
+)
+
 if(JSONCPP_INCLUDE_DIR)
     target_include_directories(appmanagers_l0test PRIVATE ${JSONCPP_INCLUDE_DIR})
     target_include_directories(rdkwindowmanager_l0test PRIVATE ${JSONCPP_INCLUDE_DIR})
+    target_include_directories(appmanager_plugin_l0test PRIVATE ${JSONCPP_INCLUDE_DIR})
 endif()
 
 if(CMAKE_PREFIX_PATH)
@@ -177,10 +226,12 @@ if(CMAKE_PREFIX_PATH)
         if(EXISTS "${_prefix}/include")
             target_include_directories(appmanagers_l0test PRIVATE "${_prefix}/include")
             target_include_directories(rdkwindowmanager_l0test PRIVATE "${_prefix}/include")
+            target_include_directories(appmanager_plugin_l0test PRIVATE "${_prefix}/include")
         endif()
         if(EXISTS "${_prefix}/include/${NAMESPACE}")
             target_include_directories(appmanagers_l0test PRIVATE "${_prefix}/include/${NAMESPACE}")
             target_include_directories(rdkwindowmanager_l0test PRIVATE "${_prefix}/include/${NAMESPACE}")
+            target_include_directories(appmanager_plugin_l0test PRIVATE "${_prefix}/include/${NAMESPACE}")
         endif()
     endforeach()
 endif()
@@ -188,14 +239,17 @@ endif()
 if(EXISTS "${PREFIX}/lib")
     target_link_directories(appmanagers_l0test PRIVATE "${PREFIX}/lib")
     target_link_directories(rdkwindowmanager_l0test PRIVATE "${PREFIX}/lib")
+    target_link_directories(appmanager_plugin_l0test PRIVATE "${PREFIX}/lib")
 endif()
 if(EXISTS "${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins")
     target_link_directories(appmanagers_l0test PRIVATE "${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins")
     target_link_directories(rdkwindowmanager_l0test PRIVATE "${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins")
+    target_link_directories(appmanager_plugin_l0test PRIVATE "${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins")
 endif()
 if(EXISTS "${PREFIX}/lib/plugins")
     target_link_directories(appmanagers_l0test PRIVATE "${PREFIX}/lib/plugins")
     target_link_directories(rdkwindowmanager_l0test PRIVATE "${PREFIX}/lib/plugins")
+    target_link_directories(appmanager_plugin_l0test PRIVATE "${PREFIX}/lib/plugins")
 endif()
 
 find_library(THUNDER_CORE_LIB NAMES ${NAMESPACE}Core HINTS "${PREFIX}/lib")
@@ -216,22 +270,27 @@ find_library(LIBIP6TC_LIB NAMES ip6tc libip6tc HINTS /usr/lib /usr/local/lib)
 if(THUNDER_CORE_LIB)
     target_link_libraries(appmanagers_l0test PRIVATE ${THUNDER_CORE_LIB})
     target_link_libraries(rdkwindowmanager_l0test PRIVATE ${THUNDER_CORE_LIB})
+    target_link_libraries(appmanager_plugin_l0test PRIVATE ${THUNDER_CORE_LIB})
 endif()
 if(THUNDER_MESSAGING_LIB)
     target_link_libraries(appmanagers_l0test PRIVATE ${THUNDER_MESSAGING_LIB})
     target_link_libraries(rdkwindowmanager_l0test PRIVATE ${THUNDER_MESSAGING_LIB})
+    target_link_libraries(appmanager_plugin_l0test PRIVATE ${THUNDER_MESSAGING_LIB})
 endif()
 if(THUNDER_PLUGINS_LIB)
     target_link_libraries(appmanagers_l0test PRIVATE ${THUNDER_PLUGINS_LIB})
     target_link_libraries(rdkwindowmanager_l0test PRIVATE ${THUNDER_PLUGINS_LIB})
+    target_link_libraries(appmanager_plugin_l0test PRIVATE ${THUNDER_PLUGINS_LIB})
 endif()
 if(THUNDER_COM_LIB)
     target_link_libraries(appmanagers_l0test PRIVATE ${THUNDER_COM_LIB})
     target_link_libraries(rdkwindowmanager_l0test PRIVATE ${THUNDER_COM_LIB})
+    target_link_libraries(appmanager_plugin_l0test PRIVATE ${THUNDER_COM_LIB})
 endif()
 if(THUNDER_DEFINITIONS_LIB)
     target_link_libraries(appmanagers_l0test PRIVATE ${THUNDER_DEFINITIONS_LIB})
     target_link_libraries(rdkwindowmanager_l0test PRIVATE ${THUNDER_DEFINITIONS_LIB})
+    target_link_libraries(appmanager_plugin_l0test PRIVATE ${THUNDER_DEFINITIONS_LIB})
 endif()
 
 target_link_libraries(appmanagers_l0test PRIVATE
@@ -246,20 +305,30 @@ target_link_libraries(rdkwindowmanager_l0test PRIVATE
     m
 )
 
+target_link_libraries(appmanager_plugin_l0test PRIVATE
+    Threads::Threads
+    dl
+    m
+)
+
 if(JSONCPP_LIB)
     target_link_libraries(appmanagers_l0test PRIVATE ${JSONCPP_LIB})
     target_link_libraries(rdkwindowmanager_l0test PRIVATE ${JSONCPP_LIB})
+    target_link_libraries(appmanager_plugin_l0test PRIVATE ${JSONCPP_LIB})
 else()
     target_link_libraries(appmanagers_l0test PRIVATE jsoncpp)
     target_link_libraries(rdkwindowmanager_l0test PRIVATE jsoncpp)
+    target_link_libraries(appmanager_plugin_l0test PRIVATE jsoncpp)
 endif()
 
 if(CURL_LIB)
     target_link_libraries(appmanagers_l0test PRIVATE ${CURL_LIB})
     target_link_libraries(rdkwindowmanager_l0test PRIVATE ${CURL_LIB})
+    target_link_libraries(appmanager_plugin_l0test PRIVATE ${CURL_LIB})
 else()
     target_link_libraries(appmanagers_l0test PRIVATE curl)
     target_link_libraries(rdkwindowmanager_l0test PRIVATE curl)
+    target_link_libraries(appmanager_plugin_l0test PRIVATE curl)
 endif()
 
 # Link ip4tc and ip6tc — required by Gateway/NetFilter.cpp and Gateway/NetFilterUtils.c
@@ -284,10 +353,22 @@ set_target_properties(rdkwindowmanager_l0test PROPERTIES
     INSTALL_RPATH "${PREFIX}/lib;${PREFIX}/lib/${STORAGE_DIRECTORY};${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins;${PREFIX}/lib/plugins"
 )
 
+set_target_properties(appmanager_plugin_l0test PROPERTIES
+    BUILD_RPATH "$ORIGIN;${PREFIX}/lib;${PREFIX}/lib/${STORAGE_DIRECTORY};${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins;${PREFIX}/lib/plugins"
+    INSTALL_RPATH "${PREFIX}/lib;${PREFIX}/lib/${STORAGE_DIRECTORY};${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins;${PREFIX}/lib/plugins"
+)
+
 add_custom_target(run
     DEPENDS appmanagers_l0test
     COMMAND $<TARGET_FILE:appmanagers_l0test>
     COMMENT "Running appmanagers_l0test"
+    VERBATIM
+)
+
+add_custom_target(run-appmanager
+    DEPENDS appmanager_plugin_l0test
+    COMMAND $<TARGET_FILE:appmanager_plugin_l0test>
+    COMMENT "Running appmanager_plugin_l0test"
     VERBATIM
 )
 
@@ -417,15 +498,16 @@ if(NOT LCOV_EXECUTABLE OR NOT GENHTML_EXECUTABLE)
     )
 else()
     add_custom_target(coverage
-        DEPENDS appmanagers_l0test rdkwindowmanager_l0test preinstall_manager_l0test
+        DEPENDS appmanagers_l0test rdkwindowmanager_l0test preinstall_manager_l0test appmanager_plugin_l0test
         COMMAND "${LCOV_EXECUTABLE}" --zerocounters -d "${CMAKE_BINARY_DIR}"
         COMMAND ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=${PREFIX}/lib:${PREFIX}/lib/${STORAGE_DIRECTORY}:${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins:${PREFIX}/lib/plugins:$ENV{LD_LIBRARY_PATH}" $<TARGET_FILE:appmanagers_l0test>
         COMMAND ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=${PREFIX}/lib:${PREFIX}/lib/${STORAGE_DIRECTORY}:${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins:${PREFIX}/lib/plugins:$ENV{LD_LIBRARY_PATH}" $<TARGET_FILE:rdkwindowmanager_l0test>
 	COMMAND ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=${PREFIX}/lib:${PREFIX}/lib/${STORAGE_DIRECTORY}:${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins:${PREFIX}/lib/plugins:$ENV{LD_LIBRARY_PATH}" $<TARGET_FILE:preinstall_manager_l0test>
+        COMMAND ${CMAKE_COMMAND} -E env "LD_LIBRARY_PATH=${PREFIX}/lib:${PREFIX}/lib/${STORAGE_DIRECTORY}:${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins:${PREFIX}/lib/plugins:$ENV{LD_LIBRARY_PATH}" $<TARGET_FILE:appmanager_plugin_l0test>
         COMMAND "${LCOV_EXECUTABLE}" -c -o coverage.info -d "${CMAKE_BINARY_DIR}"
         COMMAND "${GENHTML_EXECUTABLE}" -o coverage coverage.info
         WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/.."
-        COMMENT "Running appmanagers,rdkwindowmanager and preinstallmanager L0 tests and generating coverage report"
+        COMMENT "Running appmanagers,rdkwindowmanager,preinstallmanager and appmanager L0 tests and generating coverage report"
         VERBATIM
     )
 endif()
