@@ -33,7 +33,7 @@ uint32_t Test_AM_L0_002_Initialize_FailsWhenRootCreationFails()
     // L0 test: verify Register with null notification
     AppManagerImplementation* impl = CreateImpl();
     const WPEFramework::Core::hresult result = impl->Register(nullptr);
-    L0Test::ExpectTrue(tr, true, "AM-L0-002 executed");
+    L0Test::ExpectTrue(tr, result != WPEFramework::Core::ERROR_NONE, "AM-L0-002 null notification should fail");
     impl->Release();
     return tr.failures;
 }

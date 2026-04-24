@@ -486,9 +486,12 @@ class FakeAppStorageManager final : public WPEFramework::Exchange::IAppStorageMa
 public:
     FakeAppStorageManager()
         : _refCount(1)
-        , clearAppDataCalls(0)
-        , clearAllAppDataCalls(0)
-        , _clearResult(WPEFramework::Core::ERROR_NONE)
+        , createStorageCalls(0)
+        , getStorageCalls(0)
+        , deleteStorageCalls(0)
+        , clearStorageCalls(0)
+        , clearAllStorageCalls(0)
+        , _result(WPEFramework::Core::ERROR_NONE)
     {
     }
 
