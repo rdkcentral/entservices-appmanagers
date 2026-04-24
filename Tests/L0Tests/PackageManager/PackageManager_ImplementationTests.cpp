@@ -488,3 +488,141 @@ uint32_t Test_PM_Impl_GetConfigForPackageSuccessPath()
 
     return tr.failures;
 }
+
+uint32_t Test_PM_Impl_InstallDifferentVersionBlockedWhileLockedThenProcessedOnUnlock()
+{
+    L0Test::TestResult tr;
+    ImplFixture fx;
+    L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() succeeds");
+
+    uint32_t lockId = 0;
+    std::string unpackedPath;
+    WPEFramework::Exchange::RuntimeConfig runtimeConfig {};
+    WPEFramework::Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
+
+    L0Test::ExpectEqU32(tr,
+        fx.impl->Lock("YouTube", "100.1.24", WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH,
+            lockId, unpackedPath, runtimeConfig, appMetadata),
+        ERROR_NONE,
+        "Lock() existing package before install-block test");
+
+    if (appMetadata != nullptr) {
+        appMetadata->Release();
+        appMetadata = nullptr;
+    }
+
+    WPEFramework::Exchange::IPackageInstaller::FailReason failReason = WPEFramework::Exchange::IPackageInstaller::FailReason::NONE;
+    const auto blockedInstall = fx.impl->Install("YouTube", "200.0.0", nullptr, "/tmp/youtube_200.pkg", failReason);
+    L0Test::ExpectEqU32(tr,
+        blockedInstall,
+        ERROR_GENERAL,
+        "Install() returns ERROR_GENERAL when newer version is blocked by existing lock");
+
+    WPEFramework::Exchange::IPackageInstaller::InstallState state = WPEFramework::Exchange::IPackageInstaller::InstallState::UNINSTALLED;
+    L0Test::ExpectEqU32(tr,
+        fx.impl->PackageState("YouTube", "200.0.0", state),
+        ERROR_NONE,
+        "PackageState() for blocked version is queryable");
+    L0Test::ExpectTrue(tr,
+        state == WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLATION_BLOCKED,
+        "State is INSTALLATION_BLOCKED while old version remains locked");
+
+    L0Test::ExpectEqU32(tr,
+        fx.impl->Unlock("YouTube", "100.1.24"),
+        ERROR_NONE,
+        "Unlock() processes blocked install");
+
+    L0Test::ExpectEqU32(tr,
+        fx.impl->PackageState("YouTube", "200.0.0", state),
+        ERROR_NONE,
+        "PackageState() for new version remains queryable after unlock");
+    L0Test::ExpectTrue(tr,
+        state == WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED,
+        "Blocked install transitions to INSTALLED after unlock");
+
+    return tr.failures;
+}
+
+uint32_t Test_PM_Impl_UninstallBlockedWhileLockedThenProcessedOnUnlock()
+{
+    L0Test::TestResult tr;
+    ImplFixture fx;
+    L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() succeeds");
+
+    uint32_t lockId = 0;
+    std::string unpackedPath;
+    WPEFramework::Exchange::RuntimeConfig runtimeConfig {};
+    WPEFramework::Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
+
+    L0Test::ExpectEqU32(tr,
+        fx.impl->Lock("YouTube", "100.1.24", WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH,
+            lockId, unpackedPath, runtimeConfig, appMetadata),
+        ERROR_NONE,
+        "Lock() existing package before uninstall-block test");
+
+    if (appMetadata != nullptr) {
+        appMetadata->Release();
+        appMetadata = nullptr;
+    }
+
+    std::string errorReason;
+    const auto blockedUninstall = fx.impl->Uninstall("YouTube", errorReason);
+    L0Test::ExpectEqU32(tr,
+        blockedUninstall,
+        ERROR_GENERAL,
+        "Uninstall() returns ERROR_GENERAL while package is locked (blocked uninstall)");
+
+    WPEFramework::Exchange::IPackageInstaller::InstallState state = WPEFramework::Exchange::IPackageInstaller::InstallState::UNINSTALLED;
+    L0Test::ExpectEqU32(tr,
+        fx.impl->PackageState("YouTube", "100.1.24", state),
+        ERROR_NONE,
+        "PackageState() remains queryable during blocked uninstall");
+    L0Test::ExpectTrue(tr,
+        state == WPEFramework::Exchange::IPackageInstaller::InstallState::UNINSTALL_BLOCKED,
+        "State is UNINSTALL_BLOCKED while lock is held");
+
+    L0Test::ExpectEqU32(tr,
+        fx.impl->Unlock("YouTube", "100.1.24"),
+        ERROR_NONE,
+        "Unlock() processes blocked uninstall");
+
+    L0Test::ExpectEqU32(tr,
+        fx.impl->PackageState("YouTube", "100.1.24", state),
+        ERROR_NONE,
+        "PackageState() is queryable after blocked uninstall processing");
+    L0Test::ExpectTrue(tr,
+        state == WPEFramework::Exchange::IPackageInstaller::InstallState::UNINSTALLED,
+        "Blocked uninstall transitions to UNINSTALLED after unlock");
+
+    return tr.failures;
+}
+
+uint32_t Test_PM_Impl_InstallFailureReasonBranches()
+{
+    L0Test::TestResult tr;
+    ImplFixture fx;
+    L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() succeeds");
+
+    const std::string versions[] = { "1.0.1", "1.0.2", "1.0.3" };
+    const std::string ids[] = { "MismatchApp", "PersistFailApp", "VerifyFailApp" };
+
+    for (size_t idx = 0; idx < 3; ++idx) {
+        WPEFramework::Exchange::IPackageInstaller::FailReason failReason = WPEFramework::Exchange::IPackageInstaller::FailReason::NONE;
+        const auto rc = fx.impl->Install(ids[idx], versions[idx], nullptr, "/tmp/failure.pkg", failReason);
+        L0Test::ExpectEqU32(tr,
+            rc,
+            ERROR_GENERAL,
+            std::string("Install() failure branch returns ERROR_GENERAL for ") + ids[idx]);
+
+        WPEFramework::Exchange::IPackageInstaller::InstallState state = WPEFramework::Exchange::IPackageInstaller::InstallState::UNINSTALLED;
+        L0Test::ExpectEqU32(tr,
+            fx.impl->PackageState(ids[idx], versions[idx], state),
+            ERROR_NONE,
+            std::string("PackageState() is queryable after failed install for ") + ids[idx]);
+        L0Test::ExpectTrue(tr,
+            state == WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALL_FAILURE,
+            std::string("Failed install transitions to INSTALL_FAILURE for ") + ids[idx]);
+    }
+
+    return tr.failures;
+}

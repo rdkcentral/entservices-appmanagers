@@ -112,7 +112,36 @@ namespace packagemanager
             return SUCCESS; 
         }
 
-        virtual Result Install(const std::string &packageId, const std::string &version, const NameValues &additionalMetadata, const std::string &fileLocator, ConfigMetaData &configMetadata) { return SUCCESS; }
+        virtual Result Install(const std::string &packageId, const std::string &version, const NameValues &additionalMetadata, const std::string &fileLocator, ConfigMetaData &configMetadata) {
+            (void)version;
+            (void)additionalMetadata;
+            (void)fileLocator;
+
+            if (packageId == "MismatchApp") {
+                return VERSION_MISMATCH;
+            }
+            if (packageId == "PersistFailApp") {
+                return PERSISTENCE_FAILURE;
+            }
+            if (packageId == "VerifyFailApp") {
+                return VERIFICATION_FAILURE;
+            }
+
+            configMetadata.dial = true;
+            configMetadata.wanLanAccess = true;
+            configMetadata.thunder = true;
+            configMetadata.systemMemoryLimit = 128888000;
+            configMetadata.gpuMemoryLimit = -1;
+            configMetadata.userId = 1000;
+            configMetadata.groupId = 1001;
+            configMetadata.dataImageSize = 31457280;
+            configMetadata.appPath = "/opt/" + packageId;
+            configMetadata.appType = packagemanager::ApplicationType::INTERACTIVE;
+            configMetadata.fkpsFiles = {"file1", "file2", "file3"};
+            configMetadata.runtimeType = "";
+            configMetadata.mimeType = "application/vnd.rdk-app.dac.native";
+            return SUCCESS;
+        }
         virtual Result Uninstall(const std::string &packageId) { return SUCCESS; }
 
         virtual Result Lock(const std::string &packageId, const std::string &version, std::string &unpackedPath, ConfigMetaData &configMetadata, NameValues &additionalLocks) { return SUCCESS; }

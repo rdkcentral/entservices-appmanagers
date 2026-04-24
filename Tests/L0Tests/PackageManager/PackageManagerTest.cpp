@@ -23,6 +23,8 @@ extern uint32_t Test_PM_Impl_InstallInputValidationAndUnknownPaths();
 extern uint32_t Test_PM_Impl_GetLockedInfoAndUnlockNegativePaths();
 extern uint32_t Test_PM_Impl_DownloadWithoutInternetReturnsUnavailable();
 extern uint32_t Test_PM_Impl_GetConfigForPackageSuccessPath();
+extern uint32_t Test_PM_Impl_InstallDifferentVersionBlockedWhileLockedThenProcessedOnUnlock();
+extern uint32_t Test_PM_Impl_UninstallBlockedWhileLockedThenProcessedOnUnlock();
 extern uint32_t Test_PM_Component_HttpClient_InvalidOutputPathReturnsDiskError();
 extern uint32_t Test_PM_Component_HttpClient_InvalidUrlReturnsHttpError();
 extern uint32_t Test_PM_Component_HttpClient_InlineMethodsCoverage();
@@ -57,6 +59,8 @@ int main()
         { "PM_Impl_GetLockedInfoAndUnlockNegativePaths", Test_PM_Impl_GetLockedInfoAndUnlockNegativePaths },
         { "PM_Impl_DownloadWithoutInternetReturnsUnavailable", Test_PM_Impl_DownloadWithoutInternetReturnsUnavailable },
         { "PM_Impl_GetConfigForPackageSuccessPath", Test_PM_Impl_GetConfigForPackageSuccessPath },
+        { "PM_Impl_InstallDifferentVersionBlockedWhileLockedThenProcessedOnUnlock", Test_PM_Impl_InstallDifferentVersionBlockedWhileLockedThenProcessedOnUnlock },
+        { "PM_Impl_UninstallBlockedWhileLockedThenProcessedOnUnlock", Test_PM_Impl_UninstallBlockedWhileLockedThenProcessedOnUnlock },
         { "PM_Component_HttpClient_InvalidOutputPathReturnsDiskError", Test_PM_Component_HttpClient_InvalidOutputPathReturnsDiskError },
         { "PM_Component_HttpClient_InvalidUrlReturnsHttpError", Test_PM_Component_HttpClient_InvalidUrlReturnsHttpError },
         { "PM_Component_HttpClient_InlineMethodsCoverage", Test_PM_Component_HttpClient_InlineMethodsCoverage },
