@@ -24,6 +24,7 @@
 #include <string>
 #include <interfaces/IStore2.h>
 
+
 namespace L0Test {
 
 using string = std::string;
