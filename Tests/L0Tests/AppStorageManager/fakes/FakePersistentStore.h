@@ -94,18 +94,25 @@ public:
         return WPEFramework::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult GetKeys(const ScopeType, const string&, WPEFramework::RPC::IStringIterator*&) override {
+    WPEFramework::Core::hresult GetKeys(ScopeType scope, const string& ns, WPEFramework::RPC::IStringIterator*& iterator) override {
         // Stub implementation
+        (void)scope;
+        (void)ns;
+        (void)iterator;
         return WPEFramework::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult GetNamespaces(const ScopeType, WPEFramework::RPC::IStringIterator*&) override {
+    WPEFramework::Core::hresult GetNamespaces(ScopeType scope, WPEFramework::RPC::IStringIterator*& iterator) override {
         // Stub implementation
+        (void)scope;
+        (void)iterator;
         return WPEFramework::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult GetStorageSizes(const ScopeType, WPEFramework::RPC::IValueIterator*&) override {
+    WPEFramework::Core::hresult GetStorageSizes(ScopeType scope, WPEFramework::RPC::IValueIterator*& iterator) override {
         // Stub implementation
+        (void)scope;
+        (void)iterator;
         return WPEFramework::Core::ERROR_NONE;
     }
 
