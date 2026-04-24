@@ -21,6 +21,7 @@
 
 #include <interfaces/ILifecycleManager.h>
 #include <map>
+#include <memory>
 #include <time.h>
 #include <string>
 #include <semaphore>
@@ -57,7 +58,7 @@ namespace WPEFramework
             REQUEST_TYPE_TERMINATE
         };
 
-        class ApplicationContext
+        class ApplicationContext : public std::enable_shared_from_this<ApplicationContext>
 	{
             public:
                 ApplicationContext (std::string appId);
