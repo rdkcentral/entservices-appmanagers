@@ -62,7 +62,7 @@ uint32_t Test_AM_L0_050_LifecycleConnector_Mapping_Boundary()
 {
     L0Test::TestResult tr;
     LifecycleInterfaceConnector conn(nullptr);
-    const auto mapped = conn.mapAppLifecycleState(Exchange::ILifecycleManager::LifecycleState::STATE_UNKNOWN);
+    const auto mapped = conn.mapAppLifecycleState(Exchange::ILifecycleManager::LifecycleState::UNLOADED);
     const auto err = conn.mapErrorReason("UNKNOWN");
     L0Test::ExpectTrue(tr, true, "AM-L0-050 exercised");
     (void)mapped;

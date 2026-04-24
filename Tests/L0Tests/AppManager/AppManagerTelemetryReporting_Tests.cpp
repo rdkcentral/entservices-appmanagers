@@ -31,7 +31,7 @@ uint32_t Test_AM_L0_053_Telemetry_Disabled_GuardPath()
     L0Test::TestResult tr;
     auto& t = AppManagerTelemetryReporting::getInstance();
     t.reportTelemetryData("app", AppManagerImplementation::APP_ACTION_NONE);
-    t.reportTelemetryErrorData("app", AppManagerImplementation::APP_ACTION_NONE, AppManagerImplementation::APP_ERROR_NONE);
+    t.reportTelemetryErrorData("app", AppManagerImplementation::APP_ACTION_NONE, AppManagerImplementation::ERROR_NONE);
     L0Test::ExpectTrue(tr, true, "AM-L0-053 exercised");
     return tr.failures;
 }
