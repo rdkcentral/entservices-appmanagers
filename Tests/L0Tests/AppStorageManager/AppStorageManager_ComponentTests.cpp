@@ -37,7 +37,6 @@
 #include "common/L0TestTypes.hpp"
 
 namespace {
-
 using string = std::string;
 
 } // namespace
