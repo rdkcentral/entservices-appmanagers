@@ -62,7 +62,8 @@ public:
     using InstantiateHandler = std::function<void*(const WPEFramework::RPC::Object&, const uint32_t, uint32_t&)>;
 
     struct Config {
-        std::string configLine { "{}" };
+        std::string configLine;
+        Config() : configLine("{}") {}
     };
 
     class COMLinkMock final : public WPEFramework::PluginHost::IShell::ICOMLink {
@@ -191,8 +192,8 @@ class FakeConfiguration final : public WPEFramework::Exchange::IConfiguration {
 public:
     explicit FakeConfiguration(WPEFramework::Core::hresult configureResult = WPEFramework::Core::ERROR_NONE)
         : _refCount(1)
-        , _configureResult(configureResult)
         , configureCalls(0)
+        , _configureResult(configureResult)
     {
     }
 
@@ -227,8 +228,6 @@ public:
 
     mutable std::atomic<uint32_t> _refCount;
     std::atomic<uint32_t> configureCalls;
-
-private:
     WPEFramework::Core::hresult _configureResult;
 };
 
@@ -242,10 +241,10 @@ class FakeAppManagerImpl final : public WPEFramework::Exchange::IAppManager,
 public:
     explicit FakeAppManagerImpl(WPEFramework::Core::hresult configureResult = WPEFramework::Core::ERROR_NONE)
         : _refCount(1)
-        , _configureResult(configureResult)
         , configureCalls(0)
         , registerCalls(0)
         , unregisterCalls(0)
+        , _configureResult(configureResult)
     {
     }
 
@@ -511,10 +510,6 @@ public:
         return nullptr;
     }
 
-    WPEFramework::Core::hresult Register(WPEFramework::Exchange::IAppStorageManager::INotification*) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Unregister(WPEFramework::Exchange::IAppStorageManager::INotification*) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult GetStorageInfo(const string&, WPEFramework::Exchange::IAppStorageManager::StorageInfo&) override { return WPEFramework::Core::ERROR_NONE; }
-
     WPEFramework::Core::hresult ClearAppData(const string& appId) override
     {
         lastClearAppId = appId;
@@ -534,8 +529,6 @@ public:
     std::atomic<uint32_t> clearAppDataCalls;
     std::atomic<uint32_t> clearAllAppDataCalls;
     string lastClearAppId;
-
-private:
     WPEFramework::Core::hresult _clearResult;
 };
 
