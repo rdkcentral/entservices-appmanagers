@@ -9,10 +9,12 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 option(PLUGIN_RUNTIME_MANAGER    "Build RuntimeManager L0 test target"    ON)
 option(PLUGIN_LIFECYCLE_MANAGER  "Build LifecycleManager L0 test target"  ON)
 option(PLUGIN_RDK_WINDOW_MANAGER "Build RDKWindowManager L0 test target"  ON)
+option(PLUGIN_APP_STORAGE_MANAGER "Build AppStorageManager L0 test target" ON)
 
 option(APPMGR_ENABLE_COVERAGE  "Enable coverage flags for runtimemanager_l0test"    ON)
 option(APPLCM_ENABLE_COVERAGE  "Enable coverage flags for lifecyclemanager_l0test"  ON)
 option(APPWM_ENABLE_COVERAGE   "Enable coverage flags for rdkwindowmanager_l0test"  ON)
+option(APPASM_ENABLE_COVERAGE  "Enable coverage flags for appstorage_l0test"       ON)
 option(L0_ENABLE_WARNINGS      "Enable additional compiler warnings for L0 targets" ON)
 
 # ---------------------------------------------------------------------------
@@ -113,6 +115,24 @@ set(RDKWINDOWMANAGER_L0_SOURCES
     common/L0Bootstrap.cpp
 )
 
+set(APPSTORAGE_MANAGER_L0_SOURCES
+    ${CMAKE_SOURCE_DIR}/../../AppStorageManager/Module.cpp
+    ${CMAKE_SOURCE_DIR}/../../AppStorageManager/AppStorageManager.cpp
+    ${CMAKE_SOURCE_DIR}/../../AppStorageManager/AppStorageManagerImplementation.cpp
+    ${CMAKE_SOURCE_DIR}/../../AppStorageManager/AppStorageManagerTelemetryReporting.cpp
+    ${CMAKE_SOURCE_DIR}/../../AppStorageManager/RequestHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry/TelemetryReportingBase.cpp
+    ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry/UtilsTelemetryMetrics.cpp
+    # Test sources
+    AppStorageManager/AppStorageManagerTest.cpp
+    AppStorageManager/AppStorageManager_LifecycleTests.cpp
+    AppStorageManager/AppStorageManager_ImplementationTests.cpp
+    AppStorageManager/AppStorageManager_ComponentTests.cpp
+    AppStorageManager/fakes/FakePersistentStore.cpp
+    AppStorageManager/fakes/FakeFilesystem.cpp
+    common/L0Bootstrap.cpp
+)
+
 
 # ---------------------------------------------------------------------------
 # Declare targets
@@ -135,8 +155,14 @@ else()
     message(STATUS "PLUGIN_RDK_WINDOW_MANAGER=OFF; skipping rdkwindowmanager_l0test target")
 endif()
 
-if(NOT PLUGIN_RUNTIME_MANAGER AND NOT PLUGIN_LIFECYCLE_MANAGER AND NOT PLUGIN_RDK_WINDOW_MANAGER)
-    message(FATAL_ERROR "No L0 target enabled. Enable at least one of PLUGIN_RUNTIME_MANAGER, PLUGIN_LIFECYCLE_MANAGER, or PLUGIN_RDK_WINDOW_MANAGER.")
+if(PLUGIN_APP_STORAGE_MANAGER)
+    add_executable(appstorage_l0test ${APPSTORAGE_MANAGER_L0_SOURCES})
+else()
+    message(STATUS "PLUGIN_APP_STORAGE_MANAGER=OFF; skipping appstorage_l0test target")
+endif()
+
+if(NOT PLUGIN_RUNTIME_MANAGER AND NOT PLUGIN_LIFECYCLE_MANAGER AND NOT PLUGIN_RDK_WINDOW_MANAGER AND NOT PLUGIN_APP_STORAGE_MANAGER)
+    message(FATAL_ERROR "No L0 target enabled. Enable at least one of PLUGIN_RUNTIME_MANAGER, PLUGIN_LIFECYCLE_MANAGER, PLUGIN_RDK_WINDOW_MANAGER, or PLUGIN_APP_STORAGE_MANAGER.")
 endif()
 
 # ---------------------------------------------------------------------------
@@ -295,6 +321,51 @@ if(PLUGIN_RDK_WINDOW_MANAGER)
 endif()
 
 # ---------------------------------------------------------------------------
+# AppStorageManager target compile options / definitions / includes
+# ---------------------------------------------------------------------------
+if(PLUGIN_APP_STORAGE_MANAGER)
+    target_compile_definitions(appstorage_l0test PRIVATE
+        MODULE_NAME=AppStorageManager_L0Test
+        USE_THUNDER_R4=1
+        DISABLE_SECURITY_TOKEN=1
+        THUNDER_PLATFORM_PC_UNIX=1
+        UNIT_TEST=1
+    )
+
+    if(APPASM_ENABLE_COVERAGE)
+        target_compile_options(appstorage_l0test PRIVATE -O0 -g --coverage)
+        target_link_options(appstorage_l0test PRIVATE --coverage)
+    endif()
+
+    if(L0_ENABLE_WARNINGS)
+        target_compile_options(appstorage_l0test PRIVATE -Wall -Wextra -Wno-unused-parameter)
+    endif()
+
+    target_include_directories(appstorage_l0test PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/AppStorageManager
+        ${CMAKE_CURRENT_SOURCE_DIR}/AppStorageManager/fakes
+        ${CMAKE_CURRENT_SOURCE_DIR}/common
+        ${CMAKE_SOURCE_DIR}/../..
+        ${CMAKE_SOURCE_DIR}/../../AppStorageManager
+        ${CMAKE_SOURCE_DIR}/../../helpers
+        ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry
+        ${PREFIX}/include
+        ${PREFIX}/include/${NAMESPACE}
+    )
+
+    if(EXISTS "${PREFIX}/lib")
+        target_link_directories(appstorage_l0test PRIVATE "${PREFIX}/lib")
+    endif()
+    if(EXISTS "${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins")
+        target_link_directories(appstorage_l0test PRIVATE "${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins")
+    endif()
+    if(EXISTS "${PREFIX}/lib/plugins")
+        target_link_directories(appstorage_l0test PRIVATE "${PREFIX}/lib/plugins")
+    endif()
+endif()
+
+# ---------------------------------------------------------------------------
 # Thunder / WPEFramework library discovery (shared for all targets)
 # ---------------------------------------------------------------------------
 find_library(THUNDER_CORE_LIB      NAMES ${NAMESPACE}Core      HINTS "${PREFIX}/lib")
@@ -324,6 +395,12 @@ if(PLUGIN_RDK_WINDOW_MANAGER)
         ${PREFIX}/include/${NAMESPACE}
     )
 endif()
+if(PLUGIN_APP_STORAGE_MANAGER)
+    target_include_directories(appstorage_l0test PRIVATE
+        ${PREFIX}/include
+        ${PREFIX}/include/${NAMESPACE}
+    )
+endif()
 
 if(CMAKE_PREFIX_PATH)
     foreach(_prefix IN LISTS CMAKE_PREFIX_PATH)
@@ -337,6 +414,9 @@ if(CMAKE_PREFIX_PATH)
             if(PLUGIN_RDK_WINDOW_MANAGER)
                 target_include_directories(rdkwindowmanager_l0test PRIVATE "${_prefix}/include")
             endif()
+            if(PLUGIN_APP_STORAGE_MANAGER)
+                target_include_directories(appstorage_l0test PRIVATE "${_prefix}/include")
+            endif()
         endif()
         if(EXISTS "${_prefix}/include/${NAMESPACE}")
             if(PLUGIN_RUNTIME_MANAGER)
@@ -347,6 +427,9 @@ if(CMAKE_PREFIX_PATH)
             endif()
             if(PLUGIN_RDK_WINDOW_MANAGER)
                 target_include_directories(rdkwindowmanager_l0test PRIVATE "${_prefix}/include/${NAMESPACE}")
+            endif()
+            if(PLUGIN_APP_STORAGE_MANAGER)
+                target_include_directories(appstorage_l0test PRIVATE "${_prefix}/include/${NAMESPACE}")
             endif()
         endif()
     endforeach()
@@ -362,6 +445,9 @@ if(PLUGIN_LIFECYCLE_MANAGER)
 endif()
 if(PLUGIN_RDK_WINDOW_MANAGER)
     list(APPEND _L0_TARGETS rdkwindowmanager_l0test)
+endif()
+if(PLUGIN_APP_STORAGE_MANAGER)
+    list(APPEND _L0_TARGETS appstorage_l0test)
 endif()
 
 foreach(_target IN LISTS _L0_TARGETS)
@@ -433,6 +519,13 @@ endif()
 
 if(PLUGIN_RDK_WINDOW_MANAGER)
     set_target_properties(rdkwindowmanager_l0test PROPERTIES
+        BUILD_RPATH   "$ORIGIN;${PREFIX}/lib;${PREFIX}/lib/${STORAGE_DIRECTORY};${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins;${PREFIX}/lib/plugins"
+        INSTALL_RPATH "${PREFIX}/lib;${PREFIX}/lib/${STORAGE_DIRECTORY};${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins;${PREFIX}/lib/plugins"
+    )
+endif()
+
+if(PLUGIN_APP_STORAGE_MANAGER)
+    set_target_properties(appstorage_l0test PROPERTIES
         BUILD_RPATH   "$ORIGIN;${PREFIX}/lib;${PREFIX}/lib/${STORAGE_DIRECTORY};${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins;${PREFIX}/lib/plugins"
         INSTALL_RPATH "${PREFIX}/lib;${PREFIX}/lib/${STORAGE_DIRECTORY};${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins;${PREFIX}/lib/plugins"
     )

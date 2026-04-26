@@ -304,7 +304,7 @@ jobs:
             -DUSE_THUNDER_R4=ON \
             -DPLUGIN_RUNTIME_MANAGER=ON \
             -DPLUGIN_APPMANAGER=OFF \
-            -DPLUGIN_APP_STORAGE_MANAGER=OFF \
+            -DPLUGIN_APP_STORAGE_MANAGER=ON \
             -DPLUGIN_LIFECYCLE_MANAGER=ON \
             -DPLUGIN_DOWNLOADMANAGER=OFF \
             -DPLUGIN_PREINSTALL_MANAGER=OFF \
@@ -321,6 +321,8 @@ jobs:
             -name "libWPEFrameworkRuntimeManagerImplementation.so*" -o -name "libRuntimeManagerImplementation.so*" -o \
             -name "libLifecycleManager.so*" -o -name "libWPEFrameworkLifecycleManager.so*" -o \
             -name "libWPEFrameworkLifecycleManagerImplementation.so*" -o -name "libLifecycleManagerImplementation.so*" -o \
+            -name "libAppStorageManager.so*" -o -name "libWPEFrameworkAppStorageManager.so*" -o \
+            -name "libWPEFrameworkAppStorageManagerImplementation.so*" -o -name "libAppStorageManagerImplementation.so*" -o \
             -name "libRDKWindowManager.so*" -o -name "libWPEFrameworkRDKWindowManager.so*" -o \
             -name "libWPEFrameworkRDKWindowManagerImplementation.so*" -o -name "libRDKWindowManagerImplementation.so*" \
           \) -exec cp -f {} "$GITHUB_WORKSPACE/install/usr/lib/wpeframework/plugins/" \; 2>/dev/null || true
@@ -346,11 +348,13 @@ jobs:
             -DPLUGIN_RUNTIME_MANAGER=ON \
             -DPLUGIN_LIFECYCLE_MANAGER=ON \
             -DPLUGIN_RDK_WINDOW_MANAGER=ON \
+            -DPLUGIN_APP_STORAGE_MANAGER=ON \
             -DAPPMGR_ENABLE_COVERAGE=ON \
             -DAPPLCM_ENABLE_COVERAGE=ON \
-            -DAPPWM_ENABLE_COVERAGE=ON
+            -DAPPWM_ENABLE_COVERAGE=ON \
+            -DAPPASM_ENABLE_COVERAGE=ON
 
-          cmake --build build/entservices-appmanagers-l0tests-only --target runtimemanager_l0test lifecyclemanager_l0test rdkwindowmanager_l0test -- -j"$(nproc)"
+          cmake --build build/entservices-appmanagers-l0tests-only --target runtimemanager_l0test lifecyclemanager_l0test rdkwindowmanager_l0test appstorage_l0test -- -j"$(nproc)"
 
       - name: Run L0 tests
         id: run_l0_tests
@@ -364,10 +368,12 @@ jobs:
           runtime_test_bin="build/entservices-appmanagers-l0tests-only/runtimemanager_l0test"
           lcm_test_bin="build/entservices-appmanagers-l0tests-only/lifecyclemanager_l0test"
           rdkwm_test_bin="build/entservices-appmanagers-l0tests-only/rdkwindowmanager_l0test"
+          appstorage_test_bin="build/entservices-appmanagers-l0tests-only/appstorage_l0test"
 
           test -x "$runtime_test_bin"
           test -x "$lcm_test_bin"
           test -x "$rdkwm_test_bin"
+          test -x "$appstorage_test_bin"
 
           run_one_under_gdb() {
             local bin="$1"
@@ -436,14 +442,16 @@ jobs:
           runtime_test_rc=0
           lcm_test_rc=0
           rdkwm_test_rc=0
+          appstorage_test_rc=0
 
           run_one_under_gdb "$runtime_test_bin" l0-runtime-test.log l0-runtime-test-gdb.log || runtime_test_rc=$?
           run_one_under_gdb "$lcm_test_bin" l0-lcm-test.log l0-lcm-test-gdb.log || lcm_test_rc=$?
           run_one_under_gdb "$rdkwm_test_bin" l0-rdkwm-test.log l0-rdkwm-test-gdb.log || rdkwm_test_rc=$?
+          run_one_under_gdb "$appstorage_test_bin" l0-appstorage-test.log l0-appstorage-test-gdb.log || appstorage_test_rc=$?
 
-          cat l0-runtime-test.log l0-lcm-test.log l0-rdkwm-test.log > l0-test.log
+          cat l0-runtime-test.log l0-lcm-test.log l0-rdkwm-test.log l0-appstorage-test.log > l0-test.log
 
-          if [ "$runtime_test_rc" -ne 0 ] || [ "$lcm_test_rc" -ne 0 ] || [ "$rdkwm_test_rc" -ne 0 ]; then
+          if [ "$runtime_test_rc" -ne 0 ] || [ "$lcm_test_rc" -ne 0 ] || [ "$rdkwm_test_rc" -ne 0 ] || [ "$appstorage_test_rc" -ne 0 ]; then
             exit 1
           fi
 
@@ -451,7 +459,7 @@ jobs:
         if: ${{ always() }}
         run: |
           set -euo pipefail
-          for log in l0-runtime-test.log l0-lcm-test.log l0-rdkwm-test.log; do
+          for log in l0-runtime-test.log l0-lcm-test.log l0-rdkwm-test.log l0-appstorage-test.log; do
             if [ -f "$log" ]; then
               echo "==== $log: Failed test cases (if any) ===="
               grep -E '^\[  FAILED  \]' "$log" || echo "No explicit [ FAILED ] lines found"
@@ -473,7 +481,7 @@ jobs:
             failed=1
           fi
 
-          for log in l0-runtime-test.log l0-lcm-test.log l0-rdkwm-test.log; do
+          for log in l0-runtime-test.log l0-lcm-test.log l0-rdkwm-test.log l0-appstorage-test.log; do
             if [ -f "$log" ]; then
               echo "==== $log: Failed test cases (final gate) ===="
               grep -E '^\[  FAILED  \]' "$log" || true
