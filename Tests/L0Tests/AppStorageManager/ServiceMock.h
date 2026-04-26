@@ -45,6 +45,7 @@ public:
         , _fakeStore(nullptr)
         , _configLineCallCount(0)
         , _queryInterfaceByCallsignCallCount(0)
+        , _comLink(*this)
     {
     }
 
@@ -220,22 +221,42 @@ public:
         return WPEFramework::Core::ERROR_NONE;
     }
 
+    class COMLinkMock : public ICOMLink {
+    public:
+        COMLinkMock(ServiceMock& parent) : _parent(parent) {}
+        ~COMLinkMock() override = default;
+
+        void AddRef() const override {}
+        uint32_t Release() const override { return WPEFramework::Core::ERROR_NONE; }
+        void* QueryInterface(const uint32_t) override { return nullptr; }
+
+        void Register(WPEFramework::RPC::IRemoteConnection::INotification*) override {}
+        void Unregister(const WPEFramework::RPC::IRemoteConnection::INotification*) override {}
+        WPEFramework::RPC::IRemoteConnection* RemoteConnection(const uint32_t) override { return nullptr; }
+
+        void* Instantiate(WPEFramework::RPC::Object& object, const uint32_t waitTime, uint32_t& connectionId) override
+        {
+            (void)object;
+            (void)waitTime;
+            connectionId = 0;
+            if (_parent._fakeImpl != nullptr) {
+                _parent._fakeImpl->AddRef();
+                return _parent._fakeImpl;
+            }
+            return nullptr;
+        }
+
+    private:
+        ServiceMock& _parent;
+    };
+
     ICOMLink* COMLink() override
     {
-        // AppStorageManager tests don't use COM link functionality
-        return nullptr;
-    }
-
-    void* Instantiate(const WPEFramework::RPC::Object&, const uint32_t, uint32_t&) override
-    {
-        if (_fakeImpl != nullptr) {
-            _fakeImpl->AddRef();
-            return _fakeImpl;
-        }
-        return nullptr;
+        return &_comLink;
     }
 
 private:
+    COMLinkMock _comLink;
     mutable std::atomic<uint32_t> _refCount;
     std::string _configPath;
     WPEFramework::Exchange::IAppStorageManager* _fakeImpl;
