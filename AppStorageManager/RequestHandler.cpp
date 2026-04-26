@@ -514,13 +514,13 @@ namespace WPEFramework
                     /* Determine if required space is available */
                     if (availableSizeKB >= static_cast<int64_t>(requiredSpaceKB))
                     {
-                        LOGINFO("Enough space available. Required: %u KB, Available: %llu KB",
+                        LOGINFO("Enough space available. Required: %u KB, Available: %" PRId64 " KB",
                         requiredSpaceKB, availableSizeKB);
                         hasEnoughSpace = true;
                     }
                     else
                     {
-                        LOGERR("Not enough space available. Required: %u KB, Available: %llu KB",
+                        LOGERR("Not enough space available. Required: %u KB, Available: %" PRId64 " KB",
                         requiredSpaceKB, availableSizeKB);
                     }
                 }
