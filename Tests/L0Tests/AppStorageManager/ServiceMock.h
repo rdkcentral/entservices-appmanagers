@@ -226,15 +226,15 @@ public:
         COMLinkMock(ServiceMock& parent) : _parent(parent) {}
         ~COMLinkMock() override = default;
 
-        void AddRef() const override {}
-        uint32_t Release() const override { return WPEFramework::Core::ERROR_NONE; }
-        void* QueryInterface(const uint32_t) override { return nullptr; }
-
         void Register(WPEFramework::RPC::IRemoteConnection::INotification*) override {}
         void Unregister(const WPEFramework::RPC::IRemoteConnection::INotification*) override {}
+
+        void Register(INotification*) override {}
+        void Unregister(INotification*) override {}
+
         WPEFramework::RPC::IRemoteConnection* RemoteConnection(const uint32_t) override { return nullptr; }
 
-        void* Instantiate(WPEFramework::RPC::Object& object, const uint32_t waitTime, uint32_t& connectionId) override
+        void* Instantiate(const WPEFramework::RPC::Object& object, const uint32_t waitTime, uint32_t& connectionId) override
         {
             (void)object;
             (void)waitTime;
