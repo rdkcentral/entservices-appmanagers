@@ -83,6 +83,15 @@ public:
         return WPEFramework::Core::ERROR_NONE;
     }
 
+    void* QueryInterface(const uint32_t interfaceNumber) override
+    {
+        if (interfaceNumber == WPEFramework::PluginHost::IShell::ID) {
+            AddRef();
+            return static_cast<WPEFramework::PluginHost::IShell*>(this);
+        }
+        return nullptr;
+    }
+
     string ConfigLine() const override
     {
         _configLineCallCount++;
@@ -122,8 +131,74 @@ public:
     void Notify(const string&) override {}
     void Register(IPlugin::INotification*) override {}
     void Unregister(IPlugin::INotification*) override {}
-    void Register(IShell::ICOMLink::INotification*) override {}
-    void Unregister(IShell::ICOMLink::INotification*) override {}
+
+    // Additional IShell pure virtual methods
+    void EnableWebServer(const string& URLPath, const string& fileSystemPath) override
+    {
+        (void)URLPath;
+        (void)fileSystemPath;
+    }
+
+    void DisableWebServer() override {}
+
+    string WebPrefix() const override { return string("/Service/AppStorageManager"); }
+    string ClassName() const override { return string("AppStorageManager"); }
+    string Versions() const override { return string(); }
+    string SystemPath() const override { return string("/usr/bin"); }
+    string PluginPath() const override { return string("/usr/lib/wpeframework/plugins"); }
+    string SystemRootPath() const override { return string("/"); }
+
+    WPEFramework::Core::hresult SystemRootPath(const string& systemRootPath) override
+    {
+        (void)systemRootPath;
+        return WPEFramework::Core::ERROR_NONE;
+    }
+
+    startup Startup() const override { return startup::ACTIVATED; }
+
+    WPEFramework::Core::hresult Startup(const startup value) override
+    {
+        (void)value;
+        return WPEFramework::Core::ERROR_NONE;
+    }
+
+    bool Resumed() const override { return false; }
+
+    WPEFramework::Core::hresult Resumed(const bool value) override
+    {
+        (void)value;
+        return WPEFramework::Core::ERROR_NONE;
+    }
+
+    WPEFramework::Core::hresult ConfigLine(const string& config) override
+    {
+        _configPath = config;
+        _configLineCallCount++;
+        return WPEFramework::Core::ERROR_NONE;
+    }
+
+    WPEFramework::Core::hresult Metadata(string& info) const override
+    {
+        info = string();
+        return WPEFramework::Core::ERROR_NONE;
+    }
+
+    bool IsSupported(const uint8_t version) const override
+    {
+        (void)version;
+        return true;
+    }
+
+    WPEFramework::PluginHost::ISubSystem* SubSystems() override
+    {
+        return nullptr;
+    }
+
+    WPEFramework::Core::hresult Hibernate(const uint32_t timeout) override
+    {
+        (void)timeout;
+        return WPEFramework::Core::ERROR_NONE;
+    }
 
     uint32_t Submit(const uint32_t, const WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::IElement>&) override
     {

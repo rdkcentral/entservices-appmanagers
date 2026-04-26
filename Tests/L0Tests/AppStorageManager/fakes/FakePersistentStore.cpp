@@ -79,6 +79,15 @@ uint32_t FakePersistentStore::Release() const
     return WPEFramework::Core::ERROR_NONE;
 }
 
+void* FakePersistentStore::QueryInterface(const uint32_t interfaceNumber)
+{
+    if (interfaceNumber == WPEFramework::Exchange::IStore2::ID) {
+        AddRef();
+        return static_cast<WPEFramework::Exchange::IStore2*>(this);
+    }
+    return nullptr;
+}
+
 uint32_t FakePersistentStore::Register(INotification* notification)
 {
     (void)notification; // Unused in fake implementation

@@ -52,6 +52,7 @@ public:
     // IStore2 interface
     void AddRef() const override;
     uint32_t Release() const override;
+    void* QueryInterface(const uint32_t interfaceNumber) override;
 
     uint32_t Register(INotification* notification) override;
     uint32_t Unregister(INotification* notification) override;
