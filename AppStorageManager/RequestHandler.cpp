@@ -1,5 +1,6 @@
 
 #include <ftw.h>
+#include <inttypes.h>
 #include <mutex>
 #include "RequestHandler.h"
 #include "UtilsLogging.h"
@@ -304,7 +305,7 @@ namespace WPEFramework
                 {
                     /* Check and Store the current storage dev block size */
                     gStorageSize.blockSize = (0 != statPtr->st_blksize) ? statPtr->st_blksize : DEFAULT_STORAGE_DEV_BLOCK_SIZE;
-                    LOGINFO("path: %s dev blksize:%lu blockSize is set to %llu", path, statPtr->st_blksize, gStorageSize.blockSize);
+                    LOGINFO("path: %s dev blksize:%lu blockSize is set to %" PRIu64, path, statPtr->st_blksize, (uint64_t)gStorageSize.blockSize);
                 }
 
                 // Calculate used bytes
@@ -312,7 +313,7 @@ namespace WPEFramework
                                                             ((uint64_t)statPtr->st_blocks *(uint64_t)gStorageSize.blockSize) :
                                                             (uint64_t)statPtr->st_size;
                 gStorageSize.usedBytes += usedBytesForFile;
-                LOGINFO("path: %s usedBytes: %llu blockSize: %llu", path, gStorageSize.usedBytes, gStorageSize.blockSize);
+                LOGINFO("path: %s usedBytes: %" PRIu64 " blockSize: %" PRIu64, path, (uint64_t)gStorageSize.usedBytes, (uint64_t)gStorageSize.blockSize);
             }
             (void)internalFtwUsage;
             return 0;
@@ -483,7 +484,7 @@ namespace WPEFramework
                         std::lock_guard<std::mutex> storageSizelock(mStorageSizeLock);
 
                         gStorageSize.blockSize = (statFs.f_bsize != 0) ? statFs.f_bsize : DEFAULT_STORAGE_DEV_BLOCK_SIZE; /* Fallback to default block size */
-                        LOGINFO("path: %s f_bsize:%lu f_frsize:%lu, blockSize is set to %llu", baseDir.c_str(), statFs.f_bsize, statFs.f_frsize, gStorageSize.blockSize);
+                        LOGINFO("path: %s f_bsize:%lu f_frsize:%lu, blockSize is set to %" PRIu64, baseDir.c_str(), statFs.f_bsize, statFs.f_frsize, (uint64_t)gStorageSize.blockSize);
                     }
 
                     /* Calculate the current available storage in KB */
