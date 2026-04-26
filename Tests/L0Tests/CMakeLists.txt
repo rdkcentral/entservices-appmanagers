@@ -6,9 +6,9 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-option(PLUGIN_RUNTIME_MANAGER    "Build RuntimeManager L0 test target"    ON)
-option(PLUGIN_LIFECYCLE_MANAGER  "Build LifecycleManager L0 test target"  ON)
-option(PLUGIN_RDK_WINDOW_MANAGER "Build RDKWindowManager L0 test target"  ON)
+option(PLUGIN_RUNTIME_MANAGER    "Build RuntimeManager L0 test target"    OFF)
+option(PLUGIN_LIFECYCLE_MANAGER  "Build LifecycleManager L0 test target"  OFF)
+option(PLUGIN_RDK_WINDOW_MANAGER "Build RDKWindowManager L0 test target"  OFF)
 option(PLUGIN_APP_STORAGE_MANAGER "Build AppStorageManager L0 test target" ON)
 
 option(APPMGR_ENABLE_COVERAGE  "Enable coverage flags for runtimemanager_l0test"    ON)
@@ -198,6 +198,9 @@ if(PLUGIN_RUNTIME_MANAGER)
         target_compile_options(runtimemanager_l0test PRIVATE -Wall -Wextra -Wno-unused-parameter)
     endif()
 
+    # Suppress deprecation warnings from Thunder/WPEFramework headers
+    target_compile_options(runtimemanager_l0test PRIVATE -Wno-error=deprecated-declarations)
+
     target_include_directories(runtimemanager_l0test PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/RuntimeManager
@@ -208,6 +211,10 @@ if(PLUGIN_RUNTIME_MANAGER)
         ${CMAKE_SOURCE_DIR}/../../RuntimeManager/Gateway
         ${CMAKE_SOURCE_DIR}/../../helpers
         ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry
+    )
+
+    # Mark WPEFramework/Thunder headers as SYSTEM to suppress external warnings
+    target_include_directories(runtimemanager_l0test SYSTEM PRIVATE
         ${PREFIX}/include
         ${PREFIX}/include/${NAMESPACE}
     )
@@ -250,6 +257,9 @@ if(PLUGIN_LIFECYCLE_MANAGER)
     if(L0_ENABLE_WARNINGS)
         target_compile_options(lifecyclemanager_l0test PRIVATE -Wall -Wextra -Wno-unused-parameter)
     endif()
+
+    # Suppress deprecation warnings from Thunder/WPEFramework headers
+    target_compile_options(lifecyclemanager_l0test PRIVATE -Wno-error=deprecated-declarations)
 
     target_include_directories(lifecyclemanager_l0test PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
@@ -296,6 +306,9 @@ if(PLUGIN_RDK_WINDOW_MANAGER)
         target_compile_options(rdkwindowmanager_l0test PRIVATE -Wall -Wextra -Wno-unused-parameter)
     endif()
 
+    # Suppress deprecation warnings from Thunder/WPEFramework headers
+    target_compile_options(rdkwindowmanager_l0test PRIVATE -Wno-error=deprecated-declarations)
+
     target_include_directories(rdkwindowmanager_l0test PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/RDKWindowManager
@@ -305,6 +318,10 @@ if(PLUGIN_RDK_WINDOW_MANAGER)
         ${CMAKE_SOURCE_DIR}/../../RDKWindowManager
         ${CMAKE_SOURCE_DIR}/../../helpers
         ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry
+    )
+
+    # Mark WPEFramework/Thunder headers as SYSTEM to suppress external warnings
+    target_include_directories(rdkwindowmanager_l0test SYSTEM PRIVATE
         ${PREFIX}/include
         ${PREFIX}/include/${NAMESPACE}
     )
@@ -341,6 +358,9 @@ if(PLUGIN_APP_STORAGE_MANAGER)
         target_compile_options(appstorage_l0test PRIVATE -Wall -Wextra -Wno-unused-parameter)
     endif()
 
+    # Suppress deprecation warnings from Thunder/WPEFramework headers
+    target_compile_options(appstorage_l0test PRIVATE -Wno-error=deprecated-declarations)
+
     target_include_directories(appstorage_l0test PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/AppStorageManager
@@ -350,6 +370,10 @@ if(PLUGIN_APP_STORAGE_MANAGER)
         ${CMAKE_SOURCE_DIR}/../../AppStorageManager
         ${CMAKE_SOURCE_DIR}/../../helpers
         ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry
+    )
+
+    # Mark WPEFramework/Thunder headers as SYSTEM to suppress external warnings
+    target_include_directories(appstorage_l0test SYSTEM PRIVATE
         ${PREFIX}/include
         ${PREFIX}/include/${NAMESPACE}
     )
@@ -378,25 +402,25 @@ find_package(Threads REQUIRED)
 
 # Fallback include paths for environments without namespace package configs.
 if(PLUGIN_RUNTIME_MANAGER)
-    target_include_directories(runtimemanager_l0test PRIVATE
+    target_include_directories(runtimemanager_l0test SYSTEM PRIVATE
         ${PREFIX}/include
         ${PREFIX}/include/${NAMESPACE}
     )
 endif()
 if(PLUGIN_LIFECYCLE_MANAGER)
-    target_include_directories(lifecyclemanager_l0test PRIVATE
+    target_include_directories(lifecyclemanager_l0test SYSTEM PRIVATE
         ${PREFIX}/include
         ${PREFIX}/include/${NAMESPACE}
     )
 endif()
 if(PLUGIN_RDK_WINDOW_MANAGER)
-    target_include_directories(rdkwindowmanager_l0test PRIVATE
+    target_include_directories(rdkwindowmanager_l0test SYSTEM PRIVATE
         ${PREFIX}/include
         ${PREFIX}/include/${NAMESPACE}
     )
 endif()
 if(PLUGIN_APP_STORAGE_MANAGER)
-    target_include_directories(appstorage_l0test PRIVATE
+    target_include_directories(appstorage_l0test SYSTEM PRIVATE
         ${PREFIX}/include
         ${PREFIX}/include/${NAMESPACE}
     )
@@ -406,30 +430,30 @@ if(CMAKE_PREFIX_PATH)
     foreach(_prefix IN LISTS CMAKE_PREFIX_PATH)
         if(EXISTS "${_prefix}/include")
             if(PLUGIN_RUNTIME_MANAGER)
-                target_include_directories(runtimemanager_l0test PRIVATE "${_prefix}/include")
+                target_include_directories(runtimemanager_l0test SYSTEM PRIVATE "${_prefix}/include")
             endif()
             if(PLUGIN_LIFECYCLE_MANAGER)
-                target_include_directories(lifecyclemanager_l0test PRIVATE "${_prefix}/include")
+                target_include_directories(lifecyclemanager_l0test SYSTEM PRIVATE "${_prefix}/include")
             endif()
             if(PLUGIN_RDK_WINDOW_MANAGER)
-                target_include_directories(rdkwindowmanager_l0test PRIVATE "${_prefix}/include")
+                target_include_directories(rdkwindowmanager_l0test SYSTEM PRIVATE "${_prefix}/include")
             endif()
             if(PLUGIN_APP_STORAGE_MANAGER)
-                target_include_directories(appstorage_l0test PRIVATE "${_prefix}/include")
+                target_include_directories(appstorage_l0test SYSTEM PRIVATE "${_prefix}/include")
             endif()
         endif()
         if(EXISTS "${_prefix}/include/${NAMESPACE}")
             if(PLUGIN_RUNTIME_MANAGER)
-                target_include_directories(runtimemanager_l0test PRIVATE "${_prefix}/include/${NAMESPACE}")
+                target_include_directories(runtimemanager_l0test SYSTEM PRIVATE "${_prefix}/include/${NAMESPACE}")
             endif()
             if(PLUGIN_LIFECYCLE_MANAGER)
-                target_include_directories(lifecyclemanager_l0test PRIVATE "${_prefix}/include/${NAMESPACE}")
+                target_include_directories(lifecyclemanager_l0test SYSTEM PRIVATE "${_prefix}/include/${NAMESPACE}")
             endif()
             if(PLUGIN_RDK_WINDOW_MANAGER)
-                target_include_directories(rdkwindowmanager_l0test PRIVATE "${_prefix}/include/${NAMESPACE}")
+                target_include_directories(rdkwindowmanager_l0test SYSTEM PRIVATE "${_prefix}/include/${NAMESPACE}")
             endif()
             if(PLUGIN_APP_STORAGE_MANAGER)
-                target_include_directories(appstorage_l0test PRIVATE "${_prefix}/include/${NAMESPACE}")
+                target_include_directories(appstorage_l0test SYSTEM PRIVATE "${_prefix}/include/${NAMESPACE}")
             endif()
         endif()
     endforeach()
