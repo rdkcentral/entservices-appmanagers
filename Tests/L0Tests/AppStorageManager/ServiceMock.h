@@ -120,14 +120,12 @@ public:
     string DataPath() const override { return string("/tmp"); }
     string HashKey() const override { return string(); }
     string Callsign() const override { return string("AppStorageManager"); }
-    string Version() const override { return string("1.0"); }
     string Model() const override { return string(); }
-    string Background() const override { return string(); }
+    bool Background() const override { return false; }
     string Substitute(const string& input) const override { return input; }
     state State() const override { return ACTIVATED; }
     reason Reason() const override { return reason::REQUESTED; }
 
-    bool Background(const string&) override { return false; }
     void Notify(const string&) override {}
     void Register(IPlugin::INotification*) override {}
     void Unregister(IPlugin::INotification*) override {}
