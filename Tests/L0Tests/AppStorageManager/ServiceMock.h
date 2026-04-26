@@ -130,17 +130,26 @@ public:
         return WPEFramework::Core::ERROR_NONE;
     }
 
-    void Activate(const reason) override {}
-    void Deactivate(const reason) override {}
-    void Unavailable(const reason) override {}
+    WPEFramework::Core::hresult Activate(const reason) override
+    {
+        return WPEFramework::Core::ERROR_NONE;
+    }
 
-    ICOMLink* COMLink() override { return this; }
+    WPEFramework::Core::hresult Deactivate(const reason) override
+    {
+        return WPEFramework::Core::ERROR_NONE;
+    }
 
-    // ICOMLink interface (minimal)
-    void Register(ICOMLink::INotification*) override {}
-    void Unregister(ICOMLink::INotification*) override {}
-    uint32_t Activate(const string&, const uint32_t) override { return 0; }
-    uint32_t Close(const uint32_t) override { return WPEFramework::Core::ERROR_NONE; }
+    WPEFramework::Core::hresult Unavailable(const reason) override
+    {
+        return WPEFramework::Core::ERROR_NONE;
+    }
+
+    ICOMLink* COMLink() override
+    {
+        // AppStorageManager tests don't use COM link functionality
+        return nullptr;
+    }
 
     void* Instantiate(const RPC::Object&, const uint32_t, uint32_t&) override
     {
