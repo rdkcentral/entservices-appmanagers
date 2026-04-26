@@ -20,6 +20,8 @@
 #pragma once
 
 #include "Module.h"
+#include <interfaces/IAppStorageManager.h>
+#include <com/com.h>
 #include <atomic>
 #include <string>
 
@@ -127,8 +129,8 @@ public:
     reason Reason() const override { return reason::REQUESTED; }
 
     void Notify(const string&) override {}
-    void Register(IPlugin::INotification*) override {}
-    void Unregister(IPlugin::INotification*) override {}
+    void Register(WPEFramework::PluginHost::IPlugin::INotification*) override {}
+    void Unregister(WPEFramework::PluginHost::IPlugin::INotification*) override {}
 
     // Additional IShell pure virtual methods
     void EnableWebServer(const string& URLPath, const string& fileSystemPath) override
@@ -224,7 +226,7 @@ public:
         return nullptr;
     }
 
-    void* Instantiate(const RPC::Object&, const uint32_t, uint32_t&) override
+    void* Instantiate(const WPEFramework::RPC::Object&, const uint32_t, uint32_t&) override
     {
         if (_fakeImpl != nullptr) {
             _fakeImpl->AddRef();
