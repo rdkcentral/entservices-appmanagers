@@ -53,10 +53,12 @@ public:
     void AddRef() const override;
     uint32_t Release() const override;
 
-    uint32_t GetValue(const string& ns, const string& key, string& value) override;
-    uint32_t SetValue(const string& ns, const string& key, const string& value) override;
-    uint32_t DeleteKey(const string& ns, const string& key) override;
-    uint32_t DeleteNamespace(const string& ns) override;
+    uint32_t Register(INotification* notification) override;
+    uint32_t Unregister(INotification* notification) override;
+    uint32_t GetValue(const ScopeType scope, const string& ns, const string& key, string& value, uint32_t& ttl) override;
+    uint32_t SetValue(const ScopeType scope, const string& ns, const string& key, const string& value, const uint32_t ttl) override;
+    uint32_t DeleteKey(const ScopeType scope, const string& ns, const string& key) override;
+    uint32_t DeleteNamespace(const ScopeType scope, const string& ns) override;
 
 private:
     std::map<std::string, std::map<std::string, std::string>> _storage; // namespace -> key -> value

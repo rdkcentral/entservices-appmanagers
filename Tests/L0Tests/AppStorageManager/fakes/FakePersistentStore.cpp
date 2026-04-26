@@ -79,8 +79,21 @@ uint32_t FakePersistentStore::Release() const
     return WPEFramework::Core::ERROR_NONE;
 }
 
-uint32_t FakePersistentStore::GetValue(const string& ns, const string& key, string& value)
+uint32_t FakePersistentStore::Register(INotification* notification)
 {
+    (void)notification; // Unused in fake implementation
+    return WPEFramework::Core::ERROR_NONE;
+}
+
+uint32_t FakePersistentStore::Unregister(INotification* notification)
+{
+    (void)notification; // Unused in fake implementation
+    return WPEFramework::Core::ERROR_NONE;
+}
+
+uint32_t FakePersistentStore::GetValue(const ScopeType scope, const string& ns, const string& key, string& value, uint32_t& ttl)
+{
+    (void)scope; // Unused in fake implementation
     _getValueCalls++;
     _lastNamespace = ns;
     _lastKey = key;
@@ -92,6 +105,7 @@ uint32_t FakePersistentStore::GetValue(const string& ns, const string& key, stri
     // Check if we have a configured result
     if (!_getValueResult.empty()) {
         value = _getValueResult;
+        ttl = 0; // No TTL in fake store
         return WPEFramework::Core::ERROR_NONE;
     }
 
@@ -101,6 +115,7 @@ uint32_t FakePersistentStore::GetValue(const string& ns, const string& key, stri
         auto keyIt = nsIt->second.find(key);
         if (keyIt != nsIt->second.end()) {
             value = keyIt->second;
+            ttl = 0; // No TTL in fake store
             return WPEFramework::Core::ERROR_NONE;
         }
     }
@@ -108,8 +123,10 @@ uint32_t FakePersistentStore::GetValue(const string& ns, const string& key, stri
     return WPEFramework::Core::ERROR_UNKNOWN_KEY;
 }
 
-uint32_t FakePersistentStore::SetValue(const string& ns, const string& key, const string& value)
+uint32_t FakePersistentStore::SetValue(const ScopeType scope, const string& ns, const string& key, const string& value, const uint32_t ttl)
 {
+    (void)scope; // Unused in fake implementation
+    (void)ttl;   // Unused in fake implementation
     _setValueCalls++;
     _lastNamespace = ns;
     _lastKey = key;
@@ -123,8 +140,9 @@ uint32_t FakePersistentStore::SetValue(const string& ns, const string& key, cons
     return WPEFramework::Core::ERROR_NONE;
 }
 
-uint32_t FakePersistentStore::DeleteKey(const string& ns, const string& key)
+uint32_t FakePersistentStore::DeleteKey(const ScopeType scope, const string& ns, const string& key)
 {
+    (void)scope; // Unused in fake implementation
     _deleteKeyCalls++;
     _lastNamespace = ns;
     _lastKey = key;
@@ -144,8 +162,9 @@ uint32_t FakePersistentStore::DeleteKey(const string& ns, const string& key)
     return WPEFramework::Core::ERROR_NONE;
 }
 
-uint32_t FakePersistentStore::DeleteNamespace(const string& ns)
+uint32_t FakePersistentStore::DeleteNamespace(const ScopeType scope, const string& ns)
 {
+    (void)scope; // Unused in fake implementation
     _storage.erase(ns);
     return WPEFramework::Core::ERROR_NONE;
 }
