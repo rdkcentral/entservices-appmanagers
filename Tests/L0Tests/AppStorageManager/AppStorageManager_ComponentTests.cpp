@@ -32,7 +32,6 @@
 #include "AppStorageManagerTelemetryReporting.h"
 #include "ServiceMock.h"
 #include "fakes/FakePersistentStore.h"
-#include "fakes/FakeFilesystem.h"
 #include "common/L0Expect.hpp"
 #include "common/L0TestTypes.hpp"
 
@@ -68,7 +67,6 @@ uint32_t Test_RH_SetBaseStoragePathValid()
 {
     L0Test::TestResult tr;
 
-    L0Test::FilesystemShim::getInstance().Reset();
     RequestHandler& handler = RequestHandler::getInstance();
     
     // Should not crash

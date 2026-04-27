@@ -129,7 +129,6 @@ set(APPSTORAGE_MANAGER_L0_SOURCES
     AppStorageManager/AppStorageManager_ImplementationTests.cpp
     AppStorageManager/AppStorageManager_ComponentTests.cpp
     AppStorageManager/fakes/FakePersistentStore.cpp
-    AppStorageManager/fakes/FakeFilesystem.cpp
     common/L0Bootstrap.cpp
 )
 
@@ -344,7 +343,7 @@ if(PLUGIN_APP_STORAGE_MANAGER)
     target_compile_definitions(appstorage_l0test PRIVATE
         MODULE_NAME=AppStorageManager_L0Test
         USE_THUNDER_R4=1
-	STORAGE_MANAGER_API_VERSION_NUMBER_MAJOR=1
+        STORAGE_MANAGER_API_VERSION_NUMBER_MAJOR=1
         STORAGE_MANAGER_API_VERSION_NUMBER_MINOR=0
         STORAGE_MANAGER_API_VERSION_NUMBER_PATCH=0
         DISABLE_SECURITY_TOKEN=1
