@@ -23,6 +23,8 @@
 #include <mutex>
 #include <vector>
 #include <atomic>
+#include <cerrno>
+#include <cstring>
 #include <exception>
 #include "UtilsLogging.h"
 
@@ -66,17 +68,17 @@ namespace WPEFramework
                 }
 
                 sRunning.store(true);
+
+                if (0 != sem_init(&gRequestSemaphore, 0, 0))
+                {
+                    LOGERR("sem_init failed in %s", __FUNCTION__);
+                    return false;
+                }
+
                 sInitialized.store(true);
             }
 
             StateHandler::initialize();
-
-            if (0 != sem_init(&gRequestSemaphore, 0, 0))
-            {
-                LOGERR("sem_init failed in %s", __FUNCTION__);
-                sInitialized.store(false);
-                return false;
-            }
 
             try
             {
@@ -139,8 +141,12 @@ namespace WPEFramework
             catch (const std::system_error& ex)
             {
                 LOGERR("Failed to create requestHandlerThread in %s: %s", __FUNCTION__, ex.what());
+                {
+                    std::lock_guard<std::mutex> lock(gRequestMutex);
+                    sInitialized.store(false);
+                    gRequests.clear();
+                }
                 sem_destroy(&gRequestSemaphore);
-                sInitialized.store(false);
                 return false;
             }
 
@@ -173,7 +179,7 @@ namespace WPEFramework
 
             if (0 != sem_destroy(&gRequestSemaphore))
             {
-                LOGERR("sem_destroy failed in %s", __FUNCTION__);
+                LOGERR("sem_destroy failed in %s: %s", __FUNCTION__, strerror(errno));
             }
 
             {
