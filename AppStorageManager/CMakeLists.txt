@@ -52,9 +52,6 @@ set_target_properties(${MODULE_NAME} PROPERTIES
 
 set_source_files_properties(AppStorageManager.cpp PROPERTIES COMPILE_FLAGS "-fexceptions")
 
-# Suppress deprecation warnings from Thunder/WPEFramework headers
-target_compile_options(${MODULE_NAME} PRIVATE -Wno-error=deprecated-declarations)
-
 target_include_directories(${MODULE_NAME}
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../helpers)
@@ -86,9 +83,6 @@ add_library(${PLUGIN_IMPLEMENTATION} SHARED ${STORAGEMANAGER_SOURCES})
 if(AIMANAGERS_TELEMETRY_METRICS_SUPPORT)
     message(STATUS "TELEMETRY_METRICS_SUPPORT is enabled")
 endif(AIMANAGERS_TELEMETRY_METRICS_SUPPORT)
-
-# Suppress deprecation warnings from Thunder/WPEFramework headers
-target_compile_options(${PLUGIN_IMPLEMENTATION} PRIVATE -Wno-error=deprecated-declarations)
 
 target_include_directories(${PLUGIN_IMPLEMENTATION}
     PRIVATE
