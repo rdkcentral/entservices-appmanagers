@@ -66,10 +66,20 @@ namespace WPEFramework
                 }
 
                 sRunning.store(true);
+                sInitialized.store(true);
             }
 
             StateHandler::initialize();
-            sem_init(&gRequestSemaphore, 0, 0);
+
+            if (0 != sem_init(&gRequestSemaphore, 0, 0))
+            {
+                LOGERR("sem_init failed in %s", __FUNCTION__);
+                sInitialized.store(false);
+                return false;
+            }
+
+            try
+            {
             requestHandlerThread = std::thread([=]() {
                 bool isRunning = true;
                 {
@@ -125,9 +135,15 @@ namespace WPEFramework
                     }
                 }
             });
+            }
+            catch (const std::system_error& ex)
+            {
+                LOGERR("Failed to create requestHandlerThread in %s: %s", __FUNCTION__, ex.what());
+                sem_destroy(&gRequestSemaphore);
+                sInitialized.store(false);
+                return false;
+            }
 
-            // Mark as initialized only after semaphore and thread are ready
-            sInitialized.store(true);
 	    return true;	
 	}
 
@@ -145,11 +161,25 @@ namespace WPEFramework
             }
 
             sem_post(&gRequestSemaphore);
-            requestHandlerThread.join();
-        {
+
+            if (true == requestHandlerThread.joinable())
+            {
+                requestHandlerThread.join();
+            }
+            else
+            {
+                LOGWARN("requestHandlerThread is not joinable in %s", __FUNCTION__);
+            }
+
+            if (0 != sem_destroy(&gRequestSemaphore))
+            {
+                LOGERR("sem_destroy failed in %s", __FUNCTION__);
+            }
+
+            {
                 std::lock_guard<std::mutex> lock(gRequestMutex);
                 gRequests.clear();
-        }
+            }
 	}
 
 	void StateTransitionHandler::addRequest(StateTransitionRequest& request)
@@ -157,6 +187,7 @@ namespace WPEFramework
            // Prevent sem_post on destroyed semaphore
            if (false == sInitialized.load())
            {
+               LOGWARN("addRequest called while handler is not initialized in %s, dropping request", __FUNCTION__);
                return;
            }
 

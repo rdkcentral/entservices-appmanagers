@@ -252,13 +252,13 @@ namespace WPEFramework
             // Notifies appropriate API Gateway when an app is about to be loaded
             // Lifecycle manager will create the appInstanceId once the app is loaded.  Ripple is responsible for creating a token. 
             Core::hresult status = Core::ERROR_NONE;
-            auto context = getContext("", appId);
             bool firstLaunch = false;
             time_t requestTime = 0;
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             requestTime = LifecycleManagerTelemetryReporting::getInstance().getCurrentTimestamp();
 #endif
             mAdminLock.Lock();
+            auto context = getContext("", appId);
             if (nullptr == context)
 	    {
                 context = std::make_shared<ApplicationContext>(appId);
@@ -557,6 +557,7 @@ namespace WPEFramework
         std::shared_ptr<ApplicationContext> LifecycleManagerImplementation::getContext(const string& appInstanceId, const string& appId) const
 	{
             std::shared_ptr<ApplicationContext> context = nullptr;
+            mAdminLock.Lock();
             auto iter = mLoadedApplications.end();
 	    for (iter = mLoadedApplications.begin(); iter != mLoadedApplications.end(); iter++)
 	    {
@@ -574,6 +575,7 @@ namespace WPEFramework
                     }
 		}
 	    }
+            mAdminLock.Unlock();
 	    return context;
 	}
 
@@ -702,6 +704,7 @@ namespace WPEFramework
 	    {
                 return;
 	    }
+            mAdminLock.Lock();
             auto iter = mLoadedApplications.end();
 	    for (iter = mLoadedApplications.begin(); iter != mLoadedApplications.end(); iter++)
 	    {
@@ -718,6 +721,7 @@ namespace WPEFramework
 	    {
                 mLoadedApplications.erase(iter);
 	    }
+            mAdminLock.Unlock();
     }
 
 

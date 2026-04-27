@@ -50,7 +50,7 @@ class LifecycleManagerImplementationTest : public LifecycleManagerImplementation
     public:
         ApplicationContext* getContextImpl(const std::string& appInstanceId, const std::string& appId) const 
         {
-            return LifecycleManagerImplementation::getContext(appInstanceId, appId);
+            return LifecycleManagerImplementation::getContext(appInstanceId, appId).get();
         }
 };
 } // namespace Plugin
