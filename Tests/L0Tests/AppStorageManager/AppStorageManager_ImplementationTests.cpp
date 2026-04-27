@@ -90,10 +90,19 @@ uint32_t Test_Impl_ConfigureWithNullService()
 {
     L0Test::TestResult tr;
 
-    L0Test::FilesystemShim::getInstance().Reset();
+    // First configure with valid service to initialize singleton state
+    L0Test::FakePersistentStore fakeStore;
+    L0Test::ServiceMock::Config cfg{&fakeStore};
+    cfg.configLine = "{\"path\":\"/tmp/appdata\"}";
+    L0Test::ServiceMock service(cfg);
+
     StorageManagerImplementation* impl = CreateImpl();
     L0Test::ExpectTrue(tr, impl != nullptr, "Implementation created");
 
+    // Initialize properly first
+    impl->Configure(&service);
+
+    // Now test that calling Configure with nullptr returns error
     const uint32_t result = impl->Configure(nullptr);
     L0Test::ExpectTrue(tr, result != WPEFramework::Core::ERROR_NONE,
                        "Configure returns error with null service");

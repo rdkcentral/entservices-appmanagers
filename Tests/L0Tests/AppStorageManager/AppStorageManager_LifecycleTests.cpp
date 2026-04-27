@@ -176,7 +176,7 @@ uint32_t Test_ASM_Lifecycle_InitializeSuccessAndDeinitialize()
     plugin->Deinitialize(&service);
 
     plugin->Release();
-    if (impl) impl->Release();
+    // Note: impl is released by plugin, don't release again
 
     return tr.failures;
 }
@@ -204,7 +204,7 @@ uint32_t Test_ASM_Lifecycle_InitializeFailsWhenConfigureFails()
                        "Error message indicates configuration failure");
 
     plugin->Release();
-    failImpl->Release();
+    // Note: failImpl is released by plugin, don't release again
 
     return tr.failures;
 }
@@ -234,7 +234,7 @@ uint32_t Test_ASM_Lifecycle_InformationReturnsServiceName()
 
     plugin->Deinitialize(&service);
     plugin->Release();
-    if (impl) impl->Release();
+    // Note: impl is released by plugin, don't release again
 
     return tr.failures;
 }
@@ -266,7 +266,7 @@ uint32_t Test_ASM_Lifecycle_DeinitializeWithNullService()
     L0Test::ExpectTrue(tr, true, "Deinitialize completed successfully");
 
     plugin->Release();
-    if (impl) impl->Release();
+    // Note: impl is released by plugin, don't release again
 
     return tr.failures;
 }
