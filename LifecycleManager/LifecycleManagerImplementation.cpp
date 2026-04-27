@@ -187,6 +187,7 @@ namespace WPEFramework
         {
             Core::hresult status = Core::ERROR_NONE;
             JsonArray appsInformation;
+            Core::SafeSyncType<Core::CriticalSection> adminLock(mAdminLock);
             auto iter = mLoadedApplications.end();
             for (iter = mLoadedApplications.begin(); iter != mLoadedApplications.end(); iter++)
             {

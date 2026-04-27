@@ -199,6 +199,8 @@ namespace WPEFramework
 
             bool isStateTerminating = false;
             size_t lastStateIndex = static_cast<size_t>(-1); 
+            bool hasDeferredUnloadedEvent = false;
+            Exchange::ILifecycleManager::LifecycleState deferredOldLifecycleState = Exchange::ILifecycleManager::LifecycleState::UNLOADED;
             context->mPendingStateTransition = false;
 
             // start from next state
@@ -232,7 +234,15 @@ namespace WPEFramework
 		{
                     newLifecycleState = statePath[stateIndex];
                 }
-                sendEvent(context, oldLifecycleState, newLifecycleState, errorReason);
+                if (Exchange::ILifecycleManager::LifecycleState::UNLOADED == newLifecycleState)
+                {
+                    hasDeferredUnloadedEvent = true;
+                    deferredOldLifecycleState = oldLifecycleState;
+                }
+                else
+                {
+                    sendEvent(context, oldLifecycleState, newLifecycleState, errorReason);
+                }
 
                 if (isStateTerminating)
                 {
@@ -269,7 +279,13 @@ namespace WPEFramework
                 context->mPendingStateTransition = false;
                 context->mPendingEventName = "";
                 context->mPendingStates.clear();
-            }		  
+            }
+
+            if (true == hasDeferredUnloadedEvent)
+            {
+                sendEvent(context, deferredOldLifecycleState, Exchange::ILifecycleManager::LifecycleState::UNLOADED, errorReason);
+            }
+		  
             return result;
         }
 
