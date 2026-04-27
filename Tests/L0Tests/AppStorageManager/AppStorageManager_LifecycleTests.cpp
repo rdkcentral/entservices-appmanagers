@@ -199,7 +199,7 @@ uint32_t Test_ASM_Lifecycle_InitializeFailsWhenConfigureFails()
 {
     L0Test::TestResult tr;
 
-    L0Test::FakePersistentStore fake Store;
+    L0Test::FakePersistentStore fakeStore;
     L0Test::ServiceMock service(L0Test::ServiceMock::Config{&fakeStore});
 
     // Provide fake implementation that fails Configure

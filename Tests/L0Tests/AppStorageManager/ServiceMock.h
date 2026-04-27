@@ -23,6 +23,7 @@
 #include <interfaces/IAppStorageManager.h>
 #include <com/com.h>
 #include <atomic>
+#include <functional>
 #include <string>
 
 namespace WPEFramework {
@@ -35,10 +36,12 @@ namespace L0Test {
 
 /**
  * @brief Minimal IShell mock for AppStorageManager L0 tests
- * Following RuntimeManager pattern with Config struct
+ * Following RuntimeManager pattern with Config struct and InstantiateHandler
  */
 class ServiceMock : public WPEFramework::PluginHost::IShell {
 public:
+    using InstantiateHandler = std::function<void*(const WPEFramework::RPC::Object&, const uint32_t, uint32_t&)>;
+
     struct Config {
         explicit Config(WPEFramework::Exchange::IStore2* store = nullptr)
             : persistentStore(store)
@@ -52,7 +55,7 @@ public:
     explicit ServiceMock(Config cfg = Config())
         : _refCount(1)
         , _cfg(cfg)
-        , _fakeImpl(nullptr)
+        , _instantiateHandler()
         , _configLineCallCount(0)
         , _queryInterfaceByCallsignCallCount(0)
         , _comLink(*this)
@@ -61,10 +64,10 @@ public:
 
     ~ServiceMock() override = default;
 
-    // Configuration helper for backward compatibility with tests that set impl directly
-    void SetRootCreationResult(WPEFramework::Exchange::IAppStorageManager* impl)
+    // Set handler for Root<> template Instantiate calls
+    void SetInstantiateHandler(InstantiateHandler handler)
     {
-        _fakeImpl = impl;
+        _instantiateHandler = handler;
     }
 
     uint32_t GetConfigLineCallCount() const { return _configLineCallCount; }
