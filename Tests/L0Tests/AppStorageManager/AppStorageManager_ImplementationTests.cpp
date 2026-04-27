@@ -176,13 +176,8 @@ uint32_t Test_Impl_GetStorageWithValidAppId()
 {
     L0Test::TestResult tr;
 
-    L0Test::FilesystemShim::getInstance().Reset();
-    L0Test::FilesystemShim::getInstance().SetMkdirResult(true);
-    L0Test::FilesystemShim::getInstance().SetChownResult(true);
-    L0Test::FilesystemShim::getInstance().SetStatResult(true, {});
-    L0Test::FilesystemShim::getInstance().SetStatvfsResult(true, {});
-    L0Test::FilesystemShim::getInstance().SetDirectoryExists("/tmp/appdata/com.test.app", true);
-    L0Test::FilesystemShim::getInstance().SetDirectorySize("/tmp/appdata/com.test.app", 1024);
+    // Note: This test uses REAL filesystem operations (mkdir, stat, etc.)
+    // following PackageManager L0 test pattern - no filesystem mocking needed
 
     L0Test::FakePersistentStore fakeStore;
     L0Test::ServiceMock::Config cfg{&fakeStore};
@@ -196,11 +191,12 @@ uint32_t Test_Impl_GetStorageWithValidAppId()
     std::string createPath, createError;
     impl->CreateStorage("com.test.app", 10240, createPath, createError);
 
-    // Now get storage
+    // Now get storage with uid/gid matching what CreateStorage sets (-1, -1)
+    // This avoids triggering chown() which requires root privileges
     std::string path;
     uint32_t size = 0;
     uint32_t used = 0;
-    const uint32_t result = impl->GetStorage("com.test.app", 1000, 1000, path, size, used);
+    const uint32_t result = impl->GetStorage("com.test.app", -1, -1, path, size, used);
 
     L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE, "GetStorage returns ERROR_NONE");
     L0Test::ExpectTrue(tr, !path.empty(), "Path is not empty");

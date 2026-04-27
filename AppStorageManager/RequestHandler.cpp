@@ -1,6 +1,5 @@
 
 #include <ftw.h>
-#include <inttypes.h>
 #include <mutex>
 #include "RequestHandler.h"
 #include "UtilsLogging.h"
@@ -142,14 +141,11 @@ namespace WPEFramework
 
         void RequestHandler::releasePersistentStoreRemoteStoreObject()
         {
-            if (mPersistentStoreRemoteStoreObject != nullptr)
+            ASSERT(nullptr != mPersistentStoreRemoteStoreObject);
+            if(mPersistentStoreRemoteStoreObject)
             {
                 mPersistentStoreRemoteStoreObject->Release();
                 mPersistentStoreRemoteStoreObject = nullptr;
-            }
-            else
-            {
-                LOGWARN("PersistentStoreRemoteStoreObject is null, nothing to release");
             }
         }
 
@@ -224,10 +220,20 @@ namespace WPEFramework
             }
             else
             {
-                ASSERT(mPersistentStoreRemoteStoreObject != nullptr);
+                /* Ensure the persistent store object is created if necessary */
+                if (mPersistentStoreRemoteStoreObject == nullptr && Core::ERROR_NONE != createPersistentStoreRemoteStoreObject()) 
+                {
+                    LOGERR("Failed to create PersistentStoreRemoteStoreObject");
+                    status = Core::ERROR_GENERAL;  // Set status to indicate failure
+                }
+                else
+                {
+                    ASSERT(mPersistentStoreRemoteStoreObject != nullptr);
 
-                /* Perform action based on the StorageActionType */
-                switch (actionType)
+                    /* Perform action based on the StorageActionType */
+                    if (mPersistentStoreRemoteStoreObject != nullptr)
+                    {
+                        switch (actionType)
                         {
                             case SET:
                             {
@@ -279,6 +285,8 @@ namespace WPEFramework
                             }
                             break;
                         }
+                    }
+                }
             }
 
             return status;
@@ -296,7 +304,7 @@ namespace WPEFramework
                 {
                     /* Check and Store the current storage dev block size */
                     gStorageSize.blockSize = (0 != statPtr->st_blksize) ? statPtr->st_blksize : DEFAULT_STORAGE_DEV_BLOCK_SIZE;
-                    LOGINFO("path: %s dev blksize:%lu blockSize is set to %" PRIu64, path, statPtr->st_blksize, (uint64_t)gStorageSize.blockSize);
+                    LOGINFO("path: %s dev blksize:%lu blockSize is set to %llu", path, statPtr->st_blksize, gStorageSize.blockSize);
                 }
 
                 // Calculate used bytes
@@ -304,7 +312,7 @@ namespace WPEFramework
                                                             ((uint64_t)statPtr->st_blocks *(uint64_t)gStorageSize.blockSize) :
                                                             (uint64_t)statPtr->st_size;
                 gStorageSize.usedBytes += usedBytesForFile;
-                LOGINFO("path: %s usedBytes: %" PRIu64 " blockSize: %" PRIu64, path, (uint64_t)gStorageSize.usedBytes, (uint64_t)gStorageSize.blockSize);
+                LOGINFO("path: %s usedBytes: %llu blockSize: %llu", path, gStorageSize.usedBytes, gStorageSize.blockSize);
             }
             (void)internalFtwUsage;
             return 0;
@@ -475,7 +483,7 @@ namespace WPEFramework
                         std::lock_guard<std::mutex> storageSizelock(mStorageSizeLock);
 
                         gStorageSize.blockSize = (statFs.f_bsize != 0) ? statFs.f_bsize : DEFAULT_STORAGE_DEV_BLOCK_SIZE; /* Fallback to default block size */
-                        LOGINFO("path: %s f_bsize:%lu f_frsize:%lu, blockSize is set to %" PRIu64, baseDir.c_str(), statFs.f_bsize, statFs.f_frsize, (uint64_t)gStorageSize.blockSize);
+                        LOGINFO("path: %s f_bsize:%lu f_frsize:%lu, blockSize is set to %llu", baseDir.c_str(), statFs.f_bsize, statFs.f_frsize, gStorageSize.blockSize);
                     }
 
                     /* Calculate the current available storage in KB */
@@ -505,13 +513,13 @@ namespace WPEFramework
                     /* Determine if required space is available */
                     if (availableSizeKB >= static_cast<int64_t>(requiredSpaceKB))
                     {
-                        LOGINFO("Enough space available. Required: %u KB, Available: %" PRId64 " KB",
+                        LOGINFO("Enough space available. Required: %u KB, Available: %llu KB",
                         requiredSpaceKB, availableSizeKB);
                         hasEnoughSpace = true;
                     }
                     else
                     {
-                        LOGERR("Not enough space available. Required: %u KB, Available: %" PRId64 " KB",
+                        LOGERR("Not enough space available. Required: %u KB, Available: %llu KB",
                         requiredSpaceKB, availableSizeKB);
                     }
                 }
