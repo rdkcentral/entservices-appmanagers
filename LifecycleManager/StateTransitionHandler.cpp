@@ -24,6 +24,7 @@
 #include <mutex>
 #include <vector>
 #include <atomic>
+#include <exception>
 #include "UtilsLogging.h"
 
 namespace WPEFramework
@@ -65,50 +66,72 @@ namespace WPEFramework
 
         bool StateTransitionHandler::initialize()
 	{
-            gRequestMutex.lock();
-            if (sInitialized.load())
             {
-                gRequestMutex.unlock();
-                return true;
-            }
+                std::lock_guard<std::mutex> lock(gRequestMutex);
+                if (true == sInitialized.load())
+                {
+                    return true;
+                }
 
-            sRunning.store(true);
-            gRequestMutex.unlock();
+                sRunning.store(true);
+            }
 
             StateHandler::initialize();
             sem_init(&gRequestSemaphore, 0, 0);
             std::atexit(terminateStateTransitionHandlerAtExit);
             requestHandlerThread = std::thread([=]() {
                 bool isRunning = true;
-                gRequestMutex.lock();
-                isRunning = sRunning.load();
-                gRequestMutex.unlock();
+                {
+                    std::lock_guard<std::mutex> lock(gRequestMutex);
+                    isRunning = sRunning.load();
+                }
                 while(isRunning)
 		{
-                    gRequestMutex.lock();
-                    while (gRequests.size() > 0)
+                    while (true)
                     {
-	                std::shared_ptr<StateTransitionRequest> request = gRequests.front();
-                        if (!request)
+                        std::shared_ptr<StateTransitionRequest> request;
                         {
+                            std::lock_guard<std::mutex> lock(gRequestMutex);
+                            if (true == gRequests.empty())
+                            {
+                                break;
+                            }
+                            request = gRequests.front();
                             gRequests.erase(gRequests.begin());
+                        }
+
+                        if (nullptr == request)
+                        {
                             continue;
                         }
+
                         std::string errorReason;
-                        bool success = StateHandler::changeState(*request, errorReason);
-                        gRequests.erase(gRequests.begin());
-                        if (!success)
+                        bool success = false;
+                        try
+                        {
+                            success = StateHandler::changeState(*request, errorReason);
+                        }
+                        catch (const std::exception& ex)
+                        {
+                            errorReason = ex.what();
+                        }
+                        catch (...)
+                        {
+                            errorReason = "unknown exception";
+                        }
+
+                        if (false == success)
                         {
                             LOGERR("ERROR IN STATE TRANSITION ... %s \n",errorReason.c_str());
                             //TODO: Decide on what to do on state transition error
                             break;
                         }
                     }
-                    gRequestMutex.unlock();
                     sem_wait(&gRequestSemaphore);
-                    gRequestMutex.lock();
-                    isRunning = sRunning.load();
-                    gRequestMutex.unlock();
+                    {
+                        std::lock_guard<std::mutex> lock(gRequestMutex);
+                        isRunning = sRunning.load();
+                    }
                 }
             });
 
@@ -119,16 +142,16 @@ namespace WPEFramework
 
 	void StateTransitionHandler::terminate()
 	{
-            gRequestMutex.lock();
-            if (!sInitialized.load())
             {
-                gRequestMutex.unlock();
-                return;
-            }
+                std::lock_guard<std::mutex> lock(gRequestMutex);
+                if (false == sInitialized.load())
+                {
+                    return;
+                }
 
-            sRunning.store(false);
-            sInitialized.store(false);
-            gRequestMutex.unlock();
+                sRunning.store(false);
+                sInitialized.store(false);
+            }
 
             sem_post(&gRequestSemaphore);
 
@@ -139,28 +162,30 @@ namespace WPEFramework
 
             sem_destroy(&gRequestSemaphore);
 
-	    gRequestMutex.lock();
-            gRequests.clear();
-	    gRequestMutex.unlock();
+        {
+                std::lock_guard<std::mutex> lock(gRequestMutex);
+                gRequests.clear();
+        }
 	}
 
 	void StateTransitionHandler::addRequest(StateTransitionRequest& request)
 	{
            // Prevent sem_post on destroyed semaphore
-           if (!sInitialized.load())
+           if (false == sInitialized.load())
            {
                return;
            }
 
            //TODO: Pass contect and state as argument to function
 	   std::shared_ptr<StateTransitionRequest> stateTransitionRequest = std::make_shared<StateTransitionRequest>(request.mContext, request.mTargetState);
-	   gRequestMutex.lock();
-           gRequests.push_back(std::move(stateTransitionRequest));
-           if (sInitialized.load())
-           {
-               sem_post(&gRequestSemaphore);
-           }
-	   gRequestMutex.unlock();
+	   {
+               std::lock_guard<std::mutex> lock(gRequestMutex);
+               gRequests.push_back(std::move(stateTransitionRequest));
+               if (true == sInitialized.load())
+               {
+                   sem_post(&gRequestSemaphore);
+               }
+	   }
 	}
 
     } /* namespace Plugin */
