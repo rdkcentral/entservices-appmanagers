@@ -65,10 +65,10 @@ uint32_t Test_Impl_ConfigureWithValidService()
     L0Test::TestResult tr;
 
     L0Test::FilesystemShim::getInstance().Reset();
-    L0Test::ServiceMock service;
-    L0Test::FakePersistentStore* fakeStore = new L0Test::FakePersistentStore();
-    service.SetPersistentStoreResult(fakeStore);
-    service.SetConfigPath("{\"path\":\"/tmp/appdata\"}");
+    L0Test::FakePersistentStore fakeStore;
+    L0Test::ServiceMock::Config cfg{&fakeStore};
+    cfg.configLine = "{\"path\":\"/tmp/appdata\"}";
+    L0Test::ServiceMock service(cfg);
 
     StorageManagerImplementation* impl = CreateImpl();
     L0Test::ExpectTrue(tr, impl != nullptr, "Implementation created");
@@ -77,7 +77,6 @@ uint32_t Test_Impl_ConfigureWithValidService()
     L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE, "Configure returns ERROR_NONE");
 
     impl->Release();
-    fakeStore->Release();
 
     return tr.failures;
 }
@@ -117,10 +116,10 @@ uint32_t Test_Impl_CreateStorageWithValidInput()
     L0Test::FilesystemShim::getInstance().SetMkdirResult(true);
     L0Test::FilesystemShim::getInstance().SetStatvfsResult(true, {});
 
-    L0Test::ServiceMock service;
-    L0Test::FakePersistentStore* fakeStore = new L0Test::FakePersistentStore();
-    service.SetPersistentStoreResult(fakeStore);
-    service.SetConfigPath("{\"path\":\"/tmp/appdata\"}");
+    L0Test::FakePersistentStore fakeStore;
+    L0Test::ServiceMock::Config cfg{&fakeStore};
+    cfg.configLine = "{\"path\":\"/tmp/appdata\"}";
+    L0Test::ServiceMock service(cfg);
 
     StorageManagerImplementation* impl = CreateImpl();
     impl->Configure(&service);
@@ -134,7 +133,6 @@ uint32_t Test_Impl_CreateStorageWithValidInput()
     L0Test::ExpectTrue(tr, errorReason.empty(), "Error reason is empty on success");
 
     impl->Release();
-    fakeStore->Release();
 
     return tr.failures;
 }
@@ -149,10 +147,10 @@ uint32_t Test_Impl_CreateStorageWithEmptyAppId()
     L0Test::TestResult tr;
 
     L0Test::FilesystemShim::getInstance().Reset();
-    L0Test::ServiceMock service;
-    L0Test::FakePersistentStore* fakeStore = new L0Test::FakePersistentStore();
-    service.SetPersistentStoreResult(fakeStore);
-    service.SetConfigPath("{\"path\":\"/tmp/appdata\"}");
+    L0Test::FakePersistentStore fakeStore;
+    L0Test::ServiceMock::Config cfg{&fakeStore};
+    cfg.configLine = "{\"path\":\"/tmp/appdata\"}";
+    L0Test::ServiceMock service(cfg);
 
     StorageManagerImplementation* impl = CreateImpl();
     impl->Configure(&service);
@@ -165,7 +163,6 @@ uint32_t Test_Impl_CreateStorageWithEmptyAppId()
     L0Test::ExpectTrue(tr, !errorReason.empty(), "Error reason provides explanation");
 
     impl->Release();
-    fakeStore->Release();
 
     return tr.failures;
 }
@@ -187,10 +184,10 @@ uint32_t Test_Impl_GetStorageWithValidAppId()
     L0Test::FilesystemShim::getInstance().SetDirectoryExists("/tmp/appdata/com.test.app", true);
     L0Test::FilesystemShim::getInstance().SetDirectorySize("/tmp/appdata/com.test.app", 1024);
 
-    L0Test::ServiceMock service;
-    L0Test::FakePersistentStore* fakeStore = new L0Test::FakePersistentStore();
-    service.SetPersistentStoreResult(fakeStore);
-    service.SetConfigPath("{\"path\":\"/tmp/appdata\"}");
+    L0Test::FakePersistentStore fakeStore;
+    L0Test::ServiceMock::Config cfg{&fakeStore};
+    cfg.configLine = "{\"path\":\"/tmp/appdata\"}";
+    L0Test::ServiceMock service(cfg);
 
     StorageManagerImplementation* impl = CreateImpl();
     impl->Configure(&service);
@@ -209,7 +206,6 @@ uint32_t Test_Impl_GetStorageWithValidAppId()
     L0Test::ExpectTrue(tr, !path.empty(), "Path is not empty");
 
     impl->Release();
-    fakeStore->Release();
 
     return tr.failures;
 }
@@ -224,10 +220,10 @@ uint32_t Test_Impl_GetStorageWithEmptyAppId()
     L0Test::TestResult tr;
 
     L0Test::FilesystemShim::getInstance().Reset();
-    L0Test::ServiceMock service;
-    L0Test::FakePersistentStore* fakeStore = new L0Test::FakePersistentStore();
-    service.SetPersistentStoreResult(fakeStore);
-    service.SetConfigPath("{\"path\":\"/tmp/appdata\"}");
+    L0Test::FakePersistentStore fakeStore;
+    L0Test::ServiceMock::Config cfg{&fakeStore};
+    cfg.configLine = "{\"path\":\"/tmp/appdata\"}";
+    L0Test::ServiceMock service(cfg);
 
     StorageManagerImplementation* impl = CreateImpl();
     impl->Configure(&service);
@@ -240,7 +236,6 @@ uint32_t Test_Impl_GetStorageWithEmptyAppId()
     L0Test::ExpectTrue(tr, result != WPEFramework::Core::ERROR_NONE, "GetStorage returns error");
 
     impl->Release();
-    fakeStore->Release();
 
     return tr.failures;
 }
@@ -255,10 +250,10 @@ uint32_t Test_Impl_GetStorageWithNonExistentAppId()
     L0Test::TestResult tr;
 
     L0Test::FilesystemShim::getInstance().Reset();
-    L0Test::ServiceMock service;
-    L0Test::FakePersistentStore* fakeStore = new L0Test::FakePersistentStore();
-    service.SetPersistentStoreResult(fakeStore);
-    service.SetConfigPath("{\"path\":\"/tmp/appdata\"}");
+    L0Test::FakePersistentStore fakeStore;
+    L0Test::ServiceMock::Config cfg{&fakeStore};
+    cfg.configLine = "{\"path\":\"/tmp/appdata\"}";
+    L0Test::ServiceMock service(cfg);
 
     StorageManagerImplementation* impl = CreateImpl();
     impl->Configure(&service);
@@ -272,7 +267,6 @@ uint32_t Test_Impl_GetStorageWithNonExistentAppId()
                        "GetStorage returns error for non-existent app");
 
     impl->Release();
-    fakeStore->Release();
 
     return tr.failures;
 }
@@ -292,10 +286,10 @@ uint32_t Test_Impl_DeleteStorageWithValidAppId()
     L0Test::FilesystemShim::getInstance().SetStatvfsResult(true, {});
     L0Test::FilesystemShim::getInstance().SetDirectoryExists("/tmp/appdata/com.test.app", true);
 
-    L0Test::ServiceMock service;
-    L0Test::FakePersistentStore* fakeStore = new L0Test::FakePersistentStore();
-    service.SetPersistentStoreResult(fakeStore);
-    service.SetConfigPath("{\"path\":\"/tmp/appdata\"}");
+    L0Test::FakePersistentStore fakeStore;
+    L0Test::ServiceMock::Config cfg{&fakeStore};
+    cfg.configLine = "{\"path\":\"/tmp/appdata\"}";
+    L0Test::ServiceMock service(cfg);
 
     StorageManagerImplementation* impl = CreateImpl();
     impl->Configure(&service);
@@ -312,7 +306,6 @@ uint32_t Test_Impl_DeleteStorageWithValidAppId()
     L0Test::ExpectTrue(tr, errorReason.empty(), "Error reason is empty on success");
 
     impl->Release();
-    fakeStore->Release();
 
     return tr.failures;
 }
@@ -327,10 +320,10 @@ uint32_t Test_Impl_DeleteStorageWithEmptyAppId()
     L0Test::TestResult tr;
 
     L0Test::FilesystemShim::getInstance().Reset();
-    L0Test::ServiceMock service;
-    L0Test::FakePersistentStore* fakeStore = new L0Test::FakePersistentStore();
-    service.SetPersistentStoreResult(fakeStore);
-    service.SetConfigPath("{\"path\":\"/tmp/appdata\"}");
+    L0Test::FakePersistentStore fakeStore;
+    L0Test::ServiceMock::Config cfg{&fakeStore};
+    cfg.configLine = "{\"path\":\"/tmp/appdata\"}";
+    L0Test::ServiceMock service(cfg);
 
     StorageManagerImplementation* impl = CreateImpl();
     impl->Configure(&service);
@@ -342,7 +335,6 @@ uint32_t Test_Impl_DeleteStorageWithEmptyAppId()
     L0Test::ExpectTrue(tr, !errorReason.empty(), "Error reason provides explanation");
 
     impl->Release();
-    fakeStore->Release();
 
     return tr.failures;
 }
@@ -361,10 +353,10 @@ uint32_t Test_Impl_ClearStorageWithValidAppId()
     L0Test::FilesystemShim::getInstance().SetStatvfsResult(true, {});
     L0Test::FilesystemShim::getInstance().SetDirectoryExists("/tmp/appdata/com.test.app", true);
 
-    L0Test::ServiceMock service;
-    L0Test::FakePersistentStore* fakeStore = new L0Test::FakePersistentStore();
-    service.SetPersistentStoreResult(fakeStore);
-    service.SetConfigPath("{\"path\":\"/tmp/appdata\"}");
+    L0Test::FakePersistentStore fakeStore;
+    L0Test::ServiceMock::Config cfg{&fakeStore};
+    cfg.configLine = "{\"path\":\"/tmp/appdata\"}";
+    L0Test::ServiceMock service(cfg);
 
     StorageManagerImplementation* impl = CreateImpl();
     impl->Configure(&service);
@@ -382,7 +374,6 @@ uint32_t Test_Impl_ClearStorageWithValidAppId()
     L0Test::ExpectTrue(tr, true, "Clear executed without crash");
 
     impl->Release();
-    fakeStore->Release();
 
     return tr.failures;
 }
@@ -397,10 +388,10 @@ uint32_t Test_Impl_ClearStorageWithEmptyAppId()
     L0Test::TestResult tr;
 
     L0Test::FilesystemShim::getInstance().Reset();
-    L0Test::ServiceMock service;
-    L0Test::FakePersistentStore* fakeStore = new L0Test::FakePersistentStore();
-    service.SetPersistentStoreResult(fakeStore);
-    service.SetConfigPath("{\"path\":\"/tmp/appdata\"}");
+    L0Test::FakePersistentStore fakeStore;
+    L0Test::ServiceMock::Config cfg{&fakeStore};
+    cfg.configLine = "{\"path\":\"/tmp/appdata\"}";
+    L0Test::ServiceMock service(cfg);
 
     StorageManagerImplementation* impl = CreateImpl();
     impl->Configure(&service);
@@ -412,7 +403,6 @@ uint32_t Test_Impl_ClearStorageWithEmptyAppId()
     L0Test::ExpectTrue(tr, !errorReason.empty(), "Error reason provides explanation");
 
     impl->Release();
-    fakeStore->Release();
 
     return tr.failures;
 }
@@ -427,10 +417,10 @@ uint32_t Test_Impl_ClearAllWithNoExemptions()
     L0Test::TestResult tr;
 
     L0Test::FilesystemShim::getInstance().Reset();
-    L0Test::ServiceMock service;
-    L0Test::FakePersistentStore* fakeStore = new L0Test::FakePersistentStore();
-    service.SetPersistentStoreResult(fakeStore);
-    service.SetConfigPath("{\"path\":\"/tmp/appdata\"}");
+    L0Test::FakePersistentStore fakeStore;
+    L0Test::ServiceMock::Config cfg{&fakeStore};
+    cfg.configLine = "{\"path\":\"/tmp/appdata\"}";
+    L0Test::ServiceMock service(cfg);
 
     StorageManagerImplementation* impl = CreateImpl();
     impl->Configure(&service);
@@ -442,7 +432,6 @@ uint32_t Test_Impl_ClearAllWithNoExemptions()
     L0Test::ExpectTrue(tr, true, "ClearAll executed without crash");
 
     impl->Release();
-    fakeStore->Release();
 
     return tr.failures;
 }
@@ -457,10 +446,10 @@ uint32_t Test_Impl_ClearAllWithExemptions()
     L0Test::TestResult tr;
 
     L0Test::FilesystemShim::getInstance().Reset();
-    L0Test::ServiceMock service;
-    L0Test::FakePersistentStore* fakeStore = new L0Test::FakePersistentStore();
-    service.SetPersistentStoreResult(fakeStore);
-    service.SetConfigPath("{\"path\":\"/tmp/appdata\"}");
+    L0Test::FakePersistentStore fakeStore;
+    L0Test::ServiceMock::Config cfg{&fakeStore};
+    cfg.configLine = "{\"path\":\"/tmp/appdata\"}";
+    L0Test::ServiceMock service(cfg);
 
     StorageManagerImplementation* impl = CreateImpl();
     impl->Configure(&service);
@@ -473,7 +462,6 @@ uint32_t Test_Impl_ClearAllWithExemptions()
     L0Test::ExpectTrue(tr, true, "ClearAll with exemptions executed without crash");
 
     impl->Release();
-    fakeStore->Release();
 
     return tr.failures;
 }

@@ -133,7 +133,8 @@ uint32_t Test_ASM_Lifecycle_InitializeFailsWhenRootNull()
 {
     L0Test::TestResult tr;
 
-    L0Test::ServiceMock service;
+    L0Test::FakePersistentStore fakeStore;
+    L0Test::ServiceMock service(L0Test::ServiceMock::Config{&fakeStore});
     service.SetRootCreationResult(nullptr); // Force Root<> to return nullptr
 
     IPlugin* plugin = CreatePlugin();
@@ -159,9 +160,8 @@ uint32_t Test_ASM_Lifecycle_InitializeSuccessAndDeinitialize()
 {
     L0Test::TestResult tr;
 
-    L0Test::ServiceMock service;
-    L0Test::FakePersistentStore* fakeStore = new L0Test::FakePersistentStore();
-    service.SetPersistentStoreResult(fakeStore);
+    L0Test::FakePersistentStore fakeStore;
+    L0Test::ServiceMock service(L0Test::ServiceMock::Config{&fakeStore});
 
     // Create a real implementation
     StorageManagerImplementation* impl = WPEFramework::Core::Service<StorageManagerImplementation>::Create<StorageManagerImplementation>();
@@ -177,7 +177,6 @@ uint32_t Test_ASM_Lifecycle_InitializeSuccessAndDeinitialize()
     plugin->Deinitialize(&service);
 
     plugin->Release();
-    fakeStore->Release();
     if (impl) impl->Release();
 
     return tr.failures;
@@ -192,7 +191,8 @@ uint32_t Test_ASM_Lifecycle_InitializeFailsWhenConfigureFails()
 {
     L0Test::TestResult tr;
 
-    L0Test::ServiceMock service;
+    L0Test::FakePersistentStore fakeStore;
+    L0Test::ServiceMock service(L0Test::ServiceMock::Config{&fakeStore});
     FakeStorageManagerImplFailConfigure* failImpl = new FakeStorageManagerImplFailConfigure();
     service.SetRootCreationResult(failImpl);
 
@@ -217,9 +217,8 @@ uint32_t Test_ASM_Lifecycle_InformationReturnsServiceName()
 {
     L0Test::TestResult tr;
 
-    L0Test::ServiceMock service;
-    L0Test::FakePersistentStore* fakeStore = new L0Test::FakePersistentStore();
-    service.SetPersistentStoreResult(fakeStore);
+    L0Test::FakePersistentStore fakeStore;
+    L0Test::ServiceMock service(L0Test::ServiceMock::Config{&fakeStore});
 
     StorageManagerImplementation* impl = WPEFramework::Core::Service<StorageManagerImplementation>::Create<StorageManagerImplementation>();
     service.SetRootCreationResult(impl);
@@ -235,7 +234,6 @@ uint32_t Test_ASM_Lifecycle_InformationReturnsServiceName()
 
     plugin->Deinitialize(&service);
     plugin->Release();
-    fakeStore->Release();
     if (impl) impl->Release();
 
     return tr.failures;
@@ -250,9 +248,8 @@ uint32_t Test_ASM_Lifecycle_DeinitializeWithNullService()
 {
     L0Test::TestResult tr;
 
-    L0Test::ServiceMock service;
-    L0Test::FakePersistentStore* fakeStore = new L0Test::FakePersistentStore();
-    service.SetPersistentStoreResult(fakeStore);
+    L0Test::FakePersistentStore fakeStore;
+    L0Test::ServiceMock service(L0Test::ServiceMock::Config{&fakeStore});
 
     StorageManagerImplementation* impl = WPEFramework::Core::Service<StorageManagerImplementation>::Create<StorageManagerImplementation>();
     service.SetRootCreationResult(impl);
@@ -265,7 +262,6 @@ uint32_t Test_ASM_Lifecycle_DeinitializeWithNullService()
     plugin->Deinitialize(nullptr);
 
     plugin->Release();
-    fakeStore->Release();
     if (impl) impl->Release();
 
     return tr.failures;

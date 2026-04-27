@@ -224,20 +224,10 @@ namespace WPEFramework
             }
             else
             {
-                /* Ensure the persistent store object is created if necessary */
-                if (mPersistentStoreRemoteStoreObject == nullptr && Core::ERROR_NONE != createPersistentStoreRemoteStoreObject()) 
-                {
-                    LOGERR("Failed to create PersistentStoreRemoteStoreObject");
-                    status = Core::ERROR_GENERAL;  // Set status to indicate failure
-                }
-                else
-                {
-                    ASSERT(mPersistentStoreRemoteStoreObject != nullptr);
+                ASSERT(mPersistentStoreRemoteStoreObject != nullptr);
 
-                    /* Perform action based on the StorageActionType */
-                    if (mPersistentStoreRemoteStoreObject != nullptr)
-                    {
-                        switch (actionType)
+                /* Perform action based on the StorageActionType */
+                switch (actionType)
                         {
                             case SET:
                             {
@@ -289,8 +279,6 @@ namespace WPEFramework
                             }
                             break;
                         }
-                    }
-                }
             }
 
             return status;

@@ -35,14 +35,24 @@ namespace L0Test {
 
 /**
  * @brief Minimal IShell mock for AppStorageManager L0 tests
+ * Following RuntimeManager pattern with Config struct
  */
 class ServiceMock : public WPEFramework::PluginHost::IShell {
 public:
-    ServiceMock()
+    struct Config {
+        explicit Config(WPEFramework::Exchange::IStore2* store = nullptr)
+            : persistentStore(store)
+            , configLine("{\"path\":\"/tmp/appdata\"}")
+        {
+        }
+        WPEFramework::Exchange::IStore2* persistentStore;
+        std::string configLine;
+    };
+
+    explicit ServiceMock(Config cfg = Config())
         : _refCount(1)
-        , _configPath("{\"path\":\"/tmp/appdata\"}")
+        , _cfg(cfg)
         , _fakeImpl(nullptr)
-        , _fakeStore(nullptr)
         , _configLineCallCount(0)
         , _queryInterfaceByCallsignCallCount(0)
         , _comLink(*this)
@@ -51,20 +61,10 @@ public:
 
     ~ServiceMock() override = default;
 
-    // Configuration helpers
-    void SetConfigPath(const std::string& path)
-    {
-        _configPath = path;
-    }
-
+    // Configuration helper for backward compatibility with tests that set impl directly
     void SetRootCreationResult(WPEFramework::Exchange::IAppStorageManager* impl)
     {
         _fakeImpl = impl;
-    }
-
-    void SetPersistentStoreResult(WPEFramework::Exchange::IStore2* store)
-    {
-        _fakeStore = store;
     }
 
     uint32_t GetConfigLineCallCount() const { return _configLineCallCount; }
@@ -98,7 +98,7 @@ public:
     string ConfigLine() const override
     {
         _configLineCallCount++;
-        return _configPath;
+        return _cfg.configLine;
     }
 
     void* QueryInterfaceByCallsign(const uint32_t id, const string& name) override
@@ -106,9 +106,9 @@ public:
         _queryInterfaceByCallsignCallCount++;
         
         if (name == "org.rdk.PersistentStore" && id == WPEFramework::Exchange::IStore2::ID) {
-            if (_fakeStore != nullptr) {
-                _fakeStore->AddRef();
-                return _fakeStore;
+            if (_cfg.persistentStore != nullptr) {
+                _cfg.persistentStore->AddRef();
+                return _cfg.persistentStore;
             }
         }
         return nullptr;
@@ -173,7 +173,7 @@ public:
 
     WPEFramework::Core::hresult ConfigLine(const string& config) override
     {
-        _configPath = config;
+        _cfg.configLine = config;
         _configLineCallCount++;
         return WPEFramework::Core::ERROR_NONE;
     }
@@ -260,9 +260,8 @@ public:
 private:
     COMLinkMock _comLink;
     mutable std::atomic<uint32_t> _refCount;
-    std::string _configPath;
+    Config _cfg;
     WPEFramework::Exchange::IAppStorageManager* _fakeImpl;
-    WPEFramework::Exchange::IStore2* _fakeStore;
     mutable uint32_t _configLineCallCount;
     mutable uint32_t _queryInterfaceByCallsignCallCount;
 };
