@@ -135,7 +135,10 @@ uint32_t Test_ASM_Lifecycle_InitializeFailsWhenRootNull()
 
     L0Test::FakePersistentStore fakeStore;
     L0Test::ServiceMock service(L0Test::ServiceMock::Config{&fakeStore});
-    service.SetRootCreationResult(nullptr); // Force Root<> to return nullptr
+    service.SetInstantiateHandler([](const WPEFramework::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
+        connectionId = 0;
+        return nullptr;
+    });
 
     IPlugin* plugin = CreatePlugin();
     L0Test::ExpectTrue(tr, plugin != nullptr, "Plugin created");
@@ -162,9 +165,15 @@ uint32_t Test_ASM_Lifecycle_InitializeSuccessAndDeinitialize()
     L0Test::FakePersistentStore fakeStore;
     L0Test::ServiceMock service(L0Test::ServiceMock::Config{&fakeStore});
 
-    // Create a real implementation
-    StorageManagerImplementation* impl = WPEFramework::Core::Service<StorageManagerImplementation>::Create<StorageManagerImplementation>();
-    service.SetRootCreationResult(impl);
+    // Create a real implementation via Instantiate handler
+    service.SetInstantiateHandler([](const WPEFramework::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
+        connectionId = 0;
+        StorageManagerImplementation* impl = WPEFramework::Core::Service<StorageManagerImplementation>::Create<StorageManagerImplementation>();
+        if (impl) {
+            impl->AddRef();
+        }
+        return impl;
+    });
 
     IPlugin* plugin = CreatePlugin();
     L0Test::ExpectTrue(tr, plugin != nullptr, "Plugin created");
@@ -190,10 +199,18 @@ uint32_t Test_ASM_Lifecycle_InitializeFailsWhenConfigureFails()
 {
     L0Test::TestResult tr;
 
-    L0Test::FakePersistentStore fakeStore;
+    L0Test::FakePersistentStore fake Store;
     L0Test::ServiceMock service(L0Test::ServiceMock::Config{&fakeStore});
-    FakeStorageManagerImplFailConfigure* failImpl = new FakeStorageManagerImplFailConfigure();
-    service.SetRootCreationResult(failImpl);
+
+    // Provide fake implementation that fails Configure
+    service.SetInstantiateHandler([](const WPEFramework::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
+        connectionId = 0;
+        FakeStorageManagerImplFailConfigure* failImpl = new FakeStorageManagerImplFailConfigure();
+        if (failImpl) {
+            failImpl->AddRef();
+        }
+        return failImpl;
+    });
 
     IPlugin* plugin = CreatePlugin();
     L0Test::ExpectTrue(tr, plugin != nullptr, "Plugin created");
@@ -204,7 +221,7 @@ uint32_t Test_ASM_Lifecycle_InitializeFailsWhenConfigureFails()
                        "Error message indicates configuration failure");
 
     plugin->Release();
-    // Note: failImpl is released by plugin, don't release again
+    // Note: impl is released by plugin, don't release again
 
     return tr.failures;
 }
@@ -221,8 +238,15 @@ uint32_t Test_ASM_Lifecycle_InformationReturnsServiceName()
     L0Test::FakePersistentStore fakeStore;
     L0Test::ServiceMock service(L0Test::ServiceMock::Config{&fakeStore});
 
-    StorageManagerImplementation* impl = WPEFramework::Core::Service<StorageManagerImplementation>::Create<StorageManagerImplementation>();
-    service.SetRootCreationResult(impl);
+    // Create a real implementation via Instantiate handler
+    service.SetInstantiateHandler([](const WPEFramework::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
+        connectionId = 0;
+        StorageManagerImplementation* impl = WPEFramework::Core::Service<StorageManagerImplementation>::Create<StorageManagerImplementation>();
+        if (impl) {
+            impl->AddRef();
+        }
+        return impl;
+    });
 
     IPlugin* plugin = CreatePlugin();
     const std::string initResult = plugin->Initialize(&service);
@@ -252,8 +276,15 @@ uint32_t Test_ASM_Lifecycle_DeinitializeWithNullService()
     L0Test::FakePersistentStore fakeStore;
     L0Test::ServiceMock service(L0Test::ServiceMock::Config{&fakeStore});
 
-    StorageManagerImplementation* impl = WPEFramework::Core::Service<StorageManagerImplementation>::Create<StorageManagerImplementation>();
-    service.SetRootCreationResult(impl);
+    // Create a real implementation via Instantiate handler
+    service.SetInstantiateHandler([](const WPEFramework::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
+        connectionId = 0;
+        StorageManagerImplementation* impl = WPEFramework::Core::Service<StorageManagerImplementation>::Create<StorageManagerImplementation>();
+        if (impl) {
+            impl->AddRef();
+        }
+        return impl;
+    });
 
     IPlugin* plugin = CreatePlugin();
     const std::string initResult = plugin->Initialize(&service);

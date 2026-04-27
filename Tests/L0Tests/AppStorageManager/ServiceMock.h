@@ -236,15 +236,10 @@ public:
 
         void* Instantiate(const WPEFramework::RPC::Object& object, const uint32_t interfaceId, uint32_t& connectionId) override
         {
-            (void)object;
-            (void)interfaceId;
-            connectionId = 0;
-            
-            // Return the fake implementation that was set by the test
-            if (_parent._fakeImpl != nullptr) {
-                _parent._fakeImpl->AddRef();
-                return _parent._fakeImpl;
+            if (_parent._instantiateHandler) {
+                return _parent._instantiateHandler(object, interfaceId, connectionId);
             }
+            connectionId = 0;
             return nullptr;
         }
 
@@ -261,7 +256,7 @@ private:
     COMLinkMock _comLink;
     mutable std::atomic<uint32_t> _refCount;
     Config _cfg;
-    WPEFramework::Exchange::IAppStorageManager* _fakeImpl;
+    InstantiateHandler _instantiateHandler;
     mutable uint32_t _configLineCallCount;
     mutable uint32_t _queryInterfaceByCallsignCallCount;
 };
