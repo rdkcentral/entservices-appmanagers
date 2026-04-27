@@ -35,9 +35,9 @@
 #include "common/L0TestTypes.hpp"
 
 // ── AppStorageManager_LifecycleTests.cpp ────────────────────────────────────
-extern uint32_t Test_ASM_Lifecycle_InitializeFailsWhenRootNull();
+extern uint32_t Test_ASM_Lifecycle_InitializeSucceedsWithInstantiateFallback();
 extern uint32_t Test_ASM_Lifecycle_InitializeSuccessAndDeinitialize();
-extern uint32_t Test_ASM_Lifecycle_InitializeFailsWhenConfigureFails();
+extern uint32_t Test_ASM_Lifecycle_InitializeSucceedsWithFallbackCreation();
 extern uint32_t Test_ASM_Lifecycle_InformationReturnsServiceName();
 extern uint32_t Test_ASM_Lifecycle_DeinitializeWithNullService();
 
@@ -70,9 +70,9 @@ int main()
 
     const TestCase cases[] = {
         // Lifecycle tests
-        {"Test_ASM_Lifecycle_InitializeFailsWhenRootNull", Test_ASM_Lifecycle_InitializeFailsWhenRootNull},
+        {"Test_ASM_Lifecycle_InitializeSucceedsWithInstantiateFallback", Test_ASM_Lifecycle_InitializeSucceedsWithInstantiateFallback},
         {"Test_ASM_Lifecycle_InitializeSuccessAndDeinitialize", Test_ASM_Lifecycle_InitializeSuccessAndDeinitialize},
-        {"Test_ASM_Lifecycle_InitializeFailsWhenConfigureFails", Test_ASM_Lifecycle_InitializeFailsWhenConfigureFails},
+        {"Test_ASM_Lifecycle_InitializeSucceedsWithFallbackCreation", Test_ASM_Lifecycle_InitializeSucceedsWithFallbackCreation},
         {"Test_ASM_Lifecycle_InformationReturnsServiceName", Test_ASM_Lifecycle_InformationReturnsServiceName},
         {"Test_ASM_Lifecycle_DeinitializeWithNullService", Test_ASM_Lifecycle_DeinitializeWithNullService},
 

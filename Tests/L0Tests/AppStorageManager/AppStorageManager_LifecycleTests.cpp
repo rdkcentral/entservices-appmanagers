@@ -53,13 +53,13 @@ IPlugin* CreatePlugin()
 } // namespace
 
 /* ========================================================================== */
-/* Test_ASM_Lifecycle_InitializeFailsWhenRootNull
+/* Test_ASM_Lifecycle_InitializeSucceedsWithInstantiateFallback
  *
  * Verifies that Initialize() succeeds via fallback to in-process creation
  * when COMLink::Instantiate() returns nullptr. Thunder's Root<> template
  * automatically falls back to Core::Service<>::Create().
  */
-uint32_t Test_ASM_Lifecycle_InitializeFailsWhenRootNull()
+uint32_t Test_ASM_Lifecycle_InitializeSucceedsWithInstantiateFallback()
 {
     L0Test::TestResult tr;
 
@@ -119,13 +119,13 @@ uint32_t Test_ASM_Lifecycle_InitializeSuccessAndDeinitialize()
 }
 
 /* ========================================================================== */
-/* Test_ASM_Lifecycle_InitializeFailsWhenConfigureFails
+/* Test_ASM_Lifecycle_InitializeSucceedsWithFallbackCreation
  *
- * Verifies that Initialize() succeeds even when fallback implementation's
- * Configure() fails. The real implementation always succeeds Configure(),
- * so this test validates robustness with fallback creation.
+ * Verifies that Initialize() succeeds when using fallback implementation.
+ * When Instantiate returns nullptr, Root<> falls back to creating the real
+ * implementation which successfully completes Configure().
  */
-uint32_t Test_ASM_Lifecycle_InitializeFailsWhenConfigureFails()
+uint32_t Test_ASM_Lifecycle_InitializeSucceedsWithFallbackCreation()
 {
     L0Test::TestResult tr;
 
