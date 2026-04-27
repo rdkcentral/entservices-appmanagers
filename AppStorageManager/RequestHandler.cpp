@@ -142,11 +142,14 @@ namespace WPEFramework
 
         void RequestHandler::releasePersistentStoreRemoteStoreObject()
         {
-            ASSERT(nullptr != mPersistentStoreRemoteStoreObject);
-            if(mPersistentStoreRemoteStoreObject)
+            if (mPersistentStoreRemoteStoreObject != nullptr)
             {
                 mPersistentStoreRemoteStoreObject->Release();
                 mPersistentStoreRemoteStoreObject = nullptr;
+            }
+            else
+            {
+                LOGWARN("PersistentStoreRemoteStoreObject is null, nothing to release");
             }
         }
 
