@@ -105,7 +105,7 @@ public:
     {
         _queryInterfaceByCallsignCallCount++;
         
-        if (name == "PersistentStore" && id == WPEFramework::Exchange::IStore2::ID) {
+        if (name == "org.rdk.PersistentStore" && id == WPEFramework::Exchange::IStore2::ID) {
             if (_fakeStore != nullptr) {
                 _fakeStore->AddRef();
                 return _fakeStore;
@@ -234,11 +234,13 @@ public:
 
         WPEFramework::RPC::IRemoteConnection* RemoteConnection(const uint32_t) override { return nullptr; }
 
-        void* Instantiate(const WPEFramework::RPC::Object& object, const uint32_t waitTime, uint32_t& connectionId) override
+        void* Instantiate(const WPEFramework::RPC::Object& object, const uint32_t interfaceId, uint32_t& connectionId) override
         {
             (void)object;
-            (void)waitTime;
+            (void)interfaceId;
             connectionId = 0;
+            
+            // Return the fake implementation that was set by the test
             if (_parent._fakeImpl != nullptr) {
                 _parent._fakeImpl->AddRef();
                 return _parent._fakeImpl;
