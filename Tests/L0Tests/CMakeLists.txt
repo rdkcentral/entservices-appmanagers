@@ -10,11 +10,13 @@ option(PLUGIN_RUNTIME_MANAGER    "Build RuntimeManager L0 test target"    ON)
 option(PLUGIN_LIFECYCLE_MANAGER  "Build LifecycleManager L0 test target"  ON)
 option(PLUGIN_RDK_WINDOW_MANAGER "Build RDKWindowManager L0 test target"  ON)
 option(PLUGIN_DOWNLOAD_MANAGER   "Build DownloadManager L0 test target"   ON)
+option(PLUGIN_PACKAGE_MANAGER    "Build PackageManager L0 test target"    ON)
 
 option(APPMGR_ENABLE_COVERAGE  "Enable coverage flags for runtimemanager_l0test"    ON)
 option(APPLCM_ENABLE_COVERAGE  "Enable coverage flags for lifecyclemanager_l0test"  ON)
 option(APPWM_ENABLE_COVERAGE   "Enable coverage flags for rdkwindowmanager_l0test"  ON)
 option(APPDM_ENABLE_COVERAGE   "Enable coverage flags for downloadmanager_l0test"   ON)
+option(APPPKG_ENABLE_COVERAGE  "Enable coverage flags for packagemanager_l0test"    ON)
 option(L0_ENABLE_WARNINGS      "Enable additional compiler warnings for L0 targets" ON)
 
 # ---------------------------------------------------------------------------
@@ -131,6 +133,21 @@ set(DOWNLOAD_MANAGER_L0_SOURCES
     common/L0Bootstrap.cpp
 )
 
+set(PACKAGE_MANAGER_L0_SOURCES
+    ${CMAKE_SOURCE_DIR}/../../PackageManager/Module.cpp
+    ${CMAKE_SOURCE_DIR}/../../PackageManager/PackageManager.cpp
+    ${CMAKE_SOURCE_DIR}/../../PackageManager/PackageManagerImplementation.cpp
+    ${CMAKE_SOURCE_DIR}/../../PackageManager/PackageManagerTelemetryReporting.cpp
+    ${CMAKE_SOURCE_DIR}/../../PackageManager/HttpClient.cpp
+    ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry/TelemetryReportingBase.cpp
+    ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry/UtilsTelemetryMetrics.cpp
+    PackageManager/PackageManagerTest.cpp
+    PackageManager/PackageManager_ShellTests.cpp
+    PackageManager/PackageManager_ImplementationTests.cpp
+    PackageManager/PackageManager_ComponentTests.cpp
+    common/L0Bootstrap.cpp
+)
+
 
 # ---------------------------------------------------------------------------
 # Declare targets
@@ -157,6 +174,17 @@ if(PLUGIN_DOWNLOAD_MANAGER)
     add_executable(downloadmanager_l0test ${DOWNLOAD_MANAGER_L0_SOURCES})
 else()
     message(STATUS "PLUGIN_DOWNLOAD_MANAGER=OFF; skipping downloadmanager_l0test target")
+endif()
+
+if(PLUGIN_PACKAGE_MANAGER)
+    add_executable(packagemanager_l0test ${PACKAGE_MANAGER_L0_SOURCES})
+else()
+    message(STATUS "PLUGIN_PACKAGE_MANAGER=OFF; skipping packagemanager_l0test target")
+endif()
+
+if(NOT PLUGIN_RUNTIME_MANAGER AND NOT PLUGIN_LIFECYCLE_MANAGER AND NOT PLUGIN_RDK_WINDOW_MANAGER AND NOT PLUGIN_PACKAGE_MANAGER)
+    message(FATAL_ERROR "No L0 target enabled. Enable at least one of PLUGIN_RUNTIME_MANAGER, PLUGIN_LIFECYCLE_MANAGER, PLUGIN_RDK_WINDOW_MANAGER, or PLUGIN_PACKAGE_MANAGER.")
+>>>>>>> origin/develop
 endif()
 
 if(NOT PLUGIN_RUNTIME_MANAGER AND NOT PLUGIN_LIFECYCLE_MANAGER AND NOT PLUGIN_RDK_WINDOW_MANAGER AND NOT PLUGIN_DOWNLOAD_MANAGER)
@@ -355,7 +383,7 @@ if(PLUGIN_DOWNLOAD_MANAGER)
         ${CMAKE_SOURCE_DIR}/../../DownloadManager
         ${CMAKE_SOURCE_DIR}/../../helpers
         ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry
-        ${PREFIX}/include
+	 ${PREFIX}/include
         ${PREFIX}/include/${NAMESPACE}
     )
 
@@ -375,12 +403,65 @@ if(PLUGIN_DOWNLOAD_MANAGER)
 endif()
 
 # ---------------------------------------------------------------------------
+# PackageManager target compile options / definitions / includes
+# ---------------------------------------------------------------------------
+if(PLUGIN_PACKAGE_MANAGER)
+    find_path(JSONCPP_INCLUDE_DIR_PKG NAMES json/json.h
+        HINTS /usr/include/jsoncpp /usr/local/include/jsoncpp "${PREFIX}/include/jsoncpp")
+
+    target_compile_definitions(packagemanager_l0test PRIVATE
+        MODULE_NAME=PackageManager_L0Test
+        USE_THUNDER_R4=1
+        DISABLE_SECURITY_TOKEN=1
+        THUNDER_PLATFORM_PC_UNIX=1
+        ENABLE_AIMANAGERS_TELEMETRY_METRICS=1
+        UNIT_TEST=1
+    )
+
+    if(APPPKG_ENABLE_COVERAGE)
+        target_compile_options(packagemanager_l0test PRIVATE -O0 -g --coverage)
+        target_link_options(packagemanager_l0test PRIVATE --coverage)
+    endif()
+
+    if(L0_ENABLE_WARNINGS)
+        target_compile_options(packagemanager_l0test PRIVATE -Wall -Wextra -Wno-unused-parameter)
+    endif()
+
+    target_include_directories(packagemanager_l0test PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/PackageManager
+        ${CMAKE_CURRENT_SOURCE_DIR}/common
+        ${CMAKE_SOURCE_DIR}/../..
+        ${CMAKE_SOURCE_DIR}/../../PackageManager
+        ${CMAKE_SOURCE_DIR}/../../helpers
+        ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry
+        ${CMAKE_SOURCE_DIR}/../../Tests/mocks
+        ${PREFIX}/include
+        ${PREFIX}/include/${NAMESPACE}
+    )
+    if(JSONCPP_INCLUDE_DIR_PKG)
+        target_include_directories(packagemanager_l0test PRIVATE ${JSONCPP_INCLUDE_DIR_PKG})
+    endif()
+
+    if(EXISTS "${PREFIX}/lib")
+        target_link_directories(packagemanager_l0test PRIVATE "${PREFIX}/lib")
+    endif()
+    if(EXISTS "${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins")
+        target_link_directories(packagemanager_l0test PRIVATE "${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins")
+    endif()
+    if(EXISTS "${PREFIX}/lib/plugins")
+        target_link_directories(packagemanager_l0test PRIVATE "${PREFIX}/lib/plugins")
+    endif()
+endif()
+
+# ---------------------------------------------------------------------------
 # Thunder / WPEFramework library discovery (shared for all targets)
 # ---------------------------------------------------------------------------
 find_library(THUNDER_CORE_LIB      NAMES ${NAMESPACE}Core      HINTS "${PREFIX}/lib")
 find_library(THUNDER_MESSAGING_LIB NAMES ${NAMESPACE}Messaging HINTS "${PREFIX}/lib")
 find_library(THUNDER_PLUGINS_LIB   NAMES ${NAMESPACE}Plugins   HINTS "${PREFIX}/lib")
 find_library(THUNDER_COM_LIB       NAMES ${NAMESPACE}COM       HINTS "${PREFIX}/lib")
+find_library(THUNDER_DEFINITIONS_LIB NAMES ${NAMESPACE}Definitions HINTS "${PREFIX}/lib")
 
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
@@ -406,6 +487,12 @@ if(PLUGIN_RDK_WINDOW_MANAGER)
 endif()
 if(PLUGIN_DOWNLOAD_MANAGER)
     target_include_directories(downloadmanager_l0test PRIVATE
+	        ${PREFIX}/include
+        ${PREFIX}/include/${NAMESPACE}
+    )
+endif()
+if(PLUGIN_PACKAGE_MANAGER)
+    target_include_directories(packagemanager_l0test PRIVATE
         ${PREFIX}/include
         ${PREFIX}/include/${NAMESPACE}
     )
@@ -423,8 +510,13 @@ if(CMAKE_PREFIX_PATH)
             if(PLUGIN_RDK_WINDOW_MANAGER)
                 target_include_directories(rdkwindowmanager_l0test PRIVATE "${_prefix}/include")
             endif()
+
             if(PLUGIN_DOWNLOAD_MANAGER)
                 target_include_directories(downloadmanager_l0test PRIVATE "${_prefix}/include")
+            endif()
+
+            if(PLUGIN_PACKAGE_MANAGER)
+                target_include_directories(packagemanager_l0test PRIVATE "${_prefix}/include")
             endif()
         endif()
         if(EXISTS "${_prefix}/include/${NAMESPACE}")
@@ -439,6 +531,9 @@ if(CMAKE_PREFIX_PATH)
             endif()
             if(PLUGIN_DOWNLOAD_MANAGER)
                 target_include_directories(downloadmanager_l0test PRIVATE "${_prefix}/include/${NAMESPACE}")
+	    endif()
+            if(PLUGIN_PACKAGE_MANAGER)
+                target_include_directories(packagemanager_l0test PRIVATE "${_prefix}/include/${NAMESPACE}")
             endif()
         endif()
     endforeach()
@@ -458,6 +553,9 @@ endif()
 if(PLUGIN_DOWNLOAD_MANAGER)
     list(APPEND _L0_TARGETS downloadmanager_l0test)
 endif()
+if(PLUGIN_PACKAGE_MANAGER)
+    list(APPEND _L0_TARGETS packagemanager_l0test)
+endif()
 
 foreach(_target IN LISTS _L0_TARGETS)
     if(THUNDER_CORE_LIB)
@@ -471,6 +569,9 @@ foreach(_target IN LISTS _L0_TARGETS)
     endif()
     if(THUNDER_COM_LIB)
         target_link_libraries(${_target} PRIVATE ${THUNDER_COM_LIB})
+    endif()
+    if(THUNDER_DEFINITIONS_LIB)
+        target_link_libraries(${_target} PRIVATE ${THUNDER_DEFINITIONS_LIB})
     endif()
     target_link_libraries(${_target} PRIVATE
         Threads::Threads
@@ -518,6 +619,23 @@ if(PLUGIN_DOWNLOAD_MANAGER)
         target_link_libraries(downloadmanager_l0test PRIVATE ${CURL_LIB})
     else()
         target_link_libraries(downloadmanager_l0test PRIVATE curl)
+     endif()
+endif()
+
+# PackageManager-specific libraries (jsoncpp, curl)
+if(PLUGIN_PACKAGE_MANAGER)
+    find_library(JSONCPP_LIB_PKG NAMES jsoncpp HINTS "${PREFIX}/lib" /usr/lib /usr/local/lib)
+    find_library(CURL_LIB_PKG    NAMES curl    HINTS "${PREFIX}/lib" /usr/lib /usr/local/lib)
+
+    if(JSONCPP_LIB_PKG)
+        target_link_libraries(packagemanager_l0test PRIVATE ${JSONCPP_LIB_PKG})
+    else()
+        target_link_libraries(packagemanager_l0test PRIVATE jsoncpp)
+    endif()
+    if(CURL_LIB_PKG)
+        target_link_libraries(packagemanager_l0test PRIVATE ${CURL_LIB_PKG})
+    else()
+        target_link_libraries(packagemanager_l0test PRIVATE curl)
     endif()
 endif()
 
@@ -547,6 +665,13 @@ endif()
 
 if(PLUGIN_DOWNLOAD_MANAGER)
     set_target_properties(downloadmanager_l0test PROPERTIES
+	BUILD_RPATH   "$ORIGIN;${PREFIX}/lib;${PREFIX}/lib/${STORAGE_DIRECTORY};${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins;${PREFIX}/lib/plugins"
+        INSTALL_RPATH "${PREFIX}/lib;${PREFIX}/lib/${STORAGE_DIRECTORY};${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins;${PREFIX}/lib/plugins"
+    )
+endif()
+
+if(PLUGIN_PACKAGE_MANAGER)
+    set_target_properties(packagemanager_l0test PROPERTIES
         BUILD_RPATH   "$ORIGIN;${PREFIX}/lib;${PREFIX}/lib/${STORAGE_DIRECTORY};${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins;${PREFIX}/lib/plugins"
         INSTALL_RPATH "${PREFIX}/lib;${PREFIX}/lib/${STORAGE_DIRECTORY};${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins;${PREFIX}/lib/plugins"
     )
@@ -589,6 +714,15 @@ if(PLUGIN_DOWNLOAD_MANAGER)
         DEPENDS downloadmanager_l0test
         COMMAND $<TARGET_FILE:downloadmanager_l0test>
         COMMENT "Running downloadmanager_l0test"
+	VERBATIM
+    )
+endif()
+
+if(PLUGIN_PACKAGE_MANAGER)
+    add_custom_target(run_packagemanager
+        DEPENDS packagemanager_l0test
+        COMMAND $<TARGET_FILE:packagemanager_l0test>
+        COMMENT "Running packagemanager_l0test"
         VERBATIM
     )
 endif()
@@ -613,6 +747,9 @@ else()
 
     if(PLUGIN_RDK_WINDOW_MANAGER)
         list(APPEND COVERAGE_DEPENDS rdkwindowmanager_l0test)
+    endif()
+    if(PLUGIN_PACKAGE_MANAGER)
+        list(APPEND COVERAGE_DEPENDS packagemanager_l0test)
     endif()
 
     if(PLUGIN_DOWNLOAD_MANAGER)
