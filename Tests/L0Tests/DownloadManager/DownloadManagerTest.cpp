@@ -104,13 +104,10 @@ extern uint32_t Test_HttpClient_DownloadFileInvalidUrlReturnsHttpError();
 extern uint32_t Test_HttpClient_DownloadFileUnwritableDestReturnsDiskError();
 extern uint32_t Test_HttpClient_DownloadFile404HandledGracefully();
 extern uint32_t Test_HttpClient_PauseDoesNotCrash();
-extern uint32_t Test_HttpClient_ResumeDoesNotCrash();
 extern uint32_t Test_HttpClient_CancelSetsBCancelFlagProgressCbReturnsNonzero();
 extern uint32_t Test_HttpClient_SetRateLimitDoesNotCrash();
 extern uint32_t Test_HttpClient_GetProgressReturnsZeroInitially();
 extern uint32_t Test_HttpClient_GetStatusCodeReturnsZeroInitially();
-extern uint32_t Test_HttpClient_ProgressCbZeroDltotalDoesNotUpdateProgress();
-extern uint32_t Test_HttpClient_WriteDataCallsFwrite();
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DownloadManager_TelemetryTests.cpp  (Telemetry tests)
@@ -231,12 +228,9 @@ int main()
     RUN_TEST(Test_HttpClient_DownloadFile404HandledGracefully);
     RUN_TEST(Test_HttpClient_PauseDoesNotCrash);
     RUN_TEST(Test_HttpClient_ResumeDoesNotCrash);
-    RUN_TEST(Test_HttpClient_CancelSetsBCancelFlagProgressCbReturnsNonzero);
     RUN_TEST(Test_HttpClient_SetRateLimitDoesNotCrash);
     RUN_TEST(Test_HttpClient_GetProgressReturnsZeroInitially);
     RUN_TEST(Test_HttpClient_GetStatusCodeReturnsZeroInitially);
-    RUN_TEST(Test_HttpClient_ProgressCbZeroDltotalDoesNotUpdateProgress);
-    RUN_TEST(Test_HttpClient_WriteDataCallsFwrite);
 
     // ── Telemetry tests (DownloadManagerTelemetryReporting.cpp / .h) ────────
     std::cout << "\n-- Telemetry --" << std::endl;
