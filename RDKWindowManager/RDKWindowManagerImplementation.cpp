@@ -29,6 +29,9 @@
 #include "UtilsUnused.h"
 #include "UtilsString.h"
 
+#include <fstream>
+#include <unistd.h>
+
 using namespace std;
 using namespace RdkWindowManager;
 using namespace Utils;
@@ -574,6 +577,13 @@ void RDKWindowManagerImplementation::Dispatch(Event event, const JsonValue param
             break;
 
         case RDK_WINDOW_MANAGER_EVENT_ON_READY:
+             std::ifstream readyFile("/tmp/delayready");
+             if (readyFile.good())
+             {
+                 printf("MADANA DELAYING ON READY EVENT ... \n");
+                 fflush(stdout);
+                 sleep(30);
+             }
              while (index != mRDKWindowManagerNotification.end())
              {
                  LOGINFO("RDKWindowManager Dispatch onReady application: %s", params.String().c_str());

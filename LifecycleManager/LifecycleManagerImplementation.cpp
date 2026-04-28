@@ -259,6 +259,7 @@ namespace WPEFramework
             context->setRequestType(REQUEST_TYPE_LAUNCH);
             context->setTargetLifecycleState(targetLifecycleState);
             context->setMostRecentIntent(launchIntent);
+            context->resetPendingStates();
             success = RequestHandler::getInstance()->launch(context, launchIntent, targetLifecycleState, errorReason);
             if (!success)
 	    {
@@ -312,7 +313,7 @@ namespace WPEFramework
             string errorReason("");
             context->setTargetLifecycleState(targetLifecycleState);
             context->setMostRecentIntent(launchIntent);
-
+            context->resetPendingStates();
             bool success = RequestHandler::getInstance()->updateState(context, targetLifecycleState, errorReason);
             mAdminLock.Unlock();
             if (false == success)
@@ -347,6 +348,7 @@ namespace WPEFramework
             context->setTargetLifecycleState(Exchange::ILifecycleManager::LifecycleState::TERMINATING);
             context->setApplicationKillParams(false);
 
+            context->resetPendingStates();
             success = RequestHandler::getInstance()->terminate(context, false, errorReason);
             if (!success)
 	    {
@@ -374,6 +376,7 @@ namespace WPEFramework
             context->setRequestType(REQUEST_TYPE_TERMINATE);
             context->setTargetLifecycleState(Exchange::ILifecycleManager::LifecycleState::TERMINATING);
             context->setApplicationKillParams(true);
+            context->resetPendingStates();
             success = RequestHandler::getInstance()->terminate(context, true, errorReason);
             mAdminLock.Unlock();
             return status;
@@ -613,6 +616,7 @@ namespace WPEFramework
                         context->setTargetLifecycleState(Exchange::ILifecycleManager::LifecycleState::TERMINATING);
                         context->setApplicationKillParams(false);
 
+                        context->resetPendingStates();
                         terminated = RequestHandler::getInstance()->terminate(context, false, terminateError);
                         stateUpdated = RequestHandler::getInstance()->updateState(context, context->getTargetLifecycleState(), updateError);
                         if(terminated && stateUpdated)

@@ -74,6 +74,7 @@ namespace WPEFramework
                 void setApplicationKillParams(bool force);
                 void setRequestTime(time_t requestTime);
                 void setRequestType(RequestType requestType);
+                void resetPendingStates();
 
                 void* getState();
                 std::string getAppId();
