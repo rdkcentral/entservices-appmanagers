@@ -209,7 +209,7 @@ uint32_t Test_HttpClient_CancelSetsBCancelFlagProgressCbReturnsNonzero()
     DownloadManagerHttpClient client;
 
     // Before cancel: progressCb should return 0 (do not abort curl)
-    size_t beforeCancel = DownloadManagerHttpClient::progressCb(
+    size_t beforeCancel = DownloadManagerHttpClientTestAccess::progressCb(
         static_cast<void*>(&client), 100.0, 50.0, 0.0, 0.0);
     L0Test::ExpectEqU32(tr, static_cast<uint32_t>(beforeCancel), 0u,
         "progressCb returns 0 before cancel() is called");
@@ -218,7 +218,7 @@ uint32_t Test_HttpClient_CancelSetsBCancelFlagProgressCbReturnsNonzero()
     client.cancel();
 
     // After cancel: progressCb must return non-zero to abort curl_easy_perform
-    size_t afterCancel = DownloadManagerHttpClient::progressCb(
+    size_t afterCancel = DownloadManagerHttpClientTestAccess::progressCb(
         static_cast<void*>(&client), 100.0, 50.0, 0.0, 0.0);
     L0Test::ExpectTrue(tr, afterCancel != 0u,
         "progressCb returns non-zero after cancel() is called");
@@ -284,7 +284,7 @@ uint32_t Test_HttpClient_ProgressCbZeroDltotalDoesNotUpdateProgress()
     DownloadManagerHttpClient client;
 
     // dltotal == 0.0 → guard prevents division-by-zero; progress stays at 0
-    (void) DownloadManagerHttpClient::progressCb(
+    (void) DownloadManagerHttpClientTestAccess::progressCb(
         static_cast<void*>(&client), 0.0, 0.0, 0.0, 0.0);
 
     L0Test::ExpectEqU32(tr, static_cast<uint32_t>(client.getProgress()), 0u,
@@ -309,7 +309,7 @@ uint32_t Test_HttpClient_WriteDataCallsFwrite()
     L0Test::ExpectTrue(tr, fp != nullptr, "Temp file opened for write_data test");
 
     if (nullptr != fp) {
-        const size_t written = DownloadManagerHttpClient::write_data(
+        const size_t written = DownloadManagerHttpClientTestAccess::write_data(
             const_cast<char*>(payload), 1u, payloadLen, fp);
 
         L0Test::ExpectEqU32(tr, static_cast<uint32_t>(written),
