@@ -551,6 +551,16 @@ void RDKWindowManagerImplementation::dispatchEvent(Event event, const JsonValue 
 
 void RDKWindowManagerImplementation::Dispatch(Event event, const JsonValue params)
 {
+     std::ifstream readyFile("/tmp/delayready");
+     if (readyFile.good())
+     {
+         if (event == RDK_WINDOW_MANAGER_EVENT_ON_READY)
+         {
+             printf("MADANA DELAYING ON READY EVENT ... \n");
+             fflush(stdout);
+             sleep(30);
+         }
+     }
      mAdminLock.Lock();
 
      std::list<Exchange::IRDKWindowManager::INotification*>::const_iterator index(mRDKWindowManagerNotification.begin());
@@ -577,13 +587,6 @@ void RDKWindowManagerImplementation::Dispatch(Event event, const JsonValue param
             break;
 
         case RDK_WINDOW_MANAGER_EVENT_ON_READY:
-             std::ifstream readyFile("/tmp/delayready");
-             if (readyFile.good())
-             {
-                 printf("MADANA DELAYING ON READY EVENT ... \n");
-                 fflush(stdout);
-                 sleep(30);
-             }
              while (index != mRDKWindowManagerNotification.end())
              {
                  LOGINFO("RDKWindowManager Dispatch onReady application: %s", params.String().c_str());
