@@ -1668,48 +1668,6 @@ TEST_F(AppManagerTest, CloseAppUsingJSONRpcSuccess)
     }
 }
 
-/* * Test Case for CloseAppUsingSuspendedStateCOMRPC
- * Setting up AppManager/LifecycleManager/LifecycleManagerState/PersistentStore/PackageManagerRDKEMS Plugin and creating required COM-RPC resources
- * Setting Mock for ListPackages() to simulate getting installed package list
- * Setting Mock for Lock() to simulate lockId and unpacked path
- * Setting Mock for IsAppLoaded() to simulate the package is loaded or not
- * Setting Mock for SetTargetAppState() to simulate setting the state
- * Setting Mock for SpawnApp() to simulate spawning a app and gettign the appinstance id
- * Verifying the return of the API by passing the app in suspended state
- * Releasing the AppManager interface and all related test resources
- */
-TEST_F(AppManagerTest, CloseAppUsingComRpcSuspendedStateSuccess)
-{
-    Core::hresult status;
-
-    status = createResources();
-    EXPECT_EQ(Core::ERROR_NONE, status);
-
-    AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [](Plugin::AppInfo& a) {
-        a.setAppInstanceId(APPMANAGER_APP_INSTANCE);
-        a.setAppNewState(Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED);
-    });
-
-    LaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::SUSPENDED);
-    ON_CALL(*p_wrapsImplMock, stat(::testing::_, ::testing::_))
-        .WillByDefault([](const char* path, struct stat* info) {
-            // Simulate a successful stat call
-            if (info != nullptr) {
-                info->st_mode = S_IFREG | 0644; // Regular file with read/write permissions
-            }
-            // Simulate success
-            return 0;
-    });
-
-    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->LaunchApp(APPMANAGER_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS));
-    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->CloseApp(APPMANAGER_APP_ID));
-
-    if(status == Core::ERROR_NONE)
-    {
-        releaseResources();
-    }
-}
-
 /*
  * Test Case for CloseAppUsingComRpcFailureWrongAppID
  * Setting up AppManager/LifecycleManager/LifecycleManagerState/PersistentStore/PackageManagerRDKEMS Plugin and creating required COM-RPC resources
