@@ -757,7 +757,7 @@ namespace WPEFramework
         }
         else
         {
-            LOGWARN("Received wrong state transition request event[%s]", event.c_str());
+            LOGWARN("Received wrong state transition request: expected event[%s] pendingTransition[%d] got event[%s]", context->mPendingEventName.c_str(), context->mPendingStateTransition, event.c_str());
         }
     }
 
