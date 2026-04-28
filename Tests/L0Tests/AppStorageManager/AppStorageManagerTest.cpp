@@ -38,8 +38,8 @@
 extern uint32_t Test_ASM_Lifecycle_InitializeSucceedsWithInstantiateFallback();
 extern uint32_t Test_ASM_Lifecycle_InitializeSuccessAndDeinitialize();
 extern uint32_t Test_ASM_Lifecycle_InitializeSucceedsWithFallbackCreation();
-extern uint32_t Test_ASM_Lifecycle_InformationReturnsServiceName();
-extern uint32_t Test_ASM_Lifecycle_DeinitializeWithNullService();
+extern uint32_t Test_ASM_Lifecycle_InformationReturnsEmptyString();
+extern uint32_t Test_ASM_Lifecycle_DeinitializeSuccessWithValidService();
 
 // ── AppStorageManager_ImplementationTests.cpp ───────────────────────────────
 extern uint32_t Test_Impl_ConfigureWithValidService();
@@ -73,8 +73,8 @@ int main()
         {"Test_ASM_Lifecycle_InitializeSucceedsWithInstantiateFallback", Test_ASM_Lifecycle_InitializeSucceedsWithInstantiateFallback},
         {"Test_ASM_Lifecycle_InitializeSuccessAndDeinitialize", Test_ASM_Lifecycle_InitializeSuccessAndDeinitialize},
         {"Test_ASM_Lifecycle_InitializeSucceedsWithFallbackCreation", Test_ASM_Lifecycle_InitializeSucceedsWithFallbackCreation},
-        {"Test_ASM_Lifecycle_InformationReturnsServiceName", Test_ASM_Lifecycle_InformationReturnsServiceName},
-        {"Test_ASM_Lifecycle_DeinitializeWithNullService", Test_ASM_Lifecycle_DeinitializeWithNullService},
+        {"Test_ASM_Lifecycle_InformationReturnsEmptyString", Test_ASM_Lifecycle_InformationReturnsEmptyString},
+        {"Test_ASM_Lifecycle_DeinitializeSuccessWithValidService", Test_ASM_Lifecycle_DeinitializeSuccessWithValidService},
 
         // Implementation tests
         {"Test_Impl_ConfigureWithValidService", Test_Impl_ConfigureWithValidService},
@@ -110,7 +110,8 @@ int main()
             // Child process: run the test
             L0Test::L0BootstrapGuard bootstrap;
             uint32_t failures = cases[i].fn();
-            std::exit(failures); // Use std::exit to flush gcov counters
+            // Clamp to 0-255 since WEXITSTATUS only preserves 8 bits
+            std::exit(failures > 255 ? 255 : failures);
         } else if (pid > 0) {
             // Parent process: wait for child
             int status;

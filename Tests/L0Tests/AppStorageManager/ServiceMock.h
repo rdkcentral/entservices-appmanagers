@@ -256,12 +256,12 @@ public:
     }
 
 private:
-    COMLinkMock _comLink;
     mutable std::atomic<uint32_t> _refCount;
     Config _cfg;
     InstantiateHandler _instantiateHandler;
     mutable uint32_t _configLineCallCount;
     mutable uint32_t _queryInterfaceByCallsignCallCount;
+    COMLinkMock _comLink;
 };
 
 } // namespace L0Test

@@ -78,7 +78,7 @@ uint32_t Test_RH_SetBaseStoragePathValid()
 }
 
 /* ========================================================================== */
-/* Telemetry Tests
+/* Telemetry Tests                                                            */
 /* ========================================================================== */
 
 /* Test_Tel_GetInstanceReturnsSingleton

@@ -96,11 +96,8 @@ uint32_t Test_ASM_Lifecycle_InitializeSuccessAndDeinitialize()
     // Create a real implementation via Instantiate handler
     service.SetInstantiateHandler([](const WPEFramework::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
         connectionId = 0;
-        StorageManagerImplementation* impl = WPEFramework::Core::Service<StorageManagerImplementation>::Create<StorageManagerImplementation>();
-        if (impl) {
-            impl->AddRef();
-        }
-        return impl;
+        // Create() already returns a ref-counted object, no extra AddRef needed
+        return WPEFramework::Core::Service<StorageManagerImplementation>::Create<StorageManagerImplementation>();
     });
 
     IPlugin* plugin = CreatePlugin();
@@ -153,11 +150,11 @@ uint32_t Test_ASM_Lifecycle_InitializeSucceedsWithFallbackCreation()
 }
 
 /* ========================================================================== */
-/* Test_ASM_Lifecycle_InformationReturnsServiceName
+/* Test_ASM_Lifecycle_InformationReturnsEmptyString
  *
- * Verifies that Information() returns the service name.
+ * Verifies that Information() returns an empty string (no additional info).
  */
-uint32_t Test_ASM_Lifecycle_InformationReturnsServiceName()
+uint32_t Test_ASM_Lifecycle_InformationReturnsEmptyString()
 {
     L0Test::TestResult tr;
 
@@ -167,20 +164,17 @@ uint32_t Test_ASM_Lifecycle_InformationReturnsServiceName()
     // Create a real implementation via Instantiate handler
     service.SetInstantiateHandler([](const WPEFramework::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
         connectionId = 0;
-        StorageManagerImplementation* impl = WPEFramework::Core::Service<StorageManagerImplementation>::Create<StorageManagerImplementation>();
-        if (impl) {
-            impl->AddRef();
-        }
-        return impl;
+        // Create() already returns a ref-counted object, no extra AddRef needed
+        return WPEFramework::Core::Service<StorageManagerImplementation>::Create<StorageManagerImplementation>();
     });
 
     IPlugin* plugin = CreatePlugin();
     const std::string initResult = plugin->Initialize(&service);
     L0Test::ExpectEqStr(tr, initResult, std::string(), "Initialize success");
 
-    // Information() returns empty string by design (no additional info to report)
+    // Information() returns empty string - no additional lifecycle details for this plugin
     const std::string info = plugin->Information();
-    L0Test::ExpectEqStr(tr, info, std::string(), "Information returns empty string");
+    L0Test::ExpectEqStr(tr, info, std::string(), "Information returns no additional info");
 
     plugin->Deinitialize(&service);
     plugin->Release();
@@ -190,12 +184,12 @@ uint32_t Test_ASM_Lifecycle_InformationReturnsServiceName()
 }
 
 /* ========================================================================== */
-/* Test_ASM_Lifecycle_DeinitializeWithNullService
+/* Test_ASM_Lifecycle_DeinitializeSuccessWithValidService
  *
- * Verifies that Deinitialize() completes successfully with valid service.
- * Note: Calling Deinitialize with nullptr would trigger ASSERT in plugin code.
+ * Verifies that Deinitialize() completes successfully with a valid service pointer.
+ * Note: Passing nullptr to Deinitialize would trigger ASSERT in plugin code.
  */
-uint32_t Test_ASM_Lifecycle_DeinitializeWithNullService()
+uint32_t Test_ASM_Lifecycle_DeinitializeSuccessWithValidService()
 {
     L0Test::TestResult tr;
 
@@ -205,18 +199,15 @@ uint32_t Test_ASM_Lifecycle_DeinitializeWithNullService()
     // Create a real implementation via Instantiate handler
     service.SetInstantiateHandler([](const WPEFramework::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
         connectionId = 0;
-        StorageManagerImplementation* impl = WPEFramework::Core::Service<StorageManagerImplementation>::Create<StorageManagerImplementation>();
-        if (impl) {
-            impl->AddRef();
-        }
-        return impl;
+        // Create() already returns a ref-counted object, no extra AddRef needed
+        return WPEFramework::Core::Service<StorageManagerImplementation>::Create<StorageManagerImplementation>();
     });
 
     IPlugin* plugin = CreatePlugin();
     const std::string initResult = plugin->Initialize(&service);
     L0Test::ExpectEqStr(tr, initResult, std::string(), "Initialize success");
 
-    // Deinitialize with correct service pointer (nullptr would trigger ASSERT)
+    // Deinitialize with valid service pointer
     plugin->Deinitialize(&service);
     
     // Verify plugin can be released cleanly

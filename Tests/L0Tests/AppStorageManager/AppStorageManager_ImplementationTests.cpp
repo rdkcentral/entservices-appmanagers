@@ -413,8 +413,9 @@ uint32_t Test_Impl_ClearAllWithNoExemptions()
     std::string errorReason;
     const uint32_t result = impl->ClearAll("", errorReason);
 
-    // ClearAll should complete without crash even if no apps exist
-    L0Test::ExpectTrue(tr, true, "ClearAll executed without crash");
+    // ClearAll should succeed even if no apps exist
+    L0Test::ExpectEq(tr, result, WPEFramework::Core::ERROR_NONE, "ClearAll returns ERROR_NONE");
+    L0Test::ExpectEqStr(tr, errorReason, std::string(), "No error reason on success");
 
     impl->Release();
 
@@ -442,8 +443,9 @@ uint32_t Test_Impl_ClearAllWithExemptions()
     std::string errorReason;
     const uint32_t result = impl->ClearAll(exemptionList, errorReason);
 
-    // ClearAll should complete without crash
-    L0Test::ExpectTrue(tr, true, "ClearAll with exemptions executed without crash");
+    // ClearAll should succeed with exemptions
+    L0Test::ExpectEq(tr, result, WPEFramework::Core::ERROR_NONE, "ClearAll returns ERROR_NONE");
+    L0Test::ExpectEqStr(tr, errorReason, std::string(), "No error reason on success");
 
     impl->Release();
 
