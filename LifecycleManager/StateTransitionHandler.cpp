@@ -201,11 +201,14 @@ namespace WPEFramework
 	   std::shared_ptr<StateTransitionRequest> stateTransitionRequest = std::make_shared<StateTransitionRequest>(request.mContext, request.mTargetState);
 	   {
                std::lock_guard<std::mutex> lock(gRequestMutex);
-               gRequests.push_back(std::move(stateTransitionRequest));
-               if (true == sInitialized.load())
+               if (false == sInitialized.load())
                {
-                   sem_post(&gRequestSemaphore);
+                   LOGWARN("addRequest called after handler shutdown started in %s, dropping request", __FUNCTION__);
+                   return;
                }
+
+               gRequests.push_back(std::move(stateTransitionRequest));
+               sem_post(&gRequestSemaphore);
 	   }
 	}
 
