@@ -48,6 +48,11 @@
 #include "common/L0Expect.hpp"
 #include "common/L0TestTypes.hpp"
 
+struct DownloadManagerHttpClientTestAccess : public DownloadManagerHttpClient {
+    using DownloadManagerHttpClient::progressCb;
+    using DownloadManagerHttpClient::write_data;
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Construction initialises curl handle (non-null)
 // ─────────────────────────────────────────────────────────────────────────────
