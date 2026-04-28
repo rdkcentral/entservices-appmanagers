@@ -6,9 +6,9 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-option(PLUGIN_RUNTIME_MANAGER    "Build RuntimeManager L0 test target"    OFF)
-option(PLUGIN_LIFECYCLE_MANAGER  "Build LifecycleManager L0 test target"  OFF)
-option(PLUGIN_RDK_WINDOW_MANAGER "Build RDKWindowManager L0 test target"  OFF)
+option(PLUGIN_RUNTIME_MANAGER    "Build RuntimeManager L0 test target"    ON)
+option(PLUGIN_LIFECYCLE_MANAGER  "Build LifecycleManager L0 test target"  ON)
+option(PLUGIN_RDK_WINDOW_MANAGER "Build RDKWindowManager L0 test target"  ON)
 option(PLUGIN_APP_STORAGE_MANAGER "Build AppStorageManager L0 test target" ON)
 
 option(APPMGR_ENABLE_COVERAGE  "Enable coverage flags for runtimemanager_l0test"    ON)
