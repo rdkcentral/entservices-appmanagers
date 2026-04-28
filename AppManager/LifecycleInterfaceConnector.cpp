@@ -35,8 +35,6 @@
 #include "UtilsString.h"
 #include "AppManagerTelemetryReporting.h"
 
-#define SUSPEND_POLICY_FILE        "/tmp/AI2.0Suspendable"
-#define HIBERNATE_POLICY_FILE      "/tmp/AI2.0Hibernatable"
 #define PAUSE_STATE_WAITTIME       1000
 
 using namespace std;
@@ -220,18 +218,10 @@ namespace WPEFramework
                         }
                         else
                         {
-                            if (true == fileExists(SUSPEND_POLICY_FILE))
-                            {
-                                appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_SUSPEND);
-                                state = Exchange::ILifecycleManager::LifecycleState::SUSPENDED;
-                            }
-                            else
-                            {
-                                appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_LAUNCH);
-                                state = Exchange::ILifecycleManager::LifecycleState::ACTIVE;
-                                string source = "";
-                                appManagerImplInstance->handleOnAppLaunchRequest(appId, intent, source);
-                            }
+                            appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_LAUNCH);
+                            state = Exchange::ILifecycleManager::LifecycleState::ACTIVE;
+                            string source = "";
+                            appManagerImplInstance->handleOnAppLaunchRequest(appId, intent, source);
                             LOGINFO("spawnApp called ,state %u",state);
                             status = mLifecycleManagerRemoteObject->SpawnApp(appId, intent, state, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success);
 
@@ -240,9 +230,7 @@ namespace WPEFramework
                                 LOGINFO("Update App Info");
                                 const string capturedInstanceId = appInstanceId;
                                 const Exchange::IAppManager::AppLifecycleState targetState =
-                                    (Exchange::ILifecycleManager::LifecycleState::SUSPENDED == state)
-                                    ? Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED
-                                    : Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
+                                    Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
                                 AppInfoManager::getInstance().upsert(appId, [&](AppInfo& a) {
                                     a.setAppInstanceId(capturedInstanceId);
                                     a.setAppIntent(intent);
@@ -302,16 +290,8 @@ namespace WPEFramework
                 ASSERT (nullptr != mLifecycleManagerRemoteObject);
                 if (nullptr != mLifecycleManagerRemoteObject)
                 {
-                    if (true == fileExists(SUSPEND_POLICY_FILE))
-                    {
-                        appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_SUSPEND);
-                        state = Exchange::ILifecycleManager::LifecycleState::SUSPENDED;
-                    }
-                    else
-                    {
-                        appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_PRELOAD);
-                        state = Exchange::ILifecycleManager::LifecycleState::PAUSED;
-                    }
+                    appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_PRELOAD);
+                    state = Exchange::ILifecycleManager::LifecycleState::PAUSED;
                     status = mLifecycleManagerRemoteObject->SpawnApp(appId, intent, state, runtimeConfigObject, launchArgs, appInstanceId, error, success);
                     if (Core::ERROR_NONE == status)
                     {
@@ -322,9 +302,7 @@ namespace WPEFramework
                         {
                             const string capturedInstanceId = appInstanceId;
                             const Exchange::IAppManager::AppLifecycleState targetState =
-                                (Exchange::ILifecycleManager::LifecycleState::SUSPENDED == state)
-                                ? Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED
-                                : Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED;
+                                Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED;
                             AppInfoManager::getInstance().upsert(appId, [&](AppInfo& a) {
                                 a.setAppInstanceId(capturedInstanceId);
                                 a.getPackageInfoMutable().type = AppManagerTypes::APPLICATION_TYPE_INTERACTIVE;
@@ -381,11 +359,16 @@ namespace WPEFramework
                             {
                                 LOGINFO("Requested PAUSED state for appId: %s. Waiting for PAUSED confirmation...", appId.c_str());
 
-                                mAppIdAwaitingPause = appId;
+                                {
+                                    std::lock_guard<std::mutex> stateLock(mStateMutex);
+                                    mAppIdAwaitingPause = appId;
+                                }
                                 mAdminLock.Unlock();
                                 {
                                     std::unique_lock<std::mutex> lk(mStateMutex);
-                                    mStateChangedCV.wait_for(lk, std::chrono::milliseconds(PAUSE_STATE_WAITTIME));
+                                    mStateChangedCV.wait_for(lk, std::chrono::milliseconds(PAUSE_STATE_WAITTIME), [this, &appId]() {
+                                        return mAppIdAwaitingPause != appId;
+                                    });
                                 }
 
                                 mAdminLock.Lock();
@@ -394,7 +377,10 @@ namespace WPEFramework
                                 if(postWaitFound &&
                                     Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED == postWaitSnap.getAppNewState())
                                 {
-                                    mAppIdAwaitingPause.clear();
+                                    {
+                                        std::lock_guard<std::mutex> stateLock(mStateMutex);
+                                        mAppIdAwaitingPause.clear();
+                                    }
 
                                     if (AppInfoManager::getInstance().exists(appId))
                                     {	
@@ -408,33 +394,6 @@ namespace WPEFramework
 						LOGINFO("TerminateApp returned status: %d", terminateStatus);
 						mAdminLock.Lock();
 					}
-                                        /* Found the AppInfo; apply suspend/hibernate/unload logic */
-					else if (fileExists(SUSPEND_POLICY_FILE))
-                                        {
-                                            LOGINFO("App with AppId: %s is suspendable", appId.c_str());
-                                            AppInfoManager::getInstance().setTargetAppState(appId, Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED);
-                                            status = mLifecycleManagerRemoteObject->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::LifecycleState::SUSPENDED, appIntent);
-
-                                            if (Core::ERROR_NONE == status && fileExists(HIBERNATE_POLICY_FILE))
-                                            {
-                                                LOGINFO("App with AppId: %s is hibernatable", appId.c_str());
-                                                AppInfoManager::getInstance().setTargetAppState(appId, Exchange::IAppManager::AppLifecycleState::APP_STATE_HIBERNATED);
-                                                status = mLifecycleManagerRemoteObject->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::LifecycleState::HIBERNATED, appIntent);
-
-                                                if (Core::ERROR_NONE != status)
-                                                {
-                                                    LOGERR("Failed to apply hibernate policy for appId: %s", appId.c_str());
-                                                }
-                                            }
-                                            else if (Core::ERROR_NONE != status)
-                                            {
-                                                LOGERR("Failed to apply suspend policy for appId: %s", appId.c_str());
-                                            }
-                                        }
-                                        else
-                                        {
-                                            LOGINFO("App with AppId: %s is non suspendable. Keeping app in Paused state", appId.c_str());
-                                        }
                                     }
                                     else
                                     {
@@ -703,7 +662,7 @@ namespace WPEFramework
                     loadedAppInfo.lifecycleState       = newState;
 
                     //Add loaded info
-		    loadedAppInfoList.push_back(loadedAppInfo);
+		    loadedAppInfoList.push_back(std::move(loadedAppInfo));
                 }
 
                 apps = Core::Service<RPC::IteratorType<Exchange::IAppManager::ILoadedAppInfoIterator>> \
@@ -886,6 +845,7 @@ End:
             }
             else
             {
+                mAdminLock.Lock();
                 if (!appId.empty())
                 {
                     AppInfo snap;
@@ -899,6 +859,7 @@ End:
                         LOGERR("appId not found in database");
                     }
                 }
+                mAdminLock.Unlock();
 
                 if (!errorReason.empty())
                 {
@@ -956,36 +917,5 @@ End:
             }
         }
 
-        bool LifecycleInterfaceConnector::fileExists(const char* pFileName)
-        {
-            bool isRegular = false;
-
-            if (nullptr != pFileName)
-            {
-                struct stat fileStat;
-                if (0 == stat(pFileName, &fileStat))
-                {
-                    if (S_ISREG(fileStat.st_mode))
-                    {
-                        isRegular = true;
-                        LOGINFO("File: '%s' exists", pFileName);
-                    }
-                    else
-                    {
-                        LOGINFO("File: '%s' exists but is not a regular file", pFileName);
-                    }
-                }
-                else
-                {
-                    LOGINFO("File: Failed to stat file '%s'", pFileName);
-                }
-            }
-           else
-            {
-                LOGINFO("Filename pointer is null");
-            }
-
-            return isRegular;
-        }
      } /* namespace Plugin */
 } /* namespace WPEFramework */

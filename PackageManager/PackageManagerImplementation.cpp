@@ -1,3 +1,4 @@
+
 /**
 * If not stated otherwise in this file or this component's LICENSE
 * file the following copyright and licenses apply:
@@ -480,7 +481,6 @@ namespace Plugin {
                 if (nullptr != mStorageManagerObject) {
                     if(mStorageManagerObject->DeleteStorage(packageId, errorReason) == Core::ERROR_NONE) {
                         LOGINFO("DeleteStorage done");
-                        //#if defined(USE_LIBPACKAGE) || defined(UNIT_TEST)
                         // XXX: what if DeleteStorage() fails, who Uninstall the package
                         packagemanager::Result pmResult = packageImpl->Uninstall(packageId);
                         if (pmResult == packagemanager::SUCCESS) {
@@ -688,14 +688,12 @@ namespace Plugin {
                                                             runtimeId.empty() ? "" : runtimeId,
                                                             runtimeVersion.empty() ? "" : runtimeVersion);
 
-                LOGDBG("Locked. id: %s ver: %s additionalLocks=%zu", packageId.c_str(), version.c_str(), state.additionalLocks.size());
+                LOGDBG("Locked. id: %s ver: %s lock count:%d additionalLocks=%zu", packageId.c_str(), version.c_str(), state.mLockCount, state.additionalLocks.size());
                 getRuntimeConfig(state.runtimeConfig, runtimeConfig);
                 state.unpackedPath = unpackedPath;
                 appMetadata = Core::Service<RPC::IteratorType<Exchange::IPackageHandler::ILockIterator>>::Create<Exchange::IPackageHandler::ILockIterator>(state.additionalLocks);
-                LOGDBG("id: %s ver: %s lock count:%d", packageId.c_str(), version.c_str(), state.mLockCount);
                 LOGDBG("%s:%s appPath: %s runtimePath: %s", packageId.c_str(), version.c_str(),
                     state.runtimeConfig.appPath.c_str(), state.runtimeConfig.runtimePath.c_str());
-
             } else {
                 LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());    // This should never happen
             }
@@ -775,12 +773,12 @@ namespace Plugin {
         runtimeConfig.gpuMemoryLimit = config.gpuMemoryLimit;
 
         JsonArray vars = JsonArray();
-        for (auto str: config.envVars) {
+        for (const auto& str: config.envVars) {
             vars.Add(str);
         }
         vars.ToString(runtimeConfig.envVariables);
 
-        runtimeConfig.userId = config.userId ? config.userId : userId;  // XXX: should we increment (Userid/Groupid management RDKEMW-13259)
+        runtimeConfig.userId = config.userId ? config.userId : userId;
         runtimeConfig.groupId = config.groupId ? config.groupId : groupId;
         runtimeConfig.dataImageSize = config.dataImageSize;
 
@@ -796,6 +794,11 @@ namespace Plugin {
         runtimeConfig.appPath = config.appPath;
         runtimeConfig.command = config.command;
         runtimeConfig.runtimePath = config.runtimePath;
+
+        runtimeConfig.enableDebugger = false;
+        runtimeConfig.logFileMaxSize = 0;
+        runtimeConfig.mapi = false;
+        runtimeConfig.resourceManagerClientEnabled = false;
         runtimeConfig.ralfPkgPath = config.ralfPkgPath;
     }
 
@@ -937,7 +940,6 @@ namespace Plugin {
             return Core::ERROR_INVALID_SIGNATURE;
         }
 
-        //#if defined(USE_LIBPACKAGE) || defined(UNIT_TEST)
 	    packagemanager::ConfigMetaData metadata;
         packagemanager::Result pmResult = packageImpl->GetFileMetadata(fileLocator, id, version, metadata);
         if (pmResult == packagemanager::SUCCESS)
@@ -959,7 +961,6 @@ namespace Plugin {
         }
 	    #endif
 
-        //#if defined (USE_LIBPACKAGE) || defined(UNIT_TEST)
 	    #if defined(UNIT_TEST)
         packageImpl = packagemanager::IPackageImplDummy::instance();
         #else
@@ -974,7 +975,6 @@ namespace Plugin {
         for (auto it = aConfigMetadata.begin(); it != aConfigMetadata.end(); ++it ) {
             StateKey key = it->first;
             auto config = it->second;
-            //State state(it->second);
             State state;
             getRuntimeConfig(config, state.runtimeConfig);
             state.installState = InstallState::INSTALLED;
@@ -1099,7 +1099,6 @@ namespace Plugin {
             string errorReason = "";
             if(mStorageManagerObject->CreateStorage(packageId, STORAGE_MAX_SIZE, path, errorReason) == Core::ERROR_NONE) {
                 LOGINFO("CreateStorage path [%s]", path.c_str());
-                //#if defined(USE_LIBPACKAGE) || defined(UNIT_TEST)
                 packagemanager::ConfigMetaData config;
                 packagemanager::Result pmResult = packageImpl->Install(packageId, version, keyValues, fileLocator, config);
                 if (pmResult == packagemanager::SUCCESS) {

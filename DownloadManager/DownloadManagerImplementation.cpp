@@ -110,17 +110,17 @@ namespace Plugin {
             LOGINFO("DM: ConfigLine=%s", service->ConfigLine().c_str());
             DownloadManagerImplementation::Configuration config;
             config.FromString(service->ConfigLine());
-
-            if (config.downloadDir.IsSet() == true)
+            if (true == config.downloadDir.IsSet())
             {
+		std::lock_guard<std::mutex> lock(mQueueMutex);
                 mDownloadPath = config.downloadDir;
-            }
+	    }
             LOGINFO("DM: downloadDir=%s", mDownloadPath.c_str());
-            if (config.downloadId.IsSet() == true)
+            if (true == config.downloadId.IsSet())
             {
+                std::lock_guard<std::mutex> lock(mQueueMutex);
                 mDownloadId = static_cast<uint32_t>(config.downloadId.Value());
             }
-
             int rc = mkdir(mDownloadPath.c_str(), 0777);
             if (rc != 0 && errno != EEXIST)
             {
@@ -432,21 +432,16 @@ namespace Plugin {
     {
         while (mDownloaderRunFlag)
         {
-            DownloadInfoPtr downloadRequest = pickDownloadJob();
-            while (downloadRequest == nullptr && mDownloaderRunFlag)
+            DownloadInfoPtr downloadRequest = nullptr;
             {
-                LOGDBG("DM: Waiting for download request...");
                 std::unique_lock<std::mutex> lock(mQueueMutex);
-                mDownloadThreadCV.wait(lock);
-                lock.unlock();
+                mDownloadThreadCV.wait(lock, [&] {
+                    return !mDownloaderRunFlag || !mPriorityDownloadQueue.empty() || !mRegularDownloadQueue.empty();
+                });
+                if (!mDownloaderRunFlag)
+                    break;
 
                 downloadRequest = pickDownloadJob();
-            }
-
-            if (false == mDownloaderRunFlag)
-            {
-                LOGINFO("DM: Downloader is shutting down - exiting thread!");
-                break;
             }
 
             if (!downloadRequest)
@@ -514,7 +509,7 @@ namespace Plugin {
                 }
 
                 LOGDBG("DM: Attempt download (%d/%d): status=%d http_code=%ld elapsed=%lld ms",
-                    attemptCount, downloadRequest->getRetries(), status, httpCode, elapsed);
+                        attemptCount, downloadRequest->getRetries(), status, httpCode, elapsed);
             }
 
             if (status != DownloadManagerHttpClient::Status::Success)
@@ -580,7 +575,6 @@ namespace Plugin {
 
     DownloadManagerImplementation::DownloadInfoPtr DownloadManagerImplementation::pickDownloadJob(void)
     {
-        std::lock_guard<std::mutex> lock(mQueueMutex);
         if ((!mPriorityDownloadQueue.empty() || !mRegularDownloadQueue.empty()) && mCurrentDownload == nullptr)
         {
             if (!mPriorityDownloadQueue.empty())
