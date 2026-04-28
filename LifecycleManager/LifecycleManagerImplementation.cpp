@@ -257,8 +257,8 @@ namespace WPEFramework
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
             requestTime = LifecycleManagerTelemetryReporting::getInstance().getCurrentTimestamp();
 #endif
-            mAdminLock.Lock();
             auto context = getContext("", appId);
+            mAdminLock.Lock();
             if (nullptr == context)
 	    {
                 context = std::make_shared<ApplicationContext>(appId);
@@ -270,6 +270,7 @@ namespace WPEFramework
             context->setRequestType(REQUEST_TYPE_LAUNCH);
             context->setTargetLifecycleState(targetLifecycleState);
             context->setMostRecentIntent(launchIntent);
+            context->resetPendingStates();
             success = RequestHandler::getInstance()->launch(context.get(), launchIntent, targetLifecycleState, errorReason);
             if (!success)
 	    {
@@ -325,7 +326,7 @@ namespace WPEFramework
             string errorReason("");
             context->setTargetLifecycleState(targetLifecycleState);
             context->setMostRecentIntent(launchIntent);
-
+            context->resetPendingStates();
             bool success = RequestHandler::getInstance()->updateState(context.get(), targetLifecycleState, errorReason);
             mAdminLock.Unlock();
             if (false == success)
@@ -362,6 +363,7 @@ namespace WPEFramework
             context->setTargetLifecycleState(Exchange::ILifecycleManager::LifecycleState::TERMINATING);
             context->setApplicationKillParams(false);
 
+            context->resetPendingStates();
             success = RequestHandler::getInstance()->terminate(context.get(), false, errorReason);
             if (!success)
 	    {
@@ -391,6 +393,7 @@ namespace WPEFramework
             context->setRequestType(REQUEST_TYPE_TERMINATE);
             context->setTargetLifecycleState(Exchange::ILifecycleManager::LifecycleState::TERMINATING);
             context->setApplicationKillParams(true);
+            context->resetPendingStates();
             success = RequestHandler::getInstance()->terminate(context.get(), true, errorReason);
             mAdminLock.Unlock();
             return status;
@@ -626,6 +629,7 @@ namespace WPEFramework
                         context->setRequestType(REQUEST_TYPE_TERMINATE);
                         context->setTargetLifecycleState(Exchange::ILifecycleManager::LifecycleState::TERMINATING);
                         context->setApplicationKillParams(false);
+                        context->resetPendingStates();
 
                         terminated = RequestHandler::getInstance()->terminate(context.get(), false, terminateError);
                         stateUpdated = RequestHandler::getInstance()->updateState(context.get(), context->getTargetLifecycleState(), updateError);
