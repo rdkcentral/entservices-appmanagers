@@ -104,7 +104,7 @@ extern uint32_t Test_HttpClient_DownloadFileInvalidUrlReturnsHttpError();
 extern uint32_t Test_HttpClient_DownloadFileUnwritableDestReturnsDiskError();
 extern uint32_t Test_HttpClient_DownloadFile404HandledGracefully();
 extern uint32_t Test_HttpClient_PauseDoesNotCrash();
-extern uint32_t Test_HttpClient_CancelSetsBCancelFlagProgressCbReturnsNonzero();
+extern uint32_t Test_HttpClient_ResumeDoesNotCrash();
 extern uint32_t Test_HttpClient_SetRateLimitDoesNotCrash();
 extern uint32_t Test_HttpClient_GetProgressReturnsZeroInitially();
 extern uint32_t Test_HttpClient_GetStatusCodeReturnsZeroInitially();
