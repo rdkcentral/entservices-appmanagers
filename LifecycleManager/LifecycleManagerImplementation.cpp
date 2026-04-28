@@ -222,8 +222,7 @@ namespace WPEFramework
                             }
                             else
                             {
-                                printf("unable to get runtime status of application\n");
-                                fflush(stdout);
+                                LOGWARN("Unable to get runtime status of application for appInstanceId[%s]", context->getAppInstanceId().c_str());
                             }
                         }
                     }
@@ -414,8 +413,7 @@ namespace WPEFramework
             // sending intent is not valid for non-active application
             if (Exchange::ILifecycleManager::LifecycleState::ACTIVE != context->getCurrentLifecycleState())
             {
-                printf("Failed to send intent to non-active app [%s] \n", appInstanceId.c_str());
-                fflush(stdout);
+                LOGWARN("Failed to send intent to non-active app [%s]", appInstanceId.c_str());
                 status = Core::ERROR_GENERAL;
                 success = false;
                 errorReason = "application is not active";
@@ -483,8 +481,7 @@ namespace WPEFramework
 	Core::hresult LifecycleManagerImplementation::AppReady(const string& appId)
         {
             Core::hresult status = Core::ERROR_NONE;
-	    printf("[LifecycleManager] Received appReady event for [%s] \n", appId.c_str());
-	    fflush(stdout);
+	    LOGINFO("[LifecycleManager] Received appReady event for [%s]", appId.c_str());
             auto context = getContext("", appId);
             if (nullptr == context)
 	    {
@@ -516,8 +513,7 @@ namespace WPEFramework
             status = KillApp(context->getAppInstanceId(), errorReason, success); 
             if (status != Core::ERROR_NONE)
 	    {
-                printf("Failed to close the app [%s]\n", appId.c_str());
-		fflush(stdout);
+                LOGERR("Failed to close the app [%s]", appId.c_str());
                 return status;
 	    }
 	    if ((closeReason != KILL_AND_RUN) && (closeReason != KILL_AND_ACTIVATE))
@@ -551,8 +547,7 @@ namespace WPEFramework
 	    }
             else
 	    {
-                printf("unable to configure lifecyclemanager \n");
-		fflush(stdout);
+                LOGERR("Unable to configure LifecycleManager");
 	    }
             return result;
         }
@@ -734,18 +729,15 @@ namespace WPEFramework
         string eventName = data["name"];
         if (eventName.compare("onUserInactivity") == 0)
         {
-            printf("Received onUserInactivity event from window manager \n");
-            fflush(stdout);
+            LOGINFO("Received onUserInactivity event from window manager");
         }
         else if (eventName.compare("onDisconnect") == 0)
         {
-            printf("Received onDisconnect event from window manager \n");
-            fflush(stdout);
+            LOGINFO("Received onDisconnect event from window manager");
 	}
         else if (eventName.compare("onReady") == 0)
         {
-            printf("Received onReady event from window manager \n");
-            fflush(stdout);
+            LOGINFO("Received onReady event from window manager");
             std::string appInstanceId = data["appInstanceId"];
             auto context = getContext(appInstanceId, "");
             if (nullptr != context)
@@ -761,16 +753,11 @@ namespace WPEFramework
         {
             std::string errorReason("");
             bool success = RequestHandler::getInstance()->updateState(context, context->getTargetLifecycleState(), errorReason);
-            printf("added state transition request [%d] [%s] \n", success, event.c_str());
-            fflush(stdout);
+            LOGINFO("Added state transition request success[%d] event[%s]", success, event.c_str());
         }
         else
         {
-            printf("received wrong state transition request\n");
-            // enable for debugging wrong state transition requests
-            // printf("expected [%s] but got [%s]\n", context->mPendingEventName.c_str(), event.c_str());
-            // printf("pending state transition [%d]\n", context->mPendingStateTransition);
-            fflush(stdout);
+            LOGWARN("Received wrong state transition request event[%s]", event.c_str());
         }
     }
 
