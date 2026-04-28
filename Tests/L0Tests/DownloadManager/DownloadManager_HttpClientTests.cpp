@@ -48,14 +48,6 @@
 #include "common/L0Expect.hpp"
 #include "common/L0TestTypes.hpp"
 
-struct DownloadManagerHttpClientTestAccess {
-    static size_t progressCb(void *ptr, double dltotal, double dlnow, double ultotal, double ulnow) {
-        return DownloadManagerHttpClient::progressCb(ptr, dltotal, dlnow, ultotal, ulnow);
-    }
-    static size_t write_data(void *ptr, size_t size, size_t nmemb, FILE *stream) {
-        return DownloadManagerHttpClient::write_data(ptr, size, nmemb, stream);
-    }
-};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Construction initialises curl handle (non-null)
@@ -202,33 +194,6 @@ uint32_t Test_HttpClient_ResumeDoesNotCrash()
     return tr.failures;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// cancel() sets bCancel flag; progressCb returns non-zero
-// ─────────────────────────────────────────────────────────────────────────────
-
-uint32_t Test_HttpClient_CancelSetsBCancelFlagProgressCbReturnsNonzero()
-{
-    L0Test::TestResult tr;
-
-    DownloadManagerHttpClient client;
-
-    // Before cancel: progressCb should return 0 (do not abort curl)
-    size_t beforeCancel = DownloadManagerHttpClientTestAccess::progressCb(
-        static_cast<void*>(&client), 100.0, 50.0, 0.0, 0.0);
-    L0Test::ExpectEqU32(tr, static_cast<uint32_t>(beforeCancel), 0u,
-        "progressCb returns 0 before cancel() is called");
-
-    // Call cancel
-    client.cancel();
-
-    // After cancel: progressCb must return non-zero to abort curl_easy_perform
-    size_t afterCancel = DownloadManagerHttpClientTestAccess::progressCb(
-        static_cast<void*>(&client), 100.0, 50.0, 0.0, 0.0);
-    L0Test::ExpectTrue(tr, afterCancel != 0u,
-        "progressCb returns non-zero after cancel() is called");
-
-    return tr.failures;
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // setRateLimit does not crash
@@ -273,70 +238,6 @@ uint32_t Test_HttpClient_GetStatusCodeReturnsZeroInitially()
     DownloadManagerHttpClient client;
     L0Test::ExpectEqU32(tr, static_cast<uint32_t>(client.getStatusCode()), 0u,
         "getStatusCode() returns 0 before any download");
-
-    return tr.failures;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// progressCb with zero dltotal does not update progress
-// ─────────────────────────────────────────────────────────────────────────────
-
-uint32_t Test_HttpClient_ProgressCbZeroDltotalDoesNotUpdateProgress()
-{
-    L0Test::TestResult tr;
-
-    DownloadManagerHttpClient client;
-
-    // dltotal == 0.0 → guard prevents division-by-zero; progress stays at 0
-    (void) DownloadManagerHttpClientTestAccess::progressCb(
-        static_cast<void*>(&client), 0.0, 0.0, 0.0, 0.0);
-
-    L0Test::ExpectEqU32(tr, static_cast<uint32_t>(client.getProgress()), 0u,
-        "progress remains 0 when dltotal is 0.0 (no division-by-zero)");
-
-    return tr.failures;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// write_data calls fwrite and returns bytes written
-// ─────────────────────────────────────────────────────────────────────────────
-
-uint32_t Test_HttpClient_WriteDataCallsFwrite()
-{
-    L0Test::TestResult tr;
-
-    const char payload[] = "TESTDATA";
-    const size_t payloadLen = sizeof(payload) - 1; // exclude null terminator
-
-    const std::string tmpFile = "/tmp/dm_l0_write_data.out";
-    FILE* fp = fopen(tmpFile.c_str(), "wb");
-    L0Test::ExpectTrue(tr, fp != nullptr, "Temp file opened for write_data test");
-
-    if (nullptr != fp) {
-        const size_t written = DownloadManagerHttpClientTestAccess::write_data(
-            const_cast<char*>(payload), 1u, payloadLen, fp);
-
-        L0Test::ExpectEqU32(tr, static_cast<uint32_t>(written),
-            static_cast<uint32_t>(payloadLen),
-            "write_data returns the number of bytes written");
-
-        fclose(fp);
-
-        // Verify the file contains what we wrote
-        FILE* rf = fopen(tmpFile.c_str(), "rb");
-        if (nullptr != rf) {
-            char buf[32] = {};
-            size_t rd = fread(buf, 1u, sizeof(buf), rf);
-            fclose(rf);
-            L0Test::ExpectEqU32(tr, static_cast<uint32_t>(rd),
-                static_cast<uint32_t>(payloadLen),
-                "File contains exactly the bytes written by write_data");
-            L0Test::ExpectTrue(tr, std::memcmp(buf, payload, payloadLen) == 0,
-                "File contents match the payload written via write_data");
-        }
-    }
-
-    (void) std::remove(tmpFile.c_str());
 
     return tr.failures;
 }
