@@ -48,9 +48,13 @@
 #include "common/L0Expect.hpp"
 #include "common/L0TestTypes.hpp"
 
-struct DownloadManagerHttpClientTestAccess : public DownloadManagerHttpClient {
-    using DownloadManagerHttpClient::progressCb;
-    using DownloadManagerHttpClient::write_data;
+struct DownloadManagerHttpClientTestAccess {
+    static size_t progressCb(void *ptr, double dltotal, double dlnow, double ultotal, double ulnow) {
+        return DownloadManagerHttpClient::progressCb(ptr, dltotal, dlnow, ultotal, ulnow);
+    }
+    static size_t write_data(void *ptr, size_t size, size_t nmemb, FILE *stream) {
+        return DownloadManagerHttpClient::write_data(ptr, size, nmemb, stream);
+    }
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
