@@ -104,7 +104,6 @@ namespace WPEFramework
                     string GetAppInstanceId(const string& appId) const;
                     void removeAppInfoByAppId(const string& appId);
                     Core::hresult isAppLoaded(const string& appId, bool& loaded);
-                    bool fileExists(const char* pFileName);
                     Exchange::IAppManager::AppErrorReason mapErrorReason(const string& errorReason);
 
                 private:
