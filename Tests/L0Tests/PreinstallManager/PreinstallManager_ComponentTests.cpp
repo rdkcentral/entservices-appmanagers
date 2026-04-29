@@ -156,6 +156,8 @@ uint32_t Test_Comp_PIM_StartPreinstallInvalidDirectoryFails()
     L0Test::ServiceMock service(cfg);
 
     auto* impl = CreateImpl();
+    L0Test::FakePreinstallNotification notif;
+    impl->Register(&notif);
     impl->Configure(&service);
 
     const auto result = impl->StartPreinstall(true);
@@ -275,6 +277,9 @@ uint32_t Test_Comp_PIM_StartPreinstallAlreadyInProgressReturnsError()
 
     // Wait for thread to finish before stack cleanup.
     WaitForCompleted(impl);
+    const bool fired = WaitForNotification(notif.onPreinstallationCompleteCount);
+    L0Test::ExpectTrue(tr, fired, "OnPreinstallationComplete fired after in-progress scenario");
+    impl->Unregister(&notif);
     impl->Release();
     return tr.failures;
 }
@@ -458,6 +463,8 @@ uint32_t Test_Comp_PIM_StartPreinstallInstallsNewerVersionWhenNotForce()
     L0Test::ServiceMock service(cfg);
 
     auto* impl = CreateImpl();
+    L0Test::FakePreinstallNotification notif;
+    impl->Register(&notif);
     impl->Configure(&service);
 
     const auto result = impl->StartPreinstall(false);
@@ -470,6 +477,9 @@ uint32_t Test_Comp_PIM_StartPreinstallInstallsNewerVersionWhenNotForce()
     L0Test::ExpectEqU32(tr, installer.installCallCount.load(), 1U,
                         "Install() called once because preinstall 3.0.0 > installed 2.0.0");
 
+    const bool fired = WaitForNotification(notif.onPreinstallationCompleteCount);
+    L0Test::ExpectTrue(tr, fired, "OnPreinstallationComplete fired after newer-version install");
+    impl->Unregister(&notif);
     impl->Release();
     return tr.failures;
 }
@@ -566,6 +576,8 @@ uint32_t Test_Comp_PIM_InstallPackagesWithInvalidFieldsSkipsPackage()
     L0Test::ServiceMock service(cfg);
 
     auto* impl = CreateImpl();
+    L0Test::FakePreinstallNotification notif;
+    impl->Register(&notif);
     impl->Configure(&service);
 
     const auto result = impl->StartPreinstall(true);
@@ -579,6 +591,9 @@ uint32_t Test_Comp_PIM_InstallPackagesWithInvalidFieldsSkipsPackage()
     L0Test::ExpectEqU32(tr, installer.installCallCount.load(), 0U,
                         "Install() not called for package with empty fields");
 
+    const bool fired = WaitForNotification(notif.onPreinstallationCompleteCount);
+    L0Test::ExpectTrue(tr, fired, "OnPreinstallationComplete fired after invalid-fields path");
+    impl->Unregister(&notif);
     impl->Release();
     return tr.failures;
 }
@@ -693,6 +708,8 @@ uint32_t Test_Comp_PIM_GetFailReasonAllEnumsWithoutCrash()
         L0Test::ServiceMock service(cfg);
 
         auto* impl = CreateImpl();
+        L0Test::FakePreinstallNotification notif;
+        impl->Register(&notif);
         impl->Configure(&service);
         impl->StartPreinstall(true);
         WaitForCompleted(impl);
@@ -704,6 +721,9 @@ uint32_t Test_Comp_PIM_GetFailReasonAllEnumsWithoutCrash()
                             static_cast<uint32_t>(WPEFramework::Exchange::IPreinstallManager::State::COMPLETED),
                             "State COMPLETED after install failure with each FailReason");
 
+        const bool fired = WaitForNotification(notif.onPreinstallationCompleteCount);
+        L0Test::ExpectTrue(tr, fired, "OnPreinstallationComplete fired for each FailReason variant");
+        impl->Unregister(&notif);
         impl->Release();
     }
 
@@ -789,6 +809,8 @@ uint32_t Test_Comp_PIM_StartPreinstallJoinsPreviousCompletedThread()
     L0Test::ServiceMock service(cfg);
 
     auto* impl = CreateImpl();
+    L0Test::FakePreinstallNotification notif;
+    impl->Register(&notif);
     impl->Configure(&service);
 
     // First run — spawn thread and wait for it to complete.
@@ -810,6 +832,9 @@ uint32_t Test_Comp_PIM_StartPreinstallJoinsPreviousCompletedThread()
     L0Test::ExpectEqU32(tr, installer.installCallCount.load(), 1U,
                         "Install() called exactly once in second run");
 
+    const bool fired = WaitForNotification(notif.onPreinstallationCompleteCount);
+    L0Test::ExpectTrue(tr, fired, "OnPreinstallationComplete fired for relaunch run");
+    impl->Unregister(&notif);
     impl->Release();
     return tr.failures;
 }
@@ -914,6 +939,8 @@ uint32_t Test_Comp_PIM_ReadPreinstallDirectorySkipsDotEntries()
     L0Test::ServiceMock service(cfg);
 
     auto* impl = CreateImpl();
+    L0Test::FakePreinstallNotification notif;
+    impl->Register(&notif);
     impl->Configure(&service);
     impl->StartPreinstall(true);
     WaitForCompleted(impl);
@@ -921,6 +948,9 @@ uint32_t Test_Comp_PIM_ReadPreinstallDirectorySkipsDotEntries()
     L0Test::ExpectEqU32(tr, getConfigCalls.load(), 1U,
                         "GetConfigForPackage called exactly once (dot entries skipped)");
 
+    const bool fired = WaitForNotification(notif.onPreinstallationCompleteCount);
+    L0Test::ExpectTrue(tr, fired, "OnPreinstallationComplete fired after dot-entry filter path");
+    impl->Unregister(&notif);
     impl->Release();
     return tr.failures;
 }
@@ -965,6 +995,8 @@ uint32_t Test_Comp_PIM_StartPreinstallVersionWithSuffixStripped()
     L0Test::ServiceMock service(cfg);
 
     auto* impl = CreateImpl();
+    L0Test::FakePreinstallNotification notif;
+    impl->Register(&notif);
     impl->Configure(&service);
     impl->StartPreinstall(false);
     WaitForCompleted(impl);
@@ -972,6 +1004,9 @@ uint32_t Test_Comp_PIM_StartPreinstallVersionWithSuffixStripped()
     L0Test::ExpectEqU32(tr, installer.installCallCount.load(), 1U,
                         "Install() called once: 1.2.3-beta (stripped 1.2.3) > installed 1.2.2");
 
+    const bool fired = WaitForNotification(notif.onPreinstallationCompleteCount);
+    L0Test::ExpectTrue(tr, fired, "OnPreinstallationComplete fired after suffix-stripping path");
+    impl->Unregister(&notif);
     impl->Release();
     return tr.failures;
 }
@@ -1016,6 +1051,8 @@ uint32_t Test_Comp_PIM_InvalidVersionDoesNotCrash()
     L0Test::ServiceMock service(cfg);
 
     auto* impl = CreateImpl();
+    L0Test::FakePreinstallNotification notif;
+    impl->Register(&notif);
     impl->Configure(&service);
 
     // Must not crash — invalid version treated as not newer → filtered out.
@@ -1031,6 +1068,9 @@ uint32_t Test_Comp_PIM_InvalidVersionDoesNotCrash()
         WaitForCompleted(impl);
     L0Test::ExpectTrue(tr, finishedOrFiltered, "State eventually COMPLETED after invalid version");
 
+    const bool fired = WaitForNotification(notif.onPreinstallationCompleteCount);
+    L0Test::ExpectTrue(tr, fired, "OnPreinstallationComplete fired after invalid-version path");
+    impl->Unregister(&notif);
     impl->Release();
     return tr.failures;
 }
@@ -1102,6 +1142,8 @@ uint32_t Test_Comp_PIM_ReadPreinstallDirectoryLoadsValidPackages()
     L0Test::ServiceMock service(cfg);
 
     auto* impl = CreateImpl();
+    L0Test::FakePreinstallNotification notif;
+    impl->Register(&notif);
     impl->Configure(&service);
     impl->StartPreinstall(true);
     WaitForCompleted(impl);
@@ -1112,6 +1154,9 @@ uint32_t Test_Comp_PIM_ReadPreinstallDirectoryLoadsValidPackages()
     L0Test::ExpectEqU32(tr, installer.installCallCount.load(), 1U,
                         "Install() called once for the valid package");
 
+    const bool fired = WaitForNotification(notif.onPreinstallationCompleteCount);
+    L0Test::ExpectTrue(tr, fired, "OnPreinstallationComplete fired after valid-package path");
+    impl->Unregister(&notif);
     impl->Release();
     return tr.failures;
 }
