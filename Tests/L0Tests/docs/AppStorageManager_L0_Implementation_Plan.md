@@ -213,29 +213,24 @@ Implemented in `fakes/FakePersistentStore.h/.cpp`:
 | Test ID | Test Name (Implemented) | Coverage Focus | Status |
 |---------|-------------------------|----------------|--------|
 | **IMPL-001** | `Test_Impl_ConfigureWithValidService` | `Configure()` with valid service and FakePersistentStore | ✅ PASS |
-| **IMPL-002** | `Test_Impl_ConfigureWithNullService` | `Configure()` after Initialize (singleton already configured) | ✅ PASS
+| **IMPL-002** | `Test_Impl_ConfigureWithNullService` | `Configure()` after Initialize (singleton already configured) | ✅ PASS |
+
 ---
 
 ### B) `AppStorageManager/AppStorageManagerImplementation.cpp`
 
-#### Configuration Tests
-
-| Test ID | Test Name | Coverage Focus | Type |
-|---------|-----------|----------------|------|
-| **IMPL-001** | `Test_I - IMPLEMENTED
+#### CreateStorage Tests
 
 | Test ID | Test Name (Implemented) | Coverage Focus | Status |
 |---------|-------------------------|----------------|--------|
-| **IMPL-003** | `Test_Impl_CreateStorageWithValidInput` | `CreateStorage()` creates storage successfully with default uid/gid | ✅ PASSy |
-| **IMPL-008** | `Test_Impl_CreateStorageWithLargeSize` | `CreateStorage()` with very large size quota | Boundary |
-| **IMPL-009** | `Test_Impl_CreateStorageDuplicateAppId` | `CreateStorage()` when storage already exists | Positive |
-| **IMPL-010** | `Test_Impl_CreateStorageInsufficientSpace` | `CreateStorage()` when disk space insufficient | Negative |
-| **IMPL-011** | `Test_Impl_CreateStorageMkdirFails` | `CreateStorage()` when mkdir operation fails | Negative |
-| **IMPL-012** | `Test_Impl_CreateStoragePersistentStoreSetFails` | `CreateStorage()` when IStore2->SetValue fails | Negative |
+| **IMPL-003** | `Test_Impl_CreateStorageWithValidInput` | `CreateStorage()` creates storage successfully with default uid/gid | ✅ PASS |
+| **IMPL-008** | `Test_Impl_CreateStorageWithLargeSize` | `CreateStorage()` with very large size quota | Planned |
+| **IMPL-009** | `Test_Impl_CreateStorageDuplicateAppId` | `CreateStorage()` when storage already exists | Planned |
+| **IMPL-010** | `Test_Impl_CreateStorageInsufficientSpace` | `CreateStorage()` when disk space insufficient | Planned |
+| **IMPL-011** | `Test_Impl_CreateStorageMkdirFails` | `CreateStorage()` when mkdir operation fails | Planned |
+| **IMPL-012** | `Test_Impl_CreateStoragePersistentStoreSetFails` | `CreateStorage()` when IStore2->SetValue fails | Planned |
 
 #### GetStorage Tests
-
-| Test ID | Test Name - IMPLEMENTED
 
 | Test ID | Test Name (Implemented) | Coverage Focus | Status |
 |---------|-------------------------|----------------|--------|
@@ -248,34 +243,20 @@ Implemented in `fakes/FakePersistentStore.h/.cpp`:
 - Pass `uid=-1, gid=-1` to avoid permission-denied errors from `chown()` in CI
 - Real filesystem used - no mocking of stat/chown operations
 
-| Test ID | Test Name | Coverage Focus | Type |
-|---------|-----------|----------------|------|
-| **IMPL-021** | `Test_Impl_DeleteStorageWithValidAppId` | `DeleteStorage()` removes storage successfully | Positive |
-| **IMPL-022** | `Test_Impl_DeleteStorageWithEmptyAppId` | `DeleteStorage()` with empty appId | Negative |
-| **IMPL-023** | `Test_Impl_DeleteStorageWithNonExistentAppId` | `DeleteStorage()` when app storage doesn't exist | Negative |
-| **IMPL-024** | `Test_Impl_DeleteStorageRmdirFails` | `DeleteStorage()` when directory removal fails | Negative |
-| **IMPL-025** | `Test_Impl_DeleteStorageRemovesFromCache` | `DeleteStorage()` updates internal cache | Positive |
- - IMPLEMENTED
+#### DeleteStorage Tests
 
 | Test ID | Test Name (Implemented) | Coverage Focus | Status |
 |---------|-------------------------|----------------|--------|
 | **IMPL-008** | `Test_Impl_DeleteStorageWithValidAppId` | `DeleteStorage()` removes storage successfully | ✅ PASS |
-| **IMPL-009** | `Test_Impl_DeleteStorageWithNonExistentAppId` | `DeleteStorage()` returns error for non-existent appId | ✅ PASSes | Positive |
-| **IMPL-030** | `Test_Impl_ClearStorageDeleteFails` | `Clear()` when file deletion fails | Negative |
+| **IMPL-009** | `Test_Impl_DeleteStorageWithNonExistentAppId` | `DeleteStorage()` returns error for non-existent appId | ✅ PASS |
 
-#### ClearAll Tests
-
-| Test ID | Test - IMPLEMENTED
+#### ClearStorage Tests
 
 | Test ID | Test Name (Implemented) | Coverage Focus | Status |
 |---------|-------------------------|----------------|--------|
-| **IMPL-010** | `Test_Impl_ClearStorageWithValidAppId` | `Clear()` clears app data successfully | ✅ PASS
+| **IMPL-010** | `Test_Impl_ClearStorageWithValidAppId` | `Clear()` clears app data successfully | ✅ PASS |
 
-### C) `AppStorageManager/RequestHandler.cpp`
-
-#### Singleton and Configuration Tests (`AppStorageManager_ComponentTests.cpp`)
-
-| Test ID | Test Na - IMPLEMENTED
+#### ClearAll Tests
 
 | Test ID | Test Name (Implemented) | Coverage Focus | Status |
 |---------|-------------------------|----------------|--------|
@@ -285,15 +266,18 @@ Implemented in `fakes/FakePersistentStore.h/.cpp`:
 **Implementation Notes**:
 - Tests now use `ExpectEqU32()` for uint32_t comparisons (not generic `ExpectEq()`)
 - Validates both return code (`ERROR_NONE`) and error reason (empty string)
-| Test ID | Test Name | Coverage Focus | Type |
-|---------|-----------|----------------|------|
-| **RH-005** | `Test_RH_CreatePersistentStoreObjectSuccess` | `createPersistentStoreRemoteStoreObject()` success | Positive |
-| **RH-006** | `Test_RH_CreatePersistentStoreObjectFailsWithNullService` | Persistent store creation with null service | Negative |
-| **RComponent Tests -(Implemented) | Coverage Focus | Status |
+
+---
+
+### C) `AppStorageManager/RequestHandler.cpp`
+
+#### Singleton and Configuration Tests (`AppStorageManager_ComponentTests.cpp`)
+
+| Test ID | Test Name (Implemented) | Coverage Focus | Status |
 |---------|-------------------------|----------------|--------|
 | **COMP-001** | `Test_Comp_GetInstanceReturnsSingleton` | `getInstance()` returns same instance | ✅ PASS |
 | **COMP-002** | `Test_Comp_SetBaseStoragePath` | `SetBaseStoragePath()` with valid path | ✅ PASS |
-| **COMP-003** | `Test_Comp_ConfigureSingleton` | Configure singleton without crashing | ✅ PASSve |
+| **COMP-003** | `Test_Comp_ConfigureSingleton` | Configure singleton without crashing | ✅ PASS |
 
 #### Cache Management Tests
 

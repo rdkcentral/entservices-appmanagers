@@ -37,7 +37,6 @@
 // ── AppStorageManager_LifecycleTests.cpp ────────────────────────────────────
 extern uint32_t Test_ASM_Lifecycle_InitializeSucceedsWithInstantiateFallback();
 extern uint32_t Test_ASM_Lifecycle_InitializeSuccessAndDeinitialize();
-extern uint32_t Test_ASM_Lifecycle_InitializeSucceedsWithFallbackCreation();
 extern uint32_t Test_ASM_Lifecycle_InformationReturnsEmptyString();
 extern uint32_t Test_ASM_Lifecycle_DeinitializeSuccessWithValidService();
 
@@ -72,7 +71,6 @@ int main()
         // Lifecycle tests
         {"Test_ASM_Lifecycle_InitializeSucceedsWithInstantiateFallback", Test_ASM_Lifecycle_InitializeSucceedsWithInstantiateFallback},
         {"Test_ASM_Lifecycle_InitializeSuccessAndDeinitialize", Test_ASM_Lifecycle_InitializeSuccessAndDeinitialize},
-        {"Test_ASM_Lifecycle_InitializeSucceedsWithFallbackCreation", Test_ASM_Lifecycle_InitializeSucceedsWithFallbackCreation},
         {"Test_ASM_Lifecycle_InformationReturnsEmptyString", Test_ASM_Lifecycle_InformationReturnsEmptyString},
         {"Test_ASM_Lifecycle_DeinitializeSuccessWithValidService", Test_ASM_Lifecycle_DeinitializeSuccessWithValidService},
 

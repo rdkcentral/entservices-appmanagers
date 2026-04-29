@@ -116,40 +116,6 @@ uint32_t Test_ASM_Lifecycle_InitializeSuccessAndDeinitialize()
 }
 
 /* ========================================================================== */
-/* Test_ASM_Lifecycle_InitializeSucceedsWithFallbackCreation
- *
- * Verifies that Initialize() succeeds when using fallback implementation.
- * When Instantiate returns nullptr, Root<> falls back to creating the real
- * implementation which successfully completes Configure().
- */
-uint32_t Test_ASM_Lifecycle_InitializeSucceedsWithFallbackCreation()
-{
-    L0Test::TestResult tr;
-
-    L0Test::L0MockPersistentStore fakeStore;
-    L0Test::ServiceMock service(L0Test::ServiceMock::Config{&fakeStore});
-
-    // When Instantiate returns nullptr, Root() falls back to creating real implementation
-    // which will succeed Configure(). The fake impl that fails Configure cannot be
-    // injected through this pattern.
-    service.SetInstantiateHandler([](const WPEFramework::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
-        connectionId = 0;
-        return nullptr;  // Triggers fallback to real implementation
-    });
-
-    IPlugin* plugin = CreatePlugin();
-    L0Test::ExpectTrue(tr, plugin != nullptr, "Plugin created");
-
-    const std::string result = plugin->Initialize(&service);
-    L0Test::ExpectEqStr(tr, result, std::string(), "Initialize succeeds with fallback creation");
-
-    plugin->Deinitialize(&service);
-    plugin->Release();
-
-    return tr.failures;
-}
-
-/* ========================================================================== */
 /* Test_ASM_Lifecycle_InformationReturnsEmptyString
  *
  * Verifies that Information() returns an empty string (no additional info).

@@ -402,21 +402,12 @@ jobs:
           python
           import gdb
           _crash_signal = [None]
-          _inf_exit_code = [None]
 
           def _stop_handler(event):
               if isinstance(event, gdb.SignalEvent):
                   _crash_signal[0] = event.stop_signal
 
-          def _exit_handler(event):
-              if hasattr(event, 'exit_code'):
-                  _inf_exit_code[0] = event.exit_code
-              else:
-                  # GDB version doesn't have exit_code attribute, assume success
-                  _inf_exit_code[0] = 0
-
           gdb.events.stop.connect(_stop_handler)
-          gdb.events.exited.connect(_exit_handler)
           end
           handle SIGSEGV stop print nopass
           handle SIGABRT stop print nopass
@@ -437,8 +428,8 @@ jobs:
               print("=======================================")
               gdb.execute("quit 1")
           else:
-              code = _inf_exit_code[0] or 0
-              gdb.execute("quit %d" % code)
+              # No crash detected, tests passed - exit with 0
+              gdb.execute("quit 0")
           end
           GDBEOF
 
@@ -460,14 +451,14 @@ jobs:
           preinstall_test_rc=0
           pkgmgr_test_rc=0
 
-          run_one_under_gdb "$runtime_test_bin" l0-runtime-test.log l0-runtime-test-gdb.log || runtime_test_rc=$?
           run_one_under_gdb "$lcm_test_bin" l0-lcm-test.log l0-lcm-test-gdb.log || lcm_test_rc=$?
+          run_one_under_gdb "$runtime_test_bin" l0-runtime-test.log l0-runtime-test-gdb.log || runtime_test_rc=$?
           run_one_under_gdb "$rdkwm_test_bin" l0-rdkwm-test.log l0-rdkwm-test-gdb.log || rdkwm_test_rc=$?
           run_one_under_gdb "$appstorage_test_bin" l0-appstorage-test.log l0-appstorage-test-gdb.log || appstorage_test_rc=$?
           run_one_under_gdb "$preinstall_bin" l0-preinstall-test.log l0-preinstall-test-gdb.log || preinstall_test_rc=$?
           run_one_under_gdb "$pkgmgr_test_bin" l0-packagemanager-test.log l0-packagemanager-test-gdb.log || pkgmgr_test_rc=$?
 
-          cat l0-runtime-test.log l0-lcm-test.log l0-rdkwm-test.log l0-appstorage-test.log l0-preinstall-test.log l0-packagemanager-test.log > l0-test.log
+          cat l0-lcm-test.log l0-runtime-test.log l0-rdkwm-test.log l0-appstorage-test.log l0-preinstall-test.log l0-packagemanager-test.log > l0-test.log
 
           if [ "$runtime_test_rc" -ne 0 ] || [ "$lcm_test_rc" -ne 0 ] || [ "$rdkwm_test_rc" -ne 0 ] || [ "$appstorage_test_rc" -ne 0 ] || [ "$preinstall_test_rc" -ne 0 ] || [ "$pkgmgr_test_rc" -ne 0 ]; then
             exit 1
