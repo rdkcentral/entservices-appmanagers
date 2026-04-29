@@ -110,7 +110,7 @@ namespace WPEFramework
 
 	bool RequestHandler::updateState(ApplicationContext* context, Exchange::ILifecycleManager::LifecycleState state, string& errorReason)
 	{
-           StateTransitionRequest request(context, state);
+           StateTransitionRequest request(context->shared_from_this(), state);
            StateTransitionHandler::getInstance()->addRequest(request); 
            return true;
 	}
