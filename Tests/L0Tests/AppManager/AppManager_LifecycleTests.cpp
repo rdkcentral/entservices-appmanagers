@@ -37,10 +37,15 @@ uint32_t Test_AM_L0_001_Initialize_HappyPath()
 uint32_t Test_AM_L0_002_Initialize_FailsWhenRootCreationFails()
 {
     L0Test::TestResult tr;
-    // L0 test: verify Register with null notification
+    // L0 test: avoid passing nullptr to Register(), which is a guarded precondition.
     AppManagerImplementation* impl = CreateImpl();
-    const WPEFramework::Core::hresult result = impl->Register(nullptr);
-    L0Test::ExpectTrue(tr, result != WPEFramework::Core::ERROR_NONE, "AM-L0-002 null notification should fail");
+    L0Test::ExpectTrue(tr, impl != nullptr, "AM-L0-002 implementation created");
+
+    L0Test::FakeAppManagerNotification notif;
+    const WPEFramework::Core::hresult result = impl->Register(&notif);
+    L0Test::ExpectTrue(tr, WPEFramework::Core::ERROR_NONE == result, "AM-L0-002 Register succeeds with valid notification");
+    impl->Unregister(&notif);
+
     DestroyImpl(impl);
     return tr.failures;
 }
