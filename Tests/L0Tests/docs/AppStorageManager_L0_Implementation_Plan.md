@@ -420,11 +420,10 @@ int main() {
             if (WIFEXITED(status)) {
                 uint32_t childFailures = WEXITSTATUS(status);
                 if (childFailures > 0) {
-                    std::cer: run the test
-            L0Test::L0BootstrapGuard bootstrap;
-            uint32_t failures = cases[i].fn();
-            // Clamp to 0-255 since WEXITSTATUS only preserves 8 bits
-            std::exit(failures > 255 ? 255 : failures);
+                    std::cerr << "FAIL: " << cases[i].name
+                              << " (" << childFailures << " failures)\n";
+                    totalFailures += childFailures;
+                } else {
                     std::cout << "PASS: " << cases[i].name << "\n";
                 }
             } else if (WIFSIGNALED(status)) {

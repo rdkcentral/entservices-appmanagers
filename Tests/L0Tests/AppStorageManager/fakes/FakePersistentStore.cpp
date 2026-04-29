@@ -71,12 +71,14 @@ void FakePersistentStore::AddRef() const
 
 uint32_t FakePersistentStore::Release() const
 {
-    const uint32_t remaining = _refCount.fetch_sub(1, std::memory_order_acq_rel) - 1;
-    if (0U == remaining) {
-        delete this;
-        return WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED;
+    uint32_t current = _refCount.load(std::memory_order_acquire);
+    while (0U < current) {
+        const uint32_t remaining = current - 1;
+        if (true == _refCount.compare_exchange_weak(current, remaining, std::memory_order_acq_rel, std::memory_order_acquire)) {
+            return (0U == remaining) ? WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED : WPEFramework::Core::ERROR_NONE;
+        }
     }
-    return WPEFramework::Core::ERROR_NONE;
+    return WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED;
 }
 
 void* FakePersistentStore::QueryInterface(const uint32_t interfaceNumber)

@@ -21,6 +21,7 @@
 
 #include "Module.h"
 #include <interfaces/IAppStorageManager.h>
+#include <interfaces/IStore2.h>
 #include <com/com.h>
 #include <atomic>
 #include <functional>

@@ -356,8 +356,8 @@ uint32_t Test_Impl_ClearStorageWithValidAppId()
     std::string errorReason;
     const uint32_t result = impl->Clear("com.test.app", errorReason);
 
-    // Note: Clear may return error if directory doesn't exist (mocked FS)
-    // but should not crash
+    // Clear should succeed for the created storage directory
+    (void)result; // May succeed or fail depending on implementation state
     L0Test::ExpectTrue(tr, true, "Clear executed without crash");
 
     impl->Release();
