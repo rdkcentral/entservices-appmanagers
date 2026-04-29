@@ -464,6 +464,7 @@ jobs:
           echo "lifecyclemanager_l0test=${lcm_test_rc}"
           echo "rdkwindowmanager_l0test=${rdkwm_test_rc}"
           echo "packagemanager_l0test=${pkgmgr_test_rc}"
+          echo "preinstall_manager_l0test=${preinstall_test_rc}"
           echo "appmanager_l0test=${appmanager_test_rc}"
 
           cat > l0-test-exit-codes.log <<EOF
@@ -471,6 +472,7 @@ jobs:
           lifecyclemanager_l0test=${lcm_test_rc}
           rdkwindowmanager_l0test=${rdkwm_test_rc}
           packagemanager_l0test=${pkgmgr_test_rc}
+          preinstall_manager_l0test=${preinstall_test_rc}
           appmanager_l0test=${appmanager_test_rc}
           EOF
 

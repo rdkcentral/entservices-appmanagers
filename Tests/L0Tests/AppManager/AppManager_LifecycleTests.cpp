@@ -1,4 +1,6 @@
 #include <string>
+#include <chrono>
+#include <thread>
 
 #include <core/core.h>
 #include "AppManagerImplementation.h"
@@ -14,23 +16,41 @@ static AppManagerImplementation* CreateImpl()
     return Core::Service<AppManagerImplementation>::Create<AppManagerImplementation>();
 }
 
-static void DestroyImpl(AppManagerImplementation*& impl)
+static bool ReleaseAndWaitForDestruction(AppManagerImplementation* impl,
+                                         std::chrono::milliseconds timeout = std::chrono::milliseconds(5000))
 {
-    // These constructor-only L0 tests do not perform full Configure() wiring.
-    // Releasing the instance hits production ASSERTs in destructor teardown.
-    impl = nullptr;
+    if (nullptr == impl) {
+        return true;
+    }
+
+    impl->Release();
+
+    using Clock = std::chrono::steady_clock;
+    const auto deadline = Clock::now() + timeout;
+    do {
+        if (WPEFramework::Plugin::AppManagerImplementation::getInstance() == nullptr) {
+            return true;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    } while (Clock::now() < deadline);
+
+    return (WPEFramework::Plugin::AppManagerImplementation::getInstance() == nullptr);
 }
 
 uint32_t Test_AM_L0_001_Initialize_HappyPath()
 {
     L0Test::TestResult tr;
-    // L0 test: verify AppManagerImplementation can be instantiated and registered
+    // L0 test: verify AppManagerImplementation can be configured and registered.
+    L0Test::ServiceMock service;
     AppManagerImplementation* impl = CreateImpl();
+    impl->Configure(&service);
+
     auto notif = std::make_shared<L0Test::FakeAppManagerNotification>();
     const WPEFramework::Core::hresult result = impl->Register(notif.get());
     L0Test::ExpectTrue(tr, result == WPEFramework::Core::ERROR_NONE, "AM-L0-001 Register succeeds");
     impl->Unregister(notif.get());
-    DestroyImpl(impl);
+    L0Test::ExpectTrue(tr, ReleaseAndWaitForDestruction(impl),
+                       "AM-L0-001 implementation destroyed before teardown");
     return tr.failures;
 }
 
@@ -38,7 +58,9 @@ uint32_t Test_AM_L0_002_Initialize_FailsWhenRootCreationFails()
 {
     L0Test::TestResult tr;
     // L0 test: avoid passing nullptr to Register(), which is a guarded precondition.
+    L0Test::ServiceMock service;
     AppManagerImplementation* impl = CreateImpl();
+    impl->Configure(&service);
     L0Test::ExpectTrue(tr, impl != nullptr, "AM-L0-002 implementation created");
 
     L0Test::FakeAppManagerNotification notif;
@@ -46,37 +68,50 @@ uint32_t Test_AM_L0_002_Initialize_FailsWhenRootCreationFails()
     L0Test::ExpectTrue(tr, WPEFramework::Core::ERROR_NONE == result, "AM-L0-002 Register succeeds with valid notification");
     impl->Unregister(&notif);
 
-    DestroyImpl(impl);
+    L0Test::ExpectTrue(tr, ReleaseAndWaitForDestruction(impl),
+                       "AM-L0-002 implementation destroyed before teardown");
     return tr.failures;
 }
 
 uint32_t Test_AM_L0_003_Initialize_FailsWhenIConfigurationMissing()
 {
     L0Test::TestResult tr;
-    // L0 test: verify implementation instantiation
+    L0Test::ServiceMock service;
     AppManagerImplementation* impl = CreateImpl();
+    impl->Configure(&service);
     L0Test::ExpectTrue(tr, impl != nullptr, "AM-L0-003 implementation created");
-    DestroyImpl(impl);
+    L0Test::ExpectTrue(tr, ReleaseAndWaitForDestruction(impl),
+                       "AM-L0-003 implementation destroyed before teardown");
     return tr.failures;
 }
 
 uint32_t Test_AM_L0_004_Initialize_FailsWhenConfigureReturnsError()
 {
     L0Test::TestResult tr;
-    // L0 test: verify implementation is not null
+    L0Test::ServiceMock service;
     AppManagerImplementation* impl = CreateImpl();
+    const WPEFramework::Core::hresult nullConfigure = impl->Configure(nullptr);
+    L0Test::ExpectTrue(tr, WPEFramework::Core::ERROR_NONE != nullConfigure,
+                       "AM-L0-004 Configure(nullptr) reports failure");
+
+    const WPEFramework::Core::hresult validConfigure = impl->Configure(&service);
+    L0Test::ExpectTrue(tr, WPEFramework::Core::ERROR_NONE == validConfigure,
+                       "AM-L0-004 Configure(valid service) succeeds for teardown-safe lifecycle");
     L0Test::ExpectTrue(tr, impl != nullptr, "AM-L0-004 implementation valid");
-    DestroyImpl(impl);
+    L0Test::ExpectTrue(tr, ReleaseAndWaitForDestruction(impl),
+                       "AM-L0-004 implementation destroyed before teardown");
     return tr.failures;
 }
 
 uint32_t Test_AM_L0_005_Deinitialize_ReleasesResources()
 {
     L0Test::TestResult tr;
-    // L0 test: verify implementation lifecycle
+    L0Test::ServiceMock service;
     AppManagerImplementation* impl = CreateImpl();
+    impl->Configure(&service);
     L0Test::ExpectTrue(tr, impl != nullptr, "AM-L0-005 implementation created");
-    DestroyImpl(impl);
+    L0Test::ExpectTrue(tr, ReleaseAndWaitForDestruction(impl),
+                       "AM-L0-005 implementation destroyed before teardown");
     L0Test::ExpectTrue(tr, true, "AM-L0-005 resources released");
     return tr.failures;
 }

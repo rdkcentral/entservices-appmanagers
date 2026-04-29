@@ -45,6 +45,7 @@
 #include <plugins/plugins.h>
 #include <plugins/IShell.h>
 #include <interfaces/IAppManager.h>
+#include <interfaces/IStore2.h>
 #include <interfaces/IConfiguration.h>
 #include <interfaces/IPackageManager.h>
 #include <interfaces/IAppStorageManager.h>
@@ -52,6 +53,184 @@
 namespace L0Test {
 
 using string = std::string;
+
+class BasicStore2 final : public WPEFramework::Exchange::IStore2 {
+public:
+    void AddRef() const override { _refCount.fetch_add(1, std::memory_order_relaxed); }
+
+    uint32_t Release() const override
+    {
+        const uint32_t count = _refCount.fetch_sub(1, std::memory_order_acq_rel) - 1;
+        return (0U == count) ? WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED : WPEFramework::Core::ERROR_NONE;
+    }
+
+    void* QueryInterface(const uint32_t id) override
+    {
+        if (WPEFramework::Exchange::IStore2::ID == id) {
+            AddRef();
+            return static_cast<WPEFramework::Exchange::IStore2*>(this);
+        }
+        return nullptr;
+    }
+
+    uint32_t Register(INotification*) override { return WPEFramework::Core::ERROR_NONE; }
+    uint32_t Unregister(INotification*) override { return WPEFramework::Core::ERROR_NONE; }
+    uint32_t SetValue(const ScopeType, const string&, const string&, const string&, const uint32_t) override { return WPEFramework::Core::ERROR_NONE; }
+    uint32_t GetValue(const ScopeType, const string&, const string&, string& value, uint32_t& ttl) override
+    {
+        value.clear();
+        ttl = 0;
+        return WPEFramework::Core::ERROR_NONE;
+    }
+    uint32_t DeleteKey(const ScopeType, const string&, const string&) override { return WPEFramework::Core::ERROR_NONE; }
+    uint32_t DeleteNamespace(const ScopeType, const string&) override { return WPEFramework::Core::ERROR_NONE; }
+
+private:
+    mutable std::atomic<uint32_t> _refCount { 1 };
+};
+
+class BasicPackageHandler final : public WPEFramework::Exchange::IPackageHandler {
+public:
+    void AddRef() const override { _refCount.fetch_add(1, std::memory_order_relaxed); }
+
+    uint32_t Release() const override
+    {
+        const uint32_t count = _refCount.fetch_sub(1, std::memory_order_acq_rel) - 1;
+        return (0U == count) ? WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED : WPEFramework::Core::ERROR_NONE;
+    }
+
+    void* QueryInterface(const uint32_t id) override
+    {
+        if (WPEFramework::Exchange::IPackageHandler::ID == id) {
+            AddRef();
+            return static_cast<WPEFramework::Exchange::IPackageHandler*>(this);
+        }
+        return nullptr;
+    }
+
+    WPEFramework::Core::hresult Lock(const string&, const string&, const LockReason&, uint32_t& lockId,
+                                     string& unpackedPath, WPEFramework::Exchange::RuntimeConfig& configMetadata,
+                                     WPEFramework::Exchange::IPackageHandler::ILockIterator*& appMetadata) override
+    {
+        lockId = 0;
+        unpackedPath.clear();
+        configMetadata = {};
+        appMetadata = nullptr;
+        return WPEFramework::Core::ERROR_NONE;
+    }
+
+    WPEFramework::Core::hresult Unlock(const string&, const string&) override { return WPEFramework::Core::ERROR_NONE; }
+
+    WPEFramework::Core::hresult GetLockedInfo(const string&, const string&, string& unpackedPath,
+                                              WPEFramework::Exchange::RuntimeConfig& configMetadata,
+                                              string& gatewayMetadataPath, bool& locked) override
+    {
+        unpackedPath.clear();
+        gatewayMetadataPath.clear();
+        configMetadata = {};
+        locked = false;
+        return WPEFramework::Core::ERROR_NONE;
+    }
+
+private:
+    mutable std::atomic<uint32_t> _refCount { 1 };
+};
+
+class BasicPackageInstaller final : public WPEFramework::Exchange::IPackageInstaller {
+public:
+    void AddRef() const override { _refCount.fetch_add(1, std::memory_order_relaxed); }
+
+    uint32_t Release() const override
+    {
+        const uint32_t count = _refCount.fetch_sub(1, std::memory_order_acq_rel) - 1;
+        return (0U == count) ? WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED : WPEFramework::Core::ERROR_NONE;
+    }
+
+    void* QueryInterface(const uint32_t id) override
+    {
+        if (WPEFramework::Exchange::IPackageInstaller::ID == id) {
+            AddRef();
+            return static_cast<WPEFramework::Exchange::IPackageInstaller*>(this);
+        }
+        return nullptr;
+    }
+
+    WPEFramework::Core::hresult Register(INotification*) override { return WPEFramework::Core::ERROR_NONE; }
+    WPEFramework::Core::hresult Unregister(INotification*) override { return WPEFramework::Core::ERROR_NONE; }
+
+    WPEFramework::Core::hresult Install(const string&, const string&, IKeyValueIterator* const&, const string&, FailReason&) override
+    {
+        return WPEFramework::Core::ERROR_NONE;
+    }
+
+    WPEFramework::Core::hresult Uninstall(const string&, string&) override { return WPEFramework::Core::ERROR_NONE; }
+
+    WPEFramework::Core::hresult ListPackages(IPackageIterator*& packages) override
+    {
+        packages = nullptr;
+        return WPEFramework::Core::ERROR_NONE;
+    }
+
+    WPEFramework::Core::hresult Config(const string&, const string&, WPEFramework::Exchange::RuntimeConfig&) override
+    {
+        return WPEFramework::Core::ERROR_NONE;
+    }
+
+    WPEFramework::Core::hresult PackageState(const string&, const string&, WPEFramework::Exchange::IPackageInstaller::InstallState& state) override
+    {
+        state = WPEFramework::Exchange::IPackageInstaller::InstallState::UNKNOWN;
+        return WPEFramework::Core::ERROR_NONE;
+    }
+
+    WPEFramework::Core::hresult GetConfigForPackage(const string&, string&, string&, WPEFramework::Exchange::RuntimeConfig&) override
+    {
+        return WPEFramework::Core::ERROR_GENERAL;
+    }
+
+private:
+    mutable std::atomic<uint32_t> _refCount { 1 };
+};
+
+class BasicAppStorageManager final : public WPEFramework::Exchange::IAppStorageManager {
+public:
+    void AddRef() const override { _refCount.fetch_add(1, std::memory_order_relaxed); }
+
+    uint32_t Release() const override
+    {
+        const uint32_t count = _refCount.fetch_sub(1, std::memory_order_acq_rel) - 1;
+        return (0U == count) ? WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED : WPEFramework::Core::ERROR_NONE;
+    }
+
+    void* QueryInterface(const uint32_t id) override
+    {
+        if (WPEFramework::Exchange::IAppStorageManager::ID == id) {
+            AddRef();
+            return static_cast<WPEFramework::Exchange::IAppStorageManager*>(this);
+        }
+        return nullptr;
+    }
+
+    WPEFramework::Core::hresult CreateStorage(const string&, const uint32_t&, string& path, string&) override
+    {
+        path.clear();
+        return WPEFramework::Core::ERROR_NONE;
+    }
+
+    WPEFramework::Core::hresult GetStorage(const string&, const int32_t&, const int32_t&, string& path, uint32_t& size, uint32_t& used) override
+    {
+        path.clear();
+        size = 0;
+        used = 0;
+        return WPEFramework::Core::ERROR_NONE;
+    }
+
+    WPEFramework::Core::hresult DeleteStorage(const string&, string&) override { return WPEFramework::Core::ERROR_NONE; }
+    WPEFramework::Core::hresult Clear(const string&, string&) override { return WPEFramework::Core::ERROR_NONE; }
+    WPEFramework::Core::hresult ClearAll(const string&, string&) override { return WPEFramework::Core::ERROR_NONE; }
+
+private:
+    mutable std::atomic<uint32_t> _refCount { 1 };
+};
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ServiceMock: minimal PluginHost::IShell
@@ -160,7 +339,27 @@ public:
     uint32_t Submit(const uint32_t, const WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::IElement>&) override { return WPEFramework::Core::ERROR_NONE; }
     void Notify(const std::string&) override {}
     void* QueryInterface(const uint32_t) override { return nullptr; }
-    void* QueryInterfaceByCallsign(const uint32_t /*id*/, const std::string& /*callsign*/) override { return nullptr; }
+    void* QueryInterfaceByCallsign(const uint32_t id, const std::string& callsign) override
+    {
+        if ((WPEFramework::Exchange::IStore2::ID == id) && ("org.rdk.PersistentStore" == callsign)) {
+            _store2.AddRef();
+            return static_cast<WPEFramework::Exchange::IStore2*>(&_store2);
+        }
+        if ((WPEFramework::Exchange::IPackageHandler::ID == id) && ("org.rdk.PackageManagerRDKEMS" == callsign)) {
+            _packageHandler.AddRef();
+            return static_cast<WPEFramework::Exchange::IPackageHandler*>(&_packageHandler);
+        }
+        if ((WPEFramework::Exchange::IPackageInstaller::ID == id) && ("org.rdk.PackageManagerRDKEMS" == callsign)) {
+            _packageInstaller.AddRef();
+            return static_cast<WPEFramework::Exchange::IPackageInstaller*>(&_packageInstaller);
+        }
+        if ((WPEFramework::Exchange::IAppStorageManager::ID == id) && ("org.rdk.AppStorageManager" == callsign)) {
+            _appStorageManager.AddRef();
+            return static_cast<WPEFramework::Exchange::IAppStorageManager*>(&_appStorageManager);
+        }
+
+        return nullptr;
+    }
     void Register(WPEFramework::PluginHost::IPlugin::INotification*) override {}
     void Unregister(WPEFramework::PluginHost::IPlugin::INotification*) override {}
     std::string Model() const override { return ""; }
@@ -182,6 +381,10 @@ private:
     InstantiateHandler _instantiateHandler;
     Config _cfg;
     COMLinkMock _comLink;
+    BasicStore2 _store2;
+    BasicPackageHandler _packageHandler;
+    BasicPackageInstaller _packageInstaller;
+    BasicAppStorageManager _appStorageManager;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
