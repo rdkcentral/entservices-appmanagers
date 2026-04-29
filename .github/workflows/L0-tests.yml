@@ -351,19 +351,14 @@ jobs:
             -DPLUGIN_LIFECYCLE_MANAGER=ON \
             -DPLUGIN_RDK_WINDOW_MANAGER=ON \
             -DPLUGIN_APP_STORAGE_MANAGER=ON \
-            -DAPPMGR_ENABLE_COVERAGE=ON \
-            -DAPPLCM_ENABLE_COVERAGE=ON \
-            -DAPPWM_ENABLE_COVERAGE=ON \
-            -DAPPASM_ENABLE_COVERAGE=ON
-
-          cmake --build build/entservices-appmanagers-l0tests-only --target runtimemanager_l0test lifecyclemanager_l0test rdkwindowmanager_l0test appstorage_l0test -- -j"$(nproc)"
             -DPLUGIN_PACKAGE_MANAGER=ON \
             -DAPPMGR_ENABLE_COVERAGE=ON \
             -DAPPLCM_ENABLE_COVERAGE=ON \
             -DAPPWM_ENABLE_COVERAGE=ON \
+            -DAPPASM_ENABLE_COVERAGE=ON \
             -DAPPPKG_ENABLE_COVERAGE=ON
 
-          cmake --build build/entservices-appmanagers-l0tests-only --target runtimemanager_l0test lifecyclemanager_l0test rdkwindowmanager_l0test packagemanager_l0test -- -j"$(nproc)"
+          cmake --build build/entservices-appmanagers-l0tests-only --target runtimemanager_l0test lifecyclemanager_l0test rdkwindowmanager_l0test appstorage_l0test packagemanager_l0test -- -j"$(nproc)"
 
       - name: Run L0 tests
         id: run_l0_tests
@@ -574,4 +569,3 @@ jobs:
             l0-rdkwm-test-gdb.log
             l0-packagemanager-test-gdb.log
           if-no-files-found: warn
-
