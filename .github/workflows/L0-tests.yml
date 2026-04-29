@@ -560,8 +560,5 @@ jobs:
             l0-rdkwm-test-gdb.log
             l0-appstorage-test-gdb.log
             l0-packagemanager-test.log
-            l0-runtime-test-gdb.log
-            l0-lcm-test-gdb.log
-            l0-rdkwm-test-gdb.log
             l0-packagemanager-test-gdb.log
           if-no-files-found: warn
