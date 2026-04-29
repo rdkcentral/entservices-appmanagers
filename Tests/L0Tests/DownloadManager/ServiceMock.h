@@ -217,7 +217,6 @@ public:
 
     WPEFramework::PluginHost::ISubSystem* SubSystems() override
     {
-        _subSystem->AddRef();
         return _subSystem;
     }
 
@@ -312,7 +311,8 @@ public:
     {
         const uint32_t r = _refCount.fetch_sub(1, std::memory_order_acq_rel) - 1;
         if (0U == r) {
-            delete this;
+            // Intentionally do not delete this fake. Lifecycle tests keep a raw
+            // pointer to inspect counters after plugin deinitialization.
             return WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED;
         }
         return WPEFramework::Core::ERROR_NONE;
