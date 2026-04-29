@@ -547,11 +547,6 @@ namespace WPEFramework
             {
                 uid = 30490;
             }
-            std::ifstream inFileHome("/tmp/defaulthomeuid");
-            if (inFileHome.good())
-            {
-                uid = 30002;
-            }
             config.mUserId = uid;
             config.mGroupId = gid;
 
