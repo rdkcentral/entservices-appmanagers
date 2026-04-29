@@ -429,6 +429,7 @@ if(PLUGIN_PACKAGE_MANAGER)
 
     target_compile_definitions(packagemanager_l0test PRIVATE
         MODULE_NAME=PackageManager_L0Test
+        ENABLE_AIMANAGERS_TELEMETRY_METRICS=1
     )
 
     # Force include L0TestConfig.h in all source files
