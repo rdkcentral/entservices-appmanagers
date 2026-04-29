@@ -368,38 +368,11 @@ Implemented in `fakes/FakePersistentStore.h/.cpp`:
 - Fork-based isolation provides sufficient protection for L0 scope
 - Thread safety validated through integration/functional tests
 - L0 focus: logic correctness and branch coverage, not race conditions
-#include "common/L0Bootstrap.hpp"
-#include "common/L0TestTypes.hpp"
 
-// Forward declarations from test files
-extern uint32_t Test_ASM_Lifecycle_InitializeFailsWhenRootNull();
-extern uint32_t Test_ASM_Lifecycle_InitializeSuccessAndDeinitialize();
-// ... all other test cases ...
-
-int main() {
-    // Structure matches RuntimeManager pattern
-    struct TestCase {
-        const char* name;
-        uint32_t (*fn)();
-    };
-
-    TestCase cases[] = {
-        // Lifecycle tests
-        {"Test_ASM_Lifecycle_InitializeFailsWhenRootNull", Test_ASM_Lifecycle_InitializeFailsWhenRootNull},
-        {"Test_ASM_Lifecycle_InitializeSuccessAndDeinitialize", Test_ASM_Lifecycle_InitializeSuccessAndDeinitialize},
-        
-        // Implementation tests
-        {"Test_Impl_ConfigureWithValidService", Test_Impl_ConfigureWithValidService},
-        {"Test_Impl_CreateStorageWithValidInput", Test_Impl_CreateStorageWithValidInput},
-        
-        // RequestHandler tests
-        {"Test_RH_GetInstanceReturnsSingleton", Test_RH_GetInstanceReturnsSingleton},
-        
-        // Telemetry tests
-        {"Test_Tel_GetInstanceReturnsSingleton", Test_Tel_GetInstanceReturnsSingleton},
-        
-        // ... all test cases ...
-    };
+**Test runner note**:
+- The standalone L0 test runner and individual `Test_*()` declarations are implemented in the actual sources under `Tests/L0Tests/AppStorageManager/`.
+- They are intentionally not duplicated in this plan document, to avoid Markdown rendering issues and to prevent the documentation from drifting out of sync with the current test runner.
+- Treat the source files as the canonical definition of the executed test list and runner structure.
 
     uint32_t totalFailures = 0;
     const size_t numTests = sizeof(cases) / sizeof(cases[0]);
