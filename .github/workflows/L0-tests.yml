@@ -465,7 +465,7 @@ jobs:
         if: ${{ always() }}
         run: |
           set -euo pipefail
-          for log in l0-runtime-test.log l0-lcm-test.log l0-rdkwm-test.log l0-packagemanager-test.log; do
+          for log in l0-runtime-test.log l0-lcm-test.log l0-rdkwm-test.log l0-packagemanager-test.log l0-appmanager-test.log; do
             if [ -f "$log" ]; then
               echo "==== $log: Failed test cases (if any) ===="
               grep -E '^\[  FAILED  \]' "$log" || echo "No explicit [ FAILED ] lines found"
@@ -483,11 +483,11 @@ jobs:
           failed=0
 
           if [ "${RUN_L0_TESTS_OUTCOME}" != "success" ]; then
-            echo "L0 test execution step failed (non-zero exit)"
+            echo "L0 test execution step failed (non-zero exit). Inspect per-test logs below."
             failed=1
           fi
 
-          for log in l0-runtime-test.log l0-lcm-test.log l0-rdkwm-test.log l0-packagemanager-test.log; do
+          for log in l0-runtime-test.log l0-lcm-test.log l0-rdkwm-test.log l0-packagemanager-test.log l0-appmanager-test.log; do
             if [ -f "$log" ]; then
               echo "==== $log: Failed test cases (final gate) ===="
               grep -E '^\[  FAILED  \]' "$log" || true
