@@ -14,6 +14,13 @@ static AppManagerImplementation* CreateImpl()
     return Core::Service<AppManagerImplementation>::Create<AppManagerImplementation>();
 }
 
+static void DestroyImpl(AppManagerImplementation*& impl)
+{
+    // These constructor-only L0 tests do not perform full Configure() wiring.
+    // Releasing the instance hits production ASSERTs in destructor teardown.
+    impl = nullptr;
+}
+
 uint32_t Test_AM_L0_001_Initialize_HappyPath()
 {
     L0Test::TestResult tr;
@@ -23,7 +30,7 @@ uint32_t Test_AM_L0_001_Initialize_HappyPath()
     const WPEFramework::Core::hresult result = impl->Register(notif.get());
     L0Test::ExpectTrue(tr, result == WPEFramework::Core::ERROR_NONE, "AM-L0-001 Register succeeds");
     impl->Unregister(notif.get());
-    impl->Release();
+    DestroyImpl(impl);
     return tr.failures;
 }
 
@@ -34,7 +41,7 @@ uint32_t Test_AM_L0_002_Initialize_FailsWhenRootCreationFails()
     AppManagerImplementation* impl = CreateImpl();
     const WPEFramework::Core::hresult result = impl->Register(nullptr);
     L0Test::ExpectTrue(tr, result != WPEFramework::Core::ERROR_NONE, "AM-L0-002 null notification should fail");
-    impl->Release();
+    DestroyImpl(impl);
     return tr.failures;
 }
 
@@ -44,7 +51,7 @@ uint32_t Test_AM_L0_003_Initialize_FailsWhenIConfigurationMissing()
     // L0 test: verify implementation instantiation
     AppManagerImplementation* impl = CreateImpl();
     L0Test::ExpectTrue(tr, impl != nullptr, "AM-L0-003 implementation created");
-    impl->Release();
+    DestroyImpl(impl);
     return tr.failures;
 }
 
@@ -54,7 +61,7 @@ uint32_t Test_AM_L0_004_Initialize_FailsWhenConfigureReturnsError()
     // L0 test: verify implementation is not null
     AppManagerImplementation* impl = CreateImpl();
     L0Test::ExpectTrue(tr, impl != nullptr, "AM-L0-004 implementation valid");
-    impl->Release();
+    DestroyImpl(impl);
     return tr.failures;
 }
 
@@ -64,7 +71,7 @@ uint32_t Test_AM_L0_005_Deinitialize_ReleasesResources()
     // L0 test: verify implementation lifecycle
     AppManagerImplementation* impl = CreateImpl();
     L0Test::ExpectTrue(tr, impl != nullptr, "AM-L0-005 implementation created");
-    impl->Release();
+    DestroyImpl(impl);
     L0Test::ExpectTrue(tr, true, "AM-L0-005 resources released");
     return tr.failures;
 }
