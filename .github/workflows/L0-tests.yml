@@ -455,6 +455,21 @@ jobs:
           run_one_under_gdb "$pkgmgr_test_bin" l0-packagemanager-test.log l0-packagemanager-test-gdb.log || pkgmgr_test_rc=$?
           run_one_under_gdb "$appmanager_bin" l0-appmanager-test.log l0-appmanager-test-gdb.log || appmanager_test_rc=$?
 
+          echo "==== Per-test exit codes ===="
+          echo "runtimemanager_l0test=${runtime_test_rc}"
+          echo "lifecyclemanager_l0test=${lcm_test_rc}"
+          echo "rdkwindowmanager_l0test=${rdkwm_test_rc}"
+          echo "packagemanager_l0test=${pkgmgr_test_rc}"
+          echo "appmanager_l0test=${appmanager_test_rc}"
+
+          cat > l0-test-exit-codes.log <<EOF
+          runtimemanager_l0test=${runtime_test_rc}
+          lifecyclemanager_l0test=${lcm_test_rc}
+          rdkwindowmanager_l0test=${rdkwm_test_rc}
+          packagemanager_l0test=${pkgmgr_test_rc}
+          appmanager_l0test=${appmanager_test_rc}
+          EOF
+
           cat l0-runtime-test.log l0-lcm-test.log l0-rdkwm-test.log l0-packagemanager-test.log l0-appmanager-test.log > l0-test.log
 
           if [ "$runtime_test_rc" -ne 0 ] || [ "$lcm_test_rc" -ne 0 ] || [ "$rdkwm_test_rc" -ne 0 ] || [ "$pkgmgr_test_rc" -ne 0 ] || [ "$appmanager_test_rc" -ne 0 ]; then
@@ -469,10 +484,16 @@ jobs:
             if [ -f "$log" ]; then
               echo "==== $log: Failed test cases (if any) ===="
               grep -E '^\[  FAILED  \]' "$log" || echo "No explicit [ FAILED ] lines found"
+              grep -E 'GDB CRASH REPORT|Signal caught:|Assertion|assert|Segmentation fault|Aborted|ERROR: AddressSanitizer|runtime error:' "$log" || true
             else
               echo "$log not found"
             fi
           done
+
+          if [ -f l0-test-exit-codes.log ]; then
+            echo "==== l0-test-exit-codes.log ===="
+            cat l0-test-exit-codes.log
+          fi
 
       - name: Fail workflow if tests failed
         if: ${{ always() }}
@@ -492,11 +513,17 @@ jobs:
               echo "==== $log: Failed test cases (final gate) ===="
               grep -E '^\[  FAILED  \]' "$log" || true
               grep -E '^FAIL:' "$log" || true
+              grep -E 'GDB CRASH REPORT|Signal caught:|Assertion|assert|Segmentation fault|Aborted|ERROR: AddressSanitizer|runtime error:' "$log" || true
             else
               echo "$log not found in final gate"
               failed=1
             fi
           done
+
+          if [ -f l0-test-exit-codes.log ]; then
+            echo "==== l0-test-exit-codes.log (final gate) ===="
+            cat l0-test-exit-codes.log
+          fi
 
           if [ "$failed" -ne 0 ]; then
             exit 1
@@ -549,6 +576,7 @@ jobs:
             coverage.info
             filtered_coverage.info
             l0-test.log
+            l0-test-exit-codes.log
             l0-runtime-test.log
             l0-lcm-test.log
             l0-rdkwm-test.log
