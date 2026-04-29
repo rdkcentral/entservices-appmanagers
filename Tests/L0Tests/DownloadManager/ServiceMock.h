@@ -261,7 +261,7 @@ public:
         return nullptr;
     }
 
-    WPEFramework::RPC::IRemoteConnection* RemoteConnection(const uint32_t id) override
+    WPEFramework::RPC::IRemoteConnection* RemoteConnection(const uint32_t id)
     {
         remoteConnectionCalls++;
         return nullptr;
