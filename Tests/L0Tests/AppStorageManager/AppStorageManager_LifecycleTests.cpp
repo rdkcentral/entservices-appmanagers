@@ -32,7 +32,7 @@
 #include "AppStorageManager.h"
 #include "AppStorageManagerImplementation.h"
 #include "ServiceMock.h"
-#include "fakes/FakePersistentStore.h"
+#include "../common/L0MockPersistentStore.h"
 #include "common/L0Expect.hpp"
 #include "common/L0TestTypes.hpp"
 
@@ -63,7 +63,7 @@ uint32_t Test_ASM_Lifecycle_InitializeSucceedsWithInstantiateFallback()
 {
     L0Test::TestResult tr;
 
-    L0Test::FakePersistentStore fakeStore;
+    L0Test::L0MockPersistentStore fakeStore;
     L0Test::ServiceMock service(L0Test::ServiceMock::Config{&fakeStore});
     service.SetInstantiateHandler([](const WPEFramework::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
         connectionId = 0;
@@ -90,7 +90,7 @@ uint32_t Test_ASM_Lifecycle_InitializeSuccessAndDeinitialize()
 {
     L0Test::TestResult tr;
 
-    L0Test::FakePersistentStore fakeStore;
+    L0Test::L0MockPersistentStore fakeStore;
     L0Test::ServiceMock service(L0Test::ServiceMock::Config{&fakeStore});
 
     // Create a real implementation via Instantiate handler
@@ -126,7 +126,7 @@ uint32_t Test_ASM_Lifecycle_InitializeSucceedsWithFallbackCreation()
 {
     L0Test::TestResult tr;
 
-    L0Test::FakePersistentStore fakeStore;
+    L0Test::L0MockPersistentStore fakeStore;
     L0Test::ServiceMock service(L0Test::ServiceMock::Config{&fakeStore});
 
     // When Instantiate returns nullptr, Root() falls back to creating real implementation
@@ -158,7 +158,7 @@ uint32_t Test_ASM_Lifecycle_InformationReturnsEmptyString()
 {
     L0Test::TestResult tr;
 
-    L0Test::FakePersistentStore fakeStore;
+    L0Test::L0MockPersistentStore fakeStore;
     L0Test::ServiceMock service(L0Test::ServiceMock::Config{&fakeStore});
 
     // Create a real implementation via Instantiate handler
@@ -193,7 +193,7 @@ uint32_t Test_ASM_Lifecycle_DeinitializeSuccessWithValidService()
 {
     L0Test::TestResult tr;
 
-    L0Test::FakePersistentStore fakeStore;
+    L0Test::L0MockPersistentStore fakeStore;
     L0Test::ServiceMock service(L0Test::ServiceMock::Config{&fakeStore});
 
     // Create a real implementation via Instantiate handler

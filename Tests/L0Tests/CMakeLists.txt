@@ -132,7 +132,7 @@ set(APPSTORAGE_MANAGER_L0_SOURCES
     AppStorageManager/AppStorageManager_LifecycleTests.cpp
     AppStorageManager/AppStorageManager_ImplementationTests.cpp
     AppStorageManager/AppStorageManager_ComponentTests.cpp
-    AppStorageManager/fakes/FakePersistentStore.cpp
+    common/L0MockPersistentStore.cpp
     common/L0Bootstrap.cpp
 )
 
@@ -216,18 +216,12 @@ if(PLUGIN_RUNTIME_MANAGER)
 
     target_compile_definitions(runtimemanager_l0test PRIVATE
         MODULE_NAME=RuntimeManager_L0Test
-        USE_THUNDER_R4=1
-        RUNTIME_MANAGER_API_VERSION_NUMBER_MAJOR=1
-        RUNTIME_MANAGER_API_VERSION_NUMBER_MINOR=0
-        RUNTIME_MANAGER_API_VERSION_NUMBER_PATCH=0
-        RDK_APPMANAGERS_DEBUG=1
-        RALF_PACKAGE_SUPPORT_ENABLED=1
         PLUGIN_RUNTIME_MANAGER_IMPLEMENTATION_NAME="RuntimeManagerImplementation"
-        AI_DEBUG=1
-        AI_RELEASE=2
-        AI_BUILD_TYPE=AI_DEBUG
-        DISABLE_SECURITY_TOKEN=1
-        THUNDER_PLATFORM_PC_UNIX=1
+    )
+
+    # Force include L0TestConfig.h in all source files
+    target_compile_options(runtimemanager_l0test PRIVATE
+        -include ${CMAKE_CURRENT_SOURCE_DIR}/common/L0TestConfig.h
     )
 
     if(APPMGR_ENABLE_COVERAGE)
@@ -281,13 +275,11 @@ endif()
 if(PLUGIN_LIFECYCLE_MANAGER)
     target_compile_definitions(lifecyclemanager_l0test PRIVATE
         MODULE_NAME=LifecycleManager_L0Test
-        USE_THUNDER_R4=1
-        LIFECYCLE_MANAGER_API_VERSION_NUMBER_MAJOR=1
-        LIFECYCLE_MANAGER_API_VERSION_NUMBER_MINOR=0
-        LIFECYCLE_MANAGER_API_VERSION_NUMBER_PATCH=0
-        DISABLE_SECURITY_TOKEN=1
-        THUNDER_PLATFORM_PC_UNIX=1
-        UNIT_TEST=1
+    )
+
+    # Force include L0TestConfig.h in all source files
+    target_compile_options(lifecyclemanager_l0test PRIVATE
+        -include ${CMAKE_CURRENT_SOURCE_DIR}/common/L0TestConfig.h
     )
 
     if(APPLCM_ENABLE_COVERAGE)
@@ -329,13 +321,12 @@ endif()
 if(PLUGIN_RDK_WINDOW_MANAGER)
     target_compile_definitions(rdkwindowmanager_l0test PRIVATE
         MODULE_NAME=RDKWindowManager_L0Test
-        USE_THUNDER_R4=1
-        RDK_WINDOW_MANAGER_API_VERSION_NUMBER_MAJOR=1
-        RDK_WINDOW_MANAGER_API_VERSION_NUMBER_MINOR=0
-        RDK_WINDOW_MANAGER_API_VERSION_NUMBER_PATCH=0
         PLUGIN_RDK_WINDOW_MANAGER_IMPLEMENTATION_NAME="RDKWindowManagerImplementation"
-        DISABLE_SECURITY_TOKEN=1
-        THUNDER_PLATFORM_PC_UNIX=1
+    )
+
+    # Force include L0TestConfig.h in all source files
+    target_compile_options(rdkwindowmanager_l0test PRIVATE
+        -include ${CMAKE_CURRENT_SOURCE_DIR}/common/L0TestConfig.h
     )
 
     if(APPWM_ENABLE_COVERAGE)
@@ -384,12 +375,11 @@ endif()
 if(PLUGIN_APP_STORAGE_MANAGER)
     target_compile_definitions(appstorage_l0test PRIVATE
         MODULE_NAME=AppStorageManager_L0Test
-        USE_THUNDER_R4=1
-        STORAGE_MANAGER_API_VERSION_NUMBER_MAJOR=1
-        STORAGE_MANAGER_API_VERSION_NUMBER_MINOR=0
-        STORAGE_MANAGER_API_VERSION_NUMBER_PATCH=0
-        DISABLE_SECURITY_TOKEN=1
-        THUNDER_PLATFORM_PC_UNIX=1
+    )
+
+    # Force include L0TestConfig.h in all source files
+    target_compile_options(appstorage_l0test PRIVATE
+        -include ${CMAKE_CURRENT_SOURCE_DIR}/common/L0TestConfig.h
     )
 
     if(APPASM_ENABLE_COVERAGE)
@@ -407,7 +397,6 @@ if(PLUGIN_APP_STORAGE_MANAGER)
     target_include_directories(appstorage_l0test PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/AppStorageManager
-        ${CMAKE_CURRENT_SOURCE_DIR}/AppStorageManager/fakes
         ${CMAKE_CURRENT_SOURCE_DIR}/common
         ${CMAKE_SOURCE_DIR}/../..
         ${CMAKE_SOURCE_DIR}/../../AppStorageManager
@@ -439,11 +428,11 @@ if(PLUGIN_PACKAGE_MANAGER)
 
     target_compile_definitions(packagemanager_l0test PRIVATE
         MODULE_NAME=PackageManager_L0Test
-        USE_THUNDER_R4=1
-        DISABLE_SECURITY_TOKEN=1
-        THUNDER_PLATFORM_PC_UNIX=1
-        ENABLE_AIMANAGERS_TELEMETRY_METRICS=1
-        UNIT_TEST=1
+    )
+
+    # Force include L0TestConfig.h in all source files
+    target_compile_options(packagemanager_l0test PRIVATE
+        -include ${CMAKE_CURRENT_SOURCE_DIR}/common/L0TestConfig.h
     )
 
     if(APPPKG_ENABLE_COVERAGE)
@@ -489,14 +478,12 @@ endif()
 if(PLUGIN_PREINSTALL_MANAGER)
     target_compile_definitions(preinstall_manager_l0test PRIVATE
         MODULE_NAME=PreinstallManager_L0Test
-        USE_THUNDER_R4=1
-        PREINSTALL_MANAGER_API_VERSION_NUMBER_MAJOR=1
-        PREINSTALL_MANAGER_API_VERSION_NUMBER_MINOR=0
-        PREINSTALL_MANAGER_API_VERSION_NUMBER_PATCH=0
-        RDK_APPMANAGERS_DEBUG=1
         PLUGIN_PREINSTALL_MANAGER_IMPLEMENTATION_NAME="PreinstallManagerImplementation"
-        DISABLE_SECURITY_TOKEN=1
-        THUNDER_PLATFORM_PC_UNIX=1
+    )
+
+    # Force include L0TestConfig.h in all source files
+    target_compile_options(preinstall_manager_l0test PRIVATE
+        -include ${CMAKE_CURRENT_SOURCE_DIR}/common/L0TestConfig.h
     )
 
     if(APPMGR_PREINSTALL_ENABLE_COVERAGE)

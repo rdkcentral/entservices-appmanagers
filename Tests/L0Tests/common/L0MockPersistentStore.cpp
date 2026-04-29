@@ -17,11 +17,11 @@
  * limitations under the License.
  **/
 
-#include "FakePersistentStore.h"
+#include "L0MockPersistentStore.h"
 
 namespace L0Test {
 
-FakePersistentStore::FakePersistentStore()
+L0MockPersistentStore::L0MockPersistentStore()
     : _getValueSuccess(true)
     , _setValueSuccess(true)
     , _deleteKeySuccess(true)
@@ -33,7 +33,7 @@ FakePersistentStore::FakePersistentStore()
 {
 }
 
-void FakePersistentStore::Reset()
+void L0MockPersistentStore::Reset()
 {
     _storage.clear();
     _getValueSuccess = true;
@@ -48,28 +48,28 @@ void FakePersistentStore::Reset()
     _lastValue.clear();
 }
 
-void FakePersistentStore::SetGetValueResult(bool success, const std::string& value)
+void L0MockPersistentStore::SetGetValueResult(bool success, const std::string& value)
 {
     _getValueSuccess = success;
     _getValueResult = value;
 }
 
-void FakePersistentStore::SetSetValueResult(bool success)
+void L0MockPersistentStore::SetSetValueResult(bool success)
 {
     _setValueSuccess = success;
 }
 
-void FakePersistentStore::SetDeleteKeyResult(bool success)
+void L0MockPersistentStore::SetDeleteKeyResult(bool success)
 {
     _deleteKeySuccess = success;
 }
 
-void FakePersistentStore::AddRef() const
+void L0MockPersistentStore::AddRef() const
 {
     _refCount.fetch_add(1, std::memory_order_relaxed);
 }
 
-uint32_t FakePersistentStore::Release() const
+uint32_t L0MockPersistentStore::Release() const
 {
     uint32_t current = _refCount.load(std::memory_order_acquire);
     while (0U < current) {
@@ -81,7 +81,7 @@ uint32_t FakePersistentStore::Release() const
     return WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED;
 }
 
-void* FakePersistentStore::QueryInterface(const uint32_t interfaceNumber)
+void* L0MockPersistentStore::QueryInterface(const uint32_t interfaceNumber)
 {
     if (interfaceNumber == WPEFramework::Exchange::IStore2::ID) {
         AddRef();
@@ -90,21 +90,21 @@ void* FakePersistentStore::QueryInterface(const uint32_t interfaceNumber)
     return nullptr;
 }
 
-uint32_t FakePersistentStore::Register(INotification* notification)
+uint32_t L0MockPersistentStore::Register(INotification* notification)
 {
-    (void)notification; // Unused in fake implementation
+    (void)notification; // Unused in mock implementation
     return WPEFramework::Core::ERROR_NONE;
 }
 
-uint32_t FakePersistentStore::Unregister(INotification* notification)
+uint32_t L0MockPersistentStore::Unregister(INotification* notification)
 {
-    (void)notification; // Unused in fake implementation
+    (void)notification; // Unused in mock implementation
     return WPEFramework::Core::ERROR_NONE;
 }
 
-uint32_t FakePersistentStore::GetValue(const ScopeType scope, const string& ns, const string& key, string& value, uint32_t& ttl)
+uint32_t L0MockPersistentStore::GetValue(const ScopeType scope, const string& ns, const string& key, string& value, uint32_t& ttl)
 {
-    (void)scope; // Unused in fake implementation
+    (void)scope; // Unused in mock implementation
     _getValueCalls++;
     _lastNamespace = ns;
     _lastKey = key;
@@ -116,7 +116,7 @@ uint32_t FakePersistentStore::GetValue(const ScopeType scope, const string& ns, 
     // Check if we have a configured result
     if (!_getValueResult.empty()) {
         value = _getValueResult;
-        ttl = 0; // No TTL in fake store
+        ttl = 0; // No TTL in mock store
         return WPEFramework::Core::ERROR_NONE;
     }
 
@@ -126,7 +126,7 @@ uint32_t FakePersistentStore::GetValue(const ScopeType scope, const string& ns, 
         auto keyIt = nsIt->second.find(key);
         if (keyIt != nsIt->second.end()) {
             value = keyIt->second;
-            ttl = 0; // No TTL in fake store
+            ttl = 0; // No TTL in mock store
             return WPEFramework::Core::ERROR_NONE;
         }
     }
@@ -134,10 +134,10 @@ uint32_t FakePersistentStore::GetValue(const ScopeType scope, const string& ns, 
     return WPEFramework::Core::ERROR_UNKNOWN_KEY;
 }
 
-uint32_t FakePersistentStore::SetValue(const ScopeType scope, const string& ns, const string& key, const string& value, const uint32_t ttl)
+uint32_t L0MockPersistentStore::SetValue(const ScopeType scope, const string& ns, const string& key, const string& value, const uint32_t ttl)
 {
-    (void)scope; // Unused in fake implementation
-    (void)ttl;   // Unused in fake implementation
+    (void)scope; // Unused in mock implementation
+    (void)ttl;   // Unused in mock implementation
     _setValueCalls++;
     _lastNamespace = ns;
     _lastKey = key;
@@ -151,9 +151,9 @@ uint32_t FakePersistentStore::SetValue(const ScopeType scope, const string& ns, 
     return WPEFramework::Core::ERROR_NONE;
 }
 
-uint32_t FakePersistentStore::DeleteKey(const ScopeType scope, const string& ns, const string& key)
+uint32_t L0MockPersistentStore::DeleteKey(const ScopeType scope, const string& ns, const string& key)
 {
-    (void)scope; // Unused in fake implementation
+    (void)scope; // Unused in mock implementation
     _deleteKeyCalls++;
     _lastNamespace = ns;
     _lastKey = key;
@@ -173,9 +173,9 @@ uint32_t FakePersistentStore::DeleteKey(const ScopeType scope, const string& ns,
     return WPEFramework::Core::ERROR_NONE;
 }
 
-uint32_t FakePersistentStore::DeleteNamespace(const ScopeType scope, const string& ns)
+uint32_t L0MockPersistentStore::DeleteNamespace(const ScopeType scope, const string& ns)
 {
-    (void)scope; // Unused in fake implementation
+    (void)scope; // Unused in mock implementation
     _storage.erase(ns);
     return WPEFramework::Core::ERROR_NONE;
 }

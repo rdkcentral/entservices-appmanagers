@@ -28,12 +28,12 @@
 namespace L0Test {
 
 /**
- * @brief Fake IStore2 implementation for testing without real persistent storage
+ * @brief Mock IStore2 implementation for testing without real persistent storage
  */
-class FakePersistentStore : public WPEFramework::Exchange::IStore2 {
+class L0MockPersistentStore : public WPEFramework::Exchange::IStore2 {
 public:
-    FakePersistentStore();
-    ~FakePersistentStore() override = default;
+    L0MockPersistentStore();
+    ~L0MockPersistentStore() override = default;
 
     // Control interface
     void Reset();

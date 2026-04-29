@@ -35,7 +35,7 @@
 #include "AppStorageManagerImplementation.h"
 #include "RequestHandler.h"
 #include "ServiceMock.h"
-#include "fakes/FakePersistentStore.h"
+#include "../common/L0MockPersistentStore.h"
 #include "common/L0Expect.hpp"
 #include "common/L0TestTypes.hpp"
 
@@ -63,7 +63,7 @@ uint32_t Test_Impl_ConfigureWithValidService()
 {
     L0Test::TestResult tr;
 
-    L0Test::FakePersistentStore fakeStore;
+    L0Test::L0MockPersistentStore fakeStore;
     L0Test::ServiceMock::Config cfg{&fakeStore};
     cfg.configLine = "{\"path\":\"/tmp/appdata\"}";
     L0Test::ServiceMock service(cfg);
@@ -89,7 +89,7 @@ uint32_t Test_Impl_ConfigureWithNullService()
     L0Test::TestResult tr;
 
     // First configure with valid service to initialize singleton state
-    L0Test::FakePersistentStore fakeStore;
+    L0Test::L0MockPersistentStore fakeStore;
     L0Test::ServiceMock::Config cfg{&fakeStore};
     cfg.configLine = "{\"path\":\"/tmp/appdata\"}";
     L0Test::ServiceMock service(cfg);
@@ -120,7 +120,7 @@ uint32_t Test_Impl_CreateStorageWithValidInput()
     L0Test::TestResult tr;
 
 
-    L0Test::FakePersistentStore fakeStore;
+    L0Test::L0MockPersistentStore fakeStore;
     L0Test::ServiceMock::Config cfg{&fakeStore};
     cfg.configLine = "{\"path\":\"/tmp/appdata\"}";
     L0Test::ServiceMock service(cfg);
@@ -150,7 +150,7 @@ uint32_t Test_Impl_CreateStorageWithEmptyAppId()
 {
     L0Test::TestResult tr;
 
-    L0Test::FakePersistentStore fakeStore;
+    L0Test::L0MockPersistentStore fakeStore;
     L0Test::ServiceMock::Config cfg{&fakeStore};
     cfg.configLine = "{\"path\":\"/tmp/appdata\"}";
     L0Test::ServiceMock service(cfg);
@@ -182,7 +182,7 @@ uint32_t Test_Impl_GetStorageWithValidAppId()
     // Note: This test uses REAL filesystem operations (mkdir, stat, etc.)
     // following PackageManager L0 test pattern - no filesystem mocking needed
 
-    L0Test::FakePersistentStore fakeStore;
+    L0Test::L0MockPersistentStore fakeStore;
     L0Test::ServiceMock::Config cfg{&fakeStore};
     cfg.configLine = "{\"path\":\"/tmp/appdata\"}";
     L0Test::ServiceMock service(cfg);
@@ -218,7 +218,7 @@ uint32_t Test_Impl_GetStorageWithEmptyAppId()
 {
     L0Test::TestResult tr;
 
-    L0Test::FakePersistentStore fakeStore;
+    L0Test::L0MockPersistentStore fakeStore;
     L0Test::ServiceMock::Config cfg{&fakeStore};
     cfg.configLine = "{\"path\":\"/tmp/appdata\"}";
     L0Test::ServiceMock service(cfg);
@@ -247,7 +247,7 @@ uint32_t Test_Impl_GetStorageWithNonExistentAppId()
 {
     L0Test::TestResult tr;
 
-    L0Test::FakePersistentStore fakeStore;
+    L0Test::L0MockPersistentStore fakeStore;
     L0Test::ServiceMock::Config cfg{&fakeStore};
     cfg.configLine = "{\"path\":\"/tmp/appdata\"}";
     L0Test::ServiceMock service(cfg);
@@ -278,7 +278,7 @@ uint32_t Test_Impl_DeleteStorageWithValidAppId()
     L0Test::TestResult tr;
 
 
-    L0Test::FakePersistentStore fakeStore;
+    L0Test::L0MockPersistentStore fakeStore;
     L0Test::ServiceMock::Config cfg{&fakeStore};
     cfg.configLine = "{\"path\":\"/tmp/appdata\"}";
     L0Test::ServiceMock service(cfg);
@@ -311,7 +311,7 @@ uint32_t Test_Impl_DeleteStorageWithEmptyAppId()
 {
     L0Test::TestResult tr;
 
-    L0Test::FakePersistentStore fakeStore;
+    L0Test::L0MockPersistentStore fakeStore;
     L0Test::ServiceMock::Config cfg{&fakeStore};
     cfg.configLine = "{\"path\":\"/tmp/appdata\"}";
     L0Test::ServiceMock service(cfg);
@@ -340,7 +340,7 @@ uint32_t Test_Impl_ClearStorageWithValidAppId()
     L0Test::TestResult tr;
 
 
-    L0Test::FakePersistentStore fakeStore;
+    L0Test::L0MockPersistentStore fakeStore;
     L0Test::ServiceMock::Config cfg{&fakeStore};
     cfg.configLine = "{\"path\":\"/tmp/appdata\"}";
     L0Test::ServiceMock service(cfg);
@@ -374,7 +374,7 @@ uint32_t Test_Impl_ClearStorageWithEmptyAppId()
 {
     L0Test::TestResult tr;
 
-    L0Test::FakePersistentStore fakeStore;
+    L0Test::L0MockPersistentStore fakeStore;
     L0Test::ServiceMock::Config cfg{&fakeStore};
     cfg.configLine = "{\"path\":\"/tmp/appdata\"}";
     L0Test::ServiceMock service(cfg);
@@ -402,7 +402,7 @@ uint32_t Test_Impl_ClearAllWithNoExemptions()
 {
     L0Test::TestResult tr;
 
-    L0Test::FakePersistentStore fakeStore;
+    L0Test::L0MockPersistentStore fakeStore;
     L0Test::ServiceMock::Config cfg{&fakeStore};
     cfg.configLine = "{\"path\":\"/tmp/appdata\"}";
     L0Test::ServiceMock service(cfg);
@@ -431,7 +431,7 @@ uint32_t Test_Impl_ClearAllWithExemptions()
 {
     L0Test::TestResult tr;
 
-    L0Test::FakePersistentStore fakeStore;
+    L0Test::L0MockPersistentStore fakeStore;
     L0Test::ServiceMock::Config cfg{&fakeStore};
     cfg.configLine = "{\"path\":\"/tmp/appdata\"}";
     L0Test::ServiceMock service(cfg);

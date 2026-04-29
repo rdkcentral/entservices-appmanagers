@@ -31,7 +31,7 @@
 #include "RequestHandler.h"
 #include "AppStorageManagerTelemetryReporting.h"
 #include "ServiceMock.h"
-#include "fakes/FakePersistentStore.h"
+#include "../common/L0MockPersistentStore.h"
 #include "common/L0Expect.hpp"
 #include "common/L0TestTypes.hpp"
 
