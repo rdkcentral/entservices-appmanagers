@@ -19,7 +19,10 @@
 
 #include "RDKWindowManagerImplementation.h"
 #include <sys/prctl.h>
+#include <atomic>
+#include <chrono>
 #include <condition_variable>
+#include <deque>
 #include <mutex>
 #include <boost/filesystem.hpp>
 #include <boost/format.hpp>
@@ -35,7 +38,7 @@ using namespace RdkWindowManager;
 using namespace Utils;
 
 extern int gCurrentFramerate;
-static bool sRunning = true;
+static std::atomic<bool> sRunning{true};
 
 #define ANY_KEY                  65536
 #define KEYCODE_INVALID          -1
@@ -84,7 +87,7 @@ static std::mutex gRenderMutex;
 static std::condition_variable gRequestCV;
 static std::mutex gRequestMutex;
 static std::thread shellThread;
-static std::vector<std::shared_ptr<CreateDisplayRequest>> gCreateDisplayRequests;
+static std::deque<std::shared_ptr<CreateDisplayRequest>> gCreateDisplayRequests;
 static bool gNeedsScreenshot = false;
 static uint8_t* gScreenshotData = nullptr;
 static uint32_t gScreenshotSize = 0;
@@ -248,10 +251,19 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
                 std::vector<std::shared_ptr<CreateDisplayRequest>> pendingRequests;
                 bool needsScreenshot = false;
 
-                // 🔹 Non-blocking wait with 5ms timeout (ensures rendering at ~60Hz even with no requests)
+                // Wait up to one frame interval so idle rendering stays aligned with the configured framerate.
+                // Fall back to ~60Hz when the configured framerate is invalid or unavailable.
+                int frameTimeoutMs = 16;
+                if (0 < gCurrentFramerate) {
+                    frameTimeoutMs = 1000 / gCurrentFramerate;
+                    if (0 >= frameTimeoutMs) {
+                        frameTimeoutMs = 1;
+                    }
+                }
+
                 {
                     std::unique_lock<std::mutex> lock(gRequestMutex);
-                    gRequestCV.wait_for(lock, std::chrono::milliseconds(5), [] {
+                    gRequestCV.wait_for(lock, std::chrono::milliseconds(frameTimeoutMs), [] {
                         return ((false == gCreateDisplayRequests.empty()) || gNeedsScreenshot || (false == sRunning));
                     });
 
@@ -259,7 +271,7 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
                     while (false == gCreateDisplayRequests.empty())
                     {
                         std::shared_ptr<CreateDisplayRequest> request = gCreateDisplayRequests.front();
-                        gCreateDisplayRequests.erase(gCreateDisplayRequests.begin());
+                        gCreateDisplayRequests.pop_front();
                         if (nullptr != request)
                         {
                             pendingRequests.push_back(request);
@@ -270,7 +282,7 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
                     gNeedsScreenshot = false;
                 }
 
-                // 🔹 Handle shutdown
+                // Handle shutdown
                 if (false == isRunning)
                 {
                     for (const auto& request : pendingRequests)
@@ -284,7 +296,7 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
                     break;
                 }
 
-                // 🔹 PRIORITY 1: Process requests FIRST (no lock) — YouTube depends on this
+                // Priority 1: Process createDisplay requests, serializing compositor mutation under gRdkWindowManagerMutex
                 if (!pendingRequests.empty())
                 {
                     time_t reqProcessStart = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
@@ -292,7 +304,10 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
                     {
                         time_t displayStartTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
                         LOGINFO("Shell thread: Processing createDisplay request for client:%s", request->mClient.c_str());
-                        request->mResult = CompositorController::createDisplay(request->mClient, request->mDisplayName, request->mDisplayWidth, request->mDisplayHeight, request->mVirtualDisplayEnabled, request->mVirtualWidth, request->mVirtualHeight, request->mTopmost, request->mFocus , request->mOwnerId, request->mGroupId);
+                        {
+                            std::lock_guard<std::mutex> lock(gRdkWindowManagerMutex);
+                            request->mResult = CompositorController::createDisplay(request->mClient, request->mDisplayName, request->mDisplayWidth, request->mDisplayHeight, request->mVirtualDisplayEnabled, request->mVirtualWidth, request->mVirtualHeight, request->mTopmost, request->mFocus , request->mOwnerId, request->mGroupId);
+                        }
                         time_t displayEndTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
                         const int duration = static_cast<int>(displayEndTime - displayStartTime);
                         LOGINFO("CompositorController::createDisplay, CreateDisplay timing: client:%s start_ms:%lld end_ms:%lld duration_ms:%d status:%s",
@@ -309,7 +324,7 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
                     LOGINFO("Shell thread: Request processing completed in %lld ms", (long long)(reqProcessEnd - reqProcessStart));
                 }
 
-                // 🔹 PRIORITY 2: Screenshot (short lock)
+                // Priority 2: Screenshot
                 if (needsScreenshot)
                 {
                     time_t screenshotStart = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
@@ -336,7 +351,7 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
                     LOGINFO("Shell thread: Screenshot completed in %lld ms", (long long)(screenshotEnd - screenshotStart));
                 }
 
-                // 🔥 PRIORITY 3: ALWAYS render (even with no requests) - ensures continuous visual updates
+                // Priority 3: Render - ensures continuous visual updates
                 {
                     time_t renderStart = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
                     std::lock_guard<std::mutex> lock(gRenderMutex);
@@ -1578,15 +1593,20 @@ bool RDKWindowManagerImplementation::createDisplay(const string& client, const s
     {
         std::shared_ptr<CreateDisplayRequest> request;
 
-        // Step 1: Queue the request under lock, then wait WITHOUT lock
+        // Step 1: Check that the shell thread is still running, then queue the request under lock
         {
             std::lock_guard<std::mutex> lock(gRequestMutex);
+            if (!sRunning)
+            {
+                LOGERR("createDisplay: system is shutting down, request rejected for client: %s", client.c_str());
+                return false;
+            }
             request = std::make_shared<CreateDisplayRequest>(client, displayName, displayWidth, displayHeight, virtualDisplay, virtualWidth, virtualHeight, topmost, focus, ownerId, groupId);
             gCreateDisplayRequests.push_back(request);
         }
         gRequestCV.notify_one();
 
-        // Step 2: sem_wait WITHOUT holding the lock — shell calls createDisplay lock-free
+        // Step 2: sem_wait WITHOUT holding the lock — shell thread processes createDisplay under gRdkWindowManagerMutex
         time_t displayStartTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
         if (-1 == sem_wait(&request->mSemaphore))
         {
@@ -1600,13 +1620,18 @@ bool RDKWindowManagerImplementation::createDisplay(const string& client, const s
             static_cast<long long>(displayEndTime),
             duration, ret ? "success" : "failed");
 
-        // Step 3: addListener outside shared-state lock to reduce lock hold time
+        // Step 3: addListener under gRdkWindowManagerMutex to serialize with other compositor operations
         if (ret)
         {
             time_t addListenerStart = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
-            if (false == RdkWindowManager::CompositorController::addListener(client, mEventListener))
+            bool lockAcquired = lockRdkWindowManagerMutex();
+            if (lockAcquired)
             {
-                LOGERR("CompositorController::addListener Failed");
+                if (false == RdkWindowManager::CompositorController::addListener(client, mEventListener))
+                {
+                    LOGERR("CompositorController::addListener Failed");
+                }
+                gRdkWindowManagerMutex.unlock();
             }
             time_t addListenerEnd = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
             LOGINFO("After addListener, CreateDisplay timing: start_ms:%lld end_ms:%lld duration_ms:%d",
