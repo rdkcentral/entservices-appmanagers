@@ -399,6 +399,20 @@ if(PLUGIN_APP_STORAGE_MANAGER)
 
     # Mark WPEFramework/Thunder headers as SYSTEM to suppress external warnings
     target_include_directories(appstorage_l0test SYSTEM PRIVATE
+        ${PREFIX}/include
+        ${PREFIX}/include/${NAMESPACE}
+    )
+
+    if(EXISTS "${PREFIX}/lib")
+        target_link_directories(appstorage_l0test PRIVATE "${PREFIX}/lib")
+    endif()
+    if(EXISTS "${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins")
+        target_link_directories(appstorage_l0test PRIVATE "${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins")
+    endif()
+    if(EXISTS "${PREFIX}/lib/plugins")
+        target_link_directories(appstorage_l0test PRIVATE "${PREFIX}/lib/plugins")
+    endif()
+endif()
 # PackageManager target compile options / definitions / includes
 # ---------------------------------------------------------------------------
 if(PLUGIN_PACKAGE_MANAGER)
@@ -435,15 +449,7 @@ if(PLUGIN_PACKAGE_MANAGER)
         ${PREFIX}/include
         ${PREFIX}/include/${NAMESPACE}
     )
-
-    if(EXISTS "${PREFIX}/lib")
-        target_link_directories(appstorage_l0test PRIVATE "${PREFIX}/lib")
-    endif()
-    if(EXISTS "${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins")
-        target_link_directories(appstorage_l0test PRIVATE "${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins")
-    endif()
-    if(EXISTS "${PREFIX}/lib/plugins")
-        target_link_directories(appstorage_l0test PRIVATE "${PREFIX}/lib/plugins")
+    
     if(JSONCPP_INCLUDE_DIR_PKG)
         target_include_directories(packagemanager_l0test PRIVATE ${JSONCPP_INCLUDE_DIR_PKG})
     endif()
@@ -555,6 +561,7 @@ if(PLUGIN_RDK_WINDOW_MANAGER)
 endif()
 if(PLUGIN_APP_STORAGE_MANAGER)
     list(APPEND _L0_TARGETS appstorage_l0test)
+endif()
 if(PLUGIN_PACKAGE_MANAGER)
     list(APPEND _L0_TARGETS packagemanager_l0test)
 endif()
@@ -655,6 +662,11 @@ endif()
 
 if(PLUGIN_APP_STORAGE_MANAGER)
     set_target_properties(appstorage_l0test PROPERTIES
+        BUILD_RPATH   "$ORIGIN;${PREFIX}/lib;${PREFIX}/lib/${STORAGE_DIRECTORY};${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins;${PREFIX}/lib/plugins"
+        INSTALL_RPATH "${PREFIX}/lib;${PREFIX}/lib/${STORAGE_DIRECTORY};${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins;${PREFIX}/lib/plugins"
+    )
+endif()
+
 if(PLUGIN_PACKAGE_MANAGER)
     set_target_properties(packagemanager_l0test PROPERTIES
         BUILD_RPATH   "$ORIGIN;${PREFIX}/lib;${PREFIX}/lib/${STORAGE_DIRECTORY};${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins;${PREFIX}/lib/plugins"
@@ -692,6 +704,15 @@ if(PLUGIN_RDK_WINDOW_MANAGER)
     )
 endif()
 
+if(PLUGIN_APP_STORAGE_MANAGER)
+    add_custom_target(run_appstorage
+        DEPENDS appstorage_l0test
+        COMMAND $<TARGET_FILE:appstorage_l0test>
+        COMMENT "Running appstorage_l0test"
+        VERBATIM
+    )
+endif()
+
 if(PLUGIN_PACKAGE_MANAGER)
     add_custom_target(run_packagemanager
         DEPENDS packagemanager_l0test
@@ -721,6 +742,9 @@ else()
     if(PLUGIN_RDK_WINDOW_MANAGER)
         list(APPEND COVERAGE_DEPENDS rdkwindowmanager_l0test)
     endif()
+    if(PLUGIN_APP_STORAGE_MANAGER)
+        list(APPEND COVERAGE_DEPENDS appstorage_l0test)
+    endif()
     if(PLUGIN_PACKAGE_MANAGER)
         list(APPEND COVERAGE_DEPENDS packagemanager_l0test)
     endif()
@@ -734,3 +758,4 @@ else()
         VERBATIM
     )
 endif()
+
