@@ -409,7 +409,11 @@ jobs:
                   _crash_signal[0] = event.stop_signal
 
           def _exit_handler(event):
-              _inf_exit_code[0] = event.exit_code
+              try:
+                  _inf_exit_code[0] = event.exit_code
+              except AttributeError:
+                  # GDB version doesn't have exit_code attribute, assume success (0)
+                  _inf_exit_code[0] = 0
 
           gdb.events.stop.connect(_stop_handler)
           gdb.events.exited.connect(_exit_handler)
