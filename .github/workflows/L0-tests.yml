@@ -356,7 +356,7 @@ jobs:
             -DAPPPKG_ENABLE_COVERAGE=ON \
             -DAPPAM_ENABLE_COVERAGE=ON
 
-          cmake --build build/entservices-appmanagers-l0tests-only --target runtimemanager_l0test lifecyclemanager_l0test rdkwindowmanager_l0test packagemanager_l0test appmanager_l0test -j"$(nproc)"
+          cmake --build build/entservices-appmanagers-l0tests-only --target runtimemanager_l0test lifecyclemanager_l0test rdkwindowmanager_l0test packagemanager_l0test preinstall_manager_l0test appmanager_l0test -- -j"$(nproc)"
 
       - name: Run L0 tests
         id: run_l0_tests
@@ -370,12 +370,14 @@ jobs:
           runtime_test_bin="build/entservices-appmanagers-l0tests-only/runtimemanager_l0test"
           lcm_test_bin="build/entservices-appmanagers-l0tests-only/lifecyclemanager_l0test"
           rdkwm_test_bin="build/entservices-appmanagers-l0tests-only/rdkwindowmanager_l0test"
+          preinstall_bin="build/entservices-appmanagers-l0tests-only/preinstall_manager_l0test"
           pkgmgr_test_bin="build/entservices-appmanagers-l0tests-only/packagemanager_l0test"
           appmanager_bin="build/entservices-appmanagers-l0tests-only/appmanager_l0test"
 
           test -x "$runtime_test_bin"
           test -x "$lcm_test_bin"
           test -x "$rdkwm_test_bin"
+          test -x "$preinstall_bin"
           test -x "$pkgmgr_test_bin"
           test -x "$appmanager_bin"
 
@@ -446,12 +448,14 @@ jobs:
           runtime_test_rc=0
           lcm_test_rc=0
           rdkwm_test_rc=0
+          preinstall_test_rc=0
           pkgmgr_test_rc=0
           appmanager_test_rc=0
 
           run_one_under_gdb "$runtime_test_bin" l0-runtime-test.log l0-runtime-test-gdb.log || runtime_test_rc=$?
           run_one_under_gdb "$lcm_test_bin" l0-lcm-test.log l0-lcm-test-gdb.log || lcm_test_rc=$?
           run_one_under_gdb "$rdkwm_test_bin" l0-rdkwm-test.log l0-rdkwm-test-gdb.log || rdkwm_test_rc=$?
+          run_one_under_gdb "$preinstall_bin" l0-preinstall-test.log l0-preinstall-test-gdb.log || preinstall_test_rc=$?
           run_one_under_gdb "$pkgmgr_test_bin" l0-packagemanager-test.log l0-packagemanager-test-gdb.log || pkgmgr_test_rc=$?
           run_one_under_gdb "$appmanager_bin" l0-appmanager-test.log l0-appmanager-test-gdb.log || appmanager_test_rc=$?
 
@@ -470,9 +474,9 @@ jobs:
           appmanager_l0test=${appmanager_test_rc}
           EOF
 
-          cat l0-runtime-test.log l0-lcm-test.log l0-rdkwm-test.log l0-packagemanager-test.log l0-appmanager-test.log > l0-test.log
+          cat l0-runtime-test.log l0-lcm-test.log l0-rdkwm-test.log l0-preinstall-test.log l0-packagemanager-test.log l0-appmanager-test.log > l0-test.log
 
-          if [ "$runtime_test_rc" -ne 0 ] || [ "$lcm_test_rc" -ne 0 ] || [ "$rdkwm_test_rc" -ne 0 ] || [ "$pkgmgr_test_rc" -ne 0 ] || [ "$appmanager_test_rc" -ne 0 ]; then
+          if [ "$runtime_test_rc" -ne 0 ] || [ "$lcm_test_rc" -ne 0 ] || [ "$rdkwm_test_rc" -ne 0 ] || [ "$preinstall_test_rc" -ne 0 ] || [ "$pkgmgr_test_rc" -ne 0 ] || [ "$appmanager_test_rc" -ne 0 ]; then
             exit 1
           fi
 
@@ -480,7 +484,7 @@ jobs:
         if: ${{ always() }}
         run: |
           set -euo pipefail
-          for log in l0-runtime-test.log l0-lcm-test.log l0-rdkwm-test.log l0-packagemanager-test.log l0-appmanager-test.log; do
+          for log in l0-runtime-test.log l0-lcm-test.log l0-rdkwm-test.log l0-preinstall-test.log l0-packagemanager-test.log l0-appmanager-test.log; do
             if [ -f "$log" ]; then
               echo "==== $log: Failed test cases (if any) ===="
               grep -E '^\[  FAILED  \]' "$log" || echo "No explicit [ FAILED ] lines found"
@@ -508,7 +512,7 @@ jobs:
             failed=1
           fi
 
-          for log in l0-runtime-test.log l0-lcm-test.log l0-rdkwm-test.log l0-packagemanager-test.log l0-appmanager-test.log; do
+          for log in l0-runtime-test.log l0-lcm-test.log l0-rdkwm-test.log l0-preinstall-test.log l0-packagemanager-test.log l0-appmanager-test.log; do
             if [ -f "$log" ]; then
               echo "==== $log: Failed test cases (final gate) ===="
               grep -E '^\[  FAILED  \]' "$log" || true
@@ -584,6 +588,8 @@ jobs:
             l0-runtime-test-gdb.log
             l0-lcm-test-gdb.log
             l0-rdkwm-test-gdb.log
+            l0-preinstall-test.log
+            l0-preinstall-test-gdb.log
             l0-packagemanager-test-gdb.log
             l0-appmanager-test.log
             l0-appmanager-test-gdb.log
