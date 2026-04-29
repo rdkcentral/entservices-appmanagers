@@ -128,6 +128,12 @@ namespace WPEFramework
             mRequestType = requestType;
         }
 
+        void ApplicationContext::resetPendingStates()
+        {
+            mPendingStateTransition = false;
+            mPendingStates.clear();
+            mPendingEventName = "";
+        }
 
 	std::string ApplicationContext::getAppId()
 	{

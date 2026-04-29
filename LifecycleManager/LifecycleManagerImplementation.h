@@ -137,7 +137,7 @@ namespace WPEFramework
                 mutable Core::CriticalSection mAdminLock;
 	        std::list<Exchange::ILifecycleManager::INotification*> mLifecycleManagerNotification;
 	        std::list<Exchange::ILifecycleManagerState::INotification*> mLifecycleManagerStateNotification;
-                std::list<ApplicationContext*> mLoadedApplications;
+                std::list<std::shared_ptr<ApplicationContext>> mLoadedApplications;
                 PluginHost::IShell* mService;
 	    private: /* internal methods */
                 bool initialize(PluginHost::IShell* service);
@@ -148,7 +148,7 @@ namespace WPEFramework
                 void notifyOnFailure(const string& appInstanceId, const string& errorCode);
                 void handleStateChangeEvent(const JsonObject &data);
                 void handleWindowManagerEvent(const JsonObject &data);
-                ApplicationContext* getContext(const string& appInstanceId, const string& appId) const;
+                std::shared_ptr<ApplicationContext> getContext(const string& appInstanceId, const string& appId) const;
                 void addStateTransitionRequest(ApplicationContext* context, std::string event);
 
                 friend class Job;
