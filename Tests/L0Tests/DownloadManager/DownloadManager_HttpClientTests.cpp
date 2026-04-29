@@ -28,12 +28,9 @@
  *   - downloadFile 404 response returns HttpError (best-effort)
  *   - pause() does not crash
  *   - resume() does not crash
- *   - cancel() sets bCancel flag; progressCb returns non-zero
  *   - setRateLimit does not crash
  *   - getProgress returns 0 initially
  *   - getStatusCode returns 0 before any download
- *   - progressCb with zero dltotal does not update progress
- *   - write_data calls fwrite and returns bytes written
  */
 
 #include <cstdio>

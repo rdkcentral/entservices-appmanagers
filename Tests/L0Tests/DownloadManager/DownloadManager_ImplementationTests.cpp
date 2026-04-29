@@ -125,14 +125,12 @@ uint32_t Test_Impl_RegisterDuplicate()
 // Register nullptr notification does not crash
 // ─────────────────────────────────────────────────────────────────────────────
 
-uint32_t Test_Impl_RegisterNullptrDoesNotCrash()
+uint32_t Test_Impl_ConstructImplPointerValid()
 {
     L0Test::TestResult tr;
 
     auto* impl = CreateImpl();
-    // The implementation guards with ASSERT(notification != nullptr).
-    // In non-debug builds this should not crash; in debug builds it asserts.
-    // We verify the impl pointer itself is valid after the call.
+    // Verifies that the implementation pointer is valid after construction.
     L0Test::ExpectTrue(tr, impl != nullptr, "Impl constructed successfully");
 
     impl->Release();

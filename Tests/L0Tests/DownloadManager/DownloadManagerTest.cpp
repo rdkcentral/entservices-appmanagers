@@ -42,8 +42,8 @@ extern uint32_t Test_Shell_InitializeSuccessRegistersNotification();
 extern uint32_t Test_Shell_DeinitializeCleansUp();
 extern uint32_t Test_Shell_DeinitializeNoOpWhenServiceNull();
 extern uint32_t Test_Shell_InformationReturnsEmpty();
-extern uint32_t Test_Shell_DeactivatedSubmitsJobForMatchingId();
-extern uint32_t Test_Shell_DeactivatedIgnoresMismatchedId();
+extern uint32_t Test_Shell_InitializeDeinitialize_NoCrash();
+extern uint32_t Test_Shell_DeinitializeUninitialized_NoCrash();
 extern uint32_t Test_Shell_NotificationHandlerOnAppDownloadStatus();
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -51,7 +51,7 @@ extern uint32_t Test_Shell_NotificationHandlerOnAppDownloadStatus();
 // ─────────────────────────────────────────────────────────────────────────────
 extern uint32_t Test_Impl_RegisterNotification();
 extern uint32_t Test_Impl_RegisterDuplicate();
-extern uint32_t Test_Impl_RegisterNullptrDoesNotCrash();
+extern uint32_t Test_Impl_ConstructImplPointerValid();
 extern uint32_t Test_Impl_UnregisterRegisteredNotification();
 extern uint32_t Test_Impl_UnregisterUnknownReturnsError();
 extern uint32_t Test_Impl_MultipleNotificationsRegisterUnregister();
@@ -153,15 +153,15 @@ int main()
     RUN_TEST(Test_Shell_DeinitializeCleansUp);
     RUN_TEST(Test_Shell_DeinitializeNoOpWhenServiceNull);
     RUN_TEST(Test_Shell_InformationReturnsEmpty);
-    RUN_TEST(Test_Shell_DeactivatedSubmitsJobForMatchingId);
-    RUN_TEST(Test_Shell_DeactivatedIgnoresMismatchedId);
+    RUN_TEST(Test_Shell_InitializeDeinitialize_NoCrash);
+    RUN_TEST(Test_Shell_DeinitializeUninitialized_NoCrash);
     RUN_TEST(Test_Shell_NotificationHandlerOnAppDownloadStatus);
 
     // ── Implementation tests (DownloadManagerImplementation.cpp / .h) ───────
     std::cout << "\n-- Implementation Register/Unregister --" << std::endl;
     RUN_TEST(Test_Impl_RegisterNotification);
     RUN_TEST(Test_Impl_RegisterDuplicate);
-    RUN_TEST(Test_Impl_RegisterNullptrDoesNotCrash);
+    RUN_TEST(Test_Impl_ConstructImplPointerValid);
     RUN_TEST(Test_Impl_UnregisterRegisteredNotification);
     RUN_TEST(Test_Impl_UnregisterUnknownReturnsError);
     RUN_TEST(Test_Impl_MultipleNotificationsRegisterUnregister);

@@ -22,7 +22,6 @@
  *
  * L0 tests for the DownloadManager shell plugin (DownloadManager.cpp / .h).
  * Covers:
- *   - Initialize with null service asserts (non-crash check)
  *   - Initialize when Root<IDownloadManager>() fails returns error
  *   - Initialize success path registers notification + JDownloadManager
  *   - Deinitialize releases resources cleanly
@@ -147,12 +146,16 @@ uint32_t Test_Shell_InitializeSuccessRegistersNotification()
             L0Test::ExpectTrue(tr, true,
                 "Initialize succeeded with in-process impl (L0 context — acceptable)");
         }
+	if (nullptr != fakeImpl) {
+            fakeImpl->AddRef();
+        }
 
         ps.plugin->Deinitialize(&ps.service);
 
         if (nullptr != fakeImpl) {
             L0Test::ExpectEqU32(tr, fakeImpl->unregisterCalls.load(), 1u,
                 "IDownloadManager::Unregister called once by Deinitialize()");
+	    fakeImpl->Release();
         }
     } else {
         // In minimal isolated environments Root<>() may fail
@@ -234,10 +237,10 @@ uint32_t Test_Shell_InformationReturnsEmpty()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Deactivated submits deactivation job when connectionId matches
+// Initialize and Deinitialize plugin; ensure no crash
 // ─────────────────────────────────────────────────────────────────────────────
 
-uint32_t Test_Shell_DeactivatedSubmitsJobForMatchingId()
+uint32_t Test_Shell_InitializeDeinitialize_NoCrash()
 {
     L0Test::TestResult tr;
 
@@ -261,27 +264,26 @@ uint32_t Test_Shell_DeactivatedSubmitsJobForMatchingId()
         ps.plugin->Deinitialize(&ps.service);
     }
 
-    L0Test::ExpectTrue(tr, true, "Deactivated path exercised without crash");
+    L0Test::ExpectTrue(tr, true, "Initialize/Deinitialize path exercised without crash");
 
     return tr.failures;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Deactivated ignores mismatched connectionId (no job submitted)
+// Deinitialize on uninitialized plugin does not crash
 // ─────────────────────────────────────────────────────────────────────────────
 
-uint32_t Test_Shell_DeactivatedIgnoresMismatchedId()
+uint32_t Test_Shell_DeinitializeUninitialized_NoCrash()
 {
     L0Test::TestResult tr;
 
     // Construct plugin WITHOUT initialize so mConnectionId stays 0
     PluginAndService ps;
 
-    // A no-crash assertion: calling Deinitialize on uninitialised plugin
-    // exercises the guard condition `if (mService != nullptr)` → no-op.
+    // A no-crash assertion: calling Deinitialize on an uninitialized plugin exercises the guard condition and is a no-op.
     ps.plugin->Deinitialize(&ps.service);
 
-    L0Test::ExpectTrue(tr, true, "Deactivated with mismatched id does not crash");
+    L0Test::ExpectTrue(tr, true, "Deinitialize on uninitialized plugin does not crash");
 
     return tr.failures;
 }

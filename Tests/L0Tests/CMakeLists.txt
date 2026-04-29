@@ -285,6 +285,8 @@ if(PLUGIN_LIFECYCLE_MANAGER)
         ${CMAKE_SOURCE_DIR}/../../LifecycleManager
         ${CMAKE_SOURCE_DIR}/../../helpers
         ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry
+        ${PREFIX}/include
+        ${PREFIX}/include/${NAMESPACE}
     )
 
     if(EXISTS "${PREFIX}/lib")
