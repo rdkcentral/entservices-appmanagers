@@ -126,10 +126,9 @@
 // Feature flags
 // Note: RALF_PACKAGE_SUPPORT_ENABLED is RuntimeManager-specific and should be
 // defined only in runtimemanager_l0test's target_compile_definitions
-
-#ifndef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-#define ENABLE_AIMANAGERS_TELEMETRY_METRICS 1
-#endif
+// Similarly, ENABLE_AIMANAGERS_TELEMETRY_METRICS should be defined per-target
+// in CMakeLists.txt only for test targets that require real telemetry metrics.
+// By default, tests use the stub implementation (telemetry compiled out).
 
 #ifndef UNIT_TEST
 #define UNIT_TEST 1
