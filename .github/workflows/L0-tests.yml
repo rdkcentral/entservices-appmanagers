@@ -349,12 +349,14 @@ jobs:
             -DPLUGIN_LIFECYCLE_MANAGER=ON \
             -DPLUGIN_RDK_WINDOW_MANAGER=ON \
             -DPLUGIN_PACKAGE_MANAGER=ON \
+            -DPLUGIN_APP_MANAGER=ON \
             -DAPPMGR_ENABLE_COVERAGE=ON \
             -DAPPLCM_ENABLE_COVERAGE=ON \
             -DAPPWM_ENABLE_COVERAGE=ON \
-            -DAPPPKG_ENABLE_COVERAGE=ON
+            -DAPPPKG_ENABLE_COVERAGE=ON \
+            -DAPPAM_ENABLE_COVERAGE=ON
 
-          cmake --build build/entservices-appmanagers-l0tests-only --target runtimemanager_l0test lifecyclemanager_l0test rdkwindowmanager_l0test packagemanager_l0test appmanager_plugin_l0test-- -j"$(nproc)"
+          cmake --build build/entservices-appmanagers-l0tests-only --target runtimemanager_l0test lifecyclemanager_l0test rdkwindowmanager_l0test packagemanager_l0test appmanager_l0test -j"$(nproc)"
 
       - name: Run L0 tests
         id: run_l0_tests
@@ -369,7 +371,7 @@ jobs:
           lcm_test_bin="build/entservices-appmanagers-l0tests-only/lifecyclemanager_l0test"
           rdkwm_test_bin="build/entservices-appmanagers-l0tests-only/rdkwindowmanager_l0test"
           pkgmgr_test_bin="build/entservices-appmanagers-l0tests-only/packagemanager_l0test"
-          appmanager_bin="build/entservices-appmanagers-l0tests-only/appmanager_plugin_l0test"
+          appmanager_bin="build/entservices-appmanagers-l0tests-only/appmanager_l0test"
 
           test -x "$runtime_test_bin"
           test -x "$lcm_test_bin"
