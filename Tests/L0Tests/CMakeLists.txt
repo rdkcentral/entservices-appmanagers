@@ -131,6 +131,9 @@ set(APPSTORAGE_MANAGER_L0_SOURCES
     AppStorageManager/AppStorageManager_ImplementationTests.cpp
     AppStorageManager/AppStorageManager_ComponentTests.cpp
     AppStorageManager/fakes/FakePersistentStore.cpp
+    common/L0Bootstrap.cpp
+)
+
 set(PACKAGE_MANAGER_L0_SOURCES
     ${CMAKE_SOURCE_DIR}/../../PackageManager/Module.cpp
     ${CMAKE_SOURCE_DIR}/../../PackageManager/PackageManager.cpp
