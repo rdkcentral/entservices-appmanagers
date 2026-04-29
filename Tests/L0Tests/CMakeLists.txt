@@ -217,6 +217,7 @@ if(PLUGIN_RUNTIME_MANAGER)
     target_compile_definitions(runtimemanager_l0test PRIVATE
         MODULE_NAME=RuntimeManager_L0Test
         PLUGIN_RUNTIME_MANAGER_IMPLEMENTATION_NAME="RuntimeManagerImplementation"
+        RALF_PACKAGE_SUPPORT_ENABLED=1
     )
 
     # Force include L0TestConfig.h in all source files

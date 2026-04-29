@@ -124,9 +124,8 @@
 #endif
 
 // Feature flags
-#ifndef RALF_PACKAGE_SUPPORT_ENABLED
-#define RALF_PACKAGE_SUPPORT_ENABLED 1
-#endif
+// Note: RALF_PACKAGE_SUPPORT_ENABLED is RuntimeManager-specific and should be
+// defined only in runtimemanager_l0test's target_compile_definitions
 
 #ifndef ENABLE_AIMANAGERS_TELEMETRY_METRICS
 #define ENABLE_AIMANAGERS_TELEMETRY_METRICS 1
