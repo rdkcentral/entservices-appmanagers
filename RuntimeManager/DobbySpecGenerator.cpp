@@ -618,7 +618,7 @@ Json::Value DobbySpecGenerator::createAppServiceSDKPlugin(const ApplicationConfi
         ports.append(port);
     }
     pluginObj["data"]["additionalPorts"] = std::move(ports);
-	pluginObj["data"]["setMenu"] = "local-services-1"; //MADANA HACK HOMEAPP
+	pluginObj["data"]["setMenu"] = "local-services-1"; //HACK for now for homeapp launch. This will be resolved with proper wiring
 
     return pluginObj;
 }
