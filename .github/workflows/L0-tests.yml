@@ -303,7 +303,7 @@ jobs:
             -DDISABLE_SECURITY_TOKEN=ON \
             -DUSE_THUNDER_R4=ON \
             -DPLUGIN_RUNTIME_MANAGER=ON \
-            -DPLUGIN_APPMANAGER=OFF \
+            -DPLUGIN_APPMANAGER=ON \
             -DPLUGIN_APP_STORAGE_MANAGER=OFF \
             -DPLUGIN_LIFECYCLE_MANAGER=ON \
             -DPLUGIN_DOWNLOADMANAGER=OFF \
@@ -349,12 +349,14 @@ jobs:
             -DPLUGIN_LIFECYCLE_MANAGER=ON \
             -DPLUGIN_RDK_WINDOW_MANAGER=ON \
             -DPLUGIN_PACKAGE_MANAGER=ON \
+            -DPLUGIN_APP_MANAGER=ON \
             -DAPPMGR_ENABLE_COVERAGE=ON \
             -DAPPLCM_ENABLE_COVERAGE=ON \
             -DAPPWM_ENABLE_COVERAGE=ON \
-            -DAPPPKG_ENABLE_COVERAGE=ON
+            -DAPPPKG_ENABLE_COVERAGE=ON \
+            -DAPPAM_ENABLE_COVERAGE=ON
 
-          cmake --build build/entservices-appmanagers-l0tests-only --target runtimemanager_l0test lifecyclemanager_l0test rdkwindowmanager_l0test packagemanager_l0test preinstall_manager_l0test -- -j"$(nproc)"
+          cmake --build build/entservices-appmanagers-l0tests-only --target runtimemanager_l0test lifecyclemanager_l0test rdkwindowmanager_l0test packagemanager_l0test preinstall_manager_l0test appmanager_l0test -- -j"$(nproc)"
 
       - name: Run L0 tests
         id: run_l0_tests
@@ -370,12 +372,14 @@ jobs:
           rdkwm_test_bin="build/entservices-appmanagers-l0tests-only/rdkwindowmanager_l0test"
           preinstall_bin="build/entservices-appmanagers-l0tests-only/preinstall_manager_l0test"
           pkgmgr_test_bin="build/entservices-appmanagers-l0tests-only/packagemanager_l0test"
+          appmanager_bin="build/entservices-appmanagers-l0tests-only/appmanager_l0test"
 
           test -x "$runtime_test_bin"
           test -x "$lcm_test_bin"
           test -x "$rdkwm_test_bin"
           test -x "$preinstall_bin"
           test -x "$pkgmgr_test_bin"
+          test -x "$appmanager_bin"
 
           run_one_under_gdb() {
             local bin="$1"
@@ -446,16 +450,35 @@ jobs:
           rdkwm_test_rc=0
           preinstall_test_rc=0
           pkgmgr_test_rc=0
+          appmanager_test_rc=0
 
           run_one_under_gdb "$runtime_test_bin" l0-runtime-test.log l0-runtime-test-gdb.log || runtime_test_rc=$?
           run_one_under_gdb "$lcm_test_bin" l0-lcm-test.log l0-lcm-test-gdb.log || lcm_test_rc=$?
           run_one_under_gdb "$rdkwm_test_bin" l0-rdkwm-test.log l0-rdkwm-test-gdb.log || rdkwm_test_rc=$?
           run_one_under_gdb "$preinstall_bin" l0-preinstall-test.log l0-preinstall-test-gdb.log || preinstall_test_rc=$?
           run_one_under_gdb "$pkgmgr_test_bin" l0-packagemanager-test.log l0-packagemanager-test-gdb.log || pkgmgr_test_rc=$?
+          run_one_under_gdb "$appmanager_bin" l0-appmanager-test.log l0-appmanager-test-gdb.log || appmanager_test_rc=$?
 
-          cat l0-runtime-test.log l0-lcm-test.log l0-rdkwm-test.log l0-preinstall-test.log l0-packagemanager-test.log > l0-test.log
+          echo "==== Per-test exit codes ===="
+          echo "runtimemanager_l0test=${runtime_test_rc}"
+          echo "lifecyclemanager_l0test=${lcm_test_rc}"
+          echo "rdkwindowmanager_l0test=${rdkwm_test_rc}"
+          echo "packagemanager_l0test=${pkgmgr_test_rc}"
+          echo "preinstall_manager_l0test=${preinstall_test_rc}"
+          echo "appmanager_l0test=${appmanager_test_rc}"
 
-          if [ "$runtime_test_rc" -ne 0 ] || [ "$lcm_test_rc" -ne 0 ] || [ "$rdkwm_test_rc" -ne 0 ] || [ "$preinstall_test_rc" -ne 0 ] || [ "$pkgmgr_test_rc" -ne 0 ]; then
+          cat > l0-test-exit-codes.log <<EOF
+          runtimemanager_l0test=${runtime_test_rc}
+          lifecyclemanager_l0test=${lcm_test_rc}
+          rdkwindowmanager_l0test=${rdkwm_test_rc}
+          packagemanager_l0test=${pkgmgr_test_rc}
+          preinstall_manager_l0test=${preinstall_test_rc}
+          appmanager_l0test=${appmanager_test_rc}
+          EOF
+
+          cat l0-runtime-test.log l0-lcm-test.log l0-rdkwm-test.log l0-preinstall-test.log l0-packagemanager-test.log l0-appmanager-test.log > l0-test.log
+
+          if [ "$runtime_test_rc" -ne 0 ] || [ "$lcm_test_rc" -ne 0 ] || [ "$rdkwm_test_rc" -ne 0 ] || [ "$preinstall_test_rc" -ne 0 ] || [ "$pkgmgr_test_rc" -ne 0 ] || [ "$appmanager_test_rc" -ne 0 ]; then
             exit 1
           fi
 
@@ -463,14 +486,20 @@ jobs:
         if: ${{ always() }}
         run: |
           set -euo pipefail
-          for log in l0-runtime-test.log l0-lcm-test.log l0-rdkwm-test.log l0-preinstall-test.log l0-packagemanager-test.log; do
+          for log in l0-runtime-test.log l0-lcm-test.log l0-rdkwm-test.log l0-preinstall-test.log l0-packagemanager-test.log l0-appmanager-test.log; do
             if [ -f "$log" ]; then
               echo "==== $log: Failed test cases (if any) ===="
               grep -E '^\[  FAILED  \]' "$log" || echo "No explicit [ FAILED ] lines found"
+              grep -E 'GDB CRASH REPORT|Signal caught:|Assertion|assert|Segmentation fault|Aborted|ERROR: AddressSanitizer|runtime error:' "$log" || true
             else
               echo "$log not found"
             fi
           done
+
+          if [ -f l0-test-exit-codes.log ]; then
+            echo "==== l0-test-exit-codes.log ===="
+            cat l0-test-exit-codes.log
+          fi
 
       - name: Fail workflow if tests failed
         if: ${{ always() }}
@@ -481,20 +510,26 @@ jobs:
           failed=0
 
           if [ "${RUN_L0_TESTS_OUTCOME}" != "success" ]; then
-            echo "L0 test execution step failed (non-zero exit)"
+            echo "L0 test execution step failed (non-zero exit). Inspect per-test logs below."
             failed=1
           fi
 
-          for log in l0-runtime-test.log l0-lcm-test.log l0-rdkwm-test.log l0-preinstall-test.log l0-packagemanager-test.log; do
+          for log in l0-runtime-test.log l0-lcm-test.log l0-rdkwm-test.log l0-preinstall-test.log l0-packagemanager-test.log l0-appmanager-test.log; do
             if [ -f "$log" ]; then
               echo "==== $log: Failed test cases (final gate) ===="
               grep -E '^\[  FAILED  \]' "$log" || true
               grep -E '^FAIL:' "$log" || true
+              grep -E 'GDB CRASH REPORT|Signal caught:|Assertion|assert|Segmentation fault|Aborted|ERROR: AddressSanitizer|runtime error:' "$log" || true
             else
               echo "$log not found in final gate"
               failed=1
             fi
           done
+
+          if [ -f l0-test-exit-codes.log ]; then
+            echo "==== l0-test-exit-codes.log (final gate) ===="
+            cat l0-test-exit-codes.log
+          fi
 
           if [ "$failed" -ne 0 ]; then
             exit 1
@@ -547,6 +582,7 @@ jobs:
             coverage.info
             filtered_coverage.info
             l0-test.log
+            l0-test-exit-codes.log
             l0-runtime-test.log
             l0-lcm-test.log
             l0-rdkwm-test.log
@@ -557,5 +593,7 @@ jobs:
             l0-preinstall-test.log
             l0-preinstall-test-gdb.log
             l0-packagemanager-test-gdb.log
+            l0-appmanager-test.log
+            l0-appmanager-test-gdb.log
           if-no-files-found: warn
 
