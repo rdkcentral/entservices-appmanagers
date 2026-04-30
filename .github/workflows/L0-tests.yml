@@ -359,7 +359,7 @@ jobs:
             -DAPPLCM_ENABLE_COVERAGE=ON \
             -DAPPWM_ENABLE_COVERAGE=ON \
             -DAPPPKG_ENABLE_COVERAGE=ON \
-            -DAPPDM_ENABLE_COVERAGE=ON
+            -DAPPDM_ENABLE_COVERAGE=ON \
             -DAPPASM_ENABLE_COVERAGE=ON \
             -DAPPMGR_PREINSTALL_ENABLE_COVERAGE=ON
 
@@ -467,7 +467,7 @@ jobs:
 
           cat l0-lcm-test.log l0-runtime-test.log l0-rdkwm-test.log l0-dm-test.log l0-appstorage-test.log l0-preinstall-test.log l0-packagemanager-test.log > l0-test.log
 
-          if [ "$runtime_test_rc" -ne 0 ] || [ "$lcm_test_rc" -ne 0 ] || [ "$rdkwm_test_rc" -ne 0 ] || || [ "$dm_test_rc" -ne 0 ] || [ "$appstorage_test_rc" -ne 0 ] || [ "$preinstall_test_rc" -ne 0 ] || [ "$pkgmgr_test_rc" -ne 0 ]; then
+          if [ "$runtime_test_rc" -ne 0 ] || [ "$lcm_test_rc" -ne 0 ] || [ "$rdkwm_test_rc" -ne 0 ] || [ "$dm_test_rc" -ne 0 ] || [ "$appstorage_test_rc" -ne 0 ] || [ "$preinstall_test_rc" -ne 0 ] || [ "$pkgmgr_test_rc" -ne 0 ]; then
             exit 1
           fi
 
