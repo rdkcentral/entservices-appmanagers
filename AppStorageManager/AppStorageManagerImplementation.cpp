@@ -23,7 +23,7 @@
 #include "RequestHandler.h"
 #include <sys/statvfs.h>
 
-#define DEFAULT_APP_STORAGE_PATH        "/opt/persistent/storageManager"
+#define DEFAULT_APP_STORAGE_PATH        "/media/apps/storageManager"
 
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
 #define TELEMETRY_MARKER_LAUNCH_TIME    "OverallLaunchTime_split"
