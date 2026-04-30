@@ -256,9 +256,9 @@ uint32_t Test_Shell_InitializeDeinitialize_NoCrash()
 
     const std::string initResult = ps.plugin->Initialize(&ps.service);
     if (initResult.empty()) {
-        // Create a minimal fake RPC remote connection
-        // The DownloadManager::Deactivated() submits a deactivation job
-        // We just verify it does not crash and clean up properly.
+        // Exercise the basic lifecycle smoke path after a successful Initialize().
+        // This test only verifies that Deinitialize() can be called cleanly
+        // and does not cover DownloadManager::Deactivated() behavior.
         ps.plugin->Deinitialize(&ps.service);
     }
 

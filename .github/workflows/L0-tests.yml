@@ -564,7 +564,7 @@ jobs:
             l0-lcm-test-gdb.log
             l0-rdkwm-test-gdb.log
             l0-dm-test-gdb.log
-            l0-preinstall-test.log
+            l0-preinstall-test-gdb.log
             l0-packagemanager-test-gdb.log
           if-no-files-found: warn
 
