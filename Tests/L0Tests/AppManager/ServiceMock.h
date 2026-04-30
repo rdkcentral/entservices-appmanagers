@@ -178,7 +178,7 @@ public:
 
     WPEFramework::Core::hresult PackageState(const string&, const string&, WPEFramework::Exchange::IPackageInstaller::InstallState& state) override
     {
-        state = WPEFramework::Exchange::IPackageInstaller::InstallState::UNKNOWN;
+        state = WPEFramework::Exchange::IPackageInstaller::InstallState::UNINSTALLED;
         return WPEFramework::Core::ERROR_NONE;
     }
 
