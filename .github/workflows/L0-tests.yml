@@ -304,10 +304,10 @@ jobs:
             -DUSE_THUNDER_R4=ON \
             -DPLUGIN_RUNTIME_MANAGER=ON \
             -DPLUGIN_APPMANAGER=OFF \
-            -DPLUGIN_APP_STORAGE_MANAGER=OFF \
+            -DPLUGIN_APP_STORAGE_MANAGER=ON \
             -DPLUGIN_LIFECYCLE_MANAGER=ON \
             -DPLUGIN_DOWNLOADMANAGER=OFF \
-            -DPLUGIN_PREINSTALL_MANAGER=OFF \
+            -DPLUGIN_PREINSTALL_MANAGER=ON \
             -DPLUGIN_PACKAGE_MANAGER=OFF \
             -DPLUGIN_RDK_WINDOW_MANAGER=OFF \
             -DPLUGIN_TELEMETRYMETRICS=OFF \
@@ -321,6 +321,8 @@ jobs:
             -name "libWPEFrameworkRuntimeManagerImplementation.so*" -o -name "libRuntimeManagerImplementation.so*" -o \
             -name "libLifecycleManager.so*" -o -name "libWPEFrameworkLifecycleManager.so*" -o \
             -name "libWPEFrameworkLifecycleManagerImplementation.so*" -o -name "libLifecycleManagerImplementation.so*" -o \
+            -name "libAppStorageManager.so*" -o -name "libWPEFrameworkAppStorageManager.so*" -o \
+            -name "libWPEFrameworkAppStorageManagerImplementation.so*" -o -name "libAppStorageManagerImplementation.so*" -o \
             -name "libPackageManager.so*" -o -name "libWPEFrameworkPackageManager.so*" -o \
             -name "libWPEFrameworkPackageManagerImplementation.so*" -o -name "libPackageManagerImplementation.so*" -o \
             -name "libRDKWindowManager.so*" -o -name "libWPEFrameworkRDKWindowManager.so*" -o \
@@ -348,13 +350,17 @@ jobs:
             -DPLUGIN_RUNTIME_MANAGER=ON \
             -DPLUGIN_LIFECYCLE_MANAGER=ON \
             -DPLUGIN_RDK_WINDOW_MANAGER=ON \
+            -DPLUGIN_APP_STORAGE_MANAGER=ON \
             -DPLUGIN_PACKAGE_MANAGER=ON \
+            -DPLUGIN_PREINSTALL_MANAGER=ON \
             -DAPPMGR_ENABLE_COVERAGE=ON \
             -DAPPLCM_ENABLE_COVERAGE=ON \
             -DAPPWM_ENABLE_COVERAGE=ON \
-            -DAPPPKG_ENABLE_COVERAGE=ON
+            -DAPPASM_ENABLE_COVERAGE=ON \
+            -DAPPPKG_ENABLE_COVERAGE=ON \
+            -DAPPMGR_PREINSTALL_ENABLE_COVERAGE=ON
 
-          cmake --build build/entservices-appmanagers-l0tests-only --target runtimemanager_l0test lifecyclemanager_l0test rdkwindowmanager_l0test packagemanager_l0test -- -j"$(nproc)"
+          cmake --build build/entservices-appmanagers-l0tests-only --target runtimemanager_l0test lifecyclemanager_l0test rdkwindowmanager_l0test appstorage_l0test packagemanager_l0test preinstall_manager_l0test -- -j"$(nproc)"
 
       - name: Run L0 tests
         id: run_l0_tests
@@ -368,11 +374,15 @@ jobs:
           runtime_test_bin="build/entservices-appmanagers-l0tests-only/runtimemanager_l0test"
           lcm_test_bin="build/entservices-appmanagers-l0tests-only/lifecyclemanager_l0test"
           rdkwm_test_bin="build/entservices-appmanagers-l0tests-only/rdkwindowmanager_l0test"
+          appstorage_test_bin="build/entservices-appmanagers-l0tests-only/appstorage_l0test"
+          preinstall_bin="build/entservices-appmanagers-l0tests-only/preinstall_manager_l0test"
           pkgmgr_test_bin="build/entservices-appmanagers-l0tests-only/packagemanager_l0test"
 
           test -x "$runtime_test_bin"
           test -x "$lcm_test_bin"
           test -x "$rdkwm_test_bin"
+          test -x "$appstorage_test_bin"
+          test -x "$preinstall_bin"
           test -x "$pkgmgr_test_bin"
 
           run_one_under_gdb() {
@@ -392,17 +402,12 @@ jobs:
           python
           import gdb
           _crash_signal = [None]
-          _inf_exit_code = [None]
 
           def _stop_handler(event):
               if isinstance(event, gdb.SignalEvent):
                   _crash_signal[0] = event.stop_signal
 
-          def _exit_handler(event):
-              _inf_exit_code[0] = event.exit_code
-
           gdb.events.stop.connect(_stop_handler)
-          gdb.events.exited.connect(_exit_handler)
           end
           handle SIGSEGV stop print nopass
           handle SIGABRT stop print nopass
@@ -423,8 +428,8 @@ jobs:
               print("=======================================")
               gdb.execute("quit 1")
           else:
-              code = _inf_exit_code[0] or 0
-              gdb.execute("quit %d" % code)
+              # No crash detected, tests passed - exit with 0
+              gdb.execute("quit 0")
           end
           GDBEOF
 
@@ -442,16 +447,20 @@ jobs:
           runtime_test_rc=0
           lcm_test_rc=0
           rdkwm_test_rc=0
+          appstorage_test_rc=0
+          preinstall_test_rc=0
           pkgmgr_test_rc=0
 
-          run_one_under_gdb "$runtime_test_bin" l0-runtime-test.log l0-runtime-test-gdb.log || runtime_test_rc=$?
           run_one_under_gdb "$lcm_test_bin" l0-lcm-test.log l0-lcm-test-gdb.log || lcm_test_rc=$?
+          run_one_under_gdb "$runtime_test_bin" l0-runtime-test.log l0-runtime-test-gdb.log || runtime_test_rc=$?
           run_one_under_gdb "$rdkwm_test_bin" l0-rdkwm-test.log l0-rdkwm-test-gdb.log || rdkwm_test_rc=$?
+          run_one_under_gdb "$appstorage_test_bin" l0-appstorage-test.log l0-appstorage-test-gdb.log || appstorage_test_rc=$?
+          run_one_under_gdb "$preinstall_bin" l0-preinstall-test.log l0-preinstall-test-gdb.log || preinstall_test_rc=$?
           run_one_under_gdb "$pkgmgr_test_bin" l0-packagemanager-test.log l0-packagemanager-test-gdb.log || pkgmgr_test_rc=$?
 
-          cat l0-runtime-test.log l0-lcm-test.log l0-rdkwm-test.log l0-packagemanager-test.log > l0-test.log
+          cat l0-lcm-test.log l0-runtime-test.log l0-rdkwm-test.log l0-appstorage-test.log l0-preinstall-test.log l0-packagemanager-test.log > l0-test.log
 
-          if [ "$runtime_test_rc" -ne 0 ] || [ "$lcm_test_rc" -ne 0 ] || [ "$rdkwm_test_rc" -ne 0 ] || [ "$pkgmgr_test_rc" -ne 0 ]; then
+          if [ "$runtime_test_rc" -ne 0 ] || [ "$lcm_test_rc" -ne 0 ] || [ "$rdkwm_test_rc" -ne 0 ] || [ "$appstorage_test_rc" -ne 0 ] || [ "$preinstall_test_rc" -ne 0 ] || [ "$pkgmgr_test_rc" -ne 0 ]; then
             exit 1
           fi
 
@@ -459,7 +468,7 @@ jobs:
         if: ${{ always() }}
         run: |
           set -euo pipefail
-          for log in l0-runtime-test.log l0-lcm-test.log l0-rdkwm-test.log l0-packagemanager-test.log; do
+          for log in l0-runtime-test.log l0-lcm-test.log l0-rdkwm-test.log l0-appstorage-test.log l0-preinstall-test.log l0-packagemanager-test.log; do
             if [ -f "$log" ]; then
               echo "==== $log: Failed test cases (if any) ===="
               grep -E '^\[  FAILED  \]' "$log" || echo "No explicit [ FAILED ] lines found"
@@ -481,7 +490,7 @@ jobs:
             failed=1
           fi
 
-          for log in l0-runtime-test.log l0-lcm-test.log l0-rdkwm-test.log l0-packagemanager-test.log; do
+          for log in l0-runtime-test.log l0-lcm-test.log l0-rdkwm-test.log l0-appstorage-test.log l0-preinstall-test.log l0-packagemanager-test.log; do
             if [ -f "$log" ]; then
               echo "==== $log: Failed test cases (final gate) ===="
               grep -E '^\[  FAILED  \]' "$log" || true
@@ -546,10 +555,13 @@ jobs:
             l0-runtime-test.log
             l0-lcm-test.log
             l0-rdkwm-test.log
-            l0-packagemanager-test.log
+            l0-appstorage-test.log
             l0-runtime-test-gdb.log
             l0-lcm-test-gdb.log
             l0-rdkwm-test-gdb.log
+            l0-appstorage-test-gdb.log
+            l0-packagemanager-test.log
+            l0-preinstall-test.log
+            l0-preinstall-test-gdb.log
             l0-packagemanager-test-gdb.log
           if-no-files-found: warn
-

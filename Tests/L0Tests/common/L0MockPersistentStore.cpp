@@ -1,0 +1,183 @@
+/**
+ * If not stated otherwise in this file or this component's LICENSE
+ * file the following copyright and licenses apply:
+ *
+ * Copyright 2025 RDK Management
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ **/
+
+#include "L0MockPersistentStore.h"
+
+namespace L0Test {
+
+L0MockPersistentStore::L0MockPersistentStore()
+    : _getValueSuccess(true)
+    , _setValueSuccess(true)
+    , _deleteKeySuccess(true)
+    , _getValueResult()
+    , _getValueCalls(0)
+    , _setValueCalls(0)
+    , _deleteKeyCalls(0)
+    , _refCount(1)
+{
+}
+
+void L0MockPersistentStore::Reset()
+{
+    _storage.clear();
+    _getValueSuccess = true;
+    _setValueSuccess = true;
+    _deleteKeySuccess = true;
+    _getValueResult.clear();
+    _getValueCalls = 0;
+    _setValueCalls = 0;
+    _deleteKeyCalls = 0;
+    _lastKey.clear();
+    _lastNamespace.clear();
+    _lastValue.clear();
+}
+
+void L0MockPersistentStore::SetGetValueResult(bool success, const std::string& value)
+{
+    _getValueSuccess = success;
+    _getValueResult = value;
+}
+
+void L0MockPersistentStore::SetSetValueResult(bool success)
+{
+    _setValueSuccess = success;
+}
+
+void L0MockPersistentStore::SetDeleteKeyResult(bool success)
+{
+    _deleteKeySuccess = success;
+}
+
+void L0MockPersistentStore::AddRef() const
+{
+    _refCount.fetch_add(1, std::memory_order_relaxed);
+}
+
+uint32_t L0MockPersistentStore::Release() const
+{
+    uint32_t current = _refCount.load(std::memory_order_acquire);
+    while (0U < current) {
+        const uint32_t remaining = current - 1;
+        if (true == _refCount.compare_exchange_weak(current, remaining, std::memory_order_acq_rel, std::memory_order_acquire)) {
+            return (0U == remaining) ? WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED : WPEFramework::Core::ERROR_NONE;
+        }
+    }
+    return WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED;
+}
+
+void* L0MockPersistentStore::QueryInterface(const uint32_t interfaceNumber)
+{
+    if (interfaceNumber == WPEFramework::Exchange::IStore2::ID) {
+        AddRef();
+        return static_cast<WPEFramework::Exchange::IStore2*>(this);
+    }
+    return nullptr;
+}
+
+uint32_t L0MockPersistentStore::Register(INotification* notification)
+{
+    (void)notification; // Unused in mock implementation
+    return WPEFramework::Core::ERROR_NONE;
+}
+
+uint32_t L0MockPersistentStore::Unregister(INotification* notification)
+{
+    (void)notification; // Unused in mock implementation
+    return WPEFramework::Core::ERROR_NONE;
+}
+
+uint32_t L0MockPersistentStore::GetValue(const ScopeType scope, const string& ns, const string& key, string& value, uint32_t& ttl)
+{
+    (void)scope; // Unused in mock implementation
+    _getValueCalls++;
+    _lastNamespace = ns;
+    _lastKey = key;
+
+    if (!_getValueSuccess) {
+        return WPEFramework::Core::ERROR_UNKNOWN_KEY;
+    }
+
+    // Check if we have a configured result
+    if (!_getValueResult.empty()) {
+        value = _getValueResult;
+        ttl = 0; // No TTL in mock store
+        return WPEFramework::Core::ERROR_NONE;
+    }
+
+    // Check actual storage
+    auto nsIt = _storage.find(ns);
+    if (nsIt != _storage.end()) {
+        auto keyIt = nsIt->second.find(key);
+        if (keyIt != nsIt->second.end()) {
+            value = keyIt->second;
+            ttl = 0; // No TTL in mock store
+            return WPEFramework::Core::ERROR_NONE;
+        }
+    }
+
+    return WPEFramework::Core::ERROR_UNKNOWN_KEY;
+}
+
+uint32_t L0MockPersistentStore::SetValue(const ScopeType scope, const string& ns, const string& key, const string& value, const uint32_t ttl)
+{
+    (void)scope; // Unused in mock implementation
+    (void)ttl;   // Unused in mock implementation
+    _setValueCalls++;
+    _lastNamespace = ns;
+    _lastKey = key;
+    _lastValue = value;
+
+    if (!_setValueSuccess) {
+        return WPEFramework::Core::ERROR_GENERAL;
+    }
+
+    _storage[ns][key] = value;
+    return WPEFramework::Core::ERROR_NONE;
+}
+
+uint32_t L0MockPersistentStore::DeleteKey(const ScopeType scope, const string& ns, const string& key)
+{
+    (void)scope; // Unused in mock implementation
+    _deleteKeyCalls++;
+    _lastNamespace = ns;
+    _lastKey = key;
+
+    if (!_deleteKeySuccess) {
+        return WPEFramework::Core::ERROR_GENERAL;
+    }
+
+    auto nsIt = _storage.find(ns);
+    if (nsIt != _storage.end()) {
+        nsIt->second.erase(key);
+        if (nsIt->second.empty()) {
+            _storage.erase(nsIt);
+        }
+    }
+
+    return WPEFramework::Core::ERROR_NONE;
+}
+
+uint32_t L0MockPersistentStore::DeleteNamespace(const ScopeType scope, const string& ns)
+{
+    (void)scope; // Unused in mock implementation
+    _storage.erase(ns);
+    return WPEFramework::Core::ERROR_NONE;
+}
+
+} // namespace L0Test
