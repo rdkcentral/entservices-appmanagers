@@ -729,10 +729,6 @@ namespace WPEFramework
                             {
                                 status = Core::ERROR_GENERAL;
                             }
-                        }
-                        else if (status != Core::ERROR_NONE)
-                        {
-                            LOGERR("Failed to Run Container %s",  errorReason.c_str());
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
                             {
                                 ralf::RalfPackageBuilder ralfBuilder;
