@@ -198,7 +198,7 @@ namespace ralf
          * @param appStoragePath The host-side storage path for the application, used to construct the log file path.
          * @param appId The application ID used in the log file name.
          */
-        void addLogNameToOCIConfig(Json::Value &ociConfigRootNode, const std::string appStoragePath, const std::string &appId);
+        void addLogNameToOCIConfig(Json::Value &ociConfigRootNode, const std::string &appStoragePath, const std::string &appId);
 
         /**
          * The vector of Ralf package details as pairs of mount point and metadata path.
