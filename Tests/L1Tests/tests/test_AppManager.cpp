@@ -373,12 +373,24 @@ protected:
         return Core::Service<RPC::IteratorType<Exchange::IAppManager::ILoadedAppInfoIterator>>::Create<Exchange::IAppManager::ILoadedAppInfoIterator>(loadedAppInfoList);
     }
 
+    void PrimeLoadedAppPackageCache(const std::string& appId)
+    {
+        AppManagerTypes::PackageInfo pkgInfo;
+        pkgInfo.version = APPMANAGER_APP_VERSION;
+        pkgInfo.lockId = 1;
+        pkgInfo.unpackedPath = APPMANAGER_APP_UNPACKEDPATH;
+        pkgInfo.type = AppManagerTypes::APPLICATION_TYPE_INTERACTIVE;
+        AppInfoManager::getInstance().setPackageInfo(appId, pkgInfo);
+    }
+
     void LaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState state)
     {
         const std::string launchArgs = APPMANAGER_APP_LAUNCHARGS;
         TEST_LOG("LaunchAppPreRequisite with state: %d", state);
+        PrimeLoadedAppPackageCache(APPMANAGER_APP_ID);
 
         EXPECT_CALL(*mPackageInstallerMock, ListPackages(::testing::_))
+        .Times(::testing::AnyNumber())
         .WillRepeatedly([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
             auto mockIterator = FillPackageIterator(); // Fill the package Info
             packages = mockIterator;
@@ -386,6 +398,7 @@ protected:
         });
 
         EXPECT_CALL(*mPackageManagerMock, Lock(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .Times(::testing::AnyNumber())
         .WillRepeatedly([&](const string &packageId, const string &version, const Exchange::IPackageHandler::LockReason &lockReason, uint32_t &lockId /* @out */, string &unpackedPath /* @out */, Exchange::RuntimeConfig &configMetadata /* @out */, Exchange::IPackageHandler::ILockIterator*& appMetadata /* @out */) {
             lockId = 1;
             unpackedPath = APPMANAGER_APP_UNPACKEDPATH;
@@ -417,8 +430,10 @@ protected:
     {
         const std::string launchArgs = APPMANAGER_APP_LAUNCHARGS;
         TEST_LOG("LaunchAppPreRequisite with state: %d", state);
+        PrimeLoadedAppPackageCache(APPMANAGER_APP_ID);
 
         EXPECT_CALL(*mPackageInstallerMock, ListPackages(::testing::_))
+        .Times(::testing::AnyNumber())
         .WillRepeatedly([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
             auto mockIterator = FillPackageIterator(); // Fill the package Info
             packages = mockIterator;
@@ -426,6 +441,7 @@ protected:
         });
 
         EXPECT_CALL(*mPackageManagerMock, Lock(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .Times(::testing::AnyNumber())
         .WillRepeatedly([&](const string &packageId, const string &version, const Exchange::IPackageHandler::LockReason &lockReason, uint32_t &lockId /* @out */, string &unpackedPath /* @out */, Exchange::RuntimeConfig &configMetadata /* @out */, Exchange::IPackageHandler::ILockIterator*& appMetadata /* @out */) {
             lockId = 1;
             unpackedPath = APPMANAGER_APP_UNPACKEDPATH;
