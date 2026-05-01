@@ -186,12 +186,17 @@ namespace ralf
         bool addStorageConfigToOCIConfig(Json::Value &ociConfigRootNode, Json::Value &manifestRootNode);
 
         /**
-         * Adds a log name environment variable to the OCI config JSON for easier debugging of logs from the containerized app. 
-         * The log will be stored in /data/<app_instance_id>.log on the host since we will mount /data from host to container. 
-         * This will be overwritten every time the app is launched, but that is fine since we only care about the latest logs.
-         * @param ociConfigRootNode The root node of the OCI config JSON.
-         * @param appStoragePath The storage path for the application in the host, used to construct the log file path.
-         * @param appId The application ID to be used in the log file name.
+         * Updates the OCI config JSON at rdkPlugins.logging.data.fileOptions.path to point to the
+         * application's log file for easier debugging of logs from the containerized app.
+         * The configured log filename is derived from the host-side appStoragePath and appId
+         * (for example, appStoragePath/<appId>.log), not from an app instance ID. This file may be
+         * exposed inside the container via a mount, but the configured path itself is built from the
+         * host storage path passed to this method. The log file is overwritten each time the app is
+         * launched, which is acceptable because only the latest logs are needed.
+         * @param ociConfigRootNode The root node of the OCI config JSON whose
+         * rdkPlugins.logging.data.fileOptions.path field is updated.
+         * @param appStoragePath The host-side storage path for the application, used to construct the log file path.
+         * @param appId The application ID used in the log file name.
          */
         void addLogNameToOCIConfig(Json::Value &ociConfigRootNode, const std::string appStoragePath, const std::string &appId);
 
