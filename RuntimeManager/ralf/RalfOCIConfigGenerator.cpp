@@ -91,8 +91,8 @@ namespace ralf
 
     void RalfOCIConfigGenerator::addLogNameToOCIConfig(Json::Value &ociConfigRootNode, const std::string appStoragePath, const std::string &appId)
     {
-        // The log file name is hardcoded to /opt/logs/dacapp.log. This needs to be changed in the oci-base-spec.json file.
-        //The entry will be in rdkPlugins->logging->data->fileOptions->path
+        // Override the default log file path in the generated OCI config with an app-specific path.
+        // The updated entry is rdkPlugins->logging->data->fileOptions->path.
         std::string logFilePath = appStoragePath + "/" + appId + ".log";
         ociConfigRootNode[RDKPLUGINS][LOGGING][LOG_DATA][LOG_FILE_OPTIONS][PATH] = logFilePath;
     }
