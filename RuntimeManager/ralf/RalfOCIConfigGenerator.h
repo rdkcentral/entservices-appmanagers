@@ -188,12 +188,12 @@ namespace ralf
         /**
          * Adds a log name environment variable to the OCI config JSON for easier debugging of logs from the containerized app. 
          * The log will be stored in /data/<app_instance_id>.log on the host since we will mount /data from host to container. 
-         * This will be overwritten everytime the app is launched, but that is fine since we only care about the latest logs.
+         * This will be overwritten every time the app is launched, but that is fine since we only care about the latest logs.
          * @param ociConfigRootNode The root node of the OCI config JSON.
          * @param appStoragePath The storage path for the application in the host, used to construct the log file path.
-         * @param mAppId The application ID to be used in the log file name.
+         * @param appId The application ID to be used in the log file name.
          */
-        void addLogNameToOCIConfig(Json::Value &ociConfigRootNode, const std::string appStoragePath, const std::string &mAppId);
+        void addLogNameToOCIConfig(Json::Value &ociConfigRootNode, const std::string appStoragePath, const std::string &appId);
 
         /**
          * The vector of Ralf package details as pairs of mount point and metadata path.
