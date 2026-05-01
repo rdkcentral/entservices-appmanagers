@@ -9,6 +9,8 @@ L1_ROOT="${REPO_ROOT}/l1build"
 SRC_ROOT="${L1_ROOT}/src"
 BUILD_ROOT="${L1_ROOT}/build"
 INSTALL_ROOT="${L1_ROOT}/install/usr"
+BUILD_THREADS="${BUILD_THREADS:-$(nproc 2>/dev/null || getconf _NPROCESSORS_ONLN || echo 4)}"
+export CMAKE_BUILD_PARALLEL_LEVEL="${BUILD_THREADS}"
 
 THUNDER_REF="R4.4.1"
 THUNDERTOOLS_REF="R4.4.3"
@@ -150,7 +152,7 @@ ensure_jsoncpp() {
         -DJSONCPP_WITH_POST_BUILD_UNITTEST=OFF \
         -DJSONCPP_WITH_PKGCONFIG_SUPPORT=ON \
         -DCMAKE_INSTALL_PREFIX="${INSTALL_ROOT}"
-    cmake --build "${BUILD_ROOT}/jsoncpp" -j"$(nproc)"
+    cmake --build "${BUILD_ROOT}/jsoncpp" --parallel "${BUILD_THREADS}"
     cmake --install "${BUILD_ROOT}/jsoncpp"
 
     JSONCPP_INCLUDE_DIR="$(resolve_jsoncpp_include)"
@@ -200,7 +202,7 @@ cmake -G Ninja \
     -DCMAKE_INSTALL_PREFIX="${INSTALL_ROOT}" \
     -DCMAKE_MODULE_PATH="${INSTALL_ROOT}/../tools/cmake" \
     -DGENERIC_CMAKE_MODULE_PATH="${INSTALL_ROOT}/../tools/cmake"
-cmake --build "${BUILD_ROOT}/ThunderTools" -j"$(nproc)"
+cmake --build "${BUILD_ROOT}/ThunderTools" --parallel "${BUILD_THREADS}"
 cmake --install "${BUILD_ROOT}/ThunderTools"
 
 echo "[4/8] Building Thunder"
@@ -215,7 +217,7 @@ cmake -G Ninja \
     -DBINDING=127.0.0.1 \
     -DPORT=55555 \
     -DEXCEPTIONS_ENABLE=ON
-cmake --build "${BUILD_ROOT}/Thunder" -j"$(nproc)"
+cmake --build "${BUILD_ROOT}/Thunder" --parallel "${BUILD_THREADS}"
 cmake --install "${BUILD_ROOT}/Thunder"
 
 echo "[5/8] Building entservices-apis"
@@ -225,7 +227,7 @@ cmake -G Ninja \
     -DEXCEPTIONS_ENABLE=ON \
     -DCMAKE_INSTALL_PREFIX="${INSTALL_ROOT}" \
     -DCMAKE_MODULE_PATH="${INSTALL_ROOT}/../tools/cmake"
-cmake --build "${BUILD_ROOT}/entservices-apis" -j"$(nproc)"
+cmake --build "${BUILD_ROOT}/entservices-apis" --parallel "${BUILD_THREADS}"
 cmake --install "${BUILD_ROOT}/entservices-apis"
 
 echo "[6/8] Building googletest"
@@ -239,7 +241,7 @@ cmake -G Ninja \
     -DBUILD_GMOCK=ON \
     -DBUILD_SHARED_LIBS=OFF \
     -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-cmake --build "${BUILD_ROOT}/googletest" -j"$(nproc)"
+cmake --build "${BUILD_ROOT}/googletest" --parallel "${BUILD_THREADS}"
 cmake --install "${BUILD_ROOT}/googletest"
 
 echo "[7/8] Preparing generated external headers"
@@ -334,9 +336,9 @@ cmake -G Ninja \
     -DCMAKE_EXE_LINKER_FLAGS="${LINKER_SEARCH_FLAGS}" \
     -DCMAKE_MODULE_LINKER_FLAGS="${LINKER_SEARCH_FLAGS}" \
     "${JSONCPP_CMAKE_ARGS[@]}" \
-    -DCMAKE_CXX_FLAGS="-fprofile-arcs -ftest-coverage -DEXCEPTIONS_ENABLE=ON -DUSE_THUNDER_R4=ON -DTHUNDER_VERSION=4 -DTHUNDER_VERSION_MAJOR=4 -DTHUNDER_VERSION_MINOR=4 -DRDK_SERVICES_L1_TEST -DBUILD_L1_TESTS_SHARED_MODULE=OFF -I ${REPO_ROOT}/Tests/headers -I ${REPO_ROOT}/Tests/headers/audiocapturemgr -I ${REPO_ROOT}/Tests/headers/rdk/ds -I ${REPO_ROOT}/Tests/headers/rdk/iarmbus -I ${REPO_ROOT}/Tests/headers/rdk/iarmmgrs-hal -I ${REPO_ROOT}/Tests/headers/ccec/drivers -I ${REPO_ROOT}/Tests/headers/network -I ${REPO_ROOT}/Tests/headers/libusb -I ${REPO_ROOT}/Tests -I ${REPO_ROOT}/Tests/headers/Dobby -I ${REPO_ROOT}/Tests/headers/Dobby/Public/Dobby -I ${REPO_ROOT}/Tests/headers/Dobby/IpcService -I ${REPO_ROOT}/Tests/headers/rdkwindowmanager/include -I ${SRC_ROOT}/Thunder/Source -I ${SRC_ROOT}/Thunder/Source/core -I ${SRC_ROOT}/Thunder/Source/plugins -I ${INSTALL_ROOT}/include -I ${INSTALL_ROOT}/include/WPEFramework -I ${INSTALL_ROOT}/include/WPEFramework/plugins -include ${REPO_ROOT}/Tests/mocks/Iarm.h -include ${REPO_ROOT}/Tests/mocks/Rfc.h -include ${REPO_ROOT}/Tests/mocks/RBus.h -include ${REPO_ROOT}/Tests/mocks/Telemetry.h -include ${REPO_ROOT}/Tests/mocks/Udev.h -include ${REPO_ROOT}/Tests/mocks/maintenanceMGR.h -include ${REPO_ROOT}/Tests/mocks/pkg.h -include ${REPO_ROOT}/Tests/mocks/secure_wrappermock.h -include ${REPO_ROOT}/Tests/mocks/wpa_ctrl_mock.h -include ${REPO_ROOT}/Tests/mocks/readprocMockInterface.h -include ${REPO_ROOT}/Tests/mocks/gdialservice.h -include ${REPO_ROOT}/Tests/mocks/RdkWindowManager.h --coverage -Wall -Wno-unused-result -Wno-deprecated-declarations -Wno-error=format= -Wl,-wrap,system -Wl,-wrap,popen -Wl,-wrap,syslog -Wl,-wrap,v_secure_system -Wl,-wrap,v_secure_popen -Wl,-wrap,v_secure_pclose -Wl,-wrap,unlink -DUSE_IARMBUS -DENABLE_SYSTEM_GET_STORE_DEMO_LINK -DENABLE_DEEP_SLEEP -DENABLE_SET_WAKEUP_SRC_CONFIG -DENABLE_THERMAL_PROTECTION -DDISABLE_SECURITY_TOKEN -DUSE_DRM_SCREENCAPTURE -DHAS_API_SYSTEM -DHAS_API_POWERSTATE -DHAS_RBUS -DENABLE_DEVICE_MANUFACTURER_INFO"
+    -DCMAKE_CXX_FLAGS="-fprofile-arcs -ftest-coverage -DEXCEPTIONS_ENABLE=ON -DUSE_THUNDER_R4=ON -DTHUNDER_VERSION=4 -DTHUNDER_VERSION_MAJOR=4 -DTHUNDER_VERSION_MINOR=4 -DRDK_SERVICES_L1_TEST -DBUILD_L1_TESTS_SHARED_MODULE=OFF -I ${REPO_ROOT}/Tests/headers -I ${REPO_ROOT}/Tests/headers/audiocapturemgr -I ${REPO_ROOT}/Tests/headers/rdk/ds -I ${REPO_ROOT}/Tests/headers/rdk/iarmbus -I ${REPO_ROOT}/Tests/headers/rdk/iarmmgrs-hal -I ${REPO_ROOT}/Tests/headers/ccec/drivers -I ${REPO_ROOT}/Tests/headers/network -I ${REPO_ROOT}/Tests/headers/libusb -I ${REPO_ROOT}/Tests -I ${REPO_ROOT}/Tests/headers/Dobby -I ${REPO_ROOT}/Tests/headers/Dobby/Public/Dobby -I ${REPO_ROOT}/Tests/headers/Dobby/IpcService -I ${REPO_ROOT}/Tests/headers/rdkwindowmanager/include -I ${REPO_ROOT}/helpers/Telemetry -I ${SRC_ROOT}/Thunder/Source -I ${SRC_ROOT}/Thunder/Source/core -I ${SRC_ROOT}/Thunder/Source/plugins -I ${INSTALL_ROOT}/include -I ${INSTALL_ROOT}/include/WPEFramework -I ${INSTALL_ROOT}/include/WPEFramework/plugins -include ${REPO_ROOT}/Tests/mocks/Iarm.h -include ${REPO_ROOT}/Tests/mocks/Rfc.h -include ${REPO_ROOT}/Tests/mocks/RBus.h -include ${REPO_ROOT}/Tests/mocks/Telemetry.h -include ${REPO_ROOT}/Tests/mocks/Udev.h -include ${REPO_ROOT}/Tests/mocks/maintenanceMGR.h -include ${REPO_ROOT}/Tests/mocks/pkg.h -include ${REPO_ROOT}/Tests/mocks/secure_wrappermock.h -include ${REPO_ROOT}/Tests/mocks/wpa_ctrl_mock.h -include ${REPO_ROOT}/Tests/mocks/readprocMockInterface.h -include ${REPO_ROOT}/Tests/mocks/gdialservice.h -include ${REPO_ROOT}/Tests/mocks/RdkWindowManager.h --coverage -Wall -Wno-unused-result -Wno-deprecated-declarations -Wno-error=format= -Wl,-wrap,system -Wl,-wrap,popen -Wl,-wrap,syslog -Wl,-wrap,v_secure_system -Wl,-wrap,v_secure_popen -Wl,-wrap,v_secure_pclose -Wl,-wrap,unlink -DUSE_IARMBUS -DENABLE_SYSTEM_GET_STORE_DEMO_LINK -DENABLE_DEEP_SLEEP -DENABLE_SET_WAKEUP_SRC_CONFIG -DENABLE_THERMAL_PROTECTION -DDISABLE_SECURITY_TOKEN -DUSE_DRM_SCREENCAPTURE -DHAS_API_SYSTEM -DHAS_API_POWERSTATE -DHAS_RBUS -DENABLE_DEVICE_MANUFACTURER_INFO"
 
-cmake --build "${BUILD_ROOT}/entservices-appmanagers" -j"$(nproc)"
+cmake --build "${BUILD_ROOT}/entservices-appmanagers" --parallel "${BUILD_THREADS}"
 cmake --install "${BUILD_ROOT}/entservices-appmanagers"
 
 echo "Running RdkServicesL1Test"
