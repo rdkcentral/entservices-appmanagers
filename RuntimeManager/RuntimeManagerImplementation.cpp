@@ -39,7 +39,7 @@ namespace WPEFramework
         RuntimeManagerImplementation *RuntimeManagerImplementation::_instance = nullptr;
 
         RuntimeManagerImplementation::RuntimeManagerImplementation()
-            : mRuntimeManagerImplLock(), mCurrentservice(nullptr), mOciContainerObject(nullptr), mStorageManagerObject(nullptr), mWindowManagerConnector(nullptr), mDobbyEventListener(nullptr), mUserIdManager(nullptr), mRuntimeAppPortal("")
+            : mRuntimeManagerImplLock(), mCurrentservice(nullptr), mOciContainerObject(nullptr), mStorageManagerObject(nullptr), mWindowManagerConnector(nullptr), mDobbyEventListener(nullptr), mUserIdManager(nullptr), mRuntimeAppPortal(""), mRuntimeConfigFile(""), mAIConfiguration(nullptr)
         {
             LOGINFO("Create RuntimeManagerImplementation Instance");
             if (nullptr == RuntimeManagerImplementation::_instance)
@@ -89,6 +89,12 @@ namespace WPEFramework
             if (nullptr != mOciContainerObject)
             {
                 releaseOCIContainerPluginObject();
+            }
+
+            if (nullptr != mAIConfiguration)
+            {
+                delete mAIConfiguration;
+                mAIConfiguration = nullptr;
             }
 
             RuntimeManagerTelemetryReporting::getInstance().reset();
@@ -288,6 +294,13 @@ namespace WPEFramework
                     mRuntimeAppPortal = config.runtimeAppPortal.Value();
                 }
                 LOGINFO("runtimeAppPortal=%s", mRuntimeAppPortal.c_str());
+                if (!config.runtimeConfigFile.Value().empty())
+                {
+                    mRuntimeConfigFile = config.runtimeConfigFile.Value();
+                }
+                LOGINFO("runtimeConfigFile=%s", mRuntimeConfigFile.c_str());
+                mAIConfiguration = new AIConfiguration();
+                mAIConfiguration->initialize(mRuntimeConfigFile);
             }
             else
             {
@@ -457,8 +470,13 @@ namespace WPEFramework
             ralf::RalfPackageBuilder ralfBuilder;
             return ralfBuilder.generateRalfDobbySpec(config, runtimeConfigObject, dobbySpec);
 #else
-            DobbySpecGenerator generator;
-            return generator.generate(config, runtimeConfigObject, dobbySpec);
+        if (nullptr == mAIConfiguration)
+        {
+            LOGERR("AIConfiguration not initialized");
+            return false;
+        }
+        DobbySpecGenerator generator(*mAIConfiguration);
+        return generator.generate(config, runtimeConfigObject, dobbySpec);
 #endif // RALF_PACKAGE_SUPPORT_ENABLED
         }
 
@@ -682,7 +700,7 @@ namespace WPEFramework
                 notifyParamCheckFailure = true;
             }
             /* Generate dobbySpec for the selected container mode (legacy or non-legacy) */
-            else if (false == RuntimeManagerImplementation::generate(config, runtimeConfigObject, dobbySpec))
+            else if (false == generate(config, runtimeConfigObject, dobbySpec))
             {
                 LOGERR("Failed to generate dobbySpec");
                 status = Core::ERROR_GENERAL;
