@@ -1374,7 +1374,14 @@ uint32_t Test_Impl_ActiveDownloadMismatchIdOperations()
         "Cancel() with mismatched downloadId returns ERROR_UNKNOWN_KEY");
 
     // Cancel the real download to let the thread exit cleanly
-    impl->Cancel(downloadId);
+    // The source resets bCancel at the start of every downloadFile() call, so a
+    // cancel issued before curl_easy_perform has started is silently lost.
+    // Retry Cancel every 100 ms until the completion notification arrives;
+    // at some iteration the cancel will land while curl is running and abort it.
+    for (int i = 0; i < 50 && notif.onAppDownloadStatusCount.load() == 0u; ++i) {
+        impl->Cancel(downloadId);
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
     WaitFor([&]{ return notif.onAppDownloadStatusCount.load() > 0u; }, 5000u);
 
     impl->Unregister(&notif);
