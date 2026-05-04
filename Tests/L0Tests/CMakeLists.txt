@@ -9,6 +9,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 option(PLUGIN_RUNTIME_MANAGER    "Build RuntimeManager L0 test target"    ON)
 option(PLUGIN_LIFECYCLE_MANAGER  "Build LifecycleManager L0 test target"  ON)
 option(PLUGIN_RDK_WINDOW_MANAGER "Build RDKWindowManager L0 test target"  ON)
+option(PLUGIN_DOWNLOAD_MANAGER   "Build DownloadManager L0 test target"   ON)
 option(PLUGIN_APP_STORAGE_MANAGER "Build AppStorageManager L0 test target" ON)
 option(PLUGIN_PACKAGE_MANAGER    "Build PackageManager L0 test target"    ON)
 option(PLUGIN_PREINSTALL_MANAGER "Build PreinstallManager L0 test target" ON)
@@ -16,6 +17,7 @@ option(PLUGIN_PREINSTALL_MANAGER "Build PreinstallManager L0 test target" ON)
 option(APPMGR_ENABLE_COVERAGE  "Enable coverage flags for runtimemanager_l0test"    ON)
 option(APPLCM_ENABLE_COVERAGE  "Enable coverage flags for lifecyclemanager_l0test"  ON)
 option(APPWM_ENABLE_COVERAGE   "Enable coverage flags for rdkwindowmanager_l0test"  ON)
+option(APPDM_ENABLE_COVERAGE   "Enable coverage flags for downloadmanager_l0test"   ON)
 option(APPASM_ENABLE_COVERAGE  "Enable coverage flags for appstorage_l0test"       ON)
 option(APPPKG_ENABLE_COVERAGE  "Enable coverage flags for packagemanager_l0test"    ON)
 option(APPMGR_PREINSTALL_ENABLE_COVERAGE  "Enable coverage flags for preinstall_manager_l0test"  ON)
@@ -119,6 +121,22 @@ set(RDKWINDOWMANAGER_L0_SOURCES
     common/L0Bootstrap.cpp
 )
 
+set(DOWNLOAD_MANAGER_L0_SOURCES
+    ${CMAKE_SOURCE_DIR}/../../DownloadManager/Module.cpp
+    ${CMAKE_SOURCE_DIR}/../../DownloadManager/DownloadManager.cpp
+    ${CMAKE_SOURCE_DIR}/../../DownloadManager/DownloadManagerImplementation.cpp
+    ${CMAKE_SOURCE_DIR}/../../DownloadManager/DownloadManagerHttpClient.cpp
+    ${CMAKE_SOURCE_DIR}/../../DownloadManager/DownloadManagerTelemetryReporting.cpp
+    ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry/TelemetryReportingBase.cpp
+    ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry/UtilsTelemetryMetrics.cpp
+    DownloadManager/DownloadManagerTest.cpp
+    DownloadManager/DownloadManager_LifecycleTests.cpp
+    DownloadManager/DownloadManager_ImplementationTests.cpp
+    DownloadManager/DownloadManager_HttpClientTests.cpp
+    DownloadManager/DownloadManager_TelemetryTests.cpp
+    common/L0Bootstrap.cpp
+)
+
 set(APPSTORAGE_MANAGER_L0_SOURCES
     ${CMAKE_SOURCE_DIR}/../../AppStorageManager/Module.cpp
     ${CMAKE_SOURCE_DIR}/../../AppStorageManager/AppStorageManager.cpp
@@ -184,6 +202,12 @@ else()
     message(STATUS "PLUGIN_RDK_WINDOW_MANAGER=OFF; skipping rdkwindowmanager_l0test target")
 endif()
 
+if(PLUGIN_DOWNLOAD_MANAGER)
+    add_executable(downloadmanager_l0test ${DOWNLOAD_MANAGER_L0_SOURCES})
+else()
+    message(STATUS "PLUGIN_DOWNLOAD_MANAGER=OFF; skipping downloadmanager_l0test target")
+endif()
+
 if(PLUGIN_APP_STORAGE_MANAGER)
     add_executable(appstorage_l0test ${APPSTORAGE_MANAGER_L0_SOURCES})
 else()
@@ -202,18 +226,23 @@ else()
     message(STATUS "PLUGIN_PREINSTALL_MANAGER=OFF; skipping preinstall_manager_l0test target")
 endif()
 
-if(NOT PLUGIN_RUNTIME_MANAGER AND NOT PLUGIN_LIFECYCLE_MANAGER AND NOT PLUGIN_RDK_WINDOW_MANAGER AND NOT PLUGIN_PACKAGE_MANAGER AND NOT PLUGIN_APP_STORAGE_MANAGER AND NOT PLUGIN_PREINSTALL_MANAGER)
-    message(FATAL_ERROR "No L0 target enabled. Enable at least one of PLUGIN_RUNTIME_MANAGER, PLUGIN_LIFECYCLE_MANAGER, PLUGIN_RDK_WINDOW_MANAGER, PLUGIN_PACKAGE_MANAGER, PLUGIN_APP_STORAGE_MANAGER, or PLUGIN_PREINSTALL_MANAGER.")
+if(NOT PLUGIN_RUNTIME_MANAGER AND NOT PLUGIN_LIFECYCLE_MANAGER AND NOT PLUGIN_RDK_WINDOW_MANAGER AND NOT PLUGIN_DOWNLOAD_MANAGER AND NOT PLUGIN_PACKAGE_MANAGER AND NOT PLUGIN_APP_STORAGE_MANAGER AND NOT PLUGIN_PREINSTALL_MANAGER)
+    message(FATAL_ERROR "No L0 target enabled. Enable at least one of PLUGIN_RUNTIME_MANAGER, PLUGIN_LIFECYCLE_MANAGER, PLUGIN_RDK_WINDOW_MANAGER, PLUGIN_DOWNLOAD_MANAGER, PLUGIN_PACKAGE_MANAGER, PLUGIN_APP_STORAGE_MANAGER, or PLUGIN_PREINSTALL_MANAGER.")
 endif()
+
+# ---------------------------------------------------------------------------
+# Common third-party library discovery (jsoncpp and curl are used by both
+# RuntimeManager and DownloadManager; find once and reuse across targets)
+# ---------------------------------------------------------------------------
+find_path(JSONCPP_INCLUDE_DIR NAMES json/json.h
+    HINTS /usr/include/jsoncpp /usr/local/include/jsoncpp "${PREFIX}/include/jsoncpp")
+find_library(JSONCPP_LIB NAMES jsoncpp HINTS "${PREFIX}/lib" /usr/lib /usr/local/lib)
+find_library(CURL_LIB    NAMES curl    HINTS "${PREFIX}/lib" /usr/lib /usr/local/lib)
 
 # ---------------------------------------------------------------------------
 # RuntimeManager target compile options / definitions / includes
 # ---------------------------------------------------------------------------
 if(PLUGIN_RUNTIME_MANAGER)
-    # Locate jsoncpp headers (needed by AIConfiguration and DobbySpecGenerator)
-    find_path(JSONCPP_INCLUDE_DIR NAMES json/json.h
-        HINTS /usr/include/jsoncpp /usr/local/include/jsoncpp "${PREFIX}/include/jsoncpp")
-
     target_compile_definitions(runtimemanager_l0test PRIVATE
         MODULE_NAME=RuntimeManager_L0Test
         PLUGIN_RUNTIME_MANAGER_IMPLEMENTATION_NAME="RuntimeManagerImplementation"
@@ -303,6 +332,8 @@ if(PLUGIN_LIFECYCLE_MANAGER)
         ${CMAKE_SOURCE_DIR}/../../LifecycleManager
         ${CMAKE_SOURCE_DIR}/../../helpers
         ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry
+        ${PREFIX}/include
+        ${PREFIX}/include/${NAMESPACE}
     )
 
     if(EXISTS "${PREFIX}/lib")
@@ -371,6 +402,59 @@ if(PLUGIN_RDK_WINDOW_MANAGER)
 endif()
 
 # ---------------------------------------------------------------------------
+# DownloadManager target compile options / definitions / includes
+# ---------------------------------------------------------------------------
+if(PLUGIN_DOWNLOAD_MANAGER)
+    target_compile_definitions(downloadmanager_l0test PRIVATE
+        MODULE_NAME=DownloadManager_L0Test
+        PLUGIN_DOWNLOAD_MANAGER_IMPLEMENTATION_NAME="DownloadManagerImplementation"
+    )
+
+    # Force include L0TestConfig.h in all source files
+    target_compile_options(downloadmanager_l0test PRIVATE
+        -include ${CMAKE_CURRENT_SOURCE_DIR}/common/L0TestConfig.h
+    )
+
+    if(APPDM_ENABLE_COVERAGE)
+        target_compile_options(downloadmanager_l0test PRIVATE -O0 -g --coverage)
+        target_link_options(downloadmanager_l0test PRIVATE --coverage)
+    endif()
+
+    if(L0_ENABLE_WARNINGS)
+        target_compile_options(downloadmanager_l0test PRIVATE -Wall -Wextra -Wno-unused-parameter)
+    endif()
+
+    # Suppress deprecation warnings from Thunder/WPEFramework headers
+    target_compile_options(downloadmanager_l0test PRIVATE -Wno-error=deprecated-declarations)
+
+    target_include_directories(downloadmanager_l0test PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/DownloadManager
+        ${CMAKE_CURRENT_SOURCE_DIR}/common
+        ${CMAKE_SOURCE_DIR}/../..
+        ${CMAKE_SOURCE_DIR}/../../DownloadManager
+        ${CMAKE_SOURCE_DIR}/../../helpers
+        ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry
+        ${PREFIX}/include
+        ${PREFIX}/include/${NAMESPACE}
+    )
+
+    if(JSONCPP_INCLUDE_DIR)
+        target_include_directories(downloadmanager_l0test PRIVATE ${JSONCPP_INCLUDE_DIR})
+    endif()
+
+    if(EXISTS "${PREFIX}/lib")
+        target_link_directories(downloadmanager_l0test PRIVATE "${PREFIX}/lib")
+    endif()
+    if(EXISTS "${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins")
+        target_link_directories(downloadmanager_l0test PRIVATE "${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins")
+    endif()
+    if(EXISTS "${PREFIX}/lib/plugins")
+        target_link_directories(downloadmanager_l0test PRIVATE "${PREFIX}/lib/plugins")
+    endif()
+endif()
+
+# ---------------------------------------------------------------------------
 # AppStorageManager target compile options / definitions / includes
 # ---------------------------------------------------------------------------
 if(PLUGIN_APP_STORAGE_MANAGER)
@@ -421,6 +505,8 @@ if(PLUGIN_APP_STORAGE_MANAGER)
         target_link_directories(appstorage_l0test PRIVATE "${PREFIX}/lib/plugins")
     endif()
 endif()
+
+# ---------------------------------------------------------------------------
 # PackageManager target compile options / definitions / includes
 # ---------------------------------------------------------------------------
 if(PLUGIN_PACKAGE_MANAGER)
@@ -458,7 +544,7 @@ if(PLUGIN_PACKAGE_MANAGER)
         ${PREFIX}/include
         ${PREFIX}/include/${NAMESPACE}
     )
-    
+
     if(JSONCPP_INCLUDE_DIR_PKG)
         target_include_directories(packagemanager_l0test PRIVATE ${JSONCPP_INCLUDE_DIR_PKG})
     endif()
@@ -557,6 +643,12 @@ if(PLUGIN_APP_STORAGE_MANAGER)
         ${PREFIX}/include/${NAMESPACE}
     )
 endif()
+if(PLUGIN_DOWNLOAD_MANAGER)
+    target_include_directories(downloadmanager_l0test PRIVATE
+	${PREFIX}/include
+        ${PREFIX}/include/${NAMESPACE}
+    )
+endif()
 if(PLUGIN_PACKAGE_MANAGER)
     target_include_directories(packagemanager_l0test PRIVATE
         ${PREFIX}/include
@@ -585,6 +677,11 @@ if(CMAKE_PREFIX_PATH)
             if(PLUGIN_APP_STORAGE_MANAGER)
                 target_include_directories(appstorage_l0test SYSTEM PRIVATE "${_prefix}/include")
             endif()
+
+            if(PLUGIN_DOWNLOAD_MANAGER)
+                target_include_directories(downloadmanager_l0test PRIVATE "${_prefix}/include")
+            endif()
+
             if(PLUGIN_PACKAGE_MANAGER)
                 target_include_directories(packagemanager_l0test PRIVATE "${_prefix}/include")
             endif()
@@ -605,6 +702,9 @@ if(CMAKE_PREFIX_PATH)
             if(PLUGIN_APP_STORAGE_MANAGER)
                 target_include_directories(appstorage_l0test SYSTEM PRIVATE "${_prefix}/include/${NAMESPACE}")
             endif()
+            if(PLUGIN_DOWNLOAD_MANAGER)
+                target_include_directories(downloadmanager_l0test PRIVATE "${_prefix}/include/${NAMESPACE}")
+	    endif()
             if(PLUGIN_PACKAGE_MANAGER)
                 target_include_directories(packagemanager_l0test PRIVATE "${_prefix}/include/${NAMESPACE}")
             endif()
@@ -625,6 +725,9 @@ if(PLUGIN_LIFECYCLE_MANAGER)
 endif()
 if(PLUGIN_RDK_WINDOW_MANAGER)
     list(APPEND _L0_TARGETS rdkwindowmanager_l0test)
+endif()
+if(PLUGIN_DOWNLOAD_MANAGER)
+    list(APPEND _L0_TARGETS downloadmanager_l0test)
 endif()
 if(PLUGIN_APP_STORAGE_MANAGER)
     list(APPEND _L0_TARGETS appstorage_l0test)
@@ -661,8 +764,6 @@ endforeach()
 
 # RuntimeManager-specific libraries (jsoncpp, curl, iptables)
 if(PLUGIN_RUNTIME_MANAGER)
-    find_library(JSONCPP_LIB  NAMES jsoncpp HINTS "${PREFIX}/lib" /usr/lib /usr/local/lib)
-    find_library(CURL_LIB     NAMES curl    HINTS "${PREFIX}/lib" /usr/lib /usr/local/lib)
     # Gateway sources require libip4tc and libip6tc (iptables)
     find_library(LIBIP4TC_LIB NAMES ip4tc libip4tc HINTS /usr/lib /usr/local/lib)
     find_library(LIBIP6TC_LIB NAMES ip6tc libip6tc HINTS /usr/lib /usr/local/lib)
@@ -687,6 +788,20 @@ if(PLUGIN_RUNTIME_MANAGER)
     else()
         target_link_libraries(runtimemanager_l0test PRIVATE ip6tc)
     endif()
+endif()
+
+# DownloadManager-specific libraries (curl, jsoncpp)
+if(PLUGIN_DOWNLOAD_MANAGER)
+    if(JSONCPP_LIB)
+        target_link_libraries(downloadmanager_l0test PRIVATE ${JSONCPP_LIB})
+    else()
+        target_link_libraries(downloadmanager_l0test PRIVATE jsoncpp)
+    endif()
+    if(CURL_LIB)
+        target_link_libraries(downloadmanager_l0test PRIVATE ${CURL_LIB})
+    else()
+        target_link_libraries(downloadmanager_l0test PRIVATE curl)
+     endif()
 endif()
 
 # PackageManager-specific libraries (jsoncpp, curl)
@@ -747,6 +862,13 @@ if(PLUGIN_RDK_WINDOW_MANAGER)
     )
 endif()
 
+if(PLUGIN_DOWNLOAD_MANAGER)
+    set_target_properties(downloadmanager_l0test PROPERTIES
+	BUILD_RPATH   "$ORIGIN;${PREFIX}/lib;${PREFIX}/lib/${STORAGE_DIRECTORY};${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins;${PREFIX}/lib/plugins"
+	INSTALL_RPATH "${PREFIX}/lib;${PREFIX}/lib/${STORAGE_DIRECTORY};${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins;${PREFIX}/lib/plugins"
+    )
+endif()
+
 if(PLUGIN_APP_STORAGE_MANAGER)
     set_target_properties(appstorage_l0test PROPERTIES
         BUILD_RPATH   "$ORIGIN;${PREFIX}/lib;${PREFIX}/lib/${STORAGE_DIRECTORY};${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins;${PREFIX}/lib/plugins"
@@ -789,12 +911,22 @@ if(PLUGIN_LIFECYCLE_MANAGER)
     )
 endif()
 
+
 if(PLUGIN_RDK_WINDOW_MANAGER)
     add_custom_target(run_rdkwindowmanager
         DEPENDS rdkwindowmanager_l0test
         COMMAND $<TARGET_FILE:rdkwindowmanager_l0test>
         COMMENT "Running rdkwindowmanager_l0test"
         VERBATIM
+    )
+endif()
+
+if(PLUGIN_DOWNLOAD_MANAGER)
+    add_custom_target(run_downloadmanager
+        DEPENDS downloadmanager_l0test
+        COMMAND $<TARGET_FILE:downloadmanager_l0test>
+        COMMENT "Running downloadmanager_l0test"
+	VERBATIM
     )
 endif()
 
@@ -842,6 +974,7 @@ else()
     if(PLUGIN_LIFECYCLE_MANAGER)
         list(APPEND COVERAGE_DEPENDS lifecyclemanager_l0test)
     endif()
+
     if(PLUGIN_RDK_WINDOW_MANAGER)
         list(APPEND COVERAGE_DEPENDS rdkwindowmanager_l0test)
     endif()
@@ -853,6 +986,10 @@ else()
     endif()
     if(PLUGIN_PREINSTALL_MANAGER)
         list(APPEND COVERAGE_DEPENDS preinstall_manager_l0test)
+    endif()
+
+    if(PLUGIN_DOWNLOAD_MANAGER)
+        list(APPEND COVERAGE_DEPENDS downloadmanager_l0test)
     endif()
 
     add_custom_target(coverage
