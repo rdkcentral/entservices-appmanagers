@@ -175,6 +175,7 @@ extern uint32_t Test_RalfOCIConfigGenerator_GenerateFailsWhenGraphicsConfigMissi
 extern uint32_t Test_RalfOCIConfigGenerator_GenerateWithMockBaseSpec();
 extern uint32_t Test_RalfOCIConfigGenerator_MultipleGenerateCallsDoNotCrash();
 extern uint32_t Test_RalfOCIConfigGenerator_GenerateWithDifferentAppInstances();
+extern uint32_t Test_RalfOCIConfigGenerator_LogPathSetCorrectlyInOCIConfig();
 
 // ── Gateway/ContainerUtils tests ─────────────────────────────────────────────
 extern uint32_t Test_ContainerUtils_GetContainerIpAddress_UnknownContainerReturnsZero();
@@ -450,6 +451,7 @@ int main()
         { "RalfOCIConfigGenerator_GenerateWithMockBaseSpec",                         Test_RalfOCIConfigGenerator_GenerateWithMockBaseSpec },
         { "RalfOCIConfigGenerator_MultipleGenerateCallsDoNotCrash",                  Test_RalfOCIConfigGenerator_MultipleGenerateCallsDoNotCrash },
         { "RalfOCIConfigGenerator_GenerateWithDifferentAppInstances",                Test_RalfOCIConfigGenerator_GenerateWithDifferentAppInstances },
+        { "RalfOCIConfigGenerator_LogPathSetCorrectlyInOCIConfig",                   Test_RalfOCIConfigGenerator_LogPathSetCorrectlyInOCIConfig },
 
         // ── Gateway/ContainerUtils tests ─────────────────────────────────────
         { "ContainerUtils_GetContainerIpAddress_UnknownContainerReturnsZero",        Test_ContainerUtils_GetContainerIpAddress_UnknownContainerReturnsZero },
