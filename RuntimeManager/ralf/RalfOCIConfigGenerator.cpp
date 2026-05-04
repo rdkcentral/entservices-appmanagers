@@ -89,7 +89,7 @@ namespace ralf
         return saveOCIConfigToFile(ociConfigRootNode, config.mUserId, config.mGroupId);
     }
 
-    void RalfOCIConfigGenerator::addLogNameToOCIConfig(Json::Value &ociConfigRootNode, const std::string appStoragePath, const std::string &appId)
+    void RalfOCIConfigGenerator::addLogNameToOCIConfig(Json::Value &ociConfigRootNode, const std::string &appStoragePath, const std::string &appId)
     {
         // Override the default log file path in the generated OCI config with an app-specific path.
         // The updated entry is rdkPlugins->logging->data->fileOptions->path.
