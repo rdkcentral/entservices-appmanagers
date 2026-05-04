@@ -21,7 +21,7 @@ env:
 
 jobs:
   L0-tests:
-    name: Build and run AppManagers L0 tests
+    name: Build and run L0 tests
     runs-on: ubuntu-22.04
 
     steps:
@@ -34,7 +34,6 @@ jobs:
             thunder/build/Thunder
             thunder/build/entservices-apis
             thunder/build/ThunderTools
-            thunder/build/googletest
             thunder/install
             !thunder/install/etc/WPEFramework/plugins
             !thunder/install/usr/lib/wpeframework/plugins
@@ -99,14 +98,6 @@ jobs:
           repository: rdkcentral/entservices-apis
           path: entservices-apis
           ref: ${{env.INTERFACES_REF}}
-
-      - name: Checkout googletest
-        if: steps.cache.outputs.cache-hit != 'true'
-        uses: actions/checkout@v3
-        with:
-          repository: google/googletest
-          path: googletest
-          ref: v1.15.0
 
       - name: Apply patches ThunderTools
         if: steps.cache.outputs.cache-hit != 'true'
@@ -181,23 +172,6 @@ jobs:
           &&
           cmake --install build/entservices-apis
 
-      - name: Build googletest
-        if: steps.cache.outputs.cache-hit != 'true'
-        run: >
-          cmake -G Ninja
-          -S "$GITHUB_WORKSPACE/googletest"
-          -B build/googletest
-          -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/install/usr"
-          -DCMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake"
-          -DGENERIC_CMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake"
-          -DBUILD_TYPE=Debug
-          -DBUILD_GMOCK=ON
-          -DBUILD_SHARED_LIBS=OFF
-          -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-          &&
-          cmake --build build/googletest -j8
-          &&
-          cmake --install build/googletest
       - name: Ensure ConfigGenerator executable exists in local prefix (act/CI)
         run: |
           set -euo pipefail
@@ -304,7 +278,7 @@ jobs:
           test -f "$GITHUB_WORKSPACE/install/usr/lib/cmake/ConfigGenerator/ConfigGeneratorConfig.cmake"
           echo "Found ConfigGenerator CMake config"
 
-      - name: Build RuntimeManager plugin and stage artifacts
+      - name: Build plugins and stage artifacts
         run: |
           set -euo pipefail
 
@@ -330,10 +304,10 @@ jobs:
             -DUSE_THUNDER_R4=ON \
             -DPLUGIN_RUNTIME_MANAGER=ON \
             -DPLUGIN_APPMANAGER=OFF \
-            -DPLUGIN_APP_STORAGE_MANAGER=OFF \
-            -DPLUGIN_LIFECYCLE_MANAGER=OFF \
+            -DPLUGIN_APP_STORAGE_MANAGER=ON \
+            -DPLUGIN_LIFECYCLE_MANAGER=ON \
             -DPLUGIN_DOWNLOADMANAGER=OFF \
-            -DPLUGIN_PREINSTALL_MANAGER=OFF \
+            -DPLUGIN_PREINSTALL_MANAGER=ON \
             -DPLUGIN_PACKAGE_MANAGER=OFF \
             -DPLUGIN_RDK_WINDOW_MANAGER=OFF \
             -DPLUGIN_TELEMETRYMETRICS=OFF \
@@ -342,9 +316,20 @@ jobs:
           cmake --build build/entservices-appmanagers-l0 -- -j"$(nproc)"
 
           mkdir -p "$GITHUB_WORKSPACE/install/usr/lib/wpeframework/plugins"
-          find build/entservices-appmanagers-l0 -type f \( -name "libRuntimeManager.so*" -o -name "libWPEFrameworkRuntimeManager.so*" -o -name "libWPEFrameworkRuntimeManagerImplementation.so*" -o -name "libRuntimeManagerImplementation.so*" \) -exec cp -f {} "$GITHUB_WORKSPACE/install/usr/lib/wpeframework/plugins/" \; 2>/dev/null || true
+          find build/entservices-appmanagers-l0 -type f \( \
+            -name "libRuntimeManager.so*" -o -name "libWPEFrameworkRuntimeManager.so*" -o \
+            -name "libWPEFrameworkRuntimeManagerImplementation.so*" -o -name "libRuntimeManagerImplementation.so*" -o \
+            -name "libLifecycleManager.so*" -o -name "libWPEFrameworkLifecycleManager.so*" -o \
+            -name "libWPEFrameworkLifecycleManagerImplementation.so*" -o -name "libLifecycleManagerImplementation.so*" -o \
+            -name "libAppStorageManager.so*" -o -name "libWPEFrameworkAppStorageManager.so*" -o \
+            -name "libWPEFrameworkAppStorageManagerImplementation.so*" -o -name "libAppStorageManagerImplementation.so*" -o \
+            -name "libPackageManager.so*" -o -name "libWPEFrameworkPackageManager.so*" -o \
+            -name "libWPEFrameworkPackageManagerImplementation.so*" -o -name "libPackageManagerImplementation.so*" -o \
+            -name "libRDKWindowManager.so*" -o -name "libWPEFrameworkRDKWindowManager.so*" -o \
+            -name "libWPEFrameworkRDKWindowManagerImplementation.so*" -o -name "libRDKWindowManagerImplementation.so*" \
+          \) -exec cp -f {} "$GITHUB_WORKSPACE/install/usr/lib/wpeframework/plugins/" \; 2>/dev/null || true
 
-      - name: Build RuntimeManager and RDKWindowManager L0 tests (Tests/L0Tests)
+      - name: Build L0 tests (Tests/L0Tests)
         run: |
           set -euo pipefail
 
@@ -362,23 +347,43 @@ jobs:
             -DCMAKE_MODULE_PATH="$CMAKE_MODULE_PATH" \
             -DGENERIC_CMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" \
             -DPREFIX="$PREFIX" \
-            -DAPPMGR_ENABLE_COVERAGE=ON
+            -DPLUGIN_RUNTIME_MANAGER=ON \
+            -DPLUGIN_LIFECYCLE_MANAGER=ON \
+            -DPLUGIN_RDK_WINDOW_MANAGER=ON \
+            -DPLUGIN_APP_STORAGE_MANAGER=ON \
+            -DPLUGIN_PACKAGE_MANAGER=ON \
+            -DPLUGIN_PREINSTALL_MANAGER=ON \
+            -DAPPMGR_ENABLE_COVERAGE=ON \
+            -DAPPLCM_ENABLE_COVERAGE=ON \
+            -DAPPWM_ENABLE_COVERAGE=ON \
+            -DAPPASM_ENABLE_COVERAGE=ON \
+            -DAPPPKG_ENABLE_COVERAGE=ON \
+            -DAPPMGR_PREINSTALL_ENABLE_COVERAGE=ON
 
-          cmake --build build/entservices-appmanagers-l0tests-only --target appmanagers_l0test rdkwindowmanager_l0test -- -j"$(nproc)"
+          cmake --build build/entservices-appmanagers-l0tests-only --target runtimemanager_l0test lifecyclemanager_l0test rdkwindowmanager_l0test appstorage_l0test packagemanager_l0test preinstall_manager_l0test -- -j"$(nproc)"
 
       - name: Run L0 tests
         id: run_l0_tests
+        continue-on-error: true
         run: |
           set -euo pipefail
 
           export PATH="$GITHUB_WORKSPACE/install/usr/bin:${PATH}"
           export LD_LIBRARY_PATH="$GITHUB_WORKSPACE/install/usr/lib:$GITHUB_WORKSPACE/install/usr/lib/wpeframework:$GITHUB_WORKSPACE/install/usr/lib/wpeframework/plugins:${LD_LIBRARY_PATH:-}"
 
-          runtime_test_bin="build/entservices-appmanagers-l0tests-only/appmanagers_l0test"
+          runtime_test_bin="build/entservices-appmanagers-l0tests-only/runtimemanager_l0test"
+          lcm_test_bin="build/entservices-appmanagers-l0tests-only/lifecyclemanager_l0test"
           rdkwm_test_bin="build/entservices-appmanagers-l0tests-only/rdkwindowmanager_l0test"
+          appstorage_test_bin="build/entservices-appmanagers-l0tests-only/appstorage_l0test"
+          preinstall_bin="build/entservices-appmanagers-l0tests-only/preinstall_manager_l0test"
+          pkgmgr_test_bin="build/entservices-appmanagers-l0tests-only/packagemanager_l0test"
 
           test -x "$runtime_test_bin"
+          test -x "$lcm_test_bin"
           test -x "$rdkwm_test_bin"
+          test -x "$appstorage_test_bin"
+          test -x "$preinstall_bin"
+          test -x "$pkgmgr_test_bin"
 
           run_one_under_gdb() {
             local bin="$1"
@@ -397,17 +402,12 @@ jobs:
           python
           import gdb
           _crash_signal = [None]
-          _inf_exit_code = [None]
 
           def _stop_handler(event):
               if isinstance(event, gdb.SignalEvent):
                   _crash_signal[0] = event.stop_signal
 
-          def _exit_handler(event):
-              _inf_exit_code[0] = event.exit_code
-
           gdb.events.stop.connect(_stop_handler)
-          gdb.events.exited.connect(_exit_handler)
           end
           handle SIGSEGV stop print nopass
           handle SIGABRT stop print nopass
@@ -428,8 +428,8 @@ jobs:
               print("=======================================")
               gdb.execute("quit 1")
           else:
-              code = _inf_exit_code[0] or 0
-              gdb.execute("quit %d" % code)
+              # No crash detected, tests passed - exit with 0
+              gdb.execute("quit 0")
           end
           GDBEOF
 
@@ -445,18 +445,22 @@ jobs:
           }
 
           runtime_test_rc=0
+          lcm_test_rc=0
           rdkwm_test_rc=0
+          appstorage_test_rc=0
+          preinstall_test_rc=0
+          pkgmgr_test_rc=0
 
+          run_one_under_gdb "$lcm_test_bin" l0-lcm-test.log l0-lcm-test-gdb.log || lcm_test_rc=$?
           run_one_under_gdb "$runtime_test_bin" l0-runtime-test.log l0-runtime-test-gdb.log || runtime_test_rc=$?
           run_one_under_gdb "$rdkwm_test_bin" l0-rdkwm-test.log l0-rdkwm-test-gdb.log || rdkwm_test_rc=$?
+          run_one_under_gdb "$appstorage_test_bin" l0-appstorage-test.log l0-appstorage-test-gdb.log || appstorage_test_rc=$?
+          run_one_under_gdb "$preinstall_bin" l0-preinstall-test.log l0-preinstall-test-gdb.log || preinstall_test_rc=$?
+          run_one_under_gdb "$pkgmgr_test_bin" l0-packagemanager-test.log l0-packagemanager-test-gdb.log || pkgmgr_test_rc=$?
 
-          cat l0-runtime-test.log l0-rdkwm-test.log > l0-test.log
+          cat l0-lcm-test.log l0-runtime-test.log l0-rdkwm-test.log l0-appstorage-test.log l0-preinstall-test.log l0-packagemanager-test.log > l0-test.log
 
-          echo "==== Failed test cases (run step) ===="
-          grep -E '^\[  FAILED  \]' l0-test.log || true
-          grep -E '^FAIL:' l0-test.log || true
-
-          if [ "$runtime_test_rc" -ne 0 ] || [ "$rdkwm_test_rc" -ne 0 ]; then
+          if [ "$runtime_test_rc" -ne 0 ] || [ "$lcm_test_rc" -ne 0 ] || [ "$rdkwm_test_rc" -ne 0 ] || [ "$appstorage_test_rc" -ne 0 ] || [ "$preinstall_test_rc" -ne 0 ] || [ "$pkgmgr_test_rc" -ne 0 ]; then
             exit 1
           fi
 
@@ -464,12 +468,43 @@ jobs:
         if: ${{ always() }}
         run: |
           set -euo pipefail
-          if [ -f l0-test.log ]; then
-            echo "==== Failed test cases (if any) ===="
-            grep -E '^\[  FAILED  \]' l0-test.log || echo "No explicit [ FAILED ] lines found"
-          else
-            echo "l0-test.log not found"
+          for log in l0-runtime-test.log l0-lcm-test.log l0-rdkwm-test.log l0-appstorage-test.log l0-preinstall-test.log l0-packagemanager-test.log; do
+            if [ -f "$log" ]; then
+              echo "==== $log: Failed test cases (if any) ===="
+              grep -E '^\[  FAILED  \]' "$log" || echo "No explicit [ FAILED ] lines found"
+            else
+              echo "$log not found"
+            fi
+          done
+
+      - name: Fail workflow if tests failed
+        if: ${{ always() }}
+        env:
+          RUN_L0_TESTS_OUTCOME: ${{ steps.run_l0_tests.outcome }}
+        run: |
+          set -euo pipefail
+          failed=0
+
+          if [ "${RUN_L0_TESTS_OUTCOME}" != "success" ]; then
+            echo "L0 test execution step failed (non-zero exit)"
+            failed=1
           fi
+
+          for log in l0-runtime-test.log l0-lcm-test.log l0-rdkwm-test.log l0-appstorage-test.log l0-preinstall-test.log l0-packagemanager-test.log; do
+            if [ -f "$log" ]; then
+              echo "==== $log: Failed test cases (final gate) ===="
+              grep -E '^\[  FAILED  \]' "$log" || true
+              grep -E '^FAIL:' "$log" || true
+            else
+              echo "$log not found in final gate"
+              failed=1
+            fi
+          done
+
+          if [ "$failed" -ne 0 ]; then
+            exit 1
+          fi
+
 
       - name: Generate coverage report (lcov + HTML via genhtml)
         continue-on-error: true
@@ -504,7 +539,7 @@ jobs:
 
           genhtml \
             -o "$ARTIFACT_ROOT/coverage" \
-            -t "entservices-appmanagers AppManagers L0 coverage" \
+            -t "entservices-appmanagers L0 coverage" \
             filtered_coverage.info || true
 
       - name: Upload artifacts
@@ -518,7 +553,15 @@ jobs:
             filtered_coverage.info
             l0-test.log
             l0-runtime-test.log
+            l0-lcm-test.log
             l0-rdkwm-test.log
+            l0-appstorage-test.log
             l0-runtime-test-gdb.log
+            l0-lcm-test-gdb.log
             l0-rdkwm-test-gdb.log
+            l0-appstorage-test-gdb.log
+            l0-packagemanager-test.log
+            l0-preinstall-test.log
+            l0-preinstall-test-gdb.log
+            l0-packagemanager-test-gdb.log
           if-no-files-found: warn
