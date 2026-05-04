@@ -121,6 +121,9 @@ CreateDisplayRequest::~CreateDisplayRequest()
     {
         LOGERR("Failed to destroy semaphore: %s", strerror(errno));
     }
+    else{
+        LOGINFO("Semaphore destroyed successfully for client: %s", mClient.c_str());
+    }
 }
 
 bool lockRdkWindowManagerMutex()
