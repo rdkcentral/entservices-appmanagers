@@ -152,10 +152,8 @@ uint32_t Test_HttpClient_DownloadFile404HandledGracefully()
     const auto status = client.downloadFile(url, out, 0u);
 
     L0Test::ExpectTrue(tr,
-        status == DownloadManagerHttpClient::Status::HttpError  ||
-        status == DownloadManagerHttpClient::Status::DiskError  ||
-        status == DownloadManagerHttpClient::Status::Success,
-        "downloadFile() with unreachable host returns a valid Status without crash");
+        DownloadManagerHttpClient::Status::HttpError == status,
+        "downloadFile() with unreachable host returns HttpError");
 
     (void) std::remove(out.c_str());
 

@@ -64,6 +64,17 @@ WPEFramework::Plugin::DownloadManagerImplementation* CreateImpl()
         ::Create<WPEFramework::Plugin::DownloadManagerImplementation>();
 }
 
+/** Poll until pred() returns true or maxMs milliseconds elapse. */
+template<typename Pred>
+bool WaitFor(Pred pred, unsigned maxMs = 3000u, unsigned stepMs = 5u)
+{
+    for (unsigned elapsed = 0u; elapsed < maxMs; elapsed += stepMs) {
+        if (pred()) return true;
+        std::this_thread::sleep_for(std::chrono::milliseconds(stepMs));
+    }
+    return pred();
+}
+
 } // namespace
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -300,14 +311,14 @@ uint32_t Test_Impl_InitializeReadsDownloadDir()
         impl->Unregister(&notif);
         impl->Deinitialize(&svc);
     } else {
-        // Directory creation may fail in some sandboxed CI environments
-        L0Test::ExpectTrue(tr, true, "Initialize returned non-zero (acceptable in CI)");
+        L0Test::ExpectTrue(tr, false,
+            "Initialize() failed for writable /tmp downloadDir; downloadDir parsing/initialization was not exercised");
     }
 
     impl->Release();
     (void) std::remove(srcFile.c_str());
     return tr.failures;
-}
+} 
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Initialize reads downloadId from config line
@@ -1093,18 +1104,6 @@ bool CreateLargeTmpFile(const std::string& path, size_t sizeBytes)
     }
     fclose(fp);
     return true;
-}
-
-// Poll until pred() returns true or maxMs milliseconds elapse.
-// Returns true if pred became true within the timeout.
-template<typename Pred>
-bool WaitFor(Pred pred, unsigned maxMs = 3000u, unsigned stepMs = 5u)
-{
-    for (unsigned elapsed = 0u; elapsed < maxMs; elapsed += stepMs) {
-        if (pred()) return true;
-        std::this_thread::sleep_for(std::chrono::milliseconds(stepMs));
-    }
-    return pred();
 }
 
 } // namespace
