@@ -299,35 +299,23 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
                 // Priority 1: Process createDisplay requests, serializing compositor mutation under gRdkWindowManagerMutex
                 if (!pendingRequests.empty())
                 {
-                    time_t reqProcessStart = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
                     for (const auto& request : pendingRequests)
                     {
-                        time_t displayStartTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
                         LOGINFO("Shell thread: Processing createDisplay request for client:%s", request->mClient.c_str());
                         {
                             std::lock_guard<std::mutex> lock(gRdkWindowManagerMutex);
                             request->mResult = CompositorController::createDisplay(request->mClient, request->mDisplayName, request->mDisplayWidth, request->mDisplayHeight, request->mVirtualDisplayEnabled, request->mVirtualWidth, request->mVirtualHeight, request->mTopmost, request->mFocus , request->mOwnerId, request->mGroupId);
                         }
-                        time_t displayEndTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
-                        const int duration = static_cast<int>(displayEndTime - displayStartTime);
-                        LOGINFO("CompositorController::createDisplay, CreateDisplay timing: client:%s start_ms:%lld end_ms:%lld duration_ms:%d status:%s",
-                            request->mClient.c_str(),
-                            static_cast<long long>(displayStartTime),
-                            static_cast<long long>(displayEndTime),
-                            duration, request->mResult ? "success" : "failed");
                         if (0 != sem_post(&request->mSemaphore))
                         {
                             LOGERR("Failed to release CreateDisplayRequest semaphore: %s", strerror(errno));
                         }
                     }
-                    time_t reqProcessEnd = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
-                    LOGINFO("Shell thread: Request processing completed in %lld ms", (long long)(reqProcessEnd - reqProcessStart));
                 }
 
                 // Priority 2: Screenshot
                 if (needsScreenshot)
                 {
-                    time_t screenshotStart = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
                     std::lock_guard<std::mutex> lock(gRdkWindowManagerMutex);
                     bool success = CompositorController::screenShot(gScreenshotData, gScreenshotSize);
                     gScreenshotSuccess = success;
@@ -347,22 +335,13 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
                             RDKWindowManagerImplementation::Event::RDK_WINDOW_MANAGER_EVENT_SCREENSHOT_COMPLETE,
                             JsonValue(success));
                     }
-                    time_t screenshotEnd = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
-                    LOGINFO("Shell thread: Screenshot completed in %lld ms", (long long)(screenshotEnd - screenshotStart));
                 }
 
                 // Priority 3: Render - ensures continuous visual updates
                 {
-                    time_t renderStart = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
                     std::lock_guard<std::mutex> lock(gRenderMutex);
                     RdkWindowManager::draw();
                     RdkWindowManager::update();
-                    time_t renderEnd = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
-                    const int renderDuration = static_cast<int>(renderEnd - renderStart);
-                    if (renderDuration > 20)  // Log if render is taking too long (> 20ms)
-                    {
-                        LOGINFO("Shell thread: Rendering took %d ms (long)", renderDuration);
-                    }
                 }
             }
         });
@@ -749,32 +728,16 @@ Core::hresult RDKWindowManagerImplementation::CreateDisplay(const string &client
 
     LOGINFO("CreateDisplay params: clientId:%s, displayName:%s, displayWidth:%u, displayHeight:%u, virtualDisplay:%d, virtualWidth:%u, virtualHeight:%u, ownerId:%u, groupId:%u, topmost:%d, focus:%d",
             clientId.c_str(), displayName.c_str(), displayWidth, displayHeight, virtualDisplay, virtualWidth, virtualHeight, ownerId, groupId, topmost, focus);
-
-    time_t displayStartTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
     result = createDisplay(clientId, displayName, displayWidth, displayHeight,
                            virtualDisplay, virtualWidth, virtualHeight, ownerId, groupId, topmost, focus);
 
     if (false == result)
     {
-        const time_t displayEndTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
-        const int duration = static_cast<int>(displayEndTime - displayStartTime);
-        LOGINFO("CreateDisplay timing: clientId:%s start_ms:%lld end_ms:%lld duration_ms:%d status:failed",
-            clientId.c_str(),
-            static_cast<long long>(displayStartTime),
-            static_cast<long long>(displayEndTime),
-            duration);
         LOGERR("failed to create display : %s, displayName:%s, displayWidth:%u, displayHeight:%u, virtualDisplay:%d, virtualWidth:%u, virtualHeight:%u, topmost:%d, focus:%d, ownerId: %u, groupId: %u",
                clientId.c_str(), displayName.c_str(), displayWidth, displayHeight, virtualDisplay, virtualWidth, virtualHeight, topmost, focus, ownerId, groupId);
     }
     else
     {
-        time_t displayEndTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
-        int duration = static_cast<int>(displayEndTime - displayStartTime);
-        LOGINFO("CreateDisplay timing: clientId:%s start_ms:%lld end_ms:%lld duration_ms:%d status:success",
-            clientId.c_str(),
-            static_cast<long long>(displayStartTime),
-            static_cast<long long>(displayEndTime),
-            duration);
         RDKWindowManagerTelemetryReporting::getInstance().recordCreateDisplayTelemetry(clientId, duration);
         status = Core::ERROR_NONE;
     }
@@ -1607,23 +1570,16 @@ bool RDKWindowManagerImplementation::createDisplay(const string& client, const s
         gRequestCV.notify_one();
 
         // Step 2: sem_wait WITHOUT holding the lock — shell thread processes createDisplay under gRdkWindowManagerMutex
-        time_t displayStartTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
         if (-1 == sem_wait(&request->mSemaphore))
         {
             LOGERR("CreateDisplayRequest: sem_wait failed: %s", strerror(errno));
         }
-        time_t displayEndTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
-        const int duration = static_cast<int>(displayEndTime - displayStartTime);
         ret = request->mResult;
-        LOGINFO("After Semaphore waiting, CreateDisplay timing: start_ms:%lld end_ms:%lld duration_ms:%d status:%s",
-            static_cast<long long>(displayStartTime),
-            static_cast<long long>(displayEndTime),
-            duration, ret ? "success" : "failed");
+        LOGINFO("createDisplay: request processed for client: %s, result: %d", client.c_str(), ret);
 
         // Step 3: addListener under gRdkWindowManagerMutex to serialize with other compositor operations
         if (ret)
         {
-            time_t addListenerStart = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
             bool lockAcquired = lockRdkWindowManagerMutex();
             if (lockAcquired)
             {
@@ -1633,11 +1589,6 @@ bool RDKWindowManagerImplementation::createDisplay(const string& client, const s
                 }
                 gRdkWindowManagerMutex.unlock();
             }
-            time_t addListenerEnd = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
-            LOGINFO("After addListener, CreateDisplay timing: start_ms:%lld end_ms:%lld duration_ms:%d",
-                static_cast<long long>(addListenerStart),
-                static_cast<long long>(addListenerEnd),
-                static_cast<int>(addListenerEnd - addListenerStart));
         }
     }
     else
