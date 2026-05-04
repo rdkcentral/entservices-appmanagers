@@ -18,6 +18,7 @@
 */
 
 #include "WindowManagerConnector.h"
+#include "RuntimeManagerImplementation.h"
 #include <fstream>
 #include <random>
 
@@ -25,7 +26,7 @@ namespace WPEFramework {
 namespace Plugin {
 
 WindowManagerConnector::WindowManagerConnector()
-: mWindowManager(nullptr), mWindowManagerNotification(*this)
+: mWindowManager(nullptr), mWindowManagerNotification(*this), mRuntimeManager(nullptr)
 {
     LOGINFO("Create WindowManagerConnector Instance");
 }
@@ -35,7 +36,7 @@ WindowManagerConnector::~WindowManagerConnector()
     LOGINFO("Delete WindowManagerConnector Instance");
 }
 
-bool WindowManagerConnector::initializePlugin(PluginHost::IShell* service)
+bool WindowManagerConnector::initializePlugin(PluginHost::IShell* service, class RuntimeManagerImplementation* runtimeManager)
 {
     bool ret = false;
     if (nullptr == service)
@@ -50,6 +51,7 @@ bool WindowManagerConnector::initializePlugin(PluginHost::IShell* service)
     {
         LOGINFO("Created WindowManager Object \n");
         mWindowManager->AddRef();
+        mRuntimeManager = runtimeManager;
         ret = true;
         mPluginInitialized = true;
         Core::hresult registerResult = mWindowManager->Register(&mWindowManagerNotification);
@@ -86,18 +88,14 @@ bool WindowManagerConnector::createDisplay(const string& appInstanceId , const s
         LOGERR("WindowManagerConnector is not initialized \n");
         return false;
     }
-    JsonObject displayParams;
-    displayParams["client"] = appInstanceId;
-    displayParams["displayName"] = displayName;
+    uint32_t displayWidth=0, displayHeight=0;
+    uint32_t virtualWidth=0, virtualHeight=0;
+    bool virtualDisplay=false;
+    bool topmost=false, focus=false;
+    
+    LOGINFO("Creating display [%s] for application [%s] \n", displayName.c_str(), appInstanceId.c_str());
 
-    displayParams["ownerId"] = userId;
-    displayParams["groupId"] = groupId;
-    string displayParamsString;
-    displayParams.ToString(displayParamsString);
-
-    LOGINFO("Creating display [%s] for application [%s] with params [%s] \n", displayName.c_str(), appInstanceId.c_str(), displayParamsString.c_str());//remove
-
-    Core::hresult result = mWindowManager->CreateDisplay(displayParamsString);
+    Core::hresult result = mWindowManager->CreateDisplay(appInstanceId, displayName, displayWidth, displayHeight, virtualDisplay, virtualWidth, virtualHeight, userId, groupId, topmost, focus);
     if (Core::ERROR_NONE != result)
     {
         LOGERR("Failed to create display for application [%s] error [%d] \n",appInstanceId.c_str(), result);
@@ -123,8 +121,7 @@ void WindowManagerConnector::getDisplayInfo(const string& appInstanceId , string
         xdgRuntimeDirFd = open(xdgRuntimeDir, O_CLOEXEC | O_DIRECTORY);
         if (xdgRuntimeDirFd < 0)
         {
-            printf("failed to open XDG_RUNTIME_DIR '%s' %d\n", xdgRuntimeDir, errno);
-            fflush(stdout);
+            LOGERR("failed to open XDG_RUNTIME_DIR '%s' (errno=%d)", xdgRuntimeDir, errno);
         }
         else
         {
@@ -137,8 +134,7 @@ void WindowManagerConnector::getDisplayInfo(const string& appInstanceId , string
         xdgRuntimeDirFd = open("/tmp", O_CLOEXEC | O_DIRECTORY);
         if (xdgRuntimeDirFd < 0)
         {
-            printf("failed to open XDG_RUNTIME_DIR /tmp %d\n", errno);
-            fflush(stdout);
+            LOGERR("failed to open XDG_RUNTIME_DIR /tmp (errno=%d)", errno);
         }
         xdgDirectory = "/tmp";
     }
@@ -152,7 +148,7 @@ void WindowManagerConnector::getDisplayInfo(const string& appInstanceId , string
     {
         // generate name as wst-appInstanceId and sanity check
         string displayName = "wst-" + appInstanceId;
-        if (faccessat(xdgRuntimeDirFd, displayName.c_str(), F_OK, 0) != 0) //todo required for wst-appinstanceid?
+        if (xdgRuntimeDirFd < 0 || faccessat(xdgRuntimeDirFd, displayName.c_str(), F_OK, 0) != 0) //todo required for wst-appinstanceid?
         {
             waylandDisplayName = std::move(displayName);
         }
@@ -162,10 +158,9 @@ void WindowManagerConnector::getDisplayInfo(const string& appInstanceId , string
             waylandDisplayName = "testdisplay";
         }
     }
-    if (close(xdgRuntimeDirFd) < 0)
+    if (xdgRuntimeDirFd >= 0 && close(xdgRuntimeDirFd) < 0)
     {
-        printf("failed to close XDG_RUNTIME_DIR \n");
-        fflush(stdout);
+        LOGERR("failed to close XDG_RUNTIME_DIR (errno=%d)", errno);
     }
 
     LOGINFO("GetDisplayInfo::Returning display name [%s] for display [%s] \n", waylandDisplayName.c_str(), xdgDirectory.c_str());
@@ -173,6 +168,19 @@ void WindowManagerConnector::getDisplayInfo(const string& appInstanceId , string
 
 void WindowManagerConnector::WindowManagerNotification::OnUserInactivity(const double minutes)
 {
+}
+
+void WindowManagerConnector::WindowManagerNotification::OnDisconnected(const std::string& client)
+{
+    _parent.onWindowManagerDisconnected(client);
+}
+
+void WindowManagerConnector::onWindowManagerDisconnected(const std::string& client)
+{
+    if (nullptr != mRuntimeManager)
+    {
+        mRuntimeManager->onWindowManagerDisconnected(client);
+    }
 }
 
 } // namespace Plugin

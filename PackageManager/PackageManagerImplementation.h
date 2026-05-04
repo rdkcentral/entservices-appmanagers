@@ -37,21 +37,11 @@
 
 #include "Module.h"
 #include "UtilsLogging.h"
+#include "TelemetryMarkers.h"
 #include <interfaces/IAppPackageManager.h>
 #include <interfaces/IAppStorageManager.h>
 
 #include "HttpClient.h"
-
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-#include <interfaces/ITelemetryMetrics.h>
-
-#define TELEMETRY_MARKER_LAUNCH_TIME             "OverallLaunchTime_split"
-#define TELEMETRY_MARKER_CLOSE_TIME              "AppCloseTime_split"
-#define TELEMETRY_MARKER_INSTALL_TIME            "InstallTime_split"
-#define TELEMETRY_MARKER_INSTALL_ERROR           "InstallError_split"
-#define TELEMETRY_MARKER_UNINSTALL_TIME          "UninstallTime_split"
-#define TELEMETRY_MARKER_UNINSTALL_ERROR         "UninstallError_split"
-#endif /* ENABLE_AIMANAGERS_TELEMETRY_METRICS */
 
 #define PACKAGE_MANAGER_MARKER_FILE              "/tmp/package_manager_ready"
 
@@ -77,9 +67,6 @@ class PackageManagerImplementation
 
             public:
             State() {}
-            //State(const packagemanager::ConfigMetaData &config) {
-            //    PackageManagerImplementation::getRuntimeConfig(config, runtimeConfig);
-            //}
             InstallState installState = InstallState::UNINSTALLED;
             uint32_t mLockCount = 0;
             Exchange::RuntimeConfig runtimeConfig;
@@ -151,7 +138,6 @@ class PackageManagerImplementation
         typedef std::list<DownloadInfoPtr> DownloadQueue;
 
     public:
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
         enum PackageFailureErrorCode{
             ERROR_NONE,
             ERROR_SIGNATURE_VERIFICATION_FAILURE,
@@ -160,7 +146,6 @@ class PackageManagerImplementation
             ERROR_PERSISTENCE_FAILURE,
             ERROR_VERSION_NOT_FOUND
         };
-#endif /* ENABLE_AIMANAGERS_TELEMETRY_METRICS */
 
         PackageManagerImplementation();
         virtual ~PackageManagerImplementation();
@@ -294,12 +279,10 @@ class PackageManagerImplementation
         }
     Core::hresult createStorageManagerObject();
     void releaseStorageManagerObject();
-    void populateRuntime(packagemanager::ConfigMetadataArray& aConfigMetadata);
-
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-    void recordAndPublishTelemetryData(const std::string& marker, const std::string& appId, time_t requestTime, PackageManagerImplementation::PackageFailureErrorCode errorCode);
+    void recordAndPublishTelemetryData(const std::string& marker, const std::string& appId, time_t requestTime, PackageManagerImplementation::PackageFailureErrorCode errorCode,
+                                       const std::string& runtimeId = "", const std::string& runtimeVersion = "");
     time_t getCurrentTimestamp();
-#endif /* ENABLE_AIMANAGERS_TELEMETRY_METRICS */
+    void populateRuntime(packagemanager::ConfigMetadataArray& aConfigMetadata);
 
     private:
         mutable Core::CriticalSection mAdminLock;
@@ -332,9 +315,6 @@ class PackageManagerImplementation
         PluginHost::IShell* mCurrentservice;
         Exchange::IAppStorageManager* mStorageManagerObject;
         std::map<std::string, std::pair<std::string, std::string>> runtimeMap;
-#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
-        Exchange::ITelemetryMetrics* mTelemetryMetricsObject;
-#endif /* ENABLE_AIMANAGERS_TELEMETRY_METRICS */
     };
 } // namespace Plugin
 } // namespace WPEFramework

@@ -1,225 +1,301 @@
 /**
-* If not stated otherwise in this file or this component's LICENSE
-* file the following copyright and licenses apply:
-*
-* Copyright 2025 RDK Management
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-* http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-**/
+ * If not stated otherwise in this file or this component's LICENSE
+ * file the following copyright and licenses apply:
+ *
+ * Copyright 2026 RDK Management
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ **/
+
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
-#include <string>
-#include <chrono>
-#include <future>
-#include <dirent.h>
-#include <cstring>
 
+#include <chrono>
+#include <atomic>
+#include <cstring>
+#include <dirent.h>
+#include <future>
+#include <list>
+#include <string>
+#include <thread>
+#include <utility>
+#include <vector>
+
+// Keep RuntimeConfig ABI consistent in this TU to prevent weak-symbol
+// destructor interposition from picking a mismatched layout at runtime.
+#ifndef RUNTIME_CONFIG
+#define RUNTIME_CONFIG
+namespace WPEFramework {
+namespace Exchange {
+struct RuntimeConfig {
+    bool dial;
+    bool wanLanAccess;
+    bool thunder;
+    int32_t systemMemoryLimit;
+    int32_t gpuMemoryLimit;
+    std::string envVariables;
+    uint32_t userId;
+    uint32_t groupId;
+    uint32_t dataImageSize;
+
+    bool resourceManagerClientEnabled;
+    std::string dialId;
+    std::string command;
+    std::string appType;
+    std::string appPath;
+    std::string runtimePath;
+
+    std::string logFilePath;
+    uint32_t logFileMaxSize;
+    std::string logLevels;
+    bool mapi;
+    std::string fkpsFiles;
+    std::string ralfPkgPath;
+
+    std::string fireboltVersion;
+    bool enableDebugger;
+
+    ~RuntimeConfig();
+};
+} // namespace Exchange
+} // namespace WPEFramework
+#endif
+
+namespace WPEFramework {
+namespace Exchange {
+RuntimeConfig::~RuntimeConfig() = default;
+} // namespace Exchange
+} // namespace WPEFramework
+
+#include "COMLinkMock.h"
+#include "FactoriesImplementation.h"
+#include "Module.h"
+#include "PackageManagerMock.h"
 #include "PreinstallManager.h"
 #include "PreinstallManagerImplementation.h"
+#include "RemoteConnectionMock.h"
 #include "ServiceMock.h"
-#include "PackageManagerMock.h"
-#include "COMLinkMock.h"
 #include "ThunderPortability.h"
-#include "Module.h"
 #include "WorkerPoolImplementation.h"
 #include "WrapsMock.h"
-#include "FactoriesImplementation.h"
 
-extern "C" DIR* __real_opendir(const char* pathname);
+#define TEST_LOG(x, ...) fprintf(stderr, "\033[1;32m[%s:%d](%s)<PID:%d><TID:%d>" x "\n\033[0m", __FILE__, __LINE__, __FUNCTION__, getpid(), gettid(), ##__VA_ARGS__); fflush(stderr)
 
-#define TEST_LOG(x, ...) fprintf(stderr, "\033[1;32m[%s:%d](%s)<PID:%d><TID:%d>" x "\n\033[0m", __FILE__, __LINE__, __FUNCTION__, getpid(), gettid(), ##__VA_ARGS__); fflush(stderr);
+#define PREINSTALL_MANAGER_TEST_PACKAGE_ID "com.test.preinstall.app"
+#define PREINSTALL_MANAGER_TEST_VERSION "1.0.0"
 
-#define PREINSTALL_MANAGER_TEST_PACKAGE_ID      "com.test.preinstall.app"
-#define PREINSTALL_MANAGER_TEST_VERSION         "1.0.0"
-
+using ::testing::_;
+using ::testing::AnyNumber;
+using ::testing::DoAll;
+using ::testing::Invoke;
 using ::testing::NiceMock;
+using ::testing::Return;
+using ::testing::SetArgReferee;
 using namespace WPEFramework;
 
 class PreinstallManagerTest : public ::testing::Test {
 protected:
     ServiceMock* mServiceMock = nullptr;
     PackageInstallerMock* mPackageInstallerMock = nullptr;
-    WrapsImplMock *p_wrapsImplMock = nullptr;
-    FactoriesImplementation factoriesImplementation;
-    PLUGINHOST_DISPATCHER *dispatcher;
+    WrapsImplMock* mWrapsImplMock = nullptr;
 
-    Core::ProxyType<Plugin::PreinstallManager> plugin;
-    Plugin::PreinstallManagerImplementation *mPreinstallManagerImpl;
-    Exchange::IPackageInstaller::INotification* mPackageInstallerNotification_cb = nullptr;
+    FactoriesImplementation mFactoriesImplementation;
+    PLUGINHOST_DISPATCHER* mDispatcher = nullptr;
 
-    Core::ProxyType<WorkerPoolImplementation> workerPool;
+    Core::ProxyType<Plugin::PreinstallManager> mPlugin;
+    Plugin::PreinstallManagerImplementation* mPreinstallManagerImpl = nullptr;
+    Exchange::IPackageInstaller::INotification* mPackageInstallerNotificationCb = nullptr;
 
+    Core::ProxyType<WorkerPoolImplementation> mWorkerPool;
 
-
-    Core::hresult createResources()
-    {
-        Core::hresult status = Core::ERROR_GENERAL;
-        mServiceMock = new NiceMock<ServiceMock>;
-        mPackageInstallerMock = new NiceMock<PackageInstallerMock>;
-        testing::Mock::AllowLeak(mPackageInstallerMock); // Allow leak since mock lifecycle is managed by test framework
-        p_wrapsImplMock = new NiceMock<WrapsImplMock>;
-        Wraps::setImpl(p_wrapsImplMock);
-
-        PluginHost::IFactories::Assign(&factoriesImplementation);
-        dispatcher = static_cast<PLUGINHOST_DISPATCHER*>(
-        plugin->QueryInterface(PLUGINHOST_DISPATCHER_ID));
-        dispatcher->Activate(mServiceMock);
-        TEST_LOG("In createResources!");
-
-        EXPECT_CALL(*mServiceMock, QueryInterfaceByCallsign(::testing::_, ::testing::_))
-          .Times(::testing::AnyNumber())
-          .WillRepeatedly(::testing::Invoke(
-              [&](const uint32_t id, const std::string& name) -> void* {
-                if (name == "org.rdk.PackageManagerRDKEMS") {
-                    if (id == Exchange::IPackageInstaller::ID) {
-                        return reinterpret_cast<void*>(mPackageInstallerMock);
-                    }
-                }
-            return nullptr;
-        }));
-
-        EXPECT_CALL(*mPackageInstallerMock, Register(::testing::_))
-            .WillOnce(::testing::Invoke(
-                [&](Exchange::IPackageInstaller::INotification* notification) {
-                    mPackageInstallerNotification_cb = notification;
-                    return Core::ERROR_NONE;
-                }));
-
-        ON_CALL(*p_wrapsImplMock, stat(::testing::_, ::testing::_))
-        .WillByDefault(::testing::Return(-1));
-        
-        EXPECT_EQ(string(""), plugin->Initialize(mServiceMock));
-        mPreinstallManagerImpl = Plugin::PreinstallManagerImplementation::getInstance();
-        TEST_LOG("createResources - All done!");
-        status = Core::ERROR_NONE;
-
-        return status;
-    }
-
-    void releaseResources()
-    {
-        TEST_LOG("In releaseResources!");
-
-        if (mPackageInstallerMock != nullptr && mPackageInstallerNotification_cb != nullptr)
-        {
-            ON_CALL(*mPackageInstallerMock, Unregister(::testing::_))
-                .WillByDefault(::testing::Invoke([&]() {
-                    return 0;
-                }));
-            mPackageInstallerNotification_cb = nullptr;
-        }
-
-        if (mPackageInstallerMock != nullptr)
-        {
-            EXPECT_CALL(*mPackageInstallerMock, Release())
-                .WillOnce(::testing::Invoke(
-                [&]() {
-                     delete mPackageInstallerMock;
-                     return 0;
-                    }));
-        }
-
-        Wraps::setImpl(nullptr);
-        if (p_wrapsImplMock != nullptr)
-        {
-            delete p_wrapsImplMock;
-            p_wrapsImplMock = nullptr;
-        }
-
-        dispatcher->Deactivate();
-        dispatcher->Release();
-
-        plugin->Deinitialize(mServiceMock);
-        delete mServiceMock;
-        mPreinstallManagerImpl = nullptr;
-    }
+    std::vector<std::string> mDirectoryEntries;
+    size_t mDirectoryEntryIndex = 0;
 
     PreinstallManagerTest()
-        : plugin(Core::ProxyType<Plugin::PreinstallManager>::Create()),
-        workerPool(Core::ProxyType<WorkerPoolImplementation>::Create(2, Core::Thread::DefaultStackSize(), 16))
+        : mPlugin(Core::ProxyType<Plugin::PreinstallManager>::Create())
+        , mWorkerPool(Core::ProxyType<WorkerPoolImplementation>::Create(2, Core::Thread::DefaultStackSize(), 16))
     {
-        Core::IWorkerPool::Assign(&(*workerPool));
-        workerPool->Run();
+        Core::IWorkerPool::Assign(&(*mWorkerPool));
+        mWorkerPool->Run();
     }
 
-    virtual ~PreinstallManagerTest() override
+    ~PreinstallManagerTest() override
     {
-        TEST_LOG("Delete ~PreinstallManagerTest Instance!");
+        TEST_LOG("Delete ~PreinstallManagerTest Instance");
         Core::IWorkerPool::Assign(nullptr);
-        workerPool.Release();
+        mWorkerPool.Release();
     }
 
-    auto FillPackageIterator()
+    void TearDown() override
+    {
+        WaitForAsyncPreinstallWork();
+        ReleaseResources();
+    }
+
+    void WaitForAsyncPreinstallWork()
+    {
+        if (nullptr == mPreinstallManagerImpl) {
+            return;
+        }
+
+        WaitForPreinstallTransitionToComplete(std::chrono::milliseconds(2000));
+
+        // Give worker-pool dispatch a short window to execute queued event jobs.
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    }
+
+    bool WaitForPreinstallTransitionToComplete(const std::chrono::milliseconds timeout)
+    {
+        const auto start = std::chrono::steady_clock::now();
+        Plugin::PreinstallManagerImplementation::State state =
+            Plugin::PreinstallManagerImplementation::State::NOT_STARTED;
+
+        while (std::chrono::steady_clock::now() - start < timeout) {
+            if (Core::ERROR_NONE == mPreinstallManagerImpl->GetPreinstallState(state)) {
+                if (Plugin::PreinstallManagerImplementation::State::COMPLETED == state) {
+                    return true;
+                }
+            }
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+
+        return false;
+    }
+
+    void SetDirectoryEntries(const std::vector<std::string>& entries)
+    {
+        mDirectoryEntries = entries;
+        mDirectoryEntryIndex = 0;
+
+        ON_CALL(*mWrapsImplMock, opendir(_))
+            .WillByDefault(Invoke([this](const char* pathname) -> DIR* {
+                TEST_LOG("opendir path = %s", (nullptr == pathname) ? "null" : pathname);
+                mDirectoryEntryIndex = 0;
+                return reinterpret_cast<DIR*>(0x1);
+            }));
+
+        ON_CALL(*mWrapsImplMock, readdir(_))
+            .WillByDefault(Invoke([this](DIR*) -> struct dirent* {
+                static struct dirent entry;
+                if (mDirectoryEntryIndex >= mDirectoryEntries.size()) {
+                    return nullptr;
+                }
+
+                std::memset(&entry, 0, sizeof(entry));
+                std::strncpy(entry.d_name,
+                             mDirectoryEntries[mDirectoryEntryIndex].c_str(),
+                             sizeof(entry.d_name) - 1);
+                entry.d_type = DT_DIR;
+                ++mDirectoryEntryIndex;
+                return &entry;
+            }));
+
+        ON_CALL(*mWrapsImplMock, closedir(_))
+            .WillByDefault(Return(0));
+    }
+
+    auto BuildPackageIterator(const std::vector<Exchange::IPackageInstaller::Package>& packages)
     {
         std::list<Exchange::IPackageInstaller::Package> packageList;
-        Exchange::IPackageInstaller::Package package_1;
+        for (const auto& package : packages) {
+            packageList.emplace_back(package);
+        }
 
-        package_1.packageId = PREINSTALL_MANAGER_TEST_PACKAGE_ID;
-        package_1.version = PREINSTALL_MANAGER_TEST_VERSION;
-        package_1.digest = "";
-        package_1.state = Exchange::IPackageInstaller::InstallState::INSTALLED;
-        package_1.sizeKb = 0;
-
-        packageList.emplace_back(package_1);
         return Core::Service<RPC::IteratorType<Exchange::IPackageInstaller::IPackageIterator>>::Create<Exchange::IPackageInstaller::IPackageIterator>(packageList);
     }
 
-    void SetUpPreinstallDirectoryMocks()
+    Core::hresult CreateResources(const std::string& configLine = R"({\"appPreinstallDirectory\":\"/tmp/preinstall\"})")
     {
-        // Mock directory operations for preinstall directory
-        ON_CALL(*p_wrapsImplMock, opendir(::testing::_))
-            .WillByDefault(::testing::Invoke([](const char* pathname) {
-                // Log the pathname being accessed for debugging
-                TEST_LOG("opendir called with pathname: %s", pathname);
-                return __real_opendir(pathname);
-            }));
+        mServiceMock = new NiceMock<ServiceMock>;
+        mPackageInstallerMock = new NiceMock<PackageInstallerMock>;
+        mWrapsImplMock = new NiceMock<WrapsImplMock>;
 
-        ON_CALL(*p_wrapsImplMock, readdir(::testing::_))
-            .WillByDefault([](DIR* dirp) -> struct dirent* {
-                static int call_count = 0;
-                static struct dirent entry;
-                if (call_count == 0) {
-                    std::strncpy(entry.d_name, "testapp", sizeof(entry.d_name) - 1);
-                    entry.d_type = DT_DIR;
-                    call_count++;
-                    return &entry;
-                } else if (call_count == 1) {
-                    std::strncpy(entry.d_name, "preinstallApp", sizeof(entry.d_name) - 1);
-                    entry.d_type = DT_DIR;
-                    call_count++;
-                    return &entry;
-                } else {
-                    call_count = 0; // Reset for next traversal
+        testing::Mock::AllowLeak(mServiceMock);
+        testing::Mock::AllowLeak(mPackageInstallerMock);
+        testing::Mock::AllowLeak(mWrapsImplMock);
+
+        Wraps::setImpl(mWrapsImplMock);
+
+        PluginHost::IFactories::Assign(&mFactoriesImplementation);
+
+        ON_CALL(*mServiceMock, ConfigLine())
+            .WillByDefault(Return(configLine));
+
+        EXPECT_CALL(*mServiceMock, QueryInterfaceByCallsign(_, _))
+            .Times(AnyNumber())
+            .WillRepeatedly(Invoke(
+                [this](const uint32_t id, const std::string& name) -> void* {
+                    if (("org.rdk.PackageManagerRDKEMS" == name) && (Exchange::IPackageInstaller::ID == id)) {
+                        return static_cast<void*>(static_cast<Exchange::IPackageInstaller*>(mPackageInstallerMock));
+                    }
                     return nullptr;
-                }
-            });
+                }));
 
-        ON_CALL(*p_wrapsImplMock, closedir(::testing::_))
-            .WillByDefault([](DIR* dirp) {
-                // Simulate success
-                return 0;
-            });
+        EXPECT_CALL(*mPackageInstallerMock, Register(_))
+            .Times(AnyNumber())
+            .WillRepeatedly(Invoke(
+                [this](Exchange::IPackageInstaller::INotification* notification) {
+                    mPackageInstallerNotificationCb = notification;
+                    return Core::ERROR_NONE;
+                }));
+
+        ON_CALL(*mPackageInstallerMock, Unregister(_))
+            .WillByDefault(Return(Core::ERROR_NONE));
+
+        ON_CALL(*mWrapsImplMock, stat(_, _))
+            .WillByDefault(Return(-1));
+
+        const std::string message = mPlugin->Initialize(mServiceMock);
+        if (!message.empty()) {
+            return Core::ERROR_GENERAL;
+        }
+
+        mPreinstallManagerImpl = Plugin::PreinstallManagerImplementation::getInstance();
+        return (nullptr != mPreinstallManagerImpl) ? Core::ERROR_NONE : Core::ERROR_GENERAL;
+    }
+
+    void ReleaseResources()
+    {
+        Wraps::setImpl(nullptr);
+
+        if ((nullptr != mPlugin.operator->()) && (nullptr != mServiceMock)) {
+            mPlugin->Deinitialize(mServiceMock);
+        }
+
+        if (nullptr != mDispatcher) {
+            mDispatcher->Release();
+            mDispatcher = nullptr;
+        }
+
+        // These are COM-style mock objects referenced through AddRef/Release
+        // paths in plugin code; avoid raw deletes to prevent ownership races.
+        mWrapsImplMock = nullptr;
+        mPackageInstallerMock = nullptr;
+        mServiceMock = nullptr;
+
+        mPreinstallManagerImpl = nullptr;
+        mPackageInstallerNotificationCb = nullptr;
     }
 };
 
-// Mock notification class using GMock
-class MockNotificationTest : public Exchange::IPreinstallManager::INotification 
-{
+class MockNotificationTest : public Exchange::IPreinstallManager::INotification {
 public:
     MockNotificationTest() = default;
-    virtual ~MockNotificationTest() = default;
-    
-    MOCK_METHOD(void, OnAppInstallationStatus, (const string& jsonresponse), (override));
+    ~MockNotificationTest() override = default;
+
+    MOCK_METHOD(void, OnAppInstallationStatus, (const std::string& jsonresponse), (override));
+    MOCK_METHOD(void, OnPreinstallationComplete, (), (override));
     MOCK_METHOD(void, AddRef, (), (const, override));
     MOCK_METHOD(uint32_t, Release, (), (const, override));
 
@@ -228,225 +304,524 @@ public:
     END_INTERFACE_MAP
 };
 
-/*Test cases for PreinstallManager Plugin*/
-/**
- * @brief Verify that PreinstallManager plugin can be created successfully
- */
 TEST_F(PreinstallManagerTest, CreatePreinstallManagerPlugin)
 {
-    EXPECT_TRUE(plugin.IsValid());
+    EXPECT_TRUE(mPlugin.IsValid());
 }
 
-/**
- * @brief Test successful registration of notification interface
- *
- * @details Test verifies that:
- * - Notification can be registered successfully  
- * - Register method returns ERROR_NONE
- */
 TEST_F(PreinstallManagerTest, RegisterNotification)
 {
-    ASSERT_EQ(Core::ERROR_NONE, createResources());
+    ASSERT_EQ(Core::ERROR_NONE, CreateResources());
 
     auto mockNotification = Core::ProxyType<MockNotificationTest>::Create();
-    testing::Mock::AllowLeak(mockNotification.operator->()); // Allow leak since ProxyType manages lifecycle
-    Core::hresult status = mPreinstallManagerImpl->Register(mockNotification.operator->());
-    
+    testing::Mock::AllowLeak(mockNotification.operator->());
+
+    const Core::hresult status = mPreinstallManagerImpl->Register(mockNotification.operator->());
     EXPECT_EQ(Core::ERROR_NONE, status);
-    
-    // Cleanup
-    mPreinstallManagerImpl->Unregister(mockNotification.operator->());
-    releaseResources();
+
+    EXPECT_EQ(Core::ERROR_NONE, mPreinstallManagerImpl->Unregister(mockNotification.operator->()));
+    ReleaseResources();
 }
 
-/**
- * @brief Test successful unregistration of notification interface
- *
- * @details Test verifies that:
- * - Notification can be unregistered successfully after registration
- * - Unregister method returns ERROR_NONE
- */
 TEST_F(PreinstallManagerTest, UnregisterNotification)
 {
-    ASSERT_EQ(Core::ERROR_NONE, createResources());
+    ASSERT_EQ(Core::ERROR_NONE, CreateResources());
 
     auto mockNotification = Core::ProxyType<MockNotificationTest>::Create();
-    testing::Mock::AllowLeak(mockNotification.operator->()); // Allow leak since ProxyType manages lifecycle
-    
-    // First register
-    Core::hresult registerStatus = mPreinstallManagerImpl->Register(mockNotification.operator->());
-    EXPECT_EQ(Core::ERROR_NONE, registerStatus);
-    
-    // Then unregister
-    Core::hresult unregisterStatus = mPreinstallManagerImpl->Unregister(mockNotification.operator->());
-    EXPECT_EQ(Core::ERROR_NONE, unregisterStatus);
-    
-    releaseResources();
+    testing::Mock::AllowLeak(mockNotification.operator->());
+
+    EXPECT_EQ(Core::ERROR_NONE, mPreinstallManagerImpl->Register(mockNotification.operator->()));
+    EXPECT_EQ(Core::ERROR_NONE, mPreinstallManagerImpl->Unregister(mockNotification.operator->()));
+
+    ReleaseResources();
 }
 
-/**
- * @brief Test StartPreinstall with force install enabled
- *
- * @details Test verifies that:
- * - StartPreinstall can be called with forceInstall=true
- * - Method returns appropriate status
- */
-TEST_F(PreinstallManagerTest, StartPreinstallWithForceInstall)
+TEST_F(PreinstallManagerTest, UnregisterNotificationNotFound)
 {
-    ASSERT_EQ(Core::ERROR_NONE, createResources());
-    
-    // Mock PackageInstaller methods
-    EXPECT_CALL(*mPackageInstallerMock, GetConfigForPackage(::testing::_, ::testing::_, ::testing::_, ::testing::_))
-        .WillRepeatedly([&](const string &fileLocator, string& id, string &version, WPEFramework::Exchange::RuntimeConfig &config) {
+    ASSERT_EQ(Core::ERROR_NONE, CreateResources());
+
+    auto mockNotification = Core::ProxyType<MockNotificationTest>::Create();
+    testing::Mock::AllowLeak(mockNotification.operator->());
+
+    EXPECT_EQ(Core::ERROR_GENERAL, mPreinstallManagerImpl->Unregister(mockNotification.operator->()));
+
+    ReleaseResources();
+}
+
+TEST_F(PreinstallManagerTest, QueryInterface)
+{
+    ASSERT_EQ(Core::ERROR_NONE, CreateResources());
+
+    Exchange::IPreinstallManager* preinstallInterface =
+        static_cast<Exchange::IPreinstallManager*>(mPreinstallManagerImpl->QueryInterface(Exchange::IPreinstallManager::ID));
+
+    EXPECT_TRUE(nullptr != preinstallInterface);
+
+    if (nullptr != preinstallInterface) {
+        preinstallInterface->Release();
+    }
+
+    ReleaseResources();
+}
+
+TEST_F(PreinstallManagerTest, InformationReturnsEmptyString)
+{
+    ASSERT_EQ(Core::ERROR_NONE, CreateResources());
+
+    EXPECT_EQ(std::string(), mPlugin->Information());
+
+    ReleaseResources();
+}
+
+TEST_F(PreinstallManagerTest, ConfigureWithNullServiceReturnsError)
+{
+    ASSERT_EQ(Core::ERROR_NONE, CreateResources());
+
+    EXPECT_EQ(Core::ERROR_GENERAL, mPreinstallManagerImpl->Configure(nullptr));
+
+    ReleaseResources();
+}
+
+TEST_F(PreinstallManagerTest, StartPreinstallSendsCompletionEventForEmptyDirectory)
+{
+    ASSERT_EQ(Core::ERROR_NONE, CreateResources());
+
+    auto mockNotification = Core::ProxyType<MockNotificationTest>::Create();
+    testing::Mock::AllowLeak(mockNotification.operator->());
+
+    std::promise<void> notificationPromise;
+    auto notificationFuture = notificationPromise.get_future();
+    std::atomic<bool> promiseSet{false};
+
+    EXPECT_CALL(*mockNotification, OnPreinstallationComplete())
+        .Times(1)
+        .WillOnce(Invoke([&notificationPromise, &promiseSet]() {
+            bool expected = false;
+            if (promiseSet.compare_exchange_strong(expected, true)) {
+                notificationPromise.set_value();
+            }
+        }));
+
+    EXPECT_EQ(Core::ERROR_NONE, mPreinstallManagerImpl->Register(mockNotification.operator->()));
+
+    // Empty directory should trigger immediate completion event.
+    SetDirectoryEntries({".", ".."});
+    EXPECT_EQ(Core::ERROR_NONE, mPreinstallManagerImpl->StartPreinstall(true));
+
+    EXPECT_EQ(std::future_status::ready,
+              notificationFuture.wait_for(std::chrono::seconds(2)));
+
+    EXPECT_EQ(Core::ERROR_NONE, mPreinstallManagerImpl->Unregister(mockNotification.operator->()));
+}
+
+TEST_F(PreinstallManagerTest, StartPreinstallSendsCompletionEventAfterInstall)
+{
+    ASSERT_EQ(Core::ERROR_NONE, CreateResources());
+
+    auto mockNotification = Core::ProxyType<MockNotificationTest>::Create();
+    testing::Mock::AllowLeak(mockNotification.operator->());
+
+    std::promise<void> notificationPromise;
+    auto notificationFuture = notificationPromise.get_future();
+    std::atomic<bool> promiseSet{false};
+
+    EXPECT_CALL(*mockNotification, OnPreinstallationComplete())
+        .Times(1)
+        .WillOnce(Invoke([&notificationPromise, &promiseSet]() {
+            bool expected = false;
+            if (promiseSet.compare_exchange_strong(expected, true)) {
+                notificationPromise.set_value();
+            }
+        }));
+
+    SetDirectoryEntries({"app1"});
+
+    EXPECT_CALL(*mPackageInstallerMock, GetConfigForPackage(_, _, _, _))
+        .WillOnce(DoAll(
+            SetArgReferee<1>(PREINSTALL_MANAGER_TEST_PACKAGE_ID),
+            SetArgReferee<2>(PREINSTALL_MANAGER_TEST_VERSION),
+            Return(Core::ERROR_NONE)));
+
+    EXPECT_CALL(*mPackageInstallerMock, Install(_, _, _, _, _))
+        .Times(1)
+        .WillOnce(Return(Core::ERROR_NONE));
+
+    EXPECT_EQ(Core::ERROR_NONE, mPreinstallManagerImpl->Register(mockNotification.operator->()));
+    EXPECT_EQ(Core::ERROR_NONE, mPreinstallManagerImpl->StartPreinstall(true));
+
+    EXPECT_EQ(std::future_status::ready,
+              notificationFuture.wait_for(std::chrono::seconds(2)));
+
+    EXPECT_EQ(Core::ERROR_NONE, mPreinstallManagerImpl->Unregister(mockNotification.operator->()));
+}
+
+TEST_F(PreinstallManagerTest, StartPreinstallWithoutForceInstallSendsCompletionEventWhenAllFiltered)
+{
+    ASSERT_EQ(Core::ERROR_NONE, CreateResources());
+
+    auto mockNotification = Core::ProxyType<MockNotificationTest>::Create();
+    testing::Mock::AllowLeak(mockNotification.operator->());
+
+    std::promise<void> notificationPromise;
+    auto notificationFuture = notificationPromise.get_future();
+    std::atomic<bool> promiseSet{false};
+
+    EXPECT_CALL(*mockNotification, OnPreinstallationComplete())
+        .Times(1)
+        .WillOnce(Invoke([&notificationPromise, &promiseSet]() {
+            bool expected = false;
+            if (promiseSet.compare_exchange_strong(expected, true)) {
+                notificationPromise.set_value();
+            }
+        }));
+
+    SetDirectoryEntries({"app1"});
+
+    Exchange::IPackageInstaller::Package installedPackage {};
+    installedPackage.packageId = PREINSTALL_MANAGER_TEST_PACKAGE_ID;
+    installedPackage.version = PREINSTALL_MANAGER_TEST_VERSION;
+    installedPackage.state = Exchange::IPackageInstaller::InstallState::INSTALLED;
+
+    EXPECT_CALL(*mPackageInstallerMock, ListPackages(_))
+        .WillOnce(Invoke([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
+            auto iterator = BuildPackageIterator({std::move(installedPackage)});
+            packages = iterator;
+            return Core::ERROR_NONE;
+        }));
+
+    EXPECT_CALL(*mPackageInstallerMock, GetConfigForPackage(_, _, _, _))
+        .WillOnce(Invoke([](const std::string&,
+                            std::string& id,
+                            std::string& version,
+                            WPEFramework::Exchange::RuntimeConfig&) {
             id = PREINSTALL_MANAGER_TEST_PACKAGE_ID;
             version = PREINSTALL_MANAGER_TEST_VERSION;
             return Core::ERROR_NONE;
-        });
+        }));
 
-    EXPECT_CALL(*mPackageInstallerMock, Install(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
-        .WillRepeatedly([&](const string &packageId, const string &version, 
-                           Exchange::IPackageInstaller::IKeyValueIterator* const& additionalMetadata, 
-                           const string &fileLocator, Exchange::IPackageInstaller::FailReason &failReason) {
-            return Core::ERROR_NONE;
-        });
+    EXPECT_CALL(*mPackageInstallerMock, Install(_, _, _, _, _)).Times(0);
 
-    SetUpPreinstallDirectoryMocks();
-    
-    Core::hresult result = mPreinstallManagerImpl->StartPreinstall(true);
-    
-    // The result can be ERROR_NONE or ERROR_GENERAL depending on directory existence
-    // We mainly test that the method doesn't crash
-    EXPECT_TRUE(result == Core::ERROR_NONE || result == Core::ERROR_GENERAL);
-    
-    releaseResources();
+    EXPECT_EQ(Core::ERROR_NONE, mPreinstallManagerImpl->Register(mockNotification.operator->()));
+    EXPECT_EQ(Core::ERROR_NONE, mPreinstallManagerImpl->StartPreinstall(false));
+
+    EXPECT_EQ(std::future_status::ready,
+              notificationFuture.wait_for(std::chrono::seconds(2)));
+
+    EXPECT_EQ(Core::ERROR_NONE, mPreinstallManagerImpl->Unregister(mockNotification.operator->()));
 }
 
-/**
- * @brief Test StartPreinstall with force install disabled
- *
- * @details Test verifies that:
- * - StartPreinstall can be called with forceInstall=false
- * - Method checks existing packages before installing
- */
-TEST_F(PreinstallManagerTest, StartPreinstallWithoutForceInstall)
+TEST_F(PreinstallManagerTest, StartPreinstallWithForceInstallSuccess)
 {
-    ASSERT_EQ(Core::ERROR_NONE, createResources());
-    
-    // Mock ListPackages to return existing packages
-    EXPECT_CALL(*mPackageInstallerMock, ListPackages(::testing::_))
-        .WillRepeatedly([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
-            auto mockIterator = FillPackageIterator();
-            packages = mockIterator;
-            return Core::ERROR_NONE;
-        });
+    ASSERT_EQ(Core::ERROR_NONE, CreateResources());
 
-    EXPECT_CALL(*mPackageInstallerMock, GetConfigForPackage(::testing::_, ::testing::_, ::testing::_, ::testing::_))
-        .WillRepeatedly([&](const string &fileLocator, string& id, string &version, WPEFramework::Exchange::RuntimeConfig &config) {
+    SetDirectoryEntries({".", "..", "app1", "app2"});
+
+    EXPECT_CALL(*mPackageInstallerMock, GetConfigForPackage(_, _, _, _))
+        .Times(2)
+        .WillOnce(DoAll(
+            SetArgReferee<1>("com.test.preinstall.app1"),
+            SetArgReferee<2>("1.0.0"),
+            Return(Core::ERROR_NONE)))
+        .WillOnce(DoAll(
+            SetArgReferee<1>("com.test.preinstall.app2"),
+            SetArgReferee<2>("1.0.1"),
+            Return(Core::ERROR_NONE)));
+
+    EXPECT_CALL(*mPackageInstallerMock, Install(_, _, _, _, _))
+        .Times(2)
+        .WillRepeatedly(Invoke([](const std::string&,
+                                  const std::string&,
+                                  Exchange::IPackageInstaller::IKeyValueIterator* const&,
+                                  const std::string&,
+                                  Exchange::IPackageInstaller::FailReason&) {
+            return Core::ERROR_NONE;
+        }));
+
+    EXPECT_EQ(Core::ERROR_NONE, mPreinstallManagerImpl->StartPreinstall(true));
+}
+
+TEST_F(PreinstallManagerTest, StartPreinstallWithForceInstallInstallFailure)
+{
+    ASSERT_EQ(Core::ERROR_NONE, CreateResources());
+
+    SetDirectoryEntries({"appFailure"});
+
+    EXPECT_CALL(*mPackageInstallerMock, GetConfigForPackage(_, _, _, _))
+        .WillOnce(DoAll(
+            SetArgReferee<1>(PREINSTALL_MANAGER_TEST_PACKAGE_ID),
+            SetArgReferee<2>(PREINSTALL_MANAGER_TEST_VERSION),
+            Return(Core::ERROR_NONE)));
+
+    EXPECT_CALL(*mPackageInstallerMock, Install(_, _, _, _, _))
+        .WillOnce(Invoke([](const std::string&,
+                            const std::string&,
+                            Exchange::IPackageInstaller::IKeyValueIterator* const&,
+                            const std::string&,
+                            Exchange::IPackageInstaller::FailReason& failReason) {
+            failReason = Exchange::IPackageInstaller::FailReason::SIGNATURE_VERIFICATION_FAILURE;
+            return Core::ERROR_GENERAL;
+        }));
+
+    // StartPreinstall reports worker-thread launch status; install failures are asynchronous.
+    EXPECT_EQ(Core::ERROR_NONE, mPreinstallManagerImpl->StartPreinstall(true));
+}
+
+TEST_F(PreinstallManagerTest, StartPreinstallHandlesInvalidPackageFromGetConfig)
+{
+    ASSERT_EQ(Core::ERROR_NONE, CreateResources());
+
+    SetDirectoryEntries({"badApp"});
+
+    EXPECT_CALL(*mPackageInstallerMock, GetConfigForPackage(_, _, _, _))
+        .WillOnce(Invoke([](const std::string&,
+                            std::string&,
+                            std::string&,
+                            WPEFramework::Exchange::RuntimeConfig&) {
+            return Core::ERROR_GENERAL;
+        }));
+
+    EXPECT_CALL(*mPackageInstallerMock, Install(_, _, _, _, _)).Times(0);
+
+    EXPECT_EQ(Core::ERROR_NONE, mPreinstallManagerImpl->StartPreinstall(true));
+}
+
+TEST_F(PreinstallManagerTest, StartPreinstallWithoutForceInstallSkipsEqualVersion)
+{
+    ASSERT_EQ(Core::ERROR_NONE, CreateResources());
+
+    SetDirectoryEntries({"app1"});
+
+    Exchange::IPackageInstaller::Package installedPackage {};
+    installedPackage.packageId = PREINSTALL_MANAGER_TEST_PACKAGE_ID;
+    installedPackage.version = PREINSTALL_MANAGER_TEST_VERSION;
+    installedPackage.state = Exchange::IPackageInstaller::InstallState::INSTALLED;
+
+    EXPECT_CALL(*mPackageInstallerMock, ListPackages(_))
+        .WillOnce(Invoke([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
+            auto iterator = BuildPackageIterator({std::move(installedPackage)});
+            packages = iterator;
+            return Core::ERROR_NONE;
+        }));
+
+    EXPECT_CALL(*mPackageInstallerMock, GetConfigForPackage(_, _, _, _))
+        .WillOnce(Invoke([](const std::string&,
+                            std::string& id,
+                            std::string& version,
+                            WPEFramework::Exchange::RuntimeConfig&) {
             id = PREINSTALL_MANAGER_TEST_PACKAGE_ID;
             version = PREINSTALL_MANAGER_TEST_VERSION;
             return Core::ERROR_NONE;
-        });
+        }));
 
-    SetUpPreinstallDirectoryMocks();
-    
-    Core::hresult result = mPreinstallManagerImpl->StartPreinstall(false);
-    
-    // The result can be ERROR_NONE or ERROR_GENERAL depending on directory existence
-    EXPECT_TRUE(result == Core::ERROR_NONE || result == Core::ERROR_GENERAL);
-    
-    releaseResources();
+    EXPECT_CALL(*mPackageInstallerMock, Install(_, _, _, _, _)).Times(0);
+
+    EXPECT_EQ(Core::ERROR_NONE, mPreinstallManagerImpl->StartPreinstall(false));
+
+    ReleaseResources();
 }
 
-/**
- * @brief Test StartPreinstall failure when PackageManager object creation fails
- *
- * @details Test verifies that:
- * - StartPreinstall returns ERROR_GENERAL when PackageManager is not available
- */
+TEST_F(PreinstallManagerTest, StartPreinstallWithoutForceInstallInstallsNewerVersion)
+{
+    ASSERT_EQ(Core::ERROR_NONE, CreateResources());
+
+    SetDirectoryEntries({"app1"});
+
+    Exchange::IPackageInstaller::Package installedPackage {};
+    installedPackage.packageId = PREINSTALL_MANAGER_TEST_PACKAGE_ID;
+    installedPackage.version = "0.9.0";
+    installedPackage.state = Exchange::IPackageInstaller::InstallState::INSTALLED;
+
+    EXPECT_CALL(*mPackageInstallerMock, ListPackages(_))
+        .WillOnce(Invoke([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
+            auto iterator = BuildPackageIterator({std::move(installedPackage)});
+            packages = iterator;
+            return Core::ERROR_NONE;
+        }));
+
+    EXPECT_CALL(*mPackageInstallerMock, GetConfigForPackage(_, _, _, _))
+        .WillOnce(Invoke([](const std::string&,
+                            std::string& id,
+                            std::string& version,
+                            WPEFramework::Exchange::RuntimeConfig&) {
+            id = PREINSTALL_MANAGER_TEST_PACKAGE_ID;
+            version = PREINSTALL_MANAGER_TEST_VERSION;
+            return Core::ERROR_NONE;
+        }));
+
+    EXPECT_CALL(*mPackageInstallerMock, Install(_, _, _, _, _))
+        .Times(1)
+        .WillOnce(Return(Core::ERROR_NONE));
+
+    EXPECT_EQ(Core::ERROR_NONE, mPreinstallManagerImpl->StartPreinstall(false));
+}
+
+TEST_F(PreinstallManagerTest, StartPreinstallWithoutForceInstallInvalidInstalledVersion)
+{
+    ASSERT_EQ(Core::ERROR_NONE, CreateResources());
+
+    SetDirectoryEntries({"app1"});
+
+    Exchange::IPackageInstaller::Package installedPackage {};
+    installedPackage.packageId = PREINSTALL_MANAGER_TEST_PACKAGE_ID;
+    installedPackage.version = "abc";
+    installedPackage.state = Exchange::IPackageInstaller::InstallState::INSTALLED;
+
+    EXPECT_CALL(*mPackageInstallerMock, ListPackages(_))
+        .WillOnce(Invoke([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
+            auto iterator = BuildPackageIterator({std::move(installedPackage)});
+            packages = iterator;
+            return Core::ERROR_NONE;
+        }));
+
+    EXPECT_CALL(*mPackageInstallerMock, GetConfigForPackage(_, _, _, _))
+        .WillOnce(Invoke([](const std::string&,
+                            std::string& id,
+                            std::string& version,
+                            WPEFramework::Exchange::RuntimeConfig&) {
+            id = PREINSTALL_MANAGER_TEST_PACKAGE_ID;
+            version = PREINSTALL_MANAGER_TEST_VERSION;
+            return Core::ERROR_NONE;
+        }));
+
+    EXPECT_CALL(*mPackageInstallerMock, Install(_, _, _, _, _)).Times(0);
+
+    EXPECT_EQ(Core::ERROR_NONE, mPreinstallManagerImpl->StartPreinstall(false));
+
+    ReleaseResources();
+}
+
+TEST_F(PreinstallManagerTest, StartPreinstallWithoutForceInstallListPackagesFailure)
+{
+    ASSERT_EQ(Core::ERROR_NONE, CreateResources());
+
+    SetDirectoryEntries({"app1"});
+
+    EXPECT_CALL(*mPackageInstallerMock, ListPackages(_))
+        .WillOnce(Invoke([](Exchange::IPackageInstaller::IPackageIterator*& packages) {
+            packages = nullptr;
+            return Core::ERROR_GENERAL;
+        }));
+
+    EXPECT_CALL(*mPackageInstallerMock, GetConfigForPackage(_, _, _, _))
+        .WillOnce(Invoke([](const std::string&,
+                            std::string& id,
+                            std::string& version,
+                            WPEFramework::Exchange::RuntimeConfig&) {
+            id = PREINSTALL_MANAGER_TEST_PACKAGE_ID;
+            version = PREINSTALL_MANAGER_TEST_VERSION;
+            return Core::ERROR_NONE;
+        }));
+
+    EXPECT_EQ(Core::ERROR_GENERAL, mPreinstallManagerImpl->StartPreinstall(false));
+
+    ReleaseResources();
+}
+
+TEST_F(PreinstallManagerTest, StartPreinstallFailsWhenPreinstallDirectoryOpenFails)
+{
+    ASSERT_EQ(Core::ERROR_NONE, CreateResources(R"({"appPreinstallDirectory":"/tmp/preinstall-negative"})"));
+
+    EXPECT_CALL(*mWrapsImplMock, opendir(_))
+        .WillRepeatedly(Return(nullptr));
+
+    EXPECT_CALL(*mPackageInstallerMock, Install(_, _, _, _, _)).Times(0);
+
+    EXPECT_EQ(Core::ERROR_GENERAL, mPreinstallManagerImpl->StartPreinstall(true));
+
+    ReleaseResources();
+}
+
+TEST_F(PreinstallManagerTest, StartPreinstallWithoutForceInstallReleasesIteratorOnListFailure)
+{
+    ASSERT_EQ(Core::ERROR_NONE, CreateResources());
+
+    SetDirectoryEntries({"app1"});
+
+    Exchange::IPackageInstaller::Package installedPackage {};
+    installedPackage.packageId = PREINSTALL_MANAGER_TEST_PACKAGE_ID;
+    installedPackage.version = PREINSTALL_MANAGER_TEST_VERSION;
+    installedPackage.state = Exchange::IPackageInstaller::InstallState::INSTALLED;
+
+    auto iterator = BuildPackageIterator({std::move(installedPackage)});
+
+    EXPECT_CALL(*mPackageInstallerMock, ListPackages(_))
+        .WillOnce(Invoke([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
+            packages = iterator;
+            return Core::ERROR_GENERAL;
+        }));
+
+    EXPECT_EQ(Core::ERROR_GENERAL, mPreinstallManagerImpl->StartPreinstall(false));
+
+    ReleaseResources();
+}
+
+TEST_F(PreinstallManagerTest, StartPreinstallInstallFailureWithUnknownFailReason)
+{
+    ASSERT_EQ(Core::ERROR_NONE, CreateResources());
+
+    SetDirectoryEntries({"appUnknownFailReason"});
+
+    EXPECT_CALL(*mPackageInstallerMock, GetConfigForPackage(_, _, _, _))
+        .WillOnce(DoAll(
+            SetArgReferee<1>(PREINSTALL_MANAGER_TEST_PACKAGE_ID),
+            SetArgReferee<2>(PREINSTALL_MANAGER_TEST_VERSION),
+            Return(Core::ERROR_NONE)));
+
+    EXPECT_CALL(*mPackageInstallerMock, Install(_, _, _, _, _))
+        .WillOnce(Invoke([](const std::string&,
+                            const std::string&,
+                            Exchange::IPackageInstaller::IKeyValueIterator* const&,
+                            const std::string&,
+                            Exchange::IPackageInstaller::FailReason& failReason) {
+            failReason = static_cast<Exchange::IPackageInstaller::FailReason>(255);
+            return Core::ERROR_GENERAL;
+        }));
+
+    // StartPreinstall reports worker-thread launch status; install failures are asynchronous.
+    EXPECT_EQ(Core::ERROR_NONE, mPreinstallManagerImpl->StartPreinstall(true));
+}
+
 TEST_F(PreinstallManagerTest, StartPreinstallFailsWhenPackageManagerUnavailable)
 {
-    // Create minimal setup without PackageManager mock
     mServiceMock = new NiceMock<ServiceMock>;
-    
-    // Don't set up PackageInstaller mock in QueryInterfaceByCallsign
-    EXPECT_CALL(*mServiceMock, QueryInterfaceByCallsign(::testing::_, ::testing::_))
-        .WillRepeatedly(::testing::Return(nullptr));
-    
-    EXPECT_EQ(string(""), plugin->Initialize(mServiceMock));
+
+    EXPECT_CALL(*mServiceMock, QueryInterfaceByCallsign(_, _))
+        .WillRepeatedly(Return(nullptr));
+
+    EXPECT_EQ(std::string(""), mPlugin->Initialize(mServiceMock));
+
     mPreinstallManagerImpl = Plugin::PreinstallManagerImplementation::getInstance();
-    
-    Core::hresult result = mPreinstallManagerImpl->StartPreinstall(true);
-    
-    EXPECT_EQ(Core::ERROR_GENERAL, result);
-    
-    plugin->Deinitialize(mServiceMock);
+    ASSERT_NE(nullptr, mPreinstallManagerImpl);
+
+    EXPECT_EQ(Core::ERROR_GENERAL, mPreinstallManagerImpl->StartPreinstall(true));
+
+    mPlugin->Deinitialize(mServiceMock);
     delete mServiceMock;
+    mServiceMock = nullptr;
     mPreinstallManagerImpl = nullptr;
 }
 
-/**
- * @brief Test notification handling for app installation status
- *
- * @details Test verifies that:
- * - Notification callbacks are properly triggered
- * - Installation status is handled correctly
- */
-TEST_F(PreinstallManagerTest, HandleAppInstallationStatusNotification)
+TEST_F(PreinstallManagerTest, DeinitializeWithRemoteConnectionObject)
 {
-    ASSERT_EQ(Core::ERROR_NONE, createResources());
-    
-    auto mockNotification = Core::ProxyType<MockNotificationTest>::Create();
-    testing::Mock::AllowLeak(mockNotification.operator->()); // Allow leak since ProxyType manages lifecycle
-    
-    // Use a promise/future to wait for the asynchronous notification
-    std::promise<void> notificationPromise;
-    std::future<void> notificationFuture = notificationPromise.get_future();
-    
-    // Expect the notification method to be called and signal completion
-    EXPECT_CALL(*mockNotification, OnAppInstallationStatus(::testing::_))
-        .Times(1)
-        .WillOnce(::testing::InvokeWithoutArgs([&notificationPromise]() {
-            notificationPromise.set_value();
-        }));
-    
-    mPreinstallManagerImpl->Register(mockNotification.operator->());
-    
-    // Simulate installation status notification
-    string testJsonResponse = R"({"packageId":"testApp","version":"1.0.0","status":"SUCCESS"})";
-    
-    // Call the handler directly since it's a friend class
-    mPreinstallManagerImpl->handleOnAppInstallationStatus(testJsonResponse);
-    
-    // Wait for the asynchronous notification (with timeout)
-    auto status = notificationFuture.wait_for(std::chrono::seconds(2));
-    EXPECT_EQ(std::future_status::ready, status) << "Notification was not received within timeout";
-    
-    // Cleanup
-    mPreinstallManagerImpl->Unregister(mockNotification.operator->());
-    releaseResources();
-}
+    ASSERT_EQ(Core::ERROR_NONE, CreateResources());
 
-/**
- * @brief Test QueryInterface functionality
- *
- * @details Test verifies that:
- * - QueryInterface returns proper interfaces
- * - IPreinstallManager interface can be obtained
- */
-TEST_F(PreinstallManagerTest, QueryInterface)
-{
-    ASSERT_EQ(Core::ERROR_NONE, createResources());
-    
-    // Test querying IPreinstallManager interface
-    Exchange::IPreinstallManager* preinstallInterface = 
-        static_cast<Exchange::IPreinstallManager*>(
-            mPreinstallManagerImpl->QueryInterface(Exchange::IPreinstallManager::ID));
-    
-    EXPECT_TRUE(preinstallInterface != nullptr);
-    
-    if (preinstallInterface != nullptr) {
-        preinstallInterface->Release();
-    }
-    
-    releaseResources();
+    auto comLinkMock = new NiceMock<COMLinkMock>;
+    auto remoteConnectionMock = new NiceMock<RemoteConnectionMock>;
+
+    EXPECT_CALL(*mServiceMock, COMLink())
+        .Times(AnyNumber())
+        .WillRepeatedly(Return(comLinkMock));
+
+    EXPECT_CALL(*comLinkMock, RemoteConnection(_))
+        .Times(AnyNumber())
+        .WillRepeatedly(Return(remoteConnectionMock));
+
+    EXPECT_CALL(*remoteConnectionMock, Release())
+        .Times(AnyNumber())
+        .WillRepeatedly(Return(0));
+
+    ReleaseResources();
+
+    delete remoteConnectionMock;
+    delete comLinkMock;
 }

@@ -25,6 +25,7 @@
 #include <memory>
 #include <mutex>
 #include <condition_variable>
+#include <atomic>
 
 #include <json/json.h>
 
@@ -33,6 +34,7 @@
 #include <interfaces/IDownloadManager.h>
 
 #include "DownloadManagerHttpClient.h"
+#include "DownloadManagerTelemetryReporting.h"
 
 #define DOWNLOAD_REASON_NONE    (0xFF)
 
@@ -130,7 +132,7 @@ namespace Plugin {
 
         void downloaderRoutine(int waitTime);
         void notifyDownloadStatus(const string& id, const string& locator, const DownloadReason status);
-
+        // PRECONDITION: Caller MUST hold mQueueMutex
         DownloadInfoPtr pickDownloadJob(void);
         int nextRetryDuration(int n) {
             const double goldenRatio = (1 + std::sqrt(5)) / 2.0;
@@ -160,7 +162,7 @@ namespace Plugin {
         mutable std::mutex mQueueMutex;
         std::condition_variable mDownloadThreadCV;
         std::unique_ptr<std::thread> mDownloadThreadPtr;
-        bool            mDownloaderRunFlag;
+        std::atomic<bool> mDownloaderRunFlag;
         DownloadInfoPtr mCurrentDownload;
 
         uint32_t        mDownloadId;

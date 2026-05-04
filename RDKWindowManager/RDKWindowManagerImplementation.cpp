@@ -88,7 +88,7 @@ static std::string gScreenshotImageData;
 static bool gScreenshotSuccess = false;
 
 CreateDisplayRequest::CreateDisplayRequest(std::string client, std::string displayName, uint32_t displayWidth, uint32_t displayHeight, bool virtualDisplayEnabled,
-                                           uint32_t virtualWidth, uint32_t virtualHeight, bool topmost, bool focus, int32_t ownerId, int32_t groupId)
+                                           uint32_t virtualWidth, uint32_t virtualHeight, bool topmost, bool focus, uint32_t ownerId, uint32_t groupId)
 : mClient(std::move(client))
 , mDisplayName(std::move(displayName))
 , mDisplayWidth(displayWidth)
@@ -267,7 +267,7 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
                   if (success && gScreenshotData && gScreenshotSize > 0)
                   {
                       // Encode the screenshot data as base64
-                      Utils::String::imageEncoder(gScreenshotData, gScreenshotSize, true, gScreenshotImageData);
+                      ::Utils::String::imageEncoder(gScreenshotData, gScreenshotSize, true, gScreenshotImageData);
                       
                       // Free the buffer immediately after encoding to avoid retaining memory
                       free(gScreenshotData);
@@ -297,6 +297,7 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
         });
 
         LOGINFO("RDKWindowManagerImplementation::Initialized");
+        RDKWindowManagerTelemetryReporting::getInstance().initialize(service);
     }
     else
     {
@@ -371,6 +372,7 @@ Core::hresult RDKWindowManagerImplementation::Deinitialize(PluginHost::IShell* s
     gRdkWindowManagerMutex.unlock();
 
     LOGINFO("RDKWindowManagerImplementation::Deinitialized");
+    RDKWindowManagerTelemetryReporting::getInstance().reset();
 
     return (result);
 }
@@ -649,118 +651,50 @@ void RDKWindowManagerImplementation::Dispatch(Event event, const JsonValue param
 
 /***
  * @brief Create the display window.
- * Creates a display for the specified client using the configuration parameters.
+ * Creates a display for the specified client using the provided configuration parameters.
  *
- * @displayParams[in] : JSON String format with client/callSign, displayName, displayWidth, displayHeight,
- *                      virtualDisplay,virtualWidth,virtualHeight,topmost,focus
- *                      Ex:{\"callsign\": \"org.rdk.YouTube\",\"displayName\": \"test1\",\"displayWidth\": 1920,\"displayHeight\": 1080,
- *                          \"virtualDisplay\": true,\"virtualWidth\": 1920,\"virtualHeight\": 1080,\"topmost\": false,\"focus\": false, \"ownerId\": 30001,  \"groupId\": 30000}
- * @return            : Core::<StatusCode>
+ * @param clientId        : Unique identifier of the client application (e.g. "org.rdk.YouTube").
+ * @param displayName     : Name to assign to the created display (e.g. "test1").
+ * @param displayWidth    : Width of the display in pixels.
+ * @param displayHeight   : Height of the display in pixels.
+ * @param virtualDisplay  : When true, creates a virtual (off-screen) display.
+ * @param virtualWidth    : Width of the virtual display in pixels.
+ * @param virtualHeight   : Height of the virtual display in pixels.
+ * @param ownerId         : Linux user ID (UID) associated with the client that owns the display surface.
+ * @param groupId         : Linux group ID (GID) associated with the client or surfaces for access/grouping.
+ * @param topmost         : When true, the display surface is rendered above all others.
+ * @param focus           : When true, the display surface receives input focus on creation.
+ * @return Core::ERROR_NONE on success, Core::ERROR_GENERAL on failure.
  */
-Core::hresult RDKWindowManagerImplementation::CreateDisplay(const string &displayParams)
+Core::hresult RDKWindowManagerImplementation::CreateDisplay(const string &clientId, const string &displayName, const uint32_t displayWidth, const uint32_t displayHeight, const bool virtualDisplay, const uint32_t virtualWidth, const uint32_t virtualHeight, const uint32_t ownerId, const uint32_t groupId, const bool topmost, const bool focus)
 {
     Core::hresult status = Core::ERROR_GENERAL;
     bool result = true;
-    JsonObject parameters;
 
-    if (displayParams.empty())
+    if (clientId.empty())
     {
-        LOGERR("displayParams is empty");
+        LOGERR("CreateDisplay: clientId is empty");
+        return status;
+    }
+
+    LOGINFO("CreateDisplay params: clientId:%s, displayName:%s, displayWidth:%u, displayHeight:%u, virtualDisplay:%d, virtualWidth:%u, virtualHeight:%u, ownerId:%u, groupId:%u, topmost:%d, focus:%d",
+            clientId.c_str(), displayName.c_str(), displayWidth, displayHeight, virtualDisplay, virtualWidth, virtualHeight, ownerId, groupId, topmost, focus);
+
+    time_t displayStartTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
+    result = createDisplay(clientId, displayName, displayWidth, displayHeight,
+                           virtualDisplay, virtualWidth, virtualHeight, ownerId, groupId, topmost, focus);
+
+    if (false == result)
+    {
+        LOGERR("failed to create display : %s, displayName:%s, displayWidth:%u, displayHeight:%u, virtualDisplay:%d, virtualWidth:%u, virtualHeight:%u, topmost:%d, focus:%d, ownerId: %u, groupId: %u",
+               clientId.c_str(), displayName.c_str(), displayWidth, displayHeight, virtualDisplay, virtualWidth, virtualHeight, topmost, focus, ownerId, groupId);
     }
     else
     {
-        LOGINFO("displayParams :%s", displayParams.c_str());
-
-        parameters.FromString(displayParams);
-
-        if (!parameters.HasLabel("client") && !parameters.HasLabel("callsign"))
-        {
-            LOGERR("client or callsign");
-        }
-        else
-        {
-            string client = "";
-            if (parameters.HasLabel("client"))
-            {
-                client = parameters["client"].String();
-            }
-            else
-            {
-                client = parameters["callsign"].String();
-            }
-
-            string displayName("");
-            if (parameters.HasLabel("displayName"))
-            {
-                displayName = parameters["displayName"].String();
-            }
-
-            uint32_t displayWidth = 0;
-            if (parameters.HasLabel("displayWidth"))
-            {
-                displayWidth = parameters["displayWidth"].Number();
-            }
-
-            uint32_t displayHeight = 0;
-            if (parameters.HasLabel("displayHeight"))
-            {
-                displayHeight = parameters["displayHeight"].Number();
-            }
-
-            bool virtualDisplay = false;
-            if (parameters.HasLabel("virtualDisplay"))
-            {
-                virtualDisplay = parameters["virtualDisplay"].Boolean();
-            }
-
-            uint32_t virtualWidth = 0;
-            if (parameters.HasLabel("virtualWidth"))
-            {
-                virtualWidth = parameters["virtualWidth"].Number();
-            }
-
-            uint32_t virtualHeight = 0;
-            if (parameters.HasLabel("virtualHeight"))
-            {
-                virtualHeight = parameters["virtualHeight"].Number();
-            }
-
-            bool topmost = false;
-            if (parameters.HasLabel("topmost"))
-            {
-                topmost = parameters["topmost"].Boolean();
-            }
-
-            bool focus = false;
-            if (parameters.HasLabel("focus"))
-            {
-                focus = parameters["focus"].Boolean();
-            }
-
-            int32_t ownerId = 0;
-            if (parameters.HasLabel("ownerId"))
-            {
-                ownerId = parameters["ownerId"].Number();
-            }
-
-            int32_t groupId = 0;
-            if (parameters.HasLabel("groupId"))
-            {
-                groupId = parameters["groupId"].Number();
-            }
-            result = createDisplay(client, displayName, displayWidth, displayHeight,
-                                   virtualDisplay, virtualWidth, virtualHeight, topmost, focus, ownerId, groupId);
-
-            if (false == result)
-            {
-                LOGERR("failed to create display : %s, displayName:%s, displayWidth:%u, displayHeight:%u, virtualDisplay:%u, virtualWidth:%u, virtualHeight:%u, topmost:%u, focus:%u, ownerId: %d, groupId: %d",
-                       client.c_str(), displayName.c_str(), displayWidth, displayHeight, virtualDisplay, virtualWidth, virtualHeight, topmost, focus, ownerId, groupId);
-            }
-            else
-            {
-                status = Core::ERROR_NONE;
-            }
-        }
+        time_t displayEndTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
+        int duration = static_cast<int>(displayEndTime - displayStartTime);
+        RDKWindowManagerTelemetryReporting::getInstance().recordCreateDisplayTelemetry(clientId, duration);
+        status = Core::ERROR_NONE;
     }
     return status;
 }
@@ -1559,18 +1493,17 @@ Core::hresult RDKWindowManagerImplementation::GetVisibility(const std::string &c
  * @client[in]        : client/callsign, Ex: westerostest, org.rdk.YouTube
  * @displayName[in]   : Optional - Name of the display
  * @displayWidth[in]  : Optional - width of the creating display
- * @displayWidth[in]  : Optional - width of the creating display
  * @displayHeight[in] : Optional - height of the creating display
  * @virtualDisplay[in]: Optional - virtual display is required or not
  * @virtualWidth[in]  : Optional - width of the virtual display
  * @virtualHeight[in] : Optional - height of the virtual display
+ * @ownerId[in]       : Optional - owner identifier for the display
+ * @groupId[in]       : Optional - group identifier for the display
  * @topmost[in]       : Optional - topmost is required or not true/false
  * @focus[in]         : Optional - focus is required or not
  * @return            : Optional - true/false
  */
-bool RDKWindowManagerImplementation::createDisplay(const string& client, const string& displayName, const uint32_t displayWidth, const uint32_t displayHeight,
-                                                   const bool virtualDisplay, const uint32_t virtualWidth, const uint32_t virtualHeight,
-                                                   const bool topmost, const bool focus, const int32_t ownerId, int32_t groupId)
+bool RDKWindowManagerImplementation::createDisplay(const string& client, const string& displayName, const uint32_t displayWidth, const uint32_t displayHeight, const bool virtualDisplay, const uint32_t virtualWidth, const uint32_t virtualHeight, const uint32_t ownerId, const uint32_t groupId, const bool topmost, const bool focus)
 {
     bool ret = false;
 

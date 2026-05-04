@@ -14,7 +14,7 @@ on:
 env:
   BUILD_TYPE: Debug
   THUNDER_REF: "R4.4.1"
-  INTERFACES_REF: "develop"
+  INTERFACES_REF: "topic/RDKEMW-14505"
   AUTOMATICS_UNAME: ${{ secrets.AUTOMATICS_UNAME}}
   AUTOMATICS_PASSCODE: ${{ secrets. AUTOMATICS_PASSCODE}}
 
@@ -85,7 +85,7 @@ jobs:
         run: >
           sudo apt update
           &&
-          sudo apt install -y libsqlite3-dev libcurl4-openssl-dev valgrind lcov clang libsystemd-dev libboost-all-dev libwebsocketpp-dev meson libcunit1 libcunit1-dev curl protobuf-compiler-grpc libgrpc-dev libgrpc++-dev libjsoncpp-dev libxtables-dev libip4tc-dev libip6tc-dev libyaml-cpp-dev
+          sudo apt install -y libsqlite3-dev libcurl4-openssl-dev valgrind lcov clang libsystemd-dev libboost-all-dev libwebsocketpp-dev meson libcunit1 libcunit1-dev curl protobuf-compiler-grpc libgrpc-dev libgrpc++-dev libjsoncpp-dev libxtables-dev libip4tc-dev libip6tc-dev libyaml-cpp-dev gdb
 
       - name: Build trower-base64
         run: |
@@ -326,6 +326,7 @@ jobs:
           -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/headers/network
           -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/headers/libusb
           -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests
+          -I $GITHUB_WORKSPACE/entservices-appmanagers/helpers/Telemetry
           -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/headers/Dobby
           -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/headers/Dobby/Public/Dobby
           -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/headers/Dobby/IpcService
@@ -472,7 +473,7 @@ jobs:
           &&
           ls -l /dev/disk/by-id/usb-JetFlash_Transcend_16GB_UEUIRCXT-0
 
-      - name: Run unit tests without valgrind
+      - name: Run unit tests without valgrind with gdb
         run: |
           set -euo pipefail
 
@@ -491,11 +492,60 @@ jobs:
 
           echo "Using test binary: $TEST_BIN"
 
-          echo "Running unit tests..."
-          "$TEST_BIN"
+          # Write gdb command file.
+          # Uses Python event hooks so that:
+          #   - on a fatal signal  → prints full backtrace and exits gdb with code 1
+          #   - on a clean exit    → exits gdb with the inferior's own exit code
+          # (Plain 'quit' in gdb --batch always exits 0, even after SIGSEGV with nopass.)
+          GDB_CMD_FILE=$(mktemp /tmp/gdb_cmds.XXXXXX)
+          cat > "$GDB_CMD_FILE" << 'GDBEOF'
+          set pagination off
+          set confirm off
+          set print thread-events off
+          python
+          import gdb
+          _crash_signal = [None]
+          _inf_exit_code = [0]
+          def _stop_handler(event):
+              if hasattr(event, 'stop_signal') and event.stop_signal:
+                  _crash_signal[0] = event.stop_signal
+          def _exit_handler(event):
+              if hasattr(event, 'exit_code') and event.exit_code is not None:
+                  _inf_exit_code[0] = event.exit_code
+          gdb.events.stop.connect(_stop_handler)
+          gdb.events.exited.connect(_exit_handler)
+          end
+          handle SIGSEGV stop print nopass
+          handle SIGABRT stop print nopass
+          handle SIGBUS  stop print nopass
+          run
+          python
+          import gdb
+          sig = _crash_signal[0]
+          if sig:
+              print("\n\n========== GDB CRASH REPORT ==========")
+              print("Signal caught: " + str(sig))
+              print("--- Crashed thread backtrace (full) ---")
+              gdb.execute("bt full")
+              print("\n--- All threads backtrace ---")
+              gdb.execute("thread apply all bt full")
+              print("=======================================")
+              gdb.execute("quit 1")
+          else:
+              code = _inf_exit_code[0] or 0
+              gdb.execute("quit %d" % code)
+          end
+          GDBEOF
 
-          cp rdkL1TestResults.json "$GITHUB_WORKSPACE/rdkL1TestResultsWithoutValgrind.json"
+          echo "Running unit tests under gdb (real-time output + crash backtrace on signal)..."
+          gdb --batch -x "$GDB_CMD_FILE" --args "$TEST_BIN"
+          GDB_EXIT=$?
+          rm -f "$GDB_CMD_FILE"
+          # Copy results regardless of outcome (useful for artifact upload on failure).
+          cp rdkL1TestResults.json "$GITHUB_WORKSPACE/rdkL1TestResultsWithoutValgrind.json" 2>/dev/null || true
           rm -f rdkL1TestResults.json
+          # Fail the step if gdb reported a crash or the test binary exited non-zero.
+          exit $GDB_EXIT
 
       - name: Run unit tests with valgrind
         if: ${{ !env.ACT }}
