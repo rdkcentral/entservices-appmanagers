@@ -1853,3 +1853,79 @@ uint32_t Test_DobbySpecGenerator_GenerateWithEnvVariablesInRuntimeConfig()
 
     return tr.failures;
 }
+
+/* Test_DobbySpecGenerator_GenerateThunderPluginFromCapabilities
+ *
+ * Verifies thunder plugin generation can be driven by RuntimeConfig.capabilities
+ * even when legacy boolean field is not set.
+ */
+uint32_t Test_DobbySpecGenerator_GenerateThunderPluginFromCapabilities()
+{
+    L0Test::TestResult tr;
+
+    WPEFramework::Plugin::DobbySpecGenerator gen;
+    auto appCfg = MakeValidAppConfig();
+    auto rtCfg  = MakeValidRuntimeConfig();
+    rtCfg.thunder = false;
+    rtCfg.capabilities = "thunder";
+    std::string spec;
+
+    const bool result = gen.generate(appCfg, rtCfg, spec);
+    L0Test::ExpectTrue(tr, result,
+                       "generate() succeeds when thunder capability is provided in capabilities string");
+    L0Test::ExpectTrue(tr, spec.find("\"thunder\"") != std::string::npos,
+                       "Generated spec contains thunder plugin when thunder capability entry is present");
+
+    return tr.failures;
+}
+
+/* Test_DobbySpecGenerator_GenerateDialEnvFromEscapedCapabilityValue
+ *
+ * Verifies dial-app value is parsed from escaped name=value capability entry
+ * and applied to DIAL-related environment variables.
+ */
+uint32_t Test_DobbySpecGenerator_GenerateDialEnvFromEscapedCapabilityValue()
+{
+    L0Test::TestResult tr;
+
+    WPEFramework::Plugin::DobbySpecGenerator gen;
+    auto appCfg = MakeValidAppConfig();
+    auto rtCfg  = MakeValidRuntimeConfig();
+    rtCfg.dial = false;
+    rtCfg.dialId.clear();
+    rtCfg.capabilities = "dial-app=dial\\,id\\=01";
+    std::string spec;
+
+    const bool result = gen.generate(appCfg, rtCfg, spec);
+    L0Test::ExpectTrue(tr, result,
+                       "generate() succeeds when dial-app value is provided via capabilities string");
+    L0Test::ExpectTrue(tr, spec.find("APPLICATION_DIAL_NAME=dial,id=01") != std::string::npos,
+                       "Generated spec includes unescaped dial-app value from capabilities string");
+
+    return tr.failures;
+}
+
+/* Test_DobbySpecGenerator_GenerateWithEmptyCapabilitiesString
+ *
+ * Verifies empty RuntimeConfig.capabilities is handled safely and does not
+ * enable capability-driven plugins when legacy fields are unset.
+ */
+uint32_t Test_DobbySpecGenerator_GenerateWithEmptyCapabilitiesString()
+{
+    L0Test::TestResult tr;
+
+    WPEFramework::Plugin::DobbySpecGenerator gen;
+    auto appCfg = MakeValidAppConfig();
+    auto rtCfg  = MakeValidRuntimeConfig();
+    rtCfg.thunder = false;
+    rtCfg.capabilities.clear();
+    std::string spec;
+
+    const bool result = gen.generate(appCfg, rtCfg, spec);
+    L0Test::ExpectTrue(tr, result,
+                       "generate() succeeds when capabilities string is empty");
+    L0Test::ExpectTrue(tr, spec.find("\"thunder\"") == std::string::npos,
+                       "Generated spec does not include thunder plugin when capabilities string is empty and thunder flag is false");
+
+    return tr.failures;
+}

@@ -25,6 +25,8 @@
 #include <json/json.h>
 #include "tracing/Logging.h"
 #include <string>
+#include <utility>
+#include <vector>
 #include "ApplicationConfiguration.h"
 #include <interfaces/IRuntimeManager.h>
 #include "AIConfiguration.h"
@@ -45,12 +47,20 @@ namespace Plugin
             bool generate(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig, string& outputJsonString);
 
         private:
-            Json::Value createEnvVars(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const;
+            Json::Value createEnvVars(const ApplicationConfiguration& config,
+                                      const WPEFramework::Exchange::RuntimeConfig& runtimeConfig,
+                                      const std::vector<std::pair<std::string, std::string>>& capabilities) const;
             Json::Value createMounts(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const;
-            Json::Value createRdkPlugins(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const;
+            Json::Value createRdkPlugins(const ApplicationConfiguration& config,
+                                         const WPEFramework::Exchange::RuntimeConfig& runtimeConfig,
+                                         const std::vector<std::pair<std::string, std::string>>& capabilities) const;
             Json::Value createMinidumpPlugin() const;
-            Json::Value createAppServiceSDKPlugin(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const;
-            Json::Value createNetworkPlugin(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const;
+            Json::Value createAppServiceSDKPlugin(const ApplicationConfiguration& config,
+                                                  const WPEFramework::Exchange::RuntimeConfig& runtimeConfig,
+                                                  const std::vector<std::pair<std::string, std::string>>& capabilities) const;
+            Json::Value createNetworkPlugin(const ApplicationConfiguration& config,
+                                            const WPEFramework::Exchange::RuntimeConfig& runtimeConfig,
+                                            const std::vector<std::pair<std::string, std::string>>& capabilities) const;
             Json::Value createBindMount(const std::string &source,
                                         const std::string &destination,
                                         unsigned long options) const;
@@ -75,6 +85,12 @@ namespace Plugin
             Json::Value getWorkingDir(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const;
             void initialiseIonHeapsJson();
             std::string encodeURL(std::string url) const;
+        void parseCapabilities(const std::string& serializedCapabilities,
+                              std::vector<std::pair<std::string, std::string>>& parsedCapabilities) const;
+        bool hasCapability(const std::vector<std::pair<std::string, std::string>>& capabilities,
+                           const std::string& capabilityName) const;
+        std::string getCapabilityValue(const std::vector<std::pair<std::string, std::string>>& capabilities,
+                                       const std::string& capabilityName) const;
 	    void addHolePunchPortToSpec(Json::Value &spec, in_port_t port) const;
 
             Json::Value mIonMemoryPluginData;

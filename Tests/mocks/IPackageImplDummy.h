@@ -71,6 +71,7 @@ namespace packagemanager
         std::string logLevels; // json array of strings
         bool mapi;
         std::set<std::string> fkpsFiles;
+        std::string capabilities;
         std::string runtimeType;
         std::string mimeType;
 
@@ -102,6 +103,7 @@ namespace packagemanager
             configMetadata.appPath = "/opt/YouTube";
             configMetadata.appType = packagemanager::ApplicationType::INTERACTIVE;
             configMetadata.fkpsFiles = {"file1","file2","file3"};
+            configMetadata.capabilities = "dial-app,wan-lan,thunder,fkps";
             configMetadata.runtimeType = "";
             configMetadata.mimeType = "application/vnd.rdk-app.dac.native";
             
@@ -138,6 +140,7 @@ namespace packagemanager
             configMetadata.appPath = "/opt/" + packageId;
             configMetadata.appType = packagemanager::ApplicationType::INTERACTIVE;
             configMetadata.fkpsFiles = {"file1", "file2", "file3"};
+            configMetadata.capabilities = "dial-app,wan-lan,thunder,fkps";
             configMetadata.runtimeType = "";
             configMetadata.mimeType = "application/vnd.rdk-app.dac.native";
             return SUCCESS;

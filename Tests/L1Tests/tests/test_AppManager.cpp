@@ -389,6 +389,7 @@ protected:
         .WillRepeatedly([&](const string &packageId, const string &version, const Exchange::IPackageHandler::LockReason &lockReason, uint32_t &lockId /* @out */, string &unpackedPath /* @out */, Exchange::RuntimeConfig &configMetadata /* @out */, Exchange::IPackageHandler::ILockIterator*& appMetadata /* @out */) {
             lockId = 1;
             unpackedPath = APPMANAGER_APP_UNPACKEDPATH;
+            configMetadata.capabilities = "dial-app,wan-lan";
             return Core::ERROR_NONE;
         });
 
@@ -406,6 +407,7 @@ protected:
         .Times(::testing::AnyNumber())
         .WillOnce([&](const string& appId, const string& launchIntent, const Exchange::ILifecycleManager::LifecycleState targetLifecycleState,
             const Exchange::RuntimeConfig& runtimeConfigObject, const string& launchArgs, string& appInstanceId, string& errorReason, bool& success) {
+            EXPECT_EQ("dial-app,wan-lan", runtimeConfigObject.capabilities);
             appInstanceId = APPMANAGER_APP_INSTANCE;
             errorReason = "";
             success = true;
@@ -429,6 +431,7 @@ protected:
         .WillRepeatedly([&](const string &packageId, const string &version, const Exchange::IPackageHandler::LockReason &lockReason, uint32_t &lockId /* @out */, string &unpackedPath /* @out */, Exchange::RuntimeConfig &configMetadata /* @out */, Exchange::IPackageHandler::ILockIterator*& appMetadata /* @out */) {
             lockId = 1;
             unpackedPath = APPMANAGER_APP_UNPACKEDPATH;
+            configMetadata.capabilities = "dial-app,wan-lan";
             return Core::ERROR_NONE;
         });
 
@@ -446,6 +449,7 @@ protected:
         .Times(::testing::AnyNumber())
         .WillOnce([&](const string& appId, const string& launchIntent, const Exchange::ILifecycleManager::LifecycleState targetLifecycleState,
             const Exchange::RuntimeConfig& runtimeConfigObject, const string& launchArgs, string& appInstanceId, string& errorReason, bool& success) {
+            EXPECT_EQ("dial-app,wan-lan", runtimeConfigObject.capabilities);
             {
                 std::lock_guard<std::mutex> lock(mPreLoadMutex);
                 mPreLoadSpawmCalled = true;
