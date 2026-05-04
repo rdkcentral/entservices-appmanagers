@@ -60,6 +60,7 @@ struct RuntimeConfig {
     std::string logLevels;
     bool mapi;
     std::string fkpsFiles;
+    std::string capabilities;
     std::string ralfPkgPath;
 
     std::string fireboltVersion;
