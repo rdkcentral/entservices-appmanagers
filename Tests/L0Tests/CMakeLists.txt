@@ -407,13 +407,12 @@ endif()
 if(PLUGIN_DOWNLOAD_MANAGER)
     target_compile_definitions(downloadmanager_l0test PRIVATE
         MODULE_NAME=DownloadManager_L0Test
-        USE_THUNDER_R4=1
-        DOWNLOAD_MANAGER_API_VERSION_NUMBER_MAJOR=1
-        DOWNLOAD_MANAGER_API_VERSION_NUMBER_MINOR=0
-        DOWNLOAD_MANAGER_API_VERSION_NUMBER_PATCH=0
         PLUGIN_DOWNLOAD_MANAGER_IMPLEMENTATION_NAME="DownloadManagerImplementation"
-        DISABLE_SECURITY_TOKEN=1
-        THUNDER_PLATFORM_PC_UNIX=1
+    )
+
+    # Force include L0TestConfig.h in all source files
+    target_compile_options(downloadmanager_l0test PRIVATE
+        -include ${CMAKE_CURRENT_SOURCE_DIR}/common/L0TestConfig.h
     )
 
     if(APPDM_ENABLE_COVERAGE)
@@ -425,6 +424,9 @@ if(PLUGIN_DOWNLOAD_MANAGER)
         target_compile_options(downloadmanager_l0test PRIVATE -Wall -Wextra -Wno-unused-parameter)
     endif()
 
+    # Suppress deprecation warnings from Thunder/WPEFramework headers
+    target_compile_options(downloadmanager_l0test PRIVATE -Wno-error=deprecated-declarations)
+
     target_include_directories(downloadmanager_l0test PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/DownloadManager
@@ -433,7 +435,7 @@ if(PLUGIN_DOWNLOAD_MANAGER)
         ${CMAKE_SOURCE_DIR}/../../DownloadManager
         ${CMAKE_SOURCE_DIR}/../../helpers
         ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry
-	 ${PREFIX}/include
+        ${PREFIX}/include
         ${PREFIX}/include/${NAMESPACE}
     )
 

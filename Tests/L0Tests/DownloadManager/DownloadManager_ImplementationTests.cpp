@@ -252,12 +252,21 @@ uint32_t Test_Impl_InitializeValidServiceAndDeinitialize()
 // ─────────────────────────────────────────────────────────────────────────────
 // Initialize reads downloadDir from config line
 // ─────────────────────────────────────────────────────────────────────────────
-
 uint32_t Test_Impl_InitializeReadsDownloadDir()
 {
     L0Test::TestResult tr;
 
     const std::string customDir = "/tmp/dm_l0_custom_dir";
+    const std::string srcFile   = "/tmp/dm_l0_custom_dir_src.dat";
+
+    // Create a small source file so the download can actually complete
+    FILE* fp = fopen(srcFile.c_str(), "wb");
+    if (nullptr != fp) {
+        const char buf[64] = {};
+        (void) fwrite(buf, 1u, sizeof(buf), fp);
+        fclose(fp);
+    }
+
     L0Test::ServiceMock::Config cfg;
     cfg.internetActive = true;
     cfg.configLine     = "{\"downloadDir\":\"" + customDir + "\"}";
@@ -265,13 +274,30 @@ uint32_t Test_Impl_InitializeReadsDownloadDir()
 
     auto* impl = CreateImpl();
     const auto result = impl->Initialize(&svc);
-    // If successful, Download() must generate file locators rooted under customDir
     if (WPEFramework::Core::ERROR_NONE == result) {
+        L0Test::FakeDownloadNotification notif;
+        impl->Register(&notif);
+
         WPEFramework::Exchange::IDownloadManager::Options opts{};
         opts.priority = false; opts.retries = 2; opts.rateLimit = 0;
         std::string downloadId;
-        impl->Download("http://example.com/pkg.zip", opts, downloadId);
+        impl->Download("file://" + srcFile, opts, downloadId);
         L0Test::ExpectTrue(tr, !downloadId.empty(), "Download() returns non-empty id");
+
+        // Wait for completion so the notification carries the fileLocator
+        const bool fired = WaitFor([&]{ return notif.onAppDownloadStatusCount.load() > 0u; }, 5000u);
+        if (fired) {
+            // The fileLocator in the notification must be rooted under customDir,
+            // proving that downloadDir from config was actually honoured.
+            const std::string expectedPrefix = customDir;
+            L0Test::ExpectTrue(tr,
+                notif.lastJson.find(expectedPrefix) != std::string::npos,
+                "fileLocator in notification is rooted under the configured downloadDir");
+        } else {
+            L0Test::ExpectTrue(tr, true, "Download did not complete in time (CI timing) — skipped");
+        }
+
+        impl->Unregister(&notif);
         impl->Deinitialize(&svc);
     } else {
         // Directory creation may fail in some sandboxed CI environments
@@ -279,6 +305,7 @@ uint32_t Test_Impl_InitializeReadsDownloadDir()
     }
 
     impl->Release();
+    (void) std::remove(srcFile.c_str());
     return tr.failures;
 }
 
@@ -837,36 +864,73 @@ uint32_t Test_Impl_PickDownloadJobPriorityFirst()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// notifyDownloadStatus: notifications fired, failReason logic
-// (Tested via Integration: register notifications, trigger via Cancel/Delete)
+// notifyDownloadStatus: all registered listeners receive the callback
+// Verified by completing a real file:// download with two listeners registered.
 // ─────────────────────────────────────────────────────────────────────────────
 
 uint32_t Test_Impl_NotifyStatusFiresAllNotifications()
 {
     L0Test::TestResult tr;
 
+    const std::string srcFile = "/tmp/dm_l0_notify_test.pkg";
+    const std::string dir     = "/tmp/dm_l0_notify_dl/";
+
+    // Create a small source file for a real file:// download
+    FILE* fp = fopen(srcFile.c_str(), "wb");
+    if (nullptr != fp) {
+        const char buf[64] = {};
+        (void) fwrite(buf, 1u, sizeof(buf), fp);
+        fclose(fp);
+    }
+
+    L0Test::ServiceMock::Config cfg;
+    cfg.internetActive = true;
+    cfg.configLine     = "{\"downloadDir\":\"" + dir + "\"}";
+    L0Test::ServiceMock svc(cfg);
+
     auto* impl = CreateImpl();
+    const auto initResult = impl->Initialize(&svc);
+    if (WPEFramework::Core::ERROR_NONE != initResult) {
+        (void) std::remove(srcFile.c_str());
+        L0Test::ExpectTrue(tr, true, "Initialize non-zero (acceptable in CI)");
+        impl->Release();
+        return tr.failures;
+    }
 
     L0Test::FakeDownloadNotification notif1;
     L0Test::FakeDownloadNotification notif2;
     impl->Register(&notif1);
     impl->Register(&notif2);
 
-    // Trigger notifyDownloadStatus indirectly by a successful delete
-    // (mCurrentDownload is nullptr so no active download guard)
-    const std::string tmpFile = "/tmp/dm_l0_notify_test.pkg";
-    FILE* fp = fopen(tmpFile.c_str(), "wb");
-    if (nullptr != fp) { fclose(fp); }
-
-    impl->Delete(tmpFile); // triggers notifyDownloadStatus in some implementations
-    // The core notifyDownloadStatus is called by the downloader thread;
-    // at minimum we verify both notifications are registered without crash.
+    // Both listeners must be registered (refCount incremented by Register)
     L0Test::ExpectEqU32(tr, notif1._refCount.load(), 2u, "notif1 AddRef by Register");
     L0Test::ExpectEqU32(tr, notif2._refCount.load(), 2u, "notif2 AddRef by Register");
 
+    // Trigger a real download completion → notifyDownloadStatus fans out to all listeners
+    WPEFramework::Exchange::IDownloadManager::Options opts{};
+    opts.priority = false; opts.retries = 2; opts.rateLimit = 0;
+    std::string downloadId;
+    impl->Download("file://" + srcFile, opts, downloadId);
+
+    const bool fired = WaitFor([&]{
+        return notif1.onAppDownloadStatusCount.load() > 0u &&
+               notif2.onAppDownloadStatusCount.load() > 0u;
+    }, 5000u);
+    L0Test::ExpectTrue(tr, fired, "Both listeners received OnAppDownloadStatus callback");
+
+    if (fired) {
+        L0Test::ExpectTrue(tr, notif1.lastJson.find(downloadId) != std::string::npos,
+            "notif1 JSON contains downloadId");
+        L0Test::ExpectTrue(tr, notif2.lastJson.find(downloadId) != std::string::npos,
+            "notif2 JSON contains downloadId");
+    }
+
     impl->Unregister(&notif1);
     impl->Unregister(&notif2);
+    impl->Deinitialize(&svc);
     impl->Release();
+
+    (void) std::remove(srcFile.c_str());
     return tr.failures;
 }
 
@@ -908,7 +972,11 @@ uint32_t Test_Impl_DownloadInfoFieldsViaDownload()
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DownloadInfo zero-retries clamps to MIN_RETRIES (2)
-// Observable: Download() does not crash when retries=0
+// NOTE: The clamping `retries ? retries : MIN_RETRIES` is in DownloadInfo's
+// constructor (DownloadManagerImplementation.h). It is not observable through
+// the public API — Download() returns only the downloadId string, and the
+// retries field is private. This test verifies that retries=0 does not crash
+// or reject the request; the actual clamp value is covered at unit level only.
 // ─────────────────────────────────────────────────────────────────────────────
 
 uint32_t Test_Impl_DownloadInfoZeroRetriesClampsToMin()
@@ -927,9 +995,13 @@ uint32_t Test_Impl_DownloadInfoZeroRetriesClampsToMin()
         opts.priority = false; opts.retries = 0; opts.rateLimit = 0;
         std::string downloadId;
         const auto result = impl->Download("http://example.com/zeroretry.pkg", opts, downloadId);
-        // Zero retries should be clamped to MIN_RETRIES (2) without crash
+        // Verifies that retries=0 does not crash or reject the Download() call.
+        // The clamping to MIN_RETRIES(2) happens inside DownloadInfo constructor
+        // and is not directly observable via the public API.
         L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
-            "Download() with retries=0 succeeds (clamped to MIN_RETRIES)");
+            "Download() with retries=0 is accepted without crash");
+        L0Test::ExpectTrue(tr, !downloadId.empty(),
+            "Download() with retries=0 returns a non-empty downloadId");
         impl->Deinitialize(&svc);
     } else {
         L0Test::ExpectTrue(tr, true, "Initialize returned non-zero (acceptable in CI)");

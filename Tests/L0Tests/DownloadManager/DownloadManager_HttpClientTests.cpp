@@ -140,9 +140,12 @@ uint32_t Test_HttpClient_DownloadFile404HandledGracefully()
 
     DownloadManagerHttpClient client;
 
-    // Using a localhost URL that is almost certainly not serving content.
-    // The outcome (HttpError or DiskError or even Success with empty file) is
-    // environment-dependent, but the call must not crash.
+    // NOTE: This test cannot exercise the httpCode==404 branch in downloadFile()
+    // because that branch requires cc==CURLE_OK (a real HTTP response), which
+    // needs a running HTTP server. A refused connection (127.0.0.1:19999) gives
+    // CURLE_COULDNT_CONNECT → cc != CURLE_OK → reaches the else branch directly.
+    // The 404-specific path is covered at integration level only.
+    // This test verifies that an unreachable host returns a valid Status without crash.
     const std::string url = "http://127.0.0.1:19999/nonexistent_dm_l0_file.pkg";
     const std::string out = "/tmp/dm_l0_404_test.out";
 
