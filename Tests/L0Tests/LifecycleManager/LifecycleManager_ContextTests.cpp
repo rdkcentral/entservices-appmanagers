@@ -1134,12 +1134,12 @@ uint32_t Test_RequestHandler_LaunchDelegatesToUpdateState()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::ApplicationContext ctx("com.test.rh.launch");
+    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.rh.launch");
     std::string intent;
     std::string error;
 
     bool result = WPEFramework::Plugin::RequestHandler::getInstance()->launch(
-        &ctx, intent,
+        ctx.get(), intent,
         WPEFramework::Exchange::ILifecycleManager::LifecycleState::PAUSED,
         error);
 
@@ -1157,15 +1157,15 @@ uint32_t Test_RequestHandler_SendIntentStoresIntentOnContext()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::ApplicationContext ctx("com.test.rh.sendintent");
+    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.rh.sendintent");
     std::string error;
 
     bool result = WPEFramework::Plugin::RequestHandler::getInstance()->sendIntent(
-        &ctx, "deeplink://home", error);
+        ctx.get(), "deeplink://home", error);
 
     L0Test::ExpectTrue(tr, result,
         "RequestHandler::sendIntent() returns true");
-    L0Test::ExpectEqStr(tr, ctx.getMostRecentIntent(), "deeplink://home",
+    L0Test::ExpectEqStr(tr, ctx->getMostRecentIntent(), "deeplink://home",
         "sendIntent() stores intent on the context via setMostRecentIntent");
 
     return tr.failures;
