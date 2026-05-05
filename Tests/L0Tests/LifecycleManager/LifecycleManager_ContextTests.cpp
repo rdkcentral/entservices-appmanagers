@@ -475,7 +475,7 @@ uint32_t Test_StateHandler_TransitionUnloadedToLoadingIsValid()
         static_cast<uint32_t>(ctx->getCurrentLifecycleState()),
         static_cast<uint32_t>(WPEFramework::Exchange::ILifecycleManager::LifecycleState::LOADING),
         "Context is in LOADING state after transition");
-    L0Test::ExpectTrue(tr, !ctx.getAppInstanceId().empty(),
+    L0Test::ExpectTrue(tr, !ctx->getAppInstanceId().empty(),
         "LoadingState::handle() generated a non-empty appInstanceId");
 
     return tr.failures;
