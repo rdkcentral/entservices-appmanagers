@@ -391,8 +391,8 @@ uint32_t Test_StateHandler_InitializePopulatesMap()
 
     // A context at UNLOADED state -- transition to LOADING must be valid.
     // We test this via changeState with target=UNLOADED (already there -> true).
-    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.init");
-    WPEFramework::Plugin::StateTransitionRequest req(ctx,
+    WPEFramework::Plugin::ApplicationContext ctx("com.test.init");
+    WPEFramework::Plugin::StateTransitionRequest req(&ctx,
         WPEFramework::Exchange::ILifecycleManager::LifecycleState::UNLOADED);
     std::string error;
     bool result = WPEFramework::Plugin::StateHandler::changeState(req, error);
@@ -436,9 +436,9 @@ uint32_t Test_StateHandler_ChangeStateAlreadyAtTargetReturnsTrue()
 
     WPEFramework::Plugin::StateHandler::initialize();
 
-    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.already");
+    WPEFramework::Plugin::ApplicationContext ctx("com.test.already");
     // Context is at UNLOADED; request transition to UNLOADED
-    WPEFramework::Plugin::StateTransitionRequest req(ctx,
+    WPEFramework::Plugin::StateTransitionRequest req(&ctx,
         WPEFramework::Exchange::ILifecycleManager::LifecycleState::UNLOADED);
     std::string error;
     bool result = WPEFramework::Plugin::StateHandler::changeState(req, error);
@@ -461,10 +461,10 @@ uint32_t Test_StateHandler_TransitionUnloadedToLoadingIsValid()
 
     WPEFramework::Plugin::StateHandler::initialize();
 
-    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.loading");
+    WPEFramework::Plugin::ApplicationContext ctx("com.test.loading");
     // Target LOADING -- UpdateState will create a LoadingState and call handle(),
     // which generates UUID and posts semaphore (no external deps).
-    WPEFramework::Plugin::StateTransitionRequest req(ctx,
+    WPEFramework::Plugin::StateTransitionRequest req(&ctx,
         WPEFramework::Exchange::ILifecycleManager::LifecycleState::LOADING);
     std::string error;
     bool result = WPEFramework::Plugin::StateHandler::changeState(req, error);
@@ -472,10 +472,10 @@ uint32_t Test_StateHandler_TransitionUnloadedToLoadingIsValid()
     L0Test::ExpectTrue(tr, result,
         "UNLOADED->LOADING transition returns true");
     L0Test::ExpectEqU32(tr,
-        static_cast<uint32_t>(ctx->getCurrentLifecycleState()),
+        static_cast<uint32_t>(ctx.getCurrentLifecycleState()),
         static_cast<uint32_t>(WPEFramework::Exchange::ILifecycleManager::LifecycleState::LOADING),
         "Context is in LOADING state after transition");
-    L0Test::ExpectTrue(tr, !ctx->getAppInstanceId().empty(),
+    L0Test::ExpectTrue(tr, !ctx.getAppInstanceId().empty(),
         "LoadingState::handle() generated a non-empty appInstanceId");
 
     return tr.failures;
@@ -492,17 +492,17 @@ uint32_t Test_StateHandler_TransitionActiveToUnloadedIsInvalid()
     WPEFramework::Plugin::StateHandler::initialize();
 
     // Build context at ACTIVE state by manually setting state object
-    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.invalid");
+    WPEFramework::Plugin::ApplicationContext ctx("com.test.invalid");
     // Replace state with ActiveState
-    void* oldState = ctx->getState();
-    WPEFramework::Plugin::ActiveState* activeState = new WPEFramework::Plugin::ActiveState(ctx.get());
-    ctx->setState(static_cast<void*>(activeState));
+    void* oldState = ctx.getState();
+    WPEFramework::Plugin::ActiveState* activeState = new WPEFramework::Plugin::ActiveState(&ctx);
+    ctx.setState(static_cast<void*>(activeState));
     if (nullptr != oldState) {
         delete static_cast<WPEFramework::Plugin::State*>(oldState);
     }
 
     // Attempt ACTIVE->UNLOADED (no valid path in map)
-    WPEFramework::Plugin::StateTransitionRequest req(ctx,
+    WPEFramework::Plugin::StateTransitionRequest req(&ctx,
         WPEFramework::Exchange::ILifecycleManager::LifecycleState::UNLOADED);
     std::string error;
     bool result = WPEFramework::Plugin::StateHandler::changeState(req, error);
@@ -524,22 +524,22 @@ uint32_t Test_StateHandler_UpdateStateTransitionsContext()
 
     WPEFramework::Plugin::StateHandler::initialize();
 
-    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.update");
+    WPEFramework::Plugin::ApplicationContext ctx("com.test.update");
 
     // Before: UNLOADED
     L0Test::ExpectEqU32(tr,
-        static_cast<uint32_t>(ctx->getCurrentLifecycleState()),
+        static_cast<uint32_t>(ctx.getCurrentLifecycleState()),
         static_cast<uint32_t>(WPEFramework::Exchange::ILifecycleManager::LifecycleState::UNLOADED),
         "Context is UNLOADED before transition");
 
-    WPEFramework::Plugin::StateTransitionRequest req(ctx,
+    WPEFramework::Plugin::StateTransitionRequest req(&ctx,
         WPEFramework::Exchange::ILifecycleManager::LifecycleState::LOADING);
     std::string error;
     WPEFramework::Plugin::StateHandler::changeState(req, error);
 
     // After: LOADING
     L0Test::ExpectEqU32(tr,
-        static_cast<uint32_t>(ctx->getCurrentLifecycleState()),
+        static_cast<uint32_t>(ctx.getCurrentLifecycleState()),
         static_cast<uint32_t>(WPEFramework::Exchange::ILifecycleManager::LifecycleState::LOADING),
         "Context is LOADING after updateState via changeState");
 
@@ -556,9 +556,9 @@ uint32_t Test_StateHandler_UpdateStateAlreadyAtStateReturnsTrue()
 
     WPEFramework::Plugin::StateHandler::initialize();
 
-    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.same");
+    WPEFramework::Plugin::ApplicationContext ctx("com.test.same");
     // ctx is at UNLOADED; request transition to UNLOADED again
-    WPEFramework::Plugin::StateTransitionRequest req(ctx,
+    WPEFramework::Plugin::StateTransitionRequest req(&ctx,
         WPEFramework::Exchange::ILifecycleManager::LifecycleState::UNLOADED);
     std::string error;
     bool result = WPEFramework::Plugin::StateHandler::changeState(req, error);
@@ -583,27 +583,27 @@ uint32_t Test_StateHandler_CreateStateReturnsCorrectSubclass()
     // Test all states reachable without external deps:
     // UNLOADED: always valid, UnloadedState::handle() returns true
     {
-        auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.create.unloaded");
-        WPEFramework::Plugin::StateTransitionRequest req(ctx,
+        WPEFramework::Plugin::ApplicationContext ctx("com.test.create.unloaded");
+        WPEFramework::Plugin::StateTransitionRequest req(&ctx,
             WPEFramework::Exchange::ILifecycleManager::LifecycleState::UNLOADED);
         std::string error;
         WPEFramework::Plugin::StateHandler::changeState(req, error);
         L0Test::ExpectEqU32(tr,
-            static_cast<uint32_t>(ctx->getCurrentLifecycleState()),
+            static_cast<uint32_t>(ctx.getCurrentLifecycleState()),
             static_cast<uint32_t>(WPEFramework::Exchange::ILifecycleManager::LifecycleState::UNLOADED),
             "createState creates UnloadedState");
     }
 
     // LOADING: UnloadedState->LoadingState via updateState
     {
-        auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.create.loading");
-        WPEFramework::Plugin::StateTransitionRequest req(ctx,
+        WPEFramework::Plugin::ApplicationContext ctx("com.test.create.loading");
+        WPEFramework::Plugin::StateTransitionRequest req(&ctx,
             WPEFramework::Exchange::ILifecycleManager::LifecycleState::LOADING);
         std::string error;
         bool result = WPEFramework::Plugin::StateHandler::changeState(req, error);
         if (result) {
             L0Test::ExpectEqU32(tr,
-                static_cast<uint32_t>(ctx->getCurrentLifecycleState()),
+                static_cast<uint32_t>(ctx.getCurrentLifecycleState()),
                 static_cast<uint32_t>(WPEFramework::Exchange::ILifecycleManager::LifecycleState::LOADING),
                 "createState creates LoadingState");
         } else {
@@ -919,17 +919,17 @@ uint32_t Test_StateHandler_CreateStatePausedViaInitializingToPaused()
 
     WPEFramework::Plugin::StateHandler::initialize();
 
-    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.create.paused2");
+    WPEFramework::Plugin::ApplicationContext ctx("com.test.create.paused2");
     // Manually advance context to INITIALIZING (skip LOADING handle side-effects)
-    void* oldState = ctx->getState();
-    WPEFramework::Plugin::InitializingState* initState = new WPEFramework::Plugin::InitializingState(ctx.get());
-    ctx->setState(static_cast<void*>(initState));
+    void* oldState = ctx.getState();
+    WPEFramework::Plugin::InitializingState* initState = new WPEFramework::Plugin::InitializingState(&ctx);
+    ctx.setState(static_cast<void*>(initState));
     if (nullptr != oldState) {
         delete static_cast<WPEFramework::Plugin::State*>(oldState);
     }
 
     // Transition INITIALIZING -> PAUSED
-    WPEFramework::Plugin::StateTransitionRequest req(ctx,
+    WPEFramework::Plugin::StateTransitionRequest req(&ctx,
         WPEFramework::Exchange::ILifecycleManager::LifecycleState::PAUSED);
     std::string error;
     bool result = WPEFramework::Plugin::StateHandler::changeState(req, error);
@@ -937,7 +937,7 @@ uint32_t Test_StateHandler_CreateStatePausedViaInitializingToPaused()
     L0Test::ExpectTrue(tr, result,
         "INITIALIZING->PAUSED changeState returns true");
     L0Test::ExpectEqU32(tr,
-        static_cast<uint32_t>(ctx->getCurrentLifecycleState()),
+        static_cast<uint32_t>(ctx.getCurrentLifecycleState()),
         static_cast<uint32_t>(WPEFramework::Exchange::ILifecycleManager::LifecycleState::PAUSED),
         "Context is in PAUSED state after INITIALIZING->PAUSED transition");
 
@@ -956,21 +956,21 @@ uint32_t Test_StateHandler_CreateStateInitializingHandleReturnsFalse()
     WPEFramework::Plugin::StateHandler::initialize();
 
     // Context at LOADING (transition to LOADING first)
-    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.create.init2");
+    WPEFramework::Plugin::ApplicationContext ctx("com.test.create.init2");
     {
-        WPEFramework::Plugin::StateTransitionRequest loadReq(ctx,
+        WPEFramework::Plugin::StateTransitionRequest loadReq(&ctx,
             WPEFramework::Exchange::ILifecycleManager::LifecycleState::LOADING);
         std::string loadErr;
         WPEFramework::Plugin::StateHandler::changeState(loadReq, loadErr);
     }
     L0Test::ExpectEqU32(tr,
-        static_cast<uint32_t>(ctx->getCurrentLifecycleState()),
+        static_cast<uint32_t>(ctx.getCurrentLifecycleState()),
         static_cast<uint32_t>(WPEFramework::Exchange::ILifecycleManager::LifecycleState::LOADING),
         "context is in LOADING state");
 
     // Transition LOADING -> INITIALIZING -- handle() returns false (no runtimeHandler)
     // This exercises createState() INITIALIZING case and the delete-newState path in updateState()
-    WPEFramework::Plugin::StateTransitionRequest req(ctx,
+    WPEFramework::Plugin::StateTransitionRequest req(&ctx,
         WPEFramework::Exchange::ILifecycleManager::LifecycleState::INITIALIZING);
     std::string error;
     bool result = WPEFramework::Plugin::StateHandler::changeState(req, error);
@@ -994,17 +994,17 @@ uint32_t Test_StateHandler_CreateStateActiveViaPausedToActive()
 
     WPEFramework::Plugin::StateHandler::initialize();
 
-    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.create.active");
+    WPEFramework::Plugin::ApplicationContext ctx("com.test.create.active");
     // Manually place context in PAUSED state
-    void* oldState = ctx->getState();
-    WPEFramework::Plugin::PausedState* pausedState = new WPEFramework::Plugin::PausedState(ctx.get());
-    ctx->setState(static_cast<void*>(pausedState));
+    void* oldState = ctx.getState();
+    WPEFramework::Plugin::PausedState* pausedState = new WPEFramework::Plugin::PausedState(&ctx);
+    ctx.setState(static_cast<void*>(pausedState));
     if (nullptr != oldState) {
         delete static_cast<WPEFramework::Plugin::State*>(oldState);
     }
 
     // Transition PAUSED -> ACTIVE
-    WPEFramework::Plugin::StateTransitionRequest req(ctx,
+    WPEFramework::Plugin::StateTransitionRequest req(&ctx,
         WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE);
     std::string error;
     bool result = WPEFramework::Plugin::StateHandler::changeState(req, error);
@@ -1012,7 +1012,7 @@ uint32_t Test_StateHandler_CreateStateActiveViaPausedToActive()
     L0Test::ExpectTrue(tr, result,
         "PAUSED->ACTIVE changeState returns true (ActiveState::handle returns true with null window handler)");
     L0Test::ExpectEqU32(tr,
-        static_cast<uint32_t>(ctx->getCurrentLifecycleState()),
+        static_cast<uint32_t>(ctx.getCurrentLifecycleState()),
         static_cast<uint32_t>(WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE),
         "Context is in ACTIVE state after PAUSED->ACTIVE transition");
 
@@ -1030,17 +1030,17 @@ uint32_t Test_StateHandler_CreateStateSuspendedViaPausedToSuspended()
 
     WPEFramework::Plugin::StateHandler::initialize();
 
-    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.create.suspended");
+    WPEFramework::Plugin::ApplicationContext ctx("com.test.create.suspended");
     // Place context in PAUSED state
-    void* oldState = ctx->getState();
-    WPEFramework::Plugin::PausedState* pausedState = new WPEFramework::Plugin::PausedState(ctx.get());
-    ctx->setState(static_cast<void*>(pausedState));
+    void* oldState = ctx.getState();
+    WPEFramework::Plugin::PausedState* pausedState = new WPEFramework::Plugin::PausedState(&ctx);
+    ctx.setState(static_cast<void*>(pausedState));
     if (nullptr != oldState) {
         delete static_cast<WPEFramework::Plugin::State*>(oldState);
     }
 
     // Transition PAUSED -> SUSPENDED
-    WPEFramework::Plugin::StateTransitionRequest req(ctx,
+    WPEFramework::Plugin::StateTransitionRequest req(&ctx,
         WPEFramework::Exchange::ILifecycleManager::LifecycleState::SUSPENDED);
     std::string error;
     bool result = WPEFramework::Plugin::StateHandler::changeState(req, error);
@@ -1063,17 +1063,17 @@ uint32_t Test_StateHandler_CreateStateHibernatedViaSuspendedToHibernated()
 
     WPEFramework::Plugin::StateHandler::initialize();
 
-    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.create.hibernated");
+    WPEFramework::Plugin::ApplicationContext ctx("com.test.create.hibernated");
     // Place context in SUSPENDED state
-    void* oldState = ctx->getState();
-    WPEFramework::Plugin::SuspendedState* suspendedState = new WPEFramework::Plugin::SuspendedState(ctx.get());
-    ctx->setState(static_cast<void*>(suspendedState));
+    void* oldState = ctx.getState();
+    WPEFramework::Plugin::SuspendedState* suspendedState = new WPEFramework::Plugin::SuspendedState(&ctx);
+    ctx.setState(static_cast<void*>(suspendedState));
     if (nullptr != oldState) {
         delete static_cast<WPEFramework::Plugin::State*>(oldState);
     }
 
     // Transition SUSPENDED -> HIBERNATED
-    WPEFramework::Plugin::StateTransitionRequest req(ctx,
+    WPEFramework::Plugin::StateTransitionRequest req(&ctx,
         WPEFramework::Exchange::ILifecycleManager::LifecycleState::HIBERNATED);
     std::string error;
     bool result = WPEFramework::Plugin::StateHandler::changeState(req, error);
@@ -1104,15 +1104,15 @@ uint32_t Test_StateHandler_InvalidTransitionReturnsFalse()
     WPEFramework::Plugin::StateHandler::initialize();
 
     // From LOADING, try to go to ACTIVE (no direct path -> getStatePath returns false)
-    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.invalid.transition");
-    void* oldState = ctx->getState();
-    WPEFramework::Plugin::LoadingState* loadingState = new WPEFramework::Plugin::LoadingState(ctx.get());
-    ctx->setState(static_cast<void*>(loadingState));
+    WPEFramework::Plugin::ApplicationContext ctx("com.test.invalid.transition");
+    void* oldState = ctx.getState();
+    WPEFramework::Plugin::LoadingState* loadingState = new WPEFramework::Plugin::LoadingState(&ctx);
+    ctx.setState(static_cast<void*>(loadingState));
     if (nullptr != oldState) {
         delete static_cast<WPEFramework::Plugin::State*>(oldState);
     }
 
-    WPEFramework::Plugin::StateTransitionRequest req(ctx,
+    WPEFramework::Plugin::StateTransitionRequest req(&ctx,
         WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE);
     std::string error;
     bool result = WPEFramework::Plugin::StateHandler::changeState(req, error);
@@ -1134,12 +1134,12 @@ uint32_t Test_RequestHandler_LaunchDelegatesToUpdateState()
 {
     L0Test::TestResult tr;
 
-    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.rh.launch");
+    WPEFramework::Plugin::ApplicationContext ctx("com.test.rh.launch");
     std::string intent;
     std::string error;
 
     bool result = WPEFramework::Plugin::RequestHandler::getInstance()->launch(
-        ctx.get(), intent,
+        &ctx, intent,
         WPEFramework::Exchange::ILifecycleManager::LifecycleState::PAUSED,
         error);
 
@@ -1157,15 +1157,15 @@ uint32_t Test_RequestHandler_SendIntentStoresIntentOnContext()
 {
     L0Test::TestResult tr;
 
-    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.rh.sendintent");
+    WPEFramework::Plugin::ApplicationContext ctx("com.test.rh.sendintent");
     std::string error;
 
     bool result = WPEFramework::Plugin::RequestHandler::getInstance()->sendIntent(
-        ctx.get(), "deeplink://home", error);
+        &ctx, "deeplink://home", error);
 
     L0Test::ExpectTrue(tr, result,
         "RequestHandler::sendIntent() returns true");
-    L0Test::ExpectEqStr(tr, ctx->getMostRecentIntent(), "deeplink://home",
+    L0Test::ExpectEqStr(tr, ctx.getMostRecentIntent(), "deeplink://home",
         "sendIntent() stores intent on the context via setMostRecentIntent");
 
     return tr.failures;
@@ -1222,16 +1222,16 @@ uint32_t Test_StateHandler_ChangeStateLoadingToTerminatingPath()
     WPEFramework::Plugin::StateHandler::initialize();
 
     // Manually place context into LOADING state
-    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.loading.term");
-    void* oldState = ctx->getState();
-    auto* loadingState = new WPEFramework::Plugin::LoadingState(ctx.get());
-    ctx->setState(static_cast<void*>(loadingState));
+    WPEFramework::Plugin::ApplicationContext ctx("com.test.loading.term");
+    void* oldState = ctx.getState();
+    auto* loadingState = new WPEFramework::Plugin::LoadingState(&ctx);
+    ctx.setState(static_cast<void*>(loadingState));
     if (oldState != nullptr) {
         delete static_cast<WPEFramework::Plugin::State*>(oldState);
     }
 
     L0Test::ExpectEqU32(tr,
-        static_cast<uint32_t>(ctx->getCurrentLifecycleState()),
+        static_cast<uint32_t>(ctx.getCurrentLifecycleState()),
         static_cast<uint32_t>(WPEFramework::Exchange::ILifecycleManager::LifecycleState::LOADING),
         "context is LOADING before changeState");
 
@@ -1240,7 +1240,7 @@ uint32_t Test_StateHandler_ChangeStateLoadingToTerminatingPath()
     // The loop then calls updateState(ctx, UNLOADED) which covers
     // createState UNLOADED branch (lines 68-70).
     WPEFramework::Plugin::StateTransitionRequest req(
-        ctx,
+        &ctx,
         WPEFramework::Exchange::ILifecycleManager::LifecycleState::TERMINATING);
     std::string error;
     bool result = WPEFramework::Plugin::StateHandler::changeState(req, error);
@@ -1248,7 +1248,7 @@ uint32_t Test_StateHandler_ChangeStateLoadingToTerminatingPath()
     L0Test::ExpectTrue(tr, result,
         "changeState LOADING->TERMINATING succeeds (becomes UNLOADED)");
     L0Test::ExpectEqU32(tr,
-        static_cast<uint32_t>(ctx->getCurrentLifecycleState()),
+        static_cast<uint32_t>(ctx.getCurrentLifecycleState()),
         static_cast<uint32_t>(WPEFramework::Exchange::ILifecycleManager::LifecycleState::UNLOADED),
         "context ends in UNLOADED after LOADING->TERMINATING path");
 

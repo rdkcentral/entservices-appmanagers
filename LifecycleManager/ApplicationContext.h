@@ -21,7 +21,6 @@
 
 #include <interfaces/ILifecycleManager.h>
 #include <map>
-#include <memory>
 #include <time.h>
 #include <string>
 #include <semaphore>
@@ -58,7 +57,7 @@ namespace WPEFramework
             REQUEST_TYPE_TERMINATE
         };
 
-        class ApplicationContext : public std::enable_shared_from_this<ApplicationContext>
+        class ApplicationContext
 	{
             public:
                 ApplicationContext (std::string appId);
@@ -75,7 +74,6 @@ namespace WPEFramework
                 void setApplicationKillParams(bool force);
                 void setRequestTime(time_t requestTime);
                 void setRequestType(RequestType requestType);
-                void resetPendingStates();
 
                 void* getState();
                 std::string getAppId();
