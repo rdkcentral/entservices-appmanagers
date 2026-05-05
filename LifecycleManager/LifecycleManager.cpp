@@ -107,6 +107,21 @@ namespace WPEFramework
 
             if (nullptr != mLifecycleManagerImplementation)
             {
+                Exchange::IConfiguration* lifeCycleManagerConfig = mLifecycleManagerImplementation->QueryInterface<Exchange::IConfiguration>();
+                if (nullptr != lifeCycleManagerConfig)
+                {
+                    // LifecycleManager implementation intentionally uses Configure(nullptr)
+                    // as a deconfiguration/teardown signal during plugin shutdown.
+                    // This is a non-standard IConfiguration usage, so keep it explicit
+                    // and surface failures to aid maintenance and troubleshooting.
+                    const uint32_t configureResult = lifeCycleManagerConfig->Configure(nullptr);
+                    if (Core::ERROR_NONE != configureResult)
+                    {
+                        LOGWARN("LifecycleManager deconfigure hook Configure(nullptr) failed: %u", configureResult);
+                    }
+                    lifeCycleManagerConfig->Release();
+                }
+
                 // Stop processing:
                 RPC::IRemoteConnection* connection = service->RemoteConnection(mConnectionId);
                 VARIABLE_IS_NOT_USED uint32_t result = mLifecycleManagerImplementation->Release();
