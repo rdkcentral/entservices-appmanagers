@@ -121,9 +121,6 @@ CreateDisplayRequest::~CreateDisplayRequest()
     {
         LOGERR("Failed to destroy semaphore: %s", strerror(errno));
     }
-    else{
-        LOGINFO("Semaphore destroyed successfully for client: %s", mClient.c_str());
-    }
 }
 
 bool lockRdkWindowManagerMutex()
@@ -737,13 +734,6 @@ Core::hresult RDKWindowManagerImplementation::CreateDisplay(const string &client
 
     if (false == result)
     {
-        const time_t displayEndTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
-        const int duration = static_cast<int>(displayEndTime - displayStartTime);
-        LOGINFO("CreateDisplay timing: clientId:%s start_ms:%lld end_ms:%lld duration_ms:%d status:failed",
-            clientId.c_str(),
-            static_cast<long long>(displayStartTime),
-            static_cast<long long>(displayEndTime),
-            duration);
         LOGERR("failed to create display : %s, displayName:%s, displayWidth:%u, displayHeight:%u, virtualDisplay:%d, virtualWidth:%u, virtualHeight:%u, topmost:%d, focus:%d, ownerId: %u, groupId: %u",
                clientId.c_str(), displayName.c_str(), displayWidth, displayHeight, virtualDisplay, virtualWidth, virtualHeight, topmost, focus, ownerId, groupId);
     }
@@ -751,11 +741,6 @@ Core::hresult RDKWindowManagerImplementation::CreateDisplay(const string &client
     {
         const time_t displayEndTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
         const int duration = static_cast<int>(displayEndTime - displayStartTime);
-        LOGINFO("CreateDisplay timing: clientId:%s start_ms:%lld end_ms:%lld duration_ms:%d status:success",
-            clientId.c_str(),
-            static_cast<long long>(displayStartTime),
-            static_cast<long long>(displayEndTime),
-            duration);
         RDKWindowManagerTelemetryReporting::getInstance().recordCreateDisplayTelemetry(clientId, duration);
         status = Core::ERROR_NONE;
     }
