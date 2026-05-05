@@ -23,7 +23,7 @@
 #include "RequestHandler.h"
 #include <sys/statvfs.h>
 
-#define DEFAULT_APP_STORAGE_PATH        "/media/apps/storageManager"
+#define DEFAULT_APP_STORAGE_PATH        "/media/apps/sky/packages"
 
 #ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
 #define TELEMETRY_MARKER_LAUNCH_TIME    "OverallLaunchTime_split"
