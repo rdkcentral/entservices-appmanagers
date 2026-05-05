@@ -79,7 +79,7 @@ public:
         return impl.mLifecycleManagerStateNotification;
     }
 
-    static std::list<ApplicationContext*>&
+    static std::list<std::shared_ptr<ApplicationContext>>&
     getLoadedApps(LifecycleManagerImplementation& impl)
     {
         return impl.mLoadedApplications;
@@ -1740,3 +1740,4 @@ uint32_t Test_Impl_RuntimeEventOnStateChangedMatchingPendingTransition()
 
     return tr.failures;
 }
+
