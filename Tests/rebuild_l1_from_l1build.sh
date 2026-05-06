@@ -10,7 +10,52 @@ SRC_ROOT="${L1_ROOT}/src"
 BUILD_ROOT="${L1_ROOT}/build"
 APP_BUILD_DIR="${BUILD_ROOT}/entservices-appmanagers"
 INSTALL_ROOT="${L1_ROOT}/install/usr"
-BUILD_THREADS=4
+RAW_THREADS="$(nproc 2>/dev/null || getconf _NPROCESSORS_ONLN || echo 4)"
+if [[ "${RAW_THREADS}" -gt 8 ]]; then
+    DEFAULT_BUILD_THREADS=8
+else
+    DEFAULT_BUILD_THREADS="${RAW_THREADS}"
+fi
+BUILD_THREADS="${BUILD_THREADS:-${DEFAULT_BUILD_THREADS}}"
+BUILD_HEARTBEAT_SECONDS="${BUILD_HEARTBEAT_SECONDS:-60}"
+BUILD_TIMEOUT_SECONDS="${BUILD_TIMEOUT_SECONDS:-5400}"
+BUILD_VERBOSE="${BUILD_VERBOSE:-0}"
+export CMAKE_BUILD_PARALLEL_LEVEL="${BUILD_THREADS}"
+
+run_with_heartbeat() {
+    local label="$1"
+    shift
+
+    local start_ts elapsed
+    start_ts="$(date +%s)"
+
+    "$@" &
+    local cmd_pid=$!
+
+    while kill -0 "${cmd_pid}" >/dev/null 2>&1; do
+        sleep "${BUILD_HEARTBEAT_SECONDS}"
+
+        if ! kill -0 "${cmd_pid}" >/dev/null 2>&1; then
+            break
+        fi
+
+        elapsed=$(( $(date +%s) - start_ts ))
+        echo "[heartbeat] ${label} still running (${elapsed}s elapsed, pid=${cmd_pid})"
+        ps -p "${cmd_pid}" -o pid=,etime=,%cpu=,%mem=,cmd= 2>/dev/null | sed 's/^/[heartbeat] process: /'
+        echo "[heartbeat] tip: for detailed compiler commands, rerun with BUILD_VERBOSE=1"
+
+        if [[ "${BUILD_TIMEOUT_SECONDS}" -gt 0 && "${elapsed}" -ge "${BUILD_TIMEOUT_SECONDS}" ]]; then
+            echo "ERROR: ${label} exceeded timeout (${BUILD_TIMEOUT_SECONDS}s). Terminating build process ${cmd_pid}."
+            kill -TERM "${cmd_pid}" >/dev/null 2>&1 || true
+            sleep 5
+            kill -KILL "${cmd_pid}" >/dev/null 2>&1 || true
+            wait "${cmd_pid}" >/dev/null 2>&1 || true
+            return 124
+        fi
+    done
+
+    wait "${cmd_pid}"
+}
 
 resolve_jsoncpp_include() {
     local candidate
@@ -152,10 +197,15 @@ cmake -G Ninja \
     -DCMAKE_SHARED_LINKER_FLAGS="${LINKER_SEARCH_FLAGS}" \
     -DCMAKE_EXE_LINKER_FLAGS="${LINKER_SEARCH_FLAGS}" \
     -DCMAKE_MODULE_LINKER_FLAGS="${LINKER_SEARCH_FLAGS}" \
-    -DCMAKE_CXX_FLAGS="-fprofile-arcs -ftest-coverage -DEXCEPTIONS_ENABLE=ON -DUSE_THUNDER_R4=ON -DTHUNDER_VERSION=4 -DTHUNDER_VERSION_MAJOR=4 -DTHUNDER_VERSION_MINOR=4 -DRDK_SERVICES_L1_TEST -DBUILD_L1_TESTS_SHARED_MODULE=OFF -I ${REPO_ROOT}/Tests/headers -I ${REPO_ROOT}/Tests/headers/audiocapturemgr -I ${REPO_ROOT}/Tests/headers/rdk/ds -I ${REPO_ROOT}/Tests/headers/rdk/iarmbus -I ${REPO_ROOT}/Tests/headers/rdk/iarmmgrs-hal -I ${REPO_ROOT}/Tests/headers/ccec/drivers -I ${REPO_ROOT}/Tests/headers/network -I ${REPO_ROOT}/Tests/headers/libusb -I ${REPO_ROOT}/Tests -I ${REPO_ROOT}/Tests/headers/Dobby -I ${REPO_ROOT}/Tests/headers/Dobby/Public/Dobby -I ${REPO_ROOT}/Tests/headers/Dobby/IpcService -I ${REPO_ROOT}/Tests/headers/rdkwindowmanager/include -I ${SRC_ROOT}/Thunder/Source -I ${SRC_ROOT}/Thunder/Source/core -I ${SRC_ROOT}/Thunder/Source/plugins -I ${INSTALL_ROOT}/include -I ${INSTALL_ROOT}/include/WPEFramework -I ${INSTALL_ROOT}/include/WPEFramework/plugins -include ${REPO_ROOT}/Tests/mocks/Iarm.h -include ${REPO_ROOT}/Tests/mocks/Rfc.h -include ${REPO_ROOT}/Tests/mocks/RBus.h -include ${REPO_ROOT}/Tests/mocks/Telemetry.h -include ${REPO_ROOT}/Tests/mocks/Udev.h -include ${REPO_ROOT}/Tests/mocks/maintenanceMGR.h -include ${REPO_ROOT}/Tests/mocks/pkg.h -include ${REPO_ROOT}/Tests/mocks/secure_wrappermock.h -include ${REPO_ROOT}/Tests/mocks/wpa_ctrl_mock.h -include ${REPO_ROOT}/Tests/mocks/readprocMockInterface.h -include ${REPO_ROOT}/Tests/mocks/gdialservice.h -include ${REPO_ROOT}/Tests/mocks/RdkWindowManager.h --coverage -Wall -Wno-unused-result -Wno-deprecated-declarations -Wno-error=format= -Wl,-wrap,system -Wl,-wrap,popen -Wl,-wrap,syslog -Wl,-wrap,v_secure_system -Wl,-wrap,v_secure_popen -Wl,-wrap,v_secure_pclose -Wl,-wrap,unlink -DUSE_IARMBUS -DENABLE_SYSTEM_GET_STORE_DEMO_LINK -DENABLE_DEEP_SLEEP -DENABLE_SET_WAKEUP_SRC_CONFIG -DENABLE_THERMAL_PROTECTION -DDISABLE_SECURITY_TOKEN -DUSE_DRM_SCREENCAPTURE -DHAS_API_SYSTEM -DHAS_API_POWERSTATE -DHAS_RBUS -DENABLE_DEVICE_MANUFACTURER_INFO"
+    -DCMAKE_CXX_FLAGS="-fprofile-arcs -ftest-coverage -DEXCEPTIONS_ENABLE=ON -DUSE_THUNDER_R4=ON -DTHUNDER_VERSION=4 -DTHUNDER_VERSION_MAJOR=4 -DTHUNDER_VERSION_MINOR=4 -DRDK_SERVICES_L1_TEST -DBUILD_L1_TESTS_SHARED_MODULE=OFF -I ${REPO_ROOT}/Tests/headers -I ${REPO_ROOT}/Tests/headers/audiocapturemgr -I ${REPO_ROOT}/Tests/headers/rdk/ds -I ${REPO_ROOT}/Tests/headers/rdk/iarmbus -I ${REPO_ROOT}/Tests/headers/rdk/iarmmgrs-hal -I ${REPO_ROOT}/Tests/headers/ccec/drivers -I ${REPO_ROOT}/Tests/headers/network -I ${REPO_ROOT}/Tests/headers/libusb -I ${REPO_ROOT}/Tests -I ${REPO_ROOT}/Tests/headers/Dobby -I ${REPO_ROOT}/Tests/headers/Dobby/Public/Dobby -I ${REPO_ROOT}/Tests/headers/Dobby/IpcService -I ${REPO_ROOT}/Tests/headers/rdkwindowmanager/include -I ${REPO_ROOT}/helpers/Telemetry -I ${SRC_ROOT}/Thunder/Source -I ${SRC_ROOT}/Thunder/Source/core -I ${SRC_ROOT}/Thunder/Source/plugins -I ${INSTALL_ROOT}/include -I ${INSTALL_ROOT}/include/WPEFramework -I ${INSTALL_ROOT}/include/WPEFramework/plugins -include ${REPO_ROOT}/Tests/mocks/Iarm.h -include ${REPO_ROOT}/Tests/mocks/Rfc.h -include ${REPO_ROOT}/Tests/mocks/RBus.h -include ${REPO_ROOT}/Tests/mocks/Telemetry.h -include ${REPO_ROOT}/Tests/mocks/Udev.h -include ${REPO_ROOT}/Tests/mocks/maintenanceMGR.h -include ${REPO_ROOT}/Tests/mocks/pkg.h -include ${REPO_ROOT}/Tests/mocks/secure_wrappermock.h -include ${REPO_ROOT}/Tests/mocks/wpa_ctrl_mock.h -include ${REPO_ROOT}/Tests/mocks/readprocMockInterface.h -include ${REPO_ROOT}/Tests/mocks/gdialservice.h -include ${REPO_ROOT}/Tests/mocks/RdkWindowManager.h --coverage -Wall -Wno-unused-result -Wno-deprecated-declarations -Wno-error=format= -Wl,-wrap,system -Wl,-wrap,popen -Wl,-wrap,syslog -Wl,-wrap,v_secure_system -Wl,-wrap,v_secure_popen -Wl,-wrap,v_secure_pclose -Wl,-wrap,unlink -DUSE_IARMBUS -DENABLE_SYSTEM_GET_STORE_DEMO_LINK -DENABLE_DEEP_SLEEP -DENABLE_SET_WAKEUP_SRC_CONFIG -DENABLE_THERMAL_PROTECTION -DDISABLE_SECURITY_TOKEN -DUSE_DRM_SCREENCAPTURE -DHAS_API_SYSTEM -DHAS_API_POWERSTATE -DHAS_RBUS -DENABLE_DEVICE_MANUFACTURER_INFO"
 
 echo "[2/4] Rebuild changed code and L1 tests"
-cmake --build "${APP_BUILD_DIR}" --parallel "${BUILD_THREADS}"
+BUILD_CMD=(cmake --build "${APP_BUILD_DIR}" --parallel "${BUILD_THREADS}")
+if [[ "${BUILD_VERBOSE}" == "1" ]]; then
+    BUILD_CMD+=(--verbose)
+fi
+echo "Build settings: BUILD_THREADS=${BUILD_THREADS}, BUILD_HEARTBEAT_SECONDS=${BUILD_HEARTBEAT_SECONDS}, BUILD_TIMEOUT_SECONDS=${BUILD_TIMEOUT_SECONDS}, BUILD_VERBOSE=${BUILD_VERBOSE}"
+run_with_heartbeat "cmake build" "${BUILD_CMD[@]}"
 
 echo "[3/4] Reinstall updated binaries/libraries"
 cmake --install "${APP_BUILD_DIR}"

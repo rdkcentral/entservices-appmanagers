@@ -1,5 +1,6 @@
 #pragma once
 
+#include "L0TestConfig.h"
 #include <core/core.h>
 
 namespace L0Test {
