@@ -9,12 +9,16 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 option(PLUGIN_RUNTIME_MANAGER    "Build RuntimeManager L0 test target"    ON)
 option(PLUGIN_LIFECYCLE_MANAGER  "Build LifecycleManager L0 test target"  ON)
 option(PLUGIN_RDK_WINDOW_MANAGER "Build RDKWindowManager L0 test target"  ON)
+option(PLUGIN_APP_STORAGE_MANAGER "Build AppStorageManager L0 test target" ON)
 option(PLUGIN_PACKAGE_MANAGER    "Build PackageManager L0 test target"    ON)
+option(PLUGIN_PREINSTALL_MANAGER "Build PreinstallManager L0 test target" ON)
 
 option(APPMGR_ENABLE_COVERAGE  "Enable coverage flags for runtimemanager_l0test"    ON)
 option(APPLCM_ENABLE_COVERAGE  "Enable coverage flags for lifecyclemanager_l0test"  ON)
 option(APPWM_ENABLE_COVERAGE   "Enable coverage flags for rdkwindowmanager_l0test"  ON)
+option(APPASM_ENABLE_COVERAGE  "Enable coverage flags for appstorage_l0test"       ON)
 option(APPPKG_ENABLE_COVERAGE  "Enable coverage flags for packagemanager_l0test"    ON)
+option(APPMGR_PREINSTALL_ENABLE_COVERAGE  "Enable coverage flags for preinstall_manager_l0test"  ON)
 option(L0_ENABLE_WARNINGS      "Enable additional compiler warnings for L0 targets" ON)
 
 # ---------------------------------------------------------------------------
@@ -115,6 +119,34 @@ set(RDKWINDOWMANAGER_L0_SOURCES
     common/L0Bootstrap.cpp
 )
 
+set(APPSTORAGE_MANAGER_L0_SOURCES
+    ${CMAKE_SOURCE_DIR}/../../AppStorageManager/Module.cpp
+    ${CMAKE_SOURCE_DIR}/../../AppStorageManager/AppStorageManager.cpp
+    ${CMAKE_SOURCE_DIR}/../../AppStorageManager/AppStorageManagerImplementation.cpp
+    ${CMAKE_SOURCE_DIR}/../../AppStorageManager/AppStorageManagerTelemetryReporting.cpp
+    ${CMAKE_SOURCE_DIR}/../../AppStorageManager/RequestHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry/TelemetryReportingBase.cpp
+    ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry/UtilsTelemetryMetrics.cpp
+    # Test sources
+    AppStorageManager/AppStorageManagerTest.cpp
+    AppStorageManager/AppStorageManager_LifecycleTests.cpp
+    AppStorageManager/AppStorageManager_ImplementationTests.cpp
+    AppStorageManager/AppStorageManager_ComponentTests.cpp
+    common/L0MockPersistentStore.cpp
+    common/L0Bootstrap.cpp
+)
+
+set(PREINSTALL_MANAGER_L0_SOURCES
+    ${CMAKE_SOURCE_DIR}/../../PreinstallManager/Module.cpp
+    ${CMAKE_SOURCE_DIR}/../../PreinstallManager/PreinstallManager.cpp
+    ${CMAKE_SOURCE_DIR}/../../PreinstallManager/PreinstallManagerImplementation.cpp
+    PreinstallManager/PreinstallManagerTest.cpp
+    PreinstallManager/PreinstallManager_LifecycleTests.cpp
+    PreinstallManager/PreinstallManager_ImplementationTests.cpp
+    PreinstallManager/PreinstallManager_ComponentTests.cpp
+    common/L0Bootstrap.cpp
+)
+
 set(PACKAGE_MANAGER_L0_SOURCES
     ${CMAKE_SOURCE_DIR}/../../PackageManager/Module.cpp
     ${CMAKE_SOURCE_DIR}/../../PackageManager/PackageManager.cpp
@@ -152,14 +184,26 @@ else()
     message(STATUS "PLUGIN_RDK_WINDOW_MANAGER=OFF; skipping rdkwindowmanager_l0test target")
 endif()
 
+if(PLUGIN_APP_STORAGE_MANAGER)
+    add_executable(appstorage_l0test ${APPSTORAGE_MANAGER_L0_SOURCES})
+else()
+    message(STATUS "PLUGIN_APP_STORAGE_MANAGER=OFF; skipping appstorage_l0test target")
+endif()
+
 if(PLUGIN_PACKAGE_MANAGER)
     add_executable(packagemanager_l0test ${PACKAGE_MANAGER_L0_SOURCES})
 else()
     message(STATUS "PLUGIN_PACKAGE_MANAGER=OFF; skipping packagemanager_l0test target")
 endif()
 
-if(NOT PLUGIN_RUNTIME_MANAGER AND NOT PLUGIN_LIFECYCLE_MANAGER AND NOT PLUGIN_RDK_WINDOW_MANAGER AND NOT PLUGIN_PACKAGE_MANAGER)
-    message(FATAL_ERROR "No L0 target enabled. Enable at least one of PLUGIN_RUNTIME_MANAGER, PLUGIN_LIFECYCLE_MANAGER, PLUGIN_RDK_WINDOW_MANAGER, or PLUGIN_PACKAGE_MANAGER.")
+if(PLUGIN_PREINSTALL_MANAGER)
+    add_executable(preinstall_manager_l0test ${PREINSTALL_MANAGER_L0_SOURCES})
+else()
+    message(STATUS "PLUGIN_PREINSTALL_MANAGER=OFF; skipping preinstall_manager_l0test target")
+endif()
+
+if(NOT PLUGIN_RUNTIME_MANAGER AND NOT PLUGIN_LIFECYCLE_MANAGER AND NOT PLUGIN_RDK_WINDOW_MANAGER AND NOT PLUGIN_PACKAGE_MANAGER AND NOT PLUGIN_APP_STORAGE_MANAGER AND NOT PLUGIN_PREINSTALL_MANAGER)
+    message(FATAL_ERROR "No L0 target enabled. Enable at least one of PLUGIN_RUNTIME_MANAGER, PLUGIN_LIFECYCLE_MANAGER, PLUGIN_RDK_WINDOW_MANAGER, PLUGIN_PACKAGE_MANAGER, PLUGIN_APP_STORAGE_MANAGER, or PLUGIN_PREINSTALL_MANAGER.")
 endif()
 
 # ---------------------------------------------------------------------------
@@ -172,18 +216,13 @@ if(PLUGIN_RUNTIME_MANAGER)
 
     target_compile_definitions(runtimemanager_l0test PRIVATE
         MODULE_NAME=RuntimeManager_L0Test
-        USE_THUNDER_R4=1
-        RUNTIME_MANAGER_API_VERSION_NUMBER_MAJOR=1
-        RUNTIME_MANAGER_API_VERSION_NUMBER_MINOR=0
-        RUNTIME_MANAGER_API_VERSION_NUMBER_PATCH=0
-        RDK_APPMANAGERS_DEBUG=1
-        RALF_PACKAGE_SUPPORT_ENABLED=1
         PLUGIN_RUNTIME_MANAGER_IMPLEMENTATION_NAME="RuntimeManagerImplementation"
-        AI_DEBUG=1
-        AI_RELEASE=2
-        AI_BUILD_TYPE=AI_DEBUG
-        DISABLE_SECURITY_TOKEN=1
-        THUNDER_PLATFORM_PC_UNIX=1
+        RALF_PACKAGE_SUPPORT_ENABLED=1
+    )
+
+    # Force include L0TestConfig.h in all source files
+    target_compile_options(runtimemanager_l0test PRIVATE
+        -include ${CMAKE_CURRENT_SOURCE_DIR}/common/L0TestConfig.h
     )
 
     if(APPMGR_ENABLE_COVERAGE)
@@ -195,6 +234,9 @@ if(PLUGIN_RUNTIME_MANAGER)
         target_compile_options(runtimemanager_l0test PRIVATE -Wall -Wextra -Wno-unused-parameter)
     endif()
 
+    # Suppress deprecation warnings from Thunder/WPEFramework headers
+    target_compile_options(runtimemanager_l0test PRIVATE -Wno-error=deprecated-declarations)
+
     target_include_directories(runtimemanager_l0test PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/RuntimeManager
@@ -205,6 +247,10 @@ if(PLUGIN_RUNTIME_MANAGER)
         ${CMAKE_SOURCE_DIR}/../../RuntimeManager/Gateway
         ${CMAKE_SOURCE_DIR}/../../helpers
         ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry
+    )
+
+    # Mark WPEFramework/Thunder headers as SYSTEM to suppress external warnings
+    target_include_directories(runtimemanager_l0test SYSTEM PRIVATE
         ${PREFIX}/include
         ${PREFIX}/include/${NAMESPACE}
     )
@@ -230,13 +276,11 @@ endif()
 if(PLUGIN_LIFECYCLE_MANAGER)
     target_compile_definitions(lifecyclemanager_l0test PRIVATE
         MODULE_NAME=LifecycleManager_L0Test
-        USE_THUNDER_R4=1
-        LIFECYCLE_MANAGER_API_VERSION_NUMBER_MAJOR=1
-        LIFECYCLE_MANAGER_API_VERSION_NUMBER_MINOR=0
-        LIFECYCLE_MANAGER_API_VERSION_NUMBER_PATCH=0
-        DISABLE_SECURITY_TOKEN=1
-        THUNDER_PLATFORM_PC_UNIX=1
-        UNIT_TEST=1
+    )
+
+    # Force include L0TestConfig.h in all source files
+    target_compile_options(lifecyclemanager_l0test PRIVATE
+        -include ${CMAKE_CURRENT_SOURCE_DIR}/common/L0TestConfig.h
     )
 
     if(APPLCM_ENABLE_COVERAGE)
@@ -247,6 +291,9 @@ if(PLUGIN_LIFECYCLE_MANAGER)
     if(L0_ENABLE_WARNINGS)
         target_compile_options(lifecyclemanager_l0test PRIVATE -Wall -Wextra -Wno-unused-parameter)
     endif()
+
+    # Suppress deprecation warnings from Thunder/WPEFramework headers
+    target_compile_options(lifecyclemanager_l0test PRIVATE -Wno-error=deprecated-declarations)
 
     target_include_directories(lifecyclemanager_l0test PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
@@ -275,13 +322,12 @@ endif()
 if(PLUGIN_RDK_WINDOW_MANAGER)
     target_compile_definitions(rdkwindowmanager_l0test PRIVATE
         MODULE_NAME=RDKWindowManager_L0Test
-        USE_THUNDER_R4=1
-        RDK_WINDOW_MANAGER_API_VERSION_NUMBER_MAJOR=1
-        RDK_WINDOW_MANAGER_API_VERSION_NUMBER_MINOR=0
-        RDK_WINDOW_MANAGER_API_VERSION_NUMBER_PATCH=0
         PLUGIN_RDK_WINDOW_MANAGER_IMPLEMENTATION_NAME="RDKWindowManagerImplementation"
-        DISABLE_SECURITY_TOKEN=1
-        THUNDER_PLATFORM_PC_UNIX=1
+    )
+
+    # Force include L0TestConfig.h in all source files
+    target_compile_options(rdkwindowmanager_l0test PRIVATE
+        -include ${CMAKE_CURRENT_SOURCE_DIR}/common/L0TestConfig.h
     )
 
     if(APPWM_ENABLE_COVERAGE)
@@ -293,6 +339,9 @@ if(PLUGIN_RDK_WINDOW_MANAGER)
         target_compile_options(rdkwindowmanager_l0test PRIVATE -Wall -Wextra -Wno-unused-parameter)
     endif()
 
+    # Suppress deprecation warnings from Thunder/WPEFramework headers
+    target_compile_options(rdkwindowmanager_l0test PRIVATE -Wno-error=deprecated-declarations)
+
     target_include_directories(rdkwindowmanager_l0test PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/RDKWindowManager
@@ -302,6 +351,10 @@ if(PLUGIN_RDK_WINDOW_MANAGER)
         ${CMAKE_SOURCE_DIR}/../../RDKWindowManager
         ${CMAKE_SOURCE_DIR}/../../helpers
         ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry
+    )
+
+    # Mark WPEFramework/Thunder headers as SYSTEM to suppress external warnings
+    target_include_directories(rdkwindowmanager_l0test SYSTEM PRIVATE
         ${PREFIX}/include
         ${PREFIX}/include/${NAMESPACE}
     )
@@ -318,6 +371,56 @@ if(PLUGIN_RDK_WINDOW_MANAGER)
 endif()
 
 # ---------------------------------------------------------------------------
+# AppStorageManager target compile options / definitions / includes
+# ---------------------------------------------------------------------------
+if(PLUGIN_APP_STORAGE_MANAGER)
+    target_compile_definitions(appstorage_l0test PRIVATE
+        MODULE_NAME=AppStorageManager_L0Test
+    )
+
+    # Force include L0TestConfig.h in all source files
+    target_compile_options(appstorage_l0test PRIVATE
+        -include ${CMAKE_CURRENT_SOURCE_DIR}/common/L0TestConfig.h
+    )
+
+    if(APPASM_ENABLE_COVERAGE)
+        target_compile_options(appstorage_l0test PRIVATE -O0 -g --coverage)
+        target_link_options(appstorage_l0test PRIVATE --coverage)
+    endif()
+
+    if(L0_ENABLE_WARNINGS)
+        target_compile_options(appstorage_l0test PRIVATE -Wall -Wextra -Wno-unused-parameter)
+    endif()
+
+    # Suppress deprecation warnings from Thunder/WPEFramework headers
+    target_compile_options(appstorage_l0test PRIVATE -Wno-error=deprecated-declarations)
+
+    target_include_directories(appstorage_l0test PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/AppStorageManager
+        ${CMAKE_CURRENT_SOURCE_DIR}/common
+        ${CMAKE_SOURCE_DIR}/../..
+        ${CMAKE_SOURCE_DIR}/../../AppStorageManager
+        ${CMAKE_SOURCE_DIR}/../../helpers
+        ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry
+    )
+
+    # Mark WPEFramework/Thunder headers as SYSTEM to suppress external warnings
+    target_include_directories(appstorage_l0test SYSTEM PRIVATE
+        ${PREFIX}/include
+        ${PREFIX}/include/${NAMESPACE}
+    )
+
+    if(EXISTS "${PREFIX}/lib")
+        target_link_directories(appstorage_l0test PRIVATE "${PREFIX}/lib")
+    endif()
+    if(EXISTS "${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins")
+        target_link_directories(appstorage_l0test PRIVATE "${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins")
+    endif()
+    if(EXISTS "${PREFIX}/lib/plugins")
+        target_link_directories(appstorage_l0test PRIVATE "${PREFIX}/lib/plugins")
+    endif()
+endif()
 # PackageManager target compile options / definitions / includes
 # ---------------------------------------------------------------------------
 if(PLUGIN_PACKAGE_MANAGER)
@@ -326,11 +429,12 @@ if(PLUGIN_PACKAGE_MANAGER)
 
     target_compile_definitions(packagemanager_l0test PRIVATE
         MODULE_NAME=PackageManager_L0Test
-        USE_THUNDER_R4=1
-        DISABLE_SECURITY_TOKEN=1
-        THUNDER_PLATFORM_PC_UNIX=1
         ENABLE_AIMANAGERS_TELEMETRY_METRICS=1
-        UNIT_TEST=1
+    )
+
+    # Force include L0TestConfig.h in all source files
+    target_compile_options(packagemanager_l0test PRIVATE
+        -include ${CMAKE_CURRENT_SOURCE_DIR}/common/L0TestConfig.h
     )
 
     if(APPPKG_ENABLE_COVERAGE)
@@ -354,7 +458,7 @@ if(PLUGIN_PACKAGE_MANAGER)
         ${PREFIX}/include
         ${PREFIX}/include/${NAMESPACE}
     )
-
+    
     if(JSONCPP_INCLUDE_DIR_PKG)
         target_include_directories(packagemanager_l0test PRIVATE ${JSONCPP_INCLUDE_DIR_PKG})
     endif()
@@ -367,6 +471,52 @@ if(PLUGIN_PACKAGE_MANAGER)
     endif()
     if(EXISTS "${PREFIX}/lib/plugins")
         target_link_directories(packagemanager_l0test PRIVATE "${PREFIX}/lib/plugins")
+    endif()
+endif()
+
+# ---------------------------------------------------------------------------
+# PreinstallManager target compile options / definitions / includes
+# ---------------------------------------------------------------------------
+if(PLUGIN_PREINSTALL_MANAGER)
+    target_compile_definitions(preinstall_manager_l0test PRIVATE
+        MODULE_NAME=PreinstallManager_L0Test
+        PLUGIN_PREINSTALL_MANAGER_IMPLEMENTATION_NAME="PreinstallManagerImplementation"
+    )
+
+    # Force include L0TestConfig.h in all source files
+    target_compile_options(preinstall_manager_l0test PRIVATE
+        -include ${CMAKE_CURRENT_SOURCE_DIR}/common/L0TestConfig.h
+    )
+
+    if(APPMGR_PREINSTALL_ENABLE_COVERAGE)
+        target_compile_options(preinstall_manager_l0test PRIVATE -O0 -g --coverage)
+        target_link_options(preinstall_manager_l0test PRIVATE --coverage)
+    endif()
+
+    if(L0_ENABLE_WARNINGS)
+        target_compile_options(preinstall_manager_l0test PRIVATE -Wall -Wextra -Wno-unused-parameter)
+    endif()
+
+    target_include_directories(preinstall_manager_l0test PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/PreinstallManager
+        ${CMAKE_CURRENT_SOURCE_DIR}/common
+        ${CMAKE_SOURCE_DIR}/../..
+        ${CMAKE_SOURCE_DIR}/../../PreinstallManager
+        ${CMAKE_SOURCE_DIR}/../../helpers
+        ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry
+        ${PREFIX}/include
+        ${PREFIX}/include/${NAMESPACE}
+    )
+
+    if(EXISTS "${PREFIX}/lib")
+        target_link_directories(preinstall_manager_l0test PRIVATE "${PREFIX}/lib")
+    endif()
+    if(EXISTS "${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins")
+        target_link_directories(preinstall_manager_l0test PRIVATE "${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins")
+    endif()
+    if(EXISTS "${PREFIX}/lib/plugins")
+        target_link_directories(preinstall_manager_l0test PRIVATE "${PREFIX}/lib/plugins")
     endif()
 endif()
 
@@ -384,19 +534,25 @@ find_package(Threads REQUIRED)
 
 # Fallback include paths for environments without namespace package configs.
 if(PLUGIN_RUNTIME_MANAGER)
-    target_include_directories(runtimemanager_l0test PRIVATE
+    target_include_directories(runtimemanager_l0test SYSTEM PRIVATE
         ${PREFIX}/include
         ${PREFIX}/include/${NAMESPACE}
     )
 endif()
 if(PLUGIN_LIFECYCLE_MANAGER)
-    target_include_directories(lifecyclemanager_l0test PRIVATE
+    target_include_directories(lifecyclemanager_l0test SYSTEM PRIVATE
         ${PREFIX}/include
         ${PREFIX}/include/${NAMESPACE}
     )
 endif()
 if(PLUGIN_RDK_WINDOW_MANAGER)
-    target_include_directories(rdkwindowmanager_l0test PRIVATE
+    target_include_directories(rdkwindowmanager_l0test SYSTEM PRIVATE
+        ${PREFIX}/include
+        ${PREFIX}/include/${NAMESPACE}
+    )
+endif()
+if(PLUGIN_APP_STORAGE_MANAGER)
+    target_include_directories(appstorage_l0test SYSTEM PRIVATE
         ${PREFIX}/include
         ${PREFIX}/include/${NAMESPACE}
     )
@@ -407,35 +563,53 @@ if(PLUGIN_PACKAGE_MANAGER)
         ${PREFIX}/include/${NAMESPACE}
     )
 endif()
+if(PLUGIN_PREINSTALL_MANAGER)
+    target_include_directories(preinstall_manager_l0test PRIVATE
+        ${PREFIX}/include
+        ${PREFIX}/include/${NAMESPACE}
+    )
+endif()
 
 if(CMAKE_PREFIX_PATH)
     foreach(_prefix IN LISTS CMAKE_PREFIX_PATH)
         if(EXISTS "${_prefix}/include")
             if(PLUGIN_RUNTIME_MANAGER)
-                target_include_directories(runtimemanager_l0test PRIVATE "${_prefix}/include")
+                target_include_directories(runtimemanager_l0test SYSTEM PRIVATE "${_prefix}/include")
             endif()
             if(PLUGIN_LIFECYCLE_MANAGER)
-                target_include_directories(lifecyclemanager_l0test PRIVATE "${_prefix}/include")
+                target_include_directories(lifecyclemanager_l0test SYSTEM PRIVATE "${_prefix}/include")
             endif()
             if(PLUGIN_RDK_WINDOW_MANAGER)
-                target_include_directories(rdkwindowmanager_l0test PRIVATE "${_prefix}/include")
+                target_include_directories(rdkwindowmanager_l0test SYSTEM PRIVATE "${_prefix}/include")
+            endif()
+            if(PLUGIN_APP_STORAGE_MANAGER)
+                target_include_directories(appstorage_l0test SYSTEM PRIVATE "${_prefix}/include")
             endif()
             if(PLUGIN_PACKAGE_MANAGER)
                 target_include_directories(packagemanager_l0test PRIVATE "${_prefix}/include")
             endif()
+            if(PLUGIN_PREINSTALL_MANAGER)
+                target_include_directories(preinstall_manager_l0test PRIVATE "${_prefix}/include")
+            endif()
         endif()
         if(EXISTS "${_prefix}/include/${NAMESPACE}")
             if(PLUGIN_RUNTIME_MANAGER)
-                target_include_directories(runtimemanager_l0test PRIVATE "${_prefix}/include/${NAMESPACE}")
+                target_include_directories(runtimemanager_l0test SYSTEM PRIVATE "${_prefix}/include/${NAMESPACE}")
             endif()
             if(PLUGIN_LIFECYCLE_MANAGER)
-                target_include_directories(lifecyclemanager_l0test PRIVATE "${_prefix}/include/${NAMESPACE}")
+                target_include_directories(lifecyclemanager_l0test SYSTEM PRIVATE "${_prefix}/include/${NAMESPACE}")
             endif()
             if(PLUGIN_RDK_WINDOW_MANAGER)
-                target_include_directories(rdkwindowmanager_l0test PRIVATE "${_prefix}/include/${NAMESPACE}")
+                target_include_directories(rdkwindowmanager_l0test SYSTEM PRIVATE "${_prefix}/include/${NAMESPACE}")
+            endif()
+            if(PLUGIN_APP_STORAGE_MANAGER)
+                target_include_directories(appstorage_l0test SYSTEM PRIVATE "${_prefix}/include/${NAMESPACE}")
             endif()
             if(PLUGIN_PACKAGE_MANAGER)
                 target_include_directories(packagemanager_l0test PRIVATE "${_prefix}/include/${NAMESPACE}")
+            endif()
+            if(PLUGIN_PREINSTALL_MANAGER)
+                target_include_directories(preinstall_manager_l0test PRIVATE "${_prefix}/include/${NAMESPACE}")
             endif()
         endif()
     endforeach()
@@ -452,8 +626,14 @@ endif()
 if(PLUGIN_RDK_WINDOW_MANAGER)
     list(APPEND _L0_TARGETS rdkwindowmanager_l0test)
 endif()
+if(PLUGIN_APP_STORAGE_MANAGER)
+    list(APPEND _L0_TARGETS appstorage_l0test)
+endif()
 if(PLUGIN_PACKAGE_MANAGER)
     list(APPEND _L0_TARGETS packagemanager_l0test)
+endif()
+if(PLUGIN_PREINSTALL_MANAGER)
+    list(APPEND _L0_TARGETS preinstall_manager_l0test)
 endif()
 
 foreach(_target IN LISTS _L0_TARGETS)
@@ -526,6 +706,23 @@ if(PLUGIN_PACKAGE_MANAGER)
     endif()
 endif()
 
+# PreinstallManager-specific libraries (jsoncpp, curl)
+if(PLUGIN_PREINSTALL_MANAGER)
+    find_library(JSONCPP_LIB_PREINSTALL NAMES jsoncpp HINTS "${PREFIX}/lib" /usr/lib /usr/local/lib)
+    find_library(CURL_LIB_PREINSTALL    NAMES curl    HINTS "${PREFIX}/lib" /usr/lib /usr/local/lib)
+
+    if(JSONCPP_LIB_PREINSTALL)
+        target_link_libraries(preinstall_manager_l0test PRIVATE ${JSONCPP_LIB_PREINSTALL})
+    else()
+        target_link_libraries(preinstall_manager_l0test PRIVATE jsoncpp)
+    endif()
+    if(CURL_LIB_PREINSTALL)
+        target_link_libraries(preinstall_manager_l0test PRIVATE ${CURL_LIB_PREINSTALL})
+    else()
+        target_link_libraries(preinstall_manager_l0test PRIVATE curl)
+    endif()
+endif()
+
 # ---------------------------------------------------------------------------
 # Runtime search paths (rpath — tells the OS where to find .so files at runtime)
 # ---------------------------------------------------------------------------
@@ -550,8 +747,22 @@ if(PLUGIN_RDK_WINDOW_MANAGER)
     )
 endif()
 
+if(PLUGIN_APP_STORAGE_MANAGER)
+    set_target_properties(appstorage_l0test PROPERTIES
+        BUILD_RPATH   "$ORIGIN;${PREFIX}/lib;${PREFIX}/lib/${STORAGE_DIRECTORY};${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins;${PREFIX}/lib/plugins"
+        INSTALL_RPATH "${PREFIX}/lib;${PREFIX}/lib/${STORAGE_DIRECTORY};${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins;${PREFIX}/lib/plugins"
+    )
+endif()
+
 if(PLUGIN_PACKAGE_MANAGER)
     set_target_properties(packagemanager_l0test PROPERTIES
+        BUILD_RPATH   "$ORIGIN;${PREFIX}/lib;${PREFIX}/lib/${STORAGE_DIRECTORY};${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins;${PREFIX}/lib/plugins"
+        INSTALL_RPATH "${PREFIX}/lib;${PREFIX}/lib/${STORAGE_DIRECTORY};${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins;${PREFIX}/lib/plugins"
+    )
+endif()
+
+if(PLUGIN_PREINSTALL_MANAGER)
+    set_target_properties(preinstall_manager_l0test PROPERTIES
         BUILD_RPATH   "$ORIGIN;${PREFIX}/lib;${PREFIX}/lib/${STORAGE_DIRECTORY};${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins;${PREFIX}/lib/plugins"
         INSTALL_RPATH "${PREFIX}/lib;${PREFIX}/lib/${STORAGE_DIRECTORY};${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins;${PREFIX}/lib/plugins"
     )
@@ -587,11 +798,29 @@ if(PLUGIN_RDK_WINDOW_MANAGER)
     )
 endif()
 
+if(PLUGIN_APP_STORAGE_MANAGER)
+    add_custom_target(run_appstorage
+        DEPENDS appstorage_l0test
+        COMMAND $<TARGET_FILE:appstorage_l0test>
+        COMMENT "Running appstorage_l0test"
+        VERBATIM
+    )
+endif()
+
 if(PLUGIN_PACKAGE_MANAGER)
     add_custom_target(run_packagemanager
         DEPENDS packagemanager_l0test
         COMMAND $<TARGET_FILE:packagemanager_l0test>
         COMMENT "Running packagemanager_l0test"
+        VERBATIM
+    )
+endif()
+
+if(PLUGIN_PREINSTALL_MANAGER)
+    add_custom_target(run_preinstall
+        DEPENDS preinstall_manager_l0test
+        COMMAND $<TARGET_FILE:preinstall_manager_l0test>
+        COMMENT "Running preinstall_manager_l0test"
         VERBATIM
     )
 endif()
@@ -616,12 +845,19 @@ else()
     if(PLUGIN_RDK_WINDOW_MANAGER)
         list(APPEND COVERAGE_DEPENDS rdkwindowmanager_l0test)
     endif()
+    if(PLUGIN_APP_STORAGE_MANAGER)
+        list(APPEND COVERAGE_DEPENDS appstorage_l0test)
+    endif()
     if(PLUGIN_PACKAGE_MANAGER)
         list(APPEND COVERAGE_DEPENDS packagemanager_l0test)
+    endif()
+    if(PLUGIN_PREINSTALL_MANAGER)
+        list(APPEND COVERAGE_DEPENDS preinstall_manager_l0test)
     endif()
 
     add_custom_target(coverage
         DEPENDS ${COVERAGE_DEPENDS}
+        COMMAND "${LCOV_EXECUTABLE}" --zerocounters -d "${CMAKE_BINARY_DIR}"
         COMMAND "${LCOV_EXECUTABLE}" -c -o coverage.info -d "${CMAKE_BINARY_DIR}"
         COMMAND "${GENHTML_EXECUTABLE}" -o coverage coverage.info
         WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/.."
@@ -629,4 +865,3 @@ else()
         VERBATIM
     )
 endif()
-
