@@ -72,46 +72,46 @@ namespace WPEFramework {
                         Exchange::JRDKWindowManager::Event::OnUserInactivity(_parent, minutes);
                     }
 
-                    void OnDisconnected(const std::string& client) override
+                    void OnDisconnected(const std::string& clientId) override
                     {
                         LOGINFO("OnDisconnected");
-                        Exchange::JRDKWindowManager::Event::OnDisconnected(_parent, client);
+                        Exchange::JRDKWindowManager::Event::OnDisconnected(_parent, clientId);
                     }
 
-                    void OnReady(const std::string &client) override
+                    void OnReady(const std::string &clientId) override
                     {
-                        LOGINFO("OnReady for client %s", client.c_str());
-                        Exchange::JRDKWindowManager::Event::OnReady(_parent, client);
+                        LOGINFO("OnReady for clientId %s", clientId.c_str());
+                        Exchange::JRDKWindowManager::Event::OnReady(_parent, clientId);
                     }
 
-                    void OnConnected(const std::string& appInstanceId) override
+                    void OnConnected(const std::string& clientId) override
                     {
-                        LOGINFO("OnConnected for appInstanceId %s", appInstanceId.c_str());
-                        Exchange::JRDKWindowManager::Event::OnConnected(_parent, appInstanceId);
+                        LOGINFO("OnConnected for clientId %s", clientId.c_str());
+                        Exchange::JRDKWindowManager::Event::OnConnected(_parent, clientId);
                     }
 
-                    void OnVisible(const std::string& appInstanceId) override
+                    void OnVisible(const std::string& clientId) override
                     {
-                        LOGINFO("OnVisible for appInstanceId %s", appInstanceId.c_str());
-                        Exchange::JRDKWindowManager::Event::OnVisible(_parent, appInstanceId);
+                        LOGINFO("OnVisible for clientId %s", clientId.c_str());
+                        Exchange::JRDKWindowManager::Event::OnVisible(_parent, clientId);
                     }
 
-                    void OnHidden(const std::string& appInstanceId) override
+                    void OnHidden(const std::string& clientId) override
                     {
-                        LOGINFO("OnHidden for appInstanceId %s", appInstanceId.c_str());
-                        Exchange::JRDKWindowManager::Event::OnHidden(_parent, appInstanceId);
+                        LOGINFO("OnHidden for clientId %s", clientId.c_str());
+                        Exchange::JRDKWindowManager::Event::OnHidden(_parent, clientId);
                     }
 
-                    void OnFocus(const std::string& appInstanceId) override
+                    void OnFocus(const std::string& clientId) override
                     {
-                        LOGINFO("OnFocus for appInstanceId %s", appInstanceId.c_str());
-                        Exchange::JRDKWindowManager::Event::OnFocus(_parent, appInstanceId);
+                        LOGINFO("OnFocus for clientId %s", clientId.c_str());
+                        Exchange::JRDKWindowManager::Event::OnFocus(_parent, clientId);
                     }
 
-                    void OnBlur(const std::string& appInstanceId) override
+                    void OnBlur(const std::string& clientId) override
                     {
-                        LOGINFO("OnBlur for appInstanceId %s", appInstanceId.c_str());
-                        Exchange::JRDKWindowManager::Event::OnBlur(_parent, appInstanceId);
+                        LOGINFO("OnBlur for clientId %s", clientId.c_str());
+                        Exchange::JRDKWindowManager::Event::OnBlur(_parent, clientId);
                     }
 
                     void OnScreenshotComplete(const bool success, const std::string& imageData) override
