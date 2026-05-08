@@ -505,6 +505,8 @@ namespace WPEFramework
                 return status;
 	    }
             activate = (closeReason == KILL_AND_ACTIVATE);		    
+            //add delay
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));  // 500ms delay
 
             ApplicationLaunchParams& launchParams = context->getApplicationLaunchParams();
 	    status = SpawnApp(launchParams.mAppId, launchParams.mLaunchIntent, activate?Exchange::ILifecycleManager::LifecycleState::ACTIVE:Exchange::ILifecycleManager::LifecycleState::PAUSED, launchParams.mRuntimeConfigObject, launchParams.mLaunchArgs, appInstanceId, errorReason, success);
