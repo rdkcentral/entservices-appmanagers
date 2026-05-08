@@ -24,6 +24,9 @@
 #include <mutex>
 #include <vector>
 #include <atomic>
+#include <cerrno>
+#include <cstring>
+#include <exception>
 #include "UtilsLogging.h"
 
 namespace WPEFramework
@@ -65,52 +68,94 @@ namespace WPEFramework
 
         bool StateTransitionHandler::initialize()
 	{
-            gRequestMutex.lock();
-            if (sInitialized.load())
             {
-                gRequestMutex.unlock();
-                return true;
+                std::lock_guard<std::mutex> lock(gRequestMutex);
+                if (true == sInitialized.load())
+                {
+                    return true;
+                }
+
+                sRunning.store(true);
+
+                if (0 != sem_init(&gRequestSemaphore, 0, 0))
+                {
+                    LOGERR("sem_init failed in %s", __FUNCTION__);
+                    return false;
+                }
+
             }
 
-            sRunning.store(true);
-            gRequestMutex.unlock();
-
             StateHandler::initialize();
-            sem_init(&gRequestSemaphore, 0, 0);
             std::atexit(terminateStateTransitionHandlerAtExit);
+            try
+            {
             requestHandlerThread = std::thread([=]() {
                 bool isRunning = true;
-                gRequestMutex.lock();
-                isRunning = sRunning.load();
-                gRequestMutex.unlock();
+                {
+                    std::lock_guard<std::mutex> lock(gRequestMutex);
+                    isRunning = sRunning.load();
+                }
                 while(isRunning)
 		{
-                    gRequestMutex.lock();
-                    while (gRequests.size() > 0)
+                    while (true)
                     {
-	                std::shared_ptr<StateTransitionRequest> request = gRequests.front();
-                        if (!request)
+                        std::shared_ptr<StateTransitionRequest> request;
                         {
+                            std::lock_guard<std::mutex> lock(gRequestMutex);
+                            if (true == gRequests.empty())
+                            {
+                                break;
+                            }
+                            request = gRequests.front();
                             gRequests.erase(gRequests.begin());
+                        }
+
+                        if (nullptr == request)
+                        {
                             continue;
                         }
+
                         std::string errorReason;
-                        bool success = StateHandler::changeState(*request, errorReason);
-                        gRequests.erase(gRequests.begin());
-                        if (!success)
+                        bool success = false;
+                        try
+                        {
+                            success = StateHandler::changeState(*request, errorReason);
+                        }
+                        catch (const std::exception& ex)
+                        {
+                            errorReason = ex.what();
+                        }
+                        catch (...)
+                        {
+                            errorReason = "unknown exception";
+                        }
+
+                        if (false == success)
                         {
                             LOGERR("ERROR IN STATE TRANSITION ... %s \n",errorReason.c_str());
                             //TODO: Decide on what to do on state transition error
                             break;
                         }
                     }
-                    gRequestMutex.unlock();
                     sem_wait(&gRequestSemaphore);
-                    gRequestMutex.lock();
-                    isRunning = sRunning.load();
-                    gRequestMutex.unlock();
+                    {
+                        std::lock_guard<std::mutex> lock(gRequestMutex);
+                        isRunning = sRunning.load();
+                    }
                 }
             });
+            }
+            catch (const std::system_error& ex)
+            {
+                LOGERR("Failed to create requestHandlerThread in %s: %s", __FUNCTION__, ex.what());
+                {
+                    std::lock_guard<std::mutex> lock(gRequestMutex);
+                    sInitialized.store(false);
+                    gRequests.clear();
+                }
+                sem_destroy(&gRequestSemaphore);
+                return false;
+            }
 
             // Mark as initialized only after semaphore and thread are ready
             sInitialized.store(true);
@@ -119,16 +164,16 @@ namespace WPEFramework
 
 	void StateTransitionHandler::terminate()
 	{
-            gRequestMutex.lock();
-            if (!sInitialized.load())
             {
-                gRequestMutex.unlock();
-                return;
-            }
+                std::lock_guard<std::mutex> lock(gRequestMutex);
+                if (false == sInitialized.load())
+                {
+                    return;
+                }
 
-            sRunning.store(false);
-            sInitialized.store(false);
-            gRequestMutex.unlock();
+                sRunning.store(false);
+                sInitialized.store(false);
+            }
 
             sem_post(&gRequestSemaphore);
 
@@ -136,31 +181,44 @@ namespace WPEFramework
             {
                 requestHandlerThread.join();
             }
+            else
+            {
+                LOGWARN("requestHandlerThread is not joinable in %s", __FUNCTION__);
+            }
 
-            sem_destroy(&gRequestSemaphore);
+            if (0 != sem_destroy(&gRequestSemaphore))
+            {
+                LOGERR("sem_destroy failed in %s: %s", __FUNCTION__, strerror(errno));
+            }
 
-	    gRequestMutex.lock();
-            gRequests.clear();
-	    gRequestMutex.unlock();
+            {
+                std::lock_guard<std::mutex> lock(gRequestMutex);
+                gRequests.clear();
+            }
 	}
 
 	void StateTransitionHandler::addRequest(StateTransitionRequest& request)
 	{
            // Prevent sem_post on destroyed semaphore
-           if (!sInitialized.load())
+           if (false == sInitialized.load())
            {
+               LOGWARN("addRequest called while handler is not initialized in %s, dropping request", __FUNCTION__);
                return;
            }
 
            //TODO: Pass contect and state as argument to function
 	   std::shared_ptr<StateTransitionRequest> stateTransitionRequest = std::make_shared<StateTransitionRequest>(request.mContext, request.mTargetState);
-	   gRequestMutex.lock();
-           gRequests.push_back(std::move(stateTransitionRequest));
-           if (sInitialized.load())
-           {
+	   {
+               std::lock_guard<std::mutex> lock(gRequestMutex);
+               if (false == sInitialized.load())
+               {
+                   LOGWARN("addRequest called after handler shutdown started in %s, dropping request", __FUNCTION__);
+                   return;
+               }
+
+               gRequests.push_back(std::move(stateTransitionRequest));
                sem_post(&gRequestSemaphore);
-           }
-	   gRequestMutex.unlock();
+	   }
 	}
 
     } /* namespace Plugin */
