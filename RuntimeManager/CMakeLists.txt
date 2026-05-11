@@ -24,6 +24,7 @@ set(PLUGIN_RUNTIME_MANAGER_AUTOSTART false CACHE STRING "Automatically start Run
 set(PLUGIN_RUNTIME_MANAGER_EXTRA_LIBRARIES "")
 set(PLUGIN_RUNTIME_MANAGER_STARTUPORDER "" CACHE STRING "Automatically start RuntimeManager plugin")
 set(PLUGIN_RUNTIME_APP_PORTAL "" CACHE STRING "Runtime application portal identifier")
+set(PLUGIN_RUNTIME_CONFIG_FILE "" CACHE STRING "Path to the runtime config YAML file")
 set(PLUGIN_RUNTIME_MANAGER_BASEOCISPEC "../resources/oci-base-spec.json" CACHE STRING "Bare minimum OCI spec for runtime manager")
 
 option(AIMANAGERS_TELEMETRY_METRICS_SUPPORT "AIMANAGERS_TELEMETRY_METRICS_SUPPORT" OFF)
