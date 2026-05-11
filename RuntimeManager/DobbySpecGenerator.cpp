@@ -44,11 +44,10 @@ namespace
     #define XDG_RUNTIME_DIR "/tmp"
 }
 
-DobbySpecGenerator::DobbySpecGenerator(): mIonMemoryPluginData(Json::objectValue), mPackageMountPoint("/package"), mRuntimeMountPoint("/runtime"), mGstRegistrySourcePath(""), mGstRegistryDestinationPath("/tmp/gstreamer-cached-registry.bin")
+DobbySpecGenerator::DobbySpecGenerator(AIConfiguration& aiConfiguration): mIonMemoryPluginData(Json::objectValue), mPackageMountPoint("/package"), mRuntimeMountPoint("/runtime"), mGstRegistrySourcePath(""), mGstRegistryDestinationPath("/tmp/gstreamer-cached-registry.bin")
 {
     LOGINFO("DobbySpecGenerator()");
-    mAIConfiguration = new AIConfiguration();
-    mAIConfiguration->initialize();
+    mAIConfiguration = &aiConfiguration;
     initialiseIonHeapsJson();
 //TODO SUPPORT THIS
 /*
@@ -66,10 +65,7 @@ DobbySpecGenerator::DobbySpecGenerator(): mIonMemoryPluginData(Json::objectValue
 DobbySpecGenerator::~DobbySpecGenerator()
 {
     LOGINFO("~DobbySpecGenerator()");
-    if (nullptr != mAIConfiguration)
-    {
-        delete mAIConfiguration;
-    }
+    // mAIConfiguration is owned by RuntimeManagerImplementation; not deleted here
 }
 
 Json::Value DobbySpecGenerator::getWorkingDir(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const
