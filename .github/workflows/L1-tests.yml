@@ -85,7 +85,16 @@ jobs:
         run: >
           sudo apt update
           &&
-          sudo apt install -y libsqlite3-dev libcurl4-openssl-dev valgrind lcov clang libsystemd-dev libboost-all-dev libwebsocketpp-dev meson libcunit1 libcunit1-dev curl protobuf-compiler-grpc libgrpc-dev libgrpc++-dev libjsoncpp-dev libxtables-dev libip4tc-dev libip6tc-dev libyaml-cpp-dev gdb
+          sudo apt install -y libsqlite3-dev libcurl4-openssl-dev valgrind clang libsystemd-dev libboost-all-dev libwebsocketpp-dev meson libcunit1 libcunit1-dev curl protobuf-compiler-grpc libgrpc-dev libgrpc++-dev libjsoncpp-dev libxtables-dev libip4tc-dev libip6tc-dev libyaml-cpp-dev gdb libcapture-tiny-perl libdatetime-perl libtimedate-perl
+
+      - name: Install lcov 2.4
+        run: |
+          set -euo pipefail
+          cd /tmp
+          curl -sL https://github.com/linux-test-project/lcov/releases/download/v2.4/lcov-2.4.tar.gz -o lcov-2.4.tar.gz
+          tar xzf lcov-2.4.tar.gz
+          sudo make -C lcov-2.4 install PREFIX=/usr
+          lcov --version
 
       - name: Build trower-base64
         run: |
@@ -566,28 +575,45 @@ jobs:
 
       - name: Generate coverage
         if: ${{ matrix.coverage == 'with-coverage' && !env.ACT }}
-        run: >
+        run: |
+          set -euo pipefail
+
           cp $GITHUB_WORKSPACE/entservices-appmanagers/Tests/L1Tests/.lcovrc_l1 ~/.lcovrc
-          &&
-          lcov -c
-          -o coverage.info
-          -d build/entservices-appmanagers
-          &&
-          lcov
-          -r coverage.info
-          '/usr/include/*'
-          '*/build/entservices-appmanagers/_deps/*'
-          '*/install/usr/include/*'
-          '*/Tests/headers/*'
-          '*/Tests/mocks/*'
-          '*/Tests/L1Tests/tests/*'
-          '*/Thunder/*'
-          -o filtered_coverage.info
-          &&
-          genhtml
-          -o coverage
-          -t "entservices-appmanagers coverage"
-          filtered_coverage.info
+
+          # Detect lcov version — lcov 2.x uses different --rc key names and supports --ignore-errors
+          # no_exception_branch: excludes compiler-generated exception-handling branches (landing pads,
+          # stack unwinding) that are invisible in source code and untestable in practice.
+          LCOV_IGNORE=""
+          BRANCH_RC="--rc lcov_branch_coverage=1"
+          EXCL_BR=""
+          GENHTML_IGNORE=""
+          if lcov --version 2>&1 | grep -qE 'version 2\.'; then
+            LCOV_IGNORE="--ignore-errors version,gcov,mismatch,unused"
+            BRANCH_RC="--rc branch_coverage=1"
+            EXCL_BR="--rc no_exception_branch=1"
+            GENHTML_IGNORE="--ignore-errors version,unmapped,inconsistent,corrupt,source,empty,range,format,path,missing,mismatch,negative,branch,annotate,deprecated,package"
+          fi
+
+          lcov $LCOV_IGNORE $BRANCH_RC $EXCL_BR \
+            -c \
+            -o coverage.info \
+            -d build/entservices-appmanagers
+
+          lcov $LCOV_IGNORE $BRANCH_RC $EXCL_BR \
+            -r coverage.info \
+            '/usr/include/*' \
+            '*/build/entservices-appmanagers/_deps/*' \
+            '*/install/usr/include/*' \
+            '*/Tests/headers/*' \
+            '*/Tests/mocks/*' \
+            '*/Tests/L1Tests/tests/*' \
+            '*/Thunder/*' \
+            -o filtered_coverage.info
+
+          genhtml $GENHTML_IGNORE $BRANCH_RC --branch-coverage \
+            -o coverage \
+            -t "entservices-appmanagers coverage" \
+            filtered_coverage.info
 
       - name: Upload artifacts
         if: ${{ !env.ACT }}
