@@ -95,11 +95,10 @@ namespace
     }
 }
 
-DobbySpecGenerator::DobbySpecGenerator(): mIonMemoryPluginData(Json::objectValue), mPackageMountPoint("/package"), mRuntimeMountPoint("/runtime"), mGstRegistrySourcePath(""), mGstRegistryDestinationPath("/tmp/gstreamer-cached-registry.bin")
+DobbySpecGenerator::DobbySpecGenerator(AIConfiguration& aiConfiguration): mIonMemoryPluginData(Json::objectValue), mPackageMountPoint("/package"), mRuntimeMountPoint("/runtime"), mGstRegistrySourcePath(""), mGstRegistryDestinationPath("/tmp/gstreamer-cached-registry.bin")
 {
     LOGINFO("DobbySpecGenerator()");
-    mAIConfiguration = new AIConfiguration();
-    mAIConfiguration->initialize();
+    mAIConfiguration = &aiConfiguration;
     initialiseIonHeapsJson();
 //TODO SUPPORT THIS
 /*
@@ -117,10 +116,7 @@ DobbySpecGenerator::DobbySpecGenerator(): mIonMemoryPluginData(Json::objectValue
 DobbySpecGenerator::~DobbySpecGenerator()
 {
     LOGINFO("~DobbySpecGenerator()");
-    if (nullptr != mAIConfiguration)
-    {
-        delete mAIConfiguration;
-    }
+    // mAIConfiguration is owned by RuntimeManagerImplementation; not deleted here
 }
 
 Json::Value DobbySpecGenerator::getWorkingDir(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const
@@ -334,9 +330,9 @@ Json::Value DobbySpecGenerator::createEnvVars(const ApplicationConfiguration& co
        env.append("WESTEROS_SINK_VIRTUAL_HEIGHT=1080");
        env.append("QT_WAYLAND_CLIENT_BUFFER_INTEGRATION=wayland-egl");
        env.append("QT_WAYLAND_SHELL_INTEGRATION=wl-simple-shell");
-       env.append("QT_WAYLAND_INPUTDEVICE_INTEGRATION=skyq-input");
        env.append("QT_QPA_PLATFORM=wayland-sky-rdk");
    }
+   env.append(std::string("APPLICATION_TOKEN=") + config.mAppInstanceId);
    if (mAIConfiguration->getResourceManagerClientEnabled())
    {
        env.append("ESSRMGR_APPID=" + config.mAppId);
@@ -762,6 +758,7 @@ Json::Value DobbySpecGenerator::createAppServiceSDKPlugin(const ApplicationConfi
         ports.append(port);
     }
     pluginObj["data"]["additionalPorts"] = std::move(ports);
+	pluginObj["data"]["setMenu"] = "local-services-1"; //HACK for now for homeapp launch. This will be resolved with proper wiring
 
     return pluginObj;
 }

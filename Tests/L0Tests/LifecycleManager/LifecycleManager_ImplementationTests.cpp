@@ -79,7 +79,7 @@ public:
         return impl.mLifecycleManagerStateNotification;
     }
 
-    static std::list<ApplicationContext*>&
+    static std::list<std::shared_ptr<ApplicationContext>>&
     getLoadedApps(LifecycleManagerImplementation& impl)
     {
         return impl.mLoadedApplications;
@@ -370,8 +370,8 @@ uint32_t Test_Impl_GetLoadedAppsWithApps()
     ConcreteLifecycleManagerImpl impl;
 
     // Inject two contexts directly
-    auto* ctx1 = new WPEFramework::Plugin::ApplicationContext("com.test.app1");
-    auto* ctx2 = new WPEFramework::Plugin::ApplicationContext("com.test.app2");
+    auto ctx1 = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.app1");
+    auto ctx2 = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.app2");
     std::string id1 = "inst-001";
     std::string id2 = "inst-002";
     ctx1->setAppInstanceId(id1);
@@ -388,10 +388,7 @@ uint32_t Test_Impl_GetLoadedAppsWithApps()
     L0Test::ExpectTrue(tr, apps.find("com.test.app2") != std::string::npos,
         "Result contains appId 'com.test.app2'");
 
-    // Clean up (impl destructor will call terminate() which is safe)
-    for (auto* ctx : LifecycleManagerImplementationTest::getLoadedApps(impl)) {
-        delete ctx;
-    }
+    // Clean up (shared_ptr handles memory automatically)
     LifecycleManagerImplementationTest::getLoadedApps(impl).clear();
 
     return tr.failures;
@@ -407,7 +404,7 @@ uint32_t Test_Impl_GetLoadedAppsNonVerboseOmitsRuntimeStats()
 
     ConcreteLifecycleManagerImpl impl;
 
-    auto* ctx = new WPEFramework::Plugin::ApplicationContext("com.test.verbose");
+    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.verbose");
     std::string instId = "inst-verbose-001";
     ctx->setAppInstanceId(instId);
     LifecycleManagerImplementationTest::getLoadedApps(impl).push_back(ctx);
@@ -417,9 +414,6 @@ uint32_t Test_Impl_GetLoadedAppsNonVerboseOmitsRuntimeStats()
     L0Test::ExpectTrue(tr, apps.find("runtimeStats") == std::string::npos,
         "Non-verbose GetLoadedApps does not include runtimeStats");
 
-    for (auto* c : LifecycleManagerImplementationTest::getLoadedApps(impl)) {
-        delete c;
-    }
     LifecycleManagerImplementationTest::getLoadedApps(impl).clear();
 
     return tr.failures;
@@ -435,7 +429,7 @@ uint32_t Test_Impl_IsAppLoadedTrue()
 
     ConcreteLifecycleManagerImpl impl;
 
-    auto* ctx = new WPEFramework::Plugin::ApplicationContext("com.test.loaded");
+    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.loaded");
     std::string inst = "inst-loaded-001";
     ctx->setAppInstanceId(inst);
     LifecycleManagerImplementationTest::getLoadedApps(impl).push_back(ctx);
@@ -446,9 +440,6 @@ uint32_t Test_Impl_IsAppLoadedTrue()
         "IsAppLoaded returns ERROR_NONE");
     L0Test::ExpectTrue(tr, loaded, "IsAppLoaded returns true for existing app");
 
-    for (auto* c : LifecycleManagerImplementationTest::getLoadedApps(impl)) {
-        delete c;
-    }
     LifecycleManagerImplementationTest::getLoadedApps(impl).clear();
 
     return tr.failures;
@@ -507,7 +498,7 @@ uint32_t Test_Impl_SendIntentToActiveAppNonActive()
     ConcreteLifecycleManagerImpl impl;
 
     // App in PAUSED state (default initial state is UNLOADED, which is also not ACTIVE)
-    auto* ctx = new WPEFramework::Plugin::ApplicationContext("com.test.paused");
+    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.paused");
     std::string inst = "inst-paused-001";
     ctx->setAppInstanceId(inst);
     LifecycleManagerImplementationTest::getLoadedApps(impl).push_back(ctx);
@@ -524,9 +515,6 @@ uint32_t Test_Impl_SendIntentToActiveAppNonActive()
     L0Test::ExpectEqStr(tr, errorReason, "application is not active",
         "errorReason matches expected value");
 
-    for (auto* c : LifecycleManagerImplementationTest::getLoadedApps(impl)) {
-        delete c;
-    }
     LifecycleManagerImplementationTest::getLoadedApps(impl).clear();
 
     return tr.failures;
@@ -559,7 +547,7 @@ uint32_t Test_Impl_AppReadyKnownAppId()
 
     ConcreteLifecycleManagerImpl impl;
 
-    auto* ctx = new WPEFramework::Plugin::ApplicationContext("com.test.ready");
+    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.ready");
     std::string inst = "inst-ready-001";
     ctx->setAppInstanceId(inst);
     LifecycleManagerImplementationTest::getLoadedApps(impl).push_back(ctx);
@@ -573,9 +561,6 @@ uint32_t Test_Impl_AppReadyKnownAppId()
     L0Test::ExpectEqU32(tr, static_cast<uint32_t>(semResult), 0u,
         "mAppReadySemaphore was posted by AppReady");
 
-    for (auto* c : LifecycleManagerImplementationTest::getLoadedApps(impl)) {
-        delete c;
-    }
     LifecycleManagerImplementationTest::getLoadedApps(impl).clear();
 
     return tr.failures;
@@ -831,7 +816,7 @@ uint32_t Test_Impl_GetContextByAppInstanceId()
 
     ConcreteLifecycleManagerImpl impl;
 
-    auto* ctx = new WPEFramework::Plugin::ApplicationContext("com.test.ctx");
+    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.ctx");
     std::string inst = "inst-ctx-001";
     ctx->setAppInstanceId(inst);
     LifecycleManagerImplementationTest::getLoadedApps(impl).push_back(ctx);
@@ -850,9 +835,6 @@ uint32_t Test_Impl_GetContextByAppInstanceId()
     L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
         "getContext found app by appInstanceId (returned not-active error)");
 
-    for (auto* c : LifecycleManagerImplementationTest::getLoadedApps(impl)) {
-        delete c;
-    }
     LifecycleManagerImplementationTest::getLoadedApps(impl).clear();
 
     return tr.failures;
@@ -1036,7 +1018,7 @@ uint32_t Test_Impl_GetLoadedAppsVerboseNoRuntimeHandler()
 
     ConcreteLifecycleManagerImpl impl;
 
-    auto* ctx = new WPEFramework::Plugin::ApplicationContext("com.test.verbose");
+    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.verbose");
     std::string inst = "inst-verbose-001";
     ctx->setAppInstanceId(inst);
     LifecycleManagerImplementationTest::getLoadedApps(impl).push_back(ctx);
@@ -1049,9 +1031,6 @@ uint32_t Test_Impl_GetLoadedAppsVerboseNoRuntimeHandler()
     L0Test::ExpectTrue(tr, apps.find("com.test.verbose") != std::string::npos,
         "verbose result still contains the appId");
 
-    for (auto* c : LifecycleManagerImplementationTest::getLoadedApps(impl)) {
-        delete c;
-    }
     LifecycleManagerImplementationTest::getLoadedApps(impl).clear();
 
     return tr.failures;
@@ -1069,12 +1048,12 @@ uint32_t Test_Impl_SendIntentToActiveAppActiveApp()
 
     ConcreteLifecycleManagerImpl impl;
 
-    auto* ctx = new WPEFramework::Plugin::ApplicationContext("com.test.active");
+    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.active");
     std::string inst = "inst-active-001";
     ctx->setAppInstanceId(inst);
     // Transition the context to ACTIVE by installing an ActiveState.
     delete static_cast<WPEFramework::Plugin::State*>(ctx->getState());
-    ctx->setState(static_cast<void*>(new WPEFramework::Plugin::ActiveState(ctx)));
+    ctx->setState(static_cast<void*>(new WPEFramework::Plugin::ActiveState(ctx.get())));
     LifecycleManagerImplementationTest::getLoadedApps(impl).push_back(ctx);
 
     std::string errorReason;
@@ -1092,9 +1071,6 @@ uint32_t Test_Impl_SendIntentToActiveAppActiveApp()
     // worker pool finishes the job before impl's destructor runs.
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
-    for (auto* c : LifecycleManagerImplementationTest::getLoadedApps(impl)) {
-        delete c;
-    }
     LifecycleManagerImplementationTest::getLoadedApps(impl).clear();
 
     return tr.failures;
@@ -1112,7 +1088,7 @@ uint32_t Test_Impl_DispatchAppStateChangedUnloadedRemovesApp()
 
     ConcreteLifecycleManagerImpl impl;
 
-    auto* ctx = new WPEFramework::Plugin::ApplicationContext("com.test.unload");
+    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.unload");
     std::string inst = "inst-unload-001";
     ctx->setAppInstanceId(inst);
     LifecycleManagerImplementationTest::getLoadedApps(impl).push_back(ctx);
@@ -1196,13 +1172,13 @@ uint32_t Test_Impl_RuntimeEventOnTerminatedAppInTerminatingState()
 
     ConcreteLifecycleManagerImpl impl;
 
-    auto* ctx = new WPEFramework::Plugin::ApplicationContext("com.test.terminating");
+    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.terminating");
     std::string inst = "inst-terminating-001";
     ctx->setAppInstanceId(inst);
     // Put context into TERMINATING state via TerminatingState
     delete static_cast<WPEFramework::Plugin::State*>(ctx->getState());
     ctx->setState(static_cast<void*>(
-        new WPEFramework::Plugin::TerminatingState(ctx)));
+        new WPEFramework::Plugin::TerminatingState(ctx.get())));
     ctx->mPendingStateTransition = false;
     ctx->mPendingEventName       = "";
     LifecycleManagerImplementationTest::getLoadedApps(impl).push_back(ctx);
@@ -1233,9 +1209,6 @@ uint32_t Test_Impl_RuntimeEventOnTerminatedAppInTerminatingState()
     // StateTransitionHandler background thread uses ctx; wait for it to finish.
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
-    for (auto* c : LifecycleManagerImplementationTest::getLoadedApps(impl)) {
-        delete c;
-    }
     LifecycleManagerImplementationTest::getLoadedApps(impl).clear();
 
     return tr.failures;
@@ -1254,13 +1227,13 @@ uint32_t Test_Impl_RuntimeEventOnTerminatedUnexpected()
 
     ConcreteLifecycleManagerImpl impl;
 
-    auto* ctx = new WPEFramework::Plugin::ApplicationContext("com.test.unexpected");
+    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.unexpected");
     std::string inst = "inst-unexpected-001";
     ctx->setAppInstanceId(inst);
     // ACTIVE state → not TERMINATING → triggers unexpected-termination branch
     delete static_cast<WPEFramework::Plugin::State*>(ctx->getState());
     ctx->setState(static_cast<void*>(
-        new WPEFramework::Plugin::ActiveState(ctx)));
+        new WPEFramework::Plugin::ActiveState(ctx.get())));
     LifecycleManagerImplementationTest::getLoadedApps(impl).push_back(ctx);
 
     WPEFramework::Core::JSON::VariantContainer params;
@@ -1289,9 +1262,6 @@ uint32_t Test_Impl_RuntimeEventOnTerminatedUnexpected()
     // StateTransitionHandler background thread uses ctx; wait for it to finish.
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
-    for (auto* c : LifecycleManagerImplementationTest::getLoadedApps(impl)) {
-        delete c;
-    }
     LifecycleManagerImplementationTest::getLoadedApps(impl).clear();
 
     return tr.failures;
@@ -1348,7 +1318,7 @@ uint32_t Test_Impl_RuntimeEventOnStateChangedRunningKnownApp()
 
     ConcreteLifecycleManagerImpl impl;
 
-    auto* ctx = new WPEFramework::Plugin::ApplicationContext("com.test.running");
+    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.running");
     std::string inst = "inst-running-001";
     ctx->setAppInstanceId(inst);
     ctx->mPendingStateTransition = false;
@@ -1381,9 +1351,6 @@ uint32_t Test_Impl_RuntimeEventOnStateChangedRunningKnownApp()
     // StateTransitionHandler background thread uses ctx; wait for it to finish.
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
-    for (auto* c : LifecycleManagerImplementationTest::getLoadedApps(impl)) {
-        delete c;
-    }
     LifecycleManagerImplementationTest::getLoadedApps(impl).clear();
 
     return tr.failures;
@@ -1451,7 +1418,7 @@ uint32_t Test_Impl_NotifyOnFailureKnownApp()
 
     ConcreteLifecycleManagerImpl impl;
 
-    auto* ctx = new WPEFramework::Plugin::ApplicationContext("com.test.failapp");
+    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.failapp");
     std::string inst = "inst-failapp-001";
     ctx->setAppInstanceId(inst);
     LifecycleManagerImplementationTest::getLoadedApps(impl).push_back(ctx);
@@ -1490,11 +1457,7 @@ uint32_t Test_Impl_NotifyOnFailureKnownApp()
         static_cast<WPEFramework::Exchange::ILifecycleManager::INotification*>(notif));
     notif->Release();
 
-    // ctx is owned by handleStateChangeEvent if UNLOADED was dispatched, but here
-    // we dispatched ONFAILURE which does not erase from the list — clean up manually.
-    for (auto* c : LifecycleManagerImplementationTest::getLoadedApps(impl)) {
-        delete c;
-    }
+    // ctx memory is managed by shared_ptr; clean up the list
     LifecycleManagerImplementationTest::getLoadedApps(impl).clear();
 
     return tr.failures;
@@ -1649,7 +1612,7 @@ uint32_t Test_Impl_WindowEventOnReadyKnownAppWrongTransition()
 
     ConcreteLifecycleManagerImpl impl;
 
-    auto* ctx = new WPEFramework::Plugin::ApplicationContext("com.test.onready");
+    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.onready");
     std::string inst = "inst-onready-001";
     ctx->setAppInstanceId(inst);
     ctx->mPendingStateTransition = false;  // triggers else path in addStateTransitionRequest
@@ -1677,9 +1640,6 @@ uint32_t Test_Impl_WindowEventOnReadyKnownAppWrongTransition()
     L0Test::ExpectTrue(tr, noThrow,
         "onReady known app (wrong transition) does not throw");
 
-    for (auto* c : LifecycleManagerImplementationTest::getLoadedApps(impl)) {
-        delete c;
-    }
     LifecycleManagerImplementationTest::getLoadedApps(impl).clear();
 
     return tr.failures;
@@ -1700,7 +1660,7 @@ uint32_t Test_Impl_RuntimeEventOnStateChangedMatchingPendingTransition()
 
     ConcreteLifecycleManagerImpl impl;
 
-    auto* ctx = new WPEFramework::Plugin::ApplicationContext("com.test.pending");
+    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.pending");
     std::string inst = "inst-pending-001";
     ctx->setAppInstanceId(inst);
     ctx->mPendingStateTransition = true;
@@ -1733,10 +1693,8 @@ uint32_t Test_Impl_RuntimeEventOnStateChangedMatchingPendingTransition()
     // StateTransitionHandler background thread uses ctx; wait for it to finish.
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
-    for (auto* c : LifecycleManagerImplementationTest::getLoadedApps(impl)) {
-        delete c;
-    }
     LifecycleManagerImplementationTest::getLoadedApps(impl).clear();
 
     return tr.failures;
 }
+
