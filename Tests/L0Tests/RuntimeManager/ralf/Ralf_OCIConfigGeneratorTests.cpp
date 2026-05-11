@@ -31,6 +31,7 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <cstdio>
 #include <cstdlib>
 #include <sys/stat.h>
 
@@ -293,6 +294,92 @@ uint32_t Test_RalfOCIConfigGenerator_GenerateWithDifferentAppInstances()
 
     L0Test::ExpectTrue(tr, true,
                        "generateRalfOCIConfig() with different app instances does not crash");
+
+    return tr.failures;
+}
+
+/* Test_RalfOCIConfigGenerator_LogPathSetCorrectlyInOCIConfig
+ *
+ * Verifies that generateRalfOCIConfig() correctly sets
+ * rdkPlugins.logging.data.fileOptions.path to <appStoragePath>/<appId>.log
+ * in the generated OCI config JSON.
+ *
+ * This test writes minimal mock JSON files to the expected system paths when
+ * those paths do not already exist, then verifies the generated output, and
+ * cleans up afterwards.
+ */
+uint32_t Test_RalfOCIConfigGenerator_LogPathSetCorrectlyInOCIConfig()
+{
+    L0Test::TestResult tr;
+
+    // Skip if system files are already present so production files are not overwritten.
+    if (ralf::checkIfPathExists(ralf::RALF_OCI_BASE_SPEC_FILE) ||
+        ralf::checkIfPathExists(ralf::RALF_GRAPHICS_LAYER_CONFIG)) {
+        L0Test::ExpectTrue(tr, true,
+                           "SKIP: system OCI base spec or graphics config present, skipping log path test");
+        return tr.failures;
+    }
+
+    const std::string outputConfigPath = "/tmp/ralf_l0test_logpath_config.json";
+    const std::string appStoragePath   = "/tmp/ralf_l0test_appstorage";
+    const std::string appId            = "com.test.logpathapp";
+    const std::string expectedLogPath  = appStoragePath + "/" + appId + ".log";
+
+    // Write minimal valid JSON to the required system paths.
+    const bool baseSpecWritten  = WriteFile_OCIGen(ralf::RALF_OCI_BASE_SPEC_FILE, "{}");
+    const bool graphicsWritten  = WriteFile_OCIGen(ralf::RALF_GRAPHICS_LAYER_CONFIG, "{}");
+    if (!baseSpecWritten || !graphicsWritten) {
+        if (baseSpecWritten)  std::remove(ralf::RALF_OCI_BASE_SPEC_FILE.c_str());
+        if (graphicsWritten)  std::remove(ralf::RALF_GRAPHICS_LAYER_CONFIG.c_str());
+        L0Test::ExpectTrue(tr, true,
+                           "SKIP: could not write mock OCI spec files, skipping log path test");
+        return tr.failures;
+    }
+
+    WPEFramework::Plugin::ApplicationConfiguration config;
+    config.mAppId               = appId;
+    config.mAppInstanceId       = "inst-logpath-001";
+    config.mUserId              = 1000;
+    config.mGroupId             = 1000;
+    config.mAppStorageInfo.path = appStoragePath;
+
+    auto runtimeCfg = MakeRuntimeConfig_OCI();
+
+    std::vector<ralf::RalfPkgInfoPair> packages;
+    ralf::RalfOCIConfigGenerator gen(outputConfigPath, packages);
+
+    const bool result = gen.generateRalfOCIConfig(config, runtimeCfg);
+
+    // Remove mock system files before asserting, so cleanup always happens.
+    std::remove(ralf::RALF_OCI_BASE_SPEC_FILE.c_str());
+    std::remove(ralf::RALF_GRAPHICS_LAYER_CONFIG.c_str());
+
+    L0Test::ExpectTrue(tr, result,
+                       "generateRalfOCIConfig() should succeed with minimal mock base spec");
+
+    if (result) {
+        Json::Value outputConfig;
+        const bool parsed = ralf::JsonFromFile(outputConfigPath, outputConfig);
+        L0Test::ExpectTrue(tr, parsed,
+                           "Generated OCI config should be parseable JSON");
+
+        if (parsed) {
+            const bool hasLogPath = outputConfig.isMember("rdkPlugins") &&
+                                    outputConfig["rdkPlugins"].isMember("logging") &&
+                                    outputConfig["rdkPlugins"]["logging"].isMember("data") &&
+                                    outputConfig["rdkPlugins"]["logging"]["data"].isMember("fileOptions") &&
+                                    outputConfig["rdkPlugins"]["logging"]["data"]["fileOptions"].isMember("path");
+            L0Test::ExpectTrue(tr, hasLogPath,
+                               "Generated OCI config should contain rdkPlugins.logging.data.fileOptions.path");
+            if (hasLogPath) {
+                const std::string actualPath =
+                    outputConfig["rdkPlugins"]["logging"]["data"]["fileOptions"]["path"].asString();
+                L0Test::ExpectTrue(tr, actualPath == expectedLogPath,
+                                   "rdkPlugins.logging.data.fileOptions.path should equal <appStoragePath>/<appId>.log");
+            }
+        }
+        std::remove(outputConfigPath.c_str());
+    }
 
     return tr.failures;
 }
