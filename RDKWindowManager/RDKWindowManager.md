@@ -79,8 +79,8 @@ classDiagram
         +SetInactivityInterval(interval: uint32_t) hresult
         +ResetInactivityTime() hresult
         +GetLastKeyInfo(keyCode: uint32_t, modifiers: uint32_t, timestampInSeconds: uint64_t) hresult
-        +SetZOrder(appInstanceId: string, zOrder: int32_t) hresult
-        +GetZOrder(appInstanceId: string, zOrder: int32_t) hresult
+        +SetZOrder(clientId: string, zOrder: int32_t) hresult
+        +GetZOrder(clientId: string, zOrder: int32_t) hresult
     }
 
     class IRDKWindowManager {
@@ -100,8 +100,8 @@ classDiagram
         +SetInactivityInterval(interval: uint32_t) hresult
         +ResetInactivityTime() hresult
         +GetLastKeyInfo(keyCode: uint32_t, modifiers: uint32_t, timestampInSeconds: uint64_t) hresult
-        +SetZOrder(appInstanceId: string, zOrder: int32_t) hresult
-        +GetZOrder(appInstanceId: string, zOrder: int32_t) hresult
+        +SetZOrder(clientId: string, zOrder: int32_t) hresult
+        +GetZOrder(clientId: string, zOrder: int32_t) hresult
     }
 
     RDKWindowManagerImplementation ..|> IRDKWindowManager
@@ -144,8 +144,8 @@ RDKWindowManager/
 | `SetInactivityInterval(interval)` | Set the inactivity timeout interval (in seconds) |
 | `ResetInactivityTime()` | Reset the inactivity timer |
 | `GetLastKeyInfo(keyCode, modifiers, timestampInSeconds)` | Retrieve the last key event code, modifiers, and timestamp |
-| `SetZOrder(appInstanceId, zOrder)` | Set the Z-order for a specific application instance |
-| `GetZOrder(appInstanceId, zOrder)` | Get the current Z-order for a specific application instance |
+| `SetZOrder(clientId, zOrder)` | Set the Z-order for a specific client instance |
+| `GetZOrder(clientId, zOrder)` | Get the current Z-order for a specific client instance |
 
 ---
 
