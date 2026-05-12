@@ -78,7 +78,7 @@ namespace WPEFramework {
                         Exchange::JRDKWindowManager::Event::OnDisconnected(_parent, clientId);
                     }
 
-                    void OnReady(const std::string &clientId) override
+                    void OnReady(const std::string& clientId) override
                     {
                         LOGINFO("OnReady for clientId %s", clientId.c_str());
                         Exchange::JRDKWindowManager::Event::OnReady(_parent, clientId);
