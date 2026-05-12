@@ -88,10 +88,13 @@ jobs:
           sudo apt install -y libsqlite3-dev libcurl4-openssl-dev valgrind clang libsystemd-dev libboost-all-dev libwebsocketpp-dev meson libcunit1 libcunit1-dev curl protobuf-compiler-grpc libgrpc-dev libgrpc++-dev libjsoncpp-dev libxtables-dev libip4tc-dev libip6tc-dev libyaml-cpp-dev gdb libcapture-tiny-perl libdatetime-perl libtimedate-perl
 
       - name: Install lcov 2.4
+        env:
+          LCOV_SHA256: "3457825c6b2fe4ef77c782b82a23875c84a3c955243823f05d8f2dec0d455820"
         run: |
           set -euo pipefail
           cd /tmp
-          curl -sL https://github.com/linux-test-project/lcov/releases/download/v2.4/lcov-2.4.tar.gz -o lcov-2.4.tar.gz
+          curl -fsSL --retry 3 https://github.com/linux-test-project/lcov/releases/download/v2.4/lcov-2.4.tar.gz -o lcov-2.4.tar.gz
+          echo "${LCOV_SHA256}  lcov-2.4.tar.gz" | sha256sum --check --strict
           tar xzf lcov-2.4.tar.gz
           sudo make -C lcov-2.4 install PREFIX=/usr
           lcov --version
