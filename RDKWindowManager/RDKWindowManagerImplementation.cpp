@@ -2107,7 +2107,7 @@ Core::hresult RDKWindowManagerImplementation::SetZOrder(const string &clientId, 
  *
  * This function retrieves the zOrder of the client identified by its clientId/name.
  *
- * @param[in] client            : client name or Application instance ID
+ * @param[in] clientId            : client name or Application instance ID
  * @param[out] zOrder           : integer zorder of an app
  * @return    Core::<StatusCode>: Core::ERROR_NONE on success, Core::ERROR_GENERAL on failure
  */

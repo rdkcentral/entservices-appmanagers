@@ -1176,7 +1176,7 @@ TEST_F(RDKWindowManagerTest, GetZOrder_Success)
 
     EXPECT_EQ(Core::ERROR_NONE,
         handler.Invoke(connection, _T("getZOrder"),
-            _T("{\"appInstanceId\":\"testAppInstance\"}"),
+            _T("{\"clientId\":\"testAppInstance\"}"),
             response));
 }
 
@@ -1187,7 +1187,7 @@ TEST_F(RDKWindowManagerTest, GetZOrder_Failure)
 
     EXPECT_EQ(Core::ERROR_GENERAL,
         handler.Invoke(connection, _T("getZOrder"),
-            _T("{\"appInstanceId\":\"testAppInstance\"}"),
+            _T("{\"clientId\":\"testAppInstance\"}"),
             response));
 }
 
@@ -1201,11 +1201,11 @@ TEST_F(RDKWindowManagerTest, GetZOrder_Success_Additional)
 
     EXPECT_EQ(Core::ERROR_NONE,
         handler.Invoke(connection, _T("getZOrder"),
-            _T("{\"appInstanceId\":\"testAppInstance\"}"),
+            _T("{\"clientId\":\"testAppInstance\"}"),
             response));
 }
 
-TEST_F(RDKWindowManagerTest, GetZOrder_MissingAppInstanceId_Failure)
+TEST_F(RDKWindowManagerTest, GetZOrder_MissingClientId_Failure)
 {
     EXPECT_CALL(*windowManagerMock, GetZOrder(_, _))
         .WillOnce(Return(Core::ERROR_GENERAL));
