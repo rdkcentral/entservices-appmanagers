@@ -74,7 +74,7 @@ namespace WPEFramework {
 
                     void OnDisconnected(const std::string& clientId) override
                     {
-                        LOGINFO("OnDisconnected");
+                        LOGINFO("OnDisconnected for clientId %s", clientId.c_str());
                         Exchange::JRDKWindowManager::Event::OnDisconnected(_parent, clientId);
                     }
 
