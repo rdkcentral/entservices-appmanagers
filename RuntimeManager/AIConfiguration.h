@@ -35,7 +35,7 @@ namespace Plugin
         public:
             AIConfiguration();
             virtual ~AIConfiguration();
-            void initialize();
+            void initialize(const std::string& runtimeConfigFile = "");
             size_t getContainerConsoleLogCap();
             std::bitset<32> getAppsCpuSet() const;
             ssize_t getNonHomeAppMemoryLimit();
@@ -63,7 +63,7 @@ namespace Plugin
         private:
             void readFromCustomData();
             void readFromConfigFile();
-            void readFromYamlConfigFile();
+            void readFromYamlConfigFile(const std::string& runtimeConfigFile);
             std::list<std::string> readGlobalEnv() const;
 
             size_t mConsoleLogCap;
