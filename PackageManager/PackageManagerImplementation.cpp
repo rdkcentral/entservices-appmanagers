@@ -552,29 +552,19 @@ namespace Plugin {
         JsonObject rootObj;
 
         std::string packageDump;
-        if (packageImpl.get() != nullptr)
+        packageImpl->Dump(packageDump);
+        
+        // Parse the package dump JSON and add it to root object
+        JsonObject packageInfo;
+        if (packageInfo.FromString(packageDump))
         {
-            std::printf("[packagemanager] DumpInfo calling packageImpl->Dump\n");
-            std::fflush(stdout);
-            packageImpl->Dump(packageDump);
-            std::printf("[packagemanager] DumpInfo packageImpl->Dump returned bytes=%zu\n", packageDump.size());
-            std::fflush(stdout);
-
-            // Parse the package dump JSON and add it to root object
-            JsonObject packageInfo;
-            if (packageInfo.FromString(packageDump))
-            {
-                rootObj["packageInfo"] = packageInfo;
-            }
-            else
-            {
-                LOGERR("Failed to parse package dump JSON");
-            }
+            rootObj["packageInfo"] = packageInfo;
         }
         else
         {
-            LOGERR("packageImpl is null, unable to gather packageInfo for DumpInfo");
+            LOGERR("Failed to parse package dump JSON");
         }
+
         JsonObject downloaderInfo;
 
         // Download threads count (always 1 thread)
