@@ -505,16 +505,12 @@ namespace WPEFramework
                 return status;
 	    }
             activate = (closeReason == KILL_AND_ACTIVATE);		    
-            printf("CloseApp: Starting delay, context=%p\n", context);
-            fflush(stdout);
+            
             //add delay
             std::this_thread::sleep_for(std::chrono::milliseconds(5000));  // 5000ms delay
-            printf("CloseApp: After delay, contextAfterDelay=%p (original=%p)\n", contextAfterDelay, context);
-            fflush(stdout);
+            
 
             ApplicationLaunchParams& launchParams = context->getApplicationLaunchParams();
-            printf("CloseApp: Got launchParams, appId=%s\n", launchParams.mAppId.c_str());
-            fflush(stdout);
 	    status = SpawnApp(launchParams.mAppId, launchParams.mLaunchIntent, activate?Exchange::ILifecycleManager::LifecycleState::ACTIVE:Exchange::ILifecycleManager::LifecycleState::PAUSED, launchParams.mRuntimeConfigObject, launchParams.mLaunchArgs, appInstanceId, errorReason, success);
 	    return status;
 	}
