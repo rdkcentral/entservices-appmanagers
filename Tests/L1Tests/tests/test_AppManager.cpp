@@ -170,7 +170,7 @@ protected:
                    return reinterpret_cast<void*>(mStore2Mock);
                 } else if (name == "org.rdk.AppStorageManager") {
                     return reinterpret_cast<void*>(mStorageManagerMock);
-                } else if (name == "org.rdk.PackageManagerRDKEMS") {
+                } else if (name == "org.rdk.AppPackageManager") {
                     if (id == Exchange::IPackageHandler::ID) {
                         return reinterpret_cast<void*>(mPackageManagerMock);
                     }
