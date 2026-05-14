@@ -1067,6 +1067,8 @@ TEST_F(LifecycleManagerTest, closeApp_onKillandRun)
         .Times(::testing::AnyNumber())
         .WillOnce(::testing::Invoke(
             [&](const string& appInstanceId) {
+				// Add delay to induce race condition - increases chance of crash if bug exists
+                std::this_thread::sleep_for(std::chrono::milliseconds(500));
                 return Core::ERROR_NONE;
           }));
 
@@ -1126,6 +1128,8 @@ TEST_F(LifecycleManagerTest, closeApp_onKillandActivate)
         .Times(::testing::AnyNumber())
         .WillOnce(::testing::Invoke(
             [&](const string& client, bool &status) {
+				 // Add delay to induce race condition - increases chance of crash if bug exists
+                std::this_thread::sleep_for(std::chrono::milliseconds(500));
                 return Core::ERROR_NONE;
           }));
 
