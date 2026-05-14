@@ -24,7 +24,7 @@
 #include <memory>
 #include <time.h>
 #include <string>
-#include <semaphore>
+#include <semaphore.h>
 #include <vector>
 
 namespace WPEFramework
