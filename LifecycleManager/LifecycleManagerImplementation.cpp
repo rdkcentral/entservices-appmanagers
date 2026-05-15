@@ -260,7 +260,7 @@ namespace WPEFramework
             context->setRequestType(REQUEST_TYPE_LAUNCH);
             context->setTargetLifecycleState(targetLifecycleState);
             context->setMostRecentIntent(launchIntent);
-            success = RequestHandler::getInstance()->launch(context, launchIntent, targetLifecycleState, errorReason);
+            success = RequestHandler::getInstance()->launch(context.get(), launchIntent, targetLifecycleState, errorReason);
             if (!success)
 	    {
                 status = Core::ERROR_GENERAL;
@@ -314,7 +314,7 @@ namespace WPEFramework
             context->setTargetLifecycleState(targetLifecycleState);
             context->setMostRecentIntent(launchIntent);
 
-            bool success = RequestHandler::getInstance()->updateState(context, targetLifecycleState, errorReason);
+            bool success = RequestHandler::getInstance()->updateState(context.get(), targetLifecycleState, errorReason);
             mAdminLock.Unlock();
             if (false == success)
             {
@@ -348,7 +348,7 @@ namespace WPEFramework
             context->setTargetLifecycleState(Exchange::ILifecycleManager::LifecycleState::TERMINATING);
             context->setApplicationKillParams(false);
 
-            success = RequestHandler::getInstance()->terminate(context, false, errorReason);
+            success = RequestHandler::getInstance()->terminate(context.get(), false, errorReason);
             if (!success)
 	    {
                 status = Core::ERROR_GENERAL;
@@ -375,7 +375,7 @@ namespace WPEFramework
             context->setRequestType(REQUEST_TYPE_TERMINATE);
             context->setTargetLifecycleState(Exchange::ILifecycleManager::LifecycleState::TERMINATING);
             context->setApplicationKillParams(true);
-            success = RequestHandler::getInstance()->terminate(context, true, errorReason);
+            success = RequestHandler::getInstance()->terminate(context.get(), true, errorReason);
             mAdminLock.Unlock();
             return status;
         }
@@ -641,8 +641,8 @@ namespace WPEFramework
                         context->setTargetLifecycleState(Exchange::ILifecycleManager::LifecycleState::TERMINATING);
                         context->setApplicationKillParams(false);
 
-                        terminated = RequestHandler::getInstance()->terminate(context, false, terminateError);
-                        stateUpdated = RequestHandler::getInstance()->updateState(context, context->getTargetLifecycleState(), updateError);
+                        terminated = RequestHandler::getInstance()->terminate(context.get(), false, terminateError);
+                        stateUpdated = RequestHandler::getInstance()->updateState(context.get(), context->getTargetLifecycleState(), updateError);
                         if(terminated && stateUpdated)
                         {
                             LOGINFO("Successfully handled unexpected container termination for app[%s] ", appInstanceId.c_str());
@@ -770,7 +770,7 @@ namespace WPEFramework
         if (context->mPendingStateTransition && (0 == context->mPendingEventName.compare(event)))
         {
             std::string errorReason("");
-            bool success = RequestHandler::getInstance()->updateState(context, context->getTargetLifecycleState(), errorReason);
+            bool success = RequestHandler::getInstance()->updateState(context.get(), context->getTargetLifecycleState(), errorReason);
             printf("added state transition request [%d] [%s] \n", success, event.c_str());
             fflush(stdout);
         }
