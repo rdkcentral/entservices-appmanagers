@@ -132,7 +132,7 @@ namespace WPEFramework
              string appInstanceId(obj["appInstanceId"].String());
              uint32_t oldLifecycleState(obj["oldLifecycleState"].Number());
              string navigationIntent(obj["navigationIntent"].String());
-             ApplicationContext* context = getContext("", appId);
+             std::shared_ptr<ApplicationContext> context = getContext("", appId);
 
              mAdminLock.Lock();
         
@@ -180,13 +180,13 @@ namespace WPEFramework
         {
             Core::hresult status = Core::ERROR_NONE;
             JsonArray appsInformation;
-            std::list<ApplicationContext*>::iterator iter = mLoadedApplications.end();
+            std::list<std::shared_ptr<ApplicationContext>>::iterator iter = mLoadedApplications.end();
             for (iter = mLoadedApplications.begin(); iter != mLoadedApplications.end(); iter++)
             {
                 if (nullptr != *iter)
                 {
                     JsonObject appData;
-                    ApplicationContext* context = (*iter);
+                    std::shared_ptr<ApplicationContext> context = (*iter);
                     appData["appInstanceID"] = context->getAppInstanceId();
                     appData["appId"] = context->getAppId();
                     struct timespec lastStateChangeTime = context->getLastLifecycleStateChangeTime();
@@ -230,7 +230,7 @@ namespace WPEFramework
         {
             Core::hresult status = Core::ERROR_NONE;
             loaded = false;
-            ApplicationContext* context = getContext("", appId);
+            std::shared_ptr<ApplicationContext> context = getContext("", appId);
             if (nullptr != context)
             {
                 loaded = true;
@@ -244,14 +244,14 @@ namespace WPEFramework
             // Notifies appropriate API Gateway when an app is about to be loaded
             // Lifecycle manager will create the appInstanceId once the app is loaded.  Ripple is responsible for creating a token. 
             Core::hresult status = Core::ERROR_NONE;
-            ApplicationContext* context = getContext("", appId);
+            std::shared_ptr<ApplicationContext> context = getContext("", appId);
             bool firstLaunch = false;
             time_t requestTime = 0;
             requestTime = LifecycleManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
             mAdminLock.Lock();
             if (nullptr == context)
 	    {
-                context = new ApplicationContext(appId);
+                context = std::make_shared<ApplicationContext>(appId);
                 context->setApplicationLaunchParams(appId, launchIntent, launchArgs, targetLifecycleState, runtimeConfigObject);
 		mLoadedApplications.push_back(context);
                 firstLaunch = true;
@@ -281,7 +281,7 @@ namespace WPEFramework
         {
             // Moves a currently loaded app between states
             Core::hresult status = Core::ERROR_NONE;
-            ApplicationContext* context = getContext(appInstanceId, "");
+            std::shared_ptr<ApplicationContext> context = getContext(appInstanceId, "");
             time_t requestTime = 0;
             requestTime = LifecycleManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
             if (nullptr == context)
@@ -330,7 +330,7 @@ namespace WPEFramework
             // This is an asynchronous call, clients should use the onAppStateChange event to determine when the app is actually terminated.
             // This moves an app to the unloaded state
             Core::hresult status = Core::ERROR_NONE;
-            ApplicationContext* context = getContext(appInstanceId, "");
+            std::shared_ptr<ApplicationContext> context = getContext(appInstanceId, "");
             time_t requestTime = 0;
             requestTime = LifecycleManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
             if (nullptr == context)
@@ -360,7 +360,7 @@ namespace WPEFramework
         Core::hresult LifecycleManagerImplementation::KillApp(const string& appInstanceId, string& errorReason, bool& success)
         {
             Core::hresult status = Core::ERROR_NONE;
-            ApplicationContext* context = getContext(appInstanceId, "");
+            std::shared_ptr<ApplicationContext> context = getContext(appInstanceId, "");
             time_t requestTime =0;
             requestTime = LifecycleManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
 
@@ -384,7 +384,7 @@ namespace WPEFramework
         {
             // Sends arguments to a launched app.  This API is used for sending deeplinks to an application.  This can only be sent to an active app.  This method does nothing if the app is not active, and an errorReason is returned.
             Core::hresult status = Core::ERROR_NONE;
-            ApplicationContext* context = getContext(appInstanceId, "");
+            std::shared_ptr<ApplicationContext> context = getContext(appInstanceId, "");
             if (nullptr == context)
 	    {
                 status = Core::ERROR_GENERAL;
@@ -466,7 +466,7 @@ namespace WPEFramework
             Core::hresult status = Core::ERROR_NONE;
 	    printf("[LifecycleManager] Received appReady event for [%s] \n", appId.c_str());
 	    fflush(stdout);
-            ApplicationContext* context = getContext("", appId);
+            std::shared_ptr<ApplicationContext> context = getContext("", appId);
             if (nullptr == context)
 	    {
                 status = Core::ERROR_GENERAL;
@@ -570,10 +570,10 @@ namespace WPEFramework
             return result;
         }
 
-        ApplicationContext* LifecycleManagerImplementation::getContext(const string& appInstanceId, const string& appId) const
+        std::shared_ptr<ApplicationContext> LifecycleManagerImplementation::getContext(const string& appInstanceId, const string& appId) const
 	{
-            ApplicationContext* context = nullptr;
-            std::list<ApplicationContext*>::const_iterator iter = mLoadedApplications.end();
+            std::shared_ptr<ApplicationContext> context = nullptr;
+            std::list<std::shared_ptr<ApplicationContext>>::const_iterator iter = mLoadedApplications.end();
 	    for (iter = mLoadedApplications.begin(); iter != mLoadedApplications.end(); iter++)
 	    {
                 if (nullptr != *iter)
@@ -620,7 +620,7 @@ namespace WPEFramework
             {
                 LOGINFO("Received onterminated event from runtime manager");
                 string appInstanceId = data["appInstanceId"];
-                ApplicationContext* context = getContext(appInstanceId, "");
+                std::shared_ptr<ApplicationContext> context = getContext(appInstanceId, "");
                 if (nullptr == context)
                 {
                     LOGERR("Received termination event for app which is not available");
@@ -665,7 +665,7 @@ namespace WPEFramework
                 uint32_t runtimeState = data["state"].Number();
                 if (Exchange::IRuntimeManager::RuntimeState::RUNTIME_STATE_RUNNING == runtimeState)
                 {
-                    ApplicationContext* context = getContext(appInstanceId, "");
+                    std::shared_ptr<ApplicationContext> context = getContext(appInstanceId, "");
                     if (nullptr == context)
                     {
                         LOGERR("Received state change event for app which is not available");
@@ -696,7 +696,7 @@ namespace WPEFramework
         {
             string appId = "";
             JsonObject eventData;
-            ApplicationContext* context = getContext(appInstanceId, "");
+            std::shared_ptr<ApplicationContext> context = getContext(appInstanceId, "");
             if (nullptr != context)
             {
                 appId = context->getAppId();
@@ -718,8 +718,8 @@ namespace WPEFramework
 	    {
                 return;
 	    }
-            ApplicationContext* context = nullptr;
-            std::list<ApplicationContext*>::iterator iter = mLoadedApplications.end();
+            std::shared_ptr<ApplicationContext> context = nullptr;
+            std::list<std::shared_ptr<ApplicationContext>>::iterator iter = mLoadedApplications.end();
 	    for (iter = mLoadedApplications.begin(); iter != mLoadedApplications.end(); iter++)
 	    {
                 context = *iter;
@@ -734,7 +734,6 @@ namespace WPEFramework
 	    }
 	    if ((iter != mLoadedApplications.end()) && (nullptr != context))
 	    {
-                delete context;
                 mLoadedApplications.erase(iter);
 	    }
     }
@@ -758,7 +757,7 @@ namespace WPEFramework
             printf("Received onReady event from window manager \n");
             fflush(stdout);
             std::string appInstanceId = data["appInstanceId"];
-            ApplicationContext* context = getContext(appInstanceId, "");
+            std::shared_ptr<ApplicationContext> context = getContext(appInstanceId, "");
             if (nullptr != context)
 	    {
                 addStateTransitionRequest(context, "onFirstFrame");
@@ -766,7 +765,7 @@ namespace WPEFramework
 	}
     }
 
-    void LifecycleManagerImplementation::addStateTransitionRequest(ApplicationContext* context, std::string event)
+    void LifecycleManagerImplementation::addStateTransitionRequest(std::shared_ptr<ApplicationContext> context, std::string event)
     {
         if (context->mPendingStateTransition && (0 == context->mPendingEventName.compare(event)))
         {
@@ -787,4 +786,5 @@ namespace WPEFramework
 
     } /* namespace Plugin */
 } /* namespace WPEFramework */
+
 

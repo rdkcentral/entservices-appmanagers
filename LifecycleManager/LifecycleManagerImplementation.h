@@ -148,7 +148,7 @@ namespace WPEFramework
                 void handleStateChangeEvent(const JsonObject &data);
                 void handleWindowManagerEvent(const JsonObject &data);
                 std::shared_ptr<ApplicationContext> getContext(const string& appInstanceId, const string& appId) const;
-                void addStateTransitionRequest(ApplicationContext* context, std::string event);
+                void addStateTransitionRequest(std::shared_ptr<ApplicationContext> context, std::string event);
 
                 friend class Job;
 
@@ -158,3 +158,4 @@ namespace WPEFramework
         };
     } /* namespace Plugin */
 } /* namespace WPEFramework */
+
