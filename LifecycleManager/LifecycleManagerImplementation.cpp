@@ -142,7 +142,7 @@ namespace WPEFramework
              switch(event)
              {
                  case LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED:
-                     LifecycleManagerTelemetryReporting::getInstance().reportTelemetryDataOnStateChange(context, obj);
+                     LifecycleManagerTelemetryReporting::getInstance().reportTelemetryDataOnStateChange(context.get(), obj);
                      handleStateChangeEvent(obj);
                      while (index != mLifecycleManagerNotification.end())
                      {
