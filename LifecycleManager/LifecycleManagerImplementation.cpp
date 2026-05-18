@@ -515,18 +515,10 @@ namespace WPEFramework
             bool activate = false;
             string errorReason(""), appInstanceId("");
 
-            // Save appInstanceId before releasing context
+            // Save appInstanceId and launch params BEFORE KillApp - context will be deleted once app terminates
             string appInstanceId_local = context->getAppInstanceId();
 
-            LOGINFO("CloseApp: About to call KillApp for appInstanceId [%s]", appInstanceId_local.c_str());
-            status = KillApp(appInstanceId_local, errorReason, success); 
-            LOGINFO("CloseApp: KillApp returned with status [%d], success [%d]", status, success);
-            if (status != Core::ERROR_NONE)
-	    {
-                LOGERR("Failed to close the app [%s]", appId.c_str());
-                return status;
-	    }
-
+            // Determine respawn behaviour before killing
             switch (closeReason)
             {
                 case Exchange::ILifecycleManagerState::AppCloseReason::KILL_AND_RUN:
@@ -538,38 +530,39 @@ namespace WPEFramework
                 case Exchange::ILifecycleManagerState::AppCloseReason::USER_EXIT:
                 case Exchange::ILifecycleManagerState::AppCloseReason::ERROR:
                     LOGINFO("CloseApp: closeReason [%d:%s] is not a respawn reason; skipping respawn", closeReason, closeReasonToString(closeReason));
+                    KillApp(appInstanceId_local, errorReason, success);
                     return status;
                 default:
                     LOGWARN("CloseApp: Unknown closeReason [%d]; skipping respawn", closeReason);
+                    KillApp(appInstanceId_local, errorReason, success);
                     return status;
             }
 
-            // Release local shared_ptr reference - now context may be deleted
-            context.reset();
+            // Save launch params now, before KillApp erases the context
+            ApplicationLaunchParams launchParams = context->getApplicationLaunchParams();
+            LOGINFO("CloseApp: Saved launch params for appId [%s], launchIntent [%s]", launchParams.mAppId.c_str(), launchParams.mLaunchIntent.c_str());
 
-            // DELAY TO INDUCE BUG - context gets deleted during this time
-            LOGINFO("CloseApp: Starting 3 second delay before respawn attempt");
-            std::this_thread::sleep_for(std::chrono::milliseconds(3000));
-
-            // Try to get context again - should be NULL after kill completes
-            auto contextAfterDelay = getContext("", appId);
-            LOGINFO("CloseApp: contextAfterDelay is %s", contextAfterDelay ? "VALID" : "NULL");
-
-            if (!contextAfterDelay) {
-                // BUG: Context was deleted, we lost launch params and cannot respawn!
-                LOGERR("CloseApp: BUG! Context was deleted, cannot respawn app [%s]", appId.c_str());
-                return Core::ERROR_GENERAL;
+            // Store pending respawn - SpawnApp will be called from handleStateChangeEvent once UNLOADED
+            {
+                PendingRespawn pending;
+                pending.launchParams = launchParams;
+                pending.activate = activate;
+                mPendingRespawns[appId] = pending;
+                LOGINFO("CloseApp: Stored pending respawn for appId [%s], activate [%d]", appId.c_str(), activate);
             }
 
-            // Get launch params from context (only works if context still exists)
-            ApplicationLaunchParams& launchParams = contextAfterDelay->getApplicationLaunchParams();
-            
-            LOGINFO("CloseApp: About to call SpawnApp with appId [%s], launchIntent [%s], activate [%d]", launchParams.mAppId.c_str(), launchParams.mLaunchIntent.c_str(), activate);
-            status = SpawnApp(launchParams.mAppId, launchParams.mLaunchIntent, 
-                              activate ? Exchange::ILifecycleManager::LifecycleState::ACTIVE : Exchange::ILifecycleManager::LifecycleState::PAUSED, 
-                              launchParams.mRuntimeConfigObject, launchParams.mLaunchArgs, 
-                              appInstanceId, errorReason, success);
-            LOGINFO("CloseApp: SpawnApp completed with status [%d], success [%d]", status, success);
+            // Release our local shared_ptr before killing
+            context.reset();
+
+            LOGINFO("CloseApp: About to call KillApp for appInstanceId [%s]", appInstanceId_local.c_str());
+            status = KillApp(appInstanceId_local, errorReason, success);
+            LOGINFO("CloseApp: KillApp returned with status [%d], success [%d]", status, success);
+            if (status != Core::ERROR_NONE)
+	    {
+                LOGERR("Failed to close the app [%s]; removing pending respawn", appId.c_str());
+                mPendingRespawns.erase(appId);
+                return status;
+	    }
 	    return status;
 	}
 
@@ -768,7 +761,37 @@ namespace WPEFramework
 	    }
 	    if ((iter != mLoadedApplications.end()) && (nullptr != context))
 	    {
+                string erasedAppId = context->getAppId();
                 mLoadedApplications.erase(iter);
+                context.reset(); // release before potential respawn
+
+                // Check if there's a pending respawn for this appId
+                auto respawnIter = mPendingRespawns.find(erasedAppId);
+                if (respawnIter != mPendingRespawns.end())
+                {
+                    PendingRespawn pending = respawnIter->second;
+                    mPendingRespawns.erase(respawnIter);
+                    LOGINFO("handleStateChangeEvent: Scheduling async respawn for appId [%s], activate [%d]", erasedAppId.c_str(), pending.activate);
+
+                    // Dispatch respawn on a detached thread so we don't block the Dispatch worker
+                    // (SpawnApp acquires mAdminLock and blocks on sem_wait, both unsafe to call here)
+                    std::thread([this, pending]() {
+                        string spawnErrorReason(""), spawnAppInstanceId("");
+                        bool spawnSuccess = false;
+                        LOGINFO("RespawnThread: Starting SpawnApp for appId [%s], activate [%d]",
+                                pending.launchParams.mAppId.c_str(), pending.activate);
+                        Core::hresult spawnStatus = SpawnApp(
+                            pending.launchParams.mAppId,
+                            pending.launchParams.mLaunchIntent,
+                            pending.activate ? Exchange::ILifecycleManager::LifecycleState::ACTIVE
+                                            : Exchange::ILifecycleManager::LifecycleState::PAUSED,
+                            pending.launchParams.mRuntimeConfigObject,
+                            pending.launchParams.mLaunchArgs,
+                            spawnAppInstanceId, spawnErrorReason, spawnSuccess);
+                        LOGINFO("RespawnThread: SpawnApp completed for appId [%s] with status [%d], success [%d], newInstanceId [%s]",
+                                pending.launchParams.mAppId.c_str(), spawnStatus, spawnSuccess, spawnAppInstanceId.c_str());
+                    }).detach();
+                }
 	    }
     }
 

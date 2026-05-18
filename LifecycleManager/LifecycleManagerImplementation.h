@@ -20,6 +20,7 @@
 #pragma once
 
 #include "Module.h"
+#include <map>
 #include <interfaces/ILifecycleManager.h>
 #include <interfaces/ILifecycleManagerState.h>
 #include <interfaces/IConfiguration.h>
@@ -133,10 +134,16 @@ namespace WPEFramework
                 virtual void onStateChangeEvent(JsonObject& data) override;
 
 	    private: /* members */
+                struct PendingRespawn
+                {
+                    ApplicationLaunchParams launchParams;
+                    bool activate;
+                };
                 mutable Core::CriticalSection mAdminLock;
 	        std::list<Exchange::ILifecycleManager::INotification*> mLifecycleManagerNotification;
 	        std::list<Exchange::ILifecycleManagerState::INotification*> mLifecycleManagerStateNotification;
                 std::list<std::shared_ptr<ApplicationContext>> mLoadedApplications;
+                std::map<string, PendingRespawn> mPendingRespawns;
                 PluginHost::IShell* mService;
 	    private: /* internal methods */
                 bool initialize(PluginHost::IShell* service);
