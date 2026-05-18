@@ -484,7 +484,24 @@ namespace WPEFramework
 
 	Core::hresult LifecycleManagerImplementation::CloseApp(const string& appId, const Exchange::ILifecycleManagerState::AppCloseReason closeReason)
         {
-            LOGINFO("CloseApp called for appId [%s] with closeReason [%d]", appId.c_str(), closeReason);
+            const auto closeReasonToString = [](const Exchange::ILifecycleManagerState::AppCloseReason reason) -> const char* {
+                using AppCloseReason = Exchange::ILifecycleManagerState::AppCloseReason;
+                switch (reason)
+                {
+                    case AppCloseReason::USER_EXIT:
+                        return "USER_EXIT";
+                    case AppCloseReason::ERROR:
+                        return "ERROR";
+                    case AppCloseReason::KILL_AND_RUN:
+                        return "KILL_AND_RUN";
+                    case AppCloseReason::KILL_AND_ACTIVATE:
+                        return "KILL_AND_ACTIVATE";
+                    default:
+                        return "UNKNOWN";
+                }
+            };
+
+            LOGINFO("CloseApp called for appId [%s] with closeReason [%d:%s]", appId.c_str(), closeReason, closeReasonToString(closeReason));
             Core::hresult status = Core::ERROR_NONE;
             auto context = getContext("", appId);
             if (nullptr == context)
@@ -509,11 +526,23 @@ namespace WPEFramework
                 LOGERR("Failed to close the app [%s]", appId.c_str());
                 return status;
 	    }
-	    if ((closeReason != KILL_AND_RUN) && (closeReason != KILL_AND_ACTIVATE))
-	    {
-                return status;
-	    }
-            activate = (closeReason == KILL_AND_ACTIVATE);
+
+            switch (closeReason)
+            {
+                case Exchange::ILifecycleManagerState::AppCloseReason::KILL_AND_RUN:
+                    activate = false;
+                    break;
+                case Exchange::ILifecycleManagerState::AppCloseReason::KILL_AND_ACTIVATE:
+                    activate = true;
+                    break;
+                case Exchange::ILifecycleManagerState::AppCloseReason::USER_EXIT:
+                case Exchange::ILifecycleManagerState::AppCloseReason::ERROR:
+                    LOGINFO("CloseApp: closeReason [%d:%s] is not a respawn reason; skipping respawn", closeReason, closeReasonToString(closeReason));
+                    return status;
+                default:
+                    LOGWARN("CloseApp: Unknown closeReason [%d]; skipping respawn", closeReason);
+                    return status;
+            }
 
             // Release local shared_ptr reference - now context may be deleted
             context.reset();
