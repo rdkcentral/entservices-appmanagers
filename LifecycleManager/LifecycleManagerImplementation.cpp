@@ -484,13 +484,16 @@ namespace WPEFramework
 
 	Core::hresult LifecycleManagerImplementation::CloseApp(const string& appId, const Exchange::ILifecycleManagerState::AppCloseReason closeReason)
         {
+            LOGINFO("CloseApp called for appId [%s] with closeReason [%d]", appId.c_str(), closeReason);
             Core::hresult status = Core::ERROR_NONE;
             auto context = getContext("", appId);
             if (nullptr == context)
 	    {
+                LOGINFO("CloseApp: Context not found for appId [%s]", appId.c_str());
                 status = Core::ERROR_GENERAL;
                 return status;
 	    }
+            LOGINFO("CloseApp: Found context for appId [%s], appInstanceId [%s]", appId.c_str(), context->getAppInstanceId().c_str());
 	    bool success = false;
             bool activate = false;
             string errorReason(""), appInstanceId("");
@@ -498,11 +501,12 @@ namespace WPEFramework
             // Save appInstanceId before releasing context
             string appInstanceId_local = context->getAppInstanceId();
 
+            LOGINFO("CloseApp: About to call KillApp for appInstanceId [%s]", appInstanceId_local.c_str());
             status = KillApp(appInstanceId_local, errorReason, success); 
+            LOGINFO("CloseApp: KillApp returned with status [%d], success [%d]", status, success);
             if (status != Core::ERROR_NONE)
 	    {
-                printf("Failed to close the app [%s]\n", appId.c_str());
-		fflush(stdout);
+                LOGERR("Failed to close the app [%s]", appId.c_str());
                 return status;
 	    }
 	    if ((closeReason != KILL_AND_RUN) && (closeReason != KILL_AND_ACTIVATE))
@@ -515,27 +519,28 @@ namespace WPEFramework
             context.reset();
 
             // DELAY TO INDUCE BUG - context gets deleted during this time
+            LOGINFO("CloseApp: Starting 3 second delay before respawn attempt");
             std::this_thread::sleep_for(std::chrono::milliseconds(3000));
 
             // Try to get context again - should be NULL after kill completes
             auto contextAfterDelay = getContext("", appId);
-            printf("CloseApp: contextAfterDelay is %s\n", contextAfterDelay ? "VALID" : "NULL");
-            fflush(stdout);
+            LOGINFO("CloseApp: contextAfterDelay is %s", contextAfterDelay ? "VALID" : "NULL");
 
             if (!contextAfterDelay) {
                 // BUG: Context was deleted, we lost launch params and cannot respawn!
-                printf("CloseApp: BUG! Context was deleted, cannot respawn app [%s]\n", appId.c_str());
-                fflush(stdout);
+                LOGERR("CloseApp: BUG! Context was deleted, cannot respawn app [%s]", appId.c_str());
                 return Core::ERROR_GENERAL;
             }
 
             // Get launch params from context (only works if context still exists)
             ApplicationLaunchParams& launchParams = contextAfterDelay->getApplicationLaunchParams();
             
+            LOGINFO("CloseApp: About to call SpawnApp with appId [%s], launchIntent [%s], activate [%d]", launchParams.mAppId.c_str(), launchParams.mLaunchIntent.c_str(), activate);
             status = SpawnApp(launchParams.mAppId, launchParams.mLaunchIntent, 
                               activate ? Exchange::ILifecycleManager::LifecycleState::ACTIVE : Exchange::ILifecycleManager::LifecycleState::PAUSED, 
                               launchParams.mRuntimeConfigObject, launchParams.mLaunchArgs, 
                               appInstanceId, errorReason, success);
+            LOGINFO("CloseApp: SpawnApp completed with status [%d], success [%d]", status, success);
 	    return status;
 	}
 
