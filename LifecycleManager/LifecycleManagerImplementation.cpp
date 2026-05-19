@@ -132,7 +132,7 @@ namespace WPEFramework
              string appInstanceId(obj["appInstanceId"].String());
              uint32_t oldLifecycleState(obj["oldLifecycleState"].Number());
              string navigationIntent(obj["navigationIntent"].String());
-             std::shared_ptr<ApplicationContext> context = getContext("", appId);
+             auto context = getContext("", appId);
 
              mAdminLock.Lock();
         
@@ -501,7 +501,14 @@ namespace WPEFramework
                 }
             };
 
-            LOGINFO("CloseApp called for appId [%s] with closeReason [%d:%s]", appId.c_str(), closeReason, closeReasonToString(closeReason));
+            const char* closeReasonString = closeReasonToString(closeReason);
+            const bool shouldRespawn =
+                (closeReason == Exchange::ILifecycleManagerState::AppCloseReason::KILL_AND_RUN) ||
+                (closeReason == Exchange::ILifecycleManagerState::AppCloseReason::KILL_AND_ACTIVATE);
+            const bool activate =
+                (closeReason == Exchange::ILifecycleManagerState::AppCloseReason::KILL_AND_ACTIVATE);
+
+            LOGINFO("CloseApp called for appId [%s] with closeReason [%d:%s]", appId.c_str(), closeReason, closeReasonString);
             Core::hresult status = Core::ERROR_NONE;
             auto context = getContext("", appId);
             if (nullptr == context)
@@ -512,25 +519,15 @@ namespace WPEFramework
 	    }
             LOGINFO("CloseApp: Found context for appId [%s], appInstanceId [%s]", appId.c_str(), context->getAppInstanceId().c_str());
 	    bool success = false;
-            bool activate = false;
-            string errorReason(""), appInstanceId("");
+            string errorReason("");
 
             // Save appInstanceId and launch params BEFORE KillApp - context will be deleted once app terminates
             string appInstanceId_local = context->getAppInstanceId();
 
-            // Determine respawn behaviour before killing
-            if (closeReason == Exchange::ILifecycleManagerState::AppCloseReason::KILL_AND_RUN)
-            {
-                activate = false;
-            }
-            else if (closeReason == Exchange::ILifecycleManagerState::AppCloseReason::KILL_AND_ACTIVATE)
-            {
-                activate = true;
-            }
-            else
+            if (!shouldRespawn)
             {
                 // Non-respawn reason - just kill and return
-                LOGINFO("CloseApp: closeReason [%d:%s] is not a respawn reason; skipping respawn", closeReason, closeReasonToString(closeReason));
+                LOGINFO("CloseApp: closeReason [%d:%s] is not a respawn reason; skipping respawn", closeReason, closeReasonString);
                 KillApp(appInstanceId_local, errorReason, success);
                 return status;
             }
@@ -588,8 +585,7 @@ namespace WPEFramework
 	    }
             else
 	    {
-                printf("unable to configure lifecyclemanager \n");
-		fflush(stdout);
+        LOGERR("unable to configure lifecyclemanager");
 	    }
             return result;
         }
