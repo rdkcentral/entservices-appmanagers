@@ -258,6 +258,83 @@ TEST_F(StorageManagerTest, CreateStoragemkdirFail_Failure){
 }
 
 /*
+    CreateStorage_MissingParentDirectories_Success test verifies recursive directory creation
+    when parent directories don't exist (tests mkdirRecursive functionality).
+    This simulates the accelerator device scenario where the filesystem layout may not be
+    pre-populated at plugin startup. The test mocks mkdir to initially fail with ENOENT
+    (parent doesn't exist), then succeed as the recursive creation builds the directory tree.
+    It verifies that CreateStorage successfully creates deep nested paths even when 
+    intermediate parent directories are missing.
+*/
+TEST_F(StorageManagerTest, CreateStorage_MissingParentDirectories_Success){
+    std::string appId = "testApp";
+    uint32_t size = 1024;
+    std::string path = "";
+    std::string errorReason = "";
+    
+    int statCallCount = 0;
+    int mkdirCallCount = 0;
+    
+    // Simulate stat: directories don't exist initially
+    EXPECT_CALL(*p_wrapsImplMock, stat(_, _))
+        .WillRepeatedly([&statCallCount](const char* path, struct stat* buf) {
+            statCallCount++;
+            // First several calls: parent dirs don't exist (triggers recursive creation)
+            if (statCallCount <= 5) {
+                errno = ENOENT;
+                return -1;
+            }
+            // Later: dirs exist after creation
+            buf->st_mode = S_IFDIR | 0755;
+            buf->st_uid = 1000;
+            buf->st_gid = 1000;
+            return 0;
+        });
+    
+    // Simulate mkdir: succeeds for all directory levels
+    EXPECT_CALL(*p_wrapsImplMock, mkdir(_, _))
+        .WillRepeatedly([&mkdirCallCount](const char* path, mode_t mode) {
+            mkdirCallCount++;
+            TEST_LOG("mkdir called for: %s (call #%d)", path, mkdirCallCount);
+            return 0;  // Success - directory created
+        });
+    
+    // Mock other required functions for successful storage creation
+    EXPECT_CALL(*p_wrapsImplMock, access(_, _))
+        .WillRepeatedly(Return(0));
+        
+    EXPECT_CALL(*p_wrapsImplMock, statvfs(_, _))
+        .WillRepeatedly([](const char* path, struct statvfs* buf) {
+            buf->f_bsize = 4096;
+            buf->f_frsize = 4096;
+            buf->f_blocks = 100000;
+            buf->f_bfree = 500000;
+            buf->f_bavail = 500000;
+            return 0;
+        });
+    
+    ON_CALL(*p_wrapsImplMock, nftw(_, _, _, _))
+        .WillByDefault([](const char* dirpath, int (*fn)(const char*, const struct stat*, int, struct FTW*), int nopenfd, int flags) {
+            return 0;
+        });
+    
+    ON_CALL(*mStore2Mock, SetValue(_, _, _, _, _))
+        .WillByDefault(Invoke([](Exchange::IStore2::ScopeType scope,
+                                const std::string& appId,
+                                const std::string& key,
+                                const std::string& value,
+                                const uint32_t ttl) -> uint32_t {
+            return Core::ERROR_NONE;
+        }));
+    
+    // Execute CreateStorage - should succeed with recursive directory creation
+    EXPECT_EQ(Core::ERROR_NONE, interface->CreateStorage(appId, size, path, errorReason));
+    EXPECT_TRUE(errorReason.empty());
+    EXPECT_GT(mkdirCallCount, 1);  // Should create multiple directory levels
+    TEST_LOG("CreateStorage_MissingParentDirectories_Success: Created %d directory levels", mkdirCallCount);
+}
+
+/*
     CreateStorage_PathDoesNotExists_Success test checks the successful creation of storage for a given appId when the path does not exist.
     Creates a mock environment where the necessary functions like mkdir, access, nftw, statvfs, and stat are set up to simulate a successful resutls.
     It verifies that the CreateStorage method returns a success code and the errorReason is empty.
