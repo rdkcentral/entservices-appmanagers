@@ -52,6 +52,87 @@ namespace WPEFramework
             }
         }
 
+        /***
+        * @brief: Create directories recursively (similar to mkdir -p)
+        *
+        * This function creates all parent directories if they don't exist.
+        * It handles both absolute and relative paths.
+        *
+        * @param[in] path   : Directory path to create
+        * @param[in] mode   : Permission mode for created directories
+        *
+        * @return          : true on success, false on failure
+        ***/
+        bool RequestHandler::mkdirRecursive(const std::string& path, mode_t mode)
+        {
+            LOGINFO("[RECURSIVE_MKDIR] Attempting to create directory: %s", path.c_str());
+            
+            if (path.empty())
+            {
+                return false;
+            }
+
+            // Check if directory already exists
+            struct stat st;
+            if (stat(path.c_str(), &st) == 0)
+            {
+                if (S_ISDIR(st.st_mode))
+                {
+                    return true;  // Directory already exists
+                }
+                else
+                {
+                    LOGERR("Path exists but is not a directory: %s", path.c_str());
+                    return false;  // Path exists but is not a directory
+                }
+            }
+
+            // Try to create the directory
+            if (mkdir(path.c_str(), mode) == 0)
+            {
+                return true;  // Successfully created
+            }
+
+            // If error is not ENOENT (parent doesn't exist), return failure
+            if (errno != ENOENT)
+            {
+                LOGERR("Failed to create directory %s: %s", path.c_str(), strerror(errno));
+                return false;
+            }
+
+            // Parent directory doesn't exist, so create it recursively
+            size_t pos = path.find_last_of('/');
+            if (pos == std::string::npos || pos == 0)
+            {
+                // No more parent directories to create
+                return false;
+            }
+
+            std::string parentPath = path.substr(0, pos);
+            
+            // Recursively create parent directory
+            if (!mkdirRecursive(parentPath, mode))
+            {
+                return false;
+            }
+
+            // Now try to create the directory again
+            if (mkdir(path.c_str(), mode) == 0)
+            {
+                return true;
+            }
+            else if (errno == EEXIST)
+            {
+                // Another thread/process might have created it
+                return true;
+            }
+            else
+            {
+                LOGERR("Failed to create directory %s after creating parent: %s", path.c_str(), strerror(errno));
+                return false;
+            }
+        }
+ 
         Core::hresult RequestHandler::populateAppInfoCacheFromStoragePath()
         {
             Core::hresult status = Core::ERROR_GENERAL;
@@ -117,6 +198,7 @@ namespace WPEFramework
             }
         return status;
         }
+
 
         Core::hresult RequestHandler::createPersistentStoreRemoteStoreObject()
         {
@@ -555,13 +637,14 @@ namespace WPEFramework
                 std::unique_lock<std::mutex> lock(mStorageManagerImplLock);
 
                 /* Check if the storage mount directory exists or can be created */
-                if (mkdir(mBaseStoragePath.c_str(), STORAGE_DIR_PERMISSION) != 0)
+                LOGINFO("CreateStorage: Calling mkdirRecursive for base path: %s", mBaseStoragePath.c_str());
+                if (!mkdirRecursive(mBaseStoragePath, STORAGE_DIR_PERMISSION))
                 {
                     /* Check if the error is not directory already exists */
                     if (errno != EEXIST)
                     {
-                        errorReason = "Failed to create base storage directory: " + mBaseStoragePath;
-                        LOGERR("Error creating base storage directory %s", mBaseStoragePath.c_str());
+                        errorReason = "Failed to create base storage directory: " + mBaseStoragePath + " (errno: " + std::to_string(errno) + " - " + strerror(errno) + ")";
+                        LOGERR("Error creating base storage directory %s: errno=%d (%s)", mBaseStoragePath.c_str(), errno, strerror(errno));
                         goto ret_fail;
                     }
 
@@ -620,8 +703,8 @@ namespace WPEFramework
                         /* Check if the error is not directory already exists */
                         if (errno != EEXIST)
                         {
-                            errorReason = "Failed to create app storage directory: " + appDir;
-                            LOGERR("Error creating app storage directory %s", appDir.c_str());
+                            errorReason = "Failed to create app storage directory: " + appDir + " (errno: " + std::to_string(errno) + " - " + strerror(errno) + ")";
+                            LOGERR("Error creating app storage directory %s: errno=%d (%s)", appDir.c_str(), errno, strerror(errno));
                             goto ret_fail;
                         }
                     }

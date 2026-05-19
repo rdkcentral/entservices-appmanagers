@@ -155,6 +155,12 @@ if(PLUGIN_RUNTIME_MANAGER)
 endif()
 
 if(PLUGIN_APP_STORAGE_MANAGER)
+	if(NOT DEFINED PLUGIN_APP_STORAGE_MANAGER_PATH OR PLUGIN_APP_STORAGE_MANAGER_PATH STREQUAL "")
+		set(PLUGIN_APP_STORAGE_MANAGER_PATH "/opt/persistent/level1/level2/storageManager" CACHE STRING "Default location of App persistent storage" FORCE)
+		message(STATUS "AppStorageManager: Using default test path with nested directories: ${PLUGIN_APP_STORAGE_MANAGER_PATH}")
+	else()
+		message(STATUS "AppStorageManager: Using configured path: ${PLUGIN_APP_STORAGE_MANAGER_PATH}")
+	endif()
 	add_subdirectory(AppStorageManager)
 endif()
 
