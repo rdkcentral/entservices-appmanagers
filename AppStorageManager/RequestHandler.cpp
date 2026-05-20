@@ -52,6 +52,106 @@ namespace WPEFramework
             }
         }
 
+        /***
+        * @brief: Create directories recursively (similar to mkdir -p)
+        *
+        * This function creates all parent directories if they don't exist.
+        * It handles both absolute and relative paths.
+        *
+        * @param[in] path   : Directory path to create
+        * @param[in] mode   : Permission mode for created directories
+        *
+        * @return          : true on success, false on failure
+        ***/
+        bool RequestHandler::mkdirRecursive(const std::string& path, mode_t mode)
+        {
+            if (path.empty())
+            {
+                return false;
+            }
+
+            // Try to create the directory first (avoids TOCTOU race condition)
+            if (0 == mkdir(path.c_str(), mode))
+            {
+                return true;  // Successfully created
+            }
+
+            // Handle mkdir failure cases
+            if (EEXIST == errno)
+            {
+                // Directory might already exist - verify it's actually a directory
+                struct stat st;
+                if (0 == stat(path.c_str(), &st))
+                {
+                    if (S_ISDIR(st.st_mode))
+                    {
+                        return true;  // Directory already exists
+                    }
+                    else
+                    {
+                        LOGERR("Path exists but is not a directory: %s", path.c_str());
+                        errno = ENOTDIR;  // Set errno for caller's error reporting
+                        return false;  // Path exists but is not a directory
+                    }
+                }
+                else
+                {
+                    LOGERR("Failed to stat existing path %s: %s", path.c_str(), strerror(errno));
+                    return false;
+                }
+            }
+
+            // If error is not ENOENT (parent doesn't exist), return failure
+            if (ENOENT != errno)
+            {
+                LOGERR("Failed to create directory %s: %s", path.c_str(), strerror(errno));
+                return false;
+            }
+
+            // Parent directory doesn't exist, so create it recursively
+            size_t pos = path.find_last_of('/');
+            if (pos == std::string::npos || pos == 0)
+            {
+                // No more parent directories to create
+                errno = ENOENT;  // Parent directory doesn't exist
+                return false;
+            }
+
+            std::string parentPath = path.substr(0, pos);
+            
+            // Recursively create parent directory
+            if (!mkdirRecursive(parentPath, mode))
+            {
+                return false;
+            }
+
+            // Now try to create the directory again
+            if (0 == mkdir(path.c_str(), mode))
+            {
+                return true;
+            }
+            else if (EEXIST == errno)
+            {
+                // Another thread/process might have created it - verify it's a directory
+                struct stat st;
+                if (0 == stat(path.c_str(), &st) && S_ISDIR(st.st_mode))
+                {
+                    return true;
+                }
+                else
+                {
+                    LOGERR("Path exists after parent creation but is not a directory: %s", path.c_str());
+                    errno = ENOTDIR;  // Set errno for caller's error reporting
+                    return false;
+                }
+            }
+            else
+            {
+                LOGERR("Failed to create directory %s after creating parent: %s", path.c_str(), strerror(errno));
+                return false;
+            }
+        }
+ 
         Core::hresult RequestHandler::populateAppInfoCacheFromStoragePath()
         {
             Core::hresult status = Core::ERROR_GENERAL;
@@ -117,6 +217,7 @@ namespace WPEFramework
             }
         return status;
         }
+
 
         Core::hresult RequestHandler::createPersistentStoreRemoteStoreObject()
         {
@@ -555,15 +656,13 @@ namespace WPEFramework
                 std::unique_lock<std::mutex> lock(mStorageManagerImplLock);
 
                 /* Check if the storage mount directory exists or can be created */
-                if (mkdir(mBaseStoragePath.c_str(), STORAGE_DIR_PERMISSION) != 0)
+                LOGDBG("Calling mkdirRecursive for base path: %s", mBaseStoragePath.c_str());
+                if (!mkdirRecursive(mBaseStoragePath, STORAGE_DIR_PERMISSION))
                 {
-                    /* Check if the error is not directory already exists */
-                    if (errno != EEXIST)
-                    {
-                        errorReason = "Failed to create base storage directory: " + mBaseStoragePath;
-                        LOGERR("Error creating base storage directory %s", mBaseStoragePath.c_str());
-                        goto ret_fail;
-                    }
+                    errorReason = "Failed to create base storage directory: " + mBaseStoragePath;
+                    LOGERR("Error creating base storage directory %s: errno=%d (%s)", mBaseStoragePath.c_str(), errno, strerror(errno));
+                    goto ret_fail;
+                }
 
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
                     {
@@ -578,7 +677,6 @@ namespace WPEFramework
                         }
                     }
 #endif // RALF_PACKAGE_SUPPORT_ENABLED
-                }
 
                 /* Check if the appId storageInfo already exists or can be created */
                 if (retrieveAppStorageInfoByAppID(appId, storageInfo))
@@ -615,13 +713,13 @@ namespace WPEFramework
                     /* Check if the app storage directory exists or can be created */
                     appDir = mBaseStoragePath + "/" + appId;
 
-                    if (mkdir(appDir.c_str(), STORAGE_DIR_PERMISSION) != 0)
+                    if (0 != mkdir(appDir.c_str(), STORAGE_DIR_PERMISSION))
                     {
                         /* Check if the error is not directory already exists */
-                        if (errno != EEXIST)
+                        if (EEXIST != errno)
                         {
                             errorReason = "Failed to create app storage directory: " + appDir;
-                            LOGERR("Error creating app storage directory %s", appDir.c_str());
+                            LOGERR("Error creating app storage directory %s: errno=%d (%s)", appDir.c_str(), errno, strerror(errno));
                             goto ret_fail;
                         }
                     }
