@@ -272,31 +272,39 @@ TEST_F(StorageManagerTest, CreateStorage_MissingParentDirectories_Success){
     std::string path = "";
     std::string errorReason = "";
     
-    int statCallCount = 0;
     int mkdirCallCount = 0;
+    std::set<std::string> createdDirs;
     
-    // Simulate stat: directories don't exist initially
-    EXPECT_CALL(*p_wrapsImplMock, stat(_, _))
-        .WillRepeatedly([&statCallCount](const char* path, struct stat* buf) {
-            statCallCount++;
-            // First several calls: parent dirs don't exist (triggers recursive creation)
-            if (statCallCount <= 5) {
-                errno = ENOENT;
-                return -1;
+    // Simulate mkdir: fails with ENOENT if parent doesn't exist, succeeds otherwise
+    EXPECT_CALL(*p_wrapsImplMock, mkdir(_, _))
+        .WillRepeatedly([&mkdirCallCount, &createdDirs](const char* path, mode_t mode) -> int {
+            mkdirCallCount++;
+            std::string pathStr(path);
+            TEST_LOG("mkdir called for: %s (call #%d)", path, mkdirCallCount);
+            
+            // Check if parent directory exists
+            size_t lastSlash = pathStr.find_last_of('/');
+            if (lastSlash != std::string::npos && lastSlash > 0) {
+                std::string parent = pathStr.substr(0, lastSlash);
+                // If parent hasn't been created yet, fail with ENOENT
+                if (parent != "/opt/persistent" && createdDirs.find(parent) == createdDirs.end()) {
+                    errno = ENOENT;
+                    return -1;
+                }
             }
-            // Later: dirs exist after creation
+            
+            // Success - mark as created
+            createdDirs.insert(pathStr);
+            return 0;
+        });
+    
+    // Mock stat: only called if mkdir returns EEXIST (not in this test scenario)
+    EXPECT_CALL(*p_wrapsImplMock, stat(_, _))
+        .WillRepeatedly([](const char* path, struct stat* buf) {
             buf->st_mode = S_IFDIR | 0755;
             buf->st_uid = 1000;
             buf->st_gid = 1000;
             return 0;
-        });
-    
-    // Simulate mkdir: succeeds for all directory levels
-    EXPECT_CALL(*p_wrapsImplMock, mkdir(_, _))
-        .WillRepeatedly([&mkdirCallCount](const char* path, mode_t mode) {
-            mkdirCallCount++;
-            TEST_LOG("mkdir called for: %s (call #%d)", path, mkdirCallCount);
-            return 0;  // Success - directory created
         });
     
     // Mock other required functions for successful storage creation
@@ -378,7 +386,10 @@ TEST_F(StorageManagerTest, CreateStorage_PathDoesNotExists_Success){
 
     ON_CALL(*p_wrapsImplMock, stat(_, _))
         .WillByDefault([](const char* path, struct stat* info) {
-            // Simulate success
+            // Simulate directory exists
+            info->st_mode = S_IFDIR | 0755;
+            info->st_uid = 1000;
+            info->st_gid = 1000;
             return 0;
     });
     
