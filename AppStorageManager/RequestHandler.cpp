@@ -71,17 +71,17 @@ namespace WPEFramework
             }
 
             // Try to create the directory first (avoids TOCTOU race condition)
-            if (mkdir(path.c_str(), mode) == 0)
+            if (0 == mkdir(path.c_str(), mode))
             {
                 return true;  // Successfully created
             }
 
             // Handle mkdir failure cases
-            if (errno == EEXIST)
+            if (EEXIST == errno)
             {
                 // Directory might already exist - verify it's actually a directory
                 struct stat st;
-                if (stat(path.c_str(), &st) == 0)
+                if (0 == stat(path.c_str(), &st))
                 {
                     if (S_ISDIR(st.st_mode))
                     {
@@ -102,7 +102,7 @@ namespace WPEFramework
             }
 
             // If error is not ENOENT (parent doesn't exist), return failure
-            if (errno != ENOENT)
+            if (ENOENT != errno)
             {
                 LOGERR("Failed to create directory %s: %s", path.c_str(), strerror(errno));
                 return false;
@@ -126,15 +126,15 @@ namespace WPEFramework
             }
 
             // Now try to create the directory again
-            if (mkdir(path.c_str(), mode) == 0)
+            if (0 == mkdir(path.c_str(), mode))
             {
                 return true;
             }
-            else if (errno == EEXIST)
+            else if (EEXIST == errno)
             {
                 // Another thread/process might have created it - verify it's a directory
                 struct stat st;
-                if (stat(path.c_str(), &st) == 0 && S_ISDIR(st.st_mode))
+                if (0 == stat(path.c_str(), &st) && S_ISDIR(st.st_mode))
                 {
                     return true;
                 }
@@ -659,13 +659,10 @@ namespace WPEFramework
                 LOGDBG("Calling mkdirRecursive for base path: %s", mBaseStoragePath.c_str());
                 if (!mkdirRecursive(mBaseStoragePath, STORAGE_DIR_PERMISSION))
                 {
-                    /* Check if the error is not directory already exists */
-                    if (errno != EEXIST)
-                    {
-                        errorReason = "Failed to create base storage directory: " + mBaseStoragePath + " (errno: " + std::to_string(errno) + " - " + strerror(errno) + ")";
-                        LOGERR("Error creating base storage directory %s: errno=%d (%s)", mBaseStoragePath.c_str(), errno, strerror(errno));
-                        goto ret_fail;
-                    }
+                    errorReason = "Failed to create base storage directory: " + mBaseStoragePath;
+                    LOGERR("Error creating base storage directory %s: errno=%d (%s)", mBaseStoragePath.c_str(), errno, strerror(errno));
+                    goto ret_fail;
+                }
 
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
                     {
@@ -680,7 +677,6 @@ namespace WPEFramework
                         }
                     }
 #endif // RALF_PACKAGE_SUPPORT_ENABLED
-                }
 
                 /* Check if the appId storageInfo already exists or can be created */
                 if (retrieveAppStorageInfoByAppID(appId, storageInfo))

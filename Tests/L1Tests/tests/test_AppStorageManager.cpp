@@ -3,6 +3,7 @@
 #include <string>
 #include <cstring>
 #include <thread>
+#include <set>
 #include "AppStorageManager.h"
 #include "AppStorageManagerImplementation.h"
 #include "ServiceMock.h"
@@ -97,6 +98,8 @@ class AppStorageManagerTest : public ::testing::Test {
 
             ON_CALL(*p_wrapsImplMock, stat(_, _))
                 .WillByDefault([](const char* path, struct stat* info) {
+                    // Initialize st_mode to indicate it's a directory (fixes TOCTOU-safe mkdirRecursive checks)
+                    info->st_mode = S_IFDIR | 0755;
                     return 0;
             });
 
@@ -452,7 +455,8 @@ TEST_F(StorageManagerTest, CreateStorage_Success){
 
     ON_CALL(*p_wrapsImplMock, stat(_, _))
         .WillByDefault([](const char* path, struct stat* info) {
-            // Simulate success
+            // Simulate directory exists
+            info->st_mode = S_IFDIR | 0755;
             return 0;
     });
     
@@ -1114,6 +1118,8 @@ TEST_F(AppStorageManagerTest, CreateStorage_JsonRpc_Success) {
     });
     ON_CALL(*p_wrapsImplMock, stat(_, _))
         .WillByDefault([](const char* path, struct stat* info) {
+            // Simulate directory exists
+            info->st_mode = S_IFDIR | 0755;
             return 0;
     });
     ON_CALL(*mStore2Mock, SetValue(_, _, _, _, _))
