@@ -270,7 +270,7 @@ TEST_F(StorageManagerTest, CreateStoragemkdirFail_Failure){
     intermediate parent directories are missing.
 */
 TEST_F(StorageManagerTest, CreateStorage_MissingParentDirectories_Success){
-    std::string appId = "testApp";
+    std::string appId = "newTestApp";  // Use unique appId not cached by fixture
     uint32_t size = 1024;
     std::string path = "";
     std::string errorReason = "";
@@ -297,7 +297,7 @@ TEST_F(StorageManagerTest, CreateStorage_MissingParentDirectories_Success){
             }
             
             // Success - mark as created
-            createdDirs.insert(pathStr);
+            createdDirs.insert(std::move(pathStr));
             return 0;
         });
     

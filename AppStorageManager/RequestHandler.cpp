@@ -713,12 +713,12 @@ namespace WPEFramework
                     /* Check if the app storage directory exists or can be created */
                     appDir = mBaseStoragePath + "/" + appId;
 
-                    if (mkdir(appDir.c_str(), STORAGE_DIR_PERMISSION) != 0)
+                    if (0 != mkdir(appDir.c_str(), STORAGE_DIR_PERMISSION))
                     {
                         /* Check if the error is not directory already exists */
-                        if (errno != EEXIST)
+                        if (EEXIST != errno)
                         {
-                            errorReason = "Failed to create app storage directory: " + appDir + " (errno: " + std::to_string(errno) + " - " + strerror(errno) + ")";
+                            errorReason = "Failed to create app storage directory: " + appDir;
                             LOGERR("Error creating app storage directory %s: errno=%d (%s)", appDir.c_str(), errno, strerror(errno));
                             goto ret_fail;
                         }
