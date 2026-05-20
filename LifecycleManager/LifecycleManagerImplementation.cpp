@@ -640,11 +640,11 @@ namespace WPEFramework
 
         void LifecycleManagerImplementation::handleRuntimeManagerEvent(const JsonObject &data)
         {
-            string eventName = data["name"];
+            string eventName = data["name"].String();
+            string appInstanceId = data["appInstanceId"].String();
             if (eventName.compare("onTerminated") == 0)
             {
                 LOGINFO("Received onterminated event from runtime manager");
-                string appInstanceId = data["appInstanceId"];
                 auto context = getContext(appInstanceId, "");
                 if (nullptr == context)
                 {
@@ -687,7 +687,6 @@ namespace WPEFramework
             }
             else if (eventName.compare("onStateChanged") == 0)
             {
-                string appInstanceId = data["appInstanceId"];
                 uint32_t runtimeState = data["state"].Number();
                 if (Exchange::IRuntimeManager::RuntimeState::RUNTIME_STATE_RUNNING == runtimeState)
                 {
@@ -737,7 +736,7 @@ namespace WPEFramework
 
     void LifecycleManagerImplementation::handleStateChangeEvent(const JsonObject &data)
     {
-            string appInstanceId = data["appInstanceId"];
+            string appInstanceId = data["appInstanceId"].String();
 	    uint32_t stateInput = data["newLifecycleState"].Number();
             Exchange::ILifecycleManager::LifecycleState state = (Exchange::ILifecycleManager::LifecycleState) stateInput;
             if (Exchange::ILifecycleManager::LifecycleState::UNLOADED != state)
