@@ -904,20 +904,24 @@ TEST_F(StorageManagerTest, test_clearall_failure_json){
     });
     EXPECT_CALL(*p_wrapsImplMock, nftw(_, _, _, _))
         .WillOnce([](const char* dirpath, int (*fn)(const char*, const struct stat*, int, struct FTW*), int nopenfd, int flags) {
-            // Simulate success
+            // Call  #1: hasEnoughStorageFreeSpace for testApp creation (checking existing testApp from fixture)
             return 0;
         })
         .WillOnce([](const char* dirpath, int (*fn)(const char*, const struct stat*, int, struct FTW*), int nopenfd, int flags) {
-            // Simulate success
+            // Call #2: hasEnoughStorageFreeSpace for testexempt creation (checking testApp)
             return 0;
         })
         .WillOnce([](const char* dirpath, int (*fn)(const char*, const struct stat*, int, struct FTW*), int nopenfd, int flags) {
-            // Simulate success
+            // Call #3: hasEnoughStorageFreeSpace for testexempt creation (checking testexempt being added)
             return 0;
         })
         .WillOnce([](const char* dirpath, int (*fn)(const char*, const struct stat*, int, struct FTW*), int nopenfd, int flags) {
-            // Simulate success
-            return -1;
+            // Call #4: clearAll reading directory sizes 
+            return 0;
+        })
+        .WillOnce([](const char* dirpath, int (*fn)(const char*, const struct stat*, int, struct FTW*), int nopenfd, int flags) {
+            //Call #5: clearAll - deleteDirectoryEntries for testApp (should fail)
+            return -1;  // Simulate failure
     });
 
     EXPECT_CALL(*p_wrapsImplMock, statvfs(_, _))
