@@ -65,32 +65,40 @@ namespace WPEFramework
         ***/
         bool RequestHandler::mkdirRecursive(const std::string& path, mode_t mode)
         {
-            LOGINFO("[RECURSIVE_MKDIR] Attempting to create directory: %s", path.c_str());
-            
             if (path.empty())
             {
                 return false;
             }
 
-            // Check if directory already exists
-            struct stat st;
-            if (stat(path.c_str(), &st) == 0)
-            {
-                if (S_ISDIR(st.st_mode))
-                {
-                    return true;  // Directory already exists
-                }
-                else
-                {
-                    LOGERR("Path exists but is not a directory: %s", path.c_str());
-                    return false;  // Path exists but is not a directory
-                }
-            }
-
-            // Try to create the directory
+            // Try to create the directory first (avoids TOCTOU race condition)
             if (mkdir(path.c_str(), mode) == 0)
             {
                 return true;  // Successfully created
+            }
+
+            // Handle mkdir failure cases
+            if (errno == EEXIST)
+            {
+                // Directory might already exist - verify it's actually a directory
+                struct stat st;
+                if (stat(path.c_str(), &st) == 0)
+                {
+                    if (S_ISDIR(st.st_mode))
+                    {
+                        return true;  // Directory already exists
+                    }
+                    else
+                    {
+                        LOGERR("Path exists but is not a directory: %s", path.c_str());
+                        errno = ENOTDIR;  // Set errno for caller's error reporting
+                        return false;  // Path exists but is not a directory
+                    }
+                }
+                else
+                {
+                    LOGERR("Failed to stat existing path %s: %s", path.c_str(), strerror(errno));
+                    return false;
+                }
             }
 
             // If error is not ENOENT (parent doesn't exist), return failure
@@ -105,6 +113,7 @@ namespace WPEFramework
             if (pos == std::string::npos || pos == 0)
             {
                 // No more parent directories to create
+                errno = ENOENT;  // Parent directory doesn't exist
                 return false;
             }
 
@@ -123,8 +132,18 @@ namespace WPEFramework
             }
             else if (errno == EEXIST)
             {
-                // Another thread/process might have created it
-                return true;
+                // Another thread/process might have created it - verify it's a directory
+                struct stat st;
+                if (stat(path.c_str(), &st) == 0 && S_ISDIR(st.st_mode))
+                {
+                    return true;
+                }
+                else
+                {
+                    LOGERR("Path exists after parent creation but is not a directory: %s", path.c_str());
+                    errno = ENOTDIR;  // Set errno for caller's error reporting
+                    return false;
+                }
             }
             else
             {
@@ -637,7 +656,7 @@ namespace WPEFramework
                 std::unique_lock<std::mutex> lock(mStorageManagerImplLock);
 
                 /* Check if the storage mount directory exists or can be created */
-                LOGINFO("CreateStorage: Calling mkdirRecursive for base path: %s", mBaseStoragePath.c_str());
+                LOGDBG("Calling mkdirRecursive for base path: %s", mBaseStoragePath.c_str());
                 if (!mkdirRecursive(mBaseStoragePath, STORAGE_DIR_PERMISSION))
                 {
                     /* Check if the error is not directory already exists */
