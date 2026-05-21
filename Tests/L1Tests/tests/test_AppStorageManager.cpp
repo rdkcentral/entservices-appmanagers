@@ -99,7 +99,14 @@ class AppStorageManagerTest : public ::testing::Test {
             ON_CALL(*p_wrapsImplMock, stat(_, _))
                 .WillByDefault([](const char* path, struct stat* info) {
                     // Initialize st_mode to indicate it's a directory (fixes TOCTOU-safe mkdirRecursive checks)
+                    if (nullptr == info) {
+                        return -1;
+                    }
+                    std::memset(info, 0, sizeof(*info));
+                    // Initialize stat fields deterministically for callers that read ownership metadata.
                     info->st_mode = S_IFDIR | 0755;
+                    info->st_uid = 0;
+                    info->st_gid = 0;
                     return 0;
             });
 
@@ -289,8 +296,8 @@ TEST_F(StorageManagerTest, CreateStorage_MissingParentDirectories_Success){
             size_t lastSlash = pathStr.find_last_of('/');
             if (lastSlash != std::string::npos && lastSlash > 0) {
                 std::string parent = pathStr.substr(0, lastSlash);
-                // If parent hasn't been created yet, fail with ENOENT
-                if (parent != "/opt/persistent" && createdDirs.find(parent) == createdDirs.end()) {
+                // Treat only /opt as pre-existing to test multi-level recursion
+                if (parent != "/opt" && createdDirs.find(parent) == createdDirs.end()) {
                     errno = ENOENT;
                     return -1;
                 }
@@ -341,7 +348,19 @@ TEST_F(StorageManagerTest, CreateStorage_MissingParentDirectories_Success){
     // Execute CreateStorage - should succeed with recursive directory creation
     EXPECT_EQ(Core::ERROR_NONE, interface->CreateStorage(appId, size, path, errorReason));
     EXPECT_TRUE(errorReason.empty());
-    EXPECT_GT(mkdirCallCount, 1);  // Should create multiple directory levels
+    
+    // Verify recursive directory creation: must create parent (/opt/persistent),
+    // base (/opt/persistent/storageManager), and app dir (total >= 3)
+    EXPECT_GE(mkdirCallCount, 3);
+    
+    // Verify intermediate directories were actually created
+    EXPECT_NE(createdDirs.find("/opt/persistent"), createdDirs.end()) 
+        << "Parent directory /opt/persistent should have been created";
+    EXPECT_NE(createdDirs.find("/opt/persistent/storageManager"), createdDirs.end()) 
+        << "Base directory /opt/persistent/storageManager should have been created";
+    EXPECT_NE(createdDirs.find("/opt/persistent/storageManager/newTestApp"), createdDirs.end()) 
+        << "App directory should have been created";
+    
     TEST_LOG("CreateStorage_MissingParentDirectories_Success: Created %d directory levels", mkdirCallCount);
 }
 

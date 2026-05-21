@@ -72,7 +72,7 @@ git clone --branch topic/RDKEMW-14505 https://github.com/rdkcentral/entservices-
 
 git clone -b develop https://github.com/rdkcentral/eshelpers.git
 
-git clone -b develop https://github.com/rdkcentral/libPackage.git
+git clone -b 1.2.4 https://github.com/rdkcentral/libPackage.git
 
 ############################
 # Build Thunder-Tools

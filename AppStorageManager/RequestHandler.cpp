@@ -722,6 +722,18 @@ namespace WPEFramework
                             LOGERR("Error creating app storage directory %s: errno=%d (%s)", appDir.c_str(), errno, strerror(errno));
                             goto ret_fail;
                         }
+                        else
+                        {
+                            // Path exists - verify it's actually a directory
+                            struct stat st;
+                            if (0 != stat(appDir.c_str(), &st) || !S_ISDIR(st.st_mode))
+                            {
+                                errorReason = "Path exists but is not a directory: " + appDir;
+                                LOGERR("Path exists but is not a directory: %s", appDir.c_str());
+                                goto ret_fail;
+                            }
+                            // Directory exists - continue
+                        }
                     }
 
                     /* Create app storage info and add it to the map */
