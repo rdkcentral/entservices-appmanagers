@@ -1365,11 +1365,12 @@ TEST_F(AppManagerTest, PreloadAppUsingComRpcSuccess)
     mPreLoadSpawmCalled = false;
 
     preLaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::PAUSED);
-    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->PreloadApp(APPMANAGER_APP_ID, APPMANAGER_APP_LAUNCHARGS, error));
+    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->PreloadApp(APPMANAGER_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS, error));
     {
         std::unique_lock<std::mutex> lock(mPreLoadMutex);
         ASSERT_TRUE(mPreLoadCV.wait_for(lock, std::chrono::seconds(10), [&]{ return mPreLoadSpawmCalled; }));
     }
+    EXPECT_EQ(std::string(APPMANAGER_APP_INTENT), AppInfoManager::getInstance().getAppIntent(APPMANAGER_APP_ID));
 
     if(status == Core::ERROR_NONE)
     {
@@ -1396,12 +1397,13 @@ TEST_F(AppManagerTest, PreloadAppUsingJSONRpcSuccess)
     mPreLoadSpawmCalled = false;
 
     preLaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::PAUSED);
-    std::string request = "{\"appId\": \"" + std::string(APPMANAGER_APP_ID) + "\", \"launchArgs\": \"" + std::string(APPMANAGER_APP_LAUNCHARGS) + "\"}";
+    std::string request = "{\"appId\": \"" + std::string(APPMANAGER_APP_ID) + "\", \"intent\": \"" + std::string(APPMANAGER_APP_INTENT) + "\", \"launchArgs\": \"" + std::string(APPMANAGER_APP_LAUNCHARGS) + "\"}";
     EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("preloadApp"), request, mJsonRpcResponse));
     {
         std::unique_lock<std::mutex> lock(mPreLoadMutex);
         ASSERT_TRUE(mPreLoadCV.wait_for(lock, std::chrono::seconds(10), [&]{ return mPreLoadSpawmCalled; }));
     }
+    EXPECT_EQ(std::string(APPMANAGER_APP_INTENT), AppInfoManager::getInstance().getAppIntent(APPMANAGER_APP_ID));
 
     if(status == Core::ERROR_NONE)
     {
@@ -1442,7 +1444,7 @@ TEST_F(AppManagerTest, PreloadAppUsingComRpcFailureWrongAppID)
 
     LaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::PAUSED);
 
-    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->PreloadApp(APPMANAGER_WRONG_APP_ID, APPMANAGER_APP_LAUNCHARGS, error));
+    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->PreloadApp(APPMANAGER_WRONG_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS, error));
 
     signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
     EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
@@ -1491,7 +1493,7 @@ TEST_F(AppManagerTest, PreloadAppUsingComRpcFailureIsAppLoadedReturnError)
         loaded = false;
         return Core::ERROR_GENERAL;
     });
-    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->PreloadApp(APPMANAGER_APP_ID, APPMANAGER_APP_LAUNCHARGS, error));
+    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->PreloadApp(APPMANAGER_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS, error));
 
     signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
     EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
@@ -1526,7 +1528,7 @@ TEST_F(AppManagerTest, PreloadAppUsingComRpcFailureLifecycleManagerRemoteObjectI
     mAppManagerImpl->Register(&notification);
     notification.SetExpectedEvent(expectedEvent);
 
-    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->PreloadApp(APPMANAGER_APP_ID, APPMANAGER_APP_LAUNCHARGS, error));
+    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->PreloadApp(APPMANAGER_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS, error));
 
     signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
     EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
@@ -3317,7 +3319,7 @@ TEST_F(AppManagerTest, PreloadAppUsingComRpcFailureEmptyAppID)
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
 
-    EXPECT_EQ(Core::ERROR_INVALID_PARAMETER, mAppManagerImpl->PreloadApp("", APPMANAGER_APP_LAUNCHARGS, error));
+    EXPECT_EQ(Core::ERROR_INVALID_PARAMETER, mAppManagerImpl->PreloadApp("", APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS, error));
     EXPECT_FALSE(error.empty());
 
     if (status == Core::ERROR_NONE)
@@ -3884,7 +3886,7 @@ TEST_F(AppManagerTest, GetCustomValuesWithAipathFile)
         });
 
     preLaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::PAUSED);
-    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->PreloadApp(APPMANAGER_APP_ID, APPMANAGER_APP_LAUNCHARGS, error));
+    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->PreloadApp(APPMANAGER_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS, error));
     {
         std::unique_lock<std::mutex> lock(mPreLoadMutex);
         ASSERT_TRUE(mPreLoadCV.wait_for(lock, std::chrono::seconds(10), [&] { return mPreLoadSpawmCalled; }));
@@ -4889,7 +4891,7 @@ TEST_F(AppManagerTest, GetCustomValuesWithAipathFileHasContent)
         });
 
     preLaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::PAUSED);
-    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->PreloadApp(APPMANAGER_APP_ID, APPMANAGER_APP_LAUNCHARGS, error));
+    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->PreloadApp(APPMANAGER_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS, error));
     {
         std::unique_lock<std::mutex> lock(mPreLoadMutex);
         ASSERT_TRUE(mPreLoadCV.wait_for(lock, std::chrono::seconds(10), [&] { return mPreLoadSpawmCalled; }));
