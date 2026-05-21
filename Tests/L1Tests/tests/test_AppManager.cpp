@@ -415,7 +415,7 @@ protected:
         .WillRepeatedly([&](const string& appInstanceId , const Exchange::ILifecycleManager::LifecycleState targetLifecycleState , const string& launchIntent) {
             return Core::ERROR_NONE;
         });
-        EXPECT_CALL(*mLifecycleManagerMock, SpawnApp(APPMANAGER_APP_ID, ::testing::_, ::testing::_, ::testing::_, launchArgs, ::testing::_, ::testing::_, ::testing::_))
+        EXPECT_CALL(*mLifecycleManagerMock, SpawnApp(APPMANAGER_APP_ID, APPMANAGER_APP_INTENT, ::testing::_, ::testing::_, launchArgs, ::testing::_, ::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
         .WillOnce([&](const string& appId, const string& launchIntent, const Exchange::ILifecycleManager::LifecycleState targetLifecycleState,
             const Exchange::RuntimeConfig& runtimeConfigObject, const string& launchArgs, string& appInstanceId, string& errorReason, bool& success) {
@@ -1370,7 +1370,6 @@ TEST_F(AppManagerTest, PreloadAppUsingComRpcSuccess)
         std::unique_lock<std::mutex> lock(mPreLoadMutex);
         ASSERT_TRUE(mPreLoadCV.wait_for(lock, std::chrono::seconds(10), [&]{ return mPreLoadSpawmCalled; }));
     }
-    EXPECT_EQ(std::string(APPMANAGER_APP_INTENT), AppInfoManager::getInstance().getAppIntent(APPMANAGER_APP_ID));
 
     if(status == Core::ERROR_NONE)
     {
@@ -1403,7 +1402,6 @@ TEST_F(AppManagerTest, PreloadAppUsingJSONRpcSuccess)
         std::unique_lock<std::mutex> lock(mPreLoadMutex);
         ASSERT_TRUE(mPreLoadCV.wait_for(lock, std::chrono::seconds(10), [&]{ return mPreLoadSpawmCalled; }));
     }
-    EXPECT_EQ(std::string(APPMANAGER_APP_INTENT), AppInfoManager::getInstance().getAppIntent(APPMANAGER_APP_ID));
 
     if(status == Core::ERROR_NONE)
     {
