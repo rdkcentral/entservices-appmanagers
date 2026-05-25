@@ -144,7 +144,10 @@ namespace WPEFramework
              {
                  case LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED:
                      LifecycleManagerTelemetryReporting::getInstance().reportTelemetryDataOnStateChange(context, obj);
-                     shouldRespawn = handleStateChangeEvent(obj, pendingRespawn);
+                     if (true == handleStateChangeEvent(obj))
+                     {
+                         shouldRespawn = tryGetPendingRespawn(appInstanceId, pendingRespawn);
+                     }
                      while (index != mLifecycleManagerNotification.end())
                      {
                          (*index)->OnAppStateChanged(appId, (LifecycleState)newLifecycleState, errorReason);
@@ -498,10 +501,17 @@ namespace WPEFramework
                 status = Core::ERROR_GENERAL;
                 return status;
 	    }
+	    const string appInstanceId = context->getAppInstanceId();
+        const bool shouldRespawn = ((closeReason == KILL_AND_RUN) || (closeReason == KILL_AND_ACTIVATE));
+        ApplicationLaunchParams launchParams;
+        if (true == shouldRespawn)
+        {
+            launchParams = context->getApplicationLaunchParams();
+        }
 	    bool success = false;
             bool activate = false;
             string errorReason("");
-            status = KillApp(context->getAppInstanceId(), errorReason, success); 
+	    status = KillApp(appInstanceId, errorReason, success); 
 	    if ((Core::ERROR_NONE != status) || (false == success))
 	    {
                 if (Core::ERROR_NONE == status)
@@ -509,27 +519,27 @@ namespace WPEFramework
                     status = Core::ERROR_GENERAL;
                 }
                 mAdminLock.Lock();
-                mPendingRespawns.erase(context->getAppInstanceId());
+                mPendingRespawns.erase(appInstanceId);
                 mAdminLock.Unlock();
                 LOGERR("Failed to close the app [%s]. status[%d] success[%d] error[%s]", appId.c_str(), status, success, errorReason.c_str());
                 return status;
 	    }
-	    if ((closeReason != KILL_AND_RUN) && (closeReason != KILL_AND_ACTIVATE))
+	    if (false == shouldRespawn)
 	    {
                 mAdminLock.Lock();
-                mPendingRespawns.erase(context->getAppInstanceId());
+                mPendingRespawns.erase(appInstanceId);
                 mAdminLock.Unlock();
                 return status;
 	    }
             activate = (closeReason == KILL_AND_ACTIVATE);		    
 
 	    PendingRespawnRequest pendingRespawn;
-            pendingRespawn.mLaunchParams = context->getApplicationLaunchParams();
+            pendingRespawn.mLaunchParams = launchParams;
             pendingRespawn.mLaunchParams.mTargetState = activate ? Exchange::ILifecycleManager::LifecycleState::ACTIVE : Exchange::ILifecycleManager::LifecycleState::PAUSED;
             pendingRespawn.mLaunchParams.mLaunchIntent = "";  // Clear intent for respawn to prevent runtime manager from auto-resuming
 
             mAdminLock.Lock();
-            mPendingRespawns[context->getAppInstanceId()] = pendingRespawn;
+            mPendingRespawns[appInstanceId] = pendingRespawn;
             mAdminLock.Unlock();
 
 	    return status;
@@ -707,7 +717,7 @@ namespace WPEFramework
             LOGINFO("Notify error event for appId[%s] appInstanceId[%s] error[%s]", appId.c_str(), appInstanceId.c_str(), errorCode.c_str());
         }
 
-    bool LifecycleManagerImplementation::handleStateChangeEvent(const JsonObject &data, PendingRespawnRequest& pendingRespawn)
+    bool LifecycleManagerImplementation::handleStateChangeEvent(const JsonObject &data)
     {
             string appInstanceId = data["appInstanceId"];
 	    uint32_t stateInput = data["newLifecycleState"].Number();
@@ -732,7 +742,11 @@ namespace WPEFramework
 	    {
                 mLoadedApplications.erase(iter);
 	    }
+	    return true;
+        }
 
+        bool LifecycleManagerImplementation::tryGetPendingRespawn(const string& appInstanceId, PendingRespawnRequest& pendingRespawn)
+        {
             auto pendingRespawnIter = mPendingRespawns.find(appInstanceId);
             if (pendingRespawnIter == mPendingRespawns.end())
             {
@@ -805,4 +819,3 @@ namespace WPEFramework
 
     } /* namespace Plugin */
 } /* namespace WPEFramework */
-
