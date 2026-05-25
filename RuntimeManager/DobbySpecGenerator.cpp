@@ -143,7 +143,6 @@ bool DobbySpecGenerator::generate(const ApplicationConfiguration& config, const 
 
     std::vector<std::pair<std::string, std::string>> parsedCapabilities;
     parseCapabilities(runtimeConfig.capabilities, parsedCapabilities);
-    std::cout << "MADANA PRINT CAPABILITIES [" << runtimeConfig.capabilities << "]\n";
 
     std::ifstream inFile("/tmp/specchange");
     if (inFile.good())
