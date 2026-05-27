@@ -157,7 +157,7 @@ namespace WPEFramework
                 void Dispatch(EventNames event, const JsonValue params);
                 void handleRuntimeManagerEvent(const JsonObject &data);
                 void notifyOnFailure(const string& appInstanceId, const string& errorCode);
-                bool handleStateChangeEvent(const JsonObject &data);
+                void handleStateChangeEvent(const JsonObject &data);
                 bool tryGetPendingRespawn(const string& appInstanceId, PendingRespawnRequest& pendingRespawn);
                 void handlePendingRespawn(const PendingRespawnRequest& pendingRespawn);
                 void handleWindowManagerEvent(const JsonObject &data);

@@ -144,7 +144,8 @@ namespace WPEFramework
              {
                  case LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED:
                      LifecycleManagerTelemetryReporting::getInstance().reportTelemetryDataOnStateChange(context, obj);
-                     if (true == handleStateChangeEvent(obj))
+                     handleStateChangeEvent(obj);
+                     if (Exchange::ILifecycleManager::LifecycleState::UNLOADED == static_cast<Exchange::ILifecycleManager::LifecycleState>(newLifecycleState))
                      {
                          shouldRespawn = tryGetPendingRespawn(appInstanceId, pendingRespawn);
                      }
@@ -717,14 +718,14 @@ namespace WPEFramework
             LOGINFO("Notify error event for appId[%s] appInstanceId[%s] error[%s]", appId.c_str(), appInstanceId.c_str(), errorCode.c_str());
         }
 
-    bool LifecycleManagerImplementation::handleStateChangeEvent(const JsonObject &data)
+    void LifecycleManagerImplementation::handleStateChangeEvent(const JsonObject &data)
     {
             string appInstanceId = data["appInstanceId"];
 	    uint32_t stateInput = data["newLifecycleState"].Number();
             Exchange::ILifecycleManager::LifecycleState state = (Exchange::ILifecycleManager::LifecycleState) stateInput;
-            if (state != Exchange::ILifecycleManager::LifecycleState::UNLOADED)
+            if (Exchange::ILifecycleManager::LifecycleState::UNLOADED != state)
 	    {
-	        return false;
+	        return;
 	    }
             auto iter = mLoadedApplications.end();
 	    for (iter = mLoadedApplications.begin(); iter != mLoadedApplications.end(); iter++)
@@ -742,7 +743,6 @@ namespace WPEFramework
 	    {
                 mLoadedApplications.erase(iter);
 	    }
-	    return true;
         }
 
         bool LifecycleManagerImplementation::tryGetPendingRespawn(const string& appInstanceId, PendingRespawnRequest& pendingRespawn)
@@ -819,3 +819,4 @@ namespace WPEFramework
 
     } /* namespace Plugin */
 } /* namespace WPEFramework */
+
