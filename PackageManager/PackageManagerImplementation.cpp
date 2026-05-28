@@ -481,22 +481,33 @@ namespace Plugin {
                 }
                 ASSERT (nullptr != mStorageManagerObject);
                 if (nullptr != mStorageManagerObject) {
-                    if(mStorageManagerObject->DeleteStorage(packageId, errorReason) == Core::ERROR_NONE) {
-                        LOGINFO("DeleteStorage done");
-                        // XXX: what if DeleteStorage() fails, who Uninstall the package
-                        packagemanager::Result pmResult = packageImpl->Uninstall(packageId);
-                        if (pmResult == packagemanager::SUCCESS) {
+                    // Step 1: Uninstall the package first (symmetric with Install flow)
+                    packagemanager::Result pmResult = packageImpl->Uninstall(packageId);
+                    if (pmResult == packagemanager::SUCCESS) {
+                        LOGINFO("Package uninstallation successful, now deleting storage");
+                        
+                        // Step 2: Delete storage only after successful uninstallation
+                        if(mStorageManagerObject->DeleteStorage(packageId, errorReason) == Core::ERROR_NONE) {
+                            LOGINFO("DeleteStorage successful");
                             result = Core::ERROR_NONE;
+                            state.installState = InstallState::UNINSTALLED;
+                            NotifyInstallStatus(packageId, version, state);
                         } else {
-                            packageFailureErrorCode = (pmResult == packagemanager::Result::VERSION_MISMATCH) ?
-                                PackageManagerImplementation::PackageFailureErrorCode::ERROR_PACKAGE_MISMATCH_FAILURE : PackageManagerImplementation::PackageFailureErrorCode::ERROR_SIGNATURE_VERIFICATION_FAILURE;
+                            LOGERR("DeleteStorage failed after successful Uninstall, errorReason [%s]", errorReason.c_str());
+                            LOGWARN("Package binaries removed but storage remains at /opt/persistent/appstorage/%s", packageId.c_str());
+                            packageFailureErrorCode = PackageManagerImplementation::PackageFailureErrorCode::ERROR_PERSISTENCE_FAILURE;
+                            
+                            // Note: Package binaries are already removed, so we consider this a partial success
+                            // The orphaned storage can be cleaned up manually or by a maintenance task
+                            state.installState = InstallState::UNINSTALLED;
+                            NotifyInstallStatus(packageId, version, state);
                         }
-                        state.installState = InstallState::UNINSTALLED;
-                        NotifyInstallStatus(packageId, version, state);
                     } else {
-                        LOGERR("DeleteStorage failed with result :%d errorReason [%s]", result, errorReason.c_str());
-                        packageFailureErrorCode = PackageManagerImplementation::PackageFailureErrorCode::ERROR_PERSISTENCE_FAILURE;
-
+                        // Package uninstallation failed, storage remains intact
+                        LOGERR("Uninstall failed with result: %d", pmResult);
+                        packageFailureErrorCode = (pmResult == packagemanager::Result::VERSION_MISMATCH) ?
+                            PackageManagerImplementation::PackageFailureErrorCode::ERROR_PACKAGE_MISMATCH_FAILURE : 
+                            PackageManagerImplementation::PackageFailureErrorCode::ERROR_SIGNATURE_VERIFICATION_FAILURE;
                     }
                 }
             } else {
@@ -1099,37 +1110,55 @@ namespace Plugin {
         }
         ASSERT (nullptr != mStorageManagerObject);
         if (nullptr != mStorageManagerObject) {
-            string path = "";
-            string errorReason = "";
-            if(mStorageManagerObject->CreateStorage(packageId, STORAGE_MAX_SIZE, path, errorReason) == Core::ERROR_NONE) {
-                LOGINFO("CreateStorage path [%s]", path.c_str());
-                packagemanager::ConfigMetaData config;
-                packagemanager::Result pmResult = packageImpl->Install(packageId, version, keyValues, fileLocator, config);
-                if (pmResult == packagemanager::SUCCESS) {
+            // Step 1: Install the package first
+            packagemanager::ConfigMetaData config;
+            packagemanager::Result pmResult = packageImpl->Install(packageId, version, keyValues, fileLocator, config);
+            
+            if (pmResult == packagemanager::SUCCESS) {
+                LOGINFO("Package installation successful, now creating storage");
+                
+                // Step 2: Create storage only after successful installation
+                string path = "";
+                string errorReason = "";
+                if(mStorageManagerObject->CreateStorage(packageId, STORAGE_MAX_SIZE, path, errorReason) == Core::ERROR_NONE) {
+                    LOGINFO("CreateStorage successful, path [%s]", path.c_str());
                     result = Core::ERROR_NONE;
                     state.installState = InstallState::INSTALLED;
+                    LOGDBG("Package: %s Version: %s installed successfully", packageId.c_str(), version.c_str());
                 } else {
+                    LOGERR("CreateStorage failed after successful Install, errorReason [%s]", errorReason.c_str());
+                    state.failReason = FailReason::PERSISTENCE_FAILURE;
                     state.installState = InstallState::INSTALL_FAILURE;
-                    switch (pmResult) {
-                        case packagemanager::Result::VERSION_MISMATCH:
-                            state.failReason = FailReason::PACKAGE_MISMATCH_FAILURE;
-                            break;
-                        case packagemanager::Result::PERSISTENCE_FAILURE:
-                            state.failReason = FailReason::PERSISTENCE_FAILURE;
-                            break;
-                        case packagemanager::Result::VERIFICATION_FAILURE:
-                            state.failReason = FailReason::SIGNATURE_VERIFICATION_FAILURE;
-                            break;
-                        default:
-                            state.failReason = FailReason::GENERAL_FAILURE;
+                    
+                    // Rollback: Uninstall the package since storage creation failed
+                    LOGWARN("Rolling back package installation due to storage creation failure");
+                    packagemanager::Result uninstallResult = packageImpl->Uninstall(packageId);
+                    if (uninstallResult != packagemanager::SUCCESS) {
+                        LOGERR("Failed to rollback uninstall for packageId: %s", packageId.c_str());
+                    } else {
+                        LOGINFO("Successfully rolled back installation for packageId: %s", packageId.c_str());
                     }
-                    LOGERR("Install failed reason %s", getFailReason(state.failReason).c_str());
                 }
-                LOGDBG("Package: %s Version: %s result=%d", packageId.c_str(), version.c_str(), result);
                 NotifyInstallStatus(packageId, version, state);
             } else {
-                LOGERR("CreateStorage failed with result :%d errorReason [%s]", result, errorReason.c_str());
-                state.failReason = FailReason::PERSISTENCE_FAILURE;
+                // Package installation failed, no storage created
+                state.installState = InstallState::INSTALL_FAILURE;
+                switch (pmResult) {
+                    case packagemanager::Result::VERSION_MISMATCH:
+                        state.failReason = FailReason::PACKAGE_MISMATCH_FAILURE;
+                        break;
+                    case packagemanager::Result::PERSISTENCE_FAILURE:
+                        state.failReason = FailReason::PERSISTENCE_FAILURE;
+                        break;
+                    case packagemanager::Result::VERIFICATION_FAILURE:
+                        state.failReason = FailReason::SIGNATURE_VERIFICATION_FAILURE;
+                        break;
+                    default:
+                        state.failReason = FailReason::GENERAL_FAILURE;
+                }
+                LOGERR("Install failed reason %s", getFailReason(state.failReason).c_str());
+                LOGDBG("Package: %s Version: %s result=%d", packageId.c_str(), version.c_str(), result);
+                NotifyInstallStatus(packageId, version, state);
             }
         }
 
