@@ -72,6 +72,8 @@ git clone --branch topic/RDKEMW-16187 https://github.com/rdkcentral/entservices-
 
 git clone -b develop https://github.com/rdkcentral/eshelpers.git
 
+git clone -b v1.2.0 https://github.com/rdkcentral/ralf-utils.git
+
 git clone -b develop https://github.com/rdkcentral/libPackage.git
 
 ############################
