@@ -214,11 +214,15 @@ bool DobbySpecGenerator::generate(const ApplicationConfiguration& config, const 
     spec["cpu"] = std::move(cpuObj);
 
 #if (AI_BUILD_TYPE == AI_DEBUG)
-    Json::Value consoleObj;
-    consoleObj["limit"] = mAIConfiguration->getContainerConsoleLogCap();
-    //TODO: SUPPORT Read console path from runtime config: RDKEMW-4432
-    consoleObj["path"] = "/tmp/container.log";
-    spec["console"] = std::move(consoleObj);
+    if (!runtimeConfig.logFilePath.empty())
+    {
+        Json::Value consoleObj;
+        consoleObj["path"] = runtimeConfig.logFilePath;
+        consoleObj["limit"] = (runtimeConfig.logFileMaxSize > 0)
+            ? runtimeConfig.logFileMaxSize
+            : static_cast<uint32_t>(mAIConfiguration->getContainerConsoleLogCap());
+        spec["console"] = std::move(consoleObj);
+    }
 #endif // (AI_BUILD_TYPE == AI_DEBUG)
 
     Json::Value etcObj;
@@ -237,9 +241,8 @@ bool DobbySpecGenerator::generate(const ApplicationConfiguration& config, const 
     servicesArray.append("https\t\t443/tcp");
     servicesArray.append("https\t\t443/udp");
 
-    //TODO SUPPORT mapi in runtime config: RDKEMW-4432
-    //if (runtimeConfig.mapi)
-    if (true)
+    const bool mapiEnabled = runtimeConfig.mapi || hasCapability(parsedCapabilities, "mapi");
+    if (mapiEnabled)
     {
         for (int port : mAIConfiguration->getMapiPorts())
         {
@@ -382,9 +385,13 @@ Json::Value DobbySpecGenerator::createEnvVars(const ApplicationConfiguration& co
    }
 
    //TODO SUPPORT WATCHDOG
-   //TODO SUPPORT runtime parameter in runtime config: RDKEMW-4432
-   //TODO SUPPORT Add only for web runtime
-   env.append("WEBKIT_LEGACY_INSPECTOR_SERVER=0.0.0.0:22222");
+
+   const bool webRuntime = hasCapability(capabilities, "runtime-html");
+
+   if (webRuntime)
+   {
+       env.append("WEBKIT_LEGACY_INSPECTOR_SERVER=0.0.0.0:22222");
+   }
 
    return env;
 }
@@ -671,7 +678,19 @@ Json::Value DobbySpecGenerator::createRdkPlugins(const ApplicationConfiguration&
                                                  const std::vector<std::pair<std::string, std::string>>& capabilities) const
 {
     Json::Value rdkPluginsObj(Json::objectValue);
-    if (!config.mPorts.empty())
+    const bool appServicesRequested =
+        !config.mPorts.empty() ||
+        runtimeConfig.dial ||
+        runtimeConfig.mapi ||
+        hasCapability(capabilities, "dial-app") ||
+        hasCapability(capabilities, "mapi") ||
+        hasCapability(capabilities, "local-services-1") ||
+        hasCapability(capabilities, "local-services-2") ||
+        hasCapability(capabilities, "local-services-3") ||
+        hasCapability(capabilities, "local-services-4") ||
+        hasCapability(capabilities, "local-services-5");
+
+    if (appServicesRequested)
     {
         rdkPluginsObj["appservicesrdk"] = createAppServiceSDKPlugin(config, runtimeConfig, capabilities);
     }
@@ -683,7 +702,7 @@ Json::Value DobbySpecGenerator::createRdkPlugins(const ApplicationConfiguration&
     const bool thunderEnabled = runtimeConfig.thunder || hasCapability(capabilities, "thunder");
     if (thunderEnabled)
     {
-        rdkPluginsObj["thunder"] = createThunderPlugin(config);
+        rdkPluginsObj["thunder"] = createThunderPlugin(config, capabilities);
     }
 
     //WORK: runtime config need to have credmgr certificate
@@ -729,7 +748,6 @@ Json::Value DobbySpecGenerator::createMinidumpPlugin() const
     return pluginObj;
 }
 
-//TODO SUPPORT localservices in appsservice plugin
 //TODO SUPPORT airplay2 ports in appsservice plugin
 Json::Value DobbySpecGenerator::createAppServiceSDKPlugin(const ApplicationConfiguration& config,
                                                           const WPEFramework::Exchange::RuntimeConfig& runtimeConfig,
@@ -752,12 +770,39 @@ Json::Value DobbySpecGenerator::createAppServiceSDKPlugin(const ApplicationConfi
     }
     for (auto port : config.mPorts)
         ports.append(port);
-    for (int port : mAIConfiguration->getMapiPorts())
+    const bool mapiEnabled = runtimeConfig.mapi || hasCapability(capabilities, "mapi");
+    if (mapiEnabled)
     {
-        ports.append(port);
+        for (int port : mAIConfiguration->getMapiPorts())
+        {
+            ports.append(port);
+        }
     }
-    pluginObj["data"]["additionalPorts"] = std::move(ports);
-	pluginObj["data"]["setMenu"] = "local-services-1"; //HACK for now for homeapp launch. This will be resolved with proper wiring
+    if (!ports.empty())
+    {
+        pluginObj["data"]["additionalPorts"] = std::move(ports);
+    }
+
+    if (hasCapability(capabilities, "local-services-1"))
+    {
+        pluginObj["data"]["setMenu"] = "local-services-1";
+    }
+    else if (hasCapability(capabilities, "local-services-2"))
+    {
+        pluginObj["data"]["setMenu"] = "local-services-2";
+    }
+    else if (hasCapability(capabilities, "local-services-3"))
+    {
+        pluginObj["data"]["setMenu"] = "local-services-3";
+    }
+    else if (hasCapability(capabilities, "local-services-4"))
+    {
+        pluginObj["data"]["setMenu"] = "local-services-4";
+    }
+    else if (hasCapability(capabilities, "local-services-5"))
+    {
+        pluginObj["data"]["setMenu"] = "local-services-5";
+    }
 
     return pluginObj;
 }
@@ -786,6 +831,8 @@ Json::Value DobbySpecGenerator::createNetworkPlugin(const ApplicationConfigurati
     dataObj["ipv4"] = true;
     dataObj["ipv6"] = mAIConfiguration->getIPv6Enabled();
 
+    pluginObj["data"] = std::move(dataObj);
+
     //TODO SUPPORT Nat holepunch
     /*
     // add NAT holepunch support if requested (only for non-html apps)
@@ -813,7 +860,6 @@ Json::Value DobbySpecGenerator::createNetworkPlugin(const ApplicationConfigurati
         }
     }
     */
-    pluginObj["data"] = std::move(dataObj);
 
     return pluginObj;
 }
@@ -950,7 +996,8 @@ Json::Value DobbySpecGenerator::createIonMemoryPlugin() const
     return plugin;
 }
 
-Json::Value DobbySpecGenerator::createThunderPlugin(const ApplicationConfiguration& config) const
+Json::Value DobbySpecGenerator::createThunderPlugin(const ApplicationConfiguration& config,
+                                                    const std::vector<std::pair<std::string, std::string>>& capabilities) const
 {
     static const Json::StaticString dependsOn("dependsOn");
     static const Json::StaticString bearerUrl("bearerUrl");
@@ -966,20 +1013,16 @@ Json::Value DobbySpecGenerator::createThunderPlugin(const ApplicationConfigurati
     dependencies.append("networking");
     plugin[dependsOn] = std::move(dependencies);
 
-    //TODO SUPPORT Runtime config to check for localservices1,localservices2,localservices3,localservices4
-    /*
-    if (package->hasCapability(IPackage::Capability::LocalServices1))
+    if (hasCapability(capabilities, "local-services-1"))
         plugin[data][bearerUrl] = localServices1;
-    else if (package->hasCapability(IPackage::Capability::LocalServices2))
+    else if (hasCapability(capabilities, "local-services-2"))
         plugin[data][bearerUrl] = localServices2;
-    else if (package->hasCapability(IPackage::Capability::LocalServices3))
+    else if (hasCapability(capabilities, "local-services-3"))
         plugin[data][bearerUrl] = localServices3;
-    else if (package->hasCapability(IPackage::Capability::LocalServices4))
+    else if (hasCapability(capabilities, "local-services-4"))
         plugin[data][bearerUrl] = localServices4;
     else
         plugin[data][bearerUrl] = localServices5;
-    */
-    plugin[data][bearerUrl] = localServices2;
 
     return plugin;
 }
