@@ -368,12 +368,6 @@ public:
         percent = 55;
         return WPEFramework::Core::ERROR_NONE;
     }
-    WPEFramework::Core::hresult GetStorageDetails(uint32_t& quotaKB, uint32_t& usedKB) override
-    {
-        quotaKB = 0;
-        usedKB  = 0;
-        return WPEFramework::Core::ERROR_NONE;
-    }
     WPEFramework::Core::hresult RateLimit(const string& /*downloadId*/, const uint32_t& /*limit*/) override
     {
         return WPEFramework::Core::ERROR_NONE;

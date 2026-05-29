@@ -76,7 +76,6 @@ extern uint32_t Test_Impl_DeleteEmptyFileLocatorReturnsError();
 extern uint32_t Test_Impl_DeleteNonCurrentFileReturnsNone();
 extern uint32_t Test_Impl_DeleteNonExistentFileReturnsError();
 extern uint32_t Test_Impl_ProgressNoActiveDownloadReturnsError();
-extern uint32_t Test_Impl_GetStorageDetailsReturnsNone();
 extern uint32_t Test_Impl_RateLimitEmptyIdReturnsError();
 extern uint32_t Test_Impl_RateLimitNoActiveDownloadReturnsError();
 extern uint32_t Test_Impl_PickDownloadJobPriorityFirst();
@@ -194,7 +193,6 @@ int main()
     RUN_TEST(Test_Impl_DeleteNonCurrentFileReturnsNone);
     RUN_TEST(Test_Impl_DeleteNonExistentFileReturnsError);
     RUN_TEST(Test_Impl_ProgressNoActiveDownloadReturnsError);
-    RUN_TEST(Test_Impl_GetStorageDetailsReturnsNone);
     RUN_TEST(Test_Impl_RateLimitEmptyIdReturnsError);
     RUN_TEST(Test_Impl_RateLimitNoActiveDownloadReturnsError);
 

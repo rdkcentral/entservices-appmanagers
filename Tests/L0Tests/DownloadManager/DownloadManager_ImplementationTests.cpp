@@ -28,7 +28,6 @@
  *   - Pause / Resume / Cancel (empty ID, no active download, mismatch, success)
  *   - Delete (non-current file, in-progress file, empty locator, non-existent file)
  *   - Progress (match, no active, mismatch)
- *   - GetStorageDetails (stub returns ERROR_NONE)
  *   - RateLimit (empty ID, mismatch, success)
  *   - pickDownloadJob (priority precedence, both empty, regular fallback)
  *   - notifyDownloadStatus (fires all notifications, includes/omits failReason)
@@ -777,24 +776,6 @@ uint32_t Test_Impl_ProgressNoActiveDownloadReturnsError()
     const auto result = impl->Progress("2001", percent);
     L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
         "Progress() with no active download returns ERROR_GENERAL");
-
-    impl->Release();
-    return tr.failures;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// GetStorageDetails returns ERROR_NONE (stub)
-// ─────────────────────────────────────────────────────────────────────────────
-
-uint32_t Test_Impl_GetStorageDetailsReturnsNone()
-{
-    L0Test::TestResult tr;
-
-    auto* impl = CreateImpl();
-    uint32_t quotaKB = 99, usedKB = 99;
-    const auto result = impl->GetStorageDetails(quotaKB, usedKB);
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
-        "GetStorageDetails() stub returns ERROR_NONE");
 
     impl->Release();
     return tr.failures;
