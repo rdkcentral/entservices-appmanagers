@@ -297,7 +297,15 @@ namespace WPEFramework
                     context->setRequestType(REQUEST_TYPE_PAUSE);
                 break;
                 case Exchange::ILifecycleManager::LifecycleState::SUSPENDED:
-                    context->setRequestType(REQUEST_TYPE_SUSPEND);
+                    if (context->getCurrentLifecycleState() == Exchange::ILifecycleManager::LifecycleState::HIBERNATED)
+                    {
+                        context->setRequestTime(requestTime);
+                        context->setRequestType(REQUEST_TYPE_WAKE);
+                    }
+                    else
+                    {
+                        context->setRequestType(REQUEST_TYPE_SUSPEND);
+                    }
                 break;
                 case Exchange::ILifecycleManager::LifecycleState::HIBERNATED:
                     context->setRequestType(REQUEST_TYPE_HIBERNATE);
@@ -752,3 +760,4 @@ namespace WPEFramework
 
     } /* namespace Plugin */
 } /* namespace WPEFramework */
+
