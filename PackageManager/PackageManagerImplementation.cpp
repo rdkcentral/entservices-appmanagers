@@ -1117,28 +1117,37 @@ namespace Plugin {
             if (pmResult == packagemanager::SUCCESS) {
                 LOGINFO("Package installation successful, now creating storage");
                 
+                // Set state based on Install() result
+                state.installState = InstallState::INSTALLED;
+                result = Core::ERROR_NONE;
+                
                 // Step 2: Create storage only after successful installation
                 string path = "";
                 string errorReason = "";
                 if(mStorageManagerObject->CreateStorage(packageId, STORAGE_MAX_SIZE, path, errorReason) == Core::ERROR_NONE) {
                     LOGINFO("CreateStorage successful, path [%s]", path.c_str());
-                    result = Core::ERROR_NONE;
-                    state.installState = InstallState::INSTALLED;
                     LOGDBG("Package: %s Version: %s installed successfully", packageId.c_str(), version.c_str());
                 } else {
                     LOGERR("CreateStorage failed after successful Install, errorReason [%s]", errorReason.c_str());
                     state.failReason = FailReason::PERSISTENCE_FAILURE;
-                    state.installState = InstallState::INSTALL_FAILURE;
                     
                     // Rollback: Uninstall the package since storage creation failed
                     LOGWARN("Rolling back package installation due to storage creation failure");
                     packagemanager::Result uninstallResult = packageImpl->Uninstall(packageId);
                     if (uninstallResult != packagemanager::SUCCESS) {
                         LOGERR("Failed to rollback uninstall for packageId: %s", packageId.c_str());
+                        LOGWARN("Package remains installed at /opt/apps/ without persistent storage");
+                        // Keep INSTALLED state - package physically exists and can be launched
+                        // failReason already set to PERSISTENCE_FAILURE above
+                        result = Core::ERROR_GENERAL;
                     } else {
                         LOGINFO("Successfully rolled back installation for packageId: %s", packageId.c_str());
+                        // Rollback succeeded - package is gone, mark as failure
+                        state.installState = InstallState::INSTALL_FAILURE;
+                        result = Core::ERROR_GENERAL;
                     }
                 }
+                // Send notification after CreateStorage attempt
                 NotifyInstallStatus(packageId, version, state);
             } else {
                 // Package installation failed, no storage created
