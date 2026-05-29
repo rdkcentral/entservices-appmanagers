@@ -69,10 +69,8 @@ namespace WPEFramework
             ApplicationContext* context = getContext();
             if (Exchange::ILifecycleManager::LifecycleState::INITIALIZING == context->getCurrentLifecycleState())
 	    {
-                //TODO : Remove wait for now
-                //context->mPendingEventName = "";
-                //context->mPendingStateTransition = true;
-                //sem_wait(&context->mAppReadySemaphore);
+                context->mPendingEventName = "onAppReady";
+                context->mPendingStateTransition = true;
                 ret = true;
 	    }
 	    else if (Exchange::ILifecycleManager::LifecycleState::SUSPENDED == context->getCurrentLifecycleState())
@@ -133,7 +131,6 @@ namespace WPEFramework
 	    bool ret = false;
             //TODO : Remove wait for now
             //ApplicationContext* context = getContext();
-            //sem_wait(&context->mAppReadySemaphore);
             RuntimeManagerHandler* runtimeManagerHandler = RequestHandler::getInstance()->getRuntimeManagerHandler();
 	    if (nullptr != runtimeManagerHandler)
 	    {

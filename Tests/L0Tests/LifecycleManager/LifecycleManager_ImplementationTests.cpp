@@ -538,7 +538,7 @@ uint32_t Test_Impl_AppReadyUnknownAppId()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// AppReady posts semaphore for known appId
+// AppReady returns ERROR_NONE for known appId
 // ─────────────────────────────────────────────────────────────────────────────
 
 uint32_t Test_Impl_AppReadyKnownAppId()
@@ -555,11 +555,6 @@ uint32_t Test_Impl_AppReadyKnownAppId()
     WPEFramework::Core::hresult result = impl.AppReady("com.test.ready");
     L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
         "AppReady returns ERROR_NONE for known appId");
-
-    // Verify semaphore was posted by attempting a trywait
-    int semResult = sem_trywait(&ctx->mAppReadySemaphore);
-    L0Test::ExpectEqU32(tr, static_cast<uint32_t>(semResult), 0u,
-        "mAppReadySemaphore was posted by AppReady");
 
     LifecycleManagerImplementationTest::getLoadedApps(impl).clear();
 
