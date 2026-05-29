@@ -175,6 +175,7 @@ extern uint32_t Test_RalfOCIConfigGenerator_GenerateFailsWhenGraphicsConfigMissi
 extern uint32_t Test_RalfOCIConfigGenerator_GenerateWithMockBaseSpec();
 extern uint32_t Test_RalfOCIConfigGenerator_MultipleGenerateCallsDoNotCrash();
 extern uint32_t Test_RalfOCIConfigGenerator_GenerateWithDifferentAppInstances();
+extern uint32_t Test_RalfOCIConfigGenerator_LogPathSetCorrectlyInOCIConfig();
 
 // ── Gateway/ContainerUtils tests ─────────────────────────────────────────────
 extern uint32_t Test_ContainerUtils_GetContainerIpAddress_UnknownContainerReturnsZero();
@@ -238,6 +239,9 @@ extern uint32_t Test_DobbySpecGenerator_GenerateSysMemLimitZeroFallsBack();
 extern uint32_t Test_DobbySpecGenerator_GenerateWithNonEmptyAppPorts();
 extern uint32_t Test_DobbySpecGenerator_GetVpuEnabledReturnsFalseForSystemApp();
 extern uint32_t Test_DobbySpecGenerator_GenerateWithEnvVariablesInRuntimeConfig();
+extern uint32_t Test_DobbySpecGenerator_GenerateThunderPluginFromCapabilities();
+extern uint32_t Test_DobbySpecGenerator_GenerateDialEnvFromEscapedCapabilityValue();
+extern uint32_t Test_DobbySpecGenerator_GenerateWithEmptyCapabilitiesString();
 
 int main()
 {
@@ -386,6 +390,9 @@ int main()
         { "DobbySpecGenerator_GenerateWithNonEmptyAppPorts",                         Test_DobbySpecGenerator_GenerateWithNonEmptyAppPorts },
         { "DobbySpecGenerator_GetVpuEnabledReturnsFalseForSystemApp",                Test_DobbySpecGenerator_GetVpuEnabledReturnsFalseForSystemApp },
         { "DobbySpecGenerator_GenerateWithEnvVariablesInRuntimeConfig",              Test_DobbySpecGenerator_GenerateWithEnvVariablesInRuntimeConfig },
+        { "DobbySpecGenerator_GenerateThunderPluginFromCapabilities",                Test_DobbySpecGenerator_GenerateThunderPluginFromCapabilities },
+        { "DobbySpecGenerator_GenerateDialEnvFromEscapedCapabilityValue",            Test_DobbySpecGenerator_GenerateDialEnvFromEscapedCapabilityValue },
+        { "DobbySpecGenerator_GenerateWithEmptyCapabilitiesString",                  Test_DobbySpecGenerator_GenerateWithEmptyCapabilitiesString },
 
         // ── ralf/RalfSupport tests ───────────────────────────────────────────
         { "Ralf_ParseMemorySize_EmptyStringReturnsZero",                             Test_Ralf_ParseMemorySize_EmptyStringReturnsZero },
@@ -450,6 +457,7 @@ int main()
         { "RalfOCIConfigGenerator_GenerateWithMockBaseSpec",                         Test_RalfOCIConfigGenerator_GenerateWithMockBaseSpec },
         { "RalfOCIConfigGenerator_MultipleGenerateCallsDoNotCrash",                  Test_RalfOCIConfigGenerator_MultipleGenerateCallsDoNotCrash },
         { "RalfOCIConfigGenerator_GenerateWithDifferentAppInstances",                Test_RalfOCIConfigGenerator_GenerateWithDifferentAppInstances },
+        { "RalfOCIConfigGenerator_LogPathSetCorrectlyInOCIConfig",                   Test_RalfOCIConfigGenerator_LogPathSetCorrectlyInOCIConfig },
 
         // ── Gateway/ContainerUtils tests ─────────────────────────────────────
         { "ContainerUtils_GetContainerIpAddress_UnknownContainerReturnsZero",        Test_ContainerUtils_GetContainerIpAddress_UnknownContainerReturnsZero },

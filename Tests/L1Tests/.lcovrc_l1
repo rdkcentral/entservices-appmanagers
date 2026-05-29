@@ -144,7 +144,7 @@ geninfo_auto_base = 1
 geninfo_intermediate = auto
 
 # Specify if exception branches should be excluded from branch coverage.
-geninfo_no_exception_branch = 0
+geninfo_no_exception_branch = 1
 
 # Directory containing gcov kernel files
 # lcov_gcov_dir = /proc/gcov
@@ -178,4 +178,4 @@ lcov_list_truncate_max = 20
 lcov_function_coverage = 1
 
 # Specify if branch coverage data should be collected and processed.
-lcov_branch_coverage = 0
+lcov_branch_coverage = 1
