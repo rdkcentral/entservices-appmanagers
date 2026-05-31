@@ -795,7 +795,7 @@ namespace Plugin {
         }
         runtimeConfig.capabilities = config.capabilities;
         // Preserve legacy runtimePackage->runtime()=="runtime/html" intent without schema changes.
-        if (config.runtimeType == "html")
+        if ("html" == config.runtimeType)
         {
             const std::string runtimeHtmlCapability = "runtime-html";
             if (runtimeConfig.capabilities.find(runtimeHtmlCapability) == std::string::npos)
