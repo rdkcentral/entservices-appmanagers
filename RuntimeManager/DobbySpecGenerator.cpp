@@ -218,7 +218,7 @@ bool DobbySpecGenerator::generate(const ApplicationConfiguration& config, const 
     {
         Json::Value consoleObj;
         consoleObj["path"] = runtimeConfig.logFilePath;
-        consoleObj["limit"] = (runtimeConfig.logFileMaxSize > 0)
+        consoleObj["limit"] = (0 < runtimeConfig.logFileMaxSize)
             ? runtimeConfig.logFileMaxSize
             : static_cast<uint32_t>(mAIConfiguration->getContainerConsoleLogCap());
         spec["console"] = std::move(consoleObj);

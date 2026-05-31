@@ -67,12 +67,11 @@ namespace WPEFramework
 	{
 	    bool ret = false;
             ApplicationContext* context = getContext();
-            if (Exchange::ILifecycleManager::LifecycleState::INITIALIZING == context->getCurrentLifecycleState())
-	    {
-                context->mPendingEventName = "onAppReady";
-                context->mPendingStateTransition = true;
+            if (Exchange::ILifecycleManager::LifecycleState::INITIALIZING == context->getCurrentLifecycleState(
+))
+            {
                 ret = true;
-	    }
+            }
 	    else if (Exchange::ILifecycleManager::LifecycleState::SUSPENDED == context->getCurrentLifecycleState())
 	    {
                 RuntimeManagerHandler* runtimeManagerHandler = RequestHandler::getInstance()->getRuntimeManagerHandler();
