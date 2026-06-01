@@ -3,6 +3,7 @@
 #include <string>
 #include <cstring>
 #include <thread>
+#include <set>
 #include "AppStorageManager.h"
 #include "AppStorageManagerImplementation.h"
 #include "ServiceMock.h"
@@ -97,6 +98,15 @@ class AppStorageManagerTest : public ::testing::Test {
 
             ON_CALL(*p_wrapsImplMock, stat(_, _))
                 .WillByDefault([](const char* path, struct stat* info) {
+                    // Initialize st_mode to indicate it's a directory (fixes TOCTOU-safe mkdirRecursive checks)
+                    if (nullptr == info) {
+                        return -1;
+                    }
+                    std::memset(info, 0, sizeof(*info));
+                    // Initialize stat fields deterministically for callers that read ownership metadata.
+                    info->st_mode = S_IFDIR | 0755;
+                    info->st_uid = 0;
+                    info->st_gid = 0;
                     return 0;
             });
 
@@ -258,6 +268,103 @@ TEST_F(StorageManagerTest, CreateStoragemkdirFail_Failure){
 }
 
 /*
+    CreateStorage_MissingParentDirectories_Success test verifies recursive directory creation
+    when parent directories don't exist (tests mkdirRecursive functionality).
+    This simulates the accelerator device scenario where the filesystem layout may not be
+    pre-populated at plugin startup. The test mocks mkdir to initially fail with ENOENT
+    (parent doesn't exist), then succeed as the recursive creation builds the directory tree.
+    It verifies that CreateStorage successfully creates deep nested paths even when 
+    intermediate parent directories are missing.
+*/
+TEST_F(StorageManagerTest, CreateStorage_MissingParentDirectories_Success){
+    std::string appId = "newTestApp";  // Use unique appId not cached by fixture
+    uint32_t size = 1024;
+    std::string path = "";
+    std::string errorReason = "";
+    
+    int mkdirCallCount = 0;
+    std::set<std::string> createdDirs;
+    
+    // Simulate mkdir: fails with ENOENT if parent doesn't exist, succeeds otherwise
+    EXPECT_CALL(*p_wrapsImplMock, mkdir(_, _))
+        .WillRepeatedly([&mkdirCallCount, &createdDirs](const char* path, mode_t mode) -> int {
+            mkdirCallCount++;
+            std::string pathStr(path);
+            TEST_LOG("mkdir called for: %s (call #%d)", path, mkdirCallCount);
+            
+            // Check if parent directory exists
+            size_t lastSlash = pathStr.find_last_of('/');
+            if (lastSlash != std::string::npos && lastSlash > 0) {
+                std::string parent = pathStr.substr(0, lastSlash);
+                // Treat only /opt as pre-existing to test multi-level recursion
+                if (parent != "/opt" && createdDirs.find(parent) == createdDirs.end()) {
+                    errno = ENOENT;
+                    return -1;
+                }
+            }
+            
+            // Success - mark as created
+            createdDirs.insert(std::move(pathStr));
+            return 0;
+        });
+    
+    // Mock stat: only called if mkdir returns EEXIST (not in this test scenario)
+    EXPECT_CALL(*p_wrapsImplMock, stat(_, _))
+        .WillRepeatedly([](const char* path, struct stat* buf) {
+            buf->st_mode = S_IFDIR | 0755;
+            buf->st_uid = 1000;
+            buf->st_gid = 1000;
+            return 0;
+        });
+    
+    // Mock other required functions for successful storage creation
+    EXPECT_CALL(*p_wrapsImplMock, access(_, _))
+        .WillRepeatedly(Return(0));
+        
+    EXPECT_CALL(*p_wrapsImplMock, statvfs(_, _))
+        .WillRepeatedly([](const char* path, struct statvfs* buf) {
+            buf->f_bsize = 4096;
+            buf->f_frsize = 4096;
+            buf->f_blocks = 100000;
+            buf->f_bfree = 500000;
+            buf->f_bavail = 500000;
+            return 0;
+        });
+    
+    ON_CALL(*p_wrapsImplMock, nftw(_, _, _, _))
+        .WillByDefault([](const char* dirpath, int (*fn)(const char*, const struct stat*, int, struct FTW*), int nopenfd, int flags) {
+            return 0;
+        });
+    
+    ON_CALL(*mStore2Mock, SetValue(_, _, _, _, _))
+        .WillByDefault(Invoke([](Exchange::IStore2::ScopeType scope,
+                                const std::string& appId,
+                                const std::string& key,
+                                const std::string& value,
+                                const uint32_t ttl) -> uint32_t {
+            return Core::ERROR_NONE;
+        }));
+    
+    // Execute CreateStorage - should succeed with recursive directory creation
+    EXPECT_EQ(Core::ERROR_NONE, interface->CreateStorage(appId, size, path, errorReason));
+    EXPECT_TRUE(errorReason.empty());
+    
+    // Verify recursive directory creation: must create parent (/opt/persistent),
+    // base (/opt/persistent/storageManager), and app dir (total >= 3)
+    EXPECT_GE(mkdirCallCount, 3);
+    
+    // Verify intermediate directories were actually created
+    EXPECT_NE(createdDirs.find("/opt/persistent"), createdDirs.end()) 
+        << "Parent directory /opt/persistent should have been created";
+    EXPECT_NE(createdDirs.find("/opt/persistent/storageManager"), createdDirs.end()) 
+        << "Base directory /opt/persistent/storageManager should have been created";
+    EXPECT_NE(createdDirs.find("/opt/persistent/storageManager/newTestApp"), createdDirs.end()) 
+        << "App directory should have been created";
+    
+    TEST_LOG("CreateStorage_MissingParentDirectories_Success: Created %d directory levels", mkdirCallCount);
+}
+
+/*
     CreateStorage_PathDoesNotExists_Success test checks the successful creation of storage for a given appId when the path does not exist.
     Creates a mock environment where the necessary functions like mkdir, access, nftw, statvfs, and stat are set up to simulate a successful resutls.
     It verifies that the CreateStorage method returns a success code and the errorReason is empty.
@@ -299,9 +406,12 @@ TEST_F(StorageManagerTest, CreateStorage_PathDoesNotExists_Success){
             return 0;
     });
 
-    ON_CALL(*p_wrapsImplMock, stat(_, _))
-        .WillByDefault([](const char* path, struct stat* info) {
-            // Simulate success
+    EXPECT_CALL(*p_wrapsImplMock, stat(_, _))
+        .WillRepeatedly([](const char* path, struct stat* info) {
+            // Simulate directory exists
+            info->st_mode = S_IFDIR | 0755;
+            info->st_uid = 1000;
+            info->st_gid = 1000;
             return 0;
     });
     
@@ -364,7 +474,8 @@ TEST_F(StorageManagerTest, CreateStorage_Success){
 
     ON_CALL(*p_wrapsImplMock, stat(_, _))
         .WillByDefault([](const char* path, struct stat* info) {
-            // Simulate success
+            // Simulate directory exists
+            info->st_mode = S_IFDIR | 0755;
             return 0;
     });
     
@@ -607,7 +718,8 @@ TEST_F(StorageManagerTest, DeleteStorage_rmdirFilure){
 
     EXPECT_CALL(*p_wrapsImplMock, rmdir(_))
         .WillRepeatedly([](const char* pathname) {
-            // Simulate failure
+            // Simulate failure with EEXIST (File exists)
+            errno = EEXIST;
             return -1;
     });
 
@@ -811,20 +923,24 @@ TEST_F(StorageManagerTest, test_clearall_failure_json){
     });
     EXPECT_CALL(*p_wrapsImplMock, nftw(_, _, _, _))
         .WillOnce([](const char* dirpath, int (*fn)(const char*, const struct stat*, int, struct FTW*), int nopenfd, int flags) {
-            // Simulate success
+            // Call  #1: hasEnoughStorageFreeSpace for testApp creation (checking existing testApp from fixture)
             return 0;
         })
         .WillOnce([](const char* dirpath, int (*fn)(const char*, const struct stat*, int, struct FTW*), int nopenfd, int flags) {
-            // Simulate success
+            // Call #2: hasEnoughStorageFreeSpace for testexempt creation (checking testApp)
             return 0;
         })
         .WillOnce([](const char* dirpath, int (*fn)(const char*, const struct stat*, int, struct FTW*), int nopenfd, int flags) {
-            // Simulate success
+            // Call #3: hasEnoughStorageFreeSpace for testexempt creation (checking testexempt being added)
             return 0;
         })
         .WillOnce([](const char* dirpath, int (*fn)(const char*, const struct stat*, int, struct FTW*), int nopenfd, int flags) {
-            // Simulate success
-            return -1;
+            // Call #4: clearAll reading directory sizes 
+            return 0;
+        })
+        .WillOnce([](const char* dirpath, int (*fn)(const char*, const struct stat*, int, struct FTW*), int nopenfd, int flags) {
+            //Call #5: clearAll - deleteDirectoryEntries for testApp (should fail)
+            return -1;  // Simulate failure
     });
 
     EXPECT_CALL(*p_wrapsImplMock, statvfs(_, _))
@@ -1026,6 +1142,8 @@ TEST_F(AppStorageManagerTest, CreateStorage_JsonRpc_Success) {
     });
     ON_CALL(*p_wrapsImplMock, stat(_, _))
         .WillByDefault([](const char* path, struct stat* info) {
+            // Simulate directory exists
+            info->st_mode = S_IFDIR | 0755;
             return 0;
     });
     ON_CALL(*mStore2Mock, SetValue(_, _, _, _, _))
@@ -1783,6 +1901,11 @@ TEST_F(AppStorageManagerTest, CreateStorage_LargeSize) {
         .WillRepeatedly([](const char* path, mode_t mode) {
             errno = EEXIST;
             return -1;
+    });
+    EXPECT_CALL(*p_wrapsImplMock, stat(_, _))
+        .WillRepeatedly([](const char* path, struct stat* buf) {
+            buf->st_mode = S_IFDIR | 0755;
+            return 0;
     });
     ON_CALL(*p_wrapsImplMock, access(_, _))
         .WillByDefault([](const char* path, int mode) {
@@ -2681,6 +2804,11 @@ TEST_F(AppStorageManagerTest, CreateStorage_StatvfsException) {
             errno = EEXIST;
             return -1;
         });
+    EXPECT_CALL(*p_wrapsImplMock, stat(_, _))
+        .WillRepeatedly([](const char* path, struct stat* buf) {
+            buf->st_mode = S_IFDIR | 0755;
+            return 0;
+        });
     EXPECT_CALL(*p_wrapsImplMock, access(_, _))
         .WillRepeatedly([](const char* path, int mode) {
             return -1;
@@ -3232,6 +3360,11 @@ TEST_F(AppStorageManagerTest, CreateStorage_StatvfsReturnsError) {
             errno = EEXIST;
             return -1;
         });
+    EXPECT_CALL(*p_wrapsImplMock, stat(_, _))
+        .WillRepeatedly([](const char* path, struct stat* buf) {
+            buf->st_mode = S_IFDIR | 0755;
+            return 0;
+        });
     EXPECT_CALL(*p_wrapsImplMock, access(_, _))
         .WillRepeatedly([](const char* path, int mode) {
             return -1;
@@ -3606,6 +3739,11 @@ TEST_F(AppStorageManagerTest, CreateStorage_Positive_DirectoryAlreadyExists) {
         .WillRepeatedly([](const char* path, mode_t mode) {
             errno = EEXIST;
             return -1;
+        });
+    EXPECT_CALL(*p_wrapsImplMock, stat(_, _))
+        .WillRepeatedly([](const char* path, struct stat* buf) {
+            buf->st_mode = S_IFDIR | 0755;
+            return 0;
         });
     EXPECT_CALL(*p_wrapsImplMock, access(_, _))
         .WillRepeatedly([](const char* path, int mode) {
