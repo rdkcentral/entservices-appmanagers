@@ -260,13 +260,12 @@ namespace WPEFramework
         }
 
         /* PreloadApp invokes it */
-        Core::hresult LifecycleInterfaceConnector::preLoadApp(const string& appId, const string& launchArgs, WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject, string& error)
+        Core::hresult LifecycleInterfaceConnector::preLoadApp(const string& appId, const string& intent, const string& launchArgs, WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject, string& error)
         {
             Core::hresult status = Core::ERROR_GENERAL;
             AppManagerImplementation *appManagerImplInstance = AppManagerImplementation::getInstance();
             AppManagerTelemetryReporting& appManagerTelemetryReporting =AppManagerTelemetryReporting::getInstance();
 
-            string intent = "";
 
             string appInstanceId = "";
             bool success = true;
@@ -305,6 +304,7 @@ namespace WPEFramework
                                 Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED;
                             AppInfoManager::getInstance().upsert(appId, [&](AppInfo& a) {
                                 a.setAppInstanceId(capturedInstanceId);
+								a.setAppIntent(intent);
                                 a.getPackageInfoMutable().type = AppManagerTypes::APPLICATION_TYPE_INTERACTIVE;
                                 a.setTargetAppState(targetState);
                             });
