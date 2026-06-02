@@ -505,9 +505,21 @@ namespace Plugin {
                     } else {
                         // Package uninstallation failed, storage remains intact
                         LOGERR("Uninstall failed with result: %d", pmResult);
-                        packageFailureErrorCode = (pmResult == packagemanager::Result::VERSION_MISMATCH) ?
-                            PackageManagerImplementation::PackageFailureErrorCode::ERROR_PACKAGE_MISMATCH_FAILURE : 
-                            PackageManagerImplementation::PackageFailureErrorCode::ERROR_SIGNATURE_VERIFICATION_FAILURE;
+                        switch (pmResult) {
+                            case packagemanager::Result::VERSION_MISMATCH:
+                                packageFailureErrorCode = PackageManagerImplementation::PackageFailureErrorCode::ERROR_PACKAGE_MISMATCH_FAILURE;
+                                break;
+                            case packagemanager::Result::PERSISTENCE_FAILURE:
+                                packageFailureErrorCode = PackageManagerImplementation::PackageFailureErrorCode::ERROR_PERSISTENCE_FAILURE;
+                                break;
+                            case packagemanager::Result::VERIFICATION_FAILURE:
+                                packageFailureErrorCode = PackageManagerImplementation::PackageFailureErrorCode::ERROR_SIGNATURE_VERIFICATION_FAILURE;
+                                break;
+                            case packagemanager::Result::FAILED:
+                            default:
+                                packageFailureErrorCode = PackageManagerImplementation::PackageFailureErrorCode::ERROR_INVALID_METADATA_FAILURE;
+                                break;
+                        }
                     }
                 }
             } else {
@@ -1116,7 +1128,17 @@ namespace Plugin {
             
             if (pmResult == packagemanager::SUCCESS) {
                 LOGINFO("Package installation successful, now creating storage");
-                
+
+                // Populate state from returned config (mirrors InitializeState())
+                getRuntimeConfig(config, state.runtimeConfig);
+                state.runtimeType = config.runtimeType;
+                std::map<std::string, std::pair<std::string, std::string>>::iterator itRuntime = runtimeMap.find(state.runtimeType);
+                if (itRuntime != runtimeMap.end()) {
+                    state.runtimeApp = itRuntime->second;
+                } else {
+                    LOGDBG("Runtime not found for packageId: %s type: %s", packageId.c_str(), state.runtimeType.c_str());
+                }
+
                 // Set state based on Install() result
                 state.installState = InstallState::INSTALLED;
                 result = Core::ERROR_NONE;
@@ -1129,6 +1151,7 @@ namespace Plugin {
                     LOGDBG("Package: %s Version: %s installed successfully", packageId.c_str(), version.c_str());
                 } else {
                     LOGERR("CreateStorage failed after successful Install, errorReason [%s]", errorReason.c_str());
+                    state.installState = InstallState::INSTALL_FAILURE;
                     state.failReason = FailReason::PERSISTENCE_FAILURE;
                     
                     // Rollback: Uninstall the package since storage creation failed
@@ -1136,14 +1159,10 @@ namespace Plugin {
                     packagemanager::Result uninstallResult = packageImpl->Uninstall(packageId);
                     if (uninstallResult != packagemanager::SUCCESS) {
                         LOGERR("Failed to rollback uninstall for packageId: %s", packageId.c_str());
-                        LOGWARN("Package remains installed at /opt/apps/ without persistent storage");
-                        // Keep INSTALLED state - package physically exists and can be launched
-                        // failReason already set to PERSISTENCE_FAILURE above
+                        LOGWARN("Package artifacts may remain at /opt/apps/ without persistent storage");
                         result = Core::ERROR_GENERAL;
                     } else {
                         LOGINFO("Successfully rolled back installation for packageId: %s", packageId.c_str());
-                        // Rollback succeeded - package is gone, mark as failure
-                        state.installState = InstallState::INSTALL_FAILURE;
                         result = Core::ERROR_GENERAL;
                     }
                 }
@@ -1233,3 +1252,4 @@ namespace Plugin {
 
 } // namespace Plugin
 } // namespace WPEFramework
+
