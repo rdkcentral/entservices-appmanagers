@@ -21,6 +21,7 @@
 #include "AppInfoManager.h"
 #include "UtilsLogging.h"
 #include "tracing/Logging.h"
+#include <utility>
 
 namespace WPEFramework
 {
@@ -99,31 +100,36 @@ namespace Plugin
 
             if(!markerName.empty())
             {
-                jsonParam.ToString(telemetryMetrics);
-                if(!telemetryMetrics.empty())
+                const bool shouldPublishCloseOnRecord =
+                    (AppManagerImplementation::APP_ACTION_CLOSE == currentAction) &&
+                    (Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED != telSnap.getTargetAppState()) &&
+                    (Exchange::IAppManager::AppLifecycleState::APP_STATE_HIBERNATED != telSnap.getTargetAppState());
+
+                if (shouldPublishCloseOnRecord)
                 {
-                    getTelemetryClient().record(appId, telemetryMetrics, markerName);
                     /* For Close flow that keeps app in PAUSED (non-suspendable apps),
                      * there may be no UNLOADED state transition to trigger publish later.
                      * Publish close telemetry here to ensure AppCloseTime is reported to T2.
                      */
-                    if ((AppManagerImplementation::APP_ACTION_CLOSE == currentAction) &&
-                        (Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED != telSnap.getTargetAppState()) &&
-                        (Exchange::IAppManager::AppLifecycleState::APP_STATE_HIBERNATED != telSnap.getTargetAppState()))
-                    {
-                        JsonObject publishParam = jsonParam;
-                        publishParam["appId"] = appId;
-                        publishParam["appInstanceId"] = telSnap.getAppInstanceId();
-                        publishParam["appVersion"] = telSnap.getPackageInfo().version;
-                        publishParam["closeType"] = "CLOSE";
+                    JsonObject publishParam = std::move(jsonParam);
+                    publishParam["appId"] = appId;
+                    publishParam["appInstanceId"] = telSnap.getAppInstanceId();
+                    publishParam["appVersion"] = telSnap.getPackageInfo().version;
+                    publishParam["closeType"] = "CLOSE";
 
-                        std::string publishMetrics = "";
-                        publishParam.ToString(publishMetrics);
-                        if(!publishMetrics.empty())
-                        {
-                            getTelemetryClient().record(appId, publishMetrics, markerName);
-                            getTelemetryClient().publish(appId, markerName);
-                        }
+                    publishParam.ToString(telemetryMetrics);
+                    if(!telemetryMetrics.empty())
+                    {
+                        getTelemetryClient().record(appId, telemetryMetrics, markerName);
+                        getTelemetryClient().publish(appId, markerName);
+                    }
+                }
+                else
+                {
+                    jsonParam.ToString(telemetryMetrics);
+                    if(!telemetryMetrics.empty())
+                    {
+                        getTelemetryClient().record(appId, telemetryMetrics, markerName);
                     }
                 }
             }
