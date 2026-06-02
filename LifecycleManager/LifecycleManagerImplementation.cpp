@@ -297,7 +297,7 @@ namespace WPEFramework
                     context->setRequestType(REQUEST_TYPE_PAUSE);
                 break;
                 case Exchange::ILifecycleManager::LifecycleState::SUSPENDED:
-                    if (context->getCurrentLifecycleState() == Exchange::ILifecycleManager::LifecycleState::HIBERNATED)
+                    if (Exchange::ILifecycleManager::LifecycleState::HIBERNATED == context->getCurrentLifecycleState())
                     {
                         context->setRequestTime(requestTime);
                         context->setRequestType(REQUEST_TYPE_WAKE);
