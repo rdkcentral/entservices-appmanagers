@@ -501,7 +501,10 @@ namespace Plugin {
                             LOGWARN("Package binaries removed but storage remains at /opt/persistent/appstorage/%s", packageId.c_str());
                             packageFailureErrorCode = PackageManagerImplementation::PackageFailureErrorCode::ERROR_PERSISTENCE_FAILURE;
 
-                            // Package binaries are already removed; report uninstall success but surface persistence issue via telemetry/logs
+                            // Design decision: Return ERROR_NONE because primary operation (package removal) succeeded.
+                            // Storage cleanup is advisory; state accurately reflects UNINSTALLED.
+                            // Persistence failure is captured via telemetry for monitoring.
+                            // Returning error would mislead clients (package is gone, retry would fail).
                             result = Core::ERROR_NONE;
                             state.installState = InstallState::UNINSTALLED;
                             NotifyInstallStatus(packageId, version, state);
@@ -509,21 +512,32 @@ namespace Plugin {
                     } else {
                         // Package uninstallation failed, storage remains intact
                         LOGERR("Uninstall failed with result: %d", pmResult);
+                        result = Core::ERROR_GENERAL;
+                        state.installState = InstallState::UNINSTALL_FAILURE;
+                        
+                        // Map uninstall failure to fail reason for client notification
                         switch (pmResult) {
                             case packagemanager::Result::VERSION_MISMATCH:
                                 packageFailureErrorCode = PackageManagerImplementation::PackageFailureErrorCode::ERROR_PACKAGE_MISMATCH_FAILURE;
+                                state.failReason = FailReason::PACKAGE_MISMATCH_FAILURE;
                                 break;
                             case packagemanager::Result::PERSISTENCE_FAILURE:
                                 packageFailureErrorCode = PackageManagerImplementation::PackageFailureErrorCode::ERROR_PERSISTENCE_FAILURE;
+                                state.failReason = FailReason::PERSISTENCE_FAILURE;
                                 break;
                             case packagemanager::Result::VERIFICATION_FAILURE:
                                 packageFailureErrorCode = PackageManagerImplementation::PackageFailureErrorCode::ERROR_SIGNATURE_VERIFICATION_FAILURE;
+                                state.failReason = FailReason::SIGNATURE_VERIFICATION_FAILURE;
                                 break;
                             case packagemanager::Result::FAILED:
                             default:
                                 packageFailureErrorCode = PackageManagerImplementation::PackageFailureErrorCode::ERROR_INVALID_METADATA_FAILURE;
+                                state.failReason = FailReason::GENERAL_FAILURE;
                                 break;
                         }
+                        
+                        // Notify clients of uninstall failure
+                        NotifyInstallStatus(packageId, version, state);
                     }
                 }
             } else {
