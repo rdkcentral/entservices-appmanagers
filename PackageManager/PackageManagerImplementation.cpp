@@ -481,7 +481,11 @@ namespace Plugin {
                 }
                 ASSERT (nullptr != mStorageManagerObject);
                 if (nullptr != mStorageManagerObject) {
-                    // Step 1: Uninstall the package first (symmetric with Install flow)
+                    // Step 1: Notify that uninstall is in progress
+                    state.installState = InstallState::UNINSTALLING;
+                    NotifyInstallStatus(packageId, version, state);
+
+                    // Step 2: Uninstall the package first (symmetric with Install flow)
                     packagemanager::Result pmResult = packageImpl->Uninstall(packageId);
                     if (pmResult == packagemanager::SUCCESS) {
                         LOGINFO("Package uninstallation successful, now deleting storage");
