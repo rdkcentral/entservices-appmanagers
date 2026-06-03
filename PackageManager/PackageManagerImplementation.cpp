@@ -498,7 +498,7 @@ namespace Plugin {
                             NotifyInstallStatus(packageId, version, state);
                         } else {
                             LOGERR("DeleteStorage failed after successful Uninstall, errorReason [%s]", errorReason.c_str());
-                            LOGWARN("Package binaries removed but storage remains at /opt/persistent/appstorage/%s", packageId.c_str());
+                            LOGWARN("Package binaries removed but storage remains at /opt/persistent/storageManager/%s", packageId.c_str());
                             packageFailureErrorCode = PackageManagerImplementation::PackageFailureErrorCode::ERROR_PERSISTENCE_FAILURE;
 
                             // Design decision: Return ERROR_NONE because primary operation (package removal) succeeded.
