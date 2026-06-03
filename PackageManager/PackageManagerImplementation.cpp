@@ -496,9 +496,9 @@ namespace Plugin {
                             LOGERR("DeleteStorage failed after successful Uninstall, errorReason [%s]", errorReason.c_str());
                             LOGWARN("Package binaries removed but storage remains at /opt/persistent/appstorage/%s", packageId.c_str());
                             packageFailureErrorCode = PackageManagerImplementation::PackageFailureErrorCode::ERROR_PERSISTENCE_FAILURE;
-                            
-                            // Note: Package binaries are already removed, so we consider this a partial success
-                            // The orphaned storage can be cleaned up manually or by a maintenance task
+
+                            // Package binaries are already removed; report uninstall success but surface persistence issue via telemetry/logs
+                            result = Core::ERROR_NONE;
                             state.installState = InstallState::UNINSTALLED;
                             NotifyInstallStatus(packageId, version, state);
                         }
