@@ -795,15 +795,17 @@ End:
                 {
                     if(Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED == newAppState)
 		    {
-                        if (Exchange::IAppManager::AppLifecycleState::APP_STATE_TERMINATING == mAppCurrentActionList[appId])
+                        const bool appManagerInitiatedKill = (Exchange::IAppManager::AppLifecycleState::APP_STATE_TERMINATING == mAppCurrentActionList[appId]);
+                        const bool lifecycleManagerInitiatedKill = (Exchange::IAppManager::AppLifecycleState::APP_STATE_TERMINATING == oldAppState);
+                        if (appManagerInitiatedKill || lifecycleManagerInitiatedKill)
 			{
-			    //Normal close: Unlode event from App manager
+			    //Normal close: Unload event from App manager or LifecycleManager-initiated kill (e.g. KILL_AND_RUN)
 			    LOGINFO("Terminate event from plugin");
 			    appManagerImplInstance->handleOnAppLifecycleStateChanged(appId, appInstanceId, newAppState, oldAppState, Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE);
 			}
 			else
 			{
-			    //Upnormal close: No unload event from app manager
+			    //Abnormal close: No unload event from app manager
 			    LOGINFO("Terminate event due to app crash");
 			    appManagerImplInstance->handleOnAppLifecycleStateChanged(appId, appInstanceId, newAppState, oldAppState, Exchange::IAppManager::AppErrorReason::APP_ERROR_ABORT);
                 // Report crash telemetry when lifecycle event provides a valid app instance id.
@@ -919,3 +921,4 @@ End:
 
      } /* namespace Plugin */
 } /* namespace WPEFramework */
+
