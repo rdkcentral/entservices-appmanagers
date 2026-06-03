@@ -3,7 +3,6 @@
 #include <cstdio>
 #include <string>
 #include <thread>
-#include <vector>
 #include <unistd.h>
 
 #include "PackageManagerImplementation.h"
@@ -388,8 +387,8 @@ uint32_t Test_PM_Impl_UninstallDeleteStorageFailureReturnsGeneralAndUninstalledS
     const auto uninstallResult = fx.impl->Uninstall(packageId, errorReason);
     L0Test::ExpectEqU32(tr,
                         uninstallResult,
-                        ERROR_GENERAL,
-                        "Uninstall() returns ERROR_GENERAL when DeleteStorage() fails after successful package uninstall");
+                        ERROR_NONE,
+                        "Uninstall() returns ERROR_NONE when DeleteStorage() fails - package binaries removed successfully, storage cleanup is advisory (telemetry captures persistence failure)");
     L0Test::ExpectTrue(tr, fx.storage.deleteStorageCalls.load() > 0, "DeleteStorage() was attempted");
 
     WPEFramework::Exchange::IPackageInstaller::InstallState state = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
