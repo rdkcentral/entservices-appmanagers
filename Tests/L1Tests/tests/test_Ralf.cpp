@@ -60,16 +60,23 @@ struct RuntimeConfig {
     std::string logLevels;
     bool mapi;
     std::string fkpsFiles;
+    std::string capabilities;
     std::string ralfPkgPath;
 
     std::string fireboltVersion;
     bool enableDebugger;
 
-    ~RuntimeConfig() = default;
+    ~RuntimeConfig();
 };
 } // namespace Exchange
 } // namespace WPEFramework
 #endif
+
+namespace WPEFramework {
+namespace Exchange {
+RuntimeConfig::~RuntimeConfig() = default;
+} // namespace Exchange
+} // namespace WPEFramework
 
 // Include ralf support header
 #include "ralf/RalfSupport.h"
