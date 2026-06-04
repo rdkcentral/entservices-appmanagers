@@ -1605,14 +1605,17 @@ protected:
 
     void SetUp() override
     {
-        // Create temp directory with real syscalls before installing the mock.
+        // Create temp directory with real syscalls.  The mock is NOT installed
+        // here: even parse-failure paths through generateRalfDobbySpec trigger
+        // LOGDBG/LOGERR → syslog interception and cause stack-canary corruption
+        // when the mock is active at TestBody() return.  Tests that need the
+        // mock install it themselves; mount-dependent tests are GTEST_SKIP'd.
         mkdir(mTmpDir.c_str(), 0777);
-        InstallMock();
     }
 
     void TearDown() override
     {
-        RemoveMock();
+        RemoveMock(); // no-op when InstallMock() was never called
         ralf::removeDirectoryRecursively(mTmpDir);
     }
 
@@ -1839,14 +1842,18 @@ protected:
 
     void SetUp() override
     {
-        // Create temp directory before mock intercepts mkdir.
+        // Create temp directory with real syscalls.  The mock is NOT installed
+        // here for the same reason as RalfGenerateOCIRootfsPackageTest: having
+        // the mock active during generateRalfDobbySpec (even on a parse-failure
+        // path) causes LOGDBG/LOGERR → syslog interception and stack-canary
+        // corruption at TestBody() return.  Mount-dependent tests are
+        // GTEST_SKIP'd before they reach any ON_CALL setup.
         mkdir(mTmpDir.c_str(), 0777);
-        InstallMock();
     }
 
     void TearDown() override
     {
-        RemoveMock();
+        RemoveMock(); // no-op when InstallMock() was never called
         ralf::removeDirectoryRecursively(mTmpDir);
     }
 
