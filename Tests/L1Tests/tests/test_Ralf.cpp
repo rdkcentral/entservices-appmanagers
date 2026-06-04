@@ -1585,3 +1585,492 @@ TEST_F(RalfOCIConfigGeneratorTest, GenerateRalfOCIConfig_ConfigOverridesNodePres
     ::remove(pkgMetaFile.c_str());
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Test suite for ralf::RalfPackageBuilder::generateOCIRootfsPackage
+//
+// generateOCIRootfsPackage is a private method; it is exercised indirectly
+// through generateRalfDobbySpec.  The key observation used by these tests is
+// that dobbySpec is assigned the ociRootfsPath value AFTER
+// generateOCIRootfsPackage succeeds but BEFORE RalfOCIConfigGenerator is
+// invoked.  Therefore a non-empty dobbySpec confirms that
+// generateOCIRootfsPackage returned true, regardless of whether the OCI
+// config-generator step subsequently fails.
+// ─────────────────────────────────────────────────────────────────────────────
+
+class RalfGenerateOCIRootfsPackageTest : public RalfMockedBaseTest
+{
+protected:
+    ralf::RalfPackageBuilder mBuilder;
+    const std::string mTmpDir = "/tmp/ralf_oci_rootfs_pkg_test";
+
+    void SetUp() override
+    {
+        // Create temp directory with real syscalls before installing the mock.
+        mkdir(mTmpDir.c_str(), 0777);
+        InstallMock();
+    }
+
+    void TearDown() override
+    {
+        RemoveMock();
+        ralf::removeDirectoryRecursively(mTmpDir);
+    }
+
+    // Write a pkg_info.json whose "packages" array is the supplied JSON fragment.
+    std::string writePkgInfoFile(const std::string &name, const std::string &packagesJson)
+    {
+        const std::string path = mTmpDir + "/" + name;
+        writeTextFile(path, R"({"packages":)" + packagesJson + "}");
+        return path;
+    }
+
+    WPEFramework::Plugin::ApplicationConfiguration makeConfig(
+        const std::string &instanceId = "test_rootfs_inst_001",
+        uint32_t uid = 0, uint32_t gid = 0)
+    {
+        WPEFramework::Plugin::ApplicationConfiguration cfg;
+        cfg.mAppInstanceId = instanceId;
+        cfg.mUserId        = uid;
+        cfg.mGroupId       = gid;
+        return cfg;
+    }
+
+    WPEFramework::Exchange::RuntimeConfig makeRuntimeConfig(const std::string &pkgPath)
+    {
+        WPEFramework::Exchange::RuntimeConfig rc;
+        rc.ralfPkgPath = pkgPath;
+        return rc;
+    }
+};
+
+/* Test Case: GenerateOCIRootfsPackage_EmptyPackages_MountFails
+ * Verifies that when the packages array is empty and mount() fails,
+ * generateOCIRootfsPackage (via generateRalfDobbySpec) returns false and
+ * the dobbySpec output remains empty.
+ */
+TEST_F(RalfGenerateOCIRootfsPackageTest, GenerateOCIRootfsPackage_EmptyPackages_MountFails)
+{
+    TEST_LOG("Testing generateOCIRootfsPackage with empty packages and mount failure");
+    const std::string pkgFile = writePkgInfoFile("empty_pkgs_fail.json", "[]");
+
+    ON_CALL(*mWrapsImplMock, mkdir(_, _)).WillByDefault(Return(0));
+    ON_CALL(*mWrapsImplMock, mount(_, _, _, _, _))
+        .WillByDefault(Invoke([](const char*, const char*, const char*, unsigned long, const void*) -> int {
+            errno = EPERM;
+            return -1;
+        }));
+
+    auto config = makeConfig("test_empty_pkg_mount_fail");
+    std::string dobbySpec;
+    bool result = mBuilder.generateRalfDobbySpec(config, makeRuntimeConfig(pkgFile), dobbySpec);
+
+    EXPECT_FALSE(result);
+    EXPECT_TRUE(dobbySpec.empty());
+}
+
+/* Test Case: GenerateOCIRootfsPackage_EmptyPackages_MountSucceeds
+ * Verifies that when the packages array is empty and mount() succeeds,
+ * generateOCIRootfsPackage succeeds: dobbySpec is set to a non-empty path
+ * that contains the appInstanceId.
+ */
+TEST_F(RalfGenerateOCIRootfsPackageTest, GenerateOCIRootfsPackage_EmptyPackages_MountSucceeds)
+{
+    TEST_LOG("Testing generateOCIRootfsPackage with empty packages and mount success");
+    const std::string pkgFile = writePkgInfoFile("empty_pkgs_ok.json", "[]");
+
+    ON_CALL(*mWrapsImplMock, mkdir(_, _)).WillByDefault(Return(0));
+    ON_CALL(*mWrapsImplMock, mount(_, _, _, _, _)).WillByDefault(Return(0));
+
+    auto config = makeConfig("test_empty_pkg_mount_ok");
+    std::string dobbySpec;
+    // Overall result may be false if OCIConfigGenerator fails (no stub files in test env),
+    // but dobbySpec must already be set when generateOCIRootfsPackage succeeds.
+    mBuilder.generateRalfDobbySpec(config, makeRuntimeConfig(pkgFile), dobbySpec);
+
+    EXPECT_FALSE(dobbySpec.empty());
+    EXPECT_NE(std::string::npos, dobbySpec.find("test_empty_pkg_mount_ok"));
+}
+
+/* Test Case: GenerateOCIRootfsPackage_SinglePackage_MountFails
+ * Verifies that with a single package entry in mRalfPackages, a mount()
+ * failure causes generateOCIRootfsPackage to return false, leaving
+ * dobbySpec empty.
+ */
+TEST_F(RalfGenerateOCIRootfsPackageTest, GenerateOCIRootfsPackage_SinglePackage_MountFails)
+{
+    TEST_LOG("Testing generateOCIRootfsPackage with single package and mount failure");
+    const std::string pkgFile = writePkgInfoFile("single_pkg_fail.json",
+        R"([{"pkgMetaDataPath": "/tmp/meta1.json", "pkgMountPath": "/mnt/ralf/pkg1"}])");
+
+    ON_CALL(*mWrapsImplMock, mkdir(_, _)).WillByDefault(Return(0));
+    ON_CALL(*mWrapsImplMock, mount(_, _, _, _, _))
+        .WillByDefault(Invoke([](const char*, const char*, const char*, unsigned long, const void*) -> int {
+            errno = EPERM;
+            return -1;
+        }));
+
+    auto config = makeConfig("test_single_pkg_mount_fail");
+    std::string dobbySpec;
+    bool result = mBuilder.generateRalfDobbySpec(config, makeRuntimeConfig(pkgFile), dobbySpec);
+
+    EXPECT_FALSE(result);
+    EXPECT_TRUE(dobbySpec.empty());
+}
+
+/* Test Case: GenerateOCIRootfsPackage_SinglePackage_MountSucceeds
+ * Verifies that with a single package entry and a successful mount(),
+ * generateOCIRootfsPackage sets ociRootfsPath and dobbySpec contains the
+ * appInstanceId, confirming the path was correctly constructed.
+ */
+TEST_F(RalfGenerateOCIRootfsPackageTest, GenerateOCIRootfsPackage_SinglePackage_MountSucceeds)
+{
+    TEST_LOG("Testing generateOCIRootfsPackage with single package and mount success");
+    const std::string pkgFile = writePkgInfoFile("single_pkg_ok.json",
+        R"([{"pkgMetaDataPath": "/tmp/meta1.json", "pkgMountPath": "/mnt/ralf/pkg1"}])");
+
+    ON_CALL(*mWrapsImplMock, mkdir(_, _)).WillByDefault(Return(0));
+    ON_CALL(*mWrapsImplMock, mount(_, _, _, _, _)).WillByDefault(Return(0));
+
+    auto config = makeConfig("test_single_pkg_mount_ok");
+    std::string dobbySpec;
+    mBuilder.generateRalfDobbySpec(config, makeRuntimeConfig(pkgFile), dobbySpec);
+
+    EXPECT_FALSE(dobbySpec.empty());
+    EXPECT_NE(std::string::npos, dobbySpec.find("test_single_pkg_mount_ok"));
+}
+
+/* Test Case: GenerateOCIRootfsPackage_MultiplePackages_MountFails
+ * Verifies that with multiple packages, mount() failure causes
+ * generateOCIRootfsPackage to return false.  The layers string is built by
+ * reverse-iterating mRalfPackages; the mount failure ensures this path
+ * returns false and dobbySpec remains empty.
+ */
+TEST_F(RalfGenerateOCIRootfsPackageTest, GenerateOCIRootfsPackage_MultiplePackages_MountFails)
+{
+    TEST_LOG("Testing generateOCIRootfsPackage with multiple packages and mount failure");
+    const std::string pkgFile = writePkgInfoFile("multi_pkg_fail.json",
+        R"([
+            {"pkgMetaDataPath": "/tmp/meta1.json", "pkgMountPath": "/mnt/ralf/pkg1"},
+            {"pkgMetaDataPath": "/tmp/meta2.json", "pkgMountPath": "/mnt/ralf/pkg2"},
+            {"pkgMetaDataPath": "/tmp/meta3.json", "pkgMountPath": "/mnt/ralf/pkg3"}
+        ])");
+
+    ON_CALL(*mWrapsImplMock, mkdir(_, _)).WillByDefault(Return(0));
+    ON_CALL(*mWrapsImplMock, mount(_, _, _, _, _))
+        .WillByDefault(Invoke([](const char*, const char*, const char*, unsigned long, const void*) -> int {
+            errno = EPERM;
+            return -1;
+        }));
+
+    auto config = makeConfig("test_multi_pkg_mount_fail");
+    std::string dobbySpec;
+    bool result = mBuilder.generateRalfDobbySpec(config, makeRuntimeConfig(pkgFile), dobbySpec);
+
+    EXPECT_FALSE(result);
+    EXPECT_TRUE(dobbySpec.empty());
+}
+
+/* Test Case: GenerateOCIRootfsPackage_MultiplePackages_MountSucceeds
+ * Verifies that with multiple packages and a successful mount(), the
+ * reverse-iteration of mRalfPackages to build the overlay lower-dir layer
+ * string does not crash and dobbySpec is populated with the ociRootfsPath.
+ */
+TEST_F(RalfGenerateOCIRootfsPackageTest, GenerateOCIRootfsPackage_MultiplePackages_MountSucceeds)
+{
+    TEST_LOG("Testing generateOCIRootfsPackage with multiple packages and mount success");
+    const std::string pkgFile = writePkgInfoFile("multi_pkg_ok.json",
+        R"([
+            {"pkgMetaDataPath": "/tmp/meta1.json", "pkgMountPath": "/mnt/ralf/pkg1"},
+            {"pkgMetaDataPath": "/tmp/meta2.json", "pkgMountPath": "/mnt/ralf/pkg2"},
+            {"pkgMetaDataPath": "/tmp/meta3.json", "pkgMountPath": "/mnt/ralf/pkg3"}
+        ])");
+
+    ON_CALL(*mWrapsImplMock, mkdir(_, _)).WillByDefault(Return(0));
+    ON_CALL(*mWrapsImplMock, mount(_, _, _, _, _)).WillByDefault(Return(0));
+
+    auto config = makeConfig("test_multi_pkg_mount_ok");
+    std::string dobbySpec;
+    mBuilder.generateRalfDobbySpec(config, makeRuntimeConfig(pkgFile), dobbySpec);
+
+    EXPECT_FALSE(dobbySpec.empty());
+    EXPECT_NE(std::string::npos, dobbySpec.find("test_multi_pkg_mount_ok"));
+}
+
+/* Test Case: GenerateOCIRootfsPackage_InvalidPkgInfoPath_NeverReached
+ * Verifies that when ralfPkgPath points to a non-existent file,
+ * parseRalPkgInfo fails before generateOCIRootfsPackage is called, so
+ * generateRalfDobbySpec returns false and dobbySpec remains empty.
+ */
+TEST_F(RalfGenerateOCIRootfsPackageTest, GenerateOCIRootfsPackage_InvalidPkgInfoPath_NeverReached)
+{
+    TEST_LOG("Testing generateOCIRootfsPackage guarded by invalid pkg info path");
+    auto config = makeConfig("test_invalid_pkg_info_path");
+    std::string dobbySpec;
+    bool result = mBuilder.generateRalfDobbySpec(config,
+        makeRuntimeConfig("/tmp/ralf_no_such_pkg_info_xyz_99.json"), dobbySpec);
+
+    EXPECT_FALSE(result);
+    EXPECT_TRUE(dobbySpec.empty());
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Test suite for ralf::RalfPackageBuilder::generateRalfDobbySpec
+//
+// These tests cover the three-step flow of generateRalfDobbySpec:
+//   Step 1: parseRalPkgInfo  — parse the pkg-info JSON from ralfPkgPath
+//   Step 2: generateOCIRootfsPackage — mount the overlay FS, populate ociRootfsPath
+//   Step 3: generateRalfOCIConfig — write the OCI config JSON (requires system stubs)
+//
+// dobbySpec is assigned only after Step 2 succeeds and before Step 3 runs.
+// Any failure in Step 1 or Step 2 leaves dobbySpec untouched.
+// ─────────────────────────────────────────────────────────────────────────────
+
+class RalfGenerateRalfDobbySpecTest : public RalfMockedBaseTest
+{
+protected:
+    ralf::RalfPackageBuilder mBuilder;
+    const std::string mTmpDir = "/tmp/ralf_gen_dobby_spec_test";
+
+    void SetUp() override
+    {
+        // Create temp directory before mock intercepts mkdir.
+        mkdir(mTmpDir.c_str(), 0777);
+        InstallMock();
+    }
+
+    void TearDown() override
+    {
+        RemoveMock();
+        ralf::removeDirectoryRecursively(mTmpDir);
+    }
+
+    // Write arbitrary content to a file in the test directory and return its path.
+    std::string writePkgFile(const std::string &name, const std::string &content)
+    {
+        const std::string path = mTmpDir + "/" + name;
+        writeTextFile(path, content);
+        return path;
+    }
+
+    // Return a syntactically valid pkg-info JSON string with one package.
+    std::string validPkgJson(const std::string &mountPath = "/mnt/ralf/pkg1")
+    {
+        return R"({"packages":[{"pkgMetaDataPath":"/tmp/meta_ds.json","pkgMountPath":")"
+               + mountPath + R"("}]})";
+    }
+
+    WPEFramework::Plugin::ApplicationConfiguration makeConfig(
+        const std::string &instanceId,
+        uint32_t uid = 0, uint32_t gid = 0)
+    {
+        WPEFramework::Plugin::ApplicationConfiguration cfg;
+        cfg.mAppInstanceId = instanceId;
+        cfg.mUserId        = uid;
+        cfg.mGroupId       = gid;
+        return cfg;
+    }
+
+    WPEFramework::Exchange::RuntimeConfig makeRuntimeConfig(const std::string &pkgPath)
+    {
+        WPEFramework::Exchange::RuntimeConfig rc;
+        rc.ralfPkgPath = pkgPath;
+        return rc;
+    }
+};
+
+// ── Step 1 failure: parseRalPkgInfo ──────────────────────────────────────────
+
+/* Test Case: GenerateRalfDobbySpec_NonExistentPkgPath_ReturnsFalse
+ * Verifies that when ralfPkgPath points to a non-existent file,
+ * parseRalPkgInfo fails at Step 1 and generateRalfDobbySpec returns false.
+ */
+TEST_F(RalfGenerateRalfDobbySpecTest, GenerateRalfDobbySpec_NonExistentPkgPath_ReturnsFalse)
+{
+    TEST_LOG("Testing generateRalfDobbySpec with non-existent ralfPkgPath");
+    std::string dobbySpec;
+    bool result = mBuilder.generateRalfDobbySpec(
+        makeConfig("test_ds_no_file"),
+        makeRuntimeConfig("/tmp/ralf_no_such_pkg_xyz_ds_001.json"),
+        dobbySpec);
+
+    EXPECT_FALSE(result);
+    EXPECT_TRUE(dobbySpec.empty());
+}
+
+/* Test Case: GenerateRalfDobbySpec_EmptyPkgPath_ReturnsFalse
+ * Verifies that an empty ralfPkgPath causes parseRalPkgInfo to fail at
+ * Step 1 and generateRalfDobbySpec to return false.
+ */
+TEST_F(RalfGenerateRalfDobbySpecTest, GenerateRalfDobbySpec_EmptyPkgPath_ReturnsFalse)
+{
+    TEST_LOG("Testing generateRalfDobbySpec with empty ralfPkgPath");
+    std::string dobbySpec;
+    bool result = mBuilder.generateRalfDobbySpec(
+        makeConfig("test_ds_empty_path"),
+        makeRuntimeConfig(""),
+        dobbySpec);
+
+    EXPECT_FALSE(result);
+    EXPECT_TRUE(dobbySpec.empty());
+}
+
+/* Test Case: GenerateRalfDobbySpec_MalformedPkgJson_ReturnsFalse
+ * Verifies that a syntactically invalid pkg-info JSON causes parseRalPkgInfo
+ * to fail at Step 1, so generateRalfDobbySpec returns false.
+ */
+TEST_F(RalfGenerateRalfDobbySpecTest, GenerateRalfDobbySpec_MalformedPkgJson_ReturnsFalse)
+{
+    TEST_LOG("Testing generateRalfDobbySpec with malformed pkg-info JSON");
+    const std::string pkgFile = writePkgFile("malformed.json", "{ not valid json !!! }}}");
+
+    std::string dobbySpec;
+    bool result = mBuilder.generateRalfDobbySpec(
+        makeConfig("test_ds_malformed_json"),
+        makeRuntimeConfig(pkgFile),
+        dobbySpec);
+
+    EXPECT_FALSE(result);
+    EXPECT_TRUE(dobbySpec.empty());
+}
+
+/* Test Case: GenerateRalfDobbySpec_MissingPackagesKey_ReturnsFalse
+ * Verifies that a valid JSON file that lacks the "packages" key causes
+ * parseRalPkgInfo to fail at Step 1 and generateRalfDobbySpec to return false.
+ */
+TEST_F(RalfGenerateRalfDobbySpecTest, GenerateRalfDobbySpec_MissingPackagesKey_ReturnsFalse)
+{
+    TEST_LOG("Testing generateRalfDobbySpec when pkg-info JSON has no 'packages' key");
+    const std::string pkgFile = writePkgFile("no_packages_key.json",
+        R"({"other":"value","count":1})");
+
+    std::string dobbySpec;
+    bool result = mBuilder.generateRalfDobbySpec(
+        makeConfig("test_ds_no_packages_key"),
+        makeRuntimeConfig(pkgFile),
+        dobbySpec);
+
+    EXPECT_FALSE(result);
+    EXPECT_TRUE(dobbySpec.empty());
+}
+
+/* Test Case: GenerateRalfDobbySpec_ParseFails_DobbySpecUnchanged
+ * Verifies that when Step 1 (parseRalPkgInfo) fails, a pre-existing value
+ * in the dobbySpec output parameter is not overwritten.
+ */
+TEST_F(RalfGenerateRalfDobbySpecTest, GenerateRalfDobbySpec_ParseFails_DobbySpecUnchanged)
+{
+    TEST_LOG("Testing generateRalfDobbySpec: dobbySpec unchanged when parse fails");
+    std::string dobbySpec = "sentinel_value";
+    mBuilder.generateRalfDobbySpec(
+        makeConfig("test_ds_parse_fail_sentinel"),
+        makeRuntimeConfig("/tmp/ralf_no_such_pkg_xyz_ds_002.json"),
+        dobbySpec);
+
+    EXPECT_EQ("sentinel_value", dobbySpec);
+}
+
+// ── Step 2 failure: generateOCIRootfsPackage (mount) ─────────────────────────
+
+/* Test Case: GenerateRalfDobbySpec_MountFails_ReturnsFalse
+ * Verifies that when Step 1 (parse) succeeds but the overlay mount() call
+ * in Step 2 fails, generateRalfDobbySpec returns false.
+ */
+TEST_F(RalfGenerateRalfDobbySpecTest, GenerateRalfDobbySpec_MountFails_ReturnsFalse)
+{
+    TEST_LOG("Testing generateRalfDobbySpec returns false when mount fails");
+    const std::string pkgFile = writePkgFile("mount_fail_pkg.json", validPkgJson());
+
+    ON_CALL(*mWrapsImplMock, mkdir(_, _)).WillByDefault(Return(0));
+    ON_CALL(*mWrapsImplMock, mount(_, _, _, _, _))
+        .WillByDefault(Invoke([](const char*, const char*, const char*, unsigned long, const void*) -> int {
+            errno = EPERM;
+            return -1;
+        }));
+
+    std::string dobbySpec;
+    bool result = mBuilder.generateRalfDobbySpec(
+        makeConfig("test_ds_mount_fail"),
+        makeRuntimeConfig(pkgFile),
+        dobbySpec);
+
+    EXPECT_FALSE(result);
+    EXPECT_TRUE(dobbySpec.empty());
+}
+
+/* Test Case: GenerateRalfDobbySpec_MountFails_DobbySpecUnchanged
+ * Verifies that when Step 2 (mount) fails, a pre-existing value in the
+ * dobbySpec output parameter is not overwritten.
+ */
+TEST_F(RalfGenerateRalfDobbySpecTest, GenerateRalfDobbySpec_MountFails_DobbySpecUnchanged)
+{
+    TEST_LOG("Testing generateRalfDobbySpec: dobbySpec unchanged when mount fails");
+    const std::string pkgFile = writePkgFile("mount_fail_sentinel_pkg.json", validPkgJson());
+
+    ON_CALL(*mWrapsImplMock, mkdir(_, _)).WillByDefault(Return(0));
+    ON_CALL(*mWrapsImplMock, mount(_, _, _, _, _))
+        .WillByDefault(Invoke([](const char*, const char*, const char*, unsigned long, const void*) -> int {
+            errno = EPERM;
+            return -1;
+        }));
+
+    std::string dobbySpec = "sentinel_value";
+    mBuilder.generateRalfDobbySpec(
+        makeConfig("test_ds_mount_fail_sentinel"),
+        makeRuntimeConfig(pkgFile),
+        dobbySpec);
+
+    EXPECT_EQ("sentinel_value", dobbySpec);
+}
+
+// ── Step 2 success: dobbySpec populated ──────────────────────────────────────
+
+/* Test Case: GenerateRalfDobbySpec_MountSucceeds_DobbySpecSetToBaseDir
+ * Verifies that when Step 2 (generateOCIRootfsPackage) succeeds, dobbySpec
+ * is set to RALF_APP_ROOTFS_DIR + appInstanceId (the ociRootfsPath returned
+ * by generateOCIRootfs).  Step 3 may fail in the test environment (no OCI
+ * base-spec stub), but dobbySpec is already assigned before that.
+ */
+TEST_F(RalfGenerateRalfDobbySpecTest, GenerateRalfDobbySpec_MountSucceeds_DobbySpecSetToBaseDir)
+{
+    TEST_LOG("Testing generateRalfDobbySpec: dobbySpec set to base dir when mount succeeds");
+    const std::string pkgFile = writePkgFile("mount_ok_pkg.json", validPkgJson());
+    const std::string appInstanceId = "test_ds_mount_ok_path";
+    const std::string expectedDobbySpec = ralf::RALF_APP_ROOTFS_DIR + appInstanceId;
+
+    ON_CALL(*mWrapsImplMock, mkdir(_, _)).WillByDefault(Return(0));
+    ON_CALL(*mWrapsImplMock, mount(_, _, _, _, _)).WillByDefault(Return(0));
+
+    std::string dobbySpec;
+    mBuilder.generateRalfDobbySpec(
+        makeConfig(appInstanceId),
+        makeRuntimeConfig(pkgFile),
+        dobbySpec);
+
+    // dobbySpec must equal RALF_APP_ROOTFS_DIR + appInstanceId
+    EXPECT_EQ(expectedDobbySpec, dobbySpec);
+}
+
+/* Test Case: GenerateRalfDobbySpec_MountSucceeds_EmptyPackages_DobbySpecPopulated
+ * Verifies that even with an empty packages array (only the graphics layer
+ * rootfs is used), Step 2 succeeds and dobbySpec is set correctly.
+ */
+TEST_F(RalfGenerateRalfDobbySpecTest, GenerateRalfDobbySpec_MountSucceeds_EmptyPackages_DobbySpecPopulated)
+{
+    TEST_LOG("Testing generateRalfDobbySpec: dobbySpec populated with empty packages");
+    const std::string pkgFile = writePkgFile("empty_pkg_mount_ok.json",
+        R"({"packages":[]})");
+    const std::string appInstanceId = "test_ds_empty_pkg_ok";
+    const std::string expectedDobbySpec = ralf::RALF_APP_ROOTFS_DIR + appInstanceId;
+
+    ON_CALL(*mWrapsImplMock, mkdir(_, _)).WillByDefault(Return(0));
+    ON_CALL(*mWrapsImplMock, mount(_, _, _, _, _)).WillByDefault(Return(0));
+
+    std::string dobbySpec;
+    mBuilder.generateRalfDobbySpec(
+        makeConfig(appInstanceId),
+        makeRuntimeConfig(pkgFile),
+        dobbySpec);
+
+    EXPECT_EQ(expectedDobbySpec, dobbySpec);
+}
+
