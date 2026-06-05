@@ -69,7 +69,7 @@ void RuntimeManagerHandler::deinitialize()
             LOGINFO("Unable to unregister from runtimemanager [%d] \n", unregisterResult);
         }
         uint32_t result = mRuntimeManager->Release();
-        LOGINFO("Terminated runtime manager hanlder [%d] \n", result);
+        LOGINFO("Terminated runtime manager handler [%d] \n", result);
         mRuntimeManager = nullptr;
     }
 }
