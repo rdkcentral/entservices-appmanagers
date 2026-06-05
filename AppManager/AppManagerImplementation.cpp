@@ -1068,7 +1068,7 @@ Core::hresult AppManagerImplementation::SendIntent(const string& appId , const s
  *
  * @return              : Core::<StatusCode>
  */
-Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const string& launchArgs ,string& error)
+Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const string& intent, const string& launchArgs ,string& error)
 {
     Core::hresult status = Core::ERROR_GENERAL;
     AppManagerTelemetryReporting& appManagerTelemetryReporting = AppManagerTelemetryReporting::getInstance();
@@ -1090,7 +1090,7 @@ Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const s
         {
             LOGINFO(" PreloadApp enter with appId %s", appId.c_str());
             request->mRequestAction = APP_ACTION_PRELOAD;
-            request->mRequestParam = std::make_shared<AppLaunchRequestParam>(AppLaunchRequestParam{appId, launchArgs, ""});
+            request->mRequestParam = std::make_shared<AppLaunchRequestParam>(AppLaunchRequestParam{appId, launchArgs, intent});
             if (request->mRequestParam != nullptr)
             {
                 mAppManagerLock.lock();
