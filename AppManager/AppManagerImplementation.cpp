@@ -1068,7 +1068,7 @@ Core::hresult AppManagerImplementation::SendIntent(const string& appId , const s
  *
  * @return              : Core::<StatusCode>
  */
-Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const string& intent, const string& launchArgs ,string& error)
+Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const string& intent , const string& launchArgs ,string& error)
 {
     Core::hresult status = Core::ERROR_GENERAL;
     AppManagerTelemetryReporting& appManagerTelemetryReporting = AppManagerTelemetryReporting::getInstance();
