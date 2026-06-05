@@ -63,7 +63,7 @@ void WindowManagerHandler::terminate()
         Core::hresult unregisterResult = mWindowManager->Unregister(&mWindowManagerNotification);
         if (Core::ERROR_NONE != unregisterResult)
         {
-            LOGINFO("Unable to unregister from runtimemanager [%d] \n", unregisterResult);
+            LOGINFO("Unable to unregister from windowmanager [%d] \n", unregisterResult);
         }
         uint32_t result = mWindowManager->Release();
         LOGINFO("Window manager releases [%d]\n", result);
