@@ -27,6 +27,7 @@
 #include "UtilsLogging.h"
 #include "tracing/Logging.h"
 #include "ApplicationContext.h"
+#include <map>
 
 namespace WPEFramework
 {
@@ -45,6 +46,16 @@ namespace WPEFramework
                     LIFECYCLE_MANAGER_EVENT_WINDOW,
                     LIFECYCLE_MANAGER_EVENT_ONFAILURE
                 };
+
+                struct PendingRespawnRequest
+	        {
+                    PendingRespawnRequest()
+	            : mLaunchParams()
+	            {
+	            }
+
+                    ApplicationLaunchParams mLaunchParams;
+	        };
 
                 class EXTERNAL Job : public Core::IDispatch
 	        {
@@ -137,6 +148,7 @@ namespace WPEFramework
 	        std::list<Exchange::ILifecycleManager::INotification*> mLifecycleManagerNotification;
 	        std::list<Exchange::ILifecycleManagerState::INotification*> mLifecycleManagerStateNotification;
                 std::list<std::shared_ptr<ApplicationContext>> mLoadedApplications;
+                std::map<string, PendingRespawnRequest> mPendingRespawns;
                 PluginHost::IShell* mService;
 	    private: /* internal methods */
                 bool initialize(PluginHost::IShell* service);
@@ -146,6 +158,8 @@ namespace WPEFramework
                 void handleRuntimeManagerEvent(const JsonObject &data);
                 void notifyOnFailure(const string& appInstanceId, const string& errorCode);
                 void handleStateChangeEvent(const JsonObject &data);
+                bool tryGetPendingRespawn(const string& appInstanceId, PendingRespawnRequest& pendingRespawn);
+                void handlePendingRespawn(const PendingRespawnRequest& pendingRespawn);
                 void handleWindowManagerEvent(const JsonObject &data);
                 std::shared_ptr<ApplicationContext> getContext(const string& appInstanceId, const string& appId) const;
                 void addStateTransitionRequest(ApplicationContext* context, std::string event);
@@ -158,3 +172,4 @@ namespace WPEFramework
         };
     } /* namespace Plugin */
 } /* namespace WPEFramework */
+
