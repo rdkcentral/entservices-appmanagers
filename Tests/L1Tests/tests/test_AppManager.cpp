@@ -58,6 +58,7 @@
 #define APPMANAGER_APP_LAUNCHARGS   "test.arguments"
 #define APPMANAGER_APP_INSTANCE     "testAppInstance"
 #define APPMANAGER_APP_UNPACKEDPATH "/media/apps/sky/packages/Hulu/data.img"
+#define APPMANAGER_APP_CAPABILITIES "dial-app,wan-lan"
 #define PERSISTENT_STORE_KEY        "DUMMY"
 #define PERSISTENT_STORE_VALUE      "DUMMY_VALUE"
 #define APPMANAGER_PACKAGEID        "testPackageID"
@@ -380,6 +381,7 @@ protected:
         pkgInfo.lockId = 1;
         pkgInfo.unpackedPath = APPMANAGER_APP_UNPACKEDPATH;
         pkgInfo.type = AppManagerTypes::APPLICATION_TYPE_INTERACTIVE;
+        pkgInfo.configMetadata.capabilities = APPMANAGER_APP_CAPABILITIES;
         AppInfoManager::getInstance().setPackageInfo(appId, pkgInfo);
     }
 
