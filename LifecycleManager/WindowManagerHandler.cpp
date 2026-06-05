@@ -58,14 +58,17 @@ bool WindowManagerHandler::initialize(PluginHost::IShell* service, IEventHandler
 
 void WindowManagerHandler::terminate()
 {
-    Core::hresult unregisterResult = mWindowManager->Unregister(&mWindowManagerNotification);
-    if (Core::ERROR_NONE != unregisterResult)
+    if (mWindowManager != nullptr)
     {
-        LOGINFO("Unable to unregister from runtimemanager [%d] \n", unregisterResult);
+        Core::hresult unregisterResult = mWindowManager->Unregister(&mWindowManagerNotification);
+        if (Core::ERROR_NONE != unregisterResult)
+        {
+            LOGINFO("Unable to unregister from runtimemanager [%d] \n", unregisterResult);
+        }
+        uint32_t result = mWindowManager->Release();
+        LOGINFO("Window manager releases [%d]\n", result);
+        mWindowManager = nullptr;
     }
-    uint32_t result = mWindowManager->Release();
-    LOGINFO("Window manager releases [%d]\n", result);
-    mWindowManager = nullptr;
 }
 
 void WindowManagerHandler::WindowManagerNotification::OnUserInactivity(const double minutes)

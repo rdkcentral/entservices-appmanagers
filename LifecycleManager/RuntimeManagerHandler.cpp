@@ -61,14 +61,17 @@ bool RuntimeManagerHandler::initialize(PluginHost::IShell* service, IEventHandle
 
 void RuntimeManagerHandler::deinitialize()
 {
-    Core::hresult unregisterResult = mRuntimeManager->Unregister(&mRuntimeManagerNotification);
-    if (Core::ERROR_NONE != unregisterResult)
+    if (mRuntimeManager != nullptr)
     {
-        LOGINFO("Unable to unregister from runtimemanager [%d] \n", unregisterResult);
+        Core::hresult unregisterResult = mRuntimeManager->Unregister(&mRuntimeManagerNotification);
+        if (Core::ERROR_NONE != unregisterResult)
+        {
+            LOGINFO("Unable to unregister from runtimemanager [%d] \n", unregisterResult);
+        }
+        uint32_t result = mRuntimeManager->Release();
+        LOGINFO("Terminated runtime manager hanlder [%d] \n", result);
+        mRuntimeManager = nullptr;
     }
-    uint32_t result = mRuntimeManager->Release();
-    LOGINFO("Terminated runtime manager hanlder [%d] \n", result);
-    mRuntimeManager = nullptr;
 }
 
 bool RuntimeManagerHandler::getRuntimeStats(const string& appInstanceId, string& info)
