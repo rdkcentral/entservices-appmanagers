@@ -66,17 +66,11 @@ struct RuntimeConfig {
     std::string fireboltVersion;
     bool enableDebugger;
 
-    ~RuntimeConfig();
+    ~RuntimeConfig() = default;
 };
 } // namespace Exchange
 } // namespace WPEFramework
 #endif
-
-namespace WPEFramework {
-namespace Exchange {
-RuntimeConfig::~RuntimeConfig() = default;
-} // namespace Exchange
-} // namespace WPEFramework
 
 // Include ralf support header
 #include "ralf/RalfSupport.h"
