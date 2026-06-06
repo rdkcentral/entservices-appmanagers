@@ -120,6 +120,7 @@ extern uint32_t Test_RequestHandler_NullifyStaleEventHandler();
 extern uint32_t Test_StateHandler_InitializePopulatesMap();
 extern uint32_t Test_StateHandler_ChangeStateNullContextReturnsFalse();
 extern uint32_t Test_StateHandler_ChangeStateAlreadyAtTargetReturnsTrue();
+extern uint32_t Test_StateHandler_OnAppReadyPendingPathRetainsCurrentState();
 extern uint32_t Test_StateHandler_TransitionUnloadedToLoadingIsValid();
 extern uint32_t Test_StateHandler_TransitionActiveToUnloadedIsInvalid();
 extern uint32_t Test_StateHandler_UpdateStateTransitionsContext();
@@ -254,6 +255,7 @@ int main()
         { "StateHandler_InitializePopulatesMap",                             Test_StateHandler_InitializePopulatesMap },
         { "StateHandler_ChangeStateNullContextReturnsFalse",                 Test_StateHandler_ChangeStateNullContextReturnsFalse },
         { "StateHandler_ChangeStateAlreadyAtTargetReturnsTrue",              Test_StateHandler_ChangeStateAlreadyAtTargetReturnsTrue },
+        { "StateHandler_OnAppReadyPendingPathRetainsCurrentState",           Test_StateHandler_OnAppReadyPendingPathRetainsCurrentState },
         { "StateHandler_TransitionUnloadedToLoadingIsValid",                 Test_StateHandler_TransitionUnloadedToLoadingIsValid },
         { "StateHandler_TransitionActiveToUnloadedIsInvalid",                Test_StateHandler_TransitionActiveToUnloadedIsInvalid },
         { "StateHandler_UpdateStateTransitionsContext",                      Test_StateHandler_UpdateStateTransitionsContext },
