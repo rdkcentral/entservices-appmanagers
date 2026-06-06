@@ -794,6 +794,19 @@ namespace Plugin {
             LOGERR("Failed to  stringify fkpsFiles to JsonArray");
         }
         runtimeConfig.capabilities = config.capabilities;
+        // Preserve legacy runtimePackage->runtime()=="runtime/html" intent without schema changes.
+        if ("html" == config.runtimeType)
+        {
+            const std::string runtimeHtmlCapability = "runtime-html";
+            if (runtimeConfig.capabilities.find(runtimeHtmlCapability) == std::string::npos)
+            {
+                if (!runtimeConfig.capabilities.empty())
+                {
+                    runtimeConfig.capabilities += ",";
+                }
+                runtimeConfig.capabilities += runtimeHtmlCapability;
+            }
+        }
         runtimeConfig.appType = config.appType == packagemanager::ApplicationType::SYSTEM ? "SYSTEM" : "INTERACTIVE";
         runtimeConfig.appPath = config.appPath;
         runtimeConfig.command = config.command;

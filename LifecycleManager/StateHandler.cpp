@@ -178,7 +178,8 @@ namespace WPEFramework
             }
             Exchange::ILifecycleManager::LifecycleState currentLifecycleState = context->getCurrentLifecycleState();
 
-            if ((context->mPendingStateTransition) && (Exchange::ILifecycleManager::LifecycleState::TERMINATING != currentLifecycleState))
+            if ((context->mPendingStateTransition) && (Exchange::ILifecycleManager::LifecycleState::TERMINATING != currentLifecycleState)
+                && (context->mPendingOldState != currentLifecycleState))
             {
                 sendEvent(context, context->mPendingOldState, currentLifecycleState, errorReason);
             }
@@ -210,6 +211,17 @@ namespace WPEFramework
                 isStateTerminating = (Exchange::ILifecycleManager::LifecycleState::TERMINATING == statePath[stateIndex]);
                 if (!isStateTerminating)
 		{
+                    if ((Exchange::ILifecycleManager::LifecycleState::INITIALIZING == oldLifecycleState)
+                        && (Exchange::ILifecycleManager::LifecycleState::PAUSED == statePath[stateIndex]))
+                    {
+                        context->mPendingEventName = "onAppReady";
+                        context->mPendingStateTransition = true;
+                        context->mPendingOldState = oldLifecycleState;
+                        lastStateIndex = stateIndex;
+                        result = true;
+                        break;
+                    }
+
                     result = updateState(context, statePath[stateIndex], errorReason);
                     if(result)
                     {
