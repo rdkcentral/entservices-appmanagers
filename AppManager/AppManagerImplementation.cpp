@@ -594,11 +594,11 @@ Core::hresult AppManagerImplementation::createPackageManagerObject()
     {
         LOGERR("mCurrentservice is null \n");
     }
-    else if (nullptr == (mPackageManagerHandlerObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IPackageHandler>("org.rdk.PackageManagerRDKEMS")))
+    else if (nullptr == (mPackageManagerHandlerObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IPackageHandler>("org.rdk.AppPackageManager")))
     {
         LOGERR("mPackageManagerHandlerObject is null \n");
     }
-    else if (nullptr == (mPackageManagerInstallerObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IPackageInstaller>("org.rdk.PackageManagerRDKEMS")))
+    else if (nullptr == (mPackageManagerInstallerObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IPackageInstaller>("org.rdk.AppPackageManager")))
     {
         LOGERR("mPackageManagerInstallerObject is null \n");
     }
@@ -1068,7 +1068,8 @@ Core::hresult AppManagerImplementation::SendIntent(const string& appId , const s
  *
  * @return              : Core::<StatusCode>
  */
-Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const string& launchArgs ,string& error)
+
+Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const string& intent , const string& launchArgs ,string& error)
 {
     Core::hresult status = Core::ERROR_GENERAL;
     AppManagerTelemetryReporting& appManagerTelemetryReporting = AppManagerTelemetryReporting::getInstance();
@@ -1090,7 +1091,7 @@ Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const s
         {
             LOGINFO(" PreloadApp enter with appId %s", appId.c_str());
             request->mRequestAction = APP_ACTION_PRELOAD;
-            request->mRequestParam = std::make_shared<AppLaunchRequestParam>(AppLaunchRequestParam{appId, launchArgs, ""});
+            request->mRequestParam = std::make_shared<AppLaunchRequestParam>(AppLaunchRequestParam{appId, launchArgs, intent});
             if (request->mRequestParam != nullptr)
             {
                 mAppManagerLock.lock();
