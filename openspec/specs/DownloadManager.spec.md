@@ -9,7 +9,7 @@
 DownloadManager is a standalone HTTP download service for RDK-based devices. It provides a JSON-RPC API for initiating, pausing, resuming, cancelling, and rate-limiting HTTP downloads using libcurl. Downloads are processed from a priority queue by a dedicated downloader thread (`downloaderRoutine`). It reports real-time progress, completion, and error events to registered listeners via notifications. It is consumed primarily by PackageManager as an optional delegate for HTTP package downloads.
 
 ## Requirements
-- Provide JSON-RPC API for `Download`, `Pause`, `Resume`, `Cancel`, `RateLimit`, `Progress`, `Delete`, and `ListDownloads`
+- Provide JSON-RPC API for `Download`, `Pause`, `Resume`, `Cancel`, `RateLimit`, `Progress`, and `Delete`
 - Download files via HTTP/HTTPS using libcurl (`DownloadManagerHttpClient`)
 - Process downloads sequentially from a priority queue via a dedicated background thread
 - Support pause via `curl_easy_pause` and resume with continuation
