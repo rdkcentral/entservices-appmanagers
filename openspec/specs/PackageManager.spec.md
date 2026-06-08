@@ -63,7 +63,7 @@ PackageManagerImplementation
 ### Configuration
 - **Config File**: `AppPackageManager.conf.in` / `AppPackageManager.config`
 - **Download Dir**: Configurable via `PLUGIN_PACKAGEMANAGER_DOWNLOAD_DIR`
-- **DBus Service**: Registered as WPEFramework plugin
+- **Thunder Service**: Registered as a WPEFramework/Thunder plugin
 
 ## Data Flow
 ```
