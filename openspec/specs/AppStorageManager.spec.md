@@ -179,7 +179,7 @@ AppStorageManagerImplementation::DeleteStorage(appId)
 - Does `ClearAll` apply to all apps including system apps, or only to user-installed apps?
 
 ## References
-- Architecture: [AppStorageManager.md](./AppStorageManager.md)
+- Architecture: [AppStorageManager.md](../../AppStorageManager/AppStorageManager.md)
 - Related Spec: [PackageManager.spec.md](./PackageManager.spec.md)
 - Related Spec: [RuntimeManager.spec.md](./RuntimeManager.spec.md)
 
