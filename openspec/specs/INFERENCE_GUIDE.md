@@ -134,7 +134,7 @@ target_link_libraries(${MODULE_NAME} PRIVATE
 **Rules**:
 - `AppManagersHelpers` → Internal library
 - Other modules → Inter-module plugin dependencies (not link-time)
-- Modules communicate via JSON-RPC/DBus at runtime
+- Modules communicate via Thunder COM-RPC (Exchange interfaces via callsign) at runtime (in-process or out-of-process depending on plugin mode)
 
 **Output Structure**:
 ```
