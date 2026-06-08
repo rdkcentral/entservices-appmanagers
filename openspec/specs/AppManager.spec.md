@@ -137,7 +137,7 @@ State Changes:
 | AIMANAGERS_TELEMETRY_METRICS_SUPPORT | ON/OFF | OFF | Enable telemetry collection |
 
 ## Build & Installation
-- **Compiled Artifact**: `RdkCppPlugin_AppManager.so` / `RdkCppPlugin_AppManagerImplementation.so`
+- **Compiled Artifacts**: `lib${NAMESPACE}AppManager.so`, `lib${NAMESPACE}AppManagerImplementation.so`
 - **Install Path**: `${CMAKE_INSTALL_PREFIX}/lib/${STORAGE_DIRECTORY}/plugins`
 - **Required Build Flags**: C++11, exceptions enabled
 
