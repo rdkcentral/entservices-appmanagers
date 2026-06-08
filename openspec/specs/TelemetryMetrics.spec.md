@@ -29,8 +29,8 @@ TelemetryMetricsImplementation
     │   └→ Buffer in unordered_map<recordId, metricsJson>
     └→ Publish(id, markerName)
         ├→ Filter metrics by recordId + markerName
-        ├→ Merge metrics with same appInstanceId
-        └→ POST to TELEMETRY_PUBLISH_ENDPOINT
+        ├→ Merge other records with same appInstanceId
+        └→ Emit T2 telemetry event via t2_event_s(markerName, publishMetrics)
 ```
 
 ### Metrics Recorded Per Module
