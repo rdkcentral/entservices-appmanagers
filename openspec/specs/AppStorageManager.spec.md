@@ -133,8 +133,8 @@ AppStorageManagerImplementation::DeleteStorage(appId)
 ### CMake Configuration
 | Option | Type | Default | Purpose |
 |--------|------|---------|---------|
-| PLUGIN_APPSTORAGEMANAGER_MODE | String | Off | Plugin execution mode |
-| PLUGIN_APPSTORAGEMANAGER_AUTOSTART | Boolean | false | Auto-start on boot |
+| PLUGIN_APP_STORAGE_MANAGER_MODE | String | Off | Plugin execution mode |
+| PLUGIN_APP_STORAGE_MANAGER_AUTOSTART | Boolean | false | Auto-start on boot |
 
 ## Build & Installation
 - **Compiled Artifact**: `RdkCppPlugin_AppStorageManager.so`
