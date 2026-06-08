@@ -68,8 +68,8 @@ POST {TELEMETRY_PUBLISH_ENDPOINT}
 
 ### Configuration
 - **Config File**: `TelemetryMetrics.conf.in` / `TelemetryMetrics.config`
-- **Publish Endpoint**: Configurable via `TELEMETRY_PUBLISH_ENDPOINT`
-- **DBus Service**: Registered as WPEFramework plugin (when enabled)
+- **Callsign**: `org.rdk.TelemetryMetrics`
+- **Thunder Service**: Exposed via WPEFramework/Thunder JSON-RPC
 
 ## Data Flow
 ```
