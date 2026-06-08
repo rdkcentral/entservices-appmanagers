@@ -188,7 +188,7 @@ Inactivity:
 - Is there a maximum number of concurrent displays supported by the compositor?
 
 ## References
-- Architecture: [RDKWindowManager.md](./RDKWindowManager.md)
+- Architecture: [RDKWindowManager.md](../../RDKWindowManager/RDKWindowManager.md)
 - rdk-window-manager: [Repository](https://github.com/rdkcentral/rdk-window-manager)
 - Related Spec: [RuntimeManager.spec.md](./RuntimeManager.spec.md)
 - Related Spec: [LifecycleManager.spec.md](./LifecycleManager.spec.md)
