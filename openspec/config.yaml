@@ -46,7 +46,7 @@ context: |
   - Configuration: `${CMAKE_INSTALL_PREFIX}/etc/` (*.json files)
   
   ### Design Patterns
-  - **IPC Pattern**: All inter-plugin communication via JSON-RPC (no direct linking)
+  - **IPC Pattern**: Inter-plugin communication primarily via Thunder COM-RPC (Exchange interfaces), with JSON-RPC used for JSON-facing APIs/events
   - **Event Pattern**: State changes trigger notifications to listeners
   - **Async Pattern**: Long-running operations (container start, downloads) are async with callbacks
   - **Error Handling**: Return hresult codes; detailed errors in response objects
