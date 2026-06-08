@@ -132,26 +132,26 @@ OpenSpec explore should generate the following artifacts when run on this codeba
 ## Build Variants
 
 ### Debug Build
-```bash
+~~~bash
 cmake -DCMAKE_BUILD_TYPE=Debug \
       -DAIMANAGERS_TELEMETRY_METRICS_SUPPORT=ON \
       -DENABLE_RDKAPPMANAGERS_RUNTIMECONFIG=ON ../
-```
+~~~
 
 ### Release Build (Minimal)
-```bash
+~~~bash
 cmake -DCMAKE_BUILD_TYPE=Release \
       -DAIMANAGERS_TELEMETRY_METRICS_SUPPORT=OFF ../
-```
+~~~
 
 ### Full-Featured Build
-```bash
+~~~bash
 cmake -DCMAKE_BUILD_TYPE=Release \
       -DAIMANAGERS_TELEMETRY_METRICS_SUPPORT=ON \
       -DENABLE_RDKAPPMANAGERS_RUNTIMECONFIG=ON \
       -DRALF_PACKAGE_SUPPORT=ON \
       -DUSE_LIBPACKAGE_RALF=ON ../
-```
+~~~
 ```
 
 ### 5. Architecture & Integration Guide
