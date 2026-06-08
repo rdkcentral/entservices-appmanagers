@@ -203,7 +203,7 @@ RateLimit(downloadId, bytesPerSec):
 - What retry policy is used on transient failures — fixed delay, exponential backoff, or configurable?
 
 ## References
-- Architecture: [DownloadManager.md](./DownloadManager.md)
+- Architecture: [DownloadManager.md](../../DownloadManager/DownloadManager.md)
 - libcurl: [Documentation](https://curl.se/libcurl/c/)
 - Related Spec: [PackageManager.spec.md](./PackageManager.spec.md)
 
