@@ -187,7 +187,7 @@ namespace WPEFramework
         {
             LOGERR("mCurrentservice is null \n");
         }
-        else if (nullptr == (packageInstaller = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IPackageInstaller>("org.rdk.PackageManagerRDKEMS")))
+        else if (nullptr == (packageInstaller = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IPackageInstaller>("org.rdk.AppPackageManager")))
         {
             LOGERR("PackageManager installer object is null \n");
         }
