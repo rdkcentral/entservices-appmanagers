@@ -55,7 +55,6 @@ DownloadManagerImplementation
 | `RateLimit(downloadId, bytesPerSecond)` | Throttle download speed |
 | `Progress(downloadId, percent)` | Query download progress percentage |
 | `Delete(fileLocator)` | Delete a downloaded file |
-| `ListDownloads()` | List active/completed downloads |
 
 ### Notifications
 | Event | Description |
