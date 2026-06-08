@@ -15,6 +15,7 @@
 
 ## Non-Goals
 - [What this module intentionally does NOT do]
+
 ## Dependencies
 
 ### External Repositories
