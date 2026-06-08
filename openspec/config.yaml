@@ -39,7 +39,7 @@ context: |
   - Module documentation in `<Module>.md`
   
   ### Build Conventions
-  - Plugin execution modes: Off (static), InProcess, Remote (via DBus)
+  - Plugin execution modes: Off (disabled), Local/InProcess, Remote (via D-Bus)
   - All plugins configurable via CMake options (PLUGIN_*_MODE, PLUGIN_*_AUTOSTART)
   - Optional features gated by flags: AIMANAGERS_TELEMETRY_METRICS_SUPPORT, RALF_PACKAGE_SUPPORT, ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG
   - Install paths: `${CMAKE_INSTALL_PREFIX}/lib/${STORAGE_DIRECTORY}/plugins/`
