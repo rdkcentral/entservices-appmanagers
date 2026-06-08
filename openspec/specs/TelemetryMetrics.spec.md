@@ -181,8 +181,8 @@ _Not applicable — TelemetryMetrics operates on internal performance data only;
 - Are there plans to expose a `GetMetrics` or `ClearMetrics` JSON-RPC API in a future version?
 
 ## References
-- Architecture: [TelemetryMetrics.md](./TelemetryMetrics.md)
-- Build Configuration: [CMakeLists.txt](../TelemetryMetrics/CMakeLists.txt)
+- Architecture: [TelemetryMetrics.md](../../TelemetryMetrics/TelemetryMetrics.md)
+- Build Configuration: [CMakeLists.txt](../../TelemetryMetrics/CMakeLists.txt)
 - Related Spec: [AppManager.spec.md](./AppManager.spec.md)
 - Related Spec: [LifecycleManager.spec.md](./LifecycleManager.spec.md)
 
