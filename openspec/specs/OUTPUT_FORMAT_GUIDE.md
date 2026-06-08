@@ -184,7 +184,7 @@ graph TB
 
 ## Module Dependency Graph
 
-```
+~~~
 AppManager
   ├─→ LifecycleManager
   ├─→ PackageManager
@@ -203,7 +203,7 @@ RuntimeManager
 PackageManager
   ├─→ AppStorageManager
   └─→ libpackage-sky (external)
-```
+~~~
 
 ## Data Flow Diagrams
 
