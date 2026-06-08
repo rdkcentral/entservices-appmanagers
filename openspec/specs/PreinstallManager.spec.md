@@ -135,9 +135,9 @@ Manual Scan (Client::Scan()):
 ### CMake Configuration
 | Option | Type | Default | Purpose |
 |--------|------|---------|---------|
-| PLUGIN_PREINSTALLMANAGER_MODE | String | Off | Plugin execution mode |
-| PLUGIN_PREINSTALLMANAGER_AUTOSTART | Boolean | true | Auto-start on boot |
-| PLUGIN_PREINSTALLMANAGER_SCAN_DIRECTORIES | String | "" | Preinstall directories to scan |
+| PLUGIN_PREINSTALL_MANAGER_MODE | String | Off | Plugin execution mode |
+| PLUGIN_PREINSTALL_MANAGER_AUTOSTART | Boolean | false | Auto-start on boot |
+| PLUGIN_PREINSTALL_MANAGER_APP_PREINSTALL_DIRECTORY | String | "" | Directory path for preinstall packages |
 
 ## Build & Installation
 - **Compiled Artifact**: `RdkCppPlugin_PreinstallManager.so`
