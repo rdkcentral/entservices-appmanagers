@@ -188,8 +188,8 @@ State Changes:
 - Are app properties in PersistentStore namespaced to prevent cross-app access?
 
 ## References
-- Architecture: [README.md](../README.md#system-architecture)
-- Full Module Doc: [AppManager.md](./AppManager.md)
+- Architecture: [README.md](../../README.md#system-architecture)
+- Full Module Doc: [AppManager.md](../../AppManager/AppManager.md)
 - Related Spec: [LifecycleManager.spec.md](./LifecycleManager.spec.md)
 - Related Spec: [PackageManager.spec.md](./PackageManager.spec.md)
 
