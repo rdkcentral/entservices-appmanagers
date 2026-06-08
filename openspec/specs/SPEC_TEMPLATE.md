@@ -5,16 +5,16 @@
 **Type**: [Plugin/Framework/Utility]
 **Purpose**: [Brief description of what this module does]
 
-## Capabilities
+## Description
+[Detailed description of what this module does and how it fits in the system.]
 
-### Primary Responsibilities
-- [Responsibility 1]
-- [Responsibility 2]
-- [Responsibility 3]
+## Requirements
+- [Requirement 1]
+- [Requirement 2]
+- [Requirement 3]
 
-### Non-Goals
+## Non-Goals
 - [What this module intentionally does NOT do]
-
 ## Dependencies
 
 ### External Repositories
