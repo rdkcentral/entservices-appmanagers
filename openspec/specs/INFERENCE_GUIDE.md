@@ -140,9 +140,9 @@ target_link_libraries(${MODULE_NAME} PRIVATE
 ```
 Internal Dependencies:
   ├─ AppManagersHelpers (Library)
-  ├─ LifecycleManager (Plugin - JSON-RPC)
-  ├─ RuntimeManager (Plugin - JSON-RPC)
-  └─ PackageManager (Plugin - JSON-RPC)
+  ├─ LifecycleManager (Plugin - Exchange interface via callsign)
+  ├─ RuntimeManager (Plugin - Exchange interface via callsign)
+  └─ PackageManager (Plugin - Exchange interface via callsign)
 ```
 
 ---
