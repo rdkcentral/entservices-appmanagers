@@ -70,12 +70,13 @@ namespace Plugin
             ssize_t getSysMemoryLimit(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const;
             ssize_t getGPUMemoryLimit(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const;
             bool getVpuEnabled(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const;
-	    std::string getCpuCores();
+            std::string getCpuCores();
             void populateClassicPlugins(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig, Json::Value& spec);
             Json::Value createEthanLogPlugin(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const;
             Json::Value createMulticastSocketPlugin(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const;
             Json::Value createIonMemoryPlugin() const;
-            Json::Value createThunderPlugin(const ApplicationConfiguration& config) const;
+            Json::Value createThunderPlugin(const ApplicationConfiguration& config,
+                                            const std::vector<std::pair<std::string, std::string>>& capabilities) const;
             Json::Value createOpenCDMPlugin(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const;
             Json::Value createPrivateDataMount(const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const;
             void createFkpsMounts(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig, Json::Value& spec) const;

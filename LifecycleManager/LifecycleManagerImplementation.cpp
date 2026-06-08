@@ -491,7 +491,16 @@ namespace WPEFramework
                 status = Core::ERROR_GENERAL;
                 return status;
 	    }
-            sem_post(&context->mAppReadySemaphore);
+            printf("[LifecycleManager] Received AppReady event appId[%s] appInstanceId[%s] pending[%d] pendingEvent[%s]\n",
+                   context->getAppId().c_str(),
+                   context->getAppInstanceId().c_str(),
+                   context->mPendingStateTransition,
+                   context->mPendingEventName.c_str());
+            fflush(stdout);
+            if ((true == context->mPendingStateTransition) && (0 == context->mPendingEventName.compare("onAppReady")))
+            {
+                addStateTransitionRequest(context.get(), "onAppReady");
+            }
 	    return status;
 	}
 
