@@ -145,7 +145,7 @@ UnloadApp():
 | PLUGIN_LIFECYCLE_MANAGER_AUTOSTART | Boolean | false | Auto-start on boot |
 
 ## Build & Installation
-- **Compiled Artifact**: `RdkCppPlugin_LifecycleManager.so`
+- **Compiled Artifact**: `lib${NAMESPACE}LifecycleManager.so`
 - **Install Path**: `${CMAKE_INSTALL_PREFIX}/lib/${STORAGE_DIRECTORY}/plugins`
 - **Required Build Flags**: C++11
 - **API Version**: 1.0.0
