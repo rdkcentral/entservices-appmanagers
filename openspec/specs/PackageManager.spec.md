@@ -156,7 +156,7 @@ Unlock(packageId, version):
 | AIMANAGERS_TELEMETRY_METRICS_SUPPORT | ON/OFF | OFF | Telemetry collection |
 
 ## Build & Installation
-- **Compiled Artifact**: `RdkCppPlugin_AppPackageManager.so`
+- **Compiled Artifact**: `lib${NAMESPACE}AppPackageManager.so`
 - **Install Path**: `${CMAKE_INSTALL_PREFIX}/lib/${STORAGE_DIRECTORY}/plugins`
 - **Required Build Flags**: C++11
 - **API Version**: 1.0.0
