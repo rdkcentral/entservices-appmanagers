@@ -57,7 +57,6 @@ TelemetryMetricsImplementation
 
 ### Publish Payload Format
 ```json
-POST {TELEMETRY_PUBLISH_ENDPOINT}
 {
   "metrics": [
     {"name": "app_launch_time", "value": 2500, "unit": "ms", "timestamp": "..."},
