@@ -67,7 +67,7 @@ DownloadManagerImplementation
 ### Configuration
 - **Config File**: `DownloadManager.conf.in` / `DownloadManager.config`
 - **Download Directory**: Configurable destination path
-- **DBus Service**: Registered as WPEFramework plugin
+- **Thunder Service**: Registered as a WPEFramework/Thunder plugin
 
 ## Data Flow
 ```
