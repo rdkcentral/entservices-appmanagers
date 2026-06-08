@@ -11,7 +11,7 @@ context: |
   - **Framework**: WPEFramework (Thunder) plugin system
   - **Container Runtime**: Dobby (OCI, crun)
   - **Display**: Wayland (Essos/Westeros compositor)
-  - **IPC**: JSON-RPC over DBus
+  - **IPC**: Thunder COM-RPC (Exchange interfaces) + Thunder JSON-RPC (HTTP/WebSocket; e.g. `http://127.0.0.1:9998/jsonrpc`)
   
   ### Dependencies
   - **External Repos**: entservices-apis, Dobby, rdk-window-manager, libpackage-sky, eshelpers
