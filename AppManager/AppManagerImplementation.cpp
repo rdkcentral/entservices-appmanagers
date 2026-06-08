@@ -173,7 +173,7 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                                     else if (action == APP_ACTION_PRELOAD)
                                     {
                                         string errorReason;
-                                        status = mLifecycleInterfaceConnector->preLoadApp(appId, appRequestParam->intent, launchArgs, runtimeConfig, errorReason);
+                                        status = mLifecycleInterfaceConnector->preLoadApp(appId, launchArgs, runtimeConfig, errorReason);
                                         LOGINFO("Application preLoad from thread returns with status %d error %s", status, errorReason.c_str());
 
                                         if ((!errorReason.empty()) || (status != Core::ERROR_NONE))
@@ -594,11 +594,11 @@ Core::hresult AppManagerImplementation::createPackageManagerObject()
     {
         LOGERR("mCurrentservice is null \n");
     }
-    else if (nullptr == (mPackageManagerHandlerObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IPackageHandler>("org.rdk.AppPackageManager")))
+    else if (nullptr == (mPackageManagerHandlerObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IPackageHandler>("org.rdk.PackageManagerRDKEMS")))
     {
         LOGERR("mPackageManagerHandlerObject is null \n");
     }
-    else if (nullptr == (mPackageManagerInstallerObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IPackageInstaller>("org.rdk.AppPackageManager")))
+    else if (nullptr == (mPackageManagerInstallerObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IPackageInstaller>("org.rdk.PackageManagerRDKEMS")))
     {
         LOGERR("mPackageManagerInstallerObject is null \n");
     }
@@ -1077,13 +1077,12 @@ Core::hresult AppManagerImplementation::SendIntent(const string& appId , const s
  * Preloads an Application and app will be in the RUNNING state (hidden).
  *
  * @param[in] appId     : App identifier for the application
- * @param[in] intent(optional) : Specifies the intent or message to be available during preload
  * @param[in] launchArgs(optional) : Additional parameters passed to the application
  * @param[out] error : if success = false it holds the appropriate error reason
  *
  * @return              : Core::<StatusCode>
  */
-Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const string& intent , const string& launchArgs ,string& error)
+Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const string& launchArgs ,string& error)
 {
     Core::hresult status = Core::ERROR_GENERAL;
     AppManagerTelemetryReporting& appManagerTelemetryReporting = AppManagerTelemetryReporting::getInstance();
@@ -1105,7 +1104,7 @@ Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const s
         {
             LOGINFO(" PreloadApp enter with appId %s", appId.c_str());
             request->mRequestAction = APP_ACTION_PRELOAD;
-            request->mRequestParam = std::make_shared<AppLaunchRequestParam>(AppLaunchRequestParam{appId, launchArgs, intent});
+            request->mRequestParam = std::make_shared<AppLaunchRequestParam>(AppLaunchRequestParam{appId, launchArgs});
             if (request->mRequestParam != nullptr)
             {
                 mAppManagerLock.lock();

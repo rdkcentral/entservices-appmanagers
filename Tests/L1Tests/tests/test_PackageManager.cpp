@@ -396,13 +396,13 @@ TEST_F(PackageManagerTest, downloadMethodusingJsonRpcSuccess) {
                 return Core::ERROR_NONE;
             }));
 
-    EVENT_SUBSCRIBE(0, _T("onAppDownloadStatus"), _T("org.rdk.AppPackageManager"), message);
+    EVENT_SUBSCRIBE(0, _T("onAppDownloadStatus"), _T("org.rdk.PackageManagerRDKEMS"), message);
     
     // TC-2: Add download request to regular queue using JsonRpc
     EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("download"), _T("{\"url\": \"https://httpbin.org/bytes/1024\"}"), mJsonRpcResponse));
 
     EXPECT_EQ(Core::ERROR_NONE, onAppDownloadStatus.Lock());
-    EVENT_UNSUBSCRIBE(0, _T("onAppDownloadStatus"), _T("org.rdk.AppPackageManager"), message);
+    EVENT_UNSUBSCRIBE(0, _T("onAppDownloadStatus"), _T("org.rdk.PackageManagerRDKEMS"), message);
 
     EXPECT_NE(mJsonRpcResponse.find("1001"), std::string::npos);
 
@@ -886,12 +886,12 @@ TEST_F(PackageManagerTest, deleteMethodusingJsonRpcSuccess) {
                 return Core::ERROR_NONE;
             }));
 
-    EVENT_SUBSCRIBE(0, _T("onAppDownloadStatus"), _T("org.rdk.AppPackageManager"), message);
+    EVENT_SUBSCRIBE(0, _T("onAppDownloadStatus"), _T("org.rdk.PackageManagerRDKEMS"), message);
 
     EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("download"), _T("{\"url\": \"https://httpbin.org/bytes/1024\"}"), mJsonRpcResponse));
 
     EXPECT_EQ(Core::ERROR_NONE, onAppDownloadStatus.Lock());
-    EVENT_UNSUBSCRIBE(0, _T("onAppDownloadStatus"), _T("org.rdk.AppPackageManager"), message);
+    EVENT_UNSUBSCRIBE(0, _T("onAppDownloadStatus"), _T("org.rdk.PackageManagerRDKEMS"), message);
 
     EXPECT_NE(mJsonRpcResponse.find("1001"), std::string::npos);
 

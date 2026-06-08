@@ -16,7 +16,8 @@
 # limitations under the License.
 
 project(PackageManager)
-set(PLUGIN_NAME AppPackageManager)
+set(PLUGIN_NAME ${PROJECT_NAME}RDKEMS)
+# When existing/old PackageManager plugin is removed, remove "RDKEMS" from the PLUGIN_NAME
 set(MODULE_NAME ${NAMESPACE}${PLUGIN_NAME})
 message("Setup ${MODULE_NAME}")
 

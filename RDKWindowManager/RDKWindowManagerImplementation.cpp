@@ -2064,34 +2064,34 @@ Core::hresult RDKWindowManagerImplementation::GetLastKeyInfo(uint32_t &keyCode, 
 
 
 /**
- * @brief Sets the zOrder of the specified client with given clientId or name.
+ * @brief Sets the zOrder of the specified client with given appInstanceId or name.
  *
- * This function controls the zOrder of the client identified by its clientId/name.
+ * This function controls the zOrder of the client identified by its appInstanceId/name.
  *
  * @param[in] client            : client name or Application instance ID
  * @param[in] zOrder           : integer zorder of an app
  * @return    Core::<StatusCode>: Core::ERROR_NONE on success, Core::ERROR_GENERAL on failure
  */
-Core::hresult RDKWindowManagerImplementation::SetZOrder(const string &clientId, int32_t zOrder)
+Core::hresult RDKWindowManagerImplementation::SetZOrder(const string &appInstanceId, int32_t zOrder)
 {
     Core::hresult status = Core::ERROR_GENERAL;
     bool lockAcquired = false;
 
-    if (clientId.empty())
+    if (appInstanceId.empty())
     {
-        LOGERR("SetZOrder: clientId is empty");
+        LOGERR("SetZOrder: appInstanceId is empty");
     }
     else
     {
         lockAcquired = lockRdkWindowManagerMutex();
-        if (true == RdkWindowManager::CompositorController::setZorder(clientId, zOrder))
+        if (true == RdkWindowManager::CompositorController::setZorder(appInstanceId, zOrder))
         {
-            LOGINFO("SetZOrder: client:%s zOrder:%d", clientId.c_str(), zOrder);
+            LOGINFO("SetZOrder: client:%s zOrder:%d", appInstanceId.c_str(), zOrder);
             status = Core::ERROR_NONE;
         }
         else
         {
-            LOGERR("SetZOrder: Failed to set ZOrder to '%s' zorder:%d", clientId.c_str(), zOrder);
+            LOGERR("SetZOrder: Failed to set ZOrder to '%s' zorder:%d", appInstanceId.c_str(), zOrder);
         }
 
         if (lockAcquired)
@@ -2103,34 +2103,34 @@ Core::hresult RDKWindowManagerImplementation::SetZOrder(const string &clientId, 
 }
 
 /**
- * @brief Gets the zOrder of the specified client with given clientId or name.
+ * @brief Gets the zOrder of the specified client with given appInstanceId or name.
  *
- * This function retrieves the zOrder of the client identified by its clientId/name.
+ * This function retrieves the zOrder of the client identified by its appInstanceId/name.
  *
- * @param[in] clientId            : client name or Application instance ID
+ * @param[in] client            : client name or Application instance ID
  * @param[out] zOrder           : integer zorder of an app
  * @return    Core::<StatusCode>: Core::ERROR_NONE on success, Core::ERROR_GENERAL on failure
  */
-Core::hresult RDKWindowManagerImplementation::GetZOrder(const string &clientId, int32_t &zOrder)
+Core::hresult RDKWindowManagerImplementation::GetZOrder(const string &appInstanceId, int32_t &zOrder)
 {
     Core::hresult status = Core::ERROR_GENERAL;
     bool lockAcquired = false;
 
-    if (clientId.empty())
+    if (appInstanceId.empty())
     {
-        LOGERR("GetZOrder: clientId is empty");
+        LOGERR("GetZOrder: appInstanceId is empty");
     }
     else
     {
         lockAcquired = lockRdkWindowManagerMutex();
-        if (true == RdkWindowManager::CompositorController::getZOrder(clientId, zOrder))
+        if (true == RdkWindowManager::CompositorController::getZOrder(appInstanceId, zOrder))
         {
-            LOGINFO("GetZOrder: client:%s zOrder:%d", clientId.c_str(), zOrder);
+            LOGINFO("GetZOrder: client:%s zOrder:%d", appInstanceId.c_str(), zOrder);
             status = Core::ERROR_NONE;
         }
         else
         {
-            LOGERR("GetZOrder: Failed to get ZOrder for '%s' ", clientId.c_str());
+            LOGERR("GetZOrder: Failed to get ZOrder for '%s' ", appInstanceId.c_str());
         }
         if (lockAcquired)
         {

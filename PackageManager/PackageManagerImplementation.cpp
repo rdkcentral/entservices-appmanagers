@@ -21,9 +21,7 @@
 #include <chrono>
 #include <cinttypes> // Required for PRIu64
 #include <filesystem>
-#include <vector>
 
-// Spec: entservices-appmanagers
 #include "PackageManagerImplementation.h"
 #include "PackageManagerTelemetryReporting.h"
 
@@ -832,7 +830,6 @@ namespace Plugin {
         runtimeConfig.dataImageSize = config.dataImageSize;
 
         runtimeConfig.fkpsFiles = config.fkpsFiles;
-        runtimeConfig.capabilities = config.capabilities;
         runtimeConfig.appType = config.appType;
         runtimeConfig.appPath = config.appPath;
         runtimeConfig.command = config.command;
@@ -867,7 +864,6 @@ namespace Plugin {
         if (!list.ToString(runtimeConfig.fkpsFiles)) {
             LOGERR("Failed to  stringify fkpsFiles to JsonArray");
         }
-        runtimeConfig.capabilities = config.capabilities;
         runtimeConfig.appType = config.appType == packagemanager::ApplicationType::SYSTEM ? "SYSTEM" : "INTERACTIVE";
         runtimeConfig.appPath = config.appPath;
         runtimeConfig.command = config.command;

@@ -17,7 +17,6 @@
 * limitations under the License.
 **/
 
-// Spec: entservices-appmanagers
 #include "DobbySpecGenerator.h"
 #include "ApplicationConfiguration.h"
 #include "UtilsLogging.h"
@@ -30,8 +29,6 @@
 #include <sstream>
 #include <bitset>
 #include <set>
-#include <algorithm>
-#include <cctype>
 #include <sys/sysinfo.h>
 //TODO SUPPORT THIS
 //#include <IPackage.h>
@@ -45,54 +42,6 @@ namespace Plugin
 namespace 
 {
     #define XDG_RUNTIME_DIR "/tmp"
-
-    std::string lowerCopy(const std::string& input)
-    {
-        std::string value = input;
-        std::transform(value.begin(), value.end(), value.begin(),
-                       [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
-        return value;
-    }
-
-    std::vector<std::string> splitEscaped(const std::string& input, const char delimiter)
-    {
-        std::vector<std::string> tokens;
-        std::string current;
-        bool escaped = false;
-
-        for (const char ch : input)
-        {
-            if (escaped)
-            {
-                current.push_back(ch);
-                escaped = false;
-                continue;
-            }
-
-            if (ch == '\\')
-            {
-                escaped = true;
-                continue;
-            }
-
-            if (ch == delimiter)
-            {
-                tokens.push_back(current);
-                current.clear();
-                continue;
-            }
-
-            current.push_back(ch);
-        }
-
-        if (escaped)
-        {
-            current.push_back('\\');
-        }
-
-        tokens.push_back(current);
-        return tokens;
-    }
 }
 
 DobbySpecGenerator::DobbySpecGenerator(AIConfiguration& aiConfiguration): mIonMemoryPluginData(Json::objectValue), mPackageMountPoint("/package"), mRuntimeMountPoint("/runtime"), mGstRegistrySourcePath(""), mGstRegistryDestinationPath("/tmp/gstreamer-cached-registry.bin")
@@ -140,9 +89,6 @@ bool DobbySpecGenerator::generate(const ApplicationConfiguration& config, const 
 {
     LOGINFO("DobbySpecGenerator::generate()");
     resultSpec = "";
-
-    std::vector<std::pair<std::string, std::string>> parsedCapabilities;
-    parseCapabilities(runtimeConfig.capabilities, parsedCapabilities);
 
     std::ifstream inFile("/tmp/specchange");
     if (inFile.good())
@@ -260,8 +206,7 @@ bool DobbySpecGenerator::generate(const ApplicationConfiguration& config, const 
     etcObj["ld-preload"] = preloadsArray;
     spec["etc"] = std::move(etcObj);
 
-    const bool wanLanEnabled = runtimeConfig.wanLanAccess || hasCapability(parsedCapabilities, "wan-lan");
-    if (wanLanEnabled)
+    if (runtimeConfig.wanLanAccess)
     {
         spec["network"] = "nat";
     }
@@ -276,9 +221,9 @@ bool DobbySpecGenerator::generate(const ApplicationConfiguration& config, const 
 
     //spec["plugins"] = populateClassicPlugins(config, runtimeConfig);
     populateClassicPlugins(config, runtimeConfig, spec);
-    spec["rdkPlugins"] = createRdkPlugins(config, runtimeConfig, parsedCapabilities);
+    spec["rdkPlugins"] = createRdkPlugins(config, runtimeConfig);
     spec["mounts"] = createMounts(config, runtimeConfig);
-    spec["env"] = createEnvVars(config, runtimeConfig, parsedCapabilities);
+    spec["env"] = createEnvVars(config, runtimeConfig);
 
 #ifdef RDK_APPMANAGERS_DEBUG
     addHolePunchPortToSpec(spec, 22222);
@@ -296,9 +241,7 @@ bool DobbySpecGenerator::generate(const ApplicationConfiguration& config, const 
     return true;
 }
 
-Json::Value DobbySpecGenerator::createEnvVars(const ApplicationConfiguration& config,
-                                              const WPEFramework::Exchange::RuntimeConfig& runtimeConfig,
-                                              const std::vector<std::pair<std::string, std::string>>& capabilities) const
+Json::Value DobbySpecGenerator::createEnvVars(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const
 {
     Json::Value env(Json::arrayValue);
     env.append(std::string("APPLICATION_NAME=") + config.mAppId);
@@ -342,14 +285,9 @@ Json::Value DobbySpecGenerator::createEnvVars(const ApplicationConfiguration& co
        }
    }	     
 
-   const bool dialEnabled = runtimeConfig.dial || hasCapability(capabilities, "dial-app");
-   if (dialEnabled)
+   if (runtimeConfig.dial)
    {
        std::string dialId = runtimeConfig.dialId;
-       if (dialId.empty())
-       {
-           dialId = getCapabilityValue(capabilities, "dial-app");
-       }
        env.append(std::string("APPLICATION_DIAL_NAME=") + dialId);
        std::ostringstream dataUrlStream;
        dataUrlStream << "http://127.0.0.1:"
@@ -508,81 +446,6 @@ bool DobbySpecGenerator::shouldEnableGpu(const ApplicationConfiguration& config)
     return !config.mWesterosSocketPath.empty();
 }
 
-void DobbySpecGenerator::parseCapabilities(const std::string& serializedCapabilities,
-                                           std::vector<std::pair<std::string, std::string>>& parsedCapabilities) const
-{
-    parsedCapabilities.clear();
-
-    if (serializedCapabilities.empty())
-    {
-        return;
-    }
-
-    const std::vector<std::string> entries = splitEscaped(serializedCapabilities, ',');
-    for (const std::string& rawEntry : entries)
-    {
-        if (rawEntry.empty())
-        {
-            continue;
-        }
-
-        const std::vector<std::string> splitEntry = splitEscaped(rawEntry, '=');
-        if (splitEntry.empty() || splitEntry[0].empty())
-        {
-            continue;
-        }
-
-        std::pair<std::string, std::string> capability;
-        capability.first = lowerCopy(splitEntry[0]);
-
-        if (splitEntry.size() > 1)
-        {
-            capability.second = splitEntry[1];
-            for (size_t i = 2; i < splitEntry.size(); ++i)
-            {
-                capability.second += "=";
-                capability.second += splitEntry[i];
-            }
-        }
-
-        parsedCapabilities.push_back(std::move(capability));
-    }
-
-    return;
-}
-
-bool DobbySpecGenerator::hasCapability(const std::vector<std::pair<std::string, std::string>>& capabilities,
-                                       const std::string& capabilityName) const
-{
-    const std::string expectedName = lowerCopy(capabilityName);
-
-    for (const auto& capability : capabilities)
-    {
-        if (capability.first == expectedName)
-        {
-            return true;
-        }
-    }
-
-    return false;
-}
-
-std::string DobbySpecGenerator::getCapabilityValue(const std::vector<std::pair<std::string, std::string>>& capabilities,
-                                                   const std::string& capabilityName) const
-{
-    const std::string expectedName = lowerCopy(capabilityName);
-
-    for (const auto& capability : capabilities)
-    {
-        if (capability.first == expectedName)
-        {
-            return capability.second;
-        }
-    }
-
-    return "";
-}
-
 ssize_t DobbySpecGenerator::getSysMemoryLimit(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const
 {
     ssize_t memoryLimit = runtimeConfig.systemMemoryLimit;
@@ -666,22 +529,19 @@ std::string DobbySpecGenerator::getCpuCores()
     return coresStr;
 }
 
-Json::Value DobbySpecGenerator::createRdkPlugins(const ApplicationConfiguration& config,
-                                                 const WPEFramework::Exchange::RuntimeConfig& runtimeConfig,
-                                                 const std::vector<std::pair<std::string, std::string>>& capabilities) const
+Json::Value DobbySpecGenerator::createRdkPlugins(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const
 {
     Json::Value rdkPluginsObj(Json::objectValue);
     if (!config.mPorts.empty())
     {
-        rdkPluginsObj["appservicesrdk"] = createAppServiceSDKPlugin(config, runtimeConfig, capabilities);
+        rdkPluginsObj["appservicesrdk"] = createAppServiceSDKPlugin(config, runtimeConfig);
     }
     rdkPluginsObj["ionmemory"] = createIonMemoryPlugin();
 
 
 
-    rdkPluginsObj["networking"] = createNetworkPlugin(config, runtimeConfig, capabilities);
-    const bool thunderEnabled = runtimeConfig.thunder || hasCapability(capabilities, "thunder");
-    if (thunderEnabled)
+    rdkPluginsObj["networking"] = createNetworkPlugin(config, runtimeConfig);
+    if (runtimeConfig.thunder)
     {
         rdkPluginsObj["thunder"] = createThunderPlugin(config);
     }
@@ -731,9 +591,7 @@ Json::Value DobbySpecGenerator::createMinidumpPlugin() const
 
 //TODO SUPPORT localservices in appsservice plugin
 //TODO SUPPORT airplay2 ports in appsservice plugin
-Json::Value DobbySpecGenerator::createAppServiceSDKPlugin(const ApplicationConfiguration& config,
-                                                          const WPEFramework::Exchange::RuntimeConfig& runtimeConfig,
-                                                          const std::vector<std::pair<std::string, std::string>>& capabilities) const
+Json::Value DobbySpecGenerator::createAppServiceSDKPlugin(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const
 {
     Json::Value pluginObj(Json::objectValue);
 
@@ -745,8 +603,7 @@ Json::Value DobbySpecGenerator::createAppServiceSDKPlugin(const ApplicationConfi
     pluginObj["dependsOn"] = std::move(dependencies);
 
     Json::Value ports(Json::arrayValue);
-    const bool dialEnabled = runtimeConfig.dial || hasCapability(capabilities, "dial-app");
-    if (dialEnabled)
+    if (runtimeConfig.dial)
     {
         ports.append(mAIConfiguration->getDialServerPort());
     }
@@ -762,17 +619,14 @@ Json::Value DobbySpecGenerator::createAppServiceSDKPlugin(const ApplicationConfi
     return pluginObj;
 }
 
-Json::Value DobbySpecGenerator::createNetworkPlugin(const ApplicationConfiguration& config,
-                                                    const WPEFramework::Exchange::RuntimeConfig& runtimeConfig,
-                                                    const std::vector<std::pair<std::string, std::string>>& capabilities) const
+Json::Value DobbySpecGenerator::createNetworkPlugin(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const
 {
     Json::Value pluginObj(Json::objectValue);
 
     pluginObj["required"] = true;
 
     Json::Value dataObj(Json::objectValue);
-    const bool wanLanEnabled = runtimeConfig.wanLanAccess || hasCapability(capabilities, "wan-lan");
-    if (wanLanEnabled)
+    if (runtimeConfig.wanLanAccess)
     {
         dataObj["type"] = "nat";
         dataObj["dnsmasq"] = true;

@@ -154,6 +154,18 @@
             ]
         },
         {
+            "destination": "/etc/ssl/certs",
+            "type": "bind",
+            "source": "/etc/ssl/certs",
+            "options": [
+                "bind",
+                "ro",
+                "nosuid",
+                "nodev",
+                "noexec"
+            ]
+        },
+        {
             "destination": "/rootdir",
             "type": "tmpfs",
             "source": "tmpfs",

@@ -206,7 +206,7 @@ public:
     void* QueryInterfaceByCallsign(const uint32_t id, const std::string& callsign) override
     {
         if (WPEFramework::Exchange::IPackageInstaller::ID == id
-            && "org.rdk.AppPackageManager" == callsign
+            && "org.rdk.PackageManagerRDKEMS" == callsign
             && nullptr != _cfg.installer)
         {
             _cfg.installer->AddRef();

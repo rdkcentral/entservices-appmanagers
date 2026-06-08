@@ -115,6 +115,7 @@ namespace Plugin {
         Core::hresult Cancel(const string &downloadId) override;
         Core::hresult Delete(const string &fileLocator) override;
         Core::hresult Progress(const string &downloadId, uint8_t &percent);
+        Core::hresult GetStorageDetails(uint32_t &quotaKB, uint32_t &usedKB);
         Core::hresult RateLimit(const string &downloadId, const uint32_t &limit);
 
         Core::hresult Register(Exchange::IDownloadManager::INotification* notification) override;
