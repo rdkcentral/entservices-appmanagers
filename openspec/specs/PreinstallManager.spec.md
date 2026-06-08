@@ -140,7 +140,7 @@ Manual Scan (Client::Scan()):
 | PLUGIN_PREINSTALL_MANAGER_APP_PREINSTALL_DIRECTORY | String | "" | Directory path for preinstall packages |
 
 ## Build & Installation
-- **Compiled Artifact**: `RdkCppPlugin_PreinstallManager.so`
+- **Compiled Artifacts**: `lib${NAMESPACE}PreinstallManager.so`, `lib${NAMESPACE}PreinstallManagerImplementation.so`
 - **Install Path**: `${CMAKE_INSTALL_PREFIX}/lib/${STORAGE_DIRECTORY}/plugins`
 - **Required Build Flags**: C++11
 - **API Version**: 1.0.0
