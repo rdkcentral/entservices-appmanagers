@@ -249,9 +249,9 @@ sudo make install
 
 | Plugin | Output | Install Path |
 |--------|--------|--------------|
-| AppManager | RdkCppPlugin_AppManager.so | /usr/lib/plugins/ |
-| LifecycleManager | RdkCppPlugin_LifecycleManager.so | /usr/lib/plugins/ |
-| RuntimeManager | RdkCppPlugin_RuntimeManager.so | /usr/lib/plugins/ |
+| AppManager | lib${NAMESPACE}AppManager.so | ${CMAKE_INSTALL_PREFIX}/lib/${STORAGE_DIRECTORY}/plugins/ |
+| LifecycleManager | lib${NAMESPACE}LifecycleManager.so | ${CMAKE_INSTALL_PREFIX}/lib/${STORAGE_DIRECTORY}/plugins/ |
+| RuntimeManager | lib${NAMESPACE}RuntimeManager.so | ${CMAKE_INSTALL_PREFIX}/lib/${STORAGE_DIRECTORY}/plugins/ |
 | ... | ... | ... |
 
 ## Installation Paths
