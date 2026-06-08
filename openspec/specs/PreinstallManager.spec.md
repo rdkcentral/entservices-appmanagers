@@ -60,7 +60,7 @@ PreinstallManagerImplementation
 ### Configuration
 - **Config File**: `PreinstallManager.conf.in` / `PreinstallManager.config`
 - **App Preinstall Directory**: Configured via `PLUGIN_PREINSTALL_MANAGER_APP_PREINSTALL_DIRECTORY`
-- **DBus Service**: Registered as WPEFramework plugin
+- **Thunder Service**: Registered as a WPEFramework/Thunder plugin
 
 ## Data Flow
 ```
