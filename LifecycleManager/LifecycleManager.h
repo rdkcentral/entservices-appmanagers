@@ -58,14 +58,18 @@ namespace WPEFramework
                     INTERFACE_ENTRY(RPC::IRemoteConnection::INotification)
                     END_INTERFACE_MAP
 
-                    void Activated(RPC::IRemoteConnection*) override
+                    void Activated(RPC::IRemoteConnection* connection) override
                     {
-                        LOGINFO("LifecycleManagerState Notification Activated");
+                        if ((nullptr != connection) && (_parent.mConnectionId == connection->Id())) {
+                            LOGINFO("LifecycleManagerState Notification Activated");
+                        }
                     }
 
                     void Deactivated(RPC::IRemoteConnection *connection) override
                     {
-                        LOGINFO("LifecycleManagerState Notification Deactivated");
+                        if ((nullptr != connection) && (_parent.mConnectionId == connection->Id())) {
+                            LOGINFO("LifecycleManagerState Notification Deactivated");
+                        }
                     }
 
                     void OnAppLifecycleStateChanged(const string& appId,
