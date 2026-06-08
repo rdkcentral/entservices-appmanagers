@@ -6,18 +6,13 @@
 **Purpose**: Centralized metrics recording and publishing for performance analytics and operational monitoring
 
 ## Description
-TelemetryMetrics provides a centralized service for recording, buffering, and publishing performance metrics from across all AppManagers modules. It is an optional, compile-time-gated component controlled by the `AIMANAGERS_TELEMETRY_METRICS_SUPPORT` build flag. When enabled, each module (AppManager, LifecycleManager, RuntimeManager, PackageManager, DownloadManager) instruments key operations with `Record` and `Publish` calls. Metrics are stored in-memory and published to a configurable backend endpoint. The core API exposes `Record` (store a metric entry) and `Publish` (flush buffered metrics for a given record ID and marker name).
+TelemetryMetrics is a WPEFramework plugin that records JSON-formatted metrics in-memory and publishes them to the platform telemetry bus (T2) when `Publish` is invoked. Metrics are stored in an internal map keyed by `"<id>:<markerName>"` and are cleared after a successful publish. Other modules may optionally emit telemetry when built with `AIMANAGERS_TELEMETRY_METRICS_SUPPORT`, but the TelemetryMetrics plugin itself is enabled/disabled independently.
 
 ## Requirements
 - Provide JSON-RPC API for `Record(id, metrics, name)` and `Publish(id, name)` operations
-- Buffer recorded metrics in-memory keyed by record ID and marker name
-- Merge metrics with the same `appInstanceId` and `markerName` on publish
-- Publish buffered metrics to a configurable telemetry backend endpoint
-- Entire module is optional and gated by `AIMANAGERS_TELEMETRY_METRICS_SUPPORT` compile flag
-- Auto-start on boot when enabled (`PLUGIN_TELEMETRY_METRICS_AUTOSTART`)
-- All consumer modules (AppManager, LifecycleManager, etc.) must be compiled with `AIMANAGERS_TELEMETRY_METRICS_SUPPORT` to emit metrics
-- Publishing failures must not block or affect module operations
-- Metric buffer has a finite size; oldest metrics are discarded when the limit is exceeded
+- Parse `metrics` as a JSON object and merge it into the stored record for the key `"<id>:<name>"`
+- On `Publish`, filter/merge metrics according to marker filters and emit a T2 telemetry event (`t2_event_s`)
+- Record/Publish failures must not crash or deadlock callers; failures are reported via the returned `hresult`
 
 ## Architecture / Design
 
