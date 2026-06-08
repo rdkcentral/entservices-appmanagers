@@ -73,6 +73,9 @@
 - **Integration Tests**: [Path/Status]
 - **Test Dependencies**: [External test requirements]
 
+## Covered Code
+- [List source files and key methods/classes covered by this spec]
+
 ## Related Documentation
 - Module Doc: [Link if exists]
 - README: [Link to architecture docs]
