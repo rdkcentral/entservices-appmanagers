@@ -16,8 +16,8 @@ PreinstallManager handles the detection and installation of pre-installed applic
 - Execute installations asynchronously in a dedicated thread to avoid blocking startup
 - Emit `OnPackageDetected`, `OnInstallStarted`, and `OnInstallComplete` notifications
 - Only process packages whose install state is `INSTALLED` when checking for already-installed packages
-- Support configurable scan directories via `PLUGIN_PREINSTALLMANAGER_SCAN_DIRECTORIES`
-- Auto-start on boot via `PLUGIN_PREINSTALLMANAGER_AUTOSTART`
+- Support configurable scan directory via `PLUGIN_PREINSTALL_MANAGER_APP_PREINSTALL_DIRECTORY`
+- Auto-start on boot via `PLUGIN_PREINSTALL_MANAGER_AUTOSTART`
 
 ## Architecture / Design
 
