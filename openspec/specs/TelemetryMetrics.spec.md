@@ -144,10 +144,10 @@ _Not applicable — TelemetryMetrics operates on internal performance data only;
 ### CMake Configuration
 | Option | Type | Default | Purpose |
 |--------|------|---------|---------|
-| AIMANAGERS_TELEMETRY_METRICS_SUPPORT | ON/OFF | OFF | Enable telemetry support globally (affects all modules) |
+| AIMANAGERS_TELEMETRY_METRICS_SUPPORT | ON/OFF | OFF | Enable telemetry reporting in consumer modules (adds ENABLE_AIMANAGERS_TELEMETRY_METRICS) |
 | PLUGIN_TELEMETRY_METRICS_MODE | String | Off | Plugin execution mode |
-| PLUGIN_TELEMETRY_METRICS_AUTOSTART | Boolean | true | Auto-start on boot when enabled |
-| TELEMETRY_PUBLISH_ENDPOINT | String | "" | Telemetry backend URL for publishing |
+| PLUGIN_TELEMETRY_METRICS_AUTOSTART | Boolean | false | Auto-start on boot |
+| APPMANAGERS_ENABLE_T2_INIT | ON/OFF | OFF | Enable T2 init/uninit in TelemetryMetricsImplementation |
 
 ## Build & Installation
 - **Compiled Artifact**: `RdkCppPlugin_TelemetryMetrics.so`
