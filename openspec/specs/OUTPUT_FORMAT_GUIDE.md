@@ -163,7 +163,7 @@ cmake -DCMAKE_BUILD_TYPE=Release \
 
 ## System Architecture
 
-```mermaid
+~~~mermaid
 graph TB
     subgraph "Client Layer"
         Client[Client Applications / Firebolt]
@@ -180,7 +180,7 @@ graph TB
         Dobby[Dobby OCI Runtime]
         WinMgr[RDKWindowManager<br/>Wayland]
     end
-```
+~~~
 
 ## Module Dependency Graph
 
