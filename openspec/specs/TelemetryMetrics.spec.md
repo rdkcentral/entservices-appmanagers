@@ -79,15 +79,14 @@ Module (e.g. AppManager) with AIMANAGERS_TELEMETRY_METRICS_SUPPORT:
 
 TelemetryMetricsImplementation::Record(id, metrics, markerName):
     ├→ Parse metrics JSON
-    ├→ Store in mRecordMetrics map keyed by (id, markerName)
+    ├→ Store in mMetricsRecord map keyed by "<id>:<markerName>"
     └→ Return Core::ERROR_NONE on success
 
 TelemetryMetricsImplementation::Publish(id, markerName):
-    ├→ Filter mRecordMetrics for matching (id, markerName)
-    ├→ Extract appInstanceId from filtered entries
+    ├→ Filter mMetricsRecord for matching "<id>:<markerName>"
     ├→ Merge other records with same appInstanceId and markerName
     ├→ Serialize to publishMetrics JSON string
-    └→ POST to TELEMETRY_PUBLISH_ENDPOINT
+    └→ Emit T2 telemetry event via t2_event_s(markerName, publishMetrics)
 
 Query (not a current API):
     _Not currently exposed via JSON-RPC — metrics are publish-only._
