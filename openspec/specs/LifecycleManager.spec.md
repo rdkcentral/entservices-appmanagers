@@ -65,7 +65,7 @@ UNLOADED (0)
 
 ### Configuration
 - **Config File**: `LifecycleManager.conf.in` / `LifecycleManager.config`
-- **DBus Service**: Registered as WPEFramework plugin
+- **Thunder Service**: Registered as a WPEFramework/Thunder plugin
 
 ## Data Flow
 ```
