@@ -166,7 +166,7 @@ Wake:
 | ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG | ON/OFF | OFF | Enable YAML runtime config parsing |
 
 ## Build & Installation
-- **Compiled Artifact**: `RdkCppPlugin_RuntimeManager.so`
+- **Compiled Artifact**: `lib${NAMESPACE}RuntimeManager.so`
 - **Install Path**: `${CMAKE_INSTALL_PREFIX}/lib/${STORAGE_DIRECTORY}/plugins`
 - **Required Build Flags**: C++11, exceptions enabled
 - **API Version**: 1.0.0
