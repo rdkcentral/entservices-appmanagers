@@ -237,7 +237,7 @@ protected:
             .Times(AnyNumber())
             .WillRepeatedly(Invoke(
                 [this](const uint32_t id, const std::string& name) -> void* {
-                    if (("org.rdk.PackageManagerRDKEMS" == name) && (Exchange::IPackageInstaller::ID == id)) {
+                    if (("org.rdk.AppPackageManager" == name) && (Exchange::IPackageInstaller::ID == id)) {
                         return static_cast<void*>(static_cast<Exchange::IPackageInstaller*>(mPackageInstallerMock));
                     }
                     return nullptr;
