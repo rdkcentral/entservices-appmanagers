@@ -31,7 +31,7 @@ namespace WPEFramework
     {
         SERVICE_REGISTRATION(LifecycleManagerImplementation, 1, 0);
 
-        LifecycleManagerImplementation::LifecycleManagerImplementation(): mLifecycleManagerNotification(), mLifecycleManagerStateNotification(), mLoadedApplications(), mService(nullptr)
+        LifecycleManagerImplementation::LifecycleManagerImplementation(): mLifecycleManagerNotification(), mLifecycleManagerStateNotification(), mLoadedApplications(), mPendingRespawns(), mService(nullptr)
         {
             LOGINFO("Create LifecycleManagerImplementation Instance");
         }
@@ -120,6 +120,8 @@ namespace WPEFramework
         void LifecycleManagerImplementation::Dispatch(EventNames event, const JsonValue params)
         {
              JsonObject obj = params.Object();
+               PendingRespawnRequest pendingRespawn;
+               bool shouldRespawn = false;
 
              //below is for ILifecycleManager notification
              string appId(obj["appId"].String());
@@ -143,6 +145,10 @@ namespace WPEFramework
                  case LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED:
                      LifecycleManagerTelemetryReporting::getInstance().reportTelemetryDataOnStateChange(context, obj);
                      handleStateChangeEvent(obj);
+                     if (Exchange::ILifecycleManager::LifecycleState::UNLOADED == static_cast<Exchange::ILifecycleManager::LifecycleState>(newLifecycleState))
+                     {
+                         shouldRespawn = tryGetPendingRespawn(appInstanceId, pendingRespawn);
+                     }
                      while (index != mLifecycleManagerNotification.end())
                      {
                          (*index)->OnAppStateChanged(appId, (LifecycleState)newLifecycleState, errorReason);
@@ -173,6 +179,11 @@ namespace WPEFramework
              }
         
              mAdminLock.Unlock();
+
+             if (shouldRespawn)
+             {
+                 handlePendingRespawn(pendingRespawn);
+             }
         }
         
         Core::hresult LifecycleManagerImplementation::GetLoadedApps(const bool verbose, string& apps)
@@ -297,7 +308,15 @@ namespace WPEFramework
                     context->setRequestType(REQUEST_TYPE_PAUSE);
                 break;
                 case Exchange::ILifecycleManager::LifecycleState::SUSPENDED:
-                    context->setRequestType(REQUEST_TYPE_SUSPEND);
+                    if (Exchange::ILifecycleManager::LifecycleState::HIBERNATED == context->getCurrentLifecycleState())
+                    {
+                        context->setRequestTime(requestTime);
+                        context->setRequestType(REQUEST_TYPE_WAKE);
+                    }
+                    else
+                    {
+                        context->setRequestType(REQUEST_TYPE_SUSPEND);
+                    }
                 break;
                 case Exchange::ILifecycleManager::LifecycleState::HIBERNATED:
                     context->setRequestType(REQUEST_TYPE_HIBERNATE);
@@ -500,23 +519,47 @@ namespace WPEFramework
                 status = Core::ERROR_GENERAL;
                 return status;
 	    }
+	    const string appInstanceId = context->getAppInstanceId();
+        const bool shouldRespawn = ((closeReason == KILL_AND_RUN) || (closeReason == KILL_AND_ACTIVATE));
+        ApplicationLaunchParams launchParams;
+        if (true == shouldRespawn)
+        {
+            launchParams = context->getApplicationLaunchParams();
+        }
 	    bool success = false;
             bool activate = false;
-            string errorReason(""), appInstanceId("");
-            status = KillApp(context->getAppInstanceId(), errorReason, success); 
-            if (status != Core::ERROR_NONE)
+            string errorReason("");
+	    status = KillApp(appInstanceId, errorReason, success); 
+	    if ((Core::ERROR_NONE != status) || (false == success))
 	    {
-                LOGERR("Failed to close the app [%s]", appId.c_str());
+                if (Core::ERROR_NONE == status)
+                {
+                    status = Core::ERROR_GENERAL;
+                }
+                mAdminLock.Lock();
+                mPendingRespawns.erase(appInstanceId);
+                mAdminLock.Unlock();
+                LOGERR("Failed to close the app [%s]. status[%d] success[%d] error[%s]", appId.c_str(), status, success, errorReason.c_str());
                 return status;
 	    }
-	    if ((closeReason != KILL_AND_RUN) && (closeReason != KILL_AND_ACTIVATE))
+	    if (false == shouldRespawn)
 	    {
+                mAdminLock.Lock();
+                mPendingRespawns.erase(appInstanceId);
+                mAdminLock.Unlock();
                 return status;
 	    }
             activate = (closeReason == KILL_AND_ACTIVATE);		    
 
-            ApplicationLaunchParams& launchParams = context->getApplicationLaunchParams();
-	    status = SpawnApp(launchParams.mAppId, launchParams.mLaunchIntent, activate?Exchange::ILifecycleManager::LifecycleState::ACTIVE:Exchange::ILifecycleManager::LifecycleState::PAUSED, launchParams.mRuntimeConfigObject, launchParams.mLaunchArgs, appInstanceId, errorReason, success);
+	    PendingRespawnRequest pendingRespawn;
+            pendingRespawn.mLaunchParams = launchParams;
+            pendingRespawn.mLaunchParams.mTargetState = activate ? Exchange::ILifecycleManager::LifecycleState::ACTIVE : Exchange::ILifecycleManager::LifecycleState::PAUSED;
+            pendingRespawn.mLaunchParams.mLaunchIntent = "";  // Clear intent for respawn to prevent runtime manager from auto-resuming
+
+            mAdminLock.Lock();
+            mPendingRespawns[appInstanceId] = pendingRespawn;
+            mAdminLock.Unlock();
+
 	    return status;
 	}
 
@@ -692,16 +735,15 @@ namespace WPEFramework
             LOGINFO("Notify error event for appId[%s] appInstanceId[%s] error[%s]", appId.c_str(), appInstanceId.c_str(), errorCode.c_str());
         }
 
-	void LifecycleManagerImplementation::handleStateChangeEvent(const JsonObject &data)
+    void LifecycleManagerImplementation::handleStateChangeEvent(const JsonObject &data)
     {
             string appInstanceId = data["appInstanceId"];
 	    uint32_t stateInput = data["newLifecycleState"].Number();
             Exchange::ILifecycleManager::LifecycleState state = (Exchange::ILifecycleManager::LifecycleState) stateInput;
-            if (state != Exchange::ILifecycleManager::LifecycleState::UNLOADED)
+            if (Exchange::ILifecycleManager::LifecycleState::UNLOADED != state)
 	    {
-                return;
+	        return;
 	    }
-            mAdminLock.Lock();
             auto iter = mLoadedApplications.end();
 	    for (iter = mLoadedApplications.begin(); iter != mLoadedApplications.end(); iter++)
 	    {
@@ -718,8 +760,41 @@ namespace WPEFramework
 	    {
                 mLoadedApplications.erase(iter);
 	    }
-            mAdminLock.Unlock();
-    }
+        }
+
+        bool LifecycleManagerImplementation::tryGetPendingRespawn(const string& appInstanceId, PendingRespawnRequest& pendingRespawn)
+        {
+            auto pendingRespawnIter = mPendingRespawns.find(appInstanceId);
+            if (pendingRespawnIter == mPendingRespawns.end())
+            {
+                return false;
+            }
+
+            pendingRespawn = pendingRespawnIter->second;
+            mPendingRespawns.erase(pendingRespawnIter);
+            return true;
+        }
+
+        void LifecycleManagerImplementation::handlePendingRespawn(const PendingRespawnRequest& pendingRespawn)
+        {
+            string appInstanceId(""), errorReason("");
+            bool success = false;
+            const ApplicationLaunchParams& launchParams = pendingRespawn.mLaunchParams;
+
+            LOGINFO("Respawning app [%s] after unload confirmation", launchParams.mAppId.c_str());
+            Core::hresult status = SpawnApp(launchParams.mAppId,
+                                            launchParams.mLaunchIntent,
+                                            launchParams.mTargetState,
+                                            launchParams.mRuntimeConfigObject,
+                                            launchParams.mLaunchArgs,
+                                            appInstanceId,
+                                            errorReason,
+                                            success);
+            if ((Core::ERROR_NONE != status) || (false == success))
+            {
+                LOGERR("Failed to respawn app [%s] after unload confirmation. status[%d] success[%d] error[%s]", launchParams.mAppId.c_str(), status, success, errorReason.c_str());
+            }
+        }
 
 
     void LifecycleManagerImplementation::handleWindowManagerEvent(const JsonObject &data)
@@ -761,3 +836,4 @@ namespace WPEFramework
 
     } /* namespace Plugin */
 } /* namespace WPEFramework */
+
