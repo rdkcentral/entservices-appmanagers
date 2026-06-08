@@ -168,7 +168,7 @@ Manual Scan (Client::Scan()):
 - Is the install thread joined or detached on plugin `Deinitialize` — what happens if shutdown occurs mid-install?
 
 ## References
-- Architecture: [PreinstallManager.md](./PreinstallManager.md)
+- Architecture: [PreinstallManager.md](../../PreinstallManager/PreinstallManager.md)
 - Related Spec: [PackageManager.spec.md](./PackageManager.spec.md)
 
 ## Change History
