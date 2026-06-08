@@ -66,7 +66,7 @@ RuntimeManagerImplementation
 
 ### Configuration
 - **Config File**: Runtime config YAML (if `ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG`)
-- **DBus Service**: Registered as WPEFramework plugin
+- **Thunder Service**: Registered as a WPEFramework/Thunder plugin
 
 ## Data Flow
 ```
