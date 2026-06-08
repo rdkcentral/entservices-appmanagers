@@ -50,7 +50,7 @@ Each module specification documents:
 ### **Interfaces**
 - **Public APIs** (JSON-RPC methods)
 - **Configuration Files** (*.conf.in, *.config)
-- **DBus Services**
+- **Callsigns / JSON-RPC Endpoints** (Thunder/WPEFramework, e.g. `org.rdk.<PluginName>` via `http://127.0.0.1:9998/jsonrpc`)
 
 ### **Data Flow**
 - Visual representation of how data flows through the module
