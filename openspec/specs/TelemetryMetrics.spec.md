@@ -150,12 +150,11 @@ _Not applicable — TelemetryMetrics operates on internal performance data only;
 | APPMANAGERS_ENABLE_T2_INIT | ON/OFF | OFF | Enable T2 init/uninit in TelemetryMetricsImplementation |
 
 ## Build & Installation
-- **Compiled Artifact**: `RdkCppPlugin_TelemetryMetrics.so`
+- **Compiled Artifacts**: `lib${NAMESPACE}TelemetryMetrics.so`, `lib${NAMESPACE}TelemetryMetricsImplementation.so`
 - **Install Path**: `${CMAKE_INSTALL_PREFIX}/lib/${STORAGE_DIRECTORY}/plugins`
 - **Required Build Flags**: C++11
 - **API Version**: 1.0.0
-- **Build Dependency**: `AIMANAGERS_TELEMETRY_METRICS_SUPPORT` must be ON; affects all consumer modules
-
+- **Build Notes**: `AIMANAGERS_TELEMETRY_METRICS_SUPPORT` controls telemetry emission in consumer modules; the TelemetryMetrics plugin is enabled separately (e.g., via `PLUGIN_TELEMETRYMETRICS`).
 ## Constraints & Limitations
 - Metrics are not persisted across daemon restarts (in-memory buffer only)
 - Telemetry is opt-in per build (requires compile-time flag)
