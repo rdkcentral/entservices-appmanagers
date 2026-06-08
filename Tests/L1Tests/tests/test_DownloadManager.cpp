@@ -474,6 +474,12 @@ TEST_F(DownloadManagerImplementationTest, AllIDownloadManagerAPIs) {
     TEST_LOG("Delete (empty locator) returned: %u", deleteResult2);
     EXPECT_NE(Core::ERROR_NONE, deleteResult2) << "Delete should fail with empty file locator";
 
+    // Test GetStorageDetails - should succeed (stub implementation)
+    uint32_t quotaKB = 0, usedKB = 0;
+    Core::hresult storageResult = impl->GetStorageDetails(quotaKB, usedKB);
+    TEST_LOG("GetStorageDetails returned: %u, quota: %u KB, used: %u KB", storageResult, quotaKB, usedKB);
+    EXPECT_EQ(Core::ERROR_NONE, storageResult) << "GetStorageDetails should succeed (stub implementation)";
+
     // Test RateLimit API if it exists - additional coverage
     if (!downloadId.empty()) {
         Core::hresult rateLimitResult = impl->RateLimit(downloadId, 512);

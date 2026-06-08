@@ -79,8 +79,8 @@ classDiagram
         +SetInactivityInterval(interval: uint32_t) hresult
         +ResetInactivityTime() hresult
         +GetLastKeyInfo(keyCode: uint32_t, modifiers: uint32_t, timestampInSeconds: uint64_t) hresult
-        +SetZOrder(clientId: string, zOrder: int32_t) hresult
-        +GetZOrder(clientId: string, zOrder: int32_t) hresult
+        +SetZOrder(appInstanceId: string, zOrder: int32_t) hresult
+        +GetZOrder(appInstanceId: string, zOrder: int32_t) hresult
     }
 
     class IRDKWindowManager {

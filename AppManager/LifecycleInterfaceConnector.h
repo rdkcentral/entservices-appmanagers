@@ -92,7 +92,7 @@ namespace WPEFramework
                     Core::hresult createLifecycleManagerRemoteObject();
                     void releaseLifecycleManagerRemoteObject();
                     Core::hresult launch(const string& appId, const string& intent, const string& launchArgs, WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject);
-                    Core::hresult preLoadApp(const string& appId, const string& intent, const string& launchArgs, WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject, string& error);
+                    Core::hresult preLoadApp(const string& appId, const string& launchArgs, WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject, string& error);
                     Core::hresult closeApp(const string& appId);
                     Core::hresult terminateApp(const string& appId);
                     Core::hresult killApp(const string& appId);

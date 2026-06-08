@@ -132,7 +132,7 @@ add_plugin_test_ex(PLUGIN_PREINSTALL_MANAGER tests/test_PreinstallManager.cpp "$
 
 # PLUGIN_PACKAGE_MANAGER
 set(PACKAGEMANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/PackageManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
-set(PACKAGEMANAGER_LIBS ${NAMESPACE}AppPackageManager)
+set(PACKAGEMANAGER_LIBS ${NAMESPACE}PackageManagerRDKEMS)
 add_plugin_test_ex(PLUGIN_PACKAGE_MANAGER tests/test_PackageManager.cpp "${PACKAGEMANAGER_INC}" "${PACKAGEMANAGER_LIBS}")
 
 # PLUGIN_DOWNLOADMANAGER

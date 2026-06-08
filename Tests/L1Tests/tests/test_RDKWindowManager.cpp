@@ -1137,7 +1137,7 @@ TEST_F(RDKWindowManagerTest, SetZOrder_Success)
 
     EXPECT_EQ(Core::ERROR_NONE,
         handler.Invoke(connection, _T("setZOrder"),
-            _T("{\"clientId\":\"testAppInstance\",\"zOrder\":5}"),
+            _T("{\"appInstanceId\":\"testAppInstance\",\"zOrder\":5}"),
             response));
 }
 
@@ -1148,7 +1148,7 @@ TEST_F(RDKWindowManagerTest, SetZOrder_NegativeZOrder_Success)
 
     EXPECT_EQ(Core::ERROR_NONE,
         handler.Invoke(connection, _T("setZOrder"),
-            _T("{\"clientId\":\"testAppInstance\",\"zOrder\":-1}"),
+            _T("{\"appInstanceId\":\"testAppInstance\",\"zOrder\":-1}"),
             response));
 }
 
@@ -1159,7 +1159,7 @@ TEST_F(RDKWindowManagerTest, SetZOrder_Failure)
 
     EXPECT_EQ(Core::ERROR_GENERAL,
         handler.Invoke(connection, _T("setZOrder"),
-            _T("{\"clientId\":\"testAppInstance\",\"zOrder\":5}"),
+            _T("{\"appInstanceId\":\"testAppInstance\",\"zOrder\":5}"),
             response));
 }
 
@@ -1176,7 +1176,7 @@ TEST_F(RDKWindowManagerTest, GetZOrder_Success)
 
     EXPECT_EQ(Core::ERROR_NONE,
         handler.Invoke(connection, _T("getZOrder"),
-            _T("{\"clientId\":\"testAppInstance\"}"),
+            _T("{\"appInstanceId\":\"testAppInstance\"}"),
             response));
 }
 
@@ -1187,7 +1187,7 @@ TEST_F(RDKWindowManagerTest, GetZOrder_Failure)
 
     EXPECT_EQ(Core::ERROR_GENERAL,
         handler.Invoke(connection, _T("getZOrder"),
-            _T("{\"clientId\":\"testAppInstance\"}"),
+            _T("{\"appInstanceId\":\"testAppInstance\"}"),
             response));
 }
 
@@ -1201,7 +1201,7 @@ TEST_F(RDKWindowManagerTest, GetZOrder_Success_Additional)
 
     EXPECT_EQ(Core::ERROR_NONE,
         handler.Invoke(connection, _T("getZOrder"),
-            _T("{\"clientId\":\"testAppInstance\"}"),
+            _T("{\"appInstanceId\":\"testAppInstance\"}"),
             response));
 }
 

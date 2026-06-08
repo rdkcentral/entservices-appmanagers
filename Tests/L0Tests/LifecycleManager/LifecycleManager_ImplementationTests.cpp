@@ -85,18 +85,6 @@ public:
         return impl.mLoadedApplications;
     }
 
-    static size_t getPendingRespawnCount(LifecycleManagerImplementation& impl)
-    {
-        return impl.mPendingRespawns.size();
-    }
-
-    static Exchange::ILifecycleManager::LifecycleState getPendingRespawnTargetState(
-        LifecycleManagerImplementation& impl,
-        const std::string& appInstanceId)
-    {
-        return impl.mPendingRespawns.at(appInstanceId).mLaunchParams.mTargetState;
-    }
-
     /**
      * @brief Direct synchronous call to the private Dispatch method.
      */
@@ -123,55 +111,13 @@ public:
     uint32_t Release() const override { return Core::ERROR_NONE; }
 };
 
-class RespawnTrackingLifecycleManagerImpl : public LifecycleManagerImplementation {
-public:
-    int killCallCount = 0;
-    int spawnCallCount = 0;
-    std::string killedAppInstanceId;
-    std::string spawnedAppId;
-    Exchange::ILifecycleManager::LifecycleState spawnedTargetState =
-        Exchange::ILifecycleManager::LifecycleState::UNLOADED;
-
-    void AddRef() const override {}
-    uint32_t Release() const override { return Core::ERROR_NONE; }
-
-    Core::hresult KillApp(const std::string& appInstanceId, std::string& errorReason, bool& success) override
-    {
-        ++killCallCount;
-        killedAppInstanceId = appInstanceId;
-        errorReason.clear();
-        success = true;
-        return Core::ERROR_NONE;
-    }
-
-    Core::hresult SpawnApp(const std::string& appId,
-                           const std::string& launchIntent,
-                           const Exchange::ILifecycleManager::LifecycleState targetLifecycleState,
-                           const WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject,
-                           const std::string& launchArgs,
-                           std::string& appInstanceId,
-                           std::string& errorReason,
-                           bool& success) override
-    {
-        ++spawnCallCount;
-        spawnedAppId = appId;
-        spawnedTargetState = targetLifecycleState;
-        appInstanceId = "respawned-instance";
-        errorReason.clear();
-        success = true;
-        static_cast<void>(launchIntent);
-        static_cast<void>(runtimeConfigObject);
-        static_cast<void>(launchArgs);
-        return Core::ERROR_NONE;
-    }
-};
 } // namespace Plugin
 } // namespace WPEFramework
 
 // Convenience aliases at global scope so test functions need no namespace prefix.
 using LifecycleManagerImplementationTest = WPEFramework::Plugin::LifecycleManagerImplementationTest;
 using ConcreteLifecycleManagerImpl       = WPEFramework::Plugin::ConcreteLifecycleManagerImpl;
-using RespawnTrackingLifecycleManagerImpl = WPEFramework::Plugin::RespawnTrackingLifecycleManagerImpl;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Constructor initialises empty lists
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1176,81 +1122,6 @@ uint32_t Test_Impl_DispatchAppStateChangedUnloadedRemovesApp()
     return tr.failures;
 }
 
-uint32_t Test_Impl_CloseAppKillAndRunDefersRespawnUntilUnloaded()
-{
-    L0Test::TestResult tr;
-
-    RespawnTrackingLifecycleManagerImpl impl;
-
-    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.respawn");
-    std::string inst = "inst-respawn-001";
-    std::string appId = "com.test.respawn";
-    std::string launchIntent = "intent://respawn";
-    std::string launchArgs = "--restart";
-    WPEFramework::Exchange::RuntimeConfig runtimeConfigObject;
-
-    ctx->setAppInstanceId(inst);
-    ctx->setApplicationLaunchParams(appId,
-                                    launchIntent,
-                                    launchArgs,
-                                    WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE,
-                                    runtimeConfigObject);
-    LifecycleManagerImplementationTest::getLoadedApps(impl).push_back(ctx);
-
-    WPEFramework::Core::hresult result = impl.CloseApp(
-        appId,
-        WPEFramework::Exchange::ILifecycleManagerState::AppCloseReason::KILL_AND_RUN);
-
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
-        "CloseApp returns ERROR_NONE for KILL_AND_RUN");
-    L0Test::ExpectEqU32(tr, static_cast<uint32_t>(impl.killCallCount), 1u,
-        "KillApp is called once when CloseApp is invoked");
-    L0Test::ExpectTrue(tr, impl.killedAppInstanceId == inst,
-        "KillApp receives the current appInstanceId");
-    L0Test::ExpectEqU32(tr, static_cast<uint32_t>(impl.spawnCallCount), 0u,
-        "SpawnApp is deferred until the app reaches UNLOADED");
-    L0Test::ExpectEqU32(tr,
-        static_cast<uint32_t>(LifecycleManagerImplementationTest::getPendingRespawnCount(impl)),
-        1u,
-        "pending respawn is stored after CloseApp(KILL_AND_RUN)");
-    L0Test::ExpectEqU32(tr,
-        static_cast<uint32_t>(LifecycleManagerImplementationTest::getPendingRespawnTargetState(impl, inst)),
-        static_cast<uint32_t>(WPEFramework::Exchange::ILifecycleManager::LifecycleState::PAUSED),
-        "pending respawn target state is PAUSED for KILL_AND_RUN");
-
-    WPEFramework::Core::JSON::VariantContainer params;
-    params["appId"]             = appId;
-    params["appInstanceId"]     = inst;
-    params["oldLifecycleState"] = static_cast<uint32_t>(
-        WPEFramework::Exchange::ILifecycleManager::LifecycleState::TERMINATING);
-    params["newLifecycleState"] = static_cast<uint32_t>(
-        WPEFramework::Exchange::ILifecycleManager::LifecycleState::UNLOADED);
-    params["navigationIntent"]  = std::string("");
-    params["errorReason"]       = std::string("");
-
-    LifecycleManagerImplementationTest::callDispatch(
-        impl,
-        LifecycleManagerImplementationTest::EventNames::LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED,
-        params);
-
-    L0Test::ExpectTrue(tr,
-        LifecycleManagerImplementationTest::getLoadedApps(impl).empty(),
-        "old app context is removed after the UNLOADED event");
-    L0Test::ExpectEqU32(tr, static_cast<uint32_t>(impl.spawnCallCount), 1u,
-        "SpawnApp is triggered after the UNLOADED event");
-    L0Test::ExpectTrue(tr, impl.spawnedAppId == appId,
-        "respawn uses the original appId");
-    L0Test::ExpectEqU32(tr,
-        static_cast<uint32_t>(impl.spawnedTargetState),
-        static_cast<uint32_t>(WPEFramework::Exchange::ILifecycleManager::LifecycleState::PAUSED),
-        "respawn starts in PAUSED state for KILL_AND_RUN");
-    L0Test::ExpectEqU32(tr,
-        static_cast<uint32_t>(LifecycleManagerImplementationTest::getPendingRespawnCount(impl)),
-        0u,
-        "pending respawn is cleared after unload confirmation");
-
-    return tr.failures;
-}
 // ─────────────────────────────────────────────────────────────────────────────
 // handleRuntimeManagerEvent "onTerminated" — unknown appInstanceId
 // callDispatch(RUNTIME) reaches handleRuntimeManagerEvent synchronously.

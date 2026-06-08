@@ -184,7 +184,7 @@ make install
 | `AppManager.config` | Application manager settings |
 | `LifecycleManager.config` | Lifecycle state timeouts |
 | `RuntimeManager.config` | Container runtime paths |
-| `AppPackageManager.json` | Download directory settings (generated from `PackageManager/PackageManager.conf.in`) |
+| `PackageManager.json` | Download directory settings (generated from `PackageManager/PackageManager.conf.in`) |
 | `AppStorageManager.config` | Storage path configuration |
 
 ---

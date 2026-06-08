@@ -116,6 +116,12 @@ namespace Plugin
                         markerName = TELEMETRY_MARKER_CLOSE_TIME;
                         getTelemetryClient().record(appId, telemetryMetrics, markerName);
                     }
+                    else if(Exchange::ILifecycleManager::LifecycleState::SUSPENDED == newLifecycleState)
+                    {
+                        /*Telemetry reporting - wake case, wake is called during app terminate*/
+                        markerName = TELEMETRY_MARKER_WAKE_TIME;
+                        shouldPublish = true;
+                    }
                 break;
                 case REQUEST_TYPE_SUSPEND:
                     /*Telemetry reporting - suspend case*/
@@ -141,14 +147,6 @@ namespace Plugin
                         shouldPublish = true;
                     }
                 break;
-                case REQUEST_TYPE_WAKE:
-                    /*Telemetry reporting - wake case (HIBERNATED -> SUSPENDED)*/
-                    if(Exchange::ILifecycleManager::LifecycleState::SUSPENDED == newLifecycleState)
-                    {
-                        markerName = TELEMETRY_MARKER_WAKE_TIME;
-                        shouldPublish = true;
-                    }
-                break;
                 default:
                     LOGERR("requestType is invalid");
                 break;
@@ -171,5 +169,4 @@ namespace Plugin
 
 } /* namespace Plugin */
 } /* namespace WPEFramework */
-
 

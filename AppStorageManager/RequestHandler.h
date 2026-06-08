@@ -62,7 +62,6 @@ namespace WPEFramework
                 uint64_t getDirectorySizeInBytes(const std::string &path);
                 static int getSize(const char *path, const struct stat *statPtr, int currentFlag, struct FTW *internalFtwUsage);
                 Core::hresult deleteDirectoryEntries(const string& appId, string& errorReason);
-                bool mkdirRecursive(const std::string& path, mode_t mode);
 
                 /*Members*/
                 RequestHandler();

@@ -157,7 +157,7 @@ typedef struct _AppInfo {
 | `CloseApp(appId)` | Move app from ACTIVE to background |
 | `TerminateApp(appId)` | Clean shutdown of application |
 | `KillApp(appId)` | Force terminate application |
-| `PreloadApp(appId, intent, launchArgs)` | Preload app in background (PAUSED state) |
+| `PreloadApp(appId, launchArgs)` | Preload app in background (PAUSED state) |
 | `GetLoadedApps()` | Get list of currently loaded applications |
 | `GetInstalledApps()` | Get list of installed application packages |
 | `IsInstalled(appId)` | Check if app package is installed |

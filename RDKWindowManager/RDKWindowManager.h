@@ -72,46 +72,46 @@ namespace WPEFramework {
                         Exchange::JRDKWindowManager::Event::OnUserInactivity(_parent, minutes);
                     }
 
-                    void OnDisconnected(const std::string& clientId) override
+                    void OnDisconnected(const std::string& client) override
                     {
-                        LOGINFO("OnDisconnected for clientId %s", clientId.c_str());
-                        Exchange::JRDKWindowManager::Event::OnDisconnected(_parent, clientId);
+                        LOGINFO("OnDisconnected");
+                        Exchange::JRDKWindowManager::Event::OnDisconnected(_parent, client);
                     }
 
-                    void OnReady(const std::string& clientId) override
+                    void OnReady(const std::string &client) override
                     {
-                        LOGINFO("OnReady for clientId %s", clientId.c_str());
-                        Exchange::JRDKWindowManager::Event::OnReady(_parent, clientId);
+                        LOGINFO("OnReady for client %s", client.c_str());
+                        Exchange::JRDKWindowManager::Event::OnReady(_parent, client);
                     }
 
-                    void OnConnected(const std::string& clientId) override
+                    void OnConnected(const std::string& appInstanceId) override
                     {
-                        LOGINFO("OnConnected for clientId %s", clientId.c_str());
-                        Exchange::JRDKWindowManager::Event::OnConnected(_parent, clientId);
+                        LOGINFO("OnConnected for appInstanceId %s", appInstanceId.c_str());
+                        Exchange::JRDKWindowManager::Event::OnConnected(_parent, appInstanceId);
                     }
 
-                    void OnVisible(const std::string& clientId) override
+                    void OnVisible(const std::string& appInstanceId) override
                     {
-                        LOGINFO("OnVisible for clientId %s", clientId.c_str());
-                        Exchange::JRDKWindowManager::Event::OnVisible(_parent, clientId);
+                        LOGINFO("OnVisible for appInstanceId %s", appInstanceId.c_str());
+                        Exchange::JRDKWindowManager::Event::OnVisible(_parent, appInstanceId);
                     }
 
-                    void OnHidden(const std::string& clientId) override
+                    void OnHidden(const std::string& appInstanceId) override
                     {
-                        LOGINFO("OnHidden for clientId %s", clientId.c_str());
-                        Exchange::JRDKWindowManager::Event::OnHidden(_parent, clientId);
+                        LOGINFO("OnHidden for appInstanceId %s", appInstanceId.c_str());
+                        Exchange::JRDKWindowManager::Event::OnHidden(_parent, appInstanceId);
                     }
 
-                    void OnFocus(const std::string& clientId) override
+                    void OnFocus(const std::string& appInstanceId) override
                     {
-                        LOGINFO("OnFocus for clientId %s", clientId.c_str());
-                        Exchange::JRDKWindowManager::Event::OnFocus(_parent, clientId);
+                        LOGINFO("OnFocus for appInstanceId %s", appInstanceId.c_str());
+                        Exchange::JRDKWindowManager::Event::OnFocus(_parent, appInstanceId);
                     }
 
-                    void OnBlur(const std::string& clientId) override
+                    void OnBlur(const std::string& appInstanceId) override
                     {
-                        LOGINFO("OnBlur for clientId %s", clientId.c_str());
-                        Exchange::JRDKWindowManager::Event::OnBlur(_parent, clientId);
+                        LOGINFO("OnBlur for appInstanceId %s", appInstanceId.c_str());
+                        Exchange::JRDKWindowManager::Event::OnBlur(_parent, appInstanceId);
                     }
 
                     void OnScreenshotComplete(const bool success, const std::string& imageData) override

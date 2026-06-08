@@ -451,7 +451,6 @@ TEST_F(AppManagerTest, PreLoadLaunchAndCloseAppSuccessCaseUsingJsonRpc)
     JsonObject preLoadparams;
     preLoadparams["appId"] = "com.example.myapp";
     preLoadparams["launchArgs"] = "{\"key1\":\"38\"}";
-    preLoadparams["intent"] = "start";
     status = InvokeServiceMethod("org.rdk.AppManager", "preloadApp", preLoadparams, resultJson);
     EXPECT_EQ(status,Core::ERROR_NONE);
 

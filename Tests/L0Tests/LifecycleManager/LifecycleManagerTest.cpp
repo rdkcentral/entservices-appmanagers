@@ -87,7 +87,6 @@ extern uint32_t Test_Impl_KillAppUnknownInstance();
 extern uint32_t Test_Impl_GetLoadedAppsVerboseNoRuntimeHandler();
 extern uint32_t Test_Impl_SendIntentToActiveAppActiveApp();
 extern uint32_t Test_Impl_DispatchAppStateChangedUnloadedRemovesApp();
-extern uint32_t Test_Impl_CloseAppKillAndRunDefersRespawnUntilUnloaded();
 extern uint32_t Test_Impl_RuntimeEventOnTerminatedUnknownApp();
 extern uint32_t Test_Impl_RuntimeEventOnTerminatedAppInTerminatingState();
 extern uint32_t Test_Impl_RuntimeEventOnTerminatedUnexpected();
@@ -219,7 +218,6 @@ int main()
         { "Impl_GetLoadedAppsVerboseNoRuntimeHandler",              Test_Impl_GetLoadedAppsVerboseNoRuntimeHandler },
         { "Impl_SendIntentToActiveAppActiveApp",                    Test_Impl_SendIntentToActiveAppActiveApp },
         { "Impl_DispatchAppStateChangedUnloadedRemovesApp",         Test_Impl_DispatchAppStateChangedUnloadedRemovesApp },
-        { "Impl_CloseAppKillAndRunDefersRespawnUntilUnloaded",      Test_Impl_CloseAppKillAndRunDefersRespawnUntilUnloaded },
         { "Impl_RuntimeEventOnTerminatedUnknownApp",                  Test_Impl_RuntimeEventOnTerminatedUnknownApp },
         { "Impl_RuntimeEventOnTerminatedAppInTerminatingState",        Test_Impl_RuntimeEventOnTerminatedAppInTerminatingState },
         { "Impl_RuntimeEventOnTerminatedUnexpected",                   Test_Impl_RuntimeEventOnTerminatedUnexpected },
