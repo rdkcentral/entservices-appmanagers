@@ -207,8 +207,8 @@ UnloadApp():
 - Are there timeout mechanisms for transitions that do not complete (e.g., app stuck in LOADING)?
 
 ## References
-- State Diagram: [LifecycleManager.md](./LifecycleManager.md#state-diagram)
-- Architecture: [README.md](../README.md#application-lifecycle-states)
+- State Diagram: [LifecycleManager.md](../../LifecycleManager/LifecycleManager.md#state-diagram)
+- Architecture: [README.md](../../README.md#application-lifecycle-states)
 - Related Spec: [RuntimeManager.spec.md](./RuntimeManager.spec.md)
 - Related Spec: [RDKWindowManager.spec.md](./RDKWindowManager.spec.md)
 
