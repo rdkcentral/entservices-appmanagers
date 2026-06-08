@@ -105,8 +105,8 @@ Manual Scan (Client::Scan()):
 
 ## Versioning & Compatibility
 - **API Version**: 1.0.0
-- **Plugin Execution Mode**: Configurable via `PLUGIN_PREINSTALLMANAGER_MODE`
-- `PLUGIN_PREINSTALLMANAGER_AUTOSTART`: defaults to `true` (auto-start on boot)
+- **Plugin Execution Mode**: Configurable via `PLUGIN_PREINSTALL_MANAGER_MODE`
+- `PLUGIN_PREINSTALL_MANAGER_AUTOSTART`: defaults to `false` (auto-start on boot)
 - Preinstalled packages are immutable; the install copies them to mutable storage via PackageManager
 
 ## Conformance Testing & Validation
