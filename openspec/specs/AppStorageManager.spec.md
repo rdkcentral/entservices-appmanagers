@@ -137,7 +137,7 @@ AppStorageManagerImplementation::DeleteStorage(appId)
 | PLUGIN_APP_STORAGE_MANAGER_AUTOSTART | Boolean | false | Auto-start on boot |
 
 ## Build & Installation
-- **Compiled Artifact**: `RdkCppPlugin_AppStorageManager.so`
+- **Compiled Artifacts**: `lib${NAMESPACE}AppStorageManager.so`, `lib${NAMESPACE}AppStorageManagerImplementation.so`
 - **Install Path**: `${CMAKE_INSTALL_PREFIX}/lib/${STORAGE_DIRECTORY}/plugins`
 - **Required Build Flags**: C++11
 - **API Version**: 1.0.0
