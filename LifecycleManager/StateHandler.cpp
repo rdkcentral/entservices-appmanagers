@@ -212,7 +212,8 @@ namespace WPEFramework
                 if (!isStateTerminating)
 		{
                     if ((Exchange::ILifecycleManager::LifecycleState::INITIALIZING == oldLifecycleState)
-                        && (Exchange::ILifecycleManager::LifecycleState::PAUSED == statePath[stateIndex]))
+                        && (Exchange::ILifecycleManager::LifecycleState::PAUSED == statePath[stateIndex])
+                        && (0 != context->mPendingEventName.compare("onAppReady")))
                     {
                         context->mPendingEventName = "onAppReady";
                         context->mPendingStateTransition = true;
