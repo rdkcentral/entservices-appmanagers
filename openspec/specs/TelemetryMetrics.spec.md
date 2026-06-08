@@ -100,7 +100,7 @@ Query (not a current API):
   - RuntimeManager (container operation metrics)
   - DownloadManager (download progress and error metrics)
 - **Provides to**:
-  - Telemetry backend (metric publishing via HTTP POST)
+  - Platform telemetry bus (T2) via `t2_event_s`
   - Monitoring and analytics systems
 
 ## Performance
