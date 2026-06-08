@@ -177,7 +177,7 @@ _Not applicable — TelemetryMetrics operates on internal performance data only;
 ## Open Queries
 - What is the maximum metric buffer size before oldest entries are discarded — is this configurable?
 - Is `Publish` called automatically on a timer interval, or only when explicitly invoked by a module?
-- How is `TELEMETRY_PUBLISH_ENDPOINT` set at runtime — CMake option, config file, or JSON-RPC call?
+- How are marker filters configured/updated (e.g., compile-time constants vs config file vs runtime API)?
 - Are there plans to expose a `GetMetrics` or `ClearMetrics` JSON-RPC API in a future version?
 
 ## References
