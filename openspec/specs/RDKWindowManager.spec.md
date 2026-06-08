@@ -152,8 +152,8 @@ Inactivity:
 ### CMake Configuration
 | Option | Type | Default | Purpose |
 |--------|------|---------|---------|
-| PLUGIN_RDKWINDOWMANAGER_MODE | String | Off | Plugin execution mode |
-| PLUGIN_RDKWINDOWMANAGER_AUTOSTART | Boolean | false | Auto-start on boot |
+| PLUGIN_RDK_WINDOW_MANAGER_MODE | String | Off | Plugin execution mode |
+| PLUGIN_RDK_WINDOW_MANAGER_AUTOSTART | Boolean | false | Auto-start on boot |
 
 ## Build & Installation
 - **Compiled Artifact**: `RdkCppPlugin_RDKWindowManager.so`
