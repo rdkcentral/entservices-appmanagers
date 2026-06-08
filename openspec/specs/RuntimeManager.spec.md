@@ -230,7 +230,7 @@ Wake:
 - What happens if the CRIU checkpoint directory is corrupted or missing at `Wake` time?
 
 ## References
-- Architecture: [RuntimeManager.md](./RuntimeManager.md)
+- Architecture: [RuntimeManager.md](../../RuntimeManager/RuntimeManager.md)
 - Dobby Integration: [Dobby Documentation](https://github.com/rdkcentral/Dobby)
 - Related Spec: [LifecycleManager.spec.md](./LifecycleManager.spec.md)
 - Related Spec: [RDKWindowManager.spec.md](./RDKWindowManager.spec.md)
