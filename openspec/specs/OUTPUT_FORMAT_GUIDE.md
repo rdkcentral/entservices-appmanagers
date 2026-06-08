@@ -258,9 +258,9 @@ sudo make install
 
 \`\`\`
 ${CMAKE_INSTALL_PREFIX}/lib/${STORAGE_DIRECTORY}/plugins/
-  ├─ RdkCppPlugin_AppManager.so
-  ├─ RdkCppPlugin_LifecycleManager.so
-  ├─ RdkCppPlugin_RuntimeManager.so
+  ├─ lib${NAMESPACE}AppManager.so
+  ├─ lib${NAMESPACE}LifecycleManager.so
+  ├─ lib${NAMESPACE}RuntimeManager.so
   └─ ...
 
 ${CMAKE_INSTALL_PREFIX}/etc/
