@@ -51,7 +51,7 @@ AppStorageManagerImplementation
 ### Configuration
 - **Config File**: `AppStorageManager.conf.in` / `AppStorageManager.config`
 - **Storage Root**: Configurable via system settings
-- **DBus Service**: Registered as WPEFramework plugin
+- **Thunder Service**: Exposed as a WPEFramework/Thunder plugin
 
 ## Data Flow
 ```
