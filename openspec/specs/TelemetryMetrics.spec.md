@@ -105,7 +105,7 @@ Query (not a current API):
 ## Performance
 - Metrics are buffered in-memory (`unordered_map`); publishing is triggered on `Publish` calls
 - Publishing failures are non-blocking and do not affect calling module operations
-- Metric buffer has a finite size; oldest entries are discarded on overflow
+- Metric buffer is currently unbounded (in-memory `unordered_map`); records are cleared when successfully published.
 
 ## Security
 _Not applicable — TelemetryMetrics operates on internal performance data only; no user PII is expected in metrics._
