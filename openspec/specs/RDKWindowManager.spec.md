@@ -59,7 +59,7 @@ RDKWindowManagerImplementation
 ### Configuration
 - **Config File**: `RDKWindowManager.conf.in` / `RDKWindowManager.config`
 - **Display Settings**: Wayland socket paths, compositor connection parameters
-- **DBus Service**: Registered as WPEFramework plugin
+- **Thunder Service**: Exposed as a WPEFramework/Thunder plugin
 
 ## Data Flow
 ```
