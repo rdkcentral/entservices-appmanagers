@@ -57,7 +57,7 @@
 ## Integration Points
 - **Consumes from**: [List of modules/systems]
 - **Provides to**: [List of modules/systems]
-- **DBus Services**: [If applicable]
+- **Callsign**: [Thunder callsign, e.g. `org.rdk.<PluginName>`]
 
 ## Build & Installation
 - **Compiled Artifact**: [library/plugin name]
