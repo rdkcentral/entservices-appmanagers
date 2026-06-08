@@ -118,9 +118,9 @@ _Not applicable — TelemetryMetrics operates on internal performance data only;
 - Metrics are not persisted across daemon restarts (in-memory only)
 
 ## Conformance Testing & Validation
-- **Unit Tests**: `Tests/L1Tests` (metric recording and buffer management)
-- **Integration Tests**: `Tests/L2Tests` (end-to-end with mock telemetry backend)
-- **Test Dependencies**: Mock telemetry backend, network simulation
+- **Unit Tests**: None for TelemetryMetrics plugin itself; TelemetryMetricsClient utilities are exercised in `Tests/L0Tests/LifecycleManager/LifecycleManager_ContextTests.cpp`
+- **Integration Tests**: None currently in `Tests/L2Tests/`
+- **Test Dependencies**: N/A
 
 ## Dependencies
 
