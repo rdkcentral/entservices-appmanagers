@@ -17,7 +17,7 @@ DownloadManager is a standalone HTTP download service for RDK-based devices. It 
 - Emit `OnProgressUpdate`, `OnComplete`, `OnError`, and `OnPaused` notifications
 - Implement automatic retry with exponential backoff on transient failures
 - Report detailed error codes and messages on failure
-- Validate that a network connection is available before starting a download
+- No explicit network-availability pre-check is performed; downloads fail via libcurl errors if the network is unavailable
 - Validate that the download URL is non-empty before queuing
 - Optionally emit telemetry metrics when `AIMANAGERS_TELEMETRY_METRICS_SUPPORT` is enabled
 
