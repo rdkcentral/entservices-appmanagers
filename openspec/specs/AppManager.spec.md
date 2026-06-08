@@ -56,7 +56,7 @@ AppManagerImplementation
 
 ### Configuration
 - **Config File**: `AppManager.conf.in` / `AppManager.config`
-- **DBus Service**: Registered as WPEFramework plugin
+- **Callsign**: `org.rdk.AppManager` (WPEFramework/Thunder plugin)
 
 ## Data Flow
 ```
