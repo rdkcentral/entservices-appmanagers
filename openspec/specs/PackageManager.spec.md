@@ -208,7 +208,7 @@ Unlock(packageId, version):
 - What happens to in-progress downloads if the daemon crashes — is there a recovery mechanism?
 
 ## References
-- Architecture: [PackageManager.md](./PackageManager.md)
+- Architecture: [PackageManager.md](../../PackageManager/PackageManager.md)
 - libpackage-sky: [Repository](https://github.com/rdk-e/libpackage-sky)
 - Related Spec: [AppStorageManager.spec.md](./AppStorageManager.spec.md)
 - Related Spec: [DownloadManager.spec.md](./DownloadManager.spec.md)
