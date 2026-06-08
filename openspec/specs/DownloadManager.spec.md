@@ -157,7 +157,7 @@ RateLimit(downloadId, bytesPerSec):
 | AIMANAGERS_TELEMETRY_METRICS_SUPPORT | ON/OFF | OFF | Telemetry collection |
 
 ## Build & Installation
-- **Compiled Artifact**: `RdkCppPlugin_DownloadManager.so`
+- **Compiled Artifacts**: `lib${NAMESPACE}DownloadManager.so`, `lib${NAMESPACE}DownloadManagerImplementation.so`
 - **Install Path**: `${CMAKE_INSTALL_PREFIX}/lib/${STORAGE_DIRECTORY}/plugins`
 - **Required Build Flags**: C++11, CURL support
 - **API Version**: 1.0.0
