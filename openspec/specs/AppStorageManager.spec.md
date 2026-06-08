@@ -105,7 +105,7 @@ AppStorageManagerImplementation::DeleteStorage(appId)
 
 ## Versioning & Compatibility
 - **API Version**: 1.0.0
-- **Plugin Execution Mode**: Configurable via `PLUGIN_APPSTORAGEMANAGER_MODE`
+- **Plugin Execution Mode**: Configurable via `PLUGIN_APP_STORAGE_MANAGER_MODE`
 - No cross-device storage sync; storage is local-only
 
 ## Conformance Testing & Validation
