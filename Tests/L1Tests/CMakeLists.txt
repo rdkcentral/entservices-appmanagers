@@ -220,3 +220,12 @@ if(BUILD_L1_TESTS_SHARED_MODULE)
     install(TARGETS ${MODULE_NAME} DESTINATION lib)
     write_config(${PLUGIN_NAME})
 endif()
+
+
+add_executable(test_RalfSupport test_RalfSupport.cpp)
+
+target_link_libraries(test_RalfSupport
+    gtest
+    gtest_main
+    pthread
+)
