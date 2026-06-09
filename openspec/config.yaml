@@ -1,0 +1,119 @@
+schema: spec-driven
+
+# Project context
+# Shown to AI when creating artifacts, proposals, specs, and tasks
+context: |
+  ## Project: ENT Services AppManagers
+  
+  ### Tech Stack & Architecture
+  - **Language**: C++11/14/17
+  - **Build System**: CMake (3.3+)
+  - **Framework**: WPEFramework (Thunder) plugin system
+  - **Container Runtime**: Dobby (OCI, crun)
+  - **Display**: Wayland (Essos/Westeros compositor)
+  - **IPC**: Thunder COM-RPC (Exchange interfaces) + Thunder JSON-RPC (HTTP/WebSocket; e.g. `http://127.0.0.1:9998/jsonrpc`)
+  
+  ### Dependencies
+  - **External Repos**: entservices-apis, Dobby, rdk-window-manager, libpackage-sky, eshelpers
+  - **System Libraries**: curl, yaml-cpp (optional), jsoncpp, criu (optional)
+  - **Runtime**: systemd, crun (≥0.13), Wayland compositor
+  
+  ### Core Components (9 plugins)
+  - AppManager: Primary lifecycle API orchestrator
+  - LifecycleManager: State machine (UNLOADED→LOADING→ACTIVE/PAUSED→SUSPENDED/HIBERNATED→TERMINATING)
+  - RuntimeManager: OCI container management with hibernation support
+  - PackageManager: Download, install, lock/unlock packages
+  - AppStorageManager: Per-app persistent storage allocation
+  - RDKWindowManager: Wayland display and window management
+  - DownloadManager: HTTP downloads with queueing, pause/resume, rate limiting
+  - PreinstallManager: Pre-installed app scanning and installation
+  - TelemetryMetrics: Metrics collection and publishing (optional)
+  
+  ### Code Organization
+  - Each module in own directory: `<ModuleName>/`
+  - Public interface in `<Module>.h` (plugin interface)
+  - Implementation in `<Module>Implementation.h/cpp`
+  - Module logic in separate files (e.g., StateHandler, DobbySpecGenerator)
+  - Shared utilities in `helpers/` (AppManagersHelpers library)
+  - Configuration in `<Module>.conf.in` and `<Module>.config`
+  - Module documentation in `<Module>.md`
+  
+  ### Build Conventions
+  - Plugin execution modes: Off (disabled), Local/InProcess, Remote (out-of-process via Thunder)
+  - All plugins configurable via CMake options (PLUGIN_*_MODE, PLUGIN_*_AUTOSTART)
+  - Optional features gated by flags: AIMANAGERS_TELEMETRY_METRICS_SUPPORT, RALF_PACKAGE_SUPPORT, ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG
+  - Install paths: `${CMAKE_INSTALL_PREFIX}/lib/${STORAGE_DIRECTORY}/plugins/`
+  - Configuration: `${CMAKE_INSTALL_PREFIX}/etc/` (*.json files)
+  
+  ### Design Patterns
+  - **IPC Pattern**: Inter-plugin communication primarily via Thunder COM-RPC (Exchange interfaces), with JSON-RPC used for JSON-facing APIs/events
+  - **Event Pattern**: State changes trigger notifications to listeners
+  - **Async Pattern**: Long-running operations (container start, downloads) are async with callbacks
+  - **Error Handling**: Return hresult codes; detailed errors in response objects
+  - **Resource Cleanup**: RAII for file handles, automatic via container lifecycle
+  
+  ### Coding Standards
+  - Follow RDK C++ conventions (see .github/instructions/)
+  - Exceptions enabled for error handling
+  - C++11 minimum (C++17 preferred where available)
+  - Include guards in .h files
+  - Namespace: org.rdk or NAMESPACE variable (${NAMESPACE})
+  - Logging via pluginLogInfo, pluginLogWarning, pluginLogError
+  
+  ### Module Interactions
+  - AppManager is entry point; orchestrates other modules
+  - LifecycleManager drives state transitions; coordinates RuntimeManager + RDKWindowManager
+  - RuntimeManager handles container execution; owns Dobby integration
+  - PackageManager handles packages; uses AppStorageManager for storage
+  - RDKWindowManager creates displays for RuntimeManager
+  - All modules can emit telemetry (if AIMANAGERS_TELEMETRY_METRICS_SUPPORT enabled)
+  
+  ### Testing
+  - L1Tests: Unit tests per module (Tests/L1Tests/)
+  - L2Tests: Integration tests (Tests/L2Tests/)
+  - Mock implementations for external dependencies
+  - Test discovery via ctest framework
+  
+  ### Documentation
+  - Module specs in openspec/specs/
+  - Architecture overview in README.md
+  - Per-module architecture in <Module>/<Module>.md
+  - Specification template in openspec/specs/SPEC_TEMPLATE.md
+  - Inference guide: openspec/specs/INFERENCE_GUIDE.md
+  - Output format guide: openspec/specs/OUTPUT_FORMAT_GUIDE.md
+
+# Per-artifact rules
+rules:
+  proposal:
+    - Include executive summary (2-3 sentences max)
+    - Reference affected modules and their specs
+    - Always include "Non-goals" section
+    - Specify build impact (new dependencies, CMake options, compile time)
+    - Document breaking changes if any
+    - Keep under 2 KB (detailed design goes in design.md)
+    
+  design:
+    - Reference relevant specs and existing architecture
+    - Include data flow diagrams (ASCII or Mermaid)
+    - Document API changes with JSON-RPC examples
+    - Specify CMake configuration changes
+    - List all affected modules/specs
+    - Include backward compatibility considerations
+    - Document optional feature interactions
+    
+  spec:
+    - Use SPEC_TEMPLATE.md as starting point
+    - Include all 9 sections (Overview, Capabilities, Dependencies, Interfaces, Data Flow, Integration, Build, Constraints, Testing)
+    - Cross-reference related specs for dependencies
+    - Document CMake options in Dependencies section
+    - Include data flow diagrams for complex modules
+    - List external repo versions if constrained
+    
+  tasks:
+    - Break tasks into 2-4 hour chunks
+    - Reference specific files and line numbers when possible
+    - Include acceptance criteria
+    - Note dependencies on other tasks
+    - Specify affected specs that need updates
+    - Document test additions required
+    - Include file paths relative to repository root

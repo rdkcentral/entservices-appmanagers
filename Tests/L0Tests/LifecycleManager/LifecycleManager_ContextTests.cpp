@@ -450,6 +450,56 @@ uint32_t Test_StateHandler_ChangeStateAlreadyAtTargetReturnsTrue()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// StateHandler::changeState preserves current state in deferred pending path
+// INITIALIZING -> ACTIVE defers onAppReady at INITIALIZING -> PAUSED and stores
+// pending states. The replay list must keep INITIALIZING as index 0 so the
+// replay loop executes PAUSED before ACTIVE.
+// ─────────────────────────────────────────────────────────────────────────────
+
+uint32_t Test_StateHandler_OnAppReadyPendingPathRetainsCurrentState()
+{
+    L0Test::TestResult tr;
+
+    WPEFramework::Plugin::StateHandler::initialize();
+
+    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.appready.pending");
+
+    void* oldState = ctx->getState();
+    auto* initializingState = new WPEFramework::Plugin::InitializingState(ctx.get());
+    ctx->setState(static_cast<void*>(initializingState));
+    if (nullptr != oldState) {
+        delete static_cast<WPEFramework::Plugin::State*>(oldState);
+    }
+
+    WPEFramework::Plugin::StateTransitionRequest req(
+        ctx,
+        WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE);
+    std::string error;
+    bool result = WPEFramework::Plugin::StateHandler::changeState(req, error);
+
+    L0Test::ExpectTrue(tr, result,
+        "INITIALIZING->ACTIVE request defers successfully on onAppReady");
+    L0Test::ExpectTrue(tr, ctx->mPendingStateTransition,
+        "pending state transition is true after defer");
+    L0Test::ExpectEqStr(tr, ctx->mPendingEventName, "onAppReady",
+        "pending event is onAppReady");
+    L0Test::ExpectTrue(tr, 2 <= ctx->mPendingStates.size(),
+        "pending states include current and deferred target states");
+    if (2 <= ctx->mPendingStates.size()) {
+        L0Test::ExpectEqU32(tr,
+            static_cast<uint32_t>(ctx->mPendingStates[0]),
+            static_cast<uint32_t>(WPEFramework::Exchange::ILifecycleManager::LifecycleState::INITIALIZING),
+            "pendingStates[0] is INITIALIZING");
+        L0Test::ExpectEqU32(tr,
+            static_cast<uint32_t>(ctx->mPendingStates[1]),
+            static_cast<uint32_t>(WPEFramework::Exchange::ILifecycleManager::LifecycleState::PAUSED),
+            "pendingStates[1] is PAUSED");
+    }
+
+    return tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // isValidTransition UNLOADED->LOADING is valid
 // (tested via changeState: from UNLOADED, update to LOADING should succeed
 //  at the UpdateState level since LoadingState::handle() does not need external deps)
