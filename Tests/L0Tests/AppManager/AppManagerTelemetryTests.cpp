@@ -36,9 +36,9 @@ uint32_t Test_AM_TelemetryReportingStability()
     WPEFramework::Plugin::AppInfoManager::getInstance().setCurrentActionTime("app-telemetry", 1);
     WPEFramework::Plugin::AppInfoManager::getInstance().setAppInstanceId("app-telemetry", "instance-1");
 
-    telemetry.reportTelemetryData("app-telemetry", WPEFramework::Plugin::AppManagerTypes::APP_ACTION_LAUNCH);
+    telemetry.reportTelemetryData("app-telemetry", WPEFramework::Plugin::AppManagerImplementation::APP_ACTION_LAUNCH);
     telemetry.reportTelemetryDataOnStateChange("app-telemetry", WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE);
-    telemetry.reportTelemetryErrorData("app-telemetry", WPEFramework::Plugin::AppManagerTypes::APP_ACTION_LAUNCH, WPEFramework::Plugin::AppManagerTypes::ERROR_INTERNAL);
+    telemetry.reportTelemetryErrorData("app-telemetry", WPEFramework::Plugin::AppManagerImplementation::APP_ACTION_LAUNCH, WPEFramework::Plugin::AppManagerImplementation::ERROR_INTERNAL);
     telemetry.reportAppCrashedTelemetry("app-telemetry", "instance-1", "crash");
 
     WPEFramework::Plugin::AppInfoManager::getInstance().clear();

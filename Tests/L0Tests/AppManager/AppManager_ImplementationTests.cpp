@@ -29,7 +29,7 @@ namespace {
 
 WPEFramework::Plugin::AppManagerImplementation* CreateImpl()
 {
-    return WPEFramework::Core::Service<WPEFramework::Plugin::AppManagerImplementation>::Create<WPEFramework::Exchange::IAppManager>();
+    return WPEFramework::Core::Service<WPEFramework::Plugin::AppManagerImplementation>::Create<WPEFramework::Plugin::AppManagerImplementation>();
 }
 
 struct RefNotification final : public WPEFramework::Exchange::IAppManager::INotification {
