@@ -63,6 +63,7 @@ public:
     FakeInstallerNotification()
         : _refCount(1)
         , installStatusCount(0)
+        , lastInstallStatus()
     {
     }
 
@@ -90,13 +91,15 @@ public:
         return nullptr;
     }
 
-    void OnAppInstallationStatus(const std::string&) override
+    void OnAppInstallationStatus(const std::string& status) override
     {
+        lastInstallStatus = status;
         installStatusCount++;
     }
 
     mutable std::atomic<uint32_t> _refCount;
     std::atomic<uint32_t> installStatusCount;
+    std::string lastInstallStatus;
 };
 
 struct ImplFixture {
@@ -306,6 +309,106 @@ uint32_t Test_PM_Impl_InstallAndUninstallFlowWithNotifications()
 
     std::string errorReason;
     L0Test::ExpectEqU32(tr, fx.impl->Uninstall("SampleApp", errorReason), ERROR_NONE, "Uninstall() returns ERROR_NONE for installed package");
+
+    L0Test::ExpectEqU32(tr, fx.impl->Unregister(notif), ERROR_NONE, "Installer Unregister() returns ERROR_NONE");
+    notif->Release();
+
+    return tr.failures;
+}
+
+uint32_t Test_PM_Impl_InstallCreateStorageFailureReportsInstallFailure()
+{
+    L0Test::TestResult tr;
+    ImplFixture fx;
+
+    L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() succeeds");
+
+    auto* notif = new FakeInstallerNotification();
+    L0Test::ExpectEqU32(tr, fx.impl->Register(notif), ERROR_NONE, "Installer Register() returns ERROR_NONE");
+
+    fx.storage.createStorageResult = ERROR_GENERAL;
+
+    WPEFramework::Exchange::IPackageInstaller::FailReason failReason = WPEFramework::Exchange::IPackageInstaller::FailReason::NONE;
+    const std::string packageId = "StorageCreateFailApp";
+    const std::string version = "1.2.3";
+    const auto installResult = fx.impl->Install(packageId, version, nullptr, "/tmp/storage_create_fail.pkg", failReason);
+    L0Test::ExpectEqU32(tr,
+                        installResult,
+                        ERROR_GENERAL,
+                        "Install() returns ERROR_GENERAL when CreateStorage() fails after successful package install");
+    L0Test::ExpectTrue(tr, fx.storage.createStorageCalls.load() > 0, "CreateStorage() was attempted");
+
+    WPEFramework::Exchange::IPackageInstaller::InstallState state = WPEFramework::Exchange::IPackageInstaller::InstallState::UNINSTALLED;
+    L0Test::ExpectEqU32(tr,
+                        fx.impl->PackageState(packageId, version, state),
+                        ERROR_NONE,
+                        "PackageState() is queryable after CreateStorage() failure");
+    L0Test::ExpectTrue(tr,
+                       state == WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALL_FAILURE,
+                       "CreateStorage() failure reports INSTALL_FAILURE state");
+
+    L0Test::ExpectTrue(tr,
+                       notif->installStatusCount.load() >= 2,
+                       "Install() emits INSTALLING and final failure notification when CreateStorage() fails");
+    L0Test::ExpectTrue(tr,
+                       notif->lastInstallStatus.find("\"state\":\"INSTALL_FAILURE\"") != std::string::npos,
+                       "Final install notification includes INSTALL_FAILURE state");
+    L0Test::ExpectTrue(tr,
+                       notif->lastInstallStatus.find("\"failReason\":\"PERSISTENCE_FAILURE\"") != std::string::npos,
+                       "Final install notification includes PERSISTENCE_FAILURE failReason");
+
+    L0Test::ExpectEqU32(tr, fx.impl->Unregister(notif), ERROR_NONE, "Installer Unregister() returns ERROR_NONE");
+    notif->Release();
+
+    return tr.failures;
+}
+
+uint32_t Test_PM_Impl_UninstallDeleteStorageFailureReturnsGeneralAndUninstalledState()
+{
+    L0Test::TestResult tr;
+    ImplFixture fx;
+
+    L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() succeeds");
+
+    auto* notif = new FakeInstallerNotification();
+    L0Test::ExpectEqU32(tr, fx.impl->Register(notif), ERROR_NONE, "Installer Register() returns ERROR_NONE");
+
+    WPEFramework::Exchange::IPackageInstaller::FailReason failReason = WPEFramework::Exchange::IPackageInstaller::FailReason::NONE;
+    const std::string packageId = "DeleteStorageFailApp";
+    const std::string version = "4.5.6";
+    L0Test::ExpectEqU32(tr,
+                        fx.impl->Install(packageId, version, nullptr, "/tmp/delete_storage_fail.pkg", failReason),
+                        ERROR_NONE,
+                        "Install() succeeds before uninstall partial-success path test");
+
+    fx.storage.deleteStorageResult = ERROR_GENERAL;
+
+    std::string errorReason;
+    const auto uninstallResult = fx.impl->Uninstall(packageId, errorReason);
+    L0Test::ExpectEqU32(tr,
+                        uninstallResult,
+                        ERROR_NONE,
+                        "Uninstall() returns ERROR_NONE when DeleteStorage() fails - package binaries removed successfully, storage cleanup is advisory (telemetry captures persistence failure)");
+    L0Test::ExpectTrue(tr, fx.storage.deleteStorageCalls.load() > 0, "DeleteStorage() was attempted");
+
+    WPEFramework::Exchange::IPackageInstaller::InstallState state = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
+    L0Test::ExpectEqU32(tr,
+                        fx.impl->PackageState(packageId, version, state),
+                        ERROR_NONE,
+                        "PackageState() is queryable after DeleteStorage() failure");
+    L0Test::ExpectTrue(tr,
+                       state == WPEFramework::Exchange::IPackageInstaller::InstallState::UNINSTALLED,
+                       "DeleteStorage() failure keeps package state as UNINSTALLED (partial success semantics)");
+
+    L0Test::ExpectTrue(tr,
+                       notif->installStatusCount.load() >= 4,
+                       "Install+Uninstall flow emits expected notifications including final UNINSTALLED status");
+    L0Test::ExpectTrue(tr,
+                       notif->lastInstallStatus.find("\"state\":\"UNINSTALLED\"") != std::string::npos,
+                       "Final uninstall notification includes UNINSTALLED state");
+    L0Test::ExpectTrue(tr,
+                       notif->lastInstallStatus.find("\"failReason\"") == std::string::npos,
+                       "Final UNINSTALLED notification does not include failReason field");
 
     L0Test::ExpectEqU32(tr, fx.impl->Unregister(notif), ERROR_NONE, "Installer Unregister() returns ERROR_NONE");
     notif->Release();
@@ -630,3 +733,4 @@ uint32_t Test_PM_Impl_InstallFailureReasonBranches()
 
     return tr.failures;
 }
+
