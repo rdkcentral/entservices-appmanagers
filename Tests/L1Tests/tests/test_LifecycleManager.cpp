@@ -564,7 +564,7 @@ TEST_F(LifecycleManagerTest, spawnApp_withValidParams)
  * Handle event signals by calling the onStateChangeEventSignal() method
  * Check if the app is ready after spawning with the appId 
  * Verify that the app is ready by asserting that AppReady() returns Core::ERROR_NONE
- * Obtain the loaded app context using getContextImpl() and wait for the app ready semaphore
+ * Verify AppReady API returns success for the spawned app
  * Release the Lifecycle Manager objects and clean-up related test resources
  */
 
@@ -578,10 +578,6 @@ TEST_F(LifecycleManagerTest, appready_onSpawnAppSuccess)
     
 	// TC-6: Check if app is ready after spawning
     EXPECT_EQ(Core::ERROR_NONE, stateInterface->AppReady(appId));
-
-    Plugin::ApplicationContext* context = mLifecycleManagerImpl->getContextImpl("", appId);
-
-    sem_wait(&context->mAppReadySemaphore);
     
     releaseResources();
 }

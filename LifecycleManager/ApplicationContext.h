@@ -92,7 +92,6 @@ namespace WPEFramework
                 RequestType getRequestType();
 
                 sem_t mReachedLoadingStateSemaphore;
-                sem_t mAppReadySemaphore;
                 sem_t mFirstFrameAfterResumeSemaphore;
                 bool mPendingStateTransition;
                 std::vector<Exchange::ILifecycleManager::LifecycleState> mPendingStates; 
