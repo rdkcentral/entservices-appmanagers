@@ -46,7 +46,6 @@ namespace WPEFramework
         {
             mState = (void*) new UnloadedState(this);
             sem_init(&mReachedLoadingStateSemaphore, 0, 0);
-            sem_init(&mAppReadySemaphore, 0, 0);
             sem_init(&mFirstFrameAfterResumeSemaphore, 0, 0);
         }
 
@@ -65,7 +64,6 @@ namespace WPEFramework
 
 	    //Destroy the semaphores that are initialized in the constructor to ensure proper resource cleanup.
 	    sem_destroy(&mReachedLoadingStateSemaphore);
-	    sem_destroy(&mAppReadySemaphore);
 	    sem_destroy(&mFirstFrameAfterResumeSemaphore);
 
         }
