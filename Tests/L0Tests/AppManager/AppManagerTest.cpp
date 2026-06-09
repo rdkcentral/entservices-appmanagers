@@ -37,11 +37,19 @@ extern uint32_t Test_AM_GetLoadedAppsWithoutConnectorFails();
 extern uint32_t Test_AM_GetInstalledAppsWithoutPackagesFailsOrEmpty();
 extern uint32_t Test_AM_UpdateCurrentActionHelpers();
 extern uint32_t Test_AM_CheckInstallUninstallBlockWithoutPackages();
+extern uint32_t Test_AM_IsInstalledAndGetInstalledAppsWithPackages();
+extern uint32_t Test_AM_AppPropertyRoundTripWithStore();
+extern uint32_t Test_AM_ClearAppDataAndSystemApisWithDependencies();
+extern uint32_t Test_AM_CheckInstallUninstallBlockTrueForBlockedPackage();
 extern uint32_t Test_AM_MapLifecycleStateAndErrorReason();
 extern uint32_t Test_AM_LifecycleConnectorNullServiceConstructor();
 extern uint32_t Test_AM_LifecycleConnectorOnAppStateChangedWithoutManager();
 extern uint32_t Test_AM_LifecycleConnectorRemoveAppInfoByAppId();
 extern uint32_t Test_AM_LifecycleConnectorGetAppInstanceId();
+extern uint32_t Test_AM_LifecycleConnectorCreateAndGetLoadedAppsSuccess();
+extern uint32_t Test_AM_LifecycleConnectorIsAppLoadedAndErrorPaths();
+extern uint32_t Test_AM_LifecycleConnectorSendIntentAndKillEdgeCases();
+extern uint32_t Test_AM_LifecycleConnectorStateCallbacksStability();
 extern uint32_t Test_AM_AppInfoDefaultsAndSetters();
 extern uint32_t Test_AM_AppInfoManagerCrudAndConvenienceAccessors();
 extern uint32_t Test_AM_TelemetryReportingStability();
@@ -71,11 +79,19 @@ int main()
         { "AM_GetInstalledAppsWithoutPackagesFailsOrEmpty", Test_AM_GetInstalledAppsWithoutPackagesFailsOrEmpty },
         { "AM_UpdateCurrentActionHelpers", Test_AM_UpdateCurrentActionHelpers },
         { "AM_CheckInstallUninstallBlockWithoutPackages", Test_AM_CheckInstallUninstallBlockWithoutPackages },
+        { "AM_IsInstalledAndGetInstalledAppsWithPackages", Test_AM_IsInstalledAndGetInstalledAppsWithPackages },
+        { "AM_AppPropertyRoundTripWithStore", Test_AM_AppPropertyRoundTripWithStore },
+        { "AM_ClearAppDataAndSystemApisWithDependencies", Test_AM_ClearAppDataAndSystemApisWithDependencies },
+        { "AM_CheckInstallUninstallBlockTrueForBlockedPackage", Test_AM_CheckInstallUninstallBlockTrueForBlockedPackage },
         { "AM_MapLifecycleStateAndErrorReason", Test_AM_MapLifecycleStateAndErrorReason },
         { "AM_LifecycleConnectorNullServiceConstructor", Test_AM_LifecycleConnectorNullServiceConstructor },
         { "AM_LifecycleConnectorOnAppStateChangedWithoutManager", Test_AM_LifecycleConnectorOnAppStateChangedWithoutManager },
         { "AM_LifecycleConnectorRemoveAppInfoByAppId", Test_AM_LifecycleConnectorRemoveAppInfoByAppId },
         { "AM_LifecycleConnectorGetAppInstanceId", Test_AM_LifecycleConnectorGetAppInstanceId },
+        { "AM_LifecycleConnectorCreateAndGetLoadedAppsSuccess", Test_AM_LifecycleConnectorCreateAndGetLoadedAppsSuccess },
+        { "AM_LifecycleConnectorIsAppLoadedAndErrorPaths", Test_AM_LifecycleConnectorIsAppLoadedAndErrorPaths },
+        { "AM_LifecycleConnectorSendIntentAndKillEdgeCases", Test_AM_LifecycleConnectorSendIntentAndKillEdgeCases },
+        { "AM_LifecycleConnectorStateCallbacksStability", Test_AM_LifecycleConnectorStateCallbacksStability },
         { "AM_AppInfoDefaultsAndSetters", Test_AM_AppInfoDefaultsAndSetters },
         { "AM_AppInfoManagerCrudAndConvenienceAccessors", Test_AM_AppInfoManagerCrudAndConvenienceAccessors },
         { "AM_TelemetryReportingStability", Test_AM_TelemetryReportingStability },

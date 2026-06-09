@@ -118,3 +118,149 @@ uint32_t Test_AM_LifecycleConnectorGetAppInstanceId()
     WPEFramework::Plugin::AppInfoManager::getInstance().clear();
     return tr.failures;
 }
+
+uint32_t Test_AM_LifecycleConnectorCreateAndGetLoadedAppsSuccess()
+{
+    L0Test::TestResult tr;
+
+    auto* lifecycle = new L0Test::FakeLifecycleManager();
+    auto* lifecycleState = new L0Test::FakeLifecycleManagerState();
+
+    lifecycle->loadedAppsJson =
+        "[{\"appId\":\"app.loaded\",\"appInstanceID\":\"inst-1\",\"activeSessionId\":\"sess-1\",\"targetLifecycleState\":2,\"lifecycleState\":2}]";
+
+    L0Test::AppManagerServiceMock::Config cfg;
+    cfg.lifecycleManager = lifecycle;
+    cfg.lifecycleManagerState = lifecycleState;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    {
+        WPEFramework::Plugin::LifecycleInterfaceConnector connector(&service);
+
+        L0Test::ExpectEqU32(tr,
+            connector.createLifecycleManagerRemoteObject(),
+            WPEFramework::Core::ERROR_NONE,
+            "createLifecycleManagerRemoteObject() succeeds with lifecycle manager dependencies");
+
+        WPEFramework::Exchange::IAppManager::ILoadedAppInfoIterator* iterator = nullptr;
+        const auto status = connector.getLoadedApps(iterator);
+        L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_NONE, "getLoadedApps() succeeds for valid lifecycle JSON payload");
+        L0Test::ExpectTrue(tr, nullptr != iterator, "getLoadedApps() returns a non-null iterator on success");
+
+        if (nullptr != iterator) {
+            iterator->Release();
+        }
+    }
+
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+uint32_t Test_AM_LifecycleConnectorIsAppLoadedAndErrorPaths()
+{
+    L0Test::TestResult tr;
+
+    auto* lifecycle = new L0Test::FakeLifecycleManager();
+    auto* lifecycleState = new L0Test::FakeLifecycleManagerState();
+
+    L0Test::AppManagerServiceMock::Config cfg;
+    cfg.lifecycleManager = lifecycle;
+    cfg.lifecycleManagerState = lifecycleState;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    WPEFramework::Plugin::LifecycleInterfaceConnector connector(&service);
+    L0Test::ExpectEqU32(tr, connector.createLifecycleManagerRemoteObject(), WPEFramework::Core::ERROR_NONE, "createLifecycleManagerRemoteObject() succeeds");
+
+    bool loaded = false;
+    L0Test::ExpectEqU32(tr, connector.isAppLoaded("app.loaded", loaded), WPEFramework::Core::ERROR_NONE, "isAppLoaded() succeeds with lifecycle manager");
+    L0Test::ExpectTrue(tr, !loaded, "isAppLoaded() default fake result is false");
+
+    lifecycle->isAppLoadedHandler = [](const std::string&, bool& result) {
+        result = true;
+        return WPEFramework::Core::ERROR_NONE;
+    };
+    L0Test::ExpectEqU32(tr, connector.isAppLoaded("app.loaded", loaded), WPEFramework::Core::ERROR_NONE, "isAppLoaded() succeeds with custom handler");
+    L0Test::ExpectTrue(tr, loaded, "isAppLoaded() reflects custom handler loaded=true");
+
+    WPEFramework::Exchange::IAppManager::ILoadedAppInfoIterator* iterator = nullptr;
+    lifecycle->loadedAppsJson = "invalid-json";
+    L0Test::ExpectEqU32(tr, connector.getLoadedApps(iterator), WPEFramework::Core::ERROR_GENERAL, "getLoadedApps() fails for invalid JSON payload");
+    L0Test::ExpectTrue(tr, nullptr == iterator, "getLoadedApps() keeps iterator null on failure");
+
+    return tr.failures;
+}
+
+uint32_t Test_AM_LifecycleConnectorSendIntentAndKillEdgeCases()
+{
+    L0Test::TestResult tr;
+
+    auto* lifecycle = new L0Test::FakeLifecycleManager();
+    auto* lifecycleState = new L0Test::FakeLifecycleManagerState();
+
+    L0Test::AppManagerServiceMock::Config cfg;
+    cfg.lifecycleManager = lifecycle;
+    cfg.lifecycleManagerState = lifecycleState;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    WPEFramework::Plugin::LifecycleInterfaceConnector connector(&service);
+
+    L0Test::ExpectEqU32(tr,
+        connector.sendIntent("", "intent"),
+        WPEFramework::Core::ERROR_GENERAL,
+        "sendIntent() rejects empty app id");
+
+    L0Test::ExpectEqU32(tr,
+        connector.killApp(""),
+        WPEFramework::Core::ERROR_GENERAL,
+        "killApp() rejects empty app id");
+
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    WPEFramework::Plugin::AppInfoManager::getInstance().setAppInstanceId("app.one", "inst-1");
+
+    L0Test::ExpectEqU32(tr,
+        connector.sendIntent("app.one", "play"),
+        WPEFramework::Core::ERROR_NONE,
+        "sendIntent() succeeds for valid app id and instance");
+
+    L0Test::ExpectEqU32(tr,
+        connector.killApp("app.one"),
+        WPEFramework::Core::ERROR_NONE,
+        "killApp() succeeds for valid app id and instance");
+
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+uint32_t Test_AM_LifecycleConnectorStateCallbacksStability()
+{
+    L0Test::TestResult tr;
+
+    auto* impl = WPEFramework::Core::Service<WPEFramework::Plugin::AppManagerImplementation>::Create<WPEFramework::Plugin::AppManagerImplementation>();
+    L0Test::AppManagerServiceMock service;
+    WPEFramework::Plugin::LifecycleInterfaceConnector connector(&service);
+
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    WPEFramework::Plugin::AppInfo app;
+    app.setAppInstanceId("inst-1");
+    app.setAppNewState(WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE);
+    WPEFramework::Plugin::AppInfoManager::getInstance().upsert("app.state", [&](WPEFramework::Plugin::AppInfo& a) { a = app; });
+
+    connector.OnAppStateChanged("app.state", WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE, "ERROR_DOBBY_SPEC");
+    L0Test::ExpectTrue(tr, true, "OnAppStateChanged() remains stable with mapped error reason");
+
+    connector.OnAppLifecycleStateChanged("app.state", "inst-1",
+        WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE,
+        WPEFramework::Exchange::ILifecycleManager::LifecycleState::PAUSED,
+        "intent://navigate");
+    L0Test::ExpectTrue(tr, true, "OnAppLifecycleStateChanged() remains stable for regular transitions");
+
+    connector.OnAppLifecycleStateChanged("app.state", "inst-1",
+        static_cast<WPEFramework::Exchange::ILifecycleManager::LifecycleState>(999),
+        WPEFramework::Exchange::ILifecycleManager::LifecycleState::PAUSED,
+        "intent://navigate");
+    L0Test::ExpectTrue(tr, true, "OnAppLifecycleStateChanged() ignores unknown state transitions safely");
+
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}

@@ -256,3 +256,155 @@ uint32_t Test_AM_CheckInstallUninstallBlockWithoutPackages()
     impl->Release();
     return tr.failures;
 }
+
+uint32_t Test_AM_IsInstalledAndGetInstalledAppsWithPackages()
+{
+    L0Test::TestResult tr;
+
+    auto* installer = new L0Test::FakePackageInstaller();
+    auto* handler = new L0Test::FakePackageHandler();
+    auto* store = new L0Test::FakeStore2();
+    auto* storage = new L0Test::FakeStorageManager();
+
+    WPEFramework::Exchange::IPackageInstaller::Package installedPkg;
+    installedPkg.packageId = "app.good";
+    installedPkg.version = "1.2.3";
+    installedPkg.state = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
+
+    WPEFramework::Exchange::IPackageInstaller::Package pendingPkg;
+    pendingPkg.packageId = "app.pending";
+    pendingPkg.version = "9.9.9";
+    pendingPkg.state = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLING;
+
+    installer->installedPackages.push_back(installedPkg);
+    installer->installedPackages.push_back(pendingPkg);
+
+    L0Test::AppManagerServiceMock::Config cfg(installer);
+    cfg.packageHandler = handler;
+    cfg.store2 = store;
+    cfg.storageManager = storage;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    L0Test::ExpectEqU32(tr, impl->Configure(&service), WPEFramework::Core::ERROR_NONE, "Configure() succeeds with fake package/store/storage dependencies");
+
+    bool installed = false;
+    auto status = impl->IsInstalled("app.good", installed);
+    L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_NONE, "IsInstalled() succeeds when package installer is available");
+    L0Test::ExpectTrue(tr, installed, "IsInstalled() reports true for INSTALLED packages");
+
+    status = impl->IsInstalled("missing.app", installed);
+    L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_NONE, "IsInstalled() remains successful for missing app ids");
+    L0Test::ExpectTrue(tr, !installed, "IsInstalled() reports false when app id is absent");
+
+    std::string apps;
+    status = impl->GetInstalledApps(apps);
+    L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_NONE, "GetInstalledApps() succeeds when package list is available");
+    L0Test::ExpectTrue(tr, apps.find("app.good") != std::string::npos, "GetInstalledApps() includes installed app ids in output");
+    L0Test::ExpectTrue(tr, apps.find("app.pending") == std::string::npos, "GetInstalledApps() excludes non-installed entries");
+
+    impl->Release();
+    return tr.failures;
+}
+
+uint32_t Test_AM_AppPropertyRoundTripWithStore()
+{
+    L0Test::TestResult tr;
+
+    auto* installer = new L0Test::FakePackageInstaller();
+    auto* handler = new L0Test::FakePackageHandler();
+    auto* store = new L0Test::FakeStore2();
+    auto* storage = new L0Test::FakeStorageManager();
+
+    L0Test::AppManagerServiceMock::Config cfg(installer);
+    cfg.packageHandler = handler;
+    cfg.store2 = store;
+    cfg.storageManager = storage;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    L0Test::ExpectEqU32(tr, impl->Configure(&service), WPEFramework::Core::ERROR_NONE, "Configure() succeeds with fake store");
+
+    L0Test::ExpectEqU32(tr,
+        impl->SetAppProperty("app.good", "sampleKey", "sampleValue"),
+        WPEFramework::Core::ERROR_NONE,
+        "SetAppProperty() persists values when store dependency exists");
+
+    std::string value;
+    L0Test::ExpectEqU32(tr,
+        impl->GetAppProperty("app.good", "sampleKey", value),
+        WPEFramework::Core::ERROR_NONE,
+        "GetAppProperty() succeeds for existing values");
+    L0Test::ExpectEqStr(tr, value, std::string("sampleValue"), "GetAppProperty() returns previously set value");
+
+    impl->Release();
+    return tr.failures;
+}
+
+uint32_t Test_AM_ClearAppDataAndSystemApisWithDependencies()
+{
+    L0Test::TestResult tr;
+
+    auto* installer = new L0Test::FakePackageInstaller();
+    auto* handler = new L0Test::FakePackageHandler();
+    auto* store = new L0Test::FakeStore2();
+    auto* storage = new L0Test::FakeStorageManager();
+
+    L0Test::AppManagerServiceMock::Config cfg(installer);
+    cfg.packageHandler = handler;
+    cfg.store2 = store;
+    cfg.storageManager = storage;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    L0Test::ExpectEqU32(tr, impl->Configure(&service), WPEFramework::Core::ERROR_NONE, "Configure() succeeds with fake storage manager");
+
+    L0Test::ExpectEqU32(tr, impl->ClearAppData("app.good"), WPEFramework::Core::ERROR_NONE, "ClearAppData() succeeds with storage manager");
+    L0Test::ExpectEqU32(tr, impl->ClearAllAppData(), WPEFramework::Core::ERROR_NONE, "ClearAllAppData() succeeds with storage manager");
+
+    int32_t v = 0;
+    L0Test::ExpectEqU32(tr, impl->StartSystemApp("sys.app"), WPEFramework::Core::ERROR_NONE, "StartSystemApp() is stable");
+    L0Test::ExpectEqU32(tr, impl->StopSystemApp("sys.app"), WPEFramework::Core::ERROR_NONE, "StopSystemApp() is stable");
+    L0Test::ExpectEqU32(tr, impl->GetMaxRunningApps(v), WPEFramework::Core::ERROR_NONE, "GetMaxRunningApps() succeeds");
+    L0Test::ExpectEqU32(tr, static_cast<uint32_t>(v), static_cast<uint32_t>(-1), "GetMaxRunningApps() returns expected default");
+    L0Test::ExpectEqU32(tr, impl->GetMaxHibernatedApps(v), WPEFramework::Core::ERROR_NONE, "GetMaxHibernatedApps() succeeds");
+    L0Test::ExpectEqU32(tr, impl->GetMaxHibernatedFlashUsage(v), WPEFramework::Core::ERROR_NONE, "GetMaxHibernatedFlashUsage() succeeds");
+    L0Test::ExpectEqU32(tr, impl->GetMaxInactiveRamUsage(v), WPEFramework::Core::ERROR_NONE, "GetMaxInactiveRamUsage() succeeds");
+
+    std::string meta;
+    L0Test::ExpectEqU32(tr, impl->GetAppMetadata("app.good", "key", meta), WPEFramework::Core::ERROR_NONE, "GetAppMetadata() is stable");
+
+    impl->Release();
+    return tr.failures;
+}
+
+uint32_t Test_AM_CheckInstallUninstallBlockTrueForBlockedPackage()
+{
+    L0Test::TestResult tr;
+
+    auto* installer = new L0Test::FakePackageInstaller();
+    auto* handler = new L0Test::FakePackageHandler();
+    auto* store = new L0Test::FakeStore2();
+    auto* storage = new L0Test::FakeStorageManager();
+
+    WPEFramework::Exchange::IPackageInstaller::Package blockedPkg;
+    blockedPkg.packageId = "app.blocked";
+    blockedPkg.version = "2.0.0";
+    blockedPkg.state = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLATION_BLOCKED;
+    installer->installedPackages.push_back(blockedPkg);
+
+    L0Test::AppManagerServiceMock::Config cfg(installer);
+    cfg.packageHandler = handler;
+    cfg.store2 = store;
+    cfg.storageManager = storage;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    L0Test::ExpectEqU32(tr, impl->Configure(&service), WPEFramework::Core::ERROR_NONE, "Configure() succeeds with blocked package fixture");
+
+    const bool blocked = impl->checkInstallUninstallBlock("app.blocked");
+    L0Test::ExpectTrue(tr, blocked, "checkInstallUninstallBlock() returns true when install state is blocked");
+
+    impl->Release();
+    return tr.failures;
+}
