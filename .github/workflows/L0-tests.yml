@@ -478,6 +478,14 @@ jobs:
           run_one_under_gdb "$pkgmgr_test_bin" l0-packagemanager-test.log l0-packagemanager-test-gdb.log || pkgmgr_test_rc=$?
           run_one_under_gdb "$appmanager_test_bin" l0-appmanager-test.log l0-appmanager-test-gdb.log || appmanager_test_rc=$?
 
+          echo "lcm_test_rc=$lcm_test_rc"
+          echo "runtime_test_rc=$runtime_test_rc"
+          echo "rdkwm_test_rc=$rdkwm_test_rc"
+          echo "appstorage_test_rc=$appstorage_test_rc"
+          echo "preinstall_test_rc=$preinstall_test_rc"
+          echo "pkgmgr_test_rc=$pkgmgr_test_rc"
+          echo "appmanager_test_rc=$appmanager_test_rc"
+
           cat l0-lcm-test.log l0-runtime-test.log l0-rdkwm-test.log l0-appstorage-test.log l0-preinstall-test.log l0-packagemanager-test.log l0-appmanager-test.log > l0-test.log
 
           if [ "$runtime_test_rc" -ne 0 ] || [ "$lcm_test_rc" -ne 0 ] || [ "$rdkwm_test_rc" -ne 0 ] || [ "$appstorage_test_rc" -ne 0 ] || [ "$preinstall_test_rc" -ne 0 ] || [ "$pkgmgr_test_rc" -ne 0 ] || [ "$appmanager_test_rc" -ne 0 ]; then
@@ -492,6 +500,7 @@ jobs:
             if [ -f "$log" ]; then
               echo "==== $log: Failed test cases (if any) ===="
               grep -E '^\[  FAILED  \]' "$log" || echo "No explicit [ FAILED ] lines found"
+              grep -E 'GDB CRASH REPORT|Signal caught:' "$log" || true
             else
               echo "$log not found"
             fi
@@ -515,6 +524,7 @@ jobs:
               echo "==== $log: Failed test cases (final gate) ===="
               grep -E '^\[  FAILED  \]' "$log" || true
               grep -E '^FAIL:' "$log" || true
+              grep -E 'GDB CRASH REPORT|Signal caught:' "$log" || true
             else
               echo "$log not found in final gate"
               failed=1

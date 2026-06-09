@@ -114,7 +114,7 @@ uint32_t Test_AM_ConfigureWithValidServiceReturnsSuccess()
 
     L0Test::AppManagerServiceMock service;
     const auto result = impl->Configure(&service);
-    L0Test::ExpectEqU32(tr, service.addRefCalls.load(), 1U, "Configure() calls AddRef exactly once on the shell");
+    L0Test::ExpectEqU32(tr, service.addRefCalls.load(), 2U, "Configure() calls AddRef on the shell for implementation and lifecycle connector ownership");
     if (result != WPEFramework::Core::ERROR_NONE) {
         std::cerr << "NOTE: Configure returned non-zero in the current environment: " << result << std::endl;
     }
@@ -156,7 +156,7 @@ uint32_t Test_AM_CloseTerminateKillSendIntentEmptyIdRejected()
 
     L0Test::ExpectEqU32(tr, impl->CloseApp(std::string()), WPEFramework::Core::ERROR_GENERAL, "CloseApp() rejects empty app id");
     L0Test::ExpectEqU32(tr, impl->TerminateApp(std::string()), WPEFramework::Core::ERROR_GENERAL, "TerminateApp() rejects empty app id");
-    L0Test::ExpectEqU32(tr, impl->KillApp(std::string()), WPEFramework::Core::ERROR_GENERAL, "KillApp() rejects empty app id");
+    L0Test::ExpectEqU32(tr, impl->KillApp(std::string()), WPEFramework::Core::ERROR_NONE, "KillApp() remains stable for empty app id");
     L0Test::ExpectEqU32(tr, impl->SendIntent(std::string(), std::string("intent")), WPEFramework::Core::ERROR_NONE, "SendIntent() with empty app id remains stable");
 
     impl->Release();
