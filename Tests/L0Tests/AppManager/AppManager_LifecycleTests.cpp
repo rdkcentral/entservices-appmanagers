@@ -92,7 +92,7 @@ uint32_t Test_AM_SingletonPointerSetAndCleared()
         WPEFramework::Plugin::AppManagerImplementation::_instance->Release();
     }
 
-    auto* impl = WPEFramework::Core::Service<WPEFramework::Plugin::AppManagerImplementation>::Create<WPEFramework::Exchange::IAppManager>();
+    auto* impl = WPEFramework::Core::Service<WPEFramework::Plugin::AppManagerImplementation>::Create<WPEFramework::Plugin::AppManagerImplementation>();
     L0Test::ExpectTrue(tr, impl == WPEFramework::Plugin::AppManagerImplementation::getInstance(), "Singleton accessor returns the newly created implementation");
     impl->Release();
     L0Test::ExpectTrue(tr, nullptr == WPEFramework::Plugin::AppManagerImplementation::getInstance(), "Singleton accessor returns nullptr after release");

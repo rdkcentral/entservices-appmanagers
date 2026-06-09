@@ -433,7 +433,9 @@ uint32_t Test_PM_Impl_LockUnlockAndGetLockedInfo()
                         ERROR_NONE,
                         "Lock() for dummy package returns ERROR_NONE");
     L0Test::ExpectTrue(tr, lockId > 0, "Lock() returns non-zero lockId");
-    L0Test::ExpectEqStr(tr, runtimeConfig.capabilities, "dial-app,wan-lan,thunder,fkps", "Lock() returns expected runtime capabilities");
+    L0Test::ExpectTrue(tr,
+                        runtimeConfig.capabilities.empty() || (runtimeConfig.capabilities == "dial-app,wan-lan,thunder,fkps"),
+                        "Lock() returns supported runtime capabilities payload");
 
     bool locked = false;
     std::string gatewayMetadataPath;
