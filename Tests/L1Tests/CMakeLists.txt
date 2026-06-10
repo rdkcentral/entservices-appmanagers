@@ -229,3 +229,11 @@ target_link_libraries(test_RalfSupport
     gtest_main
     pthread
 )
+
+add_executable(test_RalfPackageBuilder_L2 test_RalfPackageBuilder_L2.cpp)
+
+target_link_libraries(test_RalfPackageBuilder_L2
+    gtest
+    gtest_main
+    pthread
+)
