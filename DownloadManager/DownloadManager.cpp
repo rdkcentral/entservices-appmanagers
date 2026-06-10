@@ -18,6 +18,9 @@
 **/
 
 #include "DownloadManager.h"
+#include "UtilsAppManagerTelemetry.h"
+
+RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::Utils::TelemetryReportingBase::Bootstrapper, "downloadManagerBootstrapTime")
 
 namespace WPEFramework {
 
@@ -48,6 +51,7 @@ namespace Plugin
     const string DownloadManager::Initialize(PluginHost::IShell * service)
     {
         string message;
+        RDKAM_RECORD_BOOTSTRAP_TIME(service);
 
         ASSERT(service != nullptr);
         ASSERT(mService == nullptr);

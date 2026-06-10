@@ -19,10 +19,61 @@
 
 #include "TelemetryReportingBase.h"
 #include <chrono>
+#include <array>
+#include <map>
+#include <mutex>
+
+#include "UtilsLogging.h"
 
 namespace WPEFramework {
 namespace Plugin {
 namespace Utils {
+
+namespace {
+    static const string BOOTSTRAP_AGGREGATE_ID = "AppManagersBootstrapMarker"; //used for aggregating all plugin init times only , not used for publishing anywhere
+    static const char* BOOTSTRAP_TIMEOUT_VALUE = "TIMEOUT";
+    static const std::chrono::seconds BOOTSTRAP_PUBLISH_TIMEOUT(120);
+    static const std::array<const char*, 7> EXPECTED_BOOTSTRAP_FIELDS = {{
+        "appManagerBootstrapTime",
+        "appStorageManagerBootstrapTime",
+        "lifecycleManagerBootstrapTime",
+        "runtimeManagerBootstrapTime",
+        "packageManagerBootstrapTime",
+        "windowManagerBootstrapTime",
+        "downloadManagerBootstrapTime"
+    }};
+    static std::map<std::string, int> gBootstrapDurations;
+    static bool gBootstrapAggregationStarted = false;
+    static bool gBootstrapPublishCompleted = false;
+    static std::chrono::steady_clock::time_point gBootstrapStartTime;
+    static std::mutex gPendingBootstrapLock;
+
+    static bool HasAllExpectedBootstrapFields(const std::map<std::string, int>& durations)
+    {
+        for (const char* fieldName : EXPECTED_BOOTSTRAP_FIELDS) {
+            if (durations.find(fieldName) == durations.end()) {
+                return false;
+            }
+        }
+        return true;
+    }
+}
+
+TelemetryReportingBase::ScopedBootstrapTimer::~ScopedBootstrapTimer()
+{
+    if ((nullptr == mTelemetry) || (false == isTelemetryMetricsEnabled())) {
+        return;
+    }
+
+    const auto endTime = std::chrono::steady_clock::now();
+    const auto durationMs = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - mStartTime).count();
+    const Core::hresult status = mTelemetry->recordBootstrapTelemetry(mService,
+        static_cast<int>(durationMs),
+        mFieldName);
+    if (Core::ERROR_NONE != status) {
+        LOGWARN("Failed to record aggregated bootstrap telemetry");
+    }
+}
 
 TelemetryReportingBase::TelemetryReportingBase()
     : mCurrentservice(nullptr)
@@ -130,6 +181,73 @@ Core::hresult TelemetryReportingBase::recordAndPublishTelemetry(const std::strin
 TelemetryMetricsClient& TelemetryReportingBase::getTelemetryClient()
 {
     return mTelemetryMetrics;
+}
+
+Core::hresult TelemetryReportingBase::recordBootstrapTelemetry(PluginHost::IShell* service,
+    const int durationMs,
+    const std::string& fieldName)
+{
+    if ((nullptr == service) || fieldName.empty()) {
+        return Core::ERROR_GENERAL;
+    }
+
+    setService(service);
+    std::map<std::string, int> recordedDurations;
+    bool shouldPublish = false;
+    bool timeoutReached = false;
+    {
+        std::lock_guard<std::mutex> lock(gPendingBootstrapLock);
+        if (true == gBootstrapPublishCompleted) {
+            return Core::ERROR_NONE;
+        }
+
+        if (false == gBootstrapAggregationStarted) {
+            gBootstrapAggregationStarted = true;
+            gBootstrapStartTime = std::chrono::steady_clock::now();
+        }
+
+        gBootstrapDurations[fieldName] = durationMs;
+        recordedDurations = gBootstrapDurations;
+
+        shouldPublish = HasAllExpectedBootstrapFields(recordedDurations);
+        timeoutReached = (std::chrono::steady_clock::now() - gBootstrapStartTime) >= BOOTSTRAP_PUBLISH_TIMEOUT;
+
+        if ((false == shouldPublish) && (false == timeoutReached)) {
+            LOGWARN("Bootstrap metric field '%s' recorded; waiting for remaining managers", fieldName.c_str());
+            return Core::ERROR_NONE;
+        }
+    }
+
+    if (!ensureTelemetryClient()) {
+        LOGWARN("Telemetry unavailable, cached bootstrap metric field '%s'", fieldName.c_str());
+        return Core::ERROR_NONE;
+    }
+
+    JsonObject jsonParam;
+    for (const auto& bootstrapEntry : recordedDurations) {
+        jsonParam[bootstrapEntry.first.c_str()] = bootstrapEntry.second;
+    }
+
+    if ((false == shouldPublish) && (true == timeoutReached)) {
+        for (const char* expectedField : EXPECTED_BOOTSTRAP_FIELDS) {
+            if (recordedDurations.find(expectedField) == recordedDurations.end()) {
+                jsonParam[expectedField] = BOOTSTRAP_TIMEOUT_VALUE;
+            }
+        }
+        shouldPublish = true;
+        LOGWARN("Bootstrap publish timeout reached; missing manager fields marked as TIMEOUT");
+    }
+
+    Core::hresult status = recordTelemetry(BOOTSTRAP_AGGREGATE_ID, jsonParam, TELEMETRY_MARKER_BOOTSTRAP_TIME);
+    if ((Core::ERROR_NONE == status) && shouldPublish) {
+        status = publishTelemetry(BOOTSTRAP_AGGREGATE_ID, TELEMETRY_MARKER_BOOTSTRAP_TIME);
+        if (Core::ERROR_NONE == status) {
+            std::lock_guard<std::mutex> lock(gPendingBootstrapLock);
+            gBootstrapPublishCompleted = true;
+        }
+    }
+
+    return status;
 }
 
 } // namespace Utils

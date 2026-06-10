@@ -19,8 +19,11 @@
 
 
 #include "AppStorageManager.h"
+#include "UtilsAppManagerTelemetry.h"
 
 const string WPEFramework::Plugin::AppStorageManager::SERVICE_NAME = "org.rdk.AppStorageManager";
+
+RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::Utils::TelemetryReportingBase::Bootstrapper, "appStorageManagerBootstrapTime")
 
 namespace WPEFramework
 {
@@ -64,6 +67,7 @@ namespace WPEFramework
     const string AppStorageManager::Initialize(PluginHost::IShell* service)
     {
         string message="";
+        RDKAM_RECORD_BOOTSTRAP_TIME(service);
 
         ASSERT(nullptr != service);
         ASSERT(nullptr == mCurrentService);

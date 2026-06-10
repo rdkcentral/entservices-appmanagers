@@ -20,9 +20,12 @@
 #include <iomanip>      /* for std::setw, std::setfill */
 #include "AppManagerImplementation.h"
 #include "AppManagerTelemetryReporting.h"
+#include "UtilsAppManagerTelemetry.h"
 
 #define TIME_DATA_SIZE           200
 static bool sRunning = false;
+
+RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::AppManagerTelemetryReporting, "appManagerBootstrapTime")
 
 namespace WPEFramework {
 namespace Plugin {
@@ -534,7 +537,7 @@ uint32_t AppManagerImplementation::Configure(PluginHost::IShell* service)
         {
             LOGINFO("created createStorageManagerRemoteObject");
         }
-        AppManagerTelemetryReporting::getInstance().initialize(service);
+        RDKAM_TELEMETRY_INIT(service);
         sRunning = true;
         /* Create the worker thread */
         try

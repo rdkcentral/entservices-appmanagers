@@ -19,6 +19,9 @@
 
 #pragma once
 
+#include <chrono>
+#include <string>
+
 #include "Module.h"
 #include "TelemetryMarkers.h"
 #include "UtilsTelemetryMetrics.h"
@@ -29,9 +32,34 @@ namespace Utils {
 
 class TelemetryReportingBase {
 public:
+    class ScopedBootstrapTimer {
+    public:
+        ScopedBootstrapTimer(TelemetryReportingBase* telemetry,
+            PluginHost::IShell* service,
+            const std::string& fieldName = "pluginBootstrapTime",
+            const bool = true)
+            : mTelemetry(telemetry)
+            , mService(service)
+            , mFieldName(fieldName)
+            , mStartTime(std::chrono::steady_clock::now())
+        {
+        }
+
+        ~ScopedBootstrapTimer();
+
+    private:
+        TelemetryReportingBase* mTelemetry;
+        PluginHost::IShell* mService;
+        std::string mFieldName;
+        std::chrono::steady_clock::time_point mStartTime;
+    };
+
     TelemetryReportingBase(const TelemetryReportingBase&) = delete;
     TelemetryReportingBase& operator=(const TelemetryReportingBase&) = delete;
     time_t getCurrentTimestampMs() const;
+    Core::hresult recordBootstrapTelemetry(PluginHost::IShell* service,
+        const int durationMs,
+        const std::string& fieldName);
 
 protected:
     TelemetryReportingBase();
@@ -53,6 +81,20 @@ protected:
     Core::hresult publishTelemetry(const std::string& appId, const std::string& marker);
     Core::hresult recordAndPublishTelemetry(const std::string& appId, const JsonObject& jsonParam, const std::string& marker, bool publish);
     TelemetryMetricsClient& getTelemetryClient();
+
+    // Minimal concrete subclass for shell plugins that only need bootstrap timing.
+    // Usage: RDKAM_DEFINE_TELEMETRY_CLIENT(Utils::TelemetryReportingBase::Bootstrapper, "fieldName")
+    class Bootstrapper final : public TelemetryReportingBase {
+    public:
+        Bootstrapper(const Bootstrapper&) = delete;
+        Bootstrapper& operator=(const Bootstrapper&) = delete;
+        static Bootstrapper& getInstance() {
+            static Bootstrapper s_instance;
+            return s_instance;
+        }
+    private:
+        Bootstrapper() = default;
+    };
 
 private:
     PluginHost::IShell* mCurrentservice;
