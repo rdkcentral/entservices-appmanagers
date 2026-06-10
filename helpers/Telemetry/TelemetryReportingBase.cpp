@@ -216,6 +216,10 @@ Core::hresult TelemetryReportingBase::recordBootstrapTelemetry(PluginHost::IShel
             LOGWARN("Bootstrap metric field '%s' recorded; waiting for remaining managers", fieldName.c_str());
             return Core::ERROR_NONE;
         }
+
+        // Claim the publish right atomically while still holding the lock.
+        // This prevents concurrent threads from also deciding to publish.
+        gBootstrapPublishCompleted = true;
     }
 
     if (!ensureTelemetryClient()) {
@@ -241,10 +245,6 @@ Core::hresult TelemetryReportingBase::recordBootstrapTelemetry(PluginHost::IShel
     Core::hresult status = recordTelemetry(BOOTSTRAP_AGGREGATE_ID, jsonParam, TELEMETRY_MARKER_BOOTSTRAP_TIME);
     if ((Core::ERROR_NONE == status) && shouldPublish) {
         status = publishTelemetry(BOOTSTRAP_AGGREGATE_ID, TELEMETRY_MARKER_BOOTSTRAP_TIME);
-        if (Core::ERROR_NONE == status) {
-            std::lock_guard<std::mutex> lock(gPendingBootstrapLock);
-            gBootstrapPublishCompleted = true;
-        }
     }
 
     return status;

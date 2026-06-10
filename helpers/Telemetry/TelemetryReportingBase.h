@@ -36,8 +36,7 @@ public:
     public:
         ScopedBootstrapTimer(TelemetryReportingBase* telemetry,
             PluginHost::IShell* service,
-            const std::string& fieldName = "pluginBootstrapTime",
-            const bool = true)
+            const std::string& fieldName = "pluginBootstrapTime")
             : mTelemetry(telemetry)
             , mService(service)
             , mFieldName(fieldName)
