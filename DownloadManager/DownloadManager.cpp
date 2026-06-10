@@ -20,7 +20,7 @@
 #include "DownloadManager.h"
 #include "UtilsAppManagerTelemetry.h"
 
-RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::Utils::TelemetryReportingBase::Bootstrapper, "downloadManagerBootstrapTime")
+RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::Utils::AppManagersBootstrapper, "downloadManagerBootstrapTime")
 
 namespace WPEFramework {
 

@@ -21,6 +21,28 @@
 
 #include "TelemetryReportingBase.h"
 
+namespace WPEFramework {
+namespace Plugin {
+namespace Utils {
+
+class AppManagersBootstrapper final : public TelemetryReportingBase {
+public:
+    AppManagersBootstrapper(const AppManagersBootstrapper&) = delete;
+    AppManagersBootstrapper& operator=(const AppManagersBootstrapper&) = delete;
+    static AppManagersBootstrapper& getInstance()
+    {
+        static AppManagersBootstrapper s_instance;
+        return s_instance;
+    }
+
+private:
+    AppManagersBootstrapper() = default;
+};
+
+} // namespace Utils
+} // namespace Plugin
+} // namespace WPEFramework
+
 /*
  * Macro pattern intentionally mirrors AppGateway telemetry helpers:
  * 1. Define per-plugin telemetry client accessors in the translation unit.
@@ -32,7 +54,7 @@
         telemetryType& GetLocalTelemetryClient() { \
             return telemetryType::getInstance(); \
         } \
-        const char* GetLocalBootstrapFieldName() { \
+        __attribute__((unused)) const char* GetLocalBootstrapFieldName() { \
             return bootstrapFieldName; \
         } \
     }

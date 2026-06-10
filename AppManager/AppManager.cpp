@@ -22,7 +22,7 @@
 
 const string WPEFramework::Plugin::AppManager::SERVICE_NAME = "org.rdk.AppManager";
 
-RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::Utils::TelemetryReportingBase::Bootstrapper, "appManagerBootstrapTime")
+RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::Utils::AppManagersBootstrapper, "appManagerBootstrapTime")
 
 namespace WPEFramework
 {

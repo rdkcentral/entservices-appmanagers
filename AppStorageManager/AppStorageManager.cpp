@@ -23,7 +23,7 @@
 
 const string WPEFramework::Plugin::AppStorageManager::SERVICE_NAME = "org.rdk.AppStorageManager";
 
-RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::Utils::TelemetryReportingBase::Bootstrapper, "appStorageManagerBootstrapTime")
+RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::Utils::AppManagersBootstrapper, "appStorageManagerBootstrapTime")
 
 namespace WPEFramework
 {

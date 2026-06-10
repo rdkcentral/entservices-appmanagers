@@ -22,7 +22,7 @@
 
 const string WPEFramework::Plugin::RDKWindowManager::SERVICE_NAME = "org.rdk.RDKWindowManager";
 
-RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::Utils::TelemetryReportingBase::Bootstrapper, "windowManagerBootstrapTime")
+RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::Utils::AppManagersBootstrapper, "windowManagerBootstrapTime")
 
 namespace WPEFramework {
 

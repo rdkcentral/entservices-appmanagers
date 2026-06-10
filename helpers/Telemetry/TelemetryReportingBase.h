@@ -81,20 +81,6 @@ protected:
     Core::hresult recordAndPublishTelemetry(const std::string& appId, const JsonObject& jsonParam, const std::string& marker, bool publish);
     TelemetryMetricsClient& getTelemetryClient();
 
-    // Minimal concrete subclass for shell plugins that only need bootstrap timing.
-    // Usage: RDKAM_DEFINE_TELEMETRY_CLIENT(Utils::TelemetryReportingBase::Bootstrapper, "fieldName")
-    class Bootstrapper final : public TelemetryReportingBase {
-    public:
-        Bootstrapper(const Bootstrapper&) = delete;
-        Bootstrapper& operator=(const Bootstrapper&) = delete;
-        static Bootstrapper& getInstance() {
-            static Bootstrapper s_instance;
-            return s_instance;
-        }
-    private:
-        Bootstrapper() = default;
-    };
-
 private:
     PluginHost::IShell* mCurrentservice;
     TelemetryMetricsClient mTelemetryMetrics;
