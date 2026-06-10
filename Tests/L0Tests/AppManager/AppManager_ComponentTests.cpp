@@ -264,3 +264,268 @@ uint32_t Test_AM_LifecycleConnectorStateCallbacksStability()
     WPEFramework::Plugin::AppInfoManager::getInstance().clear();
     return tr.failures;
 }
+
+uint32_t Test_AM_LifecycleConnectorLaunchNewApp()
+{
+    L0Test::TestResult tr;
+
+    auto* lifecycle = new L0Test::FakeLifecycleManager();
+    auto* lifecycleState = new L0Test::FakeLifecycleManagerState();
+
+    L0Test::AppManagerServiceMock::Config cfg;
+    cfg.lifecycleManager = lifecycle;
+    cfg.lifecycleManagerState = lifecycleState;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = WPEFramework::Core::Service<WPEFramework::Plugin::AppManagerImplementation>::Create<WPEFramework::Plugin::AppManagerImplementation>();
+
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+
+    {
+        WPEFramework::Plugin::LifecycleInterfaceConnector connector(&service);
+        L0Test::ExpectEqU32(tr, connector.createLifecycleManagerRemoteObject(), WPEFramework::Core::ERROR_NONE,
+            "createLifecycleManagerRemoteObject() succeeds");
+
+        WPEFramework::Exchange::RuntimeConfig runtimeConfig;
+
+        // Launch a new (never-seen) app — goes through the SpawnApp path.
+        const auto status = connector.launch("com.app.new", "intent://play", "", runtimeConfig);
+        L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_NONE,
+            "launch() succeeds for a new app via SpawnApp");
+        L0Test::ExpectTrue(tr, WPEFramework::Plugin::AppInfoManager::getInstance().exists("com.app.new"),
+            "launch() creates an AppInfo entry for the newly spawned app");
+    }
+
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+uint32_t Test_AM_LifecycleConnectorLaunchSuspendedApp()
+{
+    L0Test::TestResult tr;
+
+    auto* lifecycle = new L0Test::FakeLifecycleManager();
+    auto* lifecycleState = new L0Test::FakeLifecycleManagerState();
+
+    L0Test::AppManagerServiceMock::Config cfg;
+    cfg.lifecycleManager = lifecycle;
+    cfg.lifecycleManagerState = lifecycleState;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = WPEFramework::Core::Service<WPEFramework::Plugin::AppManagerImplementation>::Create<WPEFramework::Plugin::AppManagerImplementation>();
+
+    // Pre-populate AppInfoManager to simulate a suspended app.
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    WPEFramework::Plugin::AppInfo suspendedApp;
+    suspendedApp.setAppInstanceId("inst-suspended");
+    suspendedApp.setAppNewState(WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED);
+    WPEFramework::Plugin::AppInfoManager::getInstance().upsert("com.app.suspended",
+        [&](WPEFramework::Plugin::AppInfo& a) { a = suspendedApp; });
+
+    // Make isAppLoaded return true so the resume/SetTargetAppState path is taken.
+    lifecycle->isAppLoadedHandler = [](const std::string&, bool& loaded) {
+        loaded = true;
+        return WPEFramework::Core::ERROR_NONE;
+    };
+
+    {
+        WPEFramework::Plugin::LifecycleInterfaceConnector connector(&service);
+        L0Test::ExpectEqU32(tr, connector.createLifecycleManagerRemoteObject(), WPEFramework::Core::ERROR_NONE,
+            "createLifecycleManagerRemoteObject() succeeds for suspended-app test");
+
+        WPEFramework::Exchange::RuntimeConfig runtimeConfig;
+
+        // Launch a suspended app — goes through SetTargetAppState (resume) path.
+        const auto status = connector.launch("com.app.suspended", "intent://resume", "", runtimeConfig);
+        L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_NONE,
+            "launch() succeeds for a suspended app via SetTargetAppState");
+    }
+
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+uint32_t Test_AM_LifecycleConnectorPreloadApp()
+{
+    L0Test::TestResult tr;
+
+    auto* lifecycle = new L0Test::FakeLifecycleManager();
+    auto* lifecycleState = new L0Test::FakeLifecycleManagerState();
+
+    L0Test::AppManagerServiceMock::Config cfg;
+    cfg.lifecycleManager = lifecycle;
+    cfg.lifecycleManagerState = lifecycleState;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = WPEFramework::Core::Service<WPEFramework::Plugin::AppManagerImplementation>::Create<WPEFramework::Plugin::AppManagerImplementation>();
+
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+
+    {
+        WPEFramework::Plugin::LifecycleInterfaceConnector connector(&service);
+        L0Test::ExpectEqU32(tr, connector.createLifecycleManagerRemoteObject(), WPEFramework::Core::ERROR_NONE,
+            "createLifecycleManagerRemoteObject() succeeds for preload test");
+
+        WPEFramework::Exchange::RuntimeConfig runtimeConfig;
+        std::string error;
+
+        const auto status = connector.preLoadApp("com.app.preload", "intent://preload", "", runtimeConfig, error);
+        L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_NONE,
+            "preLoadApp() succeeds via SpawnApp with PAUSED target state");
+        L0Test::ExpectTrue(tr, WPEFramework::Plugin::AppInfoManager::getInstance().exists("com.app.preload"),
+            "preLoadApp() creates an AppInfo entry for the preloaded app");
+    }
+
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+uint32_t Test_AM_LifecycleConnectorTerminateApp()
+{
+    L0Test::TestResult tr;
+
+    auto* lifecycle = new L0Test::FakeLifecycleManager();
+    auto* lifecycleState = new L0Test::FakeLifecycleManagerState();
+
+    L0Test::AppManagerServiceMock::Config cfg;
+    cfg.lifecycleManager = lifecycle;
+    cfg.lifecycleManagerState = lifecycleState;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = WPEFramework::Core::Service<WPEFramework::Plugin::AppManagerImplementation>::Create<WPEFramework::Plugin::AppManagerImplementation>();
+
+    // Pre-populate AppInfoManager with a running app.
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    WPEFramework::Plugin::AppInfo runningApp;
+    runningApp.setAppInstanceId("inst-terminate");
+    runningApp.setAppNewState(WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE);
+    WPEFramework::Plugin::AppInfoManager::getInstance().upsert("com.app.terminate",
+        [&](WPEFramework::Plugin::AppInfo& a) { a = runningApp; });
+
+    {
+        WPEFramework::Plugin::LifecycleInterfaceConnector connector(&service);
+        L0Test::ExpectEqU32(tr, connector.createLifecycleManagerRemoteObject(), WPEFramework::Core::ERROR_NONE,
+            "createLifecycleManagerRemoteObject() succeeds for terminate test");
+
+        const auto status = connector.terminateApp("com.app.terminate");
+        L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_NONE,
+            "terminateApp() succeeds for an app with a known instance id via UnloadApp");
+    }
+
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+uint32_t Test_AM_LifecycleConnectorCloseApp()
+{
+    L0Test::TestResult tr;
+
+    auto* lifecycle = new L0Test::FakeLifecycleManager();
+    auto* lifecycleState = new L0Test::FakeLifecycleManagerState();
+
+    // Force SetTargetAppState to fail immediately so the test does not block
+    // on the 1-second PAUSE_STATE_WAITTIME timeout.
+    lifecycle->setTargetAppStateHandler = [](const std::string&,
+        WPEFramework::Exchange::ILifecycleManager::LifecycleState,
+        const std::string&) -> uint32_t {
+        return WPEFramework::Core::ERROR_GENERAL;
+    };
+
+    L0Test::AppManagerServiceMock::Config cfg;
+    cfg.lifecycleManager = lifecycle;
+    cfg.lifecycleManagerState = lifecycleState;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = WPEFramework::Core::Service<WPEFramework::Plugin::AppManagerImplementation>::Create<WPEFramework::Plugin::AppManagerImplementation>();
+
+    // Pre-populate AppInfoManager with a running app.
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    WPEFramework::Plugin::AppInfo runningApp;
+    runningApp.setAppInstanceId("inst-close");
+    runningApp.setAppNewState(WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE);
+    WPEFramework::Plugin::AppInfoManager::getInstance().upsert("com.app.close",
+        [&](WPEFramework::Plugin::AppInfo& a) { a = runningApp; });
+
+    {
+        WPEFramework::Plugin::LifecycleInterfaceConnector connector(&service);
+        L0Test::ExpectEqU32(tr, connector.createLifecycleManagerRemoteObject(), WPEFramework::Core::ERROR_NONE,
+            "createLifecycleManagerRemoteObject() succeeds for close test");
+
+        // SetTargetAppState fails → closeApp() returns ERROR_GENERAL without blocking.
+        const auto status = connector.closeApp("com.app.close");
+        L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_GENERAL,
+            "closeApp() returns ERROR_GENERAL when SetTargetAppState fails");
+    }
+
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+uint32_t Test_AM_LifecycleConnectorReleaseRemoteObjects()
+{
+    L0Test::TestResult tr;
+
+    auto* lifecycle = new L0Test::FakeLifecycleManager();
+    auto* lifecycleState = new L0Test::FakeLifecycleManagerState();
+
+    L0Test::AppManagerServiceMock::Config cfg;
+    cfg.lifecycleManager = lifecycle;
+    cfg.lifecycleManagerState = lifecycleState;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    {
+        WPEFramework::Plugin::LifecycleInterfaceConnector connector(&service);
+
+        L0Test::ExpectEqU32(tr, connector.createLifecycleManagerRemoteObject(), WPEFramework::Core::ERROR_NONE,
+            "createLifecycleManagerRemoteObject() succeeds before release test");
+        L0Test::ExpectTrue(tr, lifecycle->registeredNotification != nullptr,
+            "FakeLifecycleManager has a registered notification after createLifecycleManagerRemoteObject()");
+
+        // releaseLifecycleManagerRemoteObject() must Unregister and Release the remote objects.
+        connector.releaseLifecycleManagerRemoteObject();
+
+        L0Test::ExpectTrue(tr, lifecycle->registeredNotification == nullptr,
+            "FakeLifecycleManager notification is cleared after releaseLifecycleManagerRemoteObject()");
+    }
+
+    return tr.failures;
+}
+
+uint32_t Test_AM_LifecycleConnectorMapRemainingStates()
+{
+    L0Test::TestResult tr;
+    L0Test::AppManagerServiceMock service;
+    WPEFramework::Plugin::LifecycleInterfaceConnector connector(&service);
+
+    using LS = WPEFramework::Exchange::ILifecycleManager::LifecycleState;
+    using AS = WPEFramework::Exchange::IAppManager::AppLifecycleState;
+
+    L0Test::ExpectEqU32(tr,
+        static_cast<uint32_t>(connector.mapAppLifecycleState(LS::LOADING)),
+        static_cast<uint32_t>(AS::APP_STATE_LOADING),
+        "LOADING maps to APP_STATE_LOADING");
+    L0Test::ExpectEqU32(tr,
+        static_cast<uint32_t>(connector.mapAppLifecycleState(LS::SUSPENDED)),
+        static_cast<uint32_t>(AS::APP_STATE_SUSPENDED),
+        "SUSPENDED maps to APP_STATE_SUSPENDED");
+    L0Test::ExpectEqU32(tr,
+        static_cast<uint32_t>(connector.mapAppLifecycleState(LS::TERMINATING)),
+        static_cast<uint32_t>(AS::APP_STATE_TERMINATING),
+        "TERMINATING maps to APP_STATE_TERMINATING");
+    L0Test::ExpectEqU32(tr,
+        static_cast<uint32_t>(connector.mapAppLifecycleState(LS::HIBERNATED)),
+        static_cast<uint32_t>(AS::APP_STATE_HIBERNATED),
+        "HIBERNATED maps to APP_STATE_HIBERNATED");
+
+    L0Test::ExpectEqU32(tr,
+        static_cast<uint32_t>(connector.mapErrorReason(std::string("ERROR_INVALID_PARAM"))),
+        static_cast<uint32_t>(WPEFramework::Exchange::IAppManager::AppErrorReason::APP_ERROR_INVALID_PARAM),
+        "ERROR_INVALID_PARAM maps to APP_ERROR_INVALID_PARAM");
+
+    return tr.failures;
+}

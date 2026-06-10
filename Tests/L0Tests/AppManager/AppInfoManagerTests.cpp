@@ -73,3 +73,29 @@ uint32_t Test_AM_AppInfoManagerCrudAndConvenienceAccessors()
     mgr.clear();
     return tr.failures;
 }
+
+uint32_t Test_AM_AppInfoManagerUpsertUpdateBranch()
+{
+    L0Test::TestResult tr;
+
+    auto& mgr = WPEFramework::Plugin::AppInfoManager::getInstance();
+    mgr.clear();
+
+    // First upsert — creates a new entry.
+    mgr.upsert("app.upsert", [](WPEFramework::Plugin::AppInfo& a) {
+        a.setAppInstanceId("instance-first");
+    });
+    L0Test::ExpectTrue(tr, mgr.exists("app.upsert"), "upsert() creates entry on first call");
+    L0Test::ExpectEqStr(tr, mgr.getAppInstanceId("app.upsert"), std::string("instance-first"),
+        "upsert() stores the initial instance id");
+
+    // Second upsert on same key — hits the update-existing branch (copy = it->second).
+    mgr.upsert("app.upsert", [](WPEFramework::Plugin::AppInfo& a) {
+        a.setAppInstanceId("instance-updated");
+    });
+    L0Test::ExpectEqStr(tr, mgr.getAppInstanceId("app.upsert"), std::string("instance-updated"),
+        "upsert() updates the existing entry on second call");
+
+    mgr.clear();
+    return tr.failures;
+}

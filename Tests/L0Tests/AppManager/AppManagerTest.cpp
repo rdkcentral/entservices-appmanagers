@@ -54,6 +54,16 @@ extern uint32_t Test_AM_AppInfoDefaultsAndSetters();
 extern uint32_t Test_AM_AppInfoManagerCrudAndConvenienceAccessors();
 extern uint32_t Test_AM_TelemetryReportingStability();
 extern uint32_t Test_AM_SingletonPointerSetAndCleared();
+extern uint32_t Test_AM_LifecycleConnectorLaunchNewApp();
+extern uint32_t Test_AM_LifecycleConnectorLaunchSuspendedApp();
+extern uint32_t Test_AM_LifecycleConnectorPreloadApp();
+extern uint32_t Test_AM_LifecycleConnectorTerminateApp();
+extern uint32_t Test_AM_LifecycleConnectorCloseApp();
+extern uint32_t Test_AM_LifecycleConnectorReleaseRemoteObjects();
+extern uint32_t Test_AM_LifecycleConnectorMapRemainingStates();
+extern uint32_t Test_AM_ImplHandleOnAppUnloadedAndLaunchRequest();
+extern uint32_t Test_AM_ImplOnAppInstallationStatus();
+extern uint32_t Test_AM_AppInfoManagerUpsertUpdateBranch();
 
 int main()
 {
@@ -96,6 +106,16 @@ int main()
         { "AM_AppInfoManagerCrudAndConvenienceAccessors", Test_AM_AppInfoManagerCrudAndConvenienceAccessors },
         { "AM_TelemetryReportingStability", Test_AM_TelemetryReportingStability },
         { "AM_SingletonPointerSetAndCleared", Test_AM_SingletonPointerSetAndCleared },
+        { "AM_LifecycleConnectorLaunchNewApp", Test_AM_LifecycleConnectorLaunchNewApp },
+        { "AM_LifecycleConnectorLaunchSuspendedApp", Test_AM_LifecycleConnectorLaunchSuspendedApp },
+        { "AM_LifecycleConnectorPreloadApp", Test_AM_LifecycleConnectorPreloadApp },
+        { "AM_LifecycleConnectorTerminateApp", Test_AM_LifecycleConnectorTerminateApp },
+        { "AM_LifecycleConnectorCloseApp", Test_AM_LifecycleConnectorCloseApp },
+        { "AM_LifecycleConnectorReleaseRemoteObjects", Test_AM_LifecycleConnectorReleaseRemoteObjects },
+        { "AM_LifecycleConnectorMapRemainingStates", Test_AM_LifecycleConnectorMapRemainingStates },
+        { "AM_ImplHandleOnAppUnloadedAndLaunchRequest", Test_AM_ImplHandleOnAppUnloadedAndLaunchRequest },
+        { "AM_ImplOnAppInstallationStatus", Test_AM_ImplOnAppInstallationStatus },
+        { "AM_AppInfoManagerUpsertUpdateBranch", Test_AM_AppInfoManagerUpsertUpdateBranch },
     };
 
     uint32_t totalFailures = 0;

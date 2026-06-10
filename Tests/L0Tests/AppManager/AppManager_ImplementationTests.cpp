@@ -19,9 +19,12 @@
 
 #include <iostream>
 #include <atomic>
+#include <sstream>
 #include <string>
 
+#define private public
 #include "AppManagerImplementation.h"
+#undef private
 #include "common/AppManagerL0Fakes.hpp"
 #include "common/L0Expect.hpp"
 
@@ -405,6 +408,83 @@ uint32_t Test_AM_CheckInstallUninstallBlockTrueForBlockedPackage()
     const bool blocked = impl->checkInstallUninstallBlock("app.blocked");
     L0Test::ExpectTrue(tr, blocked, "checkInstallUninstallBlock() returns true when install state is blocked");
 
+    impl->Release();
+    return tr.failures;
+}
+
+uint32_t Test_AM_ImplHandleOnAppUnloadedAndLaunchRequest()
+{
+    L0Test::TestResult tr;
+    auto* impl = CreateImpl();
+    auto* notification = new RefNotification();
+    impl->Register(notification);
+
+    // Pre-insert an app so that Dispatch(APP_EVENT_UNLOADED) has something to work with.
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    WPEFramework::Plugin::AppInfo appInfo;
+    appInfo.setAppInstanceId("inst-unload");
+    WPEFramework::Plugin::AppInfoManager::getInstance().upsert("app.unload",
+        [&](WPEFramework::Plugin::AppInfo& a) { a = appInfo; });
+
+    // handleOnAppUnloaded fires dispatchEvent(APP_EVENT_UNLOADED, ...) which
+    // eventually calls Dispatch(), packageUnLock(), OnAppUnloaded notifications
+    // and removeAppInfoByAppId().
+    impl->handleOnAppUnloaded("app.unload", "inst-unload");
+    L0Test::ExpectTrue(tr, true, "handleOnAppUnloaded() is stable for a valid app");
+
+    // handleOnAppLaunchRequest fires dispatchEvent(APP_EVENT_LAUNCH_REQUEST, ...) which
+    // eventually calls Dispatch() → OnAppLaunchRequest notifications.
+    impl->handleOnAppLaunchRequest("app.launch", "intent://play", "source");
+    L0Test::ExpectTrue(tr, notification->launch >= 1U,
+        "handleOnAppLaunchRequest() fires the OnAppLaunchRequest notification");
+
+    // Empty-id path: early return in handleOnAppUnloaded and handleOnAppLaunchRequest.
+    impl->handleOnAppUnloaded("", "");
+    impl->handleOnAppLaunchRequest("", "", "");
+    L0Test::ExpectTrue(tr, true, "handleOnAppUnloaded/LaunchRequest() survive empty appId without crashing");
+
+    impl->Unregister(notification);
+    notification->Release();
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+uint32_t Test_AM_ImplOnAppInstallationStatus()
+{
+    L0Test::TestResult tr;
+    auto* impl = CreateImpl();
+    auto* notification = new RefNotification();
+    impl->Register(notification);
+
+    // Valid JSON array with one INSTALLED app.
+    impl->OnAppInstallationStatus(
+        "[{\"packageId\":\"pkg.install\",\"state\":\"INSTALLED\",\"version\":\"2.0\"}]");
+    L0Test::ExpectTrue(tr, notification->installed >= 1U,
+        "OnAppInstallationStatus() with INSTALLED state fires OnAppInstalled notification");
+
+    // Valid JSON array with one UNINSTALLED app.
+    impl->OnAppInstallationStatus(
+        "[{\"packageId\":\"pkg.uninstall\",\"state\":\"UNINSTALLED\"}]");
+    L0Test::ExpectTrue(tr, notification->uninstalled >= 1U,
+        "OnAppInstallationStatus() with UNINSTALLED state fires OnAppUninstalled notification");
+
+    // Unknown install state — hits the else branch in the Dispatch case.
+    impl->OnAppInstallationStatus(
+        "[{\"packageId\":\"pkg.other\",\"state\":\"DOWNLOADING\"}]");
+    L0Test::ExpectTrue(tr, true,
+        "OnAppInstallationStatus() with unknown state is handled without crashing");
+
+    // Empty JSON — hits the early-return error branch.
+    impl->OnAppInstallationStatus("");
+    L0Test::ExpectTrue(tr, true, "OnAppInstallationStatus() handles empty string gracefully");
+
+    // Invalid JSON — hits the parse-failure branch.
+    impl->OnAppInstallationStatus("not-json");
+    L0Test::ExpectTrue(tr, true, "OnAppInstallationStatus() handles invalid JSON gracefully");
+
+    impl->Unregister(notification);
+    notification->Release();
     impl->Release();
     return tr.failures;
 }
