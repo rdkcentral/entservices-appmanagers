@@ -502,7 +502,6 @@ Json::Value DobbySpecGenerator::createMounts(const ApplicationConfiguration& con
     //TODO SUPPORT Platform specific mounts
     //TODO SUPPORT Airplay specific mounts
     //TODO SUPPORT TSB Storage
-    //TODO SUPPORT EPG specific migration data store mount
     //TODO SUPPORT USB Mass storage
     //TODO SUPPORT PerfettoSocketPath not mounted
     /*
