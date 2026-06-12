@@ -45,6 +45,7 @@ namespace {
     static std::map<std::string, int> gBootstrapDurations;
     static bool gBootstrapAggregationStarted = false;
     static bool gBootstrapPublishCompleted = false;
+    static bool gBootstrapPublishInProgress = false;
     static std::chrono::steady_clock::time_point gBootstrapStartTime;
     static std::mutex gPendingBootstrapLock;
 
@@ -195,6 +196,7 @@ Core::hresult TelemetryReportingBase::recordBootstrapTelemetry(PluginHost::IShel
     std::map<std::string, int> recordedDurations;
     bool shouldPublish = false;
     bool timeoutReached = false;
+    bool isPublisher = false;
     {
         std::lock_guard<std::mutex> lock(gPendingBootstrapLock);
         if (true == gBootstrapPublishCompleted) {
@@ -217,9 +219,12 @@ Core::hresult TelemetryReportingBase::recordBootstrapTelemetry(PluginHost::IShel
             return Core::ERROR_NONE;
         }
 
-        // Claim the publish right atomically while still holding the lock.
-        // This prevents concurrent threads from also deciding to publish.
-        gBootstrapPublishCompleted = true;
+        if (true == gBootstrapPublishInProgress) {
+            return Core::ERROR_NONE;
+        }
+
+        gBootstrapPublishInProgress = true;
+        isPublisher = true;
     }
 
     if (!ensureTelemetryClient()) {
@@ -245,6 +250,14 @@ Core::hresult TelemetryReportingBase::recordBootstrapTelemetry(PluginHost::IShel
     Core::hresult status = recordTelemetry(BOOTSTRAP_AGGREGATE_ID, jsonParam, TELEMETRY_MARKER_BOOTSTRAP_TIME);
     if ((Core::ERROR_NONE == status) && shouldPublish) {
         status = publishTelemetry(BOOTSTRAP_AGGREGATE_ID, TELEMETRY_MARKER_BOOTSTRAP_TIME);
+    }
+
+    if (true == isPublisher) {
+        std::lock_guard<std::mutex> lock(gPendingBootstrapLock);
+        gBootstrapPublishInProgress = false;
+        if (Core::ERROR_NONE == status) {
+            gBootstrapPublishCompleted = true;
+        }
     }
 
     return status;
