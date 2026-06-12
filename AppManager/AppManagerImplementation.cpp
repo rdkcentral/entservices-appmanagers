@@ -793,6 +793,12 @@ Core::hresult AppManagerImplementation::packageLock(const string& appId, Package
                     appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_LAUNCH, AppManagerImplementation::ERROR_PACKAGE_LOCK);
                     packageData.version.clear();  /* Clear version on failure */
                 }
+
+                if (appMetadata != nullptr)
+                {
+                    appMetadata->Release();
+                    appMetadata = nullptr;
+                }
             }
             else
             {
@@ -892,11 +898,20 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
     }
     else
     {
-        std::vector<WPEFramework::Exchange::IPackageInstaller::Package> packageList;
-        result = fetchAppPackageList(packageList);
-        if (result == Core::ERROR_NONE)
+        packageData.version = AppInfoManager::getInstance().getPackageInfoVersion(appId);
+        if (!packageData.version.empty())
         {
-            checkIsInstalled(appId, installed, packageList, &packageData);
+            installed = true;
+            LOGINFO("Using cached package version '%s' for appId: %s", packageData.version.c_str(), appId.c_str());
+        }
+        else
+        {
+            std::vector<WPEFramework::Exchange::IPackageInstaller::Package> packageList;
+            result = fetchAppPackageList(packageList);
+            if (result == Core::ERROR_NONE)
+            {
+                checkIsInstalled(appId, installed, packageList, &packageData);
+            }
         }
     }
 
