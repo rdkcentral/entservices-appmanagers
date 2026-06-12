@@ -640,6 +640,10 @@ namespace WPEFramework
 
         void LifecycleManagerImplementation::handleRuntimeManagerEvent(const JsonObject &data)
         {
+            string eventPayload;
+            data.ToString(eventPayload);
+            LOGDBG("payload: %s", eventPayload.c_str());
+
             string eventName = data["name"].String();
             string appInstanceId = data["appInstanceId"].String();
             if (eventName.compare("onTerminated") == 0)
@@ -736,6 +740,10 @@ namespace WPEFramework
 
     void LifecycleManagerImplementation::handleStateChangeEvent(const JsonObject &data)
     {
+            string eventPayload;
+            data.ToString(eventPayload);
+            LOGDBG("payload: %s", eventPayload.c_str());
+
             string appInstanceId = data["appInstanceId"].String();
 	    uint32_t stateInput = data["newLifecycleState"].Number();
             Exchange::ILifecycleManager::LifecycleState state = (Exchange::ILifecycleManager::LifecycleState) stateInput;
