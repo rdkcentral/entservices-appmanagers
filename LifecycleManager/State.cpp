@@ -197,10 +197,14 @@ namespace WPEFramework
                 {
                     success = runtimeManagerHandler->terminate(context->getAppInstanceId(), errorReason);
                 }
+				printf("MADANA Success result [%d] force[%d] \n", success, killParams.mForce);
+				fflush(stdout);
                 if(success)
                 {
                     context->mPendingEventName = "onAppTerminating";
                     context->mPendingStateTransition = true;
+					printf("MADANA Success result pushed [%d] \n", success);
+				    fflush(stdout);
                 }
             }
             return success;
