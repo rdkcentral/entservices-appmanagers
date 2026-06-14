@@ -668,7 +668,7 @@ namespace WPEFramework
                         context->resetPendingStates();
 
                         terminated = RequestHandler::getInstance()->terminate(context.get(), false, terminateError);
-                        stateUpdated = RequestHandler::getInstance()->updateState(context.get(), context->getTargetLifecycleState(), updateError);
+                        stateUpdated = RequestHandler::getInstance()->updateState(context.get(), Exchange::ILifecycleManager::LifecycleState::UNLOADED, updateError);
                         if(terminated && stateUpdated)
                         {
                             LOGINFO("Successfully handled unexpected container termination for app[%s] ", appInstanceId.c_str());
