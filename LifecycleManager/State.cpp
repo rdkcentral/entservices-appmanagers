@@ -190,7 +190,7 @@ namespace WPEFramework
                 ApplicationContext* context = getContext();
                 if (true == context->getTerminated())
                 {
-                    printf("MADANA already terminated application. ignore terminate call \n");
+                    printf("Already terminated application. ignore terminate call \n");
                     fflush(stdout);
                     return true;
                 }

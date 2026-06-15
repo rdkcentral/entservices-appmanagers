@@ -98,8 +98,6 @@ namespace WPEFramework
         bool RequestHandler::terminate(ApplicationContext* context, bool force, string& errorReason)
 	{
             bool success = false;
-printf("MADANA ADDING HERE \n");
-fflush(stdout);
 	    success = updateState(context, Exchange::ILifecycleManager::LifecycleState::TERMINATING, errorReason);
             return success;
 	}

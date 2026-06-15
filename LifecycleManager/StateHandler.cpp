@@ -173,8 +173,6 @@ namespace WPEFramework
 
             if (context == nullptr)
             {
-printf("MADANA 1 \n");
-fflush(stdout);
                 errorReason = "ApplicationContext is null";
                 return false;
             }
@@ -183,15 +181,11 @@ fflush(stdout);
             if ((context->mPendingStateTransition) && (Exchange::ILifecycleManager::LifecycleState::TERMINATING != currentLifecycleState)
                 && (context->mPendingOldState != currentLifecycleState))
             {
-printf("MADANA 2 \n");
-fflush(stdout);
                 sendEvent(context, context->mPendingOldState, currentLifecycleState, errorReason);
             }
 
             if ((false == context->mPendingStateTransition) && (currentLifecycleState == lifecycleState))
 	    {
-printf("MADANA 3 \n");
-fflush(stdout);
 	        return true;
 	    }
 
@@ -201,8 +195,6 @@ fflush(stdout);
             {
                 printf("Unable to get sequence for target state \n");
                 fflush(stdout);
-printf("MADANA 4 \n");
-fflush(stdout);
                 return false; 
             }
 
@@ -212,8 +204,6 @@ fflush(stdout);
             Exchange::ILifecycleManager::LifecycleState deferredOldLifecycleState = Exchange::ILifecycleManager::LifecycleState::UNLOADED;
             context->mPendingStateTransition = false;
 
-printf("MADANA 5 [%d]\n",statePath.size());
-fflush(stdout);
             // start from next state
 	    for (size_t stateIndex=1; stateIndex<statePath.size(); stateIndex++)
 	    {
@@ -221,8 +211,6 @@ fflush(stdout);
                 isStateTerminating = (Exchange::ILifecycleManager::LifecycleState::TERMINATING == statePath[stateIndex]);
                 if (!isStateTerminating)
 		{
-printf("MADANA 6 [%d]\n",statePath.size());
-fflush(stdout);
                     if ((Exchange::ILifecycleManager::LifecycleState::INITIALIZING == oldLifecycleState)
                         && (Exchange::ILifecycleManager::LifecycleState::PAUSED == statePath[stateIndex])
                         && (0 != context->mPendingEventName.compare("onAppReady")) && (Exchange::ILifecycleManager::LifecycleState::TERMINATING != lifecycleState))
@@ -232,13 +220,9 @@ fflush(stdout);
                         context->mPendingOldState = oldLifecycleState;
                         lastStateIndex = stateIndex;
                         result = true;
-printf("MADANA 7 [%d]\n",statePath.size());
-fflush(stdout);
                         break;
                     }
 
-printf("MADANA 8 [%d]\n",statePath.size());
-fflush(stdout);
                     result = updateState(context, statePath[stateIndex], errorReason);
                     if(result)
                     {
