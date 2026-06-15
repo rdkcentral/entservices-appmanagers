@@ -1879,7 +1879,7 @@ uint32_t Test_DobbySpecGenerator_GenerateThunderPluginFromCapabilities()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfig();
     rtCfg.thunder = false;
@@ -1904,7 +1904,7 @@ uint32_t Test_DobbySpecGenerator_GenerateDialEnvFromEscapedCapabilityValue()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfig();
     rtCfg.dial = false;
@@ -1930,7 +1930,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithEmptyCapabilitiesString()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfig();
     rtCfg.thunder = false;
@@ -1955,7 +1955,7 @@ uint32_t Test_DobbySpecGenerator_GenerateIgnoresRuntimeLogLevelsForEthanLog()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfig();
     rtCfg.logLevels = "[\"fatal\"]";
