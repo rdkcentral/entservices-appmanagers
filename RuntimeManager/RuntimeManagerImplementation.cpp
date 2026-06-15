@@ -1048,6 +1048,8 @@ namespace WPEFramework
                     if (errorReason.compare("Container not found") == 0)
                     {
                         LOGINFO("Container is not running, no need to StopContainer");
+                        status = Core::ERROR_GENERAL;
+                        errorReason = "application not running";
                         mUserIdManager->clearUserId(appInstanceId);
                     }
                     else if ((success == false) || (status != Core::ERROR_NONE))

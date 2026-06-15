@@ -158,7 +158,12 @@ bool RuntimeManagerHandler::terminate(const string& appInstanceId, string& error
     Core::hresult result = mRuntimeManager->Terminate(appInstanceId);
     if (Core::ERROR_NONE != result)
     {
-        errorReason = "unable to terminate application";
+        printf("MADANA error reason [%s] \n", errorReason.c_str());
+        fflush(stdout);
+        if (errorReason.compare("application not running") != 0)
+        {
+            errorReason = "unable to terminate application";
+        }
         return false;
     }
     return true;

@@ -206,6 +206,15 @@ namespace WPEFramework
 					printf("MADANA Success result pushed [%d] \n", success);
 				    fflush(stdout);
                 }
+                else
+                {
+                    if (errorReason.compare("application not running") == 0)
+                    {
+                        printf("MADANA no need to wait for terminating for app already terminated \n");
+                        fflush(stdout);
+                        success = true;
+                    }
+                }
             }
             return success;
         }
