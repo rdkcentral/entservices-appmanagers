@@ -666,6 +666,7 @@ namespace WPEFramework
                         context->setTargetLifecycleState(Exchange::ILifecycleManager::LifecycleState::TERMINATING);
                         context->setApplicationKillParams(false);
                         context->resetPendingStates();
+                        context->setTerminated(true);
 
                         terminated = RequestHandler::getInstance()->terminate(context.get(), false, terminateError);
                         stateUpdated = RequestHandler::getInstance()->updateState(context.get(), Exchange::ILifecycleManager::LifecycleState::UNLOADED, updateError);

@@ -188,6 +188,12 @@ namespace WPEFramework
             if (nullptr != runtimeManagerHandler)
             {
                 ApplicationContext* context = getContext();
+                if (true == context->getTerminated())
+                {
+                    printf("MADANA already terminated application. ignore terminate call \n");
+                    fflush(stdout);
+                    return true;
+                }
                 ApplicationKillParams& killParams = context->getApplicationKillParams();
                 if (killParams.mForce)
                 {
@@ -197,23 +203,10 @@ namespace WPEFramework
                 {
                     success = runtimeManagerHandler->terminate(context->getAppInstanceId(), errorReason);
                 }
-				printf("MADANA Success result [%d] force[%d] \n", success, killParams.mForce);
-				fflush(stdout);
                 if(success)
                 {
                     context->mPendingEventName = "onAppTerminating";
                     context->mPendingStateTransition = true;
-					printf("MADANA Success result pushed [%d] \n", success);
-				    fflush(stdout);
-                }
-                else
-                {
-                    if (errorReason.compare("application not running") == 0)
-                    {
-                        printf("MADANA no need to wait for terminating for app already terminated \n");
-                        fflush(stdout);
-                        success = true;
-                    }
                 }
             }
             return success;
