@@ -138,7 +138,7 @@ namespace Plugin {
             // Remove trailing slashes (unless path is just "/")
             while (!downloadDir.empty() && 1 < downloadDir.size() && '/' == downloadDir.back()) {
                 downloadDir.pop_back();
-            }   
+            }
 
             LOGINFO("downloadDir=%s", downloadDir.c_str());
 
