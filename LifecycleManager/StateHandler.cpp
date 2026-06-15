@@ -225,7 +225,7 @@ printf("MADANA 6 [%d]\n",statePath.size());
 fflush(stdout);
                     if ((Exchange::ILifecycleManager::LifecycleState::INITIALIZING == oldLifecycleState)
                         && (Exchange::ILifecycleManager::LifecycleState::PAUSED == statePath[stateIndex])
-                        && (0 != context->mPendingEventName.compare("onAppReady")))
+                        && (0 != context->mPendingEventName.compare("onAppReady")) && (Exchange::ILifecycleManager::LifecycleState::TERMINATING != lifecycleState))
                     {
                         context->mPendingEventName = "onAppReady";
                         context->mPendingStateTransition = true;
