@@ -620,6 +620,22 @@ uint32_t Test_WindowManagerConnector_GetDisplayInfoWithoutInitDoesNotCrash()
 // ──────────────────────────────────────────────────────────────────────────────
 
 namespace {
+/* Static fixture: shared AIConfiguration instance for all DobbySpecGenerator tests.
+ * Initialized once to avoid repeated file I/O across tests.
+ */
+static WPEFramework::Plugin::AIConfiguration g_aiConfiguration;
+static bool g_aiConfigurationInitialized = false;
+
+/* Helper: gets or initializes the shared AIConfiguration fixture. */
+WPEFramework::Plugin::AIConfiguration& GetAIConfigurationFixture()
+{
+    if (!g_aiConfigurationInitialized) {
+        g_aiConfiguration.initialize();
+        g_aiConfigurationInitialized = true;
+    }
+    return g_aiConfiguration;
+}
+
 /* Helper: creates a minimal valid ApplicationConfiguration. */
 WPEFramework::Plugin::ApplicationConfiguration MakeValidAppConfig()
 {
@@ -652,7 +668,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithValidConfig()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg  = MakeValidAppConfig();
     auto rtCfg   = MakeValidRuntimeConfig();
     std::string spec;
@@ -674,7 +690,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithZeroUserId()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg  = MakeValidAppConfig();
     appCfg.mUserId = 0; // mandatory check will fail
     auto rtCfg   = MakeValidRuntimeConfig();
@@ -695,7 +711,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithEmptyCommand()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfig();
     rtCfg.command.clear(); // mandatory check will fail
@@ -716,7 +732,7 @@ uint32_t Test_DobbySpecGenerator_GenerateSpecContainsVersion()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfig();
     std::string spec;
@@ -738,7 +754,7 @@ uint32_t Test_DobbySpecGenerator_GenerateSpecContainsArgs()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfig();
     std::string spec;
@@ -759,7 +775,7 @@ uint32_t Test_DobbySpecGenerator_GenerateSpecContainsMemLimit()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfig();
     std::string spec;
@@ -781,7 +797,7 @@ uint32_t Test_DobbySpecGenerator_ConstructionAndDestruction()
     L0Test::TestResult tr;
 
     {
-        WPEFramework::Plugin::DobbySpecGenerator gen;
+        WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
         L0Test::ExpectTrue(tr, true, "DobbySpecGenerator constructs without crash");
     }
 
@@ -797,7 +813,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithRuntimePath()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfig();
     rtCfg.runtimePath = "/opt/runtimes/sky";
@@ -820,7 +836,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithoutRuntimePath()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfig();
     rtCfg.runtimePath.clear(); // no runtime path set
@@ -843,7 +859,7 @@ uint32_t Test_DobbySpecGenerator_GenerateSpecContainsCpu()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfig();
     std::string spec;
@@ -864,7 +880,7 @@ uint32_t Test_DobbySpecGenerator_GenerateSpecContainsNetwork()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfig();
     std::string spec;
@@ -885,7 +901,7 @@ uint32_t Test_DobbySpecGenerator_GenerateSpecContainsRdkPlugins()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfig();
     std::string spec;
@@ -907,7 +923,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithMemLimitFromConfig()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfig();
     rtCfg.systemMemoryLimit = 128 * 1024 * 1024; // 128 MB
@@ -1629,7 +1645,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithSpecChangeFile()
         f << "{\"version\":\"1.1\"}";
     }
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfig();
     std::string spec;
@@ -1653,7 +1669,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithWanLanAccessFalse()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfig();
     rtCfg.wanLanAccess = false;
@@ -1676,7 +1692,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithAppPath()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfig();
     rtCfg.appPath = "/opt/app/youTube";
@@ -1699,7 +1715,7 @@ uint32_t Test_DobbySpecGenerator_GenerateThunderPluginEnabled()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfig();
     rtCfg.thunder = true;
@@ -1720,7 +1736,7 @@ uint32_t Test_DobbySpecGenerator_GenerateThunderPluginDisabled()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfig();
     rtCfg.thunder = false;
@@ -1742,7 +1758,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithEmptyWesterosSocket()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     appCfg.mWesterosSocketPath.clear();  // no GUI
     auto rtCfg  = MakeValidRuntimeConfig();
@@ -1766,7 +1782,7 @@ uint32_t Test_DobbySpecGenerator_GenerateSysMemLimitZeroFallsBack()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfig();
     rtCfg.systemMemoryLimit = 0;   // will trigger branch in getSysMemoryLimit
@@ -1791,7 +1807,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithNonEmptyAppPorts()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfig();
     appCfg.mPorts.push_back(8080u);
@@ -1814,7 +1830,7 @@ uint32_t Test_DobbySpecGenerator_GetVpuEnabledReturnsFalseForSystemApp()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfig();
     rtCfg.appType = "SYSTEM";
@@ -1839,7 +1855,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithEnvVariablesInRuntimeConfig()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfig();
     // Provide a JSON array string for envVariables
@@ -1850,6 +1866,118 @@ uint32_t Test_DobbySpecGenerator_GenerateWithEnvVariablesInRuntimeConfig()
     L0Test::ExpectTrue(tr, result, "generate() succeeds with envVariables in RuntimeConfig");
     L0Test::ExpectTrue(tr, spec.find("MY_TEST_VAR") != std::string::npos,
                        "Env variable from runtimeConfig.envVariables appears in spec");
+
+    return tr.failures;
+}
+
+/* Test_DobbySpecGenerator_GenerateThunderPluginFromCapabilities
+ *
+ * Verifies thunder plugin generation can be driven by RuntimeConfig.capabilities
+ * even when legacy boolean field is not set.
+ */
+uint32_t Test_DobbySpecGenerator_GenerateThunderPluginFromCapabilities()
+{
+    L0Test::TestResult tr;
+
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    auto appCfg = MakeValidAppConfig();
+    auto rtCfg  = MakeValidRuntimeConfig();
+    rtCfg.thunder = false;
+    rtCfg.capabilities = "thunder";
+    std::string spec;
+
+    const bool result = gen.generate(appCfg, rtCfg, spec);
+    L0Test::ExpectTrue(tr, result,
+                       "generate() succeeds when thunder capability is provided in capabilities string");
+    L0Test::ExpectTrue(tr, spec.find("\"thunder\"") != std::string::npos,
+                       "Generated spec contains thunder plugin when thunder capability entry is present");
+
+    return tr.failures;
+}
+
+/* Test_DobbySpecGenerator_GenerateDialEnvFromEscapedCapabilityValue
+ *
+ * Verifies dial-app value is parsed from escaped name=value capability entry
+ * and applied to DIAL-related environment variables.
+ */
+uint32_t Test_DobbySpecGenerator_GenerateDialEnvFromEscapedCapabilityValue()
+{
+    L0Test::TestResult tr;
+
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    auto appCfg = MakeValidAppConfig();
+    auto rtCfg  = MakeValidRuntimeConfig();
+    rtCfg.dial = false;
+    rtCfg.dialId.clear();
+    rtCfg.capabilities = "dial-app=dial\\,id\\=01";
+    std::string spec;
+
+    const bool result = gen.generate(appCfg, rtCfg, spec);
+    L0Test::ExpectTrue(tr, result,
+                       "generate() succeeds when dial-app value is provided via capabilities string");
+    L0Test::ExpectTrue(tr, spec.find("APPLICATION_DIAL_NAME=dial,id=01") != std::string::npos,
+                       "Generated spec includes unescaped dial-app value from capabilities string");
+
+    return tr.failures;
+}
+
+/* Test_DobbySpecGenerator_GenerateWithEmptyCapabilitiesString
+ *
+ * Verifies empty RuntimeConfig.capabilities is handled safely and does not
+ * enable capability-driven plugins when legacy fields are unset.
+ */
+uint32_t Test_DobbySpecGenerator_GenerateWithEmptyCapabilitiesString()
+{
+    L0Test::TestResult tr;
+
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    auto appCfg = MakeValidAppConfig();
+    auto rtCfg  = MakeValidRuntimeConfig();
+    rtCfg.thunder = false;
+    rtCfg.capabilities.clear();
+    std::string spec;
+
+    const bool result = gen.generate(appCfg, rtCfg, spec);
+    L0Test::ExpectTrue(tr, result,
+                       "generate() succeeds when capabilities string is empty");
+    L0Test::ExpectTrue(tr, spec.find("\"thunder\"") == std::string::npos,
+                       "Generated spec does not include thunder plugin when capabilities string is empty and thunder flag is false");
+
+    return tr.failures;
+}
+
+/* Test_DobbySpecGenerator_GenerateIgnoresRuntimeLogLevelsForEthanLog
+ *
+ * Verifies EthanLog plugin keeps default loglevels list even when
+ * RuntimeConfig.logLevels is provided.
+ */
+uint32_t Test_DobbySpecGenerator_GenerateIgnoresRuntimeLogLevelsForEthanLog()
+{
+    L0Test::TestResult tr;
+
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    auto appCfg = MakeValidAppConfig();
+    auto rtCfg  = MakeValidRuntimeConfig();
+    rtCfg.logLevels = "[\"fatal\"]";
+    std::string spec;
+
+    const bool result = gen.generate(appCfg, rtCfg, spec);
+    L0Test::ExpectTrue(tr, result,
+                       "generate() succeeds when runtimeConfig.logLevels is set");
+    L0Test::ExpectTrue(tr, spec.find("\"loglevels\"") != std::string::npos,
+                       "Generated spec contains EthanLog loglevels field");
+    L0Test::ExpectTrue(tr, spec.find("\"fatal\"") != std::string::npos,
+                       "Generated spec contains fatal level");
+    L0Test::ExpectTrue(tr, spec.find("\"error\"") != std::string::npos,
+                       "Generated spec contains error level");
+    L0Test::ExpectTrue(tr, spec.find("\"warning\"") != std::string::npos,
+                       "Generated spec contains warning level");
+    L0Test::ExpectTrue(tr, spec.find("\"info\"") != std::string::npos,
+                       "Generated spec contains info level");
+    L0Test::ExpectTrue(tr, spec.find("\"debug\"") != std::string::npos,
+                       "Generated spec contains debug level");
+    L0Test::ExpectTrue(tr, spec.find("\"milestone\"") != std::string::npos,
+                       "Generated spec contains milestone level");
 
     return tr.failures;
 }

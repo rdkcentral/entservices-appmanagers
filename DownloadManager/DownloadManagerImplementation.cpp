@@ -403,13 +403,6 @@ namespace Plugin {
         return result;
     }
 
-    Core::hresult DownloadManagerImplementation::GetStorageDetails(uint32_t &quotaKB, uint32_t &usedKB)
-    {
-        Core::hresult result = Core::ERROR_NONE;
-        /* TODO: Stub - behaves the same as the existing package manager for now */
-        return result;
-    }
-
     Core::hresult DownloadManagerImplementation::RateLimit(const string &downloadId, const uint32_t &limit)
     {
         Core::hresult result = Core::ERROR_GENERAL;
