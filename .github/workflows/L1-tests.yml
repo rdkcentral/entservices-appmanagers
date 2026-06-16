@@ -625,6 +625,7 @@ jobs:
           name: artifacts-L1-appmanagers
           path: |
             coverage/
+            filtered_coverage.info
             valgrind_log
             rdkL1TestResultsWithoutValgrind.json
             rdkL1TestResultsWithValgrind.json
