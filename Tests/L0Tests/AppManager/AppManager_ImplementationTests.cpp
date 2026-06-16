@@ -578,9 +578,9 @@ uint32_t Test_AM_LaunchAppWithPackageHandler()
 
     // Setup package installer with a test package
     WPEFramework::Exchange::IPackageInstaller::Package pkg;
-    pkg.id = "testApp1";
+    pkg.packageId = "testApp1";
     pkg.version = "1.0.0";
-    pkg.appType = "interactive";
+    pkg.state = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
     packageInstaller.installedPackages.push_back(pkg);
 
     impl->Configure(&service);
@@ -630,9 +630,9 @@ uint32_t Test_AM_PreloadAppWithPackageHandler()
 
     // Setup package installer with a test package
     WPEFramework::Exchange::IPackageInstaller::Package pkg;
-    pkg.id = "testApp2";
+    pkg.packageId = "testApp2";
     pkg.version = "1.0.0";
-    pkg.appType = "interactive";
+    pkg.state = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
     packageInstaller.installedPackages.push_back(pkg);
 
     impl->Configure(&service);
@@ -671,17 +671,17 @@ uint32_t Test_AM_IsInstalledMultiplePackages()
 
     // Setup multiple test packages
     WPEFramework::Exchange::IPackageInstaller::Package pkg1, pkg2, pkg3;
-    pkg1.id = "app1";
+    pkg1.packageId = "app1";
     pkg1.version = "1.0.0";
-    pkg1.appType = "interactive";
+    pkg1.state = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
     
-    pkg2.id = "app2";
+    pkg2.packageId = "app2";
     pkg2.version = "2.0.0";
-    pkg2.appType = "system";
+    pkg2.state = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
     
-    pkg3.id = "app3";
+    pkg3.packageId = "app3";
     pkg3.version = "1.5.0";
-    pkg3.appType = "interactive";
+    pkg3.state = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
 
     packageInstaller.installedPackages.push_back(pkg1);
     packageInstaller.installedPackages.push_back(pkg2);
@@ -719,17 +719,17 @@ uint32_t Test_AM_GetInstalledAppsMixedTypes()
 
     // Setup packages with different types
     WPEFramework::Exchange::IPackageInstaller::Package pkg1, pkg2, pkg3;
-    pkg1.id = "interactiveApp";
+    pkg1.packageId = "interactiveApp";
     pkg1.version = "1.0.0";
-    pkg1.appType = "interactive";
+    pkg1.state = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
     
-    pkg2.id = "systemApp";
+    pkg2.packageId = "systemApp";
     pkg2.version = "2.0.0";
-    pkg2.appType = "system";
+    pkg2.state = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
     
-    pkg3.id = "unknownApp";
+    pkg3.packageId = "unknownApp";
     pkg3.version = "1.5.0";
-    pkg3.appType = "unknown";
+    pkg3.state = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
 
     packageInstaller.installedPackages.push_back(pkg1);
     packageInstaller.installedPackages.push_back(pkg2);
