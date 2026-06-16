@@ -25,10 +25,10 @@
 #include "common/AppManagerL0Mock.hpp"
 #include "common/L0Expect.hpp"
 
-namespace {
-
 // Import helper from AppManager_ImplementationTests.cpp
 extern L0Test::AppManagerServiceMock::Config CreateFullServiceConfig();
+
+namespace {
 
 struct PluginFixture {
     L0Test::AppManagerServiceMock service;

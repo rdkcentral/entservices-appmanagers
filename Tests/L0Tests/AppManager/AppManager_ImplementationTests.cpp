@@ -28,14 +28,8 @@
 #include "common/AppManagerL0Mock.hpp"
 #include "common/L0Expect.hpp"
 
-namespace {
-
-WPEFramework::Plugin::AppManagerImplementation* CreateImpl()
-{
-    return WPEFramework::Core::Service<WPEFramework::Plugin::AppManagerImplementation>::Create<WPEFramework::Plugin::AppManagerImplementation>();
-}
-
 // Helper to create a service mock with all required dependencies for AppManagerImplementation
+// Defined outside anonymous namespace so it can be accessed from other test files via extern
 L0Test::AppManagerServiceMock::Config CreateFullServiceConfig()
 {
     L0Test::AppManagerServiceMock::Config cfg;
@@ -46,6 +40,13 @@ L0Test::AppManagerServiceMock::Config CreateFullServiceConfig()
     cfg.packageHandler = new L0Test::FakePackageHandler();
     cfg.installer = new L0Test::FakePackageInstaller();
     return cfg;
+}
+
+namespace {
+
+WPEFramework::Plugin::AppManagerImplementation* CreateImpl()
+{
+    return WPEFramework::Core::Service<WPEFramework::Plugin::AppManagerImplementation>::Create<WPEFramework::Plugin::AppManagerImplementation>();
 }
 
 struct RefNotification final : public WPEFramework::Exchange::IAppManager::INotification {
