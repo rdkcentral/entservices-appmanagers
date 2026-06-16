@@ -595,11 +595,11 @@ Core::hresult AppManagerImplementation::createPackageManagerObject()
     {
         LOGERR("mCurrentservice is null \n");
     }
-    else if (nullptr == (mPackageManagerHandlerObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IPackageHandler>("org.rdk.PackageManagerRDKEMS")))
+    else if (nullptr == (mPackageManagerHandlerObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IPackageHandler>("org.rdk.AppPackageManager")))
     {
         LOGERR("mPackageManagerHandlerObject is null \n");
     }
-    else if (nullptr == (mPackageManagerInstallerObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IPackageInstaller>("org.rdk.PackageManagerRDKEMS")))
+    else if (nullptr == (mPackageManagerInstallerObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IPackageInstaller>("org.rdk.AppPackageManager")))
     {
         LOGERR("mPackageManagerInstallerObject is null \n");
     }
@@ -749,8 +749,21 @@ Core::hresult AppManagerImplementation::packageLock(const string& appId, Package
 
             if (status == Core::ERROR_NONE)
             {
-                /* Check if appId is installed and capture its installed version */
-                checkIsInstalled(appId, installed, packageList, &packageData);
+                /* Check if appId is installed */
+                checkIsInstalled(appId, installed, packageList);
+
+                if (installed)
+                {
+                    /* Check if the packageId matches the provided appId */
+                    for (const auto& package : packageList)
+                    {
+                        if (!package.packageId.empty() && package.packageId == appId && package.state == Exchange::IPackageInstaller::InstallState::INSTALLED)
+                        {
+                            packageData.version = std::string(package.version);
+                            break;
+                        }
+                    }
+                }
             }
             else
             {
@@ -767,46 +780,40 @@ Core::hresult AppManagerImplementation::packageLock(const string& appId, Package
 
         if ((status == Core::ERROR_NONE) && installed)
         {
-            LOGINFO("packageData call lock  %s", packageData.version.c_str());
-            /* Ensure package version is valid before proceeding with the Lock */
-            if ((nullptr != mPackageManagerHandlerObject) && !packageData.version.empty())
-            {
-                Exchange::IPackageHandler::ILockIterator *appMetadata = nullptr;
-                status = mPackageManagerHandlerObject->Lock(appId, packageData.version, lockReason, packageData.lockId, packageData.unpackedPath, packageData.configMetadata, appMetadata);
-                if (status == Core::ERROR_NONE)
+                LOGINFO("packageData call lock  %s", packageData.version.c_str());
+                /* Ensure package version is valid before proceeding with the Lock */
+                if ((nullptr != mPackageManagerHandlerObject) && !packageData.version.empty())
                 {
-                    LOGINFO("Fetching package entry updated for appId: %s version: %s lockId: %d unpackedPath: %s appMetadata: %s",
-                                appId.c_str(), packageData.version.c_str(), packageData.lockId, packageData.unpackedPath.c_str(), packageData.appMetadata.c_str());
-                    result = createOrUpdatePackageInfoByAppId(appId, packageData);
-
-                    /* If package info update failed, set error status */
-                    if (!result)
+                    Exchange::IPackageHandler::ILockIterator *appMetadata = nullptr;
+                    status = mPackageManagerHandlerObject->Lock(appId, packageData.version, lockReason, packageData.lockId, packageData.unpackedPath, packageData.configMetadata, appMetadata);
+                    if (status == Core::ERROR_NONE)
                     {
-                        LOGERR("Failed to createOrUpdate the PackageInfo");
-                        appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_LAUNCH, AppManagerImplementation::ERROR_PACKAGE_INVALID);
-                        status = Core::ERROR_GENERAL;
+                        LOGINFO("Fetching package entry updated for appId: %s version: %s lockId: %d unpackedPath: %s appMetadata: %s",
+                                 appId.c_str(), packageData.version.c_str(), packageData.lockId, packageData.unpackedPath.c_str(), packageData.appMetadata.c_str());
+                        result = createOrUpdatePackageInfoByAppId(appId, packageData);
+
+                        /* If package info update failed, set error status */
+                        if (!result)
+                        {
+                            LOGERR("Failed to createOrUpdate the PackageInfo");
+                            appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_LAUNCH, AppManagerImplementation::ERROR_PACKAGE_INVALID);
+                            status = Core::ERROR_GENERAL;
+                        }
+                    }
+                    else
+                    {
+                        LOGERR("Failed to PackageManager Lock %s", appId.c_str());
+                        appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_LAUNCH, AppManagerImplementation::ERROR_PACKAGE_LOCK);
+                        packageData.version.clear();  /* Clear version on failure */
                     }
                 }
                 else
                 {
-                    LOGERR("Failed to PackageManager Lock %s", appId.c_str());
-                    appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_LAUNCH, AppManagerImplementation::ERROR_PACKAGE_LOCK);
-                    packageData.version.clear();  /* Clear version on failure */
+                    LOGERR("PackageManager handler is %s", (nullptr != mPackageManagerHandlerObject) ? "valid, but package version is empty" : "null");
+                    CurrentActionError errorCode = (packageData.version.empty()?AppManagerImplementation::ERROR_PACKAGE_INVALID:AppManagerImplementation::ERROR_INTERNAL);
+                    appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_LAUNCH, errorCode);
+                    status = Core::ERROR_GENERAL;
                 }
-
-                if (appMetadata != nullptr)
-                {
-                    appMetadata->Release();
-                    appMetadata = nullptr;
-                }
-            }
-            else
-            {
-                LOGERR("PackageManager handler is %s", (nullptr != mPackageManagerHandlerObject) ? "valid, but package version is empty" : "null");
-                CurrentActionError errorCode = (packageData.version.empty()?AppManagerImplementation::ERROR_PACKAGE_INVALID:AppManagerImplementation::ERROR_INTERNAL);
-                appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_LAUNCH, errorCode);
-                status = Core::ERROR_GENERAL;
-            }
         }
         else if (status == Core::ERROR_NONE)
         {
@@ -898,19 +905,22 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
     }
     else
     {
-        packageData.version = AppInfoManager::getInstance().getPackageInfoVersion(appId);
-        if (!packageData.version.empty())
+        std::vector<WPEFramework::Exchange::IPackageInstaller::Package> packageList;
+        result = fetchAppPackageList(packageList);
+        if (result == Core::ERROR_NONE)
         {
-            installed = true;
-            LOGINFO("Using cached package version '%s' for appId: %s", packageData.version.c_str(), appId.c_str());
-        }
-        else
-        {
-            std::vector<WPEFramework::Exchange::IPackageInstaller::Package> packageList;
-            result = fetchAppPackageList(packageList);
-            if (result == Core::ERROR_NONE)
+            checkIsInstalled(appId, installed, packageList);
+
+            if (installed)
             {
-                checkIsInstalled(appId, installed, packageList, &packageData);
+                for (const auto& package : packageList)
+                {
+                    if (!package.packageId.empty() && package.packageId == appId && package.state == Exchange::IPackageInstaller::InstallState::INSTALLED)
+                    {
+                        packageData.version = std::string(package.version);
+                        break;
+                    }
+                }
             }
         }
     }
@@ -1140,7 +1150,7 @@ Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const s
         {
             LOGINFO(" PreloadApp enter with appId %s", appId.c_str());
             request->mRequestAction = APP_ACTION_PRELOAD;
-            request->mRequestParam = std::make_shared<AppLaunchRequestParam>(AppLaunchRequestParam{appId, launchArgs, intent, ""});
+            request->mRequestParam = std::make_shared<AppLaunchRequestParam>(AppLaunchRequestParam{appId, launchArgs, intent});
             if (request->mRequestParam != nullptr)
             {
                 mAppManagerLock.lock();
@@ -1384,14 +1394,9 @@ Core::hresult AppManagerImplementation::GetInstalledApps(std::string& apps)
 }
 
 /* Method to check if the app is installed */
-void AppManagerImplementation::checkIsInstalled(const std::string& appId, bool& installed, const std::vector<WPEFramework::Exchange::IPackageInstaller::Package>& packageList, PackageInfo* packageData)
+void AppManagerImplementation::checkIsInstalled(const std::string& appId, bool& installed, const std::vector<WPEFramework::Exchange::IPackageInstaller::Package>& packageList)
 {
     installed = false;
-
-    if (packageData != nullptr)
-    {
-        packageData->version.clear();
-    }
 
     for (const auto& package : packageList)
     {
@@ -1400,10 +1405,6 @@ void AppManagerImplementation::checkIsInstalled(const std::string& appId, bool& 
         {
             LOGINFO("%s is installed ",appId.c_str());
             installed = true;
-            if (packageData != nullptr)
-            {
-                packageData->version = std::string(package.version);
-            }
             break;
         }
     }
