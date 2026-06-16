@@ -35,6 +35,19 @@ WPEFramework::Plugin::AppManagerImplementation* CreateImpl()
     return WPEFramework::Core::Service<WPEFramework::Plugin::AppManagerImplementation>::Create<WPEFramework::Plugin::AppManagerImplementation>();
 }
 
+// Helper to create a service mock with all required dependencies for AppManagerImplementation
+L0Test::AppManagerServiceMock::Config CreateFullServiceConfig()
+{
+    L0Test::AppManagerServiceMock::Config cfg;
+    cfg.lifecycleManager = new L0Test::FakeLifecycleManager();
+    cfg.lifecycleManagerState = new L0Test::FakeLifecycleManagerState();
+    cfg.store2 = new L0Test::FakeStore2();
+    cfg.storageManager = new L0Test::FakeStorageManager();
+    cfg.packageHandler = new L0Test::FakePackageHandler();
+    cfg.installer = new L0Test::FakePackageInstaller();
+    return cfg;
+}
+
 struct RefNotification final : public WPEFramework::Exchange::IAppManager::INotification {
     RefNotification()
         : _refCount(1)
@@ -115,7 +128,7 @@ uint32_t Test_AM_ConfigureWithValidServiceReturnsSuccess()
     L0Test::TestResult tr;
     auto* impl = CreateImpl();
 
-    L0Test::AppManagerServiceMock service;
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
     const auto result = impl->Configure(&service);
     L0Test::ExpectEqU32(tr, service.addRefCalls.load(), 2U, "Configure() calls AddRef on the shell for implementation and lifecycle connector ownership");
     if (result != WPEFramework::Core::ERROR_NONE) {
@@ -319,7 +332,8 @@ uint32_t Test_AM_AppPropertyRoundTripWithStore()
     auto* store = new L0Test::FakeStore2();
     auto* storage = new L0Test::FakeStorageManager();
 
-    L0Test::AppManagerServiceMock::Config cfg(installer);
+    L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
+    cfg.installer = installer;
     cfg.packageHandler = handler;
     cfg.store2 = store;
     cfg.storageManager = storage;
@@ -353,7 +367,8 @@ uint32_t Test_AM_ClearAppDataAndSystemApisWithDependencies()
     auto* store = new L0Test::FakeStore2();
     auto* storage = new L0Test::FakeStorageManager();
 
-    L0Test::AppManagerServiceMock::Config cfg(installer);
+    L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
+    cfg.installer = installer;
     cfg.packageHandler = handler;
     cfg.store2 = store;
     cfg.storageManager = storage;
@@ -396,7 +411,8 @@ uint32_t Test_AM_CheckInstallUninstallBlockTrueForBlockedPackage()
     blockedPkg.state = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLATION_BLOCKED;
     installer->installedPackages.push_back(blockedPkg);
 
-    L0Test::AppManagerServiceMock::Config cfg(installer);
+    L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
+    cfg.installer = installer;
     cfg.packageHandler = handler;
     cfg.store2 = store;
     cfg.storageManager = storage;
@@ -758,7 +774,7 @@ uint32_t Test_AM_WorkerThreadStability()
     L0Test::TestResult tr;
     auto* impl = CreateImpl();
 
-    L0Test::AppManagerServiceMock service;
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
     impl->Configure(&service);
 
     // Worker thread should be running after Configure
