@@ -111,7 +111,6 @@ namespace WPEFramework
 
         void LifecycleInterfaceConnector::releaseLifecycleManagerRemoteObject()
         {
-            ASSERT(nullptr != mLifecycleManagerRemoteObject );
             if(mLifecycleManagerRemoteObject )
             {
                 mLifecycleManagerRemoteObject->Unregister(&mAppStateChangeNotification);
@@ -119,7 +118,6 @@ namespace WPEFramework
                 mLifecycleManagerRemoteObject = nullptr;
             }
 
-            ASSERT(nullptr != mLifecycleManagerStateRemoteObject );
             if(mLifecycleManagerStateRemoteObject )
             {
                 mLifecycleManagerStateRemoteObject->Unregister(&mNotification);

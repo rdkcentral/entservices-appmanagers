@@ -958,9 +958,9 @@ uint32_t Test_State_TerminatingHandleForceKillNoRuntimeHandlerReturnsFalse()
 // ─────────────────────────────────────────────────────────────────────────────
 // StateHandler::changeState creates PAUSED state via INITIALIZING->PAUSED
 //         StateHandler.cpp updateState() delete newState path when handle() succeeds
-// The INITIALIZING->PAUSED path through changeState exercises createState PAUSED
-// and PausedState::handle() INITIALIZING branch (returns true), so updateState
-// succeeds and the context settles in PAUSED.
+// The INITIALIZING->PAUSED path through changeState currently defers transition
+// by marking a pending onAppReady event; context remains in INITIALIZING until
+// pending states are replayed.
 // ─────────────────────────────────────────────────────────────────────────────
 
 uint32_t Test_StateHandler_CreateStatePausedViaInitializingToPaused()
@@ -988,8 +988,12 @@ uint32_t Test_StateHandler_CreateStatePausedViaInitializingToPaused()
         "INITIALIZING->PAUSED changeState returns true");
     L0Test::ExpectEqU32(tr,
         static_cast<uint32_t>(ctx->getCurrentLifecycleState()),
-        static_cast<uint32_t>(WPEFramework::Exchange::ILifecycleManager::LifecycleState::PAUSED),
-        "Context is in PAUSED state after INITIALIZING->PAUSED transition");
+        static_cast<uint32_t>(WPEFramework::Exchange::ILifecycleManager::LifecycleState::INITIALIZING),
+        "Context remains in INITIALIZING while INITIALIZING->PAUSED is deferred");
+    L0Test::ExpectTrue(tr, ctx->mPendingStateTransition,
+        "INITIALIZING->PAUSED sets pending state transition");
+    L0Test::ExpectEqStr(tr, ctx->mPendingEventName, std::string("onAppReady"),
+        "INITIALIZING->PAUSED defers with onAppReady event name");
 
     return tr.failures;
 }

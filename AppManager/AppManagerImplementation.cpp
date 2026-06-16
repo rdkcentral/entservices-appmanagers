@@ -578,7 +578,6 @@ Core::hresult AppManagerImplementation::createPersistentStoreRemoteStoreObject()
 
 void AppManagerImplementation::releasePersistentStoreRemoteStoreObject()
 {
-    ASSERT(nullptr != mPersistentStoreRemoteStoreObject);
     if(mPersistentStoreRemoteStoreObject)
     {
         mPersistentStoreRemoteStoreObject->Release();
@@ -614,13 +613,11 @@ Core::hresult AppManagerImplementation::createPackageManagerObject()
 
 void AppManagerImplementation::releasePackageManagerObject()
 {
-    ASSERT(nullptr != mPackageManagerHandlerObject);
     if(mPackageManagerHandlerObject)
     {
         mPackageManagerHandlerObject->Release();
         mPackageManagerHandlerObject = nullptr;
     }
-    ASSERT(nullptr != mPackageManagerInstallerObject);
     if(mPackageManagerInstallerObject)
     {
         mPackageManagerInstallerObject->Unregister(&mPackageManagerNotification);
@@ -670,7 +667,6 @@ Core::hresult AppManagerImplementation::createStorageManagerRemoteObject()
 
 void AppManagerImplementation::releaseStorageManagerRemoteObject()
 {
-    ASSERT(nullptr != mStorageManagerRemoteObject);
     if(mStorageManagerRemoteObject)
     {
         mStorageManagerRemoteObject->Release();
@@ -1172,7 +1168,6 @@ Core::hresult AppManagerImplementation::GetAppProperty(const string& appId , con
                 LOGERR("Failed to create createPersistentStoreRemoteStoreObject");
             }
         }
-        ASSERT (nullptr != mPersistentStoreRemoteStoreObject);
         if (nullptr != mPersistentStoreRemoteStoreObject)
         {
             status = mPersistentStoreRemoteStoreObject->GetValue(Exchange::IStore2::ScopeType::DEVICE, appId, key, value, ttl);
@@ -1228,8 +1223,6 @@ Core::hresult AppManagerImplementation::SetAppProperty(const string& appId, cons
                 LOGERR("Failed to create createPersistentStoreRemoteStoreObject");
             }
         }
-
-        ASSERT (nullptr != mPersistentStoreRemoteStoreObject);
         if (nullptr != mPersistentStoreRemoteStoreObject)
         {
             status = mPersistentStoreRemoteStoreObject->SetValue(Exchange::IStore2::ScopeType::DEVICE, appId, key, value, 0);
@@ -1254,10 +1247,10 @@ Core::hresult AppManagerImplementation::fetchAppPackageList(std::vector<WPEFrame
         if (Core::ERROR_NONE != createPackageManagerObject())
         {
             LOGERR("Failed to create PackageManagerObject");
+            return status;
         }
     }
-    ASSERT (nullptr != mPackageManagerInstallerObject);
-    if (mPackageManagerInstallerObject != nullptr)
+    if (nullptr != mPackageManagerInstallerObject)
     {
         Exchange::IPackageInstaller::IPackageIterator* packages = nullptr;
 
