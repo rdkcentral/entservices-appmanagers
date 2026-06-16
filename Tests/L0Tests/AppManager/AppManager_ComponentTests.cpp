@@ -22,7 +22,7 @@
 
 #include "AppManagerImplementation.h"
 #include "LifecycleInterfaceConnector.h"
-#include "common/AppManagerL0Fakes.hpp"
+#include "common/AppManagerL0Mock.hpp"
 #include "common/L0Expect.hpp"
 
 uint32_t Test_AM_MapLifecycleStateAndErrorReason()

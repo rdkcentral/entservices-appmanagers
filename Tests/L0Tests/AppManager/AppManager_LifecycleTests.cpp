@@ -22,7 +22,7 @@
 
 #include "AppManager.h"
 #include "AppManagerImplementation.h"
-#include "common/AppManagerL0Fakes.hpp"
+#include "common/AppManagerL0Mock.hpp"
 #include "common/L0Expect.hpp"
 
 namespace {

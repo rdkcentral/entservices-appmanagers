@@ -25,7 +25,7 @@
 #define private public
 #include "AppManagerImplementation.h"
 #undef private
-#include "common/AppManagerL0Fakes.hpp"
+#include "common/AppManagerL0Mock.hpp"
 #include "common/L0Expect.hpp"
 
 namespace {
