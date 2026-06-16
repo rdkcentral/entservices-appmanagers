@@ -732,8 +732,8 @@ public:
     };
 
     explicit AppManagerServiceMock(Config cfg = Config())
-        : _refCount(1)
-        , _cfg(cfg)
+        : _cfg(cfg)
+        , _refCount(1)
         , _comLink(*this)
     {
     }
