@@ -25,10 +25,13 @@
 #include "common/AppManagerL0Mock.hpp"
 #include "common/L0Expect.hpp"
 
+// Import helper from AppManager_ImplementationTests.cpp
+extern L0Test::AppManagerServiceMock::Config CreateFullServiceConfig();
+
 uint32_t Test_AM_MapLifecycleStateAndErrorReason()
 {
     L0Test::TestResult tr;
-    L0Test::AppManagerServiceMock service;
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
     WPEFramework::Plugin::LifecycleInterfaceConnector connector(&service);
 
     L0Test::ExpectEqU32(tr,
@@ -73,7 +76,7 @@ uint32_t Test_AM_LifecycleConnectorNullServiceConstructor()
 uint32_t Test_AM_LifecycleConnectorOnAppStateChangedWithoutManager()
 {
     L0Test::TestResult tr;
-    L0Test::AppManagerServiceMock service;
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
     WPEFramework::Plugin::LifecycleInterfaceConnector connector(&service);
 
     WPEFramework::Plugin::AppManagerImplementation::_instance = nullptr;
@@ -86,7 +89,7 @@ uint32_t Test_AM_LifecycleConnectorOnAppStateChangedWithoutManager()
 uint32_t Test_AM_LifecycleConnectorRemoveAppInfoByAppId()
 {
     L0Test::TestResult tr;
-    L0Test::AppManagerServiceMock service;
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
     WPEFramework::Plugin::LifecycleInterfaceConnector connector(&service);
 
     WPEFramework::Plugin::AppInfoManager::getInstance().clear();

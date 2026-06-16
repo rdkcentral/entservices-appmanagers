@@ -27,12 +27,15 @@
 
 namespace {
 
+// Import helper from AppManager_ImplementationTests.cpp
+extern L0Test::AppManagerServiceMock::Config CreateFullServiceConfig();
+
 struct PluginFixture {
     L0Test::AppManagerServiceMock service;
     WPEFramework::PluginHost::IPlugin* plugin { nullptr };
 
     PluginFixture()
-        : service()
+        : service(CreateFullServiceConfig())
         , plugin(WPEFramework::Core::Service<WPEFramework::Plugin::AppManager>::Create<WPEFramework::PluginHost::IPlugin>())
     {
     }
