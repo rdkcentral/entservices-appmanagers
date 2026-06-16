@@ -108,6 +108,9 @@ uint32_t Test_AM_RegisterAndUnregisterNotification()
     L0Test::ExpectEqU32(tr, unreg, WPEFramework::Core::ERROR_NONE, "Unregister() returns ERROR_NONE for a registered notification");
 
     notification->Release();
+    // Configure with full mock to ensure proper cleanup in destructor
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    impl->Configure(&service);
     impl->Release();
     return tr.failures;
 }
@@ -120,6 +123,9 @@ uint32_t Test_AM_ConfigureWithNullServiceFails()
     const auto result = impl->Configure(nullptr);
     L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL, "Configure(nullptr) returns ERROR_GENERAL");
 
+    // Configure with full mock to ensure proper cleanup in destructor
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    impl->Configure(&service);
     impl->Release();
     return tr.failures;
 }
@@ -148,6 +154,9 @@ uint32_t Test_AM_LaunchAppEmptyIdRejected()
     const auto result = impl->LaunchApp(std::string(), std::string("intent"), std::string("args"));
     L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_INVALID_PARAMETER, "LaunchApp() rejects an empty app id");
 
+    // Configure with full mock to ensure proper cleanup in destructor
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    impl->Configure(&service);
     impl->Release();
     return tr.failures;
 }
@@ -162,6 +171,9 @@ uint32_t Test_AM_PreloadAppEmptyIdRejected()
     L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_INVALID_PARAMETER, "PreloadApp() rejects an empty app id");
     L0Test::ExpectTrue(tr, !error.empty(), "PreloadApp() sets an error string for empty app id");
 
+    // Configure with full mock to ensure proper cleanup in destructor
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    impl->Configure(&service);
     impl->Release();
     return tr.failures;
 }
@@ -176,6 +188,9 @@ uint32_t Test_AM_CloseTerminateKillSendIntentEmptyIdRejected()
     L0Test::ExpectEqU32(tr, impl->KillApp(std::string()), WPEFramework::Core::ERROR_NONE, "KillApp() remains stable for empty app id");
     L0Test::ExpectEqU32(tr, impl->SendIntent(std::string(), std::string("intent")), WPEFramework::Core::ERROR_NONE, "SendIntent() with empty app id remains stable");
 
+    // Configure with full mock to ensure proper cleanup in destructor
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    impl->Configure(&service);
     impl->Release();
     return tr.failures;
 }
@@ -191,6 +206,9 @@ uint32_t Test_AM_GetAppPropertyAndSetAppPropertyInvalidInputs()
     L0Test::ExpectEqU32(tr, impl->SetAppProperty(std::string(), std::string("key"), std::string("value")), WPEFramework::Core::ERROR_GENERAL, "SetAppProperty() rejects empty app id");
     L0Test::ExpectEqU32(tr, impl->SetAppProperty(std::string("app"), std::string(), std::string("value")), WPEFramework::Core::ERROR_GENERAL, "SetAppProperty() rejects empty key");
 
+    // Configure with full mock to ensure proper cleanup in destructor
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    impl->Configure(&service);
     impl->Release();
     return tr.failures;
 }
@@ -203,6 +221,9 @@ uint32_t Test_AM_ClearAppDataAndClearAllAppDataWithoutDependencies()
     L0Test::ExpectEqU32(tr, impl->ClearAppData(std::string()), WPEFramework::Core::ERROR_GENERAL, "ClearAppData() rejects empty app id");
     L0Test::ExpectEqU32(tr, impl->ClearAllAppData(), WPEFramework::Core::ERROR_GENERAL, "ClearAllAppData() fails without storage manager");
 
+    // Configure with full mock to ensure proper cleanup in destructor
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    impl->Configure(&service);
     impl->Release();
     return tr.failures;
 }
@@ -217,6 +238,9 @@ uint32_t Test_AM_GetLoadedAppsWithoutConnectorFails()
     L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL, "GetLoadedApps() fails without a lifecycle connector");
     L0Test::ExpectTrue(tr, nullptr == iterator, "GetLoadedApps() leaves the iterator null on failure");
 
+    // Configure with full mock to ensure proper cleanup in destructor
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    impl->Configure(&service);
     impl->Release();
     return tr.failures;
 }
@@ -231,6 +255,9 @@ uint32_t Test_AM_GetInstalledAppsWithoutPackagesFailsOrEmpty()
     L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL, "GetInstalledApps() fails when package manager is unavailable");
     L0Test::ExpectTrue(tr, apps.empty(), "GetInstalledApps() leaves output empty on failure");
 
+    // Configure with full mock to ensure proper cleanup in destructor
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    impl->Configure(&service);
     impl->Release();
     return tr.failures;
 }
@@ -257,6 +284,9 @@ uint32_t Test_AM_UpdateCurrentActionHelpers()
         static_cast<uint32_t>(1234),
         "updateCurrentActionTime() updates the stored timestamp");
 
+    // Configure with full mock to ensure proper cleanup in destructor
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    impl->Configure(&service);
     impl->Release();
     WPEFramework::Plugin::AppInfoManager::getInstance().clear();
     return tr.failures;
@@ -270,6 +300,9 @@ uint32_t Test_AM_CheckInstallUninstallBlockWithoutPackages()
     const bool blocked = impl->checkInstallUninstallBlock("app1");
     L0Test::ExpectTrue(tr, !blocked, "checkInstallUninstallBlock() returns false when no package manager exists");
 
+    // Configure with full mock to ensure proper cleanup in destructor
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    impl->Configure(&service);
     impl->Release();
     return tr.failures;
 }
@@ -462,6 +495,9 @@ uint32_t Test_AM_ImplHandleOnAppUnloadedAndLaunchRequest()
 
     impl->Unregister(notification);
     notification->Release();
+    // Configure with full mock to ensure proper cleanup in destructor
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    impl->Configure(&service);
     impl->Release();
     WPEFramework::Plugin::AppInfoManager::getInstance().clear();
     return tr.failures;
@@ -502,6 +538,9 @@ uint32_t Test_AM_ImplOnAppInstallationStatus()
 
     impl->Unregister(notification);
     notification->Release();
+    // Configure with full mock to ensure proper cleanup in destructor
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    impl->Configure(&service);
     impl->Release();
     return tr.failures;
 }
@@ -533,6 +572,9 @@ uint32_t Test_AM_ConfigurationGettersReturnDefaults()
     L0Test::ExpectEqU32(tr, result4, WPEFramework::Core::ERROR_NONE, "GetMaxInactiveRamUsage() returns ERROR_NONE");
     L0Test::ExpectTrue(tr, maxInactiveRamUsage >= 0, "GetMaxInactiveRamUsage() returns non-negative value");
 
+    // Configure with full mock to ensure proper cleanup in destructor
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    impl->Configure(&service);
     impl->Release();
     return tr.failures;
 }
@@ -549,6 +591,9 @@ uint32_t Test_AM_GetAppMetadataInvalidParams()
     const auto r2 = impl->GetAppMetadata(std::string("app1"), std::string(), result);
     L0Test::ExpectEqU32(tr, r2, WPEFramework::Core::ERROR_GENERAL, "GetAppMetadata() rejects empty metaData key");
 
+    // Configure with full mock to ensure proper cleanup in destructor
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    impl->Configure(&service);
     impl->Release();
     return tr.failures;
 }
@@ -571,6 +616,9 @@ uint32_t Test_AM_StartAndStopSystemApp()
     const auto r4 = impl->StopSystemApp(std::string());
     L0Test::ExpectTrue(tr, r4 == WPEFramework::Core::ERROR_NONE || r4 == WPEFramework::Core::ERROR_GENERAL, "StopSystemApp() with empty ID remains stable");
 
+    // Configure with full mock to ensure proper cleanup in destructor
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    impl->Configure(&service);
     impl->Release();
     return tr.failures;
 }
