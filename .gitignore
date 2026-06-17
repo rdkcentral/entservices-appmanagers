@@ -1,0 +1,45 @@
+# Build artifacts
+build/
+*.o
+*.a
+*.so
+*.dylib
+*.out
+
+# CMake
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# Generated fuzzing artifacts
+fuzz/stats/auto/generated/
+fuzz/stats/auto/stubs/
+fuzz/stats/auto/*.cpp
+fuzz/stats/auto/*.h
+fuzz/stats/build/
+fuzz/stats/results/
+fuzz/stats/reports/
+fuzz/stats/crashes/
+fuzz/stats/*.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+.AppleDouble
+Thumbs.db
+
+# Dependencies (dynamically cloned)
+fuzz7/
+dependencies/
