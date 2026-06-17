@@ -1,0 +1,10 @@
+{
+  "target": "5958fb234812f9c4",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "error",
+    "type": "const string&"
+  },
+  "value": ""
+}

@@ -1,0 +1,12 @@
+{
+  "target": "a99f30ab70a24111",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "keyInputs",
+    "type": "const JsonArray&"
+  },
+  "value": {
+    "k": "v"
+  }
+}

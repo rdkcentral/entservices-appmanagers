@@ -1,0 +1,10 @@
+{
+  "target": "80686124197df63a",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "!ensureTelemetryClient()"
+  },
+  "value": "x"
+}

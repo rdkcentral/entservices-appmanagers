@@ -1,0 +1,10 @@
+{
+  "target": "cd3b7de46657cf10",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "isTelemetryClientAvailable()",
+    "type": "!markerName.empty() &&"
+  },
+  "value": 1
+}

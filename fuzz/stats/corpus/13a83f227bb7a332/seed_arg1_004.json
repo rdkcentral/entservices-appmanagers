@@ -1,0 +1,10 @@
+{
+  "target": "13a83f227bb7a332",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "lifeCycleState",
+    "type": "Exchange::ILifecycleManager::LifecycleState"
+  },
+  "value": 0
+}

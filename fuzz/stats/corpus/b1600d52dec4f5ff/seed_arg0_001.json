@@ -1,0 +1,10 @@
+{
+  "target": "b1600d52dec4f5ff",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "Exchange::ILifecycleManager::LifecycleState::UNLOADED"
+  },
+  "value": 1
+}

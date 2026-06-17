@@ -1,0 +1,10 @@
+{
+  "target": "60106ededdac6803",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "installed"
+  },
+  "value": 1
+}

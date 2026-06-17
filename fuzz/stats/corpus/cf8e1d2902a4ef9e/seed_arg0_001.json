@@ -1,0 +1,10 @@
+{
+  "target": "cf8e1d2902a4ef9e",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED"
+  },
+  "value": 1
+}

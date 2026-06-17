@@ -1,0 +1,10 @@
+{
+  "target": "2258c24faf7093e7",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "keys",
+    "type": "const string&"
+  },
+  "value": "invalid-mac-zz"
+}

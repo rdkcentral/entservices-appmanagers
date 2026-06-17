@@ -1,0 +1,10 @@
+{
+  "target": "1eab142ab9fd1851",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "!AppInfoManager::getInstance().exists(appId)"
+  },
+  "value": 1
+}

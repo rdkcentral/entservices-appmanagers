@@ -1,0 +1,13 @@
+{
+  "name": "nested_invalid_type",
+  "payload": {
+    "required": "x",
+    "optional": "y",
+    "count": 1,
+    "nested": [
+      1,
+      2,
+      3
+    ]
+  }
+}

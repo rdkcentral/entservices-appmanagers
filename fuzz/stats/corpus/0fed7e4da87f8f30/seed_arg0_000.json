@@ -1,0 +1,10 @@
+{
+  "target": "0fed7e4da87f8f30",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "!",
+    "type": "nullptr"
+  },
+  "value": 0
+}

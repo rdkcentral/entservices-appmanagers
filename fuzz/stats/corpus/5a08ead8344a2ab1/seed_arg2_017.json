@@ -1,0 +1,10 @@
+{
+  "target": "5a08ead8344a2ab1",
+  "mode": "single-arg",
+  "arg_index": 2,
+  "arg": {
+    "name": "client",
+    "type": "const string&"
+  },
+  "value": "invalid-mac-zz"
+}

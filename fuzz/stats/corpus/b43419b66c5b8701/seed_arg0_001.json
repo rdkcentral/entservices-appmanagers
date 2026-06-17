@@ -1,0 +1,10 @@
+{
+  "target": "b43419b66c5b8701",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "interval",
+    "type": "const uint32_t"
+  },
+  "value": 1
+}

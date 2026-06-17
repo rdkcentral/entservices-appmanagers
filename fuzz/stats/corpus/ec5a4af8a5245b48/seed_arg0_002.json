@@ -1,0 +1,12 @@
+{
+  "target": "ec5a4af8a5245b48",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "packageInstaller",
+    "type": "Exchange::IPackageInstaller*&"
+  },
+  "value": {
+    "partial": true
+  }
+}

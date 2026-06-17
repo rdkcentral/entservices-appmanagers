@@ -1,0 +1,10 @@
+{
+  "target": "5f0d4e20b2aa0562",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "notification",
+    "type": "INotification"
+  },
+  "value": "x"
+}

@@ -1,0 +1,10 @@
+{
+  "target": "b517e41f40984291",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "packages",
+    "type": "Exchange::IPackageInstaller::IPackageIterator*&"
+  },
+  "value": null
+}

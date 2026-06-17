@@ -1,0 +1,10 @@
+{
+  "name": "nested_object",
+  "payload": {
+    "outer": {
+      "inner": {
+        "deep": "x"
+      }
+    }
+  }
+}

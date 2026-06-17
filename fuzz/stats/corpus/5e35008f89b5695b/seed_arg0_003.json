@@ -1,0 +1,10 @@
+{
+  "target": "5e35008f89b5695b",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "stateSnap.getCurrentAction()"
+  },
+  "value": null
+}

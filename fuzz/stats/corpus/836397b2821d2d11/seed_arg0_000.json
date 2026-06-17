@@ -1,0 +1,10 @@
+{
+  "target": "836397b2821d2d11",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "!isAppLoaded"
+  },
+  "value": 0
+}

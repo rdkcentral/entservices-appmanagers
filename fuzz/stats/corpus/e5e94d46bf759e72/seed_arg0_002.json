@@ -1,0 +1,10 @@
+{
+  "target": "e5e94d46bf759e72",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "maxHibernatedFlashUsage",
+    "type": "int32_t&"
+  },
+  "value": 0
+}

@@ -1,0 +1,10 @@
+{
+  "target": "790dd2b824e30545",
+  "mode": "single-arg",
+  "arg_index": 2,
+  "arg": {
+    "name": "timestampInSeconds",
+    "type": "uint64_t"
+  },
+  "value": -1
+}

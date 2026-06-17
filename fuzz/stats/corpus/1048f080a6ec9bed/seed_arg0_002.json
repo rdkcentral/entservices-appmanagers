@@ -1,0 +1,10 @@
+{
+  "target": "1048f080a6ec9bed",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "Exchange::ILifecycleManagerState::INotification"
+  },
+  "value": "x"
+}

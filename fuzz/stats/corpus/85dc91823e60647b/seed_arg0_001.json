@@ -1,0 +1,10 @@
+{
+  "target": "85dc91823e60647b",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "notification",
+    "type": "Exchange::IDownloadManager::INotification*"
+  },
+  "value": {}
+}

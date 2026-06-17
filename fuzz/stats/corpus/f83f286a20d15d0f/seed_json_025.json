@@ -1,0 +1,15 @@
+{
+  "name": "count_invalid_type",
+  "payload": {
+    "required": "x",
+    "optional": "y",
+    "count": [
+      1,
+      2,
+      3
+    ],
+    "nested": {
+      "k": "v"
+    }
+  }
+}

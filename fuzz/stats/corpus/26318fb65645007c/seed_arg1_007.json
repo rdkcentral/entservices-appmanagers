@@ -1,0 +1,10 @@
+{
+  "target": "26318fb65645007c",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "arg1",
+    "type": "mPackageInstaller"
+  },
+  "value": null
+}

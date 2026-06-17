@@ -1,0 +1,10 @@
+{
+  "target": "e87882c1a92dbc50",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "preinstallPackages",
+    "type": "std::list<PackageInfo>"
+  },
+  "value": null
+}

@@ -1,0 +1,10 @@
+{
+  "target": "b645a37f82f543b9",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "packageData.unpackedPath.empty()",
+    "type": "packageData.version.empty() ||"
+  },
+  "value": 0
+}

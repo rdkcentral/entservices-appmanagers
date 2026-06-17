@@ -1,0 +1,10 @@
+{
+  "target": "d908ca21de8b0052",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "keyCode",
+    "type": "const uint32_t&"
+  },
+  "value": -1
+}

@@ -1,0 +1,10 @@
+{
+  "target": "c9d03d2acb1a8b21",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "id",
+    "type": "const std::string&"
+  },
+  "value": "invalid-mac-zz"
+}

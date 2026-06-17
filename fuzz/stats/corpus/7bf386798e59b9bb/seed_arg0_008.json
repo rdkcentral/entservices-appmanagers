@@ -1,0 +1,10 @@
+{
+  "target": "7bf386798e59b9bb",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "dirName",
+    "type": "const std::string&"
+  },
+  "value": "eth999999"
+}

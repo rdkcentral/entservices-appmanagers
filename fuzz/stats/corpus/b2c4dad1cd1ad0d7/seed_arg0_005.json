@@ -1,0 +1,10 @@
+{
+  "target": "b2c4dad1cd1ad0d7",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "errorReason",
+    "type": "string&"
+  },
+  "value": "line1\nline2\tend"
+}

@@ -1,0 +1,10 @@
+{
+  "target": "78442a273be6c047",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "arg1",
+    "type": "mAppManagerNotification.end()"
+  },
+  "value": 1
+}

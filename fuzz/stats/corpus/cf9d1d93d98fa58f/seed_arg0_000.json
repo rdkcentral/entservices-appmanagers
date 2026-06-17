@@ -1,0 +1,10 @@
+{
+  "target": "cf9d1d93d98fa58f",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "service",
+    "type": "PluginHost::IShell*"
+  },
+  "value": null
+}

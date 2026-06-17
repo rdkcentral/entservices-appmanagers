@@ -1,0 +1,10 @@
+{
+  "target": "6a9c9afc042d7a0d",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "AppInfoManager::getInstance().get(appId"
+  },
+  "value": 1
+}

@@ -1,0 +1,10 @@
+{
+  "target": "2647f2e8fef6d3b3",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "AppInfoManager::getInstance().get(pkg.packageId"
+  },
+  "value": 0
+}

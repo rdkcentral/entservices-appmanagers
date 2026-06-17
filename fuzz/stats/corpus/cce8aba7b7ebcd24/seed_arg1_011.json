@@ -1,0 +1,10 @@
+{
+  "target": "cce8aba7b7ebcd24",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "installed",
+    "type": "bool&"
+  },
+  "value": 0
+}

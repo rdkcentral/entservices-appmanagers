@@ -1,0 +1,8 @@
+{
+  "name": "valid",
+  "payload": {
+    "id": "app",
+    "state": "active",
+    "enabled": true
+  }
+}

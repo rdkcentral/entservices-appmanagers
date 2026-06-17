@@ -1,0 +1,10 @@
+{
+  "target": "41c48a691df0f343",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "apps",
+    "type": "std::string&"
+  },
+  "value": "normal"
+}

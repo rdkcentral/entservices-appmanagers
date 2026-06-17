@@ -1,0 +1,14 @@
+{
+  "target": "f85989038e3036bc",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "context",
+    "type": "ApplicationContext*"
+  },
+  "value": {
+    "nested": {
+      "bad": 1
+    }
+  }
+}

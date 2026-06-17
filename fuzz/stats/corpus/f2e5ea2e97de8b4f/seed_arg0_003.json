@@ -1,0 +1,10 @@
+{
+  "target": "f2e5ea2e97de8b4f",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "e",
+    "type": "const std::exception&"
+  },
+  "value": null
+}

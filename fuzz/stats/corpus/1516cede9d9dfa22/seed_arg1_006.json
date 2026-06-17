@@ -1,0 +1,10 @@
+{
+  "target": "1516cede9d9dfa22",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "arg1",
+    "type": "mTelemetryMetricsImpl"
+  },
+  "value": "x"
+}

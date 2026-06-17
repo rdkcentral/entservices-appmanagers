@@ -1,0 +1,10 @@
+{
+  "target": "0fe9b565cf8498fe",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "intent.empty()"
+  },
+  "value": null
+}

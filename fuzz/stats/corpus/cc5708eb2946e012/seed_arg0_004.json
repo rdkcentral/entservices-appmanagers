@@ -1,0 +1,10 @@
+{
+  "target": "cc5708eb2946e012",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "limit",
+    "type": "uint32_t"
+  },
+  "value": -1
+}

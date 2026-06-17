@@ -1,0 +1,10 @@
+{
+  "target": "6f76d09a6fbe9f80",
+  "mode": "pairwise",
+  "left_index": 0,
+  "right_index": 1,
+  "left": 0,
+  "right": {
+    "k": []
+  }
+}

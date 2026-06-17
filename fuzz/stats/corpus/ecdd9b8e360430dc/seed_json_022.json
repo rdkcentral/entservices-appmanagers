@@ -1,0 +1,11 @@
+{
+  "name": "count_whitespace",
+  "payload": {
+    "required": "x",
+    "optional": "y",
+    "count": "   ",
+    "nested": {
+      "k": "v"
+    }
+  }
+}

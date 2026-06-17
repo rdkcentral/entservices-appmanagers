@@ -1,0 +1,10 @@
+{
+  "target": "76fd2597a4421dbe",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "packages->Next(package)"
+  },
+  "value": "x"
+}

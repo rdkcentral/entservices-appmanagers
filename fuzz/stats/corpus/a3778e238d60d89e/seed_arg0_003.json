@@ -1,0 +1,10 @@
+{
+  "target": "a3778e238d60d89e",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "!",
+    "type": "mPackageManagerInstallerObject->ListPackages(packages)"
+  },
+  "value": null
+}

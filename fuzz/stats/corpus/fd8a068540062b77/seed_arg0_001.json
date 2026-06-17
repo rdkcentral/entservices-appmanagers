@@ -1,0 +1,10 @@
+{
+  "target": "fd8a068540062b77",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "installStatus"
+  },
+  "value": 1
+}

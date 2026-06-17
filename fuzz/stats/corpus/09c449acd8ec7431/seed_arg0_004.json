@@ -1,0 +1,10 @@
+{
+  "target": "09c449acd8ec7431",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "client",
+    "type": "const string&"
+  },
+  "value": "!@#$%^&*()_+-=[]{};':,./<>?"
+}

@@ -1,0 +1,10 @@
+{
+  "target": "00df9693c88ba635",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "a",
+    "type": "[&](AppInfo&"
+  },
+  "value": "x"
+}

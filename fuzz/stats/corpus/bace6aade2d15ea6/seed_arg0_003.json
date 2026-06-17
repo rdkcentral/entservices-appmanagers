@@ -1,0 +1,14 @@
+{
+  "target": "bace6aade2d15ea6",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "State(context",
+    "type": "ApplicationContext* context):"
+  },
+  "value": {
+    "nested": {
+      "bad": 1
+    }
+  }
+}

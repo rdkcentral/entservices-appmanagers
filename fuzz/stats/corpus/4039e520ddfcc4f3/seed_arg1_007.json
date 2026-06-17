@@ -1,0 +1,10 @@
+{
+  "target": "4039e520ddfcc4f3",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "arg1",
+    "type": "Exchange::ILifecycleManager::LifecycleState::TERMINATING"
+  },
+  "value": null
+}

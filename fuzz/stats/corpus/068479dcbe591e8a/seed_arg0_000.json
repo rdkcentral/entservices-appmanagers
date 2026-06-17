@@ -1,0 +1,10 @@
+{
+  "target": "068479dcbe591e8a",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "parent",
+    "type": "WindowManagerHandler&"
+  },
+  "value": 0
+}

@@ -1,0 +1,10 @@
+{
+  "target": "8ac0ae83a0f1ee70",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "path",
+    "type": "const char"
+  },
+  "value": 0
+}

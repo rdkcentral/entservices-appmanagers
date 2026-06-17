@@ -1,0 +1,10 @@
+{
+  "target": "0d21ded5c6cbeada",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "!telemetryMetrics.empty()"
+  },
+  "value": "x"
+}

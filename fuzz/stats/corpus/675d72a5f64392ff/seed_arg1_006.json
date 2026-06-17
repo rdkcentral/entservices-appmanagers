@@ -1,0 +1,10 @@
+{
+  "target": "675d72a5f64392ff",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "arg1",
+    "type": "Exchange::ILifecycleManager::LifecycleState::HIBERNATED"
+  },
+  "value": "x"
+}

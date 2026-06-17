@@ -1,0 +1,10 @@
+{
+  "target": "e84a87a80fd153fb",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "key.empty()"
+  },
+  "value": "x"
+}

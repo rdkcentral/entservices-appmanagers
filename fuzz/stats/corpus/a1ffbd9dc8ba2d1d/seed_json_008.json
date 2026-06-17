@@ -1,0 +1,10 @@
+{
+  "name": "remove_required",
+  "payload": {
+    "optional": "y",
+    "count": 1,
+    "nested": {
+      "k": "v"
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "target": "ecdd9b8e360430dc",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "mPersistentStoreRemoteStoreObject"
+  },
+  "value": 1
+}

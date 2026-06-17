@@ -1,0 +1,10 @@
+{
+  "target": "f2b672688adf4029",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "appId.empty()"
+  },
+  "value": 1
+}

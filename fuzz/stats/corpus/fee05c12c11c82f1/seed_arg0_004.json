@@ -1,0 +1,10 @@
+{
+  "target": "fee05c12c11c82f1",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "appId",
+    "type": "const string&"
+  },
+  "value": "!@#$%^&*()_+-=[]{};':,./<>?"
+}

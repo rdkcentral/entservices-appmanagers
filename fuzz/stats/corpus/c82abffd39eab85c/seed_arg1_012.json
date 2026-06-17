@@ -1,0 +1,10 @@
+{
+  "target": "c82abffd39eab85c",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "visible",
+    "type": "bool"
+  },
+  "value": 1
+}

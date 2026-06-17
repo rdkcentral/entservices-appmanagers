@@ -1,0 +1,10 @@
+{
+  "target": "f899bfd5174605b4",
+  "mode": "single-arg",
+  "arg_index": 2,
+  "arg": {
+    "name": "launchArgs",
+    "type": "const string&"
+  },
+  "value": "normal"
+}

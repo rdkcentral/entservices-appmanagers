@@ -1,0 +1,10 @@
+{
+  "target": "1516cede9d9dfa22",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "Exchange::ITelemetryMetrics"
+  },
+  "value": "x"
+}

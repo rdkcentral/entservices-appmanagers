@@ -1,0 +1,10 @@
+{
+  "target": "1b566366edc45b4a",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "mStorageManagerRemoteObject"
+  },
+  "value": null
+}

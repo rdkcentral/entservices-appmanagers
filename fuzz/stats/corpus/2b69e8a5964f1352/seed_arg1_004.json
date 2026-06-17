@@ -1,0 +1,10 @@
+{
+  "target": "2b69e8a5964f1352",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "arg1",
+    "type": "mWindowManagerHandler(nullptr)"
+  },
+  "value": 0
+}

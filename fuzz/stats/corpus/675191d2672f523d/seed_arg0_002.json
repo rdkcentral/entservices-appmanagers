@@ -1,0 +1,10 @@
+{
+  "target": "675191d2672f523d",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "maxInactiveRamUsage",
+    "type": "int32_t&"
+  },
+  "value": 0
+}

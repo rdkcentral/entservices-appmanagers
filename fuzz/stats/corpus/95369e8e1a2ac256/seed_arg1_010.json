@@ -1,0 +1,10 @@
+{
+  "target": "95369e8e1a2ac256",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "currentAction",
+    "type": "AppManagerImplementation::CurrentAction"
+  },
+  "value": 1
+}

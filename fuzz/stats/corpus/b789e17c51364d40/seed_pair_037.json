@@ -1,0 +1,8 @@
+{
+  "target": "b789e17c51364d40",
+  "mode": "pairwise",
+  "left_index": 0,
+  "right_index": 1,
+  "left": "!@#$%^&*()_+-=[]{};':,./<>?",
+  "right": "line1\nline2\tend"
+}

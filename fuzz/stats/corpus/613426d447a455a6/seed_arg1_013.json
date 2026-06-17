@@ -1,0 +1,10 @@
+{
+  "target": "613426d447a455a6",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "errorReason",
+    "type": "string&"
+  },
+  "value": "!@#$%^&*()_+-=[]{};':,./<>?"
+}

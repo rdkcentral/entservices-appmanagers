@@ -1,0 +1,10 @@
+{
+  "target": "2a5a0e3f09dd0767",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "intent",
+    "type": "const string&"
+  },
+  "value": "line1\nline2\tend"
+}

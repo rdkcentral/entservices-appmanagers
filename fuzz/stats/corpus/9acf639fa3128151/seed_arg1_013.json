@@ -1,0 +1,10 @@
+{
+  "target": "9acf639fa3128151",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "version",
+    "type": "const string&"
+  },
+  "value": "!@#$%^&*()_+-=[]{};':,./<>?"
+}

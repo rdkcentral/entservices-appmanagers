@@ -1,0 +1,10 @@
+{
+  "target": "fcda33d00591669a",
+  "mode": "state-sequence",
+  "sequence": [
+    "init",
+    "start",
+    "mutate_1",
+    "stop"
+  ]
+}

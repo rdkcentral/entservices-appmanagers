@@ -1,0 +1,10 @@
+{
+  "target": "21235c889b96d746",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "downloadId",
+    "type": "const string"
+  },
+  "value": "line1\nline2\tend"
+}

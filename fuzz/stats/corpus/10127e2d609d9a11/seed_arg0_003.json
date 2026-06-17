@@ -1,0 +1,10 @@
+{
+  "target": "10127e2d609d9a11",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "mPackageManagerHandlerObject"
+  },
+  "value": null
+}

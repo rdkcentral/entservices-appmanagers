@@ -1,0 +1,10 @@
+{
+  "target": "9075330703d24e21",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "arg1",
+    "type": "closeSnap)"
+  },
+  "value": "x"
+}

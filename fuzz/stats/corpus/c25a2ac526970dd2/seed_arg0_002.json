@@ -1,0 +1,10 @@
+{
+  "target": "c25a2ac526970dd2",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "mParent(parent",
+    "type": "LifecycleInterfaceConnector& parent) :"
+  },
+  "value": "x"
+}

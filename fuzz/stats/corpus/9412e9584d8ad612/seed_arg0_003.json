@@ -1,0 +1,10 @@
+{
+  "target": "9412e9584d8ad612",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "enable",
+    "type": "bool"
+  },
+  "value": 1
+}

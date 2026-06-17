@@ -1,0 +1,10 @@
+{
+  "target": "984a47ae716786ca",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "key",
+    "type": "const string&"
+  },
+  "value": "!@#$%^&*()_+-=[]{};':,./<>?"
+}

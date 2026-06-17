@@ -1,0 +1,9 @@
+{
+  "name": "invalid_types",
+  "payload": {
+    "id": 123,
+    "state": [
+      "x"
+    ]
+  }
+}

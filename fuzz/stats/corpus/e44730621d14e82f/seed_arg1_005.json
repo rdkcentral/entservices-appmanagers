@@ -1,0 +1,10 @@
+{
+  "target": "e44730621d14e82f",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "arg1",
+    "type": "displayName.end()"
+  },
+  "value": 1
+}

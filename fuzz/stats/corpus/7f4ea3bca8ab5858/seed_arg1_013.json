@@ -1,0 +1,10 @@
+{
+  "target": "7f4ea3bca8ab5858",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "index",
+    "type": "uint32_t"
+  },
+  "value": -1
+}

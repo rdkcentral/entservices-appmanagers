@@ -1,0 +1,10 @@
+{
+  "target": "0c720508221ca919",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "type",
+    "type": "ApplicationType"
+  },
+  "value": 0
+}

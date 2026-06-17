@@ -1,0 +1,10 @@
+{
+  "target": "7375630521e72a3e",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "third"
+  },
+  "value": "x"
+}

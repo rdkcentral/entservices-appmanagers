@@ -1,0 +1,12 @@
+{
+  "target": "3492d310ac569362",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "intercepts",
+    "type": "const JsonArray&"
+  },
+  "value": {
+    "k": "v"
+  }
+}

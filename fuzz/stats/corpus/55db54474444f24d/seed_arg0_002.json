@@ -1,0 +1,10 @@
+{
+  "target": "55db54474444f24d",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "!",
+    "type": "status"
+  },
+  "value": "x"
+}

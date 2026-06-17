@@ -1,0 +1,10 @@
+{
+  "target": "8b2f480dadf9689f",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "appId",
+    "type": "const std::string&"
+  },
+  "value": "!@#$%^&*()_+-=[]{};':,./<>?"
+}

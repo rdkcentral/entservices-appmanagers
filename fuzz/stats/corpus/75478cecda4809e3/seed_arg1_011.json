@@ -1,0 +1,10 @@
+{
+  "target": "75478cecda4809e3",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "info",
+    "type": "const AppManagerTypes::PackageInfo&"
+  },
+  "value": "x"
+}

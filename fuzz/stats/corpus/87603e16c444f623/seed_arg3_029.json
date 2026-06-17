@@ -1,0 +1,10 @@
+{
+  "target": "87603e16c444f623",
+  "mode": "single-arg",
+  "arg_index": 3,
+  "arg": {
+    "name": "path",
+    "type": "string&"
+  },
+  "value": "!@#$%^&*()_+-=[]{};':,./<>?"
+}

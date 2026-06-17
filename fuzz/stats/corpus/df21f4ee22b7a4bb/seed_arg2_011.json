@@ -1,0 +1,10 @@
+{
+  "target": "df21f4ee22b7a4bb",
+  "mode": "single-arg",
+  "arg_index": 2,
+  "arg": {
+    "name": "statePath",
+    "type": "std::vector<Exchange::ILifecycleManager::LifecycleState>&"
+  },
+  "value": null
+}

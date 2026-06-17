@@ -1,0 +1,14 @@
+{
+  "target": "3c049a750f1e2a06",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "RPC::IRemoteConnection*"
+  },
+  "value": {
+    "nested": {
+      "bad": 1
+    }
+  }
+}

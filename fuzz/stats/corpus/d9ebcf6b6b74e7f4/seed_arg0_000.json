@@ -1,0 +1,10 @@
+{
+  "target": "d9ebcf6b6b74e7f4",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "!",
+    "type": "Core::ERROR_NONE"
+  },
+  "value": 0
+}

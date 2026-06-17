@@ -1,0 +1,10 @@
+{
+  "target": "17123631d2962a22",
+  "mode": "pairwise",
+  "left_index": 0,
+  "right_index": 1,
+  "left": 0,
+  "right": {
+    "k": "v"
+  }
+}

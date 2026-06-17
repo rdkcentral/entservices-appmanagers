@@ -1,0 +1,10 @@
+{
+  "target": "fb9ac3193d9ce90f",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "path",
+    "type": "const std::string&"
+  },
+  "value": "invalid-mac-zz"
+}

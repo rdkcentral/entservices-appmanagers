@@ -1,0 +1,10 @@
+{
+  "target": "07442c3dd7fe4401",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "usedKB",
+    "type": "uint32_t"
+  },
+  "value": 1
+}

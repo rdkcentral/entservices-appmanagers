@@ -1,0 +1,10 @@
+{
+  "target": "00eadbe2b2aba4f5",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "/",
+    "type": "RPC::IRemoteConnection* /* connection"
+  },
+  "value": {}
+}

@@ -1,0 +1,10 @@
+{
+  "target": "ecf629a895138017",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "!",
+    "type": "mPackageManagerInstallerObject"
+  },
+  "value": 0
+}

@@ -1,0 +1,12 @@
+{
+  "name": "array_mutation",
+  "payload": {
+    "items": [
+      {
+        "id": 1
+      },
+      null,
+      "bad"
+    ]
+  }
+}

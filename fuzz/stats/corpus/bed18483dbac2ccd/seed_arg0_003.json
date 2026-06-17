@@ -1,0 +1,10 @@
+{
+  "target": "bed18483dbac2ccd",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "Exchange::ILifecycleManager::INotification"
+  },
+  "value": null
+}

@@ -1,0 +1,10 @@
+{
+  "target": "3234c3e1c37c300b",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "errorReason",
+    "type": "string&"
+  },
+  "value": "invalid-mac-zz"
+}

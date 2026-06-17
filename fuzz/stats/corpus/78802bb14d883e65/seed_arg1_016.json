@@ -1,0 +1,10 @@
+{
+  "target": "78802bb14d883e65",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "version",
+    "type": "const std::string&"
+  },
+  "value": "invalid-mac-zz"
+}

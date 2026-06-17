@@ -1,0 +1,7 @@
+{
+  "name": "null_values",
+  "payload": {
+    "id": null,
+    "state": null
+  }
+}

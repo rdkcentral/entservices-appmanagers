@@ -1,0 +1,11 @@
+{
+  "name": "count_null",
+  "payload": {
+    "required": "x",
+    "optional": "y",
+    "count": null,
+    "nested": {
+      "k": "v"
+    }
+  }
+}

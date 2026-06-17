@@ -1,0 +1,10 @@
+{
+  "target": "e9eb5887ec48fb01",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "packageData.unpackedPath.empty()",
+    "type": "packageData.version.empty() ||"
+  },
+  "value": 1
+}

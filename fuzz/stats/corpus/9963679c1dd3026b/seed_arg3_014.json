@@ -1,0 +1,10 @@
+{
+  "target": "9963679c1dd3026b",
+  "mode": "single-arg",
+  "arg_index": 3,
+  "arg": {
+    "name": "arg3",
+    "type": "mStatePath("
+  },
+  "value": "x"
+}

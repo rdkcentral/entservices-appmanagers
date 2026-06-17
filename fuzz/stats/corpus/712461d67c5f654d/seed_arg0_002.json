@@ -1,0 +1,10 @@
+{
+  "target": "712461d67c5f654d",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "fileLocator",
+    "type": "const string"
+  },
+  "value": "normal"
+}

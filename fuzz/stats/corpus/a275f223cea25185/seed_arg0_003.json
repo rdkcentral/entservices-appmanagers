@@ -1,0 +1,14 @@
+{
+  "target": "a275f223cea25185",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "context",
+    "type": "ApplicationContext*"
+  },
+  "value": {
+    "nested": {
+      "bad": 1
+    }
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "target": "8e44750d80ec0460",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "VARIABLE_IS_NOT_USED",
+    "type": "PluginHost::IShell* service"
+  },
+  "value": null
+}

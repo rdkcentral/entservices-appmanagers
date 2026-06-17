@@ -1,0 +1,10 @@
+{
+  "target": "bc7812fd21608228",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "second"
+  },
+  "value": 1
+}

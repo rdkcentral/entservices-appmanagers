@@ -1,0 +1,8 @@
+{
+  "target": "b90479c017971547",
+  "mode": "pairwise",
+  "left_index": 0,
+  "right_index": 1,
+  "left": "",
+  "right": "line1\nline2\tend"
+}

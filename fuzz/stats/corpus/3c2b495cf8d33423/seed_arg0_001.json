@@ -1,0 +1,10 @@
+{
+  "target": "3c2b495cf8d33423",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "PluginHost::IDispatcher"
+  },
+  "value": 1
+}

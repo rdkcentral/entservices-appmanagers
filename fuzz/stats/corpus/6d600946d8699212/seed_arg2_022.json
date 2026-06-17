@@ -1,0 +1,10 @@
+{
+  "target": "6d600946d8699212",
+  "mode": "single-arg",
+  "arg_index": 2,
+  "arg": {
+    "name": "path",
+    "type": "std::string&"
+  },
+  "value": "invalid-mac-zz"
+}

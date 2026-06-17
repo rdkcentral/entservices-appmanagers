@@ -1,0 +1,10 @@
+{
+  "target": "e93c59fe581e172b",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "locator",
+    "type": "const string&"
+  },
+  "value": "00:00:00:00:00:00"
+}

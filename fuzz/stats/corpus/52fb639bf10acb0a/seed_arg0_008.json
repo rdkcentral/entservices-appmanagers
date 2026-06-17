@@ -1,0 +1,10 @@
+{
+  "target": "52fb639bf10acb0a",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "appId",
+    "type": "const std::string&"
+  },
+  "value": "eth999999"
+}

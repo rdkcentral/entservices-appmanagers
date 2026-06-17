@@ -1,0 +1,10 @@
+{
+  "target": "f1a3924f932e8827",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "version",
+    "type": "const string"
+  },
+  "value": "eth999999"
+}

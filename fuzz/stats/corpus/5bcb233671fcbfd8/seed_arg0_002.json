@@ -1,0 +1,10 @@
+{
+  "target": "5bcb233671fcbfd8",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "appManagerImplementation",
+    "type": "AppManagerImplementation"
+  },
+  "value": "x"
+}

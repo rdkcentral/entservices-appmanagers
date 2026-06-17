@@ -1,0 +1,10 @@
+{
+  "target": "db902d2fedc034f7",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "Exchange::IPreinstallManager"
+  },
+  "value": 1
+}

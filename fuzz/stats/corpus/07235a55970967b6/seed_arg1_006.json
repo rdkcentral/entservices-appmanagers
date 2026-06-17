@@ -1,0 +1,10 @@
+{
+  "target": "07235a55970967b6",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "arg1",
+    "type": "mLifecycleManagerImplementation"
+  },
+  "value": "x"
+}

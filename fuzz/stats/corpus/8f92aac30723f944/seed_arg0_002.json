@@ -1,0 +1,10 @@
+{
+  "target": "8f92aac30723f944",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "config",
+    "type": "const Exchange::RuntimeConfig"
+  },
+  "value": "x"
+}

@@ -1,0 +1,10 @@
+{
+  "target": "fb387821992d0b80",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "enable",
+    "type": "const bool"
+  },
+  "value": true
+}

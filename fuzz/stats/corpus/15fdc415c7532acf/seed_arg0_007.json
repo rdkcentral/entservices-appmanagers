@@ -1,0 +1,10 @@
+{
+  "target": "15fdc415c7532acf",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "appsIds",
+    "type": "string"
+  },
+  "value": "invalid-mac-zz"
+}

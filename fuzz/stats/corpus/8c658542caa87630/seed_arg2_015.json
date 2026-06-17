@@ -1,0 +1,10 @@
+{
+  "target": "8c658542caa87630",
+  "mode": "single-arg",
+  "arg_index": 2,
+  "arg": {
+    "name": "lockReason",
+    "type": "Exchange::IPackageHandler::LockReason"
+  },
+  "value": "x"
+}

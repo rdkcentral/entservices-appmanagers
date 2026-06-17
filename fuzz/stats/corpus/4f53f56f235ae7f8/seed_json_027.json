@@ -1,0 +1,9 @@
+{
+  "name": "nested_empty",
+  "payload": {
+    "required": "x",
+    "optional": "y",
+    "count": 1,
+    "nested": ""
+  }
+}

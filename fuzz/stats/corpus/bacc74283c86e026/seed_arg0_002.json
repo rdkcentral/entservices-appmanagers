@@ -1,0 +1,12 @@
+{
+  "target": "bacc74283c86e026",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "service",
+    "type": "PluginHost::IShell*"
+  },
+  "value": {
+    "partial": true
+  }
+}

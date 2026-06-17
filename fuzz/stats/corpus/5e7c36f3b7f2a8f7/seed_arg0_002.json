@@ -1,0 +1,10 @@
+{
+  "target": "5e7c36f3b7f2a8f7",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "packageList",
+    "type": "std::vector<WPEFramework::Exchange::IPackageInstaller::Package>&"
+  },
+  "value": "x"
+}

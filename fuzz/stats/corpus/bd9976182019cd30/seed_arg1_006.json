@@ -1,0 +1,10 @@
+{
+  "target": "bd9976182019cd30",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "a",
+    "type": "[&](AppInfo&"
+  },
+  "value": "x"
+}

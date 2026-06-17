@@ -1,0 +1,10 @@
+{
+  "target": "7cdcafa98bc9d839",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "size",
+    "type": "size_t"
+  },
+  "value": null
+}

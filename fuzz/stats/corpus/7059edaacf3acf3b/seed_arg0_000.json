@@ -1,0 +1,10 @@
+{
+  "target": "7059edaacf3acf3b",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "runtimeConfig",
+    "type": "WPEFramework::Exchange::RuntimeConfig&"
+  },
+  "value": 0
+}

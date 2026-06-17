@@ -1,0 +1,10 @@
+{
+  "target": "f0ca64a02289253f",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "pendingRespawn",
+    "type": "const PendingRespawnRequest&"
+  },
+  "value": 0
+}

@@ -1,0 +1,10 @@
+{
+  "target": "6ebe937f4767e390",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "(getline(&line"
+  },
+  "value": null
+}

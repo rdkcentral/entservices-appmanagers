@@ -1,0 +1,10 @@
+{
+  "target": "ec8e94ff41c223b8",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "input",
+    "type": "const string"
+  },
+  "value": ""
+}

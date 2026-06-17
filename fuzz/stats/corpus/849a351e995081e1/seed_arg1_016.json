@@ -1,0 +1,10 @@
+{
+  "target": "849a351e995081e1",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "errorCode",
+    "type": "const string&"
+  },
+  "value": "invalid-mac-zz"
+}

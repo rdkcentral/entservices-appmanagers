@@ -1,0 +1,8 @@
+{
+  "name": "remove_nested",
+  "payload": {
+    "required": "x",
+    "optional": "y",
+    "count": 1
+  }
+}

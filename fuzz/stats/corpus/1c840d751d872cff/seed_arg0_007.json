@@ -1,0 +1,10 @@
+{
+  "target": "1c840d751d872cff",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "client",
+    "type": "const std::string&"
+  },
+  "value": "invalid-mac-zz"
+}

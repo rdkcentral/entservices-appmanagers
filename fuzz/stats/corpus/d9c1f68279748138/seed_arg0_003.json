@@ -1,0 +1,14 @@
+{
+  "target": "d9c1f68279748138",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "appData",
+    "type": "Exchange::IAppManager::ILoadedAppInfoIterator*&"
+  },
+  "value": {
+    "nested": {
+      "bad": 1
+    }
+  }
+}

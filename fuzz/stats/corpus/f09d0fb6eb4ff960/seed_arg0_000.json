@@ -1,0 +1,10 @@
+{
+  "target": "f09d0fb6eb4ff960",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "parent",
+    "type": "AppManager*"
+  },
+  "value": null
+}

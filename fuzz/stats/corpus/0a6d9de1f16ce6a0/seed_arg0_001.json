@@ -1,0 +1,10 @@
+{
+  "target": "0a6d9de1f16ce6a0",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "cachedPackageData.version.empty()"
+  },
+  "value": 1
+}

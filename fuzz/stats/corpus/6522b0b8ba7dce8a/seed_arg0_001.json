@@ -1,0 +1,10 @@
+{
+  "target": "6522b0b8ba7dce8a",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "RPC::IRemoteConnection::INotification"
+  },
+  "value": 1
+}

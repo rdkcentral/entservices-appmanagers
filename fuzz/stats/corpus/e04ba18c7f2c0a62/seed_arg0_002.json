@@ -1,0 +1,12 @@
+{
+  "target": "e04ba18c7f2c0a62",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "rdkWindowManagerImpl",
+    "type": "RDKWindowManagerImplementation*"
+  },
+  "value": {
+    "partial": true
+  }
+}

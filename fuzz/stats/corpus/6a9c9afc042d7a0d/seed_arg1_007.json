@@ -1,0 +1,10 @@
+{
+  "target": "6a9c9afc042d7a0d",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "arg1",
+    "type": "snap)"
+  },
+  "value": null
+}

@@ -1,0 +1,10 @@
+{
+  "target": "fdd457344bdb88ee",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "!",
+    "type": "service"
+  },
+  "value": "x"
+}

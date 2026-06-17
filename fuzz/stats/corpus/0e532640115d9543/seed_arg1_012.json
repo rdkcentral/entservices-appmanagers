@@ -1,0 +1,10 @@
+{
+  "target": "0e532640115d9543",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "limit",
+    "type": "const uint32_t"
+  },
+  "value": 255
+}

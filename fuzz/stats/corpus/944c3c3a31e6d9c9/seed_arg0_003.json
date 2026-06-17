@@ -1,0 +1,10 @@
+{
+  "target": "944c3c3a31e6d9c9",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "mLifecycleManagerRemoteObject"
+  },
+  "value": null
+}

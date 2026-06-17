@@ -1,0 +1,10 @@
+{
+  "target": "22986e0b732b79a1",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "!Utils::isTelemetryMetricsEnabled()"
+  },
+  "value": 1
+}

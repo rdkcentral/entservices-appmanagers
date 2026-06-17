@@ -1,0 +1,10 @@
+{
+  "target": "e68b1b07b8a9c735",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "aConfigMetadata",
+    "type": "packagemanager::ConfigMetadataArray&"
+  },
+  "value": 0
+}

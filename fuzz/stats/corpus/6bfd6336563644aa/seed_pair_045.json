@@ -1,0 +1,8 @@
+{
+  "target": "6bfd6336563644aa",
+  "mode": "pairwise",
+  "left_index": 0,
+  "right_index": 1,
+  "left": "line1\nline2\tend",
+  "right": "line1\nline2\tend"
+}

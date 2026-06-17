@@ -1,0 +1,10 @@
+{
+  "target": "0ff1f257e2a16fa1",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "version",
+    "type": "const string"
+  },
+  "value": "invalid-mac-zz"
+}

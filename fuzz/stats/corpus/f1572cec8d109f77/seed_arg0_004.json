@@ -1,0 +1,10 @@
+{
+  "target": "f1572cec8d109f77",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "errorReason",
+    "type": "string&"
+  },
+  "value": "!@#$%^&*()_+-=[]{};':,./<>?"
+}

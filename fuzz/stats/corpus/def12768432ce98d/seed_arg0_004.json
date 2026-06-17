@@ -1,0 +1,10 @@
+{
+  "target": "def12768432ce98d",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "interval",
+    "type": "const uint32_t"
+  },
+  "value": -1
+}

@@ -1,0 +1,10 @@
+{
+  "target": "f86b82d7f733d22c",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "Exchange::ILifecycleManager::LifecycleState::PAUSED"
+  },
+  "value": "x"
+}

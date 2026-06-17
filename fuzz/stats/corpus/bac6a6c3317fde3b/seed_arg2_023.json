@@ -1,0 +1,10 @@
+{
+  "target": "bac6a6c3317fde3b",
+  "mode": "single-arg",
+  "arg_index": 2,
+  "arg": {
+    "name": "source",
+    "type": "const string&"
+  },
+  "value": "line1\nline2\tend"
+}

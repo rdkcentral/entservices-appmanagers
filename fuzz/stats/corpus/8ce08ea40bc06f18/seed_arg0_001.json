@@ -1,0 +1,10 @@
+{
+  "target": "8ce08ea40bc06f18",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "!params.HasLabel(\"newState\")"
+  },
+  "value": 1
+}

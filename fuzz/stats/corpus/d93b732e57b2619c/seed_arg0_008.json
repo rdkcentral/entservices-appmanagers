@@ -1,0 +1,10 @@
+{
+  "target": "d93b732e57b2619c",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "appId",
+    "type": "const string&"
+  },
+  "value": "eth999999"
+}

@@ -1,0 +1,10 @@
+{
+  "target": "7b4dd08244b505f8",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "installUninstallBlocked"
+  },
+  "value": 0
+}

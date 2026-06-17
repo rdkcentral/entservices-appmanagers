@@ -1,0 +1,10 @@
+{
+  "target": "886c9d1dcc92471b",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "clientId",
+    "type": "const string"
+  },
+  "value": "!@#$%^&*()_+-=[]{};':,./<>?"
+}

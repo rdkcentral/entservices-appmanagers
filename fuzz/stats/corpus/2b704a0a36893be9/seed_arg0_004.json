@@ -1,0 +1,10 @@
+{
+  "target": "2b704a0a36893be9",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "errorReason",
+    "type": "const string&"
+  },
+  "value": "!@#$%^&*()_+-=[]{};':,./<>?"
+}

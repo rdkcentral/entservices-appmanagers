@@ -1,0 +1,12 @@
+{
+  "target": "f443c738eb70d035",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "packageInfos",
+    "type": "Exchange::IPackageDownloader::IPackageInfoIterator* const"
+  },
+  "value": {
+    "partial": true
+  }
+}

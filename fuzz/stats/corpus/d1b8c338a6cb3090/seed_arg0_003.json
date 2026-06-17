@@ -1,0 +1,10 @@
+{
+  "target": "d1b8c338a6cb3090",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "Exchange::IPackageInstaller::INotification"
+  },
+  "value": null
+}

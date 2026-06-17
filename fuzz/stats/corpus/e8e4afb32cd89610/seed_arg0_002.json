@@ -1,0 +1,10 @@
+{
+  "target": "e8e4afb32cd89610",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "appId",
+    "type": "const string"
+  },
+  "value": "normal"
+}

@@ -1,0 +1,10 @@
+{
+  "target": "22b7cabd40f32ea3",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "mParent(parent",
+    "type": "AppManagerImplementation& parent) :"
+  },
+  "value": 1
+}

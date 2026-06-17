@@ -1,0 +1,12 @@
+{
+  "target": "e1449596a5dbea3b",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "data",
+    "type": "const JsonObject"
+  },
+  "value": {
+    "k": "v"
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "target": "9a1a1d934903da1e",
+  "mode": "single-arg",
+  "arg_index": 2,
+  "arg": {
+    "name": "path",
+    "type": "std::string&"
+  },
+  "value": ""
+}

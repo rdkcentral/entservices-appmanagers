@@ -1,0 +1,10 @@
+{
+  "target": "2949803b4e7be365",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "ts",
+    "type": "const timespec&"
+  },
+  "value": "x"
+}

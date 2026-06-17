@@ -1,0 +1,10 @@
+{
+  "target": "6bd56dece3a4c5e7",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "state",
+    "type": "Exchange::IAppManager::AppLifecycleState"
+  },
+  "value": 0
+}

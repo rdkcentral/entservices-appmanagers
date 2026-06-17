@@ -1,0 +1,8 @@
+{
+  "target": "25d2321070b12392",
+  "mode": "pairwise",
+  "left_index": 0,
+  "right_index": 1,
+  "left": "!@#$%^&*()_+-=[]{};':,./<>?",
+  "right": ""
+}

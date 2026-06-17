@@ -1,0 +1,10 @@
+{
+  "target": "0d142334d8266db4",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "clientId",
+    "type": "const string"
+  },
+  "value": "line1\nline2\tend"
+}

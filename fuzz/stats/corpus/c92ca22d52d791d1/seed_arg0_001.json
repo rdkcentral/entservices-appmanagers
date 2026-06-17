@@ -1,0 +1,10 @@
+{
+  "target": "c92ca22d52d791d1",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "PackageManagerNotification"
+  },
+  "value": 1
+}

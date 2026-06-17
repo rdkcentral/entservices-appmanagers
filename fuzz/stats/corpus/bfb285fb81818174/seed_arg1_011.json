@@ -1,0 +1,10 @@
+{
+  "target": "bfb285fb81818174",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "closeReason",
+    "type": "const Exchange::ILifecycleManagerState::AppCloseReason"
+  },
+  "value": "x"
+}

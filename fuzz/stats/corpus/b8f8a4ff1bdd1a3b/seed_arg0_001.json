@@ -1,0 +1,10 @@
+{
+  "target": "b8f8a4ff1bdd1a3b",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "packages->Next(package)"
+  },
+  "value": 1
+}

@@ -1,0 +1,6 @@
+{
+  "name": "special_chars",
+  "payload": {
+    "text": "\n\t\u0000"
+  }
+}

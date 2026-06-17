@@ -1,0 +1,10 @@
+{
+  "target": "f5fe85c1d91b7a3c",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "targetLifecycleState",
+    "type": "const LifecycleState"
+  },
+  "value": 1
+}

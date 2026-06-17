@@ -1,0 +1,10 @@
+{
+  "target": "78442a273be6c047",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "std::find(mAppManagerNotification.begin()"
+  },
+  "value": 0
+}

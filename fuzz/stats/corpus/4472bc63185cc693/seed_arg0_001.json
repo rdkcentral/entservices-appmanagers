@@ -1,0 +1,10 @@
+{
+  "target": "4472bc63185cc693",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "Exchange::IConfiguration"
+  },
+  "value": 1
+}

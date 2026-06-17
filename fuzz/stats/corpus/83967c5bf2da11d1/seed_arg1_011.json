@@ -1,0 +1,10 @@
+{
+  "target": "83967c5bf2da11d1",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "t",
+    "type": "time_t"
+  },
+  "value": "x"
+}

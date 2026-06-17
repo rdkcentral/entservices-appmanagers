@@ -1,0 +1,10 @@
+{
+  "target": "9963679c1dd3026b",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "mContext(context)",
+    "type": "Exchange::ILifecycleManager::LifecycleState state):"
+  },
+  "value": 0
+}

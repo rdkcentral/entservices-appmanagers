@@ -1,0 +1,338 @@
+##############################################################################
+# fuzz-testing.yml
+#
+# Automated libFuzzer-based fuzz testing for entservices-appmanagers.
+#
+# Behaviour
+# ─────────
+#   Called by tests-trigger.yml (main-workflow) on every push / PR,
+#   exactly like L0-tests and L1-tests.
+#
+#   pull_request context → detect which plugin folders changed; fuzz only those
+#                          (if fuzz/ or helpers/ changed → fuzz all folders)
+#                          (no plugin changes → job is skipped gracefully)
+#   push / other context → fuzz all 8 plugin folders
+#   workflow_dispatch    → caller can pin target_scope, runs, max_total_time
+#
+# Artifacts retained
+# ──────────────────
+#   fuzz-report-<run_id>  → fuzz_report.md + per-folder reports + result JSON
+#   fuzz-crashes-<run_id> → crash reproducer inputs (kept 90 days)
+##############################################################################
+
+name: Fuzz Testing
+
+on:
+  workflow_call:
+    inputs:
+      caller_source:
+        description: "Specifies the source type (e.g., local or test framework) for the workflow."
+        required: true
+        type: string
+
+  workflow_dispatch:
+    inputs:
+      target_scope:
+        description: >
+          Comma-separated plugin folders to fuzz.
+          Leave empty to fuzz all folders.
+          Valid values: AppManager, AppStorageManager, DownloadManager,
+          LifecycleManager, PackageManager, PreinstallManager,
+          RDKWindowManager, TelemetryMetrics
+        required: false
+        default: ""
+      runs:
+        description: "Fuzzer iterations per target"
+        required: false
+        default: "500"
+      max_total_time:
+        description: "Max wall-clock seconds per target (0 = unlimited)"
+        required: false
+        default: "60"
+
+##############################################################################
+# Global defaults – overridable per event via env: blocks below
+##############################################################################
+env:
+  ALL_PLUGIN_FOLDERS: "AppManager,AppStorageManager,DownloadManager,LifecycleManager,PackageManager,PreinstallManager,RDKWindowManager,TelemetryMetrics"
+  ENTSERVICES_APIS_BRANCH: "topic/RDKEMW-16187"
+  ENTSERVICES_APIS_REPO: "https://github.com/rdkcentral/entservices-apis.git"
+
+jobs:
+  ##########################################################################
+  # PHASE 1 — determine which plugin folders need fuzzing
+  ##########################################################################
+  detect-scope:
+    name: Detect fuzz scope
+    runs-on: ubuntu-22.04
+    outputs:
+      scope: ${{ steps.detect.outputs.scope }}
+      skip: ${{ steps.detect.outputs.skip }}
+      runs: ${{ steps.detect.outputs.runs }}
+      max_total_time: ${{ steps.detect.outputs.max_total_time }}
+
+    steps:
+      - name: Checkout (shallow + PR base for diff)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect changed plugin folders and set scope
+        id: detect
+        shell: bash
+        run: |
+          ALL="${{ env.ALL_PLUGIN_FOLDERS }}"
+          PLUGIN_LIST="AppManager AppStorageManager DownloadManager LifecycleManager PackageManager PreinstallManager RDKWindowManager TelemetryMetrics"
+
+          # ── Iteration budget ──────────────────────────────────────────────
+          # workflow_call inherits the caller's event; workflow_dispatch has its own inputs.
+          # Detect workflow_dispatch by checking for its specific inputs.
+          WD_SCOPE="${{ github.event.inputs.target_scope }}"
+          WD_RUNS="${{ github.event.inputs.runs }}"
+          WD_TIME="${{ github.event.inputs.max_total_time }}"
+
+          if [[ -n "$WD_RUNS" ]]; then
+            RUNS="$WD_RUNS"
+            MAX_TOTAL_TIME="$WD_TIME"
+          else
+            RUNS="500"
+            MAX_TOTAL_TIME="60"
+          fi
+
+          # ── Scope detection ───────────────────────────────────────────────
+          # Under workflow_call, github.event_name is 'workflow_call' but
+          # github.event.pull_request is still populated for PR-triggered runs.
+          PR_BASE="${{ github.event.pull_request.base.sha }}"
+          PR_HEAD="${{ github.event.pull_request.head.sha }}"
+
+          if [[ -n "$WD_SCOPE" ]]; then
+            # workflow_dispatch with explicit scope
+            SCOPE="$WD_SCOPE"
+            echo "workflow_dispatch: using manually specified scope: $SCOPE"
+
+          elif [[ -n "$PR_BASE" && -n "$PR_HEAD" ]]; then
+            # PR context (direct pull_request trigger or called from PR-triggered workflow)
+            CHANGED_FILES=$(git diff --name-only "$PR_BASE"..."$PR_HEAD" 2>/dev/null \
+                            || git diff --name-only HEAD~1..HEAD)
+
+            echo "Files changed in PR:"
+            echo "$CHANGED_FILES"
+
+            # If fuzz framework or shared helpers changed → test everything
+            if echo "$CHANGED_FILES" | grep -qE "^(fuzz|helpers)/"; then
+              SCOPE="$ALL"
+              echo "fuzz/ or helpers/ changed → running all plugin scopes"
+            else
+              SCOPE=""
+              for folder in $PLUGIN_LIST; do
+                if echo "$CHANGED_FILES" | grep -qE "^${folder}/"; then
+                  SCOPE="${SCOPE:+$SCOPE,}$folder"
+                fi
+              done
+
+              if [[ -z "$SCOPE" ]]; then
+                echo "No plugin source changes in this PR → skipping fuzz testing."
+                echo "skip=true"  >> "$GITHUB_OUTPUT"
+                echo "scope="     >> "$GITHUB_OUTPUT"
+                echo "runs=$RUNS" >> "$GITHUB_OUTPUT"
+                echo "max_total_time=$MAX_TOTAL_TIME" >> "$GITHUB_OUTPUT"
+                exit 0
+              fi
+
+              echo "PR scope detected: $SCOPE"
+            fi
+
+          else
+            # push or other non-PR context → run all
+            SCOPE="$ALL"
+            echo "Running full scope: $SCOPE"
+          fi
+
+          echo "skip=false"                      >> "$GITHUB_OUTPUT"
+          echo "scope=$SCOPE"                    >> "$GITHUB_OUTPUT"
+          echo "runs=$RUNS"                      >> "$GITHUB_OUTPUT"
+          echo "max_total_time=$MAX_TOTAL_TIME"  >> "$GITHUB_OUTPUT"
+
+  ##########################################################################
+  # PHASE 2 — build fresh and run fuzz tests
+  ##########################################################################
+  fuzz-test:
+    name: "Fuzz [${{ needs.detect-scope.outputs.scope }}]"
+    needs: detect-scope
+    if: needs.detect-scope.outputs.skip != 'true'
+    runs-on: ubuntu-22.04
+
+    env:
+      DEPENDENCIES_ROOT: ${{ github.workspace }}/dependencies
+      TARGET_SCOPE: ${{ needs.detect-scope.outputs.scope }}
+      RUNS: ${{ needs.detect-scope.outputs.runs }}
+      MAX_TOTAL_TIME: ${{ needs.detect-scope.outputs.max_total_time }}
+      RUN_ID: "ci-${{ github.run_id }}-${{ github.run_attempt }}"
+      NON_INTERACTIVE: "1"
+      FUZZ_CC: clang
+      FUZZ_CXX: clang++
+
+    steps:
+      # ── 1. Source checkout ──────────────────────────────────────────────
+      - name: Checkout repository (full history)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      # ── 2. Toolchain & system packages ─────────────────────────────────
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            clang \
+            llvm \
+            cmake \
+            ninja-build \
+            python3 \
+            python3-pip \
+            libjsoncpp-dev \
+            libcurl4-openssl-dev \
+            libssl-dev \
+            git \
+            ca-certificates
+
+      - name: Verify clang libFuzzer support
+        run: |
+          clang --version
+          printf 'int main(){}' | clang -x c - \
+            -fsanitize=fuzzer,address,undefined -o /tmp/fuzz_probe
+          echo "libFuzzer+ASan+UBSan probe compiled successfully"
+          rm -f /tmp/fuzz_probe
+
+      # ── 3. External API headers ─────────────────────────────────────────
+      - name: Cache entservices-apis headers
+        id: cache-apis
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.DEPENDENCIES_ROOT }}/entservices-apis
+          key: entservices-apis-${{ env.ENTSERVICES_APIS_BRANCH }}-v1
+
+      - name: Clone entservices-apis (if not cached)
+        if: steps.cache-apis.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p "$DEPENDENCIES_ROOT"
+          git clone --depth=1 \
+            --branch "${{ env.ENTSERVICES_APIS_BRANCH }}" \
+            "${{ env.ENTSERVICES_APIS_REPO }}" \
+            "$DEPENDENCIES_ROOT/entservices-apis"
+
+      - name: Expose system jsoncpp headers in dependencies root
+        run: |
+          # CMakeLists.txt globs for  $DEPS_ROOT/*/json/json.h
+          # System libjsoncpp-dev installs to /usr/include/jsoncpp/json/json.h
+          # Create a symlink so the CMake glob resolves it.
+          JSONCPP_HEADER="/usr/include/jsoncpp/json/json.h"
+          if [[ -f "$JSONCPP_HEADER" ]]; then
+            mkdir -p "$DEPENDENCIES_ROOT/jsoncpp"
+            ln -sf /usr/include/jsoncpp/json \
+                    "$DEPENDENCIES_ROOT/jsoncpp/json"
+            echo "jsoncpp symlink created: $DEPENDENCIES_ROOT/jsoncpp/json → /usr/include/jsoncpp/json"
+          else
+            echo "System jsoncpp not found at $JSONCPP_HEADER; stubs will cover it"
+          fi
+
+      # ── 4. Clean build + fuzz run ───────────────────────────────────────
+      - name: Run fuzz pipeline (discover → stubs → harnesses → build → fuzz → report)
+        run: |
+          chmod +x "$GITHUB_WORKSPACE/fuzz/stats/auto_fuzz.sh" \
+                   "$GITHUB_WORKSPACE/fuzz/stats/run_fuzz.sh"
+          cd "$GITHUB_WORKSPACE"
+          bash fuzz/stats/auto_fuzz.sh
+
+      # ── 5. Summarise results in the workflow log ────────────────────────
+      - name: Summarise fuzz results
+        if: always()
+        shell: bash
+        run: |
+          TRIAGE="$GITHUB_WORKSPACE/fuzz/stats/results/triage_results.json"
+          RUN_RESULTS="$GITHUB_WORKSPACE/fuzz/stats/results/run_results.json"
+
+          echo "### Fuzz Testing Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Field | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|-------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Scope | \`$TARGET_SCOPE\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Runs per target | $RUNS |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Max time per target (s) | $MAX_TOTAL_TIME |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Run ID | $RUN_ID |" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          if [[ -f "$RUN_RESULTS" ]]; then
+            python3 - "$RUN_RESULTS" "$TRIAGE" >> "$GITHUB_STEP_SUMMARY" <<'PY'
+          import json, sys
+          from pathlib import Path
+
+          run_results_path = Path(sys.argv[1])
+          triage_path = Path(sys.argv[2])
+
+          run_data  = json.loads(run_results_path.read_text()) if run_results_path.exists() else {"targets": []}
+          triage    = json.loads(triage_path.read_text())      if triage_path.exists()      else {"valid_crashes": [], "ignored_false_positives": 0}
+
+          targets       = run_data.get("targets", [])
+          total         = len(targets)
+          passed        = sum(1 for t in targets if int(t.get("exit_code", 0) or 0) == 0)
+          crashed       = total - passed
+          valid_crashes = len(triage.get("valid_crashes", []))
+          ignored       = triage.get("ignored_false_positives", 0)
+          executions    = sum(t.get("executions", 0) for t in targets)
+
+          print(f"| Targets run | {total} |")
+          print(f"| Clean exits | {passed} |")
+          print(f"| Non-zero exits | {crashed} |")
+          print(f"| Valid crashes (in-scope) | **{valid_crashes}** |")
+          print(f"| Ignored false positives | {ignored} |")
+          print(f"| Total executions | {executions} |")
+          PY
+          fi
+
+      # ── 6. Upload report + result JSON ──────────────────────────────────
+      - name: Upload fuzz report and result JSON
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-report-${{ github.run_id }}
+          path: |
+            fuzz/stats/fuzz_report.md
+            fuzz/stats/reports/
+            fuzz/stats/results/
+          retention-days: 30
+
+      # ── 7. Upload crash reproducers (kept longer for investigation) ──────
+      - name: Upload crash reproducers
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-crashes-${{ github.run_id }}
+          path: fuzz/stats/crashes/
+          retention-days: 90
+          if-no-files-found: ignore
+
+      # ── 8. Fail the job if valid in-scope crashes were found ─────────────
+      - name: Fail on valid crashes
+        shell: bash
+        run: |
+          TRIAGE="$GITHUB_WORKSPACE/fuzz/stats/results/triage_results.json"
+          if [[ ! -f "$TRIAGE" ]]; then
+            echo "No triage_results.json found; treating as clean run."
+            exit 0
+          fi
+
+          VALID=$(python3 -c "
+          import json, sys
+          d = json.load(open('$TRIAGE'))
+          print(len(d.get('valid_crashes', [])))
+          " 2>/dev/null || echo 0)
+
+          if [[ "$VALID" -gt 0 ]]; then
+            echo "::error::$VALID valid in-scope crash(es) found by fuzz testing."
+            echo "Download the 'fuzz-crashes-${{ github.run_id }}' artifact for reproducer inputs."
+            echo "Download the 'fuzz-report-${{ github.run_id }}' artifact for the full report."
+            exit 1
+          fi
+
+          echo "No valid crashes detected — fuzz run clean."

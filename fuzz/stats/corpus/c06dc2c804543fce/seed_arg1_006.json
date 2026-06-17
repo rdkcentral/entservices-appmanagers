@@ -1,0 +1,10 @@
+{
+  "target": "c06dc2c804543fce",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "arg1",
+    "type": "mPackageDownloader"
+  },
+  "value": "x"
+}

@@ -1,0 +1,10 @@
+{
+  "target": "9e75e82df69eb640",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "ln",
+    "type": "uint32_t"
+  },
+  "value": 1
+}

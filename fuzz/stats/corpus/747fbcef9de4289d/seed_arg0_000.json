@@ -1,0 +1,10 @@
+{
+  "target": "747fbcef9de4289d",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "type",
+    "type": "ApplicationType"
+  },
+  "value": 0
+}

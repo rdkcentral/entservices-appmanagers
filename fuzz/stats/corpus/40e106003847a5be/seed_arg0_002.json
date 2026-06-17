@@ -1,0 +1,10 @@
+{
+  "target": "40e106003847a5be",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "mAppManagerWorkerThread.joinable()"
+  },
+  "value": "x"
+}

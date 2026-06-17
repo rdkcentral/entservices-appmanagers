@@ -1,0 +1,10 @@
+{
+  "target": "440522b83c2c0588",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "AppInfoManager::getInstance().get(pkg.packageId"
+  },
+  "value": 1
+}

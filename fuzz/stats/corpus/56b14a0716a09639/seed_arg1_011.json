@@ -1,0 +1,10 @@
+{
+  "target": "56b14a0716a09639",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "stateChangedId",
+    "type": "const uint32_t"
+  },
+  "value": 4294967295
+}

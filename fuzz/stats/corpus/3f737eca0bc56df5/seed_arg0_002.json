@@ -1,0 +1,10 @@
+{
+  "target": "3f737eca0bc56df5",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "!",
+    "type": "mAppManagerImplementation"
+  },
+  "value": "x"
+}

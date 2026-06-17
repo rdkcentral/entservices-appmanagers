@@ -1,0 +1,10 @@
+{
+  "target": "211a9895664b7ed5",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "arg1",
+    "type": "mInstallThread("
+  },
+  "value": "x"
+}

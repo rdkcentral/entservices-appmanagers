@@ -1,0 +1,6 @@
+{
+  "target": "db902d2fedc034f7",
+  "mode": "pointer-mode",
+  "pointer_mode": 2,
+  "note": "0=nullptr,1=invalid,2=valid"
+}

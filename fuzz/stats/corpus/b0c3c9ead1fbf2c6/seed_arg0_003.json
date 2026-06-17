@@ -1,0 +1,14 @@
+{
+  "target": "b0c3c9ead1fbf2c6",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "state",
+    "type": "void*"
+  },
+  "value": {
+    "nested": {
+      "bad": 1
+    }
+  }
+}

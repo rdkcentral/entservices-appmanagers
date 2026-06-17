@@ -1,0 +1,10 @@
+{
+  "target": "87603e16c444f623",
+  "mode": "single-arg",
+  "arg_index": 4,
+  "arg": {
+    "name": "size",
+    "type": "uint32_t&"
+  },
+  "value": 4294967295
+}

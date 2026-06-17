@@ -1,0 +1,10 @@
+{
+  "target": "a995e08eff7d43d8",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "currentAction"
+  },
+  "value": "x"
+}

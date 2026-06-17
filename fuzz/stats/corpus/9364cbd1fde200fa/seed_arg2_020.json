@@ -1,0 +1,10 @@
+{
+  "target": "9364cbd1fde200fa",
+  "mode": "single-arg",
+  "arg_index": 2,
+  "arg": {
+    "name": "retries",
+    "type": "uint8_t"
+  },
+  "value": 255
+}

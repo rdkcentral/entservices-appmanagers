@@ -1,0 +1,10 @@
+{
+  "target": "a28d0fe7e7c90511",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "notification",
+    "type": "Exchange::IPreinstallManager::INotification"
+  },
+  "value": null
+}

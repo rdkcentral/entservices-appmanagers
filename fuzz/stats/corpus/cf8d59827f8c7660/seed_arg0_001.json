@@ -1,0 +1,10 @@
+{
+  "target": "cf8d59827f8c7660",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "parent",
+    "type": "PreinstallManager"
+  },
+  "value": 1
+}

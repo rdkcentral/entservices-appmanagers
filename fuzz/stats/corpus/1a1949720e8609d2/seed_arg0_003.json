@@ -1,0 +1,14 @@
+{
+  "target": "1a1949720e8609d2",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "service",
+    "type": "PluginHost::IShell*"
+  },
+  "value": {
+    "nested": {
+      "bad": 1
+    }
+  }
+}

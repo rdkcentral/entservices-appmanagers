@@ -1,0 +1,10 @@
+{
+  "target": "f7d7ec950aa7f54d",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "clientId",
+    "type": "const std::string&"
+  },
+  "value": "!@#$%^&*()_+-=[]{};':,./<>?"
+}

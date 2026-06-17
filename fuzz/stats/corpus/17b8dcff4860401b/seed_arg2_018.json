@@ -1,0 +1,10 @@
+{
+  "target": "17b8dcff4860401b",
+  "mode": "single-arg",
+  "arg_index": 2,
+  "arg": {
+    "name": "quotaValue",
+    "type": "uint32_t*"
+  },
+  "value": 99999999
+}

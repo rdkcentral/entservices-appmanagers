@@ -1,0 +1,10 @@
+{
+  "target": "ce08ba1ed458c5e7",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "lifecycleManagerInitiatedKill",
+    "type": "appManagerInitiatedKill ||"
+  },
+  "value": null
+}

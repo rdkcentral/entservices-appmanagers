@@ -1,0 +1,10 @@
+{
+  "target": "db902d2fedc034f7",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "arg1",
+    "type": "mPreinstallManagerImpl"
+  },
+  "value": 0
+}

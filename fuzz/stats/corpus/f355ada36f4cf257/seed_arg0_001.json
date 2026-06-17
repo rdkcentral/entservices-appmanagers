@@ -1,0 +1,10 @@
+{
+  "target": "f355ada36f4cf257",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "success",
+    "type": "const bool"
+  },
+  "value": false
+}

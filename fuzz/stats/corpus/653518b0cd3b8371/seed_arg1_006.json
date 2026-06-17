@@ -1,0 +1,10 @@
+{
+  "target": "653518b0cd3b8371",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "arg1",
+    "type": "Exchange::ILifecycleManager::LifecycleState::LOADING"
+  },
+  "value": "x"
+}

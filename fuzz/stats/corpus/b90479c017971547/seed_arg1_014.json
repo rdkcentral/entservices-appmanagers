@@ -1,0 +1,10 @@
+{
+  "target": "b90479c017971547",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "key",
+    "type": "const string&"
+  },
+  "value": "line1\nline2\tend"
+}

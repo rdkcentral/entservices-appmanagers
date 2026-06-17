@@ -1,0 +1,10 @@
+{
+  "target": "eb42fad78299851d",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "arg1",
+    "type": "mLifecycleManagerState"
+  },
+  "value": null
+}

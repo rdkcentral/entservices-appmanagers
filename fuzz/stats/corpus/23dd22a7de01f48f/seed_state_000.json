@@ -1,0 +1,10 @@
+{
+  "target": "23dd22a7de01f48f",
+  "mode": "state-sequence",
+  "sequence": [
+    "init",
+    "start",
+    "mutate_0",
+    "stop"
+  ]
+}

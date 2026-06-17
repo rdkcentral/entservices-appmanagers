@@ -1,0 +1,11 @@
+{
+  "name": "optional_whitespace",
+  "payload": {
+    "required": "x",
+    "optional": "   ",
+    "count": 1,
+    "nested": {
+      "k": "v"
+    }
+  }
+}

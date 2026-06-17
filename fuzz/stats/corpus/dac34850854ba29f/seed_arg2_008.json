@@ -1,0 +1,10 @@
+{
+  "target": "dac34850854ba29f",
+  "mode": "single-arg",
+  "arg_index": 2,
+  "arg": {
+    "name": "arg2",
+    "type": "std::map<Exchange::ILifecycleManager::LifecycleState"
+  },
+  "value": 0
+}

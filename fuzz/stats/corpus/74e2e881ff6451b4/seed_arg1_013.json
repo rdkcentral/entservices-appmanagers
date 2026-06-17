@@ -1,0 +1,10 @@
+{
+  "target": "74e2e881ff6451b4",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "intent",
+    "type": "const string&"
+  },
+  "value": "!@#$%^&*()_+-=[]{};':,./<>?"
+}

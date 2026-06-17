@@ -1,0 +1,10 @@
+{
+  "target": "ddb072a1d0443137",
+  "mode": "single-arg",
+  "arg_index": 2,
+  "arg": {
+    "name": "newState",
+    "type": "const Exchange::IAppManager::AppLifecycleState"
+  },
+  "value": 0
+}

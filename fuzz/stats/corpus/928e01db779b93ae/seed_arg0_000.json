@@ -1,0 +1,10 @@
+{
+  "target": "928e01db779b93ae",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "found"
+  },
+  "value": 0
+}

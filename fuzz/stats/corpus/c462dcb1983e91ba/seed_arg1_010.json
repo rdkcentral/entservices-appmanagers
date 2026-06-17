@@ -1,0 +1,10 @@
+{
+  "target": "c462dcb1983e91ba",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "updater",
+    "type": "std::function<void(AppInfo&)>"
+  },
+  "value": 1
+}

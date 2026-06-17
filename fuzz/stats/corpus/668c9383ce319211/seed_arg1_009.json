@@ -1,0 +1,10 @@
+{
+  "target": "668c9383ce319211",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "userId",
+    "type": "const int32_t&"
+  },
+  "value": -2147483648
+}

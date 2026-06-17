@@ -1,0 +1,12 @@
+{
+  "target": "13a83f227bb7a332",
+  "mode": "pairwise",
+  "left_index": 0,
+  "right_index": 1,
+  "left": {
+    "nested": {
+      "bad": 1
+    }
+  },
+  "right": 0
+}

@@ -1,0 +1,10 @@
+{
+  "target": "4a31765f07d1af56",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "id",
+    "type": "const string&"
+  },
+  "value": "!@#$%^&*()_+-=[]{};':,./<>?"
+}

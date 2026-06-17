@@ -1,0 +1,10 @@
+{
+  "target": "cab7310ec5a60754",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "id",
+    "type": "const string&"
+  },
+  "value": "eth999999"
+}

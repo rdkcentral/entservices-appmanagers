@@ -1,0 +1,10 @@
+{
+  "target": "d105ada105b84b50",
+  "mode": "single-arg",
+  "arg_index": 3,
+  "arg": {
+    "name": "arg3",
+    "type": "gmtime(&timestamp.tv_sec))"
+  },
+  "value": "x"
+}

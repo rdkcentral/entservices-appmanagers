@@ -1,0 +1,10 @@
+{
+  "target": "dff4d860d23643ec",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "intent",
+    "type": "const string&"
+  },
+  "value": "invalid-mac-zz"
+}

@@ -1,0 +1,10 @@
+{
+  "target": "c8bdca06e203b9c5",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "Exchange::IAppManager::INotification"
+  },
+  "value": 0
+}

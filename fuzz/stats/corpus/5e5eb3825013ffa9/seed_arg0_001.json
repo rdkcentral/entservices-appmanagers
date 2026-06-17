@@ -1,0 +1,10 @@
+{
+  "target": "5e5eb3825013ffa9",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "e",
+    "type": "const std::system_error&"
+  },
+  "value": 1
+}

@@ -1,0 +1,10 @@
+{
+  "target": "5a542c69e2843bb1",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "client",
+    "type": "const std::string&"
+  },
+  "value": ""
+}

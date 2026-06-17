@@ -1,0 +1,10 @@
+{
+  "target": "e3751c1dff40c48a",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "metrics",
+    "type": "const std::string&"
+  },
+  "value": ""
+}

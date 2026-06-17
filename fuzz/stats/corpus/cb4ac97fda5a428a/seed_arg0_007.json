@@ -1,0 +1,10 @@
+{
+  "target": "cb4ac97fda5a428a",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "maxHibernatedApps",
+    "type": "int32_t&"
+  },
+  "value": 99999999
+}

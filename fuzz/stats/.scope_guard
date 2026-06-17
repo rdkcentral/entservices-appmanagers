@@ -1,0 +1,2 @@
+All generated fuzz assets in this framework must remain under fuzz/stats only.
+If any stage writes outside this tree, fail the run.

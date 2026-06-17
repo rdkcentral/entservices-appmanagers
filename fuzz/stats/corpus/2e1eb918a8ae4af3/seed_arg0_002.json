@@ -1,0 +1,10 @@
+{
+  "target": "2e1eb918a8ae4af3",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "NotificationHandler"
+  },
+  "value": "x"
+}

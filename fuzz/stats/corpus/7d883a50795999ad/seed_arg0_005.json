@@ -1,0 +1,10 @@
+{
+  "target": "7d883a50795999ad",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "clientId",
+    "type": "const std::string&"
+  },
+  "value": "line1\nline2\tend"
+}

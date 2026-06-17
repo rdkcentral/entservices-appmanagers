@@ -1,0 +1,10 @@
+{
+  "target": "d545c9790eb102e6",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "appId",
+    "type": "const string&"
+  },
+  "value": "line1\nline2\tend"
+}

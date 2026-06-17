@@ -1,0 +1,10 @@
+{
+  "target": "a70f13077d22e2fb",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "Exchange::IAppManager"
+  },
+  "value": 0
+}

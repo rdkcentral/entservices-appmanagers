@@ -1,0 +1,8 @@
+{
+  "target": "dff4d860d23643ec",
+  "mode": "pairwise",
+  "left_index": 0,
+  "right_index": 1,
+  "left": "line1\nline2\tend",
+  "right": "invalid-mac-zz"
+}

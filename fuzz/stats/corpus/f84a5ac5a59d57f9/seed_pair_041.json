@@ -1,0 +1,8 @@
+{
+  "target": "f84a5ac5a59d57f9",
+  "mode": "pairwise",
+  "left_index": 0,
+  "right_index": 1,
+  "left": "line1\nline2\tend",
+  "right": -1
+}

@@ -1,0 +1,14 @@
+{
+  "target": "9ebaa19f1a87ba93",
+  "mode": "pairwise",
+  "left_index": 0,
+  "right_index": 1,
+  "left": {
+    "nested": {
+      "bad": 1
+    }
+  },
+  "right": {
+    "partial": true
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "target": "07f0362cb75a39c7",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "percent",
+    "type": "uint8_t"
+  },
+  "value": -1
+}

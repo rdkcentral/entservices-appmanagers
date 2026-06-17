@@ -1,0 +1,10 @@
+{
+  "target": "fc8b17b12e08a470",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "locator",
+    "type": "string"
+  },
+  "value": "eth999999"
+}

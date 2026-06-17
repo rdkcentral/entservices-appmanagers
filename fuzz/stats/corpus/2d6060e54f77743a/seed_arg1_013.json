@@ -1,0 +1,10 @@
+{
+  "target": "2d6060e54f77743a",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "errorReason",
+    "type": "string&"
+  },
+  "value": "!@#$%^&*()_+-=[]{};':,./<>?"
+}

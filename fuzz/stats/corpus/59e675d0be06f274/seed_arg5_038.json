@@ -1,0 +1,10 @@
+{
+  "target": "59e675d0be06f274",
+  "mode": "single-arg",
+  "arg_index": 5,
+  "arg": {
+    "name": "virtualWidth",
+    "type": "const uint32_t"
+  },
+  "value": 4294967295
+}

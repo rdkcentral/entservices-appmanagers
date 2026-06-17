@@ -1,0 +1,10 @@
+{
+  "target": "b6c65dd05b42f5fb",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "!",
+    "type": "fp"
+  },
+  "value": "x"
+}

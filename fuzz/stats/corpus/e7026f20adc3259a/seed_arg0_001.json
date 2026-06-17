@@ -1,0 +1,10 @@
+{
+  "target": "e7026f20adc3259a",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "mPackageManagerHandlerObject"
+  },
+  "value": 1
+}

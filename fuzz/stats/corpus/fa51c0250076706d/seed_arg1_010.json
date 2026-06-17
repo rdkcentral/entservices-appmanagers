@@ -1,0 +1,10 @@
+{
+  "target": "fa51c0250076706d",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "lockId",
+    "type": "uint32_t"
+  },
+  "value": 1
+}

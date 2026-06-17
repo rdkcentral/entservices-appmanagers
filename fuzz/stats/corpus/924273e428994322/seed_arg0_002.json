@@ -1,0 +1,12 @@
+{
+  "target": "924273e428994322",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "context",
+    "type": "ApplicationContext*"
+  },
+  "value": {
+    "partial": true
+  }
+}

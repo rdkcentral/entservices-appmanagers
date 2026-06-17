@@ -1,0 +1,10 @@
+{
+  "target": "ac4611fa33b30c2a",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "path",
+    "type": "const std::string"
+  },
+  "value": "00:00:00:00:00:00"
+}

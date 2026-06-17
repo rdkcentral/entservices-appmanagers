@@ -1,0 +1,10 @@
+{
+  "target": "e91e5c6aacd1ac6f",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "loaded",
+    "type": "bool&"
+  },
+  "value": true
+}

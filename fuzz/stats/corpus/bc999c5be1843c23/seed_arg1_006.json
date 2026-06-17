@@ -1,0 +1,10 @@
+{
+  "target": "bc999c5be1843c23",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "arg1",
+    "type": "mDownloadManagerImpl"
+  },
+  "value": "x"
+}

@@ -1,0 +1,10 @@
+{
+  "target": "2b7b857e2b206875",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "path",
+    "type": "const std::string&"
+  },
+  "value": "line1\nline2\tend"
+}

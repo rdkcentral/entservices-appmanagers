@@ -1,0 +1,10 @@
+{
+  "target": "dcc16062d43e7f57",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "Exchange::IRDKWindowManager"
+  },
+  "value": 1
+}

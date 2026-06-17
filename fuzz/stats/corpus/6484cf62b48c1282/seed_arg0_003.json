@@ -1,0 +1,10 @@
+{
+  "target": "6484cf62b48c1282",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "AppInfoManager::getInstance().exists(appId)",
+    "type": "!pkgVersion.empty() ||"
+  },
+  "value": null
+}

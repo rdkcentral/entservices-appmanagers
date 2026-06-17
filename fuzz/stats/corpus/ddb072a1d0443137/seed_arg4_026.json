@@ -1,0 +1,10 @@
+{
+  "target": "ddb072a1d0443137",
+  "mode": "single-arg",
+  "arg_index": 4,
+  "arg": {
+    "name": "errorReason",
+    "type": "const Exchange::IAppManager::AppErrorReason"
+  },
+  "value": 0
+}

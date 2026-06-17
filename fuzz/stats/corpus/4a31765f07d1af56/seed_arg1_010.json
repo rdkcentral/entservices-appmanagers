@@ -1,0 +1,10 @@
+{
+  "target": "4a31765f07d1af56",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "locator",
+    "type": "const string&"
+  },
+  "value": " "
+}

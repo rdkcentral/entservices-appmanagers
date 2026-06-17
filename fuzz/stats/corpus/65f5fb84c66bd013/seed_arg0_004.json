@@ -1,0 +1,10 @@
+{
+  "target": "65f5fb84c66bd013",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "apps",
+    "type": "std::string&"
+  },
+  "value": "!@#$%^&*()_+-=[]{};':,./<>?"
+}

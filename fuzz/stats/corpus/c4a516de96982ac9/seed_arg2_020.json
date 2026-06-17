@@ -1,0 +1,10 @@
+{
+  "target": "c4a516de96982ac9",
+  "mode": "single-arg",
+  "arg_index": 2,
+  "arg": {
+    "name": "rateLimit",
+    "type": "uint32_t"
+  },
+  "value": 4294967295
+}

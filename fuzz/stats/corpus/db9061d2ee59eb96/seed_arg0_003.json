@@ -1,0 +1,10 @@
+{
+  "target": "db9061d2ee59eb96",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "AppInfoManager::getInstance().exists(appId)"
+  },
+  "value": null
+}

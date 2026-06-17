@@ -1,0 +1,10 @@
+{
+  "target": "459d0581a3addd84",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "isTelemetryClientAvailable()",
+    "type": "stateFound &&"
+  },
+  "value": "x"
+}

@@ -1,0 +1,10 @@
+{
+  "target": "d75fb0b0e18d2a66",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "arg1",
+    "type": "Exchange::ILifecycleManager::LifecycleState::SUSPENDED"
+  },
+  "value": "x"
+}

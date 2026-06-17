@@ -1,0 +1,12 @@
+{
+  "target": "1244da659eb2d3f4",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "data",
+    "type": "JsonObject&"
+  },
+  "value": {
+    "k": 1
+  }
+}

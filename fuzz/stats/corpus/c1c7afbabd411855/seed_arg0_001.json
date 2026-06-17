@@ -1,0 +1,10 @@
+{
+  "target": "c1c7afbabd411855",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "PluginHost::IPlugin"
+  },
+  "value": 1
+}

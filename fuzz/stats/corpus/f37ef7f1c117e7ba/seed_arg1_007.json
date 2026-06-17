@@ -1,0 +1,10 @@
+{
+  "target": "f37ef7f1c117e7ba",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "arg1",
+    "type": "mLifecycleManagerStateNotification()"
+  },
+  "value": null
+}

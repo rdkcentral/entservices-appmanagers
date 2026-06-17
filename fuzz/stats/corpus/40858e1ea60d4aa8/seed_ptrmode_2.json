@@ -1,0 +1,6 @@
+{
+  "target": "40858e1ea60d4aa8",
+  "mode": "pointer-mode",
+  "pointer_mode": 2,
+  "note": "0=nullptr,1=invalid,2=valid"
+}

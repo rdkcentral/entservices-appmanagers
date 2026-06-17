@@ -1,0 +1,10 @@
+{
+  "target": "e336af4f5e2e384b",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "appId",
+    "type": "const string&"
+  },
+  "value": "invalid-mac-zz"
+}

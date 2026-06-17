@@ -1,0 +1,10 @@
+{
+  "target": "fce7ee4a83e898e7",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "n",
+    "type": "int"
+  },
+  "value": -1
+}

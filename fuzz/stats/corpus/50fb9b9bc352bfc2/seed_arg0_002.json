@@ -1,0 +1,10 @@
+{
+  "target": "50fb9b9bc352bfc2",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "updated"
+  },
+  "value": "x"
+}

@@ -1,0 +1,10 @@
+{
+  "target": "3abcbe496d0bb39c",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "pkg.state"
+  },
+  "value": "x"
+}

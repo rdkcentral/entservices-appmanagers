@@ -1,0 +1,10 @@
+{
+  "target": "6e8777f1be88526d",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "appsIds",
+    "type": "string"
+  },
+  "value": "invalid-mac-zz"
+}

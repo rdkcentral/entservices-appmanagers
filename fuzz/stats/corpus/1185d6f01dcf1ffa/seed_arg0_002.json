@@ -1,0 +1,10 @@
+{
+  "target": "1185d6f01dcf1ffa",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "_service(nullptr)",
+    "type": "):"
+  },
+  "value": "x"
+}

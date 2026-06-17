@@ -1,0 +1,10 @@
+{
+  "target": "429e42f081196a97",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "key",
+    "type": "const string&"
+  },
+  "value": " "
+}

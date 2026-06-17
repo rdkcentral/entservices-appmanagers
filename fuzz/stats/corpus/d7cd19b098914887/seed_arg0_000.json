@@ -1,0 +1,10 @@
+{
+  "target": "d7cd19b098914887",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "verbose",
+    "type": "const bool"
+  },
+  "value": true
+}

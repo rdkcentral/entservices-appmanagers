@@ -1,0 +1,10 @@
+{
+  "target": "dd2c73c07e3fb6f4",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "updated"
+  },
+  "value": "x"
+}

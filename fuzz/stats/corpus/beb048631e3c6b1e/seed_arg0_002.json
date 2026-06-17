@@ -1,0 +1,10 @@
+{
+  "target": "beb048631e3c6b1e",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "ptr",
+    "type": "void"
+  },
+  "value": "x"
+}

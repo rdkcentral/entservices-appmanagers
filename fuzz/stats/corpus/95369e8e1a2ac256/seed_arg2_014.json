@@ -1,0 +1,10 @@
+{
+  "target": "95369e8e1a2ac256",
+  "mode": "single-arg",
+  "arg_index": 2,
+  "arg": {
+    "name": "errorCode",
+    "type": "AppManagerImplementation::CurrentActionError"
+  },
+  "value": 1
+}

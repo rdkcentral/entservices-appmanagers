@@ -1,0 +1,10 @@
+{
+  "target": "40e94c214b29efe9",
+  "mode": "single-arg",
+  "arg_index": 1,
+  "arg": {
+    "name": "progress",
+    "type": "ProgressInfo"
+  },
+  "value": "x"
+}

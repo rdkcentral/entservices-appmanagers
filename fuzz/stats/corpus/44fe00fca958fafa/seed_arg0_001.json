@@ -1,0 +1,10 @@
+{
+  "target": "44fe00fca958fafa",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "context",
+    "type": "ApplicationContext*"
+  },
+  "value": {}
+}

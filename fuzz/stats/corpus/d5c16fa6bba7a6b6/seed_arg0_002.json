@@ -1,0 +1,10 @@
+{
+  "target": "d5c16fa6bba7a6b6",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "mAppManagerNotification",
+    "type": "auto& notification :"
+  },
+  "value": "x"
+}

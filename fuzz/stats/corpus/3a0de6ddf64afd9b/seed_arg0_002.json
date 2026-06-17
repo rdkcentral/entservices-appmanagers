@@ -1,0 +1,10 @@
+{
+  "target": "3a0de6ddf64afd9b",
+  "mode": "single-arg",
+  "arg_index": 0,
+  "arg": {
+    "name": "arg0",
+    "type": "(Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING"
+  },
+  "value": "x"
+}
