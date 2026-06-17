@@ -226,8 +226,8 @@ uint32_t Test_AM_CloseTerminateKillSendIntentEmptyIdRejected()
 
     L0Test::ExpectEqU32(fixture.tr, fixture.impl->CloseApp(std::string()), WPEFramework::Core::ERROR_GENERAL, "CloseApp() rejects empty app id");
     L0Test::ExpectEqU32(fixture.tr, fixture.impl->TerminateApp(std::string()), WPEFramework::Core::ERROR_GENERAL, "TerminateApp() rejects empty app id");
-    L0Test::ExpectEqU32(fixture.tr, fixture.impl->KillApp(std::string()), WPEFramework::Core::ERROR_NONE, "KillApp() remains stable for empty app id");
-    L0Test::ExpectEqU32(fixture.tr, fixture.impl->SendIntent(std::string(), std::string("intent")), WPEFramework::Core::ERROR_NONE, "SendIntent() with empty app id remains stable");
+    L0Test::ExpectEqU32(fixture.tr, fixture.impl->KillApp(std::string()), WPEFramework::Core::ERROR_GENERAL, "KillApp() rejects empty app id");
+    L0Test::ExpectEqU32(fixture.tr, fixture.impl->SendIntent(std::string(), std::string("intent")), WPEFramework::Core::ERROR_GENERAL, "SendIntent() rejects empty app id");
 
     return fixture.tr.failures;
 }
@@ -247,24 +247,50 @@ uint32_t Test_AM_GetAppPropertyAndSetAppPropertyInvalidInputs()
 
 uint32_t Test_AM_ClearAppDataAndClearAllAppDataWithoutDependencies()
 {
-    AppManagerTestFixture fixture;
+    L0Test::TestResult tr;
+    auto* impl = CreateImpl();
+    
+    // Create config WITHOUT storage manager to test error handling
+    L0Test::AppManagerServiceMock::Config cfg;
+    cfg.lifecycleManager = new L0Test::FakeLifecycleManager();
+    cfg.lifecycleManagerState = new L0Test::FakeLifecycleManagerState();
+    cfg.store2 = new L0Test::FakeStore2();
+    cfg.storageManager = nullptr;  // No storage manager
+    cfg.packageHandler = new L0Test::FakePackageHandler();
+    cfg.installer = new L0Test::FakePackageInstaller();
+    L0Test::AppManagerServiceMock service(cfg);
+    impl->Configure(&service);
 
-    L0Test::ExpectEqU32(fixture.tr, fixture.impl->ClearAppData(std::string()), WPEFramework::Core::ERROR_GENERAL, "ClearAppData() rejects empty app id");
-    L0Test::ExpectEqU32(fixture.tr, fixture.impl->ClearAllAppData(), WPEFramework::Core::ERROR_GENERAL, "ClearAllAppData() fails without storage manager");
+    L0Test::ExpectEqU32(tr, impl->ClearAppData(std::string()), WPEFramework::Core::ERROR_GENERAL, "ClearAppData() rejects empty app id");
+    L0Test::ExpectEqU32(tr, impl->ClearAllAppData(), WPEFramework::Core::ERROR_GENERAL, "ClearAllAppData() fails without storage manager");
 
-    return fixture.tr.failures;
+    impl->Release();
+    return tr.failures;
 }
 
 uint32_t Test_AM_GetLoadedAppsWithoutConnectorFails()
 {
-    AppManagerTestFixture fixture;
+    L0Test::TestResult tr;
+    auto* impl = CreateImpl();
+    
+    // Create config WITHOUT lifecycle manager to test error handling
+    L0Test::AppManagerServiceMock::Config cfg;
+    cfg.lifecycleManager = nullptr;  // No lifecycle manager
+    cfg.lifecycleManagerState = nullptr;
+    cfg.store2 = new L0Test::FakeStore2();
+    cfg.storageManager = new L0Test::FakeStorageManager();
+    cfg.packageHandler = new L0Test::FakePackageHandler();
+    cfg.installer = new L0Test::FakePackageInstaller();
+    L0Test::AppManagerServiceMock service(cfg);
+    impl->Configure(&service);
+    
     WPEFramework::Exchange::IAppManager::ILoadedAppInfoIterator* iterator = nullptr;
+    const auto result = impl->GetLoadedApps(iterator);
+    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL, "GetLoadedApps() fails without a lifecycle connector");
+    L0Test::ExpectTrue(tr, nullptr == iterator, "GetLoadedApps() leaves the iterator null on failure");
 
-    const auto result = fixture.impl->GetLoadedApps(iterator);
-    L0Test::ExpectEqU32(fixture.tr, result, WPEFramework::Core::ERROR_GENERAL, "GetLoadedApps() fails without a lifecycle connector");
-    L0Test::ExpectTrue(fixture.tr, nullptr == iterator, "GetLoadedApps() leaves the iterator null on failure");
-
-    return fixture.tr.failures;
+    impl->Release();
+    return tr.failures;
 }
 
 uint32_t Test_AM_GetInstalledAppsWithoutPackagesFailsOrEmpty()
@@ -309,14 +335,15 @@ uint32_t Test_AM_CheckInstallUninstallBlockWithoutPackages()
 {
     L0Test::TestResult tr;
     auto* impl = CreateImpl();
+    
+    // Configure with full service BEFORE calling any impl method
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    impl->Configure(&service);
 
     const bool blocked = impl->checkInstallUninstallBlock("app1");
     L0Test::ExpectTrue(tr, !blocked, "checkInstallUninstallBlock() returns false when no package manager exists");
 
-    // Configure with full mock to ensure proper cleanup in destructor
-    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
-    impl->Configure(&service);
-    impl->Release();
+    impl->Release();  // Release while service still alive
     return tr.failures;
 }
 
