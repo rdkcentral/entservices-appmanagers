@@ -73,17 +73,21 @@ struct AppManagerTestFixture {
     // Destructor: auto-cleanup to prevent leaks and crashes
     ~AppManagerTestFixture()
     {
-        // Check if impl was already configured (either by us or by the test manually)
-        // mCurrentservice is accessible via #define private public
-        if (impl->mCurrentservice == nullptr) {
-            // Not configured yet - configure now to avoid destructor crashes
+        // CRITICAL: Release impl FIRST, before any stack-allocated services in the test are destroyed
+        // If test used stack service, it's still alive at this point because C++ destroys in reverse order
+        // We must release impl BEFORE the test's stack service gets destroyed
+        if (impl->mCurrentservice != nullptr) {
+            // Already configured (either by us or by test) - just release
+            impl->Release();
+        } else {
+            // Not configured yet - configure then release to avoid destructor crashes
             service = new L0Test::AppManagerServiceMock(CreateFullServiceConfig());
             impl->Configure(service);
             ownsService = true;
+            impl->Release();
         }
-        impl->Release();
         
-        // Only delete service if we allocated it
+        // Only delete service if we allocated it (don't delete stack-allocated services from tests)
         if (ownsService) {
             delete service;
         }
@@ -176,16 +180,22 @@ uint32_t Test_AM_ConfigureWithNullServiceFails()
 
 uint32_t Test_AM_ConfigureWithValidServiceReturnsSuccess()
 {
-    AppManagerTestFixture fixture(false);  // Don't auto-configure, we're testing Configure() itself
-
+    L0Test::TestResult tr;
+    
+    // Create impl and service manually - can't use fixture because service is stack-allocated
+    auto* impl = CreateImpl();
     L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
-    const auto result = fixture.impl->Configure(&service);
-    L0Test::ExpectEqU32(fixture.tr, service.addRefCalls.load(), 2U, "Configure() calls AddRef on the shell for implementation and lifecycle connector ownership");
+    
+    const auto result = impl->Configure(&service);
+    L0Test::ExpectEqU32(tr, service.addRefCalls.load(), 2U, "Configure() calls AddRef on the shell for implementation and lifecycle connector ownership");
     if (result != WPEFramework::Core::ERROR_NONE) {
         std::cerr << "NOTE: Configure returned non-zero in the current environment: " << result << std::endl;
     }
 
-    return fixture.tr.failures;
+    // Release impl while service is still alive (before service goes out of scope)
+    impl->Release();
+    
+    return tr.failures;
 }
 
 uint32_t Test_AM_LaunchAppEmptyIdRejected()
