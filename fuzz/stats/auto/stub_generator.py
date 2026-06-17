@@ -238,8 +238,8 @@ const char* FakeAppIdentifier(void);
 
 #include "fuzz_stub_profiles.h"
 
-// Global stubs for undefined symbols
-int gCurrentFramerate = 60;
+// Global stubs for undefined symbols - weak to avoid ODR violations when linked multiple times
+__attribute__((weak)) int gCurrentFramerate = 60;
 
 FailureProfile CurrentProfile(void) {
     const char* env = getenv("STUB_PROFILE");
