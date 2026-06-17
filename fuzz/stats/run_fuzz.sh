@@ -35,7 +35,7 @@ done
 [[ -n "$REPO_ROOT" && -n "$BUILD_DIR" ]] || { usage; exit 1; }
 
 RESULTS_DIR="${REPO_ROOT}/fuzz/stats/results"
-CRASH_DIR="${REPO_ROOT}/fuzz/stats/crashes"
+CRASH_DIR="${RESULTS_DIR}/crashes"
 mkdir -p "$RESULTS_DIR" "$CRASH_DIR"
 
 targets=()
