@@ -199,8 +199,11 @@ jobs:
       - name: Verify clang libFuzzer support
         run: |
           clang --version
-          printf 'int main(){}' | clang -x c - \
-            -fsanitize=fuzzer,address,undefined -o /tmp/fuzz_probe
+          # Probe: libFuzzer provides its own main(), so we must provide LLVMFuzzerTestOneInput
+          printf '#include <stdint.h>\n#include <stddef.h>\nextern "C" int LLVMFuzzerTestOneInput(const uint8_t *d, size_t s){return 0;}' \
+            | clang++ -x c++ - \
+              -fsanitize=fuzzer,address,undefined \
+              -o /tmp/fuzz_probe
           echo "libFuzzer+ASan+UBSan probe compiled successfully"
           rm -f /tmp/fuzz_probe
 
