@@ -271,17 +271,27 @@ jobs:
           if [[ -f "fuzz/stats/auto/CMakeLists.txt" ]]; then
             head -40 fuzz/stats/auto/CMakeLists.txt
             echo "..."
+            # Show the add_executable lines
+            grep "add_executable" fuzz/stats/auto/CMakeLists.txt | head -15
+            echo "..."
             tail -40 fuzz/stats/auto/CMakeLists.txt
           else
             echo "CMakeLists.txt not found"
           fi
           echo ""
           echo "=== Generated harness files ===" 
-          ls -la fuzz/stats/auto/generated/ | head -20
+          if [[ -d "fuzz/stats/auto/generated" ]]; then
+            ls -la fuzz/stats/auto/generated/ | head -20
+            echo "Total harnesses: $(ls -1 fuzz/stats/auto/generated/*.cpp 2>/dev/null | wc -l)"
+          else
+            echo "No generated directory"
+          fi
           echo ""
-          echo "=== Build directory ===" 
-          if [[ -d "fuzz/stats/build" ]]; then
-            ls -la fuzz/stats/build/ | head -20
+          echo "=== Build log (last 100 lines) ===" 
+          if [[ -f "fuzz/stats/build/CMakeFiles/CMakeOutput.log" ]]; then
+            tail -100 fuzz/stats/build/CMakeFiles/CMakeOutput.log
+          elif [[ -d "fuzz/stats/build" ]]; then
+            ls -la fuzz/stats/build/
           fi
 
       # ── 5. Summarise results in the workflow log ────────────────────────
