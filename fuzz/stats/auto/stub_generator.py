@@ -238,6 +238,9 @@ const char* FakeAppIdentifier(void);
 
 #include "fuzz_stub_profiles.h"
 
+// Global stubs for undefined symbols
+int gCurrentFramerate = 60;
+
 FailureProfile CurrentProfile(void) {
     const char* env = getenv("STUB_PROFILE");
     if (env == NULL) {
