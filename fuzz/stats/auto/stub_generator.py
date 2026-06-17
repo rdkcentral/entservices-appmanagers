@@ -222,6 +222,7 @@ int ShouldFailAllocation(void);
 int ShouldTimeout(void);
 int ShouldReturnNull(void);
 const char* FakeAppIdentifier(void);
+extern int gCurrentFramerate;
 
 #ifdef __cplusplus
 }  /* extern "C" */
@@ -237,9 +238,6 @@ const char* FakeAppIdentifier(void);
 #include <string.h>
 
 #include "fuzz_stub_profiles.h"
-
-// Global stubs for undefined symbols - weak to avoid ODR violations when linked multiple times
-__attribute__((weak)) int gCurrentFramerate = 60;
 
 FailureProfile CurrentProfile(void) {
     const char* env = getenv("STUB_PROFILE");
@@ -268,6 +266,19 @@ int ShouldReturnNull(void) {
 const char* FakeAppIdentifier(void) {
     return "org.rdk.fuzz.auto.generated";
 }
+""",
+        encoding="utf-8",
+    )
+
+
+def write_global_stubs(stubs_dir: Path) -> None:
+    """Write global symbol definitions that are defined weakly to avoid ODR issues."""
+    globals_source = stubs_dir / "fuzz_global_stubs.c"
+    
+    globals_source.write_text(
+        """// Global symbols defined weakly to be available across all fuzz targets without ODR violations
+// Weak symbols allow multiple object files to provide the same definition; linker picks one
+__attribute__((weak)) int gCurrentFramerate = 60;
 """,
         encoding="utf-8",
     )
@@ -1806,6 +1817,7 @@ def main() -> None:
     includes = collect_includes(repo_root, include_scope)
     missing = resolve_missing_headers(repo_root, dep_root, includes, include_scope)
     write_profile_stubs(out_dir)
+    write_global_stubs(out_dir)
     purge_collected_include_entries(out_dir, includes)
     create_plugin_stubs(out_dir)
     write_missing_header_stubs(out_dir, missing)

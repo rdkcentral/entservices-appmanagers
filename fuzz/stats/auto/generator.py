@@ -987,6 +987,8 @@ def generate_cmake(
         )
 
     stubs_sources = sorted(str(p.relative_to(repo_root / "fuzz" / "stats" / "auto")) for p in stubs_dir.glob("*.c"))
+    global_stubs = [s for s in stubs_sources if "fuzz_global_stubs" in s]
+    profile_stubs = [s for s in stubs_sources if "fuzz_global_stubs" not in s]
 
     lines = [
         "cmake_minimum_required(VERSION 3.16)",
@@ -1079,7 +1081,7 @@ def generate_cmake(
         lines.append("set(APP_MANAGER_SOURCES)")
 
     lines.append("set(STUB_SOURCES")
-    for src in stubs_sources:
+    for src in profile_stubs:
         lines.append(f"  ${{CMAKE_SOURCE_DIR}}/{src}")
     lines.append(")")
     lines.append("add_library(appmanager_fuzz_stub_support OBJECT ${STUB_SOURCES})")
@@ -1088,6 +1090,16 @@ def generate_cmake(
     lines.append("  target_link_libraries(appmanager_fuzz_stub_support PRIVATE ${FUZZ_OPTIONAL_LIBS})")
     lines.append("endif()")
     lines.append("")
+    
+    # Create static library for global stubs (linked once into each executable, not into libraries)
+    if global_stubs:
+        lines.append("set(GLOBAL_STUB_SOURCES")
+        for src in global_stubs:
+            lines.append(f"  ${{CMAKE_SOURCE_DIR}}/{src}")
+        lines.append(")")
+        lines.append("add_library(appmanager_fuzz_global_stubs STATIC ${GLOBAL_STUB_SOURCES})")
+        lines.append("set_target_properties(appmanager_fuzz_global_stubs PROPERTIES POSITION_INDEPENDENT_CODE ON)")
+        lines.append("")
 
     for folder, sources in sorted(folder_sources.items()):
         folder_id = safe_cpp_identifier(folder).lower()
@@ -1124,6 +1136,9 @@ def generate_cmake(
                 "endif()",
                 "if(FUZZ_OPTIONAL_LIBS)",
                 f"  target_link_libraries(fuzz_{key} PRIVATE ${{FUZZ_OPTIONAL_LIBS}})",
+                "endif()",
+                "if(TARGET appmanager_fuzz_global_stubs)",
+                f"  target_link_libraries(fuzz_{key} PRIVATE appmanager_fuzz_global_stubs)",
                 "endif()",
                 f"set_target_properties(fuzz_{key} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${{CMAKE_BINARY_DIR}}/bin)",
                 "",
