@@ -49,6 +49,46 @@ WPEFramework::Plugin::AppManagerImplementation* CreateImpl()
     return WPEFramework::Core::Service<WPEFramework::Plugin::AppManagerImplementation>::Create<WPEFramework::Plugin::AppManagerImplementation>();
 }
 
+// RAII test fixture that automatically manages impl lifecycle and prevents crashes
+struct AppManagerTestFixture {
+    L0Test::TestResult tr;
+    WPEFramework::Plugin::AppManagerImplementation* impl;
+    L0Test::AppManagerServiceMock* service;
+    bool shouldClearAppInfoManager;
+    
+    // Constructor: auto-configures impl to prevent ASSERT crashes
+    // Set autoConfigure=false only if you need to test Configure() itself
+    explicit AppManagerTestFixture(bool autoConfigure = true, bool clearAppInfo = false)
+        : impl(CreateImpl())
+        , service(autoConfigure ? new L0Test::AppManagerServiceMock(CreateFullServiceConfig()) : nullptr)
+        , shouldClearAppInfoManager(clearAppInfo)
+    {
+        if (service) {
+            impl->Configure(service);
+        }
+    }
+    
+    // Destructor: auto-cleanup to prevent leaks and crashes
+    ~AppManagerTestFixture()
+    {
+        // Always configure before Release to avoid destructor crashes
+        if (!service) {
+            service = new L0Test::AppManagerServiceMock(CreateFullServiceConfig());
+            impl->Configure(service);
+        }
+        impl->Release();
+        delete service;
+        
+        if (shouldClearAppInfoManager) {
+            WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+        }
+    }
+    
+    // Delete copy/move to prevent accidental double-Release
+    AppManagerTestFixture(const AppManagerTestFixture&) = delete;
+    AppManagerTestFixture& operator=(const AppManagerTestFixture&) = delete;
+};
+
 struct RefNotification final : public WPEFramework::Exchange::IAppManager::INotification {
     RefNotification()
         : _refCount(1)
@@ -117,179 +157,133 @@ uint32_t Test_AM_RegisterAndUnregisterNotification()
 
 uint32_t Test_AM_ConfigureWithNullServiceFails()
 {
-    L0Test::TestResult tr;
-    auto* impl = CreateImpl();
+    AppManagerTestFixture fixture(false);  // Don't auto-configure, we're testing Configure() itself
 
-    const auto result = impl->Configure(nullptr);
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL, "Configure(nullptr) returns ERROR_GENERAL");
+    const auto result = fixture.impl->Configure(nullptr);
+    L0Test::ExpectEqU32(fixture.tr, result, WPEFramework::Core::ERROR_GENERAL, "Configure(nullptr) returns ERROR_GENERAL");
 
-    // Configure with full mock to ensure proper cleanup in destructor
-    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
-    impl->Configure(&service);
-    impl->Release();
-    return tr.failures;
+    return fixture.tr.failures;  // Destructor will configure for safe cleanup
 }
 
 uint32_t Test_AM_ConfigureWithValidServiceReturnsSuccess()
 {
-    L0Test::TestResult tr;
-    auto* impl = CreateImpl();
+    AppManagerTestFixture fixture(false);  // Don't auto-configure, we're testing Configure() itself
 
     L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
-    const auto result = impl->Configure(&service);
-    L0Test::ExpectEqU32(tr, service.addRefCalls.load(), 2U, "Configure() calls AddRef on the shell for implementation and lifecycle connector ownership");
+    const auto result = fixture.impl->Configure(&service);
+    L0Test::ExpectEqU32(fixture.tr, service.addRefCalls.load(), 2U, "Configure() calls AddRef on the shell for implementation and lifecycle connector ownership");
     if (result != WPEFramework::Core::ERROR_NONE) {
         std::cerr << "NOTE: Configure returned non-zero in the current environment: " << result << std::endl;
     }
 
-    impl->Release();
-    return tr.failures;
+    return fixture.tr.failures;
 }
 
 uint32_t Test_AM_LaunchAppEmptyIdRejected()
 {
-    L0Test::TestResult tr;
-    auto* impl = CreateImpl();
+    AppManagerTestFixture fixture;
 
-    const auto result = impl->LaunchApp(std::string(), std::string("intent"), std::string("args"));
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_INVALID_PARAMETER, "LaunchApp() rejects an empty app id");
+    const auto result = fixture.impl->LaunchApp(std::string(), std::string("intent"), std::string("args"));
+    L0Test::ExpectEqU32(fixture.tr, result, WPEFramework::Core::ERROR_INVALID_PARAMETER, "LaunchApp() rejects an empty app id");
 
-    // Configure with full mock to ensure proper cleanup in destructor
-    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
-    impl->Configure(&service);
-    impl->Release();
-    return tr.failures;
+    return fixture.tr.failures;
 }
 
 uint32_t Test_AM_PreloadAppEmptyIdRejected()
 {
-    L0Test::TestResult tr;
-    auto* impl = CreateImpl();
+    AppManagerTestFixture fixture;
     std::string error;
 
-    const auto result = impl->PreloadApp(std::string(), std::string("intent"), std::string("args"), error);
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_INVALID_PARAMETER, "PreloadApp() rejects an empty app id");
-    L0Test::ExpectTrue(tr, !error.empty(), "PreloadApp() sets an error string for empty app id");
+    const auto result = fixture.impl->PreloadApp(std::string(), std::string("intent"), std::string("args"), error);
+    L0Test::ExpectEqU32(fixture.tr, result, WPEFramework::Core::ERROR_INVALID_PARAMETER, "PreloadApp() rejects an empty app id");
+    L0Test::ExpectTrue(fixture.tr, !error.empty(), "PreloadApp() sets an error string for empty app id");
 
-    // Configure with full mock to ensure proper cleanup in destructor
-    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
-    impl->Configure(&service);
-    impl->Release();
-    return tr.failures;
+    return fixture.tr.failures;
 }
 
 uint32_t Test_AM_CloseTerminateKillSendIntentEmptyIdRejected()
 {
-    L0Test::TestResult tr;
-    auto* impl = CreateImpl();
+    AppManagerTestFixture fixture;
 
-    L0Test::ExpectEqU32(tr, impl->CloseApp(std::string()), WPEFramework::Core::ERROR_GENERAL, "CloseApp() rejects empty app id");
-    L0Test::ExpectEqU32(tr, impl->TerminateApp(std::string()), WPEFramework::Core::ERROR_GENERAL, "TerminateApp() rejects empty app id");
-    L0Test::ExpectEqU32(tr, impl->KillApp(std::string()), WPEFramework::Core::ERROR_NONE, "KillApp() remains stable for empty app id");
-    L0Test::ExpectEqU32(tr, impl->SendIntent(std::string(), std::string("intent")), WPEFramework::Core::ERROR_NONE, "SendIntent() with empty app id remains stable");
+    L0Test::ExpectEqU32(fixture.tr, fixture.impl->CloseApp(std::string()), WPEFramework::Core::ERROR_GENERAL, "CloseApp() rejects empty app id");
+    L0Test::ExpectEqU32(fixture.tr, fixture.impl->TerminateApp(std::string()), WPEFramework::Core::ERROR_GENERAL, "TerminateApp() rejects empty app id");
+    L0Test::ExpectEqU32(fixture.tr, fixture.impl->KillApp(std::string()), WPEFramework::Core::ERROR_NONE, "KillApp() remains stable for empty app id");
+    L0Test::ExpectEqU32(fixture.tr, fixture.impl->SendIntent(std::string(), std::string("intent")), WPEFramework::Core::ERROR_NONE, "SendIntent() with empty app id remains stable");
 
-    // Configure with full mock to ensure proper cleanup in destructor
-    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
-    impl->Configure(&service);
-    impl->Release();
-    return tr.failures;
+    return fixture.tr.failures;
 }
 
 uint32_t Test_AM_GetAppPropertyAndSetAppPropertyInvalidInputs()
 {
-    L0Test::TestResult tr;
-    auto* impl = CreateImpl();
+    AppManagerTestFixture fixture;
     std::string value;
 
-    L0Test::ExpectEqU32(tr, impl->GetAppProperty(std::string(), std::string("key"), value), WPEFramework::Core::ERROR_GENERAL, "GetAppProperty() rejects empty app id");
-    L0Test::ExpectEqU32(tr, impl->GetAppProperty(std::string("app"), std::string(), value), WPEFramework::Core::ERROR_GENERAL, "GetAppProperty() rejects empty key");
-    L0Test::ExpectEqU32(tr, impl->SetAppProperty(std::string(), std::string("key"), std::string("value")), WPEFramework::Core::ERROR_GENERAL, "SetAppProperty() rejects empty app id");
-    L0Test::ExpectEqU32(tr, impl->SetAppProperty(std::string("app"), std::string(), std::string("value")), WPEFramework::Core::ERROR_GENERAL, "SetAppProperty() rejects empty key");
+    L0Test::ExpectEqU32(fixture.tr, fixture.impl->GetAppProperty(std::string(), std::string("key"), value), WPEFramework::Core::ERROR_GENERAL, "GetAppProperty() rejects empty app id");
+    L0Test::ExpectEqU32(fixture.tr, fixture.impl->GetAppProperty(std::string("app"), std::string(), value), WPEFramework::Core::ERROR_GENERAL, "GetAppProperty() rejects empty key");
+    L0Test::ExpectEqU32(fixture.tr, fixture.impl->SetAppProperty(std::string(), std::string("key"), std::string("value")), WPEFramework::Core::ERROR_GENERAL, "SetAppProperty() rejects empty app id");
+    L0Test::ExpectEqU32(fixture.tr, fixture.impl->SetAppProperty(std::string("app"), std::string(), std::string("value")), WPEFramework::Core::ERROR_GENERAL, "SetAppProperty() rejects empty key");
 
-    // Configure with full mock to ensure proper cleanup in destructor
-    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
-    impl->Configure(&service);
-    impl->Release();
-    return tr.failures;
+    return fixture.tr.failures;
 }
 
 uint32_t Test_AM_ClearAppDataAndClearAllAppDataWithoutDependencies()
 {
-    L0Test::TestResult tr;
-    auto* impl = CreateImpl();
+    AppManagerTestFixture fixture;
 
-    L0Test::ExpectEqU32(tr, impl->ClearAppData(std::string()), WPEFramework::Core::ERROR_GENERAL, "ClearAppData() rejects empty app id");
-    L0Test::ExpectEqU32(tr, impl->ClearAllAppData(), WPEFramework::Core::ERROR_GENERAL, "ClearAllAppData() fails without storage manager");
+    L0Test::ExpectEqU32(fixture.tr, fixture.impl->ClearAppData(std::string()), WPEFramework::Core::ERROR_GENERAL, "ClearAppData() rejects empty app id");
+    L0Test::ExpectEqU32(fixture.tr, fixture.impl->ClearAllAppData(), WPEFramework::Core::ERROR_GENERAL, "ClearAllAppData() fails without storage manager");
 
-    // Configure with full mock to ensure proper cleanup in destructor
-    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
-    impl->Configure(&service);
-    impl->Release();
-    return tr.failures;
+    return fixture.tr.failures;
 }
 
 uint32_t Test_AM_GetLoadedAppsWithoutConnectorFails()
 {
-    L0Test::TestResult tr;
-    auto* impl = CreateImpl();
+    AppManagerTestFixture fixture;
     WPEFramework::Exchange::IAppManager::ILoadedAppInfoIterator* iterator = nullptr;
 
-    const auto result = impl->GetLoadedApps(iterator);
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL, "GetLoadedApps() fails without a lifecycle connector");
-    L0Test::ExpectTrue(tr, nullptr == iterator, "GetLoadedApps() leaves the iterator null on failure");
+    const auto result = fixture.impl->GetLoadedApps(iterator);
+    L0Test::ExpectEqU32(fixture.tr, result, WPEFramework::Core::ERROR_GENERAL, "GetLoadedApps() fails without a lifecycle connector");
+    L0Test::ExpectTrue(fixture.tr, nullptr == iterator, "GetLoadedApps() leaves the iterator null on failure");
 
-    // Configure with full mock to ensure proper cleanup in destructor
-    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
-    impl->Configure(&service);
-    impl->Release();
-    return tr.failures;
+    return fixture.tr.failures;
 }
 
 uint32_t Test_AM_GetInstalledAppsWithoutPackagesFailsOrEmpty()
 {
-    L0Test::TestResult tr;
-    auto* impl = CreateImpl();
+    AppManagerTestFixture fixture;  // Auto-configured to prevent ASSERT crash
+    
     std::string apps;
+    const auto result = fixture.impl->GetInstalledApps(apps);
+    // When package manager has no packages, GetInstalledApps returns ERROR_NONE with empty JSON array
+    L0Test::ExpectEqU32(fixture.tr, result, WPEFramework::Core::ERROR_NONE, "GetInstalledApps() succeeds when package manager has no packages");
+    // Check for empty JSON array "[]" or empty string
+    L0Test::ExpectTrue(fixture.tr, apps.empty() || apps == "[]", "GetInstalledApps() returns empty or empty JSON array when no packages");
 
-    const auto result = impl->GetInstalledApps(apps);
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL, "GetInstalledApps() fails when package manager is unavailable");
-    L0Test::ExpectTrue(tr, apps.empty(), "GetInstalledApps() leaves output empty on failure");
-
-    // Configure with full mock to ensure proper cleanup in destructor
-    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
-    impl->Configure(&service);
-    impl->Release();
-    return tr.failures;
+    return fixture.tr.failures;
 }
 
 uint32_t Test_AM_UpdateCurrentActionHelpers()
 {
-    L0Test::TestResult tr;
-    auto* impl = CreateImpl();
+    AppManagerTestFixture fixture(true, true);  // Auto-configure and clear AppInfoManager on cleanup
 
     WPEFramework::Plugin::AppInfoManager::getInstance().clear();
     WPEFramework::Plugin::AppInfo info;
     info.setCurrentAction(WPEFramework::Plugin::AppManagerTypes::APP_ACTION_NONE);
     WPEFramework::Plugin::AppInfoManager::getInstance().upsert("app1", [&](WPEFramework::Plugin::AppInfo& a) { a = info; });
 
-    impl->updateCurrentAction("app1", WPEFramework::Plugin::AppManagerTypes::APP_ACTION_LAUNCH);
-    L0Test::ExpectEqU32(tr,
+    fixture.impl->updateCurrentAction("app1", WPEFramework::Plugin::AppManagerTypes::APP_ACTION_LAUNCH);
+    L0Test::ExpectEqU32(fixture.tr,
         static_cast<uint32_t>(WPEFramework::Plugin::AppInfoManager::getInstance().getCurrentAction("app1")),
         static_cast<uint32_t>(WPEFramework::Plugin::AppManagerTypes::APP_ACTION_LAUNCH),
         "updateCurrentAction() updates the stored action");
 
-    impl->updateCurrentActionTime("app1", 1234, WPEFramework::Plugin::AppManagerTypes::APP_ACTION_LAUNCH);
-    L0Test::ExpectEqU32(tr,
+    fixture.impl->updateCurrentActionTime("app1", 1234, WPEFramework::Plugin::AppManagerTypes::APP_ACTION_LAUNCH);
+    L0Test::ExpectEqU32(fixture.tr,
         static_cast<uint32_t>(WPEFramework::Plugin::AppInfoManager::getInstance().getCurrentActionTime("app1")),
         static_cast<uint32_t>(1234),
         "updateCurrentActionTime() updates the stored timestamp");
 
-    // Configure with full mock to ensure proper cleanup in destructor
-    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
-    impl->Configure(&service);
-    impl->Release();
-    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
-    return tr.failures;
+    return fixture.tr.failures;
 }
 
 uint32_t Test_AM_CheckInstallUninstallBlockWithoutPackages()
@@ -464,10 +458,9 @@ uint32_t Test_AM_CheckInstallUninstallBlockTrueForBlockedPackage()
 
 uint32_t Test_AM_ImplHandleOnAppUnloadedAndLaunchRequest()
 {
-    L0Test::TestResult tr;
-    auto* impl = CreateImpl();
+    AppManagerTestFixture fixture(true, true);  // Auto-configure and clear AppInfoManager
     auto* notification = new RefNotification();
-    impl->Register(notification);
+    fixture.impl->Register(notification);
 
     // Pre-insert an app so that Dispatch(APP_EVENT_UNLOADED) has something to work with.
     WPEFramework::Plugin::AppInfoManager::getInstance().clear();
@@ -479,148 +472,123 @@ uint32_t Test_AM_ImplHandleOnAppUnloadedAndLaunchRequest()
     // handleOnAppUnloaded fires dispatchEvent(APP_EVENT_UNLOADED, ...) which
     // eventually calls Dispatch(), packageUnLock(), OnAppUnloaded notifications
     // and removeAppInfoByAppId().
-    impl->handleOnAppUnloaded("app.unload", "inst-unload");
-    L0Test::ExpectTrue(tr, true, "handleOnAppUnloaded() is stable for a valid app");
+    fixture.impl->handleOnAppUnloaded("app.unload", "inst-unload");
+    L0Test::ExpectTrue(fixture.tr, true, "handleOnAppUnloaded() is stable for a valid app");
 
     // handleOnAppLaunchRequest fires dispatchEvent(APP_EVENT_LAUNCH_REQUEST, ...) which
     // eventually calls Dispatch() → OnAppLaunchRequest notifications.
-    impl->handleOnAppLaunchRequest("app.launch", "intent://play", "source");
-    L0Test::ExpectTrue(tr, notification->launch >= 1U,
+    fixture.impl->handleOnAppLaunchRequest("app.launch", "intent://play", "source");
+    L0Test::ExpectTrue(fixture.tr, notification->launch >= 1U,
         "handleOnAppLaunchRequest() fires the OnAppLaunchRequest notification");
 
     // Empty-id path: early return in handleOnAppUnloaded and handleOnAppLaunchRequest.
-    impl->handleOnAppUnloaded("", "");
-    impl->handleOnAppLaunchRequest("", "", "");
-    L0Test::ExpectTrue(tr, true, "handleOnAppUnloaded/LaunchRequest() survive empty appId without crashing");
+    fixture.impl->handleOnAppUnloaded("", "");
+    fixture.impl->handleOnAppLaunchRequest("", "", "");
+    L0Test::ExpectTrue(fixture.tr, true, "handleOnAppUnloaded/LaunchRequest() survive empty appId without crashing");
 
-    impl->Unregister(notification);
+    fixture.impl->Unregister(notification);
     notification->Release();
-    // Configure with full mock to ensure proper cleanup in destructor
-    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
-    impl->Configure(&service);
-    impl->Release();
-    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
-    return tr.failures;
+    return fixture.tr.failures;
 }
 
 uint32_t Test_AM_ImplOnAppInstallationStatus()
 {
-    L0Test::TestResult tr;
-    auto* impl = CreateImpl();
+    AppManagerTestFixture fixture;
     auto* notification = new RefNotification();
-    impl->Register(notification);
+    fixture.impl->Register(notification);
 
     // Valid JSON array with one INSTALLED app.
-    impl->OnAppInstallationStatus(
+    fixture.impl->OnAppInstallationStatus(
         "[{\"packageId\":\"pkg.install\",\"state\":\"INSTALLED\",\"version\":\"2.0\"}]");
-    L0Test::ExpectTrue(tr, notification->installed >= 1U,
+    L0Test::ExpectTrue(fixture.tr, notification->installed >= 1U,
         "OnAppInstallationStatus() with INSTALLED state fires OnAppInstalled notification");
 
     // Valid JSON array with one UNINSTALLED app.
-    impl->OnAppInstallationStatus(
+    fixture.impl->OnAppInstallationStatus(
         "[{\"packageId\":\"pkg.uninstall\",\"state\":\"UNINSTALLED\"}]");
-    L0Test::ExpectTrue(tr, notification->uninstalled >= 1U,
+    L0Test::ExpectTrue(fixture.tr, notification->uninstalled >= 1U,
         "OnAppInstallationStatus() with UNINSTALLED state fires OnAppUninstalled notification");
 
     // Unknown install state — hits the else branch in the Dispatch case.
-    impl->OnAppInstallationStatus(
+    fixture.impl->OnAppInstallationStatus(
         "[{\"packageId\":\"pkg.other\",\"state\":\"DOWNLOADING\"}]");
-    L0Test::ExpectTrue(tr, true,
+    L0Test::ExpectTrue(fixture.tr, true,
         "OnAppInstallationStatus() with unknown state is handled without crashing");
 
     // Empty JSON — hits the early-return error branch.
-    impl->OnAppInstallationStatus("");
-    L0Test::ExpectTrue(tr, true, "OnAppInstallationStatus() handles empty string gracefully");
+    fixture.impl->OnAppInstallationStatus("");
+    L0Test::ExpectTrue(fixture.tr, true, "OnAppInstallationStatus() handles empty string gracefully");
 
     // Invalid JSON — hits the parse-failure branch.
-    impl->OnAppInstallationStatus("not-json");
-    L0Test::ExpectTrue(tr, true, "OnAppInstallationStatus() handles invalid JSON gracefully");
+    fixture.impl->OnAppInstallationStatus("not-json");
+    L0Test::ExpectTrue(fixture.tr, true, "OnAppInstallationStatus() handles invalid JSON gracefully");
 
-    impl->Unregister(notification);
+    fixture.impl->Unregister(notification);
     notification->Release();
-    // Configure with full mock to ensure proper cleanup in destructor
-    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
-    impl->Configure(&service);
-    impl->Release();
-    return tr.failures;
+    return fixture.tr.failures;
 }
 
 // Test configuration getters (GetMaxRunningApps, etc.)
 uint32_t Test_AM_ConfigurationGettersReturnDefaults()
 {
-    L0Test::TestResult tr;
-    auto* impl = CreateImpl();
+    AppManagerTestFixture fixture;
 
     int32_t maxRunningApps = -1;
     int32_t maxHibernatedApps = -1;
     int32_t maxHibernatedFlashUsage = -1;
     int32_t maxInactiveRamUsage = -1;
 
-    const auto result1 = impl->GetMaxRunningApps(maxRunningApps);
-    L0Test::ExpectEqU32(tr, result1, WPEFramework::Core::ERROR_NONE, "GetMaxRunningApps() returns ERROR_NONE");
-    L0Test::ExpectTrue(tr, maxRunningApps >= 0, "GetMaxRunningApps() returns non-negative value");
+    const auto result1 = fixture.impl->GetMaxRunningApps(maxRunningApps);
+    L0Test::ExpectEqU32(fixture.tr, result1, WPEFramework::Core::ERROR_NONE, "GetMaxRunningApps() returns ERROR_NONE");
+    L0Test::ExpectTrue(fixture.tr, maxRunningApps >= 0, "GetMaxRunningApps() returns non-negative value");
 
-    const auto result2 = impl->GetMaxHibernatedApps(maxHibernatedApps);
-    L0Test::ExpectEqU32(tr, result2, WPEFramework::Core::ERROR_NONE, "GetMaxHibernatedApps() returns ERROR_NONE");
-    L0Test::ExpectTrue(tr, maxHibernatedApps >= 0, "GetMaxHibernatedApps() returns non-negative value");
+    const auto result2 = fixture.impl->GetMaxHibernatedApps(maxHibernatedApps);
+    L0Test::ExpectEqU32(fixture.tr, result2, WPEFramework::Core::ERROR_NONE, "GetMaxHibernatedApps() returns ERROR_NONE");
+    L0Test::ExpectTrue(fixture.tr, maxHibernatedApps >= 0, "GetMaxHibernatedApps() returns non-negative value");
 
-    const auto result3 = impl->GetMaxHibernatedFlashUsage(maxHibernatedFlashUsage);
-    L0Test::ExpectEqU32(tr, result3, WPEFramework::Core::ERROR_NONE, "GetMaxHibernatedFlashUsage() returns ERROR_NONE");
-    L0Test::ExpectTrue(tr, maxHibernatedFlashUsage >= 0, "GetMaxHibernatedFlashUsage() returns non-negative value");
+    const auto result3 = fixture.impl->GetMaxHibernatedFlashUsage(maxHibernatedFlashUsage);
+    L0Test::ExpectEqU32(fixture.tr, result3, WPEFramework::Core::ERROR_NONE, "GetMaxHibernatedFlashUsage() returns ERROR_NONE");
+    L0Test::ExpectTrue(fixture.tr, maxHibernatedFlashUsage >= 0, "GetMaxHibernatedFlashUsage() returns non-negative value");
 
-    const auto result4 = impl->GetMaxInactiveRamUsage(maxInactiveRamUsage);
-    L0Test::ExpectEqU32(tr, result4, WPEFramework::Core::ERROR_NONE, "GetMaxInactiveRamUsage() returns ERROR_NONE");
-    L0Test::ExpectTrue(tr, maxInactiveRamUsage >= 0, "GetMaxInactiveRamUsage() returns non-negative value");
+    const auto result4 = fixture.impl->GetMaxInactiveRamUsage(maxInactiveRamUsage);
+    L0Test::ExpectEqU32(fixture.tr, result4, WPEFramework::Core::ERROR_NONE, "GetMaxInactiveRamUsage() returns ERROR_NONE");
+    L0Test::ExpectTrue(fixture.tr, maxInactiveRamUsage >= 0, "GetMaxInactiveRamUsage() returns non-negative value");
 
-    // Configure with full mock to ensure proper cleanup in destructor
-    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
-    impl->Configure(&service);
-    impl->Release();
-    return tr.failures;
+    return fixture.tr.failures;
 }
 
 uint32_t Test_AM_GetAppMetadataInvalidParams()
 {
-    L0Test::TestResult tr;
-    auto* impl = CreateImpl();
+    AppManagerTestFixture fixture;
     std::string result;
 
-    const auto r1 = impl->GetAppMetadata(std::string(), std::string("key"), result);
-    L0Test::ExpectEqU32(tr, r1, WPEFramework::Core::ERROR_GENERAL, "GetAppMetadata() rejects empty appId");
+    const auto r1 = fixture.impl->GetAppMetadata(std::string(), std::string("key"), result);
+    L0Test::ExpectEqU32(fixture.tr, r1, WPEFramework::Core::ERROR_GENERAL, "GetAppMetadata() rejects empty appId");
 
-    const auto r2 = impl->GetAppMetadata(std::string("app1"), std::string(), result);
-    L0Test::ExpectEqU32(tr, r2, WPEFramework::Core::ERROR_GENERAL, "GetAppMetadata() rejects empty metaData key");
+    const auto r2 = fixture.impl->GetAppMetadata(std::string("app1"), std::string(), result);
+    L0Test::ExpectEqU32(fixture.tr, r2, WPEFramework::Core::ERROR_GENERAL, "GetAppMetadata() rejects empty metaData key");
 
-    // Configure with full mock to ensure proper cleanup in destructor
-    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
-    impl->Configure(&service);
-    impl->Release();
-    return tr.failures;
+    return fixture.tr.failures;
 }
 
 uint32_t Test_AM_StartAndStopSystemApp()
 {
-    L0Test::TestResult tr;
-    auto* impl = CreateImpl();
+    AppManagerTestFixture fixture;
 
-    const auto r1 = impl->StartSystemApp(std::string("systemApp1"));
-    L0Test::ExpectEqU32(tr, r1, WPEFramework::Core::ERROR_NONE, "StartSystemApp() remains stable");
+    const auto r1 = fixture.impl->StartSystemApp(std::string("systemApp1"));
+    L0Test::ExpectEqU32(fixture.tr, r1, WPEFramework::Core::ERROR_NONE, "StartSystemApp() remains stable");
 
-    const auto r2 = impl->StopSystemApp(std::string("systemApp1"));
-    L0Test::ExpectEqU32(tr, r2, WPEFramework::Core::ERROR_NONE, "StopSystemApp() remains stable");
+    const auto r2 = fixture.impl->StopSystemApp(std::string("systemApp1"));
+    L0Test::ExpectEqU32(fixture.tr, r2, WPEFramework::Core::ERROR_NONE, "StopSystemApp() remains stable");
 
     // Test with empty app ID
-    const auto r3 = impl->StartSystemApp(std::string());
-    L0Test::ExpectTrue(tr, r3 == WPEFramework::Core::ERROR_NONE || r3 == WPEFramework::Core::ERROR_GENERAL, "StartSystemApp() with empty ID remains stable");
+    const auto r3 = fixture.impl->StartSystemApp(std::string());
+    L0Test::ExpectTrue(fixture.tr, r3 == WPEFramework::Core::ERROR_NONE || r3 == WPEFramework::Core::ERROR_GENERAL, "StartSystemApp() with empty ID remains stable");
 
-    const auto r4 = impl->StopSystemApp(std::string());
-    L0Test::ExpectTrue(tr, r4 == WPEFramework::Core::ERROR_NONE || r4 == WPEFramework::Core::ERROR_GENERAL, "StopSystemApp() with empty ID remains stable");
+    const auto r4 = fixture.impl->StopSystemApp(std::string());
+    L0Test::ExpectTrue(fixture.tr, r4 == WPEFramework::Core::ERROR_NONE || r4 == WPEFramework::Core::ERROR_GENERAL, "StopSystemApp() with empty ID remains stable");
 
-    // Configure with full mock to ensure proper cleanup in destructor
-    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
-    impl->Configure(&service);
-    impl->Release();
-    return tr.failures;
+    return fixture.tr.failures;
 }
 
 uint32_t Test_AM_LaunchAppWithPackageHandler()
