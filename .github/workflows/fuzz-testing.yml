@@ -264,6 +264,26 @@ jobs:
           cd "$GITHUB_WORKSPACE"
           bash fuzz/stats/auto_fuzz.sh
 
+      - name: Debug - Print generated CMakeLists.txt
+        if: always()
+        run: |
+          echo "=== Generated CMakeLists.txt ===" 
+          if [[ -f "fuzz/stats/auto/CMakeLists.txt" ]]; then
+            head -40 fuzz/stats/auto/CMakeLists.txt
+            echo "..."
+            tail -40 fuzz/stats/auto/CMakeLists.txt
+          else
+            echo "CMakeLists.txt not found"
+          fi
+          echo ""
+          echo "=== Generated harness files ===" 
+          ls -la fuzz/stats/auto/generated/ | head -20
+          echo ""
+          echo "=== Build directory ===" 
+          if [[ -d "fuzz/stats/build" ]]; then
+            ls -la fuzz/stats/build/ | head -20
+          fi
+
       # ── 5. Summarise results in the workflow log ────────────────────────
       - name: Summarise fuzz results
         if: always()
