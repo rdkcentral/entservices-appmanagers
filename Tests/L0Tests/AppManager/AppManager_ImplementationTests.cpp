@@ -55,6 +55,7 @@ struct AppManagerTestFixture {
     WPEFramework::Plugin::AppManagerImplementation* impl;
     L0Test::AppManagerServiceMock* service;
     bool shouldClearAppInfoManager;
+    bool ownsService;  // Track if we allocated service (so we can delete it)
     
     // Constructor: auto-configures impl to prevent ASSERT crashes
     // Set autoConfigure=false only if you need to test Configure() itself
@@ -62,6 +63,7 @@ struct AppManagerTestFixture {
         : impl(CreateImpl())
         , service(autoConfigure ? new L0Test::AppManagerServiceMock(CreateFullServiceConfig()) : nullptr)
         , shouldClearAppInfoManager(clearAppInfo)
+        , ownsService(autoConfigure)
     {
         if (service) {
             impl->Configure(service);
@@ -71,13 +73,20 @@ struct AppManagerTestFixture {
     // Destructor: auto-cleanup to prevent leaks and crashes
     ~AppManagerTestFixture()
     {
-        // Always configure before Release to avoid destructor crashes
-        if (!service) {
+        // Check if impl was already configured (either by us or by the test manually)
+        // mCurrentservice is accessible via #define private public
+        if (impl->mCurrentservice == nullptr) {
+            // Not configured yet - configure now to avoid destructor crashes
             service = new L0Test::AppManagerServiceMock(CreateFullServiceConfig());
             impl->Configure(service);
+            ownsService = true;
         }
         impl->Release();
-        delete service;
+        
+        // Only delete service if we allocated it
+        if (ownsService) {
+            delete service;
+        }
         
         if (shouldClearAppInfoManager) {
             WPEFramework::Plugin::AppInfoManager::getInstance().clear();
