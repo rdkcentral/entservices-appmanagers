@@ -204,6 +204,17 @@ jobs:
           echo "libFuzzer+ASan+UBSan probe compiled successfully"
           rm -f /tmp/fuzz_probe
 
+      - name: Verify dependencies directory
+        run: |
+          echo "Checking DEPENDENCIES_ROOT: $DEPENDENCIES_ROOT"
+          if [[ -d "$DEPENDENCIES_ROOT" ]]; then
+            echo "✓ DEPENDENCIES_ROOT exists"
+            ls -la "$DEPENDENCIES_ROOT" | head -20
+          else
+            echo "✗ DEPENDENCIES_ROOT does NOT exist at: $DEPENDENCIES_ROOT"
+            echo "Will be created during clone step"
+          fi
+
       # ── 3. External API headers ─────────────────────────────────────────
       - name: Cache entservices-apis headers
         id: cache-apis
@@ -239,6 +250,15 @@ jobs:
       # ── 4. Clean build + fuzz run ───────────────────────────────────────
       - name: Run fuzz pipeline (discover → stubs → harnesses → build → fuzz → report)
         run: |
+          echo "=== Fuzz Pipeline Configuration ==="
+          echo "DEPENDENCIES_ROOT=$DEPENDENCIES_ROOT"
+          echo "TARGET_SCOPE=$TARGET_SCOPE"
+          echo "RUNS=$RUNS"
+          echo "MAX_TOTAL_TIME=$MAX_TOTAL_TIME"
+          echo "FUZZ_CC=$FUZZ_CC"
+          echo "FUZZ_CXX=$FUZZ_CXX"
+          echo "===================================="
+          echo ""
           chmod +x "$GITHUB_WORKSPACE/fuzz/stats/auto_fuzz.sh" \
                    "$GITHUB_WORKSPACE/fuzz/stats/run_fuzz.sh"
           cd "$GITHUB_WORKSPACE"
