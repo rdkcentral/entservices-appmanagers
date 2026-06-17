@@ -1286,6 +1286,8 @@ def create_plugin_stubs(stubs_dir: Path) -> None:
             "#include <algorithm>\n"
             "#include <functional>\n"
             "#include <cmath>\n"
+            "#include <iostream>\n"
+            "#include <chrono>\n"
             "#include <cstdlib>\n"
             "#include <cstring>\n"
             "#include <dirent.h>\n"
