@@ -105,7 +105,9 @@ validate_libfuzzer_runtime() {
 # If the stored value matches the computed one the generation step is skipped.
 # ---------------------------------------------------------------------------
 _compute_stub_fingerprint() {
-  # Hash all #include lines in the scoped source folders + the deps root path.
+  # Hash #include lines in scoped sources + deps root + source fingerprint.
+  # This ensures stubs are refreshed when code changes imply updated fallback
+  # needs even if include directives remain unchanged.
   local scope_dirs content
   scope_dirs=$(echo "${TARGET_SCOPE}" | tr ',' ' ')
   content="deps=${DEPENDENCIES_ROOT}\n"
@@ -114,6 +116,7 @@ _compute_stub_fingerprint() {
     content+=$(grep -r '^\ *#\ *include' "${ROOT_DIR}/${dir}" \
       --include='*.h' --include='*.cpp' 2>/dev/null | sort)
   done
+  content+="\nsource_fp=$(_compute_source_fingerprint)"
   printf '%s' "${content}" | \
     python3 -c "import hashlib,sys; print(hashlib.sha256(sys.stdin.read().encode()).hexdigest())"
 }
