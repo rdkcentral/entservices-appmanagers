@@ -900,9 +900,30 @@ inline int FuzzHarnessRunForTarget(const char* targetName, const uint8_t* data, 
     )
 
     metadata = {}
+    if metadata_map.exists():
+        try:
+            metadata = json.loads(metadata_map.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            metadata = {}
 
-    for old_harness in generated_dir.glob("fuzz_*.cpp"):
-        old_harness.unlink()
+    scoped_folders = set(manifest.get("scope", {}).get("include", DEFAULT_SCOPE_FOLDERS))
+    target_keys = {t["stable_target_key"] for t in targets}
+
+    # Remove stale harnesses only for folders included in this run's scope.
+    stale_keys = []
+    for key, item in metadata.items():
+        source_file = item.get("source_file", "")
+        folder = source_file.split("/")[0] if source_file else ""
+        if (folder in scoped_folders) and (key not in target_keys):
+            stale_keys.append(key)
+
+    for key in stale_keys:
+        harness_rel = metadata.get(key, {}).get("harness")
+        if harness_rel:
+            harness_path = repo_root / harness_rel
+            if harness_path.exists():
+                harness_path.unlink()
+        metadata.pop(key, None)
 
     for target in targets:
         key = target["stable_target_key"]

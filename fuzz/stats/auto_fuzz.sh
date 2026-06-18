@@ -134,8 +134,8 @@ _needs_stub_regen() {
 
   if [[ ! -f "${fp_file}" ]] || [[ "$(cat "${fp_file}")" != "${current_fp}" ]]; then
     log "Include directives changed (fingerprint mismatch) — will regenerate stubs"
-    # Wipe stale stubs so the generator starts clean
-    rm -rf "${stubs_dir}"/*
+    # Keep existing stubs and update in place so PR runs can merge generated
+    # assets with previously cached outputs.
     printf '%s' "${current_fp}" > "${fp_file}"
     return 0
   fi
@@ -181,7 +181,6 @@ _needs_harness_regen() {
 
   if [[ ! -f "${fp_file}" ]] || [[ "$(cat "${fp_file}")" != "${current_fp}" ]]; then
     log "Source changed (harness fingerprint mismatch) — will regenerate harnesses"
-    find "${AUTO_DIR}/generated" -name 'fuzz_*.cpp' -delete
     return 0
   fi
 
@@ -204,7 +203,6 @@ _needs_corpus_regen() {
 
   if [[ ! -f "${fp_file}" ]] || [[ "$(cat "${fp_file}")" != "${current_fp}" ]]; then
     log "Source changed (corpus fingerprint mismatch) — will regenerate corpus"
-    find "${CORPUS_DIR}" -mindepth 1 -not -name '.corpus_fingerprint' -delete
     return 0
   fi
 

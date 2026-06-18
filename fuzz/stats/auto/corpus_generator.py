@@ -115,6 +115,10 @@ def write_target_seeds(target: Dict[str, object], out_dir: Path, pairwise_budget
     tdir = out_dir / key
     tdir.mkdir(parents=True, exist_ok=True)
 
+    # Refresh this target's seeds while preserving other targets' corpus dirs.
+    for stale_seed in tdir.glob("seed_*.json"):
+        stale_seed.unlink()
+
     args = target.get("arguments", [])
     pools = [value_pool(a.get("type", "")) for a in args]
 
@@ -189,8 +193,7 @@ def main() -> None:
     manifest = json.loads((repo_root / args.manifest).read_text(encoding="utf-8"))
     targets = manifest.get("targets", [])
 
-    total = 0
-    target_counts = {}
+    generated_total = 0
     for target in targets:
         count = write_target_seeds(
             target,
@@ -199,12 +202,20 @@ def main() -> None:
             args.state_sequence_seeds,
             args.max_json_seeds,
         )
-        target_counts[target["stable_target_key"]] = count
+        generated_total += count
+
+    # Build merged summary from the full corpus directory (cached + newly generated).
+    target_counts = {}
+    total = 0
+    for target_dir in sorted([p for p in out_dir.iterdir() if p.is_dir()]):
+        count = len(list(target_dir.glob("seed_*.json")))
+        target_counts[target_dir.name] = count
         total += count
 
     summary = {
         "total_targets": len(targets),
         "total_seeds": total,
+        "generated_this_run": generated_total,
         "target_seed_counts": target_counts,
         "pairwise_budget": args.pairwise_budget,
         "state_sequence_seeds": args.state_sequence_seeds,

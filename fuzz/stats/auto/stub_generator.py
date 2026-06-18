@@ -298,9 +298,11 @@ def write_missing_header_stubs(stubs_dir: Path, missing_headers: Dict[str, str])
             header_path = include_root / inc
             header_path.parent.mkdir(parents=True, exist_ok=True)
             
-            # Skip if already exists (might be a symlink)
-            if header_path.exists() or header_path.is_symlink():
+            # Keep symlinks to real dependency headers; refresh generated files.
+            if header_path.is_symlink():
                 continue
+            if header_path.exists():
+                header_path.unlink()
             
             guard = re.sub(r"[^A-Za-z0-9]", "_", inc).upper() + "_FUZZ_STUB_H"
             if "json/json.h" == inc:
