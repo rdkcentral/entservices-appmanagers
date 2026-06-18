@@ -1348,7 +1348,7 @@ def create_plugin_stubs(stubs_dir: Path) -> None:
         "#include <plugins/IStateControl.h>\n"
         "\n"
         "#ifndef BEGIN_INTERFACE_MAP\n"
-        "#define BEGIN_INTERFACE_MAP(x) public: uint32_t AddRef() { return 1; } uint32_t Release() { return 1; }\n"
+        "#define BEGIN_INTERFACE_MAP(x) public: uint32_t AddRef() override { return 1; } uint32_t Release() override { return 1; }\n"
         "#endif\n"
         "#ifndef INTERFACE_ENTRY\n"
         "#define INTERFACE_ENTRY(x)\n"

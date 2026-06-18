@@ -57,7 +57,7 @@ env:
   ENTSERVICES_APIS_BRANCH: "topic/RDKEMW-16187"
   ENTSERVICES_APIS_REPO: "https://github.com/rdkcentral/entservices-apis.git"
   DEFAULT_RUNS: "2000"
-  DEFAULT_MAX_TOTAL_TIME: "0"
+  DEFAULT_MAX_TOTAL_TIME: "60"
 
 jobs:
   ##########################################################################
@@ -162,6 +162,7 @@ jobs:
     needs: detect-scope
     if: needs.detect-scope.outputs.skip != 'true'
     runs-on: ubuntu-22.04
+    timeout-minutes: 120
 
     env:
       DEPENDENCIES_ROOT: ${{ github.workspace }}/dependencies
@@ -175,6 +176,8 @@ jobs:
       FUZZ_CC: clang
       FUZZ_CXX: clang++
       ASAN_OPTIONS: "detect_leaks=0"
+      BUILD_TIMEOUT_SEC: "3600"
+      PIPELINE_TIMEOUT_SEC: "5400"
 
     steps:
       # ── 1. Source checkout ──────────────────────────────────────────────

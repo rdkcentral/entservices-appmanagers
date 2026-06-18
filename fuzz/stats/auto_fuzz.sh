@@ -12,6 +12,8 @@ CORPUS_DIR="${FUZZ_ROOT}/corpus"
 
 RUNS="${RUNS:-2000}"
 MAX_TOTAL_TIME="${MAX_TOTAL_TIME:-0}"
+BUILD_TIMEOUT_SEC="${BUILD_TIMEOUT_SEC:-3600}"
+PIPELINE_TIMEOUT_SEC="${PIPELINE_TIMEOUT_SEC:-5400}"
 PAIRWISE_BUDGET="${PAIRWISE_BUDGET:-48}"
 STATE_SEQUENCE_SEEDS="${STATE_SEQUENCE_SEEDS:-20}"
 MAX_JSON_SEEDS="${MAX_JSON_SEEDS:-40}"
@@ -24,6 +26,25 @@ FUZZ_CXX="${FUZZ_CXX:-${CXX:-}}"
 
 log() { printf '[auto_fuzz][%s] %s\n' "$(date -u +%H:%M:%S)" "$*"; }
 fail() { echo "[auto_fuzz][ERROR] $*" >&2; exit 1; }
+
+run_with_timeout() {
+  local timeout_sec="$1"
+  shift
+
+  if [[ "${timeout_sec}" -gt 0 ]]; then
+    if command -v timeout >/dev/null 2>&1; then
+      timeout --preserve-status "${timeout_sec}" "$@"
+      return $?
+    fi
+    if command -v gtimeout >/dev/null 2>&1; then
+      gtimeout --preserve-status "${timeout_sec}" "$@"
+      return $?
+    fi
+    log "No timeout utility found; running command without hard timeout"
+  fi
+
+  "$@"
+}
 
 assert_in_scope() {
   local candidate="$1"
@@ -267,17 +288,19 @@ build_targets() {
 
   log "Building fuzz targets"
   NCPUS=$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
-  cmake --build "${BUILD_DIR}" -j "${NCPUS}" || fail "Build failed in full mode (FUZZ_INCLUDE_APP_SOURCES=ON)"
+  run_with_timeout "${BUILD_TIMEOUT_SEC}" cmake --build "${BUILD_DIR}" -j "${NCPUS}" \
+    || fail "Build failed or timed out in full mode (FUZZ_INCLUDE_APP_SOURCES=ON)"
 }
 
 run_fuzzing() {
   log "Executing fuzz targets"
-  "${FUZZ_ROOT}/run_fuzz.sh" \
+  run_with_timeout "${PIPELINE_TIMEOUT_SEC}" "${FUZZ_ROOT}/run_fuzz.sh" \
     --repo-root "${ROOT_DIR}" \
     --build-dir "${BUILD_DIR}" \
     --runs "${RUNS}" \
     --max-total-time "${MAX_TOTAL_TIME}" \
-    --run-id "${RUN_ID}"
+    --run-id "${RUN_ID}" \
+    || fail "Fuzz execution failed or timed out"
 }
 
 triage_and_report() {
