@@ -109,7 +109,9 @@ _compute_stub_fingerprint() {
   # This ensures stubs are refreshed when code changes imply updated fallback
   # needs even if include directives remain unchanged.
   local scope_dirs content
+  local stub_generator_hash
   scope_dirs=$(echo "${TARGET_SCOPE}" | tr ',' ' ')
+  stub_generator_hash=$(sha256sum "${AUTO_DIR}/stub_generator.py" | awk '{print $1}')
   content="deps=${DEPENDENCIES_ROOT}\n"
   for dir in ${scope_dirs}; do
     [[ -d "${ROOT_DIR}/${dir}" ]] || continue
@@ -117,6 +119,7 @@ _compute_stub_fingerprint() {
       --include='*.h' --include='*.cpp' 2>/dev/null | sort)
   done
   content+="\nsource_fp=$(_compute_source_fingerprint)"
+  content+="\nstub_generator_fp=${stub_generator_hash}"
   printf '%s' "${content}" | \
     python3 -c "import hashlib,sys; print(hashlib.sha256(sys.stdin.read().encode()).hexdigest())"
 }
