@@ -365,3 +365,13 @@ jobs:
           fi
 
           echo "No valid crashes detected — fuzz run clean."
+
+      # ── 7. Upload fuzz results (reports + JSON outputs) ──────────────────
+      - name: Upload fuzz results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-results-${{ github.run_id }}
+          path: fuzz/stats/results/
+          retention-days: 90
+          if-no-files-found: ignore
