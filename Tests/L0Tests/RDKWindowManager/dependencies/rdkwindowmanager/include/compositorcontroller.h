@@ -47,6 +47,8 @@ public:
     static bool startVncServer();
     static bool stopVncServer();
     static bool screenShot(uint8_t*& data, uint32_t& size);
+    static bool setAlias(const std::string& clientId, const std::string& alias);
+    static std::string getDisplayNameFromAlias(const std::string& alias);
 };
 
 } // namespace RdkWindowManager

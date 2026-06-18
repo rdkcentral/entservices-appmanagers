@@ -2239,6 +2239,40 @@ Core::hresult RDKWindowManagerImplementation::GetScreenshot()
     return status;
 }
 
+Core::hresult RDKWindowManagerImplementation::SetAlias(const string& clientId, const string& alias)
+{
+    Core::hresult status = Core::ERROR_GENERAL;
+
+    if (clientId.empty())
+    {
+        LOGERR("SetAlias: clientId is empty");
+        return status;
+    }
+
+    if (alias.empty())
+    {
+        LOGERR("SetAlias: alias is empty");
+        return status;
+    }
+
+    const bool lockAcquired = lockRdkWindowManagerMutex();
+    if (true == RdkWindowManager::CompositorController::setAlias(clientId, alias))
+    {
+        status = Core::ERROR_NONE;
+    }
+    else
+    {
+        LOGERR("SetAlias: Failed to set alias for clientId '%s'", clientId.c_str());
+    }
+
+    if (lockAcquired)
+    {
+        gRdkWindowManagerMutex.unlock();
+    }
+
+    return status;
+}
+
 void RDKWindowManagerImplementation::notifyScreenshotComplete(bool success)
 {
     LOGINFO("Screenshot capture %s, imageData size: %zu bytes", success ? "succeeded" : "failed", gScreenshotImageData.length());
