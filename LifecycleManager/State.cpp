@@ -58,6 +58,8 @@ namespace WPEFramework
                 {
                     context->mPendingEventName = "onAppRunning";
                     context->mPendingStateTransition = true;
+                    string annotateError;
+                    runtimeManagerHandler->annotate(context->getAppInstanceId(), "fireboltState", "initializing", annotateError);
                 }
 	    }
             return ret;
@@ -94,6 +96,15 @@ namespace WPEFramework
 	    {
                 ret = true;		    
             }
+            if (ret)
+            {
+                RuntimeManagerHandler* runtimeManagerHandler = RequestHandler::getInstance()->getRuntimeManagerHandler();
+                if (nullptr != runtimeManagerHandler)
+                {
+                    string annotateError;
+                    runtimeManagerHandler->annotate(context->getAppInstanceId(), "fireboltState", "inactive", annotateError);
+                }
+            }
             return ret;
 	}
 
@@ -107,6 +118,12 @@ namespace WPEFramework
 		Core::hresult ret = windowManagerHandler->renderReady(context->getAppInstanceId(), isRenderReady);
                 if (Core::ERROR_NONE == ret)
 		{
+                    RuntimeManagerHandler* runtimeManagerHandler = RequestHandler::getInstance()->getRuntimeManagerHandler();
+                    if (nullptr != runtimeManagerHandler)
+                    {
+                        string annotateError;
+                        runtimeManagerHandler->annotate(context->getAppInstanceId(), "fireboltState", "foreground", annotateError);
+                    }
                     if (isRenderReady)
 		    {
 		        return true;	
@@ -152,6 +169,11 @@ namespace WPEFramework
                     }
                    //TODO: Handle error cases
                 }
+                if (ret)
+                {
+                    string annotateError;
+                    runtimeManagerHandler->annotate(context->getAppInstanceId(), "fireboltState", "suspended", annotateError);
+                }
 	    }
             return ret;
 	}
@@ -164,6 +186,11 @@ namespace WPEFramework
 	    {
                 ApplicationContext* context = getContext();
                 ret = runtimeManagerHandler->hibernate(context->getAppInstanceId(), errorReason);
+                if (ret)
+                {
+                    string annotateError;
+                    runtimeManagerHandler->annotate(context->getAppInstanceId(), "fireboltState", "suspended", annotateError);
+                }
 	    }
             return ret;
 	}
@@ -188,6 +215,8 @@ namespace WPEFramework
             if (nullptr != runtimeManagerHandler)
             {
                 ApplicationContext* context = getContext();
+                string annotateError;
+                runtimeManagerHandler->annotate(context->getAppInstanceId(), "fireboltState", "unloading", annotateError);
                 ApplicationKillParams& killParams = context->getApplicationKillParams();
                 if (killParams.mForce)
                 {
