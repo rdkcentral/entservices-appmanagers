@@ -167,6 +167,7 @@ jobs:
       RUNS: ${{ needs.detect-scope.outputs.runs }}
       MAX_TOTAL_TIME: ${{ needs.detect-scope.outputs.max_total_time }}
       RUN_ID: "ci-${{ github.run_id }}-${{ github.run_attempt }}"
+      WORKFLOW_URL: "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
       NON_INTERACTIVE: "1"
       FUZZ_CC: clang
       FUZZ_CXX: clang++

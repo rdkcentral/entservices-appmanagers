@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import argparse
 import json
+import os
 import re
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -138,6 +139,14 @@ def render_reports(
             f"# {title}",
             "",
             f"Generated: {now}",
+        ]
+        
+        # Add workflow URL if available from environment
+        workflow_url = os.environ.get("WORKFLOW_URL", "")
+        if workflow_url:
+            lines.append(f"Run: [{workflow_url}]({workflow_url})")
+        
+        lines.extend([
             "",
             "## Summary",
             f"- total functions fuzzed: {total_functions}",
