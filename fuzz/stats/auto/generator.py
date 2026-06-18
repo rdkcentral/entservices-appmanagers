@@ -1112,7 +1112,8 @@ def generate_cmake(
     lines.append("endif()")
     lines.append("")
     
-    # Create static library for global stubs (linked once into each executable, not into libraries)
+    # Create static library for global stubs (linked into fuzz executables and
+    # generated plugin shared libraries when app sources are enabled).
     if global_stubs:
         lines.append("set(GLOBAL_STUB_SOURCES")
         for src in global_stubs:
@@ -1135,6 +1136,9 @@ def generate_cmake(
         lines.append("    BUILD_RPATH ${CMAKE_BINARY_DIR}/bin")
         lines.append("  )")
         lines.append(f"  target_sources(appmanager_fuzz_{folder_id} PRIVATE $<TARGET_OBJECTS:appmanager_fuzz_stub_support>)")
+        lines.append("  if(TARGET appmanager_fuzz_global_stubs)")
+        lines.append(f"    target_link_libraries(appmanager_fuzz_{folder_id} PRIVATE appmanager_fuzz_global_stubs)")
+        lines.append("  endif()")
         lines.append("  if(FUZZ_OPTIONAL_LIBS)")
         lines.append(f"    target_link_libraries(appmanager_fuzz_{folder_id} PRIVATE ${{FUZZ_OPTIONAL_LIBS}})")
         lines.append("  endif()")
