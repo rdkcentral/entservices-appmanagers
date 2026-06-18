@@ -576,6 +576,13 @@ namespace Plugin {
             package.version = key.second.c_str();
             package.state = state.installState;
             package.sizeKb = state.runtimeConfig.dataImageSize;
+            package.isRuntime = false;
+            for (const auto& [runtimeType, runtimeKey] : runtimeMap) {
+                if (runtimeKey == key) {
+                    package.isRuntime = true;
+                    break;
+                }
+            }
             packageList.emplace_back(package);
         }
 
