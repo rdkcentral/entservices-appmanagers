@@ -406,13 +406,21 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          git add \
-            fuzz/stats/results/discovery_manifest.json \
-            fuzz/stats/results/dispatch_coverage_report.json \
-            fuzz/stats/results/run_results.json \
-            fuzz/stats/results/triage_results.json \
-            fuzz/stats/results/fuzz_report.md \
-            fuzz/stats/results/reports || true
+          RESULT_PATHS=(
+            fuzz/stats/results/discovery_manifest.json
+            fuzz/stats/results/dispatch_coverage_report.json
+            fuzz/stats/results/run_results.json
+            fuzz/stats/results/triage_results.json
+            fuzz/stats/results/fuzz_report.md
+            fuzz/stats/results/reports
+          )
+
+          for p in "${RESULT_PATHS[@]}"; do
+            if [[ -e "$p" ]]; then
+              # Results are intentionally ignored in git; use -f for CI commits.
+              git add -f "$p"
+            fi
+          done
 
           if git diff --cached --quiet; then
             echo "No result/report changes to commit"
