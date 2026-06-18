@@ -82,6 +82,17 @@ bool RuntimeManagerHandler::getRuntimeStats(const string& appInstanceId, string&
     return true;
 }
 
+bool RuntimeManagerHandler::annotate(const string& appInstanceId, const string& key, const string& value, string& errorReason)
+{
+    Core::hresult result = mRuntimeManager->Annotate(appInstanceId, key, value);
+    if (Core::ERROR_NONE != result)
+    {
+        errorReason = "unable to annotate application";
+        return false;
+    }
+    return true;
+}
+
 bool RuntimeManagerHandler::run(const string& appId, const string& appInstanceId, const string& launchArgs, Exchange::ILifecycleManager::LifecycleState targetState, WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject, string& errorReason)
 {
     JsonArray debugSettingsArray, pathsArray, portsArray;

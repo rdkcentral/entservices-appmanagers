@@ -74,6 +74,7 @@ namespace Plugin {
             bool hibernate(const string& appInstanceId, string& errorReason);
             bool wake(const string& appInstanceId, Exchange::ILifecycleManager::LifecycleState state, string& errorReason);
             bool getRuntimeStats(const string& appInstanceId, string& info);
+            bool annotate(const string& appInstanceId, const string& key, const string& value, string& errorReason);
             void onEvent(JsonObject& data);
 
         private:
