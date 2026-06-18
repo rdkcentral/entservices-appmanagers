@@ -164,7 +164,7 @@ def render_reports(
             f"- MAX_JSON_SEEDS: {budgets.get('MAX_JSON_SEEDS', 0)}",
             "",
             "## Valid Crashes",
-        ]
+        ])
 
         if not crashes:
             lines.append("No valid crashes detected.")
