@@ -4854,8 +4854,13 @@ TEST_F(AppManagerTest, AppManagerImplRemoveAppInfoByAppIdFound)
     EXPECT_TRUE(signalled & AppManager_onAppUnloaded);
 
     mAppManagerImpl->Unregister(&notification);
-
-    /* Verify the entry has been removed */
+    /* removeAppInfoByAppId(appId) runs after the notification callback in Dispatch(APP_EVENT_UNLOADED).
+     * Wait briefly for the worker to complete the removal to avoid a race/flaky assert. */
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(TIMEOUT);
+    while (AppInfoManager::getInstance().exists(APPMANAGER_APP_ID) && std::chrono::steady_clock::now() < deadline)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
     EXPECT_FALSE(AppInfoManager::getInstance().exists(APPMANAGER_APP_ID));
 
     if (status == Core::ERROR_NONE)
