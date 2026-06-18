@@ -1879,7 +1879,7 @@ uint32_t Test_DobbySpecGenerator_GenerateThunderPluginFromCapabilities()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfig();
     rtCfg.thunder = false;
@@ -1904,7 +1904,7 @@ uint32_t Test_DobbySpecGenerator_GenerateDialEnvFromEscapedCapabilityValue()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfig();
     rtCfg.dial = false;
@@ -1930,7 +1930,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithEmptyCapabilitiesString()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen;
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfig();
     rtCfg.thunder = false;
@@ -1942,6 +1942,42 @@ uint32_t Test_DobbySpecGenerator_GenerateWithEmptyCapabilitiesString()
                        "generate() succeeds when capabilities string is empty");
     L0Test::ExpectTrue(tr, spec.find("\"thunder\"") == std::string::npos,
                        "Generated spec does not include thunder plugin when capabilities string is empty and thunder flag is false");
+
+    return tr.failures;
+}
+
+/* Test_DobbySpecGenerator_GenerateIgnoresRuntimeLogLevelsForEthanLog
+ *
+ * Verifies EthanLog plugin keeps default loglevels list even when
+ * RuntimeConfig.logLevels is provided.
+ */
+uint32_t Test_DobbySpecGenerator_GenerateIgnoresRuntimeLogLevelsForEthanLog()
+{
+    L0Test::TestResult tr;
+
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    auto appCfg = MakeValidAppConfig();
+    auto rtCfg  = MakeValidRuntimeConfig();
+    rtCfg.logLevels = "[\"fatal\"]";
+    std::string spec;
+
+    const bool result = gen.generate(appCfg, rtCfg, spec);
+    L0Test::ExpectTrue(tr, result,
+                       "generate() succeeds when runtimeConfig.logLevels is set");
+    L0Test::ExpectTrue(tr, spec.find("\"loglevels\"") != std::string::npos,
+                       "Generated spec contains EthanLog loglevels field");
+    L0Test::ExpectTrue(tr, spec.find("\"fatal\"") != std::string::npos,
+                       "Generated spec contains fatal level");
+    L0Test::ExpectTrue(tr, spec.find("\"error\"") != std::string::npos,
+                       "Generated spec contains error level");
+    L0Test::ExpectTrue(tr, spec.find("\"warning\"") != std::string::npos,
+                       "Generated spec contains warning level");
+    L0Test::ExpectTrue(tr, spec.find("\"info\"") != std::string::npos,
+                       "Generated spec contains info level");
+    L0Test::ExpectTrue(tr, spec.find("\"debug\"") != std::string::npos,
+                       "Generated spec contains debug level");
+    L0Test::ExpectTrue(tr, spec.find("\"milestone\"") != std::string::npos,
+                       "Generated spec contains milestone level");
 
     return tr.failures;
 }
