@@ -396,7 +396,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Commit core fuzz results back to branch
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && github.actor != 'github-actions[bot]'
         shell: bash
         run: |
           set -euo pipefail
@@ -416,7 +416,7 @@ jobs:
             exit 0
           fi
 
-          git commit -m "fuzz(ci): update generated results and reports"
+          git commit -m "fuzz(ci): update generated results and reports [skip ci]"
           git push origin "HEAD:${GITHUB_REF#refs/heads/}"
 
       - name: Save merged fuzz generation cache (harness/stubs/seeds/reports)
