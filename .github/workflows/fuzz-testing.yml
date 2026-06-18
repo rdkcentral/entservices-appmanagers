@@ -21,6 +21,9 @@
 
 name: Fuzz Testing
 
+permissions:
+  contents: write
+
 on:
   workflow_call:
     inputs:
@@ -428,7 +431,9 @@ jobs:
           fi
 
           git commit -m "fuzz(ci): update generated results and reports [skip ci]"
-          git push origin "HEAD:${GITHUB_REF#refs/heads/}"
+          if ! git push origin "HEAD:${GITHUB_REF#refs/heads/}"; then
+            echo "::warning::Unable to push fuzz results (token lacks push permission). Continuing without failing."
+          fi
 
       - name: Save merged fuzz generation cache (harness/stubs/seeds/reports)
         if: always()
