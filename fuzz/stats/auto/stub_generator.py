@@ -74,6 +74,22 @@ FORCE_FALLBACK_HEADERS = {
     "UtilsString.h",
     # Provide a deterministic cross-plugin module wrapper instead of folder-specific Module.h variants.
     "Module.h",
+    # Keep Thunder/framework glue deterministic for fuzz builds.
+    "core/core.h",
+    "com/com.h",
+    "plugins/IPlugin.h",
+    "plugins/ISubSystem.h",
+    "plugins/IShell.h",
+    "plugins/IStateControl.h",
+    "plugins/plugins.h",
+    "tracing/tracing.h",
+    "tracing/Logging.h",
+    "telemetry_busmessage_sender.h",
+    "TelemetryReportingBase.h",
+    "TelemetryMarkers.h",
+    "sys/prctl.h",
+    "syscall.h",
+    "interfaces/Ids.h",
 }
 
 
