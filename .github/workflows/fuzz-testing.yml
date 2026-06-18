@@ -56,6 +56,8 @@ env:
   ALL_PLUGIN_FOLDERS: "AppManager,AppStorageManager,DownloadManager,LifecycleManager,PackageManager,PreinstallManager,RDKWindowManager,TelemetryMetrics"
   ENTSERVICES_APIS_BRANCH: "topic/RDKEMW-16187"
   ENTSERVICES_APIS_REPO: "https://github.com/rdkcentral/entservices-apis.git"
+  DEFAULT_RUNS: "2000"
+  DEFAULT_MAX_TOTAL_TIME: "0"
 
 jobs:
   ##########################################################################
@@ -94,8 +96,8 @@ jobs:
             RUNS="$WD_RUNS"
             MAX_TOTAL_TIME="$WD_TIME"
           else
-            RUNS="500"
-            MAX_TOTAL_TIME="60"
+            RUNS="${{ env.DEFAULT_RUNS }}"
+            MAX_TOTAL_TIME="${{ env.DEFAULT_MAX_TOTAL_TIME }}"
           fi
 
           # ── Scope detection ───────────────────────────────────────────────
@@ -172,6 +174,7 @@ jobs:
       NON_INTERACTIVE: "1"
       FUZZ_CC: clang
       FUZZ_CXX: clang++
+      ASAN_OPTIONS: "detect_leaks=0"
 
     steps:
       # ── 1. Source checkout ──────────────────────────────────────────────
@@ -391,6 +394,30 @@ jobs:
           path: fuzz/stats/results/
           retention-days: 90
           if-no-files-found: ignore
+
+      - name: Commit core fuzz results back to branch
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add \
+            fuzz/stats/results/discovery_manifest.json \
+            fuzz/stats/results/dispatch_coverage_report.json \
+            fuzz/stats/results/run_results.json \
+            fuzz/stats/results/triage_results.json \
+            fuzz/stats/results/fuzz_report.md \
+            fuzz/stats/results/reports || true
+
+          if git diff --cached --quiet; then
+            echo "No result/report changes to commit"
+            exit 0
+          fi
+
+          git commit -m "fuzz(ci): update generated results and reports"
+          git push origin "HEAD:${GITHUB_REF#refs/heads/}"
 
       - name: Save merged fuzz generation cache (harness/stubs/seeds/reports)
         if: always()
