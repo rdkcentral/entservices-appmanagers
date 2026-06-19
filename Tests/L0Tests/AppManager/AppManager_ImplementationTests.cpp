@@ -264,6 +264,9 @@ uint32_t Test_AM_ClearAppDataAndClearAllAppDataWithoutDependencies()
     L0Test::ExpectEqU32(tr, impl->ClearAppData(std::string()), WPEFramework::Core::ERROR_GENERAL, "ClearAppData() rejects empty app id");
     L0Test::ExpectEqU32(tr, impl->ClearAllAppData(), WPEFramework::Core::ERROR_GENERAL, "ClearAllAppData() fails without storage manager");
 
+    // CRITICAL: Reconfigure with full dependencies before Release to avoid ASSERT crash in destructor
+    L0Test::AppManagerServiceMock fullService(CreateFullServiceConfig());
+    impl->Configure(&fullService);
     impl->Release();
     return tr.failures;
 }
@@ -289,6 +292,9 @@ uint32_t Test_AM_GetLoadedAppsWithoutConnectorFails()
     L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL, "GetLoadedApps() fails without a lifecycle connector");
     L0Test::ExpectTrue(tr, nullptr == iterator, "GetLoadedApps() leaves the iterator null on failure");
 
+    // CRITICAL: Reconfigure with full dependencies before Release to avoid ASSERT crash in destructor
+    L0Test::AppManagerServiceMock fullService(CreateFullServiceConfig());
+    impl->Configure(&fullService);
     impl->Release();
     return tr.failures;
 }
@@ -373,6 +379,9 @@ uint32_t Test_AM_IsInstalledAndGetInstalledAppsWithPackages()
     cfg.packageHandler = handler;
     cfg.store2 = store;
     cfg.storageManager = storage;
+    // Add lifecycle managers to ensure complete config for safe cleanup
+    cfg.lifecycleManager = new L0Test::FakeLifecycleManager();
+    cfg.lifecycleManagerState = new L0Test::FakeLifecycleManagerState();
     L0Test::AppManagerServiceMock service(cfg);
 
     auto* impl = CreateImpl();
