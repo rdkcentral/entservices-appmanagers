@@ -95,7 +95,7 @@ static std::string gScreenshotImageData;
 static bool gScreenshotSuccess = false;
 
 CreateDisplayRequest::CreateDisplayRequest(std::string client, std::string displayName, uint32_t displayWidth, uint32_t displayHeight, bool virtualDisplayEnabled,
-                                           uint32_t virtualWidth, uint32_t virtualHeight, bool topmost, bool focus, uint32_t ownerId, uint32_t groupId)
+                                           uint32_t virtualWidth, uint32_t virtualHeight, bool topmost, bool focus, uint32_t ownerId, uint32_t groupId, std::string capabilities)
 : mClient(std::move(client))
 , mDisplayName(std::move(displayName))
 , mDisplayWidth(displayWidth)
@@ -108,6 +108,7 @@ CreateDisplayRequest::CreateDisplayRequest(std::string client, std::string displ
 , mResult(false)
 , mOwnerId(ownerId)
 , mGroupId(groupId)
+, mCapabilities(std::move(capabilities))
 {
     if (0 != sem_init(&mSemaphore, 0, 0))
     {
@@ -304,7 +305,7 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
                         LOGINFO("Shell thread: Processing createDisplay request for client:%s", request->mClient.c_str());
                         {
                             std::lock_guard<std::mutex> lock(gRdkWindowManagerMutex);
-                            request->mResult = CompositorController::createDisplay(request->mClient, request->mDisplayName, request->mDisplayWidth, request->mDisplayHeight, request->mVirtualDisplayEnabled, request->mVirtualWidth, request->mVirtualHeight, request->mTopmost, request->mFocus , request->mOwnerId, request->mGroupId);
+                            request->mResult = CompositorController::createDisplay(request->mClient, request->mDisplayName, request->mDisplayWidth, request->mDisplayHeight, request->mVirtualDisplayEnabled, request->mVirtualWidth, request->mVirtualHeight, request->mTopmost, request->mFocus , request->mOwnerId, request->mGroupId, request->mCapabilities);
                         }
                         if (0 != sem_post(&request->mSemaphore))
                         {
@@ -715,7 +716,7 @@ void RDKWindowManagerImplementation::Dispatch(Event event, const JsonValue param
  * @param focus           : When true, the display surface receives input focus on creation.
  * @return Core::ERROR_NONE on success, Core::ERROR_GENERAL on failure.
  */
-Core::hresult RDKWindowManagerImplementation::CreateDisplay(const string &clientId, const string &displayName, const uint32_t displayWidth, const uint32_t displayHeight, const bool virtualDisplay, const uint32_t virtualWidth, const uint32_t virtualHeight, const uint32_t ownerId, const uint32_t groupId, const bool topmost, const bool focus)
+Core::hresult RDKWindowManagerImplementation::CreateDisplay(const string &clientId, const string &displayName, const uint32_t displayWidth, const uint32_t displayHeight, const bool virtualDisplay, const uint32_t virtualWidth, const uint32_t virtualHeight, const uint32_t ownerId, const uint32_t groupId, const bool topmost, const bool focus, const string &capabilities)
 {
     Core::hresult status = Core::ERROR_GENERAL;
     bool result = true;
@@ -730,7 +731,7 @@ Core::hresult RDKWindowManagerImplementation::CreateDisplay(const string &client
             clientId.c_str(), displayName.c_str(), displayWidth, displayHeight, virtualDisplay, virtualWidth, virtualHeight, ownerId, groupId, topmost, focus);
     time_t displayStartTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
     result = createDisplay(clientId, displayName, displayWidth, displayHeight,
-                           virtualDisplay, virtualWidth, virtualHeight, ownerId, groupId, topmost, focus);
+                           virtualDisplay, virtualWidth, virtualHeight, ownerId, groupId, topmost, focus, capabilities);
 
     if (false == result)
     {
@@ -1551,7 +1552,7 @@ Core::hresult RDKWindowManagerImplementation::GetVisibility(const std::string &c
  * @focus[in]         : Optional - focus is required or not
  * @return            : Optional - true/false
  */
-bool RDKWindowManagerImplementation::createDisplay(const string& client, const string& displayName, const uint32_t displayWidth, const uint32_t displayHeight, const bool virtualDisplay, const uint32_t virtualWidth, const uint32_t virtualHeight, const uint32_t ownerId, const uint32_t groupId, const bool topmost, const bool focus)
+bool RDKWindowManagerImplementation::createDisplay(const string& client, const string& displayName, const uint32_t displayWidth, const uint32_t displayHeight, const bool virtualDisplay, const uint32_t virtualWidth, const uint32_t virtualHeight, const uint32_t ownerId, const uint32_t groupId, const bool topmost, const bool focus, const string& capabilities)
 {
     bool ret = false;
 
@@ -1567,7 +1568,7 @@ bool RDKWindowManagerImplementation::createDisplay(const string& client, const s
                 LOGERR("createDisplay: system is shutting down, request rejected for client: %s", client.c_str());
                 return false;
             }
-            request = std::make_shared<CreateDisplayRequest>(client, displayName, displayWidth, displayHeight, virtualDisplay, virtualWidth, virtualHeight, topmost, focus, ownerId, groupId);
+            request = std::make_shared<CreateDisplayRequest>(client, displayName, displayWidth, displayHeight, virtualDisplay, virtualWidth, virtualHeight, topmost, focus, ownerId, groupId, capabilities);
             gCreateDisplayRequests.push_back(request);
         }
         gRequestCV.notify_one();
