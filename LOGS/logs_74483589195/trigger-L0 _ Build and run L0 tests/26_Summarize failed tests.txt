@@ -1,0 +1,39 @@
+﻿2026-06-17T01:46:45.3126487Z ##[group]Run set -euo pipefail
+2026-06-17T01:46:45.3126819Z [36;1mset -euo pipefail[0m
+2026-06-17T01:46:45.3127550Z [36;1mfor log in l0-runtime-test.log l0-lcm-test.log l0-rdkwm-test.log l0-appstorage-test.log l0-preinstall-test.log l0-packagemanager-test.log l0-appmanager-test.log; do[0m
+2026-06-17T01:46:45.3128309Z [36;1m  if [ -f "$log" ]; then[0m
+2026-06-17T01:46:45.3128627Z [36;1m    echo "==== $log: Failed test cases (if any) ===="[0m
+2026-06-17T01:46:45.3129067Z [36;1m    grep -E '^\[  FAILED  \]' "$log" || echo "No explicit [ FAILED ] lines found"[0m
+2026-06-17T01:46:45.3129529Z [36;1m    grep -E 'GDB CRASH REPORT|Signal caught:' "$log" || true[0m
+2026-06-17T01:46:45.3129862Z [36;1m  else[0m
+2026-06-17T01:46:45.3130074Z [36;1m    echo "$log not found"[0m
+2026-06-17T01:46:45.3130317Z [36;1m  fi[0m
+2026-06-17T01:46:45.3130499Z [36;1mdone[0m
+2026-06-17T01:46:45.3187041Z shell: /usr/bin/bash -e {0}
+2026-06-17T01:46:45.3187302Z env:
+2026-06-17T01:46:45.3187495Z   BUILD_TYPE: Debug
+2026-06-17T01:46:45.3187738Z   THUNDER_REF: R4.4.1
+2026-06-17T01:46:45.3187976Z   INTERFACES_REF: topic/RDKEMW-16187
+2026-06-17T01:46:45.3188312Z   pythonLocation: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-17T01:46:45.3188743Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.14.5/x64/lib/pkgconfig
+2026-06-17T01:46:45.3189161Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-17T01:46:45.3189551Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-17T01:46:45.3189946Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-17T01:46:45.3190328Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.14.5/x64/lib
+2026-06-17T01:46:45.3190653Z ##[endgroup]
+2026-06-17T01:46:45.3263003Z ==== l0-runtime-test.log: Failed test cases (if any) ====
+2026-06-17T01:46:45.3279534Z No explicit [ FAILED ] lines found
+2026-06-17T01:46:45.3297773Z ==== l0-lcm-test.log: Failed test cases (if any) ====
+2026-06-17T01:46:45.3312089Z No explicit [ FAILED ] lines found
+2026-06-17T01:46:45.3327430Z ==== l0-rdkwm-test.log: Failed test cases (if any) ====
+2026-06-17T01:46:45.3341430Z No explicit [ FAILED ] lines found
+2026-06-17T01:46:45.3356589Z ==== l0-appstorage-test.log: Failed test cases (if any) ====
+2026-06-17T01:46:45.3371343Z No explicit [ FAILED ] lines found
+2026-06-17T01:46:45.3387607Z ==== l0-preinstall-test.log: Failed test cases (if any) ====
+2026-06-17T01:46:45.3401964Z No explicit [ FAILED ] lines found
+2026-06-17T01:46:45.3417542Z ==== l0-packagemanager-test.log: Failed test cases (if any) ====
+2026-06-17T01:46:45.3431944Z No explicit [ FAILED ] lines found
+2026-06-17T01:46:45.3448306Z ==== l0-appmanager-test.log: Failed test cases (if any) ====
+2026-06-17T01:46:45.3462687Z No explicit [ FAILED ] lines found
+2026-06-17T01:46:45.3477575Z ========== GDB CRASH REPORT ==========
+2026-06-17T01:46:45.3478071Z Signal caught: SIGABRT

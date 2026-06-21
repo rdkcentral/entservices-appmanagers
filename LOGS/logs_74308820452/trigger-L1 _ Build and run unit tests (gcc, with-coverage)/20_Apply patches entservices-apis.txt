@@ -1,0 +1,20 @@
+﻿2026-06-16T08:38:02.6808018Z ##[group]Run cd $GITHUB_WORKSPACE/entservices-apis
+2026-06-16T08:38:02.6808431Z [36;1mcd $GITHUB_WORKSPACE/entservices-apis[0m
+2026-06-16T08:38:02.6808920Z [36;1mpatch -p1 < $GITHUB_WORKSPACE/entservices-appmanagers/Tests/patches/RDKEMW-1007.patch[0m
+2026-06-16T08:38:02.6809365Z [36;1mcd -[0m
+2026-06-16T08:38:02.6838140Z shell: /usr/bin/bash -e {0}
+2026-06-16T08:38:02.6838414Z env:
+2026-06-16T08:38:02.6838608Z   BUILD_TYPE: Debug
+2026-06-16T08:38:02.6838823Z   THUNDER_REF: R4.4.1
+2026-06-16T08:38:02.6839055Z   INTERFACES_REF: topic/RDKEMW-16187
+2026-06-16T08:38:02.6839329Z   AUTOMATICS_UNAME: 
+2026-06-16T08:38:02.6839549Z   AUTOMATICS_PASSCODE: 
+2026-06-16T08:38:02.6839841Z   pythonLocation: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T08:38:02.6840258Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.14.5/x64/lib/pkgconfig
+2026-06-16T08:38:02.6840670Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T08:38:02.6841036Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T08:38:02.6841432Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T08:38:02.6841917Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.14.5/x64/lib
+2026-06-16T08:38:02.6842234Z ##[endgroup]
+2026-06-16T08:38:02.6893870Z patching file apis/AuthService/IAuthService.h
+2026-06-16T08:38:02.6897123Z /home/runner/work/entservices-appmanagers/entservices-appmanagers

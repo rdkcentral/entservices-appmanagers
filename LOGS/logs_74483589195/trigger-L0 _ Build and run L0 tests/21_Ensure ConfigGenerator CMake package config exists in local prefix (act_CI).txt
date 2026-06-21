@@ -1,0 +1,83 @@
+﻿2026-06-17T01:43:39.7346255Z ##[group]Run set -euo pipefail
+2026-06-17T01:43:39.7346611Z [36;1mset -euo pipefail[0m
+2026-06-17T01:43:39.7346998Z [36;1m[0m
+2026-06-17T01:43:39.7347219Z [36;1mprefix="$GITHUB_WORKSPACE/install/usr"[0m
+2026-06-17T01:43:39.7347568Z [36;1mpkgdir="$prefix/lib/cmake/ConfigGenerator"[0m
+2026-06-17T01:43:39.7347926Z [36;1mcfg="$pkgdir/ConfigGeneratorConfig.cmake"[0m
+2026-06-17T01:43:39.7348295Z [36;1mver="$pkgdir/ConfigGeneratorConfigVersion.cmake"[0m
+2026-06-17T01:43:39.7348603Z [36;1m[0m
+2026-06-17T01:43:39.7348795Z [36;1mmkdir -p "$pkgdir"[0m
+2026-06-17T01:43:39.7349015Z [36;1m[0m
+2026-06-17T01:43:39.7349433Z [36;1mfindmod="$(find "$prefix" -type f -name 'FindConfigGenerator.cmake' -print -quit 2>/dev/null || true)"[0m
+2026-06-17T01:43:39.7349927Z [36;1mfindmod_dir=""[0m
+2026-06-17T01:43:39.7350152Z [36;1mif [ -n "${findmod}" ]; then[0m
+2026-06-17T01:43:39.7350430Z [36;1m  findmod_dir="$(dirname "${findmod}")"[0m
+2026-06-17T01:43:39.7350785Z [36;1m  echo "Found FindConfigGenerator.cmake at: ${findmod}"[0m
+2026-06-17T01:43:39.7351138Z [36;1melse[0m
+2026-06-17T01:43:39.7351605Z [36;1m  echo "INFO: FindConfigGenerator.cmake not found under prefix: ${prefix} (continuing with tool-only fallback config)"[0m
+2026-06-17T01:43:39.7352136Z [36;1mfi[0m
+2026-06-17T01:43:39.7352305Z [36;1m[0m
+2026-06-17T01:43:39.7352863Z [36;1mecho "Generating ConfigGeneratorConfig.cmake at: $cfg"[0m
+2026-06-17T01:43:39.7353219Z [36;1mif [ -n "${findmod_dir}" ]; then[0m
+2026-06-17T01:43:39.7353479Z [36;1m  cat > "$cfg" <<EOF[0m
+2026-06-17T01:43:39.7353729Z [36;1minclude(CMakeFindDependencyMacro)[0m
+2026-06-17T01:43:39.7353993Z [36;1m[0m
+2026-06-17T01:43:39.7354192Z [36;1mset(_cg_module_dir "${findmod_dir}")[0m
+2026-06-17T01:43:39.7354586Z [36;1mget_filename_component(_cg_module_dir "\${_cg_module_dir}" ABSOLUTE)[0m
+2026-06-17T01:43:39.7354950Z [36;1m[0m
+2026-06-17T01:43:39.7355209Z [36;1mif(EXISTS "\${_cg_module_dir}/FindConfigGenerator.cmake")[0m
+2026-06-17T01:43:39.7355609Z [36;1m  list(PREPEND CMAKE_MODULE_PATH "\${_cg_module_dir}")[0m
+2026-06-17T01:43:39.7355921Z [36;1mendif()[0m
+2026-06-17T01:43:39.7356118Z [36;1m[0m
+2026-06-17T01:43:39.7356344Z [36;1mfind_package(ConfigGenerator REQUIRED MODULE)[0m
+2026-06-17T01:43:39.7356630Z [36;1mEOF[0m
+2026-06-17T01:43:39.7356802Z [36;1melse[0m
+2026-06-17T01:43:39.7356988Z [36;1m  cat > "$cfg" <<'EOF'[0m
+2026-06-17T01:43:39.7357276Z [36;1mset(_cg_prefix "${CMAKE_CURRENT_LIST_DIR}/../../..")[0m
+2026-06-17T01:43:39.7357669Z [36;1mget_filename_component(_cg_prefix "${_cg_prefix}" ABSOLUTE)[0m
+2026-06-17T01:43:39.7358011Z [36;1m[0m
+2026-06-17T01:43:39.7358230Z [36;1mfind_program(CONFIGGENERATOR_EXECUTABLE[0m
+2026-06-17T01:43:39.7358523Z [36;1m  NAMES ConfigGenerator[0m
+2026-06-17T01:43:39.7358935Z [36;1m  HINTS "${_cg_prefix}/bin" "${_cg_prefix}/sbin" "${_cg_prefix}/usr/bin" "${_cg_prefix}/usr/sbin"[0m
+2026-06-17T01:43:39.7359349Z [36;1m)[0m
+2026-06-17T01:43:39.7359520Z [36;1m[0m
+2026-06-17T01:43:39.7359716Z [36;1mif(NOT CONFIGGENERATOR_EXECUTABLE)[0m
+2026-06-17T01:43:39.7360179Z [36;1m  message(FATAL_ERROR "ConfigGenerator executable not found under prefix: ${_cg_prefix}")[0m
+2026-06-17T01:43:39.7360680Z [36;1mendif()[0m
+2026-06-17T01:43:39.7360864Z [36;1m[0m
+2026-06-17T01:43:39.7361101Z [36;1mif(NOT TARGET ConfigGenerator::ConfigGenerator)[0m
+2026-06-17T01:43:39.7361520Z [36;1m  add_executable(ConfigGenerator::ConfigGenerator IMPORTED GLOBAL)[0m
+2026-06-17T01:43:39.7362009Z [36;1m  set_target_properties(ConfigGenerator::ConfigGenerator PROPERTIES[0m
+2026-06-17T01:43:39.7362687Z [36;1m    IMPORTED_LOCATION "${CONFIGGENERATOR_EXECUTABLE}"[0m
+2026-06-17T01:43:39.7363033Z [36;1m  )[0m
+2026-06-17T01:43:39.7363218Z [36;1mendif()[0m
+2026-06-17T01:43:39.7363399Z [36;1m[0m
+2026-06-17T01:43:39.7363634Z [36;1mif(NOT TARGET ConfigGenerator::configgenerator)[0m
+2026-06-17T01:43:39.7364144Z [36;1m  add_executable(ConfigGenerator::configgenerator ALIAS ConfigGenerator::ConfigGenerator)[0m
+2026-06-17T01:43:39.7364589Z [36;1mendif()[0m
+2026-06-17T01:43:39.7364984Z [36;1m[0m
+2026-06-17T01:43:39.7365172Z [36;1mset(ConfigGenerator_FOUND TRUE)[0m
+2026-06-17T01:43:39.7365540Z [36;1mEOF[0m
+2026-06-17T01:43:39.7365708Z [36;1mfi[0m
+2026-06-17T01:43:39.7365874Z [36;1m[0m
+2026-06-17T01:43:39.7366052Z [36;1mif [ ! -f "$ver" ]; then[0m
+2026-06-17T01:43:39.7366294Z [36;1m  cat > "$ver" <<'EOF'[0m
+2026-06-17T01:43:39.7366537Z [36;1mset(PACKAGE_VERSION "0.0.0")[0m
+2026-06-17T01:43:39.7366812Z [36;1mset(PACKAGE_VERSION_COMPATIBLE TRUE)[0m
+2026-06-17T01:43:39.7367098Z [36;1mset(PACKAGE_VERSION_EXACT FALSE)[0m
+2026-06-17T01:43:39.7367350Z [36;1mEOF[0m
+2026-06-17T01:43:39.7367525Z [36;1mfi[0m
+2026-06-17T01:43:39.7416677Z shell: /usr/bin/bash -e {0}
+2026-06-17T01:43:39.7416922Z env:
+2026-06-17T01:43:39.7417104Z   BUILD_TYPE: Debug
+2026-06-17T01:43:39.7417311Z   THUNDER_REF: R4.4.1
+2026-06-17T01:43:39.7417535Z   INTERFACES_REF: topic/RDKEMW-16187
+2026-06-17T01:43:39.7417863Z   pythonLocation: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-17T01:43:39.7418290Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.14.5/x64/lib/pkgconfig
+2026-06-17T01:43:39.7418721Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-17T01:43:39.7419092Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-17T01:43:39.7419459Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-17T01:43:39.7419832Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.14.5/x64/lib
+2026-06-17T01:43:39.7420149Z ##[endgroup]
+2026-06-17T01:43:39.7549349Z INFO: FindConfigGenerator.cmake not found under prefix: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr (continuing with tool-only fallback config)
+2026-06-17T01:43:39.7550700Z Generating ConfigGeneratorConfig.cmake at: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/ConfigGenerator/ConfigGeneratorConfig.cmake

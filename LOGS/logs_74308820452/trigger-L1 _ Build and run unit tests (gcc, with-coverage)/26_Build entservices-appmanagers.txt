@@ -1,0 +1,541 @@
+﻿2026-06-16T08:41:02.4412734Z ##[group]Run cmake -G Ninja -S "$GITHUB_WORKSPACE/entservices-appmanagers" -B build/entservices-appmanagers -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/install/usr" -DCMAKE_PREFIX_PATH="$GITHUB_WORKSPACE/install/usr" -DCMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" -DCMAKE_CXX_FLAGS=" -fprofile-arcs -ftest-coverage -DEXCEPTIONS_ENABLE=ON -DUSE_THUNDER_R4=ON -DTHUNDER_VERSION=4 -DTHUNDER_VERSION_MAJOR=4 -DTHUNDER_VERSION_MINOR=4 -DRDK_SERVICES_L1_TEST -DBUILD_L1_TESTS_SHARED_MODULE=OFF -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/headers -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/headers/audiocapturemgr -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/headers/rdk/ds -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/headers/rdk/iarmbus -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/headers/rdk/iarmmgrs-hal -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/headers/ccec/drivers -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/headers/network -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/headers/libusb -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests -I $GITHUB_WORKSPACE/entservices-appmanagers/helpers/Telemetry -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/headers/Dobby -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/headers/Dobby/Public/Dobby -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/headers/Dobby/IpcService -I $GITHUB_WORKSPACE/Thunder/Source -I $GITHUB_WORKSPACE/Thunder/Source/core -I $GITHUB_WORKSPACE/install/usr/include -I $GITHUB_WORKSPACE/install/usr/include/WPEFramework -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/Iarm.h -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/Rfc.h -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/RBus.h -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/Telemetry.h -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/Udev.h -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/maintenanceMGR.h -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/pkg.h -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/secure_wrappermock.h -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/wpa_ctrl_mock.h -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/readprocMockInterface.h -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/gdialservice.h -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/RdkWindowManager.h --coverage -Wall -Wno-unused-result -Wno-deprecated-declarations -Wno-error=format= -Wl,-wrap,system -Wl,-wrap,popen -Wl,-wrap,syslog -Wl,-wrap,v_secure_system -Wl,-wrap,v_secure_popen -Wl,-wrap,v_secure_pclose -Wl,-wrap,unlink -DUSE_IARMBUS -DENABLE_SYSTEM_GET_STORE_DEMO_LINK -DENABLE_DEEP_SLEEP -DENABLE_SET_WAKEUP_SRC_CONFIG -DENABLE_THERMAL_PROTECTION -DDISABLE_SECURITY_TOKEN -DUSE_DRM_SCREENCAPTURE -DHAS_API_SYSTEM -DHAS_API_POWERSTATE -DHAS_RBUS -DENABLE_DEVICE_MANUFACTURER_INFO" -DCOMCAST_CONFIG=OFF -DCMAKE_DISABLE_FIND_PACKAGE_DS=ON -DCMAKE_DISABLE_FIND_PACKAGE_IARMBus=ON -DCMAKE_DISABLE_FIND_PACKAGE_Udev=ON -DCMAKE_DISABLE_FIND_PACKAGE_RFC=ON -DCMAKE_DISABLE_FIND_PACKAGE_RBus=ON -DCMAKE_BUILD_TYPE=Debug -DDS_FOUND=ON -DHAS_FRONT_PANEL=ON -DRDK_SERVICES_L1_TEST=ON -DUSE_THUNDER_R4=ON -DHIDE_NON_EXTERNAL_SYMBOLS=OFF -DPLUGIN_APPMANAGER=ON -DPLUGIN_APP_STORAGE_MANAGER=ON -DPLUGIN_RUNTIME_MANAGER=ON -DPLUGIN_LIFECYCLE_MANAGER=ON -DPLUGIN_DOWNLOADMANAGER=ON -DPLUGIN_PREINSTALL_MANAGER=ON -DPLUGIN_RDK_WINDOW_MANAGER=ON -DPLUGIN_PACKAGE_MANAGER=OFF -DENABLE_UNIT_TESTS=ON && cmake --build build/entservices-appmanagers -j8 && cmake --install build/entservices-appmanagers
+2026-06-16T08:41:02.4436095Z [36;1mcmake -G Ninja -S "$GITHUB_WORKSPACE/entservices-appmanagers" -B build/entservices-appmanagers -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/install/usr" -DCMAKE_PREFIX_PATH="$GITHUB_WORKSPACE/install/usr" -DCMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" -DCMAKE_CXX_FLAGS=" -fprofile-arcs -ftest-coverage -DEXCEPTIONS_ENABLE=ON -DUSE_THUNDER_R4=ON -DTHUNDER_VERSION=4 -DTHUNDER_VERSION_MAJOR=4 -DTHUNDER_VERSION_MINOR=4 -DRDK_SERVICES_L1_TEST -DBUILD_L1_TESTS_SHARED_MODULE=OFF -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/headers -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/headers/audiocapturemgr -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/headers/rdk/ds -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/headers/rdk/iarmbus -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/headers/rdk/iarmmgrs-hal -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/headers/ccec/drivers -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/headers/network -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/headers/libusb -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests -I $GITHUB_WORKSPACE/entservices-appmanagers/helpers/Telemetry -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/headers/Dobby -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/headers/Dobby/Public/Dobby -I $GITHUB_WORKSPACE/entservices-appmanagers/Tests/headers/Dobby/IpcService -I $GITHUB_WORKSPACE/Thunder/Source -I $GITHUB_WORKSPACE/Thunder/Source/core -I $GITHUB_WORKSPACE/install/usr/include -I $GITHUB_WORKSPACE/install/usr/include/WPEFramework -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/Iarm.h -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/Rfc.h -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/RBus.h -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/Telemetry.h -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/Udev.h -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/maintenanceMGR.h -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/pkg.h -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/secure_wrappermock.h -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/wpa_ctrl_mock.h -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/readprocMockInterface.h -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/gdialservice.h -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/RdkWindowManager.h --coverage -Wall -Wno-unused-result -Wno-deprecated-declarations -Wno-error=format= -Wl,-wrap,system -Wl,-wrap,popen -Wl,-wrap,syslog -Wl,-wrap,v_secure_system -Wl,-wrap,v_secure_popen -Wl,-wrap,v_secure_pclose -Wl,-wrap,unlink -DUSE_IARMBUS -DENABLE_SYSTEM_GET_STORE_DEMO_LINK -DENABLE_DEEP_SLEEP -DENABLE_SET_WAKEUP_SRC_CONFIG -DENABLE_THERMAL_PROTECTION -DDISABLE_SECURITY_TOKEN -DUSE_DRM_SCREENCAPTURE -DHAS_API_SYSTEM -DHAS_API_POWERSTATE -DHAS_RBUS -DENABLE_DEVICE_MANUFACTURER_INFO" -DCOMCAST_CONFIG=OFF -DCMAKE_DISABLE_FIND_PACKAGE_DS=ON -DCMAKE_DISABLE_FIND_PACKAGE_IARMBus=ON -DCMAKE_DISABLE_FIND_PACKAGE_Udev=ON -DCMAKE_DISABLE_FIND_PACKAGE_RFC=ON -DCMAKE_DISABLE_FIND_PACKAGE_RBus=ON -DCMAKE_BUILD_TYPE=Debug -DDS_FOUND=ON -DHAS_FRONT_PANEL=ON -DRDK_SERVICES_L1_TEST=ON -DUSE_THUNDER_R4=ON -DHIDE_NON_EXTERNAL_SYMBOLS=OFF -DPLUGIN_APPMANAGER=ON -DPLUGIN_APP_STORAGE_MANAGER=ON -DPLUGIN_RUNTIME_MANAGER=ON -DPLUGIN_LIFECYCLE_MANAGER=ON -DPLUGIN_DOWNLOADMANAGER=ON -DPLUGIN_PREINSTALL_MANAGER=ON -DPLUGIN_RDK_WINDOW_MANAGER=ON -DPLUGIN_PACKAGE_MANAGER=OFF -DENABLE_UNIT_TESTS=ON && cmake --build build/entservices-appmanagers -j8 && cmake --install build/entservices-appmanagers[0m
+2026-06-16T08:41:02.4475477Z shell: /usr/bin/bash -e {0}
+2026-06-16T08:41:02.4475739Z env:
+2026-06-16T08:41:02.4475941Z   BUILD_TYPE: Debug
+2026-06-16T08:41:02.4476155Z   THUNDER_REF: R4.4.1
+2026-06-16T08:41:02.4476392Z   INTERFACES_REF: topic/RDKEMW-16187
+2026-06-16T08:41:02.4476761Z   AUTOMATICS_UNAME: 
+2026-06-16T08:41:02.4476981Z   AUTOMATICS_PASSCODE: 
+2026-06-16T08:41:02.4477271Z   pythonLocation: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T08:41:02.4477688Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.14.5/x64/lib/pkgconfig
+2026-06-16T08:41:02.4478101Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T08:41:02.4478466Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T08:41:02.4478840Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T08:41:02.4479208Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.14.5/x64/lib
+2026-06-16T08:41:02.4479953Z   TOOLCHAIN_FILE: /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/gcc-with-coverage.cmake
+2026-06-16T08:41:02.4480548Z ##[endgroup]
+2026-06-16T08:41:02.4558857Z CMake Warning (dev) in CMakeLists.txt:
+2026-06-16T08:41:02.4559622Z   No project() command is present.  The top-level CMakeLists.txt file must
+2026-06-16T08:41:02.4560498Z   contain a literal, direct call to the project() command.  Add a line of
+2026-06-16T08:41:02.4561100Z   code such as
+2026-06-16T08:41:02.4561321Z 
+2026-06-16T08:41:02.4561495Z     project(ProjectName)
+2026-06-16T08:41:02.4561882Z 
+2026-06-16T08:41:02.4562157Z   near the top of the file, but after cmake_minimum_required().
+2026-06-16T08:41:02.4562583Z 
+2026-06-16T08:41:02.4562916Z   CMake is pretending there is a "project(Project)" command on the first
+2026-06-16T08:41:02.4563502Z   line.
+2026-06-16T08:41:02.4563954Z This warning is for project developers.  Use -Wno-dev to suppress it.
+2026-06-16T08:41:02.4564410Z 
+2026-06-16T08:41:02.4984367Z -- The C compiler identification is GNU 11.4.0
+2026-06-16T08:41:02.7553045Z -- The CXX compiler identification is GNU 11.4.0
+2026-06-16T08:41:02.7601026Z -- Check for working C compiler: /usr/bin/cc
+2026-06-16T08:41:02.7927384Z -- Check for working C compiler: /usr/bin/cc -- works
+2026-06-16T08:41:02.7935278Z -- Detecting C compiler ABI info
+2026-06-16T08:41:02.8252086Z -- Detecting C compiler ABI info - done
+2026-06-16T08:41:02.8354277Z -- Detecting C compile features
+2026-06-16T08:41:02.8358668Z -- Detecting C compile features - done
+2026-06-16T08:41:02.8388452Z -- Check for working CXX compiler: /usr/bin/c++
+2026-06-16T08:41:03.0926850Z -- Check for working CXX compiler: /usr/bin/c++ -- works
+2026-06-16T08:41:03.0941308Z -- Detecting CXX compiler ABI info
+2026-06-16T08:41:03.3485402Z -- Detecting CXX compiler ABI info - done
+2026-06-16T08:41:03.3652518Z -- Detecting CXX compile features
+2026-06-16T08:41:03.3657774Z -- Detecting CXX compile features - done
+2026-06-16T08:41:03.4130204Z -- Found GTest: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/libgtest.a  
+2026-06-16T08:41:03.4881358Z -- PLUGIN_APPMANAGER=ON
+2026-06-16T08:41:03.4882027Z -- PLUGIN_RUNTIME_MANAGER=ON
+2026-06-16T08:41:03.4882322Z -- PLUGIN_APP_STORAGE_MANAGER=ON
+2026-06-16T08:41:03.4882783Z -- PLUGIN_LIFECYCLE_MANAGER=ON
+2026-06-16T08:41:03.4883243Z -- PLUGIN_PREINSTALL_MANAGER=ON
+2026-06-16T08:41:03.4884064Z -- PLUGIN_PACKAGE_MANAGER=OFF
+2026-06-16T08:41:03.4884497Z -- PLUGIN_DOWNLOADMANAGER=ON
+2026-06-16T08:41:03.4885113Z -- PLUGIN_RDK_WINDOW_MANAGER=ON
+2026-06-16T08:41:03.4960993Z CMake Deprecation Warning at /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/tools/cmake/FindConfigGenerator.cmake:81 (message):
+2026-06-16T08:41:03.4961768Z -- Assuming:
+2026-06-16T08:41:03.4961996Z   
+2026-06-16T08:41:03.4962279Z   ======DEPRECATION=DETECTED==================================================
+2026-06-16T08:41:03.4962564Z 
+2026-06-16T08:41:03.4962572Z 
+2026-06-16T08:41:03.4962664Z   PROPOSED FIX:
+2026-06-16T08:41:03.4962785Z 
+2026-06-16T08:41:03.4962868Z   
+2026-06-16T08:41:03.4963354Z   /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/RDKWindowManager/CMakeLists.txt
+2026-06-16T08:41:03.4963825Z 
+2026-06-16T08:41:03.4963830Z 
+2026-06-16T08:41:03.4963985Z   "write_config(RDKWindowManager)" --> "write_config(PLUGINS
+2026-06-16T08:41:03.4964513Z   RDKWindowManager)"
+2026-06-16T08:41:03.4964656Z 
+2026-06-16T08:41:03.4964730Z   
+2026-06-16T08:41:03.4964962Z   ============================================================================
+2026-06-16T08:41:03.4965283Z Call Stack (most recent call first):
+2026-06-16T08:41:03.4965598Z   RDKWindowManager/CMakeLists.txt:92 (write_config)
+2026-06-16T08:41:03.4965810Z 
+2026-06-16T08:41:03.4965814Z 
+2026-06-16T08:41:03.4965917Z -- Plugin: RDKWindowManager
+2026-06-16T08:41:03.4966164Z -- Classname: RDKWindowManager
+2026-06-16T08:41:03.4966511Z -- Component: RDKWindowManager
+2026-06-16T08:41:03.5028620Z -- Writing configuration for RDKWindowManager using config_generator
+2026-06-16T08:41:03.5531304Z ConfigGenerator: Writing Config JSON
+2026-06-16T08:41:03.5661036Z CMake Deprecation Warning at /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/tools/cmake/FindConfigGenerator.cmake:81 (message):
+2026-06-16T08:41:03.5661876Z -- Assuming:
+2026-06-16T08:41:03.5662138Z   
+2026-06-16T08:41:03.5662441Z   ======DEPRECATION=DETECTED==================================================
+2026-06-16T08:41:03.5662713Z 
+2026-06-16T08:41:03.5662720Z 
+2026-06-16T08:41:03.5662818Z   PROPOSED FIX:
+2026-06-16T08:41:03.5662944Z 
+2026-06-16T08:41:03.5663026Z   
+2026-06-16T08:41:03.5663524Z   /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/LifecycleManager/CMakeLists.txt
+2026-06-16T08:41:03.5664000Z 
+2026-06-16T08:41:03.5664004Z 
+2026-06-16T08:41:03.5664164Z   "write_config(LifecycleManager)" --> "write_config(PLUGINS
+2026-06-16T08:41:03.5664510Z   LifecycleManager)"
+2026-06-16T08:41:03.5664652Z 
+2026-06-16T08:41:03.5664726Z   
+2026-06-16T08:41:03.5664948Z   ============================================================================
+2026-06-16T08:41:03.5665265Z Call Stack (most recent call first):
+2026-06-16T08:41:03.5665583Z   LifecycleManager/CMakeLists.txt:83 (write_config)
+2026-06-16T08:41:03.5665794Z 
+2026-06-16T08:41:03.5665807Z 
+2026-06-16T08:41:03.5665913Z -- Plugin: LifecycleManager
+2026-06-16T08:41:03.5666167Z -- Classname: LifecycleManager
+2026-06-16T08:41:03.5666414Z -- Component: LifecycleManager
+2026-06-16T08:41:03.5666749Z -- Writing configuration for LifecycleManager using config_generator
+2026-06-16T08:41:03.6142271Z ConfigGenerator: Writing Config JSON
+2026-06-16T08:41:03.6272823Z CMake Deprecation Warning at /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/tools/cmake/FindConfigGenerator.cmake:81 (message):
+2026-06-16T08:41:03.6273700Z -- Assuming:
+2026-06-16T08:41:03.6273959Z -- Plugin: AppManager
+2026-06-16T08:41:03.6274198Z -- Classname: AppManager
+2026-06-16T08:41:03.6274436Z -- Component: AppManager
+2026-06-16T08:41:03.6274676Z   
+2026-06-16T08:41:03.6274957Z   ======DEPRECATION=DETECTED==================================================
+2026-06-16T08:41:03.6275224Z 
+2026-06-16T08:41:03.6275231Z 
+2026-06-16T08:41:03.6275320Z   PROPOSED FIX:
+2026-06-16T08:41:03.6275444Z 
+2026-06-16T08:41:03.6275534Z   
+2026-06-16T08:41:03.6275994Z   /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/AppManager/CMakeLists.txt
+2026-06-16T08:41:03.6276446Z 
+2026-06-16T08:41:03.6276451Z 
+2026-06-16T08:41:03.6276627Z   "write_config(AppManager)" --> "write_config(PLUGINS AppManager)"
+2026-06-16T08:41:03.6276892Z 
+2026-06-16T08:41:03.6276968Z   
+2026-06-16T08:41:03.6277191Z   ============================================================================
+2026-06-16T08:41:03.6277501Z Call Stack (most recent call first):
+2026-06-16T08:41:03.6277809Z   AppManager/CMakeLists.txt:97 (write_config)
+2026-06-16T08:41:03.6278007Z 
+2026-06-16T08:41:03.6278012Z 
+2026-06-16T08:41:03.6278184Z -- Writing configuration for AppManager using config_generator
+2026-06-16T08:41:03.6763389Z ConfigGenerator: Writing Config JSON
+2026-06-16T08:41:03.6898564Z CMake Deprecation Warning at /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/tools/cmake/FindConfigGenerator.cmake:81 (message):
+2026-06-16T08:41:03.6899732Z -- Assuming:
+2026-06-16T08:41:03.6900001Z   
+2026-06-16T08:41:03.6900325Z   ======DEPRECATION=DETECTED==================================================
+2026-06-16T08:41:03.6900652Z 
+2026-06-16T08:41:03.6900659Z 
+2026-06-16T08:41:03.6900762Z   PROPOSED FIX:
+2026-06-16T08:41:03.6900917Z 
+2026-06-16T08:41:03.6901012Z   
+2026-06-16T08:41:03.6901574Z   /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/RuntimeManager/CMakeLists.txt
+2026-06-16T08:41:03.6902399Z 
+2026-06-16T08:41:03.6902405Z 
+2026-06-16T08:41:03.6902786Z   "write_config(RuntimeManager)" --> "write_config(PLUGINS RuntimeManager)"
+2026-06-16T08:41:03.6903140Z 
+2026-06-16T08:41:03.6903240Z   
+2026-06-16T08:41:03.6903504Z   ============================================================================
+2026-06-16T08:41:03.6903885Z Call Stack (most recent call first):
+2026-06-16T08:41:03.6904257Z   RuntimeManager/CMakeLists.txt:219 (write_config)
+2026-06-16T08:41:03.6904531Z 
+2026-06-16T08:41:03.6904536Z 
+2026-06-16T08:41:03.6904650Z -- Plugin: RuntimeManager
+2026-06-16T08:41:03.6904942Z -- Classname: RuntimeManager
+2026-06-16T08:41:03.6905244Z -- Component: RuntimeManager
+2026-06-16T08:41:03.6905651Z -- Writing configuration for RuntimeManager using config_generator
+2026-06-16T08:41:03.7386748Z ConfigGenerator: Writing Config JSON
+2026-06-16T08:41:03.7516931Z CMake Deprecation Warning at /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/tools/cmake/FindConfigGenerator.cmake:81 (message):
+2026-06-16T08:41:03.7517693Z -- Assuming:
+2026-06-16T08:41:03.7517963Z   
+2026-06-16T08:41:03.7518265Z   ======DEPRECATION=DETECTED==================================================
+2026-06-16T08:41:03.7518553Z 
+2026-06-16T08:41:03.7518561Z 
+2026-06-16T08:41:03.7518652Z   PROPOSED FIX:
+2026-06-16T08:41:03.7518790Z 
+2026-06-16T08:41:03.7518869Z   
+2026-06-16T08:41:03.7519387Z   /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/AppStorageManager/CMakeLists.txt
+2026-06-16T08:41:03.7519904Z 
+2026-06-16T08:41:03.7519909Z 
+2026-06-16T08:41:03.7520088Z   "write_config(AppStorageManager)" --> "write_config(PLUGINS
+2026-06-16T08:41:03.7520441Z   AppStorageManager)"
+2026-06-16T08:41:03.7520588Z 
+2026-06-16T08:41:03.7520672Z   
+2026-06-16T08:41:03.7520909Z   ============================================================================
+2026-06-16T08:41:03.7521245Z Call Stack (most recent call first):
+2026-06-16T08:41:03.7521575Z   AppStorageManager/CMakeLists.txt:120 (write_config)
+2026-06-16T08:41:03.7522019Z 
+2026-06-16T08:41:03.7522029Z 
+2026-06-16T08:41:03.7522143Z -- Plugin: AppStorageManager
+2026-06-16T08:41:03.7522417Z -- Classname: AppStorageManager
+2026-06-16T08:41:03.7522688Z -- Component: AppStorageManager
+2026-06-16T08:41:03.7523057Z -- Writing configuration for AppStorageManager using config_generator
+2026-06-16T08:41:03.7998426Z ConfigGenerator: Writing Config JSON
+2026-06-16T08:41:03.8133384Z CMake Deprecation Warning at /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/tools/cmake/FindConfigGenerator.cmake:81 (message):
+2026-06-16T08:41:03.8134682Z -- Assuming:
+2026-06-16T08:41:03.8135053Z   
+2026-06-16T08:41:03.8135501Z   ======DEPRECATION=DETECTED==================================================
+2026-06-16T08:41:03.8135943Z 
+2026-06-16T08:41:03.8135952Z 
+2026-06-16T08:41:03.8136148Z   PROPOSED FIX:
+2026-06-16T08:41:03.8136343Z 
+2026-06-16T08:41:03.8136464Z   
+2026-06-16T08:41:03.8137185Z   /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/DownloadManager/CMakeLists.txt
+2026-06-16T08:41:03.8137919Z 
+2026-06-16T08:41:03.8137928Z 
+2026-06-16T08:41:03.8138276Z   "write_config(DownloadManager)" --> "write_config(PLUGINS DownloadManager)"
+2026-06-16T08:41:03.8138753Z 
+2026-06-16T08:41:03.8138863Z   
+2026-06-16T08:41:03.8139094Z   ============================================================================
+2026-06-16T08:41:03.8139412Z Call Stack (most recent call first):
+2026-06-16T08:41:03.8140002Z   DownloadManager/CMakeLists.txt:79 (write_config)
+2026-06-16T08:41:03.8140219Z 
+2026-06-16T08:41:03.8140224Z 
+2026-06-16T08:41:03.8140327Z -- Plugin: DownloadManager
+2026-06-16T08:41:03.8140583Z -- Classname: DownloadManager
+2026-06-16T08:41:03.8140837Z -- Component: DownloadManager
+2026-06-16T08:41:03.8141174Z -- Writing configuration for DownloadManager using config_generator
+2026-06-16T08:41:03.8686866Z ConfigGenerator: Writing Config JSON
+2026-06-16T08:41:03.8789340Z Setup WPEFrameworkPreinstallManager v
+2026-06-16T08:41:03.8825703Z CMake Deprecation Warning at /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/tools/cmake/FindConfigGenerator.cmake:81 (message):
+2026-06-16T08:41:03.8826720Z -- Assuming:
+2026-06-16T08:41:03.8826958Z   
+2026-06-16T08:41:03.8827240Z   ======DEPRECATION=DETECTED==================================================
+2026-06-16T08:41:03.8827509Z 
+2026-06-16T08:41:03.8827515Z 
+2026-06-16T08:41:03.8827610Z   PROPOSED FIX:
+2026-06-16T08:41:03.8827750Z 
+2026-06-16T08:41:03.8827835Z   
+2026-06-16T08:41:03.8828321Z   /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/PreinstallManager/CMakeLists.txt
+2026-06-16T08:41:03.8828804Z 
+2026-06-16T08:41:03.8828808Z 
+2026-06-16T08:41:03.8828972Z   "write_config(PreinstallManager)" --> "write_config(PLUGINS
+2026-06-16T08:41:03.8829311Z   PreinstallManager)"
+2026-06-16T08:41:03.8829456Z 
+2026-06-16T08:41:03.8829529Z   
+2026-06-16T08:41:03.8829747Z   ============================================================================
+2026-06-16T08:41:03.8830074Z Call Stack (most recent call first):
+2026-06-16T08:41:03.8830386Z   PreinstallManager/CMakeLists.txt:89 (write_config)
+2026-06-16T08:41:03.8830599Z 
+2026-06-16T08:41:03.8830604Z 
+2026-06-16T08:41:03.8830716Z -- Plugin: PreinstallManager
+2026-06-16T08:41:03.8830969Z -- Classname: PreinstallManager
+2026-06-16T08:41:03.8831223Z -- Component: PreinstallManager
+2026-06-16T08:41:03.8831563Z -- Writing configuration for PreinstallManager using config_generator
+2026-06-16T08:41:03.9316001Z ConfigGenerator: Writing Config JSON
+2026-06-16T08:41:03.9428283Z -- Configuring done
+2026-06-16T08:41:03.9612585Z -- Generating done
+2026-06-16T08:41:03.9624776Z CMake Warning:
+2026-06-16T08:41:03.9625463Z   Manually-specified variables were not used by the project:
+2026-06-16T08:41:03.9625957Z 
+2026-06-16T08:41:03.9626137Z     CMAKE_DISABLE_FIND_PACKAGE_DS
+2026-06-16T08:41:03.9626630Z     CMAKE_DISABLE_FIND_PACKAGE_IARMBus
+2026-06-16T08:41:03.9627103Z     CMAKE_DISABLE_FIND_PACKAGE_RBus
+2026-06-16T08:41:03.9627524Z     CMAKE_DISABLE_FIND_PACKAGE_RFC
+2026-06-16T08:41:03.9627970Z     CMAKE_DISABLE_FIND_PACKAGE_Udev
+2026-06-16T08:41:03.9628357Z     COMCAST_CONFIG
+2026-06-16T08:41:03.9628658Z     DS_FOUND
+2026-06-16T08:41:03.9628932Z     HAS_FRONT_PANEL
+2026-06-16T08:41:03.9629226Z     USE_THUNDER_R4
+2026-06-16T08:41:03.9629409Z 
+2026-06-16T08:41:03.9629417Z 
+2026-06-16T08:41:03.9630104Z -- Build files have been written to: /home/runner/work/entservices-appmanagers/entservices-appmanagers/build/entservices-appmanagers
+2026-06-16T08:41:10.8142337Z [1/76] Building CXX object RDKWindowManager/CMakeFiles/WPEFrameworkRDKWindowManagerImplementation.dir/Module.cpp.o
+2026-06-16T08:41:11.0858829Z [2/76] Building CXX object RDKWindowManager/CMakeFiles/WPEFrameworkRDKWindowManager.dir/Module.cpp.o
+2026-06-16T08:41:11.6579009Z [3/76] Building CXX object helpers/CMakeFiles/AppManagersHelpers.dir/Telemetry/UtilsTelemetryMetrics.cpp.o
+2026-06-16T08:41:11.7929731Z [4/76] Building CXX object helpers/CMakeFiles/AppManagersHelpers.dir/Telemetry/TelemetryReportingBase.cpp.o
+2026-06-16T08:41:11.9327237Z [5/76] Linking CXX shared library helpers/libAppManagersHelpers.so
+2026-06-16T08:41:13.3299200Z [6/76] Building CXX object RDKWindowManager/CMakeFiles/WPEFrameworkRDKWindowManagerImplementation.dir/RDKWindowManagerTelemetryReporting.cpp.o
+2026-06-16T08:41:16.0965831Z [7/76] Building CXX object LifecycleManager/CMakeFiles/WPEFrameworkLifecycleManager.dir/ApplicationContext.cpp.o
+2026-06-16T08:41:18.2498628Z [8/76] Building CXX object LifecycleManager/CMakeFiles/WPEFrameworkLifecycleManager.dir/Module.cpp.o
+2026-06-16T08:41:19.8531413Z [9/76] Building CXX object LifecycleManager/CMakeFiles/WPEFrameworkLifecycleManager.dir/LifecycleManager.cpp.o
+2026-06-16T08:41:21.5002466Z [10/76] Building CXX object LifecycleManager/CMakeFiles/WPEFrameworkLifecycleManager.dir/RequestHandler.cpp.o
+2026-06-16T08:41:21.9558589Z [11/76] Building CXX object LifecycleManager/CMakeFiles/WPEFrameworkLifecycleManager.dir/LifecycleManagerTelemetryReporting.cpp.o
+2026-06-16T08:41:22.8142069Z [12/76] Building CXX object RDKWindowManager/CMakeFiles/WPEFrameworkRDKWindowManagerImplementation.dir/RDKWindowManagerImplementation.cpp.o
+2026-06-16T08:41:22.8153991Z In file included from /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/RDKWindowManager/../helpers/UtilsJsonRpc.h:22,
+2026-06-16T08:41:22.8158810Z                  from /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/RDKWindowManager/RDKWindowManagerImplementation.cpp:32:
+2026-06-16T08:41:22.8164950Z /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/RDKWindowManager/RDKWindowManagerImplementation.cpp: In member function ‘virtual WPEFramework::Core::hresult WPEFramework::Plugin::RDKWindowManagerImplementation::GetLastKeyInfo(uint32_t&, uint32_t&, uint64_t&) const’:
+2026-06-16T08:41:22.8169691Z /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/RDKWindowManager/../helpers/UtilsLogging.h:30:48: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 9 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+2026-06-16T08:41:22.8172898Z    30 | #define LOGINFO(fmt, ...) do { fprintf(stderr, "[%d] INFO [%s:%d] %s: " fmt "\n", (int)syscall(SYS_gettid), WPEFramework::Core::FileNameOnly(__FILE__), __LINE__, __FUNCTION__, ##__VA_ARGS__); fflush(stderr); } while (0)
+2026-06-16T08:41:22.8174493Z       |                                                ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2026-06-16T08:41:22.8176369Z /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/RDKWindowManager/../helpers/UtilsLogging.h:30:48: note: in definition of macro ‘LOGINFO’
+2026-06-16T08:41:22.8178794Z    30 | #define LOGINFO(fmt, ...) do { fprintf(stderr, "[%d] INFO [%s:%d] %s: " fmt "\n", (int)syscall(SYS_gettid), WPEFramework::Core::FileNameOnly(__FILE__), __LINE__, __FUNCTION__, ##__VA_ARGS__); fflush(stderr); } while (0)
+2026-06-16T08:41:22.8180359Z       |                                                ^~~~~~~~~~~~~~~~~~~~~~~~
+2026-06-16T08:41:22.8182290Z /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/RDKWindowManager/RDKWindowManagerImplementation.cpp:2054:88: note: format string is defined here
+2026-06-16T08:41:22.8185035Z  2054 |         LOGINFO("GetLastKeyInfo successful - keyCode: %u, modifiers: %u, timestamp: %llu", keyCode, modifiers, timestampInSeconds);
+2026-06-16T08:41:22.8186161Z       |                                                                                     ~~~^
+2026-06-16T08:41:22.8186829Z       |                                                                                        |
+2026-06-16T08:41:22.8187537Z       |                                                                                        long long unsigned int
+2026-06-16T08:41:22.8188312Z       |                                                                                     %lu
+2026-06-16T08:41:25.1847689Z [13/76] Building CXX object RDKWindowManager/CMakeFiles/WPEFrameworkRDKWindowManager.dir/RDKWindowManager.cpp.o
+2026-06-16T08:41:25.5359051Z [14/76] Building CXX object LifecycleManager/CMakeFiles/WPEFrameworkLifecycleManager.dir/LifecycleManagerImplementation.cpp.o
+2026-06-16T08:41:26.6333678Z [15/76] Building CXX object LifecycleManager/CMakeFiles/WPEFrameworkLifecycleManager.dir/StateTransitionHandler.cpp.o
+2026-06-16T08:41:28.5199414Z [16/76] Building CXX object LifecycleManager/CMakeFiles/WPEFrameworkLifecycleManager.dir/State.cpp.o
+2026-06-16T08:41:28.9846511Z [17/76] Building CXX object LifecycleManager/CMakeFiles/WPEFrameworkLifecycleManager.dir/RuntimeManagerHandler.cpp.o
+2026-06-16T08:41:29.8700447Z [18/76] Building CXX object LifecycleManager/CMakeFiles/WPEFrameworkLifecycleManager.dir/WindowManagerHandler.cpp.o
+2026-06-16T08:41:32.2289364Z [19/76] Building CXX object AppManager/CMakeFiles/WPEFrameworkAppManager.dir/Module.cpp.o
+2026-06-16T08:41:33.2212755Z [20/76] Building CXX object LifecycleManager/CMakeFiles/WPEFrameworkLifecycleManager.dir/StateHandler.cpp.o
+2026-06-16T08:41:33.7358711Z [21/76] Building CXX object AppManager/CMakeFiles/WPEFrameworkAppManagerImplementation.dir/AppInfo.cpp.o
+2026-06-16T08:41:36.7958901Z [22/76] Building CXX object AppManager/CMakeFiles/WPEFrameworkAppManagerImplementation.dir/AppInfoManager.cpp.o
+2026-06-16T08:41:39.2858554Z [23/76] Building CXX object AppManager/CMakeFiles/WPEFrameworkAppManagerImplementation.dir/Module.cpp.o
+2026-06-16T08:41:39.9279627Z [24/76] Building CXX object AppManager/CMakeFiles/WPEFrameworkAppManagerImplementation.dir/AppManagerTelemetryReporting.cpp.o
+2026-06-16T08:41:40.6188697Z [25/76] Building CXX object RuntimeManager/CMakeFiles/WPEFrameworkRuntimeManager.dir/Module.cpp.o
+2026-06-16T08:41:42.7319174Z [26/76] Building CXX object AppManager/CMakeFiles/WPEFrameworkAppManagerImplementation.dir/AppManagerImplementation.cpp.o
+2026-06-16T08:41:43.0131862Z [27/76] Building CXX object RuntimeManager/CMakeFiles/WPEFrameworkRuntimeManager.dir/RuntimeManager.cpp.o
+2026-06-16T08:41:43.5321068Z [28/76] Building CXX object AppManager/CMakeFiles/WPEFrameworkAppManagerImplementation.dir/LifecycleInterfaceConnector.cpp.o
+2026-06-16T08:41:43.7722549Z [29/76] Building CXX object AppManager/CMakeFiles/WPEFrameworkAppManager.dir/AppManager.cpp.o
+2026-06-16T08:41:44.3022641Z [30/76] Building CXX object RuntimeManager/CMakeFiles/WPEFrameworkRuntimeManagerImplementation.dir/UserIdManager.cpp.o
+2026-06-16T08:41:49.0289586Z [31/76] Building CXX object RuntimeManager/CMakeFiles/WPEFrameworkRuntimeManagerImplementation.dir/RuntimeManagerTelemetryReporting.cpp.o
+2026-06-16T08:41:49.5265337Z [32/76] Building CXX object RuntimeManager/CMakeFiles/WPEFrameworkRuntimeManagerImplementation.dir/WindowManagerConnector.cpp.o
+2026-06-16T08:41:49.6742614Z [33/76] Building CXX object RuntimeManager/CMakeFiles/WPEFrameworkRuntimeManagerImplementation.dir/AIConfiguration.cpp.o
+2026-06-16T08:41:49.7976701Z [34/76] Building CXX object RuntimeManager/CMakeFiles/WPEFrameworkRuntimeManagerImplementation.dir/DobbySpecGenerator.cpp.o
+2026-06-16T08:41:49.8005239Z In file included from /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/RuntimeManager/DobbySpecGenerator.cpp:23:
+2026-06-16T08:41:49.8011312Z /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/RuntimeManager/DobbySpecGenerator.cpp: In member function ‘bool WPEFramework::Plugin::DobbySpecGenerator::generate(const WPEFramework::Plugin::ApplicationConfiguration&, const WPEFramework::Exchange::RuntimeConfig&, string&)’:
+2026-06-16T08:41:49.8015661Z /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/RuntimeManager/../helpers/UtilsLogging.h:32:47: warning: format ‘%d’ expects argument of type ‘int’, but argument 7 has type ‘ssize_t’ {aka ‘long int’} [-Wformat=]
+2026-06-16T08:41:49.8035059Z    32 | #define LOGERR(fmt, ...) do { fprintf(stderr, "[%d] ERROR [%s:%d] %s: " fmt "\n", (int)syscall(SYS_gettid), WPEFramework::Core::FileNameOnly(__FILE__), __LINE__, __FUNCTION__, ##__VA_ARGS__); fflush(stderr); } while (0)
+2026-06-16T08:41:49.8036442Z       |                                               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2026-06-16T08:41:49.8038182Z /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/RuntimeManager/DobbySpecGenerator.cpp:165:9: note: in expansion of macro ‘LOGERR’
+2026-06-16T08:41:49.8040415Z   165 |         LOGERR("Invalid mandatory parameter: Mem Limit=%d, Command=%s UserId %d", memLimit, runtimeConfig.command.c_str(), config.mUserId);
+2026-06-16T08:41:49.8041388Z       |         ^~~~~~
+2026-06-16T08:41:49.8043198Z /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/RuntimeManager/DobbySpecGenerator.cpp:165:57: note: format string is defined here
+2026-06-16T08:41:49.8045177Z   165 |         LOGERR("Invalid mandatory parameter: Mem Limit=%d, Command=%s UserId %d", memLimit, runtimeConfig.command.c_str(), config.mUserId);
+2026-06-16T08:41:49.8046476Z       |                                                        ~^
+2026-06-16T08:41:49.8047046Z       |                                                         |
+2026-06-16T08:41:49.8047618Z       |                                                         int
+2026-06-16T08:41:49.8048210Z       |                                                        %ld
+2026-06-16T08:41:50.6030180Z [35/76] Building CXX object RuntimeManager/CMakeFiles/WPEFrameworkRuntimeManagerImplementation.dir/Module.cpp.o
+2026-06-16T08:41:51.1843383Z [36/76] Building CXX object RuntimeManager/CMakeFiles/WPEFrameworkRuntimeManagerImplementation.dir/RuntimeManagerImplementation.cpp.o
+2026-06-16T08:41:53.7751915Z [37/76] Building CXX object RuntimeManager/CMakeFiles/WPEFrameworkRuntimeManagerImplementation.dir/DobbyEventListener.cpp.o
+2026-06-16T08:41:56.3890045Z [38/76] Building CXX object AppStorageManager/CMakeFiles/WPEFrameworkAppStorageManager.dir/Module.cpp.o
+2026-06-16T08:41:57.6300043Z [39/76] Building CXX object AppStorageManager/CMakeFiles/WPEFrameworkAppStorageManagerImplementation.dir/Module.cpp.o
+2026-06-16T08:41:58.5373678Z [40/76] Building CXX object AppStorageManager/CMakeFiles/WPEFrameworkAppStorageManagerImplementation.dir/AppStorageManagerTelemetryReporting.cpp.o
+2026-06-16T08:41:58.8903558Z [41/76] Building CXX object AppStorageManager/CMakeFiles/WPEFrameworkAppStorageManager.dir/AppStorageManager.cpp.o
+2026-06-16T08:42:00.7343489Z [42/76] Building CXX object DownloadManager/CMakeFiles/WPEFrameworkDownloadManager.dir/Module.cpp.o
+2026-06-16T08:42:01.0309281Z [43/76] Building CXX object AppStorageManager/CMakeFiles/WPEFrameworkAppStorageManagerImplementation.dir/AppStorageManagerImplementation.cpp.o
+2026-06-16T08:42:01.9519090Z [44/76] Building CXX object AppStorageManager/CMakeFiles/WPEFrameworkAppStorageManagerImplementation.dir/RequestHandler.cpp.o
+2026-06-16T08:42:01.9533285Z In file included from /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/AppStorageManager/RequestHandler.cpp:5:
+2026-06-16T08:42:01.9537626Z /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/AppStorageManager/RequestHandler.cpp: In static member function ‘static int WPEFramework::Plugin::RequestHandler::getSize(const char*, const stat*, int, FTW*)’:
+2026-06-16T08:42:01.9593284Z /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/AppStorageManager/../helpers/UtilsLogging.h:30:48: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 9 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+2026-06-16T08:42:01.9596491Z    30 | #define LOGINFO(fmt, ...) do { fprintf(stderr, "[%d] INFO [%s:%d] %s: " fmt "\n", (int)syscall(SYS_gettid), WPEFramework::Core::FileNameOnly(__FILE__), __LINE__, __FUNCTION__, ##__VA_ARGS__); fflush(stderr); } while (0)
+2026-06-16T08:42:01.9597905Z       |                                                ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2026-06-16T08:42:01.9599569Z /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/AppStorageManager/RequestHandler.cpp:408:21: note: in expansion of macro ‘LOGINFO’
+2026-06-16T08:42:01.9601340Z   408 |                     LOGINFO("path: %s dev blksize:%lu blockSize is set to %llu", path, statPtr->st_blksize, gStorageSize.blockSize);
+2026-06-16T08:42:01.9602302Z       |                     ^~~~~~~
+2026-06-16T08:42:01.9603838Z /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/AppStorageManager/RequestHandler.cpp:408:78: note: format string is defined here
+2026-06-16T08:42:01.9605602Z   408 |                     LOGINFO("path: %s dev blksize:%lu blockSize is set to %llu", path, statPtr->st_blksize, gStorageSize.blockSize);
+2026-06-16T08:42:01.9606496Z       |                                                                           ~~~^
+2026-06-16T08:42:01.9607092Z       |                                                                              |
+2026-06-16T08:42:01.9608011Z       |                                                                              long long unsigned int
+2026-06-16T08:42:01.9608654Z       |                                                                           %lu
+2026-06-16T08:42:01.9609906Z In file included from /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/AppStorageManager/RequestHandler.cpp:5:
+2026-06-16T08:42:01.9613054Z /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/AppStorageManager/../helpers/UtilsLogging.h:30:48: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 8 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+2026-06-16T08:42:01.9615813Z    30 | #define LOGINFO(fmt, ...) do { fprintf(stderr, "[%d] INFO [%s:%d] %s: " fmt "\n", (int)syscall(SYS_gettid), WPEFramework::Core::FileNameOnly(__FILE__), __LINE__, __FUNCTION__, ##__VA_ARGS__); fflush(stderr); } while (0)
+2026-06-16T08:42:01.9617265Z       |                                                ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2026-06-16T08:42:01.9618886Z /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/AppStorageManager/RequestHandler.cpp:416:17: note: in expansion of macro ‘LOGINFO’
+2026-06-16T08:42:01.9620520Z   416 |                 LOGINFO("path: %s usedBytes: %llu blockSize: %llu", path, gStorageSize.usedBytes, gStorageSize.blockSize);
+2026-06-16T08:42:01.9621392Z       |                 ^~~~~~~
+2026-06-16T08:42:01.9673245Z /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/AppStorageManager/RequestHandler.cpp:416:49: note: format string is defined here
+2026-06-16T08:42:01.9675159Z   416 |                 LOGINFO("path: %s usedBytes: %llu blockSize: %llu", path, gStorageSize.usedBytes, gStorageSize.blockSize);
+2026-06-16T08:42:01.9676103Z       |                                              ~~~^
+2026-06-16T08:42:01.9676619Z       |                                                 |
+2026-06-16T08:42:01.9677213Z       |                                                 long long unsigned int
+2026-06-16T08:42:01.9677784Z       |                                              %lu
+2026-06-16T08:42:01.9679026Z In file included from /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/AppStorageManager/RequestHandler.cpp:5:
+2026-06-16T08:42:01.9682133Z /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/AppStorageManager/../helpers/UtilsLogging.h:30:48: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 9 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+2026-06-16T08:42:01.9684865Z    30 | #define LOGINFO(fmt, ...) do { fprintf(stderr, "[%d] INFO [%s:%d] %s: " fmt "\n", (int)syscall(SYS_gettid), WPEFramework::Core::FileNameOnly(__FILE__), __LINE__, __FUNCTION__, ##__VA_ARGS__); fflush(stderr); } while (0)
+2026-06-16T08:42:01.9686212Z       |                                                ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2026-06-16T08:42:01.9687939Z /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/AppStorageManager/RequestHandler.cpp:416:17: note: in expansion of macro ‘LOGINFO’
+2026-06-16T08:42:01.9689685Z   416 |                 LOGINFO("path: %s usedBytes: %llu blockSize: %llu", path, gStorageSize.usedBytes, gStorageSize.blockSize);
+2026-06-16T08:42:01.9690832Z       |                 ^~~~~~~
+2026-06-16T08:42:01.9692278Z /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/AppStorageManager/RequestHandler.cpp:416:65: note: format string is defined here
+2026-06-16T08:42:01.9693900Z   416 |                 LOGINFO("path: %s usedBytes: %llu blockSize: %llu", path, gStorageSize.usedBytes, gStorageSize.blockSize);
+2026-06-16T08:42:01.9694797Z       |                                                              ~~~^
+2026-06-16T08:42:01.9695365Z       |                                                                 |
+2026-06-16T08:42:01.9696160Z       |                                                                 long long unsigned int
+2026-06-16T08:42:01.9696738Z       |                                                              %lu
+2026-06-16T08:42:01.9697941Z In file included from /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/AppStorageManager/RequestHandler.cpp:5:
+2026-06-16T08:42:01.9700840Z /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/AppStorageManager/RequestHandler.cpp: In member function ‘bool WPEFramework::Plugin::RequestHandler::hasEnoughStorageFreeSpace(const string&, uint32_t)’:
+2026-06-16T08:42:01.9774843Z /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/AppStorageManager/../helpers/UtilsLogging.h:30:48: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 10 has type ‘uint64_t’ {aka ‘long unsigned int’} [-Wformat=]
+2026-06-16T08:42:01.9777836Z    30 | #define LOGINFO(fmt, ...) do { fprintf(stderr, "[%d] INFO [%s:%d] %s: " fmt "\n", (int)syscall(SYS_gettid), WPEFramework::Core::FileNameOnly(__FILE__), __LINE__, __FUNCTION__, ##__VA_ARGS__); fflush(stderr); } while (0)
+2026-06-16T08:42:01.9779244Z       |                                                ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2026-06-16T08:42:01.9780972Z /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/AppStorageManager/RequestHandler.cpp:587:25: note: in expansion of macro ‘LOGINFO’
+2026-06-16T08:42:01.9783000Z   587 |                         LOGINFO("path: %s f_bsize:%lu f_frsize:%lu, blockSize is set to %llu", baseDir.c_str(), statFs.f_bsize, statFs.f_frsize, gStorageSize.blockSize);
+2026-06-16T08:42:01.9784064Z       |                         ^~~~~~~
+2026-06-16T08:42:01.9785369Z /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/AppStorageManager/RequestHandler.cpp:587:92: note: format string is defined here
+2026-06-16T08:42:01.9787278Z   587 |                         LOGINFO("path: %s f_bsize:%lu f_frsize:%lu, blockSize is set to %llu", baseDir.c_str(), statFs.f_bsize, statFs.f_frsize, gStorageSize.blockSize);
+2026-06-16T08:42:01.9788456Z       |                                                                                         ~~~^
+2026-06-16T08:42:01.9789128Z       |                                                                                            |
+2026-06-16T08:42:01.9789872Z       |                                                                                            long long unsigned int
+2026-06-16T08:42:01.9790603Z       |                                                                                         %lu
+2026-06-16T08:42:01.9792040Z In file included from /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/AppStorageManager/RequestHandler.cpp:5:
+2026-06-16T08:42:01.9795178Z /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/AppStorageManager/../helpers/UtilsLogging.h:30:48: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 8 has type ‘int64_t’ {aka ‘long int’} [-Wformat=]
+2026-06-16T08:42:01.9797891Z    30 | #define LOGINFO(fmt, ...) do { fprintf(stderr, "[%d] INFO [%s:%d] %s: " fmt "\n", (int)syscall(SYS_gettid), WPEFramework::Core::FileNameOnly(__FILE__), __LINE__, __FUNCTION__, ##__VA_ARGS__); fflush(stderr); } while (0)
+2026-06-16T08:42:01.9799544Z       |                                                ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2026-06-16T08:42:01.9801356Z /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/AppStorageManager/RequestHandler.cpp:617:25: note: in expansion of macro ‘LOGINFO’
+2026-06-16T08:42:01.9863463Z   617 |                         LOGINFO("Enough space available. Required: %u KB, Available: %llu KB",
+2026-06-16T08:42:01.9864192Z       |                         ^~~~~~~
+2026-06-16T08:42:01.9865767Z /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/AppStorageManager/RequestHandler.cpp:617:89: note: format string is defined here
+2026-06-16T08:42:01.9867299Z   617 |                         LOGINFO("Enough space available. Required: %u KB, Available: %llu KB",
+2026-06-16T08:42:01.9868066Z       |                                                                                      ~~~^
+2026-06-16T08:42:01.9868724Z       |                                                                                         |
+2026-06-16T08:42:01.9869408Z       |                                                                                         long long unsigned int
+2026-06-16T08:42:01.9870116Z       |                                                                                      %lu
+2026-06-16T08:42:01.9871372Z In file included from /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/AppStorageManager/RequestHandler.cpp:5:
+2026-06-16T08:42:01.9874614Z /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/AppStorageManager/../helpers/UtilsLogging.h:32:47: warning: format ‘%llu’ expects argument of type ‘long long unsigned int’, but argument 8 has type ‘int64_t’ {aka ‘long int’} [-Wformat=]
+2026-06-16T08:42:01.9877508Z    32 | #define LOGERR(fmt, ...) do { fprintf(stderr, "[%d] ERROR [%s:%d] %s: " fmt "\n", (int)syscall(SYS_gettid), WPEFramework::Core::FileNameOnly(__FILE__), __LINE__, __FUNCTION__, ##__VA_ARGS__); fflush(stderr); } while (0)
+2026-06-16T08:42:01.9878970Z       |                                               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2026-06-16T08:42:01.9880627Z /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/AppStorageManager/RequestHandler.cpp:623:25: note: in expansion of macro ‘LOGERR’
+2026-06-16T08:42:01.9882406Z   623 |                         LOGERR("Not enough space available. Required: %u KB, Available: %llu KB",
+2026-06-16T08:42:01.9883178Z       |                         ^~~~~~
+2026-06-16T08:42:01.9884545Z /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/AppStorageManager/RequestHandler.cpp:623:92: note: format string is defined here
+2026-06-16T08:42:01.9886150Z   623 |                         LOGERR("Not enough space available. Required: %u KB, Available: %llu KB",
+2026-06-16T08:42:01.9887016Z       |                                                                                         ~~~^
+2026-06-16T08:42:01.9887695Z       |                                                                                            |
+2026-06-16T08:42:01.9888386Z       |                                                                                            long long unsigned int
+2026-06-16T08:42:01.9889113Z       |                                                                                         %lu
+2026-06-16T08:42:05.5065084Z [45/76] Building CXX object DownloadManager/CMakeFiles/WPEFrameworkDownloadManagerImplementation.dir/Module.cpp.o
+2026-06-16T08:42:06.4189455Z [46/76] Building CXX object DownloadManager/CMakeFiles/WPEFrameworkDownloadManagerImplementation.dir/DownloadManagerHttpClient.cpp.o
+2026-06-16T08:42:06.5073976Z [47/76] Building CXX object DownloadManager/CMakeFiles/WPEFrameworkDownloadManagerImplementation.dir/DownloadManagerTelemetryReporting.cpp.o
+2026-06-16T08:42:07.2539411Z [48/76] Building CXX object DownloadManager/CMakeFiles/WPEFrameworkDownloadManager.dir/DownloadManager.cpp.o
+2026-06-16T08:42:08.3893467Z [49/76] Building CXX object PreinstallManager/CMakeFiles/WPEFrameworkPreinstallManager.dir/Module.cpp.o
+2026-06-16T08:42:10.4523792Z [50/76] Building CXX object DownloadManager/CMakeFiles/WPEFrameworkDownloadManagerImplementation.dir/DownloadManagerImplementation.cpp.o
+2026-06-16T08:42:10.4526269Z In file included from /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/DownloadManager/DownloadManagerImplementation.h:33,
+2026-06-16T08:42:10.4529022Z                  from /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/DownloadManager/DownloadManagerImplementation.cpp:22:
+2026-06-16T08:42:10.4532824Z /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/DownloadManager/DownloadManagerImplementation.cpp: In member function ‘void WPEFramework::Plugin::DownloadManagerImplementation::downloaderRoutine(int)’:
+2026-06-16T08:42:10.4536841Z /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/DownloadManager/../helpers/UtilsLogging.h:30:48: warning: format ‘%lld’ expects argument of type ‘long long int’, but argument 7 has type ‘long int’ [-Wformat=]
+2026-06-16T08:42:10.4539673Z    30 | #define LOGINFO(fmt, ...) do { fprintf(stderr, "[%d] INFO [%s:%d] %s: " fmt "\n", (int)syscall(SYS_gettid), WPEFramework::Core::FileNameOnly(__FILE__), __LINE__, __FUNCTION__, ##__VA_ARGS__); fflush(stderr); } while (0)
+2026-06-16T08:42:10.4541257Z       |                                                ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2026-06-16T08:42:10.4543439Z /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/DownloadManager/DownloadManagerImplementation.cpp:489:21: note: in expansion of macro ‘LOGINFO’
+2026-06-16T08:42:10.4545445Z   489 |                     LOGINFO("DM: Download succeeded (took %lldms): id=%s url=%s file=%s retries=%d rateLimit=%u http_code=%ld",
+2026-06-16T08:42:10.4546545Z       |                     ^~~~~~~
+2026-06-16T08:42:10.4548080Z /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/DownloadManager/DownloadManagerImplementation.cpp:489:62: note: format string is defined here
+2026-06-16T08:42:10.4550107Z   489 |                     LOGINFO("DM: Download succeeded (took %lldms): id=%s url=%s file=%s retries=%d rateLimit=%u http_code=%ld",
+2026-06-16T08:42:10.4551164Z       |                                                           ~~~^
+2026-06-16T08:42:10.4551971Z       |                                                              |
+2026-06-16T08:42:10.4552646Z       |                                                              long long int
+2026-06-16T08:42:10.4553345Z       |                                                           %ld
+2026-06-16T08:42:10.4555012Z In file included from /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/DownloadManager/DownloadManagerImplementation.h:33,
+2026-06-16T08:42:10.4557345Z                  from /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/DownloadManager/DownloadManagerImplementation.cpp:22:
+2026-06-16T08:42:10.4560365Z /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/DownloadManager/../helpers/UtilsLogging.h:29:47: warning: format ‘%lld’ expects argument of type ‘long long int’, but argument 11 has type ‘long int’ [-Wformat=]
+2026-06-16T08:42:10.4563459Z    29 | #define LOGDBG(fmt, ...) do { fprintf(stderr, "[%d] DEBUG [%s:%d] %s: " fmt "\n", (int)syscall(SYS_gettid), WPEFramework::Core::FileNameOnly(__FILE__), __LINE__, __FUNCTION__, ##__VA_ARGS__); fflush(stderr); } while (0)
+2026-06-16T08:42:10.4565035Z       |                                               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2026-06-16T08:42:10.4566894Z /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/DownloadManager/DownloadManagerImplementation.cpp:504:17: note: in expansion of macro ‘LOGDBG’
+2026-06-16T08:42:10.4569121Z   504 |                 LOGDBG("DM: Attempt download (%d/%d): status=%d http_code=%ld elapsed=%lld ms",
+2026-06-16T08:42:10.4570875Z       |                 ^~~~~~
+2026-06-16T08:42:10.4572434Z /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/DownloadManager/DownloadManagerImplementation.cpp:504:90: note: format string is defined here
+2026-06-16T08:42:10.4574142Z   504 |                 LOGDBG("DM: Attempt download (%d/%d): status=%d http_code=%ld elapsed=%lld ms",
+2026-06-16T08:42:10.4575202Z       |                                                                                       ~~~^
+2026-06-16T08:42:10.4575873Z       |                                                                                          |
+2026-06-16T08:42:10.4576605Z       |                                                                                          long long int
+2026-06-16T08:42:10.4577345Z       |                                                                                       %ld
+2026-06-16T08:42:10.5087994Z [51/76] Building CXX object Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/__/mocks/Wraps.cpp.o
+2026-06-16T08:42:12.6048899Z [52/76] Building CXX object PreinstallManager/CMakeFiles/WPEFrameworkPreinstallManagerImplementation.dir/Module.cpp.o
+2026-06-16T08:42:15.2587753Z [53/76] Building CXX object PreinstallManager/CMakeFiles/WPEFrameworkPreinstallManagerImplementation.dir/PreinstallManagerImplementation.cpp.o
+2026-06-16T08:42:15.2594879Z In file included from /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/PreinstallManager/PreinstallManagerImplementation.h:28,
+2026-06-16T08:42:15.2599348Z                  from /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/PreinstallManager/PreinstallManagerImplementation.cpp:22:
+2026-06-16T08:42:15.2606000Z /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/PreinstallManager/PreinstallManagerImplementation.cpp: In member function ‘void WPEFramework::Plugin::PreinstallManagerImplementation::installPackages(std::__cxx11::list<WPEFramework::Plugin::PreinstallManagerImplementation::_PackageInfo>)’:
+2026-06-16T08:42:15.2612535Z /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/PreinstallManager/../helpers/UtilsLogging.h:29:47: warning: format ‘%lld’ expects argument of type ‘long long int’, but argument 7 has type ‘long int’ [-Wformat=]
+2026-06-16T08:42:15.2617505Z    29 | #define LOGDBG(fmt, ...) do { fprintf(stderr, "[%d] DEBUG [%s:%d] %s: " fmt "\n", (int)syscall(SYS_gettid), WPEFramework::Core::FileNameOnly(__FILE__), __LINE__, __FUNCTION__, ##__VA_ARGS__); fflush(stderr); } while (0)
+2026-06-16T08:42:15.2621110Z       |                                               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2026-06-16T08:42:15.2625277Z /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/PreinstallManager/PreinstallManagerImplementation.cpp:369:9: note: in expansion of macro ‘LOGDBG’
+2026-06-16T08:42:15.2629331Z   369 |         LOGDBG("Process completed in %lld seconds (%lld ms)", installDuration, installDurationMs);
+2026-06-16T08:42:15.2630519Z       |         ^~~~~~
+2026-06-16T08:42:15.2633143Z /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/PreinstallManager/PreinstallManagerImplementation.cpp:369:41: note: format string is defined here
+2026-06-16T08:42:15.2634923Z   369 |         LOGDBG("Process completed in %lld seconds (%lld ms)", installDuration, installDurationMs);
+2026-06-16T08:42:15.2635682Z       |                                      ~~~^
+2026-06-16T08:42:15.2636134Z       |                                         |
+2026-06-16T08:42:15.2636586Z       |                                         long long int
+2026-06-16T08:42:15.2637060Z       |                                      %ld
+2026-06-16T08:42:15.2638560Z In file included from /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/PreinstallManager/PreinstallManagerImplementation.h:28,
+2026-06-16T08:42:15.2640594Z                  from /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/PreinstallManager/PreinstallManagerImplementation.cpp:22:
+2026-06-16T08:42:15.2643488Z /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/PreinstallManager/../helpers/UtilsLogging.h:29:47: warning: format ‘%lld’ expects argument of type ‘long long int’, but argument 8 has type ‘long int’ [-Wformat=]
+2026-06-16T08:42:15.2646317Z    29 | #define LOGDBG(fmt, ...) do { fprintf(stderr, "[%d] DEBUG [%s:%d] %s: " fmt "\n", (int)syscall(SYS_gettid), WPEFramework::Core::FileNameOnly(__FILE__), __LINE__, __FUNCTION__, ##__VA_ARGS__); fflush(stderr); } while (0)
+2026-06-16T08:42:15.2647523Z       |                                               ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+2026-06-16T08:42:15.2649240Z /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/PreinstallManager/PreinstallManagerImplementation.cpp:369:9: note: in expansion of macro ‘LOGDBG’
+2026-06-16T08:42:15.2651008Z   369 |         LOGDBG("Process completed in %lld seconds (%lld ms)", installDuration, installDurationMs);
+2026-06-16T08:42:15.2651995Z       |         ^~~~~~
+2026-06-16T08:42:15.2653328Z /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/PreinstallManager/PreinstallManagerImplementation.cpp:369:55: note: format string is defined here
+2026-06-16T08:42:15.2655187Z   369 |         LOGDBG("Process completed in %lld seconds (%lld ms)", installDuration, installDurationMs);
+2026-06-16T08:42:15.2656009Z       |                                                    ~~~^
+2026-06-16T08:42:15.2656524Z       |                                                       |
+2026-06-16T08:42:15.2657062Z       |                                                       long long int
+2026-06-16T08:42:15.2657664Z       |                                                    %ld
+2026-06-16T08:42:15.6093730Z [54/76] Building CXX object PreinstallManager/CMakeFiles/WPEFrameworkPreinstallManager.dir/PreinstallManager.cpp.o
+2026-06-16T08:42:16.0925302Z [55/76] Building CXX object Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_UtilsFile.cpp.o
+2026-06-16T08:42:16.3102212Z [56/76] Linking CXX shared library RDKWindowManager/libWPEFrameworkRDKWindowManagerImplementation.so
+2026-06-16T08:42:16.5233694Z [57/76] Linking CXX shared library RDKWindowManager/libWPEFrameworkRDKWindowManager.so
+2026-06-16T08:42:16.8380053Z [58/76] Linking CXX shared library LifecycleManager/libWPEFrameworkLifecycleManager.so
+2026-06-16T08:42:17.0816126Z [59/76] Linking CXX shared library AppManager/libWPEFrameworkAppManager.so
+2026-06-16T08:42:17.3708444Z [60/76] Linking CXX shared library AppManager/libWPEFrameworkAppManagerImplementation.so
+2026-06-16T08:42:17.5863259Z [61/76] Linking CXX shared library RuntimeManager/libWPEFrameworkRuntimeManager.so
+2026-06-16T08:42:17.8265158Z [62/76] Linking CXX shared library RuntimeManager/libWPEFrameworkRuntimeManagerImplementation.so
+2026-06-16T08:42:18.0347230Z [63/76] Linking CXX shared library AppStorageManager/libWPEFrameworkAppStorageManager.so
+2026-06-16T08:42:18.2648403Z [64/76] Linking CXX shared library AppStorageManager/libWPEFrameworkAppStorageManagerImplementation.so
+2026-06-16T08:42:18.4772069Z [65/76] Linking CXX shared library DownloadManager/libWPEFrameworkDownloadManager.so
+2026-06-16T08:42:18.6778680Z [66/76] Linking CXX shared library DownloadManager/libWPEFrameworkDownloadManagerImplementation.so
+2026-06-16T08:42:18.9443082Z [67/76] Linking CXX shared library PreinstallManager/libWPEFrameworkPreinstallManager.so
+2026-06-16T08:42:19.1349311Z [68/76] Linking CXX shared library PreinstallManager/libWPEFrameworkPreinstallManagerImplementation.so
+2026-06-16T08:43:05.0142351Z [69/76] Building CXX object Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_DownloadManager.cpp.o
+2026-06-16T08:43:14.1619994Z [70/76] Building CXX object Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_LifecycleManager.cpp.o
+2026-06-16T08:43:26.5557127Z [71/76] Building CXX object Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.o
+2026-06-16T08:43:28.1899523Z [72/76] Building CXX object Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_PreinstallManager.cpp.o
+2026-06-16T08:43:50.1929350Z [73/76] Building CXX object Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_AppManager.cpp.o
+2026-06-16T08:43:58.0246252Z [74/76] Building CXX object Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_AppStorageManager.cpp.o
+2026-06-16T08:43:58.0248107Z In file included from /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gmock/internal/gmock-internal-utils.h:51,
+2026-06-16T08:43:58.0249953Z                  from /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gmock/gmock-actions.h:146,
+2026-06-16T08:43:58.0251752Z                  from /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gmock/gmock.h:56,
+2026-06-16T08:43:58.0253552Z                  from /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_AppStorageManager.cpp:1:
+2026-06-16T08:43:58.0256978Z /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gtest/gtest.h: In instantiation of ‘testing::AssertionResult testing::internal::CmpHelperEQ(const char*, const char*, const T1&, const T2&) [with T1 = int; T2 = unsigned int]’:
+2026-06-16T08:43:58.0261805Z /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gtest/gtest.h:1413:23:   required from ‘static testing::AssertionResult testing::internal::EqHelper::Compare(const char*, const char*, const T1&, const T2&) [with T1 = int; T2 = unsigned int; typename std::enable_if<((! std::is_integral<_Tp>::value) || (! std::is_pointer<_Dp>::value))>::type* <anonymous> = 0]’
+2026-06-16T08:43:58.0265316Z /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_AppStorageManager.cpp:660:5:   required from here
+2026-06-16T08:43:58.0268287Z /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gtest/gtest.h:1394:11: warning: comparison of integer expressions of different signedness: ‘const int’ and ‘const unsigned int’ [-Wsign-compare]
+2026-06-16T08:43:58.0270128Z  1394 |   if (lhs == rhs) {
+2026-06-16T08:43:58.0270553Z       |       ~~~~^~~~~~
+2026-06-16T08:43:58.9300351Z [75/76] Building CXX object Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RDKWindowManager.cpp.o
+2026-06-16T08:44:00.0676988Z [76/76] Linking CXX executable Tests/L1Tests/RdkServicesL1Test
+2026-06-16T08:44:00.0677809Z -- Install configuration: "MinSizeRel"
+2026-06-16T08:44:00.0678794Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/bin/RdkServicesL1Test
+2026-06-16T08:44:00.0843699Z -- Set runtime path of "/home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/bin/RdkServicesL1Test" to ""
+2026-06-16T08:44:00.0847366Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/wpeframework/plugins/libAppManagersHelpers.so
+2026-06-16T08:44:00.0852079Z -- Set runtime path of "/home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/wpeframework/plugins/libAppManagersHelpers.so" to ""
+2026-06-16T08:44:00.0856042Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/wpeframework/plugins/libWPEFrameworkRDKWindowManager.so
+2026-06-16T08:44:00.0872127Z -- Set runtime path of "/home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/wpeframework/plugins/libWPEFrameworkRDKWindowManager.so" to ""
+2026-06-16T08:44:00.0874413Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/wpeframework/plugins/libWPEFrameworkRDKWindowManagerImplementation.so
+2026-06-16T08:44:00.0886945Z -- Set runtime path of "/home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/wpeframework/plugins/libWPEFrameworkRDKWindowManagerImplementation.so" to ""
+2026-06-16T08:44:00.0888370Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/../etc/WPEFramework/plugins/RDKWindowManager.json
+2026-06-16T08:44:00.0892017Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/wpeframework/plugins/libWPEFrameworkLifecycleManager.so
+2026-06-16T08:44:00.0916218Z -- Set runtime path of "/home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/wpeframework/plugins/libWPEFrameworkLifecycleManager.so" to ""
+2026-06-16T08:44:00.0917495Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/../etc/WPEFramework/plugins/LifecycleManager.json
+2026-06-16T08:44:00.0920496Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/wpeframework/plugins/libWPEFrameworkAppManager.so
+2026-06-16T08:44:00.0934745Z -- Set runtime path of "/home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/wpeframework/plugins/libWPEFrameworkAppManager.so" to ""
+2026-06-16T08:44:00.0936904Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/wpeframework/plugins/libWPEFrameworkAppManagerImplementation.so
+2026-06-16T08:44:00.0953437Z -- Set runtime path of "/home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/wpeframework/plugins/libWPEFrameworkAppManagerImplementation.so" to ""
+2026-06-16T08:44:00.0954503Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/../etc/WPEFramework/plugins/AppManager.json
+2026-06-16T08:44:00.0958300Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/wpeframework/plugins/libWPEFrameworkRuntimeManager.so
+2026-06-16T08:44:00.0965681Z -- Set runtime path of "/home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/wpeframework/plugins/libWPEFrameworkRuntimeManager.so" to ""
+2026-06-16T08:44:00.0967854Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/wpeframework/plugins/libWPEFrameworkRuntimeManagerImplementation.so
+2026-06-16T08:44:00.0985373Z -- Set runtime path of "/home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/wpeframework/plugins/libWPEFrameworkRuntimeManagerImplementation.so" to ""
+2026-06-16T08:44:00.0986484Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/../etc/WPEFramework/plugins/RuntimeManager.json
+2026-06-16T08:44:00.0990208Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/wpeframework/plugins/libWPEFrameworkAppStorageManager.so
+2026-06-16T08:44:00.1000992Z -- Set runtime path of "/home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/wpeframework/plugins/libWPEFrameworkAppStorageManager.so" to ""
+2026-06-16T08:44:00.1003330Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/wpeframework/plugins/libWPEFrameworkAppStorageManagerImplementation.so
+2026-06-16T08:44:00.1016141Z -- Set runtime path of "/home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/wpeframework/plugins/libWPEFrameworkAppStorageManagerImplementation.so" to ""
+2026-06-16T08:44:00.1017264Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/../etc/WPEFramework/plugins/AppStorageManager.json
+2026-06-16T08:44:00.1020949Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/wpeframework/plugins/libWPEFrameworkDownloadManager.so
+2026-06-16T08:44:00.1033595Z -- Set runtime path of "/home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/wpeframework/plugins/libWPEFrameworkDownloadManager.so" to ""
+2026-06-16T08:44:00.1035747Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/wpeframework/plugins/libWPEFrameworkDownloadManagerImplementation.so
+2026-06-16T08:44:00.1047050Z -- Set runtime path of "/home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/wpeframework/plugins/libWPEFrameworkDownloadManagerImplementation.so" to ""
+2026-06-16T08:44:00.1048285Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/../etc/WPEFramework/plugins/DownloadManager.json
+2026-06-16T08:44:00.1052058Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/wpeframework/plugins/libWPEFrameworkPreinstallManager.so
+2026-06-16T08:44:00.1063730Z -- Set runtime path of "/home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/wpeframework/plugins/libWPEFrameworkPreinstallManager.so" to ""
+2026-06-16T08:44:00.1065964Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/wpeframework/plugins/libWPEFrameworkPreinstallManagerImplementation.so
+2026-06-16T08:44:00.1076332Z -- Set runtime path of "/home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/wpeframework/plugins/libWPEFrameworkPreinstallManagerImplementation.so" to ""
+2026-06-16T08:44:00.1077642Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/../etc/WPEFramework/plugins/PreinstallManager.json

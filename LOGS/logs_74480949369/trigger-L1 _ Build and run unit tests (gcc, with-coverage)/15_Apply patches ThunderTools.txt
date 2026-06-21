@@ -1,0 +1,22 @@
+﻿2026-06-17T01:12:45.7238021Z ##[group]Run cd $GITHUB_WORKSPACE/ThunderTools
+2026-06-17T01:12:45.7238704Z [36;1mcd $GITHUB_WORKSPACE/ThunderTools[0m
+2026-06-17T01:12:45.7240077Z [36;1mpatch -p1 < $GITHUB_WORKSPACE/entservices-appmanagers/Tests/patches/00010-R4.4-Add-support-for-project-dir.patch[0m
+2026-06-17T01:12:45.7241103Z [36;1mcd -[0m
+2026-06-17T01:12:45.7307230Z shell: /usr/bin/bash -e {0}
+2026-06-17T01:12:45.7307484Z env:
+2026-06-17T01:12:45.7307670Z   BUILD_TYPE: Debug
+2026-06-17T01:12:45.7307889Z   THUNDER_REF: R4.4.1
+2026-06-17T01:12:45.7308111Z   INTERFACES_REF: topic/RDKEMW-16187
+2026-06-17T01:12:45.7308368Z   AUTOMATICS_UNAME: 
+2026-06-17T01:12:45.7308574Z   AUTOMATICS_PASSCODE: 
+2026-06-17T01:12:45.7308854Z   pythonLocation: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-17T01:12:45.7309275Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.14.5/x64/lib/pkgconfig
+2026-06-17T01:12:45.7309709Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-17T01:12:45.7310079Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-17T01:12:45.7310479Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-17T01:12:45.7310843Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.14.5/x64/lib
+2026-06-17T01:12:45.7311162Z ##[endgroup]
+2026-06-17T01:12:45.7548035Z patching file JsonGenerator/source/class_emitter.py
+2026-06-17T01:12:45.7551746Z patching file ProxyStubGenerator/StubGenerator.py
+2026-06-17T01:12:45.7555489Z patching file cmake/FindProxyStubGenerator.cmake.in
+2026-06-17T01:12:45.7561273Z /home/runner/work/entservices-appmanagers/entservices-appmanagers

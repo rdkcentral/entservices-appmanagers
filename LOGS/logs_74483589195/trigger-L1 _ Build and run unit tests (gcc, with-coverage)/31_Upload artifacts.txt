@@ -1,0 +1,39 @@
+﻿2026-06-17T01:53:36.0058903Z ##[group]Run actions/upload-artifact@v4
+2026-06-17T01:53:36.0059203Z with:
+2026-06-17T01:53:36.0059419Z   name: artifacts-L1-appmanagers
+2026-06-17T01:53:36.0059901Z   path: coverage/
+valgrind_log
+rdkL1TestResultsWithoutValgrind.json
+rdkL1TestResultsWithValgrind.json
+
+2026-06-17T01:53:36.0060412Z   if-no-files-found: warn
+2026-06-17T01:53:36.0060645Z   compression-level: 6
+2026-06-17T01:53:36.0060859Z   overwrite: false
+2026-06-17T01:53:36.0061066Z   include-hidden-files: false
+2026-06-17T01:53:36.0061288Z env:
+2026-06-17T01:53:36.0061464Z   BUILD_TYPE: Debug
+2026-06-17T01:53:36.0061666Z   THUNDER_REF: R4.4.1
+2026-06-17T01:53:36.0061889Z   INTERFACES_REF: topic/RDKEMW-16187
+2026-06-17T01:53:36.0062136Z   AUTOMATICS_UNAME: 
+2026-06-17T01:53:36.0062344Z   AUTOMATICS_PASSCODE: 
+2026-06-17T01:53:36.0062614Z   pythonLocation: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-17T01:53:36.0063013Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.14.5/x64/lib/pkgconfig
+2026-06-17T01:53:36.0063404Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-17T01:53:36.0063782Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-17T01:53:36.0064126Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-17T01:53:36.0064577Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.14.5/x64/lib
+2026-06-17T01:53:36.0065215Z   TOOLCHAIN_FILE: /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/gcc-with-coverage.cmake
+2026-06-17T01:53:36.0065793Z ##[endgroup]
+2026-06-17T01:53:36.2568399Z Multiple search paths detected. Calculating the least common ancestor of all paths
+2026-06-17T01:53:36.2570259Z The least common ancestor is /home/runner/work/entservices-appmanagers/entservices-appmanagers. This will be the root directory of the artifact
+2026-06-17T01:53:36.2571100Z With the provided path, there will be 268 files uploaded
+2026-06-17T01:53:36.2573552Z Artifact name is valid!
+2026-06-17T01:53:36.2574381Z Root directory input is valid!
+2026-06-17T01:53:36.5259930Z Beginning upload of artifact content to blob storage
+2026-06-17T01:53:37.1826023Z Uploaded bytes 915987
+2026-06-17T01:53:37.2279136Z Finished uploading artifact content to blob storage!
+2026-06-17T01:53:37.2281599Z SHA256 digest of uploaded artifact zip is ae615024055d2f4ee61b7dcbd1ff7536d9aec173da80e0ce8ecf886aed0268fe
+2026-06-17T01:53:37.2283474Z Finalizing artifact upload
+2026-06-17T01:53:37.4032863Z Artifact artifacts-L1-appmanagers.zip successfully finalized. Artifact ID 7684206589
+2026-06-17T01:53:37.4035133Z Artifact artifacts-L1-appmanagers has been successfully uploaded! Final size is 915987 bytes. Artifact ID is 7684206589
+2026-06-17T01:53:37.4043549Z Artifact download URL: https://github.com/rdkcentral/entservices-appmanagers/actions/runs/27659928451/artifacts/7684206589

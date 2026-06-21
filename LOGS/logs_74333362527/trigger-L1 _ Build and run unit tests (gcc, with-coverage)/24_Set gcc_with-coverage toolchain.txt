@@ -1,0 +1,16 @@
+﻿2026-06-16T11:07:28.2173581Z ##[group]Run echo "TOOLCHAIN_FILE=$GITHUB_WORKSPACE/entservices-appmanagers/Tests/gcc-with-coverage.cmake" >> $GITHUB_ENV
+2026-06-16T11:07:28.2174697Z [36;1mecho "TOOLCHAIN_FILE=$GITHUB_WORKSPACE/entservices-appmanagers/Tests/gcc-with-coverage.cmake" >> $GITHUB_ENV[0m
+2026-06-16T11:07:28.2223640Z shell: /usr/bin/bash -e {0}
+2026-06-16T11:07:28.2223887Z env:
+2026-06-16T11:07:28.2224070Z   BUILD_TYPE: Debug
+2026-06-16T11:07:28.2224278Z   THUNDER_REF: R4.4.1
+2026-06-16T11:07:28.2224501Z   INTERFACES_REF: topic/RDKEMW-16187
+2026-06-16T11:07:28.2224759Z   AUTOMATICS_UNAME: 
+2026-06-16T11:07:28.2224968Z   AUTOMATICS_PASSCODE: 
+2026-06-16T11:07:28.2225242Z   pythonLocation: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T11:07:28.2225656Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.14.5/x64/lib/pkgconfig
+2026-06-16T11:07:28.2226071Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T11:07:28.2226428Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T11:07:28.2226783Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T11:07:28.2227171Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.14.5/x64/lib
+2026-06-16T11:07:28.2227478Z ##[endgroup]

@@ -1,0 +1,115 @@
+﻿2026-06-17T01:17:01.7499255Z ##[group]Run cmake -G Ninja -S "$GITHUB_WORKSPACE/googletest" -B build/googletest -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/install/usr" -DCMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" -DGENERIC_CMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" -DBUILD_TYPE=Debug -DBUILD_GMOCK=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON && cmake --build build/googletest -j8 && cmake --install build/googletest
+2026-06-17T01:17:01.7502190Z [36;1mcmake -G Ninja -S "$GITHUB_WORKSPACE/googletest" -B build/googletest -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/install/usr" -DCMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" -DGENERIC_CMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" -DBUILD_TYPE=Debug -DBUILD_GMOCK=ON -DBUILD_SHARED_LIBS=OFF -DCMAKE_POSITION_INDEPENDENT_CODE=ON && cmake --build build/googletest -j8 && cmake --install build/googletest[0m
+2026-06-17T01:17:01.7553063Z shell: /usr/bin/bash -e {0}
+2026-06-17T01:17:01.7553316Z env:
+2026-06-17T01:17:01.7553499Z   BUILD_TYPE: Debug
+2026-06-17T01:17:01.7553741Z   THUNDER_REF: R4.4.1
+2026-06-17T01:17:01.7553964Z   INTERFACES_REF: topic/RDKEMW-16187
+2026-06-17T01:17:01.7554228Z   AUTOMATICS_UNAME: 
+2026-06-17T01:17:01.7554438Z   AUTOMATICS_PASSCODE: 
+2026-06-17T01:17:01.7554904Z   pythonLocation: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-17T01:17:01.7555318Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.14.5/x64/lib/pkgconfig
+2026-06-17T01:17:01.7556046Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-17T01:17:01.7556435Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-17T01:17:01.7556803Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-17T01:17:01.7557186Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.14.5/x64/lib
+2026-06-17T01:17:01.7557858Z   TOOLCHAIN_FILE: /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/gcc-with-coverage.cmake
+2026-06-17T01:17:01.7558479Z ##[endgroup]
+2026-06-17T01:17:01.8098968Z -- The C compiler identification is GNU 11.4.0
+2026-06-17T01:17:01.8595068Z -- The CXX compiler identification is GNU 11.4.0
+2026-06-17T01:17:01.8638259Z -- Check for working C compiler: /usr/bin/cc
+2026-06-17T01:17:01.9046641Z -- Check for working C compiler: /usr/bin/cc -- works
+2026-06-17T01:17:01.9055001Z -- Detecting C compiler ABI info
+2026-06-17T01:17:01.9458275Z -- Detecting C compiler ABI info - done
+2026-06-17T01:17:01.9548228Z -- Detecting C compile features
+2026-06-17T01:17:01.9551598Z -- Detecting C compile features - done
+2026-06-17T01:17:01.9575857Z -- Check for working CXX compiler: /usr/bin/c++
+2026-06-17T01:17:02.0090195Z -- Check for working CXX compiler: /usr/bin/c++ -- works
+2026-06-17T01:17:02.0099934Z -- Detecting CXX compiler ABI info
+2026-06-17T01:17:02.0608501Z -- Detecting CXX compiler ABI info - done
+2026-06-17T01:17:02.0701580Z -- Detecting CXX compile features
+2026-06-17T01:17:02.0706497Z -- Detecting CXX compile features - done
+2026-06-17T01:17:02.0756255Z -- Looking for pthread.h
+2026-06-17T01:17:02.1199805Z -- Looking for pthread.h - found
+2026-06-17T01:17:02.1201984Z -- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+2026-06-17T01:17:02.1661047Z -- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+2026-06-17T01:17:02.1670206Z -- Found Threads: TRUE  
+2026-06-17T01:17:02.1729554Z -- Configuring done
+2026-06-17T01:17:02.1782551Z -- Generating done
+2026-06-17T01:17:02.1787136Z CMake Warning:
+2026-06-17T01:17:02.1789454Z   Manually-specified variables were not used by the project:
+2026-06-17T01:17:02.1789958Z 
+2026-06-17T01:17:02.1790105Z     BUILD_TYPE
+2026-06-17T01:17:02.1790465Z     GENERIC_CMAKE_MODULE_PATH
+2026-06-17T01:17:02.1790744Z 
+2026-06-17T01:17:02.1790754Z 
+2026-06-17T01:17:02.1791911Z -- Build files have been written to: /home/runner/work/entservices-appmanagers/entservices-appmanagers/build/googletest
+2026-06-17T01:17:03.4495302Z [1/8] Building CXX object googletest/CMakeFiles/gtest_main.dir/src/gtest_main.cc.o
+2026-06-17T01:17:03.6193832Z [2/8] Building CXX object googlemock/CMakeFiles/gmock_main.dir/src/gmock_main.cc.o
+2026-06-17T01:17:04.3501637Z [3/8] Building CXX object googlemock/CMakeFiles/gmock.dir/src/gmock-all.cc.o
+2026-06-17T01:17:06.1232800Z [4/8] Building CXX object googletest/CMakeFiles/gtest.dir/src/gtest-all.cc.o
+2026-06-17T01:17:06.2845959Z [5/8] Linking CXX static library lib/libgtest.a
+2026-06-17T01:17:06.3700020Z [6/8] Linking CXX static library lib/libgtest_main.a
+2026-06-17T01:17:06.3797442Z [7/8] Linking CXX static library lib/libgmock.a
+2026-06-17T01:17:06.4649026Z [8/8] Linking CXX static library lib/libgmock_main.a
+2026-06-17T01:17:06.4675955Z -- Install configuration: ""
+2026-06-17T01:17:06.4678818Z -- Up-to-date: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include
+2026-06-17T01:17:06.4680185Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gmock
+2026-06-17T01:17:06.4681632Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gmock/internal
+2026-06-17T01:17:06.4682953Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gmock/internal/gmock-pp.h
+2026-06-17T01:17:06.4684667Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gmock/internal/gmock-internal-utils.h
+2026-06-17T01:17:06.4687048Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gmock/internal/custom
+2026-06-17T01:17:06.4688741Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gmock/internal/custom/gmock-matchers.h
+2026-06-17T01:17:06.4690680Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gmock/internal/custom/gmock-generated-actions.h
+2026-06-17T01:17:06.4692586Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gmock/internal/custom/gmock-port.h
+2026-06-17T01:17:06.4694134Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gmock/internal/custom/README.md
+2026-06-17T01:17:06.4695234Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gmock/internal/gmock-port.h
+2026-06-17T01:17:06.4696633Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gmock/gmock-matchers.h
+2026-06-17T01:17:06.4698209Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gmock/gmock-nice-strict.h
+2026-06-17T01:17:06.4699708Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gmock/gmock.h
+2026-06-17T01:17:06.4700884Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gmock/gmock-more-actions.h
+2026-06-17T01:17:06.4702373Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gmock/gmock-function-mocker.h
+2026-06-17T01:17:06.4704047Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gmock/gmock-more-matchers.h
+2026-06-17T01:17:06.4705340Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gmock/gmock-spec-builders.h
+2026-06-17T01:17:06.4706923Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gmock/gmock-cardinalities.h
+2026-06-17T01:17:06.4708491Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gmock/gmock-actions.h
+2026-06-17T01:17:06.4710994Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/libgmock.a
+2026-06-17T01:17:06.4723273Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/libgmock_main.a
+2026-06-17T01:17:06.4724942Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/pkgconfig/gmock.pc
+2026-06-17T01:17:06.4726982Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/pkgconfig/gmock_main.pc
+2026-06-17T01:17:06.4731220Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/GTest/GTestTargets.cmake
+2026-06-17T01:17:06.4733202Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/GTest/GTestTargets-noconfig.cmake
+2026-06-17T01:17:06.4735060Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/GTest/GTestConfigVersion.cmake
+2026-06-17T01:17:06.4737539Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/GTest/GTestConfig.cmake
+2026-06-17T01:17:06.4738940Z -- Up-to-date: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include
+2026-06-17T01:17:06.4740235Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gtest
+2026-06-17T01:17:06.4741586Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gtest/gtest-spi.h
+2026-06-17T01:17:06.4743177Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gtest/internal
+2026-06-17T01:17:06.4744248Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gtest/internal/gtest-internal.h
+2026-06-17T01:17:06.4745766Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gtest/internal/gtest-port.h
+2026-06-17T01:17:06.4747347Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gtest/internal/gtest-type-util.h
+2026-06-17T01:17:06.4749013Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gtest/internal/gtest-port-arch.h
+2026-06-17T01:17:06.4750638Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gtest/internal/gtest-param-util.h
+2026-06-17T01:17:06.4752225Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gtest/internal/gtest-death-test-internal.h
+2026-06-17T01:17:06.4753894Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gtest/internal/custom
+2026-06-17T01:17:06.4755392Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gtest/internal/custom/gtest-port.h
+2026-06-17T01:17:06.4757214Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gtest/internal/custom/gtest.h
+2026-06-17T01:17:06.4758819Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gtest/internal/custom/README.md
+2026-06-17T01:17:06.4760426Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gtest/internal/custom/gtest-printers.h
+2026-06-17T01:17:06.4762070Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gtest/internal/gtest-filepath.h
+2026-06-17T01:17:06.4763687Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gtest/internal/gtest-string.h
+2026-06-17T01:17:06.4765103Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gtest/gtest-message.h
+2026-06-17T01:17:06.4766361Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gtest/gtest_pred_impl.h
+2026-06-17T01:17:06.4767309Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gtest/gtest.h
+2026-06-17T01:17:06.4768792Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gtest/gtest-death-test.h
+2026-06-17T01:17:06.4770397Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gtest/gtest-matchers.h
+2026-06-17T01:17:06.4771983Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gtest/gtest-test-part.h
+2026-06-17T01:17:06.4773592Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gtest/gtest-typed-test.h
+2026-06-17T01:17:06.4775152Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gtest/gtest-param-test.h
+2026-06-17T01:17:06.4776584Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gtest/gtest-printers.h
+2026-06-17T01:17:06.4778206Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gtest/gtest-assertion-result.h
+2026-06-17T01:17:06.4779491Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gtest/gtest_prod.h
+2026-06-17T01:17:06.4780897Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/libgtest.a
+2026-06-17T01:17:06.4816509Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/libgtest_main.a
+2026-06-17T01:17:06.4818129Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/pkgconfig/gtest.pc
+2026-06-17T01:17:06.4819820Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/pkgconfig/gtest_main.pc

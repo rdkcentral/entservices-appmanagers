@@ -1,0 +1,39 @@
+﻿2026-06-16T11:07:35.3769854Z ##[group]Run set -euo pipefail
+2026-06-16T11:07:35.3770214Z [36;1mset -euo pipefail[0m
+2026-06-16T11:07:35.3770439Z [36;1m[0m
+2026-06-16T11:07:35.3770655Z [36;1mprefix="$GITHUB_WORKSPACE/install/usr"[0m
+2026-06-16T11:07:35.3770953Z [36;1mmkdir -p "$prefix/bin"[0m
+2026-06-16T11:07:35.3771181Z [36;1m[0m
+2026-06-16T11:07:35.3771463Z [36;1mif command -v "$prefix/bin/ConfigGenerator" >/dev/null 2>&1; then[0m
+2026-06-16T11:07:35.3771960Z [36;1m  echo "ConfigGenerator already present at: $prefix/bin/ConfigGenerator"[0m
+2026-06-16T11:07:35.3772353Z [36;1m  exit 0[0m
+2026-06-16T11:07:35.3772542Z [36;1mfi[0m
+2026-06-16T11:07:35.3772714Z [36;1m[0m
+2026-06-16T11:07:35.3772970Z [36;1mimpl="$prefix/sbin/ConfigGenerator/config_generator.py"[0m
+2026-06-16T11:07:35.3773306Z [36;1mif [ ! -f "$impl" ]; then[0m
+2026-06-16T11:07:35.3773706Z [36;1m  echo "ERROR: Expected ConfigGenerator python implementation not found at: $impl"[0m
+2026-06-16T11:07:35.3774366Z [36;1m  find "$prefix" -maxdepth 4 -type f -name 'config_generator.py' -o -name 'ConfigGenerator' 2>/dev/null || true[0m
+2026-06-16T11:07:35.3774879Z [36;1m  exit 1[0m
+2026-06-16T11:07:35.3775066Z [36;1mfi[0m
+2026-06-16T11:07:35.3775241Z [36;1m[0m
+2026-06-16T11:07:35.3775457Z [36;1mcat > "$prefix/bin/ConfigGenerator" <<'EOF'[0m
+2026-06-16T11:07:35.3775747Z [36;1m#!/usr/bin/env bash[0m
+2026-06-16T11:07:35.3775984Z [36;1mset -euo pipefail[0m
+2026-06-16T11:07:35.3776295Z [36;1mSCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"[0m
+2026-06-16T11:07:35.3776668Z [36;1mPREFIX="$(cd "${SCRIPT_DIR}/.." && pwd)"[0m
+2026-06-16T11:07:35.3777075Z [36;1mexec python3 "${PREFIX}/sbin/ConfigGenerator/config_generator.py" "$@"[0m
+2026-06-16T11:07:35.3777737Z [36;1mEOF[0m
+2026-06-16T11:07:35.3777921Z [36;1m[0m
+2026-06-16T11:07:35.3778133Z [36;1mchmod +x "$prefix/bin/ConfigGenerator"[0m
+2026-06-16T11:07:35.3833174Z shell: /usr/bin/bash -e {0}
+2026-06-16T11:07:35.3833427Z env:
+2026-06-16T11:07:35.3833610Z   BUILD_TYPE: Debug
+2026-06-16T11:07:35.3833829Z   THUNDER_REF: R4.4.1
+2026-06-16T11:07:35.3834047Z   INTERFACES_REF: topic/RDKEMW-16187
+2026-06-16T11:07:35.3834367Z   pythonLocation: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T11:07:35.3834796Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.14.5/x64/lib/pkgconfig
+2026-06-16T11:07:35.3835215Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T11:07:35.3835582Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T11:07:35.3835949Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T11:07:35.3836499Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.14.5/x64/lib
+2026-06-16T11:07:35.3836813Z ##[endgroup]

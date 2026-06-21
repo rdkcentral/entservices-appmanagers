@@ -1,0 +1,4 @@
+2026-06-16T11:32:02.2230000Z Evaluating trigger-L2.if
+2026-06-16T11:32:02.2230000Z Evaluating: (success() && (false))
+2026-06-16T11:32:02.2230000Z Expanded: (true && false)
+2026-06-16T11:32:02.2230000Z Result: false

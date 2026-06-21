@@ -1,0 +1,692 @@
+﻿2026-06-16T11:17:28.7592372Z ##[group]Run set -euo pipefail
+2026-06-16T11:17:28.7592727Z [36;1mset -euo pipefail[0m
+2026-06-16T11:17:28.7592957Z [36;1m[0m
+2026-06-16T11:17:28.7593785Z [36;1mcp $GITHUB_WORKSPACE/entservices-appmanagers/Tests/L1Tests/.lcovrc_l1 ~/.lcovrc[0m
+2026-06-16T11:17:28.7594213Z [36;1m[0m
+2026-06-16T11:17:28.7594743Z [36;1m# Detect lcov version — lcov 2.x uses different --rc key names and supports --ignore-errors[0m
+2026-06-16T11:17:28.7595416Z [36;1m# no_exception_branch: excludes compiler-generated exception-handling branches (landing pads,[0m
+2026-06-16T11:17:28.7596039Z [36;1m# stack unwinding) that are invisible in source code and untestable in practice.[0m
+2026-06-16T11:17:28.7596451Z [36;1mLCOV_IGNORE=""[0m
+2026-06-16T11:17:28.7596699Z [36;1mBRANCH_RC="--rc lcov_branch_coverage=1"[0m
+2026-06-16T11:17:28.7596980Z [36;1mEXCL_BR=""[0m
+2026-06-16T11:17:28.7597183Z [36;1mGENHTML_IGNORE=""[0m
+2026-06-16T11:17:28.7597469Z [36;1mif lcov --version 2>&1 | grep -qE 'version 2\.'; then[0m
+2026-06-16T11:17:28.7597998Z [36;1m  LCOV_IGNORE="--ignore-errors version,gcov,mismatch,unused,inconsistent,deprecated"[0m
+2026-06-16T11:17:28.7598467Z [36;1m  BRANCH_RC="--rc branch_coverage=1"[0m
+2026-06-16T11:17:28.7598766Z [36;1m  EXCL_BR="--rc no_exception_branch=1"[0m
+2026-06-16T11:17:28.7599646Z [36;1m  GENHTML_IGNORE="--ignore-errors version,unmapped,inconsistent,corrupt,source,empty,range,format,path,missing,mismatch,negative,branch,annotate,deprecated,package"[0m
+2026-06-16T11:17:28.7600575Z [36;1mfi[0m
+2026-06-16T11:17:28.7600753Z [36;1m[0m
+2026-06-16T11:17:28.7600959Z [36;1mlcov $LCOV_IGNORE $BRANCH_RC $EXCL_BR \[0m
+2026-06-16T11:17:28.7601230Z [36;1m  -c \[0m
+2026-06-16T11:17:28.7601431Z [36;1m  -o coverage.info \[0m
+2026-06-16T11:17:28.7601687Z [36;1m  -d build/entservices-appmanagers[0m
+2026-06-16T11:17:28.7601947Z [36;1m[0m
+2026-06-16T11:17:28.7602145Z [36;1mlcov $LCOV_IGNORE $BRANCH_RC $EXCL_BR \[0m
+2026-06-16T11:17:28.7602419Z [36;1m  -r coverage.info \[0m
+2026-06-16T11:17:28.7602648Z [36;1m  '/usr/include/*' \[0m
+2026-06-16T11:17:28.7610103Z [36;1m  '*/build/entservices-appmanagers/_deps/*' \[0m
+2026-06-16T11:17:28.7610653Z [36;1m  '*/install/usr/include/*' \[0m
+2026-06-16T11:17:28.7610930Z [36;1m  '*/Tests/headers/*' \[0m
+2026-06-16T11:17:28.7611182Z [36;1m  '*/Tests/mocks/*' \[0m
+2026-06-16T11:17:28.7611423Z [36;1m  '*/Tests/L1Tests/tests/*' \[0m
+2026-06-16T11:17:28.7611680Z [36;1m  '*/Thunder/*' \[0m
+2026-06-16T11:17:28.7611926Z [36;1m  -o filtered_coverage.info[0m
+2026-06-16T11:17:28.7612171Z [36;1m[0m
+2026-06-16T11:17:28.7612430Z [36;1mgenhtml $GENHTML_IGNORE $BRANCH_RC --branch-coverage \[0m
+2026-06-16T11:17:28.7612770Z [36;1m  -o coverage \[0m
+2026-06-16T11:17:28.7613286Z [36;1m  -t "entservices-appmanagers coverage" \[0m
+2026-06-16T11:17:28.7613619Z [36;1m  filtered_coverage.info[0m
+2026-06-16T11:17:28.7668304Z shell: /usr/bin/bash -e {0}
+2026-06-16T11:17:28.7668546Z env:
+2026-06-16T11:17:28.7668730Z   BUILD_TYPE: Debug
+2026-06-16T11:17:28.7668948Z   THUNDER_REF: R4.4.1
+2026-06-16T11:17:28.7669170Z   INTERFACES_REF: topic/RDKEMW-16187
+2026-06-16T11:17:28.7669421Z   AUTOMATICS_UNAME: 
+2026-06-16T11:17:28.7669626Z   AUTOMATICS_PASSCODE: 
+2026-06-16T11:17:28.7669899Z   pythonLocation: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T11:17:28.7670323Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.14.5/x64/lib/pkgconfig
+2026-06-16T11:17:28.7670740Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T11:17:28.7671110Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T11:17:28.7671474Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T11:17:28.7671839Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.14.5/x64/lib
+2026-06-16T11:17:28.7672501Z   TOOLCHAIN_FILE: /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/gcc-with-coverage.cmake
+2026-06-16T11:17:28.7673248Z ##[endgroup]
+2026-06-16T11:17:29.1544488Z Capturing coverage data from build/entservices-appmanagers
+2026-06-16T11:17:29.1547362Z geninfo cmd: '/usr/bin/geninfo build/entservices-appmanagers --toolname lcov --output-filename coverage.info --ignore-errors version --ignore-errors gcov --ignore-errors mismatch --ignore-errors unused --ignore-errors inconsistent --ignore-errors deprecated --branch-coverage --rc branch_coverage=1 --rc no_exception_branch=1'
+2026-06-16T11:17:29.3901085Z Found gcov version: 11.4.0
+2026-06-16T11:17:29.3926127Z Using intermediate gcov format
+2026-06-16T11:17:29.3926941Z Note: 'region' and 'branch_region' filters are not applied by default when '--filter' is specified.  See the '--no-markers section in the man page for more information.
+2026-06-16T11:17:29.3927614Z Recording 'internal' directories:
+2026-06-16T11:17:29.3928087Z 	/home/runner/work/entservices-appmanagers/entservices-appmanagers/build/entservices-appmanagers
+2026-06-16T11:17:29.3928599Z 	build/entservices-appmanagers
+2026-06-16T11:17:29.3928887Z Writing temporary data to /tmp/geninfo_datCZGk
+2026-06-16T11:17:29.3929261Z Scanning build/entservices-appmanagers for .gcda files ...
+2026-06-16T11:17:29.3992552Z Found 59 data files in build/entservices-appmanagers
+2026-06-16T11:17:29.3993238Z using: chunkSize: 1, nchunks:59, intervalLength:2
+2026-06-16T11:17:30.2634541Z lcov: WARNING: (mismatch) "/usr/include/c++/11/ext/aligned_buffer.h":65: mismatched exception tag for id 15, 15: '1' -> '0'
+2026-06-16T11:17:30.2635682Z 	(use "lcov --ignore-errors mismatch,mismatch ..." to suppress this warning)
+2026-06-16T11:17:30.2636900Z lcov: WARNING: (mismatch) "/usr/include/c++/11/ext/aligned_buffer.h":65: mismatched exception tag for id 15, 15: '1' -> '0'
+2026-06-16T11:17:30.9406488Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/basic_string.h":672: mismatched exception tag for id 15, 15: '0' -> '1'
+2026-06-16T11:17:30.9407989Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/basic_string.h":672: mismatched exception tag for id 15, 15: '0' -> '1'
+2026-06-16T11:17:31.2935077Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/basic_string.h":927: mismatched exception tag for id 7, 7: '0' -> '1'
+2026-06-16T11:17:31.2936262Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/basic_string.h":195: mismatched exception tag for id 83, 83: '1' -> '0'
+2026-06-16T11:17:31.2937283Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/basic_string.h":195: mismatched exception tag for id 85, 85: '1' -> '0'
+2026-06-16T11:17:31.2938291Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/basic_string.h":195: mismatched exception tag for id 87, 87: '0' -> '1'
+2026-06-16T11:17:31.2939293Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/basic_string.h":195: mismatched exception tag for id 89, 89: '0' -> '1'
+2026-06-16T11:17:31.2940238Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/basic_string.h":195: mismatched exception tag for id 83, 83: '1' -> '0'
+2026-06-16T11:17:31.2941072Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/basic_string.h":195: mismatched exception tag for id 85, 85: '1' -> '0'
+2026-06-16T11:17:31.2941909Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/basic_string.h":195: mismatched exception tag for id 87, 87: '0' -> '1'
+2026-06-16T11:17:31.2942754Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/basic_string.h":195: mismatched exception tag for id 89, 89: '0' -> '1'
+2026-06-16T11:17:31.2943827Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/basic_string.h":927: mismatched exception tag for id 7, 7: '0' -> '1'
+2026-06-16T11:17:31.2944670Z lcov: WARNING: (mismatch) "/usr/include/c++/11/ext/aligned_buffer.h":65: mismatched exception tag for id 15, 15: '0' -> '1'
+2026-06-16T11:17:31.2945518Z lcov: WARNING: (mismatch) "/usr/include/c++/11/ext/aligned_buffer.h":65: mismatched exception tag for id 15, 15: '0' -> '1'
+2026-06-16T11:17:31.6612182Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/std_function.h":334: mismatched exception tag for id 3, 3: '0' -> '1'
+2026-06-16T11:17:31.6613906Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/std_function.h":334: mismatched exception tag for id 3, 3: '0' -> '1'
+2026-06-16T11:17:31.6615403Z lcov: WARNING: (mismatch) "/usr/include/c++/11/chrono":899: mismatched exception tag for id 1, 1: '1' -> '0'
+2026-06-16T11:17:31.6616368Z lcov: WARNING: (mismatch) "/usr/include/c++/11/chrono":899: mismatched exception tag for id 1, 1: '1' -> '0'
+2026-06-16T11:17:31.6617537Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/basic_string.h":927: mismatched exception tag for id 7, 7: '0' -> '1'
+2026-06-16T11:17:31.6618607Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/basic_string.h":927: mismatched exception tag for id 7, 7: '0' -> '1'
+2026-06-16T11:17:31.6619685Z lcov: WARNING: (mismatch) "/usr/include/c++/11/ext/aligned_buffer.h":65: mismatched exception tag for id 15, 15: '0' -> '1'
+2026-06-16T11:17:31.6620754Z lcov: WARNING: (mismatch) "/usr/include/c++/11/ext/aligned_buffer.h":65: mismatched exception tag for id 15, 15: '0' -> '1'
+2026-06-16T11:17:32.5787210Z lcov: WARNING: (mismatch) "/usr/include/c++/11/ext/aligned_buffer.h":65: mismatched exception tag for id 17, 17: '0' -> '1'
+2026-06-16T11:17:32.5788961Z lcov: WARNING: (mismatch) "/usr/include/c++/11/ext/aligned_buffer.h":65: mismatched exception tag for id 17, 17: '0' -> '1'
+2026-06-16T11:17:32.5790259Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/basic_string.h":439: mismatched exception tag for id 3, 3: '0' -> '1'
+2026-06-16T11:17:32.5791521Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/basic_string.h":672: mismatched exception tag for id 15, 15: '0' -> '1'
+2026-06-16T11:17:32.5793274Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/basic_string.h":672: mismatched exception tag for id 17, 17: '0' -> '1'
+2026-06-16T11:17:32.5794366Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/basic_string.h":672: mismatched exception tag for id 19, 19: '1' -> '0'
+2026-06-16T11:17:32.5795347Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/basic_string.h":672: mismatched exception tag for id 21, 21: '1' -> '0'
+2026-06-16T11:17:32.5796330Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/basic_string.h":672: mismatched exception tag for id 23, 23: '0' -> '1'
+2026-06-16T11:17:32.5797317Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/basic_string.h":672: mismatched exception tag for id 25, 25: '0' -> '1'
+2026-06-16T11:17:32.5798296Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/basic_string.h":672: mismatched exception tag for id 29, 29: '1' -> '0'
+2026-06-16T11:17:32.5799280Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/basic_string.h":672: mismatched exception tag for id 31, 31: '1' -> '0'
+2026-06-16T11:17:32.5800267Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/basic_string.h":672: mismatched exception tag for id 35, 35: '0' -> '1'
+2026-06-16T11:17:32.5801244Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/basic_string.h":672: mismatched exception tag for id 37, 37: '0' -> '1'
+2026-06-16T11:17:32.5802226Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/basic_string.h":672: mismatched exception tag for id 15, 15: '0' -> '1'
+2026-06-16T11:17:32.5803327Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/basic_string.h":672: mismatched exception tag for id 17, 17: '0' -> '1'
+2026-06-16T11:17:32.5804312Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/basic_string.h":672: mismatched exception tag for id 19, 19: '1' -> '0'
+2026-06-16T11:17:32.5805028Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/basic_string.h":672: mismatched exception tag for id 21, 21: '1' -> '0'
+2026-06-16T11:17:32.5805738Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/basic_string.h":672: mismatched exception tag for id 23, 23: '0' -> '1'
+2026-06-16T11:17:32.5806458Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/basic_string.h":672: mismatched exception tag for id 25, 25: '0' -> '1'
+2026-06-16T11:17:32.5807197Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/basic_string.h":672: mismatched exception tag for id 29, 29: '1' -> '0'
+2026-06-16T11:17:32.5807907Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/basic_string.h":672: mismatched exception tag for id 31, 31: '1' -> '0'
+2026-06-16T11:17:32.5808779Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/basic_string.h":672: mismatched exception tag for id 35, 35: '0' -> '1'
+2026-06-16T11:17:32.5809485Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/basic_string.h":672: mismatched exception tag for id 37, 37: '0' -> '1'
+2026-06-16T11:17:32.5810280Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/basic_string.h":439: mismatched exception tag for id 3, 3: '0' -> '1'
+2026-06-16T11:17:32.5810992Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/char_traits.h":357: mismatched exception tag for id 7, 7: '0' -> '1'
+2026-06-16T11:17:32.5811693Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/char_traits.h":357: mismatched exception tag for id 7, 7: '0' -> '1'
+2026-06-16T11:17:32.5812383Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/stl_list.h":154: mismatched exception tag for id 1, 1: '1' -> '0'
+2026-06-16T11:17:32.5813200Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/stl_list.h":154: mismatched exception tag for id 1, 1: '1' -> '0'
+2026-06-16T11:17:33.5334126Z lcov: WARNING: (inconsistent) mismatched end line for _ZN40RuntimeManagerTest_TerminateMethods_TestD2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:235: 252 -> 235 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5340024Z lcov: WARNING: (inconsistent) mismatched end line for _ZN40RuntimeManagerTest_TerminateMethods_TestD0Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:235: 252 -> 235 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5344529Z lcov: WARNING: (inconsistent) mismatched end line for _ZN40RuntimeManagerTest_TerminateMethods_TestC2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:235: 252 -> 235 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5348071Z lcov: WARNING: (inconsistent) mismatched end line for _ZN60RuntimeManagerTest_TerminateFailsWithEmptyAppInstanceId_TestD2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:264: 281 -> 264 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5351734Z lcov: WARNING: (inconsistent) mismatched end line for _ZN60RuntimeManagerTest_TerminateFailsWithEmptyAppInstanceId_TestD0Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:264: 281 -> 264 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5354780Z lcov: WARNING: (inconsistent) mismatched end line for _ZN60RuntimeManagerTest_TerminateFailsWithEmptyAppInstanceId_TestC2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:264: 281 -> 264 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5357626Z lcov: WARNING: (inconsistent) mismatched end line for _ZN53RuntimeManagerTest_TerminateNonExistentContainer_Test8TestBodyEv at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:293: 293 -> 308 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5360658Z lcov: WARNING: (inconsistent) mismatched end line for _ZN53RuntimeManagerTest_TerminateNonExistentContainer_TestD0Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:293: 308 -> 293 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5363671Z lcov: WARNING: (inconsistent) mismatched end line for _ZN53RuntimeManagerTest_TerminateNonExistentContainer_TestC2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:293: 308 -> 293 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5366481Z lcov: WARNING: (inconsistent) mismatched end line for _ZN55RuntimeManagerTest_TerminateWithInvalidContainerId_Test8TestBodyEv at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:320: 320 -> 333 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5369289Z lcov: WARNING: (inconsistent) mismatched end line for _ZN55RuntimeManagerTest_TerminateWithInvalidContainerId_TestD2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:320: 333 -> 320 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5372142Z lcov: WARNING: (inconsistent) mismatched end line for _ZN55RuntimeManagerTest_TerminateWithInvalidContainerId_TestD0Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:320: 333 -> 320 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5375199Z lcov: WARNING: (inconsistent) mismatched end line for _ZN56RuntimeManagerTest_TerminateAlreadyStoppedContainer_Test8TestBodyEv at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:345: 345 -> 360 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5378009Z lcov: WARNING: (inconsistent) mismatched end line for _ZN47RuntimeManagerTest_TerminateWithForceFails_Test8TestBodyEv at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:373: 373 -> 388 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5380810Z lcov: WARNING: (inconsistent) mismatched end line for _ZN48RuntimeManagerTest_KillNonExistentContainer_Test8TestBodyEv at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:401: 401 -> 412 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5383707Z lcov: WARNING: (inconsistent) mismatched end line for _ZN48RuntimeManagerTest_KillWithPermissionDenied_TestC2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:425: 436 -> 425 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5386436Z lcov: WARNING: (inconsistent) mismatched end line for _ZN48RuntimeManagerTest_KillWithPermissionDenied_TestD0Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:425: 436 -> 425 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5389294Z lcov: WARNING: (inconsistent) mismatched end line for _ZN48RuntimeManagerTest_KillWithPermissionDenied_TestD2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:425: 436 -> 425 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5392102Z lcov: WARNING: (inconsistent) mismatched end line for _ZN40RuntimeManagerTest_HibernateMethods_TestC2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:449: 466 -> 449 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5394872Z lcov: WARNING: (inconsistent) mismatched end line for _ZN40RuntimeManagerTest_HibernateMethods_TestD0Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:449: 466 -> 449 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5397602Z lcov: WARNING: (inconsistent) mismatched end line for _ZN40RuntimeManagerTest_HibernateMethods_TestD2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:449: 466 -> 449 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5400340Z lcov: WARNING: (inconsistent) mismatched end line for _ZN60RuntimeManagerTest_HibernateFailsWithEmptyAppInstanceId_TestD2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:478: 495 -> 478 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5403275Z lcov: WARNING: (inconsistent) mismatched end line for _ZN60RuntimeManagerTest_HibernateFailsWithEmptyAppInstanceId_TestC2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:478: 495 -> 478 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5406100Z lcov: WARNING: (inconsistent) mismatched end line for _ZN60RuntimeManagerTest_HibernateFailsWithEmptyAppInstanceId_TestD0Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:478: 495 -> 478 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5408848Z lcov: WARNING: (inconsistent) mismatched end line for _ZN35RuntimeManagerTest_KillMethods_Test8TestBodyEv at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:508: 508 -> 525 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5411488Z lcov: WARNING: (inconsistent) mismatched end line for _ZN35RuntimeManagerTest_KillMethods_TestD0Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:508: 525 -> 508 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5414318Z lcov: WARNING: (inconsistent) mismatched end line for _ZN35RuntimeManagerTest_KillMethods_TestD2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:508: 525 -> 508 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5417312Z lcov: WARNING: (inconsistent) mismatched end line for _ZN55RuntimeManagerTest_KillFailsWithEmptyAppInstanceId_Test8TestBodyEv at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:536: 536 -> 553 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5420115Z lcov: WARNING: (inconsistent) mismatched end line for _ZN55RuntimeManagerTest_KillFailsWithEmptyAppInstanceId_TestD0Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:536: 553 -> 536 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5422899Z lcov: WARNING: (inconsistent) mismatched end line for _ZN55RuntimeManagerTest_KillFailsWithEmptyAppInstanceId_TestD2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:536: 553 -> 536 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5425831Z lcov: WARNING: (inconsistent) mismatched end line for _ZN39RuntimeManagerTest_AnnonateMethods_Test8TestBodyEv at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:564: 564 -> 583 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5428510Z lcov: WARNING: (inconsistent) mismatched end line for _ZN39RuntimeManagerTest_AnnonateMethods_TestC2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:564: 583 -> 564 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5431224Z lcov: WARNING: (inconsistent) mismatched end line for _ZN51RuntimeManagerTest_AnnotateWithEmptyKeyOrValue_Test8TestBodyEv at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:593: 593 -> 597 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5434107Z lcov: WARNING: (inconsistent) mismatched end line for _ZN52RuntimeManagerTest_AnnotateNonExistentContainer_TestD0Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:608: 619 -> 608 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5436863Z lcov: WARNING: (inconsistent) mismatched end line for _ZN52RuntimeManagerTest_AnnotateNonExistentContainer_TestD2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:608: 619 -> 608 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5439612Z lcov: WARNING: (inconsistent) mismatched end line for _ZN52RuntimeManagerTest_AnnotateNonExistentContainer_TestC2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:608: 619 -> 608 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5442567Z lcov: WARNING: (inconsistent) mismatched end line for _ZN59RuntimeManagerTest_AnnotateFailsWithEmptyAppInstanceId_Test8TestBodyEv at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:630: 630 -> 649 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5445589Z lcov: WARNING: (inconsistent) mismatched end line for _ZN59RuntimeManagerTest_AnnotateFailsWithEmptyAppInstanceId_TestD2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:630: 649 -> 630 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5448400Z lcov: WARNING: (inconsistent) mismatched end line for _ZN59RuntimeManagerTest_AnnotateFailsWithEmptyAppInstanceId_TestC2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:630: 649 -> 630 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5451235Z lcov: WARNING: (inconsistent) mismatched end line for _ZN38RuntimeManagerTest_GetInfoMethods_Test8TestBodyEv at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:661: 661 -> 682 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5454113Z lcov: WARNING: (inconsistent) mismatched end line for _ZN38RuntimeManagerTest_GetInfoMethods_TestC2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:661: 682 -> 661 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5456869Z lcov: WARNING: (inconsistent) mismatched end line for _ZN54RuntimeManagerTest_GetInfoForNonExistentContainer_Test8TestBodyEv at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:694: 694 -> 708 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5459668Z lcov: WARNING: (inconsistent) mismatched end line for _ZN54RuntimeManagerTest_GetInfoForNonExistentContainer_TestD0Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:694: 708 -> 694 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5462426Z lcov: WARNING: (inconsistent) mismatched end line for _ZN54RuntimeManagerTest_GetInfoForNonExistentContainer_TestD2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:694: 708 -> 694 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5465318Z lcov: WARNING: (inconsistent) mismatched end line for _ZN59RuntimeManagerTest_GetInfoForValidContainerReturnError_TestD2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:720: 734 -> 720 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5468116Z lcov: WARNING: (inconsistent) mismatched end line for _ZN59RuntimeManagerTest_GetInfoForValidContainerReturnError_TestD0Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:720: 734 -> 720 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5471119Z lcov: WARNING: (inconsistent) mismatched end line for _ZN59RuntimeManagerTest_GetInfoForValidContainerReturnError_TestC2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:720: 734 -> 720 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5474034Z lcov: WARNING: (inconsistent) mismatched end line for _ZN58RuntimeManagerTest_GetInfoFailsWithEmptyAppInstanceId_TestD2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:746: 766 -> 746 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5476843Z lcov: WARNING: (inconsistent) mismatched end line for _ZN58RuntimeManagerTest_GetInfoFailsWithEmptyAppInstanceId_TestD0Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:746: 766 -> 746 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5479713Z lcov: WARNING: (inconsistent) mismatched end line for _ZN58RuntimeManagerTest_GetInfoFailsWithEmptyAppInstanceId_TestC2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:746: 766 -> 746 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5482442Z lcov: WARNING: (inconsistent) mismatched end line for _ZN34RuntimeManagerTest_RunMethods_Test8TestBodyEv at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:775: 775 -> 812 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5485191Z lcov: WARNING: (inconsistent) mismatched end line for _ZN34RuntimeManagerTest_RunMethods_TestD0Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:775: 812 -> 775 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5487796Z lcov: WARNING: (inconsistent) mismatched end line for _ZN34RuntimeManagerTest_RunMethods_TestD2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:775: 812 -> 775 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5490508Z lcov: WARNING: (inconsistent) mismatched end line for _ZN47RuntimeManagerTest_RunWithoutCreateDisplay_Test8TestBodyEv at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:821: 821 -> 857 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5493465Z lcov: WARNING: (inconsistent) mismatched end line for _ZN43RuntimeManagerTest_RunCreateFkpsMounts_Test8TestBodyEv at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:866: 866 -> 917 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5496316Z lcov: WARNING: (inconsistent) mismatched end line for _ZN43RuntimeManagerTest_RunCreateFkpsMounts_TestD0Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:866: 917 -> 866 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5499057Z lcov: WARNING: (inconsistent) mismatched end line for _ZN43RuntimeManagerTest_RunCreateFkpsMounts_TestD2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:866: 917 -> 866 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5501751Z lcov: WARNING: (inconsistent) mismatched end line for _ZN47RuntimeManagerTest_RunReadfromAIConfigFile_TestD0Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:927: 998 -> 927 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5504577Z lcov: WARNING: (inconsistent) mismatched end line for _ZN47RuntimeManagerTest_RunReadfromAIConfigFile_TestC2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:927: 998 -> 927 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5507362Z lcov: WARNING: (inconsistent) mismatched end line for _ZN47RuntimeManagerTest_RunReadfromAIConfigFile_TestD2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:927: 998 -> 927 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5510099Z lcov: WARNING: (inconsistent) mismatched end line for _ZN45RuntimeManagerTest_StartContainerFailure_Test8TestBodyEv at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:1007: 1007 -> 1037 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5512873Z lcov: WARNING: (inconsistent) mismatched end line for _ZN47RuntimeManagerTest_RunWithEmptyContainerId_Test8TestBodyEv at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:1046: 1046 -> 1060 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5515784Z lcov: WARNING: (inconsistent) mismatched end line for _ZN51RuntimeManagerTest_RunWithDuplicateContainerId_Test8TestBodyEv at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:1069: 1069 -> 1091 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5518530Z lcov: WARNING: (inconsistent) mismatched end line for _ZN38RuntimeManagerTest_RunWithTimeout_TestC2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:1100: 1122 -> 1100 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5521183Z lcov: WARNING: (inconsistent) mismatched end line for _ZN38RuntimeManagerTest_RunWithTimeout_TestD0Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:1100: 1122 -> 1100 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5524147Z lcov: WARNING: (inconsistent) mismatched end line for _ZN38RuntimeManagerTest_RunWithTimeout_TestD2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:1100: 1122 -> 1100 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5527022Z lcov: WARNING: (inconsistent) mismatched end line for _ZN84RuntimeManagerTest_RunIncludesDefaultEthanLogLevelsWhenRuntimeLogLevelsProvided_TestD2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:1129: 1176 -> 1129 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5530082Z lcov: WARNING: (inconsistent) mismatched end line for _ZN84RuntimeManagerTest_RunIncludesDefaultEthanLogLevelsWhenRuntimeLogLevelsProvided_TestD0Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:1129: 1176 -> 1129 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5533485Z lcov: WARNING: (inconsistent) mismatched end line for _ZN84RuntimeManagerTest_RunIncludesDefaultEthanLogLevelsWhenRuntimeLogLevelsProvided_TestC2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:1129: 1176 -> 1129 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5536347Z lcov: WARNING: (inconsistent) mismatched end line for _ZN35RuntimeManagerTest_WakeMethods_TestD2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:1185: 1241 -> 1185 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5538978Z lcov: WARNING: (inconsistent) mismatched end line for _ZN35RuntimeManagerTest_WakeMethods_TestD0Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:1185: 1241 -> 1185 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5541601Z lcov: WARNING: (inconsistent) mismatched end line for _ZN35RuntimeManagerTest_WakeMethods_TestC2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:1185: 1241 -> 1185 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5544449Z lcov: WARNING: (inconsistent) mismatched end line for _ZN58RuntimeManagerTest_WakeOnRunningNonHibernateContainer_TestD2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:1250: 1287 -> 1250 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5547263Z lcov: WARNING: (inconsistent) mismatched end line for _ZN58RuntimeManagerTest_WakeOnRunningNonHibernateContainer_TestD0Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:1250: 1287 -> 1250 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5550215Z lcov: WARNING: (inconsistent) mismatched end line for _ZN58RuntimeManagerTest_WakeOnRunningNonHibernateContainer_TestC2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:1250: 1287 -> 1250 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5553158Z lcov: WARNING: (inconsistent) mismatched end line for _ZN44RuntimeManagerTest_WakeWithGeneralError_TestC2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:1296: 1352 -> 1296 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5555862Z lcov: WARNING: (inconsistent) mismatched end line for _ZN44RuntimeManagerTest_WakeWithGeneralError_TestD2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:1296: 1352 -> 1296 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5558634Z lcov: WARNING: (inconsistent) mismatched end line for _ZN44RuntimeManagerTest_WakeWithGeneralError_TestD0Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:1296: 1352 -> 1296 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5561386Z lcov: WARNING: (inconsistent) mismatched end line for _ZN49RuntimeManagerTest_WakeOnNonRunningContainer_Test8TestBodyEv at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:1361: 1361 -> 1369 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5564253Z lcov: WARNING: (inconsistent) mismatched end line for _ZN49RuntimeManagerTest_WakeOnNonRunningContainer_TestD2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:1361: 1369 -> 1361 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.5567151Z lcov: WARNING: (inconsistent) mismatched end line for _ZN49RuntimeManagerTest_WakeOnNonRunningContainer_TestD0Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:1361: 1369 -> 1361 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.8936511Z lcov: WARNING: (inconsistent) mismatched end line for _ZN55RuntimeManagerTest_WakeFailsWithEmptyAppInstanceId_Test8TestBodyEv at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:1378: 1378 -> 1387 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.8940321Z lcov: WARNING: (inconsistent) mismatched end line for _ZN44RuntimeManagerTest_SuspendResumeMethods_Test8TestBodyEv at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:1396: 1396 -> 1450 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.8944251Z lcov: WARNING: (inconsistent) mismatched end line for _ZN44RuntimeManagerTest_SuspendResumeMethods_TestC2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:1396: 1450 -> 1396 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.8947735Z lcov: WARNING: (inconsistent) mismatched end line for _ZN58RuntimeManagerTest_SuspendFailsWithEmptyAppInstanceId_Test8TestBodyEv at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:1459: 1459 -> 1469 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.8950810Z lcov: WARNING: (inconsistent) mismatched end line for _ZN58RuntimeManagerTest_SuspendFailsWithEmptyAppInstanceId_TestD2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:1459: 1469 -> 1459 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.8953760Z lcov: WARNING: (inconsistent) mismatched end line for _ZN58RuntimeManagerTest_SuspendFailsWithEmptyAppInstanceId_TestC2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:1459: 1469 -> 1459 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.8956694Z lcov: WARNING: (inconsistent) mismatched end line for _ZN57RuntimeManagerTest_ResumeFailsWithEmptyAppInstanceId_Test8TestBodyEv at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:1478: 1478 -> 1488 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.8959590Z lcov: WARNING: (inconsistent) mismatched end line for _ZN59RuntimeManagerTest_SuspendFailsWithPauseContainerError_Test8TestBodyEv at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:1497: 1497 -> 1540 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.8962484Z lcov: WARNING: (inconsistent) mismatched end line for _ZN59RuntimeManagerTest_SuspendFailsWithPauseContainerError_TestD2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:1497: 1540 -> 1497 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.8965463Z lcov: WARNING: (inconsistent) mismatched end line for _ZN60RuntimeManagerTest_ResumeFailsResumePauseContainerError_Test8TestBodyEv at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:1552: 1552 -> 1604 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.8968274Z lcov: WARNING: (inconsistent) mismatched end line for _ZN42RuntimeManagerTest_OCIContainerEvents_Test8TestBodyEv at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:1617: 1617 -> 1630 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.8970984Z lcov: WARNING: (inconsistent) mismatched end line for _ZN42RuntimeManagerTest_OCIContainerEvents_TestD2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:1617: 1630 -> 1617 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.8974040Z lcov: WARNING: (inconsistent) mismatched end line for _ZN42RuntimeManagerTest_OCIContainerEvents_TestC2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:1617: 1630 -> 1617 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.8976876Z lcov: WARNING: (inconsistent) mismatched end line for _ZN68RuntimeManagerTest_RuntimeManagerRegisterUnregisterNotification_Test8TestBodyEv at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:1636: 1636 -> 1642 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.8979828Z lcov: WARNING: (inconsistent) mismatched end line for _ZN68RuntimeManagerTest_RuntimeManagerUnregisterNotificationNotFound_Test8TestBodyEv at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:1648: 1648 -> 1653 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.8982877Z lcov: WARNING: (inconsistent) mismatched end line for _ZN68RuntimeManagerTest_RuntimeManagerUnregisterNotificationNotFound_TestC2Ev at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:1648: 1653 -> 1648 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.8986119Z lcov: WARNING: (inconsistent) mismatched end line for _ZN49RuntimeManagerTest_RuntimeManagerGetInstance_Test8TestBodyEv at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:1659: 1659 -> 1662 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.8988940Z lcov: WARNING: (inconsistent) mismatched end line for _ZN54RuntimeManagerTest_AIConfigurationGettersCoverage_Test8TestBodyEv at /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp:1668: 1668 -> 1686 while capturing from build/entservices-appmanagers/Tests/L1Tests/CMakeFiles/RdkServicesL1Test.dir/tests/test_RunTimeManager.cpp.gcda
+2026-06-16T11:17:33.8991355Z lcov: WARNING: (count) max_message_count=100 reached for 'inconsistent' messages: no more will be reported.
+2026-06-16T11:17:33.8991935Z 	To increase or decrease this limit use '--rc max_message_count=value'.
+2026-06-16T11:17:33.8992383Z 	(use "lcov --ignore-errors count,count ..." to suppress this warning)
+2026-06-16T11:17:33.8992965Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/stl_list.h":947: mismatched exception tag for id 15, 15: '1' -> '0'
+2026-06-16T11:17:33.8993851Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/stl_list.h":947: mismatched exception tag for id 21, 21: '0' -> '1'
+2026-06-16T11:17:33.8994540Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/stl_list.h":947: mismatched exception tag for id 15, 15: '1' -> '0'
+2026-06-16T11:17:33.8995222Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/stl_list.h":947: mismatched exception tag for id 21, 21: '0' -> '1'
+2026-06-16T11:17:33.8995931Z lcov: WARNING: (mismatch) "/usr/include/c++/11/ext/aligned_buffer.h":65: mismatched exception tag for id 17, 17: '0' -> '1'
+2026-06-16T11:17:33.8996676Z lcov: WARNING: (mismatch) "/usr/include/c++/11/ext/aligned_buffer.h":65: mismatched exception tag for id 17, 17: '0' -> '1'
+2026-06-16T11:17:34.9247819Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/basic_string.h":439: mismatched exception tag for id 3, 3: '0' -> '1'
+2026-06-16T11:17:34.9249249Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/basic_string.h":439: mismatched exception tag for id 3, 3: '0' -> '1'
+2026-06-16T11:17:34.9250182Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/stl_iterator.h":1182: mismatched exception tag for id 5, 5: '0' -> '1'
+2026-06-16T11:17:34.9251116Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/stl_iterator.h":1182: mismatched exception tag for id 7, 7: '0' -> '1'
+2026-06-16T11:17:34.9252031Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/stl_iterator.h":1182: mismatched exception tag for id 5, 5: '0' -> '1'
+2026-06-16T11:17:34.9252932Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/stl_iterator.h":1182: mismatched exception tag for id 7, 7: '0' -> '1'
+2026-06-16T11:17:36.0465200Z lcov: WARNING: (mismatch) "/home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gmock/gmock-nice-strict.h":158: mismatched exception tag for id 1, 1: '0' -> '1'
+2026-06-16T11:17:36.0467559Z lcov: WARNING: (mismatch) "/home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gmock/gmock-nice-strict.h":158: mismatched exception tag for id 1, 1: '0' -> '1'
+2026-06-16T11:17:36.0469390Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/unique_ptr.h":173: mismatched exception tag for id 1, 1: '1' -> '0'
+2026-06-16T11:17:36.0470423Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/unique_ptr.h":173: mismatched exception tag for id 5, 5: '0' -> '1'
+2026-06-16T11:17:36.0471443Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/unique_ptr.h":173: mismatched exception tag for id 7, 7: '0' -> '1'
+2026-06-16T11:17:36.0472483Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/unique_ptr.h":173: mismatched exception tag for id 9, 9: '0' -> '1'
+2026-06-16T11:17:36.0473850Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/unique_ptr.h":173: mismatched exception tag for id 1, 1: '1' -> '0'
+2026-06-16T11:17:36.0474895Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/unique_ptr.h":173: mismatched exception tag for id 5, 5: '0' -> '1'
+2026-06-16T11:17:36.0475928Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/unique_ptr.h":173: mismatched exception tag for id 7, 7: '0' -> '1'
+2026-06-16T11:17:36.0476991Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/unique_ptr.h":173: mismatched exception tag for id 9, 9: '0' -> '1'
+2026-06-16T11:17:36.0478067Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/basic_string.h":927: mismatched exception tag for id 7, 7: '1' -> '0'
+2026-06-16T11:17:36.0479131Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/basic_string.h":927: mismatched exception tag for id 7, 7: '1' -> '0'
+2026-06-16T11:17:36.7240119Z lcov: WARNING: (mismatch) "/usr/include/c++/11/ext/aligned_buffer.h":104: mismatched exception tag for id 1, 1: '1' -> '0'
+2026-06-16T11:17:36.7241635Z lcov: WARNING: (mismatch) "/usr/include/c++/11/ext/aligned_buffer.h":104: mismatched exception tag for id 3, 3: '1' -> '0'
+2026-06-16T11:17:36.7242501Z lcov: WARNING: (mismatch) "/usr/include/c++/11/ext/aligned_buffer.h":104: mismatched exception tag for id 1, 1: '1' -> '0'
+2026-06-16T11:17:36.7243735Z lcov: WARNING: (mismatch) "/usr/include/c++/11/ext/aligned_buffer.h":104: mismatched exception tag for id 3, 3: '1' -> '0'
+2026-06-16T11:17:36.7244615Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/char_traits.h":357: mismatched exception tag for id 33, 33: '1' -> '0'
+2026-06-16T11:17:36.7245455Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/char_traits.h":357: mismatched exception tag for id 33, 33: '1' -> '0'
+2026-06-16T11:17:38.4246385Z lcov: WARNING: (mismatch) "/home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gmock/gmock-nice-strict.h":158: mismatched exception tag for id 1, 1: '0' -> '1'
+2026-06-16T11:17:38.4249045Z lcov: WARNING: (mismatch) "/home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gmock/gmock-nice-strict.h":158: mismatched exception tag for id 1, 1: '0' -> '1'
+2026-06-16T11:17:38.4250958Z lcov: WARNING: (mismatch) "/home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gmock/gmock-nice-strict.h":158: mismatched exception tag for id 1, 1: '0' -> '1'
+2026-06-16T11:17:38.4252626Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/basic_string.h":439: mismatched exception tag for id 25, 25: '1' -> '0'
+2026-06-16T11:17:38.4254032Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/basic_string.h":439: mismatched exception tag for id 25, 25: '1' -> '0'
+2026-06-16T11:17:40.0245617Z lcov: WARNING: (mismatch) "/home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_AppStorageManager.cpp":290: mismatched exception tag for id 1, 1: '1' -> '0'
+2026-06-16T11:17:40.0247666Z lcov: WARNING: (mismatch) "/home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gmock/gmock-nice-strict.h":158: mismatched exception tag for id 1, 1: '1' -> '0'
+2026-06-16T11:17:40.0249096Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/char_traits.h":357: mismatched exception tag for id 7, 7: '0' -> '1'
+2026-06-16T11:17:40.0250096Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/char_traits.h":357: mismatched exception tag for id 7, 7: '0' -> '1'
+2026-06-16T11:17:40.0251317Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/stl_list.h":947: mismatched exception tag for id 15, 15: '0' -> '1'
+2026-06-16T11:17:40.0252266Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/stl_list.h":947: mismatched exception tag for id 15, 15: '0' -> '1'
+2026-06-16T11:17:41.6667818Z lcov: WARNING: (mismatch) "/home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gmock/gmock-nice-strict.h":158: mismatched exception tag for id 1, 1: '0' -> '1'
+2026-06-16T11:17:41.7689774Z lcov: WARNING: (mismatch) "/usr/include/c++/11/tuple":190: mismatched exception tag for id 1, 1: '1' -> '0'
+2026-06-16T11:17:41.7690835Z lcov: WARNING: (mismatch) "/usr/include/c++/11/tuple":190: mismatched exception tag for id 1, 1: '1' -> '0'
+2026-06-16T11:17:41.7691736Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/basic_string.h":195: mismatched exception tag for id 1, 1: '0' -> '1'
+2026-06-16T11:17:41.7692654Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/basic_string.h":195: mismatched exception tag for id 3, 3: '0' -> '1'
+2026-06-16T11:17:41.7693694Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/basic_string.h":195: mismatched exception tag for id 1, 1: '0' -> '1'
+2026-06-16T11:17:41.7694589Z lcov: WARNING: (mismatch) "/usr/include/c++/11/bits/basic_string.h":195: mismatched exception tag for id 3, 3: '0' -> '1'
+2026-06-16T11:17:41.8367684Z lcov: WARNING: (count) max_message_count=100 reached for 'mismatch' messages: no more will be reported.
+2026-06-16T11:17:47.9438926Z Finished processing 59 GCDA files
+2026-06-16T11:17:47.9439485Z Apply filtering..
+2026-06-16T11:17:47.9439882Z Finished filter file processing
+2026-06-16T11:17:47.9440304Z Finished .info-file creation
+2026-06-16T11:17:47.9440697Z Summary coverage rate:
+2026-06-16T11:17:47.9441074Z   source files: 296
+2026-06-16T11:17:47.9441423Z   lines.......: 75.6% (18583 of 24584 lines)
+2026-06-16T11:17:47.9441909Z   functions...: 66.0% (22689 of 34362 functions)
+2026-06-16T11:17:47.9442381Z   branches....: 37.2% (26539 of 71413 branches)
+2026-06-16T11:17:47.9442795Z Filter suppressions:
+2026-06-16T11:17:47.9443394Z   exception:
+2026-06-16T11:17:47.9443689Z     8375 instances
+2026-06-16T11:17:47.9444004Z     193865 coverpoints
+2026-06-16T11:17:47.9444322Z Message summary:
+2026-06-16T11:17:47.9444619Z   201 warning messages:
+2026-06-16T11:17:47.9444936Z     count: 2
+2026-06-16T11:17:47.9445225Z     inconsistent: 99
+2026-06-16T11:17:47.9445524Z     mismatch: 100
+2026-06-16T11:17:47.9445822Z   1415 ignore messages:
+2026-06-16T11:17:47.9446481Z     deprecated: 4
+2026-06-16T11:17:47.9446776Z     inconsistent: 1233
+2026-06-16T11:17:47.9447082Z     mismatch: 178
+2026-06-16T11:17:48.5481289Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/com/Administrator.h
+2026-06-16T11:17:48.5483491Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/com/Communicator.h
+2026-06-16T11:17:48.5484867Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/com/ICOM.h
+2026-06-16T11:17:48.5486301Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/com/IIteratorType.h
+2026-06-16T11:17:48.5487687Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/com/IUnknown.h
+2026-06-16T11:17:48.5489071Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/com/IteratorType.h
+2026-06-16T11:17:48.5490444Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/com/Messages.h
+2026-06-16T11:17:48.5491842Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/core/Enumerate.h
+2026-06-16T11:17:48.5493391Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/core/Factory.h
+2026-06-16T11:17:48.5494807Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/core/FileSystem.h
+2026-06-16T11:17:48.5496379Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/core/Frame.h
+2026-06-16T11:17:48.5497738Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/core/IAction.h
+2026-06-16T11:17:48.5499110Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/core/IIterator.h
+2026-06-16T11:17:48.5500521Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/core/IPCChannel.h
+2026-06-16T11:17:48.5501974Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/core/IPCConnector.h
+2026-06-16T11:17:48.5503614Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/core/IPCMessage.h
+2026-06-16T11:17:48.5504988Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/core/JSON.h
+2026-06-16T11:17:48.5506338Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/core/JSONRPC.h
+2026-06-16T11:17:48.5507672Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/core/Link.h
+2026-06-16T11:17:48.5509049Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/core/MessageStore.h
+2026-06-16T11:17:48.5510448Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/core/NodeId.h
+2026-06-16T11:17:48.5511795Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/core/Number.h
+2026-06-16T11:17:48.5513369Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/core/Optional.h
+2026-06-16T11:17:48.5514787Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/core/Portability.h
+2026-06-16T11:17:48.5516200Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/core/Process.h
+2026-06-16T11:17:48.5517643Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/core/ProcessInfo.h
+2026-06-16T11:17:48.5519011Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/core/Proxy.h
+2026-06-16T11:17:48.5520332Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/core/Queue.h
+2026-06-16T11:17:48.5521739Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/core/ResourceMonitor.h
+2026-06-16T11:17:48.5523669Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/core/Serialization.h
+2026-06-16T11:17:48.5525115Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/core/Services.h
+2026-06-16T11:17:48.5526641Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/core/SocketPort.h
+2026-06-16T11:17:48.5528049Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/core/StateTrigger.h
+2026-06-16T11:17:48.5529392Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/core/Sync.h
+2026-06-16T11:17:48.5530767Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/core/TextFragment.h
+2026-06-16T11:17:48.5532159Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/core/Thread.h
+2026-06-16T11:17:48.5533751Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/core/ThreadPool.h
+2026-06-16T11:17:48.5535120Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/core/Time.h
+2026-06-16T11:17:48.5536436Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/core/Timer.h
+2026-06-16T11:17:48.5537869Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/core/TokenizedStringList.h
+2026-06-16T11:17:48.5539481Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/core/WorkerPool.h
+2026-06-16T11:17:48.5540911Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/messaging/BaseCategory.h
+2026-06-16T11:17:48.5542360Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/messaging/Control.h
+2026-06-16T11:17:48.5543975Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/messaging/Logging.h
+2026-06-16T11:17:48.5545480Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/messaging/LoggingCategories.h
+2026-06-16T11:17:48.5547000Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/messaging/MessageUnit.h
+2026-06-16T11:17:48.5548476Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/messaging/TextMessage.h
+2026-06-16T11:17:48.5549899Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/plugins/IPlugin.h
+2026-06-16T11:17:48.5551269Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/plugins/IShell.h
+2026-06-16T11:17:48.5552645Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/plugins/ISubSystem.h
+2026-06-16T11:17:48.5554219Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/plugins/JSONRPC.h
+2026-06-16T11:17:48.5555599Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/plugins/MetaData.h
+2026-06-16T11:17:48.5556964Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/plugins/Service.h
+2026-06-16T11:17:48.5558359Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/plugins/VirtualInput.h
+2026-06-16T11:17:48.5559751Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/websocket/URL.h
+2026-06-16T11:17:48.5561145Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/websocket/WebRequest.h
+2026-06-16T11:17:48.5562599Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/websocket/WebResponse.h
+2026-06-16T11:17:48.5564261Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/Thunder/Source/websocket/WebSerializer.h
+2026-06-16T11:17:48.5565910Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_AppManager.cpp
+2026-06-16T11:17:48.5567991Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_AppStorageManager.cpp
+2026-06-16T11:17:48.5570048Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_DownloadManager.cpp
+2026-06-16T11:17:48.5571951Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_LifecycleManager.cpp
+2026-06-16T11:17:48.5574069Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_PreinstallManager.cpp
+2026-06-16T11:17:48.5575974Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RDKWindowManager.cpp
+2026-06-16T11:17:48.5577863Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_RunTimeManager.cpp
+2026-06-16T11:17:48.5579690Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/L1Tests/tests/test_UtilsFile.cpp
+2026-06-16T11:17:48.5581405Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/mocks/COMLinkMock.h
+2026-06-16T11:17:48.5583393Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/mocks/FactoriesImplementation.h
+2026-06-16T11:17:48.5585140Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/mocks/ISubSystemMock.h
+2026-06-16T11:17:48.5586851Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/mocks/LifecycleManagerMock.h
+2026-06-16T11:17:48.5588570Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/mocks/OCIContainerMock.h
+2026-06-16T11:17:48.5683940Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/mocks/PackageManagerMock.h
+2026-06-16T11:17:48.5685781Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/mocks/RdkWindowManager.h
+2026-06-16T11:17:48.5687541Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/mocks/RdkWindowManagerMock.h
+2026-06-16T11:17:48.5689330Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/mocks/RemoteConnectionMock.h
+2026-06-16T11:17:48.5691087Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/mocks/RuntimeManagerMock.h
+2026-06-16T11:17:48.5692768Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/mocks/ServiceMock.h
+2026-06-16T11:17:48.5694672Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/mocks/StorageManagerMock.h
+2026-06-16T11:17:48.5696348Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/mocks/Store2Mock.h
+2026-06-16T11:17:48.5698070Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/mocks/WorkerPoolImplementation.h
+2026-06-16T11:17:48.5699783Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/mocks/Wraps.cpp
+2026-06-16T11:17:48.5701359Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers/Tests/mocks/WrapsMock.h
+2026-06-16T11:17:48.5703181Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/interfaces/IAppManager.h
+2026-06-16T11:17:48.5704970Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/interfaces/IAppPackageManager.h
+2026-06-16T11:17:48.5707012Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/interfaces/IAppStorageManager.h
+2026-06-16T11:17:48.5708902Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/interfaces/IConfiguration.h
+2026-06-16T11:17:48.5710685Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/interfaces/IDownloadManager.h
+2026-06-16T11:17:48.5712473Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/interfaces/ILifecycleManager.h
+2026-06-16T11:17:48.5714474Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/interfaces/ILifecycleManagerState.h
+2026-06-16T11:17:48.5716294Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/interfaces/IOCIContainer.h
+2026-06-16T11:17:48.5718126Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/interfaces/IPreinstallManager.h
+2026-06-16T11:17:48.5719926Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/interfaces/IRDKWindowManager.h
+2026-06-16T11:17:48.5721820Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/interfaces/IRuntimeManager.h
+2026-06-16T11:17:48.5723703Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/interfaces/IStore2.h
+2026-06-16T11:17:48.5725426Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/interfaces/json/JAppManager.h
+2026-06-16T11:17:48.5727251Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/interfaces/json/JAppStorageManager.h
+2026-06-16T11:17:48.5729125Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/interfaces/json/JDownloadManager.h
+2026-06-16T11:17:48.5731035Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/interfaces/json/JLifecycleManagerState.h
+2026-06-16T11:17:48.5733160Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/interfaces/json/JPreinstallManager.h
+2026-06-16T11:17:48.5735084Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/interfaces/json/JRDKWindowManager.h
+2026-06-16T11:17:48.5736974Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/interfaces/json/JsonData_AppManager.h
+2026-06-16T11:17:48.5738931Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/interfaces/json/JsonData_AppStorageManager.h
+2026-06-16T11:17:48.5740911Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/interfaces/json/JsonData_DownloadManager.h
+2026-06-16T11:17:48.5742920Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/interfaces/json/JsonData_LifecycleManagerState.h
+2026-06-16T11:17:48.5745120Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/interfaces/json/JsonData_PreinstallManager.h
+2026-06-16T11:17:48.5747103Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/interfaces/json/JsonData_RDKWindowManager.h
+2026-06-16T11:17:48.5748919Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/tracing/MessageUnit.h
+2026-06-16T11:17:48.5750687Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gmock/gmock-actions.h
+2026-06-16T11:17:48.5752218Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gmock/gmock-cardinalities.h
+2026-06-16T11:17:48.5754013Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gmock/gmock-matchers.h
+2026-06-16T11:17:48.5755530Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gmock/gmock-nice-strict.h
+2026-06-16T11:17:48.5757095Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gmock/gmock-spec-builders.h
+2026-06-16T11:17:48.5758742Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gmock/internal/gmock-internal-utils.h
+2026-06-16T11:17:48.5760403Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gtest/gtest-assertion-result.h
+2026-06-16T11:17:48.5761960Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gtest/gtest-matchers.h
+2026-06-16T11:17:48.5763590Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gtest/gtest-message.h
+2026-06-16T11:17:48.5765081Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gtest/gtest-printers.h
+2026-06-16T11:17:48.5766620Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gtest/gtest.h
+2026-06-16T11:17:48.5768126Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gtest/internal/gtest-internal.h
+2026-06-16T11:17:48.5769767Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gtest/internal/gtest-param-util.h
+2026-06-16T11:17:48.5771373Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gtest/internal/gtest-port.h
+2026-06-16T11:17:48.5773150Z Excluding /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/gtest/internal/gtest-type-util.h
+2026-06-16T11:17:48.5774343Z Excluding /usr/include/boost/assert/source_location.hpp
+2026-06-16T11:17:48.5774974Z Excluding /usr/include/boost/exception/exception.hpp
+2026-06-16T11:17:48.5775645Z Excluding /usr/include/boost/system/detail/generic_category.hpp
+2026-06-16T11:17:48.5776413Z Excluding /usr/include/boost/system/detail/std_interoperability.hpp
+2026-06-16T11:17:48.5777208Z Excluding /usr/include/boost/system/detail/system_category_posix.hpp
+2026-06-16T11:17:48.5777899Z Excluding /usr/include/boost/system/error_code.hpp
+2026-06-16T11:17:48.5778503Z Excluding /usr/include/boost/system/system_error.hpp
+2026-06-16T11:17:48.5779080Z Excluding /usr/include/boost/throw_exception.hpp
+2026-06-16T11:17:48.5779766Z Excluding /usr/include/boost/uuid/detail/random_provider_getrandom.ipp
+2026-06-16T11:17:48.5780482Z Excluding /usr/include/boost/uuid/entropy_error.hpp
+2026-06-16T11:17:48.5781086Z Excluding /usr/include/boost/uuid/random_generator.hpp
+2026-06-16T11:17:48.5781651Z Excluding /usr/include/boost/uuid/uuid.hpp
+2026-06-16T11:17:48.5782168Z Excluding /usr/include/boost/uuid/uuid_io.hpp
+2026-06-16T11:17:48.5782670Z Excluding /usr/include/c++/11/any
+2026-06-16T11:17:48.5783263Z Excluding /usr/include/c++/11/atomic
+2026-06-16T11:17:48.5783773Z Excluding /usr/include/c++/11/bits/alloc_traits.h
+2026-06-16T11:17:48.5784358Z Excluding /usr/include/c++/11/bits/allocated_ptr.h
+2026-06-16T11:17:48.5784922Z Excluding /usr/include/c++/11/bits/atomic_base.h
+2026-06-16T11:17:48.5785473Z Excluding /usr/include/c++/11/bits/atomic_futex.h
+2026-06-16T11:17:48.5786017Z Excluding /usr/include/c++/11/bits/basic_ios.h
+2026-06-16T11:17:48.5786555Z Excluding /usr/include/c++/11/bits/basic_string.h
+2026-06-16T11:17:48.5787109Z Excluding /usr/include/c++/11/bits/basic_string.tcc
+2026-06-16T11:17:48.5787857Z Excluding /usr/include/c++/11/bits/char_traits.h
+2026-06-16T11:17:48.5788389Z Excluding /usr/include/c++/11/bits/charconv.h
+2026-06-16T11:17:48.5788903Z Excluding /usr/include/c++/11/bits/deque.tcc
+2026-06-16T11:17:48.5789423Z Excluding /usr/include/c++/11/bits/exception.h
+2026-06-16T11:17:48.6899171Z lcov: WARNING: (unused) 'exclude' pattern '*/build/entservices-appmanagers/_deps/*' is unused.
+2026-06-16T11:17:48.6900564Z 	(use "lcov --ignore-errors unused,unused ..." to suppress this warning)
+2026-06-16T11:17:48.6901727Z lcov: WARNING: (unused) 'exclude' pattern '*/install/usr/include/*' is unused.
+2026-06-16T11:17:48.6902857Z lcov: WARNING: (unused) 'exclude' pattern '*/Tests/headers/*' is unused.
+2026-06-16T11:17:48.6964693Z Excluding /usr/include/c++/11/bits/exception_ptr.h
+2026-06-16T11:17:48.6965450Z Excluding /usr/include/c++/11/bits/functional_hash.h
+2026-06-16T11:17:48.6966132Z Excluding /usr/include/c++/11/bits/hashtable.h
+2026-06-16T11:17:48.6966838Z Excluding /usr/include/c++/11/bits/hashtable_policy.h
+2026-06-16T11:17:48.6967549Z Excluding /usr/include/c++/11/bits/invoke.h
+2026-06-16T11:17:48.6968158Z Excluding /usr/include/c++/11/bits/ios_base.h
+2026-06-16T11:17:48.6968788Z Excluding /usr/include/c++/11/bits/list.tcc
+2026-06-16T11:17:48.6969422Z Excluding /usr/include/c++/11/bits/locale_facets.h
+2026-06-16T11:17:48.6969896Z Excluding /usr/include/c++/11/bits/move.h
+2026-06-16T11:17:48.6970292Z Excluding /usr/include/c++/11/bits/predefined_ops.h
+2026-06-16T11:17:48.6970956Z Excluding /usr/include/c++/11/bits/shared_ptr.h
+2026-06-16T11:17:48.6971358Z Excluding /usr/include/c++/11/bits/shared_ptr_base.h
+2026-06-16T11:17:48.6971763Z Excluding /usr/include/c++/11/bits/std_function.h
+2026-06-16T11:17:48.6972160Z Excluding /usr/include/c++/11/bits/std_mutex.h
+2026-06-16T11:17:48.6972535Z Excluding /usr/include/c++/11/bits/std_thread.h
+2026-06-16T11:17:48.6972906Z Excluding /usr/include/c++/11/bits/stl_algo.h
+2026-06-16T11:17:48.6973807Z Excluding /usr/include/c++/11/bits/stl_algobase.h
+2026-06-16T11:17:48.6974322Z Excluding /usr/include/c++/11/bits/stl_bvector.h
+2026-06-16T11:17:48.6974707Z Excluding /usr/include/c++/11/bits/stl_construct.h
+2026-06-16T11:17:48.6975081Z Excluding /usr/include/c++/11/bits/stl_deque.h
+2026-06-16T11:17:48.6975447Z Excluding /usr/include/c++/11/bits/stl_function.h
+2026-06-16T11:17:48.6975824Z Excluding /usr/include/c++/11/bits/stl_iterator.h
+2026-06-16T11:17:48.6976245Z Excluding /usr/include/c++/11/bits/stl_iterator_base_funcs.h
+2026-06-16T11:17:48.6976668Z Excluding /usr/include/c++/11/bits/stl_list.h
+2026-06-16T11:17:48.6977021Z Excluding /usr/include/c++/11/bits/stl_map.h
+2026-06-16T11:17:48.6977372Z Excluding /usr/include/c++/11/bits/stl_pair.h
+2026-06-16T11:17:48.6977726Z Excluding /usr/include/c++/11/bits/stl_queue.h
+2026-06-16T11:17:48.6978078Z Excluding /usr/include/c++/11/bits/stl_set.h
+2026-06-16T11:17:48.6978427Z Excluding /usr/include/c++/11/bits/stl_stack.h
+2026-06-16T11:17:48.6978779Z Excluding /usr/include/c++/11/bits/stl_tree.h
+2026-06-16T11:17:48.6979167Z Excluding /usr/include/c++/11/bits/stl_uninitialized.h
+2026-06-16T11:17:48.6979559Z Excluding /usr/include/c++/11/bits/stl_vector.h
+2026-06-16T11:17:48.6979944Z Excluding /usr/include/c++/11/bits/this_thread_sleep.h
+2026-06-16T11:17:48.6980333Z Excluding /usr/include/c++/11/bits/unique_lock.h
+2026-06-16T11:17:48.6980705Z Excluding /usr/include/c++/11/bits/unique_ptr.h
+2026-06-16T11:17:48.6981077Z Excluding /usr/include/c++/11/bits/unordered_map.h
+2026-06-16T11:17:48.6981454Z Excluding /usr/include/c++/11/bits/vector.tcc
+2026-06-16T11:17:48.6981789Z Excluding /usr/include/c++/11/bitset
+2026-06-16T11:17:48.6982097Z Excluding /usr/include/c++/11/chrono
+2026-06-16T11:17:48.6982402Z Excluding /usr/include/c++/11/cmath
+2026-06-16T11:17:48.6982754Z Excluding /usr/include/c++/11/condition_variable
+2026-06-16T11:17:48.6983380Z Excluding /usr/include/c++/11/ext/aligned_buffer.h
+2026-06-16T11:17:48.6983816Z Excluding /usr/include/c++/11/ext/atomicity.h
+2026-06-16T11:17:48.6984170Z Excluding /usr/include/c++/11/ext/concurrence.h
+2026-06-16T11:17:48.6984715Z Excluding /usr/include/c++/11/ext/new_allocator.h
+2026-06-16T11:17:48.6985073Z Excluding /usr/include/c++/11/ext/string_conversions.h
+2026-06-16T11:17:48.6985375Z Excluding /usr/include/c++/11/fstream
+2026-06-16T11:17:48.6985622Z Excluding /usr/include/c++/11/future
+2026-06-16T11:17:48.6985984Z Excluding /usr/include/c++/11/initializer_list
+2026-06-16T11:17:48.6986264Z Excluding /usr/include/c++/11/iomanip
+2026-06-16T11:17:48.6986522Z Excluding /usr/include/c++/11/iostream
+2026-06-16T11:17:48.6986773Z Excluding /usr/include/c++/11/istream
+2026-06-16T11:17:48.6987018Z Excluding /usr/include/c++/11/mutex
+2026-06-16T11:17:48.6987270Z Excluding /usr/include/c++/11/optional
+2026-06-16T11:17:48.6987519Z Excluding /usr/include/c++/11/ostream
+2026-06-16T11:17:48.6987761Z Excluding /usr/include/c++/11/sstream
+2026-06-16T11:17:48.6988015Z Excluding /usr/include/c++/11/system_error
+2026-06-16T11:17:48.6988279Z Excluding /usr/include/c++/11/tuple
+2026-06-16T11:17:48.6988535Z Excluding /usr/include/c++/11/typeinfo
+2026-06-16T11:17:48.6988786Z Excluding /usr/include/c++/11/utility
+2026-06-16T11:17:48.6989037Z Excluding /usr/include/c++/11/variant
+2026-06-16T11:17:48.6989299Z Excluding /usr/include/jsoncpp/json/reader.h
+2026-06-16T11:17:48.6989592Z Excluding /usr/include/jsoncpp/json/value.h
+2026-06-16T11:17:48.6989889Z Excluding /usr/include/jsoncpp/json/writer.h
+2026-06-16T11:17:48.6990206Z Excluding /usr/include/x86_64-linux-gnu/bits/fcntl2.h
+2026-06-16T11:17:48.6990625Z Excluding /usr/include/x86_64-linux-gnu/bits/stdio2.h
+2026-06-16T11:17:48.6990986Z Excluding /usr/include/x86_64-linux-gnu/bits/string_fortified.h
+2026-06-16T11:17:48.6991353Z Excluding /usr/include/x86_64-linux-gnu/bits/syslog.h
+2026-06-16T11:17:48.6991674Z Excluding /usr/include/x86_64-linux-gnu/bits/unistd.h
+2026-06-16T11:17:48.6992040Z Excluding /usr/include/x86_64-linux-gnu/c++/11/bits/gthr-default.h
+2026-06-16T11:17:48.6992381Z Apply filtering..
+2026-06-16T11:17:48.6992594Z Finished filter file processing
+2026-06-16T11:17:48.6992834Z Removed 218 files
+2026-06-16T11:17:48.6993304Z Writing data to filtered_coverage.info
+2026-06-16T11:17:48.6993729Z Summary coverage rate:
+2026-06-16T11:17:48.6993945Z   source files: 75
+2026-06-16T11:17:48.6994154Z   lines.......: 78.9% (5301 of 6721 lines)
+2026-06-16T11:17:48.6994437Z   functions...: 75.5% (779 of 1032 functions)
+2026-06-16T11:17:48.6994712Z   branches....: 62.3% (5186 of 8320 branches)
+2026-06-16T11:17:48.6994967Z Message summary:
+2026-06-16T11:17:48.6995166Z   3 warning messages:
+2026-06-16T11:17:48.6995358Z     unused: 3
+2026-06-16T11:17:48.6995537Z   4 ignore messages:
+2026-06-16T11:17:48.6995733Z     deprecated: 4
+2026-06-16T11:17:48.9227419Z Reading tracefile filtered_coverage.info.
+2026-06-16T11:17:49.1671140Z Apply filtering..
+2026-06-16T11:17:49.2201259Z Finished filter file processing
+2026-06-16T11:17:49.2201805Z Found 75 entries.
+2026-06-16T11:17:49.2221064Z Found common filename prefix "/home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-appmanagers"
+2026-06-16T11:17:49.2229675Z Generating output.
+2026-06-16T11:17:49.2258050Z Processing file AppManager/AppInfo.h
+2026-06-16T11:17:49.2261707Z   lines=1 hit=1 functions=1 hit=1
+2026-06-16T11:17:49.2285854Z Processing file AppManager/AppInfo.cpp
+2026-06-16T11:17:49.2295702Z   lines=39 hit=34 functions=26 hit=21 branches=3 hit=3
+2026-06-16T11:17:49.2328135Z Processing file AppManager/AppInfoManager.h
+2026-06-16T11:17:49.2329506Z   lines=2 hit=2 functions=2 hit=2
+2026-06-16T11:17:49.2353446Z Processing file AppManager/AppInfoManager.cpp
+2026-06-16T11:17:49.2381680Z   lines=174 hit=62 functions=39 hit=12 branches=109 hit=36
+2026-06-16T11:17:49.2483027Z Processing file AppManager/AppManager.h
+2026-06-16T11:17:49.2491922Z   lines=40 hit=29 functions=16 hit=10 branches=40 hit=15
+2026-06-16T11:17:49.2532772Z Processing file AppManager/AppManager.cpp
+2026-06-16T11:17:49.2547952Z   lines=63 hit=48 functions=11 hit=7 branches=155 hit=73
+2026-06-16T11:17:49.2610651Z Processing file AppManager/AppManagerImplementation.h
+2026-06-16T11:17:49.2619289Z   lines=28 hit=26 functions=15 hit=10 branches=32 hit=16
+2026-06-16T11:17:49.2674792Z Processing file AppManager/AppManagerImplementation.cpp
+2026-06-16T11:17:49.2807883Z   lines=673 hit=607 functions=59 hit=54 branches=794 hit=608
+2026-06-16T11:17:49.3295273Z Processing file AppManager/LifecycleInterfaceConnector.cpp
+2026-06-16T11:17:49.3373617Z   lines=414 hit=365 functions=25 hit=24 branches=474 hit=323
+2026-06-16T11:17:49.3654189Z Processing file AppManager/AppManagerTelemetryReporting.cpp
+2026-06-16T11:17:49.3688322Z   lines=147 hit=27 functions=10 hit=9 branches=233 hit=10
+2026-06-16T11:17:49.3789419Z Processing file AppManager/Module.cpp
+2026-06-16T11:17:49.3790098Z   lines=1 hit=0 functions=2 hit=0
+2026-06-16T11:17:49.3802624Z Processing file AppManager/LifecycleInterfaceConnector.h
+2026-06-16T11:17:49.3809182Z   lines=14 hit=7 functions=18 hit=9 branches=40 hit=16
+2026-06-16T11:17:49.3845530Z Processing file AppStorageManager/AppStorageManager.h
+2026-06-16T11:17:49.3848939Z   lines=4 hit=0 functions=1 hit=0 branches=10 hit=0
+2026-06-16T11:17:49.3868768Z Processing file AppStorageManager/AppStorageManager.cpp
+2026-06-16T11:17:49.3882531Z   lines=54 hit=42 functions=10 hit=7 branches=138 hit=70
+2026-06-16T11:17:49.3938524Z Processing file AppStorageManager/AppStorageManagerImplementation.h
+2026-06-16T11:17:49.3942361Z   lines=7 hit=7 functions=2 hit=2 branches=7 hit=5
+2026-06-16T11:17:49.3965626Z Processing file AppStorageManager/AppStorageManagerImplementation.cpp
+2026-06-16T11:17:49.3981760Z   lines=86 hit=84 functions=13 hit=10 branches=97 hit=77
+2026-06-16T11:17:49.4050142Z Processing file AppStorageManager/Module.cpp
+2026-06-16T11:17:49.4051203Z   lines=1 hit=0 functions=2 hit=0
+2026-06-16T11:17:49.4063050Z Processing file AppStorageManager/AppStorageManagerTelemetryReporting.cpp
+2026-06-16T11:17:49.4069954Z   lines=26 hit=17 functions=7 hit=6 branches=24 hit=6
+2026-06-16T11:17:49.4098931Z Processing file AppStorageManager/RequestHandler.h
+2026-06-16T11:17:49.4099565Z   lines=1 hit=1
+2026-06-16T11:17:49.4113142Z Processing file AppStorageManager/RequestHandler.cpp
+2026-06-16T11:17:49.4185174Z   lines=359 hit=293 functions=24 hit=23 branches=460 hit=318
+2026-06-16T11:17:49.4453784Z Processing file DownloadManager/DownloadManager.h
+2026-06-16T11:17:49.4462245Z   lines=22 hit=5 functions=17 hit=6 branches=54 hit=19
+2026-06-16T11:17:49.4497915Z Processing file DownloadManager/DownloadManager.cpp
+2026-06-16T11:17:49.4507653Z   lines=46 hit=37 functions=7 hit=5 branches=53 hit=34
+2026-06-16T11:17:49.4550479Z Processing file DownloadManager/DownloadManagerHttpClient.h
+2026-06-16T11:17:49.4555647Z   lines=25 hit=25 functions=6 hit=6 branches=3 hit=3
+2026-06-16T11:17:49.4581142Z Processing file DownloadManager/DownloadManagerHttpClient.cpp
+2026-06-16T11:17:49.4592897Z   lines=56 hit=50 functions=5 hit=5 branches=53 hit=35
+2026-06-16T11:17:49.4637631Z Processing file DownloadManager/DownloadManagerImplementation.h
+2026-06-16T11:17:49.4646510Z   lines=36 hit=30 functions=7 hit=5 branches=53 hit=36
+2026-06-16T11:17:49.4691272Z Processing file DownloadManager/DownloadManagerImplementation.cpp
+2026-06-16T11:17:49.4730105Z   lines=207 hit=185 functions=22 hit=19 branches=276 hit=199
+2026-06-16T11:17:49.4897461Z Processing file DownloadManager/Module.cpp
+2026-06-16T11:17:49.4898335Z   lines=1 hit=0 functions=2 hit=0
+2026-06-16T11:17:49.4903282Z Processing file DownloadManager/DownloadManagerTelemetryReporting.cpp
+2026-06-16T11:17:49.4911110Z   lines=33 hit=17 functions=8 hit=6 branches=36 hit=6
+2026-06-16T11:17:49.4944282Z Processing file LifecycleManager/IEventHandler.h
+2026-06-16T11:17:49.4945553Z   lines=1 hit=1 branches=2 hit=1
+2026-06-16T11:17:49.4956538Z Processing file LifecycleManager/ApplicationContext.cpp
+2026-06-16T11:17:49.4970012Z   lines=98 hit=91 functions=30 hit=26 branches=13 hit=12
+2026-06-16T11:17:49.5030690Z Processing file LifecycleManager/LifecycleManager.h
+2026-06-16T11:17:49.5039410Z   lines=28 hit=26 functions=12 hit=9 branches=48 hit=24
+2026-06-16T11:17:49.5080586Z Processing file LifecycleManager/LifecycleManager.cpp
+2026-06-16T11:17:49.5093448Z   lines=52 hit=12 functions=10 hit=5 branches=106 hit=30
+2026-06-16T11:17:49.5143953Z Processing file LifecycleManager/LifecycleManagerImplementation.h
+2026-06-16T11:17:49.5151220Z   lines=24 hit=24 functions=6 hit=5 branches=18 hit=14
+2026-06-16T11:17:49.5192451Z Processing file LifecycleManager/LifecycleManagerImplementation.cpp
+2026-06-16T11:17:49.5272873Z   lines=370 hit=336 functions=38 hit=34 branches=506 hit=397
+2026-06-16T11:17:49.5520198Z Processing file LifecycleManager/Module.cpp
+2026-06-16T11:17:49.5521339Z   lines=1 hit=0 functions=2 hit=0
+2026-06-16T11:17:49.5533457Z Processing file LifecycleManager/LifecycleManagerTelemetryReporting.cpp
+2026-06-16T11:17:49.5549444Z   lines=71 hit=15 functions=6 hit=5 branches=108 hit=6
+2026-06-16T11:17:49.5605721Z Processing file LifecycleManager/RuntimeManagerHandler.cpp
+2026-06-16T11:17:49.5626588Z   lines=119 hit=68 functions=17 hit=9 branches=83 hit=48
+2026-06-16T11:17:49.5702445Z Processing file LifecycleManager/RequestHandler.cpp
+2026-06-16T11:17:49.5711762Z   lines=53 hit=38 functions=12 hit=8 branches=16 hit=10
+2026-06-16T11:17:49.5752951Z Processing file LifecycleManager/State.cpp
+2026-06-16T11:17:49.5765669Z   lines=73 hit=52 functions=8 hit=7 branches=44 hit=19
+2026-06-16T11:17:49.5822599Z Processing file LifecycleManager/RuntimeManagerHandler.h
+2026-06-16T11:17:49.5826968Z   lines=6 hit=4 functions=8 hit=4 branches=20 hit=8
+2026-06-16T11:17:49.5853119Z Processing file LifecycleManager/StateHandler.cpp
+2026-06-16T11:17:49.5881773Z   lines=166 hit=159 functions=7 hit=7 branches=157 hit=134
+2026-06-16T11:17:49.6018737Z Processing file LifecycleManager/State.h
+2026-06-16T11:17:49.6024391Z   lines=24 hit=19 functions=21 hit=9
+2026-06-16T11:17:49.6057520Z Processing file LifecycleManager/StateTransitionRequest.h
+2026-06-16T11:17:49.6059313Z   lines=2 hit=2 functions=1 hit=1
+2026-06-16T11:17:49.6072379Z Processing file LifecycleManager/StateTransitionHandler.cpp
+2026-06-16T11:17:49.6086186Z   lines=67 hit=47 functions=8 hit=7 branches=46 hit=23
+2026-06-16T11:17:49.6149554Z Processing file LifecycleManager/WindowManagerHandler.h
+2026-06-16T11:17:49.6154884Z   lines=6 hit=4 functions=8 hit=4 branches=20 hit=8
+2026-06-16T11:17:49.6179889Z Processing file LifecycleManager/WindowManagerHandler.cpp
+2026-06-16T11:17:49.6190751Z   lines=60 hit=25 functions=10 hit=5 branches=28 hit=8
+2026-06-16T11:17:49.6235972Z Processing file PreinstallManager/PreinstallManager.cpp
+2026-06-16T11:17:49.6252422Z   lines=62 hit=49 functions=11 hit=7 branches=151 hit=72
+2026-06-16T11:17:49.6317995Z Processing file PreinstallManager/Module.cpp
+2026-06-16T11:17:49.6319456Z   lines=1 hit=0 functions=2 hit=0
+2026-06-16T11:17:49.6332270Z Processing file PreinstallManager/PreinstallManagerImplementation.cpp
+2026-06-16T11:17:49.6373738Z   lines=223 hit=197 functions=22 hit=19 branches=234 hit=179
+2026-06-16T11:17:49.6538459Z Processing file PreinstallManager/PreinstallManager.h
+2026-06-16T11:17:49.6547615Z   lines=28 hit=10 functions=13 hit=5 branches=40 hit=12
+2026-06-16T11:17:49.6587253Z Processing file RDKWindowManager/Module.cpp
+2026-06-16T11:17:49.6588880Z   lines=1 hit=0 functions=2 hit=0
+2026-06-16T11:17:49.6601384Z Processing file PreinstallManager/PreinstallManagerImplementation.h
+2026-06-16T11:17:49.6608326Z   lines=24 hit=24 functions=9 hit=7 branches=13 hit=9
+2026-06-16T11:17:49.6653704Z Processing file RDKWindowManager/RDKWindowManager.h
+2026-06-16T11:17:49.6665638Z   lines=54 hit=9 functions=20 hit=5 branches=44 hit=15
+2026-06-16T11:17:49.6714900Z Processing file RDKWindowManager/RDKWindowManager.cpp
+2026-06-16T11:17:49.6731253Z   lines=60 hit=46 functions=11 hit=7 branches=144 hit=74
+2026-06-16T11:17:49.6796088Z Processing file RDKWindowManager/RDKWindowManagerImplementation.h
+2026-06-16T11:17:49.6803217Z   lines=21 hit=19 functions=8 hit=5 branches=12 hit=6
+2026-06-16T11:17:49.6850567Z Processing file RDKWindowManager/RDKWindowManagerImplementation.cpp
+2026-06-16T11:17:49.7003264Z   lines=758 hit=693 functions=69 hit=66 branches=914 hit=709
+2026-06-16T11:17:49.7610426Z Processing file RuntimeManager/AIConfiguration.cpp
+2026-06-16T11:17:49.7659337Z   lines=216 hit=196 functions=31 hit=29 branches=272 hit=202
+2026-06-16T11:17:49.7835183Z Processing file RDKWindowManager/RDKWindowManagerTelemetryReporting.cpp
+2026-06-16T11:17:49.7843935Z   lines=24 hit=17 functions=7 hit=6 branches=21 hit=6
+2026-06-16T11:17:49.7873815Z Processing file RuntimeManager/DobbyEventListener.cpp
+2026-06-16T11:17:49.7887623Z   lines=55 hit=51 functions=8 hit=8 branches=66 hit=45
+2026-06-16T11:17:49.7940420Z Processing file RuntimeManager/ApplicationConfiguration.h
+2026-06-16T11:17:49.7941082Z   lines=1 hit=1
+2026-06-16T11:17:49.7954754Z Processing file RuntimeManager/DobbySpecGenerator.cpp
+2026-06-16T11:17:49.8110047Z   lines=606 hit=442 functions=35 hit=31 branches=1134 hit=638
+2026-06-16T11:17:49.8580617Z Processing file RuntimeManager/DobbyEventListener.h
+2026-06-16T11:17:49.8588375Z   lines=6 hit=4 functions=8 hit=4 branches=20 hit=8
+2026-06-16T11:17:49.8613988Z Processing file RuntimeManager/Module.cpp
+2026-06-16T11:17:49.8615439Z   lines=1 hit=0 functions=2 hit=0
+2026-06-16T11:17:49.8627337Z Processing file RuntimeManager/IEventHandler.h
+2026-06-16T11:17:49.8628319Z   lines=1 hit=1 branches=2 hit=1
+2026-06-16T11:17:49.8639283Z Processing file RuntimeManager/RuntimeManagerImplementation.h
+2026-06-16T11:17:49.8646452Z   lines=28 hit=28 functions=9 hit=7 branches=14 hit=10
+2026-06-16T11:17:49.8697637Z Processing file RuntimeManager/RuntimeManagerImplementation.cpp
+2026-06-16T11:17:49.8802923Z   lines=458 hit=397 functions=41 hit=37 branches=622 hit=453
+2026-06-16T11:17:49.9201047Z Processing file RuntimeManager/UserIdManager.cpp
+2026-06-16T11:17:49.9210609Z   lines=27 hit=24 functions=5 hit=5 branches=16 hit=10
+2026-06-16T11:17:49.9240053Z Processing file RuntimeManager/RuntimeManagerTelemetryReporting.cpp
+2026-06-16T11:17:49.9250944Z   lines=42 hit=17 functions=7 hit=6 branches=54 hit=6
+2026-06-16T11:17:49.9290030Z Processing file RuntimeManager/WindowManagerConnector.h
+2026-06-16T11:17:49.9294781Z   lines=6 hit=4 functions=8 hit=4 branches=20 hit=8
+2026-06-16T11:17:49.9319468Z Processing file RuntimeManager/WindowManagerConnector.cpp
+2026-06-16T11:17:49.9334666Z   lines=74 hit=50 functions=10 hit=8 branches=61 hit=27
+2026-06-16T11:17:49.9395387Z Processing file helpers/Telemetry/TelemetryReportingBase.cpp
+2026-06-16T11:17:49.9405560Z   lines=49 hit=21 functions=18 hit=7 branches=16 hit=2
+2026-06-16T11:17:49.9450182Z Processing file RuntimeManager/WindowManagerMock.h
+2026-06-16T11:17:49.9467175Z   lines=50 hit=49 functions=104 hit=97 branches=38 hit=25
+2026-06-16T11:17:49.9519198Z Processing file helpers/UtilsFile.h
+2026-06-16T11:17:49.9528482Z   lines=29 hit=20 functions=2 hit=1 branches=39 hit=19
+2026-06-16T11:17:49.9566163Z Processing file helpers/Telemetry/UtilsTelemetryMetrics.cpp
+2026-06-16T11:17:49.9570581Z   lines=16 hit=8 functions=8 hit=4
+2026-06-16T11:17:49.9661795Z Processing file helpers/UtilsString.h
+2026-06-16T11:17:49.9668199Z   lines=19 hit=0 functions=1 hit=0 branches=14 hit=0
+2026-06-16T11:17:50.0098765Z Overall coverage rate:
+2026-06-16T11:17:50.0099282Z   source files: 75
+2026-06-16T11:17:50.0099662Z   lines.......: 78.9% (5301 of 6721 lines)
+2026-06-16T11:17:50.0100156Z   functions...: 75.5% (779 of 1032 functions)
+2026-06-16T11:17:50.0100670Z   branches....: 62.3% (5186 of 8320 branches)
+2026-06-16T11:17:50.0101096Z Message summary:
+2026-06-16T11:17:50.0101423Z   4 ignore messages:
+2026-06-16T11:17:50.0101750Z     deprecated: 4

@@ -1,0 +1,35 @@
+﻿2026-06-16T10:21:53.7168130Z ##[group]Run cd $GITHUB_WORKSPACE/Thunder
+2026-06-16T10:21:53.7168415Z [36;1mcd $GITHUB_WORKSPACE/Thunder[0m
+2026-06-16T10:21:53.7168868Z [36;1mpatch -p1 < $GITHUB_WORKSPACE/entservices-appmanagers/Tests/patches/Use_Legact_Alt_Based_On_ThunderTools_R4.4.3.patch[0m
+2026-06-16T10:21:53.7169463Z [36;1mpatch -p1 < $GITHUB_WORKSPACE/entservices-appmanagers/Tests/patches/error_code_R4_4.patch[0m
+2026-06-16T10:21:53.7170010Z [36;1mpatch -p1 < $GITHUB_WORKSPACE/entservices-appmanagers/Tests/patches/1004-Add-support-for-project-dir.patch[0m
+2026-06-16T10:21:53.7170587Z [36;1mpatch -p1 < $GITHUB_WORKSPACE/entservices-appmanagers/Tests/patches/RDKEMW-733-Add-ENTOS-IDS.patch[0m
+2026-06-16T10:21:53.7171146Z [36;1mpatch -p1 < $GITHUB_WORKSPACE/entservices-appmanagers/Tests/patches/Jsonrpc_dynamic_error_handling.patch[0m
+2026-06-16T10:21:53.7171540Z [36;1mcd -[0m
+2026-06-16T10:21:53.7218186Z shell: /usr/bin/bash -e {0}
+2026-06-16T10:21:53.7218399Z env:
+2026-06-16T10:21:53.7218566Z   BUILD_TYPE: Debug
+2026-06-16T10:21:53.7218778Z   THUNDER_REF: R4.4.1
+2026-06-16T10:21:53.7218970Z   INTERFACES_REF: topic/RDKEMW-16187
+2026-06-16T10:21:53.7219188Z   AUTOMATICS_UNAME: 
+2026-06-16T10:21:53.7219369Z   AUTOMATICS_PASSCODE: 
+2026-06-16T10:21:53.7219601Z   pythonLocation: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T10:21:53.7219930Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.14.5/x64/lib/pkgconfig
+2026-06-16T10:21:53.7220255Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T10:21:53.7220688Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T10:21:53.7220976Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T10:21:53.7221273Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.14.5/x64/lib
+2026-06-16T10:21:53.7221526Z ##[endgroup]
+2026-06-16T10:21:53.7292314Z patching file Source/plugins/CMakeLists.txt
+2026-06-16T10:21:53.7303968Z patching file Source/WPEFramework/PluginServer.h
+2026-06-16T10:21:53.7304702Z Hunk #1 succeeded at 1533 (offset -2 lines).
+2026-06-16T10:21:53.7308074Z patching file Source/core/JSONRPC.h
+2026-06-16T10:21:53.7309586Z patching file Source/core/Portability.h
+2026-06-16T10:21:53.7320909Z patching file Source/plugins/CMakeLists.txt
+2026-06-16T10:21:53.7321669Z patching file Source/com/CMakeLists.txt
+2026-06-16T10:21:53.7331638Z patching file Source/com/Ids.h
+2026-06-16T10:21:53.7342843Z patching file Source/WPEFramework/PluginServer.h
+2026-06-16T10:21:53.7346918Z patching file Source/core/JSONRPC.h
+2026-06-16T10:21:53.7348474Z patching file Source/core/Portability.h
+2026-06-16T10:21:53.7349686Z patching file Source/plugins/JSONRPC.h
+2026-06-16T10:21:53.7354887Z /home/runner/work/entservices-appmanagers/entservices-appmanagers

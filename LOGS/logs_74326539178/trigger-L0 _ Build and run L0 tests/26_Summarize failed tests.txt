@@ -1,0 +1,39 @@
+﻿2026-06-16T10:28:42.9284728Z ##[group]Run set -euo pipefail
+2026-06-16T10:28:42.9285052Z [36;1mset -euo pipefail[0m
+2026-06-16T10:28:42.9285745Z [36;1mfor log in l0-runtime-test.log l0-lcm-test.log l0-rdkwm-test.log l0-appstorage-test.log l0-preinstall-test.log l0-packagemanager-test.log l0-appmanager-test.log; do[0m
+2026-06-16T10:28:42.9286466Z [36;1m  if [ -f "$log" ]; then[0m
+2026-06-16T10:28:42.9286762Z [36;1m    echo "==== $log: Failed test cases (if any) ===="[0m
+2026-06-16T10:28:42.9287487Z [36;1m    grep -E '^\[  FAILED  \]' "$log" || echo "No explicit [ FAILED ] lines found"[0m
+2026-06-16T10:28:42.9287990Z [36;1m    grep -E 'GDB CRASH REPORT|Signal caught:' "$log" || true[0m
+2026-06-16T10:28:42.9288324Z [36;1m  else[0m
+2026-06-16T10:28:42.9288528Z [36;1m    echo "$log not found"[0m
+2026-06-16T10:28:42.9288762Z [36;1m  fi[0m
+2026-06-16T10:28:42.9288940Z [36;1mdone[0m
+2026-06-16T10:28:42.9343262Z shell: /usr/bin/bash -e {0}
+2026-06-16T10:28:42.9343498Z env:
+2026-06-16T10:28:42.9343684Z   BUILD_TYPE: Debug
+2026-06-16T10:28:42.9343911Z   THUNDER_REF: R4.4.1
+2026-06-16T10:28:42.9344129Z   INTERFACES_REF: topic/RDKEMW-16187
+2026-06-16T10:28:42.9344443Z   pythonLocation: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T10:28:42.9344853Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.14.5/x64/lib/pkgconfig
+2026-06-16T10:28:42.9345256Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T10:28:42.9345608Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T10:28:42.9345963Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T10:28:42.9346321Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.14.5/x64/lib
+2026-06-16T10:28:42.9346625Z ##[endgroup]
+2026-06-16T10:28:42.9417590Z ==== l0-runtime-test.log: Failed test cases (if any) ====
+2026-06-16T10:28:42.9434495Z No explicit [ FAILED ] lines found
+2026-06-16T10:28:42.9452733Z ==== l0-lcm-test.log: Failed test cases (if any) ====
+2026-06-16T10:28:42.9465850Z [  FAILED  ] StateHandler_CreateStatePausedViaInitializingToPaused failures=1
+2026-06-16T10:28:42.9482221Z ==== l0-rdkwm-test.log: Failed test cases (if any) ====
+2026-06-16T10:28:42.9496043Z No explicit [ FAILED ] lines found
+2026-06-16T10:28:42.9510654Z ==== l0-appstorage-test.log: Failed test cases (if any) ====
+2026-06-16T10:28:42.9526097Z No explicit [ FAILED ] lines found
+2026-06-16T10:28:42.9542621Z ==== l0-preinstall-test.log: Failed test cases (if any) ====
+2026-06-16T10:28:42.9556913Z No explicit [ FAILED ] lines found
+2026-06-16T10:28:42.9572658Z ==== l0-packagemanager-test.log: Failed test cases (if any) ====
+2026-06-16T10:28:42.9586749Z No explicit [ FAILED ] lines found
+2026-06-16T10:28:42.9602561Z ==== l0-appmanager-test.log: Failed test cases (if any) ====
+2026-06-16T10:28:42.9616829Z No explicit [ FAILED ] lines found
+2026-06-16T10:28:42.9632018Z ========== GDB CRASH REPORT ==========
+2026-06-16T10:28:42.9632341Z Signal caught: SIGABRT

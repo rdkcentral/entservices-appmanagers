@@ -1,0 +1,33 @@
+﻿2026-06-16T10:20:08.7045571Z ##[group]Run actions/cache@v3
+2026-06-16T10:20:08.7046985Z with:
+2026-06-16T10:20:08.7053238Z   path: thunder/build/Thunder
+thunder/build/entservices-apis
+thunder/build/ThunderTools
+thunder/install
+!thunder/install/etc/WPEFramework/plugins
+!thunder/install/usr/bin/RdkServicesTest
+!thunder/install/usr/include/gmock
+!thunder/install/usr/include/gtest
+!thunder/install/usr/lib/libgmockd.a
+!thunder/install/usr/lib/libgmock_maind.a
+!thunder/install/usr/lib/libgtestd.a
+!thunder/install/usr/lib/libgtest_maind.a
+!thunder/install/usr/lib/cmake/GTest
+!thunder/install/usr/lib/pkgconfig/gmock.pc
+!thunder/install/usr/lib/pkgconfig/gmock_main.pc
+!thunder/install/usr/lib/pkgconfig/gtest.pc
+!thunder/install/usr/lib/pkgconfig/gtest_main.pc
+!thunder/install/usr/lib/wpeframework/plugins
+
+2026-06-16T10:20:08.7059950Z   key: Linux-R4.4.1-topic/RDKEMW-16187-4
+2026-06-16T10:20:08.7060812Z   enableCrossOsArchive: false
+2026-06-16T10:20:08.7061587Z   fail-on-cache-miss: false
+2026-06-16T10:20:08.7062309Z   lookup-only: false
+2026-06-16T10:20:08.7063182Z env:
+2026-06-16T10:20:08.7063768Z   BUILD_TYPE: Debug
+2026-06-16T10:20:08.7064413Z   THUNDER_REF: R4.4.1
+2026-06-16T10:20:08.7065110Z   INTERFACES_REF: topic/RDKEMW-16187
+2026-06-16T10:20:08.7066084Z   AUTOMATICS_UNAME: 
+2026-06-16T10:20:08.7066745Z   AUTOMATICS_PASSCODE: 
+2026-06-16T10:20:08.7067414Z ##[endgroup]
+2026-06-16T10:20:09.0287182Z Cache not found for input keys: Linux-R4.4.1-topic/RDKEMW-16187-4

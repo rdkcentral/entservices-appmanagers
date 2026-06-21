@@ -1,0 +1,13 @@
+﻿2026-06-17T01:53:37.4195753Z ##[warning]Unexpected input(s) 'run', valid inputs are ['repository', 'ref', 'token', 'ssh-key', 'ssh-known-hosts', 'ssh-strict', 'persist-credentials', 'path', 'clean', 'sparse-checkout', 'sparse-checkout-cone-mode', 'fetch-depth', 'fetch-tags', 'lfs', 'submodules', 'set-safe-directory', 'github-server-url']
+2026-06-17T01:53:37.4201135Z Post job cleanup.
+2026-06-17T01:53:37.4910791Z [command]/usr/bin/git version
+2026-06-17T01:53:37.4941897Z git version 2.54.0
+2026-06-17T01:53:37.4980298Z Temporarily overriding HOME='/home/runner/work/_temp/4d38f87c-9f3b-4d83-82eb-ac8aa6682e48' before making global git config changes
+2026-06-17T01:53:37.4981045Z Adding repository directory to the temporary git global config as a safe directory
+2026-06-17T01:53:37.4984929Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/entservices-appmanagers/entservices-appmanagers/entservices-apis
+2026-06-17T01:53:37.5011955Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-06-17T01:53:37.5036511Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-06-17T01:53:37.5216910Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-06-17T01:53:37.5234395Z http.https://github.com/.extraheader
+2026-06-17T01:53:37.5243958Z [command]/usr/bin/git config --local --unset-all http.https://github.com/.extraheader
+2026-06-17T01:53:37.5267961Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"

@@ -1,0 +1,19 @@
+﻿2026-06-17T01:11:53.8294497Z ##[group]Run echo "Message: External Trigger Received for L1 Tests"
+2026-06-17T01:11:53.8295130Z [36;1mecho "Message: External Trigger Received for L1 Tests"[0m
+2026-06-17T01:11:53.8295839Z [36;1mecho "Trigger Source: local"[0m
+2026-06-17T01:11:53.8353425Z shell: /usr/bin/bash -e {0}
+2026-06-17T01:11:53.8353746Z env:
+2026-06-17T01:11:53.8353986Z   BUILD_TYPE: Debug
+2026-06-17T01:11:53.8354251Z   THUNDER_REF: R4.4.1
+2026-06-17T01:11:53.8354534Z   INTERFACES_REF: topic/RDKEMW-16187
+2026-06-17T01:11:53.8354858Z   AUTOMATICS_UNAME: 
+2026-06-17T01:11:53.8355128Z   AUTOMATICS_PASSCODE: 
+2026-06-17T01:11:53.8355658Z   pythonLocation: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-17T01:11:53.8356158Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.14.5/x64/lib/pkgconfig
+2026-06-17T01:11:53.8356652Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-17T01:11:53.8357085Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-17T01:11:53.8357514Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-17T01:11:53.8357999Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.14.5/x64/lib
+2026-06-17T01:11:53.8358394Z ##[endgroup]
+2026-06-17T01:11:53.8436586Z Message: External Trigger Received for L1 Tests
+2026-06-17T01:11:53.8437374Z Trigger Source: local

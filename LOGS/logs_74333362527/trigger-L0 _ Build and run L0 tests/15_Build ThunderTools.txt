@@ -1,0 +1,76 @@
+﻿2026-06-16T11:03:21.4183463Z ##[group]Run cmake -G Ninja -S "$GITHUB_WORKSPACE/ThunderTools" -B build/ThunderTools -DEXCEPTIONS_ENABLE=ON -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/install/usr" -DCMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" -DGENERIC_CMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" && cmake --build build/ThunderTools -j8 && cmake --install build/ThunderTools
+2026-06-16T11:03:21.4188358Z [36;1mcmake -G Ninja -S "$GITHUB_WORKSPACE/ThunderTools" -B build/ThunderTools -DEXCEPTIONS_ENABLE=ON -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/install/usr" -DCMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" -DGENERIC_CMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" && cmake --build build/ThunderTools -j8 && cmake --install build/ThunderTools[0m
+2026-06-16T11:03:21.4262915Z shell: /usr/bin/bash -e {0}
+2026-06-16T11:03:21.4263358Z env:
+2026-06-16T11:03:21.4263696Z   BUILD_TYPE: Debug
+2026-06-16T11:03:21.4264162Z   THUNDER_REF: R4.4.1
+2026-06-16T11:03:21.4264581Z   INTERFACES_REF: topic/RDKEMW-16187
+2026-06-16T11:03:21.4265235Z   pythonLocation: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T11:03:21.4266016Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.14.5/x64/lib/pkgconfig
+2026-06-16T11:03:21.4266782Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T11:03:21.4267750Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T11:03:21.4268458Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T11:03:21.4269174Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.14.5/x64/lib
+2026-06-16T11:03:21.4269762Z ##[endgroup]
+2026-06-16T11:03:21.4824399Z -- The C compiler identification is GNU 11.4.0
+2026-06-16T11:03:21.5737637Z -- The CXX compiler identification is GNU 11.4.0
+2026-06-16T11:03:21.5782173Z -- Check for working C compiler: /usr/bin/cc
+2026-06-16T11:03:21.6198242Z -- Check for working C compiler: /usr/bin/cc -- works
+2026-06-16T11:03:21.6206466Z -- Detecting C compiler ABI info
+2026-06-16T11:03:21.6613539Z -- Detecting C compiler ABI info - done
+2026-06-16T11:03:21.6705066Z -- Detecting C compile features
+2026-06-16T11:03:21.6708711Z -- Detecting C compile features - done
+2026-06-16T11:03:21.6732957Z -- Check for working CXX compiler: /usr/bin/c++
+2026-06-16T11:03:21.7251462Z -- Check for working CXX compiler: /usr/bin/c++ -- works
+2026-06-16T11:03:21.7262062Z -- Detecting CXX compiler ABI info
+2026-06-16T11:03:21.7785874Z -- Detecting CXX compiler ABI info - done
+2026-06-16T11:03:21.7879352Z -- Detecting CXX compile features
+2026-06-16T11:03:21.7884366Z -- Detecting CXX compile features - done
+2026-06-16T11:03:21.7905495Z -- Configuring done
+2026-06-16T11:03:21.7914080Z -- Generating done
+2026-06-16T11:03:21.7917944Z CMake Warning:
+2026-06-16T11:03:21.7918515Z   Manually-specified variables were not used by the project:
+2026-06-16T11:03:21.7918975Z 
+2026-06-16T11:03:21.7919130Z     EXCEPTIONS_ENABLE
+2026-06-16T11:03:21.7919359Z 
+2026-06-16T11:03:21.7919367Z 
+2026-06-16T11:03:21.7922450Z -- Build files have been written to: /home/runner/work/entservices-appmanagers/entservices-appmanagers/build/ThunderTools
+2026-06-16T11:03:21.7976339Z ninja: no work to do.
+2026-06-16T11:03:21.7999381Z -- Install configuration: ""
+2026-06-16T11:03:21.8002782Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/tools/cmake/FindProxyStubGenerator.cmake
+2026-06-16T11:03:21.8004489Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/tools/cmake/FindJsonGenerator.cmake
+2026-06-16T11:03:21.8006205Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/tools/cmake/FindConfigGenerator.cmake
+2026-06-16T11:03:21.8008495Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/sbin/ProxyStubGenerator
+2026-06-16T11:03:21.8010509Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/sbin/ProxyStubGenerator/__init__.py
+2026-06-16T11:03:21.8011956Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/sbin/ProxyStubGenerator/StubGenerator.py
+2026-06-16T11:03:21.8015039Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/sbin/ProxyStubGenerator/Log.py
+2026-06-16T11:03:21.8016598Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/sbin/ProxyStubGenerator/default.h
+2026-06-16T11:03:21.8018579Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/sbin/ProxyStubGenerator/Interface.py
+2026-06-16T11:03:21.8020313Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/sbin/ProxyStubGenerator/CppParser.py
+2026-06-16T11:03:21.8022081Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/sbin/JsonGenerator
+2026-06-16T11:03:21.8023493Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/sbin/JsonGenerator/GenerateDocs.bat
+2026-06-16T11:03:21.8024599Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/sbin/JsonGenerator/schemas
+2026-06-16T11:03:21.8025671Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/sbin/JsonGenerator/schemas/plugin.schema.json
+2026-06-16T11:03:21.8026817Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/sbin/JsonGenerator/schemas/interface.schema.json
+2026-06-16T11:03:21.8028201Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/sbin/JsonGenerator/docs_common.json
+2026-06-16T11:03:21.8029461Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/sbin/JsonGenerator/global.json
+2026-06-16T11:03:21.8030831Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/sbin/JsonGenerator/GenerateDocs.sh
+2026-06-16T11:03:21.8032035Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/sbin/JsonGenerator/source
+2026-06-16T11:03:21.8033705Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/sbin/JsonGenerator/source/config.py
+2026-06-16T11:03:21.8035371Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/sbin/JsonGenerator/source/class_emitter.py
+2026-06-16T11:03:21.8036582Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/sbin/JsonGenerator/source/rpc_emitter.py
+2026-06-16T11:03:21.8038703Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/sbin/JsonGenerator/source/documentation_generator.py
+2026-06-16T11:03:21.8040211Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/sbin/JsonGenerator/source/code_generator.py
+2026-06-16T11:03:21.8041647Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/sbin/JsonGenerator/source/stub_emitter.py
+2026-06-16T11:03:21.8042944Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/sbin/JsonGenerator/source/emitter.py
+2026-06-16T11:03:21.8044337Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/sbin/JsonGenerator/source/header_loader.py
+2026-06-16T11:03:21.8045955Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/sbin/JsonGenerator/source/trackers.py
+2026-06-16T11:03:21.8047666Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/sbin/JsonGenerator/source/logger.py
+2026-06-16T11:03:21.8049465Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/sbin/JsonGenerator/source/json_loader.py
+2026-06-16T11:03:21.8051212Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/sbin/JsonGenerator/source/rpc_version.py
+2026-06-16T11:03:21.8053160Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/sbin/JsonGenerator/JsonGenerator.py
+2026-06-16T11:03:21.8054660Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/sbin/ConfigGenerator
+2026-06-16T11:03:21.8055673Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/sbin/ConfigGenerator/config_compare.py
+2026-06-16T11:03:21.8057515Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/sbin/ConfigGenerator/json_helper.py
+2026-06-16T11:03:21.8065252Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/sbin/ConfigGenerator/params.config
+2026-06-16T11:03:21.8066927Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/sbin/ConfigGenerator/config_generator.py

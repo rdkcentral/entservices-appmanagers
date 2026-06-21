@@ -1,0 +1,67 @@
+﻿2026-06-16T08:36:51.2798447Z ##[group]Run set -euo pipefail
+2026-06-16T08:36:51.2798798Z [36;1mset -euo pipefail[0m
+2026-06-16T08:36:51.2799030Z [36;1mcd /tmp[0m
+2026-06-16T08:36:51.2799559Z [36;1mcurl -fsSL --retry 3 https://github.com/linux-test-project/lcov/releases/download/v2.4/lcov-2.4.tar.gz -o lcov-2.4.tar.gz[0m
+2026-06-16T08:36:51.2800218Z [36;1mecho "${LCOV_SHA256}  lcov-2.4.tar.gz" | sha256sum --check --strict[0m
+2026-06-16T08:36:51.2800594Z [36;1mtar xzf lcov-2.4.tar.gz[0m
+2026-06-16T08:36:51.2800883Z [36;1msudo make -C lcov-2.4 install PREFIX=/usr[0m
+2026-06-16T08:36:51.2801183Z [36;1mlcov --version[0m
+2026-06-16T08:36:51.2829649Z shell: /usr/bin/bash -e {0}
+2026-06-16T08:36:51.2829918Z env:
+2026-06-16T08:36:51.2830124Z   BUILD_TYPE: Debug
+2026-06-16T08:36:51.2830341Z   THUNDER_REF: R4.4.1
+2026-06-16T08:36:51.2830608Z   INTERFACES_REF: topic/RDKEMW-16187
+2026-06-16T08:36:51.2830877Z   AUTOMATICS_UNAME: 
+2026-06-16T08:36:51.2831098Z   AUTOMATICS_PASSCODE: 
+2026-06-16T08:36:51.2831401Z   pythonLocation: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T08:36:51.2832462Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.14.5/x64/lib/pkgconfig
+2026-06-16T08:36:51.2832878Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T08:36:51.2833247Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T08:36:51.2833611Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T08:36:51.2833988Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.14.5/x64/lib
+2026-06-16T08:36:51.2834434Z   LCOV_SHA256: 3457825c6b2fe4ef77c782b82a23875c84a3c955243823f05d8f2dec0d455820
+2026-06-16T08:36:51.2834831Z ##[endgroup]
+2026-06-16T08:36:51.8560206Z lcov-2.4.tar.gz: OK
+2026-06-16T08:36:51.8818050Z make: Entering directory '/tmp/lcov-2.4'
+2026-06-16T08:36:51.9239319Z   INSTALL /usr/bin/lcov
+2026-06-16T08:36:51.9368219Z   INSTALL /usr/bin/genhtml
+2026-06-16T08:36:51.9523839Z   INSTALL /usr/bin/geninfo
+2026-06-16T08:36:51.9656887Z   INSTALL /usr/bin/genpng
+2026-06-16T08:36:51.9782805Z   INSTALL /usr/bin/gendesc
+2026-06-16T08:36:51.9906316Z   INSTALL /usr/bin/perl2lcov
+2026-06-16T08:36:52.0030663Z   INSTALL /usr/bin/py2lcov
+2026-06-16T08:36:52.0155988Z   INSTALL /usr/bin/xml2lcov
+2026-06-16T08:36:52.0275731Z   INSTALL /usr/bin/xml2lcovutil.py
+2026-06-16T08:36:52.0397581Z   INSTALL /usr/bin/llvm2lcov
+2026-06-16T08:36:52.0537748Z   INSTALL /usr/share/lcov//support-scripts/P4version.pm
+2026-06-16T08:36:52.0663612Z   INSTALL /usr/share/lcov//support-scripts/analyzeInfoFiles
+2026-06-16T08:36:52.0788395Z   INSTALL /usr/share/lcov//support-scripts/annotateutil.pm
+2026-06-16T08:36:52.0912709Z   INSTALL /usr/share/lcov//support-scripts/batchGitVersion.pm
+2026-06-16T08:36:52.1039544Z   INSTALL /usr/share/lcov//support-scripts/context.pm
+2026-06-16T08:36:52.1163403Z   INSTALL /usr/share/lcov//support-scripts/criteria
+2026-06-16T08:36:52.1290457Z   INSTALL /usr/share/lcov//support-scripts/criteria.pm
+2026-06-16T08:36:52.1434181Z   INSTALL /usr/share/lcov//support-scripts/get_signature
+2026-06-16T08:36:52.1557590Z   INSTALL /usr/share/lcov//support-scripts/getp4version
+2026-06-16T08:36:52.1682784Z   INSTALL /usr/share/lcov//support-scripts/gitblame
+2026-06-16T08:36:52.1807548Z   INSTALL /usr/share/lcov//support-scripts/gitblame.pm
+2026-06-16T08:36:52.1931077Z   INSTALL /usr/share/lcov//support-scripts/gitdiff
+2026-06-16T08:36:52.2053131Z   INSTALL /usr/share/lcov//support-scripts/gitversion
+2026-06-16T08:36:52.2183466Z   INSTALL /usr/share/lcov//support-scripts/gitversion.pm
+2026-06-16T08:36:52.2309236Z   INSTALL /usr/share/lcov//support-scripts/p4annotate
+2026-06-16T08:36:52.2432987Z   INSTALL /usr/share/lcov//support-scripts/p4annotate.pm
+2026-06-16T08:36:52.2555965Z   INSTALL /usr/share/lcov//support-scripts/p4udiff
+2026-06-16T08:36:52.2682960Z   INSTALL /usr/share/lcov//support-scripts/select.pm
+2026-06-16T08:36:52.2808996Z   INSTALL /usr/share/lcov//support-scripts/simplify.pm
+2026-06-16T08:36:52.2933938Z   INSTALL /usr/share/lcov//support-scripts/spreadsheet.py
+2026-06-16T08:36:52.3060926Z   INSTALL /usr/share/lcov//support-scripts/threshold.pm
+2026-06-16T08:36:52.3205120Z   INSTALL /usr/lib/lcov/lcovutil.pm
+2026-06-16T08:36:52.3363038Z   INSTALL /usr/share/man/man1/gendesc.1
+2026-06-16T08:36:52.3495693Z   INSTALL /usr/share/man/man1/genhtml.1
+2026-06-16T08:36:52.3638733Z   INSTALL /usr/share/man/man1/geninfo.1
+2026-06-16T08:36:52.3779274Z   INSTALL /usr/share/man/man1/genpng.1
+2026-06-16T08:36:52.3915755Z   INSTALL /usr/share/man/man1/lcov.1
+2026-06-16T08:36:52.4059009Z   INSTALL /usr/share/man/man5/lcovrc.5
+2026-06-16T08:36:52.6810551Z   INSTALL /usr/etc/lcovrc
+2026-06-16T08:36:52.6823863Z   done INSTALL
+2026-06-16T08:36:52.6824277Z make: Leaving directory '/tmp/lcov-2.4'
+2026-06-16T08:36:53.0581299Z lcov: LCOV version 2.4-0

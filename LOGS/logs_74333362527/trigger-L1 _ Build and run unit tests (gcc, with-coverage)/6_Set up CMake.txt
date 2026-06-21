@@ -1,0 +1,19 @@
+﻿2026-06-16T11:02:06.3527477Z ##[group]Run jwlawson/actions-setup-cmake@v1.13
+2026-06-16T11:02:06.3527874Z with:
+2026-06-16T11:02:06.3528125Z   cmake-version: 3.16.x
+2026-06-16T11:02:06.3530940Z   github-api-token: ***
+2026-06-16T11:02:06.3531217Z   use-32bit: false
+2026-06-16T11:02:06.3531486Z env:
+2026-06-16T11:02:06.3531734Z   BUILD_TYPE: Debug
+2026-06-16T11:02:06.3531990Z   THUNDER_REF: R4.4.1
+2026-06-16T11:02:06.3532509Z   INTERFACES_REF: topic/RDKEMW-16187
+2026-06-16T11:02:06.3532876Z   AUTOMATICS_UNAME: 
+2026-06-16T11:02:06.3533417Z   AUTOMATICS_PASSCODE: 
+2026-06-16T11:02:06.3533765Z   pythonLocation: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T11:02:06.3534230Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.14.5/x64/lib/pkgconfig
+2026-06-16T11:02:06.3534695Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T11:02:06.3535108Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T11:02:06.3535514Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T11:02:06.3535933Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.14.5/x64/lib
+2026-06-16T11:02:06.3536335Z ##[endgroup]
+2026-06-16T11:02:13.0521458Z [command]/usr/bin/tar xz --warning=no-unknown-keyword --overwrite -C /home/runner/work/_temp/f812a269-9ae9-43ce-a4d5-4dbc9293af45 -f /home/runner/work/_temp/556e920a-37d9-4963-9789-6ea70d1559fc

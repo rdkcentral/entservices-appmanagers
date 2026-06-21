@@ -1,0 +1,63 @@
+﻿2026-06-16T10:21:13.8760127Z ##[group]Run if [ ! -d "trower-base64" ]; then
+2026-06-16T10:21:13.8760749Z [36;1mif [ ! -d "trower-base64" ]; then[0m
+2026-06-16T10:21:13.8761374Z [36;1m  git clone https://github.com/xmidt-org/trower-base64.git[0m
+2026-06-16T10:21:13.8762010Z [36;1mfi[0m
+2026-06-16T10:21:13.8762361Z [36;1mcd trower-base64[0m
+2026-06-16T10:21:13.8762843Z [36;1mmeson setup --warnlevel 3 --werror build[0m
+2026-06-16T10:21:13.8763372Z [36;1mninja -C build[0m
+2026-06-16T10:21:13.8763823Z [36;1msudo ninja -C build install[0m
+2026-06-16T10:21:13.8829620Z shell: /usr/bin/bash -e {0}
+2026-06-16T10:21:13.8829880Z env:
+2026-06-16T10:21:13.8830082Z   BUILD_TYPE: Debug
+2026-06-16T10:21:13.8830294Z   THUNDER_REF: R4.4.1
+2026-06-16T10:21:13.8830518Z   INTERFACES_REF: topic/RDKEMW-16187
+2026-06-16T10:21:13.8830848Z   pythonLocation: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T10:21:13.8831277Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.14.5/x64/lib/pkgconfig
+2026-06-16T10:21:13.8831692Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T10:21:13.8832517Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T10:21:13.8833117Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T10:21:13.8833489Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.14.5/x64/lib
+2026-06-16T10:21:13.8833800Z ##[endgroup]
+2026-06-16T10:21:13.8947402Z Cloning into 'trower-base64'...
+2026-06-16T10:21:15.2319663Z Ubuntu LLVM version 13.0.1
+2026-06-16T10:21:15.2320201Z   
+2026-06-16T10:21:15.2320549Z   Optimized build.
+2026-06-16T10:21:15.2320995Z   Default target: x86_64-pc-linux-gnu
+2026-06-16T10:21:15.2321550Z   Host CPU: znver3
+2026-06-16T10:21:15.4521978Z lcov: LCOV version 2.4-0
+2026-06-16T10:21:15.7258356Z genhtml: LCOV version 2.4-0
+2026-06-16T10:21:15.7650103Z The Meson build system
+2026-06-16T10:21:15.7650555Z Version: 0.61.2
+2026-06-16T10:21:15.7651189Z Source dir: /home/runner/work/entservices-appmanagers/entservices-appmanagers/trower-base64
+2026-06-16T10:21:15.7651947Z Build dir: /home/runner/work/entservices-appmanagers/entservices-appmanagers/trower-base64/build
+2026-06-16T10:21:15.7652507Z Build type: native build
+2026-06-16T10:21:15.7652768Z Project name: trower-base64
+2026-06-16T10:21:15.7653036Z Project version: 1.2.7
+2026-06-16T10:21:15.7653451Z C compiler for the host machine: cc (gcc 11.4.0 "cc (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0")
+2026-06-16T10:21:15.7653943Z C linker for the host machine: cc ld.bfd 2.38
+2026-06-16T10:21:15.7654267Z Host machine cpu family: x86_64
+2026-06-16T10:21:15.7654538Z Host machine cpu: x86_64
+2026-06-16T10:21:15.7654802Z Configuring ver.h using configuration
+2026-06-16T10:21:15.7655393Z Found pkg-config: /usr/bin/pkg-config (1.8.0)
+2026-06-16T10:21:15.7655743Z Run-time dependency cunit found: YES 2.1-3
+2026-06-16T10:21:15.7656050Z Program reuse found: NO
+2026-06-16T10:21:15.7656303Z Build targets in project: 3
+2026-06-16T10:21:15.7656468Z 
+2026-06-16T10:21:15.7656558Z trower-base64 1.2.7
+2026-06-16T10:21:15.7656692Z 
+2026-06-16T10:21:15.7656781Z   User defined options
+2026-06-16T10:21:15.7657013Z     warning_level: 3
+2026-06-16T10:21:15.7657521Z     werror       : True
+2026-06-16T10:21:15.7657686Z 
+2026-06-16T10:21:15.7657801Z Found ninja-1.13.2 at /usr/local/bin/ninja
+2026-06-16T10:21:15.7968506Z ninja: Entering directory `build'
+2026-06-16T10:21:15.8384494Z [1/5] Compiling C object libtrower-base64.so.p/src_base64.c.o
+2026-06-16T10:21:15.8564054Z [2/5] Compiling C object simple.p/tests_simple.c.o
+2026-06-16T10:21:15.8614360Z [3/5] Linking target libtrower-base64.so
+2026-06-16T10:21:16.4843464Z [4/5] Generating symbol file libtrower-base64.so.p/libtrower-base64.so.symbols
+2026-06-16T10:21:16.5036579Z [5/5] Linking target simple
+2026-06-16T10:21:16.5118171Z ninja: Entering directory `build'
+2026-06-16T10:21:16.5123477Z [0/1] Installing files.
+2026-06-16T10:21:16.7150872Z Installing libtrower-base64.so to /usr/local/lib/x86_64-linux-gnu
+2026-06-16T10:21:16.7152254Z Installing /home/runner/work/entservices-appmanagers/entservices-appmanagers/trower-base64/include/trower-base64/base64.h to /usr/local/include/trower-base64
+2026-06-16T10:21:16.7154473Z Installing /home/runner/work/entservices-appmanagers/entservices-appmanagers/trower-base64/build/include/trower-base64/ver.h to /usr/local/include/trower-base64

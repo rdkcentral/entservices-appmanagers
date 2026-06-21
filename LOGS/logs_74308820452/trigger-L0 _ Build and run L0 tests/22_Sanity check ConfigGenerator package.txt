@@ -1,0 +1,17 @@
+﻿2026-06-16T08:40:32.7440220Z ##[group]Run set -euo pipefail
+2026-06-16T08:40:32.7440565Z [36;1mset -euo pipefail[0m
+2026-06-16T08:40:32.7441110Z [36;1mtest -f "$GITHUB_WORKSPACE/install/usr/lib/cmake/ConfigGenerator/ConfigGeneratorConfig.cmake"[0m
+2026-06-16T08:40:32.7441730Z [36;1mecho "Found ConfigGenerator CMake config"[0m
+2026-06-16T08:40:32.7494695Z shell: /usr/bin/bash -e {0}
+2026-06-16T08:40:32.7495020Z env:
+2026-06-16T08:40:32.7495261Z   BUILD_TYPE: Debug
+2026-06-16T08:40:32.7495536Z   THUNDER_REF: R4.4.1
+2026-06-16T08:40:32.7495834Z   INTERFACES_REF: topic/RDKEMW-16187
+2026-06-16T08:40:32.7496262Z   pythonLocation: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T08:40:32.7496825Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.14.5/x64/lib/pkgconfig
+2026-06-16T08:40:32.7497383Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T08:40:32.7497879Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T08:40:32.7498381Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T08:40:32.7498916Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.14.5/x64/lib
+2026-06-16T08:40:32.7499354Z ##[endgroup]
+2026-06-16T08:40:32.7575580Z Found ConfigGenerator CMake config

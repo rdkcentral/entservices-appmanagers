@@ -1,0 +1,33 @@
+﻿2026-06-16T11:03:21.8096351Z ##[group]Run cd $GITHUB_WORKSPACE/Thunder
+2026-06-16T11:03:21.8096806Z [36;1mcd $GITHUB_WORKSPACE/Thunder[0m
+2026-06-16T11:03:21.8097562Z [36;1mpatch -p1 < $GITHUB_WORKSPACE/Tests/patches/Use_Legact_Alt_Based_On_ThunderTools_R4.4.3.patch[0m
+2026-06-16T11:03:21.8098288Z [36;1mpatch -p1 < $GITHUB_WORKSPACE/Tests/patches/error_code_R4_4.patch[0m
+2026-06-16T11:03:21.8098961Z [36;1mpatch -p1 < $GITHUB_WORKSPACE/Tests/patches/1004-Add-support-for-project-dir.patch[0m
+2026-06-16T11:03:21.8099662Z [36;1mpatch -p1 < $GITHUB_WORKSPACE/Tests/patches/RDKEMW-733-Add-ENTOS-IDS.patch[0m
+2026-06-16T11:03:21.8100353Z [36;1mpatch -p1 < $GITHUB_WORKSPACE/Tests/patches/Jsonrpc_dynamic_error_handling.patch[0m
+2026-06-16T11:03:21.8100883Z [36;1mcd -[0m
+2026-06-16T11:03:21.8155587Z shell: /usr/bin/bash -e {0}
+2026-06-16T11:03:21.8155868Z env:
+2026-06-16T11:03:21.8156057Z   BUILD_TYPE: Debug
+2026-06-16T11:03:21.8156278Z   THUNDER_REF: R4.4.1
+2026-06-16T11:03:21.8156524Z   INTERFACES_REF: topic/RDKEMW-16187
+2026-06-16T11:03:21.8156938Z   pythonLocation: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T11:03:21.8157776Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.14.5/x64/lib/pkgconfig
+2026-06-16T11:03:21.8158331Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T11:03:21.8158774Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T11:03:21.8159229Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T11:03:21.8159677Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.14.5/x64/lib
+2026-06-16T11:03:21.8160041Z ##[endgroup]
+2026-06-16T11:03:21.8248275Z patching file Source/plugins/CMakeLists.txt
+2026-06-16T11:03:21.8263310Z patching file Source/WPEFramework/PluginServer.h
+2026-06-16T11:03:21.8265698Z Hunk #1 succeeded at 1533 (offset -2 lines).
+2026-06-16T11:03:21.8268886Z patching file Source/core/JSONRPC.h
+2026-06-16T11:03:21.8270727Z patching file Source/core/Portability.h
+2026-06-16T11:03:21.8285032Z patching file Source/plugins/CMakeLists.txt
+2026-06-16T11:03:21.8285916Z patching file Source/com/CMakeLists.txt
+2026-06-16T11:03:21.8298774Z patching file Source/com/Ids.h
+2026-06-16T11:03:21.8313285Z patching file Source/WPEFramework/PluginServer.h
+2026-06-16T11:03:21.8319226Z patching file Source/core/JSONRPC.h
+2026-06-16T11:03:21.8321509Z patching file Source/core/Portability.h
+2026-06-16T11:03:21.8323174Z patching file Source/plugins/JSONRPC.h
+2026-06-16T11:03:21.8330252Z /home/runner/work/entservices-appmanagers/entservices-appmanagers

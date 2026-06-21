@@ -1,0 +1,690 @@
+﻿2026-06-17T01:39:10.2852383Z ##[group]Run cmake -G Ninja -S "$GITHUB_WORKSPACE/Thunder" -B build/Thunder -DMESSAGING=ON -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/install/usr" -DCMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" -DGENERIC_CMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" -DBUILD_TYPE=Debug -DBINDING=127.0.0.1 -DPORT=55555 -DEXCEPTIONS_ENABLE=ON && cmake --build build/Thunder -j8 && cmake --install build/Thunder
+2026-06-17T01:39:10.2854878Z [36;1mcmake -G Ninja -S "$GITHUB_WORKSPACE/Thunder" -B build/Thunder -DMESSAGING=ON -DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/install/usr" -DCMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" -DGENERIC_CMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" -DBUILD_TYPE=Debug -DBINDING=127.0.0.1 -DPORT=55555 -DEXCEPTIONS_ENABLE=ON && cmake --build build/Thunder -j8 && cmake --install build/Thunder[0m
+2026-06-17T01:39:10.2884869Z shell: /usr/bin/bash -e {0}
+2026-06-17T01:39:10.2885126Z env:
+2026-06-17T01:39:10.2885318Z   BUILD_TYPE: Debug
+2026-06-17T01:39:10.2885558Z   THUNDER_REF: R4.4.1
+2026-06-17T01:39:10.2885778Z   INTERFACES_REF: topic/RDKEMW-16187
+2026-06-17T01:39:10.2886054Z   AUTOMATICS_UNAME: 
+2026-06-17T01:39:10.2886688Z   AUTOMATICS_PASSCODE: 
+2026-06-17T01:39:10.2887037Z   pythonLocation: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-17T01:39:10.2887441Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.14.5/x64/lib/pkgconfig
+2026-06-17T01:39:10.2887847Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-17T01:39:10.2888201Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-17T01:39:10.2888550Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-17T01:39:10.2888925Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.14.5/x64/lib
+2026-06-17T01:39:10.2889227Z ##[endgroup]
+2026-06-17T01:39:10.3320067Z -- The C compiler identification is GNU 11.4.0
+2026-06-17T01:39:10.3737415Z -- The CXX compiler identification is GNU 11.4.0
+2026-06-17T01:39:10.3772779Z -- Check for working C compiler: /usr/bin/cc
+2026-06-17T01:39:10.4106814Z -- Check for working C compiler: /usr/bin/cc -- works
+2026-06-17T01:39:10.4114399Z -- Detecting C compiler ABI info
+2026-06-17T01:39:10.4461620Z -- Detecting C compiler ABI info - done
+2026-06-17T01:39:10.4548459Z -- Detecting C compile features
+2026-06-17T01:39:10.4551300Z -- Detecting C compile features - done
+2026-06-17T01:39:10.4573340Z -- Check for working CXX compiler: /usr/bin/c++
+2026-06-17T01:39:10.5010246Z -- Check for working CXX compiler: /usr/bin/c++ -- works
+2026-06-17T01:39:10.5018762Z -- Detecting CXX compiler ABI info
+2026-06-17T01:39:10.5444520Z -- Detecting CXX compiler ABI info - done
+2026-06-17T01:39:10.5533186Z -- Detecting CXX compile features
+2026-06-17T01:39:10.5537792Z -- Detecting CXX compile features - done
+2026-06-17T01:39:10.5543626Z -- Setting up WPEFramework v1.0.0
+2026-06-17T01:39:10.5544539Z -- Building on Linux
+2026-06-17T01:39:10.5736951Z -- ProxyStubGenerator ready /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/sbin/ProxyStubGenerator/StubGenerator.py
+2026-06-17T01:39:10.5739937Z -- JsonGenerator ready /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/sbin/JsonGenerator/JsonGenerator.py
+2026-06-17T01:39:10.5744354Z CMake Warning (dev) at CMakeLists.txt:72 (message):
+2026-06-17T01:39:10.5744944Z -- CMAKE_BUILD_TYPE: 'MinSizeRel'
+2026-06-17T01:39:10.5745248Z   CMAKE_BUILD_TYPE not set, assuming 'MinSizeRel'
+2026-06-17T01:39:10.5745627Z This warning is for project developers.  Use -Wno-dev to suppress it.
+2026-06-17T01:39:10.5745893Z 
+2026-06-17T01:39:10.5754815Z CMake Deprecation Warning at cmake/config.cmake:13 (cmake_policy):
+2026-06-17T01:39:10.5755665Z   The OLD behavior for policy CMP0054 will be removed from a future version
+2026-06-17T01:39:10.5756092Z   of CMake.
+2026-06-17T01:39:10.5756196Z 
+2026-06-17T01:39:10.5756541Z   The cmake-policies(7) manual explains that the OLD behaviors of all
+2026-06-17T01:39:10.5756989Z   policies are deprecated and that a policy should be set to OLD only under
+2026-06-17T01:39:10.5757699Z   specific short-term circumstances.  Projects should be ported to the NEW
+2026-06-17T01:39:10.5758104Z   behavior and not rely on setting a policy to OLD.
+2026-06-17T01:39:10.5758409Z Call Stack (most recent call first):
+2026-06-17T01:39:10.5758672Z   Source/CMakeLists.txt:18 (include)
+2026-06-17T01:39:10.5758835Z 
+2026-06-17T01:39:10.5758841Z 
+2026-06-17T01:39:10.5825717Z -- Assuming external events: 
+2026-06-17T01:39:10.5831671Z -- Enabled position independent code
+2026-06-17T01:39:10.5832130Z -- Exception handling is enabled
+2026-06-17T01:39:10.5840155Z -- Looking for pthread.h
+2026-06-17T01:39:10.6281182Z -- Looking for pthread.h - found
+2026-06-17T01:39:10.6282783Z -- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+2026-06-17T01:39:10.6648404Z -- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Success
+2026-06-17T01:39:10.6656139Z -- Found Threads: TRUE  
+2026-06-17T01:39:10.6662289Z -- Looking for __GNU_LIBRARY__
+2026-06-17T01:39:10.7000227Z -- Looking for __GNU_LIBRARY__ - found
+2026-06-17T01:39:10.7004212Z -- Looking for _POSIX_TIMERS
+2026-06-17T01:39:10.7399223Z -- Looking for _POSIX_TIMERS - found
+2026-06-17T01:39:10.7457236Z -- Found LIBRT: 1  
+2026-06-17T01:39:10.7460143Z -- Messaging enabled
+2026-06-17T01:39:10.7460514Z -- Disabled WCHAR support.
+2026-06-17T01:39:10.7487554Z -- Found PkgConfig: /usr/bin/pkg-config (found version "1.8.0") 
+2026-06-17T01:39:10.7493081Z -- Checking for module 'libsystemd'
+2026-06-17T01:39:10.7557648Z --   Found libsystemd, version 249
+2026-06-17T01:39:10.7720581Z -- Found Systemd: /usr/include  
+2026-06-17T01:39:10.7730355Z -- WPEFrameworkCore added support for generic consumers via WPEFrameworkCore.pc
+2026-06-17T01:39:10.7735310Z -- WPEFrameworkCore added support for cmake consumers via 'WPEFrameworkCoreConfig.cmake'
+2026-06-17T01:39:10.7740067Z -- CompileSettingsDebug added support for cmake consumers via 'CompileSettingsDebugConfig.cmake'
+2026-06-17T01:39:10.7751891Z -- WPEFrameworkCryptalgo added support for cmake consumers via 'WPEFrameworkCryptalgoConfig.cmake'
+2026-06-17T01:39:10.7966852Z -- Found ZLIB: /usr/lib/x86_64-linux-gnu/libz.so (found version "1.2.11") 
+2026-06-17T01:39:10.7974766Z -- WPEFrameworkWebSocket added support for generic consumers via WPEFrameworkWebSocket.pc
+2026-06-17T01:39:10.7979682Z -- WPEFrameworkWebSocket added support for cmake consumers via 'WPEFrameworkWebSocketConfig.cmake'
+2026-06-17T01:39:10.7990140Z -- WPEFrameworkMessaging added support for cmake consumers via 'WPEFrameworkMessagingConfig.cmake'
+2026-06-17T01:39:10.7996825Z -- WPEFrameworkTracing added support for cmake consumers via 'WPEFrameworkTracingConfig.cmake'
+2026-06-17T01:39:10.7999183Z -- Creating symlink /home/runner/work/entservices-appmanagers/entservices-appmanagers/build/Thunder/Source/messaging/tracing.h -> messaging.h
+2026-06-17T01:39:10.9671622Z ProxyStubGenerator: created file ProxyStubsMetadata.cpp
+2026-06-17T01:39:10.9672881Z ProxyStubGenerator: ICOM.h: created file ProxyStubs_COM.cpp
+2026-06-17T01:39:10.9807570Z -- WPEFrameworkCOM added support for cmake consumers via 'WPEFrameworkCOMConfig.cmake'
+2026-06-17T01:39:11.2430093Z ProxyStubGenerator: created file ProxyStubsMetadata.cpp
+2026-06-17T01:39:11.2431399Z ProxyStubGenerator: IPlugin.h: created file ProxyStubs_Plugin.cpp
+2026-06-17T01:39:11.6546010Z ProxyStubGenerator: IShell.h: created file ProxyStubs_Shell.cpp
+2026-06-17T01:39:12.2288773Z ProxyStubGenerator: [33mWARNING[0m: IController.h(61): const uint8_t& ttl: input-only fundamental type passed by reference
+2026-06-17T01:39:12.2289489Z ProxyStubGenerator: IController.h: created file ProxyStubs_Controller.cpp
+2026-06-17T01:39:12.3923422Z ProxyStubGenerator: IControllerDeprecated.h: created file ProxyStubs_ControllerDeprecated.cpp
+2026-06-17T01:39:12.5217600Z ProxyStubGenerator: IStateControl.h: created file ProxyStubs_StateControl.cpp
+2026-06-17T01:39:12.7494200Z ProxyStubGenerator: [33mWARNING[0m: ISubSystem.h(143): 'uint8_t* buffer': length of this inbound buffer is not specified; using @maxlength, but this may be inefficient
+2026-06-17T01:39:12.7495526Z ProxyStubGenerator: ISubSystem.h: created file ProxyStubs_SubSystem.cpp
+2026-06-17T01:39:12.9033190Z ProxyStubGenerator: IDispatcher.h: created file ProxyStubs_Dispatcher.cpp
+2026-06-17T01:39:13.1796151Z JsonGenerator: [33mWARNING[0m: IController.h: No version provided for SystemManagement interface, using 1.0.0
+2026-06-17T01:39:13.1797742Z JsonGenerator: IController.h: Success: JSON data classes generated in JsonData_SystemManagement.h
+2026-06-17T01:39:13.1798486Z JsonGenerator: IController.h: Success: JSON-RPC implementation generated in JSystemManagement.h
+2026-06-17T01:39:13.1799328Z JsonGenerator: [33mWARNING[0m: IController.h: No version provided for Discovery interface, using 1.0.0
+2026-06-17T01:39:13.1800077Z JsonGenerator: IController.h: Success: JSON data classes generated in JsonData_Discovery.h
+2026-06-17T01:39:13.1800743Z JsonGenerator: IController.h: Success: JSON-RPC implementation generated in JDiscovery.h
+2026-06-17T01:39:13.1801540Z JsonGenerator: [33mWARNING[0m: IController.h: No version provided for Configuration interface, using 1.0.0
+2026-06-17T01:39:13.1802290Z JsonGenerator: IController.h: Success: JSON-RPC implementation generated in JConfiguration.h
+2026-06-17T01:39:13.1803081Z JsonGenerator: [33mWARNING[0m: IController.h: No version provided for LifeTime interface, using 1.0.0
+2026-06-17T01:39:13.1803779Z JsonGenerator: IController.h: Success: JSON data classes generated in JsonData_LifeTime.h
+2026-06-17T01:39:13.1804453Z JsonGenerator: IController.h: Success: JSON enumeration code generated in JsonEnum_LifeTime.cpp
+2026-06-17T01:39:13.1805134Z JsonGenerator: IController.h: Success: JSON-RPC implementation generated in JLifeTime.h
+2026-06-17T01:39:13.1805913Z JsonGenerator: [33mWARNING[0m: IController.h: No version provided for Metadata interface, using 1.0.0
+2026-06-17T01:39:13.1806769Z JsonGenerator: IController.h: Success: JSON data classes generated in JsonData_Metadata.h
+2026-06-17T01:39:13.1807452Z JsonGenerator: IController.h: Success: JSON-RPC implementation generated in JMetadata.h
+2026-06-17T01:39:13.1808109Z JsonGenerator: IController.h: Success: JSON-RPC API header generated in json_IController.h
+2026-06-17T01:39:13.2014407Z -- WPEFrameworkPlugins added support for generic consumers via WPEFrameworkPlugins.pc
+2026-06-17T01:39:13.2020201Z -- WPEFrameworkPlugins added support for cmake consumers via 'WPEFrameworkPluginsConfig.cmake'
+2026-06-17T01:39:13.2028720Z -- WPEFrameworkProxyStubs added support for cmake consumers via 'WPEFrameworkProxyStubsConfig.cmake'
+2026-06-17T01:39:13.2072813Z -- Checking for module 'breakpad-client'
+2026-06-17T01:39:13.3212780Z --   Package 'breakpad-client', required by 'virtual:world', not found
+2026-06-17T01:39:13.3697110Z -- Configuring done
+2026-06-17T01:39:13.3868343Z -- Generating done
+2026-06-17T01:39:13.3875382Z CMake Warning:
+2026-06-17T01:39:13.3875849Z   Manually-specified variables were not used by the project:
+2026-06-17T01:39:13.3876426Z 
+2026-06-17T01:39:13.3876532Z     BUILD_TYPE
+2026-06-17T01:39:13.3876739Z     GENERIC_CMAKE_MODULE_PATH
+2026-06-17T01:39:13.3876921Z 
+2026-06-17T01:39:13.3876926Z 
+2026-06-17T01:39:13.3880340Z -- Build files have been written to: /home/runner/work/entservices-appmanagers/entservices-appmanagers/build/Thunder
+2026-06-17T01:39:14.7628152Z [1/100] Building CXX object Source/core/CMakeFiles/WPEFrameworkCore.dir/ISO639.cpp.o
+2026-06-17T01:39:15.0126618Z [2/100] Building CXX object Source/core/CMakeFiles/WPEFrameworkCore.dir/DataElement.cpp.o
+2026-06-17T01:39:15.0293875Z [3/100] Building CXX object Source/core/CMakeFiles/WPEFrameworkCore.dir/FileSystem.cpp.o
+2026-06-17T01:39:15.3443482Z [4/100] Building CXX object Source/core/CMakeFiles/WPEFrameworkCore.dir/DataElementFile.cpp.o
+2026-06-17T01:39:15.3836592Z [5/100] Building CXX object Source/core/CMakeFiles/WPEFrameworkCore.dir/DoorBell.cpp.o
+2026-06-17T01:39:15.6993764Z [6/100] Building CXX object Source/core/CMakeFiles/WPEFrameworkCore.dir/CyclicBuffer.cpp.o
+2026-06-17T01:39:16.0182544Z [7/100] Building CXX object Source/core/CMakeFiles/WPEFrameworkCore.dir/JSONRPC.cpp.o
+2026-06-17T01:39:16.1149981Z [8/100] Building CXX object Source/core/CMakeFiles/WPEFrameworkCore.dir/MessageException.cpp.o
+2026-06-17T01:39:16.2325678Z [9/100] Building CXX object Source/core/CMakeFiles/WPEFrameworkCore.dir/Library.cpp.o
+2026-06-17T01:39:16.5705021Z [10/100] Building CXX object Source/core/CMakeFiles/WPEFrameworkCore.dir/Number.cpp.o
+2026-06-17T01:39:16.6143485Z [11/100] Building CXX object Source/core/CMakeFiles/WPEFrameworkCore.dir/Netlink.cpp.o
+2026-06-17T01:39:17.1722962Z [12/100] Building CXX object Source/core/CMakeFiles/WPEFrameworkCore.dir/Parser.cpp.o
+2026-06-17T01:39:17.2552007Z [13/100] Building CXX object Source/core/CMakeFiles/WPEFrameworkCore.dir/NodeId.cpp.o
+2026-06-17T01:39:17.5968200Z [14/100] Building CXX object Source/core/CMakeFiles/WPEFrameworkCore.dir/JSON.cpp.o
+2026-06-17T01:39:17.9203571Z [15/100] Building CXX object Source/core/CMakeFiles/WPEFrameworkCore.dir/Serialization.cpp.o
+2026-06-17T01:39:18.0710295Z [16/100] Building CXX object Source/core/CMakeFiles/WPEFrameworkCore.dir/Portability.cpp.o
+2026-06-17T01:39:18.1932332Z [17/100] Building CXX object Source/core/CMakeFiles/WPEFrameworkCore.dir/ProcessInfo.cpp.o
+2026-06-17T01:39:18.2099736Z [18/100] Building CXX object Source/core/CMakeFiles/WPEFrameworkCore.dir/NetworkInfo.cpp.o
+2026-06-17T01:39:18.6497954Z [19/100] Building CXX object Source/core/CMakeFiles/WPEFrameworkCore.dir/SerialPort.cpp.o
+2026-06-17T01:39:18.6654388Z [20/100] Building CXX object Source/core/CMakeFiles/WPEFrameworkCore.dir/Services.cpp.o
+2026-06-17T01:39:18.8993480Z [21/100] Building CXX object Source/core/CMakeFiles/WPEFrameworkCore.dir/SharedBuffer.cpp.o
+2026-06-17T01:39:19.1382042Z [22/100] Building CXX object Source/core/CMakeFiles/WPEFrameworkCore.dir/Singleton.cpp.o
+2026-06-17T01:39:19.5248463Z [23/100] Building CXX object Source/core/CMakeFiles/WPEFrameworkCore.dir/Sync.cpp.o
+2026-06-17T01:39:19.6922071Z [24/100] Building CXX object Source/core/CMakeFiles/WPEFrameworkCore.dir/TextReader.cpp.o
+2026-06-17T01:39:20.1181106Z [25/100] Building CXX object Source/core/CMakeFiles/WPEFrameworkCore.dir/SocketPort.cpp.o
+2026-06-17T01:39:20.1521693Z [26/100] Building CXX object Source/core/CMakeFiles/WPEFrameworkCore.dir/Trace.cpp.o
+2026-06-17T01:39:20.3302913Z [27/100] Building CXX object Source/core/CMakeFiles/WPEFrameworkCore.dir/SystemInfo.cpp.o
+2026-06-17T01:39:20.3545701Z [28/100] Building CXX object Source/core/CMakeFiles/WPEFrameworkCore.dir/Time.cpp.o
+2026-06-17T01:39:20.4027835Z [29/100] Building CXX object Source/core/CMakeFiles/WPEFrameworkCore.dir/Thread.cpp.o
+2026-06-17T01:39:20.5501967Z [30/100] Building CXX object Source/core/CMakeFiles/WPEFrameworkCore.dir/XGetopt.cpp.o
+2026-06-17T01:39:20.5540996Z [31/100] Building CXX object Source/core/CMakeFiles/WPEFrameworkCore.dir/WorkerPool.cpp.o
+2026-06-17T01:39:20.7745665Z [32/100] Building CXX object Source/cryptalgo/CMakeFiles/WPEFrameworkCryptalgo.dir/AESImplementation.cpp.o
+2026-06-17T01:39:21.2752485Z [33/100] Building CXX object Source/core/CMakeFiles/WPEFrameworkCore.dir/ResourceMonitor.cpp.o
+2026-06-17T01:39:22.1678118Z [34/100] Building CXX object Source/core/CMakeFiles/WPEFrameworkCore.dir/MessageStore.cpp.o
+2026-06-17T01:39:22.3999459Z [35/100] Linking CXX shared library Source/core/libWPEFrameworkCore.so.1.0.0
+2026-06-17T01:39:22.4065570Z [36/100] Creating library symlink Source/core/libWPEFrameworkCore.so.1 Source/core/libWPEFrameworkCore.so
+2026-06-17T01:39:23.7342910Z [37/100] Building CXX object Source/cryptalgo/CMakeFiles/WPEFrameworkCryptalgo.dir/AES.cpp.o
+2026-06-17T01:39:23.8158005Z [38/100] Building CXX object Source/cryptalgo/CMakeFiles/WPEFrameworkCryptalgo.dir/Random.cpp.o
+2026-06-17T01:39:23.9017059Z [39/100] Building CXX object Source/cryptalgo/CMakeFiles/WPEFrameworkCryptalgo.dir/Module.cpp.o
+2026-06-17T01:39:23.9877628Z [40/100] Building CXX object Source/messaging/CMakeFiles/WPEFrameworkMessaging.dir/Module.cpp.o
+2026-06-17T01:39:24.5504704Z [41/100] Building CXX object Source/cryptalgo/CMakeFiles/WPEFrameworkCryptalgo.dir/Hash.cpp.o
+2026-06-17T01:39:24.6983694Z [42/100] Linking CXX shared library Source/cryptalgo/libWPEFrameworkCryptalgo.so.1.0.0
+2026-06-17T01:39:24.7040499Z [43/100] Creating library symlink Source/cryptalgo/libWPEFrameworkCryptalgo.so.1 Source/cryptalgo/libWPEFrameworkCryptalgo.so
+2026-06-17T01:39:25.9783415Z [44/100] Building CXX object Source/messaging/CMakeFiles/WPEFrameworkMessaging.dir/TraceCategories.cpp.o
+2026-06-17T01:39:26.3506590Z [45/100] Building CXX object Source/messaging/CMakeFiles/WPEFrameworkMessaging.dir/MessageClient.cpp.o
+2026-06-17T01:39:27.3274046Z [46/100] Building CXX object Source/messaging/CMakeFiles/WPEFrameworkMessaging.dir/DirectOutput.cpp.o
+2026-06-17T01:39:27.4625346Z [47/100] Building CXX object Source/websocket/CMakeFiles/WPEFrameworkWebSocket.dir/Module.cpp.o
+2026-06-17T01:39:28.0129658Z [48/100] Building CXX object Source/websocket/CMakeFiles/WPEFrameworkWebSocket.dir/URL.cpp.o
+2026-06-17T01:39:28.3488068Z [49/100] Building CXX object Source/messaging/CMakeFiles/WPEFrameworkMessaging.dir/Logging.cpp.o
+2026-06-17T01:39:28.6712766Z [50/100] Building CXX object Source/messaging/CMakeFiles/WPEFrameworkMessaging.dir/MessageUnit.cpp.o
+2026-06-17T01:39:28.9433129Z [51/100] Linking CXX shared library Source/messaging/libWPEFrameworkMessaging.so.1.0.0
+2026-06-17T01:39:28.9460272Z [52/100] Creating library symlink Source/messaging/libWPEFrameworkMessaging.so.1 Source/messaging/libWPEFrameworkMessaging.so
+2026-06-17T01:39:29.5791915Z [53/100] Building CXX object Source/websocket/CMakeFiles/WPEFrameworkWebSocket.dir/JSONWebToken.cpp.o
+2026-06-17T01:39:30.8951181Z [54/100] Building CXX object Source/websocket/CMakeFiles/WPEFrameworkWebSocket.dir/WebSocketLink.cpp.o
+2026-06-17T01:39:31.2553329Z [55/100] Building CXX object Source/websocket/CMakeFiles/WPEFrameworkWebSocket.dir/JSONRPCLink.cpp.o
+2026-06-17T01:39:31.9843262Z [56/100] Building CXX object Source/websocket/CMakeFiles/WPEFrameworkWebSocket.dir/WebSerializer.cpp.o
+2026-06-17T01:39:32.2052140Z [57/100] Linking CXX shared library Source/websocket/libWPEFrameworkWebSocket.so.1.0.0
+2026-06-17T01:39:32.2071583Z [58/100] Creating library symlink Source/websocket/libWPEFrameworkWebSocket.so.1 Source/websocket/libWPEFrameworkWebSocket.so
+2026-06-17T01:39:32.9183235Z [59/100] Building CXX object Source/com/CMakeFiles/WPEFrameworkCOM.dir/Administrator.cpp.o
+2026-06-17T01:39:33.6467191Z [60/100] Building CXX object Source/com/CMakeFiles/WPEFrameworkCOM.dir/Module.cpp.o
+2026-06-17T01:39:33.6558947Z [61/100] Building CXX object Source/com/CMakeFiles/WPEFrameworkCOM.dir/IUnknown.cpp.o
+2026-06-17T01:39:35.1702847Z [62/100] Building CXX object Source/com/CMakeFiles/WPEFrameworkCOM.dir/ConnectorType.cpp.o
+2026-06-17T01:39:38.2698003Z [63/100] Building CXX object Source/com/CMakeFiles/WPEFrameworkCOM.dir/Communicator.cpp.o
+2026-06-17T01:39:38.5100017Z [64/100] Building CXX object Source/plugins/CMakeFiles/WPEFrameworkPlugins.dir/Module.cpp.o
+2026-06-17T01:39:38.5468030Z [65/100] Building CXX object Source/com/CMakeFiles/WPEFrameworkCOM.dir/generated/ProxyStubs_COM.cpp.o
+2026-06-17T01:39:38.7525199Z [66/100] Building CXX object Source/plugins/CMakeFiles/WPEFrameworkPlugins.dir/Channel.cpp.o
+2026-06-17T01:39:38.7959984Z [67/100] Linking CXX shared library Source/com/libWPEFrameworkCOM.so.1.0.0
+2026-06-17T01:39:38.8010575Z [68/100] Creating library symlink Source/com/libWPEFrameworkCOM.so.1 Source/com/libWPEFrameworkCOM.so
+2026-06-17T01:39:40.8452572Z [69/100] Building CXX object Source/plugins/CMakeFiles/WPEFrameworkPlugins.dir/JSONRPC.cpp.o
+2026-06-17T01:39:40.9687455Z [70/100] Building CXX object Source/plugins/CMakeFiles/WPEFrameworkPlugins.dir/Service.cpp.o
+2026-06-17T01:39:42.5786218Z [71/100] Building CXX object Source/plugins/CMakeFiles/WPEFrameworkPlugins.dir/Shell.cpp.o
+2026-06-17T01:39:43.2743293Z [72/100] Building CXX object Source/plugins/CMakeFiles/WPEFrameworkPlugins.dir/StateControl.cpp.o
+2026-06-17T01:39:43.5640771Z [73/100] Building CXX object Source/plugins/CMakeFiles/WPEFrameworkPlugins.dir/System.cpp.o
+2026-06-17T01:39:43.6173077Z [74/100] Building CXX object Source/plugins/CMakeFiles/WPEFrameworkPlugins.dir/SubSystem.cpp.o
+2026-06-17T01:39:44.3565265Z [75/100] Building CXX object Source/plugins/CMakeFiles/WPEFrameworkPlugins.dir/MetaData.cpp.o
+2026-06-17T01:39:45.8162851Z [76/100] Building CXX object Source/plugins/CMakeFiles/WPEFrameworkProxyStubs.dir/generated/ProxyStubsMetadata.cpp.o
+2026-06-17T01:39:49.7031287Z [77/100] Building CXX object Source/plugins/CMakeFiles/WPEFrameworkProxyStubs.dir/generated/ProxyStubs_Controller.cpp.o
+2026-06-17T01:39:49.8203434Z [78/100] Building CXX object Source/plugins/CMakeFiles/WPEFrameworkProxyStubs.dir/generated/ProxyStubs_ControllerDeprecated.cpp.o
+2026-06-17T01:39:51.0038987Z [79/100] Building CXX object Source/plugins/CMakeFiles/WPEFrameworkProxyStubs.dir/generated/ProxyStubs_Dispatcher.cpp.o
+2026-06-17T01:39:51.4363117Z [80/100] Building CXX object Source/plugins/CMakeFiles/WPEFrameworkProxyStubs.dir/generated/ProxyStubs_Shell.cpp.o
+2026-06-17T01:39:51.4914404Z [81/100] Building CXX object Source/plugins/CMakeFiles/WPEFrameworkPlugins.dir/VirtualInput.cpp.o
+2026-06-17T01:39:51.7285266Z [82/100] Linking CXX shared library Source/plugins/libWPEFrameworkPlugins.so.1.0.0
+2026-06-17T01:39:51.7308259Z [83/100] Creating library symlink Source/plugins/libWPEFrameworkPlugins.so.1 Source/plugins/libWPEFrameworkPlugins.so
+2026-06-17T01:39:51.7387413Z [84/100] Building CXX object Source/plugins/CMakeFiles/WPEFrameworkProxyStubs.dir/generated/ProxyStubs_StateControl.cpp.o
+2026-06-17T01:39:51.8977244Z [85/100] Building CXX object Source/plugins/CMakeFiles/WPEFrameworkProxyStubs.dir/generated/ProxyStubs_Plugin.cpp.o
+2026-06-17T01:39:54.9633355Z [86/100] Building CXX object Source/plugins/CMakeFiles/WPEFrameworkProxyStubs.dir/Module.cpp.o
+2026-06-17T01:39:56.0271550Z [87/100] Building CXX object Source/plugins/CMakeFiles/WPEFrameworkProxyStubs.dir/generated/ProxyStubs_SubSystem.cpp.o
+2026-06-17T01:39:56.3677986Z [88/100] Linking CXX shared library Source/plugins/libWPEFrameworkProxyStubs.so.1.0.0
+2026-06-17T01:39:56.3733647Z [89/100] Creating library symlink Source/plugins/libWPEFrameworkProxyStubs.so.1 Source/plugins/libWPEFrameworkProxyStubs.so
+2026-06-17T01:40:01.0993954Z [90/100] Building CXX object Source/WPEProcess/CMakeFiles/WPEProcess.dir/Process.cpp.o
+2026-06-17T01:40:01.2508574Z [91/100] Linking CXX executable Source/WPEProcess/WPEProcess-1.0.0
+2026-06-17T01:40:01.2533324Z [92/100] Creating executable symlink Source/WPEProcess/WPEProcess
+2026-06-17T01:40:01.6674391Z [93/100] Building CXX object Source/WPEFramework/CMakeFiles/WPEFramework.dir/Probe.cpp.o
+2026-06-17T01:40:01.7757117Z [94/100] Building CXX object Source/WPEFramework/CMakeFiles/WPEFramework.dir/PostMortem.cpp.o
+2026-06-17T01:40:02.1713904Z [95/100] Building CXX object Source/WPEFramework/CMakeFiles/WPEFramework.dir/SystemInfo.cpp.o
+2026-06-17T01:40:07.0404139Z [96/100] Building CXX object Source/WPEFramework/CMakeFiles/WPEFramework.dir/PluginHost.cpp.o
+2026-06-17T01:40:08.4322849Z [97/100] Building CXX object Source/WPEFramework/CMakeFiles/WPEFramework.dir/Controller.cpp.o
+2026-06-17T01:40:10.2462957Z [98/100] Building CXX object Source/WPEFramework/CMakeFiles/WPEFramework.dir/PluginServer.cpp.o
+2026-06-17T01:40:10.3794108Z [99/100] Linking CXX executable Source/WPEFramework/WPEFramework-1.0.0
+2026-06-17T01:40:10.3812245Z [100/100] Creating executable symlink Source/WPEFramework/WPEFramework
+2026-06-17T01:40:10.3832358Z -- Install configuration: "MinSizeRel"
+2026-06-17T01:40:10.3834060Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/WPEFrameworkConfig.cmake
+2026-06-17T01:40:10.3835842Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config
+2026-06-17T01:40:10.3837815Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/stack
+2026-06-17T01:40:10.3839806Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/stack/stack_push.cmake
+2026-06-17T01:40:10.3842154Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/stack/stack_peek.cmake
+2026-06-17T01:40:10.3844231Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/stack/stack_pop.cmake
+2026-06-17T01:40:10.3846161Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/core
+2026-06-17T01:40:10.3848155Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/core/eval.cmake
+2026-06-17T01:40:10.3850115Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/core/return
+2026-06-17T01:40:10.3852199Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/core/return/return_ans.cmake
+2026-06-17T01:40:10.3854383Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/core/return/return_refs.cmake
+2026-06-17T01:40:10.3856663Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/core/return/ans_extract.cmake
+2026-06-17T01:40:10.3858849Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/core/return/return_ref.cmake
+2026-06-17T01:40:10.3860972Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/core/return/return.cmake
+2026-06-17T01:40:10.3863057Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/core/return/clr.cmake
+2026-06-17T01:40:10.3865181Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/core/return/ans_append.cmake
+2026-06-17T01:40:10.3867456Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/core/return/set_ans_ref.cmake
+2026-06-17T01:40:10.3869634Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/core/return/return_reset.cmake
+2026-06-17T01:40:10.3871812Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/core/return/return_math.cmake
+2026-06-17T01:40:10.3874188Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/core/return/return_truth.cmake
+2026-06-17T01:40:10.3876374Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/core/return/ans.cmake
+2026-06-17T01:40:10.3878488Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/core/return/set_ans.cmake
+2026-06-17T01:40:10.3880590Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/core/require.cmake
+2026-06-17T01:40:10.3882562Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/function
+2026-06-17T01:40:10.3884545Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/function/function_import_table.cmake
+2026-06-17T01:40:10.3886362Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/events
+2026-06-17T01:40:10.3887660Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/events/is_event.cmake
+2026-06-17T01:40:10.3888729Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/events/events_track.cmake
+2026-06-17T01:40:10.3889951Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/events/events.cmake
+2026-06-17T01:40:10.3891106Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/events/event_new.cmake
+2026-06-17T01:40:10.3892119Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/events/event.cmake
+2026-06-17T01:40:10.3893395Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/events/event_get.cmake
+2026-06-17T01:40:10.3894528Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/events/event_handler.cmake
+2026-06-17T01:40:10.3895608Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/events/event_handler_call.cmake
+2026-06-17T01:40:10.3896966Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/events/event_clear.cmake
+2026-06-17T01:40:10.3898215Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/events/event_handlers.cmake
+2026-06-17T01:40:10.3899348Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/events/event_addhandler.cmake
+2026-06-17T01:40:10.3900396Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/events/event_emit.cmake
+2026-06-17T01:40:10.3901536Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/events/event_removehandler.cmake
+2026-06-17T01:40:10.3902636Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/events/event_cancel.cmake
+2026-06-17T01:40:10.3903704Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/string
+2026-06-17T01:40:10.3904692Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/string/encoding
+2026-06-17T01:40:10.3905971Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/string/encoding/string_decode_semicolon.cmake
+2026-06-17T01:40:10.3907446Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/string/string_take_regex.cmake
+2026-06-17T01:40:10.3908591Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/string/string_codes.cmake
+2026-06-17T01:40:10.3909703Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/string/cmake_string_to_json.cmake
+2026-06-17T01:40:10.3910868Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/string/string_take_address.cmake
+2026-06-17T01:40:10.3911969Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/quickmap
+2026-06-17T01:40:10.3913077Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/quickmap/val.cmake
+2026-06-17T01:40:10.3914134Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/quickmap/README.md.in
+2026-06-17T01:40:10.3915296Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/quickmap/key.cmake
+2026-06-17T01:40:10.3916583Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/quickmap/var.cmake
+2026-06-17T01:40:10.3917569Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/quickmap/kv.cmake
+2026-06-17T01:40:10.3918675Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/quickmap/ref.cmake
+2026-06-17T01:40:10.3919755Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/quickmap/README.md
+2026-06-17T01:40:10.3920922Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/quickmap/end.cmake
+2026-06-17T01:40:10.3922035Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/quickmap/map.cmake
+2026-06-17T01:40:10.3922989Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/formats
+2026-06-17T01:40:10.3924011Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/formats/json
+2026-06-17T01:40:10.3924993Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/formats/json/json.cmake
+2026-06-17T01:40:10.3926345Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/formats/json/json_format_tokens.cmake
+2026-06-17T01:40:10.3927610Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/formats/json/json3.cmake
+2026-06-17T01:40:10.3928788Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/formats/json/json2.cmake
+2026-06-17T01:40:10.3929951Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/formats/json/json_tokenize.cmake
+2026-06-17T01:40:10.3931176Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/formats/json/json_extract_string_value.cmake
+2026-06-17T01:40:10.3932370Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/formats/json/json_string_to_cmake.cmake
+2026-06-17T01:40:10.3933715Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/formats/json/json4.cmake
+2026-06-17T01:40:10.3934871Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/formats/json/json_read.cmake
+2026-06-17T01:40:10.3936065Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/formats/json/README.md.in
+2026-06-17T01:40:10.3937556Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/formats/json/json_print.cmake
+2026-06-17T01:40:10.3938791Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/formats/json/json_deserialize.cmake
+2026-06-17T01:40:10.3939946Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/formats/json/json_write.cmake
+2026-06-17T01:40:10.3941092Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/formats/json/json2_definition.cmake
+2026-06-17T01:40:10.3942295Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/formats/json/README.md
+2026-06-17T01:40:10.3943631Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/formats/json/json_indented.cmake
+2026-06-17T01:40:10.3944854Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/formats/json/json_escape.cmake
+2026-06-17T01:40:10.3945967Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map
+2026-06-17T01:40:10.3947063Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/core
+2026-06-17T01:40:10.3948224Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/core/map_duplicate.cmake
+2026-06-17T01:40:10.3949453Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/core/map_remove.cmake
+2026-06-17T01:40:10.3950613Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/core/map_get_special.cmake
+2026-06-17T01:40:10.3951730Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/core/map_new.cmake
+2026-06-17T01:40:10.3952749Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/core/map_has.cmake
+2026-06-17T01:40:10.3953882Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/core/map_set_special.cmake
+2026-06-17T01:40:10.3955126Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/core/map_append_unique.cmake
+2026-06-17T01:40:10.3956438Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/core/map_set.cmake
+2026-06-17T01:40:10.3957675Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/core/map_keys.cmake
+2026-06-17T01:40:10.3958777Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/core/map_set_hidden.cmake
+2026-06-17T01:40:10.3959945Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/core/map_get.cmake
+2026-06-17T01:40:10.3961355Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/core/is_map.cmake
+2026-06-17T01:40:10.3962560Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/core/map_remove_item.cmake
+2026-06-17T01:40:10.3963736Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/core/map_delete.cmake
+2026-06-17T01:40:10.3964675Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/core/map_tryget.cmake
+2026-06-17T01:40:10.3965853Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/core/map_append.cmake
+2026-06-17T01:40:10.3967275Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/core/map_append_string.cmake
+2026-06-17T01:40:10.3968451Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/map_import_properties.cmake
+2026-06-17T01:40:10.3969555Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/iterator
+2026-06-17T01:40:10.3970882Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/iterator/map_iterator_next.cmake
+2026-06-17T01:40:10.3972072Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/iterator/map_iterator.cmake
+2026-06-17T01:40:10.3973234Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/iterator/README.md.in
+2026-06-17T01:40:10.3974332Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/iterator/map_iterator_break.cmake
+2026-06-17T01:40:10.3975339Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/iterator/README.md
+2026-06-17T01:40:10.3976237Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/operations
+2026-06-17T01:40:10.3977449Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/operations/map_clone_deep.cmake
+2026-06-17T01:40:10.3978439Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/operations/map_equal.cmake
+2026-06-17T01:40:10.3979504Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/operations/map_merge.cmake
+2026-06-17T01:40:10.3980571Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/operations/map_issubsetof.cmake
+2026-06-17T01:40:10.3981559Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/operations/map_union.cmake
+2026-06-17T01:40:10.3982550Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/operations/map_clone_shallow.cmake
+2026-06-17T01:40:10.3983674Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/operations/map_foreach.cmake
+2026-06-17T01:40:10.3984730Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/operations/map_clone.cmake
+2026-06-17T01:40:10.3985841Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/operations/map_equal_obj.cmake
+2026-06-17T01:40:10.3987237Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/dfs.cmake
+2026-06-17T01:40:10.3988241Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/map_matches_obj.cmake
+2026-06-17T01:40:10.3989571Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/README.md.in
+2026-06-17T01:40:10.3990714Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/README.md
+2026-06-17T01:40:10.3992080Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers
+2026-06-17T01:40:10.3993583Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_pop_front.cmake
+2026-06-17T01:40:10.3995356Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_to_valuelist.cmake
+2026-06-17T01:40:10.3996903Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_keys_append.cmake
+2026-06-17T01:40:10.3998472Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_overwrite.cmake
+2026-06-17T01:40:10.3999455Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_keys_clear.cmake
+2026-06-17T01:40:10.4000434Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_peek_back.cmake
+2026-06-17T01:40:10.4001400Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_count.cmake
+2026-06-17T01:40:10.4002366Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_extract.cmake
+2026-06-17T01:40:10.4003326Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_matches.cmake
+2026-06-17T01:40:10.4004291Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_keys_sort.cmake
+2026-06-17T01:40:10.4005237Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_at.cmake
+2026-06-17T01:40:10.4006180Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_has_all.cmake
+2026-06-17T01:40:10.4007245Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/mm.cmake
+2026-06-17T01:40:10.4008185Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_isempty.cmake
+2026-06-17T01:40:10.4009156Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_flatten.cmake
+2026-06-17T01:40:10.4010128Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_get_default.cmake
+2026-06-17T01:40:10.4011100Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_partial.cmake
+2026-06-17T01:40:10.4012141Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_match.cmake
+2026-06-17T01:40:10.4013097Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_has_any.cmake
+2026-06-17T01:40:10.4014050Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_ensure.cmake
+2026-06-17T01:40:10.4015004Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_path_set.cmake
+2026-06-17T01:40:10.4015982Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_pick_regex.cmake
+2026-06-17T01:40:10.4017625Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_to_keyvaluelist.cmake
+2026-06-17T01:40:10.4019517Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_push_back.cmake
+2026-06-17T01:40:10.4021225Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_peek_front.cmake
+2026-06-17T01:40:10.4023261Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_get_map.cmake
+2026-06-17T01:40:10.4025062Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_pairs.cmake
+2026-06-17T01:40:10.4026945Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_rename.cmake
+2026-06-17T01:40:10.4028782Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_set_default.cmake
+2026-06-17T01:40:10.4030645Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/list_match.cmake
+2026-06-17T01:40:10.4032371Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_push_front.cmake
+2026-06-17T01:40:10.4034130Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_unpack.cmake
+2026-06-17T01:40:10.4035173Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_pick.cmake
+2026-06-17T01:40:10.4036596Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_values.cmake
+2026-06-17T01:40:10.4037870Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_fill.cmake
+2026-06-17T01:40:10.4039132Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_pop_back.cmake
+2026-06-17T01:40:10.4040558Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_omit.cmake
+2026-06-17T01:40:10.4041616Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_copy_shallow.cmake
+2026-06-17T01:40:10.4043041Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_key_at.cmake
+2026-06-17T01:40:10.4044429Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_capture.cmake
+2026-06-17T01:40:10.4045482Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_promote.cmake
+2026-06-17T01:40:10.4046646Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_defaults.cmake
+2026-06-17T01:40:10.4048097Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_omit_regex.cmake
+2026-06-17T01:40:10.4049722Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_property_length.cmake
+2026-06-17T01:40:10.4050764Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_path_get.cmake
+2026-06-17T01:40:10.4052389Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_keys_remove.cmake
+2026-06-17T01:40:10.4053706Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_all_paths.cmake
+2026-06-17T01:40:10.4055604Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_capture_new.cmake
+2026-06-17T01:40:10.4057595Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_match_properties.cmake
+2026-06-17T01:40:10.4058744Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_invert.cmake
+2026-06-17T01:40:10.4060030Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_keys_set.cmake
+2026-06-17T01:40:10.4061397Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_clear.cmake
+2026-06-17T01:40:10.4062866Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/helpers/map_from_keyvaluelist.cmake
+2026-06-17T01:40:10.4063850Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/map/dfs_callback.cmake
+2026-06-17T01:40:10.4064735Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/collections
+2026-06-17T01:40:10.4065995Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/collections/list_push_front.cmake
+2026-06-17T01:40:10.4067167Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/collections/list_pop_back.cmake
+2026-06-17T01:40:10.4068466Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/collections/list_pop_front.cmake
+2026-06-17T01:40:10.4069774Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/collections/list_push_back.cmake
+2026-06-17T01:40:10.4071126Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/filesystem
+2026-06-17T01:40:10.4072531Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/filesystem/navigation
+2026-06-17T01:40:10.4074074Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/filesystem/navigation/pwd.cmake
+2026-06-17T01:40:10.4075908Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/filesystem/path
+2026-06-17T01:40:10.4077502Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/filesystem/path/path_qualify_from.cmake
+2026-06-17T01:40:10.4079396Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/filesystem/path/path_vary.cmake
+2026-06-17T01:40:10.4080392Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/filesystem/path/path_qualify.cmake
+2026-06-17T01:40:10.4081368Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/filesystem/path/path.cmake
+2026-06-17T01:40:10.4082319Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/filesystem/fwrite_temp.cmake
+2026-06-17T01:40:10.4083236Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/filesystem/file
+2026-06-17T01:40:10.4084142Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/filesystem/file/fwrite.cmake
+2026-06-17T01:40:10.4085103Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/ref
+2026-06-17T01:40:10.4085968Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/ref/address_pop_back.cmake
+2026-06-17T01:40:10.4087040Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/ref/address_print.cmake
+2026-06-17T01:40:10.4087983Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/ref/address_push_back.cmake
+2026-06-17T01:40:10.4088909Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/ref/address_new.cmake
+2026-06-17T01:40:10.4089821Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/ref/address_delete.cmake
+2026-06-17T01:40:10.4090758Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/ref/address_peek_front.cmake
+2026-06-17T01:40:10.4091688Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/ref/is_address.cmake
+2026-06-17T01:40:10.4092599Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/ref/address_set_new.cmake
+2026-06-17T01:40:10.4093536Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/ref/address_set.cmake
+2026-06-17T01:40:10.4094433Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/ref/README.md.in
+2026-06-17T01:40:10.4095344Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/ref/address_pop_front.cmake
+2026-06-17T01:40:10.4096407Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/ref/address_peek_back.cmake
+2026-06-17T01:40:10.4097416Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/ref/address_get.cmake
+2026-06-17T01:40:10.4098349Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/ref/address_push_front.cmake
+2026-06-17T01:40:10.4099367Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/ref/address_append.cmake
+2026-06-17T01:40:10.4100268Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/ref/README.md
+2026-06-17T01:40:10.4101178Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/ref/address_append_string.cmake
+2026-06-17T01:40:10.4102130Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/ref/address_type_get.cmake
+2026-06-17T01:40:10.4103078Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/config/ref/address_type_matches.cmake
+2026-06-17T01:40:10.4103955Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/common
+2026-06-17T01:40:10.4104816Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/common/CompileSettingsDebug.cmake
+2026-06-17T01:40:10.4106144Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/common/CompileSettings.cmake
+2026-06-17T01:40:10.4107205Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/common/HeaderOnlyInstall.cmake
+2026-06-17T01:40:10.4108517Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/common/GetExternalCode.cmake
+2026-06-17T01:40:10.4109765Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/common/CodeCoverage.cmake
+2026-06-17T01:40:10.4111262Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/common/CmakeHelperFunctions.cmake
+2026-06-17T01:40:10.4112191Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/common/CreateLink.cmake
+2026-06-17T01:40:10.4113095Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/common/install_symlink.cmake.in
+2026-06-17T01:40:10.4114009Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/common/InstallLink.cmake
+2026-06-17T01:40:10.4115269Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/common/CreatePackage.cmake
+2026-06-17T01:40:10.4116124Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/templates
+2026-06-17T01:40:10.4117054Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/templates/defaultConfig.cmake.in
+2026-06-17T01:40:10.4118391Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFramework/templates/default.pc.in
+2026-06-17T01:40:10.4119597Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/libWPEFrameworkCore.so.1.0.0
+2026-06-17T01:40:10.4120802Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/libWPEFrameworkCore.so.1
+2026-06-17T01:40:10.4121739Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/libWPEFrameworkCore.so
+2026-06-17T01:40:10.4123187Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/ASN1.h
+2026-06-17T01:40:10.4124676Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/DoorBell.h
+2026-06-17T01:40:10.4126190Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/Config.h
+2026-06-17T01:40:10.4127950Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/core.h
+2026-06-17T01:40:10.4129484Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/CyclicBuffer.h
+2026-06-17T01:40:10.4130401Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/DataBuffer.h
+2026-06-17T01:40:10.4131656Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/DataElementFile.h
+2026-06-17T01:40:10.4132835Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/DataElement.h
+2026-06-17T01:40:10.4134223Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/Enumerate.h
+2026-06-17T01:40:10.4135175Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/Factory.h
+2026-06-17T01:40:10.4136805Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/FileSystem.h
+2026-06-17T01:40:10.4138511Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/FileObserver.h
+2026-06-17T01:40:10.4140077Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/Frame.h
+2026-06-17T01:40:10.4141567Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/IAction.h
+2026-06-17T01:40:10.4143056Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/IIterator.h
+2026-06-17T01:40:10.4143863Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/IObserver.h
+2026-06-17T01:40:10.4145014Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/IPCMessage.h
+2026-06-17T01:40:10.4146544Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/IPFrame.h
+2026-06-17T01:40:10.4147774Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/IPCChannel.h
+2026-06-17T01:40:10.4148607Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/IPCConnector.h
+2026-06-17T01:40:10.4149427Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/ISO639.h
+2026-06-17T01:40:10.4150214Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/JSON.h
+2026-06-17T01:40:10.4151319Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/JSONRPC.h
+2026-06-17T01:40:10.4152166Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/KeyValue.h
+2026-06-17T01:40:10.4152967Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/Library.h
+2026-06-17T01:40:10.4153765Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/Link.h
+2026-06-17T01:40:10.4154915Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/LockableContainer.h
+2026-06-17T01:40:10.4155790Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/Measurement.h
+2026-06-17T01:40:10.4157122Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/Media.h
+2026-06-17T01:40:10.4158297Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/MessageException.h
+2026-06-17T01:40:10.4159592Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/Module.h
+2026-06-17T01:40:10.4160789Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/Netlink.h
+2026-06-17T01:40:10.4162337Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/NetworkInfo.h
+2026-06-17T01:40:10.4163859Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/NodeId.h
+2026-06-17T01:40:10.4165250Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/Number.h
+2026-06-17T01:40:10.4166825Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/Optional.h
+2026-06-17T01:40:10.4167851Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/Parser.h
+2026-06-17T01:40:10.4169115Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/Portability.h
+2026-06-17T01:40:10.4170270Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/Process.h
+2026-06-17T01:40:10.4171628Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/ProcessInfo.h
+2026-06-17T01:40:10.4172518Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/Proxy.h
+2026-06-17T01:40:10.4173307Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/Queue.h
+2026-06-17T01:40:10.4174094Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/Range.h
+2026-06-17T01:40:10.4174910Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/ReadWriteLock.h
+2026-06-17T01:40:10.4176076Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/Rectangle.h
+2026-06-17T01:40:10.4177102Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/RequestResponse.h
+2026-06-17T01:40:10.4177968Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/ResourceMonitor.h
+2026-06-17T01:40:10.4178828Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/Serialization.h
+2026-06-17T01:40:10.4179663Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/SerialPort.h
+2026-06-17T01:40:10.4180816Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/Services.h
+2026-06-17T01:40:10.4181639Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/SharedBuffer.h
+2026-06-17T01:40:10.4183003Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/Singleton.h
+2026-06-17T01:40:10.4183992Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/SocketPort.h
+2026-06-17T01:40:10.4185332Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/SocketServer.h
+2026-06-17T01:40:10.4187064Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/StateTrigger.h
+2026-06-17T01:40:10.4188652Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/StopWatch.h
+2026-06-17T01:40:10.4190178Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/Stream.h
+2026-06-17T01:40:10.4191730Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/StreamJSON.h
+2026-06-17T01:40:10.4193191Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/StreamText.h
+2026-06-17T01:40:10.4194818Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/StreamTypeLengthValue.h
+2026-06-17T01:40:10.4196499Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/Sync.h
+2026-06-17T01:40:10.4197961Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/Synchronize.h
+2026-06-17T01:40:10.4198873Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/SynchronousChannel.h
+2026-06-17T01:40:10.4199973Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/SystemInfo.h
+2026-06-17T01:40:10.4200997Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/TextFragment.h
+2026-06-17T01:40:10.4201819Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/TextReader.h
+2026-06-17T01:40:10.4202627Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/Thread.h
+2026-06-17T01:40:10.4203429Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/ThreadPool.h
+2026-06-17T01:40:10.4204230Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/Time.h
+2026-06-17T01:40:10.4205363Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/Timer.h
+2026-06-17T01:40:10.4206147Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/Trace.h
+2026-06-17T01:40:10.4207181Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/TriState.h
+2026-06-17T01:40:10.4208128Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/TypeTraits.h
+2026-06-17T01:40:10.4209004Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/ValueRecorder.h
+2026-06-17T01:40:10.4209909Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/XGetopt.h
+2026-06-17T01:40:10.4210753Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/WorkerPool.h
+2026-06-17T01:40:10.4211745Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/IWarningReportingControl.h
+2026-06-17T01:40:10.4212812Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/WarningReportingControl.h
+2026-06-17T01:40:10.4213871Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/WarningReportingCategories.h
+2026-06-17T01:40:10.4215007Z -- Up-to-date: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/Module.h
+2026-06-17T01:40:10.4215837Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/CallsignTLS.h
+2026-06-17T01:40:10.4217021Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/TokenizedStringList.h
+2026-06-17T01:40:10.4218013Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/core/MessageStore.h
+2026-06-17T01:40:10.4218874Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/pkgconfig/WPEFrameworkCore.pc
+2026-06-17T01:40:10.4219941Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFrameworkCore/WPEFrameworkCoreTargets.cmake
+2026-06-17T01:40:10.4220956Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFrameworkCore/WPEFrameworkCoreTargets-minsizerel.cmake
+2026-06-17T01:40:10.4221989Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFrameworkCore/WPEFrameworkCoreConfigVersion.cmake
+2026-06-17T01:40:10.4223237Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFrameworkCore/WPEFrameworkCoreConfig.cmake
+2026-06-17T01:40:10.4224230Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/CompileSettingsDebug/CompileSettingsDebugTargets.cmake
+2026-06-17T01:40:10.4225405Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/CompileSettingsDebug/CompileSettingsDebugConfigVersion.cmake
+2026-06-17T01:40:10.4226558Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/CompileSettingsDebug/CompileSettingsDebugConfig.cmake
+2026-06-17T01:40:10.4227628Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/libWPEFrameworkCryptalgo.so.1.0.0
+2026-06-17T01:40:10.4228455Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/libWPEFrameworkCryptalgo.so.1
+2026-06-17T01:40:10.4229444Z -- Set runtime path of "/home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/libWPEFrameworkCryptalgo.so.1.0.0" to ""
+2026-06-17T01:40:10.4230302Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/libWPEFrameworkCryptalgo.so
+2026-06-17T01:40:10.4231123Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/cryptalgo/AES.h
+2026-06-17T01:40:10.4231977Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/cryptalgo/AESImplementation.h
+2026-06-17T01:40:10.4232869Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/cryptalgo/cryptalgo.h
+2026-06-17T01:40:10.4233701Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/cryptalgo/Hash.h
+2026-06-17T01:40:10.4234534Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/cryptalgo/HashStream.h
+2026-06-17T01:40:10.4235361Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/cryptalgo/HMAC.h
+2026-06-17T01:40:10.4236178Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/cryptalgo/Random.h
+2026-06-17T01:40:10.4237078Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/cryptalgo/Module.h
+2026-06-17T01:40:10.4238105Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFrameworkCryptalgo/WPEFrameworkCryptalgoTargets.cmake
+2026-06-17T01:40:10.4239211Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFrameworkCryptalgo/WPEFrameworkCryptalgoTargets-minsizerel.cmake
+2026-06-17T01:40:10.4240438Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFrameworkCryptalgo/WPEFrameworkCryptalgoConfigVersion.cmake
+2026-06-17T01:40:10.4241542Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFrameworkCryptalgo/WPEFrameworkCryptalgoConfig.cmake
+2026-06-17T01:40:10.4242590Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/libWPEFrameworkWebSocket.so.1.0.0
+2026-06-17T01:40:10.4243620Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/libWPEFrameworkWebSocket.so.1
+2026-06-17T01:40:10.4244641Z -- Set runtime path of "/home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/libWPEFrameworkWebSocket.so.1.0.0" to ""
+2026-06-17T01:40:10.4245508Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/libWPEFrameworkWebSocket.so
+2026-06-17T01:40:10.4246446Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/websocket/URL.h
+2026-06-17T01:40:10.4247418Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/websocket/JSONWebToken.h
+2026-06-17T01:40:10.4248288Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/websocket/JSONRPCLink.h
+2026-06-17T01:40:10.4249142Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/websocket/WebLink.h
+2026-06-17T01:40:10.4249992Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/websocket/WebRequest.h
+2026-06-17T01:40:10.4250848Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/websocket/WebResponse.h
+2026-06-17T01:40:10.4251721Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/websocket/WebSerializer.h
+2026-06-17T01:40:10.4252600Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/websocket/websocket.h
+2026-06-17T01:40:10.4253684Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/websocket/WebSocketLink.h
+2026-06-17T01:40:10.4255191Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/websocket/WebTransfer.h
+2026-06-17T01:40:10.4256712Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/websocket/WebTransform.h
+2026-06-17T01:40:10.4258025Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/websocket/Module.h
+2026-06-17T01:40:10.4259227Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/pkgconfig/WPEFrameworkWebSocket.pc
+2026-06-17T01:40:10.4260202Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFrameworkWebSocket/WPEFrameworkWebSocketTargets.cmake
+2026-06-17T01:40:10.4261298Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFrameworkWebSocket/WPEFrameworkWebSocketTargets-minsizerel.cmake
+2026-06-17T01:40:10.4262426Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFrameworkWebSocket/WPEFrameworkWebSocketConfigVersion.cmake
+2026-06-17T01:40:10.4263641Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFrameworkWebSocket/WPEFrameworkWebSocketConfig.cmake
+2026-06-17T01:40:10.4264579Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/libWPEFrameworkMessaging.so.1.0.0
+2026-06-17T01:40:10.4265405Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/libWPEFrameworkMessaging.so.1
+2026-06-17T01:40:10.4266465Z -- Set runtime path of "/home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/libWPEFrameworkMessaging.so.1.0.0" to ""
+2026-06-17T01:40:10.4267396Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/libWPEFrameworkMessaging.so
+2026-06-17T01:40:10.4268220Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/messaging/Module.h
+2026-06-17T01:40:10.4269084Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/messaging/MessageClient.h
+2026-06-17T01:40:10.4269953Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/messaging/messaging.h
+2026-06-17T01:40:10.4270915Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/messaging/MessageDispatcher.h
+2026-06-17T01:40:10.4271813Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/messaging/MessageUnit.h
+2026-06-17T01:40:10.4272699Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/messaging/TraceCategories.h
+2026-06-17T01:40:10.4273590Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/messaging/TraceControl.h
+2026-06-17T01:40:10.4274459Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/messaging/Control.h
+2026-06-17T01:40:10.4275316Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/messaging/Logging.h
+2026-06-17T01:40:10.4276195Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/messaging/LoggingCategories.h
+2026-06-17T01:40:10.4277368Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/messaging/DirectOutput.h
+2026-06-17T01:40:10.4278230Z -- Up-to-date: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/messaging/Module.h
+2026-06-17T01:40:10.4279087Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/messaging/TraceFactory.h
+2026-06-17T01:40:10.4279963Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/messaging/TextMessage.h
+2026-06-17T01:40:10.4281210Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/messaging/BaseCategory.h
+2026-06-17T01:40:10.4282245Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFrameworkMessaging/WPEFrameworkMessagingTargets.cmake
+2026-06-17T01:40:10.4283353Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFrameworkMessaging/WPEFrameworkMessagingTargets-minsizerel.cmake
+2026-06-17T01:40:10.4284485Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFrameworkMessaging/WPEFrameworkMessagingConfigVersion.cmake
+2026-06-17T01:40:10.4285556Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFrameworkMessaging/WPEFrameworkMessagingConfig.cmake
+2026-06-17T01:40:10.4286842Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/tracing/Module.h
+2026-06-17T01:40:10.4287709Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/tracing/MessageClient.h
+2026-06-17T01:40:10.4288578Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/tracing/messaging.h
+2026-06-17T01:40:10.4289453Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/tracing/MessageDispatcher.h
+2026-06-17T01:40:10.4290340Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/tracing/MessageUnit.h
+2026-06-17T01:40:10.4291221Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/tracing/TraceCategories.h
+2026-06-17T01:40:10.4302117Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/tracing/TraceControl.h
+2026-06-17T01:40:10.4303730Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/tracing/Control.h
+2026-06-17T01:40:10.4305223Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/tracing/Logging.h
+2026-06-17T01:40:10.4306120Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/tracing/LoggingCategories.h
+2026-06-17T01:40:10.4307258Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/tracing/DirectOutput.h
+2026-06-17T01:40:10.4308115Z -- Up-to-date: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/tracing/Module.h
+2026-06-17T01:40:10.4308979Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/tracing/TraceFactory.h
+2026-06-17T01:40:10.4309852Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/tracing/TextMessage.h
+2026-06-17T01:40:10.4310712Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/tracing/BaseCategory.h
+2026-06-17T01:40:10.4311652Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFrameworkTracing/WPEFrameworkTracingTargets.cmake
+2026-06-17T01:40:10.4312693Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFrameworkTracing/WPEFrameworkTracingConfigVersion.cmake
+2026-06-17T01:40:10.4313729Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFrameworkTracing/WPEFrameworkTracingConfig.cmake
+2026-06-17T01:40:10.4314650Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/tracing/tracing.h
+2026-06-17T01:40:10.4315457Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/libWPEFrameworkCOM.so.1.0.0
+2026-06-17T01:40:10.4316342Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/libWPEFrameworkCOM.so.1
+2026-06-17T01:40:10.4317243Z -- Set runtime path of "/home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/libWPEFrameworkCOM.so.1.0.0" to ""
+2026-06-17T01:40:10.4318078Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/libWPEFrameworkCOM.so
+2026-06-17T01:40:10.4318877Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/com/Administrator.h
+2026-06-17T01:40:10.4319802Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/com/com.h
+2026-06-17T01:40:10.4320612Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/com/Communicator.h
+2026-06-17T01:40:10.4321454Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/com/ConnectorType.h
+2026-06-17T01:40:10.4322282Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/com/Ids.h
+2026-06-17T01:40:10.4323093Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/com/IteratorType.h
+2026-06-17T01:40:10.4323932Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/com/IIteratorType.h
+2026-06-17T01:40:10.4324782Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/com/IStringIterator.h
+2026-06-17T01:40:10.4325635Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/com/IValueIterator.h
+2026-06-17T01:40:10.4326668Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/com/ICOM.h
+2026-06-17T01:40:10.4327574Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/com/IUnknown.h
+2026-06-17T01:40:10.4328386Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/com/Messages.h
+2026-06-17T01:40:10.4329213Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/com/ProxyStubs.h
+2026-06-17T01:40:10.4330022Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/com/Module.h
+2026-06-17T01:40:10.4330901Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFrameworkCOM/WPEFrameworkCOMTargets.cmake
+2026-06-17T01:40:10.4331930Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFrameworkCOM/WPEFrameworkCOMTargets-minsizerel.cmake
+2026-06-17T01:40:10.4332960Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFrameworkCOM/WPEFrameworkCOMConfigVersion.cmake
+2026-06-17T01:40:10.4333933Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFrameworkCOM/WPEFrameworkCOMConfig.cmake
+2026-06-17T01:40:10.4334821Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/libWPEFrameworkPlugins.so.1.0.0
+2026-06-17T01:40:10.4335638Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/libWPEFrameworkPlugins.so.1
+2026-06-17T01:40:10.4336713Z -- Set runtime path of "/home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/libWPEFrameworkPlugins.so.1.0.0" to ""
+2026-06-17T01:40:10.4337582Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/libWPEFrameworkPlugins.so
+2026-06-17T01:40:10.4338404Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/plugins/Channel.h
+2026-06-17T01:40:10.4339243Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/plugins/Config.h
+2026-06-17T01:40:10.4340096Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/plugins/Configuration.h
+2026-06-17T01:40:10.4340955Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/plugins/IPlugin.h
+2026-06-17T01:40:10.4341790Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/plugins/IShell.h
+2026-06-17T01:40:10.4342699Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/plugins/IController.h
+2026-06-17T01:40:10.4343599Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/plugins/IControllerDeprecated.h
+2026-06-17T01:40:10.4344480Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/plugins/Shell.h
+2026-06-17T01:40:10.4345319Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/plugins/IStateControl.h
+2026-06-17T01:40:10.4346181Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/plugins/StateControl.h
+2026-06-17T01:40:10.4347182Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/plugins/ISubSystem.h
+2026-06-17T01:40:10.4348043Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/plugins/IDispatcher.h
+2026-06-17T01:40:10.4348898Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/plugins/SubSystem.h
+2026-06-17T01:40:10.4349797Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/plugins/JSONRPC.h
+2026-06-17T01:40:10.4350628Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/plugins/MetaData.h
+2026-06-17T01:40:10.4351458Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/plugins/plugins.h
+2026-06-17T01:40:10.4352283Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/plugins/Request.h
+2026-06-17T01:40:10.4353105Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/plugins/Service.h
+2026-06-17T01:40:10.4353928Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/plugins/System.h
+2026-06-17T01:40:10.4354746Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/plugins/Types.h
+2026-06-17T01:40:10.4355582Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/plugins/VirtualInput.h
+2026-06-17T01:40:10.4356602Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/plugins/IVirtualInput.h
+2026-06-17T01:40:10.4357450Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/include/WPEFramework/plugins/Module.h
+2026-06-17T01:40:10.4358367Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/wpeframework/proxystubs/libWPEFrameworkProxyStubs.so.1.0.0
+2026-06-17T01:40:10.4359378Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/wpeframework/proxystubs/libWPEFrameworkProxyStubs.so.1
+2026-06-17T01:40:10.4360438Z -- Set runtime path of "/home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/wpeframework/proxystubs/libWPEFrameworkProxyStubs.so.1.0.0" to ""
+2026-06-17T01:40:10.4361484Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/wpeframework/proxystubs/libWPEFrameworkProxyStubs.so
+2026-06-17T01:40:10.4362389Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/pkgconfig/WPEFrameworkPlugins.pc
+2026-06-17T01:40:10.4363324Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFrameworkPlugins/WPEFrameworkPluginsTargets.cmake
+2026-06-17T01:40:10.4364455Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFrameworkPlugins/WPEFrameworkPluginsTargets-minsizerel.cmake
+2026-06-17T01:40:10.4365539Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFrameworkPlugins/WPEFrameworkPluginsConfigVersion.cmake
+2026-06-17T01:40:10.4366717Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFrameworkPlugins/WPEFrameworkPluginsConfig.cmake
+2026-06-17T01:40:10.4367759Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFrameworkProxyStubs/WPEFrameworkProxyStubsTargets.cmake
+2026-06-17T01:40:10.4368861Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFrameworkProxyStubs/WPEFrameworkProxyStubsTargets-minsizerel.cmake
+2026-06-17T01:40:10.4369995Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFrameworkProxyStubs/WPEFrameworkProxyStubsConfigVersion.cmake
+2026-06-17T01:40:10.4371082Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/lib/cmake/WPEFrameworkProxyStubs/WPEFrameworkProxyStubsConfig.cmake
+2026-06-17T01:40:10.4372054Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/bin/WPEProcess-1.0.0
+2026-06-17T01:40:10.4372758Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/bin/WPEProcess
+2026-06-17T01:40:10.4373514Z -- Set runtime path of "/home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/bin/WPEProcess-1.0.0" to ""
+2026-06-17T01:40:10.4374280Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/bin/WPEFramework-1.0.0
+2026-06-17T01:40:10.4374992Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/bin/WPEFramework
+2026-06-17T01:40:10.4375745Z -- Set runtime path of "/home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/bin/WPEFramework-1.0.0" to ""
+2026-06-17T01:40:10.4376698Z -- Up-to-date: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/../
+2026-06-17T01:40:10.4377404Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/../etc/WPEFramework/config.json
+2026-06-17T01:40:10.4378178Z -- Installing: /home/runner/work/entservices-appmanagers/entservices-appmanagers/install/usr/../etc/init.d/wpeframework

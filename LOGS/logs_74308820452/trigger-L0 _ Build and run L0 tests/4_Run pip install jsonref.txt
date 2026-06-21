@@ -1,0 +1,19 @@
+﻿2026-06-16T08:35:05.6936309Z ##[group]Run pip install jsonref
+2026-06-16T08:35:05.6937798Z [36;1mpip install jsonref[0m
+2026-06-16T08:35:05.7089542Z shell: /usr/bin/bash -e {0}
+2026-06-16T08:35:05.7091099Z env:
+2026-06-16T08:35:05.7092646Z   BUILD_TYPE: Debug
+2026-06-16T08:35:05.7093991Z   THUNDER_REF: R4.4.1
+2026-06-16T08:35:05.7095396Z   INTERFACES_REF: topic/RDKEMW-16187
+2026-06-16T08:35:05.7097021Z   pythonLocation: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T08:35:05.7099124Z   PKG_CONFIG_PATH: /opt/hostedtoolcache/Python/3.14.5/x64/lib/pkgconfig
+2026-06-16T08:35:05.7101199Z   Python_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T08:35:05.7103191Z   Python2_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T08:35:05.7105104Z   Python3_ROOT_DIR: /opt/hostedtoolcache/Python/3.14.5/x64
+2026-06-16T08:35:05.7107021Z   LD_LIBRARY_PATH: /opt/hostedtoolcache/Python/3.14.5/x64/lib
+2026-06-16T08:35:05.7108649Z ##[endgroup]
+2026-06-16T08:35:09.2499522Z Collecting jsonref
+2026-06-16T08:35:09.2966525Z   Downloading jsonref-1.1.0-py3-none-any.whl.metadata (2.7 kB)
+2026-06-16T08:35:09.3062812Z Downloading jsonref-1.1.0-py3-none-any.whl (9.4 kB)
+2026-06-16T08:35:09.3450668Z Installing collected packages: jsonref
+2026-06-16T08:35:09.3596329Z Successfully installed jsonref-1.1.0
