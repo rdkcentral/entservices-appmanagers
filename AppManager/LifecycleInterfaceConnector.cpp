@@ -126,6 +126,12 @@ namespace WPEFramework
                 mLifecycleManagerStateRemoteObject ->Release();
                 mLifecycleManagerStateRemoteObject = nullptr;
             }
+
+	    if (nullptr != mCurrentservice)
+            {
+                mCurrentservice->Release();
+                mCurrentservice = nullptr;
+            }
         }
 
         Core::hresult LifecycleInterfaceConnector::isAppLoaded(const string& appId, bool& loaded)
