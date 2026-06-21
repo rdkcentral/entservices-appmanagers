@@ -60,7 +60,7 @@ jobs:
         run: >
           sudo apt update
           &&
-          sudo apt install -y libsqlite3-dev libcurl4-openssl-dev valgrind clang libsystemd-dev libboost-all-dev libwebsocketpp-dev meson libcunit1 libcunit1-dev curl protobuf-compiler-grpc libgrpc-dev libgrpc++-dev libjsoncpp-dev gdb ninja-build libxtables-dev libip4tc-dev libip6tc-dev libcapture-tiny-perl libdatetime-perl libtimedate-perl libyaml-cpp-dev
+          sudo apt install -y libsqlite3-dev libcurl4-openssl-dev valgrind clang libsystemd-dev libboost-all-dev libwebsocketpp-dev meson libcunit1 libcunit1-dev curl protobuf-compiler-grpc libgrpc-dev libgrpc++-dev libjsoncpp-dev gdb ninja-build libxtables-dev libip4tc-dev libip6tc-dev libcapture-tiny-perl libdatetime-perl libtimedate-perl
 
       - name: Install lcov 2.4
         env:
@@ -470,13 +470,13 @@ jobs:
           pkgmgr_test_rc=0
           appmanager_test_rc=0
 
+          run_one_under_gdb "$appmanager_test_bin" l0-appmanager-test.log l0-appmanager-test-gdb.log || appmanager_test_rc=$?
           run_one_under_gdb "$lcm_test_bin" l0-lcm-test.log l0-lcm-test-gdb.log || lcm_test_rc=$?
           run_one_under_gdb "$runtime_test_bin" l0-runtime-test.log l0-runtime-test-gdb.log || runtime_test_rc=$?
           run_one_under_gdb "$rdkwm_test_bin" l0-rdkwm-test.log l0-rdkwm-test-gdb.log || rdkwm_test_rc=$?
           run_one_under_gdb "$appstorage_test_bin" l0-appstorage-test.log l0-appstorage-test-gdb.log || appstorage_test_rc=$?
           run_one_under_gdb "$preinstall_bin" l0-preinstall-test.log l0-preinstall-test-gdb.log || preinstall_test_rc=$?
           run_one_under_gdb "$pkgmgr_test_bin" l0-packagemanager-test.log l0-packagemanager-test-gdb.log || pkgmgr_test_rc=$?
-          run_one_under_gdb "$appmanager_test_bin" l0-appmanager-test.log l0-appmanager-test-gdb.log || appmanager_test_rc=$?
 
           echo "lcm_test_rc=$lcm_test_rc"
           echo "runtime_test_rc=$runtime_test_rc"
