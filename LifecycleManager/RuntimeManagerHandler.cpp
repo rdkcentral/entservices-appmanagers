@@ -49,12 +49,12 @@ bool RuntimeManagerHandler::initialize(PluginHost::IShell* service, IEventHandle
         Core::hresult registerResult = mRuntimeManager->Register(&mRuntimeManagerNotification);
         if (Core::ERROR_NONE != registerResult)
         {
-            LOGINFO("Unable to register with runtimemanager [%d] \n", registerResult);
+            LOGINFO("Unable to register with RuntimeManager callsign=org.rdk.RuntimeManager result=%d", registerResult);
         }
     }
     else
     {
-        LOGERR("runtimemanager is null \n");
+        LOGERR("RuntimeManager is null - unable to initialize handler");
     }
     return ret;
 }

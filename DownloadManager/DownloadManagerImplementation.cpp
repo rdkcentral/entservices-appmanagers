@@ -225,6 +225,9 @@ namespace Plugin {
                     /* Added to regular queue download */
                     mRegularDownloadQueue.push(newDownload);
                 }
+                LOGINFO("DM: Queued download request: id=%s priority=%d priorityDepth=%zu regularDepth=%zu",
+                        newDownload->getId().c_str(), newDownload->getPriority(),
+                        mPriorityDownloadQueue.size(), mRegularDownloadQueue.size());
                 mDownloadThreadCV.notify_one();
                 LOGINFO("DM: Download Request: id=%s url=%s priority=%d retries=%u rateLimit=%u",
                         newDownload->getId().c_str(), newDownload->getUrl().c_str(),
@@ -575,9 +578,10 @@ namespace Plugin {
                 /* Priority queue download request */
                 mCurrentDownload = mPriorityDownloadQueue.front();
                 mPriorityDownloadQueue.pop();
-                LOGINFO("DM: PriorityQ Job: DownloadId=%s url=%s file=%s rateLimit=%u",
+                LOGINFO("DM: Dequeued priority download request: DownloadId=%s url=%s file=%s rateLimit=%u remainingPriority=%zu remainingRegular=%zu",
                         mCurrentDownload->getId().c_str(), mCurrentDownload->getUrl().c_str(),
-                        mCurrentDownload->getFileLocator().c_str(), mCurrentDownload->getRateLimit());
+                        mCurrentDownload->getFileLocator().c_str(), mCurrentDownload->getRateLimit(),
+                        mPriorityDownloadQueue.size(), mRegularDownloadQueue.size());
             }
             else
             {
@@ -586,9 +590,10 @@ namespace Plugin {
                 {
                     mCurrentDownload = mRegularDownloadQueue.front();
                     mRegularDownloadQueue.pop();
-                    LOGINFO("DM: RegularQ Job: DownloadId=%s url=%s file=%s rateLimit=%u",
+                    LOGINFO("DM: Dequeued regular download request: DownloadId=%s url=%s file=%s rateLimit=%u remainingPriority=%zu remainingRegular=%zu",
                             mCurrentDownload->getId().c_str(), mCurrentDownload->getUrl().c_str(),
-                            mCurrentDownload->getFileLocator().c_str(), mCurrentDownload->getRateLimit());
+                            mCurrentDownload->getFileLocator().c_str(), mCurrentDownload->getRateLimit(),
+                            mPriorityDownloadQueue.size(), mRegularDownloadQueue.size());
                 }
             }
         }

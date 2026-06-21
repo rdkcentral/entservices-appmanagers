@@ -135,7 +135,7 @@ namespace WPEFramework
         }
         else
         {
-            LOGERR("service is null \n");
+            LOGERR("Configure failed: service is null");
         }
 
         return result;
@@ -185,11 +185,11 @@ namespace WPEFramework
 
         if (nullptr == mCurrentservice)
         {
-            LOGERR("mCurrentservice is null \n");
+            LOGERR("createPackageManagerObject: mCurrentservice is null");
         }
         else if (nullptr == (packageInstaller = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IPackageInstaller>("org.rdk.AppPackageManager")))
         {
-            LOGERR("PackageManager installer object is null \n");
+            LOGERR("QueryInterfaceByCallsign failed for org.rdk.AppPackageManager");
         }
         else
         {
@@ -261,7 +261,7 @@ namespace WPEFramework
         DIR *dir = opendir(mAppPreinstallDirectory.c_str());
         if (!dir)
         {
-            LOGINFO("Failed to open directory: %s", mAppPreinstallDirectory.c_str());
+            LOGINFO("Failed to open directory: %s errno=%d", mAppPreinstallDirectory.c_str(), errno);
             return false;
         }
 
@@ -352,14 +352,14 @@ namespace WPEFramework
 
             if (installResult != Core::ERROR_NONE)
             {
-                LOGERR("Failed to install package: %s, version: %s, failReason: %s", pkg.packageId.c_str(), pkg.version.c_str(), getFailReason(failReason).c_str());
+                LOGERR("Failed to install package [%zu/%d]: %s version=%s failReason=%s", pkgIndex + 1, totalApps, pkg.packageId.c_str(), pkg.version.c_str(), getFailReason(failReason).c_str());
                 installError = true;
                 failedApps++;
                 pkg.installStatus = "FAILED: reason " + getFailReason(failReason);
                 continue;
             }
 
-            LOGINFO("Successfully installed package: %s, version: %s, fileLocator: %s", pkg.packageId.c_str(), pkg.version.c_str(), pkg.fileLocator.c_str());
+            LOGINFO("Successfully installed package [%zu/%d]: %s version=%s", pkgIndex + 1, totalApps, pkg.packageId.c_str(), pkg.version.c_str());
             pkg.installStatus = "SUCCESS";
         }
 
@@ -425,7 +425,7 @@ namespace WPEFramework
         LOGINFO("Create PackageManager object for preinstall listing");
         if (Core::ERROR_NONE != createPackageManagerObject(packageInstaller))
         {
-            LOGERR("Failed to create PackageManagerObject");
+            LOGERR("Failed to create PackageManager object for preinstall listing");
             return result;
         }
         ASSERT(nullptr != packageInstaller);
@@ -434,7 +434,7 @@ namespace WPEFramework
         std::list<PackageInfo> preinstallPackages; // all apps in preinstall directory
         if (!readPreinstallDirectory(packageInstaller, preinstallPackages))
         {
-            LOGERR("Failed to read preinstall directory");
+            LOGERR("Failed to read preinstall directory: path=%s errno=%d", mAppPreinstallDirectory.c_str(), errno);
             releasePackageManagerObject(packageInstaller);
             return result;
         }
@@ -461,7 +461,7 @@ namespace WPEFramework
             Core::hresult listResult = packageInstaller->ListPackages(packageList);
             if (listResult != Core::ERROR_NONE || packageList == nullptr)
             {
-                 LOGERR("ListPackages failed or package list is null");
+                 LOGERR("ListPackages failed or package list is null for preinstall check");
                 if (packageList != nullptr)
                 {
                     packageList->Release();

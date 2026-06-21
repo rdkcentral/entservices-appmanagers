@@ -260,7 +260,7 @@ namespace WPEFramework
                 break;
 
             default:
-                LOGWARN("Event[%u] not handled", event);
+                LOGWARN("Unhandled RuntimeManager event: id=%u", event);
                 break;
             }
         }
@@ -318,7 +318,7 @@ namespace WPEFramework
             }
             else
             {
-                LOGERR("service is null");
+                LOGERR("Configure failed: service is null");
             }
             return result;
         }
@@ -332,7 +332,7 @@ namespace WPEFramework
 
             if (nullptr == mCurrentservice)
             {
-                LOGERR("mCurrentservice is null");
+                LOGERR("createOCIContainerPluginObject: mCurrentservice is null");
                 goto err_ret;
             }
 
@@ -469,7 +469,7 @@ namespace WPEFramework
                     }
                     else
                     {
-                        LOGERR("Failed to get Storage Manager info");
+                        LOGERR("GetStorage failed for appId=%s status=%d", appId.c_str(), status);
                     }
                 }
             }

@@ -48,7 +48,7 @@ namespace Plugin {
     {
         if (id.empty() || name.empty())
         {
-            LOGERR("Error: ID or Name is empty.");
+            LOGERR("generateRecordId failed: id or markerName is empty");
             return "";
         }
 
@@ -81,11 +81,11 @@ namespace Plugin {
         /*  Parse the input JSON string into newMetrics */
         if (!reader->parse(metrics.c_str(), metrics.c_str() + metrics.size(), &newMetrics, &errs))
         {
-            LOGERR("JSON parse failed: %s", errs.c_str());
+            LOGERR("Record failed: JSON parse error=%s id=%s marker=%s", errs.c_str(), id.c_str(), markerName.c_str());
         }
         else if (!newMetrics.isObject())
         {
-            LOGERR("Input metrics must be a JSON object");
+            LOGERR("Record failed: metrics payload must be a JSON object id=%s marker=%s", id.c_str(), markerName.c_str());
         }
         else
         {
@@ -164,7 +164,7 @@ namespace Plugin {
         }
         else
         {
-            LOGERR("Filter list not found for marker: %s", markerName.c_str());
+            LOGERR("Publish failed: filter list not found for marker=%s", markerName.c_str());
             error = true;
         }
 
@@ -174,7 +174,7 @@ namespace Plugin {
             auto currentRecordIt = mMetricsRecord.find(recordId);
             if (currentRecordIt == mMetricsRecord.end())
             {
-                LOGERR("Current record not found: %s", recordId.c_str());
+                LOGERR("Publish failed: current record not found recordId=%s", recordId.c_str());
                 error = true;
             }
             else
@@ -193,7 +193,7 @@ namespace Plugin {
                     }
                     else 
                     {
-                        LOGWARN("Key '%s' not allowed by filter for marker '%s'", key.c_str(), markerName.c_str());
+                        LOGWARN("Filtered out metric key=%s marker=%s", key.c_str(), markerName.c_str());
                     }
                 }
             }
@@ -228,7 +228,7 @@ namespace Plugin {
                             }
                         }
                         matchedOtherRecordId = otherRecordId;
-                        LOGINFO("Merged record: '%s' into '%s'", otherRecordId.c_str(), recordId.c_str());
+                        LOGINFO("Merged telemetry record source=%s target=%s", otherRecordId.c_str(), recordId.c_str());
                         break;
                     }
                 }
@@ -242,7 +242,7 @@ namespace Plugin {
             writerBuilder["indentation"] = " ";
             std::string publishMetrics = Json::writeString(writerBuilder, filteredMetrics);
 
-            LOGINFO("Publishing metrics for RecordId:'%s' publishMetrics:'%s'", recordId.c_str(), publishMetrics.c_str());
+            LOGINFO("Publishing metrics recordId=%s payloadSize=%zu", recordId.c_str(), publishMetrics.size());
             t2_event_s((char*)markerName.c_str(), (char*)publishMetrics.c_str());
 
             /* Remove Published Record */
@@ -251,7 +251,7 @@ namespace Plugin {
             {
                 mMetricsRecord.erase(matchedOtherRecordId);
             }
-            LOGINFO("Cleared published record: %s", recordId.c_str());
+            LOGINFO("Cleared published telemetry recordId=%s", recordId.c_str());
 
             status = Core::ERROR_NONE;
         }

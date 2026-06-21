@@ -241,6 +241,8 @@ namespace Plugin {
         } else {
             mDownloadQueue.push_back(di);
         }
+        LOGINFO("PM: Queued download request: id=%s url=%s priority=%d queueDepth=%zu",
+                di->GetId().c_str(), url.c_str(), options.priority, mDownloadQueue.size());
         cv.notify_one();
 
         downloadId.downloadId = di->GetId();
@@ -1273,10 +1275,11 @@ namespace Plugin {
     PackageManagerImplementation::DownloadInfoPtr PackageManagerImplementation::getNext()
     {
         std::lock_guard<std::mutex> lock(mMutex);
-        LOGTRACE("mDownloadQueue.size = %ld\n", mDownloadQueue.size());
         if (!mDownloadQueue.empty() && mInprogressDownload == nullptr) {
             mInprogressDownload = mDownloadQueue.front();
             mDownloadQueue.pop_front();
+            LOGINFO("PM: Dequeued download request: id=%s queueDepth=%zu",
+                    mInprogressDownload->GetId().c_str(), mDownloadQueue.size());
         }
         return mInprogressDownload;
     }

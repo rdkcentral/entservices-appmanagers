@@ -135,11 +135,14 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                     case APP_ACTION_LAUNCH:
                     case APP_ACTION_PRELOAD:
                     {
-                        if (nullptr != request->mRequestParam)
+                        if (nullptr == request->mRequestParam)
                         {
-                            if (auto appRequestParam = std::static_pointer_cast<AppLaunchRequestParam>(request->mRequestParam))
-                            {
+                            LOGERR("Invalid request payload: action=%d requestParam=null", static_cast<int>(action));
+                        }
+                        else if (auto appRequestParam = std::static_pointer_cast<AppLaunchRequestParam>(request->mRequestParam))
+                        {
                                 string appId = appRequestParam->appId;
+                                LOGINFO("Dequeued request: action=%d appId=%s queueDepth=%zu", static_cast<int>(action), appId.c_str(), mAppRequestList.size());
                                 // Capture timestamp before packageLock to include packageManager lock time
                                 AppManagerTelemetryReporting& appManagerTelemetryReporting = AppManagerTelemetryReporting::getInstance();
                                 time_t actualStartTime = appManagerTelemetryReporting.getCurrentTimestampMs();
@@ -187,7 +190,7 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                                     bool installed = false;
 
                                     IsInstalled(appId, installed);
-                                    LOGERR("Failed to PackageManager Lock %s installed %d", appId.c_str(), installed);
+                                    LOGERR("packageLock failed for appId=%s installed=%d lockReason=%d status=%d", appId.c_str(), installed, static_cast<int>(lockReason), status);
                                     handleOnAppLifecycleStateChanged(appId, "",
                                         Exchange::IAppManager::APP_STATE_UNKNOWN,
                                         Exchange::IAppManager::APP_STATE_UNLOADED,
@@ -200,7 +203,7 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
 
                     default:
                     {
-                        LOGERR("action type is invalid");
+                        LOGERR("Invalid request action in worker thread: action=%d", static_cast<int>(action));
                     }
                     break; /* defult*/
                 }
@@ -360,12 +363,12 @@ void AppManagerImplementation::Dispatch(EventNames event, const JsonObject param
                 intent = params.HasLabel("intent") ? params["intent"].String() : "";
                 if (intent.empty())
                 {
-                    LOGERR("intent is empty for Launch app");
+                    LOGERR("intent is empty for launch request (appId=%s)", appId.c_str());
                 }
                 source = params.HasLabel("source") ? params["source"].String() : "";
                 if (source.empty())
                 {
-                    LOGERR("source is empty for Launch app");
+                    LOGERR("source is empty for launch request (appId=%s)", appId.c_str());
                 }
                 mAdminLock.Lock();
                 for (auto& notification : mAppManagerNotification)
@@ -452,7 +455,7 @@ void AppManagerImplementation::handleOnAppUnloaded(const string& appId, const st
         eventDetails["appId"] = appId;
         eventDetails["appInstanceId"] = appInstanceId;
 
-        LOGINFO("Notify App Lifecycle state change for appId %s: appInstanceId %s",
+        LOGINFO("Notify App Unloaded for appId %s: appInstanceId %s",
         appId.c_str(), appInstanceId.c_str());
 
         dispatchEvent(APP_EVENT_UNLOADED, eventDetails);
@@ -876,7 +879,7 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
     Core::hresult status = Core::ERROR_GENERAL;
     AppManagerTelemetryReporting& appManagerTelemetryReporting =AppManagerTelemetryReporting::getInstance();
     time_t launchStartTime = appManagerTelemetryReporting.getCurrentTimestampMs();
-    LOGINFO(" LaunchApp enter with appId %s", appId.c_str());
+    LOGINFO("LaunchApp: appId=%s intentSize=%zu launchArgsSize=%zu", appId.c_str(), intent.size(), launchArgs.size());
     bool installed = false;
     Core::hresult result = IsInstalled(appId, installed);
     //IsInstalled(appId, installed);
@@ -891,7 +894,7 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
         status = Core::ERROR_GENERAL;
     }
     else if (result != Core::ERROR_NONE ) {
-        LOGERR("fetchAppPackagelist is returing error for app %s.", appId.c_str());
+        LOGERR("fetchAppPackageList returned error for appId %s", appId.c_str());
         status = Core::ERROR_GENERAL;
     }
     else if (nullptr == mLifecycleInterfaceConnector) {
@@ -903,13 +906,13 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
 
         if (request != nullptr)
         {
-            LOGINFO("LaunchApp enter with appId %s", appId.c_str());
             request->mRequestAction = APP_ACTION_LAUNCH;
             request->mRequestParam = std::make_shared<AppLaunchRequestParam>(AppLaunchRequestParam{appId, launchArgs, intent});
             if (request->mRequestParam != nullptr)
             {
                 mAppManagerLock.lock();
                 mAppRequestList.push_back(std::move(request));
+                LOGINFO("Queued launch request: appId=%s action=%d queueDepth=%zu", appId.c_str(), APP_ACTION_LAUNCH, mAppRequestList.size());
                 mAppManagerLock.unlock();
                 mAppRequestListCV.notify_one();
                 status = Core::ERROR_NONE;
@@ -962,6 +965,10 @@ Core::hresult AppManagerImplementation::CloseApp(const string& appId)
         {
             status = mLifecycleInterfaceConnector->closeApp(appId);
         }
+        else
+        {
+            LOGERR("CloseApp failed: appId=%s lifecycleConnector=null", appId.c_str());
+        }
         if(status == Core::ERROR_NONE)
         {
             updateCurrentActionTime(appId, requestTime, AppManagerImplementation::APP_ACTION_CLOSE);
@@ -1002,6 +1009,10 @@ Core::hresult AppManagerImplementation::TerminateApp(const string& appId )
         if (nullptr != mLifecycleInterfaceConnector)
         {
             status = mLifecycleInterfaceConnector->terminateApp(appId);
+        }
+        else
+        {
+            LOGERR("TerminateApp failed: appId=%s lifecycleConnector=null", appId.c_str());
         }
         if(status == Core::ERROR_NONE)
         {
@@ -1065,6 +1076,10 @@ Core::hresult AppManagerImplementation::SendIntent(const string& appId , const s
     if (nullptr != mLifecycleInterfaceConnector)
     {
         status = mLifecycleInterfaceConnector->sendIntent(appId, intent);
+    }
+    else
+    {
+        LOGERR("SendIntent failed: appId=%s lifecycleConnector=null", appId.c_str());
     }
     mAdminLock.Unlock();
 
@@ -1340,7 +1355,7 @@ Core::hresult AppManagerImplementation::GetInstalledApps(std::string& apps)
             }
         }
         installedAppsArray.ToString(apps);
-        LOGINFO("getInstalledApps: %s", apps.c_str());
+        LOGINFO("getInstalledApps: total installed apps=%zu", installedAppsArray.Length());
     }
 
     mAdminLock.Unlock();
@@ -1522,7 +1537,7 @@ Core::hresult AppManagerImplementation::GetMaxInactiveRamUsage(int32_t& maxInact
 
 void AppManagerImplementation::OnAppInstallationStatus(const string& jsonresponse)
 {
-    LOGINFO("Received JSON response: %s", jsonresponse.c_str());
+    LOGINFO("Received installation status payload: bytes=%zu", jsonresponse.size());
 
     if (!jsonresponse.empty())
     {
@@ -1621,7 +1636,7 @@ void AppManagerImplementation::updateCurrentActionTime(const std::string& appId,
     }
     else
     {
-        LOGERR("Failed to updating currentActionTime for appId %s - app not found", appId.c_str());
+        LOGERR("Failed to update currentActionTime for appId %s (entry missing or action mismatch)", appId.c_str());
     }
 }
 

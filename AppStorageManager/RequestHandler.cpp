@@ -48,7 +48,7 @@ namespace WPEFramework
             }
             else
             {
-                LOGERR("mService is null \n");
+                LOGERR("setCurrentService: mService is null, ignoring call");
             }
         }
 
@@ -209,7 +209,7 @@ namespace WPEFramework
 
                     if(!createAppStorageInfoByAppID(appId,storageInfo))
                     {
-                        LOGERR("Failed to create storage at mStorageAppInfo\n");
+                        LOGERR("Failed to insert storage info into cache for appId=%s", appId.c_str());
                         status = Core::ERROR_GENERAL;
                     }
                 }
@@ -226,7 +226,7 @@ namespace WPEFramework
             LOGINFO("mService: %p", mService);
             if (nullptr == mService)
             {
-                LOGERR("mService is null \n");
+                LOGERR("createPersistentStoreRemoteStoreObject: mService is null");
             }
             else if (nullptr == (mPersistentStoreRemoteStoreObject = mService->QueryInterfaceByCallsign<WPEFramework::Exchange::IStore2>("org.rdk.PersistentStore")))
             {
@@ -317,14 +317,14 @@ namespace WPEFramework
             /* Check if appId is empty */
             if (appId.empty())
             {
-                LOGERR("App ID is empty");
+                LOGERR("appQuotaSizeProperty: appId is empty");
             }
             else
             {
                 /* Ensure the persistent store object is created if necessary */
                 if (mPersistentStoreRemoteStoreObject == nullptr && Core::ERROR_NONE != createPersistentStoreRemoteStoreObject()) 
                 {
-                    LOGERR("Failed to create PersistentStoreRemoteStoreObject");
+                    LOGERR("Failed to initialize PersistentStore interface (mService may be null or unavailable)");
                     status = Core::ERROR_GENERAL;  // Set status to indicate failure
                 }
                 else
@@ -341,7 +341,7 @@ namespace WPEFramework
                                 status = mPersistentStoreRemoteStoreObject->SetValue(Exchange::IStore2::ScopeType::DEVICE, appId, key, std::to_string(*quotaValue), 0);
                                 if (Core::ERROR_NONE != status)
                                 {
-                                    LOGERR("SetValue Failed: appId[%s] Key[%s] status[%d]", appId.c_str(), key.c_str(), status);
+                                    LOGERR("SetValue failed for appId=%s key=%s status=%d", appId.c_str(), key.c_str(), status);
                                 }
                                 else
                                 {
@@ -448,7 +448,7 @@ namespace WPEFramework
 
             if (storageInfo.path.empty())
             {
-                LOGWARN("AppId[%s] storage path is empty!", appId.c_str());
+                LOGWARN("Storage path empty for appId=%s (entry exists but path not set)", appId.c_str());
             }
             else
             {
@@ -461,7 +461,7 @@ namespace WPEFramework
                     it->second.uid      = storageInfo.uid;
                     it->second.gid      = storageInfo.gid;
                     it->second.quotaKB  = storageInfo.quotaKB;
-                    LOGINFO("Existing storage entry updated for appId: %s " \
+                    LOGINFO("Storage entry upserted for appId: %s " \
                                 "userId: %d groupId: %d quotaKB: %u usedKB: %u path: %s",
                                 appId.c_str(), it->second.uid, it->second.gid, it->second.quotaKB, it->second.usedKB, it->second.path.c_str());
                 }
@@ -598,8 +598,8 @@ namespace WPEFramework
                         /* Ensure applications do not exceed allocated space */
                         if (entry.second.usedKB > entry.second.quotaKB)
                         {
-                            LOGERR("Application storage usage exceeded allocation: %s (Allocated: %u KB, Used: %u KB)",
-                            entry.second.path.c_str(), entry.second.quotaKB, entry.second.usedKB);
+                            LOGERR("Storage exceeded for appId=%s: quota=%u KB used=%u KB",
+                            entry.first.c_str(), entry.second.quotaKB, entry.second.usedKB);
                         }
                         else
                         {
@@ -626,8 +626,8 @@ namespace WPEFramework
                 }
                 else
                 {
-                    LOGERR("Failed to get filesystem stats for path: %s, Error: %s",
-                    baseDir.c_str(), strerror(errno));
+                    LOGERR("Failed to get filesystem stats: path=%s errno=%d reason=%s",
+                    baseDir.c_str(), errno, strerror(errno));
                     std::lock_guard<std::mutex> storageSizelock(mStorageSizeLock);
                     gStorageSize.blockSize = DEFAULT_STORAGE_DEV_BLOCK_SIZE; /* Fallback to default block size */
                 }
@@ -671,7 +671,7 @@ namespace WPEFramework
                         ralf::getGroupId(ralf::RALF_USER_NAME, ralfGroupId);
                         if (chown(mBaseStoragePath.c_str(), -1, ralfGroupId) != 0)
                         {
-                            LOGERR("Failed to set group ownership for base storage directory %s", mBaseStoragePath.c_str());
+                            LOGERR("Failed to set group ownership: path=%s requested_gid=%u errno=%d", mBaseStoragePath.c_str(), ralfGroupId, errno);
                             errorReason = "Failed to set group ownership for base storage directory: " + mBaseStoragePath;
                             goto ret_fail;
                         }
@@ -704,7 +704,7 @@ namespace WPEFramework
 
                 if (!hasEnoughStorageFreeSpace(mBaseStoragePath, size))
                 {
-                    LOGERR("Insufficient storage space for app [%s]. Requested: %u KB", appId.c_str(), size);
+                    LOGERR("Insufficient storage for appId=%s: requested=%u KB", appId.c_str(), size);
                     errorReason = "Insufficient storage space";
                     goto ret_fail;
                 }
@@ -790,14 +790,14 @@ namespace WPEFramework
                 used     = storageInfo.usedKB;
                 if (storageInfo.usedKB > storageInfo.quotaKB)
                 {
-                    LOGWARN("Application storage usage exceeded allocation: %s (Allocated: %u KB, Used: %u KB)",storageInfo.path.c_str(), storageInfo.quotaKB, storageInfo.usedKB);
+                    LOGWARN("Storage exceeded for appId=%s: quota=%u KB used=%u KB", appId.c_str(), storageInfo.quotaKB, storageInfo.usedKB);
                 }
                 LOGINFO("GetStorage Information path = %s, userId = %d, groupId = %d, size = %u, used = %u ",path.c_str(), userId, groupId, size, used);
 
                 status = Core::ERROR_NONE;
                 if(storageInfo.uid != userId || storageInfo.gid != groupId)
                 {
-                    LOGINFO("Stored uid = %d gid = %d are different from param",storageInfo.uid, storageInfo.gid);
+                    LOGINFO("Ownership mismatch for appId=%s: stored=%d:%d param=%d:%d, updating", appId.c_str(), storageInfo.uid, storageInfo.gid, userId, groupId);
                     if (chown(path.c_str(), userId, groupId) != 0)
                     {
                         LOGERR("Failed to set ownership: %s", strerror(errno));
@@ -994,7 +994,7 @@ namespace WPEFramework
             }
             else
             {
-                LOGERR("invalid exemptionappids format. input is not in array format");
+                LOGERR("ClearAll exemptionAppIds parse failed: expected JSON array");
             }
             DIR* dir = opendir(mBaseStoragePath.c_str());
             if (!dir)
