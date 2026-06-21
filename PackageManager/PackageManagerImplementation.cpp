@@ -577,8 +577,8 @@ namespace Plugin {
             package.state = state.installState;
             package.sizeKb = state.runtimeConfig.dataImageSize;
             package.isRuntime = false;
-            for (const auto& [runtimeType, runtimeKey] : runtimeMap) {
-                if (runtimeKey == key) {
+            for (const auto& entry : runtimeMap) {
+                 if (entry.second == key) {
                     package.isRuntime = true;
                     break;
                 }
@@ -1079,8 +1079,6 @@ namespace Plugin {
         for (auto it = aConfigMetadata.begin(); it != aConfigMetadata.end(); ++it ) {
             packagemanager::ConfigMetadataKey key = it->first;
             packagemanager::ConfigMetaData config = it->second;
-	    LOGINFO("populateRuntime pkg: %s mimeType: '%s' runtimeType: '%s' appType: %d",
-                key.first.c_str(), config.mimeType.c_str(), config.runtimeType.c_str(), (int)config.appType);
             if (config.mimeType.find("runtime") == 0) {
                     std::string type;
                     auto pos = config.mimeType.find("/");

@@ -347,6 +347,7 @@ protected:
         package_1.digest = APPMANAGER_APP_DIGEST;
         package_1.state = APPMANAGER_APP_STATE;
         package_1.sizeKb = APPMANAGER_APP_SIZE;
+        package_1.isRuntime = false;
 
         packageList.emplace_back(package_1);
         return Core::Service<RPC::IteratorType<Exchange::IPackageInstaller::IPackageIterator>>::Create<Exchange::IPackageInstaller::IPackageIterator>(packageList);
