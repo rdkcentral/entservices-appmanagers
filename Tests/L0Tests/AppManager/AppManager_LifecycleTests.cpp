@@ -97,6 +97,11 @@ uint32_t Test_AM_SingletonPointerSetAndCleared()
 
     auto* impl = WPEFramework::Core::Service<WPEFramework::Plugin::AppManagerImplementation>::Create<WPEFramework::Plugin::AppManagerImplementation>();
     L0Test::ExpectTrue(tr, impl == WPEFramework::Plugin::AppManagerImplementation::getInstance(), "Singleton accessor returns the newly created implementation");
+    
+    // CRITICAL: Configure with full dependencies before Release to avoid ASSERT crash in destructor
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    impl->Configure(&service);
+    
     impl->Release();
     L0Test::ExpectTrue(tr, nullptr == WPEFramework::Plugin::AppManagerImplementation::getInstance(), "Singleton accessor returns nullptr after release");
 
