@@ -103,8 +103,6 @@ bool WindowManagerConnector::createDisplay(const string& appInstanceId , const s
         LOGERR("Failed to create display for application [%s] error [%d] \n",appInstanceId.c_str(), result);
         return false;
     }
-    result = mWindowManager->SetAlias(appInstanceId, alias);
-
     return true;
 }
 

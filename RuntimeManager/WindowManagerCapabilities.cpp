@@ -39,12 +39,12 @@ std::string buildWindowManagerCapabilities(const std::string& runtimeCapabilitie
         if (capName == "home-app")              // IPackage::Capability::HomeApp / CompositorApp
         {
             if (!result.empty()) result += ',';
-            result += "homeapp";
+            result += "homeapp"; //MADANA RENAME -> something privileged
         }
         else if (capName == "issue-notifications")  // IPackage::Capability::DisplayOverlays
         {
             if (!result.empty()) result += ',';
-            result += "overlayenabled";
+            result += "overlayenabled"; //allowpopups
         }
         else if (capName == "suspend-mode")     // IPackage::Capability::Suspendable
         {
