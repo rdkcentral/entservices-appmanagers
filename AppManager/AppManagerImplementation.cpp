@@ -1215,6 +1215,10 @@ Core::hresult AppManagerImplementation::SetAppProperty(const string& appId, cons
     {
         LOGERR("key is empty");
     }
+    else if (value.empty())
+    {
+       LOGERR("value is empty");
+    }
     else
     {
         mAdminLock.Lock();
