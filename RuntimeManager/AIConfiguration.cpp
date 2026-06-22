@@ -25,12 +25,10 @@
 #include <sstream>
 #include <string>
 #include <set>
-#ifdef ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG
 #include <climits>
 #include <cinttypes>
 #include <sys/stat.h>
 #include <yaml-cpp/yaml.h>
-#endif
 
 #define AICONFIGURATION_INI_PATH "/opt/demo/config.ini"
 
@@ -73,9 +71,7 @@ namespace Plugin
     void AIConfiguration::initialize(const std::string& runtimeConfigFile)
     {
         readFromConfigFile();
-#ifdef ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG
         readFromYamlConfigFile(runtimeConfigFile);
-#endif
     }
 
     size_t AIConfiguration::getContainerConsoleLogCap()
@@ -350,7 +346,6 @@ namespace Plugin
 
     void AIConfiguration::readFromYamlConfigFile(const std::string& runtimeConfigFile)
     {
-#ifdef ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG
         if (runtimeConfigFile.empty()) {
             LOGINFO("runtimeConfigFile is empty; skipping YAML runtime config load");
             return;
@@ -482,7 +477,6 @@ namespace Plugin
         } catch (const std::exception& ex) {
             LOGWARN("Error parsing YAML: %s", ex.what());
         }
-#endif
     }
 
     void AIConfiguration::readFromConfigFile()
