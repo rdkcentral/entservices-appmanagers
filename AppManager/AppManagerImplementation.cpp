@@ -1298,8 +1298,8 @@ Core::hresult AppManagerImplementation::GetInstalledApps(std::string& apps)
         for (const auto& pkg : packageList)
         {
             /* Proceed only if the package is in the INSTALLED state */
-            if(pkg.state == Exchange::IPackageInstaller::InstallState::INSTALLED
-                && !pkg.isRuntime)
+            if ((Exchange::IPackageInstaller::InstallState::INSTALLED == pkg.state)
+                && (false == pkg.isRuntime))
             {
                 JsonObject package;
                 package["appId"] = pkg.packageId;

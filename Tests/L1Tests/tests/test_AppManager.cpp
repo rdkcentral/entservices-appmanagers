@@ -349,7 +349,7 @@ protected:
         package_1.sizeKb = APPMANAGER_APP_SIZE;
         package_1.isRuntime = false;
 
-	Exchange::IPackageInstaller::Package package_2;
+        Exchange::IPackageInstaller::Package package_2;
         package_2.packageId = "com.test.runtimeEngine";
         package_2.version = APPMANAGER_APP_VERSION;
         package_2.digest = APPMANAGER_APP_DIGEST;
