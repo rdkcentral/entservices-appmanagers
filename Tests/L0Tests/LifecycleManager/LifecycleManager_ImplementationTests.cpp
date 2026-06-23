@@ -1176,6 +1176,9 @@ uint32_t Test_Impl_CloseAppKillAndRunDefersRespawnUntilUnloaded()
     L0Test::TestResult tr;
 
     RespawnTrackingLifecycleManagerImpl impl;
+    L0Test::FakeLcmStateNotification* stateNotification = new L0Test::FakeLcmStateNotification();
+
+    impl.Register(static_cast<WPEFramework::Exchange::ILifecycleManagerState::INotification*>(stateNotification));
 
     auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.respawn");
     std::string inst = "inst-respawn-001";
@@ -1228,6 +1231,11 @@ uint32_t Test_Impl_CloseAppKillAndRunDefersRespawnUntilUnloaded()
         LifecycleManagerImplementationTest::EventNames::LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED,
         params);
 
+    L0Test::ExpectEqStr(tr,
+        stateNotification->lastNavigationIntent,
+        "",
+        "UNLOADED state notification keeps navigationIntent unchanged for close flow");
+
     L0Test::ExpectTrue(tr,
         LifecycleManagerImplementationTest::getLoadedApps(impl).empty(),
         "old app context is removed after the UNLOADED event");
@@ -1243,6 +1251,9 @@ uint32_t Test_Impl_CloseAppKillAndRunDefersRespawnUntilUnloaded()
         static_cast<uint32_t>(LifecycleManagerImplementationTest::getPendingRespawnCount(impl)),
         0u,
         "pending respawn is cleared after unload confirmation");
+
+    impl.Unregister(static_cast<WPEFramework::Exchange::ILifecycleManagerState::INotification*>(stateNotification));
+    stateNotification->Release();
 
     return tr.failures;
 }

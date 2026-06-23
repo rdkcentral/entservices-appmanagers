@@ -795,27 +795,55 @@ End:
                 {
                     if(Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED == newAppState)
 		    {
-                        const bool appManagerInitiatedKill = (Exchange::IAppManager::AppLifecycleState::APP_STATE_TERMINATING == mAppCurrentActionList[appId]);
-                        const bool lifecycleManagerInitiatedKill = (Exchange::IAppManager::AppLifecycleState::APP_STATE_TERMINATING == oldAppState);
-                        if (appManagerInitiatedKill || lifecycleManagerInitiatedKill)
+                        bool crashAbortPending = false;
+                        auto pendingCrashAbortIter = mPendingCrashAbortByAppId.find(appId);
+                        if ((mPendingCrashAbortByAppId.end() != pendingCrashAbortIter) && (true == pendingCrashAbortIter->second))
+                        {
+                            crashAbortPending = true;
+                            mPendingCrashAbortByAppId.erase(pendingCrashAbortIter);
+                        }
+
+                        bool appManagerInitiatedKill = false;
+                        auto appActionIter = mAppCurrentActionList.find(appId);
+                        if ((mAppCurrentActionList.end() != appActionIter) &&
+                            (Exchange::IAppManager::AppLifecycleState::APP_STATE_TERMINATING == appActionIter->second))
+                        {
+                            appManagerInitiatedKill = true;
+                        }
+
+                        const bool lifecycleManagerInitiatedKill =
+                            (Exchange::IAppManager::AppLifecycleState::APP_STATE_TERMINATING == oldAppState);
+
+
+                        if (crashAbortPending)
 			{
-			    //Normal close: Unload event from App manager or LifecycleManager-initiated kill (e.g. KILL_AND_RUN)
+			    LOGINFO("Terminate event due to app crash");
+			    appManagerImplInstance->handleOnAppLifecycleStateChanged(appId, appInstanceId, newAppState, oldAppState, Exchange::IAppManager::AppErrorReason::APP_ERROR_ABORT);
+                            const std::string storedInstanceId = AppInfoManager::getInstance().getAppInstanceId(appId);
+                            if (false == storedInstanceId.empty())
+                            {
+                                std::string crashReason = "Terminate event due to app crash";
+                                AppManagerTelemetryReporting::getInstance().reportAppCrashedTelemetry(appId, storedInstanceId, crashReason);
+                            }
+			}
+                        else if (appManagerInitiatedKill || lifecycleManagerInitiatedKill)
+			{
+			    // Normal close: AppManager requested termination or LifecycleManager terminated via close flow.
 			    LOGINFO("Terminate event from plugin");
 			    appManagerImplInstance->handleOnAppLifecycleStateChanged(appId, appInstanceId, newAppState, oldAppState, Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE);
 			}
 			else
 			{
-			    //Abnormal close: No unload event from app manager
+			    // Abnormal close: unload did not originate from close/terminate flow.
 			    LOGINFO("Terminate event due to app crash");
 			    appManagerImplInstance->handleOnAppLifecycleStateChanged(appId, appInstanceId, newAppState, oldAppState, Exchange::IAppManager::AppErrorReason::APP_ERROR_ABORT);
-                // Report crash telemetry when lifecycle event provides a valid app instance id.
                 const std::string storedInstanceId = AppInfoManager::getInstance().getAppInstanceId(appId);
                 if (false == storedInstanceId.empty())
                 {
                     std::string crashReason = "Terminate event due to app crash";
                     AppManagerTelemetryReporting::getInstance().reportAppCrashedTelemetry(appId, storedInstanceId, crashReason);
                 }
-			}
+            }
 			mAppCurrentActionList.erase(appId);
 		    }
 		    else
@@ -866,9 +894,20 @@ End:
                 if (!errorReason.empty())
                 {
                     errorCode = mapErrorReason(errorReason);
-                    appManagerImplInstance->handleOnAppLifecycleStateChanged(appId, appInstanceId, Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED,
-                        currentAppState, errorCode);
-                    LOGINFO("Notified error event for appId %s: currentAppState=%d errorCode %d", appId.c_str(), static_cast<int>(currentAppState), static_cast<int>(errorCode));
+
+                    if (Exchange::IAppManager::AppErrorReason::APP_ERROR_ABORT == errorCode)
+                    {
+                        mAdminLock.Lock();
+                        mPendingCrashAbortByAppId[appId] = true;
+                        mAdminLock.Unlock();
+                        LOGINFO("Marked pending crash-abort for appId %s", appId.c_str());
+                    }
+                    else
+                    {
+                        appManagerImplInstance->handleOnAppLifecycleStateChanged(appId, appInstanceId, Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED,
+                            currentAppState, errorCode);
+                        LOGINFO("Notified error event for appId %s: currentAppState=%d errorCode %d", appId.c_str(), static_cast<int>(currentAppState), static_cast<int>(errorCode));
+                    }
                 }
             }
         }
@@ -889,6 +928,10 @@ End:
                 else if(!errorReason.compare("ERROR_INVALID_PARAM"))
                 {
                     errorCode = Exchange::IAppManager::AppErrorReason::APP_ERROR_INVALID_PARAM;
+                }
+                else if(!errorReason.compare("ERROR_ABORT"))
+                {
+                    errorCode = Exchange::IAppManager::AppErrorReason::APP_ERROR_ABORT;
                 }
                 else
                 {
