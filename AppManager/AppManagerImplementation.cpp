@@ -631,10 +631,7 @@ void AppManagerImplementation::releasePackageManagerObject()
 
 Core::hresult AppManagerImplementation::createStorageManagerRemoteObject()
 {
-     #define MAX_STORAGE_MANAGER_OBJECT_CREATION_RETRIES 2
-
     Core::hresult status = Core::ERROR_GENERAL;
-    uint8_t retryCount = 0;
 
     if (nullptr == mCurrentservice)
     {
@@ -642,27 +639,15 @@ Core::hresult AppManagerImplementation::createStorageManagerRemoteObject()
     }
     else
     {
-        do
-        {
-            mStorageManagerRemoteObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IAppStorageManager>("org.rdk.AppStorageManager");
+        mStorageManagerRemoteObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IAppStorageManager>("org.rdk.AppStorageManager");
 
-            if (nullptr == mStorageManagerRemoteObject)
-            {
-                LOGERR("storageManagerRemoteObject is null (Attempt %d)", retryCount + 1);
-                retryCount++;
-                std::this_thread::sleep_for(std::chrono::milliseconds(200));
-            }
-            else
-            {
-                LOGINFO("Successfully created Storage Manager Object");
-                status = Core::ERROR_NONE;
-                break;
-            }
-        } while (retryCount < MAX_STORAGE_MANAGER_OBJECT_CREATION_RETRIES);
-
-        if (status != Core::ERROR_NONE)
+        if (nullptr != mStorageManagerRemoteObject)
         {
-            LOGERR("Failed to create Storage Manager Object after %d attempts", MAX_STORAGE_MANAGER_OBJECT_CREATION_RETRIES);
+            status = Core::ERROR_NONE;
+        }
+        else
+        {
+            LOGERR("Failed to create Storage Manager Object");
         }
     }
     return status;
@@ -1083,6 +1068,7 @@ Core::hresult AppManagerImplementation::SendIntent(const string& appId , const s
  *
  * @return              : Core::<StatusCode>
  */
+
 Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const string& intent , const string& launchArgs ,string& error)
 {
     Core::hresult status = Core::ERROR_GENERAL;
