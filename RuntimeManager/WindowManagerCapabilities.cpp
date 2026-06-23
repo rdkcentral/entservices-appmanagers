@@ -39,7 +39,7 @@ std::string buildWindowManagerCapabilities(const std::string& runtimeCapabilitie
         if (capName == "home-app")              // IPackage::Capability::HomeApp / CompositorApp
         {
             if (!result.empty()) result += ',';
-            result += "homeapp"; //MADANA RENAME -> something privileged
+            result += "privilegedclient";
         }
         else if (capName == "issue-notifications")  // IPackage::Capability::DisplayOverlays
         {

@@ -28,7 +28,7 @@ namespace Plugin {
  * @brief Derives window-manager capability tokens from the full runtime capabilities string.
  *
  * Mirrors the IPackage::Capability checks from GuiAppManagerV2::doLaunchApp:
- *   "home-app"           (IPackage::Capability::HomeApp / CompositorApp) -> "homeapp"
+ *   "home-app"           (IPackage::Capability::HomeApp / CompositorApp) -> "privilegedclient"
  *   "issue-notifications"(IPackage::Capability::DisplayOverlays)         -> "overlayenabled"
  *   "suspend-mode"       (IPackage::Capability::Suspendable)             -> "suspendable"
  *   "refresh-rate-60hz"  (IPackage::Capability::SixtyHertz)              -> "60hz"
