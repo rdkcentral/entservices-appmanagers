@@ -21,6 +21,7 @@ set(MODULE_NAME ${NAMESPACE}${PLUGIN_NAME})
 message("Setup ${MODULE_NAME}")
 
 option(USE_LIBPACKAGE_RALF "USE_LIBPACKAGE_RALF" OFF)
+option(ENABLE_UNIT_TESTS "Enable unit tests" OFF)
 
 # XXX: ../cmake/FindCurl.cmake is bad
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/;${CMAKE_MODULE_PATH}")
@@ -31,8 +32,15 @@ if (USE_LIBPACKAGE_RALF)
     add_definitions(-DUSE_LIBPACKAGE_RALF)
 endif()
 
-include_directories(${SYSROOT_PATH}/${CMAKE_INSTALL_PREFIX}/include/Package)
-set(LIB_PACKAGE_LIBRARY "${SYSROOT_PATH}/${CMAKE_INSTALL_PREFIX}/lib/libPackage.so")
+# libPackage.so / <IPackageImpl.h> come from the external libpackage project
+# and are only required for the real (production) build. When ENABLE_UNIT_TESTS
+# is ON, PackageManagerImplementation selects the IPackageImplDummy mock from
+# Tests/mocks via `#if defined(UNIT_TEST)`, so the sysroot Package include
+# directory and libPackage.so are unused and must not be required.
+if (NOT ENABLE_UNIT_TESTS)
+    include_directories(${SYSROOT_PATH}/${CMAKE_INSTALL_PREFIX}/include/Package)
+    set(LIB_PACKAGE_LIBRARY "${SYSROOT_PATH}/${CMAKE_INSTALL_PREFIX}/lib/libPackage.so")
+endif()
 
 option(AIMANAGERS_TELEMETRY_METRICS_SUPPORT "AIMANAGERS_TELEMETRY_METRICS_SUPPORT" OFF)
 
@@ -69,8 +77,13 @@ target_link_libraries(${MODULE_NAME} PRIVATE
     ${NAMESPACE}Definitions::${NAMESPACE}Definitions
     ${NAMESPACE}Plugins::${NAMESPACE}Plugins
     ${CURL_LIBRARY}
-    ${LIB_PACKAGE_LIBRARY}
     )
+
+# Only link the real libPackage.so for production builds; unit-test builds use
+# the IPackageImplDummy mock and therefore have no symbol dependency on it.
+if (NOT ENABLE_UNIT_TESTS)
+    target_link_libraries(${MODULE_NAME} PRIVATE ${LIB_PACKAGE_LIBRARY})
+endif()
 
 if(RDK_SERVICES_L1_TEST)
     find_package( JsonCpp REQUIRED)
@@ -95,3 +108,4 @@ set(PLUGIN_PACKAGEMANAGER_AUTOSTART "false" CACHE STRING "Deactivated PackageMan
 set(PLUGIN_PACKAGEMANAGER_DOWNLOAD_DIR "" CACHE STRING "Directory path for package download")
 #write_config()
 write_config(INSTALL_NAME ${PLUGIN_NAME}.json)
+
