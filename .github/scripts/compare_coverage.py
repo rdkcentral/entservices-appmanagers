@@ -190,7 +190,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(
         description=(
             "Compare L0/L1 coverage against the develop baseline.\n"
-            "Exits 1 when coverage fails threshold or regresses from baseline."
+            "Always exits 0; prints [PASS]/[WARN] when coverage is below threshold or regresses from baseline."
         )
     )
     parser.add_argument("--baseline", required=True, metavar="PATH",
