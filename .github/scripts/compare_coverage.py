@@ -287,7 +287,7 @@ def main() -> None:
         print(f"  {summary}")
 
     # Notify when one or both suites had no coverage data (artifact absent).
-    # Gate logic is unchanged — SKIP is treated as passing by design.
+    # Missing coverage data is reported as WARN (not treated as passing).
     skipped = [n for n, cov in [("L0", l0_coverage), ("L1", l1_coverage)] if cov is None]
     if skipped:
         print(f"  NOTE: {_join_names(skipped)} coverage data absent \u2014 artifact missing or unreadable.")
