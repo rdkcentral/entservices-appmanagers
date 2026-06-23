@@ -27,6 +27,7 @@
 #include <map>
 #include <vector>
 #include <set>
+#include <mutex>
 
 namespace packagemanager
 {
@@ -157,9 +158,48 @@ namespace packagemanager
         
         virtual Result GetFileMetadata(const std::string &fileLocator, std::string &packageId, std::string &version, ConfigMetaData &configMetadata) { return SUCCESS; }
 
+        /**
+         * Returns the active IPackageImpl-like instance used by PackageManagerImplementation
+         * when built with `-DUNIT_TEST`. By default this is a fresh IPackageImplDummy whose
+         * methods return canned values. Tests can override this with a gmock mock (see
+         * Tests/mocks/IPackageImplMock.h) by calling setInstance(...).
+         */
         static std::shared_ptr<packagemanager::IPackageImplDummy> instance() {
-                return std::make_shared<packagemanager::IPackageImplDummy>();
+            std::lock_guard<std::mutex> lock(overrideMutex());
+            if (overrideSlot()) {
+                return overrideSlot();
+            }
+            return std::make_shared<packagemanager::IPackageImplDummy>();
+        }
+
+        /**
+         * Install a custom IPackageImplDummy (typically an IPackageImplMock derived
+         * via gmock) that subsequent calls to instance() will return. Call
+         * clearInstance() in the test's TearDown to restore the default behavior.
+         */
+        static void setInstance(const std::shared_ptr<packagemanager::IPackageImplDummy>& override) {
+            std::lock_guard<std::mutex> lock(overrideMutex());
+            overrideSlot() = override;
+        }
+
+        /** Remove any previously installed override. Safe to call when none is set. */
+        static void clearInstance() {
+            std::lock_guard<std::mutex> lock(overrideMutex());
+            overrideSlot().reset();
+        }
+
+    private:
+        // Function-local statics avoid needing a separate .cpp for the storage and are
+        // safe under C++17's guaranteed initialization-order rules for static locals.
+        static std::shared_ptr<packagemanager::IPackageImplDummy>& overrideSlot() {
+            static std::shared_ptr<packagemanager::IPackageImplDummy> s_override;
+            return s_override;
+        }
+        static std::mutex& overrideMutex() {
+            static std::mutex s_mutex;
+            return s_mutex;
         }
     };
 
 }
+
