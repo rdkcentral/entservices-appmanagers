@@ -9,7 +9,17 @@ L1_ROOT="${REPO_ROOT}/l1build"
 BUILD_ROOT="${L1_ROOT}/build"
 COVERAGE_DIR="${L1_ROOT}/coverage"
 LCOVRC_PATH="${REPO_ROOT}/Tests/L1Tests/.lcovrc_l1"
-LCOV_CAPTURE_IGNORE_ERRORS="${LCOV_CAPTURE_IGNORE_ERRORS:-inconsistent,inconsistent,gcov,gcov}"
+# lcov 2.x is much stricter about .gcda consistency than 1.x. When we link the
+# L1 binary with -Wl,--wrap and a forest of gmock vtables the gcov runtime
+# emits a number of artifacts that lcov flags as errors:
+#   - negative   : a branch's taken-count came back as -1
+#   - mismatch   : line numbers in .gcda don't match the recompiled source
+#   - inconsistent : per-function summary doesn't agree with per-line data
+#   - count      : counter overflow (rare, but harmless for our purpose)
+#   - unused     : -r / -e filters that didn't match any record
+#   - gcov       : generic gcov complaint (e.g. checksum mismatch on stale .gcda)
+# Each class is listed twice so lcov demotes error -> warning -> silent.
+LCOV_CAPTURE_IGNORE_ERRORS="${LCOV_CAPTURE_IGNORE_ERRORS:-inconsistent,inconsistent,negative,negative,mismatch,mismatch,count,count,unused,unused,gcov,gcov}"
 
 GCOV_CANDIDATES=()
 GCOV_TOOL_SELECTED=""
@@ -73,6 +83,9 @@ capture_with_matching_gcov() {
             --gcov-tool "${tool}" \
             --ignore-errors "${LCOV_CAPTURE_IGNORE_ERRORS}" \
             --rc geninfo_unexecuted_blocks=1 \
+            --rc lcov_branch_coverage=0 \
+            --rc geninfo_no_exception_branch=1 \
+            --no-external \
             -c \
             -o "${coverage_info_path}" \
             -d "${BUILD_ROOT}/entservices-appmanagers" \
@@ -140,7 +153,8 @@ echo "Using gcov tool: ${GCOV_TOOL_SELECTED}"
 
 echo "Filtering coverage data..."
 lcov --config-file "${LCOVRC_PATH}" \
-    --ignore-errors unused,unused \
+    --ignore-errors unused,unused,inconsistent,inconsistent,negative,negative,mismatch,mismatch \
+    --rc lcov_branch_coverage=0 \
     -r "${COVERAGE_INFO}" \
     '/usr/include/*' \
     '*/build/entservices-appmanagers/_deps/*' \
@@ -153,8 +167,11 @@ lcov --config-file "${LCOVRC_PATH}" \
 
 echo "Generating HTML report in ${COVERAGE_DIR}..."
 genhtml \
+    --ignore-errors inconsistent,inconsistent,unused,unused,source,source \
+    --rc genhtml_branch_coverage=0 \
     -o "${COVERAGE_DIR}" \
     -t "entservices-appmanagers coverage" \
     "${FILTERED_COVERAGE_INFO}"
 
 echo "Coverage report ready: ${COVERAGE_DIR}/index.html"
+
