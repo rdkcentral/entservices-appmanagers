@@ -35,7 +35,20 @@
 #include "UtilsString.h"
 #include "AppManagerTelemetryReporting.h"
 
+// Maximum time (ms) closeApp() will block waiting for the LifecycleManager to
+// confirm the APP_STATE_PAUSED transition before falling back to the
+// post-timeout state check.
+//
+// In production this is 1000 ms. The L1 test for CloseApp fires the simulated
+// OnAppLifecycleStateChanged callback *after* CloseApp() returns, so the wait
+// always runs to its full timeout and slows every CloseApp-flavored test by
+// ~1 s (and may trip CI watchdogs). Under UNIT_TEST builds we shorten it to
+// 50 ms so the fallback path is still exercised but completes quickly.
+#if defined(UNIT_TEST)
+#define PAUSE_STATE_WAITTIME       50
+#else
 #define PAUSE_STATE_WAITTIME       1000
+#endif
 
 using namespace std;
 using namespace Utils;
@@ -921,4 +934,5 @@ End:
 
      } /* namespace Plugin */
 } /* namespace WPEFramework */
+
 
