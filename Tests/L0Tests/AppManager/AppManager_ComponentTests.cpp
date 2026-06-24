@@ -126,15 +126,15 @@ uint32_t Test_AM_LifecycleConnectorCreateAndGetLoadedAppsSuccess()
 {
     L0Test::TestResult tr;
 
-    auto* lifecycle = new L0Test::FakeLifecycleManager();
-    auto* lifecycleState = new L0Test::FakeLifecycleManagerState();
+    L0Test::FakeLifecycleManager lifecycle;
+    L0Test::FakeLifecycleManagerState lifecycleState;
 
-    lifecycle->loadedAppsJson =
+    lifecycle.loadedAppsJson =
         "[{\"appId\":\"app.loaded\",\"appInstanceID\":\"inst-1\",\"activeSessionId\":\"sess-1\",\"targetLifecycleState\":2,\"lifecycleState\":2}]";
 
     L0Test::AppManagerServiceMock::Config cfg;
-    cfg.lifecycleManager = lifecycle;
-    cfg.lifecycleManagerState = lifecycleState;
+    cfg.lifecycleManager = &lifecycle;
+    cfg.lifecycleManagerState = &lifecycleState;
     L0Test::AppManagerServiceMock service(cfg);
 
     {
@@ -163,12 +163,12 @@ uint32_t Test_AM_LifecycleConnectorIsAppLoadedAndErrorPaths()
 {
     L0Test::TestResult tr;
 
-    auto* lifecycle = new L0Test::FakeLifecycleManager();
-    auto* lifecycleState = new L0Test::FakeLifecycleManagerState();
+    L0Test::FakeLifecycleManager lifecycle;
+    L0Test::FakeLifecycleManagerState lifecycleState;
 
     L0Test::AppManagerServiceMock::Config cfg;
-    cfg.lifecycleManager = lifecycle;
-    cfg.lifecycleManagerState = lifecycleState;
+    cfg.lifecycleManager = &lifecycle;
+    cfg.lifecycleManagerState = &lifecycleState;
     L0Test::AppManagerServiceMock service(cfg);
 
     WPEFramework::Plugin::LifecycleInterfaceConnector connector(&service);
@@ -178,7 +178,7 @@ uint32_t Test_AM_LifecycleConnectorIsAppLoadedAndErrorPaths()
     L0Test::ExpectEqU32(tr, connector.isAppLoaded("app.loaded", loaded), WPEFramework::Core::ERROR_NONE, "isAppLoaded() succeeds with lifecycle manager");
     L0Test::ExpectTrue(tr, !loaded, "isAppLoaded() default fake result is false");
 
-    lifecycle->isAppLoadedHandler = [](const std::string&, bool& result) {
+    lifecycle.isAppLoadedHandler = [](const std::string&, bool& result) {
         result = true;
         return WPEFramework::Core::ERROR_NONE;
     };
@@ -186,7 +186,7 @@ uint32_t Test_AM_LifecycleConnectorIsAppLoadedAndErrorPaths()
     L0Test::ExpectTrue(tr, loaded, "isAppLoaded() reflects custom handler loaded=true");
 
     WPEFramework::Exchange::IAppManager::ILoadedAppInfoIterator* iterator = nullptr;
-    lifecycle->loadedAppsJson = "invalid-json";
+    lifecycle.loadedAppsJson = "invalid-json";
     // NOTE: Current source code behavior returns ERROR_NONE when GetLoadedApps succeeds but JSON parsing fails
     // Ideally this should return ERROR_GENERAL, but to avoid changing source code, test expects actual behavior
     L0Test::ExpectEqU32(tr, connector.getLoadedApps(iterator), WPEFramework::Core::ERROR_NONE, "getLoadedApps() returns ERROR_NONE for invalid JSON payload (source limitation)");
@@ -199,12 +199,12 @@ uint32_t Test_AM_LifecycleConnectorSendIntentAndKillEdgeCases()
 {
     L0Test::TestResult tr;
 
-    auto* lifecycle = new L0Test::FakeLifecycleManager();
-    auto* lifecycleState = new L0Test::FakeLifecycleManagerState();
+    L0Test::FakeLifecycleManager lifecycle;
+    L0Test::FakeLifecycleManagerState lifecycleState;
 
     L0Test::AppManagerServiceMock::Config cfg;
-    cfg.lifecycleManager = lifecycle;
-    cfg.lifecycleManagerState = lifecycleState;
+    cfg.lifecycleManager = &lifecycle;
+    cfg.lifecycleManagerState = &lifecycleState;
     L0Test::AppManagerServiceMock service(cfg);
 
     WPEFramework::Plugin::LifecycleInterfaceConnector connector(&service);
@@ -277,12 +277,12 @@ uint32_t Test_AM_LifecycleConnectorLaunchNewApp()
 {
     L0Test::TestResult tr;
 
-    auto* lifecycle = new L0Test::FakeLifecycleManager();
-    auto* lifecycleState = new L0Test::FakeLifecycleManagerState();
+    L0Test::FakeLifecycleManager lifecycle;
+    L0Test::FakeLifecycleManagerState lifecycleState;
 
     L0Test::AppManagerServiceMock::Config cfg;
-    cfg.lifecycleManager = lifecycle;
-    cfg.lifecycleManagerState = lifecycleState;
+    cfg.lifecycleManager = &lifecycle;
+    cfg.lifecycleManagerState = &lifecycleState;
     L0Test::AppManagerServiceMock service(cfg);
 
     auto* impl = WPEFramework::Core::Service<WPEFramework::Plugin::AppManagerImplementation>::Create<WPEFramework::Plugin::AppManagerImplementation>();
@@ -316,12 +316,12 @@ uint32_t Test_AM_LifecycleConnectorLaunchSuspendedApp()
 {
     L0Test::TestResult tr;
 
-    auto* lifecycle = new L0Test::FakeLifecycleManager();
-    auto* lifecycleState = new L0Test::FakeLifecycleManagerState();
+    L0Test::FakeLifecycleManager lifecycle;
+    L0Test::FakeLifecycleManagerState lifecycleState;
 
     L0Test::AppManagerServiceMock::Config cfg;
-    cfg.lifecycleManager = lifecycle;
-    cfg.lifecycleManagerState = lifecycleState;
+    cfg.lifecycleManager = &lifecycle;
+    cfg.lifecycleManagerState = &lifecycleState;
     L0Test::AppManagerServiceMock service(cfg);
 
     auto* impl = WPEFramework::Core::Service<WPEFramework::Plugin::AppManagerImplementation>::Create<WPEFramework::Plugin::AppManagerImplementation>();
@@ -365,12 +365,12 @@ uint32_t Test_AM_LifecycleConnectorPreloadApp()
 {
     L0Test::TestResult tr;
 
-    auto* lifecycle = new L0Test::FakeLifecycleManager();
-    auto* lifecycleState = new L0Test::FakeLifecycleManagerState();
+    L0Test::FakeLifecycleManager lifecycle;
+    L0Test::FakeLifecycleManagerState lifecycleState;
 
     L0Test::AppManagerServiceMock::Config cfg;
-    cfg.lifecycleManager = lifecycle;
-    cfg.lifecycleManagerState = lifecycleState;
+    cfg.lifecycleManager = &lifecycle;
+    cfg.lifecycleManagerState = &lifecycleState;
     L0Test::AppManagerServiceMock service(cfg);
 
     auto* impl = WPEFramework::Core::Service<WPEFramework::Plugin::AppManagerImplementation>::Create<WPEFramework::Plugin::AppManagerImplementation>();
@@ -404,12 +404,12 @@ uint32_t Test_AM_LifecycleConnectorTerminateApp()
 {
     L0Test::TestResult tr;
 
-    auto* lifecycle = new L0Test::FakeLifecycleManager();
-    auto* lifecycleState = new L0Test::FakeLifecycleManagerState();
+    L0Test::FakeLifecycleManager lifecycle;
+    L0Test::FakeLifecycleManagerState lifecycleState;
 
     L0Test::AppManagerServiceMock::Config cfg;
-    cfg.lifecycleManager = lifecycle;
-    cfg.lifecycleManagerState = lifecycleState;
+    cfg.lifecycleManager = &lifecycle;
+    cfg.lifecycleManagerState = &lifecycleState;
     L0Test::AppManagerServiceMock service(cfg);
 
     auto* impl = WPEFramework::Core::Service<WPEFramework::Plugin::AppManagerImplementation>::Create<WPEFramework::Plugin::AppManagerImplementation>();
@@ -444,20 +444,20 @@ uint32_t Test_AM_LifecycleConnectorCloseApp()
 {
     L0Test::TestResult tr;
 
-    auto* lifecycle = new L0Test::FakeLifecycleManager();
-    auto* lifecycleState = new L0Test::FakeLifecycleManagerState();
+    L0Test::FakeLifecycleManager lifecycle;
+    L0Test::FakeLifecycleManagerState lifecycleState;
 
     // Force SetTargetAppState to fail immediately so the test does not block
     // on the 1-second PAUSE_STATE_WAITTIME timeout.
-    lifecycle->setTargetAppStateHandler = [](const std::string&,
+    lifecycle.setTargetAppStateHandler = [](const std::string&,
         WPEFramework::Exchange::ILifecycleManager::LifecycleState,
         const std::string&) -> uint32_t {
         return WPEFramework::Core::ERROR_GENERAL;
     };
 
     L0Test::AppManagerServiceMock::Config cfg;
-    cfg.lifecycleManager = lifecycle;
-    cfg.lifecycleManagerState = lifecycleState;
+    cfg.lifecycleManager = &lifecycle;
+    cfg.lifecycleManagerState = &lifecycleState;
     L0Test::AppManagerServiceMock service(cfg);
 
     auto* impl = WPEFramework::Core::Service<WPEFramework::Plugin::AppManagerImplementation>::Create<WPEFramework::Plugin::AppManagerImplementation>();
@@ -493,12 +493,12 @@ uint32_t Test_AM_LifecycleConnectorReleaseRemoteObjects()
 {
     L0Test::TestResult tr;
 
-    auto* lifecycle = new L0Test::FakeLifecycleManager();
-    auto* lifecycleState = new L0Test::FakeLifecycleManagerState();
+    L0Test::FakeLifecycleManager lifecycle;
+    L0Test::FakeLifecycleManagerState lifecycleState;
 
     L0Test::AppManagerServiceMock::Config cfg;
-    cfg.lifecycleManager = lifecycle;
-    cfg.lifecycleManagerState = lifecycleState;
+    cfg.lifecycleManager = &lifecycle;
+    cfg.lifecycleManagerState = &lifecycleState;
     L0Test::AppManagerServiceMock service(cfg);
 
     {
