@@ -42,9 +42,13 @@
 // In production this is 1000 ms. The L1 test for CloseApp fires the simulated
 // OnAppLifecycleStateChanged callback *after* CloseApp() returns, so the wait
 // always runs to its full timeout and slows every CloseApp-flavored test by
-// ~1 s (and may trip CI watchdogs). Under UNIT_TEST builds we shorten it to
-// 50 ms so the fallback path is still exercised but completes quickly.
-#if defined(UNIT_TEST)
+// ~1 s (and may trip CI watchdogs). Under test builds we shorten it to 50 ms
+// so the fallback path is still exercised but completes quickly.
+//
+// RDK_SERVICES_L1_TEST is defined via -D in CMAKE_CXX_FLAGS for every L1 TU
+// (see Tests/run_l1_from_l1build.sh). UNIT_TEST is defined by PackageManager's
+// CMakeLists when ENABLE_UNIT_TESTS=ON. Either is sufficient.
+#if defined(UNIT_TEST) || defined(RDK_SERVICES_L1_TEST)
 #define PAUSE_STATE_WAITTIME       50
 #else
 #define PAUSE_STATE_WAITTIME       1000

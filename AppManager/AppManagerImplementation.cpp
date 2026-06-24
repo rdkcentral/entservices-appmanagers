@@ -632,6 +632,14 @@ void AppManagerImplementation::releasePackageManagerObject()
 Core::hresult AppManagerImplementation::createStorageManagerRemoteObject()
 {
      #define MAX_STORAGE_MANAGER_OBJECT_CREATION_RETRIES 2
+     // L1/unit-test builds use mocks that resolve instantly; a 200 ms backoff
+     // per failed retry would only burn CI budget without exercising any new
+     // code path. Production keeps the original 200 ms cadence.
+#if defined(UNIT_TEST) || defined(RDK_SERVICES_L1_TEST)
+     constexpr int STORAGE_RETRY_DELAY_MS = 10;
+#else
+     constexpr int STORAGE_RETRY_DELAY_MS = 200;
+#endif
 
     Core::hresult status = Core::ERROR_GENERAL;
     uint8_t retryCount = 0;
@@ -650,7 +658,7 @@ Core::hresult AppManagerImplementation::createStorageManagerRemoteObject()
             {
                 LOGERR("storageManagerRemoteObject is null (Attempt %d)", retryCount + 1);
                 retryCount++;
-                std::this_thread::sleep_for(std::chrono::milliseconds(200));
+                std::this_thread::sleep_for(std::chrono::milliseconds(STORAGE_RETRY_DELAY_MS));
             }
             else
             {
@@ -1654,3 +1662,4 @@ bool AppManagerImplementation::checkInstallUninstallBlock(const std::string& app
 }
 } /* namespace Plugin */
 } /* namespace WPEFramework */
+
