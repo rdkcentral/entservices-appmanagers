@@ -2121,7 +2121,19 @@ uint32_t Test_AM_LICCloseAppPausedConfirmation()
     L0Test::TestResult tr;
 
     auto* impl = CreateImpl();
-    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+
+    // Use a local lifecycle manager so we can install a synchronization handler.
+    L0Test::FakeLifecycleManager lifecycleManager;
+    L0Test::FakeLifecycleManagerState lifecycleState;
+
+    L0Test::AppManagerServiceMock::Config cfg;
+    cfg.lifecycleManager = &lifecycleManager;
+    cfg.lifecycleManagerState = &lifecycleState;
+    cfg.store2 = new L0Test::FakeStore2();
+    cfg.storageManager = new L0Test::FakeStorageManager();
+    cfg.packageHandler = new L0Test::FakePackageHandler();
+    cfg.installer = new L0Test::FakePackageInstaller();
+    L0Test::AppManagerServiceMock service(cfg);
     impl->Configure(&service);
 
     const std::string appId = "app.close.paused";
@@ -2134,18 +2146,38 @@ uint32_t Test_AM_LICCloseAppPausedConfirmation()
     WPEFramework::Plugin::AppInfoManager::getInstance().upsert(
         appId, [&](WPEFramework::Plugin::AppInfo& a) { a = info; });
 
-    // Run closeApp in a background thread; it will block waiting for PAUSED.
+    // SetTargetAppState is called while closeApp holds LIC::mAdminLock.
+    // Setting the atomic flag here tells the main thread that closeApp is about
+    // to set mAppIdAwaitingPause and release the lock — safe to call
+    // OnAppLifecycleStateChanged.
+    std::atomic<bool> setTargetCalled{false};
+    lifecycleManager.setTargetAppStateHandler = [&setTargetCalled](
+        const std::string&,
+        WPEFramework::Exchange::ILifecycleManager::LifecycleState,
+        const std::string&) -> uint32_t {
+        setTargetCalled.store(true, std::memory_order_release);
+        return WPEFramework::Core::ERROR_NONE;
+    };
+
+    // Run closeApp in a background thread; it will call SetTargetAppState then
+    // block on the condvar waiting for a PAUSED notification.
     WPEFramework::Core::hresult closeResult = WPEFramework::Core::ERROR_GENERAL;
     std::thread closeThread([&] {
         closeResult = impl->mLifecycleInterfaceConnector->closeApp(appId);
     });
 
-    // Give closeApp time to reach the condvar wait point.
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    // Spin until SetTargetAppState has been called.  At that point closeApp still
+    // holds LIC::mAdminLock; OnAppLifecycleStateChanged will block on it until
+    // closeApp sets mAppIdAwaitingPause and releases the lock.
+    while (!setTargetCalled.load(std::memory_order_acquire)) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
 
-    // Fire OnAppLifecycleStateChanged with PAUSED to wake up closeApp.
-    // This also updates AppInfoManager to APP_STATE_PAUSED so the post-wait
-    // check finds the app in the expected state.
+    // Fire OnAppLifecycleStateChanged with PAUSED.  This updates AppInfoManager
+    // to APP_STATE_PAUSED and calls notify_all() on the condvar.  The condvar
+    // predicate (mAppIdAwaitingPause != appId) will remain false, so closeApp
+    // waits out the full PAUSE_STATE_WAITTIME (1000ms) before re-acquiring
+    // mAdminLock and confirming the PAUSED state via AppInfoManager.
     impl->mLifecycleInterfaceConnector->OnAppLifecycleStateChanged(
         appId, instId,
         WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE,
@@ -2158,7 +2190,7 @@ uint32_t Test_AM_LICCloseAppPausedConfirmation()
     L0Test::ExpectEqU32(tr, closeResult, WPEFramework::Core::ERROR_NONE,
         "closeApp() returns ERROR_NONE after PAUSED confirmation via condvar");
 
-    // Allow any async dispatch callbacks to settle.
+    // Allow any async dispatch callbacks from OnAppLifecycleStateChanged to settle.
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     impl->Release();
