@@ -55,7 +55,9 @@ void PackageManagerTelemetryReporting::recordAndPublishTelemetryData(const std::
     uint64_t requestTime,
     int errorCode,
     const std::string& runtimeId,
-    const std::string& runtimeVersion)
+    const std::string& runtimeVersion,
+    int count,
+    const std::string& backend)
 {
     if (!Utils::isTelemetryMetricsEnabled()) {
         return;
@@ -92,6 +94,14 @@ void PackageManagerTelemetryReporting::recordAndPublishTelemetryData(const std::
         jsonParam["installTime"] = duration;
     } else if (marker == TELEMETRY_MARKER_UNINSTALL_TIME) {
         jsonParam["uninstallTime"] = duration;
+    } else if (marker == TELEMETRY_MARKER_PACKAGE_CACHE_INIT_TIME) {
+        jsonParam["packageManagerCacheInitTime"] = duration;
+        if (0 <= count) {
+            jsonParam["count"] = count;
+        }
+        if (false == backend.empty()) {
+            jsonParam["backend"] = backend;
+        }
     } else if ((marker == TELEMETRY_MARKER_INSTALL_ERROR) || (marker == TELEMETRY_MARKER_UNINSTALL_ERROR)) {
         jsonParam["errorCode"] = errorCode;
     } else {

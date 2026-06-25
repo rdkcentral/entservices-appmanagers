@@ -26,12 +26,15 @@
 // Spec: entservices-appmanagers
 #include "PackageManagerImplementation.h"
 #include "PackageManagerTelemetryReporting.h"
+#include "UtilsAppManagerTelemetry.h"
 
 /* Until we don't get it from Package configuration, use size as 1MB */
 #define STORAGE_MAX_SIZE 1024
 
 namespace WPEFramework {
 namespace Plugin {
+
+    RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::PackageManagerTelemetryReporting, "packageManagerBootstrapTime")
 
     SERVICE_REGISTRATION(PackageManagerImplementation, 1, 0);
 
@@ -127,7 +130,7 @@ namespace Plugin {
                 result = Core::ERROR_NONE;
             }
 
-            PackageManagerTelemetryReporting::getInstance().initialize(mCurrentservice);
+            RDKAM_TELEMETRY_INIT(mCurrentservice);
 
             configStr = service->ConfigLine().c_str();
             LOGINFO("ConfigLine=%s", service->ConfigLine().c_str());
@@ -209,7 +212,8 @@ namespace Plugin {
 
     void PackageManagerImplementation::recordAndPublishTelemetryData(const std::string& marker, const std::string& appId,
                                                                      time_t requestTime, PackageManagerImplementation::PackageFailureErrorCode errorCode,
-                                                                     const std::string& runtimeId, const std::string& runtimeVersion)
+                                                                     const std::string& runtimeId, const std::string& runtimeVersion,
+                                                                     int count, const std::string& backend)
     {
         PackageManagerTelemetryReporting::getInstance().recordAndPublishTelemetryData(
             marker,
@@ -217,7 +221,9 @@ namespace Plugin {
             requestTime,
             static_cast<int>(errorCode),
             runtimeId,
-            runtimeVersion);
+            runtimeVersion,
+            count,
+            backend);
     }
 
     // IPackageDownloader methods
@@ -1019,6 +1025,11 @@ namespace Plugin {
     void PackageManagerImplementation::InitializeState()
     {
         LOGDBG("entry");
+        const time_t cacheInitStartTime = getCurrentTimestamp();
+        std::string backend("legacy");
+        #ifdef USE_LIBPACKAGE_RALF
+        backend = "ralf";
+        #endif
         #if !defined(UNIT_TEST) && !defined(ENABLE_NATIVEBUILD)
 	    PluginHost::ISubSystem* subSystem = mCurrentservice->SubSystems();
         if (subSystem != nullptr) {
@@ -1070,6 +1081,17 @@ namespace Plugin {
             } else {
                LOGERR("Failed to create marker file: %s", markerFile.c_str());
             }
+
+          const int packageCount = static_cast<int>(mState.size());
+          recordAndPublishTelemetryData(TELEMETRY_MARKER_PACKAGE_CACHE_INIT_TIME,
+                                                  "CacheInitTimeInternal",
+                                                  cacheInitStartTime,
+                                                  PackageManagerImplementation::PackageFailureErrorCode::ERROR_NONE,
+                                                  "",
+                                                  "",
+                                                  packageCount,
+                                                  backend);
+
         LOGDBG("exit");
     }
 

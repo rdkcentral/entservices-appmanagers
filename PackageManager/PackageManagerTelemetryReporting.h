@@ -39,7 +39,9 @@ public:
         uint64_t requestTime,
         int errorCode,
         const std::string& runtimeId = "",
-        const std::string& runtimeVersion = "");
+        const std::string& runtimeVersion = "",
+        int count = -1,
+        const std::string& backend = "");
 
 private:
     PackageManagerTelemetryReporting();

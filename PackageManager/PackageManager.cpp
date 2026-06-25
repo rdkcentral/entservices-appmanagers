@@ -18,9 +18,13 @@
 **/
 
 #include "PackageManager.h"
+#include "PackageManagerTelemetryReporting.h"
+#include "UtilsAppManagerTelemetry.h"
 #include <interfaces/IConfiguration.h>
 
 namespace WPEFramework {
+
+RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::PackageManagerTelemetryReporting, "packageManagerBootstrapTime")
 
 namespace Plugin
 {
@@ -51,6 +55,7 @@ namespace Plugin
     const string PackageManager::Initialize(PluginHost::IShell * service)
     {
         string message;
+        RDKAM_RECORD_BOOTSTRAP_TIME(service);
 
         ASSERT(service != nullptr);
         ASSERT(mService == nullptr);
