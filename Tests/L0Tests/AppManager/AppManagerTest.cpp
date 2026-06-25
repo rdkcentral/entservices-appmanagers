@@ -88,6 +88,8 @@ extern uint32_t Test_AM_AppInfoManagerClear();
 extern uint32_t Test_AM_AppInfoManagerBasicThreadSafety();
 extern uint32_t Test_AM_AppInfoManagerUpdateOperationBranches();
 extern uint32_t Test_AM_AppInfoManagerGetByCopyEdgeCases();
+extern uint32_t Test_AM_AppInfoManagerStateSettersAndGetters();
+extern uint32_t Test_AM_AppInfoManagerGetterNotFoundBranches();
 
 int main()
 {
@@ -164,6 +166,8 @@ int main()
         { "AM_AppInfoManagerBasicThreadSafety", Test_AM_AppInfoManagerBasicThreadSafety },
         { "AM_AppInfoManagerUpdateOperationBranches", Test_AM_AppInfoManagerUpdateOperationBranches },
         { "AM_AppInfoManagerGetByCopyEdgeCases", Test_AM_AppInfoManagerGetByCopyEdgeCases },
+        { "AM_AppInfoManagerStateSettersAndGetters", Test_AM_AppInfoManagerStateSettersAndGetters },
+        { "AM_AppInfoManagerGetterNotFoundBranches", Test_AM_AppInfoManagerGetterNotFoundBranches },
     };
 
     uint32_t totalFailures = 0;
