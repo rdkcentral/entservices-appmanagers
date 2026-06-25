@@ -20,9 +20,12 @@
 #include <iomanip>      /* for std::setw, std::setfill */
 #include "AppManagerImplementation.h"
 #include "AppManagerTelemetryReporting.h"
+#include "UtilsAppManagerTelemetry.h"
 
 #define TIME_DATA_SIZE           200
 static bool sRunning = false;
+
+RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::AppManagerTelemetryReporting, "appManagerBootstrapTime")
 
 namespace WPEFramework {
 namespace Plugin {
@@ -173,7 +176,7 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                                     else if (action == APP_ACTION_PRELOAD)
                                     {
                                         string errorReason;
-                                        status = mLifecycleInterfaceConnector->preLoadApp(appId, launchArgs, runtimeConfig, errorReason);
+                                        status = mLifecycleInterfaceConnector->preLoadApp(appId, appRequestParam->intent, launchArgs, runtimeConfig, errorReason);
                                         LOGINFO("Application preLoad from thread returns with status %d error %s", status, errorReason.c_str());
 
                                         if ((!errorReason.empty()) || (status != Core::ERROR_NONE))
@@ -534,7 +537,7 @@ uint32_t AppManagerImplementation::Configure(PluginHost::IShell* service)
         {
             LOGINFO("created createStorageManagerRemoteObject");
         }
-        AppManagerTelemetryReporting::getInstance().initialize(service);
+        RDKAM_TELEMETRY_INIT(service);
         sRunning = true;
         /* Create the worker thread */
         try
@@ -594,11 +597,11 @@ Core::hresult AppManagerImplementation::createPackageManagerObject()
     {
         LOGERR("mCurrentservice is null \n");
     }
-    else if (nullptr == (mPackageManagerHandlerObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IPackageHandler>("org.rdk.PackageManagerRDKEMS")))
+    else if (nullptr == (mPackageManagerHandlerObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IPackageHandler>("org.rdk.AppPackageManager")))
     {
         LOGERR("mPackageManagerHandlerObject is null \n");
     }
-    else if (nullptr == (mPackageManagerInstallerObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IPackageInstaller>("org.rdk.PackageManagerRDKEMS")))
+    else if (nullptr == (mPackageManagerInstallerObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IPackageInstaller>("org.rdk.AppPackageManager")))
     {
         LOGERR("mPackageManagerInstallerObject is null \n");
     }
@@ -631,10 +634,7 @@ void AppManagerImplementation::releasePackageManagerObject()
 
 Core::hresult AppManagerImplementation::createStorageManagerRemoteObject()
 {
-     #define MAX_STORAGE_MANAGER_OBJECT_CREATION_RETRIES 2
-
     Core::hresult status = Core::ERROR_GENERAL;
-    uint8_t retryCount = 0;
 
     if (nullptr == mCurrentservice)
     {
@@ -642,27 +642,15 @@ Core::hresult AppManagerImplementation::createStorageManagerRemoteObject()
     }
     else
     {
-        do
-        {
-            mStorageManagerRemoteObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IAppStorageManager>("org.rdk.AppStorageManager");
+        mStorageManagerRemoteObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IAppStorageManager>("org.rdk.AppStorageManager");
 
-            if (nullptr == mStorageManagerRemoteObject)
-            {
-                LOGERR("storageManagerRemoteObject is null (Attempt %d)", retryCount + 1);
-                retryCount++;
-                std::this_thread::sleep_for(std::chrono::milliseconds(200));
-            }
-            else
-            {
-                LOGINFO("Successfully created Storage Manager Object");
-                status = Core::ERROR_NONE;
-                break;
-            }
-        } while (retryCount < MAX_STORAGE_MANAGER_OBJECT_CREATION_RETRIES);
-
-        if (status != Core::ERROR_NONE)
+        if (nullptr != mStorageManagerRemoteObject)
         {
-            LOGERR("Failed to create Storage Manager Object after %d attempts", MAX_STORAGE_MANAGER_OBJECT_CREATION_RETRIES);
+            status = Core::ERROR_NONE;
+        }
+        else
+        {
+            LOGERR("Failed to create Storage Manager Object");
         }
     }
     return status;
@@ -1077,12 +1065,14 @@ Core::hresult AppManagerImplementation::SendIntent(const string& appId , const s
  * Preloads an Application and app will be in the RUNNING state (hidden).
  *
  * @param[in] appId     : App identifier for the application
+ * @param[in] intent(optional) : Specifies the intent or message to be available during preload
  * @param[in] launchArgs(optional) : Additional parameters passed to the application
  * @param[out] error : if success = false it holds the appropriate error reason
  *
  * @return              : Core::<StatusCode>
  */
-Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const string& launchArgs ,string& error)
+
+Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const string& intent , const string& launchArgs ,string& error)
 {
     Core::hresult status = Core::ERROR_GENERAL;
     AppManagerTelemetryReporting& appManagerTelemetryReporting = AppManagerTelemetryReporting::getInstance();
@@ -1104,7 +1094,7 @@ Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const s
         {
             LOGINFO(" PreloadApp enter with appId %s", appId.c_str());
             request->mRequestAction = APP_ACTION_PRELOAD;
-            request->mRequestParam = std::make_shared<AppLaunchRequestParam>(AppLaunchRequestParam{appId, launchArgs});
+            request->mRequestParam = std::make_shared<AppLaunchRequestParam>(AppLaunchRequestParam{appId, launchArgs, intent});
             if (request->mRequestParam != nullptr)
             {
                 mAppManagerLock.lock();
@@ -1213,6 +1203,10 @@ Core::hresult AppManagerImplementation::SetAppProperty(const string& appId, cons
     else if (key.empty())
     {
         LOGERR("key is empty");
+    }
+    else if (value.empty())
+    {
+       LOGERR("value is empty");
     }
     else
     {

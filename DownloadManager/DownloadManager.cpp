@@ -18,6 +18,9 @@
 **/
 
 #include "DownloadManager.h"
+#include "UtilsAppManagerTelemetry.h"
+
+RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::Utils::AppManagersBootstrapper, "downloadManagerBootstrapTime")
 
 namespace WPEFramework {
 
@@ -48,6 +51,7 @@ namespace Plugin
     const string DownloadManager::Initialize(PluginHost::IShell * service)
     {
         string message;
+        RDKAM_RECORD_BOOTSTRAP_TIME(service);
 
         ASSERT(service != nullptr);
         ASSERT(mService == nullptr);
@@ -127,12 +131,12 @@ namespace Plugin
 
     void DownloadManager::Deactivated(RPC::IRemoteConnection* connection)
     {
-        LOGINFO();
         // This can potentially be called on a socket thread, so the deactivation (wich in turn kills this object) must be done
         // on a seperate thread. Also make sure this call-stack can be unwound before we are totally destructed.
         if (mConnectionId == connection->Id())
         {
             ASSERT(mService != nullptr);
+            LOGINFO();
             Core::IWorkerPool::Instance().Submit(PluginHost::IShell::Job::Create(mService, PluginHost::IShell::DEACTIVATED, PluginHost::IShell::FAILURE));
         }
     }

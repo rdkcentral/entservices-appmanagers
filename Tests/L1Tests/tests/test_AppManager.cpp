@@ -58,6 +58,7 @@
 #define APPMANAGER_APP_LAUNCHARGS   "test.arguments"
 #define APPMANAGER_APP_INSTANCE     "testAppInstance"
 #define APPMANAGER_APP_UNPACKEDPATH "/media/apps/sky/packages/Hulu/data.img"
+#define APPMANAGER_APP_CAPABILITIES "dial-app,wan-lan"
 #define PERSISTENT_STORE_KEY        "DUMMY"
 #define PERSISTENT_STORE_VALUE      "DUMMY_VALUE"
 #define APPMANAGER_PACKAGEID        "testPackageID"
@@ -170,7 +171,7 @@ protected:
                    return reinterpret_cast<void*>(mStore2Mock);
                 } else if (name == "org.rdk.AppStorageManager") {
                     return reinterpret_cast<void*>(mStorageManagerMock);
-                } else if (name == "org.rdk.PackageManagerRDKEMS") {
+                } else if (name == "org.rdk.AppPackageManager") {
                     if (id == Exchange::IPackageHandler::ID) {
                         return reinterpret_cast<void*>(mPackageManagerMock);
                     }
@@ -380,6 +381,7 @@ protected:
         pkgInfo.lockId = 1;
         pkgInfo.unpackedPath = APPMANAGER_APP_UNPACKEDPATH;
         pkgInfo.type = AppManagerTypes::APPLICATION_TYPE_INTERACTIVE;
+        pkgInfo.configMetadata.capabilities = APPMANAGER_APP_CAPABILITIES;
         AppInfoManager::getInstance().setPackageInfo(appId, pkgInfo);
     }
 
@@ -416,7 +418,7 @@ protected:
         .WillRepeatedly([&](const string& appInstanceId , const Exchange::ILifecycleManager::LifecycleState targetLifecycleState , const string& launchIntent) {
             return Core::ERROR_NONE;
         });
-        EXPECT_CALL(*mLifecycleManagerMock, SpawnApp(APPMANAGER_APP_ID, ::testing::_, ::testing::_, ::testing::_, launchArgs, ::testing::_, ::testing::_, ::testing::_))
+        EXPECT_CALL(*mLifecycleManagerMock, SpawnApp(APPMANAGER_APP_ID, APPMANAGER_APP_INTENT, ::testing::_, ::testing::_, launchArgs, ::testing::_, ::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
         .WillOnce([&](const string& appId, const string& launchIntent, const Exchange::ILifecycleManager::LifecycleState targetLifecycleState,
             const Exchange::RuntimeConfig& runtimeConfigObject, const string& launchArgs, string& appInstanceId, string& errorReason, bool& success) {
@@ -1369,7 +1371,7 @@ TEST_F(AppManagerTest, PreloadAppUsingComRpcSuccess)
     mPreLoadSpawmCalled = false;
 
     preLaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::PAUSED);
-    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->PreloadApp(APPMANAGER_APP_ID, APPMANAGER_APP_LAUNCHARGS, error));
+    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->PreloadApp(APPMANAGER_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS, error));
     {
         std::unique_lock<std::mutex> lock(mPreLoadMutex);
         ASSERT_TRUE(mPreLoadCV.wait_for(lock, std::chrono::seconds(10), [&]{ return mPreLoadSpawmCalled; }));
@@ -1400,7 +1402,7 @@ TEST_F(AppManagerTest, PreloadAppUsingJSONRpcSuccess)
     mPreLoadSpawmCalled = false;
 
     preLaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::PAUSED);
-    std::string request = "{\"appId\": \"" + std::string(APPMANAGER_APP_ID) + "\", \"launchArgs\": \"" + std::string(APPMANAGER_APP_LAUNCHARGS) + "\"}";
+    std::string request = "{\"appId\": \"" + std::string(APPMANAGER_APP_ID) + "\", \"intent\": \"" + std::string(APPMANAGER_APP_INTENT) + "\", \"launchArgs\": \"" + std::string(APPMANAGER_APP_LAUNCHARGS) + "\"}";
     EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("preloadApp"), request, mJsonRpcResponse));
     {
         std::unique_lock<std::mutex> lock(mPreLoadMutex);
@@ -1446,7 +1448,7 @@ TEST_F(AppManagerTest, PreloadAppUsingComRpcFailureWrongAppID)
 
     LaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::PAUSED);
 
-    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->PreloadApp(APPMANAGER_WRONG_APP_ID, APPMANAGER_APP_LAUNCHARGS, error));
+    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->PreloadApp(APPMANAGER_WRONG_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS, error));
 
     signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
     EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
@@ -1495,7 +1497,7 @@ TEST_F(AppManagerTest, PreloadAppUsingComRpcFailureIsAppLoadedReturnError)
         loaded = false;
         return Core::ERROR_GENERAL;
     });
-    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->PreloadApp(APPMANAGER_APP_ID, APPMANAGER_APP_LAUNCHARGS, error));
+    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->PreloadApp(APPMANAGER_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS, error));
 
     signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
     EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
@@ -1530,7 +1532,7 @@ TEST_F(AppManagerTest, PreloadAppUsingComRpcFailureLifecycleManagerRemoteObjectI
     mAppManagerImpl->Register(&notification);
     notification.SetExpectedEvent(expectedEvent);
 
-    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->PreloadApp(APPMANAGER_APP_ID, APPMANAGER_APP_LAUNCHARGS, error));
+    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->PreloadApp(APPMANAGER_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS, error));
 
     signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
     EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
@@ -2630,7 +2632,7 @@ TEST_F(AppManagerTest, SetAppPropertyUsingComRpcSuccess)
 {
     Core::hresult status;
     const std::string key = PERSISTENT_STORE_KEY;
-    std::string value = "";
+    std::string value = PERSISTENT_STORE_VALUE;
 
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
@@ -2657,7 +2659,7 @@ TEST_F(AppManagerTest, SetAppPropertyUsingJSONRpcSuccess)
 {
     Core::hresult status;
     const std::string key = PERSISTENT_STORE_KEY;
-    std::string value = "";
+    std::string value = PERSISTENT_STORE_VALUE;
 
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
@@ -2720,6 +2722,53 @@ TEST_F(AppManagerTest, SetAppPropertyUsingComRpcFailureEmptyKey)
 }
 
 /*
+ * Test Case for SetAppPropertyUsingComRpcFailureEmptyValue
+ * Setting up AppManager/LifecycleManager/LifecycleManagerState/PersistentStore/PackageManagerRDKEMS Plugin and creating required COM-RPC resources
+ * Verifying the return of the API by passing an empty value with valid appId and key
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, SetAppPropertyUsingComRpcFailureEmptyValue)
+{
+    Core::hresult status;
+    const std::string key = PERSISTENT_STORE_KEY;
+    const std::string value = "";
+
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    EXPECT_EQ(Core::ERROR_GENERAL, mAppManagerImpl->SetAppProperty(APPMANAGER_APP_ID, key, value));
+    if(status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for SetAppPropertyUsingJSONRpcFailureEmptyValue
+ * Setting up AppManager/LifecycleManager/LifecycleManagerState/PersistentStore/PackageManagerRDKEMS Plugin and creating required JSON-RPC resources
+ * Verifying the return of the JSON-RPC API by passing an empty value with valid appId and key
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, SetAppPropertyUsingJSONRpcFailureEmptyValue)
+{
+    Core::hresult status;
+    const std::string key = PERSISTENT_STORE_KEY;
+    const std::string value = "";
+
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    std::string request = "{\"appId\": \"" + std::string(APPMANAGER_APP_ID) + "\", \"key\": \"" + key + "\", \"value\": \"" + value + "\"}";
+
+    EXPECT_EQ(Core::ERROR_GENERAL, mJsonRpcHandler.Invoke(connection, _T("setAppProperty"), request, mJsonRpcResponse));
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
  * Test Case for SetAppPropertyUsingComRpcFailureSetValueReturnError
  * Setting up AppManager/LifecycleManager/LifecycleManagerState/PersistentStore/PackageManagerRDKEMS Plugin and creating required COM-RPC resources
  * Setting Mock for SetValue() to simulate error return
@@ -2730,7 +2779,7 @@ TEST_F(AppManagerTest, SetAppPropertyUsingComRpcFailureSetValueReturnError)
 {
     Core::hresult status;
     const std::string key = PERSISTENT_STORE_KEY;
-    std::string value = "";
+    std::string value = PERSISTENT_STORE_VALUE;
 
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
@@ -3321,7 +3370,7 @@ TEST_F(AppManagerTest, PreloadAppUsingComRpcFailureEmptyAppID)
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
 
-    EXPECT_EQ(Core::ERROR_INVALID_PARAMETER, mAppManagerImpl->PreloadApp("", APPMANAGER_APP_LAUNCHARGS, error));
+    EXPECT_EQ(Core::ERROR_INVALID_PARAMETER, mAppManagerImpl->PreloadApp("", APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS, error));
     EXPECT_FALSE(error.empty());
 
     if (status == Core::ERROR_NONE)
@@ -3888,7 +3937,7 @@ TEST_F(AppManagerTest, GetCustomValuesWithAipathFile)
         });
 
     preLaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::PAUSED);
-    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->PreloadApp(APPMANAGER_APP_ID, APPMANAGER_APP_LAUNCHARGS, error));
+    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->PreloadApp(APPMANAGER_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS, error));
     {
         std::unique_lock<std::mutex> lock(mPreLoadMutex);
         ASSERT_TRUE(mPreLoadCV.wait_for(lock, std::chrono::seconds(10), [&] { return mPreLoadSpawmCalled; }));
@@ -4893,7 +4942,7 @@ TEST_F(AppManagerTest, GetCustomValuesWithAipathFileHasContent)
         });
 
     preLaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::PAUSED);
-    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->PreloadApp(APPMANAGER_APP_ID, APPMANAGER_APP_LAUNCHARGS, error));
+    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->PreloadApp(APPMANAGER_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS, error));
     {
         std::unique_lock<std::mutex> lock(mPreLoadMutex);
         ASSERT_TRUE(mPreLoadCV.wait_for(lock, std::chrono::seconds(10), [&] { return mPreLoadSpawmCalled; }));

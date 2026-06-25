@@ -280,7 +280,8 @@ class PackageManagerImplementation
     Core::hresult createStorageManagerObject();
     void releaseStorageManagerObject();
     void recordAndPublishTelemetryData(const std::string& marker, const std::string& appId, time_t requestTime, PackageManagerImplementation::PackageFailureErrorCode errorCode,
-                                       const std::string& runtimeId = "", const std::string& runtimeVersion = "");
+                                       const std::string& runtimeId = "", const std::string& runtimeVersion = "",
+                                       int count = -1, const std::string& backend = "");
     time_t getCurrentTimestamp();
     void populateRuntime(packagemanager::ConfigMetadataArray& aConfigMetadata);
 

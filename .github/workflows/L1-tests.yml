@@ -14,7 +14,7 @@ on:
 env:
   BUILD_TYPE: Debug
   THUNDER_REF: "R4.4.1"
-  INTERFACES_REF: "topic/RDKEMW-16187"
+  INTERFACES_REF: "develop"
   AUTOMATICS_UNAME: ${{ secrets.AUTOMATICS_UNAME}}
   AUTOMATICS_PASSCODE: ${{ secrets. AUTOMATICS_PASSCODE}}
 
@@ -625,6 +625,7 @@ jobs:
           name: artifacts-L1-appmanagers
           path: |
             coverage/
+            filtered_coverage.info
             valgrind_log
             rdkL1TestResultsWithoutValgrind.json
             rdkL1TestResultsWithValgrind.json

@@ -58,14 +58,18 @@ namespace Plugin {
                 INTERFACE_ENTRY(RPC::IRemoteConnection::INotification)
                 END_INTERFACE_MAP
 
-                void Activated(RPC::IRemoteConnection*) override
+                void Activated(RPC::IRemoteConnection* connection) override
                 {
-                    LOGINFO("AppManager Notification Activated");
+                    if ((nullptr != connection) && (_parent.mConnectionId == connection->Id())) {
+                        LOGINFO("AppManager Notification Activated");
+                    }
                 }
 
                 void Deactivated(RPC::IRemoteConnection *connection) override
                 {
-                    LOGINFO("AppManager Notification Deactivated");
+                    if ((nullptr != connection) && (_parent.mConnectionId == connection->Id())) {
+                        LOGINFO("AppManager Notification Deactivated");
+                    }
                     _parent.Deactivated(connection);
                 }
 

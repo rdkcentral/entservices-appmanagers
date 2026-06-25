@@ -10,6 +10,8 @@
 
 The **LifecycleManager** implements a state machine for managing application lifecycle transitions. It coordinates with RuntimeManager for container operations and RDKWindowManager for display management.
 
+Default plugin execution mode is **in-process** (`Off`)
+
 ### Core Responsibilities
 
 - Maintain per-application state (ApplicationContext)
