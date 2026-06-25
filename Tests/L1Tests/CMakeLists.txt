@@ -115,6 +115,26 @@ set(RUNTIMEMANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/RuntimeMan
 set(RUNTIMEMANAGER_LIBS ${NAMESPACE}RuntimeManager ${NAMESPACE}RuntimeManagerImplementation)
 add_plugin_test_ex(PLUGIN_RUNTIME_MANAGER tests/test_RunTimeManager.cpp "${RUNTIMEMANAGER_INC}" "${RUNTIMEMANAGER_LIBS}")
 
+# PLUGIN_RALF (ralf folder under RuntimeManager)
+# The ralf source files are compiled directly into the test binary so that
+# RALF_PACKAGE_SUPPORT=ON is NOT required. Enabling RALF_PACKAGE_SUPPORT in the
+# build changes code paths in AppStorageManager, AppManager, and RuntimeManager
+# (e.g. extra chown() calls, changed RuntimeConfig fields) that break the other
+# L1 tests. Compiling the ralf sources here independently avoids all of that.
+if(PLUGIN_RALF)
+    message(STATUS "PLUGIN_RALF=ON")
+    file(GLOB RALF_SRC_FILES
+        "${CMAKE_SOURCE_DIR}/../entservices-appmanagers/RuntimeManager/ralf/*.cpp"
+    )
+    list(APPEND TEST_SRC tests/test_Ralf.cpp ${RALF_SRC_FILES})
+    list(APPEND TEST_INC
+        ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/RuntimeManager
+        ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/RuntimeManager/ralf
+        ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers
+    )
+    list(APPEND TEST_LIB jsoncpp)
+endif()
+
 # PLUGIN_APP_STORAGE_MANAGER
 set(STORAGE_MANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/AppStorageManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
 set(STORAGE_MANAGER_LIBS ${NAMESPACE}AppStorageManager ${NAMESPACE}AppStorageManagerImplementation)
@@ -203,6 +223,8 @@ target_link_options(${TEST_RUNNER_NAME} PRIVATE
     -Wl,--wrap,opendir
     -Wl,--wrap,readdir
     -Wl,--wrap,closedir
+    -Wl,--wrap,mount
+    -Wl,--wrap,umount
 )
 
 target_include_directories(${TEST_RUNNER_NAME}
