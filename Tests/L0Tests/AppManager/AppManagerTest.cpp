@@ -97,6 +97,29 @@ extern uint32_t Test_AM_UpdateCurrentActionTimeMismatchedAction();
 extern uint32_t Test_AM_CheckInstallUninstallBlockUninstallBlockedState();
 extern uint32_t Test_AM_OnAppInstallationStatusInstalledWithEmptyVersion();
 extern uint32_t Test_AM_HandleOnAppLifecycleStateChangedLoadingToLoading();
+extern uint32_t Test_AM_CreateOrUpdatePackageInfoEmptyVersion();
+extern uint32_t Test_AM_CreateOrUpdatePackageInfoValidData();
+extern uint32_t Test_AM_RemoveAppInfoByAppIdNotFound();
+extern uint32_t Test_AM_OnAppInstallationStatusEmptyResponse();
+extern uint32_t Test_AM_OnAppInstallationStatusInvalidJson();
+extern uint32_t Test_AM_DispatchInstallationStatusEmptyPackageId();
+extern uint32_t Test_AM_DispatchLaunchRequestEmptyIntentAndSource();
+extern uint32_t Test_AM_DispatchUnloadedEmptyAppInstanceId();
+extern uint32_t Test_AM_FetchPackageListErrorPath();
+extern uint32_t Test_AM_GetAppPropertyGetValueFailed();
+extern uint32_t Test_AM_LICLaunchWithEmptyAppId();
+extern uint32_t Test_AM_LICPreloadWithEmptyAppId();
+extern uint32_t Test_AM_LICOnAppStateChangedUnknownAppId();
+extern uint32_t Test_AM_LICOnAppLifecycleStateChangedActiveNewState();
+extern uint32_t Test_AM_LICOnAppLifecycleStateChangedUnloadedAbnormalClose();
+extern uint32_t Test_AM_DispatchLoadingToLoadingNullConnector();
+extern uint32_t Test_AM_DispatchLifecycleStateMissingAppId();
+extern uint32_t Test_AM_DispatchLifecycleStateMissingNewState();
+extern uint32_t Test_AM_DispatchLifecycleStateMissingOldState();
+extern uint32_t Test_AM_DispatchLifecycleStateMissingErrorReason();
+extern uint32_t Test_AM_DispatchLaunchRequestMissingAppId();
+extern uint32_t Test_AM_DispatchUnloadedMissingAppId();
+extern uint32_t Test_AM_DispatchDefaultUnknownEvent();
 
 int main()
 {
@@ -182,6 +205,29 @@ int main()
         { "AM_CheckInstallUninstallBlockUninstallBlockedState", Test_AM_CheckInstallUninstallBlockUninstallBlockedState },
         { "AM_OnAppInstallationStatusInstalledWithEmptyVersion", Test_AM_OnAppInstallationStatusInstalledWithEmptyVersion },
         { "AM_HandleOnAppLifecycleStateChangedLoadingToLoading", Test_AM_HandleOnAppLifecycleStateChangedLoadingToLoading },
+        { "AM_CreateOrUpdatePackageInfoEmptyVersion", Test_AM_CreateOrUpdatePackageInfoEmptyVersion },
+        { "AM_CreateOrUpdatePackageInfoValidData", Test_AM_CreateOrUpdatePackageInfoValidData },
+        { "AM_RemoveAppInfoByAppIdNotFound", Test_AM_RemoveAppInfoByAppIdNotFound },
+        { "AM_OnAppInstallationStatusEmptyResponse", Test_AM_OnAppInstallationStatusEmptyResponse },
+        { "AM_OnAppInstallationStatusInvalidJson", Test_AM_OnAppInstallationStatusInvalidJson },
+        { "AM_DispatchInstallationStatusEmptyPackageId", Test_AM_DispatchInstallationStatusEmptyPackageId },
+        { "AM_DispatchLaunchRequestEmptyIntentAndSource", Test_AM_DispatchLaunchRequestEmptyIntentAndSource },
+        { "AM_DispatchUnloadedEmptyAppInstanceId", Test_AM_DispatchUnloadedEmptyAppInstanceId },
+        { "AM_FetchPackageListErrorPath", Test_AM_FetchPackageListErrorPath },
+        { "AM_GetAppPropertyGetValueFailed", Test_AM_GetAppPropertyGetValueFailed },
+        { "AM_LICLaunchWithEmptyAppId", Test_AM_LICLaunchWithEmptyAppId },
+        { "AM_LICPreloadWithEmptyAppId", Test_AM_LICPreloadWithEmptyAppId },
+        { "AM_LICOnAppStateChangedUnknownAppId", Test_AM_LICOnAppStateChangedUnknownAppId },
+        { "AM_LICOnAppLifecycleStateChangedActiveNewState", Test_AM_LICOnAppLifecycleStateChangedActiveNewState },
+        { "AM_LICOnAppLifecycleStateChangedUnloadedAbnormalClose", Test_AM_LICOnAppLifecycleStateChangedUnloadedAbnormalClose },
+        { "AM_DispatchLoadingToLoadingNullConnector", Test_AM_DispatchLoadingToLoadingNullConnector },
+        { "AM_DispatchLifecycleStateMissingAppId", Test_AM_DispatchLifecycleStateMissingAppId },
+        { "AM_DispatchLifecycleStateMissingNewState", Test_AM_DispatchLifecycleStateMissingNewState },
+        { "AM_DispatchLifecycleStateMissingOldState", Test_AM_DispatchLifecycleStateMissingOldState },
+        { "AM_DispatchLifecycleStateMissingErrorReason", Test_AM_DispatchLifecycleStateMissingErrorReason },
+        { "AM_DispatchLaunchRequestMissingAppId", Test_AM_DispatchLaunchRequestMissingAppId },
+        { "AM_DispatchUnloadedMissingAppId", Test_AM_DispatchUnloadedMissingAppId },
+        { "AM_DispatchDefaultUnknownEvent", Test_AM_DispatchDefaultUnknownEvent },
     };
 
     uint32_t totalFailures = 0;

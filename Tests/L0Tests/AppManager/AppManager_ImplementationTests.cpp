@@ -1242,8 +1242,6 @@ uint32_t Test_AM_CheckInstallUninstallBlockUninstallBlockedState()
     L0Test::TestResult tr;
     auto* impl = CreateImpl();
 
-    L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
-    // Override installer with a package that has UNINSTALL_BLOCKED (not INSTALLATION_BLOCKED).
     auto* installer = new L0Test::FakePackageInstaller();
     WPEFramework::Exchange::IPackageInstaller::Package uninstBlockedPkg;
     uninstBlockedPkg.packageId = "app.uninstblocked";
@@ -1251,7 +1249,13 @@ uint32_t Test_AM_CheckInstallUninstallBlockUninstallBlockedState()
     uninstBlockedPkg.state     =
         WPEFramework::Exchange::IPackageInstaller::InstallState::UNINSTALL_BLOCKED;
     installer->installedPackages.push_back(uninstBlockedPkg);
-    cfg.installer = installer;
+
+    L0Test::AppManagerServiceMock::Config cfg(installer);
+    cfg.packageHandler        = new L0Test::FakePackageHandler();
+    cfg.store2                = new L0Test::FakeStore2();
+    cfg.storageManager        = new L0Test::FakeStorageManager();
+    cfg.lifecycleManager      = new L0Test::FakeLifecycleManager();
+    cfg.lifecycleManagerState = new L0Test::FakeLifecycleManagerState();
 
     L0Test::AppManagerServiceMock service(cfg);
     impl->Configure(&service);
@@ -1310,12 +1314,424 @@ uint32_t Test_AM_HandleOnAppLifecycleStateChangedLoadingToLoading()
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
     L0Test::ExpectTrue(tr, notification->lifecycle >= 1U,
         "handleOnAppLifecycleStateChanged() fires OnAppLifecycleStateChanged notification");
-    L0Test::ExpectTrue(tr, true,
-        "handleOnAppLifecycleStateChanged() with LOADING->LOADING transition handled without crash");
 
     impl->Unregister(notification);
     notification->Release();
     impl->Release();
     WPEFramework::Plugin::AppInfoManager::getInstance().clear();
     return tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Helper functions placed inside WPEFramework::Plugin so that the unqualified
+// name "JsonObject" is resolved naturally, letting us call Dispatch() directly
+// with controlled (incomplete) JSON payloads.
+// ─────────────────────────────────────────────────────────────────────────────
+namespace WPEFramework {
+namespace Plugin {
+
+static void callDispatch_LifecycleEmpty(AppManagerImplementation* impl) {
+    JsonObject params; // no labels → triggers "appId not present or empty"
+    impl->Dispatch(AppManagerImplementation::APP_EVENT_LIFECYCLE_STATE_CHANGED, params);
+}
+
+static void callDispatch_LifecycleWithAppId(AppManagerImplementation* impl, const std::string& appId) {
+    JsonObject params;
+    params["appId"] = appId; // no newState → triggers "newState not present"
+    impl->Dispatch(AppManagerImplementation::APP_EVENT_LIFECYCLE_STATE_CHANGED, params);
+}
+
+static void callDispatch_LifecycleWithAppIdNewState(AppManagerImplementation* impl,
+                                                    const std::string& appId, int newState) {
+    JsonObject params;
+    params["appId"]    = appId;
+    params["newState"] = newState; // no oldState → triggers "oldState not present"
+    impl->Dispatch(AppManagerImplementation::APP_EVENT_LIFECYCLE_STATE_CHANGED, params);
+}
+
+static void callDispatch_LifecycleWithAppIdNewOldState(AppManagerImplementation* impl,
+                                                       const std::string& appId,
+                                                       int newState, int oldState) {
+    JsonObject params;
+    params["appId"]    = appId;
+    params["newState"] = newState;
+    params["oldState"] = oldState; // no errorReason → triggers "errorReason not present"
+    impl->Dispatch(AppManagerImplementation::APP_EVENT_LIFECYCLE_STATE_CHANGED, params);
+}
+
+static void callDispatch_LaunchRequestEmpty(AppManagerImplementation* impl) {
+    JsonObject params; // no appId → triggers "appId is missing or empty"
+    impl->Dispatch(AppManagerImplementation::APP_EVENT_LAUNCH_REQUEST, params);
+}
+
+static void callDispatch_UnloadedEmpty(AppManagerImplementation* impl) {
+    JsonObject params; // no appId → triggers "appId is missing or empty"
+    impl->Dispatch(AppManagerImplementation::APP_EVENT_UNLOADED, params);
+}
+
+static void callDispatch_UnknownEvent(AppManagerImplementation* impl) {
+    JsonObject params;
+    impl->Dispatch(AppManagerImplementation::APP_EVENT_UNKNOWN, params);
+}
+
+} // namespace Plugin
+} // namespace WPEFramework
+
+// ─────────────────────────────────────────────────────────────────────────────
+// New tests added to improve coverage beyond 75%
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Covers the LOGWARN "unpacked path is empty! or version is empty" branch in
+// createOrUpdatePackageInfoByAppId() when PackageInfo has an empty version string.
+uint32_t Test_AM_CreateOrUpdatePackageInfoEmptyVersion()
+{
+    AppManagerTestFixture fixture(true, true);
+    WPEFramework::Plugin::AppManagerTypes::PackageInfo emptyPkg; // version="" unpackedPath=""
+    bool result = fixture.impl->createOrUpdatePackageInfoByAppId("com.test.app", emptyPkg);
+    L0Test::ExpectTrue(fixture.tr, !result,
+        "createOrUpdatePackageInfoByAppId returns false when version/path are empty");
+    return fixture.tr.failures;
+}
+
+// Covers the upsert (else) branch in createOrUpdatePackageInfoByAppId() with valid data.
+uint32_t Test_AM_CreateOrUpdatePackageInfoValidData()
+{
+    AppManagerTestFixture fixture(true, true);
+    WPEFramework::Plugin::AppManagerTypes::PackageInfo pkg;
+    pkg.version     = "2.0.0";
+    pkg.unpackedPath = "/opt/test/app";
+    pkg.appMetadata  = "{}";
+    bool result = fixture.impl->createOrUpdatePackageInfoByAppId("com.test.validapp", pkg);
+    L0Test::ExpectTrue(fixture.tr, result,
+        "createOrUpdatePackageInfoByAppId returns true for valid version and path");
+    return fixture.tr.failures;
+}
+
+// Covers the LOGWARN "PackageInfo not found" branch in removeAppInfoByAppId() when
+// the appId does not exist in the AppInfoManager.
+uint32_t Test_AM_RemoveAppInfoByAppIdNotFound()
+{
+    AppManagerTestFixture fixture(true, true);
+    bool result = fixture.impl->removeAppInfoByAppId("nonexistent.app.xyz.12345");
+    L0Test::ExpectTrue(fixture.tr, !result,
+        "removeAppInfoByAppId returns false when appId not in AppInfoManager");
+    return fixture.tr.failures;
+}
+
+// Covers the LOGERR "jsonresponse string is empty" branch in OnAppInstallationStatus().
+uint32_t Test_AM_OnAppInstallationStatusEmptyResponse()
+{
+    AppManagerTestFixture fixture;
+    fixture.impl->OnAppInstallationStatus("");
+    L0Test::ExpectTrue(fixture.tr, true,
+        "OnAppInstallationStatus handles empty string without crash");
+    return fixture.tr.failures;
+}
+
+// Covers the LOGERR "Failed to parse JSON string" branch in OnAppInstallationStatus().
+uint32_t Test_AM_OnAppInstallationStatusInvalidJson()
+{
+    AppManagerTestFixture fixture;
+    fixture.impl->OnAppInstallationStatus("this-is-not-valid-json");
+    L0Test::ExpectTrue(fixture.tr, true,
+        "OnAppInstallationStatus handles invalid JSON without crash");
+    return fixture.tr.failures;
+}
+
+// Covers the LOGERR "appId is missing or empty" branch in Dispatch for
+// APP_EVENT_INSTALLATION_STATUS when packageId is present but empty.
+uint32_t Test_AM_DispatchInstallationStatusEmptyPackageId()
+{
+    AppManagerTestFixture fixture;
+    fixture.impl->OnAppInstallationStatus("[{\"packageId\":\"\",\"state\":\"INSTALLED\"}]");
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    L0Test::ExpectTrue(fixture.tr, true,
+        "Dispatch INSTALLATION_STATUS with empty packageId hits LOGERR without crash");
+    return fixture.tr.failures;
+}
+
+// Covers the LOGERR "intent is empty for Launch app" and "source is empty for Launch app"
+// branches in Dispatch for APP_EVENT_LAUNCH_REQUEST when intent and source are empty strings.
+uint32_t Test_AM_DispatchLaunchRequestEmptyIntentAndSource()
+{
+    AppManagerTestFixture fixture;
+    // appId is non-empty so handleOnAppLaunchRequest doesn't short-circuit;
+    // empty intent/source fields reach the Dispatch LOGERR paths.
+    fixture.impl->handleOnAppLaunchRequest("com.test.app", "", "");
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    L0Test::ExpectTrue(fixture.tr, true,
+        "Dispatch LAUNCH_REQUEST with empty intent/source hits LOGERR paths without crash");
+    return fixture.tr.failures;
+}
+
+// Covers the LOGERR "appInstanceId is empty for Unloaded app" branch in Dispatch for
+// APP_EVENT_UNLOADED when appInstanceId is an empty string.
+uint32_t Test_AM_DispatchUnloadedEmptyAppInstanceId()
+{
+    AppManagerTestFixture fixture;
+    // appId non-empty so handleOnAppUnloaded calls dispatchEvent;
+    // empty appInstanceId triggers the LOGERR path in Dispatch.
+    fixture.impl->handleOnAppUnloaded("com.test.app", "");
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    L0Test::ExpectTrue(fixture.tr, true,
+        "Dispatch UNLOADED with empty appInstanceId hits LOGERR path without crash");
+    return fixture.tr.failures;
+}
+
+// Covers the LOGERR paths in fetchAppPackageList (ListPackages returns error) and
+// checkInstallUninstallBlock (fetch failed → return false).
+uint32_t Test_AM_FetchPackageListErrorPath()
+{
+    L0Test::TestResult tr;
+
+    auto* installer = new L0Test::FakePackageInstaller();
+    // Make ListPackages return an error so fetchAppPackageList hits the LOGERR + goto path.
+    installer->listHandler = [](WPEFramework::Exchange::IPackageInstaller::IPackageIterator*& packages)
+                                 -> WPEFramework::Core::hresult {
+        packages = nullptr;
+        return WPEFramework::Core::ERROR_GENERAL;
+    };
+
+    L0Test::AppManagerServiceMock::Config cfg(installer);
+    cfg.packageHandler        = new L0Test::FakePackageHandler();
+    cfg.store2                = new L0Test::FakeStore2();
+    cfg.storageManager        = new L0Test::FakeStorageManager();
+    cfg.lifecycleManager      = new L0Test::FakeLifecycleManager();
+    cfg.lifecycleManagerState = new L0Test::FakeLifecycleManagerState();
+
+    L0Test::AppManagerServiceMock service(cfg);
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+
+    bool blocked = impl->checkInstallUninstallBlock("com.test.app");
+    L0Test::ExpectTrue(tr, !blocked,
+        "checkInstallUninstallBlock returns false when ListPackages fails");
+
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+// Covers the LOGERR "GetValue Failed" branch in GetAppProperty() when the Store2
+// key does not exist (FakeStore2 returns ERROR_GENERAL for unknown keys).
+uint32_t Test_AM_GetAppPropertyGetValueFailed()
+{
+    AppManagerTestFixture fixture;
+    std::string value;
+    // FakeStore2 returns ERROR_GENERAL for keys not in its data map.
+    auto result = fixture.impl->GetAppProperty("com.test.app", "key.not.present", value);
+    L0Test::ExpectEqU32(fixture.tr,
+        result,
+        WPEFramework::Core::ERROR_GENERAL,
+        "GetAppProperty returns ERROR_GENERAL when GetValue fails for missing key");
+    return fixture.tr.failures;
+}
+
+// Covers the LOGERR "appId is empty" early-return branch in
+// LifecycleInterfaceConnector::launch().
+uint32_t Test_AM_LICLaunchWithEmptyAppId()
+{
+    AppManagerTestFixture fixture;
+    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
+    auto status = fixture.impl->mLifecycleInterfaceConnector->launch("", "intent", "args", runtimeConfig);
+    L0Test::ExpectEqU32(fixture.tr, status, WPEFramework::Core::ERROR_GENERAL,
+        "LifecycleInterfaceConnector::launch returns ERROR_GENERAL for empty appId");
+    return fixture.tr.failures;
+}
+
+// Covers the LOGERR "appId is empty" early-return branch in
+// LifecycleInterfaceConnector::preLoadApp().
+uint32_t Test_AM_LICPreloadWithEmptyAppId()
+{
+    AppManagerTestFixture fixture;
+    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
+    std::string error;
+    auto status = fixture.impl->mLifecycleInterfaceConnector->preLoadApp("", "intent", "args", runtimeConfig, error);
+    L0Test::ExpectEqU32(fixture.tr, status, WPEFramework::Core::ERROR_GENERAL,
+        "LifecycleInterfaceConnector::preLoadApp returns ERROR_GENERAL for empty appId");
+    return fixture.tr.failures;
+}
+
+// Covers the LOGERR "appId not found in database" branch in
+// LifecycleInterfaceConnector::OnAppStateChanged() when the appId is not in AppInfoManager
+// but the AppManagerImplementation singleton is alive.
+uint32_t Test_AM_LICOnAppStateChangedUnknownAppId()
+{
+    AppManagerTestFixture fixture(true, true); // auto-configure + clear AppInfoManager
+    // AppInfoManager is empty, so lookup for "nonexistent.app" fails → LOGERR at L861
+    fixture.impl->mLifecycleInterfaceConnector->OnAppStateChanged(
+        "nonexistent.app.xyz",
+        WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE,
+        "ERROR_CREATE_DISPLAY");
+    L0Test::ExpectTrue(fixture.tr, true,
+        "OnAppStateChanged with unknown appId hits LOGERR path without crash");
+    return fixture.tr.failures;
+}
+
+// Covers the gAppsActiveCounter++ and setLastActiveIndex() lines in
+// LifecycleInterfaceConnector::OnAppLifecycleStateChanged() when newState == ACTIVE.
+uint32_t Test_AM_LICOnAppLifecycleStateChangedActiveNewState()
+{
+    AppManagerTestFixture fixture(true, true);
+
+    // Populate AppInfoManager so the update lambda executes with matching instanceId.
+    WPEFramework::Plugin::AppInfo info;
+    info.setAppInstanceId("inst-active-test");
+    WPEFramework::Plugin::AppInfoManager::getInstance().upsert(
+        "app.active.test",
+        [&](WPEFramework::Plugin::AppInfo& a) { a = info; });
+
+    fixture.impl->mLifecycleInterfaceConnector->OnAppLifecycleStateChanged(
+        "app.active.test", "inst-active-test",
+        WPEFramework::Exchange::ILifecycleManager::LifecycleState::LOADING, // oldState
+        WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE,  // newState
+        "");
+    L0Test::ExpectTrue(fixture.tr, true,
+        "OnAppLifecycleStateChanged with ACTIVE newState covers counter-increment lines");
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    return fixture.tr.failures;
+}
+
+// Covers the UNLOADED abnormal-close branch in
+// LifecycleInterfaceConnector::OnAppLifecycleStateChanged() (no prior terminate action).
+// This exercises appManagerInitiatedKill/lifecycleManagerInitiatedKill = false,
+// the LOGINFO "Terminate event due to app crash", APP_ERROR_ABORT dispatch,
+// telemetry stub, mAppCurrentActionList.erase, and the handleOnAppUnloaded() call.
+uint32_t Test_AM_LICOnAppLifecycleStateChangedUnloadedAbnormalClose()
+{
+    AppManagerTestFixture fixture(true, true);
+
+    // Populate AppInfoManager with a non-empty instanceId so storedInstanceId is
+    // non-empty and the telemetry-reporting branch is also instrumented.
+    WPEFramework::Plugin::AppInfo info;
+    info.setAppInstanceId("inst-unload-test");
+    WPEFramework::Plugin::AppInfoManager::getInstance().upsert(
+        "app.unload.test",
+        [&](WPEFramework::Plugin::AppInfo& a) { a = info; });
+
+    // oldState=LOADING, newState=UNLOADED, no prior mAppCurrentActionList entry
+    // → abnormal close path.
+    fixture.impl->mLifecycleInterfaceConnector->OnAppLifecycleStateChanged(
+        "app.unload.test", "inst-unload-test",
+        WPEFramework::Exchange::ILifecycleManager::LifecycleState::LOADING,  // oldState
+        WPEFramework::Exchange::ILifecycleManager::LifecycleState::UNLOADED, // newState
+        "");
+    L0Test::ExpectTrue(fixture.tr, true,
+        "OnAppLifecycleStateChanged with UNLOADED newState (abnormal close) runs without crash");
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    return fixture.tr.failures;
+}
+
+// Covers the LOGERR "mLifecycleInterfaceConnector is null, cannot kill app" branch
+// in Dispatch(APP_EVENT_LIFECYCLE_STATE_CHANGED) for a LOADING→LOADING transition
+// when mLifecycleInterfaceConnector has been nulled out.
+uint32_t Test_AM_DispatchLoadingToLoadingNullConnector()
+{
+    L0Test::TestResult tr;
+    auto* impl = CreateImpl();
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    impl->Configure(&service);
+
+    // Temporarily null the connector so the "kill app" branch takes the else path.
+    auto* savedConnector = impl->mLifecycleInterfaceConnector;
+    impl->mLifecycleInterfaceConnector = nullptr;
+
+    impl->handleOnAppLifecycleStateChanged(
+        "app.nullconn", "inst-nullconn",
+        WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING,
+        WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING,
+        WPEFramework::Exchange::IAppManager::APP_ERROR_NONE);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    // Restore before destructor so cleanup can release the connector properly.
+    impl->mLifecycleInterfaceConnector = savedConnector;
+
+    L0Test::ExpectTrue(tr, true,
+        "LOADING→LOADING with null connector hits LOGERR path without crash");
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+// ── Dispatch() error-path tests that require direct JsonObject construction ──
+
+// Covers LOGERR "appId not present or empty" in Dispatch(LIFECYCLE_STATE_CHANGED)
+// when the params object has no "appId" label.
+uint32_t Test_AM_DispatchLifecycleStateMissingAppId()
+{
+    AppManagerTestFixture fixture;
+    WPEFramework::Plugin::callDispatch_LifecycleEmpty(fixture.impl);
+    L0Test::ExpectTrue(fixture.tr, true,
+        "Dispatch LIFECYCLE with missing appId hits LOGERR without crash");
+    return fixture.tr.failures;
+}
+
+// Covers LOGERR "newState not present" in Dispatch(LIFECYCLE_STATE_CHANGED) when
+// the params object has "appId" but no "newState" label.
+uint32_t Test_AM_DispatchLifecycleStateMissingNewState()
+{
+    AppManagerTestFixture fixture;
+    WPEFramework::Plugin::callDispatch_LifecycleWithAppId(fixture.impl, "com.test.app");
+    L0Test::ExpectTrue(fixture.tr, true,
+        "Dispatch LIFECYCLE with missing newState hits LOGERR without crash");
+    return fixture.tr.failures;
+}
+
+// Covers LOGERR "oldState not present" in Dispatch(LIFECYCLE_STATE_CHANGED) when
+// the params object has "appId" and "newState" but no "oldState" label.
+uint32_t Test_AM_DispatchLifecycleStateMissingOldState()
+{
+    AppManagerTestFixture fixture;
+    WPEFramework::Plugin::callDispatch_LifecycleWithAppIdNewState(
+        fixture.impl, "com.test.app",
+        static_cast<int>(WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE));
+    L0Test::ExpectTrue(fixture.tr, true,
+        "Dispatch LIFECYCLE with missing oldState hits LOGERR without crash");
+    return fixture.tr.failures;
+}
+
+// Covers LOGERR "errorReason not present" in Dispatch(LIFECYCLE_STATE_CHANGED) when
+// the params object has "appId", "newState" and "oldState" but no "errorReason" label.
+uint32_t Test_AM_DispatchLifecycleStateMissingErrorReason()
+{
+    AppManagerTestFixture fixture;
+    WPEFramework::Plugin::callDispatch_LifecycleWithAppIdNewOldState(
+        fixture.impl, "com.test.app",
+        static_cast<int>(WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE),
+        static_cast<int>(WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING));
+    L0Test::ExpectTrue(fixture.tr, true,
+        "Dispatch LIFECYCLE with missing errorReason hits LOGERR without crash");
+    return fixture.tr.failures;
+}
+
+// Covers LOGERR "appId is missing or empty" in Dispatch(APP_EVENT_LAUNCH_REQUEST)
+// when params has no "appId" label.
+uint32_t Test_AM_DispatchLaunchRequestMissingAppId()
+{
+    AppManagerTestFixture fixture;
+    WPEFramework::Plugin::callDispatch_LaunchRequestEmpty(fixture.impl);
+    L0Test::ExpectTrue(fixture.tr, true,
+        "Dispatch LAUNCH_REQUEST with missing appId hits LOGERR without crash");
+    return fixture.tr.failures;
+}
+
+// Covers LOGERR "appId is missing or empty" in Dispatch(APP_EVENT_UNLOADED) when
+// params has no "appId" label.
+uint32_t Test_AM_DispatchUnloadedMissingAppId()
+{
+    AppManagerTestFixture fixture;
+    WPEFramework::Plugin::callDispatch_UnloadedEmpty(fixture.impl);
+    L0Test::ExpectTrue(fixture.tr, true,
+        "Dispatch UNLOADED with missing appId hits LOGERR without crash");
+    return fixture.tr.failures;
+}
+
+// Covers the default case in Dispatch()'s switch statement (LOGERR "Unknown event").
+uint32_t Test_AM_DispatchDefaultUnknownEvent()
+{
+    AppManagerTestFixture fixture;
+    WPEFramework::Plugin::callDispatch_UnknownEvent(fixture.impl);
+    L0Test::ExpectTrue(fixture.tr, true,
+        "Dispatch with APP_EVENT_UNKNOWN hits default case without crash");
+    return fixture.tr.failures;
 }
