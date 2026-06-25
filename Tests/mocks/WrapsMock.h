@@ -81,6 +81,7 @@ public:
     MOCK_METHOD(DIR* , opendir, (const char* pathname), (override));
     MOCK_METHOD(struct dirent*, readdir, (DIR*), (override));
     MOCK_METHOD(int, closedir, (DIR* dirp), (override));
+    MOCK_METHOD(struct group*, getgrnam, (const char* name), (override));
     MOCK_METHOD(CURLcode, curl_easy_setopt, (CURL* curl, CURLoption option, void* param), (override));
     MOCK_METHOD(CURLcode, curl_easy_perform, (CURL* curl), (override));
     MOCK_METHOD(CURLcode, curl_easy_getinfo, (CURL* curl, CURLINFO info, long* value), (override));

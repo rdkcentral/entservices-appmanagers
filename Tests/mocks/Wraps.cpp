@@ -17,6 +17,7 @@
 * limitations under the License.
 **/
 
+#include <grp.h>
 #include <stdarg.h>
 #include <syslog.h>
 #include "Wraps.h"
@@ -49,6 +50,9 @@ extern "C" DIR* __real_opendir(const char* pathname);
 extern "C" struct dirent* __real_readdir(DIR* dirp);
 extern "C" int __real_closedir(DIR* dirp);
 extern "C" int __real_nftw(const char* dirpath, int (*fn)(const char*, const struct stat*, int, struct FTW*), int nopenfd, int flags);
+extern "C" int __real_mount(const char* source, const char* target, const char* filesystemtype, unsigned long mountflags, const void* data);
+extern "C" int __real_umount(const char* target);
+extern "C" struct group* __real_getgrnam(const char* name);
 
 extern "C" int __wrap_system(const char* command)
 {
@@ -415,8 +419,9 @@ int Wraps::mkdir(const char* path, mode_t mode)
 }
 int Wraps::mount(const char* source, const char* target, const char* filesystemtype, unsigned long mountflags, const void* data)
 {
-    EXPECT_NE(impl, nullptr);
-    return impl->mount(source,target,filesystemtype,mountflags,data);
+    if (impl != nullptr)
+        return impl->mount(source, target, filesystemtype, mountflags, data);
+    return __real_mount(source, target, filesystemtype, mountflags, data);
 }
 int Wraps::stat(const char* path, struct stat* info)
 {
@@ -448,8 +453,9 @@ int Wraps::open(const char* pathname, int flags, mode_t mode)
 }
 int Wraps::umount(const char* path)
 {
-    EXPECT_NE(impl, nullptr);
-    return impl->umount(path);
+    if (impl != nullptr)
+        return impl->umount(path);
+    return __real_umount(path);
 }
 int Wraps::rmdir(const char* pathname)
 {
@@ -512,6 +518,19 @@ int Wraps::closedir(DIR* dirp)
         return impl->closedir(dirp);
     return __real_closedir(dirp);
 }
+
+extern "C" struct group* __wrap_getgrnam(const char* name)
+{
+    return Wraps::getInstance().getgrnam(name);
+}
+
+struct group* Wraps::getgrnam(const char* name)
+{
+    if (nullptr != impl)
+        return impl->getgrnam(name);
+    return __real_getgrnam(name);
+}
+
 CURLcode Wraps::curl_easy_setopt(CURL* curl, CURLoption option, void* param)
 {
     EXPECT_NE(impl, nullptr);
