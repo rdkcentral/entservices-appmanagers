@@ -120,6 +120,10 @@ extern uint32_t Test_AM_DispatchLifecycleStateMissingErrorReason();
 extern uint32_t Test_AM_DispatchLaunchRequestMissingAppId();
 extern uint32_t Test_AM_DispatchUnloadedMissingAppId();
 extern uint32_t Test_AM_DispatchDefaultUnknownEvent();
+extern uint32_t Test_AM_DispatchLifecycleAllFieldsNoAppInstanceId();
+extern uint32_t Test_AM_CheckInstallUninstallBlockMatchingNotBlocked();
+extern uint32_t Test_AM_PackageUnlockFails();
+extern uint32_t Test_AM_PackageUnlockAppNotInMap();
 
 int main()
 {
@@ -228,6 +232,10 @@ int main()
         { "AM_DispatchLaunchRequestMissingAppId", Test_AM_DispatchLaunchRequestMissingAppId },
         { "AM_DispatchUnloadedMissingAppId", Test_AM_DispatchUnloadedMissingAppId },
         { "AM_DispatchDefaultUnknownEvent", Test_AM_DispatchDefaultUnknownEvent },
+        { "AM_DispatchLifecycleAllFieldsNoAppInstanceId", Test_AM_DispatchLifecycleAllFieldsNoAppInstanceId },
+        { "AM_CheckInstallUninstallBlockMatchingNotBlocked", Test_AM_CheckInstallUninstallBlockMatchingNotBlocked },
+        { "AM_PackageUnlockFails", Test_AM_PackageUnlockFails },
+        { "AM_PackageUnlockAppNotInMap", Test_AM_PackageUnlockAppNotInMap },
     };
 
     uint32_t totalFailures = 0;

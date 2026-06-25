@@ -1374,6 +1374,18 @@ static void callDispatch_UnknownEvent(AppManagerImplementation* impl) {
     impl->Dispatch(AppManagerImplementation::APP_EVENT_UNKNOWN, params);
 }
 
+// All 4 required fields present but NO appInstanceId label.
+// Covers the false branch of HasLabel("appInstanceId") in the Dispatch else-block.
+static void callDispatch_LifecycleAllFieldsNoInstanceId(AppManagerImplementation* impl) {
+    JsonObject params;
+    params["appId"]       = std::string("com.test.app");
+    params["newState"]    = static_cast<int>(WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE);
+    params["oldState"]    = static_cast<int>(WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING);
+    params["errorReason"] = static_cast<int>(WPEFramework::Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE);
+    // No "appInstanceId" key → params.HasLabel("appInstanceId") = false → covers the "" branch
+    impl->Dispatch(AppManagerImplementation::APP_EVENT_LIFECYCLE_STATE_CHANGED, params);
+}
+
 } // namespace Plugin
 } // namespace WPEFramework
 
@@ -1733,5 +1745,130 @@ uint32_t Test_AM_DispatchDefaultUnknownEvent()
     WPEFramework::Plugin::callDispatch_UnknownEvent(fixture.impl);
     L0Test::ExpectTrue(fixture.tr, true,
         "Dispatch with APP_EVENT_UNKNOWN hits default case without crash");
+    return fixture.tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Branch coverage improvement tests
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Covers the false branch of params.HasLabel("appInstanceId") ternary inside the
+// Dispatch(APP_EVENT_LIFECYCLE_STATE_CHANGED) else-block.  When all 4 required
+// fields (appId, newState, oldState, errorReason) are present but "appInstanceId"
+// is absent, appInstanceId defaults to "".
+uint32_t Test_AM_DispatchLifecycleAllFieldsNoAppInstanceId()
+{
+    AppManagerTestFixture fixture;
+    WPEFramework::Plugin::callDispatch_LifecycleAllFieldsNoInstanceId(fixture.impl);
+    L0Test::ExpectTrue(fixture.tr, true,
+        "Dispatch LIFECYCLE with all required fields but no appInstanceId covers HasLabel false branch");
+    return fixture.tr.failures;
+}
+
+// Covers two uncovered branches inside checkInstallUninstallBlock()'s package loop:
+//   (a) package.packageId != appId  →  the equality test evaluates to false
+//   (b) package.packageId == appId but state is INSTALLED (not blocked)  →
+//       the blocked-state check evaluates to false
+// Also covers the !package.packageId.empty() = false branch via the empty-id package.
+uint32_t Test_AM_CheckInstallUninstallBlockMatchingNotBlocked()
+{
+    L0Test::TestResult tr;
+
+    auto* installer = new L0Test::FakePackageInstaller();
+
+    // Package with empty packageId → !package.packageId.empty() = false (short-circuit)
+    WPEFramework::Exchange::IPackageInstaller::Package emptyIdPkg;
+    emptyIdPkg.packageId = "";
+    emptyIdPkg.version   = "0.0.1";
+    emptyIdPkg.state     = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
+    installer->installedPackages.push_back(emptyIdPkg);
+
+    // Package with non-matching packageId → packageId == appId = false
+    WPEFramework::Exchange::IPackageInstaller::Package otherPkg;
+    otherPkg.packageId = "other.app.not.matching";
+    otherPkg.version   = "1.0";
+    otherPkg.state     = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
+    installer->installedPackages.push_back(otherPkg);
+
+    // Package with matching packageId but INSTALLED state (not blocked)
+    // → state == BLOCKED || state == UNINSTALL_BLOCKED = false
+    WPEFramework::Exchange::IPackageInstaller::Package targetPkg;
+    targetPkg.packageId = "target.app.notblocked";
+    targetPkg.version   = "2.0";
+    targetPkg.state     = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
+    installer->installedPackages.push_back(targetPkg);
+
+    L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
+    cfg.installer = installer;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    L0Test::ExpectEqU32(tr, impl->Configure(&service), WPEFramework::Core::ERROR_NONE,
+        "Configure() succeeds for checkInstallUninstallBlock matching-not-blocked test");
+
+    const bool blocked = impl->checkInstallUninstallBlock("target.app.notblocked");
+    L0Test::ExpectTrue(tr, !blocked,
+        "checkInstallUninstallBlock() returns false when matching package is INSTALLED (not blocked)");
+
+    impl->Release();
+    return tr.failures;
+}
+
+// Covers the LOGERR "Failed to PackageManager Unlock" branch inside packageUnLock()
+// when IPackageHandler::Unlock returns an error.  The app IS in AppInfoManager so
+// the outer if-block is entered, Unlock is called, and the failure path is taken.
+uint32_t Test_AM_PackageUnlockFails()
+{
+    L0Test::TestResult tr;
+
+    // Custom handler whose Unlock always fails
+    auto* handler = new L0Test::FakePackageHandler();
+    handler->unlockHandler = [](const std::string&, const std::string&) -> WPEFramework::Core::hresult {
+        return WPEFramework::Core::ERROR_GENERAL;
+    };
+
+    L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
+    cfg.packageHandler = handler;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+
+    // Insert entry with non-empty version so packageUnLock enters the unlock block
+    WPEFramework::Plugin::AppInfoManager::getInstance().setPackageInfoVersion(
+        "app.unlock.fail", "1.0.0");
+
+    // handleOnAppUnloaded → async Dispatch(UNLOADED) → packageUnLock → Unlock fails → LOGERR
+    impl->handleOnAppUnloaded("app.unlock.fail", "inst-1");
+    std::this_thread::sleep_for(std::chrono::milliseconds(150));
+
+    L0Test::ExpectTrue(tr, handler->unlockCount >= 1U,
+        "Unlock was called at least once, exercising the failure-return LOGERR branch");
+
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+// Covers the LOGERR "AppId not found in map to get the version" branch inside
+// packageUnLock() when the app is NOT in AppInfoManager.  In that case both
+// !pkgVersion.empty() and exists(appId) are false, so the unlock block is skipped
+// entirely and the trailing !exists check logs the error.
+uint32_t Test_AM_PackageUnlockAppNotInMap()
+{
+    AppManagerTestFixture fixture;
+
+    // Clear map so the test app is definitely absent
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+
+    // handleOnAppUnloaded → async Dispatch(UNLOADED) → packageUnLock:
+    //   pkgVersion = "" (not in map), exists = false
+    //   !pkgVersion.empty() || exists = false → unlock block skipped
+    //   !exists(appId) = true → LOGERR "AppId not found in map"
+    fixture.impl->handleOnAppUnloaded("com.notinmap.xyz.app", "inst-1");
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    L0Test::ExpectTrue(fixture.tr, true,
+        "packageUnLock covers !exists(appId) LOGERR branch when app is not in AppInfoManager");
     return fixture.tr.failures;
 }
