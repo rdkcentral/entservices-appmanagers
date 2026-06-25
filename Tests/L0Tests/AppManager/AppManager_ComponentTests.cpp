@@ -335,7 +335,7 @@ uint32_t Test_AM_LifecycleConnectorLaunchSuspendedApp()
         [&](WPEFramework::Plugin::AppInfo& a) { a = suspendedApp; });
 
     // Make isAppLoaded return true so the resume/SetTargetAppState path is taken.
-    lifecycle->isAppLoadedHandler = [](const std::string&, bool& loaded) {
+    lifecycle.isAppLoadedHandler = [](const std::string&, bool& loaded) {
         loaded = true;
         return WPEFramework::Core::ERROR_NONE;
     };
@@ -506,13 +506,13 @@ uint32_t Test_AM_LifecycleConnectorReleaseRemoteObjects()
 
         L0Test::ExpectEqU32(tr, connector.createLifecycleManagerRemoteObject(), WPEFramework::Core::ERROR_NONE,
             "createLifecycleManagerRemoteObject() succeeds before release test");
-        L0Test::ExpectTrue(tr, lifecycle->registeredNotification != nullptr,
+        L0Test::ExpectTrue(tr, lifecycle.registeredNotification != nullptr,
             "FakeLifecycleManager has a registered notification after createLifecycleManagerRemoteObject()");
 
         // releaseLifecycleManagerRemoteObject() must Unregister and Release the remote objects.
         connector.releaseLifecycleManagerRemoteObject();
 
-        L0Test::ExpectTrue(tr, lifecycle->registeredNotification == nullptr,
+        L0Test::ExpectTrue(tr, lifecycle.registeredNotification == nullptr,
             "FakeLifecycleManager notification is cleared after releaseLifecycleManagerRemoteObject()");
     }
 
