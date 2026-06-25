@@ -879,7 +879,7 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
     Core::hresult status = Core::ERROR_GENERAL;
     AppManagerTelemetryReporting& appManagerTelemetryReporting =AppManagerTelemetryReporting::getInstance();
     time_t launchStartTime = appManagerTelemetryReporting.getCurrentTimestampMs();
-    LOGINFO("LaunchApp: appId=%s intentSize=%zu launchArgsSize=%zu", appId.c_str(), intent.size(), launchArgs.size());
+    LOGINFO("appId=%s intentSize=%zu launchArgsSize=%zu", appId.c_str(), intent.size(), launchArgs.size());
     bool installed = false;
     Core::hresult result = IsInstalled(appId, installed);
     //IsInstalled(appId, installed);
@@ -1355,7 +1355,7 @@ Core::hresult AppManagerImplementation::GetInstalledApps(std::string& apps)
             }
         }
         installedAppsArray.ToString(apps);
-        LOGINFO("getInstalledApps: total installed apps=%zu", installedAppsArray.Length());
+        LOGINFO("total installed apps=%zu", installedAppsArray.Length());
     }
 
     mAdminLock.Unlock();

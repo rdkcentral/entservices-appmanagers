@@ -388,7 +388,7 @@ Core::hresult RDKWindowManagerImplementation::Deinitialize(PluginHost::IShell* s
     std::vector<std::string> clientList;
     if (false == CompositorController::getClients(clientList))
     {
-        LOGERR("CompositorController::getClients failed during deinitialize");
+        LOGERR("getClients failed during deinitialize");
     }
 
     std::vector<std::string>::iterator ptr;
@@ -396,7 +396,7 @@ Core::hresult RDKWindowManagerImplementation::Deinitialize(PluginHost::IShell* s
     {
         if(false == RdkWindowManager::CompositorController::removeListener((*ptr),mEventListener))
         {
-            LOGERR("CompositorController::removeListener failed for client=%s", (*ptr).c_str());
+            LOGERR("removeListener failed for client=%s", (*ptr).c_str());
         }
     }
 
@@ -734,7 +734,7 @@ Core::hresult RDKWindowManagerImplementation::CreateDisplay(const string &client
 
     if (false == result)
     {
-        LOGERR("CreateDisplay failed: clientId=%s displayName=%s width=%u height=%u virtual=%d vWidth=%u vHeight=%u topmost=%d focus=%d ownerId=%u groupId=%u",
+        LOGERR("create display failed: clientId=%s displayName=%s width=%u height=%u virtual=%d vWidth=%u vHeight=%u topmost=%d focus=%d ownerId=%u groupId=%u",
                clientId.c_str(), displayName.c_str(), displayWidth, displayHeight, virtualDisplay, virtualWidth, virtualHeight, topmost, focus, ownerId, groupId);
     }
     else
@@ -1596,7 +1596,7 @@ bool RDKWindowManagerImplementation::createDisplay(const string& client, const s
     }
     else
     {
-        LOGERR("CreateDisplay rejected: client already exists clientId=%s", client.c_str());
+        LOGERR("create display rejected: client already exists clientId=%s", client.c_str());
     }
 
     return ret;

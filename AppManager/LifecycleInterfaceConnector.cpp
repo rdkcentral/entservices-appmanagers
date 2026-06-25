@@ -83,7 +83,7 @@ namespace WPEFramework
 
             if (nullptr == mCurrentservice)
             {
-                LOGERR("createLifecycleManagerRemoteObject: mCurrentservice is null");
+                LOGERR("mCurrentservice is null");
             }
             else if (nullptr == (mLifecycleManagerRemoteObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::ILifecycleManager>("org.rdk.LifecycleManager")))
             {

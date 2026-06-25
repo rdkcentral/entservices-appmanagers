@@ -48,7 +48,7 @@ namespace WPEFramework
             }
             else
             {
-                LOGERR("setCurrentService: mService is null, ignoring call");
+                LOGERR("mService is null, ignoring call");
             }
         }
 
@@ -226,7 +226,7 @@ namespace WPEFramework
             LOGINFO("mService: %p", mService);
             if (nullptr == mService)
             {
-                LOGERR("createPersistentStoreRemoteStoreObject: mService is null");
+                LOGERR("mService is null");
             }
             else if (nullptr == (mPersistentStoreRemoteStoreObject = mService->QueryInterfaceByCallsign<WPEFramework::Exchange::IStore2>("org.rdk.PersistentStore")))
             {
@@ -317,7 +317,7 @@ namespace WPEFramework
             /* Check if appId is empty */
             if (appId.empty())
             {
-                LOGERR("appQuotaSizeProperty: appId is empty");
+                LOGERR("appId is empty");
             }
             else
             {

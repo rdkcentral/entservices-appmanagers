@@ -41,7 +41,7 @@ bool WindowManagerConnector::initializePlugin(PluginHost::IShell* service, class
     bool ret = false;
     if (nullptr == service)
     {
-        LOGWARN("initializePlugin failed: service is null");
+        LOGWARN("service is null");
     }
     else if (nullptr == (mWindowManager = service->QueryInterfaceByCallsign<Exchange::IRDKWindowManager>("org.rdk.RDKWindowManager")))
     {

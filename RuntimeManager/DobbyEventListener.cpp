@@ -30,7 +30,7 @@
     }                                                       \
     else                                                    \
     {                                                       \
-        LOGERR("DobbyEventListener: event handler is null while forwarding OCI event"); \
+        LOGERR("event handler is null while forwarding OCI event"); \
     }
 
 namespace WPEFramework {

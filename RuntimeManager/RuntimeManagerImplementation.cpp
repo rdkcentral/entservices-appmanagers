@@ -177,7 +177,7 @@ namespace WPEFramework
                     string containerState = obj["state"];
                     int containerStateInt = std::stoi(containerState);
                     RuntimeState state = static_cast<RuntimeState>(containerStateInt);
-                    LOGINFO("RuntimeManagerImplementation::Dispatch: state[%d]", state);
+                    LOGINFO("state[%d]", state);
                     (*index)->OnStateChanged(appInstanceId, state);
                     ++index;
                 }
@@ -332,7 +332,7 @@ namespace WPEFramework
 
             if (nullptr == mCurrentservice)
             {
-                LOGERR("createOCIContainerPluginObject: mCurrentservice is null");
+                LOGERR("mCurrentservice is null");
                 goto err_ret;
             }
 
