@@ -1102,3 +1102,220 @@ uint32_t Test_AM_KillAppWithLifecycleConnector()
     impl->Release();
     return tr.failures;
 }
+
+// ---------------------------------------------------------------------------
+// New coverage-gap tests
+// ---------------------------------------------------------------------------
+
+// Exercises the "notification not found" else-branch in Unregister() (L240).
+uint32_t Test_AM_UnregisterNotFoundBranch()
+{
+    L0Test::TestResult tr;
+    auto* impl = CreateImpl();
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    impl->Configure(&service);
+
+    // Register one notification, then attempt to unregister a DIFFERENT one
+    // that was never registered.  This must hit the else-branch at line 238-241.
+    RefNotification* registered   = new RefNotification();
+    RefNotification* unregistered = new RefNotification();
+    impl->Register(registered);
+
+    const auto result = impl->Unregister(unregistered);
+    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+        "Unregister() returns ERROR_GENERAL when notification was never registered");
+
+    impl->Unregister(registered);
+    registered->Release();
+    unregistered->Release();
+    impl->Release();
+    return tr.failures;
+}
+
+// Exercises the "value is empty" else-if branch in SetAppProperty() (L1207-1210).
+uint32_t Test_AM_SetAppPropertyEmptyValue()
+{
+    AppManagerTestFixture fixture;
+
+    const auto result = fixture.impl->SetAppProperty(
+        std::string("app.test"), std::string("someKey"), std::string());
+    L0Test::ExpectEqU32(fixture.tr, result, WPEFramework::Core::ERROR_GENERAL,
+        "SetAppProperty() returns ERROR_GENERAL when value is empty");
+
+    return fixture.tr.failures;
+}
+
+// Exercises GetInstalledApps() when AppInfoManager has an entry for an installed
+// package, covering the timestamp-formatting block at lines 1313-1325.
+uint32_t Test_AM_GetInstalledAppsWithActiveAppInfo()
+{
+    L0Test::TestResult tr;
+    auto* impl = CreateImpl();
+
+    L0Test::FakePackageInstaller packageInstaller;
+    L0Test::FakePackageHandler   handler;
+    L0Test::FakeStore2           store;
+    L0Test::FakeStorageManager   storage;
+    L0Test::FakeLifecycleManager lifecycle;
+    L0Test::FakeLifecycleManagerState lifecycleState;
+
+    // One installed package whose ID also lives in AppInfoManager.
+    WPEFramework::Exchange::IPackageInstaller::Package pkg;
+    pkg.packageId = "active.pkg";
+    pkg.version   = "2.0.0";
+    pkg.state     = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
+    packageInstaller.installedPackages.push_back(pkg);
+
+    L0Test::AppManagerServiceMock::Config cfg(&packageInstaller);
+    cfg.packageHandler    = &handler;
+    cfg.store2            = &store;
+    cfg.storageManager    = &storage;
+    cfg.lifecycleManager  = &lifecycle;
+    cfg.lifecycleManagerState = &lifecycleState;
+    L0Test::AppManagerServiceMock service(cfg);
+    impl->Configure(&service);
+
+    // Pre-populate AppInfoManager so get("active.pkg", snap) returns true,
+    // enabling the lastActiveStateChangeTime formatting path (L1313-1325).
+    {
+        timespec ts;
+        ts.tv_sec  = 1700000000L;
+        ts.tv_nsec = 123456789L;
+        WPEFramework::Plugin::AppInfoManager::getInstance().upsert("active.pkg",
+            [&ts](WPEFramework::Plugin::AppInfo& a) {
+                a.setLastActiveStateChangeTime(ts);
+                a.setLastActiveIndex(42U);
+            });
+    }
+
+    std::string apps;
+    const auto result = impl->GetInstalledApps(apps);
+    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+        "GetInstalledApps() succeeds when AppInfo entry exists for an installed package");
+    L0Test::ExpectTrue(tr, apps.find("active.pkg") != std::string::npos,
+        "GetInstalledApps() includes the package with AppInfo in the JSON output");
+
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    impl->Release();
+    return tr.failures;
+}
+
+// Exercises the "Failed to updating currentActionTime" else-branch (L1615-1617)
+// by calling updateCurrentActionTime() with a mismatched action and also with a
+// non-existent appId (both paths leave updated=false).
+uint32_t Test_AM_UpdateCurrentActionTimeMismatchedAction()
+{
+    AppManagerTestFixture fixture(true, true);  // auto-configure; clear AppInfo on teardown
+
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+
+    // Insert AppInfo with LAUNCH action.
+    WPEFramework::Plugin::AppInfoManager::getInstance().upsert("app.mismatch",
+        [](WPEFramework::Plugin::AppInfo& a) {
+            a.setCurrentAction(WPEFramework::Plugin::AppManagerTypes::APP_ACTION_LAUNCH);
+        });
+
+    // Call updateCurrentActionTime() with APP_ACTION_CLOSE — does NOT match stored
+    // APP_ACTION_LAUNCH, so updated stays false and the else-branch at L1617 fires.
+    fixture.impl->updateCurrentActionTime("app.mismatch", 9999,
+        WPEFramework::Plugin::AppManagerTypes::APP_ACTION_CLOSE);
+
+    L0Test::ExpectEqU32(fixture.tr,
+        static_cast<uint32_t>(
+            WPEFramework::Plugin::AppInfoManager::getInstance().getCurrentActionTime("app.mismatch")),
+        static_cast<uint32_t>(0),
+        "updateCurrentActionTime() does not update when current action does not match");
+
+    // Non-existent appId: update() finds nothing, updated stays false.
+    fixture.impl->updateCurrentActionTime("app.nonexistent", 12345,
+        WPEFramework::Plugin::AppManagerTypes::APP_ACTION_LAUNCH);
+    L0Test::ExpectTrue(fixture.tr, true,
+        "updateCurrentActionTime() handles non-existent appId without crash");
+
+    return fixture.tr.failures;
+}
+
+// Exercises the UNINSTALL_BLOCKED branch (L1638) in checkInstallUninstallBlock()
+// — forces evaluation of the || right-hand side by using UNINSTALL_BLOCKED state.
+uint32_t Test_AM_CheckInstallUninstallBlockUninstallBlockedState()
+{
+    L0Test::TestResult tr;
+    auto* impl = CreateImpl();
+
+    L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
+    // Override installer with a package that has UNINSTALL_BLOCKED (not INSTALLATION_BLOCKED).
+    auto* installer = new L0Test::FakePackageInstaller();
+    WPEFramework::Exchange::IPackageInstaller::Package uninstBlockedPkg;
+    uninstBlockedPkg.packageId = "app.uninstblocked";
+    uninstBlockedPkg.version   = "3.0.0";
+    uninstBlockedPkg.state     =
+        WPEFramework::Exchange::IPackageInstaller::InstallState::UNINSTALL_BLOCKED;
+    installer->installedPackages.push_back(uninstBlockedPkg);
+    cfg.installer = installer;
+
+    L0Test::AppManagerServiceMock service(cfg);
+    impl->Configure(&service);
+
+    const bool blocked = impl->checkInstallUninstallBlock("app.uninstblocked");
+    L0Test::ExpectTrue(tr, blocked,
+        "checkInstallUninstallBlock() returns true when package state is UNINSTALL_BLOCKED");
+
+    impl->Release();
+    return tr.failures;
+}
+
+// Exercises the "version is empty for installed app" branch (L330-333) in
+// Dispatch(APP_EVENT_INSTALLATION_STATUS) by sending an INSTALLED event with no version key.
+uint32_t Test_AM_OnAppInstallationStatusInstalledWithEmptyVersion()
+{
+    AppManagerTestFixture fixture;
+    auto* notification = new RefNotification();
+    fixture.impl->Register(notification);
+
+    // INSTALLED state without "version" field → version string will be empty,
+    // hitting LOGERR("version is empty for installed app") at L332.
+    fixture.impl->OnAppInstallationStatus(
+        "[{\"packageId\":\"pkg.noversion\",\"state\":\"INSTALLED\"}]");
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    L0Test::ExpectTrue(fixture.tr, true,
+        "OnAppInstallationStatus() handles INSTALLED event with no version field without crash");
+
+    fixture.impl->Unregister(notification);
+    notification->Release();
+    return fixture.tr.failures;
+}
+
+// Exercises the LOADING→LOADING "kill app" branch (L293-303) in Dispatch() and
+// also covers the notification loop at L289-291 (notification IS registered).
+uint32_t Test_AM_HandleOnAppLifecycleStateChangedLoadingToLoading()
+{
+    L0Test::TestResult tr;
+    auto* impl = CreateImpl();
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    impl->Configure(&service);
+
+    auto* notification = new RefNotification();
+    impl->Register(notification);
+
+    // Dispatch APP_EVENT_LIFECYCLE_STATE_CHANGED with both oldState and newState
+    // equal to APP_STATE_LOADING.  In Dispatch() this triggers lines 293-303
+    // ("Transition from loading state failed. Killing the application ...").
+    // Having a registered notification also covers L289-291 (the notification loop).
+    impl->handleOnAppLifecycleStateChanged(
+        "app.loading", "inst-loading",
+        WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING,
+        WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING,
+        WPEFramework::Exchange::IAppManager::APP_ERROR_NONE);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    L0Test::ExpectTrue(tr, notification->lifecycle >= 1U,
+        "handleOnAppLifecycleStateChanged() fires OnAppLifecycleStateChanged notification");
+    L0Test::ExpectTrue(tr, true,
+        "handleOnAppLifecycleStateChanged() with LOADING->LOADING transition handled without crash");
+
+    impl->Unregister(notification);
+    notification->Release();
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}

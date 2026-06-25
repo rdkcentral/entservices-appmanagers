@@ -90,6 +90,13 @@ extern uint32_t Test_AM_AppInfoManagerUpdateOperationBranches();
 extern uint32_t Test_AM_AppInfoManagerGetByCopyEdgeCases();
 extern uint32_t Test_AM_AppInfoManagerStateSettersAndGetters();
 extern uint32_t Test_AM_AppInfoManagerGetterNotFoundBranches();
+extern uint32_t Test_AM_UnregisterNotFoundBranch();
+extern uint32_t Test_AM_SetAppPropertyEmptyValue();
+extern uint32_t Test_AM_GetInstalledAppsWithActiveAppInfo();
+extern uint32_t Test_AM_UpdateCurrentActionTimeMismatchedAction();
+extern uint32_t Test_AM_CheckInstallUninstallBlockUninstallBlockedState();
+extern uint32_t Test_AM_OnAppInstallationStatusInstalledWithEmptyVersion();
+extern uint32_t Test_AM_HandleOnAppLifecycleStateChangedLoadingToLoading();
 
 int main()
 {
@@ -168,6 +175,13 @@ int main()
         { "AM_AppInfoManagerGetByCopyEdgeCases", Test_AM_AppInfoManagerGetByCopyEdgeCases },
         { "AM_AppInfoManagerStateSettersAndGetters", Test_AM_AppInfoManagerStateSettersAndGetters },
         { "AM_AppInfoManagerGetterNotFoundBranches", Test_AM_AppInfoManagerGetterNotFoundBranches },
+        { "AM_UnregisterNotFoundBranch", Test_AM_UnregisterNotFoundBranch },
+        { "AM_SetAppPropertyEmptyValue", Test_AM_SetAppPropertyEmptyValue },
+        { "AM_GetInstalledAppsWithActiveAppInfo", Test_AM_GetInstalledAppsWithActiveAppInfo },
+        { "AM_UpdateCurrentActionTimeMismatchedAction", Test_AM_UpdateCurrentActionTimeMismatchedAction },
+        { "AM_CheckInstallUninstallBlockUninstallBlockedState", Test_AM_CheckInstallUninstallBlockUninstallBlockedState },
+        { "AM_OnAppInstallationStatusInstalledWithEmptyVersion", Test_AM_OnAppInstallationStatusInstalledWithEmptyVersion },
+        { "AM_HandleOnAppLifecycleStateChangedLoadingToLoading", Test_AM_HandleOnAppLifecycleStateChangedLoadingToLoading },
     };
 
     uint32_t totalFailures = 0;
