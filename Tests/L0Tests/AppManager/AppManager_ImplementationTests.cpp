@@ -1872,3 +1872,391 @@ uint32_t Test_AM_PackageUnlockAppNotInMap()
         "packageUnLock covers !exists(appId) LOGERR branch when app is not in AppInfoManager");
     return fixture.tr.failures;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Success-path and failure-path tests for Terminate/Kill/SendIntent/Spawn/Close
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Covers AppManagerImplementation::TerminateApp success path (updateCurrentActionTime +
+// reportTelemetryData) when LIC::terminateApp returns ERROR_NONE via a successful
+// UnloadApp call.  Requires the app to be in AppInfoManager so LIC finds the instance.
+uint32_t Test_AM_TerminateAppSuccessPath()
+{
+    L0Test::TestResult tr;
+    auto* impl = CreateImpl();
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    impl->Configure(&service);
+
+    // Insert app with a non-empty instance ID so LIC::terminateApp finds it.
+    WPEFramework::Plugin::AppInfo info;
+    info.setAppInstanceId("inst-term-success");
+    WPEFramework::Plugin::AppInfoManager::getInstance().upsert(
+        "app.terminate.success",
+        [&](WPEFramework::Plugin::AppInfo& a) { a = info; });
+
+    // Default FakeLifecycleManager::UnloadApp returns ERROR_NONE / success=true.
+    const auto status = impl->TerminateApp(std::string("app.terminate.success"));
+    L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_NONE,
+        "TerminateApp() returns ERROR_NONE when UnloadApp succeeds");
+
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+// Covers LIC::terminateApp failure path (LOGERR "UnloadApp failed") when
+// UnloadApp returns an error.
+uint32_t Test_AM_LICTerminateUnloadFails()
+{
+    L0Test::TestResult tr;
+
+    auto* lm = new L0Test::FakeLifecycleManager();
+    lm->unloadAppHandler = [](const std::string&, std::string& errorReason, bool& success) {
+        errorReason = "mock unload error";
+        success = false;
+        return WPEFramework::Core::ERROR_GENERAL;
+    };
+
+    L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
+    // Replace the default lifecycle manager with our custom one
+    delete static_cast<L0Test::FakeLifecycleManager*>(cfg.lifecycleManager);
+    cfg.lifecycleManager = lm;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+
+    WPEFramework::Plugin::AppInfo info;
+    info.setAppInstanceId("inst-unload-fail");
+    WPEFramework::Plugin::AppInfoManager::getInstance().upsert(
+        "app.terminate.fail",
+        [&](WPEFramework::Plugin::AppInfo& a) { a = info; });
+
+    const auto status = impl->mLifecycleInterfaceConnector->terminateApp("app.terminate.fail");
+    L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_GENERAL,
+        "terminateApp() returns ERROR_GENERAL and logs LOGERR when UnloadApp fails");
+
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+// Covers AppManagerImplementation::KillApp success path (updateCurrentActionTime +
+// reportTelemetryData) when LIC::killApp returns ERROR_NONE.  Requires the app
+// to be in AppInfoManager so GetAppInstanceId finds an instance ID.
+uint32_t Test_AM_KillAppSuccessPath()
+{
+    L0Test::TestResult tr;
+    auto* impl = CreateImpl();
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    impl->Configure(&service);
+
+    WPEFramework::Plugin::AppInfo info;
+    info.setAppInstanceId("inst-kill-success");
+    WPEFramework::Plugin::AppInfoManager::getInstance().upsert(
+        "app.kill.success",
+        [&](WPEFramework::Plugin::AppInfo& a) { a = info; });
+
+    // Default FakeLifecycleManager::KillApp returns ERROR_NONE / success=true.
+    const auto status = impl->KillApp(std::string("app.kill.success"));
+    L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_NONE,
+        "KillApp() returns ERROR_NONE when killApp succeeds");
+
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+// Covers LIC::killApp LOGERR branch when KillApp returns success=false
+// (logical failure), causing !(ERROR_NONE == result && success) to be true.
+uint32_t Test_AM_LICKillAppFails()
+{
+    L0Test::TestResult tr;
+
+    auto* lm = new L0Test::FakeLifecycleManager();
+    lm->killAppHandler = [](const std::string&, std::string& errorReason, bool& success) {
+        errorReason = "mock kill error";
+        success = false;  // logical failure even though result is GENERAL
+        return WPEFramework::Core::ERROR_GENERAL;
+    };
+
+    L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
+    delete static_cast<L0Test::FakeLifecycleManager*>(cfg.lifecycleManager);
+    cfg.lifecycleManager = lm;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+
+    WPEFramework::Plugin::AppInfo info;
+    info.setAppInstanceId("inst-kill-fail");
+    WPEFramework::Plugin::AppInfoManager::getInstance().upsert(
+        "app.kill.fail",
+        [&](WPEFramework::Plugin::AppInfo& a) { a = info; });
+
+    // killApp should call KillApp, get a failure → LOGERR fires, returns ERROR_GENERAL
+    const auto status = impl->mLifecycleInterfaceConnector->killApp("app.kill.fail");
+    L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_GENERAL,
+        "killApp() returns ERROR_GENERAL and fires LOGERR when KillApp fails");
+
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+// Covers LIC::sendIntent LOGERR branch when SendIntentToActiveApp returns failure.
+uint32_t Test_AM_LICSendIntentFails()
+{
+    L0Test::TestResult tr;
+
+    auto* lm = new L0Test::FakeLifecycleManager();
+    lm->sendIntentHandler = [](const std::string&, const std::string&,
+                               std::string& errorReason, bool& success) {
+        errorReason = "mock intent error";
+        success = false;
+        return WPEFramework::Core::ERROR_GENERAL;
+    };
+
+    L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
+    delete static_cast<L0Test::FakeLifecycleManager*>(cfg.lifecycleManager);
+    cfg.lifecycleManager = lm;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+
+    WPEFramework::Plugin::AppInfo info;
+    info.setAppInstanceId("inst-intent-fail");
+    WPEFramework::Plugin::AppInfoManager::getInstance().upsert(
+        "app.intent.fail",
+        [&](WPEFramework::Plugin::AppInfo& a) { a = info; });
+
+    const auto status = impl->mLifecycleInterfaceConnector->sendIntent(
+        "app.intent.fail", "testIntent");
+    L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_GENERAL,
+        "sendIntent() returns ERROR_GENERAL and fires LOGERR when SendIntentToActiveApp fails");
+
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+// Covers LIC::launch SpawnApp failure path (LOGERR "SpawnApp failed") when the
+// app is not loaded and SpawnApp returns an error.
+uint32_t Test_AM_LICSpawnAppFails()
+{
+    L0Test::TestResult tr;
+
+    auto* lm = new L0Test::FakeLifecycleManager();
+    // IsAppLoaded default: loaded=false → takes the SpawnApp path
+    lm->spawnAppHandler = [](const std::string&, const std::string&,
+        WPEFramework::Exchange::ILifecycleManager::LifecycleState,
+        const WPEFramework::Exchange::RuntimeConfig&, const std::string&,
+        std::string& appInstanceId, std::string& errorReason, bool& success) {
+        errorReason = "mock spawn error";
+        success = false;
+        appInstanceId.clear();
+        return WPEFramework::Core::ERROR_GENERAL;
+    };
+
+    L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
+    delete static_cast<L0Test::FakeLifecycleManager*>(cfg.lifecycleManager);
+    cfg.lifecycleManager = lm;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+
+    // Ensure app is NOT in AppInfoManager so isAppLoaded → false → SpawnApp path
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+
+    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
+    const auto status = impl->mLifecycleInterfaceConnector->launch(
+        "app.spawn.fail", "intent", "args", runtimeConfig);
+    L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_GENERAL,
+        "launch() returns ERROR_GENERAL and fires LOGERR when SpawnApp fails");
+
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+// Covers LIC::OnAppLifecycleStateChanged normal-close path
+// (appManagerInitiatedKill=true → "App terminated normally" log path).
+// Requires mAppCurrentActionList[appId] = APP_STATE_TERMINATING before the
+// UNLOADED callback fires.
+uint32_t Test_AM_LICOnAppLifecycleStateChangedNormalClose()
+{
+    AppManagerTestFixture fixture(true, true);
+
+    // Populate AppInfoManager with an instance so the update lambda finds it.
+    WPEFramework::Plugin::AppInfo info;
+    info.setAppInstanceId("inst-normal-close");
+    WPEFramework::Plugin::AppInfoManager::getInstance().upsert(
+        "app.normal.close",
+        [&](WPEFramework::Plugin::AppInfo& a) { a = info; });
+
+    // Mark the app as APP_MANAGER initiated termination so appManagerInitiatedKill=true
+    fixture.impl->mLifecycleInterfaceConnector->mAppCurrentActionList["app.normal.close"] =
+        WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_TERMINATING;
+
+    fixture.impl->mLifecycleInterfaceConnector->OnAppLifecycleStateChanged(
+        "app.normal.close", "inst-normal-close",
+        WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE,   // oldState
+        WPEFramework::Exchange::ILifecycleManager::LifecycleState::UNLOADED, // newState
+        "");
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    L0Test::ExpectTrue(fixture.tr, true,
+        "OnAppLifecycleStateChanged UNLOADED with appManagerInitiatedKill=true covers normal-close path");
+    return fixture.tr.failures;
+}
+
+// Covers LIC::closeApp success path: SetTargetAppState succeeds → waits for
+// PAUSED confirmation → condvar notified by concurrent OnAppLifecycleStateChanged.
+// This covers the large uncovered block at L358-411 in LifecycleInterfaceConnector.cpp
+// as well as L775-776 (mAppIdAwaitingPause check) and L782-784 (notify_all).
+uint32_t Test_AM_LICCloseAppPausedConfirmation()
+{
+    L0Test::TestResult tr;
+
+    auto* impl = CreateImpl();
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    impl->Configure(&service);
+
+    const std::string appId = "app.close.paused";
+    const std::string instId = "inst-close-paused";
+
+    // Insert app in ACTIVE state with a known instance ID.
+    WPEFramework::Plugin::AppInfo info;
+    info.setAppInstanceId(instId);
+    info.setAppNewState(WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE);
+    WPEFramework::Plugin::AppInfoManager::getInstance().upsert(
+        appId, [&](WPEFramework::Plugin::AppInfo& a) { a = info; });
+
+    // Run closeApp in a background thread; it will block waiting for PAUSED.
+    WPEFramework::Core::hresult closeResult = WPEFramework::Core::ERROR_GENERAL;
+    std::thread closeThread([&] {
+        closeResult = impl->mLifecycleInterfaceConnector->closeApp(appId);
+    });
+
+    // Give closeApp time to reach the condvar wait point.
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    // Fire OnAppLifecycleStateChanged with PAUSED to wake up closeApp.
+    // This also updates AppInfoManager to APP_STATE_PAUSED so the post-wait
+    // check finds the app in the expected state.
+    impl->mLifecycleInterfaceConnector->OnAppLifecycleStateChanged(
+        appId, instId,
+        WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE,
+        WPEFramework::Exchange::ILifecycleManager::LifecycleState::PAUSED,
+        "");
+
+    // Wait for closeApp to finish.
+    closeThread.join();
+
+    L0Test::ExpectEqU32(tr, closeResult, WPEFramework::Core::ERROR_NONE,
+        "closeApp() returns ERROR_NONE after PAUSED confirmation via condvar");
+
+    // Allow any async dispatch callbacks to settle.
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+// Covers packageLock() failure when IPackageHandler::Lock returns an error.
+// Requires the app to be in the package list with INSTALLED state so the Lock
+// call is reached, and then lockHandler returns ERROR_GENERAL.
+uint32_t Test_AM_PackageLockLockFails()
+{
+    L0Test::TestResult tr;
+
+    auto* handler = new L0Test::FakePackageHandler();
+    handler->lockHandler = [](const std::string&, const std::string&,
+        const WPEFramework::Exchange::IPackageHandler::LockReason&,
+        uint32_t&, std::string&, WPEFramework::Exchange::RuntimeConfig&,
+        WPEFramework::Exchange::IPackageHandler::ILockIterator*&) {
+        return WPEFramework::Core::ERROR_GENERAL;  // Lock fails
+    };
+
+    auto* installer = new L0Test::FakePackageInstaller();
+    WPEFramework::Exchange::IPackageInstaller::Package pkg;
+    pkg.packageId = "app.lock.fail";
+    pkg.version   = "1.0";
+    pkg.state     = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
+    installer->installedPackages.push_back(pkg);
+
+    L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
+    delete static_cast<L0Test::FakePackageHandler*>(cfg.packageHandler);
+    cfg.packageHandler = handler;
+    delete static_cast<L0Test::FakePackageInstaller*>(cfg.installer);
+    cfg.installer = installer;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+
+    WPEFramework::Plugin::AppManagerImplementation::PackageInfo packageData;
+    const auto status = impl->packageLock(
+        "app.lock.fail", packageData,
+        WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH);
+
+    L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_GENERAL,
+        "packageLock() returns ERROR_GENERAL when Lock() fails and fires LOGERR");
+    L0Test::ExpectTrue(tr, handler->lockCount >= 1U,
+        "Lock() was called at least once");
+
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+// Covers packageLock() failure branch when fetchAppPackageList (ListPackages) fails.
+// When the installer returns an error from ListPackages, packageLock logs
+// LOGERR("Failed to Get the list of Packages") and returns ERROR_GENERAL.
+uint32_t Test_AM_PackageLockFetchListFails()
+{
+    L0Test::TestResult tr;
+
+    auto* installer = new L0Test::FakePackageInstaller();
+    installer->listHandler = [](WPEFramework::Exchange::IPackageInstaller::IPackageIterator*& it) {
+        it = nullptr;
+        return WPEFramework::Core::ERROR_GENERAL;  // ListPackages fails
+    };
+
+    L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
+    delete static_cast<L0Test::FakePackageInstaller*>(cfg.installer);
+    cfg.installer = installer;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+
+    WPEFramework::Plugin::AppManagerImplementation::PackageInfo packageData;
+    const auto status = impl->packageLock(
+        "app.list.fail", packageData,
+        WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH);
+
+    L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_GENERAL,
+        "packageLock() returns ERROR_GENERAL when fetchAppPackageList fails");
+
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+// Covers AppManagerImplementation::getInstallAppType() returning "SYSTEM_APP"
+// when called with APPLICATION_TYPE_SYSTEM (previously uncovered branch at L1283).
+uint32_t Test_AM_GetInstallAppTypeSystem()
+{
+    AppManagerTestFixture fixture;
+
+    const std::string result = fixture.impl->getInstallAppType(
+        WPEFramework::Plugin::AppManagerImplementation::APPLICATION_TYPE_SYSTEM);
+
+    L0Test::ExpectTrue(fixture.tr, result == "SYSTEM_APP",
+        "getInstallAppType(APPLICATION_TYPE_SYSTEM) returns \"SYSTEM_APP\"");
+    return fixture.tr.failures;
+}

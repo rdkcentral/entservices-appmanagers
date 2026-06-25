@@ -124,6 +124,17 @@ extern uint32_t Test_AM_DispatchLifecycleAllFieldsNoAppInstanceId();
 extern uint32_t Test_AM_CheckInstallUninstallBlockMatchingNotBlocked();
 extern uint32_t Test_AM_PackageUnlockFails();
 extern uint32_t Test_AM_PackageUnlockAppNotInMap();
+extern uint32_t Test_AM_TerminateAppSuccessPath();
+extern uint32_t Test_AM_LICTerminateUnloadFails();
+extern uint32_t Test_AM_KillAppSuccessPath();
+extern uint32_t Test_AM_LICKillAppFails();
+extern uint32_t Test_AM_LICSendIntentFails();
+extern uint32_t Test_AM_LICSpawnAppFails();
+extern uint32_t Test_AM_LICOnAppLifecycleStateChangedNormalClose();
+extern uint32_t Test_AM_LICCloseAppPausedConfirmation();
+extern uint32_t Test_AM_PackageLockLockFails();
+extern uint32_t Test_AM_PackageLockFetchListFails();
+extern uint32_t Test_AM_GetInstallAppTypeSystem();
 
 int main()
 {
@@ -236,6 +247,17 @@ int main()
         { "AM_CheckInstallUninstallBlockMatchingNotBlocked", Test_AM_CheckInstallUninstallBlockMatchingNotBlocked },
         { "AM_PackageUnlockFails", Test_AM_PackageUnlockFails },
         { "AM_PackageUnlockAppNotInMap", Test_AM_PackageUnlockAppNotInMap },
+        { "AM_TerminateAppSuccessPath", Test_AM_TerminateAppSuccessPath },
+        { "AM_LICTerminateUnloadFails", Test_AM_LICTerminateUnloadFails },
+        { "AM_KillAppSuccessPath", Test_AM_KillAppSuccessPath },
+        { "AM_LICKillAppFails", Test_AM_LICKillAppFails },
+        { "AM_LICSendIntentFails", Test_AM_LICSendIntentFails },
+        { "AM_LICSpawnAppFails", Test_AM_LICSpawnAppFails },
+        { "AM_LICOnAppLifecycleStateChangedNormalClose", Test_AM_LICOnAppLifecycleStateChangedNormalClose },
+        { "AM_LICCloseAppPausedConfirmation", Test_AM_LICCloseAppPausedConfirmation },
+        { "AM_PackageLockLockFails", Test_AM_PackageLockLockFails },
+        { "AM_PackageLockFetchListFails", Test_AM_PackageLockFetchListFails },
+        { "AM_GetInstallAppTypeSystem", Test_AM_GetInstallAppTypeSystem },
     };
 
     uint32_t totalFailures = 0;
