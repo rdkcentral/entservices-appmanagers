@@ -21,12 +21,15 @@
 #include "AppStorageManagerImplementation.h"
 #include "UtilsLogging.h"
 #include "AppStorageManagerTelemetryReporting.h"
+#include "UtilsAppManagerTelemetry.h"
 #include "RequestHandler.h"
 #include <sys/statvfs.h>
 
 
 namespace WPEFramework {
 namespace Plugin {
+
+    RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::AppStorageManagerTelemetryReporting, "appStorageManagerBootstrapTime")
 
     SERVICE_REGISTRATION(StorageManagerImplementation, 1, 0);
 
@@ -79,7 +82,7 @@ namespace Plugin {
                     LOGINFO("created createPersistentStoreRemoteStoreObject");
                 }
 
-                AppStorageManagerTelemetryReporting::getInstance().initialize(mCurrentservice);
+                RDKAM_TELEMETRY_INIT(mCurrentservice);
 
                 Core::SystemInfo::SetEnvironment(PATH_ENV, mBaseStoragePath.c_str());
                 LOGINFO("Base Storage Path Set: %s", mBaseStoragePath.c_str());

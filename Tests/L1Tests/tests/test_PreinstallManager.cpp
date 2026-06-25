@@ -78,6 +78,7 @@ RuntimeConfig::~RuntimeConfig() = default;
 } // namespace Exchange
 } // namespace WPEFramework
 
+
 #include "COMLinkMock.h"
 #include "FactoriesImplementation.h"
 #include "Module.h"
