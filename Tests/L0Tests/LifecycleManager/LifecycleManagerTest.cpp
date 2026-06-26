@@ -263,11 +263,7 @@ int main()
         { "StateHandler_UpdateStateTransitionsContext",                      Test_StateHandler_UpdateStateTransitionsContext },
         { "StateHandler_UpdateStateAlreadyAtStateReturnsTrue",               Test_StateHandler_UpdateStateAlreadyAtStateReturnsTrue },
         { "StateHandler_CreateStateReturnsCorrectSubclass",                  Test_StateHandler_CreateStateReturnsCorrectSubclass },
-        // KNOWN ISSUE: State transition INITIALIZING->PAUSED breaks before calling updateState(),
-        // leaving context in INITIALIZING (state=2) instead of PAUSED (state=3).
-        // Root cause: StateHandler.cpp lines 214-223 set pending flag and break WITHOUT updating state.
-        // TODO: Fix by calling updateState() BEFORE setting pending transition flag.
-        // { "StateHandler_CreateStatePausedViaInitializingToPaused",           Test_StateHandler_CreateStatePausedViaInitializingToPaused },
+        { "StateHandler_CreateStatePausedViaInitializingToPaused",           Test_StateHandler_CreateStatePausedViaInitializingToPaused },
         { "StateHandler_CreateStateInitializingHandleReturnsFalse",          Test_StateHandler_CreateStateInitializingHandleReturnsFalse },
         { "StateHandler_CreateStateActiveViaPausedToActive",                 Test_StateHandler_CreateStateActiveViaPausedToActive },
         { "StateHandler_CreateStateSuspendedViaPausedToSuspended",           Test_StateHandler_CreateStateSuspendedViaPausedToSuspended },
