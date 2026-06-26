@@ -27,7 +27,7 @@
 #include "secure_wrappermock.h"
 #include <unistd.h>
 #include <dirent.h>
-
+#include <grp.h>
 
 class WrapsImpl {
 public:
@@ -68,6 +68,7 @@ public:
     virtual DIR* opendir(const char* pathname) = 0;
     virtual struct dirent* readdir(DIR* dirp) = 0;
     virtual int closedir(DIR* dirp) = 0;
+    virtual struct group* getgrnam(const char* name) = 0;
     virtual CURLcode curl_easy_setopt(CURL* curl, CURLoption option, void* param) = 0;
     virtual CURLcode curl_easy_perform(CURL* curl) = 0;
     virtual CURLcode curl_easy_getinfo(CURL* curl, CURLINFO info, long* value) = 0;
@@ -128,6 +129,7 @@ public:
     static DIR* opendir(const char* pathname);
     static struct dirent* readdir(DIR* dirp);
     static int closedir(DIR* dirp);
+    static struct group* getgrnam(const char* name);
     CURLcode curl_easy_setopt(CURL* curl, CURLoption option, void* param);
     CURLcode curl_easy_perform(CURL* curl);
     CURLcode curl_easy_getinfo(CURL* curl, CURLINFO info, long* value);
