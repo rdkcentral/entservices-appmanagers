@@ -1621,6 +1621,13 @@ uint32_t Test_AM_LICOnAppLifecycleStateChangedUnloadedAbnormalClose()
         "app.unload.test",
         [&](WPEFramework::Plugin::AppInfo& a) { a = info; });
 
+    // Register a notification so we can wait deterministically for both async
+    // dispatches (LIFECYCLE_STATE_CHANGED + UNLOADED) to complete before the
+    // fixture releases impl.  Without this, the IWorkerPool job may race with
+    // the next test's Configure() call and cause a null-this crash.
+    auto* notif = new RefNotification();  // refcount=1 (our ref)
+    fixture.impl->Register(notif);        // refcount=2 (impl AddRef'd it)
+
     // oldState=LOADING, newState=UNLOADED, no prior mAppCurrentActionList entry
     // → abnormal close path.
     fixture.impl->mLifecycleInterfaceConnector->OnAppLifecycleStateChanged(
@@ -1628,9 +1635,26 @@ uint32_t Test_AM_LICOnAppLifecycleStateChangedUnloadedAbnormalClose()
         WPEFramework::Exchange::ILifecycleManager::LifecycleState::LOADING,  // oldState
         WPEFramework::Exchange::ILifecycleManager::LifecycleState::UNLOADED, // newState
         "");
+
     L0Test::ExpectTrue(fixture.tr, true,
         "OnAppLifecycleStateChanged with UNLOADED newState (abnormal close) runs without crash");
+
+    // Wait for both dispatched events (LIFECYCLE_STATE_CHANGED + UNLOADED) to be
+    // processed before the fixture destructor releases impl.
+    const auto abnormalDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
+    while (std::chrono::steady_clock::now() < abnormalDeadline) {
+        if (notif->lifecycle >= 1 && notif->unloaded >= 1)
+            break;
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    fixture.impl->Unregister(notif);
+    notif->Release();  // drop our own reference
+
+    // Brief sleep to let Job destructors (impl->Release()) complete after Invoke()
+    // returns, so the fixture destructor drops refcount to 0 synchronously.
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
     return fixture.tr.failures;
 }
 
@@ -2077,6 +2101,17 @@ uint32_t Test_AM_LICSpawnAppFails()
         "launch() returns ERROR_GENERAL and fires LOGERR when SpawnApp fails");
 
     impl->Release();
+
+    // launch() dispatched an async APP_EVENT_LAUNCH_REQUEST job to Core::IWorkerPool
+    // which holds an extra reference to impl.  Spin until the impl is fully destroyed
+    // (its destructor clears the singleton _instance pointer) so the next test's
+    // Configure() cannot see a null getInstance() result due to the destruction race.
+    const auto spawnDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
+    while (std::chrono::steady_clock::now() < spawnDeadline &&
+           WPEFramework::Plugin::AppManagerImplementation::getInstance() != nullptr) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+
     WPEFramework::Plugin::AppInfoManager::getInstance().clear();
     return tr.failures;
 }
@@ -2096,6 +2131,13 @@ uint32_t Test_AM_LICOnAppLifecycleStateChangedNormalClose()
         "app.normal.close",
         [&](WPEFramework::Plugin::AppInfo& a) { a = info; });
 
+    // Register a notification so we can deterministically wait for the
+    // APP_EVENT_LIFECYCLE_STATE_CHANGED and APP_EVENT_UNLOADED dispatches to be
+    // processed by Core::IWorkerPool before we Release() impl.
+    // Register keeps one ref; we keep one ref so we can safely Unregister later.
+    auto* notif = new RefNotification();  // refcount=1 (our ref)
+    fixture.impl->Register(notif);       // refcount=2 (impl AddRef'd it)
+
     // Mark the app as APP_MANAGER initiated termination so appManagerInitiatedKill=true
     fixture.impl->mLifecycleInterfaceConnector->mAppCurrentActionList["app.normal.close"] =
         WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_TERMINATING;
@@ -2105,7 +2147,29 @@ uint32_t Test_AM_LICOnAppLifecycleStateChangedNormalClose()
         WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE,   // oldState
         WPEFramework::Exchange::ILifecycleManager::LifecycleState::UNLOADED, // newState
         "");
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    // Wait for both dispatched events (LIFECYCLE_STATE_CHANGED + UNLOADED) to be
+    // processed.  OnAppLifecycleStateChanged fires for the first, OnAppUnloaded for
+    // the second.  Polling with a short sleep is safe here because we have no other
+    // synchronisation primitive to the IWorkerPool.
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
+    while (std::chrono::steady_clock::now() < deadline) {
+        if (notif->lifecycle >= 1 && notif->unloaded >= 1)
+            break;
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    // Unregister before impl is released (fixture destructor).
+    // Unregister calls Release() → refcount drops to 1.  Our Release() below
+    // drops it to 0 and deletes notif.
+    fixture.impl->Unregister(notif);
+    notif->Release();  // drop our own reference
+
+    // The notification fires inside Job::Invoke(); the Job destructor (which calls
+    // impl->Release()) runs after Invoke() returns.  A brief sleep gives both Job
+    // destructors time to complete so the fixture destructor's impl->Release()
+    // drops the refcount to 0 synchronously, preventing a race with the next test.
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
     L0Test::ExpectTrue(fixture.tr, true,
         "OnAppLifecycleStateChanged UNLOADED with appManagerInitiatedKill=true covers normal-close path");
