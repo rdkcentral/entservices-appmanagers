@@ -14,7 +14,7 @@ on:
 env:
   BUILD_TYPE: Debug
   THUNDER_REF: "R4.4.1"
-  INTERFACES_REF: "topic/RDKEMW-16187"
+  INTERFACES_REF: "develop"
   AUTOMATICS_UNAME: ${{ secrets.AUTOMATICS_UNAME}}
   AUTOMATICS_PASSCODE: ${{ secrets. AUTOMATICS_PASSCODE}}
 
@@ -346,6 +346,7 @@ jobs:
           -I $GITHUB_WORKSPACE/Thunder/Source/core
           -I $GITHUB_WORKSPACE/install/usr/include
           -I $GITHUB_WORKSPACE/install/usr/include/WPEFramework
+          -I /usr/include/jsoncpp
           -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/Iarm.h
           -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/Rfc.h
           -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/RBus.h
@@ -387,6 +388,7 @@ jobs:
           -DPLUGIN_APPMANAGER=ON
           -DPLUGIN_APP_STORAGE_MANAGER=ON
           -DPLUGIN_RUNTIME_MANAGER=ON
+          -DPLUGIN_RALF=ON
           -DPLUGIN_LIFECYCLE_MANAGER=ON
           -DPLUGIN_DOWNLOADMANAGER=ON
           -DPLUGIN_PREINSTALL_MANAGER=ON
@@ -484,6 +486,45 @@ jobs:
           ls -l /dev/disk/by-id/usb-Generic_Flash_Disk_B32FD507-0
           &&
           ls -l /dev/disk/by-id/usb-JetFlash_Transcend_16GB_UEUIRCXT-0
+
+      - name: Set up ralf and gpu-layer fixture files
+        run: |
+          sudo mkdir -p /usr/share/ralf
+          sudo tee /usr/share/ralf/oci-base-spec.json > /dev/null <<'EOF'
+          {
+            "process": {
+              "user": { "uid": 0, "gid": 0, "additionalGids": [] },
+              "args": [],
+              "env": []
+            },
+            "hostname": "",
+            "mounts": [],
+            "linux": {
+              "uidMappings": [],
+              "gidMappings": [],
+              "resources": {
+                "devices": [],
+                "memory": { "limit": 524288000 }
+              },
+              "devices": []
+            },
+            "hooks": {},
+            "rdkPlugins": {
+              "logging": {
+                "data": {
+                  "fileOptions": { "path": "" }
+                }
+              }
+            }
+          }
+          EOF
+
+          sudo mkdir -p /usr/share/gpu-layer
+          sudo tee /usr/share/gpu-layer/config.json > /dev/null <<'EOF'
+          {
+            "vendorGpuSupport": {}
+          }
+          EOF
 
       - name: Run unit tests without valgrind with gdb
         run: |
@@ -625,6 +666,7 @@ jobs:
           name: artifacts-L1-appmanagers
           path: |
             coverage/
+            filtered_coverage.info
             valgrind_log
             rdkL1TestResultsWithoutValgrind.json
             rdkL1TestResultsWithValgrind.json

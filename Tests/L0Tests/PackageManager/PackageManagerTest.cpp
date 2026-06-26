@@ -31,6 +31,7 @@ extern uint32_t Test_PM_Component_HttpClient_InvalidOutputPathReturnsDiskError()
 extern uint32_t Test_PM_Component_HttpClient_InvalidUrlReturnsHttpError();
 extern uint32_t Test_PM_Component_HttpClient_InlineMethodsCoverage();
 extern uint32_t Test_PM_Component_TelemetryReporting_Markers();
+extern uint32_t Test_PM_Component_TelemetryReporting_PackageCacheMarkerPayload();
 
 int main()
 {
@@ -74,6 +75,7 @@ int main()
         { "PM_Component_HttpClient_InvalidUrlReturnsHttpError", Test_PM_Component_HttpClient_InvalidUrlReturnsHttpError },
         { "PM_Component_HttpClient_InlineMethodsCoverage", Test_PM_Component_HttpClient_InlineMethodsCoverage },
         { "PM_Component_TelemetryReporting_Markers", Test_PM_Component_TelemetryReporting_Markers },
+        { "PM_Component_TelemetryReporting_PackageCacheMarkerPayload", Test_PM_Component_TelemetryReporting_PackageCacheMarkerPayload },
     };
 
     L0Test::TestResult tr;
