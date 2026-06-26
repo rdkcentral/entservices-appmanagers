@@ -1569,22 +1569,69 @@ uint32_t Test_AM_LICPreloadWithEmptyAppId()
 // but the AppManagerImplementation singleton is alive.
 uint32_t Test_AM_LICOnAppStateChangedUnknownAppId()
 {
-    AppManagerTestFixture fixture(true, true); // auto-configure + clear AppInfoManager
-    // AppInfoManager is empty, so lookup for "nonexistent.app" fails → LOGERR at L861
-    fixture.impl->mLifecycleInterfaceConnector->OnAppStateChanged(
+    L0Test::TestResult tr;
+
+    // Use a stack-allocated service so it outlives impl destruction.
+    // AppManagerTestFixture heap-allocates service and calls `delete service`
+    // in its destructor regardless of refcount.  AppManagerServiceMock::Release()
+    // does NOT call `delete this`, so `delete service` frees memory even while
+    // the LIC still holds a pointer — causing a use-after-free when the IWorkerPool
+    // Job destructor later calls impl->Release() → ~LIC → mCurrentservice->Release().
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+
+    // Register notification to detect when the dispatched Job has executed.
+    // OnAppStateChanged (non-empty errorReason) → handleOnAppLifecycleStateChanged
+    // → dispatchEvent(APP_EVENT_LIFECYCLE_STATE_CHANGED) → IWorkerPool Job (AddRef impl).
+    auto* notif = new RefNotification(); // refcount=1
+    impl->Register(notif);               // refcount=2 (impl AddRef'd it)
+
+    // AppInfoManager is empty → appId not found → LOGERR "appId not found in database".
+    impl->mLifecycleInterfaceConnector->OnAppStateChanged(
         "nonexistent.app.xyz",
         WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE,
         "ERROR_CREATE_DISPLAY");
-    L0Test::ExpectTrue(fixture.tr, true,
+    L0Test::ExpectTrue(tr, true,
         "OnAppStateChanged with unknown appId hits LOGERR path without crash");
-    return fixture.tr.failures;
+
+    // Wait for the Job to fire the lifecycle notification.
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
+    while (std::chrono::steady_clock::now() < deadline) {
+        if (notif->lifecycle >= 1)
+            break;
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    impl->Unregister(notif);
+    notif->Release(); // drop our ref
+
+    // Release our impl reference, then spin-wait until impl is fully destroyed.
+    // The LIC destructor's mCurrentservice->Release() is safe because `service` is
+    // a stack variable still in scope.  The mock's Release() never calls `delete this`.
+    impl->Release();
+    const auto cleanDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
+    while (std::chrono::steady_clock::now() < cleanDeadline &&
+           WPEFramework::Plugin::AppManagerImplementation::getInstance() != nullptr) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+    // Stack unwind: ~service (safe — impl already destroyed, LIC already released it)
 }
 
 // Covers the gAppsActiveCounter++ and setLastActiveIndex() lines in
 // LifecycleInterfaceConnector::OnAppLifecycleStateChanged() when newState == ACTIVE.
 uint32_t Test_AM_LICOnAppLifecycleStateChangedActiveNewState()
 {
-    AppManagerTestFixture fixture(true, true);
+    L0Test::TestResult tr;
+
+    // Stack-allocated service — stays alive for the full function scope,
+    // preventing use-after-free when the IWorkerPool Job destructor runs.
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
 
     // Populate AppInfoManager so the update lambda executes with matching instanceId.
     WPEFramework::Plugin::AppInfo info;
@@ -1593,15 +1640,40 @@ uint32_t Test_AM_LICOnAppLifecycleStateChangedActiveNewState()
         "app.active.test",
         [&](WPEFramework::Plugin::AppInfo& a) { a = info; });
 
-    fixture.impl->mLifecycleInterfaceConnector->OnAppLifecycleStateChanged(
+    // Register notification to detect when the dispatched LIFECYCLE_STATE_CHANGED Job runs.
+    auto* notif = new RefNotification(); // refcount=1
+    impl->Register(notif);               // refcount=2
+
+    impl->mLifecycleInterfaceConnector->OnAppLifecycleStateChanged(
         "app.active.test", "inst-active-test",
         WPEFramework::Exchange::ILifecycleManager::LifecycleState::LOADING, // oldState
         WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE,  // newState
         "");
-    L0Test::ExpectTrue(fixture.tr, true,
+    L0Test::ExpectTrue(tr, true,
         "OnAppLifecycleStateChanged with ACTIVE newState covers counter-increment lines");
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    return fixture.tr.failures;
+
+    // Wait for the LIFECYCLE_STATE_CHANGED Job to fire the notification.
+    const auto activeDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
+    while (std::chrono::steady_clock::now() < activeDeadline) {
+        if (notif->lifecycle >= 1)
+            break;
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    impl->Unregister(notif);
+    notif->Release();
+
+    // Release our impl reference, then spin-wait until impl is fully destroyed.
+    // The LIC destructor calls mCurrentservice->Release() on the stack service,
+    // which is safe because Release() never calls `delete this` on the mock.
+    impl->Release();
+    const auto activeCleanDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
+    while (std::chrono::steady_clock::now() < activeCleanDeadline &&
+           WPEFramework::Plugin::AppManagerImplementation::getInstance() != nullptr) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
 }
 
 // Covers the UNLOADED abnormal-close branch in
@@ -1611,7 +1683,12 @@ uint32_t Test_AM_LICOnAppLifecycleStateChangedActiveNewState()
 // telemetry stub, mAppCurrentActionList.erase, and the handleOnAppUnloaded() call.
 uint32_t Test_AM_LICOnAppLifecycleStateChangedUnloadedAbnormalClose()
 {
-    AppManagerTestFixture fixture(true, true);
+    L0Test::TestResult tr;
+
+    // Stack-allocated service — stays alive for the full function scope.
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
 
     // Populate AppInfoManager with a non-empty instanceId so storedInstanceId is
     // non-empty and the telemetry-reporting branch is also instrumented.
@@ -1621,41 +1698,42 @@ uint32_t Test_AM_LICOnAppLifecycleStateChangedUnloadedAbnormalClose()
         "app.unload.test",
         [&](WPEFramework::Plugin::AppInfo& a) { a = info; });
 
-    // Register a notification so we can wait deterministically for both async
-    // dispatches (LIFECYCLE_STATE_CHANGED + UNLOADED) to complete before the
-    // fixture releases impl.  Without this, the IWorkerPool job may race with
-    // the next test's Configure() call and cause a null-this crash.
-    auto* notif = new RefNotification();  // refcount=1 (our ref)
-    fixture.impl->Register(notif);        // refcount=2 (impl AddRef'd it)
+    // Register notification to detect when both async Jobs have executed:
+    // OnAppLifecycleStateChanged (UNLOADED) dispatches TWO jobs —
+    // APP_EVENT_LIFECYCLE_STATE_CHANGED (lifecycle++) and APP_EVENT_UNLOADED (unloaded++).
+    auto* notif = new RefNotification(); // refcount=1
+    impl->Register(notif);               // refcount=2
 
     // oldState=LOADING, newState=UNLOADED, no prior mAppCurrentActionList entry
     // → abnormal close path.
-    fixture.impl->mLifecycleInterfaceConnector->OnAppLifecycleStateChanged(
+    impl->mLifecycleInterfaceConnector->OnAppLifecycleStateChanged(
         "app.unload.test", "inst-unload-test",
         WPEFramework::Exchange::ILifecycleManager::LifecycleState::LOADING,  // oldState
         WPEFramework::Exchange::ILifecycleManager::LifecycleState::UNLOADED, // newState
         "");
-
-    L0Test::ExpectTrue(fixture.tr, true,
+    L0Test::ExpectTrue(tr, true,
         "OnAppLifecycleStateChanged with UNLOADED newState (abnormal close) runs without crash");
 
-    // Wait for both dispatched events (LIFECYCLE_STATE_CHANGED + UNLOADED) to be
-    // processed before the fixture destructor releases impl.
-    const auto abnormalDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
-    while (std::chrono::steady_clock::now() < abnormalDeadline) {
+    // Wait for both Jobs to fire their respective notifications.
+    const auto unloadDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
+    while (std::chrono::steady_clock::now() < unloadDeadline) {
         if (notif->lifecycle >= 1 && notif->unloaded >= 1)
             break;
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
-    fixture.impl->Unregister(notif);
-    notif->Release();  // drop our own reference
+    impl->Unregister(notif);
+    notif->Release();
 
-    // Brief sleep to let Job destructors (impl->Release()) complete after Invoke()
-    // returns, so the fixture destructor drops refcount to 0 synchronously.
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
-
-    return fixture.tr.failures;
+    // Release our impl reference, then spin-wait until impl is fully destroyed.
+    impl->Release();
+    const auto unloadCleanDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
+    while (std::chrono::steady_clock::now() < unloadCleanDeadline &&
+           WPEFramework::Plugin::AppManagerImplementation::getInstance() != nullptr) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
 }
 
 // Covers the LOGERR "mLifecycleInterfaceConnector is null, cannot kill app" branch
