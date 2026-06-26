@@ -472,13 +472,27 @@ public:
         return nullptr;
     }
 
+    using ClearHandler = std::function<WPEFramework::Core::hresult(const string&, string&)>;
+
     WPEFramework::Core::hresult CreateStorage(const string&, const uint32_t&, string&, string&) override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult GetStorage(const string&, const int32_t&, const int32_t&, string&, uint32_t&, uint32_t&) override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult DeleteStorage(const string&, string&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Clear(const string&, string&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult ClearAll(const string&, string&) override { return WPEFramework::Core::ERROR_NONE; }
+
+    WPEFramework::Core::hresult Clear(const string& appId, string& errorReason) override
+    {
+        if (clearHandler) { return clearHandler(appId, errorReason); }
+        return WPEFramework::Core::ERROR_NONE;
+    }
+
+    WPEFramework::Core::hresult ClearAll(const string& exemptedAppIds, string& errorReason) override
+    {
+        if (clearAllHandler) { return clearAllHandler(exemptedAppIds, errorReason); }
+        return WPEFramework::Core::ERROR_NONE;
+    }
 
     mutable std::atomic<uint32_t> _refCount;
+    ClearHandler clearHandler;
+    ClearHandler clearAllHandler;
 };
 
 class FakeLifecycleManagerState final : public WPEFramework::Exchange::ILifecycleManagerState {

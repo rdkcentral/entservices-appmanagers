@@ -2434,3 +2434,344 @@ uint32_t Test_AM_GetInstallAppTypeSystem()
         "getInstallAppType(APPLICATION_TYPE_SYSTEM) returns \"SYSTEM_APP\"");
     return fixture.tr.failures;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Null-LIC branch coverage: exercises the `if (nullptr != mLIC)` false branch
+// in CloseApp, TerminateApp, KillApp, SendIntent and GetLoadedApps.
+// Each test configures a full impl, nulls the LIC field (via #define private public),
+// calls the function, verifies the result, then restores LIC before Release().
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Covers L949: `if (nullptr != mLifecycleInterfaceConnector)` false branch in CloseApp().
+uint32_t Test_AM_CloseAppNullConnector()
+{
+    L0Test::TestResult tr;
+    auto* impl = CreateImpl();
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    impl->Configure(&service);
+
+    auto* savedLIC = impl->mLifecycleInterfaceConnector;
+    impl->mLifecycleInterfaceConnector = nullptr;
+
+    const auto result = impl->CloseApp(std::string("app.close.nulllic"));
+    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+        "CloseApp() returns ERROR_GENERAL when LIC is null");
+
+    impl->mLifecycleInterfaceConnector = savedLIC;
+    impl->Release();
+    return tr.failures;
+}
+
+// Covers L1036: `if (nullptr != mLifecycleInterfaceConnector)` false branch in TerminateApp().
+uint32_t Test_AM_TerminateAppNullConnector()
+{
+    L0Test::TestResult tr;
+    auto* impl = CreateImpl();
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    impl->Configure(&service);
+
+    auto* savedLIC = impl->mLifecycleInterfaceConnector;
+    impl->mLifecycleInterfaceConnector = nullptr;
+
+    const auto result = impl->TerminateApp(std::string("app.term.nulllic"));
+    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+        "TerminateApp() returns ERROR_GENERAL when LIC is null");
+
+    impl->mLifecycleInterfaceConnector = savedLIC;
+    impl->Release();
+    return tr.failures;
+}
+
+// Covers L1053: `if (nullptr != mLifecycleInterfaceConnector)` false branch in KillApp().
+// Note: KillApp initialises status = ERROR_NONE, so with null LIC the return is ERROR_NONE.
+uint32_t Test_AM_KillAppNullConnector()
+{
+    L0Test::TestResult tr;
+    auto* impl = CreateImpl();
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    impl->Configure(&service);
+
+    auto* savedLIC = impl->mLifecycleInterfaceConnector;
+    impl->mLifecycleInterfaceConnector = nullptr;
+
+    const auto result = impl->KillApp(std::string("app.kill.nulllic"));
+    // KillApp initialises status=ERROR_NONE; without LIC the status is unchanged.
+    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+        "KillApp() returns ERROR_NONE when LIC is null (status stays at its initial value)");
+
+    impl->mLifecycleInterfaceConnector = savedLIC;
+    impl->Release();
+    return tr.failures;
+}
+
+// Covers L990: `if (nullptr != mLifecycleInterfaceConnector)` false branch in SendIntent().
+uint32_t Test_AM_SendIntentNullConnector()
+{
+    L0Test::TestResult tr;
+    auto* impl = CreateImpl();
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    impl->Configure(&service);
+
+    auto* savedLIC = impl->mLifecycleInterfaceConnector;
+    impl->mLifecycleInterfaceConnector = nullptr;
+
+    const auto result = impl->SendIntent(std::string("app.intent.nulllic"), std::string("someIntent"));
+    // SendIntent initialises status=ERROR_NONE; without LIC the status is unchanged.
+    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+        "SendIntent() returns ERROR_NONE when LIC is null (status stays at its initial value)");
+
+    impl->mLifecycleInterfaceConnector = savedLIC;
+    impl->Release();
+    return tr.failures;
+}
+
+// Covers L1016: `if (nullptr != mLifecycleInterfaceConnector)` false branch in GetLoadedApps().
+uint32_t Test_AM_GetLoadedAppsNullConnector()
+{
+    L0Test::TestResult tr;
+    auto* impl = CreateImpl();
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    impl->Configure(&service);
+
+    auto* savedLIC = impl->mLifecycleInterfaceConnector;
+    impl->mLifecycleInterfaceConnector = nullptr;
+
+    WPEFramework::Exchange::IAppManager::ILoadedAppInfoIterator* iter = nullptr;
+    const auto result = impl->GetLoadedApps(iter);
+    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+        "GetLoadedApps() returns ERROR_GENERAL when LIC is null");
+    if (iter) { iter->Release(); }
+
+    impl->mLifecycleInterfaceConnector = savedLIC;
+    impl->Release();
+    return tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LaunchApp branch coverage
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Covers L877 branch: `result == ERROR_NONE && !installed` (app not in package list).
+uint32_t Test_AM_LaunchAppNotInstalled()
+{
+    L0Test::TestResult tr;
+    // Configure with an installer that returns an empty package list.
+    // IsInstalled → result=ERROR_NONE, installed=false → L877 true branch.
+    auto* installer = new L0Test::FakePackageInstaller();
+    // no packages added → installedPackages is empty
+    L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
+    delete static_cast<L0Test::FakePackageInstaller*>(cfg.installer);
+    cfg.installer = installer;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+
+    const auto result = impl->LaunchApp(std::string("app.not.installed"), std::string(), std::string());
+    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+        "LaunchApp() returns ERROR_GENERAL when app is not installed");
+
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+// Covers L881 branch: `result != ERROR_NONE` in LaunchApp when IsInstalled fails
+// because ListPackages returns an error.
+uint32_t Test_AM_LaunchAppFetchFails()
+{
+    L0Test::TestResult tr;
+    auto* installer = new L0Test::FakePackageInstaller();
+    installer->listHandler = [](WPEFramework::Exchange::IPackageInstaller::IPackageIterator*& it) {
+        it = nullptr;
+        return WPEFramework::Core::ERROR_GENERAL;
+    };
+    L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
+    delete static_cast<L0Test::FakePackageInstaller*>(cfg.installer);
+    cfg.installer = installer;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+
+    const auto result = impl->LaunchApp(std::string("app.fetch.fails"), std::string(), std::string());
+    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+        "LaunchApp() returns ERROR_GENERAL when IsInstalled (fetchAppPackageList) fails");
+
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+// Covers L885 branch: `nullptr == mLifecycleInterfaceConnector` in LaunchApp when
+// the app IS installed but the LIC is null.
+uint32_t Test_AM_LaunchAppNullConnectorInstalledApp()
+{
+    L0Test::TestResult tr;
+    auto* installer = new L0Test::FakePackageInstaller();
+    WPEFramework::Exchange::IPackageInstaller::Package pkg;
+    pkg.packageId = "app.launch.nulllic";
+    pkg.version   = "1.0";
+    pkg.state     = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
+    installer->installedPackages.push_back(pkg);
+
+    L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
+    delete static_cast<L0Test::FakePackageInstaller*>(cfg.installer);
+    cfg.installer = installer;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+
+    // Null the LIC so the L885 `else if (nullptr == mLIC)` branch is taken.
+    auto* savedLIC = impl->mLifecycleInterfaceConnector;
+    impl->mLifecycleInterfaceConnector = nullptr;
+
+    const auto result = impl->LaunchApp(std::string("app.launch.nulllic"), std::string(), std::string());
+    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+        "LaunchApp() returns ERROR_GENERAL when app is installed but LIC is null");
+
+    impl->mLifecycleInterfaceConnector = savedLIC;
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// packageLock already-loaded branch (L800): when isAppLoaded returns loaded=true
+// and status=ERROR_NONE, packageLock takes the "already loaded" else-if branch.
+// ─────────────────────────────────────────────────────────────────────────────
+
+uint32_t Test_AM_PackageLockAlreadyLoaded()
+{
+    L0Test::TestResult tr;
+
+    auto* lm = new L0Test::FakeLifecycleManager();
+    lm->isAppLoadedHandler = [](const std::string&, bool& loaded) {
+        loaded = true;
+        return WPEFramework::Core::ERROR_NONE;
+    };
+    L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
+    delete static_cast<L0Test::FakeLifecycleManager*>(cfg.lifecycleManager);
+    cfg.lifecycleManager = lm;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+
+    // Populate AppInfoManager with a non-empty version so L812 LOGINFO path is hit.
+    WPEFramework::Plugin::AppInfoManager::getInstance().setPackageInfoVersion(
+        "app.already.loaded", "2.0.0");
+
+    WPEFramework::Plugin::AppManagerImplementation::PackageInfo packageData;
+    const auto status = impl->packageLock(
+        "app.already.loaded", packageData,
+        WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH);
+
+    // Already-loaded path returns ERROR_NONE and populates packageData from cache.
+    L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_NONE,
+        "packageLock() returns ERROR_NONE when app is already loaded (cached-data path)");
+
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ClearAppData / ClearAllAppData branch coverage
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Covers the `else` branch of `if (nullptr != mStorageManagerRemoteObject)` in
+// ClearAppData() — i.e., storageManager is null → LOGERR + ERROR_GENERAL.
+uint32_t Test_AM_ClearAppDataNullStorage()
+{
+    L0Test::TestResult tr;
+    auto* impl = CreateImpl();
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    impl->Configure(&service);
+
+    // Null the storage object so the null-check false branch is taken.
+    auto* savedStorage = impl->mStorageManagerRemoteObject;
+    impl->mStorageManagerRemoteObject = nullptr;
+
+    const auto result = impl->ClearAppData(std::string("app.storage.null"));
+    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+        "ClearAppData() returns ERROR_GENERAL when storageManager is null");
+
+    impl->mStorageManagerRemoteObject = savedStorage;
+    impl->Release();
+    return tr.failures;
+}
+
+// Covers `if (status != ERROR_NONE)` true branch in ClearAppData() when
+// StorageManager::Clear() returns an error.
+uint32_t Test_AM_ClearAppDataStorageError()
+{
+    L0Test::TestResult tr;
+    auto* storage = new L0Test::FakeStorageManager();
+    storage->clearHandler = [](const std::string&, std::string& err) {
+        err = "mock clear error";
+        return WPEFramework::Core::ERROR_GENERAL;
+    };
+    L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
+    delete static_cast<L0Test::FakeStorageManager*>(cfg.storageManager);
+    cfg.storageManager = storage;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+
+    const auto result = impl->ClearAppData(std::string("app.clear.error"));
+    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+        "ClearAppData() returns ERROR_GENERAL when StorageManager::Clear() fails");
+
+    impl->Release();
+    return tr.failures;
+}
+
+// Covers the `else` branch of `if (nullptr != mStorageManagerRemoteObject)` in
+// ClearAllAppData() — storageManager is null → LOGERR + ERROR_GENERAL.
+uint32_t Test_AM_ClearAllAppDataNullStorage()
+{
+    L0Test::TestResult tr;
+    auto* impl = CreateImpl();
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    impl->Configure(&service);
+
+    auto* savedStorage = impl->mStorageManagerRemoteObject;
+    impl->mStorageManagerRemoteObject = nullptr;
+
+    const auto result = impl->ClearAllAppData();
+    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+        "ClearAllAppData() returns ERROR_GENERAL when storageManager is null");
+
+    impl->mStorageManagerRemoteObject = savedStorage;
+    impl->Release();
+    return tr.failures;
+}
+
+// Covers `if (status != ERROR_NONE)` true branch in ClearAllAppData() when
+// StorageManager::ClearAll() returns an error.
+uint32_t Test_AM_ClearAllAppDataStorageError()
+{
+    L0Test::TestResult tr;
+    auto* storage = new L0Test::FakeStorageManager();
+    storage->clearAllHandler = [](const std::string&, std::string& err) {
+        err = "mock clearall error";
+        return WPEFramework::Core::ERROR_GENERAL;
+    };
+    L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
+    delete static_cast<L0Test::FakeStorageManager*>(cfg.storageManager);
+    cfg.storageManager = storage;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+
+    const auto result = impl->ClearAllAppData();
+    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+        "ClearAllAppData() returns ERROR_GENERAL when StorageManager::ClearAll() fails");
+
+    impl->Release();
+    return tr.failures;
+}

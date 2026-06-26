@@ -135,6 +135,19 @@ extern uint32_t Test_AM_LICCloseAppPausedConfirmation();
 extern uint32_t Test_AM_PackageLockLockFails();
 extern uint32_t Test_AM_PackageLockFetchListFails();
 extern uint32_t Test_AM_GetInstallAppTypeSystem();
+extern uint32_t Test_AM_CloseAppNullConnector();
+extern uint32_t Test_AM_TerminateAppNullConnector();
+extern uint32_t Test_AM_KillAppNullConnector();
+extern uint32_t Test_AM_SendIntentNullConnector();
+extern uint32_t Test_AM_GetLoadedAppsNullConnector();
+extern uint32_t Test_AM_LaunchAppNotInstalled();
+extern uint32_t Test_AM_LaunchAppFetchFails();
+extern uint32_t Test_AM_LaunchAppNullConnectorInstalledApp();
+extern uint32_t Test_AM_PackageLockAlreadyLoaded();
+extern uint32_t Test_AM_ClearAppDataNullStorage();
+extern uint32_t Test_AM_ClearAppDataStorageError();
+extern uint32_t Test_AM_ClearAllAppDataNullStorage();
+extern uint32_t Test_AM_ClearAllAppDataStorageError();
 
 int main()
 {
@@ -258,6 +271,19 @@ int main()
         { "AM_PackageLockLockFails", Test_AM_PackageLockLockFails },
         { "AM_PackageLockFetchListFails", Test_AM_PackageLockFetchListFails },
         { "AM_GetInstallAppTypeSystem", Test_AM_GetInstallAppTypeSystem },
+        { "AM_CloseAppNullConnector", Test_AM_CloseAppNullConnector },
+        { "AM_TerminateAppNullConnector", Test_AM_TerminateAppNullConnector },
+        { "AM_KillAppNullConnector", Test_AM_KillAppNullConnector },
+        { "AM_SendIntentNullConnector", Test_AM_SendIntentNullConnector },
+        { "AM_GetLoadedAppsNullConnector", Test_AM_GetLoadedAppsNullConnector },
+        { "AM_LaunchAppNotInstalled", Test_AM_LaunchAppNotInstalled },
+        { "AM_LaunchAppFetchFails", Test_AM_LaunchAppFetchFails },
+        { "AM_LaunchAppNullConnectorInstalledApp", Test_AM_LaunchAppNullConnectorInstalledApp },
+        { "AM_PackageLockAlreadyLoaded", Test_AM_PackageLockAlreadyLoaded },
+        { "AM_ClearAppDataNullStorage", Test_AM_ClearAppDataNullStorage },
+        { "AM_ClearAppDataStorageError", Test_AM_ClearAppDataStorageError },
+        { "AM_ClearAllAppDataNullStorage", Test_AM_ClearAllAppDataNullStorage },
+        { "AM_ClearAllAppDataStorageError", Test_AM_ClearAllAppDataStorageError },
     };
 
     uint32_t totalFailures = 0;
