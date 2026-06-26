@@ -1569,39 +1569,68 @@ uint32_t Test_AM_LICPreloadWithEmptyAppId()
 // but the AppManagerImplementation singleton is alive.
 uint32_t Test_AM_LICOnAppStateChangedUnknownAppId()
 {
-    AppManagerTestFixture fixture(true, true); // auto-configure + clear AppInfoManager
-    // AppInfoManager is empty, so lookup for "nonexistent.app" fails → LOGERR at L861
-    fixture.impl->mLifecycleInterfaceConnector->OnAppStateChanged(
-        "nonexistent.app.xyz",
-        WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE,
-        "ERROR_CREATE_DISPLAY");
-    L0Test::ExpectTrue(fixture.tr, true,
-        "OnAppStateChanged with unknown appId hits LOGERR path without crash");
-    return fixture.tr.failures;
+    L0Test::TestResult tr;
+    {
+        AppManagerTestFixture fixture(true, true); // auto-configure + clear AppInfoManager
+        // AppInfoManager is empty → appId not found → LOGERR "appId not found in database".
+        // errorReason is non-empty → OnAppStateChanged calls handleOnAppLifecycleStateChanged
+        // which dispatches an APP_EVENT_LIFECYCLE_STATE_CHANGED job to Core::IWorkerPool
+        // (AddRef on impl).  The fixture destructor releases impl, but the IWorkerPool may
+        // still hold a reference, so the impl destructor (which clears _instance) races
+        // with the next test's Configure() → AppManagerWorkerThread(this=0x0) → SIGSEGV.
+        fixture.impl->mLifecycleInterfaceConnector->OnAppStateChanged(
+            "nonexistent.app.xyz",
+            WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE,
+            "ERROR_CREATE_DISPLAY");
+        L0Test::ExpectTrue(fixture.tr, true,
+            "OnAppStateChanged with unknown appId hits LOGERR path without crash");
+        tr = fixture.tr;
+    } // fixture destructor → impl->Release() (refcount may stay 1 if IWorkerPool job pending)
+    // Spin-wait until the IWorkerPool job destructor fully destroys impl and clears
+    // _instance, ensuring the next test's Configure() cannot race against a stale singleton.
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
+    while (std::chrono::steady_clock::now() < deadline &&
+           WPEFramework::Plugin::AppManagerImplementation::getInstance() != nullptr) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
 }
 
 // Covers the gAppsActiveCounter++ and setLastActiveIndex() lines in
 // LifecycleInterfaceConnector::OnAppLifecycleStateChanged() when newState == ACTIVE.
 uint32_t Test_AM_LICOnAppLifecycleStateChangedActiveNewState()
 {
-    AppManagerTestFixture fixture(true, true);
+    L0Test::TestResult tr;
+    {
+        AppManagerTestFixture fixture(true, true);
 
-    // Populate AppInfoManager so the update lambda executes with matching instanceId.
-    WPEFramework::Plugin::AppInfo info;
-    info.setAppInstanceId("inst-active-test");
-    WPEFramework::Plugin::AppInfoManager::getInstance().upsert(
-        "app.active.test",
-        [&](WPEFramework::Plugin::AppInfo& a) { a = info; });
+        // Populate AppInfoManager so the update lambda executes with matching instanceId.
+        WPEFramework::Plugin::AppInfo info;
+        info.setAppInstanceId("inst-active-test");
+        WPEFramework::Plugin::AppInfoManager::getInstance().upsert(
+            "app.active.test",
+            [&](WPEFramework::Plugin::AppInfo& a) { a = info; });
 
-    fixture.impl->mLifecycleInterfaceConnector->OnAppLifecycleStateChanged(
-        "app.active.test", "inst-active-test",
-        WPEFramework::Exchange::ILifecycleManager::LifecycleState::LOADING, // oldState
-        WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE,  // newState
-        "");
-    L0Test::ExpectTrue(fixture.tr, true,
-        "OnAppLifecycleStateChanged with ACTIVE newState covers counter-increment lines");
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    return fixture.tr.failures;
+        fixture.impl->mLifecycleInterfaceConnector->OnAppLifecycleStateChanged(
+            "app.active.test", "inst-active-test",
+            WPEFramework::Exchange::ILifecycleManager::LifecycleState::LOADING, // oldState
+            WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE,  // newState
+            "");
+        L0Test::ExpectTrue(fixture.tr, true,
+            "OnAppLifecycleStateChanged with ACTIVE newState covers counter-increment lines");
+        tr = fixture.tr;
+    } // fixture destructor → impl->Release()
+    // OnAppLifecycleStateChanged dispatches an APP_EVENT_LIFECYCLE_STATE_CHANGED job to
+    // Core::IWorkerPool (AddRef on impl).  Spin-wait until impl is fully destroyed and
+    // _instance is cleared, so the next test's Configure() doesn't race the singleton.
+    const auto activeDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
+    while (std::chrono::steady_clock::now() < activeDeadline &&
+           WPEFramework::Plugin::AppManagerImplementation::getInstance() != nullptr) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
 }
 
 // Covers the UNLOADED abnormal-close branch in
@@ -1611,27 +1640,40 @@ uint32_t Test_AM_LICOnAppLifecycleStateChangedActiveNewState()
 // telemetry stub, mAppCurrentActionList.erase, and the handleOnAppUnloaded() call.
 uint32_t Test_AM_LICOnAppLifecycleStateChangedUnloadedAbnormalClose()
 {
-    AppManagerTestFixture fixture(true, true);
+    L0Test::TestResult tr;
+    {
+        AppManagerTestFixture fixture(true, true);
 
-    // Populate AppInfoManager with a non-empty instanceId so storedInstanceId is
-    // non-empty and the telemetry-reporting branch is also instrumented.
-    WPEFramework::Plugin::AppInfo info;
-    info.setAppInstanceId("inst-unload-test");
-    WPEFramework::Plugin::AppInfoManager::getInstance().upsert(
-        "app.unload.test",
-        [&](WPEFramework::Plugin::AppInfo& a) { a = info; });
+        // Populate AppInfoManager with a non-empty instanceId so storedInstanceId is
+        // non-empty and the telemetry-reporting branch is also instrumented.
+        WPEFramework::Plugin::AppInfo info;
+        info.setAppInstanceId("inst-unload-test");
+        WPEFramework::Plugin::AppInfoManager::getInstance().upsert(
+            "app.unload.test",
+            [&](WPEFramework::Plugin::AppInfo& a) { a = info; });
 
-    // oldState=LOADING, newState=UNLOADED, no prior mAppCurrentActionList entry
-    // → abnormal close path.
-    fixture.impl->mLifecycleInterfaceConnector->OnAppLifecycleStateChanged(
-        "app.unload.test", "inst-unload-test",
-        WPEFramework::Exchange::ILifecycleManager::LifecycleState::LOADING,  // oldState
-        WPEFramework::Exchange::ILifecycleManager::LifecycleState::UNLOADED, // newState
-        "");
-    L0Test::ExpectTrue(fixture.tr, true,
-        "OnAppLifecycleStateChanged with UNLOADED newState (abnormal close) runs without crash");
-    std::this_thread::sleep_for(std::chrono::milliseconds(50));
-    return fixture.tr.failures;
+        // oldState=LOADING, newState=UNLOADED, no prior mAppCurrentActionList entry
+        // → abnormal close path.
+        fixture.impl->mLifecycleInterfaceConnector->OnAppLifecycleStateChanged(
+            "app.unload.test", "inst-unload-test",
+            WPEFramework::Exchange::ILifecycleManager::LifecycleState::LOADING,  // oldState
+            WPEFramework::Exchange::ILifecycleManager::LifecycleState::UNLOADED, // newState
+            "");
+        L0Test::ExpectTrue(fixture.tr, true,
+            "OnAppLifecycleStateChanged with UNLOADED newState (abnormal close) runs without crash");
+        tr = fixture.tr;
+    } // fixture destructor → impl->Release()
+    // OnAppLifecycleStateChanged (UNLOADED) dispatches APP_EVENT_LIFECYCLE_STATE_CHANGED
+    // and APP_EVENT_UNLOADED jobs to Core::IWorkerPool (each AddRefs impl).  Spin-wait
+    // until impl is fully destroyed and _instance is cleared, so the next test's
+    // Configure() doesn't race against the singleton pointer.
+    const auto unloadDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
+    while (std::chrono::steady_clock::now() < unloadDeadline &&
+           WPEFramework::Plugin::AppManagerImplementation::getInstance() != nullptr) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
 }
 
 // Covers the LOGERR "mLifecycleInterfaceConnector is null, cannot kill app" branch
