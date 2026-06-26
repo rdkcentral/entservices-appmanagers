@@ -1,4 +1,4 @@
-/*
+﻿/*
  * If not stated otherwise in this file or this component's LICENSE file the
  * following copyright and licenses apply:
  *
@@ -75,25 +75,21 @@ struct AppManagerTestFixture {
     // Destructor: auto-cleanup to prevent leaks and crashes
     ~AppManagerTestFixture()
     {
-        // CRITICAL: Release impl FIRST, before any stack-allocated services in the test are destroyed
-        // If test used stack service, it's still alive at this point because C++ destroys in reverse order
-        // We must release impl BEFORE the test's stack service gets destroyed
         if (impl->mCurrentservice != nullptr) {
-            // Already configured (either by us or by test) - just release
             impl->Release();
         } else {
-            // Not configured yet - configure then release to avoid destructor crashes
+            // impl was never configured (autoConfigure=false and test did not configure it);
+            // provide a minimal service so the impl destructor's internal assertions pass.
             service = new L0Test::AppManagerServiceMock(CreateFullServiceConfig());
             impl->Configure(service);
             ownsService = true;
             impl->Release();
         }
-        
-        // Only delete service if we allocated it (don't delete stack-allocated services from tests)
+
         if (ownsService) {
             delete service;
         }
-        
+
         if (shouldClearAppInfoManager) {
             WPEFramework::Plugin::AppInfoManager::getInstance().clear();
         }
@@ -252,17 +248,7 @@ uint32_t Test_AM_ClearAppDataAndClearAllAppDataWithoutDependencies()
 {
     L0Test::TestResult tr;
     auto* impl = CreateImpl();
-    
-    // Configure with ALL REQUIRED dependencies (including lifecycle managers)
-    // The ASSERT in LifecycleInterfaceConnector requires lifecycle managers to be non-null
-    L0Test::AppManagerServiceMock::Config cfg;
-    cfg.lifecycleManager = new L0Test::FakeLifecycleManager();  // Required by LifecycleInterfaceConnector ASSERT
-    cfg.lifecycleManagerState = new L0Test::FakeLifecycleManagerState();  // Required by LifecycleInterfaceConnector ASSERT
-    cfg.store2 = new L0Test::FakeStore2();  // Required by destructor ASSERT
-    cfg.storageManager = new L0Test::FakeStorageManager();  // Required by destructor ASSERT
-    cfg.packageHandler = new L0Test::FakePackageHandler();  // Required by destructor ASSERT
-    cfg.installer = new L0Test::FakePackageInstaller();  // Required by destructor ASSERT
-    L0Test::AppManagerServiceMock service(cfg);
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
     impl->Configure(&service);
 
     L0Test::ExpectEqU32(tr, impl->ClearAppData(std::string()), WPEFramework::Core::ERROR_GENERAL, "ClearAppData() rejects empty app id");
@@ -277,17 +263,7 @@ uint32_t Test_AM_GetLoadedAppsWithoutConnectorFails()
 {
     L0Test::TestResult tr;
     auto* impl = CreateImpl();
-    
-    // Configure with ALL required dependencies (including lifecycle managers)
-    // Even though we're testing lifecycle-related error paths, we need lifecycle managers for cleanup
-    L0Test::AppManagerServiceMock::Config cfg;
-    cfg.lifecycleManager = new L0Test::FakeLifecycleManager();  // Required by LifecycleInterfaceConnector ASSERT
-    cfg.lifecycleManagerState = new L0Test::FakeLifecycleManagerState();  // Required by LifecycleInterfaceConnector ASSERT
-    cfg.store2 = new L0Test::FakeStore2();  // Required by destructor ASSERT
-    cfg.storageManager = new L0Test::FakeStorageManager();  // Required by destructor ASSERT
-    cfg.packageHandler = new L0Test::FakePackageHandler();  // Required by destructor ASSERT
-    cfg.installer = new L0Test::FakePackageInstaller();  // Required by destructor ASSERT
-    L0Test::AppManagerServiceMock service(cfg);
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
     impl->Configure(&service);
     
     WPEFramework::Exchange::IAppManager::ILoadedAppInfoIterator* iterator = nullptr;
@@ -674,7 +650,7 @@ uint32_t Test_AM_LaunchAppWithPackageHandler()
     L0Test::AppManagerServiceMock::Config cfg(&packageInstaller);
     cfg.packageHandler = &packageHandler;
     cfg.store2 = &store;
-    cfg.storageManager = &storageManager;  // Required by destructor ASSERT
+    cfg.storageManager = &storageManager;
     cfg.lifecycleManager = &lifecycleManager;
     cfg.lifecycleManagerState = &lifecycleState;
     L0Test::AppManagerServiceMock service(cfg);
@@ -727,7 +703,7 @@ uint32_t Test_AM_PreloadAppWithPackageHandler()
     L0Test::AppManagerServiceMock::Config cfg(&packageInstaller);
     cfg.packageHandler = &packageHandler;
     cfg.store2 = &store;
-    cfg.storageManager = new L0Test::FakeStorageManager();  // Required by destructor ASSERT
+    cfg.storageManager = new L0Test::FakeStorageManager();
     cfg.lifecycleManager = &lifecycleManager;
     cfg.lifecycleManagerState = &lifecycleState;
     L0Test::AppManagerServiceMock service(cfg);
@@ -793,10 +769,10 @@ uint32_t Test_AM_IsInstalledMultiplePackages()
 
     L0Test::AppManagerServiceMock::Config cfg(&packageInstaller);
     cfg.packageHandler = &packageHandler;
-    cfg.store2 = new L0Test::FakeStore2();  // Required by destructor ASSERT
-    cfg.storageManager = new L0Test::FakeStorageManager();  // Required by destructor ASSERT
-    cfg.lifecycleManager = new L0Test::FakeLifecycleManager();  // Required by LifecycleInterfaceConnector ASSERT
-    cfg.lifecycleManagerState = new L0Test::FakeLifecycleManagerState();  // Required by LifecycleInterfaceConnector ASSERT
+    cfg.store2 = new L0Test::FakeStore2();
+    cfg.storageManager = new L0Test::FakeStorageManager();
+    cfg.lifecycleManager = new L0Test::FakeLifecycleManager();
+    cfg.lifecycleManagerState = new L0Test::FakeLifecycleManagerState();
     L0Test::AppManagerServiceMock service(cfg);
 
     impl->Configure(&service);
@@ -845,10 +821,10 @@ uint32_t Test_AM_GetInstalledAppsMixedTypes()
 
     L0Test::AppManagerServiceMock::Config cfg(&packageInstaller);
     cfg.packageHandler = &packageHandler;
-    cfg.store2 = new L0Test::FakeStore2();  // Required by destructor ASSERT
-    cfg.storageManager = new L0Test::FakeStorageManager();  // Required by destructor ASSERT
-    cfg.lifecycleManager = new L0Test::FakeLifecycleManager();  // Required by LifecycleInterfaceConnector ASSERT
-    cfg.lifecycleManagerState = new L0Test::FakeLifecycleManagerState();  // Required by LifecycleInterfaceConnector ASSERT
+    cfg.store2 = new L0Test::FakeStore2();
+    cfg.storageManager = new L0Test::FakeStorageManager();
+    cfg.lifecycleManager = new L0Test::FakeLifecycleManager();
+    cfg.lifecycleManagerState = new L0Test::FakeLifecycleManagerState();
     L0Test::AppManagerServiceMock service(cfg);
 
     impl->Configure(&service);
@@ -873,9 +849,9 @@ uint32_t Test_AM_WorkerThreadStability()
     L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
     impl->Configure(&service);
 
-    // Worker thread should be running after Configure
-    // Just verify the implementation doesn't crash
-    L0Test::ExpectTrue(tr, impl != nullptr, "Implementation stable after Configure");
+    L0Test::ExpectTrue(tr,
+        WPEFramework::Plugin::AppManagerImplementation::getInstance() != nullptr,
+        "AppManagerImplementation singleton is non-null after Configure");
 
     impl->Release();
     return tr.failures;
@@ -888,12 +864,12 @@ uint32_t Test_AM_ClearAppDataWithStorageManager()
 
     L0Test::FakeStorageManager storageManager;
     L0Test::AppManagerServiceMock::Config cfg;
-    cfg.store2 = new L0Test::FakeStore2();  // Required by destructor ASSERT
+    cfg.store2 = new L0Test::FakeStore2();
     cfg.storageManager = &storageManager;
-    cfg.packageHandler = new L0Test::FakePackageHandler();  // Required by destructor ASSERT
-    cfg.installer = new L0Test::FakePackageInstaller();  // Required by destructor ASSERT
-    cfg.lifecycleManager = new L0Test::FakeLifecycleManager();  // Required by LifecycleInterfaceConnector ASSERT
-    cfg.lifecycleManagerState = new L0Test::FakeLifecycleManagerState();  // Required by LifecycleInterfaceConnector ASSERT
+    cfg.packageHandler = new L0Test::FakePackageHandler();
+    cfg.installer = new L0Test::FakePackageInstaller();
+    cfg.lifecycleManager = new L0Test::FakeLifecycleManager();
+    cfg.lifecycleManagerState = new L0Test::FakeLifecycleManagerState();
     L0Test::AppManagerServiceMock service(cfg);
 
     impl->Configure(&service);
@@ -914,12 +890,12 @@ uint32_t Test_AM_ClearAllAppDataWithStorageManager()
 
     L0Test::FakeStorageManager storageManager;
     L0Test::AppManagerServiceMock::Config cfg;
-    cfg.store2 = new L0Test::FakeStore2();  // Required by destructor ASSERT
+    cfg.store2 = new L0Test::FakeStore2();
     cfg.storageManager = &storageManager;
-    cfg.packageHandler = new L0Test::FakePackageHandler();  // Required by destructor ASSERT
-    cfg.installer = new L0Test::FakePackageInstaller();  // Required by destructor ASSERT
-    cfg.lifecycleManager = new L0Test::FakeLifecycleManager();  // Required by LifecycleInterfaceConnector ASSERT
-    cfg.lifecycleManagerState = new L0Test::FakeLifecycleManagerState();  // Required by LifecycleInterfaceConnector ASSERT
+    cfg.packageHandler = new L0Test::FakePackageHandler();
+    cfg.installer = new L0Test::FakePackageInstaller();
+    cfg.lifecycleManager = new L0Test::FakeLifecycleManager();
+    cfg.lifecycleManagerState = new L0Test::FakeLifecycleManagerState();
     L0Test::AppManagerServiceMock service(cfg);
 
     impl->Configure(&service);
@@ -945,10 +921,10 @@ uint32_t Test_AM_GetLoadedAppsWithLifecycleConnector()
     lifecycleManager.loadedAppsJson = R"([{"appId":"app1","appInstanceId":"instance1","state":"running"}])";
     
     L0Test::AppManagerServiceMock::Config cfg;
-    cfg.store2 = new L0Test::FakeStore2();  // Required by destructor ASSERT
-    cfg.storageManager = new L0Test::FakeStorageManager();  // Required by destructor ASSERT
-    cfg.packageHandler = new L0Test::FakePackageHandler();  // Required by destructor ASSERT
-    cfg.installer = new L0Test::FakePackageInstaller();  // Required by destructor ASSERT
+    cfg.store2 = new L0Test::FakeStore2();
+    cfg.storageManager = new L0Test::FakeStorageManager();
+    cfg.packageHandler = new L0Test::FakePackageHandler();
+    cfg.installer = new L0Test::FakePackageInstaller();
     cfg.lifecycleManager = &lifecycleManager;
     cfg.lifecycleManagerState = &lifecycleState;
     L0Test::AppManagerServiceMock service(cfg);
@@ -978,19 +954,17 @@ uint32_t Test_AM_SendIntentWithLifecycleConnector()
     L0Test::FakeLifecycleManager lifecycleManager;
     L0Test::FakeLifecycleManagerState lifecycleState;
     
-    bool sendIntentCalled = false;
-    lifecycleManager.sendIntentHandler = [&sendIntentCalled](const std::string&, const std::string&, 
-                                                               std::string&, bool& success) {
-        sendIntentCalled = true;
+    lifecycleManager.sendIntentHandler = [](const std::string&, const std::string&,
+                                            std::string&, bool& success) {
         success = true;
         return WPEFramework::Core::ERROR_NONE;
     };
     
     L0Test::AppManagerServiceMock::Config cfg;
-    cfg.store2 = new L0Test::FakeStore2();  // Required by destructor ASSERT
-    cfg.storageManager = new L0Test::FakeStorageManager();  // Required by destructor ASSERT
-    cfg.packageHandler = new L0Test::FakePackageHandler();  // Required by destructor ASSERT
-    cfg.installer = new L0Test::FakePackageInstaller();  // Required by destructor ASSERT
+    cfg.store2 = new L0Test::FakeStore2();
+    cfg.storageManager = new L0Test::FakeStorageManager();
+    cfg.packageHandler = new L0Test::FakePackageHandler();
+    cfg.installer = new L0Test::FakePackageInstaller();
     cfg.lifecycleManager = &lifecycleManager;
     cfg.lifecycleManagerState = &lifecycleState;
     L0Test::AppManagerServiceMock service(cfg);
@@ -1017,10 +991,10 @@ uint32_t Test_AM_CloseAppWithLifecycleConnector()
     L0Test::FakeLifecycleManagerState lifecycleState;
     
     L0Test::AppManagerServiceMock::Config cfg;
-    cfg.store2 = new L0Test::FakeStore2();  // Required by destructor ASSERT
-    cfg.storageManager = new L0Test::FakeStorageManager();  // Required by destructor ASSERT
-    cfg.packageHandler = new L0Test::FakePackageHandler();  // Required by destructor ASSERT
-    cfg.installer = new L0Test::FakePackageInstaller();  // Required by destructor ASSERT
+    cfg.store2 = new L0Test::FakeStore2();
+    cfg.storageManager = new L0Test::FakeStorageManager();
+    cfg.packageHandler = new L0Test::FakePackageHandler();
+    cfg.installer = new L0Test::FakePackageInstaller();
     cfg.lifecycleManager = &lifecycleManager;
     cfg.lifecycleManagerState = &lifecycleState;
     L0Test::AppManagerServiceMock service(cfg);
@@ -1046,10 +1020,10 @@ uint32_t Test_AM_TerminateAppWithLifecycleConnector()
     L0Test::FakeLifecycleManagerState lifecycleState;
     
     L0Test::AppManagerServiceMock::Config cfg;
-    cfg.store2 = new L0Test::FakeStore2();  // Required by destructor ASSERT
-    cfg.storageManager = new L0Test::FakeStorageManager();  // Required by destructor ASSERT
-    cfg.packageHandler = new L0Test::FakePackageHandler();  // Required by destructor ASSERT
-    cfg.installer = new L0Test::FakePackageInstaller();  // Required by destructor ASSERT
+    cfg.store2 = new L0Test::FakeStore2();
+    cfg.storageManager = new L0Test::FakeStorageManager();
+    cfg.packageHandler = new L0Test::FakePackageHandler();
+    cfg.installer = new L0Test::FakePackageInstaller();
     cfg.lifecycleManager = &lifecycleManager;
     cfg.lifecycleManagerState = &lifecycleState;
     L0Test::AppManagerServiceMock service(cfg);
@@ -1074,18 +1048,16 @@ uint32_t Test_AM_KillAppWithLifecycleConnector()
     L0Test::FakeLifecycleManager lifecycleManager;
     L0Test::FakeLifecycleManagerState lifecycleState;
     
-    bool killAppCalled = false;
-    lifecycleManager.killAppHandler = [&killAppCalled](const std::string&, std::string&, bool& success) {
-        killAppCalled = true;
+    lifecycleManager.killAppHandler = [](const std::string&, std::string&, bool& success) {
         success = true;
         return WPEFramework::Core::ERROR_NONE;
     };
     
     L0Test::AppManagerServiceMock::Config cfg;
-    cfg.store2 = new L0Test::FakeStore2();  // Required by destructor ASSERT
-    cfg.storageManager = new L0Test::FakeStorageManager();  // Required by destructor ASSERT
-    cfg.packageHandler = new L0Test::FakePackageHandler();  // Required by destructor ASSERT
-    cfg.installer = new L0Test::FakePackageInstaller();  // Required by destructor ASSERT
+    cfg.store2 = new L0Test::FakeStore2();
+    cfg.storageManager = new L0Test::FakeStorageManager();
+    cfg.packageHandler = new L0Test::FakePackageHandler();
+    cfg.installer = new L0Test::FakePackageInstaller();
     cfg.lifecycleManager = &lifecycleManager;
     cfg.lifecycleManagerState = &lifecycleState;
     L0Test::AppManagerServiceMock service(cfg);
