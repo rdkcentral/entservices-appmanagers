@@ -1570,31 +1570,55 @@ uint32_t Test_AM_LICPreloadWithEmptyAppId()
 uint32_t Test_AM_LICOnAppStateChangedUnknownAppId()
 {
     L0Test::TestResult tr;
-    {
-        AppManagerTestFixture fixture(true, true); // auto-configure + clear AppInfoManager
-        // AppInfoManager is empty → appId not found → LOGERR "appId not found in database".
-        // errorReason is non-empty → OnAppStateChanged calls handleOnAppLifecycleStateChanged
-        // which dispatches an APP_EVENT_LIFECYCLE_STATE_CHANGED job to Core::IWorkerPool
-        // (AddRef on impl).  The fixture destructor releases impl, but the IWorkerPool may
-        // still hold a reference, so the impl destructor (which clears _instance) races
-        // with the next test's Configure() → AppManagerWorkerThread(this=0x0) → SIGSEGV.
-        fixture.impl->mLifecycleInterfaceConnector->OnAppStateChanged(
-            "nonexistent.app.xyz",
-            WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE,
-            "ERROR_CREATE_DISPLAY");
-        L0Test::ExpectTrue(fixture.tr, true,
-            "OnAppStateChanged with unknown appId hits LOGERR path without crash");
-        tr = fixture.tr;
-    } // fixture destructor → impl->Release() (refcount may stay 1 if IWorkerPool job pending)
-    // Spin-wait until the IWorkerPool job destructor fully destroys impl and clears
-    // _instance, ensuring the next test's Configure() cannot race against a stale singleton.
+
+    // Use a stack-allocated service so it outlives impl destruction.
+    // AppManagerTestFixture heap-allocates service and calls `delete service`
+    // in its destructor regardless of refcount.  AppManagerServiceMock::Release()
+    // does NOT call `delete this`, so `delete service` frees memory even while
+    // the LIC still holds a pointer — causing a use-after-free when the IWorkerPool
+    // Job destructor later calls impl->Release() → ~LIC → mCurrentservice->Release().
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+
+    // Register notification to detect when the dispatched Job has executed.
+    // OnAppStateChanged (non-empty errorReason) → handleOnAppLifecycleStateChanged
+    // → dispatchEvent(APP_EVENT_LIFECYCLE_STATE_CHANGED) → IWorkerPool Job (AddRef impl).
+    auto* notif = new RefNotification(); // refcount=1
+    impl->Register(notif);               // refcount=2 (impl AddRef'd it)
+
+    // AppInfoManager is empty → appId not found → LOGERR "appId not found in database".
+    impl->mLifecycleInterfaceConnector->OnAppStateChanged(
+        "nonexistent.app.xyz",
+        WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE,
+        "ERROR_CREATE_DISPLAY");
+    L0Test::ExpectTrue(tr, true,
+        "OnAppStateChanged with unknown appId hits LOGERR path without crash");
+
+    // Wait for the Job to fire the lifecycle notification.
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
-    while (std::chrono::steady_clock::now() < deadline &&
+    while (std::chrono::steady_clock::now() < deadline) {
+        if (notif->lifecycle >= 1)
+            break;
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    impl->Unregister(notif);
+    notif->Release(); // drop our ref
+
+    // Release our impl reference, then spin-wait until impl is fully destroyed.
+    // The LIC destructor's mCurrentservice->Release() is safe because `service` is
+    // a stack variable still in scope.  The mock's Release() never calls `delete this`.
+    impl->Release();
+    const auto cleanDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
+    while (std::chrono::steady_clock::now() < cleanDeadline &&
            WPEFramework::Plugin::AppManagerImplementation::getInstance() != nullptr) {
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
     WPEFramework::Plugin::AppInfoManager::getInstance().clear();
     return tr.failures;
+    // Stack unwind: ~service (safe — impl already destroyed, LIC already released it)
 }
 
 // Covers the gAppsActiveCounter++ and setLastActiveIndex() lines in
@@ -1602,30 +1626,49 @@ uint32_t Test_AM_LICOnAppStateChangedUnknownAppId()
 uint32_t Test_AM_LICOnAppLifecycleStateChangedActiveNewState()
 {
     L0Test::TestResult tr;
-    {
-        AppManagerTestFixture fixture(true, true);
 
-        // Populate AppInfoManager so the update lambda executes with matching instanceId.
-        WPEFramework::Plugin::AppInfo info;
-        info.setAppInstanceId("inst-active-test");
-        WPEFramework::Plugin::AppInfoManager::getInstance().upsert(
-            "app.active.test",
-            [&](WPEFramework::Plugin::AppInfo& a) { a = info; });
+    // Stack-allocated service — stays alive for the full function scope,
+    // preventing use-after-free when the IWorkerPool Job destructor runs.
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
 
-        fixture.impl->mLifecycleInterfaceConnector->OnAppLifecycleStateChanged(
-            "app.active.test", "inst-active-test",
-            WPEFramework::Exchange::ILifecycleManager::LifecycleState::LOADING, // oldState
-            WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE,  // newState
-            "");
-        L0Test::ExpectTrue(fixture.tr, true,
-            "OnAppLifecycleStateChanged with ACTIVE newState covers counter-increment lines");
-        tr = fixture.tr;
-    } // fixture destructor → impl->Release()
-    // OnAppLifecycleStateChanged dispatches an APP_EVENT_LIFECYCLE_STATE_CHANGED job to
-    // Core::IWorkerPool (AddRef on impl).  Spin-wait until impl is fully destroyed and
-    // _instance is cleared, so the next test's Configure() doesn't race the singleton.
+    // Populate AppInfoManager so the update lambda executes with matching instanceId.
+    WPEFramework::Plugin::AppInfo info;
+    info.setAppInstanceId("inst-active-test");
+    WPEFramework::Plugin::AppInfoManager::getInstance().upsert(
+        "app.active.test",
+        [&](WPEFramework::Plugin::AppInfo& a) { a = info; });
+
+    // Register notification to detect when the dispatched LIFECYCLE_STATE_CHANGED Job runs.
+    auto* notif = new RefNotification(); // refcount=1
+    impl->Register(notif);               // refcount=2
+
+    impl->mLifecycleInterfaceConnector->OnAppLifecycleStateChanged(
+        "app.active.test", "inst-active-test",
+        WPEFramework::Exchange::ILifecycleManager::LifecycleState::LOADING, // oldState
+        WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE,  // newState
+        "");
+    L0Test::ExpectTrue(tr, true,
+        "OnAppLifecycleStateChanged with ACTIVE newState covers counter-increment lines");
+
+    // Wait for the LIFECYCLE_STATE_CHANGED Job to fire the notification.
     const auto activeDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
-    while (std::chrono::steady_clock::now() < activeDeadline &&
+    while (std::chrono::steady_clock::now() < activeDeadline) {
+        if (notif->lifecycle >= 1)
+            break;
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    impl->Unregister(notif);
+    notif->Release();
+
+    // Release our impl reference, then spin-wait until impl is fully destroyed.
+    // The LIC destructor calls mCurrentservice->Release() on the stack service,
+    // which is safe because Release() never calls `delete this` on the mock.
+    impl->Release();
+    const auto activeCleanDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
+    while (std::chrono::steady_clock::now() < activeCleanDeadline &&
            WPEFramework::Plugin::AppManagerImplementation::getInstance() != nullptr) {
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
@@ -1641,34 +1684,51 @@ uint32_t Test_AM_LICOnAppLifecycleStateChangedActiveNewState()
 uint32_t Test_AM_LICOnAppLifecycleStateChangedUnloadedAbnormalClose()
 {
     L0Test::TestResult tr;
-    {
-        AppManagerTestFixture fixture(true, true);
 
-        // Populate AppInfoManager with a non-empty instanceId so storedInstanceId is
-        // non-empty and the telemetry-reporting branch is also instrumented.
-        WPEFramework::Plugin::AppInfo info;
-        info.setAppInstanceId("inst-unload-test");
-        WPEFramework::Plugin::AppInfoManager::getInstance().upsert(
-            "app.unload.test",
-            [&](WPEFramework::Plugin::AppInfo& a) { a = info; });
+    // Stack-allocated service — stays alive for the full function scope.
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
 
-        // oldState=LOADING, newState=UNLOADED, no prior mAppCurrentActionList entry
-        // → abnormal close path.
-        fixture.impl->mLifecycleInterfaceConnector->OnAppLifecycleStateChanged(
-            "app.unload.test", "inst-unload-test",
-            WPEFramework::Exchange::ILifecycleManager::LifecycleState::LOADING,  // oldState
-            WPEFramework::Exchange::ILifecycleManager::LifecycleState::UNLOADED, // newState
-            "");
-        L0Test::ExpectTrue(fixture.tr, true,
-            "OnAppLifecycleStateChanged with UNLOADED newState (abnormal close) runs without crash");
-        tr = fixture.tr;
-    } // fixture destructor → impl->Release()
-    // OnAppLifecycleStateChanged (UNLOADED) dispatches APP_EVENT_LIFECYCLE_STATE_CHANGED
-    // and APP_EVENT_UNLOADED jobs to Core::IWorkerPool (each AddRefs impl).  Spin-wait
-    // until impl is fully destroyed and _instance is cleared, so the next test's
-    // Configure() doesn't race against the singleton pointer.
+    // Populate AppInfoManager with a non-empty instanceId so storedInstanceId is
+    // non-empty and the telemetry-reporting branch is also instrumented.
+    WPEFramework::Plugin::AppInfo info;
+    info.setAppInstanceId("inst-unload-test");
+    WPEFramework::Plugin::AppInfoManager::getInstance().upsert(
+        "app.unload.test",
+        [&](WPEFramework::Plugin::AppInfo& a) { a = info; });
+
+    // Register notification to detect when both async Jobs have executed:
+    // OnAppLifecycleStateChanged (UNLOADED) dispatches TWO jobs —
+    // APP_EVENT_LIFECYCLE_STATE_CHANGED (lifecycle++) and APP_EVENT_UNLOADED (unloaded++).
+    auto* notif = new RefNotification(); // refcount=1
+    impl->Register(notif);               // refcount=2
+
+    // oldState=LOADING, newState=UNLOADED, no prior mAppCurrentActionList entry
+    // → abnormal close path.
+    impl->mLifecycleInterfaceConnector->OnAppLifecycleStateChanged(
+        "app.unload.test", "inst-unload-test",
+        WPEFramework::Exchange::ILifecycleManager::LifecycleState::LOADING,  // oldState
+        WPEFramework::Exchange::ILifecycleManager::LifecycleState::UNLOADED, // newState
+        "");
+    L0Test::ExpectTrue(tr, true,
+        "OnAppLifecycleStateChanged with UNLOADED newState (abnormal close) runs without crash");
+
+    // Wait for both Jobs to fire their respective notifications.
     const auto unloadDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
-    while (std::chrono::steady_clock::now() < unloadDeadline &&
+    while (std::chrono::steady_clock::now() < unloadDeadline) {
+        if (notif->lifecycle >= 1 && notif->unloaded >= 1)
+            break;
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    impl->Unregister(notif);
+    notif->Release();
+
+    // Release our impl reference, then spin-wait until impl is fully destroyed.
+    impl->Release();
+    const auto unloadCleanDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
+    while (std::chrono::steady_clock::now() < unloadCleanDeadline &&
            WPEFramework::Plugin::AppManagerImplementation::getInstance() != nullptr) {
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
