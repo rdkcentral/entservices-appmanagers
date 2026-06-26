@@ -17,6 +17,7 @@ The **TelemetryMetrics** module provides telemetry data recording and publishing
 - **Metric Publishing:** Publish metrics to backend
 - **Event Correlation:** Correlate metrics with app events
 - **Performance Tracking:** Track launch times, response times
+- **Bootstrap Tracking:** Track plugin Initialize/Configure duration via RAII timers
 
 ### Clients
 
@@ -25,6 +26,10 @@ The **TelemetryMetrics** module provides telemetry data recording and publishing
 | AppManager | Launch time, close time, errors |
 | LifecycleManager | State transition times |
 | PackageManager | Install/uninstall times |
+| AppStorageManager | Storage and bootstrap timings |
+| RuntimeManager | Runtime operation and bootstrap timings |
+| DownloadManager | Download and bootstrap timings |
+| RDKWindowManager | Display and bootstrap timings |
 
 ---
 
@@ -128,6 +133,7 @@ TelemetryMetrics/
 | `AppCloseTime_split` | Time from close request to completion | AppManager |
 | `AppCrashed_split` | Application crash event | AppManager |
 | `StateTransitionTime` | Time for state transition | LifecycleManager |
+| `ENTS_INFO_RDKAMPluginBootstrapTime` | Plugin Initialize/Configure duration (RAII timer) | AppManager modules |
 
 ### Package Metrics
 
