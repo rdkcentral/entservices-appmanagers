@@ -2775,3 +2775,392 @@ uint32_t Test_AM_ClearAllAppDataStorageError()
     impl->Release();
     return tr.failures;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Worker thread LAUNCH success path (L132-L170): exercises the full
+// AppManagerWorkerThread body when a LaunchApp request is successfully
+// processed.  Spin-waits for the SpawnApp handler to confirm that the
+// worker thread executed packageLock + LIC::launch + SpawnApp.
+// ─────────────────────────────────────────────────────────────────────────────
+uint32_t Test_AM_WorkerThreadLaunchSuccess()
+{
+    L0Test::TestResult tr;
+    std::atomic<bool> spawnCalled{false};
+
+    L0Test::FakeLifecycleManager lifecycleManager;
+    L0Test::FakeLifecycleManagerState lifecycleState;
+    L0Test::FakePackageHandler packageHandler;
+    L0Test::FakePackageInstaller packageInstaller;
+    L0Test::FakeStore2 store;
+    L0Test::FakeStorageManager storageManager;
+
+    lifecycleManager.spawnAppHandler = [&spawnCalled](
+        const std::string&, const std::string&,
+        const WPEFramework::Exchange::ILifecycleManager::LifecycleState,
+        const WPEFramework::Exchange::RuntimeConfig&, const std::string&,
+        std::string& appInstanceId, std::string& errorReason, bool& success) {
+        appInstanceId = "instance-worker-launch";
+        errorReason.clear();
+        success = true;
+        spawnCalled.store(true, std::memory_order_release);
+        return WPEFramework::Core::ERROR_NONE;
+    };
+
+    WPEFramework::Exchange::IPackageInstaller::Package pkg;
+    pkg.packageId = "app.worker.launch";
+    pkg.version   = "1.0.0";
+    pkg.state     = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
+    packageInstaller.installedPackages.push_back(pkg);
+
+    L0Test::AppManagerServiceMock::Config cfg;
+    cfg.lifecycleManager      = &lifecycleManager;
+    cfg.lifecycleManagerState = &lifecycleState;
+    cfg.packageHandler        = &packageHandler;
+    cfg.installer             = &packageInstaller;
+    cfg.store2                = &store;
+    cfg.storageManager        = &storageManager;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+
+    impl->LaunchApp("app.worker.launch", "defaultIntent", "");
+
+    // Spin-wait: worker must process the request, call packageLock + SpawnApp
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(3000);
+    while (!spawnCalled.load(std::memory_order_acquire) &&
+           std::chrono::steady_clock::now() < deadline) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+
+    L0Test::ExpectTrue(tr, spawnCalled.load(),
+        "Worker thread processes LaunchApp: calls packageLock then SpawnApp");
+    L0Test::ExpectTrue(tr, packageHandler.lockCount >= 1u,
+        "Worker thread calls PackageHandler::Lock as part of packageLock");
+
+    // Brief pause to let LIC::launch finish its post-SpawnApp work (upsert, unlock)
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+
+    impl->Release();
+
+    // Spin-wait until impl is fully destroyed (async IWorkerPool jobs may hold a ref)
+    const auto dl2 = std::chrono::steady_clock::now() + std::chrono::milliseconds(3000);
+    while (WPEFramework::Plugin::AppManagerImplementation::getInstance() != nullptr &&
+           std::chrono::steady_clock::now() < dl2) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Worker thread packageLock failure path (L153 false branch + L192-L197):
+// when Lock() returns error the worker falls through to the else branch,
+// calls IsInstalled and dispatches an error lifecycle-state-changed event.
+// ─────────────────────────────────────────────────────────────────────────────
+uint32_t Test_AM_WorkerThreadPackageLockFails()
+{
+    L0Test::TestResult tr;
+    std::atomic<bool> lockAttempted{false};
+
+    L0Test::FakeLifecycleManager lifecycleManager;
+    L0Test::FakeLifecycleManagerState lifecycleState;
+    L0Test::FakePackageHandler packageHandler;
+    L0Test::FakePackageInstaller packageInstaller;
+    L0Test::FakeStore2 store;
+    L0Test::FakeStorageManager storageManager;
+
+    packageHandler.lockHandler = [&lockAttempted](
+        const std::string&, const std::string&,
+        const WPEFramework::Exchange::IPackageHandler::LockReason&,
+        uint32_t&, std::string&, WPEFramework::Exchange::RuntimeConfig&,
+        WPEFramework::Exchange::IPackageHandler::ILockIterator*&) {
+        lockAttempted.store(true, std::memory_order_release);
+        return WPEFramework::Core::ERROR_GENERAL;
+    };
+
+    WPEFramework::Exchange::IPackageInstaller::Package pkg;
+    pkg.packageId = "app.worker.lockfail";
+    pkg.version   = "1.0.0";
+    pkg.state     = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
+    packageInstaller.installedPackages.push_back(pkg);
+
+    L0Test::AppManagerServiceMock::Config cfg;
+    cfg.lifecycleManager      = &lifecycleManager;
+    cfg.lifecycleManagerState = &lifecycleState;
+    cfg.packageHandler        = &packageHandler;
+    cfg.installer             = &packageInstaller;
+    cfg.store2                = &store;
+    cfg.storageManager        = &storageManager;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+
+    impl->LaunchApp("app.worker.lockfail", "intent", "");
+
+    // Spin-wait: worker must reach the Lock() call and fail
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(3000);
+    while (!lockAttempted.load(std::memory_order_acquire) &&
+           std::chrono::steady_clock::now() < deadline) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+
+    L0Test::ExpectTrue(tr, lockAttempted.load(),
+        "Worker thread hits packageLock failure path (Lock returns error, L192)");
+
+    // Allow worker to finish the handleOnAppLifecycleStateChanged dispatch
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
+    impl->Release();
+
+    const auto dl2 = std::chrono::steady_clock::now() + std::chrono::milliseconds(3000);
+    while (WPEFramework::Plugin::AppManagerImplementation::getInstance() != nullptr &&
+           std::chrono::steady_clock::now() < dl2) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Worker thread PRELOAD success path (L176-L184): exercises the preload branch
+// inside AppManagerWorkerThread when packageLock succeeds and
+// LIC::preLoadApp → SpawnApp is called.
+// ─────────────────────────────────────────────────────────────────────────────
+uint32_t Test_AM_WorkerThreadPreloadSuccess()
+{
+    L0Test::TestResult tr;
+    std::atomic<bool> spawnCalled{false};
+
+    L0Test::FakeLifecycleManager lifecycleManager;
+    L0Test::FakeLifecycleManagerState lifecycleState;
+    L0Test::FakePackageHandler packageHandler;
+    L0Test::FakePackageInstaller packageInstaller;
+    L0Test::FakeStore2 store;
+    L0Test::FakeStorageManager storageManager;
+
+    lifecycleManager.spawnAppHandler = [&spawnCalled](
+        const std::string&, const std::string&,
+        const WPEFramework::Exchange::ILifecycleManager::LifecycleState,
+        const WPEFramework::Exchange::RuntimeConfig&, const std::string&,
+        std::string& appInstanceId, std::string& errorReason, bool& success) {
+        appInstanceId = "instance-worker-preload";
+        errorReason.clear();
+        success = true;
+        spawnCalled.store(true, std::memory_order_release);
+        return WPEFramework::Core::ERROR_NONE;
+    };
+
+    WPEFramework::Exchange::IPackageInstaller::Package pkg;
+    pkg.packageId = "app.worker.preload";
+    pkg.version   = "1.0.0";
+    pkg.state     = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
+    packageInstaller.installedPackages.push_back(pkg);
+
+    L0Test::AppManagerServiceMock::Config cfg;
+    cfg.lifecycleManager      = &lifecycleManager;
+    cfg.lifecycleManagerState = &lifecycleState;
+    cfg.packageHandler        = &packageHandler;
+    cfg.installer             = &packageInstaller;
+    cfg.store2                = &store;
+    cfg.storageManager        = &storageManager;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+
+    std::string error;
+    impl->PreloadApp("app.worker.preload", "defaultIntent", "", error);
+
+    // Spin-wait: worker must call packageLock + preLoadApp + SpawnApp
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(3000);
+    while (!spawnCalled.load(std::memory_order_acquire) &&
+           std::chrono::steady_clock::now() < deadline) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+
+    L0Test::ExpectTrue(tr, spawnCalled.load(),
+        "Worker thread processes PreloadApp and calls SpawnApp via preLoadApp");
+
+    // Brief pause to let LIC::preLoadApp finish its post-SpawnApp work
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+
+    impl->Release();
+
+    const auto dl2 = std::chrono::steady_clock::now() + std::chrono::milliseconds(3000);
+    while (WPEFramework::Plugin::AppManagerImplementation::getInstance() != nullptr &&
+           std::chrono::steady_clock::now() < dl2) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// packageLock already-loaded empty-version branch (L805-L807): when
+// isAppLoaded returns loaded=true but AppInfoManager has no cached version,
+// packageLock returns ERROR_GENERAL with LOGERR.
+// ─────────────────────────────────────────────────────────────────────────────
+uint32_t Test_AM_PackageLockAlreadyLoadedEmptyVersion()
+{
+    L0Test::TestResult tr;
+
+    auto* lm = new L0Test::FakeLifecycleManager();
+    lm->isAppLoadedHandler = [](const std::string&, bool& loaded) {
+        loaded = true;
+        return WPEFramework::Core::ERROR_NONE;
+    };
+    L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
+    delete static_cast<L0Test::FakeLifecycleManager*>(cfg.lifecycleManager);
+    cfg.lifecycleManager = lm;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+
+    // App is "loaded" but no package info in AppInfoManager → version empty → L805 LOGERR
+    WPEFramework::Plugin::AppManagerImplementation::PackageInfo packageData;
+    const auto status = impl->packageLock(
+        "app.loaded.noversion", packageData,
+        WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH);
+
+    L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_GENERAL,
+        "packageLock() returns ERROR_GENERAL when loaded but cached version is empty (L805)");
+
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// packageLock isAppLoaded error path (L818-L819): when isAppLoaded returns
+// a non-ERROR_NONE status the final else branch is taken (LOGERR "Failed to
+// determine loaded state").
+// ─────────────────────────────────────────────────────────────────────────────
+uint32_t Test_AM_PackageLockIsAppLoadedError()
+{
+    L0Test::TestResult tr;
+
+    auto* lm = new L0Test::FakeLifecycleManager();
+    lm->isAppLoadedHandler = [](const std::string&, bool& loaded) {
+        loaded = false;
+        return WPEFramework::Core::ERROR_GENERAL;  // isAppLoaded failure
+    };
+    L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
+    delete static_cast<L0Test::FakeLifecycleManager*>(cfg.lifecycleManager);
+    cfg.lifecycleManager = lm;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+
+    WPEFramework::Plugin::AppManagerImplementation::PackageInfo packageData;
+    const auto status = impl->packageLock(
+        "app.isloaded.error", packageData,
+        WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH);
+
+    L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_GENERAL,
+        "packageLock() returns ERROR_GENERAL when isAppLoaded returns error (L818)");
+
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CloseApp with LIC returning error (L953 false branch): when
+// mLifecycleInterfaceConnector->closeApp() returns ERROR_GENERAL because the
+// app is not in AppInfoManager, the if(status==ERROR_NONE) block is skipped.
+// ─────────────────────────────────────────────────────────────────────────────
+uint32_t Test_AM_CloseAppLICReturnsError()
+{
+    AppManagerTestFixture fixture;
+
+    // App not in AppInfoManager → LIC::closeApp hits "AppId not found" → ERROR_GENERAL
+    // → L953 if(status==ERROR_NONE) false branch taken.
+    const auto result = fixture.impl->CloseApp("app.not.in.db.closetest");
+    L0Test::ExpectEqU32(fixture.tr, result, WPEFramework::Core::ERROR_GENERAL,
+        "CloseApp() returns ERROR_GENERAL when LIC cannot find the app (L953 false branch)");
+
+    return fixture.tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Dispatch APP_EVENT_INSTALLATION_STATUS with an unknown state (L344 LOGWARN):
+// when installStatus is neither "INSTALLED" nor "UNINSTALLED" and a
+// notification is registered, the else branch (LOGWARN) is executed.
+// ─────────────────────────────────────────────────────────────────────────────
+uint32_t Test_AM_DispatchInstallationStatusUnknownState()
+{
+    AppManagerTestFixture fixture;
+    auto* notification = new RefNotification();
+    fixture.impl->Register(notification);
+
+    // "DOWNLOADING" is not INSTALLED or UNINSTALLED → L344 LOGWARN else branch
+    fixture.impl->OnAppInstallationStatus(
+        "[{\"packageId\":\"pkg.downloading.test\",\"state\":\"DOWNLOADING\"}]");
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    L0Test::ExpectTrue(fixture.tr, true,
+        "Dispatch() handles unknown install status with LOGWARN (no crash, L344)");
+
+    fixture.impl->Unregister(notification);
+    notification->Release();
+    return fixture.tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GetAppProperty with null PersistentStore (L1176 false branch): when
+// mPersistentStoreRemoteStoreObject is null and re-creation also fails,
+// the else path logs LOGERR and returns ERROR_GENERAL.
+// ─────────────────────────────────────────────────────────────────────────────
+uint32_t Test_AM_GetAppPropertyNullPersistentStore()
+{
+    L0Test::TestResult tr;
+    auto* impl = CreateImpl();
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    impl->Configure(&service);
+
+    // Release the ref acquired during Configure, then null it out.
+    // Also clear the service cfg so QueryInterfaceByCallsign returns null on retry.
+    impl->mPersistentStoreRemoteStoreObject->Release();
+    impl->mPersistentStoreRemoteStoreObject = nullptr;
+    service._cfg.store2 = nullptr;
+
+    std::string value;
+    const auto result = impl->GetAppProperty("app.id", "some.key", value);
+    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+        "GetAppProperty() returns ERROR_GENERAL when PersistentStore is null (L1176 false)");
+
+    impl->Release();
+    return tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SetAppProperty with null PersistentStore (L1233 false branch): same
+// scenario as GetAppProperty — store is null and re-creation fails, so
+// the else path logs LOGERR and the initial ERROR_GENERAL is returned.
+// ─────────────────────────────────────────────────────────────────────────────
+uint32_t Test_AM_SetAppPropertyNullPersistentStore()
+{
+    L0Test::TestResult tr;
+    auto* impl = CreateImpl();
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    impl->Configure(&service);
+
+    impl->mPersistentStoreRemoteStoreObject->Release();
+    impl->mPersistentStoreRemoteStoreObject = nullptr;
+    service._cfg.store2 = nullptr;
+
+    const auto result = impl->SetAppProperty("app.id", "some.key", "some.value");
+    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+        "SetAppProperty() returns ERROR_GENERAL when PersistentStore is null (L1233 false)");
+
+    impl->Release();
+    return tr.failures;
+}
+

@@ -148,6 +148,15 @@ extern uint32_t Test_AM_ClearAppDataNullStorage();
 extern uint32_t Test_AM_ClearAppDataStorageError();
 extern uint32_t Test_AM_ClearAllAppDataNullStorage();
 extern uint32_t Test_AM_ClearAllAppDataStorageError();
+extern uint32_t Test_AM_WorkerThreadLaunchSuccess();
+extern uint32_t Test_AM_WorkerThreadPackageLockFails();
+extern uint32_t Test_AM_WorkerThreadPreloadSuccess();
+extern uint32_t Test_AM_PackageLockAlreadyLoadedEmptyVersion();
+extern uint32_t Test_AM_PackageLockIsAppLoadedError();
+extern uint32_t Test_AM_CloseAppLICReturnsError();
+extern uint32_t Test_AM_DispatchInstallationStatusUnknownState();
+extern uint32_t Test_AM_GetAppPropertyNullPersistentStore();
+extern uint32_t Test_AM_SetAppPropertyNullPersistentStore();
 
 int main()
 {
@@ -284,6 +293,15 @@ int main()
         { "AM_ClearAppDataStorageError", Test_AM_ClearAppDataStorageError },
         { "AM_ClearAllAppDataNullStorage", Test_AM_ClearAllAppDataNullStorage },
         { "AM_ClearAllAppDataStorageError", Test_AM_ClearAllAppDataStorageError },
+        { "AM_WorkerThreadLaunchSuccess", Test_AM_WorkerThreadLaunchSuccess },
+        { "AM_WorkerThreadPackageLockFails", Test_AM_WorkerThreadPackageLockFails },
+        { "AM_WorkerThreadPreloadSuccess", Test_AM_WorkerThreadPreloadSuccess },
+        { "AM_PackageLockAlreadyLoadedEmptyVersion", Test_AM_PackageLockAlreadyLoadedEmptyVersion },
+        { "AM_PackageLockIsAppLoadedError", Test_AM_PackageLockIsAppLoadedError },
+        { "AM_CloseAppLICReturnsError", Test_AM_CloseAppLICReturnsError },
+        { "AM_DispatchInstallationStatusUnknownState", Test_AM_DispatchInstallationStatusUnknownState },
+        { "AM_GetAppPropertyNullPersistentStore", Test_AM_GetAppPropertyNullPersistentStore },
+        { "AM_SetAppPropertyNullPersistentStore", Test_AM_SetAppPropertyNullPersistentStore },
     };
 
     uint32_t totalFailures = 0;
