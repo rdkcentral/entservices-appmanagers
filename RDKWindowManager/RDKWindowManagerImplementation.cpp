@@ -2260,17 +2260,17 @@ Core::hresult RDKWindowManagerImplementation::SetAlias(const string& clientId, c
     }
 
     const bool lockAcquired = lockRdkWindowManagerMutex();
-    if (true == RdkWindowManager::CompositorController::setAlias(clientId, alias))
-    {
-        status = Core::ERROR_NONE;
-    }
-    else
-    {
-        LOGERR("SetAlias: Failed to set alias for clientId '%s'", clientId.c_str());
-    }
-
     if (lockAcquired)
     {
+        if (true == RdkWindowManager::CompositorController::setAlias(clientId, alias))
+        {
+            status = Core::ERROR_NONE;
+        }
+        else
+        {
+            LOGERR("SetAlias: Failed to set alias for clientId '%s'", clientId.c_str());
+        }
+
         gRdkWindowManagerMutex.unlock();
     }
 
