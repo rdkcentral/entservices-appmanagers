@@ -133,7 +133,8 @@ void WindowManagerHandler::WindowManagerNotification::OnReady(const std::string 
 
 void WindowManagerHandler::WindowManagerNotification::OnFocus(const std::string &client)
 {
-    LOGINFO("Received onFocus event for app[%s] \n", client.c_str());
+    printf("Received onFocus event for app[%s] \n", client.c_str());
+    fflush(stdout);
     JsonObject eventData;
     eventData["appInstanceId"] = client;
     eventData["name"] = "onFocus";
