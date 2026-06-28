@@ -18,9 +18,13 @@
 **/
 
 #include "LifecycleManager.h"
+#include "LifecycleManagerTelemetryReporting.h"
+#include "UtilsAppManagerTelemetry.h"
 #include <interfaces/IConfiguration.h>
 
 const string WPEFramework::Plugin::LifecycleManager::SERVICE_NAME = "org.rdk.LifecycleManager";
+
+RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::LifecycleManagerTelemetryReporting, "lifecycleManagerBootstrapTime")
 
 namespace WPEFramework
 {
@@ -63,6 +67,7 @@ namespace WPEFramework
         {
             //uint32_t result = Core::ERROR_GENERAL;
             string retStatus = "";
+            RDKAM_RECORD_BOOTSTRAP_TIME(service);
             ASSERT(nullptr != service);
             ASSERT(0 == mConnectionId);
             ASSERT(nullptr == _service);

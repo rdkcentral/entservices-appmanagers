@@ -19,6 +19,7 @@
 
 #include "RuntimeManagerImplementation.h"
 #include "DobbySpecGenerator.h"
+#include "UtilsAppManagerTelemetry.h"
 #ifdef RDK_APPMANAGERS_DEBUG
 #include "ContainerUtils.h"
 #include "WebInspector.h"
@@ -35,6 +36,8 @@ namespace WPEFramework
 {
     namespace Plugin
     {
+        RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::RuntimeManagerTelemetryReporting, "runtimeManagerBootstrapTime")
+
         SERVICE_REGISTRATION(RuntimeManagerImplementation, 1, 0);
         RuntimeManagerImplementation *RuntimeManagerImplementation::_instance = nullptr;
 
@@ -276,7 +279,7 @@ namespace WPEFramework
                 mCurrentservice = service;
                 mCurrentservice->AddRef();
 
-                RuntimeManagerTelemetryReporting::getInstance().initialize(mCurrentservice);
+                RDKAM_TELEMETRY_INIT(mCurrentservice);
                 /* Create Storage Manager Plugin Object */
                 if (Core::ERROR_NONE != createStorageManagerPluginObject())
                 {

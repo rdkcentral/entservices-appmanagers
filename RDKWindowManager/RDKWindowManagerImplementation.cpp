@@ -32,6 +32,7 @@
 #include "UtilsJsonRpc.h"
 #include "UtilsUnused.h"
 #include "UtilsString.h"
+#include "UtilsAppManagerTelemetry.h"
 
 using namespace std;
 using namespace RdkWindowManager;
@@ -46,6 +47,8 @@ static std::atomic<bool> sRunning{true};
 
 namespace WPEFramework {
 namespace Plugin {
+
+RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::RDKWindowManagerTelemetryReporting, "windowManagerBootstrapTime")
 
 SERVICE_REGISTRATION(RDKWindowManagerImplementation, RDK_WINDOW_MANAGER_API_VERSION_NUMBER_MAJOR, RDK_WINDOW_MANAGER_API_VERSION_NUMBER_MINOR);
 RDKWindowManagerImplementation* RDKWindowManagerImplementation::_instance = nullptr;
@@ -348,7 +351,7 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
         });
 
         LOGINFO("RDKWindowManagerImplementation::Initialized");
-        RDKWindowManagerTelemetryReporting::getInstance().initialize(service);
+        RDKAM_TELEMETRY_INIT(service);
     }
     else
     {
