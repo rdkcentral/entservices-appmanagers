@@ -657,7 +657,7 @@ namespace WPEFramework
             {
 
                 mWindowManagerConnector->getDisplayInfo(appInstanceId, xdgRuntimeDir, waylandDisplay);
-                displayResult = mWindowManagerConnector->createDisplay(appInstanceId, waylandDisplay, appId, uid, gid, runtimeConfigObject.capabilities);
+                displayResult = mWindowManagerConnector->createDisplay(appInstanceId, waylandDisplay, uid, gid, runtimeConfigObject.capabilities);
                 if (false == displayResult)
                 {
                     LOGERR("Failed to create display");

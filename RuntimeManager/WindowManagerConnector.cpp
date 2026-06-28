@@ -82,7 +82,7 @@ void WindowManagerConnector::releasePlugin()
     mWindowManager = nullptr;
 }
 
-bool WindowManagerConnector::createDisplay(const string& appInstanceId , const string& displayName , const string& alias, const uint32_t& userId, const uint32_t& groupId, const string& capabilities)
+bool WindowManagerConnector::createDisplay(const string& appInstanceId , const string& displayName , const uint32_t& userId, const uint32_t& groupId, const string& capabilities)
 {
     if(mPluginInitialized == false)
     {

@@ -63,7 +63,7 @@ namespace Plugin {
         public:
             bool initializePlugin(PluginHost::IShell* service, class RuntimeManagerImplementation* runtimeManager);
             void releasePlugin();
-            bool createDisplay(const string& appInstanceId , const string& displayName, const string& alias, const uint32_t& userId, const uint32_t& groupId, const string& capabilities = string());
+            bool createDisplay(const string& appInstanceId , const string& displayName, const uint32_t& userId, const uint32_t& groupId, const string& capabilities = string());
             bool isPluginInitialized();
             void getDisplayInfo(const string& appInstanceId , string& xdgRuntimeDir , string& waylandDisplayName);
             void onWindowManagerDisconnected(const std::string& client);
