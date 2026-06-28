@@ -31,19 +31,10 @@
 #include "WindowManagerMock.h"
 #include "WorkerPoolImplementation.h"
 
-// In nativebuild the system Thunder's IRDKWindowManager::CreateDisplay has 11
-// parameters (no capabilities). The main CI interface adds a 12th.
-#ifdef ENABLE_NATIVEBUILD
-#define CREATE_DISPLAY_WILDCARDS \
-    ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, \
-    ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, \
-    ::testing::_
-#else
 #define CREATE_DISPLAY_WILDCARDS \
     ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, \
     ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, \
     ::testing::_, ::testing::_
-#endif
 #include <fstream>
 #include <atomic>
 #include <chrono>

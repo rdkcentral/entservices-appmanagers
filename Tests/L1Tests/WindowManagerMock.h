@@ -35,16 +35,6 @@ public:
     MOCK_METHOD(WPEFramework::Core::hresult, Initialize, (WPEFramework::PluginHost::IShell* service), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, Deinitialize, (WPEFramework::PluginHost::IShell* service), (override));
 
-#ifdef ENABLE_NATIVEBUILD
-    MOCK_METHOD(WPEFramework::Core::hresult, CreateDisplay,
-        (const string& clientId, const string& displayName,
-         const uint32_t displayWidth, const uint32_t displayHeight,
-         const bool virtualDisplay,
-         const uint32_t virtualWidth, const uint32_t virtualHeight,
-         const uint32_t ownerId, const uint32_t groupId,
-         const bool topmost, const bool focus),
-        (override));
-#else
     MOCK_METHOD(WPEFramework::Core::hresult, CreateDisplay,
         (const string& clientId, const string& displayName,
          const uint32_t displayWidth, const uint32_t displayHeight,
@@ -53,7 +43,6 @@ public:
          const uint32_t ownerId, const uint32_t groupId,
          const bool topmost, const bool focus, const string& capabilities),
         (override));
-#endif
 
     MOCK_METHOD(WPEFramework::Core::hresult, GetApps, (string& appsIds), (const, override));
     MOCK_METHOD(WPEFramework::Core::hresult, AddKeyIntercept, (const string& intercept), (override));
@@ -82,9 +71,7 @@ public:
     MOCK_METHOD(WPEFramework::Core::hresult, StartVncServer, (), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, StopVncServer, (), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, GetScreenshot, (), (override));
-#ifndef ENABLE_NATIVEBUILD
     MOCK_METHOD(WPEFramework::Core::hresult, SetAlias, (const string& clientId, const string& alias), (override));
-#endif
 };
 
 class WindowManagerNotificationMock : public WPEFramework::Exchange::IRDKWindowManager::INotification {
