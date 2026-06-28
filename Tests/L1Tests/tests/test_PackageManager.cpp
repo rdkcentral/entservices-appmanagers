@@ -1737,6 +1737,139 @@ TEST_F(PackageManagerTest, packageStateusingComRpcSuccess) {
 
 // IPackageHandler methods
 
+/* Test Case for lock/getLockedInfo/unlock success using ComRpc
+ *
+ * Set up and initialize required COM-RPC resources
+ * Call Lock() for known dummy package and verify lock metadata
+ * Call GetLockedInfo() and verify locked state
+ * Call Unlock() and verify successful unlock
+ * Deinitialize COM-RPC resources
+ */
+
+TEST_F(PackageManagerTest, lockGetLockedInfoAndUnlockusingComRpcSuccess) {
+
+    initforComRpc();
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    const string packageId = "YouTube";
+    const string version = "100.1.24";
+
+    uint32_t lockId = 0;
+    string unpackedPath;
+    Exchange::RuntimeConfig runtimeConfig {};
+    Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
+
+    EXPECT_EQ(Core::ERROR_NONE,
+              pkghandlerInterface->Lock(packageId,
+                                        version,
+                                        Exchange::IPackageHandler::LockReason::LAUNCH,
+                                        lockId,
+                                        unpackedPath,
+                                        runtimeConfig,
+                                        appMetadata));
+    EXPECT_GT(lockId, 0u);
+    EXPECT_EQ(runtimeConfig.appPath, "/opt/YouTube");
+
+    if (appMetadata != nullptr) {
+        appMetadata->Release();
+        appMetadata = nullptr;
+    }
+
+    bool locked = false;
+    string gatewayMetadataPath;
+    EXPECT_EQ(Core::ERROR_NONE,
+              pkghandlerInterface->GetLockedInfo(packageId,
+                                                 version,
+                                                 unpackedPath,
+                                                 runtimeConfig,
+                                                 gatewayMetadataPath,
+                                                 locked));
+    EXPECT_TRUE(locked);
+
+    EXPECT_EQ(Core::ERROR_NONE, pkghandlerInterface->Unlock(packageId, version));
+
+    deinitforComRpc();
+}
+
+/* Test Case for lock/getLockedInfo failure branches using ComRpc
+ *
+ * Set up and initialize required COM-RPC resources
+ * Verify Lock() and GetLockedInfo() return ERROR_BAD_REQUEST for unknown package
+ * Deinitialize COM-RPC resources
+ */
+
+TEST_F(PackageManagerTest, lockAndGetLockedInfousingComRpcFailure) {
+
+    initforComRpc();
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    uint32_t lockId = 0;
+    string unpackedPath;
+    Exchange::RuntimeConfig runtimeConfig {};
+    Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
+
+    EXPECT_EQ(Core::ERROR_BAD_REQUEST,
+              pkghandlerInterface->Lock("UnknownApp",
+                                        "0.0.1",
+                                        Exchange::IPackageHandler::LockReason::LAUNCH,
+                                        lockId,
+                                        unpackedPath,
+                                        runtimeConfig,
+                                        appMetadata));
+
+    bool locked = false;
+    string gatewayMetadataPath;
+    EXPECT_EQ(Core::ERROR_BAD_REQUEST,
+              pkghandlerInterface->GetLockedInfo("UnknownApp",
+                                                 "0.0.1",
+                                                 unpackedPath,
+                                                 runtimeConfig,
+                                                 gatewayMetadataPath,
+                                                 locked));
+
+    if (appMetadata != nullptr) {
+        appMetadata->Release();
+        appMetadata = nullptr;
+    }
+
+    deinitforComRpc();
+}
+
+/* Test Case for config/getConfigForPackage branches using ComRpc
+ *
+ * Set up and initialize required COM-RPC resources
+ * Verify Config() success for known package and failure for unknown package
+ * Verify GetConfigForPackage() invalid signature and success branches
+ * Deinitialize COM-RPC resources
+ */
+
+TEST_F(PackageManagerTest, configAndGetConfigForPackageusingComRpcBranches) {
+
+    initforComRpc();
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    Exchange::RuntimeConfig runtimeConfig {};
+    EXPECT_EQ(Core::ERROR_NONE,
+              pkginstallerInterface->Config("YouTube", "100.1.24", runtimeConfig));
+    EXPECT_EQ(runtimeConfig.appPath, "/opt/YouTube");
+
+    EXPECT_EQ(Core::ERROR_BAD_REQUEST,
+              pkginstallerInterface->Config("UnknownApp", "0", runtimeConfig));
+
+    string packageId;
+    string version;
+    EXPECT_EQ(Core::ERROR_INVALID_SIGNATURE,
+              pkginstallerInterface->GetConfigForPackage("", packageId, version, runtimeConfig));
+
+    EXPECT_EQ(Core::ERROR_NONE,
+              pkginstallerInterface->GetConfigForPackage("/tmp/fake_pkg.ipk", packageId, version, runtimeConfig));
+
+    deinitforComRpc();
+}
+
 /* Test Case for unlock failure using ComRpc
  * 
  * Set up and initialize required COM-RPC resources, configurations, mocks and expectations
@@ -1759,3 +1892,4 @@ TEST_F(PackageManagerTest, unlockmethodusingComRpcFailure) {
 
 	deinitforComRpc();
 }
+
