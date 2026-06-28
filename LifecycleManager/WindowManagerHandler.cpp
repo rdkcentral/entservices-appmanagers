@@ -142,8 +142,7 @@ void WindowManagerHandler::WindowManagerNotification::OnFocus(const std::string 
 
 void WindowManagerHandler::WindowManagerNotification::OnBlur(const std::string &client)
 {
-    printf("Received onBlur event for app[%s] \n", client.c_str());
-    fflush(stdout);
+    LOGINFO("Received onBlur event for app[%s] \n", client.c_str());
     JsonObject eventData;
     eventData["appInstanceId"] = client;
     eventData["name"] = "onBlur";
