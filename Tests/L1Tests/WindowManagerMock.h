@@ -26,11 +26,7 @@ class WindowManagerMock : public WPEFramework::Exchange::IRDKWindowManager {
 public:
     virtual ~WindowManagerMock() = default;
 
-#ifdef ENABLE_NATIVEBUILD
     MOCK_METHOD(void, AddRef, (), (const, override));
-#else
-    MOCK_METHOD(uint32_t, AddRef, (), (const, override));
-#endif
     MOCK_METHOD(uint32_t, Release, (), (const, override));
     MOCK_METHOD(void*, QueryInterface, (const uint32_t interfaceNumber), (override));
 
@@ -39,6 +35,16 @@ public:
     MOCK_METHOD(WPEFramework::Core::hresult, Initialize, (WPEFramework::PluginHost::IShell* service), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, Deinitialize, (WPEFramework::PluginHost::IShell* service), (override));
 
+#ifdef ENABLE_NATIVEBUILD
+    MOCK_METHOD(WPEFramework::Core::hresult, CreateDisplay,
+        (const string& clientId, const string& displayName,
+         const uint32_t displayWidth, const uint32_t displayHeight,
+         const bool virtualDisplay,
+         const uint32_t virtualWidth, const uint32_t virtualHeight,
+         const uint32_t ownerId, const uint32_t groupId,
+         const bool topmost, const bool focus),
+        (override));
+#else
     MOCK_METHOD(WPEFramework::Core::hresult, CreateDisplay,
         (const string& clientId, const string& displayName,
          const uint32_t displayWidth, const uint32_t displayHeight,
@@ -47,6 +53,7 @@ public:
          const uint32_t ownerId, const uint32_t groupId,
          const bool topmost, const bool focus, const string& capabilities),
         (override));
+#endif
 
     MOCK_METHOD(WPEFramework::Core::hresult, GetApps, (string& appsIds), (const, override));
     MOCK_METHOD(WPEFramework::Core::hresult, AddKeyIntercept, (const string& intercept), (override));
@@ -78,4 +85,23 @@ public:
 #ifndef ENABLE_NATIVEBUILD
     MOCK_METHOD(WPEFramework::Core::hresult, SetAlias, (const string& clientId, const string& alias), (override));
 #endif
+};
+
+class WindowManagerNotificationMock : public WPEFramework::Exchange::IRDKWindowManager::INotification {
+public:
+    WindowManagerNotificationMock() = default;
+    virtual ~WindowManagerNotificationMock() = default;
+
+    MOCK_METHOD(void, OnUserInactivity, (const double minutes), (override));
+    MOCK_METHOD(void, OnDisconnected, (const string& client), (override));
+    MOCK_METHOD(void, OnReady, (const string& client), (override));
+    MOCK_METHOD(void, OnConnected, (const string& client), (override));
+    MOCK_METHOD(void, OnVisible, (const string& client), (override));
+    MOCK_METHOD(void, OnHidden, (const string& client), (override));
+    MOCK_METHOD(void, OnFocus, (const string& client), (override));
+    MOCK_METHOD(void, OnBlur, (const string& client), (override));
+    MOCK_METHOD(void, OnScreenshotComplete, (const bool success, const string& imageData), (override));
+    MOCK_METHOD(void, AddRef, (), (const, override));
+    MOCK_METHOD(uint32_t, Release, (), (const, override));
+    MOCK_METHOD(void*, QueryInterface, (const uint32_t interfaceNumber), (override));
 };
