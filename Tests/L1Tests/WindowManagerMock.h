@@ -71,4 +71,5 @@ public:
     MOCK_METHOD(WPEFramework::Core::hresult, StartVncServer, (), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, StopVncServer, (), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, GetScreenshot, (), (override));
+    MOCK_METHOD(WPEFramework::Core::hresult, SetAlias, (const string& clientId, const string& alias), (override));
 };
