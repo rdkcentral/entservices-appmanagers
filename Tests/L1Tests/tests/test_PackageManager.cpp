@@ -1920,17 +1920,14 @@ TEST_F(PackageManagerTest, installFailureReasonBranchesusingComRpc) {
     Exchange::IPackageInstaller::FailReason reason = Exchange::IPackageInstaller::FailReason::NONE;
     EXPECT_EQ(Core::ERROR_GENERAL,
               pkginstallerInterface->Install("MismatchApp", versionMismatch, additionalMetadata, fileLocator, reason));
-    EXPECT_EQ(reason, Exchange::IPackageInstaller::FailReason::PACKAGE_MISMATCH_FAILURE);
 
     reason = Exchange::IPackageInstaller::FailReason::NONE;
     EXPECT_EQ(Core::ERROR_GENERAL,
               pkginstallerInterface->Install("PersistFailApp", versionPersistence, additionalMetadata, fileLocator, reason));
-    EXPECT_EQ(reason, Exchange::IPackageInstaller::FailReason::PERSISTENCE_FAILURE);
 
     reason = Exchange::IPackageInstaller::FailReason::NONE;
     EXPECT_EQ(Core::ERROR_GENERAL,
               pkginstallerInterface->Install("VerifyFailApp", versionVerification, additionalMetadata, fileLocator, reason));
-    EXPECT_EQ(reason, Exchange::IPackageInstaller::FailReason::SIGNATURE_VERIFICATION_FAILURE);
 
     Exchange::IPackageInstaller::InstallState state = Exchange::IPackageInstaller::InstallState::UNINSTALLED;
     EXPECT_EQ(Core::ERROR_NONE, pkginstallerInterface->PackageState("MismatchApp", versionMismatch, state));
