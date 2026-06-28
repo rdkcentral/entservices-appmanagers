@@ -26,7 +26,11 @@ class WindowManagerMock : public WPEFramework::Exchange::IRDKWindowManager {
 public:
     virtual ~WindowManagerMock() = default;
 
+#ifdef ENABLE_NATIVEBUILD
+    MOCK_METHOD(void, AddRef, (), (const, override));
+#else
     MOCK_METHOD(uint32_t, AddRef, (), (const, override));
+#endif
     MOCK_METHOD(uint32_t, Release, (), (const, override));
     MOCK_METHOD(void*, QueryInterface, (const uint32_t interfaceNumber), (override));
 
@@ -41,7 +45,7 @@ public:
          const bool virtualDisplay,
          const uint32_t virtualWidth, const uint32_t virtualHeight,
          const uint32_t ownerId, const uint32_t groupId,
-         const bool topmost, const bool focus),
+         const bool topmost, const bool focus, const string& capabilities),
         (override));
 
     MOCK_METHOD(WPEFramework::Core::hresult, GetApps, (string& appsIds), (const, override));
@@ -71,5 +75,7 @@ public:
     MOCK_METHOD(WPEFramework::Core::hresult, StartVncServer, (), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, StopVncServer, (), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, GetScreenshot, (), (override));
+#ifndef ENABLE_NATIVEBUILD
     MOCK_METHOD(WPEFramework::Core::hresult, SetAlias, (const string& clientId, const string& alias), (override));
+#endif
 };
