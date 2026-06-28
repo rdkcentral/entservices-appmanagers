@@ -403,7 +403,7 @@ bool CompositorController::getClients(std::vector<std::string>& clients)
     return S().getClientsResult;
 }
 
-bool CompositorController::createDisplay(const std::string&, const std::string&, uint32_t, uint32_t, bool, uint32_t, uint32_t, bool, bool, int32_t, int32_t)
+bool CompositorController::createDisplay(const std::string&, const std::string&, uint32_t, uint32_t, bool, uint32_t, uint32_t, bool, bool, int32_t, int32_t, const std::string&)
 {
     std::lock_guard<std::mutex> guard(S().lock);
     return S().createDisplayResult;
