@@ -1,4 +1,4 @@
-﻿/*
+/*
  * If not stated otherwise in this file or this component's LICENSE file the
  * following copyright and licenses apply:
  *
@@ -35,12 +35,12 @@
 L0Test::AppManagerServiceMock::Config CreateFullServiceConfig()
 {
     L0Test::AppManagerServiceMock::Config cfg;
-    cfg.lifecycleManager = new L0Test::FakeLifecycleManager();
-    cfg.lifecycleManagerState = new L0Test::FakeLifecycleManagerState();
-    cfg.store2 = new L0Test::FakeStore2();
-    cfg.storageManager = new L0Test::FakeStorageManager();
-    cfg.packageHandler = new L0Test::FakePackageHandler();
-    cfg.installer = new L0Test::FakePackageInstaller();
+    cfg.lifecycleManager = new L0Test::MockLifecycleManager();
+    cfg.lifecycleManagerState = new L0Test::MockLifecycleManagerState();
+    cfg.store2 = new L0Test::MockStore2();
+    cfg.storageManager = new L0Test::MockStorageManager();
+    cfg.packageHandler = new L0Test::MockPackageHandler();
+    cfg.installer = new L0Test::MockPackageInstaller();
     return cfg;
 }
 
@@ -337,10 +337,10 @@ uint32_t Test_AM_IsInstalledAndGetInstalledAppsWithPackages()
 {
     L0Test::TestResult tr;
 
-    L0Test::FakePackageInstaller installer;
-    L0Test::FakePackageHandler handler;
-    L0Test::FakeStore2 store;
-    L0Test::FakeStorageManager storage;
+    L0Test::MockPackageInstaller installer;
+    L0Test::MockPackageHandler handler;
+    L0Test::MockStore2 store;
+    L0Test::MockStorageManager storage;
 
     WPEFramework::Exchange::IPackageInstaller::Package installedPkg;
     installedPkg.packageId = "app.good";
@@ -360,8 +360,8 @@ uint32_t Test_AM_IsInstalledAndGetInstalledAppsWithPackages()
     cfg.store2 = &store;
     cfg.storageManager = &storage;
     // Lifecycle managers optional, but include for completeness
-    L0Test::FakeLifecycleManager lifecycle;
-    L0Test::FakeLifecycleManagerState lifecycleState;
+    L0Test::MockLifecycleManager lifecycle;
+    L0Test::MockLifecycleManagerState lifecycleState;
     cfg.lifecycleManager = &lifecycle;
     cfg.lifecycleManagerState = &lifecycleState;
     L0Test::AppManagerServiceMock service(cfg);
@@ -392,10 +392,10 @@ uint32_t Test_AM_AppPropertyRoundTripWithStore()
 {
     L0Test::TestResult tr;
 
-    auto* installer = new L0Test::FakePackageInstaller();
-    auto* handler = new L0Test::FakePackageHandler();
-    auto* store = new L0Test::FakeStore2();
-    auto* storage = new L0Test::FakeStorageManager();
+    auto* installer = new L0Test::MockPackageInstaller();
+    auto* handler = new L0Test::MockPackageHandler();
+    auto* store = new L0Test::MockStore2();
+    auto* storage = new L0Test::MockStorageManager();
 
     L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
     cfg.installer = installer;
@@ -427,10 +427,10 @@ uint32_t Test_AM_ClearAppDataAndSystemApisWithDependencies()
 {
     L0Test::TestResult tr;
 
-    auto* installer = new L0Test::FakePackageInstaller();
-    auto* handler = new L0Test::FakePackageHandler();
-    auto* store = new L0Test::FakeStore2();
-    auto* storage = new L0Test::FakeStorageManager();
+    auto* installer = new L0Test::MockPackageInstaller();
+    auto* handler = new L0Test::MockPackageHandler();
+    auto* store = new L0Test::MockStore2();
+    auto* storage = new L0Test::MockStorageManager();
 
     L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
     cfg.installer = installer;
@@ -465,10 +465,10 @@ uint32_t Test_AM_CheckInstallUninstallBlockTrueForBlockedPackage()
 {
     L0Test::TestResult tr;
 
-    auto* installer = new L0Test::FakePackageInstaller();
-    auto* handler = new L0Test::FakePackageHandler();
-    auto* store = new L0Test::FakeStore2();
-    auto* storage = new L0Test::FakeStorageManager();
+    auto* installer = new L0Test::MockPackageInstaller();
+    auto* handler = new L0Test::MockPackageHandler();
+    auto* store = new L0Test::MockStore2();
+    auto* storage = new L0Test::MockStorageManager();
 
     WPEFramework::Exchange::IPackageInstaller::Package blockedPkg;
     blockedPkg.packageId = "app.blocked";
@@ -640,12 +640,12 @@ uint32_t Test_AM_LaunchAppWithPackageHandler()
     L0Test::TestResult tr;
     auto* impl = CreateImpl();
 
-    L0Test::FakePackageHandler packageHandler;
-    L0Test::FakePackageInstaller packageInstaller;
-    L0Test::FakeStore2 store;
-    L0Test::FakeStorageManager storageManager;
-    L0Test::FakeLifecycleManager lifecycleManager;
-    L0Test::FakeLifecycleManagerState lifecycleState;
+    L0Test::MockPackageHandler packageHandler;
+    L0Test::MockPackageInstaller packageInstaller;
+    L0Test::MockStore2 store;
+    L0Test::MockStorageManager storageManager;
+    L0Test::MockLifecycleManager lifecycleManager;
+    L0Test::MockLifecycleManagerState lifecycleState;
 
     L0Test::AppManagerServiceMock::Config cfg(&packageInstaller);
     cfg.packageHandler = &packageHandler;
@@ -691,6 +691,15 @@ uint32_t Test_AM_LaunchAppWithPackageHandler()
     L0Test::ExpectTrue(tr, packageHandler.lockCount > 0u, "Package lock was attempted");
 
     impl->Release();
+    // Wait for the WorkerPool-dispatched Job (from handleOnAppLaunchRequest/dispatchEvent)
+    // to be fully released before stack-allocated mocks go out of scope.
+    {
+        const auto dl = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
+        while (std::chrono::steady_clock::now() < dl &&
+               WPEFramework::Plugin::AppManagerImplementation::getInstance() != nullptr) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        }
+    }
     return tr.failures;
 }
 
@@ -699,16 +708,16 @@ uint32_t Test_AM_PreloadAppWithPackageHandler()
     L0Test::TestResult tr;
     auto* impl = CreateImpl();
 
-    L0Test::FakePackageHandler packageHandler;
-    L0Test::FakePackageInstaller packageInstaller;
-    L0Test::FakeStore2 store;
-    L0Test::FakeLifecycleManager lifecycleManager;
-    L0Test::FakeLifecycleManagerState lifecycleState;
+    L0Test::MockPackageHandler packageHandler;
+    L0Test::MockPackageInstaller packageInstaller;
+    L0Test::MockStore2 store;
+    L0Test::MockLifecycleManager lifecycleManager;
+    L0Test::MockLifecycleManagerState lifecycleState;
 
     L0Test::AppManagerServiceMock::Config cfg(&packageInstaller);
     cfg.packageHandler = &packageHandler;
     cfg.store2 = &store;
-    cfg.storageManager = new L0Test::FakeStorageManager();
+    cfg.storageManager = new L0Test::MockStorageManager();
     cfg.lifecycleManager = &lifecycleManager;
     cfg.lifecycleManagerState = &lifecycleState;
     L0Test::AppManagerServiceMock service(cfg);
@@ -743,6 +752,15 @@ uint32_t Test_AM_PreloadAppWithPackageHandler()
                        "PreloadApp() with package handler attempts operation");
 
     impl->Release();
+    // Wait for the WorkerPool-dispatched Job (from dispatchEvent) to be fully
+    // released before stack-allocated mocks go out of scope.
+    {
+        const auto dl = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
+        while (std::chrono::steady_clock::now() < dl &&
+               WPEFramework::Plugin::AppManagerImplementation::getInstance() != nullptr) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        }
+    }
     return tr.failures;
 }
 
@@ -751,8 +769,8 @@ uint32_t Test_AM_IsInstalledMultiplePackages()
     L0Test::TestResult tr;
     auto* impl = CreateImpl();
 
-    L0Test::FakePackageHandler packageHandler;
-    L0Test::FakePackageInstaller packageInstaller;
+    L0Test::MockPackageHandler packageHandler;
+    L0Test::MockPackageInstaller packageInstaller;
 
     // Setup multiple test packages
     WPEFramework::Exchange::IPackageInstaller::Package pkg1, pkg2, pkg3;
@@ -774,10 +792,10 @@ uint32_t Test_AM_IsInstalledMultiplePackages()
 
     L0Test::AppManagerServiceMock::Config cfg(&packageInstaller);
     cfg.packageHandler = &packageHandler;
-    cfg.store2 = new L0Test::FakeStore2();
-    cfg.storageManager = new L0Test::FakeStorageManager();
-    cfg.lifecycleManager = new L0Test::FakeLifecycleManager();
-    cfg.lifecycleManagerState = new L0Test::FakeLifecycleManagerState();
+    cfg.store2 = new L0Test::MockStore2();
+    cfg.storageManager = new L0Test::MockStorageManager();
+    cfg.lifecycleManager = new L0Test::MockLifecycleManager();
+    cfg.lifecycleManagerState = new L0Test::MockLifecycleManagerState();
     L0Test::AppManagerServiceMock service(cfg);
 
     impl->Configure(&service);
@@ -795,6 +813,12 @@ uint32_t Test_AM_IsInstalledMultiplePackages()
     L0Test::ExpectTrue(tr, installed4 == false, "nonExistentApp is not installed");
 
     impl->Release();
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
+    while (std::chrono::steady_clock::now() < deadline &&
+           WPEFramework::Plugin::AppManagerImplementation::getInstance() != nullptr) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
     return tr.failures;
 }
 
@@ -803,8 +827,8 @@ uint32_t Test_AM_GetInstalledAppsMixedTypes()
     L0Test::TestResult tr;
     auto* impl = CreateImpl();
 
-    L0Test::FakePackageHandler packageHandler;
-    L0Test::FakePackageInstaller packageInstaller;
+    L0Test::MockPackageHandler packageHandler;
+    L0Test::MockPackageInstaller packageInstaller;
 
     // Setup packages with different types
     WPEFramework::Exchange::IPackageInstaller::Package pkg1, pkg2, pkg3;
@@ -826,10 +850,10 @@ uint32_t Test_AM_GetInstalledAppsMixedTypes()
 
     L0Test::AppManagerServiceMock::Config cfg(&packageInstaller);
     cfg.packageHandler = &packageHandler;
-    cfg.store2 = new L0Test::FakeStore2();
-    cfg.storageManager = new L0Test::FakeStorageManager();
-    cfg.lifecycleManager = new L0Test::FakeLifecycleManager();
-    cfg.lifecycleManagerState = new L0Test::FakeLifecycleManagerState();
+    cfg.store2 = new L0Test::MockStore2();
+    cfg.storageManager = new L0Test::MockStorageManager();
+    cfg.lifecycleManager = new L0Test::MockLifecycleManager();
+    cfg.lifecycleManagerState = new L0Test::MockLifecycleManagerState();
     L0Test::AppManagerServiceMock service(cfg);
 
     impl->Configure(&service);
@@ -843,6 +867,12 @@ uint32_t Test_AM_GetInstalledAppsMixedTypes()
     L0Test::ExpectTrue(tr, apps.find("systemApp") != std::string::npos, "JSON contains systemApp");
 
     impl->Release();
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
+    while (std::chrono::steady_clock::now() < deadline &&
+           WPEFramework::Plugin::AppManagerImplementation::getInstance() != nullptr) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
     return tr.failures;
 }
 
@@ -867,14 +897,14 @@ uint32_t Test_AM_ClearAppDataWithStorageManager()
     L0Test::TestResult tr;
     auto* impl = CreateImpl();
 
-    L0Test::FakeStorageManager storageManager;
+    L0Test::MockStorageManager storageManager;
     L0Test::AppManagerServiceMock::Config cfg;
-    cfg.store2 = new L0Test::FakeStore2();
+    cfg.store2 = new L0Test::MockStore2();
     cfg.storageManager = &storageManager;
-    cfg.packageHandler = new L0Test::FakePackageHandler();
-    cfg.installer = new L0Test::FakePackageInstaller();
-    cfg.lifecycleManager = new L0Test::FakeLifecycleManager();
-    cfg.lifecycleManagerState = new L0Test::FakeLifecycleManagerState();
+    cfg.packageHandler = new L0Test::MockPackageHandler();
+    cfg.installer = new L0Test::MockPackageInstaller();
+    cfg.lifecycleManager = new L0Test::MockLifecycleManager();
+    cfg.lifecycleManagerState = new L0Test::MockLifecycleManagerState();
     L0Test::AppManagerServiceMock service(cfg);
 
     impl->Configure(&service);
@@ -893,14 +923,14 @@ uint32_t Test_AM_ClearAllAppDataWithStorageManager()
     L0Test::TestResult tr;
     auto* impl = CreateImpl();
 
-    L0Test::FakeStorageManager storageManager;
+    L0Test::MockStorageManager storageManager;
     L0Test::AppManagerServiceMock::Config cfg;
-    cfg.store2 = new L0Test::FakeStore2();
+    cfg.store2 = new L0Test::MockStore2();
     cfg.storageManager = &storageManager;
-    cfg.packageHandler = new L0Test::FakePackageHandler();
-    cfg.installer = new L0Test::FakePackageInstaller();
-    cfg.lifecycleManager = new L0Test::FakeLifecycleManager();
-    cfg.lifecycleManagerState = new L0Test::FakeLifecycleManagerState();
+    cfg.packageHandler = new L0Test::MockPackageHandler();
+    cfg.installer = new L0Test::MockPackageInstaller();
+    cfg.lifecycleManager = new L0Test::MockLifecycleManager();
+    cfg.lifecycleManagerState = new L0Test::MockLifecycleManagerState();
     L0Test::AppManagerServiceMock service(cfg);
 
     impl->Configure(&service);
@@ -919,17 +949,17 @@ uint32_t Test_AM_GetLoadedAppsWithLifecycleConnector()
     L0Test::TestResult tr;
     auto* impl = CreateImpl();
 
-    L0Test::FakeLifecycleManager lifecycleManager;
-    L0Test::FakeLifecycleManagerState lifecycleState;
+    L0Test::MockLifecycleManager lifecycleManager;
+    L0Test::MockLifecycleManagerState lifecycleState;
     
     // Setup loaded apps JSON
     lifecycleManager.loadedAppsJson = R"([{"appId":"app1","appInstanceId":"instance1","state":"running"}])";
     
     L0Test::AppManagerServiceMock::Config cfg;
-    cfg.store2 = new L0Test::FakeStore2();
-    cfg.storageManager = new L0Test::FakeStorageManager();
-    cfg.packageHandler = new L0Test::FakePackageHandler();
-    cfg.installer = new L0Test::FakePackageInstaller();
+    cfg.store2 = new L0Test::MockStore2();
+    cfg.storageManager = new L0Test::MockStorageManager();
+    cfg.packageHandler = new L0Test::MockPackageHandler();
+    cfg.installer = new L0Test::MockPackageInstaller();
     cfg.lifecycleManager = &lifecycleManager;
     cfg.lifecycleManagerState = &lifecycleState;
     L0Test::AppManagerServiceMock service(cfg);
@@ -956,8 +986,8 @@ uint32_t Test_AM_SendIntentWithLifecycleConnector()
     L0Test::TestResult tr;
     auto* impl = CreateImpl();
 
-    L0Test::FakeLifecycleManager lifecycleManager;
-    L0Test::FakeLifecycleManagerState lifecycleState;
+    L0Test::MockLifecycleManager lifecycleManager;
+    L0Test::MockLifecycleManagerState lifecycleState;
     
     lifecycleManager.sendIntentHandler = [](const std::string&, const std::string&,
                                             std::string&, bool& success) {
@@ -966,10 +996,10 @@ uint32_t Test_AM_SendIntentWithLifecycleConnector()
     };
     
     L0Test::AppManagerServiceMock::Config cfg;
-    cfg.store2 = new L0Test::FakeStore2();
-    cfg.storageManager = new L0Test::FakeStorageManager();
-    cfg.packageHandler = new L0Test::FakePackageHandler();
-    cfg.installer = new L0Test::FakePackageInstaller();
+    cfg.store2 = new L0Test::MockStore2();
+    cfg.storageManager = new L0Test::MockStorageManager();
+    cfg.packageHandler = new L0Test::MockPackageHandler();
+    cfg.installer = new L0Test::MockPackageInstaller();
     cfg.lifecycleManager = &lifecycleManager;
     cfg.lifecycleManagerState = &lifecycleState;
     L0Test::AppManagerServiceMock service(cfg);
@@ -992,14 +1022,14 @@ uint32_t Test_AM_CloseAppWithLifecycleConnector()
     L0Test::TestResult tr;
     auto* impl = CreateImpl();
 
-    L0Test::FakeLifecycleManager lifecycleManager;
-    L0Test::FakeLifecycleManagerState lifecycleState;
+    L0Test::MockLifecycleManager lifecycleManager;
+    L0Test::MockLifecycleManagerState lifecycleState;
     
     L0Test::AppManagerServiceMock::Config cfg;
-    cfg.store2 = new L0Test::FakeStore2();
-    cfg.storageManager = new L0Test::FakeStorageManager();
-    cfg.packageHandler = new L0Test::FakePackageHandler();
-    cfg.installer = new L0Test::FakePackageInstaller();
+    cfg.store2 = new L0Test::MockStore2();
+    cfg.storageManager = new L0Test::MockStorageManager();
+    cfg.packageHandler = new L0Test::MockPackageHandler();
+    cfg.installer = new L0Test::MockPackageInstaller();
     cfg.lifecycleManager = &lifecycleManager;
     cfg.lifecycleManagerState = &lifecycleState;
     L0Test::AppManagerServiceMock service(cfg);
@@ -1021,14 +1051,14 @@ uint32_t Test_AM_TerminateAppWithLifecycleConnector()
     L0Test::TestResult tr;
     auto* impl = CreateImpl();
 
-    L0Test::FakeLifecycleManager lifecycleManager;
-    L0Test::FakeLifecycleManagerState lifecycleState;
+    L0Test::MockLifecycleManager lifecycleManager;
+    L0Test::MockLifecycleManagerState lifecycleState;
     
     L0Test::AppManagerServiceMock::Config cfg;
-    cfg.store2 = new L0Test::FakeStore2();
-    cfg.storageManager = new L0Test::FakeStorageManager();
-    cfg.packageHandler = new L0Test::FakePackageHandler();
-    cfg.installer = new L0Test::FakePackageInstaller();
+    cfg.store2 = new L0Test::MockStore2();
+    cfg.storageManager = new L0Test::MockStorageManager();
+    cfg.packageHandler = new L0Test::MockPackageHandler();
+    cfg.installer = new L0Test::MockPackageInstaller();
     cfg.lifecycleManager = &lifecycleManager;
     cfg.lifecycleManagerState = &lifecycleState;
     L0Test::AppManagerServiceMock service(cfg);
@@ -1050,8 +1080,8 @@ uint32_t Test_AM_KillAppWithLifecycleConnector()
     L0Test::TestResult tr;
     auto* impl = CreateImpl();
 
-    L0Test::FakeLifecycleManager lifecycleManager;
-    L0Test::FakeLifecycleManagerState lifecycleState;
+    L0Test::MockLifecycleManager lifecycleManager;
+    L0Test::MockLifecycleManagerState lifecycleState;
     
     lifecycleManager.killAppHandler = [](const std::string&, std::string&, bool& success) {
         success = true;
@@ -1059,10 +1089,10 @@ uint32_t Test_AM_KillAppWithLifecycleConnector()
     };
     
     L0Test::AppManagerServiceMock::Config cfg;
-    cfg.store2 = new L0Test::FakeStore2();
-    cfg.storageManager = new L0Test::FakeStorageManager();
-    cfg.packageHandler = new L0Test::FakePackageHandler();
-    cfg.installer = new L0Test::FakePackageInstaller();
+    cfg.store2 = new L0Test::MockStore2();
+    cfg.storageManager = new L0Test::MockStorageManager();
+    cfg.packageHandler = new L0Test::MockPackageHandler();
+    cfg.installer = new L0Test::MockPackageInstaller();
     cfg.lifecycleManager = &lifecycleManager;
     cfg.lifecycleManagerState = &lifecycleState;
     L0Test::AppManagerServiceMock service(cfg);
@@ -1129,12 +1159,12 @@ uint32_t Test_AM_GetInstalledAppsWithActiveAppInfo()
     L0Test::TestResult tr;
     auto* impl = CreateImpl();
 
-    L0Test::FakePackageInstaller packageInstaller;
-    L0Test::FakePackageHandler   handler;
-    L0Test::FakeStore2           store;
-    L0Test::FakeStorageManager   storage;
-    L0Test::FakeLifecycleManager lifecycle;
-    L0Test::FakeLifecycleManagerState lifecycleState;
+    L0Test::MockPackageInstaller packageInstaller;
+    L0Test::MockPackageHandler   handler;
+    L0Test::MockStore2           store;
+    L0Test::MockStorageManager   storage;
+    L0Test::MockLifecycleManager lifecycle;
+    L0Test::MockLifecycleManagerState lifecycleState;
 
     // One installed package whose ID also lives in AppInfoManager.
     WPEFramework::Exchange::IPackageInstaller::Package pkg;
@@ -1219,7 +1249,7 @@ uint32_t Test_AM_CheckInstallUninstallBlockUninstallBlockedState()
     L0Test::TestResult tr;
     auto* impl = CreateImpl();
 
-    auto* installer = new L0Test::FakePackageInstaller();
+    auto* installer = new L0Test::MockPackageInstaller();
     WPEFramework::Exchange::IPackageInstaller::Package uninstBlockedPkg;
     uninstBlockedPkg.packageId = "app.uninstblocked";
     uninstBlockedPkg.version   = "3.0.0";
@@ -1228,11 +1258,11 @@ uint32_t Test_AM_CheckInstallUninstallBlockUninstallBlockedState()
     installer->installedPackages.push_back(uninstBlockedPkg);
 
     L0Test::AppManagerServiceMock::Config cfg(installer);
-    cfg.packageHandler        = new L0Test::FakePackageHandler();
-    cfg.store2                = new L0Test::FakeStore2();
-    cfg.storageManager        = new L0Test::FakeStorageManager();
-    cfg.lifecycleManager      = new L0Test::FakeLifecycleManager();
-    cfg.lifecycleManagerState = new L0Test::FakeLifecycleManagerState();
+    cfg.packageHandler        = new L0Test::MockPackageHandler();
+    cfg.store2                = new L0Test::MockStore2();
+    cfg.storageManager        = new L0Test::MockStorageManager();
+    cfg.lifecycleManager      = new L0Test::MockLifecycleManager();
+    cfg.lifecycleManagerState = new L0Test::MockLifecycleManagerState();
 
     L0Test::AppManagerServiceMock service(cfg);
     impl->Configure(&service);
@@ -1473,7 +1503,7 @@ uint32_t Test_AM_FetchPackageListErrorPath()
 {
     L0Test::TestResult tr;
 
-    auto* installer = new L0Test::FakePackageInstaller();
+    auto* installer = new L0Test::MockPackageInstaller();
     // Make ListPackages return an error so fetchAppPackageList hits the LOGERR + goto path.
     installer->listHandler = [](WPEFramework::Exchange::IPackageInstaller::IPackageIterator*& packages)
                                  -> WPEFramework::Core::hresult {
@@ -1482,11 +1512,11 @@ uint32_t Test_AM_FetchPackageListErrorPath()
     };
 
     L0Test::AppManagerServiceMock::Config cfg(installer);
-    cfg.packageHandler        = new L0Test::FakePackageHandler();
-    cfg.store2                = new L0Test::FakeStore2();
-    cfg.storageManager        = new L0Test::FakeStorageManager();
-    cfg.lifecycleManager      = new L0Test::FakeLifecycleManager();
-    cfg.lifecycleManagerState = new L0Test::FakeLifecycleManagerState();
+    cfg.packageHandler        = new L0Test::MockPackageHandler();
+    cfg.store2                = new L0Test::MockStore2();
+    cfg.storageManager        = new L0Test::MockStorageManager();
+    cfg.lifecycleManager      = new L0Test::MockLifecycleManager();
+    cfg.lifecycleManagerState = new L0Test::MockLifecycleManagerState();
 
     L0Test::AppManagerServiceMock service(cfg);
     auto* impl = CreateImpl();
@@ -1502,12 +1532,12 @@ uint32_t Test_AM_FetchPackageListErrorPath()
 }
 
 // Covers the LOGERR "GetValue Failed" branch in GetAppProperty() when the Store2
-// key does not exist (FakeStore2 returns ERROR_GENERAL for unknown keys).
+// key does not exist (MockStore2 returns ERROR_GENERAL for unknown keys).
 uint32_t Test_AM_GetAppPropertyGetValueFailed()
 {
     AppManagerTestFixture fixture;
     std::string value;
-    // FakeStore2 returns ERROR_GENERAL for keys not in its data map.
+    // MockStore2 returns ERROR_GENERAL for keys not in its data map.
     auto result = fixture.impl->GetAppProperty("com.test.app", "key.not.present", value);
     L0Test::ExpectEqU32(fixture.tr,
         result,
@@ -1853,7 +1883,7 @@ uint32_t Test_AM_CheckInstallUninstallBlockMatchingNotBlocked()
 {
     L0Test::TestResult tr;
 
-    auto* installer = new L0Test::FakePackageInstaller();
+    auto* installer = new L0Test::MockPackageInstaller();
 
     // Package with empty packageId → !package.packageId.empty() = false (short-circuit)
     WPEFramework::Exchange::IPackageInstaller::Package emptyIdPkg;
@@ -1901,7 +1931,7 @@ uint32_t Test_AM_PackageUnlockFails()
     L0Test::TestResult tr;
 
     // Custom handler whose Unlock always fails
-    auto* handler = new L0Test::FakePackageHandler();
+    auto* handler = new L0Test::MockPackageHandler();
     handler->unlockHandler = [](const std::string&, const std::string&) -> WPEFramework::Core::hresult {
         return WPEFramework::Core::ERROR_GENERAL;
     };
@@ -1966,7 +1996,7 @@ uint32_t Test_AM_TerminateAppSuccessPath()
         "app.terminate.success",
         [&](WPEFramework::Plugin::AppInfo& a) { a = info; });
 
-    // Default FakeLifecycleManager::UnloadApp returns ERROR_NONE / success=true.
+    // Default MockLifecycleManager::UnloadApp returns ERROR_NONE / success=true.
     const auto status = impl->TerminateApp(std::string("app.terminate.success"));
     L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_NONE,
         "TerminateApp() returns ERROR_NONE when UnloadApp succeeds");
@@ -1982,7 +2012,7 @@ uint32_t Test_AM_LICTerminateUnloadFails()
 {
     L0Test::TestResult tr;
 
-    auto* lm = new L0Test::FakeLifecycleManager();
+    auto* lm = new L0Test::MockLifecycleManager();
     lm->unloadAppHandler = [](const std::string&, std::string& errorReason, bool& success) {
         errorReason = "mock unload error";
         success = false;
@@ -1990,7 +2020,7 @@ uint32_t Test_AM_LICTerminateUnloadFails()
     };
 
     L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
-    delete static_cast<L0Test::FakeLifecycleManager*>(cfg.lifecycleManager);
+    delete static_cast<L0Test::MockLifecycleManager*>(cfg.lifecycleManager);
     cfg.lifecycleManager = lm;
     L0Test::AppManagerServiceMock service(cfg);
 
@@ -2038,7 +2068,7 @@ uint32_t Test_AM_LICKillAppFails()
 {
     L0Test::TestResult tr;
 
-    auto* lm = new L0Test::FakeLifecycleManager();
+    auto* lm = new L0Test::MockLifecycleManager();
     lm->killAppHandler = [](const std::string&, std::string& errorReason, bool& success) {
         errorReason = "mock kill error";
         success = false;
@@ -2046,7 +2076,7 @@ uint32_t Test_AM_LICKillAppFails()
     };
 
     L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
-    delete static_cast<L0Test::FakeLifecycleManager*>(cfg.lifecycleManager);
+    delete static_cast<L0Test::MockLifecycleManager*>(cfg.lifecycleManager);
     cfg.lifecycleManager = lm;
     L0Test::AppManagerServiceMock service(cfg);
 
@@ -2072,7 +2102,7 @@ uint32_t Test_AM_LICSendIntentFails()
 {
     L0Test::TestResult tr;
 
-    auto* lm = new L0Test::FakeLifecycleManager();
+    auto* lm = new L0Test::MockLifecycleManager();
     lm->sendIntentHandler = [](const std::string&, const std::string&,
                                std::string& errorReason, bool& success) {
         errorReason = "mock intent error";
@@ -2081,7 +2111,7 @@ uint32_t Test_AM_LICSendIntentFails()
     };
 
     L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
-    delete static_cast<L0Test::FakeLifecycleManager*>(cfg.lifecycleManager);
+    delete static_cast<L0Test::MockLifecycleManager*>(cfg.lifecycleManager);
     cfg.lifecycleManager = lm;
     L0Test::AppManagerServiceMock service(cfg);
 
@@ -2108,7 +2138,7 @@ uint32_t Test_AM_LICSpawnAppFails()
 {
     L0Test::TestResult tr;
 
-    auto* lm = new L0Test::FakeLifecycleManager();
+    auto* lm = new L0Test::MockLifecycleManager();
     lm->spawnAppHandler = [](const std::string&, const std::string&,
         WPEFramework::Exchange::ILifecycleManager::LifecycleState,
         const WPEFramework::Exchange::RuntimeConfig&, const std::string&,
@@ -2120,7 +2150,7 @@ uint32_t Test_AM_LICSpawnAppFails()
     };
 
     L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
-    delete static_cast<L0Test::FakeLifecycleManager*>(cfg.lifecycleManager);
+    delete static_cast<L0Test::MockLifecycleManager*>(cfg.lifecycleManager);
     cfg.lifecycleManager = lm;
     L0Test::AppManagerServiceMock service(cfg);
 
@@ -2192,16 +2222,16 @@ uint32_t Test_AM_LICCloseAppPausedConfirmation()
 
     auto* impl = CreateImpl();
 
-    L0Test::FakeLifecycleManager lifecycleManager;
-    L0Test::FakeLifecycleManagerState lifecycleState;
+    L0Test::MockLifecycleManager lifecycleManager;
+    L0Test::MockLifecycleManagerState lifecycleState;
 
     L0Test::AppManagerServiceMock::Config cfg;
     cfg.lifecycleManager = &lifecycleManager;
     cfg.lifecycleManagerState = &lifecycleState;
-    cfg.store2 = new L0Test::FakeStore2();
-    cfg.storageManager = new L0Test::FakeStorageManager();
-    cfg.packageHandler = new L0Test::FakePackageHandler();
-    cfg.installer = new L0Test::FakePackageInstaller();
+    cfg.store2 = new L0Test::MockStore2();
+    cfg.storageManager = new L0Test::MockStorageManager();
+    cfg.packageHandler = new L0Test::MockPackageHandler();
+    cfg.installer = new L0Test::MockPackageInstaller();
     L0Test::AppManagerServiceMock service(cfg);
     impl->Configure(&service);
 
@@ -2254,7 +2284,7 @@ uint32_t Test_AM_PackageLockLockFails()
 {
     L0Test::TestResult tr;
 
-    auto* handler = new L0Test::FakePackageHandler();
+    auto* handler = new L0Test::MockPackageHandler();
     handler->lockHandler = [](const std::string&, const std::string&,
         const WPEFramework::Exchange::IPackageHandler::LockReason&,
         uint32_t&, std::string&, WPEFramework::Exchange::RuntimeConfig&,
@@ -2262,7 +2292,7 @@ uint32_t Test_AM_PackageLockLockFails()
         return WPEFramework::Core::ERROR_GENERAL;
     };
 
-    auto* installer = new L0Test::FakePackageInstaller();
+    auto* installer = new L0Test::MockPackageInstaller();
     WPEFramework::Exchange::IPackageInstaller::Package pkg;
     pkg.packageId = "app.lock.fail";
     pkg.version   = "1.0";
@@ -2270,9 +2300,9 @@ uint32_t Test_AM_PackageLockLockFails()
     installer->installedPackages.push_back(pkg);
 
     L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
-    delete static_cast<L0Test::FakePackageHandler*>(cfg.packageHandler);
+    delete static_cast<L0Test::MockPackageHandler*>(cfg.packageHandler);
     cfg.packageHandler = handler;
-    delete static_cast<L0Test::FakePackageInstaller*>(cfg.installer);
+    delete static_cast<L0Test::MockPackageInstaller*>(cfg.installer);
     cfg.installer = installer;
     L0Test::AppManagerServiceMock service(cfg);
 
@@ -2298,14 +2328,14 @@ uint32_t Test_AM_PackageLockFetchListFails()
 {
     L0Test::TestResult tr;
 
-    auto* installer = new L0Test::FakePackageInstaller();
+    auto* installer = new L0Test::MockPackageInstaller();
     installer->listHandler = [](WPEFramework::Exchange::IPackageInstaller::IPackageIterator*& it) {
         it = nullptr;
         return WPEFramework::Core::ERROR_GENERAL;
     };
 
     L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
-    delete static_cast<L0Test::FakePackageInstaller*>(cfg.installer);
+    delete static_cast<L0Test::MockPackageInstaller*>(cfg.installer);
     cfg.installer = installer;
     L0Test::AppManagerServiceMock service(cfg);
 
@@ -2445,9 +2475,9 @@ uint32_t Test_AM_GetLoadedAppsNullConnector()
 uint32_t Test_AM_LaunchAppNotInstalled()
 {
     L0Test::TestResult tr;
-    auto* installer = new L0Test::FakePackageInstaller();
+    auto* installer = new L0Test::MockPackageInstaller();
     L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
-    delete static_cast<L0Test::FakePackageInstaller*>(cfg.installer);
+    delete static_cast<L0Test::MockPackageInstaller*>(cfg.installer);
     cfg.installer = installer;
     L0Test::AppManagerServiceMock service(cfg);
 
@@ -2466,13 +2496,13 @@ uint32_t Test_AM_LaunchAppNotInstalled()
 uint32_t Test_AM_LaunchAppFetchFails()
 {
     L0Test::TestResult tr;
-    auto* installer = new L0Test::FakePackageInstaller();
+    auto* installer = new L0Test::MockPackageInstaller();
     installer->listHandler = [](WPEFramework::Exchange::IPackageInstaller::IPackageIterator*& it) {
         it = nullptr;
         return WPEFramework::Core::ERROR_GENERAL;
     };
     L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
-    delete static_cast<L0Test::FakePackageInstaller*>(cfg.installer);
+    delete static_cast<L0Test::MockPackageInstaller*>(cfg.installer);
     cfg.installer = installer;
     L0Test::AppManagerServiceMock service(cfg);
 
@@ -2491,7 +2521,7 @@ uint32_t Test_AM_LaunchAppFetchFails()
 uint32_t Test_AM_LaunchAppNullConnectorInstalledApp()
 {
     L0Test::TestResult tr;
-    auto* installer = new L0Test::FakePackageInstaller();
+    auto* installer = new L0Test::MockPackageInstaller();
     WPEFramework::Exchange::IPackageInstaller::Package pkg;
     pkg.packageId = "app.launch.nulllic";
     pkg.version   = "1.0";
@@ -2499,7 +2529,7 @@ uint32_t Test_AM_LaunchAppNullConnectorInstalledApp()
     installer->installedPackages.push_back(pkg);
 
     L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
-    delete static_cast<L0Test::FakePackageInstaller*>(cfg.installer);
+    delete static_cast<L0Test::MockPackageInstaller*>(cfg.installer);
     cfg.installer = installer;
     L0Test::AppManagerServiceMock service(cfg);
 
@@ -2527,13 +2557,13 @@ uint32_t Test_AM_PackageLockAlreadyLoaded()
 {
     L0Test::TestResult tr;
 
-    auto* lm = new L0Test::FakeLifecycleManager();
+    auto* lm = new L0Test::MockLifecycleManager();
     lm->isAppLoadedHandler = [](const std::string&, bool& loaded) {
         loaded = true;
         return WPEFramework::Core::ERROR_NONE;
     };
     L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
-    delete static_cast<L0Test::FakeLifecycleManager*>(cfg.lifecycleManager);
+    delete static_cast<L0Test::MockLifecycleManager*>(cfg.lifecycleManager);
     cfg.lifecycleManager = lm;
     L0Test::AppManagerServiceMock service(cfg);
 
@@ -2582,13 +2612,13 @@ uint32_t Test_AM_ClearAppDataNullStorage()
 uint32_t Test_AM_ClearAppDataStorageError()
 {
     L0Test::TestResult tr;
-    auto* storage = new L0Test::FakeStorageManager();
+    auto* storage = new L0Test::MockStorageManager();
     storage->clearHandler = [](const std::string&, std::string& err) {
         err = "mock clear error";
         return WPEFramework::Core::ERROR_GENERAL;
     };
     L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
-    delete static_cast<L0Test::FakeStorageManager*>(cfg.storageManager);
+    delete static_cast<L0Test::MockStorageManager*>(cfg.storageManager);
     cfg.storageManager = storage;
     L0Test::AppManagerServiceMock service(cfg);
 
@@ -2625,13 +2655,13 @@ uint32_t Test_AM_ClearAllAppDataNullStorage()
 uint32_t Test_AM_ClearAllAppDataStorageError()
 {
     L0Test::TestResult tr;
-    auto* storage = new L0Test::FakeStorageManager();
+    auto* storage = new L0Test::MockStorageManager();
     storage->clearAllHandler = [](const std::string&, std::string& err) {
         err = "mock clearall error";
         return WPEFramework::Core::ERROR_GENERAL;
     };
     L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
-    delete static_cast<L0Test::FakeStorageManager*>(cfg.storageManager);
+    delete static_cast<L0Test::MockStorageManager*>(cfg.storageManager);
     cfg.storageManager = storage;
     L0Test::AppManagerServiceMock service(cfg);
 
@@ -2655,12 +2685,12 @@ uint32_t Test_AM_WorkerThreadLaunchSuccess()
     L0Test::TestResult tr;
     std::atomic<bool> spawnCalled{false};
 
-    L0Test::FakeLifecycleManager lifecycleManager;
-    L0Test::FakeLifecycleManagerState lifecycleState;
-    L0Test::FakePackageHandler packageHandler;
-    L0Test::FakePackageInstaller packageInstaller;
-    L0Test::FakeStore2 store;
-    L0Test::FakeStorageManager storageManager;
+    L0Test::MockLifecycleManager lifecycleManager;
+    L0Test::MockLifecycleManagerState lifecycleState;
+    L0Test::MockPackageHandler packageHandler;
+    L0Test::MockPackageInstaller packageInstaller;
+    L0Test::MockStore2 store;
+    L0Test::MockStorageManager storageManager;
 
     lifecycleManager.spawnAppHandler = [&spawnCalled](
         const std::string&, const std::string&,
@@ -2728,12 +2758,12 @@ uint32_t Test_AM_WorkerThreadPackageLockFails()
     L0Test::TestResult tr;
     std::atomic<bool> lockAttempted{false};
 
-    L0Test::FakeLifecycleManager lifecycleManager;
-    L0Test::FakeLifecycleManagerState lifecycleState;
-    L0Test::FakePackageHandler packageHandler;
-    L0Test::FakePackageInstaller packageInstaller;
-    L0Test::FakeStore2 store;
-    L0Test::FakeStorageManager storageManager;
+    L0Test::MockLifecycleManager lifecycleManager;
+    L0Test::MockLifecycleManagerState lifecycleState;
+    L0Test::MockPackageHandler packageHandler;
+    L0Test::MockPackageInstaller packageInstaller;
+    L0Test::MockStore2 store;
+    L0Test::MockStorageManager storageManager;
 
     packageHandler.lockHandler = [&lockAttempted](
         const std::string&, const std::string&,
@@ -2795,12 +2825,12 @@ uint32_t Test_AM_WorkerThreadPreloadSuccess()
     L0Test::TestResult tr;
     std::atomic<bool> spawnCalled{false};
 
-    L0Test::FakeLifecycleManager lifecycleManager;
-    L0Test::FakeLifecycleManagerState lifecycleState;
-    L0Test::FakePackageHandler packageHandler;
-    L0Test::FakePackageInstaller packageInstaller;
-    L0Test::FakeStore2 store;
-    L0Test::FakeStorageManager storageManager;
+    L0Test::MockLifecycleManager lifecycleManager;
+    L0Test::MockLifecycleManagerState lifecycleState;
+    L0Test::MockPackageHandler packageHandler;
+    L0Test::MockPackageInstaller packageInstaller;
+    L0Test::MockStore2 store;
+    L0Test::MockStorageManager storageManager;
 
     lifecycleManager.spawnAppHandler = [&spawnCalled](
         const std::string&, const std::string&,
@@ -2866,13 +2896,13 @@ uint32_t Test_AM_PackageLockAlreadyLoadedEmptyVersion()
 {
     L0Test::TestResult tr;
 
-    auto* lm = new L0Test::FakeLifecycleManager();
+    auto* lm = new L0Test::MockLifecycleManager();
     lm->isAppLoadedHandler = [](const std::string&, bool& loaded) {
         loaded = true;
         return WPEFramework::Core::ERROR_NONE;
     };
     L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
-    delete static_cast<L0Test::FakeLifecycleManager*>(cfg.lifecycleManager);
+    delete static_cast<L0Test::MockLifecycleManager*>(cfg.lifecycleManager);
     cfg.lifecycleManager = lm;
     L0Test::AppManagerServiceMock service(cfg);
 
@@ -2900,13 +2930,13 @@ uint32_t Test_AM_PackageLockIsAppLoadedError()
 {
     L0Test::TestResult tr;
 
-    auto* lm = new L0Test::FakeLifecycleManager();
+    auto* lm = new L0Test::MockLifecycleManager();
     lm->isAppLoadedHandler = [](const std::string&, bool& loaded) {
         loaded = false;
         return WPEFramework::Core::ERROR_GENERAL;
     };
     L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
-    delete static_cast<L0Test::FakeLifecycleManager*>(cfg.lifecycleManager);
+    delete static_cast<L0Test::MockLifecycleManager*>(cfg.lifecycleManager);
     cfg.lifecycleManager = lm;
     L0Test::AppManagerServiceMock service(cfg);
 
@@ -2970,7 +3000,7 @@ uint32_t Test_AM_PackageLockLocksSuccessfully()
 {
     L0Test::TestResult tr;
 
-    auto* installer = new L0Test::FakePackageInstaller();
+    auto* installer = new L0Test::MockPackageInstaller();
     WPEFramework::Exchange::IPackageInstaller::Package pkg;
     pkg.packageId = "app.packlock.ok";
     pkg.version   = "2.0.1";
@@ -2978,15 +3008,15 @@ uint32_t Test_AM_PackageLockLocksSuccessfully()
     installer->installedPackages.push_back(pkg);
 
     L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
-    delete static_cast<L0Test::FakePackageInstaller*>(cfg.installer);
+    delete static_cast<L0Test::MockPackageInstaller*>(cfg.installer);
     cfg.installer = installer;
     L0Test::AppManagerServiceMock service(cfg);
 
     auto* impl = CreateImpl();
     impl->Configure(&service);
 
-    // Default FakeLifecycleManager::isAppLoaded returns loaded=false, ERROR_NONE.
-    // Default FakePackageHandler::Lock returns ERROR_NONE with unpackedPath="/tmp/app".
+    // Default MockLifecycleManager::isAppLoaded returns loaded=false, ERROR_NONE.
+    // Default MockPackageHandler::Lock returns ERROR_NONE with unpackedPath="/tmp/app".
     WPEFramework::Plugin::AppManagerImplementation::PackageInfo packageData;
     const auto status = impl->packageLock(
         "app.packlock.ok", packageData,
@@ -3009,7 +3039,7 @@ uint32_t Test_AM_PackageLockInstalledEmptyVersion()
 {
     L0Test::TestResult tr;
 
-    auto* installer = new L0Test::FakePackageInstaller();
+    auto* installer = new L0Test::MockPackageInstaller();
     WPEFramework::Exchange::IPackageInstaller::Package pkg;
     pkg.packageId = "app.packlock.emptyver";
     pkg.version   = "";                // empty → L753 condition false
@@ -3017,7 +3047,7 @@ uint32_t Test_AM_PackageLockInstalledEmptyVersion()
     installer->installedPackages.push_back(pkg);
 
     L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
-    delete static_cast<L0Test::FakePackageInstaller*>(cfg.installer);
+    delete static_cast<L0Test::MockPackageInstaller*>(cfg.installer);
     cfg.installer = installer;
     L0Test::AppManagerServiceMock service(cfg);
 
@@ -3080,12 +3110,12 @@ uint32_t Test_AM_CloseAppSuccessPath()
 {
     L0Test::TestResult tr;
 
-    L0Test::FakeLifecycleManager lifecycleManager;
-    L0Test::FakeLifecycleManagerState lifecycleState;
-    L0Test::FakePackageHandler packageHandler;
-    L0Test::FakePackageInstaller packageInstaller;
-    L0Test::FakeStore2 store;
-    L0Test::FakeStorageManager storageManager;
+    L0Test::MockLifecycleManager lifecycleManager;
+    L0Test::MockLifecycleManagerState lifecycleState;
+    L0Test::MockPackageHandler packageHandler;
+    L0Test::MockPackageInstaller packageInstaller;
+    L0Test::MockStore2 store;
+    L0Test::MockStorageManager storageManager;
 
     std::atomic<bool> setTargetCalled{false};
     lifecycleManager.setTargetAppStateHandler = [&setTargetCalled](
@@ -3164,7 +3194,7 @@ uint32_t Test_AM_GetAppPropertyNullStoreRecreates()
     // Release the current store reference cleanly, then null it.
     // GetAppProperty will detect null and call createPersistentStoreRemoteStoreObject()
     // to recreate it (L1158-L1163). createPersistentStoreRemoteStoreObject() succeeds
-    // because the service has a valid FakeStore2. The ASSERT inside GetAppProperty
+    // because the service has a valid MockStore2. The ASSERT inside GetAppProperty
     // therefore passes.
     if (fixture.impl->mPersistentStoreRemoteStoreObject != nullptr) {
         fixture.impl->mPersistentStoreRemoteStoreObject->Release();
@@ -3172,7 +3202,7 @@ uint32_t Test_AM_GetAppPropertyNullStoreRecreates()
     }
 
     std::string value;
-    // GetValue on FakeStore2 returns ERROR_GENERAL (key not in store) but that is fine —
+    // GetValue on MockStore2 returns ERROR_GENERAL (key not in store) but that is fine —
     // we only need the null-store re-create branch at L1158-L1163 to execute.
     fixture.impl->GetAppProperty("app.store.recreate", "someKey", value);
 
@@ -3215,14 +3245,14 @@ uint32_t Test_AM_PackageLockCreateOrUpdateFails()
 {
     L0Test::TestResult tr;
 
-    auto* installer = new L0Test::FakePackageInstaller();
+    auto* installer = new L0Test::MockPackageInstaller();
     WPEFramework::Exchange::IPackageInstaller::Package pkg;
     pkg.packageId = "app.coupdatefail.test";
     pkg.version   = "3.0.0";
     pkg.state     = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
     installer->installedPackages.push_back(pkg);
 
-    auto* handler = new L0Test::FakePackageHandler();
+    auto* handler = new L0Test::MockPackageHandler();
     // Lock returns ERROR_NONE but does NOT set unpackedPath (stays "").
     // createOrUpdatePackageInfoByAppId checks unpackedPath.empty() → returns false.
     handler->lockHandler = [](const std::string&,
@@ -3238,9 +3268,9 @@ uint32_t Test_AM_PackageLockCreateOrUpdateFails()
     };
 
     L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
-    delete static_cast<L0Test::FakePackageInstaller*>(cfg.installer);
+    delete static_cast<L0Test::MockPackageInstaller*>(cfg.installer);
     cfg.installer = installer;
-    delete static_cast<L0Test::FakePackageHandler*>(cfg.packageHandler);
+    delete static_cast<L0Test::MockPackageHandler*>(cfg.packageHandler);
     cfg.packageHandler = handler;
     L0Test::AppManagerServiceMock service(cfg);
 
@@ -3269,7 +3299,7 @@ uint32_t Test_AM_PackageLockNullHandlerNonEmptyVersion()
 {
     L0Test::TestResult tr;
 
-    auto* installer = new L0Test::FakePackageInstaller();
+    auto* installer = new L0Test::MockPackageInstaller();
     WPEFramework::Exchange::IPackageInstaller::Package pkg;
     pkg.packageId = "app.nullhandler.version";
     pkg.version   = "1.5.0";    // non-empty version
@@ -3277,7 +3307,7 @@ uint32_t Test_AM_PackageLockNullHandlerNonEmptyVersion()
     installer->installedPackages.push_back(pkg);
 
     L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
-    delete static_cast<L0Test::FakePackageInstaller*>(cfg.installer);
+    delete static_cast<L0Test::MockPackageInstaller*>(cfg.installer);
     cfg.installer = installer;
     L0Test::AppManagerServiceMock service(cfg);
 
@@ -3346,14 +3376,14 @@ uint32_t Test_AM_LICLaunchLoadedNotSuspended()
 {
     L0Test::TestResult tr;
 
-    auto* lm = new L0Test::FakeLifecycleManager();
+    auto* lm = new L0Test::MockLifecycleManager();
     lm->isAppLoadedHandler = [](const std::string&, bool& loaded) -> WPEFramework::Core::hresult {
         loaded = true;
         return WPEFramework::Core::ERROR_NONE;
     };
 
     L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
-    delete static_cast<L0Test::FakeLifecycleManager*>(cfg.lifecycleManager);
+    delete static_cast<L0Test::MockLifecycleManager*>(cfg.lifecycleManager);
     cfg.lifecycleManager = lm;
     L0Test::AppManagerServiceMock service(cfg);
 
@@ -3502,7 +3532,7 @@ uint32_t Test_AM_ConfigureWithNullLifecycleManager()
     L0Test::TestResult tr;
 
     L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
-    delete static_cast<L0Test::FakeLifecycleManager*>(cfg.lifecycleManager);
+    delete static_cast<L0Test::MockLifecycleManager*>(cfg.lifecycleManager);
     cfg.lifecycleManager = nullptr;
     L0Test::AppManagerServiceMock service(cfg);
 
@@ -3534,7 +3564,7 @@ uint32_t Test_AM_ConfigureWithNullLifecycleManagerState()
     L0Test::TestResult tr;
 
     L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
-    delete static_cast<L0Test::FakeLifecycleManagerState*>(cfg.lifecycleManagerState);
+    delete static_cast<L0Test::MockLifecycleManagerState*>(cfg.lifecycleManagerState);
     cfg.lifecycleManagerState = nullptr;
     L0Test::AppManagerServiceMock service(cfg);
 
@@ -3572,7 +3602,7 @@ uint32_t Test_AM_ConfigureWithNullPersistentStore()
     L0Test::TestResult tr;
 
     L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
-    delete static_cast<L0Test::FakeStore2*>(cfg.store2);
+    delete static_cast<L0Test::MockStore2*>(cfg.store2);
     cfg.store2 = nullptr;
     L0Test::AppManagerServiceMock service(cfg);
 
@@ -3588,7 +3618,7 @@ uint32_t Test_AM_ConfigureWithNullPersistentStore()
 
     // mPersistentStoreRemoteStoreObject is null; set a dummy so the ASSERT in
     // releasePersistentStoreRemoteStoreObject() (called by the destructor) passes.
-    impl->mPersistentStoreRemoteStoreObject = new L0Test::FakeStore2();
+    impl->mPersistentStoreRemoteStoreObject = new L0Test::MockStore2();
     impl->Release();
     WPEFramework::Plugin::AppInfoManager::getInstance().clear();
     return tr.failures;
@@ -3606,7 +3636,7 @@ uint32_t Test_AM_ConfigureWithNullPackageHandler()
     L0Test::TestResult tr;
 
     L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
-    delete static_cast<L0Test::FakePackageHandler*>(cfg.packageHandler);
+    delete static_cast<L0Test::MockPackageHandler*>(cfg.packageHandler);
     cfg.packageHandler = nullptr;
     L0Test::AppManagerServiceMock service(cfg);
 
@@ -3622,8 +3652,8 @@ uint32_t Test_AM_ConfigureWithNullPackageHandler()
 
     // Both package objects are null; set dummies so the ASSERTs in
     // releasePackageManagerObject() (called by the destructor) pass.
-    impl->mPackageManagerHandlerObject = new L0Test::FakePackageHandler();
-    impl->mPackageManagerInstallerObject = new L0Test::FakePackageInstaller();
+    impl->mPackageManagerHandlerObject = new L0Test::MockPackageHandler();
+    impl->mPackageManagerInstallerObject = new L0Test::MockPackageInstaller();
     impl->Release();
     WPEFramework::Plugin::AppInfoManager::getInstance().clear();
     return tr.failures;
@@ -3638,7 +3668,7 @@ uint32_t Test_AM_ConfigureWithNullPackageInstaller()
     L0Test::TestResult tr;
 
     L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
-    delete static_cast<L0Test::FakePackageInstaller*>(cfg.installer);
+    delete static_cast<L0Test::MockPackageInstaller*>(cfg.installer);
     cfg.installer = nullptr;
     L0Test::AppManagerServiceMock service(cfg);
 
@@ -3652,7 +3682,7 @@ uint32_t Test_AM_ConfigureWithNullPackageInstaller()
 
     // mPackageManagerInstallerObject is null; set a dummy so the ASSERT in
     // releasePackageManagerObject() (called by the destructor) passes.
-    impl->mPackageManagerInstallerObject = new L0Test::FakePackageInstaller();
+    impl->mPackageManagerInstallerObject = new L0Test::MockPackageInstaller();
     impl->Release();
     WPEFramework::Plugin::AppInfoManager::getInstance().clear();
     return tr.failures;
@@ -3671,7 +3701,7 @@ uint32_t Test_AM_ConfigureWithNullStorageManager()
     L0Test::TestResult tr;
 
     L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
-    delete static_cast<L0Test::FakeStorageManager*>(cfg.storageManager);
+    delete static_cast<L0Test::MockStorageManager*>(cfg.storageManager);
     cfg.storageManager = nullptr;
     L0Test::AppManagerServiceMock service(cfg);
 
@@ -3687,7 +3717,7 @@ uint32_t Test_AM_ConfigureWithNullStorageManager()
 
     // mStorageManagerRemoteObject is null; set a dummy so the ASSERT in
     // releaseStorageManagerRemoteObject() (called by the destructor) passes.
-    impl->mStorageManagerRemoteObject = new L0Test::FakeStorageManager();
+    impl->mStorageManagerRemoteObject = new L0Test::MockStorageManager();
     impl->Release();
     WPEFramework::Plugin::AppInfoManager::getInstance().clear();
     return tr.failures;
@@ -3701,7 +3731,7 @@ uint32_t Test_AM_IsInstalledNonInstalledState()
 {
     L0Test::TestResult tr;
 
-    auto* installer = new L0Test::FakePackageInstaller();
+    auto* installer = new L0Test::MockPackageInstaller();
     WPEFramework::Exchange::IPackageInstaller::Package pkg;
     pkg.packageId = "app.installing.state.test";
     pkg.version   = "1.0";
@@ -3709,7 +3739,7 @@ uint32_t Test_AM_IsInstalledNonInstalledState()
     installer->installedPackages.push_back(pkg);
 
     L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
-    delete static_cast<L0Test::FakePackageInstaller*>(cfg.installer);
+    delete static_cast<L0Test::MockPackageInstaller*>(cfg.installer);
     cfg.installer = installer;
     L0Test::AppManagerServiceMock service(cfg);
 
@@ -3739,7 +3769,7 @@ uint32_t Test_AM_GetInstalledAppsNoAppInfo()
 {
     L0Test::TestResult tr;
 
-    auto* installer = new L0Test::FakePackageInstaller();
+    auto* installer = new L0Test::MockPackageInstaller();
     WPEFramework::Exchange::IPackageInstaller::Package pkg;
     pkg.packageId = "app.installed.no.appinfo.test";
     pkg.version   = "2.0";
@@ -3747,7 +3777,7 @@ uint32_t Test_AM_GetInstalledAppsNoAppInfo()
     installer->installedPackages.push_back(pkg);
 
     L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
-    delete static_cast<L0Test::FakePackageInstaller*>(cfg.installer);
+    delete static_cast<L0Test::MockPackageInstaller*>(cfg.installer);
     cfg.installer = installer;
     L0Test::AppManagerServiceMock service(cfg);
 
