@@ -60,7 +60,7 @@ namespace AppType = WPEFramework::Plugin::AppManagerTypes;
 
 void setupTelApp(const std::string& appId,
                  AppType::CurrentAction action,
-                 AppState targetState = AppState::APP_STATE_NONE)
+                 AppState targetState = AppState::APP_STATE_ACTIVE)
 {
     AppIM::getInstance().setCurrentAction(appId, action);
     AppIM::getInstance().setCurrentActionTime(appId, 1);
@@ -113,7 +113,7 @@ uint32_t Test_AM_TelReportDataClosePublishClose()
 {
     L0Test::TestResult tr;
     AppIM::getInstance().clear();
-    setupTelApp("app-close-pub", AppType::APP_ACTION_CLOSE, AppState::APP_STATE_NONE);
+    setupTelApp("app-close-pub", AppType::APP_ACTION_CLOSE, AppState::APP_STATE_ACTIVE);
     auto& tel = AppTel::getInstance();
     tel.reportTelemetryData("app-close-pub", AppAct::APP_ACTION_CLOSE);
     L0Test::ExpectTrue(tr, true, "reportTelemetryData CLOSE non-suspended publishes on record");
