@@ -339,7 +339,7 @@ uint32_t Test_Impl_InitializeReadsDownloadId()
         WPEFramework::Exchange::IDownloadManager::Options opts{};
         opts.priority = false; opts.retries = 2; opts.rateLimit = 0;
         std::string downloadId;
-        impl->Download("http://example.com/a.pkg", opts, downloadId);
+        impl->Download("file:///dev/null", opts, downloadId);
         // First ID must be 5001 (5000 + 1)
         L0Test::ExpectEqStr(tr, downloadId, "5001",
             "First Download() id is 5001 when downloadId config is 5000");
@@ -403,8 +403,8 @@ uint32_t Test_Impl_DeinitializeClearsQueues()
         rOpts.priority = false; rOpts.retries = 2; rOpts.rateLimit = 0;
 
         std::string id1, id2;
-        impl->Download("http://cdn.example.com/p.pkg", pOpts, id1);
-        impl->Download("http://cdn.example.com/r.pkg", rOpts, id2);
+        impl->Download("file:///dev/null", pOpts, id1);
+        impl->Download("file:///dev/null", rOpts, id2);
 
         // Deinitialize must drain queues and join thread without deadlock
         const auto result = impl->Deinitialize(&svc);
@@ -507,8 +507,8 @@ uint32_t Test_Impl_DownloadPriorityAndRegularQueues()
         rOpts.priority = false; rOpts.retries = 2; rOpts.rateLimit = 0;
 
         std::string pid, rid;
-        const auto pResult = impl->Download("http://cdn.example.com/priority.pkg", pOpts, pid);
-        const auto rResult = impl->Download("http://cdn.example.com/regular.pkg",  rOpts, rid);
+        const auto pResult = impl->Download("file:///dev/null", pOpts, pid);
+        const auto rResult = impl->Download("file:///dev/null", rOpts, rid);
 
         L0Test::ExpectEqU32(tr, pResult, WPEFramework::Core::ERROR_NONE,
             "Priority Download() returns ERROR_NONE");
@@ -546,7 +546,7 @@ uint32_t Test_Impl_DownloadReturnsIncrementedId()
         WPEFramework::Exchange::IDownloadManager::Options opts{};
         opts.priority = false; opts.retries = 2; opts.rateLimit = 0;
         std::string downloadId;
-        impl->Download("http://example.com/a.pkg", opts, downloadId);
+        impl->Download("file:///dev/null", opts, downloadId);
         // Default DOWNLOADER_DOWNLOAD_ID_START = 2000, so first id = 2001
         L0Test::ExpectEqStr(tr, downloadId, "2001",
             "First Download() returns id '2001' (DOWNLOAD_ID_START+1)");
@@ -578,8 +578,8 @@ uint32_t Test_Impl_TwoDownloadsReturnUniqueIds()
         WPEFramework::Exchange::IDownloadManager::Options opts{};
         opts.priority = false; opts.retries = 2; opts.rateLimit = 0;
         std::string id1, id2;
-        impl->Download("http://example.com/a.pkg", opts, id1);
-        impl->Download("http://example.com/b.pkg", opts, id2);
+        impl->Download("file:///dev/null", opts, id1);
+        impl->Download("file:///dev/null", opts, id2);
         L0Test::ExpectEqStr(tr, id1, "2001", "First Download() id == '2001'");
         L0Test::ExpectEqStr(tr, id2, "2002", "Second Download() id == '2002'");
         L0Test::ExpectTrue(tr, id1 != id2, "Two sequential Download() calls return distinct ids");
@@ -839,8 +839,8 @@ uint32_t Test_Impl_PickDownloadJobPriorityFirst()
         rOpts.priority = false; rOpts.retries = 2; rOpts.rateLimit = 0;
 
         std::string pid, rid;
-        impl->Download("http://cdn.example.com/priority.pkg", pOpts, pid);
-        impl->Download("http://cdn.example.com/regular.pkg",  rOpts, rid);
+        impl->Download("file:///dev/null", pOpts, pid);
+        impl->Download("file:///dev/null", rOpts, rid);
 
         L0Test::ExpectTrue(tr, !pid.empty(), "Priority download received an id");
         L0Test::ExpectTrue(tr, !rid.empty(), "Regular download received an id");
@@ -948,7 +948,7 @@ uint32_t Test_Impl_DownloadInfoFieldsViaDownload()
         WPEFramework::Exchange::IDownloadManager::Options opts{};
         opts.priority = false; opts.retries = 5; opts.rateLimit = 512u;
         std::string downloadId;
-        const auto result = impl->Download("http://example.com/info.pkg", opts, downloadId);
+        const auto result = impl->Download("file:///dev/null", opts, downloadId);
         L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
             "Download() succeeds and returns id");
         L0Test::ExpectTrue(tr, !downloadId.empty(),
@@ -986,7 +986,7 @@ uint32_t Test_Impl_DownloadInfoZeroRetriesClampsToMin()
         WPEFramework::Exchange::IDownloadManager::Options opts{};
         opts.priority = false; opts.retries = 0; opts.rateLimit = 0;
         std::string downloadId;
-        const auto result = impl->Download("http://example.com/zeroretry.pkg", opts, downloadId);
+        const auto result = impl->Download("file:///dev/null", opts, downloadId);
         // Verifies that retries=0 does not crash or reject the Download() call.
         // The clamping to MIN_RETRIES(2) happens inside DownloadInfo constructor
         // and is not directly observable via the public API.

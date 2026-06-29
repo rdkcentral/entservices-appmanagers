@@ -435,8 +435,6 @@ if(PLUGIN_DOWNLOAD_MANAGER)
         ${CMAKE_SOURCE_DIR}/../../DownloadManager
         ${CMAKE_SOURCE_DIR}/../../helpers
         ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry
-        ${PREFIX}/include
-        ${PREFIX}/include/${NAMESPACE}
     )
 
     if(JSONCPP_INCLUDE_DIR)
@@ -644,7 +642,7 @@ if(PLUGIN_APP_STORAGE_MANAGER)
     )
 endif()
 if(PLUGIN_DOWNLOAD_MANAGER)
-    target_include_directories(downloadmanager_l0test PRIVATE
+    target_include_directories(downloadmanager_l0test SYSTEM PRIVATE
 	${PREFIX}/include
         ${PREFIX}/include/${NAMESPACE}
     )
