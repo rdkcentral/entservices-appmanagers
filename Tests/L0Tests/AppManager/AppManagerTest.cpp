@@ -124,6 +124,43 @@ extern uint32_t Test_AM_DispatchLifecycleAllFieldsNoAppInstanceId();
 extern uint32_t Test_AM_CheckInstallUninstallBlockMatchingNotBlocked();
 extern uint32_t Test_AM_PackageUnlockFails();
 extern uint32_t Test_AM_PackageUnlockAppNotInMap();
+extern uint32_t Test_AM_TerminateAppSuccessPath();
+extern uint32_t Test_AM_LICTerminateUnloadFails();
+extern uint32_t Test_AM_KillAppSuccessPath();
+extern uint32_t Test_AM_LICKillAppFails();
+extern uint32_t Test_AM_LICSendIntentFails();
+extern uint32_t Test_AM_LICSpawnAppFails();
+extern uint32_t Test_AM_LICOnAppLifecycleStateChangedNormalClose();
+extern uint32_t Test_AM_LICCloseAppPausedConfirmation();
+extern uint32_t Test_AM_PackageLockLockFails();
+extern uint32_t Test_AM_PackageLockFetchListFails();
+extern uint32_t Test_AM_GetInstallAppTypeSystem();
+extern uint32_t Test_AM_CloseAppNullConnector();
+extern uint32_t Test_AM_TerminateAppNullConnector();
+extern uint32_t Test_AM_KillAppNullConnector();
+extern uint32_t Test_AM_SendIntentNullConnector();
+extern uint32_t Test_AM_GetLoadedAppsNullConnector();
+extern uint32_t Test_AM_LaunchAppNotInstalled();
+extern uint32_t Test_AM_LaunchAppFetchFails();
+extern uint32_t Test_AM_LaunchAppNullConnectorInstalledApp();
+extern uint32_t Test_AM_PackageLockAlreadyLoaded();
+extern uint32_t Test_AM_ClearAppDataNullStorage();
+extern uint32_t Test_AM_ClearAppDataStorageError();
+extern uint32_t Test_AM_ClearAllAppDataNullStorage();
+extern uint32_t Test_AM_ClearAllAppDataStorageError();
+extern uint32_t Test_AM_WorkerThreadLaunchSuccess();
+extern uint32_t Test_AM_WorkerThreadPackageLockFails();
+extern uint32_t Test_AM_WorkerThreadPreloadSuccess();
+extern uint32_t Test_AM_PackageLockAlreadyLoadedEmptyVersion();
+extern uint32_t Test_AM_PackageLockIsAppLoadedError();
+extern uint32_t Test_AM_CloseAppLICReturnsError();
+extern uint32_t Test_AM_DispatchInstallationStatusUnknownState();
+extern uint32_t Test_AM_PackageLockLocksSuccessfully();
+extern uint32_t Test_AM_PackageLockInstalledEmptyVersion();
+extern uint32_t Test_AM_PackageUnLockNullPackageHandler();
+extern uint32_t Test_AM_CloseAppSuccessPath();
+extern uint32_t Test_AM_GetAppPropertyNullStoreRecreates();
+extern uint32_t Test_AM_RegisterNotificationAlreadyRegistered();
 
 int main()
 {
@@ -236,6 +273,43 @@ int main()
         { "AM_CheckInstallUninstallBlockMatchingNotBlocked", Test_AM_CheckInstallUninstallBlockMatchingNotBlocked },
         { "AM_PackageUnlockFails", Test_AM_PackageUnlockFails },
         { "AM_PackageUnlockAppNotInMap", Test_AM_PackageUnlockAppNotInMap },
+        { "AM_TerminateAppSuccessPath", Test_AM_TerminateAppSuccessPath },
+        { "AM_LICTerminateUnloadFails", Test_AM_LICTerminateUnloadFails },
+        { "AM_KillAppSuccessPath", Test_AM_KillAppSuccessPath },
+        { "AM_LICKillAppFails", Test_AM_LICKillAppFails },
+        { "AM_LICSendIntentFails", Test_AM_LICSendIntentFails },
+        { "AM_LICSpawnAppFails", Test_AM_LICSpawnAppFails },
+        { "AM_LICOnAppLifecycleStateChangedNormalClose", Test_AM_LICOnAppLifecycleStateChangedNormalClose },
+        { "AM_LICCloseAppPausedConfirmation", Test_AM_LICCloseAppPausedConfirmation },
+        { "AM_PackageLockLockFails", Test_AM_PackageLockLockFails },
+        { "AM_PackageLockFetchListFails", Test_AM_PackageLockFetchListFails },
+        { "AM_GetInstallAppTypeSystem", Test_AM_GetInstallAppTypeSystem },
+        { "AM_CloseAppNullConnector", Test_AM_CloseAppNullConnector },
+        { "AM_TerminateAppNullConnector", Test_AM_TerminateAppNullConnector },
+        { "AM_KillAppNullConnector", Test_AM_KillAppNullConnector },
+        { "AM_SendIntentNullConnector", Test_AM_SendIntentNullConnector },
+        { "AM_GetLoadedAppsNullConnector", Test_AM_GetLoadedAppsNullConnector },
+        { "AM_LaunchAppNotInstalled", Test_AM_LaunchAppNotInstalled },
+        { "AM_LaunchAppFetchFails", Test_AM_LaunchAppFetchFails },
+        { "AM_LaunchAppNullConnectorInstalledApp", Test_AM_LaunchAppNullConnectorInstalledApp },
+        { "AM_PackageLockAlreadyLoaded", Test_AM_PackageLockAlreadyLoaded },
+        { "AM_ClearAppDataNullStorage", Test_AM_ClearAppDataNullStorage },
+        { "AM_ClearAppDataStorageError", Test_AM_ClearAppDataStorageError },
+        { "AM_ClearAllAppDataNullStorage", Test_AM_ClearAllAppDataNullStorage },
+        { "AM_ClearAllAppDataStorageError", Test_AM_ClearAllAppDataStorageError },
+        { "AM_WorkerThreadLaunchSuccess", Test_AM_WorkerThreadLaunchSuccess },
+        { "AM_WorkerThreadPackageLockFails", Test_AM_WorkerThreadPackageLockFails },
+        { "AM_WorkerThreadPreloadSuccess", Test_AM_WorkerThreadPreloadSuccess },
+        { "AM_PackageLockAlreadyLoadedEmptyVersion", Test_AM_PackageLockAlreadyLoadedEmptyVersion },
+        { "AM_PackageLockIsAppLoadedError", Test_AM_PackageLockIsAppLoadedError },
+        { "AM_CloseAppLICReturnsError", Test_AM_CloseAppLICReturnsError },
+        { "AM_DispatchInstallationStatusUnknownState", Test_AM_DispatchInstallationStatusUnknownState },
+        { "AM_PackageLockLocksSuccessfully", Test_AM_PackageLockLocksSuccessfully },
+        { "AM_PackageLockInstalledEmptyVersion", Test_AM_PackageLockInstalledEmptyVersion },
+        { "AM_PackageUnLockNullPackageHandler", Test_AM_PackageUnLockNullPackageHandler },
+        { "AM_CloseAppSuccessPath", Test_AM_CloseAppSuccessPath },
+        { "AM_GetAppPropertyNullStoreRecreates", Test_AM_GetAppPropertyNullStoreRecreates },
+        { "AM_RegisterNotificationAlreadyRegistered", Test_AM_RegisterNotificationAlreadyRegistered },
     };
 
     uint32_t totalFailures = 0;

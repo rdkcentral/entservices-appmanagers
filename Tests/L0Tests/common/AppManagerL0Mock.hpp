@@ -472,11 +472,11 @@ public:
         return nullptr;
     }
 
-    using ClearHandler = std::function<WPEFramework::Core::hresult(const string&, string&)>;
-
     WPEFramework::Core::hresult CreateStorage(const string&, const uint32_t&, string&, string&) override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult GetStorage(const string&, const int32_t&, const int32_t&, string&, uint32_t&, uint32_t&) override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult DeleteStorage(const string&, string&) override { return WPEFramework::Core::ERROR_NONE; }
+
+    using ClearHandler = std::function<WPEFramework::Core::hresult(const string&, string&)>;
 
     WPEFramework::Core::hresult Clear(const string& appId, string& errorReason) override
     {
