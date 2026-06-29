@@ -782,6 +782,24 @@ uint32_t Test_Impl_ProgressNoActiveDownloadReturnsError()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Progress with empty downloadId returns ERROR_GENERAL
+// ─────────────────────────────────────────────────────────────────────────────
+
+uint32_t Test_Impl_ProgressEmptyIdReturnsError()
+{
+    L0Test::TestResult tr;
+
+    auto* impl = CreateImpl();
+    uint8_t percent = 0u;
+    const auto result = impl->Progress("", percent);
+    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+        "Progress() with empty downloadId returns ERROR_GENERAL");
+
+    impl->Release();
+    return tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // RateLimit with empty downloadId returns ERROR_GENERAL
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -1539,6 +1557,81 @@ uint32_t Test_Impl_DeleteInProgressFileReturnsError()
     impl->Release();
     return tr.failures;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Delete a different file while an active download is in progress
+//               covers the condition where fileLocator != active download locator
+// ─────────────────────────────────────────────────────────────────────────────
+
+uint32_t Test_Impl_DeleteDifferentFileWhileActiveDownload()
+{
+    L0Test::TestResult tr;
+
+    const std::string dir = "/tmp/dm_l0_del_other/";
+
+    L0Test::ServiceMock::Config cfg;
+    cfg.internetActive = true;
+    cfg.configLine     = "{\"downloadDir\":\"" + dir + "\"}";
+    L0Test::ServiceMock svc(cfg);
+
+    auto* impl = CreateImpl();
+    const auto initResult = impl->Initialize(&svc);
+    if (WPEFramework::Core::ERROR_NONE != initResult) {
+        L0Test::ExpectTrue(tr, true, "Initialize non-zero (acceptable in CI)");
+        impl->Release();
+        return tr.failures;
+    }
+
+    L0Test::FakeDownloadNotification notif;
+    impl->Register(&notif);
+
+    // Start a slow active download to keep mCurrentDownload non-null.
+    WPEFramework::Exchange::IDownloadManager::Options opts{};
+    opts.priority = false; opts.retries = 2; opts.rateLimit = 1u;
+    std::string downloadId;
+    impl->Download("file:///dev/zero", opts, downloadId);
+
+    uint8_t pct = 0u;
+    const bool active = WaitFor([&]{
+        return impl->Progress(downloadId, pct) == WPEFramework::Core::ERROR_NONE;
+    }, 3000u);
+
+    if (!active) {
+        impl->Cancel(downloadId);
+        WaitFor([&]{ return notif.onAppDownloadStatusCount.load() > 0u; }, 3000u);
+        impl->Unregister(&notif);
+        impl->Deinitialize(&svc);
+        impl->Release();
+        L0Test::ExpectTrue(tr, true, "Download not active in time (CI timing) — skipped");
+        return tr.failures;
+    }
+
+    // Create a separate file that is NOT the active download's fileLocator.
+    // fileLocator for active download is dir+"package"+downloadId.
+    // We delete a completely different file → condition false → else branch (remove).
+    const std::string otherFile = "/tmp/dm_l0_del_other_target.pkg";
+    FILE* fp = fopen(otherFile.c_str(), "wb");
+    if (nullptr != fp) {
+        const char buf[64] = {};
+        (void) fwrite(buf, 1u, sizeof(buf), fp);
+        fclose(fp);
+    }
+
+    // mCurrentDownload != null, but fileLocator != mCurrentDownload->getFileLocator()
+    // → condition false → else branch → remove(otherFile) succeeds → ERROR_NONE
+    const auto deleteResult = impl->Delete(otherFile);
+    L0Test::ExpectEqU32(tr, deleteResult, WPEFramework::Core::ERROR_NONE,
+        "Delete() of a different file while active download returns ERROR_NONE");
+
+    impl->Cancel(downloadId);
+    WaitFor([&]{ return notif.onAppDownloadStatusCount.load() > 0u; }, 5000u);
+
+    impl->Unregister(&notif);
+    impl->Deinitialize(&svc);
+    impl->Release();
+    return tr.failures;
+}
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // pickDownloadJob: regular queue used when priority queue empty

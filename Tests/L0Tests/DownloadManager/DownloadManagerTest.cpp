@@ -77,6 +77,7 @@ extern uint32_t Test_Impl_DeleteEmptyFileLocatorReturnsError();
 extern uint32_t Test_Impl_DeleteNonCurrentFileReturnsNone();
 extern uint32_t Test_Impl_DeleteNonExistentFileReturnsError();
 extern uint32_t Test_Impl_ProgressNoActiveDownloadReturnsError();
+extern uint32_t Test_Impl_ProgressEmptyIdReturnsError();
 extern uint32_t Test_Impl_RateLimitEmptyIdReturnsError();
 extern uint32_t Test_Impl_RateLimitNoActiveDownloadReturnsError();
 extern uint32_t Test_Impl_PickDownloadJobPriorityFirst();
@@ -92,6 +93,7 @@ extern uint32_t Test_Impl_DownloaderRoutineHttpErrorPath();
 extern uint32_t Test_Impl_ActiveDownloadMatchIdOperations();
 extern uint32_t Test_Impl_ActiveDownloadMismatchIdOperations();
 extern uint32_t Test_Impl_DeleteInProgressFileReturnsError();
+extern uint32_t Test_Impl_DeleteDifferentFileWhileActiveDownload();
 extern uint32_t Test_Impl_PickDownloadJobRegularQueueUsed();
 extern uint32_t Test_Impl_NotifyStatusIncludesFailReason();
 extern uint32_t Test_Impl_CancelWithActiveDownloadMatchId();
@@ -218,10 +220,12 @@ int main()
     RUN_TEST(Test_Impl_ActiveDownloadMatchIdOperations);
     RUN_TEST(Test_Impl_ActiveDownloadMismatchIdOperations);
     RUN_TEST(Test_Impl_DeleteInProgressFileReturnsError);
+    RUN_TEST(Test_Impl_DeleteDifferentFileWhileActiveDownload);
     RUN_TEST(Test_Impl_PickDownloadJobRegularQueueUsed);
     RUN_TEST(Test_Impl_NotifyStatusIncludesFailReason);
     RUN_TEST(Test_Impl_CancelWithActiveDownloadMatchId);
     RUN_TEST(Test_Impl_DownloaderRoutinePriorityQueuePath);
+    RUN_TEST(Test_Impl_ProgressEmptyIdReturnsError);
 
     // ── HTTP client tests (DownloadManagerHttpClient.cpp / .h) ──────────────
     std::cout << "\n-- HttpClient --" << std::endl;
