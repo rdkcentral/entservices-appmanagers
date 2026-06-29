@@ -3769,3 +3769,80 @@ uint32_t Test_AM_GetInstalledAppsNoAppInfo()
     WPEFramework::Plugin::AppInfoManager::getInstance().clear();
     return tr.failures;
 }
+
+// Covers LifecycleInterfaceConnector::removeAppInfoByAppId() LOGERR else-branch
+// when the requested appId is not present in AppInfoManager.
+uint32_t Test_AM_LICRemoveAppInfoByAppIdNotFound()
+{
+    L0Test::TestResult tr;
+
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+
+    // AppInfoManager is empty → exists() returns false → LOGERR branch taken.
+    impl->mLifecycleInterfaceConnector->removeAppInfoByAppId("no.such.appid.xyz");
+    L0Test::ExpectTrue(tr, true,
+        "removeAppInfoByAppId with unknown appId hits LOGERR path without crash");
+
+    impl->Release();
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
+    while (std::chrono::steady_clock::now() < deadline &&
+           WPEFramework::Plugin::AppManagerImplementation::getInstance() != nullptr) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+// Covers mapErrorReason() branches for ERROR_DOBBY_SPEC (TRUE),
+// ERROR_DOBBY_SPEC (FALSE) / ERROR_INVALID_PARAM (TRUE), and the
+// unknown-error else path.  Each call dispatches one lifecycle-state Job;
+// we wait for all three before tearing down to avoid use-after-free.
+uint32_t Test_AM_LICOnAppStateChangedMultipleErrorReasons()
+{
+    L0Test::TestResult tr;
+
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+
+    auto* notif = new RefNotification();
+    impl->Register(notif);
+
+    using LS = WPEFramework::Exchange::ILifecycleManager::LifecycleState;
+
+    // Call 1: "ERROR_DOBBY_SPEC"  →  mapErrorReason else-if(DOBBY_SPEC) TRUE branch.
+    impl->mLifecycleInterfaceConnector->OnAppStateChanged(
+        "app.err.dobby", LS::ACTIVE, "ERROR_DOBBY_SPEC");
+
+    // Call 2: "ERROR_INVALID_PARAM"  →  else-if(DOBBY_SPEC) FALSE, else-if(INVALID_PARAM) TRUE.
+    impl->mLifecycleInterfaceConnector->OnAppStateChanged(
+        "app.err.invalid", LS::ACTIVE, "ERROR_INVALID_PARAM");
+
+    // Call 3: unknown string  →  else (APP_ERROR_UNKNOWN) branch.
+    impl->mLifecycleInterfaceConnector->OnAppStateChanged(
+        "app.err.unknown", LS::ACTIVE, "ERROR_UNKNOWN_REASON");
+
+    // Wait for all three Jobs to complete.
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
+    while (std::chrono::steady_clock::now() < deadline && notif->lifecycle < 3u) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    L0Test::ExpectTrue(tr, notif->lifecycle >= 3u,
+        "All three OnAppStateChanged error-reason Jobs fired without crash");
+
+    impl->Unregister(notif);
+    notif->Release();
+
+    impl->Release();
+    const auto cleanDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
+    while (std::chrono::steady_clock::now() < cleanDeadline &&
+           WPEFramework::Plugin::AppManagerImplementation::getInstance() != nullptr) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
