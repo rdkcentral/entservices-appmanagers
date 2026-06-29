@@ -167,6 +167,32 @@ extern uint32_t Test_AM_PackageLockNullLifecycleConnector();
 extern uint32_t Test_AM_LICLaunchLoadedNotSuspended();
 extern uint32_t Test_AM_LICOnAppLifecycleStateChangedSuspended();
 extern uint32_t Test_AM_LICOnAppLifecycleStateChangedUnknownNewState();
+extern uint32_t Test_AM_TelReportDataNoAppInfo();
+extern uint32_t Test_AM_TelReportDataActionMismatch();
+extern uint32_t Test_AM_TelReportDataPreloadNoMarker();
+extern uint32_t Test_AM_TelReportDataClosePublishClose();
+extern uint32_t Test_AM_TelReportDataCloseTargetSuspended();
+extern uint32_t Test_AM_TelReportDataCloseTargetHibernated();
+extern uint32_t Test_AM_TelReportDataTerminateRecord();
+extern uint32_t Test_AM_TelReportDataKillRecord();
+extern uint32_t Test_AM_TelReportDataDefaultAction();
+extern uint32_t Test_AM_TelOnStateChangeNoAppInfo();
+extern uint32_t Test_AM_TelOnStateChangeLaunchNonActive();
+extern uint32_t Test_AM_TelOnStateChangePreloadPaused();
+extern uint32_t Test_AM_TelOnStateChangePreloadNonPaused();
+extern uint32_t Test_AM_TelOnStateChangeCloseUnloaded();
+extern uint32_t Test_AM_TelOnStateChangeTerminateUnloaded();
+extern uint32_t Test_AM_TelOnStateChangeKillUnloaded();
+extern uint32_t Test_AM_TelOnStateChangeCloseNonUnloaded();
+extern uint32_t Test_AM_TelOnStateChangeDefaultAction();
+extern uint32_t Test_AM_TelOnStateChangeLaunchInteractive();
+extern uint32_t Test_AM_TelOnStateChangePreloadInteractive();
+extern uint32_t Test_AM_TelErrorDataPreload();
+extern uint32_t Test_AM_TelErrorDataClose();
+extern uint32_t Test_AM_TelErrorDataTerminate();
+extern uint32_t Test_AM_TelErrorDataKill();
+extern uint32_t Test_AM_TelErrorDataDefault();
+extern uint32_t Test_AM_TelRecordLaunchTime();
 
 int main()
 {
@@ -322,6 +348,32 @@ int main()
         { "AM_LICLaunchLoadedNotSuspended", Test_AM_LICLaunchLoadedNotSuspended },
         { "AM_LICOnAppLifecycleStateChangedSuspended", Test_AM_LICOnAppLifecycleStateChangedSuspended },
         { "AM_LICOnAppLifecycleStateChangedUnknownNewState", Test_AM_LICOnAppLifecycleStateChangedUnknownNewState },
+        { "AM_TelReportDataNoAppInfo", Test_AM_TelReportDataNoAppInfo },
+        { "AM_TelReportDataActionMismatch", Test_AM_TelReportDataActionMismatch },
+        { "AM_TelReportDataPreloadNoMarker", Test_AM_TelReportDataPreloadNoMarker },
+        { "AM_TelReportDataClosePublishClose", Test_AM_TelReportDataClosePublishClose },
+        { "AM_TelReportDataCloseTargetSuspended", Test_AM_TelReportDataCloseTargetSuspended },
+        { "AM_TelReportDataCloseTargetHibernated", Test_AM_TelReportDataCloseTargetHibernated },
+        { "AM_TelReportDataTerminateRecord", Test_AM_TelReportDataTerminateRecord },
+        { "AM_TelReportDataKillRecord", Test_AM_TelReportDataKillRecord },
+        { "AM_TelReportDataDefaultAction", Test_AM_TelReportDataDefaultAction },
+        { "AM_TelOnStateChangeNoAppInfo", Test_AM_TelOnStateChangeNoAppInfo },
+        { "AM_TelOnStateChangeLaunchNonActive", Test_AM_TelOnStateChangeLaunchNonActive },
+        { "AM_TelOnStateChangePreloadPaused", Test_AM_TelOnStateChangePreloadPaused },
+        { "AM_TelOnStateChangePreloadNonPaused", Test_AM_TelOnStateChangePreloadNonPaused },
+        { "AM_TelOnStateChangeCloseUnloaded", Test_AM_TelOnStateChangeCloseUnloaded },
+        { "AM_TelOnStateChangeTerminateUnloaded", Test_AM_TelOnStateChangeTerminateUnloaded },
+        { "AM_TelOnStateChangeKillUnloaded", Test_AM_TelOnStateChangeKillUnloaded },
+        { "AM_TelOnStateChangeCloseNonUnloaded", Test_AM_TelOnStateChangeCloseNonUnloaded },
+        { "AM_TelOnStateChangeDefaultAction", Test_AM_TelOnStateChangeDefaultAction },
+        { "AM_TelOnStateChangeLaunchInteractive", Test_AM_TelOnStateChangeLaunchInteractive },
+        { "AM_TelOnStateChangePreloadInteractive", Test_AM_TelOnStateChangePreloadInteractive },
+        { "AM_TelErrorDataPreload", Test_AM_TelErrorDataPreload },
+        { "AM_TelErrorDataClose", Test_AM_TelErrorDataClose },
+        { "AM_TelErrorDataTerminate", Test_AM_TelErrorDataTerminate },
+        { "AM_TelErrorDataKill", Test_AM_TelErrorDataKill },
+        { "AM_TelErrorDataDefault", Test_AM_TelErrorDataDefault },
+        { "AM_TelRecordLaunchTime", Test_AM_TelRecordLaunchTime },
     };
 
     uint32_t totalFailures = 0;

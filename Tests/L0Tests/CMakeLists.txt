@@ -158,7 +158,9 @@ set(APPMANAGER_L0_SOURCES
     ${CMAKE_SOURCE_DIR}/../../AppManager/AppInfoManager.cpp
     ${CMAKE_SOURCE_DIR}/../../AppManager/LifecycleInterfaceConnector.cpp
     ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry/TelemetryReportingBase.cpp
-    ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry/UtilsTelemetryMetrics.cpp
+    # Use the test mock so isTelemetryMetricsEnabled() returns true and all
+    # telemetry reporting branches in AppManagerTelemetryReporting.cpp are covered.
+    AppManager/mocks/MockUtilsTelemetryMetrics.cpp
     AppManager/AppManagerTest.cpp
     AppManager/AppManager_LifecycleTests.cpp
     AppManager/AppManager_ImplementationTests.cpp
