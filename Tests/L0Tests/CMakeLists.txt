@@ -12,6 +12,7 @@ option(PLUGIN_RDK_WINDOW_MANAGER "Build RDKWindowManager L0 test target"  ON)
 option(PLUGIN_APP_STORAGE_MANAGER "Build AppStorageManager L0 test target" ON)
 option(PLUGIN_PACKAGE_MANAGER    "Build PackageManager L0 test target"    ON)
 option(PLUGIN_PREINSTALL_MANAGER "Build PreinstallManager L0 test target" ON)
+option(PLUGIN_APP_MANAGER        "Build AppManager L0 test target"        ON)
 
 option(APPMGR_ENABLE_COVERAGE  "Enable coverage flags for runtimemanager_l0test"    ON)
 option(APPLCM_ENABLE_COVERAGE  "Enable coverage flags for lifecyclemanager_l0test"  ON)
@@ -19,6 +20,7 @@ option(APPWM_ENABLE_COVERAGE   "Enable coverage flags for rdkwindowmanager_l0tes
 option(APPASM_ENABLE_COVERAGE  "Enable coverage flags for appstorage_l0test"       ON)
 option(APPPKG_ENABLE_COVERAGE  "Enable coverage flags for packagemanager_l0test"    ON)
 option(APPMGR_PREINSTALL_ENABLE_COVERAGE  "Enable coverage flags for preinstall_manager_l0test"  ON)
+option(APPMANAGER_ENABLE_COVERAGE         "Enable coverage flags for appmanager_l0test"           ON)
 option(L0_ENABLE_WARNINGS      "Enable additional compiler warnings for L0 targets" ON)
 
 # ---------------------------------------------------------------------------
@@ -147,6 +149,26 @@ set(PREINSTALL_MANAGER_L0_SOURCES
     common/L0Bootstrap.cpp
 )
 
+set(APPMANAGER_L0_SOURCES
+    ${CMAKE_SOURCE_DIR}/../../AppManager/Module.cpp
+    ${CMAKE_SOURCE_DIR}/../../AppManager/AppManager.cpp
+    ${CMAKE_SOURCE_DIR}/../../AppManager/AppManagerImplementation.cpp
+    ${CMAKE_SOURCE_DIR}/../../AppManager/AppManagerTelemetryReporting.cpp
+    ${CMAKE_SOURCE_DIR}/../../AppManager/AppInfo.cpp
+    ${CMAKE_SOURCE_DIR}/../../AppManager/AppInfoManager.cpp
+    ${CMAKE_SOURCE_DIR}/../../AppManager/LifecycleInterfaceConnector.cpp
+    ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry/TelemetryReportingBase.cpp
+    ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry/UtilsTelemetryMetrics.cpp
+    AppManager/AppManagerTest.cpp
+    AppManager/AppManager_LifecycleTests.cpp
+    AppManager/AppManager_ImplementationTests.cpp
+    AppManager/AppManager_ComponentTests.cpp
+    AppManager/AppManagerTelemetryTests.cpp
+    AppManager/AppInfoTests.cpp
+    AppManager/AppInfoManagerTests.cpp
+    common/L0Bootstrap.cpp
+)
+
 set(PACKAGE_MANAGER_L0_SOURCES
     ${CMAKE_SOURCE_DIR}/../../PackageManager/Module.cpp
     ${CMAKE_SOURCE_DIR}/../../PackageManager/PackageManager.cpp
@@ -202,8 +224,14 @@ else()
     message(STATUS "PLUGIN_PREINSTALL_MANAGER=OFF; skipping preinstall_manager_l0test target")
 endif()
 
-if(NOT PLUGIN_RUNTIME_MANAGER AND NOT PLUGIN_LIFECYCLE_MANAGER AND NOT PLUGIN_RDK_WINDOW_MANAGER AND NOT PLUGIN_PACKAGE_MANAGER AND NOT PLUGIN_APP_STORAGE_MANAGER AND NOT PLUGIN_PREINSTALL_MANAGER)
-    message(FATAL_ERROR "No L0 target enabled. Enable at least one of PLUGIN_RUNTIME_MANAGER, PLUGIN_LIFECYCLE_MANAGER, PLUGIN_RDK_WINDOW_MANAGER, PLUGIN_PACKAGE_MANAGER, PLUGIN_APP_STORAGE_MANAGER, or PLUGIN_PREINSTALL_MANAGER.")
+if(PLUGIN_APP_MANAGER)
+    add_executable(appmanager_l0test ${APPMANAGER_L0_SOURCES})
+else()
+    message(STATUS "PLUGIN_APP_MANAGER=OFF; skipping appmanager_l0test target")
+endif()
+
+if(NOT PLUGIN_RUNTIME_MANAGER AND NOT PLUGIN_LIFECYCLE_MANAGER AND NOT PLUGIN_RDK_WINDOW_MANAGER AND NOT PLUGIN_PACKAGE_MANAGER AND NOT PLUGIN_APP_STORAGE_MANAGER AND NOT PLUGIN_PREINSTALL_MANAGER AND NOT PLUGIN_APP_MANAGER)
+    message(FATAL_ERROR "No L0 target enabled. Enable at least one of PLUGIN_RUNTIME_MANAGER, PLUGIN_LIFECYCLE_MANAGER, PLUGIN_RDK_WINDOW_MANAGER, PLUGIN_PACKAGE_MANAGER, PLUGIN_APP_STORAGE_MANAGER, PLUGIN_PREINSTALL_MANAGER, or PLUGIN_APP_MANAGER.")
 endif()
 
 # ---------------------------------------------------------------------------
@@ -521,6 +549,60 @@ if(PLUGIN_PREINSTALL_MANAGER)
 endif()
 
 # ---------------------------------------------------------------------------
+# AppManager target compile options / definitions / includes
+# ---------------------------------------------------------------------------
+if(PLUGIN_APP_MANAGER)
+    target_compile_definitions(appmanager_l0test PRIVATE
+        MODULE_NAME=AppManager_L0Test
+        APP_MANAGER_API_VERSION_NUMBER_MAJOR=1
+        APP_MANAGER_API_VERSION_NUMBER_MINOR=0
+        APP_MANAGER_API_VERSION_NUMBER_PATCH=0
+        PLUGIN_APP_MANAGER_IMPLEMENTATION_NAME="AppManagerImplementation"
+    )
+
+    # Force include L0TestConfig.h in all source files
+    target_compile_options(appmanager_l0test PRIVATE
+        -include ${CMAKE_CURRENT_SOURCE_DIR}/common/L0TestConfig.h
+    )
+
+    if(APPMANAGER_ENABLE_COVERAGE)
+        target_compile_options(appmanager_l0test PRIVATE -O0 -g --coverage)
+        target_link_options(appmanager_l0test PRIVATE --coverage)
+    endif()
+
+    if(L0_ENABLE_WARNINGS)
+        target_compile_options(appmanager_l0test PRIVATE -Wall -Wextra -Wno-unused-parameter)
+    endif()
+
+    target_compile_options(appmanager_l0test PRIVATE -Wno-error=deprecated-declarations)
+
+    target_include_directories(appmanager_l0test PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/AppManager
+        ${CMAKE_CURRENT_SOURCE_DIR}/common
+        ${CMAKE_SOURCE_DIR}/../..
+        ${CMAKE_SOURCE_DIR}/../../AppManager
+        ${CMAKE_SOURCE_DIR}/../../helpers
+        ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry
+    )
+
+    target_include_directories(appmanager_l0test SYSTEM PRIVATE
+        ${PREFIX}/include
+        ${PREFIX}/include/${NAMESPACE}
+    )
+
+    if(EXISTS "${PREFIX}/lib")
+        target_link_directories(appmanager_l0test PRIVATE "${PREFIX}/lib")
+    endif()
+    if(EXISTS "${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins")
+        target_link_directories(appmanager_l0test PRIVATE "${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins")
+    endif()
+    if(EXISTS "${PREFIX}/lib/plugins")
+        target_link_directories(appmanager_l0test PRIVATE "${PREFIX}/lib/plugins")
+    endif()
+endif()
+
+# ---------------------------------------------------------------------------
 # Thunder / WPEFramework library discovery (shared for all targets)
 # ---------------------------------------------------------------------------
 find_library(THUNDER_CORE_LIB      NAMES ${NAMESPACE}Core      HINTS "${PREFIX}/lib")
@@ -569,6 +651,12 @@ if(PLUGIN_PREINSTALL_MANAGER)
         ${PREFIX}/include/${NAMESPACE}
     )
 endif()
+if(PLUGIN_APP_MANAGER)
+    target_include_directories(appmanager_l0test SYSTEM PRIVATE
+        ${PREFIX}/include
+        ${PREFIX}/include/${NAMESPACE}
+    )
+endif()
 
 if(CMAKE_PREFIX_PATH)
     foreach(_prefix IN LISTS CMAKE_PREFIX_PATH)
@@ -591,6 +679,9 @@ if(CMAKE_PREFIX_PATH)
             if(PLUGIN_PREINSTALL_MANAGER)
                 target_include_directories(preinstall_manager_l0test PRIVATE "${_prefix}/include")
             endif()
+            if(PLUGIN_APP_MANAGER)
+                target_include_directories(appmanager_l0test SYSTEM PRIVATE "${_prefix}/include")
+            endif()
         endif()
         if(EXISTS "${_prefix}/include/${NAMESPACE}")
             if(PLUGIN_RUNTIME_MANAGER)
@@ -610,6 +701,9 @@ if(CMAKE_PREFIX_PATH)
             endif()
             if(PLUGIN_PREINSTALL_MANAGER)
                 target_include_directories(preinstall_manager_l0test PRIVATE "${_prefix}/include/${NAMESPACE}")
+            endif()
+            if(PLUGIN_APP_MANAGER)
+                target_include_directories(appmanager_l0test SYSTEM PRIVATE "${_prefix}/include/${NAMESPACE}")
             endif()
         endif()
     endforeach()
@@ -634,6 +728,9 @@ if(PLUGIN_PACKAGE_MANAGER)
 endif()
 if(PLUGIN_PREINSTALL_MANAGER)
     list(APPEND _L0_TARGETS preinstall_manager_l0test)
+endif()
+if(PLUGIN_APP_MANAGER)
+    list(APPEND _L0_TARGETS appmanager_l0test)
 endif()
 
 foreach(_target IN LISTS _L0_TARGETS)
@@ -774,6 +871,13 @@ if(PLUGIN_PREINSTALL_MANAGER)
     )
 endif()
 
+if(PLUGIN_APP_MANAGER)
+    set_target_properties(appmanager_l0test PROPERTIES
+        BUILD_RPATH   "$ORIGIN;${PREFIX}/lib;${PREFIX}/lib/${STORAGE_DIRECTORY};${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins;${PREFIX}/lib/plugins"
+        INSTALL_RPATH "${PREFIX}/lib;${PREFIX}/lib/${STORAGE_DIRECTORY};${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins;${PREFIX}/lib/plugins"
+    )
+endif()
+
 # ---------------------------------------------------------------------------
 # Utility targets
 # ---------------------------------------------------------------------------
@@ -831,6 +935,15 @@ if(PLUGIN_PREINSTALL_MANAGER)
     )
 endif()
 
+if(PLUGIN_APP_MANAGER)
+    add_custom_target(run_appmanager
+        DEPENDS appmanager_l0test
+        COMMAND $<TARGET_FILE:appmanager_l0test>
+        COMMENT "Running appmanager_l0test"
+        VERBATIM
+    )
+endif()
+
 find_program(LCOV_EXECUTABLE    lcov)
 find_program(GENHTML_EXECUTABLE genhtml)
 
@@ -859,6 +972,9 @@ else()
     endif()
     if(PLUGIN_PREINSTALL_MANAGER)
         list(APPEND COVERAGE_DEPENDS preinstall_manager_l0test)
+    endif()
+    if(PLUGIN_APP_MANAGER)
+        list(APPEND COVERAGE_DEPENDS appmanager_l0test)
     endif()
 
     add_custom_target(coverage
