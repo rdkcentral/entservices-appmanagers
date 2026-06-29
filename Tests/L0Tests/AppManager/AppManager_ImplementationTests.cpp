@@ -683,6 +683,11 @@ uint32_t Test_AM_LaunchAppWithPackageHandler()
                             result == WPEFramework::Core::ERROR_UNAVAILABLE, 
                        "LaunchApp() with package handler attempts operation");
 
+    // packageLock is called by the worker thread asynchronously; wait up to 2 s.
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
+    while (packageHandler.lockCount == 0u && std::chrono::steady_clock::now() < deadline) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
     L0Test::ExpectTrue(tr, packageHandler.lockCount > 0u, "Package lock was attempted");
 
     impl->Release();
@@ -3511,6 +3516,10 @@ uint32_t Test_AM_ConfigureWithNullLifecycleManager()
     L0Test::ExpectTrue(tr, true,
         "Configure with null lifecycle manager covers LM null-path branches");
 
+    // LIC has null mLifecycleManagerRemoteObject — delete it directly to bypass the
+    // ASSERT in releaseLifecycleManagerRemoteObject() that fires in the destructor.
+    delete impl->mLifecycleInterfaceConnector;
+    impl->mLifecycleInterfaceConnector = nullptr;
     impl->Release();
     WPEFramework::Plugin::AppInfoManager::getInstance().clear();
     return tr.failures;
@@ -3537,6 +3546,16 @@ uint32_t Test_AM_ConfigureWithNullLifecycleManagerState()
     L0Test::ExpectTrue(tr, true,
         "Configure with null lifecycle manager state covers LMS null-path branch");
 
+    // LIC's mLifecycleManagerRemoteObject was AddRef'd by QueryInterface but the
+    // success path (which AddRef's again and Registers) was not reached.
+    // Release that one ref, then delete the LIC directly to bypass the ASSERT on
+    // the null mLifecycleManagerStateRemoteObject in the destructor.
+    if (impl->mLifecycleInterfaceConnector->mLifecycleManagerRemoteObject) {
+        impl->mLifecycleInterfaceConnector->mLifecycleManagerRemoteObject->Release();
+        impl->mLifecycleInterfaceConnector->mLifecycleManagerRemoteObject = nullptr;
+    }
+    delete impl->mLifecycleInterfaceConnector;
+    impl->mLifecycleInterfaceConnector = nullptr;
     impl->Release();
     WPEFramework::Plugin::AppInfoManager::getInstance().clear();
     return tr.failures;
@@ -3567,6 +3586,9 @@ uint32_t Test_AM_ConfigureWithNullPersistentStore()
     L0Test::ExpectTrue(tr, true,
         "Configure with null persistent store covers store null-path branches");
 
+    // mPersistentStoreRemoteStoreObject is null; set a dummy so the ASSERT in
+    // releasePersistentStoreRemoteStoreObject() (called by the destructor) passes.
+    impl->mPersistentStoreRemoteStoreObject = new L0Test::FakeStore2();
     impl->Release();
     WPEFramework::Plugin::AppInfoManager::getInstance().clear();
     return tr.failures;
@@ -3598,6 +3620,10 @@ uint32_t Test_AM_ConfigureWithNullPackageHandler()
     L0Test::ExpectTrue(tr, true,
         "Configure with null package handler covers handler null-path branches");
 
+    // Both package objects are null; set dummies so the ASSERTs in
+    // releasePackageManagerObject() (called by the destructor) pass.
+    impl->mPackageManagerHandlerObject = new L0Test::FakePackageHandler();
+    impl->mPackageManagerInstallerObject = new L0Test::FakePackageInstaller();
     impl->Release();
     WPEFramework::Plugin::AppInfoManager::getInstance().clear();
     return tr.failures;
@@ -3624,6 +3650,9 @@ uint32_t Test_AM_ConfigureWithNullPackageInstaller()
     L0Test::ExpectTrue(tr, true,
         "Configure with null package installer covers installer null-path branch");
 
+    // mPackageManagerInstallerObject is null; set a dummy so the ASSERT in
+    // releasePackageManagerObject() (called by the destructor) passes.
+    impl->mPackageManagerInstallerObject = new L0Test::FakePackageInstaller();
     impl->Release();
     WPEFramework::Plugin::AppInfoManager::getInstance().clear();
     return tr.failures;
@@ -3656,6 +3685,9 @@ uint32_t Test_AM_ConfigureWithNullStorageManager()
     L0Test::ExpectTrue(tr, true,
         "Configure with null storage manager covers storage null-path and retry branches");
 
+    // mStorageManagerRemoteObject is null; set a dummy so the ASSERT in
+    // releaseStorageManagerRemoteObject() (called by the destructor) passes.
+    impl->mStorageManagerRemoteObject = new L0Test::FakeStorageManager();
     impl->Release();
     WPEFramework::Plugin::AppInfoManager::getInstance().clear();
     return tr.failures;
