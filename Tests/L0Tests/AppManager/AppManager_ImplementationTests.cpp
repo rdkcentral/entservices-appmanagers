@@ -683,7 +683,7 @@ uint32_t Test_AM_LaunchAppWithPackageHandler()
                             result == WPEFramework::Core::ERROR_UNAVAILABLE, 
                        "LaunchApp() with package handler attempts operation");
 
-    L0Test::ExpectTrue(tr, packageHandler.lockCount >= 0, "Package lock was attempted");
+    L0Test::ExpectTrue(tr, packageHandler.lockCount > 0u, "Package lock was attempted");
 
     impl->Release();
     return tr.failures;

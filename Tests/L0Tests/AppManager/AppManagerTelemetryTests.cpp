@@ -51,14 +51,13 @@ uint32_t Test_AM_TelemetryReportingStability()
 // ============================================================
 namespace {
 
-using AppIM   = WPEFramework::Plugin::AppInfoManager;
-using AppAct  = WPEFramework::Plugin::AppManagerImplementation;
-using AppTel  = WPEFramework::Plugin::AppManagerTelemetryReporting;
-using LcState = WPEFramework::Exchange::ILifecycleManager::LifecycleState;
+using AppIM    = WPEFramework::Plugin::AppInfoManager;
+using AppAct   = WPEFramework::Plugin::AppManagerImplementation;
+using AppTel   = WPEFramework::Plugin::AppManagerTelemetryReporting;
+using LcState  = WPEFramework::Exchange::ILifecycleManager::LifecycleState;
 using AppState = WPEFramework::Exchange::IAppManager::AppLifecycleState;
 namespace AppType = WPEFramework::Plugin::AppManagerTypes;
 
-// Set up a minimal AppInfoManager entry for telemetry tests.
 void setupTelApp(const std::string& appId,
                  AppType::CurrentAction action,
                  AppState targetState = AppState::APP_STATE_NONE)
@@ -75,34 +74,29 @@ void setupTelApp(const std::string& appId,
 // reportTelemetryData branch coverage
 // ============================================================
 
-// Branch: telFound=false (unknown appId) → LOGERR else path
 uint32_t Test_AM_TelReportDataNoAppInfo()
 {
     L0Test::TestResult tr;
     AppIM::getInstance().clear();
     auto& tel = AppTel::getInstance();
-    // No entry for "unknown-app" in AppInfoManager → telFound=false
     tel.reportTelemetryData("unknown-app", AppAct::APP_ACTION_LAUNCH);
     L0Test::ExpectTrue(tr, true, "reportTelemetryData with unknown appId does not crash");
     AppIM::getInstance().clear();
     return tr.failures;
 }
 
-// Branch: currentAction mismatch → else path
 uint32_t Test_AM_TelReportDataActionMismatch()
 {
     L0Test::TestResult tr;
     AppIM::getInstance().clear();
     setupTelApp("app-mismatch", AppType::APP_ACTION_LAUNCH);
     auto& tel = AppTel::getInstance();
-    // App has LAUNCH but we call with CLOSE → mismatch → else branch
     tel.reportTelemetryData("app-mismatch", AppAct::APP_ACTION_CLOSE);
     L0Test::ExpectTrue(tr, true, "reportTelemetryData action mismatch does not crash");
     AppIM::getInstance().clear();
     return tr.failures;
 }
 
-// Branch: switch PRELOAD → no marker → if(!markerName.empty()) false
 uint32_t Test_AM_TelReportDataPreloadNoMarker()
 {
     L0Test::TestResult tr;
@@ -115,12 +109,10 @@ uint32_t Test_AM_TelReportDataPreloadNoMarker()
     return tr.failures;
 }
 
-// Branch: switch CLOSE + target not SUSPENDED/HIBERNATED → shouldPublishCloseOnRecord=true → record+publish
 uint32_t Test_AM_TelReportDataClosePublishClose()
 {
     L0Test::TestResult tr;
     AppIM::getInstance().clear();
-    // Target state APP_STATE_NONE = not SUSPENDED, not HIBERNATED → shouldPublishCloseOnRecord=true
     setupTelApp("app-close-pub", AppType::APP_ACTION_CLOSE, AppState::APP_STATE_NONE);
     auto& tel = AppTel::getInstance();
     tel.reportTelemetryData("app-close-pub", AppAct::APP_ACTION_CLOSE);
@@ -129,7 +121,6 @@ uint32_t Test_AM_TelReportDataClosePublishClose()
     return tr.failures;
 }
 
-// Branch: switch CLOSE + target SUSPENDED → no marker (inner if false)
 uint32_t Test_AM_TelReportDataCloseTargetSuspended()
 {
     L0Test::TestResult tr;
@@ -142,7 +133,6 @@ uint32_t Test_AM_TelReportDataCloseTargetSuspended()
     return tr.failures;
 }
 
-// Branch: switch CLOSE + target HIBERNATED → no marker (inner if false)
 uint32_t Test_AM_TelReportDataCloseTargetHibernated()
 {
     L0Test::TestResult tr;
@@ -155,7 +145,6 @@ uint32_t Test_AM_TelReportDataCloseTargetHibernated()
     return tr.failures;
 }
 
-// Branch: switch TERMINATE → markerName set, shouldPublishCloseOnRecord=false → record only
 uint32_t Test_AM_TelReportDataTerminateRecord()
 {
     L0Test::TestResult tr;
@@ -168,7 +157,6 @@ uint32_t Test_AM_TelReportDataTerminateRecord()
     return tr.failures;
 }
 
-// Branch: switch KILL → markerName set, shouldPublishCloseOnRecord=false → record only
 uint32_t Test_AM_TelReportDataKillRecord()
 {
     L0Test::TestResult tr;
@@ -181,7 +169,6 @@ uint32_t Test_AM_TelReportDataKillRecord()
     return tr.failures;
 }
 
-// Branch: switch default (APP_ACTION_NONE) → LOGERR, markerName stays empty
 uint32_t Test_AM_TelReportDataDefaultAction()
 {
     L0Test::TestResult tr;
@@ -198,7 +185,6 @@ uint32_t Test_AM_TelReportDataDefaultAction()
 // reportTelemetryDataOnStateChange branch coverage
 // ============================================================
 
-// Branch: telFound=false → LOGERR else path
 uint32_t Test_AM_TelOnStateChangeNoAppInfo()
 {
     L0Test::TestResult tr;
@@ -210,7 +196,6 @@ uint32_t Test_AM_TelOnStateChangeNoAppInfo()
     return tr.failures;
 }
 
-// Branch: case LAUNCH + non-ACTIVE state → no marker
 uint32_t Test_AM_TelOnStateChangeLaunchNonActive()
 {
     L0Test::TestResult tr;
@@ -223,7 +208,6 @@ uint32_t Test_AM_TelOnStateChangeLaunchNonActive()
     return tr.failures;
 }
 
-// Branch: case PRELOAD + PAUSED state → marker set (launchType=START_SYSTEM for default type)
 uint32_t Test_AM_TelOnStateChangePreloadPaused()
 {
     L0Test::TestResult tr;
@@ -236,7 +220,6 @@ uint32_t Test_AM_TelOnStateChangePreloadPaused()
     return tr.failures;
 }
 
-// Branch: case PRELOAD + non-PAUSED state → no marker
 uint32_t Test_AM_TelOnStateChangePreloadNonPaused()
 {
     L0Test::TestResult tr;
@@ -249,7 +232,6 @@ uint32_t Test_AM_TelOnStateChangePreloadNonPaused()
     return tr.failures;
 }
 
-// Branch: case CLOSE + UNLOADED → marker set, closeType="CLOSE"
 uint32_t Test_AM_TelOnStateChangeCloseUnloaded()
 {
     L0Test::TestResult tr;
@@ -262,7 +244,6 @@ uint32_t Test_AM_TelOnStateChangeCloseUnloaded()
     return tr.failures;
 }
 
-// Branch: case TERMINATE + UNLOADED → marker set, closeType="TERMINATE"
 uint32_t Test_AM_TelOnStateChangeTerminateUnloaded()
 {
     L0Test::TestResult tr;
@@ -275,7 +256,6 @@ uint32_t Test_AM_TelOnStateChangeTerminateUnloaded()
     return tr.failures;
 }
 
-// Branch: case KILL + UNLOADED → marker set, closeType="KILL"
 uint32_t Test_AM_TelOnStateChangeKillUnloaded()
 {
     L0Test::TestResult tr;
@@ -288,7 +268,6 @@ uint32_t Test_AM_TelOnStateChangeKillUnloaded()
     return tr.failures;
 }
 
-// Branch: case CLOSE + non-UNLOADED → no marker
 uint32_t Test_AM_TelOnStateChangeCloseNonUnloaded()
 {
     L0Test::TestResult tr;
@@ -301,7 +280,6 @@ uint32_t Test_AM_TelOnStateChangeCloseNonUnloaded()
     return tr.failures;
 }
 
-// Branch: switch default (APP_ACTION_NONE) → LOGERR, no marker
 uint32_t Test_AM_TelOnStateChangeDefaultAction()
 {
     L0Test::TestResult tr;
@@ -314,7 +292,6 @@ uint32_t Test_AM_TelOnStateChangeDefaultAction()
     return tr.failures;
 }
 
-// Branch: LAUNCH + ACTIVE + APPLICATION_TYPE_INTERACTIVE → launchType="LAUNCH_INTERACTIVE"
 uint32_t Test_AM_TelOnStateChangeLaunchInteractive()
 {
     L0Test::TestResult tr;
@@ -323,12 +300,11 @@ uint32_t Test_AM_TelOnStateChangeLaunchInteractive()
     AppIM::getInstance().setPackageInfoType("app-launch-interactive", AppType::APPLICATION_TYPE_INTERACTIVE);
     auto& tel = AppTel::getInstance();
     tel.reportTelemetryDataOnStateChange("app-launch-interactive", LcState::ACTIVE);
-    L0Test::ExpectTrue(tr, true, "reportTelemetryDataOnStateChange LAUNCH INTERACTIVE covers launchType ternary true branch");
+    L0Test::ExpectTrue(tr, true, "reportTelemetryDataOnStateChange LAUNCH INTERACTIVE covers launchType ternary");
     AppIM::getInstance().clear();
     return tr.failures;
 }
 
-// Branch: PRELOAD + PAUSED + APPLICATION_TYPE_INTERACTIVE → launchType="PRELOAD_INTERACTIVE"
 uint32_t Test_AM_TelOnStateChangePreloadInteractive()
 {
     L0Test::TestResult tr;
@@ -337,7 +313,7 @@ uint32_t Test_AM_TelOnStateChangePreloadInteractive()
     AppIM::getInstance().setPackageInfoType("app-preload-interactive", AppType::APPLICATION_TYPE_INTERACTIVE);
     auto& tel = AppTel::getInstance();
     tel.reportTelemetryDataOnStateChange("app-preload-interactive", LcState::PAUSED);
-    L0Test::ExpectTrue(tr, true, "reportTelemetryDataOnStateChange PRELOAD INTERACTIVE covers launchType ternary true branch");
+    L0Test::ExpectTrue(tr, true, "reportTelemetryDataOnStateChange PRELOAD INTERACTIVE covers launchType ternary");
     AppIM::getInstance().clear();
     return tr.failures;
 }
@@ -346,7 +322,6 @@ uint32_t Test_AM_TelOnStateChangePreloadInteractive()
 // reportTelemetryErrorData branch coverage
 // ============================================================
 
-// Branch: PRELOAD → LAUNCH_ERROR marker → record+publish
 uint32_t Test_AM_TelErrorDataPreload()
 {
     L0Test::TestResult tr;
@@ -358,7 +333,6 @@ uint32_t Test_AM_TelErrorDataPreload()
     return tr.failures;
 }
 
-// Branch: CLOSE → CLOSE_ERROR marker
 uint32_t Test_AM_TelErrorDataClose()
 {
     L0Test::TestResult tr;
@@ -370,7 +344,6 @@ uint32_t Test_AM_TelErrorDataClose()
     return tr.failures;
 }
 
-// Branch: TERMINATE → CLOSE_ERROR marker
 uint32_t Test_AM_TelErrorDataTerminate()
 {
     L0Test::TestResult tr;
@@ -382,7 +355,6 @@ uint32_t Test_AM_TelErrorDataTerminate()
     return tr.failures;
 }
 
-// Branch: KILL → CLOSE_ERROR marker
 uint32_t Test_AM_TelErrorDataKill()
 {
     L0Test::TestResult tr;
@@ -394,7 +366,6 @@ uint32_t Test_AM_TelErrorDataKill()
     return tr.failures;
 }
 
-// Branch: APP_ACTION_NONE → default LOGERR, markerName empty → if(!markerName.empty()) false
 uint32_t Test_AM_TelErrorDataDefault()
 {
     L0Test::TestResult tr;
@@ -410,7 +381,6 @@ uint32_t Test_AM_TelErrorDataDefault()
 // recordLaunchTime branch coverage
 // ============================================================
 
-// Branch: ensureTelemetryClient succeeds → builds JSON → record
 uint32_t Test_AM_TelRecordLaunchTime()
 {
     L0Test::TestResult tr;
