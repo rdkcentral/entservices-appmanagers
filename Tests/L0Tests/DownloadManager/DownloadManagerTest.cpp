@@ -45,6 +45,7 @@ extern uint32_t Test_Shell_InformationReturnsEmpty();
 extern uint32_t Test_Shell_InitializeDeinitialize_NoCrash();
 extern uint32_t Test_Shell_DeinitializeUninitialized_NoCrash();
 extern uint32_t Test_Shell_NotificationHandlerOnAppDownloadStatus();
+extern uint32_t Test_Shell_DeinitializeWithExtraImplReference();
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DownloadManager_ImplementationTests.cpp  (Implementation tests)
@@ -94,6 +95,7 @@ extern uint32_t Test_Impl_DeleteInProgressFileReturnsError();
 extern uint32_t Test_Impl_PickDownloadJobRegularQueueUsed();
 extern uint32_t Test_Impl_NotifyStatusIncludesFailReason();
 extern uint32_t Test_Impl_CancelWithActiveDownloadMatchId();
+extern uint32_t Test_Impl_DownloaderRoutinePriorityQueuePath();
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DownloadManager_HttpClientTests.cpp  (HttpClient tests)
@@ -156,6 +158,7 @@ int main()
     RUN_TEST(Test_Shell_InitializeDeinitialize_NoCrash);
     RUN_TEST(Test_Shell_DeinitializeUninitialized_NoCrash);
     RUN_TEST(Test_Shell_NotificationHandlerOnAppDownloadStatus);
+    RUN_TEST(Test_Shell_DeinitializeWithExtraImplReference);
 
     // ── Implementation tests (DownloadManagerImplementation.cpp / .h) ───────
     std::cout << "\n-- Implementation Register/Unregister --" << std::endl;
@@ -218,6 +221,7 @@ int main()
     RUN_TEST(Test_Impl_PickDownloadJobRegularQueueUsed);
     RUN_TEST(Test_Impl_NotifyStatusIncludesFailReason);
     RUN_TEST(Test_Impl_CancelWithActiveDownloadMatchId);
+    RUN_TEST(Test_Impl_DownloaderRoutinePriorityQueuePath);
 
     // ── HTTP client tests (DownloadManagerHttpClient.cpp / .h) ──────────────
     std::cout << "\n-- HttpClient --" << std::endl;

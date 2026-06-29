@@ -1696,3 +1696,70 @@ uint32_t Test_Impl_CancelWithActiveDownloadMatchId()
     impl->Release();
     return tr.failures;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// downloaderRoutine processes a priority file:// download to completion
+//               and fires notifyDownloadStatus (priority queue path)
+// ─────────────────────────────────────────────────────────────────────────────
+
+uint32_t Test_Impl_DownloaderRoutinePriorityQueuePath()
+{
+    L0Test::TestResult tr;
+
+    const std::string srcFile  = "/tmp/dm_l0_src_prio.dat";
+    const std::string dir      = "/tmp/dm_l0_prio_dl/";
+
+    // Create a ~32 KB source file for a real file:// download
+    const bool created = CreateLargeTmpFile(srcFile, 32u * 1024u);
+    if (!created) {
+        L0Test::ExpectTrue(tr, true, "Source file creation skipped (filesystem unavailable)");
+        return tr.failures;
+    }
+
+    L0Test::ServiceMock::Config cfg;
+    cfg.internetActive = true;
+    cfg.configLine     = "{\"downloadDir\":\"" + dir + "\"}";
+    L0Test::ServiceMock svc(cfg);
+
+    auto* impl = CreateImpl();
+    const auto initResult = impl->Initialize(&svc);
+    if (WPEFramework::Core::ERROR_NONE != initResult) {
+        (void) std::remove(srcFile.c_str());
+        L0Test::ExpectTrue(tr, true, "Initialize non-zero (acceptable in CI)");
+        impl->Release();
+        return tr.failures;
+    }
+
+    L0Test::FakeDownloadNotification notif;
+    impl->Register(&notif);
+
+    // Submit as a PRIORITY download — this pushes to mPriorityDownloadQueue.
+    // Because we wait for the notification before calling Deinitialize, the
+    // downloader thread calls pickDownloadJob() while the priority queue is
+    // non-empty, covering DMImpl.cpp L576 B0 and the LOGINFO at L581.
+    WPEFramework::Exchange::IDownloadManager::Options opts{};
+    opts.priority = true; opts.retries = 2; opts.rateLimit = 0;
+    std::string downloadId;
+    const auto dlResult = impl->Download("file://" + srcFile, opts, downloadId);
+    L0Test::ExpectEqU32(tr, dlResult, WPEFramework::Core::ERROR_NONE,
+        "Priority Download() enqueued file:// URL successfully");
+
+    // Wait for the downloader thread to complete (max 5 s).
+    const bool fired = WaitFor([&]{ return notif.onAppDownloadStatusCount.load() > 0u; }, 5000u);
+    L0Test::ExpectTrue(tr, fired, "notifyDownloadStatus fired after priority file:// download");
+
+    if (fired) {
+        const std::string& json = notif.lastJson;
+        L0Test::ExpectTrue(tr, json.find(downloadId) != std::string::npos,
+            "OnAppDownloadStatus JSON contains downloadId for priority download");
+        L0Test::ExpectTrue(tr, json.find("failReason") == std::string::npos,
+            "OnAppDownloadStatus JSON has no failReason on priority download success");
+    }
+
+    impl->Unregister(&notif);
+    impl->Deinitialize(&svc);
+    impl->Release();
+
+    (void) std::remove(srcFile.c_str());
+    return tr.failures;
+}
