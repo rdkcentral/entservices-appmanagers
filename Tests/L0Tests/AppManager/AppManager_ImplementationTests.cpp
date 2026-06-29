@@ -3200,3 +3200,287 @@ uint32_t Test_AM_RegisterNotificationAlreadyRegistered()
     notif->Release();
     return fixture.tr.failures;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// packageLock: Lock() returns ERROR_NONE but leaves unpackedPath empty →
+// createOrUpdatePackageInfoByAppId returns false → L764 Branch 0 (!result) taken
+// → status set to ERROR_GENERAL.
+// ─────────────────────────────────────────────────────────────────────────────
+uint32_t Test_AM_PackageLockCreateOrUpdateFails()
+{
+    L0Test::TestResult tr;
+
+    auto* installer = new L0Test::FakePackageInstaller();
+    WPEFramework::Exchange::IPackageInstaller::Package pkg;
+    pkg.packageId = "app.coupdatefail.test";
+    pkg.version   = "3.0.0";
+    pkg.state     = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
+    installer->installedPackages.push_back(pkg);
+
+    auto* handler = new L0Test::FakePackageHandler();
+    // Lock returns ERROR_NONE but does NOT set unpackedPath (stays "").
+    // createOrUpdatePackageInfoByAppId checks unpackedPath.empty() → returns false.
+    handler->lockHandler = [](const std::string&,
+        const std::string&,
+        const WPEFramework::Exchange::IPackageHandler::LockReason&,
+        uint32_t& lockId,
+        std::string& /*unpackedPath*/,
+        WPEFramework::Exchange::RuntimeConfig&,
+        WPEFramework::Exchange::IPackageHandler::ILockIterator*&) -> WPEFramework::Core::hresult {
+        lockId = 42;
+        // unpackedPath intentionally left empty → createOrUpdatePackageInfoByAppId returns false
+        return WPEFramework::Core::ERROR_NONE;
+    };
+
+    L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
+    delete static_cast<L0Test::FakePackageInstaller*>(cfg.installer);
+    cfg.installer = installer;
+    delete static_cast<L0Test::FakePackageHandler*>(cfg.packageHandler);
+    cfg.packageHandler = handler;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+
+    WPEFramework::Plugin::AppManagerImplementation::PackageInfo packageData;
+    const auto status = impl->packageLock(
+        "app.coupdatefail.test", packageData,
+        WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH);
+
+    L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_GENERAL,
+        "packageLock() returns ERROR_GENERAL when Lock() succeeds but unpackedPath empty (L764 Branch 0)");
+
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// packageLock: mPackageManagerHandlerObject is null but the installed package has
+// a non-empty version ("1.5.0") → ternary at L781 Branch 1 (version NOT empty)
+// selects ERROR_INTERNAL rather than ERROR_PACKAGE_INVALID.
+// ─────────────────────────────────────────────────────────────────────────────
+uint32_t Test_AM_PackageLockNullHandlerNonEmptyVersion()
+{
+    L0Test::TestResult tr;
+
+    auto* installer = new L0Test::FakePackageInstaller();
+    WPEFramework::Exchange::IPackageInstaller::Package pkg;
+    pkg.packageId = "app.nullhandler.version";
+    pkg.version   = "1.5.0";    // non-empty version
+    pkg.state     = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
+    installer->installedPackages.push_back(pkg);
+
+    L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
+    delete static_cast<L0Test::FakePackageInstaller*>(cfg.installer);
+    cfg.installer = installer;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+
+    // Null out the handler: (nullptr != mPackageManagerHandlerObject) = false at L753.
+    // Version "1.5.0" is NOT empty → ternary at L781 selects ERROR_INTERNAL (Branch 1).
+    auto* savedHandler = impl->mPackageManagerHandlerObject;
+    impl->mPackageManagerHandlerObject = nullptr;
+
+    WPEFramework::Plugin::AppManagerImplementation::PackageInfo packageData;
+    const auto status = impl->packageLock(
+        "app.nullhandler.version", packageData,
+        WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH);
+
+    L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_GENERAL,
+        "packageLock() ERROR_GENERAL when handler null with non-empty version (L781 Branch 1: ERROR_INTERNAL path)");
+
+    // Restore before Release to avoid ASSERT in releasePackageManagerObject().
+    impl->mPackageManagerHandlerObject = savedHandler;
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// packageLock: mLifecycleInterfaceConnector is null → isAppLoaded is never called,
+// status stays ERROR_GENERAL, outer else at L816 runs. Ternary at L818 Branch 0
+// taken: (nullptr == mLifecycleInterfaceConnector) → "lifecycle connector missing".
+// ─────────────────────────────────────────────────────────────────────────────
+uint32_t Test_AM_PackageLockNullLifecycleConnector()
+{
+    L0Test::TestResult tr;
+
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+
+    // Null out LIC: the guard at L725 is skipped, status stays ERROR_GENERAL.
+    // The else at L816 is entered; ternary at L818: LIC==nullptr → Branch 0 taken.
+    auto* savedLIC = impl->mLifecycleInterfaceConnector;
+    impl->mLifecycleInterfaceConnector = nullptr;
+
+    WPEFramework::Plugin::AppManagerImplementation::PackageInfo packageData;
+    const auto status = impl->packageLock(
+        "app.nulllic.packlock", packageData,
+        WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH);
+
+    L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_GENERAL,
+        "packageLock() returns ERROR_GENERAL when LIC is null (L818 Branch 0: lifecycle connector missing)");
+
+    // Restore before Release so the LIC destructor runs correctly.
+    impl->mLifecycleInterfaceConnector = savedLIC;
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LIC::launch() where isAppLoaded returns loaded=true but the app is in ACTIVE
+// state (not SUSPENDED) → combined condition at L196-199 evaluates false for
+// Branch 3 (APP_STATE_SUSPENDED != appInfoSnap.getAppNewState()) → else/spawn path.
+// ─────────────────────────────────────────────────────────────────────────────
+uint32_t Test_AM_LICLaunchLoadedNotSuspended()
+{
+    L0Test::TestResult tr;
+
+    auto* lm = new L0Test::FakeLifecycleManager();
+    lm->isAppLoadedHandler = [](const std::string&, bool& loaded) -> WPEFramework::Core::hresult {
+        loaded = true;
+        return WPEFramework::Core::ERROR_NONE;
+    };
+
+    L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
+    delete static_cast<L0Test::FakeLifecycleManager*>(cfg.lifecycleManager);
+    cfg.lifecycleManager = lm;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+
+    // App in AppInfoManager with ACTIVE state (NOT SUSPENDED) and a known instanceId.
+    WPEFramework::Plugin::AppInfo info;
+    info.setAppInstanceId("inst-loaded-active");
+    info.setAppNewState(WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE);
+    WPEFramework::Plugin::AppInfoManager::getInstance().upsert(
+        "app.loaded.active",
+        [&](WPEFramework::Plugin::AppInfo& a) { a = info; });
+
+    // Call launch(): loaded=true, status=ERROR_NONE, appInMap=true, state=ACTIVE.
+    // Condition (APP_STATE_SUSPENDED == appInfoSnap.getAppNewState()) is false
+    // → L199 Branch 3 not previously taken → now covered (else/spawn path).
+    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
+    impl->mLifecycleInterfaceConnector->launch(
+        "app.loaded.active", "intent-test", "args", runtimeConfig);
+
+    L0Test::ExpectTrue(tr, true,
+        "LIC::launch() with loaded=true but ACTIVE (not SUSPENDED) takes the else/spawn path (LIC L199 Branch 3)");
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// OnAppLifecycleStateChanged with SUSPENDED newState: mapAppLifecycleState
+// returns APP_STATE_SUSPENDED. In the shouldNotify expression (L785-790)
+// the (APP_STATE_SUSPENDED == newAppState) sub-condition at L788 Branch 1 is taken.
+// ─────────────────────────────────────────────────────────────────────────────
+uint32_t Test_AM_LICOnAppLifecycleStateChangedSuspended()
+{
+    L0Test::TestResult tr;
+
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+
+    WPEFramework::Plugin::AppInfo info;
+    info.setAppInstanceId("inst-suspended-test");
+    info.setAppNewState(WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE);
+    WPEFramework::Plugin::AppInfoManager::getInstance().upsert(
+        "app.suspended.test",
+        [&](WPEFramework::Plugin::AppInfo& a) { a = info; });
+
+    auto* notif = new RefNotification();
+    impl->Register(notif);
+
+    // Fire ACTIVE → SUSPENDED: newAppState = APP_STATE_SUSPENDED.
+    // shouldNotify evaluates (APP_STATE_SUSPENDED == newAppState) → true (Branch 1 at L788).
+    impl->mLifecycleInterfaceConnector->OnAppLifecycleStateChanged(
+        "app.suspended.test", "inst-suspended-test",
+        WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE,
+        WPEFramework::Exchange::ILifecycleManager::LifecycleState::SUSPENDED,
+        "");
+
+    L0Test::ExpectTrue(tr, true,
+        "OnAppLifecycleStateChanged with SUSPENDED newState covers LIC L788 Branch 1");
+
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
+    while (std::chrono::steady_clock::now() < deadline) {
+        if (notif->lifecycle >= 1) break;
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    impl->Unregister(notif);
+    notif->Release();
+
+    impl->Release();
+    const auto cleanDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
+    while (std::chrono::steady_clock::now() < cleanDeadline &&
+           WPEFramework::Plugin::AppManagerImplementation::getInstance() != nullptr) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// OnAppLifecycleStateChanged with an unmapped/invalid newState value: the default
+// case in mapAppLifecycleState returns APP_STATE_UNKNOWN. L735 Branch 0 is taken:
+// (APP_STATE_UNKNOWN == newAppState) → true → early return, no notification fired.
+// ─────────────────────────────────────────────────────────────────────────────
+uint32_t Test_AM_LICOnAppLifecycleStateChangedUnknownNewState()
+{
+    L0Test::TestResult tr;
+
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+
+    WPEFramework::Plugin::AppInfo info;
+    info.setAppInstanceId("inst-unknown-state");
+    WPEFramework::Plugin::AppInfoManager::getInstance().upsert(
+        "app.unknown.state",
+        [&](WPEFramework::Plugin::AppInfo& a) { a = info; });
+
+    auto* notif = new RefNotification();
+    impl->Register(notif);
+
+    // Pass out-of-range LifecycleState: mapAppLifecycleState hits default → APP_STATE_UNKNOWN.
+    // L735 Branch 0: (APP_STATE_UNKNOWN == newAppState) = true → LOGINFO + early return.
+    const auto unknownState =
+        static_cast<WPEFramework::Exchange::ILifecycleManager::LifecycleState>(99);
+    impl->mLifecycleInterfaceConnector->OnAppLifecycleStateChanged(
+        "app.unknown.state", "inst-unknown-state",
+        WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE,
+        unknownState,
+        "");
+
+    L0Test::ExpectTrue(tr, true,
+        "OnAppLifecycleStateChanged with unknown newState hits L735 Branch 0 (early return)");
+
+    // Allow any deferred work to settle; no lifecycle notification should be fired.
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    L0Test::ExpectEqU32(tr, notif->lifecycle, 0U,
+        "No lifecycle notification fired for unknown newState (early return path)");
+
+    impl->Unregister(notif);
+    notif->Release();
+
+    impl->Release();
+    const auto cleanDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
+    while (std::chrono::steady_clock::now() < cleanDeadline &&
+           WPEFramework::Plugin::AppManagerImplementation::getInstance() != nullptr) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}

@@ -161,6 +161,12 @@ extern uint32_t Test_AM_PackageUnLockNullPackageHandler();
 extern uint32_t Test_AM_CloseAppSuccessPath();
 extern uint32_t Test_AM_GetAppPropertyNullStoreRecreates();
 extern uint32_t Test_AM_RegisterNotificationAlreadyRegistered();
+extern uint32_t Test_AM_PackageLockCreateOrUpdateFails();
+extern uint32_t Test_AM_PackageLockNullHandlerNonEmptyVersion();
+extern uint32_t Test_AM_PackageLockNullLifecycleConnector();
+extern uint32_t Test_AM_LICLaunchLoadedNotSuspended();
+extern uint32_t Test_AM_LICOnAppLifecycleStateChangedSuspended();
+extern uint32_t Test_AM_LICOnAppLifecycleStateChangedUnknownNewState();
 
 int main()
 {
@@ -310,6 +316,12 @@ int main()
         { "AM_CloseAppSuccessPath", Test_AM_CloseAppSuccessPath },
         { "AM_GetAppPropertyNullStoreRecreates", Test_AM_GetAppPropertyNullStoreRecreates },
         { "AM_RegisterNotificationAlreadyRegistered", Test_AM_RegisterNotificationAlreadyRegistered },
+        { "AM_PackageLockCreateOrUpdateFails", Test_AM_PackageLockCreateOrUpdateFails },
+        { "AM_PackageLockNullHandlerNonEmptyVersion", Test_AM_PackageLockNullHandlerNonEmptyVersion },
+        { "AM_PackageLockNullLifecycleConnector", Test_AM_PackageLockNullLifecycleConnector },
+        { "AM_LICLaunchLoadedNotSuspended", Test_AM_LICLaunchLoadedNotSuspended },
+        { "AM_LICOnAppLifecycleStateChangedSuspended", Test_AM_LICOnAppLifecycleStateChangedSuspended },
+        { "AM_LICOnAppLifecycleStateChangedUnknownNewState", Test_AM_LICOnAppLifecycleStateChangedUnknownNewState },
     };
 
     uint32_t totalFailures = 0;
