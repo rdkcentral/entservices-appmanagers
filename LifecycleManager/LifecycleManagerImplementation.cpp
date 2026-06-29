@@ -664,22 +664,21 @@ namespace WPEFramework
                         std::string terminateError="";
                         std::string updateError="";
                         bool terminated = false;
-                        bool stateUpdated = false;
                         context->setRequestType(REQUEST_TYPE_TERMINATE);
                         context->setTargetLifecycleState(Exchange::ILifecycleManager::LifecycleState::TERMINATING);
                         context->setApplicationKillParams(false);
                         context->resetPendingStates();
+                        context->setTerminated(true);
 
                         terminated = RequestHandler::getInstance()->terminate(context.get(), false, terminateError);
-                        stateUpdated = RequestHandler::getInstance()->updateState(context.get(), context->getTargetLifecycleState(), updateError);
-                        if(terminated && stateUpdated)
+                        if(terminated)
                         {
                             LOGINFO("Successfully handled unexpected container termination for app[%s] ", appInstanceId.c_str());
                             LOGINFO("Successfully triggered unload for app[%s]", appInstanceId.c_str());
                         }
                         else
                         {
-                            LOGERR("Failed to handle unexpected termination for app[%s] terminateSuccess[%d] updateStateSuccess[%d] terminateError[%s] updateError[%s]", appInstanceId.c_str(), terminated, stateUpdated, terminateError.c_str(), updateError.c_str());
+                            LOGERR("Failed to handle unexpected termination for app[%s] terminateSuccess[%d] terminateError[%s] updateError[%s]", appInstanceId.c_str(), terminated, terminateError.c_str(), updateError.c_str());
                         }
                     }
                     else

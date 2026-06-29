@@ -188,6 +188,12 @@ namespace WPEFramework
             if (nullptr != runtimeManagerHandler)
             {
                 ApplicationContext* context = getContext();
+                if (true == context->getTerminated())
+                {
+                    printf("Already terminated application. ignore terminate call \n");
+                    fflush(stdout);
+                    return true;
+                }
                 ApplicationKillParams& killParams = context->getApplicationKillParams();
                 if (killParams.mForce)
                 {
