@@ -24,11 +24,14 @@
 #include <interfaces/json/JLifecycleManagerState.h>
 #include <semaphore.h>
 #include "LifecycleManagerTelemetryReporting.h"
+#include "UtilsAppManagerTelemetry.h"
 
 namespace WPEFramework
 {
     namespace Plugin
     {
+        RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::LifecycleManagerTelemetryReporting, "lifecycleManagerBootstrapTime")
+
         SERVICE_REGISTRATION(LifecycleManagerImplementation, 1, 0);
 
         LifecycleManagerImplementation::LifecycleManagerImplementation(): mLifecycleManagerNotification(), mLifecycleManagerStateNotification(), mLoadedApplications(), mPendingRespawns(), mService(nullptr)
@@ -45,7 +48,7 @@ namespace WPEFramework
         bool LifecycleManagerImplementation::initialize(PluginHost::IShell* service)
         {
             bool ret = RequestHandler::getInstance()->initialize(service, this);
-            LifecycleManagerTelemetryReporting::getInstance().initialize(service);
+            RDKAM_TELEMETRY_INIT(service);
 	    return ret;
         }
 

@@ -10,6 +10,64 @@
 #include "ServiceMock.h"
 #include "common/L0Expect.hpp"
 
+namespace {
+class CapturingTelemetryMetrics final : public WPEFramework::Exchange::ITelemetryMetrics {
+public:
+    CapturingTelemetryMetrics()
+        : _refCount(1)
+        , recordCalls(0)
+        , publishCalls(0)
+    {
+    }
+
+    void AddRef() const override
+    {
+        _refCount.fetch_add(1, std::memory_order_relaxed);
+    }
+
+    uint32_t Release() const override
+    {
+        const uint32_t remaining = _refCount.fetch_sub(1, std::memory_order_acq_rel) - 1;
+        return (0U == remaining) ? WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED : WPEFramework::Core::ERROR_NONE;
+    }
+
+    void* QueryInterface(const uint32_t id) override
+    {
+        if (id == WPEFramework::Exchange::ITelemetryMetrics::ID) {
+            AddRef();
+            return static_cast<WPEFramework::Exchange::ITelemetryMetrics*>(this);
+        }
+        return nullptr;
+    }
+
+    WPEFramework::Core::hresult Record(const std::string& id, const std::string& metrics, const std::string& name) override
+    {
+        lastId = id;
+        lastMetrics = metrics;
+        lastName = name;
+        recordCalls++;
+        return WPEFramework::Core::ERROR_NONE;
+    }
+
+    WPEFramework::Core::hresult Publish(const std::string& id, const std::string& name) override
+    {
+        lastPublishId = id;
+        lastPublishName = name;
+        publishCalls++;
+        return WPEFramework::Core::ERROR_NONE;
+    }
+
+    mutable std::atomic<uint32_t> _refCount;
+    std::atomic<uint32_t> recordCalls;
+    std::atomic<uint32_t> publishCalls;
+    std::string lastId;
+    std::string lastName;
+    std::string lastMetrics;
+    std::string lastPublishId;
+    std::string lastPublishName;
+};
+} // namespace
+
 uint32_t Test_PM_Component_HttpClient_InvalidOutputPathReturnsDiskError()
 {
     L0Test::TestResult tr;
@@ -81,6 +139,46 @@ uint32_t Test_PM_Component_TelemetryReporting_Markers()
     // For launch/close publish=false. For install/uninstall and error markers publish=true.
     L0Test::ExpectTrue(tr, telemetry.recordCalls.load() >= 6, "Telemetry record is invoked for known markers");
     L0Test::ExpectTrue(tr, telemetry.publishCalls.load() >= 4, "Telemetry publish is invoked for publish-enabled markers");
+
+    reporting.reset();
+    return tr.failures;
+}
+
+uint32_t Test_PM_Component_TelemetryReporting_PackageCacheMarkerPayload()
+{
+    L0Test::TestResult tr;
+
+    CapturingTelemetryMetrics telemetry;
+    L0Test::FakeStorageManager storage;
+    L0Test::ServiceMock::FakeSubSystem subSystem;
+    L0Test::ServiceMock service(L0Test::ServiceMock::Config(&storage, &subSystem, &telemetry));
+
+    auto& reporting = WPEFramework::Plugin::PackageManagerTelemetryReporting::getInstance();
+    reporting.initialize(&service);
+
+    const uint64_t requestTime = static_cast<uint64_t>(reporting.getCurrentTimestampMs() - 10);
+    reporting.recordAndPublishTelemetryData(
+        TELEMETRY_MARKER_PACKAGE_CACHE_INIT_TIME,
+        "CacheInitTimeInternal",
+        requestTime,
+        0,
+        "",
+        "",
+        3,
+        "sqlite");
+
+    L0Test::ExpectEqU32(tr, telemetry.recordCalls.load(), 1U, "package cache marker should record exactly once");
+    L0Test::ExpectEqU32(tr, telemetry.publishCalls.load(), 1U, "package cache marker should publish exactly once");
+    L0Test::ExpectTrue(tr, telemetry.lastName == TELEMETRY_MARKER_PACKAGE_CACHE_INIT_TIME,
+        "record marker name should match package cache marker");
+    L0Test::ExpectTrue(tr, telemetry.lastPublishName == TELEMETRY_MARKER_PACKAGE_CACHE_INIT_TIME,
+        "publish marker name should match package cache marker");
+    L0Test::ExpectTrue(tr, telemetry.lastMetrics.find("\"packageManagerCacheInitTime\"") != std::string::npos,
+        "payload should include packageManagerCacheInitTime key");
+    L0Test::ExpectTrue(tr, telemetry.lastMetrics.find("\"count\":3") != std::string::npos,
+        "payload should include numeric count key");
+    L0Test::ExpectTrue(tr, telemetry.lastMetrics.find("\"backend\":\"sqlite\"") != std::string::npos,
+        "payload should include backend key");
 
     reporting.reset();
     return tr.failures;

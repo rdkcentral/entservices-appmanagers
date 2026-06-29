@@ -19,6 +19,9 @@
 
 #pragma once
 
+#include <chrono>
+#include <string>
+
 #include "Module.h"
 #include "TelemetryMarkers.h"
 #include "UtilsTelemetryMetrics.h"
@@ -29,9 +32,33 @@ namespace Utils {
 
 class TelemetryReportingBase {
 public:
+    class ScopedBootstrapTimer {
+    public:
+        ScopedBootstrapTimer(TelemetryReportingBase* telemetry,
+            PluginHost::IShell* service,
+            const std::string& fieldName = "pluginBootstrapTime")
+            : mTelemetry(telemetry)
+            , mService(service)
+            , mFieldName(fieldName)
+            , mStartTime(std::chrono::steady_clock::now())
+        {
+        }
+
+        ~ScopedBootstrapTimer();
+
+    private:
+        TelemetryReportingBase* mTelemetry;
+        PluginHost::IShell* mService;
+        std::string mFieldName;
+        std::chrono::steady_clock::time_point mStartTime;
+    };
+
     TelemetryReportingBase(const TelemetryReportingBase&) = delete;
     TelemetryReportingBase& operator=(const TelemetryReportingBase&) = delete;
     time_t getCurrentTimestampMs() const;
+    Core::hresult recordBootstrapTelemetry(PluginHost::IShell* service,
+        const int durationMs,
+        const std::string& fieldName);
 
 protected:
     TelemetryReportingBase();

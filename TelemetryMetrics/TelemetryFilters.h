@@ -42,4 +42,6 @@ static const std::unordered_map<std::string, std::unordered_set<std::string>> ma
     {TELEMETRY_MARKER_HIBERNATE_TIME, {"lifecycleManagerSetTargetStateTime", "runtimeManagerHibernateTime", "appId", "appInstanceId", "markerName"}},
     {TELEMETRY_MARKER_WAKE_TIME, {"lifecycleManagerSetTargetStateTime", "runtimeManagerWakeTime", "appId", "appInstanceId", "markerName"}},
     {TELEMETRY_MARKER_APP_CRASHED, {"crashReason", "appId", "appInstanceId", "markerName"}},
+    {TELEMETRY_MARKER_BOOTSTRAP_TIME, {"appManagerBootstrapTime", "appStorageManagerBootstrapTime", "lifecycleManagerBootstrapTime", "runtimeManagerBootstrapTime", "packageManagerBootstrapTime", "windowManagerBootstrapTime", "downloadManagerBootstrapTime", "markerName"}},
+    {TELEMETRY_MARKER_PACKAGE_CACHE_INIT_TIME, {"packageManagerCacheInitTime", "count", "backend", "markerName"}},
 };
