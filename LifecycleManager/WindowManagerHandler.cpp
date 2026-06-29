@@ -46,7 +46,7 @@ bool WindowManagerHandler::initialize(PluginHost::IShell* service, IEventHandler
         Core::hresult registerResult = mWindowManager->Register(&mWindowManagerNotification);
         if (Core::ERROR_NONE != registerResult)
         {
-            LOGINFO("Unable to register with WindowManager callsign=org.rdk.WindowManager result=%d", registerResult);
+            LOGWARN("Unable to register with WindowManager callsign=org.rdk.RDKWindowManager result=%d", registerResult);
         }
     }
     else

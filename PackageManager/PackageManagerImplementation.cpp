@@ -247,8 +247,8 @@ namespace Plugin {
         } else {
             mDownloadQueue.push_back(di);
         }
-        LOGINFO("PM: Queued download request: id=%s url=%s priority=%d queueDepth=%zu",
-                di->GetId().c_str(), url.c_str(), options.priority, mDownloadQueue.size());
+        LOGINFO("PM: Queued download request: id=%s priority=%d queueDepth=%zu urlBytes=%zu",
+            di->GetId().c_str(), options.priority, mDownloadQueue.size(), url.size());
         cv.notify_one();
 
         downloadId.downloadId = di->GetId();

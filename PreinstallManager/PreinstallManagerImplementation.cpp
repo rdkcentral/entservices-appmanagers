@@ -327,9 +327,11 @@ namespace WPEFramework
         bool installError = false;
         int failedApps = 0;
         const int totalApps = preinstallPackages.size();
+        size_t pkgIndex = 0;
 
         for (auto &pkg : preinstallPackages)
         {
+            const size_t currentPkg = pkgIndex + 1;
             if ((pkg.packageId.empty() || pkg.version.empty() || pkg.fileLocator.empty()))
             {
                 LOGERR("Skipping invalid package with empty fields: %s", pkg.fileLocator.empty() ? "NULL" : pkg.fileLocator.c_str());
@@ -341,6 +343,7 @@ namespace WPEFramework
                 pkg.packageId = pkg.packageId.empty() ? pkg.fileLocator : pkg.packageId;
                 pkg.version = pkg.version.empty() ? "NULL" : pkg.version;
                 failedApps++;
+                ++pkgIndex;
                 continue;
             }
 
@@ -352,15 +355,17 @@ namespace WPEFramework
 
             if (installResult != Core::ERROR_NONE)
             {
-                LOGERR("Failed to install package [%zu/%d]: %s version=%s failReason=%s", pkgIndex + 1, totalApps, pkg.packageId.c_str(), pkg.version.c_str(), getFailReason(failReason).c_str());
+                LOGERR("Failed to install package [%zu/%d]: %s version=%s failReason=%s", currentPkg, totalApps, pkg.packageId.c_str(), pkg.version.c_str(), getFailReason(failReason).c_str());
                 installError = true;
                 failedApps++;
                 pkg.installStatus = "FAILED: reason " + getFailReason(failReason);
+                ++pkgIndex;
                 continue;
             }
 
-            LOGINFO("Successfully installed package [%zu/%d]: %s version=%s", pkgIndex + 1, totalApps, pkg.packageId.c_str(), pkg.version.c_str());
+            LOGINFO("Successfully installed package [%zu/%d]: %s version=%s", currentPkg, totalApps, pkg.packageId.c_str(), pkg.version.c_str());
             pkg.installStatus = "SUCCESS";
+            ++pkgIndex;
         }
 
         const auto installEnd = std::chrono::steady_clock::now();

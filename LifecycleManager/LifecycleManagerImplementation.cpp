@@ -177,7 +177,7 @@ namespace WPEFramework
                       }
                       break;
                  default:
-                     LOGWARN("Event[%u] not handled sourceId=%s handler=%s", event, sourceId.c_str(), handlerName.c_str());
+                     LOGWARN("Event[%u] not handled appId=%s appInstanceId=%s", event, appId.c_str(), appInstanceId.c_str());
                      break;
              }
         
@@ -228,7 +228,7 @@ namespace WPEFramework
                             }
                             else
                             {
-                                LOGERR("Unable to get runtime status for appInstanceId=%s status=%d", context->getAppInstanceId().c_str(), status);
+                                LOGWARN("Unable to get runtime status for appInstanceId=%s", context->getAppInstanceId().c_str());
                             }
                         }
                     }
@@ -329,7 +329,7 @@ namespace WPEFramework
                     context->setRequestType(REQUEST_TYPE_RESUME);
                 break;
                 default:
-                    LOGERR("Invalid targetLifecycleState=%d for appId=%s currentState=%s", static_cast<int>(targetLifecycleState), context->getAppId().c_str(), mStateStrings[context->getLifecycleState()].c_str());
+                    LOGERR("Invalid targetLifecycleState=%d for appId=%s currentState=%d", static_cast<int>(targetLifecycleState), context->getAppId().c_str(), static_cast<int>(context->getCurrentLifecycleState()));
                 break;
             }
             string errorReason("");

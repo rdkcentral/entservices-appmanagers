@@ -48,7 +48,7 @@ namespace Plugin {
     {
         if (id.empty() || name.empty())
         {
-            LOGERR("id or markerName is empty");
+            LOGERR("id or name is empty");
             return "";
         }
 

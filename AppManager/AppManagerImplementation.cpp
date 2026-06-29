@@ -145,7 +145,12 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                         else if (auto appRequestParam = std::static_pointer_cast<AppLaunchRequestParam>(request->mRequestParam))
                         {
                                 string appId = appRequestParam->appId;
-                                LOGINFO("Dequeued request: action=%d appId=%s queueDepth=%zu", static_cast<int>(action), appId.c_str(), mAppRequestList.size());
+                                size_t queueDepth = 0;
+                                {
+                                    std::lock_guard<std::mutex> qlock(mAppManagerLock);
+                                    queueDepth = mAppRequestList.size();
+                                }
+                                LOGINFO("Dequeued request: action=%d appId=%s queueDepth=%zu", static_cast<int>(action), appId.c_str(), queueDepth);
                                 // Capture timestamp before packageLock to include packageManager lock time
                                 AppManagerTelemetryReporting& appManagerTelemetryReporting = AppManagerTelemetryReporting::getInstance();
                                 time_t actualStartTime = appManagerTelemetryReporting.getCurrentTimestampMs();

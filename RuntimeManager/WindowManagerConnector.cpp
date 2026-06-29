@@ -57,7 +57,7 @@ bool WindowManagerConnector::initializePlugin(PluginHost::IShell* service, class
         Core::hresult registerResult = mWindowManager->Register(&mWindowManagerNotification);
         if (Core::ERROR_NONE != registerResult)
         {
-            LOGINFO("Register with WindowManager failed: result=%d", registerResult);
+            LOGWARN("Register with WindowManager failed: result=%d", registerResult);
         }
     }
     return ret;
