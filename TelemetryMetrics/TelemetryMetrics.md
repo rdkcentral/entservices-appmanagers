@@ -1,207 +1,240 @@
-# TelemetryMetrics Module
+# TelemetryMetrics Plugin Documentation
 
-> Performance Metrics & Analytics Collection
+> Performance Metrics and Analytics Collection for RDK Infrastructure
 
-[← Back to Main](../README.md) | [← Previous: RDKWindowManager](../RDKWindowManager/RDKWindowManager.md)
+## 1. High-Level Purpose & Architecture
 
+### Role in ENT / RDK Infrastructure
 
----
+The **TelemetryMetrics** plugin provides a centralized service for recording and publishing application performance metrics and telemetry data. It collects metrics from various subsystems and publishes them to telemetry backends.
 
-## Purpose & Role
+### Responsibilities
 
-The **TelemetryMetrics** module provides telemetry data recording and publishing for performance metrics, operational analytics, and app lifecycle events.
+- **Metric Recording**: Store metrics with associated identifiers
+- **Metric Publishing**: Publish collected metrics to telemetry systems
+- **Data Aggregation**: Aggregate metrics by application and metric type
 
-### Core Responsibilities
+### Interacting Subsystems
 
-- **Metric Recording:** Record timestamped metrics
-- **Metric Publishing:** Publish metrics to backend
-- **Event Correlation:** Correlate metrics with app events
-- **Performance Tracking:** Track launch times, response times
-- **Bootstrap Tracking:** Track plugin Initialize/Configure duration via RAII timers
-
-### Clients
-
-| Module | Metrics Reported |
-|--------|------------------|
-| AppManager | Launch time, close time, errors |
-| LifecycleManager | State transition times |
-| PackageManager | Install/uninstall times |
-| AppStorageManager | Storage and bootstrap timings |
-| RuntimeManager | Runtime operation and bootstrap timings |
-| DownloadManager | Download and bootstrap timings |
-| RDKWindowManager | Display and bootstrap timings |
+| Subsystem | Interaction Type | Purpose |
+|-----------|-----------------|---------|
+| AppManager | COM-RPC (inbound) | Report app metrics |
+| LifecycleManager | COM-RPC (inbound) | Report lifecycle metrics |
+| RuntimeManager | COM-RPC (inbound) | Report container metrics |
+| Telemetry Backend | Outbound | Publish metrics |
 
 ---
 
-## Architecture
+## 2. Architectural Overview
 
 ```mermaid
 graph TB
-    subgraph "TelemetryMetrics Module"
-        TM[TelemetryMetrics<br/>Plugin]
-        TMI[TelemetryMetricsImplementation]
-        MR[Metrics Record<br/>(unordered_map)]
+    subgraph "TelemetryMetrics Plugin"
+        Shell[TelemetryMetrics<br/>Plugin Shell]
+        Impl[TelemetryMetricsImplementation<br/>Metric Storage]
+        Filter[TelemetryFilters<br/>Metric Filtering]
     end
 
-    subgraph "Clients"
+    subgraph "Metric Sources"
         AM[AppManager]
         LCM[LifecycleManager]
-        PM[PackageManager]
+        RTM[RuntimeManager]
     end
 
     subgraph "Backend"
-        TS[Telemetry Service]
-        Analytics[Analytics Platform]
+        TB[Telemetry Backend]
     end
 
-    AM -->|Record| TM
-    LCM -->|Record| TM
-    PM -->|Record| TM
-    TM --> TMI
-    TMI --> MR
-    TMI -->|Publish| TS
-    TS --> Analytics
+    AM --> Shell
+    LCM --> Shell
+    RTM --> Shell
+    Shell --> Impl
+    Impl --> Filter
+    Impl --> TB
 ```
 
 ---
 
-## Class Diagram
+## 3. Code Organization
 
-```mermaid
-classDiagram
-    class TelemetryMetricsImplementation {
-        -unordered_map<string, Json::Value> mMetricsRecord
-        -std::mutex mMetricsMutex
-        +Record(id, metrics, name) hresult
-        +Publish(id, name) hresult
-    }
-
-    class ITelemetryMetrics {
-        <<interface>>
-        +Record(id, metrics, name) hresult
-        +Publish(id, name) hresult
-    }
-
-    TelemetryMetricsImplementation ..|> ITelemetryMetrics
-```
-
-### API Reference (Summary)
-
-- `Record(id, metrics, name) -> hresult`  
-  - `id` (string, required): Identifier for the metric record (e.g., a unique event or metric ID).
-  - `metrics` (string, required): Metric payload or value(s) to be recorded (e.g., `"1234"` ms, `"true"`, `"ERROR_TIMEOUT"`).
-  - `name` (string, required): Logical name associated with the metric (for example, an app or feature name).
-- `Publish(id, name) -> hresult`  
-  - As defined by the TelemetryMetrics implementation; not modified by this document.
-
----
-
-## File Organization
+### Directory Structure
 
 ```
 TelemetryMetrics/
-├── TelemetryMetrics.cpp           Plugin wrapper
-├── TelemetryMetrics.h             Plugin class definition
-├── TelemetryMetricsImplementation.cpp Core implementation
-├── TelemetryMetricsImplementation.h   Implementation class
-├── Module.cpp/h                   Module registration
-├── CMakeLists.txt                 Build configuration
-└── TelemetryMetrics.config        Runtime configuration
+├── TelemetryMetrics.cpp              # Plugin shell
+├── TelemetryMetrics.h                # Shell header
+├── TelemetryMetricsImplementation.cpp # Core implementation
+├── TelemetryMetricsImplementation.h   # Implementation header
+├── TelemetryFilters.h                # Metric filtering
+├── Module.cpp                        # Plugin module
+├── Module.h                          # Module header
+├── CMakeLists.txt                    # Build configuration
+├── TelemetryMetrics.config           # Plugin configuration
+└── TelemetryMetrics.conf.in          # Configuration template
 ```
 
 ---
 
-## API Reference
+## 4. Class & Interface Documentation
 
-### ITelemetryMetrics Interface
+### Exchange::ITelemetryMetrics Interface
 
-| Method | Purpose |
-|--------|---------|
-| `Record(id, metrics, name)` | Record a metrics payload or value for a given id and metric name |
-| `Publish(id, name)` | Publish recorded metrics for the given id and metric name |
+```cpp
+interface ITelemetryMetrics {
+    hresult Record(const string& id, const string& metrics, const string& name);
+    hresult Publish(const string& id, const string& name);
+};
+```
+
+### TelemetryMetricsImplementation
+
+```cpp
+// From TelemetryMetricsImplementation.h
+class TelemetryMetricsImplementation : public Exchange::ITelemetryMetrics {
+public:
+    TelemetryMetricsImplementation();
+    ~TelemetryMetricsImplementation() override;
+
+    BEGIN_INTERFACE_MAP(TelemetryMetricsImplementation)
+    INTERFACE_ENTRY(Exchange::ITelemetryMetrics)
+    END_INTERFACE_MAP
+
+    Core::hresult Record(const string& id, const string& metrics, const string& name) override;
+    Core::hresult Publish(const string& id, const string& name) override;
+
+private:
+    std::unordered_map<std::string, Json::Value> mMetricsRecord;
+    std::mutex mMetricsMutex;
+};
+```
 
 ---
 
-## Metrics Types
+## 5. Internal Workflows
 
-### Application Lifecycle Metrics
-
-| Metric Name | Description | Source |
-|-------------|-------------|--------|
-| `OverallLaunchTime_split` | Total time from launch request to ACTIVE | AppManager |
-| `AppLaunchError_split` | Launch failure with error code | AppManager |
-| `AppCloseTime_split` | Time from close request to completion | AppManager |
-| `AppCrashed_split` | Application crash event | AppManager |
-| `StateTransitionTime` | Time for state transition | LifecycleManager |
-| `ENTS_INFO_RDKAMPluginBootstrapTime` | Plugin Initialize/Configure duration (RAII timer) | AppManager modules |
-
-### Package Metrics
-
-| Metric Name | Description |
-|-------------|-------------|
-| `PackageInstallTime` | Time to install package |
-| `PackageUninstallTime` | Time to uninstall package |
-| `PackageDownloadTime` | Time to download package |
-
----
-
-## Telemetry Flow
+### Metric Recording Flow
 
 ```mermaid
 sequenceDiagram
-    participant App as AppManager
+    participant Source as Metric Source
     participant TM as TelemetryMetrics
-    participant Backend as Telemetry Backend
+    participant Store as MetricsRecord
 
-    Note over App,Backend: App Launch Start
-    App->>App: Start Timer
-
-    Note over App,Backend: App Becomes ACTIVE
-    App->>App: Stop Timer
-    App->>TM: Record(appId, duration, "OverallLaunchTime_split")
-    TM->>TM: Buffer Metric
-
-    Note over App,Backend: Periodic Publish
-    TM->>Backend: Publish(id, name)
-    Backend-->>TM: ACK
-    TM->>TM: Clear Buffer
+    Source->>TM: Record(id, metrics, name)
+    TM->>TM: Lock mMetricsMutex
+    TM->>Store: Parse JSON metrics
+    TM->>Store: Store by id + name
+    TM->>TM: Unlock mutex
+    TM-->>Source: success
 ```
 
----
-
-## Metric Recording Flow
+### Metric Publishing Flow
 
 ```mermaid
-flowchart TD
-    A[Event Occurs] --> B{Telemetry Enabled?}
-    B -->|No| C[Skip]
-    B -->|Yes| D[Create Metric]
-    D --> E[Add Timestamp]
-    E --> F[Add to Buffer]
-    F --> G{Buffer Full?}
-    G -->|Yes| H[Auto Publish]
-    G -->|No| I[Wait]
-    H --> J[Clear Buffer]
+sequenceDiagram
+    participant Client
+    participant TM as TelemetryMetrics
+    participant Store as MetricsRecord
+    participant Backend as Telemetry Backend
+
+    Client->>TM: Publish(id, name)
+    TM->>Store: Retrieve metrics for id/name
+    Store-->>TM: Metrics JSON
+    TM->>Backend: Send telemetry data
+    Backend-->>TM: Acknowledgment
+    TM->>Store: Clear published metrics
+    TM-->>Client: success
 ```
 
 ---
 
-## AppManagerTelemetryReporting
+## 6. Telemetry Markers
 
-The `AppManagerTelemetryReporting` helper in **AppManager** is responsible for reporting app-related telemetry (launch/close timings, state changes, errors, etc.) into the TelemetryMetrics pipeline.
+### Common Telemetry Markers
 
-At a high level, it exposes methods that wrap telemetry interactions, such as:
+The following markers are defined in `TelemetryMarkers.h` across subsystems:
+
+| Marker | Description | Source |
+|--------|-------------|--------|
+| `APP_LAUNCH_START` | App launch initiated | AppManager |
+| `APP_LAUNCH_COMPLETE` | App launch completed | LifecycleManager |
+| `CONTAINER_START` | Container starting | RuntimeManager |
+| `CONTAINER_RUNNING` | Container running | RuntimeManager |
+| `FIRST_FRAME` | First frame rendered | RDKWindowManager |
+| `APP_SUSPEND` | App suspended | LifecycleManager |
+| `APP_RESUME` | App resumed | LifecycleManager |
+| `APP_TERMINATE` | App terminated | LifecycleManager |
+
+### Telemetry Data Format
+
+```json
+{
+    "id": "com.example.app",
+    "name": "appLaunch",
+    "metrics": {
+        "startTime": 1640000000000,
+        "endTime": 1640000002500,
+        "duration": 2500,
+        "success": true,
+        "markers": {
+            "APP_LAUNCH_START": 1640000000000,
+            "CONTAINER_START": 1640000000500,
+            "CONTAINER_RUNNING": 1640000001000,
+            "FIRST_FRAME": 1640000002000,
+            "APP_LAUNCH_COMPLETE": 1640000002500
+        }
+    }
+}
+```
+
+---
+
+## 7. Configuration
+
+### Plugin Configuration
+
+```cmake
+set (autostart false)
+set (preconditions Platform)
+set (callsign "org.rdk.TelemetryMetrics")
+```
+
+### Build Option
+
+```cmake
+option(AIMANAGERS_TELEMETRY_METRICS_SUPPORT "Enable telemetry metrics" OFF)
+```
+
+---
+
+## 8. Integration Pattern
+
+### Recording Metrics from Other Plugins
 
 ```cpp
-// See AppManager/AppManagerTelemetryReporting.h for the full, authoritative API.
-
-void reportTelemetryData(...);
-void reportTelemetryDataOnStateChange(...);
-// Additional helpers may exist for other app lifecycle and error events.
+// In AppManagerTelemetryReporting.cpp
+void recordLaunchMetric(const std::string& appId, uint64_t startTime, uint64_t endTime) {
+    if (telemetryMetrics) {
+        Json::Value metrics;
+        metrics["startTime"] = startTime;
+        metrics["endTime"] = endTime;
+        metrics["duration"] = endTime - startTime;
+        
+        Json::FastWriter writer;
+        telemetryMetrics->Record(appId, writer.write(metrics), "appLaunch");
+    }
+}
 ```
 
 ---
 
-[← Back to Main](../README.md) | [Next: WebBridge →](../WebBridge/WebBridge.md)
+## 9. Testing
 
+### Test Considerations
 
+| Test | Description |
+|------|-------------|
+| Record | Metric recording |
+| Publish | Metric publishing |
+| Concurrent | Thread-safe access |
+| Aggregation | Metric aggregation |
