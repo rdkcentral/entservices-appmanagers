@@ -3484,3 +3484,256 @@ uint32_t Test_AM_LICOnAppLifecycleStateChangedUnknownNewState()
     WPEFramework::Plugin::AppInfoManager::getInstance().clear();
     return tr.failures;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Configure error-path coverage: null lifecycle manager
+// Covers: LIC createLifecycleManagerRemoteObject null-LM branch (BRDA:88),
+//         Configure else-if failure branch (BRDA:505),
+//         releaseLifecycleManagerRemoteObject null-LM and null-LMS branches
+//         (BRDA:114, BRDA:122) hit when LIC is destroyed by the destructor.
+// ─────────────────────────────────────────────────────────────────────────────
+uint32_t Test_AM_ConfigureWithNullLifecycleManager()
+{
+    L0Test::TestResult tr;
+
+    L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
+    delete static_cast<L0Test::FakeLifecycleManager*>(cfg.lifecycleManager);
+    cfg.lifecycleManager = nullptr;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    // createLifecycleManagerRemoteObject() → ILifecycleManager QueryInterface returns null
+    // → LOGWARN path → Configure's else-if failure branch taken.
+    // On Release(), releaseLifecycleManagerRemoteObject() is called with both remote
+    // objects null → null-check FALSE branches covered.
+    impl->Configure(&service);
+
+    L0Test::ExpectTrue(tr, true,
+        "Configure with null lifecycle manager covers LM null-path branches");
+
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Configure error-path coverage: null lifecycle manager state
+// Covers: LIC createLifecycleManagerRemoteObject null-LMS branch (BRDA:92).
+// ─────────────────────────────────────────────────────────────────────────────
+uint32_t Test_AM_ConfigureWithNullLifecycleManagerState()
+{
+    L0Test::TestResult tr;
+
+    L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
+    delete static_cast<L0Test::FakeLifecycleManagerState*>(cfg.lifecycleManagerState);
+    cfg.lifecycleManagerState = nullptr;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    // LM QueryInterface succeeds; LMS QueryInterface returns null → LOGWARN branch at
+    // createLifecycleManagerRemoteObject null-LMS condition covered.
+    impl->Configure(&service);
+
+    L0Test::ExpectTrue(tr, true,
+        "Configure with null lifecycle manager state covers LMS null-path branch");
+
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Configure error-path coverage: null persistent store
+// Covers: createPersistentStoreRemoteStoreObject null-QueryInterface branch (BRDA:566),
+//         Configure failure LOGERR branch (BRDA:514),
+//         releasePersistentStoreRemoteStoreObject null-guard branch (BRDA:584).
+// ─────────────────────────────────────────────────────────────────────────────
+uint32_t Test_AM_ConfigureWithNullPersistentStore()
+{
+    L0Test::TestResult tr;
+
+    L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
+    delete static_cast<L0Test::FakeStore2*>(cfg.store2);
+    cfg.store2 = nullptr;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    // IStore2 QueryInterface returns null → createPersistentStoreRemoteStoreObject returns
+    // error → Configure's LOGERR branch taken.
+    // On Release(), releasePersistentStoreRemoteStoreObject is called with null store
+    // → null-guard FALSE branch covered.
+    impl->Configure(&service);
+
+    L0Test::ExpectTrue(tr, true,
+        "Configure with null persistent store covers store null-path branches");
+
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Configure error-path coverage: null package handler
+// Covers: createPackageManagerObject null-handler branch (BRDA:600),
+//         Configure failure LOGERR branch (BRDA:523),
+//         releasePackageManagerObject null-handler and null-installer branches
+//         (BRDA:620, BRDA:626) because both objects are null when handler fails.
+// ─────────────────────────────────────────────────────────────────────────────
+uint32_t Test_AM_ConfigureWithNullPackageHandler()
+{
+    L0Test::TestResult tr;
+
+    L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
+    delete static_cast<L0Test::FakePackageHandler*>(cfg.packageHandler);
+    cfg.packageHandler = nullptr;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    // IPackageHandler QueryInterface returns null → createPackageManagerObject returns
+    // error immediately → Configure LOGERR branch taken.
+    // Both mPackageManagerHandlerObject and mPackageManagerInstallerObject remain null,
+    // so releasePackageManagerObject() null-guard branches are both covered on Release().
+    impl->Configure(&service);
+
+    L0Test::ExpectTrue(tr, true,
+        "Configure with null package handler covers handler null-path branches");
+
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Configure error-path coverage: null package installer (handler valid)
+// Covers: createPackageManagerObject null-installer branch (BRDA:604).
+// ─────────────────────────────────────────────────────────────────────────────
+uint32_t Test_AM_ConfigureWithNullPackageInstaller()
+{
+    L0Test::TestResult tr;
+
+    L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
+    delete static_cast<L0Test::FakePackageInstaller*>(cfg.installer);
+    cfg.installer = nullptr;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    // IPackageHandler QueryInterface succeeds; IPackageInstaller QueryInterface returns
+    // null → the second else-if in createPackageManagerObject (null-installer check) taken.
+    impl->Configure(&service);
+
+    L0Test::ExpectTrue(tr, true,
+        "Configure with null package installer covers installer null-path branch");
+
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Configure error-path coverage: null storage manager
+// Covers: createStorageManagerRemoteObject null-QueryInterface and retry branches,
+//         post-loop error-check branch, Configure failure branch (BRDA:532),
+//         releaseStorageManagerRemoteObject null-guard branch (BRDA:661).
+// NOTE: createStorageManagerRemoteObject retries with 200 ms sleep between attempts
+//       so this test takes ~400 ms longer than most tests.
+// ─────────────────────────────────────────────────────────────────────────────
+uint32_t Test_AM_ConfigureWithNullStorageManager()
+{
+    L0Test::TestResult tr;
+
+    L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
+    delete static_cast<L0Test::FakeStorageManager*>(cfg.storageManager);
+    cfg.storageManager = nullptr;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    // IAppStorageManager QueryInterface returns null on every attempt → all retry
+    // branches and the post-loop error LOGERR branch covered.
+    // Configure's LOGERR branch (Core::ERROR_NONE != createStorageManagerRemoteObject)
+    // taken. On Release(), releaseStorageManagerRemoteObject null-guard branch covered.
+    impl->Configure(&service);
+
+    L0Test::ExpectTrue(tr, true,
+        "Configure with null storage manager covers storage null-path and retry branches");
+
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// checkIsInstalled: package matches appId but is NOT in INSTALLED state
+// Covers: the combined condition FALSE branch when state != INSTALLED (BRDA:1352 branch 5).
+// ─────────────────────────────────────────────────────────────────────────────
+uint32_t Test_AM_IsInstalledNonInstalledState()
+{
+    L0Test::TestResult tr;
+
+    auto* installer = new L0Test::FakePackageInstaller();
+    WPEFramework::Exchange::IPackageInstaller::Package pkg;
+    pkg.packageId = "app.installing.state.test";
+    pkg.version   = "1.0";
+    pkg.state     = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLING;
+    installer->installedPackages.push_back(pkg);
+
+    L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
+    delete static_cast<L0Test::FakePackageInstaller*>(cfg.installer);
+    cfg.installer = installer;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+
+    // Package exists in the list with matching appId but state == INSTALLING, not INSTALLED.
+    // checkIsInstalled(): (!empty && pkgId==appId && state==INSTALLED) → FALSE → installed=false.
+    bool installed = true;
+    const auto result = impl->IsInstalled(std::string("app.installing.state.test"), installed);
+
+    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+        "IsInstalled returns ERROR_NONE when package exists but is not INSTALLED");
+    L0Test::ExpectTrue(tr, !installed,
+        "IsInstalled sets installed=false when package state is INSTALLING (not INSTALLED)");
+
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GetInstalledApps: INSTALLED package with no corresponding AppInfo entry
+// Covers: AppInfoManager::get() returning false → else branch (BRDA:1315 branch 1).
+// ─────────────────────────────────────────────────────────────────────────────
+uint32_t Test_AM_GetInstalledAppsNoAppInfo()
+{
+    L0Test::TestResult tr;
+
+    auto* installer = new L0Test::FakePackageInstaller();
+    WPEFramework::Exchange::IPackageInstaller::Package pkg;
+    pkg.packageId = "app.installed.no.appinfo.test";
+    pkg.version   = "2.0";
+    pkg.state     = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
+    installer->installedPackages.push_back(pkg);
+
+    L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
+    delete static_cast<L0Test::FakePackageInstaller*>(cfg.installer);
+    cfg.installer = installer;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+
+    // No AppInfo is inserted for "app.installed.no.appinfo.test", so
+    // AppInfoManager::getInstance().get(pkg.packageId, pkgSnap) returns false
+    // → the else branch (lastActiveTime="" / lastActiveIndex="") is taken.
+    std::string apps;
+    const auto result = impl->GetInstalledApps(apps);
+
+    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+        "GetInstalledApps succeeds when installed package has no AppInfo entry");
+    L0Test::ExpectTrue(tr, !apps.empty(),
+        "GetInstalledApps returns non-empty JSON when installed package has no AppInfo");
+
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}

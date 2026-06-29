@@ -167,6 +167,14 @@ extern uint32_t Test_AM_PackageLockNullLifecycleConnector();
 extern uint32_t Test_AM_LICLaunchLoadedNotSuspended();
 extern uint32_t Test_AM_LICOnAppLifecycleStateChangedSuspended();
 extern uint32_t Test_AM_LICOnAppLifecycleStateChangedUnknownNewState();
+extern uint32_t Test_AM_ConfigureWithNullLifecycleManager();
+extern uint32_t Test_AM_ConfigureWithNullLifecycleManagerState();
+extern uint32_t Test_AM_ConfigureWithNullPersistentStore();
+extern uint32_t Test_AM_ConfigureWithNullPackageHandler();
+extern uint32_t Test_AM_ConfigureWithNullPackageInstaller();
+extern uint32_t Test_AM_ConfigureWithNullStorageManager();
+extern uint32_t Test_AM_IsInstalledNonInstalledState();
+extern uint32_t Test_AM_GetInstalledAppsNoAppInfo();
 extern uint32_t Test_AM_TelReportDataNoAppInfo();
 extern uint32_t Test_AM_TelReportDataActionMismatch();
 extern uint32_t Test_AM_TelReportDataPreloadNoMarker();
@@ -348,6 +356,14 @@ int main()
         { "AM_LICLaunchLoadedNotSuspended", Test_AM_LICLaunchLoadedNotSuspended },
         { "AM_LICOnAppLifecycleStateChangedSuspended", Test_AM_LICOnAppLifecycleStateChangedSuspended },
         { "AM_LICOnAppLifecycleStateChangedUnknownNewState", Test_AM_LICOnAppLifecycleStateChangedUnknownNewState },
+        { "AM_ConfigureWithNullLifecycleManager", Test_AM_ConfigureWithNullLifecycleManager },
+        { "AM_ConfigureWithNullLifecycleManagerState", Test_AM_ConfigureWithNullLifecycleManagerState },
+        { "AM_ConfigureWithNullPersistentStore", Test_AM_ConfigureWithNullPersistentStore },
+        { "AM_ConfigureWithNullPackageHandler", Test_AM_ConfigureWithNullPackageHandler },
+        { "AM_ConfigureWithNullPackageInstaller", Test_AM_ConfigureWithNullPackageInstaller },
+        { "AM_ConfigureWithNullStorageManager", Test_AM_ConfigureWithNullStorageManager },
+        { "AM_IsInstalledNonInstalledState", Test_AM_IsInstalledNonInstalledState },
+        { "AM_GetInstalledAppsNoAppInfo", Test_AM_GetInstalledAppsNoAppInfo },
         { "AM_TelReportDataNoAppInfo", Test_AM_TelReportDataNoAppInfo },
         { "AM_TelReportDataActionMismatch", Test_AM_TelReportDataActionMismatch },
         { "AM_TelReportDataPreloadNoMarker", Test_AM_TelReportDataPreloadNoMarker },
