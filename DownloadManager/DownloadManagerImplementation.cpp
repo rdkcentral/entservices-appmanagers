@@ -581,8 +581,8 @@ namespace Plugin {
                 /* Priority queue download request */
                 mCurrentDownload = mPriorityDownloadQueue.front();
                 mPriorityDownloadQueue.pop();
-                LOGINFO("DM: Dequeued priority download request: DownloadId=%s url=%s file=%s rateLimit=%u remainingPriority=%zu remainingRegular=%zu",
-                        mCurrentDownload->getId().c_str(), mCurrentDownload->getUrl().c_str(),
+                LOGINFO("DM: Dequeued priority download request: DownloadId=%s urlBytes=%zu file=%s rateLimit=%u remainingPriority=%zu remainingRegular=%zu",
+                    mCurrentDownload->getId().c_str(), mCurrentDownload->getUrl().size(),
                         mCurrentDownload->getFileLocator().c_str(), mCurrentDownload->getRateLimit(),
                         mPriorityDownloadQueue.size(), mRegularDownloadQueue.size());
             }
@@ -593,8 +593,8 @@ namespace Plugin {
                 {
                     mCurrentDownload = mRegularDownloadQueue.front();
                     mRegularDownloadQueue.pop();
-                    LOGINFO("DM: Dequeued regular download request: DownloadId=%s url=%s file=%s rateLimit=%u remainingPriority=%zu remainingRegular=%zu",
-                            mCurrentDownload->getId().c_str(), mCurrentDownload->getUrl().c_str(),
+                        LOGINFO("DM: Dequeued regular download request: DownloadId=%s urlBytes=%zu file=%s rateLimit=%u remainingPriority=%zu remainingRegular=%zu",
+                            mCurrentDownload->getId().c_str(), mCurrentDownload->getUrl().size(),
                             mCurrentDownload->getFileLocator().c_str(), mCurrentDownload->getRateLimit(),
                             mPriorityDownloadQueue.size(), mRegularDownloadQueue.size());
                 }

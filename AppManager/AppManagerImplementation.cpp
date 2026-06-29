@@ -1352,7 +1352,7 @@ Core::hresult AppManagerImplementation::GetInstalledApps(std::string& apps)
             }
         }
         installedAppsArray.ToString(apps);
-        LOGINFO("total installed apps=%zu", installedAppsArray.Length());
+        LOGINFO("total installed apps=%zu", static_cast<size_t>(installedAppsArray.Length()));
     }
 
     mAdminLock.Unlock();

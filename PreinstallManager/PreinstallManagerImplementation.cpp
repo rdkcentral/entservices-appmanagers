@@ -325,8 +325,8 @@ namespace WPEFramework
 
         auto installStart = std::chrono::steady_clock::now();
         bool installError = false;
-        int failedApps = 0;
-        const int totalApps = preinstallPackages.size();
+        size_t failedApps = 0;
+        const size_t totalApps = preinstallPackages.size();
         size_t pkgIndex = 0;
 
         for (auto &pkg : preinstallPackages)
@@ -355,7 +355,7 @@ namespace WPEFramework
 
             if (installResult != Core::ERROR_NONE)
             {
-                LOGERR("Failed to install package [%zu/%d]: %s version=%s failReason=%s", currentPkg, totalApps, pkg.packageId.c_str(), pkg.version.c_str(), getFailReason(failReason).c_str());
+                LOGERR("Failed to install package [%zu/%zu]: %s version=%s failReason=%s", currentPkg, totalApps, pkg.packageId.c_str(), pkg.version.c_str(), getFailReason(failReason).c_str());
                 installError = true;
                 failedApps++;
                 pkg.installStatus = "FAILED: reason " + getFailReason(failReason);
@@ -363,7 +363,7 @@ namespace WPEFramework
                 continue;
             }
 
-            LOGINFO("Successfully installed package [%zu/%d]: %s version=%s", currentPkg, totalApps, pkg.packageId.c_str(), pkg.version.c_str());
+            LOGINFO("Successfully installed package [%zu/%zu]: %s version=%s", currentPkg, totalApps, pkg.packageId.c_str(), pkg.version.c_str());
             pkg.installStatus = "SUCCESS";
             ++pkgIndex;
         }
@@ -372,7 +372,7 @@ namespace WPEFramework
         const auto installDuration = std::chrono::duration_cast<std::chrono::seconds>(installEnd - installStart).count();
         const auto installDurationMs = std::chrono::duration_cast<std::chrono::milliseconds>(installEnd - installStart).count();
         LOGDBG("Process completed in %lld seconds (%lld ms)", installDuration, installDurationMs);
-        LOGINFO("Installation summary: %d/%d packages installed successfully. %d apps failed.", totalApps - failedApps, totalApps, failedApps);
+        LOGINFO("Installation summary: %zu/%zu packages installed successfully. %zu apps failed.", totalApps - failedApps, totalApps, failedApps);
         for (const auto &pkg : preinstallPackages)
         {
             LOGINFO("Package: %s [version:%s]............status:[ %s ]", pkg.packageId.c_str(), pkg.version.c_str(), pkg.installStatus.c_str());
