@@ -1061,6 +1061,38 @@ uint32_t Test_Impl_InitializeFailsWhenMkdirFails()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Initialize with a config that has no "downloadDir" key returns ERROR_GENERAL
+// ─────────────────────────────────────────────────────────────────────────────
+
+uint32_t Test_Impl_InitializeWithMissingDownloadDir()
+{
+    L0Test::TestResult tr;
+
+    // No "downloadDir" key in config → config.downloadDir.IsSet() == false
+    // → mDownloadPath stays "" → mkdir("") fails → ERROR_GENERAL
+    L0Test::ServiceMock::Config cfg;
+    cfg.internetActive = true;
+    cfg.configLine     = "{}"; // deliberate: no downloadDir
+    L0Test::ServiceMock svc(cfg);
+
+    auto* impl = CreateImpl();
+    const auto initResult = impl->Initialize(&svc);
+    L0Test::ExpectEqU32(tr, initResult, WPEFramework::Core::ERROR_GENERAL,
+        "Initialize() with no downloadDir in config returns ERROR_GENERAL");
+
+    // mCurrentservice was AddRef'd before the mkdir step, so Deinitialize
+    // is needed for correct cleanup.  It also exercises the mDownloadThreadPtr
+    // == nullptr branch (the thread was never started).
+    const auto deinitResult = impl->Deinitialize(&svc);
+    L0Test::ExpectEqU32(tr, deinitResult, WPEFramework::Core::ERROR_NONE,
+        "Deinitialize() after failed Initialize (no thread started) returns ERROR_NONE");
+
+    impl->Release();
+    return tr.failures;
+}
+
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Helper: create a local file large enough to keep curl busy for a moment.
 // Returns true on success, false if the file could not be created.
 // ─────────────────────────────────────────────────────────────────────────────

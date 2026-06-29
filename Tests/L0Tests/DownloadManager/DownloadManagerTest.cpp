@@ -84,6 +84,7 @@ extern uint32_t Test_Impl_DownloadInfoFieldsViaDownload();
 extern uint32_t Test_Impl_DownloadInfoZeroRetriesClampsToMin();
 extern uint32_t Test_Impl_DtorReleasesUnregisteredNotifications();
 extern uint32_t Test_Impl_InitializeFailsWhenMkdirFails();
+extern uint32_t Test_Impl_InitializeWithMissingDownloadDir();
 extern uint32_t Test_Impl_DownloaderRoutineSuccessPath();
 extern uint32_t Test_Impl_DownloaderRoutineDiskErrorPath();
 extern uint32_t Test_Impl_DownloaderRoutineHttpErrorPath();
@@ -205,6 +206,7 @@ int main()
     std::cout << "\n-- Implementation Dtor / mkdir-fail / Downloader thread --" << std::endl;
     RUN_TEST(Test_Impl_DtorReleasesUnregisteredNotifications);
     RUN_TEST(Test_Impl_InitializeFailsWhenMkdirFails);
+    RUN_TEST(Test_Impl_InitializeWithMissingDownloadDir);
     RUN_TEST(Test_Impl_DownloaderRoutineSuccessPath);
     RUN_TEST(Test_Impl_DownloaderRoutineDiskErrorPath);
     RUN_TEST(Test_Impl_DownloaderRoutineHttpErrorPath);
