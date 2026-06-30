@@ -84,14 +84,14 @@ RDKWindowManager/
 interface IRDKWindowManager {
     interface INotification {
         void OnUserInactivity(double minutes);
-        void OnApplicationDisconnected(const string& client);
+        void OnDisconnected(const string& client);
         void OnReady(const string& client);
-        void OnApplicationConnected(const string& client);
-        void OnApplicationVisible(const string& client);
-        void OnApplicationHidden(const string& client);
-        void OnApplicationFocus(const string& client);
-        void OnApplicationBlur(const string& client);
-        void OnScreenshotComplete(bool success);
+        void OnConnected(const string& client);
+        void OnVisible(const string& client);
+        void OnHidden(const string& client);
+        void OnFocus(const string& client);
+        void OnBlur(const string& client);
+        void OnScreenshotComplete(bool success, const string& imageData);
     };
 
     hresult Initialize(PluginHost::IShell* service);
