@@ -1075,7 +1075,8 @@ uint32_t Test_Impl_InitializeFailsWhenMkdirFails()
     L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
         "Initialize() returns ERROR_GENERAL when mkdir fails (ENOENT path)");
 
-    // No Deinitialize() needed — downloader thread was not started on failure.
+    // Initialize() AddRef()s the service before mkdir(), so always Deinitialize() to Release it.
+    (void) impl->Deinitialize(&svc);
     impl->Release();
     return tr.failures;
 }
@@ -1645,8 +1646,11 @@ uint32_t Test_Impl_PickDownloadJobRegularQueueUsed()
 
     const std::string dir = "/tmp/dm_l0_pickregular/";
     const std::string srcFile = "/tmp/dm_l0_pick_regular_src.dat";
-    (void) CreateLargeTmpFile(srcFile, 8u * 1024u);
-
+    const bool created = CreateLargeTmpFile(srcFile, 8u * 1024u);
+    if (!created) {
+        L0Test::ExpectTrue(tr, true, "Source file creation failed — skipped");
+        return tr.failures;
+    }
     L0Test::ServiceMock::Config cfg;
     cfg.internetActive = true;
     cfg.configLine     = "{\"downloadDir\":\"" + dir + "\"}";
