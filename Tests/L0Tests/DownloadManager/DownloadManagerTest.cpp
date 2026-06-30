@@ -45,6 +45,7 @@ extern uint32_t Test_Shell_InformationReturnsEmpty();
 extern uint32_t Test_Shell_InitializeDeinitialize_NoCrash();
 extern uint32_t Test_Shell_DeinitializeUninitialized_NoCrash();
 extern uint32_t Test_Shell_NotificationHandlerOnAppDownloadStatus();
+extern uint32_t Test_Shell_QueryInterfaceVariations();
 extern uint32_t Test_Shell_DeinitializeWithExtraImplReference();
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -160,6 +161,7 @@ int main()
     RUN_TEST(Test_Shell_InitializeDeinitialize_NoCrash);
     RUN_TEST(Test_Shell_DeinitializeUninitialized_NoCrash);
     RUN_TEST(Test_Shell_NotificationHandlerOnAppDownloadStatus);
+    RUN_TEST(Test_Shell_QueryInterfaceVariations);
     RUN_TEST(Test_Shell_DeinitializeWithExtraImplReference);
 
     // ── Implementation tests (DownloadManagerImplementation.cpp / .h) ───────
