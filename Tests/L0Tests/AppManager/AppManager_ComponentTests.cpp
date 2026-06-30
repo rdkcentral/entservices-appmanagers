@@ -126,8 +126,8 @@ uint32_t Test_AM_LifecycleConnectorCreateAndGetLoadedAppsSuccess()
 {
     L0Test::TestResult tr;
 
-    L0Test::FakeLifecycleManager lifecycle;
-    L0Test::FakeLifecycleManagerState lifecycleState;
+    L0Test::MockLifecycleManager lifecycle;
+    L0Test::MockLifecycleManagerState lifecycleState;
 
     lifecycle.loadedAppsJson =
         "[{\"appId\":\"app.loaded\",\"appInstanceID\":\"inst-1\",\"activeSessionId\":\"sess-1\",\"targetLifecycleState\":2,\"lifecycleState\":2}]";
@@ -163,8 +163,8 @@ uint32_t Test_AM_LifecycleConnectorIsAppLoadedAndErrorPaths()
 {
     L0Test::TestResult tr;
 
-    L0Test::FakeLifecycleManager lifecycle;
-    L0Test::FakeLifecycleManagerState lifecycleState;
+    L0Test::MockLifecycleManager lifecycle;
+    L0Test::MockLifecycleManagerState lifecycleState;
 
     L0Test::AppManagerServiceMock::Config cfg;
     cfg.lifecycleManager = &lifecycle;
@@ -199,8 +199,8 @@ uint32_t Test_AM_LifecycleConnectorSendIntentAndKillEdgeCases()
 {
     L0Test::TestResult tr;
 
-    L0Test::FakeLifecycleManager lifecycle;
-    L0Test::FakeLifecycleManagerState lifecycleState;
+    L0Test::MockLifecycleManager lifecycle;
+    L0Test::MockLifecycleManagerState lifecycleState;
 
     L0Test::AppManagerServiceMock::Config cfg;
     cfg.lifecycleManager = &lifecycle;
@@ -277,8 +277,8 @@ uint32_t Test_AM_LifecycleConnectorLaunchNewApp()
 {
     L0Test::TestResult tr;
 
-    L0Test::FakeLifecycleManager lifecycle;
-    L0Test::FakeLifecycleManagerState lifecycleState;
+    L0Test::MockLifecycleManager lifecycle;
+    L0Test::MockLifecycleManagerState lifecycleState;
 
     L0Test::AppManagerServiceMock::Config cfg;
     cfg.lifecycleManager = &lifecycle;
@@ -316,8 +316,8 @@ uint32_t Test_AM_LifecycleConnectorLaunchSuspendedApp()
 {
     L0Test::TestResult tr;
 
-    L0Test::FakeLifecycleManager lifecycle;
-    L0Test::FakeLifecycleManagerState lifecycleState;
+    L0Test::MockLifecycleManager lifecycle;
+    L0Test::MockLifecycleManagerState lifecycleState;
 
     L0Test::AppManagerServiceMock::Config cfg;
     cfg.lifecycleManager = &lifecycle;
@@ -365,8 +365,8 @@ uint32_t Test_AM_LifecycleConnectorPreloadApp()
 {
     L0Test::TestResult tr;
 
-    L0Test::FakeLifecycleManager lifecycle;
-    L0Test::FakeLifecycleManagerState lifecycleState;
+    L0Test::MockLifecycleManager lifecycle;
+    L0Test::MockLifecycleManagerState lifecycleState;
 
     L0Test::AppManagerServiceMock::Config cfg;
     cfg.lifecycleManager = &lifecycle;
@@ -404,8 +404,8 @@ uint32_t Test_AM_LifecycleConnectorTerminateApp()
 {
     L0Test::TestResult tr;
 
-    L0Test::FakeLifecycleManager lifecycle;
-    L0Test::FakeLifecycleManagerState lifecycleState;
+    L0Test::MockLifecycleManager lifecycle;
+    L0Test::MockLifecycleManagerState lifecycleState;
 
     L0Test::AppManagerServiceMock::Config cfg;
     cfg.lifecycleManager = &lifecycle;
@@ -444,8 +444,8 @@ uint32_t Test_AM_LifecycleConnectorCloseApp()
 {
     L0Test::TestResult tr;
 
-    L0Test::FakeLifecycleManager lifecycle;
-    L0Test::FakeLifecycleManagerState lifecycleState;
+    L0Test::MockLifecycleManager lifecycle;
+    L0Test::MockLifecycleManagerState lifecycleState;
 
     // Force SetTargetAppState to fail immediately so the test does not block
     // on the 1-second PAUSE_STATE_WAITTIME timeout.
@@ -493,8 +493,8 @@ uint32_t Test_AM_LifecycleConnectorReleaseRemoteObjects()
 {
     L0Test::TestResult tr;
 
-    L0Test::FakeLifecycleManager lifecycle;
-    L0Test::FakeLifecycleManagerState lifecycleState;
+    L0Test::MockLifecycleManager lifecycle;
+    L0Test::MockLifecycleManagerState lifecycleState;
 
     L0Test::AppManagerServiceMock::Config cfg;
     cfg.lifecycleManager = &lifecycle;
@@ -507,13 +507,13 @@ uint32_t Test_AM_LifecycleConnectorReleaseRemoteObjects()
         L0Test::ExpectEqU32(tr, connector.createLifecycleManagerRemoteObject(), WPEFramework::Core::ERROR_NONE,
             "createLifecycleManagerRemoteObject() succeeds before release test");
         L0Test::ExpectTrue(tr, lifecycle.registeredNotification != nullptr,
-            "FakeLifecycleManager has a registered notification after createLifecycleManagerRemoteObject()");
+            "MockLifecycleManager has a registered notification after createLifecycleManagerRemoteObject()");
 
         // releaseLifecycleManagerRemoteObject() must Unregister and Release the remote objects.
         connector.releaseLifecycleManagerRemoteObject();
 
         L0Test::ExpectTrue(tr, lifecycle.registeredNotification == nullptr,
-            "FakeLifecycleManager notification is cleared after releaseLifecycleManagerRemoteObject()");
+            "MockLifecycleManager notification is cleared after releaseLifecycleManagerRemoteObject()");
     }
 
     return tr.failures;
