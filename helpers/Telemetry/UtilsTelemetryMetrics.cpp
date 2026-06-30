@@ -89,7 +89,15 @@ Core::hresult TelemetryMetricsClient::ensure(PluginHost::IShell* service,
 
 void TelemetryMetricsClient::reset()
 {
-    // No-op for shared instance to avoid cross-plugin invalidation.
+#ifdef ENABLE_AIMANAGERS_TELEMETRY_METRICS
+    std::lock_guard<std::mutex> lock(gTelemetryLock);
+
+    if (nullptr != gTelemetryMetricsObject)
+    {
+        gTelemetryMetricsObject->Release();
+        gTelemetryMetricsObject = nullptr;
+    }
+#endif
 }
 
 bool TelemetryMetricsClient::isAvailable() const

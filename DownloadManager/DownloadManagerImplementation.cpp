@@ -20,11 +20,14 @@
 #include <chrono>
 
 #include "DownloadManagerImplementation.h"
+#include "UtilsAppManagerTelemetry.h"
 
 #define DOWNLOADER_DOWNLOAD_ID_START        (2000)
 
 namespace WPEFramework {
 namespace Plugin {
+
+    RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::DownloadManagerTelemetryReporting, "downloadManagerBootstrapTime")
 
     SERVICE_REGISTRATION(DownloadManagerImplementation, 1, 0);
 
@@ -133,7 +136,7 @@ namespace Plugin {
                 mDownloadThreadPtr = std::unique_ptr<std::thread>(new std::thread(&DownloadManagerImplementation::downloaderRoutine, this, 1));
             }
 
-            DownloadManagerTelemetryReporting::getInstance().initialize(service);
+            RDKAM_TELEMETRY_INIT(service);
         }
         else
         {

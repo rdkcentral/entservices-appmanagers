@@ -18,7 +18,7 @@
 set(PLUGIN_NAME LifecycleManager)
 set(MODULE_NAME ${NAMESPACE}${PLUGIN_NAME})
 
-set(PLUGIN_LIFECYCLE_MANAGER_MODE "Local" CACHE STRING "Controls if the plugin should run in its own process, in process or remote")
+set(PLUGIN_LIFECYCLE_MANAGER_MODE "Off" CACHE STRING "Controls if the plugin should run in its own process, in process or remote")
 set(PLUGIN_LIFECYCLE_MANAGER_AUTOSTART false CACHE STRING "Automatically start LifecycleManager plugin")
 set(PLUGIN_LIFECYCLE_MANAGER_EXTRA_LIBRARIES "")
 set(PLUGIN_LIFECYCLE_MANAGER_STARTUPORDER "" CACHE STRING "Automatically start LifecycleManager plugin")

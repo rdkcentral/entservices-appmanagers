@@ -2632,7 +2632,7 @@ TEST_F(AppManagerTest, SetAppPropertyUsingComRpcSuccess)
 {
     Core::hresult status;
     const std::string key = PERSISTENT_STORE_KEY;
-    std::string value = "";
+    std::string value = PERSISTENT_STORE_VALUE;
 
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
@@ -2659,7 +2659,7 @@ TEST_F(AppManagerTest, SetAppPropertyUsingJSONRpcSuccess)
 {
     Core::hresult status;
     const std::string key = PERSISTENT_STORE_KEY;
-    std::string value = "";
+    std::string value = PERSISTENT_STORE_VALUE;
 
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
@@ -2722,6 +2722,53 @@ TEST_F(AppManagerTest, SetAppPropertyUsingComRpcFailureEmptyKey)
 }
 
 /*
+ * Test Case for SetAppPropertyUsingComRpcFailureEmptyValue
+ * Setting up AppManager/LifecycleManager/LifecycleManagerState/PersistentStore/PackageManagerRDKEMS Plugin and creating required COM-RPC resources
+ * Verifying the return of the API by passing an empty value with valid appId and key
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, SetAppPropertyUsingComRpcFailureEmptyValue)
+{
+    Core::hresult status;
+    const std::string key = PERSISTENT_STORE_KEY;
+    const std::string value = "";
+
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    EXPECT_EQ(Core::ERROR_GENERAL, mAppManagerImpl->SetAppProperty(APPMANAGER_APP_ID, key, value));
+    if(status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for SetAppPropertyUsingJSONRpcFailureEmptyValue
+ * Setting up AppManager/LifecycleManager/LifecycleManagerState/PersistentStore/PackageManagerRDKEMS Plugin and creating required JSON-RPC resources
+ * Verifying the return of the JSON-RPC API by passing an empty value with valid appId and key
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, SetAppPropertyUsingJSONRpcFailureEmptyValue)
+{
+    Core::hresult status;
+    const std::string key = PERSISTENT_STORE_KEY;
+    const std::string value = "";
+
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    std::string request = "{\"appId\": \"" + std::string(APPMANAGER_APP_ID) + "\", \"key\": \"" + key + "\", \"value\": \"" + value + "\"}";
+
+    EXPECT_EQ(Core::ERROR_GENERAL, mJsonRpcHandler.Invoke(connection, _T("setAppProperty"), request, mJsonRpcResponse));
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
  * Test Case for SetAppPropertyUsingComRpcFailureSetValueReturnError
  * Setting up AppManager/LifecycleManager/LifecycleManagerState/PersistentStore/PackageManagerRDKEMS Plugin and creating required COM-RPC resources
  * Setting Mock for SetValue() to simulate error return
@@ -2732,7 +2779,7 @@ TEST_F(AppManagerTest, SetAppPropertyUsingComRpcFailureSetValueReturnError)
 {
     Core::hresult status;
     const std::string key = PERSISTENT_STORE_KEY;
-    std::string value = "";
+    std::string value = PERSISTENT_STORE_VALUE;
 
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
