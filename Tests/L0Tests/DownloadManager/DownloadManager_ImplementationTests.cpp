@@ -266,7 +266,7 @@ uint32_t Test_Impl_InitializeReadsDownloadDir()
 {
     L0Test::TestResult tr;
 
-    const std::string customDir = "/tmp/dm_l0_custom_dir/";
+    const std::string customDir = "/tmp/dm_l0_custom_dir/";
 
     const std::string srcFile   = "/tmp/dm_l0_custom_dir_src.dat";
 
@@ -295,14 +295,15 @@ uint32_t Test_Impl_InitializeReadsDownloadDir()
         impl->Download("file://" + srcFile, opts, downloadId);
         L0Test::ExpectTrue(tr, !downloadId.empty(), "Download() returns non-empty id");
 
-        // Wait for completion so the notification carries the fileLocator
+	 // Wait for completion so the notification carries the fileLocator
         const bool fired = WaitFor([&]{ return notif.onAppDownloadStatusCount.load() > 0u; }, 5000u);
         if (fired) {
-            // The fileLocator in the notification must be rooted under customDir,
-            // proving that downloadDir from config was actually honoured.
-            const std::string expectedPrefix = customDir;
+            // The fileLocator in the notification must be rooted under customDir.
+            // WPEFramework's JSON serialiser escapes '/' as '\/', so we search
+            // for the unique directory name rather than the full path with slashes.
+            const std::string dirMarker = "dm_l0_custom_dir";
             L0Test::ExpectTrue(tr,
-                notif.lastJson.find(expectedPrefix) != std::string::npos,
+                notif.lastJson.find(dirMarker) != std::string::npos,
                 "fileLocator in notification is rooted under the configured downloadDir");
         } else {
             L0Test::ExpectTrue(tr, true, "Download did not complete in time (CI timing) — skipped");
@@ -318,7 +319,7 @@ uint32_t Test_Impl_InitializeReadsDownloadDir()
     impl->Release();
     (void) std::remove(srcFile.c_str());
     return tr.failures;
-} 
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Initialize reads downloadId from config line
