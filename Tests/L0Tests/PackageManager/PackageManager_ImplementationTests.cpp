@@ -221,7 +221,7 @@ uint32_t Test_PM_Impl_ListPackagesAndPackageStateForDummyData()
                 L0Test::ExpectEqStr(tr,
                                     package.digest,
                                     "dummy-md5-youtube-100124",
-                                    "ListPackages() returns digest populated from ConfigMetaData.md5hash");
+                                    "ListPackages() returns digest populated from ConfigMetaData.md5Hash");
                 break;
             }
         }
