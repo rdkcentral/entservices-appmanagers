@@ -106,6 +106,7 @@ namespace Plugin {
             string appId;
             string launchArgs;
             string intent;
+            string packageVersion;
         };
 
         struct AppManagerRequest{
@@ -249,3 +250,4 @@ namespace Plugin {
     };
 } /* namespace Plugin */
 } /* namespace WPEFramework */
+

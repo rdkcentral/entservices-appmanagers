@@ -3774,15 +3774,14 @@ TEST_F(AppManagerTest, CheckInstallUninstallBlockListPackagesReturnError)
 }
 
 /*
- * Test Case for LaunchAppLockFailureListPackagesFails
+ * Test Case for LaunchAppAvoidsRedundantListPackagesWhenVersionPrefetched
  * Setting up AppManager Plugin with full resources
- * Configuring ListPackages() to succeed on the first and third call, and return nullptr on the second call
- * so fetchAppPackageList() fails inside packageLock(), while the IsInstalled() error-path check returns installed=true
- * Waiting for the resulting OnAppLifecycleStateChanged event (APP_ERROR_PACKAGE_LOCK)
- * Verifying that the error path from a packageLock() list failure correctly triggers a state-changed event
+ * Configuring LaunchApp() for a not-loaded application
+ * Verifying only one ListPackages() call is needed because the resolved package version is reused by packageLock()
+ * Waiting for the resulting OnAppLaunchRequest event to ensure the worker thread consumed the request
  * Releasing the AppManager interface and all related test resources
  */
-TEST_F(AppManagerTest, LaunchAppLockFailureListPackagesFails)
+TEST_F(AppManagerTest, LaunchAppAvoidsRedundantListPackagesWhenVersionPrefetched)
 {
     Core::hresult status;
     uint32_t signalled = AppManager_StateInvalid;
@@ -3793,13 +3792,20 @@ TEST_F(AppManagerTest, LaunchAppLockFailureListPackagesFails)
     EXPECT_EQ(Core::ERROR_NONE, status);
 
     expectedEvent.appId = APPMANAGER_APP_ID;
-    expectedEvent.appInstanceId = "";
-    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNKNOWN;
-    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED;
-    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_PACKAGE_LOCK;
+    expectedEvent.appInstanceId = APPMANAGER_APP_INSTANCE;
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED;
+    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE;
+    expectedEvent.intent = APPMANAGER_APP_INTENT;
+    expectedEvent.source = "";
 
     mAppManagerImpl->Register(&notification);
     notification.SetExpectedEvent(expectedEvent);
+
+    AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [](Plugin::AppInfo& a) {
+        a.setAppInstanceId(APPMANAGER_APP_INSTANCE);
+        a.setAppNewState(Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE);
+    });
 
     /* IsAppLoaded returns not loaded so LaunchApp proceeds into packageLock */
     EXPECT_CALL(*mLifecycleManagerMock, IsAppLoaded(::testing::_, ::testing::_))
@@ -3807,27 +3813,45 @@ TEST_F(AppManagerTest, LaunchAppLockFailureListPackagesFails)
             loaded = false;
             return Core::ERROR_NONE;
         });
-    /* First call (IsInstalled gate in LaunchApp): return installed so we pass the gate */
-    /* Second call (inside packageLock fetchAppPackageList): return nullptr to trigger lock failure */
-    /* Third call (IsInstalled in error path): return installed so APP_ERROR_PACKAGE_LOCK is used */
     EXPECT_CALL(*mPackageInstallerMock, ListPackages(::testing::_))
+        .Times(1)
         .WillOnce([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
-            auto mockIterator = FillPackageIterator();
-            packages = mockIterator;
-            return Core::ERROR_NONE;
-        })
-        .WillOnce([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
-            packages = nullptr;
-            return Core::ERROR_NONE;
-        })
-        .WillRepeatedly([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
             auto mockIterator = FillPackageIterator();
             packages = mockIterator;
             return Core::ERROR_NONE;
         });
 
+    EXPECT_CALL(*mPackageManagerMock, Lock(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .WillOnce([&](const string &packageId, const string &version, const Exchange::IPackageHandler::LockReason &lockReason, uint32_t &lockId /* @out */, string &unpackedPath /* @out */, Exchange::RuntimeConfig &configMetadata /* @out */, Exchange::IPackageHandler::ILockIterator*& appMetadata /* @out */) {
+            EXPECT_EQ(APPMANAGER_APP_ID, packageId);
+            EXPECT_EQ(APPMANAGER_APP_VERSION, version);
+            lockId = 1;
+            unpackedPath = APPMANAGER_APP_UNPACKEDPATH;
+            configMetadata.capabilities = "dial-app,wan-lan";
+            return Core::ERROR_NONE;
+        });
+
+    EXPECT_CALL(*mLifecycleManagerMock, SpawnApp(APPMANAGER_APP_ID, APPMANAGER_APP_INTENT, ::testing::_, ::testing::_, APPMANAGER_APP_LAUNCHARGS, ::testing::_, ::testing::_, ::testing::_))
+        .WillOnce([&](const string& appId, const string& launchIntent, const Exchange::ILifecycleManager::LifecycleState targetLifecycleState,
+            const Exchange::RuntimeConfig& runtimeConfigObject, const string& launchArgs, string& appInstanceId, string& errorReason, bool& success) {
+            appInstanceId = APPMANAGER_APP_INSTANCE;
+            errorReason = "";
+            success = true;
+            return Core::ERROR_NONE;
+        });
+
     EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->LaunchApp(APPMANAGER_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS));
 
+    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLaunchRequest);
+    EXPECT_TRUE(signalled & AppManager_onAppLaunchRequest);
+
+    mLifecycleManagerStateNotification_cb->OnAppLifecycleStateChanged(
+        APPMANAGER_APP_ID,
+        APPMANAGER_APP_INSTANCE,
+        Exchange::ILifecycleManager::LifecycleState::PAUSED,
+        Exchange::ILifecycleManager::LifecycleState::ACTIVE,
+        "start"
+    );
     signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
     EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
 
@@ -4953,4 +4977,5 @@ TEST_F(AppManagerTest, GetCustomValuesWithAipathFileHasContent)
         releaseResources();
     }
 }
+
 
