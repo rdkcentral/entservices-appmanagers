@@ -184,14 +184,13 @@ sequenceDiagram
 ### Retry Logic with Golden Ratio Backoff
 
 ```cpp
-// Fibonacci-like retry delay using golden ratio
+// Golden-ratio-based retry delay.
 int nextRetryDuration(int n) {
     const double goldenRatio = (1 + std::sqrt(5)) / 2.0;
     double next = n * goldenRatio;
     return static_cast<int>(std::round(next));
 }
-// Results: 1, 2, 3, 5, 8, 13, 21... seconds
-```
+// Example: n=1 -> 2s, n=2 -> 3s, n=3 -> 5s, n=4 -> 6s
 
 ---
 
