@@ -20,12 +20,9 @@
 #include <iomanip>      /* for std::setw, std::setfill */
 #include "AppManagerImplementation.h"
 #include "AppManagerTelemetryReporting.h"
-#include "UtilsAppManagerTelemetry.h"
 
 #define TIME_DATA_SIZE           200
 static bool sRunning = false;
-
-RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::AppManagerTelemetryReporting, "appManagerBootstrapTime")
 
 namespace WPEFramework {
 namespace Plugin {
@@ -80,7 +77,9 @@ AppManagerImplementation::~AppManagerImplementation()
     releaseStorageManagerRemoteObject();
     if (nullptr != mCurrentservice)
     {
-       mCurrentservice->Release();
+         // The plugin shell owns this pointer lifetime.
+         // Do not Release() from here because this object can be destroyed
+         // asynchronously after shell teardown has started.
        mCurrentservice = nullptr;
     }
 
@@ -496,7 +495,6 @@ uint32_t AppManagerImplementation::Configure(PluginHost::IShell* service)
     if (service != nullptr)
     {
         mCurrentservice = service;
-        mCurrentservice->AddRef();
 
         if (nullptr == (mLifecycleInterfaceConnector = new LifecycleInterfaceConnector(mCurrentservice)))
         {
@@ -537,7 +535,7 @@ uint32_t AppManagerImplementation::Configure(PluginHost::IShell* service)
         {
             LOGINFO("created createStorageManagerRemoteObject");
         }
-        RDKAM_TELEMETRY_INIT(service);
+        AppManagerTelemetryReporting::getInstance().initialize(service);
         sRunning = true;
         /* Create the worker thread */
         try
@@ -634,7 +632,10 @@ void AppManagerImplementation::releasePackageManagerObject()
 
 Core::hresult AppManagerImplementation::createStorageManagerRemoteObject()
 {
+     #define MAX_STORAGE_MANAGER_OBJECT_CREATION_RETRIES 2
+
     Core::hresult status = Core::ERROR_GENERAL;
+    uint8_t retryCount = 0;
 
     if (nullptr == mCurrentservice)
     {
@@ -642,15 +643,27 @@ Core::hresult AppManagerImplementation::createStorageManagerRemoteObject()
     }
     else
     {
-        mStorageManagerRemoteObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IAppStorageManager>("org.rdk.AppStorageManager");
+        do
+        {
+            mStorageManagerRemoteObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IAppStorageManager>("org.rdk.AppStorageManager");
 
-        if (nullptr != mStorageManagerRemoteObject)
+            if (nullptr == mStorageManagerRemoteObject)
+            {
+                LOGERR("storageManagerRemoteObject is null (Attempt %d)", retryCount + 1);
+                retryCount++;
+                std::this_thread::sleep_for(std::chrono::milliseconds(200));
+            }
+            else
+            {
+                LOGINFO("Successfully created Storage Manager Object");
+                status = Core::ERROR_NONE;
+                break;
+            }
+        } while (retryCount < MAX_STORAGE_MANAGER_OBJECT_CREATION_RETRIES);
+
+        if (status != Core::ERROR_NONE)
         {
-            status = Core::ERROR_NONE;
-        }
-        else
-        {
-            LOGERR("Failed to create Storage Manager Object");
+            LOGERR("Failed to create Storage Manager Object after %d attempts", MAX_STORAGE_MANAGER_OBJECT_CREATION_RETRIES);
         }
     }
     return status;
@@ -1071,7 +1084,6 @@ Core::hresult AppManagerImplementation::SendIntent(const string& appId , const s
  *
  * @return              : Core::<StatusCode>
  */
-
 Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const string& intent , const string& launchArgs ,string& error)
 {
     Core::hresult status = Core::ERROR_GENERAL;
@@ -1203,10 +1215,6 @@ Core::hresult AppManagerImplementation::SetAppProperty(const string& appId, cons
     else if (key.empty())
     {
         LOGERR("key is empty");
-    }
-    else if (value.empty())
-    {
-       LOGERR("value is empty");
     }
     else
     {
@@ -1647,3 +1655,4 @@ bool AppManagerImplementation::checkInstallUninstallBlock(const std::string& app
 }
 } /* namespace Plugin */
 } /* namespace WPEFramework */
+
