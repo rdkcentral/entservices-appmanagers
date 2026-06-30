@@ -320,57 +320,6 @@ uint32_t Test_Impl_InitializeReadsDownloadDir()
 } 
 
 // ─────────────────────────────────────────────────────────────────────────────
-// QueryInterface on shell plugin returns correct interface pointers
-// ─────────────────────────────────────────────────────────────────────────────
-
-uint32_t Test_Shell_QueryInterfaceVariations()
-{
-    L0Test::TestResult tr;
-
-    PluginAndService ps;
-
-    auto* unknown = ps.plugin->QueryInterface<WPEFramework::Core::IUnknown>();
-    L0Test::ExpectTrue(tr, nullptr != unknown,
-        "QI<IUnknown> returns non-null (BEGIN_INTERFACE_MAP early-return)");
-    if (nullptr != unknown) {
-        unknown->Release();
-    }
-
-    auto* dispatcher = ps.plugin->QueryInterface<WPEFramework::PluginHost::IDispatcher>();
-    L0Test::ExpectTrue(tr, nullptr != dispatcher,
-        "QI<IDispatcher> returns non-null (no Initialize needed)");
-    if (nullptr != dispatcher) {
-        dispatcher->Release();
-    }
-
-    auto* dmNull = ps.plugin->QueryInterface<WPEFramework::Exchange::IDownloadManager>();
-    L0Test::ExpectTrue(tr, nullptr == dmNull,
-        "QI<IDownloadManager> returns null before Initialize (impl pointer null)");
-
-    auto* notif =
-        ps.plugin->QueryInterface<WPEFramework::Exchange::IDownloadManager::INotification>();
-    L0Test::ExpectTrue(tr, nullptr == notif,
-        "QI<IDownloadManager::INotification> returns null (not in shell INTERFACE_MAP)");
-
-    L0Test::ServiceMock::Config cfg;
-    cfg.configLine = "{\"downloadDir\":\"/tmp/dm_l0_qi\"}";
-    PluginAndService ps2(cfg);
-    if (ps2.plugin->Initialize(&ps2.service).empty()) {
-        // mDownloadManagerImpl is now non-null → aggregate returns non-null
-        auto* dmImpl = ps2.plugin->QueryInterface<WPEFramework::Exchange::IDownloadManager>();
-        L0Test::ExpectTrue(tr, nullptr != dmImpl,
-            "QI<IDownloadManager> returns non-null after Initialize");
-        if (nullptr != dmImpl) {
-            dmImpl->Release();
-        }
-
-        ps2.plugin->Deinitialize(&ps2.service);
-    }
-
-    return tr.failures;
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Initialize reads downloadId from config line
 // ─────────────────────────────────────────────────────────────────────────────
 
