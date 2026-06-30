@@ -50,9 +50,9 @@ inline WPEFramework::Exchange::IPackageInstaller::IPackageIterator* CreatePackag
         WPEFramework::Exchange::IPackageInstaller::IPackageIterator>(packages);
 }
 
-class FakeRemoteConnection final : public WPEFramework::RPC::IRemoteConnection {
+class MockRemoteConnection final : public WPEFramework::RPC::IRemoteConnection {
 public:
-    explicit FakeRemoteConnection(const uint32_t id = 1)
+    explicit MockRemoteConnection(const uint32_t id = 1)
         : _refCount(1)
         , _id(id)
     {
@@ -118,11 +118,11 @@ private:
     bool _terminated { false };
 };
 
-class FakeAppManagerNotification final
+class MockAppManagerNotification final
     : public WPEFramework::Exchange::IAppManager::INotification
     , public WPEFramework::RPC::IRemoteConnection::INotification {
 public:
-    FakeAppManagerNotification()
+    MockAppManagerNotification()
         : _refCount(1)
     {
     }
@@ -201,13 +201,13 @@ public:
     std::atomic<uint32_t> unloadedCount { 0 };
 };
 
-class FakePackageHandler final : public WPEFramework::Exchange::IPackageHandler {
+class MockPackageHandler final : public WPEFramework::Exchange::IPackageHandler {
 public:
     using LockHandler = std::function<WPEFramework::Core::hresult(
         const string&, const string&, const LockReason&, uint32_t&, string&, WPEFramework::Exchange::RuntimeConfig&, ILockIterator*&)>;
     using UnlockHandler = std::function<WPEFramework::Core::hresult(const string&, const string&)>;
 
-    FakePackageHandler()
+    MockPackageHandler()
         : _refCount(1)
     {
     }
@@ -270,13 +270,13 @@ public:
     UnlockHandler unlockHandler;
 };
 
-class FakePackageInstaller final : public WPEFramework::Exchange::IPackageInstaller {
+class MockPackageInstaller final : public WPEFramework::Exchange::IPackageInstaller {
 public:
     using Package = WPEFramework::Exchange::IPackageInstaller::Package;
     using ListHandler = std::function<WPEFramework::Core::hresult(IPackageIterator*&)>;
     using ConfigHandler = std::function<WPEFramework::Core::hresult(const string&, string&, string&, WPEFramework::Exchange::RuntimeConfig&)>;
 
-    FakePackageInstaller()
+    MockPackageInstaller()
         : _refCount(1)
     {
     }
@@ -366,9 +366,9 @@ public:
     ConfigHandler configHandler;
 };
 
-class FakeStore2 final : public WPEFramework::Exchange::IStore2 {
+class MockStore2 final : public WPEFramework::Exchange::IStore2 {
 public:
-    FakeStore2()
+    MockStore2()
         : _refCount(1)
     {
     }
@@ -441,9 +441,9 @@ public:
     std::map<std::string, std::string> data;
 };
 
-class FakeStorageManager final : public WPEFramework::Exchange::IAppStorageManager {
+class MockStorageManager final : public WPEFramework::Exchange::IAppStorageManager {
 public:
-    FakeStorageManager()
+    MockStorageManager()
         : _refCount(1)
     {
     }
@@ -495,9 +495,9 @@ public:
     ClearHandler clearAllHandler;
 };
 
-class FakeLifecycleManagerState final : public WPEFramework::Exchange::ILifecycleManagerState {
+class MockLifecycleManagerState final : public WPEFramework::Exchange::ILifecycleManagerState {
 public:
-    FakeLifecycleManagerState()
+    MockLifecycleManagerState()
         : _refCount(1)
     {
     }
@@ -546,9 +546,9 @@ public:
     INotification* registeredNotification { nullptr };
 };
 
-class FakeLifecycleManager final : public WPEFramework::Exchange::ILifecycleManager {
+class MockLifecycleManager final : public WPEFramework::Exchange::ILifecycleManager {
 public:
-    FakeLifecycleManager()
+    MockLifecycleManager()
         : _refCount(1)
     {
     }
