@@ -2729,7 +2729,7 @@ TEST_F(AppManagerTest, SetAppPropertyUsingComRpcFailureEmptyKey)
  * Verifying the return of the API by passing an empty value with valid appId and key
  * Releasing the AppManager interface and all related test resources
  */
-TEST_F(AppManagerTest, DISABLED_SetAppPropertyUsingComRpcFailureEmptyValue)
+TEST_F(AppManagerTest, SetAppPropertyUsingComRpcFailureEmptyValue)
 {
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
@@ -2753,7 +2753,7 @@ TEST_F(AppManagerTest, DISABLED_SetAppPropertyUsingComRpcFailureEmptyValue)
  * Verifying the return of the JSON-RPC API by passing an empty value with valid appId and key
  * Releasing the AppManager interface and all related test resources
  */
-TEST_F(AppManagerTest, DISABLED_SetAppPropertyUsingJSONRpcFailureEmptyValue)
+TEST_F(AppManagerTest, SetAppPropertyUsingJSONRpcFailureEmptyValue)
 {
     std::this_thread::sleep_for(std::chrono::seconds(1));
 
