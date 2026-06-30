@@ -152,19 +152,20 @@ sequenceDiagram
 
 ### Common Telemetry Markers
 
-The following markers are defined in `TelemetryMarkers.h` across subsystems:
+The following markers are defined in `helpers/Telemetry/TelemetryMarkers.h`:
 
-| Marker | Description | Source |
-|--------|-------------|--------|
-| `APP_LAUNCH_START` | App launch initiated | AppManager |
-| `APP_LAUNCH_COMPLETE` | App launch completed | LifecycleManager |
-| `CONTAINER_START` | Container starting | RuntimeManager |
-| `CONTAINER_RUNNING` | Container running | RuntimeManager |
-| `FIRST_FRAME` | First frame rendered | RDKWindowManager |
-| `APP_SUSPEND` | App suspended | LifecycleManager |
-| `APP_RESUME` | App resumed | LifecycleManager |
-| `APP_TERMINATE` | App terminated | LifecycleManager |
-
+| Marker | Description |
+|--------|-------------|
+| `TELEMETRY_MARKER_DOWNLOAD_TIME` | Package download time |
+| `TELEMETRY_MARKER_DOWNLOAD_ERROR` | Package download error |
+| `TELEMETRY_MARKER_INSTALL_TIME` | Package install time |
+| `TELEMETRY_MARKER_INSTALL_ERROR` | Package install error |
+| `TELEMETRY_MARKER_UNINSTALL_TIME` | Package uninstall time |
+| `TELEMETRY_MARKER_UNINSTALL_ERROR` | Package uninstall error |
+| `TELEMETRY_MARKER_LAUNCH_TIME` | App launch time |
+| `TELEMETRY_MARKER_LAUNCH_ERROR` | App launch error |
+| `TELEMETRY_MARKER_CLOSE_TIME` | App close time |
+| `TELEMETRY_MARKER_CLOSE_ERROR` | App close error |
 ### Telemetry Data Format
 
 ```json
