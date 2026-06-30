@@ -156,21 +156,18 @@ Core::hresult ClearAllAppData();
 **Purpose**: Encapsulates runtime state for a single loaded application.
 
 **Key Members**:
-```cpp
-class AppInfo {
-private:
-    std::string mAppInstanceId;      // Unique instance identifier
-    std::string mActiveSessionId;    // Active session ID
-    AppManagerTypes::PackageInfo mPackageInfo;  // Package metadata
-    Exchange::IAppManager::AppLifecycleState mAppNewState;
-    Exchange::IAppManager::AppLifecycleState mTargetAppState;
-    Exchange::IAppManager::AppLifecycleState mAppOldState;
-    Exchange::ILifecycleManager::LifecycleState mAppLifecycleState;
-    timespec mLastActiveStateChangeTime;
-    AppManagerTypes::CurrentAction mCurrentAction;
-    time_t mCurrentActionTime;
-};
-```
+| Member | Type | Description |
+|--------|------|-------------|
+| `mAppInstanceId` | `std::string` | Unique instance identifier |
+| `mActiveSessionId` | `std::string` | Active session ID |
+| `mPackageInfo` | `AppManagerTypes::PackageInfo` | Package metadata |
+| `mAppNewState` | `Exchange::IAppManager::AppLifecycleState` | Latest app lifecycle state |
+| `mTargetAppState` | `Exchange::IAppManager::AppLifecycleState` | Target state requested by current action |
+| `mAppOldState` | `Exchange::IAppManager::AppLifecycleState` | Previous app lifecycle state |
+| `mAppLifecycleState` | `Exchange::ILifecycleManager::LifecycleState` | LifecycleManager-reported state |
+| `mLastActiveStateChangeTime` | `timespec` | Timestamp of last active-state change |
+| `mCurrentAction` | `AppManagerTypes::CurrentAction` | Current in-flight action |
+| `mCurrentActionTime` | `time_t` | Time when current action started |
 
 #### AppInfoManager.h / AppInfoManager.cpp
 
@@ -546,37 +543,3 @@ TEST(AppManagerTest, NotificationOrder) {
 ```
 
 ---
-
-## 9. Beginner-to-Expert Learning Path
-
-### Must Know First
-
-1. **WPEFramework Basics**: Understand Thunder plugin architecture, COM-RPC, JSON-RPC
-2. **Interface Pattern**: Understand the shell/implementation separation pattern
-3. **INTERFACE_MAP Macros**: How Thunder exposes interfaces
-
-### Beginner Level
-
-1. Read `AppManager.h` to understand the plugin shell structure
-2. Examine `AppManager.config` to understand plugin configuration
-3. Trace a simple `LaunchApp` call through the code
-
-### Intermediate Level
-
-1. Study `AppManagerImplementation.h` for the full API surface
-2. Understand `AppInfoManager` thread-safety patterns
-3. Trace lifecycle events from LifecycleManager back to client notifications
-
-### Advanced Level
-
-1. Study `LifecycleInterfaceConnector` for inter-plugin communication patterns
-2. Understand the worker thread request queue mechanism
-3. Analyze error handling and recovery paths
-4. Study telemetry integration in `AppManagerTelemetryReporting`
-
-### Expert Level
-
-1. Modify the state machine for new application states
-2. Add new JSON-RPC methods with proper interface updates
-3. Implement custom notification delivery strategies
-4. Performance optimization of the worker thread

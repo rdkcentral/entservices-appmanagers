@@ -98,35 +98,23 @@ interface IPreinstallManager {
 
 ### PreinstallManagerImplementation
 
-```cpp
-// From PreinstallManagerImplementation.h
-class PreinstallManagerImplementation : public Exchange::IPreinstallManager,
-                                        public Exchange::IConfiguration {
-public:
-    typedef struct _PackageInfo {
-        string fileLocator;
-        string packageId;
-        string version;
-        Exchange::RuntimeConfig configMetadata;
-        string installStatus;
-    } PackageInfo;
+`PackageInfo` fields:
 
-private:
-    class Configuration : public Core::JSON::Container {
-    public:
-        Core::JSON::String appPreinstallDirectory;
-    };
+| Field | Type | Description |
+|-------|------|-------------|
+| `fileLocator` | `string` | Source package file path |
+| `packageId` | `string` | Package identifier |
+| `version` | `string` | Package version |
+| `configMetadata` | `Exchange::RuntimeConfig` | Runtime configuration metadata |
+| `installStatus` | `string` | Install status/result marker |
 
-    Configuration mConfig;
-    std::map<string, PackageInfo> mPackageMap;
-    State mCurrentState;
+Core implementation members:
 
-public:
-    Core::hresult StartPreinstall(bool forceInstall) override;
-    Core::hresult GetPreinstallState(State& state) override;
-    uint32_t Configure(PluginHost::IShell* service) override;
-};
-```
+| Member | Type | Description |
+|--------|------|-------------|
+| `mConfig` | `Configuration` | Plugin configuration container |
+| `mPackageMap` | `std::map<string, PackageInfo>` | Package metadata map used during scan/install |
+| `mCurrentState` | `State` | Current preinstall state |
 
 ---
 

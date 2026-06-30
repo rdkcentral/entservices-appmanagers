@@ -117,32 +117,31 @@ PackageManager/
 - `Exchange::IPackageHandler` - Lock/unlock management
 
 **Key Types**:
-```cpp
-// Package state tracking
-class State {
-public:
-    InstallState installState = InstallState::UNINSTALLED;
-    uint32_t mLockCount = 0;
-    Exchange::RuntimeConfig runtimeConfig;
-    string gatewayMetadataPath;
-    string unpackedPath;
-    FailReason failReason = FailReason::NONE;
-    std::list<AdditionalLock> additionalLocks;
-    string runtimeType;
-    std::pair<std::string, std::string> runtimeApp;
-};
+`State` fields:
 
-// Download job information
-class DownloadInfo {
-    string id;
-    string url;
-    bool priority;
-    uint8_t retries;
-    long rateLimit;
-    string fileLocator;
-    bool cancel;
-};
-```
+| Field | Type | Description |
+|-------|------|-------------|
+| `installState` | `InstallState` | Current package installation state |
+| `mLockCount` | `uint32_t` | Number of active locks |
+| `runtimeConfig` | `Exchange::RuntimeConfig` | Runtime metadata used by launch/runtime flows |
+| `gatewayMetadataPath` | `string` | Path to gateway metadata |
+| `unpackedPath` | `string` | Path to unpacked package contents |
+| `failReason` | `FailReason` | Last failure reason |
+| `additionalLocks` | `std::list<AdditionalLock>` | Additional lock records |
+| `runtimeType` | `string` | Runtime type associated with package |
+| `runtimeApp` | `std::pair<std::string, std::string>` | Runtime app tuple information |
+
+`DownloadInfo` fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | `string` | Download identifier |
+| `url` | `string` | Source URL |
+| `priority` | `bool` | Priority queue flag |
+| `retries` | `uint8_t` | Retry attempt limit |
+| `rateLimit` | `long` | Download rate limit |
+| `fileLocator` | `string` | Destination file locator/path |
+| `cancel` | `bool` | Cancellation flag |
 
 **Key Methods**:
 ```cpp
@@ -201,11 +200,7 @@ interface IPackageDownloader {
         CANCELLED
     };
 
-    struct Options {
-        bool priority;
-        uint8_t retries;
-        uint64_t rateLimit;
-    };
+    // Options fields are documented in table format below.
 
     interface INotification {
         void OnDownloadComplete(const string& downloadId, const string& fileLocator,
@@ -245,11 +240,7 @@ interface IPackageInstaller {
         VERSION_NOT_FOUND
     };
 
-    struct Package {
-        string id;
-        string version;
-        InstallState state;
-    };
+    // Package fields are documented in table format below.
 
     interface INotification {
         void OnAppInstallationStatus(const string& jsonResponse);
@@ -268,6 +259,22 @@ interface IPackageInstaller {
     hresult Unregister(INotification* notification);
 };
 ```
+
+`IPackageDownloader::Options` fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `priority` | `bool` | Indicates whether to enqueue as priority download |
+| `retries` | `uint8_t` | Number of retry attempts |
+| `rateLimit` | `uint64_t` | Maximum download rate |
+
+`IPackageInstaller::Package` fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | `string` | Package identifier |
+| `version` | `string` | Package version |
+| `state` | `InstallState` | Current install state |
 
 ### Exchange::IPackageHandler Interface
 
@@ -487,26 +494,3 @@ Located in `Tests/L1Tests/tests/test_PackageManager.cpp`:
 4. **Lock Contention**: Multiple lock requests
 
 ---
-
-## 9. Beginner-to-Expert Learning Path
-
-### Must Know First
-1. HTTP protocol basics
-2. Package formats and signatures
-3. File system operations
-
-### Beginner Level
-1. Understand the three interfaces (Downloader, Installer, Handler)
-2. Trace a simple install flow
-
-### Intermediate Level
-1. Study download queue management
-2. Understand lock counting mechanism
-
-### Advanced Level
-1. Implement custom package formats
-2. Add new verification methods
-
-### Expert Level
-1. Optimize download performance
-2. Add delta update support

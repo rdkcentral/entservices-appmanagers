@@ -188,31 +188,26 @@ Core::hresult CloseApp(const string& appId, AppCloseReason closeReason);
 **Purpose**: Encapsulates all runtime context for a single application instance.
 
 **Key Members**:
-```cpp
-class ApplicationContext : public std::enable_shared_from_this<ApplicationContext> {
-private:
-    std::string mAppInstanceId;      // Unique instance ID
-    std::string mAppId;              // Application ID
-    timespec mLastLifecycleStateChangeTime;
-    std::string mActiveSessionId;
-    LifecycleState mTargetLifecycleState;
-    std::string mMostRecentIntent;
-    void* mState;                    // Current State object
-    uint32_t mStateChangeId;         // State change counter
-    ApplicationLaunchParams mLaunchParams;
-    ApplicationKillParams mKillParams;
-    time_t mRequestTime;
-    RequestType mRequestType;
-
-public:
-    sem_t mReachedLoadingStateSemaphore;
-    sem_t mFirstFrameAfterResumeSemaphore;
-    bool mPendingStateTransition;
-    std::vector<LifecycleState> mPendingStates;
-    LifecycleState mPendingOldState;
-    std::string mPendingEventName;
-};
-```
+| Member | Type | Description |
+|--------|------|-------------|
+| `mAppInstanceId` | `std::string` | Unique instance ID |
+| `mAppId` | `std::string` | Application ID |
+| `mLastLifecycleStateChangeTime` | `timespec` | Timestamp of last lifecycle transition |
+| `mActiveSessionId` | `std::string` | Active session identifier |
+| `mTargetLifecycleState` | `LifecycleState` | Requested target lifecycle state |
+| `mMostRecentIntent` | `std::string` | Last intent payload associated with app activity |
+| `mState` | `void*` | Pointer to current state object |
+| `mStateChangeId` | `uint32_t` | Monotonic state transition counter |
+| `mLaunchParams` | `ApplicationLaunchParams` | Parameters used for launch flow |
+| `mKillParams` | `ApplicationKillParams` | Parameters used for kill/terminate flow |
+| `mRequestTime` | `time_t` | Timestamp of current request |
+| `mRequestType` | `RequestType` | Current request category |
+| `mReachedLoadingStateSemaphore` | `sem_t` | Synchronization for loading-state wait |
+| `mFirstFrameAfterResumeSemaphore` | `sem_t` | Synchronization for first-frame-after-resume wait |
+| `mPendingStateTransition` | `bool` | Indicates pending transition processing |
+| `mPendingStates` | `std::vector<LifecycleState>` | Queue of pending lifecycle states |
+| `mPendingOldState` | `LifecycleState` | Previous state for pending transition handling |
+| `mPendingEventName` | `std::string` | Event name linked to pending transition |
 
 #### State.h / State.cpp
 
@@ -669,36 +664,3 @@ TEST(LifecycleManagerTest, StatePathCalculation) {
 ```
 
 ---
-
-## 9. Beginner-to-Expert Learning Path
-
-### Must Know First
-
-1. **State Pattern**: Understand the Gang of Four State design pattern
-2. **WPEFramework Plugins**: Basic Thunder plugin architecture
-3. **COM-RPC**: Inter-plugin communication mechanism
-
-### Beginner Level
-
-1. Read `State.h` to understand the state class hierarchy
-2. Examine `LifecycleManager.config` for plugin configuration
-3. Trace a simple SpawnApp call from entry to container start
-
-### Intermediate Level
-
-1. Study `StateHandler` for transition validation logic
-2. Understand `ApplicationContext` lifecycle
-3. Trace the event flow from RuntimeManager back to AppManager
-
-### Advanced Level
-
-1. Study the pending state queue mechanism in `ApplicationContext`
-2. Analyze respawn handling in `mPendingRespawns`
-3. Understand handler separation (RuntimeManagerHandler, WindowManagerHandler)
-
-### Expert Level
-
-1. Add new lifecycle states to the state machine
-2. Implement custom state transition behaviors
-3. Optimize state path calculation algorithm
-4. Add new event types and handlers

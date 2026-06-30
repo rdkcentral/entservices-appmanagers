@@ -150,35 +150,39 @@ class RuntimeManager : public PluginHost::IPlugin {
 **Purpose**: Core container orchestration logic implementing `IRuntimeManager`.
 
 **Key Types**:
-```cpp
-enum RuntimeEventType {
-    RUNTIME_MANAGER_EVENT_UNKNOWN = 0,
-    RUNTIME_MANAGER_EVENT_STATECHANGED,
-    RUNTIME_MANAGER_EVENT_CONTAINERSTARTED,
-    RUNTIME_MANAGER_EVENT_CONTAINERSTOPPED,
-    RUNTIME_MANAGER_EVENT_CONTAINERFAILED
-};
+`RuntimeEventType` values:
 
-enum RequestType {
-    REQUEST_TYPE_NONE,
-    REQUEST_TYPE_LAUNCH,
-    REQUEST_TYPE_SUSPEND,
-    REQUEST_TYPE_RESUME,
-    REQUEST_TYPE_HIBERNATE,
-    REQUEST_TYPE_WAKE,
-    REQUEST_TYPE_TERMINATE,
-    REQUEST_TYPE_KILL
-};
+| Value |
+|-------|
+| `RUNTIME_MANAGER_EVENT_UNKNOWN` |
+| `RUNTIME_MANAGER_EVENT_STATECHANGED` |
+| `RUNTIME_MANAGER_EVENT_CONTAINERSTARTED` |
+| `RUNTIME_MANAGER_EVENT_CONTAINERSTOPPED` |
+| `RUNTIME_MANAGER_EVENT_CONTAINERFAILED` |
 
-struct RuntimeAppInfo {
-    std::string appId;
-    std::string appInstanceId;
-    uint32_t descriptor;
-    RuntimeState containerState;
-    time_t requestTime;
-    RequestType requestType;
-};
-```
+`RequestType` values:
+
+| Value |
+|-------|
+| `REQUEST_TYPE_NONE` |
+| `REQUEST_TYPE_LAUNCH` |
+| `REQUEST_TYPE_SUSPEND` |
+| `REQUEST_TYPE_RESUME` |
+| `REQUEST_TYPE_HIBERNATE` |
+| `REQUEST_TYPE_WAKE` |
+| `REQUEST_TYPE_TERMINATE` |
+| `REQUEST_TYPE_KILL` |
+
+`RuntimeAppInfo` fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `appId` | `std::string` | Application identifier |
+| `appInstanceId` | `std::string` | Runtime instance identifier |
+| `descriptor` | `uint32_t` | Runtime/container descriptor |
+| `containerState` | `RuntimeState` | Current runtime state |
+| `requestTime` | `time_t` | Timestamp for active request |
+| `requestType` | `RequestType` | Request type currently being processed |
 
 **Key Methods**:
 ```cpp

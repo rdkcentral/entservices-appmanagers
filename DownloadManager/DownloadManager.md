@@ -119,11 +119,7 @@ interface IDownloadManager {
         DOWNLOAD_FAILURE
     };
 
-    struct Options {
-        bool priority;
-        uint8_t retries;
-        uint32_t rateLimit;
-    };
+    // Options fields are documented in table format below.
 
     interface INotification {
         void OnDownloadComplete(const string& downloadId, const string& fileLocator,
@@ -144,6 +140,14 @@ interface IDownloadManager {
     hresult Deinitialize(PluginHost::IShell* service);
 };
 ```
+
+`IDownloadManager::Options` fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `priority` | `bool` | Indicates whether the download goes to priority queue |
+| `retries` | `uint8_t` | Number of retry attempts |
+| `rateLimit` | `uint32_t` | Download speed limit |
 
 ---
 

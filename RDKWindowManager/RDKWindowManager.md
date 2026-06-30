@@ -147,24 +147,25 @@ interface IRDKWindowManager {
 
 ### RDKWindowManagerImplementation Key Types
 
-```cpp
-// Display creation request structure
-struct CreateDisplayRequest {
-    std::string mClient;
-    std::string mDisplayName;
-    uint32_t mDisplayWidth;
-    uint32_t mDisplayHeight;
-    bool mVirtualDisplayEnabled;
-    uint32_t mVirtualWidth;
-    uint32_t mVirtualHeight;
-    bool mTopmost;
-    bool mFocus;
-    sem_t mSemaphore;
-    bool mResult;
-    uint32_t mOwnerId;
-    uint32_t mGroupId;
-};
+`CreateDisplayRequest` fields:
 
+| Field | Type | Description |
+|-------|------|-------------|
+| `mClient` | `std::string` | Client identifier |
+| `mDisplayName` | `std::string` | Display name |
+| `mDisplayWidth` | `uint32_t` | Physical display width |
+| `mDisplayHeight` | `uint32_t` | Physical display height |
+| `mVirtualDisplayEnabled` | `bool` | Enables virtual display mode |
+| `mVirtualWidth` | `uint32_t` | Virtual display width |
+| `mVirtualHeight` | `uint32_t` | Virtual display height |
+| `mTopmost` | `bool` | Requests topmost z-order |
+| `mFocus` | `bool` | Requests focus assignment |
+| `mSemaphore` | `sem_t` | Synchronization semaphore for request completion |
+| `mResult` | `bool` | Operation success flag |
+| `mOwnerId` | `uint32_t` | Owner user identifier |
+| `mGroupId` | `uint32_t` | Owner group identifier |
+
+```cpp
 // Window manager events
 enum Event {
     RDK_WINDOW_MANAGER_EVENT_UNKNOWN,
