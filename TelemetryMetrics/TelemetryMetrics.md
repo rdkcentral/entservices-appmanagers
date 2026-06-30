@@ -168,25 +168,13 @@ The following markers are defined in `helpers/Telemetry/TelemetryMarkers.h`:
 | `TELEMETRY_MARKER_CLOSE_ERROR` | App close error |
 ### Telemetry Data Format
 
-```json
-{
-    "id": "com.example.app",
-    "name": "appLaunch",
-    "metrics": {
-        "startTime": 1640000000000,
-        "endTime": 1640000002500,
-        "duration": 2500,
-        "success": true,
-        "markers": {
-            "APP_LAUNCH_START": 1640000000000,
-            "CONTAINER_START": 1640000000500,
-            "CONTAINER_RUNNING": 1640000001000,
-            "FIRST_FRAME": 1640000002000,
-            "APP_LAUNCH_COMPLETE": 1640000002500
-        }
+    {
+        "appId": "com.example.app",
+        "appInstanceId": "instance-123",
+        "totalLaunchTime": 2500,
+        "runtimeManagerRunTime": 1200,
+        "markerName": "ENTS_INFO_RDKAMAppLaunchTime"
     }
-}
-```
 
 ---
 
