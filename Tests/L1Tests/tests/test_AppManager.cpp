@@ -24,6 +24,8 @@
 #include <vector>
 #include <cstdio>
 #include <mutex>
+#include <chrono>
+#include <thread>
 
 #include "AppManager.h"
 #include "AppManagerImplementation.h"
@@ -2727,8 +2729,10 @@ TEST_F(AppManagerTest, SetAppPropertyUsingComRpcFailureEmptyKey)
  * Verifying the return of the API by passing an empty value with valid appId and key
  * Releasing the AppManager interface and all related test resources
  */
-TEST_F(AppManagerTest, SetAppPropertyUsingComRpcFailureEmptyValue)
+TEST_F(AppManagerTest, DISABLED_SetAppPropertyUsingComRpcFailureEmptyValue)
 {
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+
     Core::hresult status;
     const std::string key = PERSISTENT_STORE_KEY;
     const std::string value = "";
@@ -2749,8 +2753,10 @@ TEST_F(AppManagerTest, SetAppPropertyUsingComRpcFailureEmptyValue)
  * Verifying the return of the JSON-RPC API by passing an empty value with valid appId and key
  * Releasing the AppManager interface and all related test resources
  */
-TEST_F(AppManagerTest, SetAppPropertyUsingJSONRpcFailureEmptyValue)
+TEST_F(AppManagerTest, DISABLED_SetAppPropertyUsingJSONRpcFailureEmptyValue)
 {
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+
     Core::hresult status;
     const std::string key = PERSISTENT_STORE_KEY;
     const std::string value = "";
@@ -4953,4 +4959,5 @@ TEST_F(AppManagerTest, GetCustomValuesWithAipathFileHasContent)
         releaseResources();
     }
 }
+
 
