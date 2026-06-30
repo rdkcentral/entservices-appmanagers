@@ -1,241 +1,229 @@
-# DownloadManager Module
+# DownloadManager Plugin Documentation
 
-> HTTP Download Service with Queue Management
+> HTTP Download Management with Priority Queuing for RDK Infrastructure
 
-[← Back to Main](../README.md) | [← Previous: PackageManager](../PackageManager/PackageManager.md)
+## 1. High-Level Purpose & Architecture
+
+### Role in ENT / RDK Infrastructure
+
+The **DownloadManager** plugin provides a dedicated HTTP download service with priority queuing, rate limiting, and retry mechanisms. It is designed as a standalone download service separate from PackageManager for general-purpose download needs.
+
+### Responsibilities
+
+- **HTTP Downloads**: Manage HTTP/HTTPS file downloads
+- **Priority Queuing**: Support priority and regular download queues
+- **Rate Limiting**: Enforce download rate limits per request
+- **Retry Logic**: Automatic retry with exponential backoff
+- **Progress Reporting**: Report download progress to subscribers
+
+### Interacting Subsystems
+
+| Subsystem | Interaction Type | Purpose |
+|-----------|-----------------|---------|
+| PackageManager | COM-RPC (potential) | May delegate downloads |
+| FileSystem | Direct | Store downloaded files |
 
 ---
 
-## Purpose & Role
+## 2. Architectural Overview
 
-The **DownloadManager** provides HTTP download services with advanced features like priority queuing, pause/resume, rate limiting, progress reporting, and automatic retry.
-
-### Core Responsibilities
-
-- **HTTP Downloads:** Download files via libcurl
-- **Queue Management:** Priority-based download queue
-- **Pause/Resume:** Support download interruption and continuation
-- **Rate Limiting:** Control bandwidth usage
-- **Progress Reporting:** Real-time download progress events
-- **Retry Logic:** Automatic retry on transient failures
-
----
-
-## Architecture
+### Major Components
 
 ```mermaid
 graph TB
-    subgraph "DownloadManager Module"
-        DM[DownloadManager<br/>Plugin]
-        DMI[DownloadManagerImplementation]
-        HC[DownloadManagerHttpClient]
-        DQ[Download Queue]
-        WT[Worker Thread]
+    subgraph "DownloadManager Plugin"
+        Impl[DownloadManagerImplementation]
+        HTTP[DownloadManagerHttpClient]
+        PQ[Priority Queue]
+        RQ[Regular Queue]
+        DT[Download Thread]
     end
 
     subgraph "External"
-        CURL[libcurl]
+        Net[Network]
         FS[FileSystem]
-        Network[HTTP Server]
     end
 
-    DM --> DMI
-    DMI --> HC
-    DMI --> DQ
-    DMI --> WT
-    HC --> CURL
-    HC --> FS
-    CURL --> Network
+    Impl --> HTTP
+    Impl --> PQ
+    Impl --> RQ
+    Impl --> DT
+    HTTP --> Net
+    DT --> FS
 ```
 
 ---
 
-## Class Diagram
+## 3. Code Organization
 
-```mermaid
-classDiagram
-    class DownloadManagerImplementation {
-        -list~DownloadInfo~ mDownloadQueue
-        -DownloadManagerHttpClient* mHttpClient
-        -thread mDownloaderThread
-        -mutex mMutex
-        +Download(url, options, downloadId) hresult
-        +Pause(downloadId) hresult
-        +Resume(downloadId) hresult
-        +Cancel(downloadId) hresult
-        +Delete(fileLocator) hresult
-        +Progress(downloadId, percent) hresult
-        +RateLimit(downloadId, limit) hresult
-    }
-
-    class DownloadInfo {
-        +string downloadId
-        +string url
-        +string destPath
-        +DownloadPriority priority
-        +DownloadStatus status
-        +uint64_t totalBytes
-        +uint64_t downloadedBytes
-        +uint32_t retryCount
-    }
-
-    class DownloadManagerHttpClient {
-        -CURL* mCurl
-        +download(url, destPath, callback) bool
-        +setRateLimit(bytesPerSec) void
-        +pause() void
-        +resume() void
-    }
-
-    DownloadManagerImplementation --> DownloadInfo: manages
-    DownloadManagerImplementation --> DownloadManagerHttpClient: uses
-```
-
----
-
-## File Organization
+### Directory Structure
 
 ```
 DownloadManager/
-├── DownloadManager.cpp            Plugin wrapper
-├── DownloadManager.h              Plugin class definition
-├── DownloadManagerImplementation.cpp Core implementation
-├── DownloadManagerImplementation.h   Implementation class
-├── DownloadManagerHttpClient.cpp  libcurl HTTP client
-├── DownloadManagerHttpClient.h    HTTP client class
-├── Module.cpp/h                   Module registration
-├── CMakeLists.txt                 Build configuration
-└── DownloadManager.config         Runtime configuration
+├── DownloadManager.cpp              # Plugin shell
+├── DownloadManager.h                # Shell header
+├── DownloadManagerImplementation.cpp # Core implementation
+├── DownloadManagerImplementation.h   # Implementation header
+├── DownloadManagerHttpClient.cpp    # HTTP client
+├── DownloadManagerHttpClient.h      # HTTP client header
+├── DownloadManagerTelemetryReporting.cpp # Telemetry
+├── DownloadManagerTelemetryReporting.h   # Telemetry header
+├── Module.cpp                       # Plugin module
+├── Module.h                         # Module header
+├── CMakeLists.txt                   # Build configuration
+├── DownloadManager.config           # Plugin configuration
+└── DownloadManager.conf.in          # Configuration template
 ```
 
----
-
-## Key Data Structures
+### Key Implementation Details
 
 ```cpp
-struct DownloadInfo {
-    string downloadId;
-    string url;
-    string destPath;
-    DownloadPriority priority;
-    DownloadStatus status;  // QUEUED, DOWNLOADING, PAUSED, COMPLETE, FAILED
-    uint64_t totalBytes;
-    uint64_t downloadedBytes;
-    uint32_t retryCount;
-    uint32_t maxRetries;
-};
+// From DownloadManagerImplementation.h
+class DownloadManagerImplementation : public Exchange::IDownloadManager {
+    class DownloadInfo {
+        string id;
+        string url;
+        bool priority;
+        uint8_t retries;
+        uint32_t rateLimit;
+        string fileLocator;
+        bool isCancelled;
+    };
 
-enum DownloadPriority {
-    LOW = 0,
-    NORMAL = 1,
-    HIGH = 2
+    typedef std::shared_ptr<DownloadInfo> DownloadInfoPtr;
+    typedef std::queue<DownloadInfoPtr> DownloadQueue;
+
+private:
+    std::unique_ptr<DownloadManagerHttpClient> mHttpClient;
+    DownloadQueue mPriorityDownloadQueue;
+    DownloadQueue mRegularDownloadQueue;
+    std::unique_ptr<std::thread> mDownloadThreadPtr;
+    std::atomic<bool> mDownloaderRunFlag;
+    DownloadInfoPtr mCurrentDownload;
+    uint32_t mDownloadId;
+    std::string mDownloadPath;
 };
 ```
 
 ---
 
-## API Reference
+## 4. Class & Interface Documentation
 
-### IDownloadManager Interface
+### Exchange::IDownloadManager Interface
 
-| Method | Purpose |
-|--------|---------|
-| `Download(url, options, downloadId)` | Queue a new download |
-| `Pause(downloadId)` | Pause an active download |
-| `Resume(downloadId)` | Resume a paused download |
-| `Cancel(downloadId)` | Cancel a download |
-| `Delete(fileLocator)` | Delete a completed download file |
-| `Progress(downloadId, percent)` | Get current download progress |
-| `RateLimit(downloadId, bytesPerSecond)` | Set per-download rate limit in bytes per second |
+```cpp
+interface IDownloadManager {
+    enum FailReason {
+        NONE = 0,
+        DISK_PERSISTENCE_FAILURE,
+        DOWNLOAD_FAILURE
+    };
+
+    // Options fields are documented in table format below.
+
+    interface INotification {
+        void OnDownloadComplete(const string& downloadId, const string& fileLocator,
+                               FailReason reason);
+        void OnDownloadProgress(const string& downloadId, uint8_t percent);
+    };
+
+    hresult Download(const string& url, const Options& options, string& downloadId);
+    hresult Pause(const string& downloadId);
+    hresult Resume(const string& downloadId);
+    hresult Cancel(const string& downloadId);
+    hresult Delete(const string& fileLocator);
+    hresult Progress(const string& downloadId, uint8_t& percent);
+    hresult RateLimit(const string& downloadId, uint32_t limit);
+    hresult Register(INotification* notification);
+    hresult Unregister(INotification* notification);
+    hresult Initialize(PluginHost::IShell* service);
+    hresult Deinitialize(PluginHost::IShell* service);
+};
+```
+
+`IDownloadManager::Options` fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `priority` | `bool` | Indicates whether the download goes to priority queue |
+| `retries` | `uint8_t` | Number of retry attempts |
+| `rateLimit` | `uint32_t` | Download speed limit |
 
 ---
 
-## Download State Machine
+## 5. Internal Workflows
+
+### Download Processing Flow
 
 ```mermaid
-stateDiagram-v2
-    [*] --> QUEUED: Download()
-    QUEUED --> DOWNLOADING: Worker picks up
-    DOWNLOADING --> PAUSED: Pause()
-    PAUSED --> DOWNLOADING: Resume()
-    DOWNLOADING --> COMPLETE: Download finished
-    DOWNLOADING --> FAILED: Error (retry exhausted)
-    DOWNLOADING --> QUEUED: Error (retry available)
-    DOWNLOADING --> CANCELLED: Cancel()
-    PAUSED --> CANCELLED: Cancel()
-    QUEUED --> CANCELLED: Cancel()
-    COMPLETE --> [*]
-    FAILED --> [*]
-    CANCELLED --> [*]
+sequenceDiagram
+    participant Client
+    participant DM as DownloadManager
+    participant DT as DownloadThread
+    participant HTTP as HttpClient
+
+    Client->>DM: Download(url, options)
+    DM->>DM: Create DownloadInfo
+    DM->>DM: Queue (priority or regular)
+    DM->>DT: Signal CV
+    DM-->>Client: downloadId
+
+    DT->>DT: pickDownloadJob()
+    DT->>HTTP: download(url, path)
+    
+    loop Progress Updates
+        HTTP->>DM: Progress callback
+        DM->>Client: OnDownloadProgress
+    end
+
+    HTTP-->>DT: Complete
+    DT->>DM: notifyDownloadStatus
+    DM->>Client: OnDownloadComplete
 ```
 
----
+### Retry Logic with Golden Ratio Backoff
 
-## Features
-
-### Priority Queue
-
-Downloads are processed based on priority:
-
-| Priority | Value | Use Case |
-|----------|-------|----------|
-| HIGH | 2 | User-initiated downloads, critical updates |
-| NORMAL | 1 | Standard app package downloads |
-| LOW | 0 | Background prefetch, optional content |
-
-### Retry Logic
-
-- Configurable max retry count (default: 3)
-- Exponential backoff between retries
-- Only retries transient errors (network, timeout)
-- Non-transient errors (404, 403) fail immediately
-
-### Rate Limiting
-
-Uses libcurl's `CURLOPT_MAX_RECV_SPEED_LARGE` for bandwidth throttling.
-
----
-
-## Events
-
-### OnDownloadStatusChanged
-
-Emitted on status changes (started, paused, resumed, completed, failed).
-
-```json
-{
-    "downloadId": "pkg-12345",
-    "status": "COMPLETE",
-    "url": "https://example.com/app.tar.gz",
-    "destPath": "/tmp/downloads/app.tar.gz"
+```cpp
+// Golden-ratio-based retry delay.
+int nextRetryDuration(int n) {
+    const double goldenRatio = (1 + std::sqrt(5)) / 2.0;
+    double next = n * goldenRatio;
+    return static_cast<int>(std::round(next));
 }
+// Example: n=1 -> 2s, n=2 -> 3s, n=3 -> 5s, n=4 -> 6s
+
+---
+
+## 6. Configuration
+
+### Plugin Configuration
+
+```cmake
+set (autostart false)
+set (preconditions Platform)
+set (callsign "org.rdk.DownloadManager")
 ```
 
-### OnDownloadProgress
-
-Emitted periodically during active download.
+### Runtime Configuration
 
 ```json
 {
-    "downloadId": "pkg-12345",
-    "downloadedBytes": 52428800,
-    "totalBytes": 104857600,
-    "percentComplete": 50
+    "downloadDir": "/tmp/downloads",
+    "downloadId": 1
 }
 ```
 
 ---
 
-## Threading Model
+## 7. Testing
 
-DownloadManager uses a dedicated worker thread (`downloaderRoutine`) that:
+### Existing Tests
 
-1. Picks highest priority download from queue
-2. Executes download via HttpClient
-3. Reports progress via notifications
-4. Handles pause/resume/cancel requests
+Located in `Tests/L1Tests/tests/test_DownloadManager.cpp`
 
----
-
-[← Back to Main](../README.md) | [Next: AppStorageManager →](../AppStorageManager/AppStorageManager.md)
-
+| Test | Description |
+|------|-------------|
+| Download | Basic download functionality |
+| Priority | Priority queue handling |
+| Cancel | Download cancellation |
+| Progress | Progress reporting |
