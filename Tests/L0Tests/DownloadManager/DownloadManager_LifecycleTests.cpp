@@ -144,7 +144,7 @@ uint32_t Test_Shell_InitializeSuccessRegistersNotification()
             L0Test::ExpectTrue(tr, true,
                 "Initialize succeeded with in-process impl (L0 context — acceptable)");
         }
-        if (nullptr != fakeImpl) {
+        if (nullptr != fakeImpl) {
             fakeImpl->AddRef();
         }
 
@@ -153,7 +153,7 @@ uint32_t Test_Shell_InitializeSuccessRegistersNotification()
         if (nullptr != fakeImpl) {
             L0Test::ExpectEqU32(tr, fakeImpl->unregisterCalls.load(), 1u,
                 "IDownloadManager::Unregister called once by Deinitialize()");
-            fakeImpl->Release();
+            fakeImpl->Release();
         }
     } else {
         // In minimal isolated environments Root<>() may fail

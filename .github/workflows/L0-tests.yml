@@ -338,7 +338,7 @@ jobs:
             -name "libRDKWindowManager.so*" -o -name "libWPEFrameworkRDKWindowManager.so*" -o \
             -name "libWPEFrameworkRDKWindowManagerImplementation.so*" -o -name "libRDKWindowManagerImplementation.so*" -o \
             -name "libDownloadManager.so*" -o -name "libWPEFrameworkDownloadManager.so*" -o \
-            -name "libWPEFrameworkDownloadManagerImplementation.so*" -o -name "libDownloadManagerImplementation.so*" \
+            -name "libWPEFrameworkDownloadManagerImplementation.so*" -o -name "libDownloadManagerImplementation.so*" -o \
             -name "libAppManager.so*" -o -name "libWPEFrameworkAppManager.so*" -o \
             -name "libWPEFrameworkAppManagerImplementation.so*" -o -name "libAppManagerImplementation.so*" \
           \) -exec cp -f {} "$GITHUB_WORKSPACE/install/usr/lib/wpeframework/plugins/" \; 2>/dev/null || true
