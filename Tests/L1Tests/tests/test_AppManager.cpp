@@ -24,6 +24,8 @@
 #include <vector>
 #include <cstdio>
 #include <mutex>
+#include <chrono>
+#include <thread>
 
 #include "AppManager.h"
 #include "AppManagerImplementation.h"
@@ -4901,6 +4903,10 @@ TEST_F(AppManagerTest, AppManagerImplRemoveAppInfoByAppIdFound)
     EXPECT_TRUE(signalled & AppManager_onAppUnloaded);
 
     mAppManagerImpl->Unregister(&notification);
+
+    /* removeAppInfoByAppId is called after OnAppUnloaded on the dispatch thread.
+     * Allow a brief settling window for the dispatch thread to complete it. */
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     /* Verify the entry has been removed */
     EXPECT_FALSE(AppInfoManager::getInstance().exists(APPMANAGER_APP_ID));

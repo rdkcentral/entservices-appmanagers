@@ -1205,7 +1205,7 @@ TEST_F(RDKWindowManagerTest, GetZOrder_Success_Additional)
             response));
 }
 
-TEST_F(RDKWindowManagerTest, GetZOrder_MissingAppInstanceId_Failure)
+TEST_F(RDKWindowManagerTest, GetZOrder_MissingClientId_Failure)
 {
     EXPECT_CALL(*windowManagerMock, GetZOrder(_, _))
         .WillOnce(Return(Core::ERROR_GENERAL));
