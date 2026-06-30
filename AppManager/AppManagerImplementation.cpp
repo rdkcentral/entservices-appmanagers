@@ -20,9 +20,12 @@
 #include <iomanip>      /* for std::setw, std::setfill */
 #include "AppManagerImplementation.h"
 #include "AppManagerTelemetryReporting.h"
+#include "UtilsAppManagerTelemetry.h"
 
 #define TIME_DATA_SIZE           200
 static bool sRunning = false;
+
+RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::AppManagerTelemetryReporting, "appManagerBootstrapTime")
 
 namespace WPEFramework {
 namespace Plugin {
@@ -535,7 +538,7 @@ uint32_t AppManagerImplementation::Configure(PluginHost::IShell* service)
         {
             LOGINFO("created createStorageManagerRemoteObject");
         }
-        AppManagerTelemetryReporting::getInstance().initialize(service);
+        RDKAM_TELEMETRY_INIT(service);
         sRunning = true;
         /* Create the worker thread */
         try
@@ -632,10 +635,7 @@ void AppManagerImplementation::releasePackageManagerObject()
 
 Core::hresult AppManagerImplementation::createStorageManagerRemoteObject()
 {
-     #define MAX_STORAGE_MANAGER_OBJECT_CREATION_RETRIES 2
-
     Core::hresult status = Core::ERROR_GENERAL;
-    uint8_t retryCount = 0;
 
     if (nullptr == mCurrentservice)
     {
@@ -643,27 +643,15 @@ Core::hresult AppManagerImplementation::createStorageManagerRemoteObject()
     }
     else
     {
-        do
-        {
-            mStorageManagerRemoteObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IAppStorageManager>("org.rdk.AppStorageManager");
+        mStorageManagerRemoteObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IAppStorageManager>("org.rdk.AppStorageManager");
 
-            if (nullptr == mStorageManagerRemoteObject)
-            {
-                LOGERR("storageManagerRemoteObject is null (Attempt %d)", retryCount + 1);
-                retryCount++;
-                std::this_thread::sleep_for(std::chrono::milliseconds(200));
-            }
-            else
-            {
-                LOGINFO("Successfully created Storage Manager Object");
-                status = Core::ERROR_NONE;
-                break;
-            }
-        } while (retryCount < MAX_STORAGE_MANAGER_OBJECT_CREATION_RETRIES);
-
-        if (status != Core::ERROR_NONE)
+        if (nullptr != mStorageManagerRemoteObject)
         {
-            LOGERR("Failed to create Storage Manager Object after %d attempts", MAX_STORAGE_MANAGER_OBJECT_CREATION_RETRIES);
+            status = Core::ERROR_NONE;
+        }
+        else
+        {
+            LOGERR("Failed to create Storage Manager Object");
         }
     }
     return status;
@@ -750,20 +738,7 @@ Core::hresult AppManagerImplementation::packageLock(const string& appId, Package
             if (status == Core::ERROR_NONE)
             {
                 /* Check if appId is installed */
-                checkIsInstalled(appId, installed, packageList);
-
-                if (installed)
-                {
-                    /* Check if the packageId matches the provided appId */
-                    for (const auto& package : packageList)
-                    {
-                        if (!package.packageId.empty() && package.packageId == appId && package.state == Exchange::IPackageInstaller::InstallState::INSTALLED)
-                        {
-                            packageData.version = std::string(package.version);
-                            break;
-                        }
-                    }
-                }
+                checkInstallDetails(appId, installed, packageData.version, packageList);
             }
             else
             {
@@ -909,19 +884,7 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
         result = fetchAppPackageList(packageList);
         if (result == Core::ERROR_NONE)
         {
-            checkIsInstalled(appId, installed, packageList);
-
-            if (installed)
-            {
-                for (const auto& package : packageList)
-                {
-                    if (!package.packageId.empty() && package.packageId == appId && package.state == Exchange::IPackageInstaller::InstallState::INSTALLED)
-                    {
-                        packageData.version = std::string(package.version);
-                        break;
-                    }
-                }
-            }
+            checkInstallDetails(appId, installed, packageData.version, packageList);
         }
     }
 
@@ -1128,6 +1091,7 @@ Core::hresult AppManagerImplementation::SendIntent(const string& appId , const s
  *
  * @return              : Core::<StatusCode>
  */
+
 Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const string& intent , const string& launchArgs ,string& error)
 {
     Core::hresult status = Core::ERROR_GENERAL;
@@ -1259,6 +1223,10 @@ Core::hresult AppManagerImplementation::SetAppProperty(const string& appId, cons
     else if (key.empty())
     {
         LOGERR("key is empty");
+    }
+    else if (value.empty())
+    {
+       LOGERR("value is empty");
     }
     else
     {
@@ -1393,10 +1361,12 @@ Core::hresult AppManagerImplementation::GetInstalledApps(std::string& apps)
     return status;
 }
 
-/* Method to check if the app is installed */
-void AppManagerImplementation::checkIsInstalled(const std::string& appId, bool& installed, const std::vector<WPEFramework::Exchange::IPackageInstaller::Package>& packageList)
+/* Method to check if the app is installed and fetch its installed version */
+void AppManagerImplementation::checkInstallDetails(const std::string& appId, bool& installed, std::string& version,
+    const std::vector<WPEFramework::Exchange::IPackageInstaller::Package>& packageList)
 {
     installed = false;
+    version.clear();
 
     for (const auto& package : packageList)
     {
@@ -1405,6 +1375,7 @@ void AppManagerImplementation::checkIsInstalled(const std::string& appId, bool& 
         {
             LOGINFO("%s is installed ",appId.c_str());
             installed = true;
+            version = std::string(package.version);
             break;
         }
     }
@@ -1427,7 +1398,8 @@ Core::hresult AppManagerImplementation::IsInstalled(const std::string& appId, bo
         status = fetchAppPackageList(packageList);
         if (status == Core::ERROR_NONE)
         {
-            checkIsInstalled(appId, installed, packageList);
+            std::string version;
+            checkInstallDetails(appId, installed, version, packageList);
             if(installed)
             {
                 LOGINFO("%s is installed ",appId.c_str());
@@ -1699,4 +1671,5 @@ bool AppManagerImplementation::checkInstallUninstallBlock(const std::string& app
 }
 } /* namespace Plugin */
 } /* namespace WPEFramework */
+
 
