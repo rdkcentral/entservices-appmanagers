@@ -151,6 +151,11 @@ namespace WPEFramework
                      if (Exchange::ILifecycleManager::LifecycleState::UNLOADED == static_cast<Exchange::ILifecycleManager::LifecycleState>(newLifecycleState))
                      {
                          shouldRespawn = tryGetPendingRespawn(appInstanceId, pendingRespawn);
+                         string pendingUnloadErrorReason;
+                         if (true == tryGetPendingUnloadErrorReason(appInstanceId, pendingUnloadErrorReason))
+                         {
+                             errorReason = pendingUnloadErrorReason;
+                         }
                      }
                      while (index != mLifecycleManagerNotification.end())
                      {
@@ -670,6 +675,10 @@ namespace WPEFramework
                         context->resetPendingStates();
                         context->setTerminated(true);
 
+                        mAdminLock.Lock();
+                        mPendingUnloadErrorReasons[appInstanceId] = "ERROR_ABORT";
+                        mAdminLock.Unlock();
+
                         terminated = RequestHandler::getInstance()->terminate(context.get(), false, terminateError);
                         if(terminated)
                         {
@@ -774,6 +783,19 @@ namespace WPEFramework
 
             pendingRespawn = pendingRespawnIter->second;
             mPendingRespawns.erase(pendingRespawnIter);
+            return true;
+        }
+
+        bool LifecycleManagerImplementation::tryGetPendingUnloadErrorReason(const string& appInstanceId, string& errorReason)
+        {
+            auto pendingUnloadErrorIter = mPendingUnloadErrorReasons.find(appInstanceId);
+            if (pendingUnloadErrorIter == mPendingUnloadErrorReasons.end())
+            {
+                return false;
+            }
+
+            errorReason = pendingUnloadErrorIter->second;
+            mPendingUnloadErrorReasons.erase(pendingUnloadErrorIter);
             return true;
         }
 

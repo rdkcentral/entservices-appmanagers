@@ -54,6 +54,7 @@ namespace {
         void onRippleEvent(std::string, WPEFramework::Core::JSON::VariantContainer&) override {}
         void onStateChangeEvent(WPEFramework::Core::JSON::VariantContainer&) override {}
     };
+
     static StubEventHandler  gStubEventHandler;
     static L0Test::FakeRuntimeManager gCtxTestRtm;
     static L0Test::FakeWindowManager  gCtxTestWm;

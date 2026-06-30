@@ -242,6 +242,11 @@ flowchart TD
 
 Emitted when an application's lifecycle state changes.
 
+Lifecycle classification in `LifecycleInterfaceConnector::OnAppLifecycleStateChanged`:
+
+- `APP_STATE_UNLOADED` is emitted with `APP_ERROR_NONE` when termination follows an expected terminate path (`APP_STATE_TERMINATING -> APP_STATE_UNLOADED`) or when AppManager initiated terminate/kill/close.
+- `APP_STATE_UNLOADED` is emitted with `APP_ERROR_ABORT` when LifecycleManager reports an explicit abort error (`ERROR_ABORT`) before unload (for example, unexpected container termination/crash).
+
 ```json
 {
     "appId": "com.example.app",

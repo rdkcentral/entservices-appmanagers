@@ -4477,6 +4477,120 @@ TEST_F(AppManagerTest, LICMapAppLifecycleStateUnloaded)
 }
 
 /*
+ * Test Case for LICTerminatingToUnloadedWithoutCrashSignalReportsNone
+ * Setting up AppManager Plugin with full resources
+ * Pre-populating mAppInfo and triggering OnAppLifecycleStateChanged with TERMINATING->UNLOADED
+ * Verifying expected terminate flow reports APP_ERROR_NONE without using navigationIntent markers
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, LICTerminatingToUnloadedWithoutCrashSignalReportsNone)
+{
+    Core::hresult status;
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [](AppInfo& a) {
+        a.setAppInstanceId(APPMANAGER_APP_INSTANCE);
+        a.setAppNewState(Exchange::IAppManager::AppLifecycleState::APP_STATE_TERMINATING);
+    });
+
+    ASSERT_NE(mLifecycleManagerStateNotification_cb, nullptr)
+        << "LifecycleManagerState notification callback is not registered";
+
+    uint32_t signalled = AppManager_StateInvalid;
+    ExpectedAppLifecycleEvent expectedEvent;
+    expectedEvent.appId = APPMANAGER_APP_ID;
+    expectedEvent.appInstanceId = APPMANAGER_APP_INSTANCE;
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED;
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_TERMINATING;
+    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE;
+
+    Core::Sink<NotificationHandler> notification;
+    mAppManagerImpl->Register(&notification);
+    notification.SetExpectedEvent(expectedEvent);
+
+    mLifecycleManagerStateNotification_cb->OnAppLifecycleStateChanged(
+        APPMANAGER_APP_ID,
+        APPMANAGER_APP_INSTANCE,
+        Exchange::ILifecycleManager::LifecycleState::TERMINATING, /* old */
+        Exchange::ILifecycleManager::LifecycleState::UNLOADED,    /* new */
+        ""
+    );
+
+    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppUnloaded);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppUnloaded);
+
+    mAppManagerImpl->Unregister(&notification);
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for LICTerminatingToUnloadedWithAbortSignalReportsAbort
+ * Setting up AppManager Plugin with full resources
+ * Pre-populating mAppInfo, delivering OnAppStateChanged(ERROR_ABORT), then TERMINATING->UNLOADED
+ * Verifying crash path reports APP_ERROR_ABORT without navigationIntent marker usage
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, LICTerminatingToUnloadedWithAbortSignalReportsAbort)
+{
+    Core::hresult status;
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [](AppInfo& a) {
+        a.setAppInstanceId(APPMANAGER_APP_INSTANCE);
+        a.setAppNewState(Exchange::IAppManager::AppLifecycleState::APP_STATE_TERMINATING);
+    });
+
+    ASSERT_NE(mLifecycleManagerStateNotification_cb, nullptr)
+        << "LifecycleManagerState notification callback is not registered";
+
+    ASSERT_NE(Plugin::LifecycleInterfaceConnector::_instance, nullptr)
+        << "LifecycleInterfaceConnector instance is not set";
+
+    uint32_t signalled = AppManager_StateInvalid;
+    ExpectedAppLifecycleEvent expectedEvent;
+    expectedEvent.appId = APPMANAGER_APP_ID;
+    expectedEvent.appInstanceId = APPMANAGER_APP_INSTANCE;
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED;
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_TERMINATING;
+    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_ABORT;
+
+    Core::Sink<NotificationHandler> notification;
+    mAppManagerImpl->Register(&notification);
+    notification.SetExpectedEvent(expectedEvent);
+
+    Plugin::LifecycleInterfaceConnector::_instance->OnAppStateChanged(
+        APPMANAGER_APP_ID,
+        Exchange::ILifecycleManager::LifecycleState::TERMINATING,
+        "ERROR_ABORT");
+
+    mLifecycleManagerStateNotification_cb->OnAppLifecycleStateChanged(
+        APPMANAGER_APP_ID,
+        APPMANAGER_APP_INSTANCE,
+        Exchange::ILifecycleManager::LifecycleState::TERMINATING, /* old */
+        Exchange::ILifecycleManager::LifecycleState::UNLOADED,    /* new */
+        ""
+    );
+
+    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppUnloaded);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppUnloaded);
+
+    mAppManagerImpl->Unregister(&notification);
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
  * Test Case for LICMapAppLifecycleStateInitializing
  * Setting up AppManager Plugin with full resources
  * Pre-populating mAppInfo and triggering OnAppLifecycleStateChanged with LOADING->INITIALIZING
