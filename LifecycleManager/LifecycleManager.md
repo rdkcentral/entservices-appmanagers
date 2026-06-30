@@ -519,19 +519,17 @@ sequenceDiagram
 
 The `StateHandler` maintains a map of valid transitions:
 
-```cpp
-// Conceptual representation of mPossibleStateTransitions
-{
-    UNLOADED:     [LOADING],
-    LOADING:      [INITIALIZING, TERMINATING],
-    INITIALIZING: [PAUSED, ACTIVE, TERMINATING],
-    PAUSED:       [ACTIVE, SUSPENDED, HIBERNATED, TERMINATING],
-    ACTIVE:       [PAUSED, TERMINATING],
-    SUSPENDED:    [PAUSED, TERMINATING],
-    HIBERNATED:   [PAUSED, TERMINATING],
-    TERMINATING:  [UNLOADED]
-}
-```
+    // Conceptual representation of mPossibleStateTransitions (target -> allowed previous states)
+    {
+        UNLOADED:     [],
+        LOADING:      [UNLOADED],
+        INITIALIZING: [LOADING],
+        PAUSED:       [INITIALIZING, ACTIVE, SUSPENDED],
+        ACTIVE:       [PAUSED],
+        SUSPENDED:    [INITIALIZING, PAUSED, HIBERNATED],
+        HIBERNATED:   [SUSPENDED],
+        TERMINATING:  [PAUSED, SUSPENDED]
+    }
 
 ### Event Handling Flow
 
