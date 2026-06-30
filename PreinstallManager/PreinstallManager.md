@@ -71,11 +71,9 @@ PreinstallManager/
 ```cpp
 interface IPreinstallManager {
     enum State {
-        IDLE = 0,
-        SCANNING,
-        INSTALLING,
-        COMPLETE,
-        FAILED
+        NOT_STARTED = 0,
+        IN_PROGRESS,
+        COMPLETED
     };
 
     enum PreinstallFailReason {
