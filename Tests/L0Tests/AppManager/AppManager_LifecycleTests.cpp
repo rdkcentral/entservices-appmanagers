@@ -65,13 +65,14 @@ uint32_t Test_AM_InitializeSucceedsAndDeinitializeCleansUp()
     });
 
     const std::string initResult = fx.plugin->Initialize(&fx.service);
+    L0Test::ExpectEqStr(tr, initResult, std::string(), "Initialize() succeeds with the L0 service mock");
+
     if (initResult.empty()) {
-        L0Test::ExpectTrue(tr, true, "Initialize() succeeds with the L0 service mock");
-        L0Test::ExpectTrue(tr, nullptr != WPEFramework::Plugin::AppManagerImplementation::getInstance(), "Implementation singleton is available after initialize");
+        L0Test::ExpectTrue(tr, nullptr != WPEFramework::Plugin::AppManagerImplementation::getInstance(),
+            "Implementation singleton is available after initialize");
         fx.plugin->Deinitialize(&fx.service);
-        L0Test::ExpectTrue(tr, nullptr == WPEFramework::Plugin::AppManagerImplementation::getInstance(), "Implementation singleton is cleared after deinitialize");
-    } else {
-        std::cerr << "NOTE: Initialize returned non-empty in the current environment: " << initResult << std::endl;
+        L0Test::ExpectTrue(tr, nullptr == WPEFramework::Plugin::AppManagerImplementation::getInstance(),
+            "Implementation singleton is cleared after deinitialize");
     }
 
     return tr.failures;

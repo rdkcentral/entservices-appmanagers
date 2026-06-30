@@ -329,7 +329,7 @@ uint32_t Test_AM_CheckInstallUninstallBlockWithoutPackages()
     const bool blocked = impl->checkInstallUninstallBlock("app1");
     L0Test::ExpectTrue(tr, !blocked, "checkInstallUninstallBlock() returns false when no package manager exists");
 
-    impl->Release();  // Release while service still alive
+    impl->Release();
     return tr.failures;
 }
 
@@ -1612,11 +1612,9 @@ uint32_t Test_AM_LICOnAppStateChangedUnknownAppId()
     }
 
     impl->Unregister(notif);
-    notif->Release(); // drop our ref
+    notif->Release();
 
-    // Release our impl reference, then spin-wait until impl is fully destroyed.
-    // The LIC destructor's mCurrentservice->Release() is safe because `service` is
-    // a stack variable still in scope.  The mock's Release() never calls `delete this`.
+    // Release and spin-wait until impl is fully destroyed (LIC dtor calls service Release safely).
     impl->Release();
     const auto cleanDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
     while (std::chrono::steady_clock::now() < cleanDeadline &&
@@ -1670,9 +1668,7 @@ uint32_t Test_AM_LICOnAppLifecycleStateChangedActiveNewState()
     impl->Unregister(notif);
     notif->Release();
 
-    // Release our impl reference, then spin-wait until impl is fully destroyed.
-    // The LIC destructor calls mCurrentservice->Release() on the stack service,
-    // which is safe because Release() never calls `delete this` on the mock.
+    // Release and spin-wait until impl is fully destroyed.
     impl->Release();
     const auto activeCleanDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
     while (std::chrono::steady_clock::now() < activeCleanDeadline &&
@@ -1732,7 +1728,7 @@ uint32_t Test_AM_LICOnAppLifecycleStateChangedUnloadedAbnormalClose()
     impl->Unregister(notif);
     notif->Release();
 
-    // Release our impl reference, then spin-wait until impl is fully destroyed.
+    // Release and spin-wait until impl is fully destroyed.
     impl->Release();
     const auto unloadCleanDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
     while (std::chrono::steady_clock::now() < unloadCleanDeadline &&
