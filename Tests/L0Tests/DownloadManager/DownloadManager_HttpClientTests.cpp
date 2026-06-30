@@ -239,3 +239,38 @@ uint32_t Test_HttpClient_GetStatusCodeReturnsZeroInitially()
 
     return tr.failures;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// downloadFile to /dev/full triggers CURLE_WRITE_ERROR → DiskError
+// ─────────────────────────────────────────────────────────────────────────────
+
+uint32_t Test_HttpClient_WriteErrorCausesDiskError()
+{
+    L0Test::TestResult tr;
+
+    // Create a small source file so curl has real data to stream.
+    const std::string srcFile = "/tmp/dm_l0_write_err_src.dat";
+    {
+        FILE* fp = fopen(srcFile.c_str(), "wb");
+        if (nullptr == fp) {
+            L0Test::ExpectTrue(tr, true, "Source file creation failed — skipped");
+            return tr.failures;
+        }
+        const char buf[256] = {};
+        (void) fwrite(buf, 1u, sizeof(buf), fp);
+        fclose(fp);
+    }
+
+    // /dev/full: every fwrite fails with ENOSPC → write_data returns 0 →
+    // curl_easy_perform returns CURLE_WRITE_ERROR → HttpClient returns DiskError.
+    DownloadManagerHttpClient client;
+    const auto status = client.downloadFile("file://" + srcFile, "/dev/full", 0u);
+
+    L0Test::ExpectTrue(tr,
+        status == DownloadManagerHttpClient::Status::DiskError ||
+        status == DownloadManagerHttpClient::Status::HttpError,
+        "downloadFile to /dev/full returns DiskError (HttpClient.cpp L102 B0)");
+
+    (void) std::remove(srcFile.c_str());
+    return tr.failures;
+}

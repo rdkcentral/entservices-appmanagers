@@ -1856,3 +1856,36 @@ uint32_t Test_Impl_DownloaderRoutinePriorityQueuePath()
     (void) std::remove(srcFile.c_str());
     return tr.failures;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Registering the same notification pointer twice does not AddRef again
+// ─────────────────────────────────────────────────────────────────────────────
+
+uint32_t Test_Impl_RegisterSameNotificationTwice()
+{
+    L0Test::TestResult tr;
+
+    auto* impl = CreateImpl();
+    L0Test::FakeDownloadNotification notif;
+
+    // First Register — accepted normally.
+    const auto r1 = impl->Register(&notif);
+    L0Test::ExpectEqU32(tr, r1, WPEFramework::Core::ERROR_NONE,
+        "First Register() returns ERROR_NONE");
+    L0Test::ExpectEqU32(tr, notif._refCount.load(), 2u,
+        "First Register() increments refcount via AddRef()");
+
+    // Second Register with the SAME pointer: ASSERT fires (logged, no abort),
+    // then the find-guard (L67) prevents double-insertion.
+    const auto r2 = impl->Register(&notif);
+    L0Test::ExpectEqU32(tr, r2, WPEFramework::Core::ERROR_NONE,
+        "Second Register() of same pointer returns ERROR_NONE");
+    // RefCount must still be 2 — the duplicate was dropped.
+    L0Test::ExpectEqU32(tr, notif._refCount.load(), 2u,
+        "Duplicate Register() does not AddRef again");
+
+    impl->Unregister(&notif);
+    impl->Release();
+    return tr.failures;
+}
+

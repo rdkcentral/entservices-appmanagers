@@ -99,6 +99,7 @@ extern uint32_t Test_Impl_PickDownloadJobRegularQueueUsed();
 extern uint32_t Test_Impl_NotifyStatusIncludesFailReason();
 extern uint32_t Test_Impl_CancelWithActiveDownloadMatchId();
 extern uint32_t Test_Impl_DownloaderRoutinePriorityQueuePath();
+extern uint32_t Test_Impl_RegisterSameNotificationTwice();
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DownloadManager_HttpClientTests.cpp  (HttpClient tests)
@@ -113,6 +114,7 @@ extern uint32_t Test_HttpClient_ResumeDoesNotCrash();
 extern uint32_t Test_HttpClient_SetRateLimitDoesNotCrash();
 extern uint32_t Test_HttpClient_GetProgressReturnsZeroInitially();
 extern uint32_t Test_HttpClient_GetStatusCodeReturnsZeroInitially();
+extern uint32_t Test_HttpClient_WriteErrorCausesDiskError();
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DownloadManager_TelemetryTests.cpp  (Telemetry tests)
@@ -228,6 +230,7 @@ int main()
     RUN_TEST(Test_Impl_CancelWithActiveDownloadMatchId);
     RUN_TEST(Test_Impl_DownloaderRoutinePriorityQueuePath);
     RUN_TEST(Test_Impl_ProgressEmptyIdReturnsError);
+    RUN_TEST(Test_Impl_RegisterSameNotificationTwice);
 
     // ── HTTP client tests (DownloadManagerHttpClient.cpp / .h) ──────────────
     std::cout << "\n-- HttpClient --" << std::endl;
@@ -241,6 +244,7 @@ int main()
     RUN_TEST(Test_HttpClient_SetRateLimitDoesNotCrash);
     RUN_TEST(Test_HttpClient_GetProgressReturnsZeroInitially);
     RUN_TEST(Test_HttpClient_GetStatusCodeReturnsZeroInitially);
+    RUN_TEST(Test_HttpClient_WriteErrorCausesDiskError);
 
     // ── Telemetry tests (DownloadManagerTelemetryReporting.cpp / .h) ────────
     std::cout << "\n-- Telemetry --" << std::endl;
