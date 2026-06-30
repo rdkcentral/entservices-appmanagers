@@ -60,17 +60,15 @@ namespace WPEFramework
             if (nullptr != service)
             {
                 mCurrentservice = service;
-                mCurrentservice->AddRef();
             }
         }
 
         LifecycleInterfaceConnector::~LifecycleInterfaceConnector()
         {
-            if (nullptr != mCurrentservice)
-            {
-               mCurrentservice->Release();
-               mCurrentservice = nullptr;
-            }
+            // The shell lifetime is owned by the plugin entry (AppManager).
+            // This connector may be destroyed asynchronously during worker-pool
+            // drain, after test/service teardown has started.
+            mCurrentservice = nullptr;
             LifecycleInterfaceConnector::_instance = nullptr;
 
 	    //clear action list
@@ -921,4 +919,5 @@ End:
 
      } /* namespace Plugin */
 } /* namespace WPEFramework */
+
 
