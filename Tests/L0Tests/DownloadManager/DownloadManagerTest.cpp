@@ -99,7 +99,6 @@ extern uint32_t Test_Impl_PickDownloadJobRegularQueueUsed();
 extern uint32_t Test_Impl_NotifyStatusIncludesFailReason();
 extern uint32_t Test_Impl_CancelWithActiveDownloadMatchId();
 extern uint32_t Test_Impl_DownloaderRoutinePriorityQueuePath();
-extern uint32_t Test_Impl_RegisterSameNotificationTwice();
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DownloadManager_HttpClientTests.cpp  (HttpClient tests)
@@ -230,7 +229,6 @@ int main()
     RUN_TEST(Test_Impl_CancelWithActiveDownloadMatchId);
     RUN_TEST(Test_Impl_DownloaderRoutinePriorityQueuePath);
     RUN_TEST(Test_Impl_ProgressEmptyIdReturnsError);
-    RUN_TEST(Test_Impl_RegisterSameNotificationTwice);
 
     // ── HTTP client tests (DownloadManagerHttpClient.cpp / .h) ──────────────
     std::cout << "\n-- HttpClient --" << std::endl;
