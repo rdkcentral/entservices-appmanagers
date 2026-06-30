@@ -248,7 +248,6 @@ uint32_t Test_HttpClient_WriteErrorCausesDiskError()
 {
     L0Test::TestResult tr;
 
-    // Create a small source file so curl has real data to stream.
     const std::string srcFile = "/tmp/dm_l0_write_err_src.dat";
     {
         FILE* fp = fopen(srcFile.c_str(), "wb");
@@ -256,7 +255,7 @@ uint32_t Test_HttpClient_WriteErrorCausesDiskError()
             L0Test::ExpectTrue(tr, true, "Source file creation failed — skipped");
             return tr.failures;
         }
-        const char buf[256] = {};
+        const char buf[16u * 1024u] = {};
         (void) fwrite(buf, 1u, sizeof(buf), fp);
         fclose(fp);
     }
