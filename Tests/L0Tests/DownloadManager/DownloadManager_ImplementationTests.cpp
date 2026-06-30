@@ -266,7 +266,7 @@ uint32_t Test_Impl_InitializeReadsDownloadDir()
 {
     L0Test::TestResult tr;
 
-    const std::string customDir = "/tmp/dm_l0_custom_dir";
+    const std::string customDir = "/tmp/dm_l0_custom_dir/";
     const std::string srcFile   = "/tmp/dm_l0_custom_dir_src.dat";
 
     // Create a small source file so the download can actually complete
