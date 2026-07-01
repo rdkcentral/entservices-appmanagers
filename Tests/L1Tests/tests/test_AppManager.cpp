@@ -3816,10 +3816,6 @@ TEST_F(AppManagerTest, LaunchAppLockFailureListPackagesFails)
             packages = mockIterator;
             return Core::ERROR_NONE;
         })
-        .WillOnce([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
-            packages = nullptr;
-            return Core::ERROR_NONE;
-        })
         .WillRepeatedly([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
             auto mockIterator = FillPackageIterator();
             packages = mockIterator;
