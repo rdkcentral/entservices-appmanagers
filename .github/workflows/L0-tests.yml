@@ -17,7 +17,7 @@ permissions:
 env:
   BUILD_TYPE: Debug
   THUNDER_REF: "R4.4.1"
-  INTERFACES_REF: "topic/RDKEMW-16187"
+  INTERFACES_REF: "develop"
 
 jobs:
   L0-tests:
@@ -60,7 +60,7 @@ jobs:
         run: >
           sudo apt update
           &&
-          sudo apt install -y libsqlite3-dev libcurl4-openssl-dev valgrind clang libsystemd-dev libboost-all-dev libwebsocketpp-dev meson libcunit1 libcunit1-dev curl protobuf-compiler-grpc libgrpc-dev libgrpc++-dev libjsoncpp-dev gdb ninja-build libxtables-dev libip4tc-dev libip6tc-dev libcapture-tiny-perl libdatetime-perl libtimedate-perl
+          sudo apt install -y libsqlite3-dev libcurl4-openssl-dev valgrind clang libsystemd-dev libboost-all-dev libwebsocketpp-dev meson libcunit1 libcunit1-dev curl protobuf-compiler-grpc libgrpc-dev libgrpc++-dev libjsoncpp-dev libyaml-cpp-dev gdb ninja-build libxtables-dev libip4tc-dev libip6tc-dev libcapture-tiny-perl libdatetime-perl libtimedate-perl
 
       - name: Install lcov 2.4
         env:
@@ -299,14 +299,12 @@ jobs:
           export CMAKE_PREFIX_PATH="$GITHUB_WORKSPACE/install/usr${CMAKE_PREFIX_PATH:+:$CMAKE_PREFIX_PATH}"
           export CMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake${CMAKE_MODULE_PATH:+:$CMAKE_MODULE_PATH}"
           export PATH="$GITHUB_WORKSPACE/install/usr/bin:$PATH"
-          # RuntimeManager sources include <json/json.h>; point compiler to jsoncpp headers.
-          export RUNTIME_MANAGER_INCLUDES="/usr/include/jsoncpp"
 
           cmake -G Ninja \
             -S "$GITHUB_WORKSPACE" \
             -B build/entservices-appmanagers-l0 \
             -DCMAKE_BUILD_TYPE=Debug \
-            -DCMAKE_CXX_FLAGS="-DUSE_THUNDER_R4 -DTHUNDER_VERSION=4 -DTHUNDER_VERSION_MAJOR=4 -DTHUNDER_VERSION_MINOR=4 -I$GITHUB_WORKSPACE/helpers -I$GITHUB_WORKSPACE/helpers/Telemetry -iquote $GITHUB_WORKSPACE/RuntimeManager" \
+            -DCMAKE_CXX_FLAGS="-DUSE_THUNDER_R4 -DTHUNDER_VERSION=4 -DTHUNDER_VERSION_MAJOR=4 -DTHUNDER_VERSION_MINOR=4 -I$GITHUB_WORKSPACE/helpers -I$GITHUB_WORKSPACE/helpers/Telemetry -iquote $GITHUB_WORKSPACE/RuntimeManager -I/usr/include/jsoncpp" \
             -DCMAKE_PREFIX_PATH="$CMAKE_PREFIX_PATH" \
             -DCMAKE_MODULE_PATH="$CMAKE_MODULE_PATH" \
             -DGENERIC_CMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" \
@@ -315,10 +313,10 @@ jobs:
             -DDISABLE_SECURITY_TOKEN=ON \
             -DUSE_THUNDER_R4=ON \
             -DPLUGIN_RUNTIME_MANAGER=ON \
-            -DPLUGIN_APPMANAGER=OFF \
+            -DPLUGIN_APPMANAGER=ON \
             -DPLUGIN_APP_STORAGE_MANAGER=ON \
             -DPLUGIN_LIFECYCLE_MANAGER=ON \
-            -DPLUGIN_DOWNLOADMANAGER=OFF \
+            -DPLUGIN_DOWNLOADMANAGER=ON \
             -DPLUGIN_PREINSTALL_MANAGER=ON \
             -DPLUGIN_PACKAGE_MANAGER=OFF \
             -DPLUGIN_RDK_WINDOW_MANAGER=OFF \
@@ -338,7 +336,11 @@ jobs:
             -name "libPackageManager.so*" -o -name "libWPEFrameworkPackageManager.so*" -o \
             -name "libWPEFrameworkPackageManagerImplementation.so*" -o -name "libPackageManagerImplementation.so*" -o \
             -name "libRDKWindowManager.so*" -o -name "libWPEFrameworkRDKWindowManager.so*" -o \
-            -name "libWPEFrameworkRDKWindowManagerImplementation.so*" -o -name "libRDKWindowManagerImplementation.so*" \
+            -name "libWPEFrameworkRDKWindowManagerImplementation.so*" -o -name "libRDKWindowManagerImplementation.so*" -o \
+            -name "libDownloadManager.so*" -o -name "libWPEFrameworkDownloadManager.so*" -o \
+            -name "libWPEFrameworkDownloadManagerImplementation.so*" -o -name "libDownloadManagerImplementation.so*" -o \
+            -name "libAppManager.so*" -o -name "libWPEFrameworkAppManager.so*" -o \
+            -name "libWPEFrameworkAppManagerImplementation.so*" -o -name "libAppManagerImplementation.so*" \
           \) -exec cp -f {} "$GITHUB_WORKSPACE/install/usr/lib/wpeframework/plugins/" \; 2>/dev/null || true
 
       - name: Build L0 tests (Tests/L0Tests)
@@ -362,17 +364,21 @@ jobs:
             -DPLUGIN_RUNTIME_MANAGER=ON \
             -DPLUGIN_LIFECYCLE_MANAGER=ON \
             -DPLUGIN_RDK_WINDOW_MANAGER=ON \
+            -DPLUGIN_DOWNLOAD_MANAGER=ON \
             -DPLUGIN_APP_STORAGE_MANAGER=ON \
             -DPLUGIN_PACKAGE_MANAGER=ON \
             -DPLUGIN_PREINSTALL_MANAGER=ON \
+            -DPLUGIN_APP_MANAGER=ON \
             -DAPPMGR_ENABLE_COVERAGE=ON \
             -DAPPLCM_ENABLE_COVERAGE=ON \
             -DAPPWM_ENABLE_COVERAGE=ON \
             -DAPPASM_ENABLE_COVERAGE=ON \
             -DAPPPKG_ENABLE_COVERAGE=ON \
-            -DAPPMGR_PREINSTALL_ENABLE_COVERAGE=ON
+            -DAPPDM_ENABLE_COVERAGE=ON \
+            -DAPPMGR_PREINSTALL_ENABLE_COVERAGE=ON \
+            -DAPPMANAGER_ENABLE_COVERAGE=ON
 
-          cmake --build build/entservices-appmanagers-l0tests-only --target runtimemanager_l0test lifecyclemanager_l0test rdkwindowmanager_l0test appstorage_l0test packagemanager_l0test preinstall_manager_l0test -- -j"$(nproc)"
+          cmake --build build/entservices-appmanagers-l0tests-only --target runtimemanager_l0test lifecyclemanager_l0test rdkwindowmanager_l0test appstorage_l0test packagemanager_l0test preinstall_manager_l0test downloadmanager_l0test appmanager_l0test -- -j"$(nproc)"
 
       - name: Run L0 tests
         id: run_l0_tests
@@ -386,16 +392,20 @@ jobs:
           runtime_test_bin="build/entservices-appmanagers-l0tests-only/runtimemanager_l0test"
           lcm_test_bin="build/entservices-appmanagers-l0tests-only/lifecyclemanager_l0test"
           rdkwm_test_bin="build/entservices-appmanagers-l0tests-only/rdkwindowmanager_l0test"
+          dm_test_bin="build/entservices-appmanagers-l0tests-only/downloadmanager_l0test"
           appstorage_test_bin="build/entservices-appmanagers-l0tests-only/appstorage_l0test"
           preinstall_bin="build/entservices-appmanagers-l0tests-only/preinstall_manager_l0test"
           pkgmgr_test_bin="build/entservices-appmanagers-l0tests-only/packagemanager_l0test"
+          appmanager_test_bin="build/entservices-appmanagers-l0tests-only/appmanager_l0test"
 
           test -x "$runtime_test_bin"
           test -x "$lcm_test_bin"
           test -x "$rdkwm_test_bin"
+          test -x "$dm_test_bin"
           test -x "$appstorage_test_bin"
           test -x "$preinstall_bin"
           test -x "$pkgmgr_test_bin"
+          test -x "$appmanager_test_bin"
 
           run_one_under_gdb() {
             local bin="$1"
@@ -459,20 +469,33 @@ jobs:
           runtime_test_rc=0
           lcm_test_rc=0
           rdkwm_test_rc=0
+          dm_test_rc=0
           appstorage_test_rc=0
           preinstall_test_rc=0
           pkgmgr_test_rc=0
+          appmanager_test_rc=0
 
+          run_one_under_gdb "$appmanager_test_bin" l0-appmanager-test.log l0-appmanager-test-gdb.log || appmanager_test_rc=$?
           run_one_under_gdb "$lcm_test_bin" l0-lcm-test.log l0-lcm-test-gdb.log || lcm_test_rc=$?
           run_one_under_gdb "$runtime_test_bin" l0-runtime-test.log l0-runtime-test-gdb.log || runtime_test_rc=$?
           run_one_under_gdb "$rdkwm_test_bin" l0-rdkwm-test.log l0-rdkwm-test-gdb.log || rdkwm_test_rc=$?
-          run_one_under_gdb "$appstorage_test_bin" l0-appstorage-test.log l0-appstorage-test-gdb.log || appstorage_test_rc=$?
+          run_one_under_gdb "$dm_test_bin" l0-dm-test.log l0-dm-test-gdb.log || dm_test_rc=$?
           run_one_under_gdb "$preinstall_bin" l0-preinstall-test.log l0-preinstall-test-gdb.log || preinstall_test_rc=$?
           run_one_under_gdb "$pkgmgr_test_bin" l0-packagemanager-test.log l0-packagemanager-test-gdb.log || pkgmgr_test_rc=$?
+          run_one_under_gdb "$appstorage_test_bin" l0-appstorage-test.log l0-appstorage-test-gdb.log || appstorage_test_rc=$?
 
-          cat l0-lcm-test.log l0-runtime-test.log l0-rdkwm-test.log l0-appstorage-test.log l0-preinstall-test.log l0-packagemanager-test.log > l0-test.log
+          echo "lcm_test_rc=$lcm_test_rc"
+          echo "runtime_test_rc=$runtime_test_rc"
+          echo "rdkwm_test_rc=$rdkwm_test_rc"
+          echo "dm_test_rc=$dm_test_rc"
+          echo "appstorage_test_rc=$appstorage_test_rc"
+          echo "preinstall_test_rc=$preinstall_test_rc"
+          echo "pkgmgr_test_rc=$pkgmgr_test_rc"
+          echo "appmanager_test_rc=$appmanager_test_rc"
 
-          if [ "$runtime_test_rc" -ne 0 ] || [ "$lcm_test_rc" -ne 0 ] || [ "$rdkwm_test_rc" -ne 0 ] || [ "$appstorage_test_rc" -ne 0 ] || [ "$preinstall_test_rc" -ne 0 ] || [ "$pkgmgr_test_rc" -ne 0 ]; then
+          cat l0-lcm-test.log l0-runtime-test.log l0-rdkwm-test.log l0-appstorage-test.log l0-preinstall-test.log l0-packagemanager-test.log l0-dm-test.log l0-appmanager-test.log > l0-test.log
+
+          if [ "$runtime_test_rc" -ne 0 ] || [ "$lcm_test_rc" -ne 0 ] || [ "$rdkwm_test_rc" -ne 0 ] || [ "$appstorage_test_rc" -ne 0 ] || [ "$preinstall_test_rc" -ne 0 ] || [ "$pkgmgr_test_rc" -ne 0 ] || [ "$dm_test_rc" -ne 0 ] || [ "$appmanager_test_rc" -ne 0 ]; then
             exit 1
           fi
 
@@ -480,10 +503,11 @@ jobs:
         if: ${{ always() }}
         run: |
           set -euo pipefail
-          for log in l0-runtime-test.log l0-lcm-test.log l0-rdkwm-test.log l0-appstorage-test.log l0-preinstall-test.log l0-packagemanager-test.log; do
+          for log in l0-runtime-test.log l0-lcm-test.log l0-rdkwm-test.log l0-appstorage-test.log l0-preinstall-test.log l0-packagemanager-test.log l0-dm-test.log l0-appmanager-test.log; do
             if [ -f "$log" ]; then
               echo "==== $log: Failed test cases (if any) ===="
               grep -E '^\[  FAILED  \]' "$log" || echo "No explicit [ FAILED ] lines found"
+              grep -E 'GDB CRASH REPORT|Signal caught:' "$log" || true
             else
               echo "$log not found"
             fi
@@ -502,11 +526,12 @@ jobs:
             failed=1
           fi
 
-          for log in l0-runtime-test.log l0-lcm-test.log l0-rdkwm-test.log l0-appstorage-test.log l0-preinstall-test.log l0-packagemanager-test.log; do
+          for log in l0-runtime-test.log l0-lcm-test.log l0-rdkwm-test.log l0-appstorage-test.log l0-preinstall-test.log l0-packagemanager-test.log l0-dm-test.log l0-appmanager-test.log; do
             if [ -f "$log" ]; then
               echo "==== $log: Failed test cases (final gate) ===="
               grep -E '^\[  FAILED  \]' "$log" || true
               grep -E '^FAIL:' "$log" || true
+              grep -E 'GDB CRASH REPORT|Signal caught:' "$log" || true
             else
               echo "$log not found in final gate"
               failed=1
@@ -537,7 +562,7 @@ jobs:
           EXCL_BR=""
           GENHTML_IGNORE=""
           if lcov --version 2>&1 | grep -qE 'version 2\.'; then
-            LCOV_IGNORE="--ignore-errors version,gcov,mismatch,unused,inconsistent,deprecated"
+            LCOV_IGNORE="--ignore-errors version,gcov,mismatch,unused,inconsistent,deprecated,negative,count"
             BRANCH_RC="--rc branch_coverage=1"
             EXCL_BR="--rc no_exception_branch=1"
             GENHTML_IGNORE="--ignore-errors version,unmapped,inconsistent,corrupt,source,empty,range,format,path,missing,mismatch,negative,branch,annotate,deprecated,package"
@@ -581,13 +606,17 @@ jobs:
             l0-runtime-test.log
             l0-lcm-test.log
             l0-rdkwm-test.log
+            l0-dm-test.log
             l0-appstorage-test.log
+            l0-preinstall-test.log
+            l0-packagemanager-test.log
             l0-runtime-test-gdb.log
             l0-lcm-test-gdb.log
             l0-rdkwm-test-gdb.log
+            l0-dm-test-gdb.log
             l0-appstorage-test-gdb.log
-            l0-packagemanager-test.log
-            l0-preinstall-test.log
             l0-preinstall-test-gdb.log
             l0-packagemanager-test-gdb.log
+            l0-appmanager-test.log
+            l0-appmanager-test-gdb.log
           if-no-files-found: warn
