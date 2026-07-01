@@ -106,6 +106,7 @@ namespace Plugin {
             string appId;
             string launchArgs;
             string intent;
+            string packageVersion;
         };
 
         struct AppManagerRequest{
@@ -229,7 +230,8 @@ namespace Plugin {
         std::condition_variable mAppRequestListCV;
         std::list<std::shared_ptr<AppManagerRequest>> mAppRequestList;
         Core::hresult fetchAppPackageList(std::vector<WPEFramework::Exchange::IPackageInstaller::Package>& packageList);
-        void checkIsInstalled(const std::string& appId, bool& installed, const std::vector<WPEFramework::Exchange::IPackageInstaller::Package>& packageList);
+        void checkInstallDetails(const std::string& appId, bool& installed, std::string& version,
+                     const std::vector<WPEFramework::Exchange::IPackageInstaller::Package>& packageList);
         Core::hresult packageLock(const string& appId, PackageInfo &packageData, Exchange::IPackageHandler::LockReason lockReason);
         Core::hresult packageUnLock(const string& appId);
         bool createOrUpdatePackageInfoByAppId(const string& appId, PackageInfo &packageData);
@@ -250,3 +252,5 @@ namespace Plugin {
     };
 } /* namespace Plugin */
 } /* namespace WPEFramework */
+
+
