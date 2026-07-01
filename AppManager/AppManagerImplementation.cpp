@@ -18,6 +18,7 @@
 */
 
 #include <iomanip>      /* for std::setw, std::setfill */
+#include <sys/stat.h>
 #include "AppManagerImplementation.h"
 #include "AppManagerTelemetryReporting.h"
 #include "UtilsAppManagerTelemetry.h"
@@ -43,9 +44,17 @@ AppManagerImplementation::AppManagerImplementation()
 , mStorageManagerRemoteObject(nullptr) 
 , mCurrentservice(nullptr)
 , mPackageManagerNotification(*this)
+, mEnhancedLoggingEnabled(false)
 , mAppManagerWorkerThread()
 {
     LOGINFO("Create AppManagerImplementation Instance");
+#ifdef APP_GATEWAY_ENHANCED_LOGGING_INDICATOR
+    struct stat buffer;
+    mEnhancedLoggingEnabled = (stat(APP_GATEWAY_ENHANCED_LOGGING_INDICATOR, &buffer) == 0);
+    LOGINFO("Enhanced logging enabled: %s (indicator: %s)",
+            mEnhancedLoggingEnabled ? "true" : "false",
+            APP_GATEWAY_ENHANCED_LOGGING_INDICATOR);
+#endif
     if (nullptr == AppManagerImplementation::_instance)
     {
         AppManagerImplementation::_instance = this;
