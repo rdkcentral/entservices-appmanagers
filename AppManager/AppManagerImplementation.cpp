@@ -48,12 +48,12 @@ AppManagerImplementation::AppManagerImplementation()
 , mAppManagerWorkerThread()
 {
     LOGINFO("Create AppManagerImplementation Instance");
-#ifdef APP_GATEWAY_ENHANCED_LOGGING_INDICATOR
+#ifdef APP_INFRA_ENHANCED_LOGGING_INDICATOR
     struct stat buffer;
-    mEnhancedLoggingEnabled = (stat(APP_GATEWAY_ENHANCED_LOGGING_INDICATOR, &buffer) == 0);
+    mEnhancedLoggingEnabled = (stat(APP_INFRA_ENHANCED_LOGGING_INDICATOR, &buffer) == 0);
     LOGINFO("Enhanced logging enabled: %s (indicator: %s)",
             mEnhancedLoggingEnabled ? "true" : "false",
-            APP_GATEWAY_ENHANCED_LOGGING_INDICATOR);
+            APP_INFRA_ENHANCED_LOGGING_INDICATOR);
 #endif
     if (nullptr == AppManagerImplementation::_instance)
     {
