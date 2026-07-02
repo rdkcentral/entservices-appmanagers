@@ -153,9 +153,14 @@ namespace Plugin {
         Core::hresult result = Core::ERROR_NONE;
         LOGINFO();
 
-        /* Stop the downloader thread */
-        mDownloaderRunFlag = false;
-        mDownloadThreadCV.notify_one();
+        /*  Added lock to avoid race condition with downloader
+            Stop the downloader thread */
+        {
+            std::lock_guard<std::mutex> lock(mQueueMutex);
+            mDownloaderRunFlag = false;
+        }
+            mDownloadThreadCV.notify_one();
+       
         if (mDownloadThreadPtr && mDownloadThreadPtr->joinable())
         {
             mDownloadThreadPtr->join();
@@ -431,14 +436,15 @@ namespace Plugin {
             DownloadInfoPtr downloadRequest = nullptr;
             {
                 std::unique_lock<std::mutex> lock(mQueueMutex);
-                mDownloadThreadCV.wait(lock, [&] {
+                //Added wait_time to avoid spurious wakeups and to allow the thread to exit gracefully when mDownloaderRunFlag is set to false
+                mDownloadThreadCV.wait_for(lock,std::chrono::seconds(waitTime), [&] {
                     return !mDownloaderRunFlag || !mPriorityDownloadQueue.empty() || !mRegularDownloadQueue.empty();
                 });
                 if (!mDownloaderRunFlag)
                     break;
 
                 downloadRequest = pickDownloadJob();
-            }
+            } //unlock mutex
 
             if (!downloadRequest)
             {
