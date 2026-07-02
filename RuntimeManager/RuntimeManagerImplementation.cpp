@@ -559,6 +559,8 @@ namespace WPEFramework
 
             /* Get current timestamp at the start of run for telemetry */
             time_t requestTime = getCurrentTimestamp();
+            const time_t runStartTime = requestTime;
+            time_t stageStartTime = runStartTime;
 
             JsonObject eventData;
             eventData["containerId"] = appInstanceId;
@@ -652,6 +654,11 @@ namespace WPEFramework
                 }
             }
 
+            LOGINFO("Run phase [configAndStorageSetup] appInstanceId=%s durationMs=%lld",
+                    appInstanceId.c_str(),
+                    static_cast<long long>(getCurrentTimestamp() - stageStartTime));
+            stageStartTime = getCurrentTimestamp();
+
             /* Creating Display — no lock needed, operates on local/connector state */
             if (nullptr != mWindowManagerConnector)
             {
@@ -679,6 +686,11 @@ namespace WPEFramework
                 westerosSocket = xdgRuntimeDir + "/" + waylandDisplay;
                 config.mWesterosSocketPath = westerosSocket;
             }
+
+            LOGINFO("Run phase [displaySetup] appInstanceId=%s durationMs=%lld",
+                    appInstanceId.c_str(),
+                    static_cast<long long>(getCurrentTimestamp() - stageStartTime));
+            stageStartTime = getCurrentTimestamp();
 
             // To indicate containers used by Widget
             bool legacyContainer = true;
@@ -729,6 +741,10 @@ namespace WPEFramework
             }
             else
             {
+                LOGINFO("Run phase [dobbySpecGeneration] appInstanceId=%s durationMs=%lld",
+                        appInstanceId.c_str(),
+                        static_cast<long long>(getCurrentTimestamp() - stageStartTime));
+
                 /* Scoped Lock 1: Validate OCI plugin pointer — brief read lock */
                 bool ociValid = false;
                 string containerId = getContainerId(appInstanceId);
@@ -760,6 +776,7 @@ namespace WPEFramework
                     if (!containerId.empty())
                     {
                         /* Container start IPC — no lock held during blocking call */
+                        stageStartTime = getCurrentTimestamp();
                         if (legacyContainer)
                             status = mOciContainerObject->StartContainerFromDobbySpec(containerId, dobbySpec, command, westerosSocket, descriptor, success, errorReason);
                         else
@@ -769,6 +786,12 @@ namespace WPEFramework
                             // Hence passing the westeros socket path as empty and relying on RALF to mount it inside the container.
                             status = mOciContainerObject->StartContainer(containerId, appPath, command, "", descriptor, success, errorReason);
                         }
+
+                        LOGINFO("Run phase [ociStartContainer] appInstanceId=%s durationMs=%lld status=%d success=%s",
+                                appInstanceId.c_str(),
+                                static_cast<long long>(getCurrentTimestamp() - stageStartTime),
+                                status,
+                                success ? "true" : "false");
 
                         if (!success)
                         {
@@ -817,6 +840,12 @@ namespace WPEFramework
             {
                 notifyParameterCheckFailure(appInstanceId, errorCode);
             }
+
+            LOGINFO("Run sync path complete appInstanceId=%s totalSyncDurationMs=%lld status=%d",
+                    appInstanceId.c_str(),
+                    static_cast<long long>(getCurrentTimestamp() - runStartTime),
+                    status);
+
             return status;
         }
 
@@ -1353,4 +1382,5 @@ namespace WPEFramework
         }
     } /* namespace Plugin */
 } /* namespace WPEFramework */
+
 
