@@ -92,9 +92,19 @@ size_t HttpClient::progressCb(void *ptr, double dltotal, double dlnow, double ul
     if (dltotal > 0.0)
     {
         double ratio = dlnow / dltotal;
-        int percent = static_cast<int>(ratio * 100);
+        // Clamp to [0.0, 1.0] (also makes NaN fall back to 0.0)
+        if (!(ratio >= 0.0)) {
+            ratio = 0.0;
+        } else if (ratio > 1.0) {
+            ratio = 1.0;
+        }
+        const int percent = static_cast<int>(ratio * 100.0);
         pHttpClient->progress = percent;
         // LOGTRACE("%d completed", percent);
+    }
+    else
+    {
+        pHttpClient->progress = 0;
     }
 
     return pHttpClient->bCancel;

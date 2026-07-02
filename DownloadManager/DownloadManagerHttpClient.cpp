@@ -125,7 +125,13 @@ size_t DownloadManagerHttpClient::progressCb(void *ptr, double dltotal, double d
     {
         // Divide first to avoid overflow with large file sizes
         double ratio = dlnow / dltotal;
-        uint8_t percent = static_cast<uint8_t>(ratio * 100);
+        // Clamp to [0.0, 1.0] (also makes NaN fall back to 0.0)
+        if (!(ratio >= 0.0)) {
+            ratio = 0.0;
+        } else if (ratio > 1.0) {
+            ratio = 1.0;
+        }
+        uint8_t percent = static_cast<uint8_t>(ratio * 100.0);
         pHttpClient->progress = percent;
         //LOGDBG("%u%% completed dlnow=%f / dltotal=%f ulnow=%f / ultotal=%f", percent, dlnow, dltotal, ulnow, ultotal);
     }
