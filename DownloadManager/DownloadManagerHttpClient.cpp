@@ -123,7 +123,9 @@ size_t DownloadManagerHttpClient::progressCb(void *ptr, double dltotal, double d
     std::lock_guard<std::mutex> lock(pHttpClient->mHttpClientMutex);
     if (dltotal > 0.0)
     {
-        uint8_t percent = static_cast<uint8_t>((dlnow * 100) / dltotal);
+        // Divide first to avoid overflow with large file sizes
+        double ratio = dlnow / dltotal;
+        uint8_t percent = static_cast<uint8_t>(ratio * 100);
         pHttpClient->progress = percent;
         //LOGDBG("%u%% completed dlnow=%f / dltotal=%f ulnow=%f / ultotal=%f", percent, dlnow, dltotal, ulnow, ultotal);
     }

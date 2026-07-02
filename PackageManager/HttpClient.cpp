@@ -88,9 +88,14 @@ size_t HttpClient::progressCb(void *ptr, double dltotal, double dlnow, double ul
 {
     HttpClient *pHttpClient = static_cast<HttpClient *>(ptr);
 
-    int percent = (int)(dlnow * 100 / dltotal);
-    pHttpClient->progress = percent;
-    // LOGTRACE("%d completed", percent);
+    // Validate dltotal is non-zero before division and divide first to avoid overflow
+    if (dltotal > 0.0)
+    {
+        double ratio = dlnow / dltotal;
+        int percent = static_cast<int>(ratio * 100);
+        pHttpClient->progress = percent;
+        // LOGTRACE("%d completed", percent);
+    }
 
     return pHttpClient->bCancel;
 }
