@@ -24,11 +24,14 @@
 #include <interfaces/json/JLifecycleManagerState.h>
 #include <semaphore.h>
 #include "LifecycleManagerTelemetryReporting.h"
+#include "UtilsAppManagerTelemetry.h"
 
 namespace WPEFramework
 {
     namespace Plugin
     {
+        RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::LifecycleManagerTelemetryReporting, "lifecycleManagerBootstrapTime")
+
         SERVICE_REGISTRATION(LifecycleManagerImplementation, 1, 0);
 
         LifecycleManagerImplementation::LifecycleManagerImplementation(): mLifecycleManagerNotification(), mLifecycleManagerStateNotification(), mLoadedApplications(), mPendingRespawns(), mService(nullptr)
@@ -45,7 +48,7 @@ namespace WPEFramework
         bool LifecycleManagerImplementation::initialize(PluginHost::IShell* service)
         {
             bool ret = RequestHandler::getInstance()->initialize(service, this);
-            LifecycleManagerTelemetryReporting::getInstance().initialize(service);
+            RDKAM_TELEMETRY_INIT(service);
 	    return ret;
         }
 
@@ -661,22 +664,21 @@ namespace WPEFramework
                         std::string terminateError="";
                         std::string updateError="";
                         bool terminated = false;
-                        bool stateUpdated = false;
                         context->setRequestType(REQUEST_TYPE_TERMINATE);
                         context->setTargetLifecycleState(Exchange::ILifecycleManager::LifecycleState::TERMINATING);
                         context->setApplicationKillParams(false);
                         context->resetPendingStates();
+                        context->setTerminated(true);
 
                         terminated = RequestHandler::getInstance()->terminate(context.get(), false, terminateError);
-                        stateUpdated = RequestHandler::getInstance()->updateState(context.get(), context->getTargetLifecycleState(), updateError);
-                        if(terminated && stateUpdated)
+                        if(terminated)
                         {
                             LOGINFO("Successfully handled unexpected container termination for app[%s] ", appInstanceId.c_str());
                             LOGINFO("Successfully triggered unload for app[%s]", appInstanceId.c_str());
                         }
                         else
                         {
-                            LOGERR("Failed to handle unexpected termination for app[%s] terminateSuccess[%d] updateStateSuccess[%d] terminateError[%s] updateError[%s]", appInstanceId.c_str(), terminated, stateUpdated, terminateError.c_str(), updateError.c_str());
+                            LOGERR("Failed to handle unexpected termination for app[%s] terminateSuccess[%d] terminateError[%s] updateError[%s]", appInstanceId.c_str(), terminated, terminateError.c_str(), updateError.c_str());
                         }
                     }
                     else

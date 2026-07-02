@@ -43,6 +43,7 @@ namespace WPEFramework
         , mStateChangeId(0)
         , mRequestTime(0)
         , mRequestType(REQUEST_TYPE_NONE)
+        , mTerminated(false)
         {
             mState = (void*) new UnloadedState(this);
             sem_init(&mReachedLoadingStateSemaphore, 0, 0);
@@ -197,6 +198,16 @@ namespace WPEFramework
         RequestType ApplicationContext::getRequestType()
         {
             return mRequestType;
+        }
+
+        void ApplicationContext::setTerminated(bool terminated)
+        {
+            mTerminated = terminated;
+        }
+
+        bool ApplicationContext::getTerminated()
+        {
+            return mTerminated;
         }
     } /* namespace Plugin */
 } /* namespace WPEFramework */

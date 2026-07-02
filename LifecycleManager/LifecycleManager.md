@@ -1,307 +1,664 @@
-# LifecycleManager Module
+# LifecycleManager Plugin Documentation
 
-> Application Lifecycle State Machine
+> State Machine for Application Lifecycle Transitions in RDK Infrastructure
 
-[← Previous: AppManager](../AppManager/AppManager.md) | [← Back to Main](../README.md) | [Next: RuntimeManager →](../RuntimeManager/RuntimeManager.md)
+## 1. High-Level Purpose & Architecture
 
----
+### Role in ENT / RDK Infrastructure
 
-## Purpose & Role
+The **LifecycleManager** plugin implements the core state machine that governs application lifecycle transitions. It acts as the central coordinator between the AppManager (which initiates requests) and the RuntimeManager (which executes container operations).
 
-The **LifecycleManager** implements a state machine for managing application lifecycle transitions. It coordinates with RuntimeManager for container operations and RDKWindowManager for display management.
+### Responsibilities
 
-### Core Responsibilities
+- **State Machine Management**: Implement and enforce valid lifecycle state transitions
+- **Application Context Tracking**: Maintain context for each loaded application
+- **Runtime Coordination**: Delegate container operations to RuntimeManager
+- **Window Management**: Coordinate with RDKWindowManager for display operations
+- **State Change Notifications**: Propagate lifecycle state changes to subscribers
 
-- Maintain per-application state (ApplicationContext)
-- Validate and execute state transitions
-- Coordinate with RuntimeManager for container operations
-- Coordinate with WindowManager for display operations
-- Emit state change notifications
+### Interacting Subsystems
 
-### Dependencies
+| Subsystem | Interaction Type | Purpose |
+|-----------|-----------------|---------|
+| AppManager | COM-RPC (inbound) | Receives SpawnApp, SetTargetAppState, UnloadApp, KillApp requests |
+| RuntimeManager | COM-RPC (outbound) | Delegates Run, Suspend, Resume, Hibernate, Wake, Terminate |
+| RDKWindowManager | COM-RPC (outbound) | Coordinates display creation and focus |
 
-| Module | Purpose |
-|--------|---------|
-| RuntimeManager | Container run, suspend, resume, hibernate, terminate |
-| RDKWindowManager | Display creation and destruction |
+### What It Does NOT Do
 
----
-
-## Lifecycle States
-
-| State | Value | Description |
-|-------|-------|-------------|
-| `UNLOADED` | 0 | Application not running, no resources allocated |
-| `LOADING` | 1 | Container starting, resources being allocated |
-| `INITIALIZING` | 2 | App performing initialization (not yet ready) |
-| `PAUSED` | 3 | App loaded but hidden (display not visible) |
-| `ACTIVE` | 4 | App visible and interactive (has focus) |
-| `SUSPENDED` | 5 | App paused with reduced resources (SIGSTOP) |
-| `HIBERNATED` | 6 | App state checkpointed to disk, container stopped |
-| `TERMINATING` | 7 | App shutting down, cleanup in progress |
+- Does not directly manage OCI containers (delegated to RuntimeManager)
+- Does not handle JSON-RPC client communication directly (handled by AppManager)
+- Does not manage package installation (handled by PackageManager)
 
 ---
 
-## State Diagram
+## 2. Architectural Overview
+
+### Major Components
+
+```mermaid
+graph TB
+    subgraph "LifecycleManager Plugin"
+        Shell[LifecycleManager<br/>JSON-RPC Shell]
+        Impl[LifecycleManagerImplementation<br/>State Machine]
+        SH[StateHandler<br/>Transition Logic]
+        STH[StateTransitionHandler<br/>Transition Executor]
+        AC[ApplicationContext<br/>App State Container]
+        States[State Classes<br/>State Behaviors]
+    end
+
+    subgraph "Handlers"
+        RMH[RuntimeManagerHandler]
+        WMH[WindowManagerHandler]
+        RH[RequestHandler]
+    end
+
+    subgraph "External Plugins"
+        RTM[RuntimeManager]
+        WM[RDKWindowManager]
+    end
+
+    Shell --> Impl
+    Impl --> SH
+    SH --> STH
+    SH --> States
+    Impl --> AC
+    Impl --> RMH
+    Impl --> WMH
+    Impl --> RH
+    RMH --> RTM
+    WMH --> WM
+```
+
+### State Machine States
 
 ```mermaid
 stateDiagram-v2
     [*] --> UNLOADED
-    UNLOADED --> LOADING: SpawnApp()
+    UNLOADED --> LOADING: SpawnApp
     LOADING --> INITIALIZING: Container Started
-    INITIALIZING --> PAUSED: AppReady() + target=PAUSED
-    INITIALIZING --> ACTIVE: AppReady() + target=ACTIVE
-    PAUSED --> ACTIVE: SetTargetAppState(ACTIVE)
-    ACTIVE --> PAUSED: SetTargetAppState(PAUSED)
-    PAUSED --> SUSPENDED: SetTargetAppState(SUSPENDED)
-    ACTIVE --> SUSPENDED: SetTargetAppState(SUSPENDED)
-    SUSPENDED --> ACTIVE: SetTargetAppState(ACTIVE)
-    SUSPENDED --> HIBERNATED: SetTargetAppState(HIBERNATED)
-    HIBERNATED --> LOADING: SetTargetAppState(ACTIVE) / Wake
-    PAUSED --> TERMINATING: UnloadApp()
-    SUSPENDED --> TERMINATING: UnloadApp()
-    HIBERNATED --> TERMINATING: UnloadApp()
-    ACTIVE --> TERMINATING: UnloadApp()
+    INITIALIZING --> PAUSED: AppReady (background)
+    INITIALIZING --> ACTIVE: AppReady (foreground)
+    PAUSED --> ACTIVE: SetTargetState(ACTIVE)
+    ACTIVE --> PAUSED: SetTargetState(PAUSED)
+    PAUSED --> SUSPENDED: SetTargetState(SUSPENDED)
+    SUSPENDED --> PAUSED: SetTargetState(PAUSED)
+    PAUSED --> HIBERNATED: SetTargetState(HIBERNATED)
+    HIBERNATED --> PAUSED: SetTargetState(PAUSED)
+    PAUSED --> TERMINATING: UnloadApp/SetTargetState(TERMINATING)
+    ACTIVE --> TERMINATING: UnloadApp
+    SUSPENDED --> TERMINATING: UnloadApp
+    HIBERNATED --> TERMINATING: UnloadApp
     TERMINATING --> UNLOADED: Container Stopped
     UNLOADED --> [*]
 ```
 
 ---
 
-## Architecture
+## 3. Code Organization
+
+### Directory Structure
+
+```
+LifecycleManager/
+├── LifecycleManager.cpp              # Plugin shell
+├── LifecycleManager.h                # Shell header
+├── LifecycleManagerImplementation.cpp # Core state machine logic
+├── LifecycleManagerImplementation.h   # Implementation header
+├── ApplicationContext.cpp            # Application context container
+├── ApplicationContext.h              # Context header
+├── State.cpp                         # State base class and derived states
+├── State.h                           # State class headers
+├── StateHandler.cpp                  # State transition coordinator
+├── StateHandler.h                    # StateHandler header
+├── StateTransitionHandler.cpp        # Transition execution logic
+├── StateTransitionHandler.h          # Transition header
+├── StateTransitionRequest.h          # Transition request structure
+├── RequestHandler.cpp                # Request processing
+├── RequestHandler.h                  # RequestHandler header
+├── RuntimeManagerHandler.cpp         # RuntimeManager bridge
+├── RuntimeManagerHandler.h           # RuntimeManagerHandler header
+├── WindowManagerHandler.cpp          # WindowManager bridge
+├── WindowManagerHandler.h            # WindowManagerHandler header
+├── IEventHandler.h                   # Event handler interface
+├── LifecycleManagerTelemetryReporting.cpp # Telemetry
+├── LifecycleManagerTelemetryReporting.h   # Telemetry header
+├── Module.cpp                        # Plugin module
+├── Module.h                          # Module header
+├── CMakeLists.txt                    # Build configuration
+├── LifecycleManager.config           # Plugin configuration
+└── LifecycleManager.conf.in          # Configuration template
+```
+
+### File-by-File Breakdown
+
+#### LifecycleManager.h / LifecycleManager.cpp
+
+**Purpose**: JSON-RPC shell plugin exposing the LifecycleManager API.
+
+**Key Elements**:
+- Implements `PluginHost::IPlugin` and `PluginHost::JSONRPC`
+- Contains `Notification` inner class for `ILifecycleManagerState::INotification`
+- Aggregates both `ILifecycleManager` and `ILifecycleManagerState` interfaces
+
+```cpp
+// From LifecycleManager.h (lines 91-97)
+BEGIN_INTERFACE_MAP(LifecycleManager)
+INTERFACE_ENTRY(PluginHost::IPlugin)
+INTERFACE_ENTRY(PluginHost::IDispatcher)
+INTERFACE_AGGREGATE(Exchange::ILifecycleManager, mLifecycleManagerImplementation)
+INTERFACE_AGGREGATE(Exchange::ILifecycleManagerState, mLifecycleManagerState)
+END_INTERFACE_MAP
+```
+
+#### LifecycleManagerImplementation.h / LifecycleManagerImplementation.cpp
+
+**Purpose**: Core state machine logic implementing `ILifecycleManager`, `ILifecycleManagerState`, and `IEventHandler`.
+
+**Key Interfaces Implemented**:
+- `Exchange::ILifecycleManager` - Main lifecycle control API
+- `Exchange::ILifecycleManagerState` - State reporting and app-side callbacks
+- `Exchange::IConfiguration` - Plugin configuration
+- `IEventHandler` - Internal event handling
+
+**Key Methods**:
+```cpp
+// ILifecycleManager methods
+Core::hresult SpawnApp(const string& appId, const string& launchIntent, 
+                       LifecycleState targetLifecycleState,
+                       const RuntimeConfig& runtimeConfigObject,
+                       const string& launchArgs, string& appInstanceId,
+                       string& errorReason, bool& success);
+Core::hresult SetTargetAppState(const string& appInstanceId, 
+                                LifecycleState targetLifecycleState,
+                                const string& launchIntent);
+Core::hresult UnloadApp(const string& appInstanceId, string& errorReason, bool& success);
+Core::hresult KillApp(const string& appInstanceId, string& errorReason, bool& success);
+Core::hresult SendIntentToActiveApp(const string& appInstanceId, const string& intent,
+                                     string& errorReason, bool& success);
+
+// ILifecycleManagerState methods
+Core::hresult AppReady(const string& appId);
+Core::hresult StateChangeComplete(const string& appId, uint32_t stateChangedId, bool success);
+Core::hresult CloseApp(const string& appId, AppCloseReason closeReason);
+```
+
+#### ApplicationContext.h / ApplicationContext.cpp
+
+**Purpose**: Encapsulates all runtime context for a single application instance.
+
+**Key Members**:
+| Member | Type | Description |
+|--------|------|-------------|
+| `mAppInstanceId` | `std::string` | Unique instance ID |
+| `mAppId` | `std::string` | Application ID |
+| `mLastLifecycleStateChangeTime` | `timespec` | Timestamp of last lifecycle transition |
+| `mActiveSessionId` | `std::string` | Active session identifier |
+| `mTargetLifecycleState` | `LifecycleState` | Requested target lifecycle state |
+| `mMostRecentIntent` | `std::string` | Last intent payload associated with app activity |
+| `mState` | `void*` | Pointer to current state object |
+| `mStateChangeId` | `uint32_t` | Monotonic state transition counter |
+| `mLaunchParams` | `ApplicationLaunchParams` | Parameters used for launch flow |
+| `mKillParams` | `ApplicationKillParams` | Parameters used for kill/terminate flow |
+| `mRequestTime` | `time_t` | Timestamp of current request |
+| `mRequestType` | `RequestType` | Current request category |
+| `mReachedLoadingStateSemaphore` | `sem_t` | Synchronization for loading-state wait |
+| `mFirstFrameAfterResumeSemaphore` | `sem_t` | Synchronization for first-frame-after-resume wait |
+| `mPendingStateTransition` | `bool` | Indicates pending transition processing |
+| `mPendingStates` | `std::vector<LifecycleState>` | Queue of pending lifecycle states |
+| `mPendingOldState` | `LifecycleState` | Previous state for pending transition handling |
+| `mPendingEventName` | `std::string` | Event name linked to pending transition |
+
+#### State.h / State.cpp
+
+**Purpose**: State pattern implementation with base class and derived state classes.
+
+**State Classes**:
+```cpp
+class State {
+public:
+    State(ApplicationContext* context, LifecycleState state);
+    virtual bool handle(string& errorReason);
+    virtual LifecycleState getValue();
+    virtual ApplicationContext* getContext();
+protected:
+    LifecycleState mState;
+    ApplicationContext* mContext;
+};
+
+class UnloadedState : public State { /* ... */ };
+class LoadingState : public State { /* ... */ };
+class InitializingState : public State { /* ... */ };
+class PausedState : public State { /* ... */ };
+class ActiveState : public State { /* ... */ };
+class SuspendedState : public State { /* ... */ };
+class HibernatedState : public State { /* ... */ };
+class TerminatingState : public State { /* ... */ };
+```
+
+#### StateHandler.h / StateHandler.cpp
+
+**Purpose**: Coordinates state transitions, validates transition paths, and dispatches events.
+
+**Key Methods**:
+```cpp
+class StateHandler {
+public:
+    static void initialize();
+    static bool changeState(StateTransitionRequest& request, string& errorReason);
+
+private:
+    static State* createState(ApplicationContext* context, LifecycleState state);
+    static bool isValidTransition(LifecycleState start, LifecycleState target,
+                                  std::map<LifecycleState, bool>& pathSequence,
+                                  std::vector<LifecycleState>& foundPath);
+    static bool updateState(ApplicationContext* context, LifecycleState state, 
+                           string& errorReason);
+    static void sendEvent(ApplicationContext* context, LifecycleState oldState,
+                         LifecycleState newState, string& errorReason);
+    static bool getStatePath(ApplicationContext* context, LifecycleState target,
+                            std::vector<LifecycleState>& statePath, string& errorReason);
+    
+    static std::map<LifecycleState, std::list<LifecycleState>> mPossibleStateTransitions;
+};
+```
+
+---
+
+## 4. Class & Interface Documentation
+
+### Exchange::ILifecycleManager Interface
+
+Primary interface for lifecycle control:
+
+```cpp
+interface ILifecycleManager {
+    // Notification interface for state changes
+    interface INotification {
+        void OnAppStateChanged(const string& appId, LifecycleState state, 
+                              const string& errorReason);
+    };
+
+    hresult Register(INotification* notification);
+    hresult Unregister(INotification* notification);
+    hresult GetLoadedApps(bool verbose, string& apps);
+    hresult IsAppLoaded(const string& appId, bool& loaded);
+    hresult SpawnApp(const string& appId, const string& launchIntent,
+                     LifecycleState targetState, const RuntimeConfig& config,
+                     const string& launchArgs, string& appInstanceId,
+                     string& errorReason, bool& success);
+    hresult SetTargetAppState(const string& appInstanceId, LifecycleState target,
+                              const string& launchIntent);
+    hresult UnloadApp(const string& appInstanceId, string& errorReason, bool& success);
+    hresult KillApp(const string& appInstanceId, string& errorReason, bool& success);
+    hresult SendIntentToActiveApp(const string& appInstanceId, const string& intent,
+                                   string& errorReason, bool& success);
+};
+```
+
+### Exchange::ILifecycleManagerState Interface
+
+Interface for app-side state reporting:
+
+```cpp
+interface ILifecycleManagerState {
+    interface INotification {
+        void OnAppLifecycleStateChanged(const string& appId, const string& appInstanceId,
+                                        LifecycleState oldState, LifecycleState newState,
+                                        const string& navigationIntent);
+    };
+
+    hresult Register(INotification* notification);
+    hresult Unregister(INotification* notification);
+    hresult AppReady(const string& appId);
+    hresult StateChangeComplete(const string& appId, uint32_t stateChangedId, bool success);
+    hresult CloseApp(const string& appId, AppCloseReason closeReason);
+};
+```
+
+### LifecycleState Enumeration
+
+```cpp
+enum LifecycleState {
+    UNLOADED = 0,     // App not loaded
+    LOADING,          // Container starting
+    INITIALIZING,     // App initializing
+    PAUSED,           // App in background
+    ACTIVE,           // App in foreground
+    SUSPENDED,        // App suspended (low memory)
+    HIBERNATED,       // App state persisted to disk
+    TERMINATING       // App shutting down
+};
+```
+
+### Class Relationships
 
 ```mermaid
-graph TB
-    subgraph "LifecycleManager Module"
-        LM[LifecycleManager<br/>Plugin]
-        LMI[LifecycleManagerImplementation]
-        AC[ApplicationContext]
-        SH[StateHandler]
+classDiagram
+    class LifecycleManager {
+        -ILifecycleManager* mLifecycleManagerImplementation
+        -ILifecycleManagerState* mLifecycleManagerState
+        +Initialize()
+        +Deinitialize()
+    }
+
+    class LifecycleManagerImplementation {
+        -list~ApplicationContext~ mLoadedApplications
+        -map~string,PendingRespawnRequest~ mPendingRespawns
+        -PluginHost::IShell* mService
+        +SpawnApp()
+        +SetTargetAppState()
+        +UnloadApp()
+        +KillApp()
+    }
+
+    class ApplicationContext {
+        -string mAppInstanceId
+        -string mAppId
+        -LifecycleState mTargetLifecycleState
+        -void* mState
+        +getState()
+        +setState()
+        +getTargetLifecycleState()
+    }
+
+    class StateHandler {
+        +changeState()$
+        +isValidTransition()$
+        -mPossibleStateTransitions$
+    }
+
+    class State {
+        #LifecycleState mState
+        #ApplicationContext* mContext
+        +handle()
+        +getValue()
+    }
+
+    class LoadingState {
+        +handle()
+    }
+
+    class ActiveState {
+        +handle()
+    }
+
+    LifecycleManager --> LifecycleManagerImplementation
+    LifecycleManagerImplementation --> ApplicationContext
+    LifecycleManagerImplementation --> StateHandler
+    StateHandler --> State
+    State <|-- LoadingState
+    State <|-- ActiveState
+    State <|-- PausedState
+    State <|-- SuspendedState
+    State <|-- HibernatedState
+    State <|-- TerminatingState
+    ApplicationContext --> State
+```
+
+---
+
+## 5. Configuration & Build Integration
+
+### Plugin Configuration (LifecycleManager.config)
+
+```cmake
+set (autostart false)
+set (preconditions Platform)
+set (callsign "org.rdk.LifecycleManager")
+
+map()
+   key(root)
+   map()
+       kv(mode ${PLUGIN_LIFECYCLE_MANAGER_MODE})
+       kv(locator lib${MODULE_NAME}.so)
+   end()
+end()
+ans(configuration)
+```
+
+### CMake Build Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `PLUGIN_LIFECYCLE_MANAGER_MODE` | Execution mode (Off/Local) | Off |
+| `PLUGIN_LIFECYCLE_MANAGER_AUTOSTART` | Auto-start on boot | false |
+| `ENABLE_UNIT_TESTS` | Enable unit test compilation | OFF |
+
+### Source Files
+
+```cmake
+set(PLUGIN_LIFECYCLE_MANAGER_SOURCES
+    LifecycleManager.cpp
+    LifecycleManagerImplementation.cpp
+    Module.cpp
+    LifecycleManagerTelemetryReporting.cpp
+    ApplicationContext.cpp
+    RequestHandler.cpp
+    RuntimeManagerHandler.cpp
+    WindowManagerHandler.cpp
+    State.cpp
+    StateHandler.cpp
+    StateTransitionHandler.cpp)
+```
+
+---
+
+## 6. Internal Workflows & Execution Flow
+
+### SpawnApp Flow
+
+```mermaid
+sequenceDiagram
+    participant AM as AppManager
+    participant LCM as LifecycleManagerImpl
+    participant SH as StateHandler
+    participant RMH as RuntimeManagerHandler
+    participant RTM as RuntimeManager
+    participant AC as ApplicationContext
+
+    AM->>LCM: SpawnApp(appId, intent, targetState, config)
+    LCM->>AC: new ApplicationContext(appId)
+    LCM->>AC: setApplicationLaunchParams(...)
+    LCM->>SH: changeState(LOADING)
+    SH->>SH: isValidTransition(UNLOADED, LOADING)
+    SH->>AC: setState(LoadingState)
+    SH->>LCM: LoadingState.handle()
+    LCM->>RMH: Run(appId, appInstanceId, config)
+    RMH->>RTM: Run(...)
+    RTM-->>RMH: success
+    RMH-->>LCM: success
+    LCM-->>AM: appInstanceId, success=true
+
+    Note over RTM: Container starts...
+
+    RTM->>LCM: onRuntimeManagerEvent(CONTAINERSTARTED)
+    LCM->>SH: changeState(INITIALIZING)
+    SH->>AC: setState(InitializingState)
+    
+    Note over LCM: App calls AppReady...
+
+    LCM->>LCM: AppReady(appId)
+    LCM->>SH: changeState(targetState)
+    SH->>AC: setState(ActiveState or PausedState)
+    LCM->>AM: OnAppLifecycleStateChanged
+```
+
+### SetTargetAppState Flow
+
+```mermaid
+sequenceDiagram
+    participant AM as AppManager
+    participant LCM as LifecycleManagerImpl
+    participant SH as StateHandler
+    participant AC as ApplicationContext
+    participant RMH as RuntimeManagerHandler
+
+    AM->>LCM: SetTargetAppState(appInstanceId, SUSPENDED)
+    LCM->>LCM: getContext(appInstanceId)
+    LCM->>AC: setTargetLifecycleState(SUSPENDED)
+    LCM->>SH: getStatePath(current, SUSPENDED)
+    SH-->>LCM: [PAUSED, SUSPENDED]
+    
+    loop For each state in path
+        LCM->>SH: changeState(nextState)
+        SH->>AC: setState(nextState)
+        SH->>SH: State.handle()
+        alt State is SUSPENDED
+            SH->>RMH: Suspend(appInstanceId)
+            RMH-->>SH: success
+        end
+        SH->>LCM: sendEvent(oldState, newState)
+        LCM->>AM: OnAppLifecycleStateChanged
+    end
+    
+    LCM-->>AM: Core::ERROR_NONE
+```
+
+### State Transition Validation
+
+The `StateHandler` maintains a map of valid transitions:
+
+    // Conceptual representation of mPossibleStateTransitions (target -> allowed previous states)
+    {
+        UNLOADED:     [],
+        LOADING:      [UNLOADED],
+        INITIALIZING: [LOADING],
+        PAUSED:       [INITIALIZING, ACTIVE, SUSPENDED],
+        ACTIVE:       [PAUSED],
+        SUSPENDED:    [INITIALIZING, PAUSED, HIBERNATED],
+        HIBERNATED:   [SUSPENDED],
+        TERMINATING:  [PAUSED, SUSPENDED]
+    }
+
+### Event Handling Flow
+
+```mermaid
+flowchart TD
+    A[RuntimeManager Event] --> B{Event Type}
+    B -->|CONTAINERSTARTED| C[handleRuntimeManagerEvent]
+    B -->|CONTAINERSTOPPED| D[handleRuntimeManagerEvent]
+    B -->|CONTAINERFAILED| E[notifyOnFailure]
+    
+    C --> F[changeState to INITIALIZING]
+    D --> G[changeState to UNLOADED]
+    E --> H[Notify error to listeners]
+    
+    I[WindowManager Event] --> J{Event Type}
+    J -->|READY| K[handleWindowManagerEvent]
+    J -->|DISCONNECTED| L[Handle disconnect]
+    
+    K --> M[Signal first frame ready]
+```
+
+---
+
+## 7. Diagrams & Visual Aids
+
+### Complete State Transition Diagram
+
+```mermaid
+stateDiagram-v2
+    [*] --> UNLOADED
+    
+    UNLOADED --> LOADING: SpawnApp()
+    
+    LOADING --> INITIALIZING: Container Started
+    LOADING --> TERMINATING: Container Failed
+    
+    INITIALIZING --> PAUSED: AppReady (target=PAUSED)
+    INITIALIZING --> ACTIVE: AppReady (target=ACTIVE)
+    INITIALIZING --> TERMINATING: Timeout/Error
+    
+    PAUSED --> ACTIVE: SetTargetState(ACTIVE)
+    ACTIVE --> PAUSED: SetTargetState(PAUSED)
+    
+    PAUSED --> SUSPENDED: SetTargetState(SUSPENDED)
+    SUSPENDED --> PAUSED: SetTargetState(PAUSED/ACTIVE)
+    
+    PAUSED --> HIBERNATED: SetTargetState(HIBERNATED)
+    HIBERNATED --> PAUSED: SetTargetState(PAUSED/ACTIVE)
+    
+    PAUSED --> TERMINATING: UnloadApp/CloseApp
+    ACTIVE --> TERMINATING: UnloadApp
+    SUSPENDED --> TERMINATING: UnloadApp/KillApp
+    HIBERNATED --> TERMINATING: UnloadApp/KillApp
+    
+    TERMINATING --> UNLOADED: Container Stopped
+    
+    UNLOADED --> [*]
+```
+
+### Handler Interaction Diagram
+
+```mermaid
+graph LR
+    subgraph "LifecycleManagerImplementation"
+        Impl[Implementation]
+    end
+
+    subgraph "Handlers"
+        RH[RequestHandler]
+        RMH[RuntimeManagerHandler]
+        WMH[WindowManagerHandler]
     end
 
     subgraph "External"
         RTM[RuntimeManager]
         WM[RDKWindowManager]
-        AM[AppManager]
     end
 
-    AM --> LM
-    LM --> LMI
-    LMI --> AC
-    LMI --> SH
-    LMI --> RTM
-    LMI --> WM
+    Impl --> RH
+    RH --> RMH
+    RH --> WMH
+    RMH --> RTM
+    WMH --> WM
+
+    RTM -.->|Events| Impl
+    WM -.->|Events| Impl
 ```
 
 ---
 
-## Class Hierarchy
+## 8. Testing & Quality Analysis
 
-```mermaid
-classDiagram
-    class LifecycleManagerImplementation {
-        -list~ApplicationContext*~ mLoadedApplications
-        -list~INotification*~ mLifecycleManagerNotification
-        -IShell* mService
-        +SpawnApp(appId, intent, targetState, config) hresult
-        +SetTargetAppState(appInstanceId, targetState) hresult
-        +UnloadApp(appInstanceId) hresult
-        +KillApp(appInstanceId) hresult
-        +GetLoadedApps() hresult
-    }
+### Existing Tests
 
-    class ApplicationContext {
-        -string mAppId
-        -string mAppInstanceId
-        -State* mCurrentState
-        -State* mTargetState
-        -RuntimeConfig mConfig
-        +getAppId() string
-        +getCurrentState() State*
-        +setCurrentState(State*) void
-    }
+Located in `Tests/L1Tests/tests/test_LifecycleManager.cpp`:
 
-    class State {
-        <<abstract>>
-        +handle(context) void
-        +getName() string
-    }
+| Test Category | Description |
+|---------------|-------------|
+| SpawnApp Tests | Verify app spawning with various configurations |
+| State Transition Tests | Verify valid state transitions |
+| Invalid Transition Tests | Verify rejection of invalid transitions |
+| UnloadApp Tests | Verify app unloading |
+| KillApp Tests | Verify forced termination |
+| Event Tests | Verify event delivery |
 
-    class UnloadedState
-    class LoadingState
-    class InitializingState
-    class PausedState
-    class ActiveState
-    class SuspendedState
-    class HibernatedState
-    class TerminatingState
+### Test Coverage Gaps
 
-    State <|-- UnloadedState
-    State <|-- LoadingState
-    State <|-- InitializingState
-    State <|-- PausedState
-    State <|-- ActiveState
-    State <|-- SuspendedState
-    State <|-- HibernatedState
-    State <|-- TerminatingState
+1. **Concurrent State Changes**: Multiple simultaneous SetTargetAppState calls
+2. **Pending State Queue**: Verification of pending state handling
+3. **Respawn Logic**: Testing of pending respawn mechanism
+4. **Timeout Handling**: State transition timeout scenarios
 
-    LifecycleManagerImplementation --> ApplicationContext: manages
-    ApplicationContext --> State: has current
+### Suggested Test Cases
+
+```cpp
+// Test rapid state transitions
+TEST(LifecycleManagerTest, RapidStateTransitions) {
+    // ACTIVE -> PAUSED -> SUSPENDED -> PAUSED -> ACTIVE in quick succession
+}
+
+// Test pending respawn
+TEST(LifecycleManagerTest, PendingRespawn) {
+    // Spawn during termination should queue respawn
+}
+
+// Test state path calculation
+TEST(LifecycleManagerTest, StatePathCalculation) {
+    // ACTIVE to HIBERNATED should go through PAUSED
+}
 ```
 
 ---
-
-## File Organization
-
-```
-LifecycleManager/
-├── LifecycleManager.cpp           Plugin wrapper
-├── LifecycleManager.h             Plugin class definition
-├── LifecycleManagerImplementation.cpp State machine implementation
-├── LifecycleManagerImplementation.h   Implementation class
-├── ApplicationContext.cpp         Per-app context
-├── ApplicationContext.h           Context class definition
-├── State.cpp                      State class implementations
-├── State.h                        State hierarchy
-├── StateHandler.cpp               State transition handlers
-├── StateHandler.h                 Handler class definitions
-├── StateTransitionHandler.cpp     Transition orchestration
-├── StateTransitionHandler.h       Transition handler class
-├── StateTransitionRequest.h       Request data structure
-├── RequestHandler.cpp             Incoming request processing
-├── RequestHandler.h               Request handler class
-├── RuntimeManagerHandler.cpp      RuntimeManager integration
-├── RuntimeManagerHandler.h        Runtime handler class
-├── WindowManagerHandler.cpp       WindowManager integration
-├── WindowManagerHandler.h         Window handler class
-├── IEventHandler.h                Event handler interface
-├── Module.cpp/h                   Module registration
-├── CMakeLists.txt                 Build configuration
-└── LifecycleManager.config        Runtime configuration
-```
-
----
-
-## API Reference
-
-### ILifecycleManager Interface
-
-| Method | Purpose |
-|--------|---------|
-| `SpawnApp(appId, launchIntent, targetState, config, launchArgs) -> (success, appInstanceId, errorReason)` | Create new application instance and start container. Returns a success flag, the new `appInstanceId` on success, and an `errorReason` string on failure. |
-| `SetTargetAppState(appInstanceId, targetState, launchIntent) -> (success, errorReason)` | Request state transition for existing app. Returns a success flag and an `errorReason` string on failure. |
-| `UnloadApp(appInstanceId) -> (success, errorReason)` | Clean shutdown of application (graceful termination). Returns a success flag and an `errorReason` string on failure. |
-| `KillApp(appInstanceId) -> (success, errorReason)` | Force terminate application (SIGKILL). Returns a success flag and an `errorReason` string on failure. |
-| `GetLoadedApps(verbose) -> (success, appsJson, errorReason)` | Get JSON list of loaded applications. Returns a success flag, a JSON structure describing loaded apps, and an `errorReason` string on failure. |
-| `IsAppLoaded(appId) -> (success, isLoaded, appInstanceId, errorReason)` | Check if app is currently loaded. Returns a success flag, an `isLoaded` boolean, the corresponding `appInstanceId` when loaded, and an `errorReason` string on failure. |
-
-### ILifecycleManagerState Interface
-
-| Method | Purpose |
-|--------|---------|
-| `AppReady(appId)` | Called by app when initialization complete |
-| `StateChangeComplete(appId, stateChangedId, success)` | Called by app to acknowledge state change |
-| `CloseApp(appId, reason)` | App requests to close itself |
-
----
-
-## State Transition Flow
-
-```mermaid
-flowchart TB
-    subgraph "Launch Flow"
-        A1[SpawnApp Called] --> A2[Create ApplicationContext]
-        A2 --> A3[Create DobbySpec]
-        A3 --> A4[Call RuntimeManager.Run]
-        A4 --> A5[Set State = LOADING]
-        A5 --> A6[Container Started Event]
-        A6 --> A7[Set State = INITIALIZING]
-        A7 --> A8[Wait for AppReady]
-        A8 --> A9{Target State?}
-        A9 -->|PAUSED| A10[Set State = PAUSED]
-        A9 -->|ACTIVE| A11[Set State = ACTIVE]
-    end
-
-    subgraph "Background Flow"
-        B1[SetTargetState SUSPENDED] --> B2[Call RuntimeManager.Suspend]
-        B2 --> B3[Set State = SUSPENDED]
-        B3 --> B4[SetTargetState HIBERNATED]
-        B4 --> B5[Call RuntimeManager.Hibernate]
-        B5 --> B6[Set State = HIBERNATED]
-    end
-
-    subgraph "Wake Flow"
-        C1[SetTargetState ACTIVE from HIBERNATED] --> C2[Call RuntimeManager.Wake]
-        C2 --> C3[Container Restored]
-        C3 --> C4[Set State = ACTIVE]
-    end
-```
-
----
-
-## Event Flow
-
-```mermaid
-sequenceDiagram
-    participant RuntimeManager
-    participant LCM as LifecycleManager
-    participant AppManager
-    participant Client
-
-    RuntimeManager->>LCM: onRuntimeManagerEvent(STARTED)
-    LCM->>LCM: Update ApplicationContext State
-    LCM->>AppManager: OnAppLifecycleStateChanged
-    AppManager->>Client: JSON-RPC Event
-
-    Note over LCM: App calls AppReady()
-    LCM->>LCM: Transition to PAUSED/ACTIVE
-    LCM->>AppManager: OnAppLifecycleStateChanged
-    AppManager->>Client: JSON-RPC Event
-```
-
----
-
-## Valid State Transitions
-
-| From | To | Trigger |
-|------|-----|---------|
-| UNLOADED | LOADING | SpawnApp() |
-| LOADING | INITIALIZING | Container started |
-| INITIALIZING | PAUSED | AppReady() + target=PAUSED |
-| INITIALIZING | ACTIVE | AppReady() + target=ACTIVE |
-| PAUSED | ACTIVE | SetTargetAppState(ACTIVE) |
-| ACTIVE | PAUSED | SetTargetAppState(PAUSED) |
-| PAUSED | SUSPENDED | SetTargetAppState(SUSPENDED) |
-| ACTIVE | SUSPENDED | SetTargetAppState(SUSPENDED) |
-| SUSPENDED | ACTIVE | SetTargetAppState(ACTIVE) |
-| SUSPENDED | HIBERNATED | SetTargetAppState(HIBERNATED) |
-| HIBERNATED | ACTIVE | SetTargetAppState(ACTIVE) |
-| * | TERMINATING | UnloadApp() |
-| TERMINATING | UNLOADED | Container stopped |
-
----
-
-## Event Handlers
-
-### IEventHandler Methods
-
-| Method | Purpose |
-|--------|---------|
-| `onRuntimeManagerEvent()` | Container state changes |
-| `onWindowManagerEvent()` | Display events |
-| `onRippleEvent()` | Firebolt events |
-| `onStateChangeEvent()` | Internal state change events |
-
-### Notification: OnAppLifecycleStateChanged
-
-Emitted on every state transition with:
-- `appId`
-- `appInstanceId`
-- `oldState`
-- `newState`
-- `navigationIntent`
-
----
-
-[← Back to Main](../README.md) | [Next: RuntimeManager →](../RuntimeManager/RuntimeManager.md)
-

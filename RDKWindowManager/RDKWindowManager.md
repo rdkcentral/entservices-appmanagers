@@ -1,216 +1,348 @@
-# RDKWindowManager Module
+# RDKWindowManager Plugin Documentation
 
-> Display & Window Management for RDK Platform
+> Display Creation, Focus Control, and Key Intercepts for RDK Infrastructure
 
-[← Back to Main](../README.md) | [← Previous: PreinstallManager](../PreinstallManager/PreinstallManager.md)
+## 1. High-Level Purpose & Architecture
 
+### Role in ENT / RDK Infrastructure
+
+The **RDKWindowManager** plugin provides window and display management services for applications running on RDK devices. It handles display creation, focus management, visibility control, key event routing, and user inactivity detection.
+
+### Responsibilities
+
+- **Display Management**: Create and destroy application displays
+- **Focus Control**: Manage application focus and Z-order
+- **Key Handling**: Intercept, route, and inject key events
+- **Visibility Control**: Show/hide application windows
+- **Inactivity Detection**: Monitor and report user inactivity
+- **VNC Server**: Remote display access (optional)
+
+### Interacting Subsystems
+
+| Subsystem | Interaction Type | Purpose |
+|-----------|-----------------|---------|
+| RuntimeManager | COM-RPC (inbound) | Display creation for containers |
+| LifecycleManager | COM-RPC (inbound) | Window events notification |
+| rdkwindowmanager library | Native | Underlying window management |
 
 ---
 
-## Purpose & Role
+## 2. Architectural Overview
 
-The **RDKWindowManager** manages Wayland display creation, client interactions, key intercepts, focus control, and user inactivity detection for applications running on RDK platform.
-
-### Core Responsibilities
-
-- **Display Management:** Create/destroy Wayland displays for apps
-- **Client Management:** Track connected Wayland clients
-- **Key Intercepts:** Configure key interception for apps
-- **Focus Control:** Manage window focus and visibility
-- **Inactivity Detection:** Report user inactivity periods
-
-### Dependencies
-
-| Module | Purpose |
-|--------|---------|
-| Compositor (Essos/Westeros) | Wayland compositor backend |
-
----
-
-## Architecture
+### Major Components
 
 ```mermaid
 graph TB
-    subgraph "RDKWindowManager Module"
-        WM[RDKWindowManager<br/>Plugin]
-        WMI[RDKWindowManagerImplementation]
+    subgraph "RDKWindowManager Plugin"
+        Shell[RDKWindowManager<br/>Plugin Shell]
+        Impl[RDKWindowManagerImplementation<br/>Window Operations]
+        Listener[RdkWindowManagerListener<br/>Event Handler]
     end
 
-    subgraph "Clients"
+    subgraph "External"
+        RWM[librdkwindowmanager<br/>Native Library]
         RTM[RuntimeManager]
         LCM[LifecycleManager]
     end
 
-    subgraph "System"
-        Compositor[Wayland Compositor<br/>Essos/Westeros]
-        Display[Physical Display]
-    end
-
-    RTM -->|CreateDisplay| WM
-    LCM -->|Focus Control| WM
-    WM --> WMI
-    WMI --> Compositor
-    Compositor --> Display
+    Shell --> Impl
+    Impl --> Listener
+    Impl --> RWM
+    RTM --> Impl
+    Impl --> LCM
 ```
 
 ---
 
-## Class Diagram
+## 3. Code Organization
 
-```mermaid
-classDiagram
-    class RDKWindowManagerImplementation {
-        -CriticalSection mAdminLock
-        -list~INotification*~ mRDKWindowManagerNotification
-        -IShell* mService
-        -shared_ptr~RdkWindowManagerEventListener~ mEventListener
-        +CreateDisplay(displayParams: string) hresult
-        +GetApps(appsIds: string) hresult
-        +SetFocus(client: string) hresult
-        +SetVisible(client: string, visible: bool) hresult
-        +GetVisibility(client: string, visible: bool) hresult
-        +AddKeyIntercept(intercept: string) hresult
-        +AddKeyIntercepts(clientId: string, intercepts: string) hresult
-        +RemoveKeyIntercept(clientId: string, keyCode: uint32_t, modifiers: string) hresult
-        +AddKeyListener(keyListeners: string) hresult
-        +RemoveKeyListener(keyListeners: string) hresult
-        +InjectKey(keyCode: uint32_t, modifiers: string) hresult
-        +EnableInactivityReporting(enable: bool) hresult
-        +SetInactivityInterval(interval: uint32_t) hresult
-        +ResetInactivityTime() hresult
-        +GetLastKeyInfo(keyCode: uint32_t, modifiers: uint32_t, timestampInSeconds: uint64_t) hresult
-        +SetZOrder(clientId: string, zOrder: int32_t) hresult
-        +GetZOrder(clientId: string, zOrder: int32_t) hresult
-    }
-
-    class IRDKWindowManager {
-        <<interface>>
-        +CreateDisplay(displayParams: string) hresult
-        +GetApps(appsIds: string) hresult
-        +SetFocus(client: string) hresult
-        +SetVisible(client: string, visible: bool) hresult
-        +GetVisibility(client: string, visible: bool) hresult
-        +AddKeyIntercept(intercept: string) hresult
-        +AddKeyIntercepts(clientId: string, intercepts: string) hresult
-        +RemoveKeyIntercept(clientId: string, keyCode: uint32_t, modifiers: string) hresult
-        +AddKeyListener(keyListeners: string) hresult
-        +RemoveKeyListener(keyListeners: string) hresult
-        +InjectKey(keyCode: uint32_t, modifiers: string) hresult
-        +EnableInactivityReporting(enable: bool) hresult
-        +SetInactivityInterval(interval: uint32_t) hresult
-        +ResetInactivityTime() hresult
-        +GetLastKeyInfo(keyCode: uint32_t, modifiers: uint32_t, timestampInSeconds: uint64_t) hresult
-        +SetZOrder(appInstanceId: string, zOrder: int32_t) hresult
-        +GetZOrder(appInstanceId: string, zOrder: int32_t) hresult
-    }
-
-    RDKWindowManagerImplementation ..|> IRDKWindowManager
-```
-
----
-
-## File Organization
+### Directory Structure
 
 ```
 RDKWindowManager/
-├── RDKWindowManager.cpp           Plugin wrapper
-├── RDKWindowManager.h             Plugin class definition
-├── RDKWindowManagerImplementation.cpp Core implementation
-├── RDKWindowManagerImplementation.h   Implementation class
-├── Module.cpp/h                   Module registration
-├── CMakeLists.txt                 Build configuration
-└── RDKWindowManager.config        Runtime configuration
+├── RDKWindowManager.cpp              # Plugin shell
+├── RDKWindowManager.h                # Shell header
+├── RDKWindowManagerImplementation.cpp # Core implementation
+├── RDKWindowManagerImplementation.h   # Implementation header
+├── RDKWindowManagerTelemetryReporting.cpp # Telemetry
+├── RDKWindowManagerTelemetryReporting.h   # Telemetry header
+├── Module.cpp                        # Plugin module
+├── Module.h                          # Module header
+├── test/                             # Test files
+├── CMakeLists.txt                    # Build configuration
+├── RDKWindowManager.config           # Plugin configuration
+└── RDKWindowManager.conf.in          # Configuration template
 ```
 
 ---
 
-## API Reference
+## 4. Class & Interface Documentation
 
-### IRDKWindowManager Interface
+### Exchange::IRDKWindowManager Interface
 
-| Method | Purpose |
-|--------|---------|
-| `CreateDisplay(displayParamsJson)` | Create a new Wayland display for an application (parameters encoded as JSON) |
-| `SetFocus(client)` | Give focus to a specific Wayland client by name |
-| `SetVisible(client, visible)` | Show or hide a specific client's display |
-| `GetVisibility(client, visible)` | Retrieve visibility state of a specific client |
-| `AddKeyIntercept(intercept)` | Add a key intercept entry (JSON-encoded) for an application |
-| `AddKeyIntercepts(clientId, intercepts)` | Add multiple key intercepts for a client |
-| `RemoveKeyIntercept(clientId, keyCode, modifiers)` | Remove a specific key intercept for a client |
-| `AddKeyListener(keyListeners)` | Register key listener(s) for an application |
-| `RemoveKeyListener(keyListeners)` | Unregister key listener(s) |
-| `InjectKey(keyCode, modifiers)` | Inject a key event with specified code and modifiers |
-| `EnableInactivityReporting(enable)` | Enable or disable user inactivity event reporting |
-| `SetInactivityInterval(interval)` | Set the inactivity timeout interval (in seconds) |
-| `ResetInactivityTime()` | Reset the inactivity timer |
-| `GetLastKeyInfo(keyCode, modifiers, timestampInSeconds)` | Retrieve the last key event code, modifiers, and timestamp |
-| `SetZOrder(appInstanceId, zOrder)` | Set the Z-order for a specific application instance |
-| `GetZOrder(appInstanceId, zOrder)` | Get the current Z-order for a specific application instance |
+```cpp
+interface IRDKWindowManager {
+    interface INotification {
+        void OnUserInactivity(double minutes);
+        void OnDisconnected(const string& client);
+        void OnReady(const string& client);
+        void OnConnected(const string& client);
+        void OnVisible(const string& client);
+        void OnHidden(const string& client);
+        void OnFocus(const string& client);
+        void OnBlur(const string& client);
+        void OnScreenshotComplete(bool success, const string& imageData);
+    };
+
+    hresult Initialize(PluginHost::IShell* service);
+    hresult Deinitialize(PluginHost::IShell* service);
+    hresult Register(INotification* notification);
+    hresult Unregister(INotification* notification);
+
+    // Display Management
+    hresult CreateDisplay(const string& clientId, const string& displayName,
+                          uint32_t displayWidth, uint32_t displayHeight,
+                          bool virtualDisplay, uint32_t virtualWidth, uint32_t virtualHeight,
+                          uint32_t ownerId, uint32_t groupId,
+                          bool topmost, bool focus);
+    hresult GetApps(string& appIds) const;
+
+    // Key Management
+    hresult AddKeyIntercept(const string& intercept);
+    hresult AddKeyIntercepts(const string& clientId, const string& intercepts);
+    hresult RemoveKeyIntercept(const string& clientId, uint32_t keyCode, const string& modifiers);
+    hresult AddKeyListener(const string& keyListeners);
+    hresult RemoveKeyListener(const string& keyListeners);
+    hresult InjectKey(uint32_t keyCode, const string& modifiers);
+    hresult GenerateKey(const string& keys, const string& client);
+    hresult EnableKeyRepeats(bool enable);
+    hresult GetKeyRepeatsEnabled(bool& keyRepeat) const;
+    hresult IgnoreKeyInputs(bool ignore);
+    hresult EnableInputEvents(const string& clients, bool enable);
+    hresult KeyRepeatConfig(const string& input, const string& keyConfig);
+    hresult GetLastKeyInfo(uint32_t& keyCode, uint32_t& modifiers, uint64_t& timestamp) const;
+
+    // Focus & Visibility
+    hresult SetFocus(const string& client);
+    hresult SetVisible(const string& client, bool visible);
+    hresult GetVisibility(const string& client, bool& visible);
+    hresult SetZOrder(const string& clientId, int32_t zOrder);
+    hresult GetZOrder(const string& clientId, int32_t& zOrder);
+
+    // Rendering
+    hresult RenderReady(const string& client, bool& status) const;
+    hresult EnableDisplayRender(const string& client, bool enable);
+
+    // Inactivity
+    hresult EnableInactivityReporting(bool enable);
+    hresult SetInactivityInterval(uint32_t interval);
+    hresult ResetInactivityTime();
+
+    // VNC & Screenshot
+    hresult StartVncServer();
+    hresult StopVncServer();
+    hresult GetScreenshot();
+};
+```
+
+### RDKWindowManagerImplementation Key Types
+
+`CreateDisplayRequest` fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `mClient` | `std::string` | Client identifier |
+| `mDisplayName` | `std::string` | Display name |
+| `mDisplayWidth` | `uint32_t` | Physical display width |
+| `mDisplayHeight` | `uint32_t` | Physical display height |
+| `mVirtualDisplayEnabled` | `bool` | Enables virtual display mode |
+| `mVirtualWidth` | `uint32_t` | Virtual display width |
+| `mVirtualHeight` | `uint32_t` | Virtual display height |
+| `mTopmost` | `bool` | Requests topmost z-order |
+| `mFocus` | `bool` | Requests focus assignment |
+| `mSemaphore` | `sem_t` | Synchronization semaphore for request completion |
+| `mResult` | `bool` | Operation success flag |
+| `mOwnerId` | `uint32_t` | Owner user identifier |
+| `mGroupId` | `uint32_t` | Owner group identifier |
+
+```cpp
+// Window manager events
+enum Event {
+    RDK_WINDOW_MANAGER_EVENT_UNKNOWN,
+    RDK_WINDOW_MANAGER_EVENT_ON_USER_INACTIVITY,
+    RDK_WINDOW_MANAGER_EVENT_APPLICATION_DISCONNECTED,
+    RDK_WINDOW_MANAGER_EVENT_ON_READY,
+    RDK_WINDOW_MANAGER_EVENT_APPLICATION_CONNECTED,
+    RDK_WINDOW_MANAGER_EVENT_APPLICATION_VISIBLE,
+    RDK_WINDOW_MANAGER_EVENT_APPLICATION_HIDDEN,
+    RDK_WINDOW_MANAGER_EVENT_APPLICATION_FOCUS,
+    RDK_WINDOW_MANAGER_EVENT_APPLICATION_BLUR,
+    RDK_WINDOW_MANAGER_EVENT_SCREENSHOT_COMPLETE
+};
+```
+
+### Event Listener Class
+
+```cpp
+class RdkWindowManagerListener : public RdkWindowManager::RdkWindowManagerEventListener {
+public:
+    virtual void onUserInactive(const double minutes);
+    virtual void onApplicationDisconnected(const std::string& client);
+    virtual void onReady(const std::string& client);
+    virtual void onApplicationConnected(const std::string& client);
+    virtual void onApplicationVisible(const std::string& client);
+    virtual void onApplicationHidden(const std::string& client);
+    virtual void onApplicationFocus(const std::string& client);
+    virtual void onApplicationBlur(const std::string& client);
+};
+```
 
 ---
 
-## Display Lifecycle
+## 5. Internal Workflows
+
+### Display Creation Flow
 
 ```mermaid
 sequenceDiagram
     participant RTM as RuntimeManager
     participant WM as RDKWindowManager
-    participant Compositor
+    participant RWM as librdkwindowmanager
 
-    Note over RTM,Compositor: App Launch
-    RTM->>WM: CreateDisplay(displayParamsJson)
-    WM->>Compositor: Create Wayland Display
-    Compositor-->>WM: display socket
-    WM-->>RTM: "wayland-app-display"
-
-    Note over RTM,Compositor: App Sets Focus
-    RTM->>WM: SetFocus(focusParamsJson)
-    WM->>Compositor: BringToFront()
-
-    Note over RTM,Compositor: App Terminates
-    RTM->>WM: DestroyDisplay(displayParamsJson)
-    WM->>Compositor: Destroy Display
+    RTM->>WM: CreateDisplay(clientId, displayName, ...)
+    WM->>WM: Create CreateDisplayRequest
+    WM->>RWM: createDisplay(...)
+    RWM-->>WM: Display created
+    WM->>WM: Signal semaphore
     WM-->>RTM: success
+
+    Note over RWM: Application connects...
+
+    RWM->>WM: onApplicationConnected(client)
+    WM->>RTM: OnApplicationConnected event
+
+    RWM->>WM: onReady(client)
+    WM->>RTM: OnReady event (first frame rendered)
+```
+
+### Key Intercept Flow
+
+```mermaid
+sequenceDiagram
+    participant App as Application
+    participant WM as RDKWindowManager
+    participant RWM as librdkwindowmanager
+
+    App->>WM: AddKeyIntercept(keyCode, modifiers, client)
+    WM->>RWM: addKeyIntercept(keyCode, modifiers, client)
+    RWM-->>WM: success
+    WM-->>App: success
+
+    Note over RWM: User presses key...
+
+    RWM->>WM: Key event
+    WM->>WM: Check intercepts
+    WM->>App: Route to registered client
+```
+
+### Focus Management Flow
+
+```mermaid
+sequenceDiagram
+    participant LCM as LifecycleManager
+    participant WM as RDKWindowManager
+    participant RWM as librdkwindowmanager
+
+    LCM->>WM: SetFocus(client)
+    WM->>RWM: setFocus(client)
+    RWM-->>WM: success
+
+    RWM->>WM: onApplicationFocus(client)
+    WM->>LCM: OnApplicationFocus event
+
+    RWM->>WM: onApplicationBlur(previousClient)
+    WM->>LCM: OnApplicationBlur event
 ```
 
 ---
 
-## Key Intercept
+## 6. Configuration
 
-Allows applications to receive specific key events even when not focused:
+### Plugin Configuration
 
-| Key Code | Common Use |
-|----------|------------|
-| KEY_HOME | Return to launcher |
-| KEY_BACK | Navigation back |
-| KEY_MENU | Options menu |
-| KEY_POWER | Power management |
-
----
-
-## Inactivity Monitoring
-
-Tracks time since last user input for:
-
-- Screen saver activation
-- Power saving mode
-- Auto-suspend of background apps
+```cmake
+set (autostart false)
+set (preconditions Platform)
+set (callsign "org.rdk.RDKWindowManager")
+```
 
 ---
 
-## Client Connection Flow
+## 7. Key Management Features
+
+### Key Intercept Options
+
+| Option | Description |
+|--------|-------------|
+| `focusOnly` | Only intercept when client has focus |
+| `propagate` | Allow key to propagate to other clients |
+| `modifiers` | Key modifier requirements (ctrl, alt, shift) |
+
+### Key Event Flow
 
 ```mermaid
 flowchart TD
-    A[Container Started] --> B[App Connects to Wayland]
-    B --> C[WindowManager Receives Client]
-    C --> D[Register Client Info]
-    D --> E[App Renders to Display]
-    E --> F[SetFocus Called]
-    F --> G[Display Visible]
+    A[Key Press] --> B{Intercept registered?}
+    B -->|Yes| C{focusOnly && !hasFocus?}
+    C -->|Yes| D[Skip intercept]
+    C -->|No| E[Deliver to interceptor]
+    B -->|No| F[Normal routing]
+    D --> F
+    E --> G{propagate?}
+    G -->|Yes| F
+    G -->|No| H[Consumed]
+    F --> I[Deliver to focused app]
 ```
 
 ---
 
-[← Back to Main](../README.md) | [Next: TelemetryMetrics →](../TelemetryMetrics/TelemetryMetrics.md)
+## 8. Testing
 
+### Existing Tests
+
+Located in `Tests/L1Tests/tests/test_RDKWindowManager.cpp`
+
+| Test | Description |
+|------|-------------|
+| CreateDisplay | Display creation |
+| SetFocus | Focus management |
+| KeyIntercept | Key interception |
+| Visibility | Show/hide windows |
+| Inactivity | Inactivity detection |
+| ZOrder | Z-order management |
+
+---
+
+## 9. Integration Notes
+
+### For RuntimeManager Integration
+
+```cpp
+// Before starting container, create display
+windowManager->CreateDisplay(appInstanceId, displayName,
+                             width, height,
+                             virtualDisplay, virtualWidth, virtualHeight,
+                             ownerId, groupId,
+                             topmost, focus);
+
+// Wait for OnReady before considering app "running"
+```
+
+### For LifecycleManager Integration
+
+```cpp
+// Monitor window events for lifecycle state
+windowManager->Register(notification);
+// OnApplicationDisconnected -> consider app crashed
+// OnReady -> first frame rendered, transition to ACTIVE
+```
