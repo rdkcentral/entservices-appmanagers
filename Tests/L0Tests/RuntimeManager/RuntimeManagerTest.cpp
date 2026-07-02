@@ -239,6 +239,10 @@ extern uint32_t Test_DobbySpecGenerator_GenerateSysMemLimitZeroFallsBack();
 extern uint32_t Test_DobbySpecGenerator_GenerateWithNonEmptyAppPorts();
 extern uint32_t Test_DobbySpecGenerator_GetVpuEnabledReturnsFalseForSystemApp();
 extern uint32_t Test_DobbySpecGenerator_GenerateWithEnvVariablesInRuntimeConfig();
+extern uint32_t Test_DobbySpecGenerator_GenerateThunderPluginFromCapabilities();
+extern uint32_t Test_DobbySpecGenerator_GenerateDialEnvFromEscapedCapabilityValue();
+extern uint32_t Test_DobbySpecGenerator_GenerateWithEmptyCapabilitiesString();
+extern uint32_t Test_DobbySpecGenerator_GenerateIgnoresRuntimeLogLevelsForEthanLog();
 
 int main()
 {
@@ -387,6 +391,10 @@ int main()
         { "DobbySpecGenerator_GenerateWithNonEmptyAppPorts",                         Test_DobbySpecGenerator_GenerateWithNonEmptyAppPorts },
         { "DobbySpecGenerator_GetVpuEnabledReturnsFalseForSystemApp",                Test_DobbySpecGenerator_GetVpuEnabledReturnsFalseForSystemApp },
         { "DobbySpecGenerator_GenerateWithEnvVariablesInRuntimeConfig",              Test_DobbySpecGenerator_GenerateWithEnvVariablesInRuntimeConfig },
+        { "DobbySpecGenerator_GenerateThunderPluginFromCapabilities",                Test_DobbySpecGenerator_GenerateThunderPluginFromCapabilities },
+        { "DobbySpecGenerator_GenerateDialEnvFromEscapedCapabilityValue",            Test_DobbySpecGenerator_GenerateDialEnvFromEscapedCapabilityValue },
+        { "DobbySpecGenerator_GenerateWithEmptyCapabilitiesString",                  Test_DobbySpecGenerator_GenerateWithEmptyCapabilitiesString },
+        { "DobbySpecGenerator_GenerateIgnoresRuntimeLogLevelsForEthanLog",           Test_DobbySpecGenerator_GenerateIgnoresRuntimeLogLevelsForEthanLog },
 
         // ── ralf/RalfSupport tests ───────────────────────────────────────────
         { "Ralf_ParseMemorySize_EmptyStringReturnsZero",                             Test_Ralf_ParseMemorySize_EmptyStringReturnsZero },

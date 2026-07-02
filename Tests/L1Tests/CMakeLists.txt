@@ -115,6 +115,33 @@ set(RUNTIMEMANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/RuntimeMan
 set(RUNTIMEMANAGER_LIBS ${NAMESPACE}RuntimeManager ${NAMESPACE}RuntimeManagerImplementation)
 add_plugin_test_ex(PLUGIN_RUNTIME_MANAGER tests/test_RunTimeManager.cpp "${RUNTIMEMANAGER_INC}" "${RUNTIMEMANAGER_LIBS}")
 
+# PLUGIN_RALF (ralf folder under RuntimeManager)
+# The ralf source files are compiled directly into the test binary so that
+# RALF_PACKAGE_SUPPORT=ON is NOT required. Enabling RALF_PACKAGE_SUPPORT in the
+# build changes code paths in AppStorageManager, AppManager, and RuntimeManager
+# (e.g. extra chown() calls, changed RuntimeConfig fields) that break the other
+# L1 tests. Compiling the ralf sources here independently avoids all of that.
+if(PLUGIN_RALF)
+    message(STATUS "PLUGIN_RALF=ON")
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(JSONCPP REQUIRED jsoncpp)
+    file(GLOB RALF_SRC_FILES
+        "${CMAKE_SOURCE_DIR}/../entservices-appmanagers/RuntimeManager/ralf/*.cpp"
+    )
+    # Replace RalfSupport.cpp with the test-local stub that uses ::open() so that
+    # JsonFromFile can be intercepted by -Wl,--wrap,open.  The stub includes the
+    # original source with JsonFromFile renamed to avoid duplicate symbols.
+    list(FILTER RALF_SRC_FILES EXCLUDE REGEX "RalfSupport\\.cpp$")
+    list(APPEND TEST_SRC tests/test_Ralf.cpp ${RALF_SRC_FILES} tests/RalfSupportStub.cpp)
+    list(APPEND TEST_INC
+        ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/RuntimeManager
+        ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/RuntimeManager/ralf
+        ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers
+        ${JSONCPP_INCLUDE_DIRS}
+    )
+    list(APPEND TEST_LIB ${JSONCPP_LIBRARIES})
+endif()
+
 # PLUGIN_APP_STORAGE_MANAGER
 set(STORAGE_MANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/AppStorageManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
 set(STORAGE_MANAGER_LIBS ${NAMESPACE}AppStorageManager ${NAMESPACE}AppStorageManagerImplementation)
@@ -132,7 +159,7 @@ add_plugin_test_ex(PLUGIN_PREINSTALL_MANAGER tests/test_PreinstallManager.cpp "$
 
 # PLUGIN_PACKAGE_MANAGER
 set(PACKAGEMANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/PackageManager ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers)
-set(PACKAGEMANAGER_LIBS ${NAMESPACE}PackageManagerRDKEMS)
+set(PACKAGEMANAGER_LIBS ${NAMESPACE}AppPackageManager)
 add_plugin_test_ex(PLUGIN_PACKAGE_MANAGER tests/test_PackageManager.cpp "${PACKAGEMANAGER_INC}" "${PACKAGEMANAGER_LIBS}")
 
 # PLUGIN_DOWNLOADMANAGER
@@ -203,6 +230,9 @@ target_link_options(${TEST_RUNNER_NAME} PRIVATE
     -Wl,--wrap,opendir
     -Wl,--wrap,readdir
     -Wl,--wrap,closedir
+    -Wl,--wrap,mount
+    -Wl,--wrap,umount
+    -Wl,--wrap,getgrnam
 )
 
 target_include_directories(${TEST_RUNNER_NAME}

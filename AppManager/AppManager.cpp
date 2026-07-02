@@ -18,8 +18,11 @@
 */
 
 #include "AppManager.h"
+#include "UtilsAppManagerTelemetry.h"
 
 const string WPEFramework::Plugin::AppManager::SERVICE_NAME = "org.rdk.AppManager";
+
+RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::Utils::AppManagersBootstrapper, "appManagerBootstrapTime")
 
 namespace WPEFramework
 {
@@ -72,6 +75,7 @@ namespace WPEFramework
     const string AppManager::Initialize(PluginHost::IShell* service)
     {
         string message="";
+        RDKAM_RECORD_BOOTSTRAP_TIME(service);
 
         ASSERT(nullptr != service);
         ASSERT(nullptr == mCurrentService);

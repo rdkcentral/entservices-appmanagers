@@ -18,8 +18,11 @@
 **/
 
 #include "RDKWindowManager.h"
+#include "UtilsAppManagerTelemetry.h"
 
 const string WPEFramework::Plugin::RDKWindowManager::SERVICE_NAME = "org.rdk.RDKWindowManager";
+
+RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::Utils::AppManagersBootstrapper, "windowManagerBootstrapTime")
 
 namespace WPEFramework {
 
@@ -64,6 +67,7 @@ namespace WPEFramework {
         {
             uint32_t result = Core::ERROR_GENERAL;
             string retStatus = "";
+            RDKAM_RECORD_BOOTSTRAP_TIME(service);
 
             ASSERT(nullptr != service);
             ASSERT(nullptr == mCurrentService);

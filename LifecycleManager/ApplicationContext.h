@@ -90,9 +90,10 @@ namespace WPEFramework
                 ApplicationKillParams& getApplicationKillParams();
                 time_t getRequestTime();
                 RequestType getRequestType();
+                void setTerminated(bool terminated);
+                bool getTerminated();
 
                 sem_t mReachedLoadingStateSemaphore;
-                sem_t mAppReadySemaphore;
                 sem_t mFirstFrameAfterResumeSemaphore;
                 bool mPendingStateTransition;
                 std::vector<Exchange::ILifecycleManager::LifecycleState> mPendingStates; 
@@ -112,6 +113,7 @@ namespace WPEFramework
                 ApplicationKillParams mKillParams;
                                 time_t mRequestTime;
                 RequestType mRequestType;
+                bool mTerminated;
         };
     } /* namespace Plugin */
 } /* namespace WPEFramework */

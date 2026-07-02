@@ -16,12 +16,12 @@
 # limitations under the License.
 
 project(PackageManager)
-set(PLUGIN_NAME ${PROJECT_NAME}RDKEMS)
-# When existing/old PackageManager plugin is removed, remove "RDKEMS" from the PLUGIN_NAME
+set(PLUGIN_NAME AppPackageManager)
 set(MODULE_NAME ${NAMESPACE}${PLUGIN_NAME})
 message("Setup ${MODULE_NAME}")
 
 option(USE_LIBPACKAGE_RALF "USE_LIBPACKAGE_RALF" OFF)
+option(ENABLE_UNIT_TESTS "Enable unit tests" OFF)
 
 # XXX: ../cmake/FindCurl.cmake is bad
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/;${CMAKE_MODULE_PATH}")
@@ -32,8 +32,17 @@ if (USE_LIBPACKAGE_RALF)
     add_definitions(-DUSE_LIBPACKAGE_RALF)
 endif()
 
-include_directories(${SYSROOT_PATH}/${CMAKE_INSTALL_PREFIX}/include/Package)
-set(LIB_PACKAGE_LIBRARY "${SYSROOT_PATH}/${CMAKE_INSTALL_PREFIX}/lib/libPackage.so")
+set(USE_LIBPACKAGE_MOCK OFF)
+if (RDK_SERVICES_L1_TEST OR ENABLE_UNIT_TESTS)
+    set(USE_LIBPACKAGE_MOCK ON)
+endif()
+
+if (USE_LIBPACKAGE_MOCK)
+    message("Using libpackage mock: IPackageImplDummy")
+else()
+    include_directories(${SYSROOT_PATH}/${CMAKE_INSTALL_PREFIX}/include/Package)
+    set(LIB_PACKAGE_LIBRARY "${SYSROOT_PATH}/${CMAKE_INSTALL_PREFIX}/lib/libPackage.so")
+endif()
 
 option(AIMANAGERS_TELEMETRY_METRICS_SUPPORT "AIMANAGERS_TELEMETRY_METRICS_SUPPORT" OFF)
 
@@ -70,21 +79,23 @@ target_link_libraries(${MODULE_NAME} PRIVATE
     ${NAMESPACE}Definitions::${NAMESPACE}Definitions
     ${NAMESPACE}Plugins::${NAMESPACE}Plugins
     ${CURL_LIBRARY}
-    ${LIB_PACKAGE_LIBRARY}
     )
+
+if (NOT USE_LIBPACKAGE_MOCK)
+    target_link_libraries(${MODULE_NAME} PRIVATE ${LIB_PACKAGE_LIBRARY})
+endif()
 
 if(RDK_SERVICES_L1_TEST)
     find_package( JsonCpp REQUIRED)
     if (JSONCPP_FOUND)
     message("Yay, found jsoncpp inc=${JSONCPP_INCLUDE_DIRS} lib=${JSONCPP_LIBRARY}")
     endif()
-    target_include_directories(${MODULE_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/Tests/mocks)
     target_include_directories(${MODULE_NAME} PUBLIC ${JSONCPP_INCLUDE_DIR})
     target_link_libraries(${MODULE_NAME} PUBLIC ${JSONCPP_LIBRARY})
 endif()
 
-option(ENABLE_UNIT_TESTS "Enable unit tests" OFF)
-if(ENABLE_UNIT_TESTS)
+if(USE_LIBPACKAGE_MOCK)
+    target_include_directories(${MODULE_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../Tests/mocks)
   target_compile_definitions(${MODULE_NAME} PRIVATE UNIT_TEST)
 endif()
 
@@ -96,3 +107,4 @@ set(PLUGIN_PACKAGEMANAGER_AUTOSTART "false" CACHE STRING "Deactivated PackageMan
 set(PLUGIN_PACKAGEMANAGER_DOWNLOAD_DIR "" CACHE STRING "Directory path for package download")
 #write_config()
 write_config(INSTALL_NAME ${PLUGIN_NAME}.json)
+

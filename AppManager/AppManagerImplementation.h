@@ -106,6 +106,7 @@ namespace Plugin {
             string appId;
             string launchArgs;
             string intent;
+            string packageVersion;
         };
 
         struct AppManagerRequest{
@@ -182,7 +183,7 @@ namespace Plugin {
         Core::hresult KillApp(const string& appId) override;
         Core::hresult GetLoadedApps(Exchange::IAppManager::ILoadedAppInfoIterator*& appData) override;
         Core::hresult SendIntent(const string& appId , const string& intent) override;
-        Core::hresult PreloadApp(const string& appId , const string& launchArgs ,string& error) override;
+        Core::hresult PreloadApp(const string& appId , const string& intent , const string& launchArgs ,string& error) override;
         Core::hresult GetAppProperty(const string& appId , const string& key , string& value) override;
         Core::hresult SetAppProperty(const string& appId , const string& key ,const string& value) override;
         Core::hresult GetInstalledApps(string& apps) override;
@@ -228,7 +229,8 @@ namespace Plugin {
         std::condition_variable mAppRequestListCV;
         std::list<std::shared_ptr<AppManagerRequest>> mAppRequestList;
         Core::hresult fetchAppPackageList(std::vector<WPEFramework::Exchange::IPackageInstaller::Package>& packageList);
-        void checkIsInstalled(const std::string& appId, bool& installed, const std::vector<WPEFramework::Exchange::IPackageInstaller::Package>& packageList);
+        void checkInstallDetails(const std::string& appId, bool& installed, std::string& version,
+                     const std::vector<WPEFramework::Exchange::IPackageInstaller::Package>& packageList);
         Core::hresult packageLock(const string& appId, PackageInfo &packageData, Exchange::IPackageHandler::LockReason lockReason);
         Core::hresult packageUnLock(const string& appId);
         bool createOrUpdatePackageInfoByAppId(const string& appId, PackageInfo &packageData);
@@ -249,3 +251,5 @@ namespace Plugin {
     };
 } /* namespace Plugin */
 } /* namespace WPEFramework */
+
+

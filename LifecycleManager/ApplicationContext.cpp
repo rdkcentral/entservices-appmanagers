@@ -43,10 +43,10 @@ namespace WPEFramework
         , mStateChangeId(0)
         , mRequestTime(0)
         , mRequestType(REQUEST_TYPE_NONE)
+        , mTerminated(false)
         {
             mState = (void*) new UnloadedState(this);
             sem_init(&mReachedLoadingStateSemaphore, 0, 0);
-            sem_init(&mAppReadySemaphore, 0, 0);
             sem_init(&mFirstFrameAfterResumeSemaphore, 0, 0);
         }
 
@@ -65,7 +65,6 @@ namespace WPEFramework
 
 	    //Destroy the semaphores that are initialized in the constructor to ensure proper resource cleanup.
 	    sem_destroy(&mReachedLoadingStateSemaphore);
-	    sem_destroy(&mAppReadySemaphore);
 	    sem_destroy(&mFirstFrameAfterResumeSemaphore);
 
         }
@@ -199,6 +198,16 @@ namespace WPEFramework
         RequestType ApplicationContext::getRequestType()
         {
             return mRequestType;
+        }
+
+        void ApplicationContext::setTerminated(bool terminated)
+        {
+            mTerminated = terminated;
+        }
+
+        bool ApplicationContext::getTerminated()
+        {
+            return mTerminated;
         }
     } /* namespace Plugin */
 } /* namespace WPEFramework */

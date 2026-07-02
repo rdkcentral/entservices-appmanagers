@@ -1121,6 +1121,60 @@ TEST_F(RuntimeManagerTest, RunWithTimeout) {
     releaseResources();
 }
 
+/* Test Case for RunIncludesDefaultEthanLogLevelsWhenRuntimeLogLevelsProvided
+ *
+ * Verifies generated Dobby spec keeps default EthanLog levels even if
+ * RuntimeConfig.logLevels is set.
+ */
+TEST_F(RuntimeManagerTest, RunIncludesDefaultEthanLogLevelsWhenRuntimeLogLevelsProvided)
+{
+    string appInstanceId("youTube");
+    std::vector<uint32_t> portList = {10, 20};
+    std::vector<std::string> pathsList = {"/tmp", "/opt"};
+    std::vector<std::string> debugSettingsList = {"MIL", "INFO"};
+
+    auto portsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IValueIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IValueIterator>(portList);
+    auto pathsListIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(pathsList);
+    auto debugSettingsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
+
+    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
+    runtimeConfig.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=main";
+    runtimeConfig.appPath = "/var/runTimeManager";
+    runtimeConfig.runtimePath = "/tmp/runTimeManager";
+    runtimeConfig.systemMemoryLimit = 512;
+    runtimeConfig.command = "SkyBrowserLauncher";
+    runtimeConfig.logLevels = "[\"fatal\"]";
+
+    EXPECT_EQ(true, createResources());
+
+    EXPECT_CALL(*mociContainerMock,
+                StartContainerFromDobbySpec(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .WillOnce(::testing::Invoke(
+            [&](const string&, const string& specJson, const string&, const string&, int32_t& descriptor, bool& success, string& errorReason) {
+                EXPECT_NE(specJson.find("\"loglevels\""), std::string::npos);
+                EXPECT_NE(specJson.find("\"fatal\""), std::string::npos);
+                EXPECT_NE(specJson.find("\"error\""), std::string::npos);
+                EXPECT_NE(specJson.find("\"warning\""), std::string::npos);
+                EXPECT_NE(specJson.find("\"info\""), std::string::npos);
+                EXPECT_NE(specJson.find("\"debug\""), std::string::npos);
+                EXPECT_NE(specJson.find("\"milestone\""), std::string::npos);
+                descriptor = 100;
+                success = true;
+                errorReason = "No Error";
+                return WPEFramework::Core::ERROR_NONE;
+            }));
+
+    ON_CALL(*mWindowManagerMock,
+            CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .WillByDefault(::testing::Return(Core::ERROR_NONE));
+
+    EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10,
+                                               portsIterator, pathsListIterator,
+                                               debugSettingsIterator, runtimeConfig));
+
+    releaseResources();
+}
+
 /* Test Case for WakeMethods
  *
  * Verifies successful Run, Hibernate, and Wake transitions for a container

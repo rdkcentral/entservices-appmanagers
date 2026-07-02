@@ -1,179 +1,228 @@
-# AppStorageManager Module
+# AppStorageManager Plugin Documentation
 
-> Application Storage Allocation & Management
+> Application-Specific Storage Allocation and Management for RDK Infrastructure
 
-[← Back to Main](../README.md) | [← Previous: DownloadManager](../DownloadManager/DownloadManager.md)
+## 1. High-Level Purpose & Architecture
+
+### Role in ENT / RDK Infrastructure
+
+The **AppStorageManager** plugin provides dedicated storage management for applications, handling creation, access, and cleanup of application-specific storage directories with proper ownership and permissions.
+
+### Responsibilities
+
+- **Storage Creation**: Create dedicated storage directories for applications
+- **Storage Access**: Provide storage paths with proper UID/GID ownership
+- **Storage Cleanup**: Clear individual or all application storage
+- **Quota Management**: Track storage usage per application
+
+### Interacting Subsystems
+
+| Subsystem | Interaction Type | Purpose |
+|-----------|-----------------|---------|
+| AppManager | COM-RPC (inbound) | Clear app data requests |
+| RuntimeManager | COM-RPC (inbound) | Get app storage info |
+| PackageManager | COM-RPC (inbound) | Storage allocation |
 
 ---
 
-## Purpose & Role
-
-The **AppStorageManager** provides application-specific persistent storage allocation, management, and cleanup. Each installed app gets a dedicated storage directory with configurable quotas.
-
-### Core Responsibilities
-
-- **Storage Creation:** Allocate app-specific storage directories
-- **Storage Query:** Get storage paths for apps
-- **Data Clear:** Clear app data while preserving structure
-- **Storage Deletion:** Remove storage on app uninstall
-- **Quota Management:** Enforce storage limits (if configured)
-
----
-
-## Architecture
+## 2. Architectural Overview
 
 ```mermaid
 graph TB
-    subgraph "AppStorageManager Module"
-        ASM[AppStorageManager<br/>Plugin]
-        ASMI[StorageManagerImplementation]
-        RH[RequestHandler]
+    subgraph "AppStorageManager Plugin"
+        Shell[AppStorageManager<br/>Plugin Shell]
+        Impl[StorageManagerImplementation<br/>Core Logic]
     end
 
-    subgraph "Clients"
-        PM[PackageManager]
+    subgraph "Consumers"
         AM[AppManager]
         RTM[RuntimeManager]
+        PKG[PackageManager]
     end
 
     subgraph "System"
         FS[FileSystem]
     end
 
-    PM -->|CreateStorage/DeleteStorage| ASM
-    AM -->|Clear/ClearAll| ASM
-    RTM -->|GetStorage| ASM
-    ASM --> ASMI
-    ASMI --> RH
-    RH --> FS
+    AM --> Shell
+    RTM --> Shell
+    PKG --> Shell
+    Shell --> Impl
+    Impl --> FS
 ```
 
 ---
 
-## Class Diagram
+## 3. Code Organization
 
-```mermaid
-classDiagram
-    class StorageManagerImplementation {
-        +CreateStorage(appId, size, path, errorReason)
-        +GetStorage(appId, userId, groupId, path, size, used)
-        +DeleteStorage(appId, errorReason)
-        +Clear(appId, errorReason)
-        +ClearAll(exemptionAppIds, errorReason)
-    }
-
-    class IAppStorageManager {
-        <<interface>>
-        +CreateStorage(appId, size, path, errorReason)
-        +GetStorage(appId, userId, groupId, path, size, used)
-        +DeleteStorage(appId, errorReason)
-        +Clear(appId, errorReason)
-        +ClearAll(exemptionAppIds, errorReason)
-    }
-
-    StorageManagerImplementation ..|> IAppStorageManager
-```
-
----
-
-## File Organization
+### Directory Structure
 
 ```
 AppStorageManager/
-├── AppStorageManager.cpp             Plugin wrapper
-├── AppStorageManager.h               Plugin class definition
-├── AppStorageManagerImplementation.cpp Core implementation
-├── AppStorageManagerImplementation.h   Implementation class
-├── RequestHandler.cpp                File system operations
-├── RequestHandler.h                  Request handler class
-├── Module.cpp/h                      Module registration
-├── CMakeLists.txt                    Build configuration
-└── AppStorageManager.config          Runtime configuration
+├── AppStorageManager.cpp              # Plugin shell
+├── AppStorageManager.h                # Shell header
+├── AppStorageManagerImplementation.cpp # Core implementation
+├── AppStorageManagerImplementation.h   # Implementation header
+├── RequestHandler.cpp                 # Request processing
+├── RequestHandler.h                   # RequestHandler header
+├── AppStorageManagerTelemetryReporting.cpp # Telemetry
+├── AppStorageManagerTelemetryReporting.h   # Telemetry header
+├── Module.cpp                         # Plugin module
+├── Module.h                           # Module header
+├── CMakeLists.txt                     # Build configuration
+├── AppStorageManager.config           # Plugin configuration
+└── AppStorageManager.conf.in          # Configuration template
 ```
 
 ---
 
-## API Reference
+## 4. Class & Interface Documentation
 
-### IAppStorageManager Interface
+### Exchange::IAppStorageManager Interface
 
-| Method | Purpose |
-|--------|---------|
-| `CreateStorage(appId, size, outPath, outErrorReason)` | Create a storage directory for an application with the specified size quota and return its path and any error reason |
-| `GetStorage(appId, userId, groupId, outPath, outSize, outUsed)` | Get the storage path, configured size, and current used space for an application; `userId` and `groupId` specify the ownership context for the storage query |
-| `DeleteStorage(appId, outErrorReason)` | Remove all storage for an application and return any error reason |
-| `Clear(appId, outErrorReason)` | Clear app data but keep storage allocated, returning any error reason |
-| `ClearAll(exemptionAppIds, outErrorReason)` | Clear data for all applications, optionally exempting those listed in `exemptionAppIds`, and return any error reason |
-
----
-
-## Storage Structure
-
-```mermaid
-graph TD
-    A["/opt/appdata/"] --> B["com.app.one/"]
-    A --> C["com.app.two/"]
-    A --> D["com.app.three/"]
-
-    B --> B1["cache/"]
-    B --> B2["data/"]
-    B --> B3["logs/"]
-
-    C --> C1["cache/"]
-    C --> C2["data/"]
-    C --> C3["logs/"]
+```cpp
+interface IAppStorageManager {
+    hresult CreateStorage(const string& appId, uint32_t size,
+                          string& path, string& errorReason);
+    hresult GetStorage(const string& appId, int32_t userId, int32_t groupId,
+                       string& path, uint32_t& size, uint32_t& used);
+    hresult DeleteStorage(const string& appId, string& errorReason);
+    hresult Clear(const string& appId, string& errorReason);
+    hresult ClearAll(const string& exemptionAppIds, string& errorReason);
+};
 ```
 
-### Storage Types
+### StorageManagerImplementation
 
-| Type | Path | Purpose |
-|------|------|---------|
-| DATA | `{appId}/data/` | Persistent app data |
-| CACHE | `{appId}/cache/` | Cacheable data (may be cleared) |
-| LOGS | `{appId}/logs/` | Application logs |
+```cpp
+// From AppStorageManagerImplementation.h
+class StorageManagerImplementation : public Exchange::IAppStorageManager,
+                                     public Exchange::IConfiguration {
+private:
+    class Config : public Core::JSON::Container {
+    public:
+        Core::JSON::String Path;  // Base storage path
+    };
+
+    Config _config;
+    PluginHost::IShell* mCurrentservice;
+    std::string mBaseStoragePath;
+
+public:
+    Core::hresult CreateStorage(const string& appId, const uint32_t& size,
+                                string& path, string& errorReason) override;
+    Core::hresult GetStorage(const string& appId, const int32_t& userId,
+                             const int32_t& groupId, string& path,
+                             uint32_t& size, uint32_t& used) override;
+    Core::hresult DeleteStorage(const string& appId, string& errorReason) override;
+    Core::hresult Clear(const string& appId, string& errorReason) override;
+    Core::hresult ClearAll(const string& exemptionAppIds, string& errorReason) override;
+    uint32_t Configure(PluginHost::IShell* service) override;
+};
+```
 
 ---
 
-## Storage Lifecycle
+## 5. Internal Workflows
+
+### Storage Creation Flow
 
 ```mermaid
 sequenceDiagram
-    participant PkgMgr as PackageManager
-    participant AppStorMgr as AppStorageManager
+    participant Client
+    participant ASM as AppStorageManager
     participant FS as FileSystem
 
-    Note over PkgMgr,FS: App Installation
-    PkgMgr->>AppStorMgr: CreateStorage(appId)
-    AppStorMgr->>FS: mkdir(basePath/appId)
-    AppStorMgr->>FS: mkdir(basePath/appId/data)
-    AppStorMgr->>FS: mkdir(basePath/appId/cache)
-    AppStorMgr-->>PkgMgr: storagePath
+    Client->>ASM: CreateStorage(appId, size)
+    ASM->>ASM: Calculate path: baseStoragePath/appId
+    ASM->>FS: mkdir(path)
+    ASM->>FS: Set permissions
+    ASM-->>Client: path, success
+```
 
-    Note over PkgMgr,FS: App Running (uses storage)
+### Storage Clear Flow
 
-    Note over PkgMgr,FS: Clear Data Request
-    PkgMgr->>AppStorMgr: Clear(appId)
-    AppStorMgr->>FS: rm -rf basePath/appId/*
-    AppStorMgr->>FS: recreate subdirs
-    AppStorMgr-->>PkgMgr: success
+```mermaid
+sequenceDiagram
+    participant AM as AppManager
+    participant ASM as AppStorageManager
+    participant FS as FileSystem
 
-    Note over PkgMgr,FS: App Uninstall
-    PkgMgr->>AppStorMgr: DeleteStorage(appId)
-    AppStorMgr->>FS: rm -rf basePath/appId
-    AppStorMgr-->>PkgMgr: success
+    AM->>ASM: Clear(appId)
+    ASM->>FS: Get storage path
+    ASM->>FS: Remove contents (preserve directory)
+    ASM-->>AM: success/error
+```
+
+### ClearAll with Exemptions
+
+```mermaid
+flowchart TD
+    A[ClearAll called] --> B[Parse exemption list]
+    B --> C[List all app directories]
+    C --> D{For each directory}
+    D --> E{In exemption list?}
+    E -->|Yes| F[Skip]
+    E -->|No| G[Clear contents]
+    F --> D
+    G --> D
+    D -->|Done| H[Return success]
 ```
 
 ---
 
-## Configuration
+## 6. Configuration
 
-Loaded from `AppStorageManager.config`:
+### Plugin Configuration
 
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `path` | `/opt/appdata` | Base storage directory for application data |
+```cmake
+set (autostart false)
+set (preconditions Platform)
+set (callsign "org.rdk.AppStorageManager")
+```
+
+### Runtime Configuration
+
+```json
+{
+    "path": "/opt/persistent/apps"
+}
+```
+
+### Storage Structure
+
+```
+/opt/persistent/apps/
+├── com.example.app1/
+│   ├── data/
+│   └── cache/
+├── com.example.app2/
+│   ├── data/
+│   └── cache/
+└── ...
+```
 
 ---
 
-[← Back to Main](../README.md) | [Next: PreinstallManager →](../PreinstallManager/PreinstallManager.md)
+## 7. Testing
 
+### Existing Tests
+
+Located in `Tests/L1Tests/tests/test_AppStorageManager.cpp`
+
+| Test | Description |
+|------|-------------|
+| CreateStorage | Storage directory creation |
+| GetStorage | Storage info retrieval |
+| Clear | Individual app storage clear |
+| ClearAll | Clear all with exemptions |
+| DeleteStorage | Storage deletion |
+
+---
+
+## 8. Best Practices
+
+1. **Always check return values** for storage operations
+2. **Use exemption lists** carefully in ClearAll to prevent data loss
+3. **Set proper UID/GID** when getting storage for container use
+4. **Monitor storage usage** to prevent disk space exhaustion
