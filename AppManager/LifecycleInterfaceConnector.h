@@ -117,6 +117,7 @@ namespace WPEFramework
                     std::mutex mStateMutex;
                     std::string mAppIdAwaitingPause;
 		    std::map<std::string, Exchange::IAppManager::AppLifecycleState> mAppCurrentActionList;
+		    std::map<std::string, Exchange::IAppManager::AppErrorReason> mAppCrashErrorMap;
         };
     }
 }
