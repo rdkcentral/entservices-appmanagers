@@ -2208,6 +2208,34 @@ Core::hresult RDKWindowManagerImplementation::StopVncServer()
 }
 
 /**
+ * @brief Gets the name of the currently focused application.
+ *
+ * @param[out] client: the identifier of the currently focused application
+ * @return    : Core::<StatusCode> (Core::ERROR_NONE on success, Core::ERROR_GENERAL on failure)
+ */
+Core::hresult RDKWindowManagerImplementation::GetFocused(string &client) const
+{
+    Core::hresult status = Core::ERROR_GENERAL;
+
+    bool lockAcquired = lockRdkWindowManagerMutex();
+    if (lockAcquired)
+    {
+        if (RdkWindowManager::CompositorController::getFocused(client))
+        {
+            LOGINFO("GetFocused: focused client is '%s'", client.c_str());
+            status = Core::ERROR_NONE;
+        }
+        else
+        {
+            LOGERR("GetFocused: Failed to retrieve focused client");
+        }
+        gRdkWindowManagerMutex.unlock();
+    }
+
+    return status;
+}
+
+/**
  * @brief Captures a screenshot of the current compositor output.
  *
  * This method initiates a screenshot capture. The actual capture is performed asynchronously
