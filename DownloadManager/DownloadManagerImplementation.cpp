@@ -163,7 +163,7 @@ namespace Plugin {
             Stop the downloader thread */
         {
             std::lock_guard<std::mutex> lock(mQueueMutex);
-            mDownloaderRunFlag = false;
+            mDownloaderRunFlag.store(false, std::memory_order_release);
         }
         mDownloadThreadCV.notify_one();
         if (mDownloadThreadPtr && mDownloadThreadPtr->joinable())
@@ -266,7 +266,7 @@ namespace Plugin {
     {
         Core::hresult result = Core::ERROR_GENERAL;
 
-        mAdminLock.Lock();
+        std::lock_guard<std::mutex> lock(mQueueMutex);
         if (!downloadId.empty() && (mCurrentDownload.get() != nullptr) && mHttpClient)
         {
             if (downloadId.compare(mCurrentDownload->getId()) == 0)
@@ -287,7 +287,6 @@ namespace Plugin {
             LOGERR("DM: Pause failed - downloadId=%s mCurrentDownload=%p mHttpClient=%p",
                    downloadId.c_str(), mCurrentDownload.get(), mHttpClient.get());
         }
-        mAdminLock.Unlock();
 
         return result;
     }
@@ -296,7 +295,7 @@ namespace Plugin {
     {
         Core::hresult result = Core::ERROR_GENERAL;
 
-        mAdminLock.Lock();
+        std::lock_guard<std::mutex> lock(mQueueMutex);
         if (!downloadId.empty() && (mCurrentDownload.get() != nullptr) && mHttpClient)
         {
             if (downloadId.compare(mCurrentDownload->getId()) == 0)
@@ -317,7 +316,6 @@ namespace Plugin {
             LOGERR("DM: Resume failed - downloadId=%s mCurrentDownload=%p mHttpClient=%p",
                    downloadId.c_str(), mCurrentDownload.get(), mHttpClient.get());
         }
-        mAdminLock.Unlock();
 
         return result;
     }
@@ -326,7 +324,7 @@ namespace Plugin {
     {
         Core::hresult result = Core::ERROR_GENERAL;
 
-        mAdminLock.Lock();
+        std::lock_guard<std::mutex> lock(mQueueMutex);
         if (!downloadId.empty() && (mCurrentDownload.get() != nullptr) && mHttpClient)
         {
             if (downloadId.compare(mCurrentDownload->getId()) == 0)
@@ -348,7 +346,6 @@ namespace Plugin {
             LOGERR("DM: Cancel failed - downloadId=%s mCurrentDownload=%p mHttpClient=%p",
                    downloadId.c_str(), mCurrentDownload.get(), mHttpClient.get());
         }
-        mAdminLock.Unlock();
 
         return result;
     }
@@ -357,25 +354,25 @@ namespace Plugin {
     {
         Core::hresult result = Core::ERROR_GENERAL;
 
-        mAdminLock.Lock();
-        if (!fileLocator.empty() && (mCurrentDownload.get() != nullptr) && \
-            (fileLocator.compare(mCurrentDownload->getFileLocator()) == 0))
         {
-            LOGWARN("DM: fileLocator %s download is in-progress", fileLocator.c_str());
+            std::lock_guard<std::mutex> lock(mQueueMutex);
+            if (!fileLocator.empty() && (mCurrentDownload.get() != nullptr) && \
+                (fileLocator.compare(mCurrentDownload->getFileLocator()) == 0))
+            {
+                LOGWARN("DM: fileLocator %s download is in-progress", fileLocator.c_str());
+                return result;
+            }
+        }
+
+        if (remove(fileLocator.c_str()) == 0)
+        {
+            LOGINFO("DM: fileLocator %s Deleted", fileLocator.c_str());
+            result = Core::ERROR_NONE;
         }
         else
         {
-            if (remove(fileLocator.c_str()) == 0)
-            {
-                LOGINFO("DM: fileLocator %s Deleted", fileLocator.c_str());
-                result = Core::ERROR_NONE;
-            }
-            else
-            {
-                LOGERR("DM: fileLocator '%s' delete failed", fileLocator.c_str());
-            }
+            LOGERR("DM: fileLocator '%s' delete failed", fileLocator.c_str());
         }
-        mAdminLock.Unlock();
 
         return result;
     }
@@ -384,7 +381,7 @@ namespace Plugin {
     {
         Core::hresult result = Core::ERROR_GENERAL;
 
-        mAdminLock.Lock();
+        std::lock_guard<std::mutex> lock(mQueueMutex);
         if (!downloadId.empty() && (mCurrentDownload.get() != nullptr) && mHttpClient)
         {
             if (downloadId.compare(mCurrentDownload->getId()) == 0)
@@ -403,7 +400,6 @@ namespace Plugin {
             LOGERR("DM: Progress failed - downloadId=%s mCurrentDownload=%p mHttpClient=%p",
                    downloadId.c_str(), mCurrentDownload.get(), mHttpClient.get());
         }
-        mAdminLock.Unlock();
 
         return result;
     }
@@ -412,7 +408,7 @@ namespace Plugin {
     {
         Core::hresult result = Core::ERROR_GENERAL;
 
-        mAdminLock.Lock();
+        std::lock_guard<std::mutex> lock(mQueueMutex);
         if (!downloadId.empty() && (mCurrentDownload.get() != nullptr) && mHttpClient)
         {
             if (downloadId.compare(mCurrentDownload->getId()) == 0)
@@ -432,23 +428,22 @@ namespace Plugin {
         {
             LOGERR("DM: Set RateLimit Failed - mCurrentDownload=%p", mCurrentDownload.get());
         }
-        mAdminLock.Unlock();
 
         return result;
     }
 
     void DownloadManagerImplementation::downloaderRoutine(int waitTime)
     {
-        while (mDownloaderRunFlag)
+        while (mDownloaderRunFlag.load(std::memory_order_acquire))
         {
             DownloadInfoPtr downloadRequest = nullptr;
             {
                 std::unique_lock<std::mutex> lock(mQueueMutex);
                 // Use a bounded wait to avoid indefinite blocking and to periodically re-check the run flag / queues
                 const bool ready = mDownloadThreadCV.wait_for(lock,std::chrono::seconds(DOWNLOADER_IDLE_WAIT_SECONDS), [&] {
-                    return !mDownloaderRunFlag || !mPriorityDownloadQueue.empty() || !mRegularDownloadQueue.empty();
+                    return !mDownloaderRunFlag.load(std::memory_order_acquire) || !mPriorityDownloadQueue.empty() || !mRegularDownloadQueue.empty();
                 });
-                if (!mDownloaderRunFlag)
+                if (!mDownloaderRunFlag.load(std::memory_order_acquire))
                     break;
                 if (!ready) {
                     continue;
@@ -552,7 +547,10 @@ namespace Plugin {
             }
 
             notifyDownloadStatus(downloadRequest->getId(), downloadRequest->getFileLocator(), reason);
-            mCurrentDownload.reset();
+            {
+                std::lock_guard<std::mutex> lock(mQueueMutex);
+                mCurrentDownload.reset();
+            }
         }
         LOGINFO("DM: Downloader thread exiting!");
     }
