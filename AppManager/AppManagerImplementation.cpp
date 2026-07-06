@@ -126,102 +126,99 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
     while (sRunning)
     {
         std::shared_ptr<AppManagerRequest> request = nullptr;
-    {
-        std::unique_lock<std::mutex> lock(mAppManagerLock);
-        mAppRequestListCV.wait(lock, [this] {return !mAppRequestList.empty() || !sRunning;});
+        {
+            std::unique_lock<std::mutex> lock(mAppManagerLock);
+            mAppRequestListCV.wait(lock, [this] { return !mAppRequestList.empty() || !sRunning; });
 
-        if (!sRunning || mAppRequestList.empty())
-            continue;
+            if (!sRunning || mAppRequestList.empty()) {
+                continue;
+            }
 
-        request = mAppRequestList.front();
-        mAppRequestList.pop_front();
-    }
-   
+            request = mAppRequestList.front();
+            mAppRequestList.pop_front();
+        }
 
-            if (request != nullptr)
+        if (request != nullptr)
+        {
+            CurrentAction action = request->mRequestAction;
+
+            switch (action)
             {
-                CurrentAction action = request->mRequestAction;
-
-                switch (action)
+                case APP_ACTION_LAUNCH:
+                case APP_ACTION_PRELOAD:
                 {
-                    case APP_ACTION_LAUNCH:
-                    case APP_ACTION_PRELOAD:
+                    if (nullptr == request->mRequestParam)
                     {
-                        if (nullptr == request->mRequestParam)
-                        {
-                            LOGERR("Invalid request payload: action=%d requestParam=null", static_cast<int>(action));
-                        }
-                        else if (auto appRequestParam = std::static_pointer_cast<AppLaunchRequestParam>(request->mRequestParam))
-                        {
-                            string appId = appRequestParam->appId;
-                            size_t queueDepth = 0;
-                            {
-                                string appId = appRequestParam->appId;
-                                // Capture timestamp before packageLock to include packageManager lock time
-                                AppManagerTelemetryReporting& appManagerTelemetryReporting = AppManagerTelemetryReporting::getInstance();
-                                time_t actualStartTime = appManagerTelemetryReporting.getCurrentTimestampMs();
-                                PackageInfo packageData;
-                                packageData.version = appRequestParam->packageVersion;
-                                Exchange::IPackageHandler::LockReason lockReason = Exchange::IPackageHandler::LockReason::LAUNCH;
+                        LOGERR("Invalid request payload: action=%d requestParam=null", static_cast<int>(action));
+                    }
+                    else if (auto appRequestParam = std::static_pointer_cast<AppLaunchRequestParam>(request->mRequestParam))
+                    {
+                        string appId = appRequestParam->appId;
+                        // Capture timestamp before packageLock to include packageManager lock time
+                        AppManagerTelemetryReporting& appManagerTelemetryReporting = AppManagerTelemetryReporting::getInstance();
+                        time_t actualStartTime = appManagerTelemetryReporting.getCurrentTimestampMs();
+                        PackageInfo packageData;
+                        packageData.version = appRequestParam->packageVersion;
+                        Exchange::IPackageHandler::LockReason lockReason = Exchange::IPackageHandler::LockReason::LAUNCH;
 
-                                Core::hresult status = packageLock(appId, packageData, lockReason);
-                                if (status == Core::ERROR_NONE)
-                                {
-                                    // Update timestamp after packageLock succeeds (app entry now exists in mAppInfo)
-                                    updateCurrentActionTime(appId, actualStartTime, action);
-                                    WPEFramework::Exchange::RuntimeConfig runtimeConfig = packageData.configMetadata;
-                                    runtimeConfig.unpackedPath = packageData.unpackedPath;
+                        Core::hresult status = packageLock(appId, packageData, lockReason);
+                        if (status == Core::ERROR_NONE)
+                        {
+                            // Update timestamp after packageLock succeeds (app entry now exists in mAppInfo)
+                            updateCurrentActionTime(appId, actualStartTime, action);
+                            WPEFramework::Exchange::RuntimeConfig runtimeConfig = packageData.configMetadata;
+                            runtimeConfig.unpackedPath = packageData.unpackedPath;
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
-                                runtimeConfig.userId = packageData.userId;
-                                runtimeConfig.groupId = packageData.groupId;
+                            runtimeConfig.userId = packageData.userId;
+                            runtimeConfig.groupId = packageData.groupId;
 #endif // RALF_PACKAGE_SUPPORT_ENABLED
-                                getCustomValues(runtimeConfig);
-                                string launchArgs = appRequestParam->launchArgs;
+                            getCustomValues(runtimeConfig);
+                            string launchArgs = appRequestParam->launchArgs;
 
-                                if (action == APP_ACTION_LAUNCH)
-                                {
-                                    status = mLifecycleInterfaceConnector->launch(appId, appRequestParam->intent, launchArgs, runtimeConfig);
-                                    LOGINFO("Application Launch from thread returns with status %d", status);
-
-                                    if (status != Core::ERROR_NONE)
-                                    {
-                                        LOGERR("launch failed status %d", status);
-                                    }
-                                }
-                                else if (action == APP_ACTION_PRELOAD)
-                                {
-                                    string errorReason;
-                                    status = mLifecycleInterfaceConnector->preLoadApp(appId, appRequestParam->intent, launchArgs, runtimeConfig, errorReason);
-                                    LOGINFO("Application preLoad from thread returns with status %d error %s", status, errorReason.c_str());
-
-                                    if ((!errorReason.empty()) || (status != Core::ERROR_NONE))
-                                    {
-                                        LOGERR("preLoadApp failed reason %s status %d", errorReason.c_str(), status);
-                                    }
-                                }
-                            }
-                            else
+                            if (action == APP_ACTION_LAUNCH)
                             {
-                                bool installed = false;
+                                status = mLifecycleInterfaceConnector->launch(appId, appRequestParam->intent, launchArgs, runtimeConfig);
+                                LOGINFO("Application Launch from thread returns with status %d", status);
 
-                                IsInstalled(appId, installed);
-                                LOGERR("packageLock failed for appId=%s installed=%d lockReason=%d status=%d", appId.c_str(), installed, static_cast<int>(lockReason), status);
-                                handleOnAppLifecycleStateChanged(appId, "",
-                                    Exchange::IAppManager::APP_STATE_UNKNOWN,
-                                    Exchange::IAppManager::APP_STATE_UNLOADED,
-                                    (installed == true) ? Exchange::IAppManager::APP_ERROR_PACKAGE_LOCK : Exchange::IAppManager::APP_ERROR_NOT_INSTALLED);
+                                if (status != Core::ERROR_NONE)
+                                {
+                                    LOGERR("launch failed status %d", status);
+                                }
                             }
+                            else if (action == APP_ACTION_PRELOAD)
+                            {
+                                string errorReason;
+                                status = mLifecycleInterfaceConnector->preLoadApp(appId, appRequestParam->intent, launchArgs, runtimeConfig, errorReason);
+                                LOGINFO("Application preLoad from thread returns with status %d error %s", status, errorReason.c_str());
+
+                                if ((!errorReason.empty()) || (status != Core::ERROR_NONE))
+                                {
+                                    LOGERR("preLoadApp failed reason %s status %d", errorReason.c_str(), status);
+                                }
+                            }
+                        }
+                        else
+                        {
+                            bool installed = false;
+
+                            IsInstalled(appId, installed);
+                            LOGERR("packageLock failed for appId=%s installed=%d lockReason=%d status=%d", appId.c_str(), installed, static_cast<int>(lockReason), status);
+                            handleOnAppLifecycleStateChanged(appId, "",
+                                Exchange::IAppManager::APP_STATE_UNKNOWN,
+                                Exchange::IAppManager::APP_STATE_UNLOADED,
+                                (installed == true) ? Exchange::IAppManager::APP_ERROR_PACKAGE_LOCK : Exchange::IAppManager::APP_ERROR_NOT_INSTALLED);
                         }
                     }
                     break; /* APP_ACTION_LAUNCH | APP_ACTION_PRELOAD */
-
-                    default:
-                    {
-                        LOGERR("Invalid request action in worker thread: action=%d", static_cast<int>(action));
-                    }
-                    break;
                 }
+
+                default:
+                {
+                    LOGERR("Invalid request action in worker thread: action=%d", static_cast<int>(action));
+                }
+                break;
             }
+        }
 
     }
     {
