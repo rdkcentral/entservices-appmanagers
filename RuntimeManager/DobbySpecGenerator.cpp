@@ -971,6 +971,35 @@ void DobbySpecGenerator::populateClassicPlugins(const ApplicationConfiguration& 
     */    
     pluginsArray.append(createOpenCDMPlugin(config, runtimeConfig));
 
+    // Add CredentialsManager plugin if application has mHTTPS credentials.
+    // Credentials are passed via capabilities as: credmgr=<base64_x509cert>:<base64_rsaKey>
+    // Same pattern as extraMounts: libpackage-sky populates capabilities, DobbySpecGenerator reads it here.
+    std::vector<std::pair<std::string, std::string>> parsedCaps;
+    parseCapabilities(runtimeConfig.capabilities, parsedCaps);
+    const std::string credmgrValue = getCapabilityValue(parsedCaps, "credmgr");
+    if (!credmgrValue.empty())
+    {
+        const size_t separatorPos = credmgrValue.find(':');
+        if (separatorPos != std::string::npos)
+        {
+            const std::string cert = credmgrValue.substr(0, separatorPos);
+            const std::string key  = credmgrValue.substr(separatorPos + 1);
+            if (!cert.empty() && !key.empty())
+            {
+                LOGINFO("Adding CredentialsManager plugin for %s", config.mAppId.c_str());
+                Json::Value credmgrPlugin(Json::objectValue);
+                credmgrPlugin["name"] = "CredentialsManager";
+                credmgrPlugin["data"]["certificate"] = cert;
+                credmgrPlugin["data"]["privateKey"]   = key;
+                pluginsArray.append(std::move(credmgrPlugin));
+            }
+        }
+        else
+        {
+            LOGWARN("Malformed credmgr capability for %s (missing ':' separator)", config.mAppId.c_str());
+        }
+    }
+
     //TODO SUPPORT Runtime config need to have multicastSocket, multicastForward,NatHolePunch capability parameter
     /*
     if (appPackage->hasCapability(IPackage::Capability::MulticastSocket))

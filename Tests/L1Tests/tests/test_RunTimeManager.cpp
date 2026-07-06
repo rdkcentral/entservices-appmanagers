@@ -972,6 +972,59 @@ TEST_F(RuntimeManagerTest, RunCreateExtraMountsFromCapabilities)
     EXPECT_EQ(0, remove(extraMountSource.c_str()));
 }
 
+/* Test Case for RunCredentialsManagerPluginFromCapabilities
+ *
+ * Injects credmgr=<cert>:<key> via capabilities in the runtime config
+ * Verifies that the generated Dobby spec contains a CredentialsManager plugin
+ * with the correct certificate and privateKey values
+ * Ensures Run() completes successfully when credmgr capability is present
+ */
+TEST_F(RuntimeManagerTest, RunCredentialsManagerPluginFromCapabilities)
+{
+    string appInstanceId("youTube");
+    std::vector<uint32_t> portList = {10, 20};
+    std::vector<std::string> pathsList = {"/tmp", "/opt"};
+    std::vector<std::string> debugSettingsList = {"MIL", "INFO"};
+
+    auto portsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IValueIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IValueIterator>(portList);
+    auto pathsListIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(pathsList);
+    auto debugSettingsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
+
+    const std::string testCert = "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0t"; // base64 x509 cert
+    const std::string testKey  = "LS0tLS1CRUdJTiBSU0EgUFJJVkFURSBLRVkt"; // base64 RSA key
+
+    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
+    runtimeConfig.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=main";
+    runtimeConfig.appPath = "/var/runTimeManager";
+    runtimeConfig.runtimePath = "/tmp/runTimeManager";
+    runtimeConfig.systemMemoryLimit = 512;
+    runtimeConfig.command = "SkyBrowserLauncher";
+    // credmgr=<cert>:<key> injected into capabilities by libpackage-sky during Lock()
+    runtimeConfig.capabilities = "dial-app,credmgr=" + testCert + ":" + testKey;
+
+    EXPECT_EQ(true, createResources());
+
+    EXPECT_CALL(*mociContainerMock, StartContainerFromDobbySpec(TEST_APP_CONTAINER_ID, ::testing::_, "", "/run/user/1001/wst-youTube", ::testing::_, ::testing::_, ::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillOnce(::testing::Invoke(
+            [&](const string&, const string& spec, const string&, const string&, int32_t& descriptor, bool& success, string& errorReason) {
+                EXPECT_NE(std::string::npos, spec.find("CredentialsManager"));
+                EXPECT_NE(std::string::npos, spec.find(testCert));
+                EXPECT_NE(std::string::npos, spec.find(testKey));
+                descriptor = 100;
+                success = true;
+                errorReason = "No Error";
+                return WPEFramework::Core::ERROR_NONE;
+            }));
+
+    ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+            .WillByDefault(::testing::Return(Core::ERROR_NONE));
+
+    EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, runtimeConfig));
+
+    releaseResources();
+}
+
 /* Test Case for RunReadfromAIConfigFile
  *
  * Creates a mock config.ini with various runtime parameters in /opt/demo
