@@ -971,32 +971,24 @@ void DobbySpecGenerator::populateClassicPlugins(const ApplicationConfiguration& 
     */    
     pluginsArray.append(createOpenCDMPlugin(config, runtimeConfig));
 
-    // Add CredentialsManager plugin if application has mHTTPS credentials.
-    // Credentials are passed via capabilities as: credmgr=<base64_x509cert>:<base64_rsaKey>
-    // Same pattern as extraMounts: libpackage-sky populates capabilities, DobbySpecGenerator reads it here.
+    // Add pre-built Dobby plugin JSON from capabilities.
+    // PackageImpl builds the full JSON and stores it as "dobbyplugin=<json_with_escaped_commas>".
+    // We just parse and append directly — no JSON construction needed here.
     std::vector<std::pair<std::string, std::string>> parsedCaps;
     parseCapabilities(runtimeConfig.capabilities, parsedCaps);
-    const std::string credmgrValue = getCapabilityValue(parsedCaps, "credmgr");
-    if (!credmgrValue.empty())
+    const std::string dobbyPluginJson = getCapabilityValue(parsedCaps, "dobbyplugin");
+    if (!dobbyPluginJson.empty())
     {
-        const size_t separatorPos = credmgrValue.find(':');
-        if (separatorPos != std::string::npos)
+        Json::Value plugin;
+        Json::Reader reader;
+        if (reader.parse(dobbyPluginJson, plugin))
         {
-            const std::string cert = credmgrValue.substr(0, separatorPos);
-            const std::string key  = credmgrValue.substr(separatorPos + 1);
-            if (!cert.empty() && !key.empty())
-            {
-                LOGINFO("Adding CredentialsManager plugin for %s", config.mAppId.c_str());
-                Json::Value credmgrPlugin(Json::objectValue);
-                credmgrPlugin["name"] = "CredentialsManager";
-                credmgrPlugin["data"]["certificate"] = cert;
-                credmgrPlugin["data"]["privateKey"]   = key;
-                pluginsArray.append(std::move(credmgrPlugin));
-            }
+            LOGINFO("Adding pre-built Dobby plugin for %s", config.mAppId.c_str());
+            pluginsArray.append(std::move(plugin));
         }
         else
         {
-            LOGWARN("Malformed credmgr capability for %s (missing ':' separator)", config.mAppId.c_str());
+            LOGWARN("Failed to parse dobbyplugin JSON for %s", config.mAppId.c_str());
         }
     }
 
