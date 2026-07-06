@@ -18,6 +18,7 @@
 */
 
 #include <iomanip>      /* for std::setw, std::setfill */
+#include <sys/stat.h>
 #include "AppManagerImplementation.h"
 #include "AppManagerTelemetryReporting.h"
 #include "UtilsAppManagerTelemetry.h"
@@ -43,9 +44,17 @@ AppManagerImplementation::AppManagerImplementation()
 , mStorageManagerRemoteObject(nullptr) 
 , mCurrentservice(nullptr)
 , mPackageManagerNotification(*this)
+, mEnhancedLoggingEnabled(false)
 , mAppManagerWorkerThread()
 {
     LOGINFO("Create AppManagerImplementation Instance");
+#ifdef APP_INFRA_ENHANCED_LOGGING_INDICATOR
+    struct stat buffer;
+    mEnhancedLoggingEnabled = (stat(APP_INFRA_ENHANCED_LOGGING_INDICATOR, &buffer) == 0);
+    LOGINFO("Enhanced logging enabled: %s (indicator: %s)",
+            mEnhancedLoggingEnabled ? "true" : "false",
+            APP_INFRA_ENHANCED_LOGGING_INDICATOR);
+#endif
     if (nullptr == AppManagerImplementation::_instance)
     {
         AppManagerImplementation::_instance = this;
@@ -117,98 +126,99 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
     while (sRunning)
     {
         std::shared_ptr<AppManagerRequest> request = nullptr;
-    {
-        std::unique_lock<std::mutex> lock(mAppManagerLock);
-        mAppRequestListCV.wait(lock, [this] {return !mAppRequestList.empty() || !sRunning;});
+        {
+            std::unique_lock<std::mutex> lock(mAppManagerLock);
+            mAppRequestListCV.wait(lock, [this] { return !mAppRequestList.empty() || !sRunning; });
 
-        if (!sRunning || mAppRequestList.empty())
-            continue;
+            if (!sRunning || mAppRequestList.empty()) {
+                continue;
+            }
 
-        request = mAppRequestList.front();
-        mAppRequestList.pop_front();
-    }
-   
+            request = mAppRequestList.front();
+            mAppRequestList.pop_front();
+        }
 
-            if (request != nullptr)
+        if (request != nullptr)
+        {
+            CurrentAction action = request->mRequestAction;
+
+            switch (action)
             {
-                CurrentAction action = request->mRequestAction;
-
-                switch (action)
+                case APP_ACTION_LAUNCH:
+                case APP_ACTION_PRELOAD:
                 {
-                    case APP_ACTION_LAUNCH:
-                    case APP_ACTION_PRELOAD:
+                    if (nullptr == request->mRequestParam)
                     {
-                        if (nullptr != request->mRequestParam)
+                        LOGERR("Invalid request payload: action=%d requestParam=null", static_cast<int>(action));
+                    }
+                    else if (auto appRequestParam = std::static_pointer_cast<AppLaunchRequestParam>(request->mRequestParam))
+                    {
+                        string appId = appRequestParam->appId;
+                        // Capture timestamp before packageLock to include packageManager lock time
+                        AppManagerTelemetryReporting& appManagerTelemetryReporting = AppManagerTelemetryReporting::getInstance();
+                        time_t actualStartTime = appManagerTelemetryReporting.getCurrentTimestampMs();
+                        PackageInfo packageData;
+                        packageData.version = appRequestParam->packageVersion;
+                        Exchange::IPackageHandler::LockReason lockReason = Exchange::IPackageHandler::LockReason::LAUNCH;
+
+                        Core::hresult status = packageLock(appId, packageData, lockReason);
+                        if (status == Core::ERROR_NONE)
                         {
-                            if (auto appRequestParam = std::static_pointer_cast<AppLaunchRequestParam>(request->mRequestParam))
-                            {
-                                string appId = appRequestParam->appId;
-                                // Capture timestamp before packageLock to include packageManager lock time
-                                AppManagerTelemetryReporting& appManagerTelemetryReporting = AppManagerTelemetryReporting::getInstance();
-                                time_t actualStartTime = appManagerTelemetryReporting.getCurrentTimestampMs();
-                                PackageInfo packageData;
-                                packageData.version = appRequestParam->packageVersion;
-                                Exchange::IPackageHandler::LockReason lockReason = Exchange::IPackageHandler::LockReason::LAUNCH;
-
-                                Core::hresult status = packageLock(appId, packageData, lockReason);
-                                if (status == Core::ERROR_NONE)
-                                {
-                                    // Update timestamp after packageLock succeeds (app entry now exists in mAppInfo)
-                                    updateCurrentActionTime(appId, actualStartTime, action);
-                                    WPEFramework::Exchange::RuntimeConfig runtimeConfig = packageData.configMetadata;
-                                    runtimeConfig.unpackedPath = packageData.unpackedPath;
+                            // Update timestamp after packageLock succeeds (app entry now exists in mAppInfo)
+                            updateCurrentActionTime(appId, actualStartTime, action);
+                            WPEFramework::Exchange::RuntimeConfig runtimeConfig = packageData.configMetadata;
+                            runtimeConfig.unpackedPath = packageData.unpackedPath;
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
-                                    runtimeConfig.userId = packageData.userId;
-                                    runtimeConfig.groupId = packageData.groupId;
+                            runtimeConfig.userId = packageData.userId;
+                            runtimeConfig.groupId = packageData.groupId;
 #endif // RALF_PACKAGE_SUPPORT_ENABLED
-                                    getCustomValues(runtimeConfig);
-                                    string launchArgs = appRequestParam->launchArgs;
+                            getCustomValues(runtimeConfig);
+                            string launchArgs = appRequestParam->launchArgs;
 
-                                    if (action == APP_ACTION_LAUNCH)
-                                    {
-                                        status = mLifecycleInterfaceConnector->launch(appId, appRequestParam->intent, launchArgs, runtimeConfig);
-                                        LOGINFO("Application Launch from thread returns with status %d", status);
+                            if (action == APP_ACTION_LAUNCH)
+                            {
+                                status = mLifecycleInterfaceConnector->launch(appId, appRequestParam->intent, launchArgs, runtimeConfig);
+                                LOGINFO("Application Launch from thread returns with status %d", status);
 
-                                        if (status != Core::ERROR_NONE)
-                                        {
-                                            LOGERR("launch failed status %d", status);
-                                        }
-                                    }
-                                    else if (action == APP_ACTION_PRELOAD)
-                                    {
-                                        string errorReason;
-                                        status = mLifecycleInterfaceConnector->preLoadApp(appId, appRequestParam->intent, launchArgs, runtimeConfig, errorReason);
-                                        LOGINFO("Application preLoad from thread returns with status %d error %s", status, errorReason.c_str());
-
-                                        if ((!errorReason.empty()) || (status != Core::ERROR_NONE))
-                                        {
-                                            LOGERR("preLoadApp failed reason %s status %d", errorReason.c_str(), status);
-                                        }
-                                    }
-                                }
-                                else
+                                if (status != Core::ERROR_NONE)
                                 {
-                                    bool installed = false;
+                                    LOGERR("launch failed status %d", status);
+                                }
+                            }
+                            else if (action == APP_ACTION_PRELOAD)
+                            {
+                                string errorReason;
+                                status = mLifecycleInterfaceConnector->preLoadApp(appId, appRequestParam->intent, launchArgs, runtimeConfig, errorReason);
+                                LOGINFO("Application preLoad from thread returns with status %d error %s", status, errorReason.c_str());
 
-                                    IsInstalled(appId, installed);
-                                    LOGERR("Failed to PackageManager Lock %s installed %d", appId.c_str(), installed);
-                                    handleOnAppLifecycleStateChanged(appId, "",
-                                        Exchange::IAppManager::APP_STATE_UNKNOWN,
-                                        Exchange::IAppManager::APP_STATE_UNLOADED,
-                                        (installed == true)?Exchange::IAppManager::APP_ERROR_PACKAGE_LOCK: Exchange::IAppManager::APP_ERROR_NOT_INSTALLED);
+                                if ((!errorReason.empty()) || (status != Core::ERROR_NONE))
+                                {
+                                    LOGERR("preLoadApp failed reason %s status %d", errorReason.c_str(), status);
                                 }
                             }
                         }
-                    }
-                    break; /*APP_ACTION_LAUNCH | APP_ACTION_PRELOAD*/
+                        else
+                        {
+                            bool installed = false;
 
-                    default:
-                    {
-                        LOGERR("action type is invalid");
+                            IsInstalled(appId, installed);
+                            LOGERR("packageLock failed for appId=%s installed=%d lockReason=%d status=%d", appId.c_str(), installed, static_cast<int>(lockReason), status);
+                            handleOnAppLifecycleStateChanged(appId, "",
+                                Exchange::IAppManager::APP_STATE_UNKNOWN,
+                                Exchange::IAppManager::APP_STATE_UNLOADED,
+                                (installed == true) ? Exchange::IAppManager::APP_ERROR_PACKAGE_LOCK : Exchange::IAppManager::APP_ERROR_NOT_INSTALLED);
+                        }
                     }
-                    break; /* defult*/
+                    break; /* APP_ACTION_LAUNCH | APP_ACTION_PRELOAD */
                 }
+
+                default:
+                {
+                    LOGERR("Invalid request action in worker thread: action=%d", static_cast<int>(action));
+                }
+                break;
             }
+        }
 
     }
     {
@@ -364,12 +374,12 @@ void AppManagerImplementation::Dispatch(EventNames event, const JsonObject param
                 intent = params.HasLabel("intent") ? params["intent"].String() : "";
                 if (intent.empty())
                 {
-                    LOGERR("intent is empty for Launch app");
+                    LOGERR("intent is empty for launch request (appId=%s)", appId.c_str());
                 }
                 source = params.HasLabel("source") ? params["source"].String() : "";
                 if (source.empty())
                 {
-                    LOGERR("source is empty for Launch app");
+                    LOGERR("source is empty for launch request (appId=%s)", appId.c_str());
                 }
                 mAdminLock.Lock();
                 for (auto& notification : mAppManagerNotification)
@@ -456,7 +466,7 @@ void AppManagerImplementation::handleOnAppUnloaded(const string& appId, const st
         eventDetails["appId"] = appId;
         eventDetails["appInstanceId"] = appInstanceId;
 
-        LOGINFO("Notify App Lifecycle state change for appId %s: appInstanceId %s",
+        LOGINFO("Notify App Unloaded for appId %s: appInstanceId %s",
         appId.c_str(), appInstanceId.c_str());
 
         dispatchEvent(APP_EVENT_UNLOADED, eventDetails);
@@ -865,7 +875,7 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
     Core::hresult result = Core::ERROR_NONE;
     AppManagerTelemetryReporting& appManagerTelemetryReporting =AppManagerTelemetryReporting::getInstance();
     time_t launchStartTime = appManagerTelemetryReporting.getCurrentTimestampMs();
-    LOGINFO(" LaunchApp enter with appId %s", appId.c_str());
+    LOGINFO("appId=%s intentSize=%zu launchArgsSize=%zu", appId.c_str(), intent.size(), launchArgs.size());
     bool installed = false;
     PackageInfo packageData;
     mAdminLock.Lock();
@@ -899,7 +909,7 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
         status = Core::ERROR_GENERAL;
     }
     else if (result != Core::ERROR_NONE ) {
-        LOGERR("fetchAppPackagelist is returing error for app %s.", appId.c_str());
+        LOGERR("fetchAppPackageList returned error for appId %s", appId.c_str());
         status = Core::ERROR_GENERAL;
     }
     else if (packageData.version.empty()) {
@@ -911,13 +921,13 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
 
         if (request != nullptr)
         {
-            LOGINFO("LaunchApp enter with appId %s", appId.c_str());
             request->mRequestAction = APP_ACTION_LAUNCH;
             request->mRequestParam = std::make_shared<AppLaunchRequestParam>(AppLaunchRequestParam{appId, launchArgs, intent, packageData.version});
             if (request->mRequestParam != nullptr)
             {
                 mAppManagerLock.lock();
                 mAppRequestList.push_back(std::move(request));
+                LOGINFO("Queued launch request: appId=%s action=%d queueDepth=%zu", appId.c_str(), APP_ACTION_LAUNCH, mAppRequestList.size());
                 mAppManagerLock.unlock();
                 mAppRequestListCV.notify_one();
                 status = Core::ERROR_NONE;
@@ -970,6 +980,10 @@ Core::hresult AppManagerImplementation::CloseApp(const string& appId)
         {
             status = mLifecycleInterfaceConnector->closeApp(appId);
         }
+        else
+        {
+            LOGERR("CloseApp failed: appId=%s lifecycleConnector=null", appId.c_str());
+        }
         if(status == Core::ERROR_NONE)
         {
             updateCurrentActionTime(appId, requestTime, AppManagerImplementation::APP_ACTION_CLOSE);
@@ -1010,6 +1024,10 @@ Core::hresult AppManagerImplementation::TerminateApp(const string& appId )
         if (nullptr != mLifecycleInterfaceConnector)
         {
             status = mLifecycleInterfaceConnector->terminateApp(appId);
+        }
+        else
+        {
+            LOGERR("TerminateApp failed: appId=%s lifecycleConnector=null", appId.c_str());
         }
         if(status == Core::ERROR_NONE)
         {
@@ -1073,6 +1091,10 @@ Core::hresult AppManagerImplementation::SendIntent(const string& appId , const s
     if (nullptr != mLifecycleInterfaceConnector)
     {
         status = mLifecycleInterfaceConnector->sendIntent(appId, intent);
+    }
+    else
+    {
+        LOGERR("SendIntent failed: appId=%s lifecycleConnector=null", appId.c_str());
     }
     mAdminLock.Unlock();
 
@@ -1353,7 +1375,7 @@ Core::hresult AppManagerImplementation::GetInstalledApps(std::string& apps)
             }
         }
         installedAppsArray.ToString(apps);
-        LOGINFO("getInstalledApps: %s", apps.c_str());
+        LOGINFO("total installed apps=%zu", static_cast<size_t>(installedAppsArray.Length()));
     }
 
     mAdminLock.Unlock();
@@ -1539,7 +1561,7 @@ Core::hresult AppManagerImplementation::GetMaxInactiveRamUsage(int32_t& maxInact
 
 void AppManagerImplementation::OnAppInstallationStatus(const string& jsonresponse)
 {
-    LOGINFO("Received JSON response: %s", jsonresponse.c_str());
+    LOGINFO("Received installation status payload: bytes=%zu", jsonresponse.size());
 
     if (!jsonresponse.empty())
     {
@@ -1638,7 +1660,7 @@ void AppManagerImplementation::updateCurrentActionTime(const std::string& appId,
     }
     else
     {
-        LOGERR("Failed to updating currentActionTime for appId %s - app not found", appId.c_str());
+        LOGERR("Failed to update currentActionTime for appId %s (entry missing or action mismatch)", appId.c_str());
     }
 }
 

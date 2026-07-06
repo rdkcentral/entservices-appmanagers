@@ -30,7 +30,7 @@
     }                                                       \
     else                                                    \
     {                                                       \
-        LOGERR("Event handler is null");                    \
+        LOGERR("event handler is null while forwarding OCI event"); \
     }
 
 namespace WPEFramework {
