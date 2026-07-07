@@ -154,7 +154,10 @@ namespace Plugin {
         LOGINFO();
 
         /* Stop the downloader thread */
-        mDownloaderRunFlag.store(false, std::memory_order_release);
+		{
+			std::lock_guard<std::mutex> lock(mQueueMutex);
+        	mDownloaderRunFlag.store(false, std::memory_order_release);
+		}
         mDownloadThreadCV.notify_one();
         if (mDownloadThreadPtr && mDownloadThreadPtr->joinable())
         {
@@ -426,7 +429,7 @@ namespace Plugin {
             DownloadInfoPtr downloadRequest = nullptr;
             {
                 std::unique_lock<std::mutex> lock(mQueueMutex);
-                mDownloadThreadCV.wait(lock, [&] {
+                mDownloadThreadCV.wait_for(lock,std::chrono::seconds(waitTime), [&] {
                     return !mDownloaderRunFlag.load(std::memory_order_acquire) || !mPriorityDownloadQueue.empty() || !mRegularDownloadQueue.empty();
                 });
                 if (!mDownloaderRunFlag.load(std::memory_order_acquire))
