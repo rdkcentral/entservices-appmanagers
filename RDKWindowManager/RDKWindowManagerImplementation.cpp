@@ -2211,7 +2211,7 @@ Core::hresult RDKWindowManagerImplementation::StopVncServer()
  * @brief Gets the name of the currently focused application.
  *
  * @param[out] client: the identifier of the currently focused application
- * @return    : Core::<StatusCode> (Core::ERROR_NONE on success, Core::ERROR_GENERAL on failure)
+ * @return    : Core::hresult (Core::ERROR_NONE on success, Core::ERROR_GENERAL on failure)
  */
 Core::hresult RDKWindowManagerImplementation::GetFocused(string &client) const
 {
