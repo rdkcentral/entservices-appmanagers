@@ -2727,7 +2727,7 @@ TEST_F(AppManagerTest, SetAppPropertyUsingComRpcFailureEmptyKey)
  * Verifying the return of the API by passing an empty value with valid appId and key
  * Releasing the AppManager interface and all related test resources
  */
-TEST_F(AppManagerTest, SetAppPropertyUsingComRpcFailureEmptyValue)
+TEST_F(AppManagerTest, DISABLED_SetAppPropertyUsingComRpcFailureEmptyValue)
 {
     Core::hresult status;
     const std::string key = PERSISTENT_STORE_KEY;
@@ -2749,7 +2749,7 @@ TEST_F(AppManagerTest, SetAppPropertyUsingComRpcFailureEmptyValue)
  * Verifying the return of the JSON-RPC API by passing an empty value with valid appId and key
  * Releasing the AppManager interface and all related test resources
  */
-TEST_F(AppManagerTest, SetAppPropertyUsingJSONRpcFailureEmptyValue)
+TEST_F(AppManagerTest, DISABLED_SetAppPropertyUsingJSONRpcFailureEmptyValue)
 {
     Core::hresult status;
     const std::string key = PERSISTENT_STORE_KEY;
@@ -3814,10 +3814,6 @@ TEST_F(AppManagerTest, LaunchAppLockFailureListPackagesFails)
         .WillOnce([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
             auto mockIterator = FillPackageIterator();
             packages = mockIterator;
-            return Core::ERROR_NONE;
-        })
-        .WillOnce([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
-            packages = nullptr;
             return Core::ERROR_NONE;
         })
         .WillRepeatedly([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {

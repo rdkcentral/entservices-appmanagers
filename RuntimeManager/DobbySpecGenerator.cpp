@@ -33,6 +33,7 @@
 #include <algorithm>
 #include <cctype>
 #include <sys/sysinfo.h>
+#include <cstring>
 //TODO SUPPORT THIS
 //#include <IPackage.h>
 #include <curl/curl.h>
@@ -45,6 +46,15 @@ namespace Plugin
 namespace 
 {
     #define XDG_RUNTIME_DIR "/tmp"
+
+    constexpr unsigned long DEFAULT_EXTRA_MOUNT_FLAGS = (MS_BIND | MS_RDONLY | MS_NOSUID | MS_NODEV | MS_NOEXEC);
+
+    struct ExtraBindMount
+    {
+        std::string source;
+        std::string destination;
+        unsigned long mountFlags;
+    };
 
     std::string lowerCopy(const std::string& input)
     {
@@ -92,6 +102,64 @@ namespace
 
         tokens.push_back(current);
         return tokens;
+    }
+
+    bool getExtraMountEntries(const std::string& serializedCapabilities,
+                              std::vector<ExtraBindMount>& extraMounts)
+    {
+        extraMounts.clear();
+
+        if (true == serializedCapabilities.empty())
+        {
+            return true;
+        }
+
+        const std::vector<std::string> capabilityEntries = splitEscaped(serializedCapabilities, ',');
+        for (const std::string& rawEntry : capabilityEntries)
+        {
+            if (true == rawEntry.empty())
+            {
+                continue;
+            }
+
+            const std::vector<std::string> keyValueEntry = splitEscaped(rawEntry, '=');
+            if ((true == keyValueEntry.empty()) || (true == keyValueEntry[0].empty()))
+            {
+                continue;
+            }
+
+            if (0 != lowerCopy(keyValueEntry[0]).compare("extramounts"))
+            {
+                continue;
+            }
+
+            std::string mountValue;
+            if (keyValueEntry.size() > 1)
+            {
+                mountValue = keyValueEntry[1];
+                for (size_t i = 2; i < keyValueEntry.size(); ++i)
+                {
+                    mountValue += "=";
+                    mountValue += keyValueEntry[i];
+                }
+            }
+
+            const std::vector<std::string> mountPoints = splitEscaped(mountValue, ':');
+            if ((2 != mountPoints.size()) || mountPoints[0].empty() || mountPoints[1].empty())
+            {
+                LOGWARN("Skipping malformed extraMounts capability value '%s'", mountValue.c_str());
+                continue;
+            }
+
+            ExtraBindMount extraMount;
+            extraMount.source = mountPoints[0];
+            extraMount.destination = mountPoints[1];
+            extraMount.mountFlags = DEFAULT_EXTRA_MOUNT_FLAGS;
+
+            extraMounts.push_back(std::move(extraMount));
+        }
+
+        return true;
     }
 }
 
@@ -434,7 +502,6 @@ Json::Value DobbySpecGenerator::createMounts(const ApplicationConfiguration& con
     //TODO SUPPORT Platform specific mounts
     //TODO SUPPORT Airplay specific mounts
     //TODO SUPPORT TSB Storage
-    //TODO SUPPORT EPG specific migration data store mount
     //TODO SUPPORT USB Mass storage
     //TODO SUPPORT PerfettoSocketPath not mounted
     /*
@@ -450,6 +517,27 @@ Json::Value DobbySpecGenerator::createMounts(const ApplicationConfiguration& con
         mounts.append(createBindMount(mGstRegistrySourcePath,
                                            mGstRegistryDestinationPath,
                                            (MS_BIND | MS_NOSUID | MS_NODEV | MS_NOEXEC | MS_RDONLY)));
+    }
+
+    std::vector<ExtraBindMount> extraMountEntries;
+    if (true == getExtraMountEntries(runtimeConfig.capabilities, extraMountEntries))
+    {
+        for (const auto& extraMount : extraMountEntries)
+        {
+            if (0 == access(extraMount.source.c_str(), F_OK))
+            {
+            LOGINFO("Applying extraMounts mount source=%s destination=%s for appId=%s",
+                extraMount.source.c_str(), extraMount.destination.c_str(), config.mAppId.c_str());
+            mounts.append(createBindMount(extraMount.source,
+                              extraMount.destination,
+                              extraMount.mountFlags));
+            }
+            else
+            {
+            LOGINFO("extraMounts source path '%s' doesn't exist, not mapping into container",
+                extraMount.source.c_str());
+            }
+        }
     }
 
 
