@@ -799,6 +799,7 @@ End:
                         const bool lifecycleManagerInitiatedKill = (Exchange::IAppManager::AppLifecycleState::APP_STATE_TERMINATING == oldAppState);
                         auto crashIt = mAppCrashErrorMap.find(appId);
                         const bool isCrash = (crashIt != mAppCrashErrorMap.end());
+                        LOGINFO("isCrash %d, appManagerInitiatedKill %d, lifecycleManagerInitiatedKill %d", isCrash, appManagerInitiatedKill, lifecycleManagerInitiatedKill);
                         if (appManagerInitiatedKill)
                         {
                             //Normal close: AppManager-initiated terminate/kill
@@ -820,7 +821,7 @@ End:
                             const std::string storedInstanceId = AppInfoManager::getInstance().getAppInstanceId(appId);
                             if (false == storedInstanceId.empty())
                             {
-                                std::string crashReason = "Terminate event due to app crash";
+                                std::string crashReason = "Terminated unexpectedly";
                                 AppManagerTelemetryReporting::getInstance().reportAppCrashedTelemetry(appId, storedInstanceId, crashReason);
                             }
                             mAppCrashErrorMap.erase(crashIt);
@@ -834,7 +835,7 @@ End:
                             const std::string storedInstanceId = AppInfoManager::getInstance().getAppInstanceId(appId);
                             if (false == storedInstanceId.empty())
                             {
-                                std::string crashReason = "Terminate event due to app crash";
+                                std::string crashReason = "Terminated unexpectedly";
                                 AppManagerTelemetryReporting::getInstance().reportAppCrashedTelemetry(appId, storedInstanceId, crashReason);
                             }
                         }

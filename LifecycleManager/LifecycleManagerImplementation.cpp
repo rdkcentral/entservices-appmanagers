@@ -661,7 +661,7 @@ namespace WPEFramework
                     {
                         LOGWARN("Container has terminated unexpectedly for app[%s] ", appInstanceId.c_str());
                         LOGWARN("Unloading app [%s] - [%s]", context->getAppId().c_str(), appInstanceId.c_str());
-                        std::string terminateError="APP_CRASHED";
+                        std::string terminateError="";
                         std::string updateError="";
                         bool terminated = false;
                         context->setRequestType(REQUEST_TYPE_TERMINATE);
