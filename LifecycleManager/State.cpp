@@ -101,8 +101,13 @@ namespace WPEFramework
                 RuntimeManagerHandler* runtimeManagerHandler = RequestHandler::getInstance()->getRuntimeManagerHandler();
                 if (nullptr != runtimeManagerHandler)
                 {
+                    // INITIALIZING→PAUSED: app just loaded, never been foreground → "inactive"
+                    // ACTIVE→PAUSED or SUSPENDED→PAUSED: was running, now backgrounded → "background"
+                    const string fireboltState =
+                        (Exchange::ILifecycleManager::LifecycleState::INITIALIZING == context->getCurrentLifecycleState())
+                        ? "inactive" : "background";
                     string annotateError;
-                    runtimeManagerHandler->annotate(context->getAppInstanceId(), "fireboltState", "inactive", annotateError);
+                    runtimeManagerHandler->annotate(context->getAppInstanceId(), "fireboltState", fireboltState, annotateError);
                 }
             }
             return ret;
