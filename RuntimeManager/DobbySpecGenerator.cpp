@@ -976,9 +976,13 @@ void DobbySpecGenerator::populateClassicPlugins(const ApplicationConfiguration& 
     // We just parse and append directly — no JSON construction needed here.
     std::vector<std::pair<std::string, std::string>> parsedCaps;
     parseCapabilities(runtimeConfig.capabilities, parsedCaps);
+    LOGINFO("populateClassicPlugins: appId=%s capabilities='%s'",
+        config.mAppId.c_str(), runtimeConfig.capabilities.c_str());
     const std::string dobbyPluginJson = getCapabilityValue(parsedCaps, "dobbyplugin");
     if (!dobbyPluginJson.empty())
     {
+        LOGINFO("dobbyplugin capability found for %s (json size=%zu)",
+            config.mAppId.c_str(), dobbyPluginJson.size());
         Json::Value plugin;
         Json::Reader reader;
         if (reader.parse(dobbyPluginJson, plugin))
@@ -990,6 +994,10 @@ void DobbySpecGenerator::populateClassicPlugins(const ApplicationConfiguration& 
         {
             LOGWARN("Failed to parse dobbyplugin JSON for %s", config.mAppId.c_str());
         }
+    }
+    else
+    {
+        LOGINFO("No dobbyplugin capability for %s", config.mAppId.c_str());
     }
 
     //TODO SUPPORT Runtime config need to have multicastSocket, multicastForward,NatHolePunch capability parameter
