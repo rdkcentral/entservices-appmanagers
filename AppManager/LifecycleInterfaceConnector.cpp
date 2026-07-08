@@ -66,6 +66,10 @@ namespace WPEFramework
 
         LifecycleInterfaceConnector::~LifecycleInterfaceConnector()
         {
+            // mCurrentservice is normally released by releaseCurrentService(), called from
+            // AppManagerImplementation::Configure(nullptr) while the service is guaranteed
+            // to be alive on the main thread.  This null-guarded call is a safety net for
+            // code paths that bypass that early-release (e.g. unit tests).
             if (nullptr != mCurrentservice)
             {
                mCurrentservice->Release();
@@ -75,6 +79,15 @@ namespace WPEFramework
 
 	    //clear action list
 	    mAppCurrentActionList.clear();
+        }
+
+        void LifecycleInterfaceConnector::releaseCurrentService()
+        {
+            if (nullptr != mCurrentservice)
+            {
+                mCurrentservice->Release();
+                mCurrentservice = nullptr;
+            }
         }
 
         Core::hresult LifecycleInterfaceConnector::createLifecycleManagerRemoteObject()
@@ -889,14 +902,13 @@ End:
                 if (!errorReason.empty())
                 {
                     errorCode = mapErrorReason(errorReason);
-                    if (errorCode == Exchange::IAppManager::AppErrorReason::APP_ERROR_ABORT &&
-                        state == Exchange::ILifecycleManager::LifecycleState::UNLOADED)
+                    if ((Exchange::IAppManager::AppErrorReason::APP_ERROR_ABORT == errorCode) &&
+                         (Exchange::ILifecycleManager::LifecycleState::UNLOADED == state))
                     {
                         // Crash detected: store error for OnAppLifecycleStateChanged (called next on same thread)
                         LOGINFO("OnAppStateChanged: crash signal received for appId %s, deferring to OnAppLifecycleStateChanged", appId.c_str());
-                        mAdminLock.Lock();
+                        Core::SafeSyncType<Core::CriticalSection> lock(mAdminLock);
                         mAppCrashErrorMap[appId] = errorCode;
-                        mAdminLock.Unlock();
                     }
                     else
                     {
