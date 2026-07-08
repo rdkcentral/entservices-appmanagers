@@ -332,7 +332,7 @@ namespace WPEFramework
                     eventData["navigationIntent"] = context->getMostRecentIntent();
                 }
                 // Propagate crash reason for unexpected terminations detected by the runtime manager
-                if (context->getTerminated() && errorReason.empty())
+                if ((true == context->getTerminated()) && (true == errorReason.empty()))
                 {
                     errorReason = "APP_CRASHED";
                 }
