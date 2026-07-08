@@ -55,6 +55,10 @@ uint32_t Test_AM_MapLifecycleStateAndErrorReason()
         static_cast<uint32_t>(connector.mapErrorReason(std::string("does-not-exist"))),
         static_cast<uint32_t>(WPEFramework::Exchange::IAppManager::AppErrorReason::APP_ERROR_UNKNOWN),
         "Unknown error string maps to APP_ERROR_UNKNOWN");
+    L0Test::ExpectEqU32(tr,
+        static_cast<uint32_t>(connector.mapErrorReason(std::string("APP_CRASHED"))),
+        static_cast<uint32_t>(WPEFramework::Exchange::IAppManager::AppErrorReason::APP_ERROR_ABORT),
+        "APP_CRASHED maps to APP_ERROR_ABORT");
 
     return tr.failures;
 }

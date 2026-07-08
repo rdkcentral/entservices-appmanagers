@@ -203,6 +203,8 @@ extern uint32_t Test_AM_TelErrorDataTerminate();
 extern uint32_t Test_AM_TelErrorDataKill();
 extern uint32_t Test_AM_TelErrorDataDefault();
 extern uint32_t Test_AM_TelRecordLaunchTime();
+extern uint32_t Test_AM_LICAppCrashedDeferralFlow();
+extern uint32_t Test_AM_LICKillAndRunNoCrash();
 
 int main()
 {
@@ -394,6 +396,8 @@ int main()
         { "AM_TelErrorDataKill", Test_AM_TelErrorDataKill },
         { "AM_TelErrorDataDefault", Test_AM_TelErrorDataDefault },
         { "AM_TelRecordLaunchTime", Test_AM_TelRecordLaunchTime },
+        { "AM_LICAppCrashedDeferralFlow", Test_AM_LICAppCrashedDeferralFlow },
+        { "AM_LICKillAndRunNoCrash", Test_AM_LICKillAndRunNoCrash },
     };
 
     uint32_t totalFailures = 0;
