@@ -818,6 +818,11 @@ End:
                             //Normal close: AppManager-initiated terminate/kill
                             LOGINFO("Terminate event from App Manager");
                             appManagerImplInstance->handleOnAppLifecycleStateChanged(appId, appInstanceId, newAppState, oldAppState, Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE);
+
+                            if (isCrash) {
+                                LOGWARN("Clearing deferred crash signal for appId %s because unload was AppManager-initiated", appId.c_str());
+                                mAppCrashErrorMap.erase(crashIt);
+                            }
                         }
                         else if (lifecycleManagerInitiatedKill && !isCrash)
                         {
