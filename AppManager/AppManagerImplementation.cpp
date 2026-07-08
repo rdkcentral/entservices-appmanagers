@@ -494,7 +494,7 @@ uint32_t AppManagerImplementation::Configure(PluginHost::IShell* service)
 {
     uint32_t result = Core::ERROR_GENERAL;
 
-    if (service == nullptr)
+    if (nullptr == service)
     {
         // Deconfigure path (called from AppManager::Deinitialize() while the service is
         // still alive on the main thread).  Eagerly release all service-bound references
