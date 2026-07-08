@@ -17,11 +17,11 @@ using string = std::string;
 class FakeStorageManager final : public WPEFramework::Exchange::IAppStorageManager {
 public:
     FakeStorageManager()
-        : _refCount(1)
-        , createStorageCalls(0)
+        : createStorageCalls(0)
         , deleteStorageCalls(0)
         , createStorageResult(WPEFramework::Core::ERROR_NONE)
         , deleteStorageResult(WPEFramework::Core::ERROR_NONE)
+        , _refCount(1)
     {
     }
 

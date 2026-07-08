@@ -1,180 +1,217 @@
-# PreinstallManager Module
+# PreinstallManager Plugin Documentation
 
-> Pre-installed Application Management
+> Pre-installed Application Scanning and Installation for RDK Infrastructure
 
-[← Back to Main](../README.md) | [← Previous: AppStorageManager](../AppStorageManager/AppStorageManager.md)
+## 1. High-Level Purpose & Architecture
 
----
+### Role in ENT / RDK Infrastructure
 
-## Purpose & Role
+The **PreinstallManager** plugin handles the discovery and installation of pre-loaded applications from a designated directory on the device. It scans for application packages at startup or on-demand and triggers their installation through PackageManager.
 
-The **PreinstallManager** handles applications that are pre-installed on the device image. It scans configured directories for preinstalled packages and triggers their installation through PackageManager on system startup.
+### Responsibilities
 
-### Core Responsibilities
+- **Package Discovery**: Scan designated directories for pre-installed packages
+- **Installation Trigger**: Initiate package installation via PackageManager
+- **State Tracking**: Track preinstallation progress and completion
+- **Force Install**: Support forced reinstallation of packages
 
-- **Directory Scanning:** Scan preinstall directories for app packages
-- **Package Detection:** Identify new preinstalled packages
-- **Installation Trigger:** Request PackageManager to install packages
-- **Version Management:** Handle preinstalled app updates
+### Interacting Subsystems
 
-### Dependencies
-
-| Module | Purpose |
-|--------|---------|
-| PackageManager | Package installation |
+| Subsystem | Interaction Type | Purpose |
+|-----------|-----------------|---------|
+| PackageManager | COM-RPC (outbound) | Install discovered packages |
 
 ---
 
-## Architecture
+## 2. Architectural Overview
 
 ```mermaid
 graph TB
-    subgraph "PreinstallManager Module"
-        PIM[PreinstallManager<br/>Plugin]
-        PIMI[PreinstallManagerImplementation]
+    subgraph "PreinstallManager Plugin"
+        Shell[PreinstallManager<br/>Plugin Shell]
+        Impl[PreinstallManagerImplementation<br/>Scan & Install Logic]
     end
 
     subgraph "External"
-        PkgMgr[PackageManager]
-        FS[FileSystem<br/>Preinstall Dirs]
+        PKG[PackageManager]
+        FS[FileSystem<br/>Preinstall Directory]
     end
 
-    PIM --> PIMI
-    PIMI -->|Scan| FS
-    PIMI -->|Install| PkgMgr
+    Shell --> Impl
+    Impl --> PKG
+    Impl --> FS
 ```
 
 ---
 
-## Class Diagram
+## 3. Code Organization
 
-```mermaid
-classDiagram
-    class PreinstallManagerImplementation {
-        -string mAppPreinstallDirectory
-        -IPackageInstaller* mPackageManagerInstallerObject
-        +Configure(service : IShell*) uint32_t
-        +StartPreinstall(forceInstall : bool) hresult
-        +Register(notification : IPreinstallManager__INotification*) hresult
-        +Unregister(notification : IPreinstallManager__INotification*) hresult
-    }
-```
-
----
-
-## File Organization
+### Directory Structure
 
 ```
 PreinstallManager/
-├── PreinstallManager.cpp          Plugin wrapper
-├── PreinstallManager.h            Plugin class definition
-├── PreinstallManagerImplementation.cpp Core implementation
-├── PreinstallManagerImplementation.h   Implementation class
-├── Module.cpp/h                   Module registration
-├── CMakeLists.txt                 Build configuration
-└── PreinstallManager.config       Runtime configuration
+├── PreinstallManager.cpp              # Plugin shell
+├── PreinstallManager.h                # Shell header
+├── PreinstallManagerImplementation.cpp # Core implementation
+├── PreinstallManagerImplementation.h   # Implementation header
+├── Module.cpp                         # Plugin module
+├── Module.h                           # Module header
+├── CMakeLists.txt                     # Build configuration
+├── PreinstallManager.config           # Plugin configuration
+├── PreinstallManager.conf.in          # Configuration template
+└── PreinstallManagerPlugin.json       # Plugin metadata
 ```
 
 ---
 
-## API Reference
+## 4. Class & Interface Documentation
 
-### IPreinstallManager Interface
+### Exchange::IPreinstallManager Interface
 
-| Method | Purpose |
-|--------|---------|
-| `StartPreinstall(forceInstall: bool)` | Scan preinstall directories and trigger installation of discovered packages (optionally forcing reinstall) |
-| `Register(notification: IPreinstallManager::INotification*)` | Register a notification sink for preinstall events |
-| `Unregister(notification: IPreinstallManager::INotification*)` | Unregister a previously registered notification sink |
+```cpp
+interface IPreinstallManager {
+    enum State {
+        NOT_STARTED = 0,
+        IN_PROGRESS,
+        COMPLETED
+    };
+
+    enum PreinstallFailReason {
+        NONE = 0,
+        SCAN_FAILED,
+        INSTALL_FAILED,
+        PACKAGE_INVALID
+    };
+
+    interface INotification {
+        void OnPreinstallationComplete(State state, PreinstallFailReason reason);
+    };
+
+    hresult Register(INotification* notification);
+    hresult Unregister(INotification* notification);
+    hresult StartPreinstall(bool forceInstall);
+    hresult GetPreinstallState(State& state);
+};
+```
+
+### PreinstallManagerImplementation
+
+`PackageInfo` fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `fileLocator` | `string` | Source package file path |
+| `packageId` | `string` | Package identifier |
+| `version` | `string` | Package version |
+| `configMetadata` | `Exchange::RuntimeConfig` | Runtime configuration metadata |
+| `installStatus` | `string` | Install status/result marker |
+
+Core implementation members:
+
+| Member | Type | Description |
+|--------|------|-------------|
+| `mConfig` | `Configuration` | Plugin configuration container |
+| `mPackageMap` | `std::map<string, PackageInfo>` | Package metadata map used during scan/install |
+| `mCurrentState` | `State` | Current preinstall state |
 
 ---
 
-## Startup Scan Flow
+## 5. Internal Workflows
+
+### Preinstall Scan and Install Flow
 
 ```mermaid
 sequenceDiagram
-    participant System
-    participant PIM as PreinstallManager
+    participant Client
+    participant PM as PreinstallManager
     participant FS as FileSystem
-    participant PkgMgr as PackageManager
+    participant PKG as PackageManager
 
-    System->>PIM: Plugin Activated
-    PIM->>PIM: Configure(service)
-    System->>PIM: StartPreinstall(forceInstall)
-    PIM->>PkgMgr: QueryInterfaceByCallsign<IPackageInstaller>
-    PkgMgr-->>PIM: IPackageInstaller*
+    Client->>PM: StartPreinstall(forceInstall)
+    PM->>PM: Set state = SCANNING
+    PM->>FS: Scan appPreinstallDirectory
+    FS-->>PM: List of packages
 
-    PIM->>FS: opendir(appPreinstallDirectory)
-    FS-->>PIM: Directory entries
-
-    loop For each directory entry
-        PIM->>PkgMgr: GetConfigForPackage(fileLocator, packageId, version, configMetadata)
-        PkgMgr-->>PIM: packageId, version, configMetadata
+    loop For each package
+        PM->>PM: Parse package metadata
+        PM->>PKG: Install(packageId, version, fileLocator)
+        PKG-->>PM: InstallResult
+        alt Install Success
+            PM->>PM: Mark as installed
+        else Install Failed
+            PM->>PM: Mark as failed
+        end
     end
 
-    alt forceInstall == false
-        PIM->>PkgMgr: ListPackages(packageList)
-        PkgMgr-->>PIM: packageList (packageId, version, state)
-        PIM->>PIM: Filter: skip packages already installed with same/newer version
-    end
-
-    loop For each package to install
-        PIM->>PkgMgr: Install(packageId, version, additionalMetadata, fileLocator, failReason)
-        PkgMgr-->>PIM: Core::hresult (ERROR_NONE / error + failReason)
-    end
-
-    PIM->>PkgMgr: Release IPackageInstaller
-    PIM-->>System: StartPreinstall complete
+    PM->>PM: Set state = COMPLETE
+    PM->>Client: OnPreinstallationComplete
 ```
 
----
-
-## Preinstall Decision Flow
+### Force Install Logic
 
 ```mermaid
 flowchart TD
-    A[Scan Preinstall Directory] --> B[Found Package?]
-    B -->|No| C[Done]
-    B -->|Yes| D[Parse Manifest]
-    D --> E{Already Installed?}
-    E -->|No| F[Install Package]
-    E -->|Yes| G{Version Higher?}
-    G -->|No| H[Skip]
-    G -->|Yes| I[Update Package]
-    F --> J[Next Package]
-    H --> J
-    I --> J
-    J --> B
+    A[StartPreinstall called] --> B{forceInstall?}
+    B -->|Yes| C[Reinstall all packages]
+    B -->|No| D[Check installed state]
+    D --> E{Already installed?}
+    E -->|Yes| F[Skip package]
+    E -->|No| G[Install package]
+    C --> H[Install package]
+    F --> I[Next package]
+    G --> I
+    H --> I
 ```
 
 ---
 
-## Preinstall Directory Structure
+## 6. Configuration
+
+### Plugin Configuration
+
+```cmake
+set (autostart false)
+set (preconditions Platform)
+set (callsign "org.rdk.PreinstallManager")
+```
+
+### Runtime Configuration
+
+```json
+{
+    "appPreinstallDirectory": "/opt/preinstall/apps"
+}
+```
+
+### Preinstall Directory Structure
 
 ```
-/opt/preinstall/
-├── com.app.one/
-│   ├── manifest.json
-│   ├── bundle.tar.gz
-│   └── metadata.json
-├── com.app.two/
-│   ├── manifest.json
-│   ├── bundle.tar.gz
-│   └── metadata.json
-└── ...
+/opt/preinstall/apps/
+├── com.example.app1.pkg
+├── com.example.app2.pkg
+└── com.example.app3.pkg
 ```
 
 ---
 
-## Configuration
+## 7. Testing
 
-Loaded from `PreinstallManager.config`:
+### Existing Tests
 
-| Parameter | Description |
-|-----------|-------------|
-| `preinstallpaths` | List of directories containing preinstalled packages |
+Located in `Tests/L1Tests/tests/test_PreinstallManager.cpp`
+
+| Test | Description |
+|------|-------------|
+| StartPreinstall | Basic scan and install |
+| ForceInstall | Forced reinstallation |
+| GetState | State retrieval |
+| Notifications | Event delivery |
 
 ---
 
-[← Back to Main](../README.md) | [Next: RDKWindowManager →](../RDKWindowManager/RDKWindowManager.md)
+## 8. Usage Notes
 
+1. **Startup Sequence**: PreinstallManager typically runs early in boot to ensure apps are available
+2. **Force Install**: Use sparingly as it reinstalls even up-to-date packages
+3. **Package Format**: Packages must be in a format understood by PackageManager
+4. **Error Handling**: Check OnPreinstallationComplete for failure reasons

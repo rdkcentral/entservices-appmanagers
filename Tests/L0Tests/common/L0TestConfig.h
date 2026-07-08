@@ -27,6 +27,18 @@
  * L0 test targets. These can override CMake-defined macros if needed.
  */
 
+// Suppress Thunder/WPEFramework deprecation warnings for TRACE_Lx usage
+// These macros are deprecated outside Thunder Core but unavoidable in test builds
+#ifdef __GNUC__
+#pragma GCC diagnostic ignored "-Wdeprecated"
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
+// Disable Thunder's custom deprecation warnings for TRACE_Lx macros
+#ifndef THUNDER_DISABLE_DEPRECATED_WARNING
+#define THUNDER_DISABLE_DEPRECATED_WARNING
+#endif
+
 // Thunder/WPEFramework configuration
 #ifndef USE_THUNDER_R4
 #define USE_THUNDER_R4 1
@@ -51,6 +63,19 @@
 
 #ifndef STORAGE_MANAGER_API_VERSION_NUMBER_PATCH
 #define STORAGE_MANAGER_API_VERSION_NUMBER_PATCH 0
+#endif
+
+// DownloadManager API version
+#ifndef DOWNLOAD_MANAGER_API_VERSION_NUMBER_MAJOR
+#define DOWNLOAD_MANAGER_API_VERSION_NUMBER_MAJOR 1
+#endif
+
+#ifndef DOWNLOAD_MANAGER_API_VERSION_NUMBER_MINOR
+#define DOWNLOAD_MANAGER_API_VERSION_NUMBER_MINOR 0
+#endif
+
+#ifndef DOWNLOAD_MANAGER_API_VERSION_NUMBER_PATCH
+#define DOWNLOAD_MANAGER_API_VERSION_NUMBER_PATCH 0
 #endif
 
 // RuntimeManager API version
