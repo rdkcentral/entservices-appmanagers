@@ -494,6 +494,25 @@ uint32_t AppManagerImplementation::Configure(PluginHost::IShell* service)
 {
     uint32_t result = Core::ERROR_GENERAL;
 
+    if (service == nullptr)
+    {
+        // Deconfigure path (called from AppManager::Deinitialize() while the service is
+        // still alive on the main thread).  Eagerly release all service-bound references
+        // so the destructors — which may run on a WorkerPool thread after the service has
+        // been freed — do not attempt to call Release() on a dangling pointer.
+        LOGINFO("AppManagerImplementation::Configure: deconfiguring service references");
+        if (nullptr != mLifecycleInterfaceConnector)
+        {
+            mLifecycleInterfaceConnector->releaseCurrentService();
+        }
+        if (nullptr != mCurrentservice)
+        {
+            mCurrentservice->Release();
+            mCurrentservice = nullptr;
+        }
+        return Core::ERROR_NONE;
+    }
+
     if (service != nullptr)
     {
         mCurrentservice = service;
