@@ -159,7 +159,7 @@ namespace Plugin {
             std::lock_guard<std::mutex> lock(mQueueMutex);
             mDownloaderRunFlag = false;
         }
-            mDownloadThreadCV.notify_one();
+        mDownloadThreadCV.notify_one();
        
         if (mDownloadThreadPtr && mDownloadThreadPtr->joinable())
         {
