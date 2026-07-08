@@ -908,12 +908,16 @@ End:
                 {
                     errorCode = mapErrorReason(errorReason);
                     if ((Exchange::IAppManager::AppErrorReason::APP_ERROR_ABORT == errorCode) &&
-                         (Exchange::ILifecycleManager::LifecycleState::UNLOADED == state))
+                        (Exchange::ILifecycleManager::LifecycleState::UNLOADED == state))
                     {
                         // Crash detected: store error for OnAppLifecycleStateChanged (called next on same thread)
-                        LOGINFO("OnAppStateChanged: crash signal received for appId %s, deferring to OnAppLifecycleStateChanged", appId.c_str());
-                        Core::SafeSyncType<Core::CriticalSection> lock(mAdminLock);
-                        mAppCrashErrorMap[appId] = errorCode;
+                        if (false == appId.empty()) {
+                            LOGINFO("OnAppStateChanged: crash signal received for appId %s, deferring to OnAppLifecycleStateChanged", appId.c_str());
+                            Core::SafeSyncType<Core::CriticalSection> lock(mAdminLock);
+                            mAppCrashErrorMap[appId] = errorCode;
+                        } else {
+                            LOGWARN("OnAppStateChanged: crash signal received with empty appId; ignoring deferral entry");
+                        }
                     }
                     else
                     {
