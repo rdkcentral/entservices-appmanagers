@@ -17,7 +17,7 @@ permissions:
 env:
   BUILD_TYPE: Debug
   THUNDER_REF: "R4.4.1"
-  INTERFACES_REF: "topic/RDKEMW-18440"
+  INTERFACES_REF: "topic/RDKEMW-19574"
 
 jobs:
   L0-tests:
