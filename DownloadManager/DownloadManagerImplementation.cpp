@@ -436,7 +436,7 @@ namespace Plugin {
             DownloadInfoPtr downloadRequest = nullptr;
             {
                 std::unique_lock<std::mutex> lock(mQueueMutex);
-                //Added wait_time to avoid spurious wakeups and to allow the thread to exit gracefully when mDownloaderRunFlag is set to false
+                // Use a bounded wait to avoid indefinite blocking and to periodically re-check the run flag / queues
                 const bool ready = mDownloadThreadCV.wait_for(lock,std::chrono::seconds(waitTime), [&] {
                     return !mDownloaderRunFlag || !mPriorityDownloadQueue.empty() || !mRegularDownloadQueue.empty();
                 });
