@@ -1864,12 +1864,10 @@ uint32_t Test_Impl_DownloaderRoutinePriorityQueuePath()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Coverity fix: notify_one() called after lock release in Deinitialize()
-//   Verifies that Deinitialize() completes promptly (thread wakes immediately
-//   via notify_one after mDownloaderRunFlag is set under lock and lock is
-//   released). If notify_one were called while holding the lock, the thread
-//   would wake and immediately block trying to re-acquire the same mutex,
-//   causing a hang. A 3-second deadline catches any such regression.
+//   Verifies that Deinitialize() completes promptly (thread wakes promptly
+ //   after mDownloaderRunFlag is set under lock and notify_one() is issued).
+ //   Notifying while holding the lock is legal, but it can delay the wake until
+ //   the lock is released; a 3-second deadline catches any join regression.
 // ─────────────────────────────────────────────────────────────────────────────
 
 uint32_t Test_Impl_DeinitializeNotifyOneAfterLockRelease()
@@ -1956,7 +1954,16 @@ uint32_t Test_Impl_WaitForPredicateWakesOnQueuedDownload()
     std::string downloadId;
 
     const auto t0 = std::chrono::steady_clock::now();
-    impl->Download("file://" + srcFile, opts, downloadId);
+    const auto dlResult = impl->Download("file://" + srcFile, opts, downloadId);
+    L0Test::ExpectEqU32(tr, dlResult, WPEFramework::Core::ERROR_NONE,
+        "Download() enqueued file:// URL successfully");
+    if (WPEFramework::Core::ERROR_NONE != dlResult) {
+        impl->Unregister(&notif);
+        impl->Deinitialize(&svc);
+        impl->Release();
+        (void) std::remove(srcFile.c_str());
+        return tr.failures;
+    }
 
     // The predicate in wait_for covers !mPriorityDownloadQueue.empty() ||
     // !mRegularDownloadQueue.empty(). The thread must wake immediately via
