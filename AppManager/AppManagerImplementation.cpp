@@ -513,67 +513,60 @@ uint32_t AppManagerImplementation::Configure(PluginHost::IShell* service)
         return Core::ERROR_NONE;
     }
 
-    if (service != nullptr)
+    mCurrentservice = service;
+    mCurrentservice->AddRef();
+
+    if (nullptr == (mLifecycleInterfaceConnector = new LifecycleInterfaceConnector(mCurrentservice)))
     {
-        mCurrentservice = service;
-        mCurrentservice->AddRef();
-
-        if (nullptr == (mLifecycleInterfaceConnector = new LifecycleInterfaceConnector(mCurrentservice)))
-        {
-            LOGERR("Failed to create LifecycleInterfaceConnector");
-        }
-        else if (Core::ERROR_NONE != mLifecycleInterfaceConnector->createLifecycleManagerRemoteObject())
-        {
-            LOGERR("Failed to create LifecycleInterfaceConnector");
-        }
-        else
-        {
-            LOGINFO("created LifecycleManagerRemoteObject");
-        }
-
-        if (Core::ERROR_NONE != createPersistentStoreRemoteStoreObject())
-        {
-            LOGERR("Failed to create createPersistentStoreRemoteStoreObject");
-        }
-        else
-        {
-            LOGINFO("created createPersistentStoreRemoteStoreObject");
-        }
-
-        if (Core::ERROR_NONE != createPackageManagerObject())
-        {
-            LOGERR("Failed to create createPackageManagerObject");
-        }
-        else
-        {
-            LOGINFO("created createPackageManagerObject");
-        }
-
-        if (Core::ERROR_NONE != createStorageManagerRemoteObject())
-        {
-            LOGERR("Failed to create createStorageManagerRemoteObject");
-        }
-        else
-        {
-            LOGINFO("created createStorageManagerRemoteObject");
-        }
-        RDKAM_TELEMETRY_INIT(service);
-        sRunning = true;
-        /* Create the worker thread */
-        try
-        {
-            mAppManagerWorkerThread = std::thread(&AppManagerImplementation::AppManagerWorkerThread, AppManagerImplementation::getInstance());
-            LOGINFO("App Manager Worker thread created");
-            result = Core::ERROR_NONE;
-        }
-        catch (const std::system_error& e)
-        {
-            LOGERR("Failed to create App Manager worker thread: %s", e.what());
-        }
+        LOGERR("Failed to create LifecycleInterfaceConnector");
+    }
+    else if (Core::ERROR_NONE != mLifecycleInterfaceConnector->createLifecycleManagerRemoteObject())
+    {
+        LOGERR("Failed to create LifecycleInterfaceConnector");
     }
     else
     {
-        LOGERR("service is null \n");
+        LOGINFO("created LifecycleManagerRemoteObject");
+    }
+
+    if (Core::ERROR_NONE != createPersistentStoreRemoteStoreObject())
+    {
+        LOGERR("Failed to create createPersistentStoreRemoteStoreObject");
+    }
+    else
+    {
+        LOGINFO("created createPersistentStoreRemoteStoreObject");
+    }
+
+    if (Core::ERROR_NONE != createPackageManagerObject())
+    {
+        LOGERR("Failed to create createPackageManagerObject");
+    }
+    else
+    {
+        LOGINFO("created createPackageManagerObject");
+    }
+
+    if (Core::ERROR_NONE != createStorageManagerRemoteObject())
+    {
+        LOGERR("Failed to create createStorageManagerRemoteObject");
+    }
+    else
+    {
+        LOGINFO("created createStorageManagerRemoteObject");
+    }
+    RDKAM_TELEMETRY_INIT(service);
+    sRunning = true;
+    /* Create the worker thread */
+    try
+    {
+        mAppManagerWorkerThread = std::thread(&AppManagerImplementation::AppManagerWorkerThread, AppManagerImplementation::getInstance());
+        LOGINFO("App Manager Worker thread created");
+        result = Core::ERROR_NONE;
+    }
+    catch (const std::system_error& e)
+    {
+        LOGERR("Failed to create App Manager worker thread: %s", e.what());
     }
 
     return result;
