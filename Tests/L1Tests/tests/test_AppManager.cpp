@@ -211,6 +211,11 @@ protected:
     {
         TEST_LOG("In releaseResources!");
 
+        if (mAppManagerImpl != nullptr)
+        {
+            mAppManagerImpl->StopWorkerThread();
+        }
+
         if (mLifecycleManagerStateMock != nullptr && mLifecycleManagerStateNotification_cb != nullptr)
         {
             ON_CALL(*mLifecycleManagerStateMock, Unregister(::testing::_))

@@ -208,7 +208,10 @@ jobs:
           repository: rdkcentral/entservices-apis
           path: entservices-apis
           ref: ${{env.INTERFACES_REF}}
-          run: rm -rf $GITHUB_WORKSPACE/entservices-apis/jsonrpc/DTV.json
+
+      - name: Remove entservices-apis DTV json
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: rm -rf $GITHUB_WORKSPACE/entservices-apis/jsonrpc/DTV.json
 
       - name: Apply patches entservices-apis
         run: |
@@ -360,6 +363,7 @@ jobs:
           -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/gdialservice.h
           -include $GITHUB_WORKSPACE/entservices-appmanagers/Tests/mocks/RdkWindowManager.h
           --coverage
+          -fno-omit-frame-pointer
           -Wall -Wno-unused-result -Wno-deprecated-declarations -Wno-error=format=
           -Wl,-wrap,system -Wl,-wrap,popen -Wl,-wrap,syslog -Wl,-wrap,v_secure_system -Wl,-wrap,v_secure_popen -Wl,-wrap,v_secure_pclose -Wl,-wrap,unlink
           -DUSE_IARMBUS

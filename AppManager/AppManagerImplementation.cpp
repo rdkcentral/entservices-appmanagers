@@ -1609,6 +1609,17 @@ void AppManagerImplementation::getCustomValues(WPEFramework::Exchange::RuntimeCo
         }
 }
 
+void AppManagerImplementation::StopWorkerThread()
+{
+    sRunning = false;
+    mAppRequestListCV.notify_all();
+    if (mAppManagerWorkerThread.joinable())
+    {
+        mAppManagerWorkerThread.join();
+        LOGINFO("AppManagerWorkerThread stopped and joined by StopWorkerThread");
+    }
+}
+
 void AppManagerImplementation::updateCurrentAction(const std::string& appId, CurrentAction action)
 {
     bool found = AppInfoManager::getInstance().update(appId, [&](AppInfo& a) {
