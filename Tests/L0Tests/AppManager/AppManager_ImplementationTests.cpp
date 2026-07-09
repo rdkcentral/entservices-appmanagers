@@ -167,14 +167,12 @@ uint32_t Test_AM_RegisterAndUnregisterNotification()
     return tr.failures;
 }
 
-uint32_t Test_AM_ConfigureWithNullServiceDeconfigures()
+uint32_t Test_AM_ConfigureWithNullServiceFails()
 {
-    // Configure(nullptr) is the deconfigure path called by AppManager::Deinitialize().
-    // It must succeed (ERROR_NONE) even when called before any prior Configure(service).
     AppManagerTestFixture fixture(false);  // Don't auto-configure, we're testing Configure() itself
 
     const auto result = fixture.impl->Configure(nullptr);
-    L0Test::ExpectEqU32(fixture.tr, result, WPEFramework::Core::ERROR_NONE, "Configure(nullptr) returns ERROR_NONE (valid deconfigure)");
+    L0Test::ExpectEqU32(fixture.tr, result, WPEFramework::Core::ERROR_GENERAL, "Configure(nullptr) returns ERROR_GENERAL");
 
     return fixture.tr.failures;  // Destructor will configure for safe cleanup
 }
@@ -196,6 +194,32 @@ uint32_t Test_AM_ConfigureWithValidServiceReturnsSuccess()
     // Release impl while service is still alive (before service goes out of scope)
     impl->Release();
     
+    return tr.failures;
+}
+
+uint32_t Test_AM_ConfigureDeconfigureSucceeds()
+{
+    L0Test::TestResult tr;
+
+    // Service must outlive the impl – declare before impl so it is destroyed after.
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    auto* impl = CreateImpl();
+
+    // Step 1: normal configure with a valid service
+    impl->Configure(&service);
+
+    // Step 2: deconfigure – must succeed because mCurrentservice is now non-null
+    const auto result = impl->Configure(nullptr);
+    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+        "Configure(nullptr) returns ERROR_NONE after a prior Configure(service)");
+
+    // Step 3: second deconfigure – mCurrentservice is null, guard must fire
+    const auto result2 = impl->Configure(nullptr);
+    L0Test::ExpectEqU32(tr, result2, WPEFramework::Core::ERROR_GENERAL,
+        "Second Configure(nullptr) returns ERROR_GENERAL when already deconfigured");
+
+    // Release while service is still alive; destructor releases the remaining remote objects.
+    impl->Release();
     return tr.failures;
 }
 
