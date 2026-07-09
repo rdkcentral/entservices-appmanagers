@@ -800,8 +800,8 @@ namespace WPEFramework
                                 /* Insert/update runtime app info */
                                 {
                                     Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
-                                    std::string appinstanceIdkey = runtimeAppInfo.appInstanceId;
-                                    mRuntimeAppInfo[appinstanceIdkey] = std::move(runtimeAppInfo);
+                                    const std::string appInstanceIdkey = runtimeAppInfo.appInstanceId;
+                                    mRuntimeAppInfo[appInstanceIdkey] = std::move(runtimeAppInfo);
                                 }
                         }
                     }
