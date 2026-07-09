@@ -347,8 +347,18 @@ protected:
         package_1.digest = APPMANAGER_APP_DIGEST;
         package_1.state = APPMANAGER_APP_STATE;
         package_1.sizeKb = APPMANAGER_APP_SIZE;
+        package_1.isRuntime = false;
+
+        Exchange::IPackageInstaller::Package package_2;
+        package_2.packageId = "com.test.runtimeEngine";
+        package_2.version = APPMANAGER_APP_VERSION;
+        package_2.digest = APPMANAGER_APP_DIGEST;
+        package_2.state = APPMANAGER_APP_STATE;
+        package_2.sizeKb = APPMANAGER_APP_SIZE;
+        package_2.isRuntime = true;
 
         packageList.emplace_back(package_1);
+        packageList.emplace_back(package_2);
         return Core::Service<RPC::IteratorType<Exchange::IPackageInstaller::IPackageIterator>>::Create<Exchange::IPackageInstaller::IPackageIterator>(packageList);
     }
 

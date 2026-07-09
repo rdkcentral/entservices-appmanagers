@@ -582,8 +582,16 @@ namespace Plugin {
             Exchange::IPackageInstaller::Package package;
             package.packageId = key.first.c_str();
             package.version = key.second.c_str();
+            package.digest = state.digest.c_str();
             package.state = state.installState;
             package.sizeKb = state.runtimeConfig.dataImageSize;
+            package.isRuntime = false;
+            for (const auto& entry : runtimeMap) {
+                 if (entry.second == key) {
+                    package.isRuntime = true;
+                    break;
+                }
+            }
             packageList.emplace_back(package);
         }
 
@@ -1048,6 +1056,7 @@ namespace Plugin {
             auto config = it->second;
             State state;
             getRuntimeConfig(config, state.runtimeConfig);
+            state.digest = config.md5Hash;
             state.installState = InstallState::INSTALLED;
             state.runtimeType = config.runtimeType;
             std::map<std::string, std::pair<std::string, std::string>>::iterator it2 = runtimeMap.find(state.runtimeType);
@@ -1186,6 +1195,7 @@ namespace Plugin {
 
                 // Populate state from returned config (mirrors InitializeState())
                 getRuntimeConfig(config, state.runtimeConfig);
+                state.digest = config.md5Hash;
                 state.runtimeType = config.runtimeType;
                 std::map<std::string, std::pair<std::string, std::string>>::iterator itRuntime = runtimeMap.find(state.runtimeType);
                 if (itRuntime != runtimeMap.end()) {
