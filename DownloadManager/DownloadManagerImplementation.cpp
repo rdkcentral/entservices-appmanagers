@@ -160,7 +160,6 @@ namespace Plugin {
             mDownloaderRunFlag = false;
         }
         mDownloadThreadCV.notify_one();
-       
         if (mDownloadThreadPtr && mDownloadThreadPtr->joinable())
         {
             mDownloadThreadPtr->join();
