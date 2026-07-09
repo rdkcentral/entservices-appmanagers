@@ -167,12 +167,14 @@ uint32_t Test_AM_RegisterAndUnregisterNotification()
     return tr.failures;
 }
 
-uint32_t Test_AM_ConfigureWithNullServiceFails()
+uint32_t Test_AM_ConfigureWithNullServiceDeconfigures()
 {
+    // Configure(nullptr) is the deconfigure path called by AppManager::Deinitialize().
+    // It must succeed (ERROR_NONE) even when called before any prior Configure(service).
     AppManagerTestFixture fixture(false);  // Don't auto-configure, we're testing Configure() itself
 
     const auto result = fixture.impl->Configure(nullptr);
-    L0Test::ExpectEqU32(fixture.tr, result, WPEFramework::Core::ERROR_GENERAL, "Configure(nullptr) returns ERROR_GENERAL");
+    L0Test::ExpectEqU32(fixture.tr, result, WPEFramework::Core::ERROR_NONE, "Configure(nullptr) returns ERROR_NONE (valid deconfigure)");
 
     return fixture.tr.failures;  // Destructor will configure for safe cleanup
 }

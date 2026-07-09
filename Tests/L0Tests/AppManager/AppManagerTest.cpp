@@ -26,7 +26,7 @@
 extern uint32_t Test_AM_InitializeSucceedsAndDeinitializeCleansUp();
 extern uint32_t Test_AM_InformationReturnsEmptyString();
 extern uint32_t Test_AM_RegisterAndUnregisterNotification();
-extern uint32_t Test_AM_ConfigureWithNullServiceFails();
+extern uint32_t Test_AM_ConfigureWithNullServiceDeconfigures();
 extern uint32_t Test_AM_ConfigureWithValidServiceReturnsSuccess();
 extern uint32_t Test_AM_LaunchAppEmptyIdRejected();
 extern uint32_t Test_AM_PreloadAppEmptyIdRejected();
@@ -219,7 +219,7 @@ int main()
         { "AM_InitializeSucceedsAndDeinitializeCleansUp", Test_AM_InitializeSucceedsAndDeinitializeCleansUp },
         { "AM_InformationReturnsEmptyString", Test_AM_InformationReturnsEmptyString },
         { "AM_RegisterAndUnregisterNotification", Test_AM_RegisterAndUnregisterNotification },
-        { "AM_ConfigureWithNullServiceFails", Test_AM_ConfigureWithNullServiceFails },
+        { "AM_ConfigureWithNullServiceDeconfigures", Test_AM_ConfigureWithNullServiceDeconfigures },
         { "AM_ConfigureWithValidServiceReturnsSuccess", Test_AM_ConfigureWithValidServiceReturnsSuccess },
         { "AM_LaunchAppEmptyIdRejected", Test_AM_LaunchAppEmptyIdRejected },
         { "AM_PreloadAppEmptyIdRejected", Test_AM_PreloadAppEmptyIdRejected },
