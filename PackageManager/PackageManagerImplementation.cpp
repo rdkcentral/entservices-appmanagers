@@ -583,6 +583,13 @@ namespace Plugin {
             package.digest = state.digest.c_str();
             package.state = state.installState;
             package.sizeKb = state.runtimeConfig.dataImageSize;
+            package.isRuntime = false;
+            for (const auto& entry : runtimeMap) {
+                 if (entry.second == key) {
+                    package.isRuntime = true;
+                    break;
+                }
+            }
             packageList.emplace_back(package);
         }
 
