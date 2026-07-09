@@ -167,6 +167,15 @@ namespace WPEFramework
             if (!mRuntimeAppPortal.empty() && appIdFromContainer.find(mRuntimeAppPortal) == 0) // TODO improve logic of fetching appInstanceId
             {
                 appIdFromContainer.erase(0, mRuntimeAppPortal.length());
+                if (!appIdFromContainer.empty() && appIdFromContainer[0] == '_')
+                {
+                    appIdFromContainer.erase(0, 1);
+                    auto separatorPos = appIdFromContainer.find('_');
+                    if (separatorPos != std::string::npos)
+                    {
+                        appIdFromContainer = appIdFromContainer.substr(separatorPos + 1);
+                    }
+                }
             }
             string appInstanceId = std::move(appIdFromContainer);
             string eventName = obj["eventName"].String();
@@ -531,10 +540,17 @@ namespace WPEFramework
         std::string RuntimeManagerImplementation::getContainerId(const string &appInstanceId)
         {
             string containerId = "";
+            string appId = "";
+            auto infoIt = mRuntimeAppInfo.find(appInstanceId);
 
-            if (!appInstanceId.empty())
+            if (infoIt != mRuntimeAppInfo.end())
             {
-                containerId = mRuntimeAppPortal + appInstanceId;
+                appId = infoIt->second.appId;
+            }
+
+            if (!appInstanceId.empty() && !appId.empty())
+            {
+                containerId = mRuntimeAppPortal + "_" + appId + "_" + appInstanceId;
             }
             return containerId;
         }
@@ -556,6 +572,7 @@ namespace WPEFramework
             bool displayResult = false;
             bool notifyParamCheckFailure = false;
             std::string errorCode = "";
+            std::string containerId = "";
 
             /* Get current timestamp at the start of run for telemetry */
             time_t requestTime = getCurrentTimestamp();
@@ -731,7 +748,10 @@ namespace WPEFramework
             {
                 /* Scoped Lock 1: Validate OCI plugin pointer — brief read lock */
                 bool ociValid = false;
-                string containerId = getContainerId(appInstanceId);
+                if (!appInstanceId.empty() && !appId.empty())
+                {
+                    containerId = mRuntimeAppPortal + "_" + appId + "_" + appInstanceId;
+                }
                 {
                     Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
                     ociValid = isOCIPluginObjectValid();
@@ -1321,7 +1341,10 @@ namespace WPEFramework
         void RuntimeManagerImplementation::notifyParameterCheckFailure(const string &appInstanceId, const string &errorCode)
         {
             JsonObject data;
-            data["containerId"] = getContainerId(appInstanceId);
+	     {
+                Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
+                data["containerId"] = getContainerId(appInstanceId);
+            }
             data["errorCode"] = errorCode;
             data["eventName"] = "onParameterCheckFailed";
             dispatchEvent(RuntimeManagerImplementation::RuntimeEventType::RUNTIME_MANAGER_EVENT_CONTAINERFAILED, data);
