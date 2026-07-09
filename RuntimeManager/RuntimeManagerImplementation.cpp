@@ -207,6 +207,28 @@ namespace WPEFramework
                     (*index)->OnStarted(appInstanceId);
                     ++index;
                 }
+                /* After OnStarted event: annotate minidump_prefix with appId for minidump file renaming */
+                {
+                    auto infoIt = mRuntimeAppInfo.find(appInstanceId);
+                    if (infoIt != mRuntimeAppInfo.end() && !infoIt->second.appId.empty())
+                    {
+                        string containerId = getContainerId(appInstanceId);
+                        if (!containerId.empty() && mOciContainerObject != nullptr)
+                        {
+                            bool annotateSuccess = false;
+                            string annotateError = "";
+                            Core::hresult annotateStatus = mOciContainerObject->Annotate(containerId, "minidump_prefix", infoIt->second.appId, annotateSuccess, annotateError);
+                            if (!annotateSuccess || annotateStatus != Core::ERROR_NONE)
+                            {
+                                LOGERR("Failed to annotate minidump_prefix for appInstanceId[%s]: %s", appInstanceId.c_str(), annotateError.c_str());
+                            }
+                            else
+                            {
+                                LOGINFO("Annotated minidump_prefix[%s] for appInstanceId[%s]", infoIt->second.appId.c_str(), appInstanceId.c_str());
+                            }
+                        }
+                    }
+                }
                 break;
             }
 
@@ -1353,4 +1375,5 @@ namespace WPEFramework
         }
     } /* namespace Plugin */
 } /* namespace WPEFramework */
+
 
