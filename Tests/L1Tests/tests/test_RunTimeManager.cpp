@@ -921,6 +921,62 @@ TEST_F(RuntimeManagerTest, RunCreateFkpsMounts)
     releaseResources();
 }
 
+/* Test Case for RunCreateExtraMountsFromCapabilities
+ *
+ * Creates a source file and injects extraMounts capability in runtime config
+ * Verifies that generated Dobby spec contains expected bind-mount source and destination
+ * Ensures Run() completes successfully when extra mount source exists
+ */
+TEST_F(RuntimeManagerTest, RunCreateExtraMountsFromCapabilities)
+{
+    string appInstanceId("youTube");
+    std::vector<uint32_t> portList = {10, 20};
+    std::vector<std::string> pathsList = {"/tmp", "/opt"};
+    std::vector<std::string> debugSettingsList = {"MIL", "INFO"};
+
+    auto portsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IValueIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IValueIterator>(portList);
+    auto pathsListIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(pathsList);
+    auto debugSettingsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
+
+    const std::string extraMountSource = "/tmp/l1-extra-mount-source.json";
+    const std::string extraMountDestination = "/tmp/l1-extra-mount-destination.json";
+    {
+        std::ofstream mountSourceFile(extraMountSource);
+        ASSERT_TRUE(mountSourceFile.is_open()) << "Failed to create extra mount source file";
+        mountSourceFile << "{}";
+    }
+
+    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
+    runtimeConfig.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=main";
+    runtimeConfig.appPath = "/var/runTimeManager";
+    runtimeConfig.runtimePath = "/tmp/runTimeManager";
+    runtimeConfig.systemMemoryLimit = 512;
+    runtimeConfig.command ="SkyBrowserLauncher";
+    runtimeConfig.capabilities = "dial-app,extraMounts=" + extraMountSource + ":" + extraMountDestination;
+
+    EXPECT_EQ(true, createResources());
+
+    EXPECT_CALL(*mociContainerMock, StartContainerFromDobbySpec(TEST_APP_CONTAINER_ID, ::testing::_, "", "/run/user/1001/wst-youTube", ::testing::_, ::testing::_, ::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillOnce(::testing::Invoke(
+            [&](const string&, const string& spec, const string&, const string&, int32_t& descriptor, bool& success, string& errorReason) {
+                EXPECT_NE(std::string::npos, spec.find(extraMountSource));
+                EXPECT_NE(std::string::npos, spec.find(extraMountDestination));
+                descriptor = 100;
+                success = true;
+                errorReason = "No Error";
+                return WPEFramework::Core::ERROR_NONE;
+          }));
+
+    ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+            .WillByDefault(::testing::Return(Core::ERROR_NONE));
+
+    EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, runtimeConfig));
+
+    releaseResources();
+    EXPECT_EQ(0, remove(extraMountSource.c_str()));
+}
+
 /* Test Case for RunReadfromAIConfigFile
  *
  * Creates a mock config.ini with various runtime parameters in /opt/demo

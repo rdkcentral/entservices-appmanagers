@@ -14,9 +14,9 @@ on:
 env:
   BUILD_TYPE: Debug
   THUNDER_REF: "R4.4.1"
-  INTERFACES_REF: "89e11c6494ffe683df44939f193f28293d36b18e"
+  INTERFACES_REF: "topic/RDKEMW-19574"
   AUTOMATICS_UNAME: ${{ secrets.AUTOMATICS_UNAME}}
-  AUTOMATICS_PASSCODE: ${{ secrets. AUTOMATICS_PASSCODE}}
+  AUTOMATICS_PASSCODE: ${{ secrets.AUTOMATICS_PASSCODE}}
 
 jobs:
   L1-tests:
@@ -393,7 +393,7 @@ jobs:
           -DPLUGIN_DOWNLOADMANAGER=ON
           -DPLUGIN_PREINSTALL_MANAGER=ON
           -DPLUGIN_RDK_WINDOW_MANAGER=ON
-          -DPLUGIN_PACKAGE_MANAGER=OFF
+          -DPLUGIN_PACKAGE_MANAGER=ON
           -DENABLE_UNIT_TESTS=ON
           &&
           cmake --build build/entservices-appmanagers -j8
