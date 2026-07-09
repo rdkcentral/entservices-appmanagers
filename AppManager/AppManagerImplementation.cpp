@@ -398,12 +398,14 @@ void AppManagerImplementation::Dispatch(EventNames event, const JsonObject param
                 mAdminLock.Lock();
                 Core::hresult unlockStatus = packageUnLock(appId);
                 LOGINFO("package unlock triggered while sending unloaded event for appId %s status %d", appId.c_str(), unlockStatus);
+                // Remove AppInfo before notifying observers so that any callback that
+                // immediately queries AppInfoManager sees a consistent "unloaded" state.
+                removeAppInfoByAppId(appId);
                 for (auto& notification : mAppManagerNotification)
                 {
                     notification->OnAppUnloaded(appId, appInstanceId);
                 }
                 mAdminLock.Unlock();
-                removeAppInfoByAppId(appId);
             }
             break;
         }
