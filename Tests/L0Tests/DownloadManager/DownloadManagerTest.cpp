@@ -99,6 +99,8 @@ extern uint32_t Test_Impl_PickDownloadJobRegularQueueUsed();
 extern uint32_t Test_Impl_NotifyStatusIncludesFailReason();
 extern uint32_t Test_Impl_CancelWithActiveDownloadMatchId();
 extern uint32_t Test_Impl_DownloaderRoutinePriorityQueuePath();
+extern uint32_t Test_Impl_DeinitializeNotifyOneAfterLockRelease();
+extern uint32_t Test_Impl_WaitForPredicateWakesOnQueuedDownload();
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DownloadManager_HttpClientTests.cpp  (HttpClient tests)
@@ -229,6 +231,10 @@ int main()
     RUN_TEST(Test_Impl_CancelWithActiveDownloadMatchId);
     RUN_TEST(Test_Impl_DownloaderRoutinePriorityQueuePath);
     RUN_TEST(Test_Impl_ProgressEmptyIdReturnsError);
+
+    std::cout << "\n-- Coverity fixes: lock + wait_for predicate --" << std::endl;
+    RUN_TEST(Test_Impl_DeinitializeNotifyOneAfterLockRelease);
+    RUN_TEST(Test_Impl_WaitForPredicateWakesOnQueuedDownload);
 
     // ── HTTP client tests (DownloadManagerHttpClient.cpp / .h) ──────────────
     std::cout << "\n-- HttpClient --" << std::endl;

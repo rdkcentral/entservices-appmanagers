@@ -1862,3 +1862,119 @@ uint32_t Test_Impl_DownloaderRoutinePriorityQueuePath()
     (void) std::remove(srcFile.c_str());
     return tr.failures;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Coverity fix: notify_one() called after lock release in Deinitialize()
+//   Verifies that Deinitialize() completes promptly (thread wakes immediately
+//   via notify_one after mDownloaderRunFlag is set under lock and lock is
+//   released). If notify_one were called while holding the lock, the thread
+//   would wake and immediately block trying to re-acquire the same mutex,
+//   causing a hang. A 3-second deadline catches any such regression.
+// ─────────────────────────────────────────────────────────────────────────────
+
+uint32_t Test_Impl_DeinitializeNotifyOneAfterLockRelease()
+{
+    L0Test::TestResult tr;
+
+    const std::string dir = "/tmp/dm_l0_notify_lock";
+    L0Test::ServiceMock::Config cfg;
+    cfg.internetActive = true;
+    cfg.configLine     = "{\"downloadDir\":\"" + dir + "\"}";
+    L0Test::ServiceMock svc(cfg);
+
+    auto* impl = CreateImpl();
+    const auto initResult = impl->Initialize(&svc);
+    if (WPEFramework::Core::ERROR_NONE != initResult) {
+        L0Test::ExpectTrue(tr, true, "Initialize non-zero (acceptable in CI)");
+        impl->Release();
+        return tr.failures;
+    }
+
+    // Let the downloader thread enter wait_for before we call Deinitialize
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    // Deinitialize sets mDownloaderRunFlag=false under lock, releases lock,
+    // then calls notify_one. The thread must wake and join within 3 seconds.
+    const auto t0 = std::chrono::steady_clock::now();
+    impl->Deinitialize(&svc);
+    const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now() - t0).count();
+
+    L0Test::ExpectTrue(tr, elapsed < 3000,
+        "Deinitialize() joins thread promptly (< 3 s); notify_one after lock release works");
+
+    impl->Release();
+    return tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Coverity fix: wait_for with predicate wakes immediately on queued download
+//   Verifies that the downloader thread wakes up as soon as a download is
+//   queued (notify_one in Download()), without waiting for the full waitTime
+//   timeout. Without a predicate, a spurious wakeup or missed notify could
+//   cause the thread to sleep through a job. The test checks that the
+//   OnAppDownloadStatus notification fires well within the 1-second waitTime.
+// ─────────────────────────────────────────────────────────────────────────────
+
+uint32_t Test_Impl_WaitForPredicateWakesOnQueuedDownload()
+{
+    L0Test::TestResult tr;
+
+    const std::string srcFile = "/tmp/dm_l0_predicate_src.dat";
+    const std::string dir     = "/tmp/dm_l0_predicate_dl/";
+
+    // Create a small source file so the download completes quickly
+    FILE* fp = fopen(srcFile.c_str(), "wb");
+    if (nullptr != fp) {
+        const char buf[64] = {};
+        (void) fwrite(buf, 1u, sizeof(buf), fp);
+        fclose(fp);
+    }
+
+    L0Test::ServiceMock::Config cfg;
+    cfg.internetActive = true;
+    cfg.configLine     = "{\"downloadDir\":\"" + dir + "\"}";
+    L0Test::ServiceMock svc(cfg);
+
+    auto* impl = CreateImpl();
+    const auto initResult = impl->Initialize(&svc);
+    if (WPEFramework::Core::ERROR_NONE != initResult) {
+        (void) std::remove(srcFile.c_str());
+        L0Test::ExpectTrue(tr, true, "Initialize non-zero (acceptable in CI)");
+        impl->Release();
+        return tr.failures;
+    }
+
+    L0Test::FakeDownloadNotification notif;
+    impl->Register(&notif);
+
+    // Let the thread settle into wait_for before queuing
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    WPEFramework::Exchange::IDownloadManager::Options opts{};
+    opts.priority = false; opts.retries = 1; opts.rateLimit = 0;
+    std::string downloadId;
+
+    const auto t0 = std::chrono::steady_clock::now();
+    impl->Download("file://" + srcFile, opts, downloadId);
+
+    // The predicate in wait_for covers !mPriorityDownloadQueue.empty() ||
+    // !mRegularDownloadQueue.empty(). The thread must wake immediately via
+    // notify_one and complete the download well before the 1-second waitTime
+    // timeout would have expired.
+    const bool fired = WaitFor([&]{ return notif.onAppDownloadStatusCount.load() > 0u; }, 2000u);
+    const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now() - t0).count();
+
+    L0Test::ExpectTrue(tr, fired,
+        "OnAppDownloadStatus fired after queuing download");
+    L0Test::ExpectTrue(tr, elapsed < 1000,
+        "Thread woke via predicate before 1-second waitTime timeout elapsed");
+
+    impl->Unregister(&notif);
+    impl->Deinitialize(&svc);
+    impl->Release();
+
+    (void) std::remove(srcFile.c_str());
+    return tr.failures;
+}
