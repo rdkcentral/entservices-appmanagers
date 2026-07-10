@@ -55,6 +55,18 @@ namespace WPEFramework
            return false;
         }
     }
+    // Returns the actual socket path that Rialto created for this app session.
+    // Equivalent to appsserviced's RialtoServerManagerClient::getSocketPath()
+    // which calls mService.getAppConnectionInfo(appId).
+    std::string RialtoConnector::getSocketPath(const std::string &callsign)
+    {
+        if (mServerManagerService)
+        {
+            return mServerManagerService->getAppConnectionInfo(callsign);
+        }
+        LOGERR("getSocketPath: RialtoServerManager service not initialized");
+        return {};
+    }
     bool RialtoConnector::resumeSession(const std::string &callsign)
     {
         if (RialtoServerStates::INACTIVE == getCurrentAppState(callsign))

@@ -42,9 +42,12 @@ namespace WPEFramework
         void initialize();
         bool waitForStateChange(const std::string &appid, const RialtoServerStates &state, int timeoutMillis);
         bool createAppSession(const std::string &callsign, const std::string &displayName, const std::string &appId);
+        // Returns the socket path Rialto assigned for the app after a successful createAppSession.
+        // Mirrors appsserviced's RialtoServerManagerClient::getSocketPath() -> getAppConnectionInfo().
+        std::string getSocketPath(const std::string &callsign);
         bool resumeSession(const std::string &callsign);
         bool suspendSession(const std::string &callsign);
- 
+
         bool deactivateSession(const std::string &callsign);
         void stateChanged(const std::string &appId, const RialtoServerStates &state) override;
 

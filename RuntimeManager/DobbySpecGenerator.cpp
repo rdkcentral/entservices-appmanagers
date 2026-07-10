@@ -366,19 +366,15 @@ Json::Value DobbySpecGenerator::createEnvVars(const ApplicationConfiguration& co
        env.append(std::string("DIAL_USN=") + mAIConfiguration->getDialUsn());
    }
 
-   //TODO SUPPORT RIALTO
-   //TODO SUPPORT rialto in runtime config
-   //if (rialtoSMClient && appPackage->hasCapability(IPackage::Capability::RequiresRialto))
-   if (false)
+#ifdef RIALTO_ENABLED
+   if (!config.mRialtoSocketPath.empty())
    {
-       //const std::string rialtoSocketPath = rialtoSMClient->getSocketPath();
-       //if (!rialtoSocketPath.empty())
-       //{
-       //    // Pass Rialto socket name used by RialtoClient to communicate with RialtoSessionServer
-       //    env.append(std::string("RIALTO_SOCKET_PATH=") + rialtoSocketPath);
-       //}
+       // Pass the Rialto socket path to the container so the app's Rialto client can connect to RialtoServer
+       env.append(std::string("RIALTO_SOCKET_PATH=") + config.mRialtoSocketPath);
    }
-   else if (!mGstRegistrySourcePath.empty())
+   else
+#endif // RIALTO_ENABLED
+   if (!mGstRegistrySourcePath.empty())
    {
        env.append("GST_REGISTRY=" + mGstRegistryDestinationPath);
        env.append("GST_REGISTRY_UPDATE=no");
@@ -428,7 +424,15 @@ Json::Value DobbySpecGenerator::createMounts(const ApplicationConfiguration& con
         }
     }
 
-    //TODO SUPPORT Handle rialto
+#ifdef RIALTO_ENABLED
+    if (!config.mRialtoSocketPath.empty())
+    {
+        // Bind mount the Rialto socket into the container so the app can connect to its RialtoServer instance
+        mounts.append(createBindMount(config.mRialtoSocketPath, config.mRialtoSocketPath,
+                                      MS_BIND | MS_NOSUID | MS_NODEV));
+    }
+#endif // RIALTO_ENABLED
+
     //TODO SUPPORT Netflix specific mounts
     //TODO SUPPORT SVP file mounts
     //TODO SUPPORT Platform specific mounts
@@ -437,14 +441,6 @@ Json::Value DobbySpecGenerator::createMounts(const ApplicationConfiguration& con
     //TODO SUPPORT EPG specific migration data store mount
     //TODO SUPPORT USB Mass storage
     //TODO SUPPORT PerfettoSocketPath not mounted
-    /*
-    if (usingRialto)
-    {
-        Json::Value rialtoMount = createRialtoMount(appPackage, rialtoSMClient);
-        if (!rialtoMount.isNull())
-            mountsArray.append(std::move(rialtoMount));
-    }
-    */
     if (!mGstRegistrySourcePath.empty())
     {
         mounts.append(createBindMount(mGstRegistrySourcePath,
@@ -620,13 +616,13 @@ ssize_t DobbySpecGenerator::getGPUMemoryLimit(const ApplicationConfiguration& co
 
 bool DobbySpecGenerator::getVpuEnabled(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const
 {
-    // TODO SUPPORT RIALTO
-    /*
-    if (rialToEnabled)
-    {
+#ifdef RIALTO_ENABLED
+    // When Rialto is enabled the app container must not have direct VPU access —
+    // RialtoServer holds the decoder resource on behalf of the app.
+    if (!config.mRialtoSocketPath.empty())
         return false;
-    }
-    */
+#endif // RIALTO_ENABLED
+
     if (runtimeConfig.appType.compare("SYSTEM") == 0)
     {
         return false;

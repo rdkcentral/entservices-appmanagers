@@ -49,11 +49,11 @@ namespace WPEFramework
             {
                 RuntimeManagerImplementation::_instance = this;
             }
-#ifdef RIALTO_IN_DAC_FEATURE_ENABLED
+#ifdef RIALTO_ENABLED
             LOGWARN("Creating rialto connector");
             RialtoConnector *rialtoBridge = new RialtoConnector();
             mRialtoConnector = std::shared_ptr<RialtoConnector>(rialtoBridge);
-#endif // RIALTO_IN_DAC_FEATURE_ENABLED
+#endif // RIALTO_ENABLED
         }
 
         RuntimeManagerImplementation *RuntimeManagerImplementation::getInstance()
@@ -682,7 +682,7 @@ namespace WPEFramework
 
             // To indicate containers used by Widget
             bool legacyContainer = true;
-#ifdef RIALTO_IN_DAC_FEATURE_ENABLED
+#ifdef RIALTO_ENABLED
             {
                 legacyContainer = false;
                 mRialtoConnector->initialize();
@@ -700,6 +700,22 @@ namespace WPEFramework
                         LOGWARN(" Rialto app session not ready. ");
                         status = Core::ERROR_GENERAL;
                     }
+                    else
+                    {
+                        // Retrieve the socket path assigned by Rialto — mirrors appsserviced's
+                        // RialtoServerManagerClient::getSocketPath() -> getAppConnectionInfo().
+                        const std::string rialtoSocketPath = mRialtoConnector->getSocketPath(appId);
+                        if (!rialtoSocketPath.empty())
+                        {
+                            config.mRialtoSocketPath = rialtoSocketPath;
+                            LOGINFO("Rialto socket path for %s: %s", appId.c_str(), rialtoSocketPath.c_str());
+                        }
+                        else
+                        {
+                            LOGWARN("Rialto socket path empty for %s, falling back to /tmp/%s", appId.c_str(), rialtoSocket.c_str());
+                            config.mRialtoSocketPath = "/tmp/" + rialtoSocket;
+                        }
+                    }
                 }
                 else
                 {
@@ -707,7 +723,7 @@ namespace WPEFramework
                     status = Core::ERROR_GENERAL;
                 }
             }
-#endif // RIALTO_IN_DAC_FEATURE_ENABLED
+#endif // RIALTO_ENABLED
             LOGINFO("legacyContainer: %s", legacyContainer ? "true" : "false");
             if (xdgRuntimeDir.empty() || waylandDisplay.empty() || !displayResult)
             {
@@ -777,6 +793,10 @@ namespace WPEFramework
                             {
                                 status = Core::ERROR_GENERAL;
                             }
+                        }
+                        else if (status != Core::ERROR_NONE)
+                        {
+                            LOGERR("Failed to Run Container %s", errorReason.c_str());
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
                             {
                                 ralf::RalfPackageBuilder ralfBuilder;
@@ -956,6 +976,13 @@ namespace WPEFramework
                         {
                             appId = mRuntimeAppInfo[appInstanceId].appId;
                         }
+#ifdef RIALTO_ENABLED
+                        if (!appId.empty())
+                        {
+                            LOGINFO("Rialto session suspend for %s", appId.c_str());
+                            mRialtoConnector->suspendSession(appId);
+                        }
+#endif // RIALTO_ENABLED
                     }
                 }
                 else
@@ -1002,6 +1029,13 @@ namespace WPEFramework
                         {
                             appId = mRuntimeAppInfo[appInstanceId].appId;
                         }
+#ifdef RIALTO_ENABLED
+                        if (!appId.empty())
+                        {
+                            LOGINFO("Rialto session resume for %s", appId.c_str());
+                            mRialtoConnector->resumeSession(appId);
+                        }
+#endif // RIALTO_ENABLED
                     }
                 }
                 else
@@ -1071,7 +1105,7 @@ namespace WPEFramework
                 {
                     LOGERR("appInstanceId is not found");
                 }
-#ifdef RIALTO_IN_DAC_FEATURE_ENABLED
+#ifdef RIALTO_ENABLED
             LOGINFO("Rialto session deactivate on terminate.");
             mRialtoConnector->deactivateSession(mRuntimeAppInfo[appInstanceId].appId);
             if (!mRialtoConnector->waitForStateChange(mRuntimeAppInfo[appInstanceId].appId, RialtoServerStates::NOT_RUNNING, RIALTO_TIMEOUT_MILLIS))
@@ -1079,7 +1113,7 @@ namespace WPEFramework
                 LOGERR("Rialto session state change failed when changing to not running.");
                 status = Core::ERROR_GENERAL;
             }
-#endif // RIALTO_IN_DAC_FEATURE_ENABLED
+#endif // RIALTO_ENABLED
             mRuntimeManagerImplLock.Unlock();
             return status;
         }
@@ -1136,7 +1170,7 @@ namespace WPEFramework
                 {
                     LOGERR("appInstanceId is not found");
                 }
-#ifdef RIALTO_IN_DAC_FEATURE_ENABLED
+#ifdef RIALTO_ENABLED
             LOGINFO("Rialto Session deactivate on kill..");
             mRialtoConnector->deactivateSession(mRuntimeAppInfo[appInstanceId].appId);
             if (!mRialtoConnector->waitForStateChange(mRuntimeAppInfo[appInstanceId].appId, RialtoServerStates::NOT_RUNNING, RIALTO_TIMEOUT_MILLIS))
@@ -1144,7 +1178,7 @@ namespace WPEFramework
                 LOGERR("Rialto session state change failed when changing to not running ");
                 status = Core::ERROR_GENERAL;
             }
-#endif // RIALTO_IN_DAC_FEATURE_ENABLED
+#endif // RIALTO_ENABLED
             mRuntimeManagerImplLock.Unlock();
             return status;
         }

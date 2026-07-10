@@ -55,6 +55,9 @@ namespace Plugin
         // westeros socket path that the containerized app should use to communicate with compositor
         std::string mWesterosSocketPath;
 
+        // rialto socket path for the app to connect to its RialtoServer instance (empty if not using Rialto)
+        std::string mRialtoSocketPath;
+
         // TODO what to do with it?
         std::vector<std::string> mDebugSettings;
 
