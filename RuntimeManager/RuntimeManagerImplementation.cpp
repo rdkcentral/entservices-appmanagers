@@ -161,11 +161,16 @@ namespace WPEFramework
 
             JsonObject obj = params.Object();
             string appIdFromContainer = obj["containerId"].String();
-            if (!mRuntimeAppPortal.empty() && appIdFromContainer.find(mRuntimeAppPortal) == 0) // TODO improve logic of fetching appInstanceId
+            string appInstanceId = "";
+
+            for (const auto& entry : mRuntimeAppInfo)
             {
-                appIdFromContainer.erase(0, mRuntimeAppPortal.length());
+                if (entry.second.containerId == appIdFromContainer)
+                {
+                    appInstanceId = entry.first;
+                    break;
+                }
             }
-            string appInstanceId = std::move(appIdFromContainer);
             string eventName = obj["eventName"].String();
             LOGINFO("Dispatching event[%s] for appInstanceId[%s]", eventName.c_str(), appInstanceId.c_str());
 
@@ -528,11 +533,15 @@ namespace WPEFramework
         std::string RuntimeManagerImplementation::getContainerId(const string &appInstanceId)
         {
             string containerId = "";
-
-            if (!appInstanceId.empty())
+	    if (!appInstanceId.empty())
             {
-                containerId = mRuntimeAppPortal + appInstanceId;
+                auto infoIt = mRuntimeAppInfo.find(appInstanceId);
+                if (infoIt != mRuntimeAppInfo.end())
+                {
+                    containerId = infoIt->second.containerId;
+                }
             }
+	    LOGINFO("getContainerId: appInstanceId=[%s] containerId=[%s]", appInstanceId.c_str(), containerId.c_str());
             return containerId;
         }
         Core::hresult RuntimeManagerImplementation::Run(const string &appId, const string &appInstanceId, const uint32_t userId, const uint32_t groupId, IValueIterator *const &ports, IStringIterator *const &paths, IStringIterator *const &debugSettings, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject)
@@ -728,7 +737,11 @@ namespace WPEFramework
             {
                 /* Scoped Lock 1: Validate OCI plugin pointer — brief read lock */
                 bool ociValid = false;
-                string containerId = getContainerId(appInstanceId);
+                string containerId = mRuntimeAppPortal + "_" + appId + "_" + appInstanceId;
+                if (containerId.length() > 64)
+                {
+                    containerId = containerId.substr(0, 64);
+                }
                 {
                     Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
                     ociValid = isOCIPluginObjectValid();
@@ -789,6 +802,7 @@ namespace WPEFramework
                                     runtimeAppInfo.appId = appId;
                                 }
                                 runtimeAppInfo.appInstanceId = appInstanceId;
+                                runtimeAppInfo.containerId = std::move(containerId);
                                 runtimeAppInfo.descriptor = std::move(descriptor);
                                 runtimeAppInfo.containerState = Exchange::IRuntimeManager::RUNTIME_STATE_STARTING;
                                 /* Store request time and type in runtime app info map */

@@ -57,6 +57,8 @@ extern uint32_t Test_Impl_DispatchContainerFailedFiresOnFailureCallback();
 extern uint32_t Test_Impl_DispatchStateChangedFiresOnStateChangedCallback();
 extern uint32_t Test_Impl_DispatchPortalPrefixStrippingWithRegisteredNotification();
 extern uint32_t Test_Impl_DispatchMultipleNotificationsAllReceiveStartedEvent();
+extern uint32_t Test_Impl_DispatchEmptyPortalUsesContainerIdAsAppInstanceId();
+extern uint32_t Test_Impl_DispatchPortalNewFormatStripsPortalAndAppId();
 
 // ── RuntimeManager_ComponentTests.cpp ────────────────────────────────────────
 extern uint32_t Test_UserIdManager_GetUserIdReturnsValidRange();
@@ -307,6 +309,8 @@ int main()
         { "Impl_DispatchStateChangedFiresOnStateChangedCallback",                    Test_Impl_DispatchStateChangedFiresOnStateChangedCallback },
         { "Impl_DispatchPortalPrefixStrippingWithRegisteredNotification",            Test_Impl_DispatchPortalPrefixStrippingWithRegisteredNotification },
         { "Impl_DispatchMultipleNotificationsAllReceiveStartedEvent",                Test_Impl_DispatchMultipleNotificationsAllReceiveStartedEvent },
+        { "Impl_DispatchEmptyPortalUsesContainerIdAsAppInstanceId",                 Test_Impl_DispatchEmptyPortalUsesContainerIdAsAppInstanceId },
+        { "Impl_DispatchPortalNewFormatStripsPortalAndAppId",                       Test_Impl_DispatchPortalNewFormatStripsPortalAndAppId },
 
         // ── Component tests ──────────────────────────────────────────────────
         { "UserIdManager_GetUserIdReturnsValidRange",                                Test_UserIdManager_GetUserIdReturnsValidRange },
