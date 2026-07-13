@@ -436,7 +436,7 @@ namespace Plugin {
             {
                 std::unique_lock<std::mutex> lock(mQueueMutex);
                 // Use a bounded wait to avoid indefinite blocking and to periodically re-check the run flag / queues
-                const bool ready = mDownloadThreadCV.wait_for(lock,std::chrono::seconds(waitTime), [&] {
+                const bool ready = mDownloadThreadCV.wait_for(lock,std::chrono::seconds(60), [&] {
                     return !mDownloaderRunFlag || !mPriorityDownloadQueue.empty() || !mRegularDownloadQueue.empty();
                 });
                 if (!mDownloaderRunFlag)

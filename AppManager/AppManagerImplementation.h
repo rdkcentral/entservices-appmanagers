@@ -247,7 +247,6 @@ namespace Plugin {
     public: /* public methods */
         void updateCurrentAction(const std::string& appId, CurrentAction action);
         void updateCurrentActionTime(const std::string& appId, time_t currentActionTime, CurrentAction currentAction);
-        void StopWorkerThread();
     bool checkInstallUninstallBlock(const std::string& appId);
     };
 } /* namespace Plugin */
