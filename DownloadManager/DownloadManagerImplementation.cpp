@@ -24,6 +24,12 @@
 
 #define DOWNLOADER_DOWNLOAD_ID_START        (2000)
 
+/* Idle re-check interval for the downloader thread's condition-variable wait.
+ * This is only a periodic backstop: real wakeups arrive immediately via
+ * notify_one (new job queued in Download() or shutdown in Deinitialize()).
+ * It is intentionally distinct from the retry-backoff seed (waitTime). */
+#define DOWNLOADER_IDLE_WAIT_SECONDS        (60)
+
 namespace WPEFramework {
 namespace Plugin {
 
@@ -436,7 +442,7 @@ namespace Plugin {
             {
                 std::unique_lock<std::mutex> lock(mQueueMutex);
                 // Use a bounded wait to avoid indefinite blocking and to periodically re-check the run flag / queues
-                const bool ready = mDownloadThreadCV.wait_for(lock,std::chrono::seconds(60), [&] {
+                const bool ready = mDownloadThreadCV.wait_for(lock,std::chrono::seconds(DOWNLOADER_IDLE_WAIT_SECONDS), [&] {
                     return !mDownloaderRunFlag || !mPriorityDownloadQueue.empty() || !mRegularDownloadQueue.empty();
                 });
                 if (!mDownloaderRunFlag)

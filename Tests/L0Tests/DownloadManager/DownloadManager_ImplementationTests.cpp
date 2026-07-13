@@ -1923,11 +1923,13 @@ uint32_t Test_Impl_WaitForPredicateWakesOnQueuedDownload()
 
     // Create a small source file so the download completes quickly
     FILE* fp = fopen(srcFile.c_str(), "wb");
-    if (nullptr != fp) {
-        const char buf[64] = {};
-        (void) fwrite(buf, 1u, sizeof(buf), fp);
-        fclose(fp);
+    if (nullptr == fp) {
+        std::cout << "SKIP: could not create local source file for file:// download test" << std::endl;
+        return tr.failures;
     }
+    const char buf[64] = {};
+    (void) fwrite(buf, 1u, sizeof(buf), fp);
+    fclose(fp);
 
     L0Test::ServiceMock::Config cfg;
     cfg.internetActive = true;
@@ -1938,7 +1940,7 @@ uint32_t Test_Impl_WaitForPredicateWakesOnQueuedDownload()
     const auto initResult = impl->Initialize(&svc);
     if (WPEFramework::Core::ERROR_NONE != initResult) {
         (void) std::remove(srcFile.c_str());
-        L0Test::ExpectTrue(tr, true, "Initialize non-zero (acceptable in CI)");
+        std::cout << "SKIP: Initialize non-zero (acceptable in CI)" << std::endl;
         impl->Release();
         return tr.failures;
     }
