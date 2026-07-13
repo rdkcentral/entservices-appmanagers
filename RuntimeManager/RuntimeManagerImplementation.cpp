@@ -536,7 +536,7 @@ namespace WPEFramework
         std::string RuntimeManagerImplementation::getContainerId(const string &appInstanceId)
         {
             string containerId = "";
-	    if (!appInstanceId.empty())
+	        if (!appInstanceId.empty())
             {
                 auto infoIt = mRuntimeAppInfo.find(appInstanceId);
                 if (infoIt != mRuntimeAppInfo.end())
@@ -544,8 +544,7 @@ namespace WPEFramework
                     containerId = infoIt->second.containerId;
                 }
             }
-	    LOGINFO("getContainerId: appInstanceId=[%s] containerId=[%s]", appInstanceId.c_str(), containerId.c_str());
-            return containerId;
+	        return containerId;
         }
         Core::hresult RuntimeManagerImplementation::Run(const string &appId, const string &appInstanceId, const uint32_t userId, const uint32_t groupId, IValueIterator *const &ports, IStringIterator *const &paths, IStringIterator *const &debugSettings, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject)
         {
