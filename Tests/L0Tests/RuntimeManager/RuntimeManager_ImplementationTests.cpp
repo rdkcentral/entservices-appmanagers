@@ -1144,12 +1144,10 @@ uint32_t Test_Impl_DispatchStateChangedFiresOnStateChangedCallback()
 
 /* Test_Impl_DispatchPortalPrefixStripping
  *
- * Verifies that when mRuntimeAppPortal is configured (via Configure() with a
- * config line containing "runtimeAppPortal"), the Dispatch code strips the
- * portal prefix from the containerId before calling notification callbacks.
- *
- * We use ServiceMock (ConfigLine returns "{}") so the portal stays empty, and
- * confirm the callback fires for the bare containerId.
+ * Verifies that when mRuntimeAppPortal is configured, the Dispatch() code
+ * strips both the portal prefix and the appId segment from the three-part
+ * containerId format  <portal>_<appId>_<appInstanceId>  before invoking
+ * notification callbacks, and that the extracted appInstanceId is correct.
  */
 uint32_t Test_Impl_DispatchPortalPrefixStrippingWithRegisteredNotification()
 {
@@ -1158,7 +1156,7 @@ uint32_t Test_Impl_DispatchPortalPrefixStrippingWithRegisteredNotification()
     // Configure ServiceMock with a non-empty runtimeAppPortal so the strip
     // branch in Dispatch() is actually exercised.
     L0Test::ServiceMock::Config cfg;
-    cfg.configLine = R"({"runtimeAppPortal":"com.sky.apps."})";
+    cfg.configLine = R"({"runtimeAppPortal":"com.sky.as.apps"})"; 
     L0Test::ServiceMock service(cfg);
 
     auto* impl = CreateImpl();
@@ -1168,9 +1166,8 @@ uint32_t Test_Impl_DispatchPortalPrefixStrippingWithRegisteredNotification()
     FakeNotification notif;
     impl->Register(&notif);
 
-    // containerId has the portal prefix — Dispatch() should strip it.
     JsonObject obj;
-    obj["containerId"] = "com.sky.apps.youTube";
+    obj["containerId"] = "com.sky.as.apps_youTube_youTube";
     obj["name"]        = "youTube";
     obj["eventName"]   = "onContainerStarted";
 
@@ -1180,6 +1177,8 @@ uint32_t Test_Impl_DispatchPortalPrefixStrippingWithRegisteredNotification()
 
     L0Test::ExpectTrue(tr, notif.onStartedCount > 0u,
                        "OnStarted fires when containerId has portal prefix");
+    L0Test::ExpectEqStr(tr, notif.lastAppInstanceId, std::string("youTube"),
+                        "Dispatch correctly extracts appInstanceId from three-part containerId format");
     impl->Unregister(&notif);
     impl->Release();
     return tr.failures;
@@ -1215,6 +1214,86 @@ uint32_t Test_Impl_DispatchMultipleNotificationsAllReceiveStartedEvent()
 
     impl->Unregister(&n1);
     impl->Unregister(&n2);
+    impl->Release();
+    return tr.failures;
+}
+
+/* Test_Impl_DispatchEmptyPortalUsesContainerIdAsAppInstanceId
+ *
+ * When mRuntimeAppPortal is empty (portal not configured), the Dispatch()
+ * portal-stripping branch is skipped entirely. The raw containerId value
+ * from the event data is delivered as appInstanceId to notification callbacks.
+ */
+uint32_t Test_Impl_DispatchEmptyPortalUsesContainerIdAsAppInstanceId()
+{
+    L0Test::TestResult tr;
+
+    // Default ConfigLine returns "{}" — portal remains empty.
+    L0Test::ServiceMock::Config cfg;
+    L0Test::ServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+
+    FakeNotification notif;
+    impl->Register(&notif);
+
+    JsonObject obj;
+    obj["containerId"] = "youTube";
+    obj["name"]        = "youTube";
+    obj["eventName"]   = "onContainerStarted";
+
+    impl->onOCIContainerStartedEvent("youTube", obj);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+    L0Test::ExpectTrue(tr, notif.onStartedCount > 0u,
+                       "OnStarted fires when portal is empty");
+    L0Test::ExpectEqStr(tr, notif.lastAppInstanceId, std::string("youTube"),
+                        "Full containerId is used as appInstanceId when portal is not configured");
+
+    impl->Unregister(&notif);
+    impl->Release();
+    return tr.failures;
+}
+
+/* Test_Impl_DispatchPortalNewFormatStripsPortalAndAppId
+ *
+ * Verifies the three-part format where appId and appInstanceId are distinct
+ * strings: <portal>_<appId>_<appInstanceId>. Dispatch() must strip both the
+ * portal prefix and the appId segment, leaving only the appInstanceId.
+ */
+uint32_t Test_Impl_DispatchPortalNewFormatStripsPortalAndAppId()
+{
+    L0Test::TestResult tr;
+
+    L0Test::ServiceMock::Config cfg;
+    cfg.configLine = R"({"runtimeAppPortal":"com.sky.as.apps"})";
+    L0Test::ServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+
+    FakeNotification notif;
+    impl->Register(&notif);
+
+    // appId and appInstanceId are intentionally different to prove the parser
+    // skips the appId segment and returns only the appInstanceId.
+    JsonObject obj;
+    obj["containerId"] = "com.sky.as.apps_com.example.myApp_myInstance123";
+    obj["name"]        = "myInstance123";
+    obj["eventName"]   = "onContainerStarted";
+
+    impl->onOCIContainerStartedEvent("myInstance123", obj);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+    L0Test::ExpectTrue(tr, notif.onStartedCount > 0u,
+                       "OnStarted fires for new three-part containerId format");
+    L0Test::ExpectEqStr(tr, notif.lastAppInstanceId, std::string("myInstance123"),
+                        "Dispatch strips portal and appId, yields appInstanceId from three-part format");
+
+    impl->Unregister(&notif);
     impl->Release();
     return tr.failures;
 }
