@@ -1908,10 +1908,10 @@ uint32_t Test_Impl_DeinitializeNotifyOneAfterLockRelease()
 // ─────────────────────────────────────────────────────────────────────────────
 // Coverity fix: wait_for with predicate wakes immediately on queued download
 //   Verifies that the downloader thread wakes up as soon as a download is
-//   queued (notify_one in Download()), without waiting for the full waitTime
+//   queued (notify_one in Download()), without waiting for the full wait_for
 //   timeout. Without a predicate, a spurious wakeup or missed notify could
-//   cause the thread to sleep through a job. The test checks that the
-//   OnAppDownloadStatus notification fires well within the 1-second waitTime.
+//   cause the thread to sleep through a queued job. The test checks that the
+//   OnAppDownloadStatus notification fires promptly after queuing the download.
 // ─────────────────────────────────────────────────────────────────────────────
 
 uint32_t Test_Impl_WaitForPredicateWakesOnQueuedDownload()
