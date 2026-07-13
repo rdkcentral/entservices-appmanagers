@@ -1865,9 +1865,9 @@ uint32_t Test_Impl_DownloaderRoutinePriorityQueuePath()
 
 // ─────────────────────────────────────────────────────────────────────────────
 //   Verifies that Deinitialize() completes promptly (thread wakes promptly
- //   after mDownloaderRunFlag is set under lock and notify_one() is issued).
- //   Notifying while holding the lock is legal, but it can delay the wake until
- //   the lock is released; a 3-second deadline catches any join regression.
+//   after mDownloaderRunFlag is set under lock and notify_one() is issued).
+//   Notifying while holding the lock is legal, but it can delay the wake until
+//   the lock is released; a 3-second deadline catches any join regression.
 // ─────────────────────────────────────────────────────────────────────────────
 
 uint32_t Test_Impl_DeinitializeNotifyOneAfterLockRelease()
@@ -1894,10 +1894,12 @@ uint32_t Test_Impl_DeinitializeNotifyOneAfterLockRelease()
     // Deinitialize sets mDownloaderRunFlag=false under lock, releases lock,
     // then calls notify_one. The thread must wake and join within 3 seconds.
     const auto t0 = std::chrono::steady_clock::now();
-    impl->Deinitialize(&svc);
+    const auto deinitResult = impl->Deinitialize(&svc);
     const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::steady_clock::now() - t0).count();
 
+    L0Test::ExpectEqU32(tr, deinitResult, WPEFramework::Core::ERROR_NONE,
+        "Deinitialize() returns ERROR_NONE");
     L0Test::ExpectTrue(tr, elapsed < 3000,
         "Deinitialize() joins thread promptly (< 3 s); notify_one after lock release works");
 
