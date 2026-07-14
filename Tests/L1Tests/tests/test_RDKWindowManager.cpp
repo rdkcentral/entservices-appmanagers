@@ -241,7 +241,7 @@ TEST_F(RDKWindowManagerTest, RegisteredMethodsExist)
 TEST_F(RDKWindowManagerTest, CreateDisplay_Success)
 {
     const string displayParams = R"({"client":"testApp","displayName":"testDisplay","displayWidth":1920,"displayHeight":1080})";
-    EXPECT_CALL(*windowManagerMock, CreateDisplay(_, _, _, _, _, _, _, _, _, _, _))
+    EXPECT_CALL(*windowManagerMock, CreateDisplay(_, _, _, _, _, _, _, _, _, _, _, _))
         .WillOnce(Return(Core::ERROR_NONE));
 
     EXPECT_EQ(Core::ERROR_NONE,
@@ -253,7 +253,7 @@ TEST_F(RDKWindowManagerTest, CreateDisplay_Success)
 TEST_F(RDKWindowManagerTest, CreateDisplay_Failure)
 {
     const string displayParams = R"({"client":"","displayName":""})";
-    EXPECT_CALL(*windowManagerMock, CreateDisplay(_, _, _, _, _, _, _, _, _, _, _))
+    EXPECT_CALL(*windowManagerMock, CreateDisplay(_, _, _, _, _, _, _, _, _, _, _, _))
         .WillOnce(Return(Core::ERROR_GENERAL));
 
     EXPECT_EQ(Core::ERROR_GENERAL,
@@ -1216,7 +1216,7 @@ TEST_F(RDKWindowManagerTest, GetZOrder_MissingAppInstanceId_Failure)
 
 TEST_F(RDKWindowManagerTest, CreateDisplay_MissingDisplayParams_Failure)
 {
-    EXPECT_CALL(*windowManagerMock, CreateDisplay(_, _, _, _, _, _, _, _, _, _, _))
+    EXPECT_CALL(*windowManagerMock, CreateDisplay(_, _, _, _, _, _, _, _, _, _, _, _))
         .WillOnce(Return(Core::ERROR_GENERAL));
 
     EXPECT_EQ(Core::ERROR_GENERAL,
@@ -1329,7 +1329,7 @@ TEST_F(RDKWindowManagerTest, GetScreenshot_Failure)
  * ===================================================================== */
 TEST_F(RDKWindowManagerImplementationTest, Impl_CreateDisplay_EmptyParams_Failure)
 {
-    EXPECT_EQ(Core::ERROR_GENERAL, windowManagerImplementation->CreateDisplay("", "", 0, 0, false, 0, 0, 0, 0, false, false));
+    EXPECT_EQ(Core::ERROR_GENERAL, windowManagerImplementation->CreateDisplay("", "", 0, 0, false, 0, 0, 0, 0, false, false, ""));
 }
 
 TEST_F(RDKWindowManagerImplementationTest, Impl_GetApps_Success)
@@ -2036,13 +2036,13 @@ TEST_F(RDKWindowManagerImplementationTest, Impl_InitializeAndDeinitialize_Covers
             return true;
         }));
 
-    EXPECT_CALL(compositorMock, createDisplay("testApp", "disp", 1920u, 1080u, false, 0u, 0u, false, false, 0, 0))
+    EXPECT_CALL(compositorMock, createDisplay("testApp", "disp", 1920u, 1080u, false, 0u, 0u, false, false, 0, 0, _))
         .WillOnce(Return(true));
     EXPECT_CALL(compositorMock, addListener("testApp", NotNull()))
         .WillOnce(Return(true));
 
     EXPECT_EQ(Core::ERROR_NONE, windowManagerImplementation->Initialize(&serviceMock));
-    EXPECT_EQ(Core::ERROR_NONE, windowManagerImplementation->CreateDisplay("testApp", "disp", 1920, 1080, false, 0, 0, 0, 0, false, false));
+    EXPECT_EQ(Core::ERROR_NONE, windowManagerImplementation->CreateDisplay("testApp", "disp", 1920, 1080, false, 0, 0, 0, 0, false, false, ""));
     EXPECT_EQ(Core::ERROR_NONE, windowManagerImplementation->Deinitialize(&serviceMock));
 }
 
