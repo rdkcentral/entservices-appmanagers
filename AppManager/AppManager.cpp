@@ -144,6 +144,12 @@ namespace WPEFramework
 
             if (nullptr != mAppManagerConfigure)
             {
+                // Eagerly release service-bound references in the implementation while the
+                // service is still alive on this (main) thread.  Without this call the
+                // LifecycleInterfaceConnector destructor may run on a WorkerPool thread
+                // after the service has been freed, causing a use-after-free SIGSEGV.
+                mAppManagerConfigure->Configure(nullptr);
+
                 mAppManagerConfigure->Release();
                 mAppManagerConfigure = nullptr;
             }

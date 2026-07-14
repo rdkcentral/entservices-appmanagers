@@ -28,6 +28,7 @@ extern uint32_t Test_AM_InformationReturnsEmptyString();
 extern uint32_t Test_AM_RegisterAndUnregisterNotification();
 extern uint32_t Test_AM_ConfigureWithNullServiceFails();
 extern uint32_t Test_AM_ConfigureWithValidServiceReturnsSuccess();
+extern uint32_t Test_AM_ConfigureDeconfigureSucceeds();
 extern uint32_t Test_AM_LaunchAppEmptyIdRejected();
 extern uint32_t Test_AM_PreloadAppEmptyIdRejected();
 extern uint32_t Test_AM_CloseTerminateKillSendIntentEmptyIdRejected();
@@ -203,6 +204,8 @@ extern uint32_t Test_AM_TelErrorDataTerminate();
 extern uint32_t Test_AM_TelErrorDataKill();
 extern uint32_t Test_AM_TelErrorDataDefault();
 extern uint32_t Test_AM_TelRecordLaunchTime();
+extern uint32_t Test_AM_LICAppCrashedDeferralFlow();
+extern uint32_t Test_AM_LICKillAndRunNoCrash();
 
 int main()
 {
@@ -219,6 +222,7 @@ int main()
         { "AM_RegisterAndUnregisterNotification", Test_AM_RegisterAndUnregisterNotification },
         { "AM_ConfigureWithNullServiceFails", Test_AM_ConfigureWithNullServiceFails },
         { "AM_ConfigureWithValidServiceReturnsSuccess", Test_AM_ConfigureWithValidServiceReturnsSuccess },
+        { "AM_ConfigureDeconfigureSucceeds", Test_AM_ConfigureDeconfigureSucceeds },
         { "AM_LaunchAppEmptyIdRejected", Test_AM_LaunchAppEmptyIdRejected },
         { "AM_PreloadAppEmptyIdRejected", Test_AM_PreloadAppEmptyIdRejected },
         { "AM_CloseTerminateKillSendIntentEmptyIdRejected", Test_AM_CloseTerminateKillSendIntentEmptyIdRejected },
@@ -394,6 +398,8 @@ int main()
         { "AM_TelErrorDataKill", Test_AM_TelErrorDataKill },
         { "AM_TelErrorDataDefault", Test_AM_TelErrorDataDefault },
         { "AM_TelRecordLaunchTime", Test_AM_TelRecordLaunchTime },
+        { "AM_LICAppCrashedDeferralFlow", Test_AM_LICAppCrashedDeferralFlow },
+        { "AM_LICKillAndRunNoCrash", Test_AM_LICKillAndRunNoCrash },
     };
 
     uint32_t totalFailures = 0;

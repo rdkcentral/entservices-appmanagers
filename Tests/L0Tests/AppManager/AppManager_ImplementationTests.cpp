@@ -197,6 +197,32 @@ uint32_t Test_AM_ConfigureWithValidServiceReturnsSuccess()
     return tr.failures;
 }
 
+uint32_t Test_AM_ConfigureDeconfigureSucceeds()
+{
+    L0Test::TestResult tr;
+
+    // Service must outlive the impl – declare before impl so it is destroyed after.
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    auto* impl = CreateImpl();
+
+    // Step 1: normal configure with a valid service
+    impl->Configure(&service);
+
+    // Step 2: deconfigure – must succeed because mCurrentservice is now non-null
+    const auto result = impl->Configure(nullptr);
+    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+        "Configure(nullptr) returns ERROR_NONE after a prior Configure(service)");
+
+    // Step 3: second deconfigure – mCurrentservice is null, guard must fire
+    const auto result2 = impl->Configure(nullptr);
+    L0Test::ExpectEqU32(tr, result2, WPEFramework::Core::ERROR_GENERAL,
+        "Second Configure(nullptr) returns ERROR_GENERAL when already deconfigured");
+
+    // Release while service is still alive; destructor releases the remaining remote objects.
+    impl->Release();
+    return tr.failures;
+}
+
 uint32_t Test_AM_LaunchAppEmptyIdRejected()
 {
     AppManagerTestFixture fixture;
@@ -3853,13 +3879,233 @@ uint32_t Test_AM_LICOnAppStateChangedMultipleErrorReasons()
     impl->mLifecycleInterfaceConnector->OnAppStateChanged(
         "app.err.unknown", LS::ACTIVE, "ERROR_UNKNOWN_REASON");
 
-    // Wait for all three Jobs to complete.
+    // Call 4: "APP_CRASHED" with ACTIVE state  →  mapErrorReason returns APP_ERROR_ABORT,
+    // but state != UNLOADED so the deferred-crash condition is false, and the else branch
+    // calls handleOnAppLifecycleStateChanged() directly (fires a lifecycle notification).
+    impl->mLifecycleInterfaceConnector->OnAppStateChanged(
+        "app.err.crash.active", LS::ACTIVE, "APP_CRASHED");
+
+    // Wait for all four Jobs to complete.
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
-    while (std::chrono::steady_clock::now() < deadline && notif->lifecycle < 3u) {
+    while (std::chrono::steady_clock::now() < deadline && notif->lifecycle < 4u) {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
-    L0Test::ExpectTrue(tr, notif->lifecycle >= 3u,
-        "All three OnAppStateChanged error-reason Jobs fired without crash");
+    L0Test::ExpectTrue(tr, notif->lifecycle >= 4u,
+        "All four OnAppStateChanged error-reason Jobs fired without crash");
+
+    impl->Unregister(notif);
+    notif->Release();
+
+    impl->Release();
+    const auto cleanDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
+    while (std::chrono::steady_clock::now() < cleanDeadline &&
+           WPEFramework::Plugin::AppManagerImplementation::getInstance() != nullptr) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+// ---------------------------------------------------------------------------
+// Notification that captures AppErrorReason from OnAppLifecycleStateChanged.
+// Used by the crash-deferral and KILL_AND_RUN flow tests below.
+// ---------------------------------------------------------------------------
+struct CrashCapturingNotification final
+    : public WPEFramework::Exchange::IAppManager::INotification {
+
+    CrashCapturingNotification() : _refCount(1) {}
+
+    void AddRef() const override
+    {
+        _refCount.fetch_add(1, std::memory_order_relaxed);
+    }
+    uint32_t Release() const override
+    {
+        const uint32_t r = _refCount.fetch_sub(1, std::memory_order_acq_rel) - 1;
+        if (0U == r) {
+            delete this;
+            return WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED;
+        }
+        return WPEFramework::Core::ERROR_NONE;
+    }
+    void* QueryInterface(const uint32_t id) override
+    {
+        if (id == WPEFramework::Exchange::IAppManager::INotification::ID) {
+            AddRef();
+            return static_cast<WPEFramework::Exchange::IAppManager::INotification*>(this);
+        }
+        return nullptr;
+    }
+
+    void OnAppInstalled(const std::string&, const std::string&) override {}
+    void OnAppUninstalled(const std::string&) override {}
+    void OnAppLifecycleStateChanged(
+        const std::string&,
+        const std::string&,
+        const WPEFramework::Exchange::IAppManager::AppLifecycleState,
+        const WPEFramework::Exchange::IAppManager::AppLifecycleState,
+        const WPEFramework::Exchange::IAppManager::AppErrorReason reason) override
+    {
+        lastErrorReason.store(static_cast<uint32_t>(reason), std::memory_order_release);
+        ++lifecycle;
+    }
+    void OnAppLaunchRequest(const std::string&, const std::string&, const std::string&) override {}
+    void OnAppUnloaded(const std::string&, const std::string&) override { ++unloaded; }
+
+    mutable std::atomic<uint32_t> _refCount;
+    std::atomic<uint32_t> lifecycle { 0 };
+    std::atomic<uint32_t> unloaded { 0 };
+    // Stored as uint32_t to keep std::atomic trivially copyable across compilers.
+    std::atomic<uint32_t> lastErrorReason { 0 };
+};
+
+// ---------------------------------------------------------------------------
+// Test_AM_LICAppCrashedDeferralFlow
+//
+// Covers the full APP_CRASHED deferral path introduced to distinguish crash
+// events from KILL_AND_RUN:
+//
+//   1. OnAppStateChanged("APP_CRASHED", UNLOADED)
+//        → mapErrorReason returns APP_ERROR_ABORT
+//        → errorCode==APP_ERROR_ABORT && state==UNLOADED → stored in mAppCrashErrorMap
+//        → handleOnAppLifecycleStateChanged is NOT called directly (no notification)
+//
+//   2. OnAppLifecycleStateChanged(TERMINATING → UNLOADED) [same dispatch order as LM]
+//        → isCrash=true  (mAppCrashErrorMap entry found)
+//        → calls handleOnAppLifecycleStateChanged with APP_ERROR_ABORT
+//        → fires crash telemetry stub
+//        → erases the mAppCrashErrorMap entry
+// ---------------------------------------------------------------------------
+uint32_t Test_AM_LICAppCrashedDeferralFlow()
+{
+    L0Test::TestResult tr;
+
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+
+    const std::string appId      = "app.crash.deferred";
+    const std::string instanceId = "inst-crash-deferred";
+
+    WPEFramework::Plugin::AppInfo info;
+    info.setAppInstanceId(instanceId);
+    WPEFramework::Plugin::AppInfoManager::getInstance().upsert(
+        appId, [&](WPEFramework::Plugin::AppInfo& a) { a = info; });
+
+    auto* notif = new CrashCapturingNotification();
+    impl->Register(notif);
+
+    using LS = WPEFramework::Exchange::ILifecycleManager::LifecycleState;
+
+    // Step 1: Simulate LM sending APP_CRASHED via OnAppStateChanged for UNLOADED.
+    //         This stores the crash reason in mAppCrashErrorMap and must NOT fire
+    //         any lifecycle notification on its own.
+    impl->mLifecycleInterfaceConnector->OnAppStateChanged(
+        appId, LS::UNLOADED, "APP_CRASHED");
+
+    // Give the worker pool a moment; we assert that no notification has fired yet.
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    L0Test::ExpectEqU32(tr, notif->lifecycle.load(), 0u,
+        "OnAppStateChanged(APP_CRASHED, UNLOADED) must NOT fire a lifecycle notification directly");
+
+    // Step 2: Simulate LM sending OnAppLifecycleStateChanged(TERMINATING→UNLOADED),
+    //         which follows OnAppStateChanged on the same dispatch thread.
+    //         isCrash=true → APP_ERROR_ABORT dispatched + crash telemetry + map entry erased.
+    impl->mLifecycleInterfaceConnector->OnAppLifecycleStateChanged(
+        appId, instanceId,
+        LS::TERMINATING, // oldState  →  lifecycleManagerInitiatedKill=true
+        LS::UNLOADED,    // newState
+        "");
+
+    // Wait for the LIFECYCLE_STATE_CHANGED Job and the UNLOADED Job.
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
+    while (std::chrono::steady_clock::now() < deadline) {
+        if (notif->lifecycle >= 1u && notif->unloaded >= 1u)
+            break;
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    L0Test::ExpectTrue(tr, notif->lifecycle >= 1u,
+        "OnAppLifecycleStateChanged(TERMINATING→UNLOADED) with crash signal fires lifecycle notification");
+    L0Test::ExpectEqU32(tr,
+        notif->lastErrorReason.load(std::memory_order_acquire),
+        static_cast<uint32_t>(WPEFramework::Exchange::IAppManager::AppErrorReason::APP_ERROR_ABORT),
+        "Crash-deferral flow notifies listeners with APP_ERROR_ABORT");
+
+    // Verify the mAppCrashErrorMap entry was erased after processing.
+    L0Test::ExpectTrue(tr,
+        impl->mLifecycleInterfaceConnector->mAppCrashErrorMap.find(appId) ==
+            impl->mLifecycleInterfaceConnector->mAppCrashErrorMap.end(),
+        "mAppCrashErrorMap entry is erased after crash notification is dispatched");
+
+    impl->Unregister(notif);
+    notif->Release();
+
+    impl->Release();
+    const auto cleanDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
+    while (std::chrono::steady_clock::now() < cleanDeadline &&
+           WPEFramework::Plugin::AppManagerImplementation::getInstance() != nullptr) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+// ---------------------------------------------------------------------------
+// Test_AM_LICKillAndRunNoCrash
+//
+// Covers the KILL_AND_RUN branch: OnAppLifecycleStateChanged(TERMINATING→UNLOADED)
+// fires WITHOUT a prior OnAppStateChanged("APP_CRASHED", UNLOADED).
+//
+//   isCrash=false, lifecycleManagerInitiatedKill=true
+//   → "Terminate event from LifecycleManager (e.g. KILL_AND_RUN)"
+//   → handleOnAppLifecycleStateChanged called with APP_ERROR_NONE
+//   → NO crash telemetry fired
+// ---------------------------------------------------------------------------
+uint32_t Test_AM_LICKillAndRunNoCrash()
+{
+    L0Test::TestResult tr;
+
+    L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+
+    const std::string appId      = "app.killandrun";
+    const std::string instanceId = "inst-killandrun";
+
+    WPEFramework::Plugin::AppInfo info;
+    info.setAppInstanceId(instanceId);
+    WPEFramework::Plugin::AppInfoManager::getInstance().upsert(
+        appId, [&](WPEFramework::Plugin::AppInfo& a) { a = info; });
+
+    auto* notif = new CrashCapturingNotification();
+    impl->Register(notif);
+
+    using LS = WPEFramework::Exchange::ILifecycleManager::LifecycleState;
+
+    // No OnAppStateChanged("APP_CRASHED") is called before this — mAppCrashErrorMap is empty.
+    // oldState=TERMINATING → lifecycleManagerInitiatedKill=true, isCrash=false
+    // → KILL_AND_RUN path → APP_ERROR_NONE.
+    impl->mLifecycleInterfaceConnector->OnAppLifecycleStateChanged(
+        appId, instanceId,
+        LS::TERMINATING, // oldState
+        LS::UNLOADED,    // newState
+        "");
+
+    // Wait for both the LIFECYCLE_STATE_CHANGED and UNLOADED Jobs.
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
+    while (std::chrono::steady_clock::now() < deadline) {
+        if (notif->lifecycle >= 1u && notif->unloaded >= 1u)
+            break;
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    L0Test::ExpectTrue(tr, notif->lifecycle >= 1u,
+        "OnAppLifecycleStateChanged(TERMINATING→UNLOADED, no crash signal) fires lifecycle notification");
+    L0Test::ExpectEqU32(tr,
+        notif->lastErrorReason.load(std::memory_order_acquire),
+        static_cast<uint32_t>(WPEFramework::Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE),
+        "KILL_AND_RUN path notifies listeners with APP_ERROR_NONE (not APP_ERROR_ABORT)");
 
     impl->Unregister(notif);
     notif->Release();

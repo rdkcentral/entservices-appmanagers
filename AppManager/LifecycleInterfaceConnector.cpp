@@ -66,6 +66,10 @@ namespace WPEFramework
 
         LifecycleInterfaceConnector::~LifecycleInterfaceConnector()
         {
+            // mCurrentservice is normally released by releaseCurrentService(), called from
+            // AppManagerImplementation::Configure(nullptr) while the service is guaranteed
+            // to be alive on the main thread.  This null-guarded call is a safety net for
+            // code paths that bypass that early-release (e.g. unit tests).
             if (nullptr != mCurrentservice)
             {
                mCurrentservice->Release();
@@ -75,6 +79,15 @@ namespace WPEFramework
 
 	    //clear action list
 	    mAppCurrentActionList.clear();
+        }
+
+        void LifecycleInterfaceConnector::releaseCurrentService()
+        {
+            if (nullptr != mCurrentservice)
+            {
+                mCurrentservice->Release();
+                mCurrentservice = nullptr;
+            }
         }
 
         Core::hresult LifecycleInterfaceConnector::createLifecycleManagerRemoteObject()
@@ -794,34 +807,62 @@ End:
                 if(shouldNotify)
                 {
                     if(Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED == newAppState)
-		    {
+		            {
                         const bool appManagerInitiatedKill = (Exchange::IAppManager::AppLifecycleState::APP_STATE_TERMINATING == mAppCurrentActionList[appId]);
                         const bool lifecycleManagerInitiatedKill = (Exchange::IAppManager::AppLifecycleState::APP_STATE_TERMINATING == oldAppState);
-                        if (appManagerInitiatedKill || lifecycleManagerInitiatedKill)
-			{
-			    //Normal close: Unload event from App manager or LifecycleManager-initiated kill (e.g. KILL_AND_RUN)
-			    LOGINFO("Terminate event from plugin");
-			    appManagerImplInstance->handleOnAppLifecycleStateChanged(appId, appInstanceId, newAppState, oldAppState, Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE);
-			}
-			else
-			{
-			    //Abnormal close: No unload event from app manager
-			    LOGINFO("Terminate event due to app crash");
-			    appManagerImplInstance->handleOnAppLifecycleStateChanged(appId, appInstanceId, newAppState, oldAppState, Exchange::IAppManager::AppErrorReason::APP_ERROR_ABORT);
-                // Report crash telemetry when lifecycle event provides a valid app instance id.
-                const std::string storedInstanceId = AppInfoManager::getInstance().getAppInstanceId(appId);
-                if (false == storedInstanceId.empty())
-                {
-                    std::string crashReason = "Terminate event due to app crash";
-                    AppManagerTelemetryReporting::getInstance().reportAppCrashedTelemetry(appId, storedInstanceId, crashReason);
-                }
-			}
-			mAppCurrentActionList.erase(appId);
-		    }
-		    else
-		    {
-                        appManagerImplInstance->handleOnAppLifecycleStateChanged(appId, appInstanceId, newAppState, oldAppState, Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE);
-		    }
+                        auto crashIt = mAppCrashErrorMap.find(appId);
+                        const bool isCrash = (crashIt != mAppCrashErrorMap.end());
+                        LOGINFO("isCrash %d, appManagerInitiatedKill %d, lifecycleManagerInitiatedKill %d", isCrash, appManagerInitiatedKill, lifecycleManagerInitiatedKill);
+                        if (appManagerInitiatedKill)
+                        {
+                            //Normal close: AppManager-initiated terminate/kill
+                            LOGINFO("Terminate event from App Manager");
+                            appManagerImplInstance->handleOnAppLifecycleStateChanged(appId, appInstanceId, newAppState, oldAppState, Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE);
+
+                            if (isCrash) {
+                                LOGWARN("Clearing deferred crash signal for appId %s because unload was AppManager-initiated", appId.c_str());
+                                mAppCrashErrorMap.erase(crashIt);
+                            }
+                        }
+                        else if (lifecycleManagerInitiatedKill && !isCrash)
+                        {
+                            //Normal close: LifecycleManager-initiated kill (e.g. KILL_AND_RUN) - no crash events
+                            LOGINFO("Terminate event from LifecycleManager (e.g. KILL_AND_RUN)");
+                            appManagerImplInstance->handleOnAppLifecycleStateChanged(appId, appInstanceId, newAppState, oldAppState, Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE);
+                        }
+                        else if (isCrash)
+                        {
+                            //Abnormal close: App crashed unexpectedly (e.g. SIGSEGV), signalled via OnAppStateChanged errorReason
+                            LOGINFO("Terminate event due to app crash (APP_CRASHED signalled by LifecycleManager)");
+                            appManagerImplInstance->handleOnAppLifecycleStateChanged(appId, appInstanceId, newAppState, oldAppState, crashIt->second);
+                            // Report crash telemetry when lifecycle event provides a valid app instance id.
+                            const std::string storedInstanceId = AppInfoManager::getInstance().getAppInstanceId(appId);
+                            if (false == storedInstanceId.empty())
+                            {
+                                std::string crashReason = "Terminated unexpectedly";
+                                AppManagerTelemetryReporting::getInstance().reportAppCrashedTelemetry(appId, storedInstanceId, crashReason);
+                            }
+                            mAppCrashErrorMap.erase(crashIt);
+                        }
+                        else
+                        {
+                            //Abnormal close: App terminated without transition through TERMINATING (unexpected)
+                            LOGINFO("Terminate event due to app crash (no prior TERMINATING state)");
+                            appManagerImplInstance->handleOnAppLifecycleStateChanged(appId, appInstanceId, newAppState, oldAppState, Exchange::IAppManager::AppErrorReason::APP_ERROR_ABORT);
+                            // Report crash telemetry when lifecycle event provides a valid app instance id.
+                            const std::string storedInstanceId = AppInfoManager::getInstance().getAppInstanceId(appId);
+                            if (false == storedInstanceId.empty())
+                            {
+                                std::string crashReason = "Terminated unexpectedly";
+                                AppManagerTelemetryReporting::getInstance().reportAppCrashedTelemetry(appId, storedInstanceId, crashReason);
+                            }
+                        }
+                        mAppCurrentActionList.erase(appId);
+		            }
+                    else
+                    {
+                                appManagerImplInstance->handleOnAppLifecycleStateChanged(appId, appInstanceId, newAppState, oldAppState, Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE);
+                    }
                 }
 
                 if(Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED == newAppState)
@@ -866,9 +907,25 @@ End:
                 if (!errorReason.empty())
                 {
                     errorCode = mapErrorReason(errorReason);
-                    appManagerImplInstance->handleOnAppLifecycleStateChanged(appId, appInstanceId, Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED,
-                        currentAppState, errorCode);
-                    LOGINFO("Notified error event for appId %s: currentAppState=%d errorCode %d", appId.c_str(), static_cast<int>(currentAppState), static_cast<int>(errorCode));
+                    if ((Exchange::IAppManager::AppErrorReason::APP_ERROR_ABORT == errorCode) &&
+                        (Exchange::ILifecycleManager::LifecycleState::UNLOADED == state))
+                    {
+                        // Crash detected: store error for OnAppLifecycleStateChanged (called next on same thread)
+                        if (false == appId.empty()) {
+                            LOGINFO("OnAppStateChanged: crash signal received for appId %s, deferring to OnAppLifecycleStateChanged", appId.c_str());
+                            Core::SafeSyncType<Core::CriticalSection> lock(mAdminLock);
+                            mAppCrashErrorMap[appId] = errorCode;
+                        } else {
+                            LOGWARN("OnAppStateChanged: crash signal received with empty appId; ignoring deferral entry");
+                        }
+                    }
+                    else
+                    {
+                        // Non-crash error (e.g. launch failure via ONFAILURE event): notify directly
+                        appManagerImplInstance->handleOnAppLifecycleStateChanged(appId, appInstanceId, Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED,
+                            currentAppState, errorCode);
+                        LOGINFO("Notified error event for appId %s: currentAppState=%d errorCode %d", appId.c_str(), static_cast<int>(currentAppState), static_cast<int>(errorCode));
+                    }
                 }
             }
         }
@@ -889,6 +946,10 @@ End:
                 else if(!errorReason.compare("ERROR_INVALID_PARAM"))
                 {
                     errorCode = Exchange::IAppManager::AppErrorReason::APP_ERROR_INVALID_PARAM;
+                }
+                else if(!errorReason.compare("APP_CRASHED"))
+                {
+                    errorCode = Exchange::IAppManager::AppErrorReason::APP_ERROR_ABORT;
                 }
                 else
                 {
