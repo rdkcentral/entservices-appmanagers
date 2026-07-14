@@ -18,9 +18,13 @@
 **/
 
 #include "LifecycleManager.h"
+#include "LifecycleManagerTelemetryReporting.h"
+#include "UtilsAppManagerTelemetry.h"
 #include <interfaces/IConfiguration.h>
 
 const string WPEFramework::Plugin::LifecycleManager::SERVICE_NAME = "org.rdk.LifecycleManager";
+
+RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::LifecycleManagerTelemetryReporting, "lifecycleManagerBootstrapTime")
 
 namespace WPEFramework
 {
@@ -55,14 +59,28 @@ namespace WPEFramework
         {
             SYSLOG(Logging::Startup, (_T("LifecycleManager Destructor")));
             LifecycleManager::sInstance = nullptr;
-	    mLifecycleManagerState = nullptr;
-	    mLifecycleManagerImplementation = nullptr;
+            if (mLifecycleManagerState != nullptr)
+            {
+                mLifecycleManagerState->Release();
+	        mLifecycleManagerState = nullptr;
+            }
+            if (mLifecycleManagerImplementation != nullptr)
+            {
+                mLifecycleManagerImplementation->Release();
+	        mLifecycleManagerImplementation = nullptr;
+            }
+            if (_service != nullptr)
+            {
+                _service->Release();
+	        _service = nullptr;
+            }
         }
 
         const string LifecycleManager::Initialize(PluginHost::IShell* service )
         {
             //uint32_t result = Core::ERROR_GENERAL;
             string retStatus = "";
+            RDKAM_RECORD_BOOTSTRAP_TIME(service);
             ASSERT(nullptr != service);
             ASSERT(0 == mConnectionId);
             ASSERT(nullptr == _service);
@@ -149,3 +167,4 @@ namespace WPEFramework
         }
     } /* namespace Plugin */
 } /* namespace WPEFramework */
+
