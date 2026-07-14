@@ -23,6 +23,8 @@ struct State {
     std::vector<std::string> clients { "testclient" };
 
     bool setFocusResult { true };
+    bool getFocusedResult { true };
+    std::string focusedClient { "testclient" };
     bool setVisibilityResult { true };
     bool getVisibilityResult { true };
     bool visibleValue { true };
@@ -81,6 +83,8 @@ void Reset()
     S().getClientsResult = true;
     S().clients = { "testclient" };
     S().setFocusResult = true;
+    S().getFocusedResult = true;
+    S().focusedClient = "testclient";
     S().setVisibilityResult = true;
     S().getVisibilityResult = true;
     S().visibleValue = true;

@@ -2218,17 +2218,19 @@ Core::hresult RDKWindowManagerImplementation::GetFocused(string &client) const
     Core::hresult status = Core::ERROR_GENERAL;
 
     bool lockAcquired = lockRdkWindowManagerMutex();
+
+    bool ret = RdkWindowManager::CompositorController::getFocused(client);
+    if (ret)
+    {
+        status = Core::ERROR_NONE;
+    }
+    else
+    {
+       LOGERR("GetFocused: Failed to retrieve focused client");
+    }
+
     if (lockAcquired)
     {
-        if (RdkWindowManager::CompositorController::getFocused(client))
-        {
-            LOGINFO("GetFocused: focused client is '%s'", client.c_str());
-            status = Core::ERROR_NONE;
-        }
-        else
-        {
-            LOGERR("GetFocused: Failed to retrieve focused client");
-        }
         gRdkWindowManagerMutex.unlock();
     }
 
