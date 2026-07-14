@@ -131,6 +131,13 @@ void SetSetFocusResult(bool value)
     S().setFocusResult = value;
 }
 
+void SetGetFocusedResult(bool value, const std::string& focusedClient)
+{
+    std::lock_guard<std::mutex> guard(S().lock);
+    S().getFocusedResult = value;
+    S().focusedClient = focusedClient;
+}
+
 void SetVisibilityResult(bool setVisibleResult, bool getVisibleResult, bool visibleValue)
 {
     std::lock_guard<std::mutex> guard(S().lock);
@@ -469,6 +476,13 @@ bool CompositorController::setFocus(const std::string&)
 {
     std::lock_guard<std::mutex> guard(S().lock);
     return S().setFocusResult;
+}
+
+bool CompositorController::getFocused(std::string& client)
+{
+    std::lock_guard<std::mutex> guard(S().lock);
+    client = S().focusedClient;
+    return S().getFocusedResult;
 }
 
 bool CompositorController::setVisibility(const std::string&, const bool)
