@@ -489,19 +489,19 @@ uint32_t Test_RDKWM_Impl_CreateDisplayAndEventVariants()
     auto* notif = new FakeNotification();
     impl->Register(notif);
 
-    const auto emptyClientRc = impl->CreateDisplay("", "disp", 1280, 720, false, 0, 0, 0, 0, true, true);
+    const auto emptyClientRc = impl->CreateDisplay("", "disp", 1280, 720, false, 0, 0, 0, 0, true, true, "");
     L0Test::ExpectEqU32(tr, emptyClientRc, WPEFramework::Core::ERROR_GENERAL,
         "CreateDisplay returns ERROR_GENERAL when client is empty");
 
     L0Test::RDKWMShim::SetGetClientsResult(true, { "alpha" });
     L0Test::RDKWMShim::SetCreateDisplayResult(true);
-    const auto successRc = impl->CreateDisplay("org.rdk.test", "disp-main", 1280, 720, true, 1920, 1080, 100, 101, true, true);
+    const auto successRc = impl->CreateDisplay("org.rdk.test", "disp-main", 1280, 720, true, 1920, 1080, 100, 101, true, true, "");
     L0Test::ExpectEqU32(tr, successRc, WPEFramework::Core::ERROR_NONE,
         "CreateDisplay returns ERROR_NONE for valid request");
 
     L0Test::RDKWMShim::SetGetClientsResult(false, {});
     L0Test::RDKWMShim::SetCreateDisplayResult(false);
-    const auto failureRc = impl->CreateDisplay("org.rdk.beta", "disp-fail", 640, 360, false, 0, 0, 0, 0, false, false);
+    const auto failureRc = impl->CreateDisplay("org.rdk.beta", "disp-fail", 640, 360, false, 0, 0, 0, 0, false, false, "");
     L0Test::ExpectEqU32(tr, failureRc, WPEFramework::Core::ERROR_GENERAL,
         "CreateDisplay returns ERROR_GENERAL when backend create fails");
 

@@ -50,6 +50,8 @@ namespace Plugin {
                 virtual void OnUserInactivity(const double minutes) override;
                 virtual void OnDisconnected(const std::string& client) override;
                 virtual void OnReady(const std::string &client) override;
+                virtual void OnFocus(const std::string& client) override;
+                virtual void OnBlur(const std::string& client) override;
 
             private:
                 WindowManagerHandler& _parent;
