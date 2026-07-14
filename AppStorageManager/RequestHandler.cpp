@@ -457,22 +457,24 @@ namespace WPEFramework
                 if (it != mStorageAppInfo.end())
                 {
                     /* Update existing entry */
-                    it->second.path     = storageInfo.path;
-                    it->second.uid      = storageInfo.uid;
-                    it->second.gid      = storageInfo.gid;
-                    it->second.quotaKB  = storageInfo.quotaKB;
+                    it->second->path     = storageInfo.path;
+                    it->second->uid      = storageInfo.uid;
+                    it->second->gid      = storageInfo.gid;
+                    it->second->quotaKB  = storageInfo.quotaKB;
                     LOGINFO("Existing storage entry updated for appId: %s " \
                                 "userId: %d groupId: %d quotaKB: %u usedKB: %u path: %s",
-                                appId.c_str(), it->second.uid, it->second.gid, it->second.quotaKB, it->second.usedKB, it->second.path.c_str());
+                                appId.c_str(), it->second->uid, it->second->gid, it->second->quotaKB, it->second->usedKB, it->second->path.c_str());
                 }
                 else
                 {
                     /* Create new entry */
-                    mStorageAppInfo[appId].path    = storageInfo.path;
-                    mStorageAppInfo[appId].uid     = storageInfo.uid;
-                    mStorageAppInfo[appId].gid     = storageInfo.gid;
-                    mStorageAppInfo[appId].quotaKB = storageInfo.quotaKB;
-                    mStorageAppInfo[appId].usedKB  = storageInfo.usedKB;
+                    auto entry = std::make_shared<StorageAppInfo>();
+                    entry->path    = storageInfo.path;
+                    entry->uid     = storageInfo.uid;
+                    entry->gid     = storageInfo.gid;
+                    entry->quotaKB = storageInfo.quotaKB;
+                    entry->usedKB  = storageInfo.usedKB;
+                    mStorageAppInfo[appId] = entry;
                     LOGINFO("Created new storage entry for appId: %s " \
                                 "userId: %d groupId: %d quotaKB: %u usedKB: %u path: %s",
                                 appId.c_str(), storageInfo.uid, storageInfo.gid, storageInfo.quotaKB, storageInfo.usedKB, storageInfo.path.c_str());
@@ -496,15 +498,15 @@ namespace WPEFramework
             if (it != mStorageAppInfo.end())
             {
                 /* Check if the existing storage directory is accessible */
-                if (access(it->second.path.c_str(), F_OK) == 0)
+                if (access(it->second->path.c_str(), F_OK) == 0)
                 {
                     /* Updating the usedKB based on the directory size */
-                    it->second.usedKB = static_cast<uint32_t>(getDirectorySizeInBytes(it->second.path) / 1024);
-                    storageInfo.path    = it->second.path;
-                    storageInfo.uid     = it->second.uid;
-                    storageInfo.gid     = it->second.gid;
-                    storageInfo.quotaKB = it->second.quotaKB;
-                    storageInfo.usedKB  = it->second.usedKB;
+                    it->second->usedKB = static_cast<uint32_t>(getDirectorySizeInBytes(it->second->path) / 1024);
+                    storageInfo.path    = it->second->path;
+                    storageInfo.uid     = it->second->uid;
+                    storageInfo.gid     = it->second->gid;
+                    storageInfo.quotaKB = it->second->quotaKB;
+                    storageInfo.usedKB  = it->second->usedKB;
                     LOGINFO("App storage entry found for appId: %s " \
                         "userId: %d groupId: %d quotaKB: %u usedKB: %u path: %s",
                         appId.c_str(), storageInfo.uid, storageInfo.gid, storageInfo.quotaKB, storageInfo.usedKB, storageInfo.path.c_str());
@@ -513,7 +515,7 @@ namespace WPEFramework
                 else
                 {
                     /* Not accessible, need to remove existing storage entry forcibly, recreate it */
-                    const string removedPath = it->second.path;
+                    const string removedPath = it->second->path;
                     if (removeAppStorageInfoByAppID(appId))
                     {
                         LOGWARN("Storage path for appID[%s] not accessible - forcibly removed!", removedPath.c_str());
@@ -546,7 +548,7 @@ namespace WPEFramework
             {
                 LOGINFO("App storage entry erased for appId: %s " \
                             "userId: %d groupId: %d quotaKB: %u usedKB: %u path: %s",
-                            appId.c_str(), it->second.uid, it->second.gid, it->second.quotaKB, it->second.usedKB, it->second.path.c_str());
+                            appId.c_str(), it->second->uid, it->second->gid, it->second->quotaKB, it->second->usedKB, it->second->path.c_str());
                 mStorageAppInfo.erase(appId);
                 appQuotaSizeProperty(DELETE, appId, nullptr); //Remove the persistent store entry
                 result = true;
@@ -593,18 +595,18 @@ namespace WPEFramework
                     /* Compute total reserved space for existing applications */
                     for (auto& entry : mStorageAppInfo)
                     {
-                        entry.second.usedKB = static_cast<uint32_t>(getDirectorySizeInBytes(entry.second.path) / 1024);
+                        entry.second->usedKB = static_cast<uint32_t>(getDirectorySizeInBytes(entry.second->path) / 1024);
 
                         /* Ensure applications do not exceed allocated space */
-                        if (entry.second.usedKB > entry.second.quotaKB)
+                        if (entry.second->usedKB > entry.second->quotaKB)
                         {
                             LOGERR("Application storage usage exceeded allocation: %s (Allocated: %u KB, Used: %u KB)",
-                            entry.second.path.c_str(), entry.second.quotaKB, entry.second.usedKB);
+                            entry.second->path.c_str(), entry.second->quotaKB, entry.second->usedKB);
                         }
                         else
                         {
                             /* quotaKB is total allocated space for the app, and usedKB is the current usage */
-                            existingAppsReservationSpaceKB += (entry.second.quotaKB - entry.second.usedKB);
+                            existingAppsReservationSpaceKB += (entry.second->quotaKB - entry.second->usedKB);
                         }
                     }
 
@@ -849,7 +851,7 @@ namespace WPEFramework
                 }
                 else
                 {
-                    const std::string path = it->second.path;
+                    const std::string path = it->second->path;
                     LOGINFO("App Folder exists, attempting to delete: %s", path.c_str());
                     if (deleteDirectoryEntries(appId, errorReason) == Core::ERROR_NONE)
                     {
@@ -934,7 +936,7 @@ namespace WPEFramework
             }
             else
             {
-                const std::string path = it->second.path;
+                const std::string path = it->second->path;
                 LOGINFO("Clearing App storage path: %s", path.c_str());
                 if (nftw(path.c_str(), deleteCallback, MAX_NUM_OF_FILE_DESCRIPTORS, FTW_DEPTH | FTW_PHYS) != 0)
                 {
@@ -944,7 +946,7 @@ namespace WPEFramework
                 else
                 {
                     /* Successfully cleared app storage path */
-                    it->second.usedKB = 0;
+                    it->second->usedKB = 0;
                     errorReason = "";
                     status = Core::ERROR_NONE;
                 }
@@ -1047,3 +1049,4 @@ namespace WPEFramework
         }
     }
 }
+

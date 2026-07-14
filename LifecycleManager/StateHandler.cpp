@@ -36,7 +36,7 @@ namespace WPEFramework
 
         bool StateHandler::updateState(ApplicationContext* context, Exchange::ILifecycleManager::LifecycleState lifeCycleState, string& errorReason)
 	{
-            State* currentState = (State*) context->getState();
+            State* currentState = context->getState();
             bool result = false;
 	    if ((nullptr != currentState) && (currentState->getValue() == lifeCycleState))
 	    {
@@ -207,7 +207,7 @@ namespace WPEFramework
             // start from next state
 	    for (size_t stateIndex=1; stateIndex<statePath.size(); stateIndex++)
 	    {
-                Exchange::ILifecycleManager::LifecycleState oldLifecycleState = ((State*)context->getState())->getValue();
+            Exchange::ILifecycleManager::LifecycleState oldLifecycleState = context->getState()->getValue();
                 isStateTerminating = (Exchange::ILifecycleManager::LifecycleState::TERMINATING == statePath[stateIndex]);
                 if (!isStateTerminating)
 		{
@@ -242,7 +242,7 @@ namespace WPEFramework
                     }
                 }
 
-		Exchange::ILifecycleManager::LifecycleState newLifecycleState = ((State*)context->getState())->getValue();
+        Exchange::ILifecycleManager::LifecycleState newLifecycleState = context->getState()->getValue();
                 if (isStateTerminating)
 		{
                     newLifecycleState = statePath[stateIndex];
@@ -373,3 +373,4 @@ namespace WPEFramework
         }
     } /* namespace Plugin */
 } /* namespace WPEFramework */
+

@@ -45,7 +45,7 @@ namespace WPEFramework
         , mRequestType(REQUEST_TYPE_NONE)
         , mTerminated(false)
         {
-            mState = (void*) new UnloadedState(this);
+            mState = new UnloadedState(this);
             sem_init(&mReachedLoadingStateSemaphore, 0, 0);
             sem_init(&mFirstFrameAfterResumeSemaphore, 0, 0);
         }
@@ -58,8 +58,7 @@ namespace WPEFramework
         {
             if (nullptr != mState)
 	    {
-                State* state = (State*)mState;
-                delete state;
+	        delete mState;
 	    }
 	    mState = nullptr;
 
@@ -89,10 +88,15 @@ namespace WPEFramework
             mLastLifecycleStateChangeTime = changeTime;
 	}
 
-        void ApplicationContext::setState(void* state)
+    void ApplicationContext::setState(State* state)
 	{
             mState = state;
 	}
+
+    void ApplicationContext::setState(void* state)
+    {
+        mState = static_cast<State*>(state);
+    }
 
 	void ApplicationContext::setTargetLifecycleState(Exchange::ILifecycleManager::LifecycleState state)
 	{
@@ -146,8 +150,7 @@ namespace WPEFramework
 
 	Exchange::ILifecycleManager::LifecycleState ApplicationContext::getCurrentLifecycleState()
 	{
-            State* state = (State*)mState;
-            return state->getValue();
+        return mState->getValue();
 	}
 
         timespec ApplicationContext::getLastLifecycleStateChangeTime()
@@ -170,7 +173,7 @@ namespace WPEFramework
             return mMostRecentIntent;
         }
 
-        void* ApplicationContext::getState()
+	State* ApplicationContext::getState()
         {
             return mState;
         }
@@ -211,3 +214,4 @@ namespace WPEFramework
         }
     } /* namespace Plugin */
 } /* namespace WPEFramework */
+

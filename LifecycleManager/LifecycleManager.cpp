@@ -59,8 +59,21 @@ namespace WPEFramework
         {
             SYSLOG(Logging::Startup, (_T("LifecycleManager Destructor")));
             LifecycleManager::sInstance = nullptr;
-	    mLifecycleManagerState = nullptr;
-	    mLifecycleManagerImplementation = nullptr;
+            if (mLifecycleManagerState != nullptr)
+            {
+                mLifecycleManagerState->Release();
+	        mLifecycleManagerState = nullptr;
+            }
+            if (mLifecycleManagerImplementation != nullptr)
+            {
+                mLifecycleManagerImplementation->Release();
+	        mLifecycleManagerImplementation = nullptr;
+            }
+            if (_service != nullptr)
+            {
+                _service->Release();
+	        _service = nullptr;
+            }
         }
 
         const string LifecycleManager::Initialize(PluginHost::IShell* service )
@@ -154,3 +167,4 @@ namespace WPEFramework
         }
     } /* namespace Plugin */
 } /* namespace WPEFramework */
+
