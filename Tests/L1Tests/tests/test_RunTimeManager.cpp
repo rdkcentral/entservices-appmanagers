@@ -30,6 +30,11 @@
 #include "OCIContainerMock.h"
 #include "WindowManagerMock.h"
 #include "WorkerPoolImplementation.h"
+
+#define CREATE_DISPLAY_WILDCARDS \
+    ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, \
+    ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, \
+    ::testing::_, ::testing::_
 #include <fstream>
 #include <atomic>
 #include <chrono>
@@ -803,7 +808,7 @@ TEST_F(RuntimeManagerTest, RunMethods)
                 return WPEFramework::Core::ERROR_NONE;
           }));
 
-    ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+    ON_CALL(*mWindowManagerMock, CreateDisplay(CREATE_DISPLAY_WILDCARDS))
             .WillByDefault(::testing::Return(Core::ERROR_NONE));
 
     EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, runtimeConfig));
@@ -849,7 +854,7 @@ TEST_F(RuntimeManagerTest, RunWithoutCreateDisplay)
                 return WPEFramework::Core::ERROR_NONE;
           }));
 
-    ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+    ON_CALL(*mWindowManagerMock, CreateDisplay(CREATE_DISPLAY_WILDCARDS))
             .WillByDefault(::testing::Return(Core::ERROR_GENERAL));
 
     EXPECT_EQ(Core::ERROR_GENERAL, interface->Run(appInstanceId, appInstanceId, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, runtimeConfig));
@@ -908,7 +913,7 @@ TEST_F(RuntimeManagerTest, RunCreateFkpsMounts)
                 return WPEFramework::Core::ERROR_NONE;
           }));
 
-    ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+    ON_CALL(*mWindowManagerMock, CreateDisplay(CREATE_DISPLAY_WILDCARDS))
             .WillByDefault(::testing::Return(Core::ERROR_NONE));
 
     EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, runtimeConfig));
@@ -1042,7 +1047,7 @@ TEST_F(RuntimeManagerTest, RunReadfromAIConfigFile)
                 return Core::ERROR_NONE;
             }));
 
-    ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_)).WillByDefault(::testing::Return(Core::ERROR_NONE));
+    ON_CALL(*mWindowManagerMock, CreateDisplay(CREATE_DISPLAY_WILDCARDS)).WillByDefault(::testing::Return(Core::ERROR_NONE));
 
     LOGINFO("Calling Run");
     EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 1000, 1001,
@@ -1221,7 +1226,7 @@ TEST_F(RuntimeManagerTest, RunIncludesDefaultEthanLogLevelsWhenRuntimeLogLevelsP
             }));
 
     ON_CALL(*mWindowManagerMock,
-            CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+            CreateDisplay(CREATE_DISPLAY_WILDCARDS))
         .WillByDefault(::testing::Return(Core::ERROR_NONE));
 
     EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10,
@@ -1480,7 +1485,7 @@ TEST_F(RuntimeManagerTest, SuspendResumeMethods)
                 return WPEFramework::Core::ERROR_NONE;
           }));
 
-    ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+    ON_CALL(*mWindowManagerMock, CreateDisplay(CREATE_DISPLAY_WILDCARDS))
             .WillByDefault(::testing::Return(Core::ERROR_NONE));
 
     EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, runtimeConfig));
@@ -1579,7 +1584,7 @@ TEST_F(RuntimeManagerTest, SuspendFailsWithPauseContainerError)
                 return Core::ERROR_NONE;
             }));
 
-    ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_)).WillByDefault(::testing::Return(Core::ERROR_NONE));
+    ON_CALL(*mWindowManagerMock, CreateDisplay(CREATE_DISPLAY_WILDCARDS)).WillByDefault(::testing::Return(Core::ERROR_NONE));
 
     EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, runtimeConfig));
 
@@ -1634,7 +1639,7 @@ TEST_F(RuntimeManagerTest, ResumeFailsResumePauseContainerError)
                 return Core::ERROR_NONE;
             }));
 
-    ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_)).WillByDefault(::testing::Return(Core::ERROR_NONE));
+    ON_CALL(*mWindowManagerMock, CreateDisplay(CREATE_DISPLAY_WILDCARDS)).WillByDefault(::testing::Return(Core::ERROR_NONE));
 
     EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, runtimeConfig));
 

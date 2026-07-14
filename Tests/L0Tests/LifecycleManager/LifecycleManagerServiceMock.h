@@ -106,7 +106,7 @@ public:
 // Fake IRDKWindowManager stub — allows WindowManagerHandler::initialize() to
 // succeed so the full Configure() chain completes without crash.
 // Follows RuntimeManager/ServiceMock.h FakeWindowManager conventions:
-// proper _refCount tracking, 11-param CreateDisplay matching the installed
+// proper _refCount tracking, 12-param CreateDisplay matching the installed
 // IRDKWindowManager interface, no self-delete (stack-allocated by tests).
 // ──────────────────────────────────────────────────────────────────────────────
 
@@ -154,7 +154,8 @@ public:
         const bool /*virtualDisplay*/,
         const uint32_t /*virtualWidth*/, const uint32_t /*virtualHeight*/,
         const uint32_t /*ownerId*/, const uint32_t /*groupId*/,
-        const bool /*topmost*/, const bool /*focus*/) override { return WPEFramework::Core::ERROR_NONE; }
+        const bool /*topmost*/, const bool /*focus*/,
+        const string& /*capabilities*/) override { return WPEFramework::Core::ERROR_NONE; }
 
     WPEFramework::Core::hresult GetApps(string& /*appsIds*/) const override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult AddKeyIntercept(const string& /*intercept*/) override { return WPEFramework::Core::ERROR_NONE; }
@@ -183,6 +184,7 @@ public:
     WPEFramework::Core::hresult StartVncServer() override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult StopVncServer() override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult GetScreenshot() override { return WPEFramework::Core::ERROR_NONE; }
+    WPEFramework::Core::hresult SetAlias(const string& /*clientId*/, const string& /*alias*/) override { return WPEFramework::Core::ERROR_NONE; }
 
     mutable std::atomic<uint32_t> _refCount;
     std::atomic<uint32_t> registerCalls;
