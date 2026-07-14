@@ -88,8 +88,8 @@ namespace Plugin {
                 uint32_t getRateLimit() { return rateLimit; }
                 string  getFileLocator() { return fileLocator; }
                 void    setFileLocator(string &locator) { fileLocator = locator; }
-                void    cancel() { isCancelled = true; }
-                bool    cancelled() { return isCancelled; }
+                void    cancel() { isCancelled.store(true, std::memory_order_release); }
+                bool    cancelled() { return isCancelled.load(std::memory_order_acquire); }
 
             private:
                 string  id;
@@ -98,7 +98,7 @@ namespace Plugin {
                 uint8_t retries;
                 uint32_t rateLimit;
                 string  fileLocator;
-                bool    isCancelled;
+                std::atomic<bool> isCancelled;
         };
 
         typedef std::shared_ptr<DownloadInfo> DownloadInfoPtr;

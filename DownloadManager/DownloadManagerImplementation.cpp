@@ -354,7 +354,7 @@ namespace Plugin {
     {
         if (fileLocator.empty())
         {
-            LOGERR("DM: Delete failed - fileLocator is empty!");
+            LOGWARN("DM: Delete failed - fileLocator is empty!");
             return Core::ERROR_BAD_REQUEST;
         }
 
