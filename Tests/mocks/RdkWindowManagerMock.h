@@ -126,7 +126,8 @@ public:
     MOCK_METHOD(bool, createDisplay, (const std::string& client, const std::string& displayName,
                                       uint32_t displayWidth, uint32_t displayHeight,
                                       bool virtualDisplayEnabled, uint32_t virtualWidth, uint32_t virtualHeight,
-                                      bool topmost, bool focus, int32_t ownerId, int32_t groupId), (override));
+                                      bool topmost, bool focus, int32_t ownerId, int32_t groupId,
+                                      const std::string& capabilities), (override));
     MOCK_METHOD(bool, addListener, (const std::string& client, std::shared_ptr<RdkWindowManagerEventListener> listener), (override));
     MOCK_METHOD(bool, removeListener, (const std::string& client, std::shared_ptr<RdkWindowManagerEventListener> listener), (override));
     MOCK_METHOD(bool, onEvent, (RdkCompositor* eventCompositor, const std::string& eventName), (override));
@@ -166,6 +167,7 @@ public:
     MOCK_METHOD(bool, renderReady, (const std::string& client), (override));
     MOCK_METHOD(bool, startVncServer, (), (override));
     MOCK_METHOD(bool, stopVncServer, (), (override));
+    MOCK_METHOD(bool, setAlias, (const std::string& clientId, const std::string& alias), (override));
 };
 
 // =============================================================

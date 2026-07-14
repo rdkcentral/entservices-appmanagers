@@ -131,5 +131,25 @@ void WindowManagerHandler::WindowManagerNotification::OnReady(const std::string 
     _parent.onEvent(eventData);
 }
 
+void WindowManagerHandler::WindowManagerNotification::OnFocus(const std::string &client)
+{
+    printf("Received onFocus event for app[%s] \n", client.c_str());
+    fflush(stdout);
+    JsonObject eventData;
+    eventData["appInstanceId"] = client;
+    eventData["name"] = "onFocus";
+    _parent.onEvent(eventData);
+}
+
+void WindowManagerHandler::WindowManagerNotification::OnBlur(const std::string &client)
+{
+    printf("Received onBlur event for app[%s] \n", client.c_str());
+    fflush(stdout);
+    JsonObject eventData;
+    eventData["appInstanceId"] = client;
+    eventData["name"] = "onBlur";
+    _parent.onEvent(eventData);
+}
+
 } // namespace Plugin
 } // namespace WPEFramework
