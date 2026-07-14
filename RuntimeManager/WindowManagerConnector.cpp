@@ -42,11 +42,11 @@ bool WindowManagerConnector::initializePlugin(PluginHost::IShell* service, class
     bool ret = false;
     if (nullptr == service)
     {
-        LOGWARN("service is null \n");
+        LOGWARN("service is null");
     }
     else if (nullptr == (mWindowManager = service->QueryInterfaceByCallsign<Exchange::IRDKWindowManager>("org.rdk.RDKWindowManager")))
     {
-        LOGWARN("Failed to create WindowManager object\n");
+        LOGWARN("QueryInterfaceByCallsign failed for org.rdk.RDKWindowManager");
     }
     else
     {
@@ -58,7 +58,7 @@ bool WindowManagerConnector::initializePlugin(PluginHost::IShell* service, class
         Core::hresult registerResult = mWindowManager->Register(&mWindowManagerNotification);
         if (Core::ERROR_NONE != registerResult)
         {
-            LOGINFO("Unable to register with windowmanager [%d] \n", registerResult);
+            LOGWARN("Register with WindowManager failed: result=%d", registerResult);
         }
     }
     return ret;

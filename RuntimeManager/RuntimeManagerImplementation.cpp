@@ -185,7 +185,7 @@ namespace WPEFramework
                     string containerState = obj["state"];
                     int containerStateInt = std::stoi(containerState);
                     RuntimeState state = static_cast<RuntimeState>(containerStateInt);
-                    LOGINFO("RuntimeManagerImplementation::Dispatch: state[%d]", state);
+                    LOGINFO("state[%d]", state);
                     (*index)->OnStateChanged(appInstanceId, state);
                     ++index;
                 }
@@ -268,7 +268,7 @@ namespace WPEFramework
                 break;
 
             default:
-                LOGWARN("Event[%u] not handled", event);
+                LOGWARN("Unhandled RuntimeManager event: id=%u", event);
                 break;
             }
         }
@@ -326,7 +326,7 @@ namespace WPEFramework
             }
             else
             {
-                LOGERR("service is null");
+                LOGERR("Configure failed: service is null");
             }
             return result;
         }
@@ -477,7 +477,7 @@ namespace WPEFramework
                     }
                     else
                     {
-                        LOGERR("Failed to get Storage Manager info");
+                        LOGERR("GetStorage failed for appId=%s status=%d", appId.c_str(), status);
                     }
                 }
             }

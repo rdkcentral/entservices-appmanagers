@@ -355,7 +355,7 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
     }
     else
     {
-        LOGERR("mService is nullptr");
+        LOGERR("Configure failed: service is null");
         result = Core::ERROR_GENERAL;
     }
     
@@ -392,7 +392,7 @@ Core::hresult RDKWindowManagerImplementation::Deinitialize(PluginHost::IShell* s
     std::vector<std::string> clientList;
     if (false == CompositorController::getClients(clientList))
     {
-        LOGERR("getClients Failed");
+        LOGERR("getClients failed during deinitialize");
     }
 
     std::vector<std::string>::iterator ptr;
@@ -400,7 +400,7 @@ Core::hresult RDKWindowManagerImplementation::Deinitialize(PluginHost::IShell* s
     {
         if(false == RdkWindowManager::CompositorController::removeListener((*ptr),mEventListener))
         {
-            LOGERR("CompositorController::removeListener Failed");
+            LOGERR("removeListener failed for client=%s", (*ptr).c_str());
         }
     }
 
@@ -695,7 +695,7 @@ void RDKWindowManagerImplementation::Dispatch(Event event, const JsonValue param
         }
 
          default:
-             LOGWARN("Event[%u] not handled", event);
+             LOGWARN("Unhandled RDKWindowManager event: id=%u", event);
              break;
      }
 
@@ -738,7 +738,7 @@ Core::hresult RDKWindowManagerImplementation::CreateDisplay(const string &client
 
     if (false == result)
     {
-        LOGERR("failed to create display : %s, displayName:%s, displayWidth:%u, displayHeight:%u, virtualDisplay:%d, virtualWidth:%u, virtualHeight:%u, topmost:%d, focus:%d, ownerId: %u, groupId: %u",
+        LOGERR("create display failed: clientId=%s displayName=%s width=%u height=%u virtual=%d vWidth=%u vHeight=%u topmost=%d focus=%d ownerId=%u groupId=%u",
                clientId.c_str(), displayName.c_str(), displayWidth, displayHeight, virtualDisplay, virtualWidth, virtualHeight, topmost, focus, ownerId, groupId);
     }
     else
@@ -1600,7 +1600,7 @@ bool RDKWindowManagerImplementation::createDisplay(const string& client, const s
     }
     else
     {
-        LOGERR("Client: %s already exist", client.c_str());
+        LOGERR("create display rejected: client already exists clientId=%s", client.c_str());
     }
 
     return ret;
@@ -2059,7 +2059,7 @@ Core::hresult RDKWindowManagerImplementation::GetLastKeyInfo(uint32_t &keyCode, 
     }
     else
     {
-        LOGERR("Failed to get last keyinfo information");
+        LOGERR("GetLastKeyInfo failed");
         retStatus = Core::ERROR_GENERAL;
     }
     
