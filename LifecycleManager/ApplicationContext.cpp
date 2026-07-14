@@ -58,7 +58,7 @@ namespace WPEFramework
         {
             if (nullptr != mState)
 	    {
-                delete mstate;
+                delete mState;
 	    }
 	    mState = nullptr;
 
@@ -145,7 +145,7 @@ namespace WPEFramework
 
 	Exchange::ILifecycleManager::LifecycleState ApplicationContext::getCurrentLifecycleState()
 	{
-            return mstate->getValue();
+            return mState->getValue();
 	}
 
         timespec ApplicationContext::getLastLifecycleStateChangeTime()
