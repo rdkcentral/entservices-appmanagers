@@ -346,12 +346,13 @@ uint32_t Test_AM_IsInstalledAndGetInstalledAppsWithPackages()
     installedPkg.packageId = "app.good";
     installedPkg.version = "1.2.3";
     installedPkg.state = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
+    installedPkg.isRuntime = false;
 
     WPEFramework::Exchange::IPackageInstaller::Package pendingPkg;
     pendingPkg.packageId = "app.pending";
     pendingPkg.version = "9.9.9";
     pendingPkg.state = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLING;
-
+    pendingPkg.isRuntime = false;
     installer.installedPackages.push_back(installedPkg);
     installer.installedPackages.push_back(pendingPkg);
 
