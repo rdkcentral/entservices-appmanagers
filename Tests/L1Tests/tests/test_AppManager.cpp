@@ -4960,3 +4960,72 @@ TEST_F(AppManagerTest, GetCustomValuesWithAipathFileHasContent)
     }
 }
 
+/*
+ * Test Case for LaunchAppLockFailureEmptyUnpackedPath
+ * Setting up AppManager Plugin with full resources
+ * Registering notification handler for lifecycle state change event
+ * Configuring IsAppLoaded() to return not-loaded so LaunchApp enters the packageLock path
+ * Configuring ListPackages() to return a valid iterator with the installed app present
+ * Configuring Lock() to return Core::ERROR_NONE but set unpackedPath = "" (empty)
+ * Calling LaunchApp() with APPMANAGER_APP_ID
+ * Verifying that an APP_ERROR_PACKAGE_LOCK lifecycle error event is raised and no crash occurs
+ * Releasing the AppManager interface and all related test resources
+ */
+TEST_F(AppManagerTest, LaunchAppLockFailureEmptyUnpackedPath)
+{
+    Core::hresult status;
+    uint32_t signalled = AppManager_StateInvalid;
+    Core::Sink<NotificationHandler> notification;
+    ExpectedAppLifecycleEvent expectedEvent;
+
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    expectedEvent.appId = APPMANAGER_APP_ID;
+    expectedEvent.appInstanceId = "";
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNKNOWN;
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED;
+    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_PACKAGE_LOCK;
+
+    mAppManagerImpl->Register(&notification);
+    notification.SetExpectedEvent(expectedEvent);
+
+    /* IsAppLoaded returns not-loaded so LaunchApp proceeds into packageLock */
+    EXPECT_CALL(*mLifecycleManagerMock, IsAppLoaded(::testing::_, ::testing::_))
+        .WillRepeatedly([&](const std::string& appId, bool& loaded) {
+            loaded = false;
+            return Core::ERROR_NONE;
+        });
+
+    /* ListPackages returns a valid iterator with the installed app present */
+    EXPECT_CALL(*mPackageInstallerMock, ListPackages(::testing::_))
+        .WillRepeatedly([&](Exchange::IPackageInstaller::IPackageIterator*& packages) {
+            auto mockIterator = FillPackageIterator();
+            packages = mockIterator;
+            return Core::ERROR_NONE;
+        });
+
+    /* Lock succeeds but returns empty unpackedPath - exercises the empty-path error branch */
+    EXPECT_CALL(*mPackageManagerMock, Lock(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .WillRepeatedly([&](const string& packageId, const string& version,
+            const Exchange::IPackageHandler::LockReason& lockReason, uint32_t& lockId,
+            string& unpackedPath, Exchange::RuntimeConfig& configMetadata,
+            Exchange::IPackageHandler::ILockIterator*& appMetadata) {
+            lockId = 1;
+            unpackedPath = "";
+            configMetadata.capabilities = APPMANAGER_APP_CAPABILITIES;
+            return Core::ERROR_NONE;
+        });
+
+    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->LaunchApp(APPMANAGER_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS));
+
+    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+
+    mAppManagerImpl->Unregister(&notification);
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
