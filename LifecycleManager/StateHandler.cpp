@@ -207,7 +207,7 @@ namespace WPEFramework
             // start from next state
 	    for (size_t stateIndex=1; stateIndex<statePath.size(); stateIndex++)
 	    {
-                Exchange::ILifecycleManager::LifecycleState oldLifecycleState = context->getStat()->getValue();
+                Exchange::ILifecycleManager::LifecycleState oldLifecycleState = context->getState()->getValue();
                 isStateTerminating = (Exchange::ILifecycleManager::LifecycleState::TERMINATING == statePath[stateIndex]);
                 if (!isStateTerminating)
 		{
