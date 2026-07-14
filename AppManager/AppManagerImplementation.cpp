@@ -927,7 +927,7 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
             {
                 mAppManagerLock.lock();
                 mAppRequestList.push_back(std::move(request));
-                LOGINFO("Queued launch request: appId=%s action=%d queueDepth=%zu", appId.c_str(), APP_ACTION_LAUNCH, mAppRequestList.size());
+                if (mEnhancedLoggingEnabled) { LOGINFO("Queued launch request: appId=%s action=%d queueDepth=%zu", appId.c_str(), APP_ACTION_LAUNCH, mAppRequestList.size()); }
                 mAppManagerLock.unlock();
                 mAppRequestListCV.notify_one();
                 status = Core::ERROR_NONE;
