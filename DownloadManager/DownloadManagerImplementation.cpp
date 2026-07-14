@@ -352,6 +352,12 @@ namespace Plugin {
 
     Core::hresult DownloadManagerImplementation::Delete(const string &fileLocator)
     {
+        if (fileLocator.empty())
+        {
+            LOGERR("DM: Delete failed - fileLocator is empty!");
+            return Core::ERROR_BAD_REQUEST;
+        }
+
         Core::hresult result = Core::ERROR_GENERAL;
 
         {
@@ -551,16 +557,7 @@ namespace Plugin {
                 std::lock_guard<std::mutex> lock(mQueueMutex);
                 mCurrentDownload.reset();
             }
-        }
-        LOGINFO("DM: Downloader thread exiting!");
-    }
-
-    void DownloadManagerImplementation::notifyDownloadStatus(const string& id, const string& locator, const DownloadReason reason)
-    {
-        JsonArray list = JsonArray();
-        JsonObject obj;
-        obj["downloadId"] = id;
-        obj["fileLocator"] = locator;
+["fileLocator"] = locator;
         if (reason != (DownloadReason)DOWNLOAD_REASON_NONE)
         {
             obj["failReason"] = getDownloadReason(reason);
