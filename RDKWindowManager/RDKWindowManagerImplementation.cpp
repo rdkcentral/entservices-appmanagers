@@ -2226,7 +2226,7 @@ Core::hresult RDKWindowManagerImplementation::GetFocused(string &client) const
     }
     else
     {
-       LOGERR("GetFocused: Failed to retrieve focused client");
+        LOGERR("GetFocused: Failed to retrieve focused client");
     }
 
     if (lockAcquired)
