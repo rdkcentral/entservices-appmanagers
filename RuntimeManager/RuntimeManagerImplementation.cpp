@@ -580,9 +580,9 @@ namespace WPEFramework
             {
                 Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
 
-                uid = mUserIdManager->getUserId(appId);
-                gid = mUserIdManager->getAppsGid();
-            }
+                uid = runtimeConfigObject.userId;
+                gid = runtimeConfigObject.groupId;
+			}
 
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
             // In Ralf package, all apps will run with the same ralf user and group
@@ -642,8 +642,8 @@ namespace WPEFramework
                 appStorageInfo.userId = uid;
                 appStorageInfo.groupId = gid;
 #else
-                appStorageInfo.userId = userId;
-                appStorageInfo.groupId = groupId;
+                appStorageInfo.userId = 0;
+                appStorageInfo.groupId = 0;
 #endif //RALF_PACKAGE_SUPPORT_ENABLED
                 if (Core::ERROR_NONE == getAppStorageInfo(appIdForStorage, appStorageInfo))
                 {
@@ -652,8 +652,8 @@ namespace WPEFramework
                     config.mAppStorageInfo.userId = uid;
                     config.mAppStorageInfo.groupId = gid;
 #else
-                    config.mAppStorageInfo.userId = userId;
-                    config.mAppStorageInfo.groupId = groupId;
+                    config.mAppStorageInfo.userId = uid;
+                    config.mAppStorageInfo.groupId = gid;
 #endif // RALF_PACKAGE_SUPPORT_ENABLED
                     config.mAppStorageInfo.size = std::move(appStorageInfo.size);
                     config.mAppStorageInfo.used = std::move(appStorageInfo.used);
