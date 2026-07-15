@@ -895,8 +895,25 @@ TEST_F(PackageManagerTest, deleteMethodusingJsonRpcSuccess) {
 
     EXPECT_NE(mJsonRpcResponse.find("1001"), std::string::npos);
 
+    const string fileLocator = "/opt/CDL/package1001";
+    std::ofstream downloadFile(fileLocator, std::ios::out | std::ios::trunc);
+    ASSERT_TRUE(downloadFile.is_open());
+    downloadFile << "test content";
+    downloadFile.close();
+
+    const string deleteRequest = string("{\"fileLocator\": \"") + fileLocator + "\"}";
+
     // TC-18: Delete download using JsonRpc
-    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("delete"), _T("{\"fileLocator\": \"/opt/CDL/package1001\"}"), mJsonRpcResponse));
+    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("delete"), deleteRequest, mJsonRpcResponse));
+
+    if (false == mJsonRpcResponse.empty()) {
+        JsonObject response;
+        EXPECT_TRUE(response.FromString(mJsonRpcResponse));
+        EXPECT_FALSE(response.HasLabel("error"));
+    }
+
+    std::ifstream deletedFile(fileLocator);
+    EXPECT_FALSE(deletedFile.good());
 
 	deinitforJsonRpc();
 }
