@@ -59,6 +59,7 @@ public:
     MOCK_METHOD(WPEFramework::Core::hresult, GetZOrder, (const string& appInstanceId, int32_t &zOrder), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, StartVncServer, (), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, StopVncServer, (), (override));
+    MOCK_METHOD(WPEFramework::Core::hresult, GetFocused, (string& client), (const, override));
     MOCK_METHOD(WPEFramework::Core::hresult, GetScreenshot, (), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, SetAlias, (const string& clientId, const string& alias), (override));
     MOCK_METHOD(void, AddRef, (), (const, override));
