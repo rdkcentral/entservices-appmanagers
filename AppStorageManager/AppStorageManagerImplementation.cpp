@@ -90,7 +90,7 @@ namespace Plugin {
                 status = handler.populateAppInfoCacheFromStoragePath();
                 if (Core::ERROR_NONE != status)
                 {
-                    LOGERR("populateAppInfoCacheFromStoragePath Failed!!!");
+                    LOGERR("populateAppInfoCacheFromStoragePath failed: status=%u", status);
                 }
                 else
                 {

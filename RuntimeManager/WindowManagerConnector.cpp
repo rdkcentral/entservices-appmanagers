@@ -21,6 +21,7 @@
 #include "RuntimeManagerImplementation.h"
 #include <fstream>
 #include <random>
+#include "WindowManagerCapabilities.h"
 
 namespace WPEFramework {
 namespace Plugin {
@@ -41,11 +42,11 @@ bool WindowManagerConnector::initializePlugin(PluginHost::IShell* service, class
     bool ret = false;
     if (nullptr == service)
     {
-        LOGWARN("service is null \n");
+        LOGWARN("service is null");
     }
     else if (nullptr == (mWindowManager = service->QueryInterfaceByCallsign<Exchange::IRDKWindowManager>("org.rdk.RDKWindowManager")))
     {
-        LOGWARN("Failed to create WindowManager object\n");
+        LOGWARN("QueryInterfaceByCallsign failed for org.rdk.RDKWindowManager");
     }
     else
     {
@@ -57,7 +58,7 @@ bool WindowManagerConnector::initializePlugin(PluginHost::IShell* service, class
         Core::hresult registerResult = mWindowManager->Register(&mWindowManagerNotification);
         if (Core::ERROR_NONE != registerResult)
         {
-            LOGINFO("Unable to register with windowmanager [%d] \n", registerResult);
+            LOGWARN("Register with WindowManager failed: result=%d", registerResult);
         }
     }
     return ret;
@@ -81,7 +82,7 @@ void WindowManagerConnector::releasePlugin()
     mWindowManager = nullptr;
 }
 
-bool WindowManagerConnector::createDisplay(const string& appInstanceId , const string& displayName , const uint32_t& userId, const uint32_t& groupId)
+bool WindowManagerConnector::createDisplay(const string& appInstanceId , const string& displayName , const uint32_t& userId, const uint32_t& groupId, const string& capabilities)
 {
     if(mPluginInitialized == false)
     {
@@ -92,16 +93,16 @@ bool WindowManagerConnector::createDisplay(const string& appInstanceId , const s
     uint32_t virtualWidth=0, virtualHeight=0;
     bool virtualDisplay=false;
     bool topmost=false, focus=false;
-    
-    LOGINFO("Creating display [%s] for application [%s] \n", displayName.c_str(), appInstanceId.c_str());
 
-    Core::hresult result = mWindowManager->CreateDisplay(appInstanceId, displayName, displayWidth, displayHeight, virtualDisplay, virtualWidth, virtualHeight, userId, groupId, topmost, focus);
+    const std::string wmCapabilities = buildWindowManagerCapabilities(capabilities);
+    LOGINFO("Creating display [%s] for application [%s], wmCapabilities [%s] \n", displayName.c_str(), appInstanceId.c_str(), wmCapabilities.c_str());
+
+    Core::hresult result = mWindowManager->CreateDisplay(appInstanceId, displayName, displayWidth, displayHeight, virtualDisplay, virtualWidth, virtualHeight, userId, groupId, topmost, focus, wmCapabilities);
     if (Core::ERROR_NONE != result)
     {
         LOGERR("Failed to create display for application [%s] error [%d] \n",appInstanceId.c_str(), result);
         return false;
     }
-
     return true;
 }
 
