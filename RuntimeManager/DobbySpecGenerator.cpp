@@ -104,6 +104,24 @@ namespace
         return tokens;
     }
 
+    // Deep-merges overlay into base: objects are merged recursively,
+    // all other types (scalars, arrays) are overwritten by the overlay value.
+    void mergeJson(Json::Value& base, const Json::Value& overlay)
+    {
+        if (!overlay.isObject() || !base.isObject())
+        {
+            base = overlay;
+            return;
+        }
+        for (const auto& key : overlay.getMemberNames())
+        {
+            if (base.isMember(key) && base[key].isObject() && overlay[key].isObject())
+                mergeJson(base[key], overlay[key]);
+            else
+                base[key] = overlay[key];
+        }
+    }
+
     bool getExtraMountEntries(const std::string& serializedCapabilities,
                               std::vector<ExtraBindMount>& extraMounts)
     {
@@ -356,6 +374,47 @@ bool DobbySpecGenerator::generate(const ApplicationConfiguration& config, const 
 #endif
 
     Json::FastWriter writer;
+
+    // apply additionalconfig capability overlay onto the spec (last step, so it
+    // can override any field set above — mirrors the extramounts pattern)
+    const std::string additionalConfigStr = getCapabilityValue(parsedCapabilities, "additionalconfig");
+    if (!additionalConfigStr.empty())
+    {
+        Json::Value overlay;
+        Json::Reader overlayReader;
+        if (overlayReader.parse(additionalConfigStr, overlay))
+        {
+            mergeJson(spec, overlay);
+            LOGINFO("additionalconfig overlay applied to Dobby spec");
+        }
+        else
+        {
+            LOGWARN("Failed to parse additionalconfig JSON: %s",
+                    overlayReader.getFormattedErrorMessages().c_str());
+        }
+    }
+
+    // Apply 'spec' capability as a non-overwriting fill: any top-level or
+    // nested key present in the capability JSON that is absent from the already-
+    // generated spec is added. Keys already set (including by additionalconfig)
+    // are never replaced.
+    const std::string capSpecStr = getCapabilityValue(parsedCapabilities, "spec");
+    if (!capSpecStr.empty())
+    {
+        Json::Value capSpec;
+        Json::Reader capSpecReader;
+        if (capSpecReader.parse(capSpecStr, capSpec))
+        {
+            fillMissingJson(spec, capSpec);
+            LOGINFO("'spec' capability fill applied to Dobby spec");
+        }
+        else
+        {
+            LOGWARN("Failed to parse 'spec' capability JSON: %s",
+                    capSpecReader.getFormattedErrorMessages().c_str());
+        }
+    }
+
     resultSpec = writer.write(spec);
     LOGINFO("spec: '%s'\n", resultSpec.c_str());
 
@@ -601,6 +660,23 @@ Json::Value DobbySpecGenerator::createBindMount(const std::string& source,
 bool DobbySpecGenerator::shouldEnableGpu(const ApplicationConfiguration& config) const
 {
     return !config.mWesterosSocketPath.empty();
+}
+
+// Non-overwriting deep merge: adds keys from 'defaults' that are absent in
+// 'base'. Existing keys in 'base' (including those set by additionalconfig)
+// are never replaced. Sub-objects are recursed into.
+void DobbySpecGenerator::fillMissingJson(Json::Value& base, const Json::Value& defaults)
+{
+    if (!defaults.isObject() || !base.isObject())
+        return;
+    for (const auto& key : defaults.getMemberNames())
+    {
+        if (!base.isMember(key))
+            base[key] = defaults[key];
+        else if (base[key].isObject() && defaults[key].isObject())
+            fillMissingJson(base[key], defaults[key]);
+        // key already present in base — skip
+    }
 }
 
 void DobbySpecGenerator::parseCapabilities(const std::string& serializedCapabilities,

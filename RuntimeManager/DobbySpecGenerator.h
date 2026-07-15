@@ -93,7 +93,7 @@ namespace Plugin
         std::string getCapabilityValue(const std::vector<std::pair<std::string, std::string>>& capabilities,
                                        const std::string& capabilityName) const;
 	    void addHolePunchPortToSpec(Json::Value &spec, in_port_t port) const;
-
+        void fillMissingJson(Json::Value& base, const Json::Value& defaults);
             Json::Value mIonMemoryPluginData;
 	    std::string mPackageMountPoint;
 	    std::string mRuntimeMountPoint;
