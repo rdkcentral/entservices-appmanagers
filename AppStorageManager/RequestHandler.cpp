@@ -611,7 +611,7 @@ namespace WPEFramework
                         else
                         {
                             /* quotaKB is total allocated space for the app, and usedKB is the current usage */
-                            existingAppsReservationSpaceKB += (entry.second.quotaKB - entry.second.usedKB);
+                            existingAppsReservationSpaceKB += (entry.second->quotaKB - entry.second->usedKB);
                         }
                     }
 
