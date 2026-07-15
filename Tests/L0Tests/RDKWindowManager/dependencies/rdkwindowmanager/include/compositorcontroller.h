@@ -24,7 +24,8 @@ public:
     static bool getClients(std::vector<std::string>& clients);
     static bool createDisplay(const std::string& client, const std::string& displayName, uint32_t displayWidth = 0, uint32_t displayHeight = 0,
                               bool virtualDisplayEnabled = false, uint32_t virtualWidth = 0, uint32_t virtualHeight = 0,
-                              bool topmost = false, bool focus = false, int32_t ownerId = 0, int32_t groupId = 0);
+                              bool topmost = false, bool focus = false, int32_t ownerId = 0, int32_t groupId = 0,
+                              const std::string& capabilities = {});
     static bool addListener(const std::string& client, std::shared_ptr<RdkWindowManagerEventListener> listener);
     static bool removeListener(const std::string& client, std::shared_ptr<RdkWindowManagerEventListener> listener);
     static void setEventListener(std::shared_ptr<RdkWindowManagerEventListener> listener);
@@ -47,6 +48,8 @@ public:
     static bool startVncServer();
     static bool stopVncServer();
     static bool screenShot(uint8_t*& data, uint32_t& size);
+    static bool setAlias(const std::string& clientId, const std::string& alias);
+    static std::string getDisplayNameFromAlias(const std::string& alias);
 };
 
 } // namespace RdkWindowManager

@@ -177,7 +177,7 @@ namespace WPEFramework
                       }
                       break;
                  default:
-                     LOGWARN("Event[%u] not handled", event);
+                     LOGWARN("Event[%u] not handled appId=%s appInstanceId=%s", event, appId.c_str(), appInstanceId.c_str());
                      break;
              }
         
@@ -228,7 +228,7 @@ namespace WPEFramework
                             }
                             else
                             {
-                                LOGWARN("Unable to get runtime status of application for appInstanceId[%s]", context->getAppInstanceId().c_str());
+                                LOGWARN("Unable to get runtime status for appInstanceId=%s", context->getAppInstanceId().c_str());
                             }
                         }
                     }
@@ -329,7 +329,7 @@ namespace WPEFramework
                     context->setRequestType(REQUEST_TYPE_RESUME);
                 break;
                 default:
-                    LOGERR("targetLifecycleState is invalid");
+                    LOGERR("Invalid targetLifecycleState=%d for appId=%s currentState=%d", static_cast<int>(targetLifecycleState), context->getAppId().c_str(), static_cast<int>(context->getCurrentLifecycleState()));
                 break;
             }
             string errorReason("");
@@ -542,7 +542,7 @@ namespace WPEFramework
                 mAdminLock.Lock();
                 mPendingRespawns.erase(appInstanceId);
                 mAdminLock.Unlock();
-                LOGERR("Failed to close the app [%s]. status[%d] success[%d] error[%s]", appId.c_str(), status, success, errorReason.c_str());
+                LOGERR("Failed to close app appId=%s: status=%d success=%d error=%s", appId.c_str(), status, success, errorReason.c_str());
                 return status;
 	    }
 	    if (false == shouldRespawn)
@@ -832,7 +832,7 @@ namespace WPEFramework
         }
         else
         {
-            LOGWARN("Received wrong state transition request: expected event[%s] pendingTransition[%d] got event[%s]", context->mPendingEventName.c_str(), context->mPendingStateTransition, event.c_str());
+            LOGWARN("Received wrong state transition request: appInstanceId=%s expected=%s got=%s pendingTransition=%d", context->getAppInstanceId().c_str(), context->mPendingEventName.c_str(), event.c_str(), context->mPendingStateTransition);
         }
     }
 

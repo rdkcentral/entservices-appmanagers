@@ -100,6 +100,7 @@ namespace WPEFramework
                 {
                     std::string appId;
                     std::string appInstanceId;
+                    std::string containerId;
                     uint32_t descriptor;
                     Exchange::IRuntimeManager::RuntimeState containerState;
                     time_t requestTime = 0;

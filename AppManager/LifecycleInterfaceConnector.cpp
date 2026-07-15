@@ -83,15 +83,15 @@ namespace WPEFramework
 
             if (nullptr == mCurrentservice)
             {
-                LOGWARN("mCurrentservice is null \n");
+                LOGERR("mCurrentservice is null");
             }
             else if (nullptr == (mLifecycleManagerRemoteObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::ILifecycleManager>("org.rdk.LifecycleManager")))
             {
-                LOGWARN("Failed to create LifecycleManager Remote object\n");
+                LOGERR("Failed to create LifecycleManager Remote object: callsign=org.rdk.LifecycleManager");
             }
             else if (nullptr == (mLifecycleManagerStateRemoteObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::ILifecycleManagerState>("org.rdk.LifecycleManager")))
             {
-                LOGWARN("Failed to create LifecycleManagerState Remote object\n");
+                LOGERR("Failed to create LifecycleManagerState Remote object: callsign=org.rdk.LifecycleManager");
             }
             else
             {
@@ -624,7 +624,7 @@ namespace WPEFramework
                 }
                 else
                 {
-                    LOGINFO("GetLoadedApps succeeded: %s", loadedApps.c_str());
+                    LOGINFO("GetLoadedApps succeeded: count=%zu", static_cast<size_t>(loadedAppsJsonArray.Length()));
                 }
 
                 auto getIntJsonField = [&](JsonObject& obj, const char* key) -> int {
