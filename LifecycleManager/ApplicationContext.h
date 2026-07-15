@@ -93,6 +93,8 @@ namespace WPEFramework
                 RequestType getRequestType();
                 void setTerminated(bool terminated);
                 bool getTerminated();
+                void setUnexpectedTermination(bool unexpectedTermination);
+                bool getUnexpectedTermination() const;
 
                 sem_t mReachedLoadingStateSemaphore;
                 sem_t mFirstFrameAfterResumeSemaphore;
@@ -115,6 +117,7 @@ namespace WPEFramework
                                 time_t mRequestTime;
                 RequestType mRequestType;
                 bool mTerminated;
+                bool mUnexpectedTermination;
         };
     } /* namespace Plugin */
 } /* namespace WPEFramework */
