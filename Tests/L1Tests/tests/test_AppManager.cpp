@@ -24,6 +24,8 @@
 #include <vector>
 #include <cstdio>
 #include <mutex>
+#include <chrono>
+#include <thread>
 
 #include "AppManager.h"
 #include "AppManagerImplementation.h"
@@ -2739,6 +2741,8 @@ TEST_F(AppManagerTest, SetAppPropertyUsingComRpcFailureEmptyKey)
  */
 TEST_F(AppManagerTest, DISABLED_SetAppPropertyUsingComRpcFailureEmptyValue)
 {
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+
     Core::hresult status;
     const std::string key = PERSISTENT_STORE_KEY;
     const std::string value = "";
@@ -2761,6 +2765,8 @@ TEST_F(AppManagerTest, DISABLED_SetAppPropertyUsingComRpcFailureEmptyValue)
  */
 TEST_F(AppManagerTest, DISABLED_SetAppPropertyUsingJSONRpcFailureEmptyValue)
 {
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+
     Core::hresult status;
     const std::string key = PERSISTENT_STORE_KEY;
     const std::string value = "";
@@ -4961,4 +4967,5 @@ TEST_F(AppManagerTest, GetCustomValuesWithAipathFileHasContent)
         releaseResources();
     }
 }
+
 
