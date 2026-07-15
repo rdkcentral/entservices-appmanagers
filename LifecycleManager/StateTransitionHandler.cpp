@@ -23,6 +23,7 @@
 #include <thread>
 #include <mutex>
 #include <vector>
+#include <deque>
 #include <atomic>
 #include <cerrno>
 #include <cstring>
@@ -36,7 +37,7 @@ namespace WPEFramework
         static std::thread requestHandlerThread;
         std::mutex gRequestMutex;
         sem_t gRequestSemaphore;
-        std::vector<std::shared_ptr<StateTransitionRequest>> gRequests;
+        std::deque<std::shared_ptr<StateTransitionRequest>> gRequests;
         static std::atomic<bool> sRunning{true};
         static std::atomic<bool> sInitialized{false};
 
@@ -107,7 +108,7 @@ namespace WPEFramework
                                 break;
                             }
                             request = gRequests.front();
-                            gRequests.erase(gRequests.begin());
+                            gRequests.pop_front();
                         }
 
                         if (nullptr == request)
@@ -137,11 +138,13 @@ namespace WPEFramework
                             break;
                         }
                     }
-                    sem_wait(&gRequestSemaphore);
+                    // Avoid waiting forever on transient signal interruption.
+                    while ((sem_wait(&gRequestSemaphore) == -1) && (errno == EINTR))
                     {
-                        std::lock_guard<std::mutex> lock(gRequestMutex);
-                        isRunning = sRunning.load();
                     }
+
+                    // sRunning is atomic; no queue lock needed here.
+                    isRunning = sRunning.load();
                 }
             });
             }
@@ -217,8 +220,10 @@ namespace WPEFramework
                }
 
                gRequests.push_back(std::move(stateTransitionRequest));
-               sem_post(&gRequestSemaphore);
 	   }
+
+           // Wake the worker after queue update; keep semaphore op outside mutex.
+           sem_post(&gRequestSemaphore);
 	}
 
     } /* namespace Plugin */
