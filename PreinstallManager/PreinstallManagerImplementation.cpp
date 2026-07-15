@@ -469,8 +469,10 @@ namespace WPEFramework
                  LOGERR("ListPackages failed or package list is null for preinstall check");
                 if (packageList != nullptr)
                 {
+                    LOGINFO("L:360 Before Releasing packageList iterator, address: %p", static_cast<void*>(packageList));
                     packageList->Release();
                     packageList = nullptr;
+                    LOGINFO("L:362 After Releasing packageList iterator, address: %p", static_cast<void*>(packageList));
                 }
                 releasePackageManagerObject(packageInstaller);
                 return result;
@@ -485,9 +487,10 @@ namespace WPEFramework
                 // todo check for installState if needed
                 // multiple apps possible with same packageId but different version
             }
-
+             LOGINFO("Before Releasing packageList iterator, address: %p", static_cast<void*>(packageList));
             packageList->Release();
             packageList = nullptr;
+             LOGINFO("After Releasing packageList iterator, address: %p", static_cast<void*>(packageList));
 
             // filter to-be-installed apps
             for (auto toBeInstalledApp = preinstallPackages.begin(); toBeInstalledApp != preinstallPackages.end(); /* skip */)
