@@ -456,6 +456,11 @@ namespace WPEFramework
                 auto it = mStorageAppInfo.find(appId);
                 if (it != mStorageAppInfo.end())
                 {
+                    if (!it->second)
+                    {
+                        LOGWARN("Null storage entry found for appId: %s, reinitializing", appId.c_str());
+                        it->second = std::make_shared<StorageAppInfo>();
+                    }
                     /* Update existing entry */
                     it->second->path     = storageInfo.path;
                     it->second->uid      = storageInfo.uid;
@@ -497,6 +502,12 @@ namespace WPEFramework
             auto it = mStorageAppInfo.find(appId);
             if (it != mStorageAppInfo.end())
             {
+                if (!it->second)
+                {
+                    LOGERR("Null storage entry found for appId: %s", appId.c_str());
+                    mStorageAppInfo.erase(it);
+                    return result;
+                }
                 /* Check if the existing storage directory is accessible */
                 if (access(it->second->path.c_str(), F_OK) == 0)
                 {
@@ -546,9 +557,16 @@ namespace WPEFramework
             auto it = mStorageAppInfo.find(appId);
             if (it != mStorageAppInfo.end())
             {
-                LOGINFO("App storage entry erased for appId: %s " \
-                            "userId: %d groupId: %d quotaKB: %u usedKB: %u path: %s",
-                            appId.c_str(), it->second->uid, it->second->gid, it->second->quotaKB, it->second->usedKB, it->second->path.c_str());
+                if (it->second)
+                {
+                    LOGINFO("App storage entry erased for appId: %s " \
+                                "userId: %d groupId: %d quotaKB: %u usedKB: %u path: %s",
+                                appId.c_str(), it->second->uid, it->second->gid, it->second->quotaKB, it->second->usedKB, it->second->path.c_str());
+                }
+                else
+                {
+                    LOGWARN("App storage entry erased for appId: %s has null value", appId.c_str());
+                }
                 mStorageAppInfo.erase(appId);
                 appQuotaSizeProperty(DELETE, appId, nullptr); //Remove the persistent store entry
                 result = true;
@@ -595,6 +613,11 @@ namespace WPEFramework
                     /* Compute total reserved space for existing applications */
                     for (auto& entry : mStorageAppInfo)
                     {
+                        if (!entry.second)
+                        {
+                            LOGWARN("Skipping null storage entry for appId: %s", entry.first.c_str());
+                            continue;
+                        }
                         entry.second->usedKB = static_cast<uint32_t>(getDirectorySizeInBytes(entry.second->path) / 1024);
 
                         /* Ensure applications do not exceed allocated space */
@@ -854,6 +877,11 @@ namespace WPEFramework
                     errorReason = "AppId not found in storage info";
                     LOGERR("AppId not found in storage info");
                 }
+                else if (!it->second)
+                {
+                    errorReason = "AppId has invalid storage info";
+                    LOGERR("AppId has null storage info");
+                }
                 else
                 {
                     const std::string path = it->second->path;
@@ -938,6 +966,11 @@ namespace WPEFramework
             {
                 errorReason = "Storage not found for appId: " + appId;
                 LOGWARN("App ID %s not found in storage info", appId.c_str());
+            }
+            else if (!it->second)
+            {
+                errorReason = "Storage info is null for appId: " + appId;
+                LOGERR("Storage info is null for appId: %s", appId.c_str());
             }
             else
             {
