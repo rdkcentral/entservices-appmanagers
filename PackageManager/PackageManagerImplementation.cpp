@@ -820,6 +820,10 @@ namespace Plugin {
         runtimeConfig.appPath = config.appPath;
         runtimeConfig.command = config.command;
         runtimeConfig.runtimePath = config.runtimePath;
+        runtimeConfig.enableDebugger = config.enableDebugger;
+        runtimeConfig.logFileMaxSize = config.logFileMaxSize;
+        runtimeConfig.mapi = config.mapi;
+        runtimeConfig.resourceManagerClientEnabled = config.resourceManagerClientEnabled;
         runtimeConfig.ralfPkgPath = config.ralfPkgPath;
     }
 
