@@ -324,36 +324,28 @@ namespace Plugin {
     Core::hresult DownloadManagerImplementation::Cancel(const string &downloadId)
     {
         Core::hresult result = Core::ERROR_GENERAL;
-        bool shouldCancelHttp = false;
 
+        std::lock_guard<std::mutex> lock(mQueueMutex);
+        if (!downloadId.empty() && (mCurrentDownload.get() != nullptr) && mHttpClient)
         {
-            std::lock_guard<std::mutex> lock(mQueueMutex);
-            if (!downloadId.empty() && (mCurrentDownload.get() != nullptr) && mHttpClient)
+            if (downloadId.compare(mCurrentDownload->getId()) == 0)
             {
-                if (downloadId.compare(mCurrentDownload->getId()) == 0)
-                {
-                    mCurrentDownload->cancel();
-                    shouldCancelHttp = true;
-                    result = Core::ERROR_NONE;
-                }
-                else
-                {
-                    LOGWARN("DM: Cancel failed - ID mismatch! Requested=%s, Active=%s",
-                            downloadId.c_str(), mCurrentDownload->getId().c_str());
-                    result = Core::ERROR_UNKNOWN_KEY;
-                }
+                mCurrentDownload->cancel();
+                mHttpClient->cancel();
+                LOGINFO("DM: downloadId %s cancelled", downloadId.c_str());
+                result = Core::ERROR_NONE;
             }
             else
             {
-                LOGERR("DM: Cancel failed - downloadId=%s mCurrentDownload=%p mHttpClient=%p",
-                       downloadId.c_str(), mCurrentDownload.get(), mHttpClient.get());
+                LOGWARN("DM: Cancel failed - ID mismatch! Requested=%s, Active=%s",
+                        downloadId.c_str(), mCurrentDownload->getId().c_str());
+                result = Core::ERROR_UNKNOWN_KEY;
             }
-        } // mQueueMutex released before entering HTTP client
-
-        if (shouldCancelHttp)
+        }
+        else
         {
-            mHttpClient->cancel();
-            LOGINFO("DM: downloadId %s cancelled", downloadId.c_str());
+            LOGERR("DM: Cancel failed - downloadId=%s mCurrentDownload=%p mHttpClient=%p",
+                   downloadId.c_str(), mCurrentDownload.get(), mHttpClient.get());
         }
 
         return result;
