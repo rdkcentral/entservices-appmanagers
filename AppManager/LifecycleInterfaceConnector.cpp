@@ -749,8 +749,7 @@ End:
                         a.setAppOldState(oldAppState);
                         a.setAppNewState(newAppState);
                         a.setAppLifecycleState(newState);
-                        a.setAppIntent((navigationIntent == "unexpectedTermination") ? "" : navigationIntent);
-
+                         a.setAppIntent(("unexpectedTermination" == navigationIntent) ? "" : navigationIntent);
                         if (Exchange::ILifecycleManager::LifecycleState::ACTIVE == oldState ||
                             Exchange::ILifecycleManager::LifecycleState::ACTIVE == newState)
                         {
@@ -795,7 +794,7 @@ End:
                 {
                     if(Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED == newAppState)
 		    {
-                        const bool isUnexpectedTermination = (navigationIntent == "unexpectedTermination");
+                        const bool isUnexpectedTermination = ("unexpectedTermination" == navigationIntent);
                         if (!isUnexpectedTermination)
                         {
                             //Normal close: Unload event from App manager or LifecycleManager-initiated kill (e.g. KILL_AND_RUN)
@@ -811,7 +810,7 @@ End:
                             const std::string storedInstanceId = AppInfoManager::getInstance().getAppInstanceId(appId);
                             if (false == storedInstanceId.empty())
                             {
-                                const std::string crashReason = isUnexpectedTermination ? "Terminated unexpectedly" : "Terminate event due to app crash";
+                               const std::string crashReason = "Terminated unexpectedly";
                                 AppManagerTelemetryReporting::getInstance().reportAppCrashedTelemetry(appId, storedInstanceId, crashReason);
                             }
                         }
