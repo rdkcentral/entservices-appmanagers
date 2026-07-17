@@ -804,7 +804,7 @@ End:
                         else
                         {
                             //Abnormal close: app crash or unexpected container termination
-                            LOGINFO("%s", isUnexpectedTermination ? "Unexpected container termination detected" : "Terminate event due to app crash");
+                            LOGINFO("Unexpected container termination detected");
                             appManagerImplInstance->handleOnAppLifecycleStateChanged(appId, appInstanceId, newAppState, oldAppState, Exchange::IAppManager::AppErrorReason::APP_ERROR_ABORT);
                             // Report crash telemetry when lifecycle event provides a valid app instance id.
                             const std::string storedInstanceId = AppInfoManager::getInstance().getAppInstanceId(appId);
