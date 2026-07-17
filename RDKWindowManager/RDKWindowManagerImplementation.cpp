@@ -755,16 +755,15 @@ Core::hresult RDKWindowManagerImplementation::CreateDisplay(const string &client
  * @brief Get the list of connected application clients.
  * Returns a list of application IDs currently connected to the window manager.
  *
- * @appsIds[out]      : JSON string array of connected app IDs.
- *                      Ex: [\"org.rdk.youttube\",\"org.rdk.netflix\"]
+ * @appsIds[out]      : Iterator over the connected app IDs, serialized as a JSON array.
+ *                      Ex: ["org.rdk.youttube","org.rdk.netflix"]
  * @return Core::ERROR_NONE on success, Core::ERROR_GENERAL on error.
  */
-Core::hresult RDKWindowManagerImplementation::GetApps(string &appsIds) const
+Core::hresult RDKWindowManagerImplementation::GetApps(RPC::IStringIterator*& appsIds) const
 {
     Core::hresult status = Core::ERROR_GENERAL;
     bool retValue = false;
     std::vector<std::string> clientList;
-    JsonArray clientsArray;
     bool lockAcquired = false;
 
     lockAcquired = lockRdkWindowManagerMutex();
@@ -776,20 +775,8 @@ Core::hresult RDKWindowManagerImplementation::GetApps(string &appsIds) const
 
     if (true == retValue)
     {
-        for (size_t i = 0; i < clientList.size(); i++)
-        {
-            clientsArray.Add(clientList[i]);
-        }
-
-        if (clientsArray.IsSet())
-        {
-            clientsArray.ToString(appsIds);
-            LOGINFO("List of appsIds: %s", appsIds.c_str());
-        }
-        else
-        {
-            LOGWARN("There are no apps");
-        }
+        appsIds = Core::Service<RPC::StringIterator>::Create<RPC::IStringIterator>(clientList);
+        LOGINFO("List of appsIds count: %zu", clientList.size());
         status = Core::ERROR_NONE;
     }
     else
