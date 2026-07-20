@@ -44,7 +44,7 @@ public:
          const bool topmost, const bool focus, const string& capabilities),
         (override));
 
-    MOCK_METHOD(WPEFramework::Core::hresult, GetApps, (string& appsIds), (const, override));
+    MOCK_METHOD(WPEFramework::Core::hresult, GetApps, (WPEFramework::RPC::IStringIterator*& appsIds), (const, override));
     MOCK_METHOD(WPEFramework::Core::hresult, AddKeyIntercept, (const string& intercept), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, AddKeyIntercepts, (const string& clientId, const string& intercepts), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, RemoveKeyIntercept, (const string& clientId, uint32_t keyCode, const string& modifiers), (override));
