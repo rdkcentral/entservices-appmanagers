@@ -756,7 +756,7 @@ Core::hresult RDKWindowManagerImplementation::CreateDisplay(const string &client
  * Returns a list of application IDs currently connected to the window manager.
  *
  * @appsIds[out]      : Iterator over the connected app IDs, serialized as a JSON array.
- *                      Ex: ["org.rdk.youttube","org.rdk.netflix"]
+ *                      Ex: ["org.rdk.youtube","org.rdk.netflix"]
  * @return Core::ERROR_NONE on success, Core::ERROR_GENERAL on error.
  */
 Core::hresult RDKWindowManagerImplementation::GetApps(RPC::IStringIterator*& appsIds) const
