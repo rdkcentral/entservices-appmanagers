@@ -214,12 +214,20 @@ uint32_t Test_RDKWM_Impl_GetAppsAndFocusPaths()
     auto* impl = CreateImpl();
     L0Test::RDKWMShim::Reset();
 
-    std::string apps;
+    WPEFramework::RPC::IStringIterator* apps = nullptr;
     L0Test::RDKWMShim::SetGetClientsResult(true, { "alpha", "beta" });
     const auto appsRc = impl->GetApps(apps);
     L0Test::ExpectEqU32(tr, appsRc, WPEFramework::Core::ERROR_NONE,
         "GetApps returns ERROR_NONE when shim getClients succeeds");
-    L0Test::ExpectTrue(tr, apps.find("alpha") != std::string::npos,
+    bool foundAlpha = false;
+    if (apps != nullptr) {
+        std::string element;
+        while (apps->Next(element)) {
+            if (element == "alpha") { foundAlpha = true; }
+        }
+        apps->Release();
+    }
+    L0Test::ExpectTrue(tr, foundAlpha,
         "GetApps output contains alpha");
 
     L0Test::RDKWMShim::SetSetFocusResult(true);
@@ -610,10 +618,11 @@ uint32_t Test_RDKWM_Impl_ErrorPathMatrix()
     L0Test::RDKWMShim::Reset();
 
     L0Test::RDKWMShim::SetGetClientsResult(false, {});
-    std::string apps;
+    WPEFramework::RPC::IStringIterator* apps = nullptr;
     const auto getAppsFailRc = impl->GetApps(apps);
     L0Test::ExpectEqU32(tr, getAppsFailRc, WPEFramework::Core::ERROR_GENERAL,
         "GetApps returns ERROR_GENERAL when backend getClients fails");
+    if (apps != nullptr) { apps->Release(); }
 
     const auto setVisibleEmptyRc = impl->SetVisible("", true);
     L0Test::ExpectEqU32(tr, setVisibleEmptyRc, WPEFramework::Core::ERROR_GENERAL,

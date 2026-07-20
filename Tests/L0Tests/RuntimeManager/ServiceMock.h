@@ -379,7 +379,7 @@ public:
         return _createDisplayReturnCode;
     }
 
-    WPEFramework::Core::hresult GetApps(string& /*appsIds*/) const override { return WPEFramework::Core::ERROR_NONE; }
+    WPEFramework::Core::hresult GetApps(WPEFramework::RPC::IStringIterator*& /*appsIds*/) const override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult AddKeyIntercept(const string& /*intercept*/) override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult AddKeyIntercepts(const string& /*clientId*/, const string& /*intercepts*/) override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult RemoveKeyIntercept(const string& /*clientId*/, const uint32_t /*keyCode*/, const string& /*modifiers*/) override { return WPEFramework::Core::ERROR_NONE; }

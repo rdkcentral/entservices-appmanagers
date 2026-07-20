@@ -267,10 +267,10 @@ TEST_F(RDKWindowManagerTest, CreateDisplay_Failure)
  * ===================================================================== */
 TEST_F(RDKWindowManagerTest, GetApps_Success)
 {
-    const string expectedApps = R"(["testApp","anotherApp"])";
+    std::vector<string> expectedApps = { "testApp", "anotherApp" };
     EXPECT_CALL(*windowManagerMock, GetApps(_))
-        .WillOnce(Invoke([&](string& appsIds) {
-            appsIds = expectedApps;
+        .WillOnce(Invoke([&](RPC::IStringIterator*& appsIds) {
+            appsIds = Core::Service<RPC::StringIterator>::Create<RPC::IStringIterator>(expectedApps);
             return Core::ERROR_NONE;
         }));
 
@@ -1334,7 +1334,7 @@ TEST_F(RDKWindowManagerImplementationTest, Impl_CreateDisplay_EmptyParams_Failur
 
 TEST_F(RDKWindowManagerImplementationTest, Impl_GetApps_Success)
 {
-    string apps;
+    RPC::IStringIterator* apps = nullptr;
     EXPECT_CALL(compositorMock, getClients(_))
         .WillOnce(Invoke([](std::vector<std::string>& clients) {
             clients = { "testapp", "anotherapp" };
@@ -1342,11 +1342,19 @@ TEST_F(RDKWindowManagerImplementationTest, Impl_GetApps_Success)
         }));
 
     EXPECT_EQ(Core::ERROR_NONE, windowManagerImplementation->GetApps(apps));
+    ASSERT_NE(apps, nullptr);
+    string element;
+    std::vector<string> received;
+    while (apps->Next(element)) {
+        received.push_back(element);
+    }
+    apps->Release();
+    EXPECT_EQ(received.size(), 2u);
 }
 
 TEST_F(RDKWindowManagerImplementationTest, Impl_GetApps_Failure)
 {
-    string apps;
+    RPC::IStringIterator* apps = nullptr;
     EXPECT_CALL(compositorMock, getClients(_))
         .WillOnce(Return(false));
 
