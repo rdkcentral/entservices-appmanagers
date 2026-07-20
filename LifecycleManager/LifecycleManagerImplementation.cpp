@@ -166,6 +166,9 @@ namespace WPEFramework
                              (*stateNotificationIndex)->OnAppLifecycleStateChanged(appId, appInstanceId, (LifecycleState)oldLifecycleState, (LifecycleState)newLifecycleState, effectiveNavigationIntent);
                              ++stateNotificationIndex;
                          }
+                         if ((nullptr != context) && isUnloadedState && isUnexpectedTermination) {
+                            context->setUnexpectedTermination(false);
+                        }
                      }
                      break;
                  case LIFECYCLE_MANAGER_EVENT_RUNTIME:
