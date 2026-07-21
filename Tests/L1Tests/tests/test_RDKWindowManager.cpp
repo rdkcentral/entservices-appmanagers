@@ -1356,7 +1356,7 @@ TEST_F(RDKWindowManagerImplementationTest, Impl_GetApps_Success)
         received.push_back(element);
     }
     apps->Release();
-    EXPECT_EQ(received.size(), 2u);
+    EXPECT_THAT(received, ::testing::ElementsAre("testapp", "anotherapp"));
 }
 
 TEST_F(RDKWindowManagerImplementationTest, Impl_GetApps_Failure)

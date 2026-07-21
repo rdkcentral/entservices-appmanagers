@@ -33,7 +33,7 @@ public:
     MOCK_METHOD(WPEFramework::Core::hresult, Initialize, (WPEFramework::PluginHost::IShell* service), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, Deinitialize, (WPEFramework::PluginHost::IShell* service), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, CreateDisplay, (const string& displayParams), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, GetApps, (string& appsIds), (const, override));
+    MOCK_METHOD(WPEFramework::Core::hresult, GetApps, (WPEFramework::RPC::IStringIterator*& appsIds), (const, override));
     MOCK_METHOD(WPEFramework::Core::hresult, AddKeyIntercept, (const string &intercept), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, AddKeyIntercepts, (const string &clientId, const string &intercepts), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, RemoveKeyIntercept, (const string &clientId, uint32_t keyCode, const string &modifiers), (override));
