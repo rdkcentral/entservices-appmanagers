@@ -623,13 +623,8 @@ namespace WPEFramework
                         /* Ensure applications do not exceed allocated space */
                         if (entry.second->usedKB > entry.second->quotaKB)
                         {
-<<<<<<< HEAD
-                            LOGERR("Storage exceeded for appId=%s: quota=%u KB used=%u KB",
-                            entry.first.c_str(), entry.second.quotaKB, entry.second.usedKB);
-=======
                             LOGERR("Application storage usage exceeded allocation: %s (Allocated: %u KB, Used: %u KB)",
                             entry.second->path.c_str(), entry.second->quotaKB, entry.second->usedKB);
->>>>>>> 7d8e524d (changes for resolving mutex)
                         }
                         else
                         {
