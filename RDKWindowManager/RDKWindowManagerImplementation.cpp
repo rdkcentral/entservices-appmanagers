@@ -761,6 +761,7 @@ Core::hresult RDKWindowManagerImplementation::CreateDisplay(const string &client
  */
 Core::hresult RDKWindowManagerImplementation::GetApps(RPC::IStringIterator*& appsIds) const
 {
+    appsIds = nullptr;
     Core::hresult status = Core::ERROR_GENERAL;
     bool retValue = false;
     std::vector<std::string> clientList;
@@ -771,6 +772,10 @@ Core::hresult RDKWindowManagerImplementation::GetApps(RPC::IStringIterator*& app
     {
         retValue = CompositorController::getClients(clientList);
         gRdkWindowManagerMutex.unlock();
+    }
+    else
+    {
+        LOGERR("Failed to acquire RDKWindowManager mutex in GetApps");
     }
 
     if (true == retValue)
