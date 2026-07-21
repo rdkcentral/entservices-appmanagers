@@ -31,6 +31,7 @@ namespace WPEFramework
 {
     namespace Plugin
     {
+        class State;
         struct ApplicationLaunchParams
 	{
             ApplicationLaunchParams();
@@ -68,7 +69,7 @@ namespace WPEFramework
                 void setActiveSessionId(std::string& id);
                 void setMostRecentIntent(const std::string& intent);
                 void setLastLifecycleStateChangeTime(timespec changeTime);
-		void setState(void* state);
+		void setState(State* state);
                 void setTargetLifecycleState(Exchange::ILifecycleManager::LifecycleState state);
                 void setStateChangeId(uint32_t id);
                 void setApplicationLaunchParams(const string& appId, const string& launchIntent, const string& launchArgs, Exchange::ILifecycleManager::LifecycleState targetState, const WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject);
@@ -77,7 +78,7 @@ namespace WPEFramework
                 void setRequestType(RequestType requestType);
                 void resetPendingStates();
 
-                void* getState();
+                State* getState();
                 std::string getAppId();
                 std::string getAppInstanceId();
 		Exchange::ILifecycleManager::LifecycleState getCurrentLifecycleState();
@@ -107,7 +108,7 @@ namespace WPEFramework
                 std::string mActiveSessionId;
                 Exchange::ILifecycleManager::LifecycleState mTargetLifecycleState;
                 std::string mMostRecentIntent;
-                void* mState;
+                State* mState;
                 uint32_t mStateChangeId;
                 ApplicationLaunchParams mLaunchParams;
                 ApplicationKillParams mKillParams;

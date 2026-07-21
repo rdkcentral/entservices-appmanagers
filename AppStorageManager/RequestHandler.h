@@ -2,6 +2,7 @@
 #include "Module.h"
 #include <interfaces/IStore2.h>
 #include <ftw.h>
+#include <memory>
 #include <mutex>
 
 namespace WPEFramework
@@ -71,7 +72,7 @@ namespace WPEFramework
                 mutable std::mutex mStorageManagerImplLock;
                 static std::mutex mStorageSizeLock;
                 Exchange::IStore2* mPersistentStoreRemoteStoreObject;
-                std::map<std::string, StorageAppInfo> mStorageAppInfo;  /* Map storing app storage info for each appId */
+                std::map<std::string, std::shared_ptr<StorageAppInfo>> mStorageAppInfo;  /* Map storing app storage info for each appId */
                 std::string mBaseStoragePath;
         };
     } /* namespace Plugin */
