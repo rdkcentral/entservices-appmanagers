@@ -157,20 +157,18 @@ namespace WPEFramework
                          (*index)->OnAppStateChanged(appId, (LifecycleState)newLifecycleState, errorReason);
                          ++index;
                      }
-                     {
-                         const bool isUnloadedState = (Exchange::ILifecycleManager::LifecycleState::UNLOADED == static_cast<Exchange::ILifecycleManager::LifecycleState>(newLifecycleState));
-                         const bool isUnexpectedTermination = (nullptr != context) && context->getUnexpectedTermination();
-                         const string effectiveNavigationIntent = (isUnloadedState && isUnexpectedTermination) ? "unexpectedTermination" : navigationIntent;
-                         while (stateNotificationIndex != mLifecycleManagerStateNotification.end())
-                         {
-                             (*stateNotificationIndex)->OnAppLifecycleStateChanged(appId, appInstanceId, (LifecycleState)oldLifecycleState, (LifecycleState)newLifecycleState, effectiveNavigationIntent);
-                             ++stateNotificationIndex;
-                         }
-                         if ((nullptr != context) && isUnloadedState && isUnexpectedTermination) {
-                            context->setUnexpectedTermination(false);
-                        }
-                     }
-                     break;
+                    const bool isUnloadedState = (Exchange::ILifecycleManager::LifecycleState::UNLOADED == static_cast<Exchange::ILifecycleManager::LifecycleState>(newLifecycleState));
+                    const bool isUnexpectedTermination = (nullptr != context) && context->getUnexpectedTermination();
+                    const string effectiveNavigationIntent = (isUnloadedState && isUnexpectedTermination) ? "unexpectedTermination" : navigationIntent;
+                    while (stateNotificationIndex != mLifecycleManagerStateNotification.end())
+                    {
+                        (*stateNotificationIndex)->OnAppLifecycleStateChanged(appId, appInstanceId, (LifecycleState)oldLifecycleState, (LifecycleState)newLifecycleState, effectiveNavigationIntent);
+                        ++stateNotificationIndex;
+                    }
+                    if ((nullptr != context) && isUnloadedState && isUnexpectedTermination) {
+                        context->setUnexpectedTermination(false);
+                    }
+                    break;
                  case LIFECYCLE_MANAGER_EVENT_RUNTIME:
                      handleRuntimeManagerEvent(obj);
                      break;

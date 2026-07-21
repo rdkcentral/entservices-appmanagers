@@ -3267,7 +3267,7 @@ uint32_t Test_AM_LICOnAppLifecycleStateChangedNormalCloseNoSentinel()
     L0Test::ExpectTrue(fixture.tr, tracker->lifecycleCalls >= 1u,
         "Normal-close path (no sentinel): lifecycle notification fired");
     L0Test::ExpectEqU32(fixture.tr,
-        static_cast<uint32_t>(tracker->lastError),
+        static_cast<uint32_t>(tracker->lastError.load(std::memory_order_relaxed)),
         static_cast<uint32_t>(WPEFramework::Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE),
         "Normal-close path (no sentinel): APP_ERROR_NONE reported, not APP_ERROR_ABORT");
 
@@ -3335,7 +3335,7 @@ uint32_t Test_AM_LICOnAppLifecycleStateChangedUnexpectedTermAbortError()
     L0Test::ExpectTrue(fixture.tr, tracker->lifecycleCalls >= 1u,
         "Crash path (unexpectedTermination sentinel): lifecycle notification fired");
     L0Test::ExpectEqU32(fixture.tr,
-        static_cast<uint32_t>(tracker->lastError),
+        static_cast<uint32_t>(tracker->lastError.load(std::memory_order_relaxed)),
         static_cast<uint32_t>(WPEFramework::Exchange::IAppManager::AppErrorReason::APP_ERROR_ABORT),
         "Crash path (unexpectedTermination sentinel): APP_ERROR_ABORT reported");
 
