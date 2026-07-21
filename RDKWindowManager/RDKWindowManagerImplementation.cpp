@@ -781,7 +781,7 @@ Core::hresult RDKWindowManagerImplementation::GetApps(RPC::IStringIterator*& app
     if (true == retValue)
     {
         appsIds = Core::Service<RPC::StringIterator>::Create<RPC::IStringIterator>(clientList);
-        if (appsIds != nullptr)
+        if (nullptr != appsIds)
         {
             LOGINFO("List of appsIds count: %zu", clientList.size());
             status = Core::ERROR_NONE;
