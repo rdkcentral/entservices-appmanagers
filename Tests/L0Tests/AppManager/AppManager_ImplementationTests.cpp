@@ -1169,9 +1169,10 @@ uint32_t Test_AM_GetInstalledAppsWithActiveAppInfo()
 
     // One installed package whose ID also lives in AppInfoManager.
     WPEFramework::Exchange::IPackageInstaller::Package pkg;
-    pkg.packageId = "active.pkg";
-    pkg.version   = "2.0.0";
-    pkg.state     = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
+    pkg.packageId  = "active.pkg";
+    pkg.version    = "2.0.0";
+    pkg.state      = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
+    pkg.isRuntime  = false;
     packageInstaller.installedPackages.push_back(pkg);
 
     L0Test::AppManagerServiceMock::Config cfg(&packageInstaller);
