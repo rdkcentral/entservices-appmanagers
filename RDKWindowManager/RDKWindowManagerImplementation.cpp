@@ -781,8 +781,15 @@ Core::hresult RDKWindowManagerImplementation::GetApps(RPC::IStringIterator*& app
     if (true == retValue)
     {
         appsIds = Core::Service<RPC::StringIterator>::Create<RPC::IStringIterator>(clientList);
-        LOGINFO("List of appsIds count: %zu", clientList.size());
-        status = Core::ERROR_NONE;
+        if (appsIds != nullptr)
+        {
+            LOGINFO("List of appsIds count: %zu", clientList.size());
+            status = Core::ERROR_NONE;
+        }
+        else
+        {
+            LOGERR("GetApps Failed to allocate iterator");
+        }
     }
     else
     {

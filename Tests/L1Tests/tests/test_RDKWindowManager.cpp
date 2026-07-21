@@ -276,6 +276,13 @@ TEST_F(RDKWindowManagerTest, GetApps_Success)
 
     EXPECT_EQ(Core::ERROR_NONE,
         handler.Invoke(connection, _T("getApps"), _T("{}"), response));
+
+    // Verify the result is a native JSON array, not a JSON-encoded string.
+    // The old bug produced escaped JSON like: "appsIds":"[\"testApp\",\"anotherApp\"]"
+    // The fix must produce a native array: "appsIds":["testApp","anotherApp"]
+    EXPECT_EQ(string::npos, response.find("\\\""));
+    EXPECT_NE(string::npos, response.find("testApp"));
+    EXPECT_NE(string::npos, response.find("anotherApp"));
 }
 
 TEST_F(RDKWindowManagerTest, GetApps_Failure)
@@ -1359,6 +1366,8 @@ TEST_F(RDKWindowManagerImplementationTest, Impl_GetApps_Failure)
         .WillOnce(Return(false));
 
     EXPECT_EQ(Core::ERROR_GENERAL, windowManagerImplementation->GetApps(apps));
+    // On failure the out-param must remain nullptr so callers can safely skip Release().
+    EXPECT_EQ(apps, nullptr);
 }
 
 TEST_F(RDKWindowManagerImplementationTest, Impl_EnableInputEvents_InvalidJson_Failure)
