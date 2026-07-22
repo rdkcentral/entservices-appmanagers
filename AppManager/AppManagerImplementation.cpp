@@ -1117,10 +1117,12 @@ Core::hresult AppManagerImplementation::SendIntent(const string& appId , const s
 Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const string& intent , const string& launchArgs ,string& error)
 {
     Core::hresult status = Core::ERROR_GENERAL;
+    Core::hresult result = Core::ERROR_NONE;
     AppManagerTelemetryReporting& appManagerTelemetryReporting = AppManagerTelemetryReporting::getInstance();
     time_t launchStartTime = appManagerTelemetryReporting.getCurrentTimestampMs();
     LOGINFO(" PreloadApp enter with appId %s", appId.c_str());
-
+    bool installed = false;
+    PackageInfo packageData;
     mAdminLock.Lock();
     if (appId.empty())
     {
@@ -1128,11 +1130,40 @@ Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const s
         error = "application Id is empty";
         status = Core::ERROR_INVALID_PARAMETER;
     }
+    else if (nullptr == mLifecycleInterfaceConnector) {
+        LOGERR("LifecycleInterfaceConnector is null");
+        status = Core::ERROR_GENERAL;
+    }
+    else
+    {
+        std::vector<WPEFramework::Exchange::IPackageInstaller::Package> packageList;
+        result = fetchAppPackageList(packageList);
+        if (result == Core::ERROR_NONE)
+        {
+            checkInstallDetails(appId, installed, packageData.version, packageList);
+        }
+    }
+
+    if (status == Core::ERROR_INVALID_PARAMETER) {
+        // Validation error already reported.
+    }
+    else if (result == Core::ERROR_NONE && !installed) {
+        LOGERR("App %s is not installed. Cannot launch.", appId.c_str());
+        status = Core::ERROR_GENERAL;
+    }
+    else if (result != Core::ERROR_NONE ) {
+        LOGERR("fetchAppPackageList returned error for appId %s", appId.c_str());
+        status = Core::ERROR_GENERAL;
+    }
+    else if (packageData.version.empty()) {
+        LOGERR("Installed package version is empty for app %s.", appId.c_str());
+        status = Core::ERROR_GENERAL;
+    }
     else if (nullptr != mLifecycleInterfaceConnector)
     {
         std::shared_ptr<AppManagerRequest> request = std::make_shared<AppManagerRequest>();
 
-        if (request != nullptr)
+        if (nullptr != request)
         {
             LOGINFO(" PreloadApp enter with appId %s", appId.c_str());
             request->mRequestAction = APP_ACTION_PRELOAD;
