@@ -146,6 +146,7 @@ namespace WPEFramework
              switch(event)
              {
                  case LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED:
+                 {
                      LifecycleManagerTelemetryReporting::getInstance().reportTelemetryDataOnStateChange(context, obj);
                      handleStateChangeEvent(obj);
                      if (Exchange::ILifecycleManager::LifecycleState::UNLOADED == static_cast<Exchange::ILifecycleManager::LifecycleState>(newLifecycleState))
@@ -169,6 +170,7 @@ namespace WPEFramework
                         context->setUnexpectedTermination(false);
                     }
                     break;
+                 }
                  case LIFECYCLE_MANAGER_EVENT_RUNTIME:
                      handleRuntimeManagerEvent(obj);
                      break;
