@@ -62,6 +62,8 @@ set(GATEWAY_SOURCES
 # Create Gateway static library
 add_library(Gateway STATIC ${GATEWAY_SOURCES})
 
+set_target_properties(Gateway PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
 # Set C++ standard
 set_target_properties(Gateway PROPERTIES
     CXX_STANDARD 11
