@@ -4908,6 +4908,8 @@ TEST_F(AppManagerTest, AppManagerImplRemoveAppInfoByAppIdFound)
 
     mAppManagerImpl->Unregister(&notification);
 
+    workerPool->Stop();
+    
     /* Verify the entry has been removed */
     EXPECT_FALSE(AppInfoManager::getInstance().exists(APPMANAGER_APP_ID));
 

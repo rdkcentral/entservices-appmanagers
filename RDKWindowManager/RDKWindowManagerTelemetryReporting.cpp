@@ -42,7 +42,7 @@ void RDKWindowManagerTelemetryReporting::initialize(PluginHost::IShell* service)
 {
     setService(service);
     if (Core::ERROR_NONE != initializeTelemetryClient()) {
-        LOGERR("TelemetryMetrics client initialization failed");
+        LOGERR("TelemetryMetrics initialization failed for RDKWindowManager");
     }
 }
 
@@ -61,8 +61,9 @@ void RDKWindowManagerTelemetryReporting::recordCreateDisplayTelemetry(const std:
     jsonParam["windowManagerCreateDisplayTime"] = durationMs;
 
     LOGINFO("Record client %s windowManagerCreateDisplayTime %d ms", client.c_str(), durationMs);
-    if (Core::ERROR_NONE != recordTelemetry(client, jsonParam, TELEMETRY_MARKER_LAUNCH_TIME)) {
-        LOGERR("Failed to record createDisplay telemetry for client %s", client.c_str());
+    Core::hresult telemetryStatus = recordTelemetry(client, jsonParam, TELEMETRY_MARKER_LAUNCH_TIME);
+    if (Core::ERROR_NONE != telemetryStatus) {
+        LOGERR("Failed to record createDisplay telemetry for client=%s marker=%s status=%d", client.c_str(), TELEMETRY_MARKER_LAUNCH_TIME, telemetryStatus);
     }
 }
 

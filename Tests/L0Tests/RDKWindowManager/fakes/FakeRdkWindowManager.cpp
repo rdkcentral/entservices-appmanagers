@@ -3,6 +3,7 @@
 #include <atomic>
 #include <chrono>
 #include <cstring>
+#include <map>
 #include <memory>
 #include <mutex>
 
@@ -37,6 +38,8 @@ struct State {
     bool setZOrderResult { true };
     bool getZOrderResult { true };
     int32_t zOrder { 5 };
+    bool setAliasResult { true };
+    std::map<std::string, std::string> aliasMap;
 
     bool startVncResult { true };
     bool stopVncResult { true };
@@ -90,6 +93,8 @@ void Reset()
     S().setZOrderResult = true;
     S().getZOrderResult = true;
     S().zOrder = 5;
+    S().setAliasResult = true;
+    S().aliasMap.clear();
     S().startVncResult = true;
     S().stopVncResult = true;
     S().enableKeyRepeatResult = true;
@@ -398,7 +403,7 @@ bool CompositorController::getClients(std::vector<std::string>& clients)
     return S().getClientsResult;
 }
 
-bool CompositorController::createDisplay(const std::string&, const std::string&, uint32_t, uint32_t, bool, uint32_t, uint32_t, bool, bool, int32_t, int32_t)
+bool CompositorController::createDisplay(const std::string&, const std::string&, uint32_t, uint32_t, bool, uint32_t, uint32_t, bool, bool, int32_t, int32_t, const std::string&)
 {
     std::lock_guard<std::mutex> guard(S().lock);
     return S().createDisplayResult;
@@ -511,6 +516,32 @@ bool CompositorController::getZOrder(const std::string&, int32_t& zOrder)
     std::lock_guard<std::mutex> guard(S().lock);
     zOrder = S().zOrder;
     return S().getZOrderResult;
+}
+
+bool CompositorController::setAlias(const std::string& clientId, const std::string& alias)
+{
+    std::lock_guard<std::mutex> guard(S().lock);
+    if (!S().setAliasResult) {
+        return false;
+    }
+    S().aliasMap[clientId] = alias;
+    return true;
+}
+
+std::string CompositorController::getDisplayNameFromAlias(const std::string& alias)
+{
+    if (alias.empty()) {
+        return "";
+    }
+
+    std::lock_guard<std::mutex> guard(S().lock);
+    for (const auto& entry : S().aliasMap) {
+        if (entry.second == alias) {
+            return entry.first;
+        }
+    }
+
+    return "";
 }
 
 bool CompositorController::startVncServer()
