@@ -80,12 +80,30 @@ namespace ralf
     constexpr const char *STORAGE_CONFIG_URN = "urn:rdk:config:storage";
     constexpr const char *MAX_LOCAL_STORAGE = "maxLocalStorage";
 
+    constexpr const char *NETWORK_CONFIG_URN = "urn:rdk:config:network";
+    constexpr const char *DIAL_CONFIG_URN = "urn:rdk:config:dial";
+    constexpr const char *PORT_FORWARDING = "portForwarding";
+    constexpr const char *PORT = "port";
+    constexpr const char *PROTOCOL = "protocol";
+    constexpr const char *NAME = "name";
+
+    constexpr const char *PERMISSIONS = "permissions";
+    constexpr const char *PERMISSION_INTERNET = "urn:rdk:permission:internet";
+    constexpr const char *PERMISSION_THUNDER = "urn:rdk:permission:thunder";
+    constexpr const char *PERMISSION_FIREBOLT = "urn:rdk:permission:firebolt";
+
+    constexpr const char *HOST_TO_CONTAINER = "hostToContainer";
+    constexpr const char *CONTAINER_TO_HOST = "containerToHost";
+    constexpr const char *LOCALHOST_MASQUERADE = "localhostMasquerade";
+    constexpr int THUNDER_JSONRPC_PORT = 9998;
+
     constexpr const char *RUNTIME_CONFIG_OVERRIDES_ENV_KEY = "RUNTIME_CONFIG_OVERRIDES_JSON";
     constexpr const char *APP_CONFIG_OVERRIDES_ENV_KEY = "APP_CONFIG_OVERRIDES_JSON";
 
     constexpr const char *RDKPLUGINS = "rdkPlugins";
     constexpr const char *LOGGING = "logging";
-    constexpr const char *LOG_DATA = "data";
+    constexpr const char *NETWORKING = "networking";
+    constexpr const char *DATA = "data";
     constexpr const char *LOG_FILE_OPTIONS = "fileOptions";
 
     // 500 MB is the default RAM given to an application. Tied to resources/oci-base-spec.json
