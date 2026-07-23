@@ -16,7 +16,7 @@ permissions:
 
 env:
   BUILD_TYPE: Debug
-  THUNDER_REF: "R4.4.1"
+  THUNDER_REF: "R4.4.6"
   INTERFACES_REF: "topic/RDKEMW-19574"
 
 jobs:
@@ -101,7 +101,7 @@ jobs:
         with:
           repository: rdkcentral/ThunderTools
           path: ThunderTools
-          ref: R4.4.3
+          ref: R4.4.6
 
       - name: Checkout entservices-apis
         if: steps.cache.outputs.cache-hit != 'true'
