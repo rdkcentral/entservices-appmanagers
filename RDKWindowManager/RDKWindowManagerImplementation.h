@@ -129,7 +129,7 @@ namespace Plugin {
         Core::hresult Register(INotification *notification) override;
         Core::hresult Unregister(INotification *notification) override;
         Core::hresult CreateDisplay(const string &clientId, const string &displayName, const uint32_t displayWidth, const uint32_t displayHeight, const bool virtualDisplay, const uint32_t virtualWidth, const uint32_t virtualHeight, const uint32_t ownerId, const uint32_t groupId, const bool topmost, const bool focus, const string &capabilities) override;
-        Core::hresult GetApps(RPC::IStringIterator*& appsIds) const override;
+        Core::hresult GetApps(IStringIterator*& appsIds) const override;
         Core::hresult AddKeyIntercept(const string &intercept) override;
         Core::hresult AddKeyIntercepts(const string &clientId, const string &intercepts) override;
         Core::hresult RemoveKeyIntercept(const string &clientId, uint32_t keyCode, const string &modifiers) override;

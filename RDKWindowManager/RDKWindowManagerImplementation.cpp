@@ -759,7 +759,7 @@ Core::hresult RDKWindowManagerImplementation::CreateDisplay(const string &client
  *                      Ex: ["org.rdk.youtube","org.rdk.netflix"]
  * @return Core::ERROR_NONE on success, Core::ERROR_GENERAL on error.
  */
-Core::hresult RDKWindowManagerImplementation::GetApps(RPC::IStringIterator*& appsIds) const
+Core::hresult RDKWindowManagerImplementation::GetApps(IStringIterator*& appsIds) const
 {
     appsIds = nullptr;
     Core::hresult status = Core::ERROR_GENERAL;
@@ -780,7 +780,7 @@ Core::hresult RDKWindowManagerImplementation::GetApps(RPC::IStringIterator*& app
 
     if (true == retValue)
     {
-        appsIds = Core::Service<RPC::StringIterator>::Create<RPC::IStringIterator>(clientList);
+        appsIds = Core::Service<RPC::StringIterator>::Create<IStringIterator>(clientList);
         if (nullptr != appsIds)
         {
             LOGINFO("List of appsIds count: %zu", clientList.size());
