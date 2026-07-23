@@ -102,6 +102,7 @@ namespace ralf
     constexpr const char *RDKPLUGINS = "rdkPlugins";
     constexpr const char *LOGGING = "logging";
     constexpr const char *NETWORKING = "networking";
+    constexpr const char *DNSMASQ = "dnsmasq";
     constexpr const char *DATA = "data";
     constexpr const char *LOG_FILE_OPTIONS = "fileOptions";
 

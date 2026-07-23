@@ -23,6 +23,7 @@
 #include "RalfSupport.h"
 #include "OCISpecConstants.h"
 #include <fstream>
+#include <sstream>
 #include <cstdlib>
 #include <vector>
 
@@ -123,6 +124,68 @@ namespace ralf
 
             return thunderPortFromConfigFile();
         }
+
+        bool hasOnlyLoopbackNameServers(const std::string &resolvPath)
+        {
+            std::ifstream in(resolvPath.c_str());
+            if (!in)
+            {
+                return false;
+            }
+
+            bool foundNameServer = false;
+            std::string line;
+            while (std::getline(in, line))
+            {
+                std::istringstream iss(line);
+                std::string key;
+                std::string value;
+
+                if (!(iss >> key) || key != "nameserver" || !(iss >> value))
+                {
+                    continue;
+                }
+
+                foundNameServer = true;
+                if (value == "::1")
+                {
+                    continue;
+                }
+
+                if (value.rfind("127.", 0) == 0)
+                {
+                    continue;
+                }
+
+                return false;
+            }
+
+            return foundNameServer;
+        }
+
+        std::string getResolverSourcePathForContainer()
+        {
+            const std::string defaultResolver = "/etc/resolv.conf";
+            if (!hasOnlyLoopbackNameServers(defaultResolver))
+            {
+                return defaultResolver;
+            }
+
+            const std::string noStubNetworkManager = "/run/NetworkManager/no-stub-resolv.conf";
+            if (WPEFramework::Core::File(noStubNetworkManager).Exists())
+            {
+                return noStubNetworkManager;
+            }
+
+            const std::string noStubSystemdResolved = "/run/systemd/resolve/resolv.conf";
+            if (WPEFramework::Core::File(noStubSystemdResolved).Exists())
+            {
+                return noStubSystemdResolved;
+            }
+
+            LOGWARN("Host resolver file %s only has loopback nameservers and no fallback resolver file found", defaultResolver.c_str());
+            return defaultResolver;
+        }
     }
 
 
@@ -164,7 +227,8 @@ namespace ralf
                                                                     bool networkEnabled,
                                                                     bool thunderAccessEnabled)
     {
-        auto mountIfAvailable = [this, &ociConfigRootNode](const std::string& path, const char* missingMsg)
+        // Mount host path only when present; skip with warning when absent.
+        auto mountIfAvailable = [this, &ociConfigRootNode](const std::string& path)
         {
             if (WPEFramework::Core::File(path).Exists())
             {
@@ -179,19 +243,42 @@ namespace ralf
             }
             else
             {
-                LOGWARN(missingMsg, path.c_str());
+                LOGWARN("Host path %s is missing; skipping mount", path.c_str());
             }
         };
 
         if (networkEnabled)
         {
-            // DNS-related files are commonly required by apps in NAT mode.
-            // Guard with exists() to avoid hard failures if host path is absent.
-            const std::string filesToBeMounted[] = {"/etc/resolv.conf", "/etc/hosts"};
-            for (const auto& path : filesToBeMounted)
+            const bool dnsmasqEnabled = ociConfigRootNode[RDKPLUGINS][NETWORKING][DATA][DNSMASQ].asBool();
+            if (!dnsmasqEnabled)
             {
-                mountIfAvailable(path, "Host path %s is missing; skipping mount");
+                // DNS-related files are commonly required by apps when dnsmasq is disabled.
+                // Guard with exists() to avoid hard failures if host path is absent.
+                const std::string resolverSourcePath = getResolverSourcePathForContainer();
+                const std::string resolverDestinationPath = "/etc/resolv.conf";
+                LOGDBG("Resolver mount selection: host '%s' -> container '%s'", resolverSourcePath.c_str(), resolverDestinationPath.c_str());
+                if (WPEFramework::Core::File(resolverSourcePath).Exists())
+                {
+                    if (ensureMountTargetFileInRootfs(resolverDestinationPath))
+                    {
+                        addMountEntry(ociConfigRootNode, resolverSourcePath, resolverDestinationPath);
+                    }
+                    else
+                    {
+                        LOGERR("Failed to prepare rootfs target for %s; skipping mount entry", resolverDestinationPath.c_str());
+                    }
+                }
+                else
+                {
+                    LOGWARN("Host path %s is missing; skipping mount", resolverSourcePath.c_str());
+                }
             }
+            else
+            {
+                LOGDBG("dnsmasq enabled for networking plugin; skipping host /etc/resolv.conf mount");
+            }
+
+            mountIfAvailable("/etc/hosts");
         }
 
         if (thunderAccessEnabled)
@@ -204,7 +291,7 @@ namespace ralf
                 communicatorPath = communicatorEnv;
             }
 
-            mountIfAvailable(communicatorPath, "Host path %s is missing; skipping mount for Thunder access");
+            mountIfAvailable(communicatorPath);
         }
     }
 
@@ -336,6 +423,7 @@ namespace ralf
         }
 
         ociConfigRootNode[RDKPLUGINS][NETWORKING][DATA][TYPE] = networkEnabled ? "nat" : "closed";
+        ociConfigRootNode[RDKPLUGINS][NETWORKING][DATA][DNSMASQ] = networkEnabled;
         LOGDBG("Network mode set to '%s' (wanLanAccess=%d dial=%d thunder=%d hasInternet=%d hasFirebolt=%d)",
              networkEnabled ? "nat" : "closed",
              runtimeConfigObject.wanLanAccess,
