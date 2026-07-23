@@ -27,10 +27,11 @@
 #include <set>
 #include <climits>
 #include <cinttypes>
+#include <cctype>
 #include <sys/stat.h>
 #include <yaml-cpp/yaml.h>
 
-#define AICONFIGURATION_INI_PATH "/opt/demo/config.ini"
+#define AICONFIGURATION_JSON_PATH "/opt/rdkappmanagers.config"
 
 extern char **environ;
 
@@ -59,6 +60,7 @@ namespace Plugin
         , mIonHeapQuotas()
         , mPreloads()
         , mEnvVariables()
+        , mDefaultAllowedLogLevels({"fatal", "error", "warning", "milestone", "info", "debug"})
     {
         // All members initialized in initialization list above
     }
@@ -158,6 +160,11 @@ namespace Plugin
     {
         return mPreloads;
     }
+
+    std::list<std::string> AIConfiguration::getDefaultAllowedLogLevels() const
+    {
+        return mDefaultAllowedLogLevels;
+    }
     std::list<std::string> AIConfiguration::readGlobalEnv() const
     {
        std::list<std::string> environmentVariables;
@@ -219,6 +226,66 @@ namespace Plugin
         mEnvVariables.push_back("WESTEROS_GL_MODE=3840x2160x60");
         mEnvVariables.push_back("WESTEROS_GL_GRAPHICS_MAX_SIZE=1920x1080");
         mEnvVariables.push_back("WESTEROS_GL_USE_REFRESH_LOCK=1");
+        mDefaultAllowedLogLevels = {"fatal", "error", "warning", "milestone", "info", "debug"};
+    }
+
+    // Parses a cpuset string like "0-3,8-11" into a bitset<32>.
+    // Mirrors ConfigFile::readBitsetValue from appinfrastructure.
+    // Accepts comma-delimited bit indices and inclusive dash-separated ranges.
+    std::bitset<32> AIConfiguration::parseCpuSetBitset(const std::string& bits,
+                                             const std::bitset<32>& defaultValue)
+    {
+        for (char ch : bits)
+        {
+            if (!isdigit(static_cast<unsigned char>(ch)) && ch != '-' && ch != ',')
+            {
+                LOGWARN("parseCpuSetBitset: invalid character '%c' in cpuset string '%s'",
+                        ch, bits.c_str());
+                return defaultValue;
+            }
+        }
+
+        std::bitset<32> value;
+        std::istringstream stream(bits);
+        std::string item;
+        while (std::getline(stream, item, ','))
+        {
+            if (item.empty())
+                continue;
+
+            if (item.find('-') == std::string::npos)
+            {
+                unsigned long bit = strtoul(item.c_str(), nullptr, 10);
+                if (bit < value.size())
+                    value.set(bit);
+                else
+                    LOGWARN("parseCpuSetBitset: bit index %lu out of range, ignoring", bit);
+            }
+            else
+            {
+                bool foundDash = false;
+                unsigned long lower = 0, upper = 0;
+                for (char rch : item)
+                {
+                    if (rch == '-')
+                    {
+                        if (foundDash) break;
+                        foundDash = true;
+                    }
+                    else
+                    {
+                        if (!foundDash) { lower = lower * 10u + static_cast<unsigned long>(rch - '0'); }
+                        else            { upper = upper * 10u + static_cast<unsigned long>(rch - '0'); }
+                    }
+                }
+                if ((lower > upper) || (upper >= value.size()))
+                    LOGWARN("parseCpuSetBitset: range '%s' invalid or out of range, ignoring", item.c_str());
+                else
+                    for (unsigned long n = lower; n <= upper; n++)
+                        value.set(n);
+            }
+        }
+        return value;
     }
 
     // helper functions for json parsing
@@ -481,137 +548,127 @@ namespace Plugin
 
     void AIConfiguration::readFromConfigFile()
     {
-        //TODO SUPPORT DEVICE_FRIENDLYNAME
-        //TODO SUPPORT DEVICE_MODEL_NUM
-        //TODO SUPPORT PARTNER_ID
-        //TODO SUPPORT REGION=USA,
-        //TODO SUPPORT LANG=en_US
-        //TODO SUPPORT STB_ENTITLEMENTS
-
-        std::list<std::string> gEnv = readGlobalEnv();
-        mEnvVariables.insert(mEnvVariables.end(),gEnv.begin(),gEnv.end());
-        LOGINFO("AIConfiguration reading from config file at %s", AICONFIGURATION_INI_PATH);
-        std::ifstream iniFile(AICONFIGURATION_INI_PATH);
-        if (!iniFile.is_open())
+        LOGINFO("AIConfiguration reading from config file at %s", AICONFIGURATION_JSON_PATH);
+        std::ifstream configFile(AICONFIGURATION_JSON_PATH);
+        if (!configFile.is_open())
         {
-            LOGERR("Failed to open the ini file at %s", AICONFIGURATION_INI_PATH);
+            LOGERR("Failed to open config file at %s", AICONFIGURATION_JSON_PATH);
             LOGINFO("Populating custom values for AIConfiguration from readFromCustomData()");
             readFromCustomData();
             return;
         }
 
-        std::string line;
-        while (std::getline(iniFile, line))
+        Json::Value root;
+        Json::CharReaderBuilder builder;
+        builder["allowComments"] = true;   // permit // and /* */ comments
+        builder["strictRoot"]    = false;
+        std::string errs;
+        if (!Json::parseFromStream(builder, configFile, &root, &errs))
         {
-            // Skip empty lines
-            if (line.empty())
-                continue;
+            LOGERR("JSON parse error in '%s': %s", AICONFIGURATION_JSON_PATH, errs.c_str());
+            readFromCustomData();
+            return;
+        }
+        configFile.close();
 
-            // Remove leading and trailing whitespace
-            line.erase(0, line.find_first_not_of(" \t"));
-            line.erase(line.find_last_not_of(" \t") + 1);
+        // Helper: safe nested-object access — returns Json::nullValue on miss.
+        auto getObj = [](const Json::Value& v, const char* k) -> const Json::Value& {
+            static const Json::Value kNull(Json::nullValue);
+            return (v.isObject() && v.isMember(k)) ? v[k] : kNull;
+        };
 
-            // Skip comments
-            if (line[0] == '#')
-                continue;
+        const Json::Value& apps    = getObj(root,  "apps");
+        const Json::Value& limits  = getObj(apps,  "limits");
+        const Json::Value& mem     = getObj(limits, "memory");
+        const Json::Value& gpu     = getObj(limits, "gpumem");
+        const Json::Value& ion     = getObj(limits, "ion");
+        const Json::Value& svp     = getObj(apps,  "svp");
+        const Json::Value& dial    = getObj(root,  "dial");
+        const Json::Value& dialSrv = getObj(dial,  "server");
 
-            std::istringstream iss(line);
-            std::string key, value;
-            if (std::getline(iss, key, '=') && std::getline(iss, value))
-            {
-                key.erase(key.find_last_not_of(" \t") + 1);     // Trim trailing spaces
-                value.erase(0, value.find_first_not_of(" \t")); // Trim leading spaces
+        // ---- memory limits -----------------------------------------------
+        if (mem["defaultLimitBytes"].isInt64() || mem["defaultLimitBytes"].isInt() || mem["defaultLimitBytes"].isUInt())
+            mNonHomeAppMemoryLimit = static_cast<ssize_t>(mem["defaultLimitBytes"].asInt64());
 
-                if (key == "consoleLogCap")
-                {
-                    mConsoleLogCap = static_cast<size_t>(std::stoull(value));
-                }
-                else if (key == "cores")
-                {
-                    mAppsCpuSet = std::bitset<32>(std::stoul(value));
-                }
-                else if (key == "ramLimit")
-                {
-                    mNonHomeAppMemoryLimit = static_cast<ssize_t>(std::stoll(value));
-                }
-                else if (key == "gpuMemoryLimit")
-                {
-                    mNonHomeAppGpuLimit = static_cast<ssize_t>(std::stoll(value));
-                }
-                else if (key == "vpuAccessBlacklist")
-                {
-                    mVpuAccessBlacklist = parseStringArray(std::move(key), std::move(value));
-                }
-                else if (key == "appsRequiringDBus")
-                {
-                    mAppsRequiringDBus = parseStringArray(std::move(key), std::move(value));
-                }
-                else if (key == "mapiPorts")
-                {
-                    mMapiPorts = parseIntArray(std::move(value));
-                }
-                else if (key == "resourceManagerClientEnabled")
-                {
-                    mResourceManagerClientEnabled = (value == "1" || value == "true");
-                }
-                else if (key == "gstreamerRegistryEnabled")
-                {
-                    mGstreamerRegistryEnabled = (value == "1" || value == "true");
-                }
-                else if (key == "svpEnabled")
-                {
-                    mSvpEnabled = (value == "1" || value == "true");
-                }
-                else if (key == "enableUsbMassStorage")
-                {
-                    mEnableUsbMassStorage = (value == "1" || value == "true");
-                }
-                else if (key == "ipv6Enabled")
-                {
-                    mIPv6Enabled = (value == "1" || value == "true");
-                }
-                else if (key == "ionDefaultLimit")
-                {
-                    mIonHeapDefaultQuota = static_cast<size_t>(std::stoull(value));
-                }
-                else if (key == "dialServerPort")
-                {
-                    mDialServerPort = static_cast<in_port_t>(std::stoul(value));
-                }
-                else if (key == "dialServerPathPrefix")
-                {
-                    // Remove surrounding quotes if present
-                    if (!value.empty() && value.front() == '"' && value.back() == '"')
-                    {
-                        value = value.substr(1, value.size() - 2);
-                    }
-                    mDialServerPathPrefix = std::move(value);
-                }
-                else if (key == "dialUsn")
-                {
-                    // Remove surrounding quotes if present
-                    if (!value.empty() && value.front() == '"' && value.back() == '"')
-                    {
-                        value = value.substr(1, value.size() - 2);
-                    }
-                    mDialUsn = std::move(value);
-                }
-                else if (key == "ionLimits")
-                {
-                    mIonHeapQuotas = parseIonLimits(std::move(value));
-                }
-                else if (key == "preloads")
-                {
-                    mPreloads = parseStringArray(std::move(key), std::move(value));
-                }
-                else if (key == "envVariables")
-                {
-                    mEnvVariables = parseStringArray(std::move(key), std::move(value));
-                }
-            }
+        // ---- GPU memory limits -------------------------------------------
+        if (gpu["defaultLimitBytes"].isInt64() || gpu["defaultLimitBytes"].isInt() || gpu["defaultLimitBytes"].isUInt())
+            mNonHomeAppGpuLimit = static_cast<ssize_t>(gpu["defaultLimitBytes"].asInt64());
+
+        // ---- console log cap ---------------------------------------------
+        if (limits["consoleLogBytes"].isInt64() || limits["consoleLogBytes"].isInt() || limits["consoleLogBytes"].isUInt())
+            mConsoleLogCap = static_cast<size_t>(limits["consoleLogBytes"].asUInt64());
+
+        // ---- CPU set — integer bitmask or range string ("0-3,8-11") ------
+        const Json::Value& cpuset = limits["cpuset"];
+        if (cpuset.isUInt() || cpuset.isInt())
+            mAppsCpuSet = std::bitset<32>(static_cast<unsigned long>(cpuset.asUInt()));
+        else if (cpuset.isString())
+            mAppsCpuSet = parseCpuSetBitset(cpuset.asString(), mAppsCpuSet);
+
+        // ---- ION heap quotas ---------------------------------------------
+        if (ion["defaultLimitBytes"].isInt64() || ion["defaultLimitBytes"].isInt() || ion["defaultLimitBytes"].isUInt())
+            mIonHeapDefaultQuota = static_cast<size_t>(ion["defaultLimitBytes"].asUInt64());
+        const Json::Value& heaps = getObj(ion, "heapsLimitBytes");
+        if (heaps.isObject())
+            for (const auto& name : heaps.getMemberNames())
+                if (heaps[name].isUInt64() || heaps[name].isUInt() || heaps[name].isInt())
+                    mIonHeapQuotas[name] = static_cast<size_t>(heaps[name].asUInt64());
+
+        // ---- feature flags -----------------------------------------------
+        if (apps["enableIPv6"].isBool())
+            mIPv6Enabled = apps["enableIPv6"].asBool();
+        if (getObj(svp, "enable").isBool())
+            mSvpEnabled = getObj(svp, "enable").asBool();
+        if (getObj(getObj(apps, "usbMassStorage"), "enable").isBool())
+            mEnableUsbMassStorage = getObj(getObj(apps, "usbMassStorage"), "enable").asBool();
+        if (getObj(getObj(apps, "resourceManagement"), "enabled").isBool())
+            mResourceManagerClientEnabled = getObj(getObj(apps, "resourceManagement"), "enabled").asBool();
+        if (getObj(getObj(apps, "gstreamer"), "registryEnabled").isBool())
+            mGstreamerRegistryEnabled = getObj(getObj(apps, "gstreamer"), "registryEnabled").asBool();
+
+        // ---- SVP files ---------------------------------------------------
+        if (svp["files"].isArray())
+            for (const auto& f : svp["files"])
+                if (f.isString()) mSvpFiles.push_back(f.asString());
+
+        // ---- default log levels ------------------------------------------
+        const Json::Value& logLevels = getObj(apps, "defaultAllowedLogLevels");
+        if (logLevels.isArray() && !logLevels.empty())
+        {
+            mDefaultAllowedLogLevels.clear();
+            for (const auto& l : logLevels)
+                if (l.isString()) mDefaultAllowedLogLevels.push_back(l.asString());
         }
 
-        iniFile.close();
+        // ---- MAPI ports --------------------------------------------------
+        const Json::Value& mapiPorts = getObj(getObj(apps, "mapi"), "ports");
+        if (mapiPorts.isArray())
+            for (const auto& p : mapiPorts)
+                if (p.isInt()) mMapiPorts.push_back(p.asInt());
+
+        // ---- app allow-lists --------------------------------------------
+        if (apps["requireDBus"].isArray())
+            for (const auto& a : apps["requireDBus"])
+                if (a.isString()) mAppsRequiringDBus.push_back(a.asString());
+        if (apps["vpuAccessBlacklist"].isArray())
+            for (const auto& a : apps["vpuAccessBlacklist"])
+                if (a.isString()) mVpuAccessBlacklist.push_back(a.asString());
+
+        // ---- preloads / extra env vars -----------------------------------
+        if (root["ldPreload"].isArray())
+            for (const auto& p : root["ldPreload"])
+                if (p.isString()) mPreloads.push_back(p.asString());
+        if (apps["extraEnvVars"].isArray())
+            for (const auto& e : apps["extraEnvVars"])
+                if (e.isString()) mEnvVariables.push_back(e.asString());
+
+        // ---- DIAL --------------------------------------------------------
+        if (dialSrv["port"].isInt())
+            mDialServerPort = static_cast<in_port_t>(dialSrv["port"].asInt());
+        if (dialSrv["prefix"].isString())
+            mDialServerPathPrefix = dialSrv["prefix"].asString();
+        if (dial["usn"].isString())
+            mDialUsn = dial["usn"].asString();
 
         printAIConfiguration();
     }
