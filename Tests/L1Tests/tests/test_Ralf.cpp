@@ -2410,46 +2410,69 @@ protected:
     }
 };
 
-TEST_F(RalfThunderFireboltNetworkTest, ThunderFlag_AddsContainerToHostPort9998)
+TEST_F(RalfThunderFireboltNetworkTest, ThunderFlag_AddsContainerToHostPortFromThunderAccess)
 {
-    TEST_LOG("thunder=true -> containerToHost port 9998 with localhostMasquerade");
+    TEST_LOG("thunder=true -> containerToHost port from THUNDER_ACCESS with top-level localhostMasquerade");
+    setenv("THUNDER_ACCESS", "127.0.0.1:43123", 1);
     rtCfg.thunder = true;
 
     EXPECT_TRUE(acc.applyRuntimeAndAppConfigToOCIConfig(ociConfig, rtCfg, appCfg));
 
     EXPECT_EQ(ociConfig[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA][ralf::TYPE].asString(), "nat");
+    const Json::Value &pf = ociConfig[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA][ralf::PORT_FORWARDING];
     const Json::Value &ctoh = ociConfig[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA][ralf::PORT_FORWARDING][ralf::CONTAINER_TO_HOST];
     EXPECT_EQ(ctoh.size(), 1u);
-    EXPECT_EQ(ctoh[0][ralf::PORT].asInt(), ralf::THUNDER_JSONRPC_PORT);
-    EXPECT_TRUE(ctoh[0][ralf::LOCALHOST_MASQUERADE].asBool());
+    EXPECT_EQ(ctoh[0][ralf::PORT].asInt(), 43123);
+    EXPECT_TRUE(pf[ralf::LOCALHOST_MASQUERADE].asBool());
+    unsetenv("THUNDER_ACCESS");
 }
 
-TEST_F(RalfThunderFireboltNetworkTest, FireboltPermission_AddsContainerToHostPort9998)
+TEST_F(RalfThunderFireboltNetworkTest, FireboltPermission_AddsContainerToHostPortFromFireboltEndpoint)
 {
-    TEST_LOG("permission:firebolt only -> containerToHost port 9998 with localhostMasquerade");
+    TEST_LOG("permission:firebolt only -> containerToHost firebolt port with top-level localhostMasquerade");
     rtCfg.capabilities = "urn:rdk:permission:firebolt";
+    rtCfg.envVariables = R"(["FIREBOLT_ENDPOINT=ws://127.0.0.1:3473/?session=abc&RPCv2=true"])";
 
     EXPECT_TRUE(acc.applyRuntimeAndAppConfigToOCIConfig(ociConfig, rtCfg, appCfg));
 
     EXPECT_EQ(ociConfig[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA][ralf::TYPE].asString(), "nat");
+    const Json::Value &pf = ociConfig[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA][ralf::PORT_FORWARDING];
     const Json::Value &ctoh = ociConfig[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA][ralf::PORT_FORWARDING][ralf::CONTAINER_TO_HOST];
     EXPECT_EQ(ctoh.size(), 1u);
-    EXPECT_EQ(ctoh[0][ralf::PORT].asInt(), ralf::THUNDER_JSONRPC_PORT);
-    EXPECT_TRUE(ctoh[0][ralf::LOCALHOST_MASQUERADE].asBool());
+    EXPECT_EQ(ctoh[0][ralf::PORT].asInt(), 3473);
+    EXPECT_TRUE(pf[ralf::LOCALHOST_MASQUERADE].asBool());
 }
 
 TEST_F(RalfThunderFireboltNetworkTest, ThunderAndFireboltBoth_SingleDedupedEntry)
 {
-    TEST_LOG("thunder + firebolt -> single deduplicated containerToHost entry on port 9998");
+    TEST_LOG("thunder + firebolt with same resolved port -> single deduplicated containerToHost entry");
+    setenv("THUNDER_ACCESS", "127.0.0.1:9998", 1);
     rtCfg.thunder      = true;
     rtCfg.capabilities = "urn:rdk:permission:firebolt,urn:rdk:permission:thunder";
+    rtCfg.envVariables = R"(["FIREBOLT_ENDPOINT=ws://127.0.0.1:9998/?session=abc&RPCv2=true"])";
 
     EXPECT_TRUE(acc.applyRuntimeAndAppConfigToOCIConfig(ociConfig, rtCfg, appCfg));
 
+    const Json::Value &pf = ociConfig[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA][ralf::PORT_FORWARDING];
     const Json::Value &ctoh = ociConfig[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA][ralf::PORT_FORWARDING][ralf::CONTAINER_TO_HOST];
     EXPECT_EQ(ctoh.size(), 1u);  // deduplicated to one entry
-    EXPECT_EQ(ctoh[0][ralf::PORT].asInt(), ralf::THUNDER_JSONRPC_PORT);
-    EXPECT_TRUE(ctoh[0][ralf::LOCALHOST_MASQUERADE].asBool());
+    EXPECT_EQ(ctoh[0][ralf::PORT].asInt(), 9998);
+    EXPECT_TRUE(pf[ralf::LOCALHOST_MASQUERADE].asBool());
+    unsetenv("THUNDER_ACCESS");
+}
+
+TEST_F(RalfThunderFireboltNetworkTest, ThunderFlag_InvalidThunderAccess_SkipsThunderContainerToHost)
+{
+    TEST_LOG("thunder=true with non-TCP THUNDER_ACCESS and no config file -> no Thunder containerToHost rule");
+    setenv("THUNDER_ACCESS", "/tmp/communicator", 1);
+    rtCfg.thunder = true;
+
+    EXPECT_TRUE(acc.applyRuntimeAndAppConfigToOCIConfig(ociConfig, rtCfg, appCfg));
+
+    const Json::Value &pf = ociConfig[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA][ralf::PORT_FORWARDING];
+    EXPECT_FALSE(pf.isMember(ralf::CONTAINER_TO_HOST));
+    EXPECT_FALSE(pf.isMember(ralf::LOCALHOST_MASQUERADE));
+    unsetenv("THUNDER_ACCESS");
 }
 
 TEST_F(RalfThunderFireboltNetworkTest, NoThunderNoFirebolt_NoContainerToHostEntry)

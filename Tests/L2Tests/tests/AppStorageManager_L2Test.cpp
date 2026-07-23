@@ -21,6 +21,7 @@
 #include <gmock/gmock.h>
 #include "L2Tests.h"
 #include "L2TestsMock.h"
+#include <cstdlib>
 #include <mutex>
 #include <condition_variable>
 #include <fstream>
@@ -48,6 +49,14 @@ using ::testing::NiceMock;
 using namespace WPEFramework;
 using testing::StrictMock;
 using ::WPEFramework::Exchange::IAppStorageManager;
+
+namespace {
+std::string GetCommunicatorConnector()
+{
+    const char* connector = std::getenv("COMMUNICATOR_CONNECTOR");
+    return (connector != nullptr && connector[0] != '\0') ? connector : std::string("/tmp/communicator");
+}
+}
 
 class StorageManagerTest : public L2TestMocks {
 protected:
@@ -101,10 +110,11 @@ StorageManagerTest::~StorageManagerTest()
 uint32_t StorageManagerTest::CreateStorageManagerInterfaceObjectUsingComRPCConnection()
 {
     uint32_t return_value =  Core::ERROR_GENERAL;
+    const std::string connector = GetCommunicatorConnector();
 
     TEST_LOG("Creating mEngineStorageManager");
     mEngineStorageManager = Core::ProxyType<RPC::InvokeServerType<1, 0, 4>>::Create();
-    mClientStorageManager = Core::ProxyType<RPC::CommunicatorClient>::Create(Core::NodeId("/tmp/communicator"), Core::ProxyType<Core::IIPCServer>(mEngineStorageManager));
+    mClientStorageManager = Core::ProxyType<RPC::CommunicatorClient>::Create(Core::NodeId(connector), Core::ProxyType<Core::IIPCServer>(mEngineStorageManager));
 
     TEST_LOG("Creating mEngineStorageManager Announcements");
 #if ((THUNDER_VERSION == 2) || ((THUNDER_VERSION == 4) && (THUNDER_VERSION_MINOR == 2)))
@@ -174,7 +184,7 @@ void createFileAndAddContent(const std::string& filePath, const std::string& fil
     {
         std::string fileNameWithPath = exampleFolder + "/" + fileName;
         std::ofstream outFile(fileNameWithPath);
-    
+
         if (!outFile)
         {
             TEST_LOG("File creation failed");
@@ -205,7 +215,7 @@ TEST_F(StorageManagerTest, CreateGetAndDeleteStorageUsingComRpcSuccess)
 
     uint32_t size = 1024;
     std::string path = " ";
-    std::string errorReason = ""; 
+    std::string errorReason = "";
     std::string appId = "testApp";
     std::string actualPath = "";
     uint32_t actualSize = 0;
@@ -377,7 +387,7 @@ TEST_F(StorageManagerTest, CreateStorageUsingComRpcSuccessIfPathExists)
 
     uint32_t size = 1024;
     std::string path = " ";
-    std::string errorReason = ""; 
+    std::string errorReason = "";
     std::string appId = "testApp";
 
     TEST_LOG("### Test CreateStorageUsingComRpcSuccessIfPathExists Begin ###");
@@ -433,7 +443,7 @@ TEST_F(StorageManagerTest, CreateStorageUsingComRpcFailiureIfEmptyAppId)
 
     uint32_t size = 1024;
     std::string path = " ";
-    std::string errorReason = ""; 
+    std::string errorReason = "";
     std::string appId = "";
 
     TEST_LOG("### Test CreateStorageUsingComRpcFailiureIfEmptyAppId Begin ###");
@@ -468,7 +478,7 @@ TEST_F(StorageManagerTest, CreateStorageUsingComRpcFailiureIfSizeExceeded)
 
     uint32_t size = 29046281;
     std::string path = " ";
-    std::string errorReason = ""; 
+    std::string errorReason = "";
     std::string appId = "testApp";
 
     TEST_LOG("### Test CreateStorageUsingComRpcFailiureIfSizeExceeded Begin ###");
@@ -521,7 +531,7 @@ TEST_F(StorageManagerTest, GetStorageUsingComRpcFailiureIfEmptyAppId)
 
     uint32_t size = 1024;
     std::string path = " ";
-    std::string errorReason = ""; 
+    std::string errorReason = "";
     std::string appId = "testApp";
     std::string actualPath = "";
     uint32_t actualSize = 0;
@@ -581,7 +591,7 @@ TEST_F(StorageManagerTest, DeleteStorageUsingComRpcFailiureIfEmptyAppId)
 
     uint32_t size = 1024;
     std::string path = " ";
-    std::string errorReason = ""; 
+    std::string errorReason = "";
     std::string appId = "testApp";
 
     TEST_LOG("### Test DeleteStorageUsingComRpcFailiureIfEmptyAppId Begin ###");
@@ -638,7 +648,7 @@ TEST_F(StorageManagerTest, ClearStorageUsingJsonRpcSuccess)
 
     uint32_t size = 1024;
     std::string path = " ";
-    std::string errorReason = ""; 
+    std::string errorReason = "";
     std::string appId = "testApp";
 
     TEST_LOG("### Test ClearStorageUsingJsonRpcSuccess Begin ###");
@@ -708,7 +718,7 @@ TEST_F(StorageManagerTest, ClearStorageUsingJsonRpcFailiureIfEmptyAppId)
 
     uint32_t size = 1024;
     std::string path = " ";
-    std::string errorReason = ""; 
+    std::string errorReason = "";
     std::string appId = "testApp";
 
     TEST_LOG("### Test ClearStorageUsingJsonRpcFailiureIfEmptyAppId Begin ###");
@@ -782,7 +792,7 @@ TEST_F(StorageManagerTest, ClearAllStorageUsingJsonRpcWithoutExemptionSuccess)
 
     uint32_t size = 1024;
     std::string path = " ";
-    std::string errorReason = ""; 
+    std::string errorReason = "";
     std::string appId1 = "testApp1";
     std::string appId2 = "testApp2";
     std::string appId3 = "testApp3";
@@ -873,7 +883,7 @@ TEST_F(StorageManagerTest, ClearAllStorageUsingJsonRpcWithExemptionSuccess)
 
     uint32_t size = 1024;
     std::string path = " ";
-    std::string errorReason = ""; 
+    std::string errorReason = "";
     std::string appId1 = "testApp1";
     std::string appId2 = "testApp2";
     std::string appId3 = "testApp3";
@@ -959,7 +969,7 @@ TEST_F(StorageManagerTest, ClearAllStorageUsingJsonRpcFailiureIfStorageDirectory
 {
     uint32_t status = Core::ERROR_GENERAL;
     std::string path = " ";
-    std::string errorReason = ""; 
+    std::string errorReason = "";
 
     TEST_LOG("### Test ClearAllStorageUsingJsonRpcFailiureIfStorageDirectoryNotPresent Begin ###");
 
@@ -982,4 +992,3 @@ TEST_F(StorageManagerTest, ClearAllStorageUsingJsonRpcFailiureIfStorageDirectory
 
     TEST_LOG("### Test ClearAllStorageUsingJsonRpcFailiureIfStorageDirectoryNotPresent End ###");
 }
-
