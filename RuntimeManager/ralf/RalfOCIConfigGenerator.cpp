@@ -27,6 +27,10 @@
 #include <vector>
 
 #define PERSIST_STORAGE_PATH "/data"
+
+#define THUNDER_CONFIF_FILE "/etc/WPEFramework/config.json"
+#define THUNDER_COM_SOCKET  "/tmp/communicator"
+
 namespace ralf
 {
     namespace
@@ -89,7 +93,7 @@ namespace ralf
         int thunderPortFromConfigFile()
         {
             Json::Value configRoot;
-            if (JsonFromFile("/etc/WPEFramework/config.json", configRoot))
+            if (JsonFromFile(THUNDER_CONFIF_FILE, configRoot))
             {
                 if (configRoot.isMember("port") && configRoot["port"].isInt())
                 {
@@ -115,7 +119,7 @@ namespace ralf
                     return port;
                 }
 
-                LOGWARN("THUNDER_ACCESS is present but not a TCP endpoint (value: %s); falling back to /etc/WPEFramework/config.json", thunderAccess);
+                LOGWARN("THUNDER_ACCESS is present but not a TCP endpoint (value: %s); falling back to %s", thunderAccess, THUNDER_CONFIF_FILE);
             }
 
             return thunderPortFromConfigFile();
@@ -125,7 +129,7 @@ namespace ralf
 
     bool RalfOCIConfigGenerator::ensureMountTargetFileInRootfs(const std::string &containerPath)
     {
-        if (containerPath.empty() || containerPath[0] != '/')
+        if (containerPath.empty() || containerPath[0] != '/' )
         {
             LOGWARN("Invalid container path for mount target creation: %s", containerPath.c_str());
             return false;
@@ -161,60 +165,47 @@ namespace ralf
                                                                     bool networkEnabled,
                                                                     bool thunderAccessEnabled)
     {
+        auto mountIfAvailable = [this, &ociConfigRootNode](const std::string& path, const char* missingMsg)
+        {
+            if (WPEFramework::Core::File(path).Exists())
+            {
+                if (ensureMountTargetFileInRootfs(path))
+                {
+                    addMountEntry(ociConfigRootNode, path, path);
+                }
+                else
+                {
+                    LOGERR("Failed to prepare rootfs target for %s; skipping mount entry", path.c_str());
+                }
+            }
+            else
+            {
+                LOGWARN(missingMsg, path.c_str());
+            }
+        };
+
         if (networkEnabled)
         {
             // DNS-related files are commonly required by apps in NAT mode.
             // Guard with exists() to avoid hard failures if host path is absent.
-            if (WPEFramework::Core::File("/etc/resolv.conf").Exists())
+            const std::string filesToBeMounted[] = {"/etc/resolv.conf", "/etc/hosts"};
+            for (const auto& path : filesToBeMounted)
             {
-                if (ensureMountTargetFileInRootfs("/etc/resolv.conf"))
-                {
-                    addMountEntry(ociConfigRootNode, "/etc/resolv.conf", "/etc/resolv.conf");
-                }
-                else
-                {
-                    LOGERR("Failed to prepare rootfs target for /etc/resolv.conf; skipping mount entry");
-                }
-            }
-            else
-            {
-                LOGWARN("Host path /etc/resolv.conf is missing; skipping mount");
-            }
-
-            if (WPEFramework::Core::File("/etc/hosts").Exists())
-            {
-                if (ensureMountTargetFileInRootfs("/etc/hosts"))
-                {
-                    addMountEntry(ociConfigRootNode, "/etc/hosts", "/etc/hosts");
-                }
-                else
-                {
-                    LOGERR("Failed to prepare rootfs target for /etc/hosts; skipping mount entry");
-                }
-            }
-            else
-            {
-                LOGWARN("Host path /etc/hosts is missing; skipping mount");
+                mountIfAvailable(path, "Host path %s is missing; skipping mount");
             }
         }
 
         if (thunderAccessEnabled)
         {
-            if (WPEFramework::Core::File("/tmp/communicator").Exists())
+            // Prefer COMMUNICATOR_CONNECTOR env (set by Thunder at startup) over the hardcoded default.
+            std::string communicatorPath = THUNDER_COM_SOCKET;
+            std::string communicatorEnv;
+            if (WPEFramework::Core::SystemInfo::GetEnvironment("COMMUNICATOR_CONNECTOR", communicatorEnv) && !communicatorEnv.empty())
             {
-                if (ensureMountTargetFileInRootfs("/tmp/communicator"))
-                {
-                    addMountEntry(ociConfigRootNode, "/tmp/communicator", "/tmp/communicator");
-                }
-                else
-                {
-                    LOGERR("Failed to prepare rootfs target for /tmp/communicator; skipping mount entry");
-                }
+                communicatorPath = communicatorEnv;
             }
-            else
-            {
-                LOGWARN("Host path /tmp/communicator is missing; skipping mount for Thunder access");
-            }
+
+            mountIfAvailable(communicatorPath, "Host path %s is missing; skipping mount for Thunder access");
         }
     }
 
