@@ -24,6 +24,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <fstream>
+#include <cstdlib>
 #include <interfaces/IStore2.h>
 #include <interfaces/ILifecycleManager.h>
 #include <interfaces/IAppManager.h>
@@ -49,6 +50,14 @@ using namespace WPEFramework;
 using testing::StrictMock;
 using ::WPEFramework::Exchange::IStore2;
 using ::WPEFramework::Exchange::IAppManager;
+
+namespace {
+std::string GetCommunicatorConnector()
+{
+    const char* connector = std::getenv("COMMUNICATOR_CONNECTOR");
+    return (connector != nullptr && connector[0] != '\0') ? connector : std::string("/tmp/communicator");
+}
+}
 
 MATCHER_P(MatchRequestStatusString, data, "")
 {
@@ -193,10 +202,11 @@ uint32_t AppManagerTest::CreateAppManagerInterfaceObjectUsingComRPCConnection()
     uint32_t returnValue =  Core::ERROR_GENERAL;
     Core::ProxyType<RPC::InvokeServerType<1, 0, 4>> appManagerEngine;
     Core::ProxyType<RPC::CommunicatorClient> appManagerClient;
+    const std::string connector = GetCommunicatorConnector();
 
     TEST_LOG("Creating appManagerEngine");
     appManagerEngine = Core::ProxyType<RPC::InvokeServerType<1, 0, 4>>::Create();
-    appManagerClient = Core::ProxyType<RPC::CommunicatorClient>::Create(Core::NodeId("/tmp/communicator"), Core::ProxyType<Core::IIPCServer>(appManagerEngine));
+    appManagerClient = Core::ProxyType<RPC::CommunicatorClient>::Create(Core::NodeId(connector), Core::ProxyType<Core::IIPCServer>(appManagerEngine));
 
     TEST_LOG("Creating appManagerEngine Announcements");
 #if ((THUNDER_VERSION == 2) || ((THUNDER_VERSION == 4) && (THUNDER_VERSION_MINOR == 2)))
