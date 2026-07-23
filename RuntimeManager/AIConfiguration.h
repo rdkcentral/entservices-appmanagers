@@ -55,6 +55,7 @@ namespace Plugin
             std::map<std::string, size_t> getIonHeapQuotas() const;
             void printAIConfiguration();
             std::list<std::string> getSvpFiles() const;
+            std::list<std::string> getDefaultAllowedLogLevels() const;
 
             // system configuration
             std::list<std::string> getPreloads() const;
@@ -65,6 +66,9 @@ namespace Plugin
             void readFromConfigFile();
             void readFromYamlConfigFile(const std::string& runtimeConfigFile);
             std::list<std::string> readGlobalEnv() const;
+            std::bitset<32> parseCpuSetBitset(const std::string& bits, const std::bitset<32>& defaultValue);
+
+
 
             size_t mConsoleLogCap;
             std::bitset<32> mAppsCpuSet;        // cores
@@ -88,6 +92,7 @@ namespace Plugin
             std::list<std::string> mPreloads;
             std::list<std::string> mEnvVariables;
             std::list<std::string> mSvpFiles;
+            std::list<std::string> mDefaultAllowedLogLevels;
     };
 } /* namespace Plugin */
 } /* namespace WPEFramework */

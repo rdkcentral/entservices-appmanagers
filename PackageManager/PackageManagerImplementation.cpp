@@ -821,6 +821,7 @@ namespace Plugin {
         runtimeConfig.command = config.command;
         runtimeConfig.runtimePath = config.runtimePath;
         runtimeConfig.ralfPkgPath = config.ralfPkgPath;
+        runtimeConfig.logFilePath = config.logFilePath;
     }
 
     // copy values from libpackage
@@ -869,6 +870,8 @@ namespace Plugin {
         runtimeConfig.command = config.command;
         runtimeConfig.runtimePath = config.runtimePath;
 
+        runtimeConfig.logLevels = config.logLevels;
+        runtimeConfig.logFilePath = config.logFilePath;
         runtimeConfig.enableDebugger = false;
         runtimeConfig.logFileMaxSize = 0;
         runtimeConfig.mapi = false;

@@ -19,6 +19,7 @@
 
 #include "RuntimeManagerImplementation.h"
 #include "DobbySpecGenerator.h"
+#include "GStreamerRegistry.h"
 #include "UtilsAppManagerTelemetry.h"
 #ifdef RDK_APPMANAGERS_DEBUG
 #include "ContainerUtils.h"
@@ -323,6 +324,15 @@ namespace WPEFramework
                 LOGINFO("runtimeConfigFile=%s", mRuntimeConfigFile.c_str());
                 mAIConfiguration = new AIConfiguration();
                 mAIConfiguration->initialize(mRuntimeConfigFile);
+
+                if (mAIConfiguration->getGstreamerRegistryEnabled())
+                {
+                    GStreamerRegistry gstRegistry;
+                    if (gstRegistry.generate())
+                        mGstRegistrySourcePath = gstRegistry.path();
+                    else
+                        LOGWARN("GStreamerRegistry generation failed; containers will not have GST registry bind-mount");
+                }
             }
             else
             {
@@ -498,6 +508,8 @@ namespace WPEFramework
             return false;
         }
         DobbySpecGenerator generator(*mAIConfiguration);
+        if (!mGstRegistrySourcePath.empty())
+            generator.setGstreamerRegistryPath(mGstRegistrySourcePath);
         return generator.generate(config, runtimeConfigObject, dobbySpec);
 #endif // RALF_PACKAGE_SUPPORT_ENABLED
         }
@@ -580,8 +592,8 @@ namespace WPEFramework
             {
                 Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
 
-                uid = mUserIdManager->getUserId(appId);
-                gid = mUserIdManager->getAppsGid();
+		uid = runtimeConfigObject.userId;
+		gid = runtimeConfigObject.groupId;
             }
 
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
@@ -642,8 +654,8 @@ namespace WPEFramework
                 appStorageInfo.userId = uid;
                 appStorageInfo.groupId = gid;
 #else
-                appStorageInfo.userId = userId;
-                appStorageInfo.groupId = groupId;
+                appStorageInfo.userId = 0;
+                appStorageInfo.groupId = 0;
 #endif //RALF_PACKAGE_SUPPORT_ENABLED
                 if (Core::ERROR_NONE == getAppStorageInfo(appIdForStorage, appStorageInfo))
                 {
@@ -652,8 +664,8 @@ namespace WPEFramework
                     config.mAppStorageInfo.userId = uid;
                     config.mAppStorageInfo.groupId = gid;
 #else
-                    config.mAppStorageInfo.userId = userId;
-                    config.mAppStorageInfo.groupId = groupId;
+                    config.mAppStorageInfo.userId = uid;
+                    config.mAppStorageInfo.groupId = gid;
 #endif // RALF_PACKAGE_SUPPORT_ENABLED
                     config.mAppStorageInfo.size = std::move(appStorageInfo.size);
                     config.mAppStorageInfo.used = std::move(appStorageInfo.used);
