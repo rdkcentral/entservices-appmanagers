@@ -1148,15 +1148,18 @@ Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const s
         // Validation error already reported.
     }
     else if (result == Core::ERROR_NONE && !installed) {
-        LOGERR("App %s is not installed. Cannot launch.", appId.c_str());
+        LOGERR("App %s is not installed. Cannot preload.", appId.c_str());
+        error = "App is not installed";
         status = Core::ERROR_GENERAL;
     }
     else if (result != Core::ERROR_NONE ) {
         LOGERR("fetchAppPackageList returned error for appId %s", appId.c_str());
+        error = "Failed to fetch installed package list";
         status = Core::ERROR_GENERAL;
     }
     else if (packageData.version.empty()) {
         LOGERR("Installed package version is empty for app %s.", appId.c_str());
+        error = "Installed package version is empty";
         status = Core::ERROR_GENERAL;
     }
     else if (nullptr != mLifecycleInterfaceConnector)
@@ -1167,7 +1170,7 @@ Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const s
         {
             LOGINFO(" PreloadApp enter with appId %s", appId.c_str());
             request->mRequestAction = APP_ACTION_PRELOAD;
-            request->mRequestParam = std::make_shared<AppLaunchRequestParam>(AppLaunchRequestParam{appId, launchArgs, intent});
+            request->mRequestParam = std::make_shared<AppLaunchRequestParam>(AppLaunchRequestParam{appId, launchArgs, intent, packageData.version});
             if (request->mRequestParam != nullptr)
             {
                 mAppManagerLock.lock();
