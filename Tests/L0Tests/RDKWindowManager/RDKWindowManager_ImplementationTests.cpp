@@ -214,7 +214,7 @@ uint32_t Test_RDKWM_Impl_GetAppsAndFocusPaths()
     auto* impl = CreateImpl();
     L0Test::RDKWMShim::Reset();
 
-    WPEFramework::RPC::IStringIterator* apps = nullptr;
+    WPEFramework::Exchange::IRDKWindowManager::IStringIterator* apps = nullptr;
     L0Test::RDKWMShim::SetGetClientsResult(true, { "alpha", "beta" });
     const auto appsRc = impl->GetApps(apps);
     L0Test::ExpectEqU32(tr, appsRc, WPEFramework::Core::ERROR_NONE,
@@ -618,7 +618,7 @@ uint32_t Test_RDKWM_Impl_ErrorPathMatrix()
     L0Test::RDKWMShim::Reset();
 
     L0Test::RDKWMShim::SetGetClientsResult(false, {});
-    WPEFramework::RPC::IStringIterator* apps = nullptr;
+    WPEFramework::Exchange::IRDKWindowManager::IStringIterator* apps = nullptr;
     const auto getAppsFailRc = impl->GetApps(apps);
     L0Test::ExpectEqU32(tr, getAppsFailRc, WPEFramework::Core::ERROR_GENERAL,
         "GetApps returns ERROR_GENERAL when backend getClients fails");
