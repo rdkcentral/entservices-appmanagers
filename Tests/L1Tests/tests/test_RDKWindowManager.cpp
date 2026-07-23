@@ -267,15 +267,22 @@ TEST_F(RDKWindowManagerTest, CreateDisplay_Failure)
  * ===================================================================== */
 TEST_F(RDKWindowManagerTest, GetApps_Success)
 {
-    const string expectedApps = R"(["testApp","anotherApp"])";
+    std::vector<string> expectedApps = { "testApp", "anotherApp" };
     EXPECT_CALL(*windowManagerMock, GetApps(_))
-        .WillOnce(Invoke([&](string& appsIds) {
-            appsIds = expectedApps;
+        .WillOnce(Invoke([&](RPC::IStringIterator*& appsIds) {
+            appsIds = Core::Service<RPC::StringIterator>::Create<RPC::IStringIterator>(expectedApps);
             return Core::ERROR_NONE;
         }));
 
     EXPECT_EQ(Core::ERROR_NONE,
         handler.Invoke(connection, _T("getApps"), _T("{}"), response));
+
+    // Verify the result is a native JSON array, not a JSON-encoded string.
+    // The old bug produced escaped JSON like: "appsIds":"[\"testApp\",\"anotherApp\"]"
+    // The fix must produce a native array: "appsIds":["testApp","anotherApp"]
+    EXPECT_EQ(string::npos, response.find("\\\""));
+    EXPECT_NE(string::npos, response.find("testApp"));
+    EXPECT_NE(string::npos, response.find("anotherApp"));
 }
 
 TEST_F(RDKWindowManagerTest, GetApps_Failure)
@@ -1334,7 +1341,7 @@ TEST_F(RDKWindowManagerImplementationTest, Impl_CreateDisplay_EmptyParams_Failur
 
 TEST_F(RDKWindowManagerImplementationTest, Impl_GetApps_Success)
 {
-    string apps;
+    RPC::IStringIterator* apps = nullptr;
     EXPECT_CALL(compositorMock, getClients(_))
         .WillOnce(Invoke([](std::vector<std::string>& clients) {
             clients = { "testapp", "anotherapp" };
@@ -1342,15 +1349,25 @@ TEST_F(RDKWindowManagerImplementationTest, Impl_GetApps_Success)
         }));
 
     EXPECT_EQ(Core::ERROR_NONE, windowManagerImplementation->GetApps(apps));
+    ASSERT_NE(apps, nullptr);
+    string element;
+    std::vector<string> received;
+    while (apps->Next(element)) {
+        received.push_back(element);
+    }
+    apps->Release();
+    EXPECT_THAT(received, ::testing::ElementsAre("testapp", "anotherapp"));
 }
 
 TEST_F(RDKWindowManagerImplementationTest, Impl_GetApps_Failure)
 {
-    string apps;
+    RPC::IStringIterator* apps = nullptr;
     EXPECT_CALL(compositorMock, getClients(_))
         .WillOnce(Return(false));
 
     EXPECT_EQ(Core::ERROR_GENERAL, windowManagerImplementation->GetApps(apps));
+    // On failure the out-param must remain nullptr so callers can safely skip Release().
+    EXPECT_EQ(apps, nullptr);
 }
 
 TEST_F(RDKWindowManagerImplementationTest, Impl_EnableInputEvents_InvalidJson_Failure)

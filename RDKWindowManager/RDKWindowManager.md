@@ -105,7 +105,7 @@ interface IRDKWindowManager {
                           bool virtualDisplay, uint32_t virtualWidth, uint32_t virtualHeight,
                           uint32_t ownerId, uint32_t groupId,
                           bool topmost, bool focus);
-    hresult GetApps(string& appIds) const;
+    hresult GetApps(IStringIterator*& appsIds) const;
 
     // Key Management
     hresult AddKeyIntercept(const string& intercept);

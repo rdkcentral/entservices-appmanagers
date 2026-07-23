@@ -157,7 +157,7 @@ public:
         const bool /*topmost*/, const bool /*focus*/,
         const string& /*capabilities*/) override { return WPEFramework::Core::ERROR_NONE; }
 
-    WPEFramework::Core::hresult GetApps(string& /*appsIds*/) const override { return WPEFramework::Core::ERROR_NONE; }
+    WPEFramework::Core::hresult GetApps(IStringIterator*& appsIds) const override { appsIds = nullptr; return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult AddKeyIntercept(const string& /*intercept*/) override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult AddKeyIntercepts(const string& /*clientId*/, const string& /*intercepts*/) override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult RemoveKeyIntercept(const string& /*clientId*/, uint32_t /*keyCode*/, const string& /*modifiers*/) override { return WPEFramework::Core::ERROR_NONE; }
