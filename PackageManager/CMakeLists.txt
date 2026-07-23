@@ -22,6 +22,8 @@ message("Setup ${MODULE_NAME}")
 
 option(USE_LIBPACKAGE_RALF "USE_LIBPACKAGE_RALF" OFF)
 option(ENABLE_UNIT_TESTS "Enable unit tests" OFF)
+option(ENABLE_INSTALL_WHILE_LOCKED "Allow package install while app version is locked" ON)
+# turn off before merge
 
 # XXX: ../cmake/FindCurl.cmake is bad
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/;${CMAKE_MODULE_PATH}")
@@ -67,6 +69,11 @@ endif()
 if(AIMANAGERS_TELEMETRY_METRICS_SUPPORT)
     message(STATUS "TELEMETRY_METRICS_SUPPORT is enabled")
 endif(AIMANAGERS_TELEMETRY_METRICS_SUPPORT)
+
+if(ENABLE_INSTALL_WHILE_LOCKED)
+    message(STATUS "ENABLE_INSTALL_WHILE_LOCKED is enabled")
+    target_compile_definitions(${MODULE_NAME} PRIVATE ENABLE_INSTALL_WHILE_LOCKED)
+endif()
 
 target_include_directories(${MODULE_NAME} PRIVATE
     ../helpers
