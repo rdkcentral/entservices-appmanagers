@@ -142,6 +142,8 @@ extern uint32_t Test_AM_SendIntentNullConnector();
 extern uint32_t Test_AM_GetLoadedAppsNullConnector();
 extern uint32_t Test_AM_LaunchAppNotInstalled();
 extern uint32_t Test_AM_LaunchAppFetchFails();
+extern uint32_t Test_AM_PreloadAppNotInstalled();
+extern uint32_t Test_AM_PreloadAppFetchFails();
 extern uint32_t Test_AM_LaunchAppNullConnectorInstalledApp();
 extern uint32_t Test_AM_PackageLockAlreadyLoaded();
 extern uint32_t Test_AM_ClearAppDataNullStorage();
@@ -333,6 +335,8 @@ int main()
         { "AM_GetLoadedAppsNullConnector", Test_AM_GetLoadedAppsNullConnector },
         { "AM_LaunchAppNotInstalled", Test_AM_LaunchAppNotInstalled },
         { "AM_LaunchAppFetchFails", Test_AM_LaunchAppFetchFails },
+        { "AM_PreloadAppNotInstalled", Test_AM_PreloadAppNotInstalled },
+        { "AM_PreloadAppFetchFails", Test_AM_PreloadAppFetchFails },
         { "AM_LaunchAppNullConnectorInstalledApp", Test_AM_LaunchAppNullConnectorInstalledApp },
         { "AM_PackageLockAlreadyLoaded", Test_AM_PackageLockAlreadyLoaded },
         { "AM_ClearAppDataNullStorage", Test_AM_ClearAppDataNullStorage },
