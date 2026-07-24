@@ -1132,6 +1132,7 @@ Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const s
     }
     else if (nullptr == mLifecycleInterfaceConnector) {
         LOGERR("LifecycleInterfaceConnector is null");
+        error = "LifecycleInterfaceConnector is null";
         status = Core::ERROR_GENERAL;
     }
     else
@@ -1146,6 +1147,9 @@ Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const s
 
     if (status == Core::ERROR_INVALID_PARAMETER) {
         // Validation error already reported.
+    }
+    else if (nullptr == mLifecycleInterfaceConnector) {
+        // Lifecycle connector error already reported.
     }
     else if (result == Core::ERROR_NONE && !installed) {
         LOGERR("App %s is not installed. Cannot preload.", appId.c_str());
