@@ -21,6 +21,7 @@
 #include "UtilsLogging.h"
 #include "tracing/Logging.h"
 #include <sstream>
+#include <unistd.h>
 
 namespace WPEFramework {
 namespace Plugin {
@@ -105,10 +106,17 @@ bool RuntimeManagerHandler::run(const string& appId, const string& appInstanceId
 
     portsList.push_back(mFireboltAccessPort);
 
-    std::stringstream ss;
-    ss << "FIREBOLT_ENDPOINT=ws://127.0.0.1:" << mFireboltAccessPort << "/?session=" << appInstanceId;
-    string fireboltEndPoint(ss.str());
-    envNewArray.Add(fireboltEndPoint);
+    // Inject FIREBOLT_ENDPOINT only when /tmp/fireboltenv is present.
+    if (access("/tmp/fireboltenv", F_OK) == 0)
+    {
+        std::stringstream ss;
+        ss << "FIREBOLT_ENDPOINT=ws://127.0.0.1:" << mFireboltAccessPort << "/?session=" << appInstanceId;
+        envNewArray.Add(ss.str());
+    }
+    else
+    {
+        LOGINFO("Skipping FIREBOLT_ENDPOINT: /tmp/fireboltenv not present");
+    }
 
     std::stringstream targetAppStateEnvironmentString;
     targetAppStateEnvironmentString << "TARGET_STATE=" << (uint32_t)targetState;
