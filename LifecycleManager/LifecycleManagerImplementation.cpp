@@ -146,6 +146,7 @@ namespace WPEFramework
              switch(event)
              {
                  case LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED:
+                 {
                      LifecycleManagerTelemetryReporting::getInstance().reportTelemetryDataOnStateChange(context, obj);
                      handleStateChangeEvent(obj);
                      if (Exchange::ILifecycleManager::LifecycleState::UNLOADED == static_cast<Exchange::ILifecycleManager::LifecycleState>(newLifecycleState))
@@ -157,12 +158,19 @@ namespace WPEFramework
                          (*index)->OnAppStateChanged(appId, (LifecycleState)newLifecycleState, errorReason);
                          ++index;
                      }
-                     while (stateNotificationIndex != mLifecycleManagerStateNotification.end())
-                     {
-                         (*stateNotificationIndex)->OnAppLifecycleStateChanged(appId, appInstanceId, (LifecycleState)oldLifecycleState, (LifecycleState)newLifecycleState, navigationIntent);
-                         ++stateNotificationIndex;
-                     }
-                     break;
+                    const bool isUnloadedState = (Exchange::ILifecycleManager::LifecycleState::UNLOADED == static_cast<Exchange::ILifecycleManager::LifecycleState>(newLifecycleState));
+                    const bool isUnexpectedTermination = (nullptr != context) && context->getUnexpectedTermination();
+                    const string effectiveNavigationIntent = (isUnloadedState && isUnexpectedTermination) ? "unexpectedTermination" : navigationIntent;
+                    while (stateNotificationIndex != mLifecycleManagerStateNotification.end())
+                    {
+                        (*stateNotificationIndex)->OnAppLifecycleStateChanged(appId, appInstanceId, (LifecycleState)oldLifecycleState, (LifecycleState)newLifecycleState, effectiveNavigationIntent);
+                        ++stateNotificationIndex;
+                    }
+                    if ((nullptr != context) && isUnloadedState && isUnexpectedTermination) {
+                        context->setUnexpectedTermination(false);
+                    }
+                    break;
+                 }
                  case LIFECYCLE_MANAGER_EVENT_RUNTIME:
                      handleRuntimeManagerEvent(obj);
                      break;
@@ -664,6 +672,7 @@ namespace WPEFramework
                         std::string terminateError="";
                         std::string updateError="";
                         bool terminated = false;
+                        context->setUnexpectedTermination(true);
                         context->setRequestType(REQUEST_TYPE_TERMINATE);
                         context->setTargetLifecycleState(Exchange::ILifecycleManager::LifecycleState::TERMINATING);
                         context->setApplicationKillParams(false);

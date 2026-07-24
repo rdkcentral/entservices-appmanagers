@@ -177,6 +177,8 @@ extern uint32_t Test_AM_IsInstalledNonInstalledState();
 extern uint32_t Test_AM_GetInstalledAppsNoAppInfo();
 extern uint32_t Test_AM_LICRemoveAppInfoByAppIdNotFound();
 extern uint32_t Test_AM_LICOnAppStateChangedMultipleErrorReasons();
+extern uint32_t Test_AM_LICOnAppLifecycleStateChangedNormalCloseNoSentinel();
+extern uint32_t Test_AM_LICOnAppLifecycleStateChangedUnexpectedTermAbortError();
 extern uint32_t Test_AM_TelReportDataNoAppInfo();
 extern uint32_t Test_AM_TelReportDataActionMismatch();
 extern uint32_t Test_AM_TelReportDataPreloadNoMarker();
@@ -368,6 +370,8 @@ int main()
         { "AM_GetInstalledAppsNoAppInfo", Test_AM_GetInstalledAppsNoAppInfo },
         { "AM_LICRemoveAppInfoByAppIdNotFound", Test_AM_LICRemoveAppInfoByAppIdNotFound },
         { "AM_LICOnAppStateChangedMultipleErrorReasons", Test_AM_LICOnAppStateChangedMultipleErrorReasons },
+        { "AM_LICOnAppLifecycleStateChangedNormalCloseNoSentinel", Test_AM_LICOnAppLifecycleStateChangedNormalCloseNoSentinel },
+        { "AM_LICOnAppLifecycleStateChangedUnexpectedTermAbortError", Test_AM_LICOnAppLifecycleStateChangedUnexpectedTermAbortError },
         { "AM_TelReportDataNoAppInfo", Test_AM_TelReportDataNoAppInfo },
         { "AM_TelReportDataActionMismatch", Test_AM_TelReportDataActionMismatch },
         { "AM_TelReportDataPreloadNoMarker", Test_AM_TelReportDataPreloadNoMarker },

@@ -44,6 +44,7 @@ namespace WPEFramework
         , mRequestTime(0)
         , mRequestType(REQUEST_TYPE_NONE)
         , mTerminated(false)
+        , mUnexpectedTermination(false)
         {
             mState = (void*) new UnloadedState(this);
             sem_init(&mReachedLoadingStateSemaphore, 0, 0);
@@ -208,6 +209,16 @@ namespace WPEFramework
         bool ApplicationContext::getTerminated()
         {
             return mTerminated;
+        }
+
+        void ApplicationContext::setUnexpectedTermination(bool unexpectedTermination)
+        {
+            mUnexpectedTermination = unexpectedTermination;
+        }
+
+        bool ApplicationContext::getUnexpectedTermination() const
+        {
+            return mUnexpectedTermination;
         }
     } /* namespace Plugin */
 } /* namespace WPEFramework */
