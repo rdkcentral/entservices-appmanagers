@@ -1146,7 +1146,7 @@ Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const s
         }
     }
 
-    if (status == Core::ERROR_INVALID_PARAMETER) {
+    if (Core::ERROR_INVALID_PARAMETER == status) {
         // Validation error already reported.
     }
     else if (nullptr == mLifecycleInterfaceConnector) {
@@ -1157,7 +1157,7 @@ Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const s
         error = "App is not installed";
         status = Core::ERROR_GENERAL;
     }
-    else if (result != Core::ERROR_NONE ) {
+    else if (Core::ERROR_NONE != result ) {
         LOGERR("fetchAppPackageList returned error for appId %s", appId.c_str());
         error = "Failed to fetch installed package list";
         status = Core::ERROR_GENERAL;
