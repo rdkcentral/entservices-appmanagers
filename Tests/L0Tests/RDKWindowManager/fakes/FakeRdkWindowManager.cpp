@@ -23,6 +23,8 @@ struct State {
     std::vector<std::string> clients { "testclient" };
 
     bool setFocusResult { true };
+    bool getFocusedResult { true };
+    std::string focusedClient { "testclient" };
     bool setVisibilityResult { true };
     bool getVisibilityResult { true };
     bool visibleValue { true };
@@ -81,6 +83,8 @@ void Reset()
     S().getClientsResult = true;
     S().clients = { "testclient" };
     S().setFocusResult = true;
+    S().getFocusedResult = true;
+    S().focusedClient = "testclient";
     S().setVisibilityResult = true;
     S().getVisibilityResult = true;
     S().visibleValue = true;
@@ -129,6 +133,13 @@ void SetSetFocusResult(bool value)
 {
     std::lock_guard<std::mutex> guard(S().lock);
     S().setFocusResult = value;
+}
+
+void SetGetFocusedResult(bool value, const std::string& focusedClient)
+{
+    std::lock_guard<std::mutex> guard(S().lock);
+    S().getFocusedResult = value;
+    S().focusedClient = focusedClient;
 }
 
 void SetVisibilityResult(bool setVisibleResult, bool getVisibleResult, bool visibleValue)
@@ -469,6 +480,13 @@ bool CompositorController::setFocus(const std::string&)
 {
     std::lock_guard<std::mutex> guard(S().lock);
     return S().setFocusResult;
+}
+
+bool CompositorController::getFocused(std::string& client)
+{
+    std::lock_guard<std::mutex> guard(S().lock);
+    client = S().focusedClient;
+    return S().getFocusedResult;
 }
 
 bool CompositorController::setVisibility(const std::string&, const bool)

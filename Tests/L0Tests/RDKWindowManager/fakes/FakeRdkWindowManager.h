@@ -12,6 +12,7 @@ void Reset();
 void SetCreateDisplayResult(bool value);
 void SetGetClientsResult(bool value, const std::vector<std::string>& clients);
 void SetSetFocusResult(bool value);
+void SetGetFocusedResult(bool value, const std::string& focusedClient);
 void SetVisibilityResult(bool setVisibleResult, bool getVisibleResult, bool visibleValue);
 void SetRenderReadyResult(bool value);
 void SetEnableDisplayRenderResult(bool value);

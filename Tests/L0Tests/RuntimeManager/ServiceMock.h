@@ -406,6 +406,7 @@ public:
     WPEFramework::Core::hresult GetScreenshot() override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult StartVncServer() override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult StopVncServer() override { return WPEFramework::Core::ERROR_NONE; }
+    WPEFramework::Core::hresult GetFocused(string& /*client*/) const override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult SetAlias(const string& /*clientId*/, const string& /*alias*/) override { return WPEFramework::Core::ERROR_NONE; }
 
     void SetCreateDisplayReturnCode(WPEFramework::Core::hresult code) { _createDisplayReturnCode = code; }

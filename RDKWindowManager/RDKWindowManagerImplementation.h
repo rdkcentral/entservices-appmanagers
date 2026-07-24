@@ -155,6 +155,7 @@ namespace Plugin {
         Core::hresult GetZOrder(const string& clientId, int32_t &zOrder) override;
         Core::hresult StartVncServer() override;
         Core::hresult StopVncServer() override;
+        Core::hresult GetFocused(string &client) const override;
         Core::hresult GetScreenshot() override;
         Core::hresult SetAlias(const string& clientId, const string& alias) override;
 

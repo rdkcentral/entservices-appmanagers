@@ -235,6 +235,42 @@ uint32_t Test_RDKWM_Impl_GetAppsAndFocusPaths()
     return tr.failures;
 }
 
+uint32_t Test_RDKWM_Impl_GetFocusedSuccess()
+{
+    L0Test::TestResult tr;
+
+    auto* impl = CreateImpl();
+    L0Test::RDKWMShim::Reset();
+
+    std::string focusedClient;
+    L0Test::RDKWMShim::SetGetFocusedResult(true, "alpha");
+    const auto getFocusedRc = impl->GetFocused(focusedClient);
+    L0Test::ExpectEqU32(tr, getFocusedRc, WPEFramework::Core::ERROR_NONE,
+        "GetFocused returns ERROR_NONE when shim returns success");
+    L0Test::ExpectTrue(tr, focusedClient == "alpha",
+        "GetFocused output matches shim focused client");
+
+    impl->Release();
+    return tr.failures;
+}
+
+uint32_t Test_RDKWM_Impl_GetFocusedFailure()
+{
+    L0Test::TestResult tr;
+
+    auto* impl = CreateImpl();
+    L0Test::RDKWMShim::Reset();
+
+    std::string focusedClient;
+    L0Test::RDKWMShim::SetGetFocusedResult(false, "");
+    const auto getFocusedRc = impl->GetFocused(focusedClient);
+    L0Test::ExpectEqU32(tr, getFocusedRc, WPEFramework::Core::ERROR_GENERAL,
+        "GetFocused returns ERROR_GENERAL when backend getFocused fails");
+
+    impl->Release();
+    return tr.failures;
+}
+
 uint32_t Test_RDKWM_Impl_VncAndZOrder()
 {
     L0Test::TestResult tr;
