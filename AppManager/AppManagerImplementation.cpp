@@ -1121,6 +1121,7 @@ Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const s
     AppManagerTelemetryReporting& appManagerTelemetryReporting = AppManagerTelemetryReporting::getInstance();
     time_t launchStartTime = appManagerTelemetryReporting.getCurrentTimestampMs();
     LOGINFO(" PreloadApp enter with appId %s", appId.c_str());
+    error.clear();
     bool installed = false;
     PackageInfo packageData;
     mAdminLock.Lock();
