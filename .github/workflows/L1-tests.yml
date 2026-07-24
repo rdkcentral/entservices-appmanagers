@@ -154,7 +154,7 @@ jobs:
       - name: Apply patches ThunderTools
         run: |  
           cd $GITHUB_WORKSPACE/ThunderTools
-          patch -p1 < $GITHUB_WORKSPACE/entservices-appmanagers/Tests/patches/00010-R4.4.6-Add-support-for-project-dir.patch
+          patch -p1 < $GITHUB_WORKSPACE/Tests/patches/00010-R4.4.6-Add-support-for-project-dir.patch
           cd -
 
       - name: Build ThunderTools
