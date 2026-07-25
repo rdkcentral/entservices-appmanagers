@@ -20,6 +20,7 @@
 #include "RuntimeManagerHandler.h"
 #include "UtilsLogging.h"
 #include "tracing/Logging.h"
+#include <filesystem>
 #include <sstream>
 #include <unistd.h>
 
@@ -107,6 +108,7 @@ bool RuntimeManagerHandler::run(const string& appId, const string& appInstanceId
     portsList.push_back(mFireboltAccessPort);
 
     // Inject FIREBOLT_ENDPOINT only when /tmp/fireboltenv is present.
+    // Uses POSIX access() instead of std::filesystem to support lib32 toolchains.
     if (access("/tmp/fireboltenv", F_OK) == 0)
     {
         std::stringstream ss;
