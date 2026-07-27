@@ -511,8 +511,9 @@ void AppManagerImplementation::handleOnAppLaunchRequest(const string& appId, con
         eventDetails["appId"] = appId;
         eventDetails["intent"] = intent;
         eventDetails["source"] = source;
+
         LOGINFO("Notify onAppLaunchRequest for appId %s: intent=%s",
-        appId.c_str(), intent.c_str());
+        appId.c_str(),intent.c_str());
 
         dispatchEvent(APP_EVENT_LAUNCH_REQUEST, eventDetails);
     }
