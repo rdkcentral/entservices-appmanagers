@@ -498,7 +498,7 @@ void AppManagerImplementation::handleOnAppUnloaded(const string& appId, const st
  * @Params[out] : None
  * @return      : void
  */
-void AppManagerImplementation::handleOnAppLaunchRequest(const string& appId, const string& intent, const string& source)
+void AppManagerImplementation::handleOnAppLaunchRequest(const string& appId, const string& intent, const string& source, const string& appInstanceId)
 {
     JsonObject eventDetails;
 
