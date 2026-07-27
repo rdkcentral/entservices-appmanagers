@@ -187,6 +187,25 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                             }
                             else if (action == APP_ACTION_PRELOAD)
                             {
+                                // Append any env vars from launchArgs["env"] into runtimeConfig.envVariables.
+                                {
+                                    JsonObject launchArgsObj;
+                                    launchArgsObj.FromString(launchArgs);
+                                    if (launchArgsObj.HasLabel("env"))
+                                    {
+                                        JsonArray envArray;
+                                        if (!runtimeConfig.envVariables.empty())
+                                            envArray.FromString(runtimeConfig.envVariables);
+                                        const JsonArray& extraEnv = launchArgsObj["env"].Array();
+                                        auto it = extraEnv.Elements();
+                                        while (it.Next())
+                                            envArray.Add(it.Current());
+                                        string envArrayStr;
+                                        envArray.ToString(envArrayStr);
+                                        runtimeConfig.envVariables = envArrayStr;
+                                        LOGINFO("PreloadApp: appended env vars from launchArgs for appId=%s", appId.c_str());
+                                    }
+                                }
                                 string errorReason;
                                 status = mLifecycleInterfaceConnector->preLoadApp(appId, appRequestParam->intent, launchArgs, runtimeConfig, errorReason);
                                 LOGINFO("Application preLoad from thread returns with status %d error %s", status, errorReason.c_str());
@@ -492,9 +511,8 @@ void AppManagerImplementation::handleOnAppLaunchRequest(const string& appId, con
         eventDetails["appId"] = appId;
         eventDetails["intent"] = intent;
         eventDetails["source"] = source;
-
         LOGINFO("Notify onAppLaunchRequest for appId %s: intent=%s",
-        appId.c_str(),intent.c_str());
+        appId.c_str(), intent.c_str());
 
         dispatchEvent(APP_EVENT_LAUNCH_REQUEST, eventDetails);
     }
