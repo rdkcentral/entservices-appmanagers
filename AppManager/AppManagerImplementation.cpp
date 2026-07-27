@@ -187,6 +187,24 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                             }
                             else if (action == APP_ACTION_PRELOAD)
                             {
+                                // If launchArgs contains "mode":"background", inject
+                                // APPLICATION_LAUNCH_METHOD=Suspend into the container environment.
+                                {
+                                    JsonObject launchArgsObj;
+                                    launchArgsObj.FromString(launchArgs);
+                                    if (launchArgsObj.HasLabel("mode") &&
+                                        launchArgsObj["mode"].String() == "background")
+                                    {
+                                        JsonArray envArray;
+                                        if (!runtimeConfig.envVariables.empty())
+                                            envArray.FromString(runtimeConfig.envVariables);
+                                        envArray.Add(JsonValue(string("APPLICATION_LAUNCH_METHOD=Suspend")));
+                                        string envArrayStr;
+                                        envArray.ToString(envArrayStr);
+                                        runtimeConfig.envVariables = envArrayStr;
+                                        LOGINFO("PreloadApp: injected APPLICATION_LAUNCH_METHOD=Suspend for appId=%s", appId.c_str());
+                                    }
+                                }
                                 string errorReason;
                                 status = mLifecycleInterfaceConnector->preLoadApp(appId, appRequestParam->intent, launchArgs, runtimeConfig, errorReason);
                                 LOGINFO("Application preLoad from thread returns with status %d error %s", status, errorReason.c_str());
@@ -479,7 +497,7 @@ void AppManagerImplementation::handleOnAppUnloaded(const string& appId, const st
  * @Params[out] : None
  * @return      : void
  */
-void AppManagerImplementation::handleOnAppLaunchRequest(const string& appId, const string& intent, const string& source)
+void AppManagerImplementation::handleOnAppLaunchRequest(const string& appId, const string& intent, const string& source, const string& appInstanceId)
 {
     JsonObject eventDetails;
 
@@ -492,9 +510,13 @@ void AppManagerImplementation::handleOnAppLaunchRequest(const string& appId, con
         eventDetails["appId"] = appId;
         eventDetails["intent"] = intent;
         eventDetails["source"] = source;
+        if (!appInstanceId.empty())
+        {
+            eventDetails["appInstanceId"] = appInstanceId;
+        }
 
-        LOGINFO("Notify onAppLaunchRequest for appId %s: intent=%s",
-        appId.c_str(),intent.c_str());
+        LOGINFO("Notify onAppLaunchRequest for appId %s appInstanceId %s: intent=%s",
+        appId.c_str(), appInstanceId.c_str(), intent.c_str());
 
         dispatchEvent(APP_EVENT_LAUNCH_REQUEST, eventDetails);
     }
