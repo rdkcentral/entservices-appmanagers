@@ -1304,6 +1304,34 @@ TEST_F(RDKWindowManagerTest, StopVncServer_Failure)
 }
 
 /* =====================================================================
+ * GetFocused
+ * ===================================================================== */
+TEST_F(RDKWindowManagerTest, GetFocused_Success)
+{
+    EXPECT_CALL(*windowManagerMock, GetFocused(_))
+        .WillOnce(Invoke([](string& client) {
+            client = TEST_CLIENT_ID;
+            return Core::ERROR_NONE;
+        }));
+
+    EXPECT_EQ(Core::ERROR_NONE,
+        handler.Invoke(connection, _T("getFocused"), _T("{}"), response));
+
+    JsonObject result;
+    result.FromString(response);
+    EXPECT_EQ(TEST_CLIENT_ID, result["client"].String());
+}
+
+TEST_F(RDKWindowManagerTest, GetFocused_Failure)
+{
+    EXPECT_CALL(*windowManagerMock, GetFocused(_))
+        .WillOnce(Return(Core::ERROR_GENERAL));
+
+    EXPECT_EQ(Core::ERROR_GENERAL,
+        handler.Invoke(connection, _T("getFocused"), _T("{}"), response));
+}
+
+/* =====================================================================
  * GetScreenshot
  * ===================================================================== */
 TEST_F(RDKWindowManagerTest, GetScreenshot_Success)
