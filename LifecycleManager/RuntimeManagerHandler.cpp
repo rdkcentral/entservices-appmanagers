@@ -20,9 +20,7 @@
 #include "RuntimeManagerHandler.h"
 #include "UtilsLogging.h"
 #include "tracing/Logging.h"
-#include <filesystem>
 #include <sstream>
-#include <unistd.h>
 
 namespace WPEFramework {
 namespace Plugin {
@@ -109,7 +107,8 @@ bool RuntimeManagerHandler::run(const string& appId, const string& appInstanceId
 
     std::stringstream ss;
     ss << "FIREBOLT_ENDPOINT=ws://127.0.0.1:" << mFireboltAccessPort << "/?session=" << appInstanceId;
-    envNewArray.Add(ss.str());
+    string fireboltEndPoint(ss.str());
+    envNewArray.Add(fireboltEndPoint);
 
     std::stringstream targetAppStateEnvironmentString;
     targetAppStateEnvironmentString << "TARGET_STATE=" << (uint32_t)targetState;
