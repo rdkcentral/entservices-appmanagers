@@ -238,10 +238,11 @@ void RuntimeManagerHandler::RuntimeManagerNotification::OnStarted(const string& 
     _parent.onEvent(eventData);
 }
 
-void RuntimeManagerHandler::RuntimeManagerNotification::OnTerminated(const string& appInstanceId)
+void RuntimeManagerHandler::RuntimeManagerNotification::OnTerminated(const string& appInstanceId, int32_t exitCode)
 {
     JsonObject eventData;
-    eventData["appInstanceId"] = appInstanceId; 
+    eventData["appInstanceId"] = appInstanceId;
+    eventData["exitCode"] = exitCode;
     eventData["name"] = "onTerminated"; 
     _parent.onEvent(eventData);
 }
