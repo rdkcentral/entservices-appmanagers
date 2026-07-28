@@ -107,18 +107,9 @@ bool RuntimeManagerHandler::run(const string& appId, const string& appInstanceId
 
     portsList.push_back(mFireboltAccessPort);
 
-    // Inject FIREBOLT_ENDPOINT only when /tmp/fireboltenv is present.
-    // Uses POSIX access() instead of std::filesystem to support lib32 toolchains.
-    if (access("/tmp/fireboltenv", F_OK) == 0)
-    {
-        std::stringstream ss;
-        ss << "FIREBOLT_ENDPOINT=ws://127.0.0.1:" << mFireboltAccessPort << "/?session=" << appInstanceId;
-        envNewArray.Add(ss.str());
-    }
-    else
-    {
-        LOGINFO("Skipping FIREBOLT_ENDPOINT: /tmp/fireboltenv not present");
-    }
+    std::stringstream ss;
+    ss << "FIREBOLT_ENDPOINT=ws://127.0.0.1:" << mFireboltAccessPort << "/?session=" << appInstanceId;
+    envNewArray.Add(ss.str());
 
     std::stringstream targetAppStateEnvironmentString;
     targetAppStateEnvironmentString << "TARGET_STATE=" << (uint32_t)targetState;
@@ -238,10 +229,11 @@ void RuntimeManagerHandler::RuntimeManagerNotification::OnStarted(const string& 
     _parent.onEvent(eventData);
 }
 
-void RuntimeManagerHandler::RuntimeManagerNotification::OnTerminated(const string& appInstanceId)
+void RuntimeManagerHandler::RuntimeManagerNotification::OnTerminated(const string& appInstanceId, int32_t exitCode)
 {
     JsonObject eventData;
-    eventData["appInstanceId"] = appInstanceId; 
+    eventData["appInstanceId"] = appInstanceId;
+    eventData["exitCode"] = exitCode;
     eventData["name"] = "onTerminated"; 
     _parent.onEvent(eventData);
 }
