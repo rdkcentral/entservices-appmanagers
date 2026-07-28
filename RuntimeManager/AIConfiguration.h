@@ -24,6 +24,7 @@
 #include <list>
 #include <map>
 #include <bitset>
+#include <optional>
 #include <netinet/in.h>
 
 namespace WPEFramework
@@ -61,6 +62,8 @@ namespace Plugin
             std::list<std::string> getPreloads() const;
             std::list<std::string> getEnvs() const;
 
+	    std::optional<bool> getRialtoOverride() const;
+
         private:
             void readFromCustomData();
             void readFromConfigFile();
@@ -93,6 +96,7 @@ namespace Plugin
             std::list<std::string> mEnvVariables;
             std::list<std::string> mSvpFiles;
             std::list<std::string> mDefaultAllowedLogLevels;
+	    std::optional<bool> mRialtoOverride;
     };
 } /* namespace Plugin */
 } /* namespace WPEFramework */

@@ -35,10 +35,27 @@ namespace WPEFramework
         mAIConfiguration->initialize();
         config.sessionServerEnvVars = mAIConfiguration->getEnvs();
         mServerManagerService  = create(shared_from_this(), config);
+	mLogHandler = std::make_shared<RialtoLogHandler>();
+        if (!mServerManagerService->registerLogHandler(mLogHandler))
+        {
+            LOGWARN("Registration of custom logger for Rialto server manager failed");
+        }
+
         mInitialized = true;
         delete mAIConfiguration;
      }
     }
+
+    std::string RialtoConnector::getSocketPath(const std::string &appId) const
+    {
+        if (!mServerManagerService)
+        {
+            LOGERR("getSocketPath: ServerManagerService is null for appId='%s'", appId.c_str());
+            return "";
+        }
+        return mServerManagerService->getAppConnectionInfo(appId);
+    }
+
     bool RialtoConnector::createAppSession(const std::string &callsign, const std::string &displayName, const std::string &appId)
     {
         LOGINFO("Creating app session with callsign : '%s', display name : '%s', appid : '%s'", callsign.c_str(), displayName.c_str(), appId.c_str());
