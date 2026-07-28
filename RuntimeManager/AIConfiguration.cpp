@@ -59,6 +59,8 @@ namespace Plugin
         , mIonHeapQuotas()
         , mPreloads()
         , mEnvVariables()
+        , mDefaultAllowedLogLevels({"fatal", "error", "warning", "milestone", "info", "debug"})
+	, mRialtoOverride(std::nullopt)
     {
         // All members initialized in initialization list above
     }
@@ -479,6 +481,11 @@ namespace Plugin
         }
     }
 
+    std::optional<bool> AIConfiguration::getRialtoOverride() const
+    {
+        return mRialtoOverride;
+    }
+
     void AIConfiguration::readFromConfigFile()
     {
         //TODO SUPPORT DEVICE_FRIENDLYNAME
@@ -612,6 +619,19 @@ namespace Plugin
         }
 
         iniFile.close();
+
+	// ---- rialto override (base) ----------------------------------
+        const Json::Value& rialtoNode = root.isMember("rialto") ? root["rialto"] : getObj(root["apps"], "rialto");
+        if (rialtoNode.isObject() && rialtoNode["override"].isString())
+        {
+            const std::string rialtoOverrideStr = rialtoNode["override"].asString();
+            if (rialtoOverrideStr == "forceOn")       mRialtoOverride = true;
+            else if (rialtoOverrideStr == "forceOff") mRialtoOverride = false;
+            else                                      mRialtoOverride = std::nullopt;
+            LOGINFO("rialto.override=%s -> mRialtoOverride=%s", rialtoOverrideStr.c_str(),
+                    !mRialtoOverride.has_value() ? "default" :
+                    mRialtoOverride.value()      ? "forceOn" : "forceOff");
+        }
 
         printAIConfiguration();
     }

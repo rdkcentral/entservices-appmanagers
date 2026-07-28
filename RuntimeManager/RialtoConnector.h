@@ -47,17 +47,44 @@ namespace WPEFramework
  
         bool deactivateSession(const std::string &callsign);
         void stateChanged(const std::string &appId, const RialtoServerStates &state) override;
+	std::string getSocketPath(const std::string &appId) const;
 
         RialtoConnector(const RialtoConnector &) = delete;            // No copying
         RialtoConnector &operator=(const RialtoConnector &) = delete; // No assignment
 
     private:
+        class RialtoLogHandler : public rialto::servermanager::service::ILogHandler
+        {
+        public:
+            void log(Level level, const std::string & /*file*/, int line,
+                     const std::string &function, const std::string &message) const override
+            {
+                switch (level)
+                {
+                    case Level::Fatal:
+                    case Level::Error:
+                        LOGERR("[rialto][%s:%d] %s", function.c_str(), line, message.c_str());
+                        break;
+                    case Level::Warning:
+                    case Level::Milestone:
+                        LOGWARN("[rialto][%s:%d] %s", function.c_str(), line, message.c_str());
+                        break;
+                    case Level::Info:
+                    case Level::Debug:
+                    case Level::External:
+                    default:
+                        LOGINFO("[rialto][%s:%d] %s", function.c_str(), line, message.c_str());
+                        break;
+                }
+            }
+        };
+
         bool mInitialized;
         std::mutex m_stateMutex;
         std::condition_variable m_stateCond;
-        std::unique_ptr<IServerManagerService> mServerManagerService ;
+        std::unique_ptr<IServerManagerService> mServerManagerService;
+        std::shared_ptr<rialto::servermanager::service::ILogHandler> mLogHandler;
         std::map<std::string, RialtoServerStates> appStateMap;
-
         const RialtoServerStates getCurrentAppState(const std::string &callsign);
       
     };

@@ -434,19 +434,16 @@ Json::Value DobbySpecGenerator::createEnvVars(const ApplicationConfiguration& co
        env.append(std::string("DIAL_USN=") + mAIConfiguration->getDialUsn());
    }
 
-   //TODO SUPPORT RIALTO
-   //TODO SUPPORT rialto in runtime config
-   //if (rialtoSMClient && appPackage->hasCapability(IPackage::Capability::RequiresRialto))
-   if (false)
+   #ifdef ENABLE_RIALTO
+   if (!config.mRialtoSocketPath.empty())
    {
-       //const std::string rialtoSocketPath = rialtoSMClient->getSocketPath();
-       //if (!rialtoSocketPath.empty())
-       //{
-       //    // Pass Rialto socket name used by RialtoClient to communicate with RialtoSessionServer
-       //    env.append(std::string("RIALTO_SOCKET_PATH=") + rialtoSocketPath);
-       //}
+       // Pass Rialto socket path used by RialtoClient to communicate with RialtoSessionServer
+       LOGINFO("Injecting RIALTO_SOCKET_PATH=%s into container env", config.mRialtoSocketPath.c_str());
+       env.append(std::string("RIALTO_SOCKET_PATH=") + config.mRialtoSocketPath);
    }
-   else if (!mGstRegistrySourcePath.empty())
+   else
+   #endif
+   if (!mGstRegistrySourcePath.empty())
    {
        env.append("GST_REGISTRY=" + mGstRegistryDestinationPath);
        env.append("GST_REGISTRY_UPDATE=no");
@@ -496,7 +493,35 @@ Json::Value DobbySpecGenerator::createMounts(const ApplicationConfiguration& con
         }
     }
 
-    //TODO SUPPORT Handle rialto
+    #ifdef ENABLE_RIALTO
+    if (!config.mRialtoSocketPath.empty())
+    {
+        LOGINFO("Adding Rialto socket bind mount: source='%s' destination='%s'", config.mRialtoSocketPath.c_str(), config.mRialtoSocketPath.c_str());
+        // Bind mount the Rialto socket into the container so the app can connect to its RialtoServer instance
+        mounts.append(createBindMount(config.mRialtoSocketPath, config.mRialtoSocketPath,
+                                      MS_BIND | MS_NOSUID | MS_NODEV));
+    }
+    else
+    {
+        LOGWARN("Rialto socket path is empty, skipping bind mount");
+	// Mount the pre-scanned GStreamer registry only when Rialto is NOT active;
+        // mirrors appinfrastructure DobbySpecGenerator behaviour.
+        if (!mGstRegistrySourcePath.empty())
+        {
+            mounts.append(createBindMount(mGstRegistrySourcePath,
+                                               mGstRegistryDestinationPath,
+                                               (MS_BIND | MS_NOSUID | MS_NODEV | MS_NOEXEC | MS_RDONLY)));
+        }
+    }
+    #else
+    if (!mGstRegistrySourcePath.empty())
+    {
+        mounts.append(createBindMount(mGstRegistrySourcePath,
+                                           mGstRegistryDestinationPath,
+                                           (MS_BIND | MS_NOSUID | MS_NODEV | MS_NOEXEC | MS_RDONLY)));
+    }
+    #endif
+
     //TODO SUPPORT Netflix specific mounts
     //TODO SUPPORT SVP file mounts
     //TODO SUPPORT Platform specific mounts
@@ -504,20 +529,6 @@ Json::Value DobbySpecGenerator::createMounts(const ApplicationConfiguration& con
     //TODO SUPPORT TSB Storage
     //TODO SUPPORT USB Mass storage
     //TODO SUPPORT PerfettoSocketPath not mounted
-    /*
-    if (usingRialto)
-    {
-        Json::Value rialtoMount = createRialtoMount(appPackage, rialtoSMClient);
-        if (!rialtoMount.isNull())
-            mountsArray.append(std::move(rialtoMount));
-    }
-    */
-    if (!mGstRegistrySourcePath.empty())
-    {
-        mounts.append(createBindMount(mGstRegistrySourcePath,
-                                           mGstRegistryDestinationPath,
-                                           (MS_BIND | MS_NOSUID | MS_NODEV | MS_NOEXEC | MS_RDONLY)));
-    }
 
     std::vector<ExtraBindMount> extraMountEntries;
     if (true == getExtraMountEntries(runtimeConfig.capabilities, extraMountEntries))
@@ -604,7 +615,7 @@ bool DobbySpecGenerator::shouldEnableGpu(const ApplicationConfiguration& config)
 }
 
 void DobbySpecGenerator::parseCapabilities(const std::string& serializedCapabilities,
-                                           std::vector<std::pair<std::string, std::string>>& parsedCapabilities) const
+                                           std::vector<std::pair<std::string, std::string>>& parsedCapabilities)
 {
     parsedCapabilities.clear();
 
@@ -647,7 +658,7 @@ void DobbySpecGenerator::parseCapabilities(const std::string& serializedCapabili
 }
 
 bool DobbySpecGenerator::hasCapability(const std::vector<std::pair<std::string, std::string>>& capabilities,
-                                       const std::string& capabilityName) const
+                                       const std::string& capabilityName)
 {
     const std::string expectedName = lowerCopy(capabilityName);
 
@@ -708,13 +719,12 @@ ssize_t DobbySpecGenerator::getGPUMemoryLimit(const ApplicationConfiguration& co
 
 bool DobbySpecGenerator::getVpuEnabled(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const
 {
-    // TODO SUPPORT RIALTO
-    /*
-    if (rialToEnabled)
+#ifdef ENABLE_RIALTO
+    if (!config.mRialtoSocketPath.empty())
     {
         return false;
     }
-    */
+#endif
     if (runtimeConfig.appType.compare("SYSTEM") == 0)
     {
         return false;
@@ -993,6 +1003,23 @@ void DobbySpecGenerator::populateClassicPlugins(const ApplicationConfiguration& 
         pluginsArray.append(createHolePuncherPlugin(appPackage));
     }
     */
+    #ifdef ENABLE_RIALTO
+    LOGINFO("populateClassicPlugins: appId='%s' mRialtoSocketPath='%s'", config.mAppId.c_str(), config.mRialtoSocketPath.c_str());
+    if (config.mRialtoSocketPath.empty())
+    {
+        LOGINFO("populateClassicPlugins: Rialto NOT active — adding OpenCDM for appId='%s'", config.mAppId.c_str());
+    #else
+    if (true)
+    {
+    #endif
+    pluginsArray.append(createOpenCDMPlugin(config, runtimeConfig));
+    }
+    #ifdef ENABLE_RIALTO
+    else
+    {
+        LOGINFO("populateClassicPlugins: Rialto active — skipping OpenCDM for appId='%s'", config.mAppId.c_str());
+    }
+    #endif
     spec["plugins"] = std::move(pluginsArray);
 }
 

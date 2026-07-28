@@ -41,7 +41,7 @@
 class WebInspector;
 #endif
 
-#ifdef RIALTO_IN_DAC_FEATURE_ENABLED
+#ifdef ENABLE_RIALTO
 #include "RialtoConnector.h"
 #define RIALTO_TIMEOUT_MILLIS 5000
 #endif
@@ -105,6 +105,9 @@ namespace WPEFramework
                     Exchange::IRuntimeManager::RuntimeState containerState;
                     time_t requestTime = 0;
                     RuntimeManagerImplementation::RequestType requestType = RuntimeManagerImplementation::REQUEST_TYPE_NONE;
+#ifdef ENABLE_RIALTO
+                    bool usesRialto = false;
+#endif
                 } RuntimeAppInfo;
 
                 class EXTERNAL Job : public Core::IDispatch
@@ -221,9 +224,9 @@ namespace WPEFramework
                 DobbyEventListener *mDobbyEventListener;
                 UserIdManager* mUserIdManager;
                 std::string mRuntimeAppPortal;
-#ifdef  RIALTO_IN_DAC_FEATURE_ENABLED
-                std::shared_ptr<RialtoConnector>  mRialtoConnector;
-#endif // RIALTO_IN_DAC_FEATURE_ENABLED
+                #ifdef  ENABLE_RIALTO
+				std::shared_ptr<RialtoConnector>  mRialtoConnector;
+                #endif
                 std::string mRuntimeConfigFile;
                 AIConfiguration* mAIConfiguration;
 
