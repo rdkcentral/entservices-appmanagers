@@ -54,6 +54,10 @@ namespace Plugin
              * Only sets the path if the file exists at call time.
              */
             void setGstreamerRegistryPath(const std::filesystem::path& registryPath);
+            static void parseCapabilities(const std::string& serializedCapabilities,
+                              std::vector<std::pair<std::string, std::string>>& parsedCapabilities);
+            static bool hasCapability(const std::vector<std::pair<std::string, std::string>>& capabilities,
+                           const std::string& capabilityName);
 
         private:
             Json::Value createEnvVars(const ApplicationConfiguration& config,
@@ -94,16 +98,12 @@ namespace Plugin
             Json::Value createResourceManagerMount(const ApplicationConfiguration& config) const;
             Json::Value getWorkingDir(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const;
             void initialiseIonHeapsJson();
-        void initialiseDefaultLogLevels();
+            void initialiseDefaultLogLevels();
             std::string encodeURL(std::string url) const;
-        void parseCapabilities(const std::string& serializedCapabilities,
-                              std::vector<std::pair<std::string, std::string>>& parsedCapabilities) const;
-        bool hasCapability(const std::vector<std::pair<std::string, std::string>>& capabilities,
-                           const std::string& capabilityName) const;
-        std::string getCapabilityValue(const std::vector<std::pair<std::string, std::string>>& capabilities,
+            std::string getCapabilityValue(const std::vector<std::pair<std::string, std::string>>& capabilities,
                                        const std::string& capabilityName) const;
 	    void addHolePunchPortToSpec(Json::Value &spec, in_port_t port) const;
-        void fillMissingJson(Json::Value& base, const Json::Value& defaults);
+            void fillMissingJson(Json::Value& base, const Json::Value& defaults);
 
             // Log level bit flags — must match packagemanager::IPackage::LogLevel values
             enum class LogLevel : unsigned

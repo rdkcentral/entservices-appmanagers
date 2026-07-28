@@ -61,6 +61,7 @@ namespace Plugin
         , mPreloads()
         , mEnvVariables()
         , mDefaultAllowedLogLevels({"fatal", "error", "warning", "milestone", "info", "debug"})
+	, mRialtoOverride(RialtoOverride::DEFAULT)
     {
         // All members initialized in initialization list above
     }
@@ -546,6 +547,11 @@ namespace Plugin
         }
     }
 
+    RialtoOverride AIConfiguration::getRialtoOverride() const
+    {
+        return mRialtoOverride;
+    }
+
     void AIConfiguration::readFromConfigFile()
     {
         LOGINFO("AIConfiguration reading from config file at %s", AICONFIGURATION_JSON_PATH);
@@ -669,6 +675,22 @@ namespace Plugin
             mDialServerPathPrefix = dialSrv["prefix"].asString();
         if (dial["usn"].isString())
             mDialUsn = dial["usn"].asString();
+
+	// ---- rialto override --------------------------------------------
+        const Json::Value& rialtoNode = root.isMember("rialto") ? root["rialto"] : getObj(apps, "rialto");
+        if (rialtoNode.isObject() && rialtoNode["override"].isString())
+        {
+            const std::string override = rialtoNode["override"].asString();
+            if (override == "forceOn")
+                mRialtoOverride = RialtoOverride::FORCE_ON;
+            else if (override == "forceOff")
+                mRialtoOverride = RialtoOverride::FORCE_OFF;
+            else
+                mRialtoOverride = RialtoOverride::DEFAULT;
+            LOGINFO("rialto.override=%s -> mRialtoOverride=%s", override.c_str(),
+                    mRialtoOverride == RialtoOverride::FORCE_ON  ? "FORCE_ON"  :
+                    mRialtoOverride == RialtoOverride::FORCE_OFF ? "FORCE_OFF" : "DEFAULT");
+        }
 
         printAIConfiguration();
     }

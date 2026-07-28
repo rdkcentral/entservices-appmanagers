@@ -30,6 +30,7 @@ namespace WPEFramework
 {
 namespace Plugin
 {
+    enum class RialtoOverride { DEFAULT, FORCE_ON, FORCE_OFF };
     class AIConfiguration
     {
         public:
@@ -60,6 +61,8 @@ namespace Plugin
             // system configuration
             std::list<std::string> getPreloads() const;
             std::list<std::string> getEnvs() const;
+
+	    RialtoOverride getRialtoOverride() const;
 
         private:
             void readFromCustomData();
@@ -93,6 +96,7 @@ namespace Plugin
             std::list<std::string> mEnvVariables;
             std::list<std::string> mSvpFiles;
             std::list<std::string> mDefaultAllowedLogLevels;
+	    RialtoOverride mRialtoOverride;
     };
 } /* namespace Plugin */
 } /* namespace WPEFramework */
