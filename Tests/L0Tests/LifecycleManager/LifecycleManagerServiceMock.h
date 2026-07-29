@@ -183,6 +183,7 @@ public:
     WPEFramework::Core::hresult GetZOrder(const string& /*appInstanceId*/, int32_t& /*zOrder*/) override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult StartVncServer() override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult StopVncServer() override { return WPEFramework::Core::ERROR_NONE; }
+    WPEFramework::Core::hresult GetFocused(string& /*client*/) const override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult GetScreenshot() override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult SetAlias(const string& /*clientId*/, const string& /*alias*/) override { return WPEFramework::Core::ERROR_NONE; }
 
