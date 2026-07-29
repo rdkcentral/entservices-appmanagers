@@ -501,6 +501,7 @@ Json::Value DobbySpecGenerator::createEnvVars(const ApplicationConfiguration& co
        LOGINFO("Injecting RIALTO_SOCKET_PATH=%s into container env", config.mRialtoSocketPath.c_str());
        env.append(std::string("RIALTO_SOCKET_PATH=") + config.mRialtoSocketPath);
    }
+   #endif
    if (!mGstRegistrySourcePath.empty())
    {
        env.append("GST_REGISTRY=" + mGstRegistryDestinationPath);
