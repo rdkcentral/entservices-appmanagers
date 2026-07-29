@@ -325,7 +325,7 @@ namespace WPEFramework
                 mAIConfiguration = new AIConfiguration();
                 mAIConfiguration->initialize(mRuntimeConfigFile);
 
-#ifdef RIALTO_IN_DAC_FEATURE_ENABLED
+#ifdef ENABLE_RIALTO
                 mRialtoOverride = mAIConfiguration->getRialtoOverride();
 #endif
 
@@ -1098,6 +1098,13 @@ namespace WPEFramework
                 {
                     LOGERR("appInstanceId is empty ");
                 }
+#ifdef ENABLE_RIALTO
+            if (!appId.empty() && mRuntimeAppInfo[appInstanceId].usesRialto)
+            {
+                LOGINFO("Rialto session resume for %s", appId.c_str());
+                mRialtoConnector->resumeSession(appId);
+            }
+#endif
             mRuntimeManagerImplLock.Unlock();
 
             recordTelemetryData(TELEMETRY_MARKER_RESUME_TIME, appId, requestTime);

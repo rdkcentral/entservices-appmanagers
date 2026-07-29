@@ -106,6 +106,7 @@ namespace WPEFramework
                     Exchange::IRuntimeManager::RuntimeState containerState;
                     time_t requestTime = 0;
                     RuntimeManagerImplementation::RequestType requestType = RuntimeManagerImplementation::REQUEST_TYPE_NONE;
+		    bool usesRialto = false;
                 } RuntimeAppInfo;
 
                 class EXTERNAL Job : public Core::IDispatch
