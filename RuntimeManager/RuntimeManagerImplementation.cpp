@@ -235,10 +235,15 @@ namespace WPEFramework
                 {
                     mRuntimeAppInfo.erase(appInstanceId);
                 }
-                while (index != mRuntimeManagerNotification.end())
                 {
-                    (*index)->OnTerminated(appInstanceId);
-                    ++index;
+                    int32_t exitCode = 0;
+                    if (obj.HasLabel("exitCode"))
+                        exitCode = static_cast<int32_t>(obj["exitCode"].Number());
+                    while (index != mRuntimeManagerNotification.end())
+                    {
+                        (*index)->OnTerminated(appInstanceId, exitCode);
+                        ++index;
+                    }
                 }
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
                 {
