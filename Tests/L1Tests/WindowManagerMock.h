@@ -61,6 +61,7 @@ public:
     MOCK_METHOD(WPEFramework::Core::hresult, EnableInputEvents, (const string& clients, bool enable), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, KeyRepeatConfig, (const string& input, const string& keyConfig), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, SetFocus, (const string& client), (override));
+    MOCK_METHOD(WPEFramework::Core::hresult, GetFocused, (string& client), (const, override));
     MOCK_METHOD(WPEFramework::Core::hresult, SetVisible, (const std::string& client, bool visible), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, GetVisibility, (const std::string& client, bool& visible), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, RenderReady, (const string& client, bool& status), (const, override));
