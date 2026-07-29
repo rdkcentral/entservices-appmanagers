@@ -2317,5 +2317,157 @@ void RDKWindowManagerImplementation::notifyScreenshotComplete(bool success)
     }
 }
 
+/**
+ * @brief Sets the bounds (position and size) of the specified client.
+ *
+ * @param[in] clientId  : client name or application instance ID
+ * @param[in] x         : x coordinate of the client window
+ * @param[in] y         : y coordinate of the client window
+ * @param[in] width     : width of the client window in pixels
+ * @param[in] height    : height of the client window in pixels
+ * @return    Core::<StatusCode>: Core::ERROR_NONE on success, Core::ERROR_GENERAL on failure
+ */
+Core::hresult RDKWindowManagerImplementation::SetBounds(const string& clientId, const uint32_t x, const uint32_t y, const uint32_t width, const uint32_t height)
+{
+    Core::hresult status = Core::ERROR_GENERAL;
+
+    if (clientId.empty())
+    {
+        LOGERR("SetBounds: clientId is empty");
+        return status;
+    }
+
+    const bool lockAcquired = lockRdkWindowManagerMutex();
+    if (lockAcquired)
+    {
+        if (true == RdkWindowManager::CompositorController::setBounds(clientId, x, y, width, height))
+        {
+            LOGINFO("SetBounds: client:%s x:%u y:%u width:%u height:%u", clientId.c_str(), x, y, width, height);
+            status = Core::ERROR_NONE;
+        }
+        else
+        {
+            LOGERR("SetBounds: Failed to set bounds for client '%s'", clientId.c_str());
+        }
+
+        gRdkWindowManagerMutex.unlock();
+    }
+
+    return status;
+}
+
+/**
+ * @brief Gets the bounds (position and size) of the specified client.
+ *
+ * @param[in]  clientId : client name or application instance ID
+ * @param[out] x        : x coordinate of the client window
+ * @param[out] y        : y coordinate of the client window
+ * @param[out] width    : width of the client window in pixels
+ * @param[out] height   : height of the client window in pixels
+ * @return    Core::<StatusCode>: Core::ERROR_NONE on success, Core::ERROR_GENERAL on failure
+ */
+Core::hresult RDKWindowManagerImplementation::GetBounds(const string& clientId, uint32_t& x, uint32_t& y, uint32_t& width, uint32_t& height) const
+{
+    Core::hresult status = Core::ERROR_GENERAL;
+
+    if (clientId.empty())
+    {
+        LOGERR("GetBounds: clientId is empty");
+        return status;
+    }
+
+    const bool lockAcquired = lockRdkWindowManagerMutex();
+    if (lockAcquired)
+    {
+        if (true == RdkWindowManager::CompositorController::getBounds(clientId, x, y, width, height))
+        {
+            LOGINFO("GetBounds: client:%s x:%u y:%u width:%u height:%u", clientId.c_str(), x, y, width, height);
+            status = Core::ERROR_NONE;
+        }
+        else
+        {
+            LOGERR("GetBounds: Failed to get bounds for client '%s'", clientId.c_str());
+        }
+
+        gRdkWindowManagerMutex.unlock();
+    }
+
+    return status;
+}
+
+/**
+ * @brief Sets the scale of the specified client.
+ *
+ * @param[in] clientId : client name or application instance ID
+ * @param[in] scaleX   : horizontal scale factor
+ * @param[in] scaleY   : vertical scale factor
+ * @return    Core::<StatusCode>: Core::ERROR_NONE on success, Core::ERROR_GENERAL on failure
+ */
+Core::hresult RDKWindowManagerImplementation::SetScale(const string& clientId, const double scaleX, const double scaleY)
+{
+    Core::hresult status = Core::ERROR_GENERAL;
+
+    if (clientId.empty())
+    {
+        LOGERR("SetScale: clientId is empty");
+        return status;
+    }
+
+    const bool lockAcquired = lockRdkWindowManagerMutex();
+    if (lockAcquired)
+    {
+        if (true == RdkWindowManager::CompositorController::setScale(clientId, scaleX, scaleY))
+        {
+            LOGINFO("SetScale: client:%s scaleX:%f scaleY:%f", clientId.c_str(), scaleX, scaleY);
+            status = Core::ERROR_NONE;
+        }
+        else
+        {
+            LOGERR("SetScale: Failed to set scale for client '%s'", clientId.c_str());
+        }
+
+        gRdkWindowManagerMutex.unlock();
+    }
+
+    return status;
+}
+
+/**
+ * @brief Gets the scale of the specified client.
+ *
+ * @param[in]  clientId : client name or application instance ID
+ * @param[out] scaleX   : horizontal scale factor
+ * @param[out] scaleY   : vertical scale factor
+ * @return    Core::<StatusCode>: Core::ERROR_NONE on success, Core::ERROR_GENERAL on failure
+ */
+Core::hresult RDKWindowManagerImplementation::GetScale(const string& clientId, double& scaleX, double& scaleY) const
+{
+    Core::hresult status = Core::ERROR_GENERAL;
+
+    if (clientId.empty())
+    {
+        LOGERR("GetScale: clientId is empty");
+        return status;
+    }
+
+    const bool lockAcquired = lockRdkWindowManagerMutex();
+    if (lockAcquired)
+    {
+        if (true == RdkWindowManager::CompositorController::getScale(clientId, scaleX, scaleY))
+        {
+            LOGINFO("GetScale: client:%s scaleX:%f scaleY:%f", clientId.c_str(), scaleX, scaleY);
+            status = Core::ERROR_NONE;
+        }
+        else
+        {
+            LOGERR("GetScale: Failed to get scale for client '%s'", clientId.c_str());
+        }
+
+        gRdkWindowManagerMutex.unlock();
+    }
+
+    return status;
+}
+
 } /* namespace Plugin */
 } /* namespace WPEFramework */
