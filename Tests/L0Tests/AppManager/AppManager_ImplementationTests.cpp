@@ -29,7 +29,7 @@
 #undef private
 #include "common/AppManagerL0Mock.hpp"
 #include "common/L0Expect.hpp"
-
+//testing
 // Helper to create a service mock with all required dependencies for AppManagerImplementation
 // Defined outside anonymous namespace so it can be accessed from other test files via extern
 L0Test::AppManagerServiceMock::Config CreateFullServiceConfig()
