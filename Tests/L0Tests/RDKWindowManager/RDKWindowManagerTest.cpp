@@ -16,6 +16,8 @@ extern uint32_t Test_RDKWM_Impl_RegisterUnregister();
 extern uint32_t Test_RDKWM_Impl_InitializeDeinitialize();
 extern uint32_t Test_RDKWM_Impl_AddKeyInterceptValidationAndSuccess();
 extern uint32_t Test_RDKWM_Impl_GetAppsAndFocusPaths();
+extern uint32_t Test_RDKWM_Impl_GetFocusedSuccess();
+extern uint32_t Test_RDKWM_Impl_GetFocusedFailure();
 extern uint32_t Test_RDKWM_Impl_VncAndZOrder();
 extern uint32_t Test_RDKWM_Impl_EventDispatchViaListener();
 extern uint32_t Test_RDKWM_Impl_VisibilityAndRenderApis();
@@ -41,6 +43,8 @@ int main()
         { "RDKWM_Impl_InitializeDeinitialize", Test_RDKWM_Impl_InitializeDeinitialize },
         { "RDKWM_Impl_AddKeyInterceptValidationAndSuccess", Test_RDKWM_Impl_AddKeyInterceptValidationAndSuccess },
         { "RDKWM_Impl_GetAppsAndFocusPaths", Test_RDKWM_Impl_GetAppsAndFocusPaths },
+        { "RDKWM_Impl_GetFocusedSuccess", Test_RDKWM_Impl_GetFocusedSuccess },
+        { "RDKWM_Impl_GetFocusedFailure", Test_RDKWM_Impl_GetFocusedFailure },
         { "RDKWM_Impl_VncAndZOrder", Test_RDKWM_Impl_VncAndZOrder },
         { "RDKWM_Impl_EventDispatchViaListener", Test_RDKWM_Impl_EventDispatchViaListener },
         { "RDKWM_Impl_VisibilityAndRenderApis", Test_RDKWM_Impl_VisibilityAndRenderApis },
