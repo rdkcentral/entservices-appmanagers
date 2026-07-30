@@ -110,9 +110,15 @@ namespace packagemanager
                 configMetadata.md5Hash = "dummy-md5-youtube-100124";
             
             ConfigMetadataKey key {"YouTube", "100.1.24"};
-
             aConfigMetadata.insert({key, configMetadata});
-            
+
+            // Runtime engine package — mimeType starts with "runtime" so it must be excluded from ListPackages
+            ConfigMetaData runtimeMetadata;
+            runtimeMetadata.mimeType = "runtime/html";
+            runtimeMetadata.md5Hash = "dummy-md5-runtimeengine-1.0";
+            ConfigMetadataKey runtimeKey {"RuntimeEngine", "1.0"};
+            aConfigMetadata.insert({runtimeKey, runtimeMetadata});
+
             return SUCCESS; 
         }
 

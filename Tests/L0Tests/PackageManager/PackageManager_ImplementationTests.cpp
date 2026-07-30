@@ -244,6 +244,39 @@ uint32_t Test_PM_Impl_ListPackagesAndPackageStateForDummyData()
     return tr.failures;
 }
 
+uint32_t Test_PM_Impl_ListPackagesExcludesRuntimePackages()
+{
+    L0Test::TestResult tr;
+    ImplFixture fx;
+
+    L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() succeeds");
+
+    WPEFramework::Exchange::IPackageInstaller::IPackageIterator* packages = nullptr;
+    L0Test::ExpectEqU32(tr, fx.impl->ListPackages(packages), ERROR_NONE, "ListPackages() returns ERROR_NONE");
+    L0Test::ExpectTrue(tr, packages != nullptr, "ListPackages() returns non-null iterator");
+
+    if (packages != nullptr) {
+        WPEFramework::Exchange::IPackageInstaller::Package package;
+        bool foundRuntime = false;
+        bool foundYouTube = false;
+        while (packages->Next(package)) {
+            if (package.packageId == "RuntimeEngine") {
+                foundRuntime = true;
+            }
+            if (package.packageId == "YouTube") {
+                foundYouTube = true;
+            }
+        }
+        L0Test::ExpectTrue(tr, !foundRuntime,
+            "ListPackages() excludes packages whose mimeType starts with 'runtime'");
+        L0Test::ExpectTrue(tr, foundYouTube,
+            "ListPackages() still includes non-runtime packages");
+        packages->Release();
+    }
+
+    return tr.failures;
+}
+
 uint32_t Test_PM_Impl_ConfigAndGetConfigForPackageEmptyLocator()
 {
     L0Test::TestResult tr;
