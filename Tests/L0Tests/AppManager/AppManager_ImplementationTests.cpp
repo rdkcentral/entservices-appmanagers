@@ -3225,7 +3225,7 @@ uint32_t Test_AM_LICOnAppLifecycleStateChangedNormalCloseNoSentinel()
 
     struct ErrorTracker final : public WPEFramework::Exchange::IAppManager::INotification {
         mutable std::atomic<uint32_t> _ref{1};
-        WPEFramework::Exchange::IAppManager::AppErrorReason lastError{
+        std::atomic<WPEFramework::Exchange::IAppManager::AppErrorReason> lastError{
             WPEFramework::Exchange::IAppManager::AppErrorReason::APP_ERROR_ABORT}; // sentinel default
         std::atomic<uint32_t> lifecycleCalls{0};
         void AddRef() const override { _ref.fetch_add(1, std::memory_order_relaxed); }
@@ -3291,7 +3291,7 @@ uint32_t Test_AM_LICOnAppLifecycleStateChangedUnexpectedTermAbortError()
 
     struct AbortTracker final : public WPEFramework::Exchange::IAppManager::INotification {
         mutable std::atomic<uint32_t> _ref{1};
-        WPEFramework::Exchange::IAppManager::AppErrorReason lastError{
+        std::atomic<WPEFramework::Exchange::IAppManager::AppErrorReason> lastError{
             WPEFramework::Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE}; // sentinel default
         std::atomic<uint32_t> lifecycleCalls{0};
         void AddRef() const override { _ref.fetch_add(1, std::memory_order_relaxed); }
