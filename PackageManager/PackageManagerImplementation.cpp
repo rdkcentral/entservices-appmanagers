@@ -579,7 +579,8 @@ namespace Plugin {
         std::lock_guard<std::recursive_mutex> lock(mtxState);
 
         for (auto const& [key, state] : mState) {
-            if (state.mimeType.find("runtime") == 0) {
+            bool isRuntime = (state.mimeType.find("runtime") == 0);
+            if (isRuntime) {
                 continue;
             }
             Exchange::IPackageInstaller::Package package{};
