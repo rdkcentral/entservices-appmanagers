@@ -806,12 +806,12 @@ ssize_t DobbySpecGenerator::getGPUMemoryLimit(const ApplicationConfiguration& co
 
 bool DobbySpecGenerator::getVpuEnabled(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig, std::vector<std::pair<std::string, std::string>>& capabilities) const
 {
-    bool usingRialto = hasCapability(capabilities, "rialto");
-    if (usingRialto)
+#ifdef ENABLE_RIALTO
+    if (!config.mRialtoSocketPath.empty())
     {
         return false;
     }
-
+#endif
     if (runtimeConfig.appType.compare("SYSTEM") == 0)
     {
         return false;
