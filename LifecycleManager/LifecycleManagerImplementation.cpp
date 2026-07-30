@@ -298,15 +298,22 @@ namespace WPEFramework
             auto context = getContext(appInstanceId, "");
             time_t requestTime = 0;
             requestTime = LifecycleManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
+            LOGINFO("SetTargetAppState entry appInstanceId=%s targetState=%d", appInstanceId.c_str(), static_cast<int>(targetLifecycleState));
             if (nullptr == context)
 	    {
+                LOGERR("SetTargetAppState failed: context not found for appInstanceId=%s", appInstanceId.c_str());
                 status = Core::ERROR_GENERAL;
                 return status;
 	    }
+            LOGDBG("SetTargetAppState waiting for mAdminLock appInstanceId=%s", appInstanceId.c_str());
             mAdminLock.Lock();
+            LOGDBG("SetTargetAppState acquired mAdminLock appInstanceId=%s currentState=%d targetState=%d", appInstanceId.c_str(), static_cast<int>(context->getCurrentLifecycleState()), static_cast<int>(targetLifecycleState));
             if (targetLifecycleState == context->getCurrentLifecycleState())
             {
+                LOGDBG("SetTargetAppState no-op, current state already matches target appInstanceId=%s state=%d", appInstanceId.c_str(), static_cast<int>(targetLifecycleState));
+                LOGDBG("SetTargetAppState releasing mAdminLock appInstanceId=%s", appInstanceId.c_str());
                 mAdminLock.Unlock();
+                LOGDBG("SetTargetAppState released mAdminLock appInstanceId=%s", appInstanceId.c_str());
                 return status;
             }
             switch(targetLifecycleState)
@@ -341,13 +348,19 @@ namespace WPEFramework
             context->setTargetLifecycleState(targetLifecycleState);
             context->setMostRecentIntent(launchIntent);
             context->resetPendingStates();
+            LOGDBG("SetTargetAppState calling updateState appInstanceId=%s appId=%s targetState=%d", appInstanceId.c_str(), context->getAppId().c_str(), static_cast<int>(targetLifecycleState));
             bool success = RequestHandler::getInstance()->updateState(context.get(), targetLifecycleState, errorReason);
+            LOGDBG("SetTargetAppState updateState returned success=%d appInstanceId=%s errorReason=%s", success, appInstanceId.c_str(), errorReason.c_str());
+            LOGDBG("SetTargetAppState releasing mAdminLock appInstanceId=%s", appInstanceId.c_str());
             mAdminLock.Unlock();
+            LOGDBG("SetTargetAppState released mAdminLock appInstanceId=%s", appInstanceId.c_str());
             if (false == success)
             {
+                LOGERR("SetTargetAppState failed: updateState returned false appInstanceId=%s appId=%s targetState=%d errorReason=%s", appInstanceId.c_str(), context->getAppId().c_str(), static_cast<int>(targetLifecycleState), errorReason.c_str());
                 status = Core::ERROR_GENERAL;
                 return status;
             }
+            LOGINFO("SetTargetAppState exit success appInstanceId=%s targetState=%d", appInstanceId.c_str(), static_cast<int>(targetLifecycleState));
             return status;
         }
         
