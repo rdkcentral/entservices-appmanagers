@@ -61,7 +61,7 @@ namespace Plugin
         , mPreloads()
         , mEnvVariables()
         , mDefaultAllowedLogLevels({"fatal", "error", "warning", "milestone", "info", "debug"})
-	, mRialtoOverride(RialtoOverride::DEFAULT)
+	, mRialtoOverride(std::nullopt)
     {
         // All members initialized in initialization list above
     }
@@ -547,7 +547,7 @@ namespace Plugin
         }
     }
 
-    RialtoOverride AIConfiguration::getRialtoOverride() const
+    std::optional<bool> AIConfiguration::getRialtoOverride() const
     {
         return mRialtoOverride;
     }
@@ -676,20 +676,17 @@ namespace Plugin
         if (dial["usn"].isString())
             mDialUsn = dial["usn"].asString();
 
-	// ---- rialto override --------------------------------------------
-        const Json::Value& rialtoNode = root.isMember("rialto") ? root["rialto"] : getObj(apps, "rialto");
+	// ---- rialto override (base) ----------------------------------
+        const Json::Value& rialtoNode = root.isMember("rialto") ? root["rialto"] : getObj(root["apps"], "rialto");
         if (rialtoNode.isObject() && rialtoNode["override"].isString())
         {
-            const std::string override = rialtoNode["override"].asString();
-            if (override == "forceOn")
-                mRialtoOverride = RialtoOverride::FORCE_ON;
-            else if (override == "forceOff")
-                mRialtoOverride = RialtoOverride::FORCE_OFF;
-            else
-                mRialtoOverride = RialtoOverride::DEFAULT;
-            LOGINFO("rialto.override=%s -> mRialtoOverride=%s", override.c_str(),
-                    mRialtoOverride == RialtoOverride::FORCE_ON  ? "FORCE_ON"  :
-                    mRialtoOverride == RialtoOverride::FORCE_OFF ? "FORCE_OFF" : "DEFAULT");
+            const std::string rialtoOverrideStr = rialtoNode["override"].asString();
+            if (rialtoOverrideStr == "forceOn")       mRialtoOverride = true;
+            else if (rialtoOverrideStr == "forceOff") mRialtoOverride = false;
+            else                                      mRialtoOverride = std::nullopt;
+            LOGINFO("rialto.override=%s -> mRialtoOverride=%s", rialtoOverrideStr.c_str(),
+                    !mRialtoOverride.has_value() ? "default" :
+                    mRialtoOverride.value()      ? "forceOn" : "forceOff");
         }
 
         printAIConfiguration();

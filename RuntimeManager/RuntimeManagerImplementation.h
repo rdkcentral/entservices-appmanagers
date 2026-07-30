@@ -106,7 +106,9 @@ namespace WPEFramework
                     Exchange::IRuntimeManager::RuntimeState containerState;
                     time_t requestTime = 0;
                     RuntimeManagerImplementation::RequestType requestType = RuntimeManagerImplementation::REQUEST_TYPE_NONE;
-		    bool usesRialto = false;
+#ifdef ENABLE_RIALTO
+                    bool usesRialto = false;
+#endif
                 } RuntimeAppInfo;
 
                 class EXTERNAL Job : public Core::IDispatch
@@ -224,8 +226,7 @@ namespace WPEFramework
                 UserIdManager* mUserIdManager;
                 std::string mRuntimeAppPortal;
                 #ifdef  ENABLE_RIALTO
-		RialtoOverride mRialtoOverride = RialtoOverride::DEFAULT;
-                std::shared_ptr<RialtoConnector>  mRialtoConnector;
+				std::shared_ptr<RialtoConnector>  mRialtoConnector;
                 #endif
                 std::string mRuntimeConfigFile;
                 AIConfiguration* mAIConfiguration;

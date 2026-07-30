@@ -84,6 +84,7 @@ list(APPEND RUNTIMEMANAGER_SOURCES  Module.cpp)
 if (RIALTO_SUPPORT)
   add_definitions("-DENABLE_RIALTO")
   list(APPEND RUNTIMEMANAGER_SOURCES  RialtoConnector.cpp)
+else()
 endif(RIALTO_SUPPORT)
 
 if(RALF_PACKAGE_SUPPORT)
