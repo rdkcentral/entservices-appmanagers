@@ -579,19 +579,15 @@ namespace Plugin {
         std::lock_guard<std::recursive_mutex> lock(mtxState);
 
         for (auto const& [key, state] : mState) {
-            Exchange::IPackageInstaller::Package package;
+            if (state.mimeType.find("runtime") == 0) {
+                continue;
+            }
+            Exchange::IPackageInstaller::Package package{};
             package.packageId = key.first.c_str();
             package.version = key.second.c_str();
             package.digest = state.digest.c_str();
             package.state = state.installState;
             package.sizeKb = state.runtimeConfig.dataImageSize;
-            package.isRuntime = false;
-            for (const auto& entry : runtimeMap) {
-                 if (entry.second == key) {
-                    package.isRuntime = true;
-                    break;
-                }
-            }
             packageList.emplace_back(package);
         }
 
@@ -1059,6 +1055,7 @@ namespace Plugin {
             state.digest = config.md5Hash;
             state.installState = InstallState::INSTALLED;
             state.runtimeType = config.runtimeType;
+            state.mimeType = config.mimeType;
             std::map<std::string, std::pair<std::string, std::string>>::iterator it2 = runtimeMap.find(state.runtimeType);
             if (it2 != runtimeMap.end()) {
                 state.runtimeApp = it2->second;
@@ -1197,6 +1194,7 @@ namespace Plugin {
                 getRuntimeConfig(config, state.runtimeConfig);
                 state.digest = config.md5Hash;
                 state.runtimeType = config.runtimeType;
+                state.mimeType = config.mimeType;
                 std::map<std::string, std::pair<std::string, std::string>>::iterator itRuntime = runtimeMap.find(state.runtimeType);
                 if (itRuntime != runtimeMap.end()) {
                     state.runtimeApp = itRuntime->second;

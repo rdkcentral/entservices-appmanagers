@@ -77,6 +77,7 @@ class PackageManagerImplementation
             std::list<Exchange::IPackageHandler::AdditionalLock> additionalLocks;
             BlockedInstallData  blockedInstallData;
             string runtimeType;                             // blank for runtime package
+            string mimeType;                                 // mime type of the package (e.g. "runtime/html", "application/html")
             std::pair<std::string, std::string> runtimeApp; // runtime package id & version
         };
 
