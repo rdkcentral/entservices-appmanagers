@@ -304,6 +304,11 @@ namespace WPEFramework
                 return status;
 	    }
             mAdminLock.Lock();
+            if (targetLifecycleState == context->getCurrentLifecycleState())
+            {
+                mAdminLock.Unlock();
+                return status;
+            }
             switch(targetLifecycleState)
             {
                 case Exchange::ILifecycleManager::LifecycleState::PAUSED:        //before SUSPEND or HIBERNATE app will be PAUSED
