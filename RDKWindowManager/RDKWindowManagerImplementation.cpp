@@ -2337,7 +2337,7 @@ Core::hresult RDKWindowManagerImplementation::ShowSplashScreen(const bool show)
     bool ret = false;
     if (show)
     {
-        ret = RdkWindowManager::CompositorController::showSplashScreen(0);
+        ret = RdkWindowManager::CompositorController::showSplashScreen(180);
         if (ret)
         {
             status = Core::ERROR_NONE;
