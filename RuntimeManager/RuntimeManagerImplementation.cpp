@@ -931,19 +931,19 @@ namespace WPEFramework
                             mRuntimeAppInfo[appInstanceId].containerState = Exchange::IRuntimeManager::RUNTIME_STATE_HIBERNATING;
                             appId = mRuntimeAppInfo[appInstanceId].appId;
                         }
+#ifdef ENABLE_RIALTO
+                        if (!appId.empty() && mRuntimeAppInfo[appInstanceId].usesRialto)
+                        {
+                            LOGINFO("Rialto session suspend for %s", appId.c_str());
+                            mRialtoConnector->suspendSession(appId);
+                        }
+#endif
                     }
                 }
                 else
                 {
                     LOGERR("appInstanceId is not found or mOciContainerObject is not ready");
                 }
-#ifdef ENABLE_RIALTO
-            if (!appId.empty() && mRuntimeAppInfo[appInstanceId].usesRialto)
-            {
-                LOGINFO("Rialto session suspend for %s", appId.c_str());
-                mRialtoConnector->suspendSession(appId);
-            }
-#endif
 
             mRuntimeManagerImplLock.Unlock();
 
@@ -989,6 +989,13 @@ namespace WPEFramework
                                 mRuntimeAppInfo[appInstanceId].containerState = Exchange::IRuntimeManager::RUNTIME_STATE_WAKING;
                                 appId = mRuntimeAppInfo[appInstanceId].appId;
                             }
+#ifdef ENABLE_RIALTO
+                            if (!appId.empty() && mRuntimeAppInfo[appInstanceId].usesRialto)
+                            {
+                                LOGINFO("Rialto session resume for %s", appId.c_str());
+                                mRialtoConnector->resumeSession(appId);
+                            }
+#endif
                         }
                     }
                     else
@@ -1000,13 +1007,6 @@ namespace WPEFramework
                 {
                     LOGERR("appInstanceId is not found ");
                 }
-#ifdef ENABLE_RIALTO
-            if (!appId.empty() && mRuntimeAppInfo[appInstanceId].usesRialto)
-            {
-                LOGINFO("Rialto session resume for %s", appId.c_str());
-                mRialtoConnector->resumeSession(appId);
-            }
-#endif
 
             mRuntimeManagerImplLock.Unlock();
 
@@ -1048,19 +1048,19 @@ namespace WPEFramework
                         {
                             appId = mRuntimeAppInfo[appInstanceId].appId;
                         }
+#ifdef ENABLE_RIALTO
+                        if (!appId.empty() && mRuntimeAppInfo[appInstanceId].usesRialto)
+                        {
+                            LOGINFO("Rialto session suspend for %s", appId.c_str());
+                            mRialtoConnector->suspendSession(appId);
+                        }
+#endif
                     }
                 }
                 else
                 {
                     LOGERR("appInstanceId is not found ");
                 }
-#ifdef ENABLE_RIALTO
-            if (!appId.empty() && mRuntimeAppInfo[appInstanceId].usesRialto)
-            {
-                LOGINFO("Rialto session suspend for %s", appId.c_str());
-                mRialtoConnector->suspendSession(appId);
-            }
-#endif
 
             mRuntimeManagerImplLock.Unlock();
 
@@ -1102,6 +1102,13 @@ namespace WPEFramework
                         {
                             appId = mRuntimeAppInfo[appInstanceId].appId;
                         }
+#ifdef ENABLE_RIALTO
+                        if (!appId.empty() && mRuntimeAppInfo[appInstanceId].usesRialto)
+                        {
+                            LOGINFO("Rialto session resume for %s", appId.c_str());
+                            mRialtoConnector->resumeSession(appId);
+                        }
+#endif
                     }
                 }
                 else
