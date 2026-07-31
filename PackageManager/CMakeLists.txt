@@ -22,8 +22,7 @@ message("Setup ${MODULE_NAME}")
 
 option(USE_LIBPACKAGE_RALF "USE_LIBPACKAGE_RALF" OFF)
 option(ENABLE_UNIT_TESTS "Enable unit tests" OFF)
-option(ENABLE_INSTALL_WHILE_LOCKED "Allow package install while app version is locked" ON)
-# turn off before merge
+option(ENABLE_INSTALL_WHILE_LOCKED "Allow package install while app version is locked" OFF)
 
 # XXX: ../cmake/FindCurl.cmake is bad
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/;${CMAKE_MODULE_PATH}")
