@@ -158,6 +158,7 @@ namespace Plugin {
         Core::hresult GetFocused(string &client) const override;
         Core::hresult GetScreenshot() override;
         Core::hresult SetAlias(const string& clientId, const string& alias) override;
+        Core::hresult ShowSplashScreen(const bool show) override;
 
     private: /*internal methods*/
         bool createDisplay(const string& client, const string& displayName, const uint32_t displayWidth = 0, const uint32_t displayHeight = 0,
