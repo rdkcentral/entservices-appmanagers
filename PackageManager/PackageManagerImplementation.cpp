@@ -1024,6 +1024,24 @@ namespace Plugin {
         return result;
     }
 
+    Core::hresult PackageManagerImplementation::GetConfigForInstalledPackage(const string &packageId, const string &version, string& config /* @out @opaque */)
+    {
+        CHECK_CACHE()
+        Core::hresult result = Core::ERROR_GENERAL;
+
+        if (packageId.empty() || version.empty())
+        {
+            return Core::ERROR_INVALID_SIGNATURE;
+        }
+
+        packagemanager::Result pmResult = packageImpl->GetInstalledPackageMetadata(packageId, version, config);
+        if (pmResult == packagemanager::SUCCESS)
+        {
+            result = Core::ERROR_NONE;
+        }
+        return result;
+    }
+
     // Internal functions
     void PackageManagerImplementation::InitializeState()
     {
