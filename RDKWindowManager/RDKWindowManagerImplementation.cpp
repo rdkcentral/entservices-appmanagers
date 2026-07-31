@@ -755,16 +755,16 @@ Core::hresult RDKWindowManagerImplementation::CreateDisplay(const string &client
  * @brief Get the list of connected application clients.
  * Returns a list of application IDs currently connected to the window manager.
  *
- * @appsIds[out]      : JSON string array of connected app IDs.
- *                      Ex: [\"org.rdk.youttube\",\"org.rdk.netflix\"]
+ * @appsIds[out]      : Iterator over the connected app IDs (JSON-RPC serializes this as a JSON array).
+ *                      Ex: ["org.rdk.youtube","org.rdk.netflix"]
  * @return Core::ERROR_NONE on success, Core::ERROR_GENERAL on error.
  */
-Core::hresult RDKWindowManagerImplementation::GetApps(string &appsIds) const
+Core::hresult RDKWindowManagerImplementation::GetApps(IStringIterator*& appsIds) const
 {
+    appsIds = nullptr;
     Core::hresult status = Core::ERROR_GENERAL;
     bool retValue = false;
     std::vector<std::string> clientList;
-    JsonArray clientsArray;
     bool lockAcquired = false;
 
     lockAcquired = lockRdkWindowManagerMutex();
@@ -773,24 +773,23 @@ Core::hresult RDKWindowManagerImplementation::GetApps(string &appsIds) const
         retValue = CompositorController::getClients(clientList);
         gRdkWindowManagerMutex.unlock();
     }
+    else
+    {
+        LOGERR("Failed to acquire RDKWindowManager mutex in GetApps");
+    }
 
     if (true == retValue)
     {
-        for (size_t i = 0; i < clientList.size(); i++)
+        appsIds = Core::Service<RPC::StringIterator>::Create<IStringIterator>(clientList);
+        if (nullptr != appsIds)
         {
-            clientsArray.Add(clientList[i]);
-        }
-
-        if (clientsArray.IsSet())
-        {
-            clientsArray.ToString(appsIds);
-            LOGINFO("List of appsIds: %s", appsIds.c_str());
+            LOGINFO("List of appsIds count: %zu", clientList.size());
+            status = Core::ERROR_NONE;
         }
         else
         {
-            LOGWARN("There are no apps");
+            LOGERR("GetApps Failed to allocate iterator");
         }
-        status = Core::ERROR_NONE;
     }
     else
     {

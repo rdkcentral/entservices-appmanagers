@@ -242,7 +242,7 @@ namespace Plugin {
             writerBuilder["indentation"] = " ";
             std::string publishMetrics = Json::writeString(writerBuilder, filteredMetrics);
 
-            LOGINFO("Publishing metrics recordId=%s payloadSize=%zu", recordId.c_str(), publishMetrics.size());
+            LOGINFO("Publishing metrics recordId=%s, payloadSize=%zu", recordId.c_str(), publishMetrics.size());
             t2_event_s((char*)markerName.c_str(), (char*)publishMetrics.c_str());
 
             /* Remove Published Record */
