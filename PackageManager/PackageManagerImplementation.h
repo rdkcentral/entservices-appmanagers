@@ -77,6 +77,7 @@ class PackageManagerImplementation
             std::list<Exchange::IPackageHandler::AdditionalLock> additionalLocks;
             BlockedInstallData  blockedInstallData;
             string runtimeType;                             // blank for runtime package
+            string packageType;                              // OCI package type (e.g. "runtime", "application")
             std::pair<std::string, std::string> runtimeApp; // runtime package id & version
         };
 
