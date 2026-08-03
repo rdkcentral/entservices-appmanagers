@@ -1170,7 +1170,7 @@ uint32_t Test_AM_GetInstalledAppsWithActiveAppInfo()
     pkg.packageId  = "active.pkg";
     pkg.version    = "2.0.0";
     pkg.state      = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
-    pkg.isRuntime  = false;
+    pkg.packageType = "application";
     packageInstaller.installedPackages.push_back(pkg);
 
     L0Test::AppManagerServiceMock::Config cfg(&packageInstaller);
