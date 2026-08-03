@@ -383,17 +383,25 @@ namespace WPEFramework
                                     }
 
                                     if (AppInfoManager::getInstance().exists(appId))
-                                    {	
-					    // Check for install/uninstall block.
-					bool installUninstallBlocked = appManagerImplInstance->checkInstallUninstallBlock(appId);
-					if (installUninstallBlocked)
-					{
-						LOGINFO("Blocked state found for appId: %s. Initiating TERMINATE.", appId.c_str());
-						mAdminLock.Unlock();
-					        Core::hresult terminateStatus = appManagerImplInstance->TerminateApp(appId);
-						LOGINFO("TerminateApp returned status: %d", terminateStatus);
-						mAdminLock.Lock();
-					}
+                                    {
+#ifdef ENABLE_RIALTO
+                                        LOGINFO("Rialto: app reached PAUSED state for appId: %s. Initiating TERMINATE to release Rialto session.", appId.c_str());
+                                        mAdminLock.Unlock();
+                                        Core::hresult terminateStatus = appManagerImplInstance->TerminateApp(appId);
+                                        LOGINFO("TerminateApp returned status: %d", terminateStatus);
+                                        mAdminLock.Lock();
+#else
+                                        // Check for install/uninstall block.
+                                        bool installUninstallBlocked = appManagerImplInstance->checkInstallUninstallBlock(appId);
+                                        if (installUninstallBlocked)
+                                        {
+                                            LOGINFO("Blocked state found for appId: %s. Initiating TERMINATE.", appId.c_str());
+                                            mAdminLock.Unlock();
+                                            Core::hresult terminateStatus = appManagerImplInstance->TerminateApp(appId);
+                                            LOGINFO("TerminateApp returned status: %d", terminateStatus);
+                                            mAdminLock.Lock();
+                                        }
+#endif	    
                                     }
                                     else
                                     {
