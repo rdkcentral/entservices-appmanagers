@@ -2323,6 +2323,7 @@ void RDKWindowManagerImplementation::notifyScreenshotComplete(bool success)
  * When show is false, hides the splash screen.
  *
  * @return    : Core::hresult (Core::ERROR_NONE on success, Core::ERROR_GENERAL on failure)
+ */
 Core::hresult RDKWindowManagerImplementation::ShowSplashScreen(const bool show)
 {
     Core::hresult status = Core::ERROR_GENERAL;
