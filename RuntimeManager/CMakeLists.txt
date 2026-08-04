@@ -122,16 +122,6 @@ set_target_properties(${PLUGIN_IMPLEMENTATION} PROPERTIES
         CXX_STANDARD 11
         CXX_STANDARD_REQUIRED YES)
 
-set( AI_BUILD_TYPE "DEBUG" )
-add_definitions( -DAI_DEBUG=1 -DAI_RELEASE=2 )
-if( AI_BUILD_TYPE STREQUAL "RELEASE" )
-    add_definitions( -DAI_BUILD_TYPE=AI_RELEASE )
-elseif( AI_BUILD_TYPE STREQUAL "DEBUG" )
-    add_definitions( -DAI_BUILD_TYPE=AI_DEBUG )
-else()
-    message( FATAL_ERROR "AI_BUILD_TYPE '${AI_BUILD_TYPE}' not supported" )
-endif()
-
 set(RUNTIME_MANAGER_INCLUDES $ENV{RUNTIME_MANAGER_INCLUDES})
 separate_arguments(RUNTIME_MANAGER_INCLUDES)
 include_directories(BEFORE ${RUNTIME_MANAGER_INCLUDES})
