@@ -30,6 +30,10 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 find_package(${NAMESPACE}Plugins REQUIRED)
 find_package(${NAMESPACE}Definitions REQUIRED)
 find_package(CompileSettingsDebug CONFIG REQUIRED)
+find_package( Curl REQUIRED)
+if (CURL_FOUND)
+    message("Yay, found curl inc=${CURL_INCLUDE_DIRS} lib=${CURL_LIBRARY}")
+endif()
 
 add_library(${MODULE_NAME} SHARED
     DownloadManager.cpp
@@ -44,7 +48,8 @@ target_link_libraries(${MODULE_NAME}
         CompileSettingsDebug::CompileSettingsDebug
         AppManagersHelpers
         ${NAMESPACE}Plugins::${NAMESPACE}Plugins
-        ${NAMESPACE}Definitions::${NAMESPACE}Definitions)
+        ${NAMESPACE}Definitions::${NAMESPACE}Definitions
+        ${CURL_LIBRARY})
 
 install(TARGETS ${MODULE_NAME}
     DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/${STORAGE_DIRECTORY}/plugins)
@@ -56,7 +61,8 @@ add_library(${PLUGIN_IMPLEMENTATION} SHARED
     DownloadManagerHttpClient.cpp)
 
 include_directories(
-   ../helpers)
+   ../helpers
+    ${CURL_INCLUDE_DIR})
 
 set_target_properties(${PLUGIN_IMPLEMENTATION} PROPERTIES
         CXX_STANDARD 11
