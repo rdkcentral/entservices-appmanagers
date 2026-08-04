@@ -281,7 +281,7 @@ bool DobbySpecGenerator::generate(const ApplicationConfiguration& config, const 
     cpuObj["cores"] = getCpuCores();
     spec["cpu"] = std::move(cpuObj);
 
-#if (AI_BUILD_TYPE == AI_DEBUG)
+#ifdef RDK_APPMANAGERS_DEBUG
     if (!runtimeConfig.logFilePath.empty())
     {
         Json::Value consoleObj;
@@ -291,7 +291,7 @@ bool DobbySpecGenerator::generate(const ApplicationConfiguration& config, const 
             : static_cast<uint32_t>(mAIConfiguration->getContainerConsoleLogCap());
         spec["console"] = std::move(consoleObj);
     }
-#endif // (AI_BUILD_TYPE == AI_DEBUG)
+#endif // RDK_APPMANAGERS_DEBUG
 
     Json::Value etcObj;
     Json::Value hostsArray(Json::arrayValue);
@@ -357,12 +357,14 @@ bool DobbySpecGenerator::generate(const ApplicationConfiguration& config, const 
 
     Json::FastWriter writer;
     resultSpec = writer.write(spec);
+#ifdef RDK_APPMANAGERS_DEBUG
     LOGINFO("spec: '%s'\n", resultSpec.c_str());
 
     std::ofstream generatedSpecFile;
     generatedSpecFile.open("/tmp/generatedSpec.json");
     generatedSpecFile << resultSpec.c_str();
     generatedSpecFile.close();
+#endif
 
     return true;
 }
