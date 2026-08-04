@@ -175,9 +175,15 @@ namespace WPEFramework
                     {
                         notification->OnAppStateChanged(appId, (LifecycleState)newLifecycleState, errorReason);
                     }
+                    const bool isUnloadedState = (Exchange::ILifecycleManager::LifecycleState::UNLOADED == static_cast<Exchange::ILifecycleManager::LifecycleState>(newLifecycleState));
+                    const bool isUnexpectedTermination = (nullptr != context) && context->getUnexpectedTermination();
+                    const string effectiveNavigationIntent = (isUnloadedState && isUnexpectedTermination) ? "unexpectedTermination" : navigationIntent;
                     for (auto* notification : lifecycleStateNotifications)
                     {
-                        notification->OnAppLifecycleStateChanged(appId, appInstanceId, (LifecycleState)oldLifecycleState, (LifecycleState)newLifecycleState, navigationIntent);
+                        notification->OnAppLifecycleStateChanged(appId, appInstanceId, (LifecycleState)oldLifecycleState, (LifecycleState)newLifecycleState, effectiveNavigationIntent);
+                    }
+                    if ((nullptr != context) && isUnloadedState && isUnexpectedTermination) {
+                        context->setUnexpectedTermination(false);
                     }
                     break;
                 }
@@ -695,6 +701,7 @@ namespace WPEFramework
                         std::string terminateError="";
                         std::string updateError="";
                         bool terminated = false;
+                        context->setUnexpectedTermination(true);
                         context->setRequestType(REQUEST_TYPE_TERMINATE);
                         context->setTargetLifecycleState(Exchange::ILifecycleManager::LifecycleState::TERMINATING);
                         context->setApplicationKillParams(false);

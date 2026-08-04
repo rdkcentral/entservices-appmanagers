@@ -1102,7 +1102,7 @@ uint32_t Test_Impl_SendIntentToActiveAppActiveApp()
     ctx->setAppInstanceId(inst);
     // Transition the context to ACTIVE by installing an ActiveState.
     delete static_cast<WPEFramework::Plugin::State*>(ctx->getState());
-    ctx->setState(static_cast<void*>(new WPEFramework::Plugin::ActiveState(ctx.get())));
+    ctx->setState(new WPEFramework::Plugin::ActiveState(ctx.get()));
     LifecycleManagerImplementationTest::getLoadedApps(impl).push_back(ctx);
 
     std::string errorReason;
@@ -1301,8 +1301,8 @@ uint32_t Test_Impl_RuntimeEventOnTerminatedAppInTerminatingState()
     ctx->setAppInstanceId(inst);
     // Put context into TERMINATING state via TerminatingState
     delete static_cast<WPEFramework::Plugin::State*>(ctx->getState());
-    ctx->setState(static_cast<void*>(
-        new WPEFramework::Plugin::TerminatingState(ctx.get())));
+    ctx->setState(
+        new WPEFramework::Plugin::TerminatingState(ctx.get()));
     ctx->mPendingStateTransition = false;
     ctx->mPendingEventName       = "";
     LifecycleManagerImplementationTest::getLoadedApps(impl).push_back(ctx);
@@ -1356,8 +1356,8 @@ uint32_t Test_Impl_RuntimeEventOnTerminatedUnexpected()
     ctx->setAppInstanceId(inst);
     // ACTIVE state → not TERMINATING → triggers unexpected-termination branch
     delete static_cast<WPEFramework::Plugin::State*>(ctx->getState());
-    ctx->setState(static_cast<void*>(
-        new WPEFramework::Plugin::ActiveState(ctx.get())));
+    ctx->setState(
+        new WPEFramework::Plugin::ActiveState(ctx.get()));
     LifecycleManagerImplementationTest::getLoadedApps(impl).push_back(ctx);
 
     WPEFramework::Core::JSON::VariantContainer params;

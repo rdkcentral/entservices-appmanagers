@@ -44,8 +44,9 @@ namespace WPEFramework
         , mRequestTime(0)
         , mRequestType(REQUEST_TYPE_NONE)
         , mTerminated(false)
+        , mUnexpectedTermination(false)
         {
-            mState = (void*) new UnloadedState(this);
+            mState = new UnloadedState(this);
             sem_init(&mReachedLoadingStateSemaphore, 0, 0);
             sem_init(&mFirstFrameAfterResumeSemaphore, 0, 0);
         }
@@ -58,8 +59,7 @@ namespace WPEFramework
         {
             if (nullptr != mState)
 	    {
-                State* state = (State*)mState;
-                delete state;
+                delete mState;
 	    }
 	    mState = nullptr;
 
@@ -89,9 +89,9 @@ namespace WPEFramework
             mLastLifecycleStateChangeTime = changeTime;
 	}
 
-        void ApplicationContext::setState(void* state)
+        void ApplicationContext::setState(State* state)
 	{
-            mState = state;
+            mState = static_cast<State*>(state);
 	}
 
 	void ApplicationContext::setTargetLifecycleState(Exchange::ILifecycleManager::LifecycleState state)
@@ -146,8 +146,7 @@ namespace WPEFramework
 
 	Exchange::ILifecycleManager::LifecycleState ApplicationContext::getCurrentLifecycleState()
 	{
-            State* state = (State*)mState;
-            return state->getValue();
+            return mState->getValue();
 	}
 
         timespec ApplicationContext::getLastLifecycleStateChangeTime()
@@ -170,7 +169,7 @@ namespace WPEFramework
             return mMostRecentIntent;
         }
 
-        void* ApplicationContext::getState()
+        State* ApplicationContext::getState()
         {
             return mState;
         }
@@ -208,6 +207,16 @@ namespace WPEFramework
         bool ApplicationContext::getTerminated()
         {
             return mTerminated;
+        }
+
+        void ApplicationContext::setUnexpectedTermination(bool unexpectedTermination)
+        {
+            mUnexpectedTermination = unexpectedTermination;
+        }
+
+        bool ApplicationContext::getUnexpectedTermination() const
+        {
+            return mUnexpectedTermination;
         }
     } /* namespace Plugin */
 } /* namespace WPEFramework */
