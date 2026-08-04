@@ -728,7 +728,7 @@ namespace WPEFramework
                 LOGINFO("[RIALTO] Entering Rialto session setup for appId='%s' appInstanceId='%s'",
                         appId.c_str(), appInstanceId.c_str());
                 mRialtoConnector->initialize();
-                std::string rialtoSocket = appId;
+                std::string rialtoSocket = "rialto-" + appId;
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
                 // Adding a prefix to the rialto socket to avoid any conflict with existing sockets as
                 // RALF package will create a socket with the name same as appInstanceId.
