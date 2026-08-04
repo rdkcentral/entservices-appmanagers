@@ -72,7 +72,7 @@ if(RDK_SERVICES_L1_TEST)
     target_include_directories(${MODULE_NAME} PUBLIC ${JSONCPP_INCLUDE_DIR})
 endif(RDK_SERVICES_L1_TEST)
 
-target_include_directories(${MODULE_NAME} PRIVATE
+target_include_directories(${PLUGIN_IMPLEMENTATION} PRIVATE
     ${CURL_INCLUDE_DIR}
 )
 target_link_libraries(${PLUGIN_IMPLEMENTATION}
