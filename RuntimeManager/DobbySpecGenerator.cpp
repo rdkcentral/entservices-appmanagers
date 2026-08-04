@@ -501,6 +501,7 @@ Json::Value DobbySpecGenerator::createEnvVars(const ApplicationConfiguration& co
        LOGINFO("Injecting RIALTO_SOCKET_PATH=%s into container env", config.mRialtoSocketPath.c_str());
        env.append(std::string("RIALTO_SOCKET_PATH=") + config.mRialtoSocketPath);
    }
+   else
    #endif
    if (!mGstRegistrySourcePath.empty())
    {
@@ -563,6 +564,21 @@ Json::Value DobbySpecGenerator::createMounts(const ApplicationConfiguration& con
     else
     {
         LOGWARN("Rialto socket path is empty, skipping bind mount");
+	// Mount the pre-scanned GStreamer registry only when Rialto is NOT active;
+        // mirrors appinfrastructure DobbySpecGenerator behaviour.
+        if (!mGstRegistrySourcePath.empty())
+        {
+            mounts.append(createBindMount(mGstRegistrySourcePath,
+                                               mGstRegistryDestinationPath,
+                                               (MS_BIND | MS_NOSUID | MS_NODEV | MS_NOEXEC | MS_RDONLY)));
+        }
+    }
+    #else
+    if (!mGstRegistrySourcePath.empty())
+    {
+        mounts.append(createBindMount(mGstRegistrySourcePath,
+                                           mGstRegistryDestinationPath,
+                                           (MS_BIND | MS_NOSUID | MS_NODEV | MS_NOEXEC | MS_RDONLY)));
     }
     #endif
 
@@ -573,13 +589,6 @@ Json::Value DobbySpecGenerator::createMounts(const ApplicationConfiguration& con
     //TODO SUPPORT TSB Storage
     //TODO SUPPORT USB Mass storage
     //TODO SUPPORT PerfettoSocketPath not mounted
-    if (!mGstRegistrySourcePath.empty())
-    {
-        mounts.append(createBindMount(mGstRegistrySourcePath,
-                                           mGstRegistryDestinationPath,
-                                           (MS_BIND | MS_NOSUID | MS_NODEV | MS_NOEXEC | MS_RDONLY)));
-    }
-    
 
     std::vector<ExtraBindMount> extraMountEntries;
     if (true == getExtraMountEntries(runtimeConfig.capabilities, extraMountEntries))
