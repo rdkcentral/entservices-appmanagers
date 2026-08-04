@@ -48,8 +48,7 @@ target_link_libraries(${MODULE_NAME}
         CompileSettingsDebug::CompileSettingsDebug
         AppManagersHelpers
         ${NAMESPACE}Plugins::${NAMESPACE}Plugins
-        ${NAMESPACE}Definitions::${NAMESPACE}Definitions
-        ${CURL_LIBRARY})
+        ${NAMESPACE}Definitions::${NAMESPACE}Definitions)
 
 install(TARGETS ${MODULE_NAME}
     DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/${STORAGE_DIRECTORY}/plugins)
@@ -61,8 +60,7 @@ add_library(${PLUGIN_IMPLEMENTATION} SHARED
     DownloadManagerHttpClient.cpp)
 
 include_directories(
-   ../helpers
-    ${CURL_INCLUDE_DIR})
+   ../helpers)
 
 set_target_properties(${PLUGIN_IMPLEMENTATION} PROPERTIES
         CXX_STANDARD 11
@@ -74,11 +72,15 @@ if(RDK_SERVICES_L1_TEST)
     target_include_directories(${MODULE_NAME} PUBLIC ${JSONCPP_INCLUDE_DIR})
 endif(RDK_SERVICES_L1_TEST)
 
+target_include_directories(${MODULE_NAME} PRIVATE
+    ${CURL_INCLUDE_DIR}
+)
 target_link_libraries(${PLUGIN_IMPLEMENTATION}
     PRIVATE
         CompileSettingsDebug::CompileSettingsDebug
         ${NAMESPACE}Plugins::${NAMESPACE}Plugins
-        AppManagersHelpers)
+        AppManagersHelpers
+        ${CURL_LIBRARY})
 
 install(TARGETS ${PLUGIN_IMPLEMENTATION}
     DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/${STORAGE_DIRECTORY}/plugins)
