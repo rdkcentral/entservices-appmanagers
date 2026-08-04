@@ -597,9 +597,9 @@ namespace WPEFramework
             {
                 Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
 
-		uid = runtimeConfigObject.userId;
-		gid = runtimeConfigObject.groupId;
-            }
+                uid = runtimeConfigObject.userId;
+                gid = runtimeConfigObject.groupId;
+			      }
 
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
             // In Ralf package, all apps will run with the same ralf user and group
