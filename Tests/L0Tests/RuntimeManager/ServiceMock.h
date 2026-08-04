@@ -379,7 +379,7 @@ public:
         return _createDisplayReturnCode;
     }
 
-    WPEFramework::Core::hresult GetApps(string& /*appsIds*/) const override { return WPEFramework::Core::ERROR_NONE; }
+    WPEFramework::Core::hresult GetApps(WPEFramework::Exchange::IRDKWindowManager::IStringIterator*& appsIds) const override { appsIds = nullptr; return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult AddKeyIntercept(const string& /*intercept*/) override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult AddKeyIntercepts(const string& /*clientId*/, const string& /*intercepts*/) override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult RemoveKeyIntercept(const string& /*clientId*/, const uint32_t /*keyCode*/, const string& /*modifiers*/) override { return WPEFramework::Core::ERROR_NONE; }
@@ -406,6 +406,7 @@ public:
     WPEFramework::Core::hresult GetScreenshot() override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult StartVncServer() override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult StopVncServer() override { return WPEFramework::Core::ERROR_NONE; }
+    WPEFramework::Core::hresult GetFocused(string& /*client*/) const override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult SetAlias(const string& /*clientId*/, const string& /*alias*/) override { return WPEFramework::Core::ERROR_NONE; }
 
     void SetCreateDisplayReturnCode(WPEFramework::Core::hresult code) { _createDisplayReturnCode = code; }

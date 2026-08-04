@@ -38,6 +38,7 @@ public:
     static bool enableInputEvents(const std::string& client, bool enable);
     static void setKeyRepeatConfig(bool enabled, int32_t initialDelay, int32_t repeatInterval);
     static bool setFocus(const std::string& client);
+    static bool getFocused(std::string& client);
     static bool setVisibility(const std::string& client, const bool visible);
     static bool getVisibility(const std::string& client, bool& visible);
     static bool renderReady(const std::string& client);
