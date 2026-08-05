@@ -2365,7 +2365,7 @@ Core::hresult RDKWindowManagerImplementation::ShowSplashScreen(const bool show)
 
     return status;
 }
-              
+/**
  * @brief Sets the bounds (position and size) of the specified client.
  *
  * @param[in] clientId  : client name or application instance ID
