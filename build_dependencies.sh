@@ -80,7 +80,7 @@ git clone -b develop https://github.com/rdkcentral/libPackage.git
 # Build Thunder-Tools
 echo "======================================================================================"
 echo "building thunderTools"
-cd ThunderTools
+#cd ThunderTools
 #patch -p1 < $GITHUB_WORKSPACE/Tests/patches/00010-R4.4-Add-support-for-project-dir.patch
 cd -
 
