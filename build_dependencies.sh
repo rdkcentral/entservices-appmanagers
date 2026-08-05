@@ -163,7 +163,8 @@ echo "building entservices-apis"
 cd entservices-apis
 # Temporary workaround: exclude apis/Tools/ITools.h from ProxyStubGenerator
 # until migration to compatible Thunder/ThunderTools versions is completed.
-if ! grep -q 'INPUT_INTERFACES_HEADERS EXCLUDE REGEX ".*/apis/Tools/ITools\\.h$"' CMakeLists.txt; then
+if ! grep -q 'INPUT_INTERFACES_HEADERS EXCLUDE REGEX ".*/apis/Tools/ITools\\.h$"' CMakeLists.txt \
+   || ! grep -q 'INTERFACE_FILE EXCLUDE REGEX ".*/apis/Tools/ITools\\.h$"' build/CMakeLists.txt; then
     patch -p1 < "$GITHUB_WORKSPACE/Tests/patches/TEMP-Exclude-ITools-until-Thunder-Upgrade.patch"
 else
     echo "entservices-apis ITools exclusion patch already applied, skipping"

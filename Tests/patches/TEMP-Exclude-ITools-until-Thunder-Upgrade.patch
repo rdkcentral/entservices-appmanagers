@@ -18,3 +18,17 @@ index 85fda2a..2c5a4d1 100644
         COMMAND ${CMAKE_COMMAND} -E copy ${INTERFACES_HEADERS} ${CMAKE_SYSROOT}${CMAKE_INSTALL_PREFIX}/include/${NAMESPACE}/interfaces
 )
 
+diff --git a/build/CMakeLists.txt b/build/CMakeLists.txt
+index 5b8e067..bc6d2aa 100644
+--- a/build/CMakeLists.txt
++++ b/build/CMakeLists.txt
+@@ -30,6 +30,7 @@ set(Target ${NAMESPACE}${PROJECT_NAME})
+ 
+ file(GLOB JSON_FILE "${CMAKE_CURRENT_SOURCE_DIR}/../apis/*/*.json" "${CMAKE_CURRENT_SOURCE_DIR}/../apis/*.json")
+ file(GLOB INTERFACE_FILE "${CMAKE_CURRENT_SOURCE_DIR}/../apis/*/I*.h")
++list(FILTER INTERFACE_FILE EXCLUDE REGEX ".*/apis/Tools/ITools\\.h$")
+ 
+ if(NOT GENERATOR_SEARCH_PATH)
+     set(GENERATOR_SEARCH_PATH ${CMAKE_SYSROOT}${CMAKE_INSTALL_PREFIX}/include/${NAMESPACE})
+
+
