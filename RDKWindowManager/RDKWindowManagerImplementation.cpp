@@ -2336,7 +2336,11 @@ Core::hresult RDKWindowManagerImplementation::ShowSplashScreen(const bool show)
     if (show)
     {
         ret = RdkWindowManager::CompositorController::showSplashScreen(180);
-        if (ret)
+        if (true == ret)
+        {
+            status = Core::ERROR_NONE;
+        }
+        else
         {
             LOGERR("ShowSplashScreen: Failed to show splash screen");
         }
@@ -2344,7 +2348,11 @@ Core::hresult RDKWindowManagerImplementation::ShowSplashScreen(const bool show)
     else
     {
         ret = RdkWindowManager::CompositorController::hideSplashScreen();
-        if (ret)
+        if (true == ret)
+        {
+            status = Core::ERROR_NONE;
+        }
+        else
         {
             LOGERR("ShowSplashScreen: Failed to hide splash screen");
         }
