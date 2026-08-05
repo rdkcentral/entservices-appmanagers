@@ -255,7 +255,7 @@ TEST_F(RuntimeManagerTest, TerminateMethods)
                 return WPEFramework::Core::ERROR_NONE;
             }));
 
-    ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+    ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
         .WillByDefault(::testing::Return(Core::ERROR_NONE));
 
     WPEFramework::Exchange::RuntimeConfig runtimeConfig;
@@ -456,7 +456,7 @@ TEST_F(RuntimeManagerTest, HibernateMethods)
                 return WPEFramework::Core::ERROR_NONE;
             }));
 
-    ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+    ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
         .WillByDefault(::testing::Return(Core::ERROR_NONE));
 
     WPEFramework::Exchange::RuntimeConfig runtimeConfig;
@@ -537,7 +537,7 @@ TEST_F(RuntimeManagerTest, KillMethods)
                 return WPEFramework::Core::ERROR_NONE;
             }));
 
-    ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+    ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
         .WillByDefault(::testing::Return(Core::ERROR_NONE));
 
     WPEFramework::Exchange::RuntimeConfig runtimeConfig;
@@ -617,7 +617,7 @@ TEST_F(RuntimeManagerTest, AnnotateMethods)
                 return WPEFramework::Core::ERROR_NONE;
             }));
 
-    ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+    ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
         .WillByDefault(::testing::Return(Core::ERROR_NONE));
 
     WPEFramework::Exchange::RuntimeConfig runtimeConfig;
@@ -731,7 +731,7 @@ TEST_F(RuntimeManagerTest, GetInfoMethods)
                 return WPEFramework::Core::ERROR_NONE;
             }));
 
-    ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+    ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
         .WillByDefault(::testing::Return(Core::ERROR_NONE));
 
     WPEFramework::Exchange::RuntimeConfig runtimeConfig;
@@ -1028,7 +1028,7 @@ TEST_F(RuntimeManagerTest, RunCreateExtraMountsFromCapabilities)
                 return WPEFramework::Core::ERROR_NONE;
           }));
 
-    ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+    ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
             .WillByDefault(::testing::Return(Core::ERROR_NONE));
 
     EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, runtimeConfig));
