@@ -1,0 +1,20 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 85fda2a..2c5a4d1 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -39,10 +39,12 @@ if(NOT GENERATOR_SEARCH_PATH)
+ endif()
+ 
+ file(GLOB_RECURSE INPUT_INTERFACES_HEADERS ./apis/*/I*.h ./apis/I*.h)
++list(FILTER INPUT_INTERFACES_HEADERS EXCLUDE REGEX ".*/apis/Tools/ITools\\.h$")
+ set(PROJECT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/apis")
+ ProxyStubGenerator(INPUT "${INPUT_INTERFACES_HEADERS}" OUTDIR "${CMAKE_CURRENT_BINARY_DIR}/generated" INCLUDE_PATH ${GENERATOR_SEARCH_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/apis" PROJECT_DIR ${PROJECT_DIR})
+ 
+ file(GLOB_RECURSE INTERFACES_HEADERS ./apis/*/I*.h ./apis/*.h)
++list(FILTER INTERFACES_HEADERS EXCLUDE REGEX ".*/apis/Tools/ITools\\.h$")
+ file(GLOB PROXY_STUB_SOURCES "${CMAKE_CURRENT_BINARY_DIR}/generated/ProxyStubs*.cpp")
+ file(MAKE_DIRECTORY ${CMAKE_SYSROOT}${CMAKE_INSTALL_PREFIX}/include/${NAMESPACE}/interfaces)
+ add_custom_target(install_headers ALL
+        COMMAND ${CMAKE_COMMAND} -E copy ${INTERFACES_HEADERS} ${CMAKE_SYSROOT}${CMAKE_INSTALL_PREFIX}/include/${NAMESPACE}/interfaces
+)
+

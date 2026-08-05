@@ -63,7 +63,7 @@ cd ..
 # Clone the required repositories
 
 
-git clone --branch  R4_4-RDK https://github.com/rdkcentral/ThunderTools.git
+git clone --branch  R4.4.3 https://github.com/rdkcentral/ThunderTools.git
 
 git clone --branch R4.4.1 https://github.com/rdkcentral/Thunder.git
 
@@ -81,8 +81,7 @@ git clone -b develop https://github.com/rdkcentral/libPackage.git
 echo "======================================================================================"
 echo "building thunderTools"
 cd ThunderTools
-git checkout 502908c4f2841056cb4b3922dd4cff55c7ea664c
-#patch -p1 < $GITHUB_WORKSPACE/Tests/patches/00010-R4.4-Add-support-for-project-dir.patch
+patch -p1 < $GITHUB_WORKSPACE/Tests/patches/00010-R4.4-Add-support-for-project-dir.patch
 cd -
 
 
@@ -162,6 +161,13 @@ cmake --build build/libPackage --target install
 echo "======================================================================================"
 echo "building entservices-apis"
 cd entservices-apis
+# Temporary workaround: exclude apis/Tools/ITools.h from ProxyStubGenerator
+# until migration to compatible Thunder/ThunderTools versions is completed.
+if ! grep -q 'INPUT_INTERFACES_HEADERS EXCLUDE REGEX ".*/apis/Tools/ITools\\.h$"' CMakeLists.txt; then
+    patch -p1 < "$GITHUB_WORKSPACE/Tests/patches/TEMP-Exclude-ITools-until-Thunder-Upgrade.patch"
+else
+    echo "entservices-apis ITools exclusion patch already applied, skipping"
+fi
 rm -rf jsonrpc/DTV.json
 cd ..
 
