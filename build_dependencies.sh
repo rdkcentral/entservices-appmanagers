@@ -63,7 +63,7 @@ cd ..
 # Clone the required repositories
 
 
-git clone --branch  R4.4.3 https://github.com/rdkcentral/ThunderTools.git
+git clone --branch  R4_4-RDK https://github.com/rdkcentral/ThunderTools.git
 
 git clone --branch R4.4.1 https://github.com/rdkcentral/Thunder.git
 
@@ -81,7 +81,8 @@ git clone -b develop https://github.com/rdkcentral/libPackage.git
 echo "======================================================================================"
 echo "building thunderTools"
 cd ThunderTools
-patch -p1 < $GITHUB_WORKSPACE/Tests/patches/00010-R4.4-Add-support-for-project-dir.patch
+git chekcout 502908c4f2841056cb4b3922dd4cff55c7ea664c
+#patch -p1 < $GITHUB_WORKSPACE/Tests/patches/00010-R4.4-Add-support-for-project-dir.patch
 cd -
 
 
