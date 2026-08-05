@@ -69,6 +69,8 @@ public:
     MOCK_METHOD(WPEFramework::Core::hresult, GetFocused, (string& client), (const, override));
     MOCK_METHOD(WPEFramework::Core::hresult, GetScreenshot, (), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, SetAlias, (const string& clientId, const string& alias), (override));
+    MOCK_METHOD(WPEFramework::Core::hresult, GetScale,
+        (const string& clientId, double& scaleX, double& scaleY), (const, override));
     MOCK_METHOD(uint32_t, AddRef, (), (const, override));
     MOCK_METHOD(uint32_t, Release, (), (const, override));
     MOCK_METHOD(void*, QueryInterface, (const uint32_t interfaceNumber), (override));
