@@ -227,7 +227,8 @@ namespace WPEFramework
                             // AI1.0 parity: set APPLICATION_LAUNCH_PARAMETERS (base64 of launchArgs)
                             // and APPLICATION_LAUNCH_METHOD so SkyBrowserLauncher can read the
                             // pairingCode and launch method directly from the Dobby container env.
-                            if (!launchArgs.empty()) {
+                            // Skip if launchArgs is empty or just "{}"
+                            if (!launchArgs.empty() && launchArgs != "{}" && launchArgs != "{ }") {
                                 // Minimal base64 encoder (RFC 4648, no line breaks)
                                 auto b64Encode = [](const std::string& in) -> std::string {
                                     static const char* T =
@@ -270,8 +271,10 @@ namespace WPEFramework
 
                                 Json::StreamWriterBuilder w; w["indentation"] = "";
                                 runtimeConfigObject.envVariables = Json::writeString(w, envArr);
-                                LOGINFO("launch: Added APPLICATION_LAUNCH_PARAMETERS and APPLICATION_LAUNCH_METHOD=%s",
-                                        launchMethod.c_str());
+                                LOGINFO("launch: Added APPLICATION_LAUNCH_PARAMETERS and APPLICATION_LAUNCH_METHOD=%s for launchArgs='%s'",
+                                        launchMethod.c_str(), launchArgs.c_str());
+                            } else {
+                                LOGINFO("launch: Skipping APPLICATION_LAUNCH_PARAMETERS (launchArgs empty or '{}')");
                             }
 
                             LOGINFO("spawnApp called ,state %u",state);
