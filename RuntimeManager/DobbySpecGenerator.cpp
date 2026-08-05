@@ -438,17 +438,47 @@ Json::Value DobbySpecGenerator::createEnvVars(const ApplicationConfiguration& co
      //TODO YET TO ANALYZE SUPPORT APPLICATION_LAUNCH_METHOD
      //TODO YET TO ANALYZE SUPPORT APPLICATION_TOKEN
 
+   // Build a set of env var names already set via runtimeConfig so we can
+   // avoid overriding them with empty defaults from AIConfiguration::getEnvs().
+   // Also deduplicate within envVariables itself (e.g. APPLICATION_LAUNCH_PARAMETERS
+   // appears as empty from PackageManager and as base64 from LifecycleInterfaceConnector
+   // — keep only the LAST occurrence so the base64 value wins).
+   std::set<std::string> setEnvKeys;
    JsonArray envInputArray;
    envInputArray.FromString(runtimeConfig.envVariables);
+
+   // Pass 1: record the index of the LAST occurrence of each key.
+   std::map<std::string, unsigned int> lastOccurrence;
+   for (unsigned int i = 0; i < envInputArray.Length(); ++i)
+   {
+       std::string item = envInputArray[i].String();
+       const auto eq = item.find('=');
+       if (eq != std::string::npos)
+           lastOccurrence[item.substr(0, eq)] = i;
+   }
+
+   // Pass 2: append only the last occurrence of each key.
    for (unsigned int i = 0; i < envInputArray.Length(); ++i)
    {
        std::string envInputItem = envInputArray[i].String();
-       env.append(envInputArray[i].String());
+       const auto eq = envInputItem.find('=');
+       const std::string key = (eq != std::string::npos) ? envInputItem.substr(0, eq) : envInputItem;
+       if (lastOccurrence.count(key) && lastOccurrence[key] != i)
+           continue;  // skip earlier duplicate occurrences
+       setEnvKeys.insert(key);
+       env.append(envInputItem);
    }
+   LOGINFO("DobbySpecGenerator: envVars dedup pass complete, setEnvKeys size=%zu", setEnvKeys.size());
 
    std::list<std::string> configEnvs = mAIConfiguration->getEnvs();
    for (auto it = configEnvs.begin(); it != configEnvs.end(); ++it)
    {
+       // Skip AIConfiguration defaults that are already set in runtimeConfig
+       // (e.g. APPLICATION_LAUNCH_PARAMETERS, APPLICATION_LAUNCH_METHOD).
+       const auto eq = it->find('=');
+       const std::string key = (eq != std::string::npos) ? it->substr(0, eq) : *it;
+       if (setEnvKeys.count(key) > 0)
+           continue;
        env.append(*it);
    }
 
