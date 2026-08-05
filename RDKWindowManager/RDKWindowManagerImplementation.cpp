@@ -2317,6 +2317,55 @@ void RDKWindowManagerImplementation::notifyScreenshotComplete(bool success)
 }
 
 /**
+ * @brief Shows or hides the splash screen.
+ *
+ * When show is true, displays the splash screen via the window manager.
+ * When show is false, hides the splash screen.
+ *
+ * @return    : Core::hresult (Core::ERROR_NONE on success, Core::ERROR_GENERAL on failure)
+ */
+Core::hresult RDKWindowManagerImplementation::ShowSplashScreen(const bool show)
+{
+    Core::hresult status = Core::ERROR_GENERAL;
+
+    LOGINFO("ShowSplashScreen: show=%s", show ? "true" : "false");
+
+    bool lockAcquired = lockRdkWindowManagerMutex();
+
+    bool ret = false;
+    if (show)
+    {
+        ret = RdkWindowManager::CompositorController::showSplashScreen(180);
+        if (true == ret)
+        {
+            status = Core::ERROR_NONE;
+        }
+        else
+        {
+            LOGERR("ShowSplashScreen: Failed to show splash screen");
+        }
+    }
+    else
+    {
+        ret = RdkWindowManager::CompositorController::hideSplashScreen();
+        if (true == ret)
+        {
+            status = Core::ERROR_NONE;
+        }
+        else
+        {
+            LOGERR("ShowSplashScreen: Failed to hide splash screen");
+        }
+    }
+
+    if (lockAcquired)
+    {
+        gRdkWindowManagerMutex.unlock();
+    }
+
+    return status;
+}
+/**
  * @brief Sets the bounds (position and size) of the specified client.
  *
  * @param[in] clientId  : client name or application instance ID
