@@ -19,6 +19,7 @@
 
 #include "RuntimeManagerImplementation.h"
 #include "DobbySpecGenerator.h"
+#include "GStreamerRegistry.h"
 #include "UtilsAppManagerTelemetry.h"
 #ifdef RDK_APPMANAGERS_DEBUG
 #include "ContainerUtils.h"
@@ -234,10 +235,15 @@ namespace WPEFramework
                 {
                     mRuntimeAppInfo.erase(appInstanceId);
                 }
-                while (index != mRuntimeManagerNotification.end())
                 {
-                    (*index)->OnTerminated(appInstanceId);
-                    ++index;
+                    int32_t exitCode = 0;
+                    if (obj.HasLabel("exitCode"))
+                        exitCode = static_cast<int32_t>(obj["exitCode"].Number());
+                    while (index != mRuntimeManagerNotification.end())
+                    {
+                        (*index)->OnTerminated(appInstanceId, exitCode);
+                        ++index;
+                    }
                 }
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
                 {
@@ -323,6 +329,15 @@ namespace WPEFramework
                 LOGINFO("runtimeConfigFile=%s", mRuntimeConfigFile.c_str());
                 mAIConfiguration = new AIConfiguration();
                 mAIConfiguration->initialize(mRuntimeConfigFile);
+
+                if (mAIConfiguration->getGstreamerRegistryEnabled())
+                {
+                    GStreamerRegistry gstRegistry;
+                    if (gstRegistry.generate())
+                        mGstRegistrySourcePath = gstRegistry.path();
+                    else
+                        LOGWARN("GStreamerRegistry generation failed; containers will not have GST registry bind-mount");
+                }
             }
             else
             {
@@ -498,6 +513,8 @@ namespace WPEFramework
             return false;
         }
         DobbySpecGenerator generator(*mAIConfiguration);
+        if (!mGstRegistrySourcePath.empty())
+            generator.setGstreamerRegistryPath(mGstRegistrySourcePath);
         return generator.generate(config, runtimeConfigObject, dobbySpec);
 #endif // RALF_PACKAGE_SUPPORT_ENABLED
         }
@@ -579,10 +596,9 @@ namespace WPEFramework
             gid_t gid;
             {
                 Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
-
-                uid = runtimeConfigObject.userId;
-                gid = runtimeConfigObject.groupId;
-			}
+		uid = runtimeConfigObject.userId;
+		gid = runtimeConfigObject.groupId;
+            }
 
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
             // In Ralf package, all apps will run with the same ralf user and group
