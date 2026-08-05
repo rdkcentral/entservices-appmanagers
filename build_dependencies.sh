@@ -65,7 +65,7 @@ cd ..
 
 git clone --branch  R4_4-RDK https://github.com/rdkcentral/ThunderTools.git
 
-git clone --branch R4.4.1 https://github.com/rdkcentral/Thunder.git
+git clone --branch R4_4-RDK https://github.com/rdkcentral/Thunder.git
 
 git clone --branch topic/RDKEMW-19867 https://github.com/rdkcentral/entservices-apis.git
 
@@ -81,6 +81,7 @@ git clone -b develop https://github.com/rdkcentral/libPackage.git
 echo "======================================================================================"
 echo "building thunderTools"
 cd ThunderTools
+git checkout d5dd83c7c19c49c7f25c558c126500bd2d64f7a4
 #patch -p1 < $GITHUB_WORKSPACE/Tests/patches/00010-R4.4-Add-support-for-project-dir.patch
 cd -
 
@@ -100,6 +101,7 @@ echo "==========================================================================
 echo "building thunder"
 
 cd Thunder
+git checkout 2c0fcc5529e7da734be558ca6efa05d934dcce31
 #patch -p1 < $GITHUB_WORKSPACE/Tests/patches/Use_Legact_Alt_Based_On_ThunderTools_R4.4.3.patch
 #patch -p1 < $GITHUB_WORKSPACE/Tests/patches/error_code_R4_4.patch
 #patch -p1 < $GITHUB_WORKSPACE/Tests/patches/1004-Add-support-for-project-dir.patch
