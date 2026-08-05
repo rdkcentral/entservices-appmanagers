@@ -35,6 +35,12 @@ namespace WPEFramework
         mAIConfiguration->initialize();
         config.sessionServerEnvVars = mAIConfiguration->getEnvs();
         mServerManagerService  = create(shared_from_this(), config);
+	if (!mServerManagerService)
+        {
+            LOGERR("Failed to create Rialto ServerManagerService");
+            delete mAIConfiguration;
+            return;
+        }
 	mLogHandler = std::make_shared<RialtoLogHandler>();
         if (!mServerManagerService->registerLogHandler(mLogHandler))
         {

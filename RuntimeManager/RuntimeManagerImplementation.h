@@ -225,9 +225,9 @@ namespace WPEFramework
                 DobbyEventListener *mDobbyEventListener;
                 UserIdManager* mUserIdManager;
                 std::string mRuntimeAppPortal;
-                #ifdef  ENABLE_RIALTO
-				std::shared_ptr<RialtoConnector>  mRialtoConnector;
-                #endif
+#ifdef  ENABLE_RIALTO
+                 std::shared_ptr<RialtoConnector>  mRialtoConnector;
+#endif
                 std::string mRuntimeConfigFile;
                 AIConfiguration* mAIConfiguration;
                 std::filesystem::path mGstRegistrySourcePath;  ///< path to pre-built GST registry (empty if disabled/failed)

@@ -115,6 +115,7 @@ bool RuntimeManagerHandler::run(const string& appId, const string& appInstanceId
     string targetAppState(targetAppStateEnvironmentString.str());
     envNewArray.Add(targetAppState);
 
+#ifdef ENABLE_RIALTO
     if (!launchArgs.empty())
     {
         JsonObject launchArgsObj;
@@ -125,6 +126,7 @@ bool RuntimeManagerHandler::run(const string& appId, const string& appInstanceId
             LOGINFO("RuntimeManagerHandler: injected RIALTO_LAUNCH_INACTIVE=1 for background preload appId=%s", appId.c_str());
         }
     }
+#endif
 
     JsonArray envInputArray, envResultArray;
     envInputArray.FromString(runtimeConfigObject.envVariables);

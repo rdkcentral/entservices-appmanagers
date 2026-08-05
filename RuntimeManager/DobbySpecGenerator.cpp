@@ -565,7 +565,7 @@ Json::Value DobbySpecGenerator::createMounts(const ApplicationConfiguration& con
     }
     else
     {
-        LOGWARN("Rialto socket path is empty, skipping bind mount");
+        LOGINFO("Rialto socket path is empty, skipping bind mount");
 	// Mount the pre-scanned GStreamer registry only when Rialto is NOT active;
         // mirrors appinfrastructure DobbySpecGenerator behaviour.
         if (!mGstRegistrySourcePath.empty())

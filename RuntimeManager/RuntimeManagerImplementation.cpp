@@ -720,18 +720,13 @@ namespace WPEFramework
             legacyContainer = false;
 #endif
 #ifdef ENABLE_RIALTO
+	    if (displayResult && !xdgRuntimeDir.empty() && !waylandDisplay.empty())
+            {
             std::vector<std::pair<std::string, std::string>> parsedCaps;
             DobbySpecGenerator::parseCapabilities(runtimeConfigObject.capabilities, parsedCaps);
             const bool appRequiresRialto = DobbySpecGenerator::hasCapability(parsedCaps, "rialto");
-            const bool requiresRialto = mAIConfiguration->getRialtoOverride().value_or(appRequiresRialto);
-            LOGINFO("[RIALTO] appId='%s' appRequiresRialto=%s rialtoOverride=%s requiresRialto=%s capabilities='%s'",
-                    appId.c_str(),
-                    appRequiresRialto ? "true" : "false",
-                    mAIConfiguration->getRialtoOverride().has_value()
-                        ? (mAIConfiguration->getRialtoOverride().value() ? "forceOn" : "forceOff")
-                        : "default",
-                    requiresRialto ? "true" : "false",
-                    runtimeConfigObject.capabilities.c_str());
+            const std::optional<bool> rialtoOverride = (nullptr != mAIConfiguration) ? mAIConfiguration->getRialtoOverride() : std::nullopt;
+            const bool requiresRialto = rialtoOverride.value_or(appRequiresRialto);
             if (mRialtoConnector && requiresRialto)
             {
                 LOGINFO("[RIALTO] Entering Rialto session setup for appId='%s' appInstanceId='%s'",
@@ -776,6 +771,7 @@ namespace WPEFramework
                 }
                 LOGINFO("[RIALTO] Rialto session setup complete for appId='%s' status=%d", appId.c_str(), status);
             }
+	    }
 #endif // ENABLE_RIALTO
 
             LOGINFO("legacyContainer: %s", legacyContainer ? "true" : "false");
