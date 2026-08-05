@@ -42,7 +42,7 @@ public:
     MOCK_METHOD(WPEFramework::Core::hresult, Mount, (), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, Unmount, (), (override));
 
-    MOCK_METHOD(void, AddRef, (), (const, override));
+    MOCK_METHOD(uint32_t, AddRef, (), (const, override));
     MOCK_METHOD(uint32_t, Release, (), (const, override));
     MOCK_METHOD(void*, QueryInterface, (const uint32_t interfaceNummer), (override));
 

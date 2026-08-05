@@ -32,7 +32,14 @@ public:
     MOCK_METHOD(WPEFramework::Core::hresult, Unregister, (INotification *notification), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, Initialize, (WPEFramework::PluginHost::IShell* service), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, Deinitialize, (WPEFramework::PluginHost::IShell* service), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, CreateDisplay, (const string& displayParams), (override));
+    MOCK_METHOD(WPEFramework::Core::hresult, CreateDisplay,
+        (const string& clientId, const string& displayName,
+         const uint32_t displayWidth, const uint32_t displayHeight,
+         const bool virtualDisplay,
+         const uint32_t virtualWidth, const uint32_t virtualHeight,
+         const uint32_t ownerId, const uint32_t groupId,
+         const bool topmost, const bool focus, const string& capabilities),
+        (override));
     MOCK_METHOD(WPEFramework::Core::hresult, GetApps, (WPEFramework::Exchange::IRDKWindowManager::IStringIterator*& appsIds), (const, override));
     MOCK_METHOD(WPEFramework::Core::hresult, AddKeyIntercept, (const string &intercept), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, AddKeyIntercepts, (const string &clientId, const string &intercepts), (override));
@@ -62,7 +69,7 @@ public:
     MOCK_METHOD(WPEFramework::Core::hresult, GetFocused, (string& client), (const, override));
     MOCK_METHOD(WPEFramework::Core::hresult, GetScreenshot, (), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, SetAlias, (const string& clientId, const string& alias), (override));
-    MOCK_METHOD(void, AddRef, (), (const, override));
+    MOCK_METHOD(uint32_t, AddRef, (), (const, override));
     MOCK_METHOD(uint32_t, Release, (), (const, override));
     MOCK_METHOD(void*, QueryInterface, (const uint32_t interfaceNumber), (override));
 
@@ -83,7 +90,7 @@ class WindowManagerNotificationMock : public IRDKWindowManager::INotification {
     MOCK_METHOD(void, OnFocus, (const std::string& client), (override));
     MOCK_METHOD(void, OnBlur, (const std::string& client), (override));
     MOCK_METHOD(void, OnScreenshotComplete, (const bool success, const std::string& imageData), (override));
-    MOCK_METHOD(void, AddRef, (), (const, override));
+    MOCK_METHOD(uint32_t, AddRef, (), (const, override));
     MOCK_METHOD(uint32_t, Release, (), (const, override));
     MOCK_METHOD(void*, QueryInterface, (const uint32_t interfaceNumber), (override));
 };

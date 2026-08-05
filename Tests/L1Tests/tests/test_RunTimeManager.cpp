@@ -61,9 +61,10 @@ public:
         startedCount++;
     }
 
-    void OnTerminated(const string& appInstanceId) override
+    void OnTerminated(const string& appInstanceId, const int32_t exitCode) override
     {
         (void)appInstanceId;
+        (void)exitCode;
         terminatedCount++;
     }
 
@@ -81,9 +82,9 @@ public:
         stateChangedCount++;
     }
 
-    void AddRef() const override
+    uint32_t AddRef() const override
     {
-        refCount++;
+        return ++refCount;
     }
 
     uint32_t Release() const override
