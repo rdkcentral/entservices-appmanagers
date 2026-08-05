@@ -60,7 +60,7 @@ class IOCIContainerNotificationMock : public IOCIContainer::INotification {
     virtual ~IOCIContainerNotificationMock() = default;
 
     MOCK_METHOD(void, OnContainerStarted, (const string& containerId, const string& name), (override));
-    MOCK_METHOD(void, OnContainerStopped, (const string& containerId, const string& name), (override));
+    MOCK_METHOD(void, OnContainerStopped, (const string& containerId, const string& name, int32_t exitCode), (override));
     MOCK_METHOD(void, OnContainerFailed, (const string& containerId, const string& name, uint32_t error), (override));
     MOCK_METHOD(void, OnContainerStateChanged, (const string& containerId, WPEFramework::Exchange::IOCIContainer::ContainerState state), (override));
 

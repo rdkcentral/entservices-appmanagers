@@ -1839,7 +1839,7 @@ TEST_F(RuntimeManagerTest, DobbyEventListenerCallbacksThroughOCINotification)
     EXPECT_EQ(Core::ERROR_NONE, interface->Register(&probe));
 
     ociNotification->OnContainerStarted("container.1", "app.started");
-    ociNotification->OnContainerStopped("container.1", "app.stopped");
+    ociNotification->OnContainerStopped("container.1", "app.stopped", 0);
     ociNotification->OnContainerFailed("container.1", "app.failed", 42);
     ociNotification->OnContainerStateChanged("container.1", Exchange::IOCIContainer::ContainerState::RUNNING);
 

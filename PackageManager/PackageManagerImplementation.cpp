@@ -603,7 +603,23 @@ namespace Plugin {
         Core::hresult result = Core::ERROR_GENERAL;
         std::lock_guard<std::recursive_mutex> lock(mtxState);
 
-        auto it = mState.find( { packageId, version } );
+        StateMap::iterator it = mState.end();
+        if (!version.empty()) {
+            it = mState.find( { packageId, version } );
+        } else {
+            // No version supplied — find the first INSTALLED entry for this packageId.
+            // StateMap is sorted by {packageId, version}, so all entries for a given
+            // packageId are contiguous; lower_bound gives the first one efficiently.
+            for (auto candidate = mState.lower_bound({packageId, ""});
+                 candidate != mState.end() && candidate->first.first == packageId;
+                 ++candidate) {
+                if (candidate->second.installState == InstallState::INSTALLED) {
+                    it = candidate;
+                    break;
+                }
+            }
+        }
+
         if (it != mState.end()) {
             auto &state = it->second;
             if (state.installState == InstallState::INSTALLED) {
@@ -815,6 +831,7 @@ namespace Plugin {
         runtimeConfig.command = config.command;
         runtimeConfig.runtimePath = config.runtimePath;
         runtimeConfig.ralfPkgPath = config.ralfPkgPath;
+        runtimeConfig.logFilePath = config.logFilePath;
     }
 
     // copy values from libpackage
@@ -863,6 +880,8 @@ namespace Plugin {
         runtimeConfig.command = config.command;
         runtimeConfig.runtimePath = config.runtimePath;
 
+        runtimeConfig.logLevels = config.logLevels;
+        runtimeConfig.logFilePath = config.logFilePath;
         runtimeConfig.enableDebugger = false;
         runtimeConfig.logFileMaxSize = 0;
         runtimeConfig.mapi = false;

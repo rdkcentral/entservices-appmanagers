@@ -42,7 +42,7 @@ namespace Plugin {
                 }
 
                 virtual void OnStarted(const string& appInstanceId) override;
-                virtual void OnTerminated(const string& appInstanceId) override;
+                virtual void OnTerminated(const string& appInstanceId, int32_t exitCode) override;
                 virtual void OnFailure(const string& appInstanceId, const string& error) override;
                 virtual void OnStateChanged(const string& appInstanceId, Exchange::IRuntimeManager::RuntimeState state) override;
 
