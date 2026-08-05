@@ -29,6 +29,7 @@ set(PLUGIN_RUNTIME_MANAGER_BASEOCISPEC "../resources/oci-base-spec.json" CACHE S
 
 option(AIMANAGERS_TELEMETRY_METRICS_SUPPORT "AIMANAGERS_TELEMETRY_METRICS_SUPPORT" OFF)
 option (RALF_PACKAGE_SUPPORT "Enable Ralf Package Support in Runtime Manager" OFF)
+option(ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG  "ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG" OFF)
 
 add_definitions(-DRUNTIME_MANAGER_API_VERSION_NUMBER_MAJOR=1)
 add_definitions(-DRUNTIME_MANAGER_API_VERSION_NUMBER_MINOR=0)
@@ -42,15 +43,25 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 find_package(${NAMESPACE}Plugins REQUIRED)
 find_package(${NAMESPACE}Definitions REQUIRED)
 find_package(CompileSettingsDebug CONFIG REQUIRED)
-find_package(yaml-cpp CONFIG REQUIRED)
+
+if(ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG)
+    find_package(yaml-cpp CONFIG REQUIRED)
+endif(ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG)
+
+
 
 add_library(${MODULE_NAME} SHARED
         RuntimeManager.cpp
         Module.cpp
 )
 
+if(ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG)
+    target_compile_definitions(${MODULE_NAME} PRIVATE ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG)
+    add_compile_definitions(ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG)
+endif()
+
 set_target_properties(${MODULE_NAME} PROPERTIES
-        CXX_STANDARD 11
+        CXX_STANDARD 17
         CXX_STANDARD_REQUIRED YES)
 
 set_source_files_properties(RuntimeManager.cpp PROPERTIES COMPILE_FLAGS "-fexceptions")
@@ -73,6 +84,7 @@ set (RUNTIMEMANAGER_SOURCES)
 list(APPEND RUNTIMEMANAGER_SOURCES  RuntimeManagerImplementation.cpp)
 list(APPEND RUNTIMEMANAGER_SOURCES  RuntimeManagerTelemetryReporting.cpp)
 list(APPEND RUNTIMEMANAGER_SOURCES  DobbySpecGenerator.cpp)
+list(APPEND RUNTIMEMANAGER_SOURCES  GStreamerRegistry.cpp)
 list(APPEND RUNTIMEMANAGER_SOURCES  WindowManagerConnector.cpp)
 list(APPEND RUNTIMEMANAGER_SOURCES  WindowManagerCapabilities.cpp)
 list(APPEND RUNTIMEMANAGER_SOURCES  DobbyEventListener.cpp)
@@ -119,7 +131,7 @@ target_include_directories(${PLUGIN_IMPLEMENTATION}
         ${CMAKE_CURRENT_SOURCE_DIR}/../helpers)
 
 set_target_properties(${PLUGIN_IMPLEMENTATION} PROPERTIES
-        CXX_STANDARD 11
+        CXX_STANDARD 17
         CXX_STANDARD_REQUIRED YES)
 
 set(RUNTIME_MANAGER_INCLUDES $ENV{RUNTIME_MANAGER_INCLUDES})
@@ -173,8 +185,11 @@ endif()
 target_link_libraries(${PLUGIN_IMPLEMENTATION} PRIVATE
     AppManagersHelpers
     CompileSettingsDebug::CompileSettingsDebug ${NAMESPACE}Plugins::${NAMESPACE}Plugins
-    ${PLUGIN_RUNTIME_MANAGER_EXTRA_LIBRARIES}
-    yaml-cpp)
+    ${PLUGIN_RUNTIME_MANAGER_EXTRA_LIBRARIES})
+
+if(ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG)
+    target_link_libraries(${PLUGIN_IMPLEMENTATION} PRIVATE yaml-cpp)
+endif()
 
 if(RDK_APPMANAGERS_DEBUG)
     target_link_libraries(${PLUGIN_IMPLEMENTATION} PRIVATE Gateway ip4tc ip6tc)

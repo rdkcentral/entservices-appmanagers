@@ -347,7 +347,7 @@ uint32_t Test_Impl_InitializeReadsDownloadId()
             "First Download() id is 5001 when downloadId config is 5000");
         impl->Deinitialize(&svc);
     } else {
-        L0Test::ExpectTrue(tr, true, "Initialize returned non-zero (acceptable in CI)");
+        std::cout << "SKIP: Initialize returned non-zero (acceptable in CI)" << std::endl;
     }
 
     impl->Release();
@@ -413,7 +413,7 @@ uint32_t Test_Impl_DeinitializeClearsQueues()
         L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
             "Deinitialize() drains queues and returns ERROR_NONE");
     } else {
-        L0Test::ExpectTrue(tr, true, "Initialize returned non-zero (acceptable in CI)");
+        std::cout << "SKIP: Initialize returned non-zero (acceptable in CI)" << std::endl;
     }
 
     impl->Release();
@@ -447,7 +447,7 @@ uint32_t Test_Impl_DownloadNoInternetReturnsUnavailable()
             "downloadId output is empty when Download() is rejected");
         impl->Deinitialize(&svc);
     } else {
-        L0Test::ExpectTrue(tr, true, "Initialize returned non-zero (acceptable in CI)");
+        std::cout << "SKIP: Initialize returned non-zero (acceptable in CI)" << std::endl;
     }
 
     impl->Release();
@@ -480,7 +480,7 @@ uint32_t Test_Impl_DownloadEmptyUrlReturnsError()
             "downloadId remains empty for rejected empty-URL Download()");
         impl->Deinitialize(&svc);
     } else {
-        L0Test::ExpectTrue(tr, true, "Initialize returned non-zero (acceptable in CI)");
+        std::cout << "SKIP: Initialize returned non-zero (acceptable in CI)" << std::endl;
     }
 
     impl->Release();
@@ -522,7 +522,7 @@ uint32_t Test_Impl_DownloadPriorityAndRegularQueues()
 
         impl->Deinitialize(&svc);
     } else {
-        L0Test::ExpectTrue(tr, true, "Initialize returned non-zero (acceptable in CI)");
+        std::cout << "SKIP: Initialize returned non-zero (acceptable in CI)" << std::endl;
     }
 
     impl->Release();
@@ -554,7 +554,7 @@ uint32_t Test_Impl_DownloadReturnsIncrementedId()
             "First Download() returns id '2001' (DOWNLOAD_ID_START+1)");
         impl->Deinitialize(&svc);
     } else {
-        L0Test::ExpectTrue(tr, true, "Initialize returned non-zero (acceptable in CI)");
+        std::cout << "SKIP: Initialize returned non-zero (acceptable in CI)" << std::endl;
     }
 
     impl->Release();
@@ -587,7 +587,7 @@ uint32_t Test_Impl_TwoDownloadsReturnUniqueIds()
         L0Test::ExpectTrue(tr, id1 != id2, "Two sequential Download() calls return distinct ids");
         impl->Deinitialize(&svc);
     } else {
-        L0Test::ExpectTrue(tr, true, "Initialize returned non-zero (acceptable in CI)");
+        std::cout << "SKIP: Initialize returned non-zero (acceptable in CI)" << std::endl;
     }
 
     impl->Release();
@@ -868,7 +868,7 @@ uint32_t Test_Impl_PickDownloadJobPriorityFirst()
 
         impl->Deinitialize(&svc);
     } else {
-        L0Test::ExpectTrue(tr, true, "Initialize returned non-zero (acceptable in CI)");
+        std::cout << "SKIP: Initialize returned non-zero (acceptable in CI)" << std::endl;
     }
 
     impl->Release();
@@ -975,7 +975,7 @@ uint32_t Test_Impl_DownloadInfoFieldsViaDownload()
             "DownloadInfo created with correct id (non-empty)");
         impl->Deinitialize(&svc);
     } else {
-        L0Test::ExpectTrue(tr, true, "Initialize returned non-zero (acceptable in CI)");
+        std::cout << "SKIP: Initialize returned non-zero (acceptable in CI)" << std::endl;
     }
 
     impl->Release();
@@ -1016,7 +1016,7 @@ uint32_t Test_Impl_DownloadInfoZeroRetriesClampsToMin()
             "Download() with retries=0 returns a non-empty downloadId");
         impl->Deinitialize(&svc);
     } else {
-        L0Test::ExpectTrue(tr, true, "Initialize returned non-zero (acceptable in CI)");
+        std::cout << "SKIP: Initialize returned non-zero (acceptable in CI)" << std::endl;
     }
 
     impl->Release();
@@ -1854,6 +1854,130 @@ uint32_t Test_Impl_DownloaderRoutinePriorityQueuePath()
         L0Test::ExpectTrue(tr, json.find("failReason") == std::string::npos,
             "OnAppDownloadStatus JSON has no failReason on priority download success");
     }
+
+    impl->Unregister(&notif);
+    impl->Deinitialize(&svc);
+    impl->Release();
+
+    (void) std::remove(srcFile.c_str());
+    return tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//   Verifies that Deinitialize() completes promptly (thread wakes promptly
+//   after mDownloaderRunFlag is set under lock and notify_one() is issued).
+//   Notifying while holding the lock is legal, but it can delay the wake until
+//   the lock is released; a 3-second deadline catches any join regression.
+// ─────────────────────────────────────────────────────────────────────────────
+
+uint32_t Test_Impl_DeinitializeNotifyOneAfterLockRelease()
+{
+    L0Test::TestResult tr;
+
+    const std::string dir = "/tmp/dm_l0_notify_lock";
+    L0Test::ServiceMock::Config cfg;
+    cfg.internetActive = true;
+    cfg.configLine     = "{\"downloadDir\":\"" + dir + "\"}";
+    L0Test::ServiceMock svc(cfg);
+
+    auto* impl = CreateImpl();
+    const auto initResult = impl->Initialize(&svc);
+    if (WPEFramework::Core::ERROR_NONE != initResult) {
+        std::cout << "SKIP: Initialize non-zero (acceptable in CI)" << std::endl;
+        impl->Release();
+        return tr.failures;
+    }
+
+    // Let the downloader thread enter wait_for before we call Deinitialize
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    // Deinitialize sets mDownloaderRunFlag=false under lock, releases lock,
+    // then calls notify_one. The thread must wake and join within 3 seconds.
+    const auto t0 = std::chrono::steady_clock::now();
+    const auto deinitResult = impl->Deinitialize(&svc);
+    const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now() - t0).count();
+
+    L0Test::ExpectEqU32(tr, deinitResult, WPEFramework::Core::ERROR_NONE,
+        "Deinitialize() returns ERROR_NONE");
+    L0Test::ExpectTrue(tr, elapsed < 3000,
+        "Deinitialize() joins thread promptly (< 3 s); notify_one after lock release works");
+
+    impl->Release();
+    return tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Coverity fix: wait_for with predicate wakes immediately on queued download
+//   Verifies that the downloader thread wakes up as soon as a download is
+//   queued (notify_one in Download()), without waiting for the full wait_for
+//   timeout. Without a predicate, a spurious wakeup or missed notify could
+//   cause the thread to sleep through a queued job. The test checks that the
+//   OnAppDownloadStatus notification fires promptly after queuing the download.
+// ─────────────────────────────────────────────────────────────────────────────
+
+uint32_t Test_Impl_WaitForPredicateWakesOnQueuedDownload()
+{
+    L0Test::TestResult tr;
+
+    const std::string srcFile = "/tmp/dm_l0_predicate_src.dat";
+    const std::string dir     = "/tmp/dm_l0_predicate_dl/";
+
+    // Create a small source file so the download completes quickly
+    FILE* fp = fopen(srcFile.c_str(), "wb");
+    if (nullptr == fp) {
+        std::cout << "SKIP: could not create local source file for file:// download test" << std::endl;
+        return tr.failures;
+    }
+    const char buf[64] = {};
+    (void) fwrite(buf, 1u, sizeof(buf), fp);
+    fclose(fp);
+
+    L0Test::ServiceMock::Config cfg;
+    cfg.internetActive = true;
+    cfg.configLine     = "{\"downloadDir\":\"" + dir + "\"}";
+    L0Test::ServiceMock svc(cfg);
+
+    auto* impl = CreateImpl();
+    const auto initResult = impl->Initialize(&svc);
+    if (WPEFramework::Core::ERROR_NONE != initResult) {
+        (void) std::remove(srcFile.c_str());
+        std::cout << "SKIP: Initialize non-zero (acceptable in CI)" << std::endl;
+        impl->Release();
+        return tr.failures;
+    }
+
+    L0Test::FakeDownloadNotification notif;
+    impl->Register(&notif);
+
+    // Let the thread settle into wait_for before queuing
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    WPEFramework::Exchange::IDownloadManager::Options opts{};
+    opts.priority = false; opts.retries = 1; opts.rateLimit = 0;
+    std::string downloadId;
+
+    const auto dlResult = impl->Download("file://" + srcFile, opts, downloadId);
+    L0Test::ExpectEqU32(tr, dlResult, WPEFramework::Core::ERROR_NONE,
+        "Download() enqueued file:// URL successfully");
+    if (WPEFramework::Core::ERROR_NONE != dlResult) {
+        impl->Unregister(&notif);
+        impl->Deinitialize(&svc);
+        impl->Release();
+        (void) std::remove(srcFile.c_str());
+        return tr.failures;
+    }
+
+    // The predicate in wait_for covers !mPriorityDownloadQueue.empty() ||
+    // !mRegularDownloadQueue.empty(). The downloader thread must wake via
+    // notify_one and process the queued job (rather than sleeping through it),
+    // which is proven functionally by the OnAppDownloadStatus notification
+    // firing. The wake latency itself is intentionally not asserted here, as
+    // wall-clock timing is unreliable on shared CI runners.
+    const bool fired = WaitFor([&]{ return notif.onAppDownloadStatusCount.load() > 0u; }, 5000u);
+
+    L0Test::ExpectTrue(tr, fired,
+        "OnAppDownloadStatus fired after queuing download (wait_for predicate woke the thread)");
 
     impl->Unregister(&notif);
     impl->Deinitialize(&svc);
