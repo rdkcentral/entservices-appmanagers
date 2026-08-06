@@ -235,7 +235,7 @@ namespace WPEFramework
                 {
                     mRuntimeAppInfo.erase(appInstanceId);
                 }
-		{
+                {
                     int32_t exitCode = 0;
                     if (obj.HasLabel("exitCode"))
                         exitCode = static_cast<int32_t>(obj["exitCode"].Number());
@@ -719,8 +719,8 @@ namespace WPEFramework
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
             legacyContainer = false;
 #endif
-            bool rialtoSetupFailed = false;
 #ifdef ENABLE_RIALTO
+            bool rialtoSetupFailed = false;
             if (displayResult && !xdgRuntimeDir.empty() && !waylandDisplay.empty())
             {
             std::vector<std::pair<std::string, std::string>> parsedCaps;
