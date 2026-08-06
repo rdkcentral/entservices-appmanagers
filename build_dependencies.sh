@@ -63,9 +63,9 @@ cd ..
 # Clone the required repositories
 
 
-git clone --branch  R4.4.3 https://github.com/rdkcentral/ThunderTools.git
+git clone --branch  R4_4-RDK https://github.com/rdkcentral/ThunderTools.git
 
-git clone --branch R4.4.1 https://github.com/rdkcentral/Thunder.git
+git clone --branch R4_4-RDK https://github.com/rdkcentral/Thunder.git
 
 git clone --branch topic/RDKEMW-19867 https://github.com/rdkcentral/entservices-apis.git
 
@@ -81,7 +81,7 @@ git clone -b develop https://github.com/rdkcentral/libPackage.git
 echo "======================================================================================"
 echo "building thunderTools"
 cd ThunderTools
-patch -p1 < $GITHUB_WORKSPACE/Tests/patches/00010-R4.4-Add-support-for-project-dir.patch
+#patch -p1 < $GITHUB_WORKSPACE/Tests/patches/00010-R4.4-Add-support-for-project-dir.patch
 cd -
 
 
@@ -100,11 +100,11 @@ echo "==========================================================================
 echo "building thunder"
 
 cd Thunder
-patch -p1 < $GITHUB_WORKSPACE/Tests/patches/Use_Legact_Alt_Based_On_ThunderTools_R4.4.3.patch
-patch -p1 < $GITHUB_WORKSPACE/Tests/patches/error_code_R4_4.patch
-patch -p1 < $GITHUB_WORKSPACE/Tests/patches/1004-Add-support-for-project-dir.patch
-patch -p1 < $GITHUB_WORKSPACE/Tests/patches/RDKEMW-733-Add-ENTOS-IDS.patch
-patch -p1 < $GITHUB_WORKSPACE/Tests/patches/Jsonrpc_dynamic_error_handling.patch
+#patch -p1 < $GITHUB_WORKSPACE/Tests/patches/Use_Legact_Alt_Based_On_ThunderTools_R4.4.3.patch
+#patch -p1 < $GITHUB_WORKSPACE/Tests/patches/error_code_R4_4.patch
+#patch -p1 < $GITHUB_WORKSPACE/Tests/patches/1004-Add-support-for-project-dir.patch
+#patch -p1 < $GITHUB_WORKSPACE/Tests/patches/RDKEMW-733-Add-ENTOS-IDS.patch
+#patch -p1 < $GITHUB_WORKSPACE/Tests/patches/Jsonrpc_dynamic_error_handling.patch
 cd -
 
 cmake -G Ninja -S Thunder -B build/Thunder \
@@ -161,14 +161,6 @@ cmake --build build/libPackage --target install
 echo "======================================================================================"
 echo "building entservices-apis"
 cd entservices-apis
-# Temporary workaround: exclude apis/Tools/ITools.h from ProxyStubGenerator
-# until migration to compatible Thunder/ThunderTools versions is completed.
-if ! grep -q 'INPUT_INTERFACES_HEADERS EXCLUDE REGEX ".*/apis/Tools/ITools\\.h$"' CMakeLists.txt \
-   || ! grep -q 'INTERFACE_FILE EXCLUDE REGEX ".*/apis/Tools/ITools\\.h$"' build/CMakeLists.txt; then
-    patch -p1 < "$GITHUB_WORKSPACE/Tests/patches/TEMP-Exclude-ITools-until-Thunder-Upgrade.patch"
-else
-    echo "entservices-apis ITools exclusion patch already applied, skipping"
-fi
 rm -rf jsonrpc/DTV.json
 cd ..
 
