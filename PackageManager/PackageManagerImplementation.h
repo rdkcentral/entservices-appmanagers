@@ -69,7 +69,7 @@ class PackageManagerImplementation
             State() {}
             InstallState installState = InstallState::UNINSTALLED;
             uint32_t mLockCount = 0;
-            Exchange::RuntimeConfig runtimeConfig;
+            Exchange::RuntimeConfig runtimeConfig {};
             string digest;
             string gatewayMetadataPath;
             string unpackedPath;
