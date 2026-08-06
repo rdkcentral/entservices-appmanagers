@@ -36,9 +36,11 @@
  */
 
 #include <atomic>
+#include <cstdio>
+#include <cstdlib>
 #include <iostream>
-#include <string>
 #include <list>
+#include <string>
 #include <sys/stat.h>
 #include <unistd.h>
 
