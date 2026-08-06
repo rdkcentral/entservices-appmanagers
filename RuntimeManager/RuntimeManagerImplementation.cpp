@@ -719,6 +719,7 @@ namespace WPEFramework
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
             legacyContainer = false;
 #endif
+            bool rialtoSetupFailed = false;
 #ifdef ENABLE_RIALTO
             if (displayResult && !xdgRuntimeDir.empty() && !waylandDisplay.empty())
             {
@@ -746,6 +747,7 @@ namespace WPEFramework
                     if (!mRialtoConnector->waitForStateChange(appInstanceId, RialtoServerStates::ACTIVE, RIALTO_TIMEOUT_MILLIS))
                     {
                         LOGWARN("[RIALTO] Rialto app session not ready — waitForStateChange timed out for appId='%s'", appId.c_str());
+                        rialtoSetupFailed = true;
                         status = Core::ERROR_GENERAL;
                     }
                     else
@@ -767,6 +769,7 @@ namespace WPEFramework
                 else
                 {
                     LOGWARN("[RIALTO] createAppSession failed for appId='%s'", appId.c_str());
+                    rialtoSetupFailed = true;
                     status = Core::ERROR_GENERAL;
                 }
                 LOGINFO("[RIALTO] Rialto session setup complete for appId='%s' status=%d", appId.c_str(), status);
@@ -786,13 +789,14 @@ namespace WPEFramework
                 notifyParamCheckFailure = true;
             }
 #ifdef ENABLE_RIALTO
-            else if (Core::ERROR_NONE != status)
+            else if (rialtoSetupFailed)
             {
-                LOGERR("Rialto session setup failed for appId='%s'", appId.c_str());
+                LOGERR("[RIALTO] Aborting container launch: Rialto session setup failed for appId='%s'", appId.c_str());
+                status = Core::ERROR_GENERAL;
                 errorCode = "ERROR_RIALTO_SESSION";
                 notifyParamCheckFailure = true;
             }
-#endif
+#endif // ENABLE_RIALTO
             /* Generate dobbySpec for the selected container mode (legacy or non-legacy) */
             else if (false == generate(config, runtimeConfigObject, dobbySpec))
             {
