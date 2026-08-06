@@ -25,9 +25,9 @@ public:
     {
     }
 
-    void AddRef() const override
+    uint32_t AddRef() const override
     {
-        _refCount.fetch_add(1, std::memory_order_relaxed);
+        return _refCount.fetch_add(1, std::memory_order_relaxed) + 1;
     }
 
     uint32_t Release() const override
@@ -107,9 +107,9 @@ public:
         {
         }
 
-        void AddRef() const override
+        uint32_t AddRef() const override
         {
-            _refCount.fetch_add(1, std::memory_order_relaxed);
+            return _refCount.fetch_add(1, std::memory_order_relaxed) + 1;
         }
 
         uint32_t Release() const override
@@ -168,9 +168,9 @@ public:
         {
         }
 
-        void AddRef() const override
+        uint32_t AddRef() const override
         {
-            _refCount.fetch_add(1, std::memory_order_relaxed);
+            return _refCount.fetch_add(1, std::memory_order_relaxed) + 1;
         }
 
         uint32_t Release() const override
@@ -269,10 +269,10 @@ public:
 
     ~ServiceMock() override = default;
 
-    void AddRef() const override
+    uint32_t AddRef() const override
     {
         addRefCalls++;
-        _refCount.fetch_add(1, std::memory_order_relaxed);
+        return _refCount.fetch_add(1, std::memory_order_relaxed) + 1;
     }
 
     uint32_t Release() const override
