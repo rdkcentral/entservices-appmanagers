@@ -347,18 +347,8 @@ protected:
         package_1.digest = APPMANAGER_APP_DIGEST;
         package_1.state = APPMANAGER_APP_STATE;
         package_1.sizeKb = APPMANAGER_APP_SIZE;
-        package_1.isRuntime = false;
-
-        Exchange::IPackageInstaller::Package package_2;
-        package_2.packageId = "com.test.runtimeEngine";
-        package_2.version = APPMANAGER_APP_VERSION;
-        package_2.digest = APPMANAGER_APP_DIGEST;
-        package_2.state = APPMANAGER_APP_STATE;
-        package_2.sizeKb = APPMANAGER_APP_SIZE;
-        package_2.isRuntime = true;
 
         packageList.emplace_back(package_1);
-        packageList.emplace_back(package_2);
         return Core::Service<RPC::IteratorType<Exchange::IPackageInstaller::IPackageIterator>>::Create<Exchange::IPackageInstaller::IPackageIterator>(packageList);
     }
 
@@ -1441,27 +1431,16 @@ TEST_F(AppManagerTest, PreloadAppUsingComRpcFailureWrongAppID)
 {
     Core::hresult status;
     std::string error = "";
-    uint32_t signalled = AppManager_StateInvalid;
-    Core::Sink<NotificationHandler> notification;
-    ExpectedAppLifecycleEvent expectedEvent;
 
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
 
-    expectedEvent.appId = APPMANAGER_WRONG_APP_ID;
-    expectedEvent.appInstanceId = "";
-    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNKNOWN;
-    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED;
-    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_NOT_INSTALLED;
-    mAppManagerImpl->Register(&notification);
-    notification.SetExpectedEvent(expectedEvent);
-
     LaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::PAUSED);
 
-    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->PreloadApp(APPMANAGER_WRONG_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS, error));
-
-    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
-    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+    /* PreloadApp for an app that is not installed must fail up front with
+     * ERROR_GENERAL (consistent with LaunchApp) instead of being queued. */
+    EXPECT_EQ(Core::ERROR_GENERAL, mAppManagerImpl->PreloadApp(APPMANAGER_WRONG_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS, error));
+    EXPECT_FALSE(error.empty());
 
     if(status == Core::ERROR_NONE)
     {
