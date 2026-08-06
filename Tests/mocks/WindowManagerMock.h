@@ -33,7 +33,7 @@ public:
     MOCK_METHOD(WPEFramework::Core::hresult, Initialize, (WPEFramework::PluginHost::IShell* service), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, Deinitialize, (WPEFramework::PluginHost::IShell* service), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, CreateDisplay, (const string& displayParams), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, GetApps, (string& appsIds), (const, override));
+    MOCK_METHOD(WPEFramework::Core::hresult, GetApps, (WPEFramework::Exchange::IRDKWindowManager::IStringIterator*& appsIds), (const, override));
     MOCK_METHOD(WPEFramework::Core::hresult, AddKeyIntercept, (const string &intercept), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, AddKeyIntercepts, (const string &clientId, const string &intercepts), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, RemoveKeyIntercept, (const string &clientId, uint32_t keyCode, const string &modifiers), (override));
@@ -59,6 +59,7 @@ public:
     MOCK_METHOD(WPEFramework::Core::hresult, GetZOrder, (const string& appInstanceId, int32_t &zOrder), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, StartVncServer, (), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, StopVncServer, (), (override));
+    MOCK_METHOD(WPEFramework::Core::hresult, GetFocused, (string& client), (const, override));
     MOCK_METHOD(WPEFramework::Core::hresult, GetScreenshot, (), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, SetAlias, (const string& clientId, const string& alias), (override));
     MOCK_METHOD(void, AddRef, (), (const, override));

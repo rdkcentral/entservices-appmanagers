@@ -427,12 +427,17 @@ namespace Plugin {
                 if (it != mState.end()) {
                     State &installedState = it->second;
                     if ( installedState.mLockCount ) {
+#ifdef ENABLE_INSTALL_WHILE_LOCKED
+                        LOGINFO("App is locked id: '%s' ver: '%s' count:%d, proceeding with install due to ENABLE_INSTALL_WHILE_LOCKED",
+                            packageId.c_str(), installedVersion.c_str(), installedState.mLockCount);
+#else
                         LOGWARN("App is locked id: '%s' ver: '%s' count:%d", packageId.c_str(), installedVersion.c_str(), installedState.mLockCount);
                         state.installState = InstallState::INSTALLATION_BLOCKED;
                         state.blockedInstallData.version = version;
                         state.blockedInstallData.keyValues = keyValues;
                         state.blockedInstallData.fileLocator = fileLocator;
                         NotifyInstallStatus(packageId, version, state);
+#endif
                     }
                 }
             }
@@ -609,7 +614,23 @@ namespace Plugin {
         Core::hresult result = Core::ERROR_GENERAL;
         std::lock_guard<std::recursive_mutex> lock(mtxState);
 
-        auto it = mState.find( { packageId, version } );
+        StateMap::iterator it = mState.end();
+        if (!version.empty()) {
+            it = mState.find( { packageId, version } );
+        } else {
+            // No version supplied — find the first INSTALLED entry for this packageId.
+            // StateMap is sorted by {packageId, version}, so all entries for a given
+            // packageId are contiguous; lower_bound gives the first one efficiently.
+            for (auto candidate = mState.lower_bound({packageId, ""});
+                 candidate != mState.end() && candidate->first.first == packageId;
+                 ++candidate) {
+                if (candidate->second.installState == InstallState::INSTALLED) {
+                    it = candidate;
+                    break;
+                }
+            }
+        }
+
         if (it != mState.end()) {
             auto &state = it->second;
             if (state.installState == InstallState::INSTALLED) {

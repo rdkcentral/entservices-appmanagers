@@ -214,12 +214,20 @@ uint32_t Test_RDKWM_Impl_GetAppsAndFocusPaths()
     auto* impl = CreateImpl();
     L0Test::RDKWMShim::Reset();
 
-    std::string apps;
+    WPEFramework::Exchange::IRDKWindowManager::IStringIterator* apps = nullptr;
     L0Test::RDKWMShim::SetGetClientsResult(true, { "alpha", "beta" });
     const auto appsRc = impl->GetApps(apps);
     L0Test::ExpectEqU32(tr, appsRc, WPEFramework::Core::ERROR_NONE,
         "GetApps returns ERROR_NONE when shim getClients succeeds");
-    L0Test::ExpectTrue(tr, apps.find("alpha") != std::string::npos,
+    bool foundAlpha = false;
+    if (apps != nullptr) {
+        std::string element;
+        while (apps->Next(element)) {
+            if (element == "alpha") { foundAlpha = true; }
+        }
+        apps->Release();
+    }
+    L0Test::ExpectTrue(tr, foundAlpha,
         "GetApps output contains alpha");
 
     L0Test::RDKWMShim::SetSetFocusResult(true);
@@ -230,6 +238,42 @@ uint32_t Test_RDKWM_Impl_GetAppsAndFocusPaths()
     const auto emptyFocusRc = impl->SetFocus("");
     L0Test::ExpectEqU32(tr, emptyFocusRc, WPEFramework::Core::ERROR_GENERAL,
         "SetFocus returns ERROR_GENERAL for empty client");
+
+    impl->Release();
+    return tr.failures;
+}
+
+uint32_t Test_RDKWM_Impl_GetFocusedSuccess()
+{
+    L0Test::TestResult tr;
+
+    auto* impl = CreateImpl();
+    L0Test::RDKWMShim::Reset();
+
+    std::string focusedClient;
+    L0Test::RDKWMShim::SetGetFocusedResult(true, "alpha");
+    const auto getFocusedRc = impl->GetFocused(focusedClient);
+    L0Test::ExpectEqU32(tr, getFocusedRc, WPEFramework::Core::ERROR_NONE,
+        "GetFocused returns ERROR_NONE when shim returns success");
+    L0Test::ExpectTrue(tr, focusedClient == "alpha",
+        "GetFocused output matches shim focused client");
+
+    impl->Release();
+    return tr.failures;
+}
+
+uint32_t Test_RDKWM_Impl_GetFocusedFailure()
+{
+    L0Test::TestResult tr;
+
+    auto* impl = CreateImpl();
+    L0Test::RDKWMShim::Reset();
+
+    std::string focusedClient;
+    L0Test::RDKWMShim::SetGetFocusedResult(false, "");
+    const auto getFocusedRc = impl->GetFocused(focusedClient);
+    L0Test::ExpectEqU32(tr, getFocusedRc, WPEFramework::Core::ERROR_GENERAL,
+        "GetFocused returns ERROR_GENERAL when backend getFocused fails");
 
     impl->Release();
     return tr.failures;
@@ -610,10 +654,11 @@ uint32_t Test_RDKWM_Impl_ErrorPathMatrix()
     L0Test::RDKWMShim::Reset();
 
     L0Test::RDKWMShim::SetGetClientsResult(false, {});
-    std::string apps;
+    WPEFramework::Exchange::IRDKWindowManager::IStringIterator* apps = nullptr;
     const auto getAppsFailRc = impl->GetApps(apps);
     L0Test::ExpectEqU32(tr, getAppsFailRc, WPEFramework::Core::ERROR_GENERAL,
         "GetApps returns ERROR_GENERAL when backend getClients fails");
+    if (apps != nullptr) { apps->Release(); }
 
     const auto setVisibleEmptyRc = impl->SetVisible("", true);
     L0Test::ExpectEqU32(tr, setVisibleEmptyRc, WPEFramework::Core::ERROR_GENERAL,

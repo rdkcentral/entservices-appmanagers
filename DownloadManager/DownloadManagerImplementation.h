@@ -84,21 +84,21 @@ namespace Plugin {
                 string  getUrl() { return url; }
                 bool    getPriority() { return priority; }
                 uint8_t getRetries() { return retries; }
-                void    setRateLimit(uint32_t limit) { rateLimit = limit; }
-                uint32_t getRateLimit() { return rateLimit; }
+                void    setRateLimit(uint32_t limit) { rateLimit.store(limit, std::memory_order_release); }
+                uint32_t getRateLimit() { return rateLimit.load(std::memory_order_acquire); }
                 string  getFileLocator() { return fileLocator; }
                 void    setFileLocator(string &locator) { fileLocator = locator; }
-                void    cancel() { isCancelled = true; }
-                bool    cancelled() { return isCancelled; }
+                void    cancel() { isCancelled.store(true, std::memory_order_release); }
+                bool    cancelled() { return isCancelled.load(std::memory_order_acquire); }
 
             private:
                 string  id;
                 string  url;
                 bool    priority;
                 uint8_t retries;
-                uint32_t rateLimit;
+                std::atomic<uint32_t> rateLimit;
                 string  fileLocator;
-                bool    isCancelled;
+                std::atomic<bool> isCancelled;
         };
 
         typedef std::shared_ptr<DownloadInfo> DownloadInfoPtr;

@@ -7,14 +7,11 @@ on:
         description: "Specifies the source type (e.g., local or test framework) for the workflow."
         required: true
         type: string
-    secrets:
-      RDKCM_RDKE:
-        required: true
 
 env:
   BUILD_TYPE: Debug
   THUNDER_REF: "R4.4.1"
-  INTERFACES_REF: "topic/RDKEMW-19574"
+  INTERFACES_REF: "topic/RDKEMW-19867"
   AUTOMATICS_UNAME: ${{ secrets.AUTOMATICS_UNAME}}
   AUTOMATICS_PASSCODE: ${{ secrets.AUTOMATICS_PASSCODE}}
 
@@ -208,7 +205,10 @@ jobs:
           repository: rdkcentral/entservices-apis
           path: entservices-apis
           ref: ${{env.INTERFACES_REF}}
-          run: rm -rf $GITHUB_WORKSPACE/entservices-apis/jsonrpc/DTV.json
+
+      - name: Remove entservices-apis DTV json
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: rm -rf $GITHUB_WORKSPACE/entservices-apis/jsonrpc/DTV.json
 
       - name: Apply patches entservices-apis
         run: |

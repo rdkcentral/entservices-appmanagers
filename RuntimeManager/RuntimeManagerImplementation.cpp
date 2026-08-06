@@ -596,7 +596,6 @@ namespace WPEFramework
             gid_t gid;
             {
                 Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
-
 		uid = runtimeConfigObject.userId;
 		gid = runtimeConfigObject.groupId;
             }
@@ -830,7 +829,7 @@ namespace WPEFramework
                                 /* Insert/update runtime app info */
                                 {
                                     Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
-                                    mRuntimeAppInfo[runtimeAppInfo.appInstanceId] = std::move(runtimeAppInfo);
+                                    mRuntimeAppInfo[appInstanceId] = std::move(runtimeAppInfo);
                                 }
                         }
                     }
@@ -1300,7 +1299,7 @@ namespace WPEFramework
                     auto webInspector = WebInspector::attach(name, addr, debugPort);
                     if (webInspector)
                     {
-                        mWebInspectors[name] = webInspector;
+                        mWebInspectors[name] = std::move(webInspector);
                         mPortAvailability[debugPort] = true;
                         LOGINFO("WebInspector attached for container %s on host port %d", name.c_str(), debugPort);
                     }

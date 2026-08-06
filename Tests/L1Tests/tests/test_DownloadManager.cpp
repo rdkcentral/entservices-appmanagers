@@ -490,6 +490,45 @@ TEST_F(DownloadManagerImplementationTest, AllIDownloadManagerAPIs) {
     // Deinitialize will be called automatically in TearDown()
 }
 
+/* Test Case: Deinitialize shuts down the downloader thread promptly (Coverity fix)
+ *
+ * Covers the "indefinite wait risk" Coverity fix in downloaderRoutine (bounded
+ * wait_for) together with the race fix in Deinitialize (mDownloaderRunFlag is
+ * set under mQueueMutex before notify_one). After Initialize(), the downloader
+ * thread parks in the bounded wait_for; Deinitialize() must set the run flag
+ * under lock, wake the thread via notify_one, and join it promptly instead of
+ * blocking indefinitely. The test asserts Deinitialize() returns within a
+ * generous deadline (an indefinite hang would never return within it).
+ */
+TEST_F(DownloadManagerImplementationTest, DeinitializeShutsDownDownloaderThreadPromptly) {
+    ASSERT_TRUE(mDownloadManagerImpl.IsValid()) << "DownloadManagerImplementation should be created successfully";
+    Plugin::DownloadManagerImplementation* impl = getRawImpl();
+    ASSERT_NE(impl, nullptr) << "Implementation pointer should be valid";
+
+    // Initialize starts the downloader thread, which parks in the bounded wait_for.
+    Core::hresult initResult = impl->Initialize(mServiceMock);
+    ASSERT_EQ(Core::ERROR_NONE, initResult) << "Initialize should succeed with proper ServiceMock";
+
+    // Give the downloader thread time to reach wait_for before shutting down.
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    // Deinitialize sets mDownloaderRunFlag=false under mQueueMutex, releases the
+    // lock, then calls notify_one. The bounded wait_for + notify_one guarantee the
+    // thread wakes immediately and join() returns promptly (no indefinite wait).
+    const auto t0 = std::chrono::steady_clock::now();
+    Core::hresult deinitResult = impl->Deinitialize(mServiceMock);
+    const auto elapsedMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now() - t0).count();
+
+    EXPECT_EQ(Core::ERROR_NONE, deinitResult) << "Deinitialize should return ERROR_NONE";
+    EXPECT_LT(elapsedMs, 5000) << "Deinitialize should join the downloader thread promptly (no indefinite wait)";
+
+    // The impl has already been deinitialized here. Release it now so TearDown()
+    // does not call Deinitialize() a second time (a double Deinitialize would
+    // dereference the now-null mCurrentservice).
+    mDownloadManagerImpl.Release();
+}
+
 /* Test Case: Plugin::DownloadManager APIs
  * Tests plugin creation, Information API, and lifecycle methods
  */

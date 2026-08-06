@@ -58,7 +58,7 @@ public:
     WPEFramework::Core::hresult Deinitialize(WPEFramework::PluginHost::IShell*) override { return WPEFramework::Core::ERROR_NONE; }
 
     WPEFramework::Core::hresult CreateDisplay(const std::string&, const std::string&, uint32_t, uint32_t, bool, uint32_t, uint32_t, uint32_t, uint32_t, bool, bool, const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult GetApps(std::string&) const override { return WPEFramework::Core::ERROR_NONE; }
+    WPEFramework::Core::hresult GetApps(WPEFramework::Exchange::IRDKWindowManager::IStringIterator*& appsIds) const override { appsIds = nullptr; return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult AddKeyIntercept(const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult AddKeyIntercepts(const std::string&, const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult RemoveKeyIntercept(const std::string&, uint32_t, const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
@@ -84,6 +84,7 @@ public:
     WPEFramework::Core::hresult GetZOrder(const std::string&, int32_t&) override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult StartVncServer() override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult StopVncServer() override { return WPEFramework::Core::ERROR_NONE; }
+    WPEFramework::Core::hresult GetFocused(std::string&) const override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult GetScreenshot() override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult SetAlias(const std::string&, const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
 

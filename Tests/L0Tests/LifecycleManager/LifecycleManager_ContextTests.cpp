@@ -288,7 +288,7 @@ uint32_t Test_AppCtx_StateRoundTrip()
     WPEFramework::Plugin::LoadingState* loadingState = new WPEFramework::Plugin::LoadingState(&ctx);
     // Replace state manually (note: this leaks the original, handled below)
     void* oldState = ctx.getState();
-    ctx.setState(static_cast<void*>(loadingState));
+    ctx.setState(loadingState);
 
     L0Test::ExpectTrue(tr, ctx.getState() != nullptr,
         "getState() returns non-null after setState()");
@@ -466,7 +466,7 @@ uint32_t Test_StateHandler_OnAppReadyPendingPathRetainsCurrentState()
 
     void* oldState = ctx->getState();
     auto* initializingState = new WPEFramework::Plugin::InitializingState(ctx.get());
-    ctx->setState(static_cast<void*>(initializingState));
+    ctx->setState(initializingState);
     if (nullptr != oldState) {
         delete static_cast<WPEFramework::Plugin::State*>(oldState);
     }
@@ -546,7 +546,7 @@ uint32_t Test_StateHandler_TransitionActiveToUnloadedIsInvalid()
     // Replace state with ActiveState
     void* oldState = ctx->getState();
     WPEFramework::Plugin::ActiveState* activeState = new WPEFramework::Plugin::ActiveState(ctx.get());
-    ctx->setState(static_cast<void*>(activeState));
+    ctx->setState(activeState);
     if (nullptr != oldState) {
         delete static_cast<WPEFramework::Plugin::State*>(oldState);
     }
@@ -667,7 +667,7 @@ uint32_t Test_StateHandler_CreateStateReturnsCorrectSubclass()
         // Manually set to INITIALIZING state (no handle() calls needed for updateState path)
         void* oldState = ctx.getState();
         WPEFramework::Plugin::InitializingState* initState = new WPEFramework::Plugin::InitializingState(&ctx);
-        ctx.setState(static_cast<void*>(initState));
+        ctx.setState(initState);
         if (nullptr != oldState) {
             delete static_cast<WPEFramework::Plugin::State*>(oldState);
         }
@@ -761,7 +761,7 @@ uint32_t Test_State_PausedHandleFromInitializingReturnsTrue()
     // Set the context into INITIALIZING state by replacing the state object
     void* oldState = ctx.getState();
     WPEFramework::Plugin::InitializingState* initState = new WPEFramework::Plugin::InitializingState(&ctx);
-    ctx.setState(static_cast<void*>(initState));
+    ctx.setState(initState);
     if (nullptr != oldState) {
         delete static_cast<WPEFramework::Plugin::State*>(oldState);
     }
@@ -795,7 +795,7 @@ uint32_t Test_State_PausedHandleFromActiveReturnsTrue()
     // Place context into ACTIVE state
     void* oldState = ctx.getState();
     WPEFramework::Plugin::ActiveState* activeState = new WPEFramework::Plugin::ActiveState(&ctx);
-    ctx.setState(static_cast<void*>(activeState));
+    ctx.setState(activeState);
     if (nullptr != oldState) {
         delete static_cast<WPEFramework::Plugin::State*>(oldState);
     }
@@ -827,7 +827,7 @@ uint32_t Test_State_PausedHandleFromSuspendedNoHandlerReturnsFalse()
     // Place context into SUSPENDED state
     void* oldState = ctx.getState();
     WPEFramework::Plugin::SuspendedState* suspendedState = new WPEFramework::Plugin::SuspendedState(&ctx);
-    ctx.setState(static_cast<void*>(suspendedState));
+    ctx.setState(suspendedState);
     if (nullptr != oldState) {
         delete static_cast<WPEFramework::Plugin::State*>(oldState);
     }
@@ -973,7 +973,7 @@ uint32_t Test_StateHandler_CreateStatePausedViaInitializingToPaused()
     // Manually advance context to INITIALIZING (skip LOADING handle side-effects)
     void* oldState = ctx->getState();
     WPEFramework::Plugin::InitializingState* initState = new WPEFramework::Plugin::InitializingState(ctx.get());
-    ctx->setState(static_cast<void*>(initState));
+    ctx->setState(initState);
     if (nullptr != oldState) {
         delete static_cast<WPEFramework::Plugin::State*>(oldState);
     }
@@ -1048,7 +1048,7 @@ uint32_t Test_StateHandler_CreateStateActiveViaPausedToActive()
     // Manually place context in PAUSED state
     void* oldState = ctx->getState();
     WPEFramework::Plugin::PausedState* pausedState = new WPEFramework::Plugin::PausedState(ctx.get());
-    ctx->setState(static_cast<void*>(pausedState));
+    ctx->setState(pausedState);
     if (nullptr != oldState) {
         delete static_cast<WPEFramework::Plugin::State*>(oldState);
     }
@@ -1084,7 +1084,7 @@ uint32_t Test_StateHandler_CreateStateSuspendedViaPausedToSuspended()
     // Place context in PAUSED state
     void* oldState = ctx->getState();
     WPEFramework::Plugin::PausedState* pausedState = new WPEFramework::Plugin::PausedState(ctx.get());
-    ctx->setState(static_cast<void*>(pausedState));
+    ctx->setState(pausedState);
     if (nullptr != oldState) {
         delete static_cast<WPEFramework::Plugin::State*>(oldState);
     }
@@ -1117,7 +1117,7 @@ uint32_t Test_StateHandler_CreateStateHibernatedViaSuspendedToHibernated()
     // Place context in SUSPENDED state
     void* oldState = ctx->getState();
     WPEFramework::Plugin::SuspendedState* suspendedState = new WPEFramework::Plugin::SuspendedState(ctx.get());
-    ctx->setState(static_cast<void*>(suspendedState));
+    ctx->setState(suspendedState);
     if (nullptr != oldState) {
         delete static_cast<WPEFramework::Plugin::State*>(oldState);
     }
@@ -1157,7 +1157,7 @@ uint32_t Test_StateHandler_InvalidTransitionReturnsFalse()
     auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.invalid.transition");
     void* oldState = ctx->getState();
     WPEFramework::Plugin::LoadingState* loadingState = new WPEFramework::Plugin::LoadingState(ctx.get());
-    ctx->setState(static_cast<void*>(loadingState));
+    ctx->setState(loadingState);
     if (nullptr != oldState) {
         delete static_cast<WPEFramework::Plugin::State*>(oldState);
     }
@@ -1275,7 +1275,7 @@ uint32_t Test_StateHandler_ChangeStateLoadingToTerminatingPath()
     auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.loading.term");
     void* oldState = ctx->getState();
     auto* loadingState = new WPEFramework::Plugin::LoadingState(ctx.get());
-    ctx->setState(static_cast<void*>(loadingState));
+    ctx->setState(loadingState);
     if (oldState != nullptr) {
         delete static_cast<WPEFramework::Plugin::State*>(oldState);
     }

@@ -44,7 +44,7 @@ public:
          const bool topmost, const bool focus, const string& capabilities),
         (override));
 
-    MOCK_METHOD(WPEFramework::Core::hresult, GetApps, (string& appsIds), (const, override));
+    MOCK_METHOD(WPEFramework::Core::hresult, GetApps, (WPEFramework::Exchange::IRDKWindowManager::IStringIterator*& appsIds), (const, override));
     MOCK_METHOD(WPEFramework::Core::hresult, AddKeyIntercept, (const string& intercept), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, AddKeyIntercepts, (const string& clientId, const string& intercepts), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, RemoveKeyIntercept, (const string& clientId, uint32_t keyCode, const string& modifiers), (override));
@@ -61,6 +61,7 @@ public:
     MOCK_METHOD(WPEFramework::Core::hresult, EnableInputEvents, (const string& clients, bool enable), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, KeyRepeatConfig, (const string& input, const string& keyConfig), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, SetFocus, (const string& client), (override));
+    MOCK_METHOD(WPEFramework::Core::hresult, GetFocused, (string& client), (const, override));
     MOCK_METHOD(WPEFramework::Core::hresult, SetVisible, (const std::string& client, bool visible), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, GetVisibility, (const std::string& client, bool& visible), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, RenderReady, (const string& client, bool& status), (const, override));
