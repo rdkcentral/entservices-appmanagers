@@ -44,7 +44,7 @@ namespace WPEFramework
         bool createAppSession(const std::string &callsign, const std::string &displayName, const std::string &appId);
         bool resumeSession(const std::string &callsign);
         bool suspendSession(const std::string &callsign);
- 
+
         bool deactivateSession(const std::string &callsign);
         void stateChanged(const std::string &appId, const RialtoServerStates &state) override;
 	std::string getSocketPath(const std::string &appId) const;

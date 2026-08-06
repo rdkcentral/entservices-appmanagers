@@ -236,7 +236,7 @@ namespace WPEFramework
                     mRuntimeAppInfo.erase(appInstanceId);
                 }
 		{
-		    int32_t exitCode = 0;
+                    int32_t exitCode = 0;
                     if (obj.HasLabel("exitCode"))
                         exitCode = static_cast<int32_t>(obj["exitCode"].Number());
                     while (index != mRuntimeManagerNotification.end())
@@ -720,7 +720,7 @@ namespace WPEFramework
             legacyContainer = false;
 #endif
 #ifdef ENABLE_RIALTO
-	    if (displayResult && !xdgRuntimeDir.empty() && !waylandDisplay.empty())
+            if (displayResult && !xdgRuntimeDir.empty() && !waylandDisplay.empty())
             {
             std::vector<std::pair<std::string, std::string>> parsedCaps;
             DobbySpecGenerator::parseCapabilities(runtimeConfigObject.capabilities, parsedCaps);
@@ -785,6 +785,14 @@ namespace WPEFramework
                 errorCode = "ERROR_CREATE_DISPLAY";
                 notifyParamCheckFailure = true;
             }
+#ifdef ENABLE_RIALTO
+            else if (Core::ERROR_NONE != status)
+            {
+                LOGERR("Rialto session setup failed for appId='%s'", appId.c_str());
+                errorCode = "ERROR_RIALTO_SESSION";
+                notifyParamCheckFailure = true;
+            }
+#endif
             /* Generate dobbySpec for the selected container mode (legacy or non-legacy) */
             else if (false == generate(config, runtimeConfigObject, dobbySpec))
             {

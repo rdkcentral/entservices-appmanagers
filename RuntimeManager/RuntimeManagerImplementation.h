@@ -226,7 +226,7 @@ namespace WPEFramework
                 UserIdManager* mUserIdManager;
                 std::string mRuntimeAppPortal;
 #ifdef  ENABLE_RIALTO
-                 std::shared_ptr<RialtoConnector>  mRialtoConnector;
+                std::shared_ptr<RialtoConnector> mRialtoConnector;
 #endif
                 std::string mRuntimeConfigFile;
                 AIConfiguration* mAIConfiguration;

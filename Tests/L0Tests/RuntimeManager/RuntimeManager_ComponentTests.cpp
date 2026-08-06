@@ -2089,10 +2089,10 @@ uint32_t Test_DobbySpecGenerator_GstRegistryEnvAbsentWhenRialtoActive()
     }
 
     WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
-    gen.setGstreamerRegistryPath(tmpPath); // Would normally cause GST_REGISTRY injection
+    gen.setGstreamerRegistryPath(tmpPath);
 
     auto appCfg = MakeValidAppConfig();
-    appCfg.mRialtoSocketPath = "/tmp/amazonPrime"; // Rialto active � must suppress GST_REGISTRY
+    appCfg.mRialtoSocketPath = "/tmp/amazonPrime";
     auto rtCfg  = MakeValidRuntimeConfig();
     std::string spec;
 

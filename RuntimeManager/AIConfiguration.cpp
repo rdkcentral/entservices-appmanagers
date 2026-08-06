@@ -682,7 +682,7 @@ namespace Plugin
         if (dial["usn"].isString())
             mDialUsn = dial["usn"].asString();
 
-	// ---- rialto override (base) ----------------------------------
+        // ---- rialto override ----------------------------------
         const Json::Value& rialtoNode = root.isMember("rialto") ? root["rialto"] : getObj(root["apps"], "rialto");
         if (rialtoNode.isObject() && rialtoNode["override"].isString())
         {
