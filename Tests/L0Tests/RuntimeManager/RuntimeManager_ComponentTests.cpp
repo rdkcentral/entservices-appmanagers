@@ -1981,3 +1981,199 @@ uint32_t Test_DobbySpecGenerator_GenerateIgnoresRuntimeLogLevelsForEthanLog()
 
     return tr.failures;
 }
+
+// DobbySpecGenerator -- Rialto / GST_REGISTRY mutual-exclusion tests
+// When Rialto is active, GST_REGISTRY env vars and registry bind-mount must NOT be injected.
+
+/* Test_DobbySpecGenerator_GstRegistryInjectedWhenRialtoInactive
+ * GST_REGISTRY and GST_REGISTRY_UPDATE=no must be present when mRialtoSocketPath is empty.
+ */
+uint32_t Test_DobbySpecGenerator_GstRegistryInjectedWhenRialtoInactive()
+{
+    L0Test::TestResult tr;
+
+    // Create a temporary file so that setGstreamerRegistryPath() accepts the path.
+    const std::string tmpPath = "/tmp/l0test_gst_registry.bin";
+    {
+        std::ofstream f(tmpPath);
+        f << "fake gst registry";
+    }
+
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    gen.setGstreamerRegistryPath(tmpPath);
+
+    auto appCfg = MakeValidAppConfig();
+    appCfg.mRialtoSocketPath = ""; // Rialto not active for this app
+    auto rtCfg  = MakeValidRuntimeConfig();
+    std::string spec;
+
+    const bool result = gen.generate(appCfg, rtCfg, spec);
+    L0Test::ExpectTrue(tr, result,
+                       "generate() succeeds when Rialto inactive and GStreamer registry path set");
+    L0Test::ExpectTrue(tr, spec.find("GST_REGISTRY=") != std::string::npos,
+                       "GST_REGISTRY env var is injected when Rialto is inactive");
+    L0Test::ExpectTrue(tr, spec.find("GST_REGISTRY_UPDATE=no") != std::string::npos,
+                       "GST_REGISTRY_UPDATE=no env var is injected when Rialto is inactive");
+
+    std::remove(tmpPath.c_str());
+    return tr.failures;
+}
+
+/* Test_DobbySpecGenerator_GstRegistryMountedWhenRialtoInactive
+ * Registry file must be bind-mounted in spec when mRialtoSocketPath is empty.
+ */
+uint32_t Test_DobbySpecGenerator_GstRegistryMountedWhenRialtoInactive()
+{
+    L0Test::TestResult tr;
+
+    const std::string tmpPath = "/tmp/l0test_gst_registry_mount.bin";
+    {
+        std::ofstream f(tmpPath);
+        f << "fake gst registry";
+    }
+
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    gen.setGstreamerRegistryPath(tmpPath);
+
+    auto appCfg = MakeValidAppConfig();
+    appCfg.mRialtoSocketPath = ""; // Rialto not active
+    auto rtCfg  = MakeValidRuntimeConfig();
+    std::string spec;
+
+    const bool result = gen.generate(appCfg, rtCfg, spec);
+    L0Test::ExpectTrue(tr, result,
+                       "generate() succeeds when Rialto inactive and GStreamer registry path set");
+    // The source path must appear in the mounts section of the Dobby spec.
+    L0Test::ExpectTrue(tr, spec.find(tmpPath) != std::string::npos,
+                       "GStreamer registry source path appears in spec mounts when Rialto is inactive");
+
+    std::remove(tmpPath.c_str());
+    return tr.failures;
+}
+
+#ifdef ENABLE_RIALTO
+/* Test_DobbySpecGenerator_RialtoSocketEnvInjectedWhenRialtoActive
+ * RIALTO_SOCKET_PATH must be injected in spec env when Rialto socket path is set.
+ */
+uint32_t Test_DobbySpecGenerator_RialtoSocketEnvInjectedWhenRialtoActive()
+{
+    L0Test::TestResult tr;
+
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    auto appCfg = MakeValidAppConfig();
+    appCfg.mRialtoSocketPath = "/tmp/amazonPrime"; // Rialto active for this app
+    auto rtCfg  = MakeValidRuntimeConfig();
+    std::string spec;
+
+    const bool result = gen.generate(appCfg, rtCfg, spec);
+    L0Test::ExpectTrue(tr, result,
+                       "generate() succeeds when Rialto is active");
+    L0Test::ExpectTrue(tr, spec.find("RIALTO_SOCKET_PATH=/tmp/amazonPrime") != std::string::npos,
+                       "RIALTO_SOCKET_PATH env var is injected when Rialto socket path is set");
+
+    return tr.failures;
+}
+
+/* Test_DobbySpecGenerator_GstRegistryEnvAbsentWhenRialtoActive
+ * GST_REGISTRY and GST_REGISTRY_UPDATE must NOT be injected when Rialto is active.
+ */
+uint32_t Test_DobbySpecGenerator_GstRegistryEnvAbsentWhenRialtoActive()
+{
+    L0Test::TestResult tr;
+
+    // Provide a valid GStreamer registry file so the path is accepted.
+    const std::string tmpPath = "/tmp/l0test_gst_registry_rialto.bin";
+    {
+        std::ofstream f(tmpPath);
+        f << "fake gst registry";
+    }
+
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    gen.setGstreamerRegistryPath(tmpPath); // Would normally cause GST_REGISTRY injection
+
+    auto appCfg = MakeValidAppConfig();
+    appCfg.mRialtoSocketPath = "/tmp/amazonPrime"; // Rialto active � must suppress GST_REGISTRY
+    auto rtCfg  = MakeValidRuntimeConfig();
+    std::string spec;
+
+    const bool result = gen.generate(appCfg, rtCfg, spec);
+    L0Test::ExpectTrue(tr, result,
+                       "generate() succeeds when both Rialto socket and GStreamer registry path are set");
+    L0Test::ExpectTrue(tr, spec.find("GST_REGISTRY=") == std::string::npos,
+                       "GST_REGISTRY env var is NOT injected when Rialto is active");
+    L0Test::ExpectTrue(tr, spec.find("GST_REGISTRY_UPDATE=no") == std::string::npos,
+                       "GST_REGISTRY_UPDATE env var is NOT injected when Rialto is active");
+
+    std::remove(tmpPath.c_str());
+    return tr.failures;
+}
+
+/* Test_DobbySpecGenerator_GstRegistryMountAbsentWhenRialtoActive
+ * Registry file must NOT be bind-mounted when Rialto is active.
+ */
+uint32_t Test_DobbySpecGenerator_GstRegistryMountAbsentWhenRialtoActive()
+{
+    L0Test::TestResult tr;
+
+    const std::string tmpPath = "/tmp/l0test_gst_registry_mount_rialto.bin";
+    {
+        std::ofstream f(tmpPath);
+        f << "fake gst registry";
+    }
+
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    gen.setGstreamerRegistryPath(tmpPath);
+
+    auto appCfg = MakeValidAppConfig();
+    appCfg.mRialtoSocketPath = "/tmp/amazonPrime"; // Rialto active
+    auto rtCfg  = MakeValidRuntimeConfig();
+    std::string spec;
+
+    const bool result = gen.generate(appCfg, rtCfg, spec);
+    L0Test::ExpectTrue(tr, result,
+                       "generate() succeeds when Rialto is active and GStreamer registry path is set");
+    // The pre-scanned registry source path must NOT appear in the spec mounts.
+    L0Test::ExpectTrue(tr, spec.find(tmpPath) == std::string::npos,
+                       "GStreamer registry source path is NOT mounted when Rialto is active");
+
+    std::remove(tmpPath.c_str());
+    return tr.failures;
+}
+
+/* Test_DobbySpecGenerator_RialtoPrefixedSocketPathUsedInSpec
+ * RIALTO_SOCKET_PATH uses the auto-allocated path; bare /tmp/<appId> must not appear.
+ */
+uint32_t Test_DobbySpecGenerator_RialtoPrefixedSocketPathUsedInSpec()
+{
+    L0Test::TestResult tr;
+
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+
+    auto appCfg = MakeValidAppConfig();
+    // Simulate the auto-allocated path that Rialto assigns (e.g. /tmp/rialto-5).
+    const std::string rialtoSocketPath = "/tmp/rialto-5";
+    const std::string bareAppIdPath    = "/tmp/amazonPrime";
+    appCfg.mRialtoSocketPath = rialtoSocketPath;
+    auto rtCfg  = MakeValidRuntimeConfig();
+    std::string spec;
+
+    const bool result = gen.generate(appCfg, rtCfg, spec);
+    L0Test::ExpectTrue(tr, result,
+                       "generate() succeeds with Rialto auto-allocated socket path");
+
+    // The auto-allocated path must appear in the env var.
+    L0Test::ExpectTrue(tr,
+                       spec.find("RIALTO_SOCKET_PATH=" + rialtoSocketPath) != std::string::npos,
+                       "RIALTO_SOCKET_PATH is set to the auto-allocated path /tmp/rialto-5");
+
+    // The auto-allocated path must be present in the mounts section.
+    L0Test::ExpectTrue(tr, spec.find(rialtoSocketPath) != std::string::npos,
+                       "Auto-allocated Rialto socket path /tmp/rialto-5 is in mounts");
+
+    // The bare appId path must NOT appear, confirming no conflict with app tempPath.
+    L0Test::ExpectTrue(tr, spec.find('"' + bareAppIdPath + '"') == std::string::npos,
+                       "Bare app temp path /tmp/amazonPrime does NOT appear in spec");
+
+    return tr.failures;
+}
+#endif // ENABLE_RIALTO
