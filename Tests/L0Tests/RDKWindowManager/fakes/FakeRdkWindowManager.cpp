@@ -502,6 +502,42 @@ bool CompositorController::getVisibility(const std::string&, bool& visible)
     return S().getVisibilityResult;
 }
 
+bool CompositorController::showSplashScreen(uint32_t)
+{
+    return true;
+}
+
+bool CompositorController::hideSplashScreen()
+{
+    return true;
+}
+
+bool CompositorController::setBounds(const std::string&, uint32_t, uint32_t, uint32_t, uint32_t)
+{
+    return true;
+}
+
+bool CompositorController::getBounds(const std::string&, uint32_t& x, uint32_t& y, uint32_t& width, uint32_t& height)
+{
+    x = 0;
+    y = 0;
+    width = 1920;
+    height = 1080;
+    return true;
+}
+
+bool CompositorController::setScale(const std::string&, double, double)
+{
+    return true;
+}
+
+bool CompositorController::getScale(const std::string&, double& scaleX, double& scaleY)
+{
+    scaleX = 1.0;
+    scaleY = 1.0;
+    return true;
+}
+
 bool CompositorController::renderReady(const std::string&)
 {
     std::lock_guard<std::mutex> guard(S().lock);
