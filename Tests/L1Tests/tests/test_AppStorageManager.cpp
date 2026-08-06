@@ -25,8 +25,6 @@ using namespace WPEFramework;
 
 namespace {
 
-// Some branches expose create/get/delete over JSON-RPC while others keep them omitted.
-// Accept both behaviors so tests focus on stability across contract variants.
 inline void ExpectJsonRpcCompatibleResult(const uint32_t rc)
 {
     EXPECT_TRUE(rc == Core::ERROR_UNKNOWN_KEY || rc == Core::ERROR_NONE || rc == Core::ERROR_GENERAL)
