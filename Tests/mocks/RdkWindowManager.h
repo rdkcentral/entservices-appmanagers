@@ -158,6 +158,8 @@ namespace RdkWindowManager
         virtual bool setBounds(const std::string& client, uint32_t x, uint32_t y, uint32_t width, uint32_t height) = 0;
         virtual bool getVisibility(const std::string& client, bool& visible) = 0;
         virtual bool setVisibility(const std::string& client, bool visible) = 0;
+        virtual bool showSplashScreen(uint32_t timeoutInSeconds) = 0;
+        virtual bool hideSplashScreen() = 0;
         virtual bool getOpacity(const std::string& client, unsigned int& opacity) = 0;
         virtual bool setOpacity(const std::string& client, unsigned int opacity) = 0;
         virtual bool getScale(const std::string& client, double& scaleX, double& scaleY) = 0;
@@ -369,6 +371,16 @@ namespace RdkWindowManager
         static bool setVisibility(const std::string& client, bool visible)
         {
             return impl() ? impl()->setVisibility(client, visible) : false;
+        }
+
+        static bool showSplashScreen(uint32_t timeoutInSeconds)
+        {
+            return impl() ? impl()->showSplashScreen(timeoutInSeconds) : false;
+        }
+
+        static bool hideSplashScreen()
+        {
+            return impl() ? impl()->hideSplashScreen() : false;
         }
 
         static bool getOpacity(const std::string& client, unsigned int& opacity)

@@ -427,12 +427,17 @@ namespace Plugin {
                 if (it != mState.end()) {
                     State &installedState = it->second;
                     if ( installedState.mLockCount ) {
+#ifdef ENABLE_INSTALL_WHILE_LOCKED
+                        LOGINFO("App is locked id: '%s' ver: '%s' count:%d, proceeding with install due to ENABLE_INSTALL_WHILE_LOCKED",
+                            packageId.c_str(), installedVersion.c_str(), installedState.mLockCount);
+#else
                         LOGWARN("App is locked id: '%s' ver: '%s' count:%d", packageId.c_str(), installedVersion.c_str(), installedState.mLockCount);
                         state.installState = InstallState::INSTALLATION_BLOCKED;
                         state.blockedInstallData.version = version;
                         state.blockedInstallData.keyValues = keyValues;
                         state.blockedInstallData.fileLocator = fileLocator;
                         NotifyInstallStatus(packageId, version, state);
+#endif
                     }
                 }
             }
@@ -585,13 +590,7 @@ namespace Plugin {
             package.digest = state.digest.c_str();
             package.state = state.installState;
             package.sizeKb = state.runtimeConfig.dataImageSize;
-            package.isRuntime = false;
-            for (const auto& entry : runtimeMap) {
-                 if (entry.second == key) {
-                    package.isRuntime = true;
-                    break;
-                }
-            }
+            package.packageType = state.packageType.c_str();
             packageList.emplace_back(package);
         }
 
@@ -836,6 +835,10 @@ namespace Plugin {
         runtimeConfig.appPath = config.appPath;
         runtimeConfig.command = config.command;
         runtimeConfig.runtimePath = config.runtimePath;
+        runtimeConfig.enableDebugger = config.enableDebugger;
+        runtimeConfig.logFileMaxSize = config.logFileMaxSize;
+        runtimeConfig.mapi = config.mapi;
+        runtimeConfig.resourceManagerClientEnabled = config.resourceManagerClientEnabled;
         runtimeConfig.ralfPkgPath = config.ralfPkgPath;
         runtimeConfig.logFilePath = config.logFilePath;
     }
@@ -1078,6 +1081,10 @@ namespace Plugin {
             state.digest = config.md5Hash;
             state.installState = InstallState::INSTALLED;
             state.runtimeType = config.runtimeType;
+            {
+                const auto sep = config.mimeType.find('/');
+                state.packageType = (sep != std::string::npos) ? config.mimeType.substr(0, sep) : config.mimeType;
+            }
             std::map<std::string, std::pair<std::string, std::string>>::iterator it2 = runtimeMap.find(state.runtimeType);
             if (it2 != runtimeMap.end()) {
                 state.runtimeApp = it2->second;
@@ -1216,6 +1223,10 @@ namespace Plugin {
                 getRuntimeConfig(config, state.runtimeConfig);
                 state.digest = config.md5Hash;
                 state.runtimeType = config.runtimeType;
+                {
+                    const auto sep = config.mimeType.find('/');
+                    state.packageType = (sep != std::string::npos) ? config.mimeType.substr(0, sep) : config.mimeType;
+                }
                 std::map<std::string, std::pair<std::string, std::string>>::iterator itRuntime = runtimeMap.find(state.runtimeType);
                 if (itRuntime != runtimeMap.end()) {
                     state.runtimeApp = itRuntime->second;

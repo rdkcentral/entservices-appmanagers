@@ -347,18 +347,8 @@ protected:
         package_1.digest = APPMANAGER_APP_DIGEST;
         package_1.state = APPMANAGER_APP_STATE;
         package_1.sizeKb = APPMANAGER_APP_SIZE;
-        package_1.isRuntime = false;
-
-        Exchange::IPackageInstaller::Package package_2;
-        package_2.packageId = "com.test.runtimeEngine";
-        package_2.version = APPMANAGER_APP_VERSION;
-        package_2.digest = APPMANAGER_APP_DIGEST;
-        package_2.state = APPMANAGER_APP_STATE;
-        package_2.sizeKb = APPMANAGER_APP_SIZE;
-        package_2.isRuntime = true;
 
         packageList.emplace_back(package_1);
-        packageList.emplace_back(package_2);
         return Core::Service<RPC::IteratorType<Exchange::IPackageInstaller::IPackageIterator>>::Create<Exchange::IPackageInstaller::IPackageIterator>(packageList);
     }
 
@@ -3826,6 +3816,11 @@ TEST_F(AppManagerTest, LaunchAppLockFailureListPackagesFails)
     signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
     EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
 
+    /* Drain async worker jobs before teardown so Job::~Job() has released
+     * mAppManagerImpl references. No additional event is expected here. */
+    signalled = notification.WaitForRequestStatus(JOB_DRAIN_TIMEOUT, AppManager_onAppInstalled);
+    EXPECT_FALSE(signalled & AppManager_onAppInstalled);
+
     mAppManagerImpl->Unregister(&notification);
     if (status == Core::ERROR_NONE)
     {
@@ -3883,6 +3878,11 @@ TEST_F(AppManagerTest, LaunchAppLockFailureLockReturnError)
 
     signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
     EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+
+    /* Drain async worker jobs before teardown so Job::~Job() has released
+     * mAppManagerImpl references. No additional event is expected here. */
+    signalled = notification.WaitForRequestStatus(JOB_DRAIN_TIMEOUT, AppManager_onAppInstalled);
+    EXPECT_FALSE(signalled & AppManager_onAppInstalled);
 
     mAppManagerImpl->Unregister(&notification);
     if (status == Core::ERROR_NONE)
