@@ -427,12 +427,17 @@ namespace Plugin {
                 if (it != mState.end()) {
                     State &installedState = it->second;
                     if ( installedState.mLockCount ) {
+#ifdef ENABLE_INSTALL_WHILE_LOCKED
+                        LOGINFO("App is locked id: '%s' ver: '%s' count:%d, proceeding with install due to ENABLE_INSTALL_WHILE_LOCKED",
+                            packageId.c_str(), installedVersion.c_str(), installedState.mLockCount);
+#else
                         LOGWARN("App is locked id: '%s' ver: '%s' count:%d", packageId.c_str(), installedVersion.c_str(), installedState.mLockCount);
                         state.installState = InstallState::INSTALLATION_BLOCKED;
                         state.blockedInstallData.version = version;
                         state.blockedInstallData.keyValues = keyValues;
                         state.blockedInstallData.fileLocator = fileLocator;
                         NotifyInstallStatus(packageId, version, state);
+#endif
                     }
                 }
             }
