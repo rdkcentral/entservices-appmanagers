@@ -116,6 +116,7 @@ jobs:
           repository: rdkcentral/Thunder
           path: Thunder
           ref: ${{env.THUNDER_REF}}
+          fetch-depth: 0
 
       - name: Pin Thunder commit
         if: steps.cache.outputs.cache-hit != 'true'
@@ -130,6 +131,7 @@ jobs:
           repository: rdkcentral/ThunderTools
           path: ThunderTools
           ref: ${{env.THUNDER_TOOLS_REF}}
+          fetch-depth: 0
 
       - name: Pin ThunderTools commit
         if: steps.cache.outputs.cache-hit != 'true'
