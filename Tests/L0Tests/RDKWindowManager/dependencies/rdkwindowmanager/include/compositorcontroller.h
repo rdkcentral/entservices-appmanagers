@@ -41,6 +41,12 @@ public:
     static bool getFocused(std::string& client);
     static bool setVisibility(const std::string& client, const bool visible);
     static bool getVisibility(const std::string& client, bool& visible);
+    static bool showSplashScreen(uint32_t timeoutInSeconds);
+    static bool hideSplashScreen();
+    static bool setBounds(const std::string& client, uint32_t x, uint32_t y, uint32_t width, uint32_t height);
+    static bool getBounds(const std::string& client, uint32_t& x, uint32_t& y, uint32_t& width, uint32_t& height);
+    static bool setScale(const std::string& client, double scaleX, double scaleY);
+    static bool getScale(const std::string& client, double& scaleX, double& scaleY);
     static bool renderReady(const std::string& client);
     static bool enableDisplayRender(const std::string& client, bool enable);
     static bool getLastKeyPress(uint32_t& keyCode, uint32_t& modifiers, uint64_t& timestampInSeconds);

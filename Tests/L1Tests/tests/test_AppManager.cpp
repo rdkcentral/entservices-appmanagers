@@ -3816,6 +3816,11 @@ TEST_F(AppManagerTest, LaunchAppLockFailureListPackagesFails)
     signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
     EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
 
+    /* Drain async worker jobs before teardown so Job::~Job() has released
+     * mAppManagerImpl references. No additional event is expected here. */
+    signalled = notification.WaitForRequestStatus(JOB_DRAIN_TIMEOUT, AppManager_onAppInstalled);
+    EXPECT_FALSE(signalled & AppManager_onAppInstalled);
+
     mAppManagerImpl->Unregister(&notification);
     if (status == Core::ERROR_NONE)
     {
@@ -3873,6 +3878,11 @@ TEST_F(AppManagerTest, LaunchAppLockFailureLockReturnError)
 
     signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
     EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+
+    /* Drain async worker jobs before teardown so Job::~Job() has released
+     * mAppManagerImpl references. No additional event is expected here. */
+    signalled = notification.WaitForRequestStatus(JOB_DRAIN_TIMEOUT, AppManager_onAppInstalled);
+    EXPECT_FALSE(signalled & AppManager_onAppInstalled);
 
     mAppManagerImpl->Unregister(&notification);
     if (status == Core::ERROR_NONE)

@@ -75,9 +75,9 @@ public:
     uint32_t GetQueryInterfaceByCallsignCallCount() const { return _queryInterfaceByCallsignCallCount; }
 
     // IShell interface implementation
-    void AddRef() const override
+    uint32_t AddRef() const override
     {
-        _refCount.fetch_add(1, std::memory_order_relaxed);
+        return _refCount.fetch_add(1, std::memory_order_relaxed) + 1;
     }
 
     uint32_t Release() const override
