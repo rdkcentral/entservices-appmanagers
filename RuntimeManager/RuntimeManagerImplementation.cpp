@@ -723,16 +723,27 @@ namespace WPEFramework
             bool rialtoSetupFailed = false;
             if (displayResult && !xdgRuntimeDir.empty() && !waylandDisplay.empty())
             {
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED
+            const bool requiresRialto = true;
+#else
             std::vector<std::pair<std::string, std::string>> parsedCaps;
             DobbySpecGenerator::parseCapabilities(runtimeConfigObject.capabilities, parsedCaps);
             const bool appRequiresRialto = DobbySpecGenerator::hasCapability(parsedCaps, "rialto");
             const std::optional<bool> rialtoOverride = (nullptr != mAIConfiguration) ? mAIConfiguration->getRialtoOverride() : std::nullopt;
             const bool requiresRialto = rialtoOverride.value_or(appRequiresRialto);
+#endif
             if (mRialtoConnector && requiresRialto)
             {
                 LOGINFO("[RIALTO] Entering Rialto session setup for appId='%s' appInstanceId='%s'",
                         appId.c_str(), appInstanceId.c_str());
-                mRialtoConnector->initialize();
+                if (!mRialtoConnector->initialize())
+                {
+                    LOGERR("[RIALTO] Rialto initialization failed for appId='%s', aborting session setup", appId.c_str());
+                    rialtoSetupFailed = true;
+                    status = Core::ERROR_GENERAL;
+                }
+                else
+                {
                 std::string rialtoSocket = "rialto-" + appId;
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
                 // Adding a prefix to the rialto socket to avoid any conflict with existing sockets as
@@ -759,11 +770,6 @@ namespace WPEFramework
                             config.mRialtoSocketPath = rialtoSocketPath;
                             LOGINFO("[RIALTO] Rialto socket path for appId='%s': '%s'", appId.c_str(), rialtoSocketPath.c_str());
                         }
-                        else
-                        {
-                            LOGWARN("[RIALTO] Rialto socket path empty for appId='%s', falling back to '/tmp/%s'", appId.c_str(), rialtoSocket.c_str());
-                            config.mRialtoSocketPath = "/tmp/" + rialtoSocket;
-                        }
                     }
                 }
                 else
@@ -773,6 +779,7 @@ namespace WPEFramework
                     status = Core::ERROR_GENERAL;
                 }
                 LOGINFO("[RIALTO] Rialto session setup complete for appId='%s' status=%d", appId.c_str(), status);
+		}
             }
 	    }
 #endif // ENABLE_RIALTO

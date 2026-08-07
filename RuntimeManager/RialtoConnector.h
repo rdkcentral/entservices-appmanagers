@@ -39,7 +39,7 @@ namespace WPEFramework
     public:
         RialtoConnector() : mInitialized(false) {}
         virtual ~RialtoConnector() = default;
-        void initialize();
+        bool initialize();
         bool waitForStateChange(const std::string &appid, const RialtoServerStates &state, int timeoutMillis);
         bool createAppSession(const std::string &callsign, const std::string &displayName, const std::string &appId);
         bool resumeSession(const std::string &callsign);
