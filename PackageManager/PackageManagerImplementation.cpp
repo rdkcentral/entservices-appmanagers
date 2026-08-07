@@ -1024,24 +1024,6 @@ namespace Plugin {
         return result;
     }
 
-    Core::hresult PackageManagerImplementation::GetConfigForInstalledPackage(const string &packageId, const string &version, string& config /* @out @opaque */)
-    {
-        CHECK_CACHE()
-        Core::hresult result = Core::ERROR_GENERAL;
-
-        if (packageId.empty() || version.empty())
-        {
-            return Core::ERROR_INVALID_SIGNATURE;
-        }
-
-        packagemanager::Result pmResult = packageImpl->GetInstalledPackageMetadata(packageId, version, config);
-        if (pmResult == packagemanager::SUCCESS)
-        {
-            result = Core::ERROR_NONE;
-        }
-        return result;
-    }
-
     // Internal functions
     void PackageManagerImplementation::InitializeState()
     {
@@ -1332,6 +1314,28 @@ namespace Plugin {
                     mInprogressDownload->GetId().c_str(), mDownloadQueue.size());
         }
         return mInprogressDownload;
+    }
+    Core::hresult PackageManagerImplementation::GetConfigForInstalledPackage(const string &packageId, const string &version, string &config /* @out @opaque */)
+    {
+        CHECK_CACHE()
+        Core::hresult result = Core::ERROR_GENERAL;
+
+        if (packageId.empty() || version.empty())
+        {
+            return Core::ERROR_INVALID_PARAMETER;
+        }
+
+        packagemanager::Result pmResult = packageImpl->GetInstalledPackageMetadata(packageId, version, config);
+        if (pmResult == packagemanager::SUCCESS)
+        {
+            result = Core::ERROR_NONE;
+        }
+        return result;
+    }
+    Core::hresult PackageManagerImplementation::GetConfigListForInstalledPackages(string &config /* @out @opaque */)
+    {
+        //This is to be implemented for sky libpackage.
+        return Core::ERROR_NONE;
     }
 
 } // namespace Plugin

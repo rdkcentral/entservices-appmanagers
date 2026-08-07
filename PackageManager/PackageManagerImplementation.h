@@ -55,6 +55,7 @@ class PackageManagerImplementation
     : public Exchange::IPackageDownloader
     , public Exchange::IPackageInstaller
     , public Exchange::IPackageHandler
+    , public Exchange::IAppPackageManagerConfig
 {
     private:
         class State {
@@ -174,7 +175,6 @@ class PackageManagerImplementation
         Core::hresult Config(const string &packageId, const string &version, Exchange::RuntimeConfig& configMetadata) override;
         Core::hresult PackageState(const string &packageId, const string &version, Exchange::IPackageInstaller::InstallState &state) override;
         Core::hresult GetConfigForPackage(const string &fileLocator, string& id, string &version, Exchange::RuntimeConfig& config) override;
-        Core::hresult GetConfigForInstalledPackage(const string &packageId, const string &version, string& config /* @out @opaque */) override;
 
         Core::hresult Register(Exchange::IPackageInstaller::INotification *sink) override;
         Core::hresult Unregister(Exchange::IPackageInstaller::INotification *sink) override;
@@ -189,10 +189,15 @@ class PackageManagerImplementation
         Core::hresult GetLockedInfo(const string &packageId, const string &version, string &unpackedPath, Exchange::RuntimeConfig& configMetadata,
             string& gatewayMetadataPath, bool &locked) override;
 
+        // IAppPackageManagerConfig methods
+        Core::hresult GetConfigForInstalledPackage(const string &packageId, const string &version, string &config /* @out @opaque */) override;
+        Core::hresult GetConfigListForInstalledPackages(string &config /* @out @opaque */) override;
+
         BEGIN_INTERFACE_MAP(PackageManagerImplementation)
             INTERFACE_ENTRY(Exchange::IPackageDownloader)
             INTERFACE_ENTRY(Exchange::IPackageInstaller)
             INTERFACE_ENTRY(Exchange::IPackageHandler)
+            INTERFACE_ENTRY(Exchange::IAppPackageManagerConfig)
         END_INTERFACE_MAP
 
     private:
