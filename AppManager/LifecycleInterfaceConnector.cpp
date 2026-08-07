@@ -224,58 +224,59 @@ namespace WPEFramework
                             string source = "";
                             appManagerImplInstance->handleOnAppLaunchRequest(appId, intent, source);
 
-                            // AI1.0 parity: set APPLICATION_LAUNCH_PARAMETERS (base64 of launchArgs)
+                            // AI1.0 parity: ALWAYS set APPLICATION_LAUNCH_PARAMETERS (base64 of launchArgs)
                             // and APPLICATION_LAUNCH_METHOD so SkyBrowserLauncher can read the
                             // pairingCode and launch method directly from the Dobby container env.
-                            // Skip if launchArgs is empty or just "{}"
-                            if (!launchArgs.empty() && launchArgs != "{}" && launchArgs != "{ }") {
-                                // Minimal base64 encoder (RFC 4648, no line breaks)
-                                auto b64Encode = [](const std::string& in) -> std::string {
-                                    static const char* T =
-                                        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-                                    std::string out;
-                                    out.reserve(((in.size() + 2) / 3) * 4);
-                                    const uint8_t* b = reinterpret_cast<const uint8_t*>(in.data());
-                                    std::size_t n = in.size(), i = 0;
-                                    for (; i + 2 < n; i += 3) {
-                                        uint32_t v = (b[i]<<16)|(b[i+1]<<8)|b[i+2];
-                                        out += T[(v>>18)&0x3F]; out += T[(v>>12)&0x3F];
-                                        out += T[(v>> 6)&0x3F]; out += T[ v     &0x3F];
-                                    }
-                                    if (i+1==n) { uint32_t v=b[i]<<16;
-                                        out+=T[(v>>18)&0x3F]; out+=T[(v>>12)&0x3F]; out+='='; out+='=';
-                                    } else if (i+2==n) { uint32_t v=(b[i]<<16)|(b[i+1]<<8);
-                                        out+=T[(v>>18)&0x3F]; out+=T[(v>>12)&0x3F]; out+=T[(v>>6)&0x3F]; out+='=';
-                                    }
-                                    return out;
-                                };
-
-                                Json::Value envArr(Json::arrayValue);
-                                {
-                                    Json::Reader rd;
-                                    Json::Value existing;
-                                    if (rd.parse(runtimeConfigObject.envVariables, existing) && existing.isArray())
-                                        envArr = existing;
-                                }
-                                envArr.append(std::string("APPLICATION_LAUNCH_PARAMETERS=") + b64Encode(launchArgs));
-
-                                // Detect launch method from intent context.source
-                                std::string launchMethod = "EPG";
-                                {
-                                    Json::Reader rd; Json::Value iv;
-                                    if (rd.parse(intent, iv) && iv["context"]["source"].isString()
-                                            && iv["context"]["source"].asString() == "dial")
-                                        launchMethod = "DIAL";
-                                }
-                                envArr.append(std::string("APPLICATION_LAUNCH_METHOD=") + launchMethod);
-
-                                Json::StreamWriterBuilder w; w["indentation"] = "";
-                                runtimeConfigObject.envVariables = Json::writeString(w, envArr);
-                                LOGINFO("launch: Added APPLICATION_LAUNCH_PARAMETERS and APPLICATION_LAUNCH_METHOD=%s for launchArgs='%s'",
-                                        launchMethod.c_str(), launchArgs.c_str());
-                            } else {
-                                LOGINFO("launch: Skipping APPLICATION_LAUNCH_PARAMETERS (launchArgs empty or '{}')");
+                            // When launchArgs is empty or "{}", use empty string (base64("") = "").
+                            std::string effectiveLaunchArgs = launchArgs;
+                            if (effectiveLaunchArgs == "{}" || effectiveLaunchArgs == "{ }") {
+                                effectiveLaunchArgs = "";
                             }
+
+                            // Minimal base64 encoder (RFC 4648, no line breaks)
+                            auto b64Encode = [](const std::string& in) -> std::string {
+                                static const char* T =
+                                    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+                                std::string out;
+                                out.reserve(((in.size() + 2) / 3) * 4);
+                                const uint8_t* b = reinterpret_cast<const uint8_t*>(in.data());
+                                std::size_t n = in.size(), i = 0;
+                                for (; i + 2 < n; i += 3) {
+                                    uint32_t v = (b[i]<<16)|(b[i+1]<<8)|b[i+2];
+                                    out += T[(v>>18)&0x3F]; out += T[(v>>12)&0x3F];
+                                    out += T[(v>> 6)&0x3F]; out += T[ v     &0x3F];
+                                }
+                                if (i+1==n) { uint32_t v=b[i]<<16;
+                                    out+=T[(v>>18)&0x3F]; out+=T[(v>>12)&0x3F]; out+='='; out+='=';
+                                } else if (i+2==n) { uint32_t v=(b[i]<<16)|(b[i+1]<<8);
+                                    out+=T[(v>>18)&0x3F]; out+=T[(v>>12)&0x3F]; out+=T[(v>>6)&0x3F]; out+='=';
+                                }
+                                return out;
+                            };
+
+                            Json::Value envArr(Json::arrayValue);
+                            {
+                                Json::Reader rd;
+                                Json::Value existing;
+                                if (rd.parse(runtimeConfigObject.envVariables, existing) && existing.isArray())
+                                    envArr = existing;
+                            }
+                            envArr.append(std::string("APPLICATION_LAUNCH_PARAMETERS=") + b64Encode(effectiveLaunchArgs));
+
+                            // Detect launch method from intent context.source
+                            std::string launchMethod = "EPG";
+                            {
+                                Json::Reader rd; Json::Value iv;
+                                if (rd.parse(intent, iv) && iv["context"]["source"].isString()
+                                        && iv["context"]["source"].asString() == "dial")
+                                    launchMethod = "DIAL";
+                            }
+                            envArr.append(std::string("APPLICATION_LAUNCH_METHOD=") + launchMethod);
+
+                            Json::StreamWriterBuilder w; w["indentation"] = "";
+                            runtimeConfigObject.envVariables = Json::writeString(w, envArr);
+                            LOGINFO("launch: APPLICATION_LAUNCH_PARAMETERS='%s' (base64 of '%s'), APPLICATION_LAUNCH_METHOD=%s",
+                                    b64Encode(effectiveLaunchArgs).c_str(), effectiveLaunchArgs.c_str(), launchMethod.c_str());
 
                             LOGINFO("spawnApp called ,state %u",state);
                             status = mLifecycleManagerRemoteObject->SpawnApp(appId, intent, state, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success);
@@ -532,10 +533,10 @@ namespace WPEFramework
                     appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_TERMINATE, AppManagerImplementation::ERROR_INVALID_PARAMS);
                 }
                 else
-                {
+		 {
                     LOGERR("appManagerImplInstance is null");
-                    appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_TERMINATE, AppManagerImplementation::ERROR_INTERNAL);
-                }
+	            appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_TERMINATE, AppManagerImplementation::ERROR_INTERNAL);
+        	 }
             mAdminLock.Unlock();
             return status;
         }
