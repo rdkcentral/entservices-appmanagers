@@ -1279,7 +1279,7 @@ uint32_t Test_DobbyEventListener_OnContainerStoppedCallsEventHandler()
     L0Test::ExpectTrue(tr, notif != nullptr,
                        "Notification object was registered with OCI container");
     if (notif != nullptr) {
-        notif->OnContainerStopped("container-1", "youTube");
+        notif->OnContainerStopped("container-1", "youTube", 0);
         L0Test::ExpectEqU32(tr, handler.stoppedCalls.load(), 1u,
                             "OnContainerStopped forwards to onOCIContainerStoppedEvent");
     }
@@ -1430,7 +1430,7 @@ uint32_t Test_DobbyEventListener_OnContainerStateChangedNullEventHandler()
     if (notif != nullptr) {
         // Should not crash even though mEventHandler is nullptr
         notif->OnContainerStarted("c1", "youTube");
-        notif->OnContainerStopped("c1", "youTube");
+        notif->OnContainerStopped("c1", "youTube", 0);
         notif->OnContainerFailed("c1", "youTube", 2u);
         notif->OnContainerStateChanged("c1",
             WPEFramework::Exchange::IOCIContainer::ContainerState::RUNNING);

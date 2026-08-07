@@ -60,6 +60,7 @@ set(RUNTIME_MANAGER_L0_SOURCES
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/RuntimeManagerTelemetryReporting.cpp
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/DobbySpecGenerator.cpp
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/WindowManagerConnector.cpp
+    ${CMAKE_SOURCE_DIR}/../../RuntimeManager/WindowManagerCapabilities.cpp
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/DobbyEventListener.cpp
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/UserIdManager.cpp
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/AIConfiguration.cpp
@@ -864,8 +865,7 @@ if(PLUGIN_RUNTIME_MANAGER)
     # Gateway sources require libip4tc and libip6tc (iptables)
     find_library(LIBIP4TC_LIB NAMES ip4tc libip4tc HINTS /usr/lib /usr/local/lib)
     find_library(LIBIP6TC_LIB NAMES ip6tc libip6tc HINTS /usr/lib /usr/local/lib)
-    find_library(YAML_CPP_LIB NAMES yaml-cpp HINTS "${PREFIX}/lib" /usr/lib /usr/local/lib)
-    
+
     if(JSONCPP_LIB)
         target_link_libraries(runtimemanager_l0test PRIVATE ${JSONCPP_LIB})
     else()
@@ -885,11 +885,6 @@ if(PLUGIN_RUNTIME_MANAGER)
         target_link_libraries(runtimemanager_l0test PRIVATE ${LIBIP6TC_LIB})
     else()
         target_link_libraries(runtimemanager_l0test PRIVATE ip6tc)
-    endif()
-     if(YAML_CPP_LIB)
-        target_link_libraries(runtimemanager_l0test PRIVATE ${YAML_CPP_LIB})
-    else()
-        target_link_libraries(runtimemanager_l0test PRIVATE yaml-cpp)
     endif()
 endif()
 

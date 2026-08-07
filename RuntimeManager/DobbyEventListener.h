@@ -40,7 +40,7 @@ namespace WPEFramework {
                 }
 
                 virtual void OnContainerStarted(const string& containerId, const string& name) override;
-                virtual void OnContainerStopped(const string& containerId, const string& name) override;
+                virtual void OnContainerStopped(const string& containerId, const string& name, int32_t exitCode) override;
                 virtual void OnContainerFailed(const string& containerId, const string& name, uint32_t error) override;
                 virtual void OnContainerStateChanged(const string& containerId, Exchange::IOCIContainer::ContainerState state) override;
 

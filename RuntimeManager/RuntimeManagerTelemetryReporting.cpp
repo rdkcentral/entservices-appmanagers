@@ -42,7 +42,7 @@ void RuntimeManagerTelemetryReporting::initialize(PluginHost::IShell* service)
 {
     setService(service);
     if (Core::ERROR_NONE != initializeTelemetryClient()) {
-        LOGERR("TelemetryMetrics client init failed");
+        LOGERR("TelemetryMetrics initialization failed for RuntimeManager");
     }
 }
 
@@ -87,7 +87,7 @@ void RuntimeManagerTelemetryReporting::recordTelemetryData(const std::string& ma
 
     jsonParam["appId"] = appId;
 
-    LOGINFO("Record appId %s marker %s start time %d", appId.c_str(), marker.c_str(), duration);
+    LOGINFO("Record telemetry duration: appId=%s marker=%s durationMs=%d", appId.c_str(), marker.c_str(), duration);
     if (Core::ERROR_NONE != recordTelemetry(appId, jsonParam, marker)) {
         LOGERR("Failed to record telemetry for appId %s marker %s", appId.c_str(), marker.c_str());
     }

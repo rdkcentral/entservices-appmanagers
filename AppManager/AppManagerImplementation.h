@@ -224,6 +224,7 @@ namespace Plugin {
         Exchange::IAppStorageManager* mStorageManagerRemoteObject;
         PluginHost::IShell* mCurrentservice;
         Core::Sink<PackageManagerNotification> mPackageManagerNotification;
+        bool mEnhancedLoggingEnabled;
         std::thread mAppManagerWorkerThread;
         std::mutex mAppManagerLock;
         std::condition_variable mAppRequestListCV;

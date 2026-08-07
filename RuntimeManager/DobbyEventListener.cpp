@@ -30,7 +30,7 @@
     }                                                       \
     else                                                    \
     {                                                       \
-        LOGERR("Event handler is null");                    \
+        LOGERR("event handler is null while forwarding OCI event"); \
     }
 
 namespace WPEFramework {
@@ -97,12 +97,13 @@ namespace WPEFramework {
             SEND_EVENT_TO_RUNTIME_MANAGER(onOCIContainerStartedEvent, name, data);
         }
 
-        void DobbyEventListener::OCIContainerNotification::OnContainerStopped(const string& containerId, const string& name)
+        void DobbyEventListener::OCIContainerNotification::OnContainerStopped(const string& containerId, const string& name, int32_t exitCode)
         {
-            // LOGINFO("Container stopped: %s", name.c_str());
+            // LOGINFO("Container stopped: %s exitCode=%d", name.c_str(), exitCode);
             JsonObject data;
             data["containerId"] = containerId;
             data["name"] = name;
+            data["exitCode"] = exitCode;
             data["eventName"] = "onContainerStopped";
             SEND_EVENT_TO_RUNTIME_MANAGER(onOCIContainerStoppedEvent, name, data);
         }

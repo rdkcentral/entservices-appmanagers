@@ -36,6 +36,7 @@
 #include "UserIdManager.h"
 #include "RuntimeManagerTelemetryReporting.h"
 #include "TelemetryMarkers.h"
+#include <filesystem>
 
 #ifdef RDK_APPMANAGERS_DEBUG
 class WebInspector;
@@ -100,6 +101,7 @@ namespace WPEFramework
                 {
                     std::string appId;
                     std::string appInstanceId;
+                    std::string containerId;
                     uint32_t descriptor;
                     Exchange::IRuntimeManager::RuntimeState containerState;
                     time_t requestTime = 0;
@@ -225,6 +227,7 @@ namespace WPEFramework
 #endif // RIALTO_IN_DAC_FEATURE_ENABLED
                 std::string mRuntimeConfigFile;
                 AIConfiguration* mAIConfiguration;
+                std::filesystem::path mGstRegistrySourcePath;  ///< path to pre-built GST registry (empty if disabled/failed)
 
             private: /* internal methods */
                 void dispatchEvent(RuntimeEventType, const JsonValue &params);

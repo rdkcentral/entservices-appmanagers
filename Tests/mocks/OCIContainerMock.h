@@ -48,7 +48,7 @@ public:
     MOCK_METHOD(Core::hresult, RemoveAnnotation, (const string& containerId /* @in */, const string& key /* @in */, bool& success /* @out */, string& errorReason /* @out */), (override));
     MOCK_METHOD(Core::hresult, Mount, (const string& containerId /* @in */, const string& source /* @in */, const string& target /* @in */, const string& type /* @in */, const string& options /* @in */, bool& success /* @out */, string& errorReason /* @out */), (override));
     MOCK_METHOD(Core::hresult, Unmount, (const string& containerId /* @in */, const string& target /* @in */, bool& success /* @out */, string& errorReason /* @out */), (override));
-    MOCK_METHOD(void, AddRef, (), (const, override));
+    MOCK_METHOD(uint32_t, AddRef, (), (const, override));
     MOCK_METHOD(uint32_t, Release, (), (const, override));
     MOCK_METHOD(void*, QueryInterface, (const uint32_t interfaceNummer), (override));
 };
@@ -60,7 +60,7 @@ class IOCIContainerNotificationMock : public IOCIContainer::INotification {
     virtual ~IOCIContainerNotificationMock() = default;
 
     MOCK_METHOD(void, OnContainerStarted, (const string& containerId, const string& name), (override));
-    MOCK_METHOD(void, OnContainerStopped, (const string& containerId, const string& name), (override));
+    MOCK_METHOD(void, OnContainerStopped, (const string& containerId, const string& name, int32_t exitCode), (override));
     MOCK_METHOD(void, OnContainerFailed, (const string& containerId, const string& name, uint32_t error), (override));
     MOCK_METHOD(void, OnContainerStateChanged, (const string& containerId, WPEFramework::Exchange::IOCIContainer::ContainerState state), (override));
 

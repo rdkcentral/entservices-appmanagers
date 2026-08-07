@@ -38,7 +38,7 @@ namespace Plugin {
     struct CreateDisplayRequest
     {
         CreateDisplayRequest(std::string client, std::string displayName, uint32_t displayWidth=0, uint32_t displayHeight=0, bool virtualDisplayEnabled=false,
-                             uint32_t virtualWidth=0, uint32_t virtualHeight=0, bool topmost = false, bool focus = false, uint32_t ownerId = 0, uint32_t groupId = 0);
+                             uint32_t virtualWidth=0, uint32_t virtualHeight=0, bool topmost = false, bool focus = false, uint32_t ownerId = 0, uint32_t groupId = 0, std::string capabilities = std::string());
 
         ~CreateDisplayRequest();
 
@@ -55,6 +55,7 @@ namespace Plugin {
         bool mResult;
         uint32_t mOwnerId;
         uint32_t mGroupId;
+        std::string mCapabilities;
     };
 
     class RDKWindowManagerImplementation : public Exchange::IRDKWindowManager{
@@ -127,8 +128,8 @@ namespace Plugin {
         Core::hresult Deinitialize(PluginHost::IShell* service) override;
         Core::hresult Register(INotification *notification) override;
         Core::hresult Unregister(INotification *notification) override;
-        Core::hresult CreateDisplay(const string &clientId, const string &displayName, const uint32_t displayWidth, const uint32_t displayHeight, const bool virtualDisplay, const uint32_t virtualWidth, const uint32_t virtualHeight, const uint32_t ownerId, const uint32_t groupId, const bool topmost, const bool focus) override;
-        Core::hresult GetApps(string &appsIds) const override;
+        Core::hresult CreateDisplay(const string &clientId, const string &displayName, const uint32_t displayWidth, const uint32_t displayHeight, const bool virtualDisplay, const uint32_t virtualWidth, const uint32_t virtualHeight, const uint32_t ownerId, const uint32_t groupId, const bool topmost, const bool focus, const string &capabilities) override;
+        Core::hresult GetApps(RPC::IStringIterator*& appsIds) const override;
         Core::hresult AddKeyIntercept(const string &intercept) override;
         Core::hresult AddKeyIntercepts(const string &clientId, const string &intercepts) override;
         Core::hresult RemoveKeyIntercept(const string &clientId, uint32_t keyCode, const string &modifiers) override;
@@ -154,12 +155,20 @@ namespace Plugin {
         Core::hresult GetZOrder(const string& clientId, int32_t &zOrder) override;
         Core::hresult StartVncServer() override;
         Core::hresult StopVncServer() override;
+        Core::hresult GetFocused(string &client) const override;
         Core::hresult GetScreenshot() override;
+        Core::hresult SetAlias(const string& clientId, const string& alias) override;
+        Core::hresult ShowSplashScreen(const bool show) override;
+        Core::hresult SetBounds(const string& clientId, const uint32_t x, const uint32_t y, const uint32_t width, const uint32_t height) override;
+        Core::hresult GetBounds(const string& clientId, uint32_t& x, uint32_t& y, uint32_t& width, uint32_t& height) const override;
+        Core::hresult SetScale(const string& clientId, const double scaleX, const double scaleY) override;
+        Core::hresult GetScale(const string& clientId, double& scaleX, double& scaleY) const override;
 
     private: /*internal methods*/
         bool createDisplay(const string& client, const string& displayName, const uint32_t displayWidth = 0, const uint32_t displayHeight = 0,
                            const bool virtualDisplay = false, const uint32_t virtualWidth = 0, const uint32_t virtualHeight = 0,
-                           const uint32_t ownerId = 0, const uint32_t groupId = 0, const bool topmost = false, const bool focus = false);
+                           const uint32_t ownerId = 0, const uint32_t groupId = 0, const bool topmost = false, const bool focus = false,
+                           const string& capabilities = string());
         bool getClients(JsonArray& clients);
         bool addKeyIntercept(const uint32_t& keyCode, const JsonArray& modifiers, const string& client, const bool& focusOnly , const bool& propagate);
         bool addKeyIntercepts(const string& clientId, const JsonArray& intercepts);

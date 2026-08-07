@@ -29,7 +29,7 @@
 #undef private
 #include "common/AppManagerL0Mock.hpp"
 #include "common/L0Expect.hpp"
-
+//testing
 // Helper to create a service mock with all required dependencies for AppManagerImplementation
 // Defined outside anonymous namespace so it can be accessed from other test files via extern
 L0Test::AppManagerServiceMock::Config CreateFullServiceConfig()
@@ -351,7 +351,6 @@ uint32_t Test_AM_IsInstalledAndGetInstalledAppsWithPackages()
     pendingPkg.packageId = "app.pending";
     pendingPkg.version = "9.9.9";
     pendingPkg.state = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLING;
-
     installer.installedPackages.push_back(installedPkg);
     installer.installedPackages.push_back(pendingPkg);
 
@@ -1168,9 +1167,10 @@ uint32_t Test_AM_GetInstalledAppsWithActiveAppInfo()
 
     // One installed package whose ID also lives in AppInfoManager.
     WPEFramework::Exchange::IPackageInstaller::Package pkg;
-    pkg.packageId = "active.pkg";
-    pkg.version   = "2.0.0";
-    pkg.state     = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
+    pkg.packageId  = "active.pkg";
+    pkg.version    = "2.0.0";
+    pkg.state      = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
+    pkg.packageType = "application";
     packageInstaller.installedPackages.push_back(pkg);
 
     L0Test::AppManagerServiceMock::Config cfg(&packageInstaller);
@@ -1680,10 +1680,10 @@ uint32_t Test_AM_LICOnAppLifecycleStateChangedActiveNewState()
 }
 
 // Covers the UNLOADED abnormal-close branch in
-// LifecycleInterfaceConnector::OnAppLifecycleStateChanged() (no prior terminate action).
-// This exercises appManagerInitiatedKill/lifecycleManagerInitiatedKill = false,
-// the LOGINFO "Terminate event due to app crash", APP_ERROR_ABORT dispatch,
-// telemetry stub, mAppCurrentActionList.erase, and the handleOnAppUnloaded() call.
+// LifecycleInterfaceConnector::OnAppLifecycleStateChanged() with the
+// "unexpectedTermination" sentinel in navigationIntent.
+// Exercises the crash path: isUnexpectedTermination=true → APP_ERROR_ABORT
+// dispatch, crash telemetry stub, mAppCurrentActionList.erase, and handleOnAppUnloaded().
 uint32_t Test_AM_LICOnAppLifecycleStateChangedUnloadedAbnormalClose()
 {
     L0Test::TestResult tr;
@@ -1701,23 +1701,21 @@ uint32_t Test_AM_LICOnAppLifecycleStateChangedUnloadedAbnormalClose()
         "app.unload.test",
         [&](WPEFramework::Plugin::AppInfo& a) { a = info; });
 
-    // Register notification to detect when both async Jobs have executed:
-    // OnAppLifecycleStateChanged (UNLOADED) dispatches TWO jobs —
-    // APP_EVENT_LIFECYCLE_STATE_CHANGED (lifecycle++) and APP_EVENT_UNLOADED (unloaded++).
-    auto* notif = new RefNotification(); // refcount=1
-    impl->Register(notif);               // refcount=2
+    // Track both the lifecycle-state-changed Job and the unloaded Job.
+    auto* notif = new RefNotification();
+    impl->Register(notif);
 
-    // oldState=LOADING, newState=UNLOADED, no prior mAppCurrentActionList entry
-    // → abnormal close path.
+    // navigationIntent == "unexpectedTermination" → isUnexpectedTermination=true
+    // → crash path: APP_ERROR_ABORT + telemetry.
     impl->mLifecycleInterfaceConnector->OnAppLifecycleStateChanged(
         "app.unload.test", "inst-unload-test",
         WPEFramework::Exchange::ILifecycleManager::LifecycleState::LOADING,  // oldState
         WPEFramework::Exchange::ILifecycleManager::LifecycleState::UNLOADED, // newState
-        "");
+        "unexpectedTermination");
     L0Test::ExpectTrue(tr, true,
-        "OnAppLifecycleStateChanged with UNLOADED newState (abnormal close) runs without crash");
+        "OnAppLifecycleStateChanged with unexpectedTermination sentinel runs without crash");
 
-    // Wait for both Jobs to fire their respective notifications.
+    // Wait for both Jobs (lifecycle++ and unloaded++) to fire.
     const auto unloadDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
     while (std::chrono::steady_clock::now() < unloadDeadline) {
         if (notif->lifecycle >= 1 && notif->unloaded >= 1)
@@ -2514,6 +2512,58 @@ uint32_t Test_AM_LaunchAppFetchFails()
     return tr.failures;
 }
 
+uint32_t Test_AM_PreloadAppNotInstalled()
+{
+    L0Test::TestResult tr;
+    auto* installer = new L0Test::MockPackageInstaller();
+    L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
+    delete static_cast<L0Test::MockPackageInstaller*>(cfg.installer);
+    cfg.installer = installer;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+
+    std::string error;
+    const auto result = impl->PreloadApp(std::string("app.not.installed"), std::string(), std::string(), error);
+    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+        "PreloadApp() returns ERROR_GENERAL when app is not installed");
+    L0Test::ExpectTrue(tr, !error.empty(),
+        "PreloadApp() sets an error string when app is not installed");
+
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+uint32_t Test_AM_PreloadAppFetchFails()
+{
+    L0Test::TestResult tr;
+    auto* installer = new L0Test::MockPackageInstaller();
+    installer->listHandler = [](WPEFramework::Exchange::IPackageInstaller::IPackageIterator*& it) {
+        it = nullptr;
+        return WPEFramework::Core::ERROR_GENERAL;
+    };
+    L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
+    delete static_cast<L0Test::MockPackageInstaller*>(cfg.installer);
+    cfg.installer = installer;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+
+    std::string error;
+    const auto result = impl->PreloadApp(std::string("app.fetch.fails"), std::string(), std::string(), error);
+    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+        "PreloadApp() returns ERROR_GENERAL when fetchAppPackageList fails");
+    L0Test::ExpectTrue(tr, !error.empty(),
+        "PreloadApp() sets an error string when fetchAppPackageList fails");
+
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
 uint32_t Test_AM_LaunchAppNullConnectorInstalledApp()
 {
     L0Test::TestResult tr;
@@ -3210,6 +3260,141 @@ uint32_t Test_AM_GetAppPropertyNullStoreRecreates()
     // ASSERTs non-null — that ASSERT will pass since the store was recreated.
     return fixture.tr.failures;
 }
+
+// Verifies that empty navigationIntent (no sentinel) results in APP_ERROR_NONE
+// (normal-close path). Validates the simplified !isUnexpectedTermination condition.
+uint32_t Test_AM_LICOnAppLifecycleStateChangedNormalCloseNoSentinel()
+{
+    AppManagerTestFixture fixture(true, true);
+
+    WPEFramework::Plugin::AppInfo info;
+    info.setAppInstanceId("inst-nosentinel");
+    WPEFramework::Plugin::AppInfoManager::getInstance().upsert(
+        "app.nosentinel",
+        [&](WPEFramework::Plugin::AppInfo& a) { a = info; });
+
+    struct ErrorTracker final : public WPEFramework::Exchange::IAppManager::INotification {
+        mutable std::atomic<uint32_t> _ref{1};
+        std::atomic<WPEFramework::Exchange::IAppManager::AppErrorReason> lastError{
+            WPEFramework::Exchange::IAppManager::AppErrorReason::APP_ERROR_ABORT}; // sentinel default
+        std::atomic<uint32_t> lifecycleCalls{0};
+        void AddRef() const override { _ref.fetch_add(1, std::memory_order_relaxed); }
+        uint32_t Release() const override {
+            if (_ref.fetch_sub(1, std::memory_order_acq_rel) == 1) { delete this; return 0; }
+            return 1;
+        }
+        void* QueryInterface(uint32_t id) override {
+            if (id == WPEFramework::Exchange::IAppManager::INotification::ID) { AddRef(); return this; }
+            return nullptr;
+        }
+        void OnAppLifecycleStateChanged(const std::string&, const std::string&,
+            const WPEFramework::Exchange::IAppManager::AppLifecycleState,
+            const WPEFramework::Exchange::IAppManager::AppLifecycleState,
+            const WPEFramework::Exchange::IAppManager::AppErrorReason err) override {
+            lastError = err;
+            ++lifecycleCalls;
+        }
+        void OnAppInstalled(const std::string&, const std::string&) override {}
+        void OnAppUninstalled(const std::string&) override {}
+        void OnAppLaunchRequest(const std::string&, const std::string&, const std::string&) override {}
+        void OnAppUnloaded(const std::string&, const std::string&) override {}
+    };
+    auto* tracker = new ErrorTracker();
+    fixture.impl->Register(tracker);
+
+    // Empty navigationIntent → isUnexpectedTermination=false → normal-close → APP_ERROR_NONE.
+    fixture.impl->mLifecycleInterfaceConnector->OnAppLifecycleStateChanged(
+        "app.nosentinel", "inst-nosentinel",
+        WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE,
+        WPEFramework::Exchange::ILifecycleManager::LifecycleState::UNLOADED,
+        "");
+
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
+    while (std::chrono::steady_clock::now() < deadline && tracker->lifecycleCalls == 0u) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    L0Test::ExpectTrue(fixture.tr, tracker->lifecycleCalls >= 1u,
+        "Normal-close path (no sentinel): lifecycle notification fired");
+    L0Test::ExpectEqU32(fixture.tr,
+        static_cast<uint32_t>(tracker->lastError.load(std::memory_order_relaxed)),
+        static_cast<uint32_t>(WPEFramework::Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE),
+        "Normal-close path (no sentinel): APP_ERROR_NONE reported, not APP_ERROR_ABORT");
+
+    fixture.impl->Unregister(tracker);
+    tracker->Release();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    return fixture.tr.failures;
+}
+
+// Verifies that the "unexpectedTermination" sentinel causes APP_ERROR_ABORT to be
+// dispatched — end-to-end validation of the sentinel-based crash detection logic.
+uint32_t Test_AM_LICOnAppLifecycleStateChangedUnexpectedTermAbortError()
+{
+    AppManagerTestFixture fixture(true, true);
+
+    WPEFramework::Plugin::AppInfo info;
+    info.setAppInstanceId("inst-crash-abort");
+    WPEFramework::Plugin::AppInfoManager::getInstance().upsert(
+        "app.crash.abort",
+        [&](WPEFramework::Plugin::AppInfo& a) { a = info; });
+
+    struct AbortTracker final : public WPEFramework::Exchange::IAppManager::INotification {
+        mutable std::atomic<uint32_t> _ref{1};
+        std::atomic<WPEFramework::Exchange::IAppManager::AppErrorReason> lastError{
+            WPEFramework::Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE}; // sentinel default
+        std::atomic<uint32_t> lifecycleCalls{0};
+        void AddRef() const override { _ref.fetch_add(1, std::memory_order_relaxed); }
+    uint32_t Release() const override {
+        const uint32_t remaining = _ref.fetch_sub(1, std::memory_order_acq_rel) - 1;
+        if (0U == remaining) { delete this; return WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED; }
+        return WPEFramework::Core::ERROR_NONE;
+    }
+        void* QueryInterface(uint32_t id) override {
+            if (id == WPEFramework::Exchange::IAppManager::INotification::ID) { AddRef(); return this; }
+            return nullptr;
+        }
+        void OnAppLifecycleStateChanged(const std::string&, const std::string&,
+            const WPEFramework::Exchange::IAppManager::AppLifecycleState,
+            const WPEFramework::Exchange::IAppManager::AppLifecycleState,
+            const WPEFramework::Exchange::IAppManager::AppErrorReason err) override {
+            lastError = err;
+            ++lifecycleCalls;
+        }
+        void OnAppInstalled(const std::string&, const std::string&) override {}
+        void OnAppUninstalled(const std::string&) override {}
+        void OnAppLaunchRequest(const std::string&, const std::string&, const std::string&) override {}
+        void OnAppUnloaded(const std::string&, const std::string&) override {}
+    };
+    auto* tracker = new AbortTracker();
+    fixture.impl->Register(tracker);
+
+    // navigationIntent == "unexpectedTermination" → isUnexpectedTermination=true
+    // → crash path → APP_ERROR_ABORT must be dispatched.
+    fixture.impl->mLifecycleInterfaceConnector->OnAppLifecycleStateChanged(
+        "app.crash.abort", "inst-crash-abort",
+        WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE,
+        WPEFramework::Exchange::ILifecycleManager::LifecycleState::UNLOADED,
+        "unexpectedTermination");
+
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
+    while (std::chrono::steady_clock::now() < deadline && tracker->lifecycleCalls == 0u) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    L0Test::ExpectTrue(fixture.tr, tracker->lifecycleCalls >= 1u,
+        "Crash path (unexpectedTermination sentinel): lifecycle notification fired");
+    L0Test::ExpectEqU32(fixture.tr,
+        static_cast<uint32_t>(tracker->lastError.load(std::memory_order_relaxed)),
+        static_cast<uint32_t>(WPEFramework::Exchange::IAppManager::AppErrorReason::APP_ERROR_ABORT),
+        "Crash path (unexpectedTermination sentinel): APP_ERROR_ABORT reported");
+
+    fixture.impl->Unregister(tracker);
+    tracker->Release();
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    return fixture.tr.failures;
+}
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Register the same notification twice: second call hits the already-in-list

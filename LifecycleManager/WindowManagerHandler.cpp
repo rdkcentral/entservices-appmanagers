@@ -46,12 +46,12 @@ bool WindowManagerHandler::initialize(PluginHost::IShell* service, IEventHandler
         Core::hresult registerResult = mWindowManager->Register(&mWindowManagerNotification);
         if (Core::ERROR_NONE != registerResult)
         {
-            LOGINFO("Unable to register with windowmanager [%d] \n", registerResult);
+            LOGWARN("Unable to register with WindowManager callsign=org.rdk.RDKWindowManager result=%d", registerResult);
         }
     }
     else
     {
-        LOGERR("windowmanager is null \n");
+        LOGERR("WindowManager is null - unable to initialize handler");
     }
     return ret;
 }
@@ -128,6 +128,26 @@ void WindowManagerHandler::WindowManagerNotification::OnReady(const std::string 
     JsonObject eventData;
     eventData["appInstanceId"] = client;
     eventData["name"] = "onReady";
+    _parent.onEvent(eventData);
+}
+
+void WindowManagerHandler::WindowManagerNotification::OnFocus(const std::string &client)
+{
+    printf("Received onFocus event for app[%s] \n", client.c_str());
+    fflush(stdout);
+    JsonObject eventData;
+    eventData["appInstanceId"] = client;
+    eventData["name"] = "onFocus";
+    _parent.onEvent(eventData);
+}
+
+void WindowManagerHandler::WindowManagerNotification::OnBlur(const std::string &client)
+{
+    printf("Received onBlur event for app[%s] \n", client.c_str());
+    fflush(stdout);
+    JsonObject eventData;
+    eventData["appInstanceId"] = client;
+    eventData["name"] = "onBlur";
     _parent.onEvent(eventData);
 }
 

@@ -158,6 +158,8 @@ namespace RdkWindowManager
         virtual bool setBounds(const std::string& client, uint32_t x, uint32_t y, uint32_t width, uint32_t height) = 0;
         virtual bool getVisibility(const std::string& client, bool& visible) = 0;
         virtual bool setVisibility(const std::string& client, bool visible) = 0;
+        virtual bool showSplashScreen(uint32_t timeoutInSeconds) = 0;
+        virtual bool hideSplashScreen() = 0;
         virtual bool getOpacity(const std::string& client, unsigned int& opacity) = 0;
         virtual bool setOpacity(const std::string& client, unsigned int opacity) = 0;
         virtual bool getScale(const std::string& client, double& scaleX, double& scaleY) = 0;
@@ -175,7 +177,8 @@ namespace RdkWindowManager
         virtual bool createDisplay(const std::string& client, const std::string& displayName,
                                    uint32_t displayWidth, uint32_t displayHeight,
                                    bool virtualDisplayEnabled, uint32_t virtualWidth, uint32_t virtualHeight,
-                                   bool topmost, bool focus, int32_t ownerId, int32_t groupId) = 0;
+                                   bool topmost, bool focus, int32_t ownerId, int32_t groupId,
+                                   const std::string& capabilities) = 0;
         virtual bool addListener(const std::string& client, std::shared_ptr<RdkWindowManagerEventListener> listener) = 0;
         virtual bool removeListener(const std::string& client, std::shared_ptr<RdkWindowManagerEventListener> listener) = 0;
         virtual bool onEvent(RdkCompositor* eventCompositor, const std::string& eventName) = 0;
@@ -215,6 +218,7 @@ namespace RdkWindowManager
         virtual bool renderReady(const std::string& client) = 0;
         virtual bool startVncServer() = 0;
         virtual bool stopVncServer() = 0;
+        virtual bool setAlias(const std::string& clientId, const std::string& alias) = 0;
     };
 
     // =============================================================
@@ -369,6 +373,16 @@ namespace RdkWindowManager
             return impl() ? impl()->setVisibility(client, visible) : false;
         }
 
+        static bool showSplashScreen(uint32_t timeoutInSeconds)
+        {
+            return impl() ? impl()->showSplashScreen(timeoutInSeconds) : false;
+        }
+
+        static bool hideSplashScreen()
+        {
+            return impl() ? impl()->hideSplashScreen() : false;
+        }
+
         static bool getOpacity(const std::string& client, unsigned int& opacity)
         {
             return impl() ? impl()->getOpacity(client, opacity) : false;
@@ -443,11 +457,12 @@ namespace RdkWindowManager
                                   uint32_t displayWidth = 0, uint32_t displayHeight = 0,
                                   bool virtualDisplayEnabled = false, uint32_t virtualWidth = 0,
                                   uint32_t virtualHeight = 0, bool topmost = false, bool focus = false,
-                                  int32_t ownerId = 0, int32_t groupId = 0)
+                                  int32_t ownerId = 0, int32_t groupId = 0,
+                                  const std::string& capabilities = {})
         {
             return impl() ? impl()->createDisplay(client, displayName, displayWidth, displayHeight,
                                                   virtualDisplayEnabled, virtualWidth, virtualHeight,
-                                                  topmost, focus, ownerId, groupId) : false;
+                                                  topmost, focus, ownerId, groupId, capabilities) : false;
         }
 
         static bool addListener(const std::string& client, std::shared_ptr<RdkWindowManagerEventListener> listener)
@@ -643,6 +658,11 @@ namespace RdkWindowManager
         static bool stopVncServer()
         {
             return impl() ? impl()->stopVncServer() : false;
+        }
+
+        static bool setAlias(const std::string& clientId, const std::string& alias)
+        {
+            return impl() ? impl()->setAlias(clientId, alias) : false;
         }
     };
 

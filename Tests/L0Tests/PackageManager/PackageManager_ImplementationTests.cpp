@@ -212,6 +212,21 @@ uint32_t Test_PM_Impl_ListPackagesAndPackageStateForDummyData()
     WPEFramework::Exchange::IPackageInstaller::IPackageIterator* packages = nullptr;
     L0Test::ExpectEqU32(tr, fx.impl->ListPackages(packages), ERROR_NONE, "ListPackages() returns ERROR_NONE");
     L0Test::ExpectTrue(tr, packages != nullptr, "ListPackages() returns non-null iterator");
+    if (packages != nullptr) {
+        WPEFramework::Exchange::IPackageInstaller::Package package;
+        bool foundPackage = false;
+        while (packages->Next(package)) {
+            if (package.packageId == "YouTube" && package.version == "100.1.24") {
+                foundPackage = true;
+                L0Test::ExpectEqStr(tr,
+                                    package.digest,
+                                    "dummy-md5-youtube-100124",
+                                    "ListPackages() returns digest populated from ConfigMetaData.md5Hash");
+                break;
+            }
+        }
+        L0Test::ExpectTrue(tr, foundPackage, "ListPackages() contains dummy package entry");
+    }
 
     WPEFramework::Exchange::IPackageInstaller::InstallState state = WPEFramework::Exchange::IPackageInstaller::InstallState::UNINSTALLED;
     L0Test::ExpectEqU32(tr,

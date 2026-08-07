@@ -78,6 +78,7 @@ namespace packagemanager
         std::string fireboltVersion;
         bool enableDebugger;
         std::string ralfPkgPath;
+            std::string md5Hash;
     };
 
     typedef std::pair<std::string, std::string> ConfigMetadataKey;
@@ -106,6 +107,7 @@ namespace packagemanager
             configMetadata.capabilities = "dial-app,wan-lan,thunder,fkps";
             configMetadata.runtimeType = "";
             configMetadata.mimeType = "application/vnd.rdk-app.dac.native";
+                configMetadata.md5Hash = "dummy-md5-youtube-100124";
             
             ConfigMetadataKey key {"YouTube", "100.1.24"};
 
@@ -115,7 +117,6 @@ namespace packagemanager
         }
 
         virtual Result Install(const std::string &packageId, const std::string &version, const NameValues &additionalMetadata, const std::string &fileLocator, ConfigMetaData &configMetadata) {
-            (void)version;
             (void)additionalMetadata;
             (void)fileLocator;
 
@@ -143,6 +144,7 @@ namespace packagemanager
             configMetadata.capabilities = "dial-app,wan-lan,thunder,fkps";
             configMetadata.runtimeType = "";
             configMetadata.mimeType = "application/vnd.rdk-app.dac.native";
+                configMetadata.md5Hash = "dummy-md5-" + packageId + "-" + version;
             return SUCCESS;
         }
         virtual Result Uninstall(const std::string &packageId) { return SUCCESS; }

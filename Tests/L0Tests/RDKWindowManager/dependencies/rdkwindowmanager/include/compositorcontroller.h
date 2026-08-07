@@ -24,7 +24,8 @@ public:
     static bool getClients(std::vector<std::string>& clients);
     static bool createDisplay(const std::string& client, const std::string& displayName, uint32_t displayWidth = 0, uint32_t displayHeight = 0,
                               bool virtualDisplayEnabled = false, uint32_t virtualWidth = 0, uint32_t virtualHeight = 0,
-                              bool topmost = false, bool focus = false, int32_t ownerId = 0, int32_t groupId = 0);
+                              bool topmost = false, bool focus = false, int32_t ownerId = 0, int32_t groupId = 0,
+                              const std::string& capabilities = {});
     static bool addListener(const std::string& client, std::shared_ptr<RdkWindowManagerEventListener> listener);
     static bool removeListener(const std::string& client, std::shared_ptr<RdkWindowManagerEventListener> listener);
     static void setEventListener(std::shared_ptr<RdkWindowManagerEventListener> listener);
@@ -37,8 +38,15 @@ public:
     static bool enableInputEvents(const std::string& client, bool enable);
     static void setKeyRepeatConfig(bool enabled, int32_t initialDelay, int32_t repeatInterval);
     static bool setFocus(const std::string& client);
+    static bool getFocused(std::string& client);
     static bool setVisibility(const std::string& client, const bool visible);
     static bool getVisibility(const std::string& client, bool& visible);
+    static bool showSplashScreen(uint32_t timeoutInSeconds);
+    static bool hideSplashScreen();
+    static bool setBounds(const std::string& client, uint32_t x, uint32_t y, uint32_t width, uint32_t height);
+    static bool getBounds(const std::string& client, uint32_t& x, uint32_t& y, uint32_t& width, uint32_t& height);
+    static bool setScale(const std::string& client, double scaleX, double scaleY);
+    static bool getScale(const std::string& client, double& scaleX, double& scaleY);
     static bool renderReady(const std::string& client);
     static bool enableDisplayRender(const std::string& client, bool enable);
     static bool getLastKeyPress(uint32_t& keyCode, uint32_t& modifiers, uint64_t& timestampInSeconds);
@@ -47,6 +55,8 @@ public:
     static bool startVncServer();
     static bool stopVncServer();
     static bool screenShot(uint8_t*& data, uint32_t& size);
+    static bool setAlias(const std::string& clientId, const std::string& alias);
+    static std::string getDisplayNameFromAlias(const std::string& alias);
 };
 
 } // namespace RdkWindowManager

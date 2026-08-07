@@ -135,10 +135,10 @@ public:
     mutable std::atomic<uint32_t> instantiateCalls      { 0 };
 
     // ── IUnknown ──────────────────────────────────────────────────────────────
-    void AddRef() const override
+    uint32_t AddRef() const override
     {
         addRefCalls++;
-        _refCount.fetch_add(1, std::memory_order_relaxed);
+        return _refCount.fetch_add(1, std::memory_order_relaxed) + 1;
     }
 
     uint32_t Release() const override
@@ -264,9 +264,9 @@ public:
     FakePackageInstaller(const FakePackageInstaller&) = delete;
     FakePackageInstaller& operator=(const FakePackageInstaller&) = delete;
 
-    void AddRef() const override
+    uint32_t AddRef() const override
     {
-        _refCount.fetch_add(1, std::memory_order_relaxed);
+        return _refCount.fetch_add(1, std::memory_order_relaxed) + 1;
     }
 
     uint32_t Release() const override
@@ -385,9 +385,9 @@ public:
     {
     }
 
-    void AddRef() const override
+    uint32_t AddRef() const override
     {
-        _refCount.fetch_add(1, std::memory_order_relaxed);
+        return _refCount.fetch_add(1, std::memory_order_relaxed) + 1;
     }
 
     uint32_t Release() const override

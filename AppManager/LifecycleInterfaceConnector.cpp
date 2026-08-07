@@ -83,15 +83,15 @@ namespace WPEFramework
 
             if (nullptr == mCurrentservice)
             {
-                LOGWARN("mCurrentservice is null \n");
+                LOGERR("mCurrentservice is null");
             }
             else if (nullptr == (mLifecycleManagerRemoteObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::ILifecycleManager>("org.rdk.LifecycleManager")))
             {
-                LOGWARN("Failed to create LifecycleManager Remote object\n");
+                LOGERR("Failed to create LifecycleManager Remote object: callsign=org.rdk.LifecycleManager");
             }
             else if (nullptr == (mLifecycleManagerStateRemoteObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::ILifecycleManagerState>("org.rdk.LifecycleManager")))
             {
-                LOGWARN("Failed to create LifecycleManagerState Remote object\n");
+                LOGERR("Failed to create LifecycleManagerState Remote object: callsign=org.rdk.LifecycleManager");
             }
             else
             {
@@ -624,7 +624,7 @@ namespace WPEFramework
                 }
                 else
                 {
-                    LOGINFO("GetLoadedApps succeeded: %s", loadedApps.c_str());
+                    LOGINFO("GetLoadedApps succeeded: count=%zu", static_cast<size_t>(loadedAppsJsonArray.Length()));
                 }
 
                 auto getIntJsonField = [&](JsonObject& obj, const char* key) -> int {
@@ -749,8 +749,7 @@ End:
                         a.setAppOldState(oldAppState);
                         a.setAppNewState(newAppState);
                         a.setAppLifecycleState(newState);
-                        a.setAppIntent(navigationIntent);
-
+                         a.setAppIntent(("unexpectedTermination" == navigationIntent) ? "" : navigationIntent);
                         if (Exchange::ILifecycleManager::LifecycleState::ACTIVE == oldState ||
                             Exchange::ILifecycleManager::LifecycleState::ACTIVE == newState)
                         {
@@ -795,27 +794,26 @@ End:
                 {
                     if(Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED == newAppState)
 		    {
-                        const bool appManagerInitiatedKill = (Exchange::IAppManager::AppLifecycleState::APP_STATE_TERMINATING == mAppCurrentActionList[appId]);
-                        const bool lifecycleManagerInitiatedKill = (Exchange::IAppManager::AppLifecycleState::APP_STATE_TERMINATING == oldAppState);
-                        if (appManagerInitiatedKill || lifecycleManagerInitiatedKill)
-			{
-			    //Normal close: Unload event from App manager or LifecycleManager-initiated kill (e.g. KILL_AND_RUN)
-			    LOGINFO("Terminate event from plugin");
-			    appManagerImplInstance->handleOnAppLifecycleStateChanged(appId, appInstanceId, newAppState, oldAppState, Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE);
-			}
-			else
-			{
-			    //Abnormal close: No unload event from app manager
-			    LOGINFO("Terminate event due to app crash");
-			    appManagerImplInstance->handleOnAppLifecycleStateChanged(appId, appInstanceId, newAppState, oldAppState, Exchange::IAppManager::AppErrorReason::APP_ERROR_ABORT);
-                // Report crash telemetry when lifecycle event provides a valid app instance id.
-                const std::string storedInstanceId = AppInfoManager::getInstance().getAppInstanceId(appId);
-                if (false == storedInstanceId.empty())
-                {
-                    std::string crashReason = "Terminate event due to app crash";
-                    AppManagerTelemetryReporting::getInstance().reportAppCrashedTelemetry(appId, storedInstanceId, crashReason);
-                }
-			}
+                        const bool isUnexpectedTermination = ("unexpectedTermination" == navigationIntent);
+                        if (!isUnexpectedTermination)
+                        {
+                            //Normal close: Unload event from App manager or LifecycleManager-initiated kill (e.g. KILL_AND_RUN)
+                            LOGINFO("Terminate event from plugin");
+                            appManagerImplInstance->handleOnAppLifecycleStateChanged(appId, appInstanceId, newAppState, oldAppState, Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE);
+                        }
+                        else
+                        {
+                            //Abnormal close: app crash or unexpected container termination
+                            LOGINFO("Unexpected container termination detected");
+                            appManagerImplInstance->handleOnAppLifecycleStateChanged(appId, appInstanceId, newAppState, oldAppState, Exchange::IAppManager::AppErrorReason::APP_ERROR_ABORT);
+                            // Report crash telemetry when lifecycle event provides a valid app instance id.
+                            const std::string storedInstanceId = AppInfoManager::getInstance().getAppInstanceId(appId);
+                            if (false == storedInstanceId.empty())
+                            {
+                               const std::string crashReason = "Terminated unexpectedly";
+                                AppManagerTelemetryReporting::getInstance().reportAppCrashedTelemetry(appId, storedInstanceId, crashReason);
+                            }
+                        }
 			mAppCurrentActionList.erase(appId);
 		    }
 		    else

@@ -3,6 +3,7 @@
 #include <atomic>
 #include <chrono>
 #include <cstring>
+#include <map>
 #include <memory>
 #include <mutex>
 
@@ -22,6 +23,8 @@ struct State {
     std::vector<std::string> clients { "testclient" };
 
     bool setFocusResult { true };
+    bool getFocusedResult { true };
+    std::string focusedClient { "testclient" };
     bool setVisibilityResult { true };
     bool getVisibilityResult { true };
     bool visibleValue { true };
@@ -37,6 +40,8 @@ struct State {
     bool setZOrderResult { true };
     bool getZOrderResult { true };
     int32_t zOrder { 5 };
+    bool setAliasResult { true };
+    std::map<std::string, std::string> aliasMap;
 
     bool startVncResult { true };
     bool stopVncResult { true };
@@ -78,6 +83,8 @@ void Reset()
     S().getClientsResult = true;
     S().clients = { "testclient" };
     S().setFocusResult = true;
+    S().getFocusedResult = true;
+    S().focusedClient = "testclient";
     S().setVisibilityResult = true;
     S().getVisibilityResult = true;
     S().visibleValue = true;
@@ -90,6 +97,8 @@ void Reset()
     S().setZOrderResult = true;
     S().getZOrderResult = true;
     S().zOrder = 5;
+    S().setAliasResult = true;
+    S().aliasMap.clear();
     S().startVncResult = true;
     S().stopVncResult = true;
     S().enableKeyRepeatResult = true;
@@ -124,6 +133,13 @@ void SetSetFocusResult(bool value)
 {
     std::lock_guard<std::mutex> guard(S().lock);
     S().setFocusResult = value;
+}
+
+void SetGetFocusedResult(bool value, const std::string& focusedClient)
+{
+    std::lock_guard<std::mutex> guard(S().lock);
+    S().getFocusedResult = value;
+    S().focusedClient = focusedClient;
 }
 
 void SetVisibilityResult(bool setVisibleResult, bool getVisibleResult, bool visibleValue)
@@ -398,7 +414,7 @@ bool CompositorController::getClients(std::vector<std::string>& clients)
     return S().getClientsResult;
 }
 
-bool CompositorController::createDisplay(const std::string&, const std::string&, uint32_t, uint32_t, bool, uint32_t, uint32_t, bool, bool, int32_t, int32_t)
+bool CompositorController::createDisplay(const std::string&, const std::string&, uint32_t, uint32_t, bool, uint32_t, uint32_t, bool, bool, int32_t, int32_t, const std::string&)
 {
     std::lock_guard<std::mutex> guard(S().lock);
     return S().createDisplayResult;
@@ -466,6 +482,13 @@ bool CompositorController::setFocus(const std::string&)
     return S().setFocusResult;
 }
 
+bool CompositorController::getFocused(std::string& client)
+{
+    std::lock_guard<std::mutex> guard(S().lock);
+    client = S().focusedClient;
+    return S().getFocusedResult;
+}
+
 bool CompositorController::setVisibility(const std::string&, const bool)
 {
     std::lock_guard<std::mutex> guard(S().lock);
@@ -477,6 +500,42 @@ bool CompositorController::getVisibility(const std::string&, bool& visible)
     std::lock_guard<std::mutex> guard(S().lock);
     visible = S().visibleValue;
     return S().getVisibilityResult;
+}
+
+bool CompositorController::showSplashScreen(uint32_t)
+{
+    return true;
+}
+
+bool CompositorController::hideSplashScreen()
+{
+    return true;
+}
+
+bool CompositorController::setBounds(const std::string&, uint32_t, uint32_t, uint32_t, uint32_t)
+{
+    return true;
+}
+
+bool CompositorController::getBounds(const std::string&, uint32_t& x, uint32_t& y, uint32_t& width, uint32_t& height)
+{
+    x = 0;
+    y = 0;
+    width = 1920;
+    height = 1080;
+    return true;
+}
+
+bool CompositorController::setScale(const std::string&, double, double)
+{
+    return true;
+}
+
+bool CompositorController::getScale(const std::string&, double& scaleX, double& scaleY)
+{
+    scaleX = 1.0;
+    scaleY = 1.0;
+    return true;
 }
 
 bool CompositorController::renderReady(const std::string&)
@@ -511,6 +570,32 @@ bool CompositorController::getZOrder(const std::string&, int32_t& zOrder)
     std::lock_guard<std::mutex> guard(S().lock);
     zOrder = S().zOrder;
     return S().getZOrderResult;
+}
+
+bool CompositorController::setAlias(const std::string& clientId, const std::string& alias)
+{
+    std::lock_guard<std::mutex> guard(S().lock);
+    if (!S().setAliasResult) {
+        return false;
+    }
+    S().aliasMap[clientId] = alias;
+    return true;
+}
+
+std::string CompositorController::getDisplayNameFromAlias(const std::string& alias)
+{
+    if (alias.empty()) {
+        return "";
+    }
+
+    std::lock_guard<std::mutex> guard(S().lock);
+    for (const auto& entry : S().aliasMap) {
+        if (entry.second == alias) {
+            return entry.first;
+        }
+    }
+
+    return "";
 }
 
 bool CompositorController::startVncServer()

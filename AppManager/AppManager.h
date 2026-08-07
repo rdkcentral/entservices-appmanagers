@@ -75,31 +75,32 @@ namespace Plugin {
 
                 void OnAppInstalled(const string& appId, const string& version) override
                 {
-                    LOGINFO("AppManager on OnAppInstalled" );
+                    LOGINFO("appId=%s version=%s", appId.c_str(), version.c_str());
                     Exchange::JAppManager::Event::OnAppInstalled(_parent, appId,version);
                 }
 
                 void OnAppUninstalled(const string& appId)override
                 {
-                    LOGINFO("AppManager on OnAppUninstalled" );
+                    LOGINFO("appId=%s", appId.c_str());
                     Exchange::JAppManager::Event::OnAppUninstalled(_parent, appId);
                 }
 
                 void OnAppLifecycleStateChanged(const string& appId, const string& appInstanceId,const Exchange::IAppManager::AppLifecycleState newState, const Exchange::IAppManager::AppLifecycleState oldState, const Exchange::IAppManager::AppErrorReason errorReason) override
                 {
-                    LOGINFO("AppManager on onAppLifecycleStateChanged");
+                    LOGINFO("appId=%s appInstanceId=%s oldState=%d newState=%d errorReason=%d",
+                        appId.c_str(), appInstanceId.c_str(), static_cast<int>(oldState), static_cast<int>(newState), static_cast<int>(errorReason));
                     Exchange::JAppManager::Event::OnAppLifecycleStateChanged(_parent, appId,appInstanceId,newState,oldState,errorReason);
                 }
 
                 void OnAppLaunchRequest(const string& appId, const string& intent, const string& source) override
                 {
-                    LOGINFO("AppManager on OnAppLaunchRequest" );
+                    LOGINFO("appId=%s source=%s", appId.c_str(), source.c_str());
                     Exchange::JAppManager::Event::OnAppLaunchRequest(_parent, appId,intent,source);
                 }
 
                 void OnAppUnloaded(const string& appId, const string& appInstanceId) override
                 {
-                    LOGINFO("AppManager on OnAppUnloaded" );
+                    LOGINFO("appId=%s appInstanceId=%s", appId.c_str(), appInstanceId.c_str());
                     Exchange::JAppManager::Event::OnAppUnloaded(_parent, appId ,appInstanceId);
                 }
 

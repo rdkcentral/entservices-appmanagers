@@ -98,7 +98,7 @@ static std::string gScreenshotImageData;
 static bool gScreenshotSuccess = false;
 
 CreateDisplayRequest::CreateDisplayRequest(std::string client, std::string displayName, uint32_t displayWidth, uint32_t displayHeight, bool virtualDisplayEnabled,
-                                           uint32_t virtualWidth, uint32_t virtualHeight, bool topmost, bool focus, uint32_t ownerId, uint32_t groupId)
+                                           uint32_t virtualWidth, uint32_t virtualHeight, bool topmost, bool focus, uint32_t ownerId, uint32_t groupId, std::string capabilities)
 : mClient(std::move(client))
 , mDisplayName(std::move(displayName))
 , mDisplayWidth(displayWidth)
@@ -111,6 +111,7 @@ CreateDisplayRequest::CreateDisplayRequest(std::string client, std::string displ
 , mResult(false)
 , mOwnerId(ownerId)
 , mGroupId(groupId)
+, mCapabilities(std::move(capabilities))
 {
     if (0 != sem_init(&mSemaphore, 0, 0))
     {
@@ -307,7 +308,7 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
                         LOGINFO("Shell thread: Processing createDisplay request for client:%s", request->mClient.c_str());
                         {
                             std::lock_guard<std::mutex> lock(gRdkWindowManagerMutex);
-                            request->mResult = CompositorController::createDisplay(request->mClient, request->mDisplayName, request->mDisplayWidth, request->mDisplayHeight, request->mVirtualDisplayEnabled, request->mVirtualWidth, request->mVirtualHeight, request->mTopmost, request->mFocus , request->mOwnerId, request->mGroupId);
+                            request->mResult = CompositorController::createDisplay(request->mClient, request->mDisplayName, request->mDisplayWidth, request->mDisplayHeight, request->mVirtualDisplayEnabled, request->mVirtualWidth, request->mVirtualHeight, request->mTopmost, request->mFocus , request->mOwnerId, request->mGroupId, request->mCapabilities);
                         }
                         if (0 != sem_post(&request->mSemaphore))
                         {
@@ -354,7 +355,7 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
     }
     else
     {
-        LOGERR("mService is nullptr");
+        LOGERR("Configure failed: service is null");
         result = Core::ERROR_GENERAL;
     }
     
@@ -391,7 +392,7 @@ Core::hresult RDKWindowManagerImplementation::Deinitialize(PluginHost::IShell* s
     std::vector<std::string> clientList;
     if (false == CompositorController::getClients(clientList))
     {
-        LOGERR("getClients Failed");
+        LOGERR("getClients failed during deinitialize");
     }
 
     std::vector<std::string>::iterator ptr;
@@ -399,7 +400,7 @@ Core::hresult RDKWindowManagerImplementation::Deinitialize(PluginHost::IShell* s
     {
         if(false == RdkWindowManager::CompositorController::removeListener((*ptr),mEventListener))
         {
-            LOGERR("CompositorController::removeListener Failed");
+            LOGERR("removeListener failed for client=%s", (*ptr).c_str());
         }
     }
 
@@ -694,7 +695,7 @@ void RDKWindowManagerImplementation::Dispatch(Event event, const JsonValue param
         }
 
          default:
-             LOGWARN("Event[%u] not handled", event);
+             LOGWARN("Unhandled RDKWindowManager event: id=%u", event);
              break;
      }
 
@@ -718,7 +719,7 @@ void RDKWindowManagerImplementation::Dispatch(Event event, const JsonValue param
  * @param focus           : When true, the display surface receives input focus on creation.
  * @return Core::ERROR_NONE on success, Core::ERROR_GENERAL on failure.
  */
-Core::hresult RDKWindowManagerImplementation::CreateDisplay(const string &clientId, const string &displayName, const uint32_t displayWidth, const uint32_t displayHeight, const bool virtualDisplay, const uint32_t virtualWidth, const uint32_t virtualHeight, const uint32_t ownerId, const uint32_t groupId, const bool topmost, const bool focus)
+Core::hresult RDKWindowManagerImplementation::CreateDisplay(const string &clientId, const string &displayName, const uint32_t displayWidth, const uint32_t displayHeight, const bool virtualDisplay, const uint32_t virtualWidth, const uint32_t virtualHeight, const uint32_t ownerId, const uint32_t groupId, const bool topmost, const bool focus, const string &capabilities)
 {
     Core::hresult status = Core::ERROR_GENERAL;
     bool result = true;
@@ -733,11 +734,11 @@ Core::hresult RDKWindowManagerImplementation::CreateDisplay(const string &client
             clientId.c_str(), displayName.c_str(), displayWidth, displayHeight, virtualDisplay, virtualWidth, virtualHeight, ownerId, groupId, topmost, focus);
     time_t displayStartTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
     result = createDisplay(clientId, displayName, displayWidth, displayHeight,
-                           virtualDisplay, virtualWidth, virtualHeight, ownerId, groupId, topmost, focus);
+                           virtualDisplay, virtualWidth, virtualHeight, ownerId, groupId, topmost, focus, capabilities);
 
     if (false == result)
     {
-        LOGERR("failed to create display : %s, displayName:%s, displayWidth:%u, displayHeight:%u, virtualDisplay:%d, virtualWidth:%u, virtualHeight:%u, topmost:%d, focus:%d, ownerId: %u, groupId: %u",
+        LOGERR("create display failed: clientId=%s displayName=%s width=%u height=%u virtual=%d vWidth=%u vHeight=%u topmost=%d focus=%d ownerId=%u groupId=%u",
                clientId.c_str(), displayName.c_str(), displayWidth, displayHeight, virtualDisplay, virtualWidth, virtualHeight, topmost, focus, ownerId, groupId);
     }
     else
@@ -754,16 +755,16 @@ Core::hresult RDKWindowManagerImplementation::CreateDisplay(const string &client
  * @brief Get the list of connected application clients.
  * Returns a list of application IDs currently connected to the window manager.
  *
- * @appsIds[out]      : JSON string array of connected app IDs.
- *                      Ex: [\"org.rdk.youttube\",\"org.rdk.netflix\"]
+ * @appsIds[out]      : Iterator over the connected app IDs (JSON-RPC serializes this as a JSON array).
+ *                      Ex: ["org.rdk.youtube","org.rdk.netflix"]
  * @return Core::ERROR_NONE on success, Core::ERROR_GENERAL on error.
  */
-Core::hresult RDKWindowManagerImplementation::GetApps(string &appsIds) const
+Core::hresult RDKWindowManagerImplementation::GetApps(RPC::IStringIterator*& appsIds) const
 {
+    appsIds = nullptr;
     Core::hresult status = Core::ERROR_GENERAL;
     bool retValue = false;
     std::vector<std::string> clientList;
-    JsonArray clientsArray;
     bool lockAcquired = false;
 
     lockAcquired = lockRdkWindowManagerMutex();
@@ -772,24 +773,23 @@ Core::hresult RDKWindowManagerImplementation::GetApps(string &appsIds) const
         retValue = CompositorController::getClients(clientList);
         gRdkWindowManagerMutex.unlock();
     }
+    else
+    {
+        LOGERR("Failed to acquire RDKWindowManager mutex in GetApps");
+    }
 
     if (true == retValue)
     {
-        for (size_t i = 0; i < clientList.size(); i++)
+        appsIds = Core::Service<RPC::StringIterator>::Create<RPC::IStringIterator>(clientList);
+        if (nullptr != appsIds)
         {
-            clientsArray.Add(clientList[i]);
-        }
-
-        if (clientsArray.IsSet())
-        {
-            clientsArray.ToString(appsIds);
-            LOGINFO("List of appsIds: %s", appsIds.c_str());
+            LOGINFO("List of appsIds count: %zu", clientList.size());
+            status = Core::ERROR_NONE;
         }
         else
         {
-            LOGWARN("There are no apps");
+            LOGERR("GetApps Failed to allocate iterator");
         }
-        status = Core::ERROR_NONE;
     }
     else
     {
@@ -1554,7 +1554,7 @@ Core::hresult RDKWindowManagerImplementation::GetVisibility(const std::string &c
  * @focus[in]         : Optional - focus is required or not
  * @return            : Optional - true/false
  */
-bool RDKWindowManagerImplementation::createDisplay(const string& client, const string& displayName, const uint32_t displayWidth, const uint32_t displayHeight, const bool virtualDisplay, const uint32_t virtualWidth, const uint32_t virtualHeight, const uint32_t ownerId, const uint32_t groupId, const bool topmost, const bool focus)
+bool RDKWindowManagerImplementation::createDisplay(const string& client, const string& displayName, const uint32_t displayWidth, const uint32_t displayHeight, const bool virtualDisplay, const uint32_t virtualWidth, const uint32_t virtualHeight, const uint32_t ownerId, const uint32_t groupId, const bool topmost, const bool focus, const string& capabilities)
 {
     bool ret = false;
 
@@ -1570,7 +1570,7 @@ bool RDKWindowManagerImplementation::createDisplay(const string& client, const s
                 LOGERR("createDisplay: system is shutting down, request rejected for client: %s", client.c_str());
                 return false;
             }
-            request = std::make_shared<CreateDisplayRequest>(client, displayName, displayWidth, displayHeight, virtualDisplay, virtualWidth, virtualHeight, topmost, focus, ownerId, groupId);
+            request = std::make_shared<CreateDisplayRequest>(client, displayName, displayWidth, displayHeight, virtualDisplay, virtualWidth, virtualHeight, topmost, focus, ownerId, groupId, capabilities);
             gCreateDisplayRequests.push_back(request);
         }
         gRequestCV.notify_one();
@@ -1599,7 +1599,7 @@ bool RDKWindowManagerImplementation::createDisplay(const string& client, const s
     }
     else
     {
-        LOGERR("Client: %s already exist", client.c_str());
+        LOGERR("create display rejected: client already exists clientId=%s", client.c_str());
     }
 
     return ret;
@@ -2058,7 +2058,7 @@ Core::hresult RDKWindowManagerImplementation::GetLastKeyInfo(uint32_t &keyCode, 
     }
     else
     {
-        LOGERR("Failed to get last keyinfo information");
+        LOGERR("GetLastKeyInfo failed");
         retStatus = Core::ERROR_GENERAL;
     }
     
@@ -2207,6 +2207,36 @@ Core::hresult RDKWindowManagerImplementation::StopVncServer()
 }
 
 /**
+ * @brief Gets the name of the currently focused application.
+ *
+ * @param[out] client: the identifier of the currently focused application
+ * @return    : Core::hresult (Core::ERROR_NONE on success, Core::ERROR_GENERAL on failure)
+ */
+Core::hresult RDKWindowManagerImplementation::GetFocused(string &client) const
+{
+    Core::hresult status = Core::ERROR_GENERAL;
+
+    bool lockAcquired = lockRdkWindowManagerMutex();
+
+    bool ret = RdkWindowManager::CompositorController::getFocused(client);
+    if (ret)
+    {
+        status = Core::ERROR_NONE;
+    }
+    else
+    {
+        LOGERR("GetFocused: Failed to retrieve focused client");
+    }
+
+    if (lockAcquired)
+    {
+        gRdkWindowManagerMutex.unlock();
+    }
+
+    return status;
+}
+
+/**
  * @brief Captures a screenshot of the current compositor output.
  *
  * This method initiates a screenshot capture. The actual capture is performed asynchronously
@@ -2242,6 +2272,40 @@ Core::hresult RDKWindowManagerImplementation::GetScreenshot()
     return status;
 }
 
+Core::hresult RDKWindowManagerImplementation::SetAlias(const string& clientId, const string& alias)
+{
+    Core::hresult status = Core::ERROR_GENERAL;
+
+    if (clientId.empty())
+    {
+        LOGERR("SetAlias: clientId is empty");
+        return status;
+    }
+
+    if (alias.empty())
+    {
+        LOGERR("SetAlias: alias is empty");
+        return status;
+    }
+
+    const bool lockAcquired = lockRdkWindowManagerMutex();
+    if (lockAcquired)
+    {
+        if (true == RdkWindowManager::CompositorController::setAlias(clientId, alias))
+        {
+            status = Core::ERROR_NONE;
+        }
+        else
+        {
+            LOGERR("SetAlias: Failed to set alias for clientId '%s'", clientId.c_str());
+        }
+
+        gRdkWindowManagerMutex.unlock();
+    }
+
+    return status;
+}
+
 void RDKWindowManagerImplementation::notifyScreenshotComplete(bool success)
 {
     LOGINFO("Screenshot capture %s, imageData size: %zu bytes", success ? "succeeded" : "failed", gScreenshotImageData.length());
@@ -2250,6 +2314,207 @@ void RDKWindowManagerImplementation::notifyScreenshotComplete(bool success)
     {
         notification->OnScreenshotComplete(success, gScreenshotImageData);
     }
+}
+
+/**
+ * @brief Shows or hides the splash screen.
+ *
+ * When show is true, displays the splash screen via the window manager.
+ * When show is false, hides the splash screen.
+ *
+ * @return    : Core::hresult (Core::ERROR_NONE on success, Core::ERROR_GENERAL on failure)
+ */
+Core::hresult RDKWindowManagerImplementation::ShowSplashScreen(const bool show)
+{
+    Core::hresult status = Core::ERROR_GENERAL;
+
+    LOGINFO("ShowSplashScreen: show=%s", show ? "true" : "false");
+
+    bool lockAcquired = lockRdkWindowManagerMutex();
+
+    bool ret = false;
+    if (show)
+    {
+        ret = RdkWindowManager::CompositorController::showSplashScreen(180);
+        if (true == ret)
+        {
+            status = Core::ERROR_NONE;
+        }
+        else
+        {
+            LOGERR("ShowSplashScreen: Failed to show splash screen");
+        }
+    }
+    else
+    {
+        ret = RdkWindowManager::CompositorController::hideSplashScreen();
+        if (true == ret)
+        {
+            status = Core::ERROR_NONE;
+        }
+        else
+        {
+            LOGERR("ShowSplashScreen: Failed to hide splash screen");
+        }
+    }
+
+    if (lockAcquired)
+    {
+        gRdkWindowManagerMutex.unlock();
+    }
+
+    return status;
+}
+/**
+ * @brief Sets the bounds (position and size) of the specified client.
+ *
+ * @param[in] clientId  : client name or application instance ID
+ * @param[in] x         : x coordinate of the client window
+ * @param[in] y         : y coordinate of the client window
+ * @param[in] width     : width of the client window in pixels
+ * @param[in] height    : height of the client window in pixels
+ * @return    Core::<StatusCode>: Core::ERROR_NONE on success, Core::ERROR_GENERAL on failure
+ */
+Core::hresult RDKWindowManagerImplementation::SetBounds(const string& clientId, const uint32_t x, const uint32_t y, const uint32_t width, const uint32_t height)
+{
+    Core::hresult status = Core::ERROR_GENERAL;
+
+    if (clientId.empty())
+    {
+        LOGERR("SetBounds: clientId is empty");
+        return status;
+    }
+
+    const bool lockAcquired = lockRdkWindowManagerMutex();
+    if (lockAcquired)
+    {
+        if (true == RdkWindowManager::CompositorController::setBounds(clientId, x, y, width, height))
+        {
+            LOGINFO("SetBounds: client:%s x:%u y:%u width:%u height:%u", clientId.c_str(), x, y, width, height);
+            status = Core::ERROR_NONE;
+        }
+        else
+        {
+            LOGERR("SetBounds: Failed to set bounds for client '%s'", clientId.c_str());
+        }
+
+        gRdkWindowManagerMutex.unlock();
+    }
+
+    return status;
+}
+
+/**
+ * @brief Gets the bounds (position and size) of the specified client.
+ *
+ * @param[in]  clientId : client name or application instance ID
+ * @param[out] x        : x coordinate of the client window
+ * @param[out] y        : y coordinate of the client window
+ * @param[out] width    : width of the client window in pixels
+ * @param[out] height   : height of the client window in pixels
+ * @return    Core::<StatusCode>: Core::ERROR_NONE on success, Core::ERROR_GENERAL on failure
+ */
+Core::hresult RDKWindowManagerImplementation::GetBounds(const string& clientId, uint32_t& x, uint32_t& y, uint32_t& width, uint32_t& height) const
+{
+    Core::hresult status = Core::ERROR_GENERAL;
+
+    if (clientId.empty())
+    {
+        LOGERR("GetBounds: clientId is empty");
+        return status;
+    }
+
+    const bool lockAcquired = lockRdkWindowManagerMutex();
+    if (lockAcquired)
+    {
+        if (true == RdkWindowManager::CompositorController::getBounds(clientId, x, y, width, height))
+        {
+            LOGINFO("GetBounds: client:%s x:%u y:%u width:%u height:%u", clientId.c_str(), x, y, width, height);
+            status = Core::ERROR_NONE;
+        }
+        else
+        {
+            LOGERR("GetBounds: Failed to get bounds for client '%s'", clientId.c_str());
+        }
+
+        gRdkWindowManagerMutex.unlock();
+    }
+
+    return status;
+}
+
+/**
+ * @brief Sets the scale of the specified client.
+ *
+ * @param[in] clientId : client name or application instance ID
+ * @param[in] scaleX   : horizontal scale factor
+ * @param[in] scaleY   : vertical scale factor
+ * @return    Core::<StatusCode>: Core::ERROR_NONE on success, Core::ERROR_GENERAL on failure
+ */
+Core::hresult RDKWindowManagerImplementation::SetScale(const string& clientId, const double scaleX, const double scaleY)
+{
+    Core::hresult status = Core::ERROR_GENERAL;
+
+    if (clientId.empty())
+    {
+        LOGERR("SetScale: clientId is empty");
+        return status;
+    }
+
+    const bool lockAcquired = lockRdkWindowManagerMutex();
+    if (lockAcquired)
+    {
+        if (true == RdkWindowManager::CompositorController::setScale(clientId, scaleX, scaleY))
+        {
+            LOGINFO("SetScale: client:%s scaleX:%f scaleY:%f", clientId.c_str(), scaleX, scaleY);
+            status = Core::ERROR_NONE;
+        }
+        else
+        {
+            LOGERR("SetScale: Failed to set scale for client '%s'", clientId.c_str());
+        }
+
+        gRdkWindowManagerMutex.unlock();
+    }
+
+    return status;
+}
+
+/**
+ * @brief Gets the scale of the specified client.
+ *
+ * @param[in]  clientId : client name or application instance ID
+ * @param[out] scaleX   : horizontal scale factor
+ * @param[out] scaleY   : vertical scale factor
+ * @return    Core::<StatusCode>: Core::ERROR_NONE on success, Core::ERROR_GENERAL on failure
+ */
+Core::hresult RDKWindowManagerImplementation::GetScale(const string& clientId, double& scaleX, double& scaleY) const
+{
+    Core::hresult status = Core::ERROR_GENERAL;
+
+    if (clientId.empty())
+    {
+        LOGERR("GetScale: clientId is empty");
+        return status;
+    }
+
+    const bool lockAcquired = lockRdkWindowManagerMutex();
+    if (lockAcquired)
+    {
+        if (true == RdkWindowManager::CompositorController::getScale(clientId, scaleX, scaleY))
+        {
+            LOGINFO("GetScale: client:%s scaleX:%f scaleY:%f", clientId.c_str(), scaleX, scaleY);
+            status = Core::ERROR_NONE;
+        }
+        else
+        {
+            LOGERR("GetScale: Failed to get scale for client '%s'", clientId.c_str());
+        }
+
+        gRdkWindowManagerMutex.unlock();
+    }
+
+    return status;
 }
 
 } /* namespace Plugin */

@@ -75,11 +75,11 @@ namespace Plugin
 
         if (nullptr == context)
         {
-            LOGERR("context is nullptr");
+            LOGERR("TelemetryMetrics client invalid: context is nullptr");
         }
         else if (!isTelemetryClientAvailable())
         {
-            LOGERR("TelemetryMetrics client is not valid");
+            LOGERR("TelemetryMetrics client unavailable during telemetry record");
         }
         else if (!data.HasLabel("appId") || (appId = data["appId"].String()).empty())
         {
@@ -150,7 +150,7 @@ namespace Plugin
                     }
                 break;
                 default:
-                    LOGERR("requestType is invalid");
+                    LOGERR("Invalid telemetry requestType=%d for appId=%s", requestType, appId.c_str());
                 break;
             }
 

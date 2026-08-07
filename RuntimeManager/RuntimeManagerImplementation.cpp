@@ -19,6 +19,7 @@
 
 #include "RuntimeManagerImplementation.h"
 #include "DobbySpecGenerator.h"
+#include "GStreamerRegistry.h"
 #include "UtilsAppManagerTelemetry.h"
 #ifdef RDK_APPMANAGERS_DEBUG
 #include "ContainerUtils.h"
@@ -164,11 +165,16 @@ namespace WPEFramework
 
             JsonObject obj = params.Object();
             string appIdFromContainer = obj["containerId"].String();
-            if (!mRuntimeAppPortal.empty() && appIdFromContainer.find(mRuntimeAppPortal) == 0) // TODO improve logic of fetching appInstanceId
+            string appInstanceId = "";
+
+            for (const auto& entry : mRuntimeAppInfo)
             {
-                appIdFromContainer.erase(0, mRuntimeAppPortal.length());
+                if (entry.second.containerId == appIdFromContainer)
+                {
+                    appInstanceId = entry.first;
+                    break;
+                }
             }
-            string appInstanceId = std::move(appIdFromContainer);
             string eventName = obj["eventName"].String();
             LOGINFO("Dispatching event[%s] for appInstanceId[%s]", eventName.c_str(), appInstanceId.c_str());
 
@@ -180,7 +186,7 @@ namespace WPEFramework
                     string containerState = obj["state"];
                     int containerStateInt = std::stoi(containerState);
                     RuntimeState state = static_cast<RuntimeState>(containerStateInt);
-                    LOGINFO("RuntimeManagerImplementation::Dispatch: state[%d]", state);
+                    LOGINFO("state[%d]", state);
                     (*index)->OnStateChanged(appInstanceId, state);
                     ++index;
                 }
@@ -229,10 +235,15 @@ namespace WPEFramework
                 {
                     mRuntimeAppInfo.erase(appInstanceId);
                 }
-                while (index != mRuntimeManagerNotification.end())
                 {
-                    (*index)->OnTerminated(appInstanceId);
-                    ++index;
+                    int32_t exitCode = 0;
+                    if (obj.HasLabel("exitCode"))
+                        exitCode = static_cast<int32_t>(obj["exitCode"].Number());
+                    while (index != mRuntimeManagerNotification.end())
+                    {
+                        (*index)->OnTerminated(appInstanceId, exitCode);
+                        ++index;
+                    }
                 }
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
                 {
@@ -240,6 +251,16 @@ namespace WPEFramework
                     ralfBuilder.unmountOverlayfsIfExists(appInstanceId);
                 }
 #endif // RALF_PACKAGE_SUPPORT_ENABLED
+
+#ifdef RIALTO_IN_DAC_FEATURE_ENABLED
+                {
+                    mRialtoConnector->deactivateSession(appInstanceId);
+                    if (!mRialtoConnector->waitForStateChange(appInstanceId, RialtoServerStates::NOT_RUNNING, RIALTO_TIMEOUT_MILLIS))
+                    {
+                        LOGERR("Rialto session state change failed when changing to not running.");
+                    }
+                }
+#endif // RIALTO_IN_DAC_FEATURE_ENABLED
                 break;
             }
 
@@ -263,7 +284,7 @@ namespace WPEFramework
                 break;
 
             default:
-                LOGWARN("Event[%u] not handled", event);
+                LOGWARN("Unhandled RuntimeManager event: id=%u", event);
                 break;
             }
         }
@@ -318,10 +339,19 @@ namespace WPEFramework
                 LOGINFO("runtimeConfigFile=%s", mRuntimeConfigFile.c_str());
                 mAIConfiguration = new AIConfiguration();
                 mAIConfiguration->initialize(mRuntimeConfigFile);
+
+                if (mAIConfiguration->getGstreamerRegistryEnabled())
+                {
+                    GStreamerRegistry gstRegistry;
+                    if (gstRegistry.generate())
+                        mGstRegistrySourcePath = gstRegistry.path();
+                    else
+                        LOGWARN("GStreamerRegistry generation failed; containers will not have GST registry bind-mount");
+                }
             }
             else
             {
-                LOGERR("service is null");
+                LOGERR("Configure failed: service is null");
             }
             return result;
         }
@@ -472,7 +502,7 @@ namespace WPEFramework
                     }
                     else
                     {
-                        LOGERR("Failed to get Storage Manager info");
+                        LOGERR("GetStorage failed for appId=%s status=%d", appId.c_str(), status);
                     }
                 }
             }
@@ -493,6 +523,8 @@ namespace WPEFramework
             return false;
         }
         DobbySpecGenerator generator(*mAIConfiguration);
+        if (!mGstRegistrySourcePath.empty())
+            generator.setGstreamerRegistryPath(mGstRegistrySourcePath);
         return generator.generate(config, runtimeConfigObject, dobbySpec);
 #endif // RALF_PACKAGE_SUPPORT_ENABLED
         }
@@ -531,12 +563,15 @@ namespace WPEFramework
         std::string RuntimeManagerImplementation::getContainerId(const string &appInstanceId)
         {
             string containerId = "";
-
-            if (!appInstanceId.empty())
+	        if (!appInstanceId.empty())
             {
-                containerId = mRuntimeAppPortal + appInstanceId;
+                auto infoIt = mRuntimeAppInfo.find(appInstanceId);
+                if (infoIt != mRuntimeAppInfo.end())
+                {
+                    containerId = infoIt->second.containerId;
+                }
             }
-            return containerId;
+	        return containerId;
         }
         Core::hresult RuntimeManagerImplementation::Run(const string &appId, const string &appInstanceId, const uint32_t userId, const uint32_t groupId, IValueIterator *const &ports, IStringIterator *const &paths, IStringIterator *const &debugSettings, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject)
         {
@@ -571,9 +606,8 @@ namespace WPEFramework
             gid_t gid;
             {
                 Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
-
-                uid = mUserIdManager->getUserId(appId);
-                gid = mUserIdManager->getAppsGid();
+		uid = runtimeConfigObject.userId;
+		gid = runtimeConfigObject.groupId;
             }
 
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
@@ -634,8 +668,8 @@ namespace WPEFramework
                 appStorageInfo.userId = uid;
                 appStorageInfo.groupId = gid;
 #else
-                appStorageInfo.userId = userId;
-                appStorageInfo.groupId = groupId;
+                appStorageInfo.userId = 0;
+                appStorageInfo.groupId = 0;
 #endif //RALF_PACKAGE_SUPPORT_ENABLED
                 if (Core::ERROR_NONE == getAppStorageInfo(appIdForStorage, appStorageInfo))
                 {
@@ -644,8 +678,8 @@ namespace WPEFramework
                     config.mAppStorageInfo.userId = uid;
                     config.mAppStorageInfo.groupId = gid;
 #else
-                    config.mAppStorageInfo.userId = userId;
-                    config.mAppStorageInfo.groupId = groupId;
+                    config.mAppStorageInfo.userId = uid;
+                    config.mAppStorageInfo.groupId = gid;
 #endif // RALF_PACKAGE_SUPPORT_ENABLED
                     config.mAppStorageInfo.size = std::move(appStorageInfo.size);
                     config.mAppStorageInfo.used = std::move(appStorageInfo.used);
@@ -657,7 +691,7 @@ namespace WPEFramework
             {
 
                 mWindowManagerConnector->getDisplayInfo(appInstanceId, xdgRuntimeDir, waylandDisplay);
-                displayResult = mWindowManagerConnector->createDisplay(appInstanceId, waylandDisplay, uid, gid);
+                displayResult = mWindowManagerConnector->createDisplay(appInstanceId, waylandDisplay, uid, gid, runtimeConfigObject.capabilities);
                 if (false == displayResult)
                 {
                     LOGERR("Failed to create display");
@@ -693,9 +727,9 @@ namespace WPEFramework
                 // RALF package will create a socket with the name same as appInstanceId.
                 rialtoSocket = "rlto-" + appInstanceId;
 #endif // RALF_PACKAGE_SUPPORT_ENABLED
-                if (mRialtoConnector->createAppSession(appId, westerosSocket, rialtoSocket))
+                if (mRialtoConnector->createAppSession(appInstanceId, westerosSocket, rialtoSocket))
                 {
-                    if (!mRialtoConnector->waitForStateChange(appId, RialtoServerStates::ACTIVE, RIALTO_TIMEOUT_MILLIS))
+                    if (!mRialtoConnector->waitForStateChange(appInstanceId, RialtoServerStates::ACTIVE, RIALTO_TIMEOUT_MILLIS))
                     {
                         LOGWARN(" Rialto app session not ready. ");
                         status = Core::ERROR_GENERAL;
@@ -731,7 +765,11 @@ namespace WPEFramework
             {
                 /* Scoped Lock 1: Validate OCI plugin pointer — brief read lock */
                 bool ociValid = false;
-                string containerId = getContainerId(appInstanceId);
+                string containerId = mRuntimeAppPortal + "_" + appId + "_" + appInstanceId;
+                if (containerId.length() > 64)
+                {
+                    containerId = containerId.substr(0, 64);
+                }
                 {
                     Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
                     ociValid = isOCIPluginObjectValid();
@@ -792,6 +830,7 @@ namespace WPEFramework
                                     runtimeAppInfo.appId = appId;
                                 }
                                 runtimeAppInfo.appInstanceId = appInstanceId;
+                                runtimeAppInfo.containerId = std::move(containerId);
                                 runtimeAppInfo.descriptor = std::move(descriptor);
                                 runtimeAppInfo.containerState = Exchange::IRuntimeManager::RUNTIME_STATE_STARTING;
                                 /* Store request time and type in runtime app info map */
@@ -800,7 +839,7 @@ namespace WPEFramework
                                 /* Insert/update runtime app info */
                                 {
                                     Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
-                                    mRuntimeAppInfo[runtimeAppInfo.appInstanceId] = std::move(runtimeAppInfo);
+                                    mRuntimeAppInfo[appInstanceId] = std::move(runtimeAppInfo);
                                 }
                         }
                     }
@@ -1073,8 +1112,8 @@ namespace WPEFramework
                 }
 #ifdef RIALTO_IN_DAC_FEATURE_ENABLED
             LOGINFO("Rialto session deactivate on terminate.");
-            mRialtoConnector->deactivateSession(mRuntimeAppInfo[appInstanceId].appId);
-            if (!mRialtoConnector->waitForStateChange(mRuntimeAppInfo[appInstanceId].appId, RialtoServerStates::NOT_RUNNING, RIALTO_TIMEOUT_MILLIS))
+            mRialtoConnector->deactivateSession(appInstanceId);
+            if (!mRialtoConnector->waitForStateChange(appInstanceId, RialtoServerStates::NOT_RUNNING, RIALTO_TIMEOUT_MILLIS))
             {
                 LOGERR("Rialto session state change failed when changing to not running.");
                 status = Core::ERROR_GENERAL;
@@ -1138,8 +1177,8 @@ namespace WPEFramework
                 }
 #ifdef RIALTO_IN_DAC_FEATURE_ENABLED
             LOGINFO("Rialto Session deactivate on kill..");
-            mRialtoConnector->deactivateSession(mRuntimeAppInfo[appInstanceId].appId);
-            if (!mRialtoConnector->waitForStateChange(mRuntimeAppInfo[appInstanceId].appId, RialtoServerStates::NOT_RUNNING, RIALTO_TIMEOUT_MILLIS))
+            mRialtoConnector->deactivateSession(appInstanceId);
+            if (!mRialtoConnector->waitForStateChange(appInstanceId, RialtoServerStates::NOT_RUNNING, RIALTO_TIMEOUT_MILLIS))
             {
                 LOGERR("Rialto session state change failed when changing to not running ");
                 status = Core::ERROR_GENERAL;
@@ -1270,7 +1309,7 @@ namespace WPEFramework
                     auto webInspector = WebInspector::attach(name, addr, debugPort);
                     if (webInspector)
                     {
-                        mWebInspectors[name] = webInspector;
+                        mWebInspectors[name] = std::move(webInspector);
                         mPortAvailability[debugPort] = true;
                         LOGINFO("WebInspector attached for container %s on host port %d", name.c_str(), debugPort);
                     }

@@ -30,13 +30,19 @@
 #include "OCIContainerMock.h"
 #include "WindowManagerMock.h"
 #include "WorkerPoolImplementation.h"
+
+#define CREATE_DISPLAY_WILDCARDS \
+    ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, \
+    ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, \
+    ::testing::_, ::testing::_
 #include <fstream>
 #include <atomic>
 #include <chrono>
 #include <thread>
 
 #define TEST_LOG(x, ...) fprintf(stderr, "\033[1;32m[%s:%d](%s)<PID:%d><TID:%d>" x "\n\033[0m", __FILE__, __LINE__, __FUNCTION__, getpid(), gettid(), ##__VA_ARGS__); fflush(stderr);
-#define TEST_APP_CONTAINER_ID "com.sky.as.appsyouTube"
+#define TEST_APP_CONTAINER_ID            "com.sky.as.apps_youTube_youTube"
+#define TEST_APP_CONTAINER_ID_UNREGISTERED "com.sky.as.apps_youTube"
 
 using namespace WPEFramework;
 using ::testing::NiceMock;
@@ -55,9 +61,10 @@ public:
         startedCount++;
     }
 
-    void OnTerminated(const string& appInstanceId) override
+    void OnTerminated(const string& appInstanceId, const int32_t exitCode) override
     {
         (void)appInstanceId;
+        (void)exitCode;
         terminatedCount++;
     }
 
@@ -75,9 +82,9 @@ public:
         stateChangedCount++;
     }
 
-    void AddRef() const override
+    uint32_t AddRef() const override
     {
-        refCount++;
+        return ++refCount;
     }
 
     uint32_t Release() const override
@@ -238,14 +245,36 @@ TEST_F(RuntimeManagerTest, TerminateMethods)
 
     EXPECT_EQ(true, createResources());
 
-    EXPECT_CALL(*mociContainerMock, StopContainer(TEST_APP_CONTAINER_ID, false,::testing::_, ::testing::_))
+    EXPECT_CALL(*mociContainerMock, StartContainerFromDobbySpec(TEST_APP_CONTAINER_ID, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .Times(1)
+        .WillOnce(::testing::Invoke(
+            [&](const string&, const string&, const string&, const string&, int32_t& descriptor, bool& success, string& errorReason) {
+                descriptor = 100;
+                success = true;
+                errorReason = "No Error";
+                return WPEFramework::Core::ERROR_NONE;
+            }));
+
+    ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .WillByDefault(::testing::Return(Core::ERROR_NONE));
+
+    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
+    runtimeConfig.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=main";
+    runtimeConfig.appPath = "/var/runTimeManager";
+    runtimeConfig.runtimePath = "/tmp/runTimeManager";
+    runtimeConfig.systemMemoryLimit = 512;
+    runtimeConfig.command = "SkyBrowserLauncher";
+
+    EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, nullptr, nullptr, nullptr, runtimeConfig));
+
+    EXPECT_CALL(*mociContainerMock, StopContainer(TEST_APP_CONTAINER_ID, false, ::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
         .WillOnce(::testing::Invoke(
             [&](const string&, bool force, bool& success, string& errorReason) {
                 success = true;
                 errorReason = "No Error";
                 return WPEFramework::Core::ERROR_NONE;
-          }));
+            }));
 
     EXPECT_EQ(Core::ERROR_NONE, interface->Terminate(appInstanceId));
     releaseResources();
@@ -267,7 +296,7 @@ TEST_F(RuntimeManagerTest, TerminateFailsWithEmptyAppInstanceId)
 
     EXPECT_EQ(true, createResources());
 
-    EXPECT_CALL(*mociContainerMock, StopContainer(TEST_APP_CONTAINER_ID, false,::testing::_, ::testing::_))
+    EXPECT_CALL(*mociContainerMock, StopContainer(TEST_APP_CONTAINER_ID_UNREGISTERED, false,::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
         .WillOnce(::testing::Invoke(
             [&](const string&, bool force, bool& success, string& errorReason) {
@@ -297,13 +326,8 @@ TEST_F(RuntimeManagerTest, TerminateNonExistentContainer) {
     EXPECT_EQ(true, createResources());
 
     EXPECT_CALL(*mociContainerMock, StopContainer(::testing::_, ::testing::_, ::testing::_, ::testing::_))
-        .WillOnce(::testing::Invoke(
-            [&](const string&, bool, bool& success, string& errorReason) {
-                success = false;
-                errorReason = "Container not found";
-                return Core::ERROR_GENERAL;
-            }));
-    EXPECT_EQ(Core::ERROR_NONE, interface->Terminate(appInstanceId));
+           .Times(0);
+    EXPECT_EQ(Core::ERROR_GENERAL, interface->Terminate(appInstanceId));
     releaseResources();
 }
 
@@ -322,13 +346,8 @@ TEST_F(RuntimeManagerTest, TerminateWithInvalidContainerId) {
 
     EXPECT_EQ(true, createResources());
     EXPECT_CALL(*mociContainerMock, StopContainer(::testing::_, ::testing::_, ::testing::_, ::testing::_))
-        .WillOnce(::testing::Invoke(
-            [&](const string&, bool, bool& success, string& errorReason) {
-                success = false;
-                errorReason = "Container not found";
-                return Core::ERROR_GENERAL;
-            }));
-    EXPECT_EQ(Core::ERROR_NONE, interface->Terminate(appInstanceId));
+        .Times(0);
+    EXPECT_EQ(Core::ERROR_GENERAL, interface->Terminate(appInstanceId));
     releaseResources();
 }
 
@@ -346,15 +365,8 @@ TEST_F(RuntimeManagerTest, TerminateAlreadyStoppedContainer) {
     string appInstanceId("youTube");
     EXPECT_EQ(true, createResources());
 
-    // Mock container as already stopped
-    EXPECT_CALL(*mociContainerMock, StopContainer(TEST_APP_CONTAINER_ID, false, ::testing::_, ::testing::_))
-        .WillOnce(::testing::Invoke(
-            [&](const string&, bool, bool& success, string& errorReason) {
-                success = false;
-                errorReason = "Container already stopped";
-                return Core::ERROR_GENERAL;
-            }));
-
+    EXPECT_CALL(*mociContainerMock, StopContainer(::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .Times(0);
     EXPECT_EQ(Core::ERROR_GENERAL, interface->Terminate(appInstanceId));
     releaseResources();
 }
@@ -373,16 +385,8 @@ TEST_F(RuntimeManagerTest, TerminateAlreadyStoppedContainer) {
 TEST_F(RuntimeManagerTest, TerminateWithForceFails) {
     string appInstanceId("youTube");
     EXPECT_EQ(true, createResources());
-
-    // Mock force-stop failure
-    EXPECT_CALL(*mociContainerMock, StopContainer(TEST_APP_CONTAINER_ID, true, ::testing::_, ::testing::_))
-        .WillOnce(::testing::Invoke(
-            [&](const string&, bool, bool& success, string& errorReason) {
-                success = false;
-                errorReason = "System error: Cannot kill process";
-                return Core::ERROR_GENERAL;
-            }));
-
+    EXPECT_CALL(*mociContainerMock, StopContainer(::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .Times(0);
     EXPECT_EQ(Core::ERROR_GENERAL, interface->Kill(appInstanceId));
     releaseResources();
 }
@@ -400,13 +404,8 @@ TEST_F(RuntimeManagerTest, TerminateWithForceFails) {
  */
 TEST_F(RuntimeManagerTest, KillNonExistentContainer) {
     EXPECT_EQ(true, createResources());
-    EXPECT_CALL(*mociContainerMock, StopContainer("com.sky.as.appsInvalid", true, ::testing::_, ::testing::_))
-        .WillOnce(::testing::Invoke(
-            [&](const string&, bool, bool& success, string& errorReason) {
-                success = false;
-                errorReason = "Container not found";
-                return Core::ERROR_GENERAL;
-            }));
+    EXPECT_CALL(*mociContainerMock, StopContainer(::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .Times(0);
     EXPECT_EQ(Core::ERROR_GENERAL, interface->Kill("Invalid"));
     releaseResources();
 }
@@ -424,13 +423,8 @@ TEST_F(RuntimeManagerTest, KillNonExistentContainer) {
  */
 TEST_F(RuntimeManagerTest, KillWithPermissionDenied) {
     EXPECT_EQ(true, createResources());
-    EXPECT_CALL(*mociContainerMock, StopContainer(::testing::_, true, ::testing::_, ::testing::_))
-        .WillOnce(::testing::Invoke(
-            [&](const string&, bool, bool& success, string& errorReason) {
-                success = false;
-                errorReason = "Permission denied";
-                return Core::ERROR_GENERAL;
-            }));
+    EXPECT_CALL(*mociContainerMock, StopContainer(::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .Times(0);
     EXPECT_EQ(Core::ERROR_GENERAL, interface->Kill("youTube"));
     releaseResources();
 }
@@ -451,6 +445,28 @@ TEST_F(RuntimeManagerTest, HibernateMethods)
     string appInstanceId("youTube");
 
     EXPECT_EQ(true, createResources());
+
+    EXPECT_CALL(*mociContainerMock, StartContainerFromDobbySpec(TEST_APP_CONTAINER_ID, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .Times(1)
+        .WillOnce(::testing::Invoke(
+            [&](const string&, const string&, const string&, const string&, int32_t& descriptor, bool& success, string& errorReason) {
+                descriptor = 100;
+                success = true;
+                errorReason = "No Error";
+                return WPEFramework::Core::ERROR_NONE;
+            }));
+
+    ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .WillByDefault(::testing::Return(Core::ERROR_NONE));
+
+    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
+    runtimeConfig.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=main";
+    runtimeConfig.appPath = "/var/runTimeManager";
+    runtimeConfig.runtimePath = "/tmp/runTimeManager";
+    runtimeConfig.systemMemoryLimit = 512;
+    runtimeConfig.command = "SkyBrowserLauncher";
+
+    EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, nullptr, nullptr, nullptr, runtimeConfig));
 
     EXPECT_CALL(*mociContainerMock, HibernateContainer(TEST_APP_CONTAINER_ID, "",::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
@@ -481,7 +497,7 @@ TEST_F(RuntimeManagerTest, HibernateFailsWithEmptyAppInstanceId)
 
     EXPECT_EQ(true, createResources());
 
-    EXPECT_CALL(*mociContainerMock, HibernateContainer(TEST_APP_CONTAINER_ID, "",::testing::_, ::testing::_))
+    EXPECT_CALL(*mociContainerMock, HibernateContainer(TEST_APP_CONTAINER_ID_UNREGISTERED, "",::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
         .WillOnce(::testing::Invoke(
             [&](const string&, const string&, bool& success, string& errorReason) {
@@ -511,6 +527,28 @@ TEST_F(RuntimeManagerTest, KillMethods)
 
     EXPECT_EQ(true, createResources());
 
+    EXPECT_CALL(*mociContainerMock, StartContainerFromDobbySpec(TEST_APP_CONTAINER_ID, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .Times(1)
+        .WillOnce(::testing::Invoke(
+            [&](const string&, const string&, const string&, const string&, int32_t& descriptor, bool& success, string& errorReason) {
+                descriptor = 100;
+                success = true;
+                errorReason = "No Error";
+                return WPEFramework::Core::ERROR_NONE;
+            }));
+
+    ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .WillByDefault(::testing::Return(Core::ERROR_NONE));
+
+    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
+    runtimeConfig.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=main";
+    runtimeConfig.appPath = "/var/runTimeManager";
+    runtimeConfig.runtimePath = "/tmp/runTimeManager";
+    runtimeConfig.systemMemoryLimit = 512;
+    runtimeConfig.command = "SkyBrowserLauncher";
+
+    EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, nullptr, nullptr, nullptr, runtimeConfig));
+
     EXPECT_CALL(*mociContainerMock, StopContainer(TEST_APP_CONTAINER_ID, true,::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
         .WillOnce(::testing::Invoke(
@@ -539,7 +577,7 @@ TEST_F(RuntimeManagerTest, KillFailsWithEmptyAppInstanceId)
 
     EXPECT_EQ(true, createResources());
 
-    EXPECT_CALL(*mociContainerMock, StopContainer(TEST_APP_CONTAINER_ID, true,::testing::_, ::testing::_))
+    EXPECT_CALL(*mociContainerMock, StopContainer(TEST_APP_CONTAINER_ID_UNREGISTERED, true,::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
         .WillOnce(::testing::Invoke(
             [&](const string&, bool force, bool& success, string& errorReason) {
@@ -552,7 +590,7 @@ TEST_F(RuntimeManagerTest, KillFailsWithEmptyAppInstanceId)
     releaseResources();
 }
 
-/* Test Case for AnnonateMethods
+/* Test Case for AnnotateMethods
  *
  * Setting up the Runtime Manager Plugin and creating necessary COM-RPC resources
  * Defining a valid appInstanceId along with key-value annotation data
@@ -561,13 +599,35 @@ TEST_F(RuntimeManagerTest, KillFailsWithEmptyAppInstanceId)
  * Asserting that the Annotate() method returns Core::ERROR_NONE upon success
  * Cleaning up by releasing the Runtime Manager Interface object and test resources
  */
-TEST_F(RuntimeManagerTest, AnnonateMethods)
+TEST_F(RuntimeManagerTest, AnnotateMethods)
 {
     string appInstanceId("youTube");
     string appKey("youTube_Key");
     string appValue("youTube_Key");
 
     EXPECT_EQ(true, createResources());
+
+    EXPECT_CALL(*mociContainerMock, StartContainerFromDobbySpec(TEST_APP_CONTAINER_ID, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .Times(1)
+        .WillOnce(::testing::Invoke(
+            [&](const string&, const string&, const string&, const string&, int32_t& descriptor, bool& success, string& errorReason) {
+                descriptor = 100;
+                success = true;
+                errorReason = "No Error";
+                return WPEFramework::Core::ERROR_NONE;
+            }));
+
+    ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .WillByDefault(::testing::Return(Core::ERROR_NONE));
+
+    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
+    runtimeConfig.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=main";
+    runtimeConfig.appPath = "/var/runTimeManager";
+    runtimeConfig.runtimePath = "/tmp/runTimeManager";
+    runtimeConfig.systemMemoryLimit = 512;
+    runtimeConfig.command = "SkyBrowserLauncher";
+
+    EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, nullptr, nullptr, nullptr, runtimeConfig));
 
     EXPECT_CALL(*mociContainerMock, Annotate(TEST_APP_CONTAINER_ID, appKey,appValue,::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
@@ -607,13 +667,8 @@ TEST_F(RuntimeManagerTest, AnnotateWithEmptyKeyOrValue) {
  */
 TEST_F(RuntimeManagerTest, AnnotateNonExistentContainer) {
     EXPECT_EQ(true, createResources());
-    EXPECT_CALL(*mociContainerMock, Annotate("com.sky.as.appsInvalid", ::testing::_, ::testing::_, ::testing::_, ::testing::_))
-        .WillOnce(::testing::Invoke(
-            [&](const string&, const string&, const string&, bool& success, string& errorReason) {
-                success = false;
-                errorReason = "Container not found";
-                return Core::ERROR_GENERAL;
-            }));
+    EXPECT_CALL(*mociContainerMock, Annotate(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .Times(0);
     EXPECT_EQ(Core::ERROR_GENERAL, interface->Annotate("Invalid", "key", "value"));
     releaseResources();
 }
@@ -635,7 +690,7 @@ TEST_F(RuntimeManagerTest, AnnotateFailsWithEmptyAppInstanceId)
 
     EXPECT_EQ(true, createResources());
 
-    EXPECT_CALL(*mociContainerMock, Annotate(TEST_APP_CONTAINER_ID, appKey,appValue,::testing::_, ::testing::_))
+    EXPECT_CALL(*mociContainerMock, Annotate(TEST_APP_CONTAINER_ID_UNREGISTERED, appKey,appValue,::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
         .WillOnce(::testing::Invoke(
             [&](const string& , const string& , const string& , bool& success , string& errorReason ){
@@ -666,6 +721,28 @@ TEST_F(RuntimeManagerTest, GetInfoMethods)
 
     EXPECT_EQ(true, createResources());
 
+    EXPECT_CALL(*mociContainerMock, StartContainerFromDobbySpec(TEST_APP_CONTAINER_ID, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .Times(1)
+        .WillOnce(::testing::Invoke(
+            [&](const string&, const string&, const string&, const string&, int32_t& descriptor, bool& success, string& errorReason) {
+                descriptor = 100;
+                success = true;
+                errorReason = "No Error";
+                return WPEFramework::Core::ERROR_NONE;
+            }));
+
+    ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .WillByDefault(::testing::Return(Core::ERROR_NONE));
+
+    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
+    runtimeConfig.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=main";
+    runtimeConfig.appPath = "/var/runTimeManager";
+    runtimeConfig.runtimePath = "/tmp/runTimeManager";
+    runtimeConfig.systemMemoryLimit = 512;
+    runtimeConfig.command = "SkyBrowserLauncher";
+
+    EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, nullptr, nullptr, nullptr, runtimeConfig));
+
     EXPECT_CALL(*mociContainerMock, GetContainerInfo(TEST_APP_CONTAINER_ID, ::testing::_,::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
         .WillOnce(::testing::Invoke(
@@ -694,14 +771,8 @@ TEST_F(RuntimeManagerTest, GetInfoMethods)
 TEST_F(RuntimeManagerTest, GetInfoForNonExistentContainer) {
     string appInfo;
     EXPECT_EQ(true, createResources());
-    EXPECT_CALL(*mociContainerMock, GetContainerInfo("com.sky.as.appsInvalid", ::testing::_, ::testing::_, ::testing::_))
-        .WillOnce(::testing::Invoke(
-            [&](const string&, string& info, bool& success, string& errorReason) {
-                info = "";
-                success = false;
-                errorReason = "Container not found";
-                return Core::ERROR_GENERAL;
-            }));
+    EXPECT_CALL(*mociContainerMock, GetContainerInfo(::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .Times(0);
     EXPECT_EQ(Core::ERROR_GENERAL, interface->GetInfo("Invalid", appInfo));
     EXPECT_TRUE(appInfo.empty());
     releaseResources();
@@ -720,14 +791,8 @@ TEST_F(RuntimeManagerTest, GetInfoForNonExistentContainer) {
 TEST_F(RuntimeManagerTest, GetInfoForValidContainerReturnError) {
     string appInfo;
     EXPECT_EQ(true, createResources());
-    EXPECT_CALL(*mociContainerMock, GetContainerInfo("com.sky.as.appsInvalid", ::testing::_, ::testing::_, ::testing::_))
-        .WillOnce(::testing::Invoke(
-            [&](const string&, string& info, bool& success, string& errorReason) {
-                info = "";
-                success = true;
-                errorReason = "No Error";
-                return Core::ERROR_GENERAL;
-            }));
+    EXPECT_CALL(*mociContainerMock, GetContainerInfo(::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .Times(0);
     EXPECT_EQ(Core::ERROR_GENERAL, interface->GetInfo("Invalid", appInfo));
     EXPECT_TRUE(appInfo.empty());
     releaseResources();
@@ -803,7 +868,7 @@ TEST_F(RuntimeManagerTest, RunMethods)
                 return WPEFramework::Core::ERROR_NONE;
           }));
 
-    ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+    ON_CALL(*mWindowManagerMock, CreateDisplay(CREATE_DISPLAY_WILDCARDS))
             .WillByDefault(::testing::Return(Core::ERROR_NONE));
 
     EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, runtimeConfig));
@@ -849,7 +914,7 @@ TEST_F(RuntimeManagerTest, RunWithoutCreateDisplay)
                 return WPEFramework::Core::ERROR_NONE;
           }));
 
-    ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+    ON_CALL(*mWindowManagerMock, CreateDisplay(CREATE_DISPLAY_WILDCARDS))
             .WillByDefault(::testing::Return(Core::ERROR_GENERAL));
 
     EXPECT_EQ(Core::ERROR_GENERAL, interface->Run(appInstanceId, appInstanceId, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, runtimeConfig));
@@ -908,12 +973,68 @@ TEST_F(RuntimeManagerTest, RunCreateFkpsMounts)
                 return WPEFramework::Core::ERROR_NONE;
           }));
 
-    ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+    ON_CALL(*mWindowManagerMock, CreateDisplay(CREATE_DISPLAY_WILDCARDS))
             .WillByDefault(::testing::Return(Core::ERROR_NONE));
 
     EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, runtimeConfig));
 
     releaseResources();
+}
+
+/* Test Case for RunCreateExtraMountsFromCapabilities
+ *
+ * Creates a source file and injects extraMounts capability in runtime config
+ * Verifies that generated Dobby spec contains expected bind-mount source and destination
+ * Ensures Run() completes successfully when extra mount source exists
+ */
+TEST_F(RuntimeManagerTest, RunCreateExtraMountsFromCapabilities)
+{
+    string appInstanceId("youTube");
+    std::vector<uint32_t> portList = {10, 20};
+    std::vector<std::string> pathsList = {"/tmp", "/opt"};
+    std::vector<std::string> debugSettingsList = {"MIL", "INFO"};
+
+    auto portsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IValueIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IValueIterator>(portList);
+    auto pathsListIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(pathsList);
+    auto debugSettingsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
+
+    const std::string extraMountSource = "/tmp/l1-extra-mount-source.json";
+    const std::string extraMountDestination = "/tmp/l1-extra-mount-destination.json";
+    {
+        std::ofstream mountSourceFile(extraMountSource);
+        ASSERT_TRUE(mountSourceFile.is_open()) << "Failed to create extra mount source file";
+        mountSourceFile << "{}";
+    }
+
+    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
+    runtimeConfig.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=main";
+    runtimeConfig.appPath = "/var/runTimeManager";
+    runtimeConfig.runtimePath = "/tmp/runTimeManager";
+    runtimeConfig.systemMemoryLimit = 512;
+    runtimeConfig.command ="SkyBrowserLauncher";
+    runtimeConfig.capabilities = "dial-app,extraMounts=" + extraMountSource + ":" + extraMountDestination;
+
+    EXPECT_EQ(true, createResources());
+
+    EXPECT_CALL(*mociContainerMock, StartContainerFromDobbySpec(TEST_APP_CONTAINER_ID, ::testing::_, "", "/run/user/1001/wst-youTube", ::testing::_, ::testing::_, ::testing::_))
+        .Times(::testing::AnyNumber())
+        .WillOnce(::testing::Invoke(
+            [&](const string&, const string& spec, const string&, const string&, int32_t& descriptor, bool& success, string& errorReason) {
+                EXPECT_NE(std::string::npos, spec.find(extraMountSource));
+                EXPECT_NE(std::string::npos, spec.find(extraMountDestination));
+                descriptor = 100;
+                success = true;
+                errorReason = "No Error";
+                return WPEFramework::Core::ERROR_NONE;
+          }));
+
+    ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+            .WillByDefault(::testing::Return(Core::ERROR_NONE));
+
+    EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, runtimeConfig));
+
+    releaseResources();
+    EXPECT_EQ(0, remove(extraMountSource.c_str()));
 }
 
 /* Test Case for RunReadfromAIConfigFile
@@ -986,7 +1107,7 @@ TEST_F(RuntimeManagerTest, RunReadfromAIConfigFile)
                 return Core::ERROR_NONE;
             }));
 
-    ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_)).WillByDefault(::testing::Return(Core::ERROR_NONE));
+    ON_CALL(*mWindowManagerMock, CreateDisplay(CREATE_DISPLAY_WILDCARDS)).WillByDefault(::testing::Return(Core::ERROR_NONE));
 
     LOGINFO("Calling Run");
     EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 1000, 1001,
@@ -1165,7 +1286,7 @@ TEST_F(RuntimeManagerTest, RunIncludesDefaultEthanLogLevelsWhenRuntimeLogLevelsP
             }));
 
     ON_CALL(*mWindowManagerMock,
-            CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+            CreateDisplay(CREATE_DISPLAY_WILDCARDS))
         .WillByDefault(::testing::Return(Core::ERROR_NONE));
 
     EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10,
@@ -1424,7 +1545,7 @@ TEST_F(RuntimeManagerTest, SuspendResumeMethods)
                 return WPEFramework::Core::ERROR_NONE;
           }));
 
-    ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+    ON_CALL(*mWindowManagerMock, CreateDisplay(CREATE_DISPLAY_WILDCARDS))
             .WillByDefault(::testing::Return(Core::ERROR_NONE));
 
     EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, runtimeConfig));
@@ -1523,7 +1644,7 @@ TEST_F(RuntimeManagerTest, SuspendFailsWithPauseContainerError)
                 return Core::ERROR_NONE;
             }));
 
-    ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_)).WillByDefault(::testing::Return(Core::ERROR_NONE));
+    ON_CALL(*mWindowManagerMock, CreateDisplay(CREATE_DISPLAY_WILDCARDS)).WillByDefault(::testing::Return(Core::ERROR_NONE));
 
     EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, runtimeConfig));
 
@@ -1578,7 +1699,7 @@ TEST_F(RuntimeManagerTest, ResumeFailsResumePauseContainerError)
                 return Core::ERROR_NONE;
             }));
 
-    ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_)).WillByDefault(::testing::Return(Core::ERROR_NONE));
+    ON_CALL(*mWindowManagerMock, CreateDisplay(CREATE_DISPLAY_WILDCARDS)).WillByDefault(::testing::Return(Core::ERROR_NONE));
 
     EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, runtimeConfig));
 
@@ -1625,6 +1746,10 @@ TEST_F(RuntimeManagerTest, OCIContainerEvents)
     mRuntimeManagerImpl->onOCIContainerStoppedEvent(dummyName, dummyData);
     mRuntimeManagerImpl->onOCIContainerFailureEvent(dummyName, dummyData);
     mRuntimeManagerImpl->onOCIContainerStateChangedEvent(dummyName, dummyData);
+
+    /* Drain all in-flight worker pool jobs submitted by the event handlers
+     * before releasing mocks, to prevent use-after-free races. */
+    workerPool->Stop();
 
     releaseResources();
 }
@@ -1715,7 +1840,7 @@ TEST_F(RuntimeManagerTest, DobbyEventListenerCallbacksThroughOCINotification)
     EXPECT_EQ(Core::ERROR_NONE, interface->Register(&probe));
 
     ociNotification->OnContainerStarted("container.1", "app.started");
-    ociNotification->OnContainerStopped("container.1", "app.stopped");
+    ociNotification->OnContainerStopped("container.1", "app.stopped", 0);
     ociNotification->OnContainerFailed("container.1", "app.failed", 42);
     ociNotification->OnContainerStateChanged("container.1", Exchange::IOCIContainer::ContainerState::RUNNING);
 

@@ -1431,27 +1431,16 @@ TEST_F(AppManagerTest, PreloadAppUsingComRpcFailureWrongAppID)
 {
     Core::hresult status;
     std::string error = "";
-    uint32_t signalled = AppManager_StateInvalid;
-    Core::Sink<NotificationHandler> notification;
-    ExpectedAppLifecycleEvent expectedEvent;
 
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
 
-    expectedEvent.appId = APPMANAGER_WRONG_APP_ID;
-    expectedEvent.appInstanceId = "";
-    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNKNOWN;
-    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED;
-    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_NOT_INSTALLED;
-    mAppManagerImpl->Register(&notification);
-    notification.SetExpectedEvent(expectedEvent);
-
     LaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::PAUSED);
 
-    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->PreloadApp(APPMANAGER_WRONG_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS, error));
-
-    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
-    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+    /* PreloadApp for an app that is not installed must fail up front with
+     * ERROR_GENERAL (consistent with LaunchApp) instead of being queued. */
+    EXPECT_EQ(Core::ERROR_GENERAL, mAppManagerImpl->PreloadApp(APPMANAGER_WRONG_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS, error));
+    EXPECT_FALSE(error.empty());
 
     if(status == Core::ERROR_NONE)
     {
@@ -3827,6 +3816,11 @@ TEST_F(AppManagerTest, LaunchAppLockFailureListPackagesFails)
     signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
     EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
 
+    /* Drain async worker jobs before teardown so Job::~Job() has released
+     * mAppManagerImpl references. No additional event is expected here. */
+    signalled = notification.WaitForRequestStatus(JOB_DRAIN_TIMEOUT, AppManager_onAppInstalled);
+    EXPECT_FALSE(signalled & AppManager_onAppInstalled);
+
     mAppManagerImpl->Unregister(&notification);
     if (status == Core::ERROR_NONE)
     {
@@ -3884,6 +3878,11 @@ TEST_F(AppManagerTest, LaunchAppLockFailureLockReturnError)
 
     signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
     EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+
+    /* Drain async worker jobs before teardown so Job::~Job() has released
+     * mAppManagerImpl references. No additional event is expected here. */
+    signalled = notification.WaitForRequestStatus(JOB_DRAIN_TIMEOUT, AppManager_onAppInstalled);
+    EXPECT_FALSE(signalled & AppManager_onAppInstalled);
 
     mAppManagerImpl->Unregister(&notification);
     if (status == Core::ERROR_NONE)
@@ -4898,6 +4897,8 @@ TEST_F(AppManagerTest, AppManagerImplRemoveAppInfoByAppIdFound)
 
     mAppManagerImpl->Unregister(&notification);
 
+    workerPool->Stop();
+    
     /* Verify the entry has been removed */
     EXPECT_FALSE(AppInfoManager::getInstance().exists(APPMANAGER_APP_ID));
 
@@ -4943,6 +4944,69 @@ TEST_F(AppManagerTest, GetCustomValuesWithAipathFileHasContent)
         std::unique_lock<std::mutex> lock(mPreLoadMutex);
         ASSERT_TRUE(mPreLoadCV.wait_for(lock, std::chrono::seconds(10), [&] { return mPreLoadSpawmCalled; }));
     }
+
+    if (status == Core::ERROR_NONE)
+    {
+        releaseResources();
+    }
+}
+
+/*
+ * Test Case for AppCrashedUnexpectedTerminationFiresAbortNotification
+ * Simulates the kill -SEGV crash scenario: LifecycleManager detects an unexpected
+ * container termination and propagates it to AppManager with
+ * navigationIntent == "unexpectedTermination".
+ * Verifies that:
+ *   - The onAppLifecycleStateChanged notification fires with APP_ERROR_ABORT.
+ *   - The onAppUnloaded notification fires so the app is cleaned up.
+ */
+TEST_F(AppManagerTest, AppCrashedUnexpectedTerminationFiresAbortNotification)
+{
+    Core::hresult status;
+    status = createResources();
+    EXPECT_EQ(Core::ERROR_NONE, status);
+
+    /* Pre-populate AppInfoManager so the connector can look up the app */
+    AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [](Plugin::AppInfo& a) {
+        a.setAppInstanceId(APPMANAGER_APP_INSTANCE);
+        a.setAppNewState(Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE);
+    });
+
+    /* Set up expected notification: UNLOADED with APP_ERROR_ABORT */
+    ExpectedAppLifecycleEvent expectedEvent;
+    expectedEvent.appId         = APPMANAGER_APP_ID;
+    expectedEvent.appInstanceId = APPMANAGER_APP_INSTANCE;
+    expectedEvent.newState      = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED;
+    expectedEvent.oldState      = Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
+    expectedEvent.errorReason   = Exchange::IAppManager::AppErrorReason::APP_ERROR_ABORT;
+
+    Core::Sink<NotificationHandler> notification;
+    mAppManagerImpl->Register(&notification);
+    notification.SetExpectedEvent(expectedEvent);
+
+    ASSERT_NE(mLifecycleManagerStateNotification_cb, nullptr)
+        << "LifecycleManagerState notification callback must be registered";
+
+    /* Simulate LifecycleManager signalling an unexpected container termination */
+    mLifecycleManagerStateNotification_cb->OnAppLifecycleStateChanged(
+        APPMANAGER_APP_ID,
+        APPMANAGER_APP_INSTANCE,
+        Exchange::ILifecycleManager::LifecycleState::ACTIVE,   /* old state */
+        Exchange::ILifecycleManager::LifecycleState::UNLOADED, /* new state */
+        "unexpectedTermination"                                /* crash sentinel */
+    );
+
+    /* onAppLifecycleStateChanged must fire with APP_ERROR_ABORT */
+    uint32_t signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged)
+        << "Expected onAppLifecycleStateChanged with APP_ERROR_ABORT for crash scenario";
+
+    /* onAppUnloaded must also fire */
+    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppUnloaded);
+    EXPECT_TRUE(signalled & AppManager_onAppUnloaded)
+        << "Expected onAppUnloaded to fire after crash";
+
+    mAppManagerImpl->Unregister(&notification);
 
     if (status == Core::ERROR_NONE)
     {

@@ -103,7 +103,7 @@ protected:
             plugin->QueryInterface(PLUGINHOST_DISPATCHER_ID));
         dispatcher->Activate(&serviceMock);
 
-        ON_CALL(serviceMock, AddRef()).WillByDefault(Return());
+        ON_CALL(serviceMock, AddRef()).WillByDefault(Return(0u));
         ON_CALL(serviceMock, Release()).WillByDefault(Return(1u));
         ON_CALL(serviceMock, Callsign()).WillByDefault(Return("org.rdk.RDKWindowManager"));
         ON_CALL(serviceMock, Locator()).WillByDefault(Return("RDKWindowManager"));
@@ -130,7 +130,7 @@ protected:
                 }));
 #endif
 
-        ON_CALL(*windowManagerMock, AddRef()).WillByDefault(Return());
+        ON_CALL(*windowManagerMock, AddRef()).WillByDefault(Return(0u));
         ON_CALL(*windowManagerMock, Release()).WillByDefault(Return(0u));
         ON_CALL(*windowManagerMock, QueryInterface(_)).WillByDefault(Return(nullptr));
 
@@ -241,7 +241,7 @@ TEST_F(RDKWindowManagerTest, RegisteredMethodsExist)
 TEST_F(RDKWindowManagerTest, CreateDisplay_Success)
 {
     const string displayParams = R"({"client":"testApp","displayName":"testDisplay","displayWidth":1920,"displayHeight":1080})";
-    EXPECT_CALL(*windowManagerMock, CreateDisplay(_, _, _, _, _, _, _, _, _, _, _))
+    EXPECT_CALL(*windowManagerMock, CreateDisplay(_, _, _, _, _, _, _, _, _, _, _, _))
         .WillOnce(Return(Core::ERROR_NONE));
 
     EXPECT_EQ(Core::ERROR_NONE,
@@ -253,7 +253,7 @@ TEST_F(RDKWindowManagerTest, CreateDisplay_Success)
 TEST_F(RDKWindowManagerTest, CreateDisplay_Failure)
 {
     const string displayParams = R"({"client":"","displayName":""})";
-    EXPECT_CALL(*windowManagerMock, CreateDisplay(_, _, _, _, _, _, _, _, _, _, _))
+    EXPECT_CALL(*windowManagerMock, CreateDisplay(_, _, _, _, _, _, _, _, _, _, _, _))
         .WillOnce(Return(Core::ERROR_GENERAL));
 
     EXPECT_EQ(Core::ERROR_GENERAL,
@@ -267,15 +267,22 @@ TEST_F(RDKWindowManagerTest, CreateDisplay_Failure)
  * ===================================================================== */
 TEST_F(RDKWindowManagerTest, GetApps_Success)
 {
-    const string expectedApps = R"(["testApp","anotherApp"])";
+    std::vector<string> expectedApps = { "testApp", "anotherApp" };
     EXPECT_CALL(*windowManagerMock, GetApps(_))
-        .WillOnce(Invoke([&](string& appsIds) {
-            appsIds = expectedApps;
+        .WillOnce(Invoke([&](RPC::IStringIterator*& appsIds) {
+            appsIds = Core::Service<RPC::StringIterator>::Create<RPC::IStringIterator>(expectedApps);
             return Core::ERROR_NONE;
         }));
 
     EXPECT_EQ(Core::ERROR_NONE,
         handler.Invoke(connection, _T("getApps"), _T("{}"), response));
+
+    // Verify the result is a native JSON array, not a JSON-encoded string.
+    // The old bug produced escaped JSON like: "appsIds":"[\"testApp\",\"anotherApp\"]"
+    // The fix must produce a native array: "appsIds":["testApp","anotherApp"]
+    EXPECT_EQ(string::npos, response.find("\\\""));
+    EXPECT_NE(string::npos, response.find("testApp"));
+    EXPECT_NE(string::npos, response.find("anotherApp"));
 }
 
 TEST_F(RDKWindowManagerTest, GetApps_Failure)
@@ -1216,7 +1223,7 @@ TEST_F(RDKWindowManagerTest, GetZOrder_MissingAppInstanceId_Failure)
 
 TEST_F(RDKWindowManagerTest, CreateDisplay_MissingDisplayParams_Failure)
 {
-    EXPECT_CALL(*windowManagerMock, CreateDisplay(_, _, _, _, _, _, _, _, _, _, _))
+    EXPECT_CALL(*windowManagerMock, CreateDisplay(_, _, _, _, _, _, _, _, _, _, _, _))
         .WillOnce(Return(Core::ERROR_GENERAL));
 
     EXPECT_EQ(Core::ERROR_GENERAL,
@@ -1304,6 +1311,34 @@ TEST_F(RDKWindowManagerTest, StopVncServer_Failure)
 }
 
 /* =====================================================================
+ * GetFocused
+ * ===================================================================== */
+TEST_F(RDKWindowManagerTest, GetFocused_Success)
+{
+    EXPECT_CALL(*windowManagerMock, GetFocused(_))
+        .WillOnce(Invoke([](string& client) {
+            client = TEST_CLIENT_ID;
+            return Core::ERROR_NONE;
+        }));
+
+    EXPECT_EQ(Core::ERROR_NONE,
+        handler.Invoke(connection, _T("getFocused"), _T("{}"), response));
+
+    JsonObject result;
+    result.FromString(response);
+    EXPECT_EQ(TEST_CLIENT_ID, result["client"].String());
+}
+
+TEST_F(RDKWindowManagerTest, GetFocused_Failure)
+{
+    EXPECT_CALL(*windowManagerMock, GetFocused(_))
+        .WillOnce(Return(Core::ERROR_GENERAL));
+
+    EXPECT_EQ(Core::ERROR_GENERAL,
+        handler.Invoke(connection, _T("getFocused"), _T("{}"), response));
+}
+
+/* =====================================================================
  * GetScreenshot
  * ===================================================================== */
 TEST_F(RDKWindowManagerTest, GetScreenshot_Success)
@@ -1329,12 +1364,12 @@ TEST_F(RDKWindowManagerTest, GetScreenshot_Failure)
  * ===================================================================== */
 TEST_F(RDKWindowManagerImplementationTest, Impl_CreateDisplay_EmptyParams_Failure)
 {
-    EXPECT_EQ(Core::ERROR_GENERAL, windowManagerImplementation->CreateDisplay("", "", 0, 0, false, 0, 0, 0, 0, false, false));
+    EXPECT_EQ(Core::ERROR_GENERAL, windowManagerImplementation->CreateDisplay("", "", 0, 0, false, 0, 0, 0, 0, false, false, ""));
 }
 
 TEST_F(RDKWindowManagerImplementationTest, Impl_GetApps_Success)
 {
-    string apps;
+    RPC::IStringIterator* apps = nullptr;
     EXPECT_CALL(compositorMock, getClients(_))
         .WillOnce(Invoke([](std::vector<std::string>& clients) {
             clients = { "testapp", "anotherapp" };
@@ -1342,15 +1377,25 @@ TEST_F(RDKWindowManagerImplementationTest, Impl_GetApps_Success)
         }));
 
     EXPECT_EQ(Core::ERROR_NONE, windowManagerImplementation->GetApps(apps));
+    ASSERT_NE(apps, nullptr);
+    string element;
+    std::vector<string> received;
+    while (apps->Next(element)) {
+        received.push_back(element);
+    }
+    apps->Release();
+    EXPECT_THAT(received, ::testing::ElementsAre("testapp", "anotherapp"));
 }
 
 TEST_F(RDKWindowManagerImplementationTest, Impl_GetApps_Failure)
 {
-    string apps;
+    RPC::IStringIterator* apps = nullptr;
     EXPECT_CALL(compositorMock, getClients(_))
         .WillOnce(Return(false));
 
     EXPECT_EQ(Core::ERROR_GENERAL, windowManagerImplementation->GetApps(apps));
+    // On failure the out-param must remain nullptr so callers can safely skip Release().
+    EXPECT_EQ(apps, nullptr);
 }
 
 TEST_F(RDKWindowManagerImplementationTest, Impl_EnableInputEvents_InvalidJson_Failure)
@@ -2036,13 +2081,13 @@ TEST_F(RDKWindowManagerImplementationTest, Impl_InitializeAndDeinitialize_Covers
             return true;
         }));
 
-    EXPECT_CALL(compositorMock, createDisplay("testApp", "disp", 1920u, 1080u, false, 0u, 0u, false, false, 0, 0))
+    EXPECT_CALL(compositorMock, createDisplay("testApp", "disp", 1920u, 1080u, false, 0u, 0u, false, false, 0, 0, _))
         .WillOnce(Return(true));
     EXPECT_CALL(compositorMock, addListener("testApp", NotNull()))
         .WillOnce(Return(true));
 
     EXPECT_EQ(Core::ERROR_NONE, windowManagerImplementation->Initialize(&serviceMock));
-    EXPECT_EQ(Core::ERROR_NONE, windowManagerImplementation->CreateDisplay("testApp", "disp", 1920, 1080, false, 0, 0, 0, 0, false, false));
+    EXPECT_EQ(Core::ERROR_NONE, windowManagerImplementation->CreateDisplay("testApp", "disp", 1920, 1080, false, 0, 0, 0, 0, false, false, ""));
     EXPECT_EQ(Core::ERROR_NONE, windowManagerImplementation->Deinitialize(&serviceMock));
 }
 

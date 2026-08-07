@@ -259,6 +259,8 @@ namespace Plugin {
         } else {
             mDownloadQueue.push_back(di);
         }
+        LOGINFO("PM: Queued download request: id=%s priority=%d queueDepth=%zu urlBytes=%zu",
+            di->GetId().c_str(), options.priority, mDownloadQueue.size(), url.size());
         cv.notify_one();
 
         downloadId.downloadId = di->GetId();
@@ -437,12 +439,17 @@ namespace Plugin {
                 if (it != mState.end()) {
                     State &installedState = it->second;
                     if ( installedState.mLockCount ) {
+#ifdef ENABLE_INSTALL_WHILE_LOCKED
+                        LOGINFO("App is locked id: '%s' ver: '%s' count:%d, proceeding with install due to ENABLE_INSTALL_WHILE_LOCKED",
+                            packageId.c_str(), installedVersion.c_str(), installedState.mLockCount);
+#else
                         LOGWARN("App is locked id: '%s' ver: '%s' count:%d", packageId.c_str(), installedVersion.c_str(), installedState.mLockCount);
                         state.installState = InstallState::INSTALLATION_BLOCKED;
                         state.blockedInstallData.version = version;
                         state.blockedInstallData.keyValues = keyValues;
                         state.blockedInstallData.fileLocator = fileLocator;
                         NotifyInstallStatus(packageId, version, state);
+#endif
                     }
                 }
             }
@@ -592,8 +599,10 @@ namespace Plugin {
             Exchange::IPackageInstaller::Package package;
             package.packageId = key.first.c_str();
             package.version = key.second.c_str();
+            package.digest = state.digest.c_str();
             package.state = state.installState;
             package.sizeKb = state.runtimeConfig.dataImageSize;
+            package.packageType = state.packageType.c_str();
             packageList.emplace_back(package);
         }
 
@@ -611,7 +620,23 @@ namespace Plugin {
         Core::hresult result = Core::ERROR_GENERAL;
         std::lock_guard<std::recursive_mutex> lock(mtxState);
 
-        auto it = mState.find( { packageId, version } );
+        StateMap::iterator it = mState.end();
+        if (!version.empty()) {
+            it = mState.find( { packageId, version } );
+        } else {
+            // No version supplied — find the first INSTALLED entry for this packageId.
+            // StateMap is sorted by {packageId, version}, so all entries for a given
+            // packageId are contiguous; lower_bound gives the first one efficiently.
+            for (auto candidate = mState.lower_bound({packageId, ""});
+                 candidate != mState.end() && candidate->first.first == packageId;
+                 ++candidate) {
+                if (candidate->second.installState == InstallState::INSTALLED) {
+                    it = candidate;
+                    break;
+                }
+            }
+        }
+
         if (it != mState.end()) {
             auto &state = it->second;
             if (state.installState == InstallState::INSTALLED) {
@@ -822,7 +847,12 @@ namespace Plugin {
         runtimeConfig.appPath = config.appPath;
         runtimeConfig.command = config.command;
         runtimeConfig.runtimePath = config.runtimePath;
+        runtimeConfig.enableDebugger = config.enableDebugger;
+        runtimeConfig.logFileMaxSize = config.logFileMaxSize;
+        runtimeConfig.mapi = config.mapi;
+        runtimeConfig.resourceManagerClientEnabled = config.resourceManagerClientEnabled;
         runtimeConfig.ralfPkgPath = config.ralfPkgPath;
+        runtimeConfig.logFilePath = config.logFilePath;
     }
 
     // copy values from libpackage
@@ -871,6 +901,8 @@ namespace Plugin {
         runtimeConfig.command = config.command;
         runtimeConfig.runtimePath = config.runtimePath;
 
+        runtimeConfig.logLevels = config.logLevels;
+        runtimeConfig.logFilePath = config.logFilePath;
         runtimeConfig.enableDebugger = false;
         runtimeConfig.logFileMaxSize = 0;
         runtimeConfig.mapi = false;
@@ -1058,8 +1090,13 @@ namespace Plugin {
             auto config = it->second;
             State state;
             getRuntimeConfig(config, state.runtimeConfig);
+            state.digest = config.md5Hash;
             state.installState = InstallState::INSTALLED;
             state.runtimeType = config.runtimeType;
+            {
+                const auto sep = config.mimeType.find('/');
+                state.packageType = (sep != std::string::npos) ? config.mimeType.substr(0, sep) : config.mimeType;
+            }
             std::map<std::string, std::pair<std::string, std::string>>::iterator it2 = runtimeMap.find(state.runtimeType);
             if (it2 != runtimeMap.end()) {
                 state.runtimeApp = it2->second;
@@ -1196,7 +1233,12 @@ namespace Plugin {
 
                 // Populate state from returned config (mirrors InitializeState())
                 getRuntimeConfig(config, state.runtimeConfig);
+                state.digest = config.md5Hash;
                 state.runtimeType = config.runtimeType;
+                {
+                    const auto sep = config.mimeType.find('/');
+                    state.packageType = (sep != std::string::npos) ? config.mimeType.substr(0, sep) : config.mimeType;
+                }
                 std::map<std::string, std::pair<std::string, std::string>>::iterator itRuntime = runtimeMap.find(state.runtimeType);
                 if (itRuntime != runtimeMap.end()) {
                     state.runtimeApp = itRuntime->second;
@@ -1307,10 +1349,11 @@ namespace Plugin {
     PackageManagerImplementation::DownloadInfoPtr PackageManagerImplementation::getNext()
     {
         std::lock_guard<std::mutex> lock(mMutex);
-        LOGTRACE("mDownloadQueue.size = %ld\n", mDownloadQueue.size());
         if (!mDownloadQueue.empty() && mInprogressDownload == nullptr) {
             mInprogressDownload = mDownloadQueue.front();
             mDownloadQueue.pop_front();
+            LOGINFO("PM: Dequeued download request: id=%s queueDepth=%zu",
+                    mInprogressDownload->GetId().c_str(), mDownloadQueue.size());
         }
         return mInprogressDownload;
     }
