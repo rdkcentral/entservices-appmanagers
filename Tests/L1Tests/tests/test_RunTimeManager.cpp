@@ -20,10 +20,19 @@
 #include<string>
 
 #include "RuntimeManager.h"
+#include <unistd.h>
 #include "RuntimeManagerImplementation.h"
 #include "AIConfiguration.h"
 #include "WindowManagerConnector.h"
 #include "ServiceMock.h"
+namespace {
+std::string CreateUniqueTmpPath(const std::string& prefix)
+{
+    static std::atomic<uint32_t> counter{0};
+
+    return "/tmp/" + prefix + "_" + std::to_string(getpid()) + "_" + std::to_string(counter.fetch_add(1)) + ".bin";
+}
+}
 #include "ThunderPortability.h"
 #include "StorageManagerMock.h"
 #include "COMLinkMock.h"
@@ -79,7 +88,7 @@ public:
     {
         (void)appInstanceId;
         (void)state;
-        stateChangedCount++;
+    const std::string tmpPath = CreateUniqueTmpPath("l1test_gst_registry");
     }
 
     uint32_t AddRef() const override
@@ -89,7 +98,7 @@ public:
 
     uint32_t Release() const override
     {
-        return --refCount;
+    const std::string tmpPath = CreateUniqueTmpPath("l1test_gst_registry_mount");
     }
 
     ~RuntimeManagerNotificationProbe() override = default;
@@ -99,7 +108,7 @@ public:
     END_INTERFACE_MAP
 };
 
-class RuntimeManagerTest : public ::testing::Test {
+    const std::string tmpPath = CreateUniqueTmpPath("l1test_gst_registry_rialto");
 protected:
     string response;
     Core::ProxyType<Plugin::RuntimeManagerImplementation> mRuntimeManagerImpl;
@@ -109,7 +118,7 @@ protected:
     StorageManagerMock* mStoreageManagerMock = nullptr;
     OCIContainerMock* mociContainerMock = nullptr;
     WindowManagerMock* mWindowManagerMock = nullptr;
-    Core::ProxyType<WorkerPoolImplementation> workerPool;
+    const std::string tmpPath = CreateUniqueTmpPath("l1test_gst_registry_mount_rialto");
 
     RuntimeManagerTest()
         : workerPool(Core::ProxyType<WorkerPoolImplementation>::Create(

@@ -47,7 +47,7 @@ namespace WPEFramework
 
         bool deactivateSession(const std::string &callsign);
         void stateChanged(const std::string &appId, const RialtoServerStates &state) override;
-	std::string getSocketPath(const std::string &appId) const;
+        std::string getSocketPath(const std::string &appId) const;
 
         RialtoConnector(const RialtoConnector &) = delete;            // No copying
         RialtoConnector &operator=(const RialtoConnector &) = delete; // No assignment

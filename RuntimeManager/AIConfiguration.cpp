@@ -63,7 +63,7 @@ namespace Plugin
         , mPreloads()
         , mEnvVariables()
         , mDefaultAllowedLogLevels({"fatal", "error", "warning", "milestone", "info", "debug"})
-	, mRialtoOverride(std::nullopt)
+        , mRialtoOverride(std::nullopt)
     {
         // All members initialized in initialization list above
     }

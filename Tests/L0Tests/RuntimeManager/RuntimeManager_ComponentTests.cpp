@@ -31,6 +31,7 @@
 #include <atomic>
 #include <fstream>
 #include <iostream>
+#include <unistd.h>
 #include <string>
 
 #include "AIConfiguration.h"
@@ -48,13 +49,21 @@
 // ──────────────────────────────────────────────────────────────────────────────
 
 /* Test_UserIdManager_GetUserIdReturnsValidRange
+namespace {
+std::string CreateUniqueTmpPath(const std::string& prefix)
+{
+    static std::atomic<uint32_t> counter{0};
+
+    return "/tmp/" + prefix + "_" + std::to_string(getpid()) + "_" + std::to_string(counter.fetch_add(1)) + ".bin";
+}
+}
  *
  * Verifies that getUserId returns a UID in the expected range [30001, 31000].
  */
 uint32_t Test_UserIdManager_GetUserIdReturnsValidRange()
 {
     L0Test::TestResult tr;
-
+    const std::string tmpPath = CreateUniqueTmpPath("l0test_gst_registry");
     WPEFramework::Plugin::UserIdManager mgr;
     const uid_t uid = mgr.getUserId("com.sky.app.youtube");
 
@@ -66,7 +75,7 @@ uint32_t Test_UserIdManager_GetUserIdReturnsValidRange()
 
 /* Test_UserIdManager_GetUserIdSameAppReturnsSameUid
  *
- * Verifies that calling getUserId twice with the same appId returns the
+    const std::string tmpPath = CreateUniqueTmpPath("l0test_gst_registry_mount");
  * same UID (persistent assignment).
  */
 uint32_t Test_UserIdManager_GetUserIdSameAppReturnsSameUid()
@@ -78,7 +87,7 @@ uint32_t Test_UserIdManager_GetUserIdSameAppReturnsSameUid()
     const uid_t uid2 = mgr.getUserId("com.sky.app.youtube");
 
     L0Test::ExpectEqU32(tr, uid1, uid2,
-                        "Two calls for the same appId return identical UIDs");
+    const std::string tmpPath = CreateUniqueTmpPath("l0test_gst_registry_rialto");
 
     return tr.failures;
 }
@@ -90,7 +99,7 @@ uint32_t Test_UserIdManager_GetUserIdSameAppReturnsSameUid()
 uint32_t Test_UserIdManager_GetUserIdDifferentAppsGetDifferentUids()
 {
     L0Test::TestResult tr;
-
+    const std::string tmpPath = CreateUniqueTmpPath("l0test_gst_registry_mount_rialto");
     WPEFramework::Plugin::UserIdManager mgr;
     const uid_t uid1 = mgr.getUserId("com.sky.app.youtube");
     const uid_t uid2 = mgr.getUserId("com.sky.app.netflix");

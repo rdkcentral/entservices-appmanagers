@@ -232,6 +232,14 @@ namespace WPEFramework
                     LOGERR("RuntimeAppInfo not found for appInstanceId: %s", appInstanceId.c_str());
                 }
                 /* Remove the runtime app info entry to prevent map from growing indefinitely */
+#ifdef ENABLE_RIALTO
+                bool usesRialto = false;
+                {
+                    auto rIt = mRuntimeAppInfo.find(appInstanceId);
+                    if (rIt != mRuntimeAppInfo.end())
+                        usesRialto = rIt->second.usesRialto;
+                }
+#endif
                 {
                     mRuntimeAppInfo.erase(appInstanceId);
                 }
@@ -253,6 +261,7 @@ namespace WPEFramework
 #endif // RALF_PACKAGE_SUPPORT_ENABLED
 
 #ifdef ENABLE_RIALTO
+                if (usesRialto)
                 {
                     mRialtoConnector->deactivateSession(appInstanceId);
                     if (!mRialtoConnector->waitForStateChange(appInstanceId, RialtoServerStates::NOT_RUNNING, RIALTO_TIMEOUT_MILLIS))
@@ -764,7 +773,7 @@ namespace WPEFramework
                     else
                     {
                         LOGINFO("[RIALTO] Rialto session reached ACTIVE state for appId='%s'", appId.c_str());
-                        const std::string rialtoSocketPath = mRialtoConnector->getSocketPath(appId);
+                        const std::string rialtoSocketPath = mRialtoConnector->getSocketPath(rialtoSocket);
                         if (!rialtoSocketPath.empty())
                         {
                             config.mRialtoSocketPath = rialtoSocketPath;
@@ -957,7 +966,8 @@ namespace WPEFramework
                         if (!appId.empty() && mRuntimeAppInfo[appInstanceId].usesRialto)
                         {
                             LOGINFO("Rialto session suspend for %s", appId.c_str());
-                            mRialtoConnector->suspendSession(appId);
+                            if (!mRialtoConnector->suspendSession(appInstanceId))
+                                LOGWARN("Rialto suspendSession failed for %s", appId.c_str());
                         }
 #endif
                     }
@@ -1015,7 +1025,8 @@ namespace WPEFramework
                             if (!appId.empty() && mRuntimeAppInfo[appInstanceId].usesRialto)
                             {
                                 LOGINFO("Rialto session resume for %s", appId.c_str());
-                                mRialtoConnector->resumeSession(appId);
+                                if (!mRialtoConnector->resumeSession(appInstanceId))
+                                    LOGWARN("Rialto resumeSession failed for %s", appId.c_str());
                             }
 #endif
                         }
@@ -1074,7 +1085,8 @@ namespace WPEFramework
                         if (!appId.empty() && mRuntimeAppInfo[appInstanceId].usesRialto)
                         {
                             LOGINFO("Rialto session suspend for %s", appId.c_str());
-                            mRialtoConnector->suspendSession(appId);
+                            if (!mRialtoConnector->suspendSession(appInstanceId))
+                                LOGWARN("Rialto suspendSession failed for %s", appId.c_str());
                         }
 #endif
                     }
@@ -1128,7 +1140,8 @@ namespace WPEFramework
                         if (!appId.empty() && mRuntimeAppInfo[appInstanceId].usesRialto)
                         {
                             LOGINFO("Rialto session resume for %s", appId.c_str());
-                            mRialtoConnector->resumeSession(appId);
+                            if (!mRialtoConnector->resumeSession(appInstanceId))
+                                LOGWARN("Rialto resumeSession failed for %s", appId.c_str());
                         }
 #endif
                     }
@@ -1201,12 +1214,15 @@ namespace WPEFramework
                     LOGERR("appInstanceId is not found");
                 }
 #ifdef ENABLE_RIALTO
-           LOGINFO("Rialto session deactivate on terminate.");
-           mRialtoConnector->deactivateSession(appInstanceId);
-           if (!mRialtoConnector->waitForStateChange(appInstanceId, RialtoServerStates::NOT_RUNNING, RIALTO_TIMEOUT_MILLIS))
+           if (mRuntimeAppInfo.count(appInstanceId) && mRuntimeAppInfo[appInstanceId].usesRialto)
            {
-                LOGERR("Rialto session state change failed when changing to not running.");
-                status = Core::ERROR_GENERAL;
+               LOGINFO("Rialto session deactivate on terminate.");
+               mRialtoConnector->deactivateSession(appInstanceId);
+               if (!mRialtoConnector->waitForStateChange(appInstanceId, RialtoServerStates::NOT_RUNNING, RIALTO_TIMEOUT_MILLIS))
+               {
+                   LOGERR("Rialto session state change failed when changing to not running.");
+                   status = Core::ERROR_GENERAL;
+               }
            }
 #endif
 
@@ -1267,12 +1283,15 @@ namespace WPEFramework
                     LOGERR("appInstanceId is not found");
                 }
 #ifdef ENABLE_RIALTO
-            LOGINFO("Rialto Session deactivate on kill..");
-            mRialtoConnector->deactivateSession(appInstanceId);
-            if (!mRialtoConnector->waitForStateChange(appInstanceId, RialtoServerStates::NOT_RUNNING, RIALTO_TIMEOUT_MILLIS))
+            if (mRuntimeAppInfo.count(appInstanceId) && mRuntimeAppInfo[appInstanceId].usesRialto)
             {
-                LOGERR("Rialto session state change failed when changing to not running ");
-                status = Core::ERROR_GENERAL;
+                LOGINFO("Rialto Session deactivate on kill..");
+                mRialtoConnector->deactivateSession(appInstanceId);
+                if (!mRialtoConnector->waitForStateChange(appInstanceId, RialtoServerStates::NOT_RUNNING, RIALTO_TIMEOUT_MILLIS))
+                {
+                    LOGERR("Rialto session state change failed when changing to not running ");
+                    status = Core::ERROR_GENERAL;
+                }
             }
 #endif // ENABLE_RIALTO
             mRuntimeManagerImplLock.Unlock();
