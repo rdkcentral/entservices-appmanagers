@@ -88,7 +88,7 @@ public:
     {
         (void)appInstanceId;
         (void)state;
-    const std::string tmpPath = CreateUniqueTmpPath("l1test_gst_registry");
+        stateChangedCount++;
     }
 
     uint32_t AddRef() const override
@@ -98,7 +98,7 @@ public:
 
     uint32_t Release() const override
     {
-    const std::string tmpPath = CreateUniqueTmpPath("l1test_gst_registry_mount");
+        return --refCount;
     }
 
     ~RuntimeManagerNotificationProbe() override = default;
@@ -108,7 +108,7 @@ public:
     END_INTERFACE_MAP
 };
 
-    const std::string tmpPath = CreateUniqueTmpPath("l1test_gst_registry_rialto");
+class RuntimeManagerTest : public ::testing::Test {
 protected:
     string response;
     Core::ProxyType<Plugin::RuntimeManagerImplementation> mRuntimeManagerImpl;
@@ -118,7 +118,7 @@ protected:
     StorageManagerMock* mStoreageManagerMock = nullptr;
     OCIContainerMock* mociContainerMock = nullptr;
     WindowManagerMock* mWindowManagerMock = nullptr;
-    const std::string tmpPath = CreateUniqueTmpPath("l1test_gst_registry_mount_rialto");
+    Core::ProxyType<WorkerPoolImplementation> workerPool;
 
     RuntimeManagerTest()
         : workerPool(Core::ProxyType<WorkerPoolImplementation>::Create(
@@ -1926,7 +1926,7 @@ static WPEFramework::Plugin::AIConfiguration& GetL1AIConfigurationFixture()
  */
 TEST(DobbySpecGeneratorRialtoTest, GstRegistryEnvInjectedWhenRialtoInactive)
 {
-    const std::string tmpPath = "/tmp/l1test_gst_registry.bin";
+    const std::string tmpPath = CreateUniqueTmpPath("l1test_gst_registry");
     {
         std::ofstream f(tmpPath);
         f << "fake gst registry";
@@ -1963,7 +1963,7 @@ TEST(DobbySpecGeneratorRialtoTest, GstRegistryEnvInjectedWhenRialtoInactive)
  */
 TEST(DobbySpecGeneratorRialtoTest, GstRegistryMountedWhenRialtoInactive)
 {
-    const std::string tmpPath = "/tmp/l1test_gst_registry_mount.bin";
+    const std::string tmpPath = CreateUniqueTmpPath("l1test_gst_registry_mount");
     {
         std::ofstream f(tmpPath);
         f << "fake gst registry";
@@ -2025,7 +2025,7 @@ TEST(DobbySpecGeneratorRialtoTest, RialtoSocketEnvInjectedWhenRialtoActive)
  */
 TEST(DobbySpecGeneratorRialtoTest, GstRegistryEnvAbsentWhenRialtoActive)
 {
-    const std::string tmpPath = "/tmp/l1test_gst_registry_rialto.bin";
+    const std::string tmpPath = CreateUniqueTmpPath("l1test_gst_registry_rialto");
     {
         std::ofstream f(tmpPath);
         f << "fake gst registry";
@@ -2062,7 +2062,7 @@ TEST(DobbySpecGeneratorRialtoTest, GstRegistryEnvAbsentWhenRialtoActive)
  */
 TEST(DobbySpecGeneratorRialtoTest, GstRegistryMountAbsentWhenRialtoActive)
 {
-    const std::string tmpPath = "/tmp/l1test_gst_registry_mount_rialto.bin";
+    const std::string tmpPath = CreateUniqueTmpPath("l1test_gst_registry_mount_rialto");
     {
         std::ofstream f(tmpPath);
         f << "fake gst registry";

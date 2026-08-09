@@ -48,7 +48,6 @@
 //  UserIdManager tests
 // ──────────────────────────────────────────────────────────────────────────────
 
-/* Test_UserIdManager_GetUserIdReturnsValidRange
 namespace {
 std::string CreateUniqueTmpPath(const std::string& prefix)
 {
@@ -57,13 +56,14 @@ std::string CreateUniqueTmpPath(const std::string& prefix)
     return "/tmp/" + prefix + "_" + std::to_string(getpid()) + "_" + std::to_string(counter.fetch_add(1)) + ".bin";
 }
 }
+
+/* Test_UserIdManager_GetUserIdReturnsValidRange
  *
  * Verifies that getUserId returns a UID in the expected range [30001, 31000].
  */
 uint32_t Test_UserIdManager_GetUserIdReturnsValidRange()
 {
     L0Test::TestResult tr;
-    const std::string tmpPath = CreateUniqueTmpPath("l0test_gst_registry");
     WPEFramework::Plugin::UserIdManager mgr;
     const uid_t uid = mgr.getUserId("com.sky.app.youtube");
 
@@ -75,7 +75,7 @@ uint32_t Test_UserIdManager_GetUserIdReturnsValidRange()
 
 /* Test_UserIdManager_GetUserIdSameAppReturnsSameUid
  *
-    const std::string tmpPath = CreateUniqueTmpPath("l0test_gst_registry_mount");
+ * Verifies that calling getUserId() for the same appId twice always returns the
  * same UID (persistent assignment).
  */
 uint32_t Test_UserIdManager_GetUserIdSameAppReturnsSameUid()
@@ -87,7 +87,7 @@ uint32_t Test_UserIdManager_GetUserIdSameAppReturnsSameUid()
     const uid_t uid2 = mgr.getUserId("com.sky.app.youtube");
 
     L0Test::ExpectEqU32(tr, uid1, uid2,
-    const std::string tmpPath = CreateUniqueTmpPath("l0test_gst_registry_rialto");
+                        "same appId always returns the same UID");
 
     return tr.failures;
 }
@@ -99,7 +99,7 @@ uint32_t Test_UserIdManager_GetUserIdSameAppReturnsSameUid()
 uint32_t Test_UserIdManager_GetUserIdDifferentAppsGetDifferentUids()
 {
     L0Test::TestResult tr;
-    const std::string tmpPath = CreateUniqueTmpPath("l0test_gst_registry_mount_rialto");
+
     WPEFramework::Plugin::UserIdManager mgr;
     const uid_t uid1 = mgr.getUserId("com.sky.app.youtube");
     const uid_t uid2 = mgr.getUserId("com.sky.app.netflix");
@@ -2002,7 +2002,7 @@ uint32_t Test_DobbySpecGenerator_GstRegistryInjectedWhenRialtoInactive()
     L0Test::TestResult tr;
 
     // Create a temporary file so that setGstreamerRegistryPath() accepts the path.
-    const std::string tmpPath = "/tmp/l0test_gst_registry.bin";
+    const std::string tmpPath = CreateUniqueTmpPath("l0test_gst_registry");
     {
         std::ofstream f(tmpPath);
         f << "fake gst registry";
@@ -2035,7 +2035,7 @@ uint32_t Test_DobbySpecGenerator_GstRegistryMountedWhenRialtoInactive()
 {
     L0Test::TestResult tr;
 
-    const std::string tmpPath = "/tmp/l0test_gst_registry_mount.bin";
+    const std::string tmpPath = CreateUniqueTmpPath("l0test_gst_registry_mount");
     {
         std::ofstream f(tmpPath);
         f << "fake gst registry";
@@ -2091,7 +2091,7 @@ uint32_t Test_DobbySpecGenerator_GstRegistryEnvAbsentWhenRialtoActive()
     L0Test::TestResult tr;
 
     // Provide a valid GStreamer registry file so the path is accepted.
-    const std::string tmpPath = "/tmp/l0test_gst_registry_rialto.bin";
+    const std::string tmpPath = CreateUniqueTmpPath("l0test_gst_registry_rialto");
     {
         std::ofstream f(tmpPath);
         f << "fake gst registry";
@@ -2124,7 +2124,7 @@ uint32_t Test_DobbySpecGenerator_GstRegistryMountAbsentWhenRialtoActive()
 {
     L0Test::TestResult tr;
 
-    const std::string tmpPath = "/tmp/l0test_gst_registry_mount_rialto.bin";
+    const std::string tmpPath = CreateUniqueTmpPath("l0test_gst_registry_mount_rialto");
     {
         std::ofstream f(tmpPath);
         f << "fake gst registry";
