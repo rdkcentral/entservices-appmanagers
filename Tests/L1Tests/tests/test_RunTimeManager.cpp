@@ -17,10 +17,11 @@
 * limitations under the License.
 **/
 #include <gtest/gtest.h>
-#include<string>
+#include <atomic>
+#include <string>
+#include <unistd.h>
 
 #include "RuntimeManager.h"
-#include <unistd.h>
 #include "RuntimeManagerImplementation.h"
 #include "AIConfiguration.h"
 #include "WindowManagerConnector.h"
