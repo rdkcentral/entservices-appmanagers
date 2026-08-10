@@ -111,10 +111,14 @@ namespace ralf
             LOGERR("Ralf package config JSON does not contain 'packages' field\n");
             return false;
         }
-        for (Json::Value::ArrayIndex i = 0; i < root["packages"].size(); ++i)
+
+        const Json::Value &packagesNode = root["packages"];
+        packages.reserve(packages.size() + packagesNode.size());
+        for (Json::Value::ArrayIndex i = 0; i < packagesNode.size(); ++i)
         {
-            std::string configData = root["packages"][i]["pkgMetaDataPath"].asString();
-            std::string mountPath = root["packages"][i]["pkgMountPath"].asString();
+            const Json::Value &packageNode = packagesNode[i];
+            std::string configData = packageNode["pkgMetaDataPath"].asString();
+            std::string mountPath = packageNode["pkgMountPath"].asString();
             packages.push_back(std::make_pair(configData, mountPath));
         }
         return true;
@@ -133,14 +137,10 @@ namespace ralf
         std::ifstream file(filePath, std::ios::in);
         if (file.is_open())
         {
-
-            std::string configData((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-            file.close();
-
             Json::CharReaderBuilder readerBuilder;
             std::string errs;
-            std::istringstream s(configData);
-            status = Json::parseFromStream(readerBuilder, s, &rootNode, &errs);
+            status = Json::parseFromStream(readerBuilder, file, &rootNode, &errs);
+            file.close();
             if (!status)
                 LOGERR("Failed to parse JSON: %s\n", errs.c_str());
         }

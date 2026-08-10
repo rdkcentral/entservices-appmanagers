@@ -429,7 +429,7 @@ namespace ralf
         return status;
     }
 
-    bool RalfOCIConfigGenerator::applyConfigurationToOCIConfig(Json::Value &ociConfigRootNode, Json::Value &manifestRootNode)
+    bool RalfOCIConfigGenerator::applyConfigurationToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &manifestRootNode)
     {
         if (!addEntryPointToOCIConfig(ociConfigRootNode, manifestRootNode))
         {
@@ -484,7 +484,7 @@ namespace ralf
 
         return true;
     }
-    bool RalfOCIConfigGenerator::addAppPackageVersionToConfig(Json::Value &ociConfigRootNode, Json::Value &manifestRootNode)
+    bool RalfOCIConfigGenerator::addAppPackageVersionToConfig(Json::Value &ociConfigRootNode, const Json::Value &manifestRootNode)
     {
         // Identifies the application package version. This value is used for logging, debugging, and version-specific behavior.
         // It must be derived from the version and versionName fields retrieved from the package metadata and formatted as 'versionName_version'.
@@ -501,7 +501,7 @@ namespace ralf
         addToEnvironment(ociConfigRootNode, "APP_PACKAGE_VERSION", appPackageVersion);
         return true;
     }
-    bool RalfOCIConfigGenerator::addStorageConfigToOCIConfig(Json::Value &ociConfigRootNode, Json::Value &configNode)
+    bool RalfOCIConfigGenerator::addStorageConfigToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &configNode)
     {
         if (configNode.isMember(STORAGE_CONFIG_URN) && configNode[STORAGE_CONFIG_URN].isObject())
         {
@@ -601,7 +601,7 @@ namespace ralf
                 {
                     const std::string envPair = envEntry.asString();
                     // Use compare for more efficient prefix matching
-                    if (envPair.length() > prefixLen &&
+                    if (envPair.length() >= prefixLen &&
                         envPair.compare(0, prefixLen, fireboltPrefix) == 0)
                     {
                         addToEnvironment(ociConfigRootNode, FIREBOLT_ENDPOINT_ENV_KEY, envPair.substr(prefixLen));
@@ -669,9 +669,10 @@ namespace ralf
         }
 
         bool status = false;
-        for (const auto &memberName : envNode.getMemberNames())
+        for (Json::ValueConstIterator it = envNode.begin(); it != envNode.end(); ++it)
         {
-            const Json::Value &valueNode = envNode[memberName];
+            const std::string memberName = it.name();
+            const Json::Value &valueNode = *it;
             if (!valueNode.isString())
             {
                 LOGWARN("Skipping non-string environment variable value in %s for key: %s\n", ENV_CONFIG_URN, memberName.c_str());
@@ -692,9 +693,8 @@ namespace ralf
     {
         // Upsert: remove any existing entry for this key, then append the new value.
         // This enforces the precedence rule (last write wins) and keeps process.env dedup-clean.
-        // Optimized: Single-pass deduplication with early termination.
+        // Optimized: remove only matching entries in place instead of rebuilding the whole array.
 
-        // Pre-allocate string to avoid multiple allocations
         std::string envVar;
         envVar.reserve(key.length() + value.length() + 1);
         envVar.append(key);
@@ -707,35 +707,36 @@ namespace ralf
             processNode = Json::Value(Json::objectValue);
         }
 
-        if (!processNode[ENV].isArray())
+        Json::Value &envNode = processNode[ENV];
+        if (!envNode.isArray())
         {
-            processNode[ENV] = Json::Value(Json::arrayValue);
+            envNode = Json::Value(Json::arrayValue);
         }
-        // Build a deduplicated array, dropping any existing entry for this key.
-        std::string prefix;
-        prefix.reserve(key.length() + 1);
-        prefix.append(key);
-        prefix.push_back('=');
-        Json::Value deduped(Json::arrayValue);
-        for (const auto &existing : processNode[ENV])
+
+        const std::string::size_type keyLength = key.length();
+        Json::Value removedEntry;
+        for (Json::Value::ArrayIndex index = envNode.size(); index > 0; --index)
         {
+            const Json::Value::ArrayIndex currentIndex = index - 1;
+            const Json::Value &existing = envNode[currentIndex];
             if (!existing.isString())
             {
-                deduped.append(existing);
                 continue;
             }
 
             const std::string existingEnvVar = existing.asString();
-            if (existingEnvVar.compare(0, prefix.length(), prefix) != 0)
+            if (existingEnvVar.length() <= keyLength ||
+                existingEnvVar[keyLength] != '=' ||
+                existingEnvVar.compare(0, keyLength, key) != 0)
             {
-                deduped.append(existing);
                 continue;
             }
 
             LOGWARN("Removed duplicate environment variable from OCI config: %s\n", existingEnvVar.c_str());
+            envNode.removeIndex(currentIndex, &removedEntry);
         }
-        deduped.append(envVar);
-        processNode[ENV] = deduped;
+
+        envNode.append(envVar);
         LOGDBG("Added environment variable to OCI config: %s\n", envVar.c_str());
     }
 } // namespace ralf

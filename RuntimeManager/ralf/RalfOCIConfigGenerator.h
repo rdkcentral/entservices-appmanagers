@@ -94,7 +94,7 @@ namespace ralf
          * @param manifestRootNode The manifest root node.
          * @return true if the configuration was applied successfully, false otherwise.
          */
-        bool applyConfigurationToOCIConfig(Json::Value &ociConfigRootNode, Json::Value &manifestRootNode);
+        bool applyConfigurationToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &manifestRootNode);
         /**
          * Adds a mount entry to the OCI config JSON.
          * @param ociConfigRootNode The root node of the OCI config JSON.
@@ -181,7 +181,7 @@ namespace ralf
          * @param manifestRootNode The root node of the manifest JSON containing the version information.
          * @return true if the version was added successfully, false otherwise.
          */
-        bool addAppPackageVersionToConfig(Json::Value &ociConfigRootNode, Json::Value &manifestRootNode);
+        bool addAppPackageVersionToConfig(Json::Value &ociConfigRootNode, const Json::Value &manifestRootNode);
 
         /**
          * Add the storage configuration from the Ralf package config to the OCI config JSON.
@@ -192,7 +192,7 @@ namespace ralf
          * @param manifestRootNode The root node of the manifest JSON containing the storage information.
          * @return true if the storage configuration was added from package, false if default value is added.
          */
-        bool addStorageConfigToOCIConfig(Json::Value &ociConfigRootNode, Json::Value &manifestRootNode);
+        bool addStorageConfigToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &manifestRootNode);
 
         /**
          * Updates the OCI config JSON at rdkPlugins.logging.data.fileOptions.path to point to the
