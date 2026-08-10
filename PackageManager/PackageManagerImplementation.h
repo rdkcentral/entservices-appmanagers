@@ -191,7 +191,7 @@ class PackageManagerImplementation
 
         // IAppPackageManagerConfig methods
         Core::hresult GetConfigForInstalledPackage(const string &packageId, const string &version, string &config /* @out @opaque */) override;
-        Core::hresult GetConfigListForInstalledPackages(string &config /* @out @opaque */) override;
+        Core::hresult GetConfigListForInstalledPackages(const string &filter, string &config /* @out @opaque */) override;
 
         BEGIN_INTERFACE_MAP(PackageManagerImplementation)
             INTERFACE_ENTRY(Exchange::IPackageDownloader)

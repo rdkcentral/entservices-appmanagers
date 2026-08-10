@@ -1332,12 +1332,11 @@ namespace Plugin {
         }
         return result;
     }
-    Core::hresult PackageManagerImplementation::GetConfigListForInstalledPackages(string &config /* @out @opaque */)
+    Core::hresult PackageManagerImplementation::GetConfigListForInstalledPackages(const string &filter, string &config /* @out @opaque */)
     {
         //This is to be implemented for sky libpackage.
         return Core::ERROR_NONE;
     }
-
 } // namespace Plugin
 } // namespace WPEFramework
 
