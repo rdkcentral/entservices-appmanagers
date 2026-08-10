@@ -680,22 +680,24 @@ namespace ralf
             processNode = Json::Value(Json::objectValue);
         }
 
-        if (!processNode[ENV].isArray())
+        Json::Value &envNode = processNode[ENV];
+        if (!envNode.isArray())
         {
-            processNode[ENV] = Json::Value(Json::arrayValue);
+            envNode = Json::Value(Json::arrayValue);
         }
-
-        // Strip existing entries with the same key before appending.
-        Json::Value deduped(Json::arrayValue);
-        for (const auto &existing : processNode[ENV])
+        // Remove any existing entries for this key in reverse order to avoid index shifting issues.
+        for (Json::Value::ArrayIndex i = envNode.size(); i > 0; --i) // 5
         {
-            if (!existing.isString() || extractEnvVarName(existing.asString()) != key)
-                deduped.append(existing);
-            else
-                LOGDBG("Removed duplicate environment variable from OCI config: %s\n", existing.asString().c_str());
+            const Json::Value::ArrayIndex idx = i - 1;
+            std::string existingEntry = envNode[idx].asString();
+            if (existingEntry.rfind(key + "=", 0) == 0)
+            {
+                // Remove in reverse order so index shifts do not skip duplicates.
+                envNode.removeIndex(idx, nullptr);
+                LOGDBG("Removed existing environment variable from OCI config: %s\n", existingEntry.c_str());
+            }
         }
-        deduped.append(envVar);
-        processNode[ENV] = deduped;
+        envNode.append(envVar);
         LOGDBG("Added environment variable to OCI config: %s\n", envVar.c_str());
     }
 } // namespace ralf
