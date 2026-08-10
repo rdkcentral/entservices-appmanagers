@@ -962,14 +962,6 @@ namespace WPEFramework
                             mRuntimeAppInfo[appInstanceId].containerState = Exchange::IRuntimeManager::RUNTIME_STATE_HIBERNATING;
                             appId = mRuntimeAppInfo[appInstanceId].appId;
                         }
-#ifdef ENABLE_RIALTO
-                        if (!appId.empty() && mRuntimeAppInfo[appInstanceId].usesRialto)
-                        {
-                            LOGINFO("Rialto session suspend for %s", appId.c_str());
-                            if (!mRialtoConnector->suspendSession(appInstanceId))
-                                LOGWARN("Rialto suspendSession failed for %s", appId.c_str());
-                        }
-#endif
                     }
                 }
                 else
