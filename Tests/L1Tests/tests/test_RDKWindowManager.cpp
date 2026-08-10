@@ -103,7 +103,7 @@ protected:
             plugin->QueryInterface(PLUGINHOST_DISPATCHER_ID));
         dispatcher->Activate(&serviceMock);
 
-        ON_CALL(serviceMock, AddRef()).WillByDefault(Return());
+        ON_CALL(serviceMock, AddRef()).WillByDefault(Return(0u));
         ON_CALL(serviceMock, Release()).WillByDefault(Return(1u));
         ON_CALL(serviceMock, Callsign()).WillByDefault(Return("org.rdk.RDKWindowManager"));
         ON_CALL(serviceMock, Locator()).WillByDefault(Return("RDKWindowManager"));
@@ -130,7 +130,7 @@ protected:
                 }));
 #endif
 
-        ON_CALL(*windowManagerMock, AddRef()).WillByDefault(Return());
+        ON_CALL(*windowManagerMock, AddRef()).WillByDefault(Return(0u));
         ON_CALL(*windowManagerMock, Release()).WillByDefault(Return(0u));
         ON_CALL(*windowManagerMock, QueryInterface(_)).WillByDefault(Return(nullptr));
 

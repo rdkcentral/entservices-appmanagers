@@ -29,7 +29,7 @@ public:
     virtual ~RemoteConnectionMock() = default;
 
     MOCK_METHOD(uint32_t, Id, (), (const, override));
-    MOCK_METHOD(void, AddRef, (), (const, override));
+    MOCK_METHOD(uint32_t, AddRef, (), (const, override));
     MOCK_METHOD(uint32_t, Release, (), (const, override));
     MOCK_METHOD(uint32_t, RemoteId, (), (const, override));
     MOCK_METHOD(void*, Acquire, (uint32_t, const std::string&, uint32_t, uint32_t), (override));

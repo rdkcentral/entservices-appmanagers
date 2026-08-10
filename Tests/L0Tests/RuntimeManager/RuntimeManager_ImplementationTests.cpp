@@ -90,7 +90,7 @@ public:
         onStartedCount++;
     }
 
-    void OnTerminated(const std::string& /*appInstanceId*/) override
+    void OnTerminated(const std::string& /*appInstanceId*/, const int32_t /*exitCode*/) override
     {
         onTerminatedCount++;
     }

@@ -35,7 +35,7 @@ public:
     MOCK_METHOD(uint32_t ,DeleteKey,(const ScopeType scope, const string& ns , const string& key) ,(override));
     MOCK_METHOD(uint32_t ,DeleteNamespace,(const ScopeType scope, const string& ns ),(override));
 
-    MOCK_METHOD(void, AddRef, (), (const, override));
+    MOCK_METHOD(uint32_t, AddRef, (), (const, override));
     MOCK_METHOD(uint32_t, Release, (), (const, override));
     MOCK_METHOD(void*, QueryInterface, (const uint32_t interfaceNummer), (override));
 

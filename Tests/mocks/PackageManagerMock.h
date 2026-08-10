@@ -33,7 +33,7 @@ public:
     MOCK_METHOD(WPEFramework::Core::hresult, Unlock, (const string &packageId,const string &version), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, GetLockedInfo, (const string &packageId,const string &version,string &unpackedPath, WPEFramework::Exchange::RuntimeConfig &configMetadata, string &gatewayMetadataPath, bool &locked), (override));
 
-    MOCK_METHOD(void, AddRef, (), (const, override));
+    MOCK_METHOD(uint32_t, AddRef, (), (const, override));
     MOCK_METHOD(uint32_t, Release, (), (const, override));
     MOCK_METHOD(void*, QueryInterface, (const uint32_t interfaceNummer), (override));
 };
@@ -53,7 +53,7 @@ public:
     MOCK_METHOD(WPEFramework::Core::hresult, PackageState, (const string &packageId, const string &version, WPEFramework::Exchange::IPackageInstaller::InstallState &state), (override));
     MOCK_METHOD(WPEFramework::Core::hresult, GetConfigForPackage, (const string &fileLocator, string& id, string &version, WPEFramework::Exchange::RuntimeConfig &config), (override));
 
-    MOCK_METHOD(void, AddRef, (), (const, override));
+    MOCK_METHOD(uint32_t, AddRef, (), (const, override));
     MOCK_METHOD(uint32_t, Release, (), (const, override));
     MOCK_METHOD(void*, QueryInterface, (const uint32_t interfaceNummer), (override));
 
