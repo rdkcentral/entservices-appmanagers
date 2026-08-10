@@ -224,8 +224,8 @@ namespace WPEFramework
                             string source = "";
                             appManagerImplInstance->handleOnAppLaunchRequest(appId, intent, source);
 
-                            // AI1.0 parity: ALWAYS set APPLICATION_LAUNCH_PARAMETERS (base64 of launchArgs)
-                            // and APPLICATION_LAUNCH_METHOD so SkyBrowserLauncher can read the
+                            // ALWAYS set APPLICATION_LAUNCH_PARAMETERS (base64 of launchArgs)
+                            // SkyBrowserLauncher can read the
                             // pairingCode and launch method directly from the Dobby container env.
                             // When launchArgs is empty or "{}", use empty string (base64("") = "").
                             std::string effectiveLaunchArgs = launchArgs;
