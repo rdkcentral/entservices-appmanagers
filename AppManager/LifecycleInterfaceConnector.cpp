@@ -265,8 +265,7 @@ namespace WPEFramework
 
                             Json::StreamWriterBuilder w; w["indentation"] = "";
                             runtimeConfigObject.envVariables = Json::writeString(w, envArr);
-                                LOGINFO("launch: APPLICATION_LAUNCH_PARAMETERS='%s' (base64 of '%s')",
-                                    b64Encode(effectiveLaunchArgs).c_str(), effectiveLaunchArgs.c_str());
+LOGINFO("launch: APPLICATION_LAUNCH_PARAMETERS set");
 
                             LOGINFO("spawnApp called ,state %u",state);
                             status = mLifecycleManagerRemoteObject->SpawnApp(appId, intent, state, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success);
