@@ -23,7 +23,6 @@
 #include "RalfSupport.h"
 #include "OCISpecConstants.h"
 #include <fstream>
-#include <ctime>
 
 #define PERSIST_STORAGE_PATH "/data"
 
@@ -31,11 +30,6 @@ namespace ralf
 {
     bool RalfOCIConfigGenerator::generateRalfOCIConfig(const WPEFramework::Plugin::ApplicationConfiguration &config, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject)
     {
-        struct timespec ralfGenStartTs;
-        clock_gettime(CLOCK_MONOTONIC, &ralfGenStartTs);
-        LOGDBG("generateRalfOCIConfig: starting OCI config generation for appId=%s ts=%ld.%09ld\n",
-               config.mAppId.c_str(), ralfGenStartTs.tv_sec, ralfGenStartTs.tv_nsec);
-
         Json::Value ociConfigRootNode;
 
         if (!JsonFromFile(RALF_OCI_BASE_SPEC_FILE, ociConfigRootNode))
@@ -260,12 +254,6 @@ namespace ralf
         {
             LOGERR("Failed to open OCI config output file: %s", mConfigFilePath.c_str());
         }
-
-        struct timespec ralfGenEndTs;
-        clock_gettime(CLOCK_MONOTONIC, &ralfGenEndTs);
-        LOGDBG("generateRalfOCIConfig: finished, config written to file %s ts=%ld.%09ld\n",
-               mConfigFilePath.c_str(), ralfGenEndTs.tv_sec, ralfGenEndTs.tv_nsec);
-
         return status;
     }
 
