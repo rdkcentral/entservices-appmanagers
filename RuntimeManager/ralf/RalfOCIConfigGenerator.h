@@ -148,6 +148,14 @@ namespace ralf
         bool addConfigOverridesToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &configNode);
 
         /**
+         * Adds environment variables from urn:rdk:config:env to OCI process.env.
+         * @param ociConfigRootNode The root node of the OCI config JSON.
+         * @param configNode The config node containing urn:rdk:config:env.
+         * @return true if at least one env var was added, false otherwise.
+         */
+        bool addConfigEnvToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &configNode);
+
+        /**
          * Adds memory configuration from the Ralf package config to the OCI config JSON.
          * if packageType is "application", it will override any configuration that runtime written.
          * @param ociConfigRootNode The root node of the OCI config JSON.
