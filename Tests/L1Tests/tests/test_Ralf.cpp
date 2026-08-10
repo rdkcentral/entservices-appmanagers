@@ -1693,48 +1693,6 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, AddConfigEnv_PosixAllowedCharactersAcc
     EXPECT_TRUE(foundValueWithEqualsVar);
 }
 
-/* Test Case: AddConfigEnv_InvalidEntriesAreSkipped
- * Verifies that malformed env names (starting with digits, empty keys, invalid symbols)
- * are cleanly rejected and omitted from process.env.
- */
-TEST_F(RalfOCIConfigGeneratorPrivateTest, AddConfigEnv_InvalidEntriesAreSkipped)
-{
-    TEST_LOG("Testing addConfigEnvToOCIConfig with invalid POSIX key formats");
-    Json::Value root;
-    Json::Value configNode;
-    configNode[ralf::ENV_CONFIG_URN]["1INVALID"] = "starts-with-digit";    // invalid key
-    configNode[ralf::ENV_CONFIG_URN]["VALID_VAR"] = "valid-value";         // valid key
-    configNode[ralf::ENV_CONFIG_URN]["INVALID-CHAR"] = "invalid-hyphen";  // invalid key
-    configNode[ralf::ENV_CONFIG_URN][""] = "empty-key";                    // invalid key
-    configNode[ralf::ENV_CONFIG_URN]["KEY_%INVALID"] = "special-character"; // invalid key
-
-    EXPECT_TRUE(mAcc.addConfigEnvToOCIConfig(root, configNode));
-
-    bool foundValidVar = false;
-    bool foundInvalidVar1 = false;
-    bool foundInvalidCharVar = false;
-    bool foundEmptyKeyVar = false;
-    bool foundSpecialCharVar = false;
-    for (const auto &e : root[ralf::PROCESS][ralf::ENV])
-    {
-        if (e.asString() == "VALID_VAR=valid-value")
-            foundValidVar = true;
-        if (e.asString().rfind("1INVALID", 0) == 0)
-            foundInvalidVar1 = true;
-        if (e.asString().rfind("INVALID-CHAR", 0) == 0)
-            foundInvalidCharVar = true;
-        if (e.asString() == "=empty-key")
-            foundEmptyKeyVar = true;
-        if (e.asString().rfind("KEY_%INVALID", 0) == 0)
-            foundSpecialCharVar = true;
-    }
-    EXPECT_TRUE(foundValidVar);
-    EXPECT_FALSE(foundInvalidVar1);
-    EXPECT_FALSE(foundInvalidCharVar);
-    EXPECT_FALSE(foundEmptyKeyVar);
-    EXPECT_FALSE(foundSpecialCharVar);
-}
-
 /* Test Case: AddConfigEnv_InvalidJsonValueTypesSkipped
  * Verifies that non-string values inside valid POSIX keys (ints, booleans, objects, nulls)
  * are skipped to avoid breaking OCI configuration specifications.

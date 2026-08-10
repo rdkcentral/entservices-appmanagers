@@ -37,23 +37,6 @@ namespace ralf
             const size_t pos = envEntry.find('=');
             return (pos == std::string::npos) ? envEntry : envEntry.substr(0, pos);
         }
-
-        // Validates POSIX env var name: [A-Za-z_][A-Za-z0-9_]*
-        bool isValidPosixEnvName(const std::string &name)
-        {
-            if (name.empty())
-                return false;
-            const unsigned char first = static_cast<unsigned char>(name[0]);
-            if (!(std::isalpha(first) || name[0] == '_'))
-                return false;
-            for (size_t i = 1; i < name.size(); ++i)
-            {
-                const unsigned char ch = static_cast<unsigned char>(name[i]);
-                if (!(std::isalnum(ch) || name[i] == '_'))
-                    return false;
-            }
-            return true;
-        }
     } // namespace
 
     bool RalfOCIConfigGenerator::generateRalfOCIConfig(const WPEFramework::Plugin::ApplicationConfiguration &config, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject)
@@ -670,11 +653,6 @@ namespace ralf
         bool status = false;
         for (const auto &memberName : envNode.getMemberNames())
         {
-            if (!isValidPosixEnvName(memberName))
-            {
-                LOGWARN("Skipping invalid environment variable name in %s: %s\n", ENV_CONFIG_URN, memberName.c_str());
-                continue;
-            }
             const Json::Value &valueNode = envNode[memberName];
             if (!valueNode.isString())
             {
