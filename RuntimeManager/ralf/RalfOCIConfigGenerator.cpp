@@ -23,23 +23,12 @@
 #include "RalfSupport.h"
 #include "OCISpecConstants.h"
 #include <fstream>
-#include <cctype>
 #include <ctime>
 
 #define PERSIST_STORAGE_PATH "/data"
 
 namespace ralf
 {
-    namespace
-    {
-        // Returns the NAME portion of a "NAME=value" env entry string.
-        std::string extractEnvVarName(const std::string &envEntry)
-        {
-            const size_t pos = envEntry.find('=');
-            return (pos == std::string::npos) ? envEntry : envEntry.substr(0, pos);
-        }
-    } // namespace
-
     bool RalfOCIConfigGenerator::generateRalfOCIConfig(const WPEFramework::Plugin::ApplicationConfiguration &config, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject)
     {
         struct timespec ralfGenStartTs;
@@ -455,7 +444,7 @@ namespace ralf
             return true; // Just return true since this is not a fatal error.
         }
         bool status = true;
-        Json::Value configNode = manifestRootNode[CONFIGURATION];
+        const Json::Value &configNode = manifestRootNode[CONFIGURATION];
         std::string packageType;
 
         if (manifestRootNode.isMember(PACKAGE_TYPE) && manifestRootNode[PACKAGE_TYPE].isString())
@@ -516,7 +505,7 @@ namespace ralf
     {
         if (configNode.isMember(STORAGE_CONFIG_URN) && configNode[STORAGE_CONFIG_URN].isObject())
         {
-            Json::Value storageConfig = configNode[STORAGE_CONFIG_URN];
+            const Json::Value &storageConfig = configNode[STORAGE_CONFIG_URN];
             // Check if maxLocalStorage is defined
             if (storageConfig.isMember(MAX_LOCAL_STORAGE) && storageConfig[MAX_LOCAL_STORAGE].isString())
             {
@@ -553,7 +542,7 @@ namespace ralf
         // Implementation for adding memory configuration
         if (configNode.isMember(MEMORY_CONFIG_URN) && configNode[MEMORY_CONFIG_URN].isObject())
         {
-            Json::Value memoryConfig = configNode[MEMORY_CONFIG_URN];
+            const Json::Value &memoryConfig = configNode[MEMORY_CONFIG_URN];
             if (memoryConfig.isMember(SYSTEM_MEMORY) && memoryConfig[SYSTEM_MEMORY].isString())
             {
                 //[LINUX][RESOURCES][MEMORY][MEMORY_LIMIT] exists in oci-base-spec file.
@@ -610,7 +599,7 @@ namespace ralf
             {
                 if (envEntry.isString())
                 {
-                    std::string envPair = envEntry.asString();
+                    const std::string envPair = envEntry.asString();
                     // Use compare for more efficient prefix matching
                     if (envPair.length() > prefixLen &&
                         envPair.compare(0, prefixLen, fireboltPrefix) == 0)
@@ -680,16 +669,15 @@ namespace ralf
         }
 
         bool status = false;
-        // Optimization: iterate directly over object members to avoid vector allocation from getMemberNames()
-        for (auto it = envNode.begin(); it != envNode.end(); ++it)
+        for (const auto &memberName : envNode.getMemberNames())
         {
-            if (!it->isString())
+            const Json::Value &valueNode = envNode[memberName];
+            if (!valueNode.isString())
             {
-                LOGWARN("Skipping non-string environment variable value in %s\n", ENV_CONFIG_URN);
+                LOGWARN("Skipping non-string environment variable value in %s for key: %s\n", ENV_CONFIG_URN, memberName.c_str());
                 continue;
             }
-            // Note: it.name() and it->asString() work with jsoncpp iterators on objects
-            addToEnvironment(ociConfigRootNode, it.name(), it->asString());
+            addToEnvironment(ociConfigRootNode, memberName, valueNode.asString());
             status = true;
         }
 
@@ -709,7 +697,9 @@ namespace ralf
         // Pre-allocate string to avoid multiple allocations
         std::string envVar;
         envVar.reserve(key.length() + value.length() + 1);
-        envVar = key + "=" + value;
+        envVar.append(key);
+        envVar.push_back('=');
+        envVar.append(value);
 
         Json::Value &processNode = ociConfigRootNode[PROCESS];
         if (!processNode.isObject())
@@ -717,32 +707,35 @@ namespace ralf
             processNode = Json::Value(Json::objectValue);
         }
 
-        Json::Value &envNode = processNode[ENV];
-        if (!envNode.isArray())
+        if (!processNode[ENV].isArray())
         {
-            envNode = Json::Value(Json::arrayValue);
+            processNode[ENV] = Json::Value(Json::arrayValue);
         }
-
-        // Optimized: Track index of duplicate entry to remove (if exists)
-        int duplicateIndex = -1;
-        for (Json::Value::ArrayIndex i = 0; i < envNode.size(); ++i)
+        // Build a deduplicated array, dropping any existing entry for this key.
+        std::string prefix;
+        prefix.reserve(key.length() + 1);
+        prefix.append(key);
+        prefix.push_back('=');
+        Json::Value deduped(Json::arrayValue);
+        for (const auto &existing : processNode[ENV])
         {
-            if (envNode[i].isString() && extractEnvVarName(envNode[i].asString()) == key)
+            if (!existing.isString())
             {
-                duplicateIndex = i;
-                LOGDBG("Found duplicate environment variable: %s\n", envNode[i].asString().c_str());
-                break; // Only need to find the first (or last) occurrence
+                deduped.append(existing);
+                continue;
             }
-        }
 
-        // Remove duplicate if found
-        if (duplicateIndex >= 0)
-        {
-            envNode.removeIndex(duplicateIndex, nullptr);
-        }
+            const std::string existingEnvVar = existing.asString();
+            if (existingEnvVar.compare(0, prefix.length(), prefix) != 0)
+            {
+                deduped.append(existing);
+                continue;
+            }
 
-        // Append new value
-        envNode.append(envVar);
+            LOGWARN("Removed duplicate environment variable from OCI config: %s\n", existingEnvVar.c_str());
+        }
+        deduped.append(envVar);
+        processNode[ENV] = deduped;
         LOGDBG("Added environment variable to OCI config: %s\n", envVar.c_str());
     }
 } // namespace ralf
