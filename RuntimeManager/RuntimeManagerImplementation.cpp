@@ -251,16 +251,6 @@ namespace WPEFramework
                     ralfBuilder.unmountOverlayfsIfExists(appInstanceId);
                 }
 #endif // RALF_PACKAGE_SUPPORT_ENABLED
-
-#ifdef RIALTO_IN_DAC_FEATURE_ENABLED
-                {
-                    mRialtoConnector->deactivateSession(appInstanceId);
-                    if (!mRialtoConnector->waitForStateChange(appInstanceId, RialtoServerStates::NOT_RUNNING, RIALTO_TIMEOUT_MILLIS))
-                    {
-                        LOGERR("Rialto session state change failed when changing to not running.");
-                    }
-                }
-#endif // RIALTO_IN_DAC_FEATURE_ENABLED
                 break;
             }
 
@@ -727,9 +717,9 @@ namespace WPEFramework
                 // RALF package will create a socket with the name same as appInstanceId.
                 rialtoSocket = "rlto-" + appInstanceId;
 #endif // RALF_PACKAGE_SUPPORT_ENABLED
-                if (mRialtoConnector->createAppSession(appInstanceId, westerosSocket, rialtoSocket))
+                if (mRialtoConnector->createAppSession(appId, westerosSocket, rialtoSocket))
                 {
-                    if (!mRialtoConnector->waitForStateChange(appInstanceId, RialtoServerStates::ACTIVE, RIALTO_TIMEOUT_MILLIS))
+                    if (!mRialtoConnector->waitForStateChange(appId, RialtoServerStates::ACTIVE, RIALTO_TIMEOUT_MILLIS))
                     {
                         LOGWARN(" Rialto app session not ready. ");
                         status = Core::ERROR_GENERAL;
@@ -1112,8 +1102,8 @@ namespace WPEFramework
                 }
 #ifdef RIALTO_IN_DAC_FEATURE_ENABLED
             LOGINFO("Rialto session deactivate on terminate.");
-            mRialtoConnector->deactivateSession(appInstanceId);
-            if (!mRialtoConnector->waitForStateChange(appInstanceId, RialtoServerStates::NOT_RUNNING, RIALTO_TIMEOUT_MILLIS))
+            mRialtoConnector->deactivateSession(mRuntimeAppInfo[appInstanceId].appId);
+            if (!mRialtoConnector->waitForStateChange(mRuntimeAppInfo[appInstanceId].appId, RialtoServerStates::NOT_RUNNING, RIALTO_TIMEOUT_MILLIS))
             {
                 LOGERR("Rialto session state change failed when changing to not running.");
                 status = Core::ERROR_GENERAL;
@@ -1177,8 +1167,8 @@ namespace WPEFramework
                 }
 #ifdef RIALTO_IN_DAC_FEATURE_ENABLED
             LOGINFO("Rialto Session deactivate on kill..");
-            mRialtoConnector->deactivateSession(appInstanceId);
-            if (!mRialtoConnector->waitForStateChange(appInstanceId, RialtoServerStates::NOT_RUNNING, RIALTO_TIMEOUT_MILLIS))
+            mRialtoConnector->deactivateSession(mRuntimeAppInfo[appInstanceId].appId);
+            if (!mRialtoConnector->waitForStateChange(mRuntimeAppInfo[appInstanceId].appId, RialtoServerStates::NOT_RUNNING, RIALTO_TIMEOUT_MILLIS))
             {
                 LOGERR("Rialto session state change failed when changing to not running ");
                 status = Core::ERROR_GENERAL;

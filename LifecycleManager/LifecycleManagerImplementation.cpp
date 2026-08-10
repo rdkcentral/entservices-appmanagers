@@ -475,6 +475,52 @@ namespace WPEFramework
             return status;
         }
 
+        Core::hresult LifecycleManagerImplementation::SetWindowBounds(const string& appId, uint32_t x, uint32_t y, uint32_t width, uint32_t height)
+        {
+            auto context = getContext("", appId);
+            if (nullptr == context)
+            {
+                LOGERR("SetWindowBounds: no context found for appId=%s", appId.c_str());
+                return Core::ERROR_GENERAL;
+            }
+            const std::string appInstanceId = context->getAppInstanceId();
+            if (appInstanceId.empty())
+            {
+                LOGERR("SetWindowBounds: appInstanceId is empty for appId=%s", appId.c_str());
+                return Core::ERROR_GENERAL;
+            }
+            WindowManagerHandler* wm = RequestHandler::getInstance()->getWindowManagerHandler();
+            if (nullptr == wm)
+            {
+                LOGERR("SetWindowBounds: WindowManagerHandler is null");
+                return Core::ERROR_GENERAL;
+            }
+            return wm->setWindowBounds(appInstanceId, x, y, width, height);
+        }
+
+        Core::hresult LifecycleManagerImplementation::GetWindowBounds(const string& appId, uint32_t& x, uint32_t& y, uint32_t& width, uint32_t& height)
+        {
+            auto context = getContext("", appId);
+            if (nullptr == context)
+            {
+                LOGERR("GetWindowBounds: no context found for appId=%s", appId.c_str());
+                return Core::ERROR_GENERAL;
+            }
+            const std::string appInstanceId = context->getAppInstanceId();
+            if (appInstanceId.empty())
+            {
+                LOGERR("GetWindowBounds: appInstanceId is empty for appId=%s", appId.c_str());
+                return Core::ERROR_GENERAL;
+            }
+            WindowManagerHandler* wm = RequestHandler::getInstance()->getWindowManagerHandler();
+            if (nullptr == wm)
+            {
+                LOGERR("GetWindowBounds: WindowManagerHandler is null");
+                return Core::ERROR_GENERAL;
+            }
+            return wm->getWindowBounds(appInstanceId, x, y, width, height);
+        }
+
         Core::hresult LifecycleManagerImplementation::Register(Exchange::ILifecycleManagerState::INotification *notification)
         {
             ASSERT (nullptr != notification);

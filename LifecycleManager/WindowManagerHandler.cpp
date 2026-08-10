@@ -151,5 +151,46 @@ void WindowManagerHandler::WindowManagerNotification::OnBlur(const std::string &
     _parent.onEvent(eventData);
 }
 
+Core::hresult WindowManagerHandler::setWindowBounds(const std::string& appInstanceId, uint32_t x, uint32_t y, uint32_t width, uint32_t height)
+{
+    if (mWindowManager == nullptr)
+    {
+        LOGERR("setWindowBounds: WindowManager is null for appInstanceId=%s", appInstanceId.c_str());
+        return Core::ERROR_GENERAL;
+    }
+    Core::hresult result = mWindowManager->SetBounds(appInstanceId, x, y, width, height);
+    if (Core::ERROR_NONE != result)
+    {
+        LOGERR("setWindowBounds: Failed for appInstanceId=%s x=%u y=%u width=%u height=%u result=%d",
+               appInstanceId.c_str(), x, y, width, height, result);
+    }
+    else
+    {
+        LOGINFO("setWindowBounds: appInstanceId=%s x=%u y=%u width=%u height=%u",
+                appInstanceId.c_str(), x, y, width, height);
+    }
+    return result;
+}
+
+Core::hresult WindowManagerHandler::getWindowBounds(const std::string& appInstanceId, uint32_t& x, uint32_t& y, uint32_t& width, uint32_t& height)
+{
+    if (mWindowManager == nullptr)
+    {
+        LOGERR("getWindowBounds: WindowManager is null for appInstanceId=%s", appInstanceId.c_str());
+        return Core::ERROR_GENERAL;
+    }
+    Core::hresult result = mWindowManager->GetBounds(appInstanceId, x, y, width, height);
+    if (Core::ERROR_NONE != result)
+    {
+        LOGERR("getWindowBounds: Failed for appInstanceId=%s result=%d", appInstanceId.c_str(), result);
+    }
+    else
+    {
+        LOGINFO("getWindowBounds: appInstanceId=%s x=%u y=%u width=%u height=%u",
+                appInstanceId.c_str(), x, y, width, height);
+    }
+    return result;
+}
+
 } // namespace Plugin
 } // namespace WPEFramework

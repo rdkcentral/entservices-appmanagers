@@ -24,6 +24,7 @@
 #include <interfaces/json/JAppManager.h>
 #include <interfaces/IAppManager.h>
 #include <interfaces/IConfiguration.h>
+#include <interfaces/IRDKWindowManager.h>
 #include "UtilsLogging.h"
 #include "tracing/Logging.h"
 #include <mutex>
@@ -129,6 +130,9 @@ namespace Plugin {
 
         private:
             void Deactivated(RPC::IRemoteConnection* connection);
+            void registerWindowManagementHandlers();
+            uint32_t setWindowBoundsHandler(const JsonObject& parameters, JsonObject& response);
+            uint32_t getWindowBoundsHandler(const JsonObject& parameters, JsonObject& response);
 
         private:
             PluginHost::IShell* mCurrentService{};

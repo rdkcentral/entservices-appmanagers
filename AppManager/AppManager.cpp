@@ -106,6 +106,8 @@ namespace WPEFramework
                 mAppManagerImpl->Register(&mAppManagerNotification);
                 // Invoking Plugin API register to wpeframework
                 Exchange::JAppManager::Register(*this, mAppManagerImpl);
+                // Register window management handlers for dynamic resize POC
+                registerWindowManagementHandlers();
 
                 if (Core::ERROR_NONE != mAppManagerConfigure->Configure(mCurrentService))
                 {
@@ -141,6 +143,8 @@ namespace WPEFramework
         {
             mAppManagerImpl->Unregister(&mAppManagerNotification);
             Exchange::JAppManager::Unregister(*this);
+            Unregister(_T("setWindowBounds"));
+            Unregister(_T("getWindowBounds"));
 
             if (nullptr != mAppManagerConfigure)
             {
@@ -191,5 +195,168 @@ namespace WPEFramework
             Core::IWorkerPool::Instance().Submit(PluginHost::IShell::Job::Create(mCurrentService, PluginHost::IShell::DEACTIVATED, PluginHost::IShell::FAILURE));
         }
     }
+
+    void AppManager::registerWindowManagementHandlers()
+    {
+        Register<JsonObject, JsonObject>(_T("setWindowBounds"),
+            [this](const JsonObject& parameters, JsonObject& response) -> uint32_t {
+                return setWindowBoundsHandler(parameters, response);
+            });
+        Register<JsonObject, JsonObject>(_T("getWindowBounds"),
+            [this](const JsonObject& parameters, JsonObject& response) -> uint32_t {
+                return getWindowBoundsHandler(parameters, response);
+            });
+    }
+
+    /**
+     * @brief Dynamically resize the compositor window of a running containerised app.
+     *
+     * JSON-RPC method:  org.rdk.AppManager.setWindowBounds
+     * Parameters:
+     *   { "appId": string, "x": uint, "y": uint, "width": uint, "height": uint }
+     *
+     * Returns:  { "success": bool }
+     *
+     * Use case: shrink the already-running player app to a "trailer preview" corner
+     * when the user hovers over a VOD tile in the reference UI, then restore it to
+     * full screen when the user leaves the tile or presses Enter to play.
+     */
+    uint32_t AppManager::setWindowBoundsHandler(const JsonObject& parameters, JsonObject& response)
+    {
+        const string appId    = parameters.HasLabel("appId")  ? parameters["appId"].String()  : "";
+        const uint32_t x      = parameters.HasLabel("x")      ? parameters["x"].Number()      : 0;
+        const uint32_t y      = parameters.HasLabel("y")      ? parameters["y"].Number()      : 0;
+        const uint32_t width  = parameters.HasLabel("width")  ? parameters["width"].Number()  : 0;
+        const uint32_t height = parameters.HasLabel("height") ? parameters["height"].Number() : 0;
+
+        if (appId.empty())
+        {
+            LOGERR("setWindowBounds: appId is required");
+            response["success"] = false;
+            return Core::ERROR_BAD_REQUEST;
+        }
+
+        // Resolve appId → appInstanceId via GetLoadedApps
+        string appInstanceId;
+        Exchange::IAppManager::ILoadedAppInfoIterator* iter = nullptr;
+        Core::hresult loadResult = mAppManagerImpl->GetLoadedApps(iter);
+        if (Core::ERROR_NONE == loadResult && iter != nullptr)
+        {
+            Exchange::IAppManager::LoadedAppInfo info{};
+            while (iter->Next(info))
+            {
+                if (info.appId == appId)
+                {
+                    appInstanceId = info.appInstanceId;
+                    break;
+                }
+            }
+            iter->Release();
+        }
+
+        if (appInstanceId.empty())
+        {
+            LOGERR("setWindowBounds: appId=%s not found among loaded apps", appId.c_str());
+            response["success"] = false;
+            return Core::ERROR_GENERAL;
+        }
+
+        // Call RDKWindowManager::SetBounds with the resolved appInstanceId
+        Exchange::IRDKWindowManager* wm = mCurrentService->QueryInterfaceByCallsign<Exchange::IRDKWindowManager>("org.rdk.RDKWindowManager");
+        if (nullptr == wm)
+        {
+            LOGERR("setWindowBounds: RDKWindowManager not available");
+            response["success"] = false;
+            return Core::ERROR_GENERAL;
+        }
+
+        Core::hresult result = wm->SetBounds(appInstanceId, x, y, width, height);
+        wm->Release();
+
+        if (Core::ERROR_NONE != result)
+        {
+            LOGERR("setWindowBounds: SetBounds failed appId=%s appInstanceId=%s result=%d",
+                   appId.c_str(), appInstanceId.c_str(), result);
+            response["success"] = false;
+            return Core::ERROR_GENERAL;
+        }
+
+        LOGINFO("setWindowBounds: appId=%s appInstanceId=%s x=%u y=%u width=%u height=%u",
+                appId.c_str(), appInstanceId.c_str(), x, y, width, height);
+        response["success"] = true;
+        return Core::ERROR_NONE;
+    }
+
+    /**
+     * @brief Query the current compositor window bounds of a running containerised app.
+     *
+     * JSON-RPC method:  org.rdk.AppManager.getWindowBounds
+     * Parameters:  { "appId": string }
+     * Returns:     { "x": uint, "y": uint, "width": uint, "height": uint, "success": bool }
+     */
+    uint32_t AppManager::getWindowBoundsHandler(const JsonObject& parameters, JsonObject& response)
+    {
+        const string appId = parameters.HasLabel("appId") ? parameters["appId"].String() : "";
+
+        if (appId.empty())
+        {
+            LOGERR("getWindowBounds: appId is required");
+            response["success"] = false;
+            return Core::ERROR_BAD_REQUEST;
+        }
+
+        // Resolve appId → appInstanceId
+        string appInstanceId;
+        Exchange::IAppManager::ILoadedAppInfoIterator* iter = nullptr;
+        Core::hresult loadResult = mAppManagerImpl->GetLoadedApps(iter);
+        if (Core::ERROR_NONE == loadResult && iter != nullptr)
+        {
+            Exchange::IAppManager::LoadedAppInfo info{};
+            while (iter->Next(info))
+            {
+                if (info.appId == appId)
+                {
+                    appInstanceId = info.appInstanceId;
+                    break;
+                }
+            }
+            iter->Release();
+        }
+
+        if (appInstanceId.empty())
+        {
+            LOGERR("getWindowBounds: appId=%s not found among loaded apps", appId.c_str());
+            response["success"] = false;
+            return Core::ERROR_GENERAL;
+        }
+
+        Exchange::IRDKWindowManager* wm = mCurrentService->QueryInterfaceByCallsign<Exchange::IRDKWindowManager>("org.rdk.RDKWindowManager");
+        if (nullptr == wm)
+        {
+            LOGERR("getWindowBounds: RDKWindowManager not available");
+            response["success"] = false;
+            return Core::ERROR_GENERAL;
+        }
+
+        uint32_t x = 0, y = 0, width = 0, height = 0;
+        Core::hresult result = wm->GetBounds(appInstanceId, x, y, width, height);
+        wm->Release();
+
+        if (Core::ERROR_NONE != result)
+        {
+            LOGERR("getWindowBounds: GetBounds failed appId=%s appInstanceId=%s result=%d",
+                   appId.c_str(), appInstanceId.c_str(), result);
+            response["success"] = false;
+            return Core::ERROR_GENERAL;
+        }
+
+        response["x"]       = x;
+        response["y"]       = y;
+        response["width"]   = width;
+        response["height"]  = height;
+        response["success"] = true;
+        return Core::ERROR_NONE;
+    }
+
 } /* namespace Plugin */
 } /* namespace WPEFramework */

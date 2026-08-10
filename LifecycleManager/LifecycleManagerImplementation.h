@@ -125,6 +125,10 @@ namespace WPEFramework
                 virtual Core::hresult KillApp(const string& appInstanceId, string& errorReason, bool& success) override;
                 virtual Core::hresult SendIntentToActiveApp(const string& appInstanceId, const string& intent, string& errorReason, bool& success) override;
 
+                /* Window management — not part of ILifecycleManager; called from LifecycleManager-internal code */
+                Core::hresult SetWindowBounds(const string& appId, uint32_t x, uint32_t y, uint32_t width, uint32_t height);
+                Core::hresult GetWindowBounds(const string& appId, uint32_t& x, uint32_t& y, uint32_t& width, uint32_t& height);
+
                 /* ILifecycleManagerState methods  */
                 /** Register notification interface */
                 virtual Core::hresult Register(Exchange::ILifecycleManagerState::INotification *notification) override;

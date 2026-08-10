@@ -70,6 +70,8 @@ namespace Plugin {
             void onEvent(JsonObject& data);
             Core::hresult renderReady(std::string appInstanceId, bool& isReady);
             Core::hresult enableDisplayRender(std::string appInstanceId, bool render);
+            Core::hresult setWindowBounds(const std::string& appInstanceId, uint32_t x, uint32_t y, uint32_t width, uint32_t height);
+            Core::hresult getWindowBounds(const std::string& appInstanceId, uint32_t& x, uint32_t& y, uint32_t& width, uint32_t& height);
         private:
             Exchange::IRDKWindowManager* mWindowManager;
             Core::Sink<WindowManagerNotification> mWindowManagerNotification;
