@@ -682,15 +682,14 @@ namespace ralf
             processNode = Json::Value(Json::objectValue);
         }
 
-        Json::Value &envNode = processNode[ENV];
-        if (!envNode.isArray())
+        if (!processNode[ENV].isArray())
         {
-            envNode = Json::Value(Json::arrayValue);
+            processNode[ENV] = Json::Value(Json::arrayValue);
         }
 
         // Strip existing entries with the same key before appending.
         Json::Value deduped(Json::arrayValue);
-        for (const auto &existing : envNode)
+        for (const auto &existing : processNode[ENV])
         {
             if (!existing.isString() || extractEnvVarName(existing.asString()) != key)
                 deduped.append(existing);
@@ -698,7 +697,7 @@ namespace ralf
                 LOGDBG("Removed duplicate environment variable from OCI config: %s\n", existing.asString().c_str());
         }
         deduped.append(envVar);
-        envNode = deduped;
+        processNode[ENV] = deduped;
         LOGDBG("Added environment variable to OCI config: %s\n", envVar.c_str());
     }
 } // namespace ralf
