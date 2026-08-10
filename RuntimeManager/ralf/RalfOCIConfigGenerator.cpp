@@ -22,23 +22,20 @@
 #include "RalfOCIConfigGenerator.h"
 #include "RalfSupport.h"
 #include "OCISpecConstants.h"
+#include <fstream>
+#include <ctime>
 
 #define PERSIST_STORAGE_PATH "/data"
 
 namespace ralf
 {
-    namespace
-    {
-        // Returns the NAME portion of a "NAME=value" env entry string.
-        std::string extractEnvVarName(const std::string &envEntry)
-        {
-            const size_t pos = envEntry.find('=');
-            return (pos == std::string::npos) ? envEntry : envEntry.substr(0, pos);
-        }
-    } // namespace
-
     bool RalfOCIConfigGenerator::generateRalfOCIConfig(const WPEFramework::Plugin::ApplicationConfiguration &config, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject)
     {
+        struct timespec ralfGenStartTs;
+        clock_gettime(CLOCK_MONOTONIC, &ralfGenStartTs);
+        LOGDBG("generateRalfOCIConfig: starting OCI config generation for appId=%s ts=%ld.%09ld\n",
+               config.mAppId.c_str(), ralfGenStartTs.tv_sec, ralfGenStartTs.tv_nsec);
+
         Json::Value ociConfigRootNode;
 
         if (!JsonFromFile(RALF_OCI_BASE_SPEC_FILE, ociConfigRootNode))
@@ -263,6 +260,12 @@ namespace ralf
         {
             LOGERR("Failed to open OCI config output file: %s", mConfigFilePath.c_str());
         }
+
+        struct timespec ralfGenEndTs;
+        clock_gettime(CLOCK_MONOTONIC, &ralfGenEndTs);
+        LOGDBG("generateRalfOCIConfig: finished, config written to file %s ts=%ld.%09ld\n",
+               mConfigFilePath.c_str(), ralfGenEndTs.tv_sec, ralfGenEndTs.tv_nsec);
+
         return status;
     }
 
@@ -680,24 +683,24 @@ namespace ralf
             processNode = Json::Value(Json::objectValue);
         }
 
-        Json::Value &envNode = processNode[ENV];
-        if (!envNode.isArray())
+        if (!processNode[ENV].isArray())
         {
-            envNode = Json::Value(Json::arrayValue);
+            processNode[ENV] = Json::Value(Json::arrayValue);
         }
-        // Remove any existing entries for this key in reverse order to avoid index shifting issues.
-        for (Json::Value::ArrayIndex i = envNode.size(); i > 0; --i) // 5
+        // Build a deduplicated array, dropping any existing entry for this key.
+        const std::string prefix = key + "=";
+        Json::Value deduped(Json::arrayValue);
+        LOGDBG("Arun: processNode[ENV] before: %s\n", processNode[ENV].toStyledString().c_str());
+        for (const auto &existing : processNode[ENV])
         {
-            const Json::Value::ArrayIndex idx = i - 1;
-            std::string existingEntry = envNode[idx].asString();
-            if (existingEntry.rfind(key + "=", 0) == 0)
-            {
-                // Remove in reverse order so index shifts do not skip duplicates.
-                envNode.removeIndex(idx, nullptr);
-                LOGDBG("Removed existing environment variable from OCI config: %s\n", existingEntry.c_str());
-            }
+            if (!existing.isString() || existing.asString().rfind(prefix, 0) != 0)
+                deduped.append(existing);
+            else
+                LOGDBG("Removed duplicate environment variable from OCI config: %s\n", existing.asString().c_str());
         }
-        envNode.append(envVar);
+        deduped.append(envVar);
+        processNode[ENV] = deduped;
+        LOGDBG("Arun: processNode[ENV] after: %s\n", processNode[ENV].toStyledString().c_str());
         LOGDBG("Added environment variable to OCI config: %s\n", envVar.c_str());
     }
 } // namespace ralf
