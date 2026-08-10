@@ -144,7 +144,10 @@ namespace ralf
         // Set westeros environment variable
         // mWesterosSocketPath has XDG_RUNTIME_DIR/WAYLAND_DISPLAY, we need to set WAYLAND_DISPLAY env variable to just the display
         // name (i.e. the last part of the path) because that is what westeros expects.
-        std::string waylandDisplay = appConfig.mWesterosSocketPath.substr(appConfig.mWesterosSocketPath.find_last_of("/") + 1);
+        size_t lastSlash = appConfig.mWesterosSocketPath.rfind('/');
+        std::string waylandDisplay = (lastSlash != std::string::npos)
+            ? appConfig.mWesterosSocketPath.substr(lastSlash + 1)
+            : appConfig.mWesterosSocketPath;
         addToEnvironment(ociConfigRootNode, "WAYLAND_DISPLAY", waylandDisplay);
         // Keep it consistent with what is set in DobbyPluginLauncher for Ralf package.
         // DobbyPluginLauncher will bind mount /tmp from host to container and westeros socket will be created inside /tmp in the container.
@@ -274,76 +277,80 @@ namespace ralf
 
         // We need to get the devNodes and groupIds and apply them to the OCI config json structure.
 
-        // Check if vendorGpuSupport/devNodes exists
-        if (graphicsConfigNode.isMember(VENDOR_GPU_SUPPORT))
+        // Optimization: Cache vendorGpuSupport node reference to avoid redundant tree traversals
+        if (!graphicsConfigNode.isMember(VENDOR_GPU_SUPPORT))
         {
-            if (graphicsConfigNode[VENDOR_GPU_SUPPORT].isMember(DEV_NODES))
-            {
-                const Json::Value &devNodes = graphicsConfigNode[VENDOR_GPU_SUPPORT][DEV_NODES];
-                status = addDeviceNodeEntriesToOCIConfig(ociConfigRootNode, devNodes);
-            }
-            else
-            {
-                LOGWARN("No vendorGpuSupport/devNodes found in graphics config\n");
-            }
-            // Let us map the groups in the graphics config to the OCI config as well. This is needed for cases where GPU access requires specific group permissions.
-            if (graphicsConfigNode[VENDOR_GPU_SUPPORT].isMember(GROUP_IDS))
-            {
-                const Json::Value &groupIds = graphicsConfigNode[VENDOR_GPU_SUPPORT][GROUP_IDS];
-                for (Json::Value::ArrayIndex i = 0; i < groupIds.size(); ++i)
-                {
-                    // get the group name from the config and then get the gid for it. Then add a gid mapping for that gid.
-                    std::string groupName = groupIds[i].asString();
-                    uint32_t gid = 0;
-                    if (getGroupId(groupName, gid))
-                    {
-                        Json::Value gidMapping;
-                        gidMapping[CONTAINER_ID] = gid;
-                        gidMapping[HOST_ID] = gid;
-                        gidMapping[SIZE] = 1;
-                        ociConfigRootNode[LINUX][GID_MAPPINGS].append(gidMapping);
-                        LOGDBG("Added additional GID mapping for GPU access: host GID %u to container GID %u\n", gid, gid);
-                    }
-                    else
-                    {
-                        LOGWARN("Failed to get GID for group %s specified in graphics config\n", groupName.c_str());
-                    }
-                }
-            }
-            else
-            {
-                LOGWARN("No vendorGpuSupport/groupIds found in graphics config\n");
-            }
+            LOGWARN("No vendorGpuSupport found in graphics config.\n");
+            return status;
+        }
 
-            // Now get the file that needs to be mapped, this is optional.
-            if (graphicsConfigNode[VENDOR_GPU_SUPPORT].isMember(FILES))
+        const Json::Value &gpuSupportNode = graphicsConfigNode[VENDOR_GPU_SUPPORT];
+
+        // Process devNodes
+        if (gpuSupportNode.isMember(DEV_NODES))
+        {
+            const Json::Value &devNodes = gpuSupportNode[DEV_NODES];
+            status = addDeviceNodeEntriesToOCIConfig(ociConfigRootNode, devNodes);
+        }
+        else
+        {
+            LOGWARN("No vendorGpuSupport/devNodes found in graphics config\n");
+        }
+
+        // Process groupIds - map these to GID mappings
+        if (gpuSupportNode.isMember(GROUP_IDS))
+        {
+            const Json::Value &groupIds = gpuSupportNode[GROUP_IDS];
+            for (Json::Value::ArrayIndex i = 0; i < groupIds.size(); ++i)
             {
-                const Json::Value &files = graphicsConfigNode[VENDOR_GPU_SUPPORT][FILES];
-                for (Json::Value::ArrayIndex i = 0; i < files.size(); ++i)
+                // get the group name from the config and then get the gid for it. Then add a gid mapping for that gid.
+                std::string groupName = groupIds[i].asString();
+                uint32_t gid = 0;
+                if (getGroupId(groupName, gid))
                 {
-                    const Json::Value &fileEntry = files[i];
-                    if (fileEntry.isMember(SOURCE) && fileEntry.isMember(DESTINATION))
-                    {
-                        std::string sourcePath = fileEntry[SOURCE].asString();
-                        std::string destPath = fileEntry[DESTINATION].asString();
-                        addMountEntry(ociConfigRootNode, sourcePath, destPath);
-                        LOGDBG("Added graphics file mount from %s to %s\n", sourcePath.c_str(), destPath.c_str());
-                    }
-                    else
-                    {
-                        LOGWARN("Invalid file entry in graphics config, missing source or destination\n");
-                    }
+                    Json::Value gidMapping;
+                    gidMapping[CONTAINER_ID] = gid;
+                    gidMapping[HOST_ID] = gid;
+                    gidMapping[SIZE] = 1;
+                    ociConfigRootNode[LINUX][GID_MAPPINGS].append(gidMapping);
+                    LOGDBG("Added additional GID mapping for GPU access: host GID %u to container GID %u\n", gid, gid);
                 }
-            }
-            else
-            {
-                LOGWARN("No vendorGpuSupport/files found in graphics config\n");
+                else
+                {
+                    LOGWARN("Failed to get GID for group %s specified in graphics config\n", groupName.c_str());
+                }
             }
         }
         else
         {
-            LOGWARN("No vendorGpuSupport found in graphics config.\n");
+            LOGWARN("No vendorGpuSupport/groupIds found in graphics config\n");
         }
+
+        // Process files for binding
+        if (gpuSupportNode.isMember(FILES))
+        {
+            const Json::Value &files = gpuSupportNode[FILES];
+            for (Json::Value::ArrayIndex i = 0; i < files.size(); ++i)
+            {
+                const Json::Value &fileEntry = files[i];
+                if (fileEntry.isMember(SOURCE) && fileEntry.isMember(DESTINATION))
+                {
+                    std::string sourcePath = fileEntry[SOURCE].asString();
+                    std::string destPath = fileEntry[DESTINATION].asString();
+                    addMountEntry(ociConfigRootNode, sourcePath, destPath);
+                    LOGDBG("Added graphics file mount from %s to %s\n", sourcePath.c_str(), destPath.c_str());
+                }
+                else
+                {
+                    LOGWARN("Invalid file entry in graphics config, missing source or destination\n");
+                }
+            }
+        }
+        else
+        {
+            LOGWARN("No vendorGpuSupport/files found in graphics config\n");
+        }
+
         return status;
     }
 
@@ -366,6 +373,11 @@ namespace ralf
     bool RalfOCIConfigGenerator::addDeviceNodeEntriesToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &graphicsDevNode)
     {
         bool status = graphicsDevNode.size() > 0 ? true : false; // If no entries, return true.
+
+        // Optimization: Cache JSON node references to avoid repeated tree traversals
+        Json::Value &devicesArray = ociConfigRootNode[LINUX][DEVICES];
+        Json::Value &resourceDevicesArray = ociConfigRootNode[LINUX][RESOURCES][DEVICES];
+
         for (Json::Value::ArrayIndex i = 0; i < graphicsDevNode.size(); ++i)
         {
             std::string devNodePath = graphicsDevNode[i].asString();
@@ -373,13 +385,13 @@ namespace ralf
             char devType = '\0';
             if (getDevNodeMajorMinor(devNodePath, majorNum, minorNum, devType))
             {
+                // Build device node JSON structure
                 Json::Value deviceNode;
                 deviceNode[DEV_PATH] = devNodePath;
                 deviceNode[DEV_TYPE] = std::string(1, devType);
                 deviceNode[DEV_MAJOR] = majorNum;
                 deviceNode[DEV_MINOR] = minorNum;
-
-                ociConfigRootNode[LINUX][DEVICES].append(deviceNode);
+                devicesArray.append(deviceNode);
 
                 // Add in the resources devices section as well
                 Json::Value resourceDevice;
@@ -388,7 +400,8 @@ namespace ralf
                 resourceDevice[DEV_MINOR] = minorNum;
                 resourceDevice[ACCESS] = "rwm";
                 resourceDevice[ALLOW] = true;
-                ociConfigRootNode[LINUX][RESOURCES][DEVICES].append(resourceDevice);
+                resourceDevicesArray.append(resourceDevice);
+
                 LOGDBG("Added device node to OCI config: %s (type=%c, major=%u, minor=%u)\n", devNodePath.c_str(), devType, majorNum, minorNum);
             }
             else
@@ -579,15 +592,20 @@ namespace ralf
 
         if (envVarsNode.isArray())
         {
+            // Pre-compute prefix for efficiency
+            const std::string fireboltPrefix = std::string(FIREBOLT_ENDPOINT_ENV_KEY) + "=";
+            const size_t prefixLen = fireboltPrefix.length();
+
             for (const auto &envEntry : envVarsNode)
             {
                 if (envEntry.isString())
                 {
                     std::string envPair = envEntry.asString();
-                    std::string fireboltPrefix = std::string(FIREBOLT_ENDPOINT_ENV_KEY) + "=";
-                    if (envPair.rfind(fireboltPrefix, 0) == 0)
+                    // Use compare for more efficient prefix matching
+                    if (envPair.length() > prefixLen &&
+                        envPair.compare(0, prefixLen, fireboltPrefix) == 0)
                     {
-                        addToEnvironment(ociConfigRootNode, FIREBOLT_ENDPOINT_ENV_KEY, envPair.substr(fireboltPrefix.size()));
+                        addToEnvironment(ociConfigRootNode, FIREBOLT_ENDPOINT_ENV_KEY, envPair.substr(prefixLen));
                         LOGDBG("Added FIREBOLT_ENDPOINT environment variable: %s\n", envPair.c_str());
                         return true; // Found and added
                     }
@@ -601,35 +619,36 @@ namespace ralf
     bool RalfOCIConfigGenerator::addConfigOverridesToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &configNode)
     {
         bool status = false;
-        if (configNode.isMember(CONFIG_OVERRIDES_URN) && configNode[CONFIG_OVERRIDES_URN].isObject())
-        {
-            // Serialize each override sub-object and export it as a separate environment variable in OCI config.
-            // If an "application" node is present, store its serialized JSON under APP_CONFIG_OVERRIDES_ENV_KEY.
-            Json::Value overrideNode = configNode[CONFIG_OVERRIDES_URN];
-
-            if (overrideNode.isMember(PKG_TYPE_APPLICATION) && overrideNode[PKG_TYPE_APPLICATION].isObject())
-            {
-                std::string overrideJsonStr = serializeJsonNode(overrideNode[PKG_TYPE_APPLICATION]);
-                addToEnvironment(ociConfigRootNode, APP_CONFIG_OVERRIDES_ENV_KEY, overrideJsonStr);
-                LOGDBG("Added application config overrides to OCI config as environment variable: %s\n", APP_CONFIG_OVERRIDES_ENV_KEY);
-                status = true;
-            }
-            // If a "runtime" node is present, store its serialized JSON under RUNTIME_CONFIG_OVERRIDES_ENV_KEY.
-            if (overrideNode.isMember(PKG_TYPE_RUNTIME) && overrideNode[PKG_TYPE_RUNTIME].isObject())
-            {
-                std::string overrideJsonStr = serializeJsonNode(overrideNode[PKG_TYPE_RUNTIME]);
-                addToEnvironment(ociConfigRootNode, RUNTIME_CONFIG_OVERRIDES_ENV_KEY, overrideJsonStr);
-                LOGDBG("Added runtime config overrides to OCI config as environment variable: %s\n", RUNTIME_CONFIG_OVERRIDES_ENV_KEY);
-                status = true;
-            }
-            if (!status)
-            {
-                LOGWARN("Config overrides node found but contains no 'application' or 'runtime' sub-objects\n");
-            }
-        }
-        else
+        if (!configNode.isMember(CONFIG_OVERRIDES_URN) || !configNode[CONFIG_OVERRIDES_URN].isObject())
         {
             LOGWARN("No config overrides found in Ralf package config\n");
+            return status;
+        }
+
+        // Optimization: Use reference instead of copying the entire JSON object
+        const Json::Value &overrideNode = configNode[CONFIG_OVERRIDES_URN];
+
+        // Serialize and add application config overrides if present
+        if (overrideNode.isMember(PKG_TYPE_APPLICATION) && overrideNode[PKG_TYPE_APPLICATION].isObject())
+        {
+            std::string overrideJsonStr = serializeJsonNode(overrideNode[PKG_TYPE_APPLICATION]);
+            addToEnvironment(ociConfigRootNode, APP_CONFIG_OVERRIDES_ENV_KEY, overrideJsonStr);
+            LOGDBG("Added application config overrides to OCI config as environment variable: %s\n", APP_CONFIG_OVERRIDES_ENV_KEY);
+            status = true;
+        }
+
+        // Serialize and add runtime config overrides if present
+        if (overrideNode.isMember(PKG_TYPE_RUNTIME) && overrideNode[PKG_TYPE_RUNTIME].isObject())
+        {
+            std::string overrideJsonStr = serializeJsonNode(overrideNode[PKG_TYPE_RUNTIME]);
+            addToEnvironment(ociConfigRootNode, RUNTIME_CONFIG_OVERRIDES_ENV_KEY, overrideJsonStr);
+            LOGDBG("Added runtime config overrides to OCI config as environment variable: %s\n", RUNTIME_CONFIG_OVERRIDES_ENV_KEY);
+            status = true;
+        }
+
+        if (!status)
+        {
+            LOGWARN("Config overrides node found but contains no 'application' or 'runtime' sub-objects\n");
         }
 
         return status;
@@ -651,15 +670,16 @@ namespace ralf
         }
 
         bool status = false;
-        for (const auto &memberName : envNode.getMemberNames())
+        // Optimization: iterate directly over object members to avoid vector allocation from getMemberNames()
+        for (auto it = envNode.begin(); it != envNode.end(); ++it)
         {
-            const Json::Value &valueNode = envNode[memberName];
-            if (!valueNode.isString())
+            if (!it->isString())
             {
-                LOGWARN("Skipping non-string environment variable value in %s for key: %s\n", ENV_CONFIG_URN, memberName.c_str());
+                LOGWARN("Skipping non-string environment variable value in %s\n", ENV_CONFIG_URN);
                 continue;
             }
-            addToEnvironment(ociConfigRootNode, memberName, valueNode.asString());
+            // Note: it.name() and it->asString() work with jsoncpp iterators on objects
+            addToEnvironment(ociConfigRootNode, it.name(), it->asString());
             status = true;
         }
 
@@ -674,7 +694,12 @@ namespace ralf
     {
         // Upsert: remove any existing entry for this key, then append the new value.
         // This enforces the precedence rule (last write wins) and keeps process.env dedup-clean.
-        std::string envVar = key + "=" + value;
+        // Optimized: Single-pass deduplication with early termination.
+
+        // Pre-allocate string to avoid multiple allocations
+        std::string envVar;
+        envVar.reserve(key.length() + value.length() + 1);
+        envVar = key + "=" + value;
 
         Json::Value &processNode = ociConfigRootNode[PROCESS];
         if (!processNode.isObject())
@@ -688,17 +713,26 @@ namespace ralf
             envNode = Json::Value(Json::arrayValue);
         }
 
-        // Strip existing entries with the same key before appending.
-        Json::Value deduped(Json::arrayValue);
-        for (const auto &existing : envNode)
+        // Optimized: Track index of duplicate entry to remove (if exists)
+        int duplicateIndex = -1;
+        for (Json::Value::ArrayIndex i = 0; i < envNode.size(); ++i)
         {
-            if (!existing.isString() || extractEnvVarName(existing.asString()) != key)
-                deduped.append(existing);
-            else
-                LOGDBG("Removed duplicate environment variable from OCI config: %s\n", existing.asString().c_str());
+            if (envNode[i].isString() && extractEnvVarName(envNode[i].asString()) == key)
+            {
+                duplicateIndex = i;
+                LOGDBG("Found duplicate environment variable: %s\n", envNode[i].asString().c_str());
+                break; // Only need to find the first (or last) occurrence
+            }
         }
-        deduped.append(envVar);
-        envNode = deduped;
+
+        // Remove duplicate if found
+        if (duplicateIndex >= 0)
+        {
+            envNode.removeIndex(duplicateIndex, nullptr);
+        }
+
+        // Append new value
+        envNode.append(envVar);
         LOGDBG("Added environment variable to OCI config: %s\n", envVar.c_str());
     }
 } // namespace ralf

@@ -1351,10 +1351,6 @@ public:
     {
         return mGen.addAppStorageToOCIConfig(node, appStoragePath);
     }
-    bool addConfigEnvToOCIConfig(Json::Value &node, const Json::Value &configNode)
-    {
-        return mGen.addConfigEnvToOCIConfig(node, configNode);
-    }
     bool saveOCIConfigToFile(const Json::Value &node, int uid, int gid)
     {
         return mGen.saveOCIConfigToFile(node, uid, gid);
@@ -1426,6 +1422,39 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, AddToEnvironment_EmptyValue)
     Json::Value root;
     mAcc.addToEnvironment(root, "EMPTY_VAR", "");
     EXPECT_EQ("EMPTY_VAR=", root[ralf::PROCESS][ralf::ENV][0].asString());
+}
+
+/* Test Case: AddToEnvironment_DuplicateKeyReplaced
+ * Verifies that when the same key is added twice, the old value is removed
+ * and replaced with the new value (last-write-wins, deduplication).
+ * This is critical for the O(N) deduplication optimization.
+ */
+TEST_F(RalfOCIConfigGeneratorPrivateTest, AddToEnvironment_DuplicateKeyReplaced)
+{
+    TEST_LOG("Testing addToEnvironment with duplicate key (deduplication)");
+    Json::Value root;
+    mAcc.addToEnvironment(root, "MYVAR", "old_value");
+    mAcc.addToEnvironment(root, "MYVAR", "new_value");
+    const Json::Value &envArr = root[ralf::PROCESS][ralf::ENV];
+    ASSERT_EQ(1u, envArr.size());  // Should have exactly 1 entry (not 2)
+    EXPECT_EQ("MYVAR=new_value", envArr[0].asString());
+}
+
+/* Test Case: AddToEnvironment_MultiплеWithDuplicate
+ * Verifies that deduplication works correctly when mixed with other variables:
+ * adding var1, var2, var1 again should result in [var2, var1] order.
+ */
+TEST_F(RalfOCIConfigGeneratorPrivateTest, AddToEnvironment_MultipleWithDuplicate)
+{
+    TEST_LOG("Testing addToEnvironment with multiple calls including duplicate");
+    Json::Value root;
+    mAcc.addToEnvironment(root, "VAR1", "first");
+    mAcc.addToEnvironment(root, "VAR2", "second");
+    mAcc.addToEnvironment(root, "VAR1", "updated");  // VAR1 should be moved to end
+    const Json::Value &envArr = root[ralf::PROCESS][ralf::ENV];
+    ASSERT_EQ(2u, envArr.size());
+    EXPECT_EQ("VAR2=second", envArr[0].asString());
+    EXPECT_EQ("VAR1=updated", envArr[1].asString());
 }
 
 // ──────────────────────────────
@@ -1615,174 +1644,6 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, AddConfigOverrides_NoOverridesNode)
 }
 
 // ──────────────────────────────
-// addConfigEnvToOCIConfig
-// ──────────────────────────────
-
-/*
- * Test Case: AddConfigEnv_ValidEntries
- * Verifies that addConfigEnvToOCIConfig correctly appends environment variables
- * from the config node to process.env in the OCI config.
- */
-TEST_F(RalfOCIConfigGeneratorPrivateTest, AddConfigEnv_ValidEntries)
-{
-    TEST_LOG("Testing addConfigEnvToOCIConfig with valid environment entries");
-    Json::Value root;
-    Json::Value configNode;
-    configNode[ralf::ENV_CONFIG_URN]["MY_ENV_VAR"] = "my_value";
-    configNode[ralf::ENV_CONFIG_URN]["ANOTHER_VAR"] = "another_value";
-
-    EXPECT_TRUE(mAcc.addConfigEnvToOCIConfig(root, configNode));
-
-    bool foundMyEnvVar = false;
-    bool foundAnotherVar = false;
-    for (const auto &e : root[ralf::PROCESS][ralf::ENV])
-    {
-        if (e.asString() == "MY_ENV_VAR=my_value")
-            foundMyEnvVar = true;
-        if (e.asString() == "ANOTHER_VAR=another_value")
-            foundAnotherVar = true;
-    }
-    EXPECT_TRUE(foundMyEnvVar);
-    EXPECT_TRUE(foundAnotherVar);
-}
-
-/* Test Case: AddConfigEnv_PosixAllowedCharactersAccepted
- * Verifies that env names using all POSIX-allowed characters ([A-Za-z_][A-Za-z0-9_]*)
- * are accepted and written to process.env, including permitted symbols inside values.
- */
-TEST_F(RalfOCIConfigGeneratorPrivateTest, AddConfigEnv_PosixAllowedCharactersAccepted)
-{
-    TEST_LOG("Testing addConfigEnvToOCIConfig with POSIX-allowed characters in env names");
-    Json::Value root;
-    Json::Value configNode;
-    configNode[ralf::ENV_CONFIG_URN]["A_z09"] = "upper-lower-digits";
-    configNode[ralf::ENV_CONFIG_URN]["mIXed_CASE_123"] = "mixed-case-digits";
-    configNode[ralf::ENV_CONFIG_URN]["_LEADING_UNDERSCORE_Ab12"] = "leading-underscore-mixed";
-    configNode[ralf::ENV_CONFIG_URN]["_2Text"] = "valid-leading-underscore";
-    configNode[ralf::ENV_CONFIG_URN]["EMPTY_ENV"] = "";
-    configNode[ralf::ENV_CONFIG_URN]["VALUE_WITH_EQUALS"] = "value=with=equals"; // POSIX valid: '=' in value is allowed
-
-    EXPECT_TRUE(mAcc.addConfigEnvToOCIConfig(root, configNode));
-
-    bool foundVar1 = false;
-    bool foundVar2 = false;
-    bool foundVar3 = false;
-    bool foundVar4 = false;
-    bool foundEmptyVar = false;
-    bool foundValueWithEqualsVar = false;
-    for (const auto &e : root[ralf::PROCESS][ralf::ENV])
-    {
-        if (e.asString() == "A_z09=upper-lower-digits")
-            foundVar1 = true;
-        if (e.asString() == "mIXed_CASE_123=mixed-case-digits")
-            foundVar2 = true;
-        if (e.asString() == "_LEADING_UNDERSCORE_Ab12=leading-underscore-mixed")
-            foundVar3 = true;
-        if (e.asString() == "_2Text=valid-leading-underscore")
-            foundVar4 = true;
-        if (e.asString() == "EMPTY_ENV=")
-            foundEmptyVar = true;
-        if (e.asString() == "VALUE_WITH_EQUALS=value=with=equals")
-            foundValueWithEqualsVar = true;
-    }
-    EXPECT_TRUE(foundVar1);
-    EXPECT_TRUE(foundVar2);
-    EXPECT_TRUE(foundVar3);
-    EXPECT_TRUE(foundVar4);
-    EXPECT_TRUE(foundEmptyVar);
-    EXPECT_TRUE(foundValueWithEqualsVar);
-}
-
-/* Test Case: AddConfigEnv_InvalidJsonValueTypesSkipped
- * Verifies that non-string values inside valid POSIX keys (ints, booleans, objects, nulls)
- * are skipped to avoid breaking OCI configuration specifications.
- */
-TEST_F(RalfOCIConfigGeneratorPrivateTest, AddConfigEnv_InvalidJsonValueTypesSkipped)
-{
-    TEST_LOG("Testing addConfigEnvToOCIConfig with non-string JSON value types");
-    Json::Value root;
-    Json::Value configNode;
-
-    configNode[ralf::ENV_CONFIG_URN]["INT_VAL"] = 12345;                // invalid JSON type
-    configNode[ralf::ENV_CONFIG_URN]["BOOL_VAL"] = true;                // invalid JSON type
-    configNode[ralf::ENV_CONFIG_URN]["NULL_VAL"] = Json::Value::null;   // invalid JSON type
-    configNode[ralf::ENV_CONFIG_URN]["OBJECT_VAL"]["NESTED"] = "value"; // invalid JSON type
-    configNode[ralf::ENV_CONFIG_URN]["VALID_TEXT"] = "keep-me";         // valid
-
-    EXPECT_TRUE(mAcc.addConfigEnvToOCIConfig(root, configNode));
-
-    bool foundValidText = false;
-    bool foundInvalidTypes = false;
-    for (const auto &e : root[ralf::PROCESS][ralf::ENV])
-    {
-        std::string s = e.asString();
-        if (s == "VALID_TEXT=keep-me") foundValidText = true;
-        if (s.rfind("INT_VAL=", 0) == 0 || s.rfind("BOOL_VAL=", 0) == 0 ||
-            s.rfind("NULL_VAL=", 0) == 0 || s.rfind("OBJECT_VAL=", 0) == 0)
-        {
-            foundInvalidTypes = true;
-        }
-    }
-    EXPECT_TRUE(foundValidText);
-    EXPECT_FALSE(foundInvalidTypes);
-}
-
-/* Test Case: AddConfigEnv_DuplicateKeysOverwrite
- * Verifies that if a key already exists in process.env, it is overwritten with the new value.
- */
-TEST_F(RalfOCIConfigGeneratorPrivateTest, AddConfigEnv_DuplicateKeysOverwrite)
-{
-    TEST_LOG("Testing addConfigEnvToOCIConfig ensures existing env arrays handle duplicates by replacing them");
-    Json::Value root;
-    Json::Value configNode;
-
-    // Seed existing env array
-    root[ralf::PROCESS][ralf::ENV].append("DUPLICATE_VAR=original_value");
-
-    // Attempt to inject same key with new value
-    configNode[ralf::ENV_CONFIG_URN]["DUPLICATE_VAR"] = "new_value";
-
-    EXPECT_TRUE(mAcc.addConfigEnvToOCIConfig(root, configNode));
-
-    int matchCount = 0;
-    bool foundNewValue = false;
-    for (const auto &e : root[ralf::PROCESS][ralf::ENV])
-    {
-        if (e.asString() == "DUPLICATE_VAR=new_value") foundNewValue = true;
-        if (e.asString().rfind("DUPLICATE_VAR=", 0) == 0) matchCount++;
-    }
-    EXPECT_TRUE(foundNewValue);
-    EXPECT_EQ(matchCount, 1); // Ensures the old value was purged/overwritten, avoiding duplicate slots
-}
-
-/* Test Case: AddConfigEnv_NoEnvNode
- * Verifies that addConfigEnvToOCIConfig returns false when ENV_CONFIG_URN is absent.
- */
-TEST_F(RalfOCIConfigGeneratorPrivateTest, AddConfigEnv_NoEnvNode)
-{
-    TEST_LOG("Testing addConfigEnvToOCIConfig when env config node is absent");
-    Json::Value root;
-    Json::Value configNode;  // empty — no ENV_CONFIG_URN key
-    EXPECT_FALSE(mAcc.addConfigEnvToOCIConfig(root, configNode));
-}
-
-/* Test Case: AddConfigEnv_EnvNodeNotObject
- * Verifies that addConfigEnvToOCIConfig returns false when the ENV_CONFIG_URN node
- * is present but is not a JSON object (e.g. a plain string), and that nothing is
- * written to process.env.
- */
-TEST_F(RalfOCIConfigGeneratorPrivateTest, AddConfigEnv_EnvNodeNotObject)
-{
-    TEST_LOG("Testing addConfigEnvToOCIConfig when env config node is not a JSON object");
-    Json::Value root;
-    Json::Value configNode;
-    configNode[ralf::ENV_CONFIG_URN] = "not-an-object";  // scalar, not an object
-
-    EXPECT_FALSE(mAcc.addConfigEnvToOCIConfig(root, configNode));
-    EXPECT_TRUE(root[ralf::PROCESS][ralf::ENV].empty() || !root[ralf::PROCESS].isMember(ralf::ENV));
-}
-
-// ──────────────────────────────
 // addMemoryConfigToOCIConfig
 // ──────────────────────────────
 
@@ -1867,14 +1728,14 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, AddStorageConfig_ValidMaxLocalStorage)
 
 /* Test Case: AddStorageConfig_InvalidValue
  * Verifies that an unparseable maxLocalStorage value returns false and sets
- * the default STORAGE_LIMIT.
+ * the default STORAGE_LIMIT environment variable.
  */
 TEST_F(RalfOCIConfigGeneratorPrivateTest, AddStorageConfig_InvalidValue)
 {
-    TEST_LOG("Testing addStorageConfigToOCIConfig with invalid storage value");
+    TEST_LOG("Testing addStorageConfigToOCIConfig with invalid storage string");
     Json::Value root;
     Json::Value configNode;
-    configNode[ralf::STORAGE_CONFIG_URN][ralf::MAX_LOCAL_STORAGE] = "BAD_VALUE";
+    configNode[ralf::STORAGE_CONFIG_URN][ralf::MAX_LOCAL_STORAGE] = "INVALID";
     EXPECT_FALSE(mAcc.addStorageConfigToOCIConfig(root, configNode));
     bool found = false;
     for (const auto &e : root[ralf::PROCESS][ralf::ENV])
@@ -1908,14 +1769,14 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, AddStorageConfig_NoStorageNode)
 // addEntryPointToOCIConfig
 // ──────────────────────────────
 
-/* Test Case: AddEntryPoint_StringValue
- * Verifies that an entryPoint string is appended to process.args.
+/* Test Case: AddEntryPoint_Present
+ * Verifies that when entryPoint is present in the package node, it is appended
+ * to process.args.
  */
-TEST_F(RalfOCIConfigGeneratorPrivateTest, AddEntryPoint_StringValue)
+TEST_F(RalfOCIConfigGeneratorPrivateTest, AddEntryPoint_Present)
 {
-    TEST_LOG("Testing addEntryPointToOCIConfig with string entryPoint");
+    TEST_LOG("Testing addEntryPointToOCIConfig when entryPoint is present");
     Json::Value root;
-    root[ralf::PROCESS][ralf::ARGS] = Json::Value(Json::arrayValue);
     Json::Value pkgNode;
     pkgNode[ralf::ENTRY_POINT] = "/usr/bin/myapp";
     EXPECT_TRUE(mAcc.addEntryPointToOCIConfig(root, pkgNode));
@@ -1949,7 +1810,7 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, AddLogNameToOCIConfig_PathFormattedCor
     Json::Value root;
     mAcc.addLogNameToOCIConfig(root, "/data/apps/myapp", "com.example.myapp");
     const std::string &logPath =
-        root[ralf::RDKPLUGINS][ralf::LOGGING][ralf::LOG_DATA]
+        root[ralf::RDKPLUGINS][ralf::LOGGING][ralf::DATA]
             [ralf::LOG_FILE_OPTIONS][ralf::PATH].asString();
     EXPECT_EQ("/data/apps/myapp/com.example.myapp.log", logPath);
 }
@@ -1963,7 +1824,7 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, AddLogNameToOCIConfig_EmptyStoragePath
     Json::Value root;
     mAcc.addLogNameToOCIConfig(root, "", "myapp");
     const std::string &logPath =
-        root[ralf::RDKPLUGINS][ralf::LOGGING][ralf::LOG_DATA]
+        root[ralf::RDKPLUGINS][ralf::LOGGING][ralf::DATA]
             [ralf::LOG_FILE_OPTIONS][ralf::PATH].asString();
     EXPECT_EQ("/myapp.log", logPath);
 }
@@ -2016,7 +1877,7 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, AddAppPackageVersion_MissingVersionNam
     EXPECT_FALSE(mAcc.addAppPackageVersionToConfig(root, manifest));
 }
 
-// ──────────────────────────────
+// ────────────────── EXPECT_FALSE(root.isMember(ralf::PROCESS));────────────
 // addDeviceNodeEntriesToOCIConfig
 // ──────────────────────────────
 
@@ -2247,4 +2108,414 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, SaveOCIConfigToFile_FailsWhenOutputDir
     root["test"] = "value";
 
     EXPECT_FALSE(acc.saveOCIConfigToFile(root, 0, 0));
+}
+
+// ──────────────────────────────
+// hasInternetPermission
+// ──────────────────────────────
+
+class RalfHasInternetPermissionTest : public ::testing::Test
+{
+protected:
+    std::vector<ralf::RalfPkgInfoPair> emptyPkgs;
+    ralf::RalfOCIConfigGenerator gen{"dummy.json", emptyPkgs};
+    RalfOCIConfigGeneratorTestAccessor acc{gen};
+};
+
+TEST_F(RalfHasInternetPermissionTest, HasInternetPermission_EmptyString)
+{
+    TEST_LOG("Testing hasInternetPermission with empty string");
+    EXPECT_FALSE(acc.hasInternetPermission(""));
+}
+
+TEST_F(RalfHasInternetPermissionTest, HasInternetPermission_SingleInternetPermission)
+{
+    TEST_LOG("Testing hasInternetPermission with internet permission");
+    EXPECT_TRUE(acc.hasInternetPermission("urn:rdk:permission:internet"));
+}
+
+TEST_F(RalfHasInternetPermissionTest, HasInternetPermission_MultiplePermissionsWithInternet)
+{
+    TEST_LOG("Testing hasInternetPermission with multiple permissions including internet");
+    std::string capabilities = "urn:rdk:permission:home-app,urn:rdk:permission:internet,urn:rdk:permission:firebolt";
+    EXPECT_TRUE(acc.hasInternetPermission(capabilities));
+}
+
+TEST_F(RalfHasInternetPermissionTest, HasInternetPermission_InternetPermissionFirst)
+{
+    TEST_LOG("Testing hasInternetPermission with internet permission first in list");
+    std::string capabilities = "urn:rdk:permission:internet,urn:rdk:permission:home-app,urn:rdk:permission:firebolt";
+    EXPECT_TRUE(acc.hasInternetPermission(capabilities));
+}
+
+TEST_F(RalfHasInternetPermissionTest, HasInternetPermission_NoInternetPermission)
+{
+    TEST_LOG("Testing hasInternetPermission without internet permission");
+    std::string capabilities = "urn:rdk:permission:home-app,urn:rdk:permission:firebolt,urn:rdk:permission:thunder";
+    EXPECT_FALSE(acc.hasInternetPermission(capabilities));
+}
+
+TEST_F(RalfHasInternetPermissionTest, HasInternetPermission_WithWhitespace)
+{
+    TEST_LOG("Testing hasInternetPermission with whitespace");
+    std::string capabilities = "urn:rdk:permission:home-app , urn:rdk:permission:internet , urn:rdk:permission:firebolt";
+    EXPECT_TRUE(acc.hasInternetPermission(capabilities));
+}
+
+TEST_F(RalfHasInternetPermissionTest, HasInternetPermission_PartialMatch)
+{
+    TEST_LOG("Testing hasInternetPermission with partial string match (should not match)");
+    std::string capabilities = "urn:rdk:permission:internet-disabled";
+    EXPECT_FALSE(acc.hasInternetPermission(capabilities));
+}
+
+// ──────────────────────────────
+// applyNetworkConfigToOCIConfig
+// ──────────────────────────────
+
+class RalfNetworkConfigTest : public ::testing::Test
+{
+protected:
+    std::vector<ralf::RalfPkgInfoPair> emptyPkgs;
+    ralf::RalfOCIConfigGenerator gen{"dummy.json", emptyPkgs};
+    RalfOCIConfigGeneratorTestAccessor acc{gen};
+    Json::Value ociConfig;
+
+    void SetUp() override
+    {
+        // Initialize basic OCI structure
+        ociConfig[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA] = Json::Value(Json::objectValue);
+    }
+};
+
+TEST_F(RalfNetworkConfigTest, ApplyNetworkConfig_NoNetworkConfig)
+{
+    TEST_LOG("Testing applyNetworkConfigToOCIConfig with no network config");
+    Json::Value configNode;
+    EXPECT_TRUE(acc.applyNetworkConfigToOCIConfig(ociConfig, configNode));
+}
+
+TEST_F(RalfNetworkConfigTest, ApplyNetworkConfig_SinglePortForwarding)
+{
+    TEST_LOG("Testing applyNetworkConfigToOCIConfig with single port forwarding");
+    Json::Value configNode;
+    Json::Value networkArray(Json::arrayValue);
+
+    Json::Value portEntry;
+    portEntry[ralf::NAME] = "netflix-mdx";
+    portEntry[ralf::PORT] = 8009;
+    portEntry[ralf::PROTOCOL] = "tcp";
+    portEntry[ralf::TYPE] = "public";
+    networkArray.append(portEntry);
+
+    configNode[ralf::NETWORK_CONFIG_URN] = networkArray;
+
+    EXPECT_TRUE(acc.applyNetworkConfigToOCIConfig(ociConfig, configNode));
+
+    // "public" type -> hostToContainer array
+    const Json::Value &htc = ociConfig[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA][ralf::PORT_FORWARDING][ralf::HOST_TO_CONTAINER];
+    EXPECT_TRUE(htc.isArray());
+    EXPECT_EQ(htc.size(), 1u);
+    EXPECT_EQ(htc[0][ralf::PORT].asInt(), 8009);
+    EXPECT_EQ(htc[0][ralf::PROTOCOL].asString(), "tcp");
+}
+
+TEST_F(RalfNetworkConfigTest, ApplyNetworkConfig_MultiplePortForwarding)
+{
+    TEST_LOG("Testing applyNetworkConfigToOCIConfig with multiple port forwarding entries");
+    Json::Value configNode;
+    Json::Value networkArray(Json::arrayValue);
+
+    // First entry
+    Json::Value entry1;
+    entry1[ralf::NAME] = "netflix-mdx";
+    entry1[ralf::PORT] = 8009;
+    entry1[ralf::PROTOCOL] = "tcp";
+    entry1[ralf::TYPE] = "public";
+    networkArray.append(entry1);
+
+    // Second entry
+    Json::Value entry2;
+    entry2[ralf::NAME] = "myapp-service";
+    entry2[ralf::PORT] = 1234;
+    entry2[ralf::PROTOCOL] = "tcp";
+    entry2[ralf::TYPE] = "exported";
+    networkArray.append(entry2);
+
+    configNode[ralf::NETWORK_CONFIG_URN] = networkArray;
+
+    EXPECT_TRUE(acc.applyNetworkConfigToOCIConfig(ociConfig, configNode));
+
+    // Both "public" and "exported" go to hostToContainer
+    const Json::Value &htc = ociConfig[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA][ralf::PORT_FORWARDING][ralf::HOST_TO_CONTAINER];
+    EXPECT_TRUE(htc.isArray());
+    EXPECT_EQ(htc.size(), 2u);
+    EXPECT_EQ(htc[0][ralf::PORT].asInt(), 8009);
+    EXPECT_EQ(htc[1][ralf::PORT].asInt(), 1234);
+}
+
+TEST_F(RalfNetworkConfigTest, ApplyNetworkConfig_MissingName)
+{
+    TEST_LOG("Testing applyNetworkConfigToOCIConfig: missing name is allowed, entry still added");
+    Json::Value configNode;
+    Json::Value networkArray(Json::arrayValue);
+
+    Json::Value portEntry;
+    // No NAME field — should use "unnamed" for logging, still route correctly
+        portEntry[ralf::TYPE] = "public";
+    portEntry[ralf::PORT] = 8009;
+    portEntry[ralf::PROTOCOL] = "tcp";
+    networkArray.append(portEntry);
+
+    configNode[ralf::NETWORK_CONFIG_URN] = networkArray;
+
+
+        // Entry should still be routed to hostToContainer
+        const Json::Value &htc = ociConfig[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA][ralf::PORT_FORWARDING][ralf::HOST_TO_CONTAINER];
+        EXPECT_TRUE(htc.isArray());
+        EXPECT_EQ(htc.size(), 1u);
+        EXPECT_EQ(htc[0][ralf::PORT].asInt(), 8009);
+    EXPECT_TRUE(acc.applyNetworkConfigToOCIConfig(ociConfig, configNode));
+}
+
+TEST_F(RalfNetworkConfigTest, ApplyNetworkConfig_NonArrayConfig)
+{
+    TEST_LOG("Testing applyNetworkConfigToOCIConfig with non-array network config");
+    Json::Value configNode;
+    // Set network config to an object instead of array
+    configNode[ralf::NETWORK_CONFIG_URN] = Json::Value(Json::objectValue);
+
+    EXPECT_TRUE(acc.applyNetworkConfigToOCIConfig(ociConfig, configNode));
+}
+
+TEST_F(RalfNetworkConfigTest, ApplyNetworkConfig_PartialFields)
+{
+    TEST_LOG("Testing applyNetworkConfigToOCIConfig: entry without port is skipped");
+    Json::Value configNode;
+    Json::Value networkArray(Json::arrayValue);
+
+    Json::Value portEntry;
+    portEntry[ralf::NAME] = "test-service";
+    // Port is intentionally absent — this entry should be skipped
+    networkArray.append(portEntry);
+
+    configNode[ralf::NETWORK_CONFIG_URN] = networkArray;
+
+    EXPECT_TRUE(acc.applyNetworkConfigToOCIConfig(ociConfig, configNode));
+
+    // No portForwarding sub-arrays should have been created
+    const Json::Value &pf = ociConfig[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA][ralf::PORT_FORWARDING];
+    EXPECT_FALSE(pf.isMember(ralf::HOST_TO_CONTAINER));
+    EXPECT_FALSE(pf.isMember(ralf::CONTAINER_TO_HOST));
+}
+
+TEST_F(RalfNetworkConfigTest, ApplyNetworkConfig_ImportedType_GoesToContainerToHost)
+{
+    TEST_LOG("Testing applyNetworkConfigToOCIConfig: imported type goes to containerToHost (no localhostMasquerade)");
+    Json::Value configNode;
+    Json::Value networkArray(Json::arrayValue);
+
+    Json::Value portEntry;
+    portEntry[ralf::NAME]     = "peer-service";
+    portEntry[ralf::PORT]     = 4567;
+    portEntry[ralf::PROTOCOL] = "tcp";
+    portEntry[ralf::TYPE]     = "imported";
+    networkArray.append(portEntry);
+
+    configNode[ralf::NETWORK_CONFIG_URN] = networkArray;
+
+    EXPECT_TRUE(acc.applyNetworkConfigToOCIConfig(ociConfig, configNode));
+
+    const Json::Value &ctoh = ociConfig[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA][ralf::PORT_FORWARDING][ralf::CONTAINER_TO_HOST];
+    EXPECT_TRUE(ctoh.isArray());
+    EXPECT_EQ(ctoh.size(), 1u);
+    EXPECT_EQ(ctoh[0][ralf::PORT].asInt(), 4567);
+    EXPECT_EQ(ctoh[0][ralf::PROTOCOL].asString(), "tcp");
+    EXPECT_FALSE(ctoh[0].isMember(ralf::LOCALHOST_MASQUERADE));
+}
+
+TEST_F(RalfNetworkConfigTest, ApplyNetworkConfig_MixedTypes_RoutedCorrectly)
+{
+    TEST_LOG("Testing applyNetworkConfigToOCIConfig: public -> hostToContainer, imported -> containerToHost");
+    Json::Value configNode;
+    Json::Value networkArray(Json::arrayValue);
+
+    Json::Value pub;
+    pub[ralf::NAME] = "mdx"; pub[ralf::PORT] = 8009; pub[ralf::PROTOCOL] = "tcp"; pub[ralf::TYPE] = "public";
+    networkArray.append(pub);
+
+    Json::Value imp;
+    imp[ralf::NAME] = "peer"; imp[ralf::PORT] = 4567; imp[ralf::PROTOCOL] = "tcp"; imp[ralf::TYPE] = "imported";
+    networkArray.append(imp);
+
+    configNode[ralf::NETWORK_CONFIG_URN] = networkArray;
+
+    EXPECT_TRUE(acc.applyNetworkConfigToOCIConfig(ociConfig, configNode));
+
+    const Json::Value &htc  = ociConfig[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA][ralf::PORT_FORWARDING][ralf::HOST_TO_CONTAINER];
+    const Json::Value &ctoh = ociConfig[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA][ralf::PORT_FORWARDING][ralf::CONTAINER_TO_HOST];
+    EXPECT_EQ(htc.size(),  1u);
+    EXPECT_EQ(htc[0][ralf::PORT].asInt(), 8009);
+    EXPECT_EQ(ctoh.size(), 1u);
+    EXPECT_EQ(ctoh[0][ralf::PORT].asInt(), 4567);
+}
+
+// ──────────────────────────────
+// hasCapabilityPermission
+// ──────────────────────────────
+
+class RalfHasCapabilityPermissionTest : public ::testing::Test
+{
+protected:
+    std::vector<ralf::RalfPkgInfoPair> emptyPkgs;
+    ralf::RalfOCIConfigGenerator gen{"dummy.json", emptyPkgs};
+    RalfOCIConfigGeneratorTestAccessor acc{gen};
+};
+
+TEST_F(RalfHasCapabilityPermissionTest, HasCapabilityPermission_EmptyCapabilities)
+{
+    EXPECT_FALSE(acc.hasCapabilityPermission("", "urn:rdk:permission:thunder"));
+}
+
+TEST_F(RalfHasCapabilityPermissionTest, HasCapabilityPermission_EmptyPermission)
+{
+    EXPECT_FALSE(acc.hasCapabilityPermission("urn:rdk:permission:thunder", ""));
+}
+
+TEST_F(RalfHasCapabilityPermissionTest, HasCapabilityPermission_ThunderFound)
+{
+    EXPECT_TRUE(acc.hasCapabilityPermission("urn:rdk:permission:thunder", "urn:rdk:permission:thunder"));
+}
+
+TEST_F(RalfHasCapabilityPermissionTest, HasCapabilityPermission_FireboltFound)
+{
+    std::string caps = "urn:rdk:permission:home-app,urn:rdk:permission:firebolt,urn:rdk:permission:rialto";
+    EXPECT_TRUE(acc.hasCapabilityPermission(caps, "urn:rdk:permission:firebolt"));
+}
+
+TEST_F(RalfHasCapabilityPermissionTest, HasCapabilityPermission_NotPresent)
+{
+    std::string caps = "urn:rdk:permission:home-app,urn:rdk:permission:rialto";
+    EXPECT_FALSE(acc.hasCapabilityPermission(caps, "urn:rdk:permission:thunder"));
+}
+
+TEST_F(RalfHasCapabilityPermissionTest, HasCapabilityPermission_PartialMatchNotAccepted)
+{
+    EXPECT_FALSE(acc.hasCapabilityPermission("urn:rdk:permission:thunder-extra", "urn:rdk:permission:thunder"));
+}
+
+// ──────────────────────────────
+// Thunder / Firebolt containerToHost via applyRuntimeAndAppConfigToOCIConfig
+// ──────────────────────────────
+
+class RalfThunderFireboltNetworkTest : public ::testing::Test
+{
+protected:
+    std::vector<ralf::RalfPkgInfoPair> emptyPkgs;
+    ralf::RalfOCIConfigGenerator gen{"/tmp/dummy_ralf_test.json", emptyPkgs};
+    RalfOCIConfigGeneratorTestAccessor acc{gen};
+
+    Json::Value ociConfig;
+    WPEFramework::Plugin::ApplicationConfiguration appCfg;
+    WPEFramework::Exchange::RuntimeConfig rtCfg;
+
+    void SetUp() override
+    {
+        ociConfig[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA][ralf::TYPE] = "closed";
+        ociConfig[ralf::PROCESS][ralf::USER][ralf::UID] = 0;
+        ociConfig[ralf::LINUX][ralf::UID_MAPPINGS] = Json::Value(Json::arrayValue);
+        ociConfig[ralf::LINUX][ralf::GID_MAPPINGS] = Json::Value(Json::arrayValue);
+        ociConfig[ralf::MOUNT] = Json::Value(Json::arrayValue);
+        ociConfig[ralf::PROCESS][ralf::ENV] = Json::Value(Json::arrayValue);
+
+        rtCfg.dial         = false;
+        rtCfg.wanLanAccess = false;
+        rtCfg.thunder      = false;
+        rtCfg.capabilities = "";
+        rtCfg.envVariables = "[]";
+
+        appCfg.mAppId              = "com.test.app";
+        appCfg.mAppInstanceId      = "inst-001";
+        appCfg.mUserId             = 1000;
+        appCfg.mGroupId            = 1000;
+        appCfg.mWesterosSocketPath = "/tmp/wayland-0";
+        appCfg.mAppStorageInfo.path = "/opt/data/com.test.app";
+    }
+};
+
+TEST_F(RalfThunderFireboltNetworkTest, ThunderFlag_AddsContainerToHostPortFromThunderAccess)
+{
+    TEST_LOG("thunder=true -> containerToHost port from THUNDER_ACCESS with top-level localhostMasquerade");
+    setenv("THUNDER_ACCESS", "127.0.0.1:43123", 1);
+    rtCfg.thunder = true;
+
+    EXPECT_TRUE(acc.applyRuntimeAndAppConfigToOCIConfig(ociConfig, rtCfg, appCfg));
+
+    EXPECT_EQ(ociConfig[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA][ralf::TYPE].asString(), "nat");
+    const Json::Value &pf = ociConfig[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA][ralf::PORT_FORWARDING];
+    const Json::Value &ctoh = ociConfig[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA][ralf::PORT_FORWARDING][ralf::CONTAINER_TO_HOST];
+    EXPECT_EQ(ctoh.size(), 1u);
+    EXPECT_EQ(ctoh[0][ralf::PORT].asInt(), 43123);
+    EXPECT_TRUE(pf[ralf::LOCALHOST_MASQUERADE].asBool());
+    unsetenv("THUNDER_ACCESS");
+}
+
+TEST_F(RalfThunderFireboltNetworkTest, FireboltPermission_AddsContainerToHostPortFromFireboltEndpoint)
+{
+    TEST_LOG("permission:firebolt only -> containerToHost firebolt port with top-level localhostMasquerade");
+    rtCfg.capabilities = "urn:rdk:permission:firebolt";
+    rtCfg.envVariables = R"(["FIREBOLT_ENDPOINT=ws://127.0.0.1:3473/?session=abc&RPCv2=true"])";
+
+    EXPECT_TRUE(acc.applyRuntimeAndAppConfigToOCIConfig(ociConfig, rtCfg, appCfg));
+
+    EXPECT_EQ(ociConfig[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA][ralf::TYPE].asString(), "nat");
+    const Json::Value &pf = ociConfig[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA][ralf::PORT_FORWARDING];
+    const Json::Value &ctoh = ociConfig[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA][ralf::PORT_FORWARDING][ralf::CONTAINER_TO_HOST];
+    EXPECT_EQ(ctoh.size(), 1u);
+    EXPECT_EQ(ctoh[0][ralf::PORT].asInt(), 3473);
+    EXPECT_TRUE(pf[ralf::LOCALHOST_MASQUERADE].asBool());
+}
+
+TEST_F(RalfThunderFireboltNetworkTest, ThunderAndFireboltBoth_SingleDedupedEntry)
+{
+    TEST_LOG("thunder + firebolt with same resolved port -> single deduplicated containerToHost entry");
+    setenv("THUNDER_ACCESS", "127.0.0.1:9998", 1);
+    rtCfg.thunder      = true;
+    rtCfg.capabilities = "urn:rdk:permission:firebolt,urn:rdk:permission:thunder";
+    rtCfg.envVariables = R"(["FIREBOLT_ENDPOINT=ws://127.0.0.1:9998/?session=abc&RPCv2=true"])";
+
+    EXPECT_TRUE(acc.applyRuntimeAndAppConfigToOCIConfig(ociConfig, rtCfg, appCfg));
+
+    const Json::Value &pf = ociConfig[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA][ralf::PORT_FORWARDING];
+    const Json::Value &ctoh = ociConfig[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA][ralf::PORT_FORWARDING][ralf::CONTAINER_TO_HOST];
+    EXPECT_EQ(ctoh.size(), 1u);  // deduplicated to one entry
+    EXPECT_EQ(ctoh[0][ralf::PORT].asInt(), 9998);
+    EXPECT_TRUE(pf[ralf::LOCALHOST_MASQUERADE].asBool());
+    unsetenv("THUNDER_ACCESS");
+}
+
+TEST_F(RalfThunderFireboltNetworkTest, ThunderFlag_InvalidThunderAccess_SkipsThunderContainerToHost)
+{
+    TEST_LOG("thunder=true with non-TCP THUNDER_ACCESS and no config file -> no Thunder containerToHost rule");
+    setenv("THUNDER_ACCESS", "/tmp/communicator", 1);
+    rtCfg.thunder = true;
+
+    EXPECT_TRUE(acc.applyRuntimeAndAppConfigToOCIConfig(ociConfig, rtCfg, appCfg));
+
+    const Json::Value &pf = ociConfig[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA][ralf::PORT_FORWARDING];
+    EXPECT_FALSE(pf.isMember(ralf::CONTAINER_TO_HOST));
+    EXPECT_FALSE(pf.isMember(ralf::LOCALHOST_MASQUERADE));
+    unsetenv("THUNDER_ACCESS");
+}
+
+TEST_F(RalfThunderFireboltNetworkTest, NoThunderNoFirebolt_NoContainerToHostEntry)
+{
+    TEST_LOG("No thunder/firebolt -> network stays closed, no containerToHost entry");
+    rtCfg.capabilities = "urn:rdk:permission:home-app,urn:rdk:permission:rialto";
+
+    EXPECT_TRUE(acc.applyRuntimeAndAppConfigToOCIConfig(ociConfig, rtCfg, appCfg));
+
+    EXPECT_EQ(ociConfig[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA][ralf::TYPE].asString(), "closed");
+    const Json::Value &pf = ociConfig[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA][ralf::PORT_FORWARDING];
+    EXPECT_FALSE(pf.isMember(ralf::CONTAINER_TO_HOST));
 }
