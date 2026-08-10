@@ -23,10 +23,38 @@
 #include "RalfSupport.h"
 #include "OCISpecConstants.h"
 #include <fstream>
+#include <cctype>
 
 #define PERSIST_STORAGE_PATH "/data"
+
 namespace ralf
 {
+    namespace
+    {
+        // Returns the NAME portion of a "NAME=value" env entry string.
+        std::string extractEnvVarName(const std::string &envEntry)
+        {
+            const size_t pos = envEntry.find('=');
+            return (pos == std::string::npos) ? envEntry : envEntry.substr(0, pos);
+        }
+
+        // Validates POSIX env var name: [A-Za-z_][A-Za-z0-9_]*
+        bool isValidPosixEnvName(const std::string &name)
+        {
+            if (name.empty())
+                return false;
+            const unsigned char first = static_cast<unsigned char>(name[0]);
+            if (!(std::isalpha(first) || name[0] == '_'))
+                return false;
+            for (size_t i = 1; i < name.size(); ++i)
+            {
+                const unsigned char ch = static_cast<unsigned char>(name[i]);
+                if (!(std::isalnum(ch) || name[i] == '_'))
+                    return false;
+            }
+            return true;
+        }
+    } // namespace
 
     bool RalfOCIConfigGenerator::generateRalfOCIConfig(const WPEFramework::Plugin::ApplicationConfiguration &config, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject)
     {
@@ -443,6 +471,16 @@ namespace ralf
             status = addStorageConfigToOCIConfig(ociConfigRootNode, configNode);
             LOGDBG("Applied storage config to OCI config ? %s\n", status ? "true" : "false");
         }
+        // Apply urn:rdk:config:env — spec matrix: Application/Service only (N/A for Runtime and Base)
+        if (packageType == PKG_TYPE_APPLICATION || packageType == PKG_TYPE_SERVICE)
+        {
+            status = addConfigEnvToOCIConfig(ociConfigRootNode, configNode);
+            LOGDBG("Applied config env to OCI config ? %s\n", status ? "true" : "false");
+        }
+        else if (configNode.isMember(ENV_CONFIG_URN))
+        {
+            LOGWARN("Ignoring %s for packageType '%s'; only valid for application/service packages\n", ENV_CONFIG_URN, packageType.c_str());
+        }
         // Add APP_PACKAGE_VERSION environment variable from application config to OCI config
         if (packageType == PKG_TYPE_APPLICATION)
         {
@@ -566,7 +604,7 @@ namespace ralf
                     std::string fireboltPrefix = std::string(FIREBOLT_ENDPOINT_ENV_KEY) + "=";
                     if (envPair.rfind(fireboltPrefix, 0) == 0)
                     {
-                        ociConfigRootNode[PROCESS][ENV].append(envPair);
+                        addToEnvironment(ociConfigRootNode, FIREBOLT_ENDPOINT_ENV_KEY, envPair.substr(fireboltPrefix.size()));
                         LOGDBG("Added FIREBOLT_ENDPOINT environment variable: %s\n", envPair.c_str());
                         return true; // Found and added
                     }
@@ -613,9 +651,51 @@ namespace ralf
 
         return status;
     }
+
+    bool RalfOCIConfigGenerator::addConfigEnvToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &configNode)
+    {
+        if (!configNode.isMember(ENV_CONFIG_URN))
+        {
+            LOGDBG("No config env found in Ralf package config\n");
+            return false;
+        }
+
+        const Json::Value &envNode = configNode[ENV_CONFIG_URN];
+        if (!envNode.isObject())
+        {
+            LOGWARN("Config env node exists but is not an object; skipping\n");
+            return false;
+        }
+
+        bool status = false;
+        for (const auto &memberName : envNode.getMemberNames())
+        {
+            if (!isValidPosixEnvName(memberName))
+            {
+                LOGWARN("Skipping invalid environment variable name in %s: %s\n", ENV_CONFIG_URN, memberName.c_str());
+                continue;
+            }
+            const Json::Value &valueNode = envNode[memberName];
+            if (!valueNode.isString())
+            {
+                LOGWARN("Skipping non-string environment variable value in %s for key: %s\n", ENV_CONFIG_URN, memberName.c_str());
+                continue;
+            }
+            addToEnvironment(ociConfigRootNode, memberName, valueNode.asString());
+            status = true;
+        }
+
+        if (!status)
+        {
+            LOGWARN("Config env node found but contains no valid key/value entries\n");
+        }
+        return status;
+    }
+
     void RalfOCIConfigGenerator::addToEnvironment(Json::Value &ociConfigRootNode, const std::string &key, const std::string &value)
     {
-        // Ensure process/ENV exists and is an array before appending the new environment variable.
+        // Upsert: remove any existing entry for this key, then append the new value.
+        // This enforces the precedence rule (last write wins) and keeps process.env dedup-clean.
         std::string envVar = key + "=" + value;
 
         Json::Value &processNode = ociConfigRootNode[PROCESS];
@@ -630,7 +710,17 @@ namespace ralf
             envNode = Json::Value(Json::arrayValue);
         }
 
-        envNode.append(envVar);
+        // Strip existing entries with the same key before appending.
+        Json::Value deduped(Json::arrayValue);
+        for (const auto &existing : envNode)
+        {
+            if (!existing.isString() || extractEnvVarName(existing.asString()) != key)
+                deduped.append(existing);
+            else
+                LOGDBG("Removed duplicate environment variable from OCI config: %s\n", existing.asString().c_str());
+        }
+        deduped.append(envVar);
+        envNode = deduped;
         LOGDBG("Added environment variable to OCI config: %s\n", envVar.c_str());
     }
 } // namespace ralf

@@ -1351,6 +1351,10 @@ public:
     {
         return mGen.addAppStorageToOCIConfig(node, appStoragePath);
     }
+    bool addConfigEnvToOCIConfig(Json::Value &node, const Json::Value &configNode)
+    {
+        return mGen.addConfigEnvToOCIConfig(node, configNode);
+    }
     bool saveOCIConfigToFile(const Json::Value &node, int uid, int gid)
     {
         return mGen.saveOCIConfigToFile(node, uid, gid);
@@ -1608,6 +1612,216 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, AddConfigOverrides_NoOverridesNode)
     Json::Value root;
     Json::Value configNode;  // empty
     EXPECT_FALSE(mAcc.addConfigOverridesToOCIConfig(root, configNode));
+}
+
+// ──────────────────────────────
+// addConfigEnvToOCIConfig
+// ──────────────────────────────
+
+/*
+ * Test Case: AddConfigEnv_ValidEntries
+ * Verifies that addConfigEnvToOCIConfig correctly appends environment variables
+ * from the config node to process.env in the OCI config.
+ */
+TEST_F(RalfOCIConfigGeneratorPrivateTest, AddConfigEnv_ValidEntries)
+{
+    TEST_LOG("Testing addConfigEnvToOCIConfig with valid environment entries");
+    Json::Value root;
+    Json::Value configNode;
+    configNode[ralf::ENV_CONFIG_URN]["MY_ENV_VAR"] = "my_value";
+    configNode[ralf::ENV_CONFIG_URN]["ANOTHER_VAR"] = "another_value";
+
+    EXPECT_TRUE(mAcc.addConfigEnvToOCIConfig(root, configNode));
+
+    bool foundMyEnvVar = false;
+    bool foundAnotherVar = false;
+    for (const auto &e : root[ralf::PROCESS][ralf::ENV])
+    {
+        if (e.asString() == "MY_ENV_VAR=my_value")
+            foundMyEnvVar = true;
+        if (e.asString() == "ANOTHER_VAR=another_value")
+            foundAnotherVar = true;
+    }
+    EXPECT_TRUE(foundMyEnvVar);
+    EXPECT_TRUE(foundAnotherVar);
+}
+
+/* Test Case: AddConfigEnv_PosixAllowedCharactersAccepted
+ * Verifies that env names using all POSIX-allowed characters ([A-Za-z_][A-Za-z0-9_]*)
+ * are accepted and written to process.env, including permitted symbols inside values.
+ */
+TEST_F(RalfOCIConfigGeneratorPrivateTest, AddConfigEnv_PosixAllowedCharactersAccepted)
+{
+    TEST_LOG("Testing addConfigEnvToOCIConfig with POSIX-allowed characters in env names");
+    Json::Value root;
+    Json::Value configNode;
+    configNode[ralf::ENV_CONFIG_URN]["A_z09"] = "upper-lower-digits";
+    configNode[ralf::ENV_CONFIG_URN]["mIXed_CASE_123"] = "mixed-case-digits";
+    configNode[ralf::ENV_CONFIG_URN]["_LEADING_UNDERSCORE_Ab12"] = "leading-underscore-mixed";
+    configNode[ralf::ENV_CONFIG_URN]["_2Text"] = "valid-leading-underscore";
+    configNode[ralf::ENV_CONFIG_URN]["EMPTY_ENV"] = "";
+    configNode[ralf::ENV_CONFIG_URN]["VALUE_WITH_EQUALS"] = "value=with=equals"; // POSIX valid: '=' in value is allowed
+
+    EXPECT_TRUE(mAcc.addConfigEnvToOCIConfig(root, configNode));
+
+    bool foundVar1 = false;
+    bool foundVar2 = false;
+    bool foundVar3 = false;
+    bool foundVar4 = false;
+    bool foundEmptyVar = false;
+    bool foundValueWithEqualsVar = false;
+    for (const auto &e : root[ralf::PROCESS][ralf::ENV])
+    {
+        if (e.asString() == "A_z09=upper-lower-digits")
+            foundVar1 = true;
+        if (e.asString() == "mIXed_CASE_123=mixed-case-digits")
+            foundVar2 = true;
+        if (e.asString() == "_LEADING_UNDERSCORE_Ab12=leading-underscore-mixed")
+            foundVar3 = true;
+        if (e.asString() == "_2Text=valid-leading-underscore")
+            foundVar4 = true;
+        if (e.asString() == "EMPTY_ENV=")
+            foundEmptyVar = true;
+        if (e.asString() == "VALUE_WITH_EQUALS=value=with=equals")
+            foundValueWithEqualsVar = true;
+    }
+    EXPECT_TRUE(foundVar1);
+    EXPECT_TRUE(foundVar2);
+    EXPECT_TRUE(foundVar3);
+    EXPECT_TRUE(foundVar4);
+    EXPECT_TRUE(foundEmptyVar);
+    EXPECT_TRUE(foundValueWithEqualsVar);
+}
+
+/* Test Case: AddConfigEnv_InvalidEntriesAreSkipped
+ * Verifies that malformed env names (starting with digits, empty keys, invalid symbols)
+ * are cleanly rejected and omitted from process.env.
+ */
+TEST_F(RalfOCIConfigGeneratorPrivateTest, AddConfigEnv_InvalidEntriesAreSkipped)
+{
+    TEST_LOG("Testing addConfigEnvToOCIConfig with invalid POSIX key formats");
+    Json::Value root;
+    Json::Value configNode;
+    configNode[ralf::ENV_CONFIG_URN]["1INVALID"] = "starts-with-digit";    // invalid key
+    configNode[ralf::ENV_CONFIG_URN]["VALID_VAR"] = "valid-value";         // valid key
+    configNode[ralf::ENV_CONFIG_URN]["INVALID-CHAR"] = "invalid-hyphen";  // invalid key
+    configNode[ralf::ENV_CONFIG_URN][""] = "empty-key";                    // invalid key
+    configNode[ralf::ENV_CONFIG_URN]["KEY_%INVALID"] = "special-character"; // invalid key
+
+    EXPECT_TRUE(mAcc.addConfigEnvToOCIConfig(root, configNode));
+
+    bool foundValidVar = false;
+    bool foundInvalidVar1 = false;
+    bool foundInvalidCharVar = false;
+    bool foundEmptyKeyVar = false;
+    bool foundSpecialCharVar = false;
+    for (const auto &e : root[ralf::PROCESS][ralf::ENV])
+    {
+        if (e.asString() == "VALID_VAR=valid-value")
+            foundValidVar = true;
+        if (e.asString().rfind("1INVALID", 0) == 0)
+            foundInvalidVar1 = true;
+        if (e.asString().rfind("INVALID-CHAR", 0) == 0)
+            foundInvalidCharVar = true;
+        if (e.asString() == "=empty-key")
+            foundEmptyKeyVar = true;
+        if (e.asString().rfind("KEY_%INVALID", 0) == 0)
+            foundSpecialCharVar = true;
+    }
+    EXPECT_TRUE(foundValidVar);
+    EXPECT_FALSE(foundInvalidVar1);
+    EXPECT_FALSE(foundInvalidCharVar);
+    EXPECT_FALSE(foundEmptyKeyVar);
+    EXPECT_FALSE(foundSpecialCharVar);
+}
+
+/* Test Case: AddConfigEnv_InvalidJsonValueTypesSkipped
+ * Verifies that non-string values inside valid POSIX keys (ints, booleans, objects, nulls)
+ * are skipped to avoid breaking OCI configuration specifications.
+ */
+TEST_F(RalfOCIConfigGeneratorPrivateTest, AddConfigEnv_InvalidJsonValueTypesSkipped)
+{
+    TEST_LOG("Testing addConfigEnvToOCIConfig with non-string JSON value types");
+    Json::Value root;
+    Json::Value configNode;
+
+    configNode[ralf::ENV_CONFIG_URN]["INT_VAL"] = 12345;                // invalid JSON type
+    configNode[ralf::ENV_CONFIG_URN]["BOOL_VAL"] = true;                // invalid JSON type
+    configNode[ralf::ENV_CONFIG_URN]["NULL_VAL"] = Json::Value::null;   // invalid JSON type
+    configNode[ralf::ENV_CONFIG_URN]["OBJECT_VAL"]["NESTED"] = "value"; // invalid JSON type
+    configNode[ralf::ENV_CONFIG_URN]["VALID_TEXT"] = "keep-me";         // valid
+
+    EXPECT_TRUE(mAcc.addConfigEnvToOCIConfig(root, configNode));
+
+    bool foundValidText = false;
+    bool foundInvalidTypes = false;
+    for (const auto &e : root[ralf::PROCESS][ralf::ENV])
+    {
+        std::string s = e.asString();
+        if (s == "VALID_TEXT=keep-me") foundValidText = true;
+        if (s.rfind("INT_VAL=", 0) == 0 || s.rfind("BOOL_VAL=", 0) == 0 ||
+            s.rfind("NULL_VAL=", 0) == 0 || s.rfind("OBJECT_VAL=", 0) == 0)
+        {
+            foundInvalidTypes = true;
+        }
+    }
+    EXPECT_TRUE(foundValidText);
+    EXPECT_FALSE(foundInvalidTypes);
+}
+
+/* Test Case: AddConfigEnv_DuplicateKeysOverwrite
+ * Verifies that if a key already exists in process.env, it is overwritten with the new value.
+ */
+TEST_F(RalfOCIConfigGeneratorPrivateTest, AddConfigEnv_DuplicateKeysOverwrite)
+{
+    TEST_LOG("Testing addConfigEnvToOCIConfig ensures existing env arrays handle duplicates by replacing them");
+    Json::Value root;
+    Json::Value configNode;
+
+    // Seed existing env array
+    root[ralf::PROCESS][ralf::ENV].append("DUPLICATE_VAR=original_value");
+
+    // Attempt to inject same key with new value
+    configNode[ralf::ENV_CONFIG_URN]["DUPLICATE_VAR"] = "new_value";
+
+    EXPECT_TRUE(mAcc.addConfigEnvToOCIConfig(root, configNode));
+
+    int matchCount = 0;
+    bool foundNewValue = false;
+    for (const auto &e : root[ralf::PROCESS][ralf::ENV])
+    {
+        if (e.asString() == "DUPLICATE_VAR=new_value") foundNewValue = true;
+        if (e.asString().rfind("DUPLICATE_VAR=", 0) == 0) matchCount++;
+    }
+    EXPECT_TRUE(foundNewValue);
+    EXPECT_EQ(matchCount, 1); // Ensures the old value was purged/overwritten, avoiding duplicate slots
+}
+
+/* Test Case: AddConfigEnv_NoEnvNode
+ * Verifies that addConfigEnvToOCIConfig returns false when ENV_CONFIG_URN is absent.
+ */
+TEST_F(RalfOCIConfigGeneratorPrivateTest, AddConfigEnv_NoEnvNode)
+{
+    TEST_LOG("Testing addConfigEnvToOCIConfig when env config node is absent");
+    Json::Value root;
+    Json::Value configNode;  // empty — no ENV_CONFIG_URN key
+    EXPECT_FALSE(mAcc.addConfigEnvToOCIConfig(root, configNode));
+}
+
+/* Test Case: AddConfigEnv_EnvNodeNotObject
+ * Verifies that addConfigEnvToOCIConfig returns false when the ENV_CONFIG_URN node
+ * is present but is not a JSON object (e.g. a plain string), and that nothing is
+ * written to process.env.
+ */
+TEST_F(RalfOCIConfigGeneratorPrivateTest, AddConfigEnv_EnvNodeNotObject)
+{
+    TEST_LOG("Testing addConfigEnvToOCIConfig when env config node is not a JSON object");
+    Json::Value root;
+    Json::Value configNode;
+    configNode[ralf::ENV_CONFIG_URN] = "not-an-object";  // scalar, not an object
+
+    EXPECT_FALSE(mAcc.addConfigEnvToOCIConfig(root, configNode));
+    EXPECT_TRUE(root[ralf::PROCESS][ralf::ENV].empty() || !root[ralf::PROCESS].isMember(ralf::ENV));
 }
 
 // ──────────────────────────────
@@ -2076,4 +2290,3 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, SaveOCIConfigToFile_FailsWhenOutputDir
 
     EXPECT_FALSE(acc.saveOCIConfigToFile(root, 0, 0));
 }
-
