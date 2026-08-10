@@ -211,6 +211,19 @@ namespace Plugin
         mDialUsn = ""; //.dial.usn
         //mPreloads
 
+        //TODO: SUPPORT Dial
+	/*
+        if (mDialServerPathPrefix.empty())
+        {
+            auto dialUuid = AICommon::Uuid::createUuid();
+            mDialServerPathPrefix = dialUuid.toString();
+        }
+        if (mDialUsn.empty())
+        {
+            AICommon::DthMacAddressProvider macAddressProvider;
+            mDialUsn = AICommon::getDeviceDialUsn(macAddressProvider.getMac());
+        }
+	*/
         mEnvVariables.push_back("WESTEROS_SINK_AMLOGIC_USE_DMABUF=1");
         mEnvVariables.push_back("WESTEROS_GL_USE_AMLOGIC_AVSYNC=1");
         mEnvVariables.push_back("WESTEROS_SINK_USE_FREERUN=1");
