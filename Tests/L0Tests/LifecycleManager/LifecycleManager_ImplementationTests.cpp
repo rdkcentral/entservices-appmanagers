@@ -119,7 +119,7 @@ public:
  */
 class ConcreteLifecycleManagerImpl : public LifecycleManagerImplementation {
 public:
-    void AddRef() const override {}
+    uint32_t AddRef() const override { return 1; }
     uint32_t Release() const override { return Core::ERROR_NONE; }
 };
 
@@ -132,7 +132,7 @@ public:
     Exchange::ILifecycleManager::LifecycleState spawnedTargetState =
         Exchange::ILifecycleManager::LifecycleState::UNLOADED;
 
-    void AddRef() const override {}
+    uint32_t AddRef() const override { return 1; }
     uint32_t Release() const override { return Core::ERROR_NONE; }
 
     Core::hresult KillApp(const std::string& appInstanceId, std::string& errorReason, bool& success) override
