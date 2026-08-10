@@ -263,20 +263,10 @@ namespace WPEFramework
                             }
                             envArr.append(std::string("APPLICATION_LAUNCH_PARAMETERS=") + b64Encode(effectiveLaunchArgs));
 
-                            // Detect launch method from intent context.source
-                            std::string launchMethod = "EPG";
-                            {
-                                Json::Reader rd; Json::Value iv;
-                                if (rd.parse(intent, iv) && iv["context"]["source"].isString()
-                                        && iv["context"]["source"].asString() == "dial")
-                                    launchMethod = "DIAL";
-                            }
-                            envArr.append(std::string("APPLICATION_LAUNCH_METHOD=") + launchMethod);
-
                             Json::StreamWriterBuilder w; w["indentation"] = "";
                             runtimeConfigObject.envVariables = Json::writeString(w, envArr);
-                            LOGINFO("launch: APPLICATION_LAUNCH_PARAMETERS='%s' (base64 of '%s'), APPLICATION_LAUNCH_METHOD=%s",
-                                    b64Encode(effectiveLaunchArgs).c_str(), effectiveLaunchArgs.c_str(), launchMethod.c_str());
+                                LOGINFO("launch: APPLICATION_LAUNCH_PARAMETERS='%s' (base64 of '%s')",
+                                    b64Encode(effectiveLaunchArgs).c_str(), effectiveLaunchArgs.c_str());
 
                             LOGINFO("spawnApp called ,state %u",state);
                             status = mLifecycleManagerRemoteObject->SpawnApp(appId, intent, state, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success);

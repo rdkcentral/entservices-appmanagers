@@ -32,32 +32,6 @@
 #include <sys/stat.h>
 #include <yaml-cpp/yaml.h>
 #endif
-#include <net/if.h>
-#include <sys/socket.h>
-#include <sys/ioctl.h>
-#include <unistd.h>
-
-namespace {
-// AI1.0-equivalent USN generation: strip colons from eth0 MAC address,
-// prefix with uuid:sky-dial-server-, append DIAL service suffix.
-static std::string generateDialUsnFromEth0Mac()
-{
-    unsigned char mac[6] = {};
-    int fd = ::socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, IPPROTO_IP);
-    if (fd >= 0) {
-        struct ifreq ifr{};
-        ::strncpy(ifr.ifr_ifrn.ifrn_name, "eth0", sizeof(ifr.ifr_ifrn.ifrn_name));
-        if (::ioctl(fd, SIOCGIFHWADDR, &ifr) == 0)
-            ::memcpy(mac, ifr.ifr_addr.sa_data, sizeof(mac));
-        ::close(fd);
-    }
-    char macStr[13];
-    ::snprintf(macStr, sizeof(macStr), "%02x%02x%02x%02x%02x%02x",
-               mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-    return std::string("uuid:sky-dial-server-") + macStr +
-           "::urn:dial-multiscreen-org:service:dial:1";
-}
-} // anonymous namespace
 
 #define AICONFIGURATION_JSON_PATH "/etc/rdk/rdkappmanagers.json"
 
@@ -237,13 +211,6 @@ namespace Plugin
         mDialUsn = ""; //.dial.usn
         //mPreloads
 
-        // Set pathPrefix to match rdkappmanagers.json "dial.server.prefix".
-        // Generate USN using the AI1.0 formula (strip colons from MAC).
-        if (mDialServerPathPrefix.empty())
-            mDialServerPathPrefix = "apps";
-        if (mDialUsn.empty()) {
-            mDialUsn = generateDialUsnFromEth0Mac();
-        }
         mEnvVariables.push_back("WESTEROS_SINK_AMLOGIC_USE_DMABUF=1");
         mEnvVariables.push_back("WESTEROS_GL_USE_AMLOGIC_AVSYNC=1");
         mEnvVariables.push_back("WESTEROS_SINK_USE_FREERUN=1");
@@ -695,13 +662,6 @@ namespace Plugin
             mDialServerPathPrefix = dialSrv["prefix"].asString();
         if (dial["usn"].isString())
             mDialUsn = dial["usn"].asString();
-
-        // USN is not stored in the config file (it is MAC-derived at runtime).
-        // Generate it here using the AI1.0 formula if not provided in config.
-        if (mDialUsn.empty()) {
-            mDialUsn = generateDialUsnFromEth0Mac();
-            LOGINFO("DIAL: generated USN from MAC: %s", mDialUsn.c_str());
-        }
 
         printAIConfiguration();
     }
