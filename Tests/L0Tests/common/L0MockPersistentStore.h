@@ -50,7 +50,7 @@ public:
     std::string GetLastValue() const { return _lastValue; }
 
     // IStore2 interface
-    void AddRef() const override;
+    uint32_t AddRef() const override;
     uint32_t Release() const override;
     void* QueryInterface(const uint32_t interfaceNumber) override;
 

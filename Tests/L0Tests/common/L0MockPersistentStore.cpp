@@ -64,9 +64,9 @@ void L0MockPersistentStore::SetDeleteKeyResult(bool success)
     _deleteKeySuccess = success;
 }
 
-void L0MockPersistentStore::AddRef() const
+uint32_t L0MockPersistentStore::AddRef() const
 {
-    _refCount.fetch_add(1, std::memory_order_relaxed);
+    return _refCount.fetch_add(1, std::memory_order_relaxed) + 1;
 }
 
 uint32_t L0MockPersistentStore::Release() const
