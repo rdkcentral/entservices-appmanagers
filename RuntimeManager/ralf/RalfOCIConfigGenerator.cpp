@@ -690,17 +690,15 @@ namespace ralf
         // Build a deduplicated array, dropping any existing entry for this key.
         const std::string prefix = key + "=";
         Json::Value deduped(Json::arrayValue);
-        LOGDBG("Arun: processNode[ENV] before: %s\n", processNode[ENV].toStyledString().c_str());
         for (const auto &existing : processNode[ENV])
         {
             if (!existing.isString() || existing.asString().rfind(prefix, 0) != 0)
                 deduped.append(existing);
             else
-                LOGDBG("Removed duplicate environment variable from OCI config: %s\n", existing.asString().c_str());
+                LOGWARN("Removed duplicate environment variable from OCI config: %s\n", existing.asString().c_str());
         }
         deduped.append(envVar);
         processNode[ENV] = deduped;
-        LOGDBG("Arun: processNode[ENV] after: %s\n", processNode[ENV].toStyledString().c_str());
         LOGDBG("Added environment variable to OCI config: %s\n", envVar.c_str());
     }
 } // namespace ralf
