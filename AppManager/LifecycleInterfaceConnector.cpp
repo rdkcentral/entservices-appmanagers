@@ -48,6 +48,40 @@ namespace WPEFramework
         LifecycleInterfaceConnector* LifecycleInterfaceConnector::_instance = nullptr;
         static uint32_t gAppsActiveCounter = 0;
 
+        namespace
+        {
+            std::string normalizeLaunchArgs(const std::string& launchArgs)
+            {
+                if (launchArgs == "{}" || launchArgs == "{ }") {
+                    return {};
+                }
+                return launchArgs;
+            }
+
+            std::string base64Encode(const std::string& in)
+            {
+                static const char* T =
+                    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+                std::string out;
+                out.reserve(((in.size() + 2) / 3) * 4);
+                const uint8_t* b = reinterpret_cast<const uint8_t*>(in.data());
+                std::size_t n = in.size(), i = 0;
+                for (; i + 2 < n; i += 3) {
+                    uint32_t v = (b[i] << 16) | (b[i + 1] << 8) | b[i + 2];
+                    out += T[(v >> 18) & 0x3F]; out += T[(v >> 12) & 0x3F];
+                    out += T[(v >>  6) & 0x3F]; out += T[ v        & 0x3F];
+                }
+                if (i + 1 == n) {
+                    uint32_t v = b[i] << 16;
+                    out += T[(v >> 18) & 0x3F]; out += T[(v >> 12) & 0x3F]; out += '='; out += '=';
+                } else if (i + 2 == n) {
+                    uint32_t v = (b[i] << 16) | (b[i + 1] << 8);
+                    out += T[(v >> 18) & 0x3F]; out += T[(v >> 12) & 0x3F]; out += T[(v >> 6) & 0x3F]; out += '=';
+                }
+                return out;
+            }
+        }
+
         LifecycleInterfaceConnector::LifecycleInterfaceConnector(PluginHost::IShell* service)
         : mLifecycleManagerRemoteObject(nullptr),
           mLifecycleManagerStateRemoteObject(nullptr),
@@ -152,6 +186,24 @@ namespace WPEFramework
             return status;
         }
 
+        void LifecycleInterfaceConnector::appendLaunchParametersEnv(const std::string& launchArgs, WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject) const
+        {
+            Json::Value envArr(Json::arrayValue);
+            {
+                Json::Reader rd;
+                Json::Value existing;
+                if (rd.parse(runtimeConfigObject.envVariables, existing) && existing.isArray())
+                    envArr = existing;
+            }
+
+            envArr.append(std::string("APPLICATION_LAUNCH_PARAMETERS=") + base64Encode(normalizeLaunchArgs(launchArgs)));
+
+            Json::StreamWriterBuilder w;
+            w["indentation"] = "";
+            runtimeConfigObject.envVariables = Json::writeString(w, envArr);
+            LOGINFO("launch: APPLICATION_LAUNCH_PARAMETERS set");
+        }
+
 
 /*
  * @brief LaunchApp invokes this to call LifecycleManager API.
@@ -224,48 +276,7 @@ namespace WPEFramework
                             string source = "";
                             appManagerImplInstance->handleOnAppLaunchRequest(appId, intent, source);
 
-                            // ALWAYS set APPLICATION_LAUNCH_PARAMETERS (base64 of launchArgs)
-                            // SkyBrowserLauncher can read the
-                            // pairingCode and launch method directly from the Dobby container env.
-                            // When launchArgs is empty or "{}", use empty string (base64("") = "").
-                            std::string effectiveLaunchArgs = launchArgs;
-                            if (effectiveLaunchArgs == "{}" || effectiveLaunchArgs == "{ }") {
-                                effectiveLaunchArgs = "";
-                            }
-
-                            // Minimal base64 encoder (RFC 4648, no line breaks)
-                            auto b64Encode = [](const std::string& in) -> std::string {
-                                static const char* T =
-                                    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-                                std::string out;
-                                out.reserve(((in.size() + 2) / 3) * 4);
-                                const uint8_t* b = reinterpret_cast<const uint8_t*>(in.data());
-                                std::size_t n = in.size(), i = 0;
-                                for (; i + 2 < n; i += 3) {
-                                    uint32_t v = (b[i]<<16)|(b[i+1]<<8)|b[i+2];
-                                    out += T[(v>>18)&0x3F]; out += T[(v>>12)&0x3F];
-                                    out += T[(v>> 6)&0x3F]; out += T[ v     &0x3F];
-                                }
-                                if (i+1==n) { uint32_t v=b[i]<<16;
-                                    out+=T[(v>>18)&0x3F]; out+=T[(v>>12)&0x3F]; out+='='; out+='=';
-                                } else if (i+2==n) { uint32_t v=(b[i]<<16)|(b[i+1]<<8);
-                                    out+=T[(v>>18)&0x3F]; out+=T[(v>>12)&0x3F]; out+=T[(v>>6)&0x3F]; out+='=';
-                                }
-                                return out;
-                            };
-
-                            Json::Value envArr(Json::arrayValue);
-                            {
-                                Json::Reader rd;
-                                Json::Value existing;
-                                if (rd.parse(runtimeConfigObject.envVariables, existing) && existing.isArray())
-                                    envArr = existing;
-                            }
-                            envArr.append(std::string("APPLICATION_LAUNCH_PARAMETERS=") + b64Encode(effectiveLaunchArgs));
-
-                            Json::StreamWriterBuilder w; w["indentation"] = "";
-                            runtimeConfigObject.envVariables = Json::writeString(w, envArr);
-LOGINFO("launch: APPLICATION_LAUNCH_PARAMETERS set");
+                            appendLaunchParametersEnv(launchArgs, runtimeConfigObject);
 
                             LOGINFO("spawnApp called ,state %u",state);
                             status = mLifecycleManagerRemoteObject->SpawnApp(appId, intent, state, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success);
