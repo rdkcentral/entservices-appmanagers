@@ -26,14 +26,14 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <errno.h>
 
 namespace WPEFramework {
 namespace Plugin {
 
-namespace fs = std::filesystem;
-
-GStreamerRegistry::GStreamerRegistry(std::filesystem::path gstLaunchPath,
-                                     std::filesystem::path gstRegistryPath)
+GStreamerRegistry::GStreamerRegistry(std::string gstLaunchPath,
+                                     std::string gstRegistryPath)
     : mGstLaunchPath(std::move(gstLaunchPath))
     , mRegistryPath(std::move(gstRegistryPath))
 {
@@ -51,14 +51,15 @@ GStreamerRegistry::GStreamerRegistry(std::filesystem::path gstLaunchPath,
  */
 bool GStreamerRegistry::generate()
 {
-    std::error_code err;
-    if (fs::exists(mRegistryPath, err))
+    if (access(mRegistryPath.c_str(), F_OK) == 0)
         return true;
 
-    const std::string registryEnvVar = "GST_REGISTRY=" + mRegistryPath.string();
+    const std::string registryEnvVar = "GST_REGISTRY=" + mRegistryPath;
 
+    const size_t slashPos = mGstLaunchPath.rfind('/');
+    const std::string gstLaunchFilename = (slashPos == std::string::npos) ? mGstLaunchPath : mGstLaunchPath.substr(slashPos + 1);
     char *args[] = {
-        strdup(mGstLaunchPath.filename().c_str()),
+        strdup(gstLaunchFilename.c_str()),
         strdup("--version"),
         nullptr
     };
@@ -107,7 +108,7 @@ bool GStreamerRegistry::generate()
     LOGINFO("GStreamerRegistry: %s exited with status %d",
             mGstLaunchPath.c_str(), WEXITSTATUS(wstatus));
 
-    if (!fs::exists(mRegistryPath, err))
+    if (access(mRegistryPath.c_str(), F_OK) != 0)
     {
         LOGWARN("GStreamerRegistry: %s did not create registry file at %s",
                 mGstLaunchPath.c_str(), mRegistryPath.c_str());
@@ -115,13 +116,12 @@ bool GStreamerRegistry::generate()
     }
 
     // Make registry readable by all users inside containers.
-    fs::permissions(mRegistryPath,
-                    fs::perms::group_read | fs::perms::others_read,
-                    fs::perm_options::add, err);
-    if (err)
+    struct stat st;
+    if (stat(mRegistryPath.c_str(), &st) != 0 ||
+        chmod(mRegistryPath.c_str(), st.st_mode | S_IRGRP | S_IROTH) != 0)
     {
         LOGERR("GStreamerRegistry: failed to set read permissions on %s: %s",
-               mRegistryPath.c_str(), err.message().c_str());
+               mRegistryPath.c_str(), strerror(errno));
         return false;
     }
 
@@ -133,10 +133,9 @@ bool GStreamerRegistry::generate()
 /**
  * Returns the registry path if the file exists, otherwise an empty path.
  */
-std::filesystem::path GStreamerRegistry::path() const
+std::string GStreamerRegistry::path() const
 {
-    std::error_code err;
-    return fs::exists(mRegistryPath, err) ? mRegistryPath : std::filesystem::path{};
+    return (access(mRegistryPath.c_str(), F_OK) == 0) ? mRegistryPath : std::string{};
 }
 
 } /* namespace Plugin */

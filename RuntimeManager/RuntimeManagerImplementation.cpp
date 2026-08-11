@@ -738,8 +738,8 @@ namespace WPEFramework
             std::vector<std::pair<std::string, std::string>> parsedCaps;
             DobbySpecGenerator::parseCapabilities(runtimeConfigObject.capabilities, parsedCaps);
             const bool appRequiresRialto = DobbySpecGenerator::hasCapability(parsedCaps, "rialto");
-            const std::optional<bool> rialtoOverride = (nullptr != mAIConfiguration) ? mAIConfiguration->getRialtoOverride() : std::nullopt;
-            const bool requiresRialto = rialtoOverride.value_or(appRequiresRialto);
+            const int rialtoOverride = (nullptr != mAIConfiguration) ? mAIConfiguration->getRialtoOverride() : -1;
+            const bool requiresRialto = (rialtoOverride >= 0) ? (rialtoOverride > 0) : appRequiresRialto;
 #endif
             if (mRialtoConnector && requiresRialto)
             {

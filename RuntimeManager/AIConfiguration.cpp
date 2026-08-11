@@ -63,7 +63,7 @@ namespace Plugin
         , mPreloads()
         , mEnvVariables()
         , mDefaultAllowedLogLevels({"fatal", "error", "warning", "milestone", "info", "debug"})
-        , mRialtoOverride(std::nullopt)
+        , mRialtoOverride(-1)
     {
         // All members initialized in initialization list above
     }
@@ -553,7 +553,7 @@ namespace Plugin
 #endif
     }
 
-    std::optional<bool> AIConfiguration::getRialtoOverride() const
+    int AIConfiguration::getRialtoOverride() const
     {
         return mRialtoOverride;
     }
@@ -687,12 +687,12 @@ namespace Plugin
         if (rialtoNode.isObject() && rialtoNode["override"].isString())
         {
             const std::string rialtoOverrideStr = rialtoNode["override"].asString();
-            if (rialtoOverrideStr == "forceOn")       mRialtoOverride = true;
-            else if (rialtoOverrideStr == "forceOff") mRialtoOverride = false;
-            else                                      mRialtoOverride = std::nullopt;
+            if (rialtoOverrideStr == "forceOn")       mRialtoOverride = 1;
+            else if (rialtoOverrideStr == "forceOff") mRialtoOverride = 0;
+            else                                      mRialtoOverride = -1;
             LOGINFO("rialto.override=%s -> mRialtoOverride=%s", rialtoOverrideStr.c_str(),
-                    !mRialtoOverride.has_value() ? "default" :
-                    mRialtoOverride.value()      ? "forceOn" : "forceOff");
+                    (mRialtoOverride < 0) ? "default" :
+                    (mRialtoOverride > 0) ? "forceOn" : "forceOff");
         }
 
         printAIConfiguration();

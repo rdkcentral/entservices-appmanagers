@@ -61,7 +61,7 @@ if(ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG)
 endif()
 
 set_target_properties(${MODULE_NAME} PROPERTIES
-        CXX_STANDARD 17
+        CXX_STANDARD 11
         CXX_STANDARD_REQUIRED YES)
 
 set_source_files_properties(RuntimeManager.cpp PROPERTIES COMPILE_FLAGS "-fexceptions")
@@ -131,7 +131,7 @@ target_include_directories(${PLUGIN_IMPLEMENTATION}
         ${CMAKE_CURRENT_SOURCE_DIR}/../helpers)
 
 set_target_properties(${PLUGIN_IMPLEMENTATION} PROPERTIES
-        CXX_STANDARD 17
+        CXX_STANDARD 11
         CXX_STANDARD_REQUIRED YES)
 
 set(RUNTIME_MANAGER_INCLUDES $ENV{RUNTIME_MANAGER_INCLUDES})

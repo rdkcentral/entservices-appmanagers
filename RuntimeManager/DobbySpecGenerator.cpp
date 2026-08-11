@@ -201,11 +201,11 @@ DobbySpecGenerator::~DobbySpecGenerator()
     // mAIConfiguration is owned by RuntimeManagerImplementation; not deleted here
 }
 
-void DobbySpecGenerator::setGstreamerRegistryPath(const std::filesystem::path& registryPath)
+void DobbySpecGenerator::setGstreamerRegistryPath(const std::string& registryPath)
 {
     // Mirrors appinfrastructure DobbySpecGenerator::setGstreamerRegistryPath().
     // Only update if the file actually exists to avoid mounting non-existent paths.
-    if (registryPath.empty() || std::filesystem::exists(registryPath))
+    if (registryPath.empty() || (access(registryPath.c_str(), F_OK) == 0))
         mGstRegistrySourcePath = registryPath.string();
 }
 

@@ -27,7 +27,6 @@
 #include <string>
 #include <utility>
 #include <vector>
-#include <filesystem>
 #include "ApplicationConfiguration.h"
 #include <interfaces/IRuntimeManager.h>
 #include "AIConfiguration.h"
@@ -53,7 +52,7 @@ namespace Plugin
              * appinfrastructure DobbySpecGenerator::setGstreamerRegistryPath().
              * Only sets the path if the file exists at call time.
              */
-            void setGstreamerRegistryPath(const std::filesystem::path& registryPath);
+            void setGstreamerRegistryPath(const std::string& registryPath);
             static void parseCapabilities(const std::string& serializedCapabilities,
                               std::vector<std::pair<std::string, std::string>>& parsedCapabilities);
             static bool hasCapability(const std::vector<std::pair<std::string, std::string>>& capabilities,
