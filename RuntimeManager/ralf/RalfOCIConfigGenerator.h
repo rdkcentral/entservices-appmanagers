@@ -102,6 +102,7 @@ namespace ralf
          * @param destination The destination path of the mount.
          */
         void addMountEntry(Json::Value &ociConfigRootNode, const std::string &source, const std::string &destination);
+
         /**
          * Add device node entries from graphics config to OCI config.
          * @param ociConfigRootNode The root node of the OCI config JSON.
@@ -199,6 +200,53 @@ namespace ralf
          * @param appId The application ID used in the log file name.
          */
         void addLogNameToOCIConfig(Json::Value &ociConfigRootNode, const std::string &appStoragePath, const std::string &appId);
+
+        /**
+         * Adds required host system file mounts used by networking and Thunder access.
+         * For network-enabled containers, bind mounts host resolver/hosts files
+         * to avoid DNS resolution failures inside the container.
+         * For Thunder/Firebolt access, bind mounts /tmp/communicator when available.
+         * @param ociConfigRootNode The root node of the OCI config JSON.
+         * @param networkEnabled True when container networking is enabled.
+         * @param thunderAccessEnabled True when Thunder/Firebolt localhost access is enabled.
+         */
+        void addNetworkSystemMountsToOCIConfig(Json::Value &ociConfigRootNode,
+                               bool networkEnabled,
+                               bool thunderAccessEnabled);
+
+        /**
+         * Ensures destination mount target file exists in generated rootfs bundle.
+         * For bind mounts to files (e.g. /etc/resolv.conf), OCI runtime expects
+         * destination path to exist inside rootfs before container start.
+         * @param containerPath Absolute path inside container (e.g. /etc/resolv.conf).
+         * @return true if target exists or was created, false otherwise.
+         */
+        bool ensureMountTargetFileInRootfs(const std::string &containerPath);
+
+        /**
+         * Applies network configuration from urn:rdk:config:network to rdkPlugins.networking.data.
+         * Extracts port forwarding entries and adds them to the OCI config.
+         * @param ociConfigRootNode The root node of the OCI config JSON.
+         * @param configNode The config node containing the network configuration.
+         * @return true if network config was processed successfully (may return true even if no config present).
+         */
+        bool applyNetworkConfigToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &configNode);
+
+        /**
+         * Checks whether a specific permission URN is present in the comma-separated capabilities string.
+         * @param capabilities The comma-separated capabilities string from package metadata.
+         * @param permission   The exact URN to search for (e.g. PERMISSION_INTERNET).
+         * @return true if the permission is found, false otherwise.
+         */
+        bool hasCapabilityPermission(const std::string &capabilities, const std::string &permission);
+
+        /**
+         * Checks if the capabilities string contains urn:rdk:permission:internet.
+         * Delegates to hasCapabilityPermission.
+         * @param capabilities The comma-separated capabilities string from package metadata.
+         * @return true if internet permission is detected, false otherwise.
+         */
+        bool hasInternetPermission(const std::string &capabilities);
 
         /**
          * The vector of Ralf package details as pairs of mount point and metadata path.
