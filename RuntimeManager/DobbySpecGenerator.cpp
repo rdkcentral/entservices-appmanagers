@@ -203,10 +203,11 @@ DobbySpecGenerator::~DobbySpecGenerator()
 
 void DobbySpecGenerator::setGstreamerRegistryPath(const std::string& registryPath)
 {
-    // Mirrors appinfrastructure DobbySpecGenerator::setGstreamerRegistryPath().
     // Only update if the file actually exists to avoid mounting non-existent paths.
     if (registryPath.empty() || (access(registryPath.c_str(), F_OK) == 0))
-        mGstRegistrySourcePath = registryPath.string();
+    {
+        mGstRegistrySourcePath = registryPath;
+    }
 }
 
 Json::Value DobbySpecGenerator::getWorkingDir(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const
