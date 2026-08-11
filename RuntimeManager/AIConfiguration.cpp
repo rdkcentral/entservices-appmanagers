@@ -627,8 +627,8 @@ namespace Plugin
             mSvpEnabled = getObj(svp, "enable").asBool();
         if (getObj(getObj(apps, "usbMassStorage"), "enable").isBool())
             mEnableUsbMassStorage = getObj(getObj(apps, "usbMassStorage"), "enable").asBool();
-        if (getObj(getObj(apps, "resourceManagement"), "enabled").isBool())
-            mResourceManagerClientEnabled = getObj(getObj(apps, "resourceManagement"), "enabled").asBool();
+        if (getObj(getObj(apps, "essosResourceManager"), "enableClient").isBool())
+            mResourceManagerClientEnabled = getObj(getObj(apps, "essosResourceManager"), "enableClient").asBool();
         if (getObj(getObj(apps, "gstreamer"), "registryEnabled").isBool())
             mGstreamerRegistryEnabled = getObj(getObj(apps, "gstreamer"), "registryEnabled").asBool();
 
