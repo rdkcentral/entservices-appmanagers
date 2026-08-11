@@ -18,6 +18,7 @@
 **/
 #include <gtest/gtest.h>
 #include <atomic>
+#include <cstdio>
 #include <string>
 #include <unistd.h>
 

@@ -29,6 +29,7 @@
  */
 
 #include <atomic>
+#include <cstdio>
 #include <fstream>
 #include <iostream>
 #include <unistd.h>
