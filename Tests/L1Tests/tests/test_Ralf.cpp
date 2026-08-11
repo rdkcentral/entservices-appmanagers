@@ -1351,6 +1351,10 @@ public:
     {
         return mGen.addAppStorageToOCIConfig(node, appStoragePath);
     }
+    bool addConfigEnvToOCIConfig(Json::Value &node, const Json::Value &configNode)
+    {
+        return mGen.addConfigEnvToOCIConfig(node, configNode);
+    }
     bool saveOCIConfigToFile(const Json::Value &node, int uid, int gid)
     {
         return mGen.saveOCIConfigToFile(node, uid, gid);
@@ -1608,6 +1612,93 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, AddConfigOverrides_NoOverridesNode)
     Json::Value root;
     Json::Value configNode;  // empty
     EXPECT_FALSE(mAcc.addConfigOverridesToOCIConfig(root, configNode));
+}
+
+// ──────────────────────────────
+// addConfigEnvToOCIConfig
+// ──────────────────────────────
+
+/*
+ * Test Case: AddConfigEnv_ValidEntries
+ * Verifies that addConfigEnvToOCIConfig correctly appends environment variables
+ * from the config node to process.env in the OCI config.
+ */
+TEST_F(RalfOCIConfigGeneratorPrivateTest, AddConfigEnv_ValidEntries)
+{
+    TEST_LOG("Testing addConfigEnvToOCIConfig with valid environment entries");
+    Json::Value root;
+    Json::Value configNode;
+    configNode[ralf::ENV_CONFIG_URN]["MY_ENV_VAR"] = "my_value";
+    configNode[ralf::ENV_CONFIG_URN]["ANOTHER_VAR"] = "another_value";
+
+    EXPECT_TRUE(mAcc.addConfigEnvToOCIConfig(root, configNode));
+
+    bool foundMyEnvVar = false;
+    bool foundAnotherVar = false;
+    for (const auto &e : root[ralf::PROCESS][ralf::ENV])
+    {
+        if (e.asString() == "MY_ENV_VAR=my_value")
+            foundMyEnvVar = true;
+        if (e.asString() == "ANOTHER_VAR=another_value")
+            foundAnotherVar = true;
+    }
+    EXPECT_TRUE(foundMyEnvVar);
+    EXPECT_TRUE(foundAnotherVar);
+}
+
+/* Test Case: AddConfigEnv_DuplicateKeysOverwrite
+ * Verifies that if a key already exists in process.env, it is overwritten with the new value.
+ */
+TEST_F(RalfOCIConfigGeneratorPrivateTest, AddConfigEnv_DuplicateKeysOverwrite)
+{
+    TEST_LOG("Testing addConfigEnvToOCIConfig ensures existing env arrays handle duplicates by replacing them");
+    Json::Value root;
+    Json::Value configNode;
+
+    // Seed existing env array
+    root[ralf::PROCESS][ralf::ENV].append("DUPLICATE_VAR=original_value");
+
+    // Attempt to inject same key with new value
+    configNode[ralf::ENV_CONFIG_URN]["DUPLICATE_VAR"] = "new_value";
+
+    EXPECT_TRUE(mAcc.addConfigEnvToOCIConfig(root, configNode));
+
+    int matchCount = 0;
+    bool foundNewValue = false;
+    for (const auto &e : root[ralf::PROCESS][ralf::ENV])
+    {
+        if (e.asString() == "DUPLICATE_VAR=new_value") foundNewValue = true;
+        if (e.asString().rfind("DUPLICATE_VAR=", 0) == 0) matchCount++;
+    }
+    EXPECT_TRUE(foundNewValue);
+    EXPECT_EQ(matchCount, 1); // Ensures the old value was purged/overwritten, avoiding duplicate slots
+}
+
+/* Test Case: AddConfigEnv_NoEnvNode
+ * Verifies that addConfigEnvToOCIConfig returns false when ENV_CONFIG_URN is absent.
+ */
+TEST_F(RalfOCIConfigGeneratorPrivateTest, AddConfigEnv_NoEnvNode)
+{
+    TEST_LOG("Testing addConfigEnvToOCIConfig when env config node is absent");
+    Json::Value root;
+    Json::Value configNode;  // empty — no ENV_CONFIG_URN key
+    EXPECT_FALSE(mAcc.addConfigEnvToOCIConfig(root, configNode));
+}
+
+/* Test Case: AddConfigEnv_EnvNodeNotObject
+ * Verifies that addConfigEnvToOCIConfig returns false when the ENV_CONFIG_URN node
+ * is present but is not a JSON object (e.g. a plain string), and that nothing is
+ * written to process.env.
+ */
+TEST_F(RalfOCIConfigGeneratorPrivateTest, AddConfigEnv_EnvNodeNotObject)
+{
+    TEST_LOG("Testing addConfigEnvToOCIConfig when env config node is not a JSON object");
+    Json::Value root;
+    Json::Value configNode;
+    configNode[ralf::ENV_CONFIG_URN] = "not-an-object";  // scalar, not an object
+
+    EXPECT_FALSE(mAcc.addConfigEnvToOCIConfig(root, configNode));
+    EXPECT_TRUE(root[ralf::PROCESS][ralf::ENV].empty() || !root[ralf::PROCESS].isMember(ralf::ENV));
 }
 
 // ──────────────────────────────
@@ -2076,4 +2167,3 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, SaveOCIConfigToFile_FailsWhenOutputDir
 
     EXPECT_FALSE(acc.saveOCIConfigToFile(root, 0, 0));
 }
-
