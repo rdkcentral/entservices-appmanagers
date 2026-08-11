@@ -48,38 +48,27 @@ namespace WPEFramework
         LifecycleInterfaceConnector* LifecycleInterfaceConnector::_instance = nullptr;
         static uint32_t gAppsActiveCounter = 0;
 
-        namespace
+        std::string LifecycleInterfaceConnector::base64Encode(const std::string& in)
         {
-            std::string normalizeLaunchArgs(const std::string& launchArgs)
-            {
-                if (launchArgs == "{}" || launchArgs == "{ }") {
-                    return {};
-                }
-                return launchArgs;
+            static const char* T =
+                "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+            std::string out;
+            out.reserve(((in.size() + 2) / 3) * 4);
+            const uint8_t* b = reinterpret_cast<const uint8_t*>(in.data());
+            std::size_t n = in.size(), i = 0;
+            for (; i + 2 < n; i += 3) {
+                uint32_t v = (b[i] << 16) | (b[i + 1] << 8) | b[i + 2];
+                out += T[(v >> 18) & 0x3F]; out += T[(v >> 12) & 0x3F];
+                out += T[(v >>  6) & 0x3F]; out += T[ v        & 0x3F];
             }
-
-            std::string base64Encode(const std::string& in)
-            {
-                static const char* T =
-                    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-                std::string out;
-                out.reserve(((in.size() + 2) / 3) * 4);
-                const uint8_t* b = reinterpret_cast<const uint8_t*>(in.data());
-                std::size_t n = in.size(), i = 0;
-                for (; i + 2 < n; i += 3) {
-                    uint32_t v = (b[i] << 16) | (b[i + 1] << 8) | b[i + 2];
-                    out += T[(v >> 18) & 0x3F]; out += T[(v >> 12) & 0x3F];
-                    out += T[(v >>  6) & 0x3F]; out += T[ v        & 0x3F];
-                }
-                if (i + 1 == n) {
-                    uint32_t v = b[i] << 16;
-                    out += T[(v >> 18) & 0x3F]; out += T[(v >> 12) & 0x3F]; out += '='; out += '=';
-                } else if (i + 2 == n) {
-                    uint32_t v = (b[i] << 16) | (b[i + 1] << 8);
-                    out += T[(v >> 18) & 0x3F]; out += T[(v >> 12) & 0x3F]; out += T[(v >> 6) & 0x3F]; out += '=';
-                }
-                return out;
+            if (i + 1 == n) {
+                uint32_t v = b[i] << 16;
+                out += T[(v >> 18) & 0x3F]; out += T[(v >> 12) & 0x3F]; out += '='; out += '=';
+            } else if (i + 2 == n) {
+                uint32_t v = (b[i] << 16) | (b[i + 1] << 8);
+                out += T[(v >> 18) & 0x3F]; out += T[(v >> 12) & 0x3F]; out += T[(v >> 6) & 0x3F]; out += '=';
             }
+            return out;
         }
 
         LifecycleInterfaceConnector::LifecycleInterfaceConnector(PluginHost::IShell* service)
@@ -196,7 +185,12 @@ namespace WPEFramework
                     envArr = existing;
             }
 
-            envArr.append(std::string("APPLICATION_LAUNCH_PARAMETERS=") + base64Encode(normalizeLaunchArgs(launchArgs)));
+            std::string sanitizedLaunchArgs = launchArgs;
+            if (sanitizedLaunchArgs == "{}" || sanitizedLaunchArgs == "{ }") {
+                sanitizedLaunchArgs.clear();
+            }
+
+            envArr.append(std::string("APPLICATION_LAUNCH_PARAMETERS=") + LifecycleInterfaceConnector::base64Encode(sanitizedLaunchArgs));
 
             Json::StreamWriterBuilder w;
             w["indentation"] = "";

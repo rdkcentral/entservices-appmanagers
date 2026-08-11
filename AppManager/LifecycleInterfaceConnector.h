@@ -107,6 +107,7 @@ namespace WPEFramework
                     Exchange::IAppManager::AppErrorReason mapErrorReason(const string& errorReason);
 
                 private:
+                    static std::string base64Encode(const std::string& in);
                     void appendLaunchParametersEnv(const std::string& launchArgs, WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject) const;
                     mutable Core::CriticalSection mAdminLock;
                     Exchange::ILifecycleManager *mLifecycleManagerRemoteObject;
