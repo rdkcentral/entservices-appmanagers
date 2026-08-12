@@ -299,6 +299,13 @@ namespace WPEFramework
 		mLoadedApplications.push_back(context);
                 firstLaunch = true;
 	    }
+            else if (context->mPendingStateTransition)
+            {
+                mAdminLock.Unlock();
+                printf("MADANA AVOID SPAWN FOR APP as there is a pending transition [%s] \n", appId.c_str());
+                fflush(stdout);
+                return Core::ERROR_GENERAL;
+            }
             context->setRequestTime(requestTime);
             context->setRequestType(REQUEST_TYPE_LAUNCH);
             context->setTargetLifecycleState(targetLifecycleState);
@@ -338,6 +345,14 @@ namespace WPEFramework
             if (targetLifecycleState == context->getCurrentLifecycleState())
             {
                 mAdminLock.Unlock();
+                return status;
+            }
+            if (context->mPendingStateTransition)
+            {
+                mAdminLock.Unlock();
+                printf("MADANA AVOID CHANGE TRANSITION FOR APP as there is a pending transition [%s][%d] \n", appInstanceId.c_str(), targetLifecycleState);
+                fflush(stdout);
+                status = Core::ERROR_GENERAL;
                 return status;
             }
             switch(targetLifecycleState)
@@ -399,6 +414,14 @@ namespace WPEFramework
                 return status;
 	    }
             mAdminLock.Lock();
+            if (context->mPendingStateTransition)
+            {
+                mAdminLock.Unlock();
+                printf("MADANA AVOID UNLOAD FOR APP as there is a pending transition [%s] \n", appInstanceId.c_str());
+                fflush(stdout);
+                success = false;
+                return Core::ERROR_GENERAL;
+            }
             if(REQUEST_TYPE_PAUSE != context->getRequestType())   //If request through AppManager closeApp, requestTime is already set
             {
                 context->setRequestTime(requestTime);
@@ -431,6 +454,14 @@ namespace WPEFramework
                 return status;
 	    }
             mAdminLock.Lock();
+            if (context->mPendingStateTransition)
+            {
+                mAdminLock.Unlock();
+                printf("MADANA AVOID KILL FOR APP as there is a pending transition [%s] \n", appInstanceId.c_str());
+                fflush(stdout);
+                success = false;
+                return Core::ERROR_GENERAL;
+            }
             context->setRequestTime(requestTime);
             context->setRequestType(REQUEST_TYPE_TERMINATE);
             context->setTargetLifecycleState(Exchange::ILifecycleManager::LifecycleState::TERMINATING);
