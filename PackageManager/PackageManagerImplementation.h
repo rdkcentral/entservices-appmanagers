@@ -55,6 +55,7 @@ class PackageManagerImplementation
     : public Exchange::IPackageDownloader
     , public Exchange::IPackageInstaller
     , public Exchange::IPackageHandler
+    , public Exchange::IPackageCacheInitializer
 {
     private:
         class State {
@@ -168,6 +169,9 @@ class PackageManagerImplementation
         Core::hresult Initialize(PluginHost::IShell* service) override;
         Core::hresult Deinitialize(PluginHost::IShell* service) override;
 
+        // IPackageCacheInitializer methods
+        Core::hresult StartCacheInitialization() override;
+
         // IPackageInstaller methods
         Core::hresult Install(const string &packageId, const string &version, IPackageInstaller::IKeyValueIterator* const& additionalMetadata, const string &fileLocator, Exchange::IPackageInstaller::FailReason &failReason) override;
         Core::hresult Uninstall(const string &packageId, string &errorReason ) override;
@@ -193,6 +197,7 @@ class PackageManagerImplementation
             INTERFACE_ENTRY(Exchange::IPackageDownloader)
             INTERFACE_ENTRY(Exchange::IPackageInstaller)
             INTERFACE_ENTRY(Exchange::IPackageHandler)
+            INTERFACE_ENTRY(Exchange::IPackageCacheInitializer)
         END_INTERFACE_MAP
 
     private:
