@@ -773,7 +773,7 @@ namespace WPEFramework
                     else
                     {
                         LOGINFO("[RIALTO] Rialto session reached ACTIVE state for appId='%s'", appId.c_str());
-                        const std::string rialtoSocketPath = mRialtoConnector->getSocketPath(rialtoSocket);
+                        const std::string rialtoSocketPath = mRialtoConnector->getSocketPath(appInstanceId);
                         if (!rialtoSocketPath.empty())
                         {
                             config.mRialtoSocketPath = rialtoSocketPath;
