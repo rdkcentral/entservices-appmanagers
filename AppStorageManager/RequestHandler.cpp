@@ -686,7 +686,6 @@ namespace WPEFramework
                 {
                     errorReason = "Failed to create base storage directory: " + mBaseStoragePath;
                     LOGERR("Error creating base storage directory %s: errno=%d (%s)", mBaseStoragePath.c_str(), errno, strerror(errno));
-                    //goto ret_fail;
                     status = Core::ERROR_GENERAL;
                     return status;
                 }
@@ -725,7 +724,6 @@ namespace WPEFramework
                             LOGERR("Failed to remove storage appId: %s", appId.c_str());
                             errorReason = "Failed to remove storage for appId: " + appId;
                             path = "";
-                            //goto ret_fail;
                             status = Core::ERROR_GENERAL;
                             return status;
                         }
