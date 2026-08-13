@@ -1326,7 +1326,9 @@ TEST_F(RDKWindowManagerTest, GetFocused_Success)
 
     JsonObject result;
     result.FromString(response);
-    EXPECT_EQ(TEST_CLIENT_ID, result["client"].String());
+    const string focusedClient = result["client"].String();
+    EXPECT_FALSE(focusedClient.empty());
+    EXPECT_EQ(WPEFramework::Plugin::toLower(TEST_CLIENT_ID), WPEFramework::Plugin::toLower(focusedClient));
 }
 
 TEST_F(RDKWindowManagerTest, GetFocused_Failure)

@@ -119,13 +119,16 @@ protected:
     std::mutex mPreLoadMutex;
     std::condition_variable mPreLoadCV;
     bool mPreLoadSpawmCalled = false;
+    bool mPluginInitialized = false;
 
     void createAppManagerImpl()
     {
         mServiceMock = new NiceMock<ServiceMock>;
 
         TEST_LOG("In createAppManagerImpl!");
-        EXPECT_EQ(string(""), plugin->Initialize(mServiceMock));
+        const string initResult = plugin->Initialize(mServiceMock);
+        EXPECT_EQ(string(""), initResult);
+        mPluginInitialized = initResult.empty();
         mAppManagerImpl = Plugin::AppManagerImplementation::getInstance();
     }
 
@@ -133,8 +136,13 @@ protected:
     {
         TEST_LOG("In releaseAppManagerImpl!");
         AppInfoManager::getInstance().clear();
-        plugin->Deinitialize(mServiceMock);
+        if (true == mPluginInitialized)
+        {
+            plugin->Deinitialize(mServiceMock);
+            mPluginInitialized = false;
+        }
         delete mServiceMock;
+        mServiceMock = nullptr;
         mAppManagerImpl = nullptr;
     }
 
@@ -199,10 +207,12 @@ protected:
         ON_CALL(*p_wrapsImplMock, stat(::testing::_, ::testing::_))
         .WillByDefault(::testing::Return(-1));
         
-        EXPECT_EQ(string(""), plugin->Initialize(mServiceMock));
+        const string initResult = plugin->Initialize(mServiceMock);
+        EXPECT_EQ(string(""), initResult);
+        mPluginInitialized = initResult.empty();
         mAppManagerImpl = Plugin::AppManagerImplementation::getInstance();
         TEST_LOG("createResources - All done!");
-        status = Core::ERROR_NONE;
+        status = (true == mPluginInitialized) ? Core::ERROR_NONE : Core::ERROR_GENERAL;
 
         return status;
     }
@@ -299,8 +309,13 @@ protected:
         dispatcher->Release();
 
         AppInfoManager::getInstance().clear();
-        plugin->Deinitialize(mServiceMock);
+        if (true == mPluginInitialized)
+        {
+            plugin->Deinitialize(mServiceMock);
+            mPluginInitialized = false;
+        }
         delete mServiceMock;
+        mServiceMock = nullptr;
         mAppManagerImpl = nullptr;
     }
     AppManagerTest()
@@ -1507,24 +1522,11 @@ TEST_F(AppManagerTest, PreloadAppUsingComRpcFailureIsAppLoadedReturnError)
 TEST_F(AppManagerTest, PreloadAppUsingComRpcFailureLifecycleManagerRemoteObjectIsNull)
 {
     std::string error = "";
-    uint32_t signalled = AppManager_StateInvalid;
-    Core::Sink<NotificationHandler> notification;
-    ExpectedAppLifecycleEvent expectedEvent;
 
     createAppManagerImpl();
 
-    expectedEvent.appId = APPMANAGER_APP_ID;
-    expectedEvent.appInstanceId = "";
-    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNKNOWN;
-    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED;
-    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_NOT_INSTALLED;
-    mAppManagerImpl->Register(&notification);
-    notification.SetExpectedEvent(expectedEvent);
-
-    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->PreloadApp(APPMANAGER_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS, error));
-
-    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
-    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+    EXPECT_EQ(Core::ERROR_GENERAL, mAppManagerImpl->PreloadApp(APPMANAGER_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS, error));
+    EXPECT_FALSE(error.empty());
 
     releaseAppManagerImpl();
 }

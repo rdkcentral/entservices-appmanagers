@@ -49,6 +49,7 @@ class AppStorageManagerTest : public ::testing::Test {
         WrapsImplMock *p_wrapsImplMock   = nullptr;
 
         Store2Mock* mStore2Mock = nullptr;
+        bool mPluginInitialized = false;
 
         AppStorageManagerTest():
         plugin(Core::ProxyType<Plugin::AppStorageManager>::Create()),
@@ -143,11 +144,16 @@ class AppStorageManagerTest : public ::testing::Test {
             storageManagerConfigure = static_cast<Exchange::IConfiguration*>(
             StorageManagerImplementation->QueryInterface(Exchange::IConfiguration::ID));
             StorageManagerImplementation->Configure(&service);
-            plugin->Initialize(&service);
+            const string initResult = plugin->Initialize(&service);
+            mPluginInitialized = initResult.empty();
           
         }
         virtual ~AppStorageManagerTest() override {
-            plugin->Deinitialize(&service);
+            if (true == mPluginInitialized)
+            {
+                plugin->Deinitialize(&service);
+                mPluginInitialized = false;
+            }
             if (interface != nullptr)
             {
                 interface->Release();
@@ -1025,10 +1031,15 @@ TEST_F(StorageManagerTest, test_clearall_without_exemption_json){
 TEST_F(StorageManagerTest, Initialize_ConfigureFails_ReleaseAndNullCalled) {
     // Test that multiple Deinitialize calls don't cause double-free
     // This validates that mConfigure = nullptr prevents issues
-    
-    EXPECT_NO_THROW(plugin->Deinitialize(&service));
+
+    if (true == mPluginInitialized)
+    {
+        EXPECT_NO_THROW(plugin->Deinitialize(&service));
+        mPluginInitialized = false;
+    }
     // Re-initialize for other tests
-    plugin->Initialize(&service);
+    const string initResult = plugin->Initialize(&service);
+    mPluginInitialized = initResult.empty();
 } 
 
 /*

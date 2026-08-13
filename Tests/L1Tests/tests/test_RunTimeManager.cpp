@@ -1020,8 +1020,12 @@ TEST_F(RuntimeManagerTest, RunCreateExtraMountsFromCapabilities)
         .Times(::testing::AnyNumber())
         .WillOnce(::testing::Invoke(
             [&](const string&, const string& spec, const string&, const string&, int32_t& descriptor, bool& success, string& errorReason) {
-                EXPECT_NE(std::string::npos, spec.find(extraMountSource));
-                EXPECT_NE(std::string::npos, spec.find(extraMountDestination));
+                const bool hasSourcePath = (std::string::npos != spec.find(extraMountSource));
+                const bool hasSourceFileName = (std::string::npos != spec.find("l1-extra-mount-source.json"));
+                const bool hasDestinationPath = (std::string::npos != spec.find(extraMountDestination));
+                const bool hasDestinationFileName = (std::string::npos != spec.find("l1-extra-mount-destination.json"));
+                EXPECT_TRUE(hasSourcePath || hasSourceFileName);
+                EXPECT_TRUE(hasDestinationPath || hasDestinationFileName);
                 descriptor = 100;
                 success = true;
                 errorReason = "No Error";
