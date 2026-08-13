@@ -135,19 +135,6 @@
 #define RDK_APPMANAGERS_DEBUG 1
 #endif
 
-// Build type for AI configuration (RuntimeManager)
-#ifndef AI_DEBUG
-#define AI_DEBUG 1
-#endif
-
-#ifndef AI_RELEASE
-#define AI_RELEASE 2
-#endif
-
-#ifndef AI_BUILD_TYPE
-#define AI_BUILD_TYPE AI_DEBUG
-#endif
-
 // Feature flags
 // Note: RALF_PACKAGE_SUPPORT_ENABLED is RuntimeManager-specific and should be
 // defined only in runtimemanager_l0test's target_compile_definitions

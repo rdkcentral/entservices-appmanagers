@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include <filesystem>
+#include <string>
 
 namespace WPEFramework {
 namespace Plugin {
@@ -38,20 +38,20 @@ class GStreamerRegistry
 {
 public:
     explicit GStreamerRegistry(
-        std::filesystem::path gstLaunchPath   = "gst-launch-1.0",
-        std::filesystem::path gstRegistryPath = "/tmp/rdkappmanagers-gstreamer-registry.bin");
+        std::string gstLaunchPath   = "gst-launch-1.0",
+        std::string gstRegistryPath = "/tmp/rdkappmanagers-gstreamer-registry.bin");
 
     ~GStreamerRegistry() = default;
 
     /** Generates the registry file.  Blocks up to ~2 s. Returns true on success. */
     bool generate();
 
-    /** Returns the registry path if the file exists, otherwise an empty path. */
-    std::filesystem::path path() const;
+    /** Returns the registry path if the file exists, otherwise an empty string. */
+    std::string path() const;
 
 private:
-    const std::filesystem::path mGstLaunchPath;
-    const std::filesystem::path mRegistryPath;
+    const std::string mGstLaunchPath;
+    const std::string mRegistryPath;
 };
 
 } /* namespace Plugin */

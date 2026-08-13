@@ -17,13 +17,24 @@
 * limitations under the License.
 **/
 #include <gtest/gtest.h>
-#include<string>
+#include <atomic>
+#include <cstdio>
+#include <string>
+#include <unistd.h>
 
 #include "RuntimeManager.h"
 #include "RuntimeManagerImplementation.h"
 #include "AIConfiguration.h"
 #include "WindowManagerConnector.h"
 #include "ServiceMock.h"
+namespace {
+std::string CreateUniqueTmpPath(const std::string& prefix)
+{
+    static std::atomic<uint32_t> counter{0};
+
+    return "/tmp/" + prefix + "_" + std::to_string(getpid()) + "_" + std::to_string(counter.fetch_add(1)) + ".bin";
+}
+}
 #include "ThunderPortability.h"
 #include "StorageManagerMock.h"
 #include "COMLinkMock.h"
@@ -1896,3 +1907,229 @@ TEST_F(RuntimeManagerTest, UnmountMethods)
     EXPECT_EQ(Core::ERROR_NONE, interface->Unmount());
 }
 
+
+// DobbySpecGenerator -- Rialto / GST_REGISTRY mutual-exclusion tests (L1)
+// When Rialto is active, GST_REGISTRY env vars and registry bind-mount must NOT be injected.
+
+/* Helper: create a minimal AIConfiguration for standalone DobbySpecGenerator tests. */
+static WPEFramework::Plugin::AIConfiguration& GetL1AIConfigurationFixture()
+{
+    static WPEFramework::Plugin::AIConfiguration cfg;
+    static bool initialized = false;
+    if (!initialized) {
+        cfg.initialize();
+        initialized = true;
+    }
+    return cfg;
+}
+
+/* Test: DobbySpecGenerator_GstRegistryEnvInjectedWhenRialtoInactive
+ * GST_REGISTRY and GST_REGISTRY_UPDATE=no must be present when mRialtoSocketPath is empty.
+ */
+TEST(DobbySpecGeneratorRialtoTest, GstRegistryEnvInjectedWhenRialtoInactive)
+{
+    const std::string tmpPath = CreateUniqueTmpPath("l1test_gst_registry");
+    {
+        std::ofstream f(tmpPath);
+        f << "fake gst registry";
+    }
+
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetL1AIConfigurationFixture());
+    gen.setGstreamerRegistryPath(tmpPath);
+
+    WPEFramework::Plugin::ApplicationConfiguration appCfg;
+    appCfg.mAppId              = "com.sky.app.youtube";
+    appCfg.mAppInstanceId      = "youTube";
+    appCfg.mUserId             = 30001u;
+    appCfg.mGroupId            = 30000u;
+    appCfg.mWesterosSocketPath = "/tmp/westeros";
+    appCfg.mRialtoSocketPath   = ""; // Rialto not active
+
+    WPEFramework::Exchange::RuntimeConfig rtCfg;
+    rtCfg.command           = "SkyBrowserLauncher";
+    rtCfg.envVariables      = "XDG_RUNTIME_DIR=/tmp";
+    rtCfg.systemMemoryLimit = 128 * 1024 * 1024;
+
+    std::string spec;
+    EXPECT_TRUE(gen.generate(appCfg, rtCfg, spec));
+    EXPECT_NE(spec.find("GST_REGISTRY="), std::string::npos)
+        << "GST_REGISTRY env var must be injected when Rialto is inactive";
+    EXPECT_NE(spec.find("GST_REGISTRY_UPDATE=no"), std::string::npos)
+        << "GST_REGISTRY_UPDATE=no must be injected when Rialto is inactive";
+
+    std::remove(tmpPath.c_str());
+}
+
+/* Test: DobbySpecGenerator_GstRegistryMountedWhenRialtoInactive
+ * Registry file must be bind-mounted in spec when mRialtoSocketPath is empty.
+ */
+TEST(DobbySpecGeneratorRialtoTest, GstRegistryMountedWhenRialtoInactive)
+{
+    const std::string tmpPath = CreateUniqueTmpPath("l1test_gst_registry_mount");
+    {
+        std::ofstream f(tmpPath);
+        f << "fake gst registry";
+    }
+
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetL1AIConfigurationFixture());
+    gen.setGstreamerRegistryPath(tmpPath);
+
+    WPEFramework::Plugin::ApplicationConfiguration appCfg;
+    appCfg.mAppId              = "com.sky.app.youtube";
+    appCfg.mAppInstanceId      = "youTube";
+    appCfg.mUserId             = 30001u;
+    appCfg.mGroupId            = 30000u;
+    appCfg.mWesterosSocketPath = "/tmp/westeros";
+    appCfg.mRialtoSocketPath   = ""; // Rialto not active
+
+    WPEFramework::Exchange::RuntimeConfig rtCfg;
+    rtCfg.command           = "SkyBrowserLauncher";
+    rtCfg.envVariables      = "XDG_RUNTIME_DIR=/tmp";
+    rtCfg.systemMemoryLimit = 128 * 1024 * 1024;
+
+    std::string spec;
+    EXPECT_TRUE(gen.generate(appCfg, rtCfg, spec));
+    EXPECT_NE(spec.find(tmpPath), std::string::npos)
+        << "GStreamer registry source path must appear in spec mounts when Rialto is inactive";
+
+    std::remove(tmpPath.c_str());
+}
+
+#ifdef ENABLE_RIALTO
+/* Test: DobbySpecGenerator_RialtoSocketEnvInjectedWhenRialtoActive
+ * RIALTO_SOCKET_PATH must be injected in spec env when Rialto socket path is set.
+ */
+TEST(DobbySpecGeneratorRialtoTest, RialtoSocketEnvInjectedWhenRialtoActive)
+{
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetL1AIConfigurationFixture());
+
+    WPEFramework::Plugin::ApplicationConfiguration appCfg;
+    appCfg.mAppId              = "amazonPrime";
+    appCfg.mAppInstanceId      = "amazonPrime";
+    appCfg.mUserId             = 30001u;
+    appCfg.mGroupId            = 30000u;
+    appCfg.mWesterosSocketPath = "/tmp/westeros";
+    appCfg.mRialtoSocketPath   = "/tmp/amazonPrime"; // Rialto active
+
+    WPEFramework::Exchange::RuntimeConfig rtCfg;
+    rtCfg.command           = "run-app.sh";
+    rtCfg.envVariables      = "XDG_RUNTIME_DIR=/tmp";
+    rtCfg.systemMemoryLimit = 128 * 1024 * 1024;
+
+    std::string spec;
+    EXPECT_TRUE(gen.generate(appCfg, rtCfg, spec));
+    EXPECT_NE(spec.find("RIALTO_SOCKET_PATH=/tmp/amazonPrime"), std::string::npos)
+        << "RIALTO_SOCKET_PATH must be injected when Rialto socket path is set";
+}
+
+/* Test: DobbySpecGenerator_GstRegistryEnvAbsentWhenRialtoActive
+ * GST_REGISTRY and GST_REGISTRY_UPDATE must NOT be injected when Rialto is active.
+ */
+TEST(DobbySpecGeneratorRialtoTest, GstRegistryEnvAbsentWhenRialtoActive)
+{
+    const std::string tmpPath = CreateUniqueTmpPath("l1test_gst_registry_rialto");
+    {
+        std::ofstream f(tmpPath);
+        f << "fake gst registry";
+    }
+
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetL1AIConfigurationFixture());
+    gen.setGstreamerRegistryPath(tmpPath); // Would normally cause GST_REGISTRY injection
+
+    WPEFramework::Plugin::ApplicationConfiguration appCfg;
+    appCfg.mAppId              = "amazonPrime";
+    appCfg.mAppInstanceId      = "amazonPrime";
+    appCfg.mUserId             = 30001u;
+    appCfg.mGroupId            = 30000u;
+    appCfg.mWesterosSocketPath = "/tmp/westeros";
+    appCfg.mRialtoSocketPath   = "/tmp/amazonPrime"; // Rialto active — must suppress GST_REGISTRY
+
+    WPEFramework::Exchange::RuntimeConfig rtCfg;
+    rtCfg.command           = "run-app.sh";
+    rtCfg.envVariables      = "XDG_RUNTIME_DIR=/tmp";
+    rtCfg.systemMemoryLimit = 128 * 1024 * 1024;
+
+    std::string spec;
+    EXPECT_TRUE(gen.generate(appCfg, rtCfg, spec));
+    EXPECT_EQ(spec.find("GST_REGISTRY="), std::string::npos)
+        << "GST_REGISTRY must NOT be injected when Rialto is active";
+    EXPECT_EQ(spec.find("GST_REGISTRY_UPDATE=no"), std::string::npos)
+        << "GST_REGISTRY_UPDATE must NOT be injected when Rialto is active";
+
+    std::remove(tmpPath.c_str());
+}
+
+/* Test: DobbySpecGenerator_GstRegistryMountAbsentWhenRialtoActive
+ * Registry file must NOT be bind-mounted when Rialto is active.
+ */
+TEST(DobbySpecGeneratorRialtoTest, GstRegistryMountAbsentWhenRialtoActive)
+{
+    const std::string tmpPath = CreateUniqueTmpPath("l1test_gst_registry_mount_rialto");
+    {
+        std::ofstream f(tmpPath);
+        f << "fake gst registry";
+    }
+
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetL1AIConfigurationFixture());
+    gen.setGstreamerRegistryPath(tmpPath);
+
+    WPEFramework::Plugin::ApplicationConfiguration appCfg;
+    appCfg.mAppId              = "amazonPrime";
+    appCfg.mAppInstanceId      = "amazonPrime";
+    appCfg.mUserId             = 30001u;
+    appCfg.mGroupId            = 30000u;
+    appCfg.mWesterosSocketPath = "/tmp/westeros";
+    appCfg.mRialtoSocketPath   = "/tmp/amazonPrime"; // Rialto active
+
+    WPEFramework::Exchange::RuntimeConfig rtCfg;
+    rtCfg.command           = "run-app.sh";
+    rtCfg.envVariables      = "XDG_RUNTIME_DIR=/tmp";
+    rtCfg.systemMemoryLimit = 128 * 1024 * 1024;
+
+    std::string spec;
+    EXPECT_TRUE(gen.generate(appCfg, rtCfg, spec));
+    EXPECT_EQ(spec.find(tmpPath), std::string::npos)
+        << "GStreamer registry source path must NOT be mounted when Rialto is active";
+
+    std::remove(tmpPath.c_str());
+}
+
+/* Test: DobbySpecGenerator_RialtoPrefixedSocketPathUsedInSpec
+ * RIALTO_SOCKET_PATH uses the auto-allocated path; bare /tmp/<appId> must not appear.
+ */
+TEST(DobbySpecGeneratorRialtoTest, RialtoPrefixedSocketPathUsedInSpec)
+{
+    const std::string rialtoSocketPath = "/tmp/rialto-5";   // simulates Rialto auto-allocation
+    const std::string bareAppIdPath    = "/tmp/amazonPrime";
+
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetL1AIConfigurationFixture());
+
+    WPEFramework::Plugin::ApplicationConfiguration appCfg;
+    appCfg.mAppId              = "amazonPrime";
+    appCfg.mAppInstanceId      = "amazonPrime";
+    appCfg.mUserId             = 30001u;
+    appCfg.mGroupId            = 30000u;
+    appCfg.mWesterosSocketPath = "/tmp/westeros";
+    appCfg.mRialtoSocketPath   = rialtoSocketPath;
+
+    WPEFramework::Exchange::RuntimeConfig rtCfg;
+    rtCfg.command           = "run-app.sh";
+    rtCfg.envVariables      = "XDG_RUNTIME_DIR=/tmp";
+    rtCfg.systemMemoryLimit = 128 * 1024 * 1024;
+
+    std::string spec;
+    EXPECT_TRUE(gen.generate(appCfg, rtCfg, spec));
+
+    // The auto-allocated path must appear in RIALTO_SOCKET_PATH.
+    EXPECT_NE(spec.find("RIALTO_SOCKET_PATH=" + rialtoSocketPath), std::string::npos)
+        << "RIALTO_SOCKET_PATH must be set to the auto-allocated path /tmp/rialto-5";
+
+    // The auto-allocated path must appear in the mounts section.
+    EXPECT_NE(spec.find(rialtoSocketPath), std::string::npos)
+        << "Auto-allocated Rialto socket path /tmp/rialto-5 must be present in mounts";
+
+    // The bare appId path must NOT appear, confirming no conflict with the app tempPath.
+    EXPECT_EQ(spec.find('"' + bareAppIdPath + '"'), std::string::npos)
+        << "Bare app temp path /tmp/amazonPrime must NOT appear in spec";
+}
+#endif // ENABLE_RIALTO

@@ -61,6 +61,8 @@ namespace Plugin
             std::list<std::string> getPreloads() const;
             std::list<std::string> getEnvs() const;
 
+            int getRialtoOverride() const;
+
         private:
             void readFromCustomData();
             void readFromConfigFile();
@@ -93,6 +95,7 @@ namespace Plugin
             std::list<std::string> mEnvVariables;
             std::list<std::string> mSvpFiles;
             std::list<std::string> mDefaultAllowedLogLevels;
+            int mRialtoOverride;
     };
 } /* namespace Plugin */
 } /* namespace WPEFramework */
