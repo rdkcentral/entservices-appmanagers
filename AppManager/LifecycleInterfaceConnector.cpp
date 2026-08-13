@@ -175,7 +175,7 @@ namespace WPEFramework
             return status;
         }
 
-        void LifecycleInterfaceConnector::appendLaunchParametersEnv(const std::string& launchArgs, WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject) const
+        void LifecycleInterfaceConnector::appendLaunchParametersEnv(const std::string& appId, const std::string& launchArgs, WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject) const
         {
             Json::Value envArr(Json::arrayValue);
             {
@@ -195,7 +195,7 @@ namespace WPEFramework
             Json::StreamWriterBuilder w;
             w["indentation"] = "";
             runtimeConfigObject.envVariables = Json::writeString(w, envArr);
-            LOGINFO("launch: APPLICATION_LAUNCH_PARAMETERS set");
+            LOGINFO("launch: appId=%s raw launch args=%s", appId.c_str(), sanitizedLaunchArgs.c_str());
         }
 
 
@@ -270,7 +270,7 @@ namespace WPEFramework
                             string source = "";
                             appManagerImplInstance->handleOnAppLaunchRequest(appId, intent, source);
 
-                            appendLaunchParametersEnv(launchArgs, runtimeConfigObject);
+                            appendLaunchParametersEnv(appId, launchArgs, runtimeConfigObject);
 
                             LOGINFO("spawnApp called ,state %u",state);
                             status = mLifecycleManagerRemoteObject->SpawnApp(appId, intent, state, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success);
@@ -341,6 +341,10 @@ namespace WPEFramework
                 {
                     appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_PRELOAD);
                     state = Exchange::ILifecycleManager::LifecycleState::PAUSED;
+
+                    // Ensure launch parameters are embedded into the runtime env for preloaded apps
+                    appendLaunchParametersEnv(appId, launchArgs, runtimeConfigObject);
+
                     status = mLifecycleManagerRemoteObject->SpawnApp(appId, intent, state, runtimeConfigObject, launchArgs, appInstanceId, error, success);
                     if (Core::ERROR_NONE == status)
                     {
