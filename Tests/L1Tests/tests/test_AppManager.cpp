@@ -337,7 +337,7 @@ protected:
         return apps_str;
     }
 
-     auto FillPackageIterator()
+     Exchange::IPackageInstaller::IPackageIterator* FillPackageIterator()
     {
         std::list<Exchange::IPackageInstaller::Package> packageList;
         Exchange::IPackageInstaller::Package package_1;
@@ -352,7 +352,7 @@ protected:
         return Core::Service<RPC::IteratorType<Exchange::IPackageInstaller::IPackageIterator>>::Create<Exchange::IPackageInstaller::IPackageIterator>(packageList);
     }
 
-     auto FillLoadedAppsIterator()
+     Exchange::IAppManager::ILoadedAppInfoIterator* FillLoadedAppsIterator()
     {
         std::list<WPEFramework::Exchange::IAppManager::LoadedAppInfo> loadedAppInfoList;
 
