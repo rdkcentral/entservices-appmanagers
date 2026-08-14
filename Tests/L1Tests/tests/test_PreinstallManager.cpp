@@ -207,7 +207,7 @@ protected:
             .WillByDefault(Return(0));
     }
 
-    auto BuildPackageIterator(const std::vector<Exchange::IPackageInstaller::Package>& packages)
+    Exchange::IPackageInstaller::IPackageIterator* BuildPackageIterator(const std::vector<Exchange::IPackageInstaller::Package>& packages)
     {
         std::list<Exchange::IPackageInstaller::Package> packageList;
         for (const auto& package : packages) {
