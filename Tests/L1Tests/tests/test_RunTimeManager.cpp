@@ -28,7 +28,7 @@
 #include "WindowManagerConnector.h"
 #include "ServiceMock.h"
 namespace {
-std::string CreateUniqueTmpPath(const std::string& prefix)
+[[maybe_unused]] std::string CreateUniqueTmpPath(const std::string& prefix)
 {
     static std::atomic<uint32_t> counter{0};
 
