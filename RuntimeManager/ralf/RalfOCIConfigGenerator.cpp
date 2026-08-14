@@ -25,9 +25,9 @@
 #include <fstream>
 
 #define PERSIST_STORAGE_PATH "/data"
+
 namespace ralf
 {
-
     bool RalfOCIConfigGenerator::generateRalfOCIConfig(const WPEFramework::Plugin::ApplicationConfiguration &config, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject)
     {
         Json::Value ociConfigRootNode;
@@ -443,6 +443,16 @@ namespace ralf
             status = addStorageConfigToOCIConfig(ociConfigRootNode, configNode);
             LOGDBG("Applied storage config to OCI config ? %s\n", status ? "true" : "false");
         }
+        // Apply urn:rdk:config:env — spec matrix: Application/Service only (N/A for Runtime and Base)
+        if (packageType == PKG_TYPE_APPLICATION || packageType == PKG_TYPE_SERVICE)
+        {
+            status = addConfigEnvToOCIConfig(ociConfigRootNode, configNode);
+            LOGDBG("Applied config env to OCI config ? %s\n", status ? "true" : "false");
+        }
+        else if (configNode.isMember(ENV_CONFIG_URN))
+        {
+            LOGWARN("Ignoring %s for packageType '%s'; only valid for application/service packages\n", ENV_CONFIG_URN, packageType.c_str());
+        }
         // Add APP_PACKAGE_VERSION environment variable from application config to OCI config
         if (packageType == PKG_TYPE_APPLICATION)
         {
@@ -566,7 +576,7 @@ namespace ralf
                     std::string fireboltPrefix = std::string(FIREBOLT_ENDPOINT_ENV_KEY) + "=";
                     if (envPair.rfind(fireboltPrefix, 0) == 0)
                     {
-                        ociConfigRootNode[PROCESS][ENV].append(envPair);
+                        addToEnvironment(ociConfigRootNode, FIREBOLT_ENDPOINT_ENV_KEY, envPair.substr(fireboltPrefix.size()));
                         LOGDBG("Added FIREBOLT_ENDPOINT environment variable: %s\n", envPair.c_str());
                         return true; // Found and added
                     }
@@ -613,9 +623,46 @@ namespace ralf
 
         return status;
     }
+
+    bool RalfOCIConfigGenerator::addConfigEnvToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &configNode)
+    {
+        if (!configNode.isMember(ENV_CONFIG_URN))
+        {
+            LOGDBG("No config env found in Ralf package config\n");
+            return false;
+        }
+
+        const Json::Value &envNode = configNode[ENV_CONFIG_URN];
+        if (!envNode.isObject())
+        {
+            LOGWARN("Config env node exists but is not an object; skipping\n");
+            return false;
+        }
+
+        bool status = false;
+        for (const auto &memberName : envNode.getMemberNames())
+        {
+            const Json::Value &valueNode = envNode[memberName];
+            if (!valueNode.isString())
+            {
+                LOGWARN("Skipping non-string environment variable value in %s for key: %s\n", ENV_CONFIG_URN, memberName.c_str());
+                continue;
+            }
+            addToEnvironment(ociConfigRootNode, memberName, valueNode.asString());
+            status = true;
+        }
+
+        if (!status)
+        {
+            LOGWARN("Config env node found but contains no valid key/value entries\n");
+        }
+        return status;
+    }
+
     void RalfOCIConfigGenerator::addToEnvironment(Json::Value &ociConfigRootNode, const std::string &key, const std::string &value)
     {
-        // Ensure process/ENV exists and is an array before appending the new environment variable.
+        // Upsert: remove any existing entry for this key, then append the new value.
+        // This enforces the precedence rule (last write wins) and keeps process.env dedup-clean.
         std::string envVar = key + "=" + value;
 
         Json::Value &processNode = ociConfigRootNode[PROCESS];
@@ -624,13 +671,22 @@ namespace ralf
             processNode = Json::Value(Json::objectValue);
         }
 
-        Json::Value &envNode = processNode[ENV];
-        if (!envNode.isArray())
+        if (!processNode[ENV].isArray())
         {
-            envNode = Json::Value(Json::arrayValue);
+            processNode[ENV] = Json::Value(Json::arrayValue);
         }
-
-        envNode.append(envVar);
+        // Build a deduplicated array, dropping any existing entry for this key.
+        const std::string prefix = key + "=";
+        Json::Value deduped(Json::arrayValue);
+        for (const auto &existing : processNode[ENV])
+        {
+            if (!existing.isString() || existing.asString().rfind(prefix, 0) != 0)
+                deduped.append(existing);
+            else
+                LOGWARN("Removed duplicate environment variable from OCI config: %s\n", existing.asString().c_str());
+        }
+        deduped.append(envVar);
+        processNode[ENV] = deduped;
         LOGDBG("Added environment variable to OCI config: %s\n", envVar.c_str());
     }
 } // namespace ralf

@@ -277,6 +277,11 @@ namespace WPEFramework
 		mLoadedApplications.push_back(context);
                 firstLaunch = true;
 	    }
+            else if (context->mPendingStateTransition)
+            {
+                mAdminLock.Unlock();
+                return Core::ERROR_GENERAL;
+            }
             context->setRequestTime(requestTime);
             context->setRequestType(REQUEST_TYPE_LAUNCH);
             context->setTargetLifecycleState(targetLifecycleState);
@@ -308,10 +313,22 @@ namespace WPEFramework
             requestTime = LifecycleManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
             if (nullptr == context)
 	    {
+                LOGERR("SetTargetAppState failed: context not found for appInstanceId=%s", appInstanceId.c_str());
                 status = Core::ERROR_GENERAL;
                 return status;
 	    }
             mAdminLock.Lock();
+            if (targetLifecycleState == context->getCurrentLifecycleState())
+            {
+                mAdminLock.Unlock();
+                return status;
+            }
+            if (context->mPendingStateTransition)
+            {
+                mAdminLock.Unlock();
+                status = Core::ERROR_GENERAL;
+                return status;
+            }
             switch(targetLifecycleState)
             {
                 case Exchange::ILifecycleManager::LifecycleState::PAUSED:        //before SUSPEND or HIBERNATE app will be PAUSED
@@ -348,6 +365,7 @@ namespace WPEFramework
             mAdminLock.Unlock();
             if (false == success)
             {
+                LOGERR("SetTargetAppState failed: updateState returned false appInstanceId=%s appId=%s targetState=%d errorReason=%s", appInstanceId.c_str(), context->getAppId().c_str(), static_cast<int>(targetLifecycleState), errorReason.c_str());
                 status = Core::ERROR_GENERAL;
                 return status;
             }
@@ -370,6 +388,12 @@ namespace WPEFramework
                 return status;
 	    }
             mAdminLock.Lock();
+            if (context->mPendingStateTransition)
+            {
+                mAdminLock.Unlock();
+                success = false;
+                return Core::ERROR_GENERAL;
+            }
             if(REQUEST_TYPE_PAUSE != context->getRequestType())   //If request through AppManager closeApp, requestTime is already set
             {
                 context->setRequestTime(requestTime);
@@ -402,6 +426,12 @@ namespace WPEFramework
                 return status;
 	    }
             mAdminLock.Lock();
+            if (context->mPendingStateTransition)
+            {
+                mAdminLock.Unlock();
+                success = false;
+                return Core::ERROR_GENERAL;
+            }
             context->setRequestTime(requestTime);
             context->setRequestType(REQUEST_TYPE_TERMINATE);
             context->setTargetLifecycleState(Exchange::ILifecycleManager::LifecycleState::TERMINATING);
@@ -755,6 +785,7 @@ namespace WPEFramework
 	    {
 	        return;
 	    }
+            Core::SafeSyncType<Core::CriticalSection> adminLock(mAdminLock);
             auto iter = mLoadedApplications.end();
 	    for (iter = mLoadedApplications.begin(); iter != mLoadedApplications.end(); iter++)
 	    {
@@ -775,6 +806,7 @@ namespace WPEFramework
 
         bool LifecycleManagerImplementation::tryGetPendingRespawn(const string& appInstanceId, PendingRespawnRequest& pendingRespawn)
         {
+            Core::SafeSyncType<Core::CriticalSection> adminLock(mAdminLock);
             auto pendingRespawnIter = mPendingRespawns.find(appInstanceId);
             if (pendingRespawnIter == mPendingRespawns.end())
             {

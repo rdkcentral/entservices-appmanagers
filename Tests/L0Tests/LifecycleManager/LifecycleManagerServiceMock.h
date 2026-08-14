@@ -54,9 +54,9 @@ public:
     {
     }
 
-    void AddRef() const override
+    uint32_t AddRef() const override
     {
-        _refCount.fetch_add(1, std::memory_order_relaxed);
+        return _refCount.fetch_add(1, std::memory_order_relaxed) + 1;
     }
 
     uint32_t Release() const override
@@ -119,9 +119,9 @@ public:
     {
     }
 
-    void AddRef() const override
+    uint32_t AddRef() const override
     {
-        _refCount.fetch_add(1, std::memory_order_relaxed);
+        return _refCount.fetch_add(1, std::memory_order_relaxed) + 1;
     }
 
     uint32_t Release() const override
@@ -157,7 +157,7 @@ public:
         const bool /*topmost*/, const bool /*focus*/,
         const string& /*capabilities*/) override { return WPEFramework::Core::ERROR_NONE; }
 
-    WPEFramework::Core::hresult GetApps(string& /*appsIds*/) const override { return WPEFramework::Core::ERROR_NONE; }
+    WPEFramework::Core::hresult GetApps(WPEFramework::Exchange::IRDKWindowManager::IStringIterator*& appsIds) const override { appsIds = nullptr; return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult AddKeyIntercept(const string& /*intercept*/) override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult AddKeyIntercepts(const string& /*clientId*/, const string& /*intercepts*/) override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult RemoveKeyIntercept(const string& /*clientId*/, uint32_t /*keyCode*/, const string& /*modifiers*/) override { return WPEFramework::Core::ERROR_NONE; }
@@ -186,6 +186,11 @@ public:
     WPEFramework::Core::hresult GetFocused(string& /*client*/) const override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult GetScreenshot() override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult SetAlias(const string& /*clientId*/, const string& /*alias*/) override { return WPEFramework::Core::ERROR_NONE; }
+    WPEFramework::Core::hresult ShowSplashScreen(const bool /*show*/) override { return WPEFramework::Core::ERROR_NONE; }
+    WPEFramework::Core::hresult SetBounds(const string& /*clientId*/, const uint32_t /*x*/, const uint32_t /*y*/, const uint32_t /*width*/, const uint32_t /*height*/) override { return WPEFramework::Core::ERROR_NONE; }
+    WPEFramework::Core::hresult GetBounds(const string& /*clientId*/, uint32_t& /*x*/, uint32_t& /*y*/, uint32_t& /*width*/, uint32_t& /*height*/) const override { return WPEFramework::Core::ERROR_NONE; }
+    WPEFramework::Core::hresult SetScale(const string& /*clientId*/, const double /*scaleX*/, const double /*scaleY*/) override { return WPEFramework::Core::ERROR_NONE; }
+    WPEFramework::Core::hresult GetScale(const string& /*clientId*/, double& /*scaleX*/, double& /*scaleY*/) const override { return WPEFramework::Core::ERROR_NONE; }
 
     mutable std::atomic<uint32_t> _refCount;
     std::atomic<uint32_t> registerCalls;
@@ -276,10 +281,10 @@ public:
     mutable std::atomic<uint32_t> releaseCalls { 0 };
     mutable std::atomic<uint32_t> instantiateCalls { 0 };
 
-    void AddRef() const override
+    uint32_t AddRef() const override
     {
         addRefCalls++;
-        _refCount.fetch_add(1, std::memory_order_relaxed);
+        return _refCount.fetch_add(1, std::memory_order_relaxed) + 1;
     }
 
     uint32_t Release() const override
@@ -381,9 +386,9 @@ public:
     {
     }
 
-    void AddRef() const override
+    uint32_t AddRef() const override
     {
-        _refCount.fetch_add(1, std::memory_order_relaxed);
+        return _refCount.fetch_add(1, std::memory_order_relaxed) + 1;
     }
 
     uint32_t Release() const override
@@ -435,9 +440,9 @@ public:
     {
     }
 
-    void AddRef() const override
+    uint32_t AddRef() const override
     {
-        _refCount.fetch_add(1, std::memory_order_relaxed);
+        return _refCount.fetch_add(1, std::memory_order_relaxed) + 1;
     }
 
     uint32_t Release() const override
@@ -501,9 +506,9 @@ public:
     {
     }
 
-    void AddRef() const override
+    uint32_t AddRef() const override
     {
-        _refCount.fetch_add(1, std::memory_order_relaxed);
+        return _refCount.fetch_add(1, std::memory_order_relaxed) + 1;
     }
 
     uint32_t Release() const override

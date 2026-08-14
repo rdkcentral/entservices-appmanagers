@@ -96,6 +96,7 @@ namespace Plugin {
             INTERFACE_AGGREGATE(Exchange::IPackageDownloader, mPackageDownloader)
             INTERFACE_AGGREGATE(Exchange::IPackageInstaller, mPackageInstaller)
             INTERFACE_AGGREGATE(Exchange::IPackageHandler, mPackageHandler)
+            INTERFACE_AGGREGATE(Exchange::IPackageCacheInitializer, mPackageCacheInitializer)
         END_INTERFACE_MAP
 
     public:
@@ -115,6 +116,7 @@ namespace Plugin {
         Exchange::IPackageDownloader* mPackageDownloader;
         Exchange::IPackageInstaller* mPackageInstaller;
         Exchange::IPackageHandler* mPackageHandler;
+        Exchange::IPackageCacheInitializer* mPackageCacheInitializer;
 
         Core::Sink<NotificationHandler> mNotificationSink;
 

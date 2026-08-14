@@ -67,7 +67,7 @@ class LifecycleManagerShellTest : public LifecycleManager {
          * wrapper (Core::ServiceType<>) provides the implementation.  For unit
          * tests we supply stubs so that this subclass is concrete and can be
          * stack-allocated without calling Initialize(). */
-        void AddRef() const override {}
+        uint32_t AddRef() const override { return 1; }
         uint32_t Release() const override { return 1; }
 
         void notificationActivated(RPC::IRemoteConnection* conn)

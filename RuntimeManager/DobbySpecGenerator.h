@@ -46,6 +46,18 @@ namespace Plugin
 
             bool generate(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig, string& outputJsonString);
 
+            /**
+             * Sets the path to a pre-generated GStreamer plugin registry to
+             * bind-mount read-only into every container.  Mirrors
+             * appinfrastructure DobbySpecGenerator::setGstreamerRegistryPath().
+             * Only sets the path if the file exists at call time.
+             */
+            void setGstreamerRegistryPath(const std::string& registryPath);
+            static void parseCapabilities(const std::string& serializedCapabilities,
+                              std::vector<std::pair<std::string, std::string>>& parsedCapabilities);
+            static bool hasCapability(const std::vector<std::pair<std::string, std::string>>& capabilities,
+                           const std::string& capabilityName);
+
         private:
             Json::Value createEnvVars(const ApplicationConfiguration& config,
                                       const WPEFramework::Exchange::RuntimeConfig& runtimeConfig,
@@ -69,7 +81,7 @@ namespace Plugin
 
             ssize_t getSysMemoryLimit(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const;
             ssize_t getGPUMemoryLimit(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const;
-            bool getVpuEnabled(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const;
+            bool getVpuEnabled(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig, std::vector<std::pair<std::string, std::string>>& capabilities) const;
             std::string getCpuCores();
             void populateClassicPlugins(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig, Json::Value& spec);
             Json::Value createEthanLogPlugin(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const;
@@ -85,14 +97,23 @@ namespace Plugin
             Json::Value createResourceManagerMount(const ApplicationConfiguration& config) const;
             Json::Value getWorkingDir(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const;
             void initialiseIonHeapsJson();
+            void initialiseDefaultLogLevels();
             std::string encodeURL(std::string url) const;
-        void parseCapabilities(const std::string& serializedCapabilities,
-                              std::vector<std::pair<std::string, std::string>>& parsedCapabilities) const;
-        bool hasCapability(const std::vector<std::pair<std::string, std::string>>& capabilities,
-                           const std::string& capabilityName) const;
-        std::string getCapabilityValue(const std::vector<std::pair<std::string, std::string>>& capabilities,
+            std::string getCapabilityValue(const std::vector<std::pair<std::string, std::string>>& capabilities,
                                        const std::string& capabilityName) const;
 	    void addHolePunchPortToSpec(Json::Value &spec, in_port_t port) const;
+            void fillMissingJson(Json::Value& base, const Json::Value& defaults);
+
+            // Log level bit flags — must match packagemanager::IPackage::LogLevel values
+            enum class LogLevel : unsigned
+            {
+                Fatal     = 0x01,
+                Error     = 0x02,
+                Warning   = 0x04,
+                Info      = 0x08,
+                Debug     = 0x10,
+                Milestone = 0x20,
+            };
 
             Json::Value mIonMemoryPluginData;
 	    std::string mPackageMountPoint;
@@ -100,6 +121,7 @@ namespace Plugin
             std::string mGstRegistrySourcePath;
             std::string mGstRegistryDestinationPath;
             AIConfiguration* mAIConfiguration;
+            unsigned mDefaultLoggingMask;   ///< pre-computed from aisettings defaultAllowedLogLevels
     };
 } /* namespace Plugin */
 } /* namespace WPEFramework */

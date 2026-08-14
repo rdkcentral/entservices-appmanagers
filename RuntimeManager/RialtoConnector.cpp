@@ -24,7 +24,7 @@
 
 namespace WPEFramework
 {
-    void RialtoConnector::initialize()
+    bool RialtoConnector::initialize()
     {
      if (!mInitialized)
      {
@@ -35,13 +35,42 @@ namespace WPEFramework
         mAIConfiguration->initialize();
         config.sessionServerEnvVars = mAIConfiguration->getEnvs();
         mServerManagerService  = create(shared_from_this(), config);
+	if (!mServerManagerService)
+        {
+            LOGERR("Failed to create Rialto ServerManagerService");
+            delete mAIConfiguration;
+            return false;
+        }
+	mLogHandler = std::make_shared<RialtoLogHandler>();
+        if (!mServerManagerService->registerLogHandler(mLogHandler))
+        {
+            LOGWARN("Registration of custom logger for Rialto server manager failed");
+        }
+
         mInitialized = true;
         delete mAIConfiguration;
      }
+     return true;
     }
+
+    std::string RialtoConnector::getSocketPath(const std::string &appId) const
+    {
+        if (!mServerManagerService)
+        {
+            LOGERR("getSocketPath: ServerManagerService is null for appId='%s'", appId.c_str());
+            return "";
+        }
+        return mServerManagerService->getAppConnectionInfo(appId);
+    }
+
     bool RialtoConnector::createAppSession(const std::string &callsign, const std::string &displayName, const std::string &appId)
     {
         LOGINFO("Creating app session with callsign : '%s', display name : '%s', appid : '%s'", callsign.c_str(), displayName.c_str(), appId.c_str());
+	if (!mServerManagerService)
+        {
+            LOGERR("createAppSession: ServerManagerService is null for appId='%s'", appId.c_str());
+            return false;
+        }
         if (!callsign.empty() && !displayName.empty() && ! appId.empty())
         {
            firebolt::rialto::common::AppConfig config = {appId, displayName};
@@ -57,6 +86,11 @@ namespace WPEFramework
     }
     bool RialtoConnector::resumeSession(const std::string &callsign)
     {
+	if (!mServerManagerService)
+        {
+            LOGERR("resumeSession: ServerManagerService is null for callsign='%s'", callsign.c_str());
+            return false;
+        }
         if (RialtoServerStates::INACTIVE == getCurrentAppState(callsign))
             return mServerManagerService ->changeSessionServerState(callsign,
                                                                     RialtoServerStates::ACTIVE);
@@ -64,6 +98,11 @@ namespace WPEFramework
     }
     bool RialtoConnector::suspendSession(const std::string &callsign)
     {
+	if (!mServerManagerService)
+        {
+            LOGERR("suspendSession: ServerManagerService is null for callsign='%s'", callsign.c_str());
+            return false;
+        }
         if (RialtoServerStates::ACTIVE == getCurrentAppState(callsign))
             return mServerManagerService ->changeSessionServerState(callsign,
                                                                     RialtoServerStates::INACTIVE);
@@ -82,6 +121,11 @@ namespace WPEFramework
     bool RialtoConnector::deactivateSession(const std::string &callsign)
     {
         LOGINFO("Deactiving app %s", callsign.c_str());
+	if (!mServerManagerService)
+        {
+            LOGERR("deactivateSession: ServerManagerService is null for callsign='%s'", callsign.c_str());
+            return false;
+        }
         RialtoServerStates state = getCurrentAppState(callsign);
         if (RialtoServerStates::ACTIVE == state ||
             RialtoServerStates::INACTIVE == state)

@@ -28,6 +28,7 @@
 #include <sstream>
 #include <list>
 #include <unistd.h>
+#include <json/json.h>
 #include <plugins/System.h>
 
 #include <interfaces/ILifecycleManager.h>
@@ -46,6 +47,29 @@ namespace WPEFramework
     {
         LifecycleInterfaceConnector* LifecycleInterfaceConnector::_instance = nullptr;
         static uint32_t gAppsActiveCounter = 0;
+
+        std::string LifecycleInterfaceConnector::base64Encode(const std::string& in)
+        {
+            static const char* T =
+                "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+            std::string out;
+            out.reserve(((in.size() + 2) / 3) * 4);
+            const uint8_t* b = reinterpret_cast<const uint8_t*>(in.data());
+            std::size_t n = in.size(), i = 0;
+            for (; i + 2 < n; i += 3) {
+                uint32_t v = (b[i] << 16) | (b[i + 1] << 8) | b[i + 2];
+                out += T[(v >> 18) & 0x3F]; out += T[(v >> 12) & 0x3F];
+                out += T[(v >>  6) & 0x3F]; out += T[ v        & 0x3F];
+            }
+            if (i + 1 == n) {
+                uint32_t v = b[i] << 16;
+                out += T[(v >> 18) & 0x3F]; out += T[(v >> 12) & 0x3F]; out += '='; out += '=';
+            } else if (i + 2 == n) {
+                uint32_t v = (b[i] << 16) | (b[i + 1] << 8);
+                out += T[(v >> 18) & 0x3F]; out += T[(v >> 12) & 0x3F]; out += T[(v >> 6) & 0x3F]; out += '=';
+            }
+            return out;
+        }
 
         LifecycleInterfaceConnector::LifecycleInterfaceConnector(PluginHost::IShell* service)
         : mLifecycleManagerRemoteObject(nullptr),
@@ -151,6 +175,29 @@ namespace WPEFramework
             return status;
         }
 
+        void LifecycleInterfaceConnector::appendLaunchParametersEnv(const std::string& launchArgs, WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject) const
+        {
+            Json::Value envArr(Json::arrayValue);
+            {
+                Json::Reader rd;
+                Json::Value existing;
+                if (rd.parse(runtimeConfigObject.envVariables, existing) && existing.isArray())
+                    envArr = existing;
+            }
+
+            std::string sanitizedLaunchArgs = launchArgs;
+            if (sanitizedLaunchArgs == "{}" || sanitizedLaunchArgs == "{ }") {
+                sanitizedLaunchArgs.clear();
+            }
+
+            envArr.append(std::string("APPLICATION_LAUNCH_PARAMETERS=") + LifecycleInterfaceConnector::base64Encode(sanitizedLaunchArgs));
+
+            Json::StreamWriterBuilder w;
+            w["indentation"] = "";
+            runtimeConfigObject.envVariables = Json::writeString(w, envArr);
+            LOGINFO("launch: APPLICATION_LAUNCH_PARAMETERS set");
+        }
+
 
 /*
  * @brief LaunchApp invokes this to call LifecycleManager API.
@@ -222,6 +269,9 @@ namespace WPEFramework
                             state = Exchange::ILifecycleManager::LifecycleState::ACTIVE;
                             string source = "";
                             appManagerImplInstance->handleOnAppLaunchRequest(appId, intent, source);
+
+                            appendLaunchParametersEnv(launchArgs, runtimeConfigObject);
+
                             LOGINFO("spawnApp called ,state %u",state);
                             status = mLifecycleManagerRemoteObject->SpawnApp(appId, intent, state, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success);
 
@@ -477,10 +527,10 @@ namespace WPEFramework
                     appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_TERMINATE, AppManagerImplementation::ERROR_INVALID_PARAMS);
                 }
                 else
-                {
+		 {
                     LOGERR("appManagerImplInstance is null");
-                    appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_TERMINATE, AppManagerImplementation::ERROR_INTERNAL);
-                }
+	            appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_TERMINATE, AppManagerImplementation::ERROR_INTERNAL);
+        	 }
             mAdminLock.Unlock();
             return status;
         }

@@ -56,6 +56,7 @@ class PackageManagerImplementation
     , public Exchange::IPackageInstaller
     , public Exchange::IPackageHandler
     , public Exchange::IAppPackageManagerConfig
+    , public Exchange::IPackageCacheInitializer
 {
     private:
         class State {
@@ -70,7 +71,7 @@ class PackageManagerImplementation
             State() {}
             InstallState installState = InstallState::UNINSTALLED;
             uint32_t mLockCount = 0;
-            Exchange::RuntimeConfig runtimeConfig;
+            Exchange::RuntimeConfig runtimeConfig {};
             string digest;
             string gatewayMetadataPath;
             string unpackedPath;
@@ -78,6 +79,7 @@ class PackageManagerImplementation
             std::list<Exchange::IPackageHandler::AdditionalLock> additionalLocks;
             BlockedInstallData  blockedInstallData;
             string runtimeType;                             // blank for runtime package
+            string packageType;                              // OCI package type (e.g. "runtime", "application")
             std::pair<std::string, std::string> runtimeApp; // runtime package id & version
         };
 
@@ -168,6 +170,9 @@ class PackageManagerImplementation
         Core::hresult Initialize(PluginHost::IShell* service) override;
         Core::hresult Deinitialize(PluginHost::IShell* service) override;
 
+        // IPackageCacheInitializer methods
+        Core::hresult StartCacheInitialization() override;
+
         // IPackageInstaller methods
         Core::hresult Install(const string &packageId, const string &version, IPackageInstaller::IKeyValueIterator* const& additionalMetadata, const string &fileLocator, Exchange::IPackageInstaller::FailReason &failReason) override;
         Core::hresult Uninstall(const string &packageId, string &errorReason ) override;
@@ -198,6 +203,7 @@ class PackageManagerImplementation
             INTERFACE_ENTRY(Exchange::IPackageInstaller)
             INTERFACE_ENTRY(Exchange::IPackageHandler)
             INTERFACE_ENTRY(Exchange::IAppPackageManagerConfig)
+            INTERFACE_ENTRY(Exchange::IPackageCacheInitializer)
         END_INTERFACE_MAP
 
     private:

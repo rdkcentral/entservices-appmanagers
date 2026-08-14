@@ -104,6 +104,24 @@ namespace
         return tokens;
     }
 
+    // Deep-merges overlay into base: objects are merged recursively,
+    // all other types (scalars, arrays) are overwritten by the overlay value.
+    void mergeJson(Json::Value& base, const Json::Value& overlay)
+    {
+        if (!overlay.isObject() || !base.isObject())
+        {
+            base = overlay;
+            return;
+        }
+        for (const auto& key : overlay.getMemberNames())
+        {
+            if (base.isMember(key) && base[key].isObject() && overlay[key].isObject())
+                mergeJson(base[key], overlay[key]);
+            else
+                base[key] = overlay[key];
+        }
+    }
+
     bool getExtraMountEntries(const std::string& serializedCapabilities,
                               std::vector<ExtraBindMount>& extraMounts)
     {
@@ -163,28 +181,33 @@ namespace
     }
 }
 
-DobbySpecGenerator::DobbySpecGenerator(AIConfiguration& aiConfiguration): mIonMemoryPluginData(Json::objectValue), mPackageMountPoint("/package"), mRuntimeMountPoint("/runtime"), mGstRegistrySourcePath(""), mGstRegistryDestinationPath("/tmp/gstreamer-cached-registry.bin")
+DobbySpecGenerator::DobbySpecGenerator(AIConfiguration& aiConfiguration)
+    : mIonMemoryPluginData(Json::objectValue)
+    , mPackageMountPoint("/package")
+    , mRuntimeMountPoint("/runtime")
+    , mGstRegistrySourcePath("")
+    , mGstRegistryDestinationPath("/tmp/gstreamer-cached-registry.bin")
+    , mDefaultLoggingMask(0)
 {
     LOGINFO("DobbySpecGenerator()");
     mAIConfiguration = &aiConfiguration;
     initialiseIonHeapsJson();
-//TODO SUPPORT THIS
-/*
-    if (mAIConfiguration->getGstreamerRegistryEnabled())
-    {
-	GStreamerRegistry gstRegistry;
-        if (gstRegistry.generate())
-        {
-            mGstRegistrySourcePath = gstRegistry.path();
-	}
-    }
-*/
+    initialiseDefaultLogLevels();
 }
 
 DobbySpecGenerator::~DobbySpecGenerator()
 {
     LOGINFO("~DobbySpecGenerator()");
     // mAIConfiguration is owned by RuntimeManagerImplementation; not deleted here
+}
+
+void DobbySpecGenerator::setGstreamerRegistryPath(const std::string& registryPath)
+{
+    // Only update if the file actually exists to avoid mounting non-existent paths.
+    if (registryPath.empty() || (access(registryPath.c_str(), F_OK) == 0))
+    {
+        mGstRegistrySourcePath = registryPath;
+    }
 }
 
 Json::Value DobbySpecGenerator::getWorkingDir(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const
@@ -262,7 +285,7 @@ bool DobbySpecGenerator::generate(const ApplicationConfiguration& config, const 
     spec["restartOnCrash"] = false;
 
     Json::Value vpuObj;
-    vpuObj["enable"] = getVpuEnabled(config, runtimeConfig);
+    vpuObj["enable"] = getVpuEnabled(config, runtimeConfig, parsedCapabilities);
     spec["vpu"] = std::move(vpuObj);
     
     //TODO CHECK FOR OPTIMIZATION
@@ -281,7 +304,7 @@ bool DobbySpecGenerator::generate(const ApplicationConfiguration& config, const 
     cpuObj["cores"] = getCpuCores();
     spec["cpu"] = std::move(cpuObj);
 
-#if (AI_BUILD_TYPE == AI_DEBUG)
+#ifdef RDK_APPMANAGERS_DEBUG
     if (!runtimeConfig.logFilePath.empty())
     {
         Json::Value consoleObj;
@@ -291,7 +314,7 @@ bool DobbySpecGenerator::generate(const ApplicationConfiguration& config, const 
             : static_cast<uint32_t>(mAIConfiguration->getContainerConsoleLogCap());
         spec["console"] = std::move(consoleObj);
     }
-#endif // (AI_BUILD_TYPE == AI_DEBUG)
+#endif // RDK_APPMANAGERS_DEBUG
 
     Json::Value etcObj;
     Json::Value hostsArray(Json::arrayValue);
@@ -351,18 +374,58 @@ bool DobbySpecGenerator::generate(const ApplicationConfiguration& config, const 
     spec["mounts"] = createMounts(config, runtimeConfig);
     spec["env"] = createEnvVars(config, runtimeConfig, parsedCapabilities);
 
-#ifdef RDK_APPMANAGERS_DEBUG
-    addHolePunchPortToSpec(spec, 22222);
-#endif
 
     Json::FastWriter writer;
+
+    // apply additionalconfig capability overlay onto the spec (last step, so it
+    // can override any field set above — mirrors the extramounts pattern)
+    const std::string additionalConfigStr = getCapabilityValue(parsedCapabilities, "additionalconfig");
+    if (!additionalConfigStr.empty())
+    {
+        Json::Value overlay;
+        Json::Reader overlayReader;
+        if (overlayReader.parse(additionalConfigStr, overlay))
+        {
+            mergeJson(spec, overlay);
+            LOGINFO("additionalconfig overlay applied to Dobby spec");
+        }
+        else
+        {
+            LOGWARN("Failed to parse additionalconfig JSON: %s",
+                    overlayReader.getFormattedErrorMessages().c_str());
+        }
+    }
+
+    // Apply 'spec' capability as a non-overwriting fill: any top-level or
+    // nested key present in the capability JSON that is absent from the already-
+    // generated spec is added. Keys already set (including by additionalconfig)
+    // are never replaced.
+    const std::string capSpecStr = getCapabilityValue(parsedCapabilities, "spec");
+    if (!capSpecStr.empty())
+    {
+        Json::Value capSpec;
+        Json::Reader capSpecReader;
+        if (capSpecReader.parse(capSpecStr, capSpec))
+        {
+            fillMissingJson(spec, capSpec);
+            LOGINFO("'spec' capability fill applied to Dobby spec");
+        }
+        else
+        {
+            LOGWARN("Failed to parse 'spec' capability JSON: %s",
+                    capSpecReader.getFormattedErrorMessages().c_str());
+        }
+    }
+
     resultSpec = writer.write(spec);
+#ifdef RDK_APPMANAGERS_DEBUG
     LOGINFO("spec: '%s'\n", resultSpec.c_str());
 
     std::ofstream generatedSpecFile;
     generatedSpecFile.open("/tmp/generatedSpec.json");
     generatedSpecFile << resultSpec.c_str();
     generatedSpecFile.close();
+#endif
 
     return true;
 }
@@ -434,19 +497,16 @@ Json::Value DobbySpecGenerator::createEnvVars(const ApplicationConfiguration& co
        env.append(std::string("DIAL_USN=") + mAIConfiguration->getDialUsn());
    }
 
-   //TODO SUPPORT RIALTO
-   //TODO SUPPORT rialto in runtime config
-   //if (rialtoSMClient && appPackage->hasCapability(IPackage::Capability::RequiresRialto))
-   if (false)
+   #ifdef ENABLE_RIALTO
+   if (!config.mRialtoSocketPath.empty())
    {
-       //const std::string rialtoSocketPath = rialtoSMClient->getSocketPath();
-       //if (!rialtoSocketPath.empty())
-       //{
-       //    // Pass Rialto socket name used by RialtoClient to communicate with RialtoSessionServer
-       //    env.append(std::string("RIALTO_SOCKET_PATH=") + rialtoSocketPath);
-       //}
+       // Pass Rialto socket path used by RialtoClient to communicate with RialtoSessionServer
+       LOGINFO("Injecting RIALTO_SOCKET_PATH=%s into container env", config.mRialtoSocketPath.c_str());
+       env.append(std::string("RIALTO_SOCKET_PATH=") + config.mRialtoSocketPath);
    }
-   else if (!mGstRegistrySourcePath.empty())
+   else
+   #endif
+   if (!mGstRegistrySourcePath.empty())
    {
        env.append("GST_REGISTRY=" + mGstRegistryDestinationPath);
        env.append("GST_REGISTRY_UPDATE=no");
@@ -496,7 +556,34 @@ Json::Value DobbySpecGenerator::createMounts(const ApplicationConfiguration& con
         }
     }
 
-    //TODO SUPPORT Handle rialto
+    #ifdef ENABLE_RIALTO
+    if (!config.mRialtoSocketPath.empty())
+    {
+        LOGINFO("Adding Rialto socket bind mount: source='%s' destination='%s'", config.mRialtoSocketPath.c_str(), config.mRialtoSocketPath.c_str());
+        // Bind mount the Rialto socket into the container so the app can connect to its RialtoServer instance
+        mounts.append(createBindMount(config.mRialtoSocketPath, config.mRialtoSocketPath,
+                                      MS_BIND | MS_NOSUID | MS_NODEV));
+    }
+    else
+    {
+        LOGINFO("Rialto socket path is empty, skipping bind mount");
+        // Mount the pre-scanned GStreamer registry only when Rialto is NOT active;
+        if (!mGstRegistrySourcePath.empty())
+        {
+            mounts.append(createBindMount(mGstRegistrySourcePath,
+                                               mGstRegistryDestinationPath,
+                                               (MS_BIND | MS_NOSUID | MS_NODEV | MS_NOEXEC | MS_RDONLY)));
+        }
+    }
+    #else
+    if (!mGstRegistrySourcePath.empty())
+    {
+        mounts.append(createBindMount(mGstRegistrySourcePath,
+                                           mGstRegistryDestinationPath,
+                                           (MS_BIND | MS_NOSUID | MS_NODEV | MS_NOEXEC | MS_RDONLY)));
+    }
+    #endif
+
     //TODO SUPPORT Netflix specific mounts
     //TODO SUPPORT SVP file mounts
     //TODO SUPPORT Platform specific mounts
@@ -504,20 +591,6 @@ Json::Value DobbySpecGenerator::createMounts(const ApplicationConfiguration& con
     //TODO SUPPORT TSB Storage
     //TODO SUPPORT USB Mass storage
     //TODO SUPPORT PerfettoSocketPath not mounted
-    /*
-    if (usingRialto)
-    {
-        Json::Value rialtoMount = createRialtoMount(appPackage, rialtoSMClient);
-        if (!rialtoMount.isNull())
-            mountsArray.append(std::move(rialtoMount));
-    }
-    */
-    if (!mGstRegistrySourcePath.empty())
-    {
-        mounts.append(createBindMount(mGstRegistrySourcePath,
-                                           mGstRegistryDestinationPath,
-                                           (MS_BIND | MS_NOSUID | MS_NODEV | MS_NOEXEC | MS_RDONLY)));
-    }
 
     std::vector<ExtraBindMount> extraMountEntries;
     if (true == getExtraMountEntries(runtimeConfig.capabilities, extraMountEntries))
@@ -603,8 +676,44 @@ bool DobbySpecGenerator::shouldEnableGpu(const ApplicationConfiguration& config)
     return !config.mWesterosSocketPath.empty();
 }
 
+// Non-overwriting deep merge: adds keys from 'defaults' that are absent in
+// 'base'. Existing keys in 'base' (including those set by additionalconfig)
+// are never replaced. Sub-objects are recursed into.
+// Exception: 'env' and 'mounts' arrays are always appended — items from
+// 'defaults' are added to the end of the existing arrays.
+void DobbySpecGenerator::fillMissingJson(Json::Value& base, const Json::Value& defaults)
+{
+    if (!defaults.isObject() || !base.isObject())
+        return;
+    for (const auto& key : defaults.getMemberNames())
+    {
+        if (!base.isMember(key))
+        {
+            // Key absent from base — add it from defaults.
+            // Check isMember FIRST to avoid jsoncpp lazily creating a null entry
+            // for the key via operator[], which would make subsequent isMember
+            // checks return true prematurely.
+            base[key] = defaults[key];
+        }
+        else if (base[key].isArray() && defaults[key].isArray() &&
+                 (key == "env" || key == "mounts" || key == "plugins"))
+        {
+            // Append items from defaults array to existing base array.
+            for (const auto& item : defaults[key])
+                base[key].append(item);
+        }
+        else if (base[key].isObject() && defaults[key].isObject())
+        {
+            // Both sides are objects (e.g. rdkPlugins) — recurse to fill
+            // missing internal keys without overwriting existing ones.
+            fillMissingJson(base[key], defaults[key]);
+        }
+        // else: key present in base with a scalar or mismatched type — preserve existing value.
+    }
+}
+
 void DobbySpecGenerator::parseCapabilities(const std::string& serializedCapabilities,
-                                           std::vector<std::pair<std::string, std::string>>& parsedCapabilities) const
+                                           std::vector<std::pair<std::string, std::string>>& parsedCapabilities)
 {
     parsedCapabilities.clear();
 
@@ -647,7 +756,7 @@ void DobbySpecGenerator::parseCapabilities(const std::string& serializedCapabili
 }
 
 bool DobbySpecGenerator::hasCapability(const std::vector<std::pair<std::string, std::string>>& capabilities,
-                                       const std::string& capabilityName) const
+                                       const std::string& capabilityName)
 {
     const std::string expectedName = lowerCopy(capabilityName);
 
@@ -706,15 +815,14 @@ ssize_t DobbySpecGenerator::getGPUMemoryLimit(const ApplicationConfiguration& co
     return gpuMemoryLimit;
 }
 
-bool DobbySpecGenerator::getVpuEnabled(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const
+bool DobbySpecGenerator::getVpuEnabled(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig, std::vector<std::pair<std::string, std::string>>& capabilities) const
 {
-    // TODO SUPPORT RIALTO
-    /*
-    if (rialToEnabled)
+#ifdef ENABLE_RIALTO
+    if (!config.mRialtoSocketPath.empty())
     {
         return false;
     }
-    */
+#endif
     if (runtimeConfig.appType.compare("SYSTEM") == 0)
     {
         return false;
@@ -766,6 +874,10 @@ Json::Value DobbySpecGenerator::createRdkPlugins(const ApplicationConfiguration&
                                                  const std::vector<std::pair<std::string, std::string>>& capabilities) const
 {
     Json::Value rdkPluginsObj(Json::objectValue);
+    rdkPluginsObj["ionmemory"] = createIonMemoryPlugin();
+    rdkPluginsObj["minidump"] = createMinidumpPlugin();
+//MADANA
+/*
     const bool appServicesRequested =
         !config.mPorts.empty() ||
         runtimeConfig.dial ||
@@ -782,27 +894,19 @@ Json::Value DobbySpecGenerator::createRdkPlugins(const ApplicationConfiguration&
     {
         rdkPluginsObj["appservicesrdk"] = createAppServiceSDKPlugin(config, runtimeConfig, capabilities);
     }
-    rdkPluginsObj["ionmemory"] = createIonMemoryPlugin();
-
-
-
     rdkPluginsObj["networking"] = createNetworkPlugin(config, runtimeConfig, capabilities);
     const bool thunderEnabled = runtimeConfig.thunder || hasCapability(capabilities, "thunder");
     if (thunderEnabled)
     {
         rdkPluginsObj["thunder"] = createThunderPlugin(config, capabilities);
     }
-
-    //WORK: runtime config need to have credmgr certificate
-    /*
     std::optional<IPackage::Certificate> credmgrCert = appPackage->credmgrCertificate();
     if (credmgrCert)
     {
         rdkPluginsObj["credentialsmanager"]["data"] =
             createCredentialsManagerData(credmgrCert->x509Certificate, credmgrCert->rsaKey);
     }
-    */
-    rdkPluginsObj["minidump"] = createMinidumpPlugin();
+*/
 
     //WORK: httpproxy only for debug builds
     /*
@@ -843,7 +947,7 @@ Json::Value DobbySpecGenerator::createAppServiceSDKPlugin(const ApplicationConfi
 {
     Json::Value pluginObj(Json::objectValue);
 
-    pluginObj["required"] = false;
+//    pluginObj["required"] = false;
 
     Json::Value dependencies(Json::arrayValue);
     dependencies.append("networking");
@@ -921,34 +1025,6 @@ Json::Value DobbySpecGenerator::createNetworkPlugin(const ApplicationConfigurati
 
     pluginObj["data"] = std::move(dataObj);
 
-    //TODO SUPPORT Nat holepunch
-    /*
-    // add NAT holepunch support if requested (only for non-html apps)
-    if (appPackage->hasCapability(IPackage::Capability::NatHolePunch) &&
-        isAllowedHolePunch(appPackage))
-    {
-        data["portForwarding"]["hostToContainer"] = createHolePunchArray(appPackage);
-    }
-
-    //TODO SUPPORT Multicast forwarding
-    // add multicast forwarding - primarily used for netflix MDX
-    if (appPackage->hasCapability(IPackage::Capability::MulticastForward))
-    {
-        data["multicastForwarding"] = createMulticastGroupsArray(appPackage);
-    }
-
-    // TODO SUPPORT inter-container communication
-    if (appPackage->hasCapability(IPackage::Capability::LocalSocketServer) ||
-        appPackage->hasCapability(IPackage::Capability::LocalSocketClient))
-    {
-        Json::Value interContainerArray = createInterContainerArray(appPackage);
-        if (!interContainerArray.empty())
-        {
-            data[interContainer] = std::move(interContainerArray);
-        }
-    }
-    */
-
     return pluginObj;
 }
 
@@ -968,8 +1044,8 @@ void DobbySpecGenerator::populateClassicPlugins(const ApplicationConfiguration& 
             pluginsArray.append(createOpenCDMPlugin(config, runtimeConfig));
         }
     }
-    */    
     pluginsArray.append(createOpenCDMPlugin(config, runtimeConfig));
+    */    
 
     //TODO SUPPORT Runtime config need to have multicastSocket, multicastForward,NatHolePunch capability parameter
     /*
@@ -993,6 +1069,23 @@ void DobbySpecGenerator::populateClassicPlugins(const ApplicationConfiguration& 
         pluginsArray.append(createHolePuncherPlugin(appPackage));
     }
     */
+    #ifdef ENABLE_RIALTO
+    LOGINFO("populateClassicPlugins: appId='%s' mRialtoSocketPath='%s'", config.mAppId.c_str(), config.mRialtoSocketPath.c_str());
+    if (config.mRialtoSocketPath.empty())
+    {
+        LOGINFO("populateClassicPlugins: Rialto NOT active — adding OpenCDM for appId='%s'", config.mAppId.c_str());
+    #else
+    if (true)
+    {
+    #endif
+    pluginsArray.append(createOpenCDMPlugin(config, runtimeConfig));
+    }
+    #ifdef ENABLE_RIALTO
+    else
+    {
+        LOGINFO("populateClassicPlugins: Rialto active — skipping OpenCDM for appId='%s'", config.mAppId.c_str());
+    }
+    #endif
     spec["plugins"] = std::move(pluginsArray);
 }
 
@@ -1012,31 +1105,24 @@ Json::Value DobbySpecGenerator::createEthanLogPlugin(const ApplicationConfigurat
     static const Json::StaticString debug("debug");
 
     Json::Value levels(Json::arrayValue);
-    //TODO SUPPORT logging mask in runtime config: RDKEMW-4432
-    /*
-    unsigned logMask = package->loggingMask();
-    if (logMask & unsigned(IPackage::LogLevel::Default))
-        logMask |= mDefaultLoggingMask;
-
-    if (logMask & unsigned(IPackage::LogLevel::Fatal))
-        levels.append(fatal);
-    if (logMask & unsigned(IPackage::LogLevel::Error))
-        levels.append(error);
-    if (logMask & unsigned(IPackage::LogLevel::Warning))
-        levels.append(warning);
-    if (logMask & unsigned(IPackage::LogLevel::Info))
-        levels.append(info);
-    if (logMask & unsigned(IPackage::LogLevel::Debug))
-        levels.append(debug);
-    if (logMask & unsigned(IPackage::LogLevel::Milestone))
-        levels.append(milestone);
-    */
-    levels.append(fatal);
-    levels.append(error);
-    levels.append(warning);
-    levels.append(info);
-    levels.append(debug);
-    levels.append(milestone);
+    if (!runtimeConfig.logLevels.empty())
+    {
+        Json::Reader reader;
+        Json::Value parsed;
+        if (reader.parse(runtimeConfig.logLevels, parsed) && parsed.isArray())
+            levels = parsed;
+    }
+    if (levels.empty())
+    {
+        // No explicit levels from package config — apply platform defaults
+        if (mDefaultLoggingMask & static_cast<unsigned>(LogLevel::Fatal))     levels.append(fatal);
+        if (mDefaultLoggingMask & static_cast<unsigned>(LogLevel::Error))     levels.append(error);
+        if (mDefaultLoggingMask & static_cast<unsigned>(LogLevel::Warning))   levels.append(warning);
+        if (mDefaultLoggingMask & static_cast<unsigned>(LogLevel::Info))      levels.append(info);
+        if (mDefaultLoggingMask & static_cast<unsigned>(LogLevel::Debug))     levels.append(debug);
+        if (mDefaultLoggingMask & static_cast<unsigned>(LogLevel::Milestone)) levels.append(milestone);
+        if (levels.empty()) levels.append(milestone);
+    }
 
     plugin[name] = pluginName;
     plugin[data][loglevels] = levels;
@@ -1126,6 +1212,20 @@ Json::Value DobbySpecGenerator::createOpenCDMPlugin(const ApplicationConfigurati
     plugin[data] = Json::Value::null;
 
     return plugin;
+}
+
+void DobbySpecGenerator::initialiseDefaultLogLevels()
+{
+    for (const auto& level : mAIConfiguration->getDefaultAllowedLogLevels())
+    {
+        if      (::strcasecmp(level.c_str(), "fatal")     == 0) mDefaultLoggingMask |= static_cast<unsigned>(LogLevel::Fatal);
+        else if (::strcasecmp(level.c_str(), "error")     == 0) mDefaultLoggingMask |= static_cast<unsigned>(LogLevel::Error);
+        else if (::strcasecmp(level.c_str(), "warning")   == 0) mDefaultLoggingMask |= static_cast<unsigned>(LogLevel::Warning);
+        else if (::strcasecmp(level.c_str(), "milestone")  == 0) mDefaultLoggingMask |= static_cast<unsigned>(LogLevel::Milestone);
+        else if (::strcasecmp(level.c_str(), "info")      == 0) mDefaultLoggingMask |= static_cast<unsigned>(LogLevel::Info);
+        else if (::strcasecmp(level.c_str(), "debug")     == 0) mDefaultLoggingMask |= static_cast<unsigned>(LogLevel::Debug);
+    }
+    LOGINFO("DobbySpecGenerator: default logging mask 0x%x", mDefaultLoggingMask);
 }
 
 void DobbySpecGenerator::initialiseIonHeapsJson()

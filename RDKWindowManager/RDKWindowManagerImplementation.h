@@ -129,7 +129,7 @@ namespace Plugin {
         Core::hresult Register(INotification *notification) override;
         Core::hresult Unregister(INotification *notification) override;
         Core::hresult CreateDisplay(const string &clientId, const string &displayName, const uint32_t displayWidth, const uint32_t displayHeight, const bool virtualDisplay, const uint32_t virtualWidth, const uint32_t virtualHeight, const uint32_t ownerId, const uint32_t groupId, const bool topmost, const bool focus, const string &capabilities) override;
-        Core::hresult GetApps(string &appsIds) const override;
+        Core::hresult GetApps(RPC::IStringIterator*& appsIds) const override;
         Core::hresult AddKeyIntercept(const string &intercept) override;
         Core::hresult AddKeyIntercepts(const string &clientId, const string &intercepts) override;
         Core::hresult RemoveKeyIntercept(const string &clientId, uint32_t keyCode, const string &modifiers) override;
@@ -158,6 +158,11 @@ namespace Plugin {
         Core::hresult GetFocused(string &client) const override;
         Core::hresult GetScreenshot() override;
         Core::hresult SetAlias(const string& clientId, const string& alias) override;
+        Core::hresult ShowSplashScreen(const bool show) override;
+        Core::hresult SetBounds(const string& clientId, const uint32_t x, const uint32_t y, const uint32_t width, const uint32_t height) override;
+        Core::hresult GetBounds(const string& clientId, uint32_t& x, uint32_t& y, uint32_t& width, uint32_t& height) const override;
+        Core::hresult SetScale(const string& clientId, const double scaleX, const double scaleY) override;
+        Core::hresult GetScale(const string& clientId, double& scaleX, double& scaleY) const override;
 
     private: /*internal methods*/
         bool createDisplay(const string& client, const string& displayName, const uint32_t displayWidth = 0, const uint32_t displayHeight = 0,

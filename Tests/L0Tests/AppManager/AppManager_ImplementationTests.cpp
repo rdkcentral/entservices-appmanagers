@@ -346,13 +346,11 @@ uint32_t Test_AM_IsInstalledAndGetInstalledAppsWithPackages()
     installedPkg.packageId = "app.good";
     installedPkg.version = "1.2.3";
     installedPkg.state = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
-    installedPkg.isRuntime = false;
 
     WPEFramework::Exchange::IPackageInstaller::Package pendingPkg;
     pendingPkg.packageId = "app.pending";
     pendingPkg.version = "9.9.9";
     pendingPkg.state = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLING;
-    pendingPkg.isRuntime = false;
     installer.installedPackages.push_back(installedPkg);
     installer.installedPackages.push_back(pendingPkg);
 
@@ -1172,7 +1170,7 @@ uint32_t Test_AM_GetInstalledAppsWithActiveAppInfo()
     pkg.packageId  = "active.pkg";
     pkg.version    = "2.0.0";
     pkg.state      = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
-    pkg.isRuntime  = false;
+    pkg.packageType = "application";
     packageInstaller.installedPackages.push_back(pkg);
 
     L0Test::AppManagerServiceMock::Config cfg(&packageInstaller);
@@ -2508,6 +2506,58 @@ uint32_t Test_AM_LaunchAppFetchFails()
     const auto result = impl->LaunchApp(std::string("app.fetch.fails"), std::string(), std::string());
     L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
         "LaunchApp() returns ERROR_GENERAL when IsInstalled (fetchAppPackageList) fails");
+
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+uint32_t Test_AM_PreloadAppNotInstalled()
+{
+    L0Test::TestResult tr;
+    auto* installer = new L0Test::MockPackageInstaller();
+    L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
+    delete static_cast<L0Test::MockPackageInstaller*>(cfg.installer);
+    cfg.installer = installer;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+
+    std::string error;
+    const auto result = impl->PreloadApp(std::string("app.not.installed"), std::string(), std::string(), error);
+    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+        "PreloadApp() returns ERROR_GENERAL when app is not installed");
+    L0Test::ExpectTrue(tr, !error.empty(),
+        "PreloadApp() sets an error string when app is not installed");
+
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+uint32_t Test_AM_PreloadAppFetchFails()
+{
+    L0Test::TestResult tr;
+    auto* installer = new L0Test::MockPackageInstaller();
+    installer->listHandler = [](WPEFramework::Exchange::IPackageInstaller::IPackageIterator*& it) {
+        it = nullptr;
+        return WPEFramework::Core::ERROR_GENERAL;
+    };
+    L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
+    delete static_cast<L0Test::MockPackageInstaller*>(cfg.installer);
+    cfg.installer = installer;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+
+    std::string error;
+    const auto result = impl->PreloadApp(std::string("app.fetch.fails"), std::string(), std::string(), error);
+    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+        "PreloadApp() returns ERROR_GENERAL when fetchAppPackageList fails");
+    L0Test::ExpectTrue(tr, !error.empty(),
+        "PreloadApp() sets an error string when fetchAppPackageList fails");
 
     impl->Release();
     WPEFramework::Plugin::AppInfoManager::getInstance().clear();

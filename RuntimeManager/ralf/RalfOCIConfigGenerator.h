@@ -186,6 +186,16 @@ namespace ralf
         bool addStorageConfigToOCIConfig(Json::Value &ociConfigRootNode, Json::Value &manifestRootNode);
 
         /**
+         * Adds flat environment variables from urn:rdk:config:env to OCI process.env.
+         * As per the metadata spec matrix, this is only valid for application/service packages.
+         * Each key must match POSIX env naming rules [A-Za-z_][A-Za-z0-9_]*; invalid keys are skipped.
+         * @param ociConfigRootNode The root node of the OCI config JSON.
+         * @param configNode The package configuration node.
+         * @return true if at least one environment variable was added, false otherwise.
+         */
+        bool addConfigEnvToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &configNode);
+
+        /**
          * Updates the OCI config JSON at rdkPlugins.logging.data.fileOptions.path to point to the
          * application's log file for easier debugging of logs from the containerized app.
          * The configured log filename is derived from the host-side appStoragePath and appId
