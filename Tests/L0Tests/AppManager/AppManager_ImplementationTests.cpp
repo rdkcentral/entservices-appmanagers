@@ -106,9 +106,9 @@ struct RefNotification final : public WPEFramework::Exchange::IAppManager::INoti
     {
     }
 
-    void AddRef() const override
+    uint32_t AddRef() const override
     {
-        _refCount.fetch_add(1, std::memory_order_relaxed);
+        return _refCount.fetch_add(1, std::memory_order_relaxed) + 1;
     }
 
     uint32_t Release() const override
@@ -3278,7 +3278,7 @@ uint32_t Test_AM_LICOnAppLifecycleStateChangedNormalCloseNoSentinel()
         std::atomic<WPEFramework::Exchange::IAppManager::AppErrorReason> lastError{
             WPEFramework::Exchange::IAppManager::AppErrorReason::APP_ERROR_ABORT}; // sentinel default
         std::atomic<uint32_t> lifecycleCalls{0};
-        void AddRef() const override { _ref.fetch_add(1, std::memory_order_relaxed); }
+        uint32_t AddRef() const override { return _ref.fetch_add(1, std::memory_order_relaxed) + 1; }
         uint32_t Release() const override {
             if (_ref.fetch_sub(1, std::memory_order_acq_rel) == 1) { delete this; return 0; }
             return 1;
@@ -3344,7 +3344,7 @@ uint32_t Test_AM_LICOnAppLifecycleStateChangedUnexpectedTermAbortError()
         std::atomic<WPEFramework::Exchange::IAppManager::AppErrorReason> lastError{
             WPEFramework::Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE}; // sentinel default
         std::atomic<uint32_t> lifecycleCalls{0};
-        void AddRef() const override { _ref.fetch_add(1, std::memory_order_relaxed); }
+        uint32_t AddRef() const override { return _ref.fetch_add(1, std::memory_order_relaxed) + 1; }
     uint32_t Release() const override {
         const uint32_t remaining = _ref.fetch_sub(1, std::memory_order_acq_rel) - 1;
         if (0U == remaining) { delete this; return WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED; }
