@@ -1910,6 +1910,7 @@ TEST_F(RuntimeManagerTest, UnmountMethods)
 
 // DobbySpecGenerator -- Rialto / GST_REGISTRY mutual-exclusion tests (L1)
 // When Rialto is active, GST_REGISTRY env vars and registry bind-mount must NOT be injected.
+#ifdef ENABLE_RIALTO
 
 /* Helper: create a minimal AIConfiguration for standalone DobbySpecGenerator tests. */
 static WPEFramework::Plugin::AIConfiguration& GetL1AIConfigurationFixture()
@@ -1995,7 +1996,6 @@ TEST(DobbySpecGeneratorRialtoTest, GstRegistryMountedWhenRialtoInactive)
     std::remove(tmpPath.c_str());
 }
 
-#ifdef ENABLE_RIALTO
 /* Test: DobbySpecGenerator_RialtoSocketEnvInjectedWhenRialtoActive
  * RIALTO_SOCKET_PATH must be injected in spec env when Rialto socket path is set.
  */
