@@ -1414,11 +1414,13 @@ namespace Plugin {
         }
         return result;
     }
-    Core::hresult PackageManagerImplementation::GetConfigListForInstalledPackages(const string &filter, string &config /* @out @opaque */)
-    {
-        //This is to be implemented for sky libpackage.
-        return Core::ERROR_NONE;
-    }
+Core::hresult PackageManagerImplementation::GetConfigListForInstalledPackages(const string &filter, string &config /* @out @opaque */)
+{
+    CHECK_CACHE()
+    (void)filter;
+    config.clear();
+    return Core::ERROR_NOT_SUPPORTED;
+}
 } // namespace Plugin
 } // namespace WPEFramework
 
