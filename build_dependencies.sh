@@ -76,6 +76,13 @@ git clone -b v1.2.0 https://github.com/rdkcentral/ralf-utils.git
 
 git clone -b develop https://github.com/rdkcentral/libPackage.git
 
+### eshelpers
+
+cd eshelpers
+git checkout topic/RDKEMW-22774
+cd - 
+###
+
 ############################
 # Build Thunder-Tools
 echo "======================================================================================"
@@ -141,9 +148,6 @@ LIBPACKAGE_INCLUDE_DIR="${GITHUB_WORKSPACE}/libPackage/include"
 mkdir -p "${LIBPACKAGE_INCLUDE_DIR}"
 
 if [ -f "${GITHUB_WORKSPACE}/eshelpers/packager/IPackageImpl.h" ]; then
-    cd ${GITHUN_WORKSPACE}/eshelpers
-    git checkout topic/RDKEMW-22774
-    cd - 
     cp "${GITHUB_WORKSPACE}/eshelpers/packager/IPackageImpl.h" "${LIBPACKAGE_INCLUDE_DIR}/IPackageImpl.h"
 else
     echo "Missing required header: ${GITHUB_WORKSPACE}/eshelpers/packager/IPackageImpl.h"
