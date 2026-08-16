@@ -883,7 +883,15 @@ namespace WPEFramework
                     LOGINFO("App Folder exists, attempting to delete: %s", path.c_str());
                     if (deleteDirectoryEntries(appId, errorReason) == Core::ERROR_NONE)
                     {
-                        if (0 == rmdir(path.c_str()))
+                        if (access(path.c_str(), F_OK) != 0)
+                        {
+                            LOGINFO("App Folder already deleted: %s", path.c_str());
+                            status = Core::ERROR_NONE;
+                            errorReason.clear();
+                            mStorageAppInfo.erase(it);
+                            appQuotaSizeProperty(DELETE, appId, nullptr);
+                        }
+                        else if (0 == rmdir(path.c_str()))
                         {
                             LOGINFO("App Folder removed successfully");
                             status = Core::ERROR_NONE;
