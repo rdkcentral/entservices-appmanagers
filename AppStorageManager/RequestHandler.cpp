@@ -971,17 +971,28 @@ namespace WPEFramework
             {
                 const std::string path = it->second->path;
                 LOGINFO("Clearing App storage path: %s", path.c_str());
-                if (nftw(path.c_str(), deleteCallback, MAX_NUM_OF_FILE_DESCRIPTORS, FTW_DEPTH | FTW_PHYS) != 0)
+
+                // If the directory does not exist on disk, treat as already cleared.
+                if (access(path.c_str(), F_OK) != 0)
                 {
-                    LOGERR("Failed to clear App storage path: %s", path.c_str());
-                    errorReason = "Failed to clear App storage path: " + path;
+                    LOGINFO("App storage path '%s' does not exist; nothing to clear", path.c_str());
+                    errorReason = "";
+                    status = Core::ERROR_NONE;
                 }
                 else
                 {
-                    /* Successfully cleared app storage path */
-                    it->second->usedKB = 0;
-                    errorReason = "";
-                    status = Core::ERROR_NONE;
+                    if (nftw(path.c_str(), deleteCallback, MAX_NUM_OF_FILE_DESCRIPTORS, FTW_DEPTH | FTW_PHYS) != 0)
+                    {
+                        LOGERR("Failed to clear App storage path: %s", path.c_str());
+                        errorReason = "Failed to clear App storage path: " + path;
+                    }
+                    else
+                    {
+                        /* Successfully cleared app storage path */
+                        it->second->usedKB = 0;
+                        errorReason = "";
+                        status = Core::ERROR_NONE;
+                    }
                 }
             }
             return status;
