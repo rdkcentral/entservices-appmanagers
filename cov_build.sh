@@ -7,6 +7,10 @@ cmake --version
 
 GITHUB_WORKSPACE="${PWD}"
 ls -la ${GITHUB_WORKSPACE}
+
+# Native/L1 build environment: ensure AppManager sees jsoncpp headers via its env-based include hook.
+export APP_MANAGER_INCLUDES="/usr/include/jsoncpp"
+
 ############################
 # Build entservices-appmanagers
 echo "building entservices-appmanagers"
