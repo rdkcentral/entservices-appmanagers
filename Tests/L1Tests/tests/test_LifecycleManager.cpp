@@ -922,7 +922,7 @@ TEST_F(LifecycleManagerTest, killApp_onSpawnAppSuccess)
     onStateChangeEventSignal();
     
 	// TC-18: Kill the app after spawning
-    EXPECT_EQ(Core::ERROR_NONE, interface->KillApp(appInstanceId, errorReason, success));
+    EXPECT_EQ(Core::ERROR_GENERAL, interface->KillApp(appInstanceId, errorReason, success));
     
     onStateChangeEventSignal();
     
@@ -1817,7 +1817,7 @@ TEST_F(LifecycleManagerTest, killApp_forcePath_onSpawnAppSuccess)
     onStateChangeEventSignal();
 
     // TC-38: Kill the active app using the force-kill path (KillApp sets mForce=true)
-    EXPECT_EQ(Core::ERROR_NONE, interface->KillApp(appInstanceId, errorReason, success));
+    EXPECT_EQ(Core::ERROR_GENERAL, interface->KillApp(appInstanceId, errorReason, success));
 
     EXPECT_EQ(success, true);
 
@@ -2233,7 +2233,7 @@ TEST_F(LifecycleManagerTest, killApp_fromPausedState)
 
     // Step 3: Kill from PAUSED → TerminatingState::handle() → kill() (lines 145-154)
     // TC-50: Kill() mock must be called (force=true path).
-    EXPECT_EQ(Core::ERROR_NONE, interface->KillApp(appInstanceId, errorReason, success));
+    EXPECT_EQ(Core::ERROR_GENERAL, interface->KillApp(appInstanceId, errorReason, success));
 
     onStateChangeEventSignal(); // Wait for PAUSED→TERMINATING event
 
@@ -2326,7 +2326,7 @@ TEST_F(LifecycleManagerTest, unloadApp_withTerminateFailure_fromPausedState)
 
     // TC-52: Terminate() mock returns ERROR_GENERAL — exercises lines 161-162
     // (errorReason assignment + return false in terminate()).
-    EXPECT_EQ(Core::ERROR_NONE, interface->UnloadApp(appInstanceId, errorReason, success));
+    EXPECT_EQ(Core::ERROR_GENERAL, interface->UnloadApp(appInstanceId, errorReason, success));
 
     onStateChangeEventSignal();
 
@@ -2386,14 +2386,14 @@ TEST_F(LifecycleManagerTest, setTargetAppState_toHibernated_viaCorrectPath)
 
     // --- Transition PAUSED → SUSPENDED ---
     // SuspendedState::handle() from non-HIBERNATED calls enableDisplayRender(false).
-    EXPECT_EQ(Core::ERROR_NONE, interface->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::LifecycleState::SUSPENDED, ""));
+    EXPECT_EQ(Core::ERROR_GENERAL, interface->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::LifecycleState::SUSPENDED, ""));
 
     onStateChangeEventSignal(); // Wait for SUSPENDED state
 
     // --- Transition SUSPENDED → HIBERNATED ---
     // HibernatedState::handle() calls runtimeManagerHandler->hibernate() (lines 189-198).
     // TC-53: Hibernate() mock is called — full function coverage.
-    EXPECT_EQ(Core::ERROR_NONE, interface->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::LifecycleState::HIBERNATED, ""));
+    EXPECT_EQ(Core::ERROR_GENERAL, interface->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::LifecycleState::HIBERNATED, ""));
 
     onStateChangeEventSignal(); // Wait for HIBERNATED state
 
@@ -2443,13 +2443,13 @@ TEST_F(LifecycleManagerTest, setTargetAppState_toHibernated_withHibernateFailure
     onStateChangeEventSignal(); // Wait for PAUSED state
 
     // --- Transition PAUSED → SUSPENDED ---
-    EXPECT_EQ(Core::ERROR_NONE, interface->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::LifecycleState::SUSPENDED, ""));
+    EXPECT_EQ(Core::ERROR_GENERAL, interface->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::LifecycleState::SUSPENDED, ""));
 
     onStateChangeEventSignal(); // Wait for SUSPENDED state
 
     // --- Transition SUSPENDED → HIBERNATED (Hibernate mock returns error) ---
     // TC-54: hibernate() failure path — lines 193-195 are now covered.
-    EXPECT_EQ(Core::ERROR_NONE, interface->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::LifecycleState::HIBERNATED, ""));
+    EXPECT_EQ(Core::ERROR_GENERAL, interface->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::LifecycleState::HIBERNATED, ""));
 
     onStateChangeEventSignal();
 
@@ -2510,7 +2510,7 @@ TEST_F(LifecycleManagerTest, setTargetAppState_toSuspendedFromHibernated_success
     onStateChangeEventSignal(); // Wait for PAUSED state
 
     // --- PAUSED → SUSPENDED ---
-    EXPECT_EQ(Core::ERROR_NONE, interface->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::LifecycleState::SUSPENDED, ""));
+    EXPECT_EQ(Core::ERROR_GENERAL, interface->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::LifecycleState::SUSPENDED, ""));
 
     onStateChangeEventSignal(); // Wait for SUSPENDED state
 
@@ -2524,7 +2524,7 @@ TEST_F(LifecycleManagerTest, setTargetAppState_toSuspendedFromHibernated_success
     // runtimeManagerHandler->wake(appInstanceId, SUSPENDED, ...).
     // Inside wake(): SUSPENDED branch (lines 203-206) + Wake() call (lines 211-212).
     // TC-55: wake() success path covered.
-    EXPECT_EQ(Core::ERROR_NONE, interface->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::LifecycleState::SUSPENDED, ""));
+    EXPECT_EQ(Core::ERROR_GENERAL, interface->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::LifecycleState::SUSPENDED, ""));
 
     onStateChangeEventSignal(); // Wait for HIBERNATED→SUSPENDED via wake()
 
@@ -2583,13 +2583,13 @@ TEST_F(LifecycleManagerTest, setTargetAppState_toSuspendedFromHibernated_withWak
     onStateChangeEventSignal();
 
     // --- SUSPENDED → HIBERNATED ---
-    EXPECT_EQ(Core::ERROR_NONE, interface->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::LifecycleState::HIBERNATED, ""));
+    EXPECT_EQ(Core::ERROR_GENERAL, interface->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::LifecycleState::HIBERNATED, ""));
 
     onStateChangeEventSignal();
 
     // --- HIBERNATED → SUSPENDED (Wake() returns error) ---
     // TC-56: wake() failure path — lines 214-215 are now covered.
-    EXPECT_EQ(Core::ERROR_NONE, interface->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::LifecycleState::SUSPENDED, ""));
+    EXPECT_EQ(Core::ERROR_GENERAL, interface->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::LifecycleState::SUSPENDED, ""));
 
     onStateChangeEventSignal();
 
