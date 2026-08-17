@@ -955,8 +955,8 @@ TEST_F(PackageManagerTest, deleteMethodusingComRpcSuccess) {
 
     string fileLocator = "/opt/CDL/package1001";
 
-    // TC-20: Delete download failure when download in progress using ComRpc
-    EXPECT_EQ(Core::ERROR_NONE, pkgdownloaderInterface->Delete(fileLocator));
+    // TC-20: Delete returns failure when download is still in progress using ComRpc.
+    EXPECT_EQ(Core::ERROR_GENERAL, pkgdownloaderInterface->Delete(fileLocator));
 
 	deinitforComRpc();
 }
