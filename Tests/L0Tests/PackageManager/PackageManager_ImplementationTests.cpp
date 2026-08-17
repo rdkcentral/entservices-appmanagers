@@ -746,4 +746,32 @@ uint32_t Test_PM_Impl_InstallFailureReasonBranches()
 
     return tr.failures;
 }
+uint32_t Test_PM_Impl_GetConfigListForInstalledPackages()
+{
+    L0Test::TestResult tr;
+    ImplFixture fx;
+    L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() succeeds");
+
+    string config;
+    L0Test::ExpectEqU32(tr,
+        fx.impl->GetConfigListForInstalledPackages("filter", config),
+        Core::ERROR_NOT_SUPPORTED,
+        "GetConfigListForInstalledPackages() returns ERROR_NOT_SUPPORTED");
+
+    return tr.failures;
+}
+uint32_t Test_PM_Impl_GetConfigForInstalledPackage()
+{
+    L0Test::TestResult tr;
+    ImplFixture fx;
+    L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() succeeds");
+
+    string config;
+    L0Test::ExpectEqU32(tr,
+        fx.impl->GetConfigForInstalledPackage("SomePackageId", "1.0.0", config),
+        Core::ERROR_GENERAL,
+        "GetConfigForInstalledPackage() returns ERROR_GENERAL for non-existent package");
+
+    return tr.failures;
+}
 
