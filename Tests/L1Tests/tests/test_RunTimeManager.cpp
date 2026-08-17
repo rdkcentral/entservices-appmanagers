@@ -250,9 +250,7 @@ protected:
  * Asserting that Terminate() returns Core::ERROR_NONE upon successful termination
  * Releasing the Runtime Manager Interface object and associated test resources
  */
-// Temporarily disabled: latest L1 run returns ERROR_GENERAL in current runtime path,
-// causing strict TerminateMethods expectations to fail.
-TEST_F(RuntimeManagerTest, DISABLED_TerminateMethods)
+TEST_F(RuntimeManagerTest, TerminateMethods)
 {
     string appInstanceId("youTube");
 
@@ -278,7 +276,14 @@ TEST_F(RuntimeManagerTest, DISABLED_TerminateMethods)
     runtimeConfig.systemMemoryLimit = 512;
     runtimeConfig.command = "SkyBrowserLauncher";
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, nullptr, nullptr, nullptr, runtimeConfig));
+    // Explicitly set uid/gid for the runtimeConfigObject. RuntimeManagerImplementation::Run()
+    // currently derives uid/gid from runtimeConfigObject (not from the Run() parameters).
+    // Without this, tests may rely on uninitialized defaults and fail (e.g. DobbySpecGenerator
+    // rejects config.mUserId == 0).
+    runtimeConfig.userId = 30001;
+    runtimeConfig.groupId = 30000;
+
+    EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 30001, 30000, nullptr, nullptr, nullptr, runtimeConfig));
 
     EXPECT_CALL(*mociContainerMock, StopContainer(TEST_APP_CONTAINER_ID, false, ::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
