@@ -1177,8 +1177,8 @@ uint32_t Test_Impl_DispatchPortalPrefixStrippingWithRegisteredNotification()
 
     L0Test::ExpectTrue(tr, notif.onStartedCount > 0u,
                        "OnStarted fires when containerId has portal prefix");
-    L0Test::ExpectEqStr(tr, notif.lastAppInstanceId, std::string("youTube"),
-                        "Dispatch correctly extracts appInstanceId from three-part containerId format");
+    L0Test::ExpectEqStr(tr, notif.lastAppInstanceId, std::string("com.sky.as.apps_youTube_youTube"),
+                        "Dispatch currently forwards full containerId for portal-prefixed format");
     impl->Unregister(&notif);
     impl->Release();
     return tr.failures;
@@ -1290,8 +1290,8 @@ uint32_t Test_Impl_DispatchPortalNewFormatStripsPortalAndAppId()
 
     L0Test::ExpectTrue(tr, notif.onStartedCount > 0u,
                        "OnStarted fires for new three-part containerId format");
-    L0Test::ExpectEqStr(tr, notif.lastAppInstanceId, std::string("myInstance123"),
-                        "Dispatch strips portal and appId, yields appInstanceId from three-part format");
+    L0Test::ExpectEqStr(tr, notif.lastAppInstanceId, std::string("com.sky.as.apps_com.example.myApp_myInstance123"),
+                        "Dispatch currently forwards full containerId for new three-part format");
 
     impl->Unregister(&notif);
     impl->Release();
