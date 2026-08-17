@@ -1507,7 +1507,6 @@ TEST_F(AppManagerTest, PreloadAppUsingComRpcFailureIsAppLoadedReturnError)
 TEST_F(AppManagerTest, PreloadAppUsingComRpcFailureLifecycleManagerRemoteObjectIsNull)
 {
     std::string error = "";
-    uint32_t signalled = AppManager_StateInvalid;
     Core::Sink<NotificationHandler> notification;
     ExpectedAppLifecycleEvent expectedEvent;
 
@@ -1690,6 +1689,7 @@ TEST_F(AppManagerTest, CloseAppUsingJSONRpcSuccess)
 TEST_F(AppManagerTest, CloseAppUsingComRpcFailureWrongAppID)
 {
     Core::hresult status;
+    uint32_t signalled = AppManager_StateInvalid;
 
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
