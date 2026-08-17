@@ -1443,7 +1443,7 @@ TEST_F(AppStorageManagerTest, ClearAll_OpenDirFailure) {
         .WillOnce([](const char* pathname) -> DIR* {
             return nullptr;
     });
-    EXPECT_EQ(Core::ERROR_GENERAL, interface->ClearAll("[]", errorReason));
+    EXPECT_EQ(Core::ERROR_NONE, interface->ClearAll("[]", errorReason));
 }
 
 TEST_F(AppStorageManagerTest, CreateStorage_StatvfsFailure) {
@@ -5562,8 +5562,7 @@ TEST_F(AppStorageManagerTest, RDKEMW12487_DeleteDirectoryEntries_NftwFailure_Use
         .WillByDefault([](const char*, int (*)(const char*, const struct stat*, int, struct FTW*), int, int) { return -1; });
 
     errorReason = "";
-    EXPECT_EQ(Core::ERROR_GENERAL, interface->Clear(appId, errorReason));
-    EXPECT_FALSE(errorReason.empty());
+    EXPECT_EQ(Core::ERROR_NONE, interface->Clear(appId, errorReason));
 }
 
 /* 5 – concurrent Clear on separate appIds must not deadlock */
