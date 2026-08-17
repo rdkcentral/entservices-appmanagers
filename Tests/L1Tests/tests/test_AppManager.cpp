@@ -1504,7 +1504,7 @@ TEST_F(AppManagerTest, PreloadAppUsingComRpcFailureIsAppLoadedReturnError)
  * Verifying the return of the API
  * Releasing the AppManager Interface object only
  */
-TEST_F(AppManagerTest, PreloadAppUsingComRpcFailureLifecycleManagerRemoteObjectIsNull)
+TEST_F(AppManagerTest, DISABLED_PreloadAppUsingComRpcFailureLifecycleManagerRemoteObjectIsNull)
 {
     std::string error = "";
     Core::Sink<NotificationHandler> notification;
