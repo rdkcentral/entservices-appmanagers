@@ -63,6 +63,7 @@ set(RUNTIME_MANAGER_L0_SOURCES
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/WindowManagerCapabilities.cpp
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/DobbyEventListener.cpp
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/UserIdManager.cpp
+    ${CMAKE_SOURCE_DIR}/../../RuntimeManager/GStreamerRegistry.cpp
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/AIConfiguration.cpp
     ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry/TelemetryReportingBase.cpp
     ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry/UtilsTelemetryMetrics.cpp
@@ -678,6 +679,10 @@ if(PLUGIN_APP_MANAGER)
         ${PREFIX}/include/${NAMESPACE}
     )
 
+    if(JSONCPP_INCLUDE_DIR)
+        target_include_directories(appmanager_l0test PRIVATE ${JSONCPP_INCLUDE_DIR})
+    endif()
+
     if(EXISTS "${PREFIX}/lib")
         target_link_directories(appmanager_l0test PRIVATE "${PREFIX}/lib")
     endif()
@@ -933,6 +938,15 @@ if(PLUGIN_PREINSTALL_MANAGER)
         target_link_libraries(preinstall_manager_l0test PRIVATE ${CURL_LIB_PREINSTALL})
     else()
         target_link_libraries(preinstall_manager_l0test PRIVATE curl)
+    endif()
+endif()
+
+# AppManager-specific libraries (jsoncpp)
+if(PLUGIN_APP_MANAGER)
+    if(JSONCPP_LIB)
+        target_link_libraries(appmanager_l0test PRIVATE ${JSONCPP_LIB})
+    else()
+        target_link_libraries(appmanager_l0test PRIVATE jsoncpp)
     endif()
 endif()
 
