@@ -76,13 +76,6 @@ git clone -b v1.2.0 https://github.com/rdkcentral/ralf-utils.git
 
 git clone -b develop https://github.com/rdkcentral/libPackage.git
 
-### eshelpers
-
-cd eshelpers
-git checkout topic/RDKEMW-22774
-cd - 
-###
-
 ############################
 # Build Thunder-Tools
 echo "======================================================================================"
