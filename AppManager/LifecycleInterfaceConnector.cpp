@@ -71,13 +71,14 @@ namespace WPEFramework
             return out;
         }
 
-        LifecycleInterfaceConnector::LifecycleInterfaceConnector(PluginHost::IShell* service)
-        : mLifecycleManagerRemoteObject(nullptr),
-          mLifecycleManagerStateRemoteObject(nullptr),
-          mNotification(*this),
-          mAppStateChangeNotification(*this),
-          mCurrentservice(nullptr),
-          mAppIdAwaitingPause("")
+                LifecycleInterfaceConnector::LifecycleInterfaceConnector(PluginHost::IShell* service)
+                : mLifecycleManagerRemoteObject(nullptr),
+                    mLifecycleManagerStateRemoteObject(nullptr),
+                    mNotification(*this),
+                    mAppStateChangeNotification(*this),
+                    mCurrentservice(nullptr),
+                    mStopLifecycleThread(false),
+                    mAppIdAwaitingPause("")
         {
             LOGINFO("Create LifecycleInterfaceConnector Instance");
             LifecycleInterfaceConnector::_instance = this;
@@ -86,10 +87,18 @@ namespace WPEFramework
                 mCurrentservice = service;
                 mCurrentservice->AddRef();
             }
+            mLifecycleWorkerThread = std::thread(&LifecycleInterfaceConnector::lifecycleWorker, this);
         }
 
         LifecycleInterfaceConnector::~LifecycleInterfaceConnector()
         {
+            mStopLifecycleThread = true;
+            mLifecycleQueueCV.notify_all();
+            if (mLifecycleWorkerThread.joinable())
+            {
+                mLifecycleWorkerThread.join();
+            }
+
             if (nullptr != mCurrentservice)
             {
                mCurrentservice->Release();
@@ -97,8 +106,8 @@ namespace WPEFramework
             }
             LifecycleInterfaceConnector::_instance = nullptr;
 
-	    //clear action list
-	    mAppCurrentActionList.clear();
+            //clear action list
+            mAppCurrentActionList.clear();
         }
 
         Core::hresult LifecycleInterfaceConnector::createLifecycleManagerRemoteObject()
@@ -775,12 +784,63 @@ End:
 
         void LifecycleInterfaceConnector::OnAppLifecycleStateChanged(const string& appId, const string& appInstanceId, const Exchange::ILifecycleManager::LifecycleState oldState, const Exchange::ILifecycleManager::LifecycleState newState, const string& navigationIntent)
         {
-            AppManagerImplementation*appManagerImplInstance = AppManagerImplementation::getInstance();
+            LOGINFO("OnAppLifecycleStateChanged event triggered for appId=%s appInstanceId=%s oldState=%d newState=%d", appId.c_str(), appInstanceId.c_str(), static_cast<int>(oldState), static_cast<int>(newState));
+            {
+                std::lock_guard<std::mutex> lock(mLifecycleQueueMutex);
+                mLifecycleTasks.push({appId, appInstanceId, oldState, newState, navigationIntent});
+            }
+            mLifecycleQueueCV.notify_one();
+        }
+
+        void LifecycleInterfaceConnector::OnAppStateChanged(const string& appId, Exchange::ILifecycleManager::LifecycleState state, const string& errorReason)
+        {
+            LOGINFO("OnAppStateChanged event triggered for appId %s: state=%d, errorReason=%s", appId.c_str(), static_cast<int>(state), errorReason.c_str());
+            {
+                std::lock_guard<std::mutex> lock(mLifecycleQueueMutex);
+                mAppStateTasks.push({appId, state, errorReason});
+            }
+            mLifecycleQueueCV.notify_one();
+        }
+
+        void LifecycleInterfaceConnector::lifecycleWorker()
+        {
+            while (true)
+            {
+                std::unique_lock<std::mutex> lock(mLifecycleQueueMutex);
+                mLifecycleQueueCV.wait(lock, [this]() {
+                    return mStopLifecycleThread || !mLifecycleTasks.empty() || !mAppStateTasks.empty();
+                });
+
+                if (mStopLifecycleThread && mLifecycleTasks.empty() && mAppStateTasks.empty())
+                {
+                    break;
+                }
+
+                if (!mLifecycleTasks.empty())
+                {
+                    AppLifecycleTask task = mLifecycleTasks.front();
+                    mLifecycleTasks.pop();
+                    lock.unlock();
+                    processAppLifecycleStateChanged(task.appId, task.appInstanceId, task.oldState, task.newState, task.navigationIntent);
+                    continue;
+                }
+
+                if (!mAppStateTasks.empty())
+                {
+                    AppStateTask task = mAppStateTasks.front();
+                    mAppStateTasks.pop();
+                    lock.unlock();
+                    processAppStateChanged(task.appId, task.state, task.errorReason);
+                }
+            }
+        }
+
+        void LifecycleInterfaceConnector::processAppLifecycleStateChanged(const string& appId, const string& appInstanceId, const Exchange::ILifecycleManager::LifecycleState oldState, const Exchange::ILifecycleManager::LifecycleState newState, const string& navigationIntent)
+        {
+            AppManagerImplementation* appManagerImplInstance = AppManagerImplementation::getInstance();
             Exchange::IAppManager::AppLifecycleState oldAppState = mapAppLifecycleState(oldState);
             Exchange::IAppManager::AppLifecycleState newAppState = mapAppLifecycleState(newState);
             bool shouldNotify = false;
-
-            LOGINFO("OnAppLifecycleStateChanged event triggered ***\n");
 
             if (Exchange::IAppManager::APP_STATE_UNKNOWN == newAppState ||
                 Exchange::IAppManager::APP_STATE_UNKNOWN == oldAppState)
@@ -799,7 +859,7 @@ End:
                         a.setAppOldState(oldAppState);
                         a.setAppNewState(newAppState);
                         a.setAppLifecycleState(newState);
-                         a.setAppIntent(("unexpectedTermination" == navigationIntent) ? "" : navigationIntent);
+                        a.setAppIntent(("unexpectedTermination" == navigationIntent) ? "" : navigationIntent);
                         if (Exchange::ILifecycleManager::LifecycleState::ACTIVE == oldState ||
                             Exchange::ILifecycleManager::LifecycleState::ACTIVE == newState)
                         {
@@ -838,38 +898,35 @@ End:
                                        (Exchange::IAppManager::AppLifecycleState::APP_STATE_HIBERNATED == newAppState) ||
                                        (Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED == newAppState));
 
-                LOGINFO("shouldNotify %d for Appstate %u",shouldNotify, newAppState);
+                LOGINFO("shouldNotify %d for Appstate %u", shouldNotify, newAppState);
 
                 if(shouldNotify)
                 {
                     if(Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED == newAppState)
-		    {
+                    {
                         const bool isUnexpectedTermination = ("unexpectedTermination" == navigationIntent);
                         if (!isUnexpectedTermination)
                         {
-                            //Normal close: Unload event from App manager or LifecycleManager-initiated kill (e.g. KILL_AND_RUN)
                             LOGINFO("Terminate event from plugin");
                             appManagerImplInstance->handleOnAppLifecycleStateChanged(appId, appInstanceId, newAppState, oldAppState, Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE);
                         }
                         else
                         {
-                            //Abnormal close: app crash or unexpected container termination
                             LOGINFO("Unexpected container termination detected");
                             appManagerImplInstance->handleOnAppLifecycleStateChanged(appId, appInstanceId, newAppState, oldAppState, Exchange::IAppManager::AppErrorReason::APP_ERROR_ABORT);
-                            // Report crash telemetry when lifecycle event provides a valid app instance id.
                             const std::string storedInstanceId = AppInfoManager::getInstance().getAppInstanceId(appId);
                             if (false == storedInstanceId.empty())
                             {
-                               const std::string crashReason = "Terminated unexpectedly";
+                                const std::string crashReason = "Terminated unexpectedly";
                                 AppManagerTelemetryReporting::getInstance().reportAppCrashedTelemetry(appId, storedInstanceId, crashReason);
                             }
                         }
-			mAppCurrentActionList.erase(appId);
-		    }
-		    else
-		    {
+                        mAppCurrentActionList.erase(appId);
+                    }
+                    else
+                    {
                         appManagerImplInstance->handleOnAppLifecycleStateChanged(appId, appInstanceId, newAppState, oldAppState, Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE);
-		    }
+                    }
                 }
 
                 if(Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED == newAppState)
@@ -881,13 +938,12 @@ End:
             }
         }
 
-        void LifecycleInterfaceConnector::OnAppStateChanged(const string& appId, Exchange::ILifecycleManager::LifecycleState state, const string& errorReason)
+        void LifecycleInterfaceConnector::processAppStateChanged(const string& appId, Exchange::ILifecycleManager::LifecycleState state, const string& errorReason)
         {
             string appInstanceId = "";
             Exchange::IAppManager::AppLifecycleState currentAppState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED;
-            AppManagerImplementation*appManagerImplInstance = AppManagerImplementation::getInstance();
+            AppManagerImplementation* appManagerImplInstance = AppManagerImplementation::getInstance();
             Exchange::IAppManager::AppErrorReason errorCode = Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE;
-            LOGINFO("OnAppStateChanged event triggered for appId %s: state=%d, errorReason=%s", appId.c_str(), static_cast<int>(state), errorReason.c_str());
 
             if(nullptr == appManagerImplInstance)
             {
@@ -901,7 +957,7 @@ End:
                     AppInfo snap;
                     if (AppInfoManager::getInstance().get(appId, snap))
                     {
-                        appInstanceId   = snap.getAppInstanceId();
+                        appInstanceId = snap.getAppInstanceId();
                         currentAppState = snap.getAppNewState();
                     }
                     else
