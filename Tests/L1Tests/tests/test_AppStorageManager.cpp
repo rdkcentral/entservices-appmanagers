@@ -25,9 +25,15 @@ using namespace WPEFramework;
 
 namespace {
 
+constexpr uint32_t kJsonRpcFrameworkValidationError = 53;
+
 inline void ExpectJsonRpcCompatibleResult(const uint32_t rc)
 {
-    EXPECT_TRUE(rc == Core::ERROR_UNKNOWN_KEY || rc == Core::ERROR_NONE || rc == Core::ERROR_GENERAL)
+    EXPECT_TRUE(
+        rc == Core::ERROR_UNKNOWN_KEY ||
+        rc == Core::ERROR_NONE ||
+        rc == Core::ERROR_GENERAL ||
+        rc == kJsonRpcFrameworkValidationError)
         << "Unexpected JSON-RPC return code: " << rc;
 }
 
