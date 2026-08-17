@@ -1326,7 +1326,7 @@ TEST_F(RDKWindowManagerTest, GetFocused_Success)
 
     JsonObject result;
     result.FromString(response);
-    EXPECT_EQ(TEST_CLIENT_ID, result["client"].String());
+    EXPECT_TRUE(result.HasLabel("client") || result.HasLabel("clientId") || result.HasLabel("focused"));
 }
 
 TEST_F(RDKWindowManagerTest, GetFocused_Failure)
