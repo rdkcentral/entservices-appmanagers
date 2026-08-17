@@ -1688,31 +1688,9 @@ TEST_F(AppManagerTest, CloseAppUsingJSONRpcSuccess)
  */
 TEST_F(AppManagerTest, CloseAppUsingComRpcFailureWrongAppID)
 {
-    Core::hresult status;
-    uint32_t signalled = AppManager_StateInvalid;
-
-    status = createResources();
-    EXPECT_EQ(Core::ERROR_NONE, status);
-    Core::Sink<NotificationHandler> notification;
-    ExpectedAppLifecycleEvent expectedEvent;
-    expectedEvent.appId = APPMANAGER_APP_ID;
-    expectedEvent.intent = APPMANAGER_APP_INTENT;
-    expectedEvent.source = "";
-
-    mAppManagerImpl->Register(&notification);
-    notification.SetExpectedEvent(expectedEvent);
-    LaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::ACTIVE);
-    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->LaunchApp(APPMANAGER_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS));
-    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLaunchRequest);
-    EXPECT_TRUE(signalled & AppManager_onAppLaunchRequest);
-
+    createAppManagerImpl();
     EXPECT_EQ(Core::ERROR_GENERAL, mAppManagerImpl->CloseApp(APPMANAGER_WRONG_APP_ID));
-
-    mAppManagerImpl->Unregister(&notification);
-    if(status == Core::ERROR_NONE)
-    {
-        releaseResources();
-    }
+    releaseAppManagerImpl();
 }
 
 /*
