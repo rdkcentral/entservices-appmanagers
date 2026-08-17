@@ -63,6 +63,7 @@ set(RUNTIME_MANAGER_L0_SOURCES
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/WindowManagerCapabilities.cpp
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/DobbyEventListener.cpp
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/UserIdManager.cpp
+    ${CMAKE_SOURCE_DIR}/../../RuntimeManager/GStreamerRegistry.cpp
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/AIConfiguration.cpp
     ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry/TelemetryReportingBase.cpp
     ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry/UtilsTelemetryMetrics.cpp
