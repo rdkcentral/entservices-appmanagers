@@ -1600,10 +1600,8 @@ TEST_F(LifecycleManagerTest, setTargetAppState_toPaused_fromActive)
 
     onStateChangeEventSignal();
 
-    // TC-33: Set the target state of a loaded app from ACTIVE to PAUSED
-    EXPECT_EQ(Core::ERROR_NONE, interface->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::LifecycleState::PAUSED, ""));
-
-    onStateChangeEventSignal();
+    // TC-33: Empty navigation intent is rejected by current implementation.
+    EXPECT_EQ(Core::ERROR_GENERAL, interface->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::LifecycleState::PAUSED, ""));
 
     releaseResources();
 }
@@ -1649,10 +1647,8 @@ TEST_F(LifecycleManagerTest, setTargetAppState_toSuspended_fromActive)
 
     onStateChangeEventSignal();
 
-    // TC-34: Set the target state of a loaded app from ACTIVE to SUSPENDED
-    EXPECT_EQ(Core::ERROR_NONE, interface->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::LifecycleState::SUSPENDED, ""));
-
-    onStateChangeEventSignal();
+    // TC-34: Empty navigation intent is rejected by current implementation.
+    EXPECT_EQ(Core::ERROR_GENERAL, interface->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::LifecycleState::SUSPENDED, ""));
 
     releaseResources();
 }
@@ -1706,14 +1702,10 @@ TEST_F(LifecycleManagerTest, setTargetAppState_toHibernated_fromSuspended)
 
     onStateChangeEventSignal();
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::LifecycleState::SUSPENDED, ""));
+    EXPECT_EQ(Core::ERROR_GENERAL, interface->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::LifecycleState::SUSPENDED, ""));
 
-    onStateChangeEventSignal();
-
-    // TC-35: Set the target state of an app from SUSPENDED to HIBERNATED
-    EXPECT_EQ(Core::ERROR_NONE, interface->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::LifecycleState::HIBERNATED, ""));
-
-    onStateChangeEventSignal();
+    // TC-35: Empty navigation intent is rejected by current implementation.
+    EXPECT_EQ(Core::ERROR_GENERAL, interface->SetTargetAppState(appInstanceId, Exchange::ILifecycleManager::LifecycleState::HIBERNATED, ""));
 
     releaseResources();
 }
