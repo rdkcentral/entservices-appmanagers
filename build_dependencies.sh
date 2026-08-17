@@ -6,6 +6,7 @@ GITHUB_WORKSPACE="${PWD}"
 ls -la ${GITHUB_WORKSPACE}
 cd ${GITHUB_WORKSPACE}
 
+echo "test"
 # # ############################# 
 #1. Install Dependencies and packages
 
