@@ -984,9 +984,7 @@ namespace WPEFramework
                 {
 			if (errno == ENOENT)
             		{
-                		LOGINFO("App storage path '%s' does not exist; nothing to clear",
-                        							path.c_str());
-
+                		LOGINFO("App storage path '%s' cleared already", path.c_str());
 		                it->second->usedKB = 0;
                 		errorReason.clear();
                 		status = Core::ERROR_NONE;
