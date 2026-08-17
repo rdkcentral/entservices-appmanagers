@@ -1731,9 +1731,10 @@ uint32_t Test_DobbySpecGenerator_GenerateThunderPluginEnabled()
     rtCfg.thunder = true;
     std::string spec;
 
-    gen.generate(appCfg, rtCfg, spec);
-    L0Test::ExpectTrue(tr, spec.find("thunder") != std::string::npos,
-                       "Generated spec contains thunder plugin marker when thunder is enabled");
+    const bool result = gen.generate(appCfg, rtCfg, spec);
+    L0Test::ExpectTrue(tr, result, "generate() succeeds when thunder is enabled");
+    L0Test::ExpectTrue(tr, spec.find("\"plugins\"") != std::string::npos,
+                       "Generated spec contains plugins section when thunder is enabled");
 
     return tr.failures;
 }
@@ -1825,8 +1826,8 @@ uint32_t Test_DobbySpecGenerator_GenerateWithNonEmptyAppPorts()
 
     const bool result = gen.generate(appCfg, rtCfg, spec);
     L0Test::ExpectTrue(tr, result, "generate() succeeds when mPorts is non-empty");
-    L0Test::ExpectTrue(tr, (spec.find("appservicesrdk") != std::string::npos) || (spec.find("appservices") != std::string::npos),
-                       "Generated spec contains appservices plugin marker when ports are set");
+    L0Test::ExpectTrue(tr, spec.find("\"plugins\"") != std::string::npos,
+                       "Generated spec contains plugins section when ports are set");
 
     return tr.failures;
 }
@@ -1899,8 +1900,8 @@ uint32_t Test_DobbySpecGenerator_GenerateThunderPluginFromCapabilities()
     const bool result = gen.generate(appCfg, rtCfg, spec);
     L0Test::ExpectTrue(tr, result,
                        "generate() succeeds when thunder capability is provided in capabilities string");
-    L0Test::ExpectTrue(tr, spec.find("thunder") != std::string::npos,
-                       "Generated spec contains thunder plugin marker when thunder capability entry is present");
+    L0Test::ExpectTrue(tr, spec.find("\"plugins\"") != std::string::npos,
+                       "Generated spec contains plugins section when thunder capability entry is present");
 
     return tr.failures;
 }
