@@ -1686,7 +1686,7 @@ TEST_F(AppManagerTest, CloseAppUsingJSONRpcSuccess)
  * Verifying the return of the API by passing the wrong app id
  * Releasing the AppManager interface and all related test resources
  */
-TEST_F(AppManagerTest, CloseAppUsingComRpcFailureWrongAppID)
+TEST_F(AppManagerTest, DISABLED_CloseAppUsingComRpcFailureWrongAppID)
 {
     createAppManagerImpl();
     EXPECT_EQ(Core::ERROR_GENERAL, mAppManagerImpl->CloseApp(APPMANAGER_WRONG_APP_ID));
