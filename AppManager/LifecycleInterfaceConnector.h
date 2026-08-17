@@ -38,6 +38,7 @@
 #include <interfaces/IAppManager.h>
 #include <condition_variable>
 #include <map>
+#include <queue>
 
 namespace WPEFramework
 {
@@ -46,6 +47,22 @@ namespace WPEFramework
         class LifecycleInterfaceConnector
         {
             private:
+            struct AppLifecycleTask
+            {
+                std::string appId;
+                std::string appInstanceId;
+                Exchange::ILifecycleManager::LifecycleState oldState;
+                Exchange::ILifecycleManager::LifecycleState newState;
+                std::string navigationIntent;
+            };
+
+            struct AppStateTask
+            {
+                std::string appId;
+                Exchange::ILifecycleManager::LifecycleState state;
+                std::string errorReason;
+            };
+
             class NotificationHandler : public Exchange::ILifecycleManagerState::INotification {
 
                 public:
@@ -107,6 +124,9 @@ namespace WPEFramework
                     Exchange::IAppManager::AppErrorReason mapErrorReason(const string& errorReason);
 
                 private:
+                    void lifecycleWorker();
+                    void processAppLifecycleStateChanged(const string& appId, const string& appInstanceId, const Exchange::ILifecycleManager::LifecycleState oldState, const Exchange::ILifecycleManager::LifecycleState newState, const string& navigationIntent);
+                    void processAppStateChanged(const string& appId, Exchange::ILifecycleManager::LifecycleState state, const string& errorReason);
                     static std::string base64Encode(const std::string& in);
                     void appendLaunchParametersEnv(const std::string& launchArgs, WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject) const;
                     mutable Core::CriticalSection mAdminLock;
@@ -117,8 +137,14 @@ namespace WPEFramework
                     PluginHost::IShell* mCurrentservice;
                     std::condition_variable mStateChangedCV;
                     std::mutex mStateMutex;
+                    std::mutex mLifecycleQueueMutex;
+                    std::condition_variable mLifecycleQueueCV;
+                    std::queue<AppLifecycleTask> mLifecycleTasks;
+                    std::queue<AppStateTask> mAppStateTasks;
+                    std::thread mLifecycleWorkerThread;
+                    bool mStopLifecycleThread;
                     std::string mAppIdAwaitingPause;
-		    std::map<std::string, Exchange::IAppManager::AppLifecycleState> mAppCurrentActionList;
+                    std::map<std::string, Exchange::IAppManager::AppLifecycleState> mAppCurrentActionList;
         };
     }
 }
