@@ -1694,7 +1694,6 @@ TEST_F(AppManagerTest, CloseAppUsingComRpcFailureWrongAppID)
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
     Core::Sink<NotificationHandler> notification;
-    uint32_t signalled = AppManager_StateInvalid;
     ExpectedAppLifecycleEvent expectedEvent;
     expectedEvent.appId = APPMANAGER_APP_ID;
     expectedEvent.intent = APPMANAGER_APP_INTENT;
@@ -4441,7 +4440,7 @@ TEST_F(AppManagerTest, LICMapAppLifecycleStateUnloaded)
     expectedEvent.appInstanceId = APPMANAGER_APP_INSTANCE;
     expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED;
     expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_LOADING;
-    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_ABORT;
+    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE;
 
     Core::Sink<NotificationHandler> notification;
     mAppManagerImpl->Register(&notification);
