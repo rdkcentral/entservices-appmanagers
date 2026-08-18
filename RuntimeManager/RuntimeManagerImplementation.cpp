@@ -857,6 +857,31 @@ namespace WPEFramework
                     }
                     if (!containerId.empty())
                     {
+                        LOGINFO("Update Info for %s", appInstanceId.c_str());
+                        if (!appId.empty())
+                        {
+                            runtimeAppInfo.appId = appId;
+                        }
+                        runtimeAppInfo.appInstanceId = appInstanceId;
+                        runtimeAppInfo.containerId = std::move(containerId);
+                        runtimeAppInfo.containerState = Exchange::IRuntimeManager::RUNTIME_STATE_STARTING;
+                        /* Store request time and type in runtime app info map */
+                        runtimeAppInfo.requestTime = requestTime;
+                        runtimeAppInfo.requestType = REQUEST_TYPE_LAUNCH;
+#ifdef ENABLE_RIALTO
+                        // usesRialto is true only when a Rialto session was actually
+                        // established (socket path assigned). If createAppSession failed,
+                        // mRialtoSocketPath stays empty and usesRialto stays false so that
+                        // Hibernate/Wake/Terminate/Kill do not touch a non-existent session.
+                        runtimeAppInfo.usesRialto = !config.mRialtoSocketPath.empty();
+#endif
+
+                        /* Insert/update runtime app info */
+                        {
+                            Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
+                            mRuntimeAppInfo[appInstanceId] = std::move(runtimeAppInfo);
+                        }
+
                         /* Container start IPC — no lock held during blocking call */
                         if (legacyContainer)
                             status = mOciContainerObject->StartContainerFromDobbySpec(containerId, dobbySpec, command, westerosSocket, descriptor, success, errorReason);
@@ -881,34 +906,13 @@ namespace WPEFramework
                                 ralfBuilder.unmountOverlayfsIfExists(appInstanceId);
                             }
 #endif // RALF_PACKAGE_SUPPORT_ENABLED
+                            Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
+                            mRuntimeAppInfo.erase(appInstanceId);
                         }
                         else
                         {
-                                LOGINFO("Update Info for %s", appInstanceId.c_str());
-                                if (!appId.empty())
-                                {
-                                    runtimeAppInfo.appId = appId;
-                                }
-                                runtimeAppInfo.appInstanceId = appInstanceId;
-                                runtimeAppInfo.containerId = std::move(containerId);
-                                runtimeAppInfo.descriptor = std::move(descriptor);
-                                runtimeAppInfo.containerState = Exchange::IRuntimeManager::RUNTIME_STATE_STARTING;
-                                /* Store request time and type in runtime app info map */
-                                runtimeAppInfo.requestTime = requestTime;
-                                runtimeAppInfo.requestType = REQUEST_TYPE_LAUNCH;
-#ifdef ENABLE_RIALTO
-                                // usesRialto is true only when a Rialto session was actually
-                                // established (socket path assigned). If createAppSession failed,
-                                // mRialtoSocketPath stays empty and usesRialto stays false so that
-                                // Hibernate/Wake/Terminate/Kill do not touch a non-existent session.
-                                runtimeAppInfo.usesRialto = !config.mRialtoSocketPath.empty();
-#endif
-
-                                /* Insert/update runtime app info */
-                                {
-                                    Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
-                                    mRuntimeAppInfo[appInstanceId] = std::move(runtimeAppInfo);
-                                }
+                            Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
+                            mRuntimeAppInfo[appInstanceId].descriptor = std::move(descriptor);
                         }
                     }
                     else
