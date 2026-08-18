@@ -4940,45 +4940,61 @@ TEST_F(AppManagerTest, AppCrashedUnexpectedTerminationFiresAbortNotification)
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
 
-    /* Pre-populate AppInfoManager so the connector can look up the app */
-    AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [](Plugin::AppInfo& a) {
+    uint32_t signalled = AppManager_StateInvalid;
+
+    /*
+     * Pre-populate AppInfoManager so LifecycleInterfaceConnector/AppManager
+     * can resolve appId and appInstanceId during the lifecycle callback.
+     */
+    AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [](AppInfo& a) {
         a.setAppInstanceId(APPMANAGER_APP_INSTANCE);
         a.setAppNewState(Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE);
+        a.setAppOldState(Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED);
+        a.getPackageInfoMutable().version = APPMANAGER_APP_VERSION;
     });
 
-    /* Set up expected notification: UNLOADED with APP_ERROR_ABORT */
     ExpectedAppLifecycleEvent expectedEvent;
-    expectedEvent.appId         = APPMANAGER_APP_ID;
+    expectedEvent.appId = APPMANAGER_APP_ID;
     expectedEvent.appInstanceId = APPMANAGER_APP_INSTANCE;
-    expectedEvent.newState      = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED;
-    expectedEvent.oldState      = Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
-    expectedEvent.errorReason   = Exchange::IAppManager::AppErrorReason::APP_ERROR_ABORT;
+    expectedEvent.newState = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED;
+    expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
+    expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_ABORT;
 
-    Core::Sink<NotificationHandler> notification;
+    Core::Sink notification;
     mAppManagerImpl->Register(&notification);
     notification.SetExpectedEvent(expectedEvent);
 
     ASSERT_NE(mLifecycleManagerStateNotification_cb, nullptr)
-        << "LifecycleManagerState notification callback must be registered";
+        << "LifecycleManagerState notification callback is not registered";
 
-    /* Simulate LifecycleManager signalling an unexpected container termination */
+    /*
+     * Simulate LifecycleManager reporting unexpected app/container termination.
+     */
     mLifecycleManagerStateNotification_cb->OnAppLifecycleStateChanged(
         APPMANAGER_APP_ID,
         APPMANAGER_APP_INSTANCE,
-        Exchange::ILifecycleManager::LifecycleState::ACTIVE,   /* old state */
-        Exchange::ILifecycleManager::LifecycleState::UNLOADED, /* new state */
-        "unexpectedTermination"                                /* crash sentinel */
+        Exchange::ILifecycleManager::LifecycleState::ACTIVE,
+        Exchange::ILifecycleManager::LifecycleState::UNLOADED,
+        "unexpectedTermination"
     );
 
-    /* onAppLifecycleStateChanged must fire with APP_ERROR_ABORT */
-    uint32_t signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
-    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged)
-        << "Expected onAppLifecycleStateChanged with APP_ERROR_ABORT for crash scenario";
+    /*
+     * First expected event: lifecycle state changed with APP_ERROR_ABORT.
+     */
+    signalled = notification.WaitForRequestStatus(
+        TIMEOUT,
+        AppManager_onAppLifecycleStateChanged
+    );
+    EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
 
-    /* onAppUnloaded must also fire */
-    signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppUnloaded);
-    EXPECT_TRUE(signalled & AppManager_onAppUnloaded)
-        << "Expected onAppUnloaded to fire after crash";
+    /*
+     * Second expected event: unloaded notification for cleanup.
+     */
+    signalled = notification.WaitForRequestStatus(
+        TIMEOUT,
+        AppManager_onAppUnloaded
+    );
+    EXPECT_TRUE(signalled & AppManager_onAppUnloaded);
 
     mAppManagerImpl->Unregister(&notification);
 
