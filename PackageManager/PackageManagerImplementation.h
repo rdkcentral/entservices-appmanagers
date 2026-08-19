@@ -55,6 +55,7 @@ class PackageManagerImplementation
     : public Exchange::IPackageDownloader
     , public Exchange::IPackageInstaller
     , public Exchange::IPackageHandler
+    , public Exchange::IAppPackageManagerConfig
     , public Exchange::IPackageCacheInitializer
 {
     private:
@@ -193,10 +194,15 @@ class PackageManagerImplementation
         Core::hresult GetLockedInfo(const string &packageId, const string &version, string &unpackedPath, Exchange::RuntimeConfig& configMetadata,
             string& gatewayMetadataPath, bool &locked) override;
 
+        // IAppPackageManagerConfig methods
+        Core::hresult GetConfigForInstalledPackage(const string &packageId, const string &version, string &config /* @out @opaque */) override;
+        Core::hresult GetConfigListForInstalledPackages(const string &filter, string &config /* @out @opaque */) override;
+
         BEGIN_INTERFACE_MAP(PackageManagerImplementation)
             INTERFACE_ENTRY(Exchange::IPackageDownloader)
             INTERFACE_ENTRY(Exchange::IPackageInstaller)
             INTERFACE_ENTRY(Exchange::IPackageHandler)
+            INTERFACE_ENTRY(Exchange::IAppPackageManagerConfig)
             INTERFACE_ENTRY(Exchange::IPackageCacheInitializer)
         END_INTERFACE_MAP
 

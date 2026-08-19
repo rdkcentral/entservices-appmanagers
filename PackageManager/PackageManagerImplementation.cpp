@@ -1397,7 +1397,30 @@ namespace Plugin {
         }
         return mInprogressDownload;
     }
+    Core::hresult PackageManagerImplementation::GetConfigForInstalledPackage(const string &packageId, const string &version, string &config /* @out @opaque */)
+    {
+        CHECK_CACHE()
+        Core::hresult result = Core::ERROR_GENERAL;
 
+        if (packageId.empty() || version.empty())
+        {
+            return Core::ERROR_INVALID_PARAMETER;
+        }
+
+        packagemanager::Result pmResult = packageImpl->GetInstalledPackageMetadata(packageId, version, config);
+        if (pmResult == packagemanager::SUCCESS)
+        {
+            result = Core::ERROR_NONE;
+        }
+        return result;
+    }
+Core::hresult PackageManagerImplementation::GetConfigListForInstalledPackages(const string &filter, string &config /* @out @opaque */)
+{
+    CHECK_CACHE()
+    (void)filter;
+    config.clear();
+    return Core::ERROR_NOT_SUPPORTED;
+}
 } // namespace Plugin
 } // namespace WPEFramework
 
