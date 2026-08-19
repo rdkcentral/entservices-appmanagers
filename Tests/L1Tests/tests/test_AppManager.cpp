@@ -4975,10 +4975,7 @@ TEST_F(AppManagerTest, GetCustomValuesWithAipathFileHasContent)
         expectedEvent.oldState = Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
         expectedEvent.errorReason = Exchange::IAppManager::AppErrorReason::APP_ERROR_ABORT;
 
-    Core::Sink<NotificationHandler> notification;
-    mAppManagerImpl->Register(&notification);
-    notification.SetExpectedEvent(expectedEvent);
-        Core::Sink notification;
+        Core::Sink<NotificationHandler> notification;
         mAppManagerImpl->Register(&notification);
         notification.SetExpectedEvent(expectedEvent);
 
