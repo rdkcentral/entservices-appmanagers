@@ -111,7 +111,7 @@ namespace Plugin {
 
         struct AppManagerRequest{
             CurrentAction mRequestAction;
-            std::shared_ptr<void> mRequestParam;
+            std::shared_ptr<AppLaunchRequestParam> mRequestParam;
         };
 
         private:

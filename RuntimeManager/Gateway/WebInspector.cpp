@@ -57,7 +57,18 @@ WebInspector::~WebInspector()
 {
     LOGINFO("detaching webinspector from %s", mAppId.c_str());
 
-    NetFilter::removeAllRulesMatchingComment(mNetFilterCommentMatcher);
+    try
+    {
+        NetFilter::removeAllRulesMatchingComment(mNetFilterCommentMatcher);
+    }
+    catch (const std::exception& exception)
+    {
+        LOGERR("failed to detach webinspector from %s: %s", mAppId.c_str(), exception.what());
+    }
+    catch (...)
+    {
+        LOGERR("failed to detach webinspector from %s: unknown exception", mAppId.c_str());
+    }
 }
 
 Debugger::Type WebInspector::type() const

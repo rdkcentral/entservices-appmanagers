@@ -123,14 +123,14 @@ Core::hresult AppManagerImplementation::Register(Exchange::IAppManager::INotific
 
 void AppManagerImplementation::AppManagerWorkerThread(void)
 {
-    while (sRunning)
+    while (sRunning.load())
     {
         std::shared_ptr<AppManagerRequest> request = nullptr;
         {
             std::unique_lock<std::mutex> lock(mAppManagerLock);
-            mAppRequestListCV.wait(lock, [this] { return !mAppRequestList.empty() || !sRunning; });
+            mAppRequestListCV.wait(lock, [this] { return !mAppRequestList.empty() || !sRunning.load(); });
 
-            if (!sRunning || mAppRequestList.empty()) {
+            if (!sRunning.load() || mAppRequestList.empty()) {
                 continue;
             }
 
@@ -151,8 +151,9 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                     {
                         LOGERR("Invalid request payload: action=%d requestParam=null", static_cast<int>(action));
                     }
-                    else if (auto appRequestParam = std::static_pointer_cast<AppLaunchRequestParam>(request->mRequestParam))
+                    else
                     {
+                        const auto& appRequestParam = request->mRequestParam;
                         string appId = appRequestParam->appId;
                         // Capture timestamp before packageLock to include packageManager lock time
                         AppManagerTelemetryReporting& appManagerTelemetryReporting = AppManagerTelemetryReporting::getInstance();
@@ -525,6 +526,7 @@ uint32_t AppManagerImplementation::Configure(PluginHost::IShell* service)
 
     if (service != nullptr)
     {
+        mAdminLock.Lock();
         mCurrentservice = service;
         mCurrentservice->AddRef();
 
@@ -580,6 +582,7 @@ uint32_t AppManagerImplementation::Configure(PluginHost::IShell* service)
         {
             LOGERR("Failed to create App Manager worker thread: %s", e.what());
         }
+        mAdminLock.Unlock();
     }
     else
     {
@@ -752,11 +755,12 @@ Core::hresult AppManagerImplementation::packageLock(const string& appId, Package
     std::vector<WPEFramework::Exchange::IPackageInstaller::Package> packageList;
     AppManagerTelemetryReporting& appManagerTelemetryReporting =AppManagerTelemetryReporting::getInstance();
 
+    mAdminLock.Lock();
     if (nullptr != mLifecycleInterfaceConnector)
     {
         status = mLifecycleInterfaceConnector->isAppLoaded(appId, loaded);
     }
-
+    mAdminLock.Unlock();
     if ((Core::ERROR_NONE == status) && (false == loaded))
     {
         if (packageData.version.empty())

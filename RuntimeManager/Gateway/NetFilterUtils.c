@@ -360,7 +360,7 @@ static ssize_t appendTcpUdpMatch(struct xt_entry_match *entry, size_t space,
 {
     if (protocol == IPPROTO_TCP)
     {
-        const ssize_t size = sizeof(struct xt_entry_match) + XT_ALIGN(sizeof(struct xt_tcp));
+        const size_t size = sizeof(struct xt_entry_match) + XT_ALIGN(sizeof(struct xt_tcp));
         if (size > space)
         {
             nfError("not enough space to write tcp match entry");
@@ -377,11 +377,11 @@ static ssize_t appendTcpUdpMatch(struct xt_entry_match *entry, size_t space,
         matchTcp->dpts[0] = dstPortMin;
         matchTcp->dpts[1] = dstPortMax;
 
-        return size;
+        return (ssize_t)size;
     }
     else if (protocol == IPPROTO_UDP)
     {
-        const ssize_t size = sizeof(struct xt_entry_match) + XT_ALIGN(sizeof(struct xt_udp));
+        const size_t size = sizeof(struct xt_entry_match) + XT_ALIGN(sizeof(struct xt_udp));
         if (size > space)
         {
             nfError("not enough space to write udp match entry");
@@ -398,7 +398,7 @@ static ssize_t appendTcpUdpMatch(struct xt_entry_match *entry, size_t space,
         matchUdp->dpts[0] = dstPortMin;
         matchUdp->dpts[1] = dstPortMax;
 
-        return size;
+        return (ssize_t)size;
     }
     else
     {
@@ -422,7 +422,7 @@ static ssize_t appendTcpUdpMatch(struct xt_entry_match *entry, size_t space,
 static ssize_t appendStateMatch(struct xt_entry_match *entry, size_t space,
                                 uint16_t states)
 {
-    const ssize_t size = sizeof(struct xt_entry_match) + XT_ALIGN(sizeof(struct xt_conntrack_mtinfo3));
+    const size_t size = sizeof(struct xt_entry_match) + XT_ALIGN(sizeof(struct xt_conntrack_mtinfo3));
     if (size > space)
     {
         nfError("not enough space to write conntrack match entry");
@@ -438,7 +438,7 @@ static ssize_t appendStateMatch(struct xt_entry_match *entry, size_t space,
     info->match_flags = XT_CONNTRACK_STATE | XT_CONNTRACK_STATE_ALIAS;
     info->state_mask = states;
 
-    return size;
+    return (ssize_t)size;
 }
 
 // -----------------------------------------------------------------------------
