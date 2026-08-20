@@ -25,9 +25,9 @@ public:
     {
     }
 
-    void AddRef() const override
+    uint32_t AddRef() const override
     {
-        _refCount.fetch_add(1, std::memory_order_relaxed);
+        return _refCount.fetch_add(1, std::memory_order_relaxed) + 1;
     }
 
     uint32_t Release() const override
@@ -67,9 +67,9 @@ public:
     {
     }
 
-    void AddRef() const override
+    uint32_t AddRef() const override
     {
-        _refCount.fetch_add(1, std::memory_order_relaxed);
+        return _refCount.fetch_add(1, std::memory_order_relaxed) + 1;
     }
 
     uint32_t Release() const override
@@ -743,6 +743,34 @@ uint32_t Test_PM_Impl_InstallFailureReasonBranches()
             state == WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALL_FAILURE,
             std::string("Failed install transitions to INSTALL_FAILURE for ") + ids[idx]);
     }
+
+    return tr.failures;
+}
+uint32_t Test_PM_Impl_GetConfigListForInstalledPackages()
+{
+    L0Test::TestResult tr;
+    ImplFixture fx;
+    L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() succeeds");
+
+    string config;
+    L0Test::ExpectEqU32(tr,
+        fx.impl->GetConfigListForInstalledPackages("filter", config),
+        Core::ERROR_NOT_SUPPORTED,
+        "GetConfigListForInstalledPackages() returns ERROR_NOT_SUPPORTED");
+
+    return tr.failures;
+}
+uint32_t Test_PM_Impl_GetConfigForInstalledPackage()
+{
+    L0Test::TestResult tr;
+    ImplFixture fx;
+    L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() succeeds");
+
+    string config;
+    L0Test::ExpectEqU32(tr,
+        fx.impl->GetConfigForInstalledPackage("SomePackageId", "1.0.0", config),
+        Core::ERROR_GENERAL,
+        "GetConfigForInstalledPackage() returns ERROR_GENERAL for non-existent package");
 
     return tr.failures;
 }

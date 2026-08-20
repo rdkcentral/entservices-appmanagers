@@ -202,8 +202,8 @@ class NotificationTest : public Exchange::IDownloadManager::INotification
         virtual ~NotificationTest() override = default;
 
         // Proper IUnknown implementation for Thunder framework
-        virtual void AddRef() const override { 
-            m_refCount.fetch_add(1);
+        virtual uint32_t AddRef() const override {
+            return m_refCount.fetch_add(1) + 1;
         }
 
         virtual uint32_t Release() const override { 

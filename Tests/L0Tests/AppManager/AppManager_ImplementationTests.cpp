@@ -29,6 +29,7 @@
 #undef private
 #include "common/AppManagerL0Mock.hpp"
 #include "common/L0Expect.hpp"
+
 //testing
 // Helper to create a service mock with all required dependencies for AppManagerImplementation
 // Defined outside anonymous namespace so it can be accessed from other test files via extern
@@ -106,9 +107,9 @@ struct RefNotification final : public WPEFramework::Exchange::IAppManager::INoti
     {
     }
 
-    void AddRef() const override
+    uint32_t AddRef() const override
     {
-        _refCount.fetch_add(1, std::memory_order_relaxed);
+        return _refCount.fetch_add(1, std::memory_order_relaxed) + 1;
     }
 
     uint32_t Release() const override
@@ -346,13 +347,11 @@ uint32_t Test_AM_IsInstalledAndGetInstalledAppsWithPackages()
     installedPkg.packageId = "app.good";
     installedPkg.version = "1.2.3";
     installedPkg.state = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
-    installedPkg.isRuntime = false;
 
     WPEFramework::Exchange::IPackageInstaller::Package pendingPkg;
     pendingPkg.packageId = "app.pending";
     pendingPkg.version = "9.9.9";
     pendingPkg.state = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLING;
-    pendingPkg.isRuntime = false;
     installer.installedPackages.push_back(installedPkg);
     installer.installedPackages.push_back(pendingPkg);
 
@@ -1172,7 +1171,7 @@ uint32_t Test_AM_GetInstalledAppsWithActiveAppInfo()
     pkg.packageId  = "active.pkg";
     pkg.version    = "2.0.0";
     pkg.state      = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
-    pkg.isRuntime  = false;
+    pkg.packageType = "application";
     packageInstaller.installedPackages.push_back(pkg);
 
     L0Test::AppManagerServiceMock::Config cfg(&packageInstaller);
@@ -3280,7 +3279,7 @@ uint32_t Test_AM_LICOnAppLifecycleStateChangedNormalCloseNoSentinel()
         std::atomic<WPEFramework::Exchange::IAppManager::AppErrorReason> lastError{
             WPEFramework::Exchange::IAppManager::AppErrorReason::APP_ERROR_ABORT}; // sentinel default
         std::atomic<uint32_t> lifecycleCalls{0};
-        void AddRef() const override { _ref.fetch_add(1, std::memory_order_relaxed); }
+        uint32_t AddRef() const override { return _ref.fetch_add(1, std::memory_order_relaxed) + 1; }
         uint32_t Release() const override {
             if (_ref.fetch_sub(1, std::memory_order_acq_rel) == 1) { delete this; return 0; }
             return 1;
@@ -3346,7 +3345,7 @@ uint32_t Test_AM_LICOnAppLifecycleStateChangedUnexpectedTermAbortError()
         std::atomic<WPEFramework::Exchange::IAppManager::AppErrorReason> lastError{
             WPEFramework::Exchange::IAppManager::AppErrorReason::APP_ERROR_NONE}; // sentinel default
         std::atomic<uint32_t> lifecycleCalls{0};
-        void AddRef() const override { _ref.fetch_add(1, std::memory_order_relaxed); }
+        uint32_t AddRef() const override { return _ref.fetch_add(1, std::memory_order_relaxed) + 1; }
     uint32_t Release() const override {
         const uint32_t remaining = _ref.fetch_sub(1, std::memory_order_acq_rel) - 1;
         if (0U == remaining) { delete this; return WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED; }
