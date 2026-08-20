@@ -752,10 +752,10 @@ uint32_t Test_PM_Impl_GetConfigListForInstalledPackages()
     ImplFixture fx;
     L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() succeeds");
 
-    string config;
+    std::string config;
     L0Test::ExpectEqU32(tr,
         fx.impl->GetConfigListForInstalledPackages("filter", config),
-        Core::ERROR_NOT_SUPPORTED,
+        ERROR_NOT_SUPPORTED,
         "GetConfigListForInstalledPackages() returns ERROR_NOT_SUPPORTED");
 
     return tr.failures;
@@ -766,10 +766,10 @@ uint32_t Test_PM_Impl_GetConfigForInstalledPackage()
     ImplFixture fx;
     L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() succeeds");
 
-    string config;
+    std::string config;
     L0Test::ExpectEqU32(tr,
         fx.impl->GetConfigForInstalledPackage("SomePackageId", "1.0.0", config),
-        Core::ERROR_GENERAL,
+        ERROR_GENERAL,
         "GetConfigForInstalledPackage() returns ERROR_GENERAL for non-existent package");
 
     return tr.failures;
