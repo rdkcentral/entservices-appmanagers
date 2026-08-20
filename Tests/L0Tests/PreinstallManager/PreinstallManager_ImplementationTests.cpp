@@ -36,8 +36,13 @@
  */
 
 #include <atomic>
+#include <cstdio>
+#include <cstdlib>
 #include <iostream>
+#include <list>
 #include <string>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include "PreinstallManagerImplementation.h"
 #include <interfaces/IPreinstallManager.h>
@@ -443,5 +448,190 @@ uint32_t Test_Impl_PIM_StartPreinstallWithNoInstallerFails()
                         "StartPreinstall returns ERROR_GENERAL when IPackageInstaller is unavailable");
 
     impl->Release();
+    return tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// isNewerVersion — version comparison unit tests (PIM-POS-015, PIM-NEG-010, PIM-BND-004)
+//
+// isNewerVersion is private; driven via StartPreinstall(force=false):
+//   - Install called   → v1 was treated as newer than v2
+//   - Install not called → v1 was equal/older, or either string was invalid
+// ─────────────────────────────────────────────────────────────────────────────
+
+namespace {
+
+/* Runs StartPreinstall(force=false) with one preinstall package (version=preinstallVer)
+ * against one installed package (version=installedVer) and returns installCallCount. */
+uint32_t RunVersionComparison(const std::string& preinstallVer, const std::string& installedVer)
+{
+    char tmpPath[256];
+    std::snprintf(tmpPath, sizeof(tmpPath), "/tmp/pim_ver_XXXXXX");
+    if (!mkdtemp(tmpPath)) return 0;
+
+    std::string subDir = std::string(tmpPath) + "/myapp";
+    mkdir(subDir.c_str(), 0755);
+
+    L0Test::FakePackageInstaller installer;
+
+    installer.getConfigHandler = [preinstallVer](const std::string&, std::string& id,
+                                                  std::string& version,
+                                                  WPEFramework::Exchange::RuntimeConfig&) {
+        id      = "myapp";
+        version = preinstallVer;
+        return WPEFramework::Core::ERROR_NONE;
+    };
+
+    installer.listPackagesHandler = [installedVer](WPEFramework::Exchange::IPackageInstaller::IPackageIterator*& packages) {
+        std::list<WPEFramework::Exchange::IPackageInstaller::Package> pkgs;
+        WPEFramework::Exchange::IPackageInstaller::Package pkg;
+        pkg.packageId = "myapp";
+        pkg.version   = installedVer;
+        pkg.state     = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
+        pkgs.push_back(pkg);
+        packages = L0Test::MakePackageIterator(pkgs);
+        return WPEFramework::Core::ERROR_NONE;
+    };
+
+    L0Test::ServiceMock::Config cfg(&installer);
+    cfg.configLine = std::string("{\"appPreinstallDirectory\":\"") + tmpPath + "\"}"; 
+    L0Test::ServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+    impl->StartPreinstall(false);
+
+    // Wait for completion (max 2s).
+    WPEFramework::Exchange::IPreinstallManager::State state;
+    for (int i = 0; i < 200; ++i) {
+        impl->GetPreinstallState(state);
+        if (state == WPEFramework::Exchange::IPreinstallManager::State::COMPLETED) break;
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    uint32_t calls = installer.installCallCount.load();
+    impl->Release();
+
+    rmdir(subDir.c_str());
+    rmdir(tmpPath);
+    return calls;
+}
+
+} // namespace
+
+/* PIM-POS-015 — newer major is installed */
+uint32_t Test_Impl_PIM_IsNewerVersion_NewerMajor()
+{
+    L0Test::TestResult tr;
+    L0Test::ExpectEqU32(tr, RunVersionComparison("2.0.0", "1.0.0"), 1U,
+                        "2.0.0 > 1.0.0 → Install called");
+    return tr.failures;
+}
+
+/* PIM-POS-015 — newer minor is installed */
+uint32_t Test_Impl_PIM_IsNewerVersion_NewerMinor()
+{
+    L0Test::TestResult tr;
+    L0Test::ExpectEqU32(tr, RunVersionComparison("1.3.0", "1.2.0"), 1U,
+                        "1.3.0 > 1.2.0 → Install called");
+    return tr.failures;
+}
+
+/* PIM-POS-015 — newer patch is installed */
+uint32_t Test_Impl_PIM_IsNewerVersion_NewerPatch()
+{
+    L0Test::TestResult tr;
+    L0Test::ExpectEqU32(tr, RunVersionComparison("1.2.4", "1.2.3"), 1U,
+                        "1.2.4 > 1.2.3 → Install called");
+    return tr.failures;
+}
+
+/* PIM-POS-015 — 4-component version: newer build */
+uint32_t Test_Impl_PIM_IsNewerVersion_NewerBuild()
+{
+    L0Test::TestResult tr;
+    L0Test::ExpectEqU32(tr, RunVersionComparison("1.2.3.2", "1.2.3.1"), 1U,
+                        "1.2.3.2 > 1.2.3.1 → Install called");
+    return tr.failures;
+}
+
+/* PIM-POS-015 — equal versions are not installed */
+uint32_t Test_Impl_PIM_IsNewerVersion_EqualVersionsNotInstalled()
+{
+    L0Test::TestResult tr;
+    L0Test::ExpectEqU32(tr, RunVersionComparison("1.2.3", "1.2.3"), 0U,
+                        "1.2.3 == 1.2.3 → Install not called");
+    return tr.failures;
+}
+
+/* PIM-POS-015 — older version is not installed */
+uint32_t Test_Impl_PIM_IsNewerVersion_OlderVersionNotInstalled()
+{
+    L0Test::TestResult tr;
+    L0Test::ExpectEqU32(tr, RunVersionComparison("1.0.0", "2.0.0"), 0U,
+                        "1.0.0 < 2.0.0 → Install not called");
+    return tr.failures;
+}
+
+/* PIM-BND-004 — prerelease suffix is stripped before comparison */
+uint32_t Test_Impl_PIM_IsNewerVersion_PrereleaseSuffixStripped()
+{
+    L0Test::TestResult tr;
+    L0Test::ExpectEqU32(tr, RunVersionComparison("2.0.0-beta", "1.9.9"), 1U,
+                        "2.0.0-beta strips to 2.0.0 > 1.9.9 → Install called");
+    return tr.failures;
+}
+
+/* PIM-BND-004 — build metadata suffix is stripped */
+uint32_t Test_Impl_PIM_IsNewerVersion_BuildMetadataSuffixStripped()
+{
+    L0Test::TestResult tr;
+    L0Test::ExpectEqU32(tr, RunVersionComparison("1.2.3+build99", "1.2.2"), 1U,
+                        "1.2.3+build99 strips to 1.2.3 > 1.2.2 → Install called");
+    return tr.failures;
+}
+
+/* PIM-NEG-010 — only 2 components (1.2) is invalid; treated as not-newer → no install */
+uint32_t Test_Impl_PIM_IsNewerVersion_TwoComponentsInvalid()
+{
+    L0Test::TestResult tr;
+    L0Test::ExpectEqU32(tr, RunVersionComparison("1.2", "1.0.0"), 0U,
+                        "1.2 has only 2 components → invalid → Install not called");
+    return tr.failures;
+}
+
+/* PIM-NEG-010 — trailing dot (1.2.3.) is invalid */
+uint32_t Test_Impl_PIM_IsNewerVersion_TrailingDotInvalid()
+{
+    L0Test::TestResult tr;
+    L0Test::ExpectEqU32(tr, RunVersionComparison("1.2.3.", "1.0.0"), 0U,
+                        "1.2.3. has empty trailing token → invalid → Install not called");
+    return tr.failures;
+}
+
+/* PIM-NEG-010 — double dot (1..2.3) is invalid */
+uint32_t Test_Impl_PIM_IsNewerVersion_DoubleDotInvalid()
+{
+    L0Test::TestResult tr;
+    L0Test::ExpectEqU32(tr, RunVersionComparison("1..2.3", "1.0.0"), 0U,
+                        "1..2.3 has empty token → invalid → Install not called");
+    return tr.failures;
+}
+
+/* PIM-NEG-010 — alpha characters in component (1.2.3a) is invalid */
+uint32_t Test_Impl_PIM_IsNewerVersion_AlphaComponentInvalid()
+{
+    L0Test::TestResult tr;
+    L0Test::ExpectEqU32(tr, RunVersionComparison("1.2.3a", "1.0.0"), 0U,
+                        "1.2.3a has trailing char in token → invalid → Install not called");
+    return tr.failures;
+}
+
+/* PIM-NEG-010 — 5 components (1.2.3.4.5) is invalid */
+uint32_t Test_Impl_PIM_IsNewerVersion_FiveComponentsInvalid()
+{
+    L0Test::TestResult tr;
+    L0Test::ExpectEqU32(tr, RunVersionComparison("1.2.3.4.5", "1.0.0"), 0U,
+                        "1.2.3.4.5 has 5 components → invalid → Install not called");
     return tr.failures;
 }
