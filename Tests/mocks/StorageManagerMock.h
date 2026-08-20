@@ -35,7 +35,7 @@ public:
     MOCK_METHOD(Core::hresult, DeleteStorage, (const string& appId, string& errorReason /* @out */), (override));
     MOCK_METHOD(Core::hresult, Clear, (const string& appId, string& errorReason /* @out */), (override));
     MOCK_METHOD(Core::hresult, ClearAll, (const string& exemptionAppIds, string& errorReason /* @out */), (override));
-    MOCK_METHOD(void, AddRef, (), (const, override));
+    MOCK_METHOD(uint32_t, AddRef, (), (const, override));
     MOCK_METHOD(uint32_t, Release, (), (const, override));
     MOCK_METHOD(void*, QueryInterface, (const uint32_t interfaceNummer), (override));
 };

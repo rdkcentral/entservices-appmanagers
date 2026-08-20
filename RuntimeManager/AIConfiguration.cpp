@@ -63,6 +63,7 @@ namespace Plugin
         , mPreloads()
         , mEnvVariables()
         , mDefaultAllowedLogLevels({"fatal", "error", "warning", "milestone", "info", "debug"})
+        , mRialtoOverride(-1)
     {
         // All members initialized in initialization list above
     }
@@ -552,6 +553,11 @@ namespace Plugin
 #endif
     }
 
+    int AIConfiguration::getRialtoOverride() const
+    {
+        return mRialtoOverride;
+    }
+
     void AIConfiguration::readFromConfigFile()
     {
         LOGINFO("AIConfiguration reading from config file at %s", AICONFIGURATION_JSON_PATH);
@@ -627,8 +633,8 @@ namespace Plugin
             mSvpEnabled = getObj(svp, "enable").asBool();
         if (getObj(getObj(apps, "usbMassStorage"), "enable").isBool())
             mEnableUsbMassStorage = getObj(getObj(apps, "usbMassStorage"), "enable").asBool();
-        if (getObj(getObj(apps, "resourceManagement"), "enabled").isBool())
-            mResourceManagerClientEnabled = getObj(getObj(apps, "resourceManagement"), "enabled").asBool();
+        if (getObj(getObj(apps, "essosResourceManager"), "enableClient").isBool())
+            mResourceManagerClientEnabled = getObj(getObj(apps, "essosResourceManager"), "enableClient").asBool();
         if (getObj(getObj(apps, "gstreamer"), "registryEnabled").isBool())
             mGstreamerRegistryEnabled = getObj(getObj(apps, "gstreamer"), "registryEnabled").asBool();
 
@@ -675,6 +681,19 @@ namespace Plugin
             mDialServerPathPrefix = dialSrv["prefix"].asString();
         if (dial["usn"].isString())
             mDialUsn = dial["usn"].asString();
+
+        // ---- rialto override ----------------------------------
+        const Json::Value& rialtoNode = root.isMember("rialto") ? root["rialto"] : getObj(root["apps"], "rialto");
+        if (rialtoNode.isObject() && rialtoNode["override"].isString())
+        {
+            const std::string rialtoOverrideStr = rialtoNode["override"].asString();
+            if (rialtoOverrideStr == "forceOn")       mRialtoOverride = 1;
+            else if (rialtoOverrideStr == "forceOff") mRialtoOverride = 0;
+            else                                      mRialtoOverride = -1;
+            LOGINFO("rialto.override=%s -> mRialtoOverride=%s", rialtoOverrideStr.c_str(),
+                    (mRialtoOverride < 0) ? "default" :
+                    (mRialtoOverride > 0) ? "forceOn" : "forceOff");
+        }
 
         printAIConfiguration();
     }

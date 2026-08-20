@@ -18,9 +18,9 @@ public:
     {
     }
 
-    void AddRef() const override
+    uint32_t AddRef() const override
     {
-        _refCount.fetch_add(1, std::memory_order_relaxed);
+        return _refCount.fetch_add(1, std::memory_order_relaxed) + 1;
     }
 
     uint32_t Release() const override
@@ -87,6 +87,11 @@ public:
     WPEFramework::Core::hresult GetFocused(std::string&) const override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult GetScreenshot() override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult SetAlias(const std::string&, const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
+    WPEFramework::Core::hresult ShowSplashScreen(const bool) override { return WPEFramework::Core::ERROR_NONE; }
+    WPEFramework::Core::hresult SetBounds(const std::string&, const uint32_t, const uint32_t, const uint32_t, const uint32_t) override { return WPEFramework::Core::ERROR_NONE; }
+    WPEFramework::Core::hresult GetBounds(const std::string&, uint32_t&, uint32_t&, uint32_t&, uint32_t&) const override { return WPEFramework::Core::ERROR_NONE; }
+    WPEFramework::Core::hresult SetScale(const std::string&, const double, const double) override { return WPEFramework::Core::ERROR_NONE; }
+    WPEFramework::Core::hresult GetScale(const std::string&, double&, double&) const override { return WPEFramework::Core::ERROR_NONE; }
 
     mutable std::atomic<uint32_t> _refCount;
     WPEFramework::Core::hresult initializeResult;

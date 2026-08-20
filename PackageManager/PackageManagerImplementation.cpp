@@ -137,6 +137,12 @@ namespace Plugin {
             PackageManagerImplementation::Configuration config;
             config.FromString(service->ConfigLine());
             downloadDir = config.downloadDir;
+
+            // Remove trailing slashes (unless path is just "/")
+            while (!downloadDir.empty() && 1 < downloadDir.size() && '/' == downloadDir.back()) {
+                downloadDir.pop_back();
+            }
+
             LOGINFO("downloadDir=%s", downloadDir.c_str());
 
             //std::filesystem::create_directories(path);        // XXX: need C++17
@@ -148,11 +154,43 @@ namespace Plugin {
             } else {
                 LOGDBG("created dir '%s'", downloadDir.c_str());
             }
-
+#ifndef DEFER_CACHE_INIT
+            // Original behavior: Start cache initialization immediately during Initialize
             mDownloadThreadPtr = std::unique_ptr<std::thread>(new std::thread(&PackageManagerImplementation::downloader, this, 1));
+#endif
         } else {
             LOGERR("service is null \n");
         }
+
+        LOGINFO("exit");
+        return result;
+    }
+
+    Core::hresult PackageManagerImplementation::StartCacheInitialization()
+    {
+        LOGINFO("entry");
+        Core::hresult result = Core::ERROR_GENERAL;
+
+        if (nullptr == mCurrentservice) {
+            LOGERR("mCurrentservice is not initialized; call Initialize() first");
+            return result;
+        }
+
+#ifdef DEFER_CACHE_INIT
+        // Start the downloader thread which will trigger InitializeState()
+        if (nullptr == mDownloadThreadPtr.get()) {
+            mDownloadThreadPtr = std::unique_ptr<std::thread>(new std::thread(&PackageManagerImplementation::downloader, this, 1));
+            LOGINFO("Cache initialization started (downloader thread created)");
+            result = Core::ERROR_NONE;
+        } else {
+            LOGWARN("Downloader thread already running; ignoring duplicate StartCacheInitialization() call");
+            result = Core::ERROR_NONE;
+        }
+#else
+        // When DEFER_CACHE_INIT is not defined, thread is already created in Initialize()
+        LOGWARN("StartCacheInitialization() called but DEFER_CACHE_INIT not enabled; cache already initialized");
+        result = Core::ERROR_NONE;
+#endif
 
         LOGINFO("exit");
         return result;
@@ -165,7 +203,15 @@ namespace Plugin {
 
         done = true;
         cv.notify_one();
+#ifdef DEFER_CACHE_INIT
+        // Deferred initialization: thread only exists if StartCacheInitialization() was called
+        if (mDownloadThreadPtr) {
+            mDownloadThreadPtr->join();
+        }
+#else
+        // Original behavior: thread is always created in Initialize()
         mDownloadThreadPtr->join();
+#endif
 
         PackageManagerTelemetryReporting::getInstance().reset();
          const std::string markerFile = PACKAGE_MANAGER_MARKER_FILE;
@@ -240,7 +286,13 @@ namespace Plugin {
         std::lock_guard<std::mutex> lock(mMutex);
 
         DownloadInfoPtr di = DownloadInfoPtr(new DownloadInfo(url, std::to_string(++mNextDownloadId), options.retries, options.rateLimit));
-        std::string filename = downloadDir + "package" + di->GetId();
+        std::string filename = "";
+        if ("/" == downloadDir) {
+            filename = downloadDir + "package" + di->GetId();
+        } else {
+            filename = downloadDir + "/" + "package" + di->GetId();
+        }
+        
         di->SetFileLocator(filename);
         if (options.priority) {
             mDownloadQueue.push_front(di);
@@ -1345,7 +1397,30 @@ namespace Plugin {
         }
         return mInprogressDownload;
     }
+    Core::hresult PackageManagerImplementation::GetConfigForInstalledPackage(const string &packageId, const string &version, string &config /* @out @opaque */)
+    {
+        CHECK_CACHE()
+        Core::hresult result = Core::ERROR_GENERAL;
 
+        if (packageId.empty() || version.empty())
+        {
+            return Core::ERROR_INVALID_PARAMETER;
+        }
+
+        packagemanager::Result pmResult = packageImpl->GetInstalledPackageMetadata(packageId, version, config);
+        if (pmResult == packagemanager::SUCCESS)
+        {
+            result = Core::ERROR_NONE;
+        }
+        return result;
+    }
+Core::hresult PackageManagerImplementation::GetConfigListForInstalledPackages(const string &filter, string &config /* @out @opaque */)
+{
+    CHECK_CACHE()
+    (void)filter;
+    config.clear();
+    return Core::ERROR_NOT_SUPPORTED;
+}
 } // namespace Plugin
 } // namespace WPEFramework
 

@@ -23,6 +23,7 @@ message("Setup ${MODULE_NAME}")
 option(USE_LIBPACKAGE_RALF "USE_LIBPACKAGE_RALF" OFF)
 option(ENABLE_UNIT_TESTS "Enable unit tests" OFF)
 option(ENABLE_INSTALL_WHILE_LOCKED "Allow package install while app version is locked" OFF)
+option(DEFER_CACHE_INIT "Defer package cache initialization to runtime (use StartCacheInitialization())" OFF)
 
 # XXX: ../cmake/FindCurl.cmake is bad
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/;${CMAKE_MODULE_PATH}")
@@ -72,6 +73,11 @@ endif(AIMANAGERS_TELEMETRY_METRICS_SUPPORT)
 if(ENABLE_INSTALL_WHILE_LOCKED)
     message(STATUS "ENABLE_INSTALL_WHILE_LOCKED is enabled")
     target_compile_definitions(${MODULE_NAME} PRIVATE ENABLE_INSTALL_WHILE_LOCKED)
+endif()
+
+if(DEFER_CACHE_INIT)
+    message(STATUS "DEFER_CACHE_INIT is enabled")
+    target_compile_definitions(${MODULE_NAME} PRIVATE DEFER_CACHE_INIT)
 endif()
 
 target_include_directories(${MODULE_NAME} PRIVATE

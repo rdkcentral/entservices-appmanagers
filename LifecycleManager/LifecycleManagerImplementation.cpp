@@ -23,7 +23,6 @@
 #include <interfaces/json/JsonData_LifecycleManagerState.h>
 #include <interfaces/json/JLifecycleManagerState.h>
 #include <semaphore.h>
-#include <vector>
 #include "LifecycleManagerTelemetryReporting.h"
 #include "UtilsAppManagerTelemetry.h"
 
@@ -136,82 +135,61 @@ namespace WPEFramework
              string appInstanceId(obj["appInstanceId"].String());
              uint32_t oldLifecycleState(obj["oldLifecycleState"].Number());
              string navigationIntent(obj["navigationIntent"].String());
+             auto contextHolder = getContext("", appId);
+             ApplicationContext* context = contextHolder.get();
 
-            std::vector<Exchange::ILifecycleManager::INotification*> lifecycleNotifications;
-            std::vector<Exchange::ILifecycleManagerState::INotification*> lifecycleStateNotifications;
-
-            mAdminLock.Lock();
-            for (auto* notification : mLifecycleManagerNotification)
-            {
-                if (nullptr != notification)
-                {
-                    notification->AddRef();
-                    lifecycleNotifications.push_back(notification);
-                }
-            }
-            for (auto* notification : mLifecycleManagerStateNotification)
-            {
-                if (nullptr != notification)
-                {
-                    notification->AddRef();
-                    lifecycleStateNotifications.push_back(notification);
-                }
-            }
-            mAdminLock.Unlock();
-
-            switch(event)
-            {
-                case LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED:
-                {
-                    auto contextHolder = getContext("", appId);
-                    ApplicationContext* context = contextHolder.get();
-                    LifecycleManagerTelemetryReporting::getInstance().reportTelemetryDataOnStateChange(context, obj);
-                    handleStateChangeEvent(obj);
-                    if (Exchange::ILifecycleManager::LifecycleState::UNLOADED == static_cast<Exchange::ILifecycleManager::LifecycleState>(newLifecycleState))
-                    {
-                        shouldRespawn = tryGetPendingRespawn(appInstanceId, pendingRespawn);
-                    }
-                    for (auto* notification : lifecycleNotifications)
-                    {
-                        notification->OnAppStateChanged(appId, (LifecycleState)newLifecycleState, errorReason);
-                    }
+             mAdminLock.Lock();
+        
+             std::list<Exchange::ILifecycleManager::INotification*>::const_iterator index(mLifecycleManagerNotification.begin());
+             std::list<Exchange::ILifecycleManagerState::INotification*>::const_iterator stateNotificationIndex(mLifecycleManagerStateNotification.begin());
+        
+             switch(event)
+             {
+                 case LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED:
+                 {
+                     LifecycleManagerTelemetryReporting::getInstance().reportTelemetryDataOnStateChange(context, obj);
+                     handleStateChangeEvent(obj);
+                     if (Exchange::ILifecycleManager::LifecycleState::UNLOADED == static_cast<Exchange::ILifecycleManager::LifecycleState>(newLifecycleState))
+                     {
+                         shouldRespawn = tryGetPendingRespawn(appInstanceId, pendingRespawn);
+                     }
+                     while (index != mLifecycleManagerNotification.end())
+                     {
+                         (*index)->OnAppStateChanged(appId, (LifecycleState)newLifecycleState, errorReason);
+                         ++index;
+                     }
                     const bool isUnloadedState = (Exchange::ILifecycleManager::LifecycleState::UNLOADED == static_cast<Exchange::ILifecycleManager::LifecycleState>(newLifecycleState));
                     const bool isUnexpectedTermination = (nullptr != context) && context->getUnexpectedTermination();
                     const string effectiveNavigationIntent = (isUnloadedState && isUnexpectedTermination) ? "unexpectedTermination" : navigationIntent;
-                    for (auto* notification : lifecycleStateNotifications)
+                    while (stateNotificationIndex != mLifecycleManagerStateNotification.end())
                     {
-                        notification->OnAppLifecycleStateChanged(appId, appInstanceId, (LifecycleState)oldLifecycleState, (LifecycleState)newLifecycleState, effectiveNavigationIntent);
+                        (*stateNotificationIndex)->OnAppLifecycleStateChanged(appId, appInstanceId, (LifecycleState)oldLifecycleState, (LifecycleState)newLifecycleState, effectiveNavigationIntent);
+                        ++stateNotificationIndex;
                     }
                     if ((nullptr != context) && isUnloadedState && isUnexpectedTermination) {
                         context->setUnexpectedTermination(false);
                     }
                     break;
-                }
-                case LIFECYCLE_MANAGER_EVENT_RUNTIME:
-                    handleRuntimeManagerEvent(obj);
-                    break;
-                case LIFECYCLE_MANAGER_EVENT_WINDOW:
-                    handleWindowManagerEvent(obj);
-                    break;
-                case LIFECYCLE_MANAGER_EVENT_ONFAILURE:
-                    for (auto* notification : lifecycleNotifications)
-                    {
-                        notification->OnAppStateChanged(appId, (LifecycleState)newLifecycleState, errorReason);
-                    }
-                    break;
-                default:
-                    LOGWARN("Event[%u] not handled appId=%s appInstanceId=%s", event, appId.c_str(), appInstanceId.c_str());
-                    break;
-            }
-
-            for (auto* notification : lifecycleNotifications)
-            {
-                notification->Release();
-            }
-            for (auto* notification : lifecycleStateNotifications)
-            {
-                notification->Release();
-            }
+                 }
+                 case LIFECYCLE_MANAGER_EVENT_RUNTIME:
+                     handleRuntimeManagerEvent(obj);
+                     break;
+                 case LIFECYCLE_MANAGER_EVENT_WINDOW:
+                      handleWindowManagerEvent(obj);
+                      break;
+                 case LIFECYCLE_MANAGER_EVENT_ONFAILURE:
+                      while (index != mLifecycleManagerNotification.end())
+                      {
+                          (*index)->OnAppStateChanged(appId, (LifecycleState)newLifecycleState, errorReason);
+                          ++index;
+                      }
+                      break;
+                 default:
+                     LOGWARN("Event[%u] not handled appId=%s appInstanceId=%s", event, appId.c_str(), appInstanceId.c_str());
+                     break;
+             }
+        
+             mAdminLock.Unlock();
 
              if (shouldRespawn)
              {
@@ -299,6 +277,11 @@ namespace WPEFramework
 		mLoadedApplications.push_back(context);
                 firstLaunch = true;
 	    }
+            else if (context->mPendingStateTransition)
+            {
+                mAdminLock.Unlock();
+                return Core::ERROR_GENERAL;
+            }
             context->setRequestTime(requestTime);
             context->setRequestType(REQUEST_TYPE_LAUNCH);
             context->setTargetLifecycleState(targetLifecycleState);
@@ -338,6 +321,12 @@ namespace WPEFramework
             if (targetLifecycleState == context->getCurrentLifecycleState())
             {
                 mAdminLock.Unlock();
+                return status;
+            }
+            if (context->mPendingStateTransition)
+            {
+                mAdminLock.Unlock();
+                status = Core::ERROR_GENERAL;
                 return status;
             }
             switch(targetLifecycleState)
@@ -399,6 +388,12 @@ namespace WPEFramework
                 return status;
 	    }
             mAdminLock.Lock();
+            if (context->mPendingStateTransition)
+            {
+                mAdminLock.Unlock();
+                success = false;
+                return Core::ERROR_GENERAL;
+            }
             if(REQUEST_TYPE_PAUSE != context->getRequestType())   //If request through AppManager closeApp, requestTime is already set
             {
                 context->setRequestTime(requestTime);
@@ -431,6 +426,12 @@ namespace WPEFramework
                 return status;
 	    }
             mAdminLock.Lock();
+            if (context->mPendingStateTransition)
+            {
+                mAdminLock.Unlock();
+                success = false;
+                return Core::ERROR_GENERAL;
+            }
             context->setRequestTime(requestTime);
             context->setRequestType(REQUEST_TYPE_TERMINATE);
             context->setTargetLifecycleState(Exchange::ILifecycleManager::LifecycleState::TERMINATING);
