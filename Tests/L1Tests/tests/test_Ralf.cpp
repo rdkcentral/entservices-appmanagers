@@ -17,75 +17,75 @@
  * limitations under the License.
  **/
 
-
-#include <gtest/gtest.h>
-#include <gmock/gmock.h>
-#include <string>
-#include <fstream>
-#include <vector>
-#include <cstdio>
 #include <cerrno>
+#include <cstdio>
+#include <fstream>
+#include <gmock/gmock.h>
+#include <gtest/gtest.h>
+#include <json/json.h>
+#include <string>
 #include <sys/stat.h>
 #include <sys/syscall.h>
 #include <unistd.h>
-#include <json/json.h>
+#include <vector>
 
-#define TEST_LOG(x, ...) fprintf(stderr, "\033[1;32m[%s:%d](%s)<PID:%d><TID:%d>" x "\n\033[0m", \
-    __FILE__, __LINE__, __FUNCTION__, getpid(), (pid_t)syscall(SYS_gettid), ##__VA_ARGS__); fflush(stderr);
+#define TEST_LOG(x, ...)                                                                        \
+    fprintf(stderr, "\033[1;32m[%s:%d](%s)<PID:%d><TID:%d>" x "\n\033[0m",                      \
+        __FILE__, __LINE__, __FUNCTION__, getpid(), (pid_t)syscall(SYS_gettid), ##__VA_ARGS__); \
+    fflush(stderr);
 
 // Keep RuntimeConfig ABI consistent in this TU to prevent weak-symbol
 #ifndef RUNTIME_CONFIG
 #define RUNTIME_CONFIG
 namespace WPEFramework {
 namespace Exchange {
-struct RuntimeConfig {
-    bool dial;
-    bool wanLanAccess;
-    bool thunder;
-    int32_t systemMemoryLimit;
-    int32_t gpuMemoryLimit;
-    std::string envVariables;
-    uint32_t userId;
-    uint32_t groupId;
-    uint32_t dataImageSize;
+    struct RuntimeConfig {
+        bool dial;
+        bool wanLanAccess;
+        bool thunder;
+        int32_t systemMemoryLimit;
+        int32_t gpuMemoryLimit;
+        std::string envVariables;
+        uint32_t userId;
+        uint32_t groupId;
+        uint32_t dataImageSize;
 
-    bool resourceManagerClientEnabled;
-    std::string dialId;
-    std::string command;
-    std::string appType;
-    std::string appPath;
-    std::string runtimePath;
+        bool resourceManagerClientEnabled;
+        std::string dialId;
+        std::string command;
+        std::string appType;
+        std::string appPath;
+        std::string runtimePath;
 
-    std::string logFilePath;
-    uint32_t logFileMaxSize;
-    std::string logLevels;
-    bool mapi;
-    std::string fkpsFiles;
-    std::string capabilities;
-    std::string ralfPkgPath;
+        std::string logFilePath;
+        uint32_t logFileMaxSize;
+        std::string logLevels;
+        bool mapi;
+        std::string fkpsFiles;
+        std::string capabilities;
+        std::string ralfPkgPath;
 
-    std::string fireboltVersion;
-    bool enableDebugger;
-    std::string unpackedPath;
+        std::string fireboltVersion;
+        bool enableDebugger;
+        std::string unpackedPath;
 
-    ~RuntimeConfig() = default;
-};
+        ~RuntimeConfig() = default;
+    };
 } // namespace Exchange
 } // namespace WPEFramework
 #endif
 
-
 // Include ralf support header
-#include "ralf/RalfSupport.h"
 #include "ralf/RalfPackageBuilder.h"
+#include "ralf/RalfSupport.h"
 // #define private public lets the test accessor reach private methods of
 // RalfOCIConfigGenerator without any change to the production header.
 #define private public
 #include "ralf/RalfOCIConfigGenerator.h"
 #undef private
-#include "ralf/RalfConstants.h"
-#include "ralf/OCISpecConstants.h"
 #include "WrapsMock.h"
+#include "ralf/OCISpecConstants.h"
+#include "ralf/RalfConstants.h"
 
 using ::testing::_;
 using ::testing::Invoke;
@@ -93,12 +93,12 @@ using ::testing::NiceMock;
 using ::testing::Return;
 
 // Forward-declare real syscalls used in mock forwarding
-extern "C" int __real_open(const char* pathname, int flags, int mode=0);
+extern "C" int __real_open(const char* pathname, int flags, int mode = 0);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helper: write a text file
 // ─────────────────────────────────────────────────────────────────────────────
-static bool writeTextFile(const std::string &path, const std::string &content)
+static bool writeTextFile(const std::string& path, const std::string& content)
 {
     std::ofstream f(path);
     if (!f.is_open())
@@ -311,8 +311,7 @@ TEST_F(RalfSerializeJsonTest, SerializeJsonNode_NestedObject)
 // Test suite for ralf::JsonFromFile
 // ─────────────────────────────────────────────────────────────────────────────
 
-class RalfJsonFromFileTest : public ::testing::Test
-{
+class RalfJsonFromFileTest : public ::testing::Test {
 protected:
     const std::string mTmpDir = "/tmp/ralf_l1_test";
     const std::string mValidJsonFile = mTmpDir + "/valid.json";
@@ -404,8 +403,7 @@ TEST_F(RalfJsonFromFileTest, JsonFromFile_EmptyPath)
 // Test suite for ralf::checkIfPathExists
 // ─────────────────────────────────────────────────────────────────────────────
 
-class RalfCheckPathTest : public ::testing::Test
-{
+class RalfCheckPathTest : public ::testing::Test {
 protected:
     const std::string mTmpDir = "/tmp/ralf_check_path_test";
     const std::string mExistingFile = mTmpDir + "/existing.txt";
@@ -463,8 +461,7 @@ TEST_F(RalfCheckPathTest, CheckIfPathExists_EmptyPath)
 // Test suite for ralf::create_directories
 // ─────────────────────────────────────────────────────────────────────────────
 
-class RalfCreateDirectoriesTest : public ::testing::Test
-{
+class RalfCreateDirectoriesTest : public ::testing::Test {
 protected:
     const std::string mBaseDir = "/tmp/ralf_mkdir_test";
 
@@ -525,8 +522,7 @@ TEST_F(RalfCreateDirectoriesTest, CreateDirectories_EmptyPath)
 // Test suite for ralf::parseRalPkgInfo
 // ─────────────────────────────────────────────────────────────────────────────
 
-class RalfParseRalPkgInfoTest : public ::testing::Test
-{
+class RalfParseRalPkgInfoTest : public ::testing::Test {
 protected:
     const std::string mTmpDir = "/tmp/ralf_pkg_info_test";
     const std::string mValidPkgInfoFile = mTmpDir + "/pkg_info.json";
@@ -633,8 +629,7 @@ TEST_F(RalfParseRalPkgInfoTest, ParseRalPkgInfo_EmptyFilePath)
 // Test suite for ralf::RalfPackageBuilder::unmountOverlayfsIfExists
 // ─────────────────────────────────────────────────────────────────────────────
 
-class RalfPackageBuilderTest : public ::testing::Test
-{
+class RalfPackageBuilderTest : public ::testing::Test {
 protected:
     ralf::RalfPackageBuilder mBuilder;
 };
@@ -737,8 +732,7 @@ TEST_F(RalfGetUserInfoTest, GetRalfUserInfo_MissingUser)
     // The function should return false and leave uid/gid unchanged.
     bool result = ralf::getRalfUserInfo(uid, gid);
     // We only assert the negative path; if "ralf" user exists on the host, skip.
-    if (!result)
-    {
+    if (!result) {
         EXPECT_EQ(0u, uid);
         EXPECT_EQ(0u, gid);
     }
@@ -859,10 +853,9 @@ TEST_F(RalfGetDevNodeMajorMinorTest, GetDevNodeMajorMinor_NonExistentPath)
 // Base fixture for tests that require WrapsImplMock
 // ─────────────────────────────────────────────────────────────────────────────
 
-class RalfMockedBaseTest : public ::testing::Test
-{
+class RalfMockedBaseTest : public ::testing::Test {
 protected:
-    NiceMock<WrapsImplMock> *mWrapsImplMock = nullptr;
+    NiceMock<WrapsImplMock>* mWrapsImplMock = nullptr;
 
     void InstallMock()
     {
@@ -966,11 +959,10 @@ TEST_F(RalfGenerateOCIRootfsTest, GenerateOCIRootfs_MountSucceeds)
 // Extended tests for RalfPackageBuilder using WrapsImplMock
 // ─────────────────────────────────────────────────────────────────────────────
 
-class RalfPackageBuilderMockedTest : public RalfMockedBaseTest
-{
+class RalfPackageBuilderMockedTest : public RalfMockedBaseTest {
 protected:
     ralf::RalfPackageBuilder mBuilder;
-    const std::string mTmpDir      = "/tmp/ralf_pkg_builder_mocked_test";
+    const std::string mTmpDir = "/tmp/ralf_pkg_builder_mocked_test";
     const std::string mPkgInfoFile = mTmpDir + "/pkg_info.json";
     const std::string mPkgMetaFile = mTmpDir + "/pkg1_meta.json";
 
@@ -981,7 +973,8 @@ protected:
         writeTextFile(mPkgInfoFile, R"({
             "packages": [
                 {
-                    "pkgMetaDataPath": ")" + mPkgMetaFile + R"(",
+                    "pkgMetaDataPath": ")"
+                + mPkgMetaFile + R"(",
                     "pkgMountPath": "/mnt/ralf/pkg1"
                 }
             ]
@@ -1069,17 +1062,17 @@ TEST_F(RalfPackageBuilderMockedTest, GenerateRalfDobbySpec_ParseRalPkgInfoFails_
     TEST_LOG("Testing generateRalfDobbySpec returns false when parseRalPkgInfo fails");
 
     WPEFramework::Plugin::ApplicationConfiguration config;
-    config.mAppId          = "com.example.app";
-    config.mAppInstanceId  = "inst_parsefail_001";
-    config.mUserId         = 1000;
-    config.mGroupId        = 1001;
+    config.mAppId = "com.example.app";
+    config.mAppInstanceId = "inst_parsefail_001";
+    config.mUserId = 1000;
+    config.mGroupId = 1001;
     config.mWesterosSocketPath = "/tmp/wst-test";
     config.mAppStorageInfo.path = "/data/apps/com.example.app";
 
     WPEFramework::Exchange::RuntimeConfig rc;
     rc.envVariables = "[]";
     // Point to a path that does not exist — parseRalPkgInfo will fail to open it.
-    rc.ralfPkgPath  = "/tmp/ralf_l1_no_such_pkginfo_xyz_12345.json";
+    rc.ralfPkgPath = "/tmp/ralf_l1_no_such_pkginfo_xyz_12345.json";
 
     std::string dobbySpec;
     EXPECT_FALSE(mBuilder.generateRalfDobbySpec(config, rc, dobbySpec));
@@ -1104,23 +1097,23 @@ TEST_F(RalfPackageBuilderMockedTest, GenerateRalfDobbySpec_GenerateOCIRootfsPack
     // generateOCIRootfsPackage — returns false.
     ON_CALL(*mWrapsImplMock, mount(_, _, _, _, _))
         .WillByDefault(Invoke([](const char*, const char*, const char*,
-                                 unsigned long, const void*) -> int {
+                                  unsigned long, const void*) -> int {
             errno = EPERM;
             return -1;
         }));
 
     WPEFramework::Plugin::ApplicationConfiguration config;
-    config.mAppId          = "com.example.app";
-    config.mAppInstanceId  = "inst_mountfail_001";
-    config.mUserId         = 0;   // uid=0 skips chown in create_directories
-    config.mGroupId        = 0;
+    config.mAppId = "com.example.app";
+    config.mAppInstanceId = "inst_mountfail_001";
+    config.mUserId = 0; // uid=0 skips chown in create_directories
+    config.mGroupId = 0;
     config.mWesterosSocketPath = "/tmp/wst-test";
     config.mAppStorageInfo.path = "/data/apps/com.example.app";
 
     WPEFramework::Exchange::RuntimeConfig rc;
     rc.envVariables = "[]";
     // Use the valid pkg-info file created in SetUp() so parseRalPkgInfo succeeds.
-    rc.ralfPkgPath  = mPkgInfoFile;
+    rc.ralfPkgPath = mPkgInfoFile;
 
     std::string dobbySpec;
     EXPECT_FALSE(mBuilder.generateRalfDobbySpec(config, rc, dobbySpec));
@@ -1131,10 +1124,9 @@ TEST_F(RalfPackageBuilderMockedTest, GenerateRalfDobbySpec_GenerateOCIRootfsPack
 // Test suite for ralf::RalfOCIConfigGenerator
 // ─────────────────────────────────────────────────────────────────────────────
 
-class RalfOCIConfigGeneratorTest : public ::testing::Test
-{
+class RalfOCIConfigGeneratorTest : public ::testing::Test {
 protected:
-    const std::string mTmpDir          = "/tmp/ralf_oci_gen_test";
+    const std::string mTmpDir = "/tmp/ralf_oci_gen_test";
     const std::string mConfigOutputFile = mTmpDir + "/config.json";
 
     void SetUp() override
@@ -1150,30 +1142,28 @@ protected:
 
     // Helpers to construct lightweight test objects
     WPEFramework::Plugin::ApplicationConfiguration makeConfig(
-        const std::string &appId = "com.example.testapp",
-        const std::string &instanceId = "test_inst_001",
+        const std::string& appId = "com.example.testapp",
+        const std::string& instanceId = "test_inst_001",
         uint32_t uid = 1000, uint32_t gid = 1000)
     {
         WPEFramework::Plugin::ApplicationConfiguration config;
-        config.mAppId              = appId;
-        config.mAppInstanceId      = instanceId;
-        config.mUserId             = uid;
-        config.mGroupId            = gid;
+        config.mAppId = appId;
+        config.mAppInstanceId = instanceId;
+        config.mUserId = uid;
+        config.mGroupId = gid;
         config.mWesterosSocketPath = "/tmp/wst-compositor";
         config.mAppStorageInfo.path = "/data/apps/" + appId;
         return config;
     }
 
     WPEFramework::Exchange::RuntimeConfig makeRuntimeConfig(
-        const std::string &envVars = "[]")
+        const std::string& envVars = "[]")
     {
         WPEFramework::Exchange::RuntimeConfig rc;
         rc.envVariables = envVars;
         return rc;
     }
-
 };
-
 
 /* Test Case: GenerateRalfOCIConfig_FailsWhenBaseSpecFileMissing
  * Exercises the first if-guard in generateRalfOCIConfig:
@@ -1193,8 +1183,7 @@ TEST_F(RalfOCIConfigGeneratorTest, GenerateRalfOCIConfig_FailsWhenBaseSpecFileMi
     // Forward every open() call to the real syscall, except for the base spec path.
     ON_CALL(mockWraps, open(_, _, _))
         .WillByDefault(Invoke([](const char* path, int flags, mode_t mode) -> int {
-            if (std::string(path) == ralf::RALF_OCI_BASE_SPEC_FILE)
-            {
+            if (std::string(path) == ralf::RALF_OCI_BASE_SPEC_FILE) {
                 errno = ENOENT;
                 return -1;
             }
@@ -1225,8 +1214,7 @@ TEST_F(RalfOCIConfigGeneratorTest, GenerateRalfOCIConfig_FailsWhenGraphicsConfig
     // Forward every open() call to the real syscall, except for the graphics config path.
     ON_CALL(mockWraps, open(_, _, _))
         .WillByDefault(Invoke([](const char* path, int flags, mode_t mode) -> int {
-            if (std::string(path) == ralf::RALF_GRAPHICS_LAYER_CONFIG)
-            {
+            if (std::string(path) == ralf::RALF_GRAPHICS_LAYER_CONFIG) {
                 errno = ENOENT;
                 return -1;
             }
@@ -1256,7 +1244,7 @@ TEST_F(RalfOCIConfigGeneratorTest, GenerateRalfOCIConfig_FailsWhenApplyGraphicsC
 {
     TEST_LOG("Testing generateRalfOCIConfig when applyGraphicsConfigToOCIConfig fails (third if-guard)");
 
-    const std::string stubBaseSpec    = mTmpDir + "/stub-oci-base-spec.json";
+    const std::string stubBaseSpec = mTmpDir + "/stub-oci-base-spec.json";
     const std::string fakeGraphicsConfig = mTmpDir + "/fake-gpu-config.json";
     writeTextFile(stubBaseSpec, "{}");
     writeTextFile(fakeGraphicsConfig, "{\"vendorGpuSupport\":{\"devNodes\":[]}}");
@@ -1287,98 +1275,95 @@ TEST_F(RalfOCIConfigGeneratorTest, GenerateRalfOCIConfig_FailsWhenApplyGraphicsC
 // Accessible because this TU includes the header with #define private public.
 // ─────────────────────────────────────────────────────────────────────────────
 
-class RalfOCIConfigGeneratorTestAccessor
-{
+class RalfOCIConfigGeneratorTestAccessor {
 public:
-    explicit RalfOCIConfigGeneratorTestAccessor(ralf::RalfOCIConfigGenerator &gen)
-        : mGen(gen) {}
+    explicit RalfOCIConfigGeneratorTestAccessor(ralf::RalfOCIConfigGenerator& gen)
+        : mGen(gen)
+    {
+    }
 
-    void addToEnvironment(Json::Value &node, const std::string &key, const std::string &value)
+    void addToEnvironment(Json::Value& node, const std::string& key, const std::string& value)
     {
         mGen.addToEnvironment(node, key, value);
     }
-    void addMountEntry(Json::Value &node, const std::string &src, const std::string &dst)
-    {
-        mGen.addMountEntry(node, src, dst);
-    }
-    bool generateHooksForOCIConfig(Json::Value &node, const std::string &op)
+
+    bool generateHooksForOCIConfig(Json::Value& node, const std::string& op)
     {
         return mGen.generateHooksForOCIConfig(node, op);
     }
-    bool addFireboltEndPointToConfig(Json::Value &node, const std::string &envVar)
+    bool addFireboltEndPointToConfig(Json::Value& node, const std::string& envVar)
     {
         return mGen.addFireboltEndPointToConfig(node, envVar);
     }
-    bool addConfigOverridesToOCIConfig(Json::Value &node, const Json::Value &configNode)
+    bool addConfigOverridesToOCIConfig(Json::Value& node, const Json::Value& configNode)
     {
         return mGen.addConfigOverridesToOCIConfig(node, configNode);
     }
-    bool addMemoryConfigToOCIConfig(Json::Value &node, const Json::Value &configNode, const std::string &pkgType)
+    bool addMemoryConfigToOCIConfig(Json::Value& node, const Json::Value& configNode, const std::string& pkgType)
     {
         return mGen.addMemoryConfigToOCIConfig(node, configNode, pkgType);
     }
-    bool addStorageConfigToOCIConfig(Json::Value &node, Json::Value &configNode)
+    bool addStorageConfigToOCIConfig(Json::Value& node, Json::Value& configNode)
     {
         return mGen.addStorageConfigToOCIConfig(node, configNode);
     }
-    bool addEntryPointToOCIConfig(Json::Value &node, const Json::Value &pkgNode)
+    bool addEntryPointToOCIConfig(Json::Value& node, const Json::Value& pkgNode)
     {
         return mGen.addEntryPointToOCIConfig(node, pkgNode);
     }
-    void addLogNameToOCIConfig(Json::Value &node, const std::string &storagePath, const std::string &appId)
+    void addLogNameToOCIConfig(Json::Value& node, const std::string& storagePath, const std::string& appId)
     {
         mGen.addLogNameToOCIConfig(node, storagePath, appId);
     }
-    bool addAppPackageVersionToConfig(Json::Value &node, Json::Value &manifestNode)
+    bool addAppPackageVersionToConfig(Json::Value& node, Json::Value& manifestNode)
     {
         return mGen.addAppPackageVersionToConfig(node, manifestNode);
     }
-    bool addDeviceNodeEntriesToOCIConfig(Json::Value &node, const Json::Value &devNodes)
+    bool addDeviceNodeEntriesToOCIConfig(Json::Value& node, const Json::Value& devNodes)
     {
         return mGen.addDeviceNodeEntriesToOCIConfig(node, devNodes);
     }
-    bool applyConfigurationToOCIConfig(Json::Value &node, Json::Value &manifestNode)
+    bool applyConfigurationToOCIConfig(Json::Value& node, Json::Value& manifestNode)
     {
         return mGen.applyConfigurationToOCIConfig(node, manifestNode);
     }
-    bool applyRuntimeAndAppConfigToOCIConfig(Json::Value &node,
-        const WPEFramework::Exchange::RuntimeConfig &rc,
-        const WPEFramework::Plugin::ApplicationConfiguration &ac)
+    bool applyRuntimeAndAppConfigToOCIConfig(Json::Value& node,
+        const WPEFramework::Exchange::RuntimeConfig& rc,
+        const WPEFramework::Plugin::ApplicationConfiguration& ac)
     {
         return mGen.applyRuntimeAndAppConfigToOCIConfig(node, rc, ac);
     }
-    bool addAppStorageToOCIConfig(Json::Value &node, const std::string &appStoragePath)
+    bool addAppStorageToOCIConfig(Json::Value& node, const std::string& appStoragePath)
     {
         return mGen.addAppStorageToOCIConfig(node, appStoragePath);
     }
-    bool addConfigEnvToOCIConfig(Json::Value &node, const Json::Value &configNode)
+    bool addConfigEnvToOCIConfig(Json::Value& node, const Json::Value& configNode)
     {
         return mGen.addConfigEnvToOCIConfig(node, configNode);
     }
-    bool saveOCIConfigToFile(const Json::Value &node, int uid, int gid)
+    bool saveOCIConfigToFile(const Json::Value& node, int uid, int gid)
     {
         return mGen.saveOCIConfigToFile(node, uid, gid);
     }
 
 private:
-    ralf::RalfOCIConfigGenerator &mGen;
+    ralf::RalfOCIConfigGenerator& mGen;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Test fixture for RalfOCIConfigGenerator private-method unit tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-class RalfOCIConfigGeneratorPrivateTest : public ::testing::Test
-{
+class RalfOCIConfigGeneratorPrivateTest : public ::testing::Test {
 protected:
     // Both members are stored as static so they outlive the generator's
     // reference members (mConfigFilePath and mRalfPackages are references,
     // not values, in RalfOCIConfigGenerator).
     static std::vector<ralf::RalfPkgInfoPair> sEmptyPackages;
-    static const std::string                  sConfigFilePath;
+    static const std::string sConfigFilePath;
 
-    ralf::RalfOCIConfigGenerator       mGen{sConfigFilePath, sEmptyPackages};
-    RalfOCIConfigGeneratorTestAccessor mAcc{mGen};
+    ralf::RalfOCIConfigGenerator mGen{ sConfigFilePath, sEmptyPackages };
+    RalfOCIConfigGeneratorTestAccessor mAcc{ mGen };
 };
 
 std::vector<ralf::RalfPkgInfoPair> RalfOCIConfigGeneratorPrivateTest::sEmptyPackages;
@@ -1396,7 +1381,7 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, AddToEnvironment_AddsKeyValuePair)
     TEST_LOG("Testing addToEnvironment with valid key and value");
     Json::Value root;
     mAcc.addToEnvironment(root, "MY_VAR", "hello");
-    const Json::Value &envArr = root[ralf::PROCESS][ralf::ENV];
+    const Json::Value& envArr = root[ralf::PROCESS][ralf::ENV];
     ASSERT_TRUE(envArr.isArray());
     ASSERT_EQ(1u, envArr.size());
     EXPECT_EQ("MY_VAR=hello", envArr[0].asString());
@@ -1411,7 +1396,7 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, AddToEnvironment_MultipleVars)
     Json::Value root;
     mAcc.addToEnvironment(root, "VAR1", "val1");
     mAcc.addToEnvironment(root, "VAR2", "val2");
-    const Json::Value &envArr = root[ralf::PROCESS][ralf::ENV];
+    const Json::Value& envArr = root[ralf::PROCESS][ralf::ENV];
     ASSERT_EQ(2u, envArr.size());
     EXPECT_EQ("VAR1=val1", envArr[0].asString());
     EXPECT_EQ("VAR2=val2", envArr[1].asString());
@@ -1429,41 +1414,41 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, AddToEnvironment_EmptyValue)
 }
 
 // ──────────────────────────────
-// addMountEntry
+// addBindMountToOCIConfig
 // ──────────────────────────────
 
-/* Test Case: AddMountEntry_CorrectFields
- * Verifies that addMountEntry creates a bind mount entry with correct source,
+/* Test Case: addBindMountToOCIConfig_CorrectFields
+ * Verifies that addBindMountToOCIConfig creates a bind mount entry with correct source,
  * destination, type "bind", and options ["rbind", "rw"].
  */
-TEST_F(RalfOCIConfigGeneratorPrivateTest, AddMountEntry_CorrectFields)
+TEST_F(RalfOCIConfigGeneratorPrivateTest, AddBindMountToOCIConfig_CorrectFields)
 {
-    TEST_LOG("Testing addMountEntry field values");
+    TEST_LOG("Testing addBindMountToOCIConfig field values");
     Json::Value root;
-    mAcc.addMountEntry(root, "/host/path", "/container/path");
-    const Json::Value &mounts = root[ralf::MOUNT];
+    ralf::addBindMountToOCIConfig(root, "/host/path", "/container/path");
+    const Json::Value& mounts = root[ralf::MOUNTS];
     ASSERT_TRUE(mounts.isArray());
     ASSERT_EQ(1u, mounts.size());
-    const Json::Value &entry = mounts[0];
-    EXPECT_EQ("/host/path",      entry[ralf::SOURCE].asString());
+    const Json::Value& entry = mounts[0];
+    EXPECT_EQ("/host/path", entry[ralf::SOURCE].asString());
     EXPECT_EQ("/container/path", entry[ralf::DESTINATION].asString());
-    EXPECT_EQ("bind",            entry[ralf::TYPE].asString());
+    EXPECT_EQ("bind", entry[ralf::TYPE].asString());
     ASSERT_TRUE(entry[ralf::OPTIONS].isArray());
     EXPECT_EQ("rbind", entry[ralf::OPTIONS][0].asString());
-    EXPECT_EQ("rw",    entry[ralf::OPTIONS][1].asString());
+    EXPECT_EQ("rw", entry[ralf::OPTIONS][1].asString());
 }
 
-/* Test Case: AddMountEntry_MultipleMounts
- * Verifies that two addMountEntry calls produce two entries in the mounts array.
+/* Test Case: addBindMountToOCIConfig_MultipleMounts
+ * Verifies that two addBindMountToOCIConfig calls produce two entries in the mounts array.
  */
-TEST_F(RalfOCIConfigGeneratorPrivateTest, AddMountEntry_MultipleMounts)
+TEST_F(RalfOCIConfigGeneratorPrivateTest, AddBindMountToOCIConfig_MultipleMounts)
 {
-    TEST_LOG("Testing addMountEntry called twice");
+    TEST_LOG("Testing addBindMountToOCIConfig called twice");
     Json::Value root;
-    mAcc.addMountEntry(root, "/src1", "/dst1");
-    mAcc.addMountEntry(root, "/src2", "/dst2");
-    ASSERT_EQ(2u, root[ralf::MOUNT].size());
-    EXPECT_EQ("/src2", root[ralf::MOUNT][1][ralf::SOURCE].asString());
+    ralf::addBindMountToOCIConfig(root, "/src1", "/dst1");
+    ralf::addBindMountToOCIConfig(root, "/src2", "/dst2");
+    ASSERT_EQ(2u, root[ralf::MOUNTS].size());
+    EXPECT_EQ("/src2", root[ralf::MOUNTS][1][ralf::SOURCE].asString());
 }
 
 // ──────────────────────────────
@@ -1479,17 +1464,17 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, GenerateHooksForOperation_CorrectStruc
     Json::Value root;
     bool result = mAcc.generateHooksForOCIConfig(root, "createRuntime");
     EXPECT_TRUE(result);
-    const Json::Value &hooksArr = root[ralf::HOOKS]["createRuntime"];
+    const Json::Value& hooksArr = root[ralf::HOOKS]["createRuntime"];
     ASSERT_TRUE(hooksArr.isArray());
     ASSERT_EQ(1u, hooksArr.size());
-    const Json::Value &hook = hooksArr[0];
+    const Json::Value& hook = hooksArr[0];
     EXPECT_EQ("/usr/bin/DobbyPluginLauncher", hook[ralf::PATH].asString());
     ASSERT_TRUE(hook[ralf::ARGS].isArray());
     EXPECT_EQ("DobbyPluginLauncher", hook[ralf::ARGS][0].asString());
-    EXPECT_EQ("-h",                  hook[ralf::ARGS][1].asString());
-    EXPECT_EQ("createRuntime",       hook[ralf::ARGS][2].asString());
-    EXPECT_EQ("-c",                  hook[ralf::ARGS][3].asString());
-    EXPECT_EQ("-v",                  hook[ralf::ARGS][5].asString());
+    EXPECT_EQ("-h", hook[ralf::ARGS][1].asString());
+    EXPECT_EQ("createRuntime", hook[ralf::ARGS][2].asString());
+    EXPECT_EQ("-c", hook[ralf::ARGS][3].asString());
+    EXPECT_EQ("-v", hook[ralf::ARGS][5].asString());
 }
 
 /* Test Case: GenerateHooksForOperation_PostStop
@@ -1520,8 +1505,7 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, AddFireboltEndPoint_Present)
         root, R"(["FIREBOLT_ENDPOINT=http://127.0.0.1:9998","OTHER=val"])");
     EXPECT_TRUE(result);
     bool found = false;
-    for (const auto &e : root[ralf::PROCESS][ralf::ENV])
-    {
+    for (const auto& e : root[ralf::PROCESS][ralf::ENV]) {
         if (e.asString() == "FIREBOLT_ENDPOINT=http://127.0.0.1:9998")
             found = true;
     }
@@ -1574,8 +1558,7 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, AddConfigOverrides_ApplicationOverride
     configNode[ralf::CONFIG_OVERRIDES_URN][ralf::PKG_TYPE_APPLICATION]["featureFlag"] = true;
     EXPECT_TRUE(mAcc.addConfigOverridesToOCIConfig(root, configNode));
     bool found = false;
-    for (const auto &e : root[ralf::PROCESS][ralf::ENV])
-    {
+    for (const auto& e : root[ralf::PROCESS][ralf::ENV]) {
         if (e.asString().rfind(std::string(ralf::APP_CONFIG_OVERRIDES_ENV_KEY) + "=", 0) == 0)
             found = true;
     }
@@ -1594,8 +1577,7 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, AddConfigOverrides_RuntimeOverride)
     configNode[ralf::CONFIG_OVERRIDES_URN][ralf::PKG_TYPE_RUNTIME]["timeout"] = 30;
     EXPECT_TRUE(mAcc.addConfigOverridesToOCIConfig(root, configNode));
     bool found = false;
-    for (const auto &e : root[ralf::PROCESS][ralf::ENV])
-    {
+    for (const auto& e : root[ralf::PROCESS][ralf::ENV]) {
         if (e.asString().rfind(std::string(ralf::RUNTIME_CONFIG_OVERRIDES_ENV_KEY) + "=", 0) == 0)
             found = true;
     }
@@ -1610,7 +1592,7 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, AddConfigOverrides_NoOverridesNode)
 {
     TEST_LOG("Testing addConfigOverridesToOCIConfig when no overrides are present");
     Json::Value root;
-    Json::Value configNode;  // empty
+    Json::Value configNode; // empty
     EXPECT_FALSE(mAcc.addConfigOverridesToOCIConfig(root, configNode));
 }
 
@@ -1635,8 +1617,7 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, AddConfigEnv_ValidEntries)
 
     bool foundMyEnvVar = false;
     bool foundAnotherVar = false;
-    for (const auto &e : root[ralf::PROCESS][ralf::ENV])
-    {
+    for (const auto& e : root[ralf::PROCESS][ralf::ENV]) {
         if (e.asString() == "MY_ENV_VAR=my_value")
             foundMyEnvVar = true;
         if (e.asString() == "ANOTHER_VAR=another_value")
@@ -1665,10 +1646,11 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, AddConfigEnv_DuplicateKeysOverwrite)
 
     int matchCount = 0;
     bool foundNewValue = false;
-    for (const auto &e : root[ralf::PROCESS][ralf::ENV])
-    {
-        if (e.asString() == "DUPLICATE_VAR=new_value") foundNewValue = true;
-        if (e.asString().rfind("DUPLICATE_VAR=", 0) == 0) matchCount++;
+    for (const auto& e : root[ralf::PROCESS][ralf::ENV]) {
+        if (e.asString() == "DUPLICATE_VAR=new_value")
+            foundNewValue = true;
+        if (e.asString().rfind("DUPLICATE_VAR=", 0) == 0)
+            matchCount++;
     }
     EXPECT_TRUE(foundNewValue);
     EXPECT_EQ(matchCount, 1); // Ensures the old value was purged/overwritten, avoiding duplicate slots
@@ -1681,7 +1663,7 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, AddConfigEnv_NoEnvNode)
 {
     TEST_LOG("Testing addConfigEnvToOCIConfig when env config node is absent");
     Json::Value root;
-    Json::Value configNode;  // empty — no ENV_CONFIG_URN key
+    Json::Value configNode; // empty — no ENV_CONFIG_URN key
     EXPECT_FALSE(mAcc.addConfigEnvToOCIConfig(root, configNode));
 }
 
@@ -1695,7 +1677,7 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, AddConfigEnv_EnvNodeNotObject)
     TEST_LOG("Testing addConfigEnvToOCIConfig when env config node is not a JSON object");
     Json::Value root;
     Json::Value configNode;
-    configNode[ralf::ENV_CONFIG_URN] = "not-an-object";  // scalar, not an object
+    configNode[ralf::ENV_CONFIG_URN] = "not-an-object"; // scalar, not an object
 
     EXPECT_FALSE(mAcc.addConfigEnvToOCIConfig(root, configNode));
     EXPECT_TRUE(root[ralf::PROCESS][ralf::ENV].empty() || !root[ralf::PROCESS].isMember(ralf::ENV));
@@ -1718,7 +1700,7 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, AddMemoryConfig_ValidSystemMemory)
     EXPECT_TRUE(mAcc.addMemoryConfigToOCIConfig(root, configNode, ralf::PKG_TYPE_APPLICATION));
     uint64_t expected = 256ULL * 1024 * 1024;
     EXPECT_EQ(static_cast<Json::UInt64>(expected),
-              root[ralf::LINUX][ralf::RESOURCES][ralf::MEMORY][ralf::MEMORY_LIMIT].asUInt64());
+        root[ralf::LINUX][ralf::RESOURCES][ralf::MEMORY][ralf::MEMORY_LIMIT].asUInt64());
 }
 
 /* Test Case: AddMemoryConfig_InvalidValue
@@ -1733,8 +1715,7 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, AddMemoryConfig_InvalidValue)
     configNode[ralf::MEMORY_CONFIG_URN][ralf::SYSTEM_MEMORY] = "INVALID";
     EXPECT_FALSE(mAcc.addMemoryConfigToOCIConfig(root, configNode, ralf::PKG_TYPE_APPLICATION));
     bool found = false;
-    for (const auto &e : root[ralf::PROCESS][ralf::ENV])
-    {
+    for (const auto& e : root[ralf::PROCESS][ralf::ENV]) {
         if (e.asString() == std::string("CPU_MEMORY_LIMIT=") + ralf::DEFAULT_RAM_LIMIT)
             found = true;
     }
@@ -1752,8 +1733,7 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, AddMemoryConfig_NoMemoryNode)
     Json::Value configNode;
     EXPECT_FALSE(mAcc.addMemoryConfigToOCIConfig(root, configNode, ralf::PKG_TYPE_APPLICATION));
     bool found = false;
-    for (const auto &e : root[ralf::PROCESS][ralf::ENV])
-    {
+    for (const auto& e : root[ralf::PROCESS][ralf::ENV]) {
         if (e.asString().rfind("CPU_MEMORY_LIMIT=", 0) == 0)
             found = true;
     }
@@ -1776,8 +1756,7 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, AddStorageConfig_ValidMaxLocalStorage)
     EXPECT_TRUE(mAcc.addStorageConfigToOCIConfig(root, configNode));
     uint64_t expected = 100ULL * 1024 * 1024;
     bool found = false;
-    for (const auto &e : root[ralf::PROCESS][ralf::ENV])
-    {
+    for (const auto& e : root[ralf::PROCESS][ralf::ENV]) {
         if (e.asString() == "STORAGE_LIMIT=" + std::to_string(expected))
             found = true;
     }
@@ -1796,8 +1775,7 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, AddStorageConfig_InvalidValue)
     configNode[ralf::STORAGE_CONFIG_URN][ralf::MAX_LOCAL_STORAGE] = "BAD_VALUE";
     EXPECT_FALSE(mAcc.addStorageConfigToOCIConfig(root, configNode));
     bool found = false;
-    for (const auto &e : root[ralf::PROCESS][ralf::ENV])
-    {
+    for (const auto& e : root[ralf::PROCESS][ralf::ENV]) {
         if (e.asString() == std::string("STORAGE_LIMIT=") + ralf::DEFAULT_STORAGE_LIMIT)
             found = true;
     }
@@ -1815,8 +1793,7 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, AddStorageConfig_NoStorageNode)
     Json::Value configNode;
     EXPECT_FALSE(mAcc.addStorageConfigToOCIConfig(root, configNode));
     bool found = false;
-    for (const auto &e : root[ralf::PROCESS][ralf::ENV])
-    {
+    for (const auto& e : root[ralf::PROCESS][ralf::ENV]) {
         if (e.asString().rfind("STORAGE_LIMIT=", 0) == 0)
             found = true;
     }
@@ -1838,7 +1815,7 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, AddEntryPoint_StringValue)
     Json::Value pkgNode;
     pkgNode[ralf::ENTRY_POINT] = "/usr/bin/myapp";
     EXPECT_TRUE(mAcc.addEntryPointToOCIConfig(root, pkgNode));
-    const Json::Value &args = root[ralf::PROCESS][ralf::ARGS];
+    const Json::Value& args = root[ralf::PROCESS][ralf::ARGS];
     ASSERT_EQ(1u, args.size());
     EXPECT_EQ("/usr/bin/myapp", args[0].asString());
 }
@@ -1851,7 +1828,7 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, AddEntryPoint_Missing)
 {
     TEST_LOG("Testing addEntryPointToOCIConfig when entryPoint is absent");
     Json::Value root;
-    Json::Value pkgNode;  // no entryPoint
+    Json::Value pkgNode; // no entryPoint
     EXPECT_TRUE(mAcc.addEntryPointToOCIConfig(root, pkgNode));
 }
 
@@ -1867,9 +1844,9 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, AddLogNameToOCIConfig_PathFormattedCor
     TEST_LOG("Testing addLogNameToOCIConfig formats path correctly");
     Json::Value root;
     mAcc.addLogNameToOCIConfig(root, "/data/apps/myapp", "com.example.myapp");
-    const std::string &logPath =
-        root[ralf::RDKPLUGINS][ralf::LOGGING][ralf::LOG_DATA]
-            [ralf::LOG_FILE_OPTIONS][ralf::PATH].asString();
+    const std::string& logPath = root[ralf::RDKPLUGINS][ralf::LOGGING][ralf::LOG_DATA]
+                                     [ralf::LOG_FILE_OPTIONS][ralf::PATH]
+                                         .asString();
     EXPECT_EQ("/data/apps/myapp/com.example.myapp.log", logPath);
 }
 
@@ -1881,9 +1858,9 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, AddLogNameToOCIConfig_EmptyStoragePath
     TEST_LOG("Testing addLogNameToOCIConfig with empty storage path");
     Json::Value root;
     mAcc.addLogNameToOCIConfig(root, "", "myapp");
-    const std::string &logPath =
-        root[ralf::RDKPLUGINS][ralf::LOGGING][ralf::LOG_DATA]
-            [ralf::LOG_FILE_OPTIONS][ralf::PATH].asString();
+    const std::string& logPath = root[ralf::RDKPLUGINS][ralf::LOGGING][ralf::LOG_DATA]
+                                     [ralf::LOG_FILE_OPTIONS][ralf::PATH]
+                                         .asString();
     EXPECT_EQ("/myapp.log", logPath);
 }
 
@@ -1899,12 +1876,11 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, AddAppPackageVersion_ValidVersionAndNa
     TEST_LOG("Testing addAppPackageVersionToConfig with valid fields");
     Json::Value root;
     Json::Value manifest;
-    manifest[ralf::VERSION]      = "42";
+    manifest[ralf::VERSION] = "42";
     manifest[ralf::VERSION_NAME] = "1.0.0";
     EXPECT_TRUE(mAcc.addAppPackageVersionToConfig(root, manifest));
     bool found = false;
-    for (const auto &e : root[ralf::PROCESS][ralf::ENV])
-    {
+    for (const auto& e : root[ralf::PROCESS][ralf::ENV]) {
         if (e.asString() == "APP_PACKAGE_VERSION=1.0.0_42")
             found = true;
     }
@@ -1978,7 +1954,7 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, ApplyConfiguration_NoConfigurationNode
     TEST_LOG("Testing applyConfigurationToOCIConfig with no configuration node");
     Json::Value root;
     Json::Value manifest;
-    manifest[ralf::ENTRY_POINT]  = "/bin/app";
+    manifest[ralf::ENTRY_POINT] = "/bin/app";
     manifest[ralf::PACKAGE_TYPE] = ralf::PKG_TYPE_APPLICATION;
     EXPECT_TRUE(mAcc.applyConfigurationToOCIConfig(root, manifest));
 }
@@ -1992,16 +1968,16 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, ApplyConfiguration_WithFullApplication
     TEST_LOG("Testing applyConfigurationToOCIConfig with full application config");
     Json::Value root;
     Json::Value manifest;
-    manifest[ralf::ENTRY_POINT]  = "/bin/app";
+    manifest[ralf::ENTRY_POINT] = "/bin/app";
     manifest[ralf::PACKAGE_TYPE] = ralf::PKG_TYPE_APPLICATION;
-    manifest[ralf::VERSION]      = "10";
+    manifest[ralf::VERSION] = "10";
     manifest[ralf::VERSION_NAME] = "2.0.0";
-    manifest[ralf::CONFIGURATION][ralf::MEMORY_CONFIG_URN][ralf::SYSTEM_MEMORY]       = "128M";
-    manifest[ralf::CONFIGURATION][ralf::STORAGE_CONFIG_URN][ralf::MAX_LOCAL_STORAGE]  = "50M";
+    manifest[ralf::CONFIGURATION][ralf::MEMORY_CONFIG_URN][ralf::SYSTEM_MEMORY] = "128M";
+    manifest[ralf::CONFIGURATION][ralf::STORAGE_CONFIG_URN][ralf::MAX_LOCAL_STORAGE] = "50M";
     EXPECT_TRUE(mAcc.applyConfigurationToOCIConfig(root, manifest));
     uint64_t expectedMem = 128ULL * 1024 * 1024;
     EXPECT_EQ(static_cast<Json::UInt64>(expectedMem),
-              root[ralf::LINUX][ralf::RESOURCES][ralf::MEMORY][ralf::MEMORY_LIMIT].asUInt64());
+        root[ralf::LINUX][ralf::RESOURCES][ralf::MEMORY][ralf::MEMORY_LIMIT].asUInt64());
 }
 
 // ──────────────────────────────────────────────────────────
@@ -2010,16 +1986,16 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, ApplyConfiguration_WithFullApplication
 
 /* Helper: build a minimal ApplicationConfiguration for the tests below. */
 static WPEFramework::Plugin::ApplicationConfiguration makeAppConfig(
-    const std::string &appId = "com.example.app",
-    const std::string &instanceId = "inst001",
+    const std::string& appId = "com.example.app",
+    const std::string& instanceId = "inst001",
     uint32_t uid = 1000, uint32_t gid = 1001,
-    const std::string &wstSocket = "/tmp/wst-testapp")
+    const std::string& wstSocket = "/tmp/wst-testapp")
 {
     WPEFramework::Plugin::ApplicationConfiguration c;
-    c.mAppId              = appId;
-    c.mAppInstanceId      = instanceId;
-    c.mUserId             = uid;
-    c.mGroupId            = gid;
+    c.mAppId = appId;
+    c.mAppInstanceId = instanceId;
+    c.mUserId = uid;
+    c.mGroupId = gid;
     c.mWesterosSocketPath = wstSocket;
     c.mAppStorageInfo.path = "/data/apps/" + appId;
     return c;
@@ -2058,10 +2034,8 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, AddAppStorage_MountsHostPathToContaine
     mAcc.addAppStorageToOCIConfig(root, "/data/apps/com.example.app");
 
     bool found = false;
-    for (const auto &m : root[ralf::MOUNT])
-    {
-        if (m[ralf::SOURCE].asString() == "/data/apps/com.example.app" &&
-            m[ralf::DESTINATION].asString() == "/data")
+    for (const auto& m : root[ralf::MOUNT]) {
+        if (m[ralf::SOURCE].asString() == "/data/apps/com.example.app" && m[ralf::DESTINATION].asString() == "/data")
             found = true;
     }
     EXPECT_TRUE(found);
@@ -2078,8 +2052,7 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, AddAppStorage_SetsPersistStoragePathEn
     mAcc.addAppStorageToOCIConfig(root, "/data/apps/com.example.app");
 
     bool found = false;
-    for (const auto &e : root[ralf::PROCESS][ralf::ENV])
-    {
+    for (const auto& e : root[ralf::PROCESS][ralf::ENV]) {
         if (e.asString() == "PERSIST_STORAGE_PATH=/data")
             found = true;
     }
@@ -2096,14 +2069,12 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, AddAppStorage_EmptyPathStillReturnsTru
     EXPECT_TRUE(mAcc.addAppStorageToOCIConfig(root, ""));
 
     bool found = false;
-    for (const auto &e : root[ralf::PROCESS][ralf::ENV])
-    {
+    for (const auto& e : root[ralf::PROCESS][ralf::ENV]) {
         if (e.asString() == "PERSIST_STORAGE_PATH=/data")
             found = true;
     }
     EXPECT_TRUE(found);
 }
-
 
 /* Test Case: ApplyRuntimeAndAppConfig_GetGroupIdFails_UsesDefaultVideoGid
  * Verifies the first if-case failure in applyRuntimeAndAppConfigToOCIConfig:
@@ -2124,7 +2095,7 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, ApplyRuntimeAndAppConfig_GetGroupIdFai
     ON_CALL(mockWraps, getgrnam(_)).WillByDefault(Return(nullptr));
 
     auto config = makeAppConfig();
-    auto rc     = makeRtConfig();
+    auto rc = makeRtConfig();
     Json::Value root;
 
     // The function must return true even when getGroupId fails (first if-case is
@@ -2133,7 +2104,7 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, ApplyRuntimeAndAppConfig_GetGroupIdFai
 
     // When getGroupId fails, videoGid stays at its initialised default of 44.
     // Verify that 44 is the value appended to process.user.additionalGids.
-    const Json::Value &additionalGids = root[ralf::PROCESS][ralf::USER][ralf::ADDITIONAL_GIDS];
+    const Json::Value& additionalGids = root[ralf::PROCESS][ralf::USER][ralf::ADDITIONAL_GIDS];
     ASSERT_GE(additionalGids.size(), 1u);
     EXPECT_EQ(44u, additionalGids[0].asUInt());
 
