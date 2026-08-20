@@ -58,9 +58,9 @@ public:
     {
     }
 
-    void AddRef() const override
+    uint32_t AddRef() const override
     {
-        _refCount.fetch_add(1, std::memory_order_relaxed);
+        return _refCount.fetch_add(1, std::memory_order_relaxed) + 1;
     }
 
     uint32_t Release() const override
@@ -127,9 +127,9 @@ public:
     {
     }
 
-    void AddRef() const override
+    uint32_t AddRef() const override
     {
-        _refCount.fetch_add(1, std::memory_order_relaxed);
+        return _refCount.fetch_add(1, std::memory_order_relaxed) + 1;
     }
 
     uint32_t Release() const override
@@ -212,9 +212,9 @@ public:
     {
     }
 
-    void AddRef() const override
+    uint32_t AddRef() const override
     {
-        _refCount.fetch_add(1, std::memory_order_relaxed);
+        return _refCount.fetch_add(1, std::memory_order_relaxed) + 1;
     }
 
     uint32_t Release() const override
@@ -281,9 +281,9 @@ public:
     {
     }
 
-    void AddRef() const override
+    uint32_t AddRef() const override
     {
-        _refCount.fetch_add(1, std::memory_order_relaxed);
+        return _refCount.fetch_add(1, std::memory_order_relaxed) + 1;
     }
 
     uint32_t Release() const override
@@ -373,9 +373,9 @@ public:
     {
     }
 
-    void AddRef() const override
+    uint32_t AddRef() const override
     {
-        _refCount.fetch_add(1, std::memory_order_relaxed);
+        return _refCount.fetch_add(1, std::memory_order_relaxed) + 1;
     }
 
     uint32_t Release() const override
@@ -448,9 +448,9 @@ public:
     {
     }
 
-    void AddRef() const override
+    uint32_t AddRef() const override
     {
-        _refCount.fetch_add(1, std::memory_order_relaxed);
+        return _refCount.fetch_add(1, std::memory_order_relaxed) + 1;
     }
 
     uint32_t Release() const override
@@ -502,9 +502,9 @@ public:
     {
     }
 
-    void AddRef() const override
+    uint32_t AddRef() const override
     {
-        _refCount.fetch_add(1, std::memory_order_relaxed);
+        return _refCount.fetch_add(1, std::memory_order_relaxed) + 1;
     }
 
     uint32_t Release() const override
@@ -553,9 +553,9 @@ public:
     {
     }
 
-    void AddRef() const override
+    uint32_t AddRef() const override
     {
-        _refCount.fetch_add(1, std::memory_order_relaxed);
+        return _refCount.fetch_add(1, std::memory_order_relaxed) + 1;
     }
 
     uint32_t Release() const override
@@ -765,10 +765,10 @@ public:
     mutable std::atomic<uint32_t> releaseCalls { 0 };
     mutable std::atomic<uint32_t> instantiateCalls { 0 };
 
-    void AddRef() const override
+    uint32_t AddRef() const override
     {
         addRefCalls++;
-        _refCount.fetch_add(1, std::memory_order_relaxed);
+        return _refCount.fetch_add(1, std::memory_order_relaxed) + 1;
     }
 
     uint32_t Release() const override
