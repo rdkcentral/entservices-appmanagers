@@ -83,8 +83,10 @@ namespace ralf
         addFireboltEndPointToConfig(ociConfigRootNode, runtimeConfigObject.envVariables);
         // /rootdir is a 10MB tmpfs, so we need to ensure that the application has enough space for its working directory.
         addToEnvironment(ociConfigRootNode, "TEMP_STORAGE_PATH", "/rootdir");
-        //Log name update.
+        // Log name update.
         addLogNameToOCIConfig(ociConfigRootNode, config.mAppStorageInfo.path, config.mAppId);
+        // Addd Timezone info
+        addTimezoneInfo(ociConfigRootNode);
         // Finally save the modified OCI config to file
         return saveOCIConfigToFile(ociConfigRootNode, config.mUserId, config.mGroupId);
     }
@@ -140,7 +142,7 @@ namespace ralf
         addToEnvironment(ociConfigRootNode, "XDG_RUNTIME_DIR", "/tmp");
 
         // Need to mount bind  XDG_RUNTIME_DIR/WAYLAND_DISPLAY from host to container
-        addMountEntry(ociConfigRootNode, appConfig.mWesterosSocketPath, appConfig.mWesterosSocketPath);
+        addBindMountToOCIConfig(ociConfigRootNode, appConfig.mWesterosSocketPath, appConfig.mWesterosSocketPath);
 
         // Home by default will be set to PERSIST_STORAGE_PATH in the OCI config.
         std::string homePath = PERSIST_STORAGE_PATH; // Default HOME path
@@ -154,7 +156,7 @@ namespace ralf
         std::string rialtoSocketPath = "/tmp/rlto-" + appConfig.mAppInstanceId;
         addToEnvironment(ociConfigRootNode, "RIALTO_SOCKET_PATH", rialtoSocketPath);
         LOGDBG("Added RIALTO_SOCKET environment variable with value %s\n", rialtoSocketPath.c_str());
-        addMountEntry(ociConfigRootNode, rialtoSocketPath, rialtoSocketPath);
+        addBindMountToOCIConfig(ociConfigRootNode, rialtoSocketPath, rialtoSocketPath);
         LOGDBG("Mounted rialto socket path %s to container path %s\n", rialtoSocketPath.c_str(), rialtoSocketPath.c_str());
         return status;
     }
@@ -164,7 +166,7 @@ namespace ralf
         // We will mount application storage to /home/root/appstorage and
         // set PERSIST_STORAGE_PATH environment variable to it.
         std::string containerStoragePath = PERSIST_STORAGE_PATH;
-        addMountEntry(ociConfigRootNode, appStoragePath, containerStoragePath);
+        addBindMountToOCIConfig(ociConfigRootNode, appStoragePath, containerStoragePath);
         addToEnvironment(ociConfigRootNode, "PERSIST_STORAGE_PATH", containerStoragePath);
         LOGDBG("Added application storage mount from %s to %s and set PERSIST_STORAGE_PATH environment variable\n", appStoragePath.c_str(), containerStoragePath.c_str());
         status = true;
@@ -214,20 +216,7 @@ namespace ralf
 
         return true;
     }
-    void RalfOCIConfigGenerator::addMountEntry(Json::Value &ociConfigRootNode, const std::string &source, const std::string &destination)
-    {
-        Json::Value mountEntry;
-        mountEntry[SOURCE] = source;
-        mountEntry[DESTINATION] = destination;
-        mountEntry[TYPE] = "bind";
 
-        Json::Value mountOptions(Json::arrayValue);
-        mountOptions.append("rbind");
-        mountOptions.append("rw");
-        mountEntry[OPTIONS] = mountOptions;
-
-        ociConfigRootNode[MOUNT].append(mountEntry);
-    }
     bool RalfOCIConfigGenerator::saveOCIConfigToFile(const Json::Value &ociConfigRootNode, int uid, int gid)
     {
         bool status = false;
@@ -315,7 +304,7 @@ namespace ralf
                     {
                         std::string sourcePath = fileEntry[SOURCE].asString();
                         std::string destPath = fileEntry[DESTINATION].asString();
-                        addMountEntry(ociConfigRootNode, sourcePath, destPath);
+                        addBindMountToOCIConfig(ociConfigRootNode, sourcePath, destPath);
                         LOGDBG("Added graphics file mount from %s to %s\n", sourcePath.c_str(), destPath.c_str());
                     }
                     else
@@ -657,6 +646,39 @@ namespace ralf
             LOGWARN("Config env node found but contains no valid key/value entries\n");
         }
         return status;
+    }
+
+    void RalfOCIConfigGenerator::addTimezoneInfo(Json::Value &ociConfigRootNode)
+    {
+        /* As per HLA , three paths needs to be mounted.
+
+        /usr/share/zoneinfo	/usr/share/zoneinfo
+        /etc/localtime	/opt/persistent/localtime
+        /etc/timezone	/opt/persistent/timeZoneDST
+
+        First one will be always present. Second and third are optional. Mount only if they are present.
+        */
+        addBindMountToOCIConfig(ociConfigRootNode, RALF_ZONE_INFO_PATH, RALF_ZONE_INFO_PATH, true);
+
+        if (checkIfPathExists(RALF_HOST_LOCALTIME_PATH))
+        {
+            addBindMountToOCIConfig(ociConfigRootNode, RALF_HOST_LOCALTIME_PATH, RALF_LOCALTIME_PATH, true);
+            LOGDBG("Added localtime mount from %s to %s\n", RALF_HOST_LOCALTIME_PATH.c_str(), RALF_LOCALTIME_PATH.c_str());
+        }
+        else
+        {
+            LOGWARN("Localtime file %s does not exist. Skipping mount.\n", RALF_HOST_LOCALTIME_PATH.c_str());
+        }
+
+        if (checkIfPathExists(RALF_HOST_TIMEZONE_DST_PATH))
+        {
+            addBindMountToOCIConfig(ociConfigRootNode, RALF_HOST_TIMEZONE_DST_PATH, RALF_TIMEZONE_PATH, true);
+            LOGDBG("Added timezone DST mount from %s to %s\n", RALF_HOST_TIMEZONE_DST_PATH.c_str(), RALF_TIMEZONE_PATH.c_str());
+        }
+        else
+        {
+            LOGWARN("Timezone DST file %s does not exist. Skipping mount.\n", RALF_HOST_TIMEZONE_DST_PATH.c_str());
+        }
     }
 
     void RalfOCIConfigGenerator::addToEnvironment(Json::Value &ociConfigRootNode, const std::string &key, const std::string &value)
