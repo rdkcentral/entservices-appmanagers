@@ -91,8 +91,8 @@ namespace ralf
     }
     void RalfOCIConfigGenerator::addThunderAccessToPrivilegedApps(Json::Value &ociConfigRootNode)
     {
-        char* thunderaccess = getenv("THUNDER_ACCESS");
-        if (thunderaccess != nullptr)
+        const char* thunderaccess = getenv("THUNDER_ACCESS");
+        if (nullptr != thunderaccess)
         {
             //TODO  this should be checked against urn:rdk:permission:thunder capability before adding to environment
             addToEnvironment(ociConfigRootNode, "THUNDER_ACCESS", thunderaccess);
