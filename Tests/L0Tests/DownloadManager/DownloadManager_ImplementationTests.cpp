@@ -1521,8 +1521,10 @@ uint32_t Test_Impl_DeleteInProgressFileReturnsError()
     L0Test::FakeDownloadNotification notif;
     impl->Register(&notif);
 
+    // retries=1: the downloader only checks the cancel flag *after* its retry
+    // backoff sleep, so extra attempts make teardown slow and flaky here.
     WPEFramework::Exchange::IDownloadManager::Options opts{};
-    opts.priority = false; opts.retries = 2; opts.rateLimit = 1u;
+    opts.priority = false; opts.retries = 1; opts.rateLimit = 1u;
     std::string downloadId;
     impl->Download("file:///dev/zero", opts, downloadId);
 
@@ -1551,8 +1553,12 @@ uint32_t Test_Impl_DeleteInProgressFileReturnsError()
     L0Test::ExpectEqU32(tr, deleteResult, WPEFramework::Core::ERROR_GENERAL,
         "Delete() of in-progress file returns ERROR_GENERAL");
 
-    // Cancel and clean up
-    impl->Cancel(downloadId);
+    // Cancel and clean up. A cancel issued before curl_easy_perform starts is
+    // reset by downloadFile(), so re-issue until the completion notification lands.
+    for (int i = 0; i < 50 && notif.onAppDownloadStatusCount.load() == 0u; ++i) {
+        impl->Cancel(downloadId);
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
     WaitFor([&]{ return notif.onAppDownloadStatusCount.load() > 0u; }, 5000u);
 
     impl->Unregister(&notif);
@@ -1589,8 +1595,9 @@ uint32_t Test_Impl_DeleteDifferentFileWhileActiveDownload()
     impl->Register(&notif);
 
     // Start a slow active download to keep mCurrentDownload non-null.
+    // retries=1 keeps teardown deterministic (no retry backoff after cancel).
     WPEFramework::Exchange::IDownloadManager::Options opts{};
-    opts.priority = false; opts.retries = 2; opts.rateLimit = 1u;
+    opts.priority = false; opts.retries = 1; opts.rateLimit = 1u;
     std::string downloadId;
     impl->Download("file:///dev/zero", opts, downloadId);
 
@@ -1626,7 +1633,10 @@ uint32_t Test_Impl_DeleteDifferentFileWhileActiveDownload()
     L0Test::ExpectEqU32(tr, deleteResult, WPEFramework::Core::ERROR_NONE,
         "Delete() of a different file while active download returns ERROR_NONE");
 
-    impl->Cancel(downloadId);
+    for (int i = 0; i < 50 && notif.onAppDownloadStatusCount.load() == 0u; ++i) {
+        impl->Cancel(downloadId);
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
     WaitFor([&]{ return notif.onAppDownloadStatusCount.load() > 0u; }, 5000u);
 
     impl->Unregister(&notif);
