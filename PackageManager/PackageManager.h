@@ -26,6 +26,8 @@
 //#include <interfaces/json/JPackageHandler.h>
 #include <interfaces/json/JsonData_PackageDownloader.h>
 #include <interfaces/json/JsonData_PackageInstaller.h>
+#include <interfaces/json/JAppPackageManagerConfig.h>
+
 
 #include "UtilsLogging.h"
 
@@ -96,6 +98,7 @@ namespace Plugin {
             INTERFACE_AGGREGATE(Exchange::IPackageDownloader, mPackageDownloader)
             INTERFACE_AGGREGATE(Exchange::IPackageInstaller, mPackageInstaller)
             INTERFACE_AGGREGATE(Exchange::IPackageHandler, mPackageHandler)
+            INTERFACE_AGGREGATE(Exchange::IAppPackageManagerConfig, mpackageConfig)
             INTERFACE_AGGREGATE(Exchange::IPackageCacheInitializer, mPackageCacheInitializer)
         END_INTERFACE_MAP
 
@@ -117,6 +120,7 @@ namespace Plugin {
         Exchange::IPackageInstaller* mPackageInstaller;
         Exchange::IPackageHandler* mPackageHandler;
         Exchange::IPackageCacheInitializer* mPackageCacheInitializer;
+        Exchange::IAppPackageManagerConfig* mpackageConfig;
 
         Core::Sink<NotificationHandler> mNotificationSink;
 
