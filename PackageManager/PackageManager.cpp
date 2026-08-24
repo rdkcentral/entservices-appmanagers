@@ -49,7 +49,7 @@ namespace Plugin
         , mPackageInstaller(nullptr)
         , mPackageHandler(nullptr)
         , mPackageCacheInitializer(nullptr)
-        , mpackageConfig(nullptr)
+        , mPackageConfig(nullptr)
         , mNotificationSink(*this)
     {
     }
@@ -66,7 +66,7 @@ namespace Plugin
         ASSERT(mPackageInstaller == nullptr);
         ASSERT(mPackageHandler == nullptr);
         ASSERT(mPackageCacheInitializer == nullptr);
-        ASSERT(mpackageConfig == nullptr);
+        ASSERT(mPackageConfig == nullptr);
         mService = service;
         mService->AddRef();
 
@@ -101,13 +101,13 @@ namespace Plugin
             if (mPackageCacheInitializer == nullptr) {
                 LOGERR("Failed to get instance of IPackageCacheInitializer");
             }
-            mpackageConfig = mPackageDownloader->QueryInterface<Exchange::IAppPackageManagerConfig>();
-            if (mpackageConfig == nullptr) {
+            mPackageConfig = mPackageDownloader->QueryInterface<Exchange::IAppPackageManagerConfig>();
+            if (mPackageConfig == nullptr) {
                 LOGERR("Failed to get instance of IAppPackageManagerConfig");
             }
             else
             {
-                Exchange::JAppPackageManagerConfig::Register(*this, mpackageConfig);
+                Exchange::JAppPackageManagerConfig::Register(*this, mPackageConfig);
             }
         }
         else {
@@ -135,8 +135,9 @@ namespace Plugin
                 mPackageCacheInitializer = nullptr;
             }
 
-            if (mpackageConfig != nullptr) {
-                mpackageConfig = nullptr;
+            if (mPackageConfig != nullptr) {
+                Exchange::JAppPackageManagerConfig::Unregister(*this);
+                mPackageConfig = nullptr;
             }
 
             if (mPackageHandler != nullptr) {
