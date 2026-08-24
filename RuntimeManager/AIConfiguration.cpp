@@ -560,11 +560,9 @@ namespace Plugin
 
     void AIConfiguration::readFromConfigFile()
     {
-        LOGINFO("AIConfiguration reading from config file at %s", AICONFIGURATION_JSON_PATH);
         std::ifstream configFile(AICONFIGURATION_JSON_PATH);
         if (!configFile.is_open())
         {
-            LOGERR("Failed to open config file at %s", AICONFIGURATION_JSON_PATH);
             LOGINFO("Populating custom values for AIConfiguration from readFromCustomData()");
             readFromCustomData();
             return;
