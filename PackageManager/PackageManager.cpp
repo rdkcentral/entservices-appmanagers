@@ -135,8 +135,9 @@ namespace Plugin
                 mPackageCacheInitializer = nullptr;
             }
 
-            if (mPackageConfig != nullptr) {
+            if (nullptr != mPackageConfig) {
                 Exchange::JAppPackageManagerConfig::Unregister(*this);
+                mPackageConfig->Release();
                 mPackageConfig = nullptr;
             }
 
