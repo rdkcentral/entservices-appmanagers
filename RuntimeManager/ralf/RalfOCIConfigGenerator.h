@@ -215,6 +215,11 @@ namespace ralf
          */
         void addTimezoneInfo(Json::Value &ociConfigRootNode);
 
+         * Adds the THUNDER_ACCESS environment variable to the OCI config for privileged apps if it is set in the host environment.
+         * @param ociConfigRootNode The root node of the OCI config JSON.
+         */
+        void addThunderAccessToPrivilegedApps(Json::Value &ociConfigRootNode);
+
         /**
          * The vector of Ralf package details as pairs of mount point and metadata path.
          */
