@@ -159,6 +159,16 @@ namespace packagemanager
         
         virtual Result GetFileMetadata(const std::string &fileLocator, std::string &packageId, std::string &version, ConfigMetaData &configMetadata) { return SUCCESS; }
 
+        // Only the package seeded by Initialize() is considered installed.
+        virtual Result GetInstalledPackageMetadata(const std::string &packageId, const std::string &version, std::string &metadata) {
+            if (packageId == "YouTube" && version == "100.1.24") {
+                metadata = "{\"packageId\":\"" + packageId + "\",\"version\":\"" + version + "\"}";
+                return SUCCESS;
+            }
+            metadata.clear();
+            return FAILED;
+        }
+
         static std::shared_ptr<packagemanager::IPackageImplDummy> instance() {
                 return std::make_shared<packagemanager::IPackageImplDummy>();
         }
