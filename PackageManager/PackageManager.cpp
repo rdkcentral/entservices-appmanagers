@@ -102,7 +102,7 @@ namespace Plugin
                 LOGERR("Failed to get instance of IPackageCacheInitializer");
             }
             mPackageConfig = mPackageDownloader->QueryInterface<Exchange::IAppPackageManagerConfig>();
-            if (mPackageConfig == nullptr) {
+            if (nullptr == mPackageConfig) {
                 LOGERR("Failed to get instance of IAppPackageManagerConfig");
             }
             else
