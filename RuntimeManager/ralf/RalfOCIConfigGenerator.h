@@ -205,7 +205,7 @@ namespace ralf
         void addLogNameToOCIConfig(Json::Value &ociConfigRootNode, const std::string &appStoragePath, const std::string &appId);
 
         /**
-         * Adds timezone information to the OCI config JSON by mounting necessary paths and setting environment variables.
+         * Adds timezone information to the OCI config JSON by mounting the necessary paths.
          * As per HLA, three paths need to be mounted:
          * - /usr/share/zoneinfo to /usr/share/zoneinfo
          * - /opt/persistent/localtime to /etc/localtime  (if present)
