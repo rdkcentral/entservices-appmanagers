@@ -208,8 +208,8 @@ namespace ralf
          * Adds timezone information to the OCI config JSON by mounting necessary paths and setting environment variables.
          * As per HLA, three paths need to be mounted:
          * - /usr/share/zoneinfo to /usr/share/zoneinfo
-         * - /etc/localtime to /opt/persistent/localtime (optional)
-         * - /etc/timezone to /opt/persistent/timeZoneDST (optional)
+         * - /opt/persistent/localtime to /etc/localtime  (if present)
+         * - /opt/persistent/timeZoneDST to /etc/timezone (if present)
          * The first path is always present, while the second and third are optional and will only be mounted if they exist on the host.
          * @param ociConfigRootNode The root node of the OCI config JSON to which timezone information is added.
          */

@@ -2034,7 +2034,7 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, AddAppStorage_MountsHostPathToContaine
     mAcc.addAppStorageToOCIConfig(root, "/data/apps/com.example.app");
 
     bool found = false;
-    for (const auto& m : root[ralf::MOUNT]) {
+    for (const auto& m : root[ralf::MOUNTS]) {
         if (m[ralf::SOURCE].asString() == "/data/apps/com.example.app" && m[ralf::DESTINATION].asString() == "/data")
             found = true;
     }

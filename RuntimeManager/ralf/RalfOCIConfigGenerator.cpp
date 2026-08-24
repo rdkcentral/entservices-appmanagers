@@ -85,7 +85,7 @@ namespace ralf
         addToEnvironment(ociConfigRootNode, "TEMP_STORAGE_PATH", "/rootdir");
         // Log name update.
         addLogNameToOCIConfig(ociConfigRootNode, config.mAppStorageInfo.path, config.mAppId);
-        // Addd Timezone info
+        // Add Timezone info
         addTimezoneInfo(ociConfigRootNode);
         // Finally save the modified OCI config to file
         return saveOCIConfigToFile(ociConfigRootNode, config.mUserId, config.mGroupId);
@@ -652,9 +652,9 @@ namespace ralf
     {
         /* As per HLA , three paths needs to be mounted.
 
-        /usr/share/zoneinfo	/usr/share/zoneinfo
-        /etc/localtime	/opt/persistent/localtime
-        /etc/timezone	/opt/persistent/timeZoneDST
+        /usr/share/zoneinfo /usr/share/zoneinfo
+        /opt/persistent/localtime /etc/localtime
+        /opt/persistent/timeZoneDST /etc/timezone
 
         First one will be always present. Second and third are optional. Mount only if they are present.
         */
