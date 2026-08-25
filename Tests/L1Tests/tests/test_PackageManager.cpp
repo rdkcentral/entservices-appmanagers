@@ -1982,7 +1982,7 @@ TEST_F(PackageManagerTest, configAndPackageStateNegativeBranchesusingComRpc) {
 /* Test Case for uninstall unknown package branch using ComRpc
  *
  * Set up and initialize COM-RPC resources
- * Call Uninstall() for a package that does not exist and verify ERROR_BAD_REQUEST
+ * Call Uninstall() for a package that does not exist and verify ERROR_GENERAL
  * Deinitialize COM-RPC resources
  */
 
@@ -1993,7 +1993,7 @@ TEST_F(PackageManagerTest, uninstallUnknownPackageusingComRpcFailure) {
     waitforSignal(TIMEOUT_FOR_INIT);
 
     string errorReason;
-    EXPECT_EQ(Core::ERROR_BAD_REQUEST, pkginstallerInterface->Uninstall("UnknownApp", errorReason));
+    EXPECT_EQ(Core::ERROR_GENERAL, pkginstallerInterface->Uninstall("UnknownApp", errorReason));
 
     deinitforComRpc();
 }

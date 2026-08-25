@@ -516,8 +516,8 @@ uint32_t Test_PM_Impl_InstallInputValidationAndUnknownPaths()
     std::string reason;
     L0Test::ExpectEqU32(tr,
                         fx.impl->Uninstall("NoSuchApp", reason),
-                        ERROR_BAD_REQUEST,
-                        "Uninstall() for unknown app returns ERROR_BAD_REQUEST");
+                        ERROR_GENERAL,
+                        "Uninstall() for unknown app returns ERROR_GENERAL");
 
     WPEFramework::Exchange::RuntimeConfig cfg {};
     L0Test::ExpectEqU32(tr,
