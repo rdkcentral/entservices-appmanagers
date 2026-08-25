@@ -96,7 +96,20 @@ namespace WPEFramework
             mLifecycleQueueCV.notify_all();
             if (mLifecycleWorkerThread.joinable())
             {
-                mLifecycleWorkerThread.join();
+                // A queued lifecycle callback can end up releasing the last reference to
+                // AppManagerImplementation (and thus this connector) while running ON the
+                // lifecycleWorker thread itself. Joining that thread from within itself is
+                // a self-join, which throws std::system_error (EDEADLK) and aborts the
+                // process. Detach in that case; the thread still exits on its own once this
+                // call returns and mStopLifecycleThread is observed.
+                if (std::this_thread::get_id() == mLifecycleWorkerThread.get_id())
+                {
+                    mLifecycleWorkerThread.detach();
+                }
+                else
+                {
+                    mLifecycleWorkerThread.join();
+                }
             }
 
             if (nullptr != mCurrentservice)
