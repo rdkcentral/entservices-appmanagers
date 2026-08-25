@@ -169,15 +169,9 @@ namespace packagemanager
             return FAILED;
         }
 
-        virtual Result GetInstalledPackageMetadata(const std::string &packageId, const std::string &version, std::string &config) { 
-            if (packageId == "YouTube" && version == "100.1.24") {
-                config = "{\"packageId\":\"" + packageId + "\",\"version\":\"" + version + "\"}";
-                return SUCCESS;
-            }
-            return FAILED; }
         virtual Result GetConfigListForInstalledPackages(const std::string &filter, std::string &config ) { 
             if (filter == "dial"  ) {
-                config = "{\"packageId\":\"" + "YouTube" + "\",\"version\":\"" + "100.1.24" + "\"}";
+                config = "{\"packageId\":\"YouTube\",\"version\":\"100.1.24\"}";
                 return SUCCESS;
             }
             return FAILED; 
