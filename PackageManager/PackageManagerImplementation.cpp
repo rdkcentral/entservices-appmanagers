@@ -1417,9 +1417,19 @@ namespace Plugin {
 Core::hresult PackageManagerImplementation::GetConfigListForInstalledPackages(const string &filter, string &config /* @out @opaque */)
 {
     CHECK_CACHE()
-    (void)filter;
-    config.clear();
-    return Core::ERROR_NOT_SUPPORTED;
+    Core::hresult result = Core::ERROR_GENERAL;
+
+    packagemanager::Result pmResult = packageImpl->GetConfigListForInstalledPackages(filter, config);
+    if (pmResult == packagemanager::SUCCESS)
+    {
+        result = Core::ERROR_NONE;
+    }
+    else
+    {
+        LOGWARN("GetConfigListForInstalledPackages failed for filter '%s'", filter.c_str());
+    }
+
+    return result; 
 }
 } // namespace Plugin
 } // namespace WPEFramework
