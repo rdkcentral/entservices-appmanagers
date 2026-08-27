@@ -1123,6 +1123,7 @@ namespace Plugin {
         packagemanager::ConfigMetadataArray aConfigMetadata;
         packagemanager::Result pmResult = packageImpl->Initialize(configStr, aConfigMetadata);
         LOGDBG("aConfigMetadata.count:%zu pmResult=%d", aConfigMetadata.size(), pmResult);
+        {
         std::lock_guard<std::recursive_mutex> lock(mtxState);
         populateRuntime(aConfigMetadata);
         for (auto it = aConfigMetadata.begin(); it != aConfigMetadata.end(); ++it ) {
@@ -1146,12 +1147,7 @@ namespace Plugin {
             }
             mState.insert( { key, state } );
         }
-
-        #if !defined(UNIT_TEST) && !defined(ENABLE_NATIVEBUILD)
-        if (subSystem != nullptr) {
-            subSystem->Set(PluginHost::ISubSystem::INSTALLATION, nullptr);
         }
-	    #endif
 
         cacheInitialized = true;
          const std::string markerFile = PACKAGE_MANAGER_MARKER_FILE;
@@ -1163,6 +1159,13 @@ namespace Plugin {
             } else {
                LOGERR("Failed to create marker file: %s", markerFile.c_str());
             }
+
+
+        #if !defined(UNIT_TEST) && !defined(ENABLE_NATIVEBUILD)
+            if (subSystem != nullptr) {
+                subSystem->Set(PluginHost::ISubSystem::INSTALLATION, nullptr);
+            }
+	    #endif
 
           const int packageCount = static_cast<int>(mState.size());
           recordAndPublishTelemetryData(TELEMETRY_MARKER_PACKAGE_CACHE_INIT_TIME,
