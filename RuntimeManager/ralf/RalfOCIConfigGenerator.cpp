@@ -86,7 +86,18 @@ namespace ralf
         //Log name update.
         addLogNameToOCIConfig(ociConfigRootNode, config.mAppStorageInfo.path, config.mAppId);
         // Finally save the modified OCI config to file
+        addThunderAccessToPrivilegedApps(ociConfigRootNode);
         return saveOCIConfigToFile(ociConfigRootNode, config.mUserId, config.mGroupId);
+    }
+    void RalfOCIConfigGenerator::addThunderAccessToPrivilegedApps(Json::Value &ociConfigRootNode)
+    {
+        const char* thunderaccess = getenv("THUNDER_ACCESS");
+        if (nullptr != thunderaccess)
+        {
+            //TODO  this should be checked against urn:rdk:permission:thunder capability before adding to environment
+            addToEnvironment(ociConfigRootNode, "THUNDER_ACCESS", thunderaccess);
+            LOGINFO("THUNDER_ACCESS environment variable is set to: %s", thunderaccess);
+        }
     }
 
     void RalfOCIConfigGenerator::addLogNameToOCIConfig(Json::Value &ociConfigRootNode, const std::string &appStoragePath, const std::string &appId)

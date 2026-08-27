@@ -87,6 +87,12 @@ struct AppManagerTestFixture {
             impl->Release();
         }
 
+        const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
+        while (WPEFramework::Plugin::AppManagerImplementation::getInstance() != nullptr &&
+               std::chrono::steady_clock::now() < deadline) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+        }
+
         if (ownsService) {
             delete service;
         }
