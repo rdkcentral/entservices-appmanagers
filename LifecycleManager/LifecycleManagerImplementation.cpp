@@ -444,7 +444,7 @@ namespace WPEFramework
         
         Core::hresult LifecycleManagerImplementation::SendIntentToActiveApp(const string& appInstanceId, const string& intent, string& errorReason, bool& success)
         {
-            // Sends arguments to a launched app.  This API is used for sending deeplinks to an application.  This can only be sent to an active app.  This method does nothing if the app is not active, and an errorReason is returned.
+            // Sends arguments to a launched app.  This API is used for sending deeplinks to an application.  This can be sent to apps in any lifecycle state (ACTIVE or non-ACTIVE).
             Core::hresult status = Core::ERROR_NONE;
             auto context = getContext(appInstanceId, "");
             if (nullptr == context)
@@ -454,24 +454,18 @@ namespace WPEFramework
                 return status;
 	    }
 
-            // sending intent is not valid for non-active application
-            if (Exchange::ILifecycleManager::LifecycleState::ACTIVE != context->getCurrentLifecycleState())
-            {
-                LOGWARN("Failed to send intent to non-active app [%s]", appInstanceId.c_str());
-                status = Core::ERROR_GENERAL;
-                success = false;
-                errorReason = "application is not active";
-                return status;
-            }
+            // Get the current lifecycle state for event reporting
+            Exchange::ILifecycleManager::LifecycleState currentState = context->getCurrentLifecycleState();
 
             JsonObject eventData;
             eventData["appId"] = context->getAppId();
             eventData["appInstanceId"] = context->getAppInstanceId();
-            eventData["oldLifecycleState"] = (uint32_t)Exchange::ILifecycleManager::LifecycleState::ACTIVE;
-            eventData["newLifecycleState"] = (uint32_t)Exchange::ILifecycleManager::LifecycleState::ACTIVE;
+            eventData["oldLifecycleState"] = (uint32_t)currentState;
+            eventData["newLifecycleState"] = (uint32_t)currentState;
             eventData["navigationIntent"] = intent;
             eventData["errorReason"] = "";
             dispatchEvent(LifecycleManagerImplementation::EventNames::LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED, eventData);
+            success = true;
             status = Core::ERROR_NONE;
             return status;
         }
@@ -879,4 +873,5 @@ namespace WPEFramework
 
     } /* namespace Plugin */
 } /* namespace WPEFramework */
+
 
