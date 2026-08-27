@@ -455,14 +455,14 @@ namespace WPEFramework
 	    }
 
             // sending intent is not valid for non-active application
-            if (Exchange::ILifecycleManager::LifecycleState::ACTIVE != context->getCurrentLifecycleState())
-            {
-                LOGWARN("Failed to send intent to non-active app [%s]", appInstanceId.c_str());
-                status = Core::ERROR_GENERAL;
-                success = false;
-                errorReason = "application is not active";
-                return status;
-            }
+            // if (Exchange::ILifecycleManager::LifecycleState::ACTIVE != context->getCurrentLifecycleState())
+            // {
+            //     LOGWARN("Failed to send intent to non-active app [%s]", appInstanceId.c_str());
+            //     status = Core::ERROR_GENERAL;
+            //     success = false;
+            //     errorReason = "application is not active";
+            //     return status;
+            // }
 
             JsonObject eventData;
             eventData["appId"] = context->getAppId();
