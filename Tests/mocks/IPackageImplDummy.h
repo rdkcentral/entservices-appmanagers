@@ -169,6 +169,14 @@ namespace packagemanager
             return FAILED;
         }
 
+        virtual Result GetConfigListForInstalledPackages(const std::string &filter, std::string &config ) { 
+            if (filter == "dial"  ) {
+                config = "{\"packageId\":\"YouTube\",\"version\":\"100.1.24\"}";
+                return SUCCESS;
+            }
+            return FAILED; 
+        }        
+
         static std::shared_ptr<packagemanager::IPackageImplDummy> instance() {
                 return std::make_shared<packagemanager::IPackageImplDummy>();
         }
