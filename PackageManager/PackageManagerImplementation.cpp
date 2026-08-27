@@ -629,6 +629,39 @@ namespace Plugin {
 
     Core::hresult PackageManagerImplementation::ListPackages(Exchange::IPackageInstaller::IPackageIterator*& packages)
     {
+        LOGINFO("ListPackages: ENTER");
+        CHECK_CACHE()
+        LOGTRACE("entry");
+        Core::hresult result = Core::ERROR_NONE;
+        std::list<Exchange::IPackageInstaller::Package> packageList;
+        LOGINFO("ListPackages: Before lock");
+        std::lock_guard<std::recursive_mutex> lock(mtxState);
+        LOGINFO("ListPackages: After lock, mState size=%zu",mState.size());
+
+
+        for (auto const& [key, state] : mState) {
+            Exchange::IPackageInstaller::Package package;
+            package.packageId = key.first.c_str();
+            package.version = key.second.c_str();
+            LOGINFO("ListPackages: version copied");
+            package.digest = state.digest.c_str();
+            package.state = state.installState;
+            package.sizeKb = state.runtimeConfig.dataImageSize;
+            package.packageType = state.packageType.c_str();
+            packageList.emplace_back(package);
+        }
+
+        packages = (Core::Service<RPC::IteratorType<Exchange::IPackageInstaller::IPackageIterator>>::Create<Exchange::IPackageInstaller::IPackageIterator>(packageList));
+
+        LOGTRACE("exit");
+
+        LOGINFO("ListPackages: EXIT result=%d",static_cast<int>(result));
+        return result;
+    }
+
+
+/*    Core::hresult PackageManagerImplementation::ListPackages(Exchange::IPackageInstaller::IPackageIterator*& packages)
+    {
         CHECK_CACHE()
         LOGTRACE("entry");
         Core::hresult result = Core::ERROR_NONE;
@@ -646,14 +679,67 @@ namespace Plugin {
             packageList.emplace_back(package);
         }
 
-        packages = (Core::Service<RPC::IteratorType<Exchange::IPackageInstaller::IPackageIterator>>::Create<Exchange::IPackageInstaller::IPackageIterator>(packageList));
+       / packages = (Core::Service<RPC::IteratorType<Exchange::IPackageInstaller::IPackageIterator>>::Create<Exchange::IPackageInstaller::IPackageIterator>(packageList));
 
         LOGTRACE("exit");
 
         return result;
-    }
+    }*/
 
     Core::hresult PackageManagerImplementation::Config(const string &packageId, const string &version, Exchange::RuntimeConfig& runtimeConfig)
+    {
+        CHECK_CACHE()
+        LOGDBG("id: '%s' ver: '%s'", packageId.c_str(), version.c_str());
+        Core::hresult result = Core::ERROR_GENERAL;
+        LOGINFO("Config: Before mtxState lock");
+        std::lock_guard<std::recursive_mutex> lock(mtxState);
+        LOGINFO("Config: After mtxState lock");
+
+        StateMap::iterator it = mState.end();
+        LOGINFO("Config: mState size=%zu", mState.size());
+        if (!version.empty()) {
+            LOGINFO("Config: Before find()");
+            it = mState.find( { packageId, version } );
+            LOGINFO("Config: After find(), found=%d",(it != mState.end()));
+        } else {
+            // No version supplied — find the first INSTALLED entry for this packageId.
+            // StateMap is sorted by {packageId, version}, so all entries for a given
+            // packageId are contiguous; lower_bound gives the first one efficiently.
+            LOGINFO("Config: Searching installed package");
+            for (auto candidate = mState.lower_bound({packageId, ""});
+                 candidate != mState.end() && candidate->first.first == packageId;
+                 ++candidate) {
+                LOGINFO("Config: candidate id='%s' version='%s'",candidate->first.first.c_str(),
+candidate->first.second.c_str());
+                if (candidate->second.installState == InstallState::INSTALLED) {
+                    LOGINFO("Config: INSTALLED candidate found");
+                    it = candidate;
+                    break;
+                }
+            }
+        }
+        LOGINFO("Config: Lookup completed");
+
+        if (it != mState.end()) {
+            auto &state = it->second;
+            LOGINFO("Config: installState=%d",static_cast<int>(state.installState));
+            if (state.installState == InstallState::INSTALLED) {
+                LOGINFO("Config: Before getRuntimeConfig()");
+                getRuntimeConfig(state.runtimeConfig, runtimeConfig);
+                LOGINFO("Config: After getRuntimeConfig()");
+                result = Core::ERROR_NONE;
+            }
+        } else {
+            LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
+            result = Core::ERROR_BAD_REQUEST;
+        }
+
+        LOGINFO("Config: EXIT result=%d",static_cast<int>(result));
+        return result;
+    }
+
+
+   /* Core::hresult PackageManagerImplementation::Config(const string &packageId, const string &version, Exchange::RuntimeConfig& runtimeConfig)
     {
         CHECK_CACHE()
         LOGDBG("id: '%s' ver: '%s'", packageId.c_str(), version.c_str());
@@ -689,7 +775,7 @@ namespace Plugin {
         }
 
         return result;
-    }
+    }*/
 
     Core::hresult PackageManagerImplementation::PackageState(const string &packageId, const string &version,
         Exchange::IPackageInstaller::InstallState &installState)
@@ -883,7 +969,23 @@ namespace Plugin {
 
         runtimeConfig.fkpsFiles = config.fkpsFiles;
         runtimeConfig.capabilities = config.capabilities;
+	LOGINFO("getRuntimeConfig: capabilities='%s'",config.capabilities.c_str());
         runtimeConfig.appType = config.appType;
+        LOGINFO("appType='%s'", config.appType.c_str());
+        runtimeConfig.appPath = config.appPath;
+        runtimeConfig.command = config.command;
+        LOGINFO("runtimePath='%s'",config.runtimePath.c_str());
+        runtimeConfig.runtimePath = config.runtimePath;
+        runtimeConfig.enableDebugger = config.enableDebugger;
+        runtimeConfig.logFileMaxSize = config.logFileMaxSize;
+        runtimeConfig.mapi = config.mapi;
+        runtimeConfig.resourceManagerClientEnabled = config.resourceManagerClientEnabled;
+        runtimeConfig.ralfPkgPath = config.ralfPkgPath;
+        LOGINFO("logFilePath='%s'",config.logFilePath.c_str());
+        runtimeConfig.logFilePath = config.logFilePath;
+        LOGINFO("getRuntimeConfig: EXIT");
+
+      /*  runtimeConfig.appType = config.appType;
         runtimeConfig.appPath = config.appPath;
         runtimeConfig.command = config.command;
         runtimeConfig.runtimePath = config.runtimePath;
@@ -892,7 +994,7 @@ namespace Plugin {
         runtimeConfig.mapi = config.mapi;
         runtimeConfig.resourceManagerClientEnabled = config.resourceManagerClientEnabled;
         runtimeConfig.ralfPkgPath = config.ralfPkgPath;
-        runtimeConfig.logFilePath = config.logFilePath;
+        runtimeConfig.logFilePath = config.logFilePath;*/
     }
 
     // copy values from libpackage
