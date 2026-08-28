@@ -96,7 +96,7 @@ namespace WPEFramework
             mLifecycleQueueCV.notify_all();
             if (mLifecycleWorkerThread.joinable())
             {
-                mLifecycleWorkerThread.join();
+               mLifecycleWorkerThread.join();
             }
 
             if (nullptr != mCurrentservice)
