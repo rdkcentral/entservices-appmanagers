@@ -165,22 +165,28 @@
             ]
         },
         {
-            "source": "/etc/ssl/certs/",
             "destination": "/etc/ssl/certs/",
+            "type": "bind",
+            "source": "/etc/ssl/certs/",
             "options": [
                 "rbind",
+                "nodev",
+                "noexec",
+                "nosuid",
                 "ro"
-            ],
-            "type": "bind"
+            ]
         },
         {
-            "source": "/usr/share/ca-certificates/",
             "destination": "/usr/share/ca-certificates/",
+            "type": "bind",
+            "source": "/usr/share/ca-certificates/",
             "options": [
                 "rbind",
+                "nodev",
+                "noexec",
+                "nosuid",
                 "ro"
-            ],
-            "type": "bind"
+            ]
         }
     ],
     "linux": {
