@@ -616,7 +616,7 @@ namespace Plugin {
         } else {
             LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
 
-            result = Core::ERROR_GENERAL;
+            result = Core::ERROR_INVALID_PARAMETER;
 
             packageFailureErrorCode =
                 PackageManagerImplementation::PackageFailureErrorCode::ERROR_VERSION_NOT_FOUND;
@@ -687,7 +687,7 @@ namespace Plugin {
             }
         } else {
             LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
-            result = Core::ERROR_BAD_REQUEST;
+            result = Core::ERROR_INVALID_PARAMETER;
         }
 
         return result;
@@ -708,7 +708,7 @@ namespace Plugin {
             LOGDBG("id: '%s' ver: '%s' state: %s", packageId.c_str(), version.c_str(), getInstallState(installState).c_str());
         } else {
             LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
-            result = Core::ERROR_BAD_REQUEST;
+            result = Core::ERROR_INVALID_PARAMETER;
         }
 
         return result;
