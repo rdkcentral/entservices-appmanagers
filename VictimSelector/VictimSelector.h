@@ -2,6 +2,7 @@
 
 #include "Module.h"
 #include <interfaces/IVictimSelector.h>
+#include <interfaces/IConfiguration.h>
 #include <interfaces/json/JVictimSelector.h>
 
 namespace WPEFramework {
@@ -31,6 +32,8 @@ public:
 private:
     PluginHost::IShell* mService;
     Exchange::IVictimSelector* mImplementation;
+    Exchange::IConfiguration* mConfigure;
+    uint32_t mConnectionId;
 };
 
 } // namespace Plugin

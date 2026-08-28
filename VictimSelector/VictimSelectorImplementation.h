@@ -49,7 +49,7 @@ public:
     Core::hresult Register(Exchange::IVictimSelector::INotification* notification) override;
     Core::hresult Unregister(Exchange::IVictimSelector::INotification* notification) override;
     Core::hresult Evict(const EvictionReason reason, const EvictionType type) override;
-    uint32_t Configure(PluginHost::IShell* service) override;
+    Core::hresult Configure(PluginHost::IShell* service) override;
 
 private:
     Core::hresult selectVictim(std::string& appId, bool& isHibernated);

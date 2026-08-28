@@ -8,6 +8,8 @@
 namespace WPEFramework {
 namespace Plugin {
 
+SERVICE_REGISTRATION(VictimSelectorImplementation, 1, 0);
+
 void VictimSelectorImplementation::AppManagerNotification::OnAppLifecycleStateChanged(
     const string& appId, const string& appInstanceId,
     const Exchange::IAppManager::AppLifecycleState newState,
@@ -57,7 +59,7 @@ Core::hresult VictimSelectorImplementation::Unregister(Exchange::IVictimSelector
     return Core::ERROR_NONE;
 }
 
-uint32_t VictimSelectorImplementation::Configure(PluginHost::IShell* service) {
+Core::hresult VictimSelectorImplementation::Configure(PluginHost::IShell* service) {
     if (service == nullptr) {
         return Core::ERROR_BAD_REQUEST;
     }
