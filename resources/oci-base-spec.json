@@ -163,6 +163,24 @@
                 "nodev",
                 "size=10240k"
             ]
+        },
+        {
+            "source": "/etc/ssl/certs/",
+            "destination": "/etc/ssl/certs/",
+            "options": [
+                "rbind",
+                "ro"
+            ],
+            "type": "bind"
+        },
+        {
+            "source": "/usr/share/ca-certificates/",
+            "destination": "/usr/share/ca-certificates/",
+            "options": [
+                "rbind",
+                "ro"
+            ],
+            "type": "bind"
         }
     ],
     "linux": {
