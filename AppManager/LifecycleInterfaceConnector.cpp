@@ -715,6 +715,10 @@ namespace WPEFramework
 		    loadedAppInfo.appId            = appId;
                     loadedAppInfo.type             = appManagerImplInstance->getInstallAppType(
                         AppInfoManager::getInstance().getPackageInfoType(appId));
+            const auto appType = AppInfoManager::getInstance().getPackageInfoType(appId);
+            loadedAppInfo.priority = (appType == AppManagerTypes::APPLICATION_TYPE_SYSTEM) ? 0 :
+                ((appId == "Netflix" || appId == "YouTube") ? 1 : 2);
+            loadedAppInfo.lastActiveIndex = AppInfoManager::getInstance().getLastActiveIndex(appId);
 		    loadedAppInfo.appInstanceId    = loadedInstanceId;
 		    loadedAppInfo.activeSessionId  = loadedActiveSessionId;
                     loadedAppInfo.targetLifecycleState = targetState;
