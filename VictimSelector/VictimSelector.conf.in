@@ -1,0 +1,11 @@
+precondition = ["Platform"]
+callsign = "org.rdk.VictimSelector"
+autostart = "@PLUGIN_VICTIM_SELECTOR_AUTOSTART@"
+startuporder = "@PLUGIN_VICTIM_SELECTOR_STARTUPORDER@"
+
+configuration = JSON()
+
+rootobject = JSON()
+rootobject.add("mode", "@PLUGIN_VICTIM_SELECTOR_MODE@")
+rootobject.add("locator", "lib@PLUGIN_IMPLEMENTATION@.so")
+configuration.add("root", rootobject)
