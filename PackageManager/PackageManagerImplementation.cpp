@@ -695,7 +695,7 @@ namespace Plugin {
         std::lock_guard<std::recursive_mutex> lock(mtxState);
         LOGINFO("Config: After mtxState lock");
 
-        StateMap::iterator it = mState.end();
+    /*    StateMap::iterator it = mState.end();
         LOGINFO("Config: mState size=%zu", mState.size());
         if (!version.empty()) {
             LOGINFO("Config: Before find()");
@@ -732,7 +732,7 @@ candidate->first.second.c_str());
         } else {
             LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
             result = Core::ERROR_BAD_REQUEST;
-        }
+        }*/
 
         LOGINFO("Config: EXIT result=%d",static_cast<int>(result));
         return result;
