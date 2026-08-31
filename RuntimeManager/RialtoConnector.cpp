@@ -28,12 +28,9 @@ namespace WPEFramework
     {
      if (!mInitialized)
      {
-        WPEFramework::Plugin::AIConfiguration* mAIConfiguration;
         LOGWARN("Initializing rialto connector.... Rialto Bridge version 1.1");
         firebolt::rialto::common::ServerManagerConfig config;
-        mAIConfiguration = new WPEFramework::Plugin::AIConfiguration();
-        mAIConfiguration->initialize();
-        config.sessionServerEnvVars = mAIConfiguration->getEnvs();
+        config.sessionServerEnvVars = readGlobalEnv();
         mServerManagerService  = create(shared_from_this(), config);
 	if (!mServerManagerService)
         {
@@ -171,5 +168,16 @@ namespace WPEFramework
         }
 
         return status;
+    }
+    std::list<std::string> RialtoConnector::readGlobalEnv() const
+    {
+       std::list<std::string> environmentVariables;
+       char **envList = environ;
+
+       for (;*envList;envList++)
+       {
+           environmentVariables.emplace_back(*envList);
+       }
+       return environmentVariables;
     }
 } // namespace WPEFramework

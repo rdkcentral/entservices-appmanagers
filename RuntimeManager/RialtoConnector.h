@@ -27,7 +27,6 @@
 #include <condition_variable>
 #include "rialto/ServerManagerServiceFactory.h"
 
-#include "AIConfiguration.h"
 namespace WPEFramework
 {
     using namespace rialto::servermanager::service;
@@ -86,6 +85,6 @@ namespace WPEFramework
         std::shared_ptr<rialto::servermanager::service::ILogHandler> mLogHandler;
         std::map<std::string, RialtoServerStates> appStateMap;
         const RialtoServerStates getCurrentAppState(const std::string &callsign);
-      
+        std::list<std::string> readGlobalEnv() const;
     };
 } // namespace WPEFramework

@@ -170,17 +170,6 @@ namespace Plugin
     {
         return mDefaultAllowedLogLevels;
     }
-    std::list<std::string> AIConfiguration::readGlobalEnv() const
-    {
-       std::list<std::string> environmentVariables;
-       char **envList = environ;
-
-       for (;*envList;envList++)
-       {
-           environmentVariables.emplace_back(*envList);
-       }
-       return environmentVariables;
-    }
 
     std::list<std::string> AIConfiguration::getEnvs() const
     {

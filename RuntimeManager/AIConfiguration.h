@@ -67,7 +67,6 @@ namespace Plugin
             void readFromCustomData();
             void readFromConfigFile();
             void readFromYamlConfigFile(const std::string& runtimeConfigFile);
-            std::list<std::string> readGlobalEnv() const;
             std::bitset<32> parseCpuSetBitset(const std::string& bits, const std::bitset<32>& defaultValue);
 
 
