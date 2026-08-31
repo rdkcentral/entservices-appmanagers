@@ -92,13 +92,40 @@ namespace WPEFramework
             }
 	    else if (Exchange::ILifecycleManager::LifecycleState::ACTIVE == context->getCurrentLifecycleState())
 	    {
-                ret = true;		    
+                RuntimeManagerHandler* runtimeManagerHandler = RequestHandler::getInstance()->getRuntimeManagerHandler();
+                if (nullptr != runtimeManagerHandler)
+                {
+                    ret = runtimeManagerHandler->suspend(context->getAppInstanceId(), errorReason);
+                    if (!ret)
+                    {
+                        LOGERR("PausedState: suspend failed for appInstanceId=%s errorReason=%s",
+                               context->getAppInstanceId().c_str(), errorReason.c_str());
+                    }
+                }
             }
             return ret;
 	}
 
         bool ActiveState::handle(string& errorReason)
 	{
+            ApplicationContext* context = getContext();
+
+            // PAUSED → ACTIVE: container is frozen, resume it and set Rialto ACTIVE.
+            if (Exchange::ILifecycleManager::LifecycleState::PAUSED == context->getCurrentLifecycleState())
+            {
+                RuntimeManagerHandler* runtimeManagerHandler = RequestHandler::getInstance()->getRuntimeManagerHandler();
+                if (nullptr != runtimeManagerHandler)
+                {
+                    bool ret = runtimeManagerHandler->resume(context->getAppInstanceId(), errorReason);
+                    if (!ret)
+                    {
+                        LOGERR("ActiveState: resume failed for appInstanceId=%s errorReason=%s",
+                               context->getAppInstanceId().c_str(), errorReason.c_str());
+                    }
+                    return ret;
+                }
+            }
+
             WindowManagerHandler* windowManagerHandler = RequestHandler::getInstance()->getWindowManagerHandler();
 	    if (nullptr != windowManagerHandler)
 	    {
