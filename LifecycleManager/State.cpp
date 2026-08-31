@@ -92,15 +92,23 @@ namespace WPEFramework
             }
 	    else if (Exchange::ILifecycleManager::LifecycleState::ACTIVE == context->getCurrentLifecycleState())
 	    {
+            LOGINFO("PausedState: handling appInstanceId=%s", context->getAppInstanceId().c_str());
                 RuntimeManagerHandler* runtimeManagerHandler = RequestHandler::getInstance()->getRuntimeManagerHandler();
-                if (nullptr != runtimeManagerHandler)
+                const std::string& appId = context->getAppId();
+                const bool isRialtoApp = (appId == "YouTube" || appId == "amazonPrime");
+                if (nullptr != runtimeManagerHandler && isRialtoApp)
                 {
+                    LOGINFO("PausedState: suspending appInstanceId=%s", context->getAppInstanceId().c_str());
                     ret = runtimeManagerHandler->suspend(context->getAppInstanceId(), errorReason);
                     if (!ret)
                     {
                         LOGERR("PausedState: suspend failed for appInstanceId=%s errorReason=%s",
                                context->getAppInstanceId().c_str(), errorReason.c_str());
                     }
+                }
+                else
+                {
+                    ret = true;
                 }
             }
             return ret;
@@ -109,30 +117,29 @@ namespace WPEFramework
         bool ActiveState::handle(string& errorReason)
 	{
             ApplicationContext* context = getContext();
-
-            // PAUSED → ACTIVE: container is frozen, resume it and set Rialto ACTIVE.
-            if (Exchange::ILifecycleManager::LifecycleState::PAUSED == context->getCurrentLifecycleState())
+            WindowManagerHandler* windowManagerHandler = RequestHandler::getInstance()->getWindowManagerHandler();
+            RuntimeManagerHandler* runtimeManagerHandler = RequestHandler::getInstance()->getRuntimeManagerHandler();
+            if (nullptr != runtimeManagerHandler)
             {
-                RuntimeManagerHandler* runtimeManagerHandler = RequestHandler::getInstance()->getRuntimeManagerHandler();
-                if (nullptr != runtimeManagerHandler)
+                const std::string& appId = context->getAppId();
+                const bool isRialtoApp = (appId == "YouTube" || appId == "amazonPrime");
+                if (isRialtoApp)
                 {
-                    bool ret = runtimeManagerHandler->resume(context->getAppInstanceId(), errorReason);
-                    if (!ret)
+                    LOGINFO("ActiveState: resuming appInstanceId=%s appId=%s", context->getAppInstanceId().c_str(), appId.c_str());
+                    bool resumeRet = runtimeManagerHandler->resume(context->getAppInstanceId(), errorReason);
+                    if (!resumeRet)
                     {
                         LOGERR("ActiveState: resume failed for appInstanceId=%s errorReason=%s",
                                context->getAppInstanceId().c_str(), errorReason.c_str());
                     }
-                    return ret;
                 }
             }
-
-            WindowManagerHandler* windowManagerHandler = RequestHandler::getInstance()->getWindowManagerHandler();
 	    if (nullptr != windowManagerHandler)
 	    {
                 ApplicationContext* context = getContext();
                 bool isRenderReady = false;
-		Core::hresult ret = windowManagerHandler->renderReady(context->getAppInstanceId(), isRenderReady);
-                if (Core::ERROR_NONE == ret)
+		Core::hresult renderRet = windowManagerHandler->renderReady(context->getAppInstanceId(), isRenderReady);
+                if (Core::ERROR_NONE == renderRet)
 		{
                     if (isRenderReady)
 		    {
