@@ -22,6 +22,7 @@
 #include "UtilsLogging.h"
 #include "RalfConstants.h"
 #include "RalfSupport.h"
+#include "OCISpecConstants.h"
 
 #include <iostream>
 
@@ -352,5 +353,22 @@ namespace ralf
 
         return status;
     }
+    bool addBindMountToOCIConfig(Json::Value &ociConfigRootNode, const std::string &hostPath, const std::string &containerPath, bool readOnly)
+    {
+        Json::Value mountEntry;
+        mountEntry[SOURCE] = hostPath;
+        mountEntry[DESTINATION] = containerPath;
+        mountEntry[TYPE] = "bind";
 
+        Json::Value mountOptions(Json::arrayValue);
+        mountOptions.append("rbind");
+        if (readOnly)
+            mountOptions.append("ro");
+        else
+            mountOptions.append("rw");
+        mountEntry[OPTIONS] = mountOptions;
+
+        ociConfigRootNode[MOUNTS].append(mountEntry);
+        return true;
+    }
 } // namespace ralf
