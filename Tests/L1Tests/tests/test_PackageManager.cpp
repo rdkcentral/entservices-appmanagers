@@ -1969,11 +1969,11 @@ TEST_F(PackageManagerTest, configAndPackageStateNegativeBranchesusingComRpc) {
               pkginstallerInterface->Install(packageId, version, additionalMetadata, fileLocator, reason));
 
     Exchange::RuntimeConfig runtimeConfig {};
-    EXPECT_EQ(Core::ERROR_GENERAL,
+    EXPECT_EQ(Core::ERROR_INVALID_PARAMETER,
               pkginstallerInterface->Config(packageId, version, runtimeConfig));
 
     Exchange::IPackageInstaller::InstallState state = Exchange::IPackageInstaller::InstallState::UNINSTALLED;
-    EXPECT_EQ(Core::ERROR_BAD_REQUEST,
+    EXPECT_EQ(Core::ERROR_INVALID_PARAMETER,
               pkginstallerInterface->PackageState("UnknownApp", "0.0.1", state));
 
     deinitforComRpc();
@@ -1982,7 +1982,7 @@ TEST_F(PackageManagerTest, configAndPackageStateNegativeBranchesusingComRpc) {
 /* Test Case for uninstall unknown package branch using ComRpc
  *
  * Set up and initialize COM-RPC resources
- * Call Uninstall() for a package that does not exist and verify ERROR_GENERAL
+ * Call Uninstall() for a package that does not exist and verify ERROR_INVALID_PARAMETER
  * Deinitialize COM-RPC resources
  */
 
@@ -1993,7 +1993,7 @@ TEST_F(PackageManagerTest, uninstallUnknownPackageusingComRpcFailure) {
     waitforSignal(TIMEOUT_FOR_INIT);
 
     string errorReason;
-    EXPECT_EQ(Core::ERROR_GENERAL, pkginstallerInterface->Uninstall("UnknownApp", errorReason));
+    EXPECT_EQ(Core::ERROR_INVALID_PARAMETER, pkginstallerInterface->Uninstall("UnknownApp", errorReason));
 
     deinitforComRpc();
 }
@@ -2001,7 +2001,7 @@ TEST_F(PackageManagerTest, uninstallUnknownPackageusingComRpcFailure) {
 /* Test Case for blocked uninstall path and unlock processing using ComRpc
  *
  * Set up and initialize COM-RPC resources
- * Lock a known package, verify Uninstall() is blocked with ERROR_GENERAL
+ * Lock a known package, verify Uninstall() is blocked with ERROR_INVALID_PARAMETER
  * Verify state transitions to UNINSTALL_BLOCKED
  * Unlock and verify blocked uninstall is processed to UNINSTALLED
  * Deinitialize COM-RPC resources
@@ -2035,7 +2035,7 @@ TEST_F(PackageManagerTest, uninstallBlockedWhileLockedThenProcessedOnUnlockusing
     }
 
     string errorReason;
-    EXPECT_EQ(Core::ERROR_GENERAL, pkginstallerInterface->Uninstall(packageId, errorReason));
+    EXPECT_EQ(Core::ERROR_INVALID_PARAMETER, pkginstallerInterface->Uninstall(packageId, errorReason));
 
     Exchange::IPackageInstaller::InstallState state = Exchange::IPackageInstaller::InstallState::UNINSTALLED;
     EXPECT_EQ(Core::ERROR_NONE, pkginstallerInterface->PackageState(packageId, version, state));
@@ -2053,7 +2053,7 @@ TEST_F(PackageManagerTest, uninstallBlockedWhileLockedThenProcessedOnUnlockusing
  *
  * Set up and initialize COM-RPC resources
  * Lock same package twice, unlock once and verify it remains locked
- * Unlock second time and verify lock state is cleared
+ * Unlock second time and verify lock state is cleared and Uninstall() returns ERROR_INVALID_PARAMETER
  * Deinitialize COM-RPC resources
  */
 
