@@ -35,7 +35,6 @@ namespace WPEFramework
 	if (!mServerManagerService)
         {
             LOGERR("Failed to create Rialto ServerManagerService");
-            delete mAIConfiguration;
             return false;
         }
 	mLogHandler = std::make_shared<RialtoLogHandler>();
@@ -45,7 +44,6 @@ namespace WPEFramework
         }
 
         mInitialized = true;
-        delete mAIConfiguration;
      }
      return true;
     }
@@ -172,6 +170,7 @@ namespace WPEFramework
     std::list<std::string> RialtoConnector::readGlobalEnv() const
     {
        std::list<std::string> environmentVariables;
+       extern char **environ;
        char **envList = environ;
 
        for (;*envList;envList++)
