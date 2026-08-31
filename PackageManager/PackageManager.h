@@ -24,7 +24,6 @@
 #include <interfaces/json/JPackageDownloader.h>
 #include <interfaces/json/JPackageInstaller.h>
 //#include <interfaces/json/JPackageHandler.h>
-#include <interfaces/IAppPackageManager.h>
 #include <interfaces/json/JsonData_PackageDownloader.h>
 #include <interfaces/json/JsonData_PackageInstaller.h>
 #include <interfaces/json/JAppPackageManagerConfig.h>
@@ -120,7 +119,6 @@ namespace Plugin {
         Exchange::IPackageDownloader* mPackageDownloader;
         Exchange::IPackageInstaller* mPackageInstaller;
         Exchange::IPackageHandler* mPackageHandler;
-        Exchange::IAppPackageManagerConfig* mPackageManagerConfig;
         Exchange::IPackageCacheInitializer* mPackageCacheInitializer;
         Exchange::IAppPackageManagerConfig* mPackageConfig;
 
