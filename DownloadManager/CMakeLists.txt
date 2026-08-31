@@ -30,6 +30,10 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 find_package(${NAMESPACE}Plugins REQUIRED)
 find_package(${NAMESPACE}Definitions REQUIRED)
 find_package(CompileSettingsDebug CONFIG REQUIRED)
+find_package( Curl REQUIRED)
+if (CURL_FOUND)
+    message("Yay, found curl inc=${CURL_INCLUDE_DIRS} lib=${CURL_LIBRARY}")
+endif()
 
 add_library(${MODULE_NAME} SHARED
     DownloadManager.cpp
@@ -68,11 +72,15 @@ if(RDK_SERVICES_L1_TEST)
     target_include_directories(${MODULE_NAME} PUBLIC ${JSONCPP_INCLUDE_DIR})
 endif(RDK_SERVICES_L1_TEST)
 
+target_include_directories(${PLUGIN_IMPLEMENTATION} PRIVATE
+    ${CURL_INCLUDE_DIR}
+)
 target_link_libraries(${PLUGIN_IMPLEMENTATION}
     PRIVATE
         CompileSettingsDebug::CompileSettingsDebug
         ${NAMESPACE}Plugins::${NAMESPACE}Plugins
-        AppManagersHelpers)
+        AppManagersHelpers
+        ${CURL_LIBRARY})
 
 install(TARGETS ${PLUGIN_IMPLEMENTATION}
     DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/${STORAGE_DIRECTORY}/plugins)
