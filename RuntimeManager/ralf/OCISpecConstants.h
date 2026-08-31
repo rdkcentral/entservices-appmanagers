@@ -44,7 +44,7 @@ namespace ralf
     constexpr const char *ACCESS = "access";
     constexpr const char *ALLOW = "allow";
     constexpr const char *PATH = "path";
-    constexpr const char *MOUNT = "mounts";
+    constexpr const char *MOUNTS = "mounts";
     constexpr const char *SOURCE = "source";
     constexpr const char *DESTINATION = "destination";
     constexpr const char *TYPE = "type";

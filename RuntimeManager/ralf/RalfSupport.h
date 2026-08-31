@@ -128,4 +128,16 @@ namespace ralf
      * @return true on success, false on failure.
      */
     bool removeDirectoryRecursively(const std::string &path);
+
+    /**
+     * Function to add a bind mount entry to the OCI configuration.
+     * @param ociConfigRootNode The root node of the OCI configuration JSON.
+     * @param hostPath The path on the host to bind mount.
+     * @param containerPath The path inside the container where the host path will be mounted.
+     * @param readOnly Whether the bind mount should be read-only (default: false).
+     * @return true on success, false on failure.
+     */
+
+    bool addBindMountToOCIConfig(Json::Value &ociConfigRootNode, const std::string &hostPath, const std::string &containerPath, bool readOnly = false);
+
 } // namespace ralf
