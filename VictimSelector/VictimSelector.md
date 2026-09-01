@@ -52,14 +52,15 @@ The current implementation reports `TIMEOUT` in the contract for future use, but
 3. Victim Selector registers an `IAppManager::INotification` listener.
 4. A client calls `evict` with a resource reason and termination type.
 5. For `RAM`, Victim Selector calls `GetLoadedApps`.
-6. Loaded applications are filtered by lifecycle state and priority.
-7. For each eligible application, Victim Selector calls `RuntimeManager.GetInfo(appInstanceId)`.
-8. Victim Selector parses `memory.user.usage` from the returned Dobby statistics JSON.
-9. Candidates are sorted by priority, memory usage, and last-active order.
-10. Victim Selector calls either `TerminateApp` or `KillApp`.
-11. AppManager lifecycle notifications are monitored.
-12. When the pending application reaches `APP_STATE_UNLOADED`, Victim Selector sends `onEvictComplete(true, NONE)`.
-13. If no eligible application exists, it sends `onEvictComplete(false, NO_CANDIDATE_FOUND)`.
+6. AppManager returns loaded applications in most-recently-active-first order.
+7. Victim Selector reads each app's `priority` property from AppManager and filters by lifecycle state and priority.
+8. For each eligible application, Victim Selector calls `RuntimeManager.GetInfo(appInstanceId)`.
+9. Victim Selector parses `memory.user.usage` from the returned Dobby statistics JSON.
+10. Candidates are sorted by priority, memory usage, and position in the AppManager ordering.
+11. Victim Selector calls either `TerminateApp` or `KillApp`.
+12. AppManager lifecycle notifications are monitored.
+13. When the pending application reaches `APP_STATE_UNLOADED`, Victim Selector sends `onEvictComplete(true, NONE)`.
+14. If no eligible application exists, it sends `onEvictComplete(false, NO_CANDIDATE_FOUND)`.
 
 ## System Memory Selection
 
@@ -69,19 +70,23 @@ The current state-based selection order follows the first part of the HLA:
 2. Applications in `SUSPENDED` state.
 3. Applications in `HIBERNATED` state as a last resort.
 
-Priority levels are assigned by AppManager as follows:
+Priority is read through `IAppManager::GetAppProperty(appId, "priority", value)`:
 
-- `0`: system applications. These are never eligible for Victim Selector termination.
-- `1`: Netflix and YouTube.
-- `2`: other interactive applications.
+- `0`: never eligible for Victim Selector termination.
+- `1`: protected application; selected only after priority `2` candidates.
+- `2`: ordinary eviction candidate.
+- Missing, empty, malformed, or values larger than `uint32_t` default to priority `2`.
+- Numeric values above `2` are currently accepted and are selected before lower numeric priorities.
 
-Within the selected state group, priority `2` applications are selected before priority `1` applications. For candidates with the same priority, the highest `memory.user.usage` is selected first. If memory usage is equal or unavailable, the smallest `lastActiveIndex` is selected first, which represents the oldest position in the ordered last-active list. The actual wall-clock timestamp is not used.
+Within the selected state group, numerically higher priority values are selected first, so priority `2` precedes priority `1`. For candidates with the same priority, the highest `memory.user.usage` is selected first. If memory usage is equal or unavailable, the app appearing later in the `GetLoadedApps` iterator is selected because that iterator is ordered most-recently-active first. Application ID is the final deterministic tie-breaker. The actual wall-clock timestamp is not exposed or used by Victim Selector.
 
 Applications in other states, including `RUNNING`, `ACTIVE`, `LOADING`, `INITIALIZING`, `TERMINATING`, and `UNLOADED`, are not eligible.
 
 If more than one application is paused, the paused group is not selected because the HLA describes the paused candidate as the only paused application. Selection then continues with suspended or hibernated candidates.
 
-The interface carries `priority` and `lastActiveIndex` in `LoadedAppInfo`. RuntimeManager supplies per-app memory usage through its existing `GetInfo(appInstanceId, info)` method. Victim Selector reads `memory.user.usage` from that JSON response. If the stats request or field parsing fails, usage defaults to zero and last-active order remains the next tie-breaker. Application ID is used only as the final deterministic tie-breaker.
+AppManager internally maintains a monotonic `lastActiveIndex`. `GetLoadedApps` uses it to sort applications most-recently-active first; apps that have never been active use index `0` and are returned last, ordered by `appId`. This preserves recency semantics without adding priority or recency fields to `IAppManager::LoadedAppInfo`.
+
+RuntimeManager supplies per-app memory usage through its existing `GetInfo(appInstanceId, info)` method. Victim Selector reads `memory.user.usage` from that JSON response. If the stats request or field parsing fails, usage defaults to zero.
 
 ## Completion Handling
 
@@ -98,8 +103,6 @@ Completion notifications are copied with an additional reference and invoked out
 
 ### API repository
 
-- `entservices-apis/apis/AppManager/IAppManager.h`
-  - Extends `LoadedAppInfo` with `priority` and `lastActiveIndex` so COM-RPC consumers can apply the App Manager priority policy.
 - `entservices-apis/apis/RuntimeManager/IRuntimeManager.h`
   - Existing `GetInfo(appInstanceId, info)` API provides the Dobby cgroup statistics JSON consumed by Victim Selector.
 - `entservices-apis/apis/VictimSelector/IVictimSelector.h`
@@ -124,7 +127,9 @@ Completion notifications are copied with an additional reference and invoked out
 - `VictimSelector/VictimSelectorImplementation.h`
   - Declares the COM-RPC implementation and AppManager notification sink.
 - `VictimSelector/VictimSelectorImplementation.cpp`
-  - Implements candidate selection, RuntimeManager statistics queries, memory parsing, AppManager connection, termination requests, and completion events.
+  - Reads app priority through `GetAppProperty`, consumes AppManager's recency ordering, queries RuntimeManager statistics, parses memory usage, submits termination requests, and reports completion events.
+- `AppManager/LifecycleInterfaceConnector.cpp`
+  - Orders `GetLoadedApps` by internal `lastActiveIndex`, most recently active first, without changing the public iterator item structure.
 - `VictimSelector/Module.h` and `VictimSelector/Module.cpp`
   - Define the plugin module dependencies.
 - `VictimSelector/CMakeLists.txt`
@@ -165,6 +170,7 @@ PLUGIN_VICTIM_SELECTOR_STARTUPORDER
 3. Add a termination timeout and report `TIMEOUT` when the lifecycle completion event does not arrive.
 4. Reject or queue concurrent `evict` requests instead of allowing a later request to replace the pending application ID.
 5. Add focused unit tests for candidate ordering, memory-stat parsing, no-candidate behavior, termination failures, lifecycle completion, and unsupported resource reasons.
+6. Restrict configured priority values to the supported policy range `0..2`, or document and test an intentionally extensible priority range.
 
 ## Validation
 
