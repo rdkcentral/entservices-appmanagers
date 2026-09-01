@@ -34,6 +34,9 @@ namespace WPEFramework
         mAIConfiguration = new WPEFramework::Plugin::AIConfiguration();
         mAIConfiguration->initialize();
         config.sessionServerEnvVars = mAIConfiguration->getEnvs();
+        // Append debug env vars for Rialto session server logging
+        config.sessionServerEnvVars.emplace_back("RIALTO_DEBUG=1");
+        LOGWARN("RialtoConnector::initialize: sessionServerEnvVars size=%zu", config.sessionServerEnvVars.size());
         mServerManagerService  = create(shared_from_this(), config);
 	if (!mServerManagerService)
         {
