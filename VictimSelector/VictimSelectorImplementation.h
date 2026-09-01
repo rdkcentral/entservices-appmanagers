@@ -53,6 +53,7 @@ public:
 
 private:
     Core::hresult selectVictim(std::string& appId, bool& isHibernated);
+    uint32_t getAppPriority(const std::string& appId) const;
     void onAppLifecycleStateChanged(const string& appId,
                                     const string& appInstanceId,
                                     Exchange::IAppManager::AppLifecycleState newState,

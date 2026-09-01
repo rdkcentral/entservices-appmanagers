@@ -2,11 +2,18 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <cstdlib>
 #include <limits>
 #include <vector>
 
 namespace WPEFramework {
 namespace Plugin {
+
+namespace {
+constexpr const char* APP_PRIORITY_PROPERTY = "priority";
+/* Apps without a stored priority are treated as ordinary eviction candidates. */
+constexpr uint32_t DEFAULT_APP_PRIORITY = 2;
+}
 
 SERVICE_REGISTRATION(VictimSelectorImplementation, 1, 0);
 
@@ -92,6 +99,26 @@ void VictimSelectorImplementation::releaseAppManager() {
     }
 }
 
+/* Priority is owned by the platform integration, which stores it per app via
+ * IAppManager::SetAppProperty("priority", "<0|1|2>"). 0 means never evict. */
+uint32_t VictimSelectorImplementation::getAppPriority(const std::string& appId) const {
+    if (mAppManager == nullptr) {
+        return DEFAULT_APP_PRIORITY;
+    }
+
+    std::string value;
+    if (mAppManager->GetAppProperty(appId, APP_PRIORITY_PROPERTY, value) != Core::ERROR_NONE || value.empty()) {
+        return DEFAULT_APP_PRIORITY;
+    }
+
+    char* end = nullptr;
+    const unsigned long parsed = std::strtoul(value.c_str(), &end, 10);
+    if (end == value.c_str() || *end != '\0' || parsed > std::numeric_limits<uint32_t>::max()) {
+        return DEFAULT_APP_PRIORITY;
+    }
+    return static_cast<uint32_t>(parsed);
+}
+
 Core::hresult VictimSelectorImplementation::selectVictim(std::string& appId, bool& isHibernated) {
     isHibernated = false;
     if (mAppManager == nullptr) {
@@ -107,13 +134,19 @@ Core::hresult VictimSelectorImplementation::selectVictim(std::string& appId, boo
     struct Candidate {
         Exchange::IAppManager::LoadedAppInfo app;
         uint64_t memoryUsage;
+        uint32_t priority;
+        uint32_t recency;
     };
     std::vector<Candidate> paused;
     std::vector<Candidate> suspended;
     std::vector<Candidate> hibernated;
     Exchange::IAppManager::LoadedAppInfo info;
+    /* GetLoadedApps returns most recently active first, so a higher position means staler. */
+    uint32_t recency = 0;
     while (apps->Next(info)) {
-        if (info.priority == 0) {
+        const uint32_t position = recency++;
+        const uint32_t priority = getAppPriority(info.appId);
+        if (priority == 0) {
             continue;
         }
         uint64_t memoryUsage = 0;
@@ -130,7 +163,7 @@ Core::hresult VictimSelectorImplementation::selectVictim(std::string& appId, boo
                 }
             }
         }
-        Candidate candidate{info, memoryUsage};
+        Candidate candidate{info, memoryUsage, priority, position};
         if (info.lifecycleState == Exchange::IAppManager::APP_STATE_PAUSED) {
             paused.push_back(candidate);
         } else if (info.lifecycleState == Exchange::IAppManager::APP_STATE_SUSPENDED) {
@@ -156,16 +189,14 @@ Core::hresult VictimSelectorImplementation::selectVictim(std::string& appId, boo
 
     const Candidate& victim = *std::min_element(candidates->begin(), candidates->end(),
         [](const Candidate& left, const Candidate& right) {
-            if (left.app.priority != right.app.priority) {
-                return left.app.priority > right.app.priority;
+            if (left.priority != right.priority) {
+                return left.priority > right.priority;
             }
             if (left.memoryUsage != right.memoryUsage) {
                 return left.memoryUsage > right.memoryUsage;
             }
-            if (left.app.lastActiveIndex != right.app.lastActiveIndex) {
-                const uint32_t leftIndex = left.app.lastActiveIndex == 0 ? std::numeric_limits<uint32_t>::max() : left.app.lastActiveIndex;
-                const uint32_t rightIndex = right.app.lastActiveIndex == 0 ? std::numeric_limits<uint32_t>::max() : right.app.lastActiveIndex;
-                return leftIndex < rightIndex;
+            if (left.recency != right.recency) {
+                return left.recency > right.recency;
             }
             return left.app.appId < right.app.appId;
         });
