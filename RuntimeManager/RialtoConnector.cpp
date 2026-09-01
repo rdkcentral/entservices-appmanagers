@@ -24,6 +24,11 @@
 
 namespace WPEFramework
 {
+    namespace
+    {
+        constexpr int RIALTO_TIMEOUT_MILLIS = 5000;
+    }
+
     bool RialtoConnector::initialize()
     {
      if (!mInitialized)
@@ -86,28 +91,97 @@ namespace WPEFramework
     }
     bool RialtoConnector::resumeSession(const std::string &callsign)
     {
-	if (!mServerManagerService)
+        if (!mServerManagerService)
         {
-            LOGERR("resumeSession: ServerManagerService is null for callsign='%s'", callsign.c_str());
+            LOGERR("resumeSession: ServerManagerService is null for callsign='%s'",
+                callsign.c_str());
             return false;
         }
+
         if (RialtoServerStates::INACTIVE == getCurrentAppState(callsign))
-            return mServerManagerService ->changeSessionServerState(callsign,
-                                                                    RialtoServerStates::ACTIVE);
+        {
+        LOGINFO("db982 resumeSession: changing session state to ACTIVE for callsign='%s'",
+                callsign.c_str());
+
+        if (mServerManagerService->changeSessionServerState(
+                callsign, RialtoServerStates::ACTIVE))
+        {
+            if (!waitForStateChange(
+                    callsign, RialtoServerStates::ACTIVE, RIALTO_TIMEOUT_MILLIS))
+            {
+                LOGERR("db982 resumeSession: Timeout waiting for Rialto server to become ACTIVE for callsign='%s'",
+                        callsign.c_str());
+                return false;
+            }
+
+            LOGINFO("db982 resumeSession: Rialto server is ACTIVE for callsign='%s'",
+                    callsign.c_str());
+
+            return true;
+        }
+        else
+        {
+            LOGERR("db982 resumeSession: Failed to change session state to ACTIVE for callsign='%s'",
+                    callsign.c_str());
+            return false;
+        }
+        }
+        else
+        {
+        LOGINFO("db982 resumeSession: Rialto server is not in INACTIVE state for callsign='%s'",
+                callsign.c_str());
+        }
+
         return false;
+
     }
+
     bool RialtoConnector::suspendSession(const std::string &callsign)
     {
-	if (!mServerManagerService)
-        {
-            LOGERR("suspendSession: ServerManagerService is null for callsign='%s'", callsign.c_str());
-            return false;
-        }
-        if (RialtoServerStates::ACTIVE == getCurrentAppState(callsign))
-            return mServerManagerService ->changeSessionServerState(callsign,
-                                                                    RialtoServerStates::INACTIVE);
+    if (!mServerManagerService)
+    {
+        LOGERR("suspendSession: ServerManagerService is null for callsign='%s'",
+            callsign.c_str());
         return false;
     }
+
+    if (RialtoServerStates::ACTIVE == getCurrentAppState(callsign))
+    {
+        LOGINFO("db982 suspendSession: changing session state to INACTIVE for callsign='%s'",
+                callsign.c_str());
+
+        if (mServerManagerService->changeSessionServerState(
+                callsign, RialtoServerStates::INACTIVE))
+        {
+            if (!waitForStateChange(
+                callsign, RialtoServerStates::INACTIVE, RIALTO_TIMEOUT_MILLIS))
+            {
+                LOGERR("suspendSession: Timeout waiting for Rialto server to become INACTIVE for callsign='%s'",
+                    callsign.c_str());
+                return false;
+            }
+
+            LOGINFO("db982 suspendSession: Rialto server is INACTIVE for callsign='%s'",
+                    callsign.c_str());
+
+            return true;
+        }
+        else
+        {
+            LOGERR("suspendSession: Failed to change session state to INACTIVE for callsign='%s'",
+                callsign.c_str());
+            return false;
+        }
+    }
+
+    LOGINFO("db982 suspendSession: Rialto server is not in ACTIVE state for callsign='%s'",
+            callsign.c_str());
+
+    return false;
+
+    }
+
+
     const RialtoServerStates RialtoConnector::getCurrentAppState(const std::string &callsign)
     {
         auto state = appStateMap.find(callsign);

@@ -92,7 +92,25 @@ namespace WPEFramework
             }
 	    else if (Exchange::ILifecycleManager::LifecycleState::ACTIVE == context->getCurrentLifecycleState())
 	    {
-                ret = true;		    
+             LOGINFO("db982 PausedState: handling appInstanceId=%s", context->getAppInstanceId().c_str());
+              LOGINFO("PausedState: handling appInstanceId=%s", context->getAppInstanceId().c_str());
+                RuntimeManagerHandler* runtimeManagerHandler = RequestHandler::getInstance()->getRuntimeManagerHandler();
+                const std::string& appId = context->getAppId();
+                const bool isRialtoApp = (appId == "YouTube" || appId == "amazonPrime");
+                if (nullptr != runtimeManagerHandler && isRialtoApp)
+                {
+                    LOGINFO("db982 PausedState: suspending appInstanceId=%s", context->getAppInstanceId().c_str());
+                    ret = runtimeManagerHandler->suspend(context->getAppInstanceId(), errorReason);
+                    if (!ret)
+                    {
+                        LOGERR("db982 PausedState: suspend failed for appInstanceId=%s errorReason=%s",
+                               context->getAppInstanceId().c_str(), errorReason.c_str());
+                    }
+                }
+                else
+                {
+                    ret = true;
+                }	    
             }
             return ret;
 	}
@@ -100,6 +118,25 @@ namespace WPEFramework
         bool ActiveState::handle(string& errorReason)
 	{
             WindowManagerHandler* windowManagerHandler = RequestHandler::getInstance()->getWindowManagerHandler();
+              RuntimeManagerHandler* runtimeManagerHandler = RequestHandler::getInstance()->getRuntimeManagerHandler();
+            if (nullptr != runtimeManagerHandler)
+            {
+                ApplicationContext* context = getContext();
+                const std::string& appId = context->getAppId();
+                const bool isRialtoApp = (appId == "YouTube" || appId == "amazonPrime");
+                if (isRialtoApp)
+                {
+                    bool resumeret = runtimeManagerHandler->resume(context->getAppInstanceId(), errorReason);
+                    if (!resumeret)
+                    {
+                        LOGERR("db982 ActiveState: resume failed for appInstanceId=%s errorReason=%s",
+                               context->getAppInstanceId().c_str(), errorReason.c_str());
+                    }
+                }
+                else{
+                    LOGINFO("db982 ActiveState: not a Rialto app, skipping resume for appInstanceId=%s", context->getAppInstanceId().c_str());
+                }
+            }
 	    if (nullptr != windowManagerHandler)
 	    {
                 ApplicationContext* context = getContext();
