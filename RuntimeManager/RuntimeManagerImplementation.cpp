@@ -234,10 +234,14 @@ namespace WPEFramework
                 /* Remove the runtime app info entry to prevent map from growing indefinitely */
 #ifdef ENABLE_RIALTO
                 bool usesRialto = false;
+                std::string rialtoAppId = "";
                 {
                     auto rIt = mRuntimeAppInfo.find(appInstanceId);
                     if (rIt != mRuntimeAppInfo.end())
+                    {
                         usesRialto = rIt->second.usesRialto;
+                        rialtoAppId = rIt->second.appId;
+                    }
                 }
 #endif
                 {
@@ -263,8 +267,8 @@ namespace WPEFramework
 #ifdef ENABLE_RIALTO
                 if (usesRialto)
                 {
-                    mRialtoConnector->deactivateSession(appInstanceId);
-                    if (!mRialtoConnector->waitForStateChange(appInstanceId, RialtoServerStates::NOT_RUNNING, RIALTO_TIMEOUT_MILLIS))
+                    mRialtoConnector->deactivateSession(rialtoAppId);
+                    if (!mRialtoConnector->waitForStateChange(rialtoAppId, RialtoServerStates::NOT_RUNNING, RIALTO_TIMEOUT_MILLIS))
                     {
                         LOGERR("Rialto session state change failed when changing to not running.");
                     }
@@ -760,11 +764,11 @@ namespace WPEFramework
                 rialtoSocket = "rlto-" + appInstanceId;
                 LOGINFO("[RIALTO] RALF enabled: rialtoSocket updated to '%s'", rialtoSocket.c_str());
 #endif // RALF_PACKAGE_SUPPORT_ENABLED
-                if (mRialtoConnector->createAppSession(appInstanceId, westerosSocket, rialtoSocket))
+                if (mRialtoConnector->createAppSession(appId, westerosSocket, rialtoSocket))
                 {
                     LOGINFO("[RIALTO] createAppSession succeeded, waiting for ACTIVE state (timeout=%d ms)",
                             RIALTO_TIMEOUT_MILLIS);
-                    if (!mRialtoConnector->waitForStateChange(appInstanceId, RialtoServerStates::ACTIVE, RIALTO_TIMEOUT_MILLIS))
+                    if (!mRialtoConnector->waitForStateChange(appId, RialtoServerStates::ACTIVE, RIALTO_TIMEOUT_MILLIS))
                     {
                         LOGWARN("[RIALTO] Rialto app session not ready — waitForStateChange timed out for appId='%s'", appId.c_str());
                         rialtoSetupFailed = true;
@@ -773,7 +777,7 @@ namespace WPEFramework
                     else
                     {
                         LOGINFO("[RIALTO] Rialto session reached ACTIVE state for appId='%s'", appId.c_str());
-                        const std::string rialtoSocketPath = mRialtoConnector->getSocketPath(appInstanceId);
+                        const std::string rialtoSocketPath = mRialtoConnector->getSocketPath(appId);
                         if (!rialtoSocketPath.empty())
                         {
                             config.mRialtoSocketPath = rialtoSocketPath;
@@ -1021,9 +1025,9 @@ namespace WPEFramework
                             if (!appId.empty() && mRuntimeAppInfo[appInstanceId].usesRialto)
                             {
                                 LOGINFO("Rialto session resume for %s", appId.c_str());
-                                if (!mRialtoConnector->resumeSession(appInstanceId))
+                                if (!mRialtoConnector->resumeSession(appId))
                                     LOGWARN("Rialto resumeSession failed for %s", appId.c_str());
-                            }
+                            }  
 #endif
                         }
                     }
@@ -1055,7 +1059,7 @@ namespace WPEFramework
                 appId = mRuntimeAppInfo[appInstanceId].appId;
                 if(mRuntimeAppInfo[appInstanceId].usesRialto)
                 {
-                    if (!mRialtoConnector->suspendSession(appInstanceId))
+                    if (!mRialtoConnector->suspendSession(appId))
                     {
                         success = false;
                         LOGWARN("Rialto suspendSession failed for %s", appId.c_str());
@@ -1103,7 +1107,7 @@ namespace WPEFramework
                         if (!appId.empty() && mRuntimeAppInfo[appInstanceId].usesRialto)
                         {
                             LOGINFO("Rialto session suspend for %s", appId.c_str());
-                            if (!mRialtoConnector->suspendSession(appInstanceId))
+                            if (!mRialtoConnector->suspendSession(appId))
                                 LOGWARN("Rialto suspendSession failed for %s", appId.c_str());
                         }
 #endif
@@ -1133,7 +1137,7 @@ namespace WPEFramework
                     if (!appId.empty() && mRuntimeAppInfo[appInstanceId].usesRialto)
                     {
                         LOGINFO("Rialto session resume for %s", appId.c_str());
-                        if (!mRialtoConnector->resumeSession(appInstanceId)){
+                        if (!mRialtoConnector->resumeSession(appId)){
                             LOGWARN("Rialto resumeSession failed for %s", appId.c_str());
                         }
                         else{
@@ -1176,7 +1180,7 @@ namespace WPEFramework
                         if (!appId.empty() && mRuntimeAppInfo[appInstanceId].usesRialto)
                         {
                             LOGINFO("Rialto session resume for %s", appId.c_str());
-                            if (!mRialtoConnector->resumeSession(appInstanceId))
+                            if (!mRialtoConnector->resumeSession(appId))
                                 LOGWARN("Rialto resumeSession failed for %s", appId.c_str());
                         }
 #endif
@@ -1252,9 +1256,10 @@ namespace WPEFramework
 #ifdef ENABLE_RIALTO
            if (mRuntimeAppInfo.count(appInstanceId) && mRuntimeAppInfo[appInstanceId].usesRialto)
            {
+               const std::string appId = mRuntimeAppInfo[appInstanceId].appId;
                LOGINFO("Rialto session deactivate on terminate.");
-               mRialtoConnector->deactivateSession(appInstanceId);
-               if (!mRialtoConnector->waitForStateChange(appInstanceId, RialtoServerStates::NOT_RUNNING, RIALTO_TIMEOUT_MILLIS))
+               mRialtoConnector->deactivateSession(appId);
+               if (!mRialtoConnector->waitForStateChange(appId, RialtoServerStates::NOT_RUNNING, RIALTO_TIMEOUT_MILLIS))
                {
                    LOGERR("Rialto session state change failed when changing to not running.");
                    status = Core::ERROR_GENERAL;
@@ -1321,9 +1326,10 @@ namespace WPEFramework
 #ifdef ENABLE_RIALTO
             if (mRuntimeAppInfo.count(appInstanceId) && mRuntimeAppInfo[appInstanceId].usesRialto)
             {
+                const std::string appId = mRuntimeAppInfo[appInstanceId].appId;
                 LOGINFO("Rialto Session deactivate on kill..");
-                mRialtoConnector->deactivateSession(appInstanceId);
-                if (!mRialtoConnector->waitForStateChange(appInstanceId, RialtoServerStates::NOT_RUNNING, RIALTO_TIMEOUT_MILLIS))
+                mRialtoConnector->deactivateSession(appId);
+                if (!mRialtoConnector->waitForStateChange(appId, RialtoServerStates::NOT_RUNNING, RIALTO_TIMEOUT_MILLIS))
                 {
                     LOGERR("Rialto session state change failed when changing to not running ");
                     status = Core::ERROR_GENERAL;
