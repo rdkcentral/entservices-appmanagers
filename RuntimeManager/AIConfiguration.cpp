@@ -35,8 +35,6 @@
 
 #define AICONFIGURATION_JSON_PATH "/etc/rdk/rdkappmanagers.json"
 
-extern char **environ;
-
 namespace WPEFramework
 {
 namespace Plugin

@@ -21,6 +21,7 @@
 #include <cstdlib>
 #include "RialtoConnector.h"
 
+extern char **environ;
 
 namespace WPEFramework
 {
@@ -37,7 +38,7 @@ namespace WPEFramework
             LOGERR("Failed to create Rialto ServerManagerService");
             return false;
         }
-	mLogHandler = std::make_shared<RialtoLogHandler>();
+	    mLogHandler = std::make_shared<RialtoLogHandler>();
         if (!mServerManagerService->registerLogHandler(mLogHandler))
         {
             LOGWARN("Registration of custom logger for Rialto server manager failed");
@@ -170,7 +171,6 @@ namespace WPEFramework
     std::list<std::string> RialtoConnector::readGlobalEnv() const
     {
         std::list<std::string> environmentVariables;
-        extern char **environ;
 
         if (!environ)
         {
