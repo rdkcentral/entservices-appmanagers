@@ -169,14 +169,18 @@ namespace WPEFramework
     }
     std::list<std::string> RialtoConnector::readGlobalEnv() const
     {
-       std::list<std::string> environmentVariables;
-       extern char **environ;
-       char **envList = environ;
+        std::list<std::string> environmentVariables;
+        extern char **environ;
 
-       for (;*envList;envList++)
-       {
-           environmentVariables.emplace_back(*envList);
-       }
-       return environmentVariables;
+        if (!environ)
+        {
+            return environmentVariables;
+        }
+
+        for (char **env = environ; env && *env; ++env)
+        {
+            environmentVariables.push_back(*env);
+        }
+        return environmentVariables;
     }
 } // namespace WPEFramework

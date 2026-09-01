@@ -24,6 +24,7 @@
 #include <map>
 #include <string>
 #include <mutex>
+#include <list>
 #include <condition_variable>
 #include "rialto/ServerManagerServiceFactory.h"
 
