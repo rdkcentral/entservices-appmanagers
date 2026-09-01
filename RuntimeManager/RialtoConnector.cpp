@@ -21,7 +21,7 @@
 #include <cstdlib>
 #include "RialtoConnector.h"
 
-extern char **environ;
+extern "C" char **environ;
 
 namespace WPEFramework
 {
