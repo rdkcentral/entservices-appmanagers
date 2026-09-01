@@ -95,13 +95,7 @@ namespace ralf
          * @return true if the configuration was applied successfully, false otherwise.
          */
         bool applyConfigurationToOCIConfig(Json::Value &ociConfigRootNode, Json::Value &manifestRootNode);
-        /**
-         * Adds a mount entry to the OCI config JSON.
-         * @param ociConfigRootNode The root node of the OCI config JSON.
-         * @param source The source path of the mount.
-         * @param destination The destination path of the mount.
-         */
-        void addMountEntry(Json::Value &ociConfigRootNode, const std::string &source, const std::string &destination);
+
         /**
          * Add device node entries from graphics config to OCI config.
          * @param ociConfigRootNode The root node of the OCI config JSON.
@@ -209,6 +203,23 @@ namespace ralf
          * @param appId The application ID used in the log file name.
          */
         void addLogNameToOCIConfig(Json::Value &ociConfigRootNode, const std::string &appStoragePath, const std::string &appId);
+
+        /**
+         * Adds timezone information to the OCI config JSON by mounting the necessary paths.
+         * As per HLA, three paths need to be mounted:
+         * - /usr/share/zoneinfo to /usr/share/zoneinfo
+         * - /opt/persistent/localtime to /etc/localtime  (if present)
+         * - /opt/persistent/timeZoneDST to /etc/timezone (if present)
+         * The first path is always present, while the second and third are optional and will only be mounted if they exist on the host.
+         * @param ociConfigRootNode The root node of the OCI config JSON to which timezone information is added.
+         */
+        void addTimezoneInfo(Json::Value &ociConfigRootNode);
+
+        /**
+         * Adds the THUNDER_ACCESS environment variable to the OCI config for privileged apps if it is set in the host environment.
+         * @param ociConfigRootNode The root node of the OCI config JSON.
+         */
+        void addThunderAccessToPrivilegedApps(Json::Value &ociConfigRootNode);
 
         /**
          * The vector of Ralf package details as pairs of mount point and metadata path.
