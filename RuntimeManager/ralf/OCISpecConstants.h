@@ -84,9 +84,14 @@ namespace ralf
     constexpr const char *STORAGE_CONFIG_URN = "urn:rdk:config:storage";
     constexpr const char *MAX_LOCAL_STORAGE = "maxLocalStorage";
     constexpr const char *ENV_CONFIG_URN = "urn:rdk:config:env";
+    constexpr const char *PLATFORM_CONFIG_URN = "urn:rdk:config:platform";
+    constexpr const char *ARCHITECTURE = "architecture";
+    constexpr const char *VARIANT = "variant";
+    constexpr const char *OS_FIELD = "os";
 
     constexpr const char *RUNTIME_CONFIG_OVERRIDES_ENV_KEY = "RUNTIME_CONFIG_OVERRIDES_JSON";
     constexpr const char *APP_CONFIG_OVERRIDES_ENV_KEY = "APP_CONFIG_OVERRIDES_JSON";
+    constexpr const char *BASE_CONFIG_OVERRIDES_ENV_KEY = "BASE_CONFIG_OVERRIDES_JSON";
 
     constexpr const char *RDKPLUGINS = "rdkPlugins";
     constexpr const char *LOGGING = "logging";

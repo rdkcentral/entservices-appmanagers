@@ -453,6 +453,9 @@ namespace ralf
         {
             LOGWARN("Ignoring %s for packageType '%s'; only valid for application/service packages\n", ENV_CONFIG_URN, packageType.c_str());
         }
+        // Apply urn:rdk:config:platform — spec matrix: Optional for all package types
+        status = addPlatformConfigToOCIConfig(ociConfigRootNode, configNode);
+        LOGDBG("Applied platform config to OCI config ? %s\n", status ? "true" : "false");
         // Add APP_PACKAGE_VERSION environment variable from application config to OCI config
         if (packageType == PKG_TYPE_APPLICATION)
         {
@@ -611,9 +614,17 @@ namespace ralf
                 LOGDBG("Added runtime config overrides to OCI config as environment variable: %s\n", RUNTIME_CONFIG_OVERRIDES_ENV_KEY);
                 status = true;
             }
+            // If a "base" node is present, store its serialized JSON under BASE_CONFIG_OVERRIDES_ENV_KEY.
+            if (overrideNode.isMember(PKG_TYPE_BASE) && overrideNode[PKG_TYPE_BASE].isObject())
+            {
+                std::string overrideJsonStr = serializeJsonNode(overrideNode[PKG_TYPE_BASE]);
+                addToEnvironment(ociConfigRootNode, BASE_CONFIG_OVERRIDES_ENV_KEY, overrideJsonStr);
+                LOGDBG("Added base config overrides to OCI config as environment variable: %s\n", BASE_CONFIG_OVERRIDES_ENV_KEY);
+                status = true;
+            }
             if (!status)
             {
-                LOGWARN("Config overrides node found but contains no 'application' or 'runtime' sub-objects\n");
+                LOGWARN("Config overrides node found but contains no 'application', 'runtime', or 'base' sub-objects\n");
             }
         }
         else
@@ -657,6 +668,59 @@ namespace ralf
             LOGWARN("Config env node found but contains no valid key/value entries\n");
         }
         return status;
+    }
+
+    bool RalfOCIConfigGenerator::addPlatformConfigToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &configNode)
+    {
+        if (!configNode.isMember(PLATFORM_CONFIG_URN) || !configNode[PLATFORM_CONFIG_URN].isObject())
+        {
+            LOGDBG("No platform configuration found in config node\n");
+            return false;
+        }
+
+        Json::Value platformNode = configNode[PLATFORM_CONFIG_URN];
+        Json::Value platformConfig(Json::objectValue);
+
+        // Architecture is required in the platform spec
+        if (platformNode.isMember(ARCHITECTURE) && platformNode[ARCHITECTURE].isString())
+        {
+            platformConfig[ARCHITECTURE] = platformNode[ARCHITECTURE];
+            LOGDBG("Added platform architecture: %s\n", platformNode[ARCHITECTURE].asString().c_str());
+        }
+        else
+        {
+            LOGWARN("Platform configuration missing required 'architecture' field\n");
+            return false;
+        }
+
+        // OS is required in the platform spec
+        if (platformNode.isMember(OS_FIELD) && platformNode[OS_FIELD].isString())
+        {
+            platformConfig[OS_FIELD] = platformNode[OS_FIELD];
+            LOGDBG("Added platform OS: %s\n", platformNode[OS_FIELD].asString().c_str());
+        }
+        else
+        {
+            LOGWARN("Platform configuration missing required 'os' field\n");
+            return false;
+        }
+
+        // Variant is optional
+        if (platformNode.isMember(VARIANT) && platformNode[VARIANT].isString())
+        {
+            platformConfig[VARIANT] = platformNode[VARIANT];
+            LOGDBG("Added platform variant: %s\n", platformNode[VARIANT].asString().c_str());
+        }
+
+        // Store platform configuration in the OCI config's rdkPlugins section
+        if (!ociConfigRootNode[RDKPLUGINS].isObject())
+        {
+            ociConfigRootNode[RDKPLUGINS] = Json::objectValue;
+        }
+        ociConfigRootNode[RDKPLUGINS][PLATFORM_CONFIG_URN] = platformConfig;
+        LOGDBG("Added platform configuration to OCI config\n");
+
+        return true;
     }
 
     void RalfOCIConfigGenerator::addTimezoneInfo(Json::Value &ociConfigRootNode)
