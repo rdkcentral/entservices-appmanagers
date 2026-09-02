@@ -69,8 +69,10 @@ private:
     Core::Sink<AppManagerNotification> mAppManagerNotification;
     Exchange::IVictimSelector::INotification* mNotification;
     std::string mPendingAppId;
+    EvictionType mPendingEvictionType;
     bool mEvictionInProgress;
     std::mutex mLock;
+    std::mutex mEvictLock;
 };
 
 } // namespace Plugin

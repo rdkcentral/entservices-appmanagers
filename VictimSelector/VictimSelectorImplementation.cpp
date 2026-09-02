@@ -32,6 +32,7 @@ VictimSelectorImplementation::VictimSelectorImplementation()
     , mConnectionId(0)
     , mAppManagerNotification(*this)
     , mNotification(nullptr)
+    , mPendingEvictionType(EVICTION_TYPE_SOFT)
     , mEvictionInProgress(false) {
 }
 
@@ -88,6 +89,7 @@ void VictimSelectorImplementation::releaseAppManager() {
     {
         std::lock_guard<std::mutex> guard(mLock);
         mPendingAppId.clear();
+        mPendingEvictionType = EVICTION_TYPE_SOFT;
         mEvictionInProgress = false;
     }
     if (nullptr != mAppManager) {
@@ -212,6 +214,8 @@ Core::hresult VictimSelectorImplementation::selectVictim(std::string& appId, boo
 }
 
 Core::hresult VictimSelectorImplementation::Evict(const EvictionReason reason, const EvictionType type) {
+    std::lock_guard<std::mutex> evictGuard(mEvictLock);
+
     if (reason != EVICTION_REASON_RAM) {
         return Core::ERROR_UNAVAILABLE;
     }
@@ -219,12 +223,35 @@ Core::hresult VictimSelectorImplementation::Evict(const EvictionReason reason, c
         return Core::ERROR_UNAVAILABLE;
     }
 
+    std::string pendingAppId;
     {
         std::lock_guard<std::mutex> guard(mLock);
         if (mEvictionInProgress) {
-            return Core::ERROR_ILLEGAL_STATE;
+            if ((EVICTION_TYPE_HARD == type) &&
+                (EVICTION_TYPE_SOFT == mPendingEvictionType) &&
+                !mPendingAppId.empty()) {
+                pendingAppId = mPendingAppId;
+                mPendingEvictionType = EVICTION_TYPE_HARD;
+            } else {
+                return Core::ERROR_ILLEGAL_STATE;
+            }
+        } else {
+            mEvictionInProgress = true;
+            mPendingEvictionType = type;
         }
-        mEvictionInProgress = true;
+    }
+
+    if (!pendingAppId.empty()) {
+        const Core::hresult escalationStatus = mAppManager->KillApp(pendingAppId);
+        if (Core::ERROR_NONE != escalationStatus) {
+            std::lock_guard<std::mutex> guard(mLock);
+            if (mEvictionInProgress &&
+                (pendingAppId == mPendingAppId) &&
+                (EVICTION_TYPE_HARD == mPendingEvictionType)) {
+                mPendingEvictionType = EVICTION_TYPE_SOFT;
+            }
+        }
+        return escalationStatus;
     }
 
     std::string appId;
@@ -233,6 +260,7 @@ Core::hresult VictimSelectorImplementation::Evict(const EvictionReason reason, c
     if (selectionStatus != Core::ERROR_NONE) {
         {
             std::lock_guard<std::mutex> guard(mLock);
+            mPendingEvictionType = EVICTION_TYPE_SOFT;
             mEvictionInProgress = false;
         }
         complete(false, EVICT_ERROR_TERMINATION_FAILED);
@@ -241,6 +269,7 @@ Core::hresult VictimSelectorImplementation::Evict(const EvictionReason reason, c
     if (appId.empty()) {
         {
             std::lock_guard<std::mutex> guard(mLock);
+            mPendingEvictionType = EVICTION_TYPE_SOFT;
             mEvictionInProgress = false;
         }
         complete(false, EVICT_ERROR_NO_CANDIDATE_FOUND);
@@ -250,18 +279,28 @@ Core::hresult VictimSelectorImplementation::Evict(const EvictionReason reason, c
     {
         std::lock_guard<std::mutex> guard(mLock);
         mPendingAppId = appId;
+        mPendingEvictionType = ((EVICTION_TYPE_HARD == type) || isHibernated)
+            ? EVICTION_TYPE_HARD
+            : EVICTION_TYPE_SOFT;
     }
 
-    const Core::hresult status = (type == EVICTION_TYPE_HARD || isHibernated)
+    const Core::hresult status = ((EVICTION_TYPE_HARD == type) || isHibernated)
         ? mAppManager->KillApp(appId)
         : mAppManager->TerminateApp(appId);
-    if (status != Core::ERROR_NONE) {
+    if (Core::ERROR_NONE != status) {
+        bool completeEviction = false;
         {
             std::lock_guard<std::mutex> guard(mLock);
-            mPendingAppId.clear();
-            mEvictionInProgress = false;
+            if (mEvictionInProgress && (appId == mPendingAppId)) {
+                mPendingAppId.clear();
+                mPendingEvictionType = EVICTION_TYPE_SOFT;
+                mEvictionInProgress = false;
+                completeEviction = true;
+            }
         }
-        complete(false, EVICT_ERROR_TERMINATION_FAILED);
+        if (completeEviction) {
+            complete(false, EVICT_ERROR_TERMINATION_FAILED);
+        }
     }
     return status;
 }
@@ -276,6 +315,7 @@ void VictimSelectorImplementation::onAppLifecycleStateChanged(
             (newState == Exchange::IAppManager::APP_STATE_UNLOADED || errorReason != Exchange::IAppManager::APP_ERROR_NONE);
         if (completeEviction) {
             mPendingAppId.clear();
+            mPendingEvictionType = EVICTION_TYPE_SOFT;
             mEvictionInProgress = false;
         }
     }

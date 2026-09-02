@@ -28,6 +28,8 @@ Parameters:
 
 The method is synchronous with respect to selecting a victim and submitting the termination request. The actual completion is reported asynchronously through `onEvictComplete`.
 
+Only one eviction can be pending at a time. A `HARD` request received while a `SOFT` request is pending escalates the same application from `TerminateApp` to `KillApp`. Other overlapping requests return `Core::ERROR_ILLEGAL_STATE`.
+
 ### `onEvictComplete`
 
 ```text
@@ -58,9 +60,10 @@ The current implementation reports `TIMEOUT` in the contract for future use, but
 9. Victim Selector parses `memory.user.usage` from the returned Dobby statistics JSON.
 10. Candidates are sorted by priority, memory usage, and position in the AppManager ordering.
 11. Victim Selector calls either `TerminateApp` or `KillApp`.
-12. AppManager lifecycle notifications are monitored.
-13. When the pending application reaches `APP_STATE_UNLOADED`, Victim Selector sends `onEvictComplete(true, NONE)`.
-14. If no eligible application exists, it sends `onEvictComplete(false, NO_CANDIDATE_FOUND)`.
+12. If a `HARD` request arrives while that application's `SOFT` eviction is pending, Victim Selector calls `KillApp` for the same application.
+13. AppManager lifecycle notifications are monitored.
+14. When the pending application reaches `APP_STATE_UNLOADED`, Victim Selector sends `onEvictComplete(true, NONE)`.
+15. If no eligible application exists, it sends `onEvictComplete(false, NO_CANDIDATE_FOUND)`.
 
 ## System Memory Selection
 
@@ -96,6 +99,8 @@ A pending eviction is completed when either:
 
 - The pending application reaches `APP_STATE_UNLOADED`, which is reported as success.
 - AppManager reports a non-`APP_ERROR_NONE` lifecycle error, which is reported as a termination failure.
+
+If a `KillApp` escalation fails synchronously, the original `SOFT` eviction remains pending and may still complete through its lifecycle notification. Exactly one completion notification is emitted for the pending application.
 
 Completion notifications are copied with an additional reference and invoked outside the internal mutex. This prevents a client callback from causing lock re-entry or notification registration changes from deadlocking the plugin.
 
@@ -168,9 +173,8 @@ PLUGIN_VICTIM_SELECTOR_STARTUPORDER
 1. Implement GPU selection using per-application GPU usage.
 2. Implement FLASH selection using hibernation storage usage.
 3. Add a termination timeout and report `TIMEOUT` when the lifecycle completion event does not arrive.
-4. Reject or queue concurrent `evict` requests instead of allowing a later request to replace the pending application ID.
-5. Add focused unit tests for candidate ordering, memory-stat parsing, no-candidate behavior, termination failures, lifecycle completion, and unsupported resource reasons.
-6. Restrict configured priority values to the supported policy range `0..2`, or document and test an intentionally extensible priority range.
+4. Add focused unit tests for candidate ordering, memory-stat parsing, no-candidate behavior, termination failures, lifecycle completion, escalation, and unsupported resource reasons.
+5. Restrict configured priority values to the supported policy range `0..2`, or document and test an intentionally extensible priority range.
 
 ## Validation
 
