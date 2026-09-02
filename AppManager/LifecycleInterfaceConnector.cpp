@@ -32,6 +32,7 @@
 #include <plugins/System.h>
 
 #include <interfaces/ILifecycleManager.h>
+#include <interfaces/IAppGateway.h>
 #include "AppManagerImplementation.h"
 #include "UtilsString.h"
 #include "AppManagerTelemetryReporting.h"
@@ -278,6 +279,30 @@ namespace WPEFramework
                             state = Exchange::ILifecycleManager::LifecycleState::ACTIVE;
                             string source = "";
                             appManagerImplInstance->handleOnAppLaunchRequest(appId, intent, source);
+
+                            LOGINFO("Requesting asynchronous user-grant check for appId=%s", appId.c_str());
+                            auto launchDelegate = mCurrentservice->QueryInterfaceByCallsign<Exchange::IAppGatewayRequestHandler>("org.rdk.LaunchDelegate");
+                            if (launchDelegate != nullptr)
+                            {
+                                Exchange::GatewayContext grantCheckContext{0, 0, appId, ""};
+                                string grantCheckResult;
+                                const Core::hresult grantCheckStatus = launchDelegate->HandleAppGatewayRequest(
+                                    grantCheckContext, "usergrants.grantcheck", "", grantCheckResult);
+                                if (grantCheckStatus != Core::ERROR_NONE)
+                                {
+                                    LOGWARN("Unable to start user-grant check for appId=%s: status=%u",
+                                            appId.c_str(), grantCheckStatus);
+                                }
+                                else
+                                {
+                                    LOGINFO("Asynchronous user-grant check accepted for appId=%s", appId.c_str());
+                                }
+                                launchDelegate->Release();
+                            }
+                            else
+                            {
+                                LOGWARN("LaunchDelegate is unavailable for user-grant check: appId=%s", appId.c_str());
+                            }
 
                             appendLaunchParametersEnv(launchArgs, runtimeConfigObject);
 
