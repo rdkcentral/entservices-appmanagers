@@ -105,7 +105,7 @@ namespace ralf
      * Helper: Caches the JsonCpp builder configuration statically to avoid heavy repetitive
      * setup allocation churn across multiple execution cycles.
      */
-    static const Json::CharReaderBuilder& RalfOCIConfigGenerator::getCachedJsonReaderBuilder()
+    const Json::CharReaderBuilder& RalfOCIConfigGenerator::getCachedJsonReaderBuilder()
     {
         static const Json::CharReaderBuilder builder = []() {
             Json::CharReaderBuilder b;
@@ -177,7 +177,7 @@ namespace ralf
     int RalfOCIConfigGenerator::getThunderPortFromConfigFile()
     {
         Json::Value configRoot;
-        if (JsonFromFile(THUNDER_CONFIF_FILE, configRoot))
+        if (JsonFromFile(THUNDER_CONFIG_FILE, configRoot))
         {
             // Optimization: Query the member once using find().
             // This cuts map lookup overhead in half by avoiding 'isMember' followed by '[]'.
@@ -213,7 +213,7 @@ namespace ralf
             }
 
             LOGWARN("THUNDER_ACCESS is present but not a TCP endpoint (value: %s); falling back to %s",
-                    thunderAccess, THUNDER_CONFIF_FILE);
+                    thunderAccess, THUNDER_CONFIG_FILE);
         }
 
         return getThunderPortFromConfigFile();
@@ -606,10 +606,10 @@ namespace ralf
             }
         }
 
-        ociConfigRootNode[RDKPLUGINS][NETWORKING][DATA][TYPE] = networkEnabled ? "nat" : "closed";
+        ociConfigRootNode[RDKPLUGINS][NETWORKING][DATA][TYPE] = networkEnabled ? "nat" : "none";
         ociConfigRootNode[RDKPLUGINS][NETWORKING][DATA][DNSMASQ] = networkEnabled;
         LOGDBG("Network mode set to '%s' (wanLanAccess=%d dial=%d thunder=%d hasInternet=%d hasFirebolt=%d)",
-             networkEnabled ? "nat" : "closed",
+             networkEnabled ? "nat" : "none",
              runtimeConfigObject.wanLanAccess,
              runtimeConfigObject.dial,
              hasThunder,
