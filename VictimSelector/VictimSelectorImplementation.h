@@ -5,6 +5,7 @@
 #include <interfaces/IAppManager.h>
 #include <interfaces/IRuntimeManager.h>
 #include <interfaces/IConfiguration.h>
+#include "tracing/Logging.h"
 #include <mutex>
 #include <string>
 
@@ -67,7 +68,6 @@ private:
     PluginHost::IShell* mService;
     Exchange::IAppManager* mAppManager;
     Exchange::IRuntimeManager* mRuntimeManager;
-    uint32_t mConnectionId;
     Core::Sink<AppManagerNotification> mAppManagerNotification;
     bool mAppManagerRegistered;
     Exchange::IVictimSelector::INotification* mNotification;

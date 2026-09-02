@@ -30,7 +30,6 @@ VictimSelectorImplementation::VictimSelectorImplementation()
     : mService(nullptr)
     , mAppManager(nullptr)
     , mRuntimeManager(nullptr)
-    , mConnectionId(0)
     , mAppManagerNotification(*this)
     , mAppManagerRegistered(false)
     , mNotification(nullptr)
@@ -62,8 +61,10 @@ Core::hresult VictimSelectorImplementation::Register(Exchange::IVictimSelector::
 }
 
 Core::hresult VictimSelectorImplementation::Unregister(Exchange::IVictimSelector::INotification* notification) {
+    ASSERT(nullptr != notification);
+
     std::lock_guard<std::mutex> guard(mLock);
-    if (mNotification == notification) {
+    if ((nullptr != mNotification) && (mNotification == notification)) {
         mNotification->Release();
         mNotification = nullptr;
     }
@@ -249,7 +250,7 @@ Core::hresult VictimSelectorImplementation::selectVictim(std::string& appId, boo
 }
 
 Core::hresult VictimSelectorImplementation::Evict(const EvictionReason reason, const EvictionType type) {
-    std::lock_guard<std::mutex> evictGuard(mEvictLock);
+    std::unique_lock<std::mutex> evictGuard(mEvictLock);
 
     if (EVICTION_REASON_RAM != reason) {
         return Core::ERROR_UNAVAILABLE;
@@ -306,6 +307,7 @@ Core::hresult VictimSelectorImplementation::Evict(const EvictionReason reason, c
             mPendingEvictionType = EVICTION_TYPE_SOFT;
             mEvictionInProgress = false;
         }
+        evictGuard.unlock();
         complete(false, EVICT_ERROR_NO_CANDIDATE_FOUND);
         return Core::ERROR_NONE;
     }
@@ -333,6 +335,7 @@ Core::hresult VictimSelectorImplementation::Evict(const EvictionReason reason, c
             }
         }
         if (completeEviction) {
+            evictGuard.unlock();
             complete(false, EVICT_ERROR_TERMINATION_FAILED);
         }
     }

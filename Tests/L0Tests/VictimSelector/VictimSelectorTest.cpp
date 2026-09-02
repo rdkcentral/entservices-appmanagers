@@ -14,7 +14,7 @@ extern uint32_t Test_VS_HardEvictionEscalatesPendingSoftEviction();
 
 int main()
 {
-    L0Test::EnsureWorkerPool();
+    L0Test::L0BootstrapGuard bootstrap;
 
     const struct {
         const char* name;
