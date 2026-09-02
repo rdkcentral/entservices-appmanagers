@@ -250,7 +250,7 @@ namespace ralf
             {
                 if (ensureMountTargetFileInRootfs(path))
                 {
-                    addMountEntry(ociConfigRootNode, path, path);
+                    addBindMountToOCIConfig(ociConfigRootNode, path, path);
                 }
                 else
                 {
@@ -276,7 +276,7 @@ namespace ralf
             {
                 if (ensureMountTargetFileInRootfs(resolverDestinationPath))
                 {
-                    addMountEntry(ociConfigRootNode, resolverSourcePath, resolverDestinationPath);
+                    addBindMountToOCIConfig(ociConfigRootNode, resolverSourcePath, resolverDestinationPath);
                 }
                 else
                 {
