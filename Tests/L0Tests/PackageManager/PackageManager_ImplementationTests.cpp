@@ -3,7 +3,6 @@
 #include <cstdio>
 #include <string>
 #include <thread>
-#include <unistd.h>
 
 #include "PackageManagerImplementation.h"
 #include "ServiceMock.h"
@@ -107,13 +106,15 @@ public:
 struct ImplFixture {
     L0Test::FakeStorageManager storage;
     L0Test::ServiceMock::FakeSubSystem subSystem;
+    L0Test::ServiceMock::FakeTelemetryMetrics telemetry;
     L0Test::ServiceMock service;
     WPEFramework::Plugin::PackageManagerImplementation* impl;
 
     ImplFixture()
         : storage()
         , subSystem()
-        , service(L0Test::ServiceMock::Config(&storage, &subSystem, nullptr))
+        , telemetry()
+        , service(L0Test::ServiceMock::Config(&storage, &subSystem, &telemetry))
         , impl(WPEFramework::Core::Service<WPEFramework::Plugin::PackageManagerImplementation>::Create<
             WPEFramework::Plugin::PackageManagerImplementation>())
     {
@@ -132,9 +133,10 @@ struct ImplFixture {
     {
         const uint32_t rc = impl->Initialize(&service);
         if (rc == ERROR_NONE) {
-            // PackageManager initializes cache asynchronously; wait until marker is published.
-            for (uint32_t i = 0; i < 250; ++i) {
-                if (0 == access(PACKAGE_MANAGER_MARKER_FILE, F_OK)) {
+            // The marker is written before telemetry; retain the fixture until the
+            // background initialization has completed its final shell access.
+            for (uint32_t i = 0; i < 500; ++i) {
+                if (0U < telemetry.recordCalls.load()) {
                     break;
                 }
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -776,4 +778,3 @@ uint32_t Test_PM_Impl_GetConfigForInstalledPackage()
 
     return tr.failures;
 }
-
