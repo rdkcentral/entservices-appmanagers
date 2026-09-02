@@ -39,7 +39,11 @@ struct PluginFixture {
 private:
     void WaitForCacheInitialization()
     {
-        if (0U == service.addRefCalls.load()) {
+        /* Telemetry is only recorded by PackageManagerImplementation's worker, which
+         * exists solely when Root<>() succeeded. Initialize() AddRefs the service once
+         * and Root<>() again, so fewer than two AddRefs means instantiation failed and
+         * no Record() will ever arrive -- skip the wait instead of stalling ~5s. */
+        if (2U > service.addRefCalls.load()) {
             return;
         }
 

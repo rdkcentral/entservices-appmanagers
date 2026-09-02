@@ -132,7 +132,14 @@ public:
     {
         {
             std::lock_guard<std::mutex> lock(_jobLock);
-            --_pendingJobs;
+            /* Guard against underflow: _pendingJobs is unsigned, so an unpaired
+             * Release() would wrap it and make WaitForPendingJobs() block until
+             * its timeout instead of reporting the real problem. */
+            if (0U < _pendingJobs) {
+                --_pendingJobs;
+            } else {
+                _unbalancedReleases = true;
+            }
         }
         _jobCompletion.notify_all();
         return Core::ERROR_NONE;
@@ -141,15 +148,17 @@ public:
     bool WaitForPendingJobs() const
     {
         std::unique_lock<std::mutex> lock(_jobLock);
-        return _jobCompletion.wait_for(lock, std::chrono::seconds(5), [this] {
+        const bool drained = _jobCompletion.wait_for(lock, std::chrono::seconds(5), [this] {
             return 0U == _pendingJobs;
         });
+        return drained && !_unbalancedReleases;
     }
 
 private:
     mutable std::mutex _jobLock;
     mutable std::condition_variable _jobCompletion;
     mutable uint32_t _pendingJobs { 0 };
+    mutable bool _unbalancedReleases { false };
 };
 
 class RespawnTrackingLifecycleManagerImpl : public LifecycleManagerImplementation {
