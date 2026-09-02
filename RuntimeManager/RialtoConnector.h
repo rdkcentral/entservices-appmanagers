@@ -37,7 +37,7 @@ namespace WPEFramework
     class RialtoConnector : public IStateObserver, public std::enable_shared_from_this<RialtoConnector>
     {
     public:
-        RialtoConnector() : mInitialized(false) {}
+        RialtoConnector() : mInitialized(false) { initialize(); }
         virtual ~RialtoConnector() = default;
         bool initialize();
         bool waitForStateChange(const std::string &appid, const RialtoServerStates &state, int timeoutMillis);
