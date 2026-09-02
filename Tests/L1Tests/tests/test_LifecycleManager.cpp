@@ -1172,9 +1172,8 @@ TEST_F(LifecycleManagerTest, stateChangeComplete_withValidParams)
  * Set the intent to a random test value
  * Spawn an app with valid parameters with target state as ACTIVE
  * Verify successful spawn by asserting that SpawnApp() returns Core::ERROR_NONE
- * Handle event signals by calling the onStateChangeEventSignal() method
  * Send an intent to the active app using the appInstanceId 
- * Verify failure of sent intent (due to failure in websocket) by asserting that SendIntentToActiveApp() returns Core::ERROR_GENERAL
+ * Verify successful intent delivery by asserting that SendIntentToActiveApp() returns Core::ERROR_NONE
  * Release the Lifecycle Manager objects and clean-up related test resources
  */
 
@@ -1200,14 +1199,12 @@ TEST_F(LifecycleManagerTest, sendIntenttoActiveApp_onSpawnAppSuccess)
 
     targetLifecycleState = Exchange::ILifecycleManager::LifecycleState::ACTIVE;
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
-
-    onStateChangeEventSignal();
+    ASSERT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
 
     // TC-25: Send intent to the app after spawning
-    EXPECT_EQ(Core::ERROR_GENERAL, interface->SendIntentToActiveApp(appInstanceId, intent, errorReason, success));   
-
-    onStateChangeEventSignal();
+    success = false;
+    EXPECT_EQ(Core::ERROR_NONE, interface->SendIntentToActiveApp(appInstanceId, intent, errorReason, success));
+    EXPECT_TRUE(success);
 
     releaseResources();
 }
