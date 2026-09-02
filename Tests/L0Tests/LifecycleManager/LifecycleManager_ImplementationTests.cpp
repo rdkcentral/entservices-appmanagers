@@ -37,8 +37,10 @@
 
 #include <atomic>
 #include <chrono>
+#include <condition_variable>
 #include <iostream>
 #include <list>
+#include <mutex>
 #include <string>
 #include <thread>
 
@@ -119,8 +121,35 @@ public:
  */
 class ConcreteLifecycleManagerImpl : public LifecycleManagerImplementation {
 public:
-    uint32_t AddRef() const override { return Core::ERROR_NONE; }
-    uint32_t Release() const override { return Core::ERROR_NONE; }
+    uint32_t AddRef() const override
+    {
+        std::lock_guard<std::mutex> lock(_jobLock);
+        ++_pendingJobs;
+        return Core::ERROR_NONE;
+    }
+
+    uint32_t Release() const override
+    {
+        {
+            std::lock_guard<std::mutex> lock(_jobLock);
+            --_pendingJobs;
+        }
+        _jobCompletion.notify_all();
+        return Core::ERROR_NONE;
+    }
+
+    bool WaitForPendingJobs() const
+    {
+        std::unique_lock<std::mutex> lock(_jobLock);
+        return _jobCompletion.wait_for(lock, std::chrono::seconds(5), [this] {
+            return 0U == _pendingJobs;
+        });
+    }
+
+private:
+    mutable std::mutex _jobLock;
+    mutable std::condition_variable _jobCompletion;
+    mutable uint32_t _pendingJobs { 0 };
 };
 
 class RespawnTrackingLifecycleManagerImpl : public LifecycleManagerImplementation {
@@ -542,7 +571,7 @@ uint32_t Test_Impl_SendIntentToActiveAppUnknownApp()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SendIntentToActiveApp returns ERROR_GENERAL for non-ACTIVE app
+// SendIntentToActiveApp queues the intent for a non-ACTIVE app.
 // ─────────────────────────────────────────────────────────────────────────────
 
 uint32_t Test_Impl_SendIntentToActiveAppNonActive()
@@ -551,7 +580,7 @@ uint32_t Test_Impl_SendIntentToActiveAppNonActive()
 
     ConcreteLifecycleManagerImpl impl;
 
-    // App in PAUSED state (default initial state is UNLOADED, which is also not ACTIVE)
+    // The default initial state is UNLOADED.
     auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.paused");
     std::string inst = "inst-paused-001";
     ctx->setAppInstanceId(inst);
@@ -562,12 +591,14 @@ uint32_t Test_Impl_SendIntentToActiveAppNonActive()
     WPEFramework::Core::hresult result = impl.SendIntentToActiveApp(
         "inst-paused-001", "deeplink://home", errorReason, success);
 
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
-        "SendIntentToActiveApp returns ERROR_GENERAL for non-ACTIVE app");
-    L0Test::ExpectTrue(tr, !success,
-        "success flag is false for non-ACTIVE app");
-    L0Test::ExpectEqStr(tr, errorReason, "application is not active",
-        "errorReason matches expected value");
+    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+        "SendIntentToActiveApp accepts a non-ACTIVE app");
+    L0Test::ExpectTrue(tr, success,
+        "success flag is true when the intent is queued");
+    L0Test::ExpectTrue(tr, errorReason.empty(),
+        "errorReason is empty when the intent is queued");
+    L0Test::ExpectTrue(tr, impl.WaitForPendingJobs(),
+        "SendIntentToActiveApp job completes before fixture teardown");
 
     LifecycleManagerImplementationTest::getLoadedApps(impl).clear();
 
@@ -880,9 +911,12 @@ uint32_t Test_Impl_GetContextByAppInstanceId()
     bool success = false;
     WPEFramework::Core::hresult result = impl.SendIntentToActiveApp(
         "inst-ctx-001", "deeplink://test", errorReason, success);
-    // App is in UNLOADED (not ACTIVE), so expect ERROR_GENERAL
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
-        "getContext found app by appInstanceId (returned not-active error)");
+    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+        "getContext finds the app by appInstanceId and queues its intent");
+    L0Test::ExpectTrue(tr, success,
+        "success is true when getContext finds the app by appInstanceId");
+    L0Test::ExpectTrue(tr, impl.WaitForPendingJobs(),
+        "appInstanceId intent job completes before fixture teardown");
 
     LifecycleManagerImplementationTest::getLoadedApps(impl).clear();
 
@@ -1115,10 +1149,8 @@ uint32_t Test_Impl_SendIntentToActiveAppActiveApp()
     L0Test::ExpectTrue(tr, errorReason.empty(),
         "errorReason is empty for ACTIVE app");
 
-    // dispatchEvent() submits an async Job to the worker pool whose Dispatch() call
-    // accesses impl's mAdminLock.  Sleep here (while impl is still in scope) so the
-    // worker pool finishes the job before impl's destructor runs.
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    L0Test::ExpectTrue(tr, impl.WaitForPendingJobs(),
+        "active-app intent job completes before fixture teardown");
 
     LifecycleManagerImplementationTest::getLoadedApps(impl).clear();
 
@@ -1521,8 +1553,8 @@ uint32_t Test_Impl_RuntimeEventOnFailure()
     L0Test::ExpectTrue(tr, noThrow,
         "onFailure dispatch does not throw");
 
-    // Wait for the async ONFAILURE job to complete before impl destructs.
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    L0Test::ExpectTrue(tr, impl.WaitForPendingJobs(),
+        "onFailure job completes before fixture teardown");
 
     impl.Unregister(
         static_cast<WPEFramework::Exchange::ILifecycleManager::INotification*>(notif));
@@ -1574,8 +1606,8 @@ uint32_t Test_Impl_NotifyOnFailureKnownApp()
     L0Test::ExpectTrue(tr, noThrow,
         "notifyOnFailure with known app does not throw");
 
-    // Wait for the async ONFAILURE job submitted by notifyOnFailure.
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    L0Test::ExpectTrue(tr, impl.WaitForPendingJobs(),
+        "known-app onFailure job completes before fixture teardown");
 
     impl.Unregister(
         static_cast<WPEFramework::Exchange::ILifecycleManager::INotification*>(notif));
@@ -1821,4 +1853,3 @@ uint32_t Test_Impl_RuntimeEventOnStateChangedMatchingPendingTransition()
 
     return tr.failures;
 }
-

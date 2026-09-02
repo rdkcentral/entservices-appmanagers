@@ -13,23 +13,41 @@ namespace {
 struct PluginFixture {
     L0Test::FakeStorageManager storage;
     L0Test::ServiceMock::FakeSubSystem subSystem;
+    L0Test::ServiceMock::FakeTelemetryMetrics telemetry;
     L0Test::ServiceMock service;
     WPEFramework::PluginHost::IPlugin* plugin;
 
     PluginFixture()
         : storage()
         , subSystem()
-        , service(L0Test::ServiceMock::Config(&storage, &subSystem, nullptr))
+        , telemetry()
+        , service(L0Test::ServiceMock::Config(&storage, &subSystem, &telemetry))
         , plugin(WPEFramework::Core::Service<WPEFramework::Plugin::PackageManager>::Create<WPEFramework::PluginHost::IPlugin>())
     {
     }
 
     ~PluginFixture()
     {
+        WaitForCacheInitialization();
         if (plugin != nullptr) {
             plugin->Deinitialize(&service);
             plugin->Release();
             plugin = nullptr;
+        }
+    }
+
+private:
+    void WaitForCacheInitialization()
+    {
+        if (0U == service.addRefCalls.load()) {
+            return;
+        }
+
+        for (uint32_t i = 0; i < 500; ++i) {
+            if (0U < telemetry.recordCalls.load()) {
+                return;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
     }
 };
