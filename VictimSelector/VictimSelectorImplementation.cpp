@@ -145,7 +145,7 @@ uint32_t VictimSelectorImplementation::getAppPriority(const std::string& appId) 
     }
 
     char* end = nullptr;
-    const unsigned long parsed = std::strtoul(value.c_str(), &end, 10);
+    const unsigned long long parsed = std::strtoull(value.c_str(), &end, 10);
     if ((value.c_str() == end) || ('\0' != *end) || (std::numeric_limits<uint32_t>::max() < parsed)) {
         return DEFAULT_APP_PRIORITY;
     }

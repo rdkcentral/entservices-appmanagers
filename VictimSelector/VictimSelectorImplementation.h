@@ -40,6 +40,8 @@ private:
 public:
     VictimSelectorImplementation();
     ~VictimSelectorImplementation() override;
+    VictimSelectorImplementation(const VictimSelectorImplementation&) = delete;
+    VictimSelectorImplementation& operator=(const VictimSelectorImplementation&) = delete;
 
     BEGIN_INTERFACE_MAP(VictimSelectorImplementation)
     INTERFACE_ENTRY(Exchange::IVictimSelector)
