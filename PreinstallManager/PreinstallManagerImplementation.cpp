@@ -18,6 +18,7 @@
  */
 
 #include <chrono>
+#include <sstream>
 
 #include "PreinstallManagerImplementation.h"
 
@@ -218,15 +219,53 @@ namespace WPEFramework
         std::string base1 = (pos1 == std::string::npos) ? v1 : v1.substr(0, pos1);
         std::string base2 = (pos2 == std::string::npos) ? v2 : v2.substr(0, pos2);
 
+        auto parseVersion = [](const std::string& version, int& major, int& minor, int& patch, int& build) -> bool {
+            std::istringstream versionStream(version);
+            std::string token;
+            int components[4] = {0, 0, 0, 0};
+            size_t count = 0;
+
+            while (std::getline(versionStream, token, '.'))
+            {
+                if ((4 <= count) || token.empty())
+                {
+                    return false;
+                }
+
+                std::istringstream tokenStream(token);
+                int value = 0;
+                char extra = '\0';
+
+                if (!(tokenStream >> value) || (tokenStream >> extra) || (0 > value))
+                {
+                    return false;
+                }
+
+                components[count++] = value;
+            }
+
+            if (3 > count)
+            {
+                return false;
+            }
+
+            major = components[0];
+            minor = components[1];
+            patch = components[2];
+            build = components[3];
+            return true;
+        };
+
         int maj1 = 0, min1 = 0, patch1 = 0, build1 = 0;
         int maj2 = 0, min2 = 0, patch2 = 0, build2 = 0;
 
-        if (std::sscanf(base1.c_str(), "%d.%d.%d.%d", &maj1, &min1, &patch1, &build1) < 3)
+        if (false == parseVersion(base1, maj1, min1, patch1, build1))
         {
             LOGERR("Version string '%s' is not in valid format", v1.c_str());
             return false;
         }
-        if (std::sscanf(base2.c_str(), "%d.%d.%d.%d", &maj2, &min2, &patch2, &build2) < 3)
+
+        if (false == parseVersion(base2, maj2, min2, patch2, build2))
         {
             LOGERR("Version string '%s' is not in valid format", v2.c_str());
             return false;
