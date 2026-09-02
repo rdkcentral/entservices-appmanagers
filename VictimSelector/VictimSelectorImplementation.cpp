@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <limits>
+#include <utility>
 #include <vector>
 
 namespace WPEFramework {
@@ -185,19 +186,22 @@ Core::hresult VictimSelectorImplementation::selectVictim(std::string& appId, boo
                 }
             }
         }
-        Candidate candidate{info, memoryUsage, priority, position};
-        if (info.lifecycleState == Exchange::IAppManager::APP_STATE_PAUSED) {
-            paused.push_back(candidate);
-        } else if (info.lifecycleState == Exchange::IAppManager::APP_STATE_SUSPENDED) {
-            suspended.push_back(candidate);
-        } else if (info.lifecycleState == Exchange::IAppManager::APP_STATE_HIBERNATED) {
-            hibernated.push_back(candidate);
+        std::vector<Candidate>* bucket = nullptr;
+        if (Exchange::IAppManager::APP_STATE_PAUSED == info.lifecycleState) {
+            bucket = &paused;
+        } else if (Exchange::IAppManager::APP_STATE_SUSPENDED == info.lifecycleState) {
+            bucket = &suspended;
+        } else if (Exchange::IAppManager::APP_STATE_HIBERNATED == info.lifecycleState) {
+            bucket = &hibernated;
+        }
+        if (nullptr != bucket) {
+            bucket->emplace_back(Candidate{std::move(info), memoryUsage, priority, position});
         }
     }
     apps->Release();
 
     const std::vector<Candidate>* candidates = nullptr;
-    if (paused.size() == 1) {
+    if (1 == paused.size()) {
         candidates = &paused;
     } else if (!suspended.empty()) {
         candidates = &suspended;
@@ -223,14 +227,14 @@ Core::hresult VictimSelectorImplementation::selectVictim(std::string& appId, boo
             return left.app.appId < right.app.appId;
         });
     appId = victim.app.appId;
-    isHibernated = victim.app.lifecycleState == Exchange::IAppManager::APP_STATE_HIBERNATED;
+    isHibernated = (Exchange::IAppManager::APP_STATE_HIBERNATED == victim.app.lifecycleState);
     return Core::ERROR_NONE;
 }
 
 Core::hresult VictimSelectorImplementation::Evict(const EvictionReason reason, const EvictionType type) {
     std::lock_guard<std::mutex> evictGuard(mEvictLock);
 
-    if (reason != EVICTION_REASON_RAM) {
+    if (EVICTION_REASON_RAM != reason) {
         return Core::ERROR_UNAVAILABLE;
     }
     if (nullptr == mAppManager) {
@@ -271,7 +275,7 @@ Core::hresult VictimSelectorImplementation::Evict(const EvictionReason reason, c
     std::string appId;
     bool isHibernated = false;
     const Core::hresult selectionStatus = selectVictim(appId, isHibernated);
-    if (selectionStatus != Core::ERROR_NONE) {
+    if (Core::ERROR_NONE != selectionStatus) {
         {
             std::lock_guard<std::mutex> guard(mLock);
             mPendingEvictionType = EVICTION_TYPE_SOFT;
@@ -305,7 +309,7 @@ Core::hresult VictimSelectorImplementation::Evict(const EvictionReason reason, c
         bool completeEviction = false;
         {
             std::lock_guard<std::mutex> guard(mLock);
-            if (mEvictionInProgress && (appId == mPendingAppId)) {
+            if (mEvictionInProgress && (mPendingAppId == appId)) {
                 mPendingAppId.clear();
                 mPendingEvictionType = EVICTION_TYPE_SOFT;
                 mEvictionInProgress = false;
@@ -325,8 +329,8 @@ void VictimSelectorImplementation::onAppLifecycleStateChanged(
     bool completeEviction = false;
     {
         std::lock_guard<std::mutex> guard(mLock);
-        completeEviction = (appId == mPendingAppId) &&
-            (newState == Exchange::IAppManager::APP_STATE_UNLOADED || errorReason != Exchange::IAppManager::APP_ERROR_NONE);
+        completeEviction = (mPendingAppId == appId) &&
+            ((Exchange::IAppManager::APP_STATE_UNLOADED == newState) || (Exchange::IAppManager::APP_ERROR_NONE != errorReason));
         if (completeEviction) {
             mPendingAppId.clear();
             mPendingEvictionType = EVICTION_TYPE_SOFT;
@@ -334,8 +338,8 @@ void VictimSelectorImplementation::onAppLifecycleStateChanged(
         }
     }
     if (completeEviction) {
-        const bool evicted = errorReason == Exchange::IAppManager::APP_ERROR_NONE &&
-            newState == Exchange::IAppManager::APP_STATE_UNLOADED;
+        const bool evicted = (Exchange::IAppManager::APP_ERROR_NONE == errorReason) &&
+            (Exchange::IAppManager::APP_STATE_UNLOADED == newState);
         complete(evicted, evicted ? EVICT_ERROR_NONE : EVICT_ERROR_TERMINATION_FAILED);
     }
 }
