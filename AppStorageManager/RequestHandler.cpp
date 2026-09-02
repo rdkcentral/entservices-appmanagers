@@ -686,7 +686,8 @@ namespace WPEFramework
                 {
                     errorReason = "Failed to create base storage directory: " + mBaseStoragePath;
                     LOGERR("Error creating base storage directory %s: errno=%d (%s)", mBaseStoragePath.c_str(), errno, strerror(errno));
-                    goto ret_fail;
+                    status = Core::ERROR_GENERAL;
+                    return status;
                 }
 
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
@@ -698,7 +699,8 @@ namespace WPEFramework
                         {
                             LOGERR("Failed to set group ownership: path=%s requested_gid=%u errno=%d", mBaseStoragePath.c_str(), ralfGroupId, errno);
                             errorReason = "Failed to set group ownership for base storage directory: " + mBaseStoragePath;
-                            goto ret_fail;
+                            status = Core::ERROR_GENERAL;
+                            return status;
                         }
                     }
 #endif // RALF_PACKAGE_SUPPORT_ENABLED
@@ -712,7 +714,7 @@ namespace WPEFramework
                         /* App storage already exist, no need of map entry update */
                         path = storageInfo.path;
                         status = Core::ERROR_NONE;
-                        goto ret_success;
+                        return status;
                     }
                     else
                     {
@@ -722,7 +724,8 @@ namespace WPEFramework
                             LOGERR("Failed to remove storage appId: %s", appId.c_str());
                             errorReason = "Failed to remove storage for appId: " + appId;
                             path = "";
-                            goto ret_fail;
+                            status = Core::ERROR_GENERAL;
+                            return status;
                         }
                     }
                 }
@@ -731,7 +734,8 @@ namespace WPEFramework
                 {
                     LOGERR("Insufficient storage for appId=%s: requested=%u KB", appId.c_str(), size);
                     errorReason = "Insufficient storage space";
-                    goto ret_fail;
+                    status = Core::ERROR_GENERAL;
+                    return status;
                 }
                 else
                 {
@@ -745,7 +749,8 @@ namespace WPEFramework
                         {
                             errorReason = "Failed to create app storage directory: " + appDir;
                             LOGERR("Error creating app storage directory %s: errno=%d (%s)", appDir.c_str(), errno, strerror(errno));
-                            goto ret_fail;
+                            status = Core::ERROR_GENERAL;
+                            return status;
                         }
                         else
                         {
@@ -755,7 +760,8 @@ namespace WPEFramework
                             {
                                 errorReason = "Path exists but is not a directory: " + appDir;
                                 LOGERR("Path exists but is not a directory: %s", appDir.c_str());
-                                goto ret_fail;
+                                status = Core::ERROR_GENERAL;
+                                return status;
                             }
                             // Directory exists - continue
                         }
@@ -792,9 +798,6 @@ namespace WPEFramework
 
                 }
             }
-
-            ret_success:
-            ret_fail:
             return status;
         }
 
@@ -883,7 +886,15 @@ namespace WPEFramework
                     LOGINFO("App Folder exists, attempting to delete: %s", path.c_str());
                     if (deleteDirectoryEntries(appId, errorReason) == Core::ERROR_NONE)
                     {
-                        if (0 == rmdir(path.c_str()))
+                        if (access(path.c_str(), F_OK) != 0)
+                        {
+                            LOGINFO("App Folder already deleted: %s", path.c_str());
+                            status = Core::ERROR_NONE;
+                            errorReason.clear();
+                            mStorageAppInfo.erase(it);
+                            appQuotaSizeProperty(DELETE, appId, nullptr);
+                        }
+                        else if (0 == rmdir(path.c_str()))
                         {
                             LOGINFO("App Folder removed successfully");
                             status = Core::ERROR_NONE;
@@ -971,18 +982,29 @@ namespace WPEFramework
             {
                 const std::string path = it->second->path;
                 LOGINFO("Clearing App storage path: %s", path.c_str());
+
                 if (nftw(path.c_str(), deleteCallback, MAX_NUM_OF_FILE_DESCRIPTORS, FTW_DEPTH | FTW_PHYS) != 0)
                 {
-                    LOGERR("Failed to clear App storage path: %s", path.c_str());
-                    errorReason = "Failed to clear App storage path: " + path;
-                }
+			if (errno == ENOENT)
+            		{
+                		LOGINFO("App storage path '%s' cleared already", path.c_str());
+		                it->second->usedKB = 0;
+                		errorReason.clear();
+                		status = Core::ERROR_NONE;
+            		}
+            		else
+            		{
+                		LOGERR("Failed to clear App storage path: %s", path.c_str());
+                		errorReason = "Failed to clear App storage path: " + path;
+            		}
+        	}
                 else
                 {
-                    /* Successfully cleared app storage path */
-                    it->second->usedKB = 0;
-                    errorReason = "";
-                    status = Core::ERROR_NONE;
-                }
+                        /* Successfully cleared app storage path */
+                        it->second->usedKB = 0;
+                        errorReason = "";
+                        status = Core::ERROR_NONE;
+		}
             }
             return status;
         }

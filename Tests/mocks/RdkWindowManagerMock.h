@@ -72,6 +72,8 @@ public:
     MOCK_METHOD(bool, getClients, (ClientList& clients), (override));
     MOCK_METHOD(bool, getVisibility, (const std::string& client, bool& visible), (override));
     MOCK_METHOD(bool, setVisibility, (const std::string& client, bool visible), (override));
+    MOCK_METHOD(bool, showSplashScreen, (uint32_t timeoutInSeconds), (override));
+    MOCK_METHOD(bool, hideSplashScreen, (), (override));
 
     MOCK_METHOD(
         bool,

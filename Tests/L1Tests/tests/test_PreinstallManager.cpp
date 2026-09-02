@@ -207,7 +207,7 @@ protected:
             .WillByDefault(Return(0));
     }
 
-    auto BuildPackageIterator(const std::vector<Exchange::IPackageInstaller::Package>& packages)
+    Exchange::IPackageInstaller::IPackageIterator* BuildPackageIterator(const std::vector<Exchange::IPackageInstaller::Package>& packages)
     {
         std::list<Exchange::IPackageInstaller::Package> packageList;
         for (const auto& package : packages) {
@@ -298,7 +298,7 @@ public:
 
     MOCK_METHOD(void, OnAppInstallationStatus, (const std::string& jsonresponse), (override));
     MOCK_METHOD(void, OnPreinstallationComplete, (), (override));
-    MOCK_METHOD(void, AddRef, (), (const, override));
+    MOCK_METHOD(uint32_t, AddRef, (), (const, override));
     MOCK_METHOD(uint32_t, Release, (), (const, override));
 
     BEGIN_INTERFACE_MAP(MockNotificationTest)

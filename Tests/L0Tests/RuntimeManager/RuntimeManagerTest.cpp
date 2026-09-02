@@ -245,6 +245,14 @@ extern uint32_t Test_DobbySpecGenerator_GenerateThunderPluginFromCapabilities();
 extern uint32_t Test_DobbySpecGenerator_GenerateDialEnvFromEscapedCapabilityValue();
 extern uint32_t Test_DobbySpecGenerator_GenerateWithEmptyCapabilitiesString();
 extern uint32_t Test_DobbySpecGenerator_GenerateIgnoresRuntimeLogLevelsForEthanLog();
+extern uint32_t Test_DobbySpecGenerator_GstRegistryInjectedWhenRialtoInactive();
+extern uint32_t Test_DobbySpecGenerator_GstRegistryMountedWhenRialtoInactive();
+#ifdef ENABLE_RIALTO
+extern uint32_t Test_DobbySpecGenerator_RialtoSocketEnvInjectedWhenRialtoActive();
+extern uint32_t Test_DobbySpecGenerator_GstRegistryEnvAbsentWhenRialtoActive();
+extern uint32_t Test_DobbySpecGenerator_GstRegistryMountAbsentWhenRialtoActive();
+extern uint32_t Test_DobbySpecGenerator_RialtoPrefixedSocketPathUsedInSpec();
+#endif
 
 int main()
 {
@@ -399,6 +407,14 @@ int main()
         { "DobbySpecGenerator_GenerateDialEnvFromEscapedCapabilityValue",            Test_DobbySpecGenerator_GenerateDialEnvFromEscapedCapabilityValue },
         { "DobbySpecGenerator_GenerateWithEmptyCapabilitiesString",                  Test_DobbySpecGenerator_GenerateWithEmptyCapabilitiesString },
         { "DobbySpecGenerator_GenerateIgnoresRuntimeLogLevelsForEthanLog",           Test_DobbySpecGenerator_GenerateIgnoresRuntimeLogLevelsForEthanLog },
+        { "DobbySpecGenerator_GstRegistryInjectedWhenRialtoInactive",                Test_DobbySpecGenerator_GstRegistryInjectedWhenRialtoInactive },
+        { "DobbySpecGenerator_GstRegistryMountedWhenRialtoInactive",                 Test_DobbySpecGenerator_GstRegistryMountedWhenRialtoInactive },
+#ifdef ENABLE_RIALTO
+        { "DobbySpecGenerator_RialtoSocketEnvInjectedWhenRialtoActive",              Test_DobbySpecGenerator_RialtoSocketEnvInjectedWhenRialtoActive },
+        { "DobbySpecGenerator_GstRegistryEnvAbsentWhenRialtoActive",                 Test_DobbySpecGenerator_GstRegistryEnvAbsentWhenRialtoActive },
+        { "DobbySpecGenerator_GstRegistryMountAbsentWhenRialtoActive",               Test_DobbySpecGenerator_GstRegistryMountAbsentWhenRialtoActive },
+        { "DobbySpecGenerator_RialtoPrefixedSocketPathUsedInSpec",                   Test_DobbySpecGenerator_RialtoPrefixedSocketPathUsedInSpec },
+#endif
 
         // ── ralf/RalfSupport tests ───────────────────────────────────────────
         { "Ralf_ParseMemorySize_EmptyStringReturnsZero",                             Test_Ralf_ParseMemorySize_EmptyStringReturnsZero },

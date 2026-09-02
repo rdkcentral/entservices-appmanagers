@@ -44,7 +44,7 @@ namespace ralf
     constexpr const char *ACCESS = "access";
     constexpr const char *ALLOW = "allow";
     constexpr const char *PATH = "path";
-    constexpr const char *MOUNT = "mounts";
+    constexpr const char *MOUNTS = "mounts";
     constexpr const char *SOURCE = "source";
     constexpr const char *DESTINATION = "destination";
     constexpr const char *TYPE = "type";
@@ -64,8 +64,12 @@ namespace ralf
     constexpr const char *VALUE = "value";
 
     constexpr const char *PACKAGE_TYPE = "packageType";
-    constexpr const char *PKG_TYPE_APPLICATION = "application";
+    constexpr const char *PKG_TYPE_BASE = "base";
+    constexpr const char *PKG_TYPE_RESOURCE = "resource";
     constexpr const char *PKG_TYPE_RUNTIME = "runtime";
+    constexpr const char *PKG_TYPE_SERVICE = "service";
+    constexpr const char *PKG_TYPE_APPLICATION = "application";
+
     constexpr const char *FIREBOLT_ENDPOINT_ENV_KEY = "FIREBOLT_ENDPOINT";
 
     constexpr const char *CONFIG_OVERRIDES_URN = "urn:rdk:config:overrides";
@@ -79,6 +83,7 @@ namespace ralf
 
     constexpr const char *STORAGE_CONFIG_URN = "urn:rdk:config:storage";
     constexpr const char *MAX_LOCAL_STORAGE = "maxLocalStorage";
+    constexpr const char *ENV_CONFIG_URN = "urn:rdk:config:env";
 
     constexpr const char *RUNTIME_CONFIG_OVERRIDES_ENV_KEY = "RUNTIME_CONFIG_OVERRIDES_JSON";
     constexpr const char *APP_CONFIG_OVERRIDES_ENV_KEY = "APP_CONFIG_OVERRIDES_JSON";

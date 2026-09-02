@@ -30,6 +30,11 @@ namespace ralf
     const std::string RALF_OVERLAYFS_TYPE = "overlay";
     const std::string RALF_APP_ROOTFS_DIR = "/tmp/ralf/";
     const std::string RALF_USER_NAME = "ralf";
+    const std::string RALF_ZONE_INFO_PATH = "/usr/share/zoneinfo";
+    const std::string RALF_HOST_LOCALTIME_PATH = "/opt/persistent/localtime";
+    const std::string RALF_HOST_TIMEZONE_DST_PATH = "/opt/persistent/timeZoneDST";
+    const std::string RALF_TIMEZONE_PATH = "/etc/timezone";
+    const std::string RALF_LOCALTIME_PATH = "/etc/localtime";
 
     typedef std::pair<std::string, std::string> RalfPkgInfoPair; // <packageMetadataJsonPath, mountPoint>
 } // namespace ralf

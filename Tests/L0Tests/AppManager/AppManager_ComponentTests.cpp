@@ -242,7 +242,6 @@ uint32_t Test_AM_LifecycleConnectorStateCallbacksStability()
 
     auto* impl = WPEFramework::Core::Service<WPEFramework::Plugin::AppManagerImplementation>::Create<WPEFramework::Plugin::AppManagerImplementation>();
     L0Test::AppManagerServiceMock service;
-    WPEFramework::Plugin::LifecycleInterfaceConnector connector(&service);
 
     WPEFramework::Plugin::AppInfoManager::getInstance().clear();
     WPEFramework::Plugin::AppInfo app;
@@ -250,20 +249,27 @@ uint32_t Test_AM_LifecycleConnectorStateCallbacksStability()
     app.setAppNewState(WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE);
     WPEFramework::Plugin::AppInfoManager::getInstance().upsert("app.state", [&](WPEFramework::Plugin::AppInfo& a) { a = app; });
 
-    connector.OnAppStateChanged("app.state", WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE, "ERROR_DOBBY_SPEC");
-    L0Test::ExpectTrue(tr, true, "OnAppStateChanged() remains stable with mapped error reason");
+    {
+        // Scoped so the connector (and its lifecycle worker thread) is destroyed
+        // and its queued callbacks are drained while impl is still alive, avoiding
+        // a use-after-free/pure-virtual-call race against impl->Release() below.
+        WPEFramework::Plugin::LifecycleInterfaceConnector connector(&service);
 
-    connector.OnAppLifecycleStateChanged("app.state", "inst-1",
-        WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE,
-        WPEFramework::Exchange::ILifecycleManager::LifecycleState::PAUSED,
-        "intent://navigate");
-    L0Test::ExpectTrue(tr, true, "OnAppLifecycleStateChanged() remains stable for regular transitions");
+        connector.OnAppStateChanged("app.state", WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE, "ERROR_DOBBY_SPEC");
+        L0Test::ExpectTrue(tr, true, "OnAppStateChanged() remains stable with mapped error reason");
 
-    connector.OnAppLifecycleStateChanged("app.state", "inst-1",
-        static_cast<WPEFramework::Exchange::ILifecycleManager::LifecycleState>(999),
-        WPEFramework::Exchange::ILifecycleManager::LifecycleState::PAUSED,
-        "intent://navigate");
-    L0Test::ExpectTrue(tr, true, "OnAppLifecycleStateChanged() ignores unknown state transitions safely");
+        connector.OnAppLifecycleStateChanged("app.state", "inst-1",
+            WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE,
+            WPEFramework::Exchange::ILifecycleManager::LifecycleState::PAUSED,
+            "intent://navigate");
+        L0Test::ExpectTrue(tr, true, "OnAppLifecycleStateChanged() remains stable for regular transitions");
+
+        connector.OnAppLifecycleStateChanged("app.state", "inst-1",
+            static_cast<WPEFramework::Exchange::ILifecycleManager::LifecycleState>(999),
+            WPEFramework::Exchange::ILifecycleManager::LifecycleState::PAUSED,
+            "intent://navigate");
+        L0Test::ExpectTrue(tr, true, "OnAppLifecycleStateChanged() ignores unknown state transitions safely");
+    }
 
     // CRITICAL: Configure with full dependencies before Release to avoid ASSERT crash in destructor
     L0Test::AppManagerServiceMock fullService(CreateFullServiceConfig());

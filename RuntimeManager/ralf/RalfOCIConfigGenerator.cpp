@@ -25,9 +25,9 @@
 #include <fstream>
 
 #define PERSIST_STORAGE_PATH "/data"
+
 namespace ralf
 {
-
     bool RalfOCIConfigGenerator::generateRalfOCIConfig(const WPEFramework::Plugin::ApplicationConfiguration &config, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject)
     {
         Json::Value ociConfigRootNode;
@@ -83,10 +83,23 @@ namespace ralf
         addFireboltEndPointToConfig(ociConfigRootNode, runtimeConfigObject.envVariables);
         // /rootdir is a 10MB tmpfs, so we need to ensure that the application has enough space for its working directory.
         addToEnvironment(ociConfigRootNode, "TEMP_STORAGE_PATH", "/rootdir");
-        //Log name update.
+        // Log name update.
         addLogNameToOCIConfig(ociConfigRootNode, config.mAppStorageInfo.path, config.mAppId);
+        // Add Timezone info
+        addTimezoneInfo(ociConfigRootNode);
         // Finally save the modified OCI config to file
+        addThunderAccessToPrivilegedApps(ociConfigRootNode);
         return saveOCIConfigToFile(ociConfigRootNode, config.mUserId, config.mGroupId);
+    }
+    void RalfOCIConfigGenerator::addThunderAccessToPrivilegedApps(Json::Value &ociConfigRootNode)
+    {
+        const char* thunderaccess = getenv("THUNDER_ACCESS");
+        if (nullptr != thunderaccess)
+        {
+            //TODO  this should be checked against urn:rdk:permission:thunder capability before adding to environment
+            addToEnvironment(ociConfigRootNode, "THUNDER_ACCESS", thunderaccess);
+            LOGINFO("THUNDER_ACCESS environment variable is set to: %s", thunderaccess);
+        }
     }
 
     void RalfOCIConfigGenerator::addLogNameToOCIConfig(Json::Value &ociConfigRootNode, const std::string &appStoragePath, const std::string &appId)
@@ -140,7 +153,7 @@ namespace ralf
         addToEnvironment(ociConfigRootNode, "XDG_RUNTIME_DIR", "/tmp");
 
         // Need to mount bind  XDG_RUNTIME_DIR/WAYLAND_DISPLAY from host to container
-        addMountEntry(ociConfigRootNode, appConfig.mWesterosSocketPath, appConfig.mWesterosSocketPath);
+        addBindMountToOCIConfig(ociConfigRootNode, appConfig.mWesterosSocketPath, appConfig.mWesterosSocketPath);
 
         // Home by default will be set to PERSIST_STORAGE_PATH in the OCI config.
         std::string homePath = PERSIST_STORAGE_PATH; // Default HOME path
@@ -154,7 +167,7 @@ namespace ralf
         std::string rialtoSocketPath = "/tmp/rlto-" + appConfig.mAppInstanceId;
         addToEnvironment(ociConfigRootNode, "RIALTO_SOCKET_PATH", rialtoSocketPath);
         LOGDBG("Added RIALTO_SOCKET environment variable with value %s\n", rialtoSocketPath.c_str());
-        addMountEntry(ociConfigRootNode, rialtoSocketPath, rialtoSocketPath);
+        addBindMountToOCIConfig(ociConfigRootNode, rialtoSocketPath, rialtoSocketPath);
         LOGDBG("Mounted rialto socket path %s to container path %s\n", rialtoSocketPath.c_str(), rialtoSocketPath.c_str());
         return status;
     }
@@ -164,7 +177,7 @@ namespace ralf
         // We will mount application storage to /home/root/appstorage and
         // set PERSIST_STORAGE_PATH environment variable to it.
         std::string containerStoragePath = PERSIST_STORAGE_PATH;
-        addMountEntry(ociConfigRootNode, appStoragePath, containerStoragePath);
+        addBindMountToOCIConfig(ociConfigRootNode, appStoragePath, containerStoragePath);
         addToEnvironment(ociConfigRootNode, "PERSIST_STORAGE_PATH", containerStoragePath);
         LOGDBG("Added application storage mount from %s to %s and set PERSIST_STORAGE_PATH environment variable\n", appStoragePath.c_str(), containerStoragePath.c_str());
         status = true;
@@ -214,20 +227,7 @@ namespace ralf
 
         return true;
     }
-    void RalfOCIConfigGenerator::addMountEntry(Json::Value &ociConfigRootNode, const std::string &source, const std::string &destination)
-    {
-        Json::Value mountEntry;
-        mountEntry[SOURCE] = source;
-        mountEntry[DESTINATION] = destination;
-        mountEntry[TYPE] = "bind";
 
-        Json::Value mountOptions(Json::arrayValue);
-        mountOptions.append("rbind");
-        mountOptions.append("rw");
-        mountEntry[OPTIONS] = mountOptions;
-
-        ociConfigRootNode[MOUNT].append(mountEntry);
-    }
     bool RalfOCIConfigGenerator::saveOCIConfigToFile(const Json::Value &ociConfigRootNode, int uid, int gid)
     {
         bool status = false;
@@ -315,7 +315,7 @@ namespace ralf
                     {
                         std::string sourcePath = fileEntry[SOURCE].asString();
                         std::string destPath = fileEntry[DESTINATION].asString();
-                        addMountEntry(ociConfigRootNode, sourcePath, destPath);
+                        addBindMountToOCIConfig(ociConfigRootNode, sourcePath, destPath);
                         LOGDBG("Added graphics file mount from %s to %s\n", sourcePath.c_str(), destPath.c_str());
                     }
                     else
@@ -443,6 +443,16 @@ namespace ralf
             status = addStorageConfigToOCIConfig(ociConfigRootNode, configNode);
             LOGDBG("Applied storage config to OCI config ? %s\n", status ? "true" : "false");
         }
+        // Apply urn:rdk:config:env — spec matrix: Application/Service only (N/A for Runtime and Base)
+        if (packageType == PKG_TYPE_APPLICATION || packageType == PKG_TYPE_SERVICE)
+        {
+            status = addConfigEnvToOCIConfig(ociConfigRootNode, configNode);
+            LOGDBG("Applied config env to OCI config ? %s\n", status ? "true" : "false");
+        }
+        else if (configNode.isMember(ENV_CONFIG_URN))
+        {
+            LOGWARN("Ignoring %s for packageType '%s'; only valid for application/service packages\n", ENV_CONFIG_URN, packageType.c_str());
+        }
         // Add APP_PACKAGE_VERSION environment variable from application config to OCI config
         if (packageType == PKG_TYPE_APPLICATION)
         {
@@ -566,7 +576,7 @@ namespace ralf
                     std::string fireboltPrefix = std::string(FIREBOLT_ENDPOINT_ENV_KEY) + "=";
                     if (envPair.rfind(fireboltPrefix, 0) == 0)
                     {
-                        ociConfigRootNode[PROCESS][ENV].append(envPair);
+                        addToEnvironment(ociConfigRootNode, FIREBOLT_ENDPOINT_ENV_KEY, envPair.substr(fireboltPrefix.size()));
                         LOGDBG("Added FIREBOLT_ENDPOINT environment variable: %s\n", envPair.c_str());
                         return true; // Found and added
                     }
@@ -613,9 +623,79 @@ namespace ralf
 
         return status;
     }
+
+    bool RalfOCIConfigGenerator::addConfigEnvToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &configNode)
+    {
+        if (!configNode.isMember(ENV_CONFIG_URN))
+        {
+            LOGDBG("No config env found in Ralf package config\n");
+            return false;
+        }
+
+        const Json::Value &envNode = configNode[ENV_CONFIG_URN];
+        if (!envNode.isObject())
+        {
+            LOGWARN("Config env node exists but is not an object; skipping\n");
+            return false;
+        }
+
+        bool status = false;
+        for (const auto &memberName : envNode.getMemberNames())
+        {
+            const Json::Value &valueNode = envNode[memberName];
+            if (!valueNode.isString())
+            {
+                LOGWARN("Skipping non-string environment variable value in %s for key: %s\n", ENV_CONFIG_URN, memberName.c_str());
+                continue;
+            }
+            addToEnvironment(ociConfigRootNode, memberName, valueNode.asString());
+            status = true;
+        }
+
+        if (!status)
+        {
+            LOGWARN("Config env node found but contains no valid key/value entries\n");
+        }
+        return status;
+    }
+
+    void RalfOCIConfigGenerator::addTimezoneInfo(Json::Value &ociConfigRootNode)
+    {
+        /* As per HLA , three paths needs to be mounted.
+
+        /usr/share/zoneinfo /usr/share/zoneinfo
+        /opt/persistent/localtime /etc/localtime
+        /opt/persistent/timeZoneDST /etc/timezone
+
+        First one will be always present. Second and third are optional. Mount only if they are present.
+        */
+        addBindMountToOCIConfig(ociConfigRootNode, RALF_ZONE_INFO_PATH, RALF_ZONE_INFO_PATH, true);
+
+        if (checkIfPathExists(RALF_HOST_LOCALTIME_PATH))
+        {
+            addBindMountToOCIConfig(ociConfigRootNode, RALF_HOST_LOCALTIME_PATH, RALF_LOCALTIME_PATH, true);
+            LOGDBG("Added localtime mount from %s to %s\n", RALF_HOST_LOCALTIME_PATH.c_str(), RALF_LOCALTIME_PATH.c_str());
+        }
+        else
+        {
+            LOGWARN("Localtime file %s does not exist. Skipping mount.\n", RALF_HOST_LOCALTIME_PATH.c_str());
+        }
+
+        if (checkIfPathExists(RALF_HOST_TIMEZONE_DST_PATH))
+        {
+            addBindMountToOCIConfig(ociConfigRootNode, RALF_HOST_TIMEZONE_DST_PATH, RALF_TIMEZONE_PATH, true);
+            LOGDBG("Added timezone DST mount from %s to %s\n", RALF_HOST_TIMEZONE_DST_PATH.c_str(), RALF_TIMEZONE_PATH.c_str());
+        }
+        else
+        {
+            LOGWARN("Timezone DST file %s does not exist. Skipping mount.\n", RALF_HOST_TIMEZONE_DST_PATH.c_str());
+        }
+    }
+
     void RalfOCIConfigGenerator::addToEnvironment(Json::Value &ociConfigRootNode, const std::string &key, const std::string &value)
     {
-        // Ensure process/ENV exists and is an array before appending the new environment variable.
+        // Upsert: remove any existing entry for this key, then append the new value.
+        // This enforces the precedence rule (last write wins) and keeps process.env dedup-clean.
         std::string envVar = key + "=" + value;
 
         Json::Value &processNode = ociConfigRootNode[PROCESS];
@@ -624,13 +704,22 @@ namespace ralf
             processNode = Json::Value(Json::objectValue);
         }
 
-        Json::Value &envNode = processNode[ENV];
-        if (!envNode.isArray())
+        if (!processNode[ENV].isArray())
         {
-            envNode = Json::Value(Json::arrayValue);
+            processNode[ENV] = Json::Value(Json::arrayValue);
         }
-
-        envNode.append(envVar);
+        // Build a deduplicated array, dropping any existing entry for this key.
+        const std::string prefix = key + "=";
+        Json::Value deduped(Json::arrayValue);
+        for (const auto &existing : processNode[ENV])
+        {
+            if (!existing.isString() || existing.asString().rfind(prefix, 0) != 0)
+                deduped.append(existing);
+            else
+                LOGWARN("Removed duplicate environment variable from OCI config: %s\n", existing.asString().c_str());
+        }
+        deduped.append(envVar);
+        processNode[ENV] = deduped;
         LOGDBG("Added environment variable to OCI config: %s\n", envVar.c_str());
     }
 } // namespace ralf

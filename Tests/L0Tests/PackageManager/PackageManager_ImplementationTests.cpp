@@ -3,7 +3,6 @@
 #include <cstdio>
 #include <string>
 #include <thread>
-#include <unistd.h>
 
 #include "PackageManagerImplementation.h"
 #include "ServiceMock.h"
@@ -16,6 +15,7 @@ using WPEFramework::Core::ERROR_BAD_REQUEST;
 using WPEFramework::Core::ERROR_GENERAL;
 using WPEFramework::Core::ERROR_INVALID_SIGNATURE;
 using WPEFramework::Core::ERROR_NONE;
+using WPEFramework::Core::ERROR_NOT_SUPPORTED;
 
 class FakeDownloaderNotification final : public WPEFramework::Exchange::IPackageDownloader::INotification {
 public:
@@ -25,9 +25,9 @@ public:
     {
     }
 
-    void AddRef() const override
+    uint32_t AddRef() const override
     {
-        _refCount.fetch_add(1, std::memory_order_relaxed);
+        return _refCount.fetch_add(1, std::memory_order_relaxed) + 1;
     }
 
     uint32_t Release() const override
@@ -67,9 +67,9 @@ public:
     {
     }
 
-    void AddRef() const override
+    uint32_t AddRef() const override
     {
-        _refCount.fetch_add(1, std::memory_order_relaxed);
+        return _refCount.fetch_add(1, std::memory_order_relaxed) + 1;
     }
 
     uint32_t Release() const override
@@ -105,13 +105,15 @@ public:
 struct ImplFixture {
     L0Test::FakeStorageManager storage;
     L0Test::ServiceMock::FakeSubSystem subSystem;
+    L0Test::ServiceMock::FakeTelemetryMetrics telemetry;
     L0Test::ServiceMock service;
     WPEFramework::Plugin::PackageManagerImplementation* impl;
 
     ImplFixture()
         : storage()
         , subSystem()
-        , service(L0Test::ServiceMock::Config(&storage, &subSystem, nullptr))
+        , telemetry()
+        , service(L0Test::ServiceMock::Config(&storage, &subSystem, &telemetry))
         , impl(WPEFramework::Core::Service<WPEFramework::Plugin::PackageManagerImplementation>::Create<
             WPEFramework::Plugin::PackageManagerImplementation>())
     {
@@ -130,9 +132,10 @@ struct ImplFixture {
     {
         const uint32_t rc = impl->Initialize(&service);
         if (rc == ERROR_NONE) {
-            // PackageManager initializes cache asynchronously; wait until marker is published.
-            for (uint32_t i = 0; i < 250; ++i) {
-                if (0 == access(PACKAGE_MANAGER_MARKER_FILE, F_OK)) {
+            // The marker is written before telemetry; retain the fixture until the
+            // background initialization has completed its final shell access.
+            for (uint32_t i = 0; i < 500; ++i) {
+                if (0U < telemetry.recordCalls.load()) {
                     break;
                 }
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -746,4 +749,31 @@ uint32_t Test_PM_Impl_InstallFailureReasonBranches()
 
     return tr.failures;
 }
+uint32_t Test_PM_Impl_GetConfigListForInstalledPackages()
+{
+    L0Test::TestResult tr;
+    ImplFixture fx;
+    L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() succeeds");
 
+    std::string config;
+    L0Test::ExpectEqU32(tr,
+        fx.impl->GetConfigListForInstalledPackages("filter", config),
+        ERROR_NOT_SUPPORTED,
+        "GetConfigListForInstalledPackages() returns ERROR_NOT_SUPPORTED");
+
+    return tr.failures;
+}
+uint32_t Test_PM_Impl_GetConfigForInstalledPackage()
+{
+    L0Test::TestResult tr;
+    ImplFixture fx;
+    L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() succeeds");
+
+    std::string config;
+    L0Test::ExpectEqU32(tr,
+        fx.impl->GetConfigForInstalledPackage("SomePackageId", "1.0.0", config),
+        ERROR_GENERAL,
+        "GetConfigForInstalledPackage() returns ERROR_GENERAL for non-existent package");
+
+    return tr.failures;
+}
