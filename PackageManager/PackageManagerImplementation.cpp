@@ -1274,11 +1274,7 @@ namespace Plugin {
                 // Populate state from returned config (mirrors InitializeState())
                 const uint32_t cachedDataImageSize = state.runtimeConfig.dataImageSize;
                 getRuntimeConfig(config, state.runtimeConfig);
-                if ((0U == state.runtimeConfig.dataImageSize) && (0U != cachedDataImageSize)) {
-                    LOGWARN("Install metadata omitted dataImageSize for %s:%s; preserving cached value %u",
-                        packageId.c_str(), version.c_str(), cachedDataImageSize);
-                    state.runtimeConfig.dataImageSize = cachedDataImageSize;
-                }
+                state.runtimeConfig.dataImageSize = cachedDataImageSize;
                 state.digest = config.md5Hash;
                 state.runtimeType = config.runtimeType;
                 {
