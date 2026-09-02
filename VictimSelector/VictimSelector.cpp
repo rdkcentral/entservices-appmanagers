@@ -64,6 +64,7 @@ const string VictimSelector::Initialize(PluginHost::IShell* service) {
             LOGERR("VictimSelector initialization failed: implementation could not be created");
             result = "VictimSelector implementation could not be created";
         } else {
+            Exchange::JVictimSelector::Register(*this, mImplementation);
             mConfigure = mImplementation->QueryInterface<Exchange::IConfiguration>();
             if (nullptr == mConfigure) {
                 LOGERR("VictimSelector initialization failed: implementation has no configuration interface");
@@ -73,8 +74,6 @@ const string VictimSelector::Initialize(PluginHost::IShell* service) {
                 if (Core::ERROR_NONE != configureStatus) {
                     LOGERR("VictimSelector initialization failed: configuration returned status=%d", configureStatus);
                     result = "VictimSelector could not be configured";
-                } else {
-                    Exchange::JVictimSelector::Register(*this, mImplementation);
                 }
             }
         }
