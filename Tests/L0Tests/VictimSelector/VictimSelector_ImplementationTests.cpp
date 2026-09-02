@@ -1,6 +1,7 @@
 #include <atomic>
 #include <list>
 #include <map>
+#include <sstream>
 #include <string>
 
 #define private public
@@ -122,7 +123,7 @@ public:
         return references;
     }
     void* QueryInterface(const uint32_t) override { return nullptr; }
-    void OnEvictComplete(const bool evicted, const EvictErrorReason errorCode) override
+    void OnEvictComplete(const bool evicted, const Exchange::IVictimSelector::EvictErrorReason errorCode) override
     {
         ++completionCalls;
         lastEvicted = evicted;
@@ -132,7 +133,7 @@ public:
     mutable std::atomic<uint32_t> mRefCount { 1 };
     uint32_t completionCalls { 0 };
     bool lastEvicted { true };
-    EvictErrorReason lastError { EVICT_ERROR_NONE };
+    Exchange::IVictimSelector::EvictErrorReason lastError { Exchange::IVictimSelector::EVICT_ERROR_NONE };
 };
 
 Exchange::IAppManager::LoadedAppInfo LoadedApp(const string& appId, const Exchange::IAppManager::AppLifecycleState state)

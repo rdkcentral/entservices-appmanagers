@@ -24,7 +24,7 @@ Parameters:
   - `FLASH`
 - `type`: Termination mode.
   - `HARD`: calls AppManager `KillApp`.
-  - `SOFT`: calls AppManager `TerminateApp`.
+  - `SOFT`: calls AppManager `TerminateApp`, except a selected `HIBERNATED` app is forcefully evicted with `KillApp`.
 
 The method is synchronous with respect to selecting a victim and submitting the termination request. The actual completion is reported asynchronously through `onEvictComplete`.
 
@@ -59,7 +59,7 @@ The current implementation reports `TIMEOUT` in the contract for future use, but
 8. For each eligible application, Victim Selector calls `RuntimeManager.GetInfo(appInstanceId)`.
 9. Victim Selector parses `memory.user.usage` from the returned Dobby statistics JSON.
 10. Candidates are sorted by priority, memory usage, and position in the AppManager ordering.
-11. Victim Selector calls either `TerminateApp` or `KillApp`.
+11. Victim Selector calls `TerminateApp` for a `SOFT` eviction, or `KillApp` for a `HARD` eviction and for any selected `HIBERNATED` app.
 12. If a `HARD` request arrives while that application's `SOFT` eviction is pending, Victim Selector calls `KillApp` for the same application.
 13. AppManager lifecycle notifications are monitored.
 14. When the pending application reaches `APP_STATE_UNLOADED`, Victim Selector sends `onEvictComplete(true, NONE)`.

@@ -83,10 +83,12 @@ Core::hresult VictimSelectorImplementation::Unregister(Exchange::IVictimSelector
     ASSERT(nullptr != notification);
 
     std::lock_guard<std::mutex> guard(mLock);
-    if ((nullptr != mNotification) && (mNotification == notification)) {
-        mNotification->Release();
-        mNotification = nullptr;
+    if ((nullptr == mNotification) || (mNotification != notification)) {
+        return Core::ERROR_GENERAL;
     }
+
+    mNotification->Release();
+    mNotification = nullptr;
     return Core::ERROR_NONE;
 }
 

@@ -24,7 +24,7 @@
 #include <interfaces/IAppManager.h>
 #include <interfaces/IRuntimeManager.h>
 #include <interfaces/IConfiguration.h>
-#include "tracing/Logging.h"
+#include "UtilsLogging.h"
 #include <mutex>
 #include <string>
 
