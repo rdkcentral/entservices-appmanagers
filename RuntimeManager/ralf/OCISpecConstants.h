@@ -60,6 +60,7 @@ namespace ralf
 
     constexpr const char *ENTRY_POINT = "entryPoint";
     constexpr const char *CONFIGURATION = "configuration";
+    constexpr const char *PERMISSIONS = "permissions";
     constexpr const char *KEY = "key";
     constexpr const char *VALUE = "value";
 
@@ -72,7 +73,28 @@ namespace ralf
 
     constexpr const char *FIREBOLT_ENDPOINT_ENV_KEY = "FIREBOLT_ENDPOINT";
 
+    constexpr const char *PERMISSION_INTERNET = "urn:rdk:permission:internet";
+
     constexpr const char *CONFIG_OVERRIDES_URN = "urn:rdk:config:overrides";
+
+    constexpr const char *NETWORK_CONFIG_URN = "urn:rdk:config:network";
+    constexpr const char *PORT_FORWARDING = "portForwarding";
+    constexpr const char *PORT = "port";
+    constexpr const char *PROTOCOL = "protocol";
+    constexpr const char *NAME = "name";
+    constexpr const char *NETWORKING = "networking";
+    constexpr const char *DNSMASQ = "dnsmasq";
+    constexpr const char *HOST_TO_CONTAINER = "hostToContainer";
+    constexpr const char *CONTAINER_TO_HOST = "containerToHost";
+    constexpr const char *LOCALHOST_MASQUERADE = "localhostMasquerade";
+    constexpr const char *MULTICAST_FORWARDING = "multicastForwarding";
+    constexpr const char *INTER_CONTAINER = "interContainer";
+    constexpr const char *NETWORK_TYPE_OPEN = "open";
+    constexpr const char *NETWORK_TYPE_NAT = "nat";
+    constexpr const char *NETWORK_TYPE_NONE = "none";
+    constexpr const char *NETWORK_IPV4 = "ipv4";
+    constexpr const char *NETWORK_IPV6 = "ipv6";
+
     constexpr const char *MEMORY_CONFIG_URN = "urn:rdk:config:memory";
     constexpr const char *SYSTEM_MEMORY = "system";
     constexpr const char *MEMORY_LIMIT = "limit";
@@ -90,7 +112,7 @@ namespace ralf
 
     constexpr const char *RDKPLUGINS = "rdkPlugins";
     constexpr const char *LOGGING = "logging";
-    constexpr const char *LOG_DATA = "data";
+    constexpr const char *DATA = "data";
     constexpr const char *LOG_FILE_OPTIONS = "fileOptions";
 
     // 500 MB is the default RAM given to an application. Tied to resources/oci-base-spec.json

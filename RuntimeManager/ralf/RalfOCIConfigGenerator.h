@@ -222,6 +222,47 @@ namespace ralf
         void addThunderAccessToPrivilegedApps(Json::Value &ociConfigRootNode);
 
         /**
+         * Adds networking defaults (type/dnsmasq/capabilities) to OCI config.
+         * @param ociConfigRootNode The root node of the OCI config JSON.
+         * @param networkEnabled Whether networking should be enabled for this app.
+         */
+        void addNetworkConfigurationsToOCIConfig(Json::Value &ociConfigRootNode, bool networkEnabled);
+
+        /**
+         * Adds required host system file mounts used by networking.
+         * Adds /etc/hosts mount always; /etc/resolv.conf mount is added only
+         * when dnsmasq is disabled.
+         * @param ociConfigRootNode The root node of the OCI config JSON.
+         */
+        void addNetworkSystemMountsToOCIConfig(Json::Value& ociConfigRootNode);
+
+        /**
+         * Ensures destination mount target file exists in generated rootfs bundle.
+         * For bind mounts to files (e.g. /etc/resolv.conf), OCI runtime expects
+         * destination path to exist inside rootfs before container start.
+         * @param containerPath Absolute path inside container (e.g. /etc/resolv.conf).
+         * @return true if target exists or was created, false otherwise.
+         */
+        bool ensureMountTargetFileInRootfs(const std::string &containerPath);
+
+        /**
+         * Applies network configuration from urn:rdk:config:network to rdkPlugins.networking.data.
+         * Extracts port forwarding entries and adds them to the OCI config.
+         * @param ociConfigRootNode The root node of the OCI config JSON.
+         * @param configNode The config node containing the network configuration.
+         * @return true if network config was processed successfully (may return true even if no config present).
+         */
+        bool applyNetworkConfigToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &configNode);
+
+        /**
+         * Checks whether a specific permission URN is present in the comma-separated capabilities string.
+         * @param capabilities The comma-separated capabilities string from package metadata.
+         * @param permission   The exact URN to search for (e.g. PERMISSION_INTERNET).
+         * @return true if the permission is found, false otherwise.
+         */
+        bool hasCapabilityPermission(const std::string &capabilities, const std::string &permission);
+
+        /**
          * The vector of Ralf package details as pairs of mount point and metadata path.
          */
         const std::vector<RalfPkgInfoPair> &mRalfPackages;

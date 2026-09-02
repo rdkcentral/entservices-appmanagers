@@ -22,6 +22,8 @@
 #include "RalfOCIConfigGenerator.h"
 #include "RalfSupport.h"
 #include "OCISpecConstants.h"
+#include <cerrno>
+#include <cstring>
 #include <fstream>
 
 #define PERSIST_STORAGE_PATH "/data"
@@ -91,6 +93,7 @@ namespace ralf
         addThunderAccessToPrivilegedApps(ociConfigRootNode);
         return saveOCIConfigToFile(ociConfigRootNode, config.mUserId, config.mGroupId);
     }
+
     void RalfOCIConfigGenerator::addThunderAccessToPrivilegedApps(Json::Value &ociConfigRootNode)
     {
         const char* thunderaccess = getenv("THUNDER_ACCESS");
@@ -107,7 +110,7 @@ namespace ralf
         // Override the default log file path in the generated OCI config with an app-specific path.
         // The updated entry is rdkPlugins->logging->data->fileOptions->path.
         std::string logFilePath = appStoragePath + "/" + appId + ".log";
-        ociConfigRootNode[RDKPLUGINS][LOGGING][LOG_DATA][LOG_FILE_OPTIONS][PATH] = logFilePath;
+        ociConfigRootNode[RDKPLUGINS][LOGGING][DATA][LOG_FILE_OPTIONS][PATH] = logFilePath;
     }
 
     bool RalfOCIConfigGenerator::applyRuntimeAndAppConfigToOCIConfig(Json::Value &ociConfigRootNode, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject, const WPEFramework::Plugin::ApplicationConfiguration &appConfig)
@@ -159,6 +162,17 @@ namespace ralf
         std::string homePath = PERSIST_STORAGE_PATH; // Default HOME path
         addToEnvironment(ociConfigRootNode, "HOME", homePath);
 
+        // Network configuration policy:
+        // - wanLanAccess=true: internet access (nat)
+        // - thunder=true or dial=true: local network access required (nat) - TODO: in future.
+        // - urn:rdk:permission:internet: internet access enabled (nat)
+        // - none enabled: keep container isolated (none)
+        // Add Network configuration from runtimeConfigObject to OCI config
+        const std::string &capabilities = runtimeConfigObject.capabilities;
+        bool hasPermissionInternet = hasCapabilityPermission(capabilities, PERMISSION_INTERNET);
+        bool networkEnabled = runtimeConfigObject.wanLanAccess || hasPermissionInternet;
+        addNetworkConfigurationsToOCIConfig(ociConfigRootNode, networkEnabled);
+
         // Mount persistent storage path
         std::string appStoragePath = appConfig.mAppStorageInfo.path;
         addAppStorageToOCIConfig(ociConfigRootNode, appStoragePath);
@@ -171,6 +185,168 @@ namespace ralf
         LOGDBG("Mounted rialto socket path %s to container path %s\n", rialtoSocketPath.c_str(), rialtoSocketPath.c_str());
         return status;
     }
+
+    void RalfOCIConfigGenerator::addNetworkConfigurationsToOCIConfig(Json::Value &ociConfigRootNode, bool networkEnabled)
+    {
+        // Cache the networking data node to prevent repetitive deep lookups
+        Json::Value &netData = ociConfigRootNode[RDKPLUGINS][NETWORKING][DATA];
+
+        if (networkEnabled)
+        {
+            static const std::string netBindServiceCap = "CAP_NET_BIND_SERVICE";
+            static const char *capabilitySets[] = {"ambient", "bounding", "effective", "inheritable", "permitted"};
+
+            // Cache the capabilities object parent node
+            Json::Value &capabilitiesNode = ociConfigRootNode[PROCESS]["capabilities"];
+
+            for (const char *setName : capabilitySets)
+            {
+                Json::Value &capSet = capabilitiesNode[setName];
+                if (!capSet.isArray())
+                {
+                    capSet = Json::Value(Json::arrayValue);
+                }
+
+                bool alreadyPresent = false;
+                const Json::ArrayIndex size = capSet.size();
+                for (Json::ArrayIndex i = 0; i < size; ++i)
+                {
+                    if (capSet[i].asCString() == netBindServiceCap)
+                    {
+                        alreadyPresent = true;
+                        break;
+                    }
+                }
+
+                if (!alreadyPresent)
+                {
+                    capSet.append(netBindServiceCap);
+                }
+            }
+
+            netData[TYPE] = NETWORK_TYPE_NAT;
+            netData[DNSMASQ] = true;
+            addNetworkSystemMountsToOCIConfig(ociConfigRootNode);
+        }
+        else
+        {
+            netData[TYPE] = NETWORK_TYPE_NONE;
+            netData[DNSMASQ] = false;
+        }
+
+        LOGDBG("Network mode set to '%s' (wanLanAccess/hasPermissionInternet=%d)",
+               (networkEnabled ? NETWORK_TYPE_NAT : NETWORK_TYPE_NONE), networkEnabled);
+    }
+
+    void RalfOCIConfigGenerator::addNetworkSystemMountsToOCIConfig(Json::Value &ociConfigRootNode)
+    {
+        // Reuse a single std::string allocation for checking files
+        std::string pathBuffer;
+
+        // Helper lambda optimized: pass by const reference, no 'this' capture needed if methods are static/const
+        auto mountIfAvailable = [this, &ociConfigRootNode](const std::string& path)
+        {
+            if (checkIfPathExists(path))
+            {
+                if (ensureMountTargetFileInRootfs(path))
+                {
+                    addMountEntry(ociConfigRootNode, path, path);
+                }
+                else
+                {
+                    LOGERR("Failed to prepare rootfs target for %s; skipping mount entry", path.c_str());
+                }
+            }
+            else
+            {
+                LOGWARN("Host path %s is missing; skipping mount", path.c_str());
+            }
+        };
+
+        const bool dnsmasqEnabled = ociConfigRootNode[RDKPLUGINS][NETWORKING][DATA][DNSMASQ].asBool();
+        if (!dnsmasqEnabled)
+        {
+            // Cache string allocations out of conditional blocks where possible
+            const std::string resolverSourcePath = getResolverSourcePathForContainer();
+            const std::string resolverDestinationPath = "/etc/resolv.conf";
+
+            LOGDBG("Resolver mount selection: host '%s' -> container '%s'", resolverSourcePath.c_str(), resolverDestinationPath.c_str());
+
+            if (checkIfPathExists(resolverSourcePath))
+            {
+                if (ensureMountTargetFileInRootfs(resolverDestinationPath))
+                {
+                    addMountEntry(ociConfigRootNode, resolverSourcePath, resolverDestinationPath);
+                }
+                else
+                {
+                    LOGERR("Failed to prepare rootfs target for %s; skipping mount entry", resolverDestinationPath.c_str());
+                }
+            }
+            else
+            {
+                LOGWARN("Host path %s is missing; skipping mount", resolverSourcePath.c_str());
+            }
+        }
+        else
+        {
+            LOGDBG("dnsmasq enabled for networking plugin; skipping host /etc/resolv.conf mount");
+        }
+
+        // Avoid dynamic string instantiation by explicitly calling with a string literal
+        pathBuffer = "/etc/hosts";
+        mountIfAvailable(pathBuffer);
+    }
+
+    bool RalfOCIConfigGenerator::ensureMountTargetFileInRootfs(const std::string &containerPath)
+    {
+        if (containerPath.empty() || ('/' != containerPath[0]))
+        {
+            LOGERR("Invalid container path '%s' for mount target preparation", containerPath.c_str());
+            return false;
+        }
+
+        const size_t configDirPos = mConfigFilePath.find_last_of('/');
+        if (std::string::npos == configDirPos)
+        {
+            LOGERR("Invalid config file path '%s'; unable to resolve rootfs directory", mConfigFilePath.c_str());
+            return false;
+        }
+
+        const std::string appBundleDir = mConfigFilePath.substr(0, configDirPos);
+        const std::string rootfsPath = appBundleDir + "/rootfs";
+        const std::string targetPath = rootfsPath + containerPath;
+
+        const size_t parentDirPos = targetPath.find_last_of('/');
+        if (std::string::npos == parentDirPos)
+        {
+            LOGERR("Unable to resolve parent directory for mount target '%s'", targetPath.c_str());
+            return false;
+        }
+
+        const std::string parentDir = targetPath.substr(0, parentDirPos);
+        if (false == create_directories(parentDir))
+        {
+            LOGERR("Failed to create parent directory '%s' for mount target", parentDir.c_str());
+            return false;
+        }
+
+        if (true == checkIfPathExists(targetPath))
+        {
+            return true;
+        }
+
+        std::ofstream targetFile(targetPath.c_str(), std::ios::out | std::ios::app);
+        if (false == targetFile.is_open())
+        {
+            LOGERR("Failed to create mount target file '%s': %s", targetPath.c_str(), strerror(errno));
+            return false;
+        }
+
+        targetFile.close();
+        return true;
+    }
+
     bool RalfOCIConfigGenerator::addAppStorageToOCIConfig(Json::Value &ociConfigRootNode, const std::string &appStoragePath)
     {
         bool status = false;
@@ -434,7 +610,7 @@ namespace ralf
             status = addConfigOverridesToOCIConfig(ociConfigRootNode, configNode);
             LOGDBG("Applied config overrides to OCI config ? %s\n", status ? "true" : "false");
         }
-        // Apply "urn:rdk:config:memory", reserved
+        // Apply "urn:rdk:config:memory", "urn:rdk:config:storage", "urn:rdk:config:network", reserved
         if (packageType == PKG_TYPE_APPLICATION || packageType == PKG_TYPE_RUNTIME)
         {
             status = addMemoryConfigToOCIConfig(ociConfigRootNode, configNode, packageType);
@@ -442,6 +618,9 @@ namespace ralf
 
             status = addStorageConfigToOCIConfig(ociConfigRootNode, configNode);
             LOGDBG("Applied storage config to OCI config ? %s\n", status ? "true" : "false");
+
+            status = applyNetworkConfigToOCIConfig(ociConfigRootNode, configNode);
+            LOGDBG("Applied network config to OCI config ? %s\n", status ? "true" : "false");
         }
         // Apply urn:rdk:config:env — spec matrix: Application/Service only (N/A for Runtime and Base)
         if (packageType == PKG_TYPE_APPLICATION || packageType == PKG_TYPE_SERVICE)
@@ -721,5 +900,105 @@ namespace ralf
         deduped.append(envVar);
         processNode[ENV] = deduped;
         LOGDBG("Added environment variable to OCI config: %s\n", envVar.c_str());
+    }
+
+    bool RalfOCIConfigGenerator::applyNetworkConfigToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &configNode)
+    {
+        if (!configNode.isMember(NETWORK_CONFIG_URN))
+        {
+            LOGDBG("No network configuration found in config node\n");
+            return true; // Optional configuration, not an error
+        }
+
+        const Json::Value &networkConfig = configNode[NETWORK_CONFIG_URN];
+        if (!networkConfig.isArray())
+        {
+            LOGWARN("Network configuration is not an array, skipping\n");
+            return true;
+        }
+
+        Json::Value &portForwarding = ociConfigRootNode[RDKPLUGINS][NETWORKING][DATA][PORT_FORWARDING];
+        if (!portForwarding.isObject())
+        {
+            portForwarding = Json::Value(Json::objectValue);
+        }
+
+        // Route entries to Dobby's hostToContainer or containerToHost arrays based on 'type':
+        //   "public" / "exported" -> hostToContainer  (inbound: external traffic reaches this container)
+        //   "imported"            -> containerToHost  (outbound: this container reaches a host/peer service)
+        //   unspecified           -> hostToContainer  (safe default)
+        for (const auto &entry : networkConfig)
+        {
+            if (!entry.isObject())
+            {
+                LOGWARN("Network config entry is not an object, skipping\n");
+                continue;
+            }
+
+            // Port is required for a meaningful forwarding rule
+            if (!entry.isMember(PORT) || !entry[PORT].isInt())
+            {
+                LOGWARN("Network config entry missing or invalid 'port' field, skipping\n");
+                continue;
+            }
+
+            std::string name     = (entry.isMember(NAME)     && entry[NAME].isString())     ? entry[NAME].asString()     : "unnamed";
+            std::string type     = (entry.isMember(TYPE)     && entry[TYPE].isString())     ? entry[TYPE].asString()     : "";
+            std::string protocol = (entry.isMember(PROTOCOL) && entry[PROTOCOL].isString()) ? entry[PROTOCOL].asString() : "tcp";
+
+            Json::Value portEntry(Json::objectValue);
+            portEntry[PORT]     = entry[PORT].asInt();
+            portEntry[PROTOCOL] = protocol;
+
+            if ("imported" == type)
+            {
+                portForwarding[CONTAINER_TO_HOST].append(portEntry);
+                LOGDBG("Added containerToHost port %d/%s for '%s'\n", entry[PORT].asInt(), protocol.c_str(), name.c_str());
+            }
+            else
+            {
+                portForwarding[HOST_TO_CONTAINER].append(portEntry);
+                LOGDBG("Added hostToContainer port %d/%s for '%s' (type='%s')\n", entry[PORT].asInt(), protocol.c_str(), name.c_str(), type.c_str());
+            }
+        }
+
+        LOGDBG("Network configuration applied to OCI config\n");
+        return true;
+    }
+
+    bool RalfOCIConfigGenerator::hasCapabilityPermission(const std::string &capabilities, const std::string &permission)
+    {
+        if (capabilities.empty() || permission.empty())
+        {
+            return false;
+        }
+
+        size_t pos = 0;
+        const std::string delimiter = ",";
+
+        while (pos < capabilities.length())
+        {
+            size_t end = capabilities.find(delimiter, pos);
+            if (end == std::string::npos)
+            {
+                end = capabilities.length();
+            }
+
+            std::string token = capabilities.substr(pos, end - pos);
+
+            // Trim whitespace
+            token.erase(0, token.find_first_not_of(" \t\n\r\f\v"));
+            token.erase(token.find_last_not_of(" \t\n\r\f\v") + 1);
+
+            if (token == permission)
+            {
+                LOGDBG("Found capability permission '%s'\n", permission.c_str());
+                return true;
+            }
+
+            pos = end + delimiter.length();
+        }
+
+        return false;
     }
 } // namespace ralf
