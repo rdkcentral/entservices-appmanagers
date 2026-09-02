@@ -11,11 +11,11 @@ TEST(VictimSelectorL1, InitializeRejectsNullService)
     EXPECT_EQ("VictimSelector received an invalid service", selector.Initialize(nullptr));
 }
 
-TEST(VictimSelectorL1, InformationIsEmpty)
+TEST(VictimSelectorL1, InformationReturnsPluginDescription)
 {
     WPEFramework::Plugin::VictimSelector selector;
 
-    EXPECT_TRUE(selector.Information().empty());
+    EXPECT_EQ("Victim Selector plugin", selector.Information());
 }
 
 } // namespace

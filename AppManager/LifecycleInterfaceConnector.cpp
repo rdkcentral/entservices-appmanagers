@@ -525,7 +525,7 @@ namespace WPEFramework
                         appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_TERMINATE);
                         mAppCurrentActionList[appId] = Exchange::IAppManager::AppLifecycleState::APP_STATE_TERMINATING;
                         status = mLifecycleManagerRemoteObject->UnloadApp(appInstanceId, errorReason, success);
-                        if (status != Core::ERROR_NONE)
+                        if (Core::ERROR_NONE != status)
                         {
                             LOGERR("UnloadApp failed with error reason: %s", errorReason.c_str());
                             appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_TERMINATE, AppManagerImplementation::ERROR_UNLOAD_APP);

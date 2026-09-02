@@ -130,13 +130,13 @@ uint32_t VictimSelectorImplementation::getAppPriority(const std::string& appId) 
     }
 
     std::string value;
-    if (mAppManager->GetAppProperty(appId, APP_PRIORITY_PROPERTY, value) != Core::ERROR_NONE || value.empty()) {
+    if ((Core::ERROR_NONE != mAppManager->GetAppProperty(appId, APP_PRIORITY_PROPERTY, value)) || value.empty()) {
         return DEFAULT_APP_PRIORITY;
     }
 
     char* end = nullptr;
     const unsigned long parsed = std::strtoul(value.c_str(), &end, 10);
-    if (end == value.c_str() || *end != '\0' || parsed > std::numeric_limits<uint32_t>::max()) {
+    if ((value.c_str() == end) || ('\0' != *end) || (std::numeric_limits<uint32_t>::max() < parsed)) {
         return DEFAULT_APP_PRIORITY;
     }
     return static_cast<uint32_t>(parsed);
@@ -169,12 +169,12 @@ Core::hresult VictimSelectorImplementation::selectVictim(std::string& appId, boo
     while (apps->Next(info)) {
         const uint32_t position = recency++;
         const uint32_t priority = getAppPriority(info.appId);
-        if (priority == 0) {
+        if (0 == priority) {
             continue;
         }
         uint64_t memoryUsage = 0;
         std::string stats;
-        if (mRuntimeManager->GetInfo(info.appInstanceId, stats) == Core::ERROR_NONE) {
+        if (Core::ERROR_NONE == mRuntimeManager->GetInfo(info.appInstanceId, stats)) {
             JsonObject statsObject;
             if (statsObject.FromString(stats) && statsObject.HasLabel("memory")) {
                 const JsonObject memoryObject = statsObject["memory"].Object();

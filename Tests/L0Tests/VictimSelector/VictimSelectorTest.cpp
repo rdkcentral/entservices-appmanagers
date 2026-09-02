@@ -6,6 +6,10 @@
 
 extern uint32_t Test_VS_NonRamEvictionIsRejected();
 extern uint32_t Test_VS_SoftEvictionSelectsPausedCandidate();
+extern uint32_t Test_VS_SelectsHighestPriorityCandidate();
+extern uint32_t Test_VS_SelectsLargestMemoryCandidateAtSamePriority();
+extern uint32_t Test_VS_NoCandidateNotifiesCaller();
+extern uint32_t Test_VS_HardEvictionEscalatesPendingSoftEviction();
 
 int main()
 {
@@ -17,6 +21,10 @@ int main()
     } tests[] = {
         { "NonRamEvictionIsRejected", Test_VS_NonRamEvictionIsRejected },
         { "SoftEvictionSelectsPausedCandidate", Test_VS_SoftEvictionSelectsPausedCandidate },
+        { "SelectsHighestPriorityCandidate", Test_VS_SelectsHighestPriorityCandidate },
+        { "SelectsLargestMemoryCandidateAtSamePriority", Test_VS_SelectsLargestMemoryCandidateAtSamePriority },
+        { "NoCandidateNotifiesCaller", Test_VS_NoCandidateNotifiesCaller },
+        { "HardEvictionEscalatesPendingSoftEviction", Test_VS_HardEvictionEscalatesPendingSoftEviction },
     };
 
     uint32_t failures = 0;
