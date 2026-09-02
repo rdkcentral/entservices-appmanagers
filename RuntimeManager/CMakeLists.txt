@@ -108,6 +108,13 @@ add_library(${PLUGIN_IMPLEMENTATION} SHARED ${RUNTIMEMANAGER_SOURCES})
 
 if (RIALTO_SUPPORT)
 target_link_libraries(${PLUGIN_IMPLEMENTATION} PRIVATE ${NAMESPACE}Plugins::${NAMESPACE}Plugins RialtoServerManager)
+
+if(DEFINED ENV{RIALTO_SOURCE_DIR} AND NOT "$ENV{RIALTO_SOURCE_DIR}" STREQUAL "")
+    target_include_directories(${PLUGIN_IMPLEMENTATION}
+        PRIVATE
+            $ENV{RIALTO_SOURCE_DIR}/media/server/service/source
+            $ENV{RIALTO_SOURCE_DIR}/serverManager/public/include)
+endif()
 endif(RIALTO_SUPPORT)
 
 if(RALF_PACKAGE_SUPPORT)
