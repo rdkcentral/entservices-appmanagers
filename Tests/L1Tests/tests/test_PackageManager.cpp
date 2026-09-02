@@ -1859,7 +1859,7 @@ TEST_F(PackageManagerTest, configAndGetConfigForPackageusingComRpcBranches) {
               pkginstallerInterface->Config("YouTube", "100.1.24", runtimeConfig));
     EXPECT_EQ(runtimeConfig.appPath, "/opt/YouTube");
 
-    EXPECT_EQ(Core::ERROR_BAD_REQUEST,
+    EXPECT_EQ(Core::ERROR_INVALID_PARAMETER,
               pkginstallerInterface->Config("UnknownApp", "0", runtimeConfig));
 
     string packageId;
