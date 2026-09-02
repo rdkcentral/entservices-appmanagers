@@ -160,7 +160,13 @@ Core::hresult VictimSelectorImplementation::selectVictim(std::string& appId, boo
 
     Exchange::IAppManager::ILoadedAppInfoIterator* apps = nullptr;
     const Core::hresult status = mAppManager->GetLoadedApps(apps);
-    if ((Core::ERROR_NONE != status) || (nullptr == apps)) {
+    if (Core::ERROR_NONE != status) {
+        if (nullptr != apps) {
+            apps->Release();
+        }
+        return status;
+    }
+    if (nullptr == apps) {
         return Core::ERROR_GENERAL;
     }
 

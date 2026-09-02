@@ -26,6 +26,11 @@ VictimSelector::~VictimSelector() {
 }
 
 const string VictimSelector::Initialize(PluginHost::IShell* service) {
+    ASSERT(nullptr == mService);
+    ASSERT(nullptr == mImplementation);
+    ASSERT(nullptr == mConfigure);
+    ASSERT(0 == mConnectionId);
+
     SYSLOG(Logging::Startup, (_T("VictimSelector::Initialize: PID=%u"), getpid()));
 
     string result;
