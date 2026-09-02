@@ -38,6 +38,7 @@
 #include <cstdlib>
 #include <cerrno>
 #include <fstream>
+#include <string>
 #include <sstream>
 #include <grp.h> //For group related functions
 
@@ -370,5 +371,93 @@ namespace ralf
 
         ociConfigRootNode[MOUNTS].append(mountEntry);
         return true;
+    }
+
+    bool hasOnlyLoopbackNameServers(const std::string &resolvPath)
+    {
+        std::ifstream in(resolvPath);
+        if (!in)
+        {
+            return false;
+        }
+
+        bool foundNameServer = false;
+        std::string line;
+        const std::string whitespace = " \t";
+
+        while (std::getline(in, line))
+        {
+            // Skip empty lines, comments, or carriage returns instantly
+            if (line.empty() || line[0] == '#' || line[0] == ';' || line[0] == '\r')
+            {
+                continue;
+            }
+
+            // Handle potential leading whitespace
+            size_t start = line.find_first_not_of(whitespace);
+            if (start == std::string_view::npos || line[start] == '#' || line[start] == ';')
+            {
+                continue;
+            }
+
+            // Match "nameserver" keyword without allocating memory
+            if (line.compare(start, 10, "nameserver") != 0)
+            {
+                continue;
+            }
+
+            // Find the start of the IP address value
+            size_t valueStart = line.find_first_not_of(whitespace, start + 10);
+            if (valueStart == std::string::npos || line[valueStart] == '#' || line[valueStart] == ';')
+            {
+                continue;
+            }
+
+            // Find the end of the IP address value (stop at whitespace or inline comment)
+            size_t valueEnd = line.find_first_of(" \t#;\r\n", valueStart);
+
+            // Extract the IP address (this is the only small allocation per valid line)
+            std::string value = (valueEnd == std::string::npos)
+                                    ? line.substr(valueStart)
+                                    : line.substr(valueStart, valueEnd - valueStart);
+
+            foundNameServer = true;
+
+            // Validate loopback addresses
+            if (value == "::1" || value.compare(0, 4, "127.") == 0)
+            {
+                continue;
+            }
+
+            return false;
+        }
+
+        return foundNameServer;
+    }
+
+    std::string getResolverSourcePathForContainer()
+    {
+        /*
+         * Determine the appropriate resolver source path for the container.
+         * If the default resolver file has only loopback nameservers, check for alternative resolver files provided by
+         * NetworkManager or systemd-resolved. If found, use those; otherwise, fall back to the default resolver file.
+         */
+        if (!hasOnlyLoopbackNameServers(RALF_DEFAULT_RESOLV_CONF_FILE))
+        {
+            return RALF_DEFAULT_RESOLV_CONF_FILE;
+        }
+
+        if (checkIfPathExists(RALF_NOSTUB_NWMGR_RESOLV_CONF_FILE))
+        {
+            return RALF_NOSTUB_NWMGR_RESOLV_CONF_FILE;
+        }
+
+        if (checkIfPathExists(RALF_NOSTUB_SYSTEMD_RESOLV_CONF_FILE))
+        {
+            return RALF_NOSTUB_SYSTEMD_RESOLV_CONF_FILE;
+        }
+
+        LOGWARN("Host resolver file %s only has loopback nameservers and no fallback resolver file found", RALF_DEFAULT_RESOLV_CONF_FILE.c_str());
+        return RALF_DEFAULT_RESOLV_CONF_FILE;
     }
 } // namespace ralf

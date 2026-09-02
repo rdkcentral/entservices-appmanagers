@@ -140,4 +140,19 @@ namespace ralf
 
     bool addBindMountToOCIConfig(Json::Value &ociConfigRootNode, const std::string &hostPath, const std::string &containerPath, bool readOnly = false);
 
-} // namespace ralf
+    /**
+     * Function to check if the given resolver file contains only loopback nameservers.
+     * @param resolvPath The path to the resolver file (e.g., /etc/resolv.conf).
+     * @return true if the resolver file contains only loopback nameservers, false otherwise.
+     */
+    bool hasOnlyLoopbackNameServers(const std::string& resolvPath);
+
+    /**
+     * Function to get the resolver source path for the container.
+     * This function checks the host's resolver configuration and determines the appropriate
+     * resolver file to use inside the container prefering non-loopback resolvers if available.
+     * @note The function checks for the existence of specific resolver files and returns the first valid one found. If none are found, it defaults to the standard /etc/resolv.conf.
+     * @return The resolver source path as a string.
+     */
+    std::string getResolverSourcePathForContainer(void);
+}  // namespace ralf

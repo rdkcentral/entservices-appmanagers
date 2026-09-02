@@ -35,6 +35,9 @@ namespace ralf
     const std::string RALF_HOST_TIMEZONE_DST_PATH = "/opt/persistent/timeZoneDST";
     const std::string RALF_TIMEZONE_PATH = "/etc/timezone";
     const std::string RALF_LOCALTIME_PATH = "/etc/localtime";
+    const std::string RALF_DEFAULT_RESOLV_CONF_FILE = "/etc/resolv.conf";
+    const std::string RALF_NOSTUB_NWMGR_RESOLV_CONF_FILE = "/run/NetworkManager/no-stub-resolv.conf";
+    const std::string RALF_NOSTUB_SYSTEMD_RESOLV_CONF_FILE = "/run/systemd/resolve/resolv.conf";
 
     typedef std::pair<std::string, std::string> RalfPkgInfoPair; // <packageMetadataJsonPath, mountPoint>
 } // namespace ralf
