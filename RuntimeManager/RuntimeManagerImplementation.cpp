@@ -54,6 +54,7 @@ namespace WPEFramework
             LOGWARN("Creating rialto connector");
             RialtoConnector *rialtoBridge = new RialtoConnector();
             mRialtoConnector = std::shared_ptr<RialtoConnector>(rialtoBridge);
+            mRialtoConnector->initialize();
 #endif
         }
 
