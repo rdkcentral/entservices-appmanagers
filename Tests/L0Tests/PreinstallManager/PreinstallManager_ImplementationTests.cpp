@@ -36,11 +36,14 @@
  */
 
 #include <atomic>
+#include <chrono>
+#include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <iostream>
 #include <list>
 #include <string>
+#include <thread>
 #include <sys/stat.h>
 #include <unistd.h>
 
@@ -461,16 +464,21 @@ uint32_t Test_Impl_PIM_StartPreinstallWithNoInstallerFails()
 
 namespace {
 
+constexpr uint32_t VERSION_COMPARISON_SETUP_FAILURE = UINT32_MAX;
+
 /* Runs StartPreinstall(force=false) with one preinstall package (version=preinstallVer)
  * against one installed package (version=installedVer) and returns installCallCount. */
 uint32_t RunVersionComparison(const std::string& preinstallVer, const std::string& installedVer)
 {
     char tmpPath[256];
     std::snprintf(tmpPath, sizeof(tmpPath), "/tmp/pim_ver_XXXXXX");
-    if (!mkdtemp(tmpPath)) return 0;
+    if (nullptr == mkdtemp(tmpPath)) return VERSION_COMPARISON_SETUP_FAILURE;
 
     std::string subDir = std::string(tmpPath) + "/myapp";
-    mkdir(subDir.c_str(), 0755);
+    if (0 != mkdir(subDir.c_str(), 0755)) {
+        rmdir(tmpPath);
+        return VERSION_COMPARISON_SETUP_FAILURE;
+    }
 
     L0Test::FakePackageInstaller installer;
 
@@ -503,18 +511,23 @@ uint32_t RunVersionComparison(const std::string& preinstallVer, const std::strin
 
     // Wait for completion (max 2s).
     WPEFramework::Exchange::IPreinstallManager::State state;
+    bool completed = false;
     for (int i = 0; i < 200; ++i) {
         impl->GetPreinstallState(state);
-        if (state == WPEFramework::Exchange::IPreinstallManager::State::COMPLETED) break;
+        if (state == WPEFramework::Exchange::IPreinstallManager::State::COMPLETED) {
+            completed = true;
+            break;
+        }
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
-    uint32_t calls = installer.installCallCount.load();
     impl->Release();
+
+    const uint32_t calls = installer.installCallCount.load();
 
     rmdir(subDir.c_str());
     rmdir(tmpPath);
-    return calls;
+    return completed ? calls : VERSION_COMPARISON_SETUP_FAILURE;
 }
 
 } // namespace
