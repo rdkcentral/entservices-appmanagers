@@ -34,9 +34,9 @@ namespace WPEFramework
         firebolt::rialto::common::ServerManagerConfig config;
         mAIConfiguration = new WPEFramework::Plugin::AIConfiguration();
         mAIConfiguration->initialize();
-        config.sessionServerEnvVars = mAIConfiguration->getEnvs();
+        config.sessionServerEnvVars = {"XDG_RUNTIME_DIR=/tmp"};
         LOGINFO("db982 Rialto sessionServerEnvVars size=%d", config.sessionServerEnvVars.size());
-        mServerManagerService  = create(shared_from_this(), config);
+        mServerManagerService = rialto::servermanager::service::create(shared_from_this(), config);
 	if (!mServerManagerService)
         {
             LOGERR("Failed to create Rialto ServerManagerService");
@@ -46,7 +46,7 @@ namespace WPEFramework
 	mLogHandler = std::make_shared<RialtoLogHandler>();
         if (!mServerManagerService->registerLogHandler(mLogHandler))
         {
-            LOGWARN("Registration of custom logger for Rialto server manager failed");
+            LOGWARN("Registration of custom logger for rialto server manager failed.");
         }
 
         mInitialized = true;
