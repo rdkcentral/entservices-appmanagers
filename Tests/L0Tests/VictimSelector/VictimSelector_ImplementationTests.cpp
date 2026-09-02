@@ -96,6 +96,7 @@ public:
     Core::hresult Kill(const string&) override { return Core::ERROR_NONE; }
     Core::hresult GetInfo(const string& appInstanceId, string& info) override
     {
+        ++getInfoCalls;
         const std::map<string, string>::const_iterator entry = runtimeInfo.find(appInstanceId);
         if (runtimeInfo.end() == entry) {
             return Core::ERROR_GENERAL;
@@ -109,6 +110,7 @@ public:
 
     mutable std::atomic<uint32_t> mRefCount { 1 };
     std::map<string, string> runtimeInfo;
+    uint32_t getInfoCalls { 0 };
 };
 
 class FakeEvictionNotification : public Exchange::IVictimSelector::INotification {
@@ -209,6 +211,8 @@ uint32_t Test_VS_SoftEvictionSelectsPausedCandidate()
     L0Test::ExpectEqU32(result, status, WPEFramework::Core::ERROR_NONE, "RAM eviction starts successfully");
     L0Test::ExpectEqStr(result, appManager->terminatedAppId, "paused", "Single eligible paused app is selected before suspended app");
     L0Test::ExpectTrue(result, appManager->killedAppId.empty(), "Soft eviction does not kill the selected paused app");
+    L0Test::ExpectEqU32(result, static_cast<FakeRuntimeManager*>(selector->mRuntimeManager)->getInfoCalls, 1,
+        "Runtime stats are read only for the selected state bucket");
 
     selector->Release();
     return result.failures;

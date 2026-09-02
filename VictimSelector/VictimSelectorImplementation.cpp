@@ -211,20 +211,6 @@ Core::hresult VictimSelectorImplementation::selectVictim(std::string& appId, boo
         if (0 == priority) {
             continue;
         }
-        uint64_t memoryUsage = 0;
-        std::string stats;
-        if (Core::ERROR_NONE == mRuntimeManager->GetInfo(info.appInstanceId, stats)) {
-            JsonObject statsObject;
-            if (statsObject.FromString(stats) && statsObject.HasLabel("memory")) {
-                const JsonObject memoryObject = statsObject["memory"].Object();
-                if (memoryObject.HasLabel("user")) {
-                    const JsonObject userMemoryObject = memoryObject["user"].Object();
-                    if (userMemoryObject.HasLabel("usage")) {
-                        memoryUsage = static_cast<uint64_t>(userMemoryObject["usage"].Number());
-                    }
-                }
-            }
-        }
         std::vector<Candidate>* bucket = nullptr;
         if (Exchange::IAppManager::APP_STATE_PAUSED == info.lifecycleState) {
             bucket = &paused;
@@ -234,12 +220,12 @@ Core::hresult VictimSelectorImplementation::selectVictim(std::string& appId, boo
             bucket = &hibernated;
         }
         if (nullptr != bucket) {
-            bucket->emplace_back(Candidate{std::move(info), memoryUsage, priority, position});
+            bucket->emplace_back(Candidate{std::move(info), 0, priority, position});
         }
     }
     apps->Release();
 
-    const std::vector<Candidate>* candidates = nullptr;
+    std::vector<Candidate>* candidates = nullptr;
     if (1 == paused.size()) {
         candidates = &paused;
     } else if (!suspended.empty()) {
@@ -250,6 +236,22 @@ Core::hresult VictimSelectorImplementation::selectVictim(std::string& appId, boo
 
     if ((nullptr == candidates) || candidates->empty()) {
         return Core::ERROR_NONE;
+    }
+
+    for (std::vector<Candidate>::iterator it = candidates->begin(); it != candidates->end(); ++it) {
+        std::string stats;
+        if (Core::ERROR_NONE == mRuntimeManager->GetInfo(it->app.appInstanceId, stats)) {
+            JsonObject statsObject;
+            if (statsObject.FromString(stats) && statsObject.HasLabel("memory")) {
+                const JsonObject memoryObject = statsObject["memory"].Object();
+                if (memoryObject.HasLabel("user")) {
+                    const JsonObject userMemoryObject = memoryObject["user"].Object();
+                    if (userMemoryObject.HasLabel("usage")) {
+                        it->memoryUsage = static_cast<uint64_t>(userMemoryObject["usage"].Number());
+                    }
+                }
+            }
+        }
     }
 
     const Candidate& victim = *std::min_element(candidates->begin(), candidates->end(),

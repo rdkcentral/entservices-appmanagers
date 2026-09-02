@@ -730,6 +730,8 @@ namespace WPEFramework
                     rankedApps.emplace_back(AppInfoManager::getInstance().getLastActiveIndex(appId), std::move(loadedAppInfo));
                 }
 
+                mAdminLock.Unlock();
+
                 /* Most recently active app first; apps that were never active (index 0) come last. */
                 std::sort(rankedApps.begin(), rankedApps.end(),
                     [](const RankedApp& left, const RankedApp& right) -> bool {
@@ -747,7 +749,7 @@ namespace WPEFramework
 
                 apps = Core::Service<RPC::IteratorType<Exchange::IAppManager::ILoadedAppInfoIterator>> \
 		   ::Create<Exchange::IAppManager::ILoadedAppInfoIterator>(loadedAppInfoList);
-		result = Core::ERROR_NONE;
+        return Core::ERROR_NONE;
             }
             else
             {
