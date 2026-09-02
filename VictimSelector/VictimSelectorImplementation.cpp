@@ -291,7 +291,6 @@ Core::hresult VictimSelectorImplementation::Evict(const EvictionReason reason, c
             mPendingEvictionType = EVICTION_TYPE_SOFT;
             mEvictionInProgress = false;
         }
-        complete(false, EVICT_ERROR_TERMINATION_FAILED);
         return selectionStatus;
     }
     if (appId.empty()) {
