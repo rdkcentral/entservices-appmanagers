@@ -67,6 +67,7 @@ private:
     Exchange::IRuntimeManager* mRuntimeManager;
     uint32_t mConnectionId;
     Core::Sink<AppManagerNotification> mAppManagerNotification;
+    bool mAppManagerRegistered;
     Exchange::IVictimSelector::INotification* mNotification;
     std::string mPendingAppId;
     EvictionType mPendingEvictionType;

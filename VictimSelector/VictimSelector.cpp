@@ -28,29 +28,34 @@ VictimSelector::~VictimSelector() {
 const string VictimSelector::Initialize(PluginHost::IShell* service) {
     SYSLOG(Logging::Startup, (_T("VictimSelector::Initialize: PID=%u"), getpid()));
 
+    string result;
     if (nullptr == service) {
-        return "VictimSelector received an invalid service";
+        result = "VictimSelector received an invalid service";
+    } else {
+        mService = service;
+        mService->AddRef();
+        mImplementation = mService->Root<Exchange::IVictimSelector>(mConnectionId, 5000, _T("VictimSelectorImplementation"));
+        if (nullptr == mImplementation) {
+            result = "VictimSelector implementation could not be created";
+        } else {
+            mConfigure = mImplementation->QueryInterface<Exchange::IConfiguration>();
+            if (nullptr == mConfigure) {
+                result = "VictimSelector implementation has no configuration interface";
+            } else if (Core::ERROR_NONE != mConfigure->Configure(mService)) {
+                result = "VictimSelector could not be configured";
+            } else {
+                Exchange::JVictimSelector::Register(*this, mImplementation);
+            }
+        }
+
+        if (!result.empty()) {
+            Deinitialize(service);
+        }
     }
 
-    mService = service;
-    mService->AddRef();
-    mImplementation = mService->Root<Exchange::IVictimSelector>(mConnectionId, 5000, _T("VictimSelectorImplementation"));
-    if (nullptr == mImplementation) {
-        Deinitialize(service);
-        return "VictimSelector implementation could not be created";
-    }
-    mConfigure = mImplementation->QueryInterface<Exchange::IConfiguration>();
-    if (nullptr == mConfigure) {
-        Deinitialize(service);
-        return "VictimSelector implementation has no configuration interface";
-    }
-    if (Core::ERROR_NONE != mConfigure->Configure(mService)) {
-        Deinitialize(service);
-        return "VictimSelector could not be configured";
-    }
-
-    Exchange::JVictimSelector::Register(*this, mImplementation);
-    return "";
+    SYSLOG(Logging::Startup, (_T("VictimSelector::Initialize exit: %s"),
+        result.empty() ? _T("success") : result.c_str()));
+    return result;
 }
 
 void VictimSelector::Deinitialize(PluginHost::IShell* service) {

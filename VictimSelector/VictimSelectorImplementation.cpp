@@ -31,6 +31,7 @@ VictimSelectorImplementation::VictimSelectorImplementation()
     , mRuntimeManager(nullptr)
     , mConnectionId(0)
     , mAppManagerNotification(*this)
+    , mAppManagerRegistered(false)
     , mNotification(nullptr)
     , mPendingEvictionType(EVICTION_TYPE_SOFT)
     , mEvictionInProgress(false) {
@@ -69,20 +70,30 @@ Core::hresult VictimSelectorImplementation::Unregister(Exchange::IVictimSelector
 }
 
 Core::hresult VictimSelectorImplementation::Configure(PluginHost::IShell* service) {
+    SYSLOG(Logging::Startup, (_T("VictimSelectorImplementation::Configure entry")));
+
+    Core::hresult result = Core::ERROR_BAD_REQUEST;
     if (nullptr == service) {
-        return Core::ERROR_BAD_REQUEST;
+        SYSLOG(Logging::Startup, (_T("VictimSelectorImplementation::Configure: service is not valid")));
+    } else {
+        mService = service;
+        mService->AddRef();
+        mAppManager = mService->QueryInterfaceByCallsign<Exchange::IAppManager>("org.rdk.AppManager");
+        mRuntimeManager = mService->QueryInterfaceByCallsign<Exchange::IRuntimeManager>("org.rdk.RuntimeManager");
+        if ((nullptr == mAppManager) || (nullptr == mRuntimeManager)) {
+            result = Core::ERROR_UNAVAILABLE;
+        } else {
+            result = mAppManager->Register(&mAppManagerNotification);
+            mAppManagerRegistered = (Core::ERROR_NONE == result);
+        }
+
+        if (Core::ERROR_NONE != result) {
+            releaseAppManager();
+        }
     }
 
-    mService = service;
-    mService->AddRef();
-    mAppManager = mService->QueryInterfaceByCallsign<Exchange::IAppManager>("org.rdk.AppManager");
-    mRuntimeManager = mService->QueryInterfaceByCallsign<Exchange::IRuntimeManager>("org.rdk.RuntimeManager");
-    if ((nullptr == mAppManager) || (nullptr == mRuntimeManager)) {
-        releaseAppManager();
-        return Core::ERROR_UNAVAILABLE;
-    }
-
-    return mAppManager->Register(&mAppManagerNotification);
+    SYSLOG(Logging::Startup, (_T("VictimSelectorImplementation::Configure exit: result=%d"), result));
+    return result;
 }
 
 void VictimSelectorImplementation::releaseAppManager() {
@@ -93,7 +104,10 @@ void VictimSelectorImplementation::releaseAppManager() {
         mEvictionInProgress = false;
     }
     if (nullptr != mAppManager) {
-        mAppManager->Unregister(&mAppManagerNotification);
+        if (mAppManagerRegistered) {
+            mAppManager->Unregister(&mAppManagerNotification);
+            mAppManagerRegistered = false;
+        }
         mAppManager->Release();
         mAppManager = nullptr;
     }
