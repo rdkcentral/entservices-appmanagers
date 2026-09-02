@@ -108,6 +108,7 @@ Core::hresult VictimSelectorImplementation::Configure(PluginHost::IShell* servic
 }
 
 void VictimSelectorImplementation::releaseAppManager() {
+    std::lock_guard<std::mutex> evictGuard(mEvictLock);
     {
         std::lock_guard<std::mutex> guard(mLock);
         mPendingAppId.clear();
