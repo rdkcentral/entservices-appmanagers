@@ -745,14 +745,14 @@ namespace WPEFramework
             {
                 LOGINFO("[RIALTO] Entering Rialto session setup for appId='%s' appInstanceId='%s'",
                         appId.c_str(), appInstanceId.c_str());
-                if (!mRialtoConnector->initialize())
+              /*  if (!mRialtoConnector->initialize())
                 {
                     LOGERR("[RIALTO] Rialto initialization failed for appId='%s', aborting session setup", appId.c_str());
                     rialtoSetupFailed = true;
                     status = Core::ERROR_GENERAL;
                 }
                 else
-                {
+                {*/
                 std::string rialtoSocket = "rialto-" + appId;
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
                 // Adding a prefix to the rialto socket to avoid any conflict with existing sockets as
@@ -788,7 +788,7 @@ namespace WPEFramework
                     status = Core::ERROR_GENERAL;
                 }
                 LOGINFO("[RIALTO] Rialto session setup complete for appId='%s' status=%d", appId.c_str(), status);
-		}
+		//}
             }
 	    }
 #endif // ENABLE_RIALTO
