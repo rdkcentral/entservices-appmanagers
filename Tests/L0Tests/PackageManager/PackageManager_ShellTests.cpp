@@ -13,23 +13,45 @@ namespace {
 struct PluginFixture {
     L0Test::FakeStorageManager storage;
     L0Test::ServiceMock::FakeSubSystem subSystem;
+    L0Test::ServiceMock::FakeTelemetryMetrics telemetry;
     L0Test::ServiceMock service;
     WPEFramework::PluginHost::IPlugin* plugin;
 
     PluginFixture()
         : storage()
         , subSystem()
-        , service(L0Test::ServiceMock::Config(&storage, &subSystem, nullptr))
+        , telemetry()
+        , service(L0Test::ServiceMock::Config(&storage, &subSystem, &telemetry))
         , plugin(WPEFramework::Core::Service<WPEFramework::Plugin::PackageManager>::Create<WPEFramework::PluginHost::IPlugin>())
     {
     }
 
     ~PluginFixture()
     {
+        WaitForCacheInitialization();
         if (plugin != nullptr) {
             plugin->Deinitialize(&service);
             plugin->Release();
             plugin = nullptr;
+        }
+    }
+
+private:
+    void WaitForCacheInitialization()
+    {
+        /* Telemetry is only recorded by PackageManagerImplementation's worker, which
+         * exists solely when Root<>() succeeded. Initialize() AddRefs the service once
+         * and Root<>() again, so fewer than two AddRefs means instantiation failed and
+         * no Record() will ever arrive -- skip the wait instead of stalling ~5s. */
+        if (2U > service.addRefCalls.load()) {
+            return;
+        }
+
+        for (uint32_t i = 0; i < 500; ++i) {
+            if (0U < telemetry.recordCalls.load()) {
+                return;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
     }
 };

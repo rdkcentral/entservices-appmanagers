@@ -120,6 +120,16 @@ protected:
     std::condition_variable mPreLoadCV;
     bool mPreLoadSpawmCalled = false;
 
+    /* AppManagerImplementation::Job holds a reference on the implementation and is
+     * released on a worker thread. If a job is still queued when the fixture tears
+     * down, the implementation destructor runs on that worker thread after the
+     * ServiceMock has been deleted, and ~LifecycleInterfaceConnector then calls
+     * Release() on dangling memory. Joining the pool first makes teardown ordered. */
+    void drainWorkerPool()
+    {
+        workerPool->Stop();
+    }
+
     void createAppManagerImpl()
     {
         mServiceMock = new NiceMock<ServiceMock>;
@@ -134,6 +144,7 @@ protected:
         TEST_LOG("In releaseAppManagerImpl!");
         AppInfoManager::getInstance().clear();
         plugin->Deinitialize(mServiceMock);
+        drainWorkerPool();
         delete mServiceMock;
         mAppManagerImpl = nullptr;
     }
@@ -300,6 +311,7 @@ protected:
 
         AppInfoManager::getInstance().clear();
         plugin->Deinitialize(mServiceMock);
+        drainWorkerPool();
         delete mServiceMock;
         mAppManagerImpl = nullptr;
     }
