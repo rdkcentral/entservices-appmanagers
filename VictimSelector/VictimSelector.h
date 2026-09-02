@@ -23,6 +23,7 @@
 #include <interfaces/IVictimSelector.h>
 #include <interfaces/IConfiguration.h>
 #include <interfaces/json/JVictimSelector.h>
+#include "tracing/Logging.h"
 
 namespace WPEFramework {
 namespace Plugin {
