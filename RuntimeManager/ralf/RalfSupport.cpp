@@ -26,6 +26,8 @@
 
 #include <iostream>
 
+#include <arpa/inet.h>  // Required for inet_pton
+#include <netinet/in.h> // Required for in_addr / in6_addr
 #include <cstring> //for strerror
 #include <cstdio>  //for ::remove
 
@@ -387,48 +389,65 @@ namespace ralf
 
         while (std::getline(in, line))
         {
-            // Skip empty lines, comments, or carriage returns instantly
-            if (line.empty() || line[0] == '#' || line[0] == ';' || line[0] == '\r')
-            {
-                continue;
-            }
+            if (line.empty()) continue;
 
-            // Handle potential leading whitespace
             size_t start = line.find_first_not_of(whitespace);
-            if (start == std::string_view::npos || line[start] == '#' || line[start] == ';')
+            if (start == std::string::npos || line[start] == '#' || line[start] == ';')
             {
                 continue;
             }
 
-            // Match "nameserver" keyword without allocating memory
             if (line.compare(start, 10, "nameserver") != 0)
             {
                 continue;
             }
 
-            // Find the start of the IP address value
             size_t valueStart = line.find_first_not_of(whitespace, start + 10);
             if (valueStart == std::string::npos || line[valueStart] == '#' || line[valueStart] == ';')
             {
                 continue;
             }
 
-            // Find the end of the IP address value (stop at whitespace or inline comment)
             size_t valueEnd = line.find_first_of(" \t#;\r\n", valueStart);
 
-            // Extract the IP address (this is the only small allocation per valid line)
-            std::string value = (valueEnd == std::string::npos)
-                                    ? line.substr(valueStart)
-                                    : line.substr(valueStart, valueEnd - valueStart);
+            // Extract the IP text token (strip off any trailing zone identifiers like %lo0)
+            size_t zoneMarker = line.find_first_of('%', valueStart);
+            size_t extractEnd = (zoneMarker != std::string::npos && (valueEnd == std::string::npos || zoneMarker < valueEnd))
+                                ? zoneMarker
+                                : valueEnd;
+
+            std::string ipStr = (extractEnd == std::string::npos)
+                                ? line.substr(valueStart)
+                                : line.substr(valueStart, extractEnd - valueStart);
 
             foundNameServer = true;
 
-            // Validate loopback addresses
-            if (value == "::1" || value.compare(0, 4, "127.") == 0)
+            // Try parsing as IPv4
+            struct in_addr ipv4Addr;
+            if (inet_pton(AF_INET, ipStr.c_str(), &ipv4Addr) == 1)
             {
-                continue;
+                // The loopback range for IPv4 is 127.0.0.0/8
+                // Extract the first byte of the 32-bit network integer
+                uint8_t firstByte = reinterpret_cast<uint8_t*>(&ipv4Addr.s_addr)[0];
+                if (firstByte == 127)
+                {
+                    continue; // Valid IPv4 loopback
+                }
+            }
+            else // Try parsing as IPv6
+            {
+                struct in6_addr ipv6Addr;
+                if (inet_pton(AF_INET6, ipStr.c_str(), &ipv6Addr) == 1)
+                {
+                    // IPv6 loopback is strictly ::1 (15 bytes of 0x00, 1 byte of 0x01)
+                    if (IN6_IS_ADDR_LOOPBACK(&ipv6Addr))
+                    {
+                        continue; // Valid IPv6 loopback
+                    }
+                }
             }
 
+            // If it isn't a valid IPv4 or IPv6 loopback address, it's an external nameserver
             return false;
         }
 
