@@ -31,25 +31,26 @@ VictimSelectorImplementation::VictimSelectorImplementation()
     , mRuntimeManager(nullptr)
     , mConnectionId(0)
     , mAppManagerNotification(*this)
-    , mNotification(nullptr) {
+    , mNotification(nullptr)
+    , mEvictionInProgress(false) {
 }
 
 VictimSelectorImplementation::~VictimSelectorImplementation() {
     releaseAppManager();
     std::lock_guard<std::mutex> guard(mLock);
-    if (mNotification != nullptr) {
+    if (nullptr != mNotification) {
         mNotification->Release();
         mNotification = nullptr;
     }
 }
 
 Core::hresult VictimSelectorImplementation::Register(Exchange::IVictimSelector::INotification* notification) {
-    if (notification == nullptr) {
+    if (nullptr == notification) {
         return Core::ERROR_BAD_REQUEST;
     }
 
     std::lock_guard<std::mutex> guard(mLock);
-    if (mNotification != nullptr) {
+    if (nullptr != mNotification) {
         mNotification->Release();
     }
     mNotification = notification;
@@ -67,7 +68,7 @@ Core::hresult VictimSelectorImplementation::Unregister(Exchange::IVictimSelector
 }
 
 Core::hresult VictimSelectorImplementation::Configure(PluginHost::IShell* service) {
-    if (service == nullptr) {
+    if (nullptr == service) {
         return Core::ERROR_BAD_REQUEST;
     }
 
@@ -75,7 +76,7 @@ Core::hresult VictimSelectorImplementation::Configure(PluginHost::IShell* servic
     mService->AddRef();
     mAppManager = mService->QueryInterfaceByCallsign<Exchange::IAppManager>("org.rdk.AppManager");
     mRuntimeManager = mService->QueryInterfaceByCallsign<Exchange::IRuntimeManager>("org.rdk.RuntimeManager");
-    if (mAppManager == nullptr || mRuntimeManager == nullptr) {
+    if ((nullptr == mAppManager) || (nullptr == mRuntimeManager)) {
         releaseAppManager();
         return Core::ERROR_UNAVAILABLE;
     }
@@ -84,16 +85,21 @@ Core::hresult VictimSelectorImplementation::Configure(PluginHost::IShell* servic
 }
 
 void VictimSelectorImplementation::releaseAppManager() {
-    if (mAppManager != nullptr) {
+    {
+        std::lock_guard<std::mutex> guard(mLock);
+        mPendingAppId.clear();
+        mEvictionInProgress = false;
+    }
+    if (nullptr != mAppManager) {
         mAppManager->Unregister(&mAppManagerNotification);
         mAppManager->Release();
         mAppManager = nullptr;
     }
-    if (mRuntimeManager != nullptr) {
+    if (nullptr != mRuntimeManager) {
         mRuntimeManager->Release();
         mRuntimeManager = nullptr;
     }
-    if (mService != nullptr) {
+    if (nullptr != mService) {
         mService->Release();
         mService = nullptr;
     }
@@ -102,7 +108,7 @@ void VictimSelectorImplementation::releaseAppManager() {
 /* Priority is owned by the platform integration, which stores it per app via
  * IAppManager::SetAppProperty("priority", "<0|1|2>"). 0 means never evict. */
 uint32_t VictimSelectorImplementation::getAppPriority(const std::string& appId) const {
-    if (mAppManager == nullptr) {
+    if (nullptr == mAppManager) {
         return DEFAULT_APP_PRIORITY;
     }
 
@@ -121,13 +127,13 @@ uint32_t VictimSelectorImplementation::getAppPriority(const std::string& appId) 
 
 Core::hresult VictimSelectorImplementation::selectVictim(std::string& appId, bool& isHibernated) {
     isHibernated = false;
-    if (mAppManager == nullptr) {
+    if (nullptr == mAppManager) {
         return Core::ERROR_UNAVAILABLE;
     }
 
     Exchange::IAppManager::ILoadedAppInfoIterator* apps = nullptr;
     const Core::hresult status = mAppManager->GetLoadedApps(apps);
-    if (status != Core::ERROR_NONE || apps == nullptr) {
+    if ((Core::ERROR_NONE != status) || (nullptr == apps)) {
         return Core::ERROR_GENERAL;
     }
 
@@ -183,7 +189,7 @@ Core::hresult VictimSelectorImplementation::selectVictim(std::string& appId, boo
         candidates = &hibernated;
     }
 
-    if (candidates == nullptr || candidates->empty()) {
+    if ((nullptr == candidates) || candidates->empty()) {
         return Core::ERROR_NONE;
     }
 
@@ -209,18 +215,34 @@ Core::hresult VictimSelectorImplementation::Evict(const EvictionReason reason, c
     if (reason != EVICTION_REASON_RAM) {
         return Core::ERROR_UNAVAILABLE;
     }
-    if (mAppManager == nullptr) {
+    if (nullptr == mAppManager) {
         return Core::ERROR_UNAVAILABLE;
+    }
+
+    {
+        std::lock_guard<std::mutex> guard(mLock);
+        if (mEvictionInProgress) {
+            return Core::ERROR_ILLEGAL_STATE;
+        }
+        mEvictionInProgress = true;
     }
 
     std::string appId;
     bool isHibernated = false;
     const Core::hresult selectionStatus = selectVictim(appId, isHibernated);
     if (selectionStatus != Core::ERROR_NONE) {
+        {
+            std::lock_guard<std::mutex> guard(mLock);
+            mEvictionInProgress = false;
+        }
         complete(false, EVICT_ERROR_TERMINATION_FAILED);
         return selectionStatus;
     }
     if (appId.empty()) {
+        {
+            std::lock_guard<std::mutex> guard(mLock);
+            mEvictionInProgress = false;
+        }
         complete(false, EVICT_ERROR_NO_CANDIDATE_FOUND);
         return Core::ERROR_NONE;
     }
@@ -237,6 +259,7 @@ Core::hresult VictimSelectorImplementation::Evict(const EvictionReason reason, c
         {
             std::lock_guard<std::mutex> guard(mLock);
             mPendingAppId.clear();
+            mEvictionInProgress = false;
         }
         complete(false, EVICT_ERROR_TERMINATION_FAILED);
     }
@@ -253,6 +276,7 @@ void VictimSelectorImplementation::onAppLifecycleStateChanged(
             (newState == Exchange::IAppManager::APP_STATE_UNLOADED || errorReason != Exchange::IAppManager::APP_ERROR_NONE);
         if (completeEviction) {
             mPendingAppId.clear();
+            mEvictionInProgress = false;
         }
     }
     if (completeEviction) {
@@ -267,11 +291,11 @@ void VictimSelectorImplementation::complete(bool evicted, EvictErrorReason error
     {
         std::lock_guard<std::mutex> guard(mLock);
         notification = mNotification;
-        if (notification != nullptr) {
+        if (nullptr != notification) {
             notification->AddRef();
         }
     }
-    if (notification != nullptr) {
+    if (nullptr != notification) {
         notification->OnEvictComplete(evicted, errorCode);
         notification->Release();
     }

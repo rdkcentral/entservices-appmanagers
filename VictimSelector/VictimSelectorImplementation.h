@@ -69,6 +69,7 @@ private:
     Core::Sink<AppManagerNotification> mAppManagerNotification;
     Exchange::IVictimSelector::INotification* mNotification;
     std::string mPendingAppId;
+    bool mEvictionInProgress;
     std::mutex mLock;
 };
 

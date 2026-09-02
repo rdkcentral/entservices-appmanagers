@@ -26,23 +26,25 @@ VictimSelector::~VictimSelector() {
 }
 
 const string VictimSelector::Initialize(PluginHost::IShell* service) {
-    if (service == nullptr) {
+    SYSLOG(Logging::Startup, (_T("VictimSelector::Initialize: PID=%u"), getpid()));
+
+    if (nullptr == service) {
         return "VictimSelector received an invalid service";
     }
 
     mService = service;
     mService->AddRef();
     mImplementation = mService->Root<Exchange::IVictimSelector>(mConnectionId, 5000, _T("VictimSelectorImplementation"));
-    if (mImplementation == nullptr) {
+    if (nullptr == mImplementation) {
         Deinitialize(service);
         return "VictimSelector implementation could not be created";
     }
     mConfigure = mImplementation->QueryInterface<Exchange::IConfiguration>();
-    if (mConfigure == nullptr) {
+    if (nullptr == mConfigure) {
         Deinitialize(service);
         return "VictimSelector implementation has no configuration interface";
     }
-    if (mConfigure->Configure(mService) != Core::ERROR_NONE) {
+    if (Core::ERROR_NONE != mConfigure->Configure(mService)) {
         Deinitialize(service);
         return "VictimSelector could not be configured";
     }
@@ -52,25 +54,34 @@ const string VictimSelector::Initialize(PluginHost::IShell* service) {
 }
 
 void VictimSelector::Deinitialize(PluginHost::IShell* service) {
-    if (mImplementation != nullptr) {
+    SYSLOG(Logging::Shutdown, (_T("VictimSelector::Deinitialize entry")));
+
+    if (nullptr != mService) {
+        ASSERT(mService == service);
+    }
+    if (nullptr != mImplementation) {
         Exchange::JVictimSelector::Unregister(*this);
-        if (mConfigure != nullptr) {
+        if (nullptr != mConfigure) {
             mConfigure->Release();
             mConfigure = nullptr;
         }
-        RPC::IRemoteConnection* connection = service->RemoteConnection(mConnectionId);
+        RPC::IRemoteConnection* connection = (nullptr != mService)
+            ? mService->RemoteConnection(mConnectionId)
+            : nullptr;
         mImplementation->Release();
         mImplementation = nullptr;
-        if (connection != nullptr) {
+        if (nullptr != connection) {
             connection->Terminate();
             connection->Release();
         }
     }
     mConnectionId = 0;
-    if (mService != nullptr) {
+    if (nullptr != mService) {
         mService->Release();
         mService = nullptr;
     }
+
+    SYSLOG(Logging::Shutdown, (_T("VictimSelector::Deinitialize exit")));
 }
 
 string VictimSelector::Information() const {

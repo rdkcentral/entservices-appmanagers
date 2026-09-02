@@ -1,7 +1,7 @@
 #pragma once
 
 #ifndef MODULE_NAME
-#define MODULE_NAME VictimSelector
+#define MODULE_NAME Plugin_VictimSelector
 #endif
 
 #include <plugins/plugins.h>
