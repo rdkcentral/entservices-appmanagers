@@ -170,6 +170,25 @@ uint32_t Test_VS_NonRamEvictionIsRejected()
     return result.failures;
 }
 
+uint32_t Test_VS_EvictionWithoutRuntimeManagerIsRejected()
+{
+    L0Test::TestResult result;
+    std::list<WPEFramework::Exchange::IAppManager::LoadedAppInfo> apps;
+    apps.push_back(LoadedApp("candidate", WPEFramework::Exchange::IAppManager::APP_STATE_SUSPENDED));
+    FakeAppManager* appManager = new FakeAppManager(apps);
+    WPEFramework::Plugin::VictimSelectorImplementation* selector = WPEFramework::Core::Service<WPEFramework::Plugin::VictimSelectorImplementation>::Create<WPEFramework::Plugin::VictimSelectorImplementation>();
+    selector->mAppManager = appManager;
+
+    const WPEFramework::Core::hresult status = selector->Evict(
+        WPEFramework::Exchange::IVictimSelector::EVICTION_REASON_RAM,
+        WPEFramework::Exchange::IVictimSelector::EVICTION_TYPE_SOFT);
+    L0Test::ExpectEqU32(result, status, WPEFramework::Core::ERROR_UNAVAILABLE, "Eviction without RuntimeManager is rejected");
+    L0Test::ExpectEqU32(result, appManager->getLoadedAppsCalls, 0, "Unavailable RuntimeManager does not load app list");
+
+    selector->Release();
+    return result.failures;
+}
+
 uint32_t Test_VS_SoftEvictionSelectsPausedCandidate()
 {
     L0Test::TestResult result;

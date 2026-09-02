@@ -5,6 +5,7 @@
 #include "common/L0TestTypes.hpp"
 
 extern uint32_t Test_VS_NonRamEvictionIsRejected();
+extern uint32_t Test_VS_EvictionWithoutRuntimeManagerIsRejected();
 extern uint32_t Test_VS_SoftEvictionSelectsPausedCandidate();
 extern uint32_t Test_VS_SelectsHighestPriorityCandidate();
 extern uint32_t Test_VS_SelectsLargestMemoryCandidateAtSamePriority();
@@ -20,6 +21,7 @@ int main()
         uint32_t (*function)();
     } tests[] = {
         { "NonRamEvictionIsRejected", Test_VS_NonRamEvictionIsRejected },
+        { "EvictionWithoutRuntimeManagerIsRejected", Test_VS_EvictionWithoutRuntimeManagerIsRejected },
         { "SoftEvictionSelectsPausedCandidate", Test_VS_SoftEvictionSelectsPausedCandidate },
         { "SelectsHighestPriorityCandidate", Test_VS_SelectsHighestPriorityCandidate },
         { "SelectsLargestMemoryCandidateAtSamePriority", Test_VS_SelectsLargestMemoryCandidateAtSamePriority },

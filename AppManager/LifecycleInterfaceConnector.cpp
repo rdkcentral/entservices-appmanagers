@@ -727,7 +727,7 @@ namespace WPEFramework
                     loadedAppInfo.targetLifecycleState = targetState;
                     loadedAppInfo.lifecycleState       = newState;
 
-                    rankedApps.push_back(RankedApp(AppInfoManager::getInstance().getLastActiveIndex(appId), loadedAppInfo));
+                    rankedApps.emplace_back(AppInfoManager::getInstance().getLastActiveIndex(appId), std::move(loadedAppInfo));
                 }
 
                 /* Most recently active app first; apps that were never active (index 0) come last. */

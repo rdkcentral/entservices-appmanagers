@@ -76,16 +76,26 @@ Core::hresult VictimSelectorImplementation::Configure(PluginHost::IShell* servic
     Core::hresult result = Core::ERROR_BAD_REQUEST;
     if (nullptr == service) {
         SYSLOG(Logging::Startup, (_T("VictimSelectorImplementation::Configure: service is not valid")));
+        LOGERR("VictimSelector configuration failed: service is null");
     } else {
         mService = service;
         mService->AddRef();
         mAppManager = mService->QueryInterfaceByCallsign<Exchange::IAppManager>("org.rdk.AppManager");
         mRuntimeManager = mService->QueryInterfaceByCallsign<Exchange::IRuntimeManager>("org.rdk.RuntimeManager");
         if ((nullptr == mAppManager) || (nullptr == mRuntimeManager)) {
+            if (nullptr == mAppManager) {
+                LOGERR("VictimSelector configuration failed: AppManager is unavailable");
+            }
+            if (nullptr == mRuntimeManager) {
+                LOGERR("VictimSelector configuration failed: RuntimeManager is unavailable");
+            }
             result = Core::ERROR_UNAVAILABLE;
         } else {
             result = mAppManager->Register(&mAppManagerNotification);
             mAppManagerRegistered = (Core::ERROR_NONE == result);
+            if (Core::ERROR_NONE != result) {
+                LOGERR("VictimSelector configuration failed: unable to register AppManager notification (status=%d)", result);
+            }
         }
 
         if (Core::ERROR_NONE != result) {
@@ -144,7 +154,7 @@ uint32_t VictimSelectorImplementation::getAppPriority(const std::string& appId) 
 
 Core::hresult VictimSelectorImplementation::selectVictim(std::string& appId, bool& isHibernated) {
     isHibernated = false;
-    if (nullptr == mAppManager) {
+    if ((nullptr == mAppManager) || (nullptr == mRuntimeManager)) {
         return Core::ERROR_UNAVAILABLE;
     }
 
