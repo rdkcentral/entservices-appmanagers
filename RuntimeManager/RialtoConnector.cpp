@@ -26,6 +26,7 @@ namespace WPEFramework
 {
     bool RialtoConnector::initialize()
     {
+        LOGINFO("db982 start Initializing rialto connector....");
      if (!mInitialized)
      {
         WPEFramework::Plugin::AIConfiguration* mAIConfiguration;
@@ -34,6 +35,7 @@ namespace WPEFramework
         mAIConfiguration = new WPEFramework::Plugin::AIConfiguration();
         mAIConfiguration->initialize();
         config.sessionServerEnvVars = mAIConfiguration->getEnvs();
+        LOGINFO("db982 Rialto sessionServerEnvVars size=%d", config.sessionServerEnvVars.size());
         mServerManagerService  = create(shared_from_this(), config);
 	if (!mServerManagerService)
         {
@@ -50,22 +52,25 @@ namespace WPEFramework
         mInitialized = true;
         delete mAIConfiguration;
      }
+     LOGINFO("db982 end Initializing rialto connector....");
      return true;
     }
 
     std::string RialtoConnector::getSocketPath(const std::string &appId) const
     {
+        LOGINFO("db982 start getSocketPath for appId='%s'", appId.c_str());
         if (!mServerManagerService)
         {
             LOGERR("getSocketPath: ServerManagerService is null for appId='%s'", appId.c_str());
             return "";
         }
+        LOGINFO("db982 end getSocketPath for appId='%s'", appId.c_str());
         return mServerManagerService->getAppConnectionInfo(appId);
     }
 
     bool RialtoConnector::createAppSession(const std::string &callsign, const std::string &displayName, const std::string &appId)
     {
-        LOGINFO("Creating app session with callsign : '%s', display name : '%s', appid : '%s'", callsign.c_str(), displayName.c_str(), appId.c_str());
+        LOGINFO("db982 Creating app session with callsign : '%s', display name : '%s', appid : '%s'", callsign.c_str(), displayName.c_str(), appId.c_str());
 	if (!mServerManagerService)
         {
             LOGERR("createAppSession: ServerManagerService is null for appId='%s'", appId.c_str());
@@ -74,6 +79,7 @@ namespace WPEFramework
         if (!callsign.empty() && !displayName.empty() && ! appId.empty())
         {
            firebolt::rialto::common::AppConfig config = {appId, displayName};
+           LOGINFO("db982 before initiateApplication");
            return mServerManagerService ->initiateApplication(callsign,
                                                            RialtoServerStates::ACTIVE,
                                                            config);
@@ -86,6 +92,7 @@ namespace WPEFramework
     }
     bool RialtoConnector::resumeSession(const std::string &callsign)
     {
+        LOGINFO("db982 Resuming app session with callsign : '%s'", callsign.c_str());
 	if (!mServerManagerService)
         {
             LOGERR("resumeSession: ServerManagerService is null for callsign='%s'", callsign.c_str());
@@ -120,7 +127,7 @@ namespace WPEFramework
     }
     bool RialtoConnector::deactivateSession(const std::string &callsign)
     {
-        LOGINFO("Deactiving app %s", callsign.c_str());
+        LOGINFO("db982 Deactiving app %s", callsign.c_str());
 	if (!mServerManagerService)
         {
             LOGERR("deactivateSession: ServerManagerService is null for callsign='%s'", callsign.c_str());
@@ -137,6 +144,7 @@ namespace WPEFramework
     void RialtoConnector::stateChanged(const std::string &appId,
                                        const RialtoServerStates &state)
     {
+        LOGINFO("db982 State change called");
         {
             std::lock_guard<std::mutex> lockguard(m_stateMutex);
             appStateMap[appId] = state;
@@ -150,6 +158,7 @@ namespace WPEFramework
     // return true when state set, false on timeout
     bool RialtoConnector::waitForStateChange(const std::string& appId, const RialtoServerStates& state, int timeoutMillis)
     {
+        LOGINFO("db982 waitforStatechange called");
         bool status = false;
         std::unique_lock<std::mutex> lock(m_stateMutex);
         auto startTime = std::chrono::steady_clock::now();
