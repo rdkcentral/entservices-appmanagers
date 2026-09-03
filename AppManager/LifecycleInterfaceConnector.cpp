@@ -469,12 +469,18 @@ namespace WPEFramework
                                     LOGERR("Timed out waiting for appId: %s to reach PAUSED state", appId.c_str());
                                     appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_CLOSE, AppManagerImplementation::ERROR_INTERNAL);
                                     status = Core::ERROR_GENERAL;
+                                    mAdminLock.Unlock();
+                                    terminateApp(appId);
+                                    mAdminLock.Lock();
                                 }
                             }
                             else
                             {
                                 LOGERR("Failed to set PAUSED state for AppId: %s", appId.c_str());
                                 appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_CLOSE, AppManagerImplementation::ERROR_SET_TARGET_APP_STATE);
+                                mAdminLock.Unlock();
+                                terminateApp(appId);
+                                mAdminLock.Lock();
                             }
                         }
                         else
@@ -602,6 +608,30 @@ namespace WPEFramework
             }
 
             return result;
+        }
+
+        Core::hresult LifecycleInterfaceConnector::setTargetAppState(const string& appId, Exchange::ILifecycleManager::LifecycleState state)
+        {
+            Core::hresult status = Core::ERROR_GENERAL;
+            if (appId.empty() || nullptr == mLifecycleManagerRemoteObject)
+            {
+                return status;
+            }
+
+            AppInfo appInfo;
+            if (!AppInfoManager::getInstance().get(appId, appInfo) || appInfo.getAppInstanceId().empty())
+            {
+                return status;
+            }
+
+            mAdminLock.Lock();
+            status = mLifecycleManagerRemoteObject->SetTargetAppState(appInfo.getAppInstanceId(), state, appInfo.getAppIntent());
+            if (Core::ERROR_NONE == status)
+            {
+                AppInfoManager::getInstance().setTargetAppState(appId, mapAppLifecycleState(state));
+            }
+            mAdminLock.Unlock();
+            return status;
         }
 
         /* Send Intent invokes it */

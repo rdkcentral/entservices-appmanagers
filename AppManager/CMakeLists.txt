@@ -23,6 +23,9 @@ set(PLUGIN_APP_MANAGER_MODE "Off" CACHE STRING "Controls if the plugin should ru
 set(PLUGIN_APP_MANAGER_AUTOSTART false CACHE STRING "Automatically start AppManager plugin")
 set(PLUGIN_APP_MANAGER_EXTRA_LIBRARIES "")
 set(PLUGIN_APP_MANAGER_STARTUPORDER "" CACHE STRING "Automatically start AppManager plugin")
+set(PLUGIN_APP_MANAGER_PAUSED_TO_SUSPENDED_TIMEOUT 60 CACHE STRING "Seconds before moving a paused app to suspended")
+set(PLUGIN_APP_MANAGER_SUSPENDED_TO_HIBERNATED_TIMEOUT 300 CACHE STRING "Seconds before evaluating a suspended app for hibernation")
+set(PLUGIN_APP_MANAGER_HIBERNATION_ENABLED 1 CACHE STRING "Enable automatic hibernation of suspended apps (0 or 1)")
 option(AIMANAGERS_TELEMETRY_METRICS_SUPPORT "AIMANAGERS_TELEMETRY_METRICS_SUPPORT" OFF)
 
 add_definitions(-DAPP_MANAGER_API_VERSION_NUMBER_MAJOR=1)
@@ -70,6 +73,7 @@ install(TARGETS ${MODULE_NAME}
 	
 set(PLUGIN_APP_MANAGER_IMPLEMENTATION_SOURCES
     AppManagerImplementation.cpp
+    AppStateTransitionManager.cpp
     AppInfo.cpp
     AppInfoManager.cpp
     LifecycleInterfaceConnector.cpp
