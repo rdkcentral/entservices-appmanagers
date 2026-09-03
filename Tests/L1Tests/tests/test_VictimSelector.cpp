@@ -6,16 +6,18 @@ namespace {
 
 TEST(VictimSelectorL1, InitializeRejectsNullService)
 {
-    WPEFramework::Plugin::VictimSelector selector;
+    WPEFramework::Core::ProxyType<WPEFramework::Plugin::VictimSelector> selector =
+        WPEFramework::Core::ProxyType<WPEFramework::Plugin::VictimSelector>::Create();
 
-    EXPECT_EQ("VictimSelector received an invalid service", selector.Initialize(nullptr));
+    EXPECT_EQ("VictimSelector received an invalid service", selector->Initialize(nullptr));
 }
 
 TEST(VictimSelectorL1, InformationReturnsPluginDescription)
 {
-    WPEFramework::Plugin::VictimSelector selector;
+    WPEFramework::Core::ProxyType<WPEFramework::Plugin::VictimSelector> selector =
+        WPEFramework::Core::ProxyType<WPEFramework::Plugin::VictimSelector>::Create();
 
-    EXPECT_EQ("Victim Selector plugin", selector.Information());
+    EXPECT_EQ("Victim Selector plugin", selector->Information());
 }
 
 } // namespace

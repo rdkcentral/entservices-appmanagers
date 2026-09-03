@@ -81,7 +81,7 @@ Priority is read through `IAppManager::GetAppProperty(appId, "priority", value)`
 - Missing, empty, malformed, or values larger than `uint32_t` default to priority `2`.
 - Numeric values above `2` are currently accepted and are selected before lower numeric priorities.
 
-Within the selected state group, numerically higher priority values are selected first, so priority `2` precedes priority `1`. For candidates with the same priority, the highest `memory.user.usage` is selected first. If memory usage is equal or unavailable, the app appearing later in the `GetLoadedApps` iterator is selected because that iterator is ordered most-recently-active first. Application ID is the final deterministic tie-breaker. The actual wall-clock timestamp is not exposed or used by Victim Selector.
+Within the selected state group, numerically higher priority values are selected first, so priority `2` precedes priority `1`. For candidates with the same priority, the highest `memory.user.usage` is selected first. If memory usage is equal or unavailable, the app appearing later in the `GetLoadedApps` iterator is selected because that iterator is ordered most-recently-active first. The actual wall-clock timestamp is not exposed or used by Victim Selector.
 
 Applications in other states, including `RUNNING`, `ACTIVE`, `LOADING`, `INITIALIZING`, `TERMINATING`, and `UNLOADED`, are not eligible.
 

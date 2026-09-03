@@ -265,7 +265,7 @@ Core::hresult VictimSelectorImplementation::selectVictim(std::string& appId, boo
             if (left.recency != right.recency) {
                 return left.recency > right.recency;
             }
-            return left.app.appId < right.app.appId;
+            return false;
         });
     appId = victim.app.appId;
     isHibernated = (Exchange::IAppManager::APP_STATE_HIBERNATED == victim.app.lifecycleState);
