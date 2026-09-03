@@ -424,6 +424,15 @@ namespace ralf
 
             outFile << ociConfigJson;
             outFile.close();
+            // Copy this file for debugging purposes to /opt/ralfOCIConfig.json
+            std::string debugFilePath = "/opt/ralfOCIConfig.json";
+            std::ofstream debugOutFile(debugFilePath.c_str());
+            if (debugOutFile)
+            {
+                debugOutFile << ociConfigJson;
+                debugOutFile.close();
+                LOGDBG("Arun: Copied OCI config JSON to debug file %s\n", debugFilePath.c_str());
+            }
             // Change ownership to uid:gid
             if (chown(mConfigFilePath.c_str(), uid, gid) != 0)
             {
