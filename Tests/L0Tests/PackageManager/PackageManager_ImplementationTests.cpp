@@ -3,7 +3,6 @@
 #include <cstdio>
 #include <string>
 #include <thread>
-#include <unistd.h>
 
 #include "PackageManagerImplementation.h"
 #include "ServiceMock.h"
@@ -14,6 +13,7 @@ namespace {
 
 using WPEFramework::Core::ERROR_BAD_REQUEST;
 using WPEFramework::Core::ERROR_GENERAL;
+using WPEFramework::Core::ERROR_INVALID_PARAMETER;
 using WPEFramework::Core::ERROR_INVALID_SIGNATURE;
 using WPEFramework::Core::ERROR_NONE;
 using WPEFramework::Core::ERROR_NOT_SUPPORTED;
@@ -106,13 +106,15 @@ public:
 struct ImplFixture {
     L0Test::FakeStorageManager storage;
     L0Test::ServiceMock::FakeSubSystem subSystem;
+    L0Test::ServiceMock::FakeTelemetryMetrics telemetry;
     L0Test::ServiceMock service;
     WPEFramework::Plugin::PackageManagerImplementation* impl;
 
     ImplFixture()
         : storage()
         , subSystem()
-        , service(L0Test::ServiceMock::Config(&storage, &subSystem, nullptr))
+        , telemetry()
+        , service(L0Test::ServiceMock::Config(&storage, &subSystem, &telemetry))
         , impl(WPEFramework::Core::Service<WPEFramework::Plugin::PackageManagerImplementation>::Create<
             WPEFramework::Plugin::PackageManagerImplementation>())
     {
@@ -131,9 +133,10 @@ struct ImplFixture {
     {
         const uint32_t rc = impl->Initialize(&service);
         if (rc == ERROR_NONE) {
-            // PackageManager initializes cache asynchronously; wait until marker is published.
-            for (uint32_t i = 0; i < 250; ++i) {
-                if (0 == access(PACKAGE_MANAGER_MARKER_FILE, F_OK)) {
+            // The marker is written before telemetry; retain the fixture until the
+            // background initialization has completed its final shell access.
+            for (uint32_t i = 0; i < 500; ++i) {
+                if (0U < telemetry.recordCalls.load()) {
                     break;
                 }
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -516,20 +519,20 @@ uint32_t Test_PM_Impl_InstallInputValidationAndUnknownPaths()
     std::string reason;
     L0Test::ExpectEqU32(tr,
                         fx.impl->Uninstall("NoSuchApp", reason),
-                        ERROR_BAD_REQUEST,
-                        "Uninstall() for unknown app returns ERROR_BAD_REQUEST");
+                        ERROR_INVALID_PARAMETER,
+                        "Uninstall() for unknown app returns ERROR_INVALID_PARAMETER");
 
     WPEFramework::Exchange::RuntimeConfig cfg {};
     L0Test::ExpectEqU32(tr,
                         fx.impl->Config("NoSuchApp", "0", cfg),
-                        ERROR_BAD_REQUEST,
-                        "Config() for unknown package returns ERROR_BAD_REQUEST");
+                        ERROR_INVALID_PARAMETER,
+                        "Config() for unknown package returns ERROR_INVALID_PARAMETER");
 
     WPEFramework::Exchange::IPackageInstaller::InstallState state = WPEFramework::Exchange::IPackageInstaller::InstallState::UNINSTALLED;
     L0Test::ExpectEqU32(tr,
                         fx.impl->PackageState("NoSuchApp", "0", state),
-                        ERROR_BAD_REQUEST,
-                        "PackageState() for unknown package returns ERROR_BAD_REQUEST");
+                        ERROR_INVALID_PARAMETER,
+                        "PackageState() for unknown package returns ERROR_INVALID_PARAMETER");
 
     return tr.failures;
 }
@@ -775,4 +778,3 @@ uint32_t Test_PM_Impl_GetConfigForInstalledPackage()
 
     return tr.failures;
 }
-
