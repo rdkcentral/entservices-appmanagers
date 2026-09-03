@@ -24,6 +24,9 @@
 #include "UtilsAppManagerTelemetry.h"
 
 #define TIME_DATA_SIZE           200
+#ifdef APP_MANAGER_RESOURCE_MONITOR
+#define RECONCILE_WAIT_TIMEOUT_MS 30000
+#endif
 static bool sRunning = false;
 
 RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::AppManagerTelemetryReporting, "appManagerBootstrapTime")
@@ -42,10 +45,20 @@ AppManagerImplementation::AppManagerImplementation()
 , mPackageManagerHandlerObject(nullptr)
 , mPackageManagerInstallerObject(nullptr)
 , mStorageManagerRemoteObject(nullptr) 
+#ifdef APP_MANAGER_RESOURCE_MONITOR
+, mResourceMonitorRemoteObject(nullptr)
+#endif
 , mCurrentservice(nullptr)
 , mPackageManagerNotification(*this)
+#ifdef APP_MANAGER_RESOURCE_MONITOR
+, mResourceMonitorNotification(*this)
+#endif
 , mEnhancedLoggingEnabled(false)
 , mAppManagerWorkerThread()
+#ifdef APP_MANAGER_RESOURCE_MONITOR
+, mReconcilePending(false)
+, mTargetRamAchieved(false)
+#endif
 {
     LOGINFO("Create AppManagerImplementation Instance");
 #ifdef APP_INFRA_ENHANCED_LOGGING_INDICATOR
@@ -78,6 +91,12 @@ AppManagerImplementation::~AppManagerImplementation()
         LOGINFO("App Manager Worker Thread joined successfully");
     }
 
+#ifdef APP_MANAGER_RESOURCE_MONITOR
+    if (mStateTransitionManager)
+    {
+        mStateTransitionManager->Stop();
+        mStateTransitionManager.reset();
+    }
     if (nullptr != mLifecycleInterfaceConnector)
     {
         mLifecycleInterfaceConnector->releaseLifecycleManagerRemoteObject();
@@ -87,6 +106,11 @@ AppManagerImplementation::~AppManagerImplementation()
     releasePersistentStoreRemoteStoreObject();
     releasePackageManagerObject();
     releaseStorageManagerRemoteObject();
+    if (nullptr != mResourceMonitorRemoteObject)
+    {
+        releaseResourceMonitorRemoteObject();
+    }
+#endif
     if (nullptr != mCurrentservice)
     {
        mCurrentservice->Release();
@@ -454,6 +478,13 @@ void AppManagerImplementation::handleOnAppLifecycleStateChanged(const string& ap
 {
     JsonObject eventDetails;
 
+#ifdef APP_MANAGER_RESOURCE_MONITOR
+    if (mStateTransitionManager)
+    {
+        mStateTransitionManager->OnStateChanged(appId, newState);
+    }
+#endif
+
     eventDetails["appId"] = appId;
     eventDetails["appInstanceId"] = appInstanceId;
     eventDetails["newState"] = static_cast<int>(newState);
@@ -567,6 +598,37 @@ uint32_t AppManagerImplementation::Configure(PluginHost::IShell* service)
         {
             LOGINFO("created createStorageManagerRemoteObject");
         }
+
+    #ifdef APP_MANAGER_RESOURCE_MONITOR
+        if (Core::ERROR_NONE != createResourceMonitorRemoteObject())
+        {
+            LOGWARN("ResourceMonitor is unavailable; reconciliation requests will fail");
+        }
+
+        uint32_t pausedToSuspendedTimeout = 60;
+        uint32_t suspendedToHibernatedTimeout = 300;
+        bool hibernationEnabled = true;
+        JsonObject configuration;
+        if (configuration.FromString(service->ConfigLine()))
+        {
+            if (configuration.HasLabel("pausedToSuspendedTimeout"))
+            {
+                pausedToSuspendedTimeout = static_cast<uint32_t>(configuration["pausedToSuspendedTimeout"].Number());
+            }
+            if (configuration.HasLabel("suspendedToHibernatedTimeout"))
+            {
+                suspendedToHibernatedTimeout = static_cast<uint32_t>(configuration["suspendedToHibernatedTimeout"].Number());
+            }
+            if (configuration.HasLabel("hibernationEnabled"))
+            {
+                hibernationEnabled = configuration["hibernationEnabled"].Number() != 0;
+            }
+        }
+
+        mStateTransitionManager.reset(new AppStateTransitionManager(*this));
+        mStateTransitionManager->Configure(pausedToSuspendedTimeout, suspendedToHibernatedTimeout, hibernationEnabled);
+        mStateTransitionManager->Start();
+    #endif
         RDKAM_TELEMETRY_INIT(service);
         sRunning = true;
         /* Create the worker thread */
@@ -696,6 +758,151 @@ void AppManagerImplementation::releaseStorageManagerRemoteObject()
     }
 }
 
+#ifdef APP_MANAGER_RESOURCE_MONITOR
+void AppManagerImplementation::ResourceMonitorNotification::OnReconciliationComplete(const string& appId, const bool targetRamAchieved)
+{
+    mParent.OnReconciliationComplete(appId, targetRamAchieved);
+}
+
+Core::hresult AppManagerImplementation::createResourceMonitorRemoteObject()
+{
+    if (nullptr == mCurrentservice)
+    {
+        return Core::ERROR_GENERAL;
+    }
+
+    mResourceMonitorRemoteObject = mCurrentservice->QueryInterfaceByCallsign<Exchange::IResourceMonitor>("org.rdk.ResourceMonitor");
+    if (nullptr == mResourceMonitorRemoteObject)
+    {
+        return Core::ERROR_UNAVAILABLE;
+    }
+
+    const Core::hresult status = mResourceMonitorRemoteObject->Register(&mResourceMonitorNotification);
+    if (Core::ERROR_NONE != status)
+    {
+        mResourceMonitorRemoteObject->Release();
+        mResourceMonitorRemoteObject = nullptr;
+    }
+    return status;
+}
+
+void AppManagerImplementation::releaseResourceMonitorRemoteObject()
+{
+    if (nullptr != mResourceMonitorRemoteObject)
+    {
+        mResourceMonitorRemoteObject->Unregister(&mResourceMonitorNotification);
+        mResourceMonitorRemoteObject->Release();
+        mResourceMonitorRemoteObject = nullptr;
+    }
+}
+
+Core::hresult AppManagerImplementation::Reconcile(const string& appId, uint32_t ramTargetMB, bool allowTerminate)
+{
+    std::lock_guard<std::mutex> requestLock(mReconcileRequestLock);
+    if (nullptr == mResourceMonitorRemoteObject &&
+        Core::ERROR_NONE != createResourceMonitorRemoteObject())
+    {
+        return Core::ERROR_UNAVAILABLE;
+    }
+
+    std::unique_lock<std::mutex> resultLock(mReconcileResultLock);
+    if (!mReconcileResultCV.wait_for(resultLock, std::chrono::milliseconds(RECONCILE_WAIT_TIMEOUT_MS),
+            [this] { return !mReconcilePending; }))
+    {
+        mReconcileAppId.clear();
+        return Core::ERROR_TIMEDOUT;
+    }
+    mReconcilePending = true;
+    mReconcileAppId = appId;
+    mTargetRamAchieved = false;
+    resultLock.unlock();
+
+    const Core::hresult status = mResourceMonitorRemoteObject->Reconcile(appId, ramTargetMB, allowTerminate);
+    if (Core::ERROR_NONE != status)
+    {
+        std::lock_guard<std::mutex> lock(mReconcileResultLock);
+        mReconcilePending = false;
+        mReconcileAppId.clear();
+        mReconcileResultCV.notify_all();
+    }
+    return status;
+}
+
+bool AppManagerImplementation::ReconcileAndWait(const string& appId, uint32_t ramTargetMB, bool allowTerminate, bool& targetRamAchieved)
+{
+    std::lock_guard<std::mutex> requestLock(mReconcileRequestLock);
+    if (nullptr == mResourceMonitorRemoteObject &&
+        Core::ERROR_NONE != createResourceMonitorRemoteObject())
+    {
+        return false;
+    }
+
+    std::unique_lock<std::mutex> resultLock(mReconcileResultLock);
+    if (!mReconcileResultCV.wait_for(resultLock, std::chrono::milliseconds(RECONCILE_WAIT_TIMEOUT_MS),
+            [this] { return !mReconcilePending; }))
+    {
+        mReconcileAppId.clear();
+        return false;
+    }
+    mReconcilePending = true;
+    mReconcileAppId = appId;
+    mTargetRamAchieved = false;
+    resultLock.unlock();
+
+    if (Core::ERROR_NONE != mResourceMonitorRemoteObject->Reconcile(appId, ramTargetMB, allowTerminate))
+    {
+        resultLock.lock();
+        mReconcilePending = false;
+        mReconcileAppId.clear();
+        mReconcileResultCV.notify_all();
+        return false;
+    }
+
+    resultLock.lock();
+    if (!mReconcileResultCV.wait_for(resultLock, std::chrono::milliseconds(RECONCILE_WAIT_TIMEOUT_MS),
+            [this] { return !mReconcilePending; }))
+    {
+        mReconcilePending = false;
+        mReconcileAppId.clear();
+        return false;
+    }
+    targetRamAchieved = mTargetRamAchieved;
+    return true;
+}
+
+void AppManagerImplementation::OnReconciliationComplete(const string& appId, bool targetRamAchieved)
+{
+    std::lock_guard<std::mutex> resultLock(mReconcileResultLock);
+    if (mReconcilePending && mReconcileAppId == appId)
+    {
+        mTargetRamAchieved = targetRamAchieved;
+        mReconcilePending = false;
+        mReconcileAppId.clear();
+        mReconcileResultCV.notify_all();
+    }
+}
+
+uint32_t AppManagerImplementation::GetAppRamTargetMB(const string& appId) const
+{
+    const PackageInfo packageInfo = AppInfoManager::getInstance().getPackageInfo(appId);
+    const uint32_t bytesPerMB = 1024 * 1024;
+    if (packageInfo.configMetadata.systemMemoryLimit <= 0)
+    {
+        return 0;
+    }
+    return static_cast<uint32_t>((static_cast<uint64_t>(packageInfo.configMetadata.systemMemoryLimit) + bytesPerMB - 1) / bytesPerMB);
+}
+
+Core::hresult AppManagerImplementation::SetInactiveTargetState(const string& appId, Exchange::ILifecycleManager::LifecycleState state)
+{
+    if (nullptr == mLifecycleInterfaceConnector)
+    {
+        return Core::ERROR_UNAVAILABLE;
+    }
+    return mLifecycleInterfaceConnector->setTargetAppState(appId, state);
+}
+#endif
+
 bool AppManagerImplementation::createOrUpdatePackageInfoByAppId(const string& appId, PackageInfo &packageData)
 {
     bool result = false;
@@ -727,6 +934,13 @@ bool AppManagerImplementation::createOrUpdatePackageInfoByAppId(const string& ap
 bool AppManagerImplementation::removeAppInfoByAppId(const string &appId)
 {
     bool result = false;
+
+#ifdef APP_MANAGER_RESOURCE_MONITOR
+    if (mStateTransitionManager)
+    {
+        mStateTransitionManager->Remove(appId);
+    }
+#endif
 
     AppInfo snap;
     if (AppInfoManager::getInstance().get(appId, snap))
@@ -944,6 +1158,15 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
             request->mRequestParam = std::make_shared<AppLaunchRequestParam>(AppLaunchRequestParam{appId, launchArgs, intent, packageData.version});
             if (request->mRequestParam != nullptr)
             {
+#ifdef APP_MANAGER_RESOURCE_MONITOR
+                mAdminLock.Unlock();
+                const Core::hresult reconcileStatus = Reconcile(appId, static_cast<uint32_t>((static_cast<uint64_t>(packageData.configMetadata.systemMemoryLimit) + 1024 * 1024 - 1) / (1024 * 1024)), true);
+                mAdminLock.Lock();
+                if (Core::ERROR_NONE != reconcileStatus)
+                {
+                    LOGWARN("Resource reconciliation could not be started for launch of appId %s", appId.c_str());
+                }
+#endif
                 mAppManagerLock.lock();
                 mAppRequestList.push_back(std::move(request));
                 if (mEnhancedLoggingEnabled) { LOGINFO("Queued launch request: appId=%s action=%d queueDepth=%zu", appId.c_str(), APP_ACTION_LAUNCH, mAppRequestList.size()); }
@@ -1188,32 +1411,57 @@ Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const s
     }
     else if (nullptr != mLifecycleInterfaceConnector)
     {
-        std::shared_ptr<AppManagerRequest> request = std::make_shared<AppManagerRequest>();
+#ifdef APP_MANAGER_RESOURCE_MONITOR
+        bool targetRamAchieved = false;
+        mAdminLock.Unlock();
+        const uint32_t ramTargetMB = static_cast<uint32_t>((static_cast<uint64_t>(packageData.configMetadata.systemMemoryLimit) + 1024 * 1024 - 1) / (1024 * 1024));
+        const bool reconciliationCompleted = ReconcileAndWait(appId, ramTargetMB, false, targetRamAchieved);
+        mAdminLock.Lock();
 
-        if (nullptr != request)
+        if (!reconciliationCompleted)
         {
-            LOGINFO(" PreloadApp enter with appId %s", appId.c_str());
-            request->mRequestAction = APP_ACTION_PRELOAD;
-            request->mRequestParam = std::make_shared<AppLaunchRequestParam>(AppLaunchRequestParam{appId, launchArgs, intent, packageData.version});
-            if (request->mRequestParam != nullptr)
+            LOGERR("Resource reconciliation failed or timed out for preload of appId %s", appId.c_str());
+            error = "Resource reconciliation failed or timed out";
+            status = Core::ERROR_GENERAL;
+        }
+        else if (!targetRamAchieved)
+        {
+            LOGERR("Insufficient RAM to preload appId %s", appId.c_str());
+            error = "Insufficient RAM to preload application";
+            status = Core::ERROR_GENERAL;
+        }
+        else
+        {
+#endif
+            std::shared_ptr<AppManagerRequest> request = std::make_shared<AppManagerRequest>();
+
+            if (nullptr != request)
             {
-                mAppManagerLock.lock();
-                mAppRequestList.push_back(std::move(request));
-                mAppManagerLock.unlock();
-                mAppRequestListCV.notify_one();
-                status = Core::ERROR_NONE;
+                LOGINFO(" PreloadApp enter with appId %s", appId.c_str());
+                request->mRequestAction = APP_ACTION_PRELOAD;
+                request->mRequestParam = std::make_shared<AppLaunchRequestParam>(AppLaunchRequestParam{appId, launchArgs, intent, packageData.version});
+                if (request->mRequestParam != nullptr)
+                {
+                    mAppManagerLock.lock();
+                    mAppRequestList.push_back(std::move(request));
+                    mAppManagerLock.unlock();
+                    mAppRequestListCV.notify_one();
+                    status = Core::ERROR_NONE;
+                }
+                else
+                {
+                    LOGERR("Failed to perform operation due to no memory");
+                    error = "Failed to perform operation due to no memory";
+                }
             }
             else
             {
                 LOGERR("Failed to perform operation due to no memory");
                 error = "Failed to perform operation due to no memory";
             }
+#ifdef APP_MANAGER_RESOURCE_MONITOR
         }
-        else
-        {
-            LOGERR("Failed to perform operation due to no memory");
-            error = "Failed to perform operation due to no memory";
-        }
+#endif
     }
     if(status == Core::ERROR_NONE)
     {

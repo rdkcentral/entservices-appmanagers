@@ -23,6 +23,14 @@ set(PLUGIN_APP_MANAGER_MODE "Off" CACHE STRING "Controls if the plugin should ru
 set(PLUGIN_APP_MANAGER_AUTOSTART false CACHE STRING "Automatically start AppManager plugin")
 set(PLUGIN_APP_MANAGER_EXTRA_LIBRARIES "")
 set(PLUGIN_APP_MANAGER_STARTUPORDER "" CACHE STRING "Automatically start AppManager plugin")
+option(APP_MANAGER_RESOURCE_MONITOR "Enable ResourceMonitor integration and inactive app state transitions" OFF)
+set(PLUGIN_APP_MANAGER_RESOURCE_MONITOR 0)
+if(APP_MANAGER_RESOURCE_MONITOR)
+    set(PLUGIN_APP_MANAGER_RESOURCE_MONITOR 1)
+endif()
+set(PLUGIN_APP_MANAGER_PAUSED_TO_SUSPENDED_TIMEOUT 60 CACHE STRING "Seconds before moving a paused app to suspended")
+set(PLUGIN_APP_MANAGER_SUSPENDED_TO_HIBERNATED_TIMEOUT 300 CACHE STRING "Seconds before evaluating a suspended app for hibernation")
+set(PLUGIN_APP_MANAGER_HIBERNATION_ENABLED 1 CACHE STRING "Enable automatic hibernation of suspended apps (0 or 1)")
 option(AIMANAGERS_TELEMETRY_METRICS_SUPPORT "AIMANAGERS_TELEMETRY_METRICS_SUPPORT" OFF)
 
 add_definitions(-DAPP_MANAGER_API_VERSION_NUMBER_MAJOR=1)
@@ -76,6 +84,10 @@ set(PLUGIN_APP_MANAGER_IMPLEMENTATION_SOURCES
     AppManagerTelemetryReporting.cpp
     Module.cpp)
 
+if(APP_MANAGER_RESOURCE_MONITOR)
+    list(APPEND PLUGIN_APP_MANAGER_IMPLEMENTATION_SOURCES AppStateTransitionManager.cpp)
+endif()
+
 add_library(${PLUGIN_IMPLEMENTATION} SHARED
     ${PLUGIN_APP_MANAGER_IMPLEMENTATION_SOURCES}
 )
@@ -83,6 +95,10 @@ add_library(${PLUGIN_IMPLEMENTATION} SHARED
 target_include_directories(${PLUGIN_IMPLEMENTATION}
     PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../helpers)
+
+if(APP_MANAGER_RESOURCE_MONITOR)
+    target_compile_definitions(${PLUGIN_IMPLEMENTATION} PRIVATE APP_MANAGER_RESOURCE_MONITOR)
+endif()
 
 set_target_properties(${PLUGIN_IMPLEMENTATION} PROPERTIES
         CXX_STANDARD 11
