@@ -62,7 +62,6 @@ namespace ralf
                 LOGERR("Failed to load Ralf package config JSON from file: %s", ralfPkgInfo.first.c_str());
                 return false;
             }
-            LOGDBG("Arun: Applying Ralf package config to OCI config for file: %s", ralfPkgInfo.first.c_str());
             if (!applyConfigurationToOCIConfig(ociConfigRootNode, ralfPackageConfigNode))
             {
                 LOGERR("Failed to apply Ralf package config to OCI config for file: %s", ralfPkgInfo.first.c_str());
@@ -626,7 +625,7 @@ namespace ralf
             LOGDBG("Applied storage config to OCI config ? %s\n", status ? "true" : "false");
 
             status = applyNetworkConfigToOCIConfig(ociConfigRootNode, configNode);
-            LOGDBG("Applied network config to OCI config ? %s\n", status ? "true" : "false");
+            LOGDBG("Arun: Applied network config to OCI config ? %s\n", status ? "true" : "false");
         }
         // Apply urn:rdk:config:env — spec matrix: Application/Service only (N/A for Runtime and Base)
         if (packageType == PKG_TYPE_APPLICATION || packageType == PKG_TYPE_SERVICE)
@@ -912,14 +911,14 @@ namespace ralf
     {
         if (!configNode.isMember(NETWORK_CONFIG_URN))
         {
-            LOGDBG("No network configuration found in config node\n");
+            LOGDBG("Arun: No network configuration found in config node\n");
             return true; // Optional configuration, not an error
         }
 
         const Json::Value &networkConfig = configNode[NETWORK_CONFIG_URN];
         if (!networkConfig.isArray())
         {
-            LOGWARN("Network configuration is not an array, skipping\n");
+            LOGWARN("Arun: Network configuration is not an array, skipping\n");
             return true;
         }
 
@@ -937,14 +936,14 @@ namespace ralf
         {
             if (!entry.isObject())
             {
-                LOGWARN("Network config entry is not an object, skipping\n");
+                LOGWARN("Arun: Network config entry is not an object, skipping\n");
                 continue;
             }
 
             // Port is required for a meaningful forwarding rule
             if (!entry.isMember(PORT) || !entry[PORT].isInt())
             {
-                LOGWARN("Network config entry missing or invalid 'port' field, skipping\n");
+                LOGWARN("Arun: Network config entry missing or invalid 'port' field, skipping\n");
                 continue;
             }
 
@@ -959,16 +958,16 @@ namespace ralf
             if ("imported" == type)
             {
                 portForwarding[CONTAINER_TO_HOST].append(portEntry);
-                LOGDBG("Added containerToHost port %d/%s for '%s'\n", entry[PORT].asInt(), protocol.c_str(), name.c_str());
+                LOGDBG("Arun: Added containerToHost port %d/%s for '%s'\n", entry[PORT].asInt(), protocol.c_str(), name.c_str());
             }
             else
             {
                 portForwarding[HOST_TO_CONTAINER].append(portEntry);
-                LOGDBG("Added hostToContainer port %d/%s for '%s' (type='%s')\n", entry[PORT].asInt(), protocol.c_str(), name.c_str(), type.c_str());
+                LOGDBG("Arun: Added hostToContainer port %d/%s for '%s' (type='%s')\n", entry[PORT].asInt(), protocol.c_str(), name.c_str(), type.c_str());
             }
         }
 
-        LOGDBG("Network configuration applied to OCI config\n");
+        LOGDBG("Arun: Network configuration applied to OCI config\n");
         return true;
     }
 
