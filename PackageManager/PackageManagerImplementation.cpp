@@ -896,7 +896,7 @@ namespace Plugin {
         runtimeConfig.resourceManagerClientEnabled = config.resourceManagerClientEnabled;
         runtimeConfig.ralfPkgPath = config.ralfPkgPath;
         runtimeConfig.logFilePath = config.logFilePath;
-        runtimeConfig.unpackedPath = state.unpackedPath;
+        runtimeConfig.unpackedPath = config.unpackedPath;
      }
 
     // copy values from libpackage
