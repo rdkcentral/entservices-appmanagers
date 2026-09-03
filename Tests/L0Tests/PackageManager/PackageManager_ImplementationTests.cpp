@@ -13,6 +13,7 @@ namespace {
 
 using WPEFramework::Core::ERROR_BAD_REQUEST;
 using WPEFramework::Core::ERROR_GENERAL;
+using WPEFramework::Core::ERROR_INVALID_PARAMETER;
 using WPEFramework::Core::ERROR_INVALID_SIGNATURE;
 using WPEFramework::Core::ERROR_NONE;
 using WPEFramework::Core::ERROR_NOT_SUPPORTED;
@@ -543,20 +544,20 @@ uint32_t Test_PM_Impl_InstallInputValidationAndUnknownPaths()
     std::string reason;
     L0Test::ExpectEqU32(tr,
                         fx.impl->Uninstall("NoSuchApp", reason),
-                        ERROR_BAD_REQUEST,
-                        "Uninstall() for unknown app returns ERROR_BAD_REQUEST");
+                        ERROR_INVALID_PARAMETER,
+                        "Uninstall() for unknown app returns ERROR_INVALID_PARAMETER");
 
     WPEFramework::Exchange::RuntimeConfig cfg {};
     L0Test::ExpectEqU32(tr,
                         fx.impl->Config("NoSuchApp", "0", cfg),
-                        ERROR_BAD_REQUEST,
-                        "Config() for unknown package returns ERROR_BAD_REQUEST");
+                        ERROR_INVALID_PARAMETER,
+                        "Config() for unknown package returns ERROR_INVALID_PARAMETER");
 
     WPEFramework::Exchange::IPackageInstaller::InstallState state = WPEFramework::Exchange::IPackageInstaller::InstallState::UNINSTALLED;
     L0Test::ExpectEqU32(tr,
                         fx.impl->PackageState("NoSuchApp", "0", state),
-                        ERROR_BAD_REQUEST,
-                        "PackageState() for unknown package returns ERROR_BAD_REQUEST");
+                        ERROR_INVALID_PARAMETER,
+                        "PackageState() for unknown package returns ERROR_INVALID_PARAMETER");
 
     return tr.failures;
 }

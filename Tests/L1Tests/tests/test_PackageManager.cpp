@@ -1859,7 +1859,7 @@ TEST_F(PackageManagerTest, configAndGetConfigForPackageusingComRpcBranches) {
               pkginstallerInterface->Config("YouTube", "100.1.24", runtimeConfig));
     EXPECT_EQ(runtimeConfig.appPath, "/opt/YouTube");
 
-    EXPECT_EQ(Core::ERROR_BAD_REQUEST,
+    EXPECT_EQ(Core::ERROR_INVALID_PARAMETER,
               pkginstallerInterface->Config("UnknownApp", "0", runtimeConfig));
 
     string packageId;
@@ -1973,7 +1973,7 @@ TEST_F(PackageManagerTest, configAndPackageStateNegativeBranchesusingComRpc) {
               pkginstallerInterface->Config(packageId, version, runtimeConfig));
 
     Exchange::IPackageInstaller::InstallState state = Exchange::IPackageInstaller::InstallState::UNINSTALLED;
-    EXPECT_EQ(Core::ERROR_BAD_REQUEST,
+    EXPECT_EQ(Core::ERROR_INVALID_PARAMETER,
               pkginstallerInterface->PackageState("UnknownApp", "0.0.1", state));
 
     deinitforComRpc();
@@ -1982,7 +1982,7 @@ TEST_F(PackageManagerTest, configAndPackageStateNegativeBranchesusingComRpc) {
 /* Test Case for uninstall unknown package branch using ComRpc
  *
  * Set up and initialize COM-RPC resources
- * Call Uninstall() for a package that does not exist and verify ERROR_BAD_REQUEST
+ * Call Uninstall() for a package that does not exist and verify ERROR_INVALID_PARAMETER
  * Deinitialize COM-RPC resources
  */
 
@@ -1993,7 +1993,7 @@ TEST_F(PackageManagerTest, uninstallUnknownPackageusingComRpcFailure) {
     waitforSignal(TIMEOUT_FOR_INIT);
 
     string errorReason;
-    EXPECT_EQ(Core::ERROR_BAD_REQUEST, pkginstallerInterface->Uninstall("UnknownApp", errorReason));
+    EXPECT_EQ(Core::ERROR_INVALID_PARAMETER, pkginstallerInterface->Uninstall("UnknownApp", errorReason));
 
     deinitforComRpc();
 }
