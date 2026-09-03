@@ -168,10 +168,15 @@ namespace ralf
         // - urn:rdk:permission:internet: internet access enabled (nat)
         // - none enabled: keep container isolated (none)
         // Add Network configuration from runtimeConfigObject to OCI config
+        if (checkIfPathExists("/opt/apply-ralf-nwcfg")) {
+        LOGDBG("Arun: /opt/apply-ralf-nwcfg exists; checking network configuration\n");
         const std::string &capabilities = runtimeConfigObject.capabilities;
         bool hasPermissionInternet = hasCapabilityPermission(capabilities, PERMISSION_INTERNET);
         bool networkEnabled = runtimeConfigObject.wanLanAccess || hasPermissionInternet;
         addNetworkConfigurationsToOCIConfig(ociConfigRootNode, networkEnabled);
+        } else {
+			LOGWARN("Arun: /opt/apply-ralf-nwcfg does not exist; skipping network configuration\n");
+		}
 
         // Mount persistent storage path
         std::string appStoragePath = appConfig.mAppStorageInfo.path;
@@ -633,8 +638,13 @@ namespace ralf
             status = addStorageConfigToOCIConfig(ociConfigRootNode, configNode);
             LOGDBG("Applied storage config to OCI config ? %s\n", status ? "true" : "false");
 
+            if (checkIfPathExists("/opt/apply-ralf-nwcfg")) {
+				LOGDBG("Arun: /opt/apply-ralf-nwcfg exists; applying network config to OCI config\n");
             status = applyNetworkConfigToOCIConfig(ociConfigRootNode, configNode);
             LOGDBG("Arun: Applied network config to OCI config ? %s\n", status ? "true" : "false");
+            } else {
+				LOGWARN("Arun: /opt/apply-ralf-nwcfg does not exist; skipping network config application\n");
+			}
         }
         // Apply urn:rdk:config:env — spec matrix: Application/Service only (N/A for Runtime and Base)
         if (packageType == PKG_TYPE_APPLICATION || packageType == PKG_TYPE_SERVICE)
