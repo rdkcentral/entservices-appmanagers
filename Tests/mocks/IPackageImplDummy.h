@@ -137,7 +137,7 @@ namespace packagemanager
             configMetadata.gpuMemoryLimit = -1;
             configMetadata.userId = 1000;
             configMetadata.groupId = 1001;
-            configMetadata.dataImageSize = 31457280;
+            configMetadata.dataImageSize = (packageId == "YouTube") ? 0 : 31457280;
             configMetadata.appPath = "/opt/" + packageId;
             configMetadata.appType = packagemanager::ApplicationType::INTERACTIVE;
             configMetadata.fkpsFiles = {"file1", "file2", "file3"};
