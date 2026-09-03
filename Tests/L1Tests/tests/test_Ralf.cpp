@@ -1844,7 +1844,7 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, AddLogNameToOCIConfig_PathFormattedCor
     TEST_LOG("Testing addLogNameToOCIConfig formats path correctly");
     Json::Value root;
     mAcc.addLogNameToOCIConfig(root, "/data/apps/myapp", "com.example.myapp");
-    const std::string& logPath = root[ralf::RDKPLUGINS][ralf::LOGGING][ralf::LOG_DATA]
+    const std::string& logPath = root[ralf::RDKPLUGINS][ralf::LOGGING][ralf::DATA]
                                      [ralf::LOG_FILE_OPTIONS][ralf::PATH]
                                          .asString();
     EXPECT_EQ("/data/apps/myapp/com.example.myapp.log", logPath);
@@ -1858,7 +1858,7 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, AddLogNameToOCIConfig_EmptyStoragePath
     TEST_LOG("Testing addLogNameToOCIConfig with empty storage path");
     Json::Value root;
     mAcc.addLogNameToOCIConfig(root, "", "myapp");
-    const std::string& logPath = root[ralf::RDKPLUGINS][ralf::LOGGING][ralf::LOG_DATA]
+    const std::string& logPath = root[ralf::RDKPLUGINS][ralf::LOGGING][ralf::DATA]
                                      [ralf::LOG_FILE_OPTIONS][ralf::PATH]
                                          .asString();
     EXPECT_EQ("/myapp.log", logPath);

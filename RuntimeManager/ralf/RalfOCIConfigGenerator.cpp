@@ -23,11 +23,430 @@
 #include "RalfSupport.h"
 #include "OCISpecConstants.h"
 #include <fstream>
+#include <string>
+#include <memory>
+#include <cstdlib>
+#include <cstring>
+#include <json/json.h>
 
 #define PERSIST_STORAGE_PATH "/data"
+#ifndef THUNDER_CONFIG_FILE
+#define THUNDER_CONFIG_FILE  "/etc/WPEFramework/config.json"
+#endif
+#ifndef THUNDER_COM_SOCKET
+#define THUNDER_COM_SOCKET   "/tmp/communicator"
+#endif
 
 namespace ralf
 {
+    /**
+     * @brief: Extracts and returns an explicit port from a URI context. Supports IPv4, IPv6, and standard hostnames
+     *         without allocating heap memory.
+     * @param uri: The URI string to parse for an explicit port number.
+     * @return: The parsed port number (1-65535) or -1 if no explicit port is found.
+     */
+    int RalfOCIConfigGenerator::getExplicitPortFromUri(const std::string &uri)
+    {
+        size_t startPos = 0;
+
+        if (uri.empty())
+        {
+            return -1;
+        }
+
+        // Skip scheme prefix if present (e.g., "ws://", "http://")
+        size_t schemePos = uri.find("://");
+        if (schemePos != std::string::npos)
+        {
+            startPos = schemePos + strlen("://");
+        }
+
+        // Isolate where the authority/host area ends (path, query, or fragment boundaries)
+        size_t hostEndPos = uri.find_first_of("/?#", startPos);
+        size_t searchEnd = (hostEndPos == std::string::npos) ? uri.size() : hostEndPos;
+
+        size_t portColonPos = std::string::npos;
+
+        // Check for IPv6 closing bracket ']' within the isolated host window
+        size_t closingBracketPos = uri.rfind(']', searchEnd - 1);
+
+        if (closingBracketPos != std::string::npos && closingBracketPos >= startPos)
+        {
+            // IPv6 scenario: The port delimiter ':' must appear precisely after the closing bracket
+            size_t nextColon = uri.find(':', closingBracketPos);
+            if (nextColon != std::string::npos && nextColon < searchEnd)
+            {
+                portColonPos = nextColon;
+            }
+        }
+        else
+        {
+            // IPv4 / Hostname scenario: Locate the last colon in the host window area
+            portColonPos = uri.rfind(':', searchEnd - 1);
+            if (portColonPos != std::string::npos && portColonPos < startPos)
+            {
+                portColonPos = std::string::npos; // Colon belongs to a malformed scheme prefix region
+            }
+        }
+
+        // Validate that a valid port integer section follows the delimiter colon
+        if (portColonPos == std::string::npos || portColonPos + 1 >= searchEnd)
+        {
+            return -1; // No explicit port specified in the URI
+        }
+
+        // Parse the port integer directly out of the continuous memory string buffer
+        int port = std::atoi(&uri[portColonPos + 1]);
+
+        return (port > 0 && port <= 65535) ? port : -1;
+    }
+
+    /**
+     * Helper: Caches the JsonCpp builder configuration statically to avoid heavy repetitive
+     * setup allocation churn across multiple execution cycles.
+     */
+    const Json::CharReaderBuilder& RalfOCIConfigGenerator::getCachedJsonReaderBuilder()
+    {
+        static const Json::CharReaderBuilder builder = []() {
+            Json::CharReaderBuilder b;
+            b["allowComments"] = false; // Internal tweak optimization
+            return b;
+        }();
+        return builder;
+    }
+
+    /**
+     * @brief: Extracts the Firebolt port from a serialized JSON environment variable string.
+     * @param envVar: The serialized JSON string containing environment variable entries.
+     * @return: The parsed port number (1-65535) or -1 if no valid Firebolt endpoint is found.
+     */
+    int RalfOCIConfigGenerator::getFireboltPortFromEnvVars(const std::string &envVar)
+    {
+        if (envVar.empty())
+        {
+            return -1;
+        }
+
+        std::unique_ptr<Json::CharReader> reader(getCachedJsonReaderBuilder().newCharReader());
+        Json::Value envVarsNode;
+
+        // Passing nullptr avoids allocations inside the error messaging pipeline
+        if (!reader->parse(envVar.data(), envVar.data() + envVar.size(), &envVarsNode, nullptr))
+        {
+            return -1;
+        }
+
+        if (!envVarsNode.isArray())
+        {
+            return -1;
+        }
+
+        // Calculate prefix length constraints once before entering the loop
+        const char* keyPtr = FIREBOLT_ENDPOINT_ENV_KEY;
+        size_t keyLen = std::strlen(keyPtr);
+
+        for (const auto &envEntry : envVarsNode)
+        {
+            if (envEntry.isString())
+            {
+                // Extract the underlying string pointer, bypassing .asString() allocation overhead
+                const char* entryStr = envEntry.asCString();
+                size_t entryLen = envEntry.size();
+
+                // Perform an optimized prefix match on continuous memory buffers for "KEY="
+                if (entryLen > keyLen + 1 &&
+                    std::strncmp(entryStr, keyPtr, keyLen) == 0 &&
+                    entryStr[keyLen] == '=')
+                {
+                    // Construct a targeted substring copy containing only the trailing extracted URI
+                    size_t prefixOffset = keyLen + 1;
+                    std::string endpoint(entryStr + prefixOffset, entryLen - prefixOffset);
+
+                    return getExplicitPortFromUri(endpoint);
+                }
+            }
+        }
+
+        return -1;
+    }
+
+    /**
+     * @brief: Extracts a valid port specification from a localized configuration file mapping.
+     * @return: The parsed port number (1-65535) or -1 if no valid port is found.
+     */
+    int RalfOCIConfigGenerator::getThunderPortFromConfigFile()
+    {
+        Json::Value configRoot;
+        if (JsonFromFile(THUNDER_CONFIG_FILE, configRoot))
+        {
+            // Optimization: Query the member once using find().
+            // This cuts map lookup overhead in half by avoiding 'isMember' followed by '[]'.
+            const Json::Value* portNode = configRoot.find("port");
+
+            if (portNode != nullptr && portNode->isInt())
+            {
+                int port = portNode->asInt();
+                if (port > 0 && port <= 65535)
+                {
+                    return port;
+                }
+            }
+        }
+
+        return -1;
+    }
+
+    /**
+     * @brief: Extracts Thunder port from the environment variable "THUNDER_ACCESS" or from a local configuration file.
+     * falling back gracefully to the file system configuration structure if unavailable.
+     * @return: The parsed port number (1-65535) or -1 if no valid port is found.
+     */
+    int RalfOCIConfigGenerator::getThunderPortFromEnvironmentOrConfig()
+    {
+        const char *thunderAccess = std::getenv("THUNDER_ACCESS");
+        if (thunderAccess != nullptr && thunderAccess[0] != '\0')
+        {
+            const int port = getExplicitPortFromUri(thunderAccess);
+            if (port > 0)
+            {
+                return port;
+            }
+
+            LOGWARN("THUNDER_ACCESS is present but not a TCP endpoint (value: %s); falling back to %s",
+                    thunderAccess, THUNDER_CONFIG_FILE);
+        }
+
+        return getThunderPortFromConfigFile();
+    }
+
+    /**
+     * @brief: Checks if the resolver file contains only loopback nameservers.
+     * @param resolvPath: The path to the resolver file.
+     * @return: True if only loopback nameservers are found, false otherwise.
+     */
+    bool RalfOCIConfigGenerator::hasOnlyLoopbackNameServers(const std::string &resolvPath)
+    {
+        if (checkIfPathExists(resolvPath) == false)
+        {
+            LOGWARN("Resolver file %s does not exist", resolvPath.c_str());
+            return false;
+        }
+
+        std::ifstream in(resolvPath.c_str());
+        if (!in)
+        {
+            return false;
+        }
+
+        bool foundNameServer = false;
+        std::string line;
+
+        while (std::getline(in, line))
+        {
+            // Quick prefix skip: A valid line must be at least long enough for "nameserver "
+            if (line.size() < 12)
+            {
+                continue;
+            }
+
+            // Performance Win: Match "nameserver" prefix directly in-place without std::istringstream
+            if (std::strncmp(line.data(), "nameserver", 10) != 0)
+            {
+                continue;
+            }
+
+            // Find the first non-whitespace character after "nameserver"
+            size_t valStart = line.find_first_not_of(" \t", 10);
+            if (valStart == std::string::npos)
+            {
+                continue; // Missing IP value
+            }
+
+            // Find where the IP token ends (whitespace or end of line)
+            size_t valEnd = line.find_first_of(" \t\r\n", valStart);
+            size_t valLen = (valEnd == std::string::npos) ? (line.size() - valStart) : (valEnd - valStart);
+
+            if (valLen == 0)
+            {
+                continue;
+            }
+
+            foundNameServer = true;
+
+            // Evaluate the loopback IP completely in-place
+            const char* valPtr = line.data() + valStart;
+
+            // Check for IPv6 Loopback "::1"
+            if (valLen == 3 && std::strncmp(valPtr, "::1", 3) == 0)
+            {
+                continue;
+            }
+
+            // Check for IPv4 Loopback range "127.*"
+            if (valLen >= 4 && std::strncmp(valPtr, "127.", 4) == 0)
+            {
+                continue;
+            }
+
+            // Found a non-loopback nameserver! Exit immediately.
+            return false;
+        }
+
+        return foundNameServer;
+    }
+
+    /**
+     * @brief: Gets the resolver source path for the container.
+     * @return: The path to the resolver file to be used inside the container.
+     * Defaults to /etc/resolv.conf, but may return a fallback path if the default resolver only contains loopback nameservers.
+     */
+    std::string RalfOCIConfigGenerator::getResolverSourcePathForContainer()
+    {
+        static const std::string defaultResolver = "/etc/resolv.conf";
+        static const std::string noStubNetworkManager = "/run/NetworkManager/no-stub-resolv.conf";
+        static const std::string noStubSystemdResolved = "/run/systemd/resolve/resolv.conf";
+
+        // Fast-path: If the default resolver has actual public nameservers, return it instantly
+        if (!hasOnlyLoopbackNameServers(defaultResolver))
+        {
+            return defaultResolver;
+        }
+
+        // Fallback lookups: Check for local container stub overrides
+        if (checkIfPathExists(noStubNetworkManager))
+        {
+            return noStubNetworkManager;
+        }
+
+        if (checkIfPathExists(noStubSystemdResolved))
+        {
+            return noStubSystemdResolved;
+        }
+
+        LOGWARN("Host resolver file %s only has loopback nameservers and no fallback resolver file found", defaultResolver.c_str());
+        return defaultResolver;
+    }
+
+    bool RalfOCIConfigGenerator::ensureMountTargetFileInRootfs(const std::string &containerPath)
+    {
+        if (containerPath.empty() || containerPath[0] != '/')
+        {
+            LOGERR("Invalid container path for mount target creation: %s", containerPath.c_str());
+            return false;
+        }
+
+        static const std::string rootfsToken = "rootfs";
+        // Optimization 2: Reserve memory upfront for the final path to prevent re-allocating during concatenation
+        const std::string bundleDir = WPEFramework::Core::File::PathName(mConfigFilePath);
+
+        std::string targetPath;
+        targetPath.reserve(bundleDir.size() + rootfsToken.size() + containerPath.size());
+        targetPath.append(bundleDir).append(rootfsToken).append(containerPath);
+
+        const std::string targetParentDir = WPEFramework::Core::File::PathName(targetPath);
+
+        WPEFramework::Core::Directory parentDir(targetParentDir.c_str());
+        if (!parentDir.CreatePath())
+        {
+            LOGERR("Failed to create mount target parent dir %s", targetParentDir.c_str());
+            return false;
+        }
+
+        WPEFramework::Core::File mountTarget(targetPath);
+
+        // Create() internally opens/creates the file safely. If it fails, we know it couldn't be prepared.
+        if (!mountTarget.Create())
+        {
+            LOGERR("Failed to create mount target file in rootfs: %s", targetPath.c_str());
+            return false;
+        }
+        mountTarget.Close();
+
+        return true;
+    }
+
+    void RalfOCIConfigGenerator::addNetworkSystemMountsToOCIConfig(Json::Value &ociConfigRootNode,
+                                                                  bool networkEnabled,
+                                                                  bool thunderAccessEnabled)
+    {
+        // A single lambda that takes both host & container paths, eliminating code duplication
+        auto mountIfAvailable = [this, &ociConfigRootNode](const std::string& srcPath, const std::string& destPath)
+        {
+            if (checkIfPathExists(srcPath))
+            {
+                if (ensureMountTargetFileInRootfs(destPath))
+                {
+                    addMountEntry(ociConfigRootNode, srcPath, destPath);
+                }
+                else
+                {
+                    LOGERR("Failed to prepare rootfs target for %s; skipping mount entry", destPath.c_str());
+                }
+            }
+            else
+            {
+                LOGWARN("Host path %s is missing; skipping mount", srcPath.c_str());
+            }
+        };
+
+        if (networkEnabled)
+        {
+            // Single safe traversal path check for deeply nested JSON objects.
+            // Prevents building dynamic null-nodes in JsonCpp map buckets.
+            bool dnsmasqEnabled = false;
+
+            const Json::Value* plugins = ociConfigRootNode.find(RDKPLUGINS);
+            if (plugins) {
+                const Json::Value* networking = plugins->find(NETWORKING);
+                if (networking) {
+                    const Json::Value* data = networking->find(DATA);
+                    if (data) {
+                        const Json::Value* dnsmasq = data->find(DNSMASQ);
+                        if (dnsmasq && dnsmasq->isBool()) {
+                            dnsmasqEnabled = dnsmasq->asBool();
+                        }
+                    }
+                }
+            }
+
+            if (!dnsmasqEnabled)
+            {
+                static const std::string resolverDestinationPath = "/etc/resolv.conf";
+                const std::string resolverSourcePath = getResolverSourcePathForContainer();
+
+                LOGDBG("Resolver mount selection: host '%s' -> container '%s'",
+                       resolverSourcePath.c_str(), resolverDestinationPath.c_str());
+
+                mountIfAvailable(resolverSourcePath, resolverDestinationPath);
+            }
+            else
+            {
+                LOGDBG("dnsmasq enabled for networking plugin; skipping host /etc/resolv.conf mount");
+            }
+
+            static const std::string etcHostsPath = "/etc/hosts";
+            mountIfAvailable(etcHostsPath, etcHostsPath);
+        }
+
+        if (thunderAccessEnabled)
+        {
+            std::string communicatorPath;
+            std::string communicatorEnv;
+
+            // Direct environment resolution check
+            if (WPEFramework::Core::SystemInfo::GetEnvironment("COMMUNICATOR_CONNECTOR", communicatorEnv) && !communicatorEnv.empty())
+            {
+                communicatorPath = std::move(communicatorEnv);
+            }
+            else
+            {
+                communicatorPath = THUNDER_COM_SOCKET;
+            }
+
+            mountIfAvailable(communicatorPath, communicatorPath);
+        }
+    }
+
     bool RalfOCIConfigGenerator::generateRalfOCIConfig(const WPEFramework::Plugin::ApplicationConfiguration &config, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject)
     {
         Json::Value ociConfigRootNode;
@@ -73,6 +492,7 @@ namespace ralf
             LOGERR("Failed to generate hooks for OCI config");
             return false;
         }
+
         // // Let us apply data from runtimeConfigObject and applicationConfiguration
         if (applyRuntimeAndAppConfigToOCIConfig(ociConfigRootNode, runtimeConfigObject, config) == false)
         {
@@ -91,6 +511,7 @@ namespace ralf
         addThunderAccessToPrivilegedApps(ociConfigRootNode);
         return saveOCIConfigToFile(ociConfigRootNode, config.mUserId, config.mGroupId);
     }
+
     void RalfOCIConfigGenerator::addThunderAccessToPrivilegedApps(Json::Value &ociConfigRootNode)
     {
         const char* thunderaccess = getenv("THUNDER_ACCESS");
@@ -107,7 +528,7 @@ namespace ralf
         // Override the default log file path in the generated OCI config with an app-specific path.
         // The updated entry is rdkPlugins->logging->data->fileOptions->path.
         std::string logFilePath = appStoragePath + "/" + appId + ".log";
-        ociConfigRootNode[RDKPLUGINS][LOGGING][LOG_DATA][LOG_FILE_OPTIONS][PATH] = logFilePath;
+        ociConfigRootNode[RDKPLUGINS][LOGGING][DATA][LOG_FILE_OPTIONS][PATH] = logFilePath;
     }
 
     bool RalfOCIConfigGenerator::applyRuntimeAndAppConfigToOCIConfig(Json::Value &ociConfigRootNode, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject, const WPEFramework::Plugin::ApplicationConfiguration &appConfig)
@@ -142,6 +563,129 @@ namespace ralf
         gidMapping[HOST_ID] = appConfig.mGroupId;
         gidMapping[SIZE] = 1;
         ociConfigRootNode[LINUX][GID_MAPPINGS].append(gidMapping);
+
+
+        // Network configuration policy:
+        // - wanLanAccess=true: internet access (nat)
+        // - thunder=true or dial=true: local network access required (nat)
+        // - urn:rdk:permission:internet: internet access enabled (nat)
+        // - none enabled: keep container isolated (none)
+        const std::string &capabilities = runtimeConfigObject.capabilities;
+        bool hasInternet  = hasCapabilityPermission(capabilities, PERMISSION_INTERNET);
+        bool hasThunder   = runtimeConfigObject.thunder || hasCapabilityPermission(capabilities, PERMISSION_THUNDER);
+        bool hasFirebolt  = hasCapabilityPermission(capabilities, PERMISSION_FIREBOLT);
+        bool networkEnabled = runtimeConfigObject.wanLanAccess || runtimeConfigObject.dial ||
+                    hasInternet || hasThunder || hasFirebolt;
+        if (networkEnabled)
+        {
+            static const std::string netRawCap = "CAP_NET_RAW";
+            static const char *capabilitySets[] = {"ambient", "bounding", "effective", "inheritable", "permitted"};
+
+            for (const char *setName : capabilitySets)
+            {
+                Json::Value &capSet = ociConfigRootNode[PROCESS]["capabilities"][setName];
+                if (!capSet.isArray())
+                {
+                    capSet = Json::Value(Json::arrayValue);
+                }
+
+                bool alreadyPresent = false;
+                for (const auto &cap : capSet)
+                {
+                    if (cap.asString() == netRawCap)
+                    {
+                        alreadyPresent = true;
+                        break;
+                    }
+                }
+
+                if (!alreadyPresent)
+                {
+                    capSet.append(netRawCap);
+                }
+            }
+        }
+
+        ociConfigRootNode[RDKPLUGINS][NETWORKING][DATA][TYPE] = networkEnabled ? "nat" : "none";
+        ociConfigRootNode[RDKPLUGINS][NETWORKING][DATA][DNSMASQ] = networkEnabled;
+        LOGDBG("Network mode set to '%s' (wanLanAccess=%d dial=%d thunder=%d hasInternet=%d hasFirebolt=%d)",
+             networkEnabled ? "nat" : "none",
+             runtimeConfigObject.wanLanAccess,
+             runtimeConfigObject.dial,
+             hasThunder,
+             hasInternet,
+             hasFirebolt);
+
+        // Granular containerToHost access with localhostMasquerade:
+        // - Thunder JSONRPC/WebSocket endpoint port comes from THUNDER_ACCESS env when it is TCP,
+        //   otherwise falls back to /etc/WPEFramework/config.json "port"
+        // - Firebolt endpoint port comes from FIREBOLT_ENDPOINT in runtime env variables
+        // Add both when required and deduplicate if they resolve to the same port.
+        if (hasThunder || hasFirebolt)
+        {
+            std::vector<int> portsToExpose = {};
+
+            if (hasThunder)
+            {
+                int thunderPort = getThunderPortFromEnvironmentOrConfig();
+                if (thunderPort != -1)
+                {
+                    portsToExpose.push_back(thunderPort);
+                }
+                else
+                {
+                    LOGWARN("Failed to resolve Thunder port(%d) from THUNDER_ACCESS or config file; skipping localhostMasquerade entry.", thunderPort);
+                }
+            }
+
+            if (hasFirebolt)
+            {
+                int fireboltPort = getFireboltPortFromEnvVars(runtimeConfigObject.envVariables);
+                if (fireboltPort != -1)
+                {
+                    portsToExpose.push_back(fireboltPort);
+                }
+                else
+                {
+                    LOGWARN("Failed to resolve Firebolt endpoint port(%d) from runtime env; skipping Firebolt-specific localhostMasquerade entry");
+                }
+            }
+
+            // Dobby Networking plugin consumes localhostMasquerade at the
+            // portForwarding object level, not per individual port entries.
+            if (!portsToExpose.empty())
+            {
+                ociConfigRootNode[RDKPLUGINS][NETWORKING][DATA][PORT_FORWARDING][LOCALHOST_MASQUERADE] = true;
+            }
+
+            for (size_t i = 0; i < portsToExpose.size(); ++i)
+            {
+                int port = portsToExpose[i];
+                bool alreadyAdded = false;
+                for (size_t j = 0; j < i; ++j)
+                {
+                    if (portsToExpose[j] == port)
+                    {
+                        alreadyAdded = true;
+                        break;
+                    }
+                }
+
+                if (alreadyAdded)
+                {
+                    continue;
+                }
+
+                Json::Value portEntry(Json::objectValue);
+                portEntry[PORT] = port;
+                portEntry[PROTOCOL] = "tcp";
+                ociConfigRootNode[RDKPLUGINS][NETWORKING][DATA][PORT_FORWARDING][CONTAINER_TO_HOST].append(portEntry);
+                LOGDBG("Added containerToHost localhostMasquerade on port %d (hasThunder=%d hasFirebolt=%d)",
+                       port, hasThunder, hasFirebolt);
+            }
+        }
+
+        addNetworkSystemMountsToOCIConfig(ociConfigRootNode, networkEnabled, (hasThunder || hasFirebolt));
 
         // Set westeros environment variable
         // mWesterosSocketPath has XDG_RUNTIME_DIR/WAYLAND_DISPLAY, we need to set WAYLAND_DISPLAY env variable to just the display
@@ -434,7 +978,7 @@ namespace ralf
             status = addConfigOverridesToOCIConfig(ociConfigRootNode, configNode);
             LOGDBG("Applied config overrides to OCI config ? %s\n", status ? "true" : "false");
         }
-        // Apply "urn:rdk:config:memory", reserved
+        // Apply "urn:rdk:config:memory", "urn:rdk:config:storage", "urn:rdk:config:network", reserved
         if (packageType == PKG_TYPE_APPLICATION || packageType == PKG_TYPE_RUNTIME)
         {
             status = addMemoryConfigToOCIConfig(ociConfigRootNode, configNode, packageType);
@@ -442,6 +986,9 @@ namespace ralf
 
             status = addStorageConfigToOCIConfig(ociConfigRootNode, configNode);
             LOGDBG("Applied storage config to OCI config ? %s\n", status ? "true" : "false");
+
+            status = applyNetworkConfigToOCIConfig(ociConfigRootNode, configNode);
+            LOGDBG("Applied network config to OCI config ? %s\n", status ? "true" : "false");
         }
         // Apply urn:rdk:config:env — spec matrix: Application/Service only (N/A for Runtime and Base)
         if (packageType == PKG_TYPE_APPLICATION || packageType == PKG_TYPE_SERVICE)
@@ -721,5 +1268,110 @@ namespace ralf
         deduped.append(envVar);
         processNode[ENV] = deduped;
         LOGDBG("Added environment variable to OCI config: %s\n", envVar.c_str());
+    }
+
+    bool RalfOCIConfigGenerator::applyNetworkConfigToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &configNode)
+    {
+        if (!configNode.isMember(NETWORK_CONFIG_URN))
+        {
+            LOGDBG("No network configuration found in config node\n");
+            return true; // Optional configuration, not an error
+        }
+
+        const Json::Value &networkConfig = configNode[NETWORK_CONFIG_URN];
+        if (!networkConfig.isArray())
+        {
+            LOGWARN("Network configuration is not an array, skipping\n");
+            return true;
+        }
+
+        Json::Value &portForwarding = ociConfigRootNode[RDKPLUGINS][NETWORKING][DATA][PORT_FORWARDING];
+        if (!portForwarding.isObject())
+        {
+            portForwarding = Json::Value(Json::objectValue);
+        }
+
+        // Route entries to Dobby's hostToContainer or containerToHost arrays based on 'type':
+        //   "public" / "exported" -> hostToContainer  (inbound: external traffic reaches this container)
+        //   "imported"            -> containerToHost  (outbound: this container reaches a host/peer service)
+        //   unspecified           -> hostToContainer  (safe default)
+        for (const auto &entry : networkConfig)
+        {
+            if (!entry.isObject())
+            {
+                LOGWARN("Network config entry is not an object, skipping\n");
+                continue;
+            }
+
+            // Port is required for a meaningful forwarding rule
+            if (!entry.isMember(PORT) || !entry[PORT].isInt())
+            {
+                LOGWARN("Network config entry missing or invalid 'port' field, skipping\n");
+                continue;
+            }
+
+            std::string name     = (entry.isMember(NAME)     && entry[NAME].isString())     ? entry[NAME].asString()     : "unnamed";
+            std::string type     = (entry.isMember(TYPE)     && entry[TYPE].isString())     ? entry[TYPE].asString()     : "";
+            std::string protocol = (entry.isMember(PROTOCOL) && entry[PROTOCOL].isString()) ? entry[PROTOCOL].asString() : "tcp";
+
+            Json::Value portEntry(Json::objectValue);
+            portEntry[PORT]     = entry[PORT].asInt();
+            portEntry[PROTOCOL] = protocol;
+
+            if (type == "imported")
+            {
+                portForwarding[CONTAINER_TO_HOST].append(portEntry);
+                LOGDBG("Added containerToHost port %d/%s for '%s'\n", entry[PORT].asInt(), protocol.c_str(), name.c_str());
+            }
+            else
+            {
+                portForwarding[HOST_TO_CONTAINER].append(portEntry);
+                LOGDBG("Added hostToContainer port %d/%s for '%s' (type='%s')\n", entry[PORT].asInt(), protocol.c_str(), name.c_str(), type.c_str());
+            }
+        }
+
+        LOGDBG("Network configuration applied to OCI config\n");
+        return true;
+    }
+
+    bool RalfOCIConfigGenerator::hasCapabilityPermission(const std::string &capabilities, const std::string &permission)
+    {
+        if (capabilities.empty() || permission.empty())
+        {
+            return false;
+        }
+
+        size_t pos = 0;
+        const std::string delimiter = ",";
+
+        while (pos < capabilities.length())
+        {
+            size_t end = capabilities.find(delimiter, pos);
+            if (end == std::string::npos)
+            {
+                end = capabilities.length();
+            }
+
+            std::string token = capabilities.substr(pos, end - pos);
+
+            // Trim whitespace
+            token.erase(0, token.find_first_not_of(" \t\n\r\f\v"));
+            token.erase(token.find_last_not_of(" \t\n\r\f\v") + 1);
+
+            if (token == permission)
+            {
+                LOGDBG("Found capability permission '%s'\n", permission.c_str());
+                return true;
+            }
+
+            pos = end + delimiter.length();
+        }
+
+        return false;
+    }
+
+    bool RalfOCIConfigGenerator::hasInternetPermission(const std::string &capabilities)
+    {
+        return hasCapabilityPermission(capabilities, PERMISSION_INTERNET);
     }
 } // namespace ralf
