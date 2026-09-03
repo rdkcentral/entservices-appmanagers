@@ -818,7 +818,12 @@ namespace Plugin {
 
                 LOGDBG("Locked. id: %s ver: %s lock count:%d additionalLocks=%zu", packageId.c_str(), version.c_str(), state.mLockCount, state.additionalLocks.size());
                 getRuntimeConfig(state.runtimeConfig, runtimeConfig);
-                state.unpackedPath = unpackedPath;
+                if (!unpackedPath.empty()) {
+                     state.unpackedPath = unpackedPath;
+                 } else {
+                     unpackedPath = state.unpackedPath;
+                 }
+                state.runtimeConfig.unpackedPath = state.unpackedPath;
                 runtimeConfig.unpackedPath = state.unpackedPath;
                 appMetadata = Core::Service<RPC::IteratorType<Exchange::IPackageHandler::ILockIterator>>::Create<Exchange::IPackageHandler::ILockIterator>(state.additionalLocks);
                 LOGDBG("%s:%s appPath: %s runtimePath: %s", packageId.c_str(), version.c_str(),
