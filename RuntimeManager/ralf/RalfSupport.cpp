@@ -461,22 +461,22 @@ namespace ralf
          * If the default resolver file has only loopback nameservers, check for alternative resolver files provided by
          * NetworkManager or systemd-resolved. If found, use those; otherwise, fall back to the default resolver file.
          */
-        if (!hasOnlyLoopbackNameServers(RALF_DEFAULT_RESOLV_CONF_FILE))
+        if (!hasOnlyLoopbackNameServers(RALF_HOST_DEFAULT_RESOLV_CONF_FILE))
         {
-            return RALF_DEFAULT_RESOLV_CONF_FILE;
+            return RALF_HOST_DEFAULT_RESOLV_CONF_FILE;
         }
 
-        if (checkIfPathExists(RALF_NOSTUB_NWMGR_RESOLV_CONF_FILE))
+        if (checkIfPathExists(RALF_HOST_NOSTUB_NWMGR_RESOLV_CONF_FILE))
         {
-            return RALF_NOSTUB_NWMGR_RESOLV_CONF_FILE;
+            return RALF_HOST_NOSTUB_NWMGR_RESOLV_CONF_FILE;
         }
 
-        if (checkIfPathExists(RALF_NOSTUB_SYSTEMD_RESOLV_CONF_FILE))
+        if (checkIfPathExists(RALF_HOST_NOSTUB_SYSTEMD_RESOLV_CONF_FILE))
         {
-            return RALF_NOSTUB_SYSTEMD_RESOLV_CONF_FILE;
+            return RALF_HOST_NOSTUB_SYSTEMD_RESOLV_CONF_FILE;
         }
 
-        LOGWARN("Host resolver file %s only has loopback nameservers and no fallback resolver file found", RALF_DEFAULT_RESOLV_CONF_FILE.c_str());
-        return RALF_DEFAULT_RESOLV_CONF_FILE;
+        LOGWARN("Host resolver file %s only has loopback nameservers and no fallback resolver file found", RALF_HOST_DEFAULT_RESOLV_CONF_FILE.c_str());
+        return RALF_HOST_DEFAULT_RESOLV_CONF_FILE;
     }
 } // namespace ralf

@@ -62,6 +62,7 @@ namespace ralf
                 LOGERR("Failed to load Ralf package config JSON from file: %s", ralfPkgInfo.first.c_str());
                 return false;
             }
+            LOGDBG("Arun: Applying Ralf package config to OCI config for file: %s", ralfPkgInfo.first.c_str());
             if (!applyConfigurationToOCIConfig(ociConfigRootNode, ralfPackageConfigNode))
             {
                 LOGERR("Failed to apply Ralf package config to OCI config for file: %s", ralfPkgInfo.first.c_str());
@@ -226,7 +227,12 @@ namespace ralf
 
             netData[TYPE] = NETWORK_TYPE_NAT;
             netData[DNSMASQ] = true;
-            addNetworkSystemMountsToOCIConfig(ociConfigRootNode);
+            if (checkIfPathExists("/opt/arun-mount-files")) {
+                LOGWARN("Arun: /opt/arun-mount-files exists; triggering network system mounts");
+                addNetworkSystemMountsToOCIConfig(ociConfigRootNode);
+            } else {
+                LOGWARN("Arun: /opt/arun-mount-files does not exist; skipping network system mounts");
+            }
         }
         else
         {
@@ -254,12 +260,12 @@ namespace ralf
                 }
                 else
                 {
-                    LOGERR("Failed to prepare rootfs target for %s; skipping mount entry", path.c_str());
+                    LOGERR("Arun: Failed to prepare rootfs target for %s; skipping mount entry", path.c_str());
                 }
             }
             else
             {
-                LOGWARN("Host path %s is missing; skipping mount", path.c_str());
+                LOGWARN("Arun: Host path %s is missing; skipping mount", path.c_str());
             }
         };
 
@@ -268,9 +274,9 @@ namespace ralf
         {
             // Cache string allocations out of conditional blocks where possible
             const std::string resolverSourcePath = getResolverSourcePathForContainer();
-            const std::string resolverDestinationPath = "/etc/resolv.conf";
+            const std::string resolverDestinationPath = RALF_DEFAULT_RESOLV_CONF_FILE;
 
-            LOGDBG("Resolver mount selection: host '%s' -> container '%s'", resolverSourcePath.c_str(), resolverDestinationPath.c_str());
+            LOGDBG("Arun: Resolver mount selection: host '%s' -> container '%s'", resolverSourcePath.c_str(), resolverDestinationPath.c_str());
 
             if (checkIfPathExists(resolverSourcePath))
             {
@@ -280,17 +286,17 @@ namespace ralf
                 }
                 else
                 {
-                    LOGERR("Failed to prepare rootfs target for %s; skipping mount entry", resolverDestinationPath.c_str());
+                    LOGERR("Arun: Failed to prepare rootfs target for %s; skipping mount entry", resolverDestinationPath.c_str());
                 }
             }
             else
             {
-                LOGWARN("Host path %s is missing; skipping mount", resolverSourcePath.c_str());
+                LOGWARN("Arun:Host path %s is missing; skipping mount", resolverSourcePath.c_str());
             }
         }
         else
         {
-            LOGDBG("dnsmasq enabled for networking plugin; skipping host /etc/resolv.conf mount");
+            LOGDBG("Arun: dnsmasq enabled for networking plugin; skipping host /etc/resolv.conf mount");
         }
 
         // Avoid dynamic string instantiation by explicitly calling with a string literal
@@ -970,8 +976,10 @@ namespace ralf
     {
         if (capabilities.empty() || permission.empty())
         {
+            LOGDBG("Arun: Capabilities or permission string is empty; cannot check for permission\n");
             return false;
         }
+        LOGDBG("Arun: Checking if capabilities '%s' contain permission '%s'\n", capabilities.c_str(), permission.c_str());
 
         size_t pos = 0;
         const std::string delimiter = ",";
