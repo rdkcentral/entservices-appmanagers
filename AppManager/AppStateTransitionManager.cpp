@@ -29,7 +29,6 @@ AppStateTransitionManager::AppStateTransitionManager(AppManagerImplementation& p
     , mRunning(false)
     , mPausedToSuspendedTimeout(60)
     , mSuspendedToHibernatedTimeout(300)
-    , mHibernationEnabled(true)
 {
 }
 
@@ -38,12 +37,11 @@ AppStateTransitionManager::~AppStateTransitionManager()
     Stop();
 }
 
-void AppStateTransitionManager::Configure(uint32_t pausedToSuspendedSeconds, uint32_t suspendedToHibernatedSeconds, bool hibernationEnabled)
+void AppStateTransitionManager::Configure(uint32_t pausedToSuspendedSeconds, uint32_t suspendedToHibernatedSeconds)
 {
     std::lock_guard<std::mutex> lock(mLock);
     mPausedToSuspendedTimeout = std::chrono::seconds(pausedToSuspendedSeconds);
     mSuspendedToHibernatedTimeout = std::chrono::seconds(suspendedToHibernatedSeconds);
-    mHibernationEnabled = hibernationEnabled;
 }
 
 void AppStateTransitionManager::Start()
@@ -167,7 +165,7 @@ void AppStateTransitionManager::Process(const std::string& appId, Exchange::IApp
         } else if (!targetRamAchieved) {
             LOGWARN("Resource target not achieved for suspended appId %s; terminating it", appId.c_str());
             mParent.TerminateApp(appId);
-        } else if (!mHibernationEnabled || !mParent.SupportsHibernation(appId) || !mParent.HasHibernationFlashSpace(appId)) {
+        } else if (!mParent.SupportsHibernation(appId) || !mParent.HasHibernationFlashSpace(appId)) {
             LOGINFO("AppId %s remains suspended because hibernation is unsupported or flash space is unavailable", appId.c_str());
             OnStateChanged(appId, Exchange::IAppManager::APP_STATE_SUSPENDED);
         } else if (mParent.SetInactiveTargetState(appId, Exchange::ILifecycleManager::HIBERNATED) != Core::ERROR_NONE) {

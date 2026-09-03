@@ -41,7 +41,7 @@ public:
     AppStateTransitionManager(const AppStateTransitionManager&) = delete;
     AppStateTransitionManager& operator=(const AppStateTransitionManager&) = delete;
 
-    void Configure(uint32_t pausedToSuspendedSeconds, uint32_t suspendedToHibernatedSeconds, bool hibernationEnabled);
+    void Configure(uint32_t pausedToSuspendedSeconds, uint32_t suspendedToHibernatedSeconds);
     void Start();
     void Stop();
     void OnStateChanged(const std::string& appId, Exchange::IAppManager::AppLifecycleState state);
@@ -66,7 +66,6 @@ private:
     std::string mPausedAppId;
     std::chrono::seconds mPausedToSuspendedTimeout;
     std::chrono::seconds mSuspendedToHibernatedTimeout;
-    bool mHibernationEnabled;
 };
 
 } // namespace Plugin

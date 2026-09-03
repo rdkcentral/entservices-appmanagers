@@ -159,9 +159,7 @@ flowchart TD
     R -- targetRamAchieved false --> T
     R -- targetRamAchieved true --> C{App supports hibernation and flash space is available?}
     C -- No --> SS
-    C -- Yes --> HE{Hibernation enabled and accepted?}
-    HE -- No --> SS
-    HE -- Yes --> HH[HIBERNATED]
+    C -- Yes --> HH[Request HIBERNATED]
 ```
 
 ### PAUSED behavior
@@ -184,7 +182,7 @@ When AppManager receives a confirmed SUSPENDED event:
 - If the resource check cannot be completed, the app remains suspended and the timer is rearmed.
 - If the RAM target is not achieved, AppManager terminates the app.
 - If the RAM target is achieved, AppManager checks the app's `APPLICATION_CAN_RUN_IN_HIBERNATE_MODE` property and available flash space.
-- HIBERNATED is requested only when hibernation is enabled, the app supports hibernation, and enough flash space is available for its configured `dataImageSize`.
+- HIBERNATED is requested when the app supports hibernation and enough flash space is available for its configured `dataImageSize`.
 - If flash space is unavailable, the app remains suspended and is checked again after `suspendedToHibernatedTimeout`.
 - If hibernation is unavailable or rejected, the app remains suspended.
 
@@ -211,7 +209,6 @@ The following CMake cache variables are available:
 |---|---:|---|
 | `PLUGIN_APP_MANAGER_PAUSED_TO_SUSPENDED_TIMEOUT` | `60` | Seconds an app may remain PAUSED |
 | `PLUGIN_APP_MANAGER_SUSPENDED_TO_HIBERNATED_TIMEOUT` | `300` | Seconds before evaluating a SUSPENDED app |
-| `PLUGIN_APP_MANAGER_HIBERNATION_ENABLED` | `1` | Enables automatic hibernation (`0` or `1`) |
 | `PLUGIN_APP_MANAGER_HIBERNATION_STORAGE_PATH` | `/media/apps/memcr` | Filesystem path used to check available hibernation flash space |
 
 They are emitted into the generated AppManager configuration as:
@@ -220,7 +217,6 @@ They are emitted into the generated AppManager configuration as:
 {
   "pausedToSuspendedTimeout": 60,
   "suspendedToHibernatedTimeout": 300,
-  "hibernationEnabled": 1,
   "hibernationStoragePath": "/media/apps/memcr"
 }
 ```

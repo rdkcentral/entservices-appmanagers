@@ -611,7 +611,6 @@ uint32_t AppManagerImplementation::Configure(PluginHost::IShell* service)
 
         uint32_t pausedToSuspendedTimeout = 60;
         uint32_t suspendedToHibernatedTimeout = 300;
-        bool hibernationEnabled = true;
         JsonObject configuration;
         if (configuration.FromString(service->ConfigLine()))
         {
@@ -623,10 +622,6 @@ uint32_t AppManagerImplementation::Configure(PluginHost::IShell* service)
             {
                 suspendedToHibernatedTimeout = static_cast<uint32_t>(configuration["suspendedToHibernatedTimeout"].Number());
             }
-            if (configuration.HasLabel("hibernationEnabled"))
-            {
-                hibernationEnabled = configuration["hibernationEnabled"].Number() != 0;
-            }
             if (configuration.HasLabel("hibernationStoragePath"))
             {
                 mHibernationStoragePath = configuration["hibernationStoragePath"].String();
@@ -634,7 +629,7 @@ uint32_t AppManagerImplementation::Configure(PluginHost::IShell* service)
         }
 
         mStateTransitionManager.reset(new AppStateTransitionManager(*this));
-        mStateTransitionManager->Configure(pausedToSuspendedTimeout, suspendedToHibernatedTimeout, hibernationEnabled);
+        mStateTransitionManager->Configure(pausedToSuspendedTimeout, suspendedToHibernatedTimeout);
         mStateTransitionManager->Start();
     #endif
         RDKAM_TELEMETRY_INIT(service);

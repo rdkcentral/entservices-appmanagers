@@ -30,7 +30,6 @@ if(APP_MANAGER_RESOURCE_MONITOR)
 endif()
 set(PLUGIN_APP_MANAGER_PAUSED_TO_SUSPENDED_TIMEOUT 60 CACHE STRING "Seconds before moving a paused app to suspended")
 set(PLUGIN_APP_MANAGER_SUSPENDED_TO_HIBERNATED_TIMEOUT 300 CACHE STRING "Seconds before evaluating a suspended app for hibernation")
-set(PLUGIN_APP_MANAGER_HIBERNATION_ENABLED 1 CACHE STRING "Enable automatic hibernation of suspended apps (0 or 1)")
 set(PLUGIN_APP_MANAGER_HIBERNATION_STORAGE_PATH "/media/apps/memcr" CACHE STRING "Filesystem path used for hibernated application data")
 option(AIMANAGERS_TELEMETRY_METRICS_SUPPORT "AIMANAGERS_TELEMETRY_METRICS_SUPPORT" OFF)
 
