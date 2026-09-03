@@ -173,7 +173,6 @@ set(APPMANAGER_L0_SOURCES
     ${CMAKE_SOURCE_DIR}/../../AppManager/Module.cpp
     ${CMAKE_SOURCE_DIR}/../../AppManager/AppManager.cpp
     ${CMAKE_SOURCE_DIR}/../../AppManager/AppManagerImplementation.cpp
-    ${CMAKE_SOURCE_DIR}/../../AppManager/AppStateTransitionManager.cpp
     ${CMAKE_SOURCE_DIR}/../../AppManager/AppManagerTelemetryReporting.cpp
     ${CMAKE_SOURCE_DIR}/../../AppManager/AppInfo.cpp
     ${CMAKE_SOURCE_DIR}/../../AppManager/AppInfoManager.cpp

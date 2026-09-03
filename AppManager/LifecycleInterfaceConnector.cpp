@@ -469,18 +469,22 @@ namespace WPEFramework
                                     LOGERR("Timed out waiting for appId: %s to reach PAUSED state", appId.c_str());
                                     appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_CLOSE, AppManagerImplementation::ERROR_INTERNAL);
                                     status = Core::ERROR_GENERAL;
+#ifdef APP_MANAGER_RESOURCE_MONITOR
                                     mAdminLock.Unlock();
                                     terminateApp(appId);
                                     mAdminLock.Lock();
+#endif
                                 }
                             }
                             else
                             {
                                 LOGERR("Failed to set PAUSED state for AppId: %s", appId.c_str());
                                 appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_CLOSE, AppManagerImplementation::ERROR_SET_TARGET_APP_STATE);
+#ifdef APP_MANAGER_RESOURCE_MONITOR
                                 mAdminLock.Unlock();
                                 terminateApp(appId);
                                 mAdminLock.Lock();
+#endif
                             }
                         }
                         else
@@ -610,6 +614,7 @@ namespace WPEFramework
             return result;
         }
 
+    #ifdef APP_MANAGER_RESOURCE_MONITOR
         Core::hresult LifecycleInterfaceConnector::setTargetAppState(const string& appId, Exchange::ILifecycleManager::LifecycleState state)
         {
             Core::hresult status = Core::ERROR_GENERAL;
@@ -633,6 +638,7 @@ namespace WPEFramework
             mAdminLock.Unlock();
             return status;
         }
+#endif
 
         /* Send Intent invokes it */
         Core::hresult LifecycleInterfaceConnector::sendIntent(const string& appId, const string& intent)

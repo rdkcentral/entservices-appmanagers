@@ -167,9 +167,12 @@ void AppStateTransitionManager::Process(const std::string& appId, Exchange::IApp
         } else if (!targetRamAchieved) {
             LOGWARN("Resource target not achieved for suspended appId %s; terminating it", appId.c_str());
             mParent.TerminateApp(appId);
-        } else if (mHibernationEnabled &&
-                   mParent.SetInactiveTargetState(appId, Exchange::ILifecycleManager::HIBERNATED) != Core::ERROR_NONE) {
-            LOGINFO("AppId %s remains suspended because hibernation is unavailable", appId.c_str());
+        } else if (!mHibernationEnabled || !mParent.SupportsHibernation(appId) || !mParent.HasHibernationFlashSpace(appId)) {
+            LOGINFO("AppId %s remains suspended because hibernation is unsupported or flash space is unavailable", appId.c_str());
+            OnStateChanged(appId, Exchange::IAppManager::APP_STATE_SUSPENDED);
+        } else if (mParent.SetInactiveTargetState(appId, Exchange::ILifecycleManager::HIBERNATED) != Core::ERROR_NONE) {
+            LOGINFO("AppId %s remains suspended because hibernation request failed", appId.c_str());
+            OnStateChanged(appId, Exchange::IAppManager::APP_STATE_SUSPENDED);
         }
     }
 }

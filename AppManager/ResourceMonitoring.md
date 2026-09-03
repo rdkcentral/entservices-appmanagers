@@ -12,6 +12,12 @@ The implementation covers three areas:
 
 ResourceMonitor remains responsible for observing platform-level signals such as `MemAvailable`, PSI, and swap usage. AppManager does not duplicate that monitoring. Each reconciliation request identifies the application and the maximum RAM target it needs.
 
+## Feature Gate
+
+All ResourceMonitor integration and inactive-state scheduling is compiled only when CMake receives `-DAPP_MANAGER_RESOURCE_MONITOR=ON`. The `entservices-rdkappmanagers` recipe sets this option only when `DISTRO_FEATURES` contains `resource-monitor`.
+
+When the feature is absent, AppManager has no ResourceMonitor dependency: it does not include or query the interface, register callbacks, start the state-transition worker, alter launch or preload behavior, or add resource-monitoring configuration values.
+
 ## ResourceMonitor Contract
 
 The COM-RPC interface is defined in `entservices-apis/apis/ResourceMonitor/IResourceMonitor.h`.
@@ -151,7 +157,9 @@ flowchart TD
     H --> R[Reconcile appId ramTargetMB false]
     R -- Failed or unavailable --> SS
     R -- targetRamAchieved false --> T
-    R -- targetRamAchieved true --> HE{Hibernation enabled and accepted?}
+    R -- targetRamAchieved true --> C{App supports hibernation and flash space is available?}
+    C -- No --> SS
+    C -- Yes --> HE{Hibernation enabled and accepted?}
     HE -- No --> SS
     HE -- Yes --> HH[HIBERNATED]
 ```
@@ -175,7 +183,9 @@ When AppManager receives a confirmed SUSPENDED event:
 - At the deadline, it calls `Reconcile(appId, ramTargetMB, false)` and waits for the proactive resource result.
 - If the resource check cannot be completed, the app remains suspended and the timer is rearmed.
 - If the RAM target is not achieved, AppManager terminates the app.
-- If the RAM target is achieved and hibernation is enabled, AppManager requests HIBERNATED.
+- If the RAM target is achieved, AppManager checks the app's `APPLICATION_CAN_RUN_IN_HIBERNATE_MODE` property and available flash space.
+- HIBERNATED is requested only when hibernation is enabled, the app supports hibernation, and enough flash space is available for its configured `dataImageSize`.
+- If flash space is unavailable, the app remains suspended and is checked again after `suspendedToHibernatedTimeout`.
 - If hibernation is unavailable or rejected, the app remains suspended.
 
 ### Other states
@@ -202,6 +212,7 @@ The following CMake cache variables are available:
 | `PLUGIN_APP_MANAGER_PAUSED_TO_SUSPENDED_TIMEOUT` | `60` | Seconds an app may remain PAUSED |
 | `PLUGIN_APP_MANAGER_SUSPENDED_TO_HIBERNATED_TIMEOUT` | `300` | Seconds before evaluating a SUSPENDED app |
 | `PLUGIN_APP_MANAGER_HIBERNATION_ENABLED` | `1` | Enables automatic hibernation (`0` or `1`) |
+| `PLUGIN_APP_MANAGER_HIBERNATION_STORAGE_PATH` | `/media/apps/memcr` | Filesystem path used to check available hibernation flash space |
 
 They are emitted into the generated AppManager configuration as:
 
@@ -209,7 +220,8 @@ They are emitted into the generated AppManager configuration as:
 {
   "pausedToSuspendedTimeout": 60,
   "suspendedToHibernatedTimeout": 300,
-  "hibernationEnabled": 1
+  "hibernationEnabled": 1,
+  "hibernationStoragePath": "/media/apps/memcr"
 }
 ```
 
@@ -272,4 +284,6 @@ Focused tests should cover:
 - The ResourceMonitor API currently has no request correlation ID, so AppManager serializes reconciliation requests.
 - Application support for PAUSED, SUSPENDED, and HIBERNATED is inferred from LifecycleManager request/confirmation behavior. Explicit capability metadata is not currently available through AppManager's package data.
 - The 30-second reconciliation wait timeout is currently a source constant rather than plugin configuration.
+- Hibernation support is read from the AppManager property `APPLICATION_CAN_RUN_IN_HIBERNATE_MODE`; the legacy `supportsHibernation` property is accepted as a fallback. If neither property is present, the app is not hibernation-capable.
+- Flash requirement is currently estimated from `RuntimeConfig.dataImageSize`, and free space is checked with `statvfs` on `hibernationStoragePath`.
 - Unit tests for the newly added flows still need to be implemented.
