@@ -14,6 +14,7 @@ option(PLUGIN_APP_STORAGE_MANAGER "Build AppStorageManager L0 test target" ON)
 option(PLUGIN_PACKAGE_MANAGER    "Build PackageManager L0 test target"    ON)
 option(PLUGIN_PREINSTALL_MANAGER "Build PreinstallManager L0 test target" ON)
 option(PLUGIN_APP_MANAGER        "Build AppManager L0 test target"        ON)
+option(PLUGIN_VICTIM_SELECTOR    "Build VictimSelector L0 test target"    ON)
 
 option(APPMGR_ENABLE_COVERAGE  "Enable coverage flags for runtimemanager_l0test"    ON)
 option(APPLCM_ENABLE_COVERAGE  "Enable coverage flags for lifecyclemanager_l0test"  ON)
@@ -23,6 +24,7 @@ option(APPASM_ENABLE_COVERAGE  "Enable coverage flags for appstorage_l0test"    
 option(APPPKG_ENABLE_COVERAGE  "Enable coverage flags for packagemanager_l0test"    ON)
 option(APPMGR_PREINSTALL_ENABLE_COVERAGE  "Enable coverage flags for preinstall_manager_l0test"  ON)
 option(APPMANAGER_ENABLE_COVERAGE         "Enable coverage flags for appmanager_l0test"           ON)
+option(VICTIM_SELECTOR_ENABLE_COVERAGE    "Enable coverage flags for victimselector_l0test"       ON)
 option(L0_ENABLE_WARNINGS      "Enable additional compiler warnings for L0 targets" ON)
 
 # ---------------------------------------------------------------------------
@@ -190,6 +192,13 @@ set(APPMANAGER_L0_SOURCES
     AppManager/AppInfoManagerTests.cpp
     common/L0Bootstrap.cpp
 )
+set(VICTIM_SELECTOR_L0_SOURCES
+    ${CMAKE_SOURCE_DIR}/../../VictimSelector/Module.cpp
+    ${CMAKE_SOURCE_DIR}/../../VictimSelector/VictimSelectorImplementation.cpp
+    VictimSelector/VictimSelectorTest.cpp
+    VictimSelector/VictimSelector_ImplementationTests.cpp
+    common/L0Bootstrap.cpp
+)
 
 set(PACKAGE_MANAGER_L0_SOURCES
     ${CMAKE_SOURCE_DIR}/../../PackageManager/Module.cpp
@@ -258,8 +267,43 @@ else()
     message(STATUS "PLUGIN_APP_MANAGER=OFF; skipping appmanager_l0test target")
 endif()
 
-if(NOT PLUGIN_RUNTIME_MANAGER AND NOT PLUGIN_LIFECYCLE_MANAGER AND NOT PLUGIN_RDK_WINDOW_MANAGER AND NOT PLUGIN_PACKAGE_MANAGER AND NOT PLUGIN_DOWNLOAD_MANAGER AND NOT PLUGIN_APP_STORAGE_MANAGER AND NOT PLUGIN_PREINSTALL_MANAGER AND NOT PLUGIN_APP_MANAGER)
-    message(FATAL_ERROR "No L0 target enabled. Enable at least one of PLUGIN_RUNTIME_MANAGER, PLUGIN_LIFECYCLE_MANAGER, PLUGIN_RDK_WINDOW_MANAGER, PLUGIN_PACKAGE_MANAGER, PLUGIN_DOWNLOAD_MANAGER, PLUGIN_APP_STORAGE_MANAGER, PLUGIN_PREINSTALL_MANAGER, or PLUGIN_APP_MANAGER.")
+if(PLUGIN_VICTIM_SELECTOR)
+    add_executable(victimselector_l0test ${VICTIM_SELECTOR_L0_SOURCES})
+    target_compile_definitions(victimselector_l0test PRIVATE
+        MODULE_NAME=VictimSelector_L0Test
+    )
+    target_compile_options(victimselector_l0test PRIVATE
+        -include ${CMAKE_CURRENT_SOURCE_DIR}/common/L0TestConfig.h
+        -Wno-error=deprecated-declarations
+    )
+    if(VICTIM_SELECTOR_ENABLE_COVERAGE)
+        target_compile_options(victimselector_l0test PRIVATE -O0 -g --coverage)
+        target_link_options(victimselector_l0test PRIVATE --coverage)
+    endif()
+    if(L0_ENABLE_WARNINGS)
+        target_compile_options(victimselector_l0test PRIVATE -Wall -Wextra -Wno-unused-parameter)
+    endif()
+    target_include_directories(victimselector_l0test PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+        ${CMAKE_CURRENT_SOURCE_DIR}/common
+        ${CMAKE_SOURCE_DIR}/../..
+        ${CMAKE_SOURCE_DIR}/../../VictimSelector
+        ${CMAKE_SOURCE_DIR}/../../helpers
+    )
+    target_include_directories(victimselector_l0test SYSTEM PRIVATE
+        ${PREFIX}/include
+        ${PREFIX}/include/${NAMESPACE}
+    )
+    if(EXISTS "${PREFIX}/lib")
+        target_link_directories(victimselector_l0test PRIVATE "${PREFIX}/lib")
+    endif()
+    if(EXISTS "${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins")
+        target_link_directories(victimselector_l0test PRIVATE "${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins")
+    endif()
+endif()
+
+if(NOT PLUGIN_RUNTIME_MANAGER AND NOT PLUGIN_LIFECYCLE_MANAGER AND NOT PLUGIN_RDK_WINDOW_MANAGER AND NOT PLUGIN_PACKAGE_MANAGER AND NOT PLUGIN_DOWNLOAD_MANAGER AND NOT PLUGIN_APP_STORAGE_MANAGER AND NOT PLUGIN_PREINSTALL_MANAGER AND NOT PLUGIN_APP_MANAGER AND NOT PLUGIN_VICTIM_SELECTOR)
+    message(FATAL_ERROR "No L0 target enabled. Enable at least one of PLUGIN_RUNTIME_MANAGER, PLUGIN_LIFECYCLE_MANAGER, PLUGIN_RDK_WINDOW_MANAGER, PLUGIN_PACKAGE_MANAGER, PLUGIN_DOWNLOAD_MANAGER, PLUGIN_APP_STORAGE_MANAGER, PLUGIN_PREINSTALL_MANAGER, PLUGIN_APP_MANAGER, or PLUGIN_VICTIM_SELECTOR.")
 endif()
 
 # ---------------------------------------------------------------------------
@@ -841,6 +885,9 @@ endif()
 if(PLUGIN_APP_MANAGER)
     list(APPEND _L0_TARGETS appmanager_l0test)
 endif()
+if(PLUGIN_VICTIM_SELECTOR)
+    list(APPEND _L0_TARGETS victimselector_l0test)
+endif()
 
 foreach(_target IN LISTS _L0_TARGETS)
     if(THUNDER_CORE_LIB)
@@ -1009,6 +1056,13 @@ if(PLUGIN_APP_MANAGER)
     )
 endif()
 
+if(PLUGIN_VICTIM_SELECTOR)
+    set_target_properties(victimselector_l0test PROPERTIES
+        BUILD_RPATH   "$ORIGIN;${PREFIX}/lib;${PREFIX}/lib/${STORAGE_DIRECTORY};${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins;${PREFIX}/lib/plugins"
+        INSTALL_RPATH "${PREFIX}/lib;${PREFIX}/lib/${STORAGE_DIRECTORY};${PREFIX}/lib/${STORAGE_DIRECTORY}/plugins;${PREFIX}/lib/plugins"
+    )
+endif()
+
 # ---------------------------------------------------------------------------
 # Utility targets
 # ---------------------------------------------------------------------------
@@ -1085,6 +1139,15 @@ if(PLUGIN_APP_MANAGER)
     )
 endif()
 
+if(PLUGIN_VICTIM_SELECTOR)
+    add_custom_target(run_victimselector
+        DEPENDS victimselector_l0test
+        COMMAND $<TARGET_FILE:victimselector_l0test>
+        COMMENT "Running victimselector_l0test"
+        VERBATIM
+    )
+endif()
+
 find_program(LCOV_EXECUTABLE    lcov)
 find_program(GENHTML_EXECUTABLE genhtml)
 
@@ -1117,6 +1180,9 @@ else()
     endif()
     if(PLUGIN_APP_MANAGER)
         list(APPEND COVERAGE_DEPENDS appmanager_l0test)
+    endif()
+    if(PLUGIN_VICTIM_SELECTOR)
+        list(APPEND COVERAGE_DEPENDS victimselector_l0test)
     endif()
 
     if(PLUGIN_DOWNLOAD_MANAGER)

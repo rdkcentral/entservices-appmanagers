@@ -17,7 +17,7 @@ env:
   THUNDER_TOOLS_REF: "R4_4-RDK"
   THUNDER_TOOLS_COMMIT_SHA: "d5dd83c7c19c49c7f25c558c126500bd2d64f7a4"
   THUNDER_COMMIT_SHA: "2c0fcc5529e7da734be558ca6efa05d934dcce31"
-  INTERFACES_REF: "53c89f0a8e2db3a8a814c62d854b6284e944f47e"
+  INTERFACES_REF: "bb7928c5654c26289893b1691909a26a0e0efa98"
 
 jobs:
   L0-tests:
@@ -383,6 +383,7 @@ jobs:
             -DPLUGIN_PACKAGE_MANAGER=ON \
             -DPLUGIN_PREINSTALL_MANAGER=ON \
             -DPLUGIN_APP_MANAGER=ON \
+            -DPLUGIN_VICTIM_SELECTOR=ON \
             -DAPPMGR_ENABLE_COVERAGE=ON \
             -DAPPLCM_ENABLE_COVERAGE=ON \
             -DAPPWM_ENABLE_COVERAGE=ON \
@@ -392,7 +393,7 @@ jobs:
             -DAPPMGR_PREINSTALL_ENABLE_COVERAGE=ON \
             -DAPPMANAGER_ENABLE_COVERAGE=ON
 
-          cmake --build build/entservices-appmanagers-l0tests-only --target runtimemanager_l0test lifecyclemanager_l0test rdkwindowmanager_l0test appstorage_l0test packagemanager_l0test preinstall_manager_l0test downloadmanager_l0test appmanager_l0test -- -j"$(nproc)"
+          cmake --build build/entservices-appmanagers-l0tests-only --target runtimemanager_l0test lifecyclemanager_l0test rdkwindowmanager_l0test appstorage_l0test packagemanager_l0test preinstall_manager_l0test downloadmanager_l0test appmanager_l0test victimselector_l0test -- -j"$(nproc)"
 
       - name: Run L0 tests
         id: run_l0_tests
@@ -411,6 +412,7 @@ jobs:
           preinstall_bin="build/entservices-appmanagers-l0tests-only/preinstall_manager_l0test"
           pkgmgr_test_bin="build/entservices-appmanagers-l0tests-only/packagemanager_l0test"
           appmanager_test_bin="build/entservices-appmanagers-l0tests-only/appmanager_l0test"
+          victimselector_test_bin="build/entservices-appmanagers-l0tests-only/victimselector_l0test"
 
           test -x "$runtime_test_bin"
           test -x "$lcm_test_bin"
@@ -420,6 +422,7 @@ jobs:
           test -x "$preinstall_bin"
           test -x "$pkgmgr_test_bin"
           test -x "$appmanager_test_bin"
+          test -x "$victimselector_test_bin"
 
           run_one_under_gdb() {
             local bin="$1"
@@ -488,8 +491,10 @@ jobs:
           preinstall_test_rc=0
           pkgmgr_test_rc=0
           appmanager_test_rc=0
+          victimselector_test_rc=0
 
           run_one_under_gdb "$appmanager_test_bin" l0-appmanager-test.log l0-appmanager-test-gdb.log || appmanager_test_rc=$?
+          run_one_under_gdb "$victimselector_test_bin" l0-victimselector-test.log l0-victimselector-test-gdb.log || victimselector_test_rc=$?
           run_one_under_gdb "$lcm_test_bin" l0-lcm-test.log l0-lcm-test-gdb.log || lcm_test_rc=$?
           run_one_under_gdb "$runtime_test_bin" l0-runtime-test.log l0-runtime-test-gdb.log || runtime_test_rc=$?
           run_one_under_gdb "$rdkwm_test_bin" l0-rdkwm-test.log l0-rdkwm-test-gdb.log || rdkwm_test_rc=$?
@@ -506,10 +511,11 @@ jobs:
           echo "preinstall_test_rc=$preinstall_test_rc"
           echo "pkgmgr_test_rc=$pkgmgr_test_rc"
           echo "appmanager_test_rc=$appmanager_test_rc"
+          echo "victimselector_test_rc=$victimselector_test_rc"
 
-          cat l0-lcm-test.log l0-runtime-test.log l0-rdkwm-test.log l0-appstorage-test.log l0-preinstall-test.log l0-packagemanager-test.log l0-dm-test.log l0-appmanager-test.log > l0-test.log
+          cat l0-lcm-test.log l0-runtime-test.log l0-rdkwm-test.log l0-appstorage-test.log l0-preinstall-test.log l0-packagemanager-test.log l0-dm-test.log l0-appmanager-test.log l0-victimselector-test.log > l0-test.log
 
-          if [ "$runtime_test_rc" -ne 0 ] || [ "$lcm_test_rc" -ne 0 ] || [ "$rdkwm_test_rc" -ne 0 ] || [ "$appstorage_test_rc" -ne 0 ] || [ "$preinstall_test_rc" -ne 0 ] || [ "$pkgmgr_test_rc" -ne 0 ] || [ "$dm_test_rc" -ne 0 ] || [ "$appmanager_test_rc" -ne 0 ]; then
+          if [ "$runtime_test_rc" -ne 0 ] || [ "$lcm_test_rc" -ne 0 ] || [ "$rdkwm_test_rc" -ne 0 ] || [ "$appstorage_test_rc" -ne 0 ] || [ "$preinstall_test_rc" -ne 0 ] || [ "$pkgmgr_test_rc" -ne 0 ] || [ "$dm_test_rc" -ne 0 ] || [ "$appmanager_test_rc" -ne 0 ] || [ "$victimselector_test_rc" -ne 0 ]; then
             exit 1
           fi
 
@@ -517,7 +523,7 @@ jobs:
         if: ${{ always() }}
         run: |
           set -euo pipefail
-          for log in l0-runtime-test.log l0-lcm-test.log l0-rdkwm-test.log l0-appstorage-test.log l0-preinstall-test.log l0-packagemanager-test.log l0-dm-test.log l0-appmanager-test.log; do
+          for log in l0-runtime-test.log l0-lcm-test.log l0-rdkwm-test.log l0-appstorage-test.log l0-preinstall-test.log l0-packagemanager-test.log l0-dm-test.log l0-appmanager-test.log l0-victimselector-test.log; do
             if [ -f "$log" ]; then
               echo "==== $log: Failed test cases (if any) ===="
               grep -E '^\[  FAILED  \]' "$log" || echo "No explicit [ FAILED ] lines found"

@@ -20,6 +20,7 @@
 #include "Module.h"
 #include "LifecycleInterfaceConnector.h"
 #include "AppInfoManager.h"
+#include <algorithm>
 #include <string>
 #include <memory>
 #include <mutex>
@@ -27,6 +28,8 @@
 #include <fstream>
 #include <sstream>
 #include <list>
+#include <utility>
+#include <vector>
 #include <unistd.h>
 #include <json/json.h>
 #include <plugins/System.h>
@@ -520,13 +523,12 @@ namespace WPEFramework
                     if (nullptr != mLifecycleManagerRemoteObject)
                     {
                         appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_TERMINATE);
-			    mAppCurrentActionList[appId] = Exchange::IAppManager::AppLifecycleState::APP_STATE_TERMINATING;
-                            status = mLifecycleManagerRemoteObject->UnloadApp(appInstanceId, errorReason, success);
-                            if (status != Core::ERROR_NONE)
-                            {
-                                LOGERR("UnloadApp failed with error reason: %s", errorReason.c_str());
-                                appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_TERMINATE, AppManagerImplementation::ERROR_UNLOAD_APP);
-                            }
+                        mAppCurrentActionList[appId] = Exchange::IAppManager::AppLifecycleState::APP_STATE_TERMINATING;
+                        status = mLifecycleManagerRemoteObject->UnloadApp(appInstanceId, errorReason, success);
+                        if (Core::ERROR_NONE != status)
+                        {
+                            LOGERR("UnloadApp failed with error reason: %s", errorReason.c_str());
+                            appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_TERMINATE, AppManagerImplementation::ERROR_UNLOAD_APP);
                         }
                     }
                 }
@@ -535,11 +537,12 @@ namespace WPEFramework
                     LOGERR("AppId %s not found in database", appId.c_str());
                     appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_TERMINATE, AppManagerImplementation::ERROR_INVALID_PARAMS);
                 }
-                else
-		 {
-                    LOGERR("appManagerImplInstance is null");
-	            appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_TERMINATE, AppManagerImplementation::ERROR_INTERNAL);
-        	 }
+            }
+            else
+            {
+                LOGERR("appManagerImplInstance is null");
+                appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_TERMINATE, AppManagerImplementation::ERROR_INTERNAL);
+            }
             mAdminLock.Unlock();
             return status;
         }
@@ -690,6 +693,10 @@ namespace WPEFramework
                     return obj.HasLabel(key) ? static_cast<int>(obj[key].Number()) : 0;
                 };
 
+                typedef std::pair<uint32_t, WPEFramework::Exchange::IAppManager::LoadedAppInfo> RankedApp;
+                std::vector<RankedApp> rankedApps;
+                rankedApps.reserve(loadedAppsJsonArray.Length());
+
                 // Iterate through each app JSON object in the array
                 for (size_t i = 0; i < loadedAppsJsonArray.Length(); ++i)
                 {
@@ -720,13 +727,29 @@ namespace WPEFramework
                     loadedAppInfo.targetLifecycleState = targetState;
                     loadedAppInfo.lifecycleState       = newState;
 
-                    //Add loaded info
-		    loadedAppInfoList.push_back(std::move(loadedAppInfo));
+                    rankedApps.emplace_back(AppInfoManager::getInstance().getLastActiveIndex(appId), std::move(loadedAppInfo));
+                }
+
+                mAdminLock.Unlock();
+
+                /* Most recently active app first; apps that were never active (index 0) come last. */
+                std::sort(rankedApps.begin(), rankedApps.end(),
+                    [](const RankedApp& left, const RankedApp& right) -> bool {
+                        if (left.first != right.first)
+                        {
+                            return left.first > right.first;
+                        }
+                        return left.second.appId < right.second.appId;
+                    });
+
+                for (std::vector<RankedApp>::iterator it = rankedApps.begin(); it != rankedApps.end(); ++it)
+                {
+                    loadedAppInfoList.push_back(std::move(it->second));
                 }
 
                 apps = Core::Service<RPC::IteratorType<Exchange::IAppManager::ILoadedAppInfoIterator>> \
 		   ::Create<Exchange::IAppManager::ILoadedAppInfoIterator>(loadedAppInfoList);
-		result = Core::ERROR_NONE;
+        return Core::ERROR_NONE;
             }
             else
             {

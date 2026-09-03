@@ -159,6 +159,53 @@ uint32_t Test_AM_LifecycleConnectorCreateAndGetLoadedAppsSuccess()
     return tr.failures;
 }
 
+uint32_t Test_AM_LifecycleConnectorGetLoadedAppsOrdersByLastActiveIndex()
+{
+    L0Test::TestResult tr;
+    L0Test::MockLifecycleManager lifecycle;
+    L0Test::MockLifecycleManagerState lifecycleState;
+    lifecycle.loadedAppsJson =
+        "[{\"appId\":\"never-active\",\"appInstanceID\":\"instance-0\",\"targetLifecycleState\":2,\"lifecycleState\":2},"
+        "{\"appId\":\"beta\",\"appInstanceID\":\"instance-1\",\"targetLifecycleState\":2,\"lifecycleState\":2},"
+        "{\"appId\":\"newest\",\"appInstanceID\":\"instance-2\",\"targetLifecycleState\":2,\"lifecycleState\":2},"
+        "{\"appId\":\"alpha\",\"appInstanceID\":\"instance-3\",\"targetLifecycleState\":2,\"lifecycleState\":2}]";
+
+    L0Test::AppManagerServiceMock::Config cfg;
+    cfg.lifecycleManager = &lifecycle;
+    cfg.lifecycleManagerState = &lifecycleState;
+    L0Test::AppManagerServiceMock service(cfg);
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    WPEFramework::Plugin::AppInfoManager::getInstance().setLastActiveIndex("newest", 12U);
+    WPEFramework::Plugin::AppInfoManager::getInstance().setLastActiveIndex("alpha", 7U);
+    WPEFramework::Plugin::AppInfoManager::getInstance().setLastActiveIndex("beta", 7U);
+    auto* impl = WPEFramework::Core::Service<WPEFramework::Plugin::AppManagerImplementation>::Create<WPEFramework::Plugin::AppManagerImplementation>();
+
+    {
+        WPEFramework::Plugin::LifecycleInterfaceConnector connector(&service);
+        WPEFramework::Exchange::IAppManager::ILoadedAppInfoIterator* iterator = nullptr;
+        const WPEFramework::Core::hresult status = connector.getLoadedApps(iterator);
+        L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_NONE, "getLoadedApps() succeeds for ordered app data");
+        L0Test::ExpectTrue(tr, nullptr != iterator, "getLoadedApps() returns an iterator for ordered app data");
+
+        const char* expectedAppIds[] = { "newest", "alpha", "beta", "never-active" };
+        if (nullptr != iterator) {
+            WPEFramework::Exchange::IAppManager::LoadedAppInfo loadedAppInfo;
+            for (const char* expectedAppId : expectedAppIds) {
+                L0Test::ExpectTrue(tr, iterator->Next(loadedAppInfo), "Iterator contains expected app");
+                L0Test::ExpectEqStr(tr, loadedAppInfo.appId, expectedAppId, "Apps are ordered by last-active index then app id");
+            }
+            L0Test::ExpectTrue(tr, !iterator->Next(loadedAppInfo), "Iterator contains no additional apps");
+            iterator->Release();
+        }
+    }
+
+    L0Test::AppManagerServiceMock fullService(CreateFullServiceConfig());
+    impl->Configure(&fullService);
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
 uint32_t Test_AM_LifecycleConnectorIsAppLoadedAndErrorPaths()
 {
     L0Test::TestResult tr;
