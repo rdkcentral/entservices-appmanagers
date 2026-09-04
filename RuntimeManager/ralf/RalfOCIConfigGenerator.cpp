@@ -27,6 +27,7 @@
 #include <chrono>
 
 #define PERSIST_STORAGE_PATH "/data"
+#define APPLY_RALF_NWCFG_FLAG "/etc/apply-ralf-nwcfg"
 
 namespace ralf
 {
@@ -101,7 +102,8 @@ namespace ralf
         // networking plugin data and permission-translated rules.
         // Ensure that we start translation after all the environment variables and other configuration
         // has been applied to the OCI config since it will be used to determine the final networking configuration.
-        if (true == checkIfPathExists("/opt/apply-ralf-nwcfg"))
+        static const bool isRalfNwcfgEnabled = checkIfPathExists(APPLY_RALF_NWCFG_FLAG);
+        if (true == isRalfNwcfgEnabled)
         {
             if (false == NetworkConfigurationHelper::generateNetworkingPluginNode(ociConfigRootNode))
             {
@@ -116,7 +118,7 @@ namespace ralf
         }
         else
         {
-            LOGWARN("/opt/apply-ralf-nwcfg does not exist; skipping network configuration\n");
+            LOGWARN("%s does not exist; skipping network configuration\n", APPLY_RALF_NWCFG_FLAG);
         }
         return saveOCIConfigToFile(ociConfigRootNode, config.mUserId, config.mGroupId);
     }
@@ -490,9 +492,10 @@ namespace ralf
         // Prepare for urn:rdk:config:network - spec matrix: Application/Service/Runtime (N/A for Base)
         if (packageType == PKG_TYPE_APPLICATION || packageType == PKG_TYPE_SERVICE || packageType == PKG_TYPE_RUNTIME)
         {
-            if (true == checkIfPathExists("/opt/apply-ralf-nwcfg"))
+            static const bool isRalfNwcfgEnabled = checkIfPathExists(APPLY_RALF_NWCFG_FLAG);
+            if (true == isRalfNwcfgEnabled)
             {
-                LOGDBG("/opt/apply-ralf-nwcfg exists; updating network config store\n");
+                LOGDBG("%s exists; updating network config store\n", APPLY_RALF_NWCFG_FLAG);
                 // 1. Capture network requirements for certain permissions
                 status = NetworkConfigurationHelper::updatePermissionConfigurationNode(ociConfigRootNode, manifestRootNode);
                 LOGDBG("Updated network based on permissions ? %s\n", status ? "true" : "false");
@@ -502,7 +505,7 @@ namespace ralf
             }
             else
             {
-                LOGWARN("/opt/apply-ralf-nwcfg does not exist; skipping network config update\n");
+                LOGWARN("%s does not exist; skipping network config update\n", APPLY_RALF_NWCFG_FLAG);
             }
         }
         // Apply urn:rdk:config:env — spec matrix: Application/Service only (N/A for Runtime and Base)

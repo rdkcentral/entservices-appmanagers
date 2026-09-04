@@ -79,9 +79,6 @@ namespace ralf
     constexpr const char *PERMISSION_FIREBOLT = "urn:rdk:permission:firebolt";
     constexpr const char *PERMISSION_THUNDER = "urn:rdk:permission:thunder";
 
-    constexpr uint32_t FIREBOLT_CONTAINER_TO_HOST_PORT = 3473;
-    constexpr uint32_t THUNDER_CONTAINER_TO_HOST_PORT = 9998;
-
     constexpr const char *CONFIG_OVERRIDES_URN = "urn:rdk:config:overrides";
 
     constexpr const char *NETWORK_CONFIG_URN = "urn:rdk:config:network";

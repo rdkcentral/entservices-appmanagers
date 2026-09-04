@@ -27,7 +27,7 @@
 #include <fstream>
 #include <sstream>
 #include <algorithm>
-#include <set>
+#include <unordered_set>
 
 #define MODULE_LOGTAG "RALF-NC"
 
@@ -204,8 +204,9 @@ namespace
         return true;
     }
 
-    void addNetworkSystemMountsToOCIConfig(Json::Value& ociConfigRootNode, const std::string& configFilePath)
+    bool addNetworkSystemMountsToOCIConfig(Json::Value& ociConfigRootNode, const std::string& configFilePath)
     {
+        bool status = false;
         const bool dnsmasqEnabled = ociConfigRootNode[ralf::RDKPLUGINS][NETWORKING][ralf::DATA][DNSMASQ].asBool();
         if (false == dnsmasqEnabled)
         {
@@ -216,7 +217,7 @@ namespace
             {
                 if (true == ensureMountTargetFileInRootfs(configFilePath, resolverDestinationPath))
                 {
-                    ralf::addBindMountToOCIConfig(ociConfigRootNode, resolverSourcePath, resolverDestinationPath);
+                    status = ralf::addBindMountToOCIConfig(ociConfigRootNode, resolverSourcePath, resolverDestinationPath);
                 }
                 else
                 {
@@ -228,6 +229,12 @@ namespace
                 LOGWARN("%s: Host path %s is missing; skipping mount", MODULE_LOGTAG, resolverSourcePath.c_str());
             }
         }
+        else
+        {
+            status = true;
+            LOGWARN("%s: dnsmasq is enabled; skipping network system mounts", MODULE_LOGTAG);
+        }
+        return status;
     }
 }
 
@@ -402,7 +409,8 @@ bool updateTempRalfNWCfgFromEnv(Json::Value& ociConfigRootNode, const std::vecto
         containerToHost = Json::Value(Json::arrayValue);
     }
 
-    std::set<std::string> foundEnvNames;
+    const std::unordered_set<std::string> requestedEnvNames(envVarNames.begin(), envVarNames.end());
+    std::unordered_set<std::string> foundEnvNames;
     bool updated = false;
 
     // Single pass over process.env; update all requested names in one scan.
@@ -421,7 +429,12 @@ bool updateTempRalfNWCfgFromEnv(Json::Value& ociConfigRootNode, const std::vecto
         }
 
         const std::string envVarName = envPair.substr(0, separatorPos);
-        if (envVarNames.end() == std::find(envVarNames.begin(), envVarNames.end(), envVarName))
+        if (requestedEnvNames.end() == requestedEnvNames.find(envVarName))
+        {
+            continue;
+        }
+
+        if (foundEnvNames.end() != foundEnvNames.find(envVarName))
         {
             continue;
         }
@@ -459,7 +472,7 @@ bool updateTempRalfNWCfgFromEnv(Json::Value& ociConfigRootNode, const std::vecto
         }
     }
 
-    for (const auto& envVarName : envVarNames)
+    for (const auto& envVarName : requestedEnvNames)
     {
         if (foundEnvNames.end() == foundEnvNames.find(envVarName))
         {
@@ -599,15 +612,6 @@ bool generateNetworkingPluginNode(Json::Value& ociConfigRootNode)
 
     localhostMasqueradeRequired = tempConfig[PERMISSION_FLAGS][LOCALHOST_MASQUERADE].asBool();
 
-    if (permissionFireboltEnabled && !hasContainerToHostRule(containerToHost, FIREBOLT_CONTAINER_TO_HOST_PORT))
-    {
-        addContainerToHostRuleIfMissing(containerToHost, FIREBOLT_CONTAINER_TO_HOST_PORT);
-    }
-    if (permissionThunderEnabled && !hasContainerToHostRule(containerToHost, THUNDER_CONTAINER_TO_HOST_PORT))
-    {
-        addContainerToHostRuleIfMissing(containerToHost, THUNDER_CONTAINER_TO_HOST_PORT);
-    }
-
     if (permissionInternetEnabled)
     {
         pluginData[TYPE] = NETWORK_TYPE_NAT;
@@ -736,17 +740,12 @@ bool applyRuntimeNetworkingConfiguration(Json::Value& ociConfigRootNode, const s
         netData[DNSMASQ] = false;
     }
 
-    if (false == netData[DNSMASQ].asBool())
+    // Dobby will not create the network namespace if dnsmasq is disabled, so we need to ensure that
+    // resolv.conf is mounted into the container when dnsmasq is disabled.
+    if ((false == netData[DNSMASQ].asBool()) &&
+        (false == addNetworkSystemMountsToOCIConfig(ociConfigRootNode, configFilePath)))
     {
-        if (true == checkIfPathExists("/opt/arun-mount-files"))
-        {
-            LOGWARN("%s: /opt/arun-mount-files exists; triggering network system mounts", MODULE_LOGTAG);
-            addNetworkSystemMountsToOCIConfig(ociConfigRootNode, configFilePath);
-        }
-        else
-        {
-            LOGWARN("%s: /opt/arun-mount-files does not exist; skipping network system mounts", MODULE_LOGTAG);
-        }
+            LOGWARN("%s: addNetworkSystemMountsToOCIConfig failed", MODULE_LOGTAG);
     }
 
     LOGDBG("%s: Network mode set to '%s' (runtimeEnabled=%d permissionInternet=%d permissionContainerToHost=%d)",
