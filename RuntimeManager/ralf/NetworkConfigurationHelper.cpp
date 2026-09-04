@@ -66,13 +66,13 @@ namespace
         }
 
         const std::string parentDir = targetPath.substr(0, parentDirPos);
-        if (false == create_directories(parentDir))
+        if (false == ralf::create_directories(parentDir))
         {
             LOGERR("Failed to create parent directory '%s' for mount target", parentDir.c_str());
             return false;
         }
 
-        if (true == checkIfPathExists(targetPath))
+        if (true == ralf::checkIfPathExists(targetPath))
         {
             return true;
         }
@@ -92,11 +92,11 @@ namespace
     {
         auto mountIfAvailable = [&ociConfigRootNode, &configFilePath](const std::string& path)
         {
-            if (true == checkIfPathExists(path))
+            if (true == ralf::checkIfPathExists(path))
             {
                 if (true == ensureMountTargetFileInRootfs(configFilePath, path))
                 {
-                    addBindMountToOCIConfig(ociConfigRootNode, path, path);
+                    ralf::addBindMountToOCIConfig(ociConfigRootNode, path, path);
                 }
                 else
                 {
@@ -109,19 +109,19 @@ namespace
             }
         };
 
-        const bool dnsmasqEnabled = ociConfigRootNode[RDKPLUGINS][NETWORKING][DATA][DNSMASQ].asBool();
+        const bool dnsmasqEnabled = ociConfigRootNode[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA][ralf::DNSMASQ].asBool();
         if (false == dnsmasqEnabled)
         {
-            const std::string resolverSourcePath = getResolverSourcePathForContainer();
-            const std::string resolverDestinationPath = RALF_DEFAULT_RESOLV_CONF_FILE;
+            const std::string resolverSourcePath = ralf::getResolverSourcePathForContainer();
+            const std::string resolverDestinationPath = ralf::RALF_DEFAULT_RESOLV_CONF_FILE;
 
             LOGDBG("Resolver mount selection: host '%s' -> container '%s'", resolverSourcePath.c_str(), resolverDestinationPath.c_str());
 
-            if (true == checkIfPathExists(resolverSourcePath))
+            if (true == ralf::checkIfPathExists(resolverSourcePath))
             {
                 if (true == ensureMountTargetFileInRootfs(configFilePath, resolverDestinationPath))
                 {
-                    addBindMountToOCIConfig(ociConfigRootNode, resolverSourcePath, resolverDestinationPath);
+                    ralf::addBindMountToOCIConfig(ociConfigRootNode, resolverSourcePath, resolverDestinationPath);
                 }
                 else
                 {
