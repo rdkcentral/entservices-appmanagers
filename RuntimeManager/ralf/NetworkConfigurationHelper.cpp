@@ -138,7 +138,7 @@ namespace
 
     void addNetworkSystemMountsToOCIConfig(Json::Value& ociConfigRootNode, const std::string& configFilePath)
     {
-        const bool dnsmasqEnabled = ociConfigRootNode[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA][ralf::DNSMASQ].asBool();
+        const bool dnsmasqEnabled = ociConfigRootNode[ralf::RDKPLUGINS][NETWORKING][ralf::DATA][DNSMASQ].asBool();
         if (false == dnsmasqEnabled)
         {
             const std::string resolverSourcePath = ralf::getResolverSourcePathForContainer();
@@ -196,12 +196,12 @@ bool updateNetworkConfigurationNode(Json::Value& ociConfigRootNode, const Json::
         return true;
     }
 
-    if (!ociConfigRootNode[TEMP_RALF_NWCFG][NETWORK].isObject())
+    if (!ociConfigRootNode[TEMP_RALF_NWCFG][ralf::NETWORK].isObject())
     {
-        ociConfigRootNode[TEMP_RALF_NWCFG][NETWORK] = Json::Value(Json::objectValue);
+        ociConfigRootNode[TEMP_RALF_NWCFG][ralf::NETWORK] = Json::Value(Json::objectValue);
     }
 
-    Json::Value& networkStore = ociConfigRootNode[TEMP_RALF_NWCFG][NETWORK];
+    Json::Value& networkStore = ociConfigRootNode[TEMP_RALF_NWCFG][ralf::NETWORK];
 
     for (Json::ArrayIndex index = 0; index < networkConfiguration.size(); ++index)
     {
@@ -215,9 +215,9 @@ bool updateNetworkConfigurationNode(Json::Value& ociConfigRootNode, const Json::
 
         std::string entryName;
 
-        if (entry.isMember(NAME) && entry[NAME].isString())
+        if (entry.isMember(ralf::NAME) && entry[ralf::NAME].isString())
         {
-            entryName = entry[NAME].asString();
+            entryName = entry[ralf::NAME].asString();
         }
         else
         {
@@ -263,15 +263,15 @@ bool updatePermissionConfigurationNode(Json::Value& ociConfigRootNode, const Jso
         }
 
         const std::string permission = permissions[index].asString();
-        if (PERMISSION_INTERNET == permission)
+        if (ralf::PERMISSION_INTERNET == permission)
         {
             hasPermissionInternet = true;
         }
-        else if (PERMISSION_FIREBOLT == permission)
+        else if (ralf::PERMISSION_FIREBOLT == permission)
         {
             hasPermissionFirebolt = true;
         }
-        else if (PERMISSION_THUNDER == permission)
+        else if (ralf::PERMISSION_THUNDER == permission)
         {
             hasPermissionThunder = true;
         }
@@ -337,24 +337,24 @@ bool updateTempRalfNWCfgFromEnv(Json::Value& ociConfigRootNode, const std::strin
 
     // get envVarName from process.env and parse it to extract the protocol and port, then add it to TEMP_RALF_NWCFG
     std::string envVarValue = "";
-    for (const auto &envEntry : processNode[ENV])
+    for (const auto &envEntry : processNode[ralf::ENV])
     {
-		if (envEntry.isString())
-		{
-			std::string envPair = envEntry.asString();
-			std::string prefix = envVarName + "=";
-			if (envPair.rfind(prefix, 0) == 0)
-			{
-				envVarValue = envPair.substr(prefix.size());
-				break;
-			}
-		}
+        if (envEntry.isString())
+        {
+            std::string envPair = envEntry.asString();
+            std::string prefix = envVarName + "=";
+            if (envPair.rfind(prefix, 0) == 0)
+            {
+                envVarValue = envPair.substr(prefix.size());
+                break;
+            }
+        }
     }
     if (envVarValue.empty())
-	{
-		LOGWARN("%s: Environment variable %s not found in process.env; skipping update", MODULE_LOGTAG, envVarName.c_str());
-		return false;
-	}
+    {
+        LOGWARN("%s: Environment variable %s not found in process.env; skipping update", MODULE_LOGTAG, envVarName.c_str());
+        return false;
+    }
     const size_t schemePos = envVarValue.find("://");
     std::string protocol = (std::string::npos == schemePos) ? "tcp" : envVarValue.substr(0, schemePos);
 
@@ -368,28 +368,28 @@ bool updateTempRalfNWCfgFromEnv(Json::Value& ociConfigRootNode, const std::strin
         }
 
         size_t colonPos = url.find(':', hostStart);
-		if (colonPos == std::string::npos)
-		{
-			return 0;
-		}
-		size_t portStart = colonPos + 1;
-		size_t portEnd = url.find_first_of("/?", portStart);
-		std::string portStr = url.substr(portStart, portEnd - portStart);
-		try
-		{
-			return std::stoi(portStr);
-		}
-		catch (const std::exception&)
-		{
-			return -1;
-		}
-	};
+        if (colonPos == std::string::npos)
+        {
+            return -1; // No port found
+        }
+        size_t portStart = colonPos + 1;
+        size_t portEnd = url.find_first_of("/?", portStart);
+        std::string portStr = url.substr(portStart, portEnd - portStart);
+        try
+        {
+            return std::stoi(portStr);
+        }
+        catch (const std::exception&)
+        {
+            return -1; // Invalid port
+        }
+    };
     int port = extractPort(envVarValue);
-	if (port <= 0)
-	{
-		LOGWARN("%s: Invalid port extracted from %s: %d; skipping update", MODULE_LOGTAG, envVarName.c_str(), port);
-		return false;
-	}
+    if (port <= 0)
+    {
+        LOGWARN("%s: Invalid port extracted from %s: %d; skipping update", MODULE_LOGTAG, envVarName.c_str(), port);
+        return false;
+    }
 
     Json::Value& tempRalfNWCfgNode = ociConfigRootNode[TEMP_RALF_NWCFG];
     if (!tempRalfNWCfgNode.isObject())
@@ -472,13 +472,13 @@ bool generateNetworkingPluginNode(Json::Value& ociConfigRootNode)
     {
         // To populate tempConfig with the necessary port and protocol information.
         if (permissionFireboltEnabled && updateTempRalfNWCfgFromEnv(ociConfigRootNode, FIREBOLT_ENDPOINT_ENV_KEY, "firebolt"))
-		{
-			refreshtempConfig++;
-		}
+        {
+            refreshtempConfig++;
+        }
         if (permissionThunderEnabled && updateTempRalfNWCfgFromEnv(ociConfigRootNode, THUNDER_ACCESS_ENV_KEY, "thunder"))
-		{
-			refreshtempConfig++;
-		}
+        {
+            refreshtempConfig++;
+        }
     }
     if (refreshtempConfig > 0)
     {
