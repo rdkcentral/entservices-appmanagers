@@ -1202,7 +1202,7 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
             {
 #ifdef APP_MANAGER_RESOURCE_MONITOR
                 mAdminLock.Unlock();
-                const Core::hresult reconcileStatus = Reconcile(appId, static_cast<uint32_t>((static_cast<uint64_t>(packageData.configMetadata.systemMemoryLimit) + 1024 * 1024 - 1) / (1024 * 1024)), true);
+                const Core::hresult reconcileStatus = Reconcile(appId, GetAppRamTargetMB(appId), true);
                 mAdminLock.Lock();
                 if (Core::ERROR_NONE != reconcileStatus)
                 {
@@ -1456,7 +1456,7 @@ Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const s
 #ifdef APP_MANAGER_RESOURCE_MONITOR
         bool targetRamAchieved = false;
         mAdminLock.Unlock();
-        const uint32_t ramTargetMB = static_cast<uint32_t>((static_cast<uint64_t>(packageData.configMetadata.systemMemoryLimit) + 1024 * 1024 - 1) / (1024 * 1024));
+    const uint32_t ramTargetMB = GetAppRamTargetMB(appId);
         const bool reconciliationCompleted = ReconcileAndWait(appId, ramTargetMB, false, targetRamAchieved);
         mAdminLock.Lock();
 

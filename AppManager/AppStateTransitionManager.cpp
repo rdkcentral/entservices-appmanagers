@@ -63,7 +63,7 @@ void AppStateTransitionManager::Stop()
 
 void AppStateTransitionManager::ExpirePausedAppLocked(const std::string& exceptAppId)
 {
-    if (!mPausedAppId.empty() && mPausedAppId != exceptAppId) {
+    if (!mPausedAppId.empty() && exceptAppId != mPausedAppId) {
         std::map<std::string, Entry>::iterator entry = mEntries.find(mPausedAppId);
         if (entry != mEntries.end()) {
             entry->second.deadline = std::chrono::steady_clock::now();
@@ -76,21 +76,21 @@ void AppStateTransitionManager::OnStateChanged(const std::string& appId, Exchang
     const std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
     {
         std::lock_guard<std::mutex> lock(mLock);
-        if (state == Exchange::IAppManager::APP_STATE_PAUSED) {
+        if (Exchange::IAppManager::APP_STATE_PAUSED == state) {
             ExpirePausedAppLocked(appId);
             mPausedAppId = appId;
             mEntries[appId] = Entry{state, now + mPausedToSuspendedTimeout};
-        } else if (state == Exchange::IAppManager::APP_STATE_SUSPENDED) {
-            if (mPausedAppId == appId) {
+        } else if (Exchange::IAppManager::APP_STATE_SUSPENDED == state) {
+            if (appId == mPausedAppId) {
                 mPausedAppId.clear();
             }
             mEntries[appId] = Entry{state, now + mSuspendedToHibernatedTimeout};
-        } else if (state == Exchange::IAppManager::APP_STATE_ACTIVE) {
+        } else if (Exchange::IAppManager::APP_STATE_ACTIVE == state) {
             mEntries.erase(appId);
             ExpirePausedAppLocked(appId);
         } else {
             mEntries.erase(appId);
-            if (mPausedAppId == appId) {
+            if (appId == mPausedAppId) {
                 mPausedAppId.clear();
             }
         }
@@ -103,7 +103,7 @@ void AppStateTransitionManager::Remove(const std::string& appId)
     {
         std::lock_guard<std::mutex> lock(mLock);
         mEntries.erase(appId);
-        if (mPausedAppId == appId) {
+        if (appId == mPausedAppId) {
             mPausedAppId.clear();
         }
     }
@@ -138,7 +138,7 @@ void AppStateTransitionManager::Worker()
                 if (it->second.deadline <= now) {
                     appId = it->first;
                     state = it->second.state;
-                    if (mPausedAppId == appId) {
+                    if (appId == mPausedAppId) {
                         mPausedAppId.clear();
                     }
                     mEntries.erase(it);
@@ -155,12 +155,12 @@ void AppStateTransitionManager::Worker()
 
 void AppStateTransitionManager::Process(const std::string& appId, Exchange::IAppManager::AppLifecycleState state)
 {
-    if (state == Exchange::IAppManager::APP_STATE_PAUSED) {
-        if (mParent.SetInactiveTargetState(appId, Exchange::ILifecycleManager::SUSPENDED) != Core::ERROR_NONE) {
+    if (Exchange::IAppManager::APP_STATE_PAUSED == state) {
+        if (Core::ERROR_NONE != mParent.SetInactiveTargetState(appId, Exchange::ILifecycleManager::SUSPENDED)) {
             LOGWARN("Unable to suspend appId %s; terminating it", appId.c_str());
             mParent.TerminateApp(appId);
         }
-    } else if (state == Exchange::IAppManager::APP_STATE_SUSPENDED) {
+    } else if (Exchange::IAppManager::APP_STATE_SUSPENDED == state) {
         bool targetRamAchieved = false;
         if (!mParent.ReconcileAndWait(appId, mParent.GetAppRamTargetMB(appId), false, targetRamAchieved)) {
             LOGWARN("Resource check unavailable for suspended appId %s; leaving it suspended", appId.c_str());
@@ -173,7 +173,7 @@ void AppStateTransitionManager::Process(const std::string& appId, Exchange::IApp
         } else if (!mParent.HasHibernationFlashSpace(appId)) {
             LOGINFO("AppId %s remains suspended because flash space is unavailable", appId.c_str());
             OnStateChanged(appId, Exchange::IAppManager::APP_STATE_SUSPENDED);
-        } else if (mParent.SetInactiveTargetState(appId, Exchange::ILifecycleManager::HIBERNATED) != Core::ERROR_NONE) {
+        } else if (Core::ERROR_NONE != mParent.SetInactiveTargetState(appId, Exchange::ILifecycleManager::HIBERNATED)) {
             LOGINFO("AppId %s remains suspended because hibernation request failed", appId.c_str());
             OnStateChanged(appId, Exchange::IAppManager::APP_STATE_SUSPENDED);
         }
