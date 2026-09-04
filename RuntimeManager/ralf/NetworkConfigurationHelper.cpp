@@ -144,8 +144,6 @@ namespace
             const std::string resolverSourcePath = ralf::getResolverSourcePathForContainer();
             const std::string resolverDestinationPath = ralf::RALF_DEFAULT_RESOLV_CONF_FILE;
 
-            LOGDBG("%s: Resolver mount selection: host '%s' -> container '%s'", MODULE_LOGTAG, resolverSourcePath.c_str(), resolverDestinationPath.c_str());
-
             if (true == ralf::checkIfPathExists(resolverSourcePath))
             {
                 if (true == ensureMountTargetFileInRootfs(configFilePath, resolverDestinationPath))
@@ -161,10 +159,6 @@ namespace
             {
                 LOGWARN("%s: Host path %s is missing; skipping mount", MODULE_LOGTAG, resolverSourcePath.c_str());
             }
-        }
-        else
-        {
-            LOGDBG("%s: dnsmasq enabled for networking plugin; skipping host /etc/resolv.conf mount", MODULE_LOGTAG);
         }
     }
 }
@@ -229,7 +223,6 @@ bool updateNetworkConfigurationNode(Json::Value& ociConfigRootNode, const Json::
 
         networkStore[entryName] = entry;
 
-        LOGDBG("%s: Merged network entry: %s", MODULE_LOGTAG, entryName.c_str());
     }
 
     return true;
@@ -276,7 +269,6 @@ bool updatePermissionConfigurationNode(Json::Value& ociConfigRootNode, const Jso
             hasPermissionThunder = true;
         }
     }
-    LOGDBG("%s: Permissions found - internet=%d firebolt=%d thunder=%d", MODULE_LOGTAG, hasPermissionInternet, hasPermissionFirebolt, hasPermissionThunder);
     Json::Value& permissionFlags = ociConfigRootNode[TEMP_RALF_NWCFG][PERMISSION_FLAGS];
     if (!permissionFlags.isObject())
     {
@@ -289,11 +281,6 @@ bool updatePermissionConfigurationNode(Json::Value& ociConfigRootNode, const Jso
         permissionFlags[PERMISSION_FIREBOLT_ENABLED].asBool() || hasPermissionFirebolt;
     permissionFlags[PERMISSION_THUNDER_ENABLED] =
         permissionFlags[PERMISSION_THUNDER_ENABLED].asBool() || hasPermissionThunder;
-
-    LOGDBG("%s: Permission networking flags updated: internet=%d firebolt=%d thunder=%d", MODULE_LOGTAG,
-           permissionFlags[PERMISSION_INTERNET_ENABLED].asBool(),
-           permissionFlags[PERMISSION_FIREBOLT_ENABLED].asBool(),
-           permissionFlags[PERMISSION_THUNDER_ENABLED].asBool());
 
     return true;
 }
@@ -438,8 +425,6 @@ bool updateTempRalfNWCfgFromEnv(Json::Value& ociConfigRootNode, const std::strin
         permissionFlags[LOCALHOST_MASQUERADE] = true;
     }
 
-    LOGDBG("%s: Updated TEMP_RALF_NWCFG with %s: protocol=%s port=%d", MODULE_LOGTAG, name.c_str(), protocol.c_str(), port);
-
     return true;
 }
 
@@ -486,7 +471,6 @@ bool generateNetworkingPluginNode(Json::Value& ociConfigRootNode)
         {
             debugOutFile << networkStore;
             debugOutFile.close();
-            LOGDBG("%s: Copied temporary network configuration to debug file %s", MODULE_LOGTAG, debugFilePath.c_str());
         }
         else
         {
@@ -624,7 +608,6 @@ bool generateNetworkingPluginNode(Json::Value& ociConfigRootNode)
         {
             debugOutFile << networkingPlugin;
             debugOutFile.close();
-            LOGDBG("%s: Copied translated network configuration to debug file %s", MODULE_LOGTAG, debugFilePath.c_str());
         }
         else
         {
@@ -749,10 +732,6 @@ bool applyRuntimeNetworkingConfiguration(Json::Value& ociConfigRootNode, const s
         {
             LOGWARN("%s: /opt/arun-mount-files does not exist; skipping network system mounts", MODULE_LOGTAG);
         }
-    }
-    else
-    {
-        LOGDBG("%s: dnsmasq enabled; skipping network system mounts", MODULE_LOGTAG);
     }
 
     LOGDBG("%s: Network mode set to '%s' (runtimeEnabled=%d permissionInternet=%d permissionContainerToHost=%d)",
