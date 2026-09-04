@@ -67,8 +67,7 @@ namespace WPEFramework
 	{
 	    bool ret = false;
             ApplicationContext* context = getContext();
-            if (Exchange::ILifecycleManager::LifecycleState::INITIALIZING == context->getCurrentLifecycleState(
-))
+            if (Exchange::ILifecycleManager::LifecycleState::INITIALIZING == context->getCurrentLifecycleState())
             {
                 ret = true;
             }
@@ -92,17 +91,33 @@ namespace WPEFramework
             }
 	    else if (Exchange::ILifecycleManager::LifecycleState::ACTIVE == context->getCurrentLifecycleState())
 	    {
-                ret = true;		    
+                RuntimeManagerHandler* runtimeManagerHandler = RequestHandler::getInstance()->getRuntimeManagerHandler();
+                if (nullptr != runtimeManagerHandler)
+	        {
+                    ret = runtimeManagerHandler->suspend(context->getAppInstanceId(), errorReason);
+                }
+                else
+	        {
+                    ret = true;
+                }
             }
             return ret;
 	}
 
         bool ActiveState::handle(string& errorReason)
 	{
+            ApplicationContext* context = getContext();
+            RuntimeManagerHandler* runtimeManagerHandler = RequestHandler::getInstance()->getRuntimeManagerHandler();
+            if ((nullptr != runtimeManagerHandler) && (Exchange::ILifecycleManager::LifecycleState::PAUSED == context->getCurrentLifecycleState()))
+	    {
+                if (!runtimeManagerHandler->resume(context->getAppInstanceId(), errorReason))
+	        {
+                    return false;
+                }
+            }
             WindowManagerHandler* windowManagerHandler = RequestHandler::getInstance()->getWindowManagerHandler();
 	    if (nullptr != windowManagerHandler)
 	    {
-                ApplicationContext* context = getContext();
                 bool isRenderReady = false;
 		Core::hresult ret = windowManagerHandler->renderReady(context->getAppInstanceId(), isRenderReady);
                 if (Core::ERROR_NONE == ret)
