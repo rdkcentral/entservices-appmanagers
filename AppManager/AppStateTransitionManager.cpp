@@ -100,11 +100,14 @@ void AppStateTransitionManager::OnStateChanged(const std::string& appId, Exchang
 
 void AppStateTransitionManager::Remove(const std::string& appId)
 {
-    std::lock_guard<std::mutex> lock(mLock);
-    mEntries.erase(appId);
-    if (mPausedAppId == appId) {
-        mPausedAppId.clear();
+    {
+        std::lock_guard<std::mutex> lock(mLock);
+        mEntries.erase(appId);
+        if (mPausedAppId == appId) {
+            mPausedAppId.clear();
+        }
     }
+    mCondition.notify_all();
 }
 
 void AppStateTransitionManager::Worker()
