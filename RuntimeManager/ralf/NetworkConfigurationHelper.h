@@ -62,12 +62,4 @@ bool generateNetworkingPlugin(Json::Value& ociConfigRootNode);
  */
 bool applyRuntimeNetworkingConfiguration(Json::Value& ociConfigRootNode, bool networkEnabled, const std::string& configFilePath);
 
-/**
- * @brief Checks whether a specific permission URN is present in a comma-separated capabilities string.
- * @param[in] capabilities Comma-separated capabilities string.
- * @param[in] permission Exact permission URN to search for.
- * @return true if permission is present, false otherwise.
- */
-bool hasCapabilityPermission(const std::string& capabilities, const std::string& permission);
-
 } // namespace NetworkConfigurationHelper

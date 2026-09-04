@@ -155,4 +155,12 @@ namespace ralf
      * @return The resolver source path as a string.
      */
     std::string getResolverSourcePathForContainer(void);
+
+    /**
+     * Function to check whether a specific permission token exists in a comma-separated capabilities string.
+     * @param capabilities Comma-separated capabilities string.
+     * @param permission Exact permission token to search for.
+     * @return true if permission is present, false otherwise.
+     */
+    bool hasCapabilityPermission(const std::string& capabilities, const std::string& permission);
 }  // namespace ralf

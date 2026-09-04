@@ -479,4 +479,40 @@ namespace ralf
         LOGWARN("Host resolver file %s only has loopback nameservers and no fallback resolver file found", RALF_HOST_DEFAULT_RESOLV_CONF_FILE.c_str());
         return RALF_HOST_DEFAULT_RESOLV_CONF_FILE;
     }
+
+        bool hasCapabilityPermission(const std::string& capabilities, const std::string& permission)
+        {
+            if (capabilities.empty() || permission.empty())
+            {
+                LOGDBG("Capabilities or permission string is empty; cannot check for permission");
+                return false;
+            }
+
+            size_t pos = 0;
+            const std::string delimiter = ",";
+
+            while (pos < capabilities.length())
+            {
+                size_t end = capabilities.find(delimiter, pos);
+                if (std::string::npos == end)
+                {
+                    end = capabilities.length();
+                }
+
+                std::string token = capabilities.substr(pos, end - pos);
+
+                token.erase(0, token.find_first_not_of(" \t\n\r\f\v"));
+                token.erase(token.find_last_not_of(" \t\n\r\f\v") + 1);
+
+                if (permission == token)
+                {
+                    LOGDBG("Found capability permission '%s'", permission.c_str());
+                    return true;
+                }
+
+                pos = end + delimiter.length();
+            }
+
+            return false;
+        }
 } // namespace ralf

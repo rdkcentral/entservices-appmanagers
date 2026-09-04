@@ -178,7 +178,7 @@ namespace ralf
         {
             LOGDBG("/opt/apply-ralf-nwcfg exists; checking network configuration\n");
             const std::string& capabilities = runtimeConfigObject.capabilities;
-            const bool hasPermissionInternet = NetworkConfigurationHelper::hasCapabilityPermission(capabilities, PERMISSION_INTERNET);
+            const bool hasPermissionInternet = hasCapabilityPermission(capabilities, PERMISSION_INTERNET);
             const bool networkEnabled = runtimeConfigObject.wanLanAccess || hasPermissionInternet;
 
             if (false == NetworkConfigurationHelper::applyRuntimeNetworkingConfiguration(ociConfigRootNode, networkEnabled, mConfigFilePath))
