@@ -93,10 +93,10 @@ namespace ralf
     }
     void RalfOCIConfigGenerator::addThunderAccessToPrivilegedApps(Json::Value &ociConfigRootNode)
     {
-        const char* thunderaccess = getenv("THUNDER_ACCESS");
+        const char *thunderaccess = getenv("THUNDER_ACCESS");
         if (nullptr != thunderaccess)
         {
-            //TODO  this should be checked against urn:rdk:permission:thunder capability before adding to environment
+            // TODO  this should be checked against urn:rdk:permission:thunder capability before adding to environment
             addToEnvironment(ociConfigRootNode, "THUNDER_ACCESS", thunderaccess);
             LOGINFO("THUNDER_ACCESS environment variable is set to: %s", thunderaccess);
         }
@@ -336,22 +336,6 @@ namespace ralf
         return status;
     }
 
-    bool RalfOCIConfigGenerator::addAdditionalEnvVariablesToOCIConfig(Json::Value &ociConfigRootNode, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject, const WPEFramework::Plugin::ApplicationConfiguration &appConfig)
-    {
-        bool status = true;
-        /* The following environmental variables expected
-        APP_PACKAGE_VERSION, XDG_RUNTIME_DIR, and TEMP_STORAGE_PATH, READ_PATH,
-        RUNTIME_CONFIG_OVERRIDES_JSON,APP_CONFIG_OVERRIDES_JSON,APP_PROVIDER_ID,
-        CLIENT_CERT_KEY, CLIENT_CERT,LOG_LEVEL,STORAGE_LIMIT,GPU_MEMORY_LIMIT,
-        CPU_MEMORY_LIMIT, DIAL_FRIENDLY_NAME, DIAL_ENABLED,
-
-        TODO: We will need to define how to get the values for these environment variables.
-        RDKEMW-13998
-        */
-
-        return status;
-    }
-
     bool RalfOCIConfigGenerator::addDeviceNodeEntriesToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &graphicsDevNode)
     {
         bool status = graphicsDevNode.size() > 0 ? true : false; // If no entries, return true.
@@ -395,7 +379,7 @@ namespace ralf
         // Apply entryPoint if exists
         if (ralfPackageConfigNode.isMember(ENTRY_POINT))
         {
-            // args is a array of strings. So append each string to args array
+            // Every package has an entry point, this is a string and expected to be a path to a file within the package.
             ociConfigRootNode[PROCESS][ARGS].append(ralfPackageConfigNode[ENTRY_POINT]);
             LOGDBG("Applied entryPoint to OCI config\n");
         }
@@ -406,11 +390,43 @@ namespace ralf
         return status;
     }
 
+    bool RalfOCIConfigGenerator::addEntryArgsToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &ralfPackageConfigNode)
+    {
+        bool status = true;
+        // Apply entryArgs if exists
+        if (ralfPackageConfigNode.isMember(ENTRY_ARGS))
+        {
+            // args is a array of strings. So append each string to args array
+            const Json::Value &entryArgs = ralfPackageConfigNode[ENTRY_ARGS];
+            if (entryArgs.isArray())
+            {
+                for (const auto &arg : entryArgs)
+                {
+                    ociConfigRootNode[PROCESS][ARGS].append(arg);
+                }
+                LOGDBG("Applied entryArgs to OCI config\n");
+            }
+            else
+            {
+                LOGWARN("entryArgs is not an array in Ralf package config\n");
+            }
+        }
+        else
+        {
+            LOGWARN("No entryArgs found in Ralf package config\n");
+        }
+        return status;
+    }
     bool RalfOCIConfigGenerator::applyConfigurationToOCIConfig(Json::Value &ociConfigRootNode, Json::Value &manifestRootNode)
     {
         if (!addEntryPointToOCIConfig(ociConfigRootNode, manifestRootNode))
         {
             LOGERR("Failed to apply Ralf Entry point for package");
+            return false;
+        }
+        if (!addEntryArgsToOCIConfig(ociConfigRootNode, manifestRootNode))
+        {
+            LOGERR("Failed to apply Ralf Entry args for package");
             return false;
         }
         // Everything else is optional. So return value will be true.
