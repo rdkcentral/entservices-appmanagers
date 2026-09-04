@@ -127,16 +127,13 @@ sequenceDiagram
 
 ## Reconciliation Synchronization
 
-The ResourceMonitor contract does not include a separate request ID, but it includes the request `appId` in both the request and completion event. AppManager therefore serializes reconciliation requests using:
+The ResourceMonitor contract does not include a separate request ID. Foreground reconciliation is fire-and-forget: ResourceMonitor uses `appId` for telemetry and AppManager does not wait for or process its completion event. AppManager serializes only reconciliation requests that require a result using:
 
 - `mReconcileRequestLock`: permits one submitted/waited reconciliation at a time.
-- `mReconcileResultLock`: protects callback state.
-- `mReconcileResultCV`: wakes the waiting preload or state-transition worker.
-- `mReconcilePending`: identifies whether a completion event is outstanding.
-- `mReconcileAppId`: correlates a completion event to the outstanding request.
+- `mReconcileResultLock`, `mReconcileResultCV`, `mReconcilePending`, and `mReconcileAppId`: correlate the ResourceMonitor callback to the active waiting request.
 - `mTargetRamAchieved`: stores the completion result.
 
-Before submitting a new request, AppManager waits for the previous completion event. The completion's `appId` must match `mReconcileAppId`, which prevents a foreground-launch completion from being mistaken for a later preload result.
+Foreground launches invoke `Reconcile` directly and continue launching immediately. Preload and state-transition requests use `ReconcileAndWait` and wait for their submitted request to complete. The completion's `appId` must match `mReconcileAppId`, which prevents a callback from being applied to the wrong active waiting request.
 
 A request identifier in the future ResourceMonitor contract would allow safe concurrent reconciliation requests without serialization.
 

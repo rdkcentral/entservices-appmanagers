@@ -803,36 +803,12 @@ void AppManagerImplementation::releaseResourceMonitorRemoteObject()
 
 Core::hresult AppManagerImplementation::Reconcile(const string& appId, uint32_t ramTargetMB, bool allowTerminate)
 {
-    std::lock_guard<std::mutex> requestLock(mReconcileRequestLock);
     if (nullptr == mResourceMonitorRemoteObject &&
         Core::ERROR_NONE != createResourceMonitorRemoteObject())
     {
         return Core::ERROR_UNAVAILABLE;
     }
-
-    std::unique_lock<std::mutex> resultLock(mReconcileResultLock);
-    if (!mReconcileResultCV.wait_for(resultLock, std::chrono::milliseconds(RECONCILE_WAIT_TIMEOUT_MS),
-            [this] { return !mReconcilePending; }))
-    {
-        mReconcilePending = false;
-        mReconcileAppId.clear();
-        mReconcileResultCV.notify_all();
-        return Core::ERROR_TIMEDOUT;
-    }
-    mReconcilePending = true;
-    mReconcileAppId = appId;
-    mTargetRamAchieved = false;
-    resultLock.unlock();
-
-    const Core::hresult status = mResourceMonitorRemoteObject->Reconcile(appId, ramTargetMB, allowTerminate);
-    if (Core::ERROR_NONE != status)
-    {
-        std::lock_guard<std::mutex> lock(mReconcileResultLock);
-        mReconcilePending = false;
-        mReconcileAppId.clear();
-        mReconcileResultCV.notify_all();
-    }
-    return status;
+    return mResourceMonitorRemoteObject->Reconcile(appId, ramTargetMB, allowTerminate);
 }
 
 bool AppManagerImplementation::ReconcileAndWait(const string& appId, uint32_t ramTargetMB, bool allowTerminate, bool& targetRamAchieved)
