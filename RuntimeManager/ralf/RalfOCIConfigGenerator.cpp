@@ -24,6 +24,7 @@
 #include "OCISpecConstants.h"
 #include "NetworkConfigurationHelper.h"
 #include <fstream>
+#include <chrono>
 
 #define PERSIST_STORAGE_PATH "/data"
 
@@ -31,6 +32,10 @@ namespace ralf
 {
     bool RalfOCIConfigGenerator::generateRalfOCIConfig(const WPEFramework::Plugin::ApplicationConfiguration &config, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject)
     {
+        auto now = std::chrono::system_clock::now();
+        auto us = std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count();
+        LOGINFO("generateRalfOCIConfig began at %lld us", us);
+
         Json::Value ociConfigRootNode;
 
         if (!JsonFromFile(RALF_OCI_BASE_SPEC_FILE, ociConfigRootNode))
@@ -289,6 +294,9 @@ namespace ralf
         {
             LOGERR("Failed to open OCI config output file: %s", mConfigFilePath.c_str());
         }
+        auto now = std::chrono::system_clock::now();
+        auto us = std::chrono::duration_cast<std::chrono::microseconds>(now.time_since_epoch()).count();
+        LOGINFO("generateRalfOCIConfig ended at %lld us", us);
         return status;
     }
 
