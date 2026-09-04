@@ -615,9 +615,16 @@ namespace WPEFramework
         Core::hresult LifecycleInterfaceConnector::setTargetAppState(const string& appId, Exchange::ILifecycleManager::LifecycleState state)
         {
             Core::hresult status = Core::ERROR_GENERAL;
-            if (appId.empty() || nullptr == mLifecycleManagerRemoteObject)
+            if (appId.empty())
             {
                 return status;
+            }
+            if (nullptr == mLifecycleManagerRemoteObject)
+            {
+                if (Core::ERROR_NONE != createLifecycleManagerRemoteObject())
+                {
+                    return status;
+                }
             }
 
             AppInfo appInfo;
