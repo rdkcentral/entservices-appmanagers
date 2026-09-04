@@ -61,6 +61,7 @@ namespace ralf
                 LOGERR("Failed to load Ralf package config JSON from file: %s", ralfPkgInfo.first.c_str());
                 return false;
             }
+            LOGDBG("RALF-NCD: Applying Ralf package config from file: %s", ralfPkgInfo.first.c_str());
             if (!applyConfigurationToOCIConfig(ociConfigRootNode, ralfPackageConfigNode))
             {
                 LOGERR("Failed to apply Ralf package config to OCI config for file: %s", ralfPkgInfo.first.c_str());

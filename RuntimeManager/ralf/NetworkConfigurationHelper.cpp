@@ -276,7 +276,7 @@ bool updatePermissionConfigurationNode(Json::Value& ociConfigRootNode, const Jso
             hasPermissionThunder = true;
         }
     }
-
+    LOGDBG("%s: Permissions found - internet=%d firebolt=%d thunder=%d", MODULE_LOGTAG, hasPermissionInternet, hasPermissionFirebolt, hasPermissionThunder);
     Json::Value& permissionFlags = ociConfigRootNode[TEMP_RALF_NWCFG][PERMISSION_FLAGS];
     if (!permissionFlags.isObject())
     {
@@ -457,6 +457,15 @@ bool generateNetworkingPluginNode(Json::Value& ociConfigRootNode)
     const bool permissionFireboltEnabled = permissionFlags[PERMISSION_FIREBOLT_ENABLED].asBool();
     const bool permissionThunderEnabled = permissionFlags[PERMISSION_THUNDER_ENABLED].asBool();
 
+    if (permissionFireboltEnabled && !updateTempRalfNWCfgFromEnv(ociConfigRootNode, FIREBOLT_ENDPOINT_ENV_KEY, "firebolt"))
+    {
+        LOGWARN("%s: Failed to update TEMP_RALF_NWCFG with %s from environment", MODULE_LOGTAG, FIREBOLT_ENDPOINT_ENV_KEY);
+    }
+    if (permissionThunderEnabled && !updateTempRalfNWCfgFromEnv(ociConfigRootNode, THUNDER_ACCESS_ENV_KEY, "thunder"))
+    {
+        LOGWARN("%s: Failed to update TEMP_RALF_NWCFG with %s from environment", MODULE_LOGTAG, THUNDER_ACCESS_ENV_KEY);
+    }
+
     const bool hasNetworkStore = tempConfig.isMember(NETWORK) && tempConfig[NETWORK].isObject() && !tempConfig[NETWORK].empty();
     const bool hasContainerToHostStore = tempConfig.isMember(CONTAINER_TO_HOST) && tempConfig[CONTAINER_TO_HOST].isArray() && !tempConfig[CONTAINER_TO_HOST].empty();
 
@@ -466,24 +475,6 @@ bool generateNetworkingPluginNode(Json::Value& ociConfigRootNode)
         return true;
     }
 
-    int refreshtempConfig = 0;
-    // Firebolt and Thunder PORT and PROTOCOL need to be extracted from the environment variables and added into tempConfig.
-    if (permissionFireboltEnabled || permissionThunderEnabled)
-    {
-        // To populate tempConfig with the necessary port and protocol information.
-        if (permissionFireboltEnabled && updateTempRalfNWCfgFromEnv(ociConfigRootNode, FIREBOLT_ENDPOINT_ENV_KEY, "firebolt"))
-        {
-            refreshtempConfig++;
-        }
-        if (permissionThunderEnabled && updateTempRalfNWCfgFromEnv(ociConfigRootNode, THUNDER_ACCESS_ENV_KEY, "thunder"))
-        {
-            refreshtempConfig++;
-        }
-    }
-    if (refreshtempConfig > 0)
-    {
-        LOGDBG("%s: Refreshed TEMP_RALF_NWCFG with %d entries from environment variables", MODULE_LOGTAG, refreshtempConfig);
-    }
     const Json::Value& networkStore = tempConfig[NETWORK];
 
     if (checkIfPathExists("/opt/apply-ralf-nwcfg"))
@@ -726,6 +717,11 @@ bool applyRuntimeNetworkingConfiguration(Json::Value& ociConfigRootNode, const s
             netData[DNSMASQ] = true;
         }
         else if (true == runtimeNetworkRequested)
+        {
+            netData[TYPE] = NETWORK_TYPE_NAT;
+            netData[DNSMASQ] = true;
+        }
+        else if (true == permissionContainerToHostEnabled)
         {
             netData[TYPE] = NETWORK_TYPE_NAT;
             netData[DNSMASQ] = true;
