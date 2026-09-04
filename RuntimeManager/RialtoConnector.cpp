@@ -33,7 +33,7 @@ namespace WPEFramework
         firebolt::rialto::common::ServerManagerConfig config;
         mAIConfiguration = new WPEFramework::Plugin::AIConfiguration();
         mAIConfiguration->initialize();
-        config.sessionServerEnvVars = mAIConfiguration->getEnvs();
+        config.sessionServerEnvVars = {"XDG_RUNTIME_DIR=/tmp"};
         mServerManagerService  = create(shared_from_this(), config);
 	if (!mServerManagerService)
         {
@@ -73,7 +73,7 @@ namespace WPEFramework
         }
         if (!callsign.empty() && !displayName.empty() && ! appId.empty())
         {
-           firebolt::rialto::common::AppConfig config = {appId, displayName};
+           firebolt::rialto::common::AppConfig config = {"", displayName};
            return mServerManagerService ->initiateApplication(callsign,
                                                            RialtoServerStates::ACTIVE,
                                                            config);
