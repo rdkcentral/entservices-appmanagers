@@ -1046,7 +1046,7 @@ namespace WPEFramework
 
         Core::hresult RuntimeManagerImplementation::Suspend(const string &appInstanceId)
         {
-            Core::hresult status = Core::ERROR_GENERAL;
+            Core::hresult status = Core::ERROR_NONE;
             std::string errorReason = "";
             std::string appId = "";
             // bool success = false;
@@ -1101,7 +1101,7 @@ namespace WPEFramework
 
         Core::hresult RuntimeManagerImplementation::Resume(const string &appInstanceId)
         {
-            Core::hresult status = Core::ERROR_GENERAL;
+            Core::hresult status = Core::ERROR_NONE;
             std::string errorReason = "";
             std::string appId = "";
             // bool success = false;
