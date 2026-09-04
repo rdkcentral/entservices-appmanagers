@@ -208,7 +208,7 @@ The following CMake cache variables are available:
 | Variable | Default | Meaning |
 |---|---:|---|
 | `PLUGIN_APP_MANAGER_PAUSED_TO_SUSPENDED_TIMEOUT` | `60` | Seconds an app may remain PAUSED |
-| `PLUGIN_APP_MANAGER_SUSPENDED_TO_HIBERNATED_TIMEOUT` | `300` | Seconds before evaluating a SUSPENDED app |
+| `PLUGIN_APP_MANAGER_SUSPENDED_TO_HIBERNATED_TIMEOUT` | `15` | Seconds before evaluating a SUSPENDED app |
 | `PLUGIN_APP_MANAGER_HIBERNATION_STORAGE_PATH` | `/media/apps/memcr` | Filesystem path used to check available hibernation flash space |
 
 They are emitted into the generated AppManager configuration as:
@@ -216,7 +216,7 @@ They are emitted into the generated AppManager configuration as:
 ```json
 {
   "pausedToSuspendedTimeout": 60,
-  "suspendedToHibernatedTimeout": 300,
+  "suspendedToHibernatedTimeout": 15,
   "hibernationStoragePath": "/media/apps/memcr"
 }
 ```

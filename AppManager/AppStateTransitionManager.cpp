@@ -28,7 +28,7 @@ AppStateTransitionManager::AppStateTransitionManager(AppManagerImplementation& p
     : mParent(parent)
     , mRunning(false)
     , mPausedToSuspendedTimeout(60)
-    , mSuspendedToHibernatedTimeout(300)
+    , mSuspendedToHibernatedTimeout(15)
 {
 }
 

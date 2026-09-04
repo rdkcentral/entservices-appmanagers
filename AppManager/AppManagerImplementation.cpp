@@ -610,7 +610,7 @@ uint32_t AppManagerImplementation::Configure(PluginHost::IShell* service)
         }
 
         uint32_t pausedToSuspendedTimeout = 60;
-        uint32_t suspendedToHibernatedTimeout = 300;
+        uint32_t suspendedToHibernatedTimeout = 15;
         JsonObject configuration;
         if (configuration.FromString(service->ConfigLine()))
         {
@@ -812,7 +812,9 @@ Core::hresult AppManagerImplementation::Reconcile(const string& appId, uint32_t 
     if (!mReconcileResultCV.wait_for(resultLock, std::chrono::milliseconds(RECONCILE_WAIT_TIMEOUT_MS),
             [this] { return !mReconcilePending; }))
     {
+        mReconcilePending = false;
         mReconcileAppId.clear();
+        mReconcileResultCV.notify_all();
         return Core::ERROR_TIMEDOUT;
     }
     mReconcilePending = true;
@@ -844,7 +846,9 @@ bool AppManagerImplementation::ReconcileAndWait(const string& appId, uint32_t ra
     if (!mReconcileResultCV.wait_for(resultLock, std::chrono::milliseconds(RECONCILE_WAIT_TIMEOUT_MS),
             [this] { return !mReconcilePending; }))
     {
+        mReconcilePending = false;
         mReconcileAppId.clear();
+        mReconcileResultCV.notify_all();
         return false;
     }
     mReconcilePending = true;
@@ -867,6 +871,7 @@ bool AppManagerImplementation::ReconcileAndWait(const string& appId, uint32_t ra
     {
         mReconcilePending = false;
         mReconcileAppId.clear();
+        mReconcileResultCV.notify_all();
         return false;
     }
     targetRamAchieved = mTargetRamAchieved;
@@ -898,6 +903,7 @@ uint32_t AppManagerImplementation::GetAppRamTargetMB(const string& appId) const
 
 bool AppManagerImplementation::SupportsHibernation(const string& appId)
 {
+    // TODO: Read the widget's hibernate-mode capability per app
     string value;
     if (GetAppProperty(appId, "APPLICATION_CAN_RUN_IN_HIBERNATE_MODE", value) != Core::ERROR_NONE)
     {
