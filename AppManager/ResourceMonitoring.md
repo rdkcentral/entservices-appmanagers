@@ -184,7 +184,8 @@ When AppManager receives a confirmed SUSPENDED event:
 - If the RAM target is achieved, AppManager checks the app's `APPLICATION_CAN_RUN_IN_HIBERNATE_MODE` property and available flash space.
 - HIBERNATED is requested when the app supports hibernation and enough flash space is available for its configured `dataImageSize`.
 - If flash space is unavailable, the app remains suspended and is checked again after `suspendedToHibernatedTimeout`.
-- If hibernation is unavailable or rejected, the app remains suspended.
+- If hibernation is unsupported, the app remains suspended without another hibernation retry.
+- If hibernation is rejected, the app remains suspended and is retried after `suspendedToHibernatedTimeout`.
 
 ### Other states
 
