@@ -70,7 +70,7 @@ namespace ralf
             // TODO tracked under RDKEMW-13995
         }
 
-        if (false == NetworkConfigurationHelper::generateNetworkingPlugin(ociConfigRootNode))
+        if (false == NetworkConfigurationHelper::generateNetworkingPluginNode(ociConfigRootNode))
         {
             LOGERR("Failed to generate networking plugin config");
             return false;
@@ -489,7 +489,7 @@ namespace ralf
             if (true == checkIfPathExists("/opt/apply-ralf-nwcfg"))
             {
                 LOGDBG("/opt/apply-ralf-nwcfg exists; updating network config store\n");
-                status = NetworkConfigurationHelper::updateNetworkConfiguration(ociConfigRootNode, manifestRootNode);
+                status = NetworkConfigurationHelper::updateNetworkConfigurationNode(ociConfigRootNode, manifestRootNode);
                 LOGDBG("Updated network config store ? %s\n", status ? "true" : "false");
             }
             else

@@ -37,7 +37,7 @@ namespace NetworkConfigurationHelper
  * @param[in] manifestRootNode Package metadata manifest.
  * @return true on success.
  */
-bool updateNetworkConfiguration(Json::Value& ociConfigRootNode, const Json::Value& manifestRootNode);
+bool updateNetworkConfigurationNode(Json::Value& ociConfigRootNode, const Json::Value& manifestRootNode);
 
 /**
  * @brief Generates Dobby networking plugin configuration from the temporary _temp_ralf_nwcfg.network store.
@@ -47,7 +47,7 @@ bool updateNetworkConfiguration(Json::Value& ociConfigRootNode, const Json::Valu
  * @param[in,out] ociConfigRootNode Root OCI configuration.
  * @return true on success.
  */
-bool generateNetworkingPlugin(Json::Value& ociConfigRootNode);
+bool generateNetworkingPluginNode(Json::Value& ociConfigRootNode);
 
 /**
  * @brief Applies runtime-driven network policy to rdkPlugins.networking.data and process capabilities.

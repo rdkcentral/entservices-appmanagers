@@ -90,25 +90,6 @@ namespace
 
     void addNetworkSystemMountsToOCIConfig(Json::Value& ociConfigRootNode, const std::string& configFilePath)
     {
-        auto mountIfAvailable = [&ociConfigRootNode, &configFilePath](const std::string& path)
-        {
-            if (true == ralf::checkIfPathExists(path))
-            {
-                if (true == ensureMountTargetFileInRootfs(configFilePath, path))
-                {
-                    ralf::addBindMountToOCIConfig(ociConfigRootNode, path, path);
-                }
-                else
-                {
-                    LOGERR("Failed to prepare rootfs target for %s; skipping mount entry", path.c_str());
-                }
-            }
-            else
-            {
-                LOGWARN("Host path %s is missing; skipping mount", path.c_str());
-            }
-        };
-
         const bool dnsmasqEnabled = ociConfigRootNode[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA][ralf::DNSMASQ].asBool();
         if (false == dnsmasqEnabled)
         {
@@ -137,8 +118,6 @@ namespace
         {
             LOGDBG("dnsmasq enabled for networking plugin; skipping host /etc/resolv.conf mount");
         }
-
-        mountIfAvailable("/etc/hosts");
     }
 }
 
@@ -146,22 +125,22 @@ using namespace ralf;
 namespace NetworkConfigurationHelper
 {
 
-bool updateNetworkConfiguration(Json::Value& ociConfigRootNode, const Json::Value& manifestRootNode)
+bool updateNetworkConfigurationNode(Json::Value& ociConfigRootNode, const Json::Value& manifestRootNode)
 {
     if (!manifestRootNode.isMember(CONFIGURATION))
     {
+        LOGWARN("No configuration node found in manifest; skipping network configuration update");
         return true;
     }
 
     const Json::Value& configurationNode = manifestRootNode[CONFIGURATION];
     if (!configurationNode.isMember(NETWORK_CONFIG_URN))
     {
+        LOGWARN("No network configuration node found in manifest; skipping network configuration update");
         return true;
     }
 
-    const Json::Value& networkConfiguration =
-        configurationNode[NETWORK_CONFIG_URN];
-
+    const Json::Value& networkConfiguration = configurationNode[NETWORK_CONFIG_URN];
     if (!networkConfiguration.isArray())
     {
         LOGWARN("Network configuration is not an array");
@@ -195,6 +174,7 @@ bool updateNetworkConfiguration(Json::Value& ociConfigRootNode, const Json::Valu
         {
             std::ostringstream generatedName;
             generatedName << "unnamed-" << networkStore.size();
+            LOGWARN("Network entry is missing a name; generating unique name: %s", generatedName.str().c_str());
             entryName = generatedName.str();
         }
 
@@ -206,15 +186,39 @@ bool updateNetworkConfiguration(Json::Value& ociConfigRootNode, const Json::Valu
     return true;
 }
 
-bool generateNetworkingPlugin(Json::Value& ociConfigRootNode)
+bool generateNetworkingPluginNode(Json::Value& ociConfigRootNode)
 {
     if (!ociConfigRootNode.isMember(TEMP_RALF_NWCFG) ||
         !ociConfigRootNode[TEMP_RALF_NWCFG].isMember(NETWORK))
     {
+        LOGWARN("No temporary network configuration found; skipping networking plugin generation");
         return true;
     }
 
     const Json::Value& networkStore = ociConfigRootNode[TEMP_RALF_NWCFG][NETWORK];
+
+    if (networkStore.empty())
+    {
+        LOGWARN("Temporary network configuration is empty; skipping networking plugin generation");
+        return true;
+    }
+
+    if (checkIfPathExists("/opt/apply-ralf-nwcfg"))
+    {
+        // dump json to a file for debugging.
+        std::string debugFilePath = "/opt/temp_ralf_nwcfg.json";
+        std::ofstream debugOutFile(debugFilePath.c_str());
+        if (debugOutFile)
+        {
+            debugOutFile << networkStore;
+            debugOutFile.close();
+            LOGDBG("Copied temporary network configuration to debug file %s\n", debugFilePath.c_str());
+        }
+        else
+        {
+            LOGERR("Failed to open debug output file: %s", debugFilePath.c_str());
+        }
+    }
 
     Json::Value networkingPlugin(Json::objectValue);
     Json::Value pluginData(Json::objectValue);
@@ -225,6 +229,8 @@ bool generateNetworkingPlugin(Json::Value& ociConfigRootNode)
     networkingPlugin[REQUIRED] = true;
 
     pluginData[TYPE] = NETWORK_TYPE_NAT;
+    // By default, enable both IPv4 and IPv6 support in the networking plugin.
+    // TODO: In the future, we may want to make this configurable based on package manifest or runtime configuration.
     pluginData[NETWORK_IPV4] = true;
     pluginData[NETWORK_IPV6] = true;
 
@@ -280,6 +286,23 @@ bool generateNetworkingPlugin(Json::Value& ociConfigRootNode)
 
     ociConfigRootNode[RDKPLUGINS][NETWORKING] = networkingPlugin;
 
+    if (checkIfPathExists("/opt/apply-ralf-nwcfg"))
+    {
+        // dump json to a file for debugging.
+        std::string debugFilePath = "/opt/temp_ralf_nwcfg.json";
+        std::ofstream debugOutFile(debugFilePath.c_str());
+        if (debugOutFile)
+        {
+            debugOutFile << networkingPlugin;
+            debugOutFile.close();
+            LOGDBG("Copied translated network configuration to debug file %s\n", debugFilePath.c_str());
+        }
+        else
+        {
+            LOGERR("Failed to open debug output file: %s", debugFilePath.c_str());
+        }
+    }
+
     if (ociConfigRootNode.isMember(TEMP_RALF_NWCFG))
     {
         ociConfigRootNode.removeMember(TEMP_RALF_NWCFG);
@@ -326,7 +349,15 @@ bool applyRuntimeNetworkingConfiguration(Json::Value& ociConfigRootNode, bool ne
 
         netData[TYPE] = NETWORK_TYPE_NAT;
         netData[DNSMASQ] = true;
+    }
+    else
+    {
+        netData[TYPE] = NETWORK_TYPE_NONE;
+        netData[DNSMASQ] = false;
+    }
 
+    if (false == netData[DNSMASQ].asBool())
+    {
         if (true == checkIfPathExists("/opt/arun-mount-files"))
         {
             LOGWARN("/opt/arun-mount-files exists; triggering network system mounts");
@@ -339,8 +370,7 @@ bool applyRuntimeNetworkingConfiguration(Json::Value& ociConfigRootNode, bool ne
     }
     else
     {
-        netData[TYPE] = NETWORK_TYPE_NONE;
-        netData[DNSMASQ] = false;
+        LOGDBG("dnsmasq enabled; skipping network system mounts");
     }
 
     LOGDBG("Network mode set to '%s' (wanLanAccess/hasPermissionInternet=%d)",
