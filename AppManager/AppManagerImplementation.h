@@ -22,6 +22,9 @@
 #include "Module.h"
 #include <interfaces/Ids.h>
 #include <interfaces/IAppManager.h>
+#ifdef APP_MANAGER_RESOURCE_MONITOR
+#include <interfaces/IResourceMonitor.h>
+#endif
 #include <interfaces/IStore2.h>
 #include <interfaces/IConfiguration.h>
 #include <interfaces/IAppPackageManager.h>
@@ -30,9 +33,13 @@
 #include <com/com.h>
 #include <core/core.h>
 #include <plugins/plugins.h>
+#ifdef APP_MANAGER_RESOURCE_MONITOR
+#include "AppStateTransitionManager.h"
+#endif
 #include "LifecycleInterfaceConnector.h"
 #include <interfaces/IPackageManager.h>
 #include <map>
+#include <memory>
 #include "AppManagerTypes.h"
 #include "AppInfoManager.h"
 
@@ -135,6 +142,23 @@ namespace Plugin {
             AppManagerImplementation& mParent;
         };
 
+    #ifdef APP_MANAGER_RESOURCE_MONITOR
+        class ResourceMonitorNotification : public Exchange::IResourceMonitor::INotification {
+        public:
+            explicit ResourceMonitorNotification(AppManagerImplementation& parent)
+                : mParent(parent) {}
+
+            void OnReconciliationComplete(const string& appId, const bool targetRamAchieved) override;
+
+            BEGIN_INTERFACE_MAP(ResourceMonitorNotification)
+            INTERFACE_ENTRY(Exchange::IResourceMonitor::INotification)
+            END_INTERFACE_MAP
+
+        private:
+            AppManagerImplementation& mParent;
+        };
+#endif
+
         class EXTERNAL Job : public Core::IDispatch {
         protected:
              Job(AppManagerImplementation *appManagerImplementation, EventNames event, JsonObject &params)
@@ -197,6 +221,13 @@ namespace Plugin {
         Core::hresult GetMaxHibernatedApps(int32_t& maxHibernatedApps) const override;
         Core::hresult GetMaxHibernatedFlashUsage(int32_t& maxHibernatedFlashUsage) const override;
         Core::hresult GetMaxInactiveRamUsage(int32_t& maxInactiveRamUsage) const override;
+    #ifdef APP_MANAGER_RESOURCE_MONITOR
+        Core::hresult SetInactiveTargetState(const string& appId, Exchange::ILifecycleManager::LifecycleState state);
+        bool ReconcileAndWait(const string& appId, uint32_t ramTargetMB, bool allowTerminate, bool& targetRamAchieved);
+        uint32_t GetAppRamTargetMB(const string& appId) const;
+        bool SupportsHibernation(const string& appId);
+        bool HasHibernationFlashSpace(const string& appId) const;
+    #endif
         void handleOnAppLifecycleStateChanged(const string& appId, const string& appInstanceId, const Exchange::IAppManager::AppLifecycleState newState,
                                         const Exchange::IAppManager::AppLifecycleState oldState, const Exchange::IAppManager::AppErrorReason errorReason);
         void handleOnAppUnloaded(const string& appId, const string& appInstanceId);
@@ -214,6 +245,12 @@ namespace Plugin {
         void getCustomValues(WPEFramework::Exchange::RuntimeConfig& runtimeConfig);
         Core::hresult createStorageManagerRemoteObject();
         void releaseStorageManagerRemoteObject();
+    #ifdef APP_MANAGER_RESOURCE_MONITOR
+        Core::hresult createResourceMonitorRemoteObject();
+        void releaseResourceMonitorRemoteObject();
+        Core::hresult Reconcile(const string& appId, uint32_t ramTargetMB, bool allowTerminate);
+        void OnReconciliationComplete(const string& appId, bool targetRamAchieved);
+    #endif
     private:
         mutable Core::CriticalSection mAdminLock;
         std::list<Exchange::IAppManager::INotification*> mAppManagerNotification;
@@ -222,13 +259,29 @@ namespace Plugin {
         Exchange::IPackageHandler* mPackageManagerHandlerObject;
         Exchange::IPackageInstaller* mPackageManagerInstallerObject;
         Exchange::IAppStorageManager* mStorageManagerRemoteObject;
+    #ifdef APP_MANAGER_RESOURCE_MONITOR
+        Exchange::IResourceMonitor* mResourceMonitorRemoteObject;
+    #endif
         PluginHost::IShell* mCurrentservice;
         Core::Sink<PackageManagerNotification> mPackageManagerNotification;
+    #ifdef APP_MANAGER_RESOURCE_MONITOR
+        Core::Sink<ResourceMonitorNotification> mResourceMonitorNotification;
+    #endif
         bool mEnhancedLoggingEnabled;
         std::thread mAppManagerWorkerThread;
         std::mutex mAppManagerLock;
         std::condition_variable mAppRequestListCV;
         std::list<std::shared_ptr<AppManagerRequest>> mAppRequestList;
+    #ifdef APP_MANAGER_RESOURCE_MONITOR
+        std::mutex mReconcileRequestLock;
+        std::mutex mReconcileResultLock;
+        std::condition_variable mReconcileResultCV;
+        bool mReconcilePending;
+        std::string mReconcileAppId;
+        bool mTargetRamAchieved;
+        std::string mHibernationStoragePath;
+        std::unique_ptr<AppStateTransitionManager> mStateTransitionManager;
+    #endif
         Core::hresult fetchAppPackageList(std::vector<WPEFramework::Exchange::IPackageInstaller::Package>& packageList);
         void checkInstallDetails(const std::string& appId, bool& installed, std::string& version,
                      const std::vector<WPEFramework::Exchange::IPackageInstaller::Package>& packageList);
