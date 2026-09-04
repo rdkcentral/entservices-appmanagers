@@ -59,6 +59,19 @@ extern uint32_t Test_Impl_PIM_QueryInterfaceUnknownID();
 extern uint32_t Test_Impl_PIM_MultipleNotificationsRegisterUnregister();
 extern uint32_t Test_Impl_PIM_StartPreinstallWithoutServiceFails();
 extern uint32_t Test_Impl_PIM_StartPreinstallWithNoInstallerFails();
+extern uint32_t Test_Impl_PIM_IsNewerVersion_NewerMajor();
+extern uint32_t Test_Impl_PIM_IsNewerVersion_NewerMinor();
+extern uint32_t Test_Impl_PIM_IsNewerVersion_NewerPatch();
+extern uint32_t Test_Impl_PIM_IsNewerVersion_NewerBuild();
+extern uint32_t Test_Impl_PIM_IsNewerVersion_EqualVersionsNotInstalled();
+extern uint32_t Test_Impl_PIM_IsNewerVersion_OlderVersionNotInstalled();
+extern uint32_t Test_Impl_PIM_IsNewerVersion_PrereleaseSuffixStripped();
+extern uint32_t Test_Impl_PIM_IsNewerVersion_BuildMetadataSuffixStripped();
+extern uint32_t Test_Impl_PIM_IsNewerVersion_TwoComponentsInvalid();
+extern uint32_t Test_Impl_PIM_IsNewerVersion_TrailingDotInvalid();
+extern uint32_t Test_Impl_PIM_IsNewerVersion_DoubleDotInvalid();
+extern uint32_t Test_Impl_PIM_IsNewerVersion_AlphaComponentInvalid();
+extern uint32_t Test_Impl_PIM_IsNewerVersion_FiveComponentsInvalid();
 
 // ── Component tests (PreinstallManager_ComponentTests.cpp) ───────────────────
 extern uint32_t Test_Comp_PIM_StartPreinstallInvalidDirectoryFails();
@@ -116,7 +129,19 @@ int main()
         { "Impl_PIM_MultipleNotificationsRegisterUnregister",   Test_Impl_PIM_MultipleNotificationsRegisterUnregister   },
         { "Impl_PIM_StartPreinstallWithoutServiceFails",        Test_Impl_PIM_StartPreinstallWithoutServiceFails        },
         { "Impl_PIM_StartPreinstallWithNoInstallerFails",       Test_Impl_PIM_StartPreinstallWithNoInstallerFails       },
-
+        { "Impl_PIM_IsNewerVersion_NewerMajor",                 Test_Impl_PIM_IsNewerVersion_NewerMajor                 },
+        { "Impl_PIM_IsNewerVersion_NewerMinor",                  Test_Impl_PIM_IsNewerVersion_NewerMinor                  },
+        { "Impl_PIM_IsNewerVersion_NewerPatch",                  Test_Impl_PIM_IsNewerVersion_NewerPatch                  },
+        { "Impl_PIM_IsNewerVersion_NewerBuild",                  Test_Impl_PIM_IsNewerVersion_NewerBuild                  },
+        { "Impl_PIM_IsNewerVersion_EqualVersionsNotInstalled",   Test_Impl_PIM_IsNewerVersion_EqualVersionsNotInstalled   },
+        { "Impl_PIM_IsNewerVersion_OlderVersionNotInstalled",    Test_Impl_PIM_IsNewerVersion_OlderVersionNotInstalled    },
+        { "Impl_PIM_IsNewerVersion_PrereleaseSuffixStripped",    Test_Impl_PIM_IsNewerVersion_PrereleaseSuffixStripped    },
+        { "Impl_PIM_IsNewerVersion_BuildMetadataSuffixStripped", Test_Impl_PIM_IsNewerVersion_BuildMetadataSuffixStripped },
+        { "Impl_PIM_IsNewerVersion_TwoComponentsInvalid",        Test_Impl_PIM_IsNewerVersion_TwoComponentsInvalid        },
+        { "Impl_PIM_IsNewerVersion_TrailingDotInvalid",          Test_Impl_PIM_IsNewerVersion_TrailingDotInvalid          },
+        { "Impl_PIM_IsNewerVersion_DoubleDotInvalid",            Test_Impl_PIM_IsNewerVersion_DoubleDotInvalid            },
+        { "Impl_PIM_IsNewerVersion_AlphaComponentInvalid",       Test_Impl_PIM_IsNewerVersion_AlphaComponentInvalid       },
+        { "Impl_PIM_IsNewerVersion_FiveComponentsInvalid",       Test_Impl_PIM_IsNewerVersion_FiveComponentsInvalid       },
         // ── Component tests ──────────────────────────────────────────────────
         { "Comp_PIM_StartPreinstallInvalidDirectoryFails",                  Test_Comp_PIM_StartPreinstallInvalidDirectoryFails                  },
         { "Comp_PIM_StartPreinstallEmptyDirSendsCompletionEvent",           Test_Comp_PIM_StartPreinstallEmptyDirSendsCompletionEvent           },

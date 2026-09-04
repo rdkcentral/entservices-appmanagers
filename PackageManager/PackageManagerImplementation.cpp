@@ -615,9 +615,11 @@ namespace Plugin {
             } // mLockCount == 0
         } else {
             LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
-            result = Core::ERROR_BAD_REQUEST;
-            packageFailureErrorCode = PackageManagerImplementation::PackageFailureErrorCode::ERROR_VERSION_NOT_FOUND;
 
+            result = Core::ERROR_INVALID_PARAMETER;
+
+            packageFailureErrorCode =
+                PackageManagerImplementation::PackageFailureErrorCode::ERROR_VERSION_NOT_FOUND;
         }
 
         recordAndPublishTelemetryData(((PackageManagerImplementation::PackageFailureErrorCode::ERROR_NONE == packageFailureErrorCode) ? TELEMETRY_MARKER_UNINSTALL_TIME : TELEMETRY_MARKER_UNINSTALL_ERROR),
@@ -685,7 +687,7 @@ namespace Plugin {
             }
         } else {
             LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
-            result = Core::ERROR_BAD_REQUEST;
+            result = Core::ERROR_INVALID_PARAMETER;
         }
 
         return result;
@@ -706,7 +708,7 @@ namespace Plugin {
             LOGDBG("id: '%s' ver: '%s' state: %s", packageId.c_str(), version.c_str(), getInstallState(installState).c_str());
         } else {
             LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
-            result = Core::ERROR_BAD_REQUEST;
+            result = Core::ERROR_INVALID_PARAMETER;
         }
 
         return result;
