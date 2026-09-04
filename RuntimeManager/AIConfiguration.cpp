@@ -35,8 +35,6 @@
 
 #define AICONFIGURATION_JSON_PATH "/etc/rdk/rdkappmanagers.json"
 
-extern char **environ;
-
 namespace WPEFramework
 {
 namespace Plugin
@@ -169,17 +167,6 @@ namespace Plugin
     std::list<std::string> AIConfiguration::getDefaultAllowedLogLevels() const
     {
         return mDefaultAllowedLogLevels;
-    }
-    std::list<std::string> AIConfiguration::readGlobalEnv() const
-    {
-       std::list<std::string> environmentVariables;
-       char **envList = environ;
-
-       for (;*envList;envList++)
-       {
-           environmentVariables.emplace_back(*envList);
-       }
-       return environmentVariables;
     }
 
     std::list<std::string> AIConfiguration::getEnvs() const
