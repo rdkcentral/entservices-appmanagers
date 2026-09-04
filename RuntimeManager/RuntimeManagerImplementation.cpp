@@ -1049,7 +1049,7 @@ namespace WPEFramework
             Core::hresult status = Core::ERROR_GENERAL;
             std::string errorReason = "";
             std::string appId = "";
-            bool success = false;
+            // bool success = false;
 
             /* Get current timestamp at the start of suspend for telemetry */
             time_t requestTime = getCurrentTimestamp();
@@ -1066,13 +1066,13 @@ namespace WPEFramework
 
                 if (!containerId.empty())
                 {
-                    status = mOciContainerObject->PauseContainer(containerId, success, errorReason);
-                    if ((success == false) || (status != Core::ERROR_NONE))
-                    {
-                        LOGERR("Failed to PauseContainer %s", errorReason.c_str());
-                    }
-                    else
-                    {
+                    // status = mOciContainerObject->PauseContainer(containerId, success, errorReason);
+                    // if ((success == false) || (status != Core::ERROR_NONE))
+                    // {
+                    //     LOGERR("Failed to PauseContainer %s", errorReason.c_str());
+                    // }
+                    // else
+                    // {
                         if (mRuntimeAppInfo.find(appInstanceId) != mRuntimeAppInfo.end())
                         {
                             appId = mRuntimeAppInfo[appInstanceId].appId;
@@ -1085,7 +1085,7 @@ namespace WPEFramework
                                 LOGWARN("Rialto suspendSession failed for %s", appId.c_str());
                         }
 #endif
-                    }
+                    // }
                 }
                 else
                 {
@@ -1104,7 +1104,7 @@ namespace WPEFramework
             Core::hresult status = Core::ERROR_GENERAL;
             std::string errorReason = "";
             std::string appId = "";
-            bool success = false;
+            // bool success = false;
 
             /* Get current timestamp at the start of resume for telemetry */
             time_t requestTime = getCurrentTimestamp();
@@ -1121,13 +1121,13 @@ namespace WPEFramework
 
                 if (!containerId.empty())
                 {
-                    status = mOciContainerObject->ResumeContainer(containerId, success, errorReason);
-                    if ((success == false) || (status != Core::ERROR_NONE))
-                    {
-                        LOGERR("Failed to ResumeContainer %s", errorReason.c_str());
-                    }
-                    else
-                    {
+                    // status = mOciContainerObject->ResumeContainer(containerId, success, errorReason);
+                    // if ((success == false) || (status != Core::ERROR_NONE))
+                    // {
+                    //     LOGERR("Failed to ResumeContainer %s", errorReason.c_str());
+                    // }
+                    // else
+                    // {
                         if (mRuntimeAppInfo.find(appInstanceId) != mRuntimeAppInfo.end())
                         {
                             appId = mRuntimeAppInfo[appInstanceId].appId;
@@ -1140,7 +1140,7 @@ namespace WPEFramework
                                 LOGWARN("Rialto resumeSession failed for %s", appId.c_str());
                         }
 #endif
-                    }
+                    // }
                 }
                 else
                 {
