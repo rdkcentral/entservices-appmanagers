@@ -9,3 +9,7 @@ rootobject = JSON()
 rootobject.add("mode", "@PLUGIN_APP_MANAGER_MODE@")
 rootobject.add("locator", "lib@PLUGIN_IMPLEMENTATION@.so")
 configuration.add("root", rootobject)
+if @PLUGIN_APP_MANAGER_RESOURCE_MONITOR@:
+	configuration.add("pausedToSuspendedTimeout", @PLUGIN_APP_MANAGER_PAUSED_TO_SUSPENDED_TIMEOUT@)
+	configuration.add("suspendedToHibernatedTimeout", @PLUGIN_APP_MANAGER_SUSPENDED_TO_HIBERNATED_TIMEOUT@)
+	configuration.add("hibernationStoragePath", "@PLUGIN_APP_MANAGER_HIBERNATION_STORAGE_PATH@")
