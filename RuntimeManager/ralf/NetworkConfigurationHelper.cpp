@@ -26,6 +26,7 @@
 #include <cstring>
 #include <fstream>
 #include <sstream>
+#include <algorithm>
 #include <set>
 
 #define MODULE_LOGTAG "RALF-NC"
@@ -57,6 +58,73 @@ namespace
     constexpr const char *NETWORK_TYPE_NONE  = "none";
     constexpr const char *NETWORK_IPV4       = "ipv4";
     constexpr const char *NETWORK_IPV6       = "ipv6";
+
+    int extractPortFromEndpoint(const std::string& url)
+    {
+        size_t hostStart = 0;
+        const size_t localSchemePos = url.find("://");
+        if (std::string::npos != localSchemePos)
+        {
+            hostStart = localSchemePos + 3;
+        }
+
+        const size_t colonPos = url.find(':', hostStart);
+        if (std::string::npos == colonPos)
+        {
+            return -1;
+        }
+
+        const size_t portStart = colonPos + 1;
+        const size_t portEnd = url.find_first_of("/?", portStart);
+        const std::string portStr = url.substr(portStart, portEnd - portStart);
+
+        try
+        {
+            return std::stoi(portStr);
+        }
+        catch (const std::exception&)
+        {
+            return -1;
+        }
+    }
+
+    std::string normalizeProtocol(const std::string& protocol)
+    {
+        if (("udp" == protocol) ||
+            ("dns" == protocol) ||
+            ("dhcp" == protocol) ||
+            ("snmp" == protocol) ||
+            ("coap" == protocol) ||
+            ("coaps" == protocol) ||
+            ("tftp" == protocol) ||
+            ("rtp" == protocol) ||
+            ("rtsp" == protocol))
+        {
+            return "udp";
+        }
+
+        if (("http" != protocol) &&
+            ("https" != protocol) &&
+            ("ftp" != protocol) &&
+            ("ssh" != protocol) &&
+            ("git" != protocol) &&
+            ("ws" != protocol) &&
+            ("wss" != protocol) &&
+            ("tcp" != protocol))
+        {
+            LOGWARN("%s: Unknown protocol '%s'; defaulting to 'tcp'", MODULE_LOGTAG, protocol.c_str());
+        }
+
+        return "tcp";
+    }
+
+    bool isLoopbackEndpoint(const std::string& endpoint)
+    {
+        return ((std::string::npos != endpoint.find("://localhost")) ||
+                (std::string::npos != endpoint.find("://127.0.0.1")) ||
+                (0 == endpoint.rfind("localhost:", 0)) ||
+                (0 == endpoint.rfind("127.0.0.1:", 0)));
+    }
 
     bool hasContainerToHostRule(const Json::Value& containerToHost, const uint32_t port)
     {
@@ -285,11 +353,11 @@ bool updatePermissionConfigurationNode(Json::Value& ociConfigRootNode, const Jso
     return true;
 }
 
-bool updateTempRalfNWCfgFromEnv(Json::Value& ociConfigRootNode, const std::string& envVarName, const std::string& name)
+bool updateTempRalfNWCfgFromEnv(Json::Value& ociConfigRootNode, const std::vector<std::string>& envVarNames)
 {
-    if (envVarName.empty())
+    if (envVarNames.empty())
     {
-        LOGWARN("%s: Environment variable name is empty; skipping update", MODULE_LOGTAG);
+        LOGWARN("%s: Environment variable list is empty; skipping update", MODULE_LOGTAG);
         return false;
     }
 
@@ -322,62 +390,6 @@ bool updateTempRalfNWCfgFromEnv(Json::Value& ociConfigRootNode, const std::strin
                 ]
      */
 
-    // get envVarName from process.env and parse it to extract the protocol and port, then add it to TEMP_RALF_NWCFG
-    std::string envVarValue = "";
-    for (const auto &envEntry : processNode[ralf::ENV])
-    {
-        if (envEntry.isString())
-        {
-            std::string envPair = envEntry.asString();
-            std::string prefix = envVarName + "=";
-            if (envPair.rfind(prefix, 0) == 0)
-            {
-                envVarValue = envPair.substr(prefix.size());
-                break;
-            }
-        }
-    }
-    if (envVarValue.empty())
-    {
-        LOGWARN("%s: Environment variable %s not found in process.env; skipping update", MODULE_LOGTAG, envVarName.c_str());
-        return false;
-    }
-    const size_t schemePos = envVarValue.find("://");
-    std::string protocol = (std::string::npos == schemePos) ? "tcp" : envVarValue.substr(0, schemePos);
-
-    // lamda to extract port
-	auto extractPort = [](const std::string& url) -> int {
-        size_t hostStart = 0;
-        const size_t localSchemePos = url.find("://");
-        if (std::string::npos != localSchemePos)
-        {
-            hostStart = localSchemePos + 3;
-        }
-
-        size_t colonPos = url.find(':', hostStart);
-        if (colonPos == std::string::npos)
-        {
-            return -1; // No port found
-        }
-        size_t portStart = colonPos + 1;
-        size_t portEnd = url.find_first_of("/?", portStart);
-        std::string portStr = url.substr(portStart, portEnd - portStart);
-        try
-        {
-            return std::stoi(portStr);
-        }
-        catch (const std::exception&)
-        {
-            return -1; // Invalid port
-        }
-    };
-    int port = extractPort(envVarValue);
-    if (port <= 0)
-    {
-        LOGWARN("%s: Invalid port extracted from %s: %d; skipping update", MODULE_LOGTAG, envVarName.c_str(), port);
-        return false;
-    }
-
     Json::Value& tempRalfNWCfgNode = ociConfigRootNode[TEMP_RALF_NWCFG];
     if (!tempRalfNWCfgNode.isObject())
     {
@@ -390,42 +402,72 @@ bool updateTempRalfNWCfgFromEnv(Json::Value& ociConfigRootNode, const std::strin
         containerToHost = Json::Value(Json::arrayValue);
     }
 
-    // protocol need to be mapped to tcp or udp, default to tcp
-    std::set<std::string> tcpSchemes = { "http", "https", "ftp", "ssh", "git", "ws", "wss", "tcp" };
-    std::set<std::string> udpSchemes = {"udp", "dns", "dhcp", "snmp", "coap", "coaps", "tftp", "rtp", "rtsp"};
-    if (tcpSchemes.find(protocol) != tcpSchemes.end())
-    {
-        protocol = "tcp";
-    }
-    else if (udpSchemes.find(protocol) != udpSchemes.end())
-    {
-        protocol = "udp";
-    }
-    else
-    {
-        LOGWARN("%s: Unknown protocol '%s' in %s; defaulting to 'tcp'", MODULE_LOGTAG, protocol.c_str(), envVarName.c_str());
-        protocol = "tcp";
-    }
+    std::set<std::string> foundEnvNames;
+    bool updated = false;
 
-    addContainerToHostRuleIfMissing(containerToHost, static_cast<uint32_t>(port), protocol);
-
-    // if host in protocol is localhost, enables localhost-masqueraded container egress to the resolved port.
-    // localhostMasquerade is required when the container must keep using localhost endpoints
-    // that are actually provided by host services.
-    if ((envVarValue.find("://localhost") != std::string::npos) ||
-        (envVarValue.find("://127.0.0.1") != std::string::npos) ||
-        (0 == envVarValue.rfind("localhost:", 0)) ||
-        (0 == envVarValue.rfind("127.0.0.1:", 0)))
+    // Single pass over process.env; update all requested names in one scan.
+    for (const auto& envEntry : processNode[ralf::ENV])
     {
-        Json::Value& permissionFlags = tempRalfNWCfgNode[PERMISSION_FLAGS];
-        if (!permissionFlags.isObject())
+        if (!envEntry.isString())
         {
-            permissionFlags = Json::Value(Json::objectValue);
+            continue;
         }
-        permissionFlags[LOCALHOST_MASQUERADE] = true;
+
+        const std::string envPair = envEntry.asString();
+        const size_t separatorPos = envPair.find('=');
+        if (std::string::npos == separatorPos)
+        {
+            continue;
+        }
+
+        const std::string envVarName = envPair.substr(0, separatorPos);
+        if (envVarNames.end() == std::find(envVarNames.begin(), envVarNames.end(), envVarName))
+        {
+            continue;
+        }
+
+        const std::string envVarValue = envPair.substr(separatorPos + 1);
+        if (envVarValue.empty())
+        {
+            LOGWARN("%s: Environment variable %s is empty; skipping update", MODULE_LOGTAG, envVarName.c_str());
+            continue;
+        }
+
+        const size_t schemePos = envVarValue.find("://");
+        const std::string protocolRaw = (std::string::npos == schemePos) ? "tcp" : envVarValue.substr(0, schemePos);
+        const std::string protocol = normalizeProtocol(protocolRaw);
+
+        const int port = extractPortFromEndpoint(envVarValue);
+        if (0 >= port)
+        {
+            LOGWARN("%s: Invalid port extracted from %s: %d; skipping update", MODULE_LOGTAG, envVarName.c_str(), port);
+            continue;
+        }
+
+        addContainerToHostRuleIfMissing(containerToHost, static_cast<uint32_t>(port), protocol);
+        foundEnvNames.insert(envVarName);
+        updated = true;
+
+        if (isLoopbackEndpoint(envVarValue))
+        {
+            Json::Value& permissionFlags = tempRalfNWCfgNode[PERMISSION_FLAGS];
+            if (!permissionFlags.isObject())
+            {
+                permissionFlags = Json::Value(Json::objectValue);
+            }
+            permissionFlags[LOCALHOST_MASQUERADE] = true;
+        }
     }
 
-    return true;
+    for (const auto& envVarName : envVarNames)
+    {
+        if (foundEnvNames.end() == foundEnvNames.find(envVarName))
+        {
+            LOGWARN("%s: Environment variable %s not found in process.env; skipping update", MODULE_LOGTAG, envVarName.c_str());
+        }
+    }
+
+    return updated;
 }
 
 bool generateNetworkingPluginNode(Json::Value& ociConfigRootNode)
@@ -442,13 +484,18 @@ bool generateNetworkingPluginNode(Json::Value& ociConfigRootNode)
     const bool permissionFireboltEnabled = permissionFlags[PERMISSION_FIREBOLT_ENABLED].asBool();
     const bool permissionThunderEnabled = permissionFlags[PERMISSION_THUNDER_ENABLED].asBool();
 
-    if (permissionFireboltEnabled && !updateTempRalfNWCfgFromEnv(ociConfigRootNode, FIREBOLT_ENDPOINT_ENV_KEY, "firebolt"))
+    std::vector<std::string> envVarNames;
+    if (permissionFireboltEnabled)
     {
-        LOGWARN("%s: Failed to update TEMP_RALF_NWCFG with %s from environment", MODULE_LOGTAG, FIREBOLT_ENDPOINT_ENV_KEY);
+        envVarNames.push_back(FIREBOLT_ENDPOINT_ENV_KEY);
     }
-    if (permissionThunderEnabled && !updateTempRalfNWCfgFromEnv(ociConfigRootNode, THUNDER_ACCESS_ENV_KEY, "thunder"))
+    if (permissionThunderEnabled)
     {
-        LOGWARN("%s: Failed to update TEMP_RALF_NWCFG with %s from environment", MODULE_LOGTAG, THUNDER_ACCESS_ENV_KEY);
+        envVarNames.push_back(THUNDER_ACCESS_ENV_KEY);
+    }
+    if (!envVarNames.empty() && !updateTempRalfNWCfgFromEnv(ociConfigRootNode, envVarNames))
+    {
+        LOGWARN("%s: Failed to update TEMP_RALF_NWCFG from permission-enabled environment variables", MODULE_LOGTAG);
     }
 
     const bool hasNetworkStore = tempConfig.isMember(NETWORK) && tempConfig[NETWORK].isObject() && !tempConfig[NETWORK].empty();
@@ -461,22 +508,6 @@ bool generateNetworkingPluginNode(Json::Value& ociConfigRootNode)
     }
 
     const Json::Value& networkStore = tempConfig[NETWORK];
-
-    if (checkIfPathExists("/opt/apply-ralf-nwcfg"))
-    {
-        // dump json to a file for debugging.
-        std::string debugFilePath = "/opt/temp_ralf_nwcfg.json";
-        std::ofstream debugOutFile(debugFilePath.c_str());
-        if (debugOutFile)
-        {
-            debugOutFile << networkStore;
-            debugOutFile.close();
-        }
-        else
-        {
-            LOGERR("%s: Failed to open debug output file: %s", MODULE_LOGTAG, debugFilePath.c_str());
-        }
-    }
 
     Json::Value networkingPlugin(Json::objectValue);
     Json::Value pluginData(Json::objectValue);
@@ -598,22 +629,6 @@ bool generateNetworkingPluginNode(Json::Value& ociConfigRootNode)
     networkingPlugin[DATA] = pluginData;
 
     ociConfigRootNode[RDKPLUGINS][NETWORKING] = networkingPlugin;
-
-    if (checkIfPathExists("/opt/apply-ralf-nwcfg"))
-    {
-        // dump json to a file for debugging.
-        std::string debugFilePath = "/opt/temp_ralf_nwcfg.json";
-        std::ofstream debugOutFile(debugFilePath.c_str());
-        if (debugOutFile)
-        {
-            debugOutFile << networkingPlugin;
-            debugOutFile.close();
-        }
-        else
-        {
-            LOGERR("%s: Failed to open debug output file: %s", MODULE_LOGTAG, debugFilePath.c_str());
-        }
-    }
 
     if (ociConfigRootNode.isMember(TEMP_RALF_NWCFG))
     {

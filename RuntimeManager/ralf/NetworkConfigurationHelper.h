@@ -21,6 +21,7 @@
 
 #include <json/json.h>
 #include <string>
+#include <vector>
 
 /**
  * @file NetworkConfigurationHelper.h
@@ -52,14 +53,13 @@ bool updateNetworkConfigurationNode(Json::Value& ociConfigRootNode, const Json::
 bool updatePermissionConfigurationNode(Json::Value& ociConfigRootNode, const Json::Value& manifestRootNode);
 
 /**
- * @brief Updates the temporary _temp_ralf_nwcfg node from an environment variable.
+ * @brief Updates the temporary _temp_ralf_nwcfg node from one or more environment variables.
  *
  * @param[in,out] ociConfigRootNode Root OCI configuration.
- * @param[in] envVarName Name of the environment variable.
- * @param[in] name Name to use within the temporary configuration.
- * @return true if the temporary configuration was updated.
+ * @param[in] envVarNames Environment variable names to read from process.env.
+ * @return true if at least one temporary configuration entry was updated.
  */
-bool updateTempRalfNWCfgFromEnv(Json::Value& ociConfigRootNode, const std::string& envVarName, const std::string& name);
+bool updateTempRalfNWCfgFromEnv(Json::Value& ociConfigRootNode, const std::vector<std::string>& envVarNames);
 
 /**
  * @brief Generates Dobby networking plugin configuration from the temporary _temp_ralf_nwcfg.network store.
