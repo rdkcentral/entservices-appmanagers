@@ -40,6 +40,28 @@ namespace NetworkConfigurationHelper
 bool updateNetworkConfigurationNode(Json::Value& ociConfigRootNode, const Json::Value& manifestRootNode);
 
 /**
+ * @brief Merges manifest permissions into temporary networking permission flags.
+ *
+ * This captures permission-driven networking intents so they can be translated
+ * to valid Dobby networking plugin data during plugin generation.
+ *
+ * @param[in,out] ociConfigRootNode Root OCI configuration.
+ * @param[in] manifestRootNode Package metadata manifest.
+ * @return true on success.
+ */
+bool updatePermissionConfigurationNode(Json::Value& ociConfigRootNode, const Json::Value& manifestRootNode);
+
+/**
+ * @brief Updates the temporary _temp_ralf_nwcfg node from an environment variable.
+ *
+ * @param[in,out] ociConfigRootNode Root OCI configuration.
+ * @param[in] envVarName Name of the environment variable.
+ * @param[in] name Name to use within the temporary configuration.
+ * @return true if the temporary configuration was updated.
+ */
+bool updateTempRalfNWCfgFromEnv(Json::Value& ociConfigRootNode, const std::string& envVarName, const std::string& name);
+
+/**
  * @brief Generates Dobby networking plugin configuration from the temporary _temp_ralf_nwcfg.network store.
  * Generated plugin is written to: rdkPlugins.networking.
  * After successful generation temporary _temp_ralf_nwcfg node is removed.
@@ -56,10 +78,9 @@ bool generateNetworkingPluginNode(Json::Value& ociConfigRootNode);
  * and optional host-system mounts for networking support.
  *
  * @param[in,out] ociConfigRootNode Root OCI configuration.
- * @param[in] networkEnabled Whether networking should be enabled for this app.
  * @param[in] configFilePath Output OCI config file path; used to resolve the generated rootfs location.
  * @return true on success.
  */
-bool applyRuntimeNetworkingConfiguration(Json::Value& ociConfigRootNode, bool networkEnabled, const std::string& configFilePath);
+bool applyRuntimeNetworkingConfiguration(Json::Value& ociConfigRootNode, const std::string& configFilePath);
 
 } // namespace NetworkConfigurationHelper

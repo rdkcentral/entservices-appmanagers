@@ -70,12 +70,6 @@ namespace ralf
             // TODO tracked under RDKEMW-13995
         }
 
-        if (false == NetworkConfigurationHelper::generateNetworkingPluginNode(ociConfigRootNode))
-        {
-            LOGERR("Failed to generate networking plugin config");
-            return false;
-        }
-
         if (generateHooksForOCIConfig(ociConfigRootNode) == false)
         {
             LOGERR("Failed to generate hooks for OCI config");
@@ -97,17 +91,38 @@ namespace ralf
         addTimezoneInfo(ociConfigRootNode);
         // Finally save the modified OCI config to file
         addThunderAccessToPrivilegedApps(ociConfigRootNode);
+        // Network configuration policy is derived by the helper from generated
+        // networking plugin data and permission-translated rules.
+        // Ensure that we start translation after all the environment variables and other configuration
+        // has been applied to the OCI config since it will be used to determine the final networking configuration.
+        if (true == checkIfPathExists("/opt/apply-ralf-nwcfg"))
+        {
+            if (false == NetworkConfigurationHelper::generateNetworkingPluginNode(ociConfigRootNode))
+            {
+                LOGERR("Failed to generate networking plugin config");
+                return false;
+            }
+            if (false == NetworkConfigurationHelper::applyRuntimeNetworkingConfiguration(ociConfigRootNode, mConfigFilePath))
+            {
+                LOGERR("Failed to apply runtime networking configuration");
+                return false;
+            }
+        }
+        else
+        {
+            LOGWARN("/opt/apply-ralf-nwcfg does not exist; skipping network configuration\n");
+        }
         return saveOCIConfigToFile(ociConfigRootNode, config.mUserId, config.mGroupId);
     }
 
     void RalfOCIConfigGenerator::addThunderAccessToPrivilegedApps(Json::Value &ociConfigRootNode)
     {
-        const char* thunderaccess = getenv("THUNDER_ACCESS");
+        const char* thunderaccess = getenv(THUNDER_ACCESS_ENV_KEY);
         if (nullptr != thunderaccess)
         {
             //TODO  this should be checked against urn:rdk:permission:thunder capability before adding to environment
-            addToEnvironment(ociConfigRootNode, "THUNDER_ACCESS", thunderaccess);
-            LOGINFO("THUNDER_ACCESS environment variable is set to: %s", thunderaccess);
+            addToEnvironment(ociConfigRootNode, THUNDER_ACCESS_ENV_KEY, thunderaccess);
+            LOGINFO("%s environment variable is set to: %s", THUNDER_ACCESS_ENV_KEY, thunderaccess);
         }
     }
 
@@ -167,30 +182,6 @@ namespace ralf
         // Home by default will be set to PERSIST_STORAGE_PATH in the OCI config.
         std::string homePath = PERSIST_STORAGE_PATH; // Default HOME path
         addToEnvironment(ociConfigRootNode, "HOME", homePath);
-
-        // Network configuration policy:
-        // - wanLanAccess=true: internet access (nat)
-        // - thunder=true or dial=true: local network access required (nat) - TODO: in future.
-        // - urn:rdk:permission:internet: internet access enabled (nat)
-        // - none enabled: keep container isolated (none)
-        // Add Network configuration from runtimeConfigObject to OCI config
-        if (true == checkIfPathExists("/opt/apply-ralf-nwcfg"))
-        {
-            LOGDBG("/opt/apply-ralf-nwcfg exists; checking network configuration\n");
-            const std::string& capabilities = runtimeConfigObject.capabilities;
-            const bool hasPermissionInternet = hasCapabilityPermission(capabilities, PERMISSION_INTERNET);
-            const bool networkEnabled = runtimeConfigObject.wanLanAccess || hasPermissionInternet;
-
-            if (false == NetworkConfigurationHelper::applyRuntimeNetworkingConfiguration(ociConfigRootNode, networkEnabled, mConfigFilePath))
-            {
-                LOGERR("Failed to apply runtime networking configuration");
-                return false;
-            }
-        }
-        else
-        {
-            LOGWARN("/opt/apply-ralf-nwcfg does not exist; skipping network configuration\n");
-        }
 
         // Mount persistent storage path
         std::string appStoragePath = appConfig.mAppStorageInfo.path;
@@ -456,6 +447,7 @@ namespace ralf
             LOGERR("Failed to apply Ralf Entry point for package");
             return false;
         }
+
         // Everything else is optional. So return value will be true.
         //  Check if configuration node exists.
         if (!manifestRootNode.isMember(CONFIGURATION) || !manifestRootNode[CONFIGURATION].isObject())
@@ -485,10 +477,17 @@ namespace ralf
 
             status = addStorageConfigToOCIConfig(ociConfigRootNode, configNode);
             LOGDBG("Applied storage config to OCI config ? %s\n", status ? "true" : "false");
-
+        }
+        // Prepare for urn:rdk:config:network - spec matrix: Application/Service/Runtime (N/A for Base)
+        if (packageType == PKG_TYPE_APPLICATION || packageType == PKG_TYPE_SERVICE || packageType == PKG_TYPE_RUNTIME)
+        {
             if (true == checkIfPathExists("/opt/apply-ralf-nwcfg"))
             {
                 LOGDBG("/opt/apply-ralf-nwcfg exists; updating network config store\n");
+                // 1. Capture network requirements for certain permissions
+                status = NetworkConfigurationHelper::updatePermissionConfigurationNode(ociConfigRootNode, manifestRootNode);
+                LOGDBG("Updated network based on permissions ? %s\n", status ? "true" : "false");
+                // 2. Capture network requirements based on the configuration node
                 status = NetworkConfigurationHelper::updateNetworkConfigurationNode(ociConfigRootNode, manifestRootNode);
                 LOGDBG("Updated network config store ? %s\n", status ? "true" : "false");
             }
