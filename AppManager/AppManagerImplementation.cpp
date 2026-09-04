@@ -101,6 +101,7 @@ AppManagerImplementation::~AppManagerImplementation()
         mStateTransitionManager->Stop();
         mStateTransitionManager.reset();
     }
+#endif
     if (nullptr != mLifecycleInterfaceConnector)
     {
         mLifecycleInterfaceConnector->releaseLifecycleManagerRemoteObject();
@@ -110,6 +111,7 @@ AppManagerImplementation::~AppManagerImplementation()
     releasePersistentStoreRemoteStoreObject();
     releasePackageManagerObject();
     releaseStorageManagerRemoteObject();
+#ifdef APP_MANAGER_RESOURCE_MONITOR
     if (nullptr != mResourceMonitorRemoteObject)
     {
         releaseResourceMonitorRemoteObject();
@@ -912,7 +914,7 @@ bool AppManagerImplementation::SupportsHibernation(const string& appId)
             return false;
         }
     }
-    return value == "1" || value == "true" || value == "TRUE";
+    return ("1" == value) || ("true" == value) || ("TRUE" == value);
 }
 
 bool AppManagerImplementation::HasHibernationFlashSpace(const string& appId) const
