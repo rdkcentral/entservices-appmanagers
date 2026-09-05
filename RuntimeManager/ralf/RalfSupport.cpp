@@ -47,6 +47,8 @@
 
 namespace ralf
 {
+    thread_local std::chrono::steady_clock::time_point gRalfPhaseLastTime = std::chrono::steady_clock::now();
+    thread_local const char* gRalfPhaseLastName = "START";
 
     bool create_directories(const std::string &path, int uid, int gid)
     {

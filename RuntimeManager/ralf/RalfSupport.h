@@ -30,8 +30,8 @@
 
 namespace ralf
 {
-    inline thread_local std::chrono::steady_clock::time_point gRalfPhaseLastTime = std::chrono::steady_clock::now();
-    inline thread_local const char* gRalfPhaseLastName = "START";
+    extern thread_local std::chrono::steady_clock::time_point gRalfPhaseLastTime;
+    extern thread_local const char* gRalfPhaseLastName;
 }
 
 // Unified milestone transition tracker and reset engine
