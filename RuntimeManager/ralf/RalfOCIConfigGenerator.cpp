@@ -747,8 +747,7 @@ namespace ralf
 
     void RalfOCIConfigGenerator::addToEnvironment(Json::Value &ociConfigRootNode, const std::string &key, const std::string &value)
     {
-        // Upsert: remove any existing entry for this key, then append the new value.
-        // This enforces the precedence rule (last write wins) and keeps process.env dedup-clean.
+        // Upsert environment key with a fast path for non-duplicate entries.
         std::string envVar = key + "=" + value;
 
         Json::Value &processNode = ociConfigRootNode[PROCESS];
@@ -761,17 +760,83 @@ namespace ralf
         {
             processNode[ENV] = Json::Value(Json::arrayValue);
         }
-        // Build a deduplicated array, dropping any existing entry for this key.
+
+        Json::Value &envNode = processNode[ENV];
         const std::string prefix = key + "=";
-        Json::Value deduped(Json::arrayValue);
-        for (const auto &existing : processNode[ENV])
+
+        int firstMatchIndex = -1;
+        bool duplicateFound = false;
+        const Json::ArrayIndex envSize = envNode.size();
+
+        for (Json::ArrayIndex i = 0; i < envSize; ++i)
         {
-            if (!existing.isString() || existing.asString().rfind(prefix, 0) != 0)
-                deduped.append(existing);
-            else
-                LOGWARN("Removed duplicate environment variable from OCI config: %s\n", existing.asString().c_str());
+            const Json::Value &existing = envNode[i];
+            if (!existing.isString())
+            {
+                continue;
+            }
+
+            const std::string existingStr = existing.asString();
+            if (existingStr.rfind(prefix, 0) == 0)
+            {
+                if (firstMatchIndex < 0)
+                {
+                    firstMatchIndex = static_cast<int>(i);
+                }
+                else
+                {
+                    duplicateFound = true;
+                    break;
+                }
+            }
         }
-        deduped.append(envVar);
+
+        // Fast path: no existing key, append once.
+        if (firstMatchIndex < 0)
+        {
+            envNode.append(envVar);
+            LOGDBG("Added environment variable to OCI config: %s\n", envVar.c_str());
+            return;
+        }
+
+        // Fast path: one existing key, update in place.
+        if (!duplicateFound)
+        {
+            envNode[static_cast<Json::ArrayIndex>(firstMatchIndex)] = envVar;
+            LOGDBG("Added environment variable to OCI config: %s\n", envVar.c_str());
+            return;
+        }
+
+        // Slow path: duplicates exist, rebuild once and keep the newest value.
+        Json::Value deduped(Json::arrayValue);
+        bool replaced = false;
+        for (Json::ArrayIndex i = 0; i < envSize; ++i)
+        {
+            const Json::Value &existing = envNode[i];
+            if (!existing.isString())
+            {
+                deduped.append(existing);
+                continue;
+            }
+
+            const std::string existingStr = existing.asString();
+            if (existingStr.rfind(prefix, 0) != 0)
+            {
+                deduped.append(existing);
+                continue;
+            }
+
+            if (!replaced)
+            {
+                deduped.append(envVar);
+                replaced = true;
+            }
+            else
+            {
+                LOGWARN("Removed duplicate environment variable from OCI config: %s\n", existingStr.c_str());
+            }
+        }
+
         processNode[ENV] = deduped;
         LOGDBG("Added environment variable to OCI config: %s\n", envVar.c_str());
     }
