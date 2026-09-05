@@ -24,6 +24,27 @@
 #include <json/json.h>
 
 #include "RalfConstants.h"
+
+#include <chrono>   // For std::chrono clocks and durations
+#include <cstdint>  // For standard int64_t types
+
+// Unified milestone transition tracker and reset engine
+#define LOG_STEP_TIME(step_name) \
+    do { \
+        thread_local auto last_time = std::chrono::steady_clock::now(); \
+        thread_local const char* last_name = "START"; \
+        \
+        auto current_time = std::chrono::steady_clock::now(); \
+        int64_t duration = std::chrono::duration_cast<std::chrono::microseconds>( \
+            current_time - last_time).count(); \
+        \
+        LOGINFO("RALF Phase [%s] -> [%s] took %lld us", \
+                last_name, #step_name, static_cast<long long>(duration)); \
+        \
+        last_time = current_time; \
+        last_name = #step_name; \
+    } while (0)
+
 namespace ralf
 {
     /**

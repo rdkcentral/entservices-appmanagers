@@ -847,5 +847,4 @@ bool applyRuntimeNetworkingConfiguration(Json::Value& ociConfigRootNode, const s
 
     return true;
 }
-
 } // namespace NetworkConfigurationHelper
