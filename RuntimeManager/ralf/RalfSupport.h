@@ -28,21 +28,27 @@
 #include <chrono>   // For std::chrono clocks and durations
 #include <cstdint>  // For standard int64_t types
 
+namespace ralf
+{
+    inline thread_local std::chrono::steady_clock::time_point gRalfPhaseLastTime = std::chrono::steady_clock::now();
+    inline thread_local const char* gRalfPhaseLastName = "START";
+}
+
 // Unified milestone transition tracker and reset engine
 #define LOG_STEP_TIME(step_name) \
     do { \
-        thread_local auto last_time = std::chrono::steady_clock::now(); \
-        thread_local const char* last_name = "START"; \
-        \
-        auto current_time = std::chrono::steady_clock::now(); \
-        int64_t duration = std::chrono::duration_cast<std::chrono::microseconds>( \
-            current_time - last_time).count(); \
-        \
+        const auto currentTime = std::chrono::steady_clock::now(); \
+        const int64_t duration = std::chrono::duration_cast<std::chrono::microseconds>(currentTime - ralf::gRalfPhaseLastTime).count(); \
         LOGINFO("RALF Phase [%s] -> [%s] took %lld us", \
-                last_name, #step_name, static_cast<long long>(duration)); \
-        \
-        last_time = current_time; \
-        last_name = #step_name; \
+                ralf::gRalfPhaseLastName, #step_name, static_cast<long long>(duration)); \
+        ralf::gRalfPhaseLastTime = currentTime; \
+        ralf::gRalfPhaseLastName = #step_name; \
+    } while (0)
+
+#define RESET_LOG_STEP_TIME(step_name) \
+    do { \
+        ralf::gRalfPhaseLastTime = std::chrono::steady_clock::now(); \
+        ralf::gRalfPhaseLastName = #step_name; \
     } while (0)
 
 namespace ralf

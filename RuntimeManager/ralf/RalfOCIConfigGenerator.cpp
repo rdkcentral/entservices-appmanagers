@@ -31,6 +31,7 @@ namespace ralf
 {
     bool RalfOCIConfigGenerator::generateRalfOCIConfig(const WPEFramework::Plugin::ApplicationConfiguration &config, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject)
     {
+        RESET_LOG_STEP_TIME(START);
         LOG_STEP_TIME(START);
 
         Json::Value ociConfigRootNode;
