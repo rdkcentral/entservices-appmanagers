@@ -113,11 +113,13 @@ namespace ralf
             LOGERR("Failed to generate networking plugin config");
             return false;
         }
+        LOG_STEP_TIME(GENERATE_NETWORKING_PLUGIN_NODE);
         if (false == NetworkConfigurationHelper::applyRuntimeNetworkingConfiguration(ociConfigRootNode, mConfigFilePath))
         {
             LOGERR("Failed to apply runtime networking configuration");
             return false;
         }
+        LOG_STEP_TIME(APPLY_RUNTIME_NETWORKING_POLICY);
         LOG_STEP_TIME(APPLY_NETWORKING_CONFIG);
         return saveOCIConfigToFile(ociConfigRootNode, config.mUserId, config.mGroupId);
     }
@@ -487,11 +489,9 @@ namespace ralf
         {
             // 1. Capture network requirements for certain permissions
             status = NetworkConfigurationHelper::updatePermissionConfigurationNode(ociConfigRootNode, manifestRootNode);
-            LOGDBG("Updated network based on permissions ? %s\n", status ? "true" : "false");
             LOG_STEP_TIME(GET_NETWORK_CONFIG_FROM_PERMISSIONS);
             // 2. Capture network requirements based on the configuration node
             status = NetworkConfigurationHelper::updateNetworkConfigurationNode(ociConfigRootNode, manifestRootNode);
-            LOGDBG("Updated network config store ? %s\n", status ? "true" : "false");
             LOG_STEP_TIME(GET_NETWORK_CONFIG_FROM_CONFIGURATION);
         }
         // Apply urn:rdk:config:env — spec matrix: Application/Service only (N/A for Runtime and Base)

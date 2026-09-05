@@ -41,7 +41,6 @@
 #include <cerrno>
 #include <fstream>
 #include <string>
-#include <sstream>
 #include <grp.h> //For group related functions
 
 #include <pwd.h> //For getting user id and group id of ralf user
@@ -137,14 +136,9 @@ namespace ralf
         std::ifstream file(filePath, std::ios::in);
         if (file.is_open())
         {
-
-            std::string configData((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-            file.close();
-
             Json::CharReaderBuilder readerBuilder;
             std::string errs;
-            std::istringstream s(configData);
-            status = Json::parseFromStream(readerBuilder, s, &rootNode, &errs);
+            status = Json::parseFromStream(readerBuilder, file, &rootNode, &errs);
             if (!status)
                 LOGERR("Failed to parse JSON: %s\n", errs.c_str());
         }
