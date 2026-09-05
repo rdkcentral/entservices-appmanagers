@@ -26,6 +26,8 @@
 
 #include <iostream>
 
+#include <arpa/inet.h>  // Required for inet_pton
+#include <netinet/in.h> // Required for in_addr / in6_addr
 #include <cstring> //for strerror
 #include <cstdio>  //for ::remove
 
@@ -38,13 +40,15 @@
 #include <cstdlib>
 #include <cerrno>
 #include <fstream>
-#include <sstream>
+#include <string>
 #include <grp.h> //For group related functions
 
 #include <pwd.h> //For getting user id and group id of ralf user
 
 namespace ralf
 {
+    thread_local std::chrono::steady_clock::time_point gRalfPhaseLastTime = std::chrono::steady_clock::now();
+    thread_local const char* gRalfPhaseLastName = "START";
 
     bool create_directories(const std::string &path, int uid, int gid)
     {
@@ -134,14 +138,9 @@ namespace ralf
         std::ifstream file(filePath, std::ios::in);
         if (file.is_open())
         {
-
-            std::string configData((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-            file.close();
-
             Json::CharReaderBuilder readerBuilder;
             std::string errs;
-            std::istringstream s(configData);
-            status = Json::parseFromStream(readerBuilder, s, &rootNode, &errs);
+            status = Json::parseFromStream(readerBuilder, file, &rootNode, &errs);
             if (!status)
                 LOGERR("Failed to parse JSON: %s\n", errs.c_str());
         }
@@ -371,4 +370,110 @@ namespace ralf
         ociConfigRootNode[MOUNTS].append(mountEntry);
         return true;
     }
+
+    bool hasOnlyLoopbackNameServers(const std::string &resolvPath)
+    {
+        std::ifstream in(resolvPath);
+        if (!in)
+        {
+            return false;
+        }
+
+        bool foundNameServer = false;
+        std::string line;
+        const std::string whitespace = " \t";
+
+        while (std::getline(in, line))
+        {
+            if (line.empty()) continue;
+
+            size_t start = line.find_first_not_of(whitespace);
+            if (start == std::string::npos || line[start] == '#' || line[start] == ';')
+            {
+                continue;
+            }
+
+            if (line.compare(start, 10, "nameserver") != 0)
+            {
+                continue;
+            }
+
+            size_t valueStart = line.find_first_not_of(whitespace, start + 10);
+            if (valueStart == std::string::npos || line[valueStart] == '#' || line[valueStart] == ';')
+            {
+                continue;
+            }
+
+            size_t valueEnd = line.find_first_of(" \t#;\r\n", valueStart);
+
+            // Extract the IP text token (strip off any trailing zone identifiers like %lo0)
+            size_t zoneMarker = line.find_first_of('%', valueStart);
+            size_t extractEnd = (zoneMarker != std::string::npos && (valueEnd == std::string::npos || zoneMarker < valueEnd))
+                                ? zoneMarker
+                                : valueEnd;
+
+            std::string ipStr = (extractEnd == std::string::npos)
+                                ? line.substr(valueStart)
+                                : line.substr(valueStart, extractEnd - valueStart);
+
+            foundNameServer = true;
+
+            // Try parsing as IPv4
+            struct in_addr ipv4Addr;
+            if (inet_pton(AF_INET, ipStr.c_str(), &ipv4Addr) == 1)
+            {
+                // The loopback range for IPv4 is 127.0.0.0/8
+                // Extract the first byte of the 32-bit network integer
+                uint8_t firstByte = reinterpret_cast<uint8_t*>(&ipv4Addr.s_addr)[0];
+                if (firstByte == 127)
+                {
+                    continue; // Valid IPv4 loopback
+                }
+            }
+            else // Try parsing as IPv6
+            {
+                struct in6_addr ipv6Addr;
+                if (inet_pton(AF_INET6, ipStr.c_str(), &ipv6Addr) == 1)
+                {
+                    // IPv6 loopback is strictly ::1 (15 bytes of 0x00, 1 byte of 0x01)
+                    if (IN6_IS_ADDR_LOOPBACK(&ipv6Addr))
+                    {
+                        continue; // Valid IPv6 loopback
+                    }
+                }
+            }
+
+            // If it isn't a valid IPv4 or IPv6 loopback address, it's an external nameserver
+            return false;
+        }
+
+        return foundNameServer;
+    }
+
+    std::string getResolverSourcePathForContainer()
+    {
+        /*
+         * Determine the appropriate resolver source path for the container.
+         * If the default resolver file has only loopback nameservers, check for alternative resolver files provided by
+         * NetworkManager or systemd-resolved. If found, use those; otherwise, fall back to the default resolver file.
+         */
+        if (!hasOnlyLoopbackNameServers(RALF_HOST_DEFAULT_RESOLV_CONF_FILE))
+        {
+            return RALF_HOST_DEFAULT_RESOLV_CONF_FILE;
+        }
+
+        if (checkIfPathExists(RALF_HOST_NOSTUB_NWMGR_RESOLV_CONF_FILE))
+        {
+            return RALF_HOST_NOSTUB_NWMGR_RESOLV_CONF_FILE;
+        }
+
+        if (checkIfPathExists(RALF_HOST_NOSTUB_SYSTEMD_RESOLV_CONF_FILE))
+        {
+            return RALF_HOST_NOSTUB_SYSTEMD_RESOLV_CONF_FILE;
+        }
+
+        LOGWARN("Host resolver file %s only has loopback nameservers and no fallback resolver file found", RALF_HOST_DEFAULT_RESOLV_CONF_FILE.c_str());
+        return RALF_HOST_DEFAULT_RESOLV_CONF_FILE;
+    }
+
 } // namespace ralf

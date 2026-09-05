@@ -24,6 +24,33 @@
 #include <json/json.h>
 
 #include "RalfConstants.h"
+
+#include <chrono>   // For std::chrono clocks and durations
+#include <cstdint>  // For standard int64_t types
+
+namespace ralf
+{
+    extern thread_local std::chrono::steady_clock::time_point gRalfPhaseLastTime;
+    extern thread_local const char* gRalfPhaseLastName;
+}
+
+// Unified milestone transition tracker and reset engine
+#define LOG_STEP_TIME(step_name) \
+    do { \
+        const auto currentTime = std::chrono::steady_clock::now(); \
+        const int64_t duration = std::chrono::duration_cast<std::chrono::microseconds>(currentTime - ralf::gRalfPhaseLastTime).count(); \
+        LOGINFO("RALF Phase [%s] -> [%s] took %lld us", \
+                ralf::gRalfPhaseLastName, #step_name, static_cast<long long>(duration)); \
+        ralf::gRalfPhaseLastTime = currentTime; \
+        ralf::gRalfPhaseLastName = #step_name; \
+    } while (0)
+
+#define RESET_LOG_STEP_TIME(step_name) \
+    do { \
+        ralf::gRalfPhaseLastTime = std::chrono::steady_clock::now(); \
+        ralf::gRalfPhaseLastName = #step_name; \
+    } while (0)
+
 namespace ralf
 {
     /**
@@ -140,4 +167,20 @@ namespace ralf
 
     bool addBindMountToOCIConfig(Json::Value &ociConfigRootNode, const std::string &hostPath, const std::string &containerPath, bool readOnly = false);
 
-} // namespace ralf
+    /**
+     * Function to check if the given resolver file contains only loopback nameservers.
+     * @param resolvPath The path to the resolver file (e.g., /etc/resolv.conf).
+     * @return true if the resolver file contains only loopback nameservers, false otherwise.
+     */
+    bool hasOnlyLoopbackNameServers(const std::string& resolvPath);
+
+    /**
+     * Function to get the resolver source path for the container.
+     * This function checks the host's resolver configuration and determines the appropriate
+     * resolver file to use inside the container prefering non-loopback resolvers if available.
+     * @note The function checks for the existence of specific resolver files and returns the first valid one found. If none are found, it defaults to the standard /etc/resolv.conf.
+     * @return The resolver source path as a string.
+     */
+    std::string getResolverSourcePathForContainer(void);
+
+}  // namespace ralf
