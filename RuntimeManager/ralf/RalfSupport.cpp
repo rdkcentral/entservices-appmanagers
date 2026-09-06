@@ -381,6 +381,7 @@ namespace ralf
 
         bool foundNameServer = false;
         std::string line;
+        std::string ipStr;
         const std::string whitespace = " \t";
 
         while (std::getline(in, line))
@@ -408,26 +409,41 @@ namespace ralf
 
             // Extract the IP text token (strip off any trailing zone identifiers like %lo0)
             size_t zoneMarker = line.find_first_of('%', valueStart);
-            size_t extractEnd = (zoneMarker != std::string::npos && (valueEnd == std::string::npos || zoneMarker < valueEnd))
-                                ? zoneMarker
-                                : valueEnd;
+            size_t extractEnd = valueEnd;
+            if (zoneMarker != std::string::npos && (valueEnd == std::string::npos || zoneMarker < valueEnd))
+            {
+                extractEnd = zoneMarker;
+            }
 
-            std::string ipStr = (extractEnd == std::string::npos)
-                                ? line.substr(valueStart)
-                                : line.substr(valueStart, extractEnd - valueStart);
+            if (extractEnd == std::string::npos)
+            {
+                ipStr.assign(line, valueStart, std::string::npos);
+            }
+            else
+            {
+                ipStr.assign(line, valueStart, extractEnd - valueStart);
+            }
 
-            foundNameServer = true;
+            if (ipStr.empty()) continue;
+
+            // If it doesn't even start with '1' or ':', it cannot possibly be a loopback address.
+            // This completely skips expensive inet_pton system calls for external IPs like 8.8.8.8.
+            const char firstChar = ipStr[0];
+            if (firstChar != '1' && firstChar != ':')
+            {
+                return false; // Found an external nameserver, abort immediately!
+            }
 
             // Try parsing as IPv4
             struct in_addr ipv4Addr;
             if (inet_pton(AF_INET, ipStr.c_str(), &ipv4Addr) == 1)
             {
-                // The loopback range for IPv4 is 127.0.0.0/8
-                // Extract the first byte of the 32-bit network integer
-                uint8_t firstByte = reinterpret_cast<uint8_t*>(&ipv4Addr.s_addr)[0];
-                if (firstByte == 127)
+                // Accessing the internal byte layout directly.
+                // The first octet is always at index 0 in network memory layout, making it completely endian-independent.
+                const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&ipv4Addr.s_addr);
+                if (bytes[0] == 127)
                 {
-                    continue; // Valid IPv4 loopback
+                    continue; // Valid IPv4 loopback range
                 }
             }
             else // Try parsing as IPv6
@@ -443,11 +459,11 @@ namespace ralf
                 }
             }
 
-            // If it isn't a valid IPv4 or IPv6 loopback address, it's an external nameserver
+            // If it passes the '1'/':' check but isn't a valid loopback structure, it's external or invalid
             return false;
         }
 
-        return foundNameServer;
+        return true;
     }
 
     std::string getResolverSourcePathForContainer()
@@ -457,22 +473,31 @@ namespace ralf
          * If the default resolver file has only loopback nameservers, check for alternative resolver files provided by
          * NetworkManager or systemd-resolved. If found, use those; otherwise, fall back to the default resolver file.
          */
+        // If the default file contains valid external nameservers, use it immediately.
+        // (Note: If the file doesn't exist, hasOnlyLoopbackNameServers returns false, causing it to return here)
         if (!hasOnlyLoopbackNameServers(RALF_HOST_DEFAULT_RESOLV_CONF_FILE))
         {
             return RALF_HOST_DEFAULT_RESOLV_CONF_FILE;
         }
 
-        if (checkIfPathExists(RALF_HOST_NOSTUB_NWMGR_RESOLV_CONF_FILE))
+        // Check the NetworkManager fallback file.
+        // It must exist AND contain at least one external, non-loopback nameserver.
+        if (!hasOnlyLoopbackNameServers(RALF_HOST_NOSTUB_NWMGR_RESOLV_CONF_FILE))
         {
             return RALF_HOST_NOSTUB_NWMGR_RESOLV_CONF_FILE;
         }
 
-        if (checkIfPathExists(RALF_HOST_NOSTUB_SYSTEMD_RESOLV_CONF_FILE))
+        // Check the systemd-resolved fallback file.
+        // It must exist AND contain at least one external, non-loopback nameserver.
+        if (!hasOnlyLoopbackNameServers(RALF_HOST_NOSTUB_SYSTEMD_RESOLV_CONF_FILE))
         {
             return RALF_HOST_NOSTUB_SYSTEMD_RESOLV_CONF_FILE;
         }
 
-        LOGWARN("Host resolver file %s only has loopback nameservers and no fallback resolver file found", RALF_HOST_DEFAULT_RESOLV_CONF_FILE.c_str());
+        // Ultimate Fallback path
+        LOGWARN("Host resolver file %s only has loopback nameservers and no valid fallback resolver file found",
+                RALF_HOST_DEFAULT_RESOLV_CONF_FILE.c_str());
+
         return RALF_HOST_DEFAULT_RESOLV_CONF_FILE;
     }
 
