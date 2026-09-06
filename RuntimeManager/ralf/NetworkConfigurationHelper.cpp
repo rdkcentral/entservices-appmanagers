@@ -624,6 +624,7 @@ bool generateNetworkingPluginNode(Json::Value& ociConfigRootNode)
     if (!hasNetworkStore && !hasContainerToHostStore && !permissionInternetEnabled && !permissionFireboltEnabled && !permissionThunderEnabled)
     {
         LOGWARN("%s: Temporary network configuration is empty; skipping networking plugin generation", MODULE_LOGTAG);
+        ociConfigRootNode.removeMember(TEMP_RALF_NWCFG);
         return true;
     }
 
