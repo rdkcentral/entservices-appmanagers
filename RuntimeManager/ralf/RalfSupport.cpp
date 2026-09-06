@@ -379,7 +379,6 @@ namespace ralf
             return false;
         }
 
-        bool foundNameServer = false;
         std::string line;
         std::string ipStr;
         const std::string whitespace = " \t";
