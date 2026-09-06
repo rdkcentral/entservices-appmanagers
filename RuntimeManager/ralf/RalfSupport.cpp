@@ -490,7 +490,7 @@ namespace ralf
          * NetworkManager or systemd-resolved. If found, use those; otherwise, fall back to the default resolver file.
          */
         // If the default file contains valid external nameservers, use it immediately.
-        // (Note: If the file doesn't exist, hasOnlyLoopbackNameServers returns false, causing it to return here)
+        // Note: we guard with checkIfPathExists(); missing files won't match this branch.
         if (checkIfPathExists(defaultResolverPath) &&
             !hasOnlyLoopbackNameServers(defaultResolverPath))
         {
