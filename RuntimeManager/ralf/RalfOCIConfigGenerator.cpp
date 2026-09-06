@@ -31,9 +31,6 @@ namespace ralf
 {
     bool RalfOCIConfigGenerator::generateRalfOCIConfig(const WPEFramework::Plugin::ApplicationConfiguration &config, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject)
     {
-        RESET_LOG_STEP_TIME(START);
-        LOG_STEP_TIME(START);
-
         Json::Value ociConfigRootNode;
 
         if (!JsonFromFile(RALF_OCI_BASE_SPEC_FILE, ociConfigRootNode))
@@ -41,7 +38,6 @@ namespace ralf
             LOGERR("Failed to load base OCI config template");
             return false;
         }
-        LOG_STEP_TIME(LOAD_BASE_SPEC);
         // Load graphics config and integrate into OCI config
         Json::Value graphicsConfigNode;
         if (!JsonFromFile(RALF_GRAPHICS_LAYER_CONFIG, graphicsConfigNode))
@@ -49,14 +45,12 @@ namespace ralf
             LOGERR("Failed to load Ralf graphics config JSON from file: %s", RALF_GRAPHICS_LAYER_CONFIG.c_str());
             return false;
         }
-        LOG_STEP_TIME(LOAD_GRAPHICS_CONFIG);
         // Apply graphics configuration
         if (!applyGraphicsConfigToOCIConfig(ociConfigRootNode, graphicsConfigNode))
         {
             LOGERR("Failed to apply graphics config to OCI config");
             return false;
         }
-        LOG_STEP_TIME(APPLY_GRAPHICS_CONFIG);
         // Now apply each Ralf package configuration
         for (const auto &ralfPkgInfo : mRalfPackages)
         {
@@ -66,7 +60,6 @@ namespace ralf
                 LOGERR("Failed to load Ralf package config JSON from file: %s", ralfPkgInfo.first.c_str());
                 return false;
             }
-            LOG_STEP_TIME(LOAD_RALF_PACKAGE_CONFIG);
             if (!applyConfigurationToOCIConfig(ociConfigRootNode, ralfPackageConfigNode))
             {
                 LOGERR("Failed to apply Ralf package config to OCI config for file: %s", ralfPkgInfo.first.c_str());
@@ -81,29 +74,22 @@ namespace ralf
             LOGERR("Failed to generate hooks for OCI config");
             return false;
         }
-        LOG_STEP_TIME(GENERATE_HOOKS_FOR_OCI_CONFIG);
         // // Let us apply data from runtimeConfigObject and applicationConfiguration
         if (applyRuntimeAndAppConfigToOCIConfig(ociConfigRootNode, runtimeConfigObject, config) == false)
         {
             LOGERR("Failed to apply runtime and application config to OCI config");
             return false;
         }
-        LOG_STEP_TIME(APPLY_RUNTIME_AND_APP_CONFIG);
         // Add FIREBOLT_ENDPOINT environment variable from runtime config to OCI config if it exists
         addFireboltEndPointToConfig(ociConfigRootNode, runtimeConfigObject.envVariables);
-        LOG_STEP_TIME(APPLY_FIREBOLT_ENDPOINT);
         // /rootdir is a 10MB tmpfs, so we need to ensure that the application has enough space for its working directory.
         addToEnvironment(ociConfigRootNode, "TEMP_STORAGE_PATH", "/rootdir");
-        LOG_STEP_TIME(APPLY_TEMP_STORAGE_PATH);
         // Log name update.
         addLogNameToOCIConfig(ociConfigRootNode, config.mAppStorageInfo.path, config.mAppId);
-        LOG_STEP_TIME(APPLY_LOG_NAME);
         // Add Timezone info
         addTimezoneInfo(ociConfigRootNode);
-        LOG_STEP_TIME(APPLY_TIMEZONE_INFO);
         // Finally save the modified OCI config to file
         addThunderAccessToPrivilegedApps(ociConfigRootNode);
-        LOG_STEP_TIME(APPLY_THUNDER_ACCESS);
         // Network configuration policy is derived by the helper from generated
         // networking plugin data and permission-translated rules.
         // Ensure that we start translation after all the environment variables and other configuration
@@ -113,14 +99,11 @@ namespace ralf
             LOGERR("Failed to generate networking plugin config");
             return false;
         }
-        LOG_STEP_TIME(GENERATE_NETWORKING_PLUGIN_NODE);
         if (false == NetworkConfigurationHelper::applyRuntimeNetworkingConfiguration(ociConfigRootNode, mConfigFilePath))
         {
             LOGERR("Failed to apply runtime networking configuration");
             return false;
         }
-        LOG_STEP_TIME(APPLY_RUNTIME_NETWORKING_POLICY);
-        LOG_STEP_TIME(APPLY_NETWORKING_CONFIG);
         return saveOCIConfigToFile(ociConfigRootNode, config.mUserId, config.mGroupId);
     }
 
@@ -290,7 +273,6 @@ namespace ralf
         {
             LOGERR("Failed to open OCI config output file: %s", mConfigFilePath.c_str());
         }
-        LOG_STEP_TIME(SAVE_OCI_CONFIG_TO_FILE);
         return status;
     }
 
@@ -450,7 +432,6 @@ namespace ralf
             LOGERR("Failed to apply Ralf Entry point for package");
             return false;
         }
-        LOG_STEP_TIME(APPLY_ENTRY_POINT);
         // Everything else is optional. So return value will be true.
         //  Check if configuration node exists.
         if (!manifestRootNode.isMember(CONFIGURATION) || !manifestRootNode[CONFIGURATION].isObject())
@@ -461,7 +442,6 @@ namespace ralf
         bool status = true;
         Json::Value configNode = manifestRootNode[CONFIGURATION];
         std::string packageType;
-        LOG_STEP_TIME(APPLY_CONFIG);
         if (manifestRootNode.isMember(PACKAGE_TYPE) && manifestRootNode[PACKAGE_TYPE].isString())
         {
             packageType = manifestRootNode[PACKAGE_TYPE].asString();
@@ -471,35 +451,29 @@ namespace ralf
         {
             status = addConfigOverridesToOCIConfig(ociConfigRootNode, configNode);
             LOGDBG("Applied config overrides to OCI config ? %s\n", status ? "true" : "false");
-            LOG_STEP_TIME(APPLY_CONFIG_OVERRIDES);
         }
         // Apply "urn:rdk:config:memory", reserved
         if (packageType == PKG_TYPE_APPLICATION || packageType == PKG_TYPE_RUNTIME)
         {
             status = addMemoryConfigToOCIConfig(ociConfigRootNode, configNode, packageType);
             LOGDBG("Applied memory config to OCI config ? %s\n", status ? "true" : "false");
-            LOG_STEP_TIME(APPLY_MEMORY_CONFIG);
 
             status = addStorageConfigToOCIConfig(ociConfigRootNode, configNode);
             LOGDBG("Applied storage config to OCI config ? %s\n", status ? "true" : "false");
-            LOG_STEP_TIME(APPLY_STORAGE_CONFIG);
         }
         // Prepare for urn:rdk:config:network - spec matrix: Application/Service/Runtime (N/A for Base)
         if (packageType == PKG_TYPE_APPLICATION || packageType == PKG_TYPE_SERVICE || packageType == PKG_TYPE_RUNTIME)
         {
             // 1. Capture network requirements for certain permissions
             status = NetworkConfigurationHelper::updatePermissionConfigurationNode(ociConfigRootNode, manifestRootNode);
-            LOG_STEP_TIME(GET_NETWORK_CONFIG_FROM_PERMISSIONS);
             // 2. Capture network requirements based on the configuration node
             status = NetworkConfigurationHelper::updateNetworkConfigurationNode(ociConfigRootNode, manifestRootNode);
-            LOG_STEP_TIME(GET_NETWORK_CONFIG_FROM_CONFIGURATION);
         }
         // Apply urn:rdk:config:env — spec matrix: Application/Service only (N/A for Runtime and Base)
         if (packageType == PKG_TYPE_APPLICATION || packageType == PKG_TYPE_SERVICE)
         {
             status = addConfigEnvToOCIConfig(ociConfigRootNode, configNode);
             LOGDBG("Applied config env to OCI config ? %s\n", status ? "true" : "false");
-            LOG_STEP_TIME(APPLY_CONFIG_ENV);
         }
         else if (configNode.isMember(ENV_CONFIG_URN))
         {
@@ -509,7 +483,6 @@ namespace ralf
         if (packageType == PKG_TYPE_APPLICATION)
         {
             addAppPackageVersionToConfig(ociConfigRootNode, manifestRootNode);
-            LOG_STEP_TIME(APPLY_CONFIG_APP_PACKAGE_VERSION);
         }
 
         return true;

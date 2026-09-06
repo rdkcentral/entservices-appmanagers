@@ -25,32 +25,6 @@
 
 #include "RalfConstants.h"
 
-#include <chrono>   // For std::chrono clocks and durations
-#include <cstdint>  // For standard int64_t types
-
-namespace ralf
-{
-    extern thread_local std::chrono::steady_clock::time_point gRalfPhaseLastTime;
-    extern thread_local const char* gRalfPhaseLastName;
-}
-
-// Unified milestone transition tracker and reset engine
-#define LOG_STEP_TIME(step_name) \
-    do { \
-        const auto currentTime = std::chrono::steady_clock::now(); \
-        const int64_t duration = std::chrono::duration_cast<std::chrono::microseconds>(currentTime - ralf::gRalfPhaseLastTime).count(); \
-        LOGINFO("RALF Phase [%s] -> [%s] took %lld us", \
-                ralf::gRalfPhaseLastName, #step_name, static_cast<long long>(duration)); \
-        ralf::gRalfPhaseLastTime = currentTime; \
-        ralf::gRalfPhaseLastName = #step_name; \
-    } while (0)
-
-#define RESET_LOG_STEP_TIME(step_name) \
-    do { \
-        ralf::gRalfPhaseLastTime = std::chrono::steady_clock::now(); \
-        ralf::gRalfPhaseLastName = #step_name; \
-    } while (0)
-
 namespace ralf
 {
     /**
