@@ -177,7 +177,7 @@ namespace ralf
     /**
      * Function to get the resolver source path for the container.
      * This function checks the host's resolver configuration and determines the appropriate
-     * resolver file to use inside the container prefering non-loopback resolvers if available.
+     * resolver file to use inside the container preferring non-loopback resolvers if available.
      * @note The function checks for the existence of specific resolver files and returns the first valid one found. If none are found, it defaults to the standard /etc/resolv.conf.
      * @return The resolver source path as a string.
      */

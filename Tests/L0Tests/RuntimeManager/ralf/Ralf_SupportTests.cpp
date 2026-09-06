@@ -956,11 +956,9 @@ uint32_t Test_Ralf_HasOnlyLoopbackNameServers_BehaviorByInputFile()
 
 // Helper structure to handle automated backup and restoration of real host files
 struct HostFileBackup {
-    std::string path;
-    std::string content;
-    bool existed;
-
-    HostFileBackup(const std::string& p) : path(p), existed(false) {
+    explicit HostFileBackup(const std::string& p)
+         : path(p)
+    {
         std::ifstream in(path);
         if (in) {
             existed = true;
@@ -971,13 +969,26 @@ struct HostFileBackup {
         }
     }
 
-    void restore() {
+    ~HostFileBackup() { restore(); }
+
+    void restore()
+    {
+        if (restored) {
+            return;
+        }
+        restored = true;
+
         ::remove(path.c_str());
         if (existed) {
             std::ofstream out(path);
             out << content;
         }
     }
+
+    std::string path;
+    std::string content;
+    bool existed{false};
+    bool restored{false};
 };
 
 /* Test_Ralf_GetResolverSourcePathForContainer_ReturnsKnownResolverPath

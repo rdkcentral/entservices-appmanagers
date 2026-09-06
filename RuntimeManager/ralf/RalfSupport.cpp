@@ -489,21 +489,24 @@ namespace ralf
          */
         // If the default file contains valid external nameservers, use it immediately.
         // (Note: If the file doesn't exist, hasOnlyLoopbackNameServers returns false, causing it to return here)
-        if (!hasOnlyLoopbackNameServers(RALF_HOST_DEFAULT_RESOLV_CONF_FILE))
+        if (checkIfPathExists(RALF_HOST_DEFAULT_RESOLV_CONF_FILE) &&
+            !hasOnlyLoopbackNameServers(RALF_HOST_DEFAULT_RESOLV_CONF_FILE))
         {
             return RALF_HOST_DEFAULT_RESOLV_CONF_FILE;
         }
 
         // Check the NetworkManager fallback file.
         // It must exist AND contain at least one external, non-loopback nameserver.
-        if (!hasOnlyLoopbackNameServers(RALF_HOST_NOSTUB_NWMGR_RESOLV_CONF_FILE))
+        if (checkIfPathExists(RALF_HOST_NOSTUB_NWMGR_RESOLV_CONF_FILE) &&
+            !hasOnlyLoopbackNameServers(RALF_HOST_NOSTUB_NWMGR_RESOLV_CONF_FILE))
         {
             return RALF_HOST_NOSTUB_NWMGR_RESOLV_CONF_FILE;
         }
 
         // Check the systemd-resolved fallback file.
         // It must exist AND contain at least one external, non-loopback nameserver.
-        if (!hasOnlyLoopbackNameServers(RALF_HOST_NOSTUB_SYSTEMD_RESOLV_CONF_FILE))
+        if (checkIfPathExists(RALF_HOST_NOSTUB_SYSTEMD_RESOLV_CONF_FILE) &&
+            !hasOnlyLoopbackNameServers(RALF_HOST_NOSTUB_SYSTEMD_RESOLV_CONF_FILE))
         {
             return RALF_HOST_NOSTUB_SYSTEMD_RESOLV_CONF_FILE;
         }
