@@ -33,12 +33,14 @@
  */
 
 #include <cstdint>
+#include <cstdio>
 #include <fstream>
 #include <iostream>
 #include <string>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <cstdlib>
+#include <vector>
 
 #include "ralf/RalfSupport.h"
 #include "common/L0Expect.hpp"
@@ -884,6 +886,162 @@ uint32_t Test_Ralf_GenerateOCIRootfs_FailsDueToNoMountSupport()
 
     L0Test::ExpectTrue(tr, !result,
                        "generateOCIRootfs() returns false when overlayfs mount is unavailable");
+
+    return tr.failures;
+}
+
+// Helper to handle safe teardown inside test blocks
+inline void cleanupTestFile(const std::string& path) {
+    ::remove(path.c_str());
+}
+
+/* Test_Ralf_HasOnlyLoopbackNameServers_BehaviorByInputFile
+ *
+ * Verifies loopback resolver detection for missing, loopback-only and external resolver files.
+ */
+uint32_t Test_Ralf_HasOnlyLoopbackNameServers_BehaviorByInputFile()
+{
+    L0Test::TestResult tr;
+    const std::string testPath = "/tmp/ralf_l0test_dynamic_resolv.conf";
+
+    // 1. Missing File Case
+    cleanupTestFile(testPath); // Ensure it does not exist
+    bool missingResult = ralf::hasOnlyLoopbackNameServers(testPath);
+    L0Test::ExpectTrue(tr, !missingResult,
+                       "Returns false when the file is completely missing");
+
+    // 2. Empty / Comments-Only File Case
+    WriteFile(testPath, "# Clear file configuration\n; nameserver 8.8.8.8\n\n");
+    L0Test::ExpectTrue(tr, ralf::hasOnlyLoopbackNameServers(testPath),
+                       "Returns true for an empty or comments-only file structure");
+
+    // 3. Standard IPv4 Loopback
+    WriteFile(testPath, "nameserver 127.0.0.1\n");
+    L0Test::ExpectTrue(tr, ralf::hasOnlyLoopbackNameServers(testPath),
+                       "Returns true for basic 127.0.0.1 loopback");
+
+    // 4. Alternative IPv4 Loopback Subnet (e.g., systemd-resolved local stub)
+    WriteFile(testPath, "nameserver 127.0.0.53\n");
+    L0Test::ExpectTrue(tr, ralf::hasOnlyLoopbackNameServers(testPath),
+                       "Returns true for alternative loopback subnets like 127.0.0.53");
+
+    // 5. Standard IPv6 Loopback
+    WriteFile(testPath, "nameserver ::1\n");
+    L0Test::ExpectTrue(tr, ralf::hasOnlyLoopbackNameServers(testPath),
+                       "Returns true for standard IPv6 loopback ::1");
+
+    // 6. Trailing Inline Comments and Whitespace Handling
+    WriteFile(testPath, "   nameserver   127.0.0.1   # Trailing comment token\n");
+    L0Test::ExpectTrue(tr, ralf::hasOnlyLoopbackNameServers(testPath),
+                       "Returns true when matching loopback padded with whitespace and inline comments");
+
+    // 7. Mixed Safe Configuration (IPv4 + IPv6 Loopbacks together)
+    WriteFile(testPath, "nameserver 127.0.0.1\nnameserver ::1\n");
+    L0Test::ExpectTrue(tr, ralf::hasOnlyLoopbackNameServers(testPath),
+                       "Returns true when every single configured entry is a loopback option");
+
+    // 8. Single External Pollution (IPv4)
+    WriteFile(testPath, "nameserver 127.0.0.1\nameserver 8.8.8.8\n");
+    L0Test::ExpectTrue(tr, !ralf::hasOnlyLoopbackNameServers(testPath),
+                       "Returns false immediately if a valid external IPv4 namespace pollutes the list");
+
+    // 9. Single External Pollution (IPv6)
+    WriteFile(testPath, "nameserver ::1\nameserver 2001:4860:4860::8888\n");
+    L0Test::ExpectTrue(tr, !ralf::hasOnlyLoopbackNameServers(testPath),
+                       "Returns false immediately if a valid external IPv6 namespace pollutes the list");
+
+    cleanupTestFile(testPath);
+    return tr.failures;
+}
+
+// Helper structure to handle automated backup and restoration of real host files
+struct HostFileBackup {
+    std::string path;
+    std::string content;
+    bool existed;
+
+    HostFileBackup(const std::string& p) : path(p), existed(false) {
+        std::ifstream in(path);
+        if (in) {
+            existed = true;
+            std::string line;
+            while (std::getline(in, line)) {
+                content += line + "\n";
+            }
+        }
+    }
+
+    void restore() {
+        ::remove(path.c_str());
+        if (existed) {
+            std::ofstream out(path);
+            out << content;
+        }
+    }
+};
+
+/* Test_Ralf_GetResolverSourcePathForContainer_ReturnsKnownResolverPath
+ *
+ * Verifies resolver source selection returns one of the known supported resolver paths.
+ */
+uint32_t Test_Ralf_GetResolverSourcePathForContainer_ReturnsKnownResolverPath()
+{
+    L0Test::TestResult tr;
+
+    // 1. Back up all three real host files to completely isolate the test state
+    HostFileBackup defaultBackup(ralf::RALF_HOST_DEFAULT_RESOLV_CONF_FILE);
+    HostFileBackup nwmgrBackup(ralf::RALF_HOST_NOSTUB_NWMGR_RESOLV_CONF_FILE);
+    HostFileBackup systemdBackup(ralf::RALF_HOST_NOSTUB_SYSTEMD_RESOLV_CONF_FILE);
+
+    // Ensure clean slate before scenarios execute
+    ::remove(ralf::RALF_HOST_DEFAULT_RESOLV_CONF_FILE.c_str());
+    ::remove(ralf::RALF_HOST_NOSTUB_NWMGR_RESOLV_CONF_FILE.c_str());
+    ::remove(ralf::RALF_HOST_NOSTUB_SYSTEMD_RESOLV_CONF_FILE.c_str());
+
+    // ------------------------------------------------------------------------
+    // SCENARIO 1: Default file has valid external nameservers (Immediate Return)
+    // ------------------------------------------------------------------------
+    WriteFile(ralf::RALF_HOST_DEFAULT_RESOLV_CONF_FILE, "nameserver 8.8.8.8\n");
+
+    std::string path = ralf::getResolverSourcePathForContainer();
+    L0Test::ExpectTrue(tr, path == ralf::RALF_HOST_DEFAULT_RESOLV_CONF_FILE,
+                       "Scenario 1: Returns default file if it contains an external nameserver");
+
+    // ------------------------------------------------------------------------
+    // SCENARIO 2: Default is loopback; NetworkManager has valid external file
+    // ------------------------------------------------------------------------
+    WriteFile(ralf::RALF_HOST_DEFAULT_RESOLV_CONF_FILE, "nameserver 127.0.0.1\n");
+    WriteFile(ralf::RALF_HOST_NOSTUB_NWMGR_RESOLV_CONF_FILE, "nameserver 1.1.1.1\n");
+
+    path = ralf::getResolverSourcePathForContainer();
+    L0Test::ExpectTrue(tr, path == ralf::RALF_HOST_NOSTUB_NWMGR_RESOLV_CONF_FILE,
+                       "Scenario 2: Falls back to NetworkManager file if default is loopback-only");
+
+    // ------------------------------------------------------------------------
+    // SCENARIO 3: Default is loopback, NetworkManager is loopback, systemd is external
+    // ------------------------------------------------------------------------
+    WriteFile(ralf::RALF_HOST_NOSTUB_NWMGR_RESOLV_CONF_FILE, "nameserver 127.0.0.53\n"); // loopback
+    WriteFile(ralf::RALF_HOST_NOSTUB_SYSTEMD_RESOLV_CONF_FILE, "nameserver 9.9.9.9\n"); // external
+
+    path = ralf::getResolverSourcePathForContainer();
+    L0Test::ExpectTrue(tr, path == ralf::RALF_HOST_NOSTUB_SYSTEMD_RESOLV_CONF_FILE,
+                       "Scenario 3: Falls back to systemd file if default and NetworkManager are loopback-only");
+
+    // ------------------------------------------------------------------------
+    // SCENARIO 4: ALL files are loopback-only or missing (Ultimate Fallback)
+    // ------------------------------------------------------------------------
+    WriteFile(ralf::RALF_HOST_NOSTUB_SYSTEMD_RESOLV_CONF_FILE, "nameserver ::1\n"); // loopback
+
+    path = ralf::getResolverSourcePathForContainer();
+    L0Test::ExpectTrue(tr, path == ralf::RALF_HOST_DEFAULT_RESOLV_CONF_FILE,
+                       "Scenario 4: Drops back to default file if all available alternatives fail loopback validation");
+
+    // ------------------------------------------------------------------------
+    // CLEANUP: Restore original host configuration files exactly as they were
+    // ------------------------------------------------------------------------
+    defaultBackup.restore();
+    nwmgrBackup.restore();
+    systemdBackup.restore();
 
     return tr.failures;
 }

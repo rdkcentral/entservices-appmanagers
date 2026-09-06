@@ -155,6 +155,17 @@ extern uint32_t Test_Ralf_CreateDirectories_UnderReadOnlyParentReturnsError();
 extern uint32_t Test_Ralf_CreateDirectories_WithNonZeroUidGidCallsChown();
 extern uint32_t Test_Ralf_UnmountOverlayfs_NonMountedPathReturnsFalse();
 extern uint32_t Test_Ralf_GenerateOCIRootfs_FailsDueToNoMountSupport();
+extern uint32_t Test_Ralf_HasOnlyLoopbackNameServers_BehaviorByInputFile();
+extern uint32_t Test_Ralf_GetResolverSourcePathForContainer_ReturnsKnownResolverPath();
+
+// ── ralf/NetworkConfigurationHelper tests ───────────────────────────────────
+extern uint32_t Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_MergesEntriesByName();
+extern uint32_t Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_IgnoresMalformedEntries();
+extern uint32_t Test_NetworkConfigurationHelper_UpdatePermissionConfigurationNode_SetsFlags();
+extern uint32_t Test_NetworkConfigurationHelper_UpdateTempRalfNWCfgFromEnv_ParsesPortAndLocalhostMasquerade();
+extern uint32_t Test_NetworkConfigurationHelper_UpdateTempRalfNWCfgFromEnv_EmptyEnvVarListReturnsFalse();
+extern uint32_t Test_NetworkConfigurationHelper_GenerateNetworkingPluginNode_ConsumesTempNode();
+extern uint32_t Test_NetworkConfigurationHelper_ApplyRuntimeNetworkingConfiguration_AddsCapabilityForNetworkMode();
 
 // ── ralf/RalfPackageBuilder tests ─────────────────────────────────────────────
 extern uint32_t Test_RalfPackageBuilder_ConstructionAndDestruction();
@@ -457,6 +468,17 @@ int main()
         { "Ralf_CreateDirectories_WithNonZeroUidGidCallsChown",                      Test_Ralf_CreateDirectories_WithNonZeroUidGidCallsChown },
         { "Ralf_UnmountOverlayfs_NonMountedPathReturnsFalse",                        Test_Ralf_UnmountOverlayfs_NonMountedPathReturnsFalse },
         { "Ralf_GenerateOCIRootfs_FailsDueToNoMountSupport",                         Test_Ralf_GenerateOCIRootfs_FailsDueToNoMountSupport },
+        { "Ralf_HasOnlyLoopbackNameServers_BehaviorByInputFile",                     Test_Ralf_HasOnlyLoopbackNameServers_BehaviorByInputFile },
+        { "Ralf_GetResolverSourcePathForContainer_ReturnsKnownResolverPath",         Test_Ralf_GetResolverSourcePathForContainer_ReturnsKnownResolverPath },
+
+        // ── ralf/NetworkConfigurationHelper tests ───────────────────────────
+        { "NetworkConfigurationHelper_UpdateNetworkConfigurationNode_MergesEntriesByName", Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_MergesEntriesByName },
+        { "NetworkConfigurationHelper_UpdateNetworkConfigurationNode_IgnoresMalformedEntries", Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_IgnoresMalformedEntries },
+        { "NetworkConfigurationHelper_UpdatePermissionConfigurationNode_SetsFlags",  Test_NetworkConfigurationHelper_UpdatePermissionConfigurationNode_SetsFlags },
+        { "NetworkConfigurationHelper_UpdateTempRalfNWCfgFromEnv_ParsesPortAndLocalhostMasquerade", Test_NetworkConfigurationHelper_UpdateTempRalfNWCfgFromEnv_ParsesPortAndLocalhostMasquerade },
+        { "NetworkConfigurationHelper_UpdateTempRalfNWCfgFromEnv_EmptyEnvVarListReturnsFalse", Test_NetworkConfigurationHelper_UpdateTempRalfNWCfgFromEnv_EmptyEnvVarListReturnsFalse },
+        { "NetworkConfigurationHelper_GenerateNetworkingPluginNode_ConsumesTempNode", Test_NetworkConfigurationHelper_GenerateNetworkingPluginNode_ConsumesTempNode },
+        { "NetworkConfigurationHelper_ApplyRuntimeNetworkingConfiguration_AddsCapabilityForNetworkMode", Test_NetworkConfigurationHelper_ApplyRuntimeNetworkingConfiguration_AddsCapabilityForNetworkMode },
 
         // ── ralf/RalfPackageBuilder tests ────────────────────────────────────
         { "RalfPackageBuilder_ConstructionAndDestruction",                           Test_RalfPackageBuilder_ConstructionAndDestruction },
