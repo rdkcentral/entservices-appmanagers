@@ -133,21 +133,36 @@ namespace ralf
      */
     bool JsonFromFile(const std::string &filePath, Json::Value &rootNode)
     {
-        bool status = false;
         LOGDBG("JsonFromFile called for file: %s\n", filePath.c_str());
+
         std::ifstream file(filePath, std::ios::in);
-        if (file.is_open())
-        {
-            Json::CharReaderBuilder readerBuilder;
-            std::string errs;
-            status = Json::parseFromStream(readerBuilder, file, &rootNode, &errs);
-            if (!status)
-                LOGERR("Failed to parse JSON: %s\n", errs.c_str());
-        }
-        else
+        if (!file.is_open())
         {
             LOGERR("Failed to open JSON file: %s\n", filePath.c_str());
+            LOGDBG("JsonFromFile [%s] ,status: 0\n", filePath.c_str());
+            return false;
         }
+
+        // Static Thread-Safe Builder Allocation
+        // Instantiating a CharReaderBuilder allocates internal settings maps on the heap.
+        // Making it static constructs it exactly once for the application lifetime.
+        static const Json::CharReaderBuilder readerBuilder = []() {
+            Json::CharReaderBuilder builder;
+            // Disable Unneeded Error Tracking Features
+            // Prevents the builder from collecting detailed structural extra information
+            // that we don't explicitly require, speeding up the parsing loop.
+            builder["collectComments"] = false;
+            return builder;
+        }();
+
+        std::string errs;
+        const bool status = Json::parseFromStream(readerBuilder, file, &rootNode, &errs);
+
+        if (!status)
+        {
+            LOGERR("Failed to parse JSON: %s\n", errs.c_str());
+        }
+
         LOGDBG("JsonFromFile [%s] ,status: %d\n", filePath.c_str(), status);
         return status;
     }
