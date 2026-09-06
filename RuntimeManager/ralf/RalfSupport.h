@@ -183,4 +183,16 @@ namespace ralf
      */
     std::string getResolverSourcePathForContainer(void);
 
+    /**
+     * Testable overload of resolver source selection that accepts explicit file paths.
+     * This keeps production behavior unchanged while allowing tests to use temporary files.
+     * @param defaultResolverPath Primary resolver file path.
+     * @param nwmgrResolverPath NetworkManager no-stub resolver file path.
+     * @param systemdResolverPath systemd-resolved resolver file path.
+     * @return Selected resolver source path.
+     */
+    std::string getResolverSourcePathForContainer(const std::string& defaultResolverPath,
+                                                  const std::string& nwmgrResolverPath,
+                                                  const std::string& systemdResolverPath);
+
 }  // namespace ralf

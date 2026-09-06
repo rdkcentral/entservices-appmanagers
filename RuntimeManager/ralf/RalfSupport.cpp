@@ -480,7 +480,9 @@ namespace ralf
         return true;
     }
 
-    std::string getResolverSourcePathForContainer()
+    std::string getResolverSourcePathForContainer(const std::string& defaultResolverPath,
+                                                  const std::string& nwmgrResolverPath,
+                                                  const std::string& systemdResolverPath)
     {
         /*
          * Determine the appropriate resolver source path for the container.
@@ -489,33 +491,40 @@ namespace ralf
          */
         // If the default file contains valid external nameservers, use it immediately.
         // (Note: If the file doesn't exist, hasOnlyLoopbackNameServers returns false, causing it to return here)
-        if (checkIfPathExists(RALF_HOST_DEFAULT_RESOLV_CONF_FILE) &&
-            !hasOnlyLoopbackNameServers(RALF_HOST_DEFAULT_RESOLV_CONF_FILE))
+        if (checkIfPathExists(defaultResolverPath) &&
+            !hasOnlyLoopbackNameServers(defaultResolverPath))
         {
-            return RALF_HOST_DEFAULT_RESOLV_CONF_FILE;
+            return defaultResolverPath;
         }
 
         // Check the NetworkManager fallback file.
         // It must exist AND contain at least one external, non-loopback nameserver.
-        if (checkIfPathExists(RALF_HOST_NOSTUB_NWMGR_RESOLV_CONF_FILE) &&
-            !hasOnlyLoopbackNameServers(RALF_HOST_NOSTUB_NWMGR_RESOLV_CONF_FILE))
+        if (checkIfPathExists(nwmgrResolverPath) &&
+            !hasOnlyLoopbackNameServers(nwmgrResolverPath))
         {
-            return RALF_HOST_NOSTUB_NWMGR_RESOLV_CONF_FILE;
+            return nwmgrResolverPath;
         }
 
         // Check the systemd-resolved fallback file.
         // It must exist AND contain at least one external, non-loopback nameserver.
-        if (checkIfPathExists(RALF_HOST_NOSTUB_SYSTEMD_RESOLV_CONF_FILE) &&
-            !hasOnlyLoopbackNameServers(RALF_HOST_NOSTUB_SYSTEMD_RESOLV_CONF_FILE))
+        if (checkIfPathExists(systemdResolverPath) &&
+            !hasOnlyLoopbackNameServers(systemdResolverPath))
         {
-            return RALF_HOST_NOSTUB_SYSTEMD_RESOLV_CONF_FILE;
+            return systemdResolverPath;
         }
 
         // Ultimate Fallback path
         LOGWARN("Host resolver file %s only has loopback nameservers and no valid fallback resolver file found",
-                RALF_HOST_DEFAULT_RESOLV_CONF_FILE.c_str());
+                defaultResolverPath.c_str());
 
-        return RALF_HOST_DEFAULT_RESOLV_CONF_FILE;
+        return defaultResolverPath;
+    }
+
+    std::string getResolverSourcePathForContainer()
+    {
+        return getResolverSourcePathForContainer(RALF_HOST_DEFAULT_RESOLV_CONF_FILE,
+                                                 RALF_HOST_NOSTUB_NWMGR_RESOLV_CONF_FILE,
+                                                 RALF_HOST_NOSTUB_SYSTEMD_RESOLV_CONF_FILE);
     }
 
 } // namespace ralf
