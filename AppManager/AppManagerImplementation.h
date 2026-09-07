@@ -223,7 +223,7 @@ namespace Plugin {
         Core::hresult GetMaxInactiveRamUsage(int32_t& maxInactiveRamUsage) const override;
     #ifdef APP_MANAGER_RESOURCE_MONITOR
         Core::hresult SetInactiveTargetState(const string& appId, Exchange::ILifecycleManager::LifecycleState state);
-        bool ReconcileAndWait(const string& appId, uint32_t ramTargetMB, bool allowTerminate, bool& targetRamAchieved);
+        Core::hresult Reconcile(const string& appId, uint32_t ramTargetMB, bool allowTerminate);
         uint32_t GetAppRamTargetMB(const string& appId) const;
         bool SupportsHibernation(const string& appId);
         bool HasHibernationFlashSpace(const string& appId) const;
@@ -247,9 +247,10 @@ namespace Plugin {
         void releaseStorageManagerRemoteObject();
     #ifdef APP_MANAGER_RESOURCE_MONITOR
         Core::hresult createResourceMonitorRemoteObject();
+        Core::hresult createResourceMonitorRemoteObjectLocked();
         void releaseResourceMonitorRemoteObject();
-        Core::hresult Reconcile(const string& appId, uint32_t ramTargetMB, bool allowTerminate);
         void OnReconciliationComplete(const string& appId, bool targetRamAchieved);
+        bool CompletePendingPreload(const string& appId, bool targetRamAchieved);
     #endif
     private:
         mutable Core::CriticalSection mAdminLock;
@@ -260,6 +261,7 @@ namespace Plugin {
         Exchange::IPackageInstaller* mPackageManagerInstallerObject;
         Exchange::IAppStorageManager* mStorageManagerRemoteObject;
     #ifdef APP_MANAGER_RESOURCE_MONITOR
+        std::mutex mResourceMonitorLock;
         Exchange::IResourceMonitor* mResourceMonitorRemoteObject;
     #endif
         PluginHost::IShell* mCurrentservice;
@@ -273,12 +275,8 @@ namespace Plugin {
         std::condition_variable mAppRequestListCV;
         std::list<std::shared_ptr<AppManagerRequest>> mAppRequestList;
     #ifdef APP_MANAGER_RESOURCE_MONITOR
-        std::mutex mReconcileRequestLock;
-        std::mutex mReconcileResultLock;
-        std::condition_variable mReconcileResultCV;
-        bool mReconcilePending;
-        std::string mReconcileAppId;
-        bool mTargetRamAchieved;
+        std::mutex mPendingPreloadLock;
+        std::map<std::string, std::shared_ptr<AppLaunchRequestParam>> mPendingPreloads;
         std::string mHibernationStoragePath;
         std::unique_ptr<AppStateTransitionManager> mStateTransitionManager;
     #endif
