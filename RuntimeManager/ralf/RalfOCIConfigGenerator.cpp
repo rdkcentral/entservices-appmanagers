@@ -448,10 +448,16 @@ namespace ralf
         {
             status = addConfigEnvToOCIConfig(ociConfigRootNode, configNode);
             LOGDBG("Applied config env to OCI config ? %s\n", status ? "true" : "false");
+            status = addDialConfigToOCIConfig(ociConfigRootNode, configNode, manifestRootNode);
+            LOGDBG("Applied DIAL config to OCI config ? %s\n", status ? "true" : "false");
         }
         else if (configNode.isMember(ENV_CONFIG_URN))
         {
             LOGWARN("Ignoring %s for packageType '%s'; only valid for application/service packages\n", ENV_CONFIG_URN, packageType.c_str());
+        }
+        else if (configNode.isMember(DIAL_CONFIG_URN))
+        {
+            LOGWARN("Ignoring %s for packageType '%s'; only valid for application/service packages\n", DIAL_CONFIG_URN, packageType.c_str());
         }
         // Apply urn:rdk:config:platform — spec matrix: Optional for all package types
         status = addPlatformConfigToOCIConfig(ociConfigRootNode, configNode);
@@ -667,6 +673,85 @@ namespace ralf
         {
             LOGWARN("Config env node found but contains no valid key/value entries\n");
         }
+        return status;
+    }
+
+    bool RalfOCIConfigGenerator::addDialConfigToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &configNode, const Json::Value &manifestRootNode)
+    {
+        if (!configNode.isMember(DIAL_CONFIG_URN) || !configNode[DIAL_CONFIG_URN].isObject())
+        {
+            LOGDBG("No DIAL configuration found in Ralf package config\n");
+            return false;
+        }
+
+        const Json::Value &dialNode = configNode[DIAL_CONFIG_URN];
+        bool status = false;
+
+        std::string dialAppName;
+        if (dialNode.isMember(APP_NAMES) && dialNode[APP_NAMES].isArray())
+        {
+            for (const auto &entry : dialNode[APP_NAMES])
+            {
+                if (entry.isString() && !entry.asString().empty())
+                {
+                    dialAppName = entry.asString();
+                    break;
+                }
+            }
+        }
+        if (dialAppName.empty() && manifestRootNode.isMember(ID) && manifestRootNode[ID].isString())
+        {
+            dialAppName = manifestRootNode[ID].asString();
+        }
+
+        if (!dialAppName.empty())
+        {
+            addToEnvironment(ociConfigRootNode, APPLICATION_DIAL_NAME_ENV_KEY, dialAppName);
+            addToEnvironment(ociConfigRootNode, DIAL_FRIENDLY_NAME_ENV_KEY, dialAppName);
+            addToEnvironment(ociConfigRootNode, DIAL_ENABLED_ENV_KEY, "true");
+            status = true;
+        }
+        else
+        {
+            LOGWARN("DIAL config found but no valid app name was provided; setting DIAL_ENABLED=false\n");
+            addToEnvironment(ociConfigRootNode, DIAL_ENABLED_ENV_KEY, "false");
+            return false;
+        }
+
+        if (dialNode.isMember(CORS_DOMAINS) && dialNode[CORS_DOMAINS].isArray())
+        {
+            std::vector<std::string> corsDomains;
+            for (const auto &entry : dialNode[CORS_DOMAINS])
+            {
+                if (entry.isString() && !entry.asString().empty())
+                {
+                    corsDomains.push_back(entry.asString());
+                }
+            }
+            if (!corsDomains.empty())
+            {
+                std::string corsValue;
+                for (size_t i = 0; i < corsDomains.size(); ++i)
+                {
+                    if (i > 0)
+                    {
+                        corsValue += ",";
+                    }
+                    corsValue += corsDomains[i];
+                }
+                addToEnvironment(ociConfigRootNode, DIAL_CORS_DOMAINS_ENV_KEY, corsValue);
+                status = true;
+            }
+        }
+
+        if (dialNode.isMember(ORIGIN_HEADER_REQUIRED) && dialNode[ORIGIN_HEADER_REQUIRED].isBool())
+        {
+            addToEnvironment(ociConfigRootNode, DIAL_ORIGIN_HEADER_REQUIRED_ENV_KEY,
+                dialNode[ORIGIN_HEADER_REQUIRED].asBool() ? "true" : "false");
+            status = true;
+        }
+
+        addToEnvironment(ociConfigRootNode, DIAL_CONFIG_JSON_ENV_KEY, serializeJsonNode(dialNode));
         return status;
     }
 

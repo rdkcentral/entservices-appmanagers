@@ -62,6 +62,7 @@ namespace ralf
     constexpr const char *CONFIGURATION = "configuration";
     constexpr const char *KEY = "key";
     constexpr const char *VALUE = "value";
+    constexpr const char *ID = "id";
 
     constexpr const char *PACKAGE_TYPE = "packageType";
     constexpr const char *PKG_TYPE_BASE = "base";
@@ -73,6 +74,10 @@ namespace ralf
     constexpr const char *FIREBOLT_ENDPOINT_ENV_KEY = "FIREBOLT_ENDPOINT";
 
     constexpr const char *CONFIG_OVERRIDES_URN = "urn:rdk:config:overrides";
+    constexpr const char *DIAL_CONFIG_URN = "urn:rdk:config:dial";
+    constexpr const char *APP_NAMES = "appNames";
+    constexpr const char *CORS_DOMAINS = "corsDomains";
+    constexpr const char *ORIGIN_HEADER_REQUIRED = "originHeaderRequired";
     constexpr const char *MEMORY_CONFIG_URN = "urn:rdk:config:memory";
     constexpr const char *SYSTEM_MEMORY = "system";
     constexpr const char *MEMORY_LIMIT = "limit";
@@ -92,6 +97,12 @@ namespace ralf
     constexpr const char *RUNTIME_CONFIG_OVERRIDES_ENV_KEY = "RUNTIME_CONFIG_OVERRIDES_JSON";
     constexpr const char *APP_CONFIG_OVERRIDES_ENV_KEY = "APP_CONFIG_OVERRIDES_JSON";
     constexpr const char *BASE_CONFIG_OVERRIDES_ENV_KEY = "BASE_CONFIG_OVERRIDES_JSON";
+    constexpr const char *APPLICATION_DIAL_NAME_ENV_KEY = "APPLICATION_DIAL_NAME";
+    constexpr const char *DIAL_FRIENDLY_NAME_ENV_KEY = "DIAL_FRIENDLY_NAME";
+    constexpr const char *DIAL_ENABLED_ENV_KEY = "DIAL_ENABLED";
+    constexpr const char *DIAL_CORS_DOMAINS_ENV_KEY = "DIAL_CORS_DOMAINS";
+    constexpr const char *DIAL_ORIGIN_HEADER_REQUIRED_ENV_KEY = "DIAL_ORIGIN_HEADER_REQUIRED";
+    constexpr const char *DIAL_CONFIG_JSON_ENV_KEY = "DIAL_CONFIG_JSON";
 
     constexpr const char *RDKPLUGINS = "rdkPlugins";
     constexpr const char *LOGGING = "logging";

@@ -191,6 +191,17 @@ namespace ralf
         bool addConfigEnvToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &configNode);
 
         /**
+         * Adds DIAL configuration from urn:rdk:config:dial to the OCI config.
+         * The runtime manager exports a DIAL-friendly name plus the optional CORS and
+         * origin-header policy into process.env so the app can honor the specification.
+         * @param ociConfigRootNode The root node of the OCI config JSON.
+         * @param configNode The package configuration node containing the DIAL specification.
+         * @param manifestRootNode The manifest root node used to fall back to package id when appNames is absent.
+         * @return true if DIAL configuration was present and applied, false otherwise.
+         */
+        bool addDialConfigToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &configNode, const Json::Value &manifestRootNode);
+
+        /**
          * Adds platform configuration from urn:rdk:config:platform to the OCI config.
          * The platform configuration specifies the target platform (architecture, variant, and OS)
          * on which the package is intended to run. This OPTIONAL configuration is used by the runtime

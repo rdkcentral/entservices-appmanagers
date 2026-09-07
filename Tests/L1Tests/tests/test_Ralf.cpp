@@ -1345,6 +1345,10 @@ public:
     {
         return mGen.addConfigEnvToOCIConfig(node, configNode);
     }
+    bool addDialConfigToOCIConfig(Json::Value& node, const Json::Value& configNode, const Json::Value& manifestNode)
+    {
+        return mGen.addDialConfigToOCIConfig(node, configNode, manifestNode);
+    }
     bool saveOCIConfigToFile(const Json::Value& node, int uid, int gid)
     {
         return mGen.saveOCIConfigToFile(node, uid, gid);
@@ -1704,6 +1708,40 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, AddConfigEnv_EnvNodeNotObject)
 
     EXPECT_FALSE(mAcc.addConfigEnvToOCIConfig(root, configNode));
     EXPECT_TRUE(root[ralf::PROCESS][ralf::ENV].empty() || !root[ralf::PROCESS].isMember(ralf::ENV));
+}
+
+/* Test Case: AddDialConfig_ValidEntries
+ * Verifies that urn:rdk:config:dial populates the OCI environment with the app name,
+ * CORS domain list, and origin header flag for DIAL-capable apps.
+ */
+TEST_F(RalfOCIConfigGeneratorPrivateTest, AddDialConfig_ValidEntries)
+{
+    TEST_LOG("Testing addDialConfigToOCIConfig with valid DIAL metadata");
+    Json::Value root;
+    Json::Value configNode;
+    Json::Value manifestNode;
+    manifestNode[ralf::ID] = "com.example.myapp";
+    configNode[ralf::DIAL_CONFIG_URN][ralf::APP_NAMES].append("MyMediaApp");
+    configNode[ralf::DIAL_CONFIG_URN][ralf::CORS_DOMAINS].append("https://media.example.com");
+    configNode[ralf::DIAL_CONFIG_URN][ralf::ORIGIN_HEADER_REQUIRED] = true;
+
+    EXPECT_TRUE(mAcc.addDialConfigToOCIConfig(root, configNode, manifestNode));
+
+    bool foundAppName = false;
+    bool foundCors = false;
+    bool foundOrigin = false;
+    for (const auto& e : root[ralf::PROCESS][ralf::ENV]) {
+        if (e.asString() == "APPLICATION_DIAL_NAME=MyMediaApp")
+            foundAppName = true;
+        if (e.asString() == "DIAL_CORS_DOMAINS=https://media.example.com")
+            foundCors = true;
+        if (e.asString() == "DIAL_ORIGIN_HEADER_REQUIRED=true")
+            foundOrigin = true;
+    }
+
+    EXPECT_TRUE(foundAppName);
+    EXPECT_TRUE(foundCors);
+    EXPECT_TRUE(foundOrigin);
 }
 
 // ──────────────────────────────
