@@ -586,7 +586,10 @@ class NotificationHandler : public Exchange::IAppManager::INotification {
               }
             }
             signalled = m_event_signalled;
-            m_event_signalled = AppManager_StateInvalid; // reset for next use
+            /* Consume only the awaited event. Clearing every bit would discard
+             * events that were already delivered by the time this call returns,
+             * causing a subsequent wait for them to block until it times out. */
+            m_event_signalled &= ~static_cast<uint32_t>(expected_status);
             return signalled;
         }
     };

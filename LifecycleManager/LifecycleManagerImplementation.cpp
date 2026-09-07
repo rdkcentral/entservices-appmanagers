@@ -282,6 +282,30 @@ namespace WPEFramework
                 mAdminLock.Unlock();
                 return Core::ERROR_GENERAL;
             }
+            else if (context->getCurrentLifecycleState() == targetLifecycleState &&
+                     !launchIntent.empty() &&
+                     context->getMostRecentIntent() != launchIntent)
+            {
+                // App is already in the target state with a different intent.
+                // Skip the state transition and dispatch only the intent event so
+                // subscribers (e.g. AppManager) are notified of the new intent.
+                LOGINFO("SpawnApp: appId=%s already in target state=%d with different intent, dispatching intent-only event",
+                        appId.c_str(), static_cast<int>(targetLifecycleState));
+                context->setMostRecentIntent(launchIntent);
+                appInstanceId = context->getAppInstanceId();
+                success = true;
+                mAdminLock.Unlock();
+
+                JsonObject eventData;
+                eventData["appId"] = context->getAppId();
+                eventData["appInstanceId"] = context->getAppInstanceId();
+                eventData["oldLifecycleState"] = static_cast<uint32_t>(context->getCurrentLifecycleState());
+                eventData["newLifecycleState"] = static_cast<uint32_t>(context->getCurrentLifecycleState());
+                eventData["navigationIntent"] = launchIntent;
+                eventData["errorReason"] = "";
+                dispatchEvent(LifecycleManagerImplementation::EventNames::LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED, eventData);
+                return status;
+            }			
             context->setRequestTime(requestTime);
             context->setRequestType(REQUEST_TYPE_LAUNCH);
             context->setTargetLifecycleState(targetLifecycleState);
