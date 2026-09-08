@@ -11,7 +11,8 @@ LifecycleManager is the central state machine for application lifecycle on RDK-b
 ## Requirements
 - Maintain a per-app state machine with valid transition enforcement
 - Accept spawn, state-change, unload, and kill requests from AppManager
-- Forward container operations (run, suspend, resume, hibernate, wake, terminate) to RuntimeManager
+- Keep the runtime configuration as a flat opaque JSON string; before `Run`, set `dialId` and upsert `FIREBOLT_ENDPOINT` and `TARGET_STATE` in the `envVariables` array while preserving unknown properties
+- Forward the enriched payload and container operations (run, suspend, resume, hibernate, wake, terminate) to RuntimeManager
 - Coordinate display creation and focus management with RDKWindowManager
 - Emit state change notifications to all registered `ILifecycleManagerState::INotification` listeners
 - Support `GetLoadedApps`, `IsAppLoaded`, `KillApp`, `SendIntentToActiveApp`, `AppReady`, and `StateChangeComplete` operations
@@ -52,7 +53,7 @@ UNLOADED (0)
 ### Public APIs (JSON-RPC)
 | Method | Description |
 |--------|-------------|
-| `SpawnApp(appId, intent, targetState, runtimeConfig, launchArgs, ...)` | Initiate app launch |
+| `SpawnApp(appId, intent, targetState, runtimeConfigPayload, launchArgs, ...)` | Initiate launch with an opaque JSON payload |
 | `SetTargetAppState(appInstanceId, targetState, intent)` | Request state transition |
 | `UnloadApp(appInstanceId, ...)` | Request app termination |
 | `KillApp(appInstanceId, ...)` | Force-kill app |
@@ -74,7 +75,8 @@ AppManager::LaunchApp()
 LifecycleManager::SpawnApp()
     ├→ Create ApplicationContext
     ├→ Transition: UNLOADED → LOADING
-    ├→ RuntimeManagerHandler → RuntimeManager::Run()
+    ├→ Set dialId; upsert FIREBOLT_ENDPOINT and TARGET_STATE env entries
+    ├→ RuntimeManagerHandler → RuntimeManager::Run(opaque JSON payload)
     │   └→ Dobby container starts
     ├→ Notify: LOADING → INITIALIZING
     └→ Notify registered listeners of state changes

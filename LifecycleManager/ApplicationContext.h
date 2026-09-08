@@ -39,7 +39,7 @@ namespace WPEFramework
 	    string mLaunchIntent;
 	    string mLaunchArgs;
             Exchange::ILifecycleManager::LifecycleState mTargetState;
-	    WPEFramework::Exchange::RuntimeConfig mRuntimeConfigObject;
+	    std::string mRuntimeConfigPayload;
 	};
 
         struct ApplicationKillParams
@@ -72,7 +72,7 @@ namespace WPEFramework
 		void setState(State* state);
                 void setTargetLifecycleState(Exchange::ILifecycleManager::LifecycleState state);
                 void setStateChangeId(uint32_t id);
-                void setApplicationLaunchParams(const string& appId, const string& launchIntent, const string& launchArgs, Exchange::ILifecycleManager::LifecycleState targetState, const WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject);
+                void setApplicationLaunchParams(const string& appId, const string& launchIntent, const string& launchArgs, Exchange::ILifecycleManager::LifecycleState targetState, const std::string& runtimeConfigPayload);
                 void setApplicationKillParams(bool force);
                 void setRequestTime(time_t requestTime);
                 void setRequestType(RequestType requestType);

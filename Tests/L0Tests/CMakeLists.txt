@@ -57,6 +57,7 @@ set(RUNTIME_MANAGER_L0_SOURCES
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/Module.cpp
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/RuntimeManager.cpp
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/RuntimeManagerImplementation.cpp
+    ${CMAKE_SOURCE_DIR}/../../RuntimeManager/RuntimeConfiguration.cpp
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/RuntimeManagerTelemetryReporting.cpp
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/DobbySpecGenerator.cpp
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/WindowManagerConnector.cpp
@@ -65,6 +66,7 @@ set(RUNTIME_MANAGER_L0_SOURCES
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/UserIdManager.cpp
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/GStreamerRegistry.cpp
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/AIConfiguration.cpp
+    ${CMAKE_SOURCE_DIR}/../../helpers/RuntimeConfigPayload.cpp
     ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry/TelemetryReportingBase.cpp
     ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry/UtilsTelemetryMetrics.cpp
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/ralf/RalfSupport.cpp
@@ -101,6 +103,7 @@ set(LIFECYCLE_MANAGER_L0_SOURCES
     ${CMAKE_SOURCE_DIR}/../../LifecycleManager/StateTransitionHandler.cpp
     ${CMAKE_SOURCE_DIR}/../../LifecycleManager/RuntimeManagerHandler.cpp
     ${CMAKE_SOURCE_DIR}/../../LifecycleManager/WindowManagerHandler.cpp
+    ${CMAKE_SOURCE_DIR}/../../helpers/RuntimeConfigPayload.cpp
     ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry/TelemetryReportingBase.cpp
     ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry/UtilsTelemetryMetrics.cpp
     # Test sources
@@ -177,6 +180,7 @@ set(APPMANAGER_L0_SOURCES
     ${CMAKE_SOURCE_DIR}/../../AppManager/AppInfo.cpp
     ${CMAKE_SOURCE_DIR}/../../AppManager/AppInfoManager.cpp
     ${CMAKE_SOURCE_DIR}/../../AppManager/LifecycleInterfaceConnector.cpp
+    ${CMAKE_SOURCE_DIR}/../../helpers/RuntimeConfigPayload.cpp
     ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry/TelemetryReportingBase.cpp
     # Use the test mock so isTelemetryMetricsEnabled() returns true and all
     # telemetry reporting branches in AppManagerTelemetryReporting.cpp are covered.
@@ -197,6 +201,7 @@ set(PACKAGE_MANAGER_L0_SOURCES
     ${CMAKE_SOURCE_DIR}/../../PackageManager/PackageManagerImplementation.cpp
     ${CMAKE_SOURCE_DIR}/../../PackageManager/PackageManagerTelemetryReporting.cpp
     ${CMAKE_SOURCE_DIR}/../../PackageManager/HttpClient.cpp
+    ${CMAKE_SOURCE_DIR}/../../helpers/RuntimeConfigPayload.cpp
     ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry/TelemetryReportingBase.cpp
     ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry/UtilsTelemetryMetrics.cpp
     PackageManager/PackageManagerTest.cpp

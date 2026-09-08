@@ -34,46 +34,7 @@
         __FILE__, __LINE__, __FUNCTION__, getpid(), (pid_t)syscall(SYS_gettid), ##__VA_ARGS__); \
     fflush(stderr);
 
-// Keep RuntimeConfig ABI consistent in this TU to prevent weak-symbol
-#ifndef RUNTIME_CONFIG
-#define RUNTIME_CONFIG
-namespace WPEFramework {
-namespace Exchange {
-    struct RuntimeConfig {
-        bool dial;
-        bool wanLanAccess;
-        bool thunder;
-        int32_t systemMemoryLimit;
-        int32_t gpuMemoryLimit;
-        std::string envVariables;
-        uint32_t userId;
-        uint32_t groupId;
-        uint32_t dataImageSize;
-
-        bool resourceManagerClientEnabled;
-        std::string dialId;
-        std::string command;
-        std::string appType;
-        std::string appPath;
-        std::string runtimePath;
-
-        std::string logFilePath;
-        uint32_t logFileMaxSize;
-        std::string logLevels;
-        bool mapi;
-        std::string fkpsFiles;
-        std::string capabilities;
-        std::string ralfPkgPath;
-
-        std::string fireboltVersion;
-        bool enableDebugger;
-        std::string unpackedPath;
-
-        ~RuntimeConfig() = default;
-    };
-} // namespace Exchange
-} // namespace WPEFramework
-#endif
+#include "RuntimeConfiguration.h"
 
 // Include ralf support header
 #include "ralf/RalfPackageBuilder.h"
@@ -1069,8 +1030,8 @@ TEST_F(RalfPackageBuilderMockedTest, GenerateRalfDobbySpec_ParseRalPkgInfoFails_
     config.mWesterosSocketPath = "/tmp/wst-test";
     config.mAppStorageInfo.path = "/data/apps/com.example.app";
 
-    WPEFramework::Exchange::RuntimeConfig rc;
-    rc.envVariables = "[]";
+    WPEFramework::Plugin::RuntimeConfiguration rc;
+    rc.envVariables = {};
     // Point to a path that does not exist — parseRalPkgInfo will fail to open it.
     rc.ralfPkgPath = "/tmp/ralf_l1_no_such_pkginfo_xyz_12345.json";
 
@@ -1110,8 +1071,8 @@ TEST_F(RalfPackageBuilderMockedTest, GenerateRalfDobbySpec_GenerateOCIRootfsPack
     config.mWesterosSocketPath = "/tmp/wst-test";
     config.mAppStorageInfo.path = "/data/apps/com.example.app";
 
-    WPEFramework::Exchange::RuntimeConfig rc;
-    rc.envVariables = "[]";
+    WPEFramework::Plugin::RuntimeConfiguration rc;
+    rc.envVariables = {};
     // Use the valid pkg-info file created in SetUp() so parseRalPkgInfo succeeds.
     rc.ralfPkgPath = mPkgInfoFile;
 
@@ -1156,10 +1117,10 @@ protected:
         return config;
     }
 
-    WPEFramework::Exchange::RuntimeConfig makeRuntimeConfig(
-        const std::string& envVars = "[]")
+    WPEFramework::Plugin::RuntimeConfiguration makeRuntimeConfiguration(
+        const std::vector<std::string>& envVars = {})
     {
-        WPEFramework::Exchange::RuntimeConfig rc;
+        WPEFramework::Plugin::RuntimeConfiguration rc;
         rc.envVariables = envVars;
         return rc;
     }
@@ -1192,7 +1153,7 @@ TEST_F(RalfOCIConfigGeneratorTest, GenerateRalfOCIConfig_FailsWhenBaseSpecFileMi
 
     std::vector<ralf::RalfPkgInfoPair> pkgs;
     ralf::RalfOCIConfigGenerator gen(mConfigOutputFile, pkgs);
-    EXPECT_FALSE(gen.generateRalfOCIConfig(makeConfig(), makeRuntimeConfig()));
+    EXPECT_FALSE(gen.generateRalfOCIConfig(makeConfig(), makeRuntimeConfiguration()));
 
     Wraps::setImpl(nullptr);
 }
@@ -1223,7 +1184,7 @@ TEST_F(RalfOCIConfigGeneratorTest, GenerateRalfOCIConfig_FailsWhenGraphicsConfig
 
     std::vector<ralf::RalfPkgInfoPair> pkgs;
     ralf::RalfOCIConfigGenerator gen(mConfigOutputFile, pkgs);
-    EXPECT_FALSE(gen.generateRalfOCIConfig(makeConfig(), makeRuntimeConfig()));
+    EXPECT_FALSE(gen.generateRalfOCIConfig(makeConfig(), makeRuntimeConfiguration()));
 
     Wraps::setImpl(nullptr);
 }
@@ -1263,7 +1224,7 @@ TEST_F(RalfOCIConfigGeneratorTest, GenerateRalfOCIConfig_FailsWhenApplyGraphicsC
 
     std::vector<ralf::RalfPkgInfoPair> pkgs;
     ralf::RalfOCIConfigGenerator gen(mConfigOutputFile, pkgs);
-    EXPECT_FALSE(gen.generateRalfOCIConfig(makeConfig(), makeRuntimeConfig()));
+    EXPECT_FALSE(gen.generateRalfOCIConfig(makeConfig(), makeRuntimeConfiguration()));
 
     Wraps::setImpl(nullptr);
     ::remove(stubBaseSpec.c_str());
@@ -1328,7 +1289,7 @@ public:
         return mGen.applyConfigurationToOCIConfig(node, manifestNode);
     }
     bool applyRuntimeAndAppConfigToOCIConfig(Json::Value& node,
-        const WPEFramework::Exchange::RuntimeConfig& rc,
+        const WPEFramework::Plugin::RuntimeConfiguration& rc,
         const WPEFramework::Plugin::ApplicationConfiguration& ac)
     {
         return mGen.applyRuntimeAndAppConfigToOCIConfig(node, rc, ac);
@@ -2001,11 +1962,11 @@ static WPEFramework::Plugin::ApplicationConfiguration makeAppConfig(
     return c;
 }
 
-/* Helper: build a minimal RuntimeConfig for the tests below. */
-static WPEFramework::Exchange::RuntimeConfig makeRtConfig()
+/* Helper: build a minimal RuntimeConfiguration for the tests below. */
+static WPEFramework::Plugin::RuntimeConfiguration makeRtConfig()
 {
-    WPEFramework::Exchange::RuntimeConfig rc;
-    rc.envVariables = "[]";
+    WPEFramework::Plugin::RuntimeConfiguration rc;
+    rc.envVariables = {};
     return rc;
 }
 

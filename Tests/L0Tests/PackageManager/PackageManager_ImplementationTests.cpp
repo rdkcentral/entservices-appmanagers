@@ -6,6 +6,7 @@
 #include <unistd.h>
 
 #include "PackageManagerImplementation.h"
+#include "RuntimeConfigPayload.h"
 #include "ServiceMock.h"
 #include "common/L0Expect.hpp"
 #include "common/L0TestTypes.hpp"
@@ -252,21 +253,111 @@ uint32_t Test_PM_Impl_ConfigAndGetConfigForPackageEmptyLocator()
 
     L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() succeeds");
 
-    WPEFramework::Exchange::RuntimeConfig config {};
+    std::string config;
     L0Test::ExpectEqU32(tr,
                         fx.impl->Config("YouTube", "100.1.24", config),
                         ERROR_NONE,
                         "Config() for installed dummy package returns ERROR_NONE");
-    L0Test::ExpectEqStr(tr, config.appPath, "/opt/YouTube", "Config() returns expected appPath from dummy metadata");
-    L0Test::ExpectEqStr(tr, config.capabilities, "dial-app,wan-lan,thunder,fkps", "Config() returns expected runtime capabilities");
+
+    WPEFramework::Plugin::Utils::RuntimeConfigPayload payload;
+    std::string error;
+    bool present = false;
+    L0Test::ExpectTrue(tr, payload.Parse(config, error), "Config() returns a valid JSON runtime payload");
+
+    std::string value;
+    L0Test::ExpectTrue(tr,
+                       payload.GetString("appPath", value, present, error) && present && value == "/opt/YouTube",
+                       "Config() payload returns expected appPath from dummy metadata");
+    L0Test::ExpectTrue(tr,
+                       payload.GetString("capabilities", value, present, error) && present && value == "dial-app,wan-lan,thunder,fkps",
+                       "Config() payload returns expected runtime capabilities");
+
+    std::vector<std::string> values;
+    L0Test::ExpectTrue(tr,
+                       payload.GetStringArray("envVariables", values, present, error) && present && values.empty(),
+                       "Config() payload encodes envVariables as a JSON string array");
+    L0Test::ExpectTrue(tr,
+                       payload.GetStringArray("fkpsFiles", values, present, error) && present &&
+                           values == std::vector<std::string>({ "file1", "file2", "file3" }),
+                       "Config() payload encodes real fkpsFiles values as a JSON string array");
+    L0Test::ExpectTrue(tr,
+                       payload.GetStringArray("logLevels", values, present, error) && present && values.empty(),
+                       "Config() payload encodes logLevels as a JSON string array");
 
     std::string id;
     std::string version;
-    WPEFramework::Exchange::RuntimeConfig cfg {};
+    std::string cfg;
     L0Test::ExpectEqU32(tr,
                         fx.impl->GetConfigForPackage("", id, version, cfg),
                         ERROR_INVALID_SIGNATURE,
                         "GetConfigForPackage() with empty locator returns ERROR_INVALID_SIGNATURE");
+
+    return tr.failures;
+}
+
+uint32_t Test_PM_Impl_RuntimeConfigPayloadSerialization()
+{
+    L0Test::TestResult tr;
+
+    WPEFramework::Plugin::Utils::RuntimeConfigPayload canonical;
+    canonical.SetString("appPath", "/opt/TestApp");
+    canonical.SetStringArray("envVariables", { "HOME=/home/private", "LANG=en_US.UTF-8" });
+    canonical.SetStringArray("fkpsFiles", { "/etc/test/one", "/etc/test/two" });
+    canonical.SetStringArray("logLevels", { "INFO", "WARN" });
+
+    std::string serialized;
+    std::string error;
+    L0Test::ExpectTrue(tr,
+                       canonical.Serialize(serialized, error),
+                       "RuntimeConfigPayload serializes a canonical opaque runtime payload");
+
+    WPEFramework::Plugin::Utils::RuntimeConfigPayload decoded;
+    bool present = false;
+    std::vector<std::string> values;
+    L0Test::ExpectTrue(tr, decoded.Parse(serialized, error), "Canonical runtime payload parses successfully");
+    L0Test::ExpectTrue(tr,
+                       decoded.GetStringArray("envVariables", values, present, error) && present &&
+                           values == std::vector<std::string>({ "HOME=/home/private", "LANG=en_US.UTF-8" }),
+                       "Canonical payload preserves envVariables array values");
+    L0Test::ExpectTrue(tr,
+                       decoded.GetStringArray("fkpsFiles", values, present, error) && present &&
+                           values == std::vector<std::string>({ "/etc/test/one", "/etc/test/two" }),
+                       "Canonical payload preserves fkpsFiles array values");
+    L0Test::ExpectTrue(tr,
+                       decoded.GetStringArray("logLevels", values, present, error) && present &&
+                           values == std::vector<std::string>({ "INFO", "WARN" }),
+                       "Canonical payload preserves logLevels array values");
+
+    WPEFramework::Plugin::Utils::RuntimeConfigPayload opaque;
+    L0Test::ExpectTrue(tr,
+                       opaque.Parse("{\"runtimePath\":\"/old/runtime\",\"vendorExtension\":{\"enabled\":true}}", error),
+                       "Opaque payload with an unknown property parses successfully");
+    opaque.SetString("runtimePath", "/new/runtime");
+    L0Test::ExpectTrue(tr, opaque.Serialize(serialized, error), "runtimePath mutation serializes successfully");
+
+    WPEFramework::Core::JSON::VariantContainer object;
+    L0Test::ExpectTrue(tr, object.FromString(serialized), "Mutated runtime payload remains valid JSON");
+    const WPEFramework::Core::JSON::VariantContainer vendor = object["vendorExtension"].Object();
+    L0Test::ExpectTrue(tr,
+                       object.HasLabel("vendorExtension") && vendor.HasLabel("enabled") && vendor["enabled"].Boolean(),
+                       "runtimePath mutation preserves unknown object properties");
+    L0Test::ExpectTrue(tr,
+                       object.HasLabel("runtimePath") && object["runtimePath"].String() == "/new/runtime",
+                       "runtimePath mutation updates only the requested property");
+
+    WPEFramework::Plugin::Utils::RuntimeConfigPayload environmentPayload;
+    L0Test::ExpectTrue(tr,
+                       environmentPayload.Parse("{\"envVariables\":[\"FIREBOLT_ENDPOINT=old1\",\"KEEP=value\",\"FIREBOLT_ENDPOINT=old2\"]}", error) &&
+                           environmentPayload.UpsertEnvironment("FIREBOLT_ENDPOINT=new", error) &&
+                           environmentPayload.GetStringArray("envVariables", values, present, error) && present &&
+                           values == std::vector<std::string>({ "FIREBOLT_ENDPOINT=new", "KEEP=value" }),
+                       "Environment upsert replaces duplicate definitions and preserves unrelated values");
+
+    WPEFramework::Plugin::Utils::RuntimeConfigPayload malformed;
+    L0Test::ExpectTrue(tr,
+                       !malformed.Parse("{\"envVariables\":[\"VALID\"]", error),
+                       "Malformed runtime payload serialization is rejected");
+    L0Test::ExpectTrue(tr, !malformed.Parse("[]", error), "Non-object runtime payload is rejected");
 
     return tr.failures;
 }
@@ -441,7 +532,7 @@ uint32_t Test_PM_Impl_LockUnlockAndGetLockedInfo()
 
     uint32_t lockId = 0;
     std::string unpackedPath;
-    WPEFramework::Exchange::RuntimeConfig runtimeConfig {};
+    std::string runtimeConfig;
     WPEFramework::Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
 
     L0Test::ExpectEqU32(tr,
@@ -449,8 +540,23 @@ uint32_t Test_PM_Impl_LockUnlockAndGetLockedInfo()
                         ERROR_NONE,
                         "Lock() for dummy package returns ERROR_NONE");
     L0Test::ExpectTrue(tr, lockId > 0, "Lock() returns non-zero lockId");
-    L0Test::ExpectEqStr(tr, runtimeConfig.capabilities, "dial-app,wan-lan,thunder,fkps", "Lock() returns expected runtime capabilities");
 
+    WPEFramework::Plugin::Utils::RuntimeConfigPayload lockPayload;
+    std::string error;
+    bool present = false;
+    std::vector<std::string> values;
+    L0Test::ExpectTrue(tr, lockPayload.Parse(runtimeConfig, error), "Lock() returns a valid JSON runtime payload");
+    L0Test::ExpectTrue(tr,
+                       lockPayload.GetStringArray("envVariables", values, present, error) && present,
+                       "Lock() payload contains envVariables as a JSON string array");
+    L0Test::ExpectTrue(tr,
+                       lockPayload.GetStringArray("fkpsFiles", values, present, error) && present,
+                       "Lock() payload contains fkpsFiles as a JSON string array");
+    L0Test::ExpectTrue(tr,
+                       lockPayload.GetStringArray("logLevels", values, present, error) && present,
+                       "Lock() payload contains logLevels as a JSON string array");
+
+    const std::string lockRuntimeConfig = runtimeConfig;
     bool locked = false;
     std::string gatewayMetadataPath;
     L0Test::ExpectEqU32(tr,
@@ -458,6 +564,10 @@ uint32_t Test_PM_Impl_LockUnlockAndGetLockedInfo()
                         ERROR_NONE,
                         "GetLockedInfo() returns ERROR_NONE for known package");
     L0Test::ExpectTrue(tr, locked, "GetLockedInfo() reports package as locked");
+    L0Test::ExpectEqStr(tr,
+                        runtimeConfig,
+                        lockRuntimeConfig,
+                        "GetLockedInfo() returns the opaque runtime payload created by Lock()");
 
     if (appMetadata != nullptr) {
         appMetadata->Release();
@@ -519,7 +629,7 @@ uint32_t Test_PM_Impl_InstallInputValidationAndUnknownPaths()
                         ERROR_BAD_REQUEST,
                         "Uninstall() for unknown app returns ERROR_BAD_REQUEST");
 
-    WPEFramework::Exchange::RuntimeConfig cfg {};
+    std::string cfg;
     L0Test::ExpectEqU32(tr,
                         fx.impl->Config("NoSuchApp", "0", cfg),
                         ERROR_BAD_REQUEST,
@@ -541,7 +651,7 @@ uint32_t Test_PM_Impl_GetLockedInfoAndUnlockNegativePaths()
     L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() succeeds");
 
     std::string unpackedPath;
-    WPEFramework::Exchange::RuntimeConfig cfg {};
+    std::string cfg;
     std::string gatewayMetadataPath;
     bool locked = false;
 
@@ -600,12 +710,27 @@ uint32_t Test_PM_Impl_GetConfigForPackageSuccessPath()
 
     std::string id;
     std::string version;
-    WPEFramework::Exchange::RuntimeConfig cfg {};
+    std::string cfg;
 
     L0Test::ExpectEqU32(tr,
                         fx.impl->GetConfigForPackage("/tmp/fake.pkg", id, version, cfg),
                         ERROR_NONE,
                         "GetConfigForPackage() with non-empty locator returns ERROR_NONE in UNIT_TEST path");
+
+    WPEFramework::Plugin::Utils::RuntimeConfigPayload payload;
+    std::string error;
+    bool present = false;
+    std::vector<std::string> values;
+    L0Test::ExpectTrue(tr, payload.Parse(cfg, error), "GetConfigForPackage() returns a valid JSON runtime payload");
+    L0Test::ExpectTrue(tr,
+                       payload.GetStringArray("envVariables", values, present, error) && present,
+                       "GetConfigForPackage() payload contains envVariables as a JSON string array");
+    L0Test::ExpectTrue(tr,
+                       payload.GetStringArray("fkpsFiles", values, present, error) && present,
+                       "GetConfigForPackage() payload contains fkpsFiles as a JSON string array");
+    L0Test::ExpectTrue(tr,
+                       payload.GetStringArray("logLevels", values, present, error) && present,
+                       "GetConfigForPackage() payload contains logLevels as a JSON string array");
 
     return tr.failures;
 }
@@ -618,7 +743,7 @@ uint32_t Test_PM_Impl_InstallDifferentVersionBlockedWhileLockedThenProcessedOnUn
 
     uint32_t lockId = 0;
     std::string unpackedPath;
-    WPEFramework::Exchange::RuntimeConfig runtimeConfig {};
+    std::string runtimeConfig;
     WPEFramework::Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
 
     L0Test::ExpectEqU32(tr,
@@ -672,7 +797,7 @@ uint32_t Test_PM_Impl_UninstallBlockedWhileLockedThenProcessedOnUnlock()
 
     uint32_t lockId = 0;
     std::string unpackedPath;
-    WPEFramework::Exchange::RuntimeConfig runtimeConfig {};
+    std::string runtimeConfig;
     WPEFramework::Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
 
     L0Test::ExpectEqU32(tr,

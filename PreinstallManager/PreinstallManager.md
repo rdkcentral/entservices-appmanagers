@@ -103,7 +103,7 @@ interface IPreinstallManager {
 | `fileLocator` | `string` | Source package file path |
 | `packageId` | `string` | Package identifier |
 | `version` | `string` | Package version |
-| `configMetadata` | `Exchange::RuntimeConfig` | Runtime configuration metadata |
+| `runtimeConfigPayload` | `string` | Opaque serialized JSON runtime configuration returned during package inspection |
 | `installStatus` | `string` | Install status/result marker |
 
 Core implementation members:

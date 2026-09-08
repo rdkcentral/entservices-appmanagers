@@ -28,7 +28,7 @@
 
 namespace ralf
 {
-    bool RalfOCIConfigGenerator::generateRalfOCIConfig(const WPEFramework::Plugin::ApplicationConfiguration &config, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject)
+    bool RalfOCIConfigGenerator::generateRalfOCIConfig(const WPEFramework::Plugin::ApplicationConfiguration &config, const WPEFramework::Plugin::RuntimeConfiguration &runtimeConfigObject)
     {
         Json::Value ociConfigRootNode;
 
@@ -110,7 +110,7 @@ namespace ralf
         ociConfigRootNode[RDKPLUGINS][LOGGING][LOG_DATA][LOG_FILE_OPTIONS][PATH] = logFilePath;
     }
 
-    bool RalfOCIConfigGenerator::applyRuntimeAndAppConfigToOCIConfig(Json::Value &ociConfigRootNode, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject, const WPEFramework::Plugin::ApplicationConfiguration &appConfig)
+    bool RalfOCIConfigGenerator::applyRuntimeAndAppConfigToOCIConfig(Json::Value &ociConfigRootNode, const WPEFramework::Plugin::RuntimeConfiguration &runtimeConfigObject, const WPEFramework::Plugin::ApplicationConfiguration &appConfig)
     {
         bool status = true;
         // Set user and group ID
@@ -336,7 +336,7 @@ namespace ralf
         return status;
     }
 
-    bool RalfOCIConfigGenerator::addAdditionalEnvVariablesToOCIConfig(Json::Value &ociConfigRootNode, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject, const WPEFramework::Plugin::ApplicationConfiguration &appConfig)
+    bool RalfOCIConfigGenerator::addAdditionalEnvVariablesToOCIConfig(Json::Value &ociConfigRootNode, const WPEFramework::Plugin::RuntimeConfiguration &runtimeConfigObject, const WPEFramework::Plugin::ApplicationConfiguration &appConfig)
     {
         bool status = true;
         /* The following environmental variables expected
@@ -549,38 +549,16 @@ namespace ralf
 
         return false;
     }
-    bool RalfOCIConfigGenerator::addFireboltEndPointToConfig(Json::Value &ociConfigRootNode, const std::string &envVar)
+    bool RalfOCIConfigGenerator::addFireboltEndPointToConfig(Json::Value &ociConfigRootNode, const std::vector<std::string> &envVars)
     {
-        /*This string is a serialized for of json value .. An example is
-        ["FIREBOLT_ENDPOINT=http:\/\/127.0.0.1:3473?session=810b474c-5f68-4cdf-82f2-86dc4d6d1f97","TARGET_STATE=4"]
-        We need to parse it and get the FIREBOLT_ENDPOINT value and push it to OCI config
-        */
-
-        Json::CharReaderBuilder readerBuilder;
-        Json::Value envVarsNode;
-        std::string errs;
-        std::unique_ptr<Json::CharReader> reader(readerBuilder.newCharReader());
-        if (!reader->parse(envVar.c_str(), envVar.c_str() + envVar.size(), &envVarsNode, &errs))
+        const std::string fireboltPrefix = std::string(FIREBOLT_ENDPOINT_ENV_KEY) + "=";
+        for (const std::string &envPair : envVars)
         {
-            LOGERR("Failed to parse env variables JSON string, error: %s\n", errs.c_str());
-            return false;
-        }
-
-        if (envVarsNode.isArray())
-        {
-            for (const auto &envEntry : envVarsNode)
+            if (envPair.rfind(fireboltPrefix, 0) == 0)
             {
-                if (envEntry.isString())
-                {
-                    std::string envPair = envEntry.asString();
-                    std::string fireboltPrefix = std::string(FIREBOLT_ENDPOINT_ENV_KEY) + "=";
-                    if (envPair.rfind(fireboltPrefix, 0) == 0)
-                    {
-                        addToEnvironment(ociConfigRootNode, FIREBOLT_ENDPOINT_ENV_KEY, envPair.substr(fireboltPrefix.size()));
-                        LOGDBG("Added FIREBOLT_ENDPOINT environment variable: %s\n", envPair.c_str());
-                        return true; // Found and added
-                    }
-                }
+                addToEnvironment(ociConfigRootNode, FIREBOLT_ENDPOINT_ENV_KEY, envPair.substr(fireboltPrefix.size()));
+                LOGDBG("Added FIREBOLT_ENDPOINT environment variable: %s\n", envPair.c_str());
+                return true;
             }
         }
         LOGWARN("FIREBOLT_ENDPOINT environment variable not found in runtime config\n");

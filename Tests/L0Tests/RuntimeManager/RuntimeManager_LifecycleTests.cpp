@@ -41,7 +41,7 @@ public:
 
     WPEFramework::Core::hresult Register(WPEFramework::Exchange::IRuntimeManager::INotification*) override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult Unregister(WPEFramework::Exchange::IRuntimeManager::INotification*) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Run(const std::string&, const std::string&, const uint32_t, const uint32_t, WPEFramework::Exchange::IRuntimeManager::IValueIterator* const&, WPEFramework::Exchange::IRuntimeManager::IStringIterator* const&, WPEFramework::Exchange::IRuntimeManager::IStringIterator* const&, const WPEFramework::Exchange::RuntimeConfig&) override { return WPEFramework::Core::ERROR_NONE; }
+    WPEFramework::Core::hresult Run(const std::string&, const std::string&, const uint32_t, const uint32_t, WPEFramework::Exchange::IRuntimeManager::IValueIterator* const&, WPEFramework::Exchange::IRuntimeManager::IStringIterator* const&, WPEFramework::Exchange::IRuntimeManager::IStringIterator* const&, const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult Hibernate(const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult Wake(const std::string&, const RuntimeState) override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult Suspend(const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
@@ -100,7 +100,7 @@ public:
 
     WPEFramework::Core::hresult Register(WPEFramework::Exchange::IRuntimeManager::INotification*) override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult Unregister(WPEFramework::Exchange::IRuntimeManager::INotification*) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Run(const std::string&, const std::string&, const uint32_t, const uint32_t, WPEFramework::Exchange::IRuntimeManager::IValueIterator* const&, WPEFramework::Exchange::IRuntimeManager::IStringIterator* const&, WPEFramework::Exchange::IRuntimeManager::IStringIterator* const&, const WPEFramework::Exchange::RuntimeConfig&) override { return WPEFramework::Core::ERROR_NONE; }
+    WPEFramework::Core::hresult Run(const std::string&, const std::string&, const uint32_t, const uint32_t, WPEFramework::Exchange::IRuntimeManager::IValueIterator* const&, WPEFramework::Exchange::IRuntimeManager::IStringIterator* const&, WPEFramework::Exchange::IRuntimeManager::IStringIterator* const&, const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult Hibernate(const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult Wake(const std::string&, const RuntimeState) override { return WPEFramework::Core::ERROR_NONE; }
     WPEFramework::Core::hresult Suspend(const std::string&) override { return WPEFramework::Core::ERROR_NONE; }

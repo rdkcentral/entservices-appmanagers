@@ -225,13 +225,14 @@ uint32_t Test_AppCtx_ApplicationLaunchParamsRoundTrip()
     L0Test::TestResult tr;
 
     WPEFramework::Plugin::ApplicationContext ctx("com.test.launch");
-    WPEFramework::Exchange::RuntimeConfig runtimeCfg;
+    const std::string runtimeConfigPayload =
+        R"({"envVariables":["EXISTING=value"],"logLevels":["DEBUG","INFO"],"vendor":{"nested":{"preserved":true}}})";
     ctx.setApplicationLaunchParams(
         "com.test.launch",
         "deeplink://home",
         "{\"key\":\"value\"}",
         WPEFramework::Exchange::ILifecycleManager::LifecycleState::PAUSED,
-        runtimeCfg);
+        runtimeConfigPayload);
 
     WPEFramework::Plugin::ApplicationLaunchParams& params = ctx.getApplicationLaunchParams();
     L0Test::ExpectEqStr(tr, params.mAppId, "com.test.launch",
@@ -244,6 +245,8 @@ uint32_t Test_AppCtx_ApplicationLaunchParamsRoundTrip()
         static_cast<uint32_t>(params.mTargetState),
         static_cast<uint32_t>(WPEFramework::Exchange::ILifecycleManager::LifecycleState::PAUSED),
         "mTargetState is PAUSED");
+    L0Test::ExpectEqStr(tr, params.mRuntimeConfigPayload, runtimeConfigPayload,
+        "opaque runtime config payload, including arrays and nested properties, matches");
 
     return tr.failures;
 }

@@ -22,7 +22,7 @@
 #include <json/json.h>
 #include "RalfConstants.h"
 #include "../ApplicationConfiguration.h"
-#include <interfaces/IRuntimeManager.h>
+#include "../RuntimeConfiguration.h"
 namespace ralf
 {
     class RalfOCIConfigGenerator
@@ -36,7 +36,7 @@ namespace ralf
          * @param runtimeConfigObject The runtime configuration.
          * @return true if the OCI config was generated successfully, false otherwise.
          */
-        bool generateRalfOCIConfig(const WPEFramework::Plugin::ApplicationConfiguration &config, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject);
+        bool generateRalfOCIConfig(const WPEFramework::Plugin::ApplicationConfiguration &config, const WPEFramework::Plugin::RuntimeConfiguration &runtimeConfigObject);
 
     private:
         /**
@@ -86,7 +86,7 @@ namespace ralf
          * @param config The application configuration.
          * @return true if the configuration options were applied successfully, false otherwise.
          */
-        bool applyRuntimeAndAppConfigToOCIConfig(Json::Value &ociConfigRootNode, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject, const WPEFramework::Plugin::ApplicationConfiguration &config);
+        bool applyRuntimeAndAppConfigToOCIConfig(Json::Value &ociConfigRootNode, const WPEFramework::Plugin::RuntimeConfiguration &runtimeConfigObject, const WPEFramework::Plugin::ApplicationConfiguration &config);
 
         /**
          * Applies the configuration from the package config to the OCI config JSON.
@@ -119,15 +119,14 @@ namespace ralf
          * @param appConfig The application configuration containing the environment variables to be added.
          * @return true if environment variables were added successfully, false otherwise.
          */
-        bool addAdditionalEnvVariablesToOCIConfig(Json::Value &ociConfigRootNode, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject, const WPEFramework::Plugin::ApplicationConfiguration &appConfig);
+        bool addAdditionalEnvVariablesToOCIConfig(Json::Value &ociConfigRootNode, const WPEFramework::Plugin::RuntimeConfiguration &runtimeConfigObject, const WPEFramework::Plugin::ApplicationConfiguration &appConfig);
         /**
-         * Reads the environment variables JSON array string from WPEFramework::Exchange::RuntimeConfig.envVariables and pushes them to OCI config.
-         * We are specifically looking to update the FIREBOLT_ENDPOINT environment variable here.
+         * Reads the environment variables and pushes FIREBOLT_ENDPOINT to OCI config.
          * @param ociConfigRootNode The root node of the OCI config JSON.
-         * @param envVar The serialized JSON array string of environment variables (e.g. "[\"KEY=VALUE\", ...]") as provided by RuntimeConfig.envVariables.
+         * @param envVars Environment variables in KEY=VALUE form.
          * @return true if the environment variable was added successfully, false otherwise.
          */
-        bool addFireboltEndPointToConfig(Json::Value &ociConfigRootNode, const std::string &envVar);
+        bool addFireboltEndPointToConfig(Json::Value &ociConfigRootNode, const std::vector<std::string> &envVars);
 
         /**
          * Adds configuration overrides from the Ralf package config to the OCI config JSON.

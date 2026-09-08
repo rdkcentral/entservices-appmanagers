@@ -74,11 +74,11 @@ static WPEFramework::Plugin::ApplicationConfiguration MakeAppConfig_OCI(
     return config;
 }
 
-static WPEFramework::Exchange::RuntimeConfig MakeRuntimeConfig_OCI()
+static WPEFramework::Plugin::RuntimeConfiguration MakeRuntimeConfig_OCI()
 {
-    WPEFramework::Exchange::RuntimeConfig cfg;
+    WPEFramework::Plugin::RuntimeConfiguration cfg;
     cfg.ralfPkgPath = "";
-    cfg.envVariables = "";
+    cfg.envVariables = {};
     return cfg;
 }
 

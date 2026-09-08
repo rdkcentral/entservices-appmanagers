@@ -16,7 +16,7 @@ PackageManager handles the full lifecycle of application packages on RDK-based d
 - Support per-download bandwidth rate limiting
 - Install packages by parsing manifests via `libpackage-sky`, validating signatures, extracting contents, and calling AppStorageManager for storage
 - Maintain lock reference counts per package; prevent uninstall while locked
-- Return `unpackedPath` and config metadata on `GetLockedInfo` for container launch
+- Create runtime metadata as a flat opaque JSON payload and return it with `unpackedPath` on `GetLockedInfo`; array-valued fields are real JSON arrays and unknown properties remain available to downstream managers
 - Emit progress, completion, and error notifications to registered listeners
 - Optionally emit telemetry metrics when `AIMANAGERS_TELEMETRY_METRICS_SUPPORT` is enabled
 - Support RALF package format when `USE_LIBPACKAGE_RALF` is enabled
@@ -55,7 +55,7 @@ PackageManagerImplementation
 | `Uninstall(packageId, errorReason)` | Remove installed package |
 | `Lock(packageId, version, lockReason, ...)` | Lock package for app execution |
 | `Unlock(packageId, version)` | Unlock package |
-| `GetLockedInfo(packageId, version, unpackedPath, configMetadata, ...)` | Query lock state and config |
+| `GetLockedInfo(packageId, version, unpackedPath, runtimeConfigPayload, ...)` | Query lock state and opaque JSON payload |
 | `ListPackages(packages)` | List installed packages |
 | `PackageState(packageId, version, state)` | Query package install state |
 | `Register / Unregister (INotification)` | Subscribe/unsubscribe download or install notifications |
@@ -87,7 +87,7 @@ PackageManagerImplementation::Install()
 Lock(packageId, version):
     ├→ Verify package is INSTALLED
     ├→ Increment lock reference count
-    ├→ Return unpackedPath and config via GetLockedInfo
+    ├→ Return unpackedPath and the flat opaque JSON payload via GetLockedInfo
     └→ Block uninstall while locked
 
 Unlock(packageId, version):

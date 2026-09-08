@@ -25,6 +25,7 @@
 #include <semaphore.h>
 #include "LifecycleManagerTelemetryReporting.h"
 #include "UtilsAppManagerTelemetry.h"
+#include "RuntimeConfigPayload.h"
 
 namespace WPEFramework
 {
@@ -259,11 +260,19 @@ namespace WPEFramework
             return status;
         }
         
-        Core::hresult LifecycleManagerImplementation::SpawnApp(const string& appId, const string& launchIntent, const LifecycleState targetLifecycleState, const WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject, const string& launchArgs, string& appInstanceId, string& errorReason, bool& success)
+        Core::hresult LifecycleManagerImplementation::SpawnApp(const string& appId, const string& launchIntent, const LifecycleState targetLifecycleState, const string& runtimeConfigPayload, const string& launchArgs, string& appInstanceId, string& errorReason, bool& success)
         {
 	    // Launches an app.  This will be an asynchronous call.
             // Notifies appropriate API Gateway when an app is about to be loaded
             // Lifecycle manager will create the appInstanceId once the app is loaded.  Ripple is responsible for creating a token. 
+            Utils::RuntimeConfigPayload payload;
+            if (!payload.Parse(runtimeConfigPayload, errorReason))
+            {
+                LOGERR("SpawnApp received invalid runtime configuration payload: %s", errorReason.c_str());
+                success = false;
+                return Core::ERROR_GENERAL;
+            }
+
             Core::hresult status = Core::ERROR_NONE;
             bool firstLaunch = false;
             time_t requestTime = 0;
@@ -273,7 +282,7 @@ namespace WPEFramework
             if (nullptr == context)
 	    {
                 context = std::make_shared<ApplicationContext>(appId);
-                context->setApplicationLaunchParams(appId, launchIntent, launchArgs, targetLifecycleState, runtimeConfigObject);
+                context->setApplicationLaunchParams(appId, launchIntent, launchArgs, targetLifecycleState, runtimeConfigPayload);
 		mLoadedApplications.push_back(context);
                 firstLaunch = true;
 	    }
@@ -822,7 +831,7 @@ namespace WPEFramework
             Core::hresult status = SpawnApp(launchParams.mAppId,
                                             launchParams.mLaunchIntent,
                                             launchParams.mTargetState,
-                                            launchParams.mRuntimeConfigObject,
+                                            launchParams.mRuntimeConfigPayload,
                                             launchParams.mLaunchArgs,
                                             appInstanceId,
                                             errorReason,

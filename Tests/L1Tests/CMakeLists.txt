@@ -133,6 +133,11 @@ if(PLUGIN_RALF)
     # original source with JsonFromFile renamed to avoid duplicate symbols.
     list(FILTER RALF_SRC_FILES EXCLUDE REGEX "RalfSupport\\.cpp$")
     list(APPEND TEST_SRC tests/test_Ralf.cpp ${RALF_SRC_FILES} tests/RalfSupportStub.cpp)
+    if(NOT PLUGIN_RUNTIME_MANAGER)
+        list(APPEND TEST_SRC
+            ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/RuntimeManager/RuntimeConfiguration.cpp
+            ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers/RuntimeConfigPayload.cpp)
+    endif()
     list(APPEND TEST_INC
         ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/RuntimeManager
         ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/RuntimeManager/ralf
