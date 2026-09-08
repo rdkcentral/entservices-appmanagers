@@ -25,6 +25,10 @@ extern "C" char **environ;
 
 namespace WPEFramework
 {
+    namespace {
+        constexpr int kRialtoTimeoutMillis = 5000;
+    }
+
     bool RialtoConnector::initialize()
     {
      if (!mInitialized)
@@ -98,7 +102,7 @@ namespace WPEFramework
                 callsign, RialtoServerStates::ACTIVE))
         {
             if (!waitForStateChange(
-                    callsign, RialtoServerStates::ACTIVE, RIALTO_TIMEOUT_MILLIS))
+                    callsign, RialtoServerStates::ACTIVE, kRialtoTimeoutMillis))
             {
                 LOGERR("db982 resumeSession: Timeout waiting for Rialto server to become ACTIVE for callsign='%s'",
                         callsign.c_str());
@@ -143,7 +147,7 @@ namespace WPEFramework
                 callsign, RialtoServerStates::INACTIVE))
         {
             if (!waitForStateChange(
-                callsign, RialtoServerStates::INACTIVE, RIALTO_TIMEOUT_MILLIS))
+                callsign, RialtoServerStates::INACTIVE, kRialtoTimeoutMillis))
             {
                 LOGERR("suspendSession: Timeout waiting for Rialto server to become INACTIVE for callsign='%s'",
                     callsign.c_str());
