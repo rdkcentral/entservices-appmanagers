@@ -449,7 +449,7 @@ Json::Value DobbySpecGenerator::createEnvVars(const ApplicationConfiguration& co
        env.append(envInputArray[i].String());
    }
 
-   std::list<std::string> configEnvs = mAIConfiguration->getEnvs();
+   std::list<std::string> configEnvs = {"XDG_RUNTIME_DIR=/tmp"};
    for (auto it = configEnvs.begin(); it != configEnvs.end(); ++it)
    {
        env.append(*it);
@@ -562,7 +562,7 @@ Json::Value DobbySpecGenerator::createMounts(const ApplicationConfiguration& con
         LOGINFO("Adding Rialto socket bind mount: source='%s' destination='%s'", config.mRialtoSocketPath.c_str(), config.mRialtoSocketPath.c_str());
         // Bind mount the Rialto socket into the container so the app can connect to its RialtoServer instance
         mounts.append(createBindMount(config.mRialtoSocketPath, config.mRialtoSocketPath,
-                                      MS_BIND | MS_NOSUID | MS_NODEV));
+                                      MS_BIND | MS_NOSUID | MS_NODEV|MS_NOEXEC));
     }
     else
     {
