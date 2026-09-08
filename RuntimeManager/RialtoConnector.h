@@ -25,6 +25,7 @@
 #include <string>
 #include <mutex>
 #include <condition_variable>
+#include "rialto/IServerManagerService.h"
 #include "rialto/ServerManagerServiceFactory.h"
 
 #include "AIConfiguration.h"
