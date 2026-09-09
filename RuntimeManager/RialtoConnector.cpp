@@ -21,6 +21,7 @@
 #include <cstdlib>
 #include "RialtoConnector.h"
 
+extern "C" char **environ;
 
 namespace WPEFramework
 {
@@ -28,27 +29,22 @@ namespace WPEFramework
     {
      if (!mInitialized)
      {
-        WPEFramework::Plugin::AIConfiguration* mAIConfiguration;
         LOGWARN("Initializing rialto connector.... Rialto Bridge version 1.1");
         firebolt::rialto::common::ServerManagerConfig config;
-        mAIConfiguration = new WPEFramework::Plugin::AIConfiguration();
-        mAIConfiguration->initialize();
-        config.sessionServerEnvVars = mAIConfiguration->getEnvs();
+        config.sessionServerEnvVars = readGlobalEnv();
         mServerManagerService  = create(shared_from_this(), config);
 	if (!mServerManagerService)
         {
             LOGERR("Failed to create Rialto ServerManagerService");
-            delete mAIConfiguration;
             return false;
         }
-	mLogHandler = std::make_shared<RialtoLogHandler>();
+	    mLogHandler = std::make_shared<RialtoLogHandler>();
         if (!mServerManagerService->registerLogHandler(mLogHandler))
         {
             LOGWARN("Registration of custom logger for Rialto server manager failed");
         }
 
         mInitialized = true;
-        delete mAIConfiguration;
      }
      return true;
     }
@@ -171,5 +167,20 @@ namespace WPEFramework
         }
 
         return status;
+    }
+    std::list<std::string> RialtoConnector::readGlobalEnv() const
+    {
+        std::list<std::string> environmentVariables;
+
+        if (!environ)
+        {
+            return environmentVariables;
+        }
+
+        for (char **env = environ; env && *env; ++env)
+        {
+            environmentVariables.push_back(*env);
+        }
+        return environmentVariables;
     }
 } // namespace WPEFramework
