@@ -242,6 +242,7 @@ namespace WPEFramework
     }
     std::list<std::string> RialtoConnector::readGlobalEnv() const
     {
+        #ifdef ENABLE_RIALTO_CONTROL
         std::list<std::string> environmentVariables;
 
         if (!environ)
@@ -253,6 +254,11 @@ namespace WPEFramework
         {
             environmentVariables.push_back(*env);
         }
+        #else
+        std::list<std::string> environmentVariables;
+        environmentVariables.push_back("XDG_RUNTIME_DIR=/tmp");
+        #endif
+
         return environmentVariables;
     }
 } // namespace WPEFramework
