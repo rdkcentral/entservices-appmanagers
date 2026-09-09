@@ -92,7 +92,7 @@ namespace WPEFramework
             }
 	    else if (Exchange::ILifecycleManager::LifecycleState::ACTIVE == context->getCurrentLifecycleState())
 	    {
-#ifdef ENABLE_RIALTO_ACTIVE_INACTIVE
+#ifdef ENABLE_RIALTO_CONTROL
             RuntimeManagerHandler* runtimeManagerHandler = RequestHandler::getInstance()->getRuntimeManagerHandler();
             if (nullptr != runtimeManagerHandler)
             {
@@ -111,7 +111,7 @@ namespace WPEFramework
 
         bool ActiveState::handle(string& errorReason)
 	{
-#ifdef ENABLE_RIALTO_ACTIVE_INACTIVE
+#ifdef ENABLE_RIALTO_CONTROL
         ApplicationContext* context = getContext();
         RuntimeManagerHandler* runtimeManagerHandler = RequestHandler::getInstance()->getRuntimeManagerHandler();
         if ((nullptr != runtimeManagerHandler) && (Exchange::ILifecycleManager::LifecycleState::PAUSED == context->getCurrentLifecycleState()))

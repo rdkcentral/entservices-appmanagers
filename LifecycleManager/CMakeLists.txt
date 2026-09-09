@@ -69,8 +69,8 @@ if(ENABLE_UNIT_TESTS)
   target_compile_definitions(${MODULE_NAME} PRIVATE UNIT_TEST)
 endif()
 
-if(ENABLE_RIALTO_ACTIVE_INACTIVE)
-	target_compile_definitions(${MODULE_NAME} PRIVATE ENABLE_RIALTO_ACTIVE_INACTIVE)
+if(ENABLE_RIALTO_CONTROL)
+	target_compile_definitions(${MODULE_NAME} PRIVATE ENABLE_RIALTO_CONTROL)
 endif()
 
 install(TARGETS ${MODULE_NAME}

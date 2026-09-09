@@ -1055,7 +1055,7 @@ namespace WPEFramework
             time_t requestTime = getCurrentTimestamp();
 
              mRuntimeManagerImplLock.Lock();
-#ifndef ENABLE_RIALTO_ACTIVE_INACTIVE
+#ifndef ENABLE_RIALTO_CONTROL
             if(!isOCIPluginObjectValid())
             {
                 mRuntimeManagerImplLock.Unlock();
@@ -1117,7 +1117,7 @@ namespace WPEFramework
             time_t requestTime = getCurrentTimestamp();
 
             mRuntimeManagerImplLock.Lock();
-#ifndef ENABLE_RIALTO_ACTIVE_INACTIVE
+#ifndef ENABLE_RIALTO_CONTROL
             if(!isOCIPluginObjectValid())
             {
                 mRuntimeManagerImplLock.Unlock();
