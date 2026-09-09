@@ -29,8 +29,10 @@
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
+#include <set>
 #include <sstream>
 #include <string>
+#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -39,8 +41,6 @@
 
 namespace
 {
-    constexpr const char *TEMP_RALF_NWCFG    = "_temp_ralf_nwcfg";
-    constexpr const char *PERMISSION_FLAGS   = "permissionFlags";
     constexpr const char *PERMISSION_INTERNET_ENABLED = "internetEnabled";
     constexpr const char *PERMISSION_FIREBOLT_ENABLED = "fireboltEnabled";
     constexpr const char *PERMISSION_THUNDER_ENABLED = "thunderEnabled";
@@ -50,6 +50,7 @@ namespace
     constexpr const char *IMPORTED           = "imported";
     constexpr const char *REQUIRED           = "required";
     constexpr const char *DIRECTION          = "direction";
+    constexpr const char *IP                 = "ip";
     constexpr const char *IN_DIRECTION       = "in";
     constexpr const char *OUT_DIRECTION      = "out";
     constexpr const char *DNSMASQ            = "dnsmasq";
@@ -64,7 +65,112 @@ namespace
     constexpr const char *NETWORK_TYPE_NONE  = "none";
     constexpr const char *NETWORK_IPV4       = "ipv4";
     constexpr const char *NETWORK_IPV6       = "ipv6";
+    constexpr const char *DEFAULT_PROTOCOL   = "tcp";
 
+    /**
+     * @brief Creates/Retrieves the networking data node from the OCI config root node.
+     * @param ociConfigRootNode The root node of the OCI config JSON.
+     * @param createIfMissing If true, will create the necessary nodes if they are missing.
+     *   It will create this:
+     *   {
+     *     "rdkPlugins": {
+     *       "networking": {
+     *         "required": true,
+     *         "data": {
+     *           "type": "nat",
+     *           "ipv4": true,
+     *           "ipv6": true,
+     *           "dnsmasq": true
+     *         }
+     *       }
+     *     }
+     *   }
+     * @return Pointer to the networking data node, or nullptr if it could not be found/created.
+     */
+    Json::Value* getNetworkingDataNode(Json::Value& ociConfigRootNode, const bool createIfMissing)
+    {
+        // 1. Resolve RDKPLUGINS
+        if (!ociConfigRootNode.isObject())
+        {
+            LOGERR("%s: Root OCI configuration node is not an object.", MODULE_LOGTAG);
+            return nullptr;
+        }
+
+        Json::Value* rdkPlugins = nullptr;
+        if (ociConfigRootNode.isMember(ralf::RDKPLUGINS) && ociConfigRootNode[ralf::RDKPLUGINS].isObject())
+        {
+            rdkPlugins = &ociConfigRootNode[ralf::RDKPLUGINS];
+        }
+        else
+        {
+            if (!createIfMissing)
+            {
+                LOGERR("%s: %s node is missing/invalid type and could not create it.", MODULE_LOGTAG, ralf::RDKPLUGINS);
+                return nullptr;
+            }
+            ociConfigRootNode[ralf::RDKPLUGINS] = Json::Value(Json::objectValue);
+            rdkPlugins = &ociConfigRootNode[ralf::RDKPLUGINS];
+        }
+
+        // 2. Resolve NETWORKING
+        Json::Value* networking = nullptr;
+        if (rdkPlugins->isMember(NETWORKING) && (*rdkPlugins)[NETWORKING].isObject())
+        {
+            networking = &(*rdkPlugins)[NETWORKING];
+        }
+        else
+        {
+            if (!createIfMissing)
+            {
+                LOGERR("%s: %s.%s node is missing/invalid type and could not create it.",
+                       MODULE_LOGTAG, ralf::RDKPLUGINS,NETWORKING);
+                return nullptr;
+            }
+            // Explicitly re-initialize to objectValue to clear any prior malformed type
+            Json::Value& netRef = (*rdkPlugins)[NETWORKING] = Json::Value(Json::objectValue);
+            netRef[REQUIRED] = true;
+            networking = &netRef;
+        }
+
+        // 3. Resolve DATA
+        Json::Value* dataNode = nullptr;
+        if (networking->isMember(ralf::DATA) && (*networking)[ralf::DATA].isObject())
+        {
+            dataNode = &(*networking)[ralf::DATA];
+        }
+        else
+        {
+            if (!createIfMissing)
+            {
+                LOGERR("%s: %s.%s.%s node is missing/invalid type and could not create it.",
+                       MODULE_LOGTAG, ralf::RDKPLUGINS, NETWORKING, ralf::DATA);
+                return nullptr;
+            }
+            (*networking)[ralf::DATA] = Json::Value(Json::objectValue);
+            dataNode = &(*networking)[ralf::DATA];
+        }
+
+        // 4. Resolve TYPE
+        if (!dataNode->isMember(ralf::TYPE)) {
+            if (!createIfMissing) {
+                LOGERR("%s: %s.%s.%s.%s node is missing and could not create in OCI config.",
+                        MODULE_LOGTAG, ralf::RDKPLUGINS, NETWORKING, ralf::DATA, ralf::TYPE);
+                return nullptr;
+            }
+            (*dataNode)[ralf::TYPE] = NETWORK_TYPE_NAT;
+            (*dataNode)[NETWORK_IPV4] = true;
+            (*dataNode)[NETWORK_IPV6] = true;
+            (*dataNode)[DNSMASQ] = true;
+        }
+
+        return dataNode;
+    }
+
+    /**
+     * @brief Extracts the port number from a given URL endpoint.
+     * @param url The URL endpoint string.
+     * @return The port number if found, otherwise -1.
+     */
     int extractPortFromEndpoint(const std::string& url)
     {
         // Isolate the protocol scheme and the start of the host
@@ -136,13 +242,18 @@ namespace
         return static_cast<int>(port);
     }
 
+    /**
+     * @brief Normalizes the given protocol to either "tcp" or "udp".
+     * @param protocol The protocol string to normalize.
+     * @return "tcp" or "udp" if the protocol is recognized, otherwise DEFAULT_PROTOCOL.
+     */
     const char* normalizeProtocol(const std::string& protocol)
     {
         // Quick length filter to instantly bypass long string comparisons
         const size_t len = protocol.size();
         if (len < 2 || len > 5) {
-            LOGWARN("%s: Unknown protocol '%s'; defaulting to 'tcp'", MODULE_LOGTAG, protocol.c_str());
-            return "tcp";
+            LOGWARN("%s: Unknown protocol '%s'; defaulting to '%s'", MODULE_LOGTAG, protocol.c_str(), DEFAULT_PROTOCOL);
+            return DEFAULT_PROTOCOL;
         }
 
         // Optimized evaluation group for UDP-based protocols
@@ -161,10 +272,15 @@ namespace
             return "tcp";
         }
 
-        LOGWARN("%s: Unknown protocol '%s'; defaulting to 'tcp'", MODULE_LOGTAG, protocol.c_str());
-        return "tcp";
+        LOGWARN("%s: Unknown protocol '%s'; defaulting to '%s'", MODULE_LOGTAG, protocol.c_str(), DEFAULT_PROTOCOL);
+        return DEFAULT_PROTOCOL;
     }
 
+    /**
+     * @brief Checks if the given endpoint is a loopback address.
+     * @param endpoint The endpoint string to check.
+     * @return true if the endpoint is a loopback address, false otherwise.
+     */
     bool isLoopbackEndpoint(const std::string& endpoint)
     {
         // Isolate the start of the host (skip "://")
@@ -192,6 +308,12 @@ namespace
                  endpoint.compare(start_pos, 9, "127.0.0.1") == 0));
     }
 
+    /**
+     * @brief Checks if a given port is already present in the container-to-host port forwarding rules.
+     * @param containerToHost The JSON array representing container-to-host port forwarding rules.
+     * @param port The port number to check for.
+     * @return true if the port is found, false otherwise.
+     */
     bool hasContainerToHostRule(const Json::Value& containerToHost, const uint32_t port)
     {
         const Json::ArrayIndex size = containerToHost.size();
@@ -208,7 +330,13 @@ namespace
         return false;
     }
 
-    void addContainerToHostRuleIfMissing(Json::Value& containerToHost, const uint32_t port, const std::string& protocol = "tcp")
+    /**
+     * @brief Adds a container-to-host port forwarding rule to the provided JSON array.
+     * @param containerToHost The JSON array representing container-to-host port forwarding rules.
+     * @param port The port number for the rule.
+     * @param protocol The protocol for the rule (default is "tcp").
+     */
+    void addContainerToHostRuleIfMissing(Json::Value& containerToHost, const uint32_t port, const std::string& protocol = DEFAULT_PROTOCOL)
     {
         if (true == hasContainerToHostRule(containerToHost, port))
         {
@@ -221,6 +349,170 @@ namespace
         containerToHost.append(rule);
     }
 
+#if 0 // Disabled for now, but will need when DNSMASQ is disabled in Dobby Network Configurations.
+    /**
+     * @brief Checks if the resolv.conf file contains only loopback nameservers.
+     * @param resolvPath The path to the resolv.conf file.
+     * @return true if only loopback nameservers are present, false otherwise.
+     */
+    bool hasOnlyLoopbackNameServers(const std::string &resolvPath)
+    {
+        std::ifstream in(resolvPath);
+        if (!in)
+        {
+            return false;
+        }
+
+        std::string line;
+        std::string ipStr;
+        const std::string whitespace = " \t";
+
+        while (std::getline(in, line))
+        {
+            if (line.empty()) continue;
+
+            size_t start = line.find_first_not_of(whitespace);
+            if (start == std::string::npos || line[start] == '#' || line[start] == ';')
+            {
+                continue;
+            }
+
+            if (line.compare(start, 10, "nameserver") != 0)
+            {
+                continue;
+            }
+
+            size_t valueStart = line.find_first_not_of(whitespace, start + 10);
+            if (valueStart == std::string::npos || line[valueStart] == '#' || line[valueStart] == ';')
+            {
+                continue;
+            }
+
+            size_t valueEnd = line.find_first_of(" \t#;\r\n", valueStart);
+
+            // Extract the IP text token (strip off any trailing zone identifiers like %lo0)
+            size_t zoneMarker = line.find_first_of('%', valueStart);
+            size_t extractEnd = valueEnd;
+            if (zoneMarker != std::string::npos && (valueEnd == std::string::npos || zoneMarker < valueEnd))
+            {
+                extractEnd = zoneMarker;
+            }
+
+            if (extractEnd == std::string::npos)
+            {
+                ipStr.assign(line, valueStart, std::string::npos);
+            }
+            else
+            {
+                ipStr.assign(line, valueStart, extractEnd - valueStart);
+            }
+
+            if (ipStr.empty()) continue;
+
+            // If it doesn't even start with '1' or ':', it cannot possibly be a loopback address.
+            // This completely skips expensive inet_pton system calls for external IPs like 8.8.8.8.
+            const char firstChar = ipStr[0];
+            if (firstChar != '1' && firstChar != ':')
+            {
+                return false; // Found an external nameserver, abort immediately!
+            }
+
+            // Try parsing as IPv4
+            struct in_addr ipv4Addr;
+            if (inet_pton(AF_INET, ipStr.c_str(), &ipv4Addr) == 1)
+            {
+                // Accessing the internal byte layout directly.
+                // The first octet is always at index 0 in network memory layout, making it completely endian-independent.
+                const uint8_t* bytes = reinterpret_cast<const uint8_t*>(&ipv4Addr.s_addr);
+                if (bytes[0] == 127)
+                {
+                    continue; // Valid IPv4 loopback range
+                }
+            }
+            else // Try parsing as IPv6
+            {
+                struct in6_addr ipv6Addr;
+                if (inet_pton(AF_INET6, ipStr.c_str(), &ipv6Addr) == 1)
+                {
+                    // IPv6 loopback is strictly ::1 (15 bytes of 0x00, 1 byte of 0x01)
+                    if (IN6_IS_ADDR_LOOPBACK(&ipv6Addr))
+                    {
+                        continue; // Valid IPv6 loopback
+                    }
+                }
+            }
+
+            // If it passes the '1'/':' check but isn't a valid loopback structure, it's external or invalid
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * @brief Determines the appropriate resolver source path for the container.
+     * @param defaultResolverPath The default resolver file path.
+     * @param nwmgrResolverPath The NetworkManager resolver file path.
+     * @param systemdResolverPath The systemd-resolved resolver file path.
+     * @return The selected resolver file path.
+     */
+    std::string getResolverSourcePathForContainer(const std::string& defaultResolverPath,
+                                                  const std::string& nwmgrResolverPath,
+                                                  const std::string& systemdResolverPath)
+    {
+        /*
+         * Determine the appropriate resolver source path for the container.
+         * If the default resolver file has only loopback nameservers, check for alternative resolver files provided by
+         * NetworkManager or systemd-resolved. If found, use those; otherwise, fall back to the default resolver file.
+         */
+        // If the default file contains valid external nameservers, use it immediately.
+        // Note: we guard with checkIfPathExists(); missing files won't match this branch.
+        if (checkIfPathExists(defaultResolverPath) &&
+            !hasOnlyLoopbackNameServers(defaultResolverPath))
+        {
+            return defaultResolverPath;
+        }
+
+        // Check the NetworkManager fallback file.
+        // It must exist AND contain at least one external, non-loopback nameserver.
+        if (checkIfPathExists(nwmgrResolverPath) &&
+            !hasOnlyLoopbackNameServers(nwmgrResolverPath))
+        {
+            return nwmgrResolverPath;
+        }
+
+        // Check the systemd-resolved fallback file.
+        // It must exist AND contain at least one external, non-loopback nameserver.
+        if (checkIfPathExists(systemdResolverPath) &&
+            !hasOnlyLoopbackNameServers(systemdResolverPath))
+        {
+            return systemdResolverPath;
+        }
+
+        // Ultimate Fallback path
+        LOGWARN("Host resolver file %s only has loopback nameservers and no valid fallback resolver file found",
+                defaultResolverPath.c_str());
+
+        return defaultResolverPath;
+    }
+
+    /**
+     * @brief Determines the appropriate resolver source path for the container.
+     * @return The selected resolver file path.
+     */
+    std::string getResolverSourcePathForContainer()
+    {
+        return getResolverSourcePathForContainer(RALF_HOST_DEFAULT_RESOLV_CONF_FILE,
+                                                 RALF_HOST_NOSTUB_NWMGR_RESOLV_CONF_FILE,
+                                                 RALF_HOST_NOSTUB_SYSTEMD_RESOLV_CONF_FILE);
+    }
+
+    /**
+     * @brief Ensures that the mount target file exists in the rootfs of the container.
+     * @param configFilePath The path to the configuration file.
+     * @param containerPath The path inside the container where the mount target should be created.
+     * @return true if the mount target file exists or was created successfully, false otherwise.
+     */
     bool ensureMountTargetFileInRootfs(const std::string& configFilePath, const std::string& containerPath)
     {
         // Restored exact original logic check: must not be empty and must start with '/'
@@ -279,6 +571,13 @@ namespace
         return true;
     }
 
+    /**
+     * @brief Adds network system mounts to the OCI configuration.
+     *     Future reserved - for additional system mounts when dnsmasq is disabled.
+     * @param[in,out] ociConfigRootNode The root node of the OCI configuration JSON.
+     * @param[in] configFilePath The path to the configuration file.
+     * @return true if the mounts were added successfully, false otherwise.
+     */
     bool addNetworkSystemMountsToOCIConfig(Json::Value& ociConfigRootNode, const std::string& configFilePath)
     {
         const bool dnsmasqEnabled = ociConfigRootNode[ralf::RDKPLUGINS][NETWORKING][ralf::DATA][DNSMASQ].asBool();
@@ -305,100 +604,584 @@ namespace
 
         return ralf::addBindMountToOCIConfig(ociConfigRootNode, resolverSourcePath, resolverDestinationPath);
     }
+#endif // 0 - DNSMASQ Disabled Mount helpers.
 }
 
 using namespace ralf;
 namespace NetworkConfigurationHelper
 {
 
+/**
+ * @brief Updates the networking data node in the OCI config with the provided Dobby network configuration object.
+ * @param ociConfigNWDataNode The networking data node of the OCI config JSON.
+   Dobby Node:
+            {
+                "ipv4": true,
+                "ipv6": <optional bool>,
+                "portForwarding": {
+                    "hostToContainer": [
+                        {
+                            "port": 1234,
+                            "protocol": "tcp"
+                        }
+                    ],
+                    "containerToHost": [
+                        {
+                            "port": 1234,
+                            "protocol": "tcp"
+                        }
+                    ],
+                    "localhostMasquerade": <optional bool>
+                },
+                "multicastForwarding": [
+                    {
+                        "ip": "239.255.255.250",
+                        "port": 1900
+                    }
+                ],
+                "interContainer": [
+                    {
+                        "direction": "in",
+                        "port": 12345,
+                        "protocol": "tcp",
+                        "localhostMasquerade": <optional bool>
+                    }
+                ]
+            }
+ * @param dobbyNWCfgObject The Dobby network configuration object to be added to the networking data node.
+ */
+bool updategetNetworkingDataNode(Json::Value& ociConfigNWDataNode, const Json::Value& dobbyNWCfgObject)
+{
+    if (!dobbyNWCfgObject.isObject() || !ociConfigNWDataNode.isObject())
+    {
+        LOGERR("%s: Invalid input parameters for updating networking data node.", MODULE_LOGTAG);
+        return false;
+    }
+
+    // Process portForwarding rules
+    if (const Json::Value* dobbyPortForwarding = dobbyNWCfgObject.find(PORT_FORWARDING))
+    {
+        if (dobbyPortForwarding->isObject())
+        {
+            Json::Value& ociPortForwarding = ociConfigNWDataNode[PORT_FORWARDING];
+            if (!ociPortForwarding.isObject())
+            {
+                ociPortForwarding = Json::Value(Json::objectValue);
+            }
+
+            // LocalhostMasquerade check
+            if (const Json::Value* masqVal = dobbyPortForwarding->find(LOCALHOST_MASQUERADE))
+            {
+                if (masqVal->isBool() && masqVal->asBool())
+                {
+                    ociPortForwarding[LOCALHOST_MASQUERADE] = true;
+                }
+            }
+
+            // HostToContainer rules
+            if (const Json::Value* hostToContRules = dobbyPortForwarding->find(HOST_TO_CONTAINER))
+            {
+                if (hostToContRules->isArray())
+                {
+                    Json::Value& ociHostToContainer = ociPortForwarding[HOST_TO_CONTAINER];
+                    if (!ociHostToContainer.isArray())
+                    {
+                        ociHostToContainer = Json::Value(Json::arrayValue);
+                    }
+
+                    for (const auto& rule : *hostToContRules)
+                    {
+                        if (rule.isObject())
+                        {
+                            const Json::Value* portVal = rule.find(PORT);
+                            const Json::Value* protoVal = rule.find(PROTOCOL);
+                            if (portVal && protoVal)
+                            {
+                                addContainerToHostRuleIfMissing(ociHostToContainer, portVal->asUInt(), protoVal->asString());
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ContainerToHost rules
+            if (const Json::Value* contToHostRules = dobbyPortForwarding->find(CONTAINER_TO_HOST))
+            {
+                if (contToHostRules->isArray())
+                {
+                    Json::Value& ociContainerToHost = ociPortForwarding[CONTAINER_TO_HOST];
+                    if (!ociContainerToHost.isArray())
+                    {
+                        ociContainerToHost = Json::Value(Json::arrayValue);
+                    }
+
+                    for (const auto& rule : *contToHostRules)
+                    {
+                        if (rule.isObject())
+                        {
+                            const Json::Value* portVal = rule.find(PORT);
+                            const Json::Value* protoVal = rule.find(PROTOCOL);
+                            if (portVal && protoVal)
+                            {
+                                addContainerToHostRuleIfMissing(ociContainerToHost, portVal->asUInt(), protoVal->asString());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Process multicastForwarding rules
+    // RALF Spec does not expose any multicast options, but process them if they exist in the Dobby config.
+    if (const Json::Value* multicastRules = dobbyNWCfgObject.find(MULTICAST_FORWARDING))
+    {
+        if (multicastRules->isArray())
+        {
+            LOGWARN("%s: SPEC CHANGED?, Processing multicastForwarding rules from RALF NW cfg.", MODULE_LOGTAG);
+            Json::Value& ociMulticastForwarding = ociConfigNWDataNode[MULTICAST_FORWARDING];
+            if (!ociMulticastForwarding.isArray())
+            {
+                ociMulticastForwarding = Json::Value(Json::arrayValue);
+            }
+
+            for (const auto& rule : *multicastRules)
+            {
+                if (rule.isObject())
+                {
+                    const Json::Value* ipVal = rule.find(IP);
+                    const Json::Value* portVal = rule.find(PORT);
+                    if (ipVal && portVal)
+                    {
+                        // Cache values locally once to avoid string conversions inside the loop
+                        std::string targetIp = ipVal->asString();
+                        unsigned int targetPort = portVal->asUInt();
+                        bool duplicateFound = false;
+
+                        for (const auto& existingRule : ociMulticastForwarding)
+                        {
+                            if (existingRule.isObject())
+                            {
+                                const Json::Value* eIp = existingRule.find(IP);
+                                const Json::Value* ePort = existingRule.find(PORT);
+                                // Direct scalar comparisons are highly efficient
+                                if (eIp && ePort && ePort->asUInt() == targetPort && eIp->asString() == targetIp)
+                                {
+                                    duplicateFound = true;
+                                    break;
+                                }
+                            }
+                        }
+                        if (!duplicateFound)
+                        {
+                            ociMulticastForwarding.append(rule);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Process interContainer rules
+    if (const Json::Value* interContRules = dobbyNWCfgObject.find(INTER_CONTAINER))
+    {
+        if (interContRules->isArray())
+        {
+            Json::Value& ociInterContainer = ociConfigNWDataNode[INTER_CONTAINER];
+            if (!ociInterContainer.isArray())
+            {
+                ociInterContainer = Json::Value(Json::arrayValue);
+            }
+
+            for (const auto& rule : *interContRules)
+            {
+                if (rule.isObject())
+                {
+                    const Json::Value* dirVal = rule.find(DIRECTION);
+                    const Json::Value* portVal = rule.find(PORT);
+                    const Json::Value* protoVal = rule.find(PROTOCOL);
+
+                    if (dirVal && portVal && protoVal)
+                    {
+                        // Cache input string/scalar values locally
+                        std::string targetDir = dirVal->asString();
+                        unsigned int targetPort = portVal->asUInt();
+                        std::string targetProto = protoVal->asString();
+
+                        const Json::Value* masqVal = rule.find(LOCALHOST_MASQUERADE);
+                        bool targetHasMasq = (masqVal && masqVal->isBool()) ? masqVal->asBool() : false;
+
+                        bool duplicateFound = false;
+                        for (const auto& existingRule : ociInterContainer)
+                        {
+                            if (existingRule.isObject())
+                            {
+                                const Json::Value* ePort = existingRule.find(PORT);
+                                // Quickest integer-first exit check
+                                if (ePort && ePort->asUInt() == targetPort)
+                                {
+                                    const Json::Value* eDir = existingRule.find(DIRECTION);
+                                    const Json::Value* eProto = existingRule.find(PROTOCOL);
+
+                                    if (eDir && eProto && eDir->asString() == targetDir && eProto->asString() == targetProto)
+                                    {
+                                        const Json::Value* eMasq = existingRule.find(LOCALHOST_MASQUERADE);
+                                        bool existingHasMasq = (eMasq && eMasq->isBool()) ? eMasq->asBool() : false;
+
+                                        if (targetHasMasq == existingHasMasq)
+                                        {
+                                            duplicateFound = true;
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if (!duplicateFound)
+                        {
+                            ociInterContainer.append(rule);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return true;
+}
+
+/**
+ * @brief @brief Converts a RALF network configuration object to a Dobby network configuration object.
+ * @param ralfNWCfgObject The RALF network configuration array or single object node.
+ * Input RALF Node::
+      {
+        "name": "netflix-mdx",
+        "port": 8009,
+        "protocol": "tcp",
+        "type": "public"
+      },
+      {
+        "name": "com.example.myapp.service",
+        "port": 1234,
+        "protocol": "tcp",
+        "type": "exported"
+      },
+      {
+        "name": "com.example.someotherapp.service",
+        "port": 4567,
+        "protocol": "tcp",
+        "type": "imported"
+      }
+public: Network services that an app or service exposes outside the device.
+exported: Service that an app or service exposes to other apps or services on the device.
+imported: Network services supplied by another app or service that the current app requires access to.
+
+ * Output Dobby Node:
+    "portForwarding": {
+        "hostToContainer": [
+            {
+                "port": 1234,
+                "protocol": "tcp"
+            },
+            {
+                "port": 5678,
+                "protocol": "udp"
+            }
+        ],
+        "containerToHost": [
+            {
+                "port": 1234,
+                "protocol": "tcp"
+            },
+            {
+                "port": 5678,
+                "protocol": "udp"
+            }
+        ],
+        "localhostMasquerade": true
+    },
+    "multicastForwarding": [
+        {
+            "ip": "239.255.255.250",
+            "port": 1900
+        }
+    ],
+    "interContainer": [
+        {
+            "direction": "in",
+            "port": 12345,
+            "protocol": "tcp",
+            "localhostMasquerade": true
+        },
+        {
+            "direction": "out",
+            "port": 2468,
+            "protocol": "tcp"
+        }
+    ]
+
+ portForwarding:
+    protocol: The protocol for the port forwarding rule (e.g., "tcp" or "udp"); optional and defaults to "tcp" if not specified.
+    hostToContainer: forwards incoming packets to specified port on the host to the container. (allow containered processes to run servers)
+    containerToHost: allow containers access to the host over certain ports. Adds firewall rules to allow containers to access the specified port(s) on the host via the bridge device.
+    localhostMasquerade: If enabled, redirect packets sent to localhost in the container to the host's localhost (via the dobby bridge device) for the forwarded ports. Allows containers to access services on the host without needing to change existing code to point to the bridge IP address. This can obviously only work for ports specified in the containerToHost section.
+
+ Multicast Forwarding: allows containered processes to receive multicast traffic from specified address/port combinations.
+    multicastForwarding.ip and multicastForwarding.port fields are both required for each forwarded multicast address.
+
+ interContainer: allows containers to communicate.
+    direction: "in" or "out" to specify the direction of the inter-container communication.
+    port: The port number for the inter-container communication.
+    protocol: The protocol for the inter-container communication (e.g., "tcp" or "udp").
+    localhostMasquerade: allows the server container to bind to localhost. For the client container, it allows connecting to localhost, forwarding the connection to the server container.
+ * @return A Dobby network configuration object (empty object {} if validation fails).
+ */
+Json::Value translateRALFNWCfgObjToDobbyNWCfgObj(const Json::Value& ralfNWCfgObject)
+{
+    // Allocated on the stack per function call - safe for looping and avoids cross-contamination
+    Json::Value dobbyNWCfgObject(Json::objectValue);
+
+    bool isArray = ralfNWCfgObject.isArray();
+    if (!isArray && !ralfNWCfgObject.isObject())
+    {
+        LOGERR("%s: Invalid RALF network configuration object type.", MODULE_LOGTAG);
+        return dobbyNWCfgObject;
+    }
+
+    // Pre-initialize basic structural containers to avoid nested lookups later
+    Json::Value& portForwarding = dobbyNWCfgObject[PORT_FORWARDING] = Json::Value(Json::objectValue);
+    Json::Value& hostToContainer = portForwarding[HOST_TO_CONTAINER] = Json::Value(Json::arrayValue);
+    Json::Value& interContainer = dobbyNWCfgObject[INTER_CONTAINER] = Json::Value(Json::arrayValue);
+
+    // Set global localhostMasquerade helper
+    portForwarding[LOCALHOST_MASQUERADE] = true;
+
+    // Direct loop handling depending on input layout structure
+    auto processItem = [&](const Json::Value& ralfItem) {
+        if (!ralfItem.isObject()) return;
+
+        const Json::Value* portVal = ralfItem.find(PORT);
+        const Json::Value* typeVal = ralfItem.find(TYPE);
+        if (!portVal || !typeVal) return;
+
+        unsigned int port = portVal->asUInt();
+        std::string type = typeVal->asString();
+
+        // Protocol is optional and defaults to "tcp"
+        const Json::Value* protoVal = ralfItem.find(PROTOCOL);
+        std::string protocol = (protoVal && protoVal->isString()) ? protoVal->asString() : DEFAULT_PROTOCOL;
+
+        if (type == PUBLIC)
+        {
+            Json::Value rule(Json::objectValue);
+            rule[PORT] = port;
+            rule[PROTOCOL] = protocol;
+            hostToContainer.append(rule);
+        }
+        else if (type == EXPORTED)
+        {
+            Json::Value rule(Json::objectValue);
+            rule[DIRECTION] = DIRECTION_IN;
+            rule[PORT] = port;
+            rule[PROTOCOL] = protocol;
+            rule[LOCALHOST_MASQUERADE] = true;
+            interContainer.append(rule);
+        }
+        else if (type == IMPORTED)
+        {
+            Json::Value rule(Json::objectValue);
+            rule[DIRECTION] = DIRECTION_OUT;
+            rule[PORT] = port;
+            rule[PROTOCOL] = protocol;
+            interContainer.append(rule);
+        }
+    };
+
+    if (isArray)
+    {
+        for (const auto& item : ralfNWCfgObject)
+        {
+            processItem(item);
+        }
+    }
+    else
+    {
+        processItem(ralfNWCfgObject);
+    }
+
+    // Clean up empty tracking members to ensure clean, valid Dobby JSON output
+    if (hostToContainer.empty())
+    {
+        portForwarding.removeMember(HOST_TO_CONTAINER);
+    }
+    if (portForwarding.empty())
+    {
+        dobbyNWCfgObject.removeMember(PORT_FORWARDING);
+    }
+    if (interContainer.empty())
+    {
+        dobbyNWCfgObject.removeMember(INTER_CONTAINER);
+    }
+
+    return dobbyNWCfgObject; // RVO optimization ensures this is highly performant
+}
+
+/**
+ * @brief Updates the OCI configuration with network configuration from the manifest.
+ * @param ociConfigRootNode The root node of the OCI configuration JSON.
+ * @param manifestRootNode The root node of the manifest JSON.
+ * @return true if the update was successful, false otherwise.
+ */
 bool updateNetworkConfigurationNode(Json::Value& ociConfigRootNode, const Json::Value& manifestRootNode)
 {
     // Handle "configuration" node in the manifest, which may contain "urn:rdk:config:network" metadata.
     if (!manifestRootNode.isMember(CONFIGURATION))
     {
         LOGWARN("%s: No configuration node found in manifest; skipping network configuration update", MODULE_LOGTAG);
-        return true;
+        return true; // Not an error; just no configuration to process
     }
 
     const Json::Value& configurationNode = manifestRootNode[CONFIGURATION];
     if (!configurationNode.isMember(NETWORK_CONFIG_URN))
     {
         LOGWARN("%s: No network configuration node found in manifest; skipping network configuration update", MODULE_LOGTAG);
-        return true;
+        return true; // Not an error; just no configuration to process
     }
+
+    /**
+     * Reference: https://github.com/rdkcentral/oci-package-spec/blob/main/metadata.md#urnrdkconfignetwork (Jun 1, 2026)
+     * Schema:
+        {
+          "$schema": "https://json-schema.org",
+          "title": "RDK Network Services Configuration Schema",
+          "description": "Network services configuration mapping to firewall rules applied to the app or service container.",
+          "type": "object",
+          "properties": {
+            "urn:rdk:config:network": {
+              "description": "Network services configuration.",
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "port": {
+                    "type": "integer"
+                  },
+                  "protocol": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string"
+                  }
+                },
+                "required": [ "name", "port", "protocol", "type" ]
+              }
+            }
+          }
+        }
+     */
 
     const Json::Value& networkConfiguration = configurationNode[NETWORK_CONFIG_URN];
     if (!networkConfiguration.isArray())
     {
-        LOGWARN("%s: Network configuration is not an array", MODULE_LOGTAG);
-        return true;
-    }
-
-    // Access the node in-place
-    Json::Value& networkStore = ociConfigRootNode[TEMP_RALF_NWCFG][ralf::NETWORK];
-    if (!networkStore.isObject())
-    {
-        networkStore = Json::Value(Json::objectValue);
+        LOGWARN("%s: Network configuration is not an array, no need to process it.", MODULE_LOGTAG);
+        return false;
     }
 
     const Json::ArrayIndex configSize = networkConfiguration.size();
+    if (0 == configSize)
+    {
+        LOGDBG("%s: Network configuration is empty, skipping it.", MODULE_LOGTAG);
+        return true; // Not an error; just no configuration to process
+    }
+
+    // Retrieve or create the networking data node in the OCI config.
+    // All FIREBOLT RALF apps require a networking data node to connect to FIREBOLT endpoint.
+    Json::Value* netData = nullptr;
+    try {
+        netData = getNetworkingDataNode(ociConfigRootNode, true);
+    } catch (const Json::LogicError& e) {
+        LOGERR("%s: Exception Json::LogicError: %s", MODULE_LOGTAG, e.what());
+        netData = nullptr;
+        return false;
+    } catch (const std::exception& e) {
+        LOGERR("%s: Exception std::exception: %s", MODULE_LOGTAG, e.what());
+        netData = nullptr;
+        return false;
+    } catch (...) {
+        LOGERR("%s: Unknown exception while retrieving networking data node.", MODULE_LOGTAG);
+        netData = nullptr;
+        return false;
+    }
+
+    // Process each network configuration entry and update the OCI config accordingly.
+    bool status = false;
     for (Json::ArrayIndex index = 0; index < configSize; ++index)
     {
-        const Json::Value& entry = networkConfiguration[index];
-
-        if (!entry.isObject())
+        const Json::Value& ralfNWCfgObject = networkConfiguration[index];
+        if (!ralfNWCfgObject.isObject())
         {
-            LOGWARN("%s: Network entry is not an object", MODULE_LOGTAG);
+            LOGWARN("%s: Network entry is not an object, skipping it.", MODULE_LOGTAG);
             continue;
         }
 
-        std::string entryName;
-        const Json::Value& nameNode = entry[ralf::NAME];
-
-        if (nameNode.isString())
+        // Spec mandates that all entries must have "name", "port", "protocol", and "type" fields.
+        // check if all "required" fields are present and matching the expected types.
+        if (!ralfNWCfgObject.isMember(ralf::NAME) || !ralfNWCfgObject[ralf::NAME].isString() ||
+            !ralfNWCfgObject.isMember(ralf::PORT) || !ralfNWCfgObject[ralf::PORT].isUInt() ||
+            !ralfNWCfgObject.isMember(ralf::PROTOCOL) || !ralfNWCfgObject[ralf::PROTOCOL].isString() ||
+            !ralfNWCfgObject.isMember(ralf::TYPE) || !ralfNWCfgObject[ralf::TYPE].isString())
         {
-            entryName = nameNode.asString();
-        }
-        else
-        {
-            // Replaces heavy streams with a raw stack buffer.
-            // 32 bytes is more than enough for "unnamed-" + an unsigned integer.
-            char buf[32] = {0};
-            int written = snprintf(buf, sizeof(buf), "unnamed-%u", networkStore.size());
-
-            if (written > 0 && static_cast<size_t>(written) < sizeof(buf)) {
-                entryName.assign(buf, static_cast<size_t>(written));
-            } else {
-                entryName = "unnamed-fallback";
-            }
-
-            LOGWARN("%s: Network entry is missing a name; generating unique name: %s", MODULE_LOGTAG, entryName.c_str());
+            LOGWARN("%s: Network entry is missing required fields or has incorrect types, skipping it.", MODULE_LOGTAG);
+            continue;
         }
 
-        networkStore[entryName] = entry;
+        // Convert RALFNWCfgObject to DobbyNWCfgObject
+        Json::Value dobbyNWCfgObject = translateRALFNWCfgObjToDobbyNWCfgObj(ralfNWCfgObject);
+        if (dobbyNWCfgObject.empty())
+        {
+            LOGWARN("%s: Failed to convert RALF network entry to Dobby format, skipping it.", MODULE_LOGTAG);
+            continue;
+        }
+        status = updategetNetworkingDataNode(*netData, dobbyNWCfgObject);
+        if (!status)
+        {
+            LOGWARN("%s: Failed to update networking data node with RALF network entry.", MODULE_LOGTAG);
+        }
     }
 
-    return true;
+    return status;
 }
 
-bool updatePermissionConfigurationNode(Json::Value& ociConfigRootNode, const Json::Value& manifestRootNode)
+/**
+ * @brief Updates the OCI configuration with network settings based on permissions specified in the manifest.
+ * @param ociConfigRootNode The root node of the OCI configuration JSON.
+ * @param manifestRootNode The root node of the manifest JSON.
+ * @return true if the update was successful or if there were no permissions to process; false on error.
+ */
+bool updatePermissionBasedNetworkConfiguration(Json::Value& ociConfigRootNode, const Json::Value& manifestRootNode)
 {
     if (!manifestRootNode.isMember(PERMISSIONS))
     {
         LOGWARN("%s: No permissions found in manifest; skipping permission-based networking update", MODULE_LOGTAG);
-        return true;
+        return true; // Not an error; just no permissions to process
     }
 
     const Json::Value& permissions = manifestRootNode[PERMISSIONS];
     if (!permissions.isArray())
     {
         LOGWARN("%s: Permissions node is not an array; skipping permission-based networking update", MODULE_LOGTAG);
-        return true;
+        return true; // Not an error; just no permissions to process
     }
 
     bool hasPermissionInternet = false;
     bool hasPermissionFirebolt = false;
     bool hasPermissionThunder = false;
+    bool updatedInternetNwCfg = false;
+    bool updatedFireboltNwCfg = false;
+    bool updatedThunderNwCfg = false;
 
     const Json::ArrayIndex size = permissions.size();
     for (Json::ArrayIndex index = 0; index < size; ++index)
@@ -426,426 +1209,133 @@ bool updatePermissionConfigurationNode(Json::Value& ociConfigRootNode, const Jso
         }
     }
 
-    // Single-pass In-Place Write Shield
-    Json::Value& permissionFlags = ociConfigRootNode[TEMP_RALF_NWCFG][PERMISSION_FLAGS];
-    if (!permissionFlags.isObject())
-    {
-        permissionFlags = Json::Value(Json::objectValue);
-    }
+    Json::Value* netData = getNetworkingDataNode(ociConfigRootNode, true);
 
-    // Shield against unnecessary JSON map traversal writes if the flag values haven't changed.
-    if (hasPermissionInternet)
+    if ((hasPermissionInternet || hasPermissionFirebolt || hasPermissionThunder) && (nullptr == netData))
     {
-        permissionFlags[PERMISSION_INTERNET_ENABLED] = true;
-    }
-    if (hasPermissionFirebolt)
-    {
-        permissionFlags[PERMISSION_FIREBOLT_ENABLED] = true;
-    }
-    if (hasPermissionThunder)
-    {
-        permissionFlags[PERMISSION_THUNDER_ENABLED] = true;
-    }
-
-    return true;
-}
-
-bool updateTempRalfNWCfgFromEnv(Json::Value& ociConfigRootNode, const std::vector<std::string>& envVarNames)
-{
-    if (envVarNames.empty())
-    {
-        LOGWARN("%s: Environment variable list is empty; skipping update", MODULE_LOGTAG);
+        LOGERR("%s: Failed to retrieve/create networking data node for permission-based update.", MODULE_LOGTAG);
         return false;
     }
 
-    Json::Value& processNode = ociConfigRootNode[PROCESS];
-    if (!processNode.isObject())
+    if (hasPermissionInternet || hasPermissionFirebolt || hasPermissionThunder)
     {
-        processNode = Json::Value(Json::objectValue);
-    }
-
-    Json::Value& envArray = processNode[ENV];
-    if (!envArray.isArray())
-    {
-        envArray = Json::Value(Json::arrayValue);
-    }
-
-    Json::Value& tempRalfNWCfgNode = ociConfigRootNode[TEMP_RALF_NWCFG];
-    if (!tempRalfNWCfgNode.isObject())
-    {
-        tempRalfNWCfgNode = Json::Value(Json::objectValue);
-    }
-
-    Json::Value& containerToHost = tempRalfNWCfgNode[CONTAINER_TO_HOST];
-    if (!containerToHost.isArray())
-    {
-        containerToHost = Json::Value(Json::arrayValue);
-    }
-
-    // Track found strings using pointer hashes instead of allocating new strings
-    // Using an unordered_set of const char* references points directly to existing allocations.
-    std::unordered_set<const char*> foundEnvNames;
-    bool updated = false;
-
-    const Json::ArrayIndex envSize = envArray.size();
-    for (Json::ArrayIndex index = 0; index < envSize; ++index)
-    {
-        const Json::Value& envEntry = envArray[index];
-        if (!envEntry.isString())
+        if (hasPermissionInternet)
         {
-            continue;
+            updatedInternetNwCfg = true;
         }
 
-        // Allocation-Free Buffer Traversal
-        const char* envPair = envEntry.asCString();
-        const char* equalsSign = std::strchr(envPair, '=');
-        if (equalsSign == nullptr)
+        // check and update if not matching.
+        if (!netData->isMember(TYPE) || !(*netData)[TYPE].isString() || (*netData)[TYPE].asString() != NETWORK_TYPE_NAT)
         {
-            continue;
+            (*netData)[TYPE] = NETWORK_TYPE_NAT;
         }
-
-        const size_t nameLen = equalsSign - envPair;
-
-        // Single allocation-free match pass against input vector
-        // Loops through envVarNames directly using string layout lengths to skip set creation overhead.
-        const std::string* matchedVar = nullptr;
-        for (const auto& reqName : envVarNames)
+        if (!netData->isMember(DNSMASQ) || !(*netData)[DNSMASQ].isBool() || !(*netData)[DNSMASQ].asBool())
         {
-            if (reqName.size() == nameLen && std::strncmp(envPair, reqName.c_str(), nameLen) == 0)
+            (*netData)[DNSMASQ] = true;
+        }
+        if (!netData->isMember(NETWORK_IPV4) || !(*netData)[NETWORK_IPV4].isBool() || !(*netData)[NETWORK_IPV4].asBool())
+        {
+            (*netData)[NETWORK_IPV4] = true;
+        }
+        if (!netData->isMember(NETWORK_IPV6) || !(*netData)[NETWORK_IPV6].isBool() || !(*netData)[NETWORK_IPV6].asBool())
+        {
+            (*netData)[NETWORK_IPV6] = true;
+        }
+    }
+
+    if (hasPermissionFirebolt)
+    {
+        /*
+           We need to extract FIREBOLT_ENDPOINT configs from manifestRootNode.envVariables if present.
+           The string is a serialized form of json value .. An example is
+           ["FIREBOLT_ENDPOINT=http:\/\/127.0.0.1:3473?session=810b474c-5f68-4cdf-82f2-86dc4d6d1f97","TARGET_STATE=4"]
+        */
+        if (manifestRootNode.isMember(ENV_VARIABLES) && manifestRootNode[ENV_VARIABLES].isArray())
+        {
+            const Json::Value& envVariables = manifestRootNode[ENV_VARIABLES];
+            const Json::ArrayIndex envSize = envVariables.size();
+            for (Json::ArrayIndex index = 0; index < envSize; ++index)
             {
-                matchedVar = &reqName;
-                break;
-            }
-        }
-
-        if (matchedVar == nullptr)
-        {
-            continue; // Not requested
-        }
-
-        // Deduplication using the static string block address of the matching vector string
-        if (foundEnvNames.count(matchedVar->c_str()) > 0)
-        {
-            continue;
-        }
-
-        const char* envVarValue = equalsSign + 1;
-        if (*envVarValue == '\0')
-        {
-            LOGWARN("%s: Environment variable %s is empty; skipping update", MODULE_LOGTAG, matchedVar->c_str());
-            continue;
-        }
-
-        // Protocol Extraction without allocating temporary substrings
-        const char* schemePos = std::strstr(envVarValue, "://");
-        const char* protocolStr = "tcp";
-        std::string protocolRawStorage; // Allocated only if fallback protocol is used
-
-        if (schemePos != nullptr)
-        {
-            protocolRawStorage.assign(envVarValue, schemePos - envVarValue);
-            protocolStr = normalizeProtocol(protocolRawStorage);
-        }
-
-        const int port = extractPortFromEndpoint(envVarValue);
-        if (port <= 0)
-        {
-            LOGWARN("%s: Invalid port extracted from %s: %d; skipping update", MODULE_LOGTAG, matchedVar->c_str(), port);
-            continue;
-        }
-
-        addContainerToHostRuleIfMissing(containerToHost, static_cast<uint32_t>(port), protocolStr);
-        foundEnvNames.insert(matchedVar->c_str());
-        updated = true;
-
-        if (isLoopbackEndpoint(envVarValue))
-        {
-            Json::Value& permissionFlags = tempRalfNWCfgNode[PERMISSION_FLAGS];
-            if (!permissionFlags.isObject())
-            {
-                permissionFlags = Json::Value(Json::objectValue);
-            }
-            permissionFlags[LOCALHOST_MASQUERADE] = true;
-        }
-    }
-
-    // Output missing environment warnings cleanly
-    for (const auto& envVarName : envVarNames)
-    {
-        if (foundEnvNames.count(envVarName.c_str()) == 0)
-        {
-            LOGWARN("%s: Environment variable %s not found in process.env; skipping update", MODULE_LOGTAG, envVarName.c_str());
-        }
-    }
-
-    return updated;
-}
-
-bool generateNetworkingPluginNode(Json::Value& ociConfigRootNode)
-{
-    // Structural Presence Guard Check
-    if (!ociConfigRootNode.isMember(TEMP_RALF_NWCFG))
-    {
-        LOGWARN("%s: No temporary network configuration found; skipping networking plugin generation", MODULE_LOGTAG);
-        return true;
-    }
-
-    Json::Value& tempConfig = ociConfigRootNode[TEMP_RALF_NWCFG];
-    const Json::Value& permissionFlags = tempConfig[PERMISSION_FLAGS];
-    const bool permissionInternetEnabled = permissionFlags[PERMISSION_INTERNET_ENABLED].asBool();
-    const bool permissionFireboltEnabled = permissionFlags[PERMISSION_FIREBOLT_ENABLED].asBool();
-    const bool permissionThunderEnabled = permissionFlags[PERMISSION_THUNDER_ENABLED].asBool();
-
-    // Pre-allocate Vector Memory
-    std::vector<std::string> envVarNames;
-    envVarNames.reserve(2);
-    if (permissionFireboltEnabled)
-    {
-        envVarNames.push_back(FIREBOLT_ENDPOINT_ENV_KEY);
-    }
-    if (permissionThunderEnabled)
-    {
-        envVarNames.push_back(THUNDER_ACCESS_ENV_KEY);
-    }
-
-    if (!envVarNames.empty() && !updateTempRalfNWCfgFromEnv(ociConfigRootNode, envVarNames))
-    {
-        LOGWARN("%s: Failed to update TEMP_RALF_NWCFG from permission-enabled environment variables", MODULE_LOGTAG);
-    }
-
-    // Single-pass Node Isolation
-    // Extract references once to prevent repeated map lookups inside conditions and loops
-    const Json::Value& networkStore = tempConfig[NETWORK];
-    const Json::Value& envContainerToHost = tempConfig[CONTAINER_TO_HOST];
-
-    const bool hasNetworkStore = networkStore.isObject() && !networkStore.empty();
-    const bool hasContainerToHostStore = envContainerToHost.isArray() && !envContainerToHost.empty();
-
-    if (!hasNetworkStore && !hasContainerToHostStore && !permissionInternetEnabled && !permissionFireboltEnabled && !permissionThunderEnabled)
-    {
-        LOGWARN("%s: Temporary network configuration is empty; skipping networking plugin generation", MODULE_LOGTAG);
-        ociConfigRootNode.removeMember(TEMP_RALF_NWCFG);
-        return true;
-    }
-
-    // Initialize the OCI target JSON tree structures
-    Json::Value networkingPlugin(Json::objectValue);
-    Json::Value pluginData(Json::objectValue);
-    Json::Value portForwarding(Json::objectValue);
-    Json::Value hostToContainer(Json::arrayValue);
-    Json::Value interContainer(Json::arrayValue);
-
-    networkingPlugin[REQUIRED] = true;
-    pluginData[TYPE] = NETWORK_TYPE_NONE;
-    pluginData[NETWORK_IPV4] = true;
-    pluginData[NETWORK_IPV6] = true;
-
-    if (hasNetworkStore)
-    {
-        pluginData[TYPE] = NETWORK_TYPE_NAT;
-        pluginData[NETWORK_IPV4] = true;
-        pluginData[NETWORK_IPV6] = true;
-
-        const Json::Value::Members serviceNames = networkStore.getMemberNames();
-        for (const std::string& serviceName : serviceNames)
-        {
-            const Json::Value& entry = networkStore[serviceName];
-            const Json::Value& portNode = entry[PORT];
-
-            if (!portNode.isUInt())
-            {
-                continue;
-            }
-
-            // Zero-Allocation String Evaluation .asCString() - reads directly from internal buffers avoiding heap allocations
-            const Json::Value& protoNode = entry[PROTOCOL];
-            const char* protocol = (protoNode.isString()) ? protoNode.asCString() : "tcp";
-
-            const Json::Value& typeNode = entry[TYPE];
-            const char* type = (typeNode.isString()) ? typeNode.asCString() : PUBLIC;
-
-            if (std::strcmp(PUBLIC, type) == 0)
-            {
-                Json::Value rule(Json::objectValue);
-                rule[PORT] = portNode;
-                rule[PROTOCOL] = protocol;
-                hostToContainer.append(rule);
-            }
-            else if (std::strcmp(EXPORTED, type) == 0)
-            {
-                Json::Value rule(Json::objectValue);
-                rule[DIRECTION] = IN_DIRECTION;
-                rule[PORT] = portNode;
-                rule[PROTOCOL] = protocol;
-                interContainer.append(rule);
-            }
-            else if (std::strcmp(IMPORTED, type) == 0)
-            {
-                Json::Value rule(Json::objectValue);
-                rule[DIRECTION] = OUT_DIRECTION;
-                rule[PORT] = portNode;
-                rule[PROTOCOL] = protocol;
-                interContainer.append(rule);
-            }
-        }
-    }
-
-    Json::Value containerToHost(Json::arrayValue);
-
-    if (hasContainerToHostStore)
-    {
-        const Json::ArrayIndex size = envContainerToHost.size();
-        for (Json::ArrayIndex index = 0; index < size; ++index)
-        {
-            const Json::Value& rule = envContainerToHost[index];
-            const Json::Value& portNode = rule[PORT];
-            if (!rule.isObject() || !portNode.isUInt())
-            {
-                continue;
-            }
-
-            // Allocation-free extraction inside container rules
-            const Json::Value& protoNode = rule[PROTOCOL];
-            const char* protocol = (protoNode.isString()) ? protoNode.asCString() : "tcp";
-
-            addContainerToHostRuleIfMissing(containerToHost, portNode.asUInt(), protocol);
-        }
-    }
-
-    if (permissionInternetEnabled)
-    {
-        pluginData[TYPE] = NETWORK_TYPE_NAT;
-        pluginData[DNSMASQ] = true;
-        pluginData[NETWORK_IPV4] = true;
-        pluginData[NETWORK_IPV6] = true;
-    }
-
-    if (!containerToHost.empty())
-    {
-        portForwarding[CONTAINER_TO_HOST] = containerToHost;
-        portForwarding[LOCALHOST_MASQUERADE] = permissionFlags[LOCALHOST_MASQUERADE].asBool();
-    }
-
-    portForwarding[HOST_TO_CONTAINER] = hostToContainer;
-    pluginData[PORT_FORWARDING] = portForwarding;
-    pluginData[INTER_CONTAINER] = interContainer;
-    networkingPlugin[DATA] = pluginData;
-
-    // Apply the configured plugin node back to the root JSON object
-    ociConfigRootNode[RDKPLUGINS][NETWORKING] = networkingPlugin;
-
-    // Clean up temporary setup storage
-    ociConfigRootNode.removeMember(TEMP_RALF_NWCFG);
-
-    return true;
-}
-
-bool applyRuntimeNetworkingConfiguration(Json::Value& ociConfigRootNode, const std::string& configFilePath)
-{
-    Json::Value& netData = ociConfigRootNode[RDKPLUGINS][NETWORKING][DATA];
-
-    // Zero-Allocation Type Evaluation
-    // Read the type as a raw C-string pointer directly from the internal JSON buffer
-    const Json::Value& typeNode = netData[TYPE];
-    const char* typeStr = typeNode.isString() ? typeNode.asCString() : "";
-    const bool isNatType = (std::strcmp(NETWORK_TYPE_NAT, typeStr) == 0);
-
-    const bool permissionInternetEnabled = isNatType && netData[DNSMASQ].asBool();
-    bool runtimeNetworkRequested = isNatType;
-
-    // Single-Pass Cache References
-    // Cache structural branches once to avoid repeated multi-level dictionary lookups
-    const Json::Value& interContainer = netData[INTER_CONTAINER];
-    if (!runtimeNetworkRequested && interContainer.isArray() && !interContainer.empty())
-    {
-        runtimeNetworkRequested = true;
-    }
-
-    const Json::Value& portForwarding = netData[PORT_FORWARDING];
-    const bool hasPortForwarding = portForwarding.isObject();
-
-    if (!runtimeNetworkRequested && hasPortForwarding)
-    {
-        const Json::Value& hostToContainer = portForwarding[HOST_TO_CONTAINER];
-        if (hostToContainer.isArray() && !hostToContainer.empty())
-        {
-            runtimeNetworkRequested = true;
-        }
-    }
-
-    bool permissionContainerToHostEnabled = false;
-    if (hasPortForwarding)
-    {
-        const Json::Value& containerToHost = portForwarding[CONTAINER_TO_HOST];
-        if (containerToHost.isArray() && !containerToHost.empty())
-        {
-            permissionContainerToHostEnabled = true;
-        }
-    }
-
-    // Determine if any networking feature has been activated
-    const bool effectiveNetworkEnabled = runtimeNetworkRequested ||
-                                          permissionInternetEnabled ||
-                                          permissionContainerToHostEnabled;
-
-    if (effectiveNetworkEnabled)
-    {
-        // Zero-Allocation Capability Matrix Scanning
-        static const char* capabilitySets[] = {"ambient", "bounding", "effective", "inheritable", "permitted"};
-        Json::Value& capabilitiesNode = ociConfigRootNode[PROCESS]["capabilities"];
-
-        for (const char* setName : capabilitySets)
-        {
-            Json::Value& capSet = capabilitiesNode[setName];
-            if (!capSet.isArray())
-            {
-                capSet = Json::Value(Json::arrayValue);
-            }
-
-            bool alreadyPresent = false;
-            const Json::ArrayIndex size = capSet.size();
-            for (Json::ArrayIndex i = 0; i < size; ++i)
-            {
-                const Json::Value& capItem = capSet[i];
-                // Using .asCString() + std::strcmp prevents creating temporary heap strings during iteration
-                if (capItem.isString() && std::strcmp("CAP_NET_BIND_SERVICE", capItem.asCString()) == 0)
+                const Json::Value& envEntry = envVariables[index];
+                if (!envEntry.isString())
                 {
-                    alreadyPresent = true;
-                    break;
+                    continue;
+                }
+
+                const char* envPair = envEntry.asCString();
+                const char* equalsSign = std::strchr(envPair, '=');
+                if (equalsSign == nullptr)
+                {
+                    continue;
+                }
+
+                const size_t nameLen = equalsSign - envPair;
+                if (nameLen == std::strlen(FIREBOLT_ENDPOINT_ENV_KEY) &&
+                    std::strncmp(envPair, FIREBOLT_ENDPOINT_ENV_KEY, nameLen) == 0)
+                {
+                    const char* endpointValue = equalsSign + 1;
+                    if (*endpointValue != '\0')
+                    {
+                        // Extract port from FIREBOLT_ENDPOINT environment variable and
+                        // add to containerToHost rules
+                        const int port = extractPortFromEndpoint(endpointValue);
+                        if (port != -1) // Valid port extracted
+                        {
+                            Json::Value fireboltNWCfgObject(Json::objectValue);
+                            fireboltNWCfgObject[ralf::NAME] = "firebolt";
+                            fireboltNWCfgObject[ralf::PORT] = port;
+                            fireboltNWCfgObject[ralf::PROTOCOL] = "tcp";
+                            fireboltNWCfgObject[ralf::TYPE] = ralf::IMPORTED;
+                            Json::Value dobbyNWCfgObject = translateRALFNWCfgObjToDobbyNWCfgObj(fireboltNWCfgObject);
+                            if (dobbyNWCfgObject.empty()) {
+                                LOGWARN("%s: translateRALFNWCfgObjToDobbyNWCfgObj error skipping it.", MODULE_LOGTAG);
+                            }
+                            updatedFireboltNwCfg = updategetNetworkingDataNode(*netData, dobbyNWCfgObject);
+                            if (!updatedFireboltNwCfg)
+                            {
+                                LOGWARN("%s: Failed to update networking data node with Firebolt network entry.", MODULE_LOGTAG);
+                            }
+                        }
+                        break;
+                    }
                 }
             }
+        }
+    }
 
-            if (!alreadyPresent)
+    if (hasPermissionThunder)
+    {
+        const char* thunderaccess = getenv(THUNDER_ACCESS_ENV_KEY);
+        if (nullptr != thunderaccess) {
+            // extract port from THUNDER_ACCESS environment variable and
+            // add to containerToHost rules
+            const int port = extractPortFromEndpoint(thunderaccess);
+            if (port != -1)  // Valid port extracted
             {
-                capSet.append("CAP_NET_BIND_SERVICE");
+                // Thunder is running on host and container needs to
+                // access it. Construct a RALF network configuration
+                // object for Thunder and add it to the networking
+                // data node.
+                Json::Value thunderNWCfgObject(Json::objectValue);
+                thunderNWCfgObject[ralf::NAME] = "thunder";
+                thunderNWCfgObject[ralf::PORT] = port;
+                thunderNWCfgObject[ralf::PROTOCOL] = "tcp";
+                thunderNWCfgObject[ralf::TYPE] = ralf::IMPORTED;
+                Json::Value dobbyNWCfgObject = translateRALFNWCfgObjToDobbyNWCfgObj(thunderNWCfgObject);
+                if (dobbyNWCfgObject.empty()) {
+                    LOGWARN("%s: translateRALFNWCfgObjToDobbyNWCfgObj error skipping it.", MODULE_LOGTAG);
+                }
+                updatedThunderNwCfg = updategetNetworkingDataNode(*netData, dobbyNWCfgObject);
+                if (!updatedThunderNwCfg)
+                {
+                    LOGWARN("%s: Failed to update networking data node with Thunder network entry.", MODULE_LOGTAG);
+                }
             }
         }
-
-        // Consolidated State Mapping: If effectiveNetworkEnabled is true, at least one target flag is true.
-        // We can safely apply the NAT configuration.
-        netData[TYPE] = NETWORK_TYPE_NAT;
-        netData[DNSMASQ] = true;
-    }
-    else
-    {
-        netData[TYPE] = NETWORK_TYPE_NONE;
-        netData[DNSMASQ] = false;
     }
 
-    // Dobby will not create the network namespace if dnsmasq is disabled, so we need to ensure that
-    // resolv.conf is mounted into the container when dnsmasq is disabled.
-    if (!netData[DNSMASQ].asBool())
-    {
-        if (!addNetworkSystemMountsToOCIConfig(ociConfigRootNode, configFilePath))
-        {
-            LOGWARN("%s: addNetworkSystemMountsToOCIConfig failed", MODULE_LOGTAG);
-        }
-    }
-
-    LOGDBG("%s: Network mode set to '%s' (runtimeEnabled=%d permissionInternet=%d permissionContainerToHost=%d)",
-            MODULE_LOGTAG, netData[TYPE].asCString(), runtimeNetworkRequested,
-            permissionInternetEnabled, permissionContainerToHostEnabled);
-
-    return true;
+     return (!hasPermissionThunder || updatedThunderNwCfg) &&
+         (!hasPermissionFirebolt || updatedFireboltNwCfg) &&
+         (!hasPermissionInternet || updatedInternetNwCfg);
 }
 } // namespace NetworkConfigurationHelper
