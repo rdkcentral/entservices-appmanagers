@@ -73,7 +73,11 @@ namespace WPEFramework
         }
         if (!callsign.empty() && !displayName.empty() && ! appId.empty())
         {
+            #ifndef ENABLE_RIALTO_CONTROL
+            firebolt::rialto::common::AppConfig config = {appId, displayName};
+            #else
            firebolt::rialto::common::AppConfig config = {"", displayName};
+            #endif
            return mServerManagerService ->initiateApplication(callsign,
                                                            RialtoServerStates::ACTIVE,
                                                            config);
