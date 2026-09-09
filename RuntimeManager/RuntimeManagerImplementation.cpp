@@ -1074,7 +1074,6 @@ namespace WPEFramework
                         LOGERR("PauseContainer succeeded for %s", appInstanceId.c_str());
                         if (mRuntimeAppInfo.find(appInstanceId) != mRuntimeAppInfo.end())
                         {
-                            mRuntimeAppInfo[appInstanceId].containerState = Exchange::IRuntimeManager::RUNTIME_STATE_SUSPENDING;
                             appId = mRuntimeAppInfo[appInstanceId].appId;
                         }
                     }
