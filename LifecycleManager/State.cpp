@@ -111,8 +111,8 @@ namespace WPEFramework
 
         bool ActiveState::handle(string& errorReason)
 	{
-        ApplicationContext* context = getContext();
 #ifdef ENABLE_RIALTO_ACTIVE_INACTIVE
+        ApplicationContext* context = getContext();
         RuntimeManagerHandler* runtimeManagerHandler = RequestHandler::getInstance()->getRuntimeManagerHandler();
         if ((nullptr != runtimeManagerHandler) && (Exchange::ILifecycleManager::LifecycleState::PAUSED == context->getCurrentLifecycleState()))
 	    {
