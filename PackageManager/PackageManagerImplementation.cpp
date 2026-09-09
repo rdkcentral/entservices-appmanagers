@@ -617,9 +617,11 @@ namespace Plugin {
             } // mLockCount == 0
         } else {
             LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
-            result = Core::ERROR_BAD_REQUEST;
-            packageFailureErrorCode = PackageManagerImplementation::PackageFailureErrorCode::ERROR_VERSION_NOT_FOUND;
 
+            result = Core::ERROR_INVALID_PARAMETER;
+
+            packageFailureErrorCode =
+                PackageManagerImplementation::PackageFailureErrorCode::ERROR_VERSION_NOT_FOUND;
         }
 
         recordAndPublishTelemetryData(((PackageManagerImplementation::PackageFailureErrorCode::ERROR_NONE == packageFailureErrorCode) ? TELEMETRY_MARKER_UNINSTALL_TIME : TELEMETRY_MARKER_UNINSTALL_ERROR),
@@ -688,7 +690,7 @@ namespace Plugin {
             }
         } else {
             LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
-            result = Core::ERROR_BAD_REQUEST;
+            result = Core::ERROR_INVALID_PARAMETER;
         }
 
         return result;
@@ -709,7 +711,7 @@ namespace Plugin {
             LOGDBG("id: '%s' ver: '%s' state: %s", packageId.c_str(), version.c_str(), getInstallState(installState).c_str());
         } else {
             LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
-            result = Core::ERROR_BAD_REQUEST;
+            result = Core::ERROR_INVALID_PARAMETER;
         }
 
         return result;
@@ -835,8 +837,23 @@ namespace Plugin {
                                                             runtimeVersion.empty() ? "" : runtimeVersion);
 
                 LOGDBG("Locked. id: %s ver: %s lock count:%d additionalLocks=%zu", packageId.c_str(), version.c_str(), state.mLockCount, state.additionalLocks.size());
+                if (1 == state.mLockCount) {
+                    state.unpackedPath = unpackedPath;
+                } else {
+                    unpackedPath = state.unpackedPath;
+                }
+                if (!updateRuntimeConfigString(state.runtimeConfigPayload, "unpackedPath", state.unpackedPath)) {
+                    if (runtimeLocked) {
+                        UnlockPackage(rtPackageId, rtVersion);
+                    }
+                    UnlockPackage(packageId, version);
+                    state.additionalLocks.clear();
+                    runtimeConfigPayload.clear();
+                    unpackedPath.clear();
+                    appMetadata = nullptr;
+                    return Core::ERROR_GENERAL;
+                }
                 runtimeConfigPayload = state.runtimeConfigPayload;
-                state.unpackedPath = unpackedPath;
                 appMetadata = Core::Service<RPC::IteratorType<Exchange::IPackageHandler::ILockIterator>>::Create<Exchange::IPackageHandler::ILockIterator>(state.additionalLocks);
                 string appPath;
                 string runtimePath;
@@ -1147,8 +1164,13 @@ namespace Plugin {
         auto it = mState.find( { packageId, version } );
         if (it != mState.end()) {
             auto &state = it->second;
-            runtimeConfigPayload = state.runtimeConfigPayload;
             unpackedPath = state.unpackedPath;
+            if (!updateRuntimeConfigString(state.runtimeConfigPayload, "unpackedPath", state.unpackedPath)) {
+                result = Core::ERROR_GENERAL;
+                runtimeConfigPayload.clear();
+            } else {
+                runtimeConfigPayload = state.runtimeConfigPayload;
+            }
             locked = (state.mLockCount > 0);
             LOGDBG("id: %s ver: %s lock count:%d", packageId.c_str(), version.c_str(), state.mLockCount);
         } else {
@@ -1354,7 +1376,17 @@ namespace Plugin {
                 LOGINFO("Package installation successful, now creating storage");
 
                 // Populate state from returned config (mirrors InitializeState())
-                if (!getRuntimeConfig(config, state.runtimeConfigPayload)) {
+                uint64_t cachedDataImageSize = 0;
+                if (!state.runtimeConfigPayload.empty()) {
+                    getRuntimeConfigUnsigned(state.runtimeConfigPayload, "dataImageSize", cachedDataImageSize);
+                }
+                packagemanager::ConfigMetaData payloadConfig = config;
+                if ((0U == payloadConfig.dataImageSize) && (0U != cachedDataImageSize)) {
+                    LOGWARN("Install metadata omitted dataImageSize for %s:%s; preserving cached value %" PRIu64,
+                        packageId.c_str(), version.c_str(), cachedDataImageSize);
+                    payloadConfig.dataImageSize = static_cast<decltype(payloadConfig.dataImageSize)>(cachedDataImageSize);
+                }
+                if (!getRuntimeConfig(payloadConfig, state.runtimeConfigPayload)) {
                     LOGERR("Failed to create runtime configuration payload for packageId: %s", packageId.c_str());
                     state.installState = InstallState::INSTALL_FAILURE;
                     state.failReason = FailReason::INVALID_METADATA_FAILURE;

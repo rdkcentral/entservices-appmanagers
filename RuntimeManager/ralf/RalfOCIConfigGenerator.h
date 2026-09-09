@@ -69,6 +69,13 @@ namespace ralf
          * @return true if the configuration options were applied successfully, false otherwise.
          */
         bool addEntryPointToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &ralfPackageConfigNode);
+        /**
+         * Applies the entryArgs options from the Ralf package to the OCI config JSON.
+         * @param ociConfigRootNode The root node of the OCI config JSON.
+         * @param ralfPackageConfigNode The Ralf package configuration JSON node.
+         * @return true if the configuration options were applied successfully, false otherwise.
+         */
+        bool addEntryArgsToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &ralfPackageConfigNode);
 
         /**
          * Saves the OCI config JSON to mConfigFilePath.
@@ -112,14 +119,7 @@ namespace ralf
          */
 
         bool addAppStorageToOCIConfig(Json::Value &ociConfigRootNode, const std::string &appStoragePath);
-        /**
-         * Add additional environmental variables as defined in specification.
-         * @param ociConfigRootNode The root node of the OCI config JSON.
-         * @param runtimeConfigObject The runtime configuration object containing the environment variables to be added.
-         * @param appConfig The application configuration containing the environment variables to be added.
-         * @return true if environment variables were added successfully, false otherwise.
-         */
-        bool addAdditionalEnvVariablesToOCIConfig(Json::Value &ociConfigRootNode, const WPEFramework::Plugin::RuntimeConfiguration &runtimeConfigObject, const WPEFramework::Plugin::ApplicationConfiguration &appConfig);
+
         /**
          * Reads the environment variables and pushes FIREBOLT_ENDPOINT to OCI config.
          * @param ociConfigRootNode The root node of the OCI config JSON.

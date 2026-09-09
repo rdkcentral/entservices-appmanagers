@@ -31,8 +31,16 @@ namespace WPEFramework
         RequestHandler::RequestHandler(): mService(nullptr)
         ,mStorageManagerImplLock()
         ,mPersistentStoreRemoteStoreObject(nullptr)
+        ,mEnhancedLoggingEnabled(false)
         {
             LOGINFO("Create RequestHandler Instance");
+#ifdef APP_INFRA_ENHANCED_LOGGING_INDICATOR
+            struct stat buffer;
+            mEnhancedLoggingEnabled = (stat(APP_INFRA_ENHANCED_LOGGING_INDICATOR, &buffer) == 0);
+            LOGINFO("Enhanced logging enabled: %s (indicator: %s)",
+                    mEnhancedLoggingEnabled ? "true" : "false",
+                    APP_INFRA_ENHANCED_LOGGING_INDICATOR);
+#endif
         }
 
         RequestHandler::~RequestHandler()
@@ -157,6 +165,7 @@ namespace WPEFramework
             Core::hresult status = Core::ERROR_GENERAL;
             std::string errorReason;
 
+            LOGINFO("populateAppInfoCacheFromStoragePath: starting cache population from %s", mBaseStoragePath.c_str());
             DIR* dir = opendir(mBaseStoragePath.c_str());
             if (!dir)
             {
@@ -165,12 +174,13 @@ namespace WPEFramework
             else
             {
                 struct dirent* entry;
+                uint32_t numAppsCached = 0;
                 while ((entry = readdir(dir)) != nullptr)
                 {
-                    LOGINFO("entry->d_name: %s", entry->d_name);
+                    LOGTRACE("entry->d_name: %s", entry->d_name);
                     if (entry->d_type != DT_DIR || strcmp(entry->d_name, ".") == 0 || strcmp(entry->d_name, "..") == 0 || !isValidAppStorageDirectory(entry->d_name))
                     {
-                        LOGERR("entry->d_name: %s d_type : %d - not a directory, it is [.] or [..], or invalid appId - SKIPPED\n", entry->d_name, entry->d_type);
+                        LOGWARN("entry->d_name: %s d_type : %d - not a directory, it is [.] or [..], or invalid appId - SKIPPED\n", entry->d_name, entry->d_type);
                         continue;
                     }
 
@@ -203,17 +213,25 @@ namespace WPEFramework
 
                     storageInfo.usedKB  = static_cast<uint32_t>(getDirectorySizeInBytes(storageInfo.path) / 1024); //get the used size
 
-                    LOGINFO("Retrieved storageInfo for appId: %s " \
-                    "userId: %d groupId: %d quotaKB: %u usedKB: %u path: %s",
-                    appId.c_str(), storageInfo.uid, storageInfo.gid, storageInfo.quotaKB, storageInfo.usedKB, storageInfo.path.c_str());
+                    if (mEnhancedLoggingEnabled)
+                    {
+                        LOGINFO("Retrieved storageInfo for appId: %s " \
+                        "userId: %d groupId: %d quotaKB: %u usedKB: %u path: %s",
+                        appId.c_str(), storageInfo.uid, storageInfo.gid, storageInfo.quotaKB, storageInfo.usedKB, storageInfo.path.c_str());
+                    }
 
                     if(!createAppStorageInfoByAppID(appId,storageInfo))
                     {
                         LOGERR("Failed to insert storage info into cache for appId=%s", appId.c_str());
                         status = Core::ERROR_GENERAL;
                     }
+                    else
+                    {
+                        ++numAppsCached;
+                    }
                 }
                 closedir(dir);
+                LOGINFO("populateAppInfoCacheFromStoragePath: cached storage info for %u app(s) from %s", numAppsCached, mBaseStoragePath.c_str());
             }
         return status;
         }
@@ -360,7 +378,7 @@ namespace WPEFramework
                                 }
                                 else
                                 {
-                                    LOGINFO("appId[%s] Key[%s] value retrived[%s]", appId.c_str(), key.c_str(), quotaSize.c_str());
+                                    LOGTRACE("appId[%s] Key[%s] value retrived[%s]", appId.c_str(), key.c_str(), quotaSize.c_str());
                                     *quotaValue = static_cast<uint32_t>(std::stoul(quotaSize,nullptr,0));
                                 }
                             }
@@ -413,7 +431,7 @@ namespace WPEFramework
                                                             ((uint64_t)statPtr->st_blocks *(uint64_t)gStorageSize.blockSize) :
                                                             (uint64_t)statPtr->st_size;
                 gStorageSize.usedBytes += usedBytesForFile;
-                LOGINFO("path: %s usedBytes: %llu blockSize: %llu", path, gStorageSize.usedBytes, gStorageSize.blockSize);
+                LOGTRACE("path: %s usedBytes: %llu blockSize: %llu", path, gStorageSize.usedBytes, gStorageSize.blockSize);
             }
             (void)internalFtwUsage;
             return 0;
@@ -466,7 +484,7 @@ namespace WPEFramework
                     it->second->uid      = storageInfo.uid;
                     it->second->gid      = storageInfo.gid;
                     it->second->quotaKB  = storageInfo.quotaKB;
-                    LOGINFO("Existing storage entry updated for appId: %s " \
+                    LOGTRACE("Existing storage entry updated for appId: %s " \
                                 "userId: %d groupId: %d quotaKB: %u usedKB: %u path: %s",
                                 appId.c_str(), it->second->uid, it->second->gid, it->second->quotaKB, it->second->usedKB, it->second->path.c_str());
                 }
@@ -480,7 +498,7 @@ namespace WPEFramework
                     entry->quotaKB = storageInfo.quotaKB;
                     entry->usedKB  = storageInfo.usedKB;
                     mStorageAppInfo[appId] = entry;
-                    LOGINFO("Created new storage entry for appId: %s " \
+                    LOGTRACE("Created new storage entry for appId: %s " \
                                 "userId: %d groupId: %d quotaKB: %u usedKB: %u path: %s",
                                 appId.c_str(), storageInfo.uid, storageInfo.gid, storageInfo.quotaKB, storageInfo.usedKB, storageInfo.path.c_str());
                 }

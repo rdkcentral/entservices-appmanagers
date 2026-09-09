@@ -1774,6 +1774,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithEmptyWesterosSocket()
     auto appCfg = MakeValidAppConfig();
     appCfg.mWesterosSocketPath.clear();  // no GUI
     auto rtCfg  = MakeValidRuntimeConfiguration();
+    rtCfg.envVariables.clear();
     std::string spec;
 
     const bool result = gen.generate(appCfg, rtCfg, spec);

@@ -2,6 +2,9 @@
 
 #include <core/JSON.h>
 
+#include <cerrno>
+#include <cstdlib>
+
 namespace WPEFramework {
 namespace Plugin {
 namespace Utils {
@@ -168,11 +171,20 @@ bool RuntimeConfigPayload::GetInteger(const std::string& key, int64_t& value, bo
     if (!present) {
         return true;
     }
-    if (mImpl->object[key.c_str()].Content() != JsonValue::type::NUMBER) {
+    const JsonValue& jsonValue = mImpl->object[key.c_str()];
+    if (jsonValue.Content() != JsonValue::type::NUMBER) {
         error = key + " must be an integer";
         return false;
     }
-    value = mImpl->object[key.c_str()].Number();
+    const std::string encoded = jsonValue.Value();
+    char* end = nullptr;
+    errno = 0;
+    const long long parsed = std::strtoll(encoded.c_str(), &end, 10);
+    if ((errno == ERANGE) || (end == encoded.c_str()) || (*end != '\0')) {
+        error = key + " must be an integer";
+        return false;
+    }
+    value = static_cast<int64_t>(parsed);
     return true;
 }
 
