@@ -71,7 +71,7 @@ class PackageManagerImplementation
             State() {}
             InstallState installState = InstallState::UNINSTALLED;
             uint32_t mLockCount = 0;
-            Exchange::RuntimeConfig runtimeConfig {};
+            string runtimeConfigPayload;
             string digest;
             string gatewayMetadataPath;
             string unpackedPath;
@@ -177,21 +177,21 @@ class PackageManagerImplementation
         Core::hresult Install(const string &packageId, const string &version, IPackageInstaller::IKeyValueIterator* const& additionalMetadata, const string &fileLocator, Exchange::IPackageInstaller::FailReason &failReason) override;
         Core::hresult Uninstall(const string &packageId, string &errorReason ) override;
         Core::hresult ListPackages(Exchange::IPackageInstaller::IPackageIterator*& packages);
-        Core::hresult Config(const string &packageId, const string &version, Exchange::RuntimeConfig& configMetadata) override;
+        Core::hresult Config(const string &packageId, const string &version, string& configMetadata) override;
         Core::hresult PackageState(const string &packageId, const string &version, Exchange::IPackageInstaller::InstallState &state) override;
-        Core::hresult GetConfigForPackage(const string &fileLocator, string& id, string &version, Exchange::RuntimeConfig& config) override;
+        Core::hresult GetConfigForPackage(const string &fileLocator, string& id, string &version, string& config) override;
 
         Core::hresult Register(Exchange::IPackageInstaller::INotification *sink) override;
         Core::hresult Unregister(Exchange::IPackageInstaller::INotification *sink) override;
 
         // IPackageHandler methods
         Core::hresult Lock(const string &packageId, const string &version, const Exchange::IPackageHandler::LockReason &lockReason,
-            uint32_t &lockId, string &unpackedPath, Exchange::RuntimeConfig& configMetadata,
+            uint32_t &lockId, string &unpackedPath, string& configMetadata,
             Exchange::IPackageHandler::ILockIterator*& appMetadata
         ) override;
 
         Core::hresult Unlock(const string &packageId, const string &version) override;
-        Core::hresult GetLockedInfo(const string &packageId, const string &version, string &unpackedPath, Exchange::RuntimeConfig& configMetadata,
+        Core::hresult GetLockedInfo(const string &packageId, const string &version, string &unpackedPath, string& configMetadata,
             string& gatewayMetadataPath, bool &locked) override;
 
         // IAppPackageManagerConfig methods
@@ -207,8 +207,10 @@ class PackageManagerImplementation
         END_INTERFACE_MAP
 
     private:
-        void getRuntimeConfig(const packagemanager::ConfigMetaData &config, Exchange::RuntimeConfig &runtimeConfig);
-        void getRuntimeConfig(const Exchange::RuntimeConfig &config, Exchange::RuntimeConfig &runtimeConfig);
+        bool getRuntimeConfig(const packagemanager::ConfigMetaData &config, string &runtimeConfigPayload);
+        bool getRuntimeConfigString(const string &runtimeConfigPayload, const string &key, string &value);
+        bool getRuntimeConfigUnsigned(const string &runtimeConfigPayload, const string &key, uint64_t &value);
+        bool updateRuntimeConfigString(string &runtimeConfigPayload, const string &key, const string &value);
         Core::hresult LockRuntime(State &state, string &unpackedPath);
         Core::hresult LockPackage(const string &packageId, const string &version, const Exchange::IPackageHandler::LockReason &lockReason,
             uint32_t &lockId, string &unpackedPath, packagemanager::ConfigMetaData &config, packagemanager::NameValues &locks);

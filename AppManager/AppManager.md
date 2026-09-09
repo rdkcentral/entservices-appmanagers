@@ -198,12 +198,14 @@ AppInfoManager::getInstance().upsert(appId, [&](AppInfo& a) {
 
 **Purpose**: Bridge between AppManager and LifecycleManager for lifecycle operations.
 
+The launch configuration crosses manager boundaries as a flat, opaque JSON string. AppManager parses the package payload only to set `unpackedPath` and append strings from `launchArgs.env` to the `envVariables` JSON array, then reserializes it without dropping unknown properties.
+
 **Key Methods**:
 ```cpp
-Core::hresult launch(const string& appId, const string& intent, const string& launchArgs, 
-                     WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject);
+Core::hresult launch(const string& appId, const string& intent, const string& launchArgs,
+                     std::string& runtimeConfigPayload);
 Core::hresult preLoadApp(const string& appId, const string& intent, const string& launchArgs,
-                         WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject, string& error);
+                         std::string& runtimeConfigPayload, string& error);
 Core::hresult closeApp(const string& appId);
 Core::hresult terminateApp(const string& appId);
 Core::hresult killApp(const string& appId);
@@ -397,8 +399,9 @@ sequenceDiagram
     Shell->>Impl: LaunchApp(appId, intent, launchArgs)
     Impl->>Impl: packageLock(appId)
     Impl->>AIM: upsert(appId, setCurrentAction=LAUNCH)
-    Impl->>LIC: launch(appId, intent, launchArgs, runtimeConfig)
-    LIC->>LCM: SpawnApp(appId, intent, ACTIVE, runtimeConfig)
+    Impl->>Impl: Set unpackedPath and append launch env to opaque JSON payload
+    Impl->>LIC: launch(appId, intent, launchArgs, runtimeConfigPayload)
+    LIC->>LCM: SpawnApp(appId, intent, ACTIVE, runtimeConfigPayload)
     LCM-->>LIC: appInstanceId
     LIC->>AIM: setAppInstanceId(appId, appInstanceId)
     LIC-->>Impl: Core::ERROR_NONE

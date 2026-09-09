@@ -300,7 +300,7 @@ uint32_t Test_AM_LifecycleConnectorLaunchNewApp()
         L0Test::ExpectEqU32(tr, connector.createLifecycleManagerRemoteObject(), WPEFramework::Core::ERROR_NONE,
             "createLifecycleManagerRemoteObject() succeeds");
 
-        WPEFramework::Exchange::RuntimeConfig runtimeConfig;
+        std::string runtimeConfig = R"({"capabilities":"dial-app,wan-lan","envVariables":["BASE=1"],"command":"launcher","userId":30001})";
 
         // Launch a new (never-seen) app — goes through the SpawnApp path.
         const auto status = connector.launch("com.app.new", "intent://play", "", runtimeConfig);
@@ -351,7 +351,7 @@ uint32_t Test_AM_LifecycleConnectorLaunchSuspendedApp()
         L0Test::ExpectEqU32(tr, connector.createLifecycleManagerRemoteObject(), WPEFramework::Core::ERROR_NONE,
             "createLifecycleManagerRemoteObject() succeeds for suspended-app test");
 
-        WPEFramework::Exchange::RuntimeConfig runtimeConfig;
+        std::string runtimeConfig = R"({"capabilities":"dial-app,wan-lan","envVariables":["BASE=1"],"command":"launcher","userId":30001})";
 
         // Launch a suspended app — goes through SetTargetAppState (resume) path.
         const auto status = connector.launch("com.app.suspended", "intent://resume", "", runtimeConfig);
@@ -388,7 +388,7 @@ uint32_t Test_AM_LifecycleConnectorPreloadApp()
         L0Test::ExpectEqU32(tr, connector.createLifecycleManagerRemoteObject(), WPEFramework::Core::ERROR_NONE,
             "createLifecycleManagerRemoteObject() succeeds for preload test");
 
-        WPEFramework::Exchange::RuntimeConfig runtimeConfig;
+        std::string runtimeConfig = R"({"capabilities":"dial-app,wan-lan","envVariables":["BASE=1"],"command":"launcher","userId":30001})";
         std::string error;
 
         const auto status = connector.preLoadApp("com.app.preload", "intent://preload", "", runtimeConfig, error);

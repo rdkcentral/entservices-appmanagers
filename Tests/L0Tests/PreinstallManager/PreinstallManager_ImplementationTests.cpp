@@ -484,7 +484,7 @@ uint32_t RunVersionComparison(const std::string& preinstallVer, const std::strin
 
     installer.getConfigHandler = [preinstallVer](const std::string&, std::string& id,
                                                   std::string& version,
-                                                  WPEFramework::Exchange::RuntimeConfig&) {
+                                                  std::string&) {
         id      = "myapp";
         version = preinstallVer;
         return WPEFramework::Core::ERROR_NONE;

@@ -28,7 +28,7 @@
 #include <utility>
 #include <vector>
 #include "ApplicationConfiguration.h"
-#include <interfaces/IRuntimeManager.h>
+#include "RuntimeConfiguration.h"
 #include "AIConfiguration.h"
 
 namespace WPEFramework
@@ -44,7 +44,7 @@ namespace Plugin
             DobbySpecGenerator(AIConfiguration& aiConfiguration);
             virtual ~DobbySpecGenerator();
 
-            bool generate(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig, string& outputJsonString);
+            bool generate(const ApplicationConfiguration& config, const RuntimeConfiguration& runtimeConfig, std::string& outputJsonString);
 
             /**
              * Sets the path to a pre-generated GStreamer plugin registry to
@@ -60,18 +60,18 @@ namespace Plugin
 
         private:
             Json::Value createEnvVars(const ApplicationConfiguration& config,
-                                      const WPEFramework::Exchange::RuntimeConfig& runtimeConfig,
+                                      const RuntimeConfiguration& runtimeConfig,
                                       const std::vector<std::pair<std::string, std::string>>& capabilities) const;
-            Json::Value createMounts(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const;
+            Json::Value createMounts(const ApplicationConfiguration& config, const RuntimeConfiguration& runtimeConfig) const;
             Json::Value createRdkPlugins(const ApplicationConfiguration& config,
-                                         const WPEFramework::Exchange::RuntimeConfig& runtimeConfig,
+                                         const RuntimeConfiguration& runtimeConfig,
                                          const std::vector<std::pair<std::string, std::string>>& capabilities) const;
             Json::Value createMinidumpPlugin() const;
             Json::Value createAppServiceSDKPlugin(const ApplicationConfiguration& config,
-                                                  const WPEFramework::Exchange::RuntimeConfig& runtimeConfig,
+                                                  const RuntimeConfiguration& runtimeConfig,
                                                   const std::vector<std::pair<std::string, std::string>>& capabilities) const;
             Json::Value createNetworkPlugin(const ApplicationConfiguration& config,
-                                            const WPEFramework::Exchange::RuntimeConfig& runtimeConfig,
+                                            const RuntimeConfiguration& runtimeConfig,
                                             const std::vector<std::pair<std::string, std::string>>& capabilities) const;
             Json::Value createBindMount(const std::string &source,
                                         const std::string &destination,
@@ -79,23 +79,23 @@ namespace Plugin
 
             bool shouldEnableGpu(const ApplicationConfiguration& config) const;
 
-            ssize_t getSysMemoryLimit(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const;
-            ssize_t getGPUMemoryLimit(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const;
-            bool getVpuEnabled(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig, std::vector<std::pair<std::string, std::string>>& capabilities) const;
+            ssize_t getSysMemoryLimit(const ApplicationConfiguration& config, const RuntimeConfiguration& runtimeConfig) const;
+            ssize_t getGPUMemoryLimit(const ApplicationConfiguration& config, const RuntimeConfiguration& runtimeConfig) const;
+            bool getVpuEnabled(const ApplicationConfiguration& config, const RuntimeConfiguration& runtimeConfig, std::vector<std::pair<std::string, std::string>>& capabilities) const;
             std::string getCpuCores();
-            void populateClassicPlugins(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig, Json::Value& spec);
-            Json::Value createEthanLogPlugin(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const;
-            Json::Value createMulticastSocketPlugin(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const;
+            void populateClassicPlugins(const ApplicationConfiguration& config, const RuntimeConfiguration& runtimeConfig, Json::Value& spec);
+            Json::Value createEthanLogPlugin(const ApplicationConfiguration& config, const RuntimeConfiguration& runtimeConfig) const;
+            Json::Value createMulticastSocketPlugin(const ApplicationConfiguration& config, const RuntimeConfiguration& runtimeConfig) const;
             Json::Value createIonMemoryPlugin() const;
             Json::Value createThunderPlugin(const ApplicationConfiguration& config,
                                             const std::vector<std::pair<std::string, std::string>>& capabilities) const;
-            Json::Value createOpenCDMPlugin(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const;
-            Json::Value createPrivateDataMount(const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const;
-            void createFkpsMounts(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig, Json::Value& spec) const;
+            Json::Value createOpenCDMPlugin(const ApplicationConfiguration& config, const RuntimeConfiguration& runtimeConfig) const;
+            Json::Value createPrivateDataMount(const RuntimeConfiguration& runtimeConfig) const;
+            void createFkpsMounts(const ApplicationConfiguration& config, const RuntimeConfiguration& runtimeConfig, Json::Value& spec) const;
             Json::Value createTmpfsMount(const std::string &mntDestination,
                                  unsigned long mntOptions) const;
             Json::Value createResourceManagerMount(const ApplicationConfiguration& config) const;
-            Json::Value getWorkingDir(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const;
+            Json::Value getWorkingDir(const ApplicationConfiguration& config, const RuntimeConfiguration& runtimeConfig) const;
             void initialiseIonHeapsJson();
             void initialiseDefaultLogLevels();
             std::string encodeURL(std::string url) const;

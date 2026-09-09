@@ -167,6 +167,7 @@ public:
     int spawnCallCount = 0;
     std::string killedAppInstanceId;
     std::string spawnedAppId;
+    std::string spawnedRuntimeConfigPayload;
     Exchange::ILifecycleManager::LifecycleState spawnedTargetState =
         Exchange::ILifecycleManager::LifecycleState::UNLOADED;
 
@@ -185,7 +186,7 @@ public:
     Core::hresult SpawnApp(const std::string& appId,
                            const std::string& launchIntent,
                            const Exchange::ILifecycleManager::LifecycleState targetLifecycleState,
-                           const WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject,
+                           const std::string& runtimeConfigPayload,
                            const std::string& launchArgs,
                            std::string& appInstanceId,
                            std::string& errorReason,
@@ -193,12 +194,13 @@ public:
     {
         ++spawnCallCount;
         spawnedAppId = appId;
+        spawnedRuntimeConfigPayload = runtimeConfigPayload;
         spawnedTargetState = targetLifecycleState;
         appInstanceId = "respawned-instance";
         errorReason.clear();
         success = true;
         static_cast<void>(launchIntent);
-        static_cast<void>(runtimeConfigObject);
+        static_cast<void>(runtimeConfigPayload);
         static_cast<void>(launchArgs);
         return Core::ERROR_NONE;
     }
@@ -1223,14 +1225,15 @@ uint32_t Test_Impl_CloseAppKillAndRunDefersRespawnUntilUnloaded()
     std::string appId = "com.test.respawn";
     std::string launchIntent = "intent://respawn";
     std::string launchArgs = "--restart";
-    WPEFramework::Exchange::RuntimeConfig runtimeConfigObject;
+    const std::string runtimeConfigPayload =
+        R"({"envVariables":["EXISTING=value"],"logLevels":["DEBUG","INFO"],"vendor":{"preserve":true}})";
 
     ctx->setAppInstanceId(inst);
     ctx->setApplicationLaunchParams(appId,
                                     launchIntent,
                                     launchArgs,
                                     WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE,
-                                    runtimeConfigObject);
+                                    runtimeConfigPayload);
     LifecycleManagerImplementationTest::getLoadedApps(impl).push_back(ctx);
 
     WPEFramework::Core::hresult result = impl.CloseApp(
@@ -1276,6 +1279,8 @@ uint32_t Test_Impl_CloseAppKillAndRunDefersRespawnUntilUnloaded()
         "SpawnApp is triggered after the UNLOADED event");
     L0Test::ExpectTrue(tr, impl.spawnedAppId == appId,
         "respawn uses the original appId");
+    L0Test::ExpectEqStr(tr, impl.spawnedRuntimeConfigPayload, runtimeConfigPayload,
+        "respawn preserves the opaque runtime config payload");
     L0Test::ExpectEqU32(tr,
         static_cast<uint32_t>(impl.spawnedTargetState),
         static_cast<uint32_t>(WPEFramework::Exchange::ILifecycleManager::LifecycleState::PAUSED),

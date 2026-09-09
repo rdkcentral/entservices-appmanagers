@@ -151,6 +151,7 @@ extern uint32_t Test_AM_ClearAppDataStorageError();
 extern uint32_t Test_AM_ClearAllAppDataNullStorage();
 extern uint32_t Test_AM_ClearAllAppDataStorageError();
 extern uint32_t Test_AM_WorkerThreadLaunchSuccess();
+extern uint32_t Test_AM_WorkerThreadMalformedRuntimeConfigDoesNotSpawn();
 extern uint32_t Test_AM_WorkerThreadPackageLockFails();
 extern uint32_t Test_AM_WorkerThreadPreloadSuccess();
 extern uint32_t Test_AM_PackageLockAlreadyLoadedEmptyVersion();
@@ -349,6 +350,7 @@ int main()
         { "AM_ClearAllAppDataNullStorage", Test_AM_ClearAllAppDataNullStorage },
         { "AM_ClearAllAppDataStorageError", Test_AM_ClearAllAppDataStorageError },
         { "AM_WorkerThreadLaunchSuccess", Test_AM_WorkerThreadLaunchSuccess },
+        { "AM_WorkerThreadMalformedRuntimeConfigDoesNotSpawn", Test_AM_WorkerThreadMalformedRuntimeConfigDoesNotSpawn },
         { "AM_WorkerThreadPackageLockFails", Test_AM_WorkerThreadPackageLockFails },
         { "AM_WorkerThreadPreloadSuccess", Test_AM_WorkerThreadPreloadSuccess },
         { "AM_PackageLockAlreadyLoadedEmptyVersion", Test_AM_PackageLockAlreadyLoadedEmptyVersion },

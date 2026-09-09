@@ -42,7 +42,7 @@ namespace ralf
         return generateOCIRootfs(appInstanceId, packageLayers, uid, gid, ociRootfsPath);
     }
 
-    bool RalfPackageBuilder::generateRalfDobbySpec(const WPEFramework::Plugin::ApplicationConfiguration &config, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject, std::string &dobbySpec)
+    bool RalfPackageBuilder::generateRalfDobbySpec(const WPEFramework::Plugin::ApplicationConfiguration &config, const WPEFramework::Plugin::RuntimeConfiguration &runtimeConfigObject, std::string &dobbySpec)
     {
         std::string ralfPkgPath = runtimeConfigObject.ralfPkgPath;
 

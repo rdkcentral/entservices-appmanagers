@@ -9,6 +9,8 @@
 RuntimeManager is responsible for all container-level operations on RDK devices. It uses Dobby (with crun as the OCI runtime) to launch, suspend, resume, hibernate, wake, terminate, and kill application containers. It generates per-application OCI bundle specifications via `DobbySpecGenerator`, allocates Wayland displays for GUI applications through RDKWindowManager, retrieves storage paths from AppStorageManager, and monitors container state changes via `DobbyEventListener`. Hibernation (checkpoint/restore) is an optional feature gated on CRIU availability.
 
 ## Requirements
+- Accept runtime configuration across the manager boundary only as a flat opaque JSON string, validate it, and decode known fields into a private runtime type
+- Keep JSON arrays as arrays; unknown payload properties are tolerated and remain preserved by upstream enrichment
 - Launch application containers via Dobby using dynamically generated OCI specs
 - Support suspend (SIGSTOP) and resume (SIGCONT) for pausing applications
 - Support checkpoint-based hibernation via CRIU and subsequent wake (restore)
@@ -38,7 +40,8 @@ RuntimeManagerImplementation
 
 ### Key Components
 - **RuntimeManagerImplementation**: Core plugin logic — dispatches all container operations
-- **DobbySpecGenerator**: Generates OCI bundle JSON from app config and RuntimeConfig
+- **RuntimeConfigurationDecoder**: Privately validates and decodes the opaque JSON payload into RuntimeManager's internal `RuntimeConfiguration`
+- **DobbySpecGenerator**: Generates OCI bundle JSON from app config and the private decoded configuration
 - **DobbyEventListener**: Listens to Dobby container lifecycle events and propagates them
 - **WindowManagerConnector**: Thin connector to RDKWindowManager for display allocation
 - **RialtoConnector**: Optional connector for Rialto media session integration
@@ -51,7 +54,7 @@ RuntimeManagerImplementation
 ### Public APIs (JSON-RPC)
 | Method | Description |
 |--------|-------------|
-| `Run(appId, appInstanceId, userId, groupId, ports, paths, debugSettings, runtimeConfig)` | Start container |
+| `Run(appId, appInstanceId, userId, groupId, ports, paths, debugSettings, runtimeConfigPayload)` | Validate/decode the opaque JSON payload and start the container |
 | `Suspend(appInstanceId)` | Pause container (SIGSTOP) |
 | `Resume(appInstanceId)` | Resume container (SIGCONT) |
 | `Hibernate(appInstanceId)` | Checkpoint to disk via CRIU |
@@ -72,7 +75,8 @@ RuntimeManagerImplementation
 ```
 LifecycleManager::SpawnApp()
     ↓
-RuntimeManagerImplementation::Run()
+RuntimeManagerImplementation::Run(runtimeConfigPayload)
+    ├→ Validate/decode opaque JSON into private RuntimeConfiguration
     ├→ DobbySpecGenerator::generate()
     │   ├→ Apply base OCI spec
     │   ├→ createMounts() — app paths and storage

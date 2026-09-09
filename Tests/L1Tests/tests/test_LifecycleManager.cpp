@@ -29,7 +29,6 @@
 #include "LifecycleManager.h"
 #include "LifecycleManagerImplementation.h"
 #include "ServiceMock.h"
-#include "RuntimeManagerMock.h"
 #include "WindowManagerMock.h"
 #include "WorkerPoolImplementation.h"
 
@@ -101,6 +100,31 @@ class LifecycleManagerShellTest : public LifecycleManager {
 using ::testing::NiceMock;
 using namespace WPEFramework;
 using namespace std;
+
+// Keep this mock local: the shared RuntimeManagerMock is intentionally not
+// changed by LifecycleManager's opaque runtime-config migration.
+class RuntimeManagerMock : public Exchange::IRuntimeManager {
+public:
+    MOCK_METHOD(Core::hresult, Register, (INotification* notification), (override));
+    MOCK_METHOD(Core::hresult, Unregister, (INotification* notification), (override));
+    MOCK_METHOD(Core::hresult, Run, (const string& appId, const string& appInstanceId,
+        const uint32_t userId, const uint32_t groupId, IValueIterator* const& ports,
+        IStringIterator* const& paths, IStringIterator* const& debugSettings,
+        const string& runtimeConfigPayload), (override));
+    MOCK_METHOD(Core::hresult, Hibernate, (const string& appInstanceId), (override));
+    MOCK_METHOD(Core::hresult, Wake, (const string& appInstanceId, const RuntimeState runtimeState), (override));
+    MOCK_METHOD(Core::hresult, Suspend, (const string& appInstanceId), (override));
+    MOCK_METHOD(Core::hresult, Resume, (const string& appInstanceId), (override));
+    MOCK_METHOD(Core::hresult, Terminate, (const string& appInstanceId), (override));
+    MOCK_METHOD(Core::hresult, Kill, (const string& appInstanceId), (override));
+    MOCK_METHOD(Core::hresult, GetInfo, (const string& appInstanceId, string& info), (override));
+    MOCK_METHOD(Core::hresult, Annotate, (const string& appInstanceId, const string& key, const string& value), (override));
+    MOCK_METHOD(Core::hresult, Mount, (), (override));
+    MOCK_METHOD(Core::hresult, Unmount, (), (override));
+    MOCK_METHOD(uint32_t, AddRef, (), (const, override));
+    MOCK_METHOD(uint32_t, Release, (), (const, override));
+    MOCK_METHOD(void*, QueryInterface, (const uint32_t interfaceNumber), (override));
+};
 
 class EventHandlerTest : public Plugin::IEventHandler {
     public:
@@ -207,7 +231,7 @@ protected:
     string appId;
     string launchIntent;
     Exchange::ILifecycleManager::LifecycleState targetLifecycleState;
-    Exchange::RuntimeConfig runtimeConfigObject;
+    string runtimeConfigPayload;
     string launchArgs;
     string appInstanceId;
     string errorReason;
@@ -271,30 +295,7 @@ protected:
         client = "test.client";
         minutes = 24;
         
-        runtimeConfigObject.dial = true;
-        runtimeConfigObject.wanLanAccess = true;
-        runtimeConfigObject.thunder = true;
-        runtimeConfigObject.systemMemoryLimit = 1024;
-        runtimeConfigObject.gpuMemoryLimit = 512;
-        runtimeConfigObject.envVariables = "test.env.variables";
-        runtimeConfigObject.userId = 1;
-        runtimeConfigObject.groupId = 1;
-        runtimeConfigObject.dataImageSize = 1024;
-        runtimeConfigObject.resourceManagerClientEnabled = true;
-        runtimeConfigObject.dialId = "test.dial.id";
-        runtimeConfigObject.command = "test.command";
-        runtimeConfigObject.appType = "test.app.type";
-        runtimeConfigObject.appPath = "test.app.path";
-        runtimeConfigObject.runtimePath = "test.runtime.path";
-        runtimeConfigObject.logFilePath = "test.logfile.path";
-        runtimeConfigObject.logFileMaxSize = 1024;
-        runtimeConfigObject.logLevels = "[\"DEBUG\",\"INFO\"]";
-        runtimeConfigObject.mapi = true;
-        runtimeConfigObject.fkpsFiles = "[\"fkps1\",\"fkps2\"]";
-        runtimeConfigObject.ralfPkgPath = "/tmp/ralf";
-        runtimeConfigObject.fireboltVersion = "test.firebolt.version";
-        runtimeConfigObject.enableDebugger = true;
-        runtimeConfigObject.unpackedPath = "test.unpacked.path";
+        runtimeConfigPayload = R"({"dial":true,"wanLanAccess":true,"thunder":true,"systemMemoryLimit":1024,"gpuMemoryLimit":512,"envVariables":["EXISTING=value"],"userId":1,"groupId":1,"dataImageSize":1024,"resourceManagerClientEnabled":true,"dialId":"caller.supplied","command":"test.command","appType":"test.app.type","appPath":"test.app.path","runtimePath":"test.runtime.path","logFilePath":"test.logfile.path","logFileMaxSize":1024,"logLevels":["DEBUG","INFO"],"mapi":true,"fkpsFiles":["fkps1","fkps2"],"ralfPkgPath":"/tmp/ralf","fireboltVersion":"test.firebolt.version","enableDebugger":true,"unpackedPath":"test.unpacked.path"})";
 
         // Initialize event parameters and event data
         eventHdlTest.appId = appId;
@@ -549,7 +550,7 @@ TEST_F(LifecycleManagerTest, spawnApp_withValidParams)
     createResources();
 
     // TC-5: Spawn an app with all parameters valid
-    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
+    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigPayload, launchArgs, appInstanceId, errorReason, success));
 
     onStateChangeEventSignal();
 
@@ -568,11 +569,35 @@ TEST_F(LifecycleManagerTest, spawnApp_withValidParams)
  * Release the Lifecycle Manager objects and clean-up related test resources
  */
 
+TEST_F(LifecycleManagerTest, spawnApp_rejectsMalformedAndNonObjectRuntimeConfigPayloads)
+{
+    createResources();
+
+    const vector<string> invalidPayloads = {
+        R"({"envVariables":["VALID=1"],)",
+        R"(["not","an","object"])",
+        R"("not an object")",
+        ""
+    };
+    for (const string& invalidPayload : invalidPayloads) {
+        appInstanceId.clear();
+        errorReason.clear();
+        success = true;
+        EXPECT_EQ(Core::ERROR_GENERAL,
+            interface->SpawnApp(appId, launchIntent, targetLifecycleState,
+                invalidPayload, launchArgs, appInstanceId, errorReason, success));
+        EXPECT_FALSE(success);
+        EXPECT_FALSE(errorReason.empty());
+    }
+
+    releaseResources();
+}
+
 TEST_F(LifecycleManagerTest, appready_onSpawnAppSuccess) 
 {
     createResources();
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
+    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigPayload, launchArgs, appInstanceId, errorReason, success));
 
     onStateChangeEventSignal();
     
@@ -596,7 +621,7 @@ TEST_F(LifecycleManagerTest, appready_oninvalidAppId)
 {
     createResources();
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
+    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigPayload, launchArgs, appInstanceId, errorReason, success));
 
     onStateChangeEventSignal();
 	
@@ -624,7 +649,7 @@ TEST_F(LifecycleManagerTest, isAppLoaded_onSpawnAppSuccess)
 
     bool loaded = false;
     
-    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
+    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigPayload, launchArgs, appInstanceId, errorReason, success));
 
     onStateChangeEventSignal();
 
@@ -653,7 +678,7 @@ TEST_F(LifecycleManagerTest, isAppLoaded_oninvalidAppId)
 
     bool loaded = true;
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
+    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigPayload, launchArgs, appInstanceId, errorReason, success));
 
     onStateChangeEventSignal();
 	
@@ -684,7 +709,7 @@ TEST_F(LifecycleManagerTest, getLoadedApps_verboseEnabled)
     bool verbose = true;
     string apps = "";
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
+    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigPayload, launchArgs, appInstanceId, errorReason, success));
 
     onStateChangeEventSignal();
 	
@@ -715,7 +740,7 @@ TEST_F(LifecycleManagerTest, getLoadedApps_verboseDisabled)
     bool verbose = false;
     string apps = "";
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
+    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigPayload, launchArgs, appInstanceId, errorReason, success));
 
     onStateChangeEventSignal();
 	
@@ -767,11 +792,54 @@ TEST_F(LifecycleManagerTest, getLoadedApps_noAppsLoaded)
 TEST_F(LifecycleManagerTest, setTargetAppState_withValidParams)
 {
     createResources();
+    runtimeConfigPayload = R"({"envVariables":["EXISTING=value","FIREBOLT_ENDPOINT=stale","TARGET_STATE=999"],"logLevels":["DEBUG","INFO"],"unknown":{"nested":{"items":[1,2,3],"preserved":true}}})";
 
     EXPECT_CALL(*mRuntimeManagerMock, Run(appId, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
         .WillOnce(::testing::Invoke(
-            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const Exchange::RuntimeConfig& runtimeConfigObject) {
+            [&](const string& runAppId, const string& runAppInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const string& handedOffPayload) {
+                JsonObject handedOff;
+                const bool validObject = handedOff.FromString(handedOffPayload);
+                EXPECT_TRUE(validObject);
+                if (!validObject) {
+                    return Core::ERROR_GENERAL;
+                }
+                EXPECT_EQ(appId, runAppId);
+                EXPECT_EQ(appId, handedOff["dialId"].String());
+
+                const JsonArray environment = handedOff["envVariables"].Array();
+                bool foundExisting = false;
+                bool foundFireboltEndpoint = false;
+                bool foundTargetState = false;
+                uint32_t fireboltEntryCount = 0;
+                uint32_t targetStateEntryCount = 0;
+                for (uint16_t index = 0; index < environment.Length(); ++index) {
+                    const string value = environment[index].String();
+                    foundExisting = foundExisting || value == "EXISTING=value";
+                    if (value.find("FIREBOLT_ENDPOINT=") == 0) {
+                        ++fireboltEntryCount;
+                        foundFireboltEndpoint = value.find("/?session=" + runAppInstanceId) != string::npos;
+                    }
+                    if (value.find("TARGET_STATE=") == 0) {
+                        ++targetStateEntryCount;
+                        foundTargetState = value == "TARGET_STATE=" + to_string(
+                            static_cast<uint32_t>(Exchange::ILifecycleManager::LifecycleState::ACTIVE));
+                    }
+                }
+                EXPECT_TRUE(foundExisting);
+                EXPECT_TRUE(foundFireboltEndpoint);
+                EXPECT_TRUE(foundTargetState);
+                EXPECT_EQ(1u, fireboltEntryCount);
+                EXPECT_EQ(1u, targetStateEntryCount);
+
+                const JsonObject unknown = handedOff["unknown"].Object();
+                const JsonObject nested = unknown["nested"].Object();
+                EXPECT_TRUE(nested["preserved"].Boolean());
+                const JsonArray items = nested["items"].Array();
+                EXPECT_EQ(3u, items.Length());
+                if (items.Length() > 1) {
+                    EXPECT_EQ(2, items[1].Number());
+                }
                 return Core::ERROR_NONE;
           }));
 
@@ -782,7 +850,7 @@ TEST_F(LifecycleManagerTest, setTargetAppState_withValidParams)
                 return Core::ERROR_NONE;
           }));
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
+    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigPayload, launchArgs, appInstanceId, errorReason, success));
 
     onStateChangeEventSignal();
 
@@ -814,7 +882,7 @@ TEST_F(LifecycleManagerTest, setTargetAppState_withinvalidParams)
 {
     createResources();
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
+    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigPayload, launchArgs, appInstanceId, errorReason, success));
 
     onStateChangeEventSignal();
 
@@ -843,7 +911,7 @@ TEST_F(LifecycleManagerTest, unloadApp_onSpawnAppSuccess)
     EXPECT_CALL(*mRuntimeManagerMock, Run(appId, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
         .WillOnce(::testing::Invoke(
-            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const Exchange::RuntimeConfig& runtimeConfigObject) {
+            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const string& runtimeConfigPayload) {
                 return Core::ERROR_NONE;
           }));
 
@@ -854,7 +922,7 @@ TEST_F(LifecycleManagerTest, unloadApp_onSpawnAppSuccess)
                 return Core::ERROR_NONE;
           }));
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
+    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigPayload, launchArgs, appInstanceId, errorReason, success));
 
     onStateChangeEventSignal();
     
@@ -906,7 +974,7 @@ TEST_F(LifecycleManagerTest, killApp_onSpawnAppSuccess)
     EXPECT_CALL(*mRuntimeManagerMock, Run(appId, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
         .WillOnce(::testing::Invoke(
-            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const Exchange::RuntimeConfig& runtimeConfigObject) {
+            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const string& runtimeConfigPayload) {
                 return Core::ERROR_NONE;
           }));
 
@@ -917,7 +985,7 @@ TEST_F(LifecycleManagerTest, killApp_onSpawnAppSuccess)
                 return Core::ERROR_NONE;
           }));
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
+    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigPayload, launchArgs, appInstanceId, errorReason, success));
 
     onStateChangeEventSignal();
     
@@ -969,7 +1037,7 @@ TEST_F(LifecycleManagerTest, closeApp_onUserExit)
     EXPECT_CALL(*mRuntimeManagerMock, Run(appId, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
         .WillOnce(::testing::Invoke(
-            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const Exchange::RuntimeConfig& runtimeConfigObject) {
+            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const string& runtimeConfigPayload) {
                 return Core::ERROR_NONE;
           }));
 
@@ -980,7 +1048,7 @@ TEST_F(LifecycleManagerTest, closeApp_onUserExit)
                 return Core::ERROR_NONE;
           }));
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
+    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigPayload, launchArgs, appInstanceId, errorReason, success));
 
     onStateChangeEventSignal();
     
@@ -1011,7 +1079,7 @@ TEST_F(LifecycleManagerTest, closeApp_onError)
     EXPECT_CALL(*mRuntimeManagerMock, Run(appId, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
         .WillOnce(::testing::Invoke(
-            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const Exchange::RuntimeConfig& runtimeConfigObject) {
+            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const string& runtimeConfigPayload) {
                 return Core::ERROR_NONE;
           }));
 
@@ -1022,7 +1090,7 @@ TEST_F(LifecycleManagerTest, closeApp_onError)
                 return Core::ERROR_NONE;
           }));
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
+    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigPayload, launchArgs, appInstanceId, errorReason, success));
 
     onStateChangeEventSignal();
     
@@ -1053,7 +1121,7 @@ TEST_F(LifecycleManagerTest, closeApp_onKillandRun)
     EXPECT_CALL(*mRuntimeManagerMock, Run(appId, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
         .WillOnce(::testing::Invoke(
-            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const Exchange::RuntimeConfig& runtimeConfigObject) {
+            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const string& runtimeConfigPayload) {
                 return Core::ERROR_NONE;
           }));
 
@@ -1064,7 +1132,7 @@ TEST_F(LifecycleManagerTest, closeApp_onKillandRun)
                 return Core::ERROR_NONE;
           }));
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
+    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigPayload, launchArgs, appInstanceId, errorReason, success));
 
     onStateChangeEventSignal();
     
@@ -1105,7 +1173,7 @@ TEST_F(LifecycleManagerTest, closeApp_onKillandActivate)
     EXPECT_CALL(*mRuntimeManagerMock, Run(appId, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
         .WillOnce(::testing::Invoke(
-            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const Exchange::RuntimeConfig& runtimeConfigObject) {
+            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const string& runtimeConfigPayload) {
                 return Core::ERROR_NONE;
           }));
 
@@ -1123,7 +1191,7 @@ TEST_F(LifecycleManagerTest, closeApp_onKillandActivate)
                 return Core::ERROR_NONE;
           }));
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
+    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigPayload, launchArgs, appInstanceId, errorReason, success));
 
     onStateChangeEventSignal();
     
@@ -1184,7 +1252,7 @@ TEST_F(LifecycleManagerTest, sendIntenttoActiveApp_onSpawnAppSuccess)
     EXPECT_CALL(*mRuntimeManagerMock, Run(appId, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
         .WillOnce(::testing::Invoke(
-            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const Exchange::RuntimeConfig& runtimeConfigObject) {
+            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const string& runtimeConfigPayload) {
                 return Core::ERROR_NONE;
           }));
 
@@ -1199,7 +1267,7 @@ TEST_F(LifecycleManagerTest, sendIntenttoActiveApp_onSpawnAppSuccess)
 
     targetLifecycleState = Exchange::ILifecycleManager::LifecycleState::ACTIVE;
 
-    ASSERT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
+    ASSERT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigPayload, launchArgs, appInstanceId, errorReason, success));
 
     // TC-25: Send intent to the app after spawning
     success = false;
@@ -1231,7 +1299,7 @@ TEST_F(LifecycleManagerTest, runtimeManagerEvent_onTerminated)
     EXPECT_CALL(*mRuntimeManagerMock, Run(appId, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
         .WillOnce(::testing::Invoke(
-            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const Exchange::RuntimeConfig& runtimeConfigObject) {
+            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const string& runtimeConfigPayload) {
                 return Core::ERROR_NONE;
           }));
 
@@ -1251,7 +1319,7 @@ TEST_F(LifecycleManagerTest, runtimeManagerEvent_onTerminated)
 
     targetLifecycleState = Exchange::ILifecycleManager::LifecycleState::ACTIVE;
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
+    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigPayload, launchArgs, appInstanceId, errorReason, success));
 
     onStateChangeEventSignal();
     
@@ -1299,13 +1367,13 @@ TEST_F(LifecycleManagerTest, runtimeManagerEvent_onStateChanged)
     EXPECT_CALL(*mRuntimeManagerMock, Run(appId, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
         .WillOnce(::testing::Invoke(
-            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const Exchange::RuntimeConfig& runtimeConfigObject) {
+            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const string& runtimeConfigPayload) {
                 return Core::ERROR_NONE;
           }));
 
     targetLifecycleState = Exchange::ILifecycleManager::LifecycleState::INITIALIZING;
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
+    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigPayload, launchArgs, appInstanceId, errorReason, success));
 
     onStateChangeEventSignal();
  
@@ -1345,13 +1413,13 @@ TEST_F(LifecycleManagerTest, runtimeManagerEvent_onFailure)
     EXPECT_CALL(*mRuntimeManagerMock, Run(appId, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
         .WillOnce(::testing::Invoke(
-            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const Exchange::RuntimeConfig& runtimeConfigObject) {
+            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const string& runtimeConfigPayload) {
                 return Core::ERROR_NONE;
           }));
 
     targetLifecycleState = Exchange::ILifecycleManager::LifecycleState::INITIALIZING;
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
+    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigPayload, launchArgs, appInstanceId, errorReason, success));
 
     onStateChangeEventSignal();
 
@@ -1387,13 +1455,13 @@ TEST_F(LifecycleManagerTest, runtimeManagerEvent_onStarted)
     EXPECT_CALL(*mRuntimeManagerMock, Run(appId, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
         .WillOnce(::testing::Invoke(
-            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const Exchange::RuntimeConfig& runtimeConfigObject) {
+            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const string& runtimeConfigPayload) {
                 return Core::ERROR_NONE;
           }));
 
     targetLifecycleState = Exchange::ILifecycleManager::LifecycleState::INITIALIZING;
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
+    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigPayload, launchArgs, appInstanceId, errorReason, success));
 
     onStateChangeEventSignal();
 
@@ -1428,7 +1496,7 @@ TEST_F(LifecycleManagerTest, windowManagerEvent_onUserInactivity)
     EXPECT_CALL(*mRuntimeManagerMock, Run(appId, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
         .WillOnce(::testing::Invoke(
-            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const Exchange::RuntimeConfig& runtimeConfigObject) {
+            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const string& runtimeConfigPayload) {
                 return Core::ERROR_NONE;
           }));
 
@@ -1441,7 +1509,7 @@ TEST_F(LifecycleManagerTest, windowManagerEvent_onUserInactivity)
 
     targetLifecycleState = Exchange::ILifecycleManager::LifecycleState::ACTIVE;
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
+    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigPayload, launchArgs, appInstanceId, errorReason, success));
 
     onStateChangeEventSignal();
 
@@ -1476,7 +1544,7 @@ TEST_F(LifecycleManagerTest, windowManagerEvent_onDisconnect)
     EXPECT_CALL(*mRuntimeManagerMock, Run(appId, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
         .WillOnce(::testing::Invoke(
-            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const Exchange::RuntimeConfig& runtimeConfigObject) {
+            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const string& runtimeConfigPayload) {
                 return Core::ERROR_NONE;
           }));
 
@@ -1489,7 +1557,7 @@ TEST_F(LifecycleManagerTest, windowManagerEvent_onDisconnect)
 
     targetLifecycleState = Exchange::ILifecycleManager::LifecycleState::ACTIVE;
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
+    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigPayload, launchArgs, appInstanceId, errorReason, success));
 
     onStateChangeEventSignal();
 
@@ -1525,7 +1593,7 @@ TEST_F(LifecycleManagerTest, windowManagerEvent_onReady)
     EXPECT_CALL(*mRuntimeManagerMock, Run(appId, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
         .WillOnce(::testing::Invoke(
-            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const Exchange::RuntimeConfig& runtimeConfigObject) {
+            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const string& runtimeConfigPayload) {
                 return Core::ERROR_NONE;
           }));
 
@@ -1538,7 +1606,7 @@ TEST_F(LifecycleManagerTest, windowManagerEvent_onReady)
 
     targetLifecycleState = Exchange::ILifecycleManager::LifecycleState::ACTIVE;
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
+    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigPayload, launchArgs, appInstanceId, errorReason, success));
 
     onStateChangeEventSignal();
 
@@ -1580,7 +1648,7 @@ TEST_F(LifecycleManagerTest, setTargetAppState_toPaused_fromActive)
     EXPECT_CALL(*mRuntimeManagerMock, Run(appId, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
         .WillOnce(::testing::Invoke(
-            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const Exchange::RuntimeConfig& runtimeConfigObject) {
+            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const string& runtimeConfigPayload) {
                 return Core::ERROR_NONE;
           }));
 
@@ -1593,7 +1661,7 @@ TEST_F(LifecycleManagerTest, setTargetAppState_toPaused_fromActive)
 
     targetLifecycleState = Exchange::ILifecycleManager::LifecycleState::ACTIVE;
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
+    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigPayload, launchArgs, appInstanceId, errorReason, success));
 
     onStateChangeEventSignal();
 
@@ -1623,7 +1691,7 @@ TEST_F(LifecycleManagerTest, setTargetAppState_toSuspended_fromActive)
     EXPECT_CALL(*mRuntimeManagerMock, Run(appId, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
         .WillOnce(::testing::Invoke(
-            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const Exchange::RuntimeConfig& runtimeConfigObject) {
+            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const string& runtimeConfigPayload) {
                 return Core::ERROR_NONE;
           }));
 
@@ -1640,7 +1708,7 @@ TEST_F(LifecycleManagerTest, setTargetAppState_toSuspended_fromActive)
 
     targetLifecycleState = Exchange::ILifecycleManager::LifecycleState::ACTIVE;
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
+    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigPayload, launchArgs, appInstanceId, errorReason, success));
 
     onStateChangeEventSignal();
 
@@ -1671,7 +1739,7 @@ TEST_F(LifecycleManagerTest, setTargetAppState_toHibernated_fromSuspended)
     EXPECT_CALL(*mRuntimeManagerMock, Run(appId, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
         .WillOnce(::testing::Invoke(
-            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const Exchange::RuntimeConfig& runtimeConfigObject) {
+            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const string& runtimeConfigPayload) {
                 return Core::ERROR_NONE;
           }));
 
@@ -1695,7 +1763,7 @@ TEST_F(LifecycleManagerTest, setTargetAppState_toHibernated_fromSuspended)
 
     targetLifecycleState = Exchange::ILifecycleManager::LifecycleState::ACTIVE;
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
+    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigPayload, launchArgs, appInstanceId, errorReason, success));
 
     onStateChangeEventSignal();
 
@@ -1755,7 +1823,7 @@ TEST_F(LifecycleManagerTest, getLoadedApps_verboseEnabled_withGetInfoFailure)
     bool verbose = true;
     string apps = "";
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
+    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigPayload, launchArgs, appInstanceId, errorReason, success));
 
     onStateChangeEventSignal();
 
@@ -1789,7 +1857,7 @@ TEST_F(LifecycleManagerTest, killApp_forcePath_onSpawnAppSuccess)
     EXPECT_CALL(*mRuntimeManagerMock, Run(appId, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
         .WillOnce(::testing::Invoke(
-            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const Exchange::RuntimeConfig& runtimeConfigObject) {
+            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const string& runtimeConfigPayload) {
                 return Core::ERROR_NONE;
           }));
 
@@ -1809,7 +1877,7 @@ TEST_F(LifecycleManagerTest, killApp_forcePath_onSpawnAppSuccess)
 
     targetLifecycleState = Exchange::ILifecycleManager::LifecycleState::ACTIVE;
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
+    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigPayload, launchArgs, appInstanceId, errorReason, success));
 
     onStateChangeEventSignal();
 
@@ -1844,7 +1912,7 @@ TEST_F(LifecycleManagerTest, closeApp_withKillFailure)
     EXPECT_CALL(*mRuntimeManagerMock, Run(appId, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
         .WillOnce(::testing::Invoke(
-            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const Exchange::RuntimeConfig& runtimeConfigObject) {
+            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const string& runtimeConfigPayload) {
                 return Core::ERROR_NONE;
           }));
 
@@ -1852,7 +1920,7 @@ TEST_F(LifecycleManagerTest, closeApp_withKillFailure)
         .Times(::testing::AnyNumber())
         .WillRepeatedly(::testing::Return(Core::ERROR_GENERAL));
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
+    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigPayload, launchArgs, appInstanceId, errorReason, success));
 
     onStateChangeEventSignal();
 
@@ -1888,11 +1956,11 @@ TEST_F(LifecycleManagerTest, setTargetAppState_withInvalidTargetState)
     EXPECT_CALL(*mRuntimeManagerMock, Run(appId, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
         .WillOnce(::testing::Invoke(
-            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const Exchange::RuntimeConfig& runtimeConfigObject) {
+            [&](const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const string& runtimeConfigPayload) {
                 return Core::ERROR_NONE;
           }));
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
+    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigPayload, launchArgs, appInstanceId, errorReason, success));
 
     onStateChangeEventSignal();
 
@@ -2133,7 +2201,7 @@ TEST_F(LifecycleManagerTest, spawnApp_withRunFailure)
     // TC-48: SpawnApp queues an INITIALIZING request; background processes
     // LOADING→INITIALIZING and calls runtimeManagerHandler->run() which hits
     // the error path (lines 139-140) because Run() mock returns ERROR_GENERAL.
-    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
+    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigPayload, launchArgs, appInstanceId, errorReason, success));
 
     onStateChangeEventSignal();
 
@@ -2144,13 +2212,11 @@ TEST_F(LifecycleManagerTest, spawnApp_withRunFailure)
  * TC-49 — spawnApp_withEnvVariablesArray
  *
  * Verifies RuntimeManagerHandler::run() env-variables copy loop (line 119).
- * When runtimeConfigObject.envVariables is a valid JSON array the inner loop
- *   for (unsigned int i = 0; i < envInputArray.Length(); ++i)
- * iterates and adds entries to envResultArray.  This exercises line 119 which
- * is bypassed whenever envVariables is an empty or invalid JSON string.
+ * When the opaque runtime config contains a valid envVariables JSON array,
+ * RuntimeManagerHandler preserves those entries while adding its own values.
  *
  * Setup:
- *   - runtimeConfigObject.envVariables is set to a two-element JSON array.
+ *   - runtimeConfigPayload contains a two-element envVariables array.
  *   - target state is INITIALIZING so InitializingState::handle() calls run().
  * Expected result: SpawnApp() returns Core::ERROR_NONE.
  * ---------------------------------------------------------------------------
@@ -2159,15 +2225,14 @@ TEST_F(LifecycleManagerTest, spawnApp_withEnvVariablesArray)
 {
     createResources();
 
-    // Set envVariables to a valid JSON array; run() will iterate over it
-    // at line 119 (envResultArray.Add(envInputArray[i].String())).
-    runtimeConfigObject.envVariables = "[\"CUSTOM_VAR1=hello\",\"CUSTOM_VAR2=world\"]";
+    runtimeConfigPayload =
+        R"({"envVariables":["CUSTOM_VAR1=hello","CUSTOM_VAR2=world"],"logLevels":["DEBUG","INFO"]})";
 
     targetLifecycleState = Exchange::ILifecycleManager::LifecycleState::INITIALIZING;
 
     // TC-49: env variables copy loop is exercised inside run() because
     // envInputArray.Length() > 0 when envVariables is a JSON array string.
-    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
+    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigPayload, launchArgs, appInstanceId, errorReason, success));
 
     onStateChangeEventSignal();
 
@@ -2214,7 +2279,7 @@ TEST_F(LifecycleManagerTest, killApp_fromPausedState)
 
     // Step 1: Spawn app — blocks until LOADING state, then background proceeds
     targetLifecycleState = Exchange::ILifecycleManager::LifecycleState::PAUSED;
-    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
+    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigPayload, launchArgs, appInstanceId, errorReason, success));
 
     onStateChangeEventSignal(); // Wait for UNLOADED→LOADING event
 
@@ -2262,7 +2327,7 @@ TEST_F(LifecycleManagerTest, killApp_withKillFailure_fromPausedState)
         .WillRepeatedly(::testing::Return(Core::ERROR_GENERAL));
 
     targetLifecycleState = Exchange::ILifecycleManager::LifecycleState::PAUSED;
-    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
+    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigPayload, launchArgs, appInstanceId, errorReason, success));
 
     onStateChangeEventSignal();
 
@@ -2310,7 +2375,7 @@ TEST_F(LifecycleManagerTest, unloadApp_withTerminateFailure_fromPausedState)
         .WillRepeatedly(::testing::Return(Core::ERROR_GENERAL));
 
     targetLifecycleState = Exchange::ILifecycleManager::LifecycleState::PAUSED;
-    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
+    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigPayload, launchArgs, appInstanceId, errorReason, success));
 
     onStateChangeEventSignal();
 
@@ -2370,7 +2435,7 @@ TEST_F(LifecycleManagerTest, setTargetAppState_toHibernated_viaCorrectPath)
 
     // --- Reach PAUSED ---
     targetLifecycleState = Exchange::ILifecycleManager::LifecycleState::PAUSED;
-    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
+    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigPayload, launchArgs, appInstanceId, errorReason, success));
 
     onStateChangeEventSignal();
 
@@ -2428,7 +2493,7 @@ TEST_F(LifecycleManagerTest, setTargetAppState_toHibernated_withHibernateFailure
 
     // --- Reach PAUSED ---
     targetLifecycleState = Exchange::ILifecycleManager::LifecycleState::PAUSED;
-    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
+    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigPayload, launchArgs, appInstanceId, errorReason, success));
 
     onStateChangeEventSignal();
 
@@ -2495,7 +2560,7 @@ TEST_F(LifecycleManagerTest, setTargetAppState_toSuspendedFromHibernated_success
 
     // --- Reach PAUSED ---
     targetLifecycleState = Exchange::ILifecycleManager::LifecycleState::PAUSED;
-    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
+    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigPayload, launchArgs, appInstanceId, errorReason, success));
 
     onStateChangeEventSignal();
 
@@ -2563,7 +2628,7 @@ TEST_F(LifecycleManagerTest, setTargetAppState_toSuspendedFromHibernated_withWak
 
     // --- Reach PAUSED ---
     targetLifecycleState = Exchange::ILifecycleManager::LifecycleState::PAUSED;
-    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success));
+    EXPECT_EQ(Core::ERROR_NONE, interface->SpawnApp(appId, launchIntent, targetLifecycleState, runtimeConfigPayload, launchArgs, appInstanceId, errorReason, success));
 
     onStateChangeEventSignal();
 

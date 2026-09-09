@@ -32,7 +32,7 @@ namespace Plugin
     namespace {
         static Metadata<PackageManager> metadata(
             // Version
-            1, 0, 0,
+            2, 0, 0,
             // Preconditions
             {},
             // Terminations

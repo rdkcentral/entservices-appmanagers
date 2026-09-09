@@ -108,8 +108,8 @@ namespace WPEFramework
                     ~LifecycleInterfaceConnector();
                     Core::hresult createLifecycleManagerRemoteObject();
                     void releaseLifecycleManagerRemoteObject();
-                    Core::hresult launch(const string& appId, const string& intent, const string& launchArgs, WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject);
-                    Core::hresult preLoadApp(const string& appId, const string& intent, const string& launchArgs, WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject, string& error);
+                    Core::hresult launch(const string& appId, const string& intent, const string& launchArgs, std::string& runtimeConfigPayload);
+                    Core::hresult preLoadApp(const string& appId, const string& intent, const string& launchArgs, std::string& runtimeConfigPayload, string& error);
                     Core::hresult closeApp(const string& appId);
                     Core::hresult terminateApp(const string& appId);
                     Core::hresult killApp(const string& appId);
@@ -128,7 +128,7 @@ namespace WPEFramework
                     void processAppLifecycleStateChanged(const string& appId, const string& appInstanceId, const Exchange::ILifecycleManager::LifecycleState oldState, const Exchange::ILifecycleManager::LifecycleState newState, const string& navigationIntent);
                     void processAppStateChanged(const string& appId, Exchange::ILifecycleManager::LifecycleState state, const string& errorReason);
                     static std::string base64Encode(const std::string& in);
-                    void appendLaunchParametersEnv(const std::string& launchArgs, WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject) const;
+                    bool appendLaunchParametersEnv(const std::string& launchArgs, std::string& runtimeConfigPayload, std::string& error) const;
                     mutable Core::CriticalSection mAdminLock;
                     Exchange::ILifecycleManager *mLifecycleManagerRemoteObject;
                     Exchange::ILifecycleManagerState *mLifecycleManagerStateRemoteObject;

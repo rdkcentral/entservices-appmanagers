@@ -35,6 +35,7 @@
 #include <map>
 #include "AppManagerTypes.h"
 #include "AppInfoManager.h"
+#include "RuntimeConfigPayload.h"
 
 namespace WPEFramework {
 namespace Plugin {
@@ -211,7 +212,7 @@ namespace Plugin {
         void releasePersistentStoreRemoteStoreObject();
         Core::hresult createPackageManagerObject();
         void releasePackageManagerObject();
-        void getCustomValues(WPEFramework::Exchange::RuntimeConfig& runtimeConfig);
+        void getCustomValues(Utils::RuntimeConfigPayload& runtimeConfigPayload);
         Core::hresult createStorageManagerRemoteObject();
         void releaseStorageManagerRemoteObject();
     private:
