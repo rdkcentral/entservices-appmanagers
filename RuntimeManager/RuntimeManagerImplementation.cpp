@@ -1046,16 +1046,17 @@ namespace WPEFramework
 
         Core::hresult RuntimeManagerImplementation::Suspend(const string &appInstanceId)
         {
+#ifndef ENABLE_RIALTO_CONTROL
             Core::hresult status = Core::ERROR_GENERAL;
             std::string errorReason = "";
             std::string appId = "";
             bool success = false;
 
-            // Get current timestamp at the start of suspend for telemetry 
+            /* Get current timestamp at the start of suspend for telemetry */
             time_t requestTime = getCurrentTimestamp();
 
-             mRuntimeManagerImplLock.Lock();
-#ifndef ENABLE_RIALTO_CONTROL
+            mRuntimeManagerImplLock.Lock();
+
             if(!isOCIPluginObjectValid())
             {
                 mRuntimeManagerImplLock.Unlock();
@@ -1063,6 +1064,7 @@ namespace WPEFramework
                 return status;
             }
                 string containerId = getContainerId(appInstanceId);
+
                 if (!containerId.empty())
                 {
                     status = mOciContainerObject->PauseContainer(containerId, success, errorReason);
@@ -1070,8 +1072,8 @@ namespace WPEFramework
                     {
                         LOGERR("Failed to PauseContainer %s", errorReason.c_str());
                     }
-                    else{
-                        LOGERR("PauseContainer succeeded for %s", appInstanceId.c_str());
+                    else
+                    {
                         if (mRuntimeAppInfo.find(appInstanceId) != mRuntimeAppInfo.end())
                         {
                             appId = mRuntimeAppInfo[appInstanceId].appId;
@@ -1082,42 +1084,51 @@ namespace WPEFramework
                 {
                     LOGERR("appInstanceId is not found ");
                 }
-#else
-                        if (mRuntimeAppInfo.find(appInstanceId) != mRuntimeAppInfo.end())
-                        {
-                            appId = mRuntimeAppInfo[appInstanceId].appId;
-                        }
-                        if (!appId.empty() && mRuntimeAppInfo[appInstanceId].usesRialto)
-                        {
-                            LOGINFO("Rialto session suspend for %s", appId.c_str());
-                            if (!mRialtoConnector->suspendSession(appInstanceId))
-                            {
-                                LOGWARN("Rialto suspendSession failed for %s", appId.c_str());
-                            }
-                            else
-                            {
-                                LOGINFO("Rialto suspendSession succeeded for %s", appId.c_str());
-                                status = Core::ERROR_NONE;
-                            }
-                        }
-#endif
+
             mRuntimeManagerImplLock.Unlock();
             recordTelemetryData(TELEMETRY_MARKER_SUSPEND_TIME, appId, requestTime);
             return status;
+#else   
+            Core::hresult status = Core::ERROR_NONE;
+            std::string errorReason = "";
+            std::string appId = "";
+            bool success = false;
+            if (mRuntimeAppInfo.find(appInstanceId) != mRuntimeAppInfo.end())
+            {
+                appId = mRuntimeAppInfo[appInstanceId].appId;
+            }
+            if (!appId.empty() && mRuntimeAppInfo[appInstanceId].usesRialto)
+            {
+                LOGINFO("Rialto session suspend for %s", appId.c_str());
+                if (!mRialtoConnector->suspendSession(appInstanceId))
+                {
+                    LOGWARN("Rialto suspendSession failed for %s", appId.c_str());
+                }
+                else
+                {
+                    LOGINFO("Rialto suspendSession succeeded for %s", appId.c_str());
+                    status = Core::ERROR_NONE;
+                }
+            }
+            mRuntimeManagerImplLock.Unlock();
+            recordTelemetryData(TELEMETRY_MARKER_SUSPEND_TIME, appId, requestTime);
+            return status;
+#endif    
         }
 
         Core::hresult RuntimeManagerImplementation::Resume(const string &appInstanceId)
         {
+#ifndef ENABLE_RIALTO_CONTROL
             Core::hresult status = Core::ERROR_GENERAL;
             std::string errorReason = "";
             std::string appId = "";
             bool success = false;
 
-            // Get current timestamp at the start of resume for telemetry 
+            /* Get current timestamp at the start of resume for telemetry */
             time_t requestTime = getCurrentTimestamp();
 
             mRuntimeManagerImplLock.Lock();
-#ifndef ENABLE_RIALTO_CONTROL
+
             if(!isOCIPluginObjectValid())
             {
                 mRuntimeManagerImplLock.Unlock();
@@ -1135,18 +1146,21 @@ namespace WPEFramework
                     }
                     else
                     {
-                        
-                        if (mRuntimeAppInfo.find(appInstanceId) != mRuntimeAppInfo.end())
-                        {
-                            appId = mRuntimeAppInfo[appInstanceId].appId;
-                        }
+                        LOGINFO("ResumeContainer succeeded for %s", appInstanceId.c_str());
                     }
                 }
                 else
                 {
-                    LOGERR("appInstanceId is not found ");
+                    LOGERR("appInstanceId is empty ");
                 }
+            mRuntimeManagerImplLock.Unlock();
+            recordTelemetryData(TELEMETRY_MARKER_RESUME_TIME, appId, requestTime);
+            return status;
 #else
+            Core::hresult status = Core::ERROR_NONE;
+            std::string errorReason = "";
+            std::string appId = "";
+            bool success = false;
                 if (mRuntimeAppInfo.find(appInstanceId) != mRuntimeAppInfo.end())
                 {
                     appId = mRuntimeAppInfo[appInstanceId].appId;
@@ -1163,10 +1177,10 @@ namespace WPEFramework
                                 LOGINFO("db982 Rialto resumeSession succeeded for %s", appId.c_str());
                             }
                 }
-#endif
             mRuntimeManagerImplLock.Unlock();
             recordTelemetryData(TELEMETRY_MARKER_RESUME_TIME, appId, requestTime);
             return status;
+#endif
         }
 
         Core::hresult RuntimeManagerImplementation::Terminate(const string &appInstanceId)
