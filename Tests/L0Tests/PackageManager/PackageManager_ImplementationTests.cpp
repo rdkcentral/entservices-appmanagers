@@ -13,6 +13,7 @@ namespace {
 
 using WPEFramework::Core::ERROR_BAD_REQUEST;
 using WPEFramework::Core::ERROR_GENERAL;
+using WPEFramework::Core::ERROR_INVALID_PARAMETER;
 using WPEFramework::Core::ERROR_INVALID_SIGNATURE;
 using WPEFramework::Core::ERROR_NONE;
 using WPEFramework::Core::ERROR_NOT_SUPPORTED;
@@ -320,13 +321,38 @@ uint32_t Test_PM_Impl_InstallAndUninstallFlowWithNotifications()
     auto* notif = new FakeInstallerNotification();
     L0Test::ExpectEqU32(tr, fx.impl->Register(notif), ERROR_NONE, "Installer Register() returns ERROR_NONE");
 
-    WPEFramework::Exchange::IPackageInstaller::FailReason failReason = WPEFramework::Exchange::IPackageInstaller::FailReason::NONE;
-    const auto installResult = fx.impl->Install("SampleApp", "1.0.0", nullptr, "/tmp/fake_pkg.ipk", failReason);
-    L0Test::ExpectEqU32(tr, installResult, ERROR_NONE, "Install() returns ERROR_NONE with dummy package impl");
-    L0Test::ExpectTrue(tr, notif->installStatusCount.load() >= 2, "Install() emits installation notifications");
-
+    const std::string packageId = "YouTube";
+    const std::string version = "100.1.24";
     std::string errorReason;
-    L0Test::ExpectEqU32(tr, fx.impl->Uninstall("SampleApp", errorReason), ERROR_NONE, "Uninstall() returns ERROR_NONE for installed package");
+    L0Test::ExpectEqU32(tr,
+                        fx.impl->Uninstall(packageId, errorReason),
+                        ERROR_NONE,
+                        "Uninstall() succeeds for the package loaded during cache initialization");
+
+    WPEFramework::Exchange::IPackageInstaller::FailReason failReason = WPEFramework::Exchange::IPackageInstaller::FailReason::NONE;
+    const auto installResult = fx.impl->Install(packageId, version, nullptr, "/tmp/fake_pkg.ipk", failReason);
+    L0Test::ExpectEqU32(tr, installResult, ERROR_NONE, "Reinstall() returns ERROR_NONE with dummy package impl");
+    L0Test::ExpectTrue(tr, notif->installStatusCount.load() >= 4, "Uninstall and reinstall emit installation notifications");
+
+    WPEFramework::Exchange::IPackageInstaller::IPackageIterator* packages = nullptr;
+    L0Test::ExpectEqU32(tr, fx.impl->ListPackages(packages), ERROR_NONE, "ListPackages() succeeds immediately after reinstall");
+    L0Test::ExpectTrue(tr, nullptr != packages, "ListPackages() returns an iterator immediately after reinstall");
+    if (nullptr != packages) {
+        WPEFramework::Exchange::IPackageInstaller::Package package;
+        bool foundPackage = false;
+        while (packages->Next(package)) {
+            if ((packageId == package.packageId) && (version == package.version)) {
+                foundPackage = true;
+                L0Test::ExpectEqU32(tr,
+                                    package.sizeKb,
+                                    31457280U,
+                                    "Reinstalled package exposes dataImageSize through ListPackages() without reboot");
+                break;
+            }
+        }
+        L0Test::ExpectTrue(tr, foundPackage, "ListPackages() contains the reinstalled package");
+        packages->Release();
+    }
 
     L0Test::ExpectEqU32(tr, fx.impl->Unregister(notif), ERROR_NONE, "Installer Unregister() returns ERROR_NONE");
     notif->Release();
@@ -518,20 +544,20 @@ uint32_t Test_PM_Impl_InstallInputValidationAndUnknownPaths()
     std::string reason;
     L0Test::ExpectEqU32(tr,
                         fx.impl->Uninstall("NoSuchApp", reason),
-                        ERROR_BAD_REQUEST,
-                        "Uninstall() for unknown app returns ERROR_BAD_REQUEST");
+                        ERROR_INVALID_PARAMETER,
+                        "Uninstall() for unknown app returns ERROR_INVALID_PARAMETER");
 
     WPEFramework::Exchange::RuntimeConfig cfg {};
     L0Test::ExpectEqU32(tr,
                         fx.impl->Config("NoSuchApp", "0", cfg),
-                        ERROR_BAD_REQUEST,
-                        "Config() for unknown package returns ERROR_BAD_REQUEST");
+                        ERROR_INVALID_PARAMETER,
+                        "Config() for unknown package returns ERROR_INVALID_PARAMETER");
 
     WPEFramework::Exchange::IPackageInstaller::InstallState state = WPEFramework::Exchange::IPackageInstaller::InstallState::UNINSTALLED;
     L0Test::ExpectEqU32(tr,
                         fx.impl->PackageState("NoSuchApp", "0", state),
-                        ERROR_BAD_REQUEST,
-                        "PackageState() for unknown package returns ERROR_BAD_REQUEST");
+                        ERROR_INVALID_PARAMETER,
+                        "PackageState() for unknown package returns ERROR_INVALID_PARAMETER");
 
     return tr.failures;
 }
