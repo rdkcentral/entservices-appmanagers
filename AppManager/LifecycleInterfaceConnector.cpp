@@ -20,6 +20,7 @@
 #include "Module.h"
 #include "LifecycleInterfaceConnector.h"
 #include "AppInfoManager.h"
+#include <algorithm>
 #include <string>
 #include <memory>
 #include <mutex>
@@ -27,12 +28,13 @@
 #include <fstream>
 #include <sstream>
 #include <list>
+#include <utility>
+#include <vector>
 #include <unistd.h>
 #include <json/json.h>
 #include <plugins/System.h>
 
 #include <interfaces/ILifecycleManager.h>
-#include <interfaces/IAppGateway.h>
 #include "AppManagerImplementation.h"
 #include "UtilsString.h"
 #include "AppManagerTelemetryReporting.h"
@@ -280,30 +282,6 @@ namespace WPEFramework
                             string source = "";
                             appManagerImplInstance->handleOnAppLaunchRequest(appId, intent, source);
 
-                            LOGINFO("Requesting asynchronous user-grant check for appId=%s", appId.c_str());
-                            auto launchDelegate = mCurrentservice->QueryInterfaceByCallsign<Exchange::IAppGatewayRequestHandler>("org.rdk.LaunchDelegate");
-                            if (launchDelegate != nullptr)
-                            {
-                                Exchange::GatewayContext grantCheckContext{0, 0, appId, ""};
-                                string grantCheckResult;
-                                const Core::hresult grantCheckStatus = launchDelegate->HandleAppGatewayRequest(
-                                    grantCheckContext, "usergrants.grantcheck", "", grantCheckResult);
-                                if (grantCheckStatus != Core::ERROR_NONE)
-                                {
-                                    LOGWARN("Unable to start user-grant check for appId=%s: status=%u",
-                                            appId.c_str(), grantCheckStatus);
-                                }
-                                else
-                                {
-                                    LOGINFO("Asynchronous user-grant check accepted for appId=%s", appId.c_str());
-                                }
-                                launchDelegate->Release();
-                            }
-                            else
-                            {
-                                LOGWARN("LaunchDelegate is unavailable for user-grant check: appId=%s", appId.c_str());
-                            }
-
                             appendLaunchParametersEnv(launchArgs, runtimeConfigObject);
 
                             LOGINFO("spawnApp called ,state %u",state);
@@ -491,12 +469,22 @@ namespace WPEFramework
                                     LOGERR("Timed out waiting for appId: %s to reach PAUSED state", appId.c_str());
                                     appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_CLOSE, AppManagerImplementation::ERROR_INTERNAL);
                                     status = Core::ERROR_GENERAL;
+#ifdef APP_MANAGER_RESOURCE_MONITOR
+                                    mAdminLock.Unlock();
+                                    terminateApp(appId);
+                                    mAdminLock.Lock();
+#endif
                                 }
                             }
                             else
                             {
                                 LOGERR("Failed to set PAUSED state for AppId: %s", appId.c_str());
                                 appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_CLOSE, AppManagerImplementation::ERROR_SET_TARGET_APP_STATE);
+#ifdef APP_MANAGER_RESOURCE_MONITOR
+                                mAdminLock.Unlock();
+                                terminateApp(appId);
+                                mAdminLock.Lock();
+#endif
                             }
                         }
                         else
@@ -545,13 +533,12 @@ namespace WPEFramework
                     if (nullptr != mLifecycleManagerRemoteObject)
                     {
                         appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_TERMINATE);
-			    mAppCurrentActionList[appId] = Exchange::IAppManager::AppLifecycleState::APP_STATE_TERMINATING;
-                            status = mLifecycleManagerRemoteObject->UnloadApp(appInstanceId, errorReason, success);
-                            if (status != Core::ERROR_NONE)
-                            {
-                                LOGERR("UnloadApp failed with error reason: %s", errorReason.c_str());
-                                appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_TERMINATE, AppManagerImplementation::ERROR_UNLOAD_APP);
-                            }
+                        mAppCurrentActionList[appId] = Exchange::IAppManager::AppLifecycleState::APP_STATE_TERMINATING;
+                        status = mLifecycleManagerRemoteObject->UnloadApp(appInstanceId, errorReason, success);
+                        if (Core::ERROR_NONE != status)
+                        {
+                            LOGERR("UnloadApp failed with error reason: %s", errorReason.c_str());
+                            appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_TERMINATE, AppManagerImplementation::ERROR_UNLOAD_APP);
                         }
                     }
                 }
@@ -560,11 +547,12 @@ namespace WPEFramework
                     LOGERR("AppId %s not found in database", appId.c_str());
                     appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_TERMINATE, AppManagerImplementation::ERROR_INVALID_PARAMS);
                 }
-                else
-		 {
-                    LOGERR("appManagerImplInstance is null");
-	            appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_TERMINATE, AppManagerImplementation::ERROR_INTERNAL);
-        	 }
+            }
+            else
+            {
+                LOGERR("appManagerImplInstance is null");
+                appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_TERMINATE, AppManagerImplementation::ERROR_INTERNAL);
+            }
             mAdminLock.Unlock();
             return status;
         }
@@ -625,6 +613,39 @@ namespace WPEFramework
 
             return result;
         }
+
+    #ifdef APP_MANAGER_RESOURCE_MONITOR
+        Core::hresult LifecycleInterfaceConnector::setTargetAppState(const string& appId, Exchange::ILifecycleManager::LifecycleState state)
+        {
+            Core::hresult status = Core::ERROR_GENERAL;
+            if (appId.empty())
+            {
+                return status;
+            }
+            if (nullptr == mLifecycleManagerRemoteObject)
+            {
+                if (Core::ERROR_NONE != createLifecycleManagerRemoteObject())
+                {
+                    return status;
+                }
+            }
+
+            AppInfo appInfo;
+            if (!AppInfoManager::getInstance().get(appId, appInfo) || appInfo.getAppInstanceId().empty())
+            {
+                return status;
+            }
+
+            mAdminLock.Lock();
+            status = mLifecycleManagerRemoteObject->SetTargetAppState(appInfo.getAppInstanceId(), state, appInfo.getAppIntent());
+            if (Core::ERROR_NONE == status)
+            {
+                AppInfoManager::getInstance().setTargetAppState(appId, mapAppLifecycleState(state));
+            }
+            mAdminLock.Unlock();
+            return status;
+        }
+#endif
 
         /* Send Intent invokes it */
         Core::hresult LifecycleInterfaceConnector::sendIntent(const string& appId, const string& intent)
@@ -715,6 +736,10 @@ namespace WPEFramework
                     return obj.HasLabel(key) ? static_cast<int>(obj[key].Number()) : 0;
                 };
 
+                typedef std::pair<uint32_t, WPEFramework::Exchange::IAppManager::LoadedAppInfo> RankedApp;
+                std::vector<RankedApp> rankedApps;
+                rankedApps.reserve(loadedAppsJsonArray.Length());
+
                 // Iterate through each app JSON object in the array
                 for (size_t i = 0; i < loadedAppsJsonArray.Length(); ++i)
                 {
@@ -745,13 +770,29 @@ namespace WPEFramework
                     loadedAppInfo.targetLifecycleState = targetState;
                     loadedAppInfo.lifecycleState       = newState;
 
-                    //Add loaded info
-		    loadedAppInfoList.push_back(std::move(loadedAppInfo));
+                    rankedApps.emplace_back(AppInfoManager::getInstance().getLastActiveIndex(appId), std::move(loadedAppInfo));
+                }
+
+                mAdminLock.Unlock();
+
+                /* Most recently active app first; apps that were never active (index 0) come last. */
+                std::sort(rankedApps.begin(), rankedApps.end(),
+                    [](const RankedApp& left, const RankedApp& right) -> bool {
+                        if (left.first != right.first)
+                        {
+                            return left.first > right.first;
+                        }
+                        return left.second.appId < right.second.appId;
+                    });
+
+                for (std::vector<RankedApp>::iterator it = rankedApps.begin(); it != rankedApps.end(); ++it)
+                {
+                    loadedAppInfoList.push_back(std::move(it->second));
                 }
 
                 apps = Core::Service<RPC::IteratorType<Exchange::IAppManager::ILoadedAppInfoIterator>> \
 		   ::Create<Exchange::IAppManager::ILoadedAppInfoIterator>(loadedAppInfoList);
-		result = Core::ERROR_NONE;
+        return Core::ERROR_NONE;
             }
             else
             {
@@ -1050,4 +1091,3 @@ End:
 
      } /* namespace Plugin */
 } /* namespace WPEFramework */
-
