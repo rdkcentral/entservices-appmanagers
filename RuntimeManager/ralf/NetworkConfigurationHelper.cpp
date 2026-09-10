@@ -123,7 +123,7 @@ namespace
             if (!createIfMissing)
             {
                 LOGERR("%s: %s.%s node is missing/invalid type and could not create it.",
-                       MODULE_LOGTAG, ralf::RDKPLUGINS,NETWORKING);
+                       MODULE_LOGTAG, ralf::RDKPLUGINS, NETWORKING);
                 return nullptr;
             }
             // Explicitly re-initialize to objectValue to clear any prior malformed type
@@ -375,16 +375,16 @@ namespace
     {
         if (!arrayContainer.isArray()) return;
 
-        uint32_t port = rule[PORT].asUInt();
-        std::string protocol = rule[PROTOCOL].asString();
+        uint32_t port = rule[ralf::PORT].asUInt();
+        std::string protocol = rule[ralf::PROTOCOL].asString();
 
         // Scan for duplicate port + protocol combinations
         for (const auto& existingRule : arrayContainer)
         {
-            if (existingRule.isMember(PORT) && existingRule[PORT].isUInt() &&
-                existingRule.isMember(PROTOCOL) && existingRule[PROTOCOL].isString())
+            if (existingRule.isMember(ralf::PORT) && existingRule[ralf::PORT].isUInt() &&
+                existingRule.isMember(ralf::PROTOCOL) && existingRule[ralf::PROTOCOL].isString())
             {
-                if (port == existingRule[PORT].asUInt() && protocol == existingRule[PROTOCOL].asString())
+                if (port == existingRule[ralf::PORT].asUInt() && protocol == existingRule[ralf::PROTOCOL].asString())
                 {
                     return; // Duplicate found, exit early
                 }
@@ -898,15 +898,15 @@ Json::Value translateRALFNWCfgObjToDobbyNWCfgObj(const Json::Value& ralfNWCfgObj
 
     auto processItem = [&](const Json::Value& ralfItem) {
         // Enforce basic element verification
-        if (!ralfItem.isObject() || !ralfItem.isMember(PORT) || !ralfItem.isMember(TYPE) ||
-            !ralfItem[PORT].isUInt() || !ralfItem[TYPE].isString())
+        if (!ralfItem.isObject() || !ralfItem.isMember(ralf::PORT) || !ralfItem.isMember(ralf::TYPE) ||
+            !ralfItem[ralf::PORT].isUInt() || !ralfItem[ralf::TYPE].isString())
         {
             LOGWARN("%s: Invalid RALF network configuration item.", MODULE_LOGTAG);
             return;
         }
 
-        uint32_t port = ralfItem[PORT].asUInt();
-        std::string type = ralfItem[TYPE].asString();
+        uint32_t port = ralfItem[ralf::PORT].asUInt();
+        std::string type = ralfItem[ralf::TYPE].asString();
 
         if (port == 0 || port > 65535 || (PUBLIC != type && EXPORTED != type && IMPORTED != type))
         {
@@ -916,24 +916,24 @@ Json::Value translateRALFNWCfgObjToDobbyNWCfgObj(const Json::Value& ralfNWCfgObj
 
         // Handle string protocol mappings safely
         std::string protocol = DEFAULT_PROTOCOL;
-        if (ralfItem.isMember(PROTOCOL) && ralfItem[PROTOCOL].isString())
+        if (ralfItem.isMember(ralf::PROTOCOL) && ralfItem[ralf::PROTOCOL].isString())
         {
-            protocol = normalizeProtocol(ralfItem[PROTOCOL].asString());
+            protocol = normalizeProtocol(ralfItem[ralf::PROTOCOL].asString());
         }
 
         if (PUBLIC == type)
         {
             Json::Value rule(Json::objectValue);
-            rule[PORT] = port;
-            rule[PROTOCOL] = protocol;
+            rule[ralf::PORT] = port;
+            rule[ralf::PROTOCOL] = protocol;
             appendIfUnique(hostToContainer, rule);
         }
         else if (EXPORTED == type)
         {
             Json::Value rule(Json::objectValue);
             rule[DIRECTION] = DIRECTION_IN;
-            rule[PORT] = port;
-            rule[PROTOCOL] = protocol;
+            rule[ralf::PORT] = port;
+            rule[ralf::PROTOCOL] = protocol;
             rule[LOCALHOST_MASQUERADE] = true;
             appendIfUnique(interContainer, rule);
         }
@@ -941,8 +941,8 @@ Json::Value translateRALFNWCfgObjToDobbyNWCfgObj(const Json::Value& ralfNWCfgObj
         {
             Json::Value rule(Json::objectValue);
             rule[DIRECTION] = DIRECTION_OUT;
-            rule[PORT] = port;
-            rule[PROTOCOL] = protocol;
+            rule[ralf::PORT] = port;
+            rule[ralf::PROTOCOL] = protocol;
             rule[LOCALHOST_MASQUERADE] = true;
             appendIfUnique(interContainer, rule);
         }
@@ -982,14 +982,14 @@ Json::Value translateRALFNWCfgObjToDobbyNWCfgObj(const Json::Value& ralfNWCfgObj
 bool updateNetworkConfigurationNode(Json::Value& ociConfigRootNode, const Json::Value& manifestRootNode)
 {
     // Handle "configuration" node in the manifest, which may contain "urn:rdk:config:network" metadata.
-    if (!manifestRootNode.isMember(CONFIGURATION))
+    if (!manifestRootNode.isMember(ralf::CONFIGURATION))
     {
         LOGWARN("%s: No configuration node found in manifest; skipping network configuration update", MODULE_LOGTAG);
         return true; // Not an error; just no configuration to process
     }
 
-    const Json::Value& configurationNode = manifestRootNode[CONFIGURATION];
-    if (!configurationNode.isMember(NETWORK_CONFIG_URN))
+    const Json::Value& configurationNode = manifestRootNode[ralf::CONFIGURATION];
+    if (!configurationNode.isMember(ralf::NETWORK_CONFIG_URN))
     {
         LOGWARN("%s: No network configuration node found in manifest; skipping network configuration update", MODULE_LOGTAG);
         return true; // Not an error; just no configuration to process
@@ -1030,7 +1030,7 @@ bool updateNetworkConfigurationNode(Json::Value& ociConfigRootNode, const Json::
         }
      */
 
-    const Json::Value& networkConfiguration = configurationNode[NETWORK_CONFIG_URN];
+    const Json::Value& networkConfiguration = configurationNode[ralf::NETWORK_CONFIG_URN];
     if (!networkConfiguration.isArray())
     {
         LOGWARN("%s: Network configuration is not an array, no need to process it.", MODULE_LOGTAG);
@@ -1089,13 +1089,13 @@ bool updateNetworkConfigurationNode(Json::Value& ociConfigRootNode, const Json::
 bool updatePermissionBasedNetworkConfiguration(Json::Value& ociConfigRootNode, const Json::Value& manifestRootNode,
                                                const std::string& envVariables)
 {
-    if (!manifestRootNode.isMember(PERMISSIONS))
+    if (!manifestRootNode.isMember(ralf::PERMISSIONS))
     {
         LOGWARN("%s: No permissions found in manifest; skipping permission-based networking update", MODULE_LOGTAG);
         return true; // Not an error; just no permissions to process
     }
 
-    const Json::Value& permissions = manifestRootNode[PERMISSIONS];
+    const Json::Value& permissions = manifestRootNode[ralf::PERMISSIONS];
     if (!permissions.isArray())
     {
         LOGWARN("%s: Permissions node is not an array; skipping permission-based networking update", MODULE_LOGTAG);
@@ -1151,9 +1151,9 @@ bool updatePermissionBasedNetworkConfiguration(Json::Value& ociConfigRootNode, c
         }
 
         // check and update if not matching.
-        if (!netData->isMember(TYPE) || !(*netData)[TYPE].isString() || (*netData)[TYPE].asString() != NETWORK_TYPE_NAT)
+        if (!netData->isMember(ralf::TYPE) || !(*netData)[ralf::TYPE].isString() || (*netData)[ralf::TYPE].asString() != NETWORK_TYPE_NAT)
         {
-            (*netData)[TYPE] = NETWORK_TYPE_NAT;
+            (*netData)[ralf::TYPE] = NETWORK_TYPE_NAT;
         }
         if (!netData->isMember(DNSMASQ) || !(*netData)[DNSMASQ].isBool() || !(*netData)[DNSMASQ].asBool())
         {
@@ -1184,7 +1184,7 @@ bool updatePermissionBasedNetworkConfiguration(Json::Value& ociConfigRootNode, c
         Json::Value envVarsNode;
         std::string errs;
         std::unique_ptr<Json::CharReader> reader(readerBuilder.newCharReader());
-        if (!reader->parse(envVar.c_str(), envVar.c_str() + envVar.size(), &envVarsNode, &errs))
+        if (!reader->parse(envVariables.c_str(), envVariables.c_str() + envVariables.size(), &envVarsNode, &errs))
         {
             LOGERR("Failed to parse env variables JSON string, error: %s\n", errs.c_str());
             return false;
@@ -1197,7 +1197,7 @@ bool updatePermissionBasedNetworkConfiguration(Json::Value& ociConfigRootNode, c
                 if (envEntry.isString())
                 {
                     std::string envPair = envEntry.asString();
-                    std::string fireboltPrefix = std::string(FIREBOLT_ENDPOINT_ENV_KEY) + "=";
+                    std::string fireboltPrefix = std::string(ralf::FIREBOLT_ENDPOINT_ENV_KEY) + "=";
                     if (envPair.rfind(fireboltPrefix, 0) == 0)
                     {
                         std::string fireboltEndpointStr = envPair.substr(fireboltPrefix.size());
@@ -1213,7 +1213,7 @@ bool updatePermissionBasedNetworkConfiguration(Json::Value& ociConfigRootNode, c
                             fireboltNWCfgObject[ralf::NAME] = "Firebolt";
                             fireboltNWCfgObject[ralf::PORT] = port;
                             fireboltNWCfgObject[ralf::PROTOCOL] = normalizedProtocol.c_str();
-                            fireboltNWCfgObject[ralf::TYPE] = ralf::IMPORTED;
+                            fireboltNWCfgObject[ralf::TYPE] = IMPORTED;
                             ralfLocalNWCfgObject.append(fireboltNWCfgObject);
                         }
                         break;
@@ -1240,7 +1240,7 @@ bool updatePermissionBasedNetworkConfiguration(Json::Value& ociConfigRootNode, c
                 thunderNWCfgObject[ralf::NAME] = "Thunder";
                 thunderNWCfgObject[ralf::PORT] = port;
                 thunderNWCfgObject[ralf::PROTOCOL] = normalizedProtocol.c_str();
-                thunderNWCfgObject[ralf::TYPE] = ralf::IMPORTED; // Thunder is an imported service for the container
+                thunderNWCfgObject[ralf::TYPE] = IMPORTED; // Thunder is an imported service for the container
                 ralfLocalNWCfgObject.append(thunderNWCfgObject);
             }
             else
