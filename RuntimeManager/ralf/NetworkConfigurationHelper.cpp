@@ -51,8 +51,8 @@ namespace
     constexpr const char *REQUIRED           = "required";
     constexpr const char *DIRECTION          = "direction";
     constexpr const char *IP                 = "ip";
-    constexpr const char *IN_DIRECTION       = "in";
-    constexpr const char *OUT_DIRECTION      = "out";
+    constexpr const char *DIRECTION_IN       = "in";
+    constexpr const char *DIRECTION_OUT      = "out";
     constexpr const char *DNSMASQ            = "dnsmasq";
     constexpr const char *HOST_TO_CONTAINER  = "hostToContainer";
     constexpr const char *CONTAINER_TO_HOST  = "containerToHost";
@@ -336,7 +336,8 @@ namespace
      * @param port The port number for the rule.
      * @param protocol The protocol for the rule (default is "tcp").
      */
-    void addContainerToHostRuleIfMissing(Json::Value& containerToHost, const uint32_t port, const std::string& protocol = DEFAULT_PROTOCOL)
+    void addContainerToHostRuleIfMissing(Json::Value& containerToHost, const uint32_t port,
+                                         const std::string& protocol = DEFAULT_PROTOCOL)
     {
         if (true == hasContainerToHostRule(containerToHost, port))
         {
@@ -649,6 +650,7 @@ namespace NetworkConfigurationHelper
                 ]
             }
  * @param dobbyNWCfgObject The Dobby network configuration object to be added to the networking data node.
+ * @return true if the update was successful, false otherwise.
  */
 bool updategetNetworkingDataNode(Json::Value& ociConfigNWDataNode, const Json::Value& dobbyNWCfgObject)
 {
@@ -658,10 +660,11 @@ bool updategetNetworkingDataNode(Json::Value& ociConfigNWDataNode, const Json::V
         return false;
     }
 
-    // Process portForwarding rules
-    if (const Json::Value* dobbyPortForwarding = dobbyNWCfgObject.find(PORT_FORWARDING))
+    // 1. Process portForwarding rules
+    if (dobbyNWCfgObject.isMember(PORT_FORWARDING))
     {
-        if (dobbyPortForwarding->isObject())
+        const Json::Value& dobbyPortForwarding = dobbyNWCfgObject[PORT_FORWARDING];
+        if (dobbyPortForwarding.isObject())
         {
             Json::Value& ociPortForwarding = ociConfigNWDataNode[PORT_FORWARDING];
             if (!ociPortForwarding.isObject())
@@ -669,19 +672,17 @@ bool updategetNetworkingDataNode(Json::Value& ociConfigNWDataNode, const Json::V
                 ociPortForwarding = Json::Value(Json::objectValue);
             }
 
-            // LocalhostMasquerade check
-            if (const Json::Value* masqVal = dobbyPortForwarding->find(LOCALHOST_MASQUERADE))
+            // portForwarding.LocalhostMasquerade check
+            if (dobbyPortForwarding.get(LOCALHOST_MASQUERADE, false).asBool())
             {
-                if (masqVal->isBool() && masqVal->asBool())
-                {
-                    ociPortForwarding[LOCALHOST_MASQUERADE] = true;
-                }
+                ociPortForwarding[LOCALHOST_MASQUERADE] = true;
             }
 
-            // HostToContainer rules
-            if (const Json::Value* hostToContRules = dobbyPortForwarding->find(HOST_TO_CONTAINER))
+            // portForwarding.HostToContainer rules
+            if (dobbyPortForwarding.isMember(HOST_TO_CONTAINER))
             {
-                if (hostToContRules->isArray())
+                const Json::Value& hostToContRules = dobbyPortForwarding[HOST_TO_CONTAINER];
+                if (hostToContRules.isArray())
                 {
                     Json::Value& ociHostToContainer = ociPortForwarding[HOST_TO_CONTAINER];
                     if (!ociHostToContainer.isArray())
@@ -689,25 +690,21 @@ bool updategetNetworkingDataNode(Json::Value& ociConfigNWDataNode, const Json::V
                         ociHostToContainer = Json::Value(Json::arrayValue);
                     }
 
-                    for (const auto& rule : *hostToContRules)
+                    for (const auto& rule : hostToContRules)
                     {
-                        if (rule.isObject())
+                        if (rule.isObject() && rule.isMember(ralf::PORT) && rule.isMember(ralf::PROTOCOL))
                         {
-                            const Json::Value* portVal = rule.find(PORT);
-                            const Json::Value* protoVal = rule.find(PROTOCOL);
-                            if (portVal && protoVal)
-                            {
-                                addContainerToHostRuleIfMissing(ociHostToContainer, portVal->asUInt(), protoVal->asString());
-                            }
+                            addContainerToHostRuleIfMissing(ociHostToContainer, rule[ralf::PORT].asUInt(), rule[ralf::PROTOCOL].asString());
                         }
                     }
                 }
             }
 
             // ContainerToHost rules
-            if (const Json::Value* contToHostRules = dobbyPortForwarding->find(CONTAINER_TO_HOST))
+            if (dobbyPortForwarding.isMember(CONTAINER_TO_HOST))
             {
-                if (contToHostRules->isArray())
+                const Json::Value& contToHostRules = dobbyPortForwarding[CONTAINER_TO_HOST];
+                if (contToHostRules.isArray())
                 {
                     Json::Value& ociContainerToHost = ociPortForwarding[CONTAINER_TO_HOST];
                     if (!ociContainerToHost.isArray())
@@ -715,16 +712,11 @@ bool updategetNetworkingDataNode(Json::Value& ociConfigNWDataNode, const Json::V
                         ociContainerToHost = Json::Value(Json::arrayValue);
                     }
 
-                    for (const auto& rule : *contToHostRules)
+                    for (const auto& rule : contToHostRules)
                     {
-                        if (rule.isObject())
+                        if (rule.isObject() && rule.isMember(ralf::PORT) && rule.isMember(ralf::PROTOCOL))
                         {
-                            const Json::Value* portVal = rule.find(PORT);
-                            const Json::Value* protoVal = rule.find(PROTOCOL);
-                            if (portVal && protoVal)
-                            {
-                                addContainerToHostRuleIfMissing(ociContainerToHost, portVal->asUInt(), protoVal->asString());
-                            }
+                            addContainerToHostRuleIfMissing(ociContainerToHost, rule[ralf::PORT].asUInt(), rule[ralf::PROTOCOL].asString());
                         }
                     }
                 }
@@ -732,11 +724,12 @@ bool updategetNetworkingDataNode(Json::Value& ociConfigNWDataNode, const Json::V
         }
     }
 
-    // Process multicastForwarding rules
-    // RALF Spec does not expose any multicast options, but process them if they exist in the Dobby config.
-    if (const Json::Value* multicastRules = dobbyNWCfgObject.find(MULTICAST_FORWARDING))
+    // 2. Process multicastForwarding rules
+    // Note: RALF spec does not define multicastForwarding, but we will process it if present in the input.
+    if (dobbyNWCfgObject.isMember(MULTICAST_FORWARDING))
     {
-        if (multicastRules->isArray())
+        const Json::Value& multicastRules = dobbyNWCfgObject[MULTICAST_FORWARDING];
+        if (multicastRules.isArray())
         {
             LOGWARN("%s: SPEC CHANGED?, Processing multicastForwarding rules from RALF NW cfg.", MODULE_LOGTAG);
             Json::Value& ociMulticastForwarding = ociConfigNWDataNode[MULTICAST_FORWARDING];
@@ -745,47 +738,40 @@ bool updategetNetworkingDataNode(Json::Value& ociConfigNWDataNode, const Json::V
                 ociMulticastForwarding = Json::Value(Json::arrayValue);
             }
 
-            for (const auto& rule : *multicastRules)
+            for (const auto& rule : multicastRules)
             {
-                if (rule.isObject())
-                {
-                    const Json::Value* ipVal = rule.find(IP);
-                    const Json::Value* portVal = rule.find(PORT);
-                    if (ipVal && portVal)
-                    {
-                        // Cache values locally once to avoid string conversions inside the loop
-                        std::string targetIp = ipVal->asString();
-                        unsigned int targetPort = portVal->asUInt();
-                        bool duplicateFound = false;
+                if (!rule.isObject() || !rule.isMember(IP) || !rule.isMember(ralf::PORT))
+                    continue;
 
-                        for (const auto& existingRule : ociMulticastForwarding)
+                std::string targetIp = rule[IP].asString();
+                unsigned int targetPort = rule[ralf::PORT].asUInt();
+                bool duplicateFound = false;
+
+                for (const auto& existingRule : ociMulticastForwarding)
+                {
+                    if (existingRule.isObject() && existingRule.isMember(IP) && existingRule.isMember(ralf::PORT))
+                    {
+                        if (existingRule[ralf::PORT].asUInt() == targetPort && existingRule[IP].asString() == targetIp)
                         {
-                            if (existingRule.isObject())
-                            {
-                                const Json::Value* eIp = existingRule.find(IP);
-                                const Json::Value* ePort = existingRule.find(PORT);
-                                // Direct scalar comparisons are highly efficient
-                                if (eIp && ePort && ePort->asUInt() == targetPort && eIp->asString() == targetIp)
-                                {
-                                    duplicateFound = true;
-                                    break;
-                                }
-                            }
-                        }
-                        if (!duplicateFound)
-                        {
-                            ociMulticastForwarding.append(rule);
+                            duplicateFound = true;
+                            break;
                         }
                     }
+                }
+
+                if (!duplicateFound)
+                {
+                    ociMulticastForwarding.append(rule);
                 }
             }
         }
     }
 
-    // Process interContainer rules
-    if (const Json::Value* interContRules = dobbyNWCfgObject.find(INTER_CONTAINER))
+    // 3. Process interContainer rules
+    if (dobbyNWCfgObject.isMember(INTER_CONTAINER))
     {
-        if (interContRules->isArray())
+        const Json::Value& interContRules = dobbyNWCfgObject[INTER_CONTAINER];
+        if (interContRules.isArray())
         {
             Json::Value& ociInterContainer = ociConfigNWDataNode[INTER_CONTAINER];
             if (!ociInterContainer.isArray())
@@ -793,55 +779,41 @@ bool updategetNetworkingDataNode(Json::Value& ociConfigNWDataNode, const Json::V
                 ociInterContainer = Json::Value(Json::arrayValue);
             }
 
-            for (const auto& rule : *interContRules)
+            for (const auto& rule : interContRules)
             {
-                if (rule.isObject())
+                if (!rule.isObject() || !rule.isMember(DIRECTION) || !rule.isMember(ralf::PORT) || !rule.isMember(ralf::PROTOCOL))
+                    continue;
+
+                std::string targetDir = rule[DIRECTION].asString();
+                unsigned int targetPort = rule[ralf::PORT].asUInt();
+                std::string targetProto = rule[ralf::PROTOCOL].asString();
+                bool targetHasMasq = rule.get(LOCALHOST_MASQUERADE, false).asBool();
+                bool duplicateFound = false;
+
+                for (const auto& existingRule : ociInterContainer)
                 {
-                    const Json::Value* dirVal = rule.find(DIRECTION);
-                    const Json::Value* portVal = rule.find(PORT);
-                    const Json::Value* protoVal = rule.find(PROTOCOL);
+                    if (!existingRule.isObject() || !existingRule.isMember(ralf::PORT))
+                        continue;
 
-                    if (dirVal && portVal && protoVal)
+                    // Fast integer check first
+                    if (existingRule[ralf::PORT].asUInt() != targetPort)
+                        continue;
+
+                    if (existingRule.isMember(DIRECTION) && existingRule.isMember(ralf::PROTOCOL))
                     {
-                        // Cache input string/scalar values locally
-                        std::string targetDir = dirVal->asString();
-                        unsigned int targetPort = portVal->asUInt();
-                        std::string targetProto = protoVal->asString();
-
-                        const Json::Value* masqVal = rule.find(LOCALHOST_MASQUERADE);
-                        bool targetHasMasq = (masqVal && masqVal->isBool()) ? masqVal->asBool() : false;
-
-                        bool duplicateFound = false;
-                        for (const auto& existingRule : ociInterContainer)
+                        if (existingRule[DIRECTION].asString() == targetDir &&
+                            existingRule[ralf::PROTOCOL].asString() == targetProto &&
+                            existingRule.get(LOCALHOST_MASQUERADE, false).asBool() == targetHasMasq)
                         {
-                            if (existingRule.isObject())
-                            {
-                                const Json::Value* ePort = existingRule.find(PORT);
-                                // Quickest integer-first exit check
-                                if (ePort && ePort->asUInt() == targetPort)
-                                {
-                                    const Json::Value* eDir = existingRule.find(DIRECTION);
-                                    const Json::Value* eProto = existingRule.find(PROTOCOL);
-
-                                    if (eDir && eProto && eDir->asString() == targetDir && eProto->asString() == targetProto)
-                                    {
-                                        const Json::Value* eMasq = existingRule.find(LOCALHOST_MASQUERADE);
-                                        bool existingHasMasq = (eMasq && eMasq->isBool()) ? eMasq->asBool() : false;
-
-                                        if (targetHasMasq == existingHasMasq)
-                                        {
-                                            duplicateFound = true;
-                                            break;
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        if (!duplicateFound)
-                        {
-                            ociInterContainer.append(rule);
+                            duplicateFound = true;
+                            break;
                         }
                     }
+                }
+
+                if (!duplicateFound)
+                {
+                    ociInterContainer.append(rule);
                 }
             }
         }
@@ -938,7 +910,6 @@ imported: Network services supplied by another app or service that the current a
  */
 Json::Value translateRALFNWCfgObjToDobbyNWCfgObj(const Json::Value& ralfNWCfgObject)
 {
-    // Allocated on the stack per function call - safe for looping and avoids cross-contamination
     Json::Value dobbyNWCfgObject(Json::objectValue);
 
     bool isArray = ralfNWCfgObject.isArray();
@@ -948,7 +919,7 @@ Json::Value translateRALFNWCfgObjToDobbyNWCfgObj(const Json::Value& ralfNWCfgObj
         return dobbyNWCfgObject;
     }
 
-    // Pre-initialize basic structural containers to avoid nested lookups later
+    // Pre-initialize basic structural containers
     Json::Value& portForwarding = dobbyNWCfgObject[PORT_FORWARDING] = Json::Value(Json::objectValue);
     Json::Value& hostToContainer = portForwarding[HOST_TO_CONTAINER] = Json::Value(Json::arrayValue);
     Json::Value& interContainer = dobbyNWCfgObject[INTER_CONTAINER] = Json::Value(Json::arrayValue);
@@ -958,32 +929,28 @@ Json::Value translateRALFNWCfgObjToDobbyNWCfgObj(const Json::Value& ralfNWCfgObj
 
     // Direct loop handling depending on input layout structure
     auto processItem = [&](const Json::Value& ralfItem) {
-        if (!ralfItem.isObject()) return;
+        if (!ralfItem.isObject() || !ralfItem.isMember(PORT) || !ralfItem.isMember(TYPE))
+            return;
 
-        const Json::Value* portVal = ralfItem.find(PORT);
-        const Json::Value* typeVal = ralfItem.find(TYPE);
-        if (!portVal || !typeVal) return;
-
-        unsigned int port = portVal->asUInt();
-        std::string type = typeVal->asString();
+        unsigned int port = ralfItem[PORT].asUInt();
+        std::string type = ralfItem[TYPE].asString();
 
         // Protocol is optional and defaults to "tcp"
-        const Json::Value* protoVal = ralfItem.find(PROTOCOL);
-        std::string protocol = (protoVal && protoVal->isString()) ? protoVal->asString() : DEFAULT_PROTOCOL;
+        std::string protocol = ralfItem.get(ralf::PROTOCOL, DEFAULT_PROTOCOL).asString();
 
         if (type == PUBLIC)
         {
             Json::Value rule(Json::objectValue);
-            rule[PORT] = port;
-            rule[PROTOCOL] = protocol;
+            rule[ralf::PORT] = port;
+            rule[ralf::PROTOCOL] = protocol;
             hostToContainer.append(rule);
         }
         else if (type == EXPORTED)
         {
             Json::Value rule(Json::objectValue);
             rule[DIRECTION] = DIRECTION_IN;
-            rule[PORT] = port;
-            rule[PROTOCOL] = protocol;
+            rule[ralf::PORT] = port;
+            rule[ralf::PROTOCOL] = protocol;
             rule[LOCALHOST_MASQUERADE] = true;
             interContainer.append(rule);
         }
@@ -991,8 +958,8 @@ Json::Value translateRALFNWCfgObjToDobbyNWCfgObj(const Json::Value& ralfNWCfgObj
         {
             Json::Value rule(Json::objectValue);
             rule[DIRECTION] = DIRECTION_OUT;
-            rule[PORT] = port;
-            rule[PROTOCOL] = protocol;
+            rule[ralf::PORT] = port;
+            rule[ralf::PROTOCOL] = protocol;
             interContainer.append(rule);
         }
     };
@@ -1023,7 +990,7 @@ Json::Value translateRALFNWCfgObjToDobbyNWCfgObj(const Json::Value& ralfNWCfgObj
         dobbyNWCfgObject.removeMember(INTER_CONTAINER);
     }
 
-    return dobbyNWCfgObject; // RVO optimization ensures this is highly performant
+    return dobbyNWCfgObject;
 }
 
 /**
@@ -1090,8 +1057,7 @@ bool updateNetworkConfigurationNode(Json::Value& ociConfigRootNode, const Json::
         return false;
     }
 
-    const Json::ArrayIndex configSize = networkConfiguration.size();
-    if (0 == configSize)
+    if (networkConfiguration.empty())
     {
         LOGDBG("%s: Network configuration is empty, skipping it.", MODULE_LOGTAG);
         return true; // Not an error; just no configuration to process
@@ -1116,43 +1082,21 @@ bool updateNetworkConfigurationNode(Json::Value& ociConfigRootNode, const Json::
         return false;
     }
 
-    // Process each network configuration entry and update the OCI config accordingly.
-    bool status = false;
-    for (Json::ArrayIndex index = 0; index < configSize; ++index)
+    if (nullptr == netData)
     {
-        const Json::Value& ralfNWCfgObject = networkConfiguration[index];
-        if (!ralfNWCfgObject.isObject())
-        {
-            LOGWARN("%s: Network entry is not an object, skipping it.", MODULE_LOGTAG);
-            continue;
-        }
-
-        // Spec mandates that all entries must have "name", "port", "protocol", and "type" fields.
-        // check if all "required" fields are present and matching the expected types.
-        if (!ralfNWCfgObject.isMember(ralf::NAME) || !ralfNWCfgObject[ralf::NAME].isString() ||
-            !ralfNWCfgObject.isMember(ralf::PORT) || !ralfNWCfgObject[ralf::PORT].isUInt() ||
-            !ralfNWCfgObject.isMember(ralf::PROTOCOL) || !ralfNWCfgObject[ralf::PROTOCOL].isString() ||
-            !ralfNWCfgObject.isMember(ralf::TYPE) || !ralfNWCfgObject[ralf::TYPE].isString())
-        {
-            LOGWARN("%s: Network entry is missing required fields or has incorrect types, skipping it.", MODULE_LOGTAG);
-            continue;
-        }
-
-        // Convert RALFNWCfgObject to DobbyNWCfgObject
-        Json::Value dobbyNWCfgObject = translateRALFNWCfgObjToDobbyNWCfgObj(ralfNWCfgObject);
-        if (dobbyNWCfgObject.empty())
-        {
-            LOGWARN("%s: Failed to convert RALF network entry to Dobby format, skipping it.", MODULE_LOGTAG);
-            continue;
-        }
-        status = updategetNetworkingDataNode(*netData, dobbyNWCfgObject);
-        if (!status)
-        {
-            LOGWARN("%s: Failed to update networking data node with RALF network entry.", MODULE_LOGTAG);
-        }
+        LOGERR("%s: Failed to retrieve/create networking data node for network configuration update.", MODULE_LOGTAG);
+        return false;
     }
 
-    return status;
+    // Batch-process network configuration array entries
+    Json::Value dobbyNWCfgObject = translateRALFNWCfgObjToDobbyNWCfgObj(networkConfiguration);
+    if (dobbyNWCfgObject.empty())
+    {
+        LOGWARN("%s: Translated Dobby network configuration object is empty.", MODULE_LOGTAG);
+        return true;
+    }
+
+    return updategetNetworkingDataNode(*netData, dobbyNWCfgObject);
 }
 
 /**
@@ -1245,67 +1189,33 @@ bool updatePermissionBasedNetworkConfiguration(Json::Value& ociConfigRootNode, c
 
     if (hasPermissionFirebolt)
     {
-        /*
-           We need to extract FIREBOLT_ENDPOINT configs from manifestRootNode.envVariables if present.
-           The string is a serialized form of json value .. An example is
-           ["FIREBOLT_ENDPOINT=http:\/\/127.0.0.1:3473?session=810b474c-5f68-4cdf-82f2-86dc4d6d1f97","TARGET_STATE=4"]
-        */
-        if (manifestRootNode.isMember(ENV_VARIABLES) && manifestRootNode[ENV_VARIABLES].isArray())
+        // TODO: get the FIREBOLT_ENDPOINT string and extract the port from it. For now, we will use a hardcoded port.
+        // Sample: FIREBOLT_ENDPOINT=http://127.0.0.1:3473?session=810b474c-5f68-4cdf-82f2-86dc4d6d1f97
+        std::string fireboltEndpointStr("FIREBOLT_ENDPOINT=http://127.0.0.1:3473?session=810b474c-5f68-4cdf-82f2-86dc4d6d1f97");
+
+        const int port = extractPortFromEndpoint(fireboltEndpointStr);
+        if (port != -1) // Valid port extracted
         {
-            const Json::Value& envVariables = manifestRootNode[ENV_VARIABLES];
-            const Json::ArrayIndex envSize = envVariables.size();
-            for (Json::ArrayIndex index = 0; index < envSize; ++index)
+            Json::Value fireboltNWCfgObject(Json::objectValue);
+            fireboltNWCfgObject[ralf::NAME] = "firebolt";
+            fireboltNWCfgObject[ralf::PORT] = port;
+            fireboltNWCfgObject[ralf::PROTOCOL] = "tcp";
+            fireboltNWCfgObject[ralf::TYPE] = IMPORTED;
+            Json::Value dobbyNWCfgObject = translateRALFNWCfgObjToDobbyNWCfgObj(fireboltNWCfgObject);
+            if (dobbyNWCfgObject.empty()) {
+                LOGWARN("%s: translateRALFNWCfgObjToDobbyNWCfgObj error skipping it.", MODULE_LOGTAG);
+            }
+            updatedFireboltNwCfg = updategetNetworkingDataNode(*netData, dobbyNWCfgObject);
+            if (!updatedFireboltNwCfg)
             {
-                const Json::Value& envEntry = envVariables[index];
-                if (!envEntry.isString())
-                {
-                    continue;
-                }
-
-                const char* envPair = envEntry.asCString();
-                const char* equalsSign = std::strchr(envPair, '=');
-                if (equalsSign == nullptr)
-                {
-                    continue;
-                }
-
-                const size_t nameLen = equalsSign - envPair;
-                if (nameLen == std::strlen(FIREBOLT_ENDPOINT_ENV_KEY) &&
-                    std::strncmp(envPair, FIREBOLT_ENDPOINT_ENV_KEY, nameLen) == 0)
-                {
-                    const char* endpointValue = equalsSign + 1;
-                    if (*endpointValue != '\0')
-                    {
-                        // Extract port from FIREBOLT_ENDPOINT environment variable and
-                        // add to containerToHost rules
-                        const int port = extractPortFromEndpoint(endpointValue);
-                        if (port != -1) // Valid port extracted
-                        {
-                            Json::Value fireboltNWCfgObject(Json::objectValue);
-                            fireboltNWCfgObject[ralf::NAME] = "firebolt";
-                            fireboltNWCfgObject[ralf::PORT] = port;
-                            fireboltNWCfgObject[ralf::PROTOCOL] = "tcp";
-                            fireboltNWCfgObject[ralf::TYPE] = ralf::IMPORTED;
-                            Json::Value dobbyNWCfgObject = translateRALFNWCfgObjToDobbyNWCfgObj(fireboltNWCfgObject);
-                            if (dobbyNWCfgObject.empty()) {
-                                LOGWARN("%s: translateRALFNWCfgObjToDobbyNWCfgObj error skipping it.", MODULE_LOGTAG);
-                            }
-                            updatedFireboltNwCfg = updategetNetworkingDataNode(*netData, dobbyNWCfgObject);
-                            if (!updatedFireboltNwCfg)
-                            {
-                                LOGWARN("%s: Failed to update networking data node with Firebolt network entry.", MODULE_LOGTAG);
-                            }
-                        }
-                        break;
-                    }
-                }
+                LOGWARN("%s: Failed to update networking data node with Firebolt network entry.", MODULE_LOGTAG);
             }
         }
     }
 
     if (hasPermissionThunder)
     {
-        const char* thunderaccess = getenv(THUNDER_ACCESS_ENV_KEY);
+        const char* thunderaccess = getenv(ralf::THUNDER_ACCESS_ENV_KEY);
         if (nullptr != thunderaccess) {
             // extract port from THUNDER_ACCESS environment variable and
             // add to containerToHost rules
@@ -1320,7 +1230,7 @@ bool updatePermissionBasedNetworkConfiguration(Json::Value& ociConfigRootNode, c
                 thunderNWCfgObject[ralf::NAME] = "thunder";
                 thunderNWCfgObject[ralf::PORT] = port;
                 thunderNWCfgObject[ralf::PROTOCOL] = "tcp";
-                thunderNWCfgObject[ralf::TYPE] = ralf::IMPORTED;
+                thunderNWCfgObject[ralf::TYPE] = IMPORTED;
                 Json::Value dobbyNWCfgObject = translateRALFNWCfgObjToDobbyNWCfgObj(thunderNWCfgObject);
                 if (dobbyNWCfgObject.empty()) {
                     LOGWARN("%s: translateRALFNWCfgObjToDobbyNWCfgObj error skipping it.", MODULE_LOGTAG);
@@ -1334,8 +1244,8 @@ bool updatePermissionBasedNetworkConfiguration(Json::Value& ociConfigRootNode, c
         }
     }
 
-     return (!hasPermissionThunder || updatedThunderNwCfg) &&
-         (!hasPermissionFirebolt || updatedFireboltNwCfg) &&
-         (!hasPermissionInternet || updatedInternetNwCfg);
+    return ((!hasPermissionThunder || updatedThunderNwCfg) &&
+            (!hasPermissionFirebolt || updatedFireboltNwCfg) &&
+            (!hasPermissionInternet || updatedInternetNwCfg));
 }
 } // namespace NetworkConfigurationHelper
