@@ -1199,9 +1199,11 @@ bool updatePermissionBasedNetworkConfiguration(Json::Value& ociConfigRootNode, c
                     if (envPair.rfind(fireboltPrefix, 0) == 0)
                     {
                         std::string fireboltEndpointStr = envPair.substr(fireboltPrefix.size());
-                        LOGDBG("Found FIREBOLT_ENDPOINT: %s\n", fireboltEndpointStr.c_str());
                         bool isLoopback = isLoopbackEndpoint(fireboltEndpointStr);
-                        std::string normalizedProtocol = normalizeProtocol(fireboltEndpointStr);
+                        // Extract protocol scheme (e.g., "ws" from "ws://127.0.0.1:3473/?session=...")
+                        size_t schemeEnd = fireboltEndpointStr.find("://");
+                        std::string protocolScheme = (schemeEnd != std::string::npos) ? fireboltEndpointStr.substr(0, schemeEnd) : fireboltEndpointStr;
+                        std::string normalizedProtocol = normalizeProtocol(protocolScheme);
                         const int port = extractPortFromEndpoint(fireboltEndpointStr);
                         if ((port != -1) && isLoopback) // Valid port extracted and is loopback
                         {
@@ -1228,8 +1230,12 @@ bool updatePermissionBasedNetworkConfiguration(Json::Value& ociConfigRootNode, c
         const char* thunderaccess = getenv(ralf::THUNDER_ACCESS_ENV_KEY);
         if (nullptr != thunderaccess) {
             bool isLoopback = isLoopbackEndpoint(thunderaccess);
-            std::string normalizedProtocol = normalizeProtocol(thunderaccess);
-            const int port = extractPortFromEndpoint(thunderaccess);
+            // Extract protocol from env value if present (e.g., "http://..." or default to "tcp" for "host:port")
+            std::string thunderAccessStr(thunderaccess);
+            size_t schemeEnd = thunderAccessStr.find("://");
+            std::string protocolScheme = (schemeEnd != std::string::npos) ? thunderAccessStr.substr(0, schemeEnd) : "tcp";
+            std::string normalizedProtocol = normalizeProtocol(protocolScheme);
+            const int port = extractPortFromEndpoint(thunderAccessStr);
             if ((port != -1) && isLoopback)  // Valid port extracted and is loopback
             {
                 // Thunder is running on host and container needs to access it.
