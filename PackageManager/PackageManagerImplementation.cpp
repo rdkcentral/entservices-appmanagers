@@ -1402,7 +1402,7 @@ namespace Plugin {
         CHECK_CACHE()
         Core::hresult result = Core::ERROR_GENERAL;
 
-        if (packageId.empty() || version.empty())
+        if (packageId.empty())
         {
             return Core::ERROR_INVALID_PARAMETER;
         }
