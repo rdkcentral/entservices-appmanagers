@@ -151,6 +151,11 @@ Core::hresult ClearAppData(const string& appId);
 Core::hresult ClearAllAppData();
 ```
 
+**`GetLoadedApps` ordering**: the returned iterator is ordered by when each app was last
+ACTIVE, most recently active first. Apps that have never been ACTIVE are returned last,
+ordered by `appId`. Callers that need least-recently-used semantics (for example
+VictimSelector) can rely on this ordering instead of a per-app recency field.
+
 #### AppInfo.h / AppInfo.cpp
 
 **Purpose**: Encapsulates runtime state for a single loaded application.
