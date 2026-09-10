@@ -29,6 +29,7 @@
  */
 
 #include <cstdint>
+#include <cstdlib>
 #include <string>
 #include <vector>
 
@@ -351,5 +352,47 @@ uint32_t Test_NetworkConfigurationHelper_ApplyRuntimeNetworkingConfiguration_Add
     L0Test::ExpectEqStr(tr, disabledNetData[ralf::TYPE].asString(), "none", "Type defaults back cleanly to 'none'");
     L0Test::ExpectTrue(tr, !disabledNetData["dnsmasq"].asBool(), "dnsmasq falls back cleanly to false");
 
+    return tr.failures;
+}
+
+uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_UsesContainerToHostForLoopbackEndpoints()
+{
+    L0Test::TestResult tr;
+
+    Json::Value ociConfigRootNode(Json::objectValue);
+    Json::Value manifestRootNode(Json::objectValue);
+    manifestRootNode[ralf::PERMISSIONS] = Json::Value(Json::arrayValue);
+    manifestRootNode[ralf::PERMISSIONS].append(ralf::PERMISSION_FIREBOLT);
+    manifestRootNode[ralf::PERMISSIONS].append(ralf::PERMISSION_THUNDER);
+
+    setenv(ralf::THUNDER_ACCESS_ENV_KEY, "127.0.0.1:9998", 1);
+
+    const bool status = NetworkConfigurationHelper::updatePermissionBasedNetworkConfiguration(ociConfigRootNode, manifestRootNode);
+    L0Test::ExpectTrue(tr, status, "updatePermissionBasedNetworkConfiguration() returns true for loopback host permissions");
+
+    const Json::Value& networking = ociConfigRootNode[ralf::RDKPLUGINS]["networking"][ralf::DATA];
+    L0Test::ExpectTrue(tr, networking["portForwarding"]["containerToHost"].isArray(), "loopback host ports are mapped to containerToHost");
+    L0Test::ExpectTrue(tr, networking["portForwarding"]["containerToHost"].size() == 2u, "both Firebolt and Thunder loopback ports are forwarded");
+
+    if (networking["portForwarding"]["containerToHost"].isArray())
+    {
+        bool found3473 = false;
+        bool found9998 = false;
+        for (const auto& rule : networking["portForwarding"]["containerToHost"]) {
+            if (rule[ralf::PORT].asUInt() == 3473u) {
+                found3473 = true;
+            }
+            if (rule[ralf::PORT].asUInt() == 9998u) {
+                found9998 = true;
+            }
+        }
+        L0Test::ExpectTrue(tr, found3473, "Firebolt port 3473 is added to containerToHost");
+        L0Test::ExpectTrue(tr, found9998, "Thunder port 9998 is added to containerToHost");
+    }
+
+    L0Test::ExpectTrue(tr, !networking["interContainer"].isArray() || networking["interContainer"].size() == 0u,
+                       "loopback host access must not be emitted as interContainer rules");
+
+    unsetenv(ralf::THUNDER_ACCESS_ENV_KEY);
     return tr.failures;
 }

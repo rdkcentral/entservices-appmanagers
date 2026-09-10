@@ -60,7 +60,7 @@ namespace ralf
                 LOGERR("Failed to load Ralf package config JSON from file: %s", ralfPkgInfo.first.c_str());
                 return false;
             }
-            if (!applyConfigurationToOCIConfig(ociConfigRootNode, ralfPackageConfigNode))
+            if (!applyConfigurationToOCIConfig(ociConfigRootNode, ralfPackageConfigNode, runtimeConfigObject.envVariables))
             {
                 LOGERR("Failed to apply Ralf package config to OCI config for file: %s", ralfPkgInfo.first.c_str());
                 return false;
@@ -252,6 +252,19 @@ namespace ralf
             }
             else
             {
+                // ARUN: debug dump: copy the file to /tmp/arun-oci-app.json for debugging
+                std::string debugFilePath = "/tmp/arun-oci-app.json";
+                std::ofstream debugOutFile(debugFilePath.c_str());
+                if (debugOutFile)
+                {
+                    debugOutFile << ociConfigJson;
+                    debugOutFile.close();
+                    LOGDBG("Debug OCI config JSON written to %s\n", debugFilePath.c_str());
+                }
+                else
+                {
+                    LOGWARN("Failed to write debug OCI config JSON to %s\n", debugFilePath.c_str());
+                }
                 status = true;
             }
         }
@@ -411,7 +424,7 @@ namespace ralf
         return status;
     }
 
-    bool RalfOCIConfigGenerator::applyConfigurationToOCIConfig(Json::Value &ociConfigRootNode, Json::Value &manifestRootNode)
+    bool RalfOCIConfigGenerator::applyConfigurationToOCIConfig(Json::Value &ociConfigRootNode, Json::Value &manifestRootNode, const std::string &envVariables)
     {
         if (!addEntryPointToOCIConfig(ociConfigRootNode, manifestRootNode))
         {
@@ -452,7 +465,7 @@ namespace ralf
         {
             status = NetworkConfigurationHelper::updateNetworkConfigurationNode(ociConfigRootNode, manifestRootNode);
             LOGDBG("Applied network config to OCI config ? %s\n", status ? "true" : "false");
-            status = NetworkConfigurationHelper::updatePermissionBasedNetworkConfiguration(ociConfigRootNode, manifestRootNode);
+            status = NetworkConfigurationHelper::updatePermissionBasedNetworkConfiguration(ociConfigRootNode, manifestRootNode, envVariables);
             LOGDBG("Applied permission based network config to OCI config ? %s\n", status ? "true" : "false");
         }
         // Apply urn:rdk:config:env — spec matrix: Application/Service only (N/A for Runtime and Base)

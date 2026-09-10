@@ -85,7 +85,7 @@ extern uint32_t Test_DobbyEventListener_InitializeWithNullOCIPlugin();
 extern uint32_t Test_DobbyEventListener_DeinitializeWithoutInitialize();
 extern uint32_t Test_DobbyEventListener_DoubleDeinitialize();
 extern uint32_t Test_WindowManagerConnector_ConstructionAndDestruction();
-extern uint32_t Test_WindowManagerConnector_IsPluginInitializedReturnsFalseInitially();
+extern uint32_t Test_WindowManagerConnector_IsPluginInitializedReturnsFalse();
 extern uint32_t Test_WindowManagerConnector_InitializeWithNullServiceReturnsFalse();
 extern uint32_t Test_WindowManagerConnector_InitializeWithServiceMissingWindowManagerPlugin();
 extern uint32_t Test_WindowManagerConnector_ReleasePluginWithoutInitDoesNotCrash();
@@ -166,6 +166,7 @@ extern uint32_t Test_NetworkConfigurationHelper_UpdateTempRalfNWCfgFromEnv_Parse
 extern uint32_t Test_NetworkConfigurationHelper_UpdateTempRalfNWCfgFromEnv_EmptyEnvVarListReturnsFalse();
 extern uint32_t Test_NetworkConfigurationHelper_GenerateNetworkingPluginNode_ConsumesTempNode();
 extern uint32_t Test_NetworkConfigurationHelper_ApplyRuntimeNetworkingConfiguration_AddsCapabilityForNetworkMode();
+extern uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_UsesContainerToHostForLoopbackEndpoints();
 
 // ── ralf/RalfPackageBuilder tests ─────────────────────────────────────────────
 extern uint32_t Test_RalfPackageBuilder_ConstructionAndDestruction();
@@ -479,6 +480,7 @@ int main()
         { "NetworkConfigurationHelper_UpdateTempRalfNWCfgFromEnv_EmptyEnvVarListReturnsFalse", Test_NetworkConfigurationHelper_UpdateTempRalfNWCfgFromEnv_EmptyEnvVarListReturnsFalse },
         { "NetworkConfigurationHelper_GenerateNetworkingPluginNode_ConsumesTempNode", Test_NetworkConfigurationHelper_GenerateNetworkingPluginNode_ConsumesTempNode },
         { "NetworkConfigurationHelper_ApplyRuntimeNetworkingConfiguration_AddsCapabilityForNetworkMode", Test_NetworkConfigurationHelper_ApplyRuntimeNetworkingConfiguration_AddsCapabilityForNetworkMode },
+        { "NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_UsesContainerToHostForLoopbackEndpoints", Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_UsesContainerToHostForLoopbackEndpoints },
 
         // ── ralf/RalfPackageBuilder tests ────────────────────────────────────
         { "RalfPackageBuilder_ConstructionAndDestruction",                           Test_RalfPackageBuilder_ConstructionAndDestruction },

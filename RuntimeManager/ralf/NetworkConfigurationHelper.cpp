@@ -243,36 +243,38 @@ namespace
     }
 
     /**
-     * @brief Normalizes the given protocol to either "tcp" or "udp".
-     * @param protocol The protocol string to normalize.
-     * @return "tcp" or "udp" if the protocol is recognized, otherwise DEFAULT_PROTOCOL.
+     * @brief Normalizes application-level protocol aliases into Dobby-compatible L4 layer types ("tcp" or "udp").
+     * Maps known industry layer-7 primitives to their underlying transport protocols. Unknown inputs
+     * safely fall back to the globally defined default protocol macro.
+     * @param[in] protocol The raw string input from the configuration payload.
+     * @return const char* A static string literal pointing to "tcp" or "udp".
      */
     const char* normalizeProtocol(const std::string& protocol)
     {
-        // Quick length filter to instantly bypass long string comparisons
+        // Quick length filter to instantly bypass out-of-bounds string tokens
         const size_t len = protocol.size();
         if (len < 2 || len > 5) {
-            LOGWARN("%s: Unknown protocol '%s'; defaulting to '%s'", MODULE_LOGTAG, protocol.c_str(), DEFAULT_PROTOCOL);
+            LOGWARN("%s: Unknown protocol layout '%s'; defaulting to '%s'", MODULE_LOGTAG, protocol.c_str(), DEFAULT_PROTOCOL);
             return DEFAULT_PROTOCOL;
         }
 
-        // Optimized evaluation group for UDP-based protocols
+        // Evaluation group for UDP-based protocols
         if (protocol == "udp"  || protocol == "dns"  || protocol == "dhcp" ||
             protocol == "snmp" || protocol == "coap" || protocol == "coaps" ||
-            protocol == "tftp" || protocol == "rtp"  || protocol == "rtsp")
+            protocol == "tftp" || protocol == "rtp")
         {
             return "udp";
         }
 
-        // Known TCP-based protocols evaluation group
-        if (protocol == "http" || protocol == "https" || protocol == "ftp" ||
-            protocol == "ssh"  || protocol == "git"   || protocol == "ws"  ||
-            protocol == "wss"  || protocol == "tcp")
+        // Evaluation group for TCP-based protocols (Fixed: Moved 'rtsp' to TCP control layer)
+        if (protocol == "tcp"  || protocol == "http" || protocol == "https" ||
+            protocol == "ftp"  || protocol == "ssh"  || protocol == "git"   ||
+            protocol == "ws"   || protocol == "wss"  || protocol == "rtsp")
         {
             return "tcp";
         }
 
-        LOGWARN("%s: Unknown protocol '%s'; defaulting to '%s'", MODULE_LOGTAG, protocol.c_str(), DEFAULT_PROTOCOL);
+        LOGWARN("%s: Unrecognized mapping alias '%s'; defaulting to '%s'", MODULE_LOGTAG, protocol.c_str(), DEFAULT_PROTOCOL);
         return DEFAULT_PROTOCOL;
     }
 
@@ -314,16 +316,25 @@ namespace
      * @param port The port number to check for.
      * @return true if the port is found, false otherwise.
      */
-    bool hasContainerToHostRule(const Json::Value& containerToHost, const uint32_t port)
+    bool hasContainerToHostRule(const Json::Value& containerToHost, const uint32_t port, const std::string& protocol)
     {
+        if (!containerToHost.isArray())
+        {
+            return false;
+        }
+
         const Json::ArrayIndex size = containerToHost.size();
         for (Json::ArrayIndex index = 0; index < size; ++index)
         {
-            if (containerToHost[index].isMember(ralf::PORT) &&
-                containerToHost[index][ralf::PORT].isUInt() &&
-                (port == containerToHost[index][ralf::PORT].asUInt()))
+            const Json::Value& rule = containerToHost[index];
+
+            if (rule.isMember(ralf::PORT) && rule[ralf::PORT].isUInt() &&
+                rule.isMember(ralf::PROTOCOL) && rule[ralf::PROTOCOL].isString())
             {
-                return true;
+                if (port == rule[ralf::PORT].asUInt() && protocol == rule[ralf::PROTOCOL].asString())
+                {
+                    return true;
+                }
             }
         }
 
@@ -336,10 +347,9 @@ namespace
      * @param port The port number for the rule.
      * @param protocol The protocol for the rule (default is "tcp").
      */
-    void addContainerToHostRuleIfMissing(Json::Value& containerToHost, const uint32_t port,
-                                         const std::string& protocol = DEFAULT_PROTOCOL)
+    void addContainerToHostRuleIfMissing(Json::Value& containerToHost, const uint32_t port, const std::string& protocol)
     {
-        if (true == hasContainerToHostRule(containerToHost, port))
+        if (hasContainerToHostRule(containerToHost, port, protocol))
         {
             return;
         }
@@ -348,6 +358,41 @@ namespace
         rule[ralf::PORT] = port;
         rule[ralf::PROTOCOL] = protocol;
         containerToHost.append(rule);
+    }
+
+    /**
+     * @brief Scans a Dobby rule array for duplicate configurations and appends the rule if unique.
+     *
+     * Verifies that no element matching the same port and protocol exists within the
+     * target array before appending. Prevents overlapping rules when processing lists.
+     *
+     * @param[in,out] arrayContainer The target Json::Value array where the rule should be added.
+     * @param[in] rule The Json::Value object containing the network rule fields.
+     *
+     * @return void
+     */
+    void appendIfUnique(Json::Value& arrayContainer, const Json::Value& rule)
+    {
+        if (!arrayContainer.isArray()) return;
+
+        uint32_t port = rule[PORT].asUInt();
+        std::string protocol = rule[PROTOCOL].asString();
+
+        // Scan for duplicate port + protocol combinations
+        for (const auto& existingRule : arrayContainer)
+        {
+            if (existingRule.isMember(PORT) && existingRule[PORT].isUInt() &&
+                existingRule.isMember(PROTOCOL) && existingRule[PROTOCOL].isString())
+            {
+                if (port == existingRule[PORT].asUInt() && protocol == existingRule[PROTOCOL].asString())
+                {
+                    return; // Duplicate found, exit early
+                }
+            }
+        }
+
+        // No duplicate found, perform the insert
+        arrayContainer.append(rule);
     }
 
 #if 0 // Disabled for now, but will need when DNSMASQ is disabled in Dobby Network Configurations.
@@ -823,97 +868,21 @@ bool updategetNetworkingDataNode(Json::Value& ociConfigNWDataNode, const Json::V
 }
 
 /**
- * @brief @brief Converts a RALF network configuration object to a Dobby network configuration object.
- * @param ralfNWCfgObject The RALF network configuration array or single object node.
- * Input RALF Node::
-      {
-        "name": "netflix-mdx",
-        "port": 8009,
-        "protocol": "tcp",
-        "type": "public"
-      },
-      {
-        "name": "com.example.myapp.service",
-        "port": 1234,
-        "protocol": "tcp",
-        "type": "exported"
-      },
-      {
-        "name": "com.example.someotherapp.service",
-        "port": 4567,
-        "protocol": "tcp",
-        "type": "imported"
-      }
-public: Network services that an app or service exposes outside the device.
-exported: Service that an app or service exposes to other apps or services on the device.
-imported: Network services supplied by another app or service that the current app requires access to.
-
- * Output Dobby Node:
-    "portForwarding": {
-        "hostToContainer": [
-            {
-                "port": 1234,
-                "protocol": "tcp"
-            },
-            {
-                "port": 5678,
-                "protocol": "udp"
-            }
-        ],
-        "containerToHost": [
-            {
-                "port": 1234,
-                "protocol": "tcp"
-            },
-            {
-                "port": 5678,
-                "protocol": "udp"
-            }
-        ],
-        "localhostMasquerade": true
-    },
-    "multicastForwarding": [
-        {
-            "ip": "239.255.255.250",
-            "port": 1900
-        }
-    ],
-    "interContainer": [
-        {
-            "direction": "in",
-            "port": 12345,
-            "protocol": "tcp",
-            "localhostMasquerade": true
-        },
-        {
-            "direction": "out",
-            "port": 2468,
-            "protocol": "tcp"
-        }
-    ]
-
- portForwarding:
-    protocol: The protocol for the port forwarding rule (e.g., "tcp" or "udp"); optional and defaults to "tcp" if not specified.
-    hostToContainer: forwards incoming packets to specified port on the host to the container. (allow containered processes to run servers)
-    containerToHost: allow containers access to the host over certain ports. Adds firewall rules to allow containers to access the specified port(s) on the host via the bridge device.
-    localhostMasquerade: If enabled, redirect packets sent to localhost in the container to the host's localhost (via the dobby bridge device) for the forwarded ports. Allows containers to access services on the host without needing to change existing code to point to the bridge IP address. This can obviously only work for ports specified in the containerToHost section.
-
- Multicast Forwarding: allows containered processes to receive multicast traffic from specified address/port combinations.
-    multicastForwarding.ip and multicastForwarding.port fields are both required for each forwarded multicast address.
-
- interContainer: allows containers to communicate.
-    direction: "in" or "out" to specify the direction of the inter-container communication.
-    port: The port number for the inter-container communication.
-    protocol: The protocol for the inter-container communication (e.g., "tcp" or "udp").
-    localhostMasquerade: allows the server container to bind to localhost. For the client container, it allows connecting to localhost, forwarding the connection to the server container.
- * @return A Dobby network configuration object (empty object {} if validation fails).
+ * @brief Translates a RALF network configuration model object into a Dobby networking plugin schema format.
+ *
+ * Iterates through standard RALF items containing public, exported, or imported rules. Maps
+ * them into their functional Dobby equivalents (hostToContainer, interContainer in/out) while
+ * tracking deduplication and dynamically removing empty JSON structural wrappers.
+ *
+ * @param[in] ralfNWCfgObject The source network configuration JSON payload (can be an Object or Array).
+ *
+ * @return Json::Value An object populated with the translated Dobby format networking configuration.
  */
 Json::Value translateRALFNWCfgObjToDobbyNWCfgObj(const Json::Value& ralfNWCfgObject)
 {
     Json::Value dobbyNWCfgObject(Json::objectValue);
 
-    bool isArray = ralfNWCfgObject.isArray();
-    if (!isArray && !ralfNWCfgObject.isObject())
+    if (!ralfNWCfgObject.isArray() && !ralfNWCfgObject.isObject())
     {
         LOGERR("%s: Invalid RALF network configuration object type.", MODULE_LOGTAG);
         return dobbyNWCfgObject;
@@ -924,47 +893,63 @@ Json::Value translateRALFNWCfgObjToDobbyNWCfgObj(const Json::Value& ralfNWCfgObj
     Json::Value& hostToContainer = portForwarding[HOST_TO_CONTAINER] = Json::Value(Json::arrayValue);
     Json::Value& interContainer = dobbyNWCfgObject[INTER_CONTAINER] = Json::Value(Json::arrayValue);
 
-    // Set global localhostMasquerade helper
+    // Set fallback global localhostMasquerade helper
     portForwarding[LOCALHOST_MASQUERADE] = true;
 
-    // Direct loop handling depending on input layout structure
     auto processItem = [&](const Json::Value& ralfItem) {
-        if (!ralfItem.isObject() || !ralfItem.isMember(PORT) || !ralfItem.isMember(TYPE))
+        // Enforce basic element verification
+        if (!ralfItem.isObject() || !ralfItem.isMember(PORT) || !ralfItem.isMember(TYPE) ||
+            !ralfItem[PORT].isUInt() || !ralfItem[TYPE].isString())
+        {
+            LOGWARN("%s: Invalid RALF network configuration item.", MODULE_LOGTAG);
             return;
+        }
 
-        unsigned int port = ralfItem[PORT].asUInt();
+        uint32_t port = ralfItem[PORT].asUInt();
         std::string type = ralfItem[TYPE].asString();
 
-        // Protocol is optional and defaults to "tcp"
-        std::string protocol = ralfItem.get(ralf::PROTOCOL, DEFAULT_PROTOCOL).asString();
+        if (port == 0 || port > 65535 || (PUBLIC != type && EXPORTED != type && IMPORTED != type))
+        {
+            LOGWARN("%s: Invalid port %u or type '%s'; skipping item.", MODULE_LOGTAG, port, type.c_str());
+            return;
+        }
 
-        if (type == PUBLIC)
+        // Handle string protocol mappings safely
+        std::string protocol = DEFAULT_PROTOCOL;
+        if (ralfItem.isMember(PROTOCOL) && ralfItem[PROTOCOL].isString())
+        {
+            protocol = normalizeProtocol(ralfItem[PROTOCOL].asString());
+        }
+
+        if (PUBLIC == type)
         {
             Json::Value rule(Json::objectValue);
-            rule[ralf::PORT] = port;
-            rule[ralf::PROTOCOL] = protocol;
-            hostToContainer.append(rule);
+            rule[PORT] = port;
+            rule[PROTOCOL] = protocol;
+            appendIfUnique(hostToContainer, rule);
         }
-        else if (type == EXPORTED)
+        else if (EXPORTED == type)
         {
             Json::Value rule(Json::objectValue);
             rule[DIRECTION] = DIRECTION_IN;
-            rule[ralf::PORT] = port;
-            rule[ralf::PROTOCOL] = protocol;
+            rule[PORT] = port;
+            rule[PROTOCOL] = protocol;
             rule[LOCALHOST_MASQUERADE] = true;
-            interContainer.append(rule);
+            appendIfUnique(interContainer, rule);
         }
-        else if (type == IMPORTED)
+        else if (IMPORTED == type)
         {
             Json::Value rule(Json::objectValue);
             rule[DIRECTION] = DIRECTION_OUT;
-            rule[ralf::PORT] = port;
-            rule[ralf::PROTOCOL] = protocol;
-            interContainer.append(rule);
+            rule[PORT] = port;
+            rule[PROTOCOL] = protocol;
+            rule[LOCALHOST_MASQUERADE] = true;
+            appendIfUnique(interContainer, rule);
         }
     };
 
-    if (isArray)
+    // Traverse structural layout arrays cleanly
+    if (ralfNWCfgObject.isArray())
     {
         for (const auto& item : ralfNWCfgObject)
         {
@@ -976,19 +961,14 @@ Json::Value translateRALFNWCfgObjToDobbyNWCfgObj(const Json::Value& ralfNWCfgObj
         processItem(ralfNWCfgObject);
     }
 
-    // Clean up empty tracking members to ensure clean, valid Dobby JSON output
-    if (hostToContainer.empty())
-    {
-        portForwarding.removeMember(HOST_TO_CONTAINER);
-    }
-    if (portForwarding.empty())
+    // Clean up empty tracking members to ensure clean, valid Dobby JSON output structure
+    if (hostToContainer.empty()) portForwarding.removeMember(HOST_TO_CONTAINER);
+
+    if (portForwarding.empty() || (portForwarding.size() == 1 && portForwarding.isMember(LOCALHOST_MASQUERADE)))
     {
         dobbyNWCfgObject.removeMember(PORT_FORWARDING);
     }
-    if (interContainer.empty())
-    {
-        dobbyNWCfgObject.removeMember(INTER_CONTAINER);
-    }
+    if (interContainer.empty()) dobbyNWCfgObject.removeMember(INTER_CONTAINER);
 
     return dobbyNWCfgObject;
 }
@@ -1103,9 +1083,11 @@ bool updateNetworkConfigurationNode(Json::Value& ociConfigRootNode, const Json::
  * @brief Updates the OCI configuration with network settings based on permissions specified in the manifest.
  * @param ociConfigRootNode The root node of the OCI configuration JSON.
  * @param manifestRootNode The root node of the manifest JSON.
+ * @param envVariables The serialized JSON array string of environment variables as provided by RuntimeConfig.envVariables.
  * @return true if the update was successful or if there were no permissions to process; false on error.
  */
-bool updatePermissionBasedNetworkConfiguration(Json::Value& ociConfigRootNode, const Json::Value& manifestRootNode)
+bool updatePermissionBasedNetworkConfiguration(Json::Value& ociConfigRootNode, const Json::Value& manifestRootNode,
+                                               const std::string& envVariables)
 {
     if (!manifestRootNode.isMember(PERMISSIONS))
     {
@@ -1187,37 +1169,60 @@ bool updatePermissionBasedNetworkConfiguration(Json::Value& ociConfigRootNode, c
         }
     }
 
-    if (hasPermissionFirebolt)
-    {
-        // TODO: get the FIREBOLT_ENDPOINT string and extract the port from it. For now, we will use a hardcoded port.
-        // Sample: FIREBOLT_ENDPOINT=http://127.0.0.1:3473?session=810b474c-5f68-4cdf-82f2-86dc4d6d1f97
-        std::string fireboltEndpointStr("FIREBOLT_ENDPOINT=http://127.0.0.1:3473?session=810b474c-5f68-4cdf-82f2-86dc4d6d1f97");
+    // Array type RALF network configuration object for Thunder & Firebolt.
+    Json::Value ralfLocalNWCfgObject(Json::arrayValue);
 
-        bool isLoopback = isLoopbackEndpoint(fireboltEndpointStr);
-        std::string normalizedProtocol = normalizeProtocol(fireboltEndpointStr);
-        const int port = extractPortFromEndpoint(fireboltEndpointStr);
-        if ((port != -1) && isLoopback) // Valid port extracted and is loopback
+    if (hasPermissionFirebolt && !envVariables.empty())
+    {
+        /**
+         * The envVariables string is a serialized form of JSON value .. An example is
+         * ["FIREBOLT_ENDPOINT=http:\/\/127.0.0.1:3473?session=810b474c-5f68-4cdf-82f2-86dc4d6d1f97","TARGET_STATE=4"]
+         * We need to parse it and get the FIREBOLT_ENDPOINT string.
+         */
+
+        Json::CharReaderBuilder readerBuilder;
+        Json::Value envVarsNode;
+        std::string errs;
+        std::unique_ptr<Json::CharReader> reader(readerBuilder.newCharReader());
+        if (!reader->parse(envVar.c_str(), envVar.c_str() + envVar.size(), &envVarsNode, &errs))
         {
-            Json::Value fireboltNWCfgObject(Json::objectValue);
-            fireboltNWCfgObject[ralf::NAME] = "firebolt";
-            fireboltNWCfgObject[ralf::PORT] = port;
-            fireboltNWCfgObject[ralf::PROTOCOL] = normalizedProtocol.c_str();
-            fireboltNWCfgObject[ralf::TYPE] = IMPORTED;
-            Json::Value dobbyNWCfgObject = translateRALFNWCfgObjToDobbyNWCfgObj(fireboltNWCfgObject);
-            if (dobbyNWCfgObject.empty()) {
-                LOGWARN("%s: translateRALFNWCfgObjToDobbyNWCfgObj error skipping it.", MODULE_LOGTAG);
-            }
-            updatedFireboltNwCfg = updategetNetworkingDataNode(*netData, dobbyNWCfgObject);
-            if (!updatedFireboltNwCfg)
+            LOGERR("Failed to parse env variables JSON string, error: %s\n", errs.c_str());
+            return false;
+        }
+
+        if (envVarsNode.isArray())
+        {
+            for (const auto &envEntry : envVarsNode)
             {
-                LOGWARN("%s: Failed to update networking data node with Firebolt network entry.", MODULE_LOGTAG);
+                if (envEntry.isString())
+                {
+                    std::string envPair = envEntry.asString();
+                    std::string fireboltPrefix = std::string(FIREBOLT_ENDPOINT_ENV_KEY) + "=";
+                    if (envPair.rfind(fireboltPrefix, 0) == 0)
+                    {
+                        std::string fireboltEndpointStr = envPair.substr(fireboltPrefix.size());
+                        LOGDBG("Found FIREBOLT_ENDPOINT: %s\n", fireboltEndpointStr.c_str());
+                        bool isLoopback = isLoopbackEndpoint(fireboltEndpointStr);
+                        std::string normalizedProtocol = normalizeProtocol(fireboltEndpointStr);
+                        const int port = extractPortFromEndpoint(fireboltEndpointStr);
+                        if ((port != -1) && isLoopback) // Valid port extracted and is loopback
+                        {
+                            // Firebolt is running on host and container needs to access it.
+                            // Construct a RALF network configuration object for Firebolt and insert into ralfLocalNWCfgObject
+                            Json::Value fireboltNWCfgObject(Json::objectValue);
+                            fireboltNWCfgObject[ralf::NAME] = "Firebolt";
+                            fireboltNWCfgObject[ralf::PORT] = port;
+                            fireboltNWCfgObject[ralf::PROTOCOL] = normalizedProtocol.c_str();
+                            fireboltNWCfgObject[ralf::TYPE] = ralf::IMPORTED;
+                            ralfLocalNWCfgObject.append(fireboltNWCfgObject);
+                        }
+                        break;
+                    }
+                }
             }
         }
-        else
-        {
-            LOGWARN("%s: Invalid Firebolt endpoint(port:%d, isLoopback:%d), skipping addition.",
-                    MODULE_LOGTAG, port, isLoopback);
-        }
+        LOGWARN("FIREBOLT_ENDPOINT environment variable not found in runtime config\n");
+        return false;
     }
 
     if (hasPermissionThunder)
@@ -1230,22 +1235,13 @@ bool updatePermissionBasedNetworkConfiguration(Json::Value& ociConfigRootNode, c
             if ((port != -1) && isLoopback)  // Valid port extracted and is loopback
             {
                 // Thunder is running on host and container needs to access it.
-                // Construct a RALF network configuration object for Thunder and add it to the networking data node.
+                // Construct a RALF network configuration object for Thunder and insert into ralfLocalNWCfgObject
                 Json::Value thunderNWCfgObject(Json::objectValue);
-                thunderNWCfgObject[ralf::NAME] = "thunder";
+                thunderNWCfgObject[ralf::NAME] = "Thunder";
                 thunderNWCfgObject[ralf::PORT] = port;
                 thunderNWCfgObject[ralf::PROTOCOL] = normalizedProtocol.c_str();
-                thunderNWCfgObject[ralf::TYPE] = IMPORTED;
-                Json::Value dobbyNWCfgObject = translateRALFNWCfgObjToDobbyNWCfgObj(thunderNWCfgObject);
-                if (dobbyNWCfgObject.empty())
-                {
-                    LOGWARN("%s: translateRALFNWCfgObjToDobbyNWCfgObj error skipping it.", MODULE_LOGTAG);
-                }
-                updatedThunderNwCfg = updategetNetworkingDataNode(*netData, dobbyNWCfgObject);
-                if (!updatedThunderNwCfg)
-                {
-                    LOGWARN("%s: Failed to update networking data node with Thunder network entry.", MODULE_LOGTAG);
-                }
+                thunderNWCfgObject[ralf::TYPE] = ralf::IMPORTED; // Thunder is an imported service for the container
+                ralfLocalNWCfgObject.append(thunderNWCfgObject);
             }
             else
             {
@@ -1255,8 +1251,19 @@ bool updatePermissionBasedNetworkConfiguration(Json::Value& ociConfigRootNode, c
         }
     }
 
-    return ((!hasPermissionThunder || updatedThunderNwCfg) &&
-            (!hasPermissionFirebolt || updatedFireboltNwCfg) &&
-            (!hasPermissionInternet || updatedInternetNwCfg));
+    if (ralfLocalNWCfgObject.empty())
+    {
+        LOGWARN("%s: No valid RALF network configuration objects generated for permission-based update.", MODULE_LOGTAG);
+        return true;
+    }
+
+    Json::Value dobbyLocalNWCfgObject = translateRALFNWCfgObjToDobbyNWCfgObj(ralfLocalNWCfgObject);
+    if (dobbyLocalNWCfgObject.empty())
+    {
+        LOGWARN("%s: Translated Dobby network configuration object is empty.", MODULE_LOGTAG);
+        return false;
+    }
+
+    return updategetNetworkingDataNode(*netData, dobbyLocalNWCfgObject);
 }
 } // namespace NetworkConfigurationHelper
