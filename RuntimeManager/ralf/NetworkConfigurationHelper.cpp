@@ -1193,13 +1193,15 @@ bool updatePermissionBasedNetworkConfiguration(Json::Value& ociConfigRootNode, c
         // Sample: FIREBOLT_ENDPOINT=http://127.0.0.1:3473?session=810b474c-5f68-4cdf-82f2-86dc4d6d1f97
         std::string fireboltEndpointStr("FIREBOLT_ENDPOINT=http://127.0.0.1:3473?session=810b474c-5f68-4cdf-82f2-86dc4d6d1f97");
 
+        bool isLoopback = isLoopbackEndpoint(fireboltEndpointStr);
+        std::string normalizedProtocol = normalizeProtocol(fireboltEndpointStr);
         const int port = extractPortFromEndpoint(fireboltEndpointStr);
-        if (port != -1) // Valid port extracted
+        if ((port != -1) && isLoopback) // Valid port extracted and is loopback
         {
             Json::Value fireboltNWCfgObject(Json::objectValue);
             fireboltNWCfgObject[ralf::NAME] = "firebolt";
             fireboltNWCfgObject[ralf::PORT] = port;
-            fireboltNWCfgObject[ralf::PROTOCOL] = "tcp";
+            fireboltNWCfgObject[ralf::PROTOCOL] = normalizedProtocol.c_str();
             fireboltNWCfgObject[ralf::TYPE] = IMPORTED;
             Json::Value dobbyNWCfgObject = translateRALFNWCfgObjToDobbyNWCfgObj(fireboltNWCfgObject);
             if (dobbyNWCfgObject.empty()) {
@@ -1211,28 +1213,32 @@ bool updatePermissionBasedNetworkConfiguration(Json::Value& ociConfigRootNode, c
                 LOGWARN("%s: Failed to update networking data node with Firebolt network entry.", MODULE_LOGTAG);
             }
         }
+        else
+        {
+            LOGWARN("%s: Invalid Firebolt endpoint(port:%d, isLoopback:%d), skipping addition.",
+                    MODULE_LOGTAG, port, isLoopback);
+        }
     }
 
     if (hasPermissionThunder)
     {
         const char* thunderaccess = getenv(ralf::THUNDER_ACCESS_ENV_KEY);
         if (nullptr != thunderaccess) {
-            // extract port from THUNDER_ACCESS environment variable and
-            // add to containerToHost rules
+            bool isLoopback = isLoopbackEndpoint(thunderaccess);
+            std::string normalizedProtocol = normalizeProtocol(thunderaccess);
             const int port = extractPortFromEndpoint(thunderaccess);
-            if (port != -1)  // Valid port extracted
+            if ((port != -1) && isLoopback)  // Valid port extracted and is loopback
             {
-                // Thunder is running on host and container needs to
-                // access it. Construct a RALF network configuration
-                // object for Thunder and add it to the networking
-                // data node.
+                // Thunder is running on host and container needs to access it.
+                // Construct a RALF network configuration object for Thunder and add it to the networking data node.
                 Json::Value thunderNWCfgObject(Json::objectValue);
                 thunderNWCfgObject[ralf::NAME] = "thunder";
                 thunderNWCfgObject[ralf::PORT] = port;
-                thunderNWCfgObject[ralf::PROTOCOL] = "tcp";
+                thunderNWCfgObject[ralf::PROTOCOL] = normalizedProtocol.c_str();
                 thunderNWCfgObject[ralf::TYPE] = IMPORTED;
                 Json::Value dobbyNWCfgObject = translateRALFNWCfgObjToDobbyNWCfgObj(thunderNWCfgObject);
-                if (dobbyNWCfgObject.empty()) {
+                if (dobbyNWCfgObject.empty())
+                {
                     LOGWARN("%s: translateRALFNWCfgObjToDobbyNWCfgObj error skipping it.", MODULE_LOGTAG);
                 }
                 updatedThunderNwCfg = updategetNetworkingDataNode(*netData, dobbyNWCfgObject);
@@ -1240,6 +1246,11 @@ bool updatePermissionBasedNetworkConfiguration(Json::Value& ociConfigRootNode, c
                 {
                     LOGWARN("%s: Failed to update networking data node with Thunder network entry.", MODULE_LOGTAG);
                 }
+            }
+            else
+            {
+                LOGWARN("%s: Invalid Thunder endpoint(port:%d, isLoopback:%d), skipping addition.",
+                        MODULE_LOGTAG, port, isLoopback);
             }
         }
     }
