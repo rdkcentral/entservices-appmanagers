@@ -823,6 +823,8 @@ namespace Plugin {
                 } else {
                      unpackedPath = state.unpackedPath;
                 }
+                state.runtimeConfig.unpackedPath = state.unpackedPath;
+                runtimeConfig.unpackedPath = state.unpackedPath;
                 appMetadata = Core::Service<RPC::IteratorType<Exchange::IPackageHandler::ILockIterator>>::Create<Exchange::IPackageHandler::ILockIterator>(state.additionalLocks);
                 LOGDBG("%s:%s appPath: %s runtimePath: %s", packageId.c_str(), version.c_str(),
                     state.runtimeConfig.appPath.c_str(), state.runtimeConfig.runtimePath.c_str());
@@ -899,6 +901,7 @@ namespace Plugin {
         runtimeConfig.resourceManagerClientEnabled = config.resourceManagerClientEnabled;
         runtimeConfig.ralfPkgPath = config.ralfPkgPath;
         runtimeConfig.logFilePath = config.logFilePath;
+        runtimeConfig.unpackedPath = config.unpackedPath;
      }
 
     // copy values from libpackage
@@ -1075,6 +1078,7 @@ namespace Plugin {
             auto &state = it->second;
             getRuntimeConfig(state.runtimeConfig, runtimeConfig);
             unpackedPath = state.unpackedPath;
+            runtimeConfig.unpackedPath = state.unpackedPath;
             locked = (state.mLockCount > 0);
             LOGDBG("id: %s ver: %s lock count:%d", packageId.c_str(), version.c_str(), state.mLockCount);
         } else {

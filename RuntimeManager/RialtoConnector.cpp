@@ -99,7 +99,7 @@ namespace WPEFramework
 
         if (RialtoServerStates::INACTIVE == getCurrentAppState(callsign))
         {
-        LOGINFO("db982 resumeSession: changing session state to ACTIVE for callsign='%s'",
+        LOGINFO("resumeSession: changing session state to ACTIVE for callsign='%s'",
                 callsign.c_str());
 
         if (mServerManagerService->changeSessionServerState(
@@ -108,26 +108,26 @@ namespace WPEFramework
             if (!waitForStateChange(
                     callsign, RialtoServerStates::ACTIVE, kRialtoTimeoutMillis))
             {
-                LOGERR("db982 resumeSession: Timeout waiting for Rialto server to become ACTIVE for callsign='%s'",
+                LOGERR("resumeSession: Timeout waiting for Rialto server to become ACTIVE for callsign='%s'",
                         callsign.c_str());
                 return false;
             }
 
-            LOGINFO("db982 resumeSession: Rialto server is ACTIVE for callsign='%s'",
+            LOGINFO("resumeSession: Rialto server is ACTIVE for callsign='%s'",
                     callsign.c_str());
 
             return true;
         }
         else
         {
-            LOGERR("db982 resumeSession: Failed to change session state to ACTIVE for callsign='%s'",
+            LOGERR("resumeSession: Failed to change session state to ACTIVE for callsign='%s'",
                     callsign.c_str());
             return false;
         }
         }
         else
         {
-        LOGINFO("db982 resumeSession: Rialto server is not in INACTIVE state for callsign='%s'",
+        LOGINFO("resumeSession: Rialto server is not in INACTIVE state for callsign='%s'",
                 callsign.c_str());
         }
 
@@ -144,7 +144,7 @@ namespace WPEFramework
 
     if (RialtoServerStates::ACTIVE == getCurrentAppState(callsign))
     {
-        LOGINFO("db982 suspendSession: changing session state to INACTIVE for callsign='%s'",
+        LOGINFO("suspendSession: changing session state to INACTIVE for callsign='%s'",
                 callsign.c_str());
 
         if (mServerManagerService->changeSessionServerState(
@@ -158,7 +158,7 @@ namespace WPEFramework
                 return false;
             }
 
-            LOGINFO("db982 suspendSession: Rialto server is INACTIVE for callsign='%s'",
+            LOGINFO("suspendSession: Rialto server is INACTIVE for callsign='%s'",
                     callsign.c_str());
 
             return true;
@@ -171,7 +171,7 @@ namespace WPEFramework
         }
     }
 
-    LOGINFO("db982 suspendSession: Rialto server is not in ACTIVE state for callsign='%s'",
+    LOGINFO("suspendSession: Rialto server is not in ACTIVE state for callsign='%s'",
             callsign.c_str());
 
     return false;
