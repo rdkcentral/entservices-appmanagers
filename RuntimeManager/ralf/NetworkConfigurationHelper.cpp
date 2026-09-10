@@ -1106,8 +1106,6 @@ bool updatePermissionBasedNetworkConfiguration(Json::Value& ociConfigRootNode, c
     bool hasPermissionFirebolt = false;
     bool hasPermissionThunder = false;
     bool updatedInternetNwCfg = false;
-    bool updatedFireboltNwCfg = false;
-    bool updatedThunderNwCfg = false;
 
     const Json::ArrayIndex size = permissions.size();
     for (Json::ArrayIndex index = 0; index < size; ++index)
@@ -1264,6 +1262,6 @@ bool updatePermissionBasedNetworkConfiguration(Json::Value& ociConfigRootNode, c
         return false;
     }
 
-    return updategetNetworkingDataNode(*netData, dobbyLocalNWCfgObject);
+    return (updatedInternetNwCfg && updategetNetworkingDataNode(*netData, dobbyLocalNWCfgObject));
 }
 } // namespace NetworkConfigurationHelper
