@@ -1156,7 +1156,7 @@ namespace WPEFramework
             if (!appId.empty() && mRuntimeAppInfo[appInstanceId].usesRialto)
             {
                 LOGINFO("Rialto session resume for %s", appId.c_str());
-                if (!mRialtoConnector->resumeSession(appId))
+                if (!mRialtoConnector->resumeSession(appInstanceId))
                 {
                     LOGWARN("Rialto resumeSession failed for %s", appId.c_str());
                 }
