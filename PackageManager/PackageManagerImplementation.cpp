@@ -1437,17 +1437,20 @@ Core::hresult PackageManagerImplementation::GetConfigListForInstalledPackages(co
     CHECK_CACHE()
     Core::hresult result = Core::ERROR_GENERAL;
 
-    packagemanager::Result pmResult = packageImpl->GetConfigListForInstalledPackages(filter, config);
+    config.clear();
+
+    const packagemanager::Result pmResult = packageImpl->GetConfigListForInstalledPackages(filter, config);
     if (pmResult == packagemanager::SUCCESS)
     {
         result = Core::ERROR_NONE;
     }
     else
     {
-        LOGWARN("GetConfigListForInstalledPackages failed for filter '%s'", filter.c_str());
+        config.clear();
+        LOGWARN("GetConfigListForInstalledPackages failed for filter '%s' (pmResult=%d)", filter.c_str(), static_cast<int>(pmResult));
     }
 
-    return result; 
+    return result;
 }
 } // namespace Plugin
 } // namespace WPEFramework
