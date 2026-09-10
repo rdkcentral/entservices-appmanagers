@@ -242,7 +242,7 @@ namespace WPEFramework
     }
     std::list<std::string> RialtoConnector::readGlobalEnv() const
     {
-        #ifdef ENABLE_RIALTO_CONTROL
+        #ifndef ENABLE_RIALTO_CONTROL
         std::list<std::string> environmentVariables;
 
         if (!environ)
