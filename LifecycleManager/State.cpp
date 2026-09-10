@@ -121,7 +121,8 @@ namespace WPEFramework
                 return false;
             }
         }
-#endif
+        return true;
+#else
         WindowManagerHandler* windowManagerHandler = RequestHandler::getInstance()->getWindowManagerHandler();
 	    if (nullptr != windowManagerHandler)
 	    {
@@ -139,13 +140,14 @@ namespace WPEFramework
                         context->mPendingEventName = "onFirstFrame";
                         context->mPendingStateTransition = true;
 		    }
-                }
+        }
 		else
 		{
-                    return false;
-                }
+            return false;
+        }
 	    }
             return true;
+#endif
 	}
 
         bool SuspendedState::handle(string& errorReason)
