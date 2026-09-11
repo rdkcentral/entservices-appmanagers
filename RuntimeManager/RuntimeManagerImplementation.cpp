@@ -961,7 +961,7 @@ namespace WPEFramework
                     }
                     else
                     {
-                        if (mRuntimeAppInfo.find(appInstanceId) != mRuntimeAppInfo.end())
+                        if (mRuntimeAppInfo.end() != mRuntimeAppInfo.find(appInstanceId))
                         {
                             mRuntimeAppInfo[appInstanceId].containerState = Exchange::IRuntimeManager::RUNTIME_STATE_HIBERNATING;
                             appId = mRuntimeAppInfo[appInstanceId].appId;
@@ -1012,7 +1012,7 @@ namespace WPEFramework
                         }
                         else
                         {
-                            if (mRuntimeAppInfo.find(appInstanceId) != mRuntimeAppInfo.end())
+                            if (mRuntimeAppInfo.end() != mRuntimeAppInfo.find(appInstanceId))
                             {
                                 mRuntimeAppInfo[appInstanceId].containerState = Exchange::IRuntimeManager::RUNTIME_STATE_WAKING;
                                 appId = mRuntimeAppInfo[appInstanceId].appId;
@@ -1071,7 +1071,7 @@ namespace WPEFramework
                     }
                     else
                     {
-                        if (mRuntimeAppInfo.find(appInstanceId) != mRuntimeAppInfo.end())
+                        if (mRuntimeAppInfo.end() != mRuntimeAppInfo.find(appInstanceId))
                         {
                             appId = mRuntimeAppInfo[appInstanceId].appId;
                         }
@@ -1086,7 +1086,7 @@ namespace WPEFramework
 #else   
             status = Core::ERROR_NONE;
             mRuntimeManagerImplLock.Lock();
-            if (mRuntimeAppInfo.find(appInstanceId) != mRuntimeAppInfo.end())
+            if (mRuntimeAppInfo.end() != mRuntimeAppInfo.find(appInstanceId))
             {
                 appId = mRuntimeAppInfo[appInstanceId].appId;
             }
@@ -1149,7 +1149,7 @@ namespace WPEFramework
 #else
             status = Core::ERROR_NONE;
             mRuntimeManagerImplLock.Lock();
-            if (mRuntimeAppInfo.find(appInstanceId) != mRuntimeAppInfo.end())
+            if (mRuntimeAppInfo.end() != mRuntimeAppInfo.find(appInstanceId))
             {
                 appId = mRuntimeAppInfo[appInstanceId].appId;
             }
@@ -1218,7 +1218,7 @@ namespace WPEFramework
                     else
                     {
                         mUserIdManager->clearUserId(appInstanceId);
-                        if (mRuntimeAppInfo.find(appInstanceId) != mRuntimeAppInfo.end())
+                        if (mRuntimeAppInfo.end() != mRuntimeAppInfo.find(appInstanceId))
                         {
                             mRuntimeAppInfo[appInstanceId].containerState = Exchange::IRuntimeManager::RUNTIME_STATE_TERMINATING;
                         }
@@ -1287,7 +1287,7 @@ namespace WPEFramework
                     else
                     {
                         mUserIdManager->clearUserId(appInstanceId);
-                        if (mRuntimeAppInfo.find(appInstanceId) != mRuntimeAppInfo.end())
+                        if (mRuntimeAppInfo.end() != mRuntimeAppInfo.find(appInstanceId))
                         {
                             mRuntimeAppInfo[appInstanceId].containerState = Exchange::IRuntimeManager::RUNTIME_STATE_TERMINATING;
                         }

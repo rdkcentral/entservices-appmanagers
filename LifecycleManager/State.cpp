@@ -100,7 +100,7 @@ namespace WPEFramework
             }
             else
 	        {
-                ret = true;
+                ret = false;
             }
 #else
             ret = true;
