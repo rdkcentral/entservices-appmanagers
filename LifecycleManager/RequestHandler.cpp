@@ -23,20 +23,33 @@
 #include <boost/uuid/uuid.hpp>
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
+#include <mutex>
 
 namespace WPEFramework
 {
     namespace Plugin
     {
         RequestHandler* RequestHandler::mInstance = nullptr;
+        static std::mutex gRequestHandlerInstanceMutex;
 
         RequestHandler* RequestHandler::getInstance()
 	{
+            std::lock_guard<std::mutex> lock(gRequestHandlerInstanceMutex);
             if (nullptr == mInstance)
             {
                 mInstance = new RequestHandler();
             }
             return mInstance;
+	}
+
+        void RequestHandler::cleanupSingelton()
+	{
+            std::lock_guard<std::mutex> lock(gRequestHandlerInstanceMutex);
+            if (nullptr != mInstance)
+            {
+                delete mInstance;
+                mInstance = nullptr;
+            }
 	}
 
         RequestHandler::RequestHandler(): mRuntimeManagerHandler(nullptr), mWindowManagerHandler(nullptr), mEventHandler(nullptr)
@@ -74,6 +87,7 @@ namespace WPEFramework
         void RequestHandler::terminate()
 	{
             StateTransitionHandler::getInstance()->terminate();
+            StateTransitionHandler::cleanupSingelton();
             if (mWindowManagerHandler)
             {
                 mWindowManagerHandler->terminate();
