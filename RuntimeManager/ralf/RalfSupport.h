@@ -24,6 +24,7 @@
 #include <json/json.h>
 
 #include "RalfConstants.h"
+
 namespace ralf
 {
     /**
@@ -139,5 +140,4 @@ namespace ralf
      */
 
     bool addBindMountToOCIConfig(Json::Value &ociConfigRootNode, const std::string &hostPath, const std::string &containerPath, bool readOnly = false);
-
-} // namespace ralf
+}  // namespace ralf

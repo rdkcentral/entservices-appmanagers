@@ -22,6 +22,7 @@
  * If there are constants that are more generic and can be used across different components, those should ideally be moved to a more common location.
  **/
 #include <string>
+#include <cstdint>
 namespace ralf
 {
     constexpr const char *PROCESS = "process";
@@ -60,6 +61,7 @@ namespace ralf
 
     constexpr const char *ENTRY_POINT = "entryPoint";
     constexpr const char *CONFIGURATION = "configuration";
+    constexpr const char *PERMISSIONS = "permissions";
     constexpr const char *KEY = "key";
     constexpr const char *VALUE = "value";
 
@@ -71,8 +73,21 @@ namespace ralf
     constexpr const char *PKG_TYPE_APPLICATION = "application";
 
     constexpr const char *FIREBOLT_ENDPOINT_ENV_KEY = "FIREBOLT_ENDPOINT";
+    constexpr const char *THUNDER_ACCESS_ENV_KEY = "THUNDER_ACCESS";
+
+    constexpr const char *PERMISSION_INTERNET = "urn:rdk:permission:internet";
+    constexpr const char *PERMISSION_FIREBOLT = "urn:rdk:permission:firebolt";
+    constexpr const char *PERMISSION_THUNDER = "urn:rdk:permission:thunder";
 
     constexpr const char *CONFIG_OVERRIDES_URN = "urn:rdk:config:overrides";
+
+    constexpr const char *NETWORK_CONFIG_URN = "urn:rdk:config:network";
+
+    constexpr const char* NETWORK = "network";
+    constexpr const char *PORT = "port";
+    constexpr const char *PROTOCOL = "protocol";
+    constexpr const char *NAME = "name";
+
     constexpr const char *MEMORY_CONFIG_URN = "urn:rdk:config:memory";
     constexpr const char *SYSTEM_MEMORY = "system";
     constexpr const char *MEMORY_LIMIT = "limit";
@@ -90,7 +105,7 @@ namespace ralf
 
     constexpr const char *RDKPLUGINS = "rdkPlugins";
     constexpr const char *LOGGING = "logging";
-    constexpr const char *LOG_DATA = "data";
+    constexpr const char *DATA = "data";
     constexpr const char *LOG_FILE_OPTIONS = "fileOptions";
 
     // 500 MB is the default RAM given to an application. Tied to resources/oci-base-spec.json

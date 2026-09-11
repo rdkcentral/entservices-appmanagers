@@ -92,9 +92,10 @@ namespace ralf
          * Applies the configuration from the package config to the OCI config JSON.
          * @param ociConfigRootNode The root node of the OCI config JSON.
          * @param manifestRootNode The manifest root node.
+         * @param envVariables The serialized JSON array string of environment variables as provided by RuntimeConfig.envVariables.
          * @return true if the configuration was applied successfully, false otherwise.
          */
-        bool applyConfigurationToOCIConfig(Json::Value &ociConfigRootNode, Json::Value &manifestRootNode);
+        bool applyConfigurationToOCIConfig(Json::Value &ociConfigRootNode, Json::Value &manifestRootNode, const std::string &envVariables);
 
         /**
          * Add device node entries from graphics config to OCI config.

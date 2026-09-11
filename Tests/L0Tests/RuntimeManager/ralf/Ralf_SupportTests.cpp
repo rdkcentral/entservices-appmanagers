@@ -33,12 +33,14 @@
  */
 
 #include <cstdint>
+#include <cstdio>
 #include <fstream>
 #include <iostream>
 #include <string>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <cstdlib>
+#include <vector>
 
 #include "ralf/RalfSupport.h"
 #include "common/L0Expect.hpp"

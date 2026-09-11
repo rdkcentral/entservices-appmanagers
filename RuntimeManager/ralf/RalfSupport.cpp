@@ -26,6 +26,8 @@
 
 #include <iostream>
 
+#include <arpa/inet.h>  // Required for inet_pton
+#include <netinet/in.h> // Required for in_addr / in6_addr
 #include <cstring> //for strerror
 #include <cstdio>  //for ::remove
 
@@ -38,14 +40,13 @@
 #include <cstdlib>
 #include <cerrno>
 #include <fstream>
-#include <sstream>
+#include <string>
 #include <grp.h> //For group related functions
 
 #include <pwd.h> //For getting user id and group id of ralf user
 
 namespace ralf
 {
-
     bool create_directories(const std::string &path, int uid, int gid)
     {
 
@@ -129,26 +130,36 @@ namespace ralf
      */
     bool JsonFromFile(const std::string &filePath, Json::Value &rootNode)
     {
-        bool status = false;
         LOGDBG("JsonFromFile called for file: %s\n", filePath.c_str());
+
         std::ifstream file(filePath, std::ios::in);
-        if (file.is_open())
-        {
-
-            std::string configData((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-            file.close();
-
-            Json::CharReaderBuilder readerBuilder;
-            std::string errs;
-            std::istringstream s(configData);
-            status = Json::parseFromStream(readerBuilder, s, &rootNode, &errs);
-            if (!status)
-                LOGERR("Failed to parse JSON: %s\n", errs.c_str());
-        }
-        else
+        if (!file.is_open())
         {
             LOGERR("Failed to open JSON file: %s\n", filePath.c_str());
+            LOGDBG("JsonFromFile [%s] ,status: 0\n", filePath.c_str());
+            return false;
         }
+
+        // Static Thread-Safe Builder Allocation
+        // Instantiating a CharReaderBuilder allocates internal settings maps on the heap.
+        // Making it static constructs it exactly once for the application lifetime.
+        static const Json::CharReaderBuilder readerBuilder = []() {
+            Json::CharReaderBuilder builder;
+            // Disable Unneeded Error Tracking Features
+            // Prevents the builder from collecting detailed structural extra information
+            // that we don't explicitly require, speeding up the parsing loop.
+            builder["collectComments"] = false;
+            return builder;
+        }();
+
+        std::string errs;
+        const bool status = Json::parseFromStream(readerBuilder, file, &rootNode, &errs);
+
+        if (!status)
+        {
+            LOGERR("Failed to parse JSON: %s\n", errs.c_str());
+        }
+
         LOGDBG("JsonFromFile [%s] ,status: %d\n", filePath.c_str(), status);
         return status;
     }
@@ -353,6 +364,7 @@ namespace ralf
 
         return status;
     }
+
     bool addBindMountToOCIConfig(Json::Value &ociConfigRootNode, const std::string &hostPath, const std::string &containerPath, bool readOnly)
     {
         Json::Value mountEntry;

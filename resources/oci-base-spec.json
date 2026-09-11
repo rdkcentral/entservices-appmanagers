@@ -253,7 +253,7 @@
         "networking": {
             "required": true,
             "data": {
-                "type": "open"
+                "type": "none"
             }
         }
     }
