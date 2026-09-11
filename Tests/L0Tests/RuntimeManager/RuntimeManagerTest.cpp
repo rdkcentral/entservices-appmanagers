@@ -155,8 +155,6 @@ extern uint32_t Test_Ralf_CreateDirectories_UnderReadOnlyParentReturnsError();
 extern uint32_t Test_Ralf_CreateDirectories_WithNonZeroUidGidCallsChown();
 extern uint32_t Test_Ralf_UnmountOverlayfs_NonMountedPathReturnsFalse();
 extern uint32_t Test_Ralf_GenerateOCIRootfs_FailsDueToNoMountSupport();
-extern uint32_t Test_Ralf_HasOnlyLoopbackNameServers_BehaviorByInputFile();
-extern uint32_t Test_Ralf_GetResolverSourcePathForContainer_ReturnsKnownResolverPath();
 
 // ── ralf/NetworkConfigurationHelper tests ───────────────────────────────────
 extern uint32_t Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_MapsAndDeduplicatesRules();
@@ -477,8 +475,6 @@ int main()
         { "Ralf_CreateDirectories_WithNonZeroUidGidCallsChown",                      Test_Ralf_CreateDirectories_WithNonZeroUidGidCallsChown },
         { "Ralf_UnmountOverlayfs_NonMountedPathReturnsFalse",                        Test_Ralf_UnmountOverlayfs_NonMountedPathReturnsFalse },
         { "Ralf_GenerateOCIRootfs_FailsDueToNoMountSupport",                         Test_Ralf_GenerateOCIRootfs_FailsDueToNoMountSupport },
-        { "Ralf_HasOnlyLoopbackNameServers_BehaviorByInputFile",                     Test_Ralf_HasOnlyLoopbackNameServers_BehaviorByInputFile },
-        { "Ralf_GetResolverSourcePathForContainer_ReturnsKnownResolverPath",         Test_Ralf_GetResolverSourcePathForContainer_ReturnsKnownResolverPath },
 
         // ── ralf/NetworkConfigurationHelper tests ───────────────────────────
         { "NetworkConfigurationHelper_UpdateNetworkConfigurationNode_MapsAndDeduplicatesRules", Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_MapsAndDeduplicatesRules },

@@ -109,18 +109,18 @@ uint32_t Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_MapsAndD
     L0Test::ExpectTrue(tr, networkingData.isObject(), "Networking data node exists");
 
     const Json::Value& hostToContainer = networkingData[PORT_FORWARDING][HOST_TO_CONTAINER];
-    L0Test::ExpectTrue(tr, hostToContainer.isArray() && hostToContainer.size() == 1u,
+    L0Test::ExpectTrue(tr, hostToContainer.isArray() && 1u == hostToContainer.size(),
                        "Duplicate public entries are deduplicated to one hostToContainer rule");
-    if (hostToContainer.isArray() && hostToContainer.size() == 1u)
+    if (hostToContainer.isArray() && 1u == hostToContainer.size())
     {
         L0Test::ExpectEqU32(tr, hostToContainer[0][ralf::PORT].asUInt(), 8080u,
                             "Public rule port is preserved");
     }
 
     const Json::Value& interContainer = networkingData[INTER_CONTAINER];
-    L0Test::ExpectTrue(tr, interContainer.isArray() && interContainer.size() == 2u,
+    L0Test::ExpectTrue(tr, interContainer.isArray() && 2u == interContainer.size(),
                        "Exported and imported map to two interContainer rules");
-    if (interContainer.isArray() && interContainer.size() == 2u)
+    if (interContainer.isArray() && 2u == interContainer.size())
     {
         L0Test::ExpectEqStr(tr, interContainer[0][DIRECTION].asString(), "in",
                             "Exported maps to direction in");
@@ -158,9 +158,9 @@ uint32_t Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_IgnoresM
 
     const Json::Value& hostToContainer =
         ociConfigRootNode[ralf::RDKPLUGINS][NETWORKING][ralf::DATA][PORT_FORWARDING][HOST_TO_CONTAINER];
-    L0Test::ExpectTrue(tr, hostToContainer.isArray() && hostToContainer.size() == 1u,
+    L0Test::ExpectTrue(tr, hostToContainer.isArray() && 1u == hostToContainer.size(),
                        "Only valid entry is translated to hostToContainer");
-    if (hostToContainer.isArray() && hostToContainer.size() == 1u)
+    if (hostToContainer.isArray() && 1u == hostToContainer.size())
     {
         L0Test::ExpectEqU32(tr, hostToContainer[0][ralf::PORT].asUInt(), 7777u,
                             "Valid entry port is preserved");
@@ -279,9 +279,9 @@ uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfigurati
 
     const Json::Value& containerToHost =
         ociConfigRootNode[ralf::RDKPLUGINS][NETWORKING][ralf::DATA][PORT_FORWARDING][CONTAINER_TO_HOST];
-    L0Test::ExpectTrue(tr, containerToHost.isArray() && containerToHost.size() == 1u,
+    L0Test::ExpectTrue(tr, containerToHost.isArray() && 1u == containerToHost.size(),
                        "Thunder loopback endpoint generates one containerToHost rule");
-    if (containerToHost.isArray() && containerToHost.size() == 1u)
+    if (containerToHost.isArray() && 1u == containerToHost.size())
     {
         L0Test::ExpectEqU32(tr, containerToHost[0][ralf::PORT].asUInt(), 9998u,
                             "Thunder host:port endpoint port is parsed correctly");
@@ -364,7 +364,7 @@ uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfigurati
 
     const Json::Value& containerToHost =
         ociConfigRootNode[ralf::RDKPLUGINS][NETWORKING][ralf::DATA][PORT_FORWARDING][CONTAINER_TO_HOST];
-    L0Test::ExpectTrue(tr, containerToHost.isArray() && containerToHost.size() == 1u,
+    L0Test::ExpectTrue(tr, containerToHost.isArray() && 1u == containerToHost.size(),
                        "Duplicate FIREBOLT rule is skipped and existing containerToHost entry is retained");
 
     return tr.failures;
@@ -400,7 +400,7 @@ uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfigurati
 
     const Json::Value& containerToHost =
         ociConfigRootNode[ralf::RDKPLUGINS][NETWORKING][ralf::DATA][PORT_FORWARDING][CONTAINER_TO_HOST];
-    L0Test::ExpectTrue(tr, containerToHost.isArray() && containerToHost.size() == 2u,
+    L0Test::ExpectTrue(tr, containerToHost.isArray() && 2u == containerToHost.size(),
                        "No duplicate entries are appended when FIREBOLT and THUNDER rules already exist");
 
     unsetenv(ralf::THUNDER_ACCESS_ENV_KEY);
@@ -451,17 +451,17 @@ uint32_t Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_Generate
                        "generated networking plugin is marked as required");
 
     const Json::Value& hostToContainer = pluginNode[ralf::DATA][PORT_FORWARDING][HOST_TO_CONTAINER];
-    L0Test::ExpectTrue(tr, hostToContainer.isArray() && hostToContainer.size() == 1u,
+    L0Test::ExpectTrue(tr, hostToContainer.isArray() && 1u == hostToContainer.size(),
                        "Valid public service generates one hostToContainer rule and malformed node is skipped");
     if (hostToContainer.isArray() && !hostToContainer.empty()) {
         L0Test::ExpectEqU32(tr, hostToContainer[0][ralf::PORT].asUInt(), 8080u, "Public service port is verified");
     }
 
     const Json::Value& interContainer = pluginNode[ralf::DATA][INTER_CONTAINER];
-    L0Test::ExpectTrue(tr, interContainer.isArray() && interContainer.size() == 2u,
+    L0Test::ExpectTrue(tr, interContainer.isArray() && 2u == interContainer.size(),
                        "Generates exported and imported directional interContainer rules");
 
-    if (interContainer.isArray() && interContainer.size() == 2u) {
+    if (interContainer.isArray() && 2u == interContainer.size()) {
         L0Test::ExpectEqStr(tr, interContainer[0][DIRECTION].asString(), "in", "Exported types cleanly map to directional rule 'in'");
         L0Test::ExpectEqStr(tr, interContainer[1][DIRECTION].asString(), "out", "Imported types cleanly map to directional rule 'out'");
     }
@@ -517,17 +517,17 @@ uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfigurati
 
     const Json::Value& networking = ociConfigRootNode[ralf::RDKPLUGINS][NETWORKING][ralf::DATA];
     L0Test::ExpectTrue(tr, networking[PORT_FORWARDING][CONTAINER_TO_HOST].isArray(), "loopback host ports are mapped to containerToHost");
-    L0Test::ExpectTrue(tr, networking[PORT_FORWARDING][CONTAINER_TO_HOST].size() == 2u, "both Firebolt and Thunder loopback ports are forwarded");
+    L0Test::ExpectTrue(tr, 2u == networking[PORT_FORWARDING][CONTAINER_TO_HOST].size(), "both Firebolt and Thunder loopback ports are forwarded");
 
     if (networking[PORT_FORWARDING][CONTAINER_TO_HOST].isArray())
     {
         bool found3473 = false;
         bool found9998 = false;
         for (const auto& rule : networking[PORT_FORWARDING][CONTAINER_TO_HOST]) {
-            if (rule[ralf::PORT].asUInt() == 3473u) {
+            if (3473u == rule[ralf::PORT].asUInt()) {
                 found3473 = true;
             }
-            if (rule[ralf::PORT].asUInt() == 9998u) {
+            if (9998u == rule[ralf::PORT].asUInt()) {
                 found9998 = true;
             }
         }
@@ -535,7 +535,7 @@ uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfigurati
         L0Test::ExpectTrue(tr, found9998, "Thunder port 9998 is added to containerToHost");
     }
 
-    L0Test::ExpectTrue(tr, !networking[INTER_CONTAINER].isArray() || networking[INTER_CONTAINER].size() == 0u,
+    L0Test::ExpectTrue(tr, !networking[INTER_CONTAINER].isArray() || 0u == networking[INTER_CONTAINER].size(),
                        "loopback host access must not be emitted as interContainer rules");
 
     unsetenv(ralf::THUNDER_ACCESS_ENV_KEY);
@@ -572,9 +572,9 @@ uint32_t Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_Imported
     const Json::Value& networkingData = ociConfigRootNode[ralf::RDKPLUGINS][NETWORKING][ralf::DATA];
 
     const Json::Value& containerToHost = networkingData[PORT_FORWARDING][CONTAINER_TO_HOST];
-    L0Test::ExpectTrue(tr, containerToHost.isArray() && containerToHost.size() == 1u,
+    L0Test::ExpectTrue(tr, containerToHost.isArray() && 1u == containerToHost.size(),
                        "Only host-marked imported endpoint is translated to containerToHost");
-    if (containerToHost.isArray() && containerToHost.size() == 1u)
+    if (containerToHost.isArray() && 1u == containerToHost.size())
     {
         L0Test::ExpectEqU32(tr, containerToHost[0][ralf::PORT].asUInt(), 9998u,
                             "Host-marked imported endpoint port is routed to containerToHost");
@@ -585,9 +585,9 @@ uint32_t Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_Imported
     }
 
     const Json::Value& interContainer = networkingData[INTER_CONTAINER];
-    L0Test::ExpectTrue(tr, interContainer.isArray() && interContainer.size() == 1u,
+    L0Test::ExpectTrue(tr, interContainer.isArray() && 1u == interContainer.size(),
                        "Non-host imported endpoint remains interContainer rule");
-    if (interContainer.isArray() && interContainer.size() == 1u)
+    if (interContainer.isArray() && 1u == interContainer.size())
     {
         L0Test::ExpectEqStr(tr, interContainer[0][DIRECTION].asString(), "out",
                             "Non-host imported endpoint maps to interContainer direction out");
