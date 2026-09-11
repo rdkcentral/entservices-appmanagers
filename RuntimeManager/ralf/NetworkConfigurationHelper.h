@@ -31,56 +31,22 @@ namespace NetworkConfigurationHelper
 {
 
 /**
- * @brief Merges urn:rdk:config:network metadata into the temporary _temp_ralf_nwcfg.network store within the OCI configuration.
- * Entries are keyed by the network service name. Existing entries are replaced and new entries are added.
- *
- * @param[in,out] ociConfigRootNode Root OCI configuration.
- * @param[in] manifestRootNode Package metadata manifest.
- * @return true on success.
+ * @brief Merges urn:rdk:config:network metadata into OCI root networking data.
+ * @param[in,out] ociConfigRootNode The root node of the OCI configuration JSON.
+ * @param[in] manifestRootNode The root node of the manifest JSON.
+ * @return true if the update was successful, false otherwise.
  */
 bool updateNetworkConfigurationNode(Json::Value& ociConfigRootNode, const Json::Value& manifestRootNode);
 
 /**
- * @brief Merges manifest permissions into temporary networking permission flags.
+ * @brief Updates the OCI configuration with network settings based on permissions specified in the manifest.
  *
- * This captures permission-driven networking intents so they can be translated
- * to valid Dobby networking plugin data during plugin generation.
- *
- * @param[in,out] ociConfigRootNode Root OCI configuration.
- * @param[in] manifestRootNode Package metadata manifest.
- * @return true on success.
+ * @param[in,out] ociConfigRootNode The root node of the OCI configuration JSON.
+ * @param[in] manifestRootNode The root node of the manifest JSON.
+ * @param[in] envVariables The serialized JSON array string of environment variables as provided by RuntimeConfig.envVariables.
+ * @return true if the update was successful or if there were no permissions to process; false on error.
  */
-bool updatePermissionConfigurationNode(Json::Value& ociConfigRootNode, const Json::Value& manifestRootNode);
-
-/**
- * @brief Updates the temporary _temp_ralf_nwcfg node from one or more environment variables.
- *
- * @param[in,out] ociConfigRootNode Root OCI configuration.
- * @param[in] envVarNames Environment variable names to read from process.env.
- * @return true if at least one temporary configuration entry was updated.
- */
-bool updateTempRalfNWCfgFromEnv(Json::Value& ociConfigRootNode, const std::vector<std::string>& envVarNames);
-
-/**
- * @brief Generates Dobby networking plugin configuration from the temporary _temp_ralf_nwcfg.network store.
- * Generated plugin is written to: rdkPlugins.networking.
- * After successful generation temporary _temp_ralf_nwcfg node is removed.
- *
- * @param[in,out] ociConfigRootNode Root OCI configuration.
- * @return true on success.
- */
-bool generateNetworkingPluginNode(Json::Value& ociConfigRootNode);
-
-/**
- * @brief Applies runtime-driven network policy to rdkPlugins.networking.data and process capabilities.
- *
- * This handles default networking mode (nat/none), dnsmasq flag, required capabilities,
- * and optional host-system mounts for networking support.
- *
- * @param[in,out] ociConfigRootNode Root OCI configuration.
- * @param[in] configFilePath Output OCI config file path; used to resolve the generated rootfs location.
- * @return true on success.
- */
-bool applyRuntimeNetworkingConfiguration(Json::Value& ociConfigRootNode, const std::string& configFilePath);
+bool updatePermissionBasedNetworkConfiguration(Json::Value& ociConfigRootNode, const Json::Value& manifestRootNode,
+                                               const std::string& envVariables);
 
 } // namespace NetworkConfigurationHelper

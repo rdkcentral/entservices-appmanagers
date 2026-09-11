@@ -60,7 +60,7 @@ namespace ralf
                 LOGERR("Failed to load Ralf package config JSON from file: %s", ralfPkgInfo.first.c_str());
                 return false;
             }
-            if (!applyConfigurationToOCIConfig(ociConfigRootNode, ralfPackageConfigNode))
+            if (!applyConfigurationToOCIConfig(ociConfigRootNode, ralfPackageConfigNode, runtimeConfigObject.envVariables))
             {
                 LOGERR("Failed to apply Ralf package config to OCI config for file: %s", ralfPkgInfo.first.c_str());
                 return false;
@@ -90,20 +90,6 @@ namespace ralf
         addTimezoneInfo(ociConfigRootNode);
         // Finally save the modified OCI config to file
         addThunderAccessToPrivilegedApps(ociConfigRootNode);
-        // Network configuration policy is derived by the helper from generated
-        // networking plugin data and permission-translated rules.
-        // Ensure that we start translation after all the environment variables and other configuration
-        // has been applied to the OCI config since it will be used to determine the final networking configuration.
-        if (false == NetworkConfigurationHelper::generateNetworkingPluginNode(ociConfigRootNode))
-        {
-            LOGERR("Failed to generate networking plugin config");
-            return false;
-        }
-        if (false == NetworkConfigurationHelper::applyRuntimeNetworkingConfiguration(ociConfigRootNode, mConfigFilePath))
-        {
-            LOGERR("Failed to apply runtime networking configuration");
-            return false;
-        }
         return saveOCIConfigToFile(ociConfigRootNode, config.mUserId, config.mGroupId);
     }
 
@@ -425,7 +411,7 @@ namespace ralf
         return status;
     }
 
-    bool RalfOCIConfigGenerator::applyConfigurationToOCIConfig(Json::Value &ociConfigRootNode, Json::Value &manifestRootNode)
+    bool RalfOCIConfigGenerator::applyConfigurationToOCIConfig(Json::Value &ociConfigRootNode, Json::Value &manifestRootNode, const std::string &envVariables)
     {
         if (!addEntryPointToOCIConfig(ociConfigRootNode, manifestRootNode))
         {
@@ -464,10 +450,10 @@ namespace ralf
         // Prepare for urn:rdk:config:network - spec matrix: Application/Service/Runtime (N/A for Base)
         if (packageType == PKG_TYPE_APPLICATION || packageType == PKG_TYPE_SERVICE || packageType == PKG_TYPE_RUNTIME)
         {
-            // 1. Capture network requirements for certain permissions
-            status = NetworkConfigurationHelper::updatePermissionConfigurationNode(ociConfigRootNode, manifestRootNode);
-            // 2. Capture network requirements based on the configuration node
             status = NetworkConfigurationHelper::updateNetworkConfigurationNode(ociConfigRootNode, manifestRootNode);
+            LOGDBG("Applied network config to OCI config ? %s\n", status ? "true" : "false");
+            status = NetworkConfigurationHelper::updatePermissionBasedNetworkConfiguration(ociConfigRootNode, manifestRootNode, envVariables);
+            LOGDBG("Applied permission based network config to OCI config ? %s\n", status ? "true" : "false");
         }
         // Apply urn:rdk:config:env — spec matrix: Application/Service only (N/A for Runtime and Base)
         if (packageType == PKG_TYPE_APPLICATION || packageType == PKG_TYPE_SERVICE)
