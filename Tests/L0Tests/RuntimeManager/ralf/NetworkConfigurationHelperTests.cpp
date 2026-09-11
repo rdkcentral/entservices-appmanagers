@@ -353,7 +353,7 @@ uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfigurati
 
     Json::Value existingRule(Json::objectValue);
     existingRule[ralf::PORT] = 3473;
-    existingRule[ralf::PROTOCOL] = "ws";
+    existingRule[ralf::PROTOCOL] = "tcp";
     ociConfigRootNode[ralf::RDKPLUGINS][NETWORKING][ralf::DATA][PORT_FORWARDING][CONTAINER_TO_HOST].append(existingRule);
 
     const std::string envVariables = "[\"FIREBOLT_ENDPOINT=ws://127.0.0.1:3473\"]";
@@ -382,7 +382,7 @@ uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfigurati
 
     Json::Value existingFireboltRule(Json::objectValue);
     existingFireboltRule[ralf::PORT] = 3473;
-    existingFireboltRule[ralf::PROTOCOL] = "ws";
+    existingFireboltRule[ralf::PROTOCOL] = "tcp";
     ociConfigRootNode[ralf::RDKPLUGINS][NETWORKING][ralf::DATA][PORT_FORWARDING][CONTAINER_TO_HOST].append(existingFireboltRule);
 
     Json::Value existingThunderRule(Json::objectValue);
