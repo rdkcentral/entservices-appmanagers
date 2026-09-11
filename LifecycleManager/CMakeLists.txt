@@ -69,6 +69,10 @@ if(ENABLE_UNIT_TESTS)
   target_compile_definitions(${MODULE_NAME} PRIVATE UNIT_TEST)
 endif()
 
+if(ENABLE_RIALTO_CONTROL)
+	target_compile_definitions(${MODULE_NAME} PRIVATE ENABLE_RIALTO_CONTROL)
+endif()
+
 install(TARGETS ${MODULE_NAME}
     DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/${STORAGE_DIRECTORY}/plugins)
 
