@@ -66,6 +66,10 @@ namespace
     constexpr const char *NETWORK_IPV4       = "ipv4";
     constexpr const char *NETWORK_IPV6       = "ipv6";
     constexpr const char *DEFAULT_PROTOCOL   = "tcp";
+    // Internal translation hint (non-RALF key): imported endpoint is on host, not another container.
+    // Dobby interContainer is for container-to-container routing over the bridge.
+    // Host loopback access must use portForwarding.containerToHost (with localhostMasquerade).
+    constexpr const char *HOST_ENDPOINT_MARKER = "_hostEndpoint";
 
     /**
      * @brief Creates/Retrieves the networking data node from the OCI config root node.
@@ -798,6 +802,8 @@ bool updategetNetworkingDataNode(Json::Value& ociConfigNWDataNode, const Json::V
                     {
                         if (existingRule[ralf::PORT].asUInt() == targetPort && existingRule[IP].asString() == targetIp)
                         {
+                            LOGDBG("%s: Duplicate multicastForwarding rule found for IP %s and port %u; skipping.",
+                                     MODULE_LOGTAG, targetIp.c_str(), targetPort);
                             duplicateFound = true;
                             break;
                         }
@@ -850,6 +856,8 @@ bool updategetNetworkingDataNode(Json::Value& ociConfigNWDataNode, const Json::V
                             existingRule[ralf::PROTOCOL].asString() == targetProto &&
                             existingRule.get(LOCALHOST_MASQUERADE, false).asBool() == targetHasMasq)
                         {
+                            LOGDBG("%s: Duplicate interContainer rule found for direction %s, port %u, protocol %s; skipping.",
+                                     MODULE_LOGTAG, targetDir.c_str(), targetPort, targetProto.c_str());
                             duplicateFound = true;
                             break;
                         }
@@ -891,6 +899,7 @@ Json::Value translateRALFNWCfgObjToDobbyNWCfgObj(const Json::Value& ralfNWCfgObj
     // Pre-initialize basic structural containers
     Json::Value& portForwarding = dobbyNWCfgObject[PORT_FORWARDING] = Json::Value(Json::objectValue);
     Json::Value& hostToContainer = portForwarding[HOST_TO_CONTAINER] = Json::Value(Json::arrayValue);
+    Json::Value& containerToHost = portForwarding[CONTAINER_TO_HOST] = Json::Value(Json::arrayValue);
     Json::Value& interContainer = dobbyNWCfgObject[INTER_CONTAINER] = Json::Value(Json::arrayValue);
 
     // Set fallback global localhostMasquerade helper
@@ -939,12 +948,24 @@ Json::Value translateRALFNWCfgObjToDobbyNWCfgObj(const Json::Value& ralfNWCfgObj
         }
         else if (IMPORTED == type)
         {
-            Json::Value rule(Json::objectValue);
-            rule[DIRECTION] = DIRECTION_OUT;
-            rule[ralf::PORT] = port;
-            rule[ralf::PROTOCOL] = protocol;
-            rule[LOCALHOST_MASQUERADE] = true;
-            appendIfUnique(interContainer, rule);
+            // Keep RALF semantics: imported means client side inter-container by default.
+            // Only route to containerToHost when explicitly marked as host endpoint per Dobby behavior.
+            if (ralfItem.get(HOST_ENDPOINT_MARKER, false).asBool())
+            {
+                Json::Value rule(Json::objectValue);
+                rule[ralf::PORT] = port;
+                rule[ralf::PROTOCOL] = protocol;
+                appendIfUnique(containerToHost, rule);
+            }
+            else
+            {
+                Json::Value rule(Json::objectValue);
+                rule[DIRECTION] = DIRECTION_OUT;
+                rule[ralf::PORT] = port;
+                rule[ralf::PROTOCOL] = protocol;
+                rule[LOCALHOST_MASQUERADE] = true;
+                appendIfUnique(interContainer, rule);
+            }
         }
     };
 
@@ -963,6 +984,7 @@ Json::Value translateRALFNWCfgObjToDobbyNWCfgObj(const Json::Value& ralfNWCfgObj
 
     // Clean up empty tracking members to ensure clean, valid Dobby JSON output structure
     if (hostToContainer.empty()) portForwarding.removeMember(HOST_TO_CONTAINER);
+    if (containerToHost.empty()) portForwarding.removeMember(CONTAINER_TO_HOST);
 
     if (portForwarding.empty() || (portForwarding.size() == 1 && portForwarding.isMember(LOCALHOST_MASQUERADE)))
     {
@@ -1105,12 +1127,9 @@ bool updatePermissionBasedNetworkConfiguration(Json::Value& ociConfigRootNode, c
     bool hasPermissionInternet = false;
     bool hasPermissionFirebolt = false;
     bool hasPermissionThunder = false;
-    bool updatedInternetNwCfg = false;
-    bool updatedFireboltNwCfg = false;
-    bool updatedThunderNwCfg = false;
 
     const Json::ArrayIndex permissionSize = permissions.size();
-    int validPermissionCount = 0;
+    unsigned int validTranslationCount = 0; // Tracks NW translation required permissions.
     for (Json::ArrayIndex index = 0; index < permissionSize; ++index)
     {
         const Json::Value& permValue = permissions[index];
@@ -1118,9 +1137,6 @@ bool updatePermissionBasedNetworkConfiguration(Json::Value& ociConfigRootNode, c
         {
             continue;
         }
-
-        ++validPermissionCount;
-
         // std::strcmp performs an extremely fast, zero-allocation memory evaluation.
         const char* permStr = permValue.asCString();
 
@@ -1130,10 +1146,12 @@ bool updatePermissionBasedNetworkConfiguration(Json::Value& ociConfigRootNode, c
         }
         else if (std::strcmp(permStr, ralf::PERMISSION_FIREBOLT) == 0)
         {
+            ++validTranslationCount;
             hasPermissionFirebolt = true;
         }
         else if (std::strcmp(permStr, ralf::PERMISSION_THUNDER) == 0)
         {
+            ++validTranslationCount;
             hasPermissionThunder = true;
         }
     }
@@ -1148,12 +1166,7 @@ bool updatePermissionBasedNetworkConfiguration(Json::Value& ociConfigRootNode, c
 
     if (hasPermissionInternet || hasPermissionFirebolt || hasPermissionThunder)
     {
-        if (hasPermissionInternet)
-        {
-            updatedInternetNwCfg = true;
-        }
-
-        // check and update if not matching.
+        // check and update if not matching. Any of these would need below configurations.
         if (!netData->isMember(ralf::TYPE) || !(*netData)[ralf::TYPE].isString() || (*netData)[ralf::TYPE].asString() != NETWORK_TYPE_NAT)
         {
             (*netData)[ralf::TYPE] = NETWORK_TYPE_NAT;
@@ -1238,6 +1251,9 @@ bool updatePermissionBasedNetworkConfiguration(Json::Value& ociConfigRootNode, c
                             fireboltNWCfgObject[ralf::PORT] = static_cast<unsigned int>(port);
                             fireboltNWCfgObject[ralf::PROTOCOL] = normalizeProtocol(protocolScheme);
                             fireboltNWCfgObject[ralf::TYPE] = IMPORTED;
+                            // Mark this imported rule as a host endpoint for Dobby translation purposes
+                            // Refer HOST_ENDPOINT_MARKER definition section for details.
+                            fireboltNWCfgObject[HOST_ENDPOINT_MARKER] = true;
                             ralfLocalNWCfgObject.append(fireboltNWCfgObject);
                             foundEndpoint = true;
                             break; // Successfully processed the network target
@@ -1281,6 +1297,9 @@ bool updatePermissionBasedNetworkConfiguration(Json::Value& ociConfigRootNode, c
                 thunderNWCfgObject[ralf::PORT] = static_cast<unsigned int>(port);
                 thunderNWCfgObject[ralf::PROTOCOL] = normalizeProtocol(protocolScheme);
                 thunderNWCfgObject[ralf::TYPE] = IMPORTED;
+                // Mark this imported rule as a host endpoint for Dobby translation purposes
+                // Refer HOST_ENDPOINT_MARKER definition section for details.
+                thunderNWCfgObject[HOST_ENDPOINT_MARKER] = true;
                 ralfLocalNWCfgObject.append(thunderNWCfgObject);
                 thunderEndpointFound = true;
             }
@@ -1296,10 +1315,10 @@ bool updatePermissionBasedNetworkConfiguration(Json::Value& ociConfigRootNode, c
         }
     }
 
-    if (ralfLocalNWCfgObject.empty() || (ralfLocalNWCfgObject.size() != validPermissionCount))
+    if (ralfLocalNWCfgObject.empty() || (ralfLocalNWCfgObject.size() != validTranslationCount))
     {
-        LOGWARN("%s: No valid RALF network configuration objects(%d) generated for (%d) permission(s).",
-                MODULE_LOGTAG, ralfLocalNWCfgObject.size(), validPermissionCount);
+        LOGWARN("%s: No valid RALF network configuration objects(%d) generated for permission(s)[valid:%d].",
+                MODULE_LOGTAG, ralfLocalNWCfgObject.size(), validTranslationCount);
         return false;
     }
 
