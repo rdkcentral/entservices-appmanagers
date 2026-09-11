@@ -155,12 +155,21 @@ namespace
         }
 
         // 4. Resolve TYPE
-        if (!dataNode->isMember(ralf::TYPE)) {
+        if (!dataNode->isMember(ralf::TYPE))
+        {
             if (!createIfMissing) {
                 LOGERR("%s: %s.%s.%s.%s node is missing and could not create in OCI config.",
                         MODULE_LOGTAG, ralf::RDKPLUGINS, NETWORKING, ralf::DATA, ralf::TYPE);
                 return nullptr;
             }
+            (*dataNode)[ralf::TYPE] = NETWORK_TYPE_NAT;
+            (*dataNode)[NETWORK_IPV4] = true;
+            (*dataNode)[NETWORK_IPV6] = true;
+            (*dataNode)[DNSMASQ] = true;
+        }
+        else if (createIfMissing && (*dataNode)[ralf::TYPE].isString() &&
+                 (*dataNode)[ralf::TYPE].asString() != NETWORK_TYPE_NAT)
+        {
             (*dataNode)[ralf::TYPE] = NETWORK_TYPE_NAT;
             (*dataNode)[NETWORK_IPV4] = true;
             (*dataNode)[NETWORK_IPV6] = true;
@@ -238,7 +247,9 @@ namespace
         long port = std::strtol(startPtr, &endPtr, 10);
 
         // Validate parsed range and characters
-        if ((endPtr == startPtr) || (port < 0) || (port > 65535) ||
+        // Port 0 is a special reserved port in networking (wildcard/ephemeral assignment) and is completely invalid
+        // for a persistent Dobby container port-forwarding rule or an application loopback connection endpoint.
+        if ((endPtr == startPtr) || (port <= 0) || (port > 65535) ||
             ((endPtr - startPtr) != static_cast<std::ptrdiff_t>(portLen))) {
             return -1;
         }
@@ -300,7 +311,7 @@ namespace
                 size_t host_len = bracket_end - start_pos + 1;
                 // Exact match for "[::1]" or "[0:0:0:0:0:0:0:1]"
                 return (host_len == 5 && endpoint.compare(start_pos, 5, "[::1]") == 0) ||
-                       (host_len == 23 && endpoint.compare(start_pos, 23, "[0:0:0:0:0:0:0:1]") == 0);
+                       (host_len == 17 && endpoint.compare(start_pos, 17, "[0:0:0:0:0:0:0:1]") == 0);
             }
             return false; // Malformed IPv6 bracket
         }
@@ -332,7 +343,8 @@ namespace
         {
             const Json::Value& rule = containerToHost[index];
 
-            if (rule.isMember(ralf::PORT) && rule[ralf::PORT].isUInt() &&
+            if (rule.isMember(ralf::PORT) && (rule[ralf::PORT].isUInt() ||
+                (rule[ralf::PORT].isInt() && 0 <= rule[ralf::PORT].asInt())) &&
                 rule.isMember(ralf::PROTOCOL) && rule[ralf::PROTOCOL].isString())
             {
                 if (port == rule[ralf::PORT].asUInt() && protocol == rule[ralf::PROTOCOL].asString())
@@ -419,14 +431,17 @@ namespace
                 {
                     for (const auto& rule : cToHArray)
                     {
-                        // Short-Circuit: If port fails, string evaluations are skipped entirely
-                        if (rule.isObject() &&
-                            rule.isMember(ralf::PORT) && rule[ralf::PORT].isUInt() &&
-                            rule[ralf::PORT].asUInt() == targetPort &&
-                            rule.isMember(ralf::PROTOCOL) && rule[ralf::PROTOCOL].isString() &&
-                            targetProto == rule[ralf::PROTOCOL].asCString())
+                        if (rule.isObject() && rule.isMember(ralf::PORT) &&
+                            (rule[ralf::PORT].isInt() || rule[ralf::PORT].isUInt()) &&
+                            rule.isMember(ralf::PROTOCOL) && rule[ralf::PROTOCOL].isString())
                         {
-                            return true;
+                            int existingPort = rule[ralf::PORT].asInt();
+                            if (existingPort > 0 && existingPort <= 65535 &&
+                                static_cast<unsigned int>(existingPort) == targetPort &&
+                                targetProto == rule[ralf::PROTOCOL].asCString())
+                            {
+                                return true;
+                            }
                         }
                     }
                 }
@@ -692,7 +707,7 @@ Json::Value translateRALFNWCfgObjToDobbyNWCfgObj(const Json::Value& ralfNWCfgObj
     auto processItem = [&](const Json::Value& ralfItem) {
         // Enforce basic element verification
         if (!ralfItem.isObject() || !ralfItem.isMember(ralf::PORT) || !ralfItem.isMember(ralf::TYPE) ||
-            !ralfItem[ralf::PORT].isUInt() || !ralfItem[ralf::TYPE].isString())
+            (!ralfItem[ralf::PORT].isUInt() && !ralfItem[ralf::PORT].isInt()) || !ralfItem[ralf::TYPE].isString())
         {
             LOGWARN("%s: Invalid RALF network configuration item.", MODULE_LOGTAG);
             return;
@@ -936,46 +951,36 @@ bool updatePermissionBasedNetworkConfiguration(Json::Value& ociConfigRootNode, c
         }
     }
 
-    Json::Value* netData = getNetworkingDataNode(ociConfigRootNode, true);
-
-    if ((hasPermissionInternet || hasPermissionFirebolt || hasPermissionThunder) && (nullptr == netData))
+    if (!hasPermissionInternet && !hasPermissionFirebolt && !hasPermissionThunder)
     {
-        LOGERR("%s: Failed to retrieve/create networking data node for permission-based update.", MODULE_LOGTAG);
-        return false;
+        LOGDBG("%s: No relevant permissions found; skipping permission-based networking update", MODULE_LOGTAG);
+        return true;
     }
 
-    if (hasPermissionInternet || hasPermissionFirebolt || hasPermissionThunder)
-    {
-        if (!netData->isMember(ralf::TYPE) || !(*netData)[ralf::TYPE].isString() ||
-            (*netData)[ralf::TYPE].asString() != NETWORK_TYPE_NAT)
-        {
-            (*netData)[ralf::TYPE] = NETWORK_TYPE_NAT;
-        }
-        if (!netData->isMember(DNSMASQ) || !(*netData)[DNSMASQ].isBool() || !(*netData)[DNSMASQ].asBool())
-        {
-            (*netData)[DNSMASQ] = true;
-        }
-        if (!netData->isMember(NETWORK_IPV4) || !(*netData)[NETWORK_IPV4].isBool() || !(*netData)[NETWORK_IPV4].asBool())
-        {
-            (*netData)[NETWORK_IPV4] = true;
-        }
-        if (!netData->isMember(NETWORK_IPV6) || !(*netData)[NETWORK_IPV6].isBool() || !(*netData)[NETWORK_IPV6].asBool())
-        {
-            (*netData)[NETWORK_IPV6] = true;
-        }
-    }
+    // Call with false first. This provides a non-mutating snapshot pointer to verify duplicates
+    Json::Value* netDataCheck = getNetworkingDataNode(ociConfigRootNode, false);
 
     Json::Value ralfLocalNWCfgObject(Json::arrayValue);
 
-    // Explicit fulfillment tracking to guarantee feature isolation
     bool isFireboltFulfilled = !hasPermissionFirebolt;
     bool isThunderFulfilled = !hasPermissionThunder;
+    bool isInternetFulfilled = !hasPermissionInternet;
+
+    // Check if dnsmasq is enabled in the networking data node for internet permission.
+    if (hasPermissionInternet && netDataCheck != nullptr)
+    {
+        if (netDataCheck->isMember(DNSMASQ) && (*netDataCheck)[DNSMASQ].isBool() &&
+            (*netDataCheck)[DNSMASQ].asBool() && netDataCheck->isMember(ralf::TYPE) &&
+            (*netDataCheck)[ralf::TYPE].isString() && (*netDataCheck)[ralf::TYPE].asString() == NETWORK_TYPE_NAT)
+        {
+            isInternetFulfilled = true;
+        }
+    }
 
     if (hasPermissionFirebolt && !envVariables.empty())
     {
         const std::string& src = envVariables;
         const std::string prefix = std::string(ralf::FIREBOLT_ENDPOINT_ENV_KEY);
-
         size_t pos = 0;
 
         while ((pos = src.find(prefix, pos)) != std::string::npos)
@@ -990,7 +995,6 @@ bool updatePermissionBasedNetworkConfiguration(Json::Value& ociConfigRootNode, c
             if (valueStart < src.size() && src[valueStart] == '=')
             {
                 valueStart++;
-
                 size_t valueEnd = src.find('"', valueStart);
                 if (valueEnd != std::string::npos)
                 {
@@ -1015,17 +1019,18 @@ bool updatePermissionBasedNetworkConfiguration(Json::Value& ociConfigRootNode, c
                             : fireboltEndpointStr;
 
                         const int port = extractPortFromEndpoint(fireboltEndpointStr);
-                        if (port != -1)
+                        if (port > 0 && port <= 65535)
                         {
                             const std::string normProto = normalizeProtocol(protocolScheme);
                             const unsigned int targetPort = static_cast<unsigned int>(port);
 
-                            // Using Pass-By-Reference validation safely
-                            if (hasPortFwdContainerToHostRule(*netData, targetPort, normProto))
+                            // Safe inspection lookup using the non-mutated snapshot block reference
+                            if (netDataCheck != nullptr &&
+                                hasPortFwdContainerToHostRule(*netDataCheck, targetPort, normProto))
                             {
                                 LOGDBG("%s: Firebolt Port %u & protocol %s already exists; skipping addition.",
                                         MODULE_LOGTAG, targetPort, normProto.c_str());
-                                isFireboltFulfilled = true; // Fulfilled via pre-existing block
+                                isFireboltFulfilled = true;
                                 break;
                             }
 
@@ -1037,7 +1042,7 @@ bool updatePermissionBasedNetworkConfiguration(Json::Value& ociConfigRootNode, c
                             fireboltNWCfgObject[HOST_ENDPOINT_MARKER] = true;
 
                             ralfLocalNWCfgObject.append(fireboltNWCfgObject);
-                            isFireboltFulfilled = true; // Fulfilled via scheduling translation insertion
+                            isFireboltFulfilled = true;
                             break;
                         }
                     }
@@ -1061,7 +1066,7 @@ bool updatePermissionBasedNetworkConfiguration(Json::Value& ociConfigRootNode, c
             std::string thunderAccessStr(thunderaccess);
             const int port = extractPortFromEndpoint(thunderAccessStr);
 
-            if (port != -1 && isLoopback)
+            if (port > 0 && port <= 65535 && isLoopback)
             {
                 size_t schemeEnd = thunderAccessStr.find("://");
                 std::string protocolScheme = (schemeEnd != std::string::npos)
@@ -1071,12 +1076,12 @@ bool updatePermissionBasedNetworkConfiguration(Json::Value& ociConfigRootNode, c
                 const std::string normProto = normalizeProtocol(protocolScheme);
                 const unsigned int targetPort = static_cast<unsigned int>(port);
 
-                // Using Pass-By-Reference validation safely
-                if (hasPortFwdContainerToHostRule(*netData, targetPort, normProto))
+                // Safe inspection lookup using the non-mutated snapshot block reference
+                if (netDataCheck != nullptr && hasPortFwdContainerToHostRule(*netDataCheck, targetPort, normProto))
                 {
                     LOGDBG("%s: Thunder Port %u & protocol %s already exists; skipping addition.",
                             MODULE_LOGTAG, targetPort, normProto.c_str());
-                    isThunderFulfilled = true; // Fulfilled via pre-existing block
+                    isThunderFulfilled = true;
                 }
                 else
                 {
@@ -1088,7 +1093,7 @@ bool updatePermissionBasedNetworkConfiguration(Json::Value& ociConfigRootNode, c
                     thunderNWCfgObject[HOST_ENDPOINT_MARKER] = true;
 
                     ralfLocalNWCfgObject.append(thunderNWCfgObject);
-                    isThunderFulfilled = true; // Fulfilled via scheduling translation insertion
+                    isThunderFulfilled = true;
                 }
             }
             else
@@ -1096,31 +1101,56 @@ bool updatePermissionBasedNetworkConfiguration(Json::Value& ociConfigRootNode, c
                 LOGDBG("%s: Invalid Thunder endpoint(port:%d, isLoopback:%d)", MODULE_LOGTAG, port, isLoopback);
             }
         }
+
+        if (!isThunderFulfilled)
+        {
+            LOGERR("%s: THUNDER_ACCESS environment variable not found or invalid in runtime config.", MODULE_LOGTAG);
+        }
     }
 
-    // Hard Gate: Return false to block launch if requested permissions are unfulfilled
-    if (!isFireboltFulfilled || !isThunderFulfilled)
-    {
-        LOGERR("%s: Permission-based network translation failed. [Fulfillment Status - Firebolt: %s, Thunder: %s]",
-               MODULE_LOGTAG,
-               isFireboltFulfilled ? "SUCCESS" : "FAILED",
-               isThunderFulfilled ? "SUCCESS" : "FAILED");
-        return false;
-    }
-
-    // Direct success escape path if everything needed was already present in netData
-    if (ralfLocalNWCfgObject.empty())
+    // Direct success escape path if everything needed was already present or unrequested
+    if (ralfLocalNWCfgObject.empty() && isInternetFulfilled)
     {
         return true;
     }
 
-    Json::Value dobbyLocalNWCfgObject = translateRALFNWCfgObjToDobbyNWCfgObj(ralfLocalNWCfgObject);
-    if (dobbyLocalNWCfgObject.empty())
+    // If rules were generated OR internet needs configuration, mutate the node
+    if (!ralfLocalNWCfgObject.empty() || !isInternetFulfilled)
     {
-        LOGWARN("%s: Translated Dobby network configuration object is empty.", MODULE_LOGTAG);
+        // This will ensure NAT and DNSMASQ are enabled satisfying the internet permission requirement.
+        Json::Value* netData = getNetworkingDataNode(ociConfigRootNode, true);
+        if (nullptr == netData)
+        {
+            LOGERR("%s: Failed to create or initialize the active networking data node.", MODULE_LOGTAG);
+            return false;
+        }
+
+        Json::Value dobbyLocalNWCfgObject(Json::objectValue);
+        dobbyLocalNWCfgObject = translateRALFNWCfgObjToDobbyNWCfgObj(ralfLocalNWCfgObject);
+        if (dobbyLocalNWCfgObject.empty())
+        {
+            LOGWARN("%s: Translated Dobby network configuration object is empty.", MODULE_LOGTAG);
+            return false;
+        }
+
+        if (!updategetNetworkingDataNode(*netData, dobbyLocalNWCfgObject))
+        {
+            return false;
+        }
+    }
+
+    // --- FINAL HARD GATE BOUNDARY ---
+    if (!isFireboltFulfilled || !isThunderFulfilled)
+    {
+        LOGERR("%s: Permission-based network translation failed."
+               "[Fulfillment Status - Firebolt: %s, Thunder: %s, Internet: %s]",
+                    MODULE_LOGTAG,
+                    isFireboltFulfilled ? "SUCCESS" : "FAILED",
+                    isThunderFulfilled ? "SUCCESS" : "FAILED",
+                    isInternetFulfilled ? "SUCCESS" : "FAILED");
         return false;
     }
 
-    return (updategetNetworkingDataNode(*netData, dobbyLocalNWCfgObject));
+    return true;
 }
 } // namespace NetworkConfigurationHelper
