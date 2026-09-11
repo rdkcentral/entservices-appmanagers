@@ -1323,9 +1323,9 @@ public:
     {
         return mGen.addDeviceNodeEntriesToOCIConfig(node, devNodes);
     }
-    bool applyConfigurationToOCIConfig(Json::Value& node, Json::Value& manifestNode)
+    bool applyConfigurationToOCIConfig(Json::Value& node, Json::Value& manifestNode, const std::string& envVariables)
     {
-        return mGen.applyConfigurationToOCIConfig(node, manifestNode);
+        return mGen.applyConfigurationToOCIConfig(node, manifestNode, envVariables);
     }
     bool applyRuntimeAndAppConfigToOCIConfig(Json::Value& node,
         const WPEFramework::Exchange::RuntimeConfig& rc,
@@ -1956,7 +1956,7 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, ApplyConfiguration_NoConfigurationNode
     Json::Value manifest;
     manifest[ralf::ENTRY_POINT] = "/bin/app";
     manifest[ralf::PACKAGE_TYPE] = ralf::PKG_TYPE_APPLICATION;
-    EXPECT_TRUE(mAcc.applyConfigurationToOCIConfig(root, manifest));
+    EXPECT_TRUE(mAcc.applyConfigurationToOCIConfig(root, manifest, "[]"));
 }
 
 /* Test Case: ApplyConfiguration_WithFullApplicationConfig
@@ -1974,7 +1974,7 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, ApplyConfiguration_WithFullApplication
     manifest[ralf::VERSION_NAME] = "2.0.0";
     manifest[ralf::CONFIGURATION][ralf::MEMORY_CONFIG_URN][ralf::SYSTEM_MEMORY] = "128M";
     manifest[ralf::CONFIGURATION][ralf::STORAGE_CONFIG_URN][ralf::MAX_LOCAL_STORAGE] = "50M";
-    EXPECT_TRUE(mAcc.applyConfigurationToOCIConfig(root, manifest));
+    EXPECT_TRUE(mAcc.applyConfigurationToOCIConfig(root, manifest, "[]"));
     uint64_t expectedMem = 128ULL * 1024 * 1024;
     EXPECT_EQ(static_cast<Json::UInt64>(expectedMem),
         root[ralf::LINUX][ralf::RESOURCES][ralf::MEMORY][ralf::MEMORY_LIMIT].asUInt64());
