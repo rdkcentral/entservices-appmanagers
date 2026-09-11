@@ -155,12 +155,21 @@ namespace
         }
 
         // 4. Resolve TYPE
-        if (!dataNode->isMember(ralf::TYPE)) {
+        if (!dataNode->isMember(ralf::TYPE))
+        {
             if (!createIfMissing) {
                 LOGERR("%s: %s.%s.%s.%s node is missing and could not create in OCI config.",
                         MODULE_LOGTAG, ralf::RDKPLUGINS, NETWORKING, ralf::DATA, ralf::TYPE);
                 return nullptr;
             }
+            (*dataNode)[ralf::TYPE] = NETWORK_TYPE_NAT;
+            (*dataNode)[NETWORK_IPV4] = true;
+            (*dataNode)[NETWORK_IPV6] = true;
+            (*dataNode)[DNSMASQ] = true;
+        }
+        else if ((*dataNode)[ralf::TYPE].isString() && (*dataNode)[ralf::TYPE].asString() != NETWORK_TYPE_NAT)
+        {
+            // Explicitly transition out of non-NAT types to activate routing capabilities
             (*dataNode)[ralf::TYPE] = NETWORK_TYPE_NAT;
             (*dataNode)[NETWORK_IPV4] = true;
             (*dataNode)[NETWORK_IPV6] = true;
@@ -238,7 +247,9 @@ namespace
         long port = std::strtol(startPtr, &endPtr, 10);
 
         // Validate parsed range and characters
-        if ((endPtr == startPtr) || (port < 0) || (port > 65535) ||
+        // Port 0 is a special reserved port in networking (wildcard/ephemeral assignment) and is completely invalid
+        // for a persistent Dobby container port-forwarding rule or an application loopback connection endpoint.
+        if ((endPtr == startPtr) || (port <= 0) || (port > 65535) ||
             ((endPtr - startPtr) != static_cast<std::ptrdiff_t>(portLen))) {
             return -1;
         }
@@ -300,7 +311,7 @@ namespace
                 size_t host_len = bracket_end - start_pos + 1;
                 // Exact match for "[::1]" or "[0:0:0:0:0:0:0:1]"
                 return (host_len == 5 && endpoint.compare(start_pos, 5, "[::1]") == 0) ||
-                       (host_len == 23 && endpoint.compare(start_pos, 23, "[0:0:0:0:0:0:0:1]") == 0);
+                       (host_len == 17 && endpoint.compare(start_pos, 17, "[0:0:0:0:0:0:0:1]") == 0);
             }
             return false; // Malformed IPv6 bracket
         }
@@ -332,7 +343,7 @@ namespace
         {
             const Json::Value& rule = containerToHost[index];
 
-            if (rule.isMember(ralf::PORT) && rule[ralf::PORT].isUInt() &&
+            if (rule.isMember(ralf::PORT) && (rule[ralf::PORT].isUInt() || rule[ralf::PORT].isInt()) &&
                 rule.isMember(ralf::PROTOCOL) && rule[ralf::PROTOCOL].isString())
             {
                 if (port == rule[ralf::PORT].asUInt() && protocol == rule[ralf::PROTOCOL].asString())
@@ -692,7 +703,7 @@ Json::Value translateRALFNWCfgObjToDobbyNWCfgObj(const Json::Value& ralfNWCfgObj
     auto processItem = [&](const Json::Value& ralfItem) {
         // Enforce basic element verification
         if (!ralfItem.isObject() || !ralfItem.isMember(ralf::PORT) || !ralfItem.isMember(ralf::TYPE) ||
-            !ralfItem[ralf::PORT].isUInt() || !ralfItem[ralf::TYPE].isString())
+            (!ralfItem[ralf::PORT].isUInt() && !ralfItem[ralf::PORT].isInt()) || !ralfItem[ralf::TYPE].isString())
         {
             LOGWARN("%s: Invalid RALF network configuration item.", MODULE_LOGTAG);
             return;
