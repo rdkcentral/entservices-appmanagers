@@ -135,6 +135,7 @@ if(DISABLE_SECURITY_TOKEN)
 endif()
 
 option(AIMANAGERS_TELEMETRY_METRICS_SUPPORT "AIMANAGERS_TELEMETRY_METRICS_SUPPORT" OFF)
+option(ENABLE_RIALTO_CONTROL "Enable Rialto ACTIVE/INACTIVE transitions" OFF)
 
 add_subdirectory(helpers)
 
@@ -148,11 +149,6 @@ endif()
 
 if(PLUGIN_APPMANAGER)
     add_subdirectory(AppManager)
-endif()
-
-option(PLUGIN_VICTIM_SELECTOR "PLUGIN_VICTIM_SELECTOR" OFF)
-if(PLUGIN_VICTIM_SELECTOR)
-    add_subdirectory(VictimSelector)
 endif()
 
 if(PLUGIN_RUNTIME_MANAGER)
