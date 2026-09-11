@@ -449,7 +449,7 @@ Json::Value DobbySpecGenerator::createEnvVars(const ApplicationConfiguration& co
        env.append(envInputArray[i].String());
    }
 
-   std::list<std::string> configEnvs = {"XDG_RUNTIME_DIR=/tmp"};
+   std::list<std::string> configEnvs = mAIConfiguration->getEnvs();
    for (auto it = configEnvs.begin(); it != configEnvs.end(); ++it)
    {
        env.append(*it);
