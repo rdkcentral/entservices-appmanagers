@@ -1106,15 +1106,20 @@ bool updatePermissionBasedNetworkConfiguration(Json::Value& ociConfigRootNode, c
     bool hasPermissionFirebolt = false;
     bool hasPermissionThunder = false;
     bool updatedInternetNwCfg = false;
+    bool updatedFireboltNwCfg = false;
+    bool updatedThunderNwCfg = false;
 
-    const Json::ArrayIndex size = permissions.size();
-    for (Json::ArrayIndex index = 0; index < size; ++index)
+    const Json::ArrayIndex permissionSize = permissions.size();
+    int validPermissionCount = 0;
+    for (Json::ArrayIndex index = 0; index < permissionSize; ++index)
     {
         const Json::Value& permValue = permissions[index];
         if (!permValue.isString())
         {
             continue;
         }
+
+        ++validPermissionCount;
 
         // std::strcmp performs an extremely fast, zero-allocation memory evaluation.
         const char* permStr = permValue.asCString();
@@ -1167,7 +1172,7 @@ bool updatePermissionBasedNetworkConfiguration(Json::Value& ociConfigRootNode, c
         }
     }
 
-    // Array type RALF network configuration object for Thunder & Firebolt.
+    // Array type RALF network configuration object buffer.
     Json::Value ralfLocalNWCfgObject(Json::arrayValue);
 
     if (hasPermissionFirebolt && !envVariables.empty())
@@ -1177,88 +1182,125 @@ bool updatePermissionBasedNetworkConfiguration(Json::Value& ociConfigRootNode, c
          * ["FIREBOLT_ENDPOINT=http:\/\/127.0.0.1:3473?session=810b474c-5f68-4cdf-82f2-86dc4d6d1f97","TARGET_STATE=4"]
          * We need to parse it and get the FIREBOLT_ENDPOINT string.
          */
+        const std::string& src = envVariables;
+        const std::string prefix = std::string(ralf::FIREBOLT_ENDPOINT_ENV_KEY);
 
-        Json::CharReaderBuilder readerBuilder;
-        Json::Value envVarsNode;
-        std::string errs;
-        std::unique_ptr<Json::CharReader> reader(readerBuilder.newCharReader());
-        if (!reader->parse(envVariables.c_str(), envVariables.c_str() + envVariables.size(), &envVarsNode, &errs))
-        {
-            LOGERR("Failed to parse env variables JSON string, error: %s\n", errs.c_str());
-            return false;
-        }
+        size_t pos = 0;
+        bool foundEndpoint = false;
 
-        if (envVarsNode.isArray())
+        while ((pos = src.find(prefix, pos)) != std::string::npos)
         {
-            for (const auto &envEntry : envVarsNode)
+            // Boundary validation: Ensure the match is a standalone key token (preceded by '"' or '[')
+            if (pos > 0 && src[pos - 1] != '"' && src[pos - 1] != '[')
             {
-                if (envEntry.isString())
+                pos += prefix.size();
+                continue;
+            }
+
+            // Verify the assignment operator immediately follows the environment key name
+            size_t valueStart = pos + prefix.size();
+            if (valueStart < src.size() && src[valueStart] == '=')
+            {
+                valueStart++; // Move pointer past the '=' operator
+
+                // Track the terminating quote marker for this JSON string element entry
+                size_t valueEnd = src.find('"', valueStart);
+                if (valueEnd != std::string::npos)
                 {
-                    std::string envPair = envEntry.asString();
-                    std::string fireboltPrefix = std::string(ralf::FIREBOLT_ENDPOINT_ENV_KEY) + "=";
-                    if (envPair.rfind(fireboltPrefix, 0) == 0)
+                    size_t len = valueEnd - valueStart;
+                    // Unescape JSON forward slashes inline if present (e.g. "http:\/\/" -> "http://")
+                    std::string fireboltEndpointStr;
+                    fireboltEndpointStr.reserve(len);
+                    for (size_t i = 0; i < len; ++i)
                     {
-                        std::string fireboltEndpointStr = envPair.substr(fireboltPrefix.size());
-                        bool isLoopback = isLoopbackEndpoint(fireboltEndpointStr);
-                        // Extract protocol scheme (e.g., "ws" from "ws://127.0.0.1:3473/?session=...")
-                        size_t schemeEnd = fireboltEndpointStr.find("://");
-                        std::string protocolScheme = (schemeEnd != std::string::npos) ? fireboltEndpointStr.substr(0, schemeEnd) : fireboltEndpointStr;
-                        std::string normalizedProtocol = normalizeProtocol(protocolScheme);
-                        const int port = extractPortFromEndpoint(fireboltEndpointStr);
-                        if ((port != -1) && isLoopback) // Valid port extracted and is loopback
+                        size_t currentIdx = valueStart + i;
+                        if (src[currentIdx] == '\\' && (i + 1 < len) && src[currentIdx + 1] == '/')
                         {
-                            // Firebolt is running on host and container needs to access it.
-                            // Construct a RALF network configuration object for Firebolt and insert into ralfLocalNWCfgObject
+                            continue; // Skip the backslash escape character
+                        }
+                        fireboltEndpointStr.push_back(src[currentIdx]);
+                    }
+
+                    if (isLoopbackEndpoint(fireboltEndpointStr))
+                    {
+                        // Safely extract the transport layer scheme
+                        size_t schemeEnd = fireboltEndpointStr.find("://");
+                        std::string protocolScheme = (schemeEnd != std::string::npos)
+                            ? fireboltEndpointStr.substr(0, schemeEnd)
+                            : fireboltEndpointStr;
+
+                        const int port = extractPortFromEndpoint(fireboltEndpointStr);
+                        if (port != -1)
+                        {
+                            // Safely apply the standard single protocol layout translation rules
                             Json::Value fireboltNWCfgObject(Json::objectValue);
                             fireboltNWCfgObject[ralf::NAME] = "Firebolt";
-                            fireboltNWCfgObject[ralf::PORT] = port;
-                            fireboltNWCfgObject[ralf::PROTOCOL] = normalizedProtocol.c_str();
+                            fireboltNWCfgObject[ralf::PORT] = static_cast<unsigned int>(port);
+                            fireboltNWCfgObject[ralf::PROTOCOL] = normalizeProtocol(protocolScheme);
                             fireboltNWCfgObject[ralf::TYPE] = IMPORTED;
                             ralfLocalNWCfgObject.append(fireboltNWCfgObject);
+                            foundEndpoint = true;
+                            break; // Successfully processed the network target
                         }
-                        break;
                     }
                 }
             }
+            pos += prefix.size();
         }
-        LOGWARN("FIREBOLT_ENDPOINT environment variable not found in runtime config\n");
-        return false;
+
+        if (!foundEndpoint)
+        {
+            LOGERR("FIREBOLT_ENDPOINT environment variable not found or invalid in runtime config\n");
+        }
     }
 
     if (hasPermissionThunder)
     {
+        bool thunderEndpointFound = false;
         const char* thunderaccess = getenv(ralf::THUNDER_ACCESS_ENV_KEY);
-        if (nullptr != thunderaccess) {
+        if (thunderaccess != nullptr)
+        {
+            // 1. Verify loopback topology using the raw char array directly
             bool isLoopback = isLoopbackEndpoint(thunderaccess);
-            // Extract protocol from env value if present (e.g., "http://..." or default to "tcp" for "host:port")
+
+            // 2. Wrap into a string container safely for internal parsing utilities
             std::string thunderAccessStr(thunderaccess);
-            size_t schemeEnd = thunderAccessStr.find("://");
-            std::string protocolScheme = (schemeEnd != std::string::npos) ? thunderAccessStr.substr(0, schemeEnd) : "tcp";
-            std::string normalizedProtocol = normalizeProtocol(protocolScheme);
             const int port = extractPortFromEndpoint(thunderAccessStr);
-            if ((port != -1) && isLoopback)  // Valid port extracted and is loopback
+
+            if (port != -1 && isLoopback)
             {
-                // Thunder is running on host and container needs to access it.
-                // Construct a RALF network configuration object for Thunder and insert into ralfLocalNWCfgObject
+                // Extract the protocol scheme efficiently without string cutting
+                size_t schemeEnd = thunderAccessStr.find("://");
+                std::string protocolScheme = (schemeEnd != std::string::npos)
+                    ? thunderAccessStr.substr(0, schemeEnd)
+                    : "tcp";
+
+                // Thunder runs on the host and the container requires outbound inter-container/host access
                 Json::Value thunderNWCfgObject(Json::objectValue);
                 thunderNWCfgObject[ralf::NAME] = "Thunder";
-                thunderNWCfgObject[ralf::PORT] = port;
-                thunderNWCfgObject[ralf::PROTOCOL] = normalizedProtocol.c_str();
-                thunderNWCfgObject[ralf::TYPE] = IMPORTED; // Thunder is an imported service for the container
+                thunderNWCfgObject[ralf::PORT] = static_cast<unsigned int>(port);
+                thunderNWCfgObject[ralf::PROTOCOL] = normalizeProtocol(protocolScheme);
+                thunderNWCfgObject[ralf::TYPE] = IMPORTED;
                 ralfLocalNWCfgObject.append(thunderNWCfgObject);
+                thunderEndpointFound = true;
             }
             else
             {
-                LOGWARN("%s: Invalid Thunder endpoint(port:%d, isLoopback:%d), skipping addition.",
-                        MODULE_LOGTAG, port, isLoopback);
+                LOGDBG("%s: Invalid Thunder endpoint(port:%d, isLoopback:%d)", MODULE_LOGTAG, port, isLoopback);
             }
+        }
+        if (!thunderEndpointFound)
+        {
+            LOGERR("%s: THUNDER_ACCESS environment variable not found or invalid in runtime config, skipping addition.",
+                    MODULE_LOGTAG);
         }
     }
 
-    if (ralfLocalNWCfgObject.empty())
+    if (ralfLocalNWCfgObject.empty() || (ralfLocalNWCfgObject.size() != validPermissionCount))
     {
-        LOGWARN("%s: No valid RALF network configuration objects generated for permission-based update.", MODULE_LOGTAG);
-        return true;
+        LOGWARN("%s: No valid RALF network configuration objects(%d) generated for (%d) permission(s).",
+                MODULE_LOGTAG, ralfLocalNWCfgObject.size(), validPermissionCount);
+        return false;
     }
 
     Json::Value dobbyLocalNWCfgObject = translateRALFNWCfgObjToDobbyNWCfgObj(ralfLocalNWCfgObject);
@@ -1268,6 +1310,6 @@ bool updatePermissionBasedNetworkConfiguration(Json::Value& ociConfigRootNode, c
         return false;
     }
 
-    return (updatedInternetNwCfg && updategetNetworkingDataNode(*netData, dobbyLocalNWCfgObject));
+    return (updategetNetworkingDataNode(*netData, dobbyLocalNWCfgObject));
 }
 } // namespace NetworkConfigurationHelper
