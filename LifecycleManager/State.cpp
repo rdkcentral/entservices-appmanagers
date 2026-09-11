@@ -92,14 +92,38 @@ namespace WPEFramework
             }
 	    else if (Exchange::ILifecycleManager::LifecycleState::ACTIVE == context->getCurrentLifecycleState())
 	    {
-                ret = true;		    
+#ifdef ENABLE_RIALTO_CONTROL
+            RuntimeManagerHandler* runtimeManagerHandler = RequestHandler::getInstance()->getRuntimeManagerHandler();
+            if (nullptr != runtimeManagerHandler)
+            {
+                ret = runtimeManagerHandler->suspend(context->getAppInstanceId(), errorReason);
             }
+            else
+	        {
+                ret = false;
+            }
+#else
+            ret = true;
+#endif
+        }
             return ret;
 	}
 
         bool ActiveState::handle(string& errorReason)
 	{
-            WindowManagerHandler* windowManagerHandler = RequestHandler::getInstance()->getWindowManagerHandler();
+#ifdef ENABLE_RIALTO_CONTROL
+        ApplicationContext* context = getContext();
+        RuntimeManagerHandler* runtimeManagerHandler = RequestHandler::getInstance()->getRuntimeManagerHandler();
+        if ((nullptr != runtimeManagerHandler) && (Exchange::ILifecycleManager::LifecycleState::PAUSED == context->getCurrentLifecycleState()))
+	    {
+            if (false == runtimeManagerHandler->resume(context->getAppInstanceId(), errorReason))
+	        {
+                return false;
+            }
+        }
+        return true;
+#else
+        WindowManagerHandler* windowManagerHandler = RequestHandler::getInstance()->getWindowManagerHandler();
 	    if (nullptr != windowManagerHandler)
 	    {
                 ApplicationContext* context = getContext();
@@ -116,13 +140,14 @@ namespace WPEFramework
                         context->mPendingEventName = "onFirstFrame";
                         context->mPendingStateTransition = true;
 		    }
-                }
+        }
 		else
 		{
-                    return false;
-                }
+            return false;
+        }
 	    }
             return true;
+#endif
 	}
 
         bool SuspendedState::handle(string& errorReason)
