@@ -57,6 +57,7 @@ namespace WPEFramework
             try
             {
                 RequestHandler::getInstance()->terminate();
+                RequestHandler::cleanupSingelton();
             }
             catch(const std::exception& e)
             {

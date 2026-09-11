@@ -48,14 +48,26 @@ namespace WPEFramework
         }
 
         StateTransitionHandler* StateTransitionHandler::mInstance = nullptr;
+        static std::mutex gStateTransitionHandlerInstanceMutex;
 
         StateTransitionHandler* StateTransitionHandler::getInstance()
 	{
+            std::lock_guard<std::mutex> lock(gStateTransitionHandlerInstanceMutex);
             if (nullptr == mInstance)
             {
                 mInstance = new StateTransitionHandler();
             }
             return mInstance;
+	}
+
+        void StateTransitionHandler::cleanupSingelton()
+	{
+            std::lock_guard<std::mutex> lock(gStateTransitionHandlerInstanceMutex);
+            if (nullptr != mInstance)
+            {
+                delete mInstance;
+                mInstance = nullptr;
+            }
 	}
 
         StateTransitionHandler::StateTransitionHandler()
