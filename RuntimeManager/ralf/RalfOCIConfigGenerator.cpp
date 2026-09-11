@@ -252,19 +252,6 @@ namespace ralf
             }
             else
             {
-                // ARUN: debug dump: copy the file to /tmp/arun-oci-app.json for debugging
-                std::string debugFilePath = "/tmp/arun-oci-app.json";
-                std::ofstream debugOutFile(debugFilePath.c_str());
-                if (debugOutFile)
-                {
-                    debugOutFile << ociConfigJson;
-                    debugOutFile.close();
-                    LOGDBG("Debug OCI config JSON written to %s\n", debugFilePath.c_str());
-                }
-                else
-                {
-                    LOGWARN("Failed to write debug OCI config JSON to %s\n", debugFilePath.c_str());
-                }
                 status = true;
             }
         }

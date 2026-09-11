@@ -876,15 +876,20 @@ bool updategetNetworkingDataNode(Json::Value& ociConfigNWDataNode, const Json::V
 }
 
 /**
- * @brief Translates a RALF network configuration model object into a Dobby networking plugin schema format.
+ * @brief Translates RALF network rules into Dobby networking plugin data.
  *
- * Iterates through standard RALF items containing public, exported, or imported rules. Maps
- * them into their functional Dobby equivalents (hostToContainer, interContainer in/out) while
- * tracking deduplication and dynamically removing empty JSON structural wrappers.
+ * Mapping rules:
+ * - public   -> portForwarding.hostToContainer
+ * - exported -> interContainer direction "in"
+ * - imported -> interContainer direction "out" (default RALF semantics)
+ * - imported with "_hostEndpoint": true -> portForwarding.containerToHost
  *
- * @param[in] ralfNWCfgObject The source network configuration JSON payload (can be an Object or Array).
+ * The internal "_hostEndpoint" marker is only a translation hint used for host-backed
+ * endpoints (for example, loopback Thunder/Firebolt) and is not emitted in the final Dobby
+ * output. Duplicate rules are deduplicated and empty wrapper nodes are removed.
  *
- * @return Json::Value An object populated with the translated Dobby format networking configuration.
+ * @param[in] ralfNWCfgObject Source RALF network JSON payload (object or array).
+ * @return Json::Value Translated Dobby networking JSON fragment.
  */
 Json::Value translateRALFNWCfgObjToDobbyNWCfgObj(const Json::Value& ralfNWCfgObject)
 {
