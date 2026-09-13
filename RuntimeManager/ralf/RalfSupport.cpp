@@ -125,8 +125,10 @@ namespace
             }
 
             const std::string destinationPath = mountNode[ralf::DESTINATION].asString();
-            if (destinationPath.empty() || '/' != destinationPath[0])
+
+            if (destinationPath.empty() || destinationPath[0] != '/' || destinationPath.find("..") != std::string::npos)
             {
+                LOGWARN("Skipping invalid or traversing bind mount destination path: %s", destinationPath.c_str());
                 continue;
             }
 

@@ -92,6 +92,7 @@ namespace ralf
         if (!ensureMergedRootfsMountTargets(configFilePath, ociRootfsPath, config.mUserId, config.mGroupId))
         {
             LOGERR("Failed to prepare merged-rootfs mount targets for appInstanceId: %s", config.mAppInstanceId.c_str());
+            unmountOverlayfsIfExists(config.mAppInstanceId);
             return false;
         }
 
