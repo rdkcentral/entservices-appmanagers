@@ -83,10 +83,12 @@ namespace ralf
 
     constexpr const char *NETWORK_CONFIG_URN = "urn:rdk:config:network";
 
-    constexpr const char* NETWORK = "network";
+    constexpr const char *NETWORK = "network";
     constexpr const char *PORT = "port";
     constexpr const char *PROTOCOL = "protocol";
     constexpr const char *NAME = "name";
+    constexpr const char *NETWORKING = "networking";
+    constexpr const char *DNSMASQ = "dnsmasq";
 
     constexpr const char *MEMORY_CONFIG_URN = "urn:rdk:config:memory";
     constexpr const char *SYSTEM_MEMORY = "system";
