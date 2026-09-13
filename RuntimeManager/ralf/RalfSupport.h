@@ -131,6 +131,27 @@ namespace ralf
     bool removeDirectoryRecursively(const std::string &path);
 
     /**
+     * Ensures required destination paths exist inside the merged rootfs before
+     * Dobby bind mounts are applied.
+     *
+     * Behavior:
+     * - Scans OCI bind mounts and pre-creates destination files/directories.
+     * - Applies conditional requirements derived from plugin config.
+     *   Current rule: when rdkPlugins.networking.data.dnsmasq is false,
+     *   pre-create /etc/resolv.conf in rootfs.
+     *
+     * @param ociConfigRootNode Parsed OCI config root node.
+     * @param rootfsMountPath Path to merged rootfs mount directory.
+     * @param uid Ownership uid for created paths (0 means no chown).
+     * @param gid Ownership gid for created paths (0 means no chown).
+     * @return true on success, false on failure.
+     */
+    bool prepareMergedRootfsMountTargets(const Json::Value& ociConfigRootNode,
+                                         const std::string& rootfsMountPath,
+                                         const int uid,
+                                         const int gid);
+
+    /**
      * Function to add a bind mount entry to the OCI configuration.
      * @param ociConfigRootNode The root node of the OCI configuration JSON.
      * @param hostPath The path on the host to bind mount.

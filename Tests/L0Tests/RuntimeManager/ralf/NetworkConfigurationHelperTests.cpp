@@ -40,7 +40,6 @@ namespace {
     constexpr const char *PERMISSION_INTERNET_ENABLED = "internetEnabled";
     constexpr const char *PERMISSION_FIREBOLT_ENABLED = "fireboltEnabled";
     constexpr const char *PERMISSION_THUNDER_ENABLED = "thunderEnabled";
-    constexpr const char *NETWORKING         = "networking";
     constexpr const char *PUBLIC             = "public";
     constexpr const char *EXPORTED           = "exported";
     constexpr const char *IMPORTED           = "imported";
@@ -49,7 +48,6 @@ namespace {
     constexpr const char *IP                 = "ip";
     constexpr const char *DIRECTION_IN       = "in";
     constexpr const char *DIRECTION_OUT      = "out";
-    constexpr const char *DNSMASQ            = "dnsmasq";
     constexpr const char *HOST_TO_CONTAINER  = "hostToContainer";
     constexpr const char *CONTAINER_TO_HOST  = "containerToHost";
     constexpr const char *PORT_FORWARDING    = "portForwarding";
@@ -105,7 +103,7 @@ uint32_t Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_MapsAndD
     L0Test::ExpectTrue(tr, status,
                        "updateNetworkConfigurationNode() returns true for valid network rules");
 
-    const Json::Value& networkingData = ociConfigRootNode[ralf::RDKPLUGINS][NETWORKING][ralf::DATA];
+    const Json::Value& networkingData = ociConfigRootNode[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA];
     L0Test::ExpectTrue(tr, networkingData.isObject(), "Networking data node exists");
 
     const Json::Value& hostToContainer = networkingData[PORT_FORWARDING][HOST_TO_CONTAINER];
@@ -157,7 +155,7 @@ uint32_t Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_IgnoresM
                        "updateNetworkConfigurationNode() returns true even when malformed entries are present");
 
     const Json::Value& hostToContainer =
-        ociConfigRootNode[ralf::RDKPLUGINS][NETWORKING][ralf::DATA][PORT_FORWARDING][HOST_TO_CONTAINER];
+        ociConfigRootNode[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA][PORT_FORWARDING][HOST_TO_CONTAINER];
     L0Test::ExpectTrue(tr, hostToContainer.isArray() && 1u == hostToContainer.size(),
                        "Only valid entry is translated to hostToContainer");
     if (hostToContainer.isArray() && 1u == hostToContainer.size())
@@ -207,6 +205,7 @@ uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfigurati
     Json::Value ociConfigRootNode(Json::objectValue);
     Json::Value manifestRootNode(Json::objectValue);
     manifestRootNode[ralf::PERMISSIONS] = Json::Value(Json::arrayValue);
+    manifestRootNode[ralf::PERMISSIONS].append(ralf::PERMISSION_INTERNET);
     manifestRootNode[ralf::PERMISSIONS].append(ralf::PERMISSION_FIREBOLT);
 
     const std::string envVariables = "[\"FIREBOLT_ENDPOINT=ws://127.0.0.1:3473\"]";
@@ -216,10 +215,10 @@ uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfigurati
     L0Test::ExpectTrue(tr, status,
                        "updatePermissionBasedNetworkConfiguration() returns true for valid Firebolt loopback endpoint");
 
-    const Json::Value& networkingData = ociConfigRootNode[ralf::RDKPLUGINS][NETWORKING][ralf::DATA];
+    const Json::Value& networkingData = ociConfigRootNode[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA];
     L0Test::ExpectEqStr(tr, networkingData[ralf::TYPE].asString(), NETWORK_TYPE_NAT,
                         "Network type is forced to nat when permission-based networking is applied");
-    L0Test::ExpectTrue(tr, networkingData[DNSMASQ].asBool(), "dnsmasq is enabled for permission-based networking");
+    L0Test::ExpectTrue(tr, networkingData[ralf::DNSMASQ].asBool(), "dnsmasq is enabled for permission-based networking");
     L0Test::ExpectTrue(tr, networkingData[NETWORK_IPV4].asBool(), "ipv4 is enabled for permission-based networking");
     L0Test::ExpectTrue(tr, networkingData[NETWORK_IPV6].asBool(), "ipv6 is enabled for permission-based networking");
 
@@ -261,6 +260,74 @@ uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfigurati
     return tr.failures;
 }
 
+uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_NoRelevantPermissionsReturnsTrue()
+{
+    L0Test::TestResult tr;
+
+    Json::Value ociConfigRootNode(Json::objectValue);
+    Json::Value manifestRootNode(Json::objectValue);
+    manifestRootNode[ralf::PERMISSIONS] = Json::Value(Json::arrayValue);
+    manifestRootNode[ralf::PERMISSIONS].append("urn:rdk:permission:irrelevant");
+
+    const bool status = NetworkConfigurationHelper::updatePermissionBasedNetworkConfiguration(
+        ociConfigRootNode, manifestRootNode, std::string());
+    L0Test::ExpectTrue(tr, status,
+                       "updatePermissionBasedNetworkConfiguration() returns true when no relevant permissions are present");
+    L0Test::ExpectTrue(tr, !ociConfigRootNode.isMember(ralf::RDKPLUGINS),
+                       "No networking node is created when permissions do not require networking");
+
+    return tr.failures;
+}
+
+uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_InternetAlreadyFulfilledReturnsTrue()
+{
+    L0Test::TestResult tr;
+
+    Json::Value ociConfigRootNode(Json::objectValue);
+    Json::Value manifestRootNode(Json::objectValue);
+    manifestRootNode[ralf::PERMISSIONS] = Json::Value(Json::arrayValue);
+    manifestRootNode[ralf::PERMISSIONS].append(ralf::PERMISSION_INTERNET);
+
+    Json::Value& netData = ociConfigRootNode[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA];
+    netData[ralf::TYPE] = NETWORK_TYPE_NAT;
+    netData[ralf::DNSMASQ] = true;
+    netData[NETWORK_IPV4] = true;
+    netData[NETWORK_IPV6] = true;
+
+    const bool status = NetworkConfigurationHelper::updatePermissionBasedNetworkConfiguration(
+        ociConfigRootNode, manifestRootNode, std::string());
+    L0Test::ExpectTrue(tr, status,
+                       "updatePermissionBasedNetworkConfiguration() returns true when internet permission is already fulfilled");
+    L0Test::ExpectEqStr(tr, netData[ralf::TYPE].asString(), NETWORK_TYPE_NAT,
+                        "Existing nat type remains unchanged");
+    L0Test::ExpectTrue(tr, netData[NETWORK_IPV4].asBool(), "Existing ipv4 flag remains enabled");
+    L0Test::ExpectTrue(tr, netData[NETWORK_IPV6].asBool(), "Existing ipv6 flag remains enabled");
+
+    return tr.failures;
+}
+
+uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_InternetOnlyWithoutExistingNodeReturnsTrue()
+{
+    L0Test::TestResult tr;
+
+    Json::Value ociConfigRootNode(Json::objectValue);
+    Json::Value manifestRootNode(Json::objectValue);
+    manifestRootNode[ralf::PERMISSIONS] = Json::Value(Json::arrayValue);
+    manifestRootNode[ralf::PERMISSIONS].append(ralf::PERMISSION_INTERNET);
+
+    const bool status = NetworkConfigurationHelper::updatePermissionBasedNetworkConfiguration(
+        ociConfigRootNode, manifestRootNode, std::string());
+    L0Test::ExpectTrue(tr, status,
+                       "updatePermissionBasedNetworkConfiguration() returns true when internet permission requires only NAT/dnsmasq defaults");
+
+    const Json::Value& netData = ociConfigRootNode[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA];
+    L0Test::ExpectEqStr(tr, netData[ralf::TYPE].asString(), NETWORK_TYPE_NAT,
+                        "Networking data node is initialized to nat for internet permission");
+    L0Test::ExpectTrue(tr, netData[ralf::DNSMASQ].asBool(), "dnsmasq is enabled for internet permission");
+
+    return tr.failures;
+}
+
 uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_ParsesThunderHostPort()
 {
     L0Test::TestResult tr;
@@ -278,7 +345,7 @@ uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfigurati
                        "updatePermissionBasedNetworkConfiguration() returns true for THUNDER_ACCESS host:port form");
 
     const Json::Value& containerToHost =
-        ociConfigRootNode[ralf::RDKPLUGINS][NETWORKING][ralf::DATA][PORT_FORWARDING][CONTAINER_TO_HOST];
+        ociConfigRootNode[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA][PORT_FORWARDING][CONTAINER_TO_HOST];
     L0Test::ExpectTrue(tr, containerToHost.isArray() && 1u == containerToHost.size(),
                        "Thunder loopback endpoint generates one containerToHost rule");
     if (containerToHost.isArray() && 1u == containerToHost.size())
@@ -310,13 +377,33 @@ uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfigurati
     L0Test::ExpectTrue(tr, !status,
                        "updatePermissionBasedNetworkConfiguration() returns false for invalid Thunder endpoint when THUNDER permission is requested");
 
-    const Json::Value& networkingData = ociConfigRootNode[ralf::RDKPLUGINS][NETWORKING][ralf::DATA];
+    const Json::Value& networkingData = ociConfigRootNode[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA];
     L0Test::ExpectTrue(tr, !networkingData.isMember(PORT_FORWARDING) ||
                            !networkingData[PORT_FORWARDING].isMember(CONTAINER_TO_HOST),
                        "No containerToHost rule is created for invalid Thunder endpoint");
 
     unsetenv(ralf::THUNDER_ACCESS_ENV_KEY);
 
+    return tr.failures;
+}
+
+uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_ThunderNonLoopbackReturnsFalse()
+{
+    L0Test::TestResult tr;
+
+    Json::Value ociConfigRootNode(Json::objectValue);
+    Json::Value manifestRootNode(Json::objectValue);
+    manifestRootNode[ralf::PERMISSIONS] = Json::Value(Json::arrayValue);
+    manifestRootNode[ralf::PERMISSIONS].append(ralf::PERMISSION_THUNDER);
+
+    setenv(ralf::THUNDER_ACCESS_ENV_KEY, "192.168.0.5:9998", 1);
+
+    const bool status = NetworkConfigurationHelper::updatePermissionBasedNetworkConfiguration(
+        ociConfigRootNode, manifestRootNode, std::string());
+    L0Test::ExpectTrue(tr, !status,
+                       "updatePermissionBasedNetworkConfiguration() returns false when THUNDER_ACCESS is non-loopback");
+
+    unsetenv(ralf::THUNDER_ACCESS_ENV_KEY);
     return tr.failures;
 }
 
@@ -334,10 +421,28 @@ uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfigurati
     L0Test::ExpectTrue(tr, !status,
                        "updatePermissionBasedNetworkConfiguration() returns false when FIREBOLT permission is requested but endpoint is absent");
 
-    const Json::Value& networkingData = ociConfigRootNode[ralf::RDKPLUGINS][NETWORKING][ralf::DATA];
+    const Json::Value& networkingData = ociConfigRootNode[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA];
     L0Test::ExpectTrue(tr, !networkingData.isMember(PORT_FORWARDING) ||
                            !networkingData[PORT_FORWARDING].isMember(CONTAINER_TO_HOST),
                        "No containerToHost rule is created when FIREBOLT endpoint is absent");
+
+    return tr.failures;
+}
+
+uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_FireboltNonLoopbackReturnsFalse()
+{
+    L0Test::TestResult tr;
+
+    Json::Value ociConfigRootNode(Json::objectValue);
+    Json::Value manifestRootNode(Json::objectValue);
+    manifestRootNode[ralf::PERMISSIONS] = Json::Value(Json::arrayValue);
+    manifestRootNode[ralf::PERMISSIONS].append(ralf::PERMISSION_FIREBOLT);
+
+    const std::string envVariables = "[\"FIREBOLT_ENDPOINT=ws://10.0.0.9:3473\"]";
+    const bool status = NetworkConfigurationHelper::updatePermissionBasedNetworkConfiguration(
+        ociConfigRootNode, manifestRootNode, envVariables);
+    L0Test::ExpectTrue(tr, !status,
+                       "updatePermissionBasedNetworkConfiguration() returns false when FIREBOLT endpoint is non-loopback");
 
     return tr.failures;
 }
@@ -354,7 +459,7 @@ uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfigurati
     Json::Value existingRule(Json::objectValue);
     existingRule[ralf::PORT] = 3473;
     existingRule[ralf::PROTOCOL] = "tcp";
-    ociConfigRootNode[ralf::RDKPLUGINS][NETWORKING][ralf::DATA][PORT_FORWARDING][CONTAINER_TO_HOST].append(existingRule);
+    ociConfigRootNode[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA][PORT_FORWARDING][CONTAINER_TO_HOST].append(existingRule);
 
     const std::string envVariables = "[\"FIREBOLT_ENDPOINT=ws://127.0.0.1:3473\"]";
     const bool status = NetworkConfigurationHelper::updatePermissionBasedNetworkConfiguration(
@@ -363,7 +468,7 @@ uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfigurati
                        "updatePermissionBasedNetworkConfiguration() returns true when FIREBOLT rule already exists");
 
     const Json::Value& containerToHost =
-        ociConfigRootNode[ralf::RDKPLUGINS][NETWORKING][ralf::DATA][PORT_FORWARDING][CONTAINER_TO_HOST];
+        ociConfigRootNode[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA][PORT_FORWARDING][CONTAINER_TO_HOST];
     L0Test::ExpectTrue(tr, containerToHost.isArray() && 1u == containerToHost.size(),
                        "Duplicate FIREBOLT rule is skipped and existing containerToHost entry is retained");
 
@@ -383,12 +488,12 @@ uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfigurati
     Json::Value existingFireboltRule(Json::objectValue);
     existingFireboltRule[ralf::PORT] = 3473;
     existingFireboltRule[ralf::PROTOCOL] = "tcp";
-    ociConfigRootNode[ralf::RDKPLUGINS][NETWORKING][ralf::DATA][PORT_FORWARDING][CONTAINER_TO_HOST].append(existingFireboltRule);
+    ociConfigRootNode[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA][PORT_FORWARDING][CONTAINER_TO_HOST].append(existingFireboltRule);
 
     Json::Value existingThunderRule(Json::objectValue);
     existingThunderRule[ralf::PORT] = 9998;
     existingThunderRule[ralf::PROTOCOL] = "tcp";
-    ociConfigRootNode[ralf::RDKPLUGINS][NETWORKING][ralf::DATA][PORT_FORWARDING][CONTAINER_TO_HOST].append(existingThunderRule);
+    ociConfigRootNode[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA][PORT_FORWARDING][CONTAINER_TO_HOST].append(existingThunderRule);
 
     const std::string envVariables = "[\"FIREBOLT_ENDPOINT=ws://127.0.0.1:3473\"]";
     setenv(ralf::THUNDER_ACCESS_ENV_KEY, "127.0.0.1:9998", 1);
@@ -399,11 +504,52 @@ uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfigurati
                        "updatePermissionBasedNetworkConfiguration() returns true when all permission-derived rules already exist");
 
     const Json::Value& containerToHost =
-        ociConfigRootNode[ralf::RDKPLUGINS][NETWORKING][ralf::DATA][PORT_FORWARDING][CONTAINER_TO_HOST];
+        ociConfigRootNode[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA][PORT_FORWARDING][CONTAINER_TO_HOST];
     L0Test::ExpectTrue(tr, containerToHost.isArray() && 2u == containerToHost.size(),
                        "No duplicate entries are appended when FIREBOLT and THUNDER rules already exist");
 
     unsetenv(ralf::THUNDER_ACCESS_ENV_KEY);
+    return tr.failures;
+}
+
+uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_IgnoresInvalidSignedPortInDuplicateCheck()
+{
+    L0Test::TestResult tr;
+
+    Json::Value ociConfigRootNode(Json::objectValue);
+    Json::Value manifestRootNode(Json::objectValue);
+    manifestRootNode[ralf::PERMISSIONS] = Json::Value(Json::arrayValue);
+    manifestRootNode[ralf::PERMISSIONS].append(ralf::PERMISSION_FIREBOLT);
+
+    Json::Value invalidExistingRule(Json::objectValue);
+    invalidExistingRule[ralf::PORT] = -1;
+    invalidExistingRule[ralf::PROTOCOL] = "tcp";
+    ociConfigRootNode[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA][PORT_FORWARDING][CONTAINER_TO_HOST].append(invalidExistingRule);
+
+    const std::string envVariables = "[\"FIREBOLT_ENDPOINT=ws://127.0.0.1:3473\"]";
+    const bool status = NetworkConfigurationHelper::updatePermissionBasedNetworkConfiguration(
+        ociConfigRootNode, manifestRootNode, envVariables);
+    L0Test::ExpectTrue(tr, status,
+                       "updatePermissionBasedNetworkConfiguration() returns true and ignores invalid signed port entries during duplicate detection");
+
+    const Json::Value& containerToHost =
+        ociConfigRootNode[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA][PORT_FORWARDING][CONTAINER_TO_HOST];
+    L0Test::ExpectTrue(tr, containerToHost.isArray() && 2u == containerToHost.size(),
+                       "Valid Firebolt rule is appended even when an existing invalid negative port rule is present");
+
+    bool found3473 = false;
+    for (const auto& rule : containerToHost)
+    {
+        if (rule.isMember(ralf::PORT) && rule[ralf::PORT].isUInt() &&
+            3473u == rule[ralf::PORT].asUInt())
+        {
+            found3473 = true;
+            break;
+        }
+    }
+    L0Test::ExpectTrue(tr, found3473,
+                       "New Firebolt loopback rule with port 3473 is present");
+
     return tr.failures;
 }
 
@@ -444,7 +590,7 @@ uint32_t Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_Generate
     L0Test::ExpectTrue(tr, status,
                        "updateNetworkConfigurationNode() returns true for mixed valid and malformed network rules");
 
-    const Json::Value& pluginNode = ociConfigRootNode[ralf::RDKPLUGINS][NETWORKING];
+    const Json::Value& pluginNode = ociConfigRootNode[ralf::RDKPLUGINS][ralf::NETWORKING];
     L0Test::ExpectTrue(tr, pluginNode.isObject(),
                        "networking plugin node is generated under rdkPlugins.networking");
     L0Test::ExpectTrue(tr, pluginNode[REQUIRED].asBool(),
@@ -487,13 +633,53 @@ uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfigurati
     L0Test::ExpectTrue(tr, status,
                        "updatePermissionBasedNetworkConfiguration() returns true when Firebolt and Thunder loopback endpoints are valid");
 
-    const Json::Value& netData = ociConfigRootNode[ralf::RDKPLUGINS][NETWORKING][ralf::DATA];
-    L0Test::ExpectEqStr(tr, netData[ralf::TYPE].asString(), NETWORK_TYPE_NAT, "network type remains nat");
-    L0Test::ExpectTrue(tr, netData[DNSMASQ].asBool(), "dnsmasq remains enabled");
-    L0Test::ExpectTrue(tr, netData[NETWORK_IPV4].asBool(), "ipv4 remains enabled");
-    L0Test::ExpectTrue(tr, netData[NETWORK_IPV6].asBool(), "ipv6 remains enabled");
+    const Json::Value& netData = ociConfigRootNode[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA];
+    L0Test::ExpectEqStr(tr, netData[ralf::TYPE].asString(), NETWORK_TYPE_NONE,
+                        "network type is normalized to none when internet permission is absent");
+    L0Test::ExpectTrue(tr, netData[ralf::DNSMASQ].isBool() && !netData[ralf::DNSMASQ].asBool(),
+                       "dnsmasq remains disabled when internet permission is absent");
+    L0Test::ExpectTrue(tr, netData[NETWORK_IPV4].isBool() && netData[NETWORK_IPV4].asBool(),
+                       "ipv4 is normalized to true for networking baseline");
+    L0Test::ExpectTrue(tr, netData[NETWORK_IPV6].isBool() && netData[NETWORK_IPV6].asBool(),
+                       "ipv6 is normalized to true for networking baseline");
 
     unsetenv(ralf::THUNDER_ACCESS_ENV_KEY);
+
+    return tr.failures;
+}
+
+uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_PreservesDnsmasqFalseWithoutInternetPermission()
+{
+    L0Test::TestResult tr;
+
+    Json::Value ociConfigRootNode(Json::objectValue);
+    Json::Value manifestRootNode(Json::objectValue);
+
+    // Pre-seed networking data to represent a dnsmasq-disabled NAT profile.
+    Json::Value& netData = ociConfigRootNode[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA];
+    netData[ralf::TYPE] = NETWORK_TYPE_NAT;
+    netData[ralf::DNSMASQ] = false;
+    netData[NETWORK_IPV4] = true;
+    netData[NETWORK_IPV6] = false;
+
+    manifestRootNode[ralf::PERMISSIONS] = Json::Value(Json::arrayValue);
+    manifestRootNode[ralf::PERMISSIONS].append(ralf::PERMISSION_FIREBOLT);
+
+    const std::string envVariables = "[\"FIREBOLT_ENDPOINT=ws://127.0.0.1:3473\"]";
+    const bool status = NetworkConfigurationHelper::updatePermissionBasedNetworkConfiguration(
+        ociConfigRootNode, manifestRootNode, envVariables);
+
+    L0Test::ExpectTrue(tr, status,
+                       "updatePermissionBasedNetworkConfiguration() succeeds for firebolt-only permission with pre-existing dnsmasq=false");
+
+    L0Test::ExpectEqStr(tr, netData[ralf::TYPE].asString(), NETWORK_TYPE_NAT,
+                        "network type remains nat when internet permission is absent");
+    L0Test::ExpectTrue(tr, netData[ralf::DNSMASQ].isBool() && !netData[ralf::DNSMASQ].asBool(),
+                       "dnsmasq=false is preserved when internet permission is absent");
+    L0Test::ExpectTrue(tr, netData[NETWORK_IPV4].isBool() && netData[NETWORK_IPV4].asBool(),
+                       "ipv4 state remains unchanged without internet permission");
+    L0Test::ExpectTrue(tr, netData[NETWORK_IPV6].isBool() && netData[NETWORK_IPV6].asBool(),
+                       "ipv6 is normalized to true even when internet permission is absent");
 
     return tr.failures;
 }
@@ -515,7 +701,7 @@ uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfigurati
         ociConfigRootNode, manifestRootNode, envVariables);
     L0Test::ExpectTrue(tr, status, "updatePermissionBasedNetworkConfiguration() returns true for loopback host permissions");
 
-    const Json::Value& networking = ociConfigRootNode[ralf::RDKPLUGINS][NETWORKING][ralf::DATA];
+    const Json::Value& networking = ociConfigRootNode[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA];
     L0Test::ExpectTrue(tr, networking[PORT_FORWARDING][CONTAINER_TO_HOST].isArray(), "loopback host ports are mapped to containerToHost");
     L0Test::ExpectTrue(tr, 2u == networking[PORT_FORWARDING][CONTAINER_TO_HOST].size(), "both Firebolt and Thunder loopback ports are forwarded");
 
@@ -569,7 +755,7 @@ uint32_t Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_Imported
     L0Test::ExpectTrue(tr, status,
                        "updateNetworkConfigurationNode() returns true for imported endpoint translation matrix");
 
-    const Json::Value& networkingData = ociConfigRootNode[ralf::RDKPLUGINS][NETWORKING][ralf::DATA];
+    const Json::Value& networkingData = ociConfigRootNode[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA];
 
     const Json::Value& containerToHost = networkingData[PORT_FORWARDING][CONTAINER_TO_HOST];
     L0Test::ExpectTrue(tr, containerToHost.isArray() && 1u == containerToHost.size(),

@@ -889,3 +889,103 @@ uint32_t Test_Ralf_GenerateOCIRootfs_FailsDueToNoMountSupport()
 
     return tr.failures;
 }
+
+uint32_t Test_Ralf_PrepareMergedRootfsMountTargets_DnsmasqFalseCreatesResolvConf()
+{
+    L0Test::TestResult tr;
+
+    const std::string rootBase = "/tmp/ralf_l0test_mount_targets_dnsmasq_false";
+    const std::string rootfsPath = rootBase + "/rootfs";
+    if (ralf::checkIfPathExists(rootBase))
+    {
+        ralf::removeDirectoryRecursively(rootBase);
+    }
+    ralf::create_directories(rootfsPath);
+
+    Json::Value ociConfig(Json::objectValue);
+    ociConfig["rdkPlugins"]["networking"]["data"]["dnsmasq"] = false;
+
+    const bool status = ralf::prepareMergedRootfsMountTargets(ociConfig, rootfsPath, 0, 0);
+    L0Test::ExpectTrue(tr, status,
+                       "prepareMergedRootfsMountTargets() returns true when creating dnsmasq conditional paths");
+    L0Test::ExpectTrue(tr, ralf::checkIfPathExists(rootfsPath + "/etc/resolv.conf"),
+                       "dnsmasq=false creates /etc/resolv.conf in merged rootfs");
+
+    ralf::removeDirectoryRecursively(rootBase);
+    return tr.failures;
+}
+
+uint32_t Test_Ralf_PrepareMergedRootfsMountTargets_DnsmasqTrueSkipsResolvConf()
+{
+    L0Test::TestResult tr;
+
+    const std::string rootBase = "/tmp/ralf_l0test_mount_targets_dnsmasq_true";
+    const std::string rootfsPath = rootBase + "/rootfs";
+    if (ralf::checkIfPathExists(rootBase))
+    {
+        ralf::removeDirectoryRecursively(rootBase);
+    }
+    ralf::create_directories(rootfsPath);
+
+    Json::Value ociConfig(Json::objectValue);
+    ociConfig["rdkPlugins"]["networking"]["data"]["dnsmasq"] = true;
+
+    const bool status = ralf::prepareMergedRootfsMountTargets(ociConfig, rootfsPath, 0, 0);
+    L0Test::ExpectTrue(tr, status,
+                       "prepareMergedRootfsMountTargets() returns true when dnsmasq is enabled");
+    L0Test::ExpectTrue(tr, !ralf::checkIfPathExists(rootfsPath + "/etc/resolv.conf"),
+                       "dnsmasq=true does not force-create /etc/resolv.conf");
+
+    ralf::removeDirectoryRecursively(rootBase);
+    return tr.failures;
+}
+
+uint32_t Test_Ralf_PrepareMergedRootfsMountTargets_CreatesBindDestinationFileAndDirectory()
+{
+    L0Test::TestResult tr;
+
+    const std::string rootBase = "/tmp/ralf_l0test_mount_targets_bind";
+    const std::string rootfsPath = rootBase + "/rootfs";
+    const std::string sourceDir = "/tmp/ralf_l0test_source_dir";
+    const std::string sourceFile = "/tmp/ralf_l0test_source_file";
+
+    if (ralf::checkIfPathExists(rootBase))
+    {
+        ralf::removeDirectoryRecursively(rootBase);
+    }
+    if (ralf::checkIfPathExists(sourceDir))
+    {
+        ralf::removeDirectoryRecursively(sourceDir);
+    }
+    ralf::create_directories(rootfsPath);
+    ralf::create_directories(sourceDir);
+    WriteFile(sourceFile, "host-file");
+
+    Json::Value ociConfig(Json::objectValue);
+    ociConfig["mounts"] = Json::Value(Json::arrayValue);
+
+    Json::Value fileMount(Json::objectValue);
+    fileMount["type"] = "bind";
+    fileMount["source"] = sourceFile;
+    fileMount["destination"] = "/etc/custom.conf";
+    ociConfig["mounts"].append(fileMount);
+
+    Json::Value dirMount(Json::objectValue);
+    dirMount["type"] = "bind";
+    dirMount["source"] = sourceDir;
+    dirMount["destination"] = "/opt/customdir";
+    ociConfig["mounts"].append(dirMount);
+
+    const bool status = ralf::prepareMergedRootfsMountTargets(ociConfig, rootfsPath, 0, 0);
+    L0Test::ExpectTrue(tr, status,
+                       "prepareMergedRootfsMountTargets() returns true for bind destination preparation");
+    L0Test::ExpectTrue(tr, ralf::checkIfPathExists(rootfsPath + "/etc/custom.conf"),
+                       "file bind destination is pre-created in merged rootfs");
+    L0Test::ExpectTrue(tr, ralf::checkIfPathExists(rootfsPath + "/opt/customdir"),
+                       "directory bind destination is pre-created in merged rootfs");
+
+    ralf::removeDirectoryRecursively(rootBase);
+    ralf::removeDirectoryRecursively(sourceDir);
+    ::remove(sourceFile.c_str());
+    return tr.failures;
+}
