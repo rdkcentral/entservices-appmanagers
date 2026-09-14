@@ -32,7 +32,7 @@ namespace WPEFramework
             public:
                 StateTransitionHandler(const StateTransitionHandler& obj) = delete;
                 static StateTransitionHandler* getInstance();
-                static void cleanupSingelton();
+                static void cleanupSingleton();
                 ~StateTransitionHandler ();
                 bool initialize();
 		void terminate();

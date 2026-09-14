@@ -42,7 +42,7 @@ namespace WPEFramework
             return mInstance;
 	}
 
-        void RequestHandler::cleanupSingelton()
+        void RequestHandler::cleanupSingleton()
 	{
             std::lock_guard<std::mutex> lock(gRequestHandlerInstanceMutex);
             if (nullptr != mInstance)
@@ -87,7 +87,7 @@ namespace WPEFramework
         void RequestHandler::terminate()
 	{
             StateTransitionHandler::getInstance()->terminate();
-            StateTransitionHandler::cleanupSingelton();
+            StateTransitionHandler::cleanupSingleton();
             if (mWindowManagerHandler)
             {
                 mWindowManagerHandler->terminate();

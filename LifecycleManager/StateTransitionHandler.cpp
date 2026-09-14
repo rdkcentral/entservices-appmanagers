@@ -60,7 +60,7 @@ namespace WPEFramework
             return mInstance;
 	}
 
-        void StateTransitionHandler::cleanupSingelton()
+        void StateTransitionHandler::cleanupSingleton()
 	{
             std::lock_guard<std::mutex> lock(gStateTransitionHandlerInstanceMutex);
             if (nullptr != mInstance)

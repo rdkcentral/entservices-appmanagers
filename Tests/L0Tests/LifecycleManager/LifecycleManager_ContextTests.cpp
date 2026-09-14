@@ -1239,14 +1239,14 @@ uint32_t Test_RequestHandler_GetWindowManagerHandlerReturnsNull()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// RequestHandler::cleanupSingelton() destroys mInstance so the next
+// RequestHandler::cleanupSingleton() destroys mInstance so the next
 // getInstance() call constructs a genuinely fresh object (RDKEMW-15824).
 // We prove "fresh" without relying on pointer-address reuse (the allocator
 // can legitimately hand back the same freed address) by observing that a
 // member set via initialize() reverts to its default-constructed value.
 // ─────────────────────────────────────────────────────────────────────────────
 
-uint32_t Test_RequestHandler_CleanupSingeltonProducesFreshInstance()
+uint32_t Test_RequestHandler_CleanupSingletonProducesFreshInstance()
 {
     L0Test::TestResult tr;
 
@@ -1261,15 +1261,15 @@ uint32_t Test_RequestHandler_CleanupSingeltonProducesFreshInstance()
     // Mirrors production shutdown order (LifecycleManagerImplementation::terminate()):
     // terminate() the live instance, then destroy the singleton itself.
     WPEFramework::Plugin::RequestHandler::getInstance()->terminate();
-    WPEFramework::Plugin::RequestHandler::cleanupSingelton();
+    WPEFramework::Plugin::RequestHandler::cleanupSingleton();
 
     // terminate() does not clear mEventHandler on the (now-deleted) old instance,
-    // so a non-null value here would mean cleanupSingelton() failed to delete it
+    // so a non-null value here would mean cleanupSingleton() failed to delete it
     // and getInstance() is still handing back the old object.
     WPEFramework::Plugin::IEventHandler* eventHandlerAfterCleanup =
         WPEFramework::Plugin::RequestHandler::getInstance()->getEventHandler();
     L0Test::ExpectTrue(tr, eventHandlerAfterCleanup == nullptr,
-        "cleanupSingelton() deletes the old instance so getInstance() returns a freshly constructed one");
+        "cleanupSingleton() deletes the old instance so getInstance() returns a freshly constructed one");
 
     return tr.failures;
 }
@@ -1286,7 +1286,7 @@ uint32_t Test_RequestHandler_GetInstanceIsThreadSafe()
 
     // Start from a clean slate so every thread races on first construction.
     WPEFramework::Plugin::RequestHandler::getInstance()->terminate();
-    WPEFramework::Plugin::RequestHandler::cleanupSingelton();
+    WPEFramework::Plugin::RequestHandler::cleanupSingleton();
 
     constexpr int kThreadCount = 16;
     std::vector<WPEFramework::Plugin::RequestHandler*> results(kThreadCount, nullptr);
@@ -1316,7 +1316,7 @@ uint32_t Test_RequestHandler_GetInstanceIsThreadSafe()
         "concurrent getInstance() calls all observe the same instance (no duplicate-allocation race)");
 
     // Leave the singleton clean for subsequent tests.
-    WPEFramework::Plugin::RequestHandler::cleanupSingelton();
+    WPEFramework::Plugin::RequestHandler::cleanupSingleton();
 
     return tr.failures;
 }
@@ -1341,22 +1341,22 @@ uint32_t Test_StateTransitionHandler_GetInstanceReturnsSameInstance()
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// StateTransitionHandler::cleanupSingelton() deletes mInstance and leaves the
+// StateTransitionHandler::cleanupSingleton() deletes mInstance and leaves the
 // singleton safe to use again via getInstance() (RDKEMW-15824).
 // ─────────────────────────────────────────────────────────────────────────────
 
-uint32_t Test_StateTransitionHandler_CleanupSingeltonThenGetInstanceIsSafe()
+uint32_t Test_StateTransitionHandler_CleanupSingletonThenGetInstanceIsSafe()
 {
     L0Test::TestResult tr;
 
     WPEFramework::Plugin::StateTransitionHandler::getInstance();
-    WPEFramework::Plugin::StateTransitionHandler::cleanupSingelton();
+    WPEFramework::Plugin::StateTransitionHandler::cleanupSingleton();
 
     WPEFramework::Plugin::StateTransitionHandler* afterCleanup =
         WPEFramework::Plugin::StateTransitionHandler::getInstance();
 
     L0Test::ExpectTrue(tr, afterCleanup != nullptr,
-        "getInstance() safely reconstructs the singleton after cleanupSingelton()");
+        "getInstance() safely reconstructs the singleton after cleanupSingleton()");
 
     return tr.failures;
 }
@@ -1369,7 +1369,7 @@ uint32_t Test_StateTransitionHandler_GetInstanceIsThreadSafe()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::StateTransitionHandler::cleanupSingelton();
+    WPEFramework::Plugin::StateTransitionHandler::cleanupSingleton();
 
     constexpr int kThreadCount = 16;
     std::vector<WPEFramework::Plugin::StateTransitionHandler*> results(kThreadCount, nullptr);
