@@ -147,6 +147,11 @@ extern uint32_t Test_StateHandler_InvalidTransitionReturnsFalse();
 extern uint32_t Test_RequestHandler_LaunchDelegatesToUpdateState();
 extern uint32_t Test_RequestHandler_SendIntentStoresIntentOnContext();
 extern uint32_t Test_RequestHandler_GetWindowManagerHandlerReturnsNull();
+extern uint32_t Test_RequestHandler_CleanupSingeltonProducesFreshInstance();
+extern uint32_t Test_RequestHandler_GetInstanceIsThreadSafe();
+extern uint32_t Test_StateTransitionHandler_GetInstanceReturnsSameInstance();
+extern uint32_t Test_StateTransitionHandler_CleanupSingeltonThenGetInstanceIsSafe();
+extern uint32_t Test_StateTransitionHandler_GetInstanceIsThreadSafe();
 extern uint32_t Test_AppCtx_GetRequestTypeDefaultIsNone();
 extern uint32_t Test_StateHandler_ChangeStateLoadingToTerminatingPath();
 
@@ -289,6 +294,11 @@ int main()
         { "RequestHandler_LaunchDelegatesToUpdateState",                         Test_RequestHandler_LaunchDelegatesToUpdateState },
         { "RequestHandler_SendIntentStoresIntentOnContext",                       Test_RequestHandler_SendIntentStoresIntentOnContext },
         { "RequestHandler_GetWindowManagerHandlerReturnsNull",                   Test_RequestHandler_GetWindowManagerHandlerReturnsNull },
+        { "RequestHandler_CleanupSingeltonProducesFreshInstance",                Test_RequestHandler_CleanupSingeltonProducesFreshInstance },
+        { "RequestHandler_GetInstanceIsThreadSafe",                              Test_RequestHandler_GetInstanceIsThreadSafe },
+        { "StateTransitionHandler_GetInstanceReturnsSameInstance",               Test_StateTransitionHandler_GetInstanceReturnsSameInstance },
+        { "StateTransitionHandler_CleanupSingeltonThenGetInstanceIsSafe",        Test_StateTransitionHandler_CleanupSingeltonThenGetInstanceIsSafe },
+        { "StateTransitionHandler_GetInstanceIsThreadSafe",                      Test_StateTransitionHandler_GetInstanceIsThreadSafe },
         // ── Telemetry tests ──────────────────────────────────────────────────
         { "TelemetryMetricsClient_IsAvailableReturnsTrue",                       Test_TelemetryMetricsClient_IsAvailableReturnsTrue },
         { "TelemetryMetricsClient_EnsureReturnsErrorNone",                       Test_TelemetryMetricsClient_EnsureReturnsErrorNone },
