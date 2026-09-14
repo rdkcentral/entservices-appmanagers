@@ -989,3 +989,56 @@ uint32_t Test_Ralf_PrepareMergedRootfsMountTargets_CreatesBindDestinationFileAnd
     ::remove(sourceFile.c_str());
     return tr.failures;
 }
+
+uint32_t Test_Ralf_PrepareMergedRootfsMountTargets_SkipsNestedBindUnderTmpfsAncestor()
+{
+    L0Test::TestResult tr;
+
+    const std::string rootBase = "/tmp/ralf_l0test_mount_targets_nested_tmpfs";
+    const std::string rootfsPath = rootBase + "/rootfs";
+    const std::string sourceDir = "/tmp/ralf_l0test_source_nested_tmpfs";
+
+    if (ralf::checkIfPathExists(rootBase))
+    {
+        ralf::removeDirectoryRecursively(rootBase);
+    }
+    if (ralf::checkIfPathExists(sourceDir))
+    {
+        ralf::removeDirectoryRecursively(sourceDir);
+    }
+
+    ralf::create_directories(rootfsPath);
+    ralf::create_directories(sourceDir);
+
+    Json::Value ociConfig(Json::objectValue);
+    ociConfig["mounts"] = Json::Value(Json::arrayValue);
+
+    Json::Value tmpfsMount(Json::objectValue);
+    tmpfsMount["type"] = "tmpfs";
+    tmpfsMount["destination"] = "/tmp";
+    ociConfig["mounts"].append(tmpfsMount);
+
+    Json::Value nestedBindMount(Json::objectValue);
+    nestedBindMount["type"] = "bind";
+    nestedBindMount["source"] = sourceDir;
+    nestedBindMount["destination"] = "/tmp/rlto-test";
+    ociConfig["mounts"].append(nestedBindMount);
+
+    Json::Value regularBindMount(Json::objectValue);
+    regularBindMount["type"] = "bind";
+    regularBindMount["source"] = sourceDir;
+    regularBindMount["destination"] = "/opt/regular-dir";
+    ociConfig["mounts"].append(regularBindMount);
+
+    const bool status = ralf::prepareMergedRootfsMountTargets(ociConfig, rootfsPath, 0, 0);
+    L0Test::ExpectTrue(tr, status,
+                       "prepareMergedRootfsMountTargets() succeeds when nested bind target is under tmpfs ancestor mount");
+    L0Test::ExpectTrue(tr, !ralf::checkIfPathExists(rootfsPath + "/tmp/rlto-test"),
+                       "nested bind destination under tmpfs ancestor is not pre-created in merged rootfs");
+    L0Test::ExpectTrue(tr, ralf::checkIfPathExists(rootfsPath + "/opt/regular-dir"),
+                       "non-masked bind destination is still pre-created in merged rootfs");
+
+    ralf::removeDirectoryRecursively(rootBase);
+    ralf::removeDirectoryRecursively(sourceDir);
+    return tr.failures;
+}
