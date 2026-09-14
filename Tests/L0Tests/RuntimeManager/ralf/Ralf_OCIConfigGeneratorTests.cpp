@@ -30,10 +30,12 @@
 #include <cstdint>
 #include <fstream>
 #include <iostream>
+#include <sstream>
 #include <string>
 #include <cstdio>
 #include <cstdlib>
 #include <sys/stat.h>
+#include <json/json.h>
 
 #define private public
 #include "ralf/RalfOCIConfigGenerator.h"
