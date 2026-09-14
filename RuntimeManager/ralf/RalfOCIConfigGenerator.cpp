@@ -22,6 +22,7 @@
 #include "RalfOCIConfigGenerator.h"
 #include "RalfSupport.h"
 #include "OCISpecConstants.h"
+#include "NetworkConfigurationHelper.h"
 #include <fstream>
 
 #define PERSIST_STORAGE_PATH "/data"
@@ -44,7 +45,6 @@ namespace ralf
             LOGERR("Failed to load Ralf graphics config JSON from file: %s", RALF_GRAPHICS_LAYER_CONFIG.c_str());
             return false;
         }
-
         // Apply graphics configuration
         if (!applyGraphicsConfigToOCIConfig(ociConfigRootNode, graphicsConfigNode))
         {
@@ -60,7 +60,7 @@ namespace ralf
                 LOGERR("Failed to load Ralf package config JSON from file: %s", ralfPkgInfo.first.c_str());
                 return false;
             }
-            if (!applyConfigurationToOCIConfig(ociConfigRootNode, ralfPackageConfigNode))
+            if (!applyConfigurationToOCIConfig(ociConfigRootNode, ralfPackageConfigNode, runtimeConfigObject.envVariables))
             {
                 LOGERR("Failed to apply Ralf package config to OCI config for file: %s", ralfPkgInfo.first.c_str());
                 return false;
@@ -68,6 +68,7 @@ namespace ralf
             // Apply permissions if exists
             // TODO tracked under RDKEMW-13995
         }
+
         if (generateHooksForOCIConfig(ociConfigRootNode) == false)
         {
             LOGERR("Failed to generate hooks for OCI config");
@@ -91,14 +92,15 @@ namespace ralf
         addThunderAccessToPrivilegedApps(ociConfigRootNode);
         return saveOCIConfigToFile(ociConfigRootNode, config.mUserId, config.mGroupId);
     }
+
     void RalfOCIConfigGenerator::addThunderAccessToPrivilegedApps(Json::Value &ociConfigRootNode)
     {
-        const char* thunderaccess = getenv("THUNDER_ACCESS");
+        const char* thunderaccess = getenv(THUNDER_ACCESS_ENV_KEY);
         if (nullptr != thunderaccess)
         {
             //TODO  this should be checked against urn:rdk:permission:thunder capability before adding to environment
-            addToEnvironment(ociConfigRootNode, "THUNDER_ACCESS", thunderaccess);
-            LOGINFO("THUNDER_ACCESS environment variable is set to: %s", thunderaccess);
+            addToEnvironment(ociConfigRootNode, THUNDER_ACCESS_ENV_KEY, thunderaccess);
+            LOGINFO("%s environment variable is set to: %s", THUNDER_ACCESS_ENV_KEY, thunderaccess);
         }
     }
 
@@ -107,7 +109,7 @@ namespace ralf
         // Override the default log file path in the generated OCI config with an app-specific path.
         // The updated entry is rdkPlugins->logging->data->fileOptions->path.
         std::string logFilePath = appStoragePath + "/" + appId + ".log";
-        ociConfigRootNode[RDKPLUGINS][LOGGING][LOG_DATA][LOG_FILE_OPTIONS][PATH] = logFilePath;
+        ociConfigRootNode[RDKPLUGINS][LOGGING][DATA][LOG_FILE_OPTIONS][PATH] = logFilePath;
     }
 
     bool RalfOCIConfigGenerator::applyRuntimeAndAppConfigToOCIConfig(Json::Value &ociConfigRootNode, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject, const WPEFramework::Plugin::ApplicationConfiguration &appConfig)
@@ -171,6 +173,7 @@ namespace ralf
         LOGDBG("Mounted rialto socket path %s to container path %s\n", rialtoSocketPath.c_str(), rialtoSocketPath.c_str());
         return status;
     }
+
     bool RalfOCIConfigGenerator::addAppStorageToOCIConfig(Json::Value &ociConfigRootNode, const std::string &appStoragePath)
     {
         bool status = false;
@@ -240,7 +243,6 @@ namespace ralf
         std::ofstream outFile(mConfigFilePath.c_str());
         if (outFile)
         {
-
             outFile << ociConfigJson;
             outFile.close();
             // Change ownership to uid:gid
@@ -248,7 +250,10 @@ namespace ralf
             {
                 LOGERR("Failed to change ownership of OCI config file %s to %d:%d\n", mConfigFilePath.c_str(), uid, gid);
             }
-            status = true;
+            else
+            {
+                status = true;
+            }
         }
         else
         {
@@ -406,7 +411,7 @@ namespace ralf
         return status;
     }
 
-    bool RalfOCIConfigGenerator::applyConfigurationToOCIConfig(Json::Value &ociConfigRootNode, Json::Value &manifestRootNode)
+    bool RalfOCIConfigGenerator::applyConfigurationToOCIConfig(Json::Value &ociConfigRootNode, Json::Value &manifestRootNode, const std::string &envVariables)
     {
         if (!addEntryPointToOCIConfig(ociConfigRootNode, manifestRootNode))
         {
@@ -423,7 +428,6 @@ namespace ralf
         bool status = true;
         Json::Value configNode = manifestRootNode[CONFIGURATION];
         std::string packageType;
-
         if (manifestRootNode.isMember(PACKAGE_TYPE) && manifestRootNode[PACKAGE_TYPE].isString())
         {
             packageType = manifestRootNode[PACKAGE_TYPE].asString();
@@ -442,6 +446,14 @@ namespace ralf
 
             status = addStorageConfigToOCIConfig(ociConfigRootNode, configNode);
             LOGDBG("Applied storage config to OCI config ? %s\n", status ? "true" : "false");
+        }
+        // Prepare for urn:rdk:config:network - spec matrix: Application/Service/Runtime (N/A for Base)
+        if (packageType == PKG_TYPE_APPLICATION || packageType == PKG_TYPE_SERVICE || packageType == PKG_TYPE_RUNTIME)
+        {
+            status = NetworkConfigurationHelper::updateNetworkConfigurationNode(ociConfigRootNode, manifestRootNode);
+            LOGDBG("Applied network config to OCI config ? %s\n", status ? "true" : "false");
+            status = NetworkConfigurationHelper::updatePermissionBasedNetworkConfiguration(ociConfigRootNode, manifestRootNode, envVariables);
+            LOGDBG("Applied permission based network config to OCI config ? %s\n", status ? "true" : "false");
         }
         // Apply urn:rdk:config:env — spec matrix: Application/Service only (N/A for Runtime and Base)
         if (packageType == PKG_TYPE_APPLICATION || packageType == PKG_TYPE_SERVICE)
@@ -694,8 +706,7 @@ namespace ralf
 
     void RalfOCIConfigGenerator::addToEnvironment(Json::Value &ociConfigRootNode, const std::string &key, const std::string &value)
     {
-        // Upsert: remove any existing entry for this key, then append the new value.
-        // This enforces the precedence rule (last write wins) and keeps process.env dedup-clean.
+        // Upsert environment key with a fast path for non-duplicate entries.
         std::string envVar = key + "=" + value;
 
         Json::Value &processNode = ociConfigRootNode[PROCESS];
@@ -708,18 +719,85 @@ namespace ralf
         {
             processNode[ENV] = Json::Value(Json::arrayValue);
         }
-        // Build a deduplicated array, dropping any existing entry for this key.
+
+        Json::Value &envNode = processNode[ENV];
         const std::string prefix = key + "=";
-        Json::Value deduped(Json::arrayValue);
-        for (const auto &existing : processNode[ENV])
+
+        int firstMatchIndex = -1;
+        bool duplicateFound = false;
+        const Json::ArrayIndex envSize = envNode.size();
+
+        for (Json::ArrayIndex i = 0; i < envSize; ++i)
         {
-            if (!existing.isString() || existing.asString().rfind(prefix, 0) != 0)
-                deduped.append(existing);
-            else
-                LOGWARN("Removed duplicate environment variable from OCI config: %s\n", existing.asString().c_str());
+            const Json::Value &existing = envNode[i];
+            if (!existing.isString())
+            {
+                continue;
+            }
+
+            const std::string existingStr = existing.asString();
+            if (existingStr.rfind(prefix, 0) == 0)
+            {
+                if (firstMatchIndex < 0)
+                {
+                    firstMatchIndex = static_cast<int>(i);
+                }
+                else
+                {
+                    duplicateFound = true;
+                    break;
+                }
+            }
         }
-        deduped.append(envVar);
+
+        // Fast path: no existing key, append once.
+        if (firstMatchIndex < 0)
+        {
+            envNode.append(envVar);
+            LOGDBG("Added environment variable to OCI config: %s\n", envVar.c_str());
+            return;
+        }
+
+        // Fast path: one existing key, update in place.
+        if (!duplicateFound)
+        {
+            envNode[static_cast<Json::ArrayIndex>(firstMatchIndex)] = envVar;
+            LOGDBG("Added environment variable to OCI config: %s\n", envVar.c_str());
+            return;
+        }
+
+        // Slow path: duplicates exist, rebuild once and keep the newest value.
+        Json::Value deduped(Json::arrayValue);
+        bool replaced = false;
+        for (Json::ArrayIndex i = 0; i < envSize; ++i)
+        {
+            const Json::Value &existing = envNode[i];
+            if (!existing.isString())
+            {
+                deduped.append(existing);
+                continue;
+            }
+
+            const std::string existingStr = existing.asString();
+            if (existingStr.rfind(prefix, 0) != 0)
+            {
+                deduped.append(existing);
+                continue;
+            }
+
+            if (!replaced)
+            {
+                deduped.append(envVar);
+                replaced = true;
+            }
+            else
+            {
+                LOGWARN("Removed duplicate environment variable from OCI config: %s\n", existingStr.c_str());
+            }
+        }
+
         processNode[ENV] = deduped;
         LOGDBG("Added environment variable to OCI config: %s\n", envVar.c_str());
     }
+
 } // namespace ralf

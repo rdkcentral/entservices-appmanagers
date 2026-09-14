@@ -26,6 +26,8 @@
 
 #include <iostream>
 
+#include <arpa/inet.h>  // Required for inet_pton
+#include <netinet/in.h> // Required for in_addr / in6_addr
 #include <cstring> //for strerror
 #include <cstdio>  //for ::remove
 
@@ -38,14 +40,135 @@
 #include <cstdlib>
 #include <cerrno>
 #include <fstream>
-#include <sstream>
+#include <string>
 #include <grp.h> //For group related functions
 
 #include <pwd.h> //For getting user id and group id of ralf user
 
+namespace
+{
+    struct RootfsPathRequirement
+    {
+        std::string containerPath;
+        bool createAsFile;
+    };
+
+    bool ensureDirectoryExistsInRootfs(const std::string& rootfsMountPath,
+                                       const std::string& containerPath,
+                                       const int uid,
+                                       const int gid)
+    {
+        const std::string targetPath = rootfsMountPath + containerPath;
+        return ralf::create_directories(targetPath, uid, gid);
+    }
+
+    bool ensureFileExistsInRootfs(const std::string& rootfsMountPath,
+                                  const std::string& containerPath,
+                                  const int uid,
+                                  const int gid)
+    {
+        const size_t lastSlash = containerPath.find_last_of('/');
+        if (std::string::npos == lastSlash)
+        {
+            LOGERR("Invalid container file path: %s", containerPath.c_str());
+            return false;
+        }
+
+        const std::string parentPath = containerPath.substr(0, lastSlash);
+        if (!parentPath.empty() && !ensureDirectoryExistsInRootfs(rootfsMountPath, parentPath, uid, gid))
+        {
+            LOGERR("Failed to create parent directory in merged rootfs: %s", parentPath.c_str());
+            return false;
+        }
+
+        const std::string filePath = rootfsMountPath + containerPath;
+        std::ofstream outputFile(filePath, std::ios::app);
+        if (!outputFile.is_open())
+        {
+            LOGERR("Failed to create file in merged rootfs: %s", filePath.c_str());
+            return false;
+        }
+
+        return true;
+    }
+
+    bool getPathTypeFromHostSource(const std::string& hostPath, bool& isDirectory)
+    {
+        struct stat sourceStat;
+        if (0 != stat(hostPath.c_str(), &sourceStat))
+        {
+            return false;
+        }
+
+        isDirectory = S_ISDIR(sourceStat.st_mode);
+        return true;
+    }
+
+    void collectBindMountRequirements(const Json::Value& ociConfigRootNode,
+                                      std::vector<RootfsPathRequirement>& requirements)
+    {
+        if (!ociConfigRootNode.isMember(ralf::MOUNTS) || !ociConfigRootNode[ralf::MOUNTS].isArray())
+        {
+            return;
+        }
+
+        const Json::Value& mounts = ociConfigRootNode[ralf::MOUNTS];
+        const Json::ArrayIndex mountCount = mounts.size();
+        for (Json::ArrayIndex index = 0; index < mountCount; ++index)
+        {
+            const Json::Value& mountNode = mounts[index];
+            if (!mountNode.isObject() || !mountNode.isMember(ralf::TYPE) || !mountNode[ralf::TYPE].isString() ||
+                "bind" != mountNode[ralf::TYPE].asString() || !mountNode.isMember(ralf::DESTINATION) ||
+                !mountNode[ralf::DESTINATION].isString())
+            {
+                continue;
+            }
+
+            const std::string destinationPath = mountNode[ralf::DESTINATION].asString();
+
+            if (destinationPath.empty() || destinationPath[0] != '/' || destinationPath.find("..") != std::string::npos)
+            {
+                LOGWARN("Skipping invalid or traversing bind mount destination path: %s", destinationPath.c_str());
+                continue;
+            }
+
+            bool createAsFile = false;
+            bool sourceTypeKnown = false;
+            bool sourceIsDirectory = false;
+
+            if (mountNode.isMember(ralf::SOURCE) && mountNode[ralf::SOURCE].isString())
+            {
+                sourceTypeKnown = getPathTypeFromHostSource(mountNode[ralf::SOURCE].asString(), sourceIsDirectory);
+            }
+
+            if (sourceTypeKnown)
+            {
+                createAsFile = !sourceIsDirectory;
+            }
+            else if ('/' == destinationPath.back())
+            {
+                createAsFile = false;
+            }
+
+            requirements.push_back({destinationPath, createAsFile});
+        }
+    }
+
+    void collectConditionalRequirements(const Json::Value& ociConfigRootNode,
+                                        std::vector<RootfsPathRequirement>& requirements)
+    {
+        // Dobby will mount /etc/resolv.conf from the host into the container if dnsmasq is disabled.
+        const Json::Value& networkData = ociConfigRootNode[ralf::RDKPLUGINS][ralf::NETWORKING][ralf::DATA];
+        if (networkData.isObject() && networkData.isMember(ralf::DNSMASQ) && networkData[ralf::DNSMASQ].isBool() &&
+            !networkData[ralf::DNSMASQ].asBool())
+        {
+            requirements.push_back({ralf::RALF_ETC_RESOLV_CONF, true});
+        }
+    }
+}
+
 namespace ralf
 {
-
     bool create_directories(const std::string &path, int uid, int gid)
     {
 
@@ -129,26 +252,36 @@ namespace ralf
      */
     bool JsonFromFile(const std::string &filePath, Json::Value &rootNode)
     {
-        bool status = false;
         LOGDBG("JsonFromFile called for file: %s\n", filePath.c_str());
+
         std::ifstream file(filePath, std::ios::in);
-        if (file.is_open())
-        {
-
-            std::string configData((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-            file.close();
-
-            Json::CharReaderBuilder readerBuilder;
-            std::string errs;
-            std::istringstream s(configData);
-            status = Json::parseFromStream(readerBuilder, s, &rootNode, &errs);
-            if (!status)
-                LOGERR("Failed to parse JSON: %s\n", errs.c_str());
-        }
-        else
+        if (!file.is_open())
         {
             LOGERR("Failed to open JSON file: %s\n", filePath.c_str());
+            LOGDBG("JsonFromFile [%s] ,status: 0\n", filePath.c_str());
+            return false;
         }
+
+        // Static Thread-Safe Builder Allocation
+        // Instantiating a CharReaderBuilder allocates internal settings maps on the heap.
+        // Making it static constructs it exactly once for the application lifetime.
+        static const Json::CharReaderBuilder readerBuilder = []() {
+            Json::CharReaderBuilder builder;
+            // Disable Unneeded Error Tracking Features
+            // Prevents the builder from collecting detailed structural extra information
+            // that we don't explicitly require, speeding up the parsing loop.
+            builder["collectComments"] = false;
+            return builder;
+        }();
+
+        std::string errs;
+        const bool status = Json::parseFromStream(readerBuilder, file, &rootNode, &errs);
+
+        if (!status)
+        {
+            LOGERR("Failed to parse JSON: %s\n", errs.c_str());
+        }
+
         LOGDBG("JsonFromFile [%s] ,status: %d\n", filePath.c_str(), status);
         return status;
     }
@@ -353,6 +486,38 @@ namespace ralf
 
         return status;
     }
+
+    bool prepareMergedRootfsMountTargets(const Json::Value& ociConfigRootNode,
+                                         const std::string& rootfsMountPath,
+                                         const int uid,
+                                         const int gid)
+    {
+        std::vector<RootfsPathRequirement> requirements;
+        collectBindMountRequirements(ociConfigRootNode, requirements);
+        collectConditionalRequirements(ociConfigRootNode, requirements);
+
+        for (const auto& requirement : requirements)
+        {
+            bool status = true;
+            if (requirement.createAsFile)
+            {
+                status = ensureFileExistsInRootfs(rootfsMountPath, requirement.containerPath, uid, gid);
+            }
+            else
+            {
+                status = ensureDirectoryExistsInRootfs(rootfsMountPath, requirement.containerPath, uid, gid);
+            }
+
+            if (!status)
+            {
+                LOGERR("Failed to prepare merged-rootfs path: %s", requirement.containerPath.c_str());
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     bool addBindMountToOCIConfig(Json::Value &ociConfigRootNode, const std::string &hostPath, const std::string &containerPath, bool readOnly)
     {
         Json::Value mountEntry;

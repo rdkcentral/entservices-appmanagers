@@ -69,6 +69,7 @@ set(RUNTIME_MANAGER_L0_SOURCES
     ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry/UtilsTelemetryMetrics.cpp
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/ralf/RalfSupport.cpp
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/ralf/RalfPackageBuilder.cpp
+    ${CMAKE_SOURCE_DIR}/../../RuntimeManager/ralf/NetworkConfigurationHelper.cpp
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/ralf/RalfOCIConfigGenerator.cpp
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/Gateway/WebInspector.cpp
     ${CMAKE_SOURCE_DIR}/../../RuntimeManager/Gateway/NetFilter.cpp
@@ -82,6 +83,7 @@ set(RUNTIME_MANAGER_L0_SOURCES
     RuntimeManager/RuntimeManager_ComponentTests.cpp
     RuntimeManager/ralf/Ralf_SupportTests.cpp
     RuntimeManager/ralf/Ralf_PackageBuilderTests.cpp
+    RuntimeManager/ralf/NetworkConfigurationHelperTests.cpp
     RuntimeManager/ralf/Ralf_OCIConfigGeneratorTests.cpp
     RuntimeManager/Gateway/Gateway_ContainerUtilsTests.cpp
     RuntimeManager/Gateway/Gateway_WebInspectorTests.cpp
