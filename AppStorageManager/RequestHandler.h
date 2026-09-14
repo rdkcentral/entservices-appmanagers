@@ -74,6 +74,7 @@ namespace WPEFramework
                 Exchange::IStore2* mPersistentStoreRemoteStoreObject;
                 std::map<std::string, std::shared_ptr<StorageAppInfo>> mStorageAppInfo;  /* Map storing app storage info for each appId */
                 std::string mBaseStoragePath;
+                bool mEnhancedLoggingEnabled;
         };
     } /* namespace Plugin */
 } /* namespace WPEFramework */
