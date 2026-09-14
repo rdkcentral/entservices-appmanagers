@@ -65,6 +65,7 @@ namespace WPEFramework
             std::lock_guard<std::mutex> lock(gStateTransitionHandlerInstanceMutex);
             if (nullptr != mInstance)
             {
+                mInstance->terminate();
                 delete mInstance;
                 mInstance = nullptr;
             }
