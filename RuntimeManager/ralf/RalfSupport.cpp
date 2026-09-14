@@ -94,9 +94,12 @@ namespace
         }
         outputFile.close();
 
-        if (isNewFile)
+        if (isNewFile && (uid != 0 || gid != 0))
         {
-            if (chown(filePath.c_str(), uid, gid) != 0)
+            const uid_t targetUid = (uid == 0) ? -1 : static_cast<uid_t>(uid);
+            const gid_t targetGid = (gid == 0) ? -1 : static_cast<gid_t>(gid);
+
+            if (chown(filePath.c_str(), targetUid, targetGid) != 0)
             {
                 LOGERR("Failed to chown file %s to %d:%d: %s", filePath.c_str(), uid, gid, strerror(errno));
                 return false;
