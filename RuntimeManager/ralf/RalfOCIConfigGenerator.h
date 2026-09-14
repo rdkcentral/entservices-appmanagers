@@ -191,6 +191,16 @@ namespace ralf
         bool addConfigEnvToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &configNode);
 
         /**
+         * Applies permissions from the manifest to the OCI config JSON.
+         * @param ociConfigRootNode The root node of the OCI config JSON.
+         * @param manifestRootNode The root node of the manifest JSON containing the permission information.
+         * @param envVariables The environment variables to be added based on permissions.
+         * @return false if any permission could not be applied, true otherwise.
+         */
+        bool applyPermissionsToOCIConfig(Json::Value& ociConfigRootNode, const Json::Value& manifestRootNode,
+                                         const std::string& envVariables);
+
+        /**
          * Adds permission-based environment variables to the OCI config JSON.
          * @param ociConfigRootNode The root node of the OCI config JSON.
          * @param manifestRootNode The root node of the manifest JSON containing the permission information.
@@ -200,7 +210,7 @@ namespace ralf
         bool addPermissionBasedEnvironmentVariables(Json::Value& ociConfigRootNode,
                                     const Json::Value& manifestRootNode, const std::string& envVariables);
 
-	/**
+        /**
          * Updates the OCI config JSON at rdkPlugins.logging.data.fileOptions.path to point to the
          * application's log file for easier debugging of logs from the containerized app.
          * The configured log filename is derived from the host-side appStoragePath and appId

@@ -65,6 +65,11 @@ namespace ralf
                 LOGERR("Failed to apply Ralf package config to OCI config for file: %s", ralfPkgInfo.first.c_str());
                 return false;
             }
+            if (!applyPermissionsToOCIConfig(ociConfigRootNode, ralfPackageConfigNode, runtimeConfigObject.envVariables))
+            {
+                LOGERR("Failed to apply Ralf package permissions to OCI config for file: %s", ralfPkgInfo.first.c_str());
+                return false;
+            }
         }
 
         if (generateHooksForOCIConfig(ociConfigRootNode) == false)
@@ -443,7 +448,7 @@ namespace ralf
             status = addStorageConfigToOCIConfig(ociConfigRootNode, configNode);
             LOGDBG("Applied storage config to OCI config ? %s\n", status ? "true" : "false");
         }
-        // Process urn:rdk:config:network & permissions - spec matrix: Application/Service/Runtime (N/A for Base)
+        // Process urn:rdk:config:network - spec matrix: Application/Service/Runtime (N/A for Base)
         if (packageType == PKG_TYPE_APPLICATION || packageType == PKG_TYPE_SERVICE || packageType == PKG_TYPE_RUNTIME)
         {
             status = NetworkConfigurationHelper::updateNetworkConfigurationNode(ociConfigRootNode, manifestRootNode);
@@ -669,22 +674,44 @@ namespace ralf
         return status;
     }
 
-    bool RalfOCIConfigGenerator::addPermissionBasedEnvironmentVariables(Json::Value& ociConfigRootNode,
-                                    const Json::Value& manifestRootNode, const std::string& envVariables)
+    bool RalfOCIConfigGenerator::applyPermissionsToOCIConfig(Json::Value& ociConfigRootNode,
+                                                        const Json::Value& manifestRootNode,
+                                                        const std::string& envVariables)
     {
-        if (!manifestRootNode.isMember(ralf::PERMISSIONS))
+        const auto& pkgNode = manifestRootNode[PACKAGE_TYPE];
+        if (!pkgNode.isString())
         {
-            LOGWARN("No permissions found in manifest; skipping permission-based ENV update");
+            LOGWARN("Package type is missing or not a string; skipping permission-based OCI config updates");
+            return true;
+        }
+
+        const char* pkgTypeStr = pkgNode.asCString();
+        if (!pkgTypeStr)
+        {
+            return true;
+        }
+
+        if (strcmp(pkgTypeStr, PKG_TYPE_APPLICATION) != 0 &&
+            strcmp(pkgTypeStr, PKG_TYPE_SERVICE) != 0 &&
+            strcmp(pkgTypeStr, PKG_TYPE_RUNTIME) != 0)
+        {
+            LOGWARN("Invalid packageType; skipping permission-based OCI config updates");
             return true;
         }
 
         const auto& permissions = manifestRootNode[ralf::PERMISSIONS];
         if (!permissions.isArray())
         {
-            LOGWARN("Permissions node is not an array; skipping permission-based ENV update");
+            LOGWARN("Permissions node is missing or not an array; skipping permission-based OCI config updates");
             return true;
         }
 
+        return addPermissionBasedEnvironmentVariables(ociConfigRootNode, permissions, envVariables);
+    }
+
+    bool RalfOCIConfigGenerator::addPermissionBasedEnvironmentVariables(Json::Value& ociConfigRootNode,
+                                    const Json::Value& permissions, const std::string& envVariables)
+    {
         for (const auto& permValue : permissions)
         {
             if (!permValue.isString())
@@ -694,7 +721,7 @@ namespace ralf
 
             const std::string permStr = permValue.asString();
 
-            if (permStr == ralf::PERMISSION_FIREBOLT)
+            if (ralf::PERMISSION_FIREBOLT == permStr)
             {
                 if (envVariables.empty())
                 {
@@ -708,7 +735,7 @@ namespace ralf
                     return false;
                 }
             }
-            else if (permStr == ralf::PERMISSION_THUNDER)
+            else if (ralf::PERMISSION_THUNDER == permStr)
             {
                 if (false == addThunderAccessToPrivilegedApps(ociConfigRootNode))
                 {
@@ -801,15 +828,15 @@ namespace ralf
 
         if (firstMatchIndex < 0)
         {
-            envNode.append(std::move(envVar));
             LOGDBG("Added environment variable to OCI config: %s\n", envVar.c_str());
+            envNode.append(std::move(envVar));
             return;
         }
 
         if (!duplicateFound)
         {
-            envNode[static_cast<Json::ArrayIndex>(firstMatchIndex)] = std::move(envVar);
             LOGDBG("Added environment variable to OCI config: %s\n", envVar.c_str());
+            envNode[static_cast<Json::ArrayIndex>(firstMatchIndex)] = std::move(envVar);
             return;
         }
 
