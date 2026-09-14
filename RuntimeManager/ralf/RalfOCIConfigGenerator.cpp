@@ -455,8 +455,6 @@ namespace ralf
             LOGDBG("Applied network config to OCI config ? %s\n", status ? "true" : "false");
             status = NetworkConfigurationHelper::updatePermissionBasedNetworkConfiguration(ociConfigRootNode, manifestRootNode, envVariables);
             LOGDBG("Applied permission based network config to OCI config ? %s\n", status ? "true" : "false");
-            status = addPermissionBasedEnvironmentVariables(ociConfigRootNode, manifestRootNode, envVariables);
-            LOGDBG("Applied permission based environment variables to OCI config ? %s\n", status ? "true" : "false");
         }
         // Apply urn:rdk:config:env — spec matrix: Application/Service only (N/A for Runtime and Base)
         if (packageType == PKG_TYPE_APPLICATION || packageType == PKG_TYPE_SERVICE)

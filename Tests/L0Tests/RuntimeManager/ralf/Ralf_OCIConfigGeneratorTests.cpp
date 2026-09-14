@@ -35,9 +35,12 @@
 #include <cstdlib>
 #include <sys/stat.h>
 
+#define private public
 #include "ralf/RalfOCIConfigGenerator.h"
+#undef private
 #include "ralf/RalfConstants.h"
 #include "ralf/RalfSupport.h"
+#include "ralf/OCISpecConstants.h"
 #include "ApplicationConfiguration.h"
 #include <interfaces/IRuntimeManager.h>
 #include "common/L0Expect.hpp"
@@ -80,6 +83,22 @@ static WPEFramework::Exchange::RuntimeConfig MakeRuntimeConfig_OCI()
     cfg.ralfPkgPath = "";
     cfg.envVariables = "";
     return cfg;
+}
+
+static bool HasEnvEntry_OCIGen(const Json::Value& ociConfigRootNode, const std::string& expectedEntry)
+{
+    const Json::Value& envNode = ociConfigRootNode[ralf::PROCESS][ralf::ENV];
+    if (!envNode.isArray()) {
+        return false;
+    }
+
+    for (const auto& entry : envNode) {
+        if (entry.isString() && expectedEntry == entry.asString()) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -381,5 +400,94 @@ uint32_t Test_RalfOCIConfigGenerator_LogPathSetCorrectlyInOCIConfig()
         std::remove(outputConfigPath.c_str());
     }
 
+    return tr.failures;
+}
+
+uint32_t Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_MissingPackageTypeReturnsTrue()
+{
+    L0Test::TestResult tr;
+
+    std::vector<ralf::RalfPkgInfoPair> packages;
+    ralf::RalfOCIConfigGenerator gen("/tmp/ralf_l0test_permissions_pkgtype_missing.json", packages);
+
+    Json::Value ociConfigRootNode(Json::objectValue);
+    Json::Value manifestRootNode(Json::objectValue);
+    manifestRootNode[ralf::PERMISSIONS] = Json::Value(Json::arrayValue);
+    manifestRootNode[ralf::PERMISSIONS].append(ralf::PERMISSION_FIREBOLT);
+
+    const bool status = gen.applyPermissionsToOCIConfig(ociConfigRootNode, manifestRootNode,
+                                                        "[\"FIREBOLT_ENDPOINT=ws://127.0.0.1:3473\"]");
+    L0Test::ExpectTrue(tr, status,
+                       "applyPermissionsToOCIConfig() returns true when packageType is absent");
+
+    return tr.failures;
+}
+
+uint32_t Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_ValidFireboltPermissionAddsEndpoint()
+{
+    L0Test::TestResult tr;
+
+    std::vector<ralf::RalfPkgInfoPair> packages;
+    ralf::RalfOCIConfigGenerator gen("/tmp/ralf_l0test_permissions_firebolt.json", packages);
+
+    Json::Value ociConfigRootNode(Json::objectValue);
+    Json::Value manifestRootNode(Json::objectValue);
+    manifestRootNode[ralf::PACKAGE_TYPE] = ralf::PKG_TYPE_APPLICATION;
+    manifestRootNode[ralf::PERMISSIONS] = Json::Value(Json::arrayValue);
+    manifestRootNode[ralf::PERMISSIONS].append(ralf::PERMISSION_FIREBOLT);
+
+    const bool status = gen.applyPermissionsToOCIConfig(ociConfigRootNode, manifestRootNode,
+                                                        "[\"FIREBOLT_ENDPOINT=ws://127.0.0.1:3473\"]");
+    L0Test::ExpectTrue(tr, status,
+                       "applyPermissionsToOCIConfig() returns true for valid FIREBOLT permission and endpoint");
+    L0Test::ExpectTrue(tr, HasEnvEntry_OCIGen(ociConfigRootNode, "FIREBOLT_ENDPOINT=ws://127.0.0.1:3473"),
+                       "applyPermissionsToOCIConfig() adds FIREBOLT_ENDPOINT to OCI process env");
+
+    return tr.failures;
+}
+
+uint32_t Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_FireboltEmptyEnvReturnsFalse()
+{
+    L0Test::TestResult tr;
+
+    std::vector<ralf::RalfPkgInfoPair> packages;
+    ralf::RalfOCIConfigGenerator gen("/tmp/ralf_l0test_perm_env_empty.json", packages);
+
+    Json::Value ociConfigRootNode(Json::objectValue);
+    Json::Value manifestRootNode(Json::objectValue);
+    manifestRootNode[ralf::PACKAGE_TYPE] = ralf::PKG_TYPE_APPLICATION;
+    manifestRootNode[ralf::PERMISSIONS] = Json::Value(Json::arrayValue);
+    manifestRootNode[ralf::PERMISSIONS].append(ralf::PERMISSION_FIREBOLT);
+
+    const bool status = gen.applyPermissionsToOCIConfig(ociConfigRootNode, manifestRootNode, "");
+    L0Test::ExpectTrue(tr, !status,
+                       "applyPermissionsToOCIConfig() returns false when FIREBOLT permission has empty envVariables");
+
+    return tr.failures;
+}
+
+uint32_t Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_ThunderAddsThunderAccess()
+{
+    L0Test::TestResult tr;
+
+    std::vector<ralf::RalfPkgInfoPair> packages;
+    ralf::RalfOCIConfigGenerator gen("/tmp/ralf_l0test_perm_env_thunder.json", packages);
+
+    Json::Value ociConfigRootNode(Json::objectValue);
+    Json::Value manifestRootNode(Json::objectValue);
+    manifestRootNode[ralf::PACKAGE_TYPE] = ralf::PKG_TYPE_APPLICATION;
+    manifestRootNode[ralf::PERMISSIONS] = Json::Value(Json::arrayValue);
+    manifestRootNode[ralf::PERMISSIONS].append(ralf::PERMISSION_THUNDER);
+
+    setenv(ralf::THUNDER_ACCESS_ENV_KEY, "127.0.0.1:9998", 1);
+
+    const bool status = gen.applyPermissionsToOCIConfig(ociConfigRootNode, manifestRootNode,
+                                                        "[\"TARGET_STATE=4\"]");
+    L0Test::ExpectTrue(tr, status,
+                       "applyPermissionsToOCIConfig() returns true for THUNDER permission when THUNDER_ACCESS is set");
+    L0Test::ExpectTrue(tr, HasEnvEntry_OCIGen(ociConfigRootNode, "THUNDER_ACCESS=127.0.0.1:9998"),
+                       "applyPermissionsToOCIConfig() adds THUNDER_ACCESS to OCI process env");
+
+    unsetenv(ralf::THUNDER_ACCESS_ENV_KEY);
     return tr.failures;
 }
