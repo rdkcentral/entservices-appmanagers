@@ -82,11 +82,25 @@ namespace
         }
 
         const std::string filePath = rootfsMountPath + containerPath;
+
+        struct stat buffer;
+        const bool isNewFile = (stat(filePath.c_str(), &buffer) != 0);
+
         std::ofstream outputFile(filePath, std::ios::app);
         if (!outputFile.is_open())
         {
             LOGERR("Failed to create file in merged rootfs: %s", filePath.c_str());
             return false;
+        }
+        outputFile.close();
+
+        if (isNewFile)
+        {
+            if (chown(filePath.c_str(), uid, gid) != 0)
+            {
+                LOGERR("Failed to chown file %s to %d:%d: %s", filePath.c_str(), uid, gid, strerror(errno));
+                return false;
+            }
         }
 
         return true;

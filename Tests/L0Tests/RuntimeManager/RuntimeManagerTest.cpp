@@ -85,7 +85,7 @@ extern uint32_t Test_DobbyEventListener_InitializeWithNullOCIPlugin();
 extern uint32_t Test_DobbyEventListener_DeinitializeWithoutInitialize();
 extern uint32_t Test_DobbyEventListener_DoubleDeinitialize();
 extern uint32_t Test_WindowManagerConnector_ConstructionAndDestruction();
-extern uint32_t Test_WindowManagerConnector_IsPluginInitializedReturnsFalse();
+extern uint32_t Test_WindowManagerConnector_IsPluginInitializedReturnsFalseInitially();
 extern uint32_t Test_WindowManagerConnector_InitializeWithNullServiceReturnsFalse();
 extern uint32_t Test_WindowManagerConnector_InitializeWithServiceMissingWindowManagerPlugin();
 extern uint32_t Test_WindowManagerConnector_ReleasePluginWithoutInitDoesNotCrash();

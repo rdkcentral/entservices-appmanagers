@@ -93,6 +93,7 @@ namespace ralf
         {
             LOGERR("Failed to prepare merged-rootfs mount targets for appInstanceId: %s", config.mAppInstanceId.c_str());
             unmountOverlayfsIfExists(config.mAppInstanceId);
+            dobbySpec.clear();
             return false;
         }
 
