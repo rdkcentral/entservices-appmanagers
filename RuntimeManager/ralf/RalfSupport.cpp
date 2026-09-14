@@ -44,6 +44,7 @@
 #include <grp.h> //For group related functions
 
 #include <pwd.h> //For getting user id and group id of ralf user
+#include <algorithm>
 
 namespace
 {
@@ -52,6 +53,80 @@ namespace
         std::string containerPath;
         bool createAsFile;
     };
+
+    std::string normalizeContainerPath(const std::string& path)
+    {
+        if (path.empty())
+        {
+            return "/";
+        }
+
+        std::string normalizedPath = path;
+        while (normalizedPath.size() > 1 && '/' == normalizedPath.back())
+        {
+            normalizedPath.pop_back();
+        }
+
+        return normalizedPath;
+    }
+
+    bool isStrictAncestorPath(const std::string& ancestorPath, const std::string& candidatePath)
+    {
+        const std::string normalizedAncestor = normalizeContainerPath(ancestorPath);
+        const std::string normalizedCandidate = normalizeContainerPath(candidatePath);
+
+        if (normalizedCandidate.size() <= normalizedAncestor.size())
+        {
+            return false;
+        }
+
+        if (0 != normalizedCandidate.compare(0, normalizedAncestor.size(), normalizedAncestor))
+        {
+            return false;
+        }
+
+        return '/' == normalizedCandidate[normalizedAncestor.size()];
+    }
+
+    size_t containerPathDepth(const std::string& path)
+    {
+        const std::string normalizedPath = normalizeContainerPath(path);
+        return static_cast<size_t>(std::count(normalizedPath.begin(), normalizedPath.end(), '/'));
+    }
+
+    void collectNonBindMountDestinations(const Json::Value& ociConfigRootNode,
+                                         std::vector<std::string>& nonBindMountDestinations)
+    {
+        if (!ociConfigRootNode.isMember(ralf::MOUNTS) || !ociConfigRootNode[ralf::MOUNTS].isArray())
+        {
+            return;
+        }
+
+        const Json::Value& mounts = ociConfigRootNode[ralf::MOUNTS];
+        const Json::ArrayIndex mountCount = mounts.size();
+        for (Json::ArrayIndex index = 0; index < mountCount; ++index)
+        {
+            const Json::Value& mountNode = mounts[index];
+            if (!mountNode.isObject() || !mountNode.isMember(ralf::TYPE) || !mountNode[ralf::TYPE].isString() ||
+                !mountNode.isMember(ralf::DESTINATION) || !mountNode[ralf::DESTINATION].isString())
+            {
+                continue;
+            }
+
+            if ("bind" == mountNode[ralf::TYPE].asString())
+            {
+                continue;
+            }
+
+            const std::string destinationPath = mountNode[ralf::DESTINATION].asString();
+            if (destinationPath.empty() || destinationPath[0] != '/' || destinationPath.find("..") != std::string::npos)
+            {
+                continue;
+            }
+
+            nonBindMountDestinations.push_back(normalizeContainerPath(destinationPath));
+        }
+    }
 
     bool ensureDirectoryExistsInRootfs(const std::string& rootfsMountPath,
                                        const std::string& containerPath,
@@ -510,11 +585,37 @@ namespace ralf
                                          const int gid)
     {
         std::vector<RootfsPathRequirement> requirements;
+        std::vector<std::string> nonBindMountDestinations;
+
         collectBindMountRequirements(ociConfigRootNode, requirements);
         collectConditionalRequirements(ociConfigRootNode, requirements);
+        collectNonBindMountDestinations(ociConfigRootNode, nonBindMountDestinations);
+
+        std::stable_sort(requirements.begin(), requirements.end(),
+                         [](const RootfsPathRequirement& lhs, const RootfsPathRequirement& rhs)
+                         {
+                             return containerPathDepth(lhs.containerPath) < containerPathDepth(rhs.containerPath);
+                         });
 
         for (const auto& requirement : requirements)
         {
+            bool isMaskedByAncestorMount = false;
+            for (const auto& ancestorDestination : nonBindMountDestinations)
+            {
+                if (isStrictAncestorPath(ancestorDestination, requirement.containerPath))
+                {
+                    //LOGDBG("Skipping merged-rootfs pre-create for %s because ancestor mount %s masks it",
+                    //       requirement.containerPath.c_str(), ancestorDestination.c_str());
+                    isMaskedByAncestorMount = true;
+                    break;
+                }
+            }
+
+            if (isMaskedByAncestorMount)
+            {
+                continue;
+            }
+
             bool status = true;
             if (requirement.createAsFile)
             {

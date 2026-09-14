@@ -158,6 +158,7 @@ extern uint32_t Test_Ralf_GenerateOCIRootfs_FailsDueToNoMountSupport();
 extern uint32_t Test_Ralf_PrepareMergedRootfsMountTargets_DnsmasqFalseCreatesResolvConf();
 extern uint32_t Test_Ralf_PrepareMergedRootfsMountTargets_DnsmasqTrueSkipsResolvConf();
 extern uint32_t Test_Ralf_PrepareMergedRootfsMountTargets_CreatesBindDestinationFileAndDirectory();
+extern uint32_t Test_Ralf_PrepareMergedRootfsMountTargets_SkipsNestedBindUnderTmpfsAncestor();
 
 // ── ralf/NetworkConfigurationHelper tests ───────────────────────────────────
 extern uint32_t Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_MapsAndDeduplicatesRules();
@@ -493,6 +494,7 @@ int main()
         { "Ralf_PrepareMergedRootfsMountTargets_DnsmasqFalseCreatesResolvConf",      Test_Ralf_PrepareMergedRootfsMountTargets_DnsmasqFalseCreatesResolvConf },
         { "Ralf_PrepareMergedRootfsMountTargets_DnsmasqTrueSkipsResolvConf",         Test_Ralf_PrepareMergedRootfsMountTargets_DnsmasqTrueSkipsResolvConf },
         { "Ralf_PrepareMergedRootfsMountTargets_CreatesBindDestinationFileAndDirectory", Test_Ralf_PrepareMergedRootfsMountTargets_CreatesBindDestinationFileAndDirectory },
+        { "Ralf_PrepareMergedRootfsMountTargets_SkipsNestedBindUnderTmpfsAncestor",  Test_Ralf_PrepareMergedRootfsMountTargets_SkipsNestedBindUnderTmpfsAncestor },
 
         // ── ralf/NetworkConfigurationHelper tests ───────────────────────────
         { "NetworkConfigurationHelper_UpdateNetworkConfigurationNode_MapsAndDeduplicatesRules", Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_MapsAndDeduplicatesRules },
