@@ -440,8 +440,43 @@ uint32_t Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_ValidFireboltPe
                                                         "[\"FIREBOLT_ENDPOINT=ws://127.0.0.1:3473\"]");
     L0Test::ExpectTrue(tr, status,
                        "applyPermissionsToOCIConfig() returns true for valid FIREBOLT permission and endpoint");
+    L0Test::ExpectTrue(tr,
+                       ociConfigRootNode.isMember(ralf::RDKPLUGINS) &&
+                           ociConfigRootNode[ralf::RDKPLUGINS].isObject() &&
+                           ociConfigRootNode[ralf::RDKPLUGINS].isMember(ralf::NETWORKING),
+                       "applyPermissionsToOCIConfig() applies permission-based networking configuration");
     L0Test::ExpectTrue(tr, HasEnvEntry_OCIGen(ociConfigRootNode, "FIREBOLT_ENDPOINT=ws://127.0.0.1:3473"),
                        "applyPermissionsToOCIConfig() adds FIREBOLT_ENDPOINT to OCI process env");
+
+    return tr.failures;
+}
+
+uint32_t Test_RalfOCIConfigGenerator_ApplyConfigurationToOCIConfig_PermissionsOnlySkipsPermissionNetworkUpdates()
+{
+    L0Test::TestResult tr;
+
+    std::vector<ralf::RalfPkgInfoPair> packages;
+    ralf::RalfOCIConfigGenerator gen("/tmp/ralf_l0test_cfg_perm_network_guard.json", packages);
+
+    Json::Value ociConfigRootNode(Json::objectValue);
+    Json::Value manifestRootNode(Json::objectValue);
+    manifestRootNode[ralf::ENTRY_POINT] = "bin/app";
+    manifestRootNode[ralf::PACKAGE_TYPE] = ralf::PKG_TYPE_APPLICATION;
+    manifestRootNode[ralf::PERMISSIONS] = Json::Value(Json::arrayValue);
+    manifestRootNode[ralf::PERMISSIONS].append(ralf::PERMISSION_FIREBOLT);
+    // Keep configuration object present so function does not return early.
+    manifestRootNode[ralf::CONFIGURATION] = Json::Value(Json::objectValue);
+
+    const bool status = gen.applyConfigurationToOCIConfig(
+        ociConfigRootNode, manifestRootNode,
+        "[\"FIREBOLT_ENDPOINT=ws://127.0.0.1:3473\"]");
+
+    L0Test::ExpectTrue(tr, status,
+                       "applyConfigurationToOCIConfig() succeeds for minimal application manifest");
+    L0Test::ExpectTrue(tr,
+                       !ociConfigRootNode.isMember(ralf::RDKPLUGINS) ||
+                           !ociConfigRootNode[ralf::RDKPLUGINS].isMember(ralf::NETWORKING),
+                       "applyConfigurationToOCIConfig() no longer applies permission-based networking updates");
 
     return tr.failures;
 }

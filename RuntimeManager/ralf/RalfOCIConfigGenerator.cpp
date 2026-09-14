@@ -453,8 +453,6 @@ namespace ralf
         {
             status = NetworkConfigurationHelper::updateNetworkConfigurationNode(ociConfigRootNode, manifestRootNode);
             LOGDBG("Applied network config to OCI config ? %s\n", status ? "true" : "false");
-            status = NetworkConfigurationHelper::updatePermissionBasedNetworkConfiguration(ociConfigRootNode, manifestRootNode, envVariables);
-            LOGDBG("Applied permission based network config to OCI config ? %s\n", status ? "true" : "false");
         }
         // Apply urn:rdk:config:env — spec matrix: Application/Service only (N/A for Runtime and Base)
         if (packageType == PKG_TYPE_APPLICATION || packageType == PKG_TYPE_SERVICE)
@@ -704,7 +702,12 @@ namespace ralf
             return true;
         }
 
-        return addPermissionBasedEnvironmentVariables(ociConfigRootNode, permissions, envVariables);
+        bool nwStatus = NetworkConfigurationHelper::updatePermissionBasedNetworkConfiguration(ociConfigRootNode, manifestRootNode, envVariables);
+        LOGDBG("Applied permission based network config to OCI config ? %s\n", nwStatus ? "true" : "false");
+        bool envStatus = addPermissionBasedEnvironmentVariables(ociConfigRootNode, permissions, envVariables);
+        LOGDBG("Applied permission based environment variables to OCI config ? %s\n", envStatus ? "true" : "false");
+
+        return (nwStatus && envStatus);
     }
 
     bool RalfOCIConfigGenerator::addPermissionBasedEnvironmentVariables(Json::Value& ociConfigRootNode,
