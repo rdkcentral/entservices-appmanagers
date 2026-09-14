@@ -206,6 +206,11 @@ extern uint32_t Test_RalfOCIConfigGenerator_GenerateWithMockBaseSpec();
 extern uint32_t Test_RalfOCIConfigGenerator_MultipleGenerateCallsDoNotCrash();
 extern uint32_t Test_RalfOCIConfigGenerator_GenerateWithDifferentAppInstances();
 extern uint32_t Test_RalfOCIConfigGenerator_LogPathSetCorrectlyInOCIConfig();
+extern uint32_t Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_MissingPackageTypeReturnsTrue();
+extern uint32_t Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_ValidFireboltPermissionAddsEndpoint();
+extern uint32_t Test_RalfOCIConfigGenerator_ApplyConfigurationToOCIConfig_PermissionsOnlySkipsPermissionNetworkUpdates();
+extern uint32_t Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_FireboltEmptyEnvReturnsFalse();
+extern uint32_t Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_ThunderAddsThunderAccess();
 
 // ── Gateway/ContainerUtils tests ─────────────────────────────────────────────
 extern uint32_t Test_ContainerUtils_GetContainerIpAddress_UnknownContainerReturnsZero();
@@ -536,6 +541,11 @@ int main()
         { "RalfOCIConfigGenerator_MultipleGenerateCallsDoNotCrash",                  Test_RalfOCIConfigGenerator_MultipleGenerateCallsDoNotCrash },
         { "RalfOCIConfigGenerator_GenerateWithDifferentAppInstances",                Test_RalfOCIConfigGenerator_GenerateWithDifferentAppInstances },
         { "RalfOCIConfigGenerator_LogPathSetCorrectlyInOCIConfig",                   Test_RalfOCIConfigGenerator_LogPathSetCorrectlyInOCIConfig },
+        { "RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_MissingPackageTypeReturnsTrue", Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_MissingPackageTypeReturnsTrue },
+        { "RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_ValidFireboltPermissionAddsEndpoint", Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_ValidFireboltPermissionAddsEndpoint },
+        { "RalfOCIConfigGenerator_ApplyConfigurationToOCIConfig_PermissionsOnlySkipsPermissionNetworkUpdates", Test_RalfOCIConfigGenerator_ApplyConfigurationToOCIConfig_PermissionsOnlySkipsPermissionNetworkUpdates },
+        { "RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_FireboltEmptyEnvReturnsFalse", Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_FireboltEmptyEnvReturnsFalse },
+        { "RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_ThunderAddsThunderAccess", Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_ThunderAddsThunderAccess },
 
         // ── Gateway/ContainerUtils tests ─────────────────────────────────────
         { "ContainerUtils_GetContainerIpAddress_UnknownContainerReturnsZero",        Test_ContainerUtils_GetContainerIpAddress_UnknownContainerReturnsZero },
