@@ -468,8 +468,7 @@ uint32_t Test_RalfOCIConfigGenerator_ApplyConfigurationToOCIConfig_PermissionsOn
     manifestRootNode[ralf::CONFIGURATION] = Json::Value(Json::objectValue);
 
     const bool status = gen.applyConfigurationToOCIConfig(
-        ociConfigRootNode, manifestRootNode,
-        "[\"FIREBOLT_ENDPOINT=ws://127.0.0.1:3473\"]");
+        ociConfigRootNode, manifestRootNode);
 
     L0Test::ExpectTrue(tr, status,
                        "applyConfigurationToOCIConfig() succeeds for minimal application manifest");

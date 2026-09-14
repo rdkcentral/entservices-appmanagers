@@ -60,7 +60,7 @@ namespace ralf
                 LOGERR("Failed to load Ralf package config JSON from file: %s", ralfPkgInfo.first.c_str());
                 return false;
             }
-            if (!applyConfigurationToOCIConfig(ociConfigRootNode, ralfPackageConfigNode, runtimeConfigObject.envVariables))
+            if (!applyConfigurationToOCIConfig(ociConfigRootNode, ralfPackageConfigNode))
             {
                 LOGERR("Failed to apply Ralf package config to OCI config for file: %s", ralfPkgInfo.first.c_str());
                 return false;
@@ -412,7 +412,7 @@ namespace ralf
         return status;
     }
 
-    bool RalfOCIConfigGenerator::applyConfigurationToOCIConfig(Json::Value &ociConfigRootNode, Json::Value &manifestRootNode, const std::string &envVariables)
+    bool RalfOCIConfigGenerator::applyConfigurationToOCIConfig(Json::Value &ociConfigRootNode, Json::Value &manifestRootNode)
     {
         if (!addEntryPointToOCIConfig(ociConfigRootNode, manifestRootNode))
         {
@@ -687,9 +687,9 @@ namespace ralf
             return true;
         }
 
-        if (strcmp(pkgTypeStr, PKG_TYPE_APPLICATION) != 0 &&
-            strcmp(pkgTypeStr, PKG_TYPE_SERVICE) != 0 &&
-            strcmp(pkgTypeStr, PKG_TYPE_RUNTIME) != 0)
+        if (0 != strcmp(pkgTypeStr, PKG_TYPE_APPLICATION) &&
+            0 != strcmp(pkgTypeStr, PKG_TYPE_SERVICE) &&
+            0 != strcmp(pkgTypeStr, PKG_TYPE_RUNTIME))
         {
             LOGWARN("Invalid packageType; skipping permission-based OCI config updates");
             return true;
@@ -861,7 +861,7 @@ namespace ralf
 
             if (!replaced)
             {
-                deduped.append(std::move(envVar));
+                deduped.append(envVar);
                 replaced = true;
             }
             else
