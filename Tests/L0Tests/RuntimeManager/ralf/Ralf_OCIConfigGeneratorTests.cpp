@@ -35,6 +35,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <sys/stat.h>
+#include <unistd.h>
 #include <json/json.h>
 
 #define private public
@@ -360,8 +361,8 @@ uint32_t Test_RalfOCIConfigGenerator_LogPathSetCorrectlyInOCIConfig()
     WPEFramework::Plugin::ApplicationConfiguration config;
     config.mAppId               = appId;
     config.mAppInstanceId       = "inst-logpath-001";
-    config.mUserId              = 1000;
-    config.mGroupId             = 1000;
+    config.mUserId              = static_cast<uint32_t>(getuid());
+    config.mGroupId             = static_cast<uint32_t>(getgid());
     config.mAppStorageInfo.path = appStoragePath;
 
     auto runtimeCfg = MakeRuntimeConfig_OCI();
