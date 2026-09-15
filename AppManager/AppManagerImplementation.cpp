@@ -202,6 +202,14 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
 #endif // RALF_PACKAGE_SUPPORT_ENABLED
                             getCustomValues(runtimeConfig);
                             string launchArgs = appRequestParam->launchArgs;
+                            JsonObject launchArgsObj;
+                            launchArgsObj.FromString(launchArgs);
+                            const bool debugLaunchRequested = launchArgsObj.HasLabel("debugger") || launchArgsObj.HasLabel("enableDebugger");
+                            runtimeConfig.enableDebugger = debugLaunchRequested;
+                            if (debugLaunchRequested)
+                            {
+                                LOGINFO("Debugger launch requested for appId=%s", appId.c_str());
+                            }
 
                             if (action == APP_ACTION_LAUNCH)
                             {
@@ -217,8 +225,8 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                             {
                                 // Append any env vars from launchArgs["env"] into runtimeConfig.envVariables.
                                 {
-                                    JsonObject launchArgsObj;
-                                    launchArgsObj.FromString(launchArgs);
+                                    //JsonObject launchArgsObj;
+                                    //launchArgsObj.FromString(launchArgs);
                                     if (launchArgsObj.HasLabel("env"))
                                     {
                                         JsonArray envArray;
