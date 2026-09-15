@@ -87,7 +87,6 @@ namespace WPEFramework
         void RequestHandler::terminate()
 	{
             StateTransitionHandler::getInstance()->terminate();
-            StateTransitionHandler::cleanupSingleton();
             if (mWindowManagerHandler)
             {
                 mWindowManagerHandler->terminate();
