@@ -1156,7 +1156,6 @@ namespace Plugin {
             }
             mState.insert( { key, state } );
         }
-        }
 
         cacheInitialized = true;
          const std::string markerFile = PACKAGE_MANAGER_MARKER_FILE;
