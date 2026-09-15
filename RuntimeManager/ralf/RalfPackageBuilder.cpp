@@ -86,6 +86,8 @@ namespace ralf
         status = ralfOciGen.generateRalfOCIConfig(config, runtimeConfigObject);
         if (!status)
         {
+            unmountOverlayfsIfExists(config.mAppInstanceId);
+            dobbySpec.clear();
             return false;
         }
 

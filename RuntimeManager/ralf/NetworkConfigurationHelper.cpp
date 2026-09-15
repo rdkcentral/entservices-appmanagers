@@ -302,16 +302,24 @@ namespace
         if (start_pos < endpoint.size() && endpoint[start_pos] == '[') {
             size_t bracket_end = endpoint.find(']', start_pos);
             if (bracket_end != std::string::npos) {
+                // Validate delimiter immediately after the closing bracket ']'
+                size_t next_char_pos = bracket_end + 1;
+                if (next_char_pos < endpoint.size()) {
+                    char next_char = endpoint[next_char_pos];
+                    if (next_char != ':' && next_char != '/' && next_char != '?') {
+                        return false; // Invalid delimiter after IPv6 bracket
+                    }
+                }
                 size_t host_len = bracket_end - start_pos + 1;
                 // Exact match for "[::1]" or "[0:0:0:0:0:0:0:1]"
-                return (host_len == 5 && endpoint.compare(start_pos, 5, "[::1]") == 0) ||
-                       (host_len == 17 && endpoint.compare(start_pos, 17, "[0:0:0:0:0:0:0:1]") == 0);
+                return ((host_len == 5 && endpoint.compare(start_pos, 5, "[::1]") == 0) ||
+                        (host_len == 17 && endpoint.compare(start_pos, 17, "[0:0:0:0:0:0:0:1]") == 0));
             }
             return false; // Malformed IPv6 bracket
         }
 
-        // Handle IPv4 and Hostnames (stop at ':' or '/')
-        size_t end_pos = endpoint.find_first_of(":/", start_pos);
+        // Handle IPv4 and Hostnames (stop at ':', '/', or '?')
+        size_t end_pos = endpoint.find_first_of(":/?", start_pos);
         size_t host_len = (end_pos == std::string::npos) ? (endpoint.size() - start_pos) : (end_pos - start_pos);
 
         return ((host_len == 9) &&
