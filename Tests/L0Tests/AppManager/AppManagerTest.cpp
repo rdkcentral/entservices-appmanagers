@@ -47,6 +47,7 @@ extern uint32_t Test_AM_LifecycleConnectorOnAppStateChangedWithoutManager();
 extern uint32_t Test_AM_LifecycleConnectorRemoveAppInfoByAppId();
 extern uint32_t Test_AM_LifecycleConnectorGetAppInstanceId();
 extern uint32_t Test_AM_LifecycleConnectorCreateAndGetLoadedAppsSuccess();
+extern uint32_t Test_AM_LifecycleConnectorGetLoadedAppsOrdersByLastActiveIndex();
 extern uint32_t Test_AM_LifecycleConnectorIsAppLoadedAndErrorPaths();
 extern uint32_t Test_AM_LifecycleConnectorSendIntentAndKillEdgeCases();
 extern uint32_t Test_AM_LifecycleConnectorStateCallbacksStability();
@@ -242,6 +243,7 @@ int main()
         { "AM_LifecycleConnectorRemoveAppInfoByAppId", Test_AM_LifecycleConnectorRemoveAppInfoByAppId },
         { "AM_LifecycleConnectorGetAppInstanceId", Test_AM_LifecycleConnectorGetAppInstanceId },
         { "AM_LifecycleConnectorCreateAndGetLoadedAppsSuccess", Test_AM_LifecycleConnectorCreateAndGetLoadedAppsSuccess },
+        { "AM_LifecycleConnectorGetLoadedAppsOrdersByLastActiveIndex", Test_AM_LifecycleConnectorGetLoadedAppsOrdersByLastActiveIndex },
         { "AM_LifecycleConnectorIsAppLoadedAndErrorPaths", Test_AM_LifecycleConnectorIsAppLoadedAndErrorPaths },
         { "AM_LifecycleConnectorSendIntentAndKillEdgeCases", Test_AM_LifecycleConnectorSendIntentAndKillEdgeCases },
         { "AM_LifecycleConnectorStateCallbacksStability", Test_AM_LifecycleConnectorStateCallbacksStability },
