@@ -105,6 +105,7 @@ namespace WPEFramework
                     Exchange::IRuntimeManager::RuntimeState containerState;
                     time_t requestTime = 0;
                     RuntimeManagerImplementation::RequestType requestType = RuntimeManagerImplementation::REQUEST_TYPE_NONE;
+                    bool debuggerEnabled = false;
 #ifdef ENABLE_RIALTO
                     bool usesRialto = false;
 #endif
