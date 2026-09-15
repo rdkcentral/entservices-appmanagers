@@ -868,6 +868,7 @@ namespace WPEFramework
                         /* Store request time and type in runtime app info map */
                         runtimeAppInfo.requestTime = requestTime;
                         runtimeAppInfo.requestType = REQUEST_TYPE_LAUNCH;
+                        runtimeAppInfo.debuggerEnabled = runtimeConfigObject.enableDebugger;
 #ifdef ENABLE_RIALTO
                         // usesRialto is true only when a Rialto session was actually
                         // established (socket path assigned). If createAppSession failed,
@@ -1391,8 +1392,23 @@ namespace WPEFramework
         void RuntimeManagerImplementation::onOCIContainerStartedEvent(std::string name, JsonObject &data)
         {
             LOGINFO("Container name: %s", name.c_str());
-/*
+
 #ifdef RDK_APPMANAGERS_DEBUG
+	    bool debuggerEnabled = false;
+            {
+                Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
+                for (const auto& appInfo : mRuntimeAppInfo)
+                {
+                    if (appInfo.second.containerId == name)
+                    {
+                        debuggerEnabled = appInfo.second.debuggerEnabled;
+                        break;
+                    }
+                }
+            }
+
+            if (debuggerEnabled)
+            {
             const in_addr_t addr = ContainerUtils::getContainerIpAddress(name);
             if (addr != 0)
             {
@@ -1434,8 +1450,12 @@ namespace WPEFramework
             {
                 LOGERR("Failed to get IP address for container '%s'", name.c_str());
             }
+	    }
+            else
+            {
+                LOGINFO("Skipping WebInspector attach for container %s (debugger not requested)", name.c_str());
+            }
 #endif
-*/
             dispatchEvent(RuntimeManagerImplementation::RuntimeEventType::RUNTIME_MANAGER_EVENT_CONTAINERSTARTED, data);
         }
 
