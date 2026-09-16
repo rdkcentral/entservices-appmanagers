@@ -59,6 +59,7 @@ namespace ralf
     constexpr const char *FILES = "files";
 
     constexpr const char *ENTRY_POINT = "entryPoint";
+    constexpr const char *ENTRY_ARGS = "entryArgs";
     constexpr const char *CONFIGURATION = "configuration";
     constexpr const char *KEY = "key";
     constexpr const char *VALUE = "value";
