@@ -102,7 +102,7 @@ namespace WPEFramework
                 }
 
             }
-
+            std::lock_guard<std::mutex> lock(gStateTransitionHandlerInstanceMutex);
             StateHandler::initialize();
             std::atexit(terminateStateTransitionHandlerAtExit);
             try
