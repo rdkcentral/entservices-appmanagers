@@ -134,7 +134,7 @@ namespace ralf
          * As per the current specification, these are expected to be added as environment variables in the OCI config.
          * If an "application" sub-object is present in the overrides, it is serialized under APP_CONFIG_OVERRIDES_JSON.
          * If a "runtime" sub-object is present, it is serialized under RUNTIME_CONFIG_OVERRIDES_JSON.
-         * If a "base" sub-object is present, it is serialized under BASE_CONFIG_OVERRIDES_JSON.
+         * If a "base" sub-object is present in the overrides, it is serialized under BASE_CONFIG_OVERRIDES_JSON.
          * @param ociConfigRootNode The root node of the OCI config JSON.
          * @param configNode  The config node containing the overrides.
          * @return true if at least one config override env var was added, false otherwise.
@@ -189,28 +189,6 @@ namespace ralf
          * @return true if at least one environment variable was added, false otherwise.
          */
         bool addConfigEnvToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &configNode);
-
-        /**
-         * Adds DIAL configuration from urn:rdk:config:dial to the OCI config.
-         * The runtime manager exports a DIAL-friendly name plus the optional CORS and
-         * origin-header policy into process.env so the app can honor the specification.
-         * @param ociConfigRootNode The root node of the OCI config JSON.
-         * @param configNode The package configuration node containing the DIAL specification.
-         * @param manifestRootNode The manifest root node used to fall back to package id when appNames is absent.
-         * @return true if DIAL configuration was present and applied, false otherwise.
-         */
-        bool addDialConfigToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &configNode, const Json::Value &manifestRootNode);
-
-        /**
-         * Adds platform configuration from urn:rdk:config:platform to the OCI config.
-         * The platform configuration specifies the target platform (architecture, variant, and OS)
-         * on which the package is intended to run. This OPTIONAL configuration is used by the runtime
-         * manager to validate and filter packages based on the device's platform capabilities.
-         * @param ociConfigRootNode The root node of the OCI config JSON.
-         * @param configNode The package configuration node containing the platform specification.
-         * @return true if platform configuration was added, false if not present or invalid.
-         */
-        bool addPlatformConfigToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &configNode);
 
         /**
          * Updates the OCI config JSON at rdkPlugins.logging.data.fileOptions.path to point to the

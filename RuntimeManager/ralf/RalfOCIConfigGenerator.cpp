@@ -464,20 +464,11 @@ namespace ralf
         {
             status = addConfigEnvToOCIConfig(ociConfigRootNode, configNode);
             LOGDBG("Applied config env to OCI config ? %s\n", status ? "true" : "false");
-            status = addDialConfigToOCIConfig(ociConfigRootNode, configNode, manifestRootNode);
-            LOGDBG("Applied DIAL config to OCI config ? %s\n", status ? "true" : "false");
         }
         else if (configNode.isMember(ENV_CONFIG_URN))
         {
             LOGWARN("Ignoring %s for packageType '%s'; only valid for application/service packages\n", ENV_CONFIG_URN, packageType.c_str());
         }
-        else if (configNode.isMember(DIAL_CONFIG_URN))
-        {
-            LOGWARN("Ignoring %s for packageType '%s'; only valid for application/service packages\n", DIAL_CONFIG_URN, packageType.c_str());
-        }
-        // Apply urn:rdk:config:platform — spec matrix: Optional for all package types
-        status = addPlatformConfigToOCIConfig(ociConfigRootNode, configNode);
-        LOGDBG("Applied platform config to OCI config ? %s\n", status ? "true" : "false");
         // Add APP_PACKAGE_VERSION environment variable from application config to OCI config
         if (packageType == PKG_TYPE_APPLICATION)
         {
@@ -618,9 +609,10 @@ namespace ralf
         if (configNode.isMember(CONFIG_OVERRIDES_URN) && configNode[CONFIG_OVERRIDES_URN].isObject())
         {
             // Serialize each override sub-object and export it as a separate environment variable in OCI config.
-            // If an "application" node is present, store its serialized JSON under APP_CONFIG_OVERRIDES_ENV_KEY.
+            // Supports application, runtime, and base package types as per urn:rdk:config:overrides specification.
             Json::Value overrideNode = configNode[CONFIG_OVERRIDES_URN];
 
+            // If an "application" node is present, store its serialized JSON under APP_CONFIG_OVERRIDES_ENV_KEY.
             if (overrideNode.isMember(PKG_TYPE_APPLICATION) && overrideNode[PKG_TYPE_APPLICATION].isObject())
             {
                 std::string overrideJsonStr = serializeJsonNode(overrideNode[PKG_TYPE_APPLICATION]);
@@ -628,6 +620,7 @@ namespace ralf
                 LOGDBG("Added application config overrides to OCI config as environment variable: %s\n", APP_CONFIG_OVERRIDES_ENV_KEY);
                 status = true;
             }
+            
             // If a "runtime" node is present, store its serialized JSON under RUNTIME_CONFIG_OVERRIDES_ENV_KEY.
             if (overrideNode.isMember(PKG_TYPE_RUNTIME) && overrideNode[PKG_TYPE_RUNTIME].isObject())
             {
@@ -636,6 +629,7 @@ namespace ralf
                 LOGDBG("Added runtime config overrides to OCI config as environment variable: %s\n", RUNTIME_CONFIG_OVERRIDES_ENV_KEY);
                 status = true;
             }
+            
             // If a "base" node is present, store its serialized JSON under BASE_CONFIG_OVERRIDES_ENV_KEY.
             if (overrideNode.isMember(PKG_TYPE_BASE) && overrideNode[PKG_TYPE_BASE].isObject())
             {
@@ -644,6 +638,7 @@ namespace ralf
                 LOGDBG("Added base config overrides to OCI config as environment variable: %s\n", BASE_CONFIG_OVERRIDES_ENV_KEY);
                 status = true;
             }
+            
             if (!status)
             {
                 LOGWARN("Config overrides node found but contains no 'application', 'runtime', or 'base' sub-objects\n");
@@ -690,138 +685,6 @@ namespace ralf
             LOGWARN("Config env node found but contains no valid key/value entries\n");
         }
         return status;
-    }
-
-    bool RalfOCIConfigGenerator::addDialConfigToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &configNode, const Json::Value &manifestRootNode)
-    {
-        if (!configNode.isMember(DIAL_CONFIG_URN) || !configNode[DIAL_CONFIG_URN].isObject())
-        {
-            LOGDBG("No DIAL configuration found in Ralf package config\n");
-            return false;
-        }
-
-        const Json::Value &dialNode = configNode[DIAL_CONFIG_URN];
-        bool status = false;
-
-        std::string dialAppName;
-        if (dialNode.isMember(APP_NAMES) && dialNode[APP_NAMES].isArray())
-        {
-            for (const auto &entry : dialNode[APP_NAMES])
-            {
-                if (entry.isString() && !entry.asString().empty())
-                {
-                    dialAppName = entry.asString();
-                    break;
-                }
-            }
-        }
-        if (dialAppName.empty() && manifestRootNode.isMember(ID) && manifestRootNode[ID].isString())
-        {
-            dialAppName = manifestRootNode[ID].asString();
-        }
-
-        if (!dialAppName.empty())
-        {
-            addToEnvironment(ociConfigRootNode, APPLICATION_DIAL_NAME_ENV_KEY, dialAppName);
-            addToEnvironment(ociConfigRootNode, DIAL_FRIENDLY_NAME_ENV_KEY, dialAppName);
-            addToEnvironment(ociConfigRootNode, DIAL_ENABLED_ENV_KEY, "true");
-            status = true;
-        }
-        else
-        {
-            LOGWARN("DIAL config found but no valid app name was provided; setting DIAL_ENABLED=false\n");
-            addToEnvironment(ociConfigRootNode, DIAL_ENABLED_ENV_KEY, "false");
-            return false;
-        }
-
-        if (dialNode.isMember(CORS_DOMAINS) && dialNode[CORS_DOMAINS].isArray())
-        {
-            std::vector<std::string> corsDomains;
-            for (const auto &entry : dialNode[CORS_DOMAINS])
-            {
-                if (entry.isString() && !entry.asString().empty())
-                {
-                    corsDomains.push_back(entry.asString());
-                }
-            }
-            if (!corsDomains.empty())
-            {
-                std::string corsValue;
-                for (size_t i = 0; i < corsDomains.size(); ++i)
-                {
-                    if (i > 0)
-                    {
-                        corsValue += ",";
-                    }
-                    corsValue += corsDomains[i];
-                }
-                addToEnvironment(ociConfigRootNode, DIAL_CORS_DOMAINS_ENV_KEY, corsValue);
-                status = true;
-            }
-        }
-
-        if (dialNode.isMember(ORIGIN_HEADER_REQUIRED) && dialNode[ORIGIN_HEADER_REQUIRED].isBool())
-        {
-            addToEnvironment(ociConfigRootNode, DIAL_ORIGIN_HEADER_REQUIRED_ENV_KEY,
-                dialNode[ORIGIN_HEADER_REQUIRED].asBool() ? "true" : "false");
-            status = true;
-        }
-
-        addToEnvironment(ociConfigRootNode, DIAL_CONFIG_JSON_ENV_KEY, serializeJsonNode(dialNode));
-        return status;
-    }
-
-    bool RalfOCIConfigGenerator::addPlatformConfigToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &configNode)
-    {
-        if (!configNode.isMember(PLATFORM_CONFIG_URN) || !configNode[PLATFORM_CONFIG_URN].isObject())
-        {
-            LOGDBG("No platform configuration found in config node\n");
-            return false;
-        }
-
-        Json::Value platformNode = configNode[PLATFORM_CONFIG_URN];
-        Json::Value platformConfig(Json::objectValue);
-
-        // Architecture is required in the platform spec
-        if (platformNode.isMember(ARCHITECTURE) && platformNode[ARCHITECTURE].isString())
-        {
-            platformConfig[ARCHITECTURE] = platformNode[ARCHITECTURE];
-            LOGDBG("Added platform architecture: %s\n", platformNode[ARCHITECTURE].asString().c_str());
-        }
-        else
-        {
-            LOGWARN("Platform configuration missing required 'architecture' field\n");
-            return false;
-        }
-
-        // OS is required in the platform spec
-        if (platformNode.isMember(OS_FIELD) && platformNode[OS_FIELD].isString())
-        {
-            platformConfig[OS_FIELD] = platformNode[OS_FIELD];
-            LOGDBG("Added platform OS: %s\n", platformNode[OS_FIELD].asString().c_str());
-        }
-        else
-        {
-            LOGWARN("Platform configuration missing required 'os' field\n");
-            return false;
-        }
-
-        // Variant is optional
-        if (platformNode.isMember(VARIANT) && platformNode[VARIANT].isString())
-        {
-            platformConfig[VARIANT] = platformNode[VARIANT];
-            LOGDBG("Added platform variant: %s\n", platformNode[VARIANT].asString().c_str());
-        }
-
-        // Store platform configuration in the OCI config's rdkPlugins section
-        if (!ociConfigRootNode[RDKPLUGINS].isObject())
-        {
-            ociConfigRootNode[RDKPLUGINS] = Json::objectValue;
-        }
-        ociConfigRootNode[RDKPLUGINS][PLATFORM_CONFIG_URN] = platformConfig;
-        LOGDBG("Added platform configuration to OCI config\n");
-
-        return true;
     }
 
     void RalfOCIConfigGenerator::addTimezoneInfo(Json::Value &ociConfigRootNode)

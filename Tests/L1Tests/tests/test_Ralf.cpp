@@ -1307,10 +1307,6 @@ public:
     {
         return mGen.addStorageConfigToOCIConfig(node, configNode);
     }
-    bool addPlatformConfigToOCIConfig(Json::Value& node, const Json::Value& configNode)
-    {
-        return mGen.addPlatformConfigToOCIConfig(node, configNode);
-    }
     bool addEntryPointToOCIConfig(Json::Value& node, const Json::Value& pkgNode)
     {
         return mGen.addEntryPointToOCIConfig(node, pkgNode);
@@ -1344,10 +1340,6 @@ public:
     bool addConfigEnvToOCIConfig(Json::Value& node, const Json::Value& configNode)
     {
         return mGen.addConfigEnvToOCIConfig(node, configNode);
-    }
-    bool addDialConfigToOCIConfig(Json::Value& node, const Json::Value& configNode, const Json::Value& manifestNode)
-    {
-        return mGen.addDialConfigToOCIConfig(node, configNode, manifestNode);
     }
     bool saveOCIConfigToFile(const Json::Value& node, int uid, int gid)
     {
@@ -1592,25 +1584,6 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, AddConfigOverrides_RuntimeOverride)
     EXPECT_TRUE(found);
 }
 
-/* Test Case: AddConfigOverrides_BaseOverride
- * Verifies that a "base" sub-object is serialized and stored as
- * BASE_CONFIG_OVERRIDES_JSON environment variable.
- */
-TEST_F(RalfOCIConfigGeneratorPrivateTest, AddConfigOverrides_BaseOverride)
-{
-    TEST_LOG("Testing addConfigOverridesToOCIConfig with base override");
-    Json::Value root;
-    Json::Value configNode;
-    configNode[ralf::CONFIG_OVERRIDES_URN][ralf::PKG_TYPE_BASE]["config"] = "baseConfig";
-    EXPECT_TRUE(mAcc.addConfigOverridesToOCIConfig(root, configNode));
-    bool found = false;
-    for (const auto& e : root[ralf::PROCESS][ralf::ENV]) {
-        if (e.asString().rfind(std::string(ralf::BASE_CONFIG_OVERRIDES_ENV_KEY) + "=", 0) == 0)
-            found = true;
-    }
-    EXPECT_TRUE(found);
-}
-
 /* Test Case: AddConfigOverrides_NoOverridesNode
  * Verifies that addConfigOverridesToOCIConfig returns false when CONFIG_OVERRIDES_URN
  * is absent from the config node.
@@ -1708,40 +1681,6 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, AddConfigEnv_EnvNodeNotObject)
 
     EXPECT_FALSE(mAcc.addConfigEnvToOCIConfig(root, configNode));
     EXPECT_TRUE(root[ralf::PROCESS][ralf::ENV].empty() || !root[ralf::PROCESS].isMember(ralf::ENV));
-}
-
-/* Test Case: AddDialConfig_ValidEntries
- * Verifies that urn:rdk:config:dial populates the OCI environment with the app name,
- * CORS domain list, and origin header flag for DIAL-capable apps.
- */
-TEST_F(RalfOCIConfigGeneratorPrivateTest, AddDialConfig_ValidEntries)
-{
-    TEST_LOG("Testing addDialConfigToOCIConfig with valid DIAL metadata");
-    Json::Value root;
-    Json::Value configNode;
-    Json::Value manifestNode;
-    manifestNode[ralf::ID] = "com.example.myapp";
-    configNode[ralf::DIAL_CONFIG_URN][ralf::APP_NAMES].append("MyMediaApp");
-    configNode[ralf::DIAL_CONFIG_URN][ralf::CORS_DOMAINS].append("https://media.example.com");
-    configNode[ralf::DIAL_CONFIG_URN][ralf::ORIGIN_HEADER_REQUIRED] = true;
-
-    EXPECT_TRUE(mAcc.addDialConfigToOCIConfig(root, configNode, manifestNode));
-
-    bool foundAppName = false;
-    bool foundCors = false;
-    bool foundOrigin = false;
-    for (const auto& e : root[ralf::PROCESS][ralf::ENV]) {
-        if (e.asString() == "APPLICATION_DIAL_NAME=MyMediaApp")
-            foundAppName = true;
-        if (e.asString() == "DIAL_CORS_DOMAINS=https://media.example.com")
-            foundCors = true;
-        if (e.asString() == "DIAL_ORIGIN_HEADER_REQUIRED=true")
-            foundOrigin = true;
-    }
-
-    EXPECT_TRUE(foundAppName);
-    EXPECT_TRUE(foundCors);
-    EXPECT_TRUE(foundOrigin);
 }
 
 // ──────────────────────────────
@@ -1859,80 +1798,6 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, AddStorageConfig_NoStorageNode)
             found = true;
     }
     EXPECT_TRUE(found);
-}
-
-// ──────────────────────────────
-// addPlatformConfigToOCIConfig
-// ──────────────────────────────
-
-/* Test Case: AddPlatformConfig_ValidConfig
- * Verifies that platform configuration with all fields (architecture, os, and variant) is correctly added.
- */
-TEST_F(RalfOCIConfigGeneratorPrivateTest, AddPlatformConfig_ValidConfig)
-{
-    TEST_LOG("Testing addPlatformConfigToOCIConfig with valid platform config");
-    Json::Value root;
-    Json::Value configNode;
-    configNode[ralf::PLATFORM_CONFIG_URN][ralf::ARCHITECTURE] = "arm";
-    configNode[ralf::PLATFORM_CONFIG_URN][ralf::OS_FIELD] = "linux";
-    configNode[ralf::PLATFORM_CONFIG_URN][ralf::VARIANT] = "v7";
-    EXPECT_TRUE(mAcc.addPlatformConfigToOCIConfig(root, configNode));
-    EXPECT_TRUE(root[ralf::RDKPLUGINS][ralf::PLATFORM_CONFIG_URN].isObject());
-    EXPECT_EQ("arm", root[ralf::RDKPLUGINS][ralf::PLATFORM_CONFIG_URN][ralf::ARCHITECTURE].asString());
-    EXPECT_EQ("linux", root[ralf::RDKPLUGINS][ralf::PLATFORM_CONFIG_URN][ralf::OS_FIELD].asString());
-    EXPECT_EQ("v7", root[ralf::RDKPLUGINS][ralf::PLATFORM_CONFIG_URN][ralf::VARIANT].asString());
-}
-
-/* Test Case: AddPlatformConfig_WithoutVariant
- * Verifies that platform configuration without variant (optional field) is correctly added.
- */
-TEST_F(RalfOCIConfigGeneratorPrivateTest, AddPlatformConfig_WithoutVariant)
-{
-    TEST_LOG("Testing addPlatformConfigToOCIConfig without optional variant");
-    Json::Value root;
-    Json::Value configNode;
-    configNode[ralf::PLATFORM_CONFIG_URN][ralf::ARCHITECTURE] = "arm64";
-    configNode[ralf::PLATFORM_CONFIG_URN][ralf::OS_FIELD] = "linux";
-    EXPECT_TRUE(mAcc.addPlatformConfigToOCIConfig(root, configNode));
-    EXPECT_TRUE(root[ralf::RDKPLUGINS][ralf::PLATFORM_CONFIG_URN].isObject());
-    EXPECT_EQ("arm64", root[ralf::RDKPLUGINS][ralf::PLATFORM_CONFIG_URN][ralf::ARCHITECTURE].asString());
-    EXPECT_EQ("linux", root[ralf::RDKPLUGINS][ralf::PLATFORM_CONFIG_URN][ralf::OS_FIELD].asString());
-    EXPECT_FALSE(root[ralf::RDKPLUGINS][ralf::PLATFORM_CONFIG_URN].isMember(ralf::VARIANT));
-}
-
-/* Test Case: AddPlatformConfig_MissingArchitecture
- * Verifies that platform configuration without required architecture field returns false.
- */
-TEST_F(RalfOCIConfigGeneratorPrivateTest, AddPlatformConfig_MissingArchitecture)
-{
-    TEST_LOG("Testing addPlatformConfigToOCIConfig with missing architecture");
-    Json::Value root;
-    Json::Value configNode;
-    configNode[ralf::PLATFORM_CONFIG_URN][ralf::OS_FIELD] = "linux";
-    EXPECT_FALSE(mAcc.addPlatformConfigToOCIConfig(root, configNode));
-}
-
-/* Test Case: AddPlatformConfig_MissingOS
- * Verifies that platform configuration without required os field returns false.
- */
-TEST_F(RalfOCIConfigGeneratorPrivateTest, AddPlatformConfig_MissingOS)
-{
-    TEST_LOG("Testing addPlatformConfigToOCIConfig with missing os");
-    Json::Value root;
-    Json::Value configNode;
-    configNode[ralf::PLATFORM_CONFIG_URN][ralf::ARCHITECTURE] = "arm";
-    EXPECT_FALSE(mAcc.addPlatformConfigToOCIConfig(root, configNode));
-}
-
-/* Test Case: AddPlatformConfig_NoPlatformNode
- * Verifies that addPlatformConfigToOCIConfig returns false when PLATFORM_CONFIG_URN is absent.
- */
-TEST_F(RalfOCIConfigGeneratorPrivateTest, AddPlatformConfig_NoPlatformNode)
-{
-    TEST_LOG("Testing addPlatformConfigToOCIConfig when platform config is absent");
-    Json::Value root;
-    Json::Value configNode; // empty
-    EXPECT_FALSE(mAcc.addPlatformConfigToOCIConfig(root, configNode));
 }
 
 // ──────────────────────────────
