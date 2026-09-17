@@ -364,7 +364,11 @@ uint32_t Test_Impl_InitializeExistingDirReturnsNone()
 {
     L0Test::TestResult tr;
 
-    const std::string dir = "/tmp"; // /tmp always exists
+    // Create a pre-existing directory that passes security validation
+    // (owned by current user, not world-writable)
+    const std::string dir = "/tmp/dm_l0_existing_dir/";
+    (void) mkdir(dir.c_str(), 0755);  // OK if it already exists
+
     L0Test::ServiceMock::Config cfg;
     cfg.internetActive = true;
     cfg.configLine     = "{\"downloadDir\":\"" + dir + "\"}";
@@ -380,6 +384,7 @@ uint32_t Test_Impl_InitializeExistingDirReturnsNone()
     }
 
     impl->Release();
+    (void) rmdir(dir.c_str());  // Clean up
     return tr.failures;
 }
 
@@ -1660,7 +1665,8 @@ uint32_t Test_Impl_DeleteDifferentFileWhileActiveDownload()
     // Create a separate file that is NOT the active download's fileLocator.
     // fileLocator for active download is dir+"package"+downloadId.
     // We delete a completely different file → condition false → else branch (remove).
-    const std::string otherFile = "/tmp/dm_l0_del_other_target.pkg";
+    // IMPORTANT: File must be inside the managed directory for the security fix to allow deletion.
+    const std::string otherFile = dir + "other_target.pkg";
     FILE* fp = fopen(otherFile.c_str(), "wb");
     if (nullptr != fp) {
         const char buf[64] = {};
