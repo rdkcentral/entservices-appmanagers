@@ -1665,8 +1665,9 @@ uint32_t Test_Impl_DeleteDifferentFileWhileActiveDownload()
     // Create a separate file that is NOT the active download's fileLocator.
     // fileLocator for active download is dir+"package"+downloadId.
     // We delete a completely different file → condition false → else branch (remove).
-    // IMPORTANT: File must be inside the managed directory for the security fix to allow deletion.
-    const std::string otherFile = dir + "other_target.pkg";
+    // IMPORTANT: File must be inside the managed directory and follow the
+    // package<digits> naming convention for the security fix to allow deletion.
+    const std::string otherFile = dir + "package9999";
     FILE* fp = fopen(otherFile.c_str(), "wb");
     if (nullptr != fp) {
         const char buf[64] = {};
