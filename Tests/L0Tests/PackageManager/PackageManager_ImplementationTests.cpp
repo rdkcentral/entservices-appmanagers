@@ -3,6 +3,7 @@
 #include <cstdio>
 #include <string>
 #include <thread>
+#include <unistd.h>
 
 #include "PackageManagerImplementation.h"
 #include "ServiceMock.h"
@@ -298,16 +299,33 @@ uint32_t Test_PM_Impl_DeleteFilePaths()
 
     L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() succeeds");
 
-    const std::string existing = "/tmp/packagemanager_l0_delete_me.bin";
+    const std::string existing = "/tmp/packagemanager_l0/package7001";
+    const std::string outside = "/tmp/package7002";
+    const std::string target = "/tmp/packagemanager_l0_target";
+    const std::string link = "/tmp/packagemanager_l0/package7003";
     FILE* f = std::fopen(existing.c_str(), "wb");
     if (f != nullptr) {
         std::fwrite("ok", 1, 2, f);
         std::fclose(f);
     }
+    f = std::fopen(target.c_str(), "wb");
+    if (f != nullptr) {
+        std::fwrite("ok", 1, 2, f);
+        std::fclose(f);
+    }
+    (void) symlink(target.c_str(), link.c_str());
 
-    L0Test::ExpectEqU32(tr, fx.impl->Delete(existing), ERROR_NONE, "Delete() on existing file returns ERROR_NONE");
+    L0Test::ExpectEqU32(tr, fx.impl->Delete(existing), ERROR_NONE, "Delete() on managed file returns ERROR_NONE");
     L0Test::ExpectEqU32(tr, fx.impl->Delete(existing), ERROR_GENERAL, "Delete() on missing file returns ERROR_GENERAL");
+    L0Test::ExpectEqU32(tr, fx.impl->Delete(outside), ERROR_GENERAL, "Delete() outside downloadDir is rejected");
+    L0Test::ExpectEqU32(tr, fx.impl->Delete("/tmp/packagemanager_l0/../package7002"), ERROR_GENERAL, "Delete() traversal is rejected");
+    L0Test::ExpectEqU32(tr, fx.impl->Delete(link), ERROR_GENERAL, "Delete() symbolic link is rejected");
+    L0Test::ExpectEqU32(tr, fx.impl->Delete("/tmp/packagemanager_l0/unmanaged"), ERROR_GENERAL, "Delete() unmanaged filename is rejected");
+    L0Test::ExpectEqU32(tr, fx.impl->Delete("tmp/packagemanager_l0/package7004"), ERROR_GENERAL, "Delete() relative locator is rejected");
+    L0Test::ExpectTrue(tr, access(target.c_str(), F_OK) == 0, "Symbolic-link target remains");
 
+    (void) unlink(link.c_str());
+    (void) unlink(target.c_str());
     return tr.failures;
 }
 

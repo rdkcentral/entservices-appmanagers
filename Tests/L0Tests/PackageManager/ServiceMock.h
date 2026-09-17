@@ -250,7 +250,7 @@ public:
             : storage(storage)
             , subSystem(subSystem)
             , telemetry(telemetry)
-            , configLine("{\"downloadDir\":\"/tmp/\"}")
+            , configLine("{\"downloadDir\":\"/tmp/packagemanager_l0\"}")
         {
         }
 
