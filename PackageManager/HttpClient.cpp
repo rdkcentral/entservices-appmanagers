@@ -50,6 +50,11 @@ HttpClient::downloadFile(const std::string & url, const std::string & fileName, 
     httpCode = 0;
 
     if (curl) {
+        /* Security: restrict protocols to HTTPS (and HTTP as fallback) to prevent
+         * SSRF via file://, gopher://, dict:// etc.  Also restrict redirect protocols
+         * and disable following redirects to non-HTTP(S) targets. */
+        (void) curl_easy_setopt(curl, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
+        (void) curl_easy_setopt(curl, CURLOPT_REDIR_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
         (void) curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
         setRateLimit(rateLimit);
 
