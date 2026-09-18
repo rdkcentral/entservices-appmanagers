@@ -135,7 +135,7 @@ namespace Plugin {
                 std::lock_guard<std::mutex> lock(mQueueMutex);
                 mDownloadId = static_cast<uint32_t>(config.downloadId.Value());
             }
-            int rc = mkdir(mDownloadPath.c_str(), 0777);
+            int rc = mkdir(mDownloadPath.c_str(), 0755);
             if (rc != 0 && errno != EEXIST)
             {
                 LOGERR("DM: Failed to create Download Path '%s' rc: %d errno=%d", mDownloadPath.c_str(), rc, errno);
