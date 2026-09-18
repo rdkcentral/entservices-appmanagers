@@ -627,7 +627,8 @@ namespace WPEFramework
             }
 #else
             // Validate caller-supplied userId and groupId to prevent privilege escalation
-            // Reject uid 0 (root) and other privileged IDs unless explicitly authorized
+            // Reject uid 0 (root) and gid 0 (root group) - these are the most dangerous
+            // Allow other system accounts (< 1000) as platform apps may legitimately use them
             if (uid == 0)
             {
                 LOGERR("Rejected privileged userId=0 (root) from caller - not allowed");
@@ -635,28 +636,12 @@ namespace WPEFramework
                 errorReason = "Privileged userId not allowed";
                 return status;
             }
-            // Reject UID < 1000 (typically system users) unless explicitly authorized
-            if (uid < 1000)
-            {
-                LOGWARN("Rejected system userId=%d from caller - only non-system UIDs allowed", uid);
-                status = Core::ERROR_UNAUTHORIZED;
-                errorReason = "System userId not allowed";
-                return status;
-            }
-            // Reject gid 0 (root group) and other privileged groups
+            // Reject gid 0 (root group)
             if (gid == 0)
             {
                 LOGERR("Rejected privileged groupId=0 (root) from caller - not allowed");
                 status = Core::ERROR_UNAUTHORIZED;
                 errorReason = "Privileged groupId not allowed";
-                return status;
-            }
-            // Reject GID < 1000 (typically system groups) unless explicitly authorized
-            if (gid < 1000)
-            {
-                LOGWARN("Rejected system groupId=%d from caller - only non-system GIDs allowed", gid);
-                status = Core::ERROR_UNAUTHORIZED;
-                errorReason = "System groupId not allowed";
                 return status;
             }
 #endif // RALF_PACKAGE_SUPPORT_ENABLED

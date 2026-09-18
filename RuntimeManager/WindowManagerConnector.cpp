@@ -154,7 +154,6 @@ void WindowManagerConnector::getDisplayInfo(const string& appInstanceId , string
     {
         LOGERR("Display name already exists, using default display name\n");
         waylandDisplayName = "testdisplay";
-        }
     }
     if (xdgRuntimeDirFd >= 0 && close(xdgRuntimeDirFd) < 0)
     {
