@@ -18,6 +18,7 @@
 **/
 
 #include <chrono>
+#include <curl/curl.h>
 
 #include "DownloadManagerImplementation.h"
 #include "UtilsAppManagerTelemetry.h"
@@ -61,6 +62,124 @@ namespace Plugin {
             }
         }
         mDownloadManagerNotification.clear();
+    }
+
+    // Validate URL to prevent SSRF attacks (RDKEMW-24509)
+    // Rejects localhost, private network ranges, and file:// protocols
+    bool DownloadManagerImplementation::isValidDownloadUrl(const std::string& url) const
+    {
+        if (url.empty())
+        {
+            return false;
+        }
+
+        // Simple string-based validation for compatibility
+        std::string urlLower = url;
+        std::transform(urlLower.begin(), urlLower.end(), urlLower.begin(), ::tolower);
+
+        // Allow file:// protocol during L0/L1 testing for local file testing
+        // In production, file:// is rejected for SSRF protection
+#ifndef RDK_SERVICES_L1_TEST
+        // Reject file:// protocol in production
+        if (urlLower.find("file://") == 0)
+        {
+            LOGERR("Rejected URL with file:// protocol: %s", url.c_str());
+            return false;
+        }
+#endif
+
+        // Allow file://, http:// and https:// during testing
+        // Only allow http:// and https:// in production
+        bool hasValidScheme = false;
+#ifdef RDK_SERVICES_L1_TEST
+        hasValidScheme = (urlLower.find("file://") == 0 || 
+                          urlLower.find("http://") == 0 || 
+                          urlLower.find("https://") == 0);
+#else
+        hasValidScheme = (urlLower.find("http://") == 0 || urlLower.find("https://") == 0);
+#endif
+
+        if (!hasValidScheme)
+        {
+            LOGERR("Rejected URL with invalid scheme: %s", url.c_str());
+            return false;
+        }
+
+        // Skip host validation for file:// URLs (local files)
+        if (urlLower.find("file://") == 0)
+        {
+            return true;
+        }
+
+        // Extract host from URL (simple parsing)
+        size_t schemeEnd = urlLower.find("://");
+        if (schemeEnd == std::string::npos)
+        {
+            return false;
+        }
+
+        size_t hostStart = schemeEnd + 3;
+        size_t hostEnd = urlLower.find('/', hostStart);
+        if (hostEnd == std::string::npos)
+        {
+            hostEnd = urlLower.length();
+        }
+
+        size_t portStart = urlLower.find(':', hostStart);
+        if (portStart != std::string::npos && portStart < hostEnd)
+        {
+            hostEnd = portStart;
+        }
+
+        std::string host = urlLower.substr(hostStart, hostEnd - hostStart);
+
+        // Reject localhost variants
+        if (host == "localhost" || host == "127.0.0.1" || host == "::1" || host == "[::1]")
+        {
+            LOGERR("Rejected URL pointing to localhost: %s", url.c_str());
+            return false;
+        }
+
+        // Reject private network ranges
+        // 10.0.0.0/8
+        if (host.find("10.") == 0)
+        {
+            LOGERR("Rejected URL pointing to private network: %s", url.c_str());
+            return false;
+        }
+
+        // 192.168.0.0/16
+        if (host.find("192.168.") == 0)
+        {
+            LOGERR("Rejected URL pointing to private network: %s", url.c_str());
+            return false;
+        }
+
+        // 172.16.0.0/12 (172.16.0.0 to 172.31.255.255)
+        if (host.find("172.") == 0)
+        {
+            size_t secondDot = host.find('.', 4);
+            if (secondDot != std::string::npos)
+            {
+                std::string secondOctet = host.substr(4, secondDot - 4);
+                try
+                {
+                    int octet = std::stoi(secondOctet);
+                    if (octet >= 16 && octet <= 31)
+                    {
+                        LOGERR("Rejected URL pointing to private network: %s", url.c_str());
+                        return false;
+                    }
+                }
+                catch (...)
+                {
+                    // Invalid IP format, reject
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
     Core::hresult DownloadManagerImplementation::Register(Exchange::IDownloadManager::INotification* notification)
@@ -222,6 +341,12 @@ namespace Plugin {
             LOGERR("DM: Download failed - empty URL! priority=%d retries=%u rateLimit=%u",
                    options.priority, options.retries, options.rateLimit);
             DownloadManagerTelemetryReporting::getInstance().recordDownloadErrorTelemetry("EMPTY_URL", static_cast<int>(DownloadReason::DOWNLOAD_FAILURE));
+        }
+        else if (!isValidDownloadUrl(url))
+        {
+            LOGERR("DM: Download failed - invalid URL (SSRF protection): %s", url.c_str());
+            result = Core::ERROR_BAD_REQUEST;
+            DownloadManagerTelemetryReporting::getInstance().recordDownloadErrorTelemetry("INVALID_URL", static_cast<int>(DownloadReason::DOWNLOAD_FAILURE));
         }
         else
         {
