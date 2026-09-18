@@ -34,8 +34,6 @@
 #include <cctype>
 #include <sys/sysinfo.h>
 #include <cstring>
-#include <limits.h>
-#include <stdlib.h>
 //TODO SUPPORT THIS
 //#include <IPackage.h>
 #include <curl/curl.h>
@@ -124,63 +122,24 @@ namespace
         }
     }
 
-    // Validate that a path is safe for container spec use
-    // Rejects absolute paths outside allowed prefixes, traversal sequences, and symlinks
+    // Validate that a path does not contain a parent-directory component.
+    // Host mount sources are supplied as absolute paths from several valid roots,
+    // so restricting them to a small prefix allow-list breaks legitimate specs.
     bool isValidContainerPath(const std::string& path)
     {
-        if (path.empty())
+        if (path.empty() || (path.find('\0') != std::string::npos))
         {
             return false;
         }
 
-        // Reject path traversal sequences
-        if (path.find("..") != std::string::npos)
+        std::istringstream components(path);
+        std::string component;
+        while (std::getline(components, component, '/'))
         {
-            return false;
-        }
-
-        // Reject absolute paths - only allow relative paths or safe prefixes
-        if (path[0] == '/')
-        {
-            // Allow-listed safe prefixes
-            const std::vector<std::string> safePrefixes = {
-                "/opt/",
-                "/tmp/",
-                "/var/tmp/",
-                "/home/",
-                "/mnt/"
-            };
-
-            bool isSafePrefix = false;
-            for (const auto& prefix : safePrefixes)
-            {
-                if (path.compare(0, prefix.length(), prefix) == 0)
-                {
-                    isSafePrefix = true;
-                    break;
-                }
-            }
-
-            if (!isSafePrefix)
+            if (component == "..")
             {
                 return false;
             }
-        }
-
-        // Canonicalize the path to resolve symlinks
-        char resolvedPath[PATH_MAX];
-        if (realpath(path.c_str(), resolvedPath) == nullptr)
-        {
-            // Path doesn't exist or is inaccessible - this is acceptable for paths
-            // that will be created later, but we should still validate the format
-            return true;
-        }
-
-        // Check if the resolved path is still within safe bounds
-        std::string resolved(resolvedPath);
-        if (resolved.find("..") != std::string::npos)
-        {
-            return false;
         }
 
         return true;
@@ -1444,8 +1403,8 @@ void DobbySpecGenerator::createFkpsMounts(const ApplicationConfiguration& config
     {
 	std::string fkpsFile = *it;
 
-        // Validate fkpsFile to prevent path traversal
-        if (fkpsFile.find("..") != std::string::npos || fkpsFile[0] == '/')
+        // FKPS entries must be relative to fkpsPathPrefix.
+        if (fkpsFile.empty() || (fkpsFile[0] == '/') || !isValidContainerPath(fkpsFile))
         {
             LOGERR("Invalid fkpsFile path (traversal or absolute): %s", fkpsFile.c_str());
             continue;
