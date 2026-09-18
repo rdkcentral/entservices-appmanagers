@@ -139,24 +139,21 @@ void WindowManagerConnector::getDisplayInfo(const string& appInstanceId , string
         }
         xdgDirectory = "/tmp";
     }
-    std::ifstream f("/tmp/specchange1");
-    if (f.good())
+
+    // SECURITY: Removed /tmp/specchange1 backdoor (RDKEMW-24510)
+    // This world-writable file was being used to override display names
+    // for local privilege escalation. The code has been removed.
+
+    // generate name as wst-appInstanceId and sanity check
+    string displayName = "wst-" + appInstanceId;
+    if (xdgRuntimeDirFd < 0 || faccessat(xdgRuntimeDirFd, displayName.c_str(), F_OK, 0) != 0) //todo required for wst-appinstanceid?
     {
-        waylandDisplayName = "testdisplay";
-        f.close();
+        waylandDisplayName = std::move(displayName);
     }
     else
     {
-        // generate name as wst-appInstanceId and sanity check
-        string displayName = "wst-" + appInstanceId;
-        if (xdgRuntimeDirFd < 0 || faccessat(xdgRuntimeDirFd, displayName.c_str(), F_OK, 0) != 0) //todo required for wst-appinstanceid?
-        {
-            waylandDisplayName = std::move(displayName);
-        }
-        else
-        {
-            LOGERR("Display name already exists, using default display name\n");
-            waylandDisplayName = "testdisplay";
+        LOGERR("Display name already exists, using default display name\n");
+        waylandDisplayName = "testdisplay";
         }
     }
     if (xdgRuntimeDirFd >= 0 && close(xdgRuntimeDirFd) < 0)
