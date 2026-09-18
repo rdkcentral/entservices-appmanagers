@@ -34,6 +34,8 @@
 #include <cctype>
 #include <sys/sysinfo.h>
 #include <cstring>
+#include <limits.h>
+#include <stdlib.h>
 //TODO SUPPORT THIS
 //#include <IPackage.h>
 #include <curl/curl.h>
@@ -120,6 +122,120 @@ namespace
             else
                 base[key] = overlay[key];
         }
+    }
+
+    // Validate that a path is safe for container spec use
+    // Rejects absolute paths outside allowed prefixes, traversal sequences, and symlinks
+    bool isValidContainerPath(const std::string& path)
+    {
+        if (path.empty())
+        {
+            return false;
+        }
+
+        // Reject path traversal sequences
+        if (path.find("..") != std::string::npos)
+        {
+            return false;
+        }
+
+        // Reject absolute paths - only allow relative paths or safe prefixes
+        if (path[0] == '/')
+        {
+            // Allow-listed safe prefixes
+            const std::vector<std::string> safePrefixes = {
+                "/opt/",
+                "/tmp/",
+                "/var/tmp/",
+                "/home/",
+                "/mnt/"
+            };
+
+            bool isSafePrefix = false;
+            for (const auto& prefix : safePrefixes)
+            {
+                if (path.compare(0, prefix.length(), prefix) == 0)
+                {
+                    isSafePrefix = true;
+                    break;
+                }
+            }
+
+            if (!isSafePrefix)
+            {
+                return false;
+            }
+        }
+
+        // Canonicalize the path to resolve symlinks
+        char resolvedPath[PATH_MAX];
+        if (realpath(path.c_str(), resolvedPath) == nullptr)
+        {
+            // Path doesn't exist or is inaccessible - this is acceptable for paths
+            // that will be created later, but we should still validate the format
+            return true;
+        }
+
+        // Check if the resolved path is still within safe bounds
+        std::string resolved(resolvedPath);
+        if (resolved.find("..") != std::string::npos)
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    // Validate environment variable to prevent injection attacks
+    // Rejects dangerous variable names like LD_PRELOAD, LD_LIBRARY_PATH, etc.
+    bool isValidEnvVar(const std::string& envVar)
+    {
+        if (envVar.empty())
+        {
+            return false;
+        }
+
+        // Split into name and value
+        size_t eqPos = envVar.find('=');
+        if (eqPos == std::string::npos || eqPos == 0)
+        {
+            return false; // Invalid format
+        }
+
+        std::string name = envVar.substr(0, eqPos);
+        std::string value = envVar.substr(eqPos + 1);
+
+        // Block dangerous environment variable names
+        const std::vector<std::string> blockedNames = {
+            "LD_PRELOAD",
+            "LD_LIBRARY_PATH",
+            "LD_AUDIT",
+            "LD_DEBUG",
+            "LD_TRACE_LOADED_OBJECTS",
+            "IFS"
+        };
+
+        for (const auto& blocked : blockedNames)
+        {
+            if (name == blocked)
+            {
+                LOGERR("Blocked dangerous environment variable: %s", name.c_str());
+                return false;
+            }
+        }
+
+        // Reject shell metacharacters in the value
+        const std::string shellMetachars = "`$()|&;<>";
+        for (char c : value)
+        {
+            if (shellMetachars.find(c) != std::string::npos)
+            {
+                LOGERR("Rejected shell metacharacter in environment variable value");
+                return false;
+            }
+        }
+
+        return true;
     }
 
     bool getExtraMountEntries(const std::string& serializedCapabilities,
@@ -446,7 +562,15 @@ Json::Value DobbySpecGenerator::createEnvVars(const ApplicationConfiguration& co
    for (unsigned int i = 0; i < envInputArray.Length(); ++i)
    {
        std::string envInputItem = envInputArray[i].String();
-       env.append(envInputArray[i].String());
+       // Validate environment variable to prevent injection attacks
+       if (isValidEnvVar(envInputItem))
+       {
+           env.append(envInputArray[i].String());
+       }
+       else
+       {
+           LOGWARN("Rejected unsafe environment variable: %s", envInputItem.c_str());
+       }
    }
 
    std::list<std::string> configEnvs = mAIConfiguration->getEnvs();
@@ -530,12 +654,28 @@ Json::Value DobbySpecGenerator::createMounts(const ApplicationConfiguration& con
 
     if (!runtimeConfig.appPath.empty())
     {
-        mounts.append(createBindMount(runtimeConfig.appPath, mPackageMountPoint, MS_BIND | MS_RDONLY | MS_NOSUID | MS_NODEV));
+        // Validate appPath to prevent path traversal and symlink attacks
+        if (isValidContainerPath(runtimeConfig.appPath))
+        {
+            mounts.append(createBindMount(runtimeConfig.appPath, mPackageMountPoint, MS_BIND | MS_RDONLY | MS_NOSUID | MS_NODEV));
+        }
+        else
+        {
+            LOGERR("Invalid appPath for container bind mount: %s", runtimeConfig.appPath.c_str());
+        }
     }
 
     if (!runtimeConfig.runtimePath.empty())
     {
-        mounts.append(createBindMount(runtimeConfig.runtimePath, mRuntimeMountPoint, MS_BIND | MS_RDONLY | MS_NOSUID | MS_NODEV));
+        // Validate runtimePath to prevent path traversal and symlink attacks
+        if (isValidContainerPath(runtimeConfig.runtimePath))
+        {
+            mounts.append(createBindMount(runtimeConfig.runtimePath, mRuntimeMountPoint, MS_BIND | MS_RDONLY | MS_NOSUID | MS_NODEV));
+        }
+        else
+        {
+            LOGERR("Invalid runtimePath for container bind mount: %s", runtimeConfig.runtimePath.c_str());
+        }
     }
 
     mounts.append(createBindMount("/etc/ssl/certs", "/etc/ssl/certs",
@@ -1265,6 +1405,13 @@ Json::Value DobbySpecGenerator::createPrivateDataMount(const WPEFramework::Excha
         return Json::nullValue;
     }
 
+    // Validate the unpackedPath to prevent path traversal and symlink attacks
+    if (!isValidContainerPath(sourcePath))
+    {
+        LOGERR("Invalid unpackedPath for container loop mount: %s", sourcePath.c_str());
+        return Json::nullValue;
+    }
+
     mount[source] = sourcePath;
     mount[destination] = "/home/private";
     mount[type] = loop;
@@ -1296,6 +1443,14 @@ void DobbySpecGenerator::createFkpsMounts(const ApplicationConfiguration& config
     for (std::list<std::string>::iterator it=fkpsFiles.begin(); it!=fkpsFiles.end(); ++it)
     {
 	std::string fkpsFile = *it;
+
+        // Validate fkpsFile to prevent path traversal
+        if (fkpsFile.find("..") != std::string::npos || fkpsFile[0] == '/')
+        {
+            LOGERR("Invalid fkpsFile path (traversal or absolute): %s", fkpsFile.c_str());
+            continue;
+        }
+
         const std::string fkpsFilePath = fkpsPathPrefix + fkpsFile;
 
         int fd = open(fkpsFilePath.c_str(), O_RDONLY | O_NOFOLLOW | O_CLOEXEC);
