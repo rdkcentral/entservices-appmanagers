@@ -632,7 +632,7 @@ namespace WPEFramework
             if (uid == 0)
             {
                 LOGERR("Rejected privileged userId=0 (root) from caller - not allowed");
-                status = Core::ERROR_UNAUTHORIZED;
+                status = Core::ERROR_UNAUTHENTICATED;
                 errorReason = "Privileged userId not allowed";
                 return status;
             }
@@ -640,7 +640,7 @@ namespace WPEFramework
             if (gid == 0)
             {
                 LOGERR("Rejected privileged groupId=0 (root) from caller - not allowed");
-                status = Core::ERROR_UNAUTHORIZED;
+                status = Core::ERROR_UNAUTHENTICATED;
                 errorReason = "Privileged groupId not allowed";
                 return status;
             }
