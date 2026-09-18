@@ -1545,6 +1545,14 @@ Core::hresult AppManagerImplementation::GetAppProperty(const string& appId , con
     }
     else
     {
+        // TODO: Add authorization check to prevent IDOR (RDKEMW-24504)
+        // The caller should only be allowed to get properties for apps they own/are authorized for.
+        // This requires:
+        // 1. Extract caller identity from Thunder security context
+        // 2. Map caller to authorized appIds (e.g., via app ownership or ACL)
+        // 3. Reject request if caller is not authorized for the requested appId
+        // For now, this remains an IDOR vulnerability that requires architectural changes.
+
         mAdminLock.Lock();
         /* Checking if mPersistentStoreRemoteStoreObject is not valid then create the object, not required to destroy this object as it is handled in Destructor */
         if (nullptr == mPersistentStoreRemoteStoreObject)
@@ -1604,6 +1612,14 @@ Core::hresult AppManagerImplementation::SetAppProperty(const string& appId, cons
     }
     else
     {
+        // TODO: Add authorization check to prevent IDOR (RDKEMW-24504)
+        // The caller should only be allowed to set properties for apps they own/are authorized for.
+        // This requires:
+        // 1. Extract caller identity from Thunder security context
+        // 2. Map caller to authorized appIds (e.g., via app ownership or ACL)
+        // 3. Reject request if caller is not authorized for the requested appId
+        // For now, this remains an IDOR vulnerability that requires architectural changes.
+
         mAdminLock.Lock();
 
         /* Checking if mPersistentStoreRemoteStoreObject is not valid then create the object */
@@ -1819,6 +1835,14 @@ Core::hresult AppManagerImplementation::ClearAppData(const string& appId)
         status = Core::ERROR_GENERAL;
         return status;
     }
+
+    // TODO: Add authorization check to prevent IDOR (RDKEMW-24504)
+    // The caller should only be allowed to clear data for apps they own/are authorized for.
+    // This requires:
+    // 1. Extract caller identity from Thunder security context
+    // 2. Map caller to authorized appIds (e.g., via app ownership or ACL)
+    // 3. Reject request if caller is not authorized for the requested appId
+    // For now, this remains an IDOR vulnerability that requires architectural changes.
 
     mAdminLock.Lock(); //required??
     if (nullptr != mStorageManagerRemoteObject)
