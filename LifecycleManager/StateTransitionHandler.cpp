@@ -47,8 +47,9 @@ namespace WPEFramework
                 // Order matters: cleanupSingleton() below joins the worker thread before
                 // deleting, and that thread reaches RequestHandler via State.cpp. Stopping
                 // it first means RequestHandler cannot be deleted out from under it.
-                StateTransitionHandler::cleanupSingleton();
+                RequestHandler::getInstance()->terminate();
                 RequestHandler::cleanupSingleton();
+                StateTransitionHandler::cleanupSingleton();
             }
         }
 
@@ -70,7 +71,6 @@ namespace WPEFramework
             std::lock_guard<std::mutex> lock(gStateTransitionHandlerInstanceMutex);
             if (nullptr != mInstance)
             {
-                mInstance->terminate();
                 delete mInstance;
                 mInstance = nullptr;
             }
@@ -86,6 +86,7 @@ namespace WPEFramework
 
         bool StateTransitionHandler::initialize()
 	{
+            std::lock_guard<std::mutex> lock(gStateTransitionHandlerInstanceMutex);
             {
                 std::lock_guard<std::mutex> lock(gRequestMutex);
                 if (true == sInitialized.load())
@@ -102,7 +103,6 @@ namespace WPEFramework
                 }
 
             }
-            std::lock_guard<std::mutex> lock(gStateTransitionHandlerInstanceMutex);
             StateHandler::initialize();
             std::atexit(terminateStateTransitionHandlerAtExit);
             try
