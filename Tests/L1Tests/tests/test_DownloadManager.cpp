@@ -610,8 +610,8 @@ TEST_F(DownloadManagerImplementationTest, DeleteExistingFile) {
 
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
-    // Create a temporary file that will be deleted by the plugin
-    const string tempFilePath = "/tmp/test_dm_delete_target.bin";
+    // Create a temporary file within the download directory that will be deleted by the plugin
+    const string tempFilePath = "/opt/downloads/test_dm_delete_target.bin";
     FILE* fp = fopen(tempFilePath.c_str(), "wb");
     ASSERT_NE(fp, nullptr) << "Should be able to create temp file for delete test";
     fclose(fp);
@@ -620,6 +620,9 @@ TEST_F(DownloadManagerImplementationTest, DeleteExistingFile) {
     Core::hresult result = impl->Delete(tempFilePath);
     TEST_LOG("Delete (existing file) returned: %u", result);
     EXPECT_EQ(Core::ERROR_NONE, result) << "Delete should return ERROR_NONE when file exists and is not actively downloading";
+    
+    // Clean up the test file
+    remove(tempFilePath.c_str());
 }
 
 /* Test Case: RateLimit when no download is active

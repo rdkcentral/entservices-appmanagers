@@ -138,6 +138,7 @@ namespace Plugin {
             double next = n * goldenRatio;
             return static_cast<int>(std::round(next));
         }
+        bool isValidDownloadPath(const std::string& fileLocator) const;
 
         string getDownloadReason(DownloadReason reason) {
             switch (reason)
