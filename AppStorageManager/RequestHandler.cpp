@@ -694,6 +694,14 @@ namespace WPEFramework
                 LOGERR("Invalid App ID");
                 errorReason = "appId cannot be empty";
             }
+            // Validate appId to prevent path traversal (RDKEMW-24516)
+            else if (appId.find("..") != std::string::npos || appId.find('/') != std::string::npos)
+            {
+                LOGERR("Invalid appId (contains traversal or separator): %s", appId.c_str());
+                errorReason = "appId contains invalid characters";
+                status = Core::ERROR_INVALID_PARAMETER;
+                return status;
+            }
             else
             {
                 std::unique_lock<std::mutex> lock(mStorageManagerImplLock);
