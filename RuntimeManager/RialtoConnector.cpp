@@ -25,6 +25,10 @@ extern "C" char **environ;
 
 namespace WPEFramework
 {
+    namespace {
+        constexpr int kRialtoTimeoutMillis = 5000;
+    }
+
     bool RialtoConnector::initialize()
     {
      if (!mInitialized)
@@ -69,7 +73,11 @@ namespace WPEFramework
         }
         if (!callsign.empty() && !displayName.empty() && ! appId.empty())
         {
-           firebolt::rialto::common::AppConfig config = {appId, displayName};
+            #ifndef ENABLE_RIALTO_CONTROL
+            firebolt::rialto::common::AppConfig config = {appId, displayName};
+            #else
+           firebolt::rialto::common::AppConfig config = {"", displayName};
+            #endif
            return mServerManagerService ->initiateApplication(callsign,
                                                            RialtoServerStates::ACTIVE,
                                                            config);
@@ -82,27 +90,91 @@ namespace WPEFramework
     }
     bool RialtoConnector::resumeSession(const std::string &callsign)
     {
-	if (!mServerManagerService)
+	 if (!mServerManagerService)
         {
-            LOGERR("resumeSession: ServerManagerService is null for callsign='%s'", callsign.c_str());
+            LOGERR("resumeSession: ServerManagerService is null for callsign='%s'",
+                callsign.c_str());
             return false;
         }
+
         if (RialtoServerStates::INACTIVE == getCurrentAppState(callsign))
-            return mServerManagerService ->changeSessionServerState(callsign,
-                                                                    RialtoServerStates::ACTIVE);
+        {
+        LOGINFO("resumeSession: changing session state to ACTIVE for callsign='%s'",
+                callsign.c_str());
+
+        if (mServerManagerService->changeSessionServerState(
+                callsign, RialtoServerStates::ACTIVE))
+        {
+            if (!waitForStateChange(
+                    callsign, RialtoServerStates::ACTIVE, kRialtoTimeoutMillis))
+            {
+                LOGERR("resumeSession: Timeout waiting for Rialto server to become ACTIVE for callsign='%s'",
+                        callsign.c_str());
+                return false;
+            }
+
+            LOGINFO("resumeSession: Rialto server is ACTIVE for callsign='%s'",
+                    callsign.c_str());
+
+            return true;
+        }
+        else
+        {
+            LOGERR("resumeSession: Failed to change session state to ACTIVE for callsign='%s'",
+                    callsign.c_str());
+            return false;
+        }
+        }
+        else
+        {
+        LOGINFO("resumeSession: Rialto server is not in INACTIVE state for callsign='%s'",
+                callsign.c_str());
+        }
+
         return false;
     }
     bool RialtoConnector::suspendSession(const std::string &callsign)
     {
-	if (!mServerManagerService)
+         if (!mServerManagerService)
+    {
+        LOGERR("suspendSession: ServerManagerService is null for callsign='%s'",
+            callsign.c_str());
+        return false;
+    }
+
+    if (RialtoServerStates::ACTIVE == getCurrentAppState(callsign))
+    {
+        LOGINFO("suspendSession: changing session state to INACTIVE for callsign='%s'",
+                callsign.c_str());
+
+        if (mServerManagerService->changeSessionServerState(
+                callsign, RialtoServerStates::INACTIVE))
         {
-            LOGERR("suspendSession: ServerManagerService is null for callsign='%s'", callsign.c_str());
+            if (!waitForStateChange(
+                callsign, RialtoServerStates::INACTIVE, kRialtoTimeoutMillis))
+            {
+                LOGERR("suspendSession: Timeout waiting for Rialto server to become INACTIVE for callsign='%s'",
+                    callsign.c_str());
+                return false;
+            }
+
+            LOGINFO("suspendSession: Rialto server is INACTIVE for callsign='%s'",
+                    callsign.c_str());
+
+            return true;
+        }
+        else
+        {
+            LOGERR("suspendSession: Failed to change session state to INACTIVE for callsign='%s'",
+                callsign.c_str());
             return false;
         }
-        if (RialtoServerStates::ACTIVE == getCurrentAppState(callsign))
-            return mServerManagerService ->changeSessionServerState(callsign,
-                                                                    RialtoServerStates::INACTIVE);
-        return false;
+    }
+
+    LOGINFO("suspendSession: Rialto server is not in ACTIVE state for callsign='%s'",
+            callsign.c_str());
+
+    return false;
     }
     const RialtoServerStates RialtoConnector::getCurrentAppState(const std::string &callsign)
     {
@@ -170,6 +242,7 @@ namespace WPEFramework
     }
     std::list<std::string> RialtoConnector::readGlobalEnv() const
     {
+        #ifndef ENABLE_RIALTO_CONTROL
         std::list<std::string> environmentVariables;
 
         if (!environ)
@@ -181,6 +254,11 @@ namespace WPEFramework
         {
             environmentVariables.push_back(*env);
         }
+        #else
+        std::list<std::string> environmentVariables;
+        environmentVariables.push_back("XDG_RUNTIME_DIR=/tmp");
+        #endif
+
         return environmentVariables;
     }
 } // namespace WPEFramework
