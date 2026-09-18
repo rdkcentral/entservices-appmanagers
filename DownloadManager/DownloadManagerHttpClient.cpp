@@ -19,6 +19,9 @@
 
 #include <iostream>
 #include <math.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/stat.h>
 
 #include "Module.h"
 #include "DownloadManagerHttpClient.h"
@@ -71,7 +74,21 @@ DownloadManagerHttpClient::Status DownloadManagerHttpClient::downloadFile(const 
             LOGWARN("Failed to set CURLOPT_MAX_RECV_SPEED_LARGE: %s", curl_easy_strerror(rateLimit_ret));
         }
 
-        fp = fopen(fileName.c_str(), "wb");
+        /* Security: use O_CREAT|O_EXCL|O_NOFOLLOW to prevent symlink-follow overwrites
+         * with predictable packageN filenames in the download directory. */
+        {
+            /* Remove any pre-existing file first so O_EXCL works on retry */
+            struct stat lst;
+            if (lstat(fileName.c_str(), &lst) == 0) {
+                if (S_ISLNK(lst.st_mode)) {
+                    LOGERR("DM: Refusing symlink target: %s", fileName.c_str());
+                    return Status::DiskError;
+                }
+                unlink(fileName.c_str());
+            }
+        }
+        int fd = open(fileName.c_str(), O_WRONLY | O_CREAT | O_EXCL | O_NOFOLLOW, 0644);
+        fp = (fd >= 0) ? fdopen(fd, "wb") : nullptr;
         if (fp != NULL)
         {
             (void) curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);
