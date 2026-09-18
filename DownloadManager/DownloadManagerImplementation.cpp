@@ -18,6 +18,7 @@
 **/
 
 #include <chrono>
+#include <curl/curl.h>
 
 #include "DownloadManagerImplementation.h"
 #include "UtilsAppManagerTelemetry.h"
@@ -61,6 +62,108 @@ namespace Plugin {
             }
         }
         mDownloadManagerNotification.clear();
+    }
+
+    // Validate URL to prevent SSRF attacks (RDKEMW-24509)
+    // Rejects localhost, private network ranges, and file:// protocols
+    bool DownloadManagerImplementation::isValidDownloadUrl(const std::string& url) const
+    {
+        if (url.empty())
+        {
+            return false;
+        }
+
+        // Use libcurl's URL parser for robust validation
+        CURLU *h = curl_url();
+        if (!h)
+        {
+            return false;
+        }
+
+        CURLUcode rc = curl_url_set(h, CURLUPART_URL, url.c_str(), 0);
+        if (rc != CURLUE_OK)
+        {
+            curl_url_cleanup(h);
+            return false;
+        }
+
+        // Get the scheme
+        char *scheme = nullptr;
+        rc = curl_url_get(h, CURLUPART_SCHEME, &scheme, 0);
+        if (rc != CURLUE_OK || !scheme)
+        {
+            curl_url_cleanup(h);
+            return false;
+        }
+
+        // Only allow http and https schemes
+        bool schemeValid = (strcmp(scheme, "http") == 0 || strcmp(scheme, "https") == 0);
+        curl_free(scheme);
+
+        if (!schemeValid)
+        {
+            LOGERR("Rejected URL with invalid scheme: %s", url.c_str());
+            curl_url_cleanup(h);
+            return false;
+        }
+
+        // Get the host
+        char *host = nullptr;
+        rc = curl_url_get(h, CURLUPART_HOST, &host, 0);
+        if (rc != CURLUE_OK || !host)
+        {
+            curl_url_cleanup(h);
+            return false;
+        }
+
+        std::string hostStr(host);
+        curl_free(host);
+
+        // Reject localhost and 127.0.0.1
+        if (hostStr == "localhost" || hostStr == "127.0.0.1" || hostStr == "::1")
+        {
+            LOGERR("Rejected URL pointing to localhost: %s", url.c_str());
+            curl_url_cleanup(h);
+            return false;
+        }
+
+        // Reject private network ranges
+        // 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16
+        if (hostStr.find("10.") == 0 || hostStr.find("192.168.") == 0)
+        {
+            LOGERR("Rejected URL pointing to private network: %s", url.c_str());
+            curl_url_cleanup(h);
+            return false;
+        }
+
+        // Check 172.16.0.0/12 range (172.16.0.0 to 172.31.255.255)
+        if (hostStr.find("172.") == 0)
+        {
+            size_t secondDot = hostStr.find('.', 4);
+            if (secondDot != std::string::npos)
+            {
+                std::string secondOctet = hostStr.substr(4, secondDot - 4);
+                try
+                {
+                    int octet = std::stoi(secondOctet);
+                    if (octet >= 16 && octet <= 31)
+                    {
+                        LOGERR("Rejected URL pointing to private network: %s", url.c_str());
+                        curl_url_cleanup(h);
+                        return false;
+                    }
+                }
+                catch (...)
+                {
+                    // Invalid IP format, reject
+                    curl_url_cleanup(h);
+                    return false;
+                }
+            }
+        }
+
+        curl_url_cleanup(h);
+        return true;
     }
 
     Core::hresult DownloadManagerImplementation::Register(Exchange::IDownloadManager::INotification* notification)
@@ -222,6 +325,12 @@ namespace Plugin {
             LOGERR("DM: Download failed - empty URL! priority=%d retries=%u rateLimit=%u",
                    options.priority, options.retries, options.rateLimit);
             DownloadManagerTelemetryReporting::getInstance().recordDownloadErrorTelemetry("EMPTY_URL", static_cast<int>(DownloadReason::DOWNLOAD_FAILURE));
+        }
+        else if (!isValidDownloadUrl(url))
+        {
+            LOGERR("DM: Download failed - invalid URL (SSRF protection): %s", url.c_str());
+            result = Core::ERROR_BAD_REQUEST;
+            DownloadManagerTelemetryReporting::getInstance().recordDownloadErrorTelemetry("INVALID_URL", static_cast<int>(DownloadReason::DOWNLOAD_FAILURE));
         }
         else
         {

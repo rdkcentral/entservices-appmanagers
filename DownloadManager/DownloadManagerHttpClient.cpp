@@ -65,6 +65,10 @@ DownloadManagerHttpClient::Status DownloadManagerHttpClient::downloadFile(const 
     if (curl)
     {
         (void) curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+        
+        // Restrict protocols to HTTP(S) only for SSRF protection (RDKEMW-24509)
+        (void) curl_easy_setopt(curl, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
+        
         LOGDBG("curl rateLimit set to %u", rateLimit);
         CURLcode rateLimit_ret = curl_easy_setopt(curl, CURLOPT_MAX_RECV_SPEED_LARGE, (curl_off_t)rateLimit);
         if (rateLimit_ret != CURLE_OK) {
