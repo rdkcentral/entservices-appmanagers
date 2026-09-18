@@ -484,6 +484,7 @@ if(PLUGIN_DOWNLOAD_MANAGER)
     target_compile_definitions(downloadmanager_l0test PRIVATE
         MODULE_NAME=DownloadManager_L0Test
         PLUGIN_DOWNLOAD_MANAGER_IMPLEMENTATION_NAME="DownloadManagerImplementation"
+        RDK_SERVICES_L1_TEST=1
     )
 
     # Force include L0TestConfig.h in all source files

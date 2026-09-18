@@ -67,7 +67,12 @@ DownloadManagerHttpClient::Status DownloadManagerHttpClient::downloadFile(const 
         (void) curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
         
         // Restrict protocols to HTTP(S) only for SSRF protection (RDKEMW-24509)
+        // Allow file:// during L0/L1 testing for local file testing
+#ifdef RDK_SERVICES_L1_TEST
+        (void) curl_easy_setopt(curl, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS | CURLPROTO_FILE);
+#else
         (void) curl_easy_setopt(curl, CURLOPT_PROTOCOLS, CURLPROTO_HTTP | CURLPROTO_HTTPS);
+#endif
         
         LOGDBG("curl rateLimit set to %u", rateLimit);
         CURLcode rateLimit_ret = curl_easy_setopt(curl, CURLOPT_MAX_RECV_SPEED_LARGE, (curl_off_t)rateLimit);

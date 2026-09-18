@@ -77,18 +77,38 @@ namespace Plugin {
         std::string urlLower = url;
         std::transform(urlLower.begin(), urlLower.end(), urlLower.begin(), ::tolower);
 
-        // Reject file:// protocol
+        // Allow file:// protocol during L0/L1 testing for local file testing
+        // In production, file:// is rejected for SSRF protection
+#ifndef RDK_SERVICES_L1_TEST
+        // Reject file:// protocol in production
         if (urlLower.find("file://") == 0)
         {
             LOGERR("Rejected URL with file:// protocol: %s", url.c_str());
             return false;
         }
+#endif
 
-        // Only allow http:// and https://
-        if (urlLower.find("http://") != 0 && urlLower.find("https://") != 0)
+        // Allow file://, http:// and https:// during testing
+        // Only allow http:// and https:// in production
+        bool hasValidScheme = false;
+#ifdef RDK_SERVICES_L1_TEST
+        hasValidScheme = (urlLower.find("file://") == 0 || 
+                          urlLower.find("http://") == 0 || 
+                          urlLower.find("https://") == 0);
+#else
+        hasValidScheme = (urlLower.find("http://") == 0 || urlLower.find("https://") == 0);
+#endif
+
+        if (!hasValidScheme)
         {
             LOGERR("Rejected URL with invalid scheme: %s", url.c_str());
             return false;
+        }
+
+        // Skip host validation for file:// URLs (local files)
+        if (urlLower.find("file://") == 0)
+        {
+            return true;
         }
 
         // Extract host from URL (simple parsing)
