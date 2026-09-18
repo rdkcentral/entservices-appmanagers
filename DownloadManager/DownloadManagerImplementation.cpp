@@ -18,6 +18,9 @@
 **/
 
 #include <chrono>
+#include <limits.h>
+#include <stdlib.h>
+#include <cstring>
 
 #include "DownloadManagerImplementation.h"
 #include "UtilsAppManagerTelemetry.h"
@@ -61,6 +64,47 @@ namespace Plugin {
             }
         }
         mDownloadManagerNotification.clear();
+    }
+
+    // Validate that a file path is within the download directory
+    // Prevents arbitrary file deletion via path traversal
+    bool DownloadManagerImplementation::isValidDownloadPath(const std::string& fileLocator) const
+    {
+        if (fileLocator.empty())
+        {
+            return false;
+        }
+
+        // Reject path traversal sequences
+        if (fileLocator.find("..") != std::string::npos)
+        {
+            LOGERR("Rejected path with traversal sequence: %s", fileLocator.c_str());
+            return false;
+        }
+
+        // Canonicalize the path to resolve symlinks
+        char resolvedPath[PATH_MAX];
+        if (realpath(fileLocator.c_str(), resolvedPath) == nullptr)
+        {
+            // Path doesn't exist - this is acceptable for deletion of non-existent files
+            // but we should still validate the format
+            return true;
+        }
+
+        // Check if the resolved path is within the download directory
+        std::string resolved(resolvedPath);
+        if (!mDownloadPath.empty())
+        {
+            // Ensure the resolved path starts with the download directory
+            if (resolved.compare(0, mDownloadPath.length(), mDownloadPath) != 0)
+            {
+                LOGERR("Rejected path outside download directory: %s (expected prefix: %s)",
+                       resolved.c_str(), mDownloadPath.c_str());
+                return false;
+            }
+        }
+
+        return true;
     }
 
     Core::hresult DownloadManagerImplementation::Register(Exchange::IDownloadManager::INotification* notification)
@@ -367,6 +411,13 @@ namespace Plugin {
         if (fileLocator.empty())
         {
             LOGWARN("DM: Delete failed - fileLocator is empty!");
+            return Core::ERROR_BAD_REQUEST;
+        }
+
+        // Validate file path to prevent arbitrary file deletion (RDKEMW-24508)
+        if (!isValidDownloadPath(fileLocator))
+        {
+            LOGERR("DM: Delete failed - invalid file path: %s", fileLocator.c_str());
             return Core::ERROR_BAD_REQUEST;
         }
 
