@@ -783,9 +783,17 @@ uint32_t Test_PM_Impl_GetConfigListForInstalledPackages()
 
     std::string config;
     L0Test::ExpectEqU32(tr,
-        fx.impl->GetConfigListForInstalledPackages("filter", config),
-        ERROR_NOT_SUPPORTED,
-        "GetConfigListForInstalledPackages() returns ERROR_NOT_SUPPORTED");
+        fx.impl->GetConfigListForInstalledPackages("dial", config),
+        ERROR_NONE,
+        "GetConfigListForInstalledPackages() returns ERROR_NONE for filter 'dial'");
+    L0Test::ExpectTrue(tr, !config.empty(), "GetConfigListForInstalledPackages() config is non-empty on success");
+
+    config.clear();
+    L0Test::ExpectEqU32(tr,
+        fx.impl->GetConfigListForInstalledPackages("unsupported-filter", config),
+        ERROR_GENERAL,
+        "GetConfigListForInstalledPackages() returns ERROR_GENERAL for an unmatched filter");
+    L0Test::ExpectTrue(tr, config.empty(), "GetConfigListForInstalledPackages() config remains empty on failure");
 
     return tr.failures;
 }
