@@ -110,6 +110,10 @@ bool RuntimeManagerHandler::run(const string& appId, const string& appInstanceId
     string fireboltEndPoint(ss.str());
     envNewArray.Add(fireboltEndPoint);
 
+    LOGINFO("RuntimeManagerHandler::run appId=%s appInstanceId=%s enableDebugger=%d launchArgs=%s",
+            appId.c_str(), appInstanceId.c_str(), runtimeConfigObject.enableDebugger ? 1 : 0, launchArgs.c_str());
+
+
     std::stringstream targetAppStateEnvironmentString;
     targetAppStateEnvironmentString << "TARGET_STATE=" << (uint32_t)targetState;
     string targetAppState(targetAppStateEnvironmentString.str());
