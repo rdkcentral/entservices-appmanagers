@@ -206,11 +206,6 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                             launchArgsObj.FromString(launchArgs);
                             const bool debugLaunchRequested = launchArgsObj.HasLabel("debugger") || launchArgsObj.HasLabel("enableDebugger");
                             runtimeConfig.enableDebugger = debugLaunchRequested;
-			    LOGINFO("Launch debug evaluation for appId=%s enableDebugger=%d hasDebuggerLabel=%d hasEnableDebuggerLabel=%d launchArgs=%s",
-                                    appId.c_str(), runtimeConfig.enableDebugger ? 1 : 0,
-                                    launchArgsObj.HasLabel("debugger") ? 1 : 0,
-                                    launchArgsObj.HasLabel("enableDebugger") ? 1 : 0,
-                                    launchArgs.c_str());
                             if (debugLaunchRequested)
                             {
                                 LOGINFO("Debugger launch requested for appId=%s", appId.c_str());

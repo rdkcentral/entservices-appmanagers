@@ -514,18 +514,11 @@ Json::Value DobbySpecGenerator::createEnvVars(const ApplicationConfiguration& co
 
    //TODO SUPPORT WATCHDOG
 #ifdef RDK_APPMANAGERS_DEBUG
-   LOGINFO("createEnvVars: appId='%s' enableDebugger=%d capabilities='%s'",
-           config.mAppId.c_str(), runtimeConfig.enableDebugger ? 1 : 0, runtimeConfig.capabilities.c_str());
-
    const bool webRuntime = hasCapability(capabilities, "runtime-html");
-   LOGINFO("createEnvVars: appId='%s' runtime-html capability detected=%d",
-           config.mAppId.c_str(), webRuntime ? 1 : 0);
-
 
    if (runtimeConfig.enableDebugger && webRuntime)
    {
        env.append("WEBKIT_LEGACY_INSPECTOR_SERVER=0.0.0.0:22222");
-       LOGINFO("createEnvVars: appended WEBKIT_LEGACY_INSPECTOR_SERVER for appId='%s'", config.mAppId.c_str());
    }
 #endif
 
