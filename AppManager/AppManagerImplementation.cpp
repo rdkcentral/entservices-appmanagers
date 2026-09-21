@@ -18,6 +18,7 @@
 */
 
 #include <iomanip>      /* for std::setw, std::setfill */
+#include <atomic>
 #include <sys/stat.h>
 #ifdef APP_MANAGER_RESOURCE_MONITOR
 #include <sys/statvfs.h>
@@ -27,7 +28,7 @@
 #include "UtilsAppManagerTelemetry.h"
 
 #define TIME_DATA_SIZE           200
-static bool sRunning = false;
+static std::atomic<bool> sRunning{false};
 
 RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::AppManagerTelemetryReporting, "appManagerBootstrapTime")
 
@@ -82,7 +83,7 @@ AppManagerImplementation::~AppManagerImplementation()
 {
     LOGINFO("Delete AppManagerImplementation Instance");
     _instance = nullptr;
-    sRunning = false;
+    sRunning.store(false);
     mAppRequestListCV.notify_all();
 #ifdef APP_MANAGER_RESOURCE_MONITOR
     {
@@ -151,14 +152,14 @@ Core::hresult AppManagerImplementation::Register(Exchange::IAppManager::INotific
 
 void AppManagerImplementation::AppManagerWorkerThread(void)
 {
-    while (sRunning)
+    while (sRunning.load())
     {
         std::shared_ptr<AppManagerRequest> request = nullptr;
         {
             std::unique_lock<std::mutex> lock(mAppManagerLock);
-            mAppRequestListCV.wait(lock, [this] { return !mAppRequestList.empty() || !sRunning; });
+            mAppRequestListCV.wait(lock, [this] { return !mAppRequestList.empty() || !sRunning.load(); });
 
-            if (!sRunning || mAppRequestList.empty()) {
+            if (!sRunning.load() || mAppRequestList.empty()) {
                 continue;
             }
 
@@ -205,7 +206,17 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
 
                             if (action == APP_ACTION_LAUNCH)
                             {
-                                status = mLifecycleInterfaceConnector->launch(appId, appRequestParam->intent, launchArgs, runtimeConfig);
+                                mAdminLock.Lock();
+                                if (nullptr != mLifecycleInterfaceConnector)
+                                {
+                                    status = mLifecycleInterfaceConnector->launch(appId, appRequestParam->intent, launchArgs, runtimeConfig);
+                                }
+                                else
+                                {
+                                    LOGERR("mLifecycleInterfaceConnector is null, cannot launch app %s", appId.c_str());
+                                    status = Core::ERROR_GENERAL;
+                                }
+                                mAdminLock.Unlock();
                                 LOGINFO("Application Launch from thread returns with status %d", status);
 
                                 if (status != Core::ERROR_NONE)
@@ -235,7 +246,18 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                                     }
                                 }
                                 string errorReason;
-                                status = mLifecycleInterfaceConnector->preLoadApp(appId, appRequestParam->intent, launchArgs, runtimeConfig, errorReason);
+                                mAdminLock.Lock();
+                                if (nullptr != mLifecycleInterfaceConnector)
+                                {
+                                    status = mLifecycleInterfaceConnector->preLoadApp(appId, appRequestParam->intent, launchArgs, runtimeConfig, errorReason);
+                                }
+                                else
+                                {
+                                    errorReason = "mLifecycleInterfaceConnector is null";
+                                    LOGERR("mLifecycleInterfaceConnector is null, cannot preload app %s", appId.c_str());
+                                    status = Core::ERROR_GENERAL;
+                                }
+                                mAdminLock.Unlock();
                                 LOGINFO("Application preLoad from thread returns with status %d error %s", status, errorReason.c_str());
 
                                 if ((!errorReason.empty()) || (status != Core::ERROR_NONE))
@@ -563,6 +585,7 @@ uint32_t AppManagerImplementation::Configure(PluginHost::IShell* service)
         mCurrentservice = service;
         mCurrentservice->AddRef();
 
+        mAdminLock.Lock();
         if (nullptr == (mLifecycleInterfaceConnector = new LifecycleInterfaceConnector(mCurrentservice)))
         {
             LOGERR("Failed to create LifecycleInterfaceConnector");
@@ -575,6 +598,7 @@ uint32_t AppManagerImplementation::Configure(PluginHost::IShell* service)
         {
             LOGINFO("created LifecycleManagerRemoteObject");
         }
+        mAdminLock.Unlock();
 
         if (Core::ERROR_NONE != createPersistentStoreRemoteStoreObject())
         {
@@ -633,11 +657,11 @@ uint32_t AppManagerImplementation::Configure(PluginHost::IShell* service)
         mStateTransitionManager->Start();
     #endif
         RDKAM_TELEMETRY_INIT(service);
-        sRunning = true;
+        sRunning.store(true);
         /* Create the worker thread */
         try
         {
-            mAppManagerWorkerThread = std::thread(&AppManagerImplementation::AppManagerWorkerThread, AppManagerImplementation::getInstance());
+            mAppManagerWorkerThread = std::thread(&AppManagerImplementation::AppManagerWorkerThread, this);
             LOGINFO("App Manager Worker thread created");
             result = Core::ERROR_NONE;
         }
@@ -997,6 +1021,9 @@ Core::hresult AppManagerImplementation::packageLock(const string& appId, Package
     std::vector<WPEFramework::Exchange::IPackageInstaller::Package> packageList;
     AppManagerTelemetryReporting& appManagerTelemetryReporting =AppManagerTelemetryReporting::getInstance();
 
+    /* Guard mLifecycleInterfaceConnector/mPackageManagerHandlerObject for the whole operation */
+    mAdminLock.Lock();
+
     if (nullptr != mLifecycleInterfaceConnector)
     {
         status = mLifecycleInterfaceConnector->isAppLoaded(appId, loaded);
@@ -1092,6 +1119,8 @@ Core::hresult AppManagerImplementation::packageLock(const string& appId, Package
         const char* failureReason = (nullptr == mLifecycleInterfaceConnector) ? "lifecycle connector missing" : "isAppLoaded failed";
         LOGERR("Failed to determine loaded state for appId %s, status: %d, reason: %s", appId.c_str(), status, failureReason);
     }
+
+    mAdminLock.Unlock();
 
     return status;
 }

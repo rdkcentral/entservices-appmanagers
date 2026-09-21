@@ -2308,11 +2308,23 @@ Core::hresult RDKWindowManagerImplementation::SetAlias(const string& clientId, c
 
 void RDKWindowManagerImplementation::notifyScreenshotComplete(bool success)
 {
-    LOGINFO("Screenshot capture %s, imageData size: %zu bytes", success ? "succeeded" : "failed", gScreenshotImageData.length());
-    
+    /* gScreenshotImageData is written under gRdkWindowManagerMutex on the shell thread; snapshot it under the same lock */
+    std::string imageData;
+    const bool lockAcquired = lockRdkWindowManagerMutex();
+    if (lockAcquired)
+    {
+        imageData = gScreenshotImageData;
+        gRdkWindowManagerMutex.unlock();
+    }
+
+    LOGINFO("Screenshot capture %s, imageData size: %zu bytes", success ? "succeeded" : "failed", imageData.length());
+
     for (auto* notification : mRDKWindowManagerNotification)
     {
-        notification->OnScreenshotComplete(success, gScreenshotImageData);
+        if (nullptr != notification)
+        {
+            notification->OnScreenshotComplete(success, imageData);
+        }
     }
 }
 

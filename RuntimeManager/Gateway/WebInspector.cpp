@@ -13,6 +13,7 @@
 #include "NetFilter.h"
 
 #include <unistd.h>
+#include <exception>
 
 // -----------------------------------------------------------------------------
 /*!
@@ -57,7 +58,19 @@ WebInspector::~WebInspector()
 {
     LOGINFO("detaching webinspector from %s", mAppId.c_str());
 
-    NetFilter::removeAllRulesMatchingComment(mNetFilterCommentMatcher);
+    /* NetFilter::removeAllRulesMatchingComment() may throw std::regex_error; must not escape a destructor */
+    try
+    {
+        NetFilter::removeAllRulesMatchingComment(mNetFilterCommentMatcher);
+    }
+    catch (const std::exception &e)
+    {
+        LOGERR("exception while detaching webinspector from %s: %s", mAppId.c_str(), e.what());
+    }
+    catch (...)
+    {
+        LOGERR("unknown exception while detaching webinspector from %s", mAppId.c_str());
+    }
 }
 
 Debugger::Type WebInspector::type() const
