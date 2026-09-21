@@ -41,9 +41,6 @@
 
 namespace
 {
-    constexpr const char *PERMISSION_INTERNET_ENABLED = "internetEnabled";
-    constexpr const char *PERMISSION_FIREBOLT_ENABLED = "fireboltEnabled";
-    constexpr const char *PERMISSION_THUNDER_ENABLED = "thunderEnabled";
     constexpr const char *PUBLIC             = "public";
     constexpr const char *EXPORTED           = "exported";
     constexpr const char *IMPORTED           = "imported";
