@@ -1534,7 +1534,6 @@ Core::hresult AppManagerImplementation::GetAppProperty(const string& appId , con
 {
     LOGINFO("GetAppProperty Entered");
     Core::hresult status = Core::ERROR_GENERAL;
-    uint32_t ttl = 0;
     if(appId.empty())
     {
         LOGERR("Empty appId");
@@ -1545,39 +1544,7 @@ Core::hresult AppManagerImplementation::GetAppProperty(const string& appId , con
     }
     else
     {
-        // TODO: Add authorization check to prevent IDOR (RDKEMW-24504)
-        // The caller should only be allowed to get properties for apps they own/are authorized for.
-        // This requires:
-        // 1. Extract caller identity from Thunder security context
-        // 2. Map caller to authorized appIds (e.g., via app ownership or ACL)
-        // 3. Reject request if caller is not authorized for the requested appId
-        // For now, this remains an IDOR vulnerability that requires architectural changes.
-
-        mAdminLock.Lock();
-        /* Checking if mPersistentStoreRemoteStoreObject is not valid then create the object, not required to destroy this object as it is handled in Destructor */
-        if (nullptr == mPersistentStoreRemoteStoreObject)
-        {
-            LOGINFO("Create PersistentStore Remote store object");
-            if (Core::ERROR_NONE != createPersistentStoreRemoteStoreObject())
-            {
-                LOGERR("Failed to create createPersistentStoreRemoteStoreObject");
-            }
-        }
-        ASSERT (nullptr != mPersistentStoreRemoteStoreObject);
-        if (nullptr != mPersistentStoreRemoteStoreObject)
-        {
-            status = mPersistentStoreRemoteStoreObject->GetValue(Exchange::IStore2::ScopeType::DEVICE, appId, key, value, ttl);
-            LOGINFO("Key[%s] value[%s] status[%d]", key.c_str(), value.c_str(), status);
-            if (Core::ERROR_NONE != status)
-            {
-                LOGERR("GetValue Failed");
-            }
-        }
-        else
-        {
-            LOGERR("PersistentStore object is not valid");
-        }
-        mAdminLock.Unlock();
+        status = Core::ERROR_UNAVAILABLE;
     }
     LOGINFO("GetAppProperty Exited");
 
@@ -1612,37 +1579,7 @@ Core::hresult AppManagerImplementation::SetAppProperty(const string& appId, cons
     }
     else
     {
-        // TODO: Add authorization check to prevent IDOR (RDKEMW-24504)
-        // The caller should only be allowed to set properties for apps they own/are authorized for.
-        // This requires:
-        // 1. Extract caller identity from Thunder security context
-        // 2. Map caller to authorized appIds (e.g., via app ownership or ACL)
-        // 3. Reject request if caller is not authorized for the requested appId
-        // For now, this remains an IDOR vulnerability that requires architectural changes.
-
-        mAdminLock.Lock();
-
-        /* Checking if mPersistentStoreRemoteStoreObject is not valid then create the object */
-        if (nullptr == mPersistentStoreRemoteStoreObject)
-        {
-            LOGINFO("Create PersistentStore Remote store object");
-            if (Core::ERROR_NONE != createPersistentStoreRemoteStoreObject())
-            {
-                LOGERR("Failed to create createPersistentStoreRemoteStoreObject");
-            }
-        }
-
-        ASSERT (nullptr != mPersistentStoreRemoteStoreObject);
-        if (nullptr != mPersistentStoreRemoteStoreObject)
-        {
-            status = mPersistentStoreRemoteStoreObject->SetValue(Exchange::IStore2::ScopeType::DEVICE, appId, key, value, 0);
-        }
-        else
-        {
-            LOGERR("PersistentStore object is not valid");
-        }
-
-        mAdminLock.Unlock();
+        status = Core::ERROR_UNAVAILABLE;
     }
     return status;
 }
@@ -1836,59 +1773,14 @@ Core::hresult AppManagerImplementation::ClearAppData(const string& appId)
         return status;
     }
 
-    // TODO: Add authorization check to prevent IDOR (RDKEMW-24504)
-    // The caller should only be allowed to clear data for apps they own/are authorized for.
-    // This requires:
-    // 1. Extract caller identity from Thunder security context
-    // 2. Map caller to authorized appIds (e.g., via app ownership or ACL)
-    // 3. Reject request if caller is not authorized for the requested appId
-    // For now, this remains an IDOR vulnerability that requires architectural changes.
-
-    mAdminLock.Lock(); //required??
-    if (nullptr != mStorageManagerRemoteObject)
-    {
-        std::string errorReason;
-        status = mStorageManagerRemoteObject->Clear(appId,errorReason);
-        if (status != Core::ERROR_NONE)
-        {
-            LOGERR("Failed to clear app data for appId: %s errorReason : %s", appId.c_str(), errorReason.c_str());
-        }
-    }
-    else
-    {
-        LOGERR("StorageManager Remote Object is null");
-        status = Core::ERROR_GENERAL;
-    }
-    mAdminLock.Unlock();
-
-    return status;
+    return Core::ERROR_UNAVAILABLE;
 }
 
 Core::hresult AppManagerImplementation::ClearAllAppData()
 {
-    Core::hresult status = Core::ERROR_NONE;
-
     LOGINFO("ClearAllAppData Entered");
 
-    mAdminLock.Lock(); //required??
-    if (nullptr != mStorageManagerRemoteObject)
-    {
-        std::string errorReason;
-        std::string exemptedAppIds = "";
-        status = mStorageManagerRemoteObject->ClearAll(exemptedAppIds,errorReason);
-        if (status != Core::ERROR_NONE)
-        {
-            LOGERR("Failed to clear all app data errorReason : %s", errorReason.c_str());
-        }
-    }
-    else
-    {
-        LOGERR("StorageManager Remote Object is null");
-        status = Core::ERROR_GENERAL;
-    }
-    mAdminLock.Unlock();
-
-    return status;
+    return Core::ERROR_UNAVAILABLE;
 }
 
 Core::hresult AppManagerImplementation::GetAppMetadata(const string& appId, const string& metaData, string& result)
