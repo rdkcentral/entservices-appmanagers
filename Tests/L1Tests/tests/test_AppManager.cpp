@@ -2554,11 +2554,8 @@ TEST_F(AppManagerTest, GetAppPropertyUsingComRpcFailureGetAppPropertyReturnError
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
 
-    EXPECT_CALL(*mStore2Mock, GetValue(Exchange::IStore2::ScopeType::DEVICE, APPMANAGER_APP_ID, key, ::testing::_, ::testing::_))
-    .WillOnce([&](const Exchange::IStore2::ScopeType scope, const string& ns, const string& key, string& value, uint32_t& ttl) {
-        return Core::ERROR_GENERAL;
-    });
-    EXPECT_EQ(Core::ERROR_GENERAL, mAppManagerImpl->GetAppProperty(APPMANAGER_APP_ID, key, value));
+    EXPECT_CALL(*mStore2Mock, GetValue(Exchange::IStore2::ScopeType::DEVICE, APPMANAGER_APP_ID, key, ::testing::_, ::testing::_)).Times(0);
+    EXPECT_EQ(Core::ERROR_UNAVAILABLE, mAppManagerImpl->GetAppProperty(APPMANAGER_APP_ID, key, value));
     if(status == Core::ERROR_NONE)
     {
         releaseResources();
@@ -2580,7 +2577,7 @@ TEST_F(AppManagerTest, GetAppPropertyUsingComRpcFailureLifecycleManagerRemoteObj
 
     createAppManagerImpl();
 
-    EXPECT_EQ(Core::ERROR_GENERAL, mAppManagerImpl->GetAppProperty(APPMANAGER_APP_ID, key, value));
+    EXPECT_EQ(Core::ERROR_UNAVAILABLE, mAppManagerImpl->GetAppProperty(APPMANAGER_APP_ID, key, value));
     releaseAppManagerImpl();
 }
 
@@ -2741,11 +2738,8 @@ TEST_F(AppManagerTest, SetAppPropertyUsingComRpcFailureSetValueReturnError)
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
 
-    EXPECT_CALL(*mStore2Mock, SetValue(Exchange::IStore2::ScopeType::DEVICE, APPMANAGER_APP_ID, key, value, 0))
-    .WillOnce([&](const Exchange::IStore2::ScopeType scope, const string& ns, const string& key, const string& value, const uint32_t ttl) {
-        return Core::ERROR_GENERAL;
-    });
-    EXPECT_EQ(Core::ERROR_GENERAL, mAppManagerImpl->SetAppProperty(APPMANAGER_APP_ID, key, value));
+    EXPECT_CALL(*mStore2Mock, SetValue(Exchange::IStore2::ScopeType::DEVICE, APPMANAGER_APP_ID, key, value, 0)).Times(0);
+    EXPECT_EQ(Core::ERROR_UNAVAILABLE, mAppManagerImpl->SetAppProperty(APPMANAGER_APP_ID, key, value));
 
     if(status == Core::ERROR_NONE)
     {
@@ -3387,13 +3381,9 @@ TEST_F(AppManagerTest, ClearAppDataUsingComRpcFailureStorageManagerReturnError)
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
 
-    EXPECT_CALL(*mStorageManagerMock, Clear(::testing::_, ::testing::_))
-        .WillOnce([&](const string& appId, string& errorReason) {
-            errorReason = "Storage error";
-            return Core::ERROR_GENERAL;
-        });
+    EXPECT_CALL(*mStorageManagerMock, Clear(::testing::_, ::testing::_)).Times(0);
 
-    EXPECT_EQ(Core::ERROR_GENERAL, mAppManagerImpl->ClearAppData(APPMANAGER_APP_ID));
+    EXPECT_EQ(Core::ERROR_UNAVAILABLE, mAppManagerImpl->ClearAppData(APPMANAGER_APP_ID));
 
     if (status == Core::ERROR_NONE)
     {
@@ -3412,7 +3402,7 @@ TEST_F(AppManagerTest, ClearAppDataUsingComRpcFailureStorageManagerObjectIsNull)
 {
     createAppManagerImpl();
 
-    EXPECT_EQ(Core::ERROR_GENERAL, mAppManagerImpl->ClearAppData(APPMANAGER_APP_ID));
+    EXPECT_EQ(Core::ERROR_UNAVAILABLE, mAppManagerImpl->ClearAppData(APPMANAGER_APP_ID));
 
     releaseAppManagerImpl();
 }
