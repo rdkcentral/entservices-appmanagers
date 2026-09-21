@@ -585,20 +585,21 @@ uint32_t AppManagerImplementation::Configure(PluginHost::IShell* service)
         mCurrentservice = service;
         mCurrentservice->AddRef();
 
-        mAdminLock.Lock();
-        if (nullptr == (mLifecycleInterfaceConnector = new LifecycleInterfaceConnector(mCurrentservice)))
         {
-            LOGERR("Failed to create LifecycleInterfaceConnector");
+            Core::SafeSyncType<Core::CriticalSection> adminLock(mAdminLock);
+            if (nullptr == (mLifecycleInterfaceConnector = new LifecycleInterfaceConnector(mCurrentservice)))
+            {
+                LOGERR("Failed to create LifecycleInterfaceConnector");
+            }
+            else if (Core::ERROR_NONE != mLifecycleInterfaceConnector->createLifecycleManagerRemoteObject())
+            {
+                LOGERR("Failed to create LifecycleInterfaceConnector");
+            }
+            else
+            {
+                LOGINFO("created LifecycleManagerRemoteObject");
+            }
         }
-        else if (Core::ERROR_NONE != mLifecycleInterfaceConnector->createLifecycleManagerRemoteObject())
-        {
-            LOGERR("Failed to create LifecycleInterfaceConnector");
-        }
-        else
-        {
-            LOGINFO("created LifecycleManagerRemoteObject");
-        }
-        mAdminLock.Unlock();
 
         if (Core::ERROR_NONE != createPersistentStoreRemoteStoreObject())
         {

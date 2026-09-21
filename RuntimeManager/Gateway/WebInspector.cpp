@@ -58,7 +58,6 @@ WebInspector::~WebInspector()
 {
     LOGINFO("detaching webinspector from %s", mAppId.c_str());
 
-    /* NetFilter::removeAllRulesMatchingComment() may throw std::regex_error; must not escape a destructor */
     try
     {
         NetFilter::removeAllRulesMatchingComment(mNetFilterCommentMatcher);
