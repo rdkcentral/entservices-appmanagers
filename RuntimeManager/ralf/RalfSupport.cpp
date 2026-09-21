@@ -85,7 +85,7 @@ namespace
             return false;
         }
 
-        return '/' == normalizedCandidate[normalizedAncestor.size()];
+        return ("/" == normalizedAncestor) || ('/' == normalizedCandidate[normalizedAncestor.size()]);
     }
 
     size_t containerPathDepth(const std::string& path)
