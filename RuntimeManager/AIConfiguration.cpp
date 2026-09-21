@@ -48,6 +48,8 @@ namespace Plugin
         , mVpuAccessBlacklist()
         , mAppsRequiringDBus()
         , mMapiPorts()
+        , mAirplayPorts()
+        , mAirplayMounts()
         , mResourceManagerClientEnabled(false)
         , mGstreamerRegistryEnabled(false)
         , mSvpEnabled(false)
@@ -113,7 +115,14 @@ namespace Plugin
     {
         return mMapiPorts;
     }
-
+    std::list<int> AIConfiguration::getAirplayPorts() const
+    {
+        return mAirplayPorts;
+    }
+    std::list<std::pair<std::string, std::string>> AIConfiguration::getAirplayMounts() const
+    {
+        return mAirplayMounts;
+    }
     bool AIConfiguration::getResourceManagerClientEnabled() const
     {
         return mResourceManagerClientEnabled;
@@ -188,6 +197,8 @@ namespace Plugin
         /* mVpuAccessBlacklist - apps.vpuAccessBlacklist */
         /* mAppsRequiringDBusList - apps.requireDBus */
         /* mMapiPorts = apps.mapi.ports */
+        mAirplayPorts = { 43092, 13132, 13133, 13134, 13135 };
+        mAirplayMounts = { { "/opt/secure/Airplay", "/airplay" } };
         mResourceManagerClientEnabled = false; // .apps.essosResourceManager.enableClient
         mGstreamerRegistryEnabled = false; // apps.gstreamer.mapCachedRegistry
         mSvpEnabled = false; // apps.svp.enable
@@ -642,6 +653,27 @@ namespace Plugin
         if (mapiPorts.isArray())
             for (const auto& p : mapiPorts)
                 if (p.isInt()) mMapiPorts.push_back(p.asInt());
+
+        // ---- AirPlay configuration ---------------------------------------
+        const Json::Value& airplay = getObj(root, "airplay");
+        const Json::Value& airplayPorts = getObj(airplay, "ports");
+        if (airplayPorts.isArray())
+        {
+            mAirplayPorts.clear();
+            for (const auto& p : airplayPorts)
+                if (p.isInt()) mAirplayPorts.push_back(p.asInt());
+        }
+        const Json::Value& airplayMounts = getObj(airplay, "mounts");
+        if (airplayMounts.isArray())
+        {
+            mAirplayMounts.clear();
+            for (const auto& mount : airplayMounts)
+            {
+                if (mount["source"].isString() && mount["destination"].isString())
+                    mAirplayMounts.emplace_back(mount["source"].asString(),
+                                                mount["destination"].asString());
+            }
+        }
 
         // ---- app allow-lists --------------------------------------------
         if (apps["requireDBus"].isArray())

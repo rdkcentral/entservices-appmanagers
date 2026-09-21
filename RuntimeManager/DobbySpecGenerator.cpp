@@ -371,7 +371,7 @@ bool DobbySpecGenerator::generate(const ApplicationConfiguration& config, const 
     //spec["plugins"] = populateClassicPlugins(config, runtimeConfig);
     populateClassicPlugins(config, runtimeConfig, spec);
     spec["rdkPlugins"] = createRdkPlugins(config, runtimeConfig, parsedCapabilities);
-    spec["mounts"] = createMounts(config, runtimeConfig);
+    spec["mounts"] = createMounts(config, runtimeConfig, parsedCapabilities);
     spec["env"] = createEnvVars(config, runtimeConfig, parsedCapabilities);
 
 
@@ -524,7 +524,9 @@ Json::Value DobbySpecGenerator::createEnvVars(const ApplicationConfiguration& co
    return env;
 }
 
-Json::Value DobbySpecGenerator::createMounts(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const
+Json::Value DobbySpecGenerator::createMounts(const ApplicationConfiguration& config,
+                                             const WPEFramework::Exchange::RuntimeConfig& runtimeConfig,
+                                             const std::vector<std::pair<std::string, std::string>>& capabilities) const
 {
     Json::Value mounts(Json::arrayValue);
 
@@ -587,7 +589,12 @@ Json::Value DobbySpecGenerator::createMounts(const ApplicationConfiguration& con
     //TODO SUPPORT Netflix specific mounts
     //TODO SUPPORT SVP file mounts
     //TODO SUPPORT Platform specific mounts
-    //TODO SUPPORT Airplay specific mounts
+    if (hasCapability(capabilities, "airplay"))
+    {
+        Json::Value airplayMounts = createAirPlay2Mounts();
+        for (Json::Value& mount : airplayMounts)
+            mounts.append(std::move(mount));
+    }
     //TODO SUPPORT TSB Storage
     //TODO SUPPORT USB Mass storage
     //TODO SUPPORT PerfettoSocketPath not mounted
@@ -613,6 +620,26 @@ Json::Value DobbySpecGenerator::createMounts(const ApplicationConfiguration& con
         }
     }
 
+
+    return mounts;
+}
+
+Json::Value DobbySpecGenerator::createAirPlay2Mounts() const
+{
+    Json::Value mounts(Json::arrayValue);
+    const unsigned long mountFlags = MS_BIND | MS_RDONLY | MS_NOSUID | MS_NODEV | MS_NOEXEC;
+
+    for (const auto& mountPoint : mAIConfiguration->getAirplayMounts())
+    {
+        if (access(mountPoint.first.c_str(), F_OK) != 0)
+        {
+            LOGWARN("AirPlay mount source '%s' doesn't exist, not mapping into container",
+                    mountPoint.first.c_str());
+            continue;
+        }
+
+        mounts.append(createBindMount(mountPoint.first, mountPoint.second, mountFlags));
+    }
 
     return mounts;
 }
@@ -876,6 +903,12 @@ Json::Value DobbySpecGenerator::createRdkPlugins(const ApplicationConfiguration&
     Json::Value rdkPluginsObj(Json::objectValue);
     rdkPluginsObj["ionmemory"] = createIonMemoryPlugin();
     rdkPluginsObj["minidump"] = createMinidumpPlugin();
+
+    if (hasCapability(capabilities, "airplay"))
+    {
+        rdkPluginsObj["networking"] = createNetworkPlugin(config, runtimeConfig, capabilities);
+        rdkPluginsObj["appservicesrdk"] = createAppServiceSDKPlugin(config, runtimeConfig, capabilities);
+    }
 //MADANA
 /*
     const bool appServicesRequested =
@@ -940,7 +973,6 @@ Json::Value DobbySpecGenerator::createMinidumpPlugin() const
     return pluginObj;
 }
 
-//TODO SUPPORT airplay2 ports in appsservice plugin
 Json::Value DobbySpecGenerator::createAppServiceSDKPlugin(const ApplicationConfiguration& config,
                                                           const WPEFramework::Exchange::RuntimeConfig& runtimeConfig,
                                                           const std::vector<std::pair<std::string, std::string>>& capabilities) const
@@ -969,6 +1001,11 @@ Json::Value DobbySpecGenerator::createAppServiceSDKPlugin(const ApplicationConfi
         {
             ports.append(port);
         }
+    }
+    if (hasCapability(capabilities, "airplay"))
+    {
+        for (int port : mAIConfiguration->getAirplayPorts())
+            ports.append(port);
     }
     if (!ports.empty())
     {
