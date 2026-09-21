@@ -919,9 +919,8 @@ uint32_t Test_AM_ClearAppDataWithStorageManager()
     impl->Configure(&service);
 
     const auto result = impl->ClearAppData(std::string("testApp"));
-    L0Test::ExpectTrue(tr, result == WPEFramework::Core::ERROR_NONE || 
-                            result == WPEFramework::Core::ERROR_GENERAL,
-                       "ClearAppData() with storage manager remains stable");
+    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_UNAVAILABLE,
+                       "ClearAppData() rejects access without caller authorization");
 
     impl->Release();
     return tr.failures;
@@ -1550,8 +1549,8 @@ uint32_t Test_AM_GetAppPropertyGetValueFailed()
     auto result = fixture.impl->GetAppProperty("com.test.app", "key.not.present", value);
     L0Test::ExpectEqU32(fixture.tr,
         result,
-        WPEFramework::Core::ERROR_GENERAL,
-        "GetAppProperty returns ERROR_GENERAL when GetValue fails for missing key");
+        WPEFramework::Core::ERROR_UNAVAILABLE,
+        "GetAppProperty rejects access without caller authorization");
     return fixture.tr.failures;
 }
 
@@ -2656,8 +2655,8 @@ uint32_t Test_AM_ClearAppDataNullStorage()
     impl->mStorageManagerRemoteObject = nullptr;
 
     const auto result = impl->ClearAppData(std::string("app.storage.null"));
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
-        "ClearAppData() returns ERROR_GENERAL when storageManager is null");
+    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_UNAVAILABLE,
+        "ClearAppData() rejects access without caller authorization");
 
     impl->mStorageManagerRemoteObject = savedStorage;
     impl->Release();
@@ -2681,8 +2680,8 @@ uint32_t Test_AM_ClearAppDataStorageError()
     impl->Configure(&service);
 
     const auto result = impl->ClearAppData(std::string("app.clear.error"));
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
-        "ClearAppData() returns ERROR_GENERAL when StorageManager::Clear() fails");
+    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_UNAVAILABLE,
+        "ClearAppData() rejects access without caller authorization");
 
     impl->Release();
     return tr.failures;
