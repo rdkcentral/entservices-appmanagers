@@ -694,10 +694,9 @@ namespace WPEFramework
                 LOGERR("Invalid App ID");
                 errorReason = "appId cannot be empty";
             }
-            else if (appId.find('/') != std::string::npos || appId.find('\\') != std::string::npos
-                     || appId.find("..") != std::string::npos || appId[0] == '.')
+            else if (!isValidAppStorageDirectory(appId))
             {
-                LOGERR("Rejected appId with path traversal characters: %s", appId.c_str());
+                LOGERR("Rejected invalid appId: %s", appId.c_str());
                 errorReason = "appId contains invalid characters";
             }
             else
