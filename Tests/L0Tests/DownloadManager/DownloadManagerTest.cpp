@@ -65,6 +65,7 @@ extern uint32_t Test_Impl_InitializeExistingDirReturnsNone();
 extern uint32_t Test_Impl_DeinitializeClearsQueues();
 extern uint32_t Test_Impl_DownloadNoInternetReturnsUnavailable();
 extern uint32_t Test_Impl_DownloadEmptyUrlReturnsError();
+extern uint32_t Test_Impl_ProductionDownloadUrlPolicy();
 extern uint32_t Test_Impl_DownloadPriorityAndRegularQueues();
 extern uint32_t Test_Impl_DownloadReturnsIncrementedId();
 extern uint32_t Test_Impl_TwoDownloadsReturnUniqueIds();
@@ -187,6 +188,7 @@ int main()
     std::cout << "\n-- Implementation Download --" << std::endl;
     RUN_TEST(Test_Impl_DownloadNoInternetReturnsUnavailable);
     RUN_TEST(Test_Impl_DownloadEmptyUrlReturnsError);
+    RUN_TEST(Test_Impl_ProductionDownloadUrlPolicy);
     RUN_TEST(Test_Impl_DownloadPriorityAndRegularQueues);
     RUN_TEST(Test_Impl_DownloadReturnsIncrementedId);
     RUN_TEST(Test_Impl_TwoDownloadsReturnUniqueIds);

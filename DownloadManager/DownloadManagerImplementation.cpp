@@ -18,6 +18,7 @@
 **/
 
 #include <chrono>
+#include <cctype>
 #include <curl/curl.h>
 
 #include "DownloadManagerImplementation.h"
@@ -75,40 +76,12 @@ namespace Plugin {
 
         // Simple string-based validation for compatibility
         std::string urlLower = url;
-        std::transform(urlLower.begin(), urlLower.end(), urlLower.begin(), ::tolower);
+        std::transform(urlLower.begin(), urlLower.end(), urlLower.begin(), [](unsigned char character) { return std::tolower(character); });
 
-        // Allow file:// protocol during L0/L1 testing for local file testing
-        // In production, file:// is rejected for SSRF protection
-#ifndef RDK_SERVICES_L1_TEST
-        // Reject file:// protocol in production
-        if (urlLower.find("file://") == 0)
-        {
-            LOGERR("Rejected URL with file:// protocol: %s", url.c_str());
-            return false;
-        }
-#endif
-
-        // Allow file://, http:// and https:// during testing
-        // Only allow http:// and https:// in production
-        bool hasValidScheme = false;
-#ifdef RDK_SERVICES_L1_TEST
-        hasValidScheme = (urlLower.find("file://") == 0 || 
-                          urlLower.find("http://") == 0 || 
-                          urlLower.find("https://") == 0);
-#else
-        hasValidScheme = (urlLower.find("http://") == 0 || urlLower.find("https://") == 0);
-#endif
-
-        if (!hasValidScheme)
+        if (urlLower.find("http://") != 0 && urlLower.find("https://") != 0)
         {
             LOGERR("Rejected URL with invalid scheme: %s", url.c_str());
             return false;
-        }
-
-        // Skip host validation for file:// URLs (local files)
-        if (urlLower.find("file://") == 0)
-        {
-            return true;
         }
 
         // Extract host from URL (simple parsing)
@@ -125,16 +98,24 @@ namespace Plugin {
             hostEnd = urlLower.length();
         }
 
-        size_t portStart = urlLower.find(':', hostStart);
-        if (portStart != std::string::npos && portStart < hostEnd)
+        std::string host;
+        if (hostStart < urlLower.length() && urlLower[hostStart] == '[')
         {
-            hostEnd = portStart;
+            const size_t bracketEnd = urlLower.find(']', hostStart + 1);
+            if (bracketEnd == std::string::npos || bracketEnd >= hostEnd)
+                return false;
+            host = urlLower.substr(hostStart + 1, bracketEnd - hostStart - 1);
+        }
+        else
+        {
+            const size_t portStart = urlLower.find(':', hostStart);
+            if (portStart != std::string::npos && portStart < hostEnd)
+                hostEnd = portStart;
+            host = urlLower.substr(hostStart, hostEnd - hostStart);
         }
 
-        std::string host = urlLower.substr(hostStart, hostEnd - hostStart);
-
         // Reject localhost variants
-        if (host == "localhost" || host == "127.0.0.1" || host == "::1" || host == "[::1]")
+        if (host == "localhost" || host.find("127.") == 0 || host == "0.0.0.0" || host == "::" || host == "::1" || host.find("169.254.") == 0)
         {
             LOGERR("Rejected URL pointing to localhost: %s", url.c_str());
             return false;
@@ -327,6 +308,11 @@ namespace Plugin {
         string &downloadId)
     {
         Core::hresult result = Core::ERROR_GENERAL;
+        bool validUrl = isValidDownloadUrl(url);
+#ifdef RDK_SERVICES_L1_TEST
+        if (url.find("file://") == 0)
+            validUrl = true;
+#endif
 
         mAdminLock.Lock();
         if (!mCurrentservice->SubSystems()->IsActive(PluginHost::ISubSystem::INTERNET))
@@ -342,7 +328,7 @@ namespace Plugin {
                    options.priority, options.retries, options.rateLimit);
             DownloadManagerTelemetryReporting::getInstance().recordDownloadErrorTelemetry("EMPTY_URL", static_cast<int>(DownloadReason::DOWNLOAD_FAILURE));
         }
-        else if (!isValidDownloadUrl(url))
+        else if (!validUrl)
         {
             LOGERR("DM: Download failed - invalid URL (SSRF protection): %s", url.c_str());
             result = Core::ERROR_BAD_REQUEST;
