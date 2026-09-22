@@ -204,7 +204,7 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                             string launchArgs = appRequestParam->launchArgs;
                             JsonObject launchArgsObj;
                             launchArgsObj.FromString(launchArgs);
-                            const bool debugLaunchRequested = launchArgsObj.HasLabel("debugger") || launchArgsObj.HasLabel("enableDebugger");
+                            const bool debugLaunchRequested = launchArgsObj.HasLabel("debugger");
                             runtimeConfig.enableDebugger = debugLaunchRequested;
                             if (debugLaunchRequested)
                             {
@@ -225,8 +225,6 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                             {
                                 // Append any env vars from launchArgs["env"] into runtimeConfig.envVariables.
                                 {
-                                    //JsonObject launchArgsObj;
-                                    //launchArgsObj.FromString(launchArgs);
                                     if (launchArgsObj.HasLabel("env"))
                                     {
                                         JsonArray envArray;
