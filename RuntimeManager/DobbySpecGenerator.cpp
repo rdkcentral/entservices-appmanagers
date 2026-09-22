@@ -235,6 +235,7 @@ bool DobbySpecGenerator::generate(const ApplicationConfiguration& config, const 
     std::vector<std::pair<std::string, std::string>> parsedCapabilities;
     parseCapabilities(runtimeConfig.capabilities, parsedCapabilities);
 
+#ifdef RDK_APPMANAGERS_DEBUG
     std::ifstream inFile("/tmp/specchange");
     if (inFile.good())
     {
@@ -246,8 +247,10 @@ bool DobbySpecGenerator::generate(const ApplicationConfiguration& config, const 
         inFile.close();
         JsonObject parameters;
         parameters.FromString(resultSpec.c_str());
+        LOGINFO("Using debug spec override from /tmp/specchange");
         return true;
     }
+#endif
    
     ssize_t memLimit = getSysMemoryLimit(config, runtimeConfig);
     /*mandatory parameter check*/
