@@ -1,4 +1,5 @@
 #include "UserIdManager.h"
+#include "Module.h"
 #include "UtilsLogging.h"
 
 namespace WPEFramework {
