@@ -170,6 +170,34 @@ uint32_t Test_Impl_CreateStorageWithEmptyAppId()
     return tr.failures;
 }
 
+uint32_t Test_Impl_CreateStorageRejectsUnsafeAppIds()
+{
+    L0Test::TestResult tr;
+
+    L0Test::L0MockPersistentStore fakeStore;
+    L0Test::ServiceMock::Config cfg{&fakeStore};
+    cfg.configLine = "{\"path\":\"/tmp/appdata\"}";
+    L0Test::ServiceMock service(cfg);
+
+    StorageManagerImplementation* impl = CreateImpl();
+    impl->Configure(&service);
+
+    const char* invalidAppIds[] = {"../outside", "/absolute", "nested/app", "nested\\app", ".hidden", "app..name", "app%2fname", "-leading", "trailing-"};
+    for (const char* appId : invalidAppIds)
+    {
+        std::string path;
+        std::string errorReason;
+        const uint32_t result = impl->CreateStorage(appId, 10240, path, errorReason);
+        L0Test::ExpectTrue(tr, result != WPEFramework::Core::ERROR_NONE, "CreateStorage rejects unsafe appId");
+        L0Test::ExpectTrue(tr, path.empty(), "CreateStorage has no filesystem result for unsafe appId");
+        L0Test::ExpectTrue(tr, !errorReason.empty(), "CreateStorage reports unsafe appId rejection");
+    }
+
+    impl->Release();
+
+    return tr.failures;
+}
+
 /* ========================================================================== */
 /* Test_Impl_GetStorageWithValidAppId
  *
