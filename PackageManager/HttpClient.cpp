@@ -17,6 +17,8 @@
 * limitations under the License.
 **/
 
+#include <algorithm>
+#include <cctype>
 #include <iostream>
 #include <math.h>
 
@@ -41,8 +43,22 @@ HttpClient::~HttpClient() {
     //curl_global_cleanup();
 }
 
+bool HttpClient::isSupportedUrl(const std::string& url)
+{
+    const size_t separator = url.find("://");
+    if (separator == std::string::npos)
+        return false;
+
+    std::string scheme = url.substr(0, separator);
+    std::transform(scheme.begin(), scheme.end(), scheme.begin(), [](unsigned char character) { return std::tolower(character); });
+    return scheme == "http" || scheme == "https";
+}
+
 HttpClient::Status
 HttpClient::downloadFile(const std::string & url, const std::string & fileName, uint32_t rateLimit) {
+    if (!isSupportedUrl(url))
+        return Status::HttpError;
+
     Status status = Status::Success;
     CURLcode cc = CURLE_OK;
     FILE *fp;

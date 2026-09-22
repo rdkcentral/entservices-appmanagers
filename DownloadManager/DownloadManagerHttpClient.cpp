@@ -17,6 +17,8 @@
 * limitations under the License.
 **/
 
+#include <algorithm>
+#include <cctype>
 #include <iostream>
 #include <math.h>
 
@@ -51,8 +53,22 @@ DownloadManagerHttpClient::~DownloadManagerHttpClient()
     //curl_global_cleanup();
 }
 
+bool DownloadManagerHttpClient::isSupportedUrl(const std::string& url)
+{
+    const size_t separator = url.find("://");
+    if (separator == std::string::npos)
+        return false;
+
+    std::string scheme = url.substr(0, separator);
+    std::transform(scheme.begin(), scheme.end(), scheme.begin(), [](unsigned char character) { return std::tolower(character); });
+    return scheme == "http" || scheme == "https";
+}
+
 DownloadManagerHttpClient::Status DownloadManagerHttpClient::downloadFile(const std::string & url, const std::string & fileName, uint32_t rateLimit)
 {
+    if (!isSupportedUrl(url))
+        return Status::HttpError;
+
     Status status = Status::Success;
     CURLcode cc;
     FILE *fp;
