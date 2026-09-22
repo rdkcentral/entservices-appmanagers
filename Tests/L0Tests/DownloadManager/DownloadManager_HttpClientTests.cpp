@@ -37,6 +37,7 @@
 #include <cstring>
 #include <iostream>
 #include <string>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #include <core/core.h>
@@ -106,6 +107,46 @@ uint32_t Test_HttpClient_DownloadFileInvalidUrlReturnsHttpError()
     // Clean up any leftover file
     (void) std::remove(tmpFile.c_str());
 
+    return tr.failures;
+}
+
+uint32_t Test_HttpClient_DownloadFileRejectsSymlinkWithoutTargetSideEffect()
+{
+    L0Test::TestResult tr;
+    DownloadManagerHttpClient client;
+
+    char directoryTemplate[] = "/tmp/dm_symlink_XXXXXX";
+    char* directory = mkdtemp(directoryTemplate);
+    L0Test::ExpectTrue(tr, directory != nullptr, "Temporary test directory is created");
+    if (directory == nullptr)
+        return tr.failures;
+
+    const std::string target = std::string(directory) + "/target";
+    const std::string destination = std::string(directory) + "/download";
+    FILE* targetFile = fopen(target.c_str(), "wb");
+    L0Test::ExpectTrue(tr, targetFile != nullptr, "Symlink target is created");
+    if (targetFile != nullptr) {
+        fputs("unchanged", targetFile);
+        fclose(targetFile);
+    }
+    L0Test::ExpectEqU32(tr, symlink(target.c_str(), destination.c_str()), 0, "Download destination symlink is created");
+
+    const auto status = client.downloadFile("http://127.0.0.1:1/unreachable", destination, 0u);
+    L0Test::ExpectEqU32(tr, static_cast<uint32_t>(status), static_cast<uint32_t>(DownloadManagerHttpClient::Status::DiskError), "Symlink destination is rejected");
+
+    char content[16] = {};
+    targetFile = fopen(target.c_str(), "rb");
+    if (targetFile != nullptr) {
+        fread(content, 1, sizeof(content) - 1, targetFile);
+        fclose(targetFile);
+    }
+    L0Test::ExpectEqStr(tr, std::string(content), std::string("unchanged"), "Rejected download does not modify symlink target");
+    struct stat destinationInfo;
+    L0Test::ExpectTrue(tr, lstat(destination.c_str(), &destinationInfo) == 0 && S_ISLNK(destinationInfo.st_mode), "Rejected download does not replace the symlink");
+
+    unlink(destination.c_str());
+    unlink(target.c_str());
+    rmdir(directory);
     return tr.failures;
 }
 
