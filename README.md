@@ -72,20 +72,22 @@ flowchart LR
 
 ---
 
-## Module Documentation
+## Generated Subsystem Documentation
+
+The modular documentation in [`docs/`](docs/) is organized by selected subsystem. Each file is self-contained and covers architecture, source organization, interfaces, configuration, workflows, diagrams, tests, and a beginner-to-expert learning path.
 
 | Module | Description | Documentation |
 |--------|-------------|---------------|
-| **AppManager** | Primary API for application management. Orchestrates app lifecycle operations. | [View →](./AppManager/AppManager.md) |
-| **LifecycleManager** | State machine for application lifecycle transitions. | [View →](./LifecycleManager/LifecycleManager.md) |
-| **RuntimeManager** | Container runtime using Dobby OCI. Handles execution and hibernation. | [View →](./RuntimeManager/RuntimeManager.md) |
-| **PackageManager** | Package download, installation, locking, and uninstallation. | [View →](./PackageManager/PackageManager.md) |
-| **DownloadManager** | HTTP downloads with priority queuing and rate limiting. | [View →](./DownloadManager/DownloadManager.md) |
-| **AppStorageManager** | Application-specific storage allocation and management. | [View →](./AppStorageManager/AppStorageManager.md) |
-| **PreinstallManager** | Pre-installed application scanning and installation. | [View →](./PreinstallManager/PreinstallManager.md) |
-| **RDKWindowManager** | Display creation, focus control, and key intercepts. | [View →](./RDKWindowManager/RDKWindowManager.md) |
-| **TelemetryMetrics** | Performance metrics and analytics collection. | [View →](./TelemetryMetrics/TelemetryMetrics.md) |
-| **WebBridge** | WebSocket bridge for JSON-RPC communication. | [View →](./WebBridge/WebBridge.md) |
+| **AppManager** | Application orchestration, metadata, lifecycle requests, and notifications. | [View →](docs/AppManager.md) |
+| **AppStorageManager** | Per-application persistent storage and quota operations. | [View →](docs/AppStorageManager.md) |
+| **LifecycleManager** | Application state transitions and lifecycle notifications. | [View →](docs/LifecycleManager.md) |
+| **DownloadManager** | Asynchronous prioritized HTTP downloads and retries. | [View →](docs/DownloadManager.md) |
+| **PreinstallManager** | Preinstalled package discovery and installation. | [View →](docs/PreinstallManager.md) |
+| **PackageManager** | Package download, installation, locking, metadata, and cache state. | [View →](docs/PackageManager.md) |
+| **RDKWindowManager** | Display, compositor, input, focus, and render control. | [View →](docs/RDKWindowManager.md) |
+| **RuntimeManager** | OCI container execution and runtime state management. | [View →](docs/RuntimeManager.md) |
+| **TelemetryMetrics** | Thread-safe metric recording, filtering, and publication. | [View →](docs/TelemetryMetrics.md) |
+| **VictimSelector** | Memory-pressure victim selection and eviction escalation. | [View →](docs/VictimSelector.md) |
 
 ---
 
