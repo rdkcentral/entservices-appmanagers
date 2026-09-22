@@ -95,7 +95,7 @@ stateDiagram-v2
 
 ---
 
-## 3. Code Organization
+## 3. Code Organization (Folder & File-Level)
 
 ### Directory Structure
 
@@ -662,3 +662,9 @@ TEST(LifecycleManagerTest, StatePathCalculation) {
 ```
 
 ---
+
+## 9. Beginner-to-Expert Teaching Mode
+
+**Must know first:** LifecycleManager is a state machine around an application instance, not the container runtime itself. Learn contexts, target states, notifications, and asynchronous event dispatch.
+
+**Advanced path:** trace `SpawnApp` through `StateTransitionHandler`, `RuntimeManagerHandler`, and `WindowManagerHandler`, then study failure, respawn, pending-state queues, and teardown.

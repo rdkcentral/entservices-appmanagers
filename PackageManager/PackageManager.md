@@ -83,7 +83,7 @@ stateDiagram-v2
 
 ---
 
-## 3. Code Organization
+## 3. Code Organization (Folder & File-Level)
 
 ### Directory Structure
 
@@ -494,3 +494,9 @@ Located in `Tests/L1Tests/tests/test_PackageManager.cpp`:
 4. **Lock Contention**: Multiple lock requests
 
 ---
+
+## 9. Beginner-to-Expert Teaching Mode
+
+**Must know first:** package state includes versions, locks, runtime metadata, and storage paths, not only installed/uninstalled status.
+
+**Advanced path:** trace download-to-install state transitions, inspect lock accounting and blocked operations, then compare RALF and non-RALF builds and cache initialization modes.

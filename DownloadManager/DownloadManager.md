@@ -54,7 +54,7 @@ graph TB
 
 ---
 
-## 3. Code Organization
+## 3. Code Organization (Folder & File-Level)
 
 ### Directory Structure
 
@@ -151,7 +151,11 @@ interface IDownloadManager {
 
 ---
 
-## 5. Internal Workflows
+## 5. Configuration & Build Integration
+
+The implementation declares `downloadDir` and `downloadId`; plugin settings include `mode`, `locator`, `autostart`, and `startuporder`. The checked-in [DownloadManager.config](DownloadManager.config) omits `downloadDir` and `downloadId` even though [DownloadManager.conf.in](DownloadManager.conf.in) declares them. [CMakeLists.txt](CMakeLists.txt) requires libcurl.
+
+## 6. Internal Workflows & Execution Flow
 
 ### Download Processing Flow
 
@@ -191,10 +195,36 @@ int nextRetryDuration(int n) {
     return static_cast<int>(std::round(next));
 }
 // Example: n=1 -> 2s, n=2 -> 3s, n=3 -> 5s, n=4 -> 6s
+}
+```
 
 ---
 
-## 6. Configuration
+## 7. Diagrams & Visual Aids
+
+```mermaid
+classDiagram
+    class DownloadManagerImplementation
+    class DownloadInfo
+    class DownloadManagerHttpClient
+    DownloadManagerImplementation --> DownloadInfo : queues
+    DownloadManagerImplementation --> DownloadManagerHttpClient : owns
+    DownloadManagerImplementation ..|> IDownloadManager
+```
+
+```mermaid
+stateDiagram-v2
+    [*] --> Stopped
+    Stopped --> Running: Initialize
+    Running --> Queued: Download
+    Queued --> Active: worker selects
+    Active --> Queued: retry
+    Active --> Completed: success
+    Active --> Cancelled: cancel
+    Running --> Stopped: Deinitialize and join
+```
+
+## 8. Testing & Quality Analysis
 
 ### Plugin Configuration
 
@@ -215,8 +245,6 @@ set (callsign "org.rdk.DownloadManager")
 
 ---
 
-## 7. Testing
-
 ### Existing Tests
 
 Located in `Tests/L1Tests/tests/test_DownloadManager.cpp`
@@ -227,3 +255,11 @@ Located in `Tests/L1Tests/tests/test_DownloadManager.cpp`
 | Priority | Priority queue handling |
 | Cancel | Download cancellation |
 | Progress | Progress reporting |
+
+L0 coverage also covers lifecycle, implementation, HTTP client, telemetry, retry/queue, and shutdown behavior under [Tests/L0Tests/DownloadManager](../Tests/L0Tests/DownloadManager); L1 coverage exists. Add tests for worker-start failure, concurrent cancel/completion, retry exhaustion, and configuration parity.
+
+## 9. Beginner-to-Expert Teaching Mode
+
+**Must know first:** understand producer/consumer queues, the downloader worker, download id versus file locator, and notification delivery.
+
+**Advanced path:** inspect queue locking, cancellation visibility, rate limiting, retry backoff, libcurl error mapping, and shutdown lifetime.

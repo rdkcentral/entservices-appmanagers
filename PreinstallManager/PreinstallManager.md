@@ -44,7 +44,7 @@ graph TB
 
 ---
 
-## 3. Code Organization
+## 3. Code Organization (Folder & File-Level)
 
 ### Directory Structure
 
@@ -116,7 +116,11 @@ Core implementation members:
 
 ---
 
-## 5. Internal Workflows
+## 5. Configuration & Build Integration
+
+The implementation configuration key is `appPreinstallDirectory`; plugin settings include `mode`, `locator`, and `autostart`. The checked-in [PreinstallManager.config](PreinstallManager.config) omits `appPreinstallDirectory` even though [PreinstallManager.conf.in](PreinstallManager.conf.in) declares it. [CMakeLists.txt](CMakeLists.txt) wraps filesystem calls for L1 tests.
+
+## 6. Internal Workflows & Execution Flow
 
 ### Preinstall Scan and Install Flow
 
@@ -165,7 +169,28 @@ flowchart TD
 
 ---
 
-## 6. Configuration
+## 7. Diagrams & Visual Aids
+
+```mermaid
+classDiagram
+    class PreinstallManagerImplementation
+    class PackageInfo
+    PreinstallManagerImplementation --> PackageInfo : builds package list
+    PreinstallManagerImplementation ..|> IPreinstallManager
+    PreinstallManagerImplementation ..|> IConfiguration
+```
+
+```mermaid
+stateDiagram-v2
+    [*] --> Idle
+    Idle --> Discovering: StartPreinstall
+    Discovering --> Installing: packages found
+    Discovering --> Complete: no installation required
+    Installing --> Complete: packages processed
+    Installing --> Failed: scan or install error
+```
+
+## 8. Testing & Quality Analysis
 
 ### Plugin Configuration
 
@@ -194,8 +219,6 @@ set (callsign "org.rdk.PreinstallManager")
 
 ---
 
-## 7. Testing
-
 ### Existing Tests
 
 Located in `Tests/L1Tests/tests/test_PreinstallManager.cpp`
@@ -206,6 +229,14 @@ Located in `Tests/L1Tests/tests/test_PreinstallManager.cpp`
 | ForceInstall | Forced reinstallation |
 | GetState | State retrieval |
 | Notifications | Event delivery |
+
+Extensive L0 tests are under [Tests/L0Tests/PreinstallManager](../Tests/L0Tests/PreinstallManager), including lifecycle, implementation, component, version filtering, failure, event, and thread cases; L1 coverage also exists. Add malformed metadata, duplicate-version, permissions, forced-rerun, and shutdown-during-install tests.
+
+## 9. Beginner-to-Expert Teaching Mode
+
+**Must know first:** this plugin scans package artifacts and delegates installation to AppPackageManager; it is not the package installer itself.
+
+**Advanced path:** trace directory discovery into `PackageInfo`, semantic-version filtering, install-state/error mapping, asynchronous completion, and thread teardown.
 
 ---
 

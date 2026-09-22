@@ -54,7 +54,7 @@ graph TB
 
 ---
 
-## 3. Code Organization
+## 3. Code Organization (Folder & File-Level)
 
 ### Directory Structure
 
@@ -304,9 +304,35 @@ flowchart TD
     F --> I[Deliver to focused app]
 ```
 
+## 5. Configuration & Build Integration
+
+The plugin configuration uses `mode`, `locator`, `autostart`, and `startuporder`. [CMakeLists.txt](CMakeLists.txt) links the external `rdkwindowmanager` library outside test builds and uses fakes for L0 tests. The root build selects this subsystem through `PLUGIN_RDK_WINDOW_MANAGER`.
+
+## 6. Internal Workflows & Execution Flow
+
+- **Initialization:** clear `WAYLAND_DISPLAY`, install listeners, enable inactivity reporting, initialize the compositor, and start the render/request thread.
+- **Requests:** display, focus, visibility, geometry, scale, input, screenshot, and VNC operations are forwarded to the platform library, often through queued requests and semaphores.
+- **Events:** platform callbacks are dispatched to registered notifications for connection, readiness, visibility, focus, blur, inactivity, and screenshot completion.
+- **Shutdown:** stop and wake the worker, join it, deinitialize the compositor, remove listeners, and clear queues/buffers.
+
+The compositor implementation and several failure semantics are external to this repository.
+
+## 7. Diagrams & Visual Aids
+
+```mermaid
+sequenceDiagram
+    participant R as RuntimeManager
+    participant W as RDKWindowManager
+    participant P as rdkwindowmanager
+    R->>W: CreateDisplay(client, dimensions)
+    W->>P: create display
+    P-->>W: result/event
+    W-->>R: HRESULT and notification
+```
+
 ---
 
-## 8. Testing
+## 8. Testing & Quality Analysis
 
 ### Existing Tests
 
@@ -323,7 +349,13 @@ Located in `Tests/L1Tests/tests/test_RDKWindowManager.cpp`
 
 ---
 
-## 9. Integration Notes
+## 9. Beginner-to-Expert Teaching Mode
+
+**Must know first:** this plugin adapts the external `rdkwindowmanager` compositor library and uses a dedicated platform/render thread. Learn client identity, display creation, focus, visibility, input interception, and asynchronous events.
+
+**Advanced path:** trace `CreateDisplayRequest` semaphore synchronization, compositor callbacks, screenshot/render queues, listener removal, and shutdown ordering. Platform compositor semantics are outside this repository.
+
+## Integration Notes
 
 ### For RuntimeManager Integration
 

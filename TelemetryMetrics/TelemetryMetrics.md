@@ -55,7 +55,7 @@ graph TB
 
 ---
 
-## 3. Code Organization
+## 3. Code Organization (Folder & File-Level)
 
 ### Directory Structure
 
@@ -110,7 +110,11 @@ private:
 
 ---
 
-## 5. Internal Workflows
+## 5. Configuration & Build Integration
+
+The plugin settings are `mode`, `locator`, `autostart`, and `startuporder`. `APPMANAGERS_ENABLE_T2_INIT` controls T2 initialization in [CMakeLists.txt](CMakeLists.txt). There is no direct TelemetryMetrics-specific L0 target in the current [Tests/L0Tests/CMakeLists.txt](../Tests/L0Tests/CMakeLists.txt); other subsystem telemetry tests exercise the integration indirectly.
+
+## 6. Internal Workflows & Execution Flow
 
 ### Metric Recording Flow
 
@@ -148,7 +152,25 @@ sequenceDiagram
 
 ---
 
-## 6. Telemetry Markers
+## 7. Diagrams & Visual Aids
+
+```mermaid
+classDiagram
+    class TelemetryMetricsImplementation
+    class TelemetryFilters
+    TelemetryMetricsImplementation --> TelemetryFilters : filters publish data
+    TelemetryMetricsImplementation ..|> ITelemetryMetrics
+```
+
+```mermaid
+stateDiagram-v2
+    [*] --> Empty
+    Empty --> Recorded: Record
+    Recorded --> Published: Publish
+    Published --> Empty: clear published state
+```
+
+## Telemetry Markers
 
 ### Common Telemetry Markers
 
@@ -178,7 +200,13 @@ The following markers are defined in `helpers/Telemetry/TelemetryMarkers.h`:
 
 ---
 
-## 7. Configuration
+## 8. Testing & Quality Analysis
+
+There is no subsystem-specific L0 test target in the current workspace. Add focused tests for concurrent record/publish, malformed JSON, filtering, duplicate metric identities, T2-disabled behavior, and shutdown/uninitialization.
+
+The visible [TelemetryMetrics.cpp](TelemetryMetrics.cpp) shutdown code contains a commented-out `result` declaration followed by an assertion using `result`; this source path is ambiguous and requires explicit compile/test confirmation.
+
+## Configuration
 
 ### Plugin Configuration
 
@@ -196,7 +224,13 @@ option(AIMANAGERS_TELEMETRY_METRICS_SUPPORT "Enable telemetry metrics" OFF)
 
 ---
 
-## 8. Integration Pattern
+## 9. Beginner-to-Expert Teaching Mode
+
+**Must know first:** `Record` accumulates JSON metrics and `Publish` is the emission boundary. Learn the identity parameters, mutex-protected map, and shared-service lookup pattern.
+
+**Advanced path:** trace a subsystem reporter through `QueryInterfaceByCallsign`, inspect filter/merge semantics, and compare T2-enabled and T2-disabled builds.
+
+## Integration Pattern
 
 ### Recording Metrics from Other Plugins
 
@@ -217,7 +251,7 @@ void recordLaunchMetric(const std::string& appId, uint64_t startTime, uint64_t e
 
 ---
 
-## 9. Testing
+## 10. Legacy Test Notes
 
 ### Test Considerations
 

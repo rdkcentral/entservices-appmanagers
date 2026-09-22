@@ -74,20 +74,20 @@ flowchart LR
 
 ## Generated Subsystem Documentation
 
-The modular documentation in [`docs/`](docs/) is organized by selected subsystem. Each file is self-contained and covers architecture, source organization, interfaces, configuration, workflows, diagrams, tests, and a beginner-to-expert learning path.
+The manager-local documentation is organized by selected subsystem. Each file is self-contained and covers architecture, source organization, interfaces, configuration, workflows, diagrams, tests, and a beginner-to-expert learning path.
 
 | Module | Description | Documentation |
 |--------|-------------|---------------|
-| **AppManager** | Application orchestration, metadata, lifecycle requests, and notifications. | [View →](docs/AppManager.md) |
-| **AppStorageManager** | Per-application persistent storage and quota operations. | [View →](docs/AppStorageManager.md) |
-| **LifecycleManager** | Application state transitions and lifecycle notifications. | [View →](docs/LifecycleManager.md) |
-| **DownloadManager** | Asynchronous prioritized HTTP downloads and retries. | [View →](docs/DownloadManager.md) |
-| **PreinstallManager** | Preinstalled package discovery and installation. | [View →](docs/PreinstallManager.md) |
-| **PackageManager** | Package download, installation, locking, metadata, and cache state. | [View →](docs/PackageManager.md) |
-| **RDKWindowManager** | Display, compositor, input, focus, and render control. | [View →](docs/RDKWindowManager.md) |
-| **RuntimeManager** | OCI container execution and runtime state management. | [View →](docs/RuntimeManager.md) |
-| **TelemetryMetrics** | Thread-safe metric recording, filtering, and publication. | [View →](docs/TelemetryMetrics.md) |
-| **VictimSelector** | Memory-pressure victim selection and eviction escalation. | [View →](docs/VictimSelector.md) |
+| **AppManager** | Application orchestration, metadata, lifecycle requests, and notifications. | [View →](AppManager/AppManager.md) |
+| **AppStorageManager** | Per-application persistent storage and quota operations. | [View →](AppStorageManager/AppStorageManager.md) |
+| **LifecycleManager** | Application state transitions and lifecycle notifications. | [View →](LifecycleManager/LifecycleManager.md) |
+| **DownloadManager** | Asynchronous prioritized HTTP downloads and retries. | [View →](DownloadManager/DownloadManager.md) |
+| **PreinstallManager** | Preinstalled package discovery and installation. | [View →](PreinstallManager/PreinstallManager.md) |
+| **PackageManager** | Package download, installation, locking, metadata, and cache state. | [View →](PackageManager/PackageManager.md) |
+| **RDKWindowManager** | Display, compositor, input, focus, and render control. | [View →](RDKWindowManager/RDKWindowManager.md) |
+| **RuntimeManager** | OCI container execution and runtime state management. | [View →](RuntimeManager/RuntimeManager.md) |
+| **TelemetryMetrics** | Thread-safe metric recording, filtering, and publication. | [View →](TelemetryMetrics/TelemetryMetrics.md) |
+| **VictimSelector** | Memory-pressure victim selection and eviction escalation. | [View →](VictimSelector/VictimSelector.md) |
 
 ---
 
