@@ -1,4 +1,5 @@
 #include "UserIdManager.h"
+#include "UtilsLogging.h"
 
 namespace WPEFramework {
 namespace Plugin {
@@ -17,7 +18,7 @@ UserIdManager::UserIdManager()
 
     if (mUserIdAvailablePool.empty())
     {
-        printf("Depleted user id pool, none available for new apps");
+        LOGWARN("Depleted user id pool, none available for new apps");
     }
 
 }
@@ -34,7 +35,7 @@ uid_t UserIdManager::getUserId(const std::string& appId)
 
     if (mUserIdAvailablePool.size() < 5u)
     {
-        printf("Pool of available uids has been depleted, refusing to give"
+        LOGERR("Pool of available uids has been depleted, refusing to give"
                      " app '%s' a uid", appId.c_str());
         return 0;
     }
