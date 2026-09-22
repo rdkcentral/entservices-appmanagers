@@ -241,6 +241,8 @@ extern uint32_t Test_DobbySpecGenerator_GenerateSysMemLimitZeroFallsBack();
 extern uint32_t Test_DobbySpecGenerator_GenerateWithNonEmptyAppPorts();
 extern uint32_t Test_DobbySpecGenerator_GetVpuEnabledReturnsFalseForSystemApp();
 extern uint32_t Test_DobbySpecGenerator_GenerateWithEnvVariablesInRuntimeConfig();
+extern uint32_t Test_DobbySpecGenerator_RejectsUnsafeEnvironmentVariables();
+extern uint32_t Test_DobbySpecGenerator_RejectsTraversalMountPaths();
 extern uint32_t Test_DobbySpecGenerator_GenerateThunderPluginFromCapabilities();
 extern uint32_t Test_DobbySpecGenerator_GenerateDialEnvFromEscapedCapabilityValue();
 extern uint32_t Test_DobbySpecGenerator_GenerateWithEmptyCapabilitiesString();
@@ -403,6 +405,8 @@ int main()
         { "DobbySpecGenerator_GenerateWithNonEmptyAppPorts",                         Test_DobbySpecGenerator_GenerateWithNonEmptyAppPorts },
         { "DobbySpecGenerator_GetVpuEnabledReturnsFalseForSystemApp",                Test_DobbySpecGenerator_GetVpuEnabledReturnsFalseForSystemApp },
         { "DobbySpecGenerator_GenerateWithEnvVariablesInRuntimeConfig",              Test_DobbySpecGenerator_GenerateWithEnvVariablesInRuntimeConfig },
+        { "DobbySpecGenerator_RejectsUnsafeEnvironmentVariables",                     Test_DobbySpecGenerator_RejectsUnsafeEnvironmentVariables },
+        { "DobbySpecGenerator_RejectsTraversalMountPaths",                            Test_DobbySpecGenerator_RejectsTraversalMountPaths },
         { "DobbySpecGenerator_GenerateThunderPluginFromCapabilities",                Test_DobbySpecGenerator_GenerateThunderPluginFromCapabilities },
         { "DobbySpecGenerator_GenerateDialEnvFromEscapedCapabilityValue",            Test_DobbySpecGenerator_GenerateDialEnvFromEscapedCapabilityValue },
         { "DobbySpecGenerator_GenerateWithEmptyCapabilitiesString",                  Test_DobbySpecGenerator_GenerateWithEmptyCapabilitiesString },

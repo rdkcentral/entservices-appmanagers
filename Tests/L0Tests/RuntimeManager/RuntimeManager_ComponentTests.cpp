@@ -1881,6 +1881,44 @@ uint32_t Test_DobbySpecGenerator_GenerateWithEnvVariablesInRuntimeConfig()
     return tr.failures;
 }
 
+uint32_t Test_DobbySpecGenerator_RejectsUnsafeEnvironmentVariables()
+{
+    L0Test::TestResult tr;
+
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    auto appCfg = MakeValidAppConfig();
+    auto rtCfg = MakeValidRuntimeConfig();
+    rtCfg.envVariables = "[\"SAFE_NAME=value\",\"LD_PRELOAD=/tmp/library.so\",\"SHELL_VALUE=$(command)\"]";
+    std::string spec;
+
+    const bool result = gen.generate(appCfg, rtCfg, spec);
+    L0Test::ExpectTrue(tr, result, "generate() succeeds after filtering unsafe environment variables");
+    L0Test::ExpectTrue(tr, spec.find("SAFE_NAME=value") != std::string::npos, "Valid environment variable remains in spec");
+    L0Test::ExpectTrue(tr, spec.find("LD_PRELOAD") == std::string::npos, "Loader environment variable is rejected");
+    L0Test::ExpectTrue(tr, spec.find("SHELL_VALUE") == std::string::npos, "Environment value with unsafe metacharacters is rejected");
+
+    return tr.failures;
+}
+
+uint32_t Test_DobbySpecGenerator_RejectsTraversalMountPaths()
+{
+    L0Test::TestResult tr;
+
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    auto appCfg = MakeValidAppConfig();
+    auto rtCfg = MakeValidRuntimeConfig();
+    rtCfg.appPath = "/opt/apps/../private";
+    rtCfg.runtimePath = "/opt/runtime/../../private";
+    std::string spec;
+
+    const bool result = gen.generate(appCfg, rtCfg, spec);
+    L0Test::ExpectTrue(tr, result, "generate() succeeds while omitting unsafe optional mounts");
+    L0Test::ExpectTrue(tr, spec.find(rtCfg.appPath) == std::string::npos, "Traversal app mount is omitted");
+    L0Test::ExpectTrue(tr, spec.find(rtCfg.runtimePath) == std::string::npos, "Traversal runtime mount is omitted");
+
+    return tr.failures;
+}
+
 /* Test_DobbySpecGenerator_GenerateThunderPluginFromCapabilities
  *
  * Verifies thunder plugin generation can be driven by RuntimeConfig.capabilities
