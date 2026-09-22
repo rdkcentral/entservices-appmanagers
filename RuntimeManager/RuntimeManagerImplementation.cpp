@@ -1428,47 +1428,47 @@ namespace WPEFramework
 
             if (debuggerEnabled)
             {
-            const in_addr_t addr = ContainerUtils::getContainerIpAddress(name);
-            if (addr != 0)
-            {
-                struct in_addr ip_addr;
-                ip_addr.s_addr = addr;
-                LOGINFO("Container %s started with IP address: %s", name.c_str(), inet_ntoa(ip_addr));
-
-                uint16_t debugPort = 0;
-
-                for (uint16_t port = 2000; port <= 2100; ++port)
+                const in_addr_t addr = ContainerUtils::getContainerIpAddress(name);
+                if (addr != 0)
                 {
-                    if (mPortAvailability.find(port) == mPortAvailability.end() || !mPortAvailability[port])
+                    struct in_addr ip_addr;
+                    ip_addr.s_addr = addr;
+                    LOGINFO("Container %s started with IP address: %s", name.c_str(), inet_ntoa(ip_addr));
+
+                    uint16_t debugPort = 0;
+
+                    for (uint16_t port = 2000; port <= 2100; ++port)
                     {
-                        debugPort = port;
-                        break;
+                        if (mPortAvailability.find(port) == mPortAvailability.end() || !mPortAvailability[port])
+                        {
+                            debugPort = port;
+                            break;
+                        }
                     }
-                }
 
-                if (debugPort != 0)
-                {
-                    auto webInspector = WebInspector::attach(name, addr, debugPort);
-                    if (webInspector)
+                    if (debugPort != 0)
                     {
-                        mWebInspectors[name] = std::move(webInspector);
-                        mPortAvailability[debugPort] = true;
-                        LOGINFO("WebInspector attached for container %s on host port %d", name.c_str(), debugPort);
+                        auto webInspector = WebInspector::attach(name, addr, debugPort);
+                        if (webInspector)
+                        {
+                            mWebInspectors[name] = std::move(webInspector);
+                            mPortAvailability[debugPort] = true;
+                            LOGINFO("WebInspector attached for container %s on host port %d", name.c_str(), debugPort);
+                        }
+                        else
+                        {
+                            LOGWARN("WebInspector::attach failed for container %s on port %d", name.c_str(), debugPort);
+                        }
                     }
                     else
                     {
-                        LOGWARN("WebInspector::attach failed for container %s on port %d", name.c_str(), debugPort);
+                        LOGERR("No available debug ports for container %s", name.c_str());
                     }
                 }
                 else
                 {
-                    LOGERR("No available debug ports for container %s", name.c_str());
+                    LOGERR("Failed to get IP address for container '%s'", name.c_str());
                 }
-            }
-            else
-            {
-                LOGERR("Failed to get IP address for container '%s'", name.c_str());
-            }
 	    }
             else
             {
@@ -1480,7 +1480,7 @@ namespace WPEFramework
 
         void RuntimeManagerImplementation::onOCIContainerStoppedEvent(std::string name, JsonObject &data)
         {
-/*
+
 #ifdef RDK_APPMANAGERS_DEBUG
             auto it = mWebInspectors.find(name);
             if (it != mWebInspectors.end())
@@ -1492,7 +1492,7 @@ namespace WPEFramework
                 LOGINFO("Debug port %d flag reset to available for reuse", freedPort);
             }
 #endif
-*/
+
             dispatchEvent(RuntimeManagerImplementation::RuntimeEventType::RUNTIME_MANAGER_EVENT_CONTAINERSTOPPED, data);
         }
 
