@@ -1642,8 +1642,7 @@ uint32_t Test_WindowManagerConnector_GetDisplayInfoWithoutXdgRuntimeDirFallsToTm
 
 /* Test_DobbySpecGenerator_GenerateWithSpecChangeFile
  *
- * Verifies the generate() spec-override path when /tmp/specchange exists.
- * Covers DobbySpecGenerator.cpp lines 96-106.
+ * Verifies an untrusted spec override file is ignored.
  */
 uint32_t Test_DobbySpecGenerator_GenerateWithSpecChangeFile()
 {
@@ -1662,9 +1661,11 @@ uint32_t Test_DobbySpecGenerator_GenerateWithSpecChangeFile()
 
     const bool result = gen.generate(appCfg, rtCfg, spec);
     L0Test::ExpectTrue(tr, result,
-                       "generate() returns true when /tmp/specchange override file exists");
-    L0Test::ExpectTrue(tr, !spec.empty(),
-                       "generate() returns content from override file");
+                       "generate() succeeds while ignoring the override file");
+    L0Test::ExpectTrue(tr, spec.find("\"version\":\"1.1\"") == std::string::npos,
+                       "generate() does not use content from the override file");
+    L0Test::ExpectTrue(tr, spec.find("SkyBrowserLauncher") != std::string::npos,
+                       "generate() preserves the requested valid runtime configuration");
 
     // Clean up
     std::remove("/tmp/specchange");

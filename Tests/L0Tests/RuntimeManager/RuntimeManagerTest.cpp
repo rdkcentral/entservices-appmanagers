@@ -11,6 +11,7 @@ extern uint32_t Test_RuntimeManager_InitializeFailsWhenConfigurationInterfaceMis
 extern uint32_t Test_RuntimeManager_InformationReturnsServiceName();
 
 // ── RuntimeManager_ImplementationTests.cpp ───────────────────────────────────
+extern uint32_t Test_Impl_UnprivilegedIdentityValidation();
 extern uint32_t Test_Impl_RegisterNotification();
 extern uint32_t Test_Impl_RegisterDuplicate();
 extern uint32_t Test_Impl_UnregisterNotification();
@@ -271,6 +272,7 @@ int main()
         { "RuntimeManager_InformationReturnsServiceName",                            Test_RuntimeManager_InformationReturnsServiceName },
 
         // ── Implementation tests ─────────────────────────────────────────────
+        { "Impl_UnprivilegedIdentityValidation",                                    Test_Impl_UnprivilegedIdentityValidation },
         { "Impl_RegisterNotification",                                               Test_Impl_RegisterNotification },
         { "Impl_RegisterDuplicate",                                                  Test_Impl_RegisterDuplicate },
         { "Impl_UnregisterNotification",                                             Test_Impl_UnregisterNotification },

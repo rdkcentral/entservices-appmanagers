@@ -62,6 +62,11 @@ namespace WPEFramework
             return _instance;
         }
 
+        bool RuntimeManagerImplementation::isUnprivilegedIdentity(const uint32_t userId, const uint32_t groupId)
+        {
+            return userId != 0 && groupId != 0;
+        }
+
         RuntimeManagerImplementation::~RuntimeManagerImplementation()
         {
             LOGINFO("Call RuntimeManagerImplementation destructor");
@@ -629,19 +634,11 @@ namespace WPEFramework
             // Validate caller-supplied userId and groupId to prevent privilege escalation
             // Reject uid 0 (root) and gid 0 (root group) - these are the most dangerous
             // Allow other system accounts (< 1000) as platform apps may legitimately use them
-            if (uid == 0)
+            if (!isUnprivilegedIdentity(uid, gid))
             {
-                LOGERR("Rejected privileged userId=0 (root) from caller - not allowed");
+                LOGERR("Rejected privileged user or group identity from caller");
                 status = Core::ERROR_UNAUTHENTICATED;
-                errorReason = "Privileged userId not allowed";
-                return status;
-            }
-            // Reject gid 0 (root group)
-            if (gid == 0)
-            {
-                LOGERR("Rejected privileged groupId=0 (root) from caller - not allowed");
-                status = Core::ERROR_UNAUTHENTICATED;
-                errorReason = "Privileged groupId not allowed";
+                errorReason = "Privileged user or group identity not allowed";
                 return status;
             }
 #endif // RALF_PACKAGE_SUPPORT_ENABLED

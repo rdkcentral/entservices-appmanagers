@@ -164,6 +164,7 @@ namespace WPEFramework
                 RuntimeManagerImplementation & operator=(const RuntimeManagerImplementation &) = delete;
 
                 static RuntimeManagerImplementation* getInstance();
+                static bool isUnprivilegedIdentity(const uint32_t userId, const uint32_t groupId);
 
                 BEGIN_INTERFACE_MAP(RuntimeManagerImplementation)
                 INTERFACE_ENTRY(Exchange::IRuntimeManager)
