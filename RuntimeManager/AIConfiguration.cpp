@@ -48,8 +48,8 @@ namespace Plugin
         , mVpuAccessBlacklist()
         , mAppsRequiringDBus()
         , mMapiPorts()
-        , mAirplayPorts()
-        , mAirplayMounts()
+        , mAirplayPorts({ 43092, 13132, 13133, 13134, 13135 })
+        , mAirplayMounts({ { "/opt/secure/Airplay", "/airplay" } })
         , mResourceManagerClientEnabled(false)
         , mGstreamerRegistryEnabled(false)
         , mSvpEnabled(false)
@@ -197,8 +197,6 @@ namespace Plugin
         /* mVpuAccessBlacklist - apps.vpuAccessBlacklist */
         /* mAppsRequiringDBusList - apps.requireDBus */
         /* mMapiPorts = apps.mapi.ports */
-        mAirplayPorts = { 43092, 13132, 13133, 13134, 13135 };
-        mAirplayMounts = { { "/opt/secure/Airplay", "/airplay" } };
         mResourceManagerClientEnabled = false; // .apps.essosResourceManager.enableClient
         mGstreamerRegistryEnabled = false; // apps.gstreamer.mapCachedRegistry
         mSvpEnabled = false; // apps.svp.enable
