@@ -208,7 +208,17 @@ namespace WPEFramework
                     if (Core::ERROR_NONE != status)
                     {
                         LOGERR("appQuotaSizeProperty Failed for App Quota size retrivel, appId:%s!!!", appId.c_str());
-                        storageInfo.quotaKB = 0;
+                        if (status == 22) // EINVAL - property doesn't exist
+                        {
+                            LOGINFO("quotaSize property not found for appId: %s, using default", appId.c_str());
+                            storageInfo.quotaKB = 0;
+                        }
+                        else if (status != 0)
+                        {
+                            // Handle other errors
+                            LOGERR("Failed to get quotaSize for appId: %s, status: %d", appId.c_str(), status);
+                            continue;
+                        }
                     }
 
                     storageInfo.usedKB  = static_cast<uint32_t>(getDirectorySizeInBytes(storageInfo.path) / 1024); //get the used size
