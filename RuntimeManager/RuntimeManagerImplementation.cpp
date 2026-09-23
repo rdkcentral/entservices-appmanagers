@@ -869,6 +869,16 @@ namespace WPEFramework
                         runtimeAppInfo.requestTime = requestTime;
                         runtimeAppInfo.requestType = REQUEST_TYPE_LAUNCH;
                         runtimeAppInfo.debuggerEnabled = runtimeConfigObject.enableDebugger;
+			runtimeAppInfo.webInspectorEnabled = false;
+
+#ifdef RDK_APPMANAGERS_DEBUG
+                        if ((true == runtimeAppInfo.debuggerEnabled) && (true == legacyContainer))
+                        {
+                            std::vector<std::pair<std::string, std::string>> parsedCapabilities;
+                            DobbySpecGenerator::parseCapabilities(runtimeConfigObject.capabilities, parsedCapabilities);
+                            runtimeAppInfo.webInspectorEnabled = DobbySpecGenerator::hasCapability(parsedCapabilities, "runtime-html");
+                        }
+#endif
 #ifdef ENABLE_RIALTO
                         // usesRialto is true only when a Rialto session was actually
                         // established (socket path assigned). If createAppSession failed,
@@ -1414,19 +1424,21 @@ namespace WPEFramework
 
 #ifdef RDK_APPMANAGERS_DEBUG
 	    bool debuggerEnabled = false;
+	    bool webInspectorEnabled = false;
             {
                 Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
                 for (const auto& appInfo : mRuntimeAppInfo)
                 {
-                    if (appInfo.second.containerId == name)
+                    if (appInfo.second.containerId == data["containerId"].String())
                     {
                         debuggerEnabled = appInfo.second.debuggerEnabled;
+			webInspectorEnabled = appInfo.second.webInspectorEnabled;
                         break;
                     }
                 }
             }
 
-            if (debuggerEnabled)
+            if ((true == debuggerEnabled) && (true == webInspectorEnabled))
             {
                 const in_addr_t addr = ContainerUtils::getContainerIpAddress(name);
                 if (addr != 0)
