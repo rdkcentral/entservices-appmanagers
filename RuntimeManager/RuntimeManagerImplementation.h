@@ -218,6 +218,7 @@ namespace WPEFramework
                 std::map<std::string, RuntimeAppInfo> mRuntimeAppInfo;
 
                 #ifdef RDK_APPMANAGERS_DEBUG
+                Core::CriticalSection mWebInspectorLock;
                 std::map<std::string, std::shared_ptr<WebInspector>> mWebInspectors;
                 std::map<uint16_t, bool> mPortAvailability;
                 #endif
