@@ -1448,27 +1448,33 @@ namespace WPEFramework
                     LOGINFO("Container %s started with IP address: %s", name.c_str(), inet_ntoa(ip_addr));
 
                     uint16_t debugPort = 0;
+		    {
+                        Core::SafeSyncType<Core::CriticalSection> lock(mWebInspectorLock);
 
-                    for (uint16_t port = 2000; port <= 2100; ++port)
-                    {
-                        if (mPortAvailability.find(port) == mPortAvailability.end() || !mPortAvailability[port])
+                        for (uint16_t port = 2000; port <= 2100; ++port)
                         {
-                            debugPort = port;
-                            break;
+                            if (mPortAvailability.find(port) == mPortAvailability.end() || !mPortAvailability[port])
+                            {
+                                debugPort = port;
+                                mPortAvailability[debugPort] = true;
+                                break;
+                            }
                         }
-                    }
+		    }
 
                     if (debugPort != 0)
                     {
                         auto webInspector = WebInspector::attach(name, addr, debugPort);
                         if (webInspector)
                         {
+                            Core::SafeSyncType<Core::CriticalSection> lock(mWebInspectorLock);
                             mWebInspectors[name] = std::move(webInspector);
-                            mPortAvailability[debugPort] = true;
                             LOGINFO("WebInspector attached for container %s on host port %d", name.c_str(), debugPort);
                         }
                         else
                         {
+                            Core::SafeSyncType<Core::CriticalSection> lock(mWebInspectorLock);
+                            mPortAvailability[debugPort] = false;
                             LOGWARN("WebInspector::attach failed for container %s on port %d", name.c_str(), debugPort);
                         }
                     }
@@ -1494,6 +1500,7 @@ namespace WPEFramework
         {
 
 #ifdef RDK_APPMANAGERS_DEBUG
+            Core::SafeSyncType<Core::CriticalSection> lock(mWebInspectorLock);
             auto it = mWebInspectors.find(name);
             if (it != mWebInspectors.end())
             {
