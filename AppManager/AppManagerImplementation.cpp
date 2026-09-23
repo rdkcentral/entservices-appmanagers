@@ -205,7 +205,7 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                             JsonObject launchArgsObj;
                             launchArgsObj.FromString(launchArgs);
                             const bool debugLaunchRequested = launchArgsObj.HasLabel("debugger");
-                            runtimeConfig.enableDebugger = debugLaunchRequested;
+                            runtimeConfig.enableDebugger = runtimeConfig.enableDebugger || debugLaunchRequested;
                             if (debugLaunchRequested)
                             {
                                 LOGINFO("Debugger launch requested for appId=%s", appId.c_str());

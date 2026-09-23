@@ -106,6 +106,7 @@ namespace WPEFramework
                     time_t requestTime = 0;
                     RuntimeManagerImplementation::RequestType requestType = RuntimeManagerImplementation::REQUEST_TYPE_NONE;
                     bool debuggerEnabled = false;
+		    bool webInspectorEnabled = false;
 #ifdef ENABLE_RIALTO
                     bool usesRialto = false;
 #endif
