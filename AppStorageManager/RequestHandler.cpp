@@ -208,6 +208,7 @@ namespace WPEFramework
                     if (Core::ERROR_NONE != status)
                     {
                         LOGERR("appQuotaSizeProperty Failed for App Quota size retrivel, appId:%s!!!", appId.c_str());
+                        LOGINFO("quotaSize property not found for appId: %s, using default", appId.c_str());
                         storageInfo.quotaKB = 0;
                     }
 
@@ -228,6 +229,7 @@ namespace WPEFramework
                     else
                     {
                         ++numAppsCached;
+                        status = Core::ERROR_NONE;
                     }
                 }
                 closedir(dir);
