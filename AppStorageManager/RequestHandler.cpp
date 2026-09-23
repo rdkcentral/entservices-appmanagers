@@ -208,7 +208,7 @@ namespace WPEFramework
                     if (Core::ERROR_NONE != status)
                     {
                         LOGERR("appQuotaSizeProperty Failed for App Quota size retrivel, appId:%s!!!", appId.c_str());
-                        if (status == 22) // EINVAL - property doesn't exist
+                        if (Core::ERROR_UNKNOWN_KEY == status) // EINVAL - property doesn't exist
                         {
                             LOGINFO("quotaSize property not found for appId: %s, using default", appId.c_str());
                             storageInfo.quotaKB = 0;
