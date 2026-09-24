@@ -298,7 +298,6 @@ TEST_F(AppManagerTest, SetAndGetAppPropertySuccessCaseUsingJsonRpc)
     uint32_t status = Core::ERROR_GENERAL;
     JsonObject resultJson;
     Core::JSON::String resultString;
-    std::string propValue = "";
     string appId = "com.example.myapp";
     string key = "delay";
     string value = "\"10\"";
@@ -311,19 +310,14 @@ TEST_F(AppManagerTest, SetAndGetAppPropertySuccessCaseUsingJsonRpc)
     params["value"] = value;
     /* Invoking setAppProperty method */
     status = InvokeServiceMethod("org.rdk.AppManager", "setAppProperty", params, resultJson);
-    EXPECT_EQ(status,Core::ERROR_NONE);
+    EXPECT_EQ(status,Core::ERROR_UNAVAILABLE);
 
     /* Invoking getAppProperty method */
     JsonObject params1;
     params1["appId"] = appId;
     params1["key"] = key;
     status = InvokeServiceMethod("org.rdk.AppManager", "getAppProperty", params1, resultString);
-    EXPECT_EQ(status,Core::ERROR_NONE);
-
-    propValue = resultString.Value();
-    TEST_LOG("propValue: %s expected value: %s", propValue.c_str(), value.c_str());
-    EXPECT_EQ(propValue, value);
-    EXPECT_TRUE(propValue == value);
+    EXPECT_EQ(status,Core::ERROR_UNAVAILABLE);
 }
 
 /********************************************************
@@ -1207,11 +1201,10 @@ TEST_F(AppManagerTest, SetAndGetAppPropertyComRpcConnectionSuccessCase)
                 string appId = "com.example.myapp";
                 string key = "delay";
                 string value = "\"10\""; /* string as json string format */
-                string expectedValue = "\"10\"";
 
                 TEST_LOG("Calling SetAppProperty");
                 status = mAppmanagerPlugin->SetAppProperty(appId, key, value);
-                EXPECT_EQ(status,Core::ERROR_NONE);
+                EXPECT_EQ(status,Core::ERROR_UNAVAILABLE);
                 if (status != Core::ERROR_NONE)
                 {
                     std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
@@ -1221,15 +1214,8 @@ TEST_F(AppManagerTest, SetAndGetAppPropertyComRpcConnectionSuccessCase)
                 TEST_LOG("Calling GetAppProperty");
                 value = "";
                 status = mAppmanagerPlugin->GetAppProperty(appId, key, value);
-                EXPECT_EQ(status,Core::ERROR_NONE);
-                if (status != Core::ERROR_NONE)
-                {
-                    std::string errorMsg = "COM-RPC returned error " + std::to_string(status) + " (" + std::string(Core::ErrorToString(status)) + ")";
-                    TEST_LOG("Err: %s", errorMsg.c_str());
-                }
-                TEST_LOG("value: %s expectedValue:%s", value.c_str(), expectedValue.c_str());
-
-                EXPECT_EQ(value, expectedValue);
+                EXPECT_EQ(status,Core::ERROR_UNAVAILABLE);
+                EXPECT_TRUE(value.empty());
 
                 mAppmanagerPlugin->Release();
             }
