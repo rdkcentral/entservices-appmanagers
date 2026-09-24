@@ -509,12 +509,6 @@ The repository contains L0 implementation, lifecycle, component, telemetry, `App
 
 The exact retry and ordering guarantees of remote services are defined outside this folder by the generated exchange interfaces and deployment integration.
 
-## 9. Beginner-to-Expert Teaching Mode
-
-**Must know first:** AppManager is an orchestration layer. Learn the difference between the Thunder plugin wrapper, `AppManagerImplementation`, application metadata, lifecycle states, and asynchronous notifications.
-
-**Advanced path:** trace a launch through `LifecycleInterfaceConnector`, LifecycleManager, RuntimeManager, package locking, metadata updates, and the optional ResourceMonitor reconciliation path.
-
 ### Existing Tests
 
 Located in `Tests/L1Tests/tests/test_AppManager.cpp`:
@@ -556,5 +550,11 @@ TEST(AppManagerTest, NotificationOrder) {
     // State changes should be delivered in order
 }
 ```
+
+## 9. Beginner-to-Expert Teaching Mode
+
+**Must know first:** AppManager is an orchestration layer. Learn the difference between the Thunder plugin wrapper, `AppManagerImplementation`, application metadata, lifecycle states, and asynchronous notifications.
+
+**Advanced path:** trace a launch through `LifecycleInterfaceConnector`, LifecycleManager, RuntimeManager, package locking, metadata updates, and the optional ResourceMonitor reconciliation path.
 
 ---

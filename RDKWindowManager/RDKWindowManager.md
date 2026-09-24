@@ -199,7 +199,19 @@ public:
 
 ---
 
-## 5. Internal Workflows
+## 5. Configuration & Build Integration
+
+The plugin configuration uses `mode`, `locator`, `autostart`, and `startuporder`.
+
+```cmake
+set (autostart false)
+set (preconditions Platform)
+set (callsign "org.rdk.RDKWindowManager")
+```
+
+[CMakeLists.txt](CMakeLists.txt) links the external `rdkwindowmanager` library outside test builds and uses fakes for L0 tests. The root build selects this subsystem through `PLUGIN_RDK_WINDOW_MANAGER`.
+
+## 6. Internal Workflows & Execution Flow
 
 ### Display Creation Flow
 
@@ -266,19 +278,7 @@ sequenceDiagram
 
 ---
 
-## 6. Configuration
-
-### Plugin Configuration
-
-```cmake
-set (autostart false)
-set (preconditions Platform)
-set (callsign "org.rdk.RDKWindowManager")
-```
-
----
-
-## 7. Key Management Features
+### Key Management Features
 
 ### Key Intercept Options
 
@@ -304,16 +304,9 @@ flowchart TD
     F --> I[Deliver to focused app]
 ```
 
-## 5. Configuration & Build Integration
+### Runtime and lifecycle integration
 
-The plugin configuration uses `mode`, `locator`, `autostart`, and `startuporder`. [CMakeLists.txt](CMakeLists.txt) links the external `rdkwindowmanager` library outside test builds and uses fakes for L0 tests. The root build selects this subsystem through `PLUGIN_RDK_WINDOW_MANAGER`.
-
-## 6. Internal Workflows & Execution Flow
-
-- **Initialization:** clear `WAYLAND_DISPLAY`, install listeners, enable inactivity reporting, initialize the compositor, and start the render/request thread.
-- **Requests:** display, focus, visibility, geometry, scale, input, screenshot, and VNC operations are forwarded to the platform library, often through queued requests and semaphores.
-- **Events:** platform callbacks are dispatched to registered notifications for connection, readiness, visibility, focus, blur, inactivity, and screenshot completion.
-- **Shutdown:** stop and wake the worker, join it, deinitialize the compositor, remove listeners, and clear queues/buffers.
+For RuntimeManager integration, create the display before starting the container and wait for the ready event before considering the application running. LifecycleManager can consume connection, readiness, focus, blur, and disconnection events.
 
 The compositor implementation and several failure semantics are external to this repository.
 
@@ -355,26 +348,3 @@ Located in `Tests/L1Tests/tests/test_RDKWindowManager.cpp`
 
 **Advanced path:** trace `CreateDisplayRequest` semaphore synchronization, compositor callbacks, screenshot/render queues, listener removal, and shutdown ordering. Platform compositor semantics are outside this repository.
 
-## Integration Notes
-
-### For RuntimeManager Integration
-
-```cpp
-// Before starting container, create display
-windowManager->CreateDisplay(appInstanceId, displayName,
-                             width, height,
-                             virtualDisplay, virtualWidth, virtualHeight,
-                             ownerId, groupId,
-                             topmost, focus);
-
-// Wait for OnReady before considering app "running"
-```
-
-### For LifecycleManager Integration
-
-```cpp
-// Monitor window events for lifecycle state
-windowManager->Register(notification);
-// OnApplicationDisconnected -> consider app crashed
-// OnReady -> first frame rendered, transition to ACTIVE
-```
