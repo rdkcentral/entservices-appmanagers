@@ -190,6 +190,26 @@ namespace ralf
         bool addConfigEnvToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &configNode);
 
         /**
+         * Applies permissions from the manifest to the OCI config JSON.
+         * @param ociConfigRootNode The root node of the OCI config JSON.
+         * @param manifestRootNode The root node of the manifest JSON containing the permission information.
+         * @param envVariables The environment variables to be added based on permissions.
+         * @return false if any permission could not be applied, true otherwise.
+         */
+        bool applyPermissionsToOCIConfig(Json::Value& ociConfigRootNode, const Json::Value& manifestRootNode,
+                                         const std::string& envVariables);
+
+        /**
+         * Adds permission-based environment variables to the OCI config JSON.
+         * @param ociConfigRootNode The root node of the OCI config JSON.
+         * @param manifestRootNode The root node of the manifest JSON containing the permission information.
+         * @param envVariables The environment variables to be added based on permissions.
+         * @return false if any environment variable could not be added, true otherwise.
+         */
+        bool addPermissionBasedEnvironmentVariables(Json::Value& ociConfigRootNode,
+                                    const Json::Value& manifestRootNode, const std::string& envVariables);
+
+        /**
          * Updates the OCI config JSON at rdkPlugins.logging.data.fileOptions.path to point to the
          * application's log file for easier debugging of logs from the containerized app.
          * The configured log filename is derived from the host-side appStoragePath and appId
@@ -218,8 +238,9 @@ namespace ralf
         /**
          * Adds the THUNDER_ACCESS environment variable to the OCI config for privileged apps if it is set in the host environment.
          * @param ociConfigRootNode The root node of the OCI config JSON.
+         * @return true if the environment variable was added, false otherwise.
          */
-        void addThunderAccessToPrivilegedApps(Json::Value &ociConfigRootNode);
+        bool addThunderAccessToPrivilegedApps(Json::Value &ociConfigRootNode);
 
         /**
          * The vector of Ralf package details as pairs of mount point and metadata path.
