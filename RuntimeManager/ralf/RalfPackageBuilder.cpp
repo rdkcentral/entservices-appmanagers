@@ -22,10 +22,25 @@
 #include "RalfOCIConfigGenerator.h"
 #include "RalfSupport.h"
 
-#include <fstream>
-
 namespace ralf
 {
+    namespace
+    {
+        bool ensureMergedRootfsMountTargets(const std::string& configFilePath,
+                                            const std::string& ociRootfsPath,
+                                            const int uid,
+                                            const int gid)
+        {
+            Json::Value ociConfigRootNode;
+            if (!JsonFromFile(configFilePath, ociConfigRootNode))
+            {
+                LOGERR("Failed to load generated OCI config for merged-rootfs mount target preparation: %s", configFilePath.c_str());
+                return false;
+            }
+
+            return prepareMergedRootfsMountTargets(ociConfigRootNode, ociRootfsPath + "/rootfs", uid, gid);
+        }
+    }
 
     bool RalfPackageBuilder::generateOCIRootfsPackage(const std::string &appInstanceId, const int uid, const int gid, std::string &ociRootfsPath)
     {
@@ -69,6 +84,21 @@ namespace ralf
 
         RalfOCIConfigGenerator ralfOciGen(configFilePath, mRalfPackages);
         status = ralfOciGen.generateRalfOCIConfig(config, runtimeConfigObject);
+        if (!status)
+        {
+            unmountOverlayfsIfExists(config.mAppInstanceId);
+            dobbySpec.clear();
+            return false;
+        }
+
+        if (!ensureMergedRootfsMountTargets(configFilePath, ociRootfsPath, config.mUserId, config.mGroupId))
+        {
+            LOGERR("Failed to prepare merged-rootfs mount targets for appInstanceId: %s", config.mAppInstanceId.c_str());
+            unmountOverlayfsIfExists(config.mAppInstanceId);
+            dobbySpec.clear();
+            return false;
+        }
+
         return status;
     }
 
