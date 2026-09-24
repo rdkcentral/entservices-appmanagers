@@ -147,11 +147,12 @@ set (callsign "org.rdk.AppStorageManager")
 
 ### Storage Structure
 
+~~~
 /opt/persistent/apps/
 ├── com.example.app1/
 ├── com.example.app2/
 └── ...
-```
+~~~
 
 ## 6. Internal Workflows & Execution Flow
 
