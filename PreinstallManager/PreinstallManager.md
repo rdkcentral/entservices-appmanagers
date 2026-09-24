@@ -240,7 +240,7 @@ Extensive L0 tests are under [Tests/L0Tests/PreinstallManager](../Tests/L0Tests/
 
 ---
 
-## 8. Usage Notes
+## 10. Usage Notes
 
 1. **Startup Sequence**: PreinstallManager typically runs early in boot to ensure apps are available
 2. **Force Install**: Use sparingly as it reinstalls even up-to-date packages
