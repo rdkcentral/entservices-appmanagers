@@ -104,7 +104,7 @@ stateDiagram-v2
     Selecting --> Complete: no victim/error
     Terminating --> Complete: lifecycle event confirms
     Terminating --> Killing: escalation required
-    Killing --> Complete: kill confirmed
+    Killing --> Complete: lifecycle event (unloaded/error)
     Complete --> Idle: notification delivered
 ```
 
