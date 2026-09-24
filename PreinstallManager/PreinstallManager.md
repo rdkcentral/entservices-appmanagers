@@ -211,8 +211,7 @@ stateDiagram-v2
     Idle --> Discovering: StartPreinstall
     Discovering --> Installing: packages found
     Discovering --> Complete: no installation required
-    Installing --> Complete: packages processed
-    Installing --> Complete: packages processed (including failures)
+    Installing --> Complete: packages processed (successes and failures)
 ```
 
 ## 8. Testing & Quality Analysis
