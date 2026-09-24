@@ -64,7 +64,7 @@ Selection depends on the AppManager priority property and AppManager's ordering 
 - **Configure:** resolve AppManager and RuntimeManager, register the AppManager listener, and clear prior eviction state.
 - **Select:** inspect candidate apps, lifecycle state, memory/runtime information, priority, recency, and hibernation status.
 - **Soft eviction:** request `TerminateApp` for the selected candidate.
-- **Escalation:** if termination does not complete as required, request `KillApp` according to `EvictionType` and failure policy.
+- **Escalation:** if a hard `Evict` request arrives while a soft eviction is pending for the same app, request `KillApp`; termination failures are reported rather than automatically escalated.
 - **Completion:** lifecycle notification for the pending app calls `complete`, which reports success or an error reason.
 - **Shutdown:** unregister the listener, release service interfaces, and reset pending state.
 
