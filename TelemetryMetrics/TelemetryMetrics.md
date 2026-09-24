@@ -157,8 +157,10 @@ sequenceDiagram
 ```mermaid
 classDiagram
     class TelemetryMetricsImplementation
-    class TelemetryFilters
-    TelemetryMetricsImplementation --> TelemetryFilters : filters publish data
+    class markerFilters {
+        <<static filter map>>
+    }
+    TelemetryMetricsImplementation --> markerFilters : reads during Publish
     TelemetryMetricsImplementation ..|> ITelemetryMetrics
 ```
 
