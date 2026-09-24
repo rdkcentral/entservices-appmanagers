@@ -868,6 +868,23 @@ namespace WPEFramework
                         /* Store request time and type in runtime app info map */
                         runtimeAppInfo.requestTime = requestTime;
                         runtimeAppInfo.requestType = REQUEST_TYPE_LAUNCH;
+                        runtimeAppInfo.debuggerEnabled = runtimeConfigObject.enableDebugger;
+			runtimeAppInfo.webInspectorEnabled = false;
+
+#ifdef RDK_APPMANAGERS_DEBUG
+                        if ((true == runtimeAppInfo.debuggerEnabled) && (true == legacyContainer))
+                        {
+                            runtimeAppInfo.webInspectorEnabled =
+                                (std::string::npos != dobbySpec.find("WEBKIT_LEGACY_INSPECTOR_SERVER="));
+
+                            LOGINFO("WebInspector configuration for appId=%s: debuggerEnabled=%d, legacyContainer=%d, webInspectorEnabled=%d", appId.c_str(), runtimeAppInfo.debuggerEnabled, legacyContainer, runtimeAppInfo.webInspectorEnabled);
+
+                            if (!runtimeAppInfo.webInspectorEnabled)
+                            {
+                                LOGWARN("Debugger requested for appId=%s, but WEBKIT_LEGACY_INSPECTOR_SERVER is missing from the generated Dobby spec", appId.c_str());
+                            }
+                        }
+#endif
 #ifdef ENABLE_RIALTO
                         // usesRialto is true only when a Rialto session was actually
                         // established (socket path assigned). If createAppSession failed,
@@ -1410,69 +1427,106 @@ namespace WPEFramework
         void RuntimeManagerImplementation::onOCIContainerStartedEvent(std::string name, JsonObject &data)
         {
             LOGINFO("Container name: %s", name.c_str());
-/*
+
 #ifdef RDK_APPMANAGERS_DEBUG
-            const in_addr_t addr = ContainerUtils::getContainerIpAddress(name);
-            if (addr != 0)
+	    bool debuggerEnabled = false;
+	    bool webInspectorEnabled = false;
+	    const std::string eventContainerId = data.HasLabel("containerId") ? data["containerId"].String() : std::string();
+            const std::string inspectorKey = eventContainerId.empty() ? name : eventContainerId;
             {
-                struct in_addr ip_addr;
-                ip_addr.s_addr = addr;
-                LOGINFO("Container %s started with IP address: %s", name.c_str(), inet_ntoa(ip_addr));
-
-                uint16_t debugPort = 0;
-
-                for (uint16_t port = 2000; port <= 2100; ++port)
+                Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
+                for (const auto& appInfo : mRuntimeAppInfo)
                 {
-                    if (mPortAvailability.find(port) == mPortAvailability.end() || !mPortAvailability[port])
+                    if ((appInfo.second.containerId == eventContainerId) ||
+                        (eventContainerId.empty() && (appInfo.second.containerId == name)))
                     {
-                        debugPort = port;
+                        debuggerEnabled = appInfo.second.debuggerEnabled;
+			webInspectorEnabled = appInfo.second.webInspectorEnabled;
                         break;
                     }
                 }
+            }
 
-                if (debugPort != 0)
+            if ((true == debuggerEnabled) && (true == webInspectorEnabled))
+            {
+                const in_addr_t addr = ContainerUtils::getContainerIpAddress(name);
+                if (addr != 0)
                 {
-                    auto webInspector = WebInspector::attach(name, addr, debugPort);
-                    if (webInspector)
+                    struct in_addr ip_addr;
+                    ip_addr.s_addr = addr;
+                    LOGINFO("Container %s started with IP address: %s", name.c_str(), inet_ntoa(ip_addr));
+
+                    uint16_t debugPort = 0;
+		    {
+                        Core::SafeSyncType<Core::CriticalSection> lock(mWebInspectorLock);
+
+                        for (uint16_t port = 2000; port <= 2100; ++port)
+                        {
+                            if (mPortAvailability.find(port) == mPortAvailability.end() || !mPortAvailability[port])
+                            {
+                                debugPort = port;
+                                mPortAvailability[debugPort] = true;
+                                break;
+                            }
+                        }
+		    }
+
+                    if (debugPort != 0)
                     {
-                        mWebInspectors[name] = std::move(webInspector);
-                        mPortAvailability[debugPort] = true;
-                        LOGINFO("WebInspector attached for container %s on host port %d", name.c_str(), debugPort);
+                        auto webInspector = WebInspector::attach(name, addr, debugPort);
+                        if (webInspector)
+                        {
+                            Core::SafeSyncType<Core::CriticalSection> lock(mWebInspectorLock);
+                            mWebInspectors[inspectorKey] = std::move(webInspector);
+                            LOGINFO("WebInspector attached for container %s (key=%s) on host port %d", name.c_str(), inspectorKey.c_str(), debugPort);
+                        }
+                        else
+                        {
+                            Core::SafeSyncType<Core::CriticalSection> lock(mWebInspectorLock);
+                            mPortAvailability[debugPort] = false;
+                            LOGWARN("WebInspector::attach failed for container %s on port %d", name.c_str(), debugPort);
+                        }
                     }
                     else
                     {
-                        LOGWARN("WebInspector::attach failed for container %s on port %d", name.c_str(), debugPort);
+                        LOGERR("No available debug ports for container %s", name.c_str());
                     }
                 }
                 else
                 {
-                    LOGERR("No available debug ports for container %s", name.c_str());
+                    LOGERR("Failed to get IP address for container '%s'", name.c_str());
                 }
-            }
+	    }
             else
             {
-                LOGERR("Failed to get IP address for container '%s'", name.c_str());
+                LOGINFO("Skipping WebInspector attach for container %s (debugger not requested)", name.c_str());
             }
 #endif
-*/
             dispatchEvent(RuntimeManagerImplementation::RuntimeEventType::RUNTIME_MANAGER_EVENT_CONTAINERSTARTED, data);
         }
 
         void RuntimeManagerImplementation::onOCIContainerStoppedEvent(std::string name, JsonObject &data)
         {
-/*
+
 #ifdef RDK_APPMANAGERS_DEBUG
-            auto it = mWebInspectors.find(name);
+            const std::string eventContainerId = data.HasLabel("containerId") ? data["containerId"].String() : std::string();
+            const std::string inspectorKey = eventContainerId.empty() ? name : eventContainerId;
+            Core::SafeSyncType<Core::CriticalSection> lock(mWebInspectorLock);
+            auto it = mWebInspectors.find(inspectorKey);
+            if ((it == mWebInspectors.end()) && !eventContainerId.empty())
+            {
+                it = mWebInspectors.find(name);
+            }
             if (it != mWebInspectors.end())
             {
                 uint16_t freedPort = it->second->debugPort();
-                LOGINFO("Detaching WebInspector for container %s, freeing debug port %d", name.c_str(), freedPort);
+		LOGINFO("Detaching WebInspector for container %s (key=%s), freeing debug port %d", name.c_str(), it->first.c_str(), freedPort);
                 mWebInspectors.erase(it);
                 mPortAvailability[freedPort] = false;
                 LOGINFO("Debug port %d flag reset to available for reuse", freedPort);
             }
 #endif
-*/
+
             dispatchEvent(RuntimeManagerImplementation::RuntimeEventType::RUNTIME_MANAGER_EVENT_CONTAINERSTOPPED, data);
         }
 
