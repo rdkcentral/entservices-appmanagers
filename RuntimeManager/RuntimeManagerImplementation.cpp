@@ -874,9 +874,15 @@ namespace WPEFramework
 #ifdef RDK_APPMANAGERS_DEBUG
                         if ((true == runtimeAppInfo.debuggerEnabled) && (true == legacyContainer))
                         {
-                            std::vector<std::pair<std::string, std::string>> parsedCapabilities;
-                            DobbySpecGenerator::parseCapabilities(runtimeConfigObject.capabilities, parsedCapabilities);
-                            runtimeAppInfo.webInspectorEnabled = DobbySpecGenerator::hasCapability(parsedCapabilities, "runtime-html");
+                            runtimeAppInfo.webInspectorEnabled =
+                                (std::string::npos != dobbySpec.find("WEBKIT_LEGACY_INSPECTOR_SERVER="));
+
+                            LOGINFO("WebInspector configuration for appId=%s: debuggerEnabled=%d, legacyContainer=%d, webInspectorEnabled=%d", appId.c_str(), runtimeAppInfo.debuggerEnabled, legacyContainer, runtimeAppInfo.webInspectorEnabled);
+
+                            if (!runtimeAppInfo.webInspectorEnabled)
+                            {
+                                LOGWARN("Debugger requested for appId=%s, but WEBKIT_LEGACY_INSPECTOR_SERVER is missing from the generated Dobby spec", appId.c_str());
+                            }
                         }
 #endif
 #ifdef ENABLE_RIALTO
