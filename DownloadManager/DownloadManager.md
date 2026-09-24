@@ -234,9 +234,8 @@ classDiagram
 stateDiagram-v2
     [*] --> Stopped
     Stopped --> Running: Initialize
-    Running --> Queued: Download
     Queued --> Active: worker selects
-    Active --> Queued: retry
+    Active --> Active: retry/backoff
     Active --> Completed: success
     Active --> Cancelled: cancel
     Running --> Stopped: Deinitialize and join
