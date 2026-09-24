@@ -103,7 +103,7 @@ stateDiagram-v2
 
 There is no direct TelemetryMetrics-specific L0 test target in the current test CMake structure. Indirect telemetry tests exist in subsystem suites. Add focused tests for concurrent record/publish, malformed JSON, filtering, duplicate markers, T2-disabled behavior, and destructor/uninitialization behavior.
 
-The current [TelemetryMetrics.cpp](../TelemetryMetrics/TelemetryMetrics.cpp) contains a commented-out declaration of `result` followed by an assertion using `result` in the shutdown path. The workspace diagnostics did not report an error, but this path needs explicit compile/test confirmation because the visible source is ambiguous.
+The shutdown path asserts on an undeclared `result` because its declaration is commented out at [TelemetryMetrics.cpp](../TelemetryMetrics/TelemetryMetrics.cpp#L107); this is a compile error that requires a source fix.
 
 ## 9. Beginner-to-Expert Teaching Mode
 
