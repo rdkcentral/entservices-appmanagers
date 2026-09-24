@@ -228,6 +228,7 @@ namespace WPEFramework
                     else
                     {
                         ++numAppsCached;
+                        status = Core::ERROR_NONE;
                     }
                 }
                 closedir(dir);
