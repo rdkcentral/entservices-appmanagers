@@ -1431,11 +1431,14 @@ namespace WPEFramework
 #ifdef RDK_APPMANAGERS_DEBUG
 	    bool debuggerEnabled = false;
 	    bool webInspectorEnabled = false;
+	    const std::string eventContainerId = data.HasLabel("containerId") ? data["containerId"].String() : std::string();
+            const std::string inspectorKey = eventContainerId.empty() ? name : eventContainerId;
             {
                 Core::SafeSyncType<Core::CriticalSection> lock(mRuntimeManagerImplLock);
                 for (const auto& appInfo : mRuntimeAppInfo)
                 {
-                    if (appInfo.second.containerId == data["containerId"].String())
+                    if ((appInfo.second.containerId == eventContainerId) ||
+                        (eventContainerId.empty() && (appInfo.second.containerId == name)))
                     {
                         debuggerEnabled = appInfo.second.debuggerEnabled;
 			webInspectorEnabled = appInfo.second.webInspectorEnabled;
@@ -1474,8 +1477,8 @@ namespace WPEFramework
                         if (webInspector)
                         {
                             Core::SafeSyncType<Core::CriticalSection> lock(mWebInspectorLock);
-                            mWebInspectors[name] = std::move(webInspector);
-                            LOGINFO("WebInspector attached for container %s on host port %d", name.c_str(), debugPort);
+                            mWebInspectors[inspectorKey] = std::move(webInspector);
+                            LOGINFO("WebInspector attached for container %s (key=%s) on host port %d", name.c_str(), inspectorKey.c_str(), debugPort);
                         }
                         else
                         {
@@ -1506,12 +1509,18 @@ namespace WPEFramework
         {
 
 #ifdef RDK_APPMANAGERS_DEBUG
+            const std::string eventContainerId = data.HasLabel("containerId") ? data["containerId"].String() : std::string();
+            const std::string inspectorKey = eventContainerId.empty() ? name : eventContainerId;
             Core::SafeSyncType<Core::CriticalSection> lock(mWebInspectorLock);
-            auto it = mWebInspectors.find(name);
+            auto it = mWebInspectors.find(inspectorKey);
+            if ((it == mWebInspectors.end()) && !eventContainerId.empty())
+            {
+                it = mWebInspectors.find(name);
+            }
             if (it != mWebInspectors.end())
             {
                 uint16_t freedPort = it->second->debugPort();
-                LOGINFO("Detaching WebInspector for container %s, freeing debug port %d", name.c_str(), freedPort);
+		LOGINFO("Detaching WebInspector for container %s (key=%s), freeing debug port %d", name.c_str(), it->first.c_str(), freedPort);
                 mWebInspectors.erase(it);
                 mPortAvailability[freedPort] = false;
                 LOGINFO("Debug port %d flag reset to available for reuse", freedPort);
