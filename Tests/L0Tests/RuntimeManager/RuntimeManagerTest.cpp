@@ -156,6 +156,35 @@ extern uint32_t Test_Ralf_CreateDirectories_UnderReadOnlyParentReturnsError();
 extern uint32_t Test_Ralf_CreateDirectories_WithNonZeroUidGidCallsChown();
 extern uint32_t Test_Ralf_UnmountOverlayfs_NonMountedPathReturnsFalse();
 extern uint32_t Test_Ralf_GenerateOCIRootfs_FailsDueToNoMountSupport();
+extern uint32_t Test_Ralf_PrepareMergedRootfsMountTargets_DnsmasqFalseCreatesResolvConf();
+extern uint32_t Test_Ralf_PrepareMergedRootfsMountTargets_DnsmasqTrueSkipsResolvConf();
+extern uint32_t Test_Ralf_PrepareMergedRootfsMountTargets_CreatesBindDestinationFileAndDirectory();
+extern uint32_t Test_Ralf_PrepareMergedRootfsMountTargets_SkipsNestedBindUnderTmpfsAncestor();
+
+// ── ralf/NetworkConfigurationHelper tests ───────────────────────────────────
+extern uint32_t Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_MapsAndDeduplicatesRules();
+extern uint32_t Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_IgnoresMalformedEntries();
+extern uint32_t Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_MissingConfigurationReturnsTrue();
+extern uint32_t Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_NetworkConfigNotArrayReturnsFalse();
+extern uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_SetsNatAndIpFlags();
+extern uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_MissingPermissionsReturnsTrue();
+extern uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_NonArrayPermissionsReturnsTrue();
+extern uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_NoRelevantPermissionsReturnsTrue();
+extern uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_InternetAlreadyFulfilledReturnsTrue();
+extern uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_InternetOnlyWithoutExistingNodeReturnsTrue();
+extern uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_ParsesThunderHostPort();
+extern uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_ThunderInvalidPortReturnsFalse();
+extern uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_ThunderNonLoopbackReturnsFalse();
+extern uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_FireboltMissingEnvReturnsFalse();
+extern uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_FireboltNonLoopbackReturnsFalse();
+extern uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_SkipsDuplicateFireboltRule();
+extern uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_SkipsAllDuplicateRulesAndReturnsTrue();
+extern uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_IgnoresInvalidSignedPortInDuplicateCheck();
+extern uint32_t Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_GeneratesNetworkingPluginNode();
+extern uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_FireboltAndThunderEnableNetworkDefaults();
+extern uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_PreservesDnsmasqFalseWithoutInternetPermission();
+extern uint32_t Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_UsesContainerToHostForLoopbackEndpoints();
+extern uint32_t Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_ImportedHostEndpointRoutesToContainerToHost();
 
 // ── ralf/RalfPackageBuilder tests ─────────────────────────────────────────────
 extern uint32_t Test_RalfPackageBuilder_ConstructionAndDestruction();
@@ -179,6 +208,11 @@ extern uint32_t Test_RalfOCIConfigGenerator_GenerateWithMockBaseSpec();
 extern uint32_t Test_RalfOCIConfigGenerator_MultipleGenerateCallsDoNotCrash();
 extern uint32_t Test_RalfOCIConfigGenerator_GenerateWithDifferentAppInstances();
 extern uint32_t Test_RalfOCIConfigGenerator_LogPathSetCorrectlyInOCIConfig();
+extern uint32_t Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_MissingPackageTypeReturnsTrue();
+extern uint32_t Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_ValidFireboltPermissionAddsEndpoint();
+extern uint32_t Test_RalfOCIConfigGenerator_ApplyConfigurationToOCIConfig_PermissionsOnlySkipsPermissionNetworkUpdates();
+extern uint32_t Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_FireboltEmptyEnvReturnsFalse();
+extern uint32_t Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_ThunderAddsThunderAccess();
 
 // ── Gateway/ContainerUtils tests ─────────────────────────────────────────────
 extern uint32_t Test_ContainerUtils_GetContainerIpAddress_UnknownContainerReturnsZero();
@@ -459,6 +493,35 @@ int main()
         { "Ralf_CreateDirectories_WithNonZeroUidGidCallsChown",                      Test_Ralf_CreateDirectories_WithNonZeroUidGidCallsChown },
         { "Ralf_UnmountOverlayfs_NonMountedPathReturnsFalse",                        Test_Ralf_UnmountOverlayfs_NonMountedPathReturnsFalse },
         { "Ralf_GenerateOCIRootfs_FailsDueToNoMountSupport",                         Test_Ralf_GenerateOCIRootfs_FailsDueToNoMountSupport },
+        { "Ralf_PrepareMergedRootfsMountTargets_DnsmasqFalseCreatesResolvConf",      Test_Ralf_PrepareMergedRootfsMountTargets_DnsmasqFalseCreatesResolvConf },
+        { "Ralf_PrepareMergedRootfsMountTargets_DnsmasqTrueSkipsResolvConf",         Test_Ralf_PrepareMergedRootfsMountTargets_DnsmasqTrueSkipsResolvConf },
+        { "Ralf_PrepareMergedRootfsMountTargets_CreatesBindDestinationFileAndDirectory", Test_Ralf_PrepareMergedRootfsMountTargets_CreatesBindDestinationFileAndDirectory },
+        { "Ralf_PrepareMergedRootfsMountTargets_SkipsNestedBindUnderTmpfsAncestor",  Test_Ralf_PrepareMergedRootfsMountTargets_SkipsNestedBindUnderTmpfsAncestor },
+
+        // ── ralf/NetworkConfigurationHelper tests ───────────────────────────
+        { "NetworkConfigurationHelper_UpdateNetworkConfigurationNode_MapsAndDeduplicatesRules", Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_MapsAndDeduplicatesRules },
+        { "NetworkConfigurationHelper_UpdateNetworkConfigurationNode_IgnoresMalformedEntries", Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_IgnoresMalformedEntries },
+        { "NetworkConfigurationHelper_UpdateNetworkConfigurationNode_MissingConfigurationReturnsTrue", Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_MissingConfigurationReturnsTrue },
+        { "NetworkConfigurationHelper_UpdateNetworkConfigurationNode_NetworkConfigNotArrayReturnsFalse", Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_NetworkConfigNotArrayReturnsFalse },
+        { "NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_SetsNatAndIpFlags",  Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_SetsNatAndIpFlags },
+        { "NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_MissingPermissionsReturnsTrue", Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_MissingPermissionsReturnsTrue },
+        { "NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_NonArrayPermissionsReturnsTrue", Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_NonArrayPermissionsReturnsTrue },
+        { "NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_NoRelevantPermissionsReturnsTrue", Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_NoRelevantPermissionsReturnsTrue },
+        { "NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_InternetAlreadyFulfilledReturnsTrue", Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_InternetAlreadyFulfilledReturnsTrue },
+        { "NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_InternetOnlyWithoutExistingNodeReturnsTrue", Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_InternetOnlyWithoutExistingNodeReturnsTrue },
+        { "NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_ParsesThunderHostPort", Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_ParsesThunderHostPort },
+        { "NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_ThunderInvalidPortReturnsFalse", Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_ThunderInvalidPortReturnsFalse },
+        { "NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_ThunderNonLoopbackReturnsFalse", Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_ThunderNonLoopbackReturnsFalse },
+        { "NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_FireboltMissingEnvReturnsFalse", Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_FireboltMissingEnvReturnsFalse },
+        { "NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_FireboltNonLoopbackReturnsFalse", Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_FireboltNonLoopbackReturnsFalse },
+        { "NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_SkipsDuplicateFireboltRule", Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_SkipsDuplicateFireboltRule },
+        { "NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_SkipsAllDuplicateRulesAndReturnsTrue", Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_SkipsAllDuplicateRulesAndReturnsTrue },
+        { "NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_IgnoresInvalidSignedPortInDuplicateCheck", Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_IgnoresInvalidSignedPortInDuplicateCheck },
+        { "NetworkConfigurationHelper_UpdateNetworkConfigurationNode_GeneratesNetworkingPluginNode", Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_GeneratesNetworkingPluginNode },
+        { "NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_FireboltAndThunderEnableNetworkDefaults", Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_FireboltAndThunderEnableNetworkDefaults },
+        { "NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_PreservesDnsmasqFalseWithoutInternetPermission", Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_PreservesDnsmasqFalseWithoutInternetPermission },
+        { "NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_UsesContainerToHostForLoopbackEndpoints", Test_NetworkConfigurationHelper_UpdatePermissionBasedNetworkConfiguration_UsesContainerToHostForLoopbackEndpoints },
+        { "NetworkConfigurationHelper_UpdateNetworkConfigurationNode_ImportedHostEndpointRoutesToContainerToHost", Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_ImportedHostEndpointRoutesToContainerToHost },
 
         // ── ralf/RalfPackageBuilder tests ────────────────────────────────────
         { "RalfPackageBuilder_ConstructionAndDestruction",                           Test_RalfPackageBuilder_ConstructionAndDestruction },
@@ -482,6 +545,11 @@ int main()
         { "RalfOCIConfigGenerator_MultipleGenerateCallsDoNotCrash",                  Test_RalfOCIConfigGenerator_MultipleGenerateCallsDoNotCrash },
         { "RalfOCIConfigGenerator_GenerateWithDifferentAppInstances",                Test_RalfOCIConfigGenerator_GenerateWithDifferentAppInstances },
         { "RalfOCIConfigGenerator_LogPathSetCorrectlyInOCIConfig",                   Test_RalfOCIConfigGenerator_LogPathSetCorrectlyInOCIConfig },
+        { "RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_MissingPackageTypeReturnsTrue", Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_MissingPackageTypeReturnsTrue },
+        { "RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_ValidFireboltPermissionAddsEndpoint", Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_ValidFireboltPermissionAddsEndpoint },
+        { "RalfOCIConfigGenerator_ApplyConfigurationToOCIConfig_PermissionsOnlySkipsPermissionNetworkUpdates", Test_RalfOCIConfigGenerator_ApplyConfigurationToOCIConfig_PermissionsOnlySkipsPermissionNetworkUpdates },
+        { "RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_FireboltEmptyEnvReturnsFalse", Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_FireboltEmptyEnvReturnsFalse },
+        { "RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_ThunderAddsThunderAccess", Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_ThunderAddsThunderAccess },
 
         // ── Gateway/ContainerUtils tests ─────────────────────────────────────
         { "ContainerUtils_GetContainerIpAddress_UnknownContainerReturnsZero",        Test_ContainerUtils_GetContainerIpAddress_UnknownContainerReturnsZero },
