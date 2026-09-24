@@ -103,7 +103,7 @@ stateDiagram-v2
 
 There is no direct TelemetryMetrics-specific L0 test target in the current test CMake structure. Indirect telemetry tests exist in subsystem suites. Add focused tests for concurrent record/publish, malformed JSON, filtering, duplicate markers, T2-disabled behavior, and destructor/uninitialization behavior.
 
-The shutdown path stores the single `Release()` result and uses it for both destruction logging and the final destruction assertion in [TelemetryMetrics.cpp](../TelemetryMetrics/TelemetryMetrics.cpp#L107). This keeps the remote implementation release operation single-shot and makes the teardown check compile-time valid.
+The shutdown code in [TelemetryMetrics.cpp](../TelemetryMetrics/TelemetryMetrics.cpp#L107) calls `Release()` inline while the `result` declaration remains commented out, then asserts on undeclared `result`. The current source therefore has a compilation defect; the declaration and single stored `Release()` result must be restored separately.
 
 ## 9. Beginner-to-Expert Teaching Mode
 
