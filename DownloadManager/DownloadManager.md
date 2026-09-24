@@ -212,7 +212,6 @@ int nextRetryDuration(int n) {
     return static_cast<int>(std::round(next));
 }
 // Example: n=1 -> 2s, n=2 -> 3s, n=3 -> 5s, n=4 -> 6s
-}
 ```
 
 ---
