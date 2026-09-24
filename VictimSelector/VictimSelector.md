@@ -265,8 +265,6 @@ PLUGIN_VICTIM_SELECTOR_STARTUPORDER
 
 ## Validation
 
-The modified files pass VS Code diagnostics where the required project headers are available, and `git diff --check` passes in both repositories.
-
 A full CMake build could not be run in the development environment because CMake and the Thunder/WPEFramework development headers were unavailable.
 
 ## 9. Beginner-to-Expert Teaching Mode

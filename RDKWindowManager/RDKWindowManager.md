@@ -308,6 +308,24 @@ flowchart TD
 
 For RuntimeManager integration, create the display before starting the container and wait for the ready event before considering the application running. LifecycleManager can consume connection, readiness, focus, blur, and disconnection events.
 
+```cpp
+// Before starting a container, create its display.
+windowManager->CreateDisplay(appInstanceId, displayName,
+                             width, height,
+                             virtualDisplay, virtualWidth, virtualHeight,
+                             ownerId, groupId,
+                             topmost, focus);
+
+// Wait for OnReady before considering the application running.
+```
+
+```cpp
+// Monitor window events for lifecycle state.
+windowManager->Register(notification);
+// OnApplicationDisconnected -> consider app crashed
+// OnReady -> first frame rendered, transition to ACTIVE
+```
+
 The compositor implementation and several failure semantics are external to this repository.
 
 ## 7. Diagrams & Visual Aids

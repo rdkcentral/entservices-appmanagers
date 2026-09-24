@@ -241,6 +241,13 @@ Located in `Tests/L1Tests/tests/test_AppStorageManager.cpp`
 
 The repository also has L0 lifecycle, implementation, and component tests under [Tests/L0Tests/AppStorageManager](../Tests/L0Tests/AppStorageManager), plus L1 and L2 coverage. Add tests for quota boundaries, ownership/path validation, partial filesystem failure, empty configured paths, and RALF-enabled behavior.
 
+### Best Practices
+
+1. **Always check return values** for storage operations.
+2. **Use exemption lists** carefully in `ClearAll` to prevent data loss.
+3. **Set proper UID/GID** when getting storage for container use.
+4. **Monitor storage usage** to prevent disk space exhaustion.
+
 ## 9. Beginner-to-Expert Teaching Mode
 
 **Must know first:** distinguish persistent application data from package contents and runtime state. Learn how `path` becomes app-specific storage and how quota/ownership outputs are returned.

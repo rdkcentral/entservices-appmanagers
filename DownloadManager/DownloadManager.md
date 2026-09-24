@@ -13,7 +13,7 @@ The **DownloadManager** plugin provides a dedicated HTTP download service with p
 - **HTTP Downloads**: Manage HTTP/HTTPS file downloads
 - **Priority Queuing**: Support priority and regular download queues
 - **Rate Limiting**: Enforce download rate limits per request
-- **Retry Logic**: Automatic retry with exponential backoff
+- **Retry Logic**: Automatic retries using the implementation's retry policy
 - **Progress Reporting**: Report download progress to subscribers
 
 ### Interacting Subsystems
@@ -202,17 +202,19 @@ sequenceDiagram
     DM->>Client: OnDownloadComplete
 ```
 
-### Retry Logic with Golden Ratio Backoff
+### Retry Behavior
+
+The implementation exposes retry-related options and reports download failures through `IDownloadManager`. Its current `nextRetryDuration` helper uses a golden-ratio multiplier for retry delays:
 
 ```cpp
-// Golden-ratio-based retry delay.
 int nextRetryDuration(int n) {
     const double goldenRatio = (1 + std::sqrt(5)) / 2.0;
     double next = n * goldenRatio;
     return static_cast<int>(std::round(next));
 }
-// Example: n=1 -> 2s, n=2 -> 3s, n=3 -> 5s, n=4 -> 6s
 ```
+
+The exact scheduling and retry limits remain implementation details.
 
 ---
 

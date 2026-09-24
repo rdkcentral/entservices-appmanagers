@@ -63,7 +63,9 @@ graph TB
     Impl --> FS
 ```
 
-### Package Lifecycle
+### High-Level Package Workflow
+
+The following diagram combines download and installation phases for orientation. `DOWNLOADING` and `DOWNLOADED` are download workflow labels, not values from the `IPackageInstaller::InstallState` enum documented below.
 
 ```mermaid
 stateDiagram-v2
@@ -226,9 +228,12 @@ interface IPackageInstaller {
     enum InstallState {
         UNINSTALLED = 0,
         INSTALLING,
+        INSTALLATION_BLOCKED,
+        INSTALL_FAILURE,
         INSTALLED,
         UNINSTALLING,
-        FAILED
+        UNINSTALL_FAILURE,
+        UNINSTALL_BLOCKED
     };
 
     enum FailReason {
@@ -352,14 +357,7 @@ classDiagram
 
 ### Configuration Parameters
 
-```json
-{
-    "downloadDir": "/tmp/packages",
-    "maxConcurrentDownloads": 2,
-    "defaultRetries": 3,
-    "defaultRateLimit": 0
-}
-```
+The implementation defines `downloadDir` as its package-download configuration key. No checked-in `PackageManager.config` exists in this workspace, and the source does not define `maxConcurrentDownloads`, `defaultRetries`, or `defaultRateLimit` as PackageManager configuration parameters.
 
 ---
 

@@ -76,15 +76,8 @@ interface IPreinstallManager {
         COMPLETED
     };
 
-    enum PreinstallFailReason {
-        NONE = 0,
-        SCAN_FAILED,
-        INSTALL_FAILED,
-        PACKAGE_INVALID
-    };
-
     interface INotification {
-        void OnPreinstallationComplete(State state, PreinstallFailReason reason);
+        void OnPreinstallationComplete();
     };
 
     hresult Register(INotification* notification);
@@ -157,7 +150,7 @@ sequenceDiagram
     participant PKG as PackageManager
 
     Client->>PM: StartPreinstall(forceInstall)
-    PM->>PM: Set state = SCANNING
+    PM->>PM: Set state = IN_PROGRESS
     PM->>FS: Scan appPreinstallDirectory
     FS-->>PM: List of packages
 
@@ -172,8 +165,8 @@ sequenceDiagram
         end
     end
 
-    PM->>PM: Set state = COMPLETE
-    PM->>Client: OnPreinstallationComplete
+    PM->>PM: Set state = COMPLETED
+    PM->>Client: OnPreinstallationComplete()
 ```
 
 ### Force Install Logic
@@ -207,11 +200,10 @@ classDiagram
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Idle
-    Idle --> Discovering: StartPreinstall
-    Discovering --> Installing: packages found
-    Discovering --> Complete: no installation required
-    Installing --> Complete: packages processed (successes and failures)
+    [*] --> NOT_STARTED
+    NOT_STARTED --> IN_PROGRESS: StartPreinstall
+    IN_PROGRESS --> COMPLETED: no installation required
+    IN_PROGRESS --> COMPLETED: packages processed (successes and failures)
 ```
 
 ## 8. Testing & Quality Analysis
@@ -234,7 +226,7 @@ Extensive L0 tests are under [Tests/L0Tests/PreinstallManager](../Tests/L0Tests/
 1. **Startup Sequence**: PreinstallManager typically runs early in boot to ensure apps are available
 2. **Force Install**: Use sparingly as it reinstalls even up-to-date packages
 3. **Package Format**: Packages must be in a format understood by PackageManager
-4. **Error Handling**: Check OnPreinstallationComplete for failure reasons
+4. **Error Handling**: Check `GetPreinstallState` and package-installation status for outcomes; `OnPreinstallationComplete()` is a completion notification without state or reason parameters.
 
 ## 9. Beginner-to-Expert Teaching Mode
 

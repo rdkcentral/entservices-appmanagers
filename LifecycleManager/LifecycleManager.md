@@ -574,10 +574,10 @@ stateDiagram-v2
     ACTIVE --> PAUSED: SetTargetState(PAUSED)
     
     PAUSED --> SUSPENDED: SetTargetState(SUSPENDED)
-    SUSPENDED --> PAUSED: SetTargetState(PAUSED/ACTIVE)
+    SUSPENDED --> PAUSED: SetTargetState(PAUSED)
     
     PAUSED --> HIBERNATED: SetTargetState(HIBERNATED)
-    HIBERNATED --> PAUSED: SetTargetState(PAUSED/ACTIVE)
+    HIBERNATED --> PAUSED: SetTargetState(PAUSED)
     
     PAUSED --> TERMINATING: UnloadApp/CloseApp
     ACTIVE --> TERMINATING: UnloadApp
@@ -588,6 +588,8 @@ stateDiagram-v2
     
     UNLOADED --> [*]
 ```
+
+An ACTIVE target from SUSPENDED or HIBERNATED is reached through the intermediate PAUSED state; the transition handler does not model it as a direct edge.
 
 ### Handler Interaction Diagram
 
