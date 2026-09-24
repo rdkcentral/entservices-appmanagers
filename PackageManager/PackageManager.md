@@ -74,13 +74,16 @@ stateDiagram-v2
     DOWNLOADING --> DOWNLOADED: Download Complete
     DOWNLOADED --> INSTALLING: Install()
     INSTALLING --> INSTALLED: Install Complete
+    INSTALLING --> INSTALLATION_BLOCKED: Install Blocked
+    INSTALLING --> INSTALL_FAILURE: Install Failed
     INSTALLED --> LOCKED: Lock()
     LOCKED --> INSTALLED: Unlock()
     INSTALLED --> UNINSTALLING: Uninstall()
     UNINSTALLING --> UNINSTALLED: Uninstall Complete
-    
+    UNINSTALLING --> UNINSTALL_BLOCKED: Uninstall Blocked
+    UNINSTALLING --> UNINSTALL_FAILURE: Uninstall Failed
+
     DOWNLOADING --> UNINSTALLED: Download Failed
-    INSTALLING --> UNINSTALLED: Install Failed
 ```
 
 ---
@@ -433,10 +436,13 @@ stateDiagram-v2
     [*] --> UNINSTALLED
     UNINSTALLED --> INSTALLING: Install()
     INSTALLING --> INSTALLED: Success
-    INSTALLING --> FAILED: Error
+    INSTALLING --> INSTALL_FAILURE: Error
+    INSTALLING --> INSTALLATION_BLOCKED: Blocked
     INSTALLED --> UNINSTALLING: Uninstall()
     UNINSTALLING --> UNINSTALLED: Success
-    FAILED --> UNINSTALLED: Cleanup
+    UNINSTALLING --> UNINSTALL_FAILURE: Error
+    UNINSTALLING --> UNINSTALL_BLOCKED: Blocked
+    INSTALL_FAILURE --> UNINSTALLED: Cleanup
     INSTALLED --> INSTALLED: Lock/Unlock
 ```
 
