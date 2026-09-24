@@ -80,8 +80,13 @@ sequenceDiagram
     V->>A: read app candidates/properties
     V->>R: inspect runtime information
     V->>A: TerminateApp(victim)
+    alt hard eviction arrives while soft eviction is pending
+        P->>V: Evict(reason, HARD)
+        V->>A: KillApp(victim)
+    else soft eviction remains pending
+        V->>V: Wait for lifecycle or error notification
+    end
     A-->>V: lifecycle event
-    V->>A: KillApp(victim) if escalation required
     V-->>P: eviction completion
 ```
 
