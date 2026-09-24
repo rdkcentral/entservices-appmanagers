@@ -1,5 +1,6 @@
 
 #include <ftw.h>
+#include <fcntl.h>
 #include <mutex>
 #include "RequestHandler.h"
 #include "UtilsLogging.h"
@@ -689,16 +690,16 @@ namespace WPEFramework
             std::string appDir = "";
             StorageAppInfo storageInfo;
 
-            LOGINFO("Entered CreateStorage Implementation appId: %s", appId.c_str());
+            LOGINFO("Entered CreateStorage Implementation");
             if (appId.empty())
             {
                 LOGERR("Invalid App ID");
                 errorReason = "appId cannot be empty";
             }
             // Validate appId to prevent path traversal (RDKEMW-24516)
-            else if (appId.find("..") != std::string::npos || appId.find('/') != std::string::npos)
+            else if (!isValidAppStorageDirectory(appId))
             {
-                LOGERR("Invalid appId (contains traversal or separator): %s", appId.c_str());
+                LOGERR("Invalid appId");
                 errorReason = "appId contains invalid characters";
                 status = Core::ERROR_INVALID_PARAMETER;
                 return status;
@@ -769,30 +770,31 @@ namespace WPEFramework
                     /* Check if the app storage directory exists or can be created */
                     appDir = mBaseStoragePath + "/" + appId;
 
-                    if (0 != mkdir(appDir.c_str(), STORAGE_DIR_PERMISSION))
+                    const int baseDirectory = open(mBaseStoragePath.c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+                    if (baseDirectory < 0)
                     {
-                        /* Check if the error is not directory already exists */
-                        if (EEXIST != errno)
-                        {
-                            errorReason = "Failed to create app storage directory: " + appDir;
-                            LOGERR("Error creating app storage directory %s: errno=%d (%s)", appDir.c_str(), errno, strerror(errno));
-                            status = Core::ERROR_GENERAL;
-                            return status;
-                        }
-                        else
-                        {
-                            // Path exists - verify it's actually a directory
-                            struct stat st;
-                            if (0 != stat(appDir.c_str(), &st) || !S_ISDIR(st.st_mode))
-                            {
-                                errorReason = "Path exists but is not a directory: " + appDir;
-                                LOGERR("Path exists but is not a directory: %s", appDir.c_str());
-                                status = Core::ERROR_GENERAL;
-                                return status;
-                            }
-                            // Directory exists - continue
-                        }
+                        errorReason = "Base storage path is not a trusted directory";
+                        LOGERR("Failed to open base storage directory without following links: errno=%d (%s)", errno, strerror(errno));
+                        return Core::ERROR_GENERAL;
                     }
+
+                    if (0 != mkdirat(baseDirectory, appId.c_str(), STORAGE_DIR_PERMISSION) && EEXIST != errno)
+                    {
+                        errorReason = "Failed to create app storage directory: " + appDir;
+                        LOGERR("Error creating app storage directory: errno=%d (%s)", errno, strerror(errno));
+                        close(baseDirectory);
+                        return Core::ERROR_GENERAL;
+                    }
+
+                    struct stat st;
+                    if (0 != fstatat(baseDirectory, appId.c_str(), &st, AT_SYMLINK_NOFOLLOW) || !S_ISDIR(st.st_mode))
+                    {
+                        errorReason = "App storage path is not a trusted directory";
+                        LOGERR("App storage path is not a directory or is a symbolic link");
+                        close(baseDirectory);
+                        return Core::ERROR_GENERAL;
+                    }
+                    close(baseDirectory);
 
                     /* Create app storage info and add it to the map */
                     storageInfo.path    = appDir;
