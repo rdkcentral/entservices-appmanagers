@@ -187,7 +187,7 @@ stateDiagram-v2
     Discovering --> Installing: packages found
     Discovering --> Complete: no installation required
     Installing --> Complete: packages processed
-    Installing --> Failed: scan or install error
+    Installing --> Complete: packages processed (including failures)
 ```
 
 ## 8. Testing & Quality Analysis
