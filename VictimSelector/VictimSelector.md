@@ -93,12 +93,6 @@ stateDiagram-v2
 
 L0 implementation tests are under [Tests/L0Tests/VictimSelector](../Tests/L0Tests/VictimSelector), with L1 coverage. Add focused tests for candidate ranking, malformed priority/memory data, no candidates, concurrent eviction, terminate-to-kill escalation, missing services, notification loss, and unsupported GPU/FLASH reasons.
 
-## 9. Beginner-to-Expert Teaching Mode
-
-**Must know first:** VictimSelector chooses a victim and delegates the action; it does not terminate processes directly. Learn soft versus hard eviction and event-driven completion.
-
-**Advanced path:** trace candidate ranking through AppManager and RuntimeManager, inspect mutex/state lifetime, and verify escalation and completion under concurrent lifecycle events.
-
 ## Public API
 
 The COM-RPC contract is defined in `entservices-apis/apis/VictimSelector/IVictimSelector.h`.
@@ -274,3 +268,9 @@ PLUGIN_VICTIM_SELECTOR_STARTUPORDER
 The modified files pass VS Code diagnostics where the required project headers are available, and `git diff --check` passes in both repositories.
 
 A full CMake build could not be run in the development environment because CMake and the Thunder/WPEFramework development headers were unavailable.
+
+## 9. Beginner-to-Expert Teaching Mode
+
+**Must know first:** VictimSelector chooses a victim and delegates the action; it does not terminate processes directly. Learn soft versus hard eviction and event-driven completion.
+
+**Advanced path:** trace candidate ranking through AppManager and RuntimeManager, inspect mutex/state lifetime, and verify escalation and completion under concurrent lifecycle events.
