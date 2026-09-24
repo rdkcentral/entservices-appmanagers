@@ -120,6 +120,31 @@ Core implementation members:
 
 The implementation configuration key is `appPreinstallDirectory`; plugin settings include `mode`, `locator`, and `autostart`. The checked-in [PreinstallManager.config](PreinstallManager.config) omits `appPreinstallDirectory` even though [PreinstallManager.conf.in](PreinstallManager.conf.in) declares it. [CMakeLists.txt](CMakeLists.txt) wraps filesystem calls for L1 tests.
 
+### Plugin Configuration
+
+```cmake
+set (autostart false)
+set (preconditions Platform)
+set (callsign "org.rdk.PreinstallManager")
+```
+
+### Runtime Configuration
+
+```json
+{
+    "appPreinstallDirectory": "/opt/preinstall/apps"
+}
+```
+
+### Preinstall Directory Structure
+
+```
+/opt/preinstall/apps/
+├── com.example.app1.pkg
+├── com.example.app2.pkg
+└── com.example.app3.pkg
+```
+
 ## 6. Internal Workflows & Execution Flow
 
 ### Preinstall Scan and Install Flow
@@ -192,33 +217,6 @@ stateDiagram-v2
 
 ## 8. Testing & Quality Analysis
 
-### Plugin Configuration
-
-```cmake
-set (autostart false)
-set (preconditions Platform)
-set (callsign "org.rdk.PreinstallManager")
-```
-
-### Runtime Configuration
-
-```json
-{
-    "appPreinstallDirectory": "/opt/preinstall/apps"
-}
-```
-
-### Preinstall Directory Structure
-
-```
-/opt/preinstall/apps/
-├── com.example.app1.pkg
-├── com.example.app2.pkg
-└── com.example.app3.pkg
-```
-
----
-
 ### Existing Tests
 
 Located in `Tests/L1Tests/tests/test_PreinstallManager.cpp`
@@ -232,17 +230,15 @@ Located in `Tests/L1Tests/tests/test_PreinstallManager.cpp`
 
 Extensive L0 tests are under [Tests/L0Tests/PreinstallManager](../Tests/L0Tests/PreinstallManager), including lifecycle, implementation, component, version filtering, failure, event, and thread cases; L1 coverage also exists. Add malformed metadata, duplicate-version, permissions, forced-rerun, and shutdown-during-install tests.
 
-## 9. Beginner-to-Expert Teaching Mode
-
-**Must know first:** this plugin scans package artifacts and delegates installation to AppPackageManager; it is not the package installer itself.
-
-**Advanced path:** trace directory discovery into `PackageInfo`, semantic-version filtering, install-state/error mapping, asynchronous completion, and thread teardown.
-
----
-
-## 10. Usage Notes
+## Usage Notes
 
 1. **Startup Sequence**: PreinstallManager typically runs early in boot to ensure apps are available
 2. **Force Install**: Use sparingly as it reinstalls even up-to-date packages
 3. **Package Format**: Packages must be in a format understood by PackageManager
 4. **Error Handling**: Check OnPreinstallationComplete for failure reasons
+
+## 9. Beginner-to-Expert Teaching Mode
+
+**Must know first:** this plugin scans package artifacts and delegates installation to AppPackageManager; it is not the package installer itself.
+
+**Advanced path:** trace directory discovery into `PackageInfo`, semantic-version filtering, install-state/error mapping, asynchronous completion, and thread teardown.
