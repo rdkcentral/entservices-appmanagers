@@ -155,6 +155,23 @@ interface IDownloadManager {
 
 The implementation declares `downloadDir` and `downloadId`; plugin settings include `mode`, `locator`, `autostart`, and `startuporder`. The checked-in [DownloadManager.config](DownloadManager.config) omits `downloadDir` and `downloadId` even though [DownloadManager.conf.in](DownloadManager.conf.in) declares them. [CMakeLists.txt](CMakeLists.txt) requires libcurl.
 
+### Plugin Configuration
+
+```cmake
+set (autostart false)
+set (preconditions Platform)
+set (callsign "org.rdk.DownloadManager")
+```
+
+### Runtime Configuration
+
+```json
+{
+    "downloadDir": "/tmp/downloads",
+    "downloadId": 1
+}
+```
+
 ## 6. Internal Workflows & Execution Flow
 
 ### Download Processing Flow
@@ -225,25 +242,6 @@ stateDiagram-v2
 ```
 
 ## 8. Testing & Quality Analysis
-
-### Plugin Configuration
-
-```cmake
-set (autostart false)
-set (preconditions Platform)
-set (callsign "org.rdk.DownloadManager")
-```
-
-### Runtime Configuration
-
-```json
-{
-    "downloadDir": "/tmp/downloads",
-    "downloadId": 1
-}
-```
-
----
 
 ### Existing Tests
 

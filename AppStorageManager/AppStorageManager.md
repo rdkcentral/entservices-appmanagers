@@ -127,6 +127,37 @@ public:
 
 The implementation configuration key is `path`; the plugin-level configuration also contains `mode`, `locator`, `autostart`, and optional `startuporder`. [AppStorageManager.conf.in](AppStorageManager.conf.in) is the generated template and [AppStorageManager.config](AppStorageManager.config) is the checked-in helper form. The build optionally enables `RALF_PACKAGE_SUPPORT` and wraps filesystem calls for L1 tests.
 
+The effective platform default for an empty configured path is not established by this subsystem.
+
+### Plugin Configuration
+
+```cmake
+set (autostart false)
+set (preconditions Platform)
+set (callsign "org.rdk.AppStorageManager")
+```
+
+### Runtime Configuration
+
+```json
+{
+    "path": "/opt/persistent/apps"
+}
+```
+
+### Storage Structure
+
+```
+/opt/persistent/apps/
+├── com.example.app1/
+│   ├── data/
+│   └── cache/
+├── com.example.app2/
+│   ├── data/
+│   └── cache/
+└── ...
+```
+
 ## 6. Internal Workflows & Execution Flow
 
 ### Storage Creation Flow
@@ -198,37 +229,6 @@ stateDiagram-v2
 
 ## 8. Testing & Quality Analysis
 
-### Plugin Configuration
-
-```cmake
-set (autostart false)
-set (preconditions Platform)
-set (callsign "org.rdk.AppStorageManager")
-```
-
-### Runtime Configuration
-
-```json
-{
-    "path": "/opt/persistent/apps"
-}
-```
-
-### Storage Structure
-
-```
-/opt/persistent/apps/
-├── com.example.app1/
-│   ├── data/
-│   └── cache/
-├── com.example.app2/
-│   ├── data/
-│   └── cache/
-└── ...
-```
-
----
-
 ### Existing Tests
 
 Located in `Tests/L1Tests/tests/test_AppStorageManager.cpp`
@@ -244,8 +244,6 @@ Located in `Tests/L1Tests/tests/test_AppStorageManager.cpp`
 ---
 
 The repository also has L0 lifecycle, implementation, and component tests under [Tests/L0Tests/AppStorageManager](../Tests/L0Tests/AppStorageManager), plus L1 and L2 coverage. Add tests for quota boundaries, ownership/path validation, partial filesystem failure, empty configured paths, and RALF-enabled behavior.
-
-The effective platform default for an empty configured path is not established by this subsystem.
 
 ## 9. Beginner-to-Expert Teaching Mode
 
