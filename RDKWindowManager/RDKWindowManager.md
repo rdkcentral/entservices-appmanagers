@@ -322,7 +322,7 @@ windowManager->CreateDisplay(appInstanceId, displayName,
 ```cpp
 // Monitor window events for lifecycle state.
 windowManager->Register(notification);
-// OnApplicationDisconnected -> consider app crashed
+// OnDisconnected -> dispatch onDisconnect; crash handling is integration-specific.
 // OnReady -> first frame rendered, transition to ACTIVE
 ```
 
