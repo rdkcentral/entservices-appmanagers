@@ -63,7 +63,9 @@ graph TB
     Impl --> FS
 ```
 
-### Package Lifecycle
+### High-Level Package Workflow
+
+The following diagram combines download and installation phases for orientation. `DOWNLOADING` and `DOWNLOADED` are download workflow labels, not values from the `IPackageInstaller::InstallState` enum documented below.
 
 ```mermaid
 stateDiagram-v2
@@ -72,18 +74,21 @@ stateDiagram-v2
     DOWNLOADING --> DOWNLOADED: Download Complete
     DOWNLOADED --> INSTALLING: Install()
     INSTALLING --> INSTALLED: Install Complete
+    INSTALLING --> INSTALLATION_BLOCKED: Install Blocked
+    INSTALLING --> INSTALL_FAILURE: Install Failed
     INSTALLED --> LOCKED: Lock()
     LOCKED --> INSTALLED: Unlock()
     INSTALLED --> UNINSTALLING: Uninstall()
     UNINSTALLING --> UNINSTALLED: Uninstall Complete
-    
+    UNINSTALLING --> UNINSTALL_BLOCKED: Uninstall Blocked
+    UNINSTALLING --> UNINSTALL_FAILURE: Uninstall Failed
+
     DOWNLOADING --> UNINSTALLED: Download Failed
-    INSTALLING --> UNINSTALLED: Install Failed
 ```
 
 ---
 
-## 3. Code Organization
+## 3. Code Organization (Folder & File-Level)
 
 ### Directory Structure
 
@@ -226,9 +231,12 @@ interface IPackageInstaller {
     enum InstallState {
         UNINSTALLED = 0,
         INSTALLING,
+        INSTALLATION_BLOCKED,
+        INSTALL_FAILURE,
         INSTALLED,
         UNINSTALLING,
-        FAILED
+        UNINSTALL_FAILURE,
+        UNINSTALL_BLOCKED
     };
 
     enum FailReason {
@@ -352,14 +360,7 @@ classDiagram
 
 ### Configuration Parameters
 
-```json
-{
-    "downloadDir": "/tmp/packages",
-    "maxConcurrentDownloads": 2,
-    "defaultRetries": 3,
-    "defaultRateLimit": 0
-}
-```
+The implementation defines `downloadDir` as its package-download configuration key. No checked-in `PackageManager.config` exists in this workspace, and the source does not define `maxConcurrentDownloads`, `defaultRetries`, or `defaultRateLimit` as PackageManager configuration parameters.
 
 ---
 
@@ -435,10 +436,13 @@ stateDiagram-v2
     [*] --> UNINSTALLED
     UNINSTALLED --> INSTALLING: Install()
     INSTALLING --> INSTALLED: Success
-    INSTALLING --> FAILED: Error
+    INSTALLING --> INSTALL_FAILURE: Error
+    INSTALLING --> INSTALLATION_BLOCKED: Blocked
     INSTALLED --> UNINSTALLING: Uninstall()
     UNINSTALLING --> UNINSTALLED: Success
-    FAILED --> UNINSTALLED: Cleanup
+    UNINSTALLING --> UNINSTALL_FAILURE: Error
+    UNINSTALLING --> UNINSTALL_BLOCKED: Blocked
+    INSTALL_FAILURE --> UNINSTALLED: Cleanup
     INSTALLED --> INSTALLED: Lock/Unlock
 ```
 
@@ -494,3 +498,9 @@ Located in `Tests/L1Tests/tests/test_PackageManager.cpp`:
 4. **Lock Contention**: Multiple lock requests
 
 ---
+
+## 9. Beginner-to-Expert Teaching Mode
+
+**Must know first:** package state includes versions, locks, runtime metadata, and storage paths, not only installed/uninstalled status.
+
+**Advanced path:** trace download-to-install state transitions, inspect lock accounting and blocked operations, then compare RALF and non-RALF builds and cache initialization modes.

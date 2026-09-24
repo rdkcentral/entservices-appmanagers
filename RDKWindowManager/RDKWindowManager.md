@@ -54,7 +54,7 @@ graph TB
 
 ---
 
-## 3. Code Organization
+## 3. Code Organization (Folder & File-Level)
 
 ### Directory Structure
 
@@ -199,7 +199,19 @@ public:
 
 ---
 
-## 5. Internal Workflows
+## 5. Configuration & Build Integration
+
+The plugin configuration uses `mode`, `locator`, `autostart`, and `startuporder`.
+
+```cmake
+set (autostart false)
+set (preconditions Platform)
+set (callsign "org.rdk.RDKWindowManager")
+```
+
+[CMakeLists.txt](CMakeLists.txt) links the external `rdkwindowmanager` library outside test builds and uses fakes for L0 tests. The root build selects this subsystem through `PLUGIN_RDK_WINDOW_MANAGER`.
+
+## 6. Internal Workflows & Execution Flow
 
 ### Display Creation Flow
 
@@ -266,19 +278,7 @@ sequenceDiagram
 
 ---
 
-## 6. Configuration
-
-### Plugin Configuration
-
-```cmake
-set (autostart false)
-set (preconditions Platform)
-set (callsign "org.rdk.RDKWindowManager")
-```
-
----
-
-## 7. Key Management Features
+### Key Management Features
 
 ### Key Intercept Options
 
@@ -304,9 +304,46 @@ flowchart TD
     F --> I[Deliver to focused app]
 ```
 
+### Runtime and lifecycle integration
+
+For RuntimeManager integration, create the display before starting the container and wait for the ready event before considering the application running. LifecycleManager can consume connection, readiness, focus, blur, and disconnection events.
+
+```cpp
+// Before starting a container, create its display.
+windowManager->CreateDisplay(appInstanceId, displayName,
+                             width, height,
+                             virtualDisplay, virtualWidth, virtualHeight,
+                             ownerId, groupId,
+                             topmost, focus);
+
+// Wait for OnReady before considering the application running.
+```
+
+```cpp
+// Monitor window events for lifecycle state.
+windowManager->Register(notification);
+// OnDisconnected -> dispatch onDisconnect; crash handling is integration-specific.
+// OnReady -> first frame rendered, transition to ACTIVE
+```
+
+The compositor implementation and several failure semantics are external to this repository.
+
+## 7. Diagrams & Visual Aids
+
+```mermaid
+sequenceDiagram
+    participant R as RuntimeManager
+    participant W as RDKWindowManager
+    participant P as rdkwindowmanager
+    R->>W: CreateDisplay(client, dimensions)
+    W->>P: create display
+    P-->>W: result/event
+    W-->>R: HRESULT and notification
+```
+
 ---
 
-## 8. Testing
+## 8. Testing & Quality Analysis
 
 ### Existing Tests
 
@@ -323,26 +360,9 @@ Located in `Tests/L1Tests/tests/test_RDKWindowManager.cpp`
 
 ---
 
-## 9. Integration Notes
+## 9. Beginner-to-Expert Teaching Mode
 
-### For RuntimeManager Integration
+**Must know first:** this plugin adapts the external `rdkwindowmanager` compositor library and uses a dedicated platform/render thread. Learn client identity, display creation, focus, visibility, input interception, and asynchronous events.
 
-```cpp
-// Before starting container, create display
-windowManager->CreateDisplay(appInstanceId, displayName,
-                             width, height,
-                             virtualDisplay, virtualWidth, virtualHeight,
-                             ownerId, groupId,
-                             topmost, focus);
+**Advanced path:** trace `CreateDisplayRequest` semaphore synchronization, compositor callbacks, screenshot/render queues, listener removal, and shutdown ordering. Platform compositor semantics are outside this repository.
 
-// Wait for OnReady before considering app "running"
-```
-
-### For LifecycleManager Integration
-
-```cpp
-// Monitor window events for lifecycle state
-windowManager->Register(notification);
-// OnApplicationDisconnected -> consider app crashed
-// OnReady -> first frame rendered, transition to ACTIVE
-```

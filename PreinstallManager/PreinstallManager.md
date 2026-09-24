@@ -44,7 +44,7 @@ graph TB
 
 ---
 
-## 3. Code Organization
+## 3. Code Organization (Folder & File-Level)
 
 ### Directory Structure
 
@@ -76,15 +76,8 @@ interface IPreinstallManager {
         COMPLETED
     };
 
-    enum PreinstallFailReason {
-        NONE = 0,
-        SCAN_FAILED,
-        INSTALL_FAILED,
-        PACKAGE_INVALID
-    };
-
     interface INotification {
-        void OnPreinstallationComplete(State state, PreinstallFailReason reason);
+        void OnPreinstallationComplete();
     };
 
     hresult Register(INotification* notification);
@@ -116,56 +109,9 @@ Core implementation members:
 
 ---
 
-## 5. Internal Workflows
+## 5. Configuration & Build Integration
 
-### Preinstall Scan and Install Flow
-
-```mermaid
-sequenceDiagram
-    participant Client
-    participant PM as PreinstallManager
-    participant FS as FileSystem
-    participant PKG as PackageManager
-
-    Client->>PM: StartPreinstall(forceInstall)
-    PM->>PM: Set state = SCANNING
-    PM->>FS: Scan appPreinstallDirectory
-    FS-->>PM: List of packages
-
-    loop For each package
-        PM->>PM: Parse package metadata
-        PM->>PKG: Install(packageId, version, fileLocator)
-        PKG-->>PM: InstallResult
-        alt Install Success
-            PM->>PM: Mark as installed
-        else Install Failed
-            PM->>PM: Mark as failed
-        end
-    end
-
-    PM->>PM: Set state = COMPLETE
-    PM->>Client: OnPreinstallationComplete
-```
-
-### Force Install Logic
-
-```mermaid
-flowchart TD
-    A[StartPreinstall called] --> B{forceInstall?}
-    B -->|Yes| C[Reinstall all packages]
-    B -->|No| D[Check installed state]
-    D --> E{Already installed?}
-    E -->|Yes| F[Skip package]
-    E -->|No| G[Install package]
-    C --> H[Install package]
-    F --> I[Next package]
-    G --> I
-    H --> I
-```
-
----
-
-## 6. Configuration
+The implementation configuration key is `appPreinstallDirectory`; plugin settings include `mode`, `locator`, and `autostart`. The checked-in [PreinstallManager.config](PreinstallManager.config) omits `appPreinstallDirectory` even though [PreinstallManager.conf.in](PreinstallManager.conf.in) declares it. [CMakeLists.txt](CMakeLists.txt) wraps filesystem calls for L1 tests.
 
 ### Plugin Configuration
 
@@ -192,9 +138,75 @@ set (callsign "org.rdk.PreinstallManager")
 └── com.example.app3.pkg
 ```
 
+## 6. Internal Workflows & Execution Flow
+
+### Preinstall Scan and Install Flow
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant PM as PreinstallManager
+    participant FS as FileSystem
+    participant PKG as PackageManager
+
+    Client->>PM: StartPreinstall(forceInstall)
+    PM->>PM: Set state = IN_PROGRESS
+    PM->>FS: Scan appPreinstallDirectory
+    FS-->>PM: List of packages
+
+    loop For each package
+        PM->>PM: Parse package metadata
+        PM->>PKG: Install(packageId, version, fileLocator)
+        PKG-->>PM: InstallResult
+        alt Install Success
+            PM->>PM: Mark as installed
+        else Install Failed
+            PM->>PM: Mark as failed
+        end
+    end
+
+    PM->>PM: Set state = COMPLETED
+    PM->>Client: OnPreinstallationComplete()
+```
+
+### Force Install Logic
+
+```mermaid
+flowchart TD
+    A[StartPreinstall called] --> B{forceInstall?}
+    B -->|Yes| C[Reinstall all packages]
+    B -->|No| D[Check installed state]
+    D --> E{Already installed?}
+    E -->|Yes| F[Skip package]
+    E -->|No| G[Install package]
+    C --> H[Install package]
+    F --> I[Next package]
+    G --> I
+    H --> I
+```
+
 ---
 
-## 7. Testing
+## 7. Diagrams & Visual Aids
+
+```mermaid
+classDiagram
+    class PreinstallManagerImplementation
+    class PackageInfo
+    PreinstallManagerImplementation --> PackageInfo : builds package list
+    PreinstallManagerImplementation ..|> IPreinstallManager
+    PreinstallManagerImplementation ..|> IConfiguration
+```
+
+```mermaid
+stateDiagram-v2
+    [*] --> NOT_STARTED
+    NOT_STARTED --> IN_PROGRESS: StartPreinstall
+    IN_PROGRESS --> COMPLETED: no installation required
+    IN_PROGRESS --> COMPLETED: packages processed (successes and failures)
+```
+
+## 8. Testing & Quality Analysis
 
 ### Existing Tests
 
@@ -207,11 +219,17 @@ Located in `Tests/L1Tests/tests/test_PreinstallManager.cpp`
 | GetState | State retrieval |
 | Notifications | Event delivery |
 
----
+Extensive L0 tests are under [Tests/L0Tests/PreinstallManager](../Tests/L0Tests/PreinstallManager), including lifecycle, implementation, component, version filtering, failure, event, and thread cases; L1 coverage also exists. Add malformed metadata, duplicate-version, permissions, forced-rerun, and shutdown-during-install tests.
 
-## 8. Usage Notes
+## Usage Notes
 
 1. **Startup Sequence**: PreinstallManager typically runs early in boot to ensure apps are available
 2. **Force Install**: Use sparingly as it reinstalls even up-to-date packages
 3. **Package Format**: Packages must be in a format understood by PackageManager
-4. **Error Handling**: Check OnPreinstallationComplete for failure reasons
+4. **Error Handling**: Check `GetPreinstallState` and package-installation status for outcomes; `OnPreinstallationComplete()` is a completion notification without state or reason parameters.
+
+## 9. Beginner-to-Expert Teaching Mode
+
+**Must know first:** this plugin scans package artifacts and delegates installation to AppPackageManager; it is not the package installer itself.
+
+**Advanced path:** trace directory discovery into `PackageInfo`, semantic-version filtering, install-state/error mapping, asynchronous completion, and thread teardown.
