@@ -1156,12 +1156,7 @@ namespace Plugin {
             }
             mState.insert( { key, state } );
         }
-
-        #if !defined(UNIT_TEST) && !defined(ENABLE_NATIVEBUILD)
-        if (subSystem != nullptr) {
-            subSystem->Set(PluginHost::ISubSystem::INSTALLATION, nullptr);
         }
-	    #endif
 
         cacheInitialized = true;
          const std::string markerFile = PACKAGE_MANAGER_MARKER_FILE;
@@ -1173,6 +1168,13 @@ namespace Plugin {
             } else {
                LOGERR("Failed to create marker file: %s", markerFile.c_str());
             }
+
+
+        #if !defined(UNIT_TEST) && !defined(ENABLE_NATIVEBUILD)
+            if (subSystem != nullptr) {
+                subSystem->Set(PluginHost::ISubSystem::INSTALLATION, nullptr);
+            }
+	    #endif
 
           const int packageCount = static_cast<int>(mState.size());
           recordAndPublishTelemetryData(TELEMETRY_MARKER_PACKAGE_CACHE_INIT_TIME,
@@ -1433,9 +1435,22 @@ namespace Plugin {
 Core::hresult PackageManagerImplementation::GetConfigListForInstalledPackages(const string &filter, string &config /* @out @opaque */)
 {
     CHECK_CACHE()
-    (void)filter;
+    Core::hresult result = Core::ERROR_GENERAL;
+
     config.clear();
-    return Core::ERROR_NOT_SUPPORTED;
+
+    const packagemanager::Result pmResult = packageImpl->GetConfigListForInstalledPackages(filter, config);
+    if (pmResult == packagemanager::SUCCESS)
+    {
+        result = Core::ERROR_NONE;
+    }
+    else
+    {
+        config.clear();
+        LOGWARN("GetConfigListForInstalledPackages failed for filter '%s' (pmResult=%d)", filter.c_str(), static_cast<int>(pmResult));
+    }
+
+    return result;
 }
 } // namespace Plugin
 } // namespace WPEFramework
