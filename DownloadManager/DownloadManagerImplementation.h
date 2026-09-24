@@ -127,6 +127,8 @@ namespace Plugin {
             INTERFACE_ENTRY(Exchange::IDownloadManager)
         END_INTERFACE_MAP
 
+        bool isValidDownloadUrl(const std::string& url) const;
+
     private:
 
         void downloaderRoutine(int waitTime);
@@ -138,6 +140,7 @@ namespace Plugin {
             double next = n * goldenRatio;
             return static_cast<int>(std::round(next));
         }
+        bool isValidDownloadPath(const std::string& fileLocator) const;
 
         string getDownloadReason(DownloadReason reason) {
             switch (reason)

@@ -215,7 +215,7 @@ endif()
 
 target_link_libraries(${TEST_RUNNER_NAME} gtest_main gmock gtest ${TEST_LIB})
 
-target_compile_definitions(${TEST_RUNNER_NAME} PRIVATE UNIT_TEST)
+target_compile_definitions(${TEST_RUNNER_NAME} PRIVATE UNIT_TEST RDK_SERVICES_L1_TEST=1)
 
 target_link_options(${TEST_RUNNER_NAME} PRIVATE
     -Wl,--wrap,system
