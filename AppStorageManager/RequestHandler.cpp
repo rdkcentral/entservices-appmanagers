@@ -1,6 +1,5 @@
 
 #include <ftw.h>
-#include <fcntl.h>
 #include <mutex>
 #include "RequestHandler.h"
 #include "UtilsLogging.h"
@@ -767,31 +766,23 @@ namespace WPEFramework
                     /* Check if the app storage directory exists or can be created */
                     appDir = mBaseStoragePath + "/" + appId;
 
-                    const int baseDirectory = open(mBaseStoragePath.c_str(), O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
-                    if (baseDirectory < 0)
+                    if (0 != mkdir(appDir.c_str(), STORAGE_DIR_PERMISSION))
                     {
-                        errorReason = "Base storage path is not a trusted directory";
-                        LOGERR("Failed to open base storage directory without following links: errno=%d (%s)", errno, strerror(errno));
-                        return Core::ERROR_GENERAL;
-                    }
+                        if (EEXIST != errno)
+                        {
+                            errorReason = "Failed to create app storage directory: " + appDir;
+                            LOGERR("Error creating app storage directory: errno=%d (%s)", errno, strerror(errno));
+                            return Core::ERROR_GENERAL;
+                        }
 
-                    if (0 != mkdirat(baseDirectory, appId.c_str(), STORAGE_DIR_PERMISSION) && EEXIST != errno)
-                    {
-                        errorReason = "Failed to create app storage directory: " + appDir;
-                        LOGERR("Error creating app storage directory: errno=%d (%s)", errno, strerror(errno));
-                        close(baseDirectory);
-                        return Core::ERROR_GENERAL;
+                        struct stat st;
+                        if (0 != lstat(appDir.c_str(), &st) || !S_ISDIR(st.st_mode) || S_ISLNK(st.st_mode))
+                        {
+                            errorReason = "App storage path is not a trusted directory";
+                            LOGERR("App storage path is not a directory or is a symbolic link");
+                            return Core::ERROR_GENERAL;
+                        }
                     }
-
-                    struct stat st;
-                    if (0 != fstatat(baseDirectory, appId.c_str(), &st, AT_SYMLINK_NOFOLLOW) || !S_ISDIR(st.st_mode))
-                    {
-                        errorReason = "App storage path is not a trusted directory";
-                        LOGERR("App storage path is not a directory or is a symbolic link");
-                        close(baseDirectory);
-                        return Core::ERROR_GENERAL;
-                    }
-                    close(baseDirectory);
 
                     /* Create app storage info and add it to the map */
                     storageInfo.path    = appDir;
