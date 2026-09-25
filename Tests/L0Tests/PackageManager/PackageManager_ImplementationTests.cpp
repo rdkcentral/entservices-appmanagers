@@ -11,7 +11,6 @@
 
 namespace {
 
-using WPEFramework::Core::ERROR_BAD_REQUEST;
 using WPEFramework::Core::ERROR_GENERAL;
 using WPEFramework::Core::ERROR_INVALID_PARAMETER;
 using WPEFramework::Core::ERROR_INVALID_SIGNATURE;
@@ -498,8 +497,8 @@ uint32_t Test_PM_Impl_LockUnlockAndGetLockedInfo()
 
     L0Test::ExpectEqU32(tr,
                         fx.impl->Lock("UnknownApp", "0.0.1", WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH, lockId, unpackedPath, runtimeConfig, appMetadata),
-                        ERROR_BAD_REQUEST,
-                        "Lock() for unknown package returns ERROR_BAD_REQUEST");
+                        ERROR_INVALID_PARAMETER,
+                        "Lock() for unknown package returns ERROR_INVALID_PARAMETER");
 
     return tr.failures;
 }
@@ -575,8 +574,8 @@ uint32_t Test_PM_Impl_GetLockedInfoAndUnlockNegativePaths()
 
     L0Test::ExpectEqU32(tr,
                         fx.impl->GetLockedInfo("UnknownApp", "0", unpackedPath, cfg, gatewayMetadataPath, locked),
-                        ERROR_BAD_REQUEST,
-                        "GetLockedInfo() for unknown package returns ERROR_BAD_REQUEST");
+                        ERROR_INVALID_PARAMETER,
+                        "GetLockedInfo() for unknown package returns ERROR_INVALID_PARAMETER");
 
     L0Test::ExpectEqU32(tr,
                         fx.impl->Unlock("YouTube", "100.1.24"),
