@@ -141,7 +141,7 @@ class AppStorageManagerTest : public ::testing::Test {
             }));
             
             ON_CALL(service, ConfigLine())
-                .WillByDefault(Return("{\"path\":\"/opt/persistent/storageManager\"}"));
+                .WillByDefault(Return("{\"path\":\"/tmp/appStorageManagerL1\"}"));
 
             interface = static_cast<Exchange::IAppStorageManager*>(
                 StorageManagerImplementation->QueryInterface(Exchange::IAppStorageManager::ID));
@@ -261,7 +261,7 @@ TEST_F(StorageManagerTest, CreateStorageSizeExceeded_Failure){
     CreateStorage_Success test checks the failure of creation of storage for a given appId due to mkdir failure.
     Creates a mock environment where the necessary functions like access, nftw, are set up to simulate a successful resutls.
     Creates a mock environment where the mkdir function is set up to simulate a failure with ENOTDIR error.
-    It verifies that the CreateStorage method returns a failure code and errorReason that Failed to create base storage directory: /opt/persistent/storageManager.
+    It verifies that the CreateStorage method returns a failure code and errorReason that Failed to create base storage directory: /tmp/appStorageManagerL1.
     The test also logs the message for debugging purposes.
 */
 TEST_F(StorageManagerTest, CreateStoragemkdirFail_Failure){
@@ -278,7 +278,7 @@ TEST_F(StorageManagerTest, CreateStoragemkdirFail_Failure){
         });
 
     EXPECT_EQ(Core::ERROR_GENERAL, interface->CreateStorage(appId, size, path, errorReason));
-    EXPECT_STREQ("Failed to create base storage directory: /opt/persistent/storageManager", errorReason.c_str());
+    EXPECT_STREQ("Failed to create base storage directory: /tmp/appStorageManagerL1", errorReason.c_str());
     TEST_LOG("CreateStoragemkdirFail_Failure errorReason = %s",errorReason.c_str());
 
 }
@@ -366,15 +366,15 @@ TEST_F(StorageManagerTest, CreateStorage_MissingParentDirectories_Success){
     EXPECT_TRUE(errorReason.empty());
     
     // Verify recursive directory creation: must create parent (/opt/persistent),
-    // base (/opt/persistent/storageManager), and app dir (total >= 3)
+    // base (/tmp/appStorageManagerL1), and app dir (total >= 3)
     EXPECT_GE(mkdirCallCount, 3);
     
     // Verify intermediate directories were actually created
     EXPECT_NE(createdDirs.find("/opt/persistent"), createdDirs.end()) 
         << "Parent directory /opt/persistent should have been created";
-    EXPECT_NE(createdDirs.find("/opt/persistent/storageManager"), createdDirs.end()) 
-        << "Base directory /opt/persistent/storageManager should have been created";
-    EXPECT_NE(createdDirs.find("/opt/persistent/storageManager/newTestApp"), createdDirs.end()) 
+    EXPECT_NE(createdDirs.find("/tmp/appStorageManagerL1"), createdDirs.end())
+        << "Base directory /tmp/appStorageManagerL1 should have been created";
+    EXPECT_NE(createdDirs.find("/tmp/appStorageManagerL1/newTestApp"), createdDirs.end())
         << "App directory should have been created";
     
     TEST_LOG("CreateStorage_MissingParentDirectories_Success: Created %d directory levels", mkdirCallCount);
@@ -675,7 +675,7 @@ TEST_F(StorageManagerTest, GetStorage_Success){
     EXPECT_EQ(Core::ERROR_NONE, interface->GetStorage(appId, userId, groupId, path, size, used));
     EXPECT_EQ(1024, size);
     EXPECT_EQ(0, used);
-    EXPECT_EQ(path, "/opt/persistent/storageManager/testApp");
+    EXPECT_EQ(path, "/tmp/appStorageManagerL1/testApp");
 }
 
 /*
@@ -3425,7 +3425,7 @@ TEST_F(AppStorageManagerTest, CreateStorage_SecondMkdirFails) {
             return 0;
         });
     EXPECT_EQ(Core::ERROR_GENERAL, interface->CreateStorage(appId, size, path, errorReason));
-    EXPECT_STREQ("Failed to create app storage directory: /opt/persistent/storageManager/secondMkdirFailApp", errorReason.c_str());
+    EXPECT_STREQ("Failed to create app storage directory: /tmp/appStorageManagerL1/secondMkdirFailApp", errorReason.c_str());
 }
 
 TEST_F(AppStorageManagerTest, DeleteStorage_RmdirReturnsError) {
@@ -3753,6 +3753,7 @@ TEST_F(AppStorageManagerTest, CreateStorage_Positive_DirectoryAlreadyExists) {
     uint32_t size = 1024;
     std::string path = "";
     std::string errorReason = "";
+    ASSERT_TRUE(Core::Directory(_T("/tmp/appStorageManagerL1/existingDirApp")).CreatePath());
     EXPECT_CALL(*p_wrapsImplMock, mkdir(_, _))
         .WillRepeatedly([](const char* path, mode_t mode) {
             errno = EEXIST;
