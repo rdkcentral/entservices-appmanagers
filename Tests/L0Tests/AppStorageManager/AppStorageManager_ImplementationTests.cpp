@@ -170,6 +170,59 @@ uint32_t Test_Impl_CreateStorageWithEmptyAppId()
     return tr.failures;
 }
 
+uint32_t Test_Impl_CreateStorageRejectsUnsafeAppIds()
+{
+    L0Test::TestResult tr;
+    L0Test::L0MockPersistentStore fakeStore;
+    L0Test::ServiceMock::Config cfg{&fakeStore};
+    cfg.configLine = "{\"path\":\"/tmp/appdata\"}";
+    L0Test::ServiceMock service(cfg);
+    StorageManagerImplementation* impl = CreateImpl();
+    impl->Configure(&service);
+
+    const char* invalidAppIds[] = {"../outside", "/absolute", "nested/app", "nested\\app", ".hidden", "app..name", "-leading", "trailing-"};
+    for (const char* appId : invalidAppIds)
+    {
+        std::string path;
+        std::string errorReason;
+        const uint32_t result = impl->CreateStorage(appId, 10240, path, errorReason);
+        L0Test::ExpectTrue(tr, result != WPEFramework::Core::ERROR_NONE, "CreateStorage rejects unsafe appId");
+        L0Test::ExpectTrue(tr, path.empty(), "CreateStorage returns no path for unsafe appId");
+        L0Test::ExpectTrue(tr, !errorReason.empty(), "CreateStorage reports unsafe appId rejection");
+    }
+    impl->Release();
+    return tr.failures;
+}
+
+uint32_t Test_Impl_CreateStorageRejectsExistingSymlink()
+{
+    L0Test::TestResult tr;
+    L0Test::L0MockPersistentStore fakeStore;
+    L0Test::ServiceMock::Config cfg{&fakeStore};
+    cfg.configLine = "{\"path\":\"/tmp/appdata\"}";
+    L0Test::ServiceMock service(cfg);
+    StorageManagerImplementation* impl = CreateImpl();
+    impl->Configure(&service);
+
+    mkdir("/tmp/appdata", 0755);
+    unlink("/tmp/appdata/com.test.link");
+    const int linkResult = symlink("/tmp", "/tmp/appdata/com.test.link");
+    L0Test::ExpectTrue(tr, linkResult == 0, "Security fixture creates existing symlink");
+
+    std::string path;
+    std::string errorReason;
+    const uint32_t result = impl->CreateStorage("com.test.link", 10240, path, errorReason);
+    L0Test::ExpectTrue(tr, result != WPEFramework::Core::ERROR_NONE, "CreateStorage rejects existing symlink");
+    L0Test::ExpectTrue(tr, path.empty(), "CreateStorage returns no path for existing symlink");
+    L0Test::ExpectTrue(tr, !errorReason.empty(), "CreateStorage reports existing symlink rejection");
+
+    struct stat linkInfo;
+    L0Test::ExpectTrue(tr, lstat("/tmp/appdata/com.test.link", &linkInfo) == 0 && S_ISLNK(linkInfo.st_mode), "CreateStorage does not replace existing symlink");
+    unlink("/tmp/appdata/com.test.link");
+    impl->Release();
+    return tr.failures;
+}
+
 /* ========================================================================== */
 /* Test_Impl_GetStorageWithValidAppId
  *
