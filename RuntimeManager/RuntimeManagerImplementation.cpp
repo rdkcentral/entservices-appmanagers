@@ -62,6 +62,11 @@ namespace WPEFramework
             return _instance;
         }
 
+        bool RuntimeManagerImplementation::isUnprivilegedIdentity(const uint32_t userId, const uint32_t groupId)
+        {
+            return userId != 0 && groupId != 0;
+        }
+
         RuntimeManagerImplementation::~RuntimeManagerImplementation()
         {
             LOGINFO("Call RuntimeManagerImplementation destructor");
@@ -625,12 +630,23 @@ namespace WPEFramework
             {
                 LOGERR("Failed to get Ralf user info. This can lead to failure in launching the app. uid: %d, gid: %d", uid, gid);
             }
-#endif
-            std::ifstream inFile("/tmp/specchange");
-            if (inFile.good())
+#else
+            // Validate caller-supplied userId and groupId to prevent privilege escalation
+            // Reject uid 0 (root) and gid 0 (root group) - these are the most dangerous
+            // Allow other system accounts (< 1000) as platform apps may legitimately use them
+            if (!isUnprivilegedIdentity(uid, gid))
             {
-                uid = 30490;
+                LOGERR("Rejected privileged user or group identity from caller");
+                status = Core::ERROR_UNAUTHENTICATED;
+                errorReason = "Privileged user or group identity not allowed";
+                return status;
             }
+#endif // RALF_PACKAGE_SUPPORT_ENABLED
+
+            // SECURITY: Remove /tmp/specchange backdoor (RDKEMW-24510)
+            // This world-writable file was being used to override user/group IDs
+            // for local privilege escalation. The code has been removed.
+
             config.mUserId = uid;
             config.mGroupId = gid;
 

@@ -123,6 +123,18 @@ WPEFramework::Plugin::RuntimeManagerImplementation* CreateImpl()
 
 } // namespace
 
+uint32_t Test_Impl_UnprivilegedIdentityValidation()
+{
+    L0Test::TestResult tr;
+
+    L0Test::ExpectTrue(tr, WPEFramework::Plugin::RuntimeManagerImplementation::isUnprivilegedIdentity(1000, 1000), "Non-root identity is accepted");
+    L0Test::ExpectTrue(tr, !WPEFramework::Plugin::RuntimeManagerImplementation::isUnprivilegedIdentity(0, 1000), "Root user is rejected");
+    L0Test::ExpectTrue(tr, !WPEFramework::Plugin::RuntimeManagerImplementation::isUnprivilegedIdentity(1000, 0), "Root group is rejected");
+    L0Test::ExpectTrue(tr, !WPEFramework::Plugin::RuntimeManagerImplementation::isUnprivilegedIdentity(0, 0), "Root user and group are rejected");
+
+    return tr.failures;
+}
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Register / Unregister
 // ──────────────────────────────────────────────────────────────────────────────
