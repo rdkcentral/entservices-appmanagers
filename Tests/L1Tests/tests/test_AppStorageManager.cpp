@@ -395,6 +395,7 @@ TEST_F(StorageManagerTest, CreateStorage_PathDoesNotExists_Success){
 
     EXPECT_CALL(*p_wrapsImplMock, mkdir(_, _))
         .WillRepeatedly([](const char* path, mode_t mode) {
+            Core::Directory(_T(path)).CreatePath();
            errno = EEXIST;  // Directory already exists
             return -1;
     });
@@ -1454,6 +1455,7 @@ TEST_F(AppStorageManagerTest, CreateStorage_StatvfsFailure) {
     std::string errorReason = "";
     EXPECT_CALL(*p_wrapsImplMock, mkdir(_, _))
         .WillRepeatedly([](const char* path, mode_t mode) {
+            Core::Directory(_T(path)).CreatePath();
             errno = EEXIST;
             return -1;
     });
@@ -1916,6 +1918,7 @@ TEST_F(AppStorageManagerTest, CreateStorage_LargeSize) {
     std::string errorReason = "";
     EXPECT_CALL(*p_wrapsImplMock, mkdir(_, _))
         .WillRepeatedly([](const char* path, mode_t mode) {
+            Core::Directory(_T(path)).CreatePath();
             errno = EEXIST;
             return -1;
     });
@@ -2634,6 +2637,7 @@ TEST_F(AppStorageManagerTest, ClearAll_JsonRpc_EmptyArrayExemptions) {
 TEST_F(AppStorageManagerTest, CreateStorage_JsonRpc_MaxUint32Size) {
     EXPECT_CALL(*p_wrapsImplMock, mkdir(_, _))
         .WillRepeatedly([](const char* path, mode_t mode) {
+            Core::Directory(_T(path)).CreatePath();
             errno = EEXIST;
             return -1;
     });
@@ -2818,6 +2822,7 @@ TEST_F(AppStorageManagerTest, CreateStorage_StatvfsException) {
     std::string errorReason = "";
     EXPECT_CALL(*p_wrapsImplMock, mkdir(_, _))
         .WillRepeatedly([](const char* path, mode_t mode) {
+            Core::Directory(_T(path)).CreatePath();
             errno = EEXIST;
             return -1;
         });
@@ -3375,6 +3380,7 @@ TEST_F(AppStorageManagerTest, CreateStorage_StatvfsReturnsError) {
     std::string errorReason = "";
     EXPECT_CALL(*p_wrapsImplMock, mkdir(_, _))
         .WillRepeatedly([](const char* path, mode_t mode) {
+            Core::Directory(_T(path)).CreatePath();
             errno = EEXIST;
             return -1;
         });
@@ -3756,6 +3762,7 @@ TEST_F(AppStorageManagerTest, CreateStorage_Positive_DirectoryAlreadyExists) {
     ASSERT_TRUE(Core::Directory(_T("/tmp/appStorageManagerL1/existingDirApp")).CreatePath());
     EXPECT_CALL(*p_wrapsImplMock, mkdir(_, _))
         .WillRepeatedly([](const char* path, mode_t mode) {
+            Core::Directory(_T(path)).CreatePath();
             errno = EEXIST;
             return -1;
         });
