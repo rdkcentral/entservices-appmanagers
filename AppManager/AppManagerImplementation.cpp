@@ -132,7 +132,10 @@ AppManagerImplementation::~AppManagerImplementation()
 #endif
     if (mAppManagerWorkerThread.joinable())
     {
-        mAppManagerWorkerThread.join();
+        if (mAppManagerWorkerThread.get_id() == std::this_thread::get_id())
+            mAppManagerWorkerThread.detach();
+        else
+            mAppManagerWorkerThread.join();
         LOGINFO("App Manager Worker Thread joined successfully");
     }
 
