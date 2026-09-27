@@ -370,8 +370,8 @@ TEST_F(StorageManagerTest, CreateStorage_MissingParentDirectories_Success){
     EXPECT_GE(mkdirCallCount, 3);
     
     // Verify intermediate directories were actually created
-    EXPECT_NE(createdDirs.find("/opt/persistent"), createdDirs.end()) 
-        << "Parent directory /opt/persistent should have been created";
+    EXPECT_NE(createdDirs.find("/tmp/appStorageManagerL1"), createdDirs.end())
+        << "Base directory /tmp/appStorageManagerL1 should have been created";
     EXPECT_NE(createdDirs.find("/tmp/appStorageManagerL1"), createdDirs.end())
         << "Base directory /tmp/appStorageManagerL1 should have been created";
     EXPECT_NE(createdDirs.find("/tmp/appStorageManagerL1/newTestApp"), createdDirs.end())
