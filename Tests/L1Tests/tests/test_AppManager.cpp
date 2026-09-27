@@ -143,8 +143,8 @@ protected:
     {
         TEST_LOG("In releaseAppManagerImpl!");
         AppInfoManager::getInstance().clear();
-        drainWorkerPool();
         plugin->Deinitialize(mServiceMock);
+        drainWorkerPool();
         delete mServiceMock;
         mAppManagerImpl = nullptr;
     }
@@ -310,8 +310,8 @@ protected:
         dispatcher->Release();
 
         AppInfoManager::getInstance().clear();
-        drainWorkerPool();
         plugin->Deinitialize(mServiceMock);
+        drainWorkerPool();
         delete mServiceMock;
         mAppManagerImpl = nullptr;
     }
