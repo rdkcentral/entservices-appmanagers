@@ -99,7 +99,10 @@ namespace WPEFramework
             mLifecycleQueueCV.notify_all();
             if (mLifecycleWorkerThread.joinable())
             {
-               mLifecycleWorkerThread.join();
+                if (mLifecycleWorkerThread.get_id() == std::this_thread::get_id())
+                    mLifecycleWorkerThread.detach();
+                else
+                    mLifecycleWorkerThread.join();
             }
 
             if (nullptr != mCurrentservice)

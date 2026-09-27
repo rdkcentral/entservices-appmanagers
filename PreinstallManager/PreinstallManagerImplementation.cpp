@@ -53,7 +53,10 @@ namespace WPEFramework
 
         if (mInstallThread.joinable())
         {
-            mInstallThread.join();
+            if (mInstallThread.get_id() == std::this_thread::get_id())
+                mInstallThread.detach();
+            else
+                mInstallThread.join();
         }
 
         _instance = nullptr;
