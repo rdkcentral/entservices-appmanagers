@@ -177,9 +177,15 @@ namespace WPEFramework
      */
     void PreinstallManagerImplementation::sendOnPreinstallationCompleteEvent()
     {
-        LOGINFO("Dispatching OnPreinstallationComplete event");
-        JsonObject eventDetails; // OnPreinstallationComplete doesn't need any params
-        dispatchEvent(PREINSTALL_MANAGER_ONPREINSTALLATIONCOMPLETE, eventDetails);
+        mAdminLock.Lock();
+        const bool hasNotifications = !mPreinstallManagerNotifications.empty();
+        mAdminLock.Unlock();
+        if (hasNotifications)
+        {
+            LOGINFO("Dispatching OnPreinstallationComplete event");
+            JsonObject eventDetails; // OnPreinstallationComplete doesn't need any params
+            dispatchEvent(PREINSTALL_MANAGER_ONPREINSTALLATIONCOMPLETE, eventDetails);
+        }
     }
 
     Core::hresult PreinstallManagerImplementation::createPackageManagerObject(Exchange::IPackageInstaller*& packageInstaller)
