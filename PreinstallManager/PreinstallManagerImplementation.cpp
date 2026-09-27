@@ -359,10 +359,10 @@ namespace WPEFramework
         if (Core::ERROR_NONE != createPackageManagerObject(packageInstaller))
         {
             LOGERR("Failed to create PackageManagerObject for install");
+            sendOnPreinstallationCompleteEvent();
             mAdminLock.Lock();
             mPreinstallState = State::COMPLETED;
             mAdminLock.Unlock();
-            sendOnPreinstallationCompleteEvent();
             return;
         }
 
@@ -423,15 +423,14 @@ namespace WPEFramework
 
         releasePackageManagerObject(packageInstaller);
 
-        mAdminLock.Lock();
-        mPreinstallState = State::COMPLETED;
-        mAdminLock.Unlock();
-
         if (installError)
         {
             LOGWARN("Preinstall completed with failures");
         }
         sendOnPreinstallationCompleteEvent();
+        mAdminLock.Lock();
+        mPreinstallState = State::COMPLETED;
+        mAdminLock.Unlock();
     }
 
     /*
