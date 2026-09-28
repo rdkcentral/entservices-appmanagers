@@ -33,6 +33,7 @@ AppInfo::AppInfo()
     , mLastActiveStateChangeTime({0, 0})
     , mLastActiveIndex(0)
     , mAppIntent("")
+    , mRequestedLaunchVersion("")
     , mCurrentAction(AppManagerTypes::APP_ACTION_NONE)
     , mCurrentActionTime(0)
 {}
@@ -53,6 +54,7 @@ Exchange::ILifecycleManager::LifecycleState AppInfo::getAppLifecycleState() cons
 const timespec& AppInfo::getLastActiveStateChangeTime() const { return mLastActiveStateChangeTime; }
 uint32_t        AppInfo::getLastActiveIndex()            const { return mLastActiveIndex; }
 const std::string& AppInfo::getAppIntent()               const { return mAppIntent; }
+const std::string& AppInfo::getRequestedLaunchVersion() const { return mRequestedLaunchVersion; }
 
 AppManagerTypes::CurrentAction AppInfo::getCurrentAction() const { return mCurrentAction; }
 
@@ -73,6 +75,7 @@ void AppInfo::setAppLifecycleState(Exchange::ILifecycleManager::LifecycleState s
 void AppInfo::setLastActiveStateChangeTime(const timespec& ts) { mLastActiveStateChangeTime = ts; }
 void AppInfo::setLastActiveIndex(uint32_t index)               { mLastActiveIndex            = index; }
 void AppInfo::setAppIntent(const std::string& intent)          { mAppIntent                 = intent; }
+void AppInfo::setRequestedLaunchVersion(const std::string& version) { mRequestedLaunchVersion = version; }
 
 void AppInfo::setCurrentAction(AppManagerTypes::CurrentAction action) { mCurrentAction = action; }
 

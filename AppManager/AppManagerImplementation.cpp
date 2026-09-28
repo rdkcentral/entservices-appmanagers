@@ -202,6 +202,7 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
 #endif // RALF_PACKAGE_SUPPORT_ENABLED
                             getCustomValues(runtimeConfig);
                             string launchArgs = appRequestParam->launchArgs;
+                            AppInfoManager::getInstance().setRequestedLaunchVersion(appId, packageData.version);
 
                             if (action == APP_ACTION_LAUNCH)
                             {
@@ -1074,17 +1075,51 @@ Core::hresult AppManagerImplementation::packageLock(const string& appId, Package
     else if (Core::ERROR_NONE == status)
     {
         const PackageInfo cachedPackageData = AppInfoManager::getInstance().getPackageInfo(appId);
-        packageData = cachedPackageData;
+        //packageData = cachedPackageData;
 
         if (cachedPackageData.version.empty())
         {
             LOGERR("Skipping packageLock for loaded appId %s failed: cached packageData is empty", appId.c_str());
             status = Core::ERROR_GENERAL;
         }
-        else
+       /* else
         {
             LOGINFO("Skipping packageLock for appId %s because app is already loaded", appId.c_str());
             status = Core::ERROR_NONE;
+        }*/
+	else if ((true == packageData.version.empty()) || (0 == cachedPackageData.version.compare(packageData.version)))
+        {
+            packageData = cachedPackageData;
+            LOGINFO("Skipping packageLock for appId %s because app is already loaded", appId.c_str());
+            status = Core::ERROR_NONE;
+        }
+        else
+        {
+            LOGINFO("Loaded appId %s requested with new package version %s while running %s; locking requested version",
+                appId.c_str(), packageData.version.c_str(), cachedPackageData.version.c_str());
+
+            if ((nullptr != mPackageManagerHandlerObject) && (false == packageData.version.empty()))
+            {
+                Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
+                status = mPackageManagerHandlerObject->Lock(appId, packageData.version, lockReason, packageData.lockId, packageData.unpackedPath, packageData.configMetadata, appMetadata);
+                if (Core::ERROR_NONE == status)
+                {
+                    LOGINFO("Locked requested package version for loaded appId %s; AppInfo update deferred until replacement launch", appId.c_str());
+                }
+                else
+                {
+                    LOGERR("Failed to lock requested package version %s for loaded appId %s", packageData.version.c_str(), appId.c_str());
+                    appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_LAUNCH, AppManagerImplementation::ERROR_PACKAGE_LOCK);
+                    packageData.version.clear();
+                }
+            }
+            else
+            {
+                LOGERR("PackageManager handler is %s", ((nullptr != mPackageManagerHandlerObject) ? "valid, but package version is empty" : "null"));
+                CurrentActionError errorCode = (packageData.version.empty() ? AppManagerImplementation::ERROR_PACKAGE_INVALID : AppManagerImplementation::ERROR_INTERNAL);
+                appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_LAUNCH, errorCode);
+                status = Core::ERROR_GENERAL;
+            }
         }
     }
     else

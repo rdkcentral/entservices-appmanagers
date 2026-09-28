@@ -210,6 +210,131 @@ namespace WPEFramework
             LOGINFO("launch: APPLICATION_LAUNCH_PARAMETERS set");
         }
 
+        Core::hresult LifecycleInterfaceConnector::launchRequestedPackage(const string& appId, const string& intent,
+            const string& launchArgs, WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject)
+        {
+            Core::hresult status = Core::ERROR_GENERAL;
+            string appInstanceId = "";
+            string errorReason = "";
+            bool success = true;
+            Exchange::ILifecycleManager::LifecycleState state = Exchange::ILifecycleManager::LifecycleState::ACTIVE;
+            AppManagerImplementation* appManagerImplInstance = AppManagerImplementation::getInstance();
+            AppManagerTelemetryReporting& appManagerTelemetryReporting = AppManagerTelemetryReporting::getInstance();
+
+            if (nullptr == appManagerImplInstance)
+            {
+                LOGERR("launchRequestedPackage failed: AppManagerImplementation instance is null");
+                appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_LAUNCH, AppManagerImplementation::ERROR_INTERNAL);
+                return Core::ERROR_GENERAL;
+            }
+
+            appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_LAUNCH);
+            string source = "";
+            appManagerImplInstance->handleOnAppLaunchRequest(appId, intent, source);
+
+            appendLaunchParametersEnv(launchArgs, runtimeConfigObject);
+
+            LOGINFO("spawnApp called ,state %u", state);
+            status = mLifecycleManagerRemoteObject->SpawnApp(appId, intent, state, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success);
+
+            if ((Core::ERROR_NONE == status) && (true == success))
+            {
+                LOGINFO("Update App Info");
+                const string capturedInstanceId = appInstanceId;
+                const Exchange::IAppManager::AppLifecycleState targetState =
+                    Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
+                AppInfoManager::getInstance().upsert(appId, [&](AppInfo& a) {
+                    a.setAppInstanceId(capturedInstanceId);
+                    a.setAppIntent(intent);
+                    a.getPackageInfoMutable().type = AppManagerTypes::APPLICATION_TYPE_INTERACTIVE;
+                    AppManagerTypes::PackageInfo packageInfo = a.getPackageInfo();
+                    packageInfo.unpackedPath = runtimeConfigObject.unpackedPath;
+                    packageInfo.configMetadata = runtimeConfigObject;
+                    a.setPackageInfo(packageInfo);
+                    a.setTargetAppState(targetState);
+                });
+            }
+            else
+            {
+                LOGERR("spawnApp failed: appId=%s status=%d success=%d errorReason=%s",
+                    appId.c_str(), status, success, errorReason.c_str());
+                appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_LAUNCH, AppManagerImplementation::ERROR_SPAWN_APP);
+                if (Core::ERROR_NONE == status)
+                {
+                    status = Core::ERROR_GENERAL;
+                }
+            }
+
+            return status;
+        }
+
+        Core::hresult LifecycleInterfaceConnector::restartSuspendedWithRequestedVersion(const string& appId,
+            const string& intent, const string& launchArgs, WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject,
+            const string& suspendedAppInstanceId)
+        {
+            Core::hresult status = Core::ERROR_GENERAL;
+            string errorReason = "";
+            bool success = true;
+            AppManagerImplementation* appManagerImplInstance = AppManagerImplementation::getInstance();
+            AppManagerTelemetryReporting& appManagerTelemetryReporting = AppManagerTelemetryReporting::getInstance();
+
+            if (nullptr == appManagerImplInstance)
+            {
+                LOGERR("restartSuspendedWithRequestedVersion failed: AppManagerImplementation instance is null");
+                appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_LAUNCH, AppManagerImplementation::ERROR_INTERNAL);
+                return Core::ERROR_GENERAL;
+            }
+
+            appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_KILL);
+            status = mLifecycleManagerRemoteObject->KillApp(suspendedAppInstanceId, errorReason, success);
+
+            if ((Core::ERROR_NONE != status) || (false == success))
+            {
+                LOGERR("Failed to kill old suspended app instance for replacement appId=%s status=%d success=%d errorReason=%s",
+                    appId.c_str(), status, success, errorReason.c_str());
+                appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_LAUNCH, AppManagerImplementation::ERROR_KILL_APP);
+                if (Core::ERROR_NONE == status)
+                {
+                    status = Core::ERROR_GENERAL;
+                }
+            }
+            else
+            {
+                bool stillLoaded = true;
+                uint32_t pollCount = 0;
+                constexpr uint32_t maxPollCount = 50;
+
+                mAdminLock.Unlock();
+                while ((true == stillLoaded) && (pollCount < maxPollCount))
+                {
+                    Core::hresult loadedStatus = isAppLoaded(appId, stillLoaded);
+                    if (Core::ERROR_NONE != loadedStatus)
+                    {
+                        LOGERR("Unable to query loaded state while replacing appId=%s status=%d", appId.c_str(), loadedStatus);
+                        break;
+                    }
+                    if (false == stillLoaded)
+                    {
+                        break;
+                    }
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                    ++pollCount;
+                }
+                mAdminLock.Lock();
+
+                if (true == stillLoaded)
+                {
+                    LOGERR("Timed out waiting for old suspended app instance unload before launching new version appId=%s", appId.c_str());
+                    status = Core::ERROR_GENERAL;
+                }
+                else
+                {
+                    status = launchRequestedPackage(appId, intent, launchArgs, runtimeConfigObject);
+                }
+            }
+
+            return status;
+        }
 
 /*
  * @brief LaunchApp invokes this to call LifecycleManager API.
@@ -221,9 +346,9 @@ namespace WPEFramework
             Core::hresult status = Core::ERROR_GENERAL;
             AppManagerImplementation*appManagerImplInstance = AppManagerImplementation::getInstance();
             bool loaded = false;
-            string appInstanceId = "";
+            /*string appInstanceId = "";
             string errorReason = "";
-            bool success = true;
+            bool success = true;*/
             Exchange::ILifecycleManager::LifecycleState state = Exchange::ILifecycleManager::LifecycleState::UNLOADED;
             AppManagerTelemetryReporting& appManagerTelemetryReporting =AppManagerTelemetryReporting::getInstance();
 
@@ -252,10 +377,21 @@ namespace WPEFramework
                     {
                         AppInfo appInfoSnap;
                         bool appInMap = AppInfoManager::getInstance().get(appId, appInfoSnap);
+			const string runningVersion = appInfoSnap.getPackageInfo().version;
+                        const string requestedVersion = appInfoSnap.getRequestedLaunchVersion();
+                        const string runningUnpackedPath = appInfoSnap.getPackageInfo().unpackedPath;
+                        const bool hasRunningPath = (false == runningUnpackedPath.empty());
+                        const bool hasRequestedPath = (false == runtimeConfigObject.unpackedPath.empty());
+                        const bool versionKnown = ((false == runningVersion.empty()) && (false == requestedVersion.empty()));
+                        const bool versionChanged = (true == versionKnown)
+                            ? (0 != runningVersion.compare(requestedVersion))
+                            : ((hasRunningPath && hasRequestedPath && (0 != runningUnpackedPath.compare(runtimeConfigObject.unpackedPath))) ||
+                               (hasRunningPath != hasRequestedPath));
                         if ((true == loaded) &&
                             (Core::ERROR_NONE == status) &&
                             appInMap &&
-                            (Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED == appInfoSnap.getAppNewState()))
+			    (Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED == appInfoSnap.getAppNewState()) &&
+                            (false == versionChanged))
                         {
                             appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_RESUME);
                             state = Exchange::ILifecycleManager::LifecycleState::ACTIVE;
@@ -275,7 +411,24 @@ namespace WPEFramework
                                 LOGERR("SetTargetAppState Failed");
                             }
                         }
+
+			else if ((true == loaded) &&
+                            (Core::ERROR_NONE == status) &&
+                            appInMap &&
+                            (Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED == appInfoSnap.getAppNewState()) &&
+                            versionChanged)
+                        {
+                            LOGINFO("Suspended app replacement for appId=%s runningVersion=%s requestedVersion=%s runningPath=%s requestedPath=%s",
+                                appId.c_str(), runningVersion.c_str(), requestedVersion.c_str(), runningUnpackedPath.c_str(), runtimeConfigObject.unpackedPath.c_str());
+                            status = restartSuspendedWithRequestedVersion(appId, intent, launchArgs, runtimeConfigObject,
+                                appInfoSnap.getAppInstanceId());
+                        }
                         else
+                        {
+                            status = launchRequestedPackage(appId, intent, launchArgs, runtimeConfigObject);
+                        }
+
+                        /*else
                         {
                             appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_LAUNCH);
                             state = Exchange::ILifecycleManager::LifecycleState::ACTIVE;
@@ -305,7 +458,7 @@ namespace WPEFramework
                                 LOGERR("spawnApp failed");
                                 appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_LAUNCH, AppManagerImplementation::ERROR_SPAWN_APP);
                             }
-                        }
+                        }*/
                     }
                     else
                     {
@@ -602,6 +755,10 @@ namespace WPEFramework
                     {
                         LOGERR("killApp failed, result: %d, success: %d, errorReason: %s", result, success, errorReason.c_str());
                         appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_KILL, AppManagerImplementation::ERROR_KILL_APP);
+			if (Core::ERROR_NONE == result)
+                        {
+                            result = Core::ERROR_GENERAL;
+                        }
                     }
                 }
                 mAdminLock.Unlock();
