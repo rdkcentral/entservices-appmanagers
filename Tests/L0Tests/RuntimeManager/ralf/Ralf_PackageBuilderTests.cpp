@@ -36,6 +36,7 @@
 #include "ralf/RalfPackageBuilder.h"
 #include "ralf/RalfSupport.h"
 #include "ApplicationConfiguration.h"
+#include "RuntimeManagerImplementation.h"
 #include <interfaces/IRuntimeManager.h>
 #include "common/L0Expect.hpp"
 #include "common/L0TestTypes.hpp"
@@ -336,6 +337,53 @@ uint32_t Test_RalfPackageBuilder_UnmountOverlayfsIfExists_WhenPathExistsTriggerU
     // Cleanup
     ::rmdir(mountPath.c_str());
     ::rmdir((std::string(ralf::RALF_APP_ROOTFS_DIR) + appInstanceId).c_str());
+
+    return tr.failures;
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// RuntimeManagerImplementation RALF / legacy dispatch
+// ──────────────────────────────────────────────────────────────────────────────
+
+/* Test_RuntimeManager_IsRalfPackage_DispatchesOnRalfPkgPath
+ *
+ * The RALF and legacy EntOS Widget launch paths coexist in a single build and are
+ * selected at runtime from RuntimeConfig.ralfPkgPath.  Verifies that an empty
+ * ralfPkgPath selects the legacy Dobby spec path and a non-empty one selects RALF.
+ */
+uint32_t Test_RuntimeManager_IsRalfPackage_DispatchesOnRalfPkgPath()
+{
+    L0Test::TestResult tr;
+
+    auto legacyCfg = MakeRuntimeConfig("");
+    L0Test::ExpectTrue(tr,
+                       !WPEFramework::Plugin::RuntimeManagerImplementation::isRalfPackage(legacyCfg),
+                       "empty ralfPkgPath selects the legacy Dobby spec path");
+
+    auto ralfCfg = MakeRuntimeConfig("/tmp/ralf_l0test_pkginfo.json");
+    L0Test::ExpectTrue(tr,
+                       WPEFramework::Plugin::RuntimeManagerImplementation::isRalfPackage(ralfCfg),
+                       "non-empty ralfPkgPath selects the RALF path");
+
+    return tr.failures;
+}
+
+/* Test_RuntimeManager_CleanupRalfInstance_SkipsWidgetInstances
+ *
+ * Overlayfs teardown must only run for instances that were actually launched from a
+ * RALF OCI bundle; widget instances never create one.
+ */
+uint32_t Test_RuntimeManager_CleanupRalfInstance_SkipsWidgetInstances()
+{
+    L0Test::TestResult tr;
+
+    WPEFramework::Plugin::RuntimeManagerImplementation::cleanupRalfInstance("l0test_widget_inst", false);
+    L0Test::ExpectTrue(tr, true,
+                       "cleanupRalfInstance() is a no-op for a non-RALF instance");
+
+    WPEFramework::Plugin::RuntimeManagerImplementation::cleanupRalfInstance("l0test_ralf_never_mounted", true);
+    L0Test::ExpectTrue(tr, true,
+                       "cleanupRalfInstance() tolerates a RALF instance with no overlayfs");
 
     return tr.failures;
 }

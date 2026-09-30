@@ -190,6 +190,8 @@ extern uint32_t Test_RalfPackageBuilder_ConstructionAndDestruction();
 extern uint32_t Test_RalfPackageBuilder_UnmountOverlayfsIfExists_NonExistentPathReturnsFalse();
 extern uint32_t Test_RalfPackageBuilder_UnmountOverlayfsIfExists_EmptyAppInstanceId();
 extern uint32_t Test_RalfPackageBuilder_GenerateRalfDobbySpec_EmptyRalfPkgPathReturnsFalse();
+extern uint32_t Test_RuntimeManager_IsRalfPackage_DispatchesOnRalfPkgPath();
+extern uint32_t Test_RuntimeManager_CleanupRalfInstance_SkipsWidgetInstances();
 extern uint32_t Test_RalfPackageBuilder_GenerateRalfDobbySpec_NonExistentPkgFileReturnsFalse();
 extern uint32_t Test_RalfPackageBuilder_GenerateRalfDobbySpec_MalformedPkgFileReturnsFalse();
 extern uint32_t Test_RalfPackageBuilder_GenerateRalfDobbySpec_PkgFileMissingPackagesFieldReturnsFalse();
@@ -526,6 +528,8 @@ int main()
         { "RalfPackageBuilder_UnmountOverlayfsIfExists_NonExistentPathReturnsFalse", Test_RalfPackageBuilder_UnmountOverlayfsIfExists_NonExistentPathReturnsFalse },
         { "RalfPackageBuilder_UnmountOverlayfsIfExists_EmptyAppInstanceId",          Test_RalfPackageBuilder_UnmountOverlayfsIfExists_EmptyAppInstanceId },
         { "RalfPackageBuilder_GenerateRalfDobbySpec_EmptyRalfPkgPathReturnsFalse",   Test_RalfPackageBuilder_GenerateRalfDobbySpec_EmptyRalfPkgPathReturnsFalse },
+        { "RuntimeManager_IsRalfPackage_DispatchesOnRalfPkgPath",                    Test_RuntimeManager_IsRalfPackage_DispatchesOnRalfPkgPath },
+        { "RuntimeManager_CleanupRalfInstance_SkipsWidgetInstances",                 Test_RuntimeManager_CleanupRalfInstance_SkipsWidgetInstances },
         { "RalfPackageBuilder_GenerateRalfDobbySpec_NonExistentPkgFileReturnsFalse", Test_RalfPackageBuilder_GenerateRalfDobbySpec_NonExistentPkgFileReturnsFalse },
         { "RalfPackageBuilder_GenerateRalfDobbySpec_MalformedPkgFileReturnsFalse",   Test_RalfPackageBuilder_GenerateRalfDobbySpec_MalformedPkgFileReturnsFalse },
         { "RalfPackageBuilder_GenerateRalfDobbySpec_PkgFileMissingPackagesField",    Test_RalfPackageBuilder_GenerateRalfDobbySpec_PkgFileMissingPackagesFieldReturnsFalse },
