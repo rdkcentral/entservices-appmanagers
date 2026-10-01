@@ -521,6 +521,10 @@ uint32_t RunVersionComparison(const std::string& preinstallVer, const std::strin
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
+    // Wait for queued worker-pool job to release implementation reference
+    // before releasing local mocks, preventing race condition in destructor
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
     impl->Release();
 
     const uint32_t calls = installer.installCallCount.load();

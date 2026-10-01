@@ -18,6 +18,8 @@
 **/
 
 #include <chrono>
+#include <limits.h>
+#include <stdlib.h>
 
 #include "DownloadManagerImplementation.h"
 #include "UtilsAppManagerTelemetry.h"
@@ -61,6 +63,92 @@ namespace Plugin {
             }
         }
         mDownloadManagerNotification.clear();
+    }
+
+    // Validate that a file path is within the download directory
+    // Prevents arbitrary file deletion via path traversal
+    bool DownloadManagerImplementation::isValidDownloadPath(const std::string& fileLocator) const
+    {
+        if (fileLocator.empty())
+        {
+            return false;
+        }
+
+        // Reject path traversal sequences
+        if (fileLocator.find("..") != std::string::npos)
+        {
+            LOGERR("Rejected path with traversal sequence: %s", fileLocator.c_str());
+            return false;
+        }
+
+        // Canonicalize the download directory once
+        char resolvedDownloadDir[PATH_MAX];
+        std::string canonicalDownloadDir;
+        if (!mDownloadPath.empty())
+        {
+            if (realpath(mDownloadPath.c_str(), resolvedDownloadDir) == nullptr)
+            {
+                LOGERR("Failed to canonicalize download directory: %s", mDownloadPath.c_str());
+                return false;
+            }
+            canonicalDownloadDir = resolvedDownloadDir;
+        }
+
+        // Canonicalize the target path to resolve symlinks
+        char resolvedPath[PATH_MAX];
+        if (realpath(fileLocator.c_str(), resolvedPath) == nullptr)
+        {
+            // Path doesn't exist - this is acceptable for deletion of non-existent files
+            // but we should still validate the format against the download directory
+            // Check if the path would be within the download directory if it existed
+            if (!canonicalDownloadDir.empty())
+            {
+                // Ensure the path starts with the canonical download directory
+                if (fileLocator.compare(0, canonicalDownloadDir.length(), canonicalDownloadDir) != 0)
+                {
+                    LOGERR("Rejected path outside download directory: %s (expected prefix: %s)",
+                           fileLocator.c_str(), canonicalDownloadDir.c_str());
+                    return false;
+                }
+                // Ensure path-component boundary (not just string prefix)
+                // e.g., reject /opt/downloads-evil/file when download dir is /opt/downloads
+                if (fileLocator.length() > canonicalDownloadDir.length() &&
+                    fileLocator[canonicalDownloadDir.length()] != '/')
+                {
+                    LOGERR("Rejected path not within download directory: %s", fileLocator.c_str());
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        // Check if the resolved path is within the download directory
+        std::string resolved(resolvedPath);
+        if (!canonicalDownloadDir.empty())
+        {
+            // Ensure the resolved path starts with the canonical download directory
+            if (resolved.compare(0, canonicalDownloadDir.length(), canonicalDownloadDir) != 0)
+            {
+                LOGERR("Rejected path outside download directory: %s (expected prefix: %s)",
+                       resolved.c_str(), canonicalDownloadDir.c_str());
+                return false;
+            }
+            // Ensure path-component boundary
+            if (resolved.length() > canonicalDownloadDir.length() &&
+                resolved[canonicalDownloadDir.length()] != '/')
+            {
+                LOGERR("Rejected path not within download directory: %s", resolved.c_str());
+                return false;
+            }
+            // Reject deleting the download directory itself
+            if (resolved == canonicalDownloadDir)
+            {
+                LOGERR("Rejected attempt to delete download directory itself: %s", resolved.c_str());
+                return false;
+            }
+        }
+
+        return true;
     }
 
     Core::hresult DownloadManagerImplementation::Register(Exchange::IDownloadManager::INotification* notification)
@@ -367,6 +455,13 @@ namespace Plugin {
         if (fileLocator.empty())
         {
             LOGWARN("DM: Delete failed - fileLocator is empty!");
+            return Core::ERROR_BAD_REQUEST;
+        }
+
+        // Validate file path to prevent arbitrary file deletion (RDKEMW-24508)
+        if (!isValidDownloadPath(fileLocator))
+        {
+            LOGERR("DM: Delete failed - invalid file path: %s", fileLocator.c_str());
             return Core::ERROR_BAD_REQUEST;
         }
 
