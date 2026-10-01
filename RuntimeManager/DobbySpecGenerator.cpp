@@ -235,19 +235,9 @@ bool DobbySpecGenerator::generate(const ApplicationConfiguration& config, const 
     std::vector<std::pair<std::string, std::string>> parsedCapabilities;
     parseCapabilities(runtimeConfig.capabilities, parsedCapabilities);
 
-    std::ifstream inFile("/tmp/specchange");
-    if (inFile.good())
-    {
-        inFile.open("/tmp/specchange"); //open the input file
-        std::stringstream strStream;
-        strStream << inFile.rdbuf(); //read the file
-        resultSpec = strStream.str(); //str holds the content of the file
-        std::cout << resultSpec << "\n"; //you can do anything with the string!!!
-        inFile.close();
-        JsonObject parameters;
-        parameters.FromString(resultSpec.c_str());
-        return true;
-    }
+    // SECURITY: Removed /tmp/specchange backdoor (RDKEMW-24510)
+    // This world-writable file was being used to override the entire Dobby spec
+    // for local privilege escalation. The code has been removed.
    
     ssize_t memLimit = getSysMemoryLimit(config, runtimeConfig);
     /*mandatory parameter check*/
