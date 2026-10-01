@@ -145,6 +145,8 @@ protected:
         AppInfoManager::getInstance().clear();
         plugin->Deinitialize(mServiceMock);
         drainWorkerPool();
+        for (int i = 0; i < 200 && Plugin::AppManagerImplementation::getInstance() != nullptr; ++i)
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
         delete mServiceMock;
         mAppManagerImpl = nullptr;
     }
@@ -312,6 +314,8 @@ protected:
         AppInfoManager::getInstance().clear();
         plugin->Deinitialize(mServiceMock);
         drainWorkerPool();
+        for (int i = 0; i < 200 && Plugin::AppManagerImplementation::getInstance() != nullptr; ++i)
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
         delete mServiceMock;
         mAppManagerImpl = nullptr;
     }

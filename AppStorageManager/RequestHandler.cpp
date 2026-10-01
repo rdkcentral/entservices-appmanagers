@@ -289,7 +289,7 @@ namespace WPEFramework
 
             auto it = dirName.begin();
             char ch = *it++;
-            if (!isalnum(ch))
+            if (!isalnum(static_cast<unsigned char>(ch)))
             {
                 return false;
             }
@@ -305,14 +305,14 @@ namespace WPEFramework
                     if (prev == '.')
                         return false;
                 }
-                else if (!isalnum(ch) && (ch != '-') && (ch != '_'))
+                else if (!isalnum(static_cast<unsigned char>(ch)) && (ch != '-') && (ch != '_'))
                 {
                     return false;
                 }
             }
 
             // check the last character is alphanumeric
-            return isalnum(ch);
+            return isalnum(static_cast<unsigned char>(ch));
         }
 
 
@@ -695,6 +695,11 @@ namespace WPEFramework
                 LOGERR("Invalid App ID");
                 errorReason = "appId cannot be empty";
             }
+            else if (!isValidAppStorageDirectory(appId))
+            {
+                LOGERR("Rejected invalid appId");
+                errorReason = "appId contains invalid characters";
+            }
             else
             {
                 std::unique_lock<std::mutex> lock(mStorageManagerImplLock);
@@ -763,26 +768,19 @@ namespace WPEFramework
 
                     if (0 != mkdir(appDir.c_str(), STORAGE_DIR_PERMISSION))
                     {
-                        /* Check if the error is not directory already exists */
                         if (EEXIST != errno)
                         {
                             errorReason = "Failed to create app storage directory: " + appDir;
-                            LOGERR("Error creating app storage directory %s: errno=%d (%s)", appDir.c_str(), errno, strerror(errno));
-                            status = Core::ERROR_GENERAL;
-                            return status;
+                            LOGERR("Error creating app storage directory: errno=%d (%s)", errno, strerror(errno));
+                            return Core::ERROR_GENERAL;
                         }
-                        else
+
+                        struct stat st;
+                        if (0 != lstat(appDir.c_str(), &st) || !S_ISDIR(st.st_mode) || S_ISLNK(st.st_mode))
                         {
-                            // Path exists - verify it's actually a directory
-                            struct stat st;
-                            if (0 != stat(appDir.c_str(), &st) || !S_ISDIR(st.st_mode))
-                            {
-                                errorReason = "Path exists but is not a directory: " + appDir;
-                                LOGERR("Path exists but is not a directory: %s", appDir.c_str());
-                                status = Core::ERROR_GENERAL;
-                                return status;
-                            }
-                            // Directory exists - continue
+                            errorReason = "App storage path is not a trusted directory";
+                            LOGERR("App storage path is not a directory or is a symbolic link");
+                            return Core::ERROR_GENERAL;
                         }
                     }
 
