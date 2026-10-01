@@ -487,6 +487,29 @@ uint32_t Test_Impl_DownloadEmptyUrlReturnsError()
     return tr.failures;
 }
 
+uint32_t Test_Impl_ProductionDownloadUrlPolicy()
+{
+    L0Test::TestResult tr;
+    auto* impl = CreateImpl();
+
+    L0Test::ExpectTrue(tr, impl->isValidDownloadUrl("https://example.invalid/package"), "Public HTTPS URL is accepted");
+    L0Test::ExpectTrue(tr, impl->isValidDownloadUrl("HTTP://example.invalid/package"), "URL scheme comparison is case-insensitive");
+    L0Test::ExpectTrue(tr, !impl->isValidDownloadUrl("file:///tmp/package"), "Local file URL is rejected by production policy");
+    L0Test::ExpectTrue(tr, !impl->isValidDownloadUrl("gopher://example.invalid/package"), "Unsupported scheme is rejected");
+    L0Test::ExpectTrue(tr, !impl->isValidDownloadUrl("http://localhost/package"), "Localhost is rejected");
+    L0Test::ExpectTrue(tr, !impl->isValidDownloadUrl("http://127.1.2.3/package"), "Loopback range is rejected");
+    L0Test::ExpectTrue(tr, !impl->isValidDownloadUrl("http://[::1]/package"), "IPv6 loopback is rejected");
+    L0Test::ExpectTrue(tr, !impl->isValidDownloadUrl("http://10.1.2.3/package"), "Private class A address is rejected");
+    L0Test::ExpectTrue(tr, !impl->isValidDownloadUrl("http://172.31.2.3/package"), "Private class B address is rejected");
+    L0Test::ExpectTrue(tr, impl->isValidDownloadUrl("http://172.32.2.3/package"), "Public boundary outside private class B range is accepted");
+    L0Test::ExpectTrue(tr, !impl->isValidDownloadUrl("http://192.168.2.3/package"), "Private class C address is rejected");
+    L0Test::ExpectTrue(tr, !impl->isValidDownloadUrl("http://169.254.2.3/package"), "Link-local address is rejected");
+    L0Test::ExpectTrue(tr, !impl->isValidDownloadUrl(" http://example.invalid/package"), "Leading whitespace is rejected");
+
+    impl->Release();
+    return tr.failures;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Download priority and regular queue routing
 // ─────────────────────────────────────────────────────────────────────────────

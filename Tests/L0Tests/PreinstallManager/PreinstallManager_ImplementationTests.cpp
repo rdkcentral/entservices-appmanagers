@@ -522,6 +522,10 @@ uint32_t RunVersionComparison(const std::string& preinstallVer, const std::strin
     }
 
     impl->Release();
+    for (int i = 0; i < 200 && WPEFramework::Plugin::PreinstallManagerImplementation::getInstance() != nullptr; ++i)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
 
     const uint32_t calls = installer.installCallCount.load();
 

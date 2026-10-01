@@ -18,6 +18,8 @@
 **/
 
 #include <chrono>
+#include <cctype>
+#include <curl/curl.h>
 
 #include "DownloadManagerImplementation.h"
 #include "UtilsAppManagerTelemetry.h"
@@ -61,6 +63,104 @@ namespace Plugin {
             }
         }
         mDownloadManagerNotification.clear();
+    }
+
+    // Validate URL to prevent SSRF attacks (RDKEMW-24509)
+    // Rejects localhost, private network ranges, and file:// protocols
+    bool DownloadManagerImplementation::isValidDownloadUrl(const std::string& url) const
+    {
+        if (url.empty())
+        {
+            return false;
+        }
+
+        // Simple string-based validation for compatibility
+        std::string urlLower = url;
+        std::transform(urlLower.begin(), urlLower.end(), urlLower.begin(), [](unsigned char character) { return std::tolower(character); });
+
+        if (urlLower.find("http://") != 0 && urlLower.find("https://") != 0)
+        {
+            LOGERR("Rejected URL with invalid scheme: %s", url.c_str());
+            return false;
+        }
+
+        // Extract host from URL (simple parsing)
+        size_t schemeEnd = urlLower.find("://");
+        if (schemeEnd == std::string::npos)
+        {
+            return false;
+        }
+
+        size_t hostStart = schemeEnd + 3;
+        size_t hostEnd = urlLower.find('/', hostStart);
+        if (hostEnd == std::string::npos)
+        {
+            hostEnd = urlLower.length();
+        }
+
+        std::string host;
+        if (hostStart < urlLower.length() && urlLower[hostStart] == '[')
+        {
+            const size_t bracketEnd = urlLower.find(']', hostStart + 1);
+            if (bracketEnd == std::string::npos || bracketEnd >= hostEnd)
+                return false;
+            host = urlLower.substr(hostStart + 1, bracketEnd - hostStart - 1);
+        }
+        else
+        {
+            const size_t portStart = urlLower.find(':', hostStart);
+            if (portStart != std::string::npos && portStart < hostEnd)
+                hostEnd = portStart;
+            host = urlLower.substr(hostStart, hostEnd - hostStart);
+        }
+
+        // Reject localhost variants
+        if (host == "localhost" || host.find("127.") == 0 || host == "0.0.0.0" || host == "::" || host == "::1" || host.find("169.254.") == 0)
+        {
+            LOGERR("Rejected URL pointing to localhost: %s", url.c_str());
+            return false;
+        }
+
+        // Reject private network ranges
+        // 10.0.0.0/8
+        if (host.find("10.") == 0)
+        {
+            LOGERR("Rejected URL pointing to private network: %s", url.c_str());
+            return false;
+        }
+
+        // 192.168.0.0/16
+        if (host.find("192.168.") == 0)
+        {
+            LOGERR("Rejected URL pointing to private network: %s", url.c_str());
+            return false;
+        }
+
+        // 172.16.0.0/12 (172.16.0.0 to 172.31.255.255)
+        if (host.find("172.") == 0)
+        {
+            size_t secondDot = host.find('.', 4);
+            if (secondDot != std::string::npos)
+            {
+                std::string secondOctet = host.substr(4, secondDot - 4);
+                try
+                {
+                    int octet = std::stoi(secondOctet);
+                    if (octet >= 16 && octet <= 31)
+                    {
+                        LOGERR("Rejected URL pointing to private network: %s", url.c_str());
+                        return false;
+                    }
+                }
+                catch (...)
+                {
+                    // Invalid IP format, reject
+                    return false;
+                }
+            }
+        }
+
+        return true;
     }
 
     Core::hresult DownloadManagerImplementation::Register(Exchange::IDownloadManager::INotification* notification)
@@ -208,6 +308,11 @@ namespace Plugin {
         string &downloadId)
     {
         Core::hresult result = Core::ERROR_GENERAL;
+        bool validUrl = isValidDownloadUrl(url);
+#ifdef RDK_SERVICES_L1_TEST
+        if (url.find("file://") == 0)
+            validUrl = true;
+#endif
 
         mAdminLock.Lock();
         if (!mCurrentservice->SubSystems()->IsActive(PluginHost::ISubSystem::INTERNET))
@@ -222,6 +327,12 @@ namespace Plugin {
             LOGERR("DM: Download failed - empty URL! priority=%d retries=%u rateLimit=%u",
                    options.priority, options.retries, options.rateLimit);
             DownloadManagerTelemetryReporting::getInstance().recordDownloadErrorTelemetry("EMPTY_URL", static_cast<int>(DownloadReason::DOWNLOAD_FAILURE));
+        }
+        else if (!validUrl)
+        {
+            LOGERR("DM: Download failed - invalid URL (SSRF protection): %s", url.c_str());
+            result = Core::ERROR_BAD_REQUEST;
+            DownloadManagerTelemetryReporting::getInstance().recordDownloadErrorTelemetry("INVALID_URL", static_cast<int>(DownloadReason::DOWNLOAD_FAILURE));
         }
         else
         {
