@@ -8,6 +8,30 @@ cmake --version
 GITHUB_WORKSPACE="${PWD}"
 ls -la ${GITHUB_WORKSPACE}
 
+# Exclude non-product directories from the build source tree so coverity/scans
+# are run against a clean product build without those folders.
+# Important: the L1 test CMake files hardcode ../entservices-appmanagers, so the
+# filtered source tree must live as a sibling of the repo root, not inside it and
+# not in /tmp, otherwise those generated include paths resolve incorrectly.
+REPO_PARENT="$(dirname "${GITHUB_WORKSPACE}")"
+COV_BUILD_SOURCE="${REPO_PARENT}/entservices-appmanagers-cov"
+rm -rf "${COV_BUILD_SOURCE}"
+mkdir -p "${COV_BUILD_SOURCE}"
+
+echo "DEBUG: repo root: ${GITHUB_WORKSPACE}"
+echo "DEBUG: sibling scan-prep tree: ${COV_BUILD_SOURCE}"
+find "${GITHUB_WORKSPACE}" -mindepth 1 -maxdepth 1 \
+    ! -name '.git' \
+    ! -name '.cov_build_source' \
+    ! -name 'build' \
+    ! -name 'tests' \
+    ! -name 'libocispec' \
+    ! -name 'develop' \
+    ! -name 'openspec' \
+    -exec cp -a {} "${COV_BUILD_SOURCE}/" \;
+
+echo "DEBUG: excluded directories: .git .cov_build_source build tests libocispec develop openspec; keeping install and Tests required by build"
+
 # Native/L1 build environment: ensure AppManager sees jsoncpp headers via its env-based include hook.
 export APP_MANAGER_INCLUDES="/usr/include/jsoncpp"
 
@@ -15,8 +39,8 @@ export APP_MANAGER_INCLUDES="/usr/include/jsoncpp"
 # Build entservices-appmanagers
 echo "building entservices-appmanagers"
 
-cd ${GITHUB_WORKSPACE}
-PREFIX_PATH="${CMAKE_PREFIX_PATH:+${CMAKE_PREFIX_PATH};}${GITHUB_WORKSPACE}/install/usr;${GITHUB_WORKSPACE}/eshelpers;/usr"
+cd "${COV_BUILD_SOURCE}"
+PREFIX_PATH="${CMAKE_PREFIX_PATH:+${CMAKE_PREFIX_PATH};}${COV_BUILD_SOURCE}/install/usr;${COV_BUILD_SOURCE}/eshelpers;/usr"
 
 # Coverity workflow only: make CompileSettingsDebug export symbols for direct test linking.
 COMPILE_SETTINGS_DIR="${GITHUB_WORKSPACE}/install/usr/lib/cmake/CompileSettingsDebug"
@@ -30,10 +54,10 @@ else
 	COMPILE_SETTINGS_DEBUG_ARG=""
 fi
 
-cmake -G Ninja -S "$GITHUB_WORKSPACE" -B build/entservices-appmanagers \
+cmake -G Ninja -S "${COV_BUILD_SOURCE}" -B build/entservices-appmanagers \
 -DUSE_THUNDER_R4=ON \
--DCMAKE_INSTALL_PREFIX="$GITHUB_WORKSPACE/install/usr" \
--DCMAKE_MODULE_PATH="$GITHUB_WORKSPACE/install/tools/cmake" \
+-DCMAKE_INSTALL_PREFIX="${COV_BUILD_SOURCE}/install/usr" \
+-DCMAKE_MODULE_PATH="${COV_BUILD_SOURCE}/install/tools/cmake" \
 -DCMAKE_PREFIX_PATH="${PREFIX_PATH}" \
 ${COMPILE_SETTINGS_DEBUG_ARG:+${COMPILE_SETTINGS_DEBUG_ARG}} \
 -DCMAKE_DISABLE_FIND_PACKAGE_IARMBus=ON \
@@ -53,17 +77,17 @@ ${COMPILE_SETTINGS_DEBUG_ARG:+${COMPILE_SETTINGS_DEBUG_ARG}} \
 -DPLUGIN_VICTIM_SELECTOR=ON \
 -DPLUGIN_PACKAGE_MANAGER=OFF \
 -DCMAKE_CXX_FLAGS="-fvisibility=default -DEXCEPTIONS_ENABLE=ON \
--I ${GITHUB_WORKSPACE}/Tests/mocks \
--I ${GITHUB_WORKSPACE}/Tests/mocks/thunder \
--I ${GITHUB_WORKSPACE}/helpers/Telemetry \
--include ${GITHUB_WORKSPACE}/Tests/mocks/Iarm.h \
--include ${GITHUB_WORKSPACE}/Tests/mocks/Rfc.h \
--include ${GITHUB_WORKSPACE}/Tests/mocks/RBus.h \
--include ${GITHUB_WORKSPACE}/Tests/mocks/Telemetry.h \
--include ${GITHUB_WORKSPACE}/Tests/mocks/Udev.h \
--include ${GITHUB_WORKSPACE}/Tests/mocks/pkg.h \
--include ${GITHUB_WORKSPACE}/Tests/mocks/maintenanceMGR.h \
--include ${GITHUB_WORKSPACE}/Tests/mocks/secure_wrappermock.h \
+-I ${COV_BUILD_SOURCE}/Tests/mocks \
+-I ${COV_BUILD_SOURCE}/Tests/mocks/thunder \
+-I ${COV_BUILD_SOURCE}/helpers/Telemetry \
+-include ${COV_BUILD_SOURCE}/Tests/mocks/Iarm.h \
+-include ${COV_BUILD_SOURCE}/Tests/mocks/Rfc.h \
+-include ${COV_BUILD_SOURCE}/Tests/mocks/RBus.h \
+-include ${COV_BUILD_SOURCE}/Tests/mocks/Telemetry.h \
+-include ${COV_BUILD_SOURCE}/Tests/mocks/Udev.h \
+-include ${COV_BUILD_SOURCE}/Tests/mocks/pkg.h \
+-include ${COV_BUILD_SOURCE}/Tests/mocks/maintenanceMGR.h \
+-include ${COV_BUILD_SOURCE}/Tests/mocks/secure_wrappermock.h \
 -Wall -Werror -Wno-error=format \
 -Wl,-wrap,system -Wl,-wrap,popen -Wl,-wrap,syslog \
 -DENABLE_TELEMETRY_LOGGING -DUSE_IARMBUS \
@@ -75,7 +99,7 @@ ${COMPILE_SETTINGS_DEBUG_ARG:+${COMPILE_SETTINGS_DEBUG_ARG}} \
 
 
 # Ensure generated Ninja compile rules cannot force hidden visibility.
-BUILD_DIR="${GITHUB_WORKSPACE}/build/entservices-appmanagers"
+BUILD_DIR="${COV_BUILD_SOURCE}/build/entservices-appmanagers"
 if [ -d "${BUILD_DIR}" ]; then
 	find "${BUILD_DIR}" -type f \( -name "*.ninja" -o -name "flags.make" \) | while read -r build_file; do
 		perl -pi -e 's/-fvisibility=hidden/-fvisibility=default/g' "${build_file}"
@@ -86,3 +110,4 @@ fi
 cmake --build build/entservices-appmanagers --target install
 echo "======================================================================================"
 exit 0
+
