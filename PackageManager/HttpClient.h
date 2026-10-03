@@ -34,7 +34,7 @@ class HttpClient {
         HttpClient();
         ~HttpClient();
 
-        Status downloadFile(const std::string & url, const std::string & fileName, uint32_t rateLimit = 0);
+        Status downloadFile(const std::string & url, const std::string & fileName, uint32_t rateLimit = 0, int directoryFd = -1);
 
         void pause() { curl_easy_pause(curl, CURLPAUSE_RECV | CURLPAUSE_SEND); }
         void resume() { curl_easy_pause(curl, CURLPAUSE_CONT); }
