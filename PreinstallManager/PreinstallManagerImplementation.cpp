@@ -220,6 +220,10 @@ namespace WPEFramework
         std::string base2 = (pos2 == std::string::npos) ? v2 : v2.substr(0, pos2);
 
         auto parseVersion = [](const std::string& version, int& major, int& minor, int& patch, int& build) -> bool {
+            if (version.empty() || version.front() == '.' || version.back() == '.')
+            {
+                return false;
+            }
             std::istringstream versionStream(version);
             std::string token;
             int components[4] = {0, 0, 0, 0};
