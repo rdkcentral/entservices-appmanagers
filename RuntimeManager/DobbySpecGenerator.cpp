@@ -475,7 +475,7 @@ Json::Value DobbySpecGenerator::createEnvVars(const ApplicationConfiguration& co
            env.append("WESTEROS_SINK_USE_ESSRMGR=1");
        }
    }	     
-
+#ifdef ENABLE_DIAL
    const bool dialEnabled = runtimeConfig.dial || hasCapability(capabilities, "dial-app");
    if (dialEnabled)
    {
@@ -496,7 +496,7 @@ Json::Value DobbySpecGenerator::createEnvVars(const ApplicationConfiguration& co
        env.append(std::string("ADDITIONAL_DATA_URL=") + dataUrl);
        env.append(std::string("DIAL_USN=") + mAIConfiguration->getDialUsn());
    }
-
+#endif // ENABLE_DIAL
    #ifdef ENABLE_RIALTO
    if (!config.mRialtoSocketPath.empty())
    {
