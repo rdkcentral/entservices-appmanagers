@@ -13,7 +13,7 @@ The **DownloadManager** plugin provides a dedicated HTTP download service with p
 - **HTTP Downloads**: Manage HTTP/HTTPS file downloads
 - **Priority Queuing**: Support priority and regular download queues
 - **Rate Limiting**: Enforce download rate limits per request
-- **Retry Logic**: Automatic retry with exponential backoff
+- **Retry Logic**: Automatic retries using the implementation's retry policy
 - **Progress Reporting**: Report download progress to subscribers
 
 ### Interacting Subsystems
@@ -54,7 +54,7 @@ graph TB
 
 ---
 
-## 3. Code Organization
+## 3. Code Organization (Folder & File-Level)
 
 ### Directory Structure
 
@@ -151,7 +151,28 @@ interface IDownloadManager {
 
 ---
 
-## 5. Internal Workflows
+## 5. Configuration & Build Integration
+
+The implementation declares `downloadDir` and `downloadId`; plugin settings include `mode`, `locator`, `autostart`, and `startuporder`. The checked-in [DownloadManager.config](DownloadManager.config) omits `downloadDir` and `downloadId` even though [DownloadManager.conf.in](DownloadManager.conf.in) declares them. [CMakeLists.txt](CMakeLists.txt) requires libcurl.
+
+### Plugin Configuration
+
+```cmake
+set (autostart false)
+set (preconditions Platform)
+set (callsign "org.rdk.DownloadManager")
+```
+
+### Runtime Configuration
+
+```json
+{
+    "downloadDir": "/tmp/downloads",
+    "downloadId": 1
+}
+```
+
+## 6. Internal Workflows & Execution Flow
 
 ### Download Processing Flow
 
@@ -181,41 +202,46 @@ sequenceDiagram
     DM->>Client: OnDownloadComplete
 ```
 
-### Retry Logic with Golden Ratio Backoff
+### Retry Behavior
+
+The implementation exposes retry-related options and reports download failures through `IDownloadManager`. Its current `nextRetryDuration` helper uses a golden-ratio multiplier for retry delays:
 
 ```cpp
-// Golden-ratio-based retry delay.
 int nextRetryDuration(int n) {
     const double goldenRatio = (1 + std::sqrt(5)) / 2.0;
     double next = n * goldenRatio;
     return static_cast<int>(std::round(next));
 }
-// Example: n=1 -> 2s, n=2 -> 3s, n=3 -> 5s, n=4 -> 6s
+```
+
+The exact scheduling and retry limits remain implementation details.
 
 ---
 
-## 6. Configuration
+## 7. Diagrams & Visual Aids
 
-### Plugin Configuration
-
-```cmake
-set (autostart false)
-set (preconditions Platform)
-set (callsign "org.rdk.DownloadManager")
+```mermaid
+classDiagram
+    class DownloadManagerImplementation
+    class DownloadInfo
+    class DownloadManagerHttpClient
+    DownloadManagerImplementation --> DownloadInfo : queues
+    DownloadManagerImplementation --> DownloadManagerHttpClient : owns
+    DownloadManagerImplementation ..|> IDownloadManager
 ```
 
-### Runtime Configuration
-
-```json
-{
-    "downloadDir": "/tmp/downloads",
-    "downloadId": 1
-}
+```mermaid
+stateDiagram-v2
+    [*] --> Stopped
+    Stopped --> Running: Initialize
+    Queued --> Active: worker selects
+    Active --> Active: retry/backoff
+    Active --> Completed: success
+    Active --> Cancelled: cancel
+    Running --> Stopped: Deinitialize and join
 ```
 
----
-
-## 7. Testing
+## 8. Testing & Quality Analysis
 
 ### Existing Tests
 
@@ -227,3 +253,11 @@ Located in `Tests/L1Tests/tests/test_DownloadManager.cpp`
 | Priority | Priority queue handling |
 | Cancel | Download cancellation |
 | Progress | Progress reporting |
+
+L0 coverage also covers lifecycle, implementation, HTTP client, telemetry, retry/queue, and shutdown behavior under [Tests/L0Tests/DownloadManager](../Tests/L0Tests/DownloadManager); L1 coverage exists. Add tests for worker-start failure, concurrent cancel/completion, retry exhaustion, and configuration parity.
+
+## 9. Beginner-to-Expert Teaching Mode
+
+**Must know first:** understand producer/consumer queues, the downloader worker, download id versus file locator, and notification delivery.
+
+**Advanced path:** inspect queue locking, cancellation visibility, rate limiting, retry backoff, libcurl error mapping, and shutdown lifetime.
