@@ -27,6 +27,8 @@ namespace WPEFramework
 {
     namespace {
         constexpr int kRialtoTimeoutMillis = 5000;
+        // Hardcoded PlaybackInfo timer interval (in milliseconds) for now.
+        constexpr uint32_t kPlaybackInfoTimerMs = 250;
     }
 
     bool RialtoConnector::initialize()
@@ -74,9 +76,12 @@ namespace WPEFramework
         if (!callsign.empty() && !displayName.empty() && ! appId.empty())
         {
             #ifndef ENABLE_RIALTO_CONTROL
-            firebolt::rialto::common::AppConfig config = {appId, displayName};
+            firebolt::rialto::common::AppConfig config = {appId, displayName, kPlaybackInfoTimerMs};
             #else
-           firebolt::rialto::common::AppConfig config = {"", displayName};
+           firebolt::rialto::common::AppConfig config;
+           config.clientIpcSocketName = "";
+           config.clientDisplayName = displayName;
+           config.playbackInfoTimerMs = kPlaybackInfoTimerMs;
             #endif
            return mServerManagerService ->initiateApplication(callsign,
                                                            RialtoServerStates::ACTIVE,
