@@ -1499,7 +1499,7 @@ namespace WPEFramework
 	    }
             else
             {
-                LOGINFO("Skipping WebInspector attach for container %s (debugger not requested)", name.c_str());
+		 LOGINFO("Skipping WebInspector attach for container %s (debuggerEnabled=%d, webInspectorEnabled=%d)", name.c_str(), debuggerEnabled, webInspectorEnabled);
             }
 #endif
             dispatchEvent(RuntimeManagerImplementation::RuntimeEventType::RUNTIME_MANAGER_EVENT_CONTAINERSTARTED, data);
