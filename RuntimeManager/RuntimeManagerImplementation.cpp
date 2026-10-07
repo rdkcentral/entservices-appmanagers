@@ -613,6 +613,13 @@ namespace WPEFramework
         }
         Core::hresult RuntimeManagerImplementation::Run(const string &appId, const string &appInstanceId, const uint32_t userId, const uint32_t groupId, IValueIterator *const &ports, IStringIterator *const &paths, IStringIterator *const &debugSettings, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject)
         {
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED
+            LOGDBG("[ralf-debug] RALF_PACKAGE_SUPPORT_ENABLED is compiled in");
+#else
+            LOGDBG("[ralf-debug] RALF_PACKAGE_SUPPORT_ENABLED is NOT compiled in");
+#endif // RALF_PACKAGE_SUPPORT_ENABLED
+            LOGDBG("[ralf-debug] Run received appId='%s' instance='%s' ralfPkgPath='%s'", appId.c_str(),
+                appInstanceId.c_str(), runtimeConfigObject.ralfPkgPath.c_str());
             Core::hresult status = Core::ERROR_GENERAL;
             RuntimeAppInfo runtimeAppInfo;
             std::string xdgRuntimeDir = "";
@@ -649,6 +656,8 @@ namespace WPEFramework
             }
 
             const bool ralfInstance = isRalfPackage(runtimeConfigObject);
+            LOGDBG("[ralf-debug] Run selected %s container flow for appId='%s'", ralfInstance ? "RALF" : "legacy",
+                appId.c_str());
 
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
             /* RALF containers all share the single 'ralf' user; widgets keep the per-app

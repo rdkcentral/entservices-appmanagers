@@ -28,7 +28,7 @@ set(PLUGIN_RUNTIME_CONFIG_FILE "" CACHE STRING "Path to the runtime config YAML 
 set(PLUGIN_RUNTIME_MANAGER_BASEOCISPEC "../resources/oci-base-spec.json" CACHE STRING "Bare minimum OCI spec for runtime manager")
 
 option(AIMANAGERS_TELEMETRY_METRICS_SUPPORT "AIMANAGERS_TELEMETRY_METRICS_SUPPORT" OFF)
-option (RALF_PACKAGE_SUPPORT "Enable Ralf Package Support in Runtime Manager" OFF)
+option (RALF_PACKAGE_SUPPORT "Enable Ralf Package Support in Runtime Manager" ON)
 option(ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG  "ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG" OFF)
 
 add_definitions(-DRUNTIME_MANAGER_API_VERSION_NUMBER_MAJOR=1)

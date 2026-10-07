@@ -284,6 +284,8 @@ namespace WPEFramework
 
                             appendLaunchParametersEnv(launchArgs, runtimeConfigObject);
 
+                            LOGDBG("[ralf-debug] SpawnApp handoff for %s ralfPkgPath='%s'", appId.c_str(),
+                                runtimeConfigObject.ralfPkgPath.c_str());
                             LOGINFO("spawnApp called ,state %u",state);
                             status = mLifecycleManagerRemoteObject->SpawnApp(appId, intent, state, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success);
 

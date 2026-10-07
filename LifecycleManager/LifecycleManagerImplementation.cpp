@@ -261,6 +261,7 @@ namespace WPEFramework
         
         Core::hresult LifecycleManagerImplementation::SpawnApp(const string& appId, const string& launchIntent, const LifecycleState targetLifecycleState, const WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject, const string& launchArgs, string& appInstanceId, string& errorReason, bool& success)
         {
+        LOGDBG("[ralf-debug] SpawnApp received appId='%s' ralfPkgPath='%s'", appId.c_str(), runtimeConfigObject.ralfPkgPath.c_str());
 	    // Launches an app.  This will be an asynchronous call.
             // Notifies appropriate API Gateway when an app is about to be loaded
             // Lifecycle manager will create the appInstanceId once the app is loaded.  Ripple is responsible for creating a token. 

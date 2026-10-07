@@ -202,6 +202,8 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                             runtimeConfig.groupId = packageData.groupId;
 #endif // RALF_PACKAGE_SUPPORT_ENABLED
                             getCustomValues(runtimeConfig);
+                            LOGDBG("[ralf-debug] Launch runtime config for %s:%s ralfPkgPath='%s'", appId.c_str(),
+                                packageData.version.c_str(), runtimeConfig.ralfPkgPath.c_str());
                             string launchArgs = appRequestParam->launchArgs;
 
                             if (action == APP_ACTION_LAUNCH)

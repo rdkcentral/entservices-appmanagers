@@ -818,6 +818,8 @@ namespace Plugin {
 
                 LOGDBG("Locked. id: %s ver: %s lock count:%d additionalLocks=%zu", packageId.c_str(), version.c_str(), state.mLockCount, state.additionalLocks.size());
                 getRuntimeConfig(state.runtimeConfig, runtimeConfig);
+                LOGDBG("[ralf-debug] Lock runtime config for %s:%s ralfPkgPath='%s'", packageId.c_str(), version.c_str(),
+                    runtimeConfig.ralfPkgPath.c_str());
                 if (1 == state.mLockCount) {
                     state.unpackedPath = unpackedPath;
                 } else {
