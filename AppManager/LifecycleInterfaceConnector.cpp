@@ -205,7 +205,6 @@ namespace WPEFramework
             }
 
             envArr.append(std::string("APPLICATION_LAUNCH_PARAMETERS=") + LifecycleInterfaceConnector::base64Encode(sanitizedLaunchArgs));
-            envArr.append(std::string("APPLICATION_LAUNCH_METHOD=") + launchMethodFromPayload(sanitizedLaunchArgs));
 
             Json::StreamWriterBuilder w;
             w["indentation"] = "";
