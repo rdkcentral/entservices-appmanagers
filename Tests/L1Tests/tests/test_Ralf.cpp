@@ -592,14 +592,14 @@ TEST_F(RalfParseRalPkgInfoTest, ParseRalPkgInfo_MissingPackagesField)
 }
 
 /* Test Case: ParseRalPkgInfo_EmptyPackagesArray
- * Verifies that an empty packages array succeeds with zero packages.
+ * Verifies that an empty packages array is rejected as non-launchable.
  */
 TEST_F(RalfParseRalPkgInfoTest, ParseRalPkgInfo_EmptyPackagesArray)
 {
     TEST_LOG("Testing parseRalPkgInfo with empty packages array");
     std::vector<ralf::RalfPkgInfoPair> packages;
     bool result = ralf::parseRalPkgInfo(mEmptyPackagesFile, packages);
-    EXPECT_TRUE(result);
+    EXPECT_FALSE(result);
     EXPECT_TRUE(packages.empty());
 }
 

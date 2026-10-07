@@ -321,18 +321,49 @@ namespace ralf
     bool parseRalPkgInfo(const std::string &configFilePath, std::vector<RalfPkgInfoPair> &packages)
     {
         Json::Value root;
-        JsonFromFile(configFilePath, root);
-        if (!root.isMember("packages"))
+        if (!JsonFromFile(configFilePath, root))
         {
-            LOGERR("Ralf package config JSON does not contain 'packages' field\n");
+            LOGERR("Failed to load Ralf package config JSON: %s", configFilePath.c_str());
             return false;
         }
-        for (Json::Value::ArrayIndex i = 0; i < root["packages"].size(); ++i)
+
+        if (!root.isObject() || !root.isMember("packages") || !root["packages"].isArray())
         {
-            std::string configData = root["packages"][i]["pkgMetaDataPath"].asString();
-            std::string mountPath = root["packages"][i]["pkgMountPath"].asString();
-            packages.push_back(std::make_pair(configData, mountPath));
+            LOGERR("Ralf package config JSON does not contain a valid 'packages' array");
+            return false;
         }
+
+        const Json::Value& packageEntries = root["packages"];
+        if (0 == packageEntries.size())
+        {
+            LOGERR("Ralf package config JSON contains no package layers");
+            return false;
+        }
+
+        std::vector<RalfPkgInfoPair> parsedPackages;
+        parsedPackages.reserve(packageEntries.size());
+        for (Json::Value::ArrayIndex i = 0; i < packageEntries.size(); ++i)
+        {
+            const Json::Value& entry = packageEntries[i];
+            if (!entry.isObject() || !entry.isMember("pkgMetaDataPath") || !entry["pkgMetaDataPath"].isString() ||
+                !entry.isMember("pkgMountPath") || !entry["pkgMountPath"].isString())
+            {
+                LOGERR("Ralf package config JSON contains an invalid package entry at index %u", i);
+                return false;
+            }
+
+            const std::string configData = entry["pkgMetaDataPath"].asString();
+            const std::string mountPath = entry["pkgMountPath"].asString();
+            if (configData.empty() || mountPath.empty())
+            {
+                LOGERR("Ralf package config JSON contains an empty metadata or mount path at index %u", i);
+                return false;
+            }
+
+            parsedPackages.push_back(std::make_pair(configData, mountPath));
+        }
+
+        packages.insert(packages.end(), parsedPackages.begin(), parsedPackages.end());
         return true;
     }
 

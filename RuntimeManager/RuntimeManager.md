@@ -26,6 +26,23 @@ The **RuntimeManager** plugin manages application execution through OCI-complian
 | OCIContainer (Dobby) | COM-RPC (outbound) | Executes container operations |
 | AppStorageManager | COM-RPC (outbound) | Gets application storage paths |
 
+### RALF Package Launch
+
+When RALF support is built in, `Run()` selects the RALF flow only when the
+runtime configuration contains a non-empty `ralfPkgPath`. The normal widget
+flow remains the default: it uses `DobbySpecGenerator` and starts from the
+legacy unpacked package path. RALF uses `RalfPackageBuilder` to read the
+PackageManager mount manifest, assemble the package-layer overlay and generate
+the RALF OCI configuration; the generated rootfs path is passed to
+`IOCIContainer::StartContainer`. Both paths continue to share display setup,
+container lifecycle notifications and AppStorageManager integration.
+
+PackageManager owns RALF verification, installation and package mounts. It
+provides RuntimeManager a neutral manifest of package rootfs paths and the
+associated RDK `config.json` files. The RALF builder unmounts its per-instance
+overlay on stop/failure, while PackageManager releases its package/dependency
+locks through the normal unlock lifecycle.
+
 ### What It Does NOT Do
 
 - Does not manage application lifecycle state machine (handled by LifecycleManager)
@@ -48,6 +65,7 @@ graph TB
         WMC[WindowManagerConnector<br/>Display Bridge]
         UIM[UserIdManager<br/>UID/GID Management]
         AIC[AIConfiguration<br/>YAML Config Loader]
+        RPB[RalfPackageBuilder<br/>RALF OCI Rootfs/Spec]
     end
 
     subgraph "External Services"
@@ -62,6 +80,7 @@ graph TB
     Impl --> WMC
     Impl --> UIM
     Impl --> AIC
+    Impl -->|non-empty ralfPkgPath| RPB
     DEL --> OCI
     WMC --> WM
     Impl --> ASM

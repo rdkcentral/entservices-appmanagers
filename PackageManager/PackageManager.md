@@ -30,6 +30,28 @@ The **PackageManager** plugin provides comprehensive package management capabili
 - Does not run containers (handled by RuntimeManager)
 - Does not manage application-specific data (handled by AppStorageManager)
 
+### RALF package boundary
+
+The plugin delegates package verification, persistence, and package-content
+mounting to its linked `libPackage` implementation. A RALF-capable provider
+uses the same persistent repository slot as widgets, `<packages.storageDir>/<appId>/package.wgt`;
+the filename does not imply ZIP content. The provider detects the format from
+package bytes and returns its RALF package-root manifest in
+`RuntimeConfig.ralfPkgPath` when the package is locked.
+
+`PackageManagerImplementation` forwards that field without changing the
+existing lock/unlock API. An empty `ralfPkgPath` continues to identify the
+legacy widget path; a non-empty value is consumed by a RuntimeManager built
+with `RALF_PACKAGE_SUPPORT=ON`. RuntimeManager cleans up only its per-instance
+overlay, while package-root mount lifetime remains owned by the normal
+PackageManager lock/unlock lifecycle. Thus enabling RALF launch support does
+not change widget storage names or lock semantics.
+
+`USE_LIBPACKAGE_RALF` is not the RALF format-support switch. It enables the
+generic `libPackage` backend's extra runtime-companion lock behavior. Keep it
+disabled for the Sky `libPackage` backend, which resolves that dependency as
+part of its own lock operation.
+
 ---
 
 ## 2. Architectural Overview

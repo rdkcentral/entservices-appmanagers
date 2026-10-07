@@ -145,7 +145,8 @@ extern uint32_t Test_Ralf_JsonFromFile_EmptyFileReturnsFalse();
 extern uint32_t Test_Ralf_ParseRalPkgInfo_NonExistentFileReturnsFalse();
 extern uint32_t Test_Ralf_ParseRalPkgInfo_MissingPackagesFieldReturnsFalse();
 extern uint32_t Test_Ralf_ParseRalPkgInfo_ValidPackagesFileReturnsTrue();
-extern uint32_t Test_Ralf_ParseRalPkgInfo_EmptyPackagesArraySucceeds();
+extern uint32_t Test_Ralf_ParseRalPkgInfo_EmptyPackagesArrayReturnsFalse();
+extern uint32_t Test_Ralf_ParseRalPkgInfo_InvalidEntryDoesNotPartiallyAppend();
 extern uint32_t Test_Ralf_GetDevNodeMajorMinor_NonExistentNodeReturnsFalse();
 extern uint32_t Test_Ralf_GetDevNodeMajorMinor_DevNullReturnsTrue();
 extern uint32_t Test_Ralf_GetGroupId_UnknownGroupReturnsFalse();
@@ -483,7 +484,8 @@ int main()
         { "Ralf_ParseRalPkgInfo_NonExistentFileReturnsFalse",                        Test_Ralf_ParseRalPkgInfo_NonExistentFileReturnsFalse },
         { "Ralf_ParseRalPkgInfo_MissingPackagesFieldReturnsFalse",                   Test_Ralf_ParseRalPkgInfo_MissingPackagesFieldReturnsFalse },
         { "Ralf_ParseRalPkgInfo_ValidPackagesFileReturnsTrue",                       Test_Ralf_ParseRalPkgInfo_ValidPackagesFileReturnsTrue },
-        { "Ralf_ParseRalPkgInfo_EmptyPackagesArraySucceeds",                         Test_Ralf_ParseRalPkgInfo_EmptyPackagesArraySucceeds },
+        { "Ralf_ParseRalPkgInfo_EmptyPackagesArrayReturnsFalse",                     Test_Ralf_ParseRalPkgInfo_EmptyPackagesArrayReturnsFalse },
+        { "Ralf_ParseRalPkgInfo_InvalidEntryDoesNotPartiallyAppend",                 Test_Ralf_ParseRalPkgInfo_InvalidEntryDoesNotPartiallyAppend },
         { "Ralf_GetDevNodeMajorMinor_NonExistentNodeReturnsFalse",                   Test_Ralf_GetDevNodeMajorMinor_NonExistentNodeReturnsFalse },
         { "Ralf_GetDevNodeMajorMinor_DevNullReturnsTrue",                            Test_Ralf_GetDevNodeMajorMinor_DevNullReturnsTrue },
         { "Ralf_GetGroupId_UnknownGroupReturnsFalse",                                Test_Ralf_GetGroupId_UnknownGroupReturnsFalse },

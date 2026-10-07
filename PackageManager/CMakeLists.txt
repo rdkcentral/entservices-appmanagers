@@ -20,7 +20,10 @@ set(PLUGIN_NAME AppPackageManager)
 set(MODULE_NAME ${NAMESPACE}${PLUGIN_NAME})
 message("Setup ${MODULE_NAME}")
 
-option(USE_LIBPACKAGE_RALF "USE_LIBPACKAGE_RALF" OFF)
+# Enables legacy generic-libPackage runtime companion locking semantics. This is
+# not the RALF format-support switch; Sky's RALF-capable libPackage resolves its
+# runtime dependency itself, so keep this OFF for that backend.
+option(USE_LIBPACKAGE_RALF "Enable generic libPackage RALF runtime-lock behavior" OFF)
 option(ENABLE_UNIT_TESTS "Enable unit tests" OFF)
 option(ENABLE_INSTALL_WHILE_LOCKED "Allow package install while app version is locked" OFF)
 option(DEFER_CACHE_INIT "Defer package cache initialization to runtime (use StartCacheInitialization())" OFF)

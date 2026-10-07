@@ -633,6 +633,16 @@ uint32_t Test_PM_Impl_GetConfigForPackageSuccessPath()
                         fx.impl->GetConfigForPackage("/tmp/fake.pkg", id, version, cfg),
                         ERROR_NONE,
                         "GetConfigForPackage() with non-empty locator returns ERROR_NONE in UNIT_TEST path");
+    L0Test::ExpectTrue(tr, cfg.ralfPkgPath.empty(),
+                       "legacy package metadata leaves the RALF mount manifest empty");
+
+    WPEFramework::Exchange::RuntimeConfig ralfCfg {};
+    L0Test::ExpectEqU32(tr,
+                        fx.impl->GetConfigForPackage("/tmp/ralf-metadata.json", id, version, ralfCfg),
+                        ERROR_NONE,
+                        "GetConfigForPackage() accepts RALF package metadata");
+    L0Test::ExpectEqStr(tr, ralfCfg.ralfPkgPath, "/tmp/ralf-metadata.json",
+                        "PackageManager forwards the RALF mount manifest to RuntimeConfig");
 
     return tr.failures;
 }

@@ -648,11 +648,11 @@ uint32_t Test_Ralf_ParseRalPkgInfo_ValidPackagesFileReturnsTrue()
     return tr.failures;
 }
 
-/* Test_Ralf_ParseRalPkgInfo_EmptyPackagesArraySucceeds
+/* Test_Ralf_ParseRalPkgInfo_EmptyPackagesArrayReturnsFalse
  *
- * Verifies that parseRalPkgInfo() handles an empty packages array gracefully.
+ * An empty package list cannot produce a launchable RALF rootfs and must be rejected.
  */
-uint32_t Test_Ralf_ParseRalPkgInfo_EmptyPackagesArraySucceeds()
+uint32_t Test_Ralf_ParseRalPkgInfo_EmptyPackagesArrayReturnsFalse()
 {
     L0Test::TestResult tr;
 
@@ -661,10 +661,40 @@ uint32_t Test_Ralf_ParseRalPkgInfo_EmptyPackagesArraySucceeds()
 
     std::vector<ralf::RalfPkgInfoPair> packages;
     const bool result = ralf::parseRalPkgInfo(tmpPath, packages);
-    L0Test::ExpectTrue(tr, result,
-                       "parseRalPkgInfo() returns true for empty packages array");
+    L0Test::ExpectTrue(tr, !result,
+                       "parseRalPkgInfo() rejects an empty packages array");
     L0Test::ExpectEqU32(tr, static_cast<uint32_t>(packages.size()), 0u,
-                        "parseRalPkgInfo() produces empty vector for empty array");
+                        "parseRalPkgInfo() leaves the output empty for empty array");
+
+    ::remove(tmpPath.c_str());
+
+    return tr.failures;
+}
+
+/* Test_Ralf_ParseRalPkgInfo_InvalidEntryDoesNotPartiallyAppend
+ *
+ * Verifies malformed entries are rejected without changing pre-existing output.
+ */
+uint32_t Test_Ralf_ParseRalPkgInfo_InvalidEntryDoesNotPartiallyAppend()
+{
+    L0Test::TestResult tr;
+
+    const std::string tmpPath = "/tmp/ralf_l0test_invalid_entry.json";
+    WriteFile(tmpPath,
+        "{"
+        "  \"packages\": ["
+        "    {\"pkgMetaDataPath\": \"/pkg/meta/app.json\", \"pkgMountPath\": \"/mnt/app\"},"
+        "    {\"pkgMetaDataPath\": 123, \"pkgMountPath\": \"/mnt/runtime\"}"
+        "  ]"
+        "}");
+
+    std::vector<ralf::RalfPkgInfoPair> packages;
+    packages.emplace_back("/existing/meta.json", "/existing/mount");
+    const bool result = ralf::parseRalPkgInfo(tmpPath, packages);
+    L0Test::ExpectTrue(tr, !result,
+                       "parseRalPkgInfo() rejects an entry with a non-string path");
+    L0Test::ExpectEqU32(tr, static_cast<uint32_t>(packages.size()), 1u,
+                        "parseRalPkgInfo() does not partially append invalid entries");
 
     ::remove(tmpPath.c_str());
 
