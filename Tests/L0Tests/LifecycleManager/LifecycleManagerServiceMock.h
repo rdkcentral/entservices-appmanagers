@@ -23,6 +23,7 @@
 #include <cstdint>
 #include <functional>
 #include <string>
+#include <vector>
 
 #include <core/core.h>
 #include <plugins/plugins.h>
@@ -471,6 +472,7 @@ public:
         const WPEFramework::Exchange::ILifecycleManager::LifecycleState newState,
         const std::string& navigationIntent) override
     {
+        transitions.emplace_back(oldState, newState);
         onStateChangedCount++;
         lastAppId = appId;
         lastAppInstanceId = appInstanceId;
@@ -486,6 +488,8 @@ public:
     WPEFramework::Exchange::ILifecycleManager::LifecycleState lastOldState {};
     WPEFramework::Exchange::ILifecycleManager::LifecycleState lastNewState {};
     std::string lastNavigationIntent;
+    std::vector<std::pair<WPEFramework::Exchange::ILifecycleManager::LifecycleState,
+                          WPEFramework::Exchange::ILifecycleManager::LifecycleState>> transitions;
 };
 
 // ──────────────────────────────────────────────────────────────────────────────
