@@ -209,6 +209,9 @@ namespace WPEFramework
                 bool isOCIPluginObjectValid(void);
                 Exchange::IRuntimeManager::RuntimeState getRuntimeState(const string& appInstanceId);
                 Core::hresult getAppStorageInfo(const string& appId, AppStorageInfo& appStorageInfo);
+#ifdef RDK_APPMANAGERS_DEBUG
+                void detachWebInspectorForContainer(const std::string& name);
+#endif
 
             private: /* members */
                 mutable Core::CriticalSection mRuntimeManagerImplLock;

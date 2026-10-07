@@ -952,7 +952,7 @@ namespace Plugin {
 
         runtimeConfig.logLevels = config.logLevels;
         runtimeConfig.logFilePath = config.logFilePath;
-        runtimeConfig.enableDebugger = config.enableDebugger;
+        runtimeConfig.enableDebugger = false;
         runtimeConfig.logFileMaxSize = 0;
         runtimeConfig.mapi = false;
         runtimeConfig.resourceManagerClientEnabled = false;

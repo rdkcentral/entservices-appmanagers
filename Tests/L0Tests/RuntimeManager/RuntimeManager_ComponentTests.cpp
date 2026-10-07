@@ -1881,6 +1881,61 @@ uint32_t Test_DobbySpecGenerator_GenerateWithEnvVariablesInRuntimeConfig()
     return tr.failures;
 }
 
+/* Test_DobbySpecGenerator_GenerateInjectsWebInspectorEnvWhenDebuggerEnabled
+ *
+ * Verifies WEBKIT legacy inspector env is injected for runtime-html when
+ * enableDebugger is true.
+ */
+uint32_t Test_DobbySpecGenerator_GenerateInjectsWebInspectorEnvWhenDebuggerEnabled()
+{
+    L0Test::TestResult tr;
+
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    auto appCfg = MakeValidAppConfig();
+    auto rtCfg  = MakeValidRuntimeConfig();
+    rtCfg.enableDebugger = true;
+    rtCfg.capabilities = "runtime-html";
+    std::string spec;
+
+    const bool result = gen.generate(appCfg, rtCfg, spec);
+    L0Test::ExpectTrue(tr, result,
+                       "generate() succeeds for runtime-html with debugger enabled");
+#ifdef RDK_APPMANAGERS_DEBUG
+    L0Test::ExpectTrue(tr, spec.find("WEBKIT_LEGACY_INSPECTOR_SERVER=0.0.0.0:22222") != std::string::npos,
+                       "WebInspector env is injected when debugger is enabled for runtime-html");
+#else
+    L0Test::ExpectTrue(tr, spec.find("WEBKIT_LEGACY_INSPECTOR_SERVER=0.0.0.0:22222") == std::string::npos,
+                       "WebInspector env is not injected when debug build flag is disabled");
+#endif
+
+    return tr.failures;
+}
+
+/* Test_DobbySpecGenerator_GenerateSkipsWebInspectorEnvWhenDebuggerDisabled
+ *
+ * Verifies WEBKIT legacy inspector env is not injected when enableDebugger
+ * is false, even for runtime-html.
+ */
+uint32_t Test_DobbySpecGenerator_GenerateSkipsWebInspectorEnvWhenDebuggerDisabled()
+{
+    L0Test::TestResult tr;
+
+    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    auto appCfg = MakeValidAppConfig();
+    auto rtCfg  = MakeValidRuntimeConfig();
+    rtCfg.enableDebugger = false;
+    rtCfg.capabilities = "runtime-html";
+    std::string spec;
+
+    const bool result = gen.generate(appCfg, rtCfg, spec);
+    L0Test::ExpectTrue(tr, result,
+                       "generate() succeeds for runtime-html with debugger disabled");
+    L0Test::ExpectTrue(tr, spec.find("WEBKIT_LEGACY_INSPECTOR_SERVER=0.0.0.0:22222") == std::string::npos,
+                       "WebInspector env is not injected when debugger is disabled");
+
+    return tr.failures;
+}
+
 /* Test_DobbySpecGenerator_GenerateThunderPluginFromCapabilities
  *
  * Verifies thunder plugin generation can be driven by RuntimeConfig.capabilities

@@ -209,17 +209,17 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                             if (launchArgsObj.HasLabel("debugger"))
                             {
                                 const JsonValue debuggerValue = launchArgsObj["debugger"];
-                                if (debuggerValue.Content() == JsonValue::type::BOOLEAN)
+                                if (JsonValue::type::BOOLEAN == debuggerValue.Content())
                                 {
                                     debugLaunchRequested = debuggerValue.Boolean();
                                 }
-                                else if (debuggerValue.Content() == JsonValue::type::STRING)
+                                else if (JsonValue::type::STRING == debuggerValue.Content())
                                 {
                                     const std::string debuggerToken = debuggerValue.String();
                                     debugLaunchRequested = (!debuggerToken.empty() && (debuggerToken != "false") && (debuggerToken != "0"));
                                 }
                             }
-                            runtimeConfig.enableDebugger = runtimeConfig.enableDebugger || debugLaunchRequested;
+                            runtimeConfig.enableDebugger = debugLaunchRequested;
                             if (debugLaunchRequested)
                             {
                                 LOGINFO("Debugger launch requested for appId=%s", appId.c_str());
