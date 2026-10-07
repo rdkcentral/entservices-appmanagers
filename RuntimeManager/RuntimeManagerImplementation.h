@@ -210,7 +210,7 @@ namespace WPEFramework
                 Exchange::IRuntimeManager::RuntimeState getRuntimeState(const string& appInstanceId);
                 Core::hresult getAppStorageInfo(const string& appId, AppStorageInfo& appStorageInfo);
 #ifdef RDK_APPMANAGERS_DEBUG
-                void detachWebInspectorForContainer(const std::string& name);
+                void detachWebInspectorForContainer(const std::string& name, const JsonObject& data);
 #endif
 
             private: /* members */

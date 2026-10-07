@@ -1456,9 +1456,8 @@ namespace WPEFramework
                     ip_addr.s_addr = addr;
                     LOGINFO("Container %s started with IP address: %s", name.c_str(), inet_ntoa(ip_addr));
 
-                    uint16_t debugPort = 0;
-		    {
                         Core::SafeSyncType<Core::CriticalSection> lock(mWebInspectorLock);
+                        uint16_t debugPort = 0;
 
                         for (uint16_t port = 2000; port <= 2100; ++port)
                         {
@@ -1469,20 +1468,17 @@ namespace WPEFramework
                                 break;
                             }
                         }
-		    }
 
                     if (debugPort != 0)
                     {
                         auto webInspector = WebInspector::attach(name, addr, debugPort);
                         if (webInspector)
                         {
-                            Core::SafeSyncType<Core::CriticalSection> lock(mWebInspectorLock);
                             mWebInspectors[inspectorKey] = std::move(webInspector);
                             LOGINFO("WebInspector attached for container %s (key=%s) on host port %d", name.c_str(), inspectorKey.c_str(), debugPort);
                         }
                         else
                         {
-                            Core::SafeSyncType<Core::CriticalSection> lock(mWebInspectorLock);
                             mPortAvailability[debugPort] = false;
                             LOGWARN("WebInspector::attach failed for container %s on port %d", name.c_str(), debugPort);
                         }
@@ -1506,7 +1502,7 @@ namespace WPEFramework
         }
 
 #ifdef RDK_APPMANAGERS_DEBUG
-        void RuntimeManagerImplementation::detachWebInspectorForContainer(const std::string& name)
+        void RuntimeManagerImplementation::detachWebInspectorForContainer(const std::string& name, const JsonObject& data)
         {
             const std::string eventContainerId = data.HasLabel("containerId") ? data["containerId"].String() : std::string();
             const std::string inspectorKey = eventContainerId.empty() ? name : eventContainerId;
@@ -1530,7 +1526,7 @@ namespace WPEFramework
         {
 
 #ifdef RDK_APPMANAGERS_DEBUG
-            detachWebInspectorForContainer(name);
+            detachWebInspectorForContainer(name, data);
 #endif
 
             dispatchEvent(RuntimeManagerImplementation::RuntimeEventType::RUNTIME_MANAGER_EVENT_CONTAINERSTOPPED, data);
@@ -1539,7 +1535,7 @@ namespace WPEFramework
         void RuntimeManagerImplementation::onOCIContainerFailureEvent(std::string name, JsonObject &data)
         {
 #ifdef RDK_APPMANAGERS_DEBUG
-            detachWebInspectorForContainer(name);
+            detachWebInspectorForContainer(name, data);
 #endif
             dispatchEvent(RuntimeManagerImplementation::RuntimeEventType::RUNTIME_MANAGER_EVENT_CONTAINERFAILED, data);
         }
