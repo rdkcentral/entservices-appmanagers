@@ -133,6 +133,11 @@ if(PLUGIN_RALF)
     # original source with JsonFromFile renamed to avoid duplicate symbols.
     list(FILTER RALF_SRC_FILES EXCLUDE REGEX "RalfSupport\\.cpp$")
     list(APPEND TEST_SRC tests/test_Ralf.cpp ${RALF_SRC_FILES} tests/RalfSupportStub.cpp)
+    if(NOT PLUGIN_RUNTIME_MANAGER)
+        list(APPEND TEST_SRC
+            ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/RuntimeManager/RuntimeConfiguration.cpp
+            ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers/RuntimeConfigPayload.cpp)
+    endif()
     list(APPEND TEST_INC
         ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/RuntimeManager
         ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/RuntimeManager/ralf
@@ -213,7 +218,7 @@ if(BUILD_L1_TESTS_SHARED_MODULE)
     endif()
 endif()
 
-target_link_libraries(${TEST_RUNNER_NAME} gtest_main gmock gtest ${TEST_LIB})
+target_link_libraries(${TEST_RUNNER_NAME} gtest_main gmock gtest ${TEST_LIB} AppManagersHelpers)
 
 target_compile_definitions(${TEST_RUNNER_NAME} PRIVATE UNIT_TEST)
 

@@ -12,7 +12,8 @@ AppManager is the primary entry point for application lifecycle management on RD
 - Provide JSON-RPC API for launching, closing, terminating, and killing applications
 - Maintain an in-memory map of loaded applications and their current lifecycle states
 - Lock packages via PackageManager before launching an app and unlock on close/terminate
-- Forward launch/close/terminate/kill requests to LifecycleManager
+- Treat package runtime configuration as a flat opaque JSON string; set `unpackedPath`, append `launchArgs.env` strings to the `envVariables` array, and preserve unknown properties
+- Forward the enriched payload and launch/close/terminate/kill requests to LifecycleManager
 - Propagate state change notifications received from LifecycleManager to JSON-RPC clients
 - Support querying of loaded apps and per-app state via `GetLoadedApps` and `GetAppState`
 - Support get/set of application-specific properties via PersistentStore
@@ -65,7 +66,8 @@ Client (JSON-RPC)
 AppManager::Notify()
     ↓
 AppManagerImplementation::LaunchApp()
-    ├→ PackageManager::Lock()         →  Get unpackedPath, config
+    ├→ PackageManager::Lock()         →  Get opaque JSON payload
+    ├→ Set unpackedPath; append launch env array entries
     ├→ LifecycleInterfaceConnector::Launch()
     │   └→ LifecycleManager::SpawnApp()
     │       └→ RuntimeManager::Run()

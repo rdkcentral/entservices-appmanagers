@@ -171,7 +171,7 @@ uint32_t Test_Comp_PIM_StartPreinstallInvalidDirectoryFails()
     // GetConfigForPackage would succeed, but the directory won't be opened.
     installer.getConfigHandler = [](const std::string&, std::string& id,
                                      std::string& version,
-                                     WPEFramework::Exchange::RuntimeConfig&) {
+                                     std::string&) {
         id      = "testapp";
         version = "1.0.0";
         return WPEFramework::Core::ERROR_NONE;
@@ -265,7 +265,7 @@ uint32_t Test_Comp_PIM_StartPreinstallAlreadyInProgressReturnsError()
     L0Test::FakePackageInstaller installer;
     installer.getConfigHandler = [](const std::string&, std::string& id,
                                      std::string& version,
-                                     WPEFramework::Exchange::RuntimeConfig&) {
+                                     std::string&) {
         id      = "myapp";
         version = "1.0.0";
         return WPEFramework::Core::ERROR_NONE;
@@ -335,7 +335,7 @@ uint32_t Test_Comp_PIM_StartPreinstallForceInstallAllPackages()
     L0Test::FakePackageInstaller installer;
     installer.getConfigHandler = [&](const std::string& locator, std::string& id,
                                       std::string& version,
-                                      WPEFramework::Exchange::RuntimeConfig&) {
+                                      std::string&) {
         getConfigCount++;
         // Use the directory name as packageId.
         const auto slash = locator.rfind('/');
@@ -402,7 +402,7 @@ uint32_t Test_Comp_PIM_StartPreinstallFiltersOlderVersionWhenNotForce()
     // GetConfigForPackage returns version 1.5.0 for the preinstall package.
     installer.getConfigHandler = [](const std::string&, std::string& id,
                                      std::string& version,
-                                     WPEFramework::Exchange::RuntimeConfig&) {
+                                     std::string&) {
         id      = "myapp";
         version = "1.5.0"; // older than the installed version
         return WPEFramework::Core::ERROR_NONE;
@@ -473,7 +473,7 @@ uint32_t Test_Comp_PIM_StartPreinstallInstallsNewerVersionWhenNotForce()
     // GetConfigForPackage returns version 3.0.0 — newer than installed.
     installer.getConfigHandler = [](const std::string&, std::string& id,
                                      std::string& version,
-                                     WPEFramework::Exchange::RuntimeConfig&) {
+                                     std::string&) {
         id      = "myapp";
         version = "3.0.0"; // newer than installed
         return WPEFramework::Core::ERROR_NONE;
@@ -537,7 +537,7 @@ uint32_t Test_Comp_PIM_StartPreinstallEqualVersionFilteredSendsCompletionEvent()
     L0Test::FakePackageInstaller installer;
     installer.getConfigHandler = [](const std::string&, std::string& id,
                                      std::string& version,
-                                     WPEFramework::Exchange::RuntimeConfig&) {
+                                     std::string&) {
         id      = "myapp";
         version = "1.0.0"; // same as installed
         return WPEFramework::Core::ERROR_NONE;
@@ -602,7 +602,7 @@ uint32_t Test_Comp_PIM_InstallPackagesWithInvalidFieldsSkipsPackage()
     // GetConfigForPackage returns ERROR_GENERAL → packageId and version stay empty.
     installer.getConfigHandler = [](const std::string&, std::string& id,
                                      std::string& /*version*/,
-                                     WPEFramework::Exchange::RuntimeConfig&) {
+                                     std::string&) {
         id = ""; // empty packageId
         return WPEFramework::Core::ERROR_GENERAL;
     };
@@ -654,7 +654,7 @@ uint32_t Test_Comp_PIM_InstallPackagesHandlesInstallFailure()
     L0Test::FakePackageInstaller installer;
     installer.getConfigHandler = [](const std::string&, std::string& id,
                                      std::string& version,
-                                     WPEFramework::Exchange::RuntimeConfig&) {
+                                     std::string&) {
         id      = "failing_pkg";
         version = "1.0.0";
         return WPEFramework::Core::ERROR_NONE;
@@ -726,7 +726,7 @@ uint32_t Test_Comp_PIM_GetFailReasonAllEnumsWithoutCrash()
         L0Test::FakePackageInstaller installer;
         installer.getConfigHandler = [](const std::string&, std::string& id,
                                          std::string& version,
-                                         WPEFramework::Exchange::RuntimeConfig&) {
+                                         std::string&) {
             id      = "pkg";
             version = "1.0.0";
             return WPEFramework::Core::ERROR_NONE;
@@ -840,7 +840,7 @@ uint32_t Test_Comp_PIM_StartPreinstallJoinsPreviousCompletedThread()
     L0Test::FakePackageInstaller installer;
     installer.getConfigHandler = [](const std::string&, std::string& id,
                                      std::string& version,
-                                     WPEFramework::Exchange::RuntimeConfig&) {
+                                     std::string&) {
         id      = "pkg";
         version = "1.0.0";
         return WPEFramework::Core::ERROR_NONE;
@@ -923,7 +923,7 @@ uint32_t Test_Comp_PIM_InstallPackagesCreateManagerFails()
     // installHandler return ERROR_GENERAL after switch.
     listingInstaller.getConfigHandler = [](const std::string&, std::string& id,
                                             std::string& version,
-                                            WPEFramework::Exchange::RuntimeConfig&) {
+                                            std::string&) {
         id      = "pkg";
         version = "1.0.0";
         return WPEFramework::Core::ERROR_NONE;
@@ -983,7 +983,7 @@ uint32_t Test_Comp_PIM_ReadPreinstallDirectorySkipsDotEntries()
     L0Test::FakePackageInstaller installer;
     installer.getConfigHandler = [&](const std::string&, std::string& id,
                                       std::string& version,
-                                      WPEFramework::Exchange::RuntimeConfig&) {
+                                      std::string&) {
         getConfigCalls++;
         id      = "real_pkg";
         version = "1.0.0";
@@ -1032,7 +1032,7 @@ uint32_t Test_Comp_PIM_StartPreinstallVersionWithSuffixStripped()
     // Preinstall version has a pre-release suffix; strip: 1.2.3 > 1.2.2, so newer.
     installer.getConfigHandler = [](const std::string&, std::string& id,
                                      std::string& version,
-                                     WPEFramework::Exchange::RuntimeConfig&) {
+                                     std::string&) {
         id      = "app";
         version = "1.2.3-beta+build11"; // stripped to 1.2.3
         return WPEFramework::Core::ERROR_NONE;
@@ -1090,7 +1090,7 @@ uint32_t Test_Comp_PIM_InvalidVersionDoesNotCrash()
     // Return a non-numeric version string.
     installer.getConfigHandler = [](const std::string&, std::string& id,
                                      std::string& version,
-                                     WPEFramework::Exchange::RuntimeConfig&) {
+                                     std::string&) {
         id      = "badver";
         version = "abc.xyz.not-semver";
         return WPEFramework::Core::ERROR_NONE;
@@ -1194,7 +1194,7 @@ uint32_t Test_Comp_PIM_ReadPreinstallDirectoryLoadsValidPackages()
     L0Test::FakePackageInstaller installer;
     installer.getConfigHandler = [](const std::string&, std::string& id,
                                      std::string& version,
-                                     WPEFramework::Exchange::RuntimeConfig&) {
+                                     std::string&) {
         id      = "com.example.app";
         version = "2.1.3";
         return WPEFramework::Core::ERROR_NONE;

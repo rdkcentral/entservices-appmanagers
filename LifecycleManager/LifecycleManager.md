@@ -166,7 +166,7 @@ END_INTERFACE_MAP
 // ILifecycleManager methods
 Core::hresult SpawnApp(const string& appId, const string& launchIntent, 
                        LifecycleState targetLifecycleState,
-                       const RuntimeConfig& runtimeConfigObject,
+                       const string& runtimeConfigPayload,
                        const string& launchArgs, string& appInstanceId,
                        string& errorReason, bool& success);
 Core::hresult SetTargetAppState(const string& appInstanceId, 
@@ -186,6 +186,8 @@ Core::hresult CloseApp(const string& appId, AppCloseReason closeReason);
 #### ApplicationContext.h / ApplicationContext.cpp
 
 **Purpose**: Encapsulates all runtime context for a single application instance.
+
+LifecycleManager retains the incoming flat JSON configuration as an opaque string. Immediately before `RuntimeManager::Run`, it sets `dialId` and upserts `FIREBOLT_ENDPOINT` and `TARGET_STATE` entries in the `envVariables` array. Reserialization preserves every unknown property and keeps arrays as JSON arrays.
 
 **Key Members**:
 | Member | Type | Description |
@@ -284,7 +286,7 @@ interface ILifecycleManager {
     hresult GetLoadedApps(bool verbose, string& apps);
     hresult IsAppLoaded(const string& appId, bool& loaded);
     hresult SpawnApp(const string& appId, const string& launchIntent,
-                     LifecycleState targetState, const RuntimeConfig& config,
+                     LifecycleState targetState, const string& runtimeConfigPayload,
                      const string& launchArgs, string& appInstanceId,
                      string& errorReason, bool& success);
     hresult SetTargetAppState(const string& appInstanceId, LifecycleState target,

@@ -43,10 +43,10 @@ bool updateNetworkConfigurationNode(Json::Value& ociConfigRootNode, const Json::
  *
  * @param[in,out] ociConfigRootNode The root node of the OCI configuration JSON.
  * @param[in] manifestRootNode The root node of the manifest JSON.
- * @param[in] envVariables The serialized JSON array string of environment variables as provided by RuntimeConfig.envVariables.
+ * @param[in] envVariables The decoded runtime environment variables.
  * @return true if the update was successful or if there were no permissions to process; false on error.
  */
 bool updatePermissionBasedNetworkConfiguration(Json::Value& ociConfigRootNode, const Json::Value& manifestRootNode,
-                                               const std::string& envVariables);
+                                               const std::vector<std::string>& envVariables);
 
 } // namespace NetworkConfigurationHelper

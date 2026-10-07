@@ -21,6 +21,7 @@ find_package(${NAMESPACE}Plugins REQUIRED)
 find_package(${NAMESPACE}Definitions REQUIRED)
 
 add_library(${HELPERS_LIBRARY_NAME} SHARED
+    RuntimeConfigPayload.cpp
     Telemetry/UtilsTelemetryMetrics.cpp
     Telemetry/TelemetryReportingBase.cpp)
 

@@ -80,11 +80,11 @@ static WPEFramework::Plugin::ApplicationConfiguration MakeAppConfig_OCI(
     return config;
 }
 
-static WPEFramework::Exchange::RuntimeConfig MakeRuntimeConfig_OCI()
+static WPEFramework::Plugin::RuntimeConfiguration MakeRuntimeConfig_OCI()
 {
-    WPEFramework::Exchange::RuntimeConfig cfg;
+    WPEFramework::Plugin::RuntimeConfiguration cfg;
     cfg.ralfPkgPath = "";
-    cfg.envVariables = "";
+    cfg.envVariables = {};
     return cfg;
 }
 
@@ -419,7 +419,7 @@ uint32_t Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_MissingPackageT
     manifestRootNode[ralf::PERMISSIONS].append(ralf::PERMISSION_FIREBOLT);
 
     const bool status = gen.applyPermissionsToOCIConfig(ociConfigRootNode, manifestRootNode,
-                                                        "[\"FIREBOLT_ENDPOINT=ws://127.0.0.1:3473\"]");
+                                                        { "FIREBOLT_ENDPOINT=ws://127.0.0.1:3473" });
     L0Test::ExpectTrue(tr, status,
                        "applyPermissionsToOCIConfig() returns true when packageType is absent");
 
@@ -440,7 +440,7 @@ uint32_t Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_ValidFireboltPe
     manifestRootNode[ralf::PERMISSIONS].append(ralf::PERMISSION_FIREBOLT);
 
     const bool status = gen.applyPermissionsToOCIConfig(ociConfigRootNode, manifestRootNode,
-                                                        "[\"FIREBOLT_ENDPOINT=ws://127.0.0.1:3473\"]");
+                                                        { "FIREBOLT_ENDPOINT=ws://127.0.0.1:3473" });
     L0Test::ExpectTrue(tr, status,
                        "applyPermissionsToOCIConfig() returns true for valid FIREBOLT permission and endpoint");
     L0Test::ExpectTrue(tr,
@@ -496,7 +496,7 @@ uint32_t Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_FireboltEmptyEn
     manifestRootNode[ralf::PERMISSIONS] = Json::Value(Json::arrayValue);
     manifestRootNode[ralf::PERMISSIONS].append(ralf::PERMISSION_FIREBOLT);
 
-    const bool status = gen.applyPermissionsToOCIConfig(ociConfigRootNode, manifestRootNode, "");
+    const bool status = gen.applyPermissionsToOCIConfig(ociConfigRootNode, manifestRootNode, {});
     L0Test::ExpectTrue(tr, !status,
                        "applyPermissionsToOCIConfig() returns false when FIREBOLT permission has empty envVariables");
 
@@ -519,7 +519,7 @@ uint32_t Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_ThunderAddsThun
     setenv(ralf::THUNDER_ACCESS_ENV_KEY, "127.0.0.1:9998", 1);
 
     const bool status = gen.applyPermissionsToOCIConfig(ociConfigRootNode, manifestRootNode,
-                                                        "[\"TARGET_STATE=4\"]");
+                                                        { "TARGET_STATE=4" });
     L0Test::ExpectTrue(tr, status,
                        "applyPermissionsToOCIConfig() returns true for THUNDER permission when THUNDER_ACCESS is set");
     L0Test::ExpectTrue(tr, HasEnvEntry_OCIGen(ociConfigRootNode, "THUNDER_ACCESS=127.0.0.1:9998"),
