@@ -1505,10 +1505,9 @@ namespace WPEFramework
             dispatchEvent(RuntimeManagerImplementation::RuntimeEventType::RUNTIME_MANAGER_EVENT_CONTAINERSTARTED, data);
         }
 
-        void RuntimeManagerImplementation::onOCIContainerStoppedEvent(std::string name, JsonObject &data)
-        {
-
 #ifdef RDK_APPMANAGERS_DEBUG
+        void RuntimeManagerImplementation::detachWebInspectorForContainer(const std::string& name)
+        {
             const std::string eventContainerId = data.HasLabel("containerId") ? data["containerId"].String() : std::string();
             const std::string inspectorKey = eventContainerId.empty() ? name : eventContainerId;
             Core::SafeSyncType<Core::CriticalSection> lock(mWebInspectorLock);
@@ -1525,6 +1524,13 @@ namespace WPEFramework
                 mPortAvailability[freedPort] = false;
                 LOGINFO("Debug port %d flag reset to available for reuse", freedPort);
             }
+	}
+#endif
+        void RuntimeManagerImplementation::onOCIContainerStoppedEvent(std::string name, JsonObject &data)
+        {
+
+#ifdef RDK_APPMANAGERS_DEBUG
+            detachWebInspectorForContainer(name);
 #endif
 
             dispatchEvent(RuntimeManagerImplementation::RuntimeEventType::RUNTIME_MANAGER_EVENT_CONTAINERSTOPPED, data);
@@ -1532,6 +1538,9 @@ namespace WPEFramework
 
         void RuntimeManagerImplementation::onOCIContainerFailureEvent(std::string name, JsonObject &data)
         {
+#ifdef RDK_APPMANAGERS_DEBUG
+            detachWebInspectorForContainer(name);
+#endif
             dispatchEvent(RuntimeManagerImplementation::RuntimeEventType::RUNTIME_MANAGER_EVENT_CONTAINERFAILED, data);
         }
 
