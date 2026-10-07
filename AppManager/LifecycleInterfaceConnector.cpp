@@ -393,6 +393,13 @@ namespace WPEFramework
 			    (Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED == appInfoSnap.getAppNewState()) &&
                             (false == versionChanged))
                         {
+			    LOGINFO("[LAUNCH_FLOW][IF] Resume suspended app | appId=%s appInstanceId=%s state=%d runningVersion=%s requestedVersion=%s versionChanged=%d",
+                            appId.c_str(),
+                            appInfoSnap.getAppInstanceId().c_str(),
+                            static_cast<int>(appInfoSnap.getAppNewState()),
+                            runningVersion.c_str(),
+                            requestedVersion.c_str(),
+                            versionChanged);
                             appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_RESUME);
                             state = Exchange::ILifecycleManager::LifecycleState::ACTIVE;
                             LOGINFO("launchApp appInstanceId %s", appInfoSnap.getAppInstanceId().c_str());
@@ -425,6 +432,14 @@ namespace WPEFramework
                         }
                         else
                         {
+			   LOGINFO("[LAUNCH_FLOW][ELSE] Fresh launch | appId=%s state=%d loaded=%d appInMap=%d runningVersion=%s requestedVersion=%s versionChanged=%d",
+                           appId.c_str(),
+                           static_cast<int>(appInfoSnap.getAppNewState()),
+                           loaded,
+                           appInMap,
+                           runningVersion.c_str(),
+                           requestedVersion.c_str(),
+                           versionChanged);
                             status = launchRequestedPackage(appId, intent, launchArgs, runtimeConfigObject);
                         }
 
