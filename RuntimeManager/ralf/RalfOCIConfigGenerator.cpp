@@ -170,12 +170,16 @@ namespace ralf
         std::string appStoragePath = appConfig.mAppStorageInfo.path;
         addAppStorageToOCIConfig(ociConfigRootNode, appStoragePath);
 
-        // Finally add rialto path to the environment variables
-        std::string rialtoSocketPath = "/tmp/rlto-" + appConfig.mAppInstanceId;
-        addToEnvironment(ociConfigRootNode, "RIALTO_SOCKET_PATH", rialtoSocketPath);
-        LOGDBG("Added RIALTO_SOCKET environment variable with value %s\n", rialtoSocketPath.c_str());
-        addBindMountToOCIConfig(ociConfigRootNode, rialtoSocketPath, rialtoSocketPath);
-        LOGDBG("Mounted rialto socket path %s to container path %s\n", rialtoSocketPath.c_str(), rialtoSocketPath.c_str());
+        if (!appConfig.mRialtoSocketPath.empty())
+        {
+            addToEnvironment(ociConfigRootNode, "RIALTO_SOCKET_PATH", appConfig.mRialtoSocketPath);
+            LOGDBG("Added RIALTO_SOCKET_PATH environment variable with value %s\n",
+                   appConfig.mRialtoSocketPath.c_str());
+            addBindMountToOCIConfig(ociConfigRootNode, appConfig.mRialtoSocketPath,
+                                    appConfig.mRialtoSocketPath);
+            LOGDBG("Mounted rialto socket path %s to container path %s\n",
+                   appConfig.mRialtoSocketPath.c_str(), appConfig.mRialtoSocketPath.c_str());
+        }
         return status;
     }
 
@@ -326,10 +330,35 @@ namespace ralf
                         fileEntry.isMember(SOURCE) && fileEntry[SOURCE].isString() &&
                         fileEntry.isMember(DESTINATION) && fileEntry[DESTINATION].isString())
                     {
-                        addBindMountToOCIConfig(ociConfigRootNode, fileEntry[SOURCE].asString(),
+                        std::string sourcePath = fileEntry[SOURCE].asString();
+                        const std::string configuredWaylandEglSource = "/usr/lib/libwayland-egl.so.1.20.0";
+                        const std::string deviceWaylandEglSource = "/usr/lib/libwayland-egl.so.1";
+
+                        /*
+                         * TODO: Remove this temporary Broadcom image compatibility workaround once the
+                         * vendor GPU override is maintained alongside the target image's library versions.
+                         * The checked-in legacy override requests libwayland-egl.so.1.20.0, but some devices
+                         * only provide libwayland-egl.so.1 (which resolves to their installed version).
+                         * Keep the configured container destination unchanged so existing vendor symlinks
+                         * continue to resolve; redirect only the missing host bind source when the soname
+                         * path is present. Do not generalize this fallback to unrelated GPU libraries.
+                         */
+                        struct stat sourceStat;
+                        struct stat deviceSourceStat;
+                        if (configuredWaylandEglSource == sourcePath &&
+                            0 != stat(sourcePath.c_str(), &sourceStat) &&
+                            0 == stat(deviceWaylandEglSource.c_str(), &deviceSourceStat) &&
+                            S_ISREG(deviceSourceStat.st_mode))
+                        {
+                            LOGWARN("Configured Wayland EGL source is missing; using device soname path %s",
+                                    deviceWaylandEglSource.c_str());
+                            sourcePath = deviceWaylandEglSource;
+                        }
+
+                        addBindMountToOCIConfig(ociConfigRootNode, sourcePath,
                                                 fileEntry[DESTINATION].asString(), true, false, true, true);
                         LOGDBG("Added read-only graphics bind mount from %s to %s\n",
-                               fileEntry[SOURCE].asCString(), fileEntry[DESTINATION].asCString());
+                               sourcePath.c_str(), fileEntry[DESTINATION].asCString());
                     }
                     else if (!fileEntry.isMember(TYPE) || !fileEntry[TYPE].isString() ||
                              ("symlink" != fileEntry[TYPE].asString() && "file" != fileEntry[TYPE].asString()))
