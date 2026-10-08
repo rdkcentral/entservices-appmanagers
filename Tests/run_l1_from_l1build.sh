@@ -247,7 +247,6 @@ cmake --install "${BUILD_ROOT}/googletest"
 echo "[7/8] Preparing generated external headers"
 HEADER_DIRS=(
     "${REPO_ROOT}/Tests/headers/audiocapturemgr"
-    "${REPO_ROOT}/Tests/headers/rdk/ds"
     "${REPO_ROOT}/Tests/headers/rdk/iarmbus"
     "${REPO_ROOT}/Tests/headers/rdk/iarmmgrs-hal"
     "${REPO_ROOT}/Tests/headers/ccec/drivers"
@@ -263,26 +262,6 @@ for header_dir in "${HEADER_DIRS[@]}"; do
 done
 
 HEADER_STUBS=(
-    "${REPO_ROOT}/Tests/headers/rdk/ds/host.hpp"
-    "${REPO_ROOT}/Tests/headers/rdk/ds/videoOutputPort.hpp"
-    "${REPO_ROOT}/Tests/headers/rdk/ds/videoOutputPortType.hpp"
-    "${REPO_ROOT}/Tests/headers/rdk/ds/videoOutputPortConfig.hpp"
-    "${REPO_ROOT}/Tests/headers/rdk/ds/videoResolution.hpp"
-    "${REPO_ROOT}/Tests/headers/rdk/ds/audioOutputPort.hpp"
-    "${REPO_ROOT}/Tests/headers/rdk/ds/audioOutputPortType.hpp"
-    "${REPO_ROOT}/Tests/headers/rdk/ds/audioOutputPortConfig.hpp"
-    "${REPO_ROOT}/Tests/headers/rdk/ds/sleepMode.hpp"
-    "${REPO_ROOT}/Tests/headers/rdk/ds/frontPanelConfig.hpp"
-    "${REPO_ROOT}/Tests/headers/rdk/ds/frontPanelTextDisplay.hpp"
-    "${REPO_ROOT}/Tests/headers/rdk/ds/hdmiIn.hpp"
-    "${REPO_ROOT}/Tests/headers/rdk/ds/compositeIn.hpp"
-    "${REPO_ROOT}/Tests/headers/rdk/ds/exception.hpp"
-    "${REPO_ROOT}/Tests/headers/rdk/ds/dsError.h"
-    "${REPO_ROOT}/Tests/headers/rdk/ds/dsMgr.h"
-    "${REPO_ROOT}/Tests/headers/rdk/ds/manager.hpp"
-    "${REPO_ROOT}/Tests/headers/rdk/ds/dsTypes.h"
-    "${REPO_ROOT}/Tests/headers/rdk/ds/dsUtl.h"
-    "${REPO_ROOT}/Tests/headers/rdk/ds/pixelResolution.hpp"
     "${REPO_ROOT}/Tests/headers/rdk/iarmbus/libIARM.h"
     "${REPO_ROOT}/Tests/headers/rdk/iarmbus/libIBus.h"
     "${REPO_ROOT}/Tests/headers/rdk/iarmbus/libIBusDaemon.h"
@@ -312,14 +291,11 @@ cmake -G Ninja \
     -DCMAKE_PREFIX_PATH="${INSTALL_ROOT}" \
     -DCMAKE_MODULE_PATH="${INSTALL_ROOT}/../tools/cmake" \
     -DCOMCAST_CONFIG=OFF \
-    -DCMAKE_DISABLE_FIND_PACKAGE_DS=ON \
     -DCMAKE_DISABLE_FIND_PACKAGE_IARMBus=ON \
     -DCMAKE_DISABLE_FIND_PACKAGE_Udev=ON \
     -DCMAKE_DISABLE_FIND_PACKAGE_RFC=ON \
     -DCMAKE_DISABLE_FIND_PACKAGE_RBus=ON \
     -DCMAKE_BUILD_TYPE=Debug \
-    -DDS_FOUND=ON \
-    -DHAS_FRONT_PANEL=ON \
     -DRDK_SERVICES_L1_TEST=ON \
     -DUSE_THUNDER_R4=ON \
     -DHIDE_NON_EXTERNAL_SYMBOLS=OFF \
@@ -336,7 +312,7 @@ cmake -G Ninja \
     -DCMAKE_EXE_LINKER_FLAGS="${LINKER_SEARCH_FLAGS}" \
     -DCMAKE_MODULE_LINKER_FLAGS="${LINKER_SEARCH_FLAGS}" \
     "${JSONCPP_CMAKE_ARGS[@]}" \
-    -DCMAKE_CXX_FLAGS="-fprofile-arcs -ftest-coverage -DEXCEPTIONS_ENABLE=ON -DUSE_THUNDER_R4=ON -DTHUNDER_VERSION=4 -DTHUNDER_VERSION_MAJOR=4 -DTHUNDER_VERSION_MINOR=4 -DRDK_SERVICES_L1_TEST -DBUILD_L1_TESTS_SHARED_MODULE=OFF -I ${REPO_ROOT}/Tests/headers -I ${REPO_ROOT}/Tests/headers/audiocapturemgr -I ${REPO_ROOT}/Tests/headers/rdk/ds -I ${REPO_ROOT}/Tests/headers/rdk/iarmbus -I ${REPO_ROOT}/Tests/headers/rdk/iarmmgrs-hal -I ${REPO_ROOT}/Tests/headers/ccec/drivers -I ${REPO_ROOT}/Tests/headers/network -I ${REPO_ROOT}/Tests/headers/libusb -I ${REPO_ROOT}/Tests -I ${REPO_ROOT}/Tests/headers/Dobby -I ${REPO_ROOT}/Tests/headers/Dobby/Public/Dobby -I ${REPO_ROOT}/Tests/headers/Dobby/IpcService -I ${REPO_ROOT}/Tests/headers/rdkwindowmanager/include -I ${REPO_ROOT}/helpers/Telemetry -I ${SRC_ROOT}/Thunder/Source -I ${SRC_ROOT}/Thunder/Source/core -I ${SRC_ROOT}/Thunder/Source/plugins -I ${INSTALL_ROOT}/include -I ${INSTALL_ROOT}/include/WPEFramework -I ${INSTALL_ROOT}/include/WPEFramework/plugins -include ${REPO_ROOT}/Tests/mocks/Iarm.h -include ${REPO_ROOT}/Tests/mocks/Rfc.h -include ${REPO_ROOT}/Tests/mocks/RBus.h -include ${REPO_ROOT}/Tests/mocks/Telemetry.h -include ${REPO_ROOT}/Tests/mocks/Udev.h -include ${REPO_ROOT}/Tests/mocks/maintenanceMGR.h -include ${REPO_ROOT}/Tests/mocks/pkg.h -include ${REPO_ROOT}/Tests/mocks/secure_wrappermock.h -include ${REPO_ROOT}/Tests/mocks/wpa_ctrl_mock.h -include ${REPO_ROOT}/Tests/mocks/readprocMockInterface.h -include ${REPO_ROOT}/Tests/mocks/gdialservice.h -include ${REPO_ROOT}/Tests/mocks/RdkWindowManager.h --coverage -Wall -Wno-unused-result -Wno-deprecated-declarations -Wno-error=format= -Wl,-wrap,system -Wl,-wrap,popen -Wl,-wrap,syslog -Wl,-wrap,v_secure_system -Wl,-wrap,v_secure_popen -Wl,-wrap,v_secure_pclose -Wl,-wrap,unlink -DUSE_IARMBUS -DENABLE_SYSTEM_GET_STORE_DEMO_LINK -DENABLE_DEEP_SLEEP -DENABLE_SET_WAKEUP_SRC_CONFIG -DENABLE_THERMAL_PROTECTION -DDISABLE_SECURITY_TOKEN -DUSE_DRM_SCREENCAPTURE -DHAS_API_SYSTEM -DHAS_API_POWERSTATE -DHAS_RBUS -DENABLE_DEVICE_MANUFACTURER_INFO"
+    -DCMAKE_CXX_FLAGS="-fprofile-arcs -ftest-coverage -DEXCEPTIONS_ENABLE=ON -DUSE_THUNDER_R4=ON -DTHUNDER_VERSION=4 -DTHUNDER_VERSION_MAJOR=4 -DTHUNDER_VERSION_MINOR=4 -DRDK_SERVICES_L1_TEST -DBUILD_L1_TESTS_SHARED_MODULE=OFF -I ${REPO_ROOT}/Tests/headers -I ${REPO_ROOT}/Tests/headers/audiocapturemgr -I ${REPO_ROOT}/Tests/headers/rdk/iarmbus -I ${REPO_ROOT}/Tests/headers/rdk/iarmmgrs-hal -I ${REPO_ROOT}/Tests/headers/ccec/drivers -I ${REPO_ROOT}/Tests/headers/network -I ${REPO_ROOT}/Tests/headers/libusb -I ${REPO_ROOT}/Tests -I ${REPO_ROOT}/Tests/headers/Dobby -I ${REPO_ROOT}/Tests/headers/Dobby/Public/Dobby -I ${REPO_ROOT}/Tests/headers/Dobby/IpcService -I ${REPO_ROOT}/Tests/headers/rdkwindowmanager/include -I ${REPO_ROOT}/helpers/Telemetry -I ${SRC_ROOT}/Thunder/Source -I ${SRC_ROOT}/Thunder/Source/core -I ${SRC_ROOT}/Thunder/Source/plugins -I ${INSTALL_ROOT}/include -I ${INSTALL_ROOT}/include/WPEFramework -I ${INSTALL_ROOT}/include/WPEFramework/plugins -include ${REPO_ROOT}/Tests/mocks/Iarm.h -include ${REPO_ROOT}/Tests/mocks/Rfc.h -include ${REPO_ROOT}/Tests/mocks/RBus.h -include ${REPO_ROOT}/Tests/mocks/Telemetry.h -include ${REPO_ROOT}/Tests/mocks/Udev.h -include ${REPO_ROOT}/Tests/mocks/maintenanceMGR.h -include ${REPO_ROOT}/Tests/mocks/pkg.h -include ${REPO_ROOT}/Tests/mocks/secure_wrappermock.h -include ${REPO_ROOT}/Tests/mocks/wpa_ctrl_mock.h -include ${REPO_ROOT}/Tests/mocks/readprocMockInterface.h -include ${REPO_ROOT}/Tests/mocks/gdialservice.h -include ${REPO_ROOT}/Tests/mocks/RdkWindowManager.h --coverage -Wall -Wno-unused-result -Wno-deprecated-declarations -Wno-error=format= -Wl,-wrap,system -Wl,-wrap,popen -Wl,-wrap,syslog -Wl,-wrap,v_secure_system -Wl,-wrap,v_secure_popen -Wl,-wrap,v_secure_pclose -Wl,-wrap,unlink -DUSE_IARMBUS -DENABLE_SYSTEM_GET_STORE_DEMO_LINK -DENABLE_DEEP_SLEEP -DENABLE_SET_WAKEUP_SRC_CONFIG -DENABLE_THERMAL_PROTECTION -DDISABLE_SECURITY_TOKEN -DUSE_DRM_SCREENCAPTURE -DHAS_API_SYSTEM -DHAS_API_POWERSTATE -DHAS_RBUS -DENABLE_DEVICE_MANUFACTURER_INFO"
 
 cmake --build "${BUILD_ROOT}/entservices-appmanagers" --parallel "${BUILD_THREADS}"
 cmake --install "${BUILD_ROOT}/entservices-appmanagers"
