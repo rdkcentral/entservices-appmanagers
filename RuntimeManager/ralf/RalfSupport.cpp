@@ -416,9 +416,19 @@ namespace ralf
         std::string appRootfsDir = baseDir + "/rootfs";
         std::string workSubDir = baseDir + "/work";
         std::string upperSubDir = baseDir + "/upper";
-        create_directories(appRootfsDir, uid, gid);
-        create_directories(workSubDir, uid, gid);
-        create_directories(upperSubDir, uid, gid);
+        if (!create_directories(appRootfsDir, uid, gid) ||
+            !create_directories(workSubDir, uid, gid) ||
+            !create_directories(upperSubDir, uid, gid))
+        {
+            LOGERR("Failed to create RALF bundle directories for appInstanceId: %s", appInstanceId.c_str());
+            return false;
+        }
+        if (0 != chmod(baseDir.c_str(), 0755))
+        {
+            LOGERR("Failed to set RALF bundle directory mode to 0755 for %s: %s",
+                   baseDir.c_str(), strerror(errno));
+            return false;
+        }
 
         // Now we can mount the overlay filesystem
         std::string options = "lowerdir=" + pkgmountPaths + ",upperdir=" + upperSubDir + ",workdir=" + workSubDir;

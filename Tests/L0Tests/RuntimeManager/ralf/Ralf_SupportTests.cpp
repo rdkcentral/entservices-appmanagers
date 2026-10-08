@@ -909,6 +909,7 @@ uint32_t Test_Ralf_GenerateOCIRootfs_FailsDueToNoMountSupport()
 
     const std::string testInstanceId = "l0test_ociroot_inst_001";
     const std::string pkgMountPaths = "/tmp";
+    const std::string bundlePath = std::string(ralf::RALF_APP_ROOTFS_DIR) + testInstanceId;
     std::string ociRootfsPath;
 
     const bool result = ralf::generateOCIRootfs(testInstanceId, pkgMountPaths,
@@ -916,6 +917,10 @@ uint32_t Test_Ralf_GenerateOCIRootfs_FailsDueToNoMountSupport()
 
     L0Test::ExpectTrue(tr, !result,
                        "generateOCIRootfs() returns false when overlayfs mount is unavailable");
+    struct stat bundleStat;
+    L0Test::ExpectTrue(tr, 0 == stat(bundlePath.c_str(), &bundleStat) && 0755 == (bundleStat.st_mode & 07777),
+                       "generateOCIRootfs() creates a Dobby-compatible 0755 bundle directory");
+    ralf::removeDirectoryRecursively(bundlePath);
 
     return tr.failures;
 }
