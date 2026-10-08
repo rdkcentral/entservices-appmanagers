@@ -634,6 +634,27 @@ namespace ralf
         collectConditionalRequirements(ociConfigRootNode, requirements);
         collectNonBindMountDestinations(ociConfigRootNode, nonBindMountDestinations);
 
+        std::stable_sort(nonBindMountDestinations.begin(), nonBindMountDestinations.end(),
+                         [](const std::string& lhs, const std::string& rhs)
+                         {
+                             return containerPathDepth(lhs) < containerPathDepth(rhs);
+                         });
+
+        for (const auto& destinationPath : nonBindMountDestinations)
+        {
+            if (!ensureDirectoryExistsInRootfs(rootfsMountPath, destinationPath))
+            {
+                LOGERR("Failed to prepare merged-rootfs mount directory: %s", destinationPath.c_str());
+                return false;
+            }
+        }
+
+        if (!ensureDirectoryExistsInRootfs(rootfsMountPath, "/home"))
+        {
+            LOGERR("Failed to prepare legacy standard rootfs directory: /home");
+            return false;
+        }
+
         std::stable_sort(requirements.begin(), requirements.end(),
                          [](const RootfsPathRequirement& lhs, const RootfsPathRequirement& rhs)
                          {

@@ -984,6 +984,44 @@ uint32_t Test_Ralf_PrepareMergedRootfsMountTargets_DnsmasqTrueSkipsResolvConf()
     return tr.failures;
 }
 
+uint32_t Test_Ralf_PrepareMergedRootfsMountTargets_CreatesStandardAndNonBindMountDirectories()
+{
+    L0Test::TestResult tr;
+
+    const std::string rootBase = "/tmp/ralf_l0test_mount_targets_non_bind";
+    const std::string rootfsPath = rootBase + "/rootfs";
+    if (ralf::checkIfPathExists(rootBase))
+    {
+        ralf::removeDirectoryRecursively(rootBase);
+    }
+    ralf::create_directories(rootfsPath);
+
+    Json::Value ociConfig(Json::objectValue);
+    ociConfig["mounts"] = Json::Value(Json::arrayValue);
+
+    Json::Value devMount(Json::objectValue);
+    devMount["type"] = "tmpfs";
+    devMount["destination"] = "/dev";
+    ociConfig["mounts"].append(devMount);
+
+    Json::Value devPtsMount(Json::objectValue);
+    devPtsMount["type"] = "devpts";
+    devPtsMount["destination"] = "/dev/pts";
+    ociConfig["mounts"].append(devPtsMount);
+
+    const bool status = ralf::prepareMergedRootfsMountTargets(ociConfig, rootfsPath, 0, 0);
+    L0Test::ExpectTrue(tr, status,
+                       "prepareMergedRootfsMountTargets() succeeds for non-bind mount destinations");
+    L0Test::ExpectTrue(tr, ralf::checkIfPathExists(rootfsPath + "/dev") &&
+                       ralf::checkIfPathExists(rootfsPath + "/dev/pts"),
+                       "non-bind mount destinations are created parent-first in merged rootfs");
+    L0Test::ExpectTrue(tr, ralf::checkIfPathExists(rootfsPath + "/home"),
+                       "legacy standard /home directory is created in merged rootfs");
+
+    ralf::removeDirectoryRecursively(rootBase);
+    return tr.failures;
+}
+
 uint32_t Test_Ralf_PrepareMergedRootfsMountTargets_CreatesBindDestinationFileAndDirectory()
 {
     L0Test::TestResult tr;
@@ -1020,6 +1058,8 @@ uint32_t Test_Ralf_PrepareMergedRootfsMountTargets_CreatesBindDestinationFileAnd
     dirMount["destination"] = "/opt/customdir";
     ociConfig["mounts"].append(dirMount);
 
+    struct stat before;
+    const bool ownerKnown = 0 == stat(rootBase.c_str(), &before);
     const bool status = ralf::prepareMergedRootfsMountTargets(ociConfig, rootfsPath, 0, 0);
     L0Test::ExpectTrue(tr, status,
                        "prepareMergedRootfsMountTargets() returns true for bind destination preparation");
@@ -1027,6 +1067,18 @@ uint32_t Test_Ralf_PrepareMergedRootfsMountTargets_CreatesBindDestinationFileAnd
                        "file bind destination is pre-created in merged rootfs");
     L0Test::ExpectTrue(tr, ralf::checkIfPathExists(rootfsPath + "/opt/customdir"),
                        "directory bind destination is pre-created in merged rootfs");
+
+    Json::Value dirOnlyConfig(Json::objectValue);
+    dirOnlyConfig["mounts"] = Json::Value(Json::arrayValue);
+    dirOnlyConfig["mounts"].append(dirMount);
+    const int requestedUid = (0 == geteuid()) ? 0 : static_cast<int>(geteuid()) + 1;
+    const int requestedGid = (0 == geteuid()) ? 0 : static_cast<int>(getegid()) + 1;
+    const bool nonzeroUidStatus = ralf::prepareMergedRootfsMountTargets(
+        dirOnlyConfig, rootfsPath, requestedUid, requestedGid);
+    struct stat after;
+    L0Test::ExpectTrue(tr, nonzeroUidStatus && ownerKnown && 0 == stat(rootBase.c_str(), &after) &&
+                       before.st_uid == after.st_uid && before.st_gid == after.st_gid,
+                       "directory bind preparation does not chown the bundle or its ancestors");
 
     ralf::removeDirectoryRecursively(rootBase);
     ralf::removeDirectoryRecursively(sourceDir);

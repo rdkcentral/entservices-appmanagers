@@ -158,6 +158,7 @@ extern uint32_t Test_Ralf_UnmountOverlayfs_NonMountedPathReturnsFalse();
 extern uint32_t Test_Ralf_GenerateOCIRootfs_FailsDueToNoMountSupport();
 extern uint32_t Test_Ralf_PrepareMergedRootfsMountTargets_DnsmasqFalseCreatesResolvConf();
 extern uint32_t Test_Ralf_PrepareMergedRootfsMountTargets_DnsmasqTrueSkipsResolvConf();
+extern uint32_t Test_Ralf_PrepareMergedRootfsMountTargets_CreatesStandardAndNonBindMountDirectories();
 extern uint32_t Test_Ralf_PrepareMergedRootfsMountTargets_CreatesBindDestinationFileAndDirectory();
 extern uint32_t Test_Ralf_PrepareMergedRootfsMountTargets_SkipsNestedBindUnderTmpfsAncestor();
 
@@ -498,6 +499,7 @@ int main()
         { "Ralf_GenerateOCIRootfs_FailsDueToNoMountSupport",                         Test_Ralf_GenerateOCIRootfs_FailsDueToNoMountSupport },
         { "Ralf_PrepareMergedRootfsMountTargets_DnsmasqFalseCreatesResolvConf",      Test_Ralf_PrepareMergedRootfsMountTargets_DnsmasqFalseCreatesResolvConf },
         { "Ralf_PrepareMergedRootfsMountTargets_DnsmasqTrueSkipsResolvConf",         Test_Ralf_PrepareMergedRootfsMountTargets_DnsmasqTrueSkipsResolvConf },
+        { "Ralf_PrepareMergedRootfsMountTargets_CreatesStandardAndNonBindMountDirectories", Test_Ralf_PrepareMergedRootfsMountTargets_CreatesStandardAndNonBindMountDirectories },
         { "Ralf_PrepareMergedRootfsMountTargets_CreatesBindDestinationFileAndDirectory", Test_Ralf_PrepareMergedRootfsMountTargets_CreatesBindDestinationFileAndDirectory },
         { "Ralf_PrepareMergedRootfsMountTargets_SkipsNestedBindUnderTmpfsAncestor",  Test_Ralf_PrepareMergedRootfsMountTargets_SkipsNestedBindUnderTmpfsAncestor },
 

@@ -331,6 +331,7 @@ if(PLUGIN_RUNTIME_MANAGER)
     if(ENTOS_RALF_SUPPORT)
         target_compile_definitions(runtimemanager_l0test PRIVATE
             ENTOS_RALF_SUPPORT
+            ENTOS_RALF_BUNDLE_ROOT=\"/tmp/ralf_l0test_bundle_root/\"
             ENTOS_RALF_GPU_CONFIG_FILE=\"/tmp/ralf_l0test_vendor_gpu_config.json\"
         )
     endif()
