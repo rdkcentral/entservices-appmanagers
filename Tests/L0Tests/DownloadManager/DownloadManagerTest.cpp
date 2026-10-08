@@ -108,6 +108,7 @@ extern uint32_t Test_Impl_WaitForPredicateWakesOnQueuedDownload();
 extern uint32_t Test_HttpClient_ConstructionInitializesCurl();
 extern uint32_t Test_HttpClient_DestructionCleanupWithoutCrash();
 extern uint32_t Test_HttpClient_DownloadFileInvalidUrlReturnsHttpError();
+extern uint32_t Test_HttpClient_UrlSchemePolicy();
 extern uint32_t Test_HttpClient_DownloadFileUnwritableDestReturnsDiskError();
 extern uint32_t Test_HttpClient_DownloadFile404HandledGracefully();
 extern uint32_t Test_HttpClient_PauseDoesNotCrash();
@@ -242,6 +243,7 @@ int main()
     RUN_TEST(Test_HttpClient_ConstructionInitializesCurl);
     RUN_TEST(Test_HttpClient_DestructionCleanupWithoutCrash);
     RUN_TEST(Test_HttpClient_DownloadFileInvalidUrlReturnsHttpError);
+    RUN_TEST(Test_HttpClient_UrlSchemePolicy);
     RUN_TEST(Test_HttpClient_DownloadFileUnwritableDestReturnsDiskError);
     RUN_TEST(Test_HttpClient_DownloadFile404HandledGracefully);
     RUN_TEST(Test_HttpClient_PauseDoesNotCrash);
