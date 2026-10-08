@@ -17,8 +17,11 @@
 * limitations under the License.
 **/
 
+#include <fcntl.h>
 #include <iostream>
 #include <math.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include "Module.h"
 #include "DownloadManagerHttpClient.h"
@@ -51,7 +54,7 @@ DownloadManagerHttpClient::~DownloadManagerHttpClient()
     //curl_global_cleanup();
 }
 
-DownloadManagerHttpClient::Status DownloadManagerHttpClient::downloadFile(const std::string & url, const std::string & fileName, uint32_t rateLimit)
+DownloadManagerHttpClient::Status DownloadManagerHttpClient::downloadFile(const std::string & url, const std::string & fileName, uint32_t rateLimit, int directoryFd)
 {
     Status status = Status::Success;
     CURLcode cc;
@@ -71,7 +74,25 @@ DownloadManagerHttpClient::Status DownloadManagerHttpClient::downloadFile(const 
             LOGWARN("Failed to set CURLOPT_MAX_RECV_SPEED_LARGE: %s", curl_easy_strerror(rateLimit_ret));
         }
 
-        fp = fopen(fileName.c_str(), "wb");
+        fp = nullptr;
+        if (directoryFd >= 0) {
+            const size_t separator = fileName.find_last_of('/');
+            const std::string filename = separator == std::string::npos ? fileName : fileName.substr(separator + 1);
+            const int output = openat(directoryFd, filename.c_str(), O_WRONLY | O_CREAT | O_CLOEXEC | O_NOFOLLOW, 0600);
+            struct stat outputStat;
+            if (output >= 0
+                && fstat(output, &outputStat) == 0
+                && S_ISREG(outputStat.st_mode)
+                && outputStat.st_uid == geteuid()
+                && ftruncate(output, 0) == 0) {
+                fp = fdopen(output, "wb");
+            }
+            if (output >= 0 && fp == nullptr) {
+                close(output);
+            }
+        } else {
+            fp = fopen(fileName.c_str(), "wb");
+        }
         if (fp != NULL)
         {
             (void) curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, write_data);

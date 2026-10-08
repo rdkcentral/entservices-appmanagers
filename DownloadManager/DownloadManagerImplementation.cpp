@@ -18,6 +18,10 @@
 **/
 
 #include <chrono>
+#include <fcntl.h>
+#include <limits.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 #include "DownloadManagerImplementation.h"
 #include "UtilsAppManagerTelemetry.h"
@@ -33,6 +37,89 @@
 namespace WPEFramework {
 namespace Plugin {
 
+    static bool prepareManagedDownloadDirectory(std::string& downloadDir, int& directoryFd)
+    {
+        if (downloadDir.empty() || downloadDir.front() != '/') {
+            return false;
+        }
+        while (downloadDir.size() > 1 && downloadDir.back() == '/') {
+            downloadDir.pop_back();
+        }
+        if (mkdir(downloadDir.c_str(), 0750) != 0 && errno != EEXIST) {
+            return false;
+        }
+
+        char resolved[PATH_MAX];
+        struct stat directoryStat;
+        if (realpath(downloadDir.c_str(), resolved) == nullptr
+            || lstat(resolved, &directoryStat) != 0
+            || !S_ISDIR(directoryStat.st_mode)) {
+            return false;
+        }
+        if (directoryStat.st_uid != geteuid()
+            || (directoryStat.st_mode & (S_IWGRP | S_IWOTH)) != 0) {
+            return false;
+        }
+
+        if (std::string(resolved) == "/") {
+            return false;
+        }
+
+        const int openedDirectory = open(resolved, O_RDONLY | O_DIRECTORY | O_CLOEXEC | O_NOFOLLOW);
+        struct stat openedStat;
+        if (openedDirectory < 0
+            || fstat(openedDirectory, &openedStat) != 0
+            || openedStat.st_dev != directoryStat.st_dev
+            || openedStat.st_ino != directoryStat.st_ino) {
+            if (openedDirectory >= 0) {
+                close(openedDirectory);
+            }
+            return false;
+        }
+
+        downloadDir = resolved;
+        directoryFd = openedDirectory;
+        return true;
+    }
+
+    static bool removeManagedDownload(const std::string& fileLocator, const std::string& downloadDir, int directoryFd)
+    {
+        if (downloadDir.empty() || downloadDir == "/" || fileLocator.empty() || fileLocator.front() != '/' || directoryFd < 0) {
+            return false;
+        }
+
+        if (fileLocator.find("/../") != std::string::npos
+            || fileLocator.find("/./") != std::string::npos
+            || fileLocator.find("//") != std::string::npos) {
+            return false;
+        }
+        const size_t separator = fileLocator.find_last_of('/');
+        if (separator == std::string::npos) {
+            return false;
+        }
+        const std::string parent = separator == 0 ? "/" : fileLocator.substr(0, separator);
+        char resolvedParent[PATH_MAX];
+        if (realpath(parent.c_str(), resolvedParent) == nullptr || downloadDir != resolvedParent) {
+            return false;
+        }
+
+        const std::string filename = fileLocator.substr(separator + 1);
+        if (filename.compare(0, 7, "package") != 0 || filename.size() == 7 || filename.find('/') != std::string::npos) {
+            return false;
+        }
+        for (size_t index = 7; index < filename.size(); ++index) {
+            if (filename[index] < '0' || filename[index] > '9') {
+                return false;
+            }
+        }
+
+        struct stat fileStat;
+        const bool valid = fstatat(directoryFd, filename.c_str(), &fileStat, AT_SYMLINK_NOFOLLOW) == 0
+            && S_ISREG(fileStat.st_mode)
+            && fileStat.st_uid == geteuid();
+        return valid && unlinkat(directoryFd, filename.c_str(), 0) == 0;
+    }
+
     RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::DownloadManagerTelemetryReporting, "downloadManagerBootstrapTime")
 
     SERVICE_REGISTRATION(DownloadManagerImplementation, 1, 0);
@@ -42,6 +129,7 @@ namespace Plugin {
         , mDownloaderRunFlag(true)
         , mDownloadId(DOWNLOADER_DOWNLOAD_ID_START)
         , mDownloadPath("")
+        , mDownloadDirectoryFd(-1)
         , mCurrentservice(nullptr)
     {
         LOGINFO("DM: ctor DownloadManagerImplementation: %p", this);
@@ -51,6 +139,10 @@ namespace Plugin {
     DownloadManagerImplementation::~DownloadManagerImplementation()
     {
         LOGINFO("DM: dtor DownloadManagerImplementation: %p", this);
+        if (mDownloadDirectoryFd >= 0) {
+            close(mDownloadDirectoryFd);
+            mDownloadDirectoryFd = -1;
+        }
 
         std::list<Exchange::IDownloadManager::INotification*>::iterator itDownloader(mDownloadManagerNotification.begin());
         {
@@ -108,10 +200,11 @@ namespace Plugin {
 
     Core::hresult DownloadManagerImplementation::Initialize(PluginHost::IShell* service)
     {
+        std::lock_guard<std::mutex> lifecycleLock(mLifecycleMutex);
         Core::hresult result = Core::ERROR_NONE;
         LOGINFO("entry");
 
-        if (service != nullptr)
+        if (service != nullptr && mCurrentservice == nullptr)
         {
             mCurrentservice = service;
             mCurrentservice->AddRef();
@@ -135,10 +228,9 @@ namespace Plugin {
                 std::lock_guard<std::mutex> lock(mQueueMutex);
                 mDownloadId = static_cast<uint32_t>(config.downloadId.Value());
             }
-            int rc = mkdir(mDownloadPath.c_str(), 0777);
-            if (rc != 0 && errno != EEXIST)
+            if (!prepareManagedDownloadDirectory(mDownloadPath, mDownloadDirectoryFd))
             {
-                LOGERR("DM: Failed to create Download Path '%s' rc: %d errno=%d", mDownloadPath.c_str(), rc, errno);
+                LOGERR("DM: Download path is invalid or insecure");
                 result = Core::ERROR_GENERAL;
             }
             else
@@ -152,18 +244,31 @@ namespace Plugin {
         }
         else
         {
-            LOGERR("DM: Initialization failed - service is null!");
+            LOGERR("DM: Initialization failed - invalid service or already initialized");
             result = Core::ERROR_GENERAL;
         }
 
+        if (result != Core::ERROR_NONE && mCurrentservice != nullptr) {
+            if (mDownloadDirectoryFd >= 0) {
+                close(mDownloadDirectoryFd);
+                mDownloadDirectoryFd = -1;
+            }
+            mCurrentservice->Release();
+            mCurrentservice = nullptr;
+            DownloadManagerTelemetryReporting::getInstance().reset();
+        }
         LOGINFO("exit");
         return result;
     }
 
     Core::hresult DownloadManagerImplementation::Deinitialize(PluginHost::IShell* service)
     {
+        std::lock_guard<std::mutex> lifecycleLock(mLifecycleMutex);
         Core::hresult result = Core::ERROR_NONE;
         LOGINFO();
+        if (mCurrentservice == nullptr) {
+            return result;
+        }
 
         /*  Added lock to avoid race condition with downloader
             Stop the downloader thread */
@@ -194,6 +299,14 @@ namespace Plugin {
             }
         }
 
+        {
+            std::lock_guard<std::mutex> lock(mQueueMutex);
+            if (mDownloadDirectoryFd >= 0) {
+                close(mDownloadDirectoryFd);
+                mDownloadDirectoryFd = -1;
+            }
+        }
+
         mCurrentservice->Release();
         mCurrentservice = nullptr;
 
@@ -207,7 +320,11 @@ namespace Plugin {
         const Exchange::IDownloadManager::Options &options,
         string &downloadId)
     {
+        std::lock_guard<std::mutex> lifecycleLock(mLifecycleMutex);
         Core::hresult result = Core::ERROR_GENERAL;
+        if (mCurrentservice == nullptr) {
+            return Core::ERROR_UNAVAILABLE;
+        }
 
         mAdminLock.Lock();
         if (!mCurrentservice->SubSystems()->IsActive(PluginHost::ISubSystem::INTERNET))
@@ -364,6 +481,7 @@ namespace Plugin {
 
     Core::hresult DownloadManagerImplementation::Delete(const string &fileLocator)
     {
+        std::lock_guard<std::mutex> lifecycleLock(mLifecycleMutex);
         if (fileLocator.empty())
         {
             LOGWARN("DM: Delete failed - fileLocator is empty!");
@@ -371,25 +489,22 @@ namespace Plugin {
         }
 
         Core::hresult result = Core::ERROR_GENERAL;
-
+        std::lock_guard<std::mutex> lock(mQueueMutex);
+        if ((mCurrentDownload.get() != nullptr) &&
+            (fileLocator.compare(mCurrentDownload->getFileLocator()) == 0))
         {
-            std::lock_guard<std::mutex> lock(mQueueMutex);
-            if (!fileLocator.empty() && (mCurrentDownload.get() != nullptr) && \
-                (fileLocator.compare(mCurrentDownload->getFileLocator()) == 0))
-            {
-                LOGWARN("DM: fileLocator %s download is in-progress", fileLocator.c_str());
-                return result;
-            }
+            LOGWARN("DM: requested download is in-progress");
+            return result;
         }
 
-        if (remove(fileLocator.c_str()) == 0)
+        if (removeManagedDownload(fileLocator, mDownloadPath, mDownloadDirectoryFd))
         {
-            LOGINFO("DM: fileLocator %s Deleted", fileLocator.c_str());
+            LOGINFO("DM: managed download deleted");
             result = Core::ERROR_NONE;
         }
         else
         {
-            LOGERR("DM: fileLocator '%s' delete failed", fileLocator.c_str());
+            LOGERR("DM: fileLocator rejected or delete failed");
         }
 
         return result;
@@ -512,7 +627,8 @@ namespace Plugin {
                 auto begin = std::chrono::steady_clock::now();
                 status = mHttpClient->downloadFile(downloadRequest->getUrl(),
                                         downloadRequest->getFileLocator(),
-                                        downloadRequest->getRateLimit());
+                                        downloadRequest->getRateLimit(),
+                                        mDownloadDirectoryFd);
                 auto end = std::chrono::steady_clock::now();
                 auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - begin).count();
                 long httpCode = mHttpClient->getStatusCode();
