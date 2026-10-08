@@ -188,6 +188,7 @@ extern uint32_t Test_NetworkConfigurationHelper_UpdateNetworkConfigurationNode_I
 
 // ── ralf/RalfPackageBuilder tests ─────────────────────────────────────────────
 extern uint32_t Test_RalfPackageBuilder_ConstructionAndDestruction();
+extern uint32_t Test_RalfVendorLayer_CreatesConfiguredFilesSymlinksAndMountTargets();
 extern uint32_t Test_RalfPackageBuilder_UnmountOverlayfsIfExists_NonExistentPathReturnsFalse();
 extern uint32_t Test_RalfPackageBuilder_UnmountOverlayfsIfExists_EmptyAppInstanceId();
 extern uint32_t Test_RalfPackageBuilder_GenerateRalfDobbySpec_EmptyRalfPkgPathReturnsFalse();
@@ -527,6 +528,7 @@ int main()
 
         // ── ralf/RalfPackageBuilder tests ────────────────────────────────────
         { "RalfPackageBuilder_ConstructionAndDestruction",                           Test_RalfPackageBuilder_ConstructionAndDestruction },
+        { "RalfVendorLayer_CreatesConfiguredFilesSymlinksAndMountTargets",          Test_RalfVendorLayer_CreatesConfiguredFilesSymlinksAndMountTargets },
         { "RalfPackageBuilder_UnmountOverlayfsIfExists_NonExistentPathReturnsFalse", Test_RalfPackageBuilder_UnmountOverlayfsIfExists_NonExistentPathReturnsFalse },
         { "RalfPackageBuilder_UnmountOverlayfsIfExists_EmptyAppInstanceId",          Test_RalfPackageBuilder_UnmountOverlayfsIfExists_EmptyAppInstanceId },
         { "RalfPackageBuilder_GenerateRalfDobbySpec_EmptyRalfPkgPathReturnsFalse",   Test_RalfPackageBuilder_GenerateRalfDobbySpec_EmptyRalfPkgPathReturnsFalse },

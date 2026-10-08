@@ -24,6 +24,7 @@
 #include "OCISpecConstants.h"
 #include "NetworkConfigurationHelper.h"
 #include <fstream>
+#include <glob.h>
 
 #define PERSIST_STORAGE_PATH "/data"
 
@@ -317,6 +318,22 @@ namespace ralf
                 for (Json::Value::ArrayIndex i = 0; i < files.size(); ++i)
                 {
                     const Json::Value &fileEntry = files[i];
+#ifdef ENTOS_RALF_SUPPORT
+                    if (fileEntry.isMember(TYPE) && fileEntry[TYPE].isString() && "bind" == fileEntry[TYPE].asString() &&
+                        fileEntry.isMember(SOURCE) && fileEntry[SOURCE].isString() &&
+                        fileEntry.isMember(DESTINATION) && fileEntry[DESTINATION].isString())
+                    {
+                        addBindMountToOCIConfig(ociConfigRootNode, fileEntry[SOURCE].asString(),
+                                                fileEntry[DESTINATION].asString(), true, false, true, true);
+                        LOGDBG("Added read-only graphics bind mount from %s to %s\n",
+                               fileEntry[SOURCE].asCString(), fileEntry[DESTINATION].asCString());
+                    }
+                    else if (!fileEntry.isMember(TYPE) || !fileEntry[TYPE].isString() ||
+                             ("symlink" != fileEntry[TYPE].asString() && "file" != fileEntry[TYPE].asString()))
+                    {
+                        LOGWARN("Skipping invalid or unsupported vendor GPU file entry at index %u\n", i);
+                    }
+#else
                     if (fileEntry.isMember(SOURCE) && fileEntry.isMember(DESTINATION))
                     {
                         std::string sourcePath = fileEntry[SOURCE].asString();
@@ -328,6 +345,7 @@ namespace ralf
                     {
                         LOGWARN("Invalid file entry in graphics config, missing source or destination\n");
                     }
+#endif
                 }
             }
             else
@@ -345,9 +363,35 @@ namespace ralf
     bool RalfOCIConfigGenerator::addDeviceNodeEntriesToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &graphicsDevNode)
     {
         bool status = graphicsDevNode.size() > 0 ? true : false; // If no entries, return true.
+        std::vector<std::string> deviceNodePaths;
         for (Json::Value::ArrayIndex i = 0; i < graphicsDevNode.size(); ++i)
         {
-            std::string devNodePath = graphicsDevNode[i].asString();
+            const std::string devNodePattern = graphicsDevNode[i].asString();
+#ifdef ENTOS_RALF_SUPPORT
+            glob_t matches = {};
+            const int globStatus = glob(devNodePattern.c_str(), GLOB_NOSORT, nullptr, &matches);
+            if (0 == globStatus)
+            {
+                for (size_t match = 0; match < matches.gl_pathc; ++match)
+                {
+                    if (nullptr != matches.gl_pathv[match])
+                    {
+                        deviceNodePaths.emplace_back(matches.gl_pathv[match]);
+                    }
+                }
+            }
+            else if (GLOB_NOMATCH != globStatus)
+            {
+                LOGWARN("Failed to expand graphics device pattern: %s\n", devNodePattern.c_str());
+            }
+            globfree(&matches);
+#else
+            deviceNodePaths.push_back(devNodePattern);
+#endif
+        }
+
+        for (const std::string &devNodePath : deviceNodePaths)
+        {
             unsigned int majorNum = 0, minorNum = 0;
             char devType = '\0';
             if (getDevNodeMajorMinor(devNodePath, majorNum, minorNum, devType))

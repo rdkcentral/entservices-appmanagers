@@ -32,8 +32,10 @@
 #include <string>
 #include <sys/stat.h>
 #include <cstdlib>
+#include <unistd.h>
 
 #include "ralf/RalfPackageBuilder.h"
+#include "ralf/RalfVendorLayer.h"
 #include "ralf/RalfSupport.h"
 #include "ApplicationConfiguration.h"
 #include "RuntimeManagerImplementation.h"
@@ -100,6 +102,78 @@ uint32_t Test_RalfPackageBuilder_ConstructionAndDestruction()
     L0Test::ExpectTrue(tr, true,
                        "RalfPackageBuilder destructor does not crash");
 
+    return tr.failures;
+}
+
+uint32_t Test_RalfVendorLayer_CreatesConfiguredFilesSymlinksAndMountTargets()
+{
+    L0Test::TestResult tr;
+    const std::string testRoot = "/tmp/ralf_l0test_vendor_layer_" + std::to_string(getpid());
+    const std::string sourcePath = testRoot + "/source.so";
+    const std::string configPath = testRoot + "/vendor-gpu.json";
+    const std::string layerPath = testRoot + "/layer";
+    const std::string copiedPath = layerPath + "/usr/lib/copied.so";
+    const std::string symlinkPath = layerPath + "/usr/lib/libEGL.so.1";
+    const std::string bindTargetPath = layerPath + "/usr/lib/bind.so";
+    const std::string missingBindTargetPath = layerPath + "/usr/lib/missing-bind.so";
+
+    L0Test::ExpectTrue(tr, WriteFile_PB(sourcePath, "gpu-library"),
+                       "Create test GPU source file");
+
+    Json::Value config(Json::objectValue);
+    Json::Value files(Json::arrayValue);
+
+    Json::Value copiedFile(Json::objectValue);
+    copiedFile["type"] = "file";
+    copiedFile["source"] = sourcePath;
+    copiedFile["destination"] = "/usr/lib/copied.so";
+    files.append(copiedFile);
+
+    Json::Value symlink(Json::objectValue);
+    symlink["type"] = "symlink";
+    symlink["target"] = "/usr/lib/copied.so";
+    symlink["linkPath"] = "/usr/lib/libEGL.so.1";
+    files.append(symlink);
+
+    Json::Value bind(Json::objectValue);
+    bind["type"] = "bind";
+    bind["source"] = sourcePath;
+    bind["destination"] = "/usr/lib/bind.so";
+    files.append(bind);
+
+    Json::Value missingBind(Json::objectValue);
+    missingBind["type"] = "bind";
+    missingBind["source"] = testRoot + "/missing-source.so";
+    missingBind["destination"] = "/usr/lib/missing-bind.so";
+    files.append(missingBind);
+    config["vendorGpuSupport"]["files"] = files;
+
+    Json::StreamWriterBuilder writer;
+    L0Test::ExpectTrue(tr, WriteFile_PB(configPath, Json::writeString(writer, config)),
+                       "Write test Broadcom vendor GPU config");
+
+    ralf::RalfVendorLayer layer(layerPath);
+    const bool created = layer.create(configPath);
+    L0Test::ExpectTrue(tr, created, "Create vendor GPU layer from typed file entries");
+
+    struct stat copiedStat;
+    struct stat symlinkStat;
+    struct stat bindTargetStat;
+    L0Test::ExpectTrue(tr, 0 == stat(copiedPath.c_str(), &copiedStat) && S_ISREG(copiedStat.st_mode),
+                       "Copy file entry into vendor layer");
+    std::ifstream copiedFileStream(copiedPath.c_str(), std::ios::binary);
+    std::string copiedContents;
+    copiedFileStream >> copiedContents;
+    L0Test::ExpectTrue(tr, "gpu-library" == copiedContents,
+                       "Preserve copied GPU file contents");
+    L0Test::ExpectTrue(tr, 0 == lstat(symlinkPath.c_str(), &symlinkStat) && S_ISLNK(symlinkStat.st_mode),
+                       "Create symlink entry in vendor layer");
+    L0Test::ExpectTrue(tr, 0 == stat(bindTargetPath.c_str(), &bindTargetStat) && S_ISREG(bindTargetStat.st_mode),
+                       "Create bind mount target in vendor layer");
+    L0Test::ExpectTrue(tr, 0 == stat(missingBindTargetPath.c_str(), &bindTargetStat) && S_ISREG(bindTargetStat.st_mode),
+                       "Create bind target even when its host source is unavailable");
+
+    ralf::removeDirectoryRecursively(testRoot);
     return tr.failures;
 }
 

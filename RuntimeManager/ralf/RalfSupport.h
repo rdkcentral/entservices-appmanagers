@@ -160,5 +160,6 @@ namespace ralf
      * @return true on success, false on failure.
      */
 
-    bool addBindMountToOCIConfig(Json::Value &ociConfigRootNode, const std::string &hostPath, const std::string &containerPath, bool readOnly = false);
+    bool addBindMountToOCIConfig(Json::Value &ociConfigRootNode, const std::string &hostPath, const std::string &containerPath,
+                                 bool readOnly = false, bool recursive = true, bool noSuid = false, bool noDev = false);
 }  // namespace ralf

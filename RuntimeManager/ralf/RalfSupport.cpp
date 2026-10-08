@@ -667,7 +667,8 @@ namespace ralf
         return true;
     }
 
-    bool addBindMountToOCIConfig(Json::Value &ociConfigRootNode, const std::string &hostPath, const std::string &containerPath, bool readOnly)
+    bool addBindMountToOCIConfig(Json::Value &ociConfigRootNode, const std::string &hostPath, const std::string &containerPath,
+                                 bool readOnly, bool recursive, bool noSuid, bool noDev)
     {
         Json::Value mountEntry;
         mountEntry[SOURCE] = hostPath;
@@ -675,7 +676,11 @@ namespace ralf
         mountEntry[TYPE] = "bind";
 
         Json::Value mountOptions(Json::arrayValue);
-        mountOptions.append("rbind");
+        mountOptions.append(recursive ? "rbind" : "bind");
+        if (noSuid)
+            mountOptions.append("nosuid");
+        if (noDev)
+            mountOptions.append("nodev");
         if (readOnly)
             mountOptions.append("ro");
         else
