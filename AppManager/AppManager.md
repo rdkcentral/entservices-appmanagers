@@ -77,6 +77,8 @@ graph TB
 4. **AppInfoManager**: Thread-safe singleton registry for all loaded application state
 5. **AppInfo**: Individual application state container
 
+`LifecycleInterfaceConnector` processes lifecycle callbacks on one worker thread. `AppManagerImplementation::dispatchEvent()` then queues outgoing notifications in FIFO order for a single worker-pool job to drain. Callbacks execute outside the queue lock, so notifications remain asynchronous while `INITIALIZING → PAUSED` is delivered before a subsequent `PAUSED → ACTIVE` for the same instance. Ordering starts at LifecycleManager's own ordered dispatch queue; these queues do not impose an order on genuinely concurrent producers before they enqueue.
+
 ---
 
 ## 3. Code Organization (Folder & File-Level)
