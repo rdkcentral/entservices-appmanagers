@@ -614,7 +614,7 @@ jobs:
             filtered_coverage.info || true
 
       - name: Upload artifacts
-        if: ${{ always() && !env.ACT }}
+        if: ${{ !env.ACT }}
         uses: actions/upload-artifact@v4
         with:
           name: artifacts-L0-appmanagers
