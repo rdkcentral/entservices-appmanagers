@@ -95,7 +95,7 @@ stateDiagram-v2
 
 ---
 
-## 3. Code Organization
+## 3. Code Organization (Folder & File-Level)
 
 ### Directory Structure
 
@@ -446,6 +446,10 @@ set(PLUGIN_LIFECYCLE_MANAGER_SOURCES
 
 ## 6. Internal Workflows & Execution Flow
 
+### Ordered Event Delivery
+
+`dispatchEvent()` appends state, runtime, window, and failure events to a FIFO queue. A single worker-pool job drains the queue and calls `Dispatch()` outside the queue lock. This preserves event submission order (including `INITIALIZING → PAUSED → ACTIVE`) without blocking the event producer or tying up worker-pool threads waiting on earlier jobs. Notification callbacks remain protected by the existing administration lock; enqueue order across truly concurrent producers is the order in which they acquire the queue lock.
+
 ### SpawnApp Flow
 
 ```mermaid
@@ -574,10 +578,10 @@ stateDiagram-v2
     ACTIVE --> PAUSED: SetTargetState(PAUSED)
     
     PAUSED --> SUSPENDED: SetTargetState(SUSPENDED)
-    SUSPENDED --> PAUSED: SetTargetState(PAUSED/ACTIVE)
+    SUSPENDED --> PAUSED: SetTargetState(PAUSED)
     
     PAUSED --> HIBERNATED: SetTargetState(HIBERNATED)
-    HIBERNATED --> PAUSED: SetTargetState(PAUSED/ACTIVE)
+    HIBERNATED --> PAUSED: SetTargetState(PAUSED)
     
     PAUSED --> TERMINATING: UnloadApp/CloseApp
     ACTIVE --> TERMINATING: UnloadApp
@@ -588,6 +592,8 @@ stateDiagram-v2
     
     UNLOADED --> [*]
 ```
+
+An ACTIVE target from SUSPENDED or HIBERNATED is reached through the intermediate PAUSED state; the transition handler does not model it as a direct edge.
 
 ### Handler Interaction Diagram
 
@@ -662,3 +668,9 @@ TEST(LifecycleManagerTest, StatePathCalculation) {
 ```
 
 ---
+
+## 9. Beginner-to-Expert Teaching Mode
+
+**Must know first:** LifecycleManager is a state machine around an application instance, not the container runtime itself. Learn contexts, target states, notifications, and asynchronous event dispatch.
+
+**Advanced path:** trace `SpawnApp` through `StateTransitionHandler`, `RuntimeManagerHandler`, and `WindowManagerHandler`, then study failure, respawn, pending-state queues, and teardown.

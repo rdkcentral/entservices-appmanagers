@@ -1021,7 +1021,7 @@ namespace Plugin {
             LOGERR("Package: '%s:%s' lock count: %" PRIu32, packageId.c_str(), version.c_str(), state.mLockCount);
         } else {
             LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
-            result = Core::ERROR_BAD_REQUEST;
+            result = Core::ERROR_INVALID_PARAMETER;
         }
 
         return result;
@@ -1134,7 +1134,7 @@ namespace Plugin {
             }
         } else {
             LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
-            result = Core::ERROR_BAD_REQUEST;
+            result = Core::ERROR_INVALID_PARAMETER;
         }
 
         if (Core::ERROR_NONE == result)
@@ -1174,7 +1174,7 @@ namespace Plugin {
             LOGDBG("id: %s ver: %s lock count:%d", packageId.c_str(), version.c_str(), state.mLockCount);
         } else {
             LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
-            result = Core::ERROR_BAD_REQUEST;
+            result = Core::ERROR_INVALID_PARAMETER;
         }
 
         return result;
@@ -1235,7 +1235,7 @@ namespace Plugin {
             LOGDBG("id: %s ver: %s lock count:%d", packageId.c_str(), version.c_str(), state.mLockCount);
         } else {
             LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
-            result = Core::ERROR_BAD_REQUEST;
+            result = Core::ERROR_INVALID_PARAMETER;
         }
         return result;
     }

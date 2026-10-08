@@ -117,7 +117,39 @@ namespace WPEFramework
         
         void LifecycleManagerImplementation::dispatchEvent(EventNames event, const JsonValue &params)
         {
-            Core::IWorkerPool::Instance().Submit(Job::Create(this, event, params));
+            bool schedule = false;
+            {
+                std::lock_guard<std::mutex> lock(mEventQueueLock);
+                mEventQueue.emplace_back(event, params);
+                if (false == mEventDispatchScheduled)
+                {
+                    mEventDispatchScheduled = true;
+                    schedule = true;
+                }
+            }
+            if (schedule)
+            {
+                Core::IWorkerPool::Instance().Submit(Job::Create(this));
+            }
+        }
+
+        void LifecycleManagerImplementation::drainEvents()
+        {
+            while (true)
+            {
+                std::pair<EventNames, JsonValue> next;
+                {
+                    std::lock_guard<std::mutex> lock(mEventQueueLock);
+                    if (mEventQueue.empty())
+                    {
+                        mEventDispatchScheduled = false;
+                        return;
+                    }
+                    next = std::move(mEventQueue.front());
+                    mEventQueue.pop_front();
+                }
+                Dispatch(next.first, next.second);
+            }
         }
         
         void LifecycleManagerImplementation::Dispatch(EventNames event, const JsonValue params)
@@ -383,7 +415,10 @@ namespace WPEFramework
             }
             string errorReason("");
             context->setTargetLifecycleState(targetLifecycleState);
-            context->setMostRecentIntent(launchIntent);
+			if (!launchIntent.empty())
+			{
+                context->setMostRecentIntent(launchIntent);
+			}
             context->resetPendingStates();
             bool success = RequestHandler::getInstance()->updateState(context.get(), targetLifecycleState, errorReason);
             mAdminLock.Unlock();

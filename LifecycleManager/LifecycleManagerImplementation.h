@@ -27,7 +27,9 @@
 #include "UtilsLogging.h"
 #include "tracing/Logging.h"
 #include "ApplicationContext.h"
+#include <deque>
 #include <map>
+#include <mutex>
 
 namespace WPEFramework
 {
@@ -60,10 +62,8 @@ namespace WPEFramework
                 class EXTERNAL Job : public Core::IDispatch
 	        {
                     protected:
-                         Job(LifecycleManagerImplementation *lifeCycleManagerImplementation, EventNames event, JsonValue &params)
+                                 explicit Job(LifecycleManagerImplementation *lifeCycleManagerImplementation)
                             : mLifecycleManagerImplementation(lifeCycleManagerImplementation)
-                            , _event(event)
-                            , _params(params)
 	                {
                             if (mLifecycleManagerImplementation != nullptr)
 	            	    {
@@ -84,23 +84,21 @@ namespace WPEFramework
                          }
 
                     public:
-                         static Core::ProxyType<Core::IDispatch> Create(LifecycleManagerImplementation *lifeCycleManagerImplementation, EventNames event, JsonValue params)
+                         static Core::ProxyType<Core::IDispatch> Create(LifecycleManagerImplementation *lifeCycleManagerImplementation)
 	                 {
 #ifndef  USE_THUNDER_R4
-                             return (Core::proxy_cast<Core::IDispatch>(Core::ProxyType<Job>::Create(lifeCycleManagerImplementation, event, params)));
+                             return (Core::proxy_cast<Core::IDispatch>(Core::ProxyType<Job>::Create(lifeCycleManagerImplementation)));
 #else
-                             return (Core::ProxyType<Core::IDispatch>(Core::ProxyType<Job>::Create(lifeCycleManagerImplementation, event, params)));
+                             return (Core::ProxyType<Core::IDispatch>(Core::ProxyType<Job>::Create(lifeCycleManagerImplementation)));
 #endif
                          }
 
                          virtual void Dispatch()
 	                 {
-                             mLifecycleManagerImplementation->Dispatch(_event, _params);
+                             mLifecycleManagerImplementation->drainEvents();
                          }
                     private:
                         LifecycleManagerImplementation *mLifecycleManagerImplementation;
-                        const EventNames _event;
-                        const JsonValue _params;
                 };
 
                 LifecycleManagerImplementation ();
@@ -145,6 +143,9 @@ namespace WPEFramework
 
 	    private: /* members */
                 mutable Core::CriticalSection mAdminLock;
+	        std::mutex mEventQueueLock;
+                std::deque<std::pair<EventNames, JsonValue>> mEventQueue;
+                bool mEventDispatchScheduled { false };
 	        std::list<Exchange::ILifecycleManager::INotification*> mLifecycleManagerNotification;
 	        std::list<Exchange::ILifecycleManagerState::INotification*> mLifecycleManagerStateNotification;
                 std::list<std::shared_ptr<ApplicationContext>> mLoadedApplications;
@@ -154,6 +155,7 @@ namespace WPEFramework
                 bool initialize(PluginHost::IShell* service);
                 void terminate();
                 void dispatchEvent(EventNames, const JsonValue &params);
+                void drainEvents();
                 void Dispatch(EventNames event, const JsonValue params);
                 void handleRuntimeManagerEvent(const JsonObject &data);
                 void notifyOnFailure(const string& appInstanceId, const string& errorCode);

@@ -77,9 +77,11 @@ graph TB
 4. **AppInfoManager**: Thread-safe singleton registry for all loaded application state
 5. **AppInfo**: Individual application state container
 
+`LifecycleInterfaceConnector` processes lifecycle callbacks on one worker thread. `AppManagerImplementation::dispatchEvent()` then queues outgoing notifications in FIFO order for a single worker-pool job to drain. Callbacks execute outside the queue lock, so notifications remain asynchronous while `INITIALIZING → PAUSED` is delivered before a subsequent `PAUSED → ACTIVE` for the same instance. Ordering starts at LifecycleManager's own ordered dispatch queue; these queues do not impose an order on genuinely concurrent producers before they enqueue.
+
 ---
 
-## 3. Code Organization
+## 3. Code Organization (Folder & File-Level)
 
 ### Directory Structure
 
@@ -505,6 +507,10 @@ graph LR
 
 ## 8. Testing & Quality Analysis
 
+The repository contains L0 implementation, lifecycle, component, telemetry, `AppInfo`, and `AppInfoManager` tests under [Tests/L0Tests/AppManager](../Tests/L0Tests/AppManager), with additional L1 and L2 coverage. Recommended additions are cross-service failure ordering, duplicate concurrent actions, shutdown with queued work, and explicit coverage for the optional ResourceMonitor build.
+
+The exact retry and ordering guarantees of remote services are defined outside this folder by the generated exchange interfaces and deployment integration.
+
 ### Existing Tests
 
 Located in `Tests/L1Tests/tests/test_AppManager.cpp`:
@@ -546,5 +552,11 @@ TEST(AppManagerTest, NotificationOrder) {
     // State changes should be delivered in order
 }
 ```
+
+## 9. Beginner-to-Expert Teaching Mode
+
+**Must know first:** AppManager is an orchestration layer. Learn the difference between the Thunder plugin wrapper, `AppManagerImplementation`, application metadata, lifecycle states, and asynchronous notifications.
+
+**Advanced path:** trace a launch through `LifecycleInterfaceConnector`, LifecycleManager, RuntimeManager, package locking, metadata updates, and the optional ResourceMonitor reconciliation path.
 
 ---

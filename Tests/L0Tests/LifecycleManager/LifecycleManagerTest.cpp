@@ -74,6 +74,7 @@ extern uint32_t Test_Impl_ConfigureWithNullService();
 extern uint32_t Test_Impl_OnRippleEventIsNoOp();
 extern uint32_t Test_Impl_DispatchAppStateChangedCallsLcmNotifications();
 extern uint32_t Test_Impl_DispatchAppStateChangedCallsStateNotifications();
+extern uint32_t Test_Impl_QueuedLifecycleEventsPreserveOrder();
 extern uint32_t Test_Impl_DispatchOnFailureCallsLcmNotification();
 extern uint32_t Test_Impl_DispatchUnknownEventDoesNotCrash();
 extern uint32_t Test_Impl_GetContextByAppInstanceId();
@@ -147,6 +148,11 @@ extern uint32_t Test_StateHandler_InvalidTransitionReturnsFalse();
 extern uint32_t Test_RequestHandler_LaunchDelegatesToUpdateState();
 extern uint32_t Test_RequestHandler_SendIntentStoresIntentOnContext();
 extern uint32_t Test_RequestHandler_GetWindowManagerHandlerReturnsNull();
+extern uint32_t Test_RequestHandler_CleanupSingletonProducesFreshInstance();
+extern uint32_t Test_RequestHandler_GetInstanceIsThreadSafe();
+extern uint32_t Test_StateTransitionHandler_GetInstanceReturnsSameInstance();
+extern uint32_t Test_StateTransitionHandler_CleanupSingletonThenGetInstanceIsSafe();
+extern uint32_t Test_StateTransitionHandler_GetInstanceIsThreadSafe();
 extern uint32_t Test_AppCtx_GetRequestTypeDefaultIsNone();
 extern uint32_t Test_StateHandler_ChangeStateLoadingToTerminatingPath();
 
@@ -207,6 +213,7 @@ int main()
         { "Impl_OnRippleEventIsNoOp",                               Test_Impl_OnRippleEventIsNoOp },
         { "Impl_DispatchAppStateChangedCallsLcmNotifications",      Test_Impl_DispatchAppStateChangedCallsLcmNotifications },
         { "Impl_DispatchAppStateChangedCallsStateNotifications",    Test_Impl_DispatchAppStateChangedCallsStateNotifications },
+        { "Impl_QueuedLifecycleEventsPreserveOrder",               Test_Impl_QueuedLifecycleEventsPreserveOrder },
         { "Impl_DispatchOnFailureCallsLcmNotification",             Test_Impl_DispatchOnFailureCallsLcmNotification },
         { "Impl_DispatchUnknownEventDoesNotCrash",                  Test_Impl_DispatchUnknownEventDoesNotCrash },
         { "Impl_GetContextByAppInstanceId",                         Test_Impl_GetContextByAppInstanceId },
@@ -289,6 +296,11 @@ int main()
         { "RequestHandler_LaunchDelegatesToUpdateState",                         Test_RequestHandler_LaunchDelegatesToUpdateState },
         { "RequestHandler_SendIntentStoresIntentOnContext",                       Test_RequestHandler_SendIntentStoresIntentOnContext },
         { "RequestHandler_GetWindowManagerHandlerReturnsNull",                   Test_RequestHandler_GetWindowManagerHandlerReturnsNull },
+        { "RequestHandler_CleanupSingletonProducesFreshInstance",                Test_RequestHandler_CleanupSingletonProducesFreshInstance },
+        { "RequestHandler_GetInstanceIsThreadSafe",                              Test_RequestHandler_GetInstanceIsThreadSafe },
+        { "StateTransitionHandler_GetInstanceReturnsSameInstance",               Test_StateTransitionHandler_GetInstanceReturnsSameInstance },
+        { "StateTransitionHandler_CleanupSingletonThenGetInstanceIsSafe",        Test_StateTransitionHandler_CleanupSingletonThenGetInstanceIsSafe },
+        { "StateTransitionHandler_GetInstanceIsThreadSafe",                      Test_StateTransitionHandler_GetInstanceIsThreadSafe },
         // ── Telemetry tests ──────────────────────────────────────────────────
         { "TelemetryMetricsClient_IsAvailableReturnsTrue",                       Test_TelemetryMetricsClient_IsAvailableReturnsTrue },
         { "TelemetryMetricsClient_EnsureReturnsErrorNone",                       Test_TelemetryMetricsClient_EnsureReturnsErrorNone },

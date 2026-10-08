@@ -22,7 +22,7 @@ public:
                                                const in_addr_t &appIpAddr,
                                                int debugPort);
 
-    ~WebInspector() final;
+    ~WebInspector() noexcept final;
 
     Type type() const override;
     bool isAttached() const override;

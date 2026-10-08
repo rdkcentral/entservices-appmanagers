@@ -367,7 +367,7 @@ static ssize_t appendTcpUdpMatch(struct xt_entry_match *entry, size_t space,
             return -1;
         }
 
-        memset(entry, 0x00, size);
+        memset((uint8_t *)entry, 0x00, (size_t)size);
         strcpy(entry->u.user.name, "tcp");
         entry->u.user.match_size = size;
 
@@ -388,7 +388,7 @@ static ssize_t appendTcpUdpMatch(struct xt_entry_match *entry, size_t space,
             return -1;
         }
 
-        memset(entry, 0x00, size);
+        memset((uint8_t *)entry, 0x00, (size_t)size);
         strcpy(entry->u.user.name, "udp");
         entry->u.user.match_size = size;
 
@@ -429,7 +429,7 @@ static ssize_t appendStateMatch(struct xt_entry_match *entry, size_t space,
         return -1;
     }
 
-    memset(entry, 0x00, size);
+    memset((uint8_t *)entry, 0x00, (size_t)size);
     strcpy(entry->u.user.name, "conntrack");
     entry->u.user.match_size = size;
     entry->u.user.revision = 3;
