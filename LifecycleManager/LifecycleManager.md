@@ -95,7 +95,7 @@ stateDiagram-v2
 
 ---
 
-## 3. Code Organization
+## 3. Code Organization (Folder & File-Level)
 
 ### Directory Structure
 
@@ -578,10 +578,10 @@ stateDiagram-v2
     ACTIVE --> PAUSED: SetTargetState(PAUSED)
     
     PAUSED --> SUSPENDED: SetTargetState(SUSPENDED)
-    SUSPENDED --> PAUSED: SetTargetState(PAUSED/ACTIVE)
+    SUSPENDED --> PAUSED: SetTargetState(PAUSED)
     
     PAUSED --> HIBERNATED: SetTargetState(HIBERNATED)
-    HIBERNATED --> PAUSED: SetTargetState(PAUSED/ACTIVE)
+    HIBERNATED --> PAUSED: SetTargetState(PAUSED)
     
     PAUSED --> TERMINATING: UnloadApp/CloseApp
     ACTIVE --> TERMINATING: UnloadApp
@@ -592,6 +592,8 @@ stateDiagram-v2
     
     UNLOADED --> [*]
 ```
+
+An ACTIVE target from SUSPENDED or HIBERNATED is reached through the intermediate PAUSED state; the transition handler does not model it as a direct edge.
 
 ### Handler Interaction Diagram
 
@@ -666,3 +668,9 @@ TEST(LifecycleManagerTest, StatePathCalculation) {
 ```
 
 ---
+
+## 9. Beginner-to-Expert Teaching Mode
+
+**Must know first:** LifecycleManager is a state machine around an application instance, not the container runtime itself. Learn contexts, target states, notifications, and asynchronous event dispatch.
+
+**Advanced path:** trace `SpawnApp` through `StateTransitionHandler`, `RuntimeManagerHandler`, and `WindowManagerHandler`, then study failure, respawn, pending-state queues, and teardown.

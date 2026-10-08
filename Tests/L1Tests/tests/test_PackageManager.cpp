@@ -1798,7 +1798,7 @@ TEST_F(PackageManagerTest, lockGetLockedInfoAndUnlockusingComRpcSuccess) {
 /* Test Case for lock/getLockedInfo failure branches using ComRpc
  *
  * Set up and initialize required COM-RPC resources
- * Verify Lock() and GetLockedInfo() return ERROR_BAD_REQUEST for unknown package
+ * Verify Lock() and GetLockedInfo() return ERROR_INVALID_PARAMETER for unknown package
  * Deinitialize COM-RPC resources
  */
 
@@ -1813,7 +1813,7 @@ TEST_F(PackageManagerTest, lockAndGetLockedInfousingComRpcFailure) {
     Exchange::RuntimeConfig runtimeConfig {};
     Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
 
-    EXPECT_EQ(Core::ERROR_BAD_REQUEST,
+    EXPECT_EQ(Core::ERROR_INVALID_PARAMETER,
               pkghandlerInterface->Lock("UnknownApp",
                                         "0.0.1",
                                         Exchange::IPackageHandler::LockReason::LAUNCH,
@@ -1824,7 +1824,7 @@ TEST_F(PackageManagerTest, lockAndGetLockedInfousingComRpcFailure) {
 
     bool locked = false;
     string gatewayMetadataPath;
-    EXPECT_EQ(Core::ERROR_BAD_REQUEST,
+    EXPECT_EQ(Core::ERROR_INVALID_PARAMETER,
               pkghandlerInterface->GetLockedInfo("UnknownApp",
                                                  "0.0.1",
                                                  unpackedPath,
@@ -1947,7 +1947,7 @@ TEST_F(PackageManagerTest, installFailureReasonBranchesusingComRpc) {
  *
  * Set up and initialize COM-RPC resources
  * Force install failure state, then verify Config() returns ERROR_GENERAL for non-installed known package
- * Verify PackageState() returns ERROR_BAD_REQUEST for unknown package/version
+ * Verify PackageState() returns ERROR_INVALID_PARAMETER for unknown package/version
  * Deinitialize COM-RPC resources
  */
 
@@ -2129,7 +2129,7 @@ TEST_F(PackageManagerTest, lockTwiceUnlockTwiceLockCountBranchusingComRpc) {
 /* Test Case for unlock unknown package branch using ComRpc
  *
  * Set up and initialize COM-RPC resources
- * Verify Unlock() returns ERROR_BAD_REQUEST for unknown package/version
+ * Verify Unlock() returns ERROR_INVALID_PARAMETER for unknown package/version
  * Deinitialize COM-RPC resources
  */
 
@@ -2139,7 +2139,7 @@ TEST_F(PackageManagerTest, unlockUnknownPackageusingComRpcBadRequest) {
 
     waitforSignal(TIMEOUT_FOR_INIT);
 
-    EXPECT_EQ(Core::ERROR_BAD_REQUEST, pkghandlerInterface->Unlock("UnknownApp", "0.0.1"));
+    EXPECT_EQ(Core::ERROR_INVALID_PARAMETER, pkghandlerInterface->Unlock("UnknownApp", "0.0.1"));
 
     deinitforComRpc();
 }

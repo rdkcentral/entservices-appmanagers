@@ -91,7 +91,7 @@ stateDiagram-v2
 
 ---
 
-## 3. Code Organization
+## 3. Code Organization (Folder & File-Level)
 
 ### Directory Structure
 
@@ -670,7 +670,7 @@ TEST(RuntimeManagerTest, ContainerFailureRecovery) {
 
 ---
 
-## 9. Beginner-to-Expert Learning Path
+## 9. Beginner-to-Expert Teaching Mode
 
 ### Must Know First
 

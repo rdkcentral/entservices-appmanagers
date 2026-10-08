@@ -95,7 +95,6 @@ static bool gNeedsScreenshot = false;
 static uint8_t* gScreenshotData = nullptr;
 static uint32_t gScreenshotSize = 0;
 static std::string gScreenshotImageData;
-static bool gScreenshotSuccess = false;
 
 CreateDisplayRequest::CreateDisplayRequest(std::string client, std::string displayName, uint32_t displayWidth, uint32_t displayHeight, bool virtualDisplayEnabled,
                                            uint32_t virtualWidth, uint32_t virtualHeight, bool topmost, bool focus, uint32_t ownerId, uint32_t groupId, std::string capabilities)
@@ -320,17 +319,19 @@ Core::hresult RDKWindowManagerImplementation::Initialize(PluginHost::IShell* ser
                 // Priority 2: Screenshot
                 if (needsScreenshot)
                 {
-                    std::lock_guard<std::mutex> lock(gRdkWindowManagerMutex);
-                    bool success = CompositorController::screenShot(gScreenshotData, gScreenshotSize);
-                    gScreenshotSuccess = success;
-                    gScreenshotImageData.clear();
-
-                    if (success && gScreenshotData && gScreenshotSize > 0)
+                    bool success = false;
                     {
-                        ::Utils::String::imageEncoder(gScreenshotData, gScreenshotSize, true, gScreenshotImageData);
-                        free(gScreenshotData);
-                        gScreenshotData = nullptr;
-                        gScreenshotSize = 0;
+                        std::lock_guard<std::mutex> lock(gRdkWindowManagerMutex);
+                        success = CompositorController::screenShot(gScreenshotData, gScreenshotSize);
+                        gScreenshotImageData.clear();
+
+                        if (success && gScreenshotData && gScreenshotSize > 0)
+                        {
+                            ::Utils::String::imageEncoder(gScreenshotData, gScreenshotSize, true, gScreenshotImageData);
+                            free(gScreenshotData);
+                            gScreenshotData = nullptr;
+                            gScreenshotSize = 0;
+                        }
                     }
 
                     if (RDKWindowManagerImplementation::_instance)
@@ -2308,11 +2309,17 @@ Core::hresult RDKWindowManagerImplementation::SetAlias(const string& clientId, c
 
 void RDKWindowManagerImplementation::notifyScreenshotComplete(bool success)
 {
-    LOGINFO("Screenshot capture %s, imageData size: %zu bytes", success ? "succeeded" : "failed", gScreenshotImageData.length());
-    
+    std::string imageData;
+    {
+        std::lock_guard<std::mutex> lock(gRdkWindowManagerMutex);
+        imageData = gScreenshotImageData;
+    }
+
+    LOGINFO("Screenshot capture %s, imageData size: %zu bytes", success ? "succeeded" : "failed", imageData.length());
+
     for (auto* notification : mRDKWindowManagerNotification)
     {
-        notification->OnScreenshotComplete(success, gScreenshotImageData);
+        notification->OnScreenshotComplete(success, imageData);
     }
 }
 
