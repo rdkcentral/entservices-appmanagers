@@ -37,6 +37,7 @@
 
 #include <interfaces/ILifecycleManager.h>
 #include "AppManagerImplementation.h"
+#include "UtilsLaunchArgs.h"
 #include "UtilsString.h"
 #include "AppManagerTelemetryReporting.h"
 
@@ -49,81 +50,6 @@ namespace WPEFramework
 {
     namespace Plugin
     {
-        namespace {
-            int hexToInt(const char c)
-            {
-                if ((c >= '0') && (c <= '9')) {
-                    return (c - '0');
-                }
-                if ((c >= 'a') && (c <= 'f')) {
-                    return (c - 'a' + 10);
-                }
-                if ((c >= 'A') && (c <= 'F')) {
-                    return (c - 'A' + 10);
-                }
-                return -1;
-            }
-
-            bool decodePercentEncoded(const std::string& in, std::string& out)
-            {
-                out.clear();
-                out.reserve(in.size());
-
-                bool replaced = false;
-                for (size_t i = 0; i < in.size(); ++i) {
-                    if (('%' == in[i]) && ((i + 2) < in.size())) {
-                        const int hi = hexToInt(in[i + 1]);
-                        const int lo = hexToInt(in[i + 2]);
-                        if ((hi >= 0) && (lo >= 0)) {
-                            out.push_back(static_cast<char>((hi << 4) | lo));
-                            i += 2;
-                            replaced = true;
-                            continue;
-                        }
-                    }
-
-                    if ('+' == in[i]) {
-                        out.push_back(' ');
-                        replaced = true;
-                    } else {
-                        out.push_back(in[i]);
-                    }
-                }
-
-                return replaced;
-            }
-
-            bool isJsonObject(const std::string& payload)
-            {
-                Json::Reader reader;
-                Json::Value value;
-                return ((true == reader.parse(payload, value)) && (true == value.isObject()));
-            }
-
-            std::string normalizeLaunchArgs(const std::string& launchArgs)
-            {
-                if (launchArgs.empty()) {
-                    return launchArgs;
-                }
-
-                if (true == isJsonObject(launchArgs)) {
-                    return launchArgs;
-                }
-
-                std::string decoded;
-                if (false == decodePercentEncoded(launchArgs, decoded)) {
-                    return launchArgs;
-                }
-
-                if (true == isJsonObject(decoded)) {
-                    LOGINFO("launch: normalized percent-encoded launchArgs to JSON");
-                    return decoded;
-                }
-
-                return launchArgs;
-            }
-        }
-
         LifecycleInterfaceConnector* LifecycleInterfaceConnector::_instance = nullptr;
         static uint32_t gAppsActiveCounter = 0;
 
@@ -273,7 +199,7 @@ namespace WPEFramework
                     envArr = existing;
             }
 
-            const std::string normalizedLaunchArgs = normalizeLaunchArgs(launchArgs);
+            const std::string normalizedLaunchArgs = ::Utils::LaunchArgs::normalizeLaunchArgs(launchArgs);
             envArr.append(std::string("APPLICATION_LAUNCH_PARAMETERS=") + LifecycleInterfaceConnector::base64Encode(normalizedLaunchArgs));
 
             Json::StreamWriterBuilder w;
@@ -291,7 +217,7 @@ namespace WPEFramework
         Core::hresult LifecycleInterfaceConnector::launch(const string& appId, const string& intent, const string& launchArgs, WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject)
         {
             Core::hresult status = Core::ERROR_GENERAL;
-            const std::string normalizedLaunchArgs = normalizeLaunchArgs(launchArgs);
+            const std::string normalizedLaunchArgs = ::Utils::LaunchArgs::normalizeLaunchArgs(launchArgs);
             AppManagerImplementation*appManagerImplInstance = AppManagerImplementation::getInstance();
             bool loaded = false;
             string appInstanceId = "";
@@ -336,7 +262,7 @@ namespace WPEFramework
                         {
                             appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_RESUME);
                             state = Exchange::ILifecycleManager::LifecycleState::ACTIVE;
-                            LOGINFO("launchApp appInstanceId %s", appInfoSnap.getAppInstanceId().c_str());
+                            LOGINFO("launchApp appInstanceId %s currentState %d", appInfoSnap.getAppInstanceId().c_str(), static_cast<int>(currentState));
                             status = mLifecycleManagerRemoteObject->SetTargetAppState(appInfoSnap.getAppInstanceId(), state, intent);
 
                             if (Core::ERROR_NONE == status)
@@ -402,7 +328,7 @@ namespace WPEFramework
         Core::hresult LifecycleInterfaceConnector::preLoadApp(const string& appId, const string& intent, const string& launchArgs, WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject, string& error)
         {
             Core::hresult status = Core::ERROR_GENERAL;
-            const std::string normalizedLaunchArgs = normalizeLaunchArgs(launchArgs);
+            const std::string normalizedLaunchArgs = ::Utils::LaunchArgs::normalizeLaunchArgs(launchArgs);
             AppManagerImplementation *appManagerImplInstance = AppManagerImplementation::getInstance();
             AppManagerTelemetryReporting& appManagerTelemetryReporting =AppManagerTelemetryReporting::getInstance();
 
