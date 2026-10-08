@@ -409,25 +409,29 @@ namespace ralf
         return status;
     }
 
-    bool generateOCIRootfs(const std::string appInstanceId, const std::string &pkgmountPaths, const int uid, const int gid, std::string &ociRootfsPath)
+    bool generateOCIRootfs(const std::string appInstanceId, const std::string &pkgmountPaths, std::string &ociRootfsPath)
     {
         // Let us create a directory for app as RALF_APP_ROOTFS_DIR/appInstanceId
         std::string baseDir = RALF_APP_ROOTFS_DIR + appInstanceId;
         std::string appRootfsDir = baseDir + "/rootfs";
         std::string workSubDir = baseDir + "/work";
         std::string upperSubDir = baseDir + "/upper";
-        if (!create_directories(appRootfsDir, uid, gid) ||
-            !create_directories(workSubDir, uid, gid) ||
-            !create_directories(upperSubDir, uid, gid))
+        if (!create_directories(appRootfsDir) ||
+            !create_directories(workSubDir) ||
+            !create_directories(upperSubDir))
         {
             LOGERR("Failed to create RALF bundle directories for appInstanceId: %s", appInstanceId.c_str());
             return false;
         }
-        if (0 != chmod(baseDir.c_str(), 0755))
+        const std::string bundleDirectories[] = {baseDir, appRootfsDir, upperSubDir, workSubDir};
+        for (const std::string &directory : bundleDirectories)
         {
-            LOGERR("Failed to set RALF bundle directory mode to 0755 for %s: %s",
-                   baseDir.c_str(), strerror(errno));
-            return false;
+            if (0 != chmod(directory.c_str(), 0755))
+            {
+                LOGERR("Failed to set RALF bundle directory mode to 0755 for %s: %s",
+                       directory.c_str(), strerror(errno));
+                return false;
+            }
         }
 
         // Now we can mount the overlay filesystem

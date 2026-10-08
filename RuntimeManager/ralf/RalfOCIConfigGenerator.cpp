@@ -23,8 +23,11 @@
 #include "RalfSupport.h"
 #include "OCISpecConstants.h"
 #include "NetworkConfigurationHelper.h"
+#include <cerrno>
+#include <cstring>
 #include <fstream>
 #include <glob.h>
+#include <sys/stat.h>
 
 #define PERSIST_STORAGE_PATH "/data"
 
@@ -233,7 +236,7 @@ namespace ralf
         return true;
     }
 
-    bool RalfOCIConfigGenerator::saveOCIConfigToFile(const Json::Value &ociConfigRootNode, int uid, int gid)
+    bool RalfOCIConfigGenerator::saveOCIConfigToFile(const Json::Value &ociConfigRootNode, int, int)
     {
         bool status = false;
         std::string ociConfigJson;
@@ -247,10 +250,10 @@ namespace ralf
         {
             outFile << ociConfigJson;
             outFile.close();
-            // Change ownership to uid:gid
-            if (chown(mConfigFilePath.c_str(), uid, gid) != 0)
+            if (0 != chmod(mConfigFilePath.c_str(), 0644))
             {
-                LOGERR("Failed to change ownership of OCI config file %s to %d:%d\n", mConfigFilePath.c_str(), uid, gid);
+                LOGERR("Failed to set OCI config file mode to 0644 for %s: %s",
+                       mConfigFilePath.c_str(), strerror(errno));
             }
             else
             {

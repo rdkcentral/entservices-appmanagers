@@ -80,8 +80,8 @@ namespace ralf
         /**
          * Saves the OCI config JSON to mConfigFilePath.
          * @param ociConfigRootNode The root node of the OCI config JSON.
-         * @param uid The user ID to set as the owner of the file.
-         * @param gid The group ID to set as the owner of the file.
+         * @param uid Retained for compatibility; it does not change file ownership.
+         * @param gid Retained for compatibility; it does not change file ownership.
          * @return true if the OCI config was saved successfully, false otherwise.
          */
         bool saveOCIConfigToFile(const Json::Value &ociConfigRootNode, int uid, int gid);

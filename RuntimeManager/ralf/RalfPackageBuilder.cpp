@@ -44,7 +44,7 @@ namespace ralf
         }
     }
 
-    bool RalfPackageBuilder::generateOCIRootfsPackage(const std::string &appInstanceId, const int uid, const int gid, std::string &ociRootfsPath)
+    bool RalfPackageBuilder::generateOCIRootfsPackage(const std::string &appInstanceId, std::string &ociRootfsPath)
     {
         // Let us extract the mount points.
 #ifdef ENTOS_RALF_SUPPORT
@@ -101,7 +101,7 @@ namespace ralf
         }
 #endif
         // Create OCI rootfs package based on parsed data
-        const bool status = generateOCIRootfs(appInstanceId, packageLayers, uid, gid, ociRootfsPath);
+        const bool status = generateOCIRootfs(appInstanceId, packageLayers, ociRootfsPath);
     #ifdef ENTOS_RALF_SUPPORT
         if (!status)
         {
@@ -125,7 +125,7 @@ namespace ralf
         LOGDBG("Extracted %d Ralf packages from config\n", (int)mRalfPackages.size());
         // Step two: Generate overlay OCI rootfs package for the application instance
         std::string ociRootfsPath;
-        status = generateOCIRootfsPackage(config.mAppInstanceId, config.mUserId, config.mGroupId, ociRootfsPath);
+        status = generateOCIRootfsPackage(config.mAppInstanceId, ociRootfsPath);
         if (!status)
         {
             LOGERR("Failed to generate OCI rootfs package for appInstanceId: %s\n", config.mAppInstanceId.c_str());

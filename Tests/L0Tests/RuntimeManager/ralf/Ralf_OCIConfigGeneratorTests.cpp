@@ -380,6 +380,11 @@ uint32_t Test_RalfOCIConfigGenerator_LogPathSetCorrectlyInOCIConfig()
                        "generateRalfOCIConfig() should succeed with minimal mock base spec");
 
     if (result) {
+        struct stat configStat;
+        L0Test::ExpectTrue(tr, 0 == stat(outputConfigPath.c_str(), &configStat) &&
+                           0644 == (configStat.st_mode & 07777) && geteuid() == configStat.st_uid,
+                           "Generated OCI config is process-owned with legacy 0644 mode");
+
         Json::Value outputConfig;
         const bool parsed = ralf::JsonFromFile(outputConfigPath, outputConfig);
         L0Test::ExpectTrue(tr, parsed,

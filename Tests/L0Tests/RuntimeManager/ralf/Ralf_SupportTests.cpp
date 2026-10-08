@@ -912,14 +912,23 @@ uint32_t Test_Ralf_GenerateOCIRootfs_FailsDueToNoMountSupport()
     const std::string bundlePath = std::string(ralf::RALF_APP_ROOTFS_DIR) + testInstanceId;
     std::string ociRootfsPath;
 
-    const bool result = ralf::generateOCIRootfs(testInstanceId, pkgMountPaths,
-                                                0, 0, ociRootfsPath);
+    const bool result = ralf::generateOCIRootfs(testInstanceId, pkgMountPaths, ociRootfsPath);
 
     L0Test::ExpectTrue(tr, !result,
                        "generateOCIRootfs() returns false when overlayfs mount is unavailable");
-    struct stat bundleStat;
-    L0Test::ExpectTrue(tr, 0 == stat(bundlePath.c_str(), &bundleStat) && 0755 == (bundleStat.st_mode & 07777),
-                       "generateOCIRootfs() creates a Dobby-compatible 0755 bundle directory");
+    const std::string bundleDirectories[] = {
+        bundlePath,
+        bundlePath + "/rootfs",
+        bundlePath + "/upper",
+        bundlePath + "/work"
+    };
+    for (const std::string &directory : bundleDirectories)
+    {
+        struct stat directoryStat;
+        L0Test::ExpectTrue(tr, 0 == stat(directory.c_str(), &directoryStat) &&
+                           0755 == (directoryStat.st_mode & 07777) && geteuid() == directoryStat.st_uid,
+                           "generateOCIRootfs() creates process-owned 0755 bundle directories");
+    }
     ralf::removeDirectoryRecursively(bundlePath);
 
     return tr.failures;
