@@ -53,7 +53,7 @@ graph TB
 
 ---
 
-## 3. Code Organization
+## 3. Code Organization (Folder & File-Level)
 
 ### Directory Structure
 
@@ -123,7 +123,38 @@ public:
 
 ---
 
-## 5. Internal Workflows
+## 5. Configuration & Build Integration
+
+The implementation configuration key is `path`; the plugin-level configuration also contains `mode`, `locator`, `autostart`, and optional `startuporder`. [AppStorageManager.conf.in](AppStorageManager.conf.in) is the generated template and [AppStorageManager.config](AppStorageManager.config) is the checked-in helper form. The build optionally enables `RALF_PACKAGE_SUPPORT` and wraps filesystem calls for L1 tests.
+
+The effective platform default for an empty configured path is not established by this subsystem.
+
+### Plugin Configuration
+
+```cmake
+set (autostart false)
+set (preconditions Platform)
+set (callsign "org.rdk.AppStorageManager")
+```
+
+### Runtime Configuration
+
+```json
+{
+    "path": "/opt/persistent/apps"
+}
+```
+
+### Storage Structure
+
+~~~
+/opt/persistent/apps/
+├── com.example.app1/
+├── com.example.app2/
+└── ...
+~~~
+
+## 6. Internal Workflows & Execution Flow
 
 ### Storage Creation Flow
 
@@ -171,40 +202,28 @@ flowchart TD
 
 ---
 
-## 6. Configuration
+## 7. Diagrams & Visual Aids
 
-### Plugin Configuration
-
-```cmake
-set (autostart false)
-set (preconditions Platform)
-set (callsign "org.rdk.AppStorageManager")
+```mermaid
+classDiagram
+    class StorageManagerImplementation
+    class RequestHandler
+    StorageManagerImplementation --> RequestHandler : delegates filesystem work
+    StorageManagerImplementation ..|> IAppStorageManager
+    StorageManagerImplementation ..|> IConfiguration
 ```
 
-### Runtime Configuration
-
-```json
-{
-    "path": "/opt/persistent/apps"
-}
+```mermaid
+stateDiagram-v2
+    [*] --> Unconfigured
+    Unconfigured --> Ready: Configure(service)
+    Ready --> Operating: storage request
+    Operating --> Ready: completed
+    Operating --> Error: filesystem or store failure
+    Ready --> Stopped: teardown
 ```
 
-### Storage Structure
-
-```
-/opt/persistent/apps/
-├── com.example.app1/
-│   ├── data/
-│   └── cache/
-├── com.example.app2/
-│   ├── data/
-│   └── cache/
-└── ...
-```
-
----
-
-## 7. Testing
+## 8. Testing & Quality Analysis
 
 ### Existing Tests
 
@@ -220,9 +239,17 @@ Located in `Tests/L1Tests/tests/test_AppStorageManager.cpp`
 
 ---
 
-## 8. Best Practices
+The repository also has L0 lifecycle, implementation, and component tests under [Tests/L0Tests/AppStorageManager](../Tests/L0Tests/AppStorageManager), plus L1 and L2 coverage. Add tests for quota boundaries, ownership/path validation, partial filesystem failure, empty configured paths, and RALF-enabled behavior.
 
-1. **Always check return values** for storage operations
-2. **Use exemption lists** carefully in ClearAll to prevent data loss
-3. **Set proper UID/GID** when getting storage for container use
-4. **Monitor storage usage** to prevent disk space exhaustion
+### Best Practices
+
+1. **Always check return values** for storage operations.
+2. **Use exemption lists** carefully in `ClearAll` to prevent data loss.
+3. **Set proper UID/GID** when getting storage for container use.
+4. **Monitor storage usage** to prevent disk space exhaustion.
+
+## 9. Beginner-to-Expert Teaching Mode
+
+**Must know first:** distinguish persistent application data from package contents and runtime state. Learn how `path` becomes app-specific storage and how quota/ownership outputs are returned.
+
+**Advanced path:** trace `Configure` through cache and PersistentStore setup, inspect `RequestHandler`, then compare normal and `RALF_PACKAGE_SUPPORT` builds.
