@@ -129,12 +129,10 @@ namespace
     }
 
     bool ensureDirectoryExistsInRootfs(const std::string& rootfsMountPath,
-                                       const std::string& containerPath,
-                                       const int uid,
-                                       const int gid)
+                                       const std::string& containerPath)
     {
         const std::string targetPath = rootfsMountPath + containerPath;
-        return ralf::create_directories(targetPath, uid, gid);
+        return ralf::create_directories(targetPath);
     }
 
     bool ensureFileExistsInRootfs(const std::string& rootfsMountPath,
@@ -150,7 +148,7 @@ namespace
         }
 
         const std::string parentPath = containerPath.substr(0, lastSlash);
-        if (!parentPath.empty() && !ensureDirectoryExistsInRootfs(rootfsMountPath, parentPath, uid, gid))
+        if (!parentPath.empty() && !ensureDirectoryExistsInRootfs(rootfsMountPath, parentPath))
         {
             LOGERR("Failed to create parent directory in merged rootfs: %s", parentPath.c_str());
             return false;
@@ -668,7 +666,7 @@ namespace ralf
             }
             else
             {
-                status = ensureDirectoryExistsInRootfs(rootfsMountPath, requirement.containerPath, uid, gid);
+                status = ensureDirectoryExistsInRootfs(rootfsMountPath, requirement.containerPath);
             }
 
             if (!status)
