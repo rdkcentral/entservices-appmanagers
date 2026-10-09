@@ -19,6 +19,7 @@
 
 #include <iostream>
 #include <atomic>
+#include <deque>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -139,8 +140,14 @@ struct RefNotification final : public WPEFramework::Exchange::IAppManager::INoti
 
     void OnAppInstalled(const std::string&, const std::string&) override { ++installed; }
     void OnAppUninstalled(const std::string&) override { ++uninstalled; }
-    void OnAppLifecycleStateChanged(const std::string&, const std::string&, const WPEFramework::Exchange::IAppManager::AppLifecycleState,
-        const WPEFramework::Exchange::IAppManager::AppLifecycleState, const WPEFramework::Exchange::IAppManager::AppErrorReason) override { ++lifecycle; }
+    void OnAppLifecycleStateChanged(const std::string&, const std::string&, const WPEFramework::Exchange::IAppManager::AppLifecycleState newState,
+        const WPEFramework::Exchange::IAppManager::AppLifecycleState, const WPEFramework::Exchange::IAppManager::AppErrorReason) override
+    {
+        std::lock_guard<std::mutex> lock(eventLock);
+        lifecycleStates.push_back(newState);
+        ++lifecycle;
+        eventCV.notify_all();
+    }
     void OnAppLaunchRequest(const std::string&, const std::string&, const std::string&) override { ++launch; }
     void OnAppUnloaded(const std::string&, const std::string&) override { ++unloaded; }
 
@@ -150,6 +157,9 @@ struct RefNotification final : public WPEFramework::Exchange::IAppManager::INoti
     uint32_t lifecycle { 0 };
     uint32_t launch { 0 };
     uint32_t unloaded { 0 };
+    std::mutex eventLock;
+    std::condition_variable eventCV;
+    std::vector<WPEFramework::Exchange::IAppManager::AppLifecycleState> lifecycleStates;
 };
 
 } // namespace
@@ -172,6 +182,40 @@ uint32_t Test_AM_RegisterAndUnregisterNotification()
     notification->Release();
     impl->Release();
     return tr.failures;
+}
+
+uint32_t Test_AM_QueuedLifecycleEventsPreserveOrder()
+{
+    AppManagerTestFixture fixture;
+    auto* notification = new RefNotification();
+    fixture.impl->Register(notification);
+
+    fixture.impl->handleOnAppLifecycleStateChanged("com.test.order", "instance-order",
+        WPEFramework::Exchange::IAppManager::APP_STATE_PAUSED,
+        WPEFramework::Exchange::IAppManager::APP_STATE_INITIALIZING,
+        WPEFramework::Exchange::IAppManager::APP_ERROR_NONE);
+    fixture.impl->handleOnAppLifecycleStateChanged("com.test.order", "instance-order",
+        WPEFramework::Exchange::IAppManager::APP_STATE_ACTIVE,
+        WPEFramework::Exchange::IAppManager::APP_STATE_PAUSED,
+        WPEFramework::Exchange::IAppManager::APP_ERROR_NONE);
+
+    {
+        std::unique_lock<std::mutex> lock(notification->eventLock);
+        L0Test::ExpectTrue(fixture.tr,
+            notification->eventCV.wait_for(lock, std::chrono::seconds(5), [&] {
+                return 2U == notification->lifecycleStates.size();
+            }), "Both AppManager transitions arrive");
+        if (2U == notification->lifecycleStates.size()) {
+            L0Test::ExpectTrue(fixture.tr,
+                WPEFramework::Exchange::IAppManager::APP_STATE_PAUSED == notification->lifecycleStates[0] &&
+                WPEFramework::Exchange::IAppManager::APP_STATE_ACTIVE == notification->lifecycleStates[1],
+                "INITIALIZING to PAUSED arrives before PAUSED to ACTIVE");
+        }
+    }
+
+    fixture.impl->Unregister(notification);
+    notification->Release();
+    return fixture.tr.failures;
 }
 
 uint32_t Test_AM_ConfigureWithNullServiceFails()

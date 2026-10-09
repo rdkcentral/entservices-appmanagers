@@ -26,6 +26,7 @@
 extern uint32_t Test_AM_InitializeSucceedsAndDeinitializeCleansUp();
 extern uint32_t Test_AM_InformationReturnsEmptyString();
 extern uint32_t Test_AM_RegisterAndUnregisterNotification();
+extern uint32_t Test_AM_QueuedLifecycleEventsPreserveOrder();
 extern uint32_t Test_AM_ConfigureWithNullServiceFails();
 extern uint32_t Test_AM_ConfigureWithValidServiceReturnsSuccess();
 extern uint32_t Test_AM_LaunchAppEmptyIdRejected();
@@ -223,6 +224,7 @@ int main()
         { "AM_InitializeSucceedsAndDeinitializeCleansUp", Test_AM_InitializeSucceedsAndDeinitializeCleansUp },
         { "AM_InformationReturnsEmptyString", Test_AM_InformationReturnsEmptyString },
         { "AM_RegisterAndUnregisterNotification", Test_AM_RegisterAndUnregisterNotification },
+        { "AM_QueuedLifecycleEventsPreserveOrder", Test_AM_QueuedLifecycleEventsPreserveOrder },
         { "AM_ConfigureWithNullServiceFails", Test_AM_ConfigureWithNullServiceFails },
         { "AM_ConfigureWithValidServiceReturnsSuccess", Test_AM_ConfigureWithValidServiceReturnsSuccess },
         { "AM_LaunchAppEmptyIdRejected", Test_AM_LaunchAppEmptyIdRejected },

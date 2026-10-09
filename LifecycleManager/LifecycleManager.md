@@ -448,6 +448,10 @@ set(PLUGIN_LIFECYCLE_MANAGER_SOURCES
 
 ## 6. Internal Workflows & Execution Flow
 
+### Ordered Event Delivery
+
+`dispatchEvent()` appends state, runtime, window, and failure events to a FIFO queue. A single worker-pool job drains the queue and calls `Dispatch()` outside the queue lock. This preserves event submission order (including `INITIALIZING → PAUSED → ACTIVE`) without blocking the event producer or tying up worker-pool threads waiting on earlier jobs. Notification callbacks remain protected by the existing administration lock; enqueue order across truly concurrent producers is the order in which they acquire the queue lock.
+
 ### SpawnApp Flow
 
 ```mermaid

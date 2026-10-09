@@ -367,7 +367,39 @@ Core::hresult AppManagerImplementation::Unregister(Exchange::IAppManager::INotif
 
 void AppManagerImplementation::dispatchEvent(EventNames event, const JsonObject &params)
 {
-    Core::IWorkerPool::Instance().Submit(Job::Create(this, event, params));
+    bool schedule = false;
+    {
+        std::lock_guard<std::mutex> lock(mEventQueueLock);
+        mEventQueue.emplace_back(event, params);
+        if (false == mEventDispatchScheduled)
+        {
+            mEventDispatchScheduled = true;
+            schedule = true;
+        }
+    }
+    if (schedule)
+    {
+        Core::IWorkerPool::Instance().Submit(Job::Create(this));
+    }
+}
+
+void AppManagerImplementation::drainEvents()
+{
+    while (true)
+    {
+        std::pair<EventNames, JsonObject> next;
+        {
+            std::lock_guard<std::mutex> lock(mEventQueueLock);
+            if (mEventQueue.empty())
+            {
+                mEventDispatchScheduled = false;
+                return;
+            }
+            next = std::move(mEventQueue.front());
+            mEventQueue.pop_front();
+        }
+        Dispatch(next.first, next.second);
+    }
 }
 
 void AppManagerImplementation::Dispatch(EventNames event, const JsonObject params)

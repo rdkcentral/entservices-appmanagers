@@ -111,6 +111,14 @@ public:
     {
         impl.Dispatch(event, params);
     }
+
+    static void queueEvent(
+        LifecycleManagerImplementation& impl,
+        EventNames event,
+        const Core::JSON::VariantContainer& params)
+    {
+        impl.dispatchEvent(event, params);
+    }
 };
 
 /**
@@ -828,6 +836,46 @@ uint32_t Test_Impl_DispatchAppStateChangedCallsStateNotifications()
     sn1->Release();
     sn2->Release();
 
+    return tr.failures;
+}
+
+uint32_t Test_Impl_QueuedLifecycleEventsPreserveOrder()
+{
+    L0Test::TestResult tr;
+    ConcreteLifecycleManagerImpl impl;
+    auto* notification = new L0Test::FakeLcmStateNotification();
+    impl.Register(static_cast<WPEFramework::Exchange::ILifecycleManagerState::INotification*>(notification));
+
+    WPEFramework::Core::JSON::VariantContainer params;
+    params["appId"] = "com.test.order";
+    params["appInstanceId"] = "instance-order";
+    params["navigationIntent"] = "";
+    params["errorReason"] = "";
+
+    params["oldLifecycleState"] = static_cast<uint32_t>(WPEFramework::Exchange::ILifecycleManager::INITIALIZING);
+    params["newLifecycleState"] = static_cast<uint32_t>(WPEFramework::Exchange::ILifecycleManager::PAUSED);
+    LifecycleManagerImplementationTest::queueEvent(impl,
+        LifecycleManagerImplementationTest::LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED, params);
+
+    params["oldLifecycleState"] = static_cast<uint32_t>(WPEFramework::Exchange::ILifecycleManager::PAUSED);
+    params["newLifecycleState"] = static_cast<uint32_t>(WPEFramework::Exchange::ILifecycleManager::ACTIVE);
+    LifecycleManagerImplementationTest::queueEvent(impl,
+        LifecycleManagerImplementationTest::LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED, params);
+
+    L0Test::ExpectTrue(tr, impl.WaitForPendingJobs(), "Queued lifecycle dispatch completes");
+    L0Test::ExpectEqU32(tr, notification->onStateChangedCount.load(), 2U,
+        "Both lifecycle transitions are delivered");
+    if (2U == notification->transitions.size()) {
+        L0Test::ExpectTrue(tr,
+            notification->transitions[0].first == WPEFramework::Exchange::ILifecycleManager::INITIALIZING &&
+            notification->transitions[0].second == WPEFramework::Exchange::ILifecycleManager::PAUSED &&
+            notification->transitions[1].first == WPEFramework::Exchange::ILifecycleManager::PAUSED &&
+            notification->transitions[1].second == WPEFramework::Exchange::ILifecycleManager::ACTIVE,
+            "INITIALIZING to PAUSED is delivered before PAUSED to ACTIVE");
+    }
+
+    impl.Unregister(static_cast<WPEFramework::Exchange::ILifecycleManagerState::INotification*>(notification));
+    notification->Release();
     return tr.failures;
 }
 // ─────────────────────────────────────────────────────────────────────────────
