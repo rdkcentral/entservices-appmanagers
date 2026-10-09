@@ -49,6 +49,20 @@ RuntimeManagerImplementation
 - **Gateway/ContainerUtils, NetFilter, NetFilterLock**: Network isolation utilities
 - **Gateway/WebInspector, Debugger**: Debug/inspection tooling
 
+### Runtime Configuration Schema Evolution
+
+`envVariables`, `logLevels`, and `fkpsFiles` are JSON arrays of strings in the opaque payload. The removed public `RuntimeConfig` structure represented each property as a `std::string` containing a second serialized JSON array. The opaque payload removes that nested serialization, and RuntimeManager represents the decoded values privately as `std::vector<std::string>`.
+
+| Property | Opaque JSON representation | Private RuntimeManager representation |
+|----------|----------------------------|---------------------------------------|
+| `envVariables` | Array of `NAME=value` strings | `std::vector<std::string>` |
+| `logLevels` | Array of log-level strings | `std::vector<std::string>` |
+| `fkpsFiles` | Array of file-path strings | `std::vector<std::string>` |
+
+This changes the JSON property type from a string containing encoded JSON to a real JSON array. Producers must emit real arrays, intermediaries must preserve them as arrays, and `RuntimeConfigurationDecoder` validates that every array element is a string.
+
+When RuntimeManager must consume a new property, the owning producer adds it to the opaque payload, a typed field with a safe default is added to private `RuntimeConfiguration`, and `RuntimeConfigurationDecoder::Decode()` validates and populates it. New properties should remain optional unless a coordinated breaking change is intended. Properties not consumed by RuntimeManager need no private field or decoder change and are tolerated as unknown properties.
+
 ## External Interfaces
 
 ### Public APIs (JSON-RPC)
