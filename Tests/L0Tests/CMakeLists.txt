@@ -329,6 +329,8 @@ if(PLUGIN_RUNTIME_MANAGER)
         RALF_PACKAGE_SUPPORT_ENABLED=1
     )
     if(ENTOS_RALF_SUPPORT)
+        find_package(LibXml2 REQUIRED)
+        target_link_libraries(runtimemanager_l0test PRIVATE LibXml2::LibXml2)
         target_compile_definitions(runtimemanager_l0test PRIVATE
             ENTOS_RALF_SUPPORT
             ENTOS_RALF_BUNDLE_ROOT=\"/tmp/ralf_l0test_bundle_root/\"

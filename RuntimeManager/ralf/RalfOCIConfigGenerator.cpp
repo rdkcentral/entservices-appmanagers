@@ -28,6 +28,10 @@
 #include <fstream>
 #include <glob.h>
 #include <sys/stat.h>
+#ifdef ENTOS_RALF_SUPPORT
+#include <libxml/parser.h>
+#include <libxml/tree.h>
+#endif
 
 #define PERSIST_STORAGE_PATH "/data"
 
@@ -525,6 +529,58 @@ namespace ralf
 
     bool RalfOCIConfigGenerator::setLegacyProcessArgs(Json::Value &ociConfigRootNode, const std::vector<Json::Value> &packageConfigs)
     {
+#ifdef ENTOS_RALF_SUPPORT
+        if (2 == packageConfigs.size() && 2 == mRalfPackages.size() &&
+            !packageConfigs.front()[ENTRY_POINT].isString() &&
+            packageConfigs.back()[PACKAGE_TYPE].isString() &&
+            PKG_TYPE_APPLICATION == packageConfigs.back()[PACKAGE_TYPE].asString() &&
+            packageConfigs.back()[ENTRY_POINT].isString())
+        {
+            const std::string configPath = mRalfPackages.front().second + "/config.xml";
+            xmlDocPtr document = xmlReadFile(configPath.c_str(), nullptr, XML_PARSE_NONET);
+            if (nullptr == document)
+            {
+                LOGERR("Failed to read widget runtime metadata at %s", configPath.c_str());
+                return false;
+            }
+
+            std::string executable;
+            const xmlNodePtr root = xmlDocGetRootElement(document);
+            for (xmlNodePtr child = nullptr != root ? root->children : nullptr; nullptr != child; child = child->next)
+            {
+                if (XML_ELEMENT_NODE == child->type && xmlStrEqual(child->name, BAD_CAST "content"))
+                {
+                    xmlChar *source = xmlGetProp(child, BAD_CAST "src");
+                    if (nullptr != source)
+                    {
+                        executable = reinterpret_cast<const char *>(source);
+                        xmlFree(source);
+                    }
+                    break;
+                }
+            }
+            xmlFreeDoc(document);
+
+            if (executable.empty() || '/' == executable.front() ||
+                "." == executable || ".." == executable ||
+                0 == executable.find("../") || std::string::npos != executable.find("/../") ||
+                std::string::npos != executable.find("/./") ||
+                (3 <= executable.size() && "/.." == executable.substr(executable.size() - 3)))
+            {
+                LOGERR("Invalid widget runtime executable in %s: %s", configPath.c_str(), executable.c_str());
+                return false;
+            }
+
+            Json::Value args(Json::arrayValue);
+            args.append("/runtime/" + executable);
+            ociConfigRootNode[PROCESS][ARGS] = std::move(args);
+            ociConfigRootNode[PROCESS]["cwd"] = "/package";
+            addBindMountToOCIConfig(ociConfigRootNode, mRalfPackages.front().second, "/runtime", true);
+            addBindMountToOCIConfig(ociConfigRootNode, mRalfPackages.back().second, "/package", true);
+            return true;
+        }
+#endif
+
         if (packageConfigs.size() < 2 ||
             !packageConfigs.front()[PACKAGE_TYPE].isString() ||
             PKG_TYPE_BASE != packageConfigs.front()[PACKAGE_TYPE].asString() ||

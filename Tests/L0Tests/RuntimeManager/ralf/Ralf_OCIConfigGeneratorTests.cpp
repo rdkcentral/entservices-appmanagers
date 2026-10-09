@@ -494,6 +494,47 @@ uint32_t Test_RalfOCIConfigGenerator_LegacyProcessArgsRejectMissingBase()
     return tr.failures;
 }
 
+#ifdef ENTOS_RALF_SUPPORT
+uint32_t Test_RalfOCIConfigGenerator_WidgetRuntimeUsesContentExecutable()
+{
+    L0Test::TestResult tr;
+    const std::string runtimeRoot = "/tmp/ralf_l0test_widget_runtime";
+    const std::string appRoot = "/tmp/ralf_l0test_widget_app";
+    L0Test::ExpectTrue(tr, WriteFile_OCIGen(runtimeRoot + "/config.xml",
+                       "<widget><content src=\"bin/browser\" type=\"application/vnd.rdk.browser\"/></widget>"),
+                       "widget runtime config is available");
+    std::vector<ralf::RalfPkgInfoPair> packages = {
+        {runtimeRoot + "/config.json", runtimeRoot},
+        {appRoot + "/config.json", appRoot}
+    };
+    ralf::RalfOCIConfigGenerator gen("/tmp/ralf_l0test_widget_spec.json", packages);
+    Json::Value runtime(Json::objectValue);
+    Json::Value app(Json::objectValue);
+    app[ralf::PACKAGE_TYPE] = ralf::PKG_TYPE_APPLICATION;
+    app[ralf::ENTRY_POINT] = ".";
+    Json::Value spec(Json::objectValue);
+
+    L0Test::ExpectTrue(tr, gen.setLegacyProcessArgs(spec, {runtime, app}),
+                       "widget runtime and RALF app launch without a base package");
+    L0Test::ExpectTrue(tr, spec[ralf::PROCESS][ralf::ARGS].size() == 1 &&
+                       spec[ralf::PROCESS][ralf::ARGS][0].asString() == "/runtime/bin/browser" &&
+                       spec[ralf::PROCESS]["cwd"].asString() == "/package",
+                       "browser widget executable is launched with app working directory");
+    const Json::Value &mounts = spec[ralf::MOUNTS];
+    L0Test::ExpectTrue(tr, mounts.size() == 2 &&
+                       mounts[0][ralf::SOURCE].asString() == runtimeRoot &&
+                       mounts[0][ralf::DESTINATION].asString() == "/runtime" &&
+                       mounts[1][ralf::SOURCE].asString() == appRoot &&
+                       mounts[1][ralf::DESTINATION].asString() == "/package",
+                       "runtime and app have legacy mount paths");
+
+    std::remove((runtimeRoot + "/config.xml").c_str());
+    ::rmdir(runtimeRoot.c_str());
+    ::rmdir(appRoot.c_str());
+    return tr.failures;
+}
+#endif
+
 uint32_t Test_RalfOCIConfigGenerator_UsesWaylandEglSonameForMissingConfiguredSource()
 {
     L0Test::TestResult tr;
