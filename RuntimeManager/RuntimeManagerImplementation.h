@@ -105,6 +105,8 @@ namespace WPEFramework
                     Exchange::IRuntimeManager::RuntimeState containerState;
                     time_t requestTime = 0;
                     RuntimeManagerImplementation::RequestType requestType = RuntimeManagerImplementation::REQUEST_TYPE_NONE;
+                    bool debuggerEnabled = false;
+		    bool webInspectorEnabled = false;
 #ifdef ENABLE_RIALTO
                     bool usesRialto = false;
 #endif
@@ -207,6 +209,9 @@ namespace WPEFramework
                 bool isOCIPluginObjectValid(void);
                 Exchange::IRuntimeManager::RuntimeState getRuntimeState(const string& appInstanceId);
                 Core::hresult getAppStorageInfo(const string& appId, AppStorageInfo& appStorageInfo);
+#ifdef RDK_APPMANAGERS_DEBUG
+                void detachWebInspectorForContainer(const std::string& name, const JsonObject& data);
+#endif
 
             private: /* members */
                 mutable Core::CriticalSection mRuntimeManagerImplLock;
@@ -216,6 +221,7 @@ namespace WPEFramework
                 std::map<std::string, RuntimeAppInfo> mRuntimeAppInfo;
 
                 #ifdef RDK_APPMANAGERS_DEBUG
+                Core::CriticalSection mWebInspectorLock;
                 std::map<std::string, std::shared_ptr<WebInspector>> mWebInspectors;
                 std::map<uint16_t, bool> mPortAvailability;
                 #endif

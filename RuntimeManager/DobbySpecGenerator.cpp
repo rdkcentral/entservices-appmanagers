@@ -513,13 +513,14 @@ Json::Value DobbySpecGenerator::createEnvVars(const ApplicationConfiguration& co
    }
 
    //TODO SUPPORT WATCHDOG
-
+#ifdef RDK_APPMANAGERS_DEBUG
    const bool webRuntime = hasCapability(capabilities, "runtime-html");
 
-   if (webRuntime)
+   if (runtimeConfig.enableDebugger && webRuntime)
    {
        env.append("WEBKIT_LEGACY_INSPECTOR_SERVER=0.0.0.0:22222");
    }
+#endif
 
    return env;
 }
