@@ -330,6 +330,7 @@ if(PLUGIN_RUNTIME_MANAGER)
     )
     if(ENTOS_RALF_SUPPORT)
         find_package(LibXml2 REQUIRED)
+        target_include_directories(runtimemanager_l0test PRIVATE ${LIBXML2_INCLUDE_DIRS})
         target_link_libraries(runtimemanager_l0test PRIVATE LibXml2::LibXml2)
         target_compile_definitions(runtimemanager_l0test PRIVATE
             ENTOS_RALF_SUPPORT
