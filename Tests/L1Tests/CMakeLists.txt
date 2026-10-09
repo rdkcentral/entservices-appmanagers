@@ -24,6 +24,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(${NAMESPACE}Plugins REQUIRED)
 find_package(GTest REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(JSONCPP REQUIRED IMPORTED_TARGET jsoncpp)
 
 set (TEST_SRC
     tests/test_UtilsFile.cpp
@@ -130,8 +132,6 @@ endif()
 # L1 tests. Compiling the ralf sources here independently avoids all of that.
 if(PLUGIN_RALF)
     message(STATUS "PLUGIN_RALF=ON")
-    find_package(PkgConfig REQUIRED)
-    pkg_check_modules(JSONCPP REQUIRED jsoncpp)
     file(GLOB RALF_SRC_FILES
         "${CMAKE_SOURCE_DIR}/../entservices-appmanagers/RuntimeManager/ralf/*.cpp"
     )
@@ -146,7 +146,6 @@ if(PLUGIN_RALF)
         ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers
         ${JSONCPP_INCLUDE_DIRS}
     )
-    list(APPEND TEST_LIB ${JSONCPP_LIBRARIES})
 endif()
 
 # PLUGIN_APP_STORAGE_MANAGER
@@ -220,7 +219,7 @@ if(BUILD_L1_TESTS_SHARED_MODULE)
     endif()
 endif()
 
-target_link_libraries(${TEST_RUNNER_NAME} gtest_main gmock gtest ${TEST_LIB} AppManagersHelpers)
+target_link_libraries(${TEST_RUNNER_NAME} gtest_main gmock gtest ${TEST_LIB} AppManagersHelpers PkgConfig::JSONCPP)
 
 target_compile_definitions(${TEST_RUNNER_NAME} PRIVATE UNIT_TEST)
 

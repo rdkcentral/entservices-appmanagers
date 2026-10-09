@@ -67,6 +67,19 @@ WPEFramework::Plugin::PreinstallManagerImplementation* CreateImpl()
         WPEFramework::Plugin::PreinstallManagerImplementation>();
 }
 
+bool ReleaseAndWaitForDestruction(WPEFramework::Plugin::PreinstallManagerImplementation* impl,
+                                  std::chrono::milliseconds timeout = std::chrono::milliseconds(5000))
+{
+    impl->Release();
+    const auto deadline = std::chrono::steady_clock::now() + timeout;
+    while ((nullptr != WPEFramework::Plugin::PreinstallManagerImplementation::getInstance()) &&
+           (std::chrono::steady_clock::now() < deadline))
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+    return nullptr == WPEFramework::Plugin::PreinstallManagerImplementation::getInstance();
+}
+
 } // namespace
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -521,13 +534,13 @@ uint32_t RunVersionComparison(const std::string& preinstallVer, const std::strin
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
-    impl->Release();
+    const bool destroyed = ReleaseAndWaitForDestruction(impl);
 
     const uint32_t calls = installer.installCallCount.load();
 
     rmdir(subDir.c_str());
     rmdir(tmpPath);
-    return completed ? calls : VERSION_COMPARISON_SETUP_FAILURE;
+    return (completed && destroyed) ? calls : VERSION_COMPARISON_SETUP_FAILURE;
 }
 
 } // namespace
