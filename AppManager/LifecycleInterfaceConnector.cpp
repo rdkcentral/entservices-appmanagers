@@ -390,9 +390,7 @@ namespace WPEFramework
                         if ((true == loaded) &&
                             (Core::ERROR_NONE == status) &&
                             appInMap &&
-			    ((Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED == appInfoSnap.getAppNewState()) ||
-			                                 (Exchange::IAppManager::AppLifecycleState::APP_STATE_HIBERNATED == appInfoSnap.getAppNewState())) &&
-
+			    (Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED == appInfoSnap.getAppNewState()) &&
                             (false == versionChanged))
                         {
 			    LOGINFO("[LAUNCH_FLOW][IF] Resume suspended app | appId=%s appInstanceId=%s state=%d runningVersion=%s requestedVersion=%s versionChanged=%d",
@@ -424,8 +422,7 @@ namespace WPEFramework
 			else if ((true == loaded) &&
                             (Core::ERROR_NONE == status) &&
                             appInMap &&
-                            ((Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED == appInfoSnap.getAppNewState()) ||
-			    (Exchange::IAppManager::AppLifecycleState::APP_STATE_HIBERNATED == appInfoSnap.getAppNewState())) &&
+                            (Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED == appInfoSnap.getAppNewState()) &&
                             versionChanged)
                         {
                             LOGINFO("Suspended app replacement for appId=%s runningVersion=%s requestedVersion=%s runningPath=%s requestedPath=%s",
