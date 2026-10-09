@@ -66,15 +66,23 @@ namespace Plugin {
     Core::hresult DownloadManagerImplementation::Register(Exchange::IDownloadManager::INotification* notification)
     {
         LOGINFO("entry");
-        ASSERT(notification != nullptr);
+        if (notification == nullptr)
+        {
+            LOGERR("Register failed: notification is null");
+            return Core::ERROR_GENERAL;
+        }
 
         mAdminLock.Lock();
-        ASSERT(std::find(mDownloadManagerNotification.begin(), mDownloadManagerNotification.end(), notification) == mDownloadManagerNotification.end());
-        if (std::find(mDownloadManagerNotification.begin(), mDownloadManagerNotification.end(), notification) == mDownloadManagerNotification.end())
+        auto foundIt = std::find(mDownloadManagerNotification.begin(), mDownloadManagerNotification.end(), notification);
+        if (foundIt != mDownloadManagerNotification.end())
         {
-            mDownloadManagerNotification.push_back(notification);
-            notification->AddRef();
+            LOGWARN("Register: notification is already registered");
+            mAdminLock.Unlock();
+            return Core::ERROR_GENERAL;
         }
+
+        mDownloadManagerNotification.push_back(notification);
+        notification->AddRef();
 
         mAdminLock.Unlock();
         LOGINFO("exit");
@@ -85,7 +93,11 @@ namespace Plugin {
     Core::hresult DownloadManagerImplementation::Unregister(Exchange::IDownloadManager::INotification* notification)
     {
         LOGINFO();
-        ASSERT(notification != nullptr);
+        if (notification == nullptr)
+        {
+            LOGERR("Unregister failed: notification is null");
+            return Core::ERROR_GENERAL;
+        }
         Core::hresult result = Core::ERROR_NONE;
 
         /* Remove the notification from the list */
@@ -145,7 +157,25 @@ namespace Plugin {
             {
                 LOGINFO("DM: Download path ready at '%s'", mDownloadPath.c_str());
                 mDownloaderRunFlag.store(true, std::memory_order_relaxed);
-                mDownloadThreadPtr = std::unique_ptr<std::thread>(new std::thread(&DownloadManagerImplementation::downloaderRoutine, this, 1));
+                try
+                {
+                    mDownloadThreadPtr = std::unique_ptr<std::thread>(new std::thread(&DownloadManagerImplementation::downloaderRoutine, this, 1));
+                    LOGINFO("DM: Downloader thread created successfully");
+                }
+                catch (const std::system_error& e)
+                {
+                    LOGERR("DM: Failed to create downloader thread - %s (code: %d)", e.what(), e.code().value());
+                    mDownloaderRunFlag.store(false, std::memory_order_relaxed);
+                    result = Core::ERROR_GENERAL;
+                    return result;
+                }
+                catch (const std::exception& e)
+                {
+                    LOGERR("DM: Unexpected error creating downloader thread - %s", e.what());
+                    mDownloaderRunFlag.store(false, std::memory_order_relaxed);
+                    result = Core::ERROR_GENERAL;
+                    return result;
+                }
             }
 
             RDKAM_TELEMETRY_INIT(service);
