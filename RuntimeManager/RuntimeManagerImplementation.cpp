@@ -1449,7 +1449,7 @@ namespace WPEFramework
 
             if ((true == debuggerEnabled) && (true == webInspectorEnabled))
             {
-                const in_addr_t addr = ContainerUtils::getContainerIpAddress(name);
+                const in_addr_t addr = ContainerUtils::getContainerIpAddress(inspectorKey);
                 if (addr != 0)
                 {
                     struct in_addr ip_addr;
