@@ -45,6 +45,10 @@
 
 #include <pwd.h> //For getting user id and group id of ralf user
 #include <algorithm>
+#ifdef ENTOS_RALF_SUPPORT
+#include <libxml/parser.h>
+#include <libxml/tree.h>
+#endif
 
 namespace
 {
@@ -315,6 +319,66 @@ namespace ralf
 
         return true;
     }
+
+#ifdef ENTOS_RALF_SUPPORT
+    bool getWidgetRuntimeLaunchInfo(const std::string &manifestPath, std::string &appPath,
+                                    std::string &runtimePath, std::string &command)
+    {
+        std::vector<RalfPkgInfoPair> packages;
+        Json::Value runtimeConfig;
+        Json::Value appConfig;
+        if (!parseRalPkgInfo(manifestPath, packages) || 2 != packages.size() ||
+            !JsonFromFile(packages.front().first, runtimeConfig) ||
+            !JsonFromFile(packages.back().first, appConfig) ||
+            runtimeConfig[ENTRY_POINT].isString() ||
+            !appConfig[PACKAGE_TYPE].isString() ||
+            PKG_TYPE_APPLICATION != appConfig[PACKAGE_TYPE].asString() ||
+            !appConfig[ENTRY_POINT].isString())
+        {
+            return false;
+        }
+
+        const std::string configPath = packages.front().second + "/config.xml";
+        xmlDocPtr document = xmlReadFile(configPath.c_str(), nullptr, XML_PARSE_NONET);
+        if (nullptr == document)
+        {
+            LOGERR("Failed to read widget runtime metadata at %s", configPath.c_str());
+            return false;
+        }
+
+        std::string executable;
+        const xmlNodePtr root = xmlDocGetRootElement(document);
+        for (xmlNodePtr child = nullptr != root ? root->children : nullptr; nullptr != child; child = child->next)
+        {
+            if (XML_ELEMENT_NODE == child->type && xmlStrEqual(child->name, BAD_CAST "content"))
+            {
+                xmlChar *source = xmlGetProp(child, BAD_CAST "src");
+                if (nullptr != source)
+                {
+                    executable = reinterpret_cast<const char *>(source);
+                    xmlFree(source);
+                }
+                break;
+            }
+        }
+        xmlFreeDoc(document);
+
+        if (executable.empty() || '/' == executable.front() ||
+            "." == executable || ".." == executable ||
+            0 == executable.find("../") || std::string::npos != executable.find("/../") ||
+            std::string::npos != executable.find("/./") ||
+            (3 <= executable.size() && "/.." == executable.substr(executable.size() - 3)))
+        {
+            LOGERR("Invalid widget runtime executable in %s: %s", configPath.c_str(), executable.c_str());
+            return false;
+        }
+
+        appPath = packages.back().second;
+        runtimePath = packages.front().second;
+        command = executable;
+        return true;
+    }
+#endif
 
     bool parseRalPkgInfo(const std::string &configFilePath, std::vector<RalfPkgInfoPair> &packages)
     {

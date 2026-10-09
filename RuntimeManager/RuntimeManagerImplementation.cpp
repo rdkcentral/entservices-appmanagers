@@ -531,10 +531,10 @@ namespace WPEFramework
 #endif // RALF_PACKAGE_SUPPORT_ENABLED
         }
 
-        bool RuntimeManagerImplementation::generate(const ApplicationConfiguration &config, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject, std::string &dobbySpec)
+        bool RuntimeManagerImplementation::generate(const ApplicationConfiguration &config, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject, std::string &dobbySpec, bool classicRalfWidget)
         {
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
-            if (isRalfPackage(runtimeConfigObject))
+            if (isRalfPackage(runtimeConfigObject) && !classicRalfWidget)
             {
                 LOGINFO("Generating Ralf Package Config : %s", runtimeConfigObject.ralfPkgPath.c_str());
                 ralf::RalfPackageBuilder ralfBuilder;
@@ -658,6 +658,21 @@ namespace WPEFramework
             const bool ralfInstance = isRalfPackage(runtimeConfigObject);
             LOGDBG("[ralf-debug] Run selected %s container flow for appId='%s'", ralfInstance ? "RALF" : "legacy",
                 appId.c_str());
+            WPEFramework::Exchange::RuntimeConfig launchConfig = runtimeConfigObject;
+            bool classicRalfWidget = false;
+#ifdef ENTOS_RALF_SUPPORT
+            if (ralfInstance)
+            {
+                classicRalfWidget = ralf::getWidgetRuntimeLaunchInfo(runtimeConfigObject.ralfPkgPath,
+                    launchConfig.appPath, launchConfig.runtimePath, launchConfig.command);
+                if (classicRalfWidget)
+                {
+                    launchConfig.unpackedPath.clear();
+                    LOGINFO("RALF app with widget runtime: launching %s from %s using classic Dobby spec",
+                            launchConfig.command.c_str(), launchConfig.runtimePath.c_str());
+                }
+            }
+#endif
 
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
             /* RALF containers all share the single 'ralf' user; widgets keep the per-app
@@ -755,7 +770,7 @@ namespace WPEFramework
             }
 
             // To indicate containers used by Widget
-            const bool legacyContainer = !ralfInstance;
+            const bool legacyContainer = !ralfInstance || classicRalfWidget;
 #ifdef ENABLE_RIALTO
             bool rialtoSetupFailed = false;
             if (displayResult && !xdgRuntimeDir.empty() && !waylandDisplay.empty())
@@ -842,7 +857,7 @@ namespace WPEFramework
             }
 #endif // ENABLE_RIALTO
             /* Generate dobbySpec for the selected container mode (legacy or non-legacy) */
-            else if (false == generate(config, runtimeConfigObject, dobbySpec))
+            else if (false == generate(config, launchConfig, dobbySpec, classicRalfWidget))
             {
                 LOGERR("Failed to generate dobbySpec");
                 status = Core::ERROR_GENERAL;

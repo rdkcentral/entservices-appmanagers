@@ -495,40 +495,46 @@ uint32_t Test_RalfOCIConfigGenerator_LegacyProcessArgsRejectMissingBase()
 }
 
 #ifdef ENTOS_RALF_SUPPORT
-uint32_t Test_RalfOCIConfigGenerator_WidgetRuntimeUsesContentExecutable()
+uint32_t Test_Ralf_GetWidgetRuntimeLaunchInfo()
 {
     L0Test::TestResult tr;
     const std::string runtimeRoot = "/tmp/ralf_l0test_widget_runtime";
     const std::string appRoot = "/tmp/ralf_l0test_widget_app";
+    const std::string manifestPath = "/tmp/ralf_l0test_widget_manifest.json";
     L0Test::ExpectTrue(tr, WriteFile_OCIGen(runtimeRoot + "/config.xml",
                        "<widget><content src=\"bin/browser\" type=\"application/vnd.rdk.browser\"/></widget>"),
                        "widget runtime config is available");
-    std::vector<ralf::RalfPkgInfoPair> packages = {
-        {runtimeRoot + "/config.json", runtimeRoot},
-        {appRoot + "/config.json", appRoot}
-    };
-    ralf::RalfOCIConfigGenerator gen("/tmp/ralf_l0test_widget_spec.json", packages);
-    Json::Value runtime(Json::objectValue);
-    Json::Value app(Json::objectValue);
-    app[ralf::PACKAGE_TYPE] = ralf::PKG_TYPE_APPLICATION;
-    app[ralf::ENTRY_POINT] = ".";
-    Json::Value spec(Json::objectValue);
+    L0Test::ExpectTrue(tr, WriteFile_OCIGen(runtimeRoot + "/config.json", "{}") &&
+                       WriteFile_OCIGen(appRoot + "/config.json",
+                                         "{\"packageType\":\"application\",\"entryPoint\":\".\"}"),
+                       "runtime and RALF app config are available");
 
-    L0Test::ExpectTrue(tr, gen.setLegacyProcessArgs(spec, {runtime, app}),
-                       "widget runtime and RALF app launch without a base package");
-    L0Test::ExpectTrue(tr, spec[ralf::PROCESS][ralf::ARGS].size() == 1 &&
-                       spec[ralf::PROCESS][ralf::ARGS][0].asString() == "/runtime/bin/browser" &&
-                       spec[ralf::PROCESS]["cwd"].asString() == "/package",
-                       "browser widget executable is launched with app working directory");
-    const Json::Value &mounts = spec[ralf::MOUNTS];
-    L0Test::ExpectTrue(tr, mounts.size() == 2 &&
-                       mounts[0][ralf::SOURCE].asString() == runtimeRoot &&
-                       mounts[0][ralf::DESTINATION].asString() == "/runtime" &&
-                       mounts[1][ralf::SOURCE].asString() == appRoot &&
-                       mounts[1][ralf::DESTINATION].asString() == "/package",
-                       "runtime and app have legacy mount paths");
+    Json::Value manifest(Json::objectValue);
+    Json::Value runtime(Json::objectValue);
+    runtime["pkgMetaDataPath"] = runtimeRoot + "/config.json";
+    runtime["pkgMountPath"] = runtimeRoot;
+    manifest["packages"].append(runtime);
+    Json::Value app(Json::objectValue);
+    app["pkgMetaDataPath"] = appRoot + "/config.json";
+    app["pkgMountPath"] = appRoot;
+    manifest["packages"].append(app);
+    Json::StreamWriterBuilder writer;
+    L0Test::ExpectTrue(tr, WriteFile_OCIGen(manifestPath, Json::writeString(writer, manifest)),
+                       "dependency-first mount manifest is available");
+
+    std::string appPath;
+    std::string runtimePath;
+    std::string command;
+    L0Test::ExpectTrue(tr, ralf::getWidgetRuntimeLaunchInfo(manifestPath, appPath, runtimePath, command),
+                       "widget runtime and RALF app select the classic launch path");
+    L0Test::ExpectTrue(tr, appPath == appRoot && runtimePath == runtimeRoot &&
+                       command == "bin/browser",
+                       "classic spec receives package mount, widget runtime mount and executable");
 
     std::remove((runtimeRoot + "/config.xml").c_str());
+    std::remove((runtimeRoot + "/config.json").c_str());
+    std::remove((appRoot + "/config.json").c_str());
+    std::remove(manifestPath.c_str());
     ::rmdir(runtimeRoot.c_str());
     ::rmdir(appRoot.c_str());
     return tr.failures;
