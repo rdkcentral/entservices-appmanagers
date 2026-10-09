@@ -541,7 +541,10 @@ Json::Value DobbySpecGenerator::createMounts(const ApplicationConfiguration& con
     mounts.append(createBindMount("/etc/ssl/certs", "/etc/ssl/certs",
                                (MS_BIND | MS_RDONLY | MS_NOSUID | MS_NODEV)));
 
-    mounts.append(createPrivateDataMount(runtimeConfig));
+    if (!runtimeConfig.unpackedPath.empty())
+    {
+        mounts.append(createPrivateDataMount(runtimeConfig));
+    }
     
     createFkpsMounts(config, runtimeConfig, mounts);
 
@@ -876,6 +879,11 @@ Json::Value DobbySpecGenerator::createRdkPlugins(const ApplicationConfiguration&
     Json::Value rdkPluginsObj(Json::objectValue);
     rdkPluginsObj["ionmemory"] = createIonMemoryPlugin();
     rdkPluginsObj["minidump"] = createMinidumpPlugin();
+    if (!runtimeConfig.ralfPkgPath.empty())
+    {
+        rdkPluginsObj["networking"] = createNetworkPlugin(config, runtimeConfig, capabilities);
+        rdkPluginsObj["appservicesrdk"] = createAppServiceSDKPlugin(config, runtimeConfig, capabilities);
+    }
 //MADANA
 /*
     const bool appServicesRequested =

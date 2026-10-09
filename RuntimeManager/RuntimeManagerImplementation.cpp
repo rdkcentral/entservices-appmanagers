@@ -27,6 +27,7 @@
 #endif
 #include <errno.h>
 #include <fstream>
+#include <sys/stat.h>
 
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
 #include "ralf/RalfPackageBuilder.h"
@@ -667,7 +668,18 @@ namespace WPEFramework
                     launchConfig.appPath, launchConfig.runtimePath, launchConfig.command);
                 if (classicRalfWidget)
                 {
+                    const std::string privateImagePath = launchConfig.unpackedPath + "/data.img";
                     launchConfig.unpackedPath.clear();
+                    struct stat privateImageInfo;
+                    if (0 == stat(privateImagePath.c_str(), &privateImageInfo) && S_ISREG(privateImageInfo.st_mode))
+                    {
+                        launchConfig.unpackedPath = privateImagePath;
+                    }
+                    else
+                    {
+                        LOGWARN("RALF widget private image not found at '%s'; omitting /home/private loop mount",
+                                privateImagePath.c_str());
+                    }
                     LOGINFO("RALF app with widget runtime: launching %s from %s using classic Dobby spec",
                             launchConfig.command.c_str(), launchConfig.runtimePath.c_str());
                 }
