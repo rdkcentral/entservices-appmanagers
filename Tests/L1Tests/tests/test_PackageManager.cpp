@@ -18,6 +18,7 @@
 **/
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <json/json.h>
 #include <mntent.h>
 #include <fstream>
 #include <string>
@@ -1800,7 +1801,13 @@ TEST_F(PackageManagerTest, lockGetLockedInfoAndUnlockusingComRpcSuccess) {
                                                  gatewayMetadataPath,
                                                  locked));
     EXPECT_TRUE(locked);
-    EXPECT_EQ(runtimeConfig, lockRuntimeConfig);
+    Json::Value lockRuntimeConfigJson;
+    Json::Value runtimeConfigJson;
+    Json::Reader lockRuntimeConfigReader;
+    Json::Reader runtimeConfigReader;
+    ASSERT_TRUE(lockRuntimeConfigReader.parse(lockRuntimeConfig, lockRuntimeConfigJson));
+    ASSERT_TRUE(runtimeConfigReader.parse(runtimeConfig, runtimeConfigJson));
+    EXPECT_EQ(runtimeConfigJson, lockRuntimeConfigJson);
 
     EXPECT_EQ(Core::ERROR_NONE, pkghandlerInterface->Unlock(packageId, version));
 
