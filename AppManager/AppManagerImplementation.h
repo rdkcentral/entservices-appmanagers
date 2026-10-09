@@ -39,6 +39,7 @@
 #include "LifecycleInterfaceConnector.h"
 #include <interfaces/IPackageManager.h>
 #include <map>
+#include <deque>
 #include <memory>
 #include "AppManagerTypes.h"
 #include "AppInfoManager.h"
@@ -161,10 +162,9 @@ namespace Plugin {
 
         class EXTERNAL Job : public Core::IDispatch {
         protected:
-             Job(AppManagerImplementation *appManagerImplementation, EventNames event, JsonObject &params)
+                 explicit Job(AppManagerImplementation *appManagerImplementation)
                 : mAppManagerImplementation(appManagerImplementation)
-                , _event(event)
-                , _params(params) {
+                     {
                 if (mAppManagerImplementation != nullptr) {
                     mAppManagerImplementation->AddRef();
                 }
@@ -181,21 +181,19 @@ namespace Plugin {
             }
 
        public:
-            static Core::ProxyType<Core::IDispatch> Create(AppManagerImplementation *appManagerImplementation, EventNames event, JsonObject params) {
+            static Core::ProxyType<Core::IDispatch> Create(AppManagerImplementation *appManagerImplementation) {
 #ifndef USE_THUNDER_R4
-                return (Core::proxy_cast<Core::IDispatch>(Core::ProxyType<Job>::Create(appManagerImplementation, event, params)));
+                return (Core::proxy_cast<Core::IDispatch>(Core::ProxyType<Job>::Create(appManagerImplementation)));
 #else
-                return (Core::ProxyType<Core::IDispatch>(Core::ProxyType<Job>::Create(appManagerImplementation, event, params)));
+                return (Core::ProxyType<Core::IDispatch>(Core::ProxyType<Job>::Create(appManagerImplementation)));
 #endif
             }
 
             virtual void Dispatch() {
-                mAppManagerImplementation->Dispatch(_event, _params);
+                mAppManagerImplementation->drainEvents();
             }
         private:
             AppManagerImplementation *mAppManagerImplementation;
-            const EventNames _event;
-            const JsonObject _params;
         };
 
     public:
@@ -254,6 +252,9 @@ namespace Plugin {
     #endif
     private:
         mutable Core::CriticalSection mAdminLock;
+        std::mutex mEventQueueLock;
+        std::deque<std::pair<EventNames, JsonObject>> mEventQueue;
+        bool mEventDispatchScheduled { false };
         std::list<Exchange::IAppManager::INotification*> mAppManagerNotification;
         LifecycleInterfaceConnector* mLifecycleInterfaceConnector;
         Exchange::IStore2* mPersistentStoreRemoteStoreObject;
@@ -290,6 +291,7 @@ namespace Plugin {
         void OnAppInstallationStatus(const string& jsonresponse);
         void  AppManagerWorkerThread(void);
         void dispatchEvent(EventNames, const JsonObject &params);
+        void drainEvents();
         void Dispatch(EventNames event, const JsonObject params);
         friend class Job;
 
