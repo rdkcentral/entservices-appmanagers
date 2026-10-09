@@ -2833,16 +2833,12 @@ uint32_t Test_AM_WorkerThreadLaunchSuccess()
         L0Test::ExpectEqStr(tr, enrichedConfig["capabilities"].String(), std::string("dial-app,wan-lan"),
             "Capabilities retain their supported string representation");
         const JsonArray environment = enrichedConfig["envVariables"].Array();
-        L0Test::ExpectEqU32(tr, environment.Length(), 4u,
-            "Launch environment entries are appended to the existing JSON array");
-        if (environment.Length() == 4u) {
+        L0Test::ExpectEqU32(tr, environment.Length(), 2u,
+            "Launch preserves the package environment and encoded launch parameters");
+        if (environment.Length() == 2u) {
             L0Test::ExpectEqStr(tr, environment[0].String(), std::string("BASE=1"),
                 "Existing package environment is preserved");
-            L0Test::ExpectEqStr(tr, environment[1].String(), std::string("EXTRA_ONE=1"),
-                "First launch environment entry is appended");
-            L0Test::ExpectEqStr(tr, environment[2].String(), std::string("EXTRA_TWO=two"),
-                "Second launch environment entry is appended");
-            L0Test::ExpectTrue(tr, environment[3].String().find("APPLICATION_LAUNCH_PARAMETERS=") == 0,
+            L0Test::ExpectTrue(tr, environment[1].String().find("APPLICATION_LAUNCH_PARAMETERS=") == 0,
                 "Encoded launch parameters are appended");
         }
 
@@ -2934,6 +2930,8 @@ uint32_t Test_AM_WorkerThreadMalformedRuntimeConfigDoesNotSpawn()
         "Malformed runtime config causes the package lock to be released");
     L0Test::ExpectTrue(tr, !spawnCalled.load(std::memory_order_acquire),
         "LifecycleManager::SpawnApp is not called for malformed package runtime config");
+    L0Test::ExpectTrue(tr, !WPEFramework::Plugin::AppInfoManager::getInstance().exists("app.worker.malformed"),
+        "Malformed runtime config removes the AppInfo entry created by packageLock");
 
     impl->Release();
     const auto cleanDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(3000);

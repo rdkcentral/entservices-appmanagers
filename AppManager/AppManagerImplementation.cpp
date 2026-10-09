@@ -202,7 +202,7 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                             {
                                 LOGERR("Invalid runtime configuration payload for appId=%s: %s", appId.c_str(), payloadError.c_str());
                                 appManagerTelemetryReporting.reportTelemetryErrorData(appId, action, AppManagerImplementation::ERROR_PACKAGE_INVALID);
-                                status = Core::ERROR_GENERAL;
+                                status = Core::ERROR_INVALID_PARAMETER;
                             }
                             else
                             {
@@ -216,7 +216,7 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                                     || !runtimeConfig.GetUnsigned("groupId", groupId, groupIdPresent, payloadError))
                                 {
                                     LOGERR("Invalid RALF runtime configuration for appId=%s: %s", appId.c_str(), payloadError.c_str());
-                                    status = Core::ERROR_GENERAL;
+                                    status = Core::ERROR_INVALID_PARAMETER;
                                 }
                                 else
                                 {
@@ -229,9 +229,9 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                                 getCustomValues(runtimeConfig);
                                 string launchArgs = appRequestParam->launchArgs;
 
-                                // Append any env vars from launchArgs["env"] into the runtime config payload.
+                                // Preserve legacy behavior by appending launchArgs["env"] only for preload requests.
                                 JsonObject launchArgsObj;
-                                if ((status == Core::ERROR_NONE) && launchArgsObj.FromString(launchArgs) && launchArgsObj.HasLabel("env"))
+                                if ((APP_ACTION_PRELOAD == action) && (Core::ERROR_NONE == status) && launchArgsObj.FromString(launchArgs) && launchArgsObj.HasLabel("env"))
                                 {
                                     if (launchArgsObj["env"].Content() != JsonValue::type::ARRAY)
                                     {
@@ -295,9 +295,14 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                                     mAdminLock.Unlock();
                                 }
                             }
-                            if (status != Core::ERROR_NONE)
+                            if (Core::ERROR_NONE != status)
                             {
                                 packageUnLock(appId);
+                                handleOnAppLifecycleStateChanged(appId, "",
+                                    Exchange::IAppManager::APP_STATE_UNKNOWN,
+                                    Exchange::IAppManager::APP_STATE_UNLOADED,
+                                    (Core::ERROR_INVALID_PARAMETER == status) ? Exchange::IAppManager::APP_ERROR_INVALID_PARAM : Exchange::IAppManager::APP_ERROR_UNKNOWN);
+                                removeAppInfoByAppId(appId);
                             }
                         }
                         else

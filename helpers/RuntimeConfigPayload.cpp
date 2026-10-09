@@ -190,15 +190,28 @@ bool RuntimeConfigPayload::GetInteger(const std::string& key, int64_t& value, bo
 
 bool RuntimeConfigPayload::GetUnsigned(const std::string& key, uint64_t& value, bool& present, std::string& error) const
 {
-    int64_t signedValue = 0;
-    if (!GetInteger(key, signedValue, present, error)) {
-        return false;
+    present = mImpl->object.HasLabel(key.c_str());
+    if (!present) {
+        return true;
     }
-    if (present && signedValue < 0) {
+    const JsonValue& jsonValue = mImpl->object[key.c_str()];
+    if (jsonValue.Content() != JsonValue::type::NUMBER) {
         error = key + " must be an unsigned integer";
         return false;
     }
-    value = static_cast<uint64_t>(signedValue);
+    const std::string encoded = jsonValue.Value();
+    if (!encoded.empty() && ('-' == encoded.front())) {
+        error = key + " must be an unsigned integer";
+        return false;
+    }
+    char* end = nullptr;
+    errno = 0;
+    const unsigned long long parsed = std::strtoull(encoded.c_str(), &end, 10);
+    if ((ERANGE == errno) || (end == encoded.c_str()) || ('\0' != *end)) {
+        error = key + " must be an unsigned integer";
+        return false;
+    }
+    value = static_cast<uint64_t>(parsed);
     return true;
 }
 

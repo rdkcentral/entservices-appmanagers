@@ -203,7 +203,7 @@ AppInfoManager::getInstance().upsert(appId, [&](AppInfo& a) {
 
 **Purpose**: Bridge between AppManager and LifecycleManager for lifecycle operations.
 
-The launch configuration crosses manager boundaries as a flat, opaque JSON string. AppManager parses the package payload only to set `unpackedPath` and append strings from `launchArgs.env` to the `envVariables` JSON array, then reserializes it without dropping unknown properties.
+The launch configuration crosses manager boundaries as a flat, opaque JSON string. AppManager parses the package payload to set `unpackedPath`; for preload requests it preserves the existing behavior of appending strings from `launchArgs.env` to the `envVariables` JSON array. It then reserializes the payload without dropping unknown properties.
 
 **Key Methods**:
 ```cpp
@@ -404,7 +404,7 @@ sequenceDiagram
     Shell->>Impl: LaunchApp(appId, intent, launchArgs)
     Impl->>Impl: packageLock(appId)
     Impl->>AIM: upsert(appId, setCurrentAction=LAUNCH)
-    Impl->>Impl: Set unpackedPath and append launch env to opaque JSON payload
+    Impl->>Impl: Set unpackedPath and preserve unknown JSON properties
     Impl->>LIC: launch(appId, intent, launchArgs, runtimeConfigPayload)
     LIC->>LCM: SpawnApp(appId, intent, ACTIVE, runtimeConfigPayload)
     LCM-->>LIC: appInstanceId

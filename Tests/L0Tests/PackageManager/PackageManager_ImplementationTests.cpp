@@ -1,6 +1,7 @@
 #include <atomic>
 #include <chrono>
 #include <cstdio>
+#include <limits>
 #include <string>
 #include <thread>
 
@@ -306,6 +307,7 @@ uint32_t Test_PM_Impl_RuntimeConfigPayloadSerialization()
     canonical.SetStringArray("envVariables", { "HOME=/home/private", "LANG=en_US.UTF-8" });
     canonical.SetStringArray("fkpsFiles", { "/etc/test/one", "/etc/test/two" });
     canonical.SetStringArray("logLevels", { "INFO", "WARN" });
+    canonical.SetUnsigned("maxUnsigned", std::numeric_limits<uint64_t>::max());
 
     std::string serialized;
     std::string error;
@@ -329,6 +331,11 @@ uint32_t Test_PM_Impl_RuntimeConfigPayloadSerialization()
                        decoded.GetStringArray("logLevels", values, present, error) && present &&
                            values == std::vector<std::string>({ "INFO", "WARN" }),
                        "Canonical payload preserves logLevels array values");
+    uint64_t unsignedValue = 0;
+    L0Test::ExpectTrue(tr,
+                       decoded.GetUnsigned("maxUnsigned", unsignedValue, present, error) && present &&
+                           unsignedValue == std::numeric_limits<uint64_t>::max(),
+                       "Unsigned payload values round trip through the full uint64 range");
 
     WPEFramework::Plugin::Utils::RuntimeConfigPayload opaque;
     L0Test::ExpectTrue(tr,

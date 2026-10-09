@@ -154,7 +154,7 @@ bool RuntimeConfigurationDecoder::Decode(const std::string& serialized, RuntimeC
         error = "command is mandatory and must not be empty";
         return false;
     }
-    if (decoded.userId == 0) {
+    if (0 == decoded.userId) {
         error = "userId is mandatory and must not be zero";
         return false;
     }
