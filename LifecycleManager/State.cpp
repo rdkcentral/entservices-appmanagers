@@ -114,15 +114,15 @@ namespace WPEFramework
 #ifdef ENABLE_RIALTO_CONTROL
         ApplicationContext* context = getContext();
         RuntimeManagerHandler* runtimeManagerHandler = RequestHandler::getInstance()->getRuntimeManagerHandler();
-        if ((nullptr != runtimeManagerHandler) && (Exchange::ILifecycleManager::LifecycleState::PAUSED == context->getCurrentLifecycleState()))
+        if ((nullptr != runtimeManagerHandler) && (Exchange::ILifecycleManager::LifecycleState::PAUSED == context->getCurrentLifecycleState())
+            && (0 != context->mPendingEventName.compare("onFirstFrame")))
 	    {
             if (false == runtimeManagerHandler->resume(context->getAppInstanceId(), errorReason))
 	        {
                 return false;
             }
         }
-        return true;
-#else
+#endif
         WindowManagerHandler* windowManagerHandler = RequestHandler::getInstance()->getWindowManagerHandler();
 	    if (nullptr != windowManagerHandler)
 	    {
@@ -147,7 +147,6 @@ namespace WPEFramework
         }
 	    }
             return true;
-#endif
 	}
 
         bool SuspendedState::handle(string& errorReason)
