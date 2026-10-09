@@ -17,6 +17,11 @@ The **RuntimeManager** plugin manages application execution through OCI-complian
 - **User ID Management**: Manage container user/group IDs via `UserIdManager`
 - **AI Configuration**: Load runtime configuration from YAML via `AIConfiguration`
 
+The `RUNTIMEMANAGER_ENABLE_DIALCONFIG` CMake option (default `ON`) enables DIAL
+environment-variable generation in `DobbySpecGenerator` for DIAL-enabled
+applications. Set `-DRUNTIMEMANAGER_ENABLE_DIALCONFIG=ON` when configuring both
+RuntimeManager and its standalone L0 tests to build and test this behavior.
+
 ### Interacting Subsystems
 
 | Subsystem | Interaction Type | Purpose |
