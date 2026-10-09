@@ -60,13 +60,6 @@ class PackageManagerImplementation
 {
     private:
         class State {
-            class BlockedInstallData {
-                public:
-                string version;
-                packagemanager::NameValues keyValues;
-                string fileLocator;
-            };
-
             public:
             State() {}
             InstallState installState = InstallState::UNINSTALLED;
@@ -77,7 +70,6 @@ class PackageManagerImplementation
             string unpackedPath;
             FailReason failReason = Exchange::IPackageInstaller::FailReason::NONE;
             std::list<Exchange::IPackageHandler::AdditionalLock> additionalLocks;
-            BlockedInstallData  blockedInstallData;
             string runtimeType;                             // blank for runtime package
             string packageType;                              // OCI package type (e.g. "runtime", "application")
             std::pair<std::string, std::string> runtimeApp; // runtime package id & version
@@ -227,7 +219,7 @@ class PackageManagerImplementation
         inline string GetInstalledVersion(const string& id) {
             for (auto const& [key, state] : mState) {
                 if ((id.compare(key.first) == 0) &&
-                    (state.installState == InstallState::INSTALLED || state.installState == InstallState::INSTALLATION_BLOCKED || state.installState == InstallState::UNINSTALL_BLOCKED)) {
+                    (state.installState == InstallState::INSTALLED || state.installState == InstallState::UNINSTALL_BLOCKED)) {
                     return key.second;
                 }
             }
@@ -237,14 +229,13 @@ class PackageManagerImplementation
         inline string GetBlockedVersion(const string& id) {
             for (auto const& [key, state] : mState) {
                 if ((id.compare(key.first) == 0) &&
-                    (state.installState == InstallState::INSTALLATION_BLOCKED || state.installState == InstallState::UNINSTALL_BLOCKED)) {
+                    state.installState == InstallState::UNINSTALL_BLOCKED) {
                     return key.second;
                 }
             }
             return "";
         }
 
-        inline bool IsInstallBlocked(const string &packageId, const string &version, const packagemanager::NameValues &keyValues, const string &fileLocator);
         Core::hresult Install(const string &packageId, const string &version, const packagemanager::NameValues &keyValues, const string &fileLocator, State& state);
 
         void InitializeState();

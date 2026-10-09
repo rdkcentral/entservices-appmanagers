@@ -74,7 +74,6 @@ stateDiagram-v2
     DOWNLOADING --> DOWNLOADED: Download Complete
     DOWNLOADED --> INSTALLING: Install()
     INSTALLING --> INSTALLED: Install Complete
-    INSTALLING --> INSTALLATION_BLOCKED: Install Blocked
     INSTALLING --> INSTALL_FAILURE: Install Failed
     INSTALLED --> LOCKED: Lock()
     LOCKED --> INSTALLED: Unlock()
@@ -437,7 +436,6 @@ stateDiagram-v2
     UNINSTALLED --> INSTALLING: Install()
     INSTALLING --> INSTALLED: Success
     INSTALLING --> INSTALL_FAILURE: Error
-    INSTALLING --> INSTALLATION_BLOCKED: Blocked
     INSTALLED --> UNINSTALLING: Uninstall()
     UNINSTALLING --> UNINSTALLED: Success
     UNINSTALLING --> UNINSTALL_FAILURE: Error
