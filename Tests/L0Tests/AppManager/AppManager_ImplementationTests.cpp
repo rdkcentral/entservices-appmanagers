@@ -2649,12 +2649,15 @@ uint32_t Test_AM_PackageLockAlreadyLoaded()
         "app.already.loaded", "2.0.0");
 
     WPEFramework::Plugin::AppManagerImplementation::PackageInfo packageData;
+    bool lockAcquired = true;
     const auto status = impl->packageLock(
         "app.already.loaded", packageData,
-        WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH);
+        WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH, &lockAcquired);
 
     L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_NONE,
         "packageLock() returns ERROR_NONE when app is already loaded (cached-data path)");
+    L0Test::ExpectTrue(tr, !lockAcquired,
+        "Cached package data does not report a newly acquired PackageManager lock");
 
     impl->Release();
     WPEFramework::Plugin::AppInfoManager::getInstance().clear();

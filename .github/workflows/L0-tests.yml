@@ -520,7 +520,7 @@ jobs:
           fi
 
       - name: Summarize failed tests
-        if: ${{ always() }}
+        if: ${{ always() && steps.run_l0_tests.outcome != 'skipped' }}
         run: |
           set -euo pipefail
           for log in l0-runtime-test.log l0-lcm-test.log l0-rdkwm-test.log l0-appstorage-test.log l0-preinstall-test.log l0-packagemanager-test.log l0-dm-test.log l0-appmanager-test.log l0-victimselector-test.log; do
@@ -534,7 +534,7 @@ jobs:
           done
 
       - name: Fail workflow if tests failed
-        if: ${{ always() }}
+        if: ${{ always() && steps.run_l0_tests.outcome != 'skipped' }}
         env:
           RUN_L0_TESTS_OUTCOME: ${{ steps.run_l0_tests.outcome }}
         run: |

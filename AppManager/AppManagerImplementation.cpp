@@ -190,7 +190,8 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                         packageData.version = appRequestParam->packageVersion;
                         Exchange::IPackageHandler::LockReason lockReason = Exchange::IPackageHandler::LockReason::LAUNCH;
 
-                        Core::hresult status = packageLock(appId, packageData, lockReason);
+                        bool packageLockAcquired = false;
+                        Core::hresult status = packageLock(appId, packageData, lockReason, &packageLockAcquired);
                         if (status == Core::ERROR_NONE)
                         {
                             // Update timestamp after packageLock succeeds (app entry now exists in mAppInfo)
@@ -295,7 +296,7 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                                     mAdminLock.Unlock();
                                 }
                             }
-                            if (Core::ERROR_NONE != status)
+                            if ((Core::ERROR_NONE != status) && packageLockAcquired)
                             {
                                 packageUnLock(appId);
                                 handleOnAppLifecycleStateChanged(appId, "",
@@ -1051,8 +1052,12 @@ bool AppManagerImplementation::removeAppInfoByAppId(const string &appId)
     }
     return result;
 }
-Core::hresult AppManagerImplementation::packageLock(const string& appId, PackageInfo &packageData, Exchange::IPackageHandler::LockReason lockReason)
+Core::hresult AppManagerImplementation::packageLock(const string& appId, PackageInfo &packageData, Exchange::IPackageHandler::LockReason lockReason, bool* lockAcquired)
 {
+    if (nullptr != lockAcquired)
+    {
+        *lockAcquired = false;
+    }
     Core::hresult status = Core::ERROR_GENERAL;
     bool result = false;
     bool installed = false;
@@ -1100,8 +1105,12 @@ Core::hresult AppManagerImplementation::packageLock(const string& appId, Package
                 {
                     Exchange::IPackageHandler::ILockIterator *appMetadata = nullptr;
                     status = mPackageManagerHandlerObject->Lock(appId, packageData.version, lockReason, packageData.lockId, packageData.unpackedPath, packageData.configMetadata, appMetadata);
-                    if (status == Core::ERROR_NONE)
+                    if (Core::ERROR_NONE == status)
                     {
+                        if (nullptr != lockAcquired)
+                        {
+                            *lockAcquired = true;
+                        }
                         LOGINFO("Fetching package entry updated for appId: %s version: %s lockId: %d unpackedPath: %s appMetadata: %s",
                                  appId.c_str(), packageData.version.c_str(), packageData.lockId, packageData.unpackedPath.c_str(), packageData.appMetadata.c_str());
                         result = createOrUpdatePackageInfoByAppId(appId, packageData);

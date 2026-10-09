@@ -115,6 +115,13 @@ set(RUNTIMEMANAGER_INC ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/RuntimeMan
 set(RUNTIMEMANAGER_LIBS ${NAMESPACE}RuntimeManager ${NAMESPACE}RuntimeManagerImplementation)
 add_plugin_test_ex(PLUGIN_RUNTIME_MANAGER tests/test_RunTimeManager.cpp "${RUNTIMEMANAGER_INC}" "${RUNTIMEMANAGER_LIBS}")
 
+if((PLUGIN_LIFECYCLE_MANAGER OR PLUGIN_RALF) AND NOT PLUGIN_RUNTIME_MANAGER)
+    list(APPEND TEST_SRC
+        ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/RuntimeManager/RuntimeConfiguration.cpp)
+    list(APPEND TEST_INC
+        ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/RuntimeManager)
+endif()
+
 # PLUGIN_RALF (ralf folder under RuntimeManager)
 # The ralf source files are compiled directly into the test binary so that
 # RALF_PACKAGE_SUPPORT=ON is NOT required. Enabling RALF_PACKAGE_SUPPORT in the
@@ -133,11 +140,6 @@ if(PLUGIN_RALF)
     # original source with JsonFromFile renamed to avoid duplicate symbols.
     list(FILTER RALF_SRC_FILES EXCLUDE REGEX "RalfSupport\\.cpp$")
     list(APPEND TEST_SRC tests/test_Ralf.cpp ${RALF_SRC_FILES} tests/RalfSupportStub.cpp)
-    if(NOT PLUGIN_RUNTIME_MANAGER)
-        list(APPEND TEST_SRC
-            ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/RuntimeManager/RuntimeConfiguration.cpp
-            ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/helpers/RuntimeConfigPayload.cpp)
-    endif()
     list(APPEND TEST_INC
         ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/RuntimeManager
         ${CMAKE_SOURCE_DIR}/../entservices-appmanagers/RuntimeManager/ralf
