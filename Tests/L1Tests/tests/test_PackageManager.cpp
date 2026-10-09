@@ -363,6 +363,7 @@ TEST_F(PackageManagerTest, registeredMethodsusingJsonRpc) {
     EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Exists(_T("listPackages")));
     EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Exists(_T("config")));
     EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Exists(_T("packageState")));
+    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Exists(_T("getRunningApplicationsUsingPackage")));
 
 	deinitforJsonRpc();
 }
@@ -2140,6 +2141,75 @@ TEST_F(PackageManagerTest, unlockUnknownPackageusingComRpcBadRequest) {
     waitforSignal(TIMEOUT_FOR_INIT);
 
     EXPECT_EQ(Core::ERROR_INVALID_PARAMETER, pkghandlerInterface->Unlock("UnknownApp", "0.0.1"));
+
+    deinitforComRpc();
+}
+
+/* Test Case for getRunningApplicationsUsingPackage via JsonRpc - success path
+ *
+ * Initialize the plugin for JSON-RPC
+ * Invoke the method for the "YouTube" package - the UNIT_TEST dummy backend
+ * (IPackageImplDummy) reports "YouTube" as its running user
+ * Verify Core::ERROR_NONE and that the response carries the application id
+ */
+
+TEST_F(PackageManagerTest, getRunningApplicationsUsingPackageJsonRpcSuccess) {
+
+    initforJsonRpc();
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    const uint32_t rc = mJsonRpcHandler.Invoke(connection, _T("getRunningApplicationsUsingPackage"), _T("{\"packageId\": \"YouTube\"}"), mJsonRpcResponse);
+    EXPECT_EQ(Core::ERROR_NONE, rc);
+    EXPECT_EQ(mJsonRpcResponse, R"~~(["YouTube"])~~");
+
+    // A package with no running users serializes as an empty JSON array
+    const uint32_t rcEmpty = mJsonRpcHandler.Invoke(connection, _T("getRunningApplicationsUsingPackage"), _T("{\"packageId\": \"com.rdkcentral.base\"}"), mJsonRpcResponse);
+    EXPECT_EQ(Core::ERROR_NONE, rcEmpty);
+    EXPECT_EQ(mJsonRpcResponse, R"~~([])~~");
+
+    deinitforJsonRpc();
+}
+
+/* Test Case for getRunningApplicationsUsingPackage via JsonRpc - backend failure
+ *
+ * The dummy backend fails for the "StatusFailApp" package id
+ * Verify the failure is mapped to Core::ERROR_GENERAL
+ */
+
+TEST_F(PackageManagerTest, getRunningApplicationsUsingPackageJsonRpcBackendFailure) {
+
+    initforJsonRpc();
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    const uint32_t rc = mJsonRpcHandler.Invoke(connection, _T("getRunningApplicationsUsingPackage"), _T("{\"packageId\": \"StatusFailApp\"}"), mJsonRpcResponse);
+    EXPECT_EQ(Core::ERROR_GENERAL, rc);
+
+    deinitforJsonRpc();
+}
+
+/* Test Case for getRunningApplicationsUsingPackage via ComRpc - success path
+ *
+ * Initialize the implementation for COM-RPC, query IAppPackagesStatus directly
+ * from the implementation object
+ * Verify Core::ERROR_NONE and the JSON array string payload
+ */
+
+TEST_F(PackageManagerTest, getRunningApplicationsUsingPackageComRpcSuccess) {
+
+    initforComRpc();
+
+    waitforSignal(TIMEOUT_FOR_INIT);
+
+    auto* statusInterface = static_cast<Exchange::IAppPackagesStatus*>(mPackageManagerImpl->QueryInterface(Exchange::IAppPackagesStatus::ID));
+    ASSERT_TRUE(nullptr != statusInterface);
+
+    std::string applicationIds;
+    EXPECT_EQ(Core::ERROR_NONE, statusInterface->GetRunningApplicationsUsingPackage("YouTube", applicationIds));
+    EXPECT_EQ(applicationIds, "[\"YouTube\"]");
+
+    statusInterface->Release();
 
     deinitforComRpc();
 }

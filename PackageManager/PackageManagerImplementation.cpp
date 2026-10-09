@@ -38,7 +38,7 @@ namespace Plugin {
 
     SERVICE_REGISTRATION(PackageManagerImplementation, 1, 0);
 
-    #define CHECK_CACHE() { if ((packageImpl.get() == nullptr) || (!cacheInitialized)) { \
+    #define CHECK_CACHE() { if ((!cacheInitialized) || (packageImpl.get() == nullptr)) { \
         LOGERR("Cache is not initialized!"); \
         return Core::ERROR_UNAVAILABLE; \
     }}
@@ -1354,6 +1354,19 @@ namespace Plugin {
         }
 
         return result;
+    }
+
+    Core::hresult PackageManagerImplementation::GetRunningApplicationsUsingPackage(const string &packageId, string& applicationIds)
+    {
+        std::lock_guard<std::recursive_mutex> lock(mtxState);
+        CHECK_CACHE()
+        // libpackage already returns the ids serialized as a JSON array string.
+        const packagemanager::Result result = packageImpl->GetRunningApplicationsUsingPackage(packageId, applicationIds);
+        if (packagemanager::SUCCESS != result) {
+            LOGERR("Failed to get running applications for packageId '%s': %d", packageId.c_str(), static_cast<int>(result));
+            return Core::ERROR_GENERAL;
+        }
+        return Core::ERROR_NONE;
     }
 
     void PackageManagerImplementation::NotifyDownloadStatus(const string& id, const string& locator, const DownloadReason reason)

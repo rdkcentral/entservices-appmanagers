@@ -802,3 +802,56 @@ uint32_t Test_PM_Impl_GetConfigForInstalledPackage()
 
     return tr.failures;
 }
+
+uint32_t Test_PM_Impl_GetRunningApplicationsUsingPackageSuccess()
+{
+    L0Test::TestResult tr;
+    ImplFixture fx;
+    L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() succeeds");
+
+    std::string applicationIds;
+    L0Test::ExpectEqU32(tr,
+        fx.impl->GetRunningApplicationsUsingPackage("YouTube", applicationIds),
+        ERROR_NONE,
+        "GetRunningApplicationsUsingPackage() returns ERROR_NONE");
+    L0Test::ExpectEqStr(tr,
+        applicationIds,
+        "[\"YouTube\"]",
+        "GetRunningApplicationsUsingPackage() serializes the ids as a JSON array string");
+
+    return tr.failures;
+}
+
+uint32_t Test_PM_Impl_GetRunningApplicationsUsingPackageBackendFailure()
+{
+    L0Test::TestResult tr;
+    ImplFixture fx;
+    L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() succeeds");
+
+    std::string applicationIds;
+    L0Test::ExpectEqU32(tr,
+        fx.impl->GetRunningApplicationsUsingPackage("StatusFailApp", applicationIds),
+        ERROR_GENERAL,
+        "GetRunningApplicationsUsingPackage() maps a backend failure to ERROR_GENERAL");
+
+    return tr.failures;
+}
+
+uint32_t Test_PM_Impl_GetRunningApplicationsUsingPackageCacheUnavailable()
+{
+    L0Test::TestResult tr;
+
+    // No Initialize(): packageImpl stays null until the cache initialization runs,
+    // so CHECK_CACHE rejects the call. Deinitialize is skipped deliberately - with
+    // no Initialize there is no downloader thread or service to tear down.
+    auto* impl = WPEFramework::Core::Service<WPEFramework::Plugin::PackageManagerImplementation>::Create<
+        WPEFramework::Plugin::PackageManagerImplementation>();
+    std::string applicationIds;
+    L0Test::ExpectEqU32(tr,
+        impl->GetRunningApplicationsUsingPackage("YouTube", applicationIds),
+        WPEFramework::Core::ERROR_UNAVAILABLE,
+        "GetRunningApplicationsUsingPackage() before cache initialization returns ERROR_UNAVAILABLE");
+    impl->Release();
+
+    return tr.failures;
+}
