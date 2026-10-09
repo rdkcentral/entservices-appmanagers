@@ -77,6 +77,8 @@ namespace ralf
          */
         bool addEntryArgsToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &ralfPackageConfigNode);
 
+        bool setLegacyProcessArgs(Json::Value &ociConfigRootNode, const std::vector<Json::Value> &packageConfigs);
+
         /**
          * Saves the OCI config JSON to mConfigFilePath.
          * @param ociConfigRootNode The root node of the OCI config JSON.

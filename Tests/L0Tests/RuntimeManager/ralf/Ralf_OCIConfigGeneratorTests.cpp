@@ -411,6 +411,130 @@ uint32_t Test_RalfOCIConfigGenerator_LogPathSetCorrectlyInOCIConfig()
     return tr.failures;
 }
 
+uint32_t Test_RalfOCIConfigGenerator_UsesConfiguredRialtoSocketPath()
+{
+    L0Test::TestResult tr;
+
+    std::vector<ralf::RalfPkgInfoPair> packages;
+    ralf::RalfOCIConfigGenerator gen("/tmp/ralf_l0test_rialto_config.json", packages);
+    auto config = MakeAppConfig_OCI();
+    auto runtimeCfg = MakeRuntimeConfig_OCI();
+    config.mRialtoSocketPath = "/tmp/ralf_l0test_rialto.sock";
+
+    Json::Value ociConfig(Json::objectValue);
+    const bool status = gen.applyRuntimeAndAppConfigToOCIConfig(ociConfig, runtimeCfg, config);
+    L0Test::ExpectTrue(tr, status,
+                       "applyRuntimeAndAppConfigToOCIConfig() accepts configured Rialto socket path");
+    L0Test::ExpectTrue(tr, HasEnvEntry_OCIGen(ociConfig,
+                       "RIALTO_SOCKET_PATH=" + config.mRialtoSocketPath),
+                       "RIALTO_SOCKET_PATH uses the path allocated by RialtoConnector");
+
+    bool hasSocketMount = false;
+    const Json::Value& mounts = ociConfig[ralf::MOUNTS];
+    if (mounts.isArray())
+    {
+        for (const Json::Value& mount : mounts)
+        {
+            if (mount[ralf::TYPE].asString() == "bind" &&
+                mount[ralf::SOURCE].asString() == config.mRialtoSocketPath &&
+                mount[ralf::DESTINATION].asString() == config.mRialtoSocketPath)
+            {
+                hasSocketMount = true;
+                break;
+            }
+        }
+    }
+    L0Test::ExpectTrue(tr, hasSocketMount,
+                       "Rialto bind mount uses the allocated host socket path");
+
+    return tr.failures;
+}
+
+uint32_t Test_RalfOCIConfigGenerator_LegacyProcessArgsFollowBaseRuntimeAppOrder()
+{
+    L0Test::TestResult tr;
+    std::vector<ralf::RalfPkgInfoPair> packages;
+    ralf::RalfOCIConfigGenerator gen("/tmp/ralf_l0test_process_args.json", packages);
+    Json::Value base(Json::objectValue);
+    base[ralf::PACKAGE_TYPE] = ralf::PKG_TYPE_BASE;
+    base[ralf::ENTRY_POINT] = "/usr/libexec/DobbyInit";
+    base[ralf::ENTRY_ARGS].append("ignored-base-arg");
+    Json::Value runtime(Json::objectValue);
+    runtime[ralf::ENTRY_POINT] = "/usr/bin/browser";
+    runtime[ralf::ENTRY_ARGS].append("ignored-runtime-arg");
+    Json::Value app(Json::objectValue);
+    app[ralf::ENTRY_POINT] = ".";
+    app[ralf::ENTRY_ARGS].append("--app");
+    Json::Value ociConfig(Json::objectValue);
+
+    L0Test::ExpectTrue(tr, gen.setLegacyProcessArgs(ociConfig, {base, runtime, app}),
+                       "base, runtime and app entries form a legacy command");
+    const Json::Value &args = ociConfig[ralf::PROCESS][ralf::ARGS];
+    L0Test::ExpectTrue(tr, args.isArray() && 4 == args.size() &&
+                       "/usr/libexec/DobbyInit" == args[0].asString() &&
+                       "/usr/bin/browser" == args[1].asString() &&
+                       "." == args[2].asString() && "--app" == args[3].asString(),
+                       "only app arguments follow the base init, runtime and app entrypoints");
+    return tr.failures;
+}
+
+uint32_t Test_RalfOCIConfigGenerator_LegacyProcessArgsRejectMissingBase()
+{
+    L0Test::TestResult tr;
+    std::vector<ralf::RalfPkgInfoPair> packages;
+    ralf::RalfOCIConfigGenerator gen("/tmp/ralf_l0test_no_base.json", packages);
+    Json::Value runtime(Json::objectValue);
+    runtime[ralf::ENTRY_POINT] = "/usr/bin/browser";
+    Json::Value app(Json::objectValue);
+    app[ralf::ENTRY_POINT] = ".";
+    Json::Value ociConfig(Json::objectValue);
+
+    L0Test::ExpectTrue(tr, !gen.setLegacyProcessArgs(ociConfig, {runtime, app}),
+                       "two-layer manifest without a base init is rejected before Dobby");
+    return tr.failures;
+}
+
+uint32_t Test_RalfOCIConfigGenerator_UsesWaylandEglSonameForMissingConfiguredSource()
+{
+    L0Test::TestResult tr;
+
+    std::vector<ralf::RalfPkgInfoPair> packages;
+    ralf::RalfOCIConfigGenerator gen("/tmp/ralf_l0test_wayland_egl_config.json", packages);
+    Json::Value graphicsConfig(Json::objectValue);
+    graphicsConfig[ralf::VENDOR_GPU_SUPPORT][ralf::DEV_NODES] = Json::Value(Json::arrayValue);
+    graphicsConfig[ralf::VENDOR_GPU_SUPPORT][ralf::GROUP_IDS] = Json::Value(Json::arrayValue);
+    graphicsConfig[ralf::VENDOR_GPU_SUPPORT][ralf::FILES] = Json::Value(Json::arrayValue);
+
+    Json::Value bindEntry(Json::objectValue);
+    bindEntry[ralf::TYPE] = "bind";
+    bindEntry[ralf::SOURCE] = "/usr/lib/libwayland-egl.so.1.20.0";
+    bindEntry[ralf::DESTINATION] = "/usr/lib/libwayland-egl.so.1.20.0";
+    graphicsConfig[ralf::VENDOR_GPU_SUPPORT][ralf::FILES].append(bindEntry);
+
+    Json::Value ociConfig(Json::objectValue);
+    const bool status = gen.applyGraphicsConfigToOCIConfig(ociConfig, graphicsConfig);
+    L0Test::ExpectTrue(tr, status,
+                       "applyGraphicsConfigToOCIConfig() accepts the configured Wayland EGL bind");
+
+    std::string expectedSource = "/usr/lib/libwayland-egl.so.1.20.0";
+    struct stat configuredSourceStat;
+    struct stat sonameSourceStat;
+    if (0 != stat(expectedSource.c_str(), &configuredSourceStat) &&
+        0 == stat("/usr/lib/libwayland-egl.so.1", &sonameSourceStat) &&
+        S_ISREG(sonameSourceStat.st_mode))
+    {
+        expectedSource = "/usr/lib/libwayland-egl.so.1";
+    }
+
+    const Json::Value& mounts = ociConfig[ralf::MOUNTS];
+    L0Test::ExpectTrue(tr, mounts.isArray() && 1 == mounts.size() &&
+                       expectedSource == mounts[0][ralf::SOURCE].asString() &&
+                       "/usr/lib/libwayland-egl.so.1.20.0" == mounts[0][ralf::DESTINATION].asString(),
+                       "missing Wayland EGL source falls back to device soname and preserves container destination");
+
+    return tr.failures;
+}
+
 uint32_t Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_MissingPackageTypeReturnsTrue()
 {
     L0Test::TestResult tr;

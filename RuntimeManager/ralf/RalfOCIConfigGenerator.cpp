@@ -56,6 +56,9 @@ namespace ralf
             return false;
         }
         // Now apply each Ralf package configuration
+    #ifdef ENTOS_RALF_SUPPORT
+        std::vector<Json::Value> packageConfigs;
+    #endif
         for (const auto &ralfPkgInfo : mRalfPackages)
         {
             Json::Value ralfPackageConfigNode;
@@ -74,7 +77,16 @@ namespace ralf
                 LOGERR("Failed to apply Ralf package permissions to OCI config for file: %s", ralfPkgInfo.first.c_str());
                 return false;
             }
+#ifdef ENTOS_RALF_SUPPORT
+            packageConfigs.push_back(std::move(ralfPackageConfigNode));
+#endif
         }
+#ifdef ENTOS_RALF_SUPPORT
+        if (!setLegacyProcessArgs(ociConfigRootNode, packageConfigs))
+        {
+            return false;
+        }
+#endif
 
         if (generateHooksForOCIConfig(ociConfigRootNode) == false)
         {
@@ -254,6 +266,17 @@ namespace ralf
         {
             outFile << ociConfigJson;
             outFile.close();
+#ifdef RDK_APPMANAGERS_DEBUG
+            std::ofstream generatedSpecFile("/tmp/generatedRalfSpec", std::ios::trunc);
+            if (generatedSpecFile)
+            {
+                generatedSpecFile << ociConfigJson;
+            }
+            else
+            {
+                LOGWARN("Failed to dump generated RALF OCI spec to /tmp/generatedRalfSpec");
+            }
+#endif
             if (0 != chmod(mConfigFilePath.c_str(), 0644))
             {
                 LOGERR("Failed to set OCI config file mode to 0644 for %s: %s",
@@ -499,6 +522,49 @@ namespace ralf
         }
         return status;
     }
+
+    bool RalfOCIConfigGenerator::setLegacyProcessArgs(Json::Value &ociConfigRootNode, const std::vector<Json::Value> &packageConfigs)
+    {
+        if (packageConfigs.size() < 2 ||
+            !packageConfigs.front()[PACKAGE_TYPE].isString() ||
+            PKG_TYPE_BASE != packageConfigs.front()[PACKAGE_TYPE].asString() ||
+            !packageConfigs.front()[ENTRY_POINT].isString() ||
+            packageConfigs.front()[ENTRY_POINT].asString().empty())
+        {
+            LOGERR("RALF launch requires a base package with an init entryPoint; check the runtime's base dependency");
+            return false;
+        }
+
+        const Json::Value &app = packageConfigs.back();
+        if (!app[ENTRY_POINT].isString() || app[ENTRY_POINT].asString().empty())
+        {
+            LOGERR("RALF application package has no entryPoint");
+            return false;
+        }
+
+        Json::Value args(Json::arrayValue);
+        args.append(packageConfigs.front()[ENTRY_POINT]);
+        for (size_t index = 1; index + 1 < packageConfigs.size(); ++index)
+        {
+            const Json::Value &entryPoint = packageConfigs[index][ENTRY_POINT];
+            if (entryPoint.isString() && !entryPoint.asString().empty())
+            {
+                args.append(entryPoint);
+            }
+        }
+        args.append(app[ENTRY_POINT]);
+        const Json::Value &appArgs = app[ENTRY_ARGS];
+        if (appArgs.isArray())
+        {
+            for (const auto &arg : appArgs)
+            {
+                args.append(arg);
+            }
+        }
+        ociConfigRootNode[PROCESS][ARGS] = std::move(args);
+        return true;
+    }
+
     bool RalfOCIConfigGenerator::applyConfigurationToOCIConfig(Json::Value &ociConfigRootNode, Json::Value &manifestRootNode)
     {
         if (!addEntryPointToOCIConfig(ociConfigRootNode, manifestRootNode))

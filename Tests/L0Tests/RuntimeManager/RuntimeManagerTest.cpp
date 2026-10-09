@@ -212,6 +212,10 @@ extern uint32_t Test_RalfOCIConfigGenerator_GenerateWithMockBaseSpec();
 extern uint32_t Test_RalfOCIConfigGenerator_MultipleGenerateCallsDoNotCrash();
 extern uint32_t Test_RalfOCIConfigGenerator_GenerateWithDifferentAppInstances();
 extern uint32_t Test_RalfOCIConfigGenerator_LogPathSetCorrectlyInOCIConfig();
+extern uint32_t Test_RalfOCIConfigGenerator_UsesConfiguredRialtoSocketPath();
+extern uint32_t Test_RalfOCIConfigGenerator_LegacyProcessArgsFollowBaseRuntimeAppOrder();
+extern uint32_t Test_RalfOCIConfigGenerator_LegacyProcessArgsRejectMissingBase();
+extern uint32_t Test_RalfOCIConfigGenerator_UsesWaylandEglSonameForMissingConfiguredSource();
 extern uint32_t Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_MissingPackageTypeReturnsTrue();
 extern uint32_t Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_ValidFireboltPermissionAddsEndpoint();
 extern uint32_t Test_RalfOCIConfigGenerator_ApplyConfigurationToOCIConfig_PermissionsOnlySkipsPermissionNetworkUpdates();
@@ -553,6 +557,10 @@ int main()
         { "RalfOCIConfigGenerator_MultipleGenerateCallsDoNotCrash",                  Test_RalfOCIConfigGenerator_MultipleGenerateCallsDoNotCrash },
         { "RalfOCIConfigGenerator_GenerateWithDifferentAppInstances",                Test_RalfOCIConfigGenerator_GenerateWithDifferentAppInstances },
         { "RalfOCIConfigGenerator_LogPathSetCorrectlyInOCIConfig",                   Test_RalfOCIConfigGenerator_LogPathSetCorrectlyInOCIConfig },
+        { "RalfOCIConfigGenerator_UsesConfiguredRialtoSocketPath",                   Test_RalfOCIConfigGenerator_UsesConfiguredRialtoSocketPath },
+        { "RalfOCIConfigGenerator_LegacyProcessArgsFollowBaseRuntimeAppOrder",        Test_RalfOCIConfigGenerator_LegacyProcessArgsFollowBaseRuntimeAppOrder },
+        { "RalfOCIConfigGenerator_LegacyProcessArgsRejectMissingBase",                Test_RalfOCIConfigGenerator_LegacyProcessArgsRejectMissingBase },
+        { "RalfOCIConfigGenerator_UsesWaylandEglSonameForMissingConfiguredSource",   Test_RalfOCIConfigGenerator_UsesWaylandEglSonameForMissingConfiguredSource },
         { "RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_MissingPackageTypeReturnsTrue", Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_MissingPackageTypeReturnsTrue },
         { "RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_ValidFireboltPermissionAddsEndpoint", Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_ValidFireboltPermissionAddsEndpoint },
         { "RalfOCIConfigGenerator_ApplyConfigurationToOCIConfig_PermissionsOnlySkipsPermissionNetworkUpdates", Test_RalfOCIConfigGenerator_ApplyConfigurationToOCIConfig_PermissionsOnlySkipsPermissionNetworkUpdates },
