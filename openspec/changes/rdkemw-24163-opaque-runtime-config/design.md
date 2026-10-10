@@ -2,6 +2,8 @@
 
 See `proposal.md` for motivation and `specs/opaque-runtime-config/spec.md` for the behavioral contract. Runtime configuration originates in libPackage metadata, crosses four Thunder COM-RPC plugin boundaries, and ultimately drives Dobby or RALF OCI generation. The affected architecture is documented in `openspec/specs/{PackageManager,AppManager,LifecycleManager,RuntimeManager}.spec.md`; PreinstallManager is a mechanical consumer.
 
+**Branch history:** The feature branch was merged with the latest `origin/develop` during implementation. This brought in lifecycle event queue handling and coverage-build updates that are orthogonal to the opaque runtime config refactor but are included in the final feature branch.
+
 ## Goals / Non-Goals
 
 **Goals:**
@@ -38,7 +40,11 @@ IRuntimeManager::Run
     const RuntimeConfig& -> const string& runtimeConfigPayload @opaque
 ```
 
+**JSON-RPC parameter names:** The original JSON-RPC parameter names (`configMetadata`, `config`) for `IPackageInstaller` methods were preserved to maintain client compatibility, even though the C++ parameters are now named `runtimeConfigPayload`. This is a JSON-RPC-only naming difference; the COM interface uses the new parameter names.
+
 For JSON-RPC/generated bindings, the payload is therefore one opaque string rather than an expanded struct. This is a breaking response/signature change and requires coordinated rebuild and deployment.
+
+**JSON-RPC contract note:** The `@opaque` annotation is used on the C++ string parameter so that JSON-RPC emits the serialized JSON object as raw JSON rather than a quoted string. The C++/COM parameter remains a serialized `std::string`, but JSON-RPC exposes its contents as a JSON object. This was clarified during code review to align the documentation with the ThunderTools generator behavior.
 
 ### 2. Producer and mutation ownership
 
@@ -71,6 +77,8 @@ Keeping field ownership in each plugin avoids recreating the removed shared stru
 ### 4. Real JSON arrays
 
 `envVariables`, `fkpsFiles`, and `logLevels` are arrays of strings. Embedded JSON text was rejected because it requires double parsing and obscures type validation. RuntimeManager rejects wrong array and element types.
+
+**Schema evolution note:** The original implementation embedded JSON arrays as strings, requiring double serialization. The refactored implementation uses native JSON arrays (`std::vector<std::string>` in the private `RuntimeConfiguration` model), which eliminates double serialization and simplifies manipulation. This is a content-type change for these properties and is documented in the "Runtime Configuration Schema Evolution" section of `RuntimeManager.spec.md` for backward compatibility.
 
 ### 5. Private RuntimeManager decoder
 

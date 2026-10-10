@@ -21,7 +21,7 @@
 ## 4. Incidental Consumers and Documentation
 
 - [x] 4.1 Mechanically migrate `PreinstallManager/PreinstallManagerImplementation.{h,cpp}` and all affected mocks under `Tests/mocks/` and `Tests/L0Tests/common/` without adding payload interpretation.
-- [x] 4.2 Update AppManager, PackageManager, LifecycleManager, RuntimeManager, and PreinstallManager Markdown plus `openspec/specs/*.spec.md` architecture descriptions for ownership and data flow.
+- [x] 4.2 Update AppManager, PackageManager, LifecycleManager, RuntimeManager, and PreinstallManager Markdown plus `openspec/specs/*.spec.md` architecture descriptions for ownership and data flow. (Added "Runtime Configuration Schema Evolution" section to `RuntimeManager.spec.md` documenting the change from embedded JSON strings to real JSON arrays for `envVariables`, `logLevels`, and `fkpsFiles`.)
 - [x] 4.3 Point `.github/workflows/L0-tests.yml` and `.github/workflows/L1-tests.yml` at the coordinated API feature revision for branch CI.
 - [ ] 4.4 Replace the temporary `feature/RDKEMW-24163` `INTERFACES_REF` with the final merged/released API revision before production integration; depends on the API change landing.
 
@@ -36,9 +36,20 @@
 
 - [ ] 6.1 Remove trailing whitespace from the committed app-manager change and verify `git diff --check` plus the equivalent commit patch check produce no errors.
 - [ ] 6.2 Run the repository GitHub plugin-build workflow against the coordinated API revision; acceptance: all affected plugins compile and link successfully in the production CI setup.
-- [ ] 6.3 Run `.github/workflows/L0-tests.yml`; acceptance: every configured affected L0 executable runs with zero failures, not merely compiles.
-- [ ] 6.4 Run `.github/workflows/L1-tests.yml`; acceptance: every configured affected L1 target compiles, each affected executable runs, and all report zero failures; depends on 6.2.
+- [x] 6.3 Run `.github/workflows/L0-tests.yml`; acceptance: every configured affected L0 executable runs with zero failures, not merely compiles. (Verified in CI after fixes for PreinstallManager SIGSEGV, LifecycleManager enum scope, and AppManager package-lock behavior.)
+- [x] 6.4 Run `.github/workflows/L1-tests.yml`; acceptance: every configured affected L1 target compiles, each affected executable runs, and all report zero failures; depends on 6.2. (Verified in CI after fixes for native JsonCpp dependency, AppManager self-join crash, and Package Manager semantic JSON comparison.)
 - [ ] 6.5 Run the applicable GitHub workflow jobs for both legacy Dobby and RALF-enabled configurations plus the AppManager L2 launch path; acceptance: all variants pass and 5.3-5.4 demonstrate semantic equivalence.
 - [x] 6.6 Confirm `entservices-apis` changed-header validation, generated documentation check, and Ubuntu/ThunderComponents build pass in PR CI.
 - [ ] 6.7 Record the unrelated legacy-header findings from the full `entservices-apis` validator as an accepted baseline or resolve them through the owning workstream; acceptance: this change has no untriaged CI failure.
 - [x] 6.8 Audit production and public API sources for `Exchange::RuntimeConfig`, public `struct RuntimeConfig`, and the old guard; acceptance: zero relevant references remain.
+
+**CI follow-up fixes (committed):**
+- Native build workflow pinned to the reviewed API commit to avoid stale headers.
+- Unconditional JsonCpp discovery for L1 tests to support RuntimeManager tests.
+- PreinstallManager async implementation lifetime fix to prevent SIGSEGV.
+- PreinstallManager state race fix for repeated runs.
+- Trailing-dot version validation fix.
+- AppManager worker pool drain before teardown to prevent self-join crashes.
+- Package Manager lock acquisition tracking to avoid unlocking cached apps.
+- Lifecycle Manager L0 enum test-scope fix.
+- Package Manager L1 semantic JSON comparison instead of byte-for-byte strings.
