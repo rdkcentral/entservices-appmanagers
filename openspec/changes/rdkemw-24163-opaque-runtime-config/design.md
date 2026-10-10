@@ -46,6 +46,14 @@ For JSON-RPC/generated bindings, the payload is therefore one opaque string rath
 
 **JSON-RPC contract note:** The `@opaque` annotation is used on the C++ string parameter so that JSON-RPC emits the serialized JSON object as raw JSON rather than a quoted string. The C++/COM parameter remains a serialized `std::string`, but JSON-RPC exposes its contents as a JSON object. This was clarified during code review to align the documentation with the ThunderTools generator behavior.
 
+**Affected JSON-RPC APIs:** The following `IAppPackageManager` methods return runtime configuration with `@opaque` and are affected by the array-format change:
+- `IPackageInstaller::Config` (`@text config`)
+- `IPackageInstaller::GetConfigForPackage` (`@text getConfigForPackage`)
+- `IPackageHandler::Lock` (`@text lock`)
+- `IPackageHandler::GetLockedInfo` (`@text getLockedInfo`)
+- `IAppPackageManagerConfig::GetConfigForInstalledPackage` (`@text getConfigForInstalledPackage`)
+- `IAppPackageManagerConfig::GetConfigListForInstalledPackages` (`@text getConfigListForInstalledPackages`)
+
 ### 2. Producer and mutation ownership
 
 ```text
@@ -77,6 +85,26 @@ Keeping field ownership in each plugin avoids recreating the removed shared stru
 ### 4. Real JSON arrays
 
 `envVariables`, `fkpsFiles`, and `logLevels` are arrays of strings. Embedded JSON text was rejected because it requires double parsing and obscures type validation. RuntimeManager rejects wrong array and element types.
+
+**JSON-RPC before/after example:**
+
+Before (embedded JSON strings):
+```json
+{
+  "envVariables": "[\"XDG_RUNTIME_DIR=/tmp\",\"WAYLAND_DISPLAY=test\"]",
+  "logLevels": "[\"INFO\",\"DEBUG\"]",
+  "fkpsFiles": "[\"/path/to/file1\",\"/path/to/file2\"]"
+}
+```
+
+After (native JSON arrays with `@opaque`):
+```json
+{
+  "envVariables": ["XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=test"],
+  "logLevels": ["INFO", "DEBUG"],
+  "fkpsFiles": ["/path/to/file1", "/path/to/file2"]
+}
+```
 
 **Schema evolution note:** The original implementation embedded JSON arrays as strings, requiring double serialization. The refactored implementation uses native JSON arrays (`std::vector<std::string>` in the private `RuntimeConfiguration` model), which eliminates double serialization and simplifies manipulation. This is a content-type change for these properties and is documented in the "Runtime Configuration Schema Evolution" section of `RuntimeManager.spec.md` for backward compatibility.
 

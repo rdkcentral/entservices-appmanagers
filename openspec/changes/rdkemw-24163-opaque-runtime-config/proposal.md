@@ -11,6 +11,28 @@ Runtime configuration is duplicated as divergent `Exchange::RuntimeConfig` struc
 - Mechanically migrate PreinstallManager, mocks, tests, generated API documentation, and CMake wiring.
 - Use `@opaque` annotation on JSON-RPC parameters so the serialized JSON string is emitted as a raw JSON object over JSON-RPC, while the C++/COM parameter remains a string.
 
+**JSON-RPC breaking change example:**
+
+Before (embedded JSON strings):
+```json
+{
+  "envVariables": "[\"XDG_RUNTIME_DIR=/tmp\",\"WAYLAND_DISPLAY=test\"]",
+  "logLevels": "[\"INFO\",\"DEBUG\"]",
+  "fkpsFiles": "[\"/path/to/file1\",\"/path/to/file2\"]"
+}
+```
+
+After (native JSON arrays with `@opaque`):
+```json
+{
+  "envVariables": ["XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=test"],
+  "logLevels": ["INFO", "DEBUG"],
+  "fkpsFiles": ["/path/to/file1", "/path/to/file2"]
+}
+```
+
+Clients must update from parsing string values containing JSON arrays to receiving native JSON arrays directly.
+
 ## Capabilities
 
 ### New Capabilities

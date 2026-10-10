@@ -21,11 +21,34 @@ The system SHALL transport runtime configuration between PackageManager, AppMana
 - **THEN** every participating plugin SHALL be rebuilt against the same compatible `entservices-apis` revision
 
 ### Requirement: Canonical payload production
-PackageManager SHALL produce the payload from package metadata using the established runtime property names, values, derivations, and defaults. `envVariables`, `fkpsFiles`, and `logLevels` SHALL be JSON arrays containing only strings.
+PackageManager SHALL produce the payload from package metadata using the established runtime property names, values, derivations, and defaults. `envVariables`, `fkpsFiles`, and `logLevels` SHALL be JSON arrays containing only strings. This is a breaking change for JSON-RPC clients that previously received these as strings containing serialized JSON arrays.
 
 #### Scenario: Package metadata contains collections
 - **WHEN** package metadata contains environment variables, FKPS files, or log levels
 - **THEN** PackageManager SHALL encode each collection as a JSON string array rather than JSON text embedded in a string
+
+#### Scenario: JSON-RPC client receives runtime configuration
+- **WHEN** a JSON-RPC client calls `IPackageInstaller::Config` or any method returning runtime configuration
+- **THEN** the response SHALL contain `envVariables`, `logLevels`, and `fkpsFiles` as native JSON arrays
+- **AND** the format SHALL be a breaking change from the previous embedded JSON string representation
+
+**Before (embedded JSON strings):**
+```json
+{
+  "envVariables": "[\"XDG_RUNTIME_DIR=/tmp\",\"WAYLAND_DISPLAY=test\"]",
+  "logLevels": "[\"INFO\",\"DEBUG\"]",
+  "fkpsFiles": "[\"/path/to/file1\",\"/path/to/file2\"]"
+}
+```
+
+**After (native JSON arrays with `@opaque`):**
+```json
+{
+  "envVariables": ["XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=test"],
+  "logLevels": ["INFO", "DEBUG"],
+  "fkpsFiles": ["/path/to/file1", "/path/to/file2"]
+}
+```
 
 #### Scenario: Runtime package association changes
 - **WHEN** a runtime package is associated with an existing application package
