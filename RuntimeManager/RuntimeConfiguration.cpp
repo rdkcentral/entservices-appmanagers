@@ -112,7 +112,7 @@ bool GetStringArray(const Utils::RuntimeConfigPayload& payload, const std::strin
 
 } // namespace
 
-bool RuntimeConfigurationDeserializer::Deserialize(const std::string& serialized, RuntimeConfiguration& configuration, std::string& error, uint32_t defaultUserId, uint32_t defaultGroupId, bool requireCommand)
+bool RuntimeConfigurationDecoder::Decode(const std::string& serialized, RuntimeConfiguration& configuration, std::string& error, uint32_t defaultUserId, uint32_t defaultGroupId, bool requireCommand)
 {
     Utils::RuntimeConfigPayload payload;
     if (!payload.Parse(serialized, error)) {

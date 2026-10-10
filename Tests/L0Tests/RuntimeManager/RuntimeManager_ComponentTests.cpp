@@ -132,7 +132,7 @@ uint32_t Test_UserIdManager_ClearUserIdReturnsUidToPool()
     L0Test::ExpectTrue(tr, uid2 >= 30001u && uid2 <= 31000u,
                        "After clearUserId(), a new app still gets a valid UID");
 
-    // uid1 should be reusable
+    // uid1 should be reusable  
     (void)uid1;
     L0Test::ExpectTrue(tr, uid2 != 0u,
                        "clearUserId() successfully returned UID to pool (non-zero reuse)");
@@ -2183,10 +2183,10 @@ uint32_t Test_DobbySpecGenerator_RialtoPrefixedSocketPathUsedInSpec()
 #endif // ENABLE_RIALTO
 
 // ──────────────────────────────────────────────────────────────────────────────
-// RuntimeConfigurationDeserializer tests
+// RuntimeConfigurationDecoder tests
 // ──────────────────────────────────────────────────────────────────────────────
 
-uint32_t Test_RuntimeConfigurationDeserializer_FullValidPayload()
+uint32_t Test_RuntimeConfigurationDecoder_FullValidPayload()
 {
     L0Test::TestResult tr;
     WPEFramework::Plugin::RuntimeConfiguration cfg;
@@ -2205,31 +2205,31 @@ uint32_t Test_RuntimeConfigurationDeserializer_FullValidPayload()
         "enableDebugger":true,"unpackedPath":"/tmp/unpacked"
     })";
 
-    L0Test::ExpectTrue(tr, WPEFramework::Plugin::RuntimeConfigurationDeserializer::Deserialize(payload, cfg, error),
-                       "deserializer accepts a complete valid payload");
+    L0Test::ExpectTrue(tr, WPEFramework::Plugin::RuntimeConfigurationDecoder::Decode(payload, cfg, error),
+                       "decoder accepts a complete valid payload");
     L0Test::ExpectTrue(tr, cfg.dial && cfg.wanLanAccess && cfg.thunder && cfg.resourceManagerClientEnabled,
-                       "deserializer populates boolean fields");
+                       "decoder populates boolean fields");
     L0Test::ExpectTrue(tr, cfg.systemMemoryLimit == -42 && cfg.gpuMemoryLimit == 84,
-                       "deserializer populates signed limits");
+                       "decoder populates signed limits");
     L0Test::ExpectTrue(tr, cfg.userId == 30001 && cfg.groupId == 30000 && cfg.dataImageSize == 4096,
-                       "deserializer populates unsigned fields");
+                       "decoder populates unsigned fields");
     L0Test::ExpectTrue(tr, cfg.envVariables.size() == 2 && cfg.envVariables[0] == "A=1" && cfg.envVariables[1] == "B=two",
                        "envVariables is decoded as a real string array");
     L0Test::ExpectTrue(tr, cfg.logLevels.size() == 2 && cfg.fkpsFiles.size() == 2,
                        "logLevels and fkpsFiles are decoded as real string arrays");
-    L0Test::ExpectEqStr(tr, cfg.command, "launcher", "deserializer populates command");
-    L0Test::ExpectEqStr(tr, cfg.unpackedPath, "/tmp/unpacked", "deserializer populates trailing optional field");
+    L0Test::ExpectEqStr(tr, cfg.command, "launcher", "decoder populates command");
+    L0Test::ExpectEqStr(tr, cfg.unpackedPath, "/tmp/unpacked", "decoder populates trailing optional field");
     return tr.failures;
 }
 
-uint32_t Test_RuntimeConfigurationDeserializer_OptionalDefaults()
+uint32_t Test_RuntimeConfigurationDecoder_OptionalDefaults()
 {
     L0Test::TestResult tr;
     WPEFramework::Plugin::RuntimeConfiguration cfg;
     std::string error;
     L0Test::ExpectTrue(tr,
-        WPEFramework::Plugin::RuntimeConfigurationDeserializer::Deserialize(R"({"command":"launcher"})", cfg, error, 41, 42),
-        "deserializer accepts omitted optional properties");
+        WPEFramework::Plugin::RuntimeConfigurationDecoder::Decode(R"({"command":"launcher"})", cfg, error, 41, 42),
+        "decoder accepts omitted optional properties");
     L0Test::ExpectTrue(tr, !cfg.dial && !cfg.wanLanAccess && !cfg.thunder && cfg.userId == 41 && cfg.groupId == 42,
                        "omitted scalar properties retain caller defaults");
     L0Test::ExpectTrue(tr, cfg.envVariables.empty() && cfg.logLevels.empty() && cfg.fkpsFiles.empty(),
@@ -2237,19 +2237,19 @@ uint32_t Test_RuntimeConfigurationDeserializer_OptionalDefaults()
     return tr.failures;
 }
 
-uint32_t Test_RuntimeConfigurationDeserializer_RejectsMalformedAndNonObjectJson()
+uint32_t Test_RuntimeConfigurationDecoder_RejectsMalformedAndNonObjectJson()
 {
     L0Test::TestResult tr;
     WPEFramework::Plugin::RuntimeConfiguration cfg;
     std::string error;
-    L0Test::ExpectTrue(tr, !WPEFramework::Plugin::RuntimeConfigurationDeserializer::Deserialize("{bad json", cfg, error),
-                       "deserializer rejects malformed JSON");
-    L0Test::ExpectTrue(tr, !WPEFramework::Plugin::RuntimeConfigurationDeserializer::Deserialize("[]", cfg, error),
-                       "deserializer rejects a non-object JSON root");
+    L0Test::ExpectTrue(tr, !WPEFramework::Plugin::RuntimeConfigurationDecoder::Decode("{bad json", cfg, error),
+                       "decoder rejects malformed JSON");
+    L0Test::ExpectTrue(tr, !WPEFramework::Plugin::RuntimeConfigurationDecoder::Decode("[]", cfg, error),
+                       "decoder rejects a non-object JSON root");
     return tr.failures;
 }
 
-uint32_t Test_RuntimeConfigurationDeserializer_RejectsWrongScalarTypes()
+uint32_t Test_RuntimeConfigurationDecoder_RejectsWrongScalarTypes()
 {
     L0Test::TestResult tr;
     const std::string payloads[] = {
@@ -2261,13 +2261,13 @@ uint32_t Test_RuntimeConfigurationDeserializer_RejectsWrongScalarTypes()
     for (const auto& payload : payloads) {
         WPEFramework::Plugin::RuntimeConfiguration cfg;
         std::string error;
-        L0Test::ExpectTrue(tr, !WPEFramework::Plugin::RuntimeConfigurationDeserializer::Deserialize(payload, cfg, error),
-                           "deserializer rejects a wrong scalar type");
+        L0Test::ExpectTrue(tr, !WPEFramework::Plugin::RuntimeConfigurationDecoder::Decode(payload, cfg, error),
+                           "decoder rejects a wrong scalar type");
     }
     return tr.failures;
 }
 
-uint32_t Test_RuntimeConfigurationDeserializer_RejectsWrongArrayTypes()
+uint32_t Test_RuntimeConfigurationDecoder_RejectsWrongArrayTypes()
 {
     L0Test::TestResult tr;
     const std::string payloads[] = {
@@ -2279,13 +2279,13 @@ uint32_t Test_RuntimeConfigurationDeserializer_RejectsWrongArrayTypes()
     for (const auto& payload : payloads) {
         WPEFramework::Plugin::RuntimeConfiguration cfg;
         std::string error;
-        L0Test::ExpectTrue(tr, !WPEFramework::Plugin::RuntimeConfigurationDeserializer::Deserialize(payload, cfg, error),
-                           "deserializer rejects wrong array or array-element types");
+        L0Test::ExpectTrue(tr, !WPEFramework::Plugin::RuntimeConfigurationDecoder::Decode(payload, cfg, error),
+                           "decoder rejects wrong array or array-element types");
     }
     return tr.failures;
 }
 
-uint32_t Test_RuntimeConfigurationDeserializer_RequiresCommandAndUserId()
+uint32_t Test_RuntimeConfigurationDecoder_RequiresCommandAndUserId()
 {
     L0Test::TestResult tr;
     const std::string payloads[] = {
@@ -2295,26 +2295,26 @@ uint32_t Test_RuntimeConfigurationDeserializer_RequiresCommandAndUserId()
     for (const auto& payload : payloads) {
         WPEFramework::Plugin::RuntimeConfiguration cfg;
         std::string error;
-        L0Test::ExpectTrue(tr, !WPEFramework::Plugin::RuntimeConfigurationDeserializer::Deserialize(payload, cfg, error),
-                           "deserializer requires non-empty command and non-zero userId");
+        L0Test::ExpectTrue(tr, !WPEFramework::Plugin::RuntimeConfigurationDecoder::Decode(payload, cfg, error),
+                           "decoder requires non-empty command and non-zero userId");
     }
     WPEFramework::Plugin::RuntimeConfiguration ralfConfig;
     std::string ralfError;
     L0Test::ExpectTrue(tr,
-        WPEFramework::Plugin::RuntimeConfigurationDeserializer::Deserialize(R"({"userId":1,"ralfPkgPath":"/tmp/ralf"})", ralfConfig, ralfError, 0, 0, false),
-        "deserializer permits RALF configuration without a command");
+        WPEFramework::Plugin::RuntimeConfigurationDecoder::Decode(R"({"userId":1,"ralfPkgPath":"/tmp/ralf"})", ralfConfig, ralfError, 0, 0, false),
+        "decoder permits RALF configuration without a command");
     return tr.failures;
 }
 
-uint32_t Test_RuntimeConfigurationDeserializer_ToleratesUnknownProperties()
+uint32_t Test_RuntimeConfigurationDecoder_ToleratesUnknownProperties()
 {
     L0Test::TestResult tr;
     WPEFramework::Plugin::RuntimeConfiguration cfg;
     std::string error;
     L0Test::ExpectTrue(tr,
-        WPEFramework::Plugin::RuntimeConfigurationDeserializer::Deserialize(
+        WPEFramework::Plugin::RuntimeConfigurationDecoder::Decode(
             R"({"command":"launcher","userId":7,"futureOption":{"nested":[1,2,3]}})", cfg, error),
-        "deserializer tolerates unknown properties");
+        "decoder tolerates unknown properties");
     L0Test::ExpectEqU32(tr, cfg.userId, 7, "known fields remain decoded with unknown properties present");
     return tr.failures;
 }

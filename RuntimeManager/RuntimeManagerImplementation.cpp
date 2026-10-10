@@ -591,7 +591,7 @@ namespace WPEFramework
 #else
             const bool requireCommand = true;
 #endif
-            if (!RuntimeConfigurationDeserializer::Deserialize(runtimeConfigPayload, runtimeConfigObject, configurationError, userId, groupId, requireCommand))
+            if (!RuntimeConfigurationDecoder::Decode(runtimeConfigPayload, runtimeConfigObject, configurationError, userId, groupId, requireCommand))
             {
                 LOGERR("Invalid runtime configuration payload: %s", configurationError.c_str());
                 notifyParameterCheckFailure(appInstanceId, "ERROR_INVALID_PARAM");

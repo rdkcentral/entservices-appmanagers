@@ -40,7 +40,7 @@ RuntimeManagerImplementation
 
 ### Key Components
 - **RuntimeManagerImplementation**: Core plugin logic — dispatches all container operations
-- **RuntimeConfigurationDeserializer**: Privately validates and decodes the opaque JSON payload into RuntimeManager's internal `RuntimeConfiguration`
+- **RuntimeConfigurationDecoder**: Privately validates and decodes the opaque JSON payload into RuntimeManager's internal `RuntimeConfiguration`
 - **DobbySpecGenerator**: Generates OCI bundle JSON from app config and the private decoded configuration
 - **DobbyEventListener**: Listens to Dobby container lifecycle events and propagates them
 - **WindowManagerConnector**: Thin connector to RDKWindowManager for display allocation
@@ -59,9 +59,9 @@ RuntimeManagerImplementation
 | `logLevels` | Array of log-level strings | `std::vector<std::string>` |
 | `fkpsFiles` | Array of file-path strings | `std::vector<std::string>` |
 
-This changes the JSON property type from a string containing encoded JSON to a real JSON array. Producers must emit real arrays, intermediaries must preserve them as arrays, and `RuntimeConfigurationDeserializer` validates that every array element is a string.
+This changes the JSON property type from a string containing encoded JSON to a real JSON array. Producers must emit real arrays, intermediaries must preserve them as arrays, and `RuntimeConfigurationDecoder` validates that every array element is a string.
 
-When RuntimeManager must consume a new property, the owning producer adds it to the opaque payload, a typed field with a safe default is added to private `RuntimeConfiguration`, and `RuntimeConfigurationDeserializer::Deserialize()` validates and populates it. New properties should remain optional unless a coordinated breaking change is intended. Properties not consumed by RuntimeManager need no private field or deserializer change and are tolerated as unknown properties.
+When RuntimeManager must consume a new property, the owning producer adds it to the opaque payload, a typed field with a safe default is added to private `RuntimeConfiguration`, and `RuntimeConfigurationDecoder::Decode()` validates and populates it. New properties should remain optional unless a coordinated breaking change is intended. Properties not consumed by RuntimeManager need no private field or decoder change and are tolerated as unknown properties.
 
 ## External Interfaces
 
