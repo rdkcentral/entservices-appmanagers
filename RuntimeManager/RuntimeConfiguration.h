@@ -59,9 +59,9 @@ struct RuntimeConfiguration {
     std::string unpackedPath;
 };
 
-class RuntimeConfigurationDecoder {
+class RuntimeConfigurationDeserializer {
 public:
-    static bool Decode(const std::string& payload, RuntimeConfiguration& configuration, std::string& error, uint32_t defaultUserId = 0, uint32_t defaultGroupId = 0, bool requireCommand = true);
+    static bool Deserialize(const std::string& payload, RuntimeConfiguration& configuration, std::string& error, uint32_t defaultUserId = 0, uint32_t defaultGroupId = 0, bool requireCommand = true);
 };
 
 } // namespace Plugin

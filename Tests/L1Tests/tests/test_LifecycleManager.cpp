@@ -812,7 +812,7 @@ TEST_F(LifecycleManagerTest, opaqueRuntimeConfigIsEnrichedAndDecodedEndToEnd)
             [&](const string& runAppId, const string& runAppInstanceId, const uint32_t userId, const uint32_t groupId, Exchange::IRuntimeManager::IValueIterator* const& ports, Exchange::IRuntimeManager::IStringIterator* const& paths, Exchange::IRuntimeManager::IStringIterator* const& debugSettings, const string& handedOffPayload) {
                 Plugin::RuntimeConfiguration decoded;
                 string decodeError;
-                EXPECT_TRUE(Plugin::RuntimeConfigurationDecoder::Decode(handedOffPayload, decoded, decodeError));
+                EXPECT_TRUE(Plugin::RuntimeConfigurationDeserializer::Deserialize(handedOffPayload, decoded, decodeError));
                 EXPECT_EQ(appId, runAppId);
                 EXPECT_TRUE(decoded.dial);
                 EXPECT_TRUE(decoded.wanLanAccess);
