@@ -325,14 +325,10 @@ namespace WPEFramework
                     {
                         AppInfo appInfoSnap;
                         bool appInMap = AppInfoManager::getInstance().get(appId, appInfoSnap);
-                        const Exchange::IAppManager::AppLifecycleState currentState =
-                            appInMap ? appInfoSnap.getAppNewState()
-                                     : Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED;
                         if ((true == loaded) &&
                             (Core::ERROR_NONE == status) &&
                             appInMap &&
-                            ((Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED == currentState) ||
-                             (Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED == currentState)))
+                            (Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED == appInfoSnap.getAppNewState()))
                         {
                             appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_RESUME);
                             state = Exchange::ILifecycleManager::LifecycleState::ACTIVE;

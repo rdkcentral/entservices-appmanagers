@@ -7,7 +7,6 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 option(PLUGIN_RUNTIME_MANAGER    "Build RuntimeManager L0 test target"    ON)
-option(ENABLE_DIAL               "Enable RuntimeManager DIAL environment variables" OFF)
 option(PLUGIN_LIFECYCLE_MANAGER  "Build LifecycleManager L0 test target"  ON)
 option(PLUGIN_RDK_WINDOW_MANAGER "Build RDKWindowManager L0 test target"  ON)
 option(PLUGIN_DOWNLOAD_MANAGER   "Build DownloadManager L0 test target"   ON)
@@ -327,9 +326,6 @@ if(PLUGIN_RUNTIME_MANAGER)
         PLUGIN_RUNTIME_MANAGER_IMPLEMENTATION_NAME="RuntimeManagerImplementation"
         RALF_PACKAGE_SUPPORT_ENABLED=1
     )
-    if(ENABLE_DIAL)
-        target_compile_definitions(runtimemanager_l0test PRIVATE ENABLE_DIAL)
-    endif()
 
     # Force include L0TestConfig.h in all source files
     target_compile_options(runtimemanager_l0test PRIVATE

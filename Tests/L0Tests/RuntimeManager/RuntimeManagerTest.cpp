@@ -276,9 +276,7 @@ extern uint32_t Test_DobbySpecGenerator_GenerateWithNonEmptyAppPorts();
 extern uint32_t Test_DobbySpecGenerator_GetVpuEnabledReturnsFalseForSystemApp();
 extern uint32_t Test_DobbySpecGenerator_GenerateWithEnvVariablesInRuntimeConfig();
 extern uint32_t Test_DobbySpecGenerator_GenerateThunderPluginFromCapabilities();
-#ifdef ENABLE_DIAL
 extern uint32_t Test_DobbySpecGenerator_GenerateDialEnvFromEscapedCapabilityValue();
-#endif
 extern uint32_t Test_DobbySpecGenerator_GenerateWithEmptyCapabilitiesString();
 extern uint32_t Test_DobbySpecGenerator_GenerateIgnoresRuntimeLogLevelsForEthanLog();
 extern uint32_t Test_DobbySpecGenerator_GstRegistryInjectedWhenRialtoInactive();
@@ -440,9 +438,7 @@ int main()
         { "DobbySpecGenerator_GetVpuEnabledReturnsFalseForSystemApp",                Test_DobbySpecGenerator_GetVpuEnabledReturnsFalseForSystemApp },
         { "DobbySpecGenerator_GenerateWithEnvVariablesInRuntimeConfig",              Test_DobbySpecGenerator_GenerateWithEnvVariablesInRuntimeConfig },
         { "DobbySpecGenerator_GenerateThunderPluginFromCapabilities",                Test_DobbySpecGenerator_GenerateThunderPluginFromCapabilities },
-#ifdef ENABLE_DIAL
         { "DobbySpecGenerator_GenerateDialEnvFromEscapedCapabilityValue",            Test_DobbySpecGenerator_GenerateDialEnvFromEscapedCapabilityValue },
-#endif
         { "DobbySpecGenerator_GenerateWithEmptyCapabilitiesString",                  Test_DobbySpecGenerator_GenerateWithEmptyCapabilitiesString },
         { "DobbySpecGenerator_GenerateIgnoresRuntimeLogLevelsForEthanLog",           Test_DobbySpecGenerator_GenerateIgnoresRuntimeLogLevelsForEthanLog },
         { "DobbySpecGenerator_GstRegistryInjectedWhenRialtoInactive",                Test_DobbySpecGenerator_GstRegistryInjectedWhenRialtoInactive },
