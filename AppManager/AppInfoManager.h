@@ -123,7 +123,7 @@ public:
     void setPackageInfoVersion(const std::string& appId,      const std::string& version);
     void setPackageInfoLockId(const std::string& appId,       uint32_t lockId);
     void setPackageInfoUnpackedPath(const std::string& appId, const std::string& path);
-    void setPackageInfoConfigMetadata(const std::string& appId, const Exchange::RuntimeConfig& cfg);
+    void setPackageInfoConfigMetadata(const std::string& appId, const std::string& cfg);
     void setPackageInfoAppMetadata(const std::string& appId,  const std::string& metadata);
     void setPackageInfoType(const std::string& appId,         AppManagerTypes::ApplicationType type);
     void setCurrentActionTime(const std::string& appId, time_t t);

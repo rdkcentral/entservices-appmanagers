@@ -1,0 +1,57 @@
+## Why
+
+Runtime configuration is duplicated as divergent `Exchange::RuntimeConfig` structures across PackageManager, AppManager, LifecycleManager, and RuntimeManager, forcing coordinated interface changes whenever fields evolve. Replace that shared typed contract with one mutable opaque payload while preserving existing launch behavior.
+
+## What Changes
+
+- **BREAKING** Replace public `RuntimeConfig` COM parameters with an opaque serialized JSON string; all consumers must rebuild against the matching `entservices-apis` revision.
+- Make PackageManager create and retain a flat payload using existing field names and defaults, with `envVariables`, `fkpsFiles`, and `logLevels` as real JSON arrays (not embedded JSON strings).
+- Let AppManager and LifecycleManager mutate only owned properties while retaining unknown values.
+- Make RuntimeManager validate once and decode known members into a private type used by Dobby and RALF.
+- Mechanically migrate PreinstallManager, mocks, tests, generated API documentation, and CMake wiring.
+- Use `@opaque` annotation on JSON-RPC parameters so the serialized JSON string is emitted as a raw JSON object over JSON-RPC, while the C++/COM parameter remains a string.
+
+**JSON-RPC breaking change example:**
+
+Before (embedded JSON strings):
+```json
+{
+  "envVariables": "[\"XDG_RUNTIME_DIR=/tmp\",\"WAYLAND_DISPLAY=test\"]",
+  "logLevels": "[\"INFO\",\"DEBUG\"]",
+  "fkpsFiles": "[\"/path/to/file1\",\"/path/to/file2\"]"
+}
+```
+
+After (native JSON arrays with `@opaque`):
+```json
+{
+  "envVariables": ["XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=test"],
+  "logLevels": ["INFO", "DEBUG"],
+  "fkpsFiles": ["/path/to/file1", "/path/to/file2"]
+}
+```
+
+Clients must update from parsing string values containing JSON arrays to receiving native JSON arrays directly.
+
+## Capabilities
+
+### New Capabilities
+
+- `opaque-runtime-config`: End-to-end production, enrichment, forwarding, validation, and consumption of runtime configuration as an opaque JSON payload.
+
+### Modified Capabilities
+
+None. Existing flat module documents are not registered OpenSpec capabilities.
+
+## Impact
+
+Affected modules/specs are PackageManager, AppManager, LifecycleManager, RuntimeManager, and incidental PreinstallManager integration. Public interfaces change in `entservices-apis`. Existing JSONCPP support is reused; no external dependency or CMake option is added.
+
+## Non-goals
+
+- Change package metadata names, defaults, or ownership.
+- Change lifecycle transitions, telemetry, storage, display, Dobby, RALF, Rialto, networking, resource, mount, logging, or debug behavior.
+- Provide backward ABI compatibility with binaries built against the removed structures.
+- Define JSON member ordering or whitespace as stable.
+
+**Schema evolution note:** The change from embedded JSON strings to real JSON arrays for `envVariables`, `fkpsFiles`, and `logLevels` is a content-type change documented in the "Runtime Configuration Schema Evolution" section of `RuntimeManager.spec.md`. This eliminates double serialization and simplifies manipulation but requires awareness for any consumers that previously parsed these as strings.

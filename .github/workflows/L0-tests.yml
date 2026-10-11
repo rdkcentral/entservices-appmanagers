@@ -17,7 +17,7 @@ env:
   THUNDER_TOOLS_REF: "R4_4-RDK"
   THUNDER_TOOLS_COMMIT_SHA: "d5dd83c7c19c49c7f25c558c126500bd2d64f7a4"
   THUNDER_COMMIT_SHA: "2c0fcc5529e7da734be558ca6efa05d934dcce31"
-  INTERFACES_REF: "db8fce1bc33a918d09ba0d9f6ba05e69c180485a"
+  INTERFACES_REF: "2f3d9e2be7b4c8a733375cfe3abc51290130febd"
 
 jobs:
   L0-tests:
@@ -520,7 +520,7 @@ jobs:
           fi
 
       - name: Summarize failed tests
-        if: ${{ always() }}
+        if: ${{ always() && steps.run_l0_tests.outcome != 'skipped' }}
         run: |
           set -euo pipefail
           for log in l0-runtime-test.log l0-lcm-test.log l0-rdkwm-test.log l0-appstorage-test.log l0-preinstall-test.log l0-packagemanager-test.log l0-dm-test.log l0-appmanager-test.log l0-victimselector-test.log; do
@@ -534,7 +534,7 @@ jobs:
           done
 
       - name: Fail workflow if tests failed
-        if: ${{ always() }}
+        if: ${{ always() && steps.run_l0_tests.outcome != 'skipped' }}
         env:
           RUN_L0_TESTS_OUTCOME: ${{ steps.run_l0_tests.outcome }}
         run: |

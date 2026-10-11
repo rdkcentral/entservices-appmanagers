@@ -388,9 +388,10 @@ uint32_t Test_AM_AppInfoManagerStateSettersAndGetters()
         "setPackageInfoUnpackedPath stores the path");
 
     // ---- setPackageInfoConfigMetadata ----
-    WPEFramework::Exchange::RuntimeConfig cfg{};
+    const std::string cfg = R"({"capabilities":"dial-app,wan-lan","envVariables":["BASE=1"],"command":"launcher","userId":30001})";
     mgr.setPackageInfoConfigMetadata("app.pkg2", cfg);
-    L0Test::ExpectTrue(tr, true, "setPackageInfoConfigMetadata does not crash for valid app");
+    L0Test::ExpectEqStr(tr, mgr.getPackageInfo("app.pkg2").configMetadata, cfg,
+        "setPackageInfoConfigMetadata stores the opaque JSON payload");
 
     // ---- setPackageInfoAppMetadata ----
     mgr.setPackageInfoAppMetadata("app.pkg2", "app-meta-json");

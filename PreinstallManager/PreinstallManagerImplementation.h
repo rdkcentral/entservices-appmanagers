@@ -83,7 +83,7 @@ namespace WPEFramework
                 string fileLocator;
                 string packageId;
                 string version;
-                WPEFramework::Exchange::RuntimeConfig configMetadata;
+                std::string runtimeConfigPayload;
                 string installStatus; // optional field to store install status for logging purpose
             } PackageInfo;
 

@@ -192,7 +192,7 @@ Core::hresult Run(const string& appId, const string& appInstanceId,
                   IValueIterator* const& ports,
                   IStringIterator* const& paths,
                   IStringIterator* const& debugSettings,
-                  const RuntimeConfig& runtimeConfigObject);
+                  const string& runtimeConfigPayload);
 Core::hresult Hibernate(const string& appInstanceId);
 Core::hresult Wake(const string& appInstanceId, RuntimeState runtimeState);
 Core::hresult Suspend(const string& appInstanceId);
@@ -207,23 +207,25 @@ Core::hresult Annotate(const string& appInstanceId, const string& key, const str
 
 **Purpose**: Generates OCI-compliant container specifications for Dobby.
 
+`RuntimeManager::Run` is the only manager boundary that validates and decodes the flat opaque JSON payload into the private `RuntimeConfiguration` type. The decoder consumes known fields for OCI generation; upstream managers do not share that structure. JSON arrays remain arrays throughout the payload flow, and enrichment preserves unknown properties.
+
 **Key Methods**:
 ```cpp
 class DobbySpecGenerator {
 public:
     DobbySpecGenerator(AIConfiguration& aiConfiguration);
     bool generate(const ApplicationConfiguration& config,
-                  const RuntimeConfig& runtimeConfig,
+                  const RuntimeConfiguration& runtimeConfig,
                   string& outputJsonString);
 
 private:
     Json::Value createEnvVars(const ApplicationConfiguration& config,
-                              const RuntimeConfig& runtimeConfig,
+                              const RuntimeConfiguration& runtimeConfig,
                               const std::vector<std::pair<std::string, std::string>>& capabilities) const;
     Json::Value createMounts(const ApplicationConfiguration& config,
-                             const RuntimeConfig& runtimeConfig) const;
+                             const RuntimeConfiguration& runtimeConfig) const;
     Json::Value createRdkPlugins(const ApplicationConfiguration& config,
-                                 const RuntimeConfig& runtimeConfig,
+                                 const RuntimeConfiguration& runtimeConfig,
                                  const std::vector<std::pair<std::string, std::string>>& capabilities) const;
     Json::Value createNetworkPlugin(...) const;
     Json::Value createThunderPlugin(...) const;
@@ -312,7 +314,7 @@ interface IRuntimeManager {
                 uint32_t userId, uint32_t groupId,
                 IValueIterator* ports, IStringIterator* paths,
                 IStringIterator* debugSettings,
-                const RuntimeConfig& runtimeConfig);
+                const string& runtimeConfigPayload);
     hresult Hibernate(const string& appInstanceId);
     hresult Wake(const string& appInstanceId, RuntimeState state);
     hresult Suspend(const string& appInstanceId);

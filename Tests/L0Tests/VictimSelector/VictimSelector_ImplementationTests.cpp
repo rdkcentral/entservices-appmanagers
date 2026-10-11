@@ -87,7 +87,7 @@ public:
     void* QueryInterface(const uint32_t) override { return nullptr; }
     Core::hresult Register(INotification*) override { return Core::ERROR_NONE; }
     Core::hresult Unregister(INotification*) override { return Core::ERROR_NONE; }
-    Core::hresult Run(const string&, const string&, const uint32_t, const uint32_t, IValueIterator* const&, IStringIterator* const&, IStringIterator* const&, const Exchange::RuntimeConfig&) override { return Core::ERROR_NONE; }
+    Core::hresult Run(const string&, const string&, const uint32_t, const uint32_t, IValueIterator* const&, IStringIterator* const&, IStringIterator* const&, const string&) override { return Core::ERROR_NONE; }
     Core::hresult Hibernate(const string&) override { return Core::ERROR_NONE; }
     Core::hresult Wake(const string&, const RuntimeState) override { return Core::ERROR_NONE; }
     Core::hresult Suspend(const string&) override { return Core::ERROR_NONE; }

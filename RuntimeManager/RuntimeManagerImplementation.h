@@ -30,6 +30,7 @@
 #include <condition_variable>
 #include "AIConfiguration.h"
 #include "ApplicationConfiguration.h"
+#include "RuntimeConfiguration.h"
 #include "WindowManagerConnector.h"
 #include "IEventHandler.h"
 #include "DobbyEventListener.h"
@@ -174,7 +175,7 @@ namespace WPEFramework
                 virtual Core::hresult Register(Exchange::IRuntimeManager::INotification *notification) override;
                 virtual Core::hresult Unregister(Exchange::IRuntimeManager::INotification *notification) override;
 
-                virtual Core::hresult Run(const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, IValueIterator* const& ports, IStringIterator* const& paths, IStringIterator* const& debugSettings, const WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject) override;
+                virtual Core::hresult Run(const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, IValueIterator* const& ports, IStringIterator* const& paths, IStringIterator* const& debugSettings, const string& runtimeConfigPayload) override;
                 virtual Core::hresult Hibernate(const string& appInstanceId) override;
                 virtual Core::hresult Wake(const string& appInstanceId, const RuntimeState runtimeState) override;
                 virtual Core::hresult Suspend(const string& appInstanceId) override;
@@ -189,7 +190,7 @@ namespace WPEFramework
                 // IConfiguration methods
                 uint32_t Configure(PluginHost::IShell* service) override;
 
-                bool generate(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig, std::string& dobbySpec);
+                bool generate(const ApplicationConfiguration& config, const RuntimeConfiguration& runtimeConfig, std::string& dobbySpec);
 
                 // IEventHandler methods
                 virtual void onOCIContainerStartedEvent(std::string name, JsonObject& data) override;
