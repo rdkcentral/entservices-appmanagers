@@ -23,6 +23,7 @@
 #ifdef APP_MANAGER_RESOURCE_MONITOR
 #include <sys/statvfs.h>
 #endif
+#include <json/json.h>
 #include "AppManagerImplementation.h"
 #include "AppManagerTelemetryReporting.h"
 #include "UtilsAppManagerTelemetry.h"
@@ -977,11 +978,34 @@ uint32_t AppManagerImplementation::GetAppRamTargetMB(const string& appId) const
 {
     const PackageInfo packageInfo = AppInfoManager::getInstance().getPackageInfo(appId);
     const uint32_t bytesPerMB = 1024 * 1024;
-    if (packageInfo.configMetadata.systemMemoryLimit <= 0)
+    
+    /* Decode systemMemoryLimit from opaque configMetadata JSON string */
+    int64_t systemMemoryLimit = 0;
+    if (!packageInfo.configMetadata.empty())
+    {
+        try
+        {
+            Json::Value root;
+            Json::Reader reader;
+            if (reader.parse(packageInfo.configMetadata, root))
+            {
+                if (root.isMember("systemMemoryLimit") && root["systemMemoryLimit"].isInt64())
+                {
+                    systemMemoryLimit = root["systemMemoryLimit"].asInt64();
+                }
+            }
+        }
+        catch (...)
+        {
+            LOGERR("Failed to parse configMetadata for appId=%s", appId.c_str());
+        }
+    }
+    
+    if (systemMemoryLimit <= 0)
     {
         return 0;
     }
-    return static_cast<uint32_t>((static_cast<uint64_t>(packageInfo.configMetadata.systemMemoryLimit) + bytesPerMB - 1) / bytesPerMB);
+    return static_cast<uint32_t>((static_cast<uint64_t>(systemMemoryLimit) + bytesPerMB - 1) / bytesPerMB);
 }
 
 bool AppManagerImplementation::SupportsHibernation(const string& appId)
@@ -1001,7 +1025,30 @@ bool AppManagerImplementation::SupportsHibernation(const string& appId)
 bool AppManagerImplementation::HasHibernationFlashSpace(const string& appId) const
 {
     const PackageInfo packageInfo = AppInfoManager::getInstance().getPackageInfo(appId);
-    const uint64_t requiredBytes = packageInfo.configMetadata.dataImageSize;
+    
+    /* Decode dataImageSize from opaque configMetadata JSON string */
+    uint64_t dataImageSize = 0;
+    if (!packageInfo.configMetadata.empty())
+    {
+        try
+        {
+            Json::Value root;
+            Json::Reader reader;
+            if (reader.parse(packageInfo.configMetadata, root))
+            {
+                if (root.isMember("dataImageSize") && root["dataImageSize"].isUInt64())
+                {
+                    dataImageSize = root["dataImageSize"].asUInt64();
+                }
+            }
+        }
+        catch (...)
+        {
+            LOGERR("Failed to parse configMetadata for appId=%s", appId.c_str());
+        }
+    }
+    
+    const uint64_t requiredBytes = dataImageSize;
     if (requiredBytes == 0)
     {
         return false;

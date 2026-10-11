@@ -197,7 +197,7 @@ endif()
 target_link_directories(${TEST_RUNNER_NAME} PUBLIC ${CMAKE_INSTALL_PREFIX}/lib ${CMAKE_INSTALL_PREFIX}/lib/wpeframework/plugins)
 
 if(BUILD_L1_TESTS_SHARED_MODULE)
-    target_link_libraries(${MODULE_NAME} ${TEST_LIB})
+    target_link_libraries(${MODULE_NAME} ${TEST_LIB} AppManagersHelpers PkgConfig::JSONCPP)
 
     target_include_directories(${MODULE_NAME} PRIVATE
             ${CMAKE_CURRENT_SOURCE_DIR}/../mocks
