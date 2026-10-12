@@ -192,7 +192,7 @@ namespace WPEFramework
                 // IConfiguration methods
                 uint32_t Configure(PluginHost::IShell* service) override;
 
-                bool generate(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig, std::string& dobbySpec, bool classicRalfWidget = false);
+                bool generate(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig, std::string& dobbySpec, bool classicRalfLaunch = false);
                 static bool isRalfPackage(const WPEFramework::Exchange::RuntimeConfig& runtimeConfig);
                 static void cleanupRalfInstance(const string& appInstanceId, bool ralfMode);
 

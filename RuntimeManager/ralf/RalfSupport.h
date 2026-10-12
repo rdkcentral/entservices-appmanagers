@@ -46,10 +46,8 @@ namespace ralf
      * @return true on success, false on failure
      */
     bool parseRalPkgInfo(const std::string &configFilePath, std::vector<RalfPkgInfoPair> &packages);
-#ifdef ENTOS_RALF_SUPPORT
-    bool getWidgetRuntimeLaunchInfo(const std::string &manifestPath, std::string &appPath,
-                                    std::string &runtimePath, std::string &command);
-#endif
+    bool getClassicRalfLaunchInfo(const std::string &manifestPath, std::string &appPath,
+                                  std::string &runtimePath, std::string &command);
     /**
      * Function to read JSON data from a file
      * @param filePath The path to the JSON file

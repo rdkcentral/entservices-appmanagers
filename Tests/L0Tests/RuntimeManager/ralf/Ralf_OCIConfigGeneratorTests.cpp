@@ -495,19 +495,17 @@ uint32_t Test_RalfOCIConfigGenerator_LegacyProcessArgsRejectMissingBase()
 }
 
 #ifdef ENTOS_RALF_SUPPORT
-uint32_t Test_Ralf_GetWidgetRuntimeLaunchInfo()
+uint32_t Test_Ralf_GetClassicRalfLaunchInfo()
 {
     L0Test::TestResult tr;
     const std::string runtimeRoot = "/tmp/ralf_l0test_widget_runtime";
     const std::string appRoot = "/tmp/ralf_l0test_widget_app";
     const std::string manifestPath = "/tmp/ralf_l0test_widget_manifest.json";
-    L0Test::ExpectTrue(tr, WriteFile_OCIGen(runtimeRoot + "/config.xml",
-                       "<widget><content src=\"bin/browser\" type=\"application/vnd.rdk.browser\"/></widget>"),
-                       "widget runtime config is available");
-    L0Test::ExpectTrue(tr, WriteFile_OCIGen(runtimeRoot + "/config.json", "{}") &&
+    L0Test::ExpectTrue(tr, WriteFile_OCIGen(runtimeRoot + "/config.json",
+                       "{\"packageType\":\"runtime\",\"entryPoint\":\"bin/browser\"}") &&
                        WriteFile_OCIGen(appRoot + "/config.json",
                                          "{\"packageType\":\"application\",\"entryPoint\":\".\"}"),
-                       "runtime and RALF app config are available");
+                       "runtime and RALF app configs are available");
 
     Json::Value manifest(Json::objectValue);
     Json::Value runtime(Json::objectValue);
@@ -525,13 +523,30 @@ uint32_t Test_Ralf_GetWidgetRuntimeLaunchInfo()
     std::string appPath;
     std::string runtimePath;
     std::string command;
-    L0Test::ExpectTrue(tr, ralf::getWidgetRuntimeLaunchInfo(manifestPath, appPath, runtimePath, command),
-                       "widget runtime and RALF app select the classic launch path");
+    L0Test::ExpectTrue(tr, ralf::getClassicRalfLaunchInfo(manifestPath, appPath, runtimePath, command),
+                       "runtime and RALF app select the classic launch path");
     L0Test::ExpectTrue(tr, appPath == appRoot && runtimePath == runtimeRoot &&
                        command == "bin/browser",
-                       "classic spec receives package mount, widget runtime mount and executable");
+                       "classic spec receives app mount, runtime mount and executable");
 
-    std::remove((runtimeRoot + "/config.xml").c_str());
+    L0Test::ExpectTrue(tr, WriteFile_OCIGen(runtimeRoot + "/config.json",
+                       "{\"packageType\":\"application\",\"entryPoint\":\"bin/widget\"}"),
+                       "non-runtime dependency config is available");
+    L0Test::ExpectTrue(tr, !ralf::getClassicRalfLaunchInfo(manifestPath, appPath, runtimePath, command),
+                       "non-runtime ZIP layer is not accepted as a runtime");
+
+    L0Test::ExpectTrue(tr, WriteFile_OCIGen(appRoot + "/config.json",
+                       "{\"packageType\":\"application\",\"entryPoint\":\"bin/app\"}"),
+                       "app-only RALF config is available");
+    manifest["packages"].clear();
+    manifest["packages"].append(app);
+    L0Test::ExpectTrue(tr, WriteFile_OCIGen(manifestPath, Json::writeString(writer, manifest)),
+                       "app-only manifest is available");
+    L0Test::ExpectTrue(tr, ralf::getClassicRalfLaunchInfo(manifestPath, appPath, runtimePath, command),
+                       "base-free RALF app selects the classic launch path");
+    L0Test::ExpectTrue(tr, appPath == appRoot && runtimePath.empty() && command == "bin/app",
+                       "app-only classic launch uses the app root and entrypoint");
+
     std::remove((runtimeRoot + "/config.json").c_str());
     std::remove((appRoot + "/config.json").c_str());
     std::remove(manifestPath.c_str());

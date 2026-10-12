@@ -78,8 +78,8 @@ stateDiagram-v2
     UNLOADED --> LOADING: SpawnApp
     LOADING --> INITIALIZING: Container Started
     INITIALIZING --> PAUSED: AppReady (background)
-    INITIALIZING --> ACTIVE: AppReady (foreground)
-    PAUSED --> ACTIVE: SetTargetState(ACTIVE)
+    INITIALIZING --> ACTIVE: AppReady + first frame (foreground)
+    PAUSED --> ACTIVE: SetTargetState(ACTIVE) + first frame
     ACTIVE --> PAUSED: SetTargetState(PAUSED)
     PAUSED --> SUSPENDED: SetTargetState(SUSPENDED)
     SUSPENDED --> PAUSED: SetTargetState(PAUSED)
@@ -92,6 +92,11 @@ stateDiagram-v2
     TERMINATING --> UNLOADED: Container Stopped
     UNLOADED --> [*]
 ```
+
+`ActiveState::handle()` resumes a Rialto session when needed, then checks
+`WindowManagerHandler::renderReady()`. When the compositor has not produced a
+frame, it defers the ACTIVE transition until the window manager's `onReady`
+event. Replaying that event does not resume an already active Rialto session.
 
 ---
 
@@ -567,10 +572,10 @@ stateDiagram-v2
     LOADING --> TERMINATING: Container Failed
     
     INITIALIZING --> PAUSED: AppReady (target=PAUSED)
-    INITIALIZING --> ACTIVE: AppReady (target=ACTIVE)
+    INITIALIZING --> ACTIVE: AppReady + first frame (target=ACTIVE)
     INITIALIZING --> TERMINATING: Timeout/Error
     
-    PAUSED --> ACTIVE: SetTargetState(ACTIVE)
+    PAUSED --> ACTIVE: SetTargetState(ACTIVE) + first frame
     ACTIVE --> PAUSED: SetTargetState(PAUSED)
     
     PAUSED --> SUSPENDED: SetTargetState(SUSPENDED)

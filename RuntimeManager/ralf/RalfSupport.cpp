@@ -45,11 +45,6 @@
 
 #include <pwd.h> //For getting user id and group id of ralf user
 #include <algorithm>
-#ifdef ENTOS_RALF_SUPPORT
-#include <libxml/parser.h>
-#include <libxml/tree.h>
-#endif
-
 namespace
 {
     struct RootfsPathRequirement
@@ -320,48 +315,39 @@ namespace ralf
         return true;
     }
 
-#ifdef ENTOS_RALF_SUPPORT
-    bool getWidgetRuntimeLaunchInfo(const std::string &manifestPath, std::string &appPath,
-                                    std::string &runtimePath, std::string &command)
+    bool getClassicRalfLaunchInfo(const std::string &manifestPath, std::string &appPath,
+                                  std::string &runtimePath, std::string &command)
     {
         std::vector<RalfPkgInfoPair> packages;
-        Json::Value runtimeConfig;
         Json::Value appConfig;
-        if (!parseRalPkgInfo(manifestPath, packages) || 2 != packages.size() ||
-            !JsonFromFile(packages.front().first, runtimeConfig) ||
+        if (!parseRalPkgInfo(manifestPath, packages) || packages.empty() || 2 < packages.size() ||
             !JsonFromFile(packages.back().first, appConfig) ||
-            runtimeConfig[ENTRY_POINT].isString() ||
             !appConfig[PACKAGE_TYPE].isString() ||
             PKG_TYPE_APPLICATION != appConfig[PACKAGE_TYPE].asString() ||
-            !appConfig[ENTRY_POINT].isString())
+            !appConfig[ENTRY_POINT].isString() || appConfig[ENTRY_POINT].asString().empty())
         {
             return false;
         }
 
-        const std::string configPath = packages.front().second + "/config.xml";
-        xmlDocPtr document = xmlReadFile(configPath.c_str(), nullptr, XML_PARSE_NONET);
-        if (nullptr == document)
-        {
-            LOGERR("Failed to read widget runtime metadata at %s", configPath.c_str());
-            return false;
-        }
-
+        std::string runtimeMountPath;
         std::string executable;
-        const xmlNodePtr root = xmlDocGetRootElement(document);
-        for (xmlNodePtr child = nullptr != root ? root->children : nullptr; nullptr != child; child = child->next)
+        if (2 == packages.size())
         {
-            if (XML_ELEMENT_NODE == child->type && xmlStrEqual(child->name, BAD_CAST "content"))
+            Json::Value runtimeConfig;
+            if (!JsonFromFile(packages.front().first, runtimeConfig) ||
+                !runtimeConfig[PACKAGE_TYPE].isString() ||
+                PKG_TYPE_RUNTIME != runtimeConfig[PACKAGE_TYPE].asString() ||
+                !runtimeConfig[ENTRY_POINT].isString())
             {
-                xmlChar *source = xmlGetProp(child, BAD_CAST "src");
-                if (nullptr != source)
-                {
-                    executable = reinterpret_cast<const char *>(source);
-                    xmlFree(source);
-                }
-                break;
+                return false;
             }
+            runtimeMountPath = packages.front().second;
+            executable = runtimeConfig[ENTRY_POINT].asString();
         }
-        xmlFreeDoc(document);
+        else
+        {
+            executable = appConfig[ENTRY_POINT].asString();
+        }
 
         if (executable.empty() || '/' == executable.front() ||
             "." == executable || ".." == executable ||
@@ -369,16 +355,15 @@ namespace ralf
             std::string::npos != executable.find("/./") ||
             (3 <= executable.size() && "/.." == executable.substr(executable.size() - 3)))
         {
-            LOGERR("Invalid widget runtime executable in %s: %s", configPath.c_str(), executable.c_str());
+            LOGERR("Invalid classic RALF executable path: %s", executable.c_str());
             return false;
         }
 
         appPath = packages.back().second;
-        runtimePath = packages.front().second;
+        runtimePath = runtimeMountPath;
         command = executable;
         return true;
     }
-#endif
 
     bool parseRalPkgInfo(const std::string &configFilePath, std::vector<RalfPkgInfoPair> &packages)
     {

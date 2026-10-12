@@ -216,7 +216,7 @@ extern uint32_t Test_RalfOCIConfigGenerator_UsesConfiguredRialtoSocketPath();
 extern uint32_t Test_RalfOCIConfigGenerator_LegacyProcessArgsFollowBaseRuntimeAppOrder();
 extern uint32_t Test_RalfOCIConfigGenerator_LegacyProcessArgsRejectMissingBase();
 #ifdef ENTOS_RALF_SUPPORT
-extern uint32_t Test_Ralf_GetWidgetRuntimeLaunchInfo();
+extern uint32_t Test_Ralf_GetClassicRalfLaunchInfo();
 #endif
 extern uint32_t Test_RalfOCIConfigGenerator_UsesWaylandEglSonameForMissingConfiguredSource();
 extern uint32_t Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_MissingPackageTypeReturnsTrue();
@@ -564,7 +564,7 @@ int main()
         { "RalfOCIConfigGenerator_LegacyProcessArgsFollowBaseRuntimeAppOrder",        Test_RalfOCIConfigGenerator_LegacyProcessArgsFollowBaseRuntimeAppOrder },
         { "RalfOCIConfigGenerator_LegacyProcessArgsRejectMissingBase",                Test_RalfOCIConfigGenerator_LegacyProcessArgsRejectMissingBase },
     #ifdef ENTOS_RALF_SUPPORT
-        { "Ralf_GetWidgetRuntimeLaunchInfo",                                         Test_Ralf_GetWidgetRuntimeLaunchInfo },
+        { "Ralf_GetClassicRalfLaunchInfo",                                          Test_Ralf_GetClassicRalfLaunchInfo },
     #endif
         { "RalfOCIConfigGenerator_UsesWaylandEglSonameForMissingConfiguredSource",   Test_RalfOCIConfigGenerator_UsesWaylandEglSonameForMissingConfiguredSource },
         { "RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_MissingPackageTypeReturnsTrue", Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_MissingPackageTypeReturnsTrue },
