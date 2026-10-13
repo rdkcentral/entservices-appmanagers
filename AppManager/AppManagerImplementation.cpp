@@ -1212,6 +1212,11 @@ Core::hresult AppManagerImplementation::packageLock(const string& appId, Package
             {
                 Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
                 status = mPackageManagerHandlerObject->Lock(appId, packageData.version, lockReason, packageData.lockId, packageData.unpackedPath, packageData.configMetadata, appMetadata);
+                if (nullptr != appMetadata)
+                {
+                    appMetadata->Release();
+                    appMetadata = nullptr;
+                }
                 if (Core::ERROR_NONE == status)
                 {
                     LOGINFO("Locked requested package version for loaded appId %s; AppInfo update deferred until replacement launch", appId.c_str());
