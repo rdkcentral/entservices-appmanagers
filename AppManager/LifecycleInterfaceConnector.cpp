@@ -211,7 +211,7 @@ namespace WPEFramework
         }
 
         Core::hresult LifecycleInterfaceConnector::launchRequestedPackage(const string& appId, const string& intent,
-            const string& launchArgs, WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject)
+            const string& launchArgs, WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject, const string& requestedVersion)
         {
             Core::hresult status = Core::ERROR_GENERAL;
             string appInstanceId = "";
@@ -248,7 +248,16 @@ namespace WPEFramework
                     a.setAppIntent(intent);
                     a.getPackageInfoMutable().type = AppManagerTypes::APPLICATION_TYPE_INTERACTIVE;
                     AppManagerTypes::PackageInfo packageInfo = a.getPackageInfo();
-                    packageInfo.version = a.getRequestedLaunchVersion();
+                    string effectiveVersion = requestedVersion;
+                    if (true == effectiveVersion.empty())
+                    {
+                        effectiveVersion = a.getRequestedLaunchVersion();
+                    }
+                    if (false == effectiveVersion.empty())
+                    {
+                        packageInfo.version = effectiveVersion;
+                        a.setRequestedLaunchVersion(effectiveVersion);
+                    }
                     packageInfo.unpackedPath = runtimeConfigObject.unpackedPath;
                     packageInfo.configMetadata = runtimeConfigObject;
                     a.setPackageInfo(packageInfo);
@@ -271,7 +280,7 @@ namespace WPEFramework
 
         Core::hresult LifecycleInterfaceConnector::restartSuspendedWithRequestedVersion(const string& appId,
             const string& intent, const string& launchArgs, WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject,
-            const string& suspendedAppInstanceId)
+            const string& suspendedAppInstanceId, const string& requestedVersion)
         {
             Core::hresult status = Core::ERROR_GENERAL;
             string errorReason = "";
@@ -330,7 +339,7 @@ namespace WPEFramework
                 }
                 else
                 {
-                    status = launchRequestedPackage(appId, intent, launchArgs, runtimeConfigObject);
+                    status = launchRequestedPackage(appId, intent, launchArgs, runtimeConfigObject, requestedVersion);
                 }
             }
 
@@ -433,10 +442,14 @@ namespace WPEFramework
                             (Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED == appInfoSnap.getAppNewState()) &&
                             versionChanged)
                         {
+                            AppInfoManager::getInstance().update(appId, [&](AppInfo& a) {
+                                a.setPendingUnloadInstanceId(appInfoSnap.getAppInstanceId());
+                                a.setPendingUnloadVersion(runningVersion);
+                            });
                             LOGINFO("Suspended app replacement for appId=%s runningVersion=%s requestedVersion=%s runningPath=%s requestedPath=%s",
                                 appId.c_str(), runningVersion.c_str(), requestedVersion.c_str(), runningUnpackedPath.c_str(), runtimeConfigObject.unpackedPath.c_str());
                             status = restartSuspendedWithRequestedVersion(appId, intent, launchArgs, runtimeConfigObject,
-                                appInfoSnap.getAppInstanceId());
+                                appInfoSnap.getAppInstanceId(), requestedVersion);
                         }
                         else
                         {
@@ -448,7 +461,7 @@ namespace WPEFramework
                            runningVersion.c_str(),
                            requestedVersion.c_str(),
                            versionChanged);
-                            status = launchRequestedPackage(appId, intent, launchArgs, runtimeConfigObject);
+                           status = launchRequestedPackage(appId, intent, launchArgs, runtimeConfigObject, requestedVersion);
                         }
 
                     }

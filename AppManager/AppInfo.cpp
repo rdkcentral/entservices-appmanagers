@@ -34,6 +34,8 @@ AppInfo::AppInfo()
     , mLastActiveIndex(0)
     , mAppIntent("")
     , mRequestedLaunchVersion("")
+    , mPendingUnloadInstanceId("")
+    , mPendingUnloadVersion("")
     , mCurrentAction(AppManagerTypes::APP_ACTION_NONE)
     , mCurrentActionTime(0)
 {}
@@ -55,6 +57,8 @@ const timespec& AppInfo::getLastActiveStateChangeTime() const { return mLastActi
 uint32_t        AppInfo::getLastActiveIndex()            const { return mLastActiveIndex; }
 const std::string& AppInfo::getAppIntent()               const { return mAppIntent; }
 const std::string& AppInfo::getRequestedLaunchVersion() const { return mRequestedLaunchVersion; }
+const std::string& AppInfo::getPendingUnloadInstanceId() const { return mPendingUnloadInstanceId; }
+const std::string& AppInfo::getPendingUnloadVersion() const { return mPendingUnloadVersion; }
 
 AppManagerTypes::CurrentAction AppInfo::getCurrentAction() const { return mCurrentAction; }
 
@@ -76,6 +80,8 @@ void AppInfo::setLastActiveStateChangeTime(const timespec& ts) { mLastActiveStat
 void AppInfo::setLastActiveIndex(uint32_t index)               { mLastActiveIndex            = index; }
 void AppInfo::setAppIntent(const std::string& intent)          { mAppIntent                 = intent; }
 void AppInfo::setRequestedLaunchVersion(const std::string& version) { mRequestedLaunchVersion = version; }
+void AppInfo::setPendingUnloadInstanceId(const std::string& id) { mPendingUnloadInstanceId = id; }
+void AppInfo::setPendingUnloadVersion(const std::string& version) { mPendingUnloadVersion = version; }
 
 void AppInfo::setCurrentAction(AppManagerTypes::CurrentAction action) { mCurrentAction = action; }
 

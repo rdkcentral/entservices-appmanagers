@@ -526,23 +526,38 @@ void AppManagerImplementation::Dispatch(EventNames event, const JsonObject param
                     LOGERR("appInstanceId is empty for Unloaded app");
                 }
 
-                const std::string trackedInstanceId = AppInfoManager::getInstance().getAppInstanceId(appId);
-                const bool hasEventInstanceId = (false == appInstanceId.empty());
-                const bool hasTrackedInstanceId = (false == trackedInstanceId.empty());
-                const bool staleUnloadedEvent = ((true == hasEventInstanceId) &&
-                    (true == hasTrackedInstanceId) &&
-                    (0 != trackedInstanceId.compare(appInstanceId)));
+		AppInfo appInfoSnap;
+                const bool appInfoFound = AppInfoManager::getInstance().get(appId, appInfoSnap);
+                const string trackedInstanceId = appInfoFound ? appInfoSnap.getAppInstanceId() : "";
+                const bool staleUnloadedEvent =
+                    (false == appInstanceId.empty()) &&
+                    (false == trackedInstanceId.empty()) &&
+                    (0 != appInstanceId.compare(trackedInstanceId));
 
                 if (true == staleUnloadedEvent)
                 {
-                    LOGWARN("Ignoring stale unloaded event for appId=%s eventInstanceId=%s trackedInstanceId=%s",
-                        appId.c_str(), appInstanceId.c_str(), trackedInstanceId.c_str());
+                    const string pendingVersion = appInfoSnap.getPendingUnloadVersion();
+                    LOGWARN("Stale unloaded event for appId=%s eventInstanceId=%s trackedInstanceId=%s pendingVersion=%s",
+                        appId.c_str(), appInstanceId.c_str(), trackedInstanceId.c_str(), pendingVersion.c_str());
+
                     mAdminLock.Lock();
-                    for (auto& notification : mAppManagerNotification)
+                    if ((nullptr != mPackageManagerHandlerObject) &&
+                        (0 == appInstanceId.compare(appInfoSnap.getPendingUnloadInstanceId())) &&
+                        (false == pendingVersion.empty()))
                     {
-                        notification->OnAppUnloaded(appId, appInstanceId);
+                        const Core::hresult staleUnlockStatus = mPackageManagerHandlerObject->Unlock(appId, pendingVersion);
+                        LOGINFO("Stale unload unlock for appId=%s version=%s status=%d", appId.c_str(), pendingVersion.c_str(), staleUnlockStatus);
+                        if (Core::ERROR_NONE != staleUnlockStatus)
+                        {
+                            AppManagerTelemetryReporting::getInstance().reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_CLOSE, AppManagerImplementation::ERROR_PACKAGE_UNLOCK);
+                        }
                     }
                     mAdminLock.Unlock();
+
+                    AppInfoManager::getInstance().update(appId, [&](AppInfo& a) {
+                        a.setPendingUnloadInstanceId("");
+                        a.setPendingUnloadVersion("");
+                    });
                     break;
                 }
 
