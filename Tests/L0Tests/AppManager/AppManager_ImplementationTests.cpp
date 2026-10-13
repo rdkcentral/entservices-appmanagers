@@ -3446,6 +3446,342 @@ uint32_t Test_AM_LICOnAppLifecycleStateChangedUnexpectedTermAbortError()
     return fixture.tr.failures;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// LIC::launch() suspended replacement success path:
+// loaded=true, app state=SUSPENDED, versionChanged=true -> kill old instance,
+// observe unload, then spawn requested version and update AppInfo instance id.
+// ─────────────────────────────────────────────────────────────────────────────
+uint32_t Test_AM_LICLaunchSuspendedReplacementSuccess()
+{
+    L0Test::TestResult tr;
+
+    auto* lm = new L0Test::MockLifecycleManager();
+    std::atomic<uint32_t> isLoadedCalls{0};
+    std::atomic<uint32_t> killCalls{0};
+    std::atomic<uint32_t> spawnCalls{0};
+
+    lm->isAppLoadedHandler = [&isLoadedCalls](const std::string&, bool& loaded) -> WPEFramework::Core::hresult {
+        const uint32_t callIndex = ++isLoadedCalls;
+        loaded = (1U == callIndex);
+        return WPEFramework::Core::ERROR_NONE;
+    };
+
+    lm->killAppHandler = [&killCalls](const std::string&, std::string& errorReason, bool& success) -> WPEFramework::Core::hresult {
+        ++killCalls;
+        errorReason.clear();
+        success = true;
+        return WPEFramework::Core::ERROR_NONE;
+    };
+
+    lm->spawnAppHandler = [&spawnCalls](const std::string&, const std::string&,
+        const WPEFramework::Exchange::ILifecycleManager::LifecycleState,
+        const WPEFramework::Exchange::RuntimeConfig&, const std::string&,
+        std::string& appInstanceId, std::string& errorReason, bool& success) -> WPEFramework::Core::hresult {
+        ++spawnCalls;
+        appInstanceId = "inst-replaced-new";
+        errorReason.clear();
+        success = true;
+        return WPEFramework::Core::ERROR_NONE;
+    };
+
+    L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
+    delete static_cast<L0Test::MockLifecycleManager*>(cfg.lifecycleManager);
+    cfg.lifecycleManager = lm;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+
+    WPEFramework::Plugin::AppInfo appInfo;
+    appInfo.setAppInstanceId("inst-replaced-old");
+    appInfo.setAppNewState(WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED);
+    WPEFramework::Plugin::AppManagerTypes::PackageInfo packageInfo;
+    packageInfo.version = "1.0.0";
+    packageInfo.unpackedPath = "/pkg/old";
+    appInfo.setPackageInfo(packageInfo);
+    appInfo.setRequestedLaunchVersion("2.0.0");
+    WPEFramework::Plugin::AppInfoManager::getInstance().upsert(
+        "app.replace.success",
+        [&](WPEFramework::Plugin::AppInfo& a) { a = appInfo; });
+
+    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
+    runtimeConfig.unpackedPath = "/pkg/new";
+    const auto status = impl->mLifecycleInterfaceConnector->launch(
+        "app.replace.success", "intent.replace", "", runtimeConfig);
+
+    L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_NONE,
+        "LIC launch returns ERROR_NONE when suspended replacement kill+unload+spawn succeeds");
+    L0Test::ExpectEqU32(tr, killCalls.load(), 1U,
+        "Suspended replacement calls KillApp exactly once");
+    L0Test::ExpectEqU32(tr, spawnCalls.load(), 1U,
+        "Suspended replacement launches requested version exactly once");
+
+    WPEFramework::Plugin::AppInfo updated;
+    const bool exists = WPEFramework::Plugin::AppInfoManager::getInstance().get("app.replace.success", updated);
+    L0Test::ExpectTrue(tr, exists, "AppInfo remains present after successful suspended replacement");
+    if (true == exists)
+    {
+        L0Test::ExpectTrue(tr, updated.getAppInstanceId() == "inst-replaced-new",
+            "AppInfo instance id is updated to replacement instance");
+    }
+
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LIC::launch() suspended replacement kill-failure path:
+// loaded=true, app state=SUSPENDED, versionChanged=true -> KillApp fails,
+// replacement launch aborts and SpawnApp is not attempted.
+// ─────────────────────────────────────────────────────────────────────────────
+uint32_t Test_AM_LICLaunchSuspendedReplacementKillFailure()
+{
+    L0Test::TestResult tr;
+
+    auto* lm = new L0Test::MockLifecycleManager();
+    std::atomic<uint32_t> spawnCalls{0};
+    lm->isAppLoadedHandler = [](const std::string&, bool& loaded) -> WPEFramework::Core::hresult {
+        loaded = true;
+        return WPEFramework::Core::ERROR_NONE;
+    };
+    lm->killAppHandler = [](const std::string&, std::string& errorReason, bool& success) -> WPEFramework::Core::hresult {
+        errorReason = "kill failed";
+        success = false;
+        return WPEFramework::Core::ERROR_GENERAL;
+    };
+    lm->spawnAppHandler = [&spawnCalls](const std::string&, const std::string&,
+        const WPEFramework::Exchange::ILifecycleManager::LifecycleState,
+        const WPEFramework::Exchange::RuntimeConfig&, const std::string&,
+        std::string&, std::string&, bool&) -> WPEFramework::Core::hresult {
+        ++spawnCalls;
+        return WPEFramework::Core::ERROR_NONE;
+    };
+
+    L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
+    delete static_cast<L0Test::MockLifecycleManager*>(cfg.lifecycleManager);
+    cfg.lifecycleManager = lm;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+
+    WPEFramework::Plugin::AppInfo appInfo;
+    appInfo.setAppInstanceId("inst-kill-fail-old");
+    appInfo.setAppNewState(WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED);
+    WPEFramework::Plugin::AppManagerTypes::PackageInfo packageInfo;
+    packageInfo.version = "1.0.0";
+    packageInfo.unpackedPath = "/pkg/old";
+    appInfo.setPackageInfo(packageInfo);
+    appInfo.setRequestedLaunchVersion("2.0.0");
+    WPEFramework::Plugin::AppInfoManager::getInstance().upsert(
+        "app.replace.killfail",
+        [&](WPEFramework::Plugin::AppInfo& a) { a = appInfo; });
+
+    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
+    runtimeConfig.unpackedPath = "/pkg/new";
+    const auto status = impl->mLifecycleInterfaceConnector->launch(
+        "app.replace.killfail", "intent.replace", "", runtimeConfig);
+
+    L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_GENERAL,
+        "LIC launch returns ERROR_GENERAL when suspended replacement kill fails");
+    L0Test::ExpectEqU32(tr, spawnCalls.load(), 0U,
+        "Spawn is not attempted if replacement kill fails");
+
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LIC::launch() suspended replacement unload-poll failure path:
+// KillApp succeeds, then IsAppLoaded polling returns an error while still loaded,
+// so replacement launch returns failure without calling SpawnApp.
+// ─────────────────────────────────────────────────────────────────────────────
+uint32_t Test_AM_LICLaunchSuspendedReplacementPollFailure()
+{
+    L0Test::TestResult tr;
+
+    auto* lm = new L0Test::MockLifecycleManager();
+    std::atomic<uint32_t> isLoadedCalls{0};
+    std::atomic<uint32_t> spawnCalls{0};
+
+    lm->isAppLoadedHandler = [&isLoadedCalls](const std::string&, bool& loaded) -> WPEFramework::Core::hresult {
+        const uint32_t callIndex = ++isLoadedCalls;
+        if (1U == callIndex)
+        {
+            loaded = true;
+            return WPEFramework::Core::ERROR_NONE;
+        }
+        loaded = true;
+        return WPEFramework::Core::ERROR_GENERAL;
+    };
+
+    lm->killAppHandler = [](const std::string&, std::string& errorReason, bool& success) -> WPEFramework::Core::hresult {
+        errorReason.clear();
+        success = true;
+        return WPEFramework::Core::ERROR_NONE;
+    };
+
+    lm->spawnAppHandler = [&spawnCalls](const std::string&, const std::string&,
+        const WPEFramework::Exchange::ILifecycleManager::LifecycleState,
+        const WPEFramework::Exchange::RuntimeConfig&, const std::string&,
+        std::string&, std::string&, bool&) -> WPEFramework::Core::hresult {
+        ++spawnCalls;
+        return WPEFramework::Core::ERROR_NONE;
+    };
+
+    L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
+    delete static_cast<L0Test::MockLifecycleManager*>(cfg.lifecycleManager);
+    cfg.lifecycleManager = lm;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+
+    WPEFramework::Plugin::AppInfo appInfo;
+    appInfo.setAppInstanceId("inst-poll-fail-old");
+    appInfo.setAppNewState(WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED);
+    WPEFramework::Plugin::AppManagerTypes::PackageInfo packageInfo;
+    packageInfo.version = "1.0.0";
+    packageInfo.unpackedPath = "/pkg/old";
+    appInfo.setPackageInfo(packageInfo);
+    appInfo.setRequestedLaunchVersion("2.0.0");
+    WPEFramework::Plugin::AppInfoManager::getInstance().upsert(
+        "app.replace.pollfail",
+        [&](WPEFramework::Plugin::AppInfo& a) { a = appInfo; });
+
+    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
+    runtimeConfig.unpackedPath = "/pkg/new";
+    const auto status = impl->mLifecycleInterfaceConnector->launch(
+        "app.replace.pollfail", "intent.replace", "", runtimeConfig);
+
+    L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_GENERAL,
+        "LIC launch returns ERROR_GENERAL when suspended replacement unload polling fails");
+    L0Test::ExpectEqU32(tr, spawnCalls.load(), 0U,
+        "Spawn is not attempted when unload polling fails during replacement");
+
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LIC::launch() suspended replacement spawn-failure path:
+// KillApp succeeds and unload is observed, but SpawnApp for the requested version
+// fails, so replacement launch returns ERROR_GENERAL.
+// ─────────────────────────────────────────────────────────────────────────────
+uint32_t Test_AM_LICLaunchSuspendedReplacementSpawnFailure()
+{
+    L0Test::TestResult tr;
+
+    auto* lm = new L0Test::MockLifecycleManager();
+    std::atomic<uint32_t> isLoadedCalls{0};
+    std::atomic<uint32_t> spawnCalls{0};
+
+    lm->isAppLoadedHandler = [&isLoadedCalls](const std::string&, bool& loaded) -> WPEFramework::Core::hresult {
+        const uint32_t callIndex = ++isLoadedCalls;
+        loaded = (1U == callIndex);
+        return WPEFramework::Core::ERROR_NONE;
+    };
+
+    lm->killAppHandler = [](const std::string&, std::string& errorReason, bool& success) -> WPEFramework::Core::hresult {
+        errorReason.clear();
+        success = true;
+        return WPEFramework::Core::ERROR_NONE;
+    };
+
+    lm->spawnAppHandler = [&spawnCalls](const std::string&, const std::string&,
+        const WPEFramework::Exchange::ILifecycleManager::LifecycleState,
+        const WPEFramework::Exchange::RuntimeConfig&, const std::string&,
+        std::string& appInstanceId, std::string& errorReason, bool& success) -> WPEFramework::Core::hresult {
+        ++spawnCalls;
+        appInstanceId.clear();
+        errorReason = "spawn failed";
+        success = false;
+        return WPEFramework::Core::ERROR_GENERAL;
+    };
+
+    L0Test::AppManagerServiceMock::Config cfg = CreateFullServiceConfig();
+    delete static_cast<L0Test::MockLifecycleManager*>(cfg.lifecycleManager);
+    cfg.lifecycleManager = lm;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+
+    WPEFramework::Plugin::AppInfo appInfo;
+    appInfo.setAppInstanceId("inst-spawn-fail-old");
+    appInfo.setAppNewState(WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED);
+    WPEFramework::Plugin::AppManagerTypes::PackageInfo packageInfo;
+    packageInfo.version = "1.0.0";
+    packageInfo.unpackedPath = "/pkg/old";
+    appInfo.setPackageInfo(packageInfo);
+    appInfo.setRequestedLaunchVersion("2.0.0");
+    WPEFramework::Plugin::AppInfoManager::getInstance().upsert(
+        "app.replace.spawnfail",
+        [&](WPEFramework::Plugin::AppInfo& a) { a = appInfo; });
+
+    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
+    runtimeConfig.unpackedPath = "/pkg/new";
+    const auto status = impl->mLifecycleInterfaceConnector->launch(
+        "app.replace.spawnfail", "intent.replace", "", runtimeConfig);
+
+    L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_GENERAL,
+        "LIC launch returns ERROR_GENERAL when replacement spawn fails after kill+unload");
+    L0Test::ExpectEqU32(tr, spawnCalls.load(), 1U,
+        "Replacement spawn is attempted once when kill+unload succeed");
+
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Stale old-instance unload race coverage:
+// AppInfo already holds the replacement instance id, then an UNLOADED event for
+// the old instance arrives and must be handled without crash.
+// ─────────────────────────────────────────────────────────────────────────────
+uint32_t Test_AM_LICStaleOldInstanceUnloadedRaceCoverage()
+{
+    AppManagerTestFixture fixture(true, true);
+
+    WPEFramework::Plugin::AppInfo appInfo;
+    appInfo.setAppInstanceId("inst-replacement-current");
+    appInfo.setAppNewState(WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE);
+    WPEFramework::Plugin::AppManagerTypes::PackageInfo packageInfo;
+    packageInfo.version = "2.0.0";
+    appInfo.setPackageInfo(packageInfo);
+    WPEFramework::Plugin::AppInfoManager::getInstance().upsert(
+        "app.replace.race",
+        [&](WPEFramework::Plugin::AppInfo& a) { a = appInfo; });
+
+    auto* notif = new RefNotification();
+    fixture.impl->Register(notif);
+
+    fixture.impl->mLifecycleInterfaceConnector->OnAppLifecycleStateChanged(
+        "app.replace.race", "inst-replacement-old",
+        WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE,
+        WPEFramework::Exchange::ILifecycleManager::LifecycleState::UNLOADED,
+        "");
+
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
+    while (std::chrono::steady_clock::now() < deadline)
+    {
+        if (notif->unloaded >= 1u)
+        {
+            break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    L0Test::ExpectTrue(fixture.tr, notif->unloaded >= 1u,
+        "Stale unload event is processed and emits unloaded notification without crash");
+
+    fixture.impl->Unregister(notif);
+    notif->Release();
+    return fixture.tr.failures;
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Register the same notification twice: second call hits the already-in-list

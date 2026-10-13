@@ -183,6 +183,11 @@ extern uint32_t Test_AM_LICRemoveAppInfoByAppIdNotFound();
 extern uint32_t Test_AM_LICOnAppStateChangedMultipleErrorReasons();
 extern uint32_t Test_AM_LICOnAppLifecycleStateChangedNormalCloseNoSentinel();
 extern uint32_t Test_AM_LICOnAppLifecycleStateChangedUnexpectedTermAbortError();
+extern uint32_t Test_AM_LICLaunchSuspendedReplacementSuccess();
+extern uint32_t Test_AM_LICLaunchSuspendedReplacementKillFailure();
+extern uint32_t Test_AM_LICLaunchSuspendedReplacementPollFailure();
+extern uint32_t Test_AM_LICLaunchSuspendedReplacementSpawnFailure();
+extern uint32_t Test_AM_LICStaleOldInstanceUnloadedRaceCoverage();
 extern uint32_t Test_AM_TelReportDataNoAppInfo();
 extern uint32_t Test_AM_TelReportDataActionMismatch();
 extern uint32_t Test_AM_TelReportDataPreloadNoMarker();
@@ -383,6 +388,11 @@ int main()
         { "AM_LICOnAppStateChangedMultipleErrorReasons", Test_AM_LICOnAppStateChangedMultipleErrorReasons },
         { "AM_LICOnAppLifecycleStateChangedNormalCloseNoSentinel", Test_AM_LICOnAppLifecycleStateChangedNormalCloseNoSentinel },
         { "AM_LICOnAppLifecycleStateChangedUnexpectedTermAbortError", Test_AM_LICOnAppLifecycleStateChangedUnexpectedTermAbortError },
+        { "AM_LICLaunchSuspendedReplacementSuccess", Test_AM_LICLaunchSuspendedReplacementSuccess },
+        { "AM_LICLaunchSuspendedReplacementKillFailure", Test_AM_LICLaunchSuspendedReplacementKillFailure },
+        { "AM_LICLaunchSuspendedReplacementPollFailure", Test_AM_LICLaunchSuspendedReplacementPollFailure },
+        { "AM_LICLaunchSuspendedReplacementSpawnFailure", Test_AM_LICLaunchSuspendedReplacementSpawnFailure },
+        { "AM_LICStaleOldInstanceUnloadedRaceCoverage", Test_AM_LICStaleOldInstanceUnloadedRaceCoverage },
         { "AM_TelReportDataNoAppInfo", Test_AM_TelReportDataNoAppInfo },
         { "AM_TelReportDataActionMismatch", Test_AM_TelReportDataActionMismatch },
         { "AM_TelReportDataPreloadNoMarker", Test_AM_TelReportDataPreloadNoMarker },
