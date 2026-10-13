@@ -526,6 +526,26 @@ void AppManagerImplementation::Dispatch(EventNames event, const JsonObject param
                     LOGERR("appInstanceId is empty for Unloaded app");
                 }
 
+                const std::string trackedInstanceId = AppInfoManager::getInstance().getAppInstanceId(appId);
+                const bool hasEventInstanceId = (false == appInstanceId.empty());
+                const bool hasTrackedInstanceId = (false == trackedInstanceId.empty());
+                const bool staleUnloadedEvent = ((true == hasEventInstanceId) &&
+                    (true == hasTrackedInstanceId) &&
+                    (0 != trackedInstanceId.compare(appInstanceId)));
+
+                if (true == staleUnloadedEvent)
+                {
+                    LOGWARN("Ignoring stale unloaded event for appId=%s eventInstanceId=%s trackedInstanceId=%s",
+                        appId.c_str(), appInstanceId.c_str(), trackedInstanceId.c_str());
+                    mAdminLock.Lock();
+                    for (auto& notification : mAppManagerNotification)
+                    {
+                        notification->OnAppUnloaded(appId, appInstanceId);
+                    }
+                    mAdminLock.Unlock();
+                    break;
+                }
+
                 mAdminLock.Lock();
                 Core::hresult unlockStatus = packageUnLock(appId);
                 LOGINFO("package unlock triggered while sending unloaded event for appId %s status %d", appId.c_str(), unlockStatus);
@@ -1152,19 +1172,13 @@ Core::hresult AppManagerImplementation::packageLock(const string& appId, Package
     else if (Core::ERROR_NONE == status)
     {
         const PackageInfo cachedPackageData = AppInfoManager::getInstance().getPackageInfo(appId);
-        //packageData = cachedPackageData;
 
         if (cachedPackageData.version.empty())
         {
             LOGERR("Skipping packageLock for loaded appId %s failed: cached packageData is empty", appId.c_str());
             status = Core::ERROR_GENERAL;
         }
-       /* else
-        {
-            LOGINFO("Skipping packageLock for appId %s because app is already loaded", appId.c_str());
-            status = Core::ERROR_NONE;
-        }*/
-	else if ((true == packageData.version.empty()) || (0 == cachedPackageData.version.compare(packageData.version)))
+        else if ((true == packageData.version.empty()) || (0 == cachedPackageData.version.compare(packageData.version)))
         {
             packageData = cachedPackageData;
             LOGINFO("Skipping packageLock for appId %s because app is already loaded", appId.c_str());
@@ -1241,6 +1255,33 @@ Core::hresult AppManagerImplementation::packageUnLock(const string& appId)
         }
         return status;
 }
+
+Core::hresult AppManagerImplementation::releaseDeferredReplacementLock(const string& appId)
+{
+    const std::string activeVersion = AppInfoManager::getInstance().getPackageInfoVersion(appId);
+    const std::string requestedVersion = AppInfoManager::getInstance().getRequestedLaunchVersion(appId);
+
+    if ((true == requestedVersion.empty()) || (0 == requestedVersion.compare(activeVersion)))
+    {
+        return Core::ERROR_NONE;
+    }
+
+    if (nullptr == mPackageManagerHandlerObject)
+    {
+        LOGERR("Cannot release deferred replacement lock: package handler null for appId=%s version=%s", appId.c_str(), requestedVersion.c_str());
+        AppManagerTelemetryReporting::getInstance().reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_LAUNCH, AppManagerImplementation::ERROR_PACKAGE_UNLOCK);
+        return Core::ERROR_GENERAL;
+    }
+
+    const Core::hresult status = mPackageManagerHandlerObject->Unlock(appId, requestedVersion);
+    if (Core::ERROR_NONE != status)
+    {
+        LOGERR("Failed to release deferred replacement lock for appId=%s version=%s status=%d", appId.c_str(), requestedVersion.c_str(), status);
+        AppManagerTelemetryReporting::getInstance().reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_LAUNCH, AppManagerImplementation::ERROR_PACKAGE_UNLOCK);
+    }
+    return status;
+}
+
 /*
  * @brief Launch App requested by client.
  * @Params[in]  : const string& appId , const string& intent, const string& launchArgs

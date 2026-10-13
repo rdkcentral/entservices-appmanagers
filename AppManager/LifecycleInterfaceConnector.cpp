@@ -248,6 +248,7 @@ namespace WPEFramework
                     a.setAppIntent(intent);
                     a.getPackageInfoMutable().type = AppManagerTypes::APPLICATION_TYPE_INTERACTIVE;
                     AppManagerTypes::PackageInfo packageInfo = a.getPackageInfo();
+                    packageInfo.version = a.getRequestedLaunchVersion();
                     packageInfo.unpackedPath = runtimeConfigObject.unpackedPath;
                     packageInfo.configMetadata = runtimeConfigObject;
                     a.setPackageInfo(packageInfo);
@@ -333,6 +334,16 @@ namespace WPEFramework
                 }
             }
 
+            if ((Core::ERROR_NONE != status) && (nullptr != appManagerImplInstance))
+            {
+                Core::hresult releaseStatus = appManagerImplInstance->releaseDeferredReplacementLock(appId);
+                if (Core::ERROR_NONE != releaseStatus)
+                {
+                    LOGERR("Failed to release deferred replacement lock after replacement failure for appId=%s status=%d",
+                        appId.c_str(), releaseStatus);
+                }
+            }
+
             return status;
         }
 
@@ -346,9 +357,6 @@ namespace WPEFramework
             Core::hresult status = Core::ERROR_GENERAL;
             AppManagerImplementation*appManagerImplInstance = AppManagerImplementation::getInstance();
             bool loaded = false;
-            /*string appInstanceId = "";
-            string errorReason = "";
-            bool success = true;*/
             Exchange::ILifecycleManager::LifecycleState state = Exchange::ILifecycleManager::LifecycleState::UNLOADED;
             AppManagerTelemetryReporting& appManagerTelemetryReporting =AppManagerTelemetryReporting::getInstance();
 
@@ -377,7 +385,7 @@ namespace WPEFramework
                     {
                         AppInfo appInfoSnap;
                         bool appInMap = AppInfoManager::getInstance().get(appId, appInfoSnap);
-			const string runningVersion = appInfoSnap.getPackageInfo().version;
+                        const string runningVersion = appInfoSnap.getPackageInfo().version;
                         const string requestedVersion = appInfoSnap.getRequestedLaunchVersion();
                         const string runningUnpackedPath = appInfoSnap.getPackageInfo().unpackedPath;
                         const bool hasRunningPath = (false == runningUnpackedPath.empty());
@@ -390,7 +398,7 @@ namespace WPEFramework
                         if ((true == loaded) &&
                             (Core::ERROR_NONE == status) &&
                             appInMap &&
-			    (Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED == appInfoSnap.getAppNewState()) &&
+                            (Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED == appInfoSnap.getAppNewState()) &&
                             (false == versionChanged))
                         {
 			    LOGINFO("[LAUNCH_FLOW][IF] Resume suspended app | appId=%s appInstanceId=%s state=%d runningVersion=%s requestedVersion=%s versionChanged=%d",
@@ -419,7 +427,7 @@ namespace WPEFramework
                             }
                         }
 
-			else if ((true == loaded) &&
+                        else if ((true == loaded) &&
                             (Core::ERROR_NONE == status) &&
                             appInMap &&
                             (Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED == appInfoSnap.getAppNewState()) &&
@@ -443,37 +451,6 @@ namespace WPEFramework
                             status = launchRequestedPackage(appId, intent, launchArgs, runtimeConfigObject);
                         }
 
-                        /*else
-                        {
-                            appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_LAUNCH);
-                            state = Exchange::ILifecycleManager::LifecycleState::ACTIVE;
-                            string source = "";
-                            appManagerImplInstance->handleOnAppLaunchRequest(appId, intent, source);
-
-                            appendLaunchParametersEnv(launchArgs, runtimeConfigObject);
-
-                            LOGINFO("spawnApp called ,state %u",state);
-                            status = mLifecycleManagerRemoteObject->SpawnApp(appId, intent, state, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success);
-
-                            if (Core::ERROR_NONE == status)
-                            {
-                                LOGINFO("Update App Info");
-                                const string capturedInstanceId = appInstanceId;
-                                const Exchange::IAppManager::AppLifecycleState targetState =
-                                    Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
-                                AppInfoManager::getInstance().upsert(appId, [&](AppInfo& a) {
-                                    a.setAppInstanceId(capturedInstanceId);
-                                    a.setAppIntent(intent);
-                                    a.getPackageInfoMutable().type = AppManagerTypes::APPLICATION_TYPE_INTERACTIVE;
-                                    a.setTargetAppState(targetState);
-                                });
-                            }
-                            else
-                            {
-                                LOGERR("spawnApp failed");
-                                appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_LAUNCH, AppManagerImplementation::ERROR_SPAWN_APP);
-                            }
-                        }*/
                     }
                     else
                     {
@@ -770,7 +747,7 @@ namespace WPEFramework
                     {
                         LOGERR("killApp failed, result: %d, success: %d, errorReason: %s", result, success, errorReason.c_str());
                         appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_KILL, AppManagerImplementation::ERROR_KILL_APP);
-			if (Core::ERROR_NONE == result)
+                        if (Core::ERROR_NONE == result)
                         {
                             result = Core::ERROR_GENERAL;
                         }
