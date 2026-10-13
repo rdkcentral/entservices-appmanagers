@@ -1203,6 +1203,13 @@ Core::hresult AppManagerImplementation::packageLock(const string& appId, Package
             LOGINFO("Skipping packageLock for appId %s because app is already loaded", appId.c_str());
             status = Core::ERROR_NONE;
         }
+        else if (Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED !=
+            AppInfoManager::getInstance().getAppNewState(appId))
+        {
+            packageData = cachedPackageData;
+            LOGINFO("Skipping packageLock for loaded non-suspended appId %s", appId.c_str());
+            status = Core::ERROR_NONE;
+        }
         else
         {
             LOGINFO("Loaded appId %s requested with new package version %s while running %s; locking requested version",
