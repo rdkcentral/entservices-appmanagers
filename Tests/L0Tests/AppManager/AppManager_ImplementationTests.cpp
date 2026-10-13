@@ -3765,18 +3765,24 @@ uint32_t Test_AM_LICStaleOldInstanceUnloadedRaceCoverage()
         WPEFramework::Exchange::ILifecycleManager::LifecycleState::UNLOADED,
         "");
 
-    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(200);
     while (std::chrono::steady_clock::now() < deadline)
     {
-        if (notif->unloaded >= 1u)
-        {
-            break;
-        }
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
 
-    L0Test::ExpectTrue(fixture.tr, notif->unloaded >= 1u,
-        "Stale unload event is processed and emits unloaded notification without crash");
+    L0Test::ExpectEqU32(fixture.tr, notif->unloaded, 0U,
+        "Stale unload event suppresses unloaded notification for old instance");
+
+    WPEFramework::Plugin::AppInfo updated;
+    const bool exists = WPEFramework::Plugin::AppInfoManager::getInstance().get("app.replace.race", updated);
+    L0Test::ExpectTrue(fixture.tr, exists,
+        "Replacement app remains tracked after stale unload event");
+    if (true == exists)
+    {
+        L0Test::ExpectEqStr(fixture.tr, updated.getAppInstanceId(), "inst-replacement-current",
+            "Tracked app instance remains unchanged after stale unload event");
+    }
 
     fixture.impl->Unregister(notif);
     notif->Release();

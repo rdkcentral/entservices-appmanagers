@@ -500,6 +500,15 @@ protected:
             return Core::ERROR_NONE;
         });
     }
+
+    void SetupKillApp()
+    {
+        EXPECT_CALL(*mLifecycleManagerMock, KillApp(::testing::_, ::testing::_, ::testing::_))
+        .WillRepeatedly([&](const string& appInstanceId, string& errorReason, bool& success) {
+            success = true;
+            return Core::ERROR_NONE;
+        });
+    }
 };
 
 class NotificationHandler : public Exchange::IAppManager::INotification {
@@ -2083,6 +2092,7 @@ TEST_F(AppManagerTest, KillAppUsingComRpcSuccess)
     EXPECT_TRUE(signalled & AppManager_onAppLaunchRequest);
     mAppManagerImpl->Unregister(&notification);
     SetupUnloadApp();
+    SetupKillApp();
 
     EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->KillApp(APPMANAGER_APP_ID));
 
@@ -2133,6 +2143,7 @@ TEST_F(AppManagerTest, KillAppUsingJSONRpcSuccess)
 
     EVENT_SUBSCRIBE(0, _T("onAppLaunchRequest"), _T("org.rdk.AppManager"), message);
     LaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::ACTIVE);
+    SetupKillApp();
     EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("launchApp"), requestLaunch, mJsonRpcResponse));
     EXPECT_EQ(Core::ERROR_NONE, onAppLaunchRequest.Lock());
     EVENT_UNSUBSCRIBE(0, _T("onAppLaunchRequest"), _T("org.rdk.AppManager"), message);

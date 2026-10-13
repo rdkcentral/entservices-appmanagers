@@ -204,6 +204,15 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                         time_t actualStartTime = appManagerTelemetryReporting.getCurrentTimestampMs();
                         PackageInfo packageData;
                         packageData.version = appRequestParam->packageVersion;
+                        if ((APP_ACTION_PRELOAD == action) && (true == loadedBeforeLock))
+                        {
+                            const PackageInfo cachedPackageData = AppInfoManager::getInstance().getPackageInfo(appId);
+                            if (false == cachedPackageData.version.empty())
+                            {
+                                packageData.version = cachedPackageData.version;
+                                LOGINFO("Using cached package version %s for preload of loaded appId %s", packageData.version.c_str(), appId.c_str());
+                            }
+                        }
                         Exchange::IPackageHandler::LockReason lockReason = Exchange::IPackageHandler::LockReason::LAUNCH;
 
                         Core::hresult status = packageLock(appId, packageData, lockReason);
