@@ -183,17 +183,20 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                     else if (auto appRequestParam = std::static_pointer_cast<AppLaunchRequestParam>(request->mRequestParam))
                     {
                         string appId = appRequestParam->appId;
-                        bool loadedBeforeLock = false;
+                        bool loadedBeforeLock = true;
                         if (nullptr != mLifecycleInterfaceConnector)
                         {
-                            Core::hresult loadedStatus = Core::ERROR_GENERAL;
+                            bool loadedState = false;
                             mAdminLock.Lock();
-                            loadedStatus = mLifecycleInterfaceConnector->isAppLoaded(appId, loadedBeforeLock);
+                            const Core::hresult loadedStatus = mLifecycleInterfaceConnector->isAppLoaded(appId, loadedState);
                             mAdminLock.Unlock();
-                            if (Core::ERROR_NONE != loadedStatus)
+                            if (Core::ERROR_NONE == loadedStatus)
+                            {
+                                loadedBeforeLock = loadedState;
+                            }
+                            else
                             {
                                 LOGWARN("Unable to query pre-lock loaded state for appId=%s status=%d", appId.c_str(), loadedStatus);
-                                loadedBeforeLock = false;
                             }
                         }
                         // Capture timestamp before packageLock to include packageManager lock time

@@ -321,6 +321,7 @@ namespace WPEFramework
                     if (Core::ERROR_NONE != loadedStatus)
                     {
                         LOGERR("Unable to query loaded state while replacing appId=%s status=%d", appId.c_str(), loadedStatus);
+                        stillLoaded = true;
                         break;
                     }
                     if (false == stillLoaded)
