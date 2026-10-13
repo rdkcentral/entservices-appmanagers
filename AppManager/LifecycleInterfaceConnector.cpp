@@ -462,15 +462,6 @@ namespace WPEFramework
                            requestedVersion.c_str(),
                            versionChanged);
                            status = launchRequestedPackage(appId, intent, launchArgs, runtimeConfigObject, requestedVersion);
-                           if (Core::ERROR_NONE != status)
-                           {
-                               const Core::hresult releaseStatus = appManagerImplInstance->releaseDeferredReplacementLock(appId);
-                               if (Core::ERROR_NONE != releaseStatus)
-                               {
-                                   LOGERR("Failed to release deferred replacement lock after launch failure for appId=%s status=%d",
-                                       appId.c_str(), releaseStatus);
-                               }
-                           }
                         }
 
                     }

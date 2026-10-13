@@ -183,6 +183,19 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                     else if (auto appRequestParam = std::static_pointer_cast<AppLaunchRequestParam>(request->mRequestParam))
                     {
                         string appId = appRequestParam->appId;
+                        bool loadedBeforeLock = false;
+                        if (nullptr != mLifecycleInterfaceConnector)
+                        {
+                            Core::hresult loadedStatus = Core::ERROR_GENERAL;
+                            mAdminLock.Lock();
+                            loadedStatus = mLifecycleInterfaceConnector->isAppLoaded(appId, loadedBeforeLock);
+                            mAdminLock.Unlock();
+                            if (Core::ERROR_NONE != loadedStatus)
+                            {
+                                LOGWARN("Unable to query pre-lock loaded state for appId=%s status=%d", appId.c_str(), loadedStatus);
+                                loadedBeforeLock = false;
+                            }
+                        }
                         // Capture timestamp before packageLock to include packageManager lock time
                         AppManagerTelemetryReporting& appManagerTelemetryReporting = AppManagerTelemetryReporting::getInstance();
                         time_t actualStartTime = appManagerTelemetryReporting.getCurrentTimestampMs();
@@ -284,6 +297,11 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                                 {
                                     LOGERR("preLoadApp failed reason %s status %d", errorReason.c_str(), status);
                                 }
+                            }
+			    if ((Core::ERROR_NONE != status) && (false == loadedBeforeLock))
+                            {
+                                const Core::hresult unlockStatus = packageUnLock(appId);
+                                LOGWARN("Released package lock after failed fresh launch/preload for appId=%s status=%d", appId.c_str(), unlockStatus);
                             }
                         }
                         else
