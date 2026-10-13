@@ -14,6 +14,7 @@ extern uint32_t Test_PM_Impl_InstallerRegisterUnregister();
 extern uint32_t Test_PM_Impl_UnregisterUnknownNotification();
 extern uint32_t Test_PM_Impl_ListPackagesAndPackageStateForDummyData();
 extern uint32_t Test_PM_Impl_ConfigAndGetConfigForPackageEmptyLocator();
+extern uint32_t Test_PM_Impl_RuntimeConfigPayloadSerialization();
 extern uint32_t Test_PM_Impl_PauseResumeCancelProgressRateLimitWithoutActiveDownload();
 extern uint32_t Test_PM_Impl_DeleteFilePaths();
 extern uint32_t Test_PM_Impl_InstallAndUninstallFlowWithNotifications();
@@ -53,6 +54,7 @@ int main()
         { "PM_Impl_UnregisterUnknownNotification", Test_PM_Impl_UnregisterUnknownNotification },
         { "PM_Impl_ListPackagesAndPackageStateForDummyData", Test_PM_Impl_ListPackagesAndPackageStateForDummyData },
         { "PM_Impl_ConfigAndGetConfigForPackageEmptyLocator", Test_PM_Impl_ConfigAndGetConfigForPackageEmptyLocator },
+        { "PM_Impl_RuntimeConfigPayloadSerialization", Test_PM_Impl_RuntimeConfigPayloadSerialization },
         { "PM_Impl_PauseResumeCancelProgressRateLimitWithoutActiveDownload", Test_PM_Impl_PauseResumeCancelProgressRateLimitWithoutActiveDownload },
         { "PM_Impl_DeleteFilePaths", Test_PM_Impl_DeleteFilePaths },
         { "PM_Impl_InstallAndUninstallFlowWithNotifications", Test_PM_Impl_InstallAndUninstallFlowWithNotifications },

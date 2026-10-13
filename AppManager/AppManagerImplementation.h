@@ -43,6 +43,7 @@
 #include <memory>
 #include "AppManagerTypes.h"
 #include "AppInfoManager.h"
+#include "RuntimeConfigPayload.h"
 
 namespace WPEFramework {
 namespace Plugin {
@@ -240,7 +241,7 @@ namespace Plugin {
         void releasePersistentStoreRemoteStoreObject();
         Core::hresult createPackageManagerObject();
         void releasePackageManagerObject();
-        void getCustomValues(WPEFramework::Exchange::RuntimeConfig& runtimeConfig);
+        void getCustomValues(Utils::RuntimeConfigPayload& runtimeConfigPayload);
         Core::hresult createStorageManagerRemoteObject();
         void releaseStorageManagerRemoteObject();
     #ifdef APP_MANAGER_RESOURCE_MONITOR
@@ -284,7 +285,7 @@ namespace Plugin {
         Core::hresult fetchAppPackageList(std::vector<WPEFramework::Exchange::IPackageInstaller::Package>& packageList);
         void checkInstallDetails(const std::string& appId, bool& installed, std::string& version,
                      const std::vector<WPEFramework::Exchange::IPackageInstaller::Package>& packageList);
-        Core::hresult packageLock(const string& appId, PackageInfo &packageData, Exchange::IPackageHandler::LockReason lockReason);
+        Core::hresult packageLock(const string& appId, PackageInfo &packageData, Exchange::IPackageHandler::LockReason lockReason, bool* lockAcquired = nullptr);
         Core::hresult packageUnLock(const string& appId);
         bool createOrUpdatePackageInfoByAppId(const string& appId, PackageInfo &packageData);
         bool removeAppInfoByAppId(const string &appId);

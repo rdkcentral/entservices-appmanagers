@@ -309,7 +309,7 @@ void AppInfoManager::setPackageInfoUnpackedPath(const std::string& appId, const 
     mMap[appId].getPackageInfoMutable().unpackedPath = path;
 }
 
-void AppInfoManager::setPackageInfoConfigMetadata(const std::string& appId, const Exchange::RuntimeConfig& cfg)
+void AppInfoManager::setPackageInfoConfigMetadata(const std::string& appId, const std::string& cfg)
 {
     Core::SafeSyncType<Core::CriticalSection> lock(mLock);
     mMap[appId].getPackageInfoMutable().configMetadata = cfg;
