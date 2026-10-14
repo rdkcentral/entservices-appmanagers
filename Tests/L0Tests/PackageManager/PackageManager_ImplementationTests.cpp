@@ -637,7 +637,7 @@ uint32_t Test_PM_Impl_GetConfigForPackageSuccessPath()
     return tr.failures;
 }
 
-uint32_t Test_PM_Impl_InstallDifferentVersionBlockedWhileLockedThenProcessedOnUnlock()
+uint32_t Test_PM_Impl_InstallDifferentVersionWhileLocked()
 {
     L0Test::TestResult tr;
     ImplFixture fx;
@@ -652,7 +652,7 @@ uint32_t Test_PM_Impl_InstallDifferentVersionBlockedWhileLockedThenProcessedOnUn
         fx.impl->Lock("YouTube", "100.1.24", WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH,
             lockId, unpackedPath, runtimeConfig, appMetadata),
         ERROR_NONE,
-        "Lock() existing package before install-block test");
+        "Lock() existing package before install");
 
     if (appMetadata != nullptr) {
         appMetadata->Release();
@@ -660,25 +660,33 @@ uint32_t Test_PM_Impl_InstallDifferentVersionBlockedWhileLockedThenProcessedOnUn
     }
 
     WPEFramework::Exchange::IPackageInstaller::FailReason failReason = WPEFramework::Exchange::IPackageInstaller::FailReason::NONE;
-    const auto blockedInstall = fx.impl->Install("YouTube", "200.0.0", nullptr, "/tmp/youtube_200.pkg", failReason);
+    const auto install = fx.impl->Install("YouTube", "200.0.0", nullptr, "/tmp/youtube_200.pkg", failReason);
     L0Test::ExpectEqU32(tr,
-        blockedInstall,
-        ERROR_GENERAL,
-        "Install() returns ERROR_GENERAL when newer version is blocked by existing lock");
+        install,
+        ERROR_NONE,
+        "Install() succeeds while the old version is locked");
 
     WPEFramework::Exchange::IPackageInstaller::InstallState state = WPEFramework::Exchange::IPackageInstaller::InstallState::UNINSTALLED;
     L0Test::ExpectEqU32(tr,
         fx.impl->PackageState("YouTube", "200.0.0", state),
         ERROR_NONE,
-        "PackageState() for blocked version is queryable");
+        "PackageState() for new version is queryable while old version is locked");
     L0Test::ExpectTrue(tr,
-        state == WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLATION_BLOCKED,
-        "State is INSTALLATION_BLOCKED while old version remains locked");
+        state == WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED,
+        "New version is installed while old version remains locked");
+
+    L0Test::ExpectEqU32(tr,
+        fx.impl->PackageState("YouTube", "100.1.24", state),
+        ERROR_NONE,
+        "PackageState() for old version is queryable while its lock is held");
+    L0Test::ExpectTrue(tr,
+        state == WPEFramework::Exchange::IPackageInstaller::InstallState::UNINSTALLED,
+        "Old version is marked uninstalled after the new version installs");
 
     L0Test::ExpectEqU32(tr,
         fx.impl->Unlock("YouTube", "100.1.24"),
         ERROR_NONE,
-        "Unlock() processes blocked install");
+        "Unlock() releases the old version without processing a deferred install");
 
     L0Test::ExpectEqU32(tr,
         fx.impl->PackageState("YouTube", "200.0.0", state),
@@ -686,7 +694,7 @@ uint32_t Test_PM_Impl_InstallDifferentVersionBlockedWhileLockedThenProcessedOnUn
         "PackageState() for new version remains queryable after unlock");
     L0Test::ExpectTrue(tr,
         state == WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED,
-        "Blocked install transitions to INSTALLED after unlock");
+        "New version remains installed after unlock");
 
     return tr.failures;
 }

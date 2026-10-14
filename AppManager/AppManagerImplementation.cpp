@@ -203,6 +203,27 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
 #endif // RALF_PACKAGE_SUPPORT_ENABLED
                             getCustomValues(runtimeConfig);
                             string launchArgs = appRequestParam->launchArgs;
+                            JsonObject launchArgsObj;
+                            launchArgsObj.FromString(launchArgs);
+                            bool debugLaunchRequested = false;
+                            if (launchArgsObj.HasLabel("debugger"))
+                            {
+                                const JsonValue debuggerValue = launchArgsObj["debugger"];
+                                if (JsonValue::type::BOOLEAN == debuggerValue.Content())
+                                {
+                                    debugLaunchRequested = debuggerValue.Boolean();
+                                }
+                                else if (JsonValue::type::STRING == debuggerValue.Content())
+                                {
+                                    const std::string debuggerToken = debuggerValue.String();
+                                    debugLaunchRequested = (!debuggerToken.empty() && (debuggerToken != "false") && (debuggerToken != "0"));
+                                }
+                            }
+                            runtimeConfig.enableDebugger = debugLaunchRequested;
+                            if (debugLaunchRequested)
+                            {
+                                LOGINFO("Debugger launch requested for appId=%s", appId.c_str());
+                            }
 
                             if (action == APP_ACTION_LAUNCH)
                             {
@@ -228,8 +249,6 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                             {
                                 // Append any env vars from launchArgs["env"] into runtimeConfig.envVariables.
                                 {
-                                    JsonObject launchArgsObj;
-                                    launchArgsObj.FromString(launchArgs);
                                     if (launchArgsObj.HasLabel("env"))
                                     {
                                         JsonArray envArray;

@@ -23,7 +23,7 @@ extern uint32_t Test_PM_Impl_InstallInputValidationAndUnknownPaths();
 extern uint32_t Test_PM_Impl_GetLockedInfoAndUnlockNegativePaths();
 extern uint32_t Test_PM_Impl_DownloadWithoutInternetReturnsUnavailable();
 extern uint32_t Test_PM_Impl_GetConfigForPackageSuccessPath();
-extern uint32_t Test_PM_Impl_InstallDifferentVersionBlockedWhileLockedThenProcessedOnUnlock();
+extern uint32_t Test_PM_Impl_InstallDifferentVersionWhileLocked();
 extern uint32_t Test_PM_Impl_UninstallBlockedWhileLockedThenProcessedOnUnlock();
 extern uint32_t Test_PM_Impl_InstallCreateStorageFailureReportsInstallFailure();
 extern uint32_t Test_PM_Impl_UninstallDeleteStorageFailureReturnsGeneralAndUninstalledState();
@@ -63,7 +63,7 @@ int main()
         { "PM_Impl_GetLockedInfoAndUnlockNegativePaths", Test_PM_Impl_GetLockedInfoAndUnlockNegativePaths },
         { "PM_Impl_DownloadWithoutInternetReturnsUnavailable", Test_PM_Impl_DownloadWithoutInternetReturnsUnavailable },
         { "PM_Impl_GetConfigForPackageSuccessPath", Test_PM_Impl_GetConfigForPackageSuccessPath },
-        { "PM_Impl_InstallDifferentVersionBlockedWhileLockedThenProcessedOnUnlock", Test_PM_Impl_InstallDifferentVersionBlockedWhileLockedThenProcessedOnUnlock },
+        { "PM_Impl_InstallDifferentVersionWhileLocked", Test_PM_Impl_InstallDifferentVersionWhileLocked },
         { "PM_Impl_UninstallBlockedWhileLockedThenProcessedOnUnlock", Test_PM_Impl_UninstallBlockedWhileLockedThenProcessedOnUnlock },
         { "PM_Impl_InstallCreateStorageFailureReportsInstallFailure", Test_PM_Impl_InstallCreateStorageFailureReportsInstallFailure },
         { "PM_Impl_UninstallDeleteStorageFailureReturnsGeneralAndUninstalledState", Test_PM_Impl_UninstallDeleteStorageFailureReturnsGeneralAndUninstalledState },
