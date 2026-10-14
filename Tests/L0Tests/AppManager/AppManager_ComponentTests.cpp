@@ -414,6 +414,73 @@ uint32_t Test_AM_LifecycleConnectorLaunchSuspendedApp()
     return tr.failures;
 }
 
+uint32_t Test_AM_LifecycleConnectorLaunchPausedApp()
+{
+    L0Test::TestResult tr;
+
+    L0Test::MockLifecycleManager lifecycle;
+    L0Test::MockLifecycleManagerState lifecycleState;
+
+    L0Test::AppManagerServiceMock::Config cfg;
+    cfg.lifecycleManager = &lifecycle;
+    cfg.lifecycleManagerState = &lifecycleState;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = WPEFramework::Core::Service<WPEFramework::Plugin::AppManagerImplementation>::Create<WPEFramework::Plugin::AppManagerImplementation>();
+
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    WPEFramework::Plugin::AppInfo pausedApp;
+    pausedApp.setAppInstanceId("inst-paused");
+    pausedApp.setAppNewState(WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED);
+    WPEFramework::Plugin::AppInfoManager::getInstance().upsert("YouTube",
+        [&](WPEFramework::Plugin::AppInfo& appInfo) { appInfo = pausedApp; });
+
+    lifecycle.isAppLoadedHandler = [](const std::string&, bool& loaded) {
+        loaded = true;
+        return WPEFramework::Core::ERROR_NONE;
+    };
+
+    unsigned setTargetCalls = 0;
+    unsigned spawnCalls = 0;
+    lifecycle.setTargetAppStateHandler = [&](const std::string& appInstanceId,
+                                             const WPEFramework::Exchange::ILifecycleManager::LifecycleState state,
+                                             const std::string& intent) {
+        ++setTargetCalls;
+        L0Test::ExpectEqStr(tr, appInstanceId, "inst-paused", "paused app instance is resumed");
+        L0Test::ExpectEqU32(tr, state, WPEFramework::Exchange::ILifecycleManager::ACTIVE,
+            "paused app target state is ACTIVE");
+        L0Test::ExpectEqStr(tr, intent, "intent://dial-relaunch", "relaunch intent is forwarded");
+        return WPEFramework::Core::ERROR_NONE;
+    };
+    lifecycle.spawnAppHandler = [&](const std::string&, const std::string&,
+                                    WPEFramework::Exchange::ILifecycleManager::LifecycleState,
+                                    const WPEFramework::Exchange::RuntimeConfig&, const std::string&,
+                                    std::string&, std::string&, bool&) {
+        ++spawnCalls;
+        return WPEFramework::Core::ERROR_NONE;
+    };
+
+    {
+        WPEFramework::Plugin::LifecycleInterfaceConnector connector(&service);
+        L0Test::ExpectEqU32(tr, connector.createLifecycleManagerRemoteObject(), WPEFramework::Core::ERROR_NONE,
+            "createLifecycleManagerRemoteObject() succeeds for paused-app test");
+
+        WPEFramework::Exchange::RuntimeConfig runtimeConfig;
+        const auto status = connector.launch("YouTube", "intent://dial-relaunch", "new-dial-args", runtimeConfig);
+        L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_NONE,
+            "launch() succeeds for a paused app via SetTargetAppState");
+    }
+
+    L0Test::ExpectEqU32(tr, setTargetCalls, 1, "SetTargetAppState is called once");
+    L0Test::ExpectEqU32(tr, spawnCalls, 0, "SpawnApp is not called for a loaded paused app");
+
+    L0Test::AppManagerServiceMock fullService(CreateFullServiceConfig());
+    impl->Configure(&fullService);
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
 uint32_t Test_AM_LifecycleConnectorPreloadApp()
 {
     L0Test::TestResult tr;
