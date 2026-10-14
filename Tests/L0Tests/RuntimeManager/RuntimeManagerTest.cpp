@@ -273,6 +273,7 @@ extern uint32_t Test_DobbySpecGenerator_GenerateThunderPluginDisabled();
 extern uint32_t Test_DobbySpecGenerator_GenerateWithEmptyWesterosSocket();
 extern uint32_t Test_DobbySpecGenerator_GenerateSysMemLimitZeroFallsBack();
 extern uint32_t Test_DobbySpecGenerator_GenerateWithNonEmptyAppPorts();
+extern uint32_t Test_DobbySpecGenerator_GenerateAirPlay2CapabilityEnablesPortsAndPlugin();
 extern uint32_t Test_DobbySpecGenerator_GetVpuEnabledReturnsFalseForSystemApp();
 extern uint32_t Test_DobbySpecGenerator_GenerateWithEnvVariablesInRuntimeConfig();
 extern uint32_t Test_DobbySpecGenerator_GenerateThunderPluginFromCapabilities();
@@ -435,6 +436,7 @@ int main()
         { "DobbySpecGenerator_GenerateWithEmptyWesterosSocket",                      Test_DobbySpecGenerator_GenerateWithEmptyWesterosSocket },
         { "DobbySpecGenerator_GenerateSysMemLimitZeroFallsBack",                     Test_DobbySpecGenerator_GenerateSysMemLimitZeroFallsBack },
         { "DobbySpecGenerator_GenerateWithNonEmptyAppPorts",                         Test_DobbySpecGenerator_GenerateWithNonEmptyAppPorts },
+        { "DobbySpecGenerator_GenerateAirPlay2CapabilityEnablesPortsAndPlugin",       Test_DobbySpecGenerator_GenerateAirPlay2CapabilityEnablesPortsAndPlugin },
         { "DobbySpecGenerator_GetVpuEnabledReturnsFalseForSystemApp",                Test_DobbySpecGenerator_GetVpuEnabledReturnsFalseForSystemApp },
         { "DobbySpecGenerator_GenerateWithEnvVariablesInRuntimeConfig",              Test_DobbySpecGenerator_GenerateWithEnvVariablesInRuntimeConfig },
         { "DobbySpecGenerator_GenerateThunderPluginFromCapabilities",                Test_DobbySpecGenerator_GenerateThunderPluginFromCapabilities },

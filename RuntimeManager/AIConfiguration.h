@@ -43,6 +43,8 @@ namespace Plugin
             std::list<std::string> getVpuAccessBlacklist() const;
             std::list<std::string> getAppsRequiringDBus() const;
             std::list<int> getMapiPorts() const;
+            std::list<int> getAirplayPorts() const;
+            std::list<std::pair<std::string, std::string>> getAirplayMounts() const;
             bool getResourceManagerClientEnabled() const;
             bool getGstreamerRegistryEnabled();
             bool getSvpEnabled();
@@ -78,6 +80,8 @@ namespace Plugin
             std::list<std::string> mVpuAccessBlacklist;
             std::list<std::string> mAppsRequiringDBus;
             std::list<int> mMapiPorts;
+            std::list<int> mAirplayPorts;
+            std::list<std::pair<std::string, std::string>> mAirplayMounts;
             bool mResourceManagerClientEnabled;
             bool mGstreamerRegistryEnabled;
             bool mSvpEnabled;

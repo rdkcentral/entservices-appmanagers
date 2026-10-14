@@ -21,6 +21,8 @@
 #include "LifecycleInterfaceConnector.h"
 #include "AppInfoManager.h"
 #include <algorithm>
+#include <cctype>
+#include <map>
 #include <string>
 #include <memory>
 #include <mutex>
@@ -207,7 +209,7 @@ namespace WPEFramework
             Json::StreamWriterBuilder w;
             w["indentation"] = "";
             runtimeConfigObject.envVariables = Json::writeString(w, envArr);
-            LOGINFO("launch: APPLICATION_LAUNCH_PARAMETERS set");
+            LOGINFO("launch: APPLICATION_LAUNCH_PARAMETERS set (%zu bytes)", sanitizedLaunchArgs.size());
         }
 
 
@@ -282,7 +284,9 @@ namespace WPEFramework
                             string source = "";
                             appManagerImplInstance->handleOnAppLaunchRequest(appId, intent, source);
 
-                            appendLaunchParametersEnv(launchArgs, runtimeConfigObject);
+                            /* AI 1.0 used the whole launch request body as the app arguments,
+                               so when no separate launchArgs are supplied fall back to the intent. */
+                            appendLaunchParametersEnv(launchArgs.empty() ? intent : launchArgs, runtimeConfigObject);
 
                             LOGINFO("spawnApp called ,state %u",state);
                             status = mLifecycleManagerRemoteObject->SpawnApp(appId, intent, state, runtimeConfigObject, launchArgs, appInstanceId, errorReason, success);

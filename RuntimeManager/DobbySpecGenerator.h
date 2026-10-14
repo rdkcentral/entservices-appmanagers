@@ -62,7 +62,10 @@ namespace Plugin
             Json::Value createEnvVars(const ApplicationConfiguration& config,
                                       const WPEFramework::Exchange::RuntimeConfig& runtimeConfig,
                                       const std::vector<std::pair<std::string, std::string>>& capabilities) const;
-            Json::Value createMounts(const ApplicationConfiguration& config, const WPEFramework::Exchange::RuntimeConfig& runtimeConfig) const;
+            Json::Value createMounts(const ApplicationConfiguration& config,
+                                     const WPEFramework::Exchange::RuntimeConfig& runtimeConfig,
+                                     const std::vector<std::pair<std::string, std::string>>& capabilities) const;
+            Json::Value createAirPlay2Mounts() const;
             Json::Value createRdkPlugins(const ApplicationConfiguration& config,
                                          const WPEFramework::Exchange::RuntimeConfig& runtimeConfig,
                                          const std::vector<std::pair<std::string, std::string>>& capabilities) const;
