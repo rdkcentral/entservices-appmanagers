@@ -66,7 +66,7 @@ namespace Plugin {
         public:
             bool initialize(PluginHost::IShell* service, IEventHandler* eventHandler);
 	    void deinitialize();
-            bool run(const string& appId, const string& appInstanceId, const string& launchArgs, Exchange::ILifecycleManager::LifecycleState targetState, WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject, string& errorReason);
+            bool run(const string& appId, const string& appInstanceId, const string& launchArgs, Exchange::ILifecycleManager::LifecycleState targetState, std::string& runtimeConfigPayload, string& errorReason);
             bool kill(const string& appInstanceId, string& errorReason);
             bool terminate(const string& appInstanceId, string& errorReason);
             bool suspend(const string& appInstanceId, string& errorReason);

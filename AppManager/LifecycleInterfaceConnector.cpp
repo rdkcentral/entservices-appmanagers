@@ -20,6 +20,7 @@
 #include "Module.h"
 #include "LifecycleInterfaceConnector.h"
 #include "AppInfoManager.h"
+#include "RuntimeConfigPayload.h"
 #include <algorithm>
 #include <string>
 #include <memory>
@@ -189,23 +190,22 @@ namespace WPEFramework
             return status;
         }
 
-        void LifecycleInterfaceConnector::appendLaunchParametersEnv(const std::string& launchArgs, WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject) const
+        bool LifecycleInterfaceConnector::appendLaunchParametersEnv(const std::string& launchArgs, std::string& runtimeConfigPayload, std::string& error) const
         {
-            Json::Value envArr(Json::arrayValue);
+            Utils::RuntimeConfigPayload payload;
+            if (!payload.Parse(runtimeConfigPayload, error))
             {
-                Json::Reader rd;
-                Json::Value existing;
-                if (rd.parse(runtimeConfigObject.envVariables, existing) && existing.isArray())
-                    envArr = existing;
+                return false;
             }
 
             const std::string normalizedLaunchArgs = ::Utils::LaunchArgs::normalizeLaunchArgs(launchArgs);
-            envArr.append(std::string("APPLICATION_LAUNCH_PARAMETERS=") + LifecycleInterfaceConnector::base64Encode(normalizedLaunchArgs));
-
-            Json::StreamWriterBuilder w;
-            w["indentation"] = "";
-            runtimeConfigObject.envVariables = Json::writeString(w, envArr);
+            if (!payload.UpsertEnvironment(std::string("APPLICATION_LAUNCH_PARAMETERS=") + LifecycleInterfaceConnector::base64Encode(normalizedLaunchArgs), error)
+                || !payload.Serialize(runtimeConfigPayload, error))
+            {
+                return false;
+            }
             LOGINFO("launch: APPLICATION_LAUNCH_PARAMETERS set");
+            return true;
         }
 
 
@@ -214,7 +214,7 @@ namespace WPEFramework
  * @Params  : const string& appId , const string& intent , const string& launchArgs
  * @return  : Core::hresult
  */
-        Core::hresult LifecycleInterfaceConnector::launch(const string& appId, const string& intent, const string& launchArgs, WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject)
+        Core::hresult LifecycleInterfaceConnector::launch(const string& appId, const string& intent, const string& launchArgs, std::string& runtimeConfigPayload)
         {
             Core::hresult status = Core::ERROR_GENERAL;
             const std::string normalizedLaunchArgs = ::Utils::LaunchArgs::normalizeLaunchArgs(launchArgs);
@@ -285,10 +285,16 @@ namespace WPEFramework
                             string source = "";
                             appManagerImplInstance->handleOnAppLaunchRequest(appId, intent, source);
 
-                            appendLaunchParametersEnv(normalizedLaunchArgs, runtimeConfigObject);
-
-                            LOGINFO("spawnApp called ,state %u",state);
-                            status = mLifecycleManagerRemoteObject->SpawnApp(appId, intent, state, runtimeConfigObject, normalizedLaunchArgs, appInstanceId, errorReason, success);
+                            if (!appendLaunchParametersEnv(launchArgs, runtimeConfigPayload, errorReason))
+                            {
+                                LOGERR("Invalid runtime configuration payload: %s", errorReason.c_str());
+                                status = Core::ERROR_INVALID_PARAMETER;
+                            }
+                            else
+                            {
+                                LOGINFO("spawnApp called ,state %u",state);
+                                status = mLifecycleManagerRemoteObject->SpawnApp(appId, intent, state, runtimeConfigPayload, launchArgs, appInstanceId, errorReason, success);
+                            }
 
                             if (Core::ERROR_NONE == status)
                             {
@@ -325,7 +331,7 @@ namespace WPEFramework
         }
 
         /* PreloadApp invokes it */
-        Core::hresult LifecycleInterfaceConnector::preLoadApp(const string& appId, const string& intent, const string& launchArgs, WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject, string& error)
+        Core::hresult LifecycleInterfaceConnector::preLoadApp(const string& appId, const string& intent, const string& launchArgs, std::string& runtimeConfigPayload, string& error)
         {
             Core::hresult status = Core::ERROR_GENERAL;
             const std::string normalizedLaunchArgs = ::Utils::LaunchArgs::normalizeLaunchArgs(launchArgs);
@@ -357,7 +363,15 @@ namespace WPEFramework
                 {
                     appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_PRELOAD);
                     state = Exchange::ILifecycleManager::LifecycleState::PAUSED;
-                    status = mLifecycleManagerRemoteObject->SpawnApp(appId, intent, state, runtimeConfigObject, normalizedLaunchArgs, appInstanceId, error, success);
+                    if (!appendLaunchParametersEnv(launchArgs, runtimeConfigPayload, error))
+                    {
+                        LOGERR("Invalid runtime configuration payload: %s", error.c_str());
+                    }
+                    else
+                    {
+                        status = mLifecycleManagerRemoteObject->SpawnApp(appId, intent, state, runtimeConfigPayload, launchArgs, appInstanceId, error, success);
+                    }
+
                     if (Core::ERROR_NONE == status)
                     {
                         LOGINFO("Update App Info");
