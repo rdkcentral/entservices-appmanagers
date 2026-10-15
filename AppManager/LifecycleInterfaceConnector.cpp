@@ -226,6 +226,9 @@ namespace WPEFramework
             if (nullptr == mLifecycleManagerStateRemoteObject)
             {
                 LOGERR("restartSuspendedWithRequestedVersion failed: LifecycleManagerState remote object is null");
+		Core::hresult releaseStatus = appManagerImplInstance->releaseDeferredReplacementLock(appId);
+
+                LOGINFO("Released deferred replacement lock for appId=%s status=%d", appId.c_str(), releaseStatus);
                 appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_LAUNCH, AppManagerImplementation::ERROR_INTERNAL);
                 return Core::ERROR_GENERAL;
             }
@@ -234,18 +237,17 @@ namespace WPEFramework
                 AppManagerTypes::PackageInfo packageInfo = a.getPackageInfo();
                 if (false == requestedVersion.empty())
                 {
-                    packageInfo.version = requestedVersion;
                     a.setRequestedLaunchVersion(requestedVersion);
                 }
                 packageInfo.unpackedPath = runtimeConfigObject.unpackedPath;
                 packageInfo.configMetadata = runtimeConfigObject;
                 a.setPackageInfo(packageInfo);
-                a.setTargetAppState(Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED);
+                a.setTargetAppState(Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE);
                 a.setAppIntent(intent);
             });
 
             appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_CLOSE);
-            status = mLifecycleManagerStateRemoteObject->CloseApp(appId, Exchange::ILifecycleManagerState::AppCloseReason::KILL_AND_RUN);
+            status = mLifecycleManagerStateRemoteObject->CloseApp(appId, Exchange::ILifecycleManagerState::AppCloseReason::KILL_AND_ACTIVATE);
 
             if (Core::ERROR_NONE != status)
             {
@@ -366,7 +368,7 @@ namespace WPEFramework
                             });
                             LOGINFO("Suspended app replacement for appId=%s runningVersion=%s requestedVersion=%s runningPath=%s requestedPath=%s",
                                 appId.c_str(), runningVersion.c_str(), requestedVersion.c_str(), runningUnpackedPath.c_str(), runtimeConfigObject.unpackedPath.c_str());
-                            status = restartSuspendedWithRequestedVersion(appId, intent, launchArgs, runtimeConfigObject,
+                            status = restartSuspendedWithRequestedVersion(appId, intent, runtimeConfigObject,
                                 appInfoSnap.getAppInstanceId(), requestedVersion);
                         }
                         else
