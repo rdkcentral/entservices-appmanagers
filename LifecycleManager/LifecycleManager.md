@@ -512,8 +512,8 @@ sequenceDiagram
             SH->>RMH: Suspend(appInstanceId)
             RMH-->>SH: success
         end
-        SH->>LCM: sendEvent(oldState, newState)
-        LCM->>AM: OnAppLifecycleStateChanged
+        SH->>LCM: sendEvent(oldState, newState, mostRecentIntent)
+        LCM->>AM: OnAppLifecycleStateChanged(oldState, newState, navigationIntent)
     end
     
     LCM-->>AM: Core::ERROR_NONE

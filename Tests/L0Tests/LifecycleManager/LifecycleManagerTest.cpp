@@ -146,6 +146,7 @@ extern uint32_t Test_StateHandler_CreateStateSuspendedViaPausedToSuspended();
 extern uint32_t Test_StateHandler_CreateStateHibernatedViaSuspendedToHibernated();
 extern uint32_t Test_StateHandler_InvalidTransitionReturnsFalse();
 extern uint32_t Test_RequestHandler_LaunchDelegatesToUpdateState();
+extern uint32_t Test_StateHandlerTransitionEventsIncludeNavigationIntent();
 extern uint32_t Test_RequestHandler_SendIntentStoresIntentOnContext();
 extern uint32_t Test_RequestHandler_GetWindowManagerHandlerReturnsNull();
 extern uint32_t Test_RequestHandler_CleanupSingletonProducesFreshInstance();
@@ -261,6 +262,7 @@ int main()
 
         // ── StateHandler tests ───────────────────────────────────────────────
         { "RequestHandler_NullifyStaleEventHandler",                         Test_RequestHandler_NullifyStaleEventHandler },
+        { "StateHandlerTransitionEventsIncludeNavigationIntent",             Test_StateHandlerTransitionEventsIncludeNavigationIntent },
         { "StateHandler_InitializePopulatesMap",                             Test_StateHandler_InitializePopulatesMap },
         { "StateHandler_ChangeStateNullContextReturnsFalse",                 Test_StateHandler_ChangeStateNullContextReturnsFalse },
         { "StateHandler_ChangeStateAlreadyAtTargetReturnsTrue",              Test_StateHandler_ChangeStateAlreadyAtTargetReturnsTrue },
