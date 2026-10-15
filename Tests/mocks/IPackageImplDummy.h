@@ -174,8 +174,16 @@ namespace packagemanager
                 config = "{\"packageId\":\"YouTube\",\"version\":\"100.1.24\"}";
                 return SUCCESS;
             }
-            return FAILED; 
-        }        
+            return FAILED;
+        }
+
+        virtual Result GetRunningApplicationsUsingPackage(const std::string &packageId, std::string &applicationIds) {
+            if ("StatusFailApp" == packageId) {
+                return FAILED;
+            }
+            applicationIds = ("YouTube" == packageId) ? "[\"YouTube\"]" : "[]";
+            return SUCCESS;
+        }
 
         static std::shared_ptr<packagemanager::IPackageImplDummy> instance() {
                 return std::make_shared<packagemanager::IPackageImplDummy>();
