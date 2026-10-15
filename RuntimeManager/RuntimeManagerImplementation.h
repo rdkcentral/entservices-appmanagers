@@ -37,6 +37,9 @@
 #include "RuntimeManagerTelemetryReporting.h"
 #include "TelemetryMarkers.h"
 
+#include <cstdint>
+#include <string>
+
 #ifdef RDK_APPMANAGERS_DEBUG
 class WebInspector;
 #endif
@@ -231,6 +234,7 @@ namespace WPEFramework
                 void Dispatch(RuntimeEventType event, const JsonValue params);
                 void notifyParameterCheckFailure(const string& appInstanceId, const string& errorCode);
 
+                static uint32_t getPlaybackInfoTimerMsForApp(const std::string& appId);
                 void recordTelemetryData(const std::string& marker, const std::string& appId, uint64_t requestTime, const std::string& fieldName = "");
                 time_t getCurrentTimestamp();
 

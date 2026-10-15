@@ -39,12 +39,20 @@ namespace WPEFramework
         delete mAIConfiguration;
      }
     }
-    bool RialtoConnector::createAppSession(const std::string &callsign, const std::string &displayName, const std::string &appId)
+    bool RialtoConnector::createAppSession(const std::string &callsign, const std::string &displayName, const std::string &appId, uint32_t playbackInfoTimerMs)
     {
-        LOGINFO("Creating app session with callsign : '%s', display name : '%s', appid : '%s'", callsign.c_str(), displayName.c_str(), appId.c_str());
+        LOGINFO("Creating app session with callsign : '%s', display name : '%s', appid : '%s', playbackInfoTimerMs : %u", callsign.c_str(), displayName.c_str(), appId.c_str(), playbackInfoTimerMs);
         if (!callsign.empty() && !displayName.empty() && ! appId.empty())
         {
-           firebolt::rialto::common::AppConfig config = {appId, displayName};
+           #ifndef ENABLE_RIALTO_CONTROL
+           firebolt::rialto::common::AppConfig config = {appId, displayName, kPlaybackInfoTimerMs};
+           #else
+           firebolt::rialto::common::AppConfig config;
+           config.clientIpcSocketName = "";
+           config.clientDisplayName = displayName;
+           config.playbackInfoTimerMs = kPlaybackInfoTimerMs;
+           #endif
+           LOGINFO("AppConfig.playbackInfoTimerMs=%u set for appId='%s', calling initiateApplication", config.playbackInfoTimerMs, appId.c_str());
            return mServerManagerService ->initiateApplication(callsign,
                                                            RialtoServerStates::ACTIVE,
                                                            config);
