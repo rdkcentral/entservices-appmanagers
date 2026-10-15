@@ -207,7 +207,7 @@ uint32_t Test_PM_Shell_DownloadPathThroughPluginAggregate()
     L0Test::ExpectTrue(tr, installer != nullptr, "IPackageInstaller is available after initialize");
     if (installer != nullptr) {
         WPEFramework::Exchange::IPackageInstaller::FailReason failReason = WPEFramework::Exchange::IPackageInstaller::FailReason::NONE;
-        const auto installRc = installer->Install("PluginAggregateApp", "1.0.0", nullptr, "/tmp/plugin_aggregate.pkg", failReason);
+        const auto installRc = installer->Install("PluginAggregateApp", nullptr, "/tmp/plugin_aggregate.pkg", failReason);
         L0Test::ExpectEqU32(tr, installRc, WPEFramework::Core::ERROR_NONE, "Installer aggregate Install() succeeds through plugin wrapper");
 
         std::string errorReason;

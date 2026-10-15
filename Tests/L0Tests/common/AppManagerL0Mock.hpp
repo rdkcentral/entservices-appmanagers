@@ -204,8 +204,8 @@ public:
 class MockPackageHandler final : public WPEFramework::Exchange::IPackageHandler {
 public:
     using LockHandler = std::function<WPEFramework::Core::hresult(
-        const string&, const string&, const LockReason&, uint32_t&, string&, WPEFramework::Exchange::RuntimeConfig&, ILockIterator*&)>;
-    using UnlockHandler = std::function<WPEFramework::Core::hresult(const string&, const string&)>;
+        const string&, const LockReason&, uint32_t&, string&, WPEFramework::Exchange::RuntimeConfig&, ILockIterator*&)>;
+    using UnlockHandler = std::function<WPEFramework::Core::hresult(const string&)>;
 
     MockPackageHandler()
         : _refCount(1)
@@ -236,12 +236,12 @@ public:
         return nullptr;
     }
 
-    WPEFramework::Core::hresult Lock(const string& packageId, const string& version, const LockReason& lockReason,
+    WPEFramework::Core::hresult Lock(const string& packageId, const LockReason& lockReason,
         uint32_t& lockId, string& unpackedPath, WPEFramework::Exchange::RuntimeConfig& configMetadata, ILockIterator*& appMetadata) override
     {
         lockCount++;
         if (lockHandler) {
-            return lockHandler(packageId, version, lockReason, lockId, unpackedPath, configMetadata, appMetadata);
+            return lockHandler(packageId, lockReason, lockId, unpackedPath, configMetadata, appMetadata);
         }
         lockId = 1;
         unpackedPath = "/tmp/app";
@@ -249,16 +249,16 @@ public:
         return WPEFramework::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult Unlock(const string& packageId, const string& version) override
+    WPEFramework::Core::hresult Unlock(const string& packageId) override
     {
         unlockCount++;
         if (unlockHandler) {
-            return unlockHandler(packageId, version);
+            return unlockHandler(packageId);
         }
         return WPEFramework::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult GetLockedInfo(const string&, const string&, string&, WPEFramework::Exchange::RuntimeConfig&, string&, bool&) override
+    WPEFramework::Core::hresult GetLockedInfo(const string&, string&, WPEFramework::Exchange::RuntimeConfig&, string&, bool&) override
     {
         return WPEFramework::Core::ERROR_NONE;
     }
@@ -317,7 +317,7 @@ public:
         return WPEFramework::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult Install(const string&, const string&, IKeyValueIterator* const&, const string&, FailReason&) override
+    WPEFramework::Core::hresult Install(const string&, IKeyValueIterator* const&, const string&, FailReason&) override
     {
         return WPEFramework::Core::ERROR_NONE;
     }
@@ -337,12 +337,12 @@ public:
         return (nullptr != packages) ? WPEFramework::Core::ERROR_NONE : WPEFramework::Core::ERROR_GENERAL;
     }
 
-    WPEFramework::Core::hresult Config(const string&, const string&, WPEFramework::Exchange::RuntimeConfig&) override
+    WPEFramework::Core::hresult Config(const string&, WPEFramework::Exchange::RuntimeConfig&) override
     {
         return WPEFramework::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult PackageState(const string&, const string&, InstallState&) override
+    WPEFramework::Core::hresult PackageState(const string&, InstallState&) override
     {
         return WPEFramework::Core::ERROR_NONE;
     }

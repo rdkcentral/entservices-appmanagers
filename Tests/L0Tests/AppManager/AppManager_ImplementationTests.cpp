@@ -1977,7 +1977,7 @@ uint32_t Test_AM_PackageUnlockFails()
 
     // Custom handler whose Unlock always fails
     auto* handler = new L0Test::MockPackageHandler();
-    handler->unlockHandler = [](const std::string&, const std::string&) -> WPEFramework::Core::hresult {
+    handler->unlockHandler = [](const std::string&) -> WPEFramework::Core::hresult {
         return WPEFramework::Core::ERROR_GENERAL;
     };
 
@@ -2004,7 +2004,7 @@ uint32_t Test_AM_PackageUnlockFails()
     return tr.failures;
 }
 
-// Covers the LOGERR "AppId not found in map to get the version" branch inside
+// Covers the LOGERR "AppId not found in map to unlock" branch inside
 // packageUnLock() when the app is NOT in AppInfoManager.  In that case both
 // !pkgVersion.empty() and exists(appId) are false, so the unlock block is skipped
 // entirely and the trailing !exists check logs the error.
@@ -2330,7 +2330,7 @@ uint32_t Test_AM_PackageLockLockFails()
     L0Test::TestResult tr;
 
     auto* handler = new L0Test::MockPackageHandler();
-    handler->lockHandler = [](const std::string&, const std::string&,
+    handler->lockHandler = [](const std::string&,
         const WPEFramework::Exchange::IPackageHandler::LockReason&,
         uint32_t&, std::string&, WPEFramework::Exchange::RuntimeConfig&,
         WPEFramework::Exchange::IPackageHandler::ILockIterator*&) {
@@ -2790,7 +2790,7 @@ uint32_t Test_AM_WorkerThreadLaunchSuccess()
     L0Test::MockStorageManager storageManager;
 
     lifecycleManager.spawnAppHandler = [&spawnCalled](
-        const std::string&, const std::string&,
+        const std::string&,
         const WPEFramework::Exchange::ILifecycleManager::LifecycleState,
         const WPEFramework::Exchange::RuntimeConfig&, const std::string&,
         std::string& appInstanceId, std::string& errorReason, bool& success) {
@@ -3175,7 +3175,7 @@ uint32_t Test_AM_PackageUnLockNullPackageHandler()
     L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
     impl->Configure(&service);
 
-    // Insert app in AppInfoManager with a package version so the unlock block is entered
+    // Insert an AppInfoManager entry so the unlock block is entered
     WPEFramework::Plugin::AppInfoManager::getInstance().upsert(
         "app.unlock.nullhandler",
         [](WPEFramework::Plugin::AppInfo& a) {
@@ -3488,7 +3488,6 @@ uint32_t Test_AM_PackageLockCreateOrUpdateFails()
     // Lock returns ERROR_NONE but does NOT set unpackedPath (stays "").
     // createOrUpdatePackageInfoByAppId checks unpackedPath.empty() → returns false.
     handler->lockHandler = [](const std::string&,
-        const std::string&,
         const WPEFramework::Exchange::IPackageHandler::LockReason&,
         uint32_t& lockId,
         std::string& /*unpackedPath*/,

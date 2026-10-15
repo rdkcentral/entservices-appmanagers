@@ -78,7 +78,7 @@ For each detected package:
 mInstallThread = std::thread(installPackages, preinstallPackages):
     For each package in list:
         ├→ Notify: OnInstallStarted
-        ├→ PackageManager::Install(packageId, version, fileLocator, ...)
+        ├→ PackageManager::Install(packageId, fileLocator, ...)
         └→ Notify: OnInstallComplete (success/failure)
 
 Manual Scan (Client::Scan()):
