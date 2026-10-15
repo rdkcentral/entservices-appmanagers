@@ -362,10 +362,6 @@ namespace WPEFramework
                             (Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED == appInfoSnap.getAppNewState()) &&
                             versionChanged)
                         {
-                            AppInfoManager::getInstance().update(appId, [&](AppInfo& a) {
-                                a.setPendingUnloadInstanceId(appInfoSnap.getAppInstanceId());
-                                a.setPendingUnloadVersion(runningVersion);
-                            });
                             LOGINFO("Suspended app replacement for appId=%s runningVersion=%s requestedVersion=%s runningPath=%s requestedPath=%s",
                                 appId.c_str(), runningVersion.c_str(), requestedVersion.c_str(), runningUnpackedPath.c_str(), runtimeConfigObject.unpackedPath.c_str());
                             status = restartSuspendedWithRequestedVersion(appId, intent, runtimeConfigObject,
