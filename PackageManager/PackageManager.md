@@ -304,10 +304,6 @@ interface IPackageHandler {
 };
 ```
 
-### API Compatibility
-
-`IPackageInstaller` is version 2.0.0. Its JSON-RPC methods and the `IPackageHandler` COM-RPC methods no longer accept a version argument. V2 uses `ID_PACKAGE_INSTALLER_V2` and `ID_PACKAGE_HANDLER_V2`; the legacy IDs remain reserved, so old clients fail interface discovery instead of calling an incompatible signature. Rebuild and deploy clients with the service. For a staggered rollout, keep the previous service available or provide an adapter exposing the legacy IDs and forwarding by `packageId`, ignoring `version`. No adapter is included in this change.
-
 ### Class Relationships
 
 ```mermaid

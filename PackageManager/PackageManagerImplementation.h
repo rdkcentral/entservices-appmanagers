@@ -70,7 +70,7 @@ class PackageManagerImplementation
             string digest;
             string gatewayMetadataPath;
             string unpackedPath;
-            string version;                                  // currently tracked version for this packageId (internal bookkeeping only)
+            string version;                                  // preserves the installed package's version internally
             FailReason failReason = Exchange::IPackageInstaller::FailReason::NONE;
             std::list<Exchange::IPackageHandler::AdditionalLock> additionalLocks;
             string runtimeType;                             // blank for runtime package
