@@ -18,9 +18,14 @@
 * limitations under the License.
 **/
 
+#include <algorithm>
+#include <cerrno>
 #include <chrono>
 #include <cinttypes> // Required for PRIu64
+#include <cstdint>
+#include <cstring>
 #include <filesystem>
+#include <sys/statvfs.h>
 #include <vector>
 
 // Spec: entservices-appmanagers
@@ -403,8 +408,32 @@ namespace Plugin {
 
     Core::hresult PackageManagerImplementation::GetStorageInformation(uint32_t &quotaKB, uint32_t &usedKB)
     {
-        Core::hresult result = Core::ERROR_NONE;
-        LOGDBG();
+        Core::hresult result = Core::ERROR_GENERAL;
+        struct statvfs fsStat;
+
+        quotaKB = 0;
+        usedKB = 0;
+
+        /* Packages are downloaded/installed under downloadDir, report the stats of its partition */
+        const string storagePath = downloadDir.empty() ? string("/") : downloadDir;
+
+        memset(&fsStat, 0, sizeof(fsStat));
+        if (0 != statvfs(storagePath.c_str(), &fsStat)) {
+            LOGERR("statvfs failed for '%s' errno=%d reason=%s", storagePath.c_str(), errno, strerror(errno));
+        } else {
+            /* f_frsize is the unit of f_blocks/f_bfree, fall back to f_bsize when the filesystem does not report it */
+            const uint64_t blockSize = (0 != fsStat.f_frsize) ? static_cast<uint64_t>(fsStat.f_frsize) : static_cast<uint64_t>(fsStat.f_bsize);
+            const uint64_t totalKB = (static_cast<uint64_t>(fsStat.f_blocks) * blockSize) / 1024;
+            const uint64_t freeKB = (static_cast<uint64_t>(fsStat.f_bfree) * blockSize) / 1024;
+            const uint64_t inUseKB = (totalKB > freeKB) ? (totalKB - freeKB) : 0;
+
+            quotaKB = static_cast<uint32_t>(std::min<uint64_t>(totalKB, UINT32_MAX));
+            usedKB = static_cast<uint32_t>(std::min<uint64_t>(inUseKB, UINT32_MAX));
+
+            LOGDBG("path='%s' quotaKB=%u usedKB=%u", storagePath.c_str(), quotaKB, usedKB);
+            result = Core::ERROR_NONE;
+        }
+
         return result;
     }
 
