@@ -327,10 +327,7 @@ namespace WPEFramework
                 eventData["appInstanceId"] = context->getAppInstanceId();
                 eventData["oldLifecycleState"] = (uint32_t)oldLifecycleState;
                 eventData["newLifecycleState"] = (uint32_t)newLifecycleState;
-                if (newLifecycleState == Exchange::ILifecycleManager::LifecycleState::ACTIVE)
-                {
-                    eventData["navigationIntent"] = context->getMostRecentIntent();
-                }
+                eventData["navigationIntent"] = context->getMostRecentIntent();
                 eventData["errorReason"] = errorReason;
                 eventHandler->onStateChangeEvent(eventData);
             }
