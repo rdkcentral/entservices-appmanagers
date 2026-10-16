@@ -26,6 +26,9 @@
 #include "WebInspector.h"
 #endif
 #include <errno.h>
+#include <cstdlib>
+#include <algorithm>
+#include <cctype>
 #include <fstream>
 
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
@@ -41,6 +44,33 @@ namespace WPEFramework
 
         SERVICE_REGISTRATION(RuntimeManagerImplementation, 1, 0);
         RuntimeManagerImplementation *RuntimeManagerImplementation::_instance = nullptr;
+
+        namespace
+        {
+            // RDKEMW-15487: PlaybackInfo timer interval selection.
+            // YouTube requires a 32ms PlaybackInfo timer interval (validated via the YTS
+            // conformance tests). All other applications use the default 250ms interval, which
+            // reduces CPU usage. The application being launched is identified by its appId; a
+            // case-insensitive match on "youtube" selects the YouTube interval.
+            constexpr uint32_t kDefaultPlaybackInfoTimerMs = 250;
+            constexpr uint32_t kYouTubePlaybackInfoTimerMs = 32;
+
+            uint32_t getPlaybackInfoTimerMsForApp(const std::string &appId)
+            {
+                std::string lowerAppId = appId;
+                std::transform(lowerAppId.begin(), lowerAppId.end(), lowerAppId.begin(),
+                               [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+                if (lowerAppId.find("youtube") != std::string::npos)
+                {
+                    LOGINFO("Launched application appId='%s' is identified as YouTube, using playbackInfoTimerMs=%u ms",
+                            appId.c_str(), kYouTubePlaybackInfoTimerMs);
+                    return kYouTubePlaybackInfoTimerMs;
+                }
+                LOGINFO("Launched application is appId='%s' , using default playbackInfoTimerMs=%u ms",
+                        appId.c_str(), kDefaultPlaybackInfoTimerMs);
+                return kDefaultPlaybackInfoTimerMs;
+            }
+        }
 
         RuntimeManagerImplementation::RuntimeManagerImplementation()
             : mRuntimeManagerImplLock(), mCurrentservice(nullptr), mOciContainerObject(nullptr), mStorageManagerObject(nullptr), mWindowManagerConnector(nullptr), mDobbyEventListener(nullptr), mUserIdManager(nullptr), mRuntimeAppPortal(""), mRuntimeConfigFile(""), mAIConfiguration(nullptr)
@@ -760,7 +790,7 @@ namespace WPEFramework
                 rialtoSocket = "rlto-" + appInstanceId;
                 LOGINFO("[RIALTO] RALF enabled: rialtoSocket updated to '%s'", rialtoSocket.c_str());
 #endif // RALF_PACKAGE_SUPPORT_ENABLED
-                if (mRialtoConnector->createAppSession(appInstanceId, westerosSocket, rialtoSocket))
+                if (mRialtoConnector->createAppSession(appInstanceId, westerosSocket, rialtoSocket, getPlaybackInfoTimerMsForApp(appId)))
                 {
                     LOGINFO("[RIALTO] createAppSession succeeded, waiting for ACTIVE state (timeout=%d ms)",
                             RIALTO_TIMEOUT_MILLIS);
