@@ -42,7 +42,9 @@
 #include <cstdio>
 #include <iostream>
 #include <string>
+#include <sys/stat.h>
 #include <thread>
+#include <unistd.h>
 #include <vector>
 
 #include "DownloadManagerImplementation.h"
@@ -362,7 +364,11 @@ uint32_t Test_Impl_InitializeExistingDirReturnsNone()
 {
     L0Test::TestResult tr;
 
-    const std::string dir = "/tmp"; // /tmp always exists
+    // Create a pre-existing directory that passes security validation
+    // (owned by current user, not world-writable)
+    const std::string dir = "/tmp/dm_l0_existing_dir/";
+    (void) mkdir(dir.c_str(), 0755);  // OK if it already exists
+
     L0Test::ServiceMock::Config cfg;
     cfg.internetActive = true;
     cfg.configLine     = "{\"downloadDir\":\"" + dir + "\"}";
@@ -378,6 +384,7 @@ uint32_t Test_Impl_InitializeExistingDirReturnsNone()
     }
 
     impl->Release();
+    (void) rmdir(dir.c_str());  // Clean up
     return tr.failures;
 }
 
@@ -707,9 +714,8 @@ uint32_t Test_Impl_DeleteEmptyFileLocatorReturnsError()
 
     auto* impl = CreateImpl();
     const auto result = impl->Delete("");
-    // empty fileLocator → the else branch calls remove("") → fails → ERROR_GENERAL
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
-        "Delete() with empty fileLocator returns ERROR_GENERAL");
+    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_BAD_REQUEST,
+        "Delete() with empty fileLocator returns ERROR_BAD_REQUEST");
 
     impl->Release();
     return tr.failures;
@@ -723,28 +729,34 @@ uint32_t Test_Impl_DeleteNonCurrentFileReturnsNone()
 {
     L0Test::TestResult tr;
 
-    // Create a real temporary file to delete
-    const std::string tmpFile = "/tmp/dm_l0_delete_test.pkg";
+    const std::string dir = "/tmp/dm_l0_delete";
+    const std::string tmpFile = dir + "/package2001";
+    (void) mkdir(dir.c_str(), 0700);
     FILE* fp = fopen(tmpFile.c_str(), "wb");
-    L0Test::ExpectTrue(tr, fp != nullptr, "Temporary file created for Delete() test");
+    L0Test::ExpectTrue(tr, fp != nullptr, "Temporary managed file created for Delete() test");
     if (nullptr != fp) {
         fclose(fp);
     }
 
+    L0Test::ServiceMock::Config cfg;
+    cfg.configLine = "{\"downloadDir\":\"" + dir + "\"}";
+    L0Test::ServiceMock svc(cfg);
     auto* impl = CreateImpl();
-    // No active download → mCurrentDownload is nullptr → goes to else → remove()
+    L0Test::ExpectEqU32(tr, impl->Initialize(&svc), WPEFramework::Core::ERROR_NONE,
+        "Initialize() succeeds for managed download directory");
     const auto result = impl->Delete(tmpFile);
     L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
-        "Delete() for non-current file returns ERROR_NONE");
+        "Delete() for managed file returns ERROR_NONE");
 
-    // Verify the file no longer exists
     FILE* check = fopen(tmpFile.c_str(), "rb");
-    L0Test::ExpectTrue(tr, check == nullptr, "File is gone after Delete()");
+    L0Test::ExpectTrue(tr, check == nullptr, "Managed file is gone after Delete()");
     if (nullptr != check) {
         fclose(check);
     }
 
+    impl->Deinitialize(&svc);
     impl->Release();
+    (void) rmdir(dir.c_str());
     return tr.failures;
 }
 
@@ -756,12 +768,46 @@ uint32_t Test_Impl_DeleteNonExistentFileReturnsError()
 {
     L0Test::TestResult tr;
 
-    auto* impl = CreateImpl();
-    const auto result = impl->Delete("/nonexistent/dm_l0_ghost.pkg");
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
-        "Delete() on non-existent file returns ERROR_GENERAL");
+    const std::string dir = "/tmp/dm_l0_delete_reject";
+    const std::string outside = "/tmp/package9001";
+    const std::string target = "/tmp/dm_l0_delete_target";
+    const std::string link = dir + "/package9002";
+    (void) mkdir(dir.c_str(), 0700);
+    FILE* fp = fopen(outside.c_str(), "wb");
+    if (nullptr != fp) {
+        fclose(fp);
+    }
+    fp = fopen(target.c_str(), "wb");
+    if (nullptr != fp) {
+        fclose(fp);
+    }
+    (void) symlink(target.c_str(), link.c_str());
 
+    L0Test::ServiceMock::Config cfg;
+    cfg.configLine = "{\"downloadDir\":\"" + dir + "\"}";
+    L0Test::ServiceMock svc(cfg);
+    auto* impl = CreateImpl();
+    L0Test::ExpectEqU32(tr, impl->Initialize(&svc), WPEFramework::Core::ERROR_NONE,
+        "Initialize() succeeds for rejection tests");
+    L0Test::ExpectEqU32(tr, impl->Delete(outside), WPEFramework::Core::ERROR_GENERAL,
+        "Delete() rejects a file outside the managed directory");
+    L0Test::ExpectEqU32(tr, impl->Delete(dir + "/../package9001"), WPEFramework::Core::ERROR_GENERAL,
+        "Delete() rejects traversal outside the managed directory");
+    L0Test::ExpectEqU32(tr, impl->Delete(link), WPEFramework::Core::ERROR_GENERAL,
+        "Delete() rejects a symbolic link");
+    L0Test::ExpectEqU32(tr, impl->Delete(dir + "/unmanaged"), WPEFramework::Core::ERROR_GENERAL,
+        "Delete() rejects an unmanaged filename");
+    L0Test::ExpectEqU32(tr, impl->Delete("tmp/dm_l0_delete_reject/package9003"), WPEFramework::Core::ERROR_GENERAL,
+        "Delete() rejects a relative locator");
+    L0Test::ExpectTrue(tr, access(outside.c_str(), F_OK) == 0, "Outside file remains");
+    L0Test::ExpectTrue(tr, access(target.c_str(), F_OK) == 0, "Symbolic-link target remains");
+
+    impl->Deinitialize(&svc);
     impl->Release();
+    (void) unlink(link.c_str());
+    (void) unlink(outside.c_str());
+    (void) unlink(target.c_str());
+    (void) rmdir(dir.c_str());
     return tr.failures;
 }
 
@@ -1619,7 +1665,9 @@ uint32_t Test_Impl_DeleteDifferentFileWhileActiveDownload()
     // Create a separate file that is NOT the active download's fileLocator.
     // fileLocator for active download is dir+"package"+downloadId.
     // We delete a completely different file → condition false → else branch (remove).
-    const std::string otherFile = "/tmp/dm_l0_del_other_target.pkg";
+    // IMPORTANT: File must be inside the managed directory and follow the
+    // package<digits> naming convention for the security fix to allow deletion.
+    const std::string otherFile = dir + "package9999";
     FILE* fp = fopen(otherFile.c_str(), "wb");
     if (nullptr != fp) {
         const char buf[64] = {};

@@ -301,6 +301,7 @@ class PackageManagerImplementation
         std::list<Exchange::IPackageInstaller::INotification*> mInstallNotifications;
         std::unique_ptr<HttpClient> mHttpClient;
 
+        mutable std::mutex mLifecycleMutex;
         mutable std::mutex mMutex;
         std::condition_variable cv;
         std::unique_ptr<std::thread> mDownloadThreadPtr;
@@ -314,6 +315,7 @@ class PackageManagerImplementation
         bool cacheInitialized = false;
 
         std::string downloadDir = "/opt/CDL/";
+        int mDownloadDirectoryFd = -1;
         string configStr;
         uint32_t userId = 30000;
         uint32_t groupId = 30000;

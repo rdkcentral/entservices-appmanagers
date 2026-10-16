@@ -598,8 +598,10 @@ TEST_F(DownloadManagerImplementationTest, UnregisterNotificationNotFound) {
 }
 
 /* Test Case: Delete an existing file (success path)
- * Covers: Delete success path (lines 348-349 of DownloadManagerImplementation.cpp)
- * Validates that Delete returns Core::ERROR_NONE when the file exists and no download is active for it.
+ * Covers: Delete success path via removeManagedDownload()
+ * Validates that Delete returns Core::ERROR_NONE when the file exists inside the
+ * managed download directory, follows the package<digits> naming convention, and
+ * no download is active for it.
  */
 TEST_F(DownloadManagerImplementationTest, DeleteExistingFile) {
     Plugin::DownloadManagerImplementation* impl = getRawImpl();
@@ -610,13 +612,15 @@ TEST_F(DownloadManagerImplementationTest, DeleteExistingFile) {
 
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
-    // Create a temporary file that will be deleted by the plugin
-    const string tempFilePath = "/tmp/test_dm_delete_target.bin";
+    // Create a temporary file inside the managed download directory with a valid
+    // package<digits> name so that the security validation in removeManagedDownload()
+    // permits the deletion.
+    const string tempFilePath = "/tmp/downloads/package8888";
     FILE* fp = fopen(tempFilePath.c_str(), "wb");
     ASSERT_NE(fp, nullptr) << "Should be able to create temp file for delete test";
     fclose(fp);
 
-    // Delete the existing file - no active download, so the else branch is taken, remove() succeeds
+    // Delete the managed file - no active download, so the else branch is taken
     Core::hresult result = impl->Delete(tempFilePath);
     TEST_LOG("Delete (existing file) returned: %u", result);
     EXPECT_EQ(Core::ERROR_NONE, result) << "Delete should return ERROR_NONE when file exists and is not actively downloading";

@@ -851,12 +851,14 @@ uint32_t Test_Impl_QueuedLifecycleEventsPreserveOrder()
     params["oldLifecycleState"] = static_cast<uint32_t>(WPEFramework::Exchange::ILifecycleManager::INITIALIZING);
     params["newLifecycleState"] = static_cast<uint32_t>(WPEFramework::Exchange::ILifecycleManager::PAUSED);
     LifecycleManagerImplementationTest::queueEvent(impl,
-        LifecycleManagerImplementationTest::LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED, params);
+        LifecycleManagerImplementationTest::EventNames::LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED,
+        params);
 
     params["oldLifecycleState"] = static_cast<uint32_t>(WPEFramework::Exchange::ILifecycleManager::PAUSED);
     params["newLifecycleState"] = static_cast<uint32_t>(WPEFramework::Exchange::ILifecycleManager::ACTIVE);
     LifecycleManagerImplementationTest::queueEvent(impl,
-        LifecycleManagerImplementationTest::LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED, params);
+        LifecycleManagerImplementationTest::EventNames::LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED,
+        params);
 
     L0Test::ExpectTrue(tr, impl.WaitForPendingJobs(), "Queued lifecycle dispatch completes");
     L0Test::ExpectEqU32(tr, notification->onStateChangedCount.load(), 2U,
