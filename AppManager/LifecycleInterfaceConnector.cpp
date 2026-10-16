@@ -208,6 +208,518 @@ namespace WPEFramework
             LOGINFO("launch: APPLICATION_LAUNCH_PARAMETERS set");
         }
 
+       /* Core::hresult LifecycleInterfaceConnector::restartSuspendedWithRequestedVersion(const string& appId,
+            const string& intent, WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject,
+            const string& suspendedAppInstanceId, const string& requestedVersion)
+        {
+            Core::hresult status = Core::ERROR_GENERAL;
+            AppManagerImplementation* appManagerImplInstance = AppManagerImplementation::getInstance();
+            AppManagerTelemetryReporting& appManagerTelemetryReporting = AppManagerTelemetryReporting::getInstance();
+
+            if (nullptr == appManagerImplInstance)
+            {
+                LOGERR("restartSuspendedWithRequestedVersion failed: AppManagerImplementation instance is null");
+                appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_LAUNCH, AppManagerImplementation::ERROR_INTERNAL);
+                return Core::ERROR_GENERAL;
+            }
+
+            if (nullptr == mLifecycleManagerStateRemoteObject)
+            {
+                LOGERR("restartSuspendedWithRequestedVersion failed: LifecycleManagerState remote object is null");
+		Core::hresult releaseStatus = appManagerImplInstance->releaseDeferredReplacementLock(appId);
+
+                LOGINFO("Released deferred replacement lock for appId=%s status=%d", appId.c_str(), releaseStatus);
+                appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_LAUNCH, AppManagerImplementation::ERROR_INTERNAL);
+                return Core::ERROR_GENERAL;
+            }
+
+    i        AppInfoManager::getInstance().update(appId, [&](AppInfo& a) {
+                AppManagerTypes::PackageInfo packageInfo = a.getPackageInfo();
+                if (false == requestedVersion.empty())
+                {
+                    a.setRequestedLaunchVersion(requestedVersion);
+                }
+                packageInfo.unpackedPath = runtimeConfigObject.unpackedPath;
+                packageInfo.configMetadata = runtimeConfigObject;
+                a.setPackageInfo(packageInfo);
+                a.setTargetAppState(Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE);
+                a.setAppIntent(intent);
+            });
+	    
+     
+    AppInfoManager::getInstance().update(
+        appId,
+        [&](AppInfo& appInfo)
+        {
+            AppManagerTypes::PackageInfo packageInfo =
+                appInfo.getPackageInfo();
+
+            const string oldVersion =
+                packageInfo.version;
+
+            appInfo.setPendingUnloadInstanceId(
+                suspendedAppInstanceId);
+
+            appInfo.setPendingUnloadVersion(
+                oldVersion);
+            if (!requestedVersion.empty())
+            {
+                appInfo.setRequestedLaunchVersion(
+                    requestedVersion);
+
+                packageInfo.version =
+                    requestedVersion;
+            }
+
+            packageInfo.unpackedPath =
+                runtimeConfigObject.unpackedPath;
+
+            packageInfo.configMetadata =
+                runtimeConfigObject;
+
+            appInfo.setPackageInfo(
+                packageInfo);
+
+            appInfo.setTargetAppState(
+                Exchange::IAppManager::
+                    AppLifecycleState::APP_STATE_ACTIVE);
+
+            appInfo.setAppIntent(
+                intent);
+
+            LOGINFO(
+                "[REPLACEMENT_DEBUG] Stored replacement details: "
+                "appId=%s oldInstanceId=%s "
+                "oldVersion=%s requestedVersion=%s "
+                "requestedPath=%s",
+                appId.c_str(),
+                suspendedAppInstanceId.c_str(),
+                oldVersion.c_str(),
+                requestedVersion.c_str(),
+                runtimeConfigObject.unpackedPath.c_str());
+        });
+
+            appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_CLOSE);
+            status = mLifecycleManagerStateRemoteObject->CloseApp(appId, Exchange::ILifecycleManagerState::AppCloseReason::KILL_AND_ACTIVATE);
+
+            if (Core::ERROR_NONE != status)
+            {
+                LOGERR("Failed to restart suspended app with requested version for appId=%s status=%d oldInstanceId=%s requestedVersion=%s",
+                    appId.c_str(), status, suspendedAppInstanceId.c_str(), requestedVersion.c_str());
+                appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_LAUNCH, AppManagerImplementation::ERROR_KILL_APP);
+            }
+
+            if ((Core::ERROR_NONE != status) && (nullptr != appManagerImplInstance))
+            {
+                Core::hresult releaseStatus = appManagerImplInstance->releaseDeferredReplacementLock(appId);
+                if (Core::ERROR_NONE != releaseStatus)
+                {
+                    LOGERR("Failed to release deferred replacement lock after replacement failure for appId=%s status=%d",
+                        appId.c_str(), releaseStatus);
+                }
+            }
+
+            return status;
+        }*/
+
+Core::hresult
+LifecycleInterfaceConnector::restartSuspendedWithRequestedVersion(
+    const string& appId,
+    const string& intent,
+    const string& launchArgs,
+    WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject,
+    const string& suspendedAppInstanceId,
+    const string& requestedVersion)
+{
+    Core::hresult status = Core::ERROR_GENERAL;
+
+    AppManagerImplementation* appManagerImplInstance =
+        AppManagerImplementation::getInstance();
+
+    AppManagerTelemetryReporting& telemetry =
+        AppManagerTelemetryReporting::getInstance();
+
+    if (nullptr == appManagerImplInstance)
+    {
+        LOGERR(
+            "restartSuspendedWithRequestedVersion failed: "
+            "AppManagerImplementation instance is null");
+
+        telemetry.reportTelemetryErrorData(
+            appId,
+            AppManagerImplementation::APP_ACTION_LAUNCH,
+            AppManagerImplementation::ERROR_INTERNAL);
+
+        return Core::ERROR_GENERAL;
+    }
+
+    if ((nullptr == mLifecycleManagerRemoteObject) ||
+        (nullptr == mLifecycleManagerStateRemoteObject))
+    {
+        LOGERR(
+            "restartSuspendedWithRequestedVersion failed: "
+            "LifecycleManager object is null appId=%s",
+            appId.c_str());
+
+        const Core::hresult releaseStatus =
+            appManagerImplInstance->
+                releaseDeferredReplacementLock(appId);
+
+        LOGINFO(
+            "Released deferred replacement lock: "
+            "appId=%s status=%d",
+            appId.c_str(),
+            releaseStatus);
+
+        telemetry.reportTelemetryErrorData(
+            appId,
+            AppManagerImplementation::APP_ACTION_LAUNCH,
+            AppManagerImplementation::ERROR_INTERNAL);
+
+        return Core::ERROR_GENERAL;
+    }
+
+    if (runtimeConfigObject.unpackedPath.empty())
+    {
+        LOGERR(
+            "restartSuspendedWithRequestedVersion failed: "
+            "replacement unpackedPath is empty "
+            "appId=%s requestedVersion=%s",
+            appId.c_str(),
+            requestedVersion.c_str());
+
+        const Core::hresult releaseStatus =
+            appManagerImplInstance->
+                releaseDeferredReplacementLock(appId);
+
+        LOGINFO(
+            "Released deferred replacement lock: "
+            "appId=%s status=%d",
+            appId.c_str(),
+            releaseStatus);
+
+        telemetry.reportTelemetryErrorData(
+            appId,
+            AppManagerImplementation::APP_ACTION_LAUNCH,
+            AppManagerImplementation::ERROR_INTERNAL);
+
+        return Core::ERROR_GENERAL;
+    }
+
+    /*
+     * Add APPLICATION_LAUNCH_PARAMETERS to the same RuntimeConfig
+     * that will be stored in LifecycleManager's ApplicationContext.
+     */
+    appendLaunchParametersEnv(
+        launchArgs,
+        runtimeConfigObject);
+
+    /*
+     * Capture the current AppInfo before updating it with the
+     * replacement package metadata.
+     */
+    AppInfo oldAppInfo;
+
+    if (!AppInfoManager::getInstance().get(
+            appId,
+            oldAppInfo))
+    {
+        LOGERR(
+            "restartSuspendedWithRequestedVersion failed: "
+            "AppInfo not found appId=%s",
+            appId.c_str());
+
+        const Core::hresult releaseStatus =
+            appManagerImplInstance->
+                releaseDeferredReplacementLock(appId);
+
+        LOGINFO(
+            "Released deferred replacement lock: "
+            "appId=%s status=%d",
+            appId.c_str(),
+            releaseStatus);
+
+        telemetry.reportTelemetryErrorData(
+            appId,
+            AppManagerImplementation::APP_ACTION_LAUNCH,
+            AppManagerImplementation::ERROR_INTERNAL);
+
+        return Core::ERROR_GENERAL;
+    }
+
+    const string oldVersion =
+        oldAppInfo.getPackageInfo().version;
+
+    const string oldPath =
+        oldAppInfo.getPackageInfo().unpackedPath;
+
+    LOGINFO(
+        "[REPLACEMENT_DEBUG] Preparing replacement context: "
+        "appId=%s oldInstanceId=%s "
+        "oldVersion=%s requestedVersion=%s "
+        "oldPath=%s newPath=%s",
+        appId.c_str(),
+        suspendedAppInstanceId.c_str(),
+        oldVersion.c_str(),
+        requestedVersion.c_str(),
+        oldPath.c_str(),
+        runtimeConfigObject.unpackedPath.c_str());
+
+    /*
+     * Reuse the existing SpawnApp API to transfer the new RuntimeConfig
+     * into LifecycleManager.
+     *
+     * The guarded replacement-preparation branch in SpawnApp must:
+     *
+     * 1. Detect that the current app is SUSPENDED.
+     * 2. Detect that the package path has changed.
+     * 3. Call context->setApplicationLaunchParams().
+     * 4. Return the existing suspended instance ID.
+     * 5. Return without calling RequestHandler::launch().
+     *
+     * No new container is created during this call.
+     */
+    string preparedInstanceId("");
+    string errorReason("");
+    bool success = false;
+
+    status =
+        mLifecycleManagerRemoteObject->SpawnApp(
+            appId,
+            intent,
+            Exchange::ILifecycleManager::
+                LifecycleState::ACTIVE,
+            runtimeConfigObject,
+            launchArgs,
+            preparedInstanceId,
+            errorReason,
+            success);
+
+    LOGINFO(
+        "[REPLACEMENT_DEBUG] Replacement preparation returned: "
+        "appId=%s expectedInstanceId=%s "
+        "returnedInstanceId=%s status=%d "
+        "success=%d error=%s newPath=%s",
+        appId.c_str(),
+        suspendedAppInstanceId.c_str(),
+        preparedInstanceId.c_str(),
+        status,
+        success,
+        errorReason.empty()
+            ? "<empty>"
+            : errorReason.c_str(),
+        runtimeConfigObject.unpackedPath.c_str());
+
+    if ((Core::ERROR_NONE != status) ||
+        (false == success))
+    {
+        if (Core::ERROR_NONE == status)
+        {
+            status = Core::ERROR_GENERAL;
+        }
+
+        LOGERR(
+            "[REPLACEMENT_DEBUG] Failed to prepare replacement "
+            "context: appId=%s oldInstanceId=%s "
+            "requestedVersion=%s path=%s "
+            "status=%d success=%d error=%s",
+            appId.c_str(),
+            suspendedAppInstanceId.c_str(),
+            requestedVersion.c_str(),
+            runtimeConfigObject.unpackedPath.c_str(),
+            status,
+            success,
+            errorReason.empty()
+                ? "<empty>"
+                : errorReason.c_str());
+
+        const Core::hresult releaseStatus =
+            appManagerImplInstance->
+                releaseDeferredReplacementLock(appId);
+
+        if (Core::ERROR_NONE != releaseStatus)
+        {
+            LOGERR(
+                "Failed to release deferred replacement lock: "
+                "appId=%s status=%d",
+                appId.c_str(),
+                releaseStatus);
+        }
+
+        telemetry.reportTelemetryErrorData(
+            appId,
+            AppManagerImplementation::APP_ACTION_LAUNCH,
+            AppManagerImplementation::ERROR_INTERNAL);
+
+        return status;
+    }
+
+    /*
+     * The preparation call must return the existing suspended
+     * instance ID. A different ID means the normal SpawnApp path
+     * executed unexpectedly.
+     */
+    if (preparedInstanceId != suspendedAppInstanceId)
+    {
+        LOGERR(
+            "[REPLACEMENT_DEBUG] Unexpected instance after "
+            "replacement preparation: appId=%s "
+            "expectedInstanceId=%s returnedInstanceId=%s",
+            appId.c_str(),
+            suspendedAppInstanceId.c_str(),
+            preparedInstanceId.c_str());
+
+        const Core::hresult releaseStatus =
+            appManagerImplInstance->
+                releaseDeferredReplacementLock(appId);
+
+        if (Core::ERROR_NONE != releaseStatus)
+        {
+            LOGERR(
+                "Failed to release deferred replacement lock: "
+                "appId=%s status=%d",
+                appId.c_str(),
+                releaseStatus);
+        }
+
+        telemetry.reportTelemetryErrorData(
+            appId,
+            AppManagerImplementation::APP_ACTION_LAUNCH,
+            AppManagerImplementation::ERROR_INTERNAL);
+
+        return Core::ERROR_GENERAL;
+    }
+
+    /*
+     * Save the old instance ID and old version before updating
+     * AppInfo with the new package metadata.
+     *
+     * The old instance's UNLOADED handler uses these values to
+     * unlock the old version explicitly.
+     */
+    AppInfoManager::getInstance().update(
+        appId,
+       [&] (AppInfo& appInfo)
+        {
+            AppManagerTypes::PackageInfo packageInfo =
+                appInfo.getPackageInfo();
+
+            appInfo.setPendingUnloadInstanceId(
+                suspendedAppInstanceId);
+
+            appInfo.setPendingUnloadVersion(
+                oldVersion);
+
+            if (!requestedVersion.empty())
+            {
+                packageInfo.version =
+                    requestedVersion;
+
+                appInfo.setRequestedLaunchVersion(
+                    requestedVersion);
+            }
+
+            packageInfo.unpackedPath =
+                runtimeConfigObject.unpackedPath;
+
+            packageInfo.configMetadata =
+                runtimeConfigObject;
+
+            appInfo.setPackageInfo(
+                packageInfo);
+
+            appInfo.setTargetAppState(
+                Exchange::IAppManager::
+                    AppLifecycleState::APP_STATE_ACTIVE);
+
+            appInfo.setAppIntent(
+                intent);
+        });
+
+    LOGINFO(
+        "[REPLACEMENT_DEBUG] Replacement metadata stored: "
+        "appId=%s oldInstanceId=%s "
+        "oldVersion=%s requestedVersion=%s "
+        "newPath=%s",
+        appId.c_str(),
+        suspendedAppInstanceId.c_str(),
+        oldVersion.c_str(),
+        requestedVersion.c_str(),
+        runtimeConfigObject.unpackedPath.c_str());
+
+    appManagerImplInstance->updateCurrentAction(
+        appId,
+        AppManagerImplementation::APP_ACTION_CLOSE);
+
+    /*
+     * CloseApp captures the refreshed ApplicationLaunchParams,
+     * stores them in mPendingRespawns, and kills the old instance.
+     *
+     * The actual replacement SpawnApp happens only after the old
+     * instance reaches UNLOADED.
+     */
+    LOGINFO(
+        "[REPLACEMENT_DEBUG] Calling "
+        "CloseApp(KILL_AND_ACTIVATE): "
+        "appId=%s oldInstanceId=%s "
+        "requestedVersion=%s newPath=%s",
+        appId.c_str(),
+        suspendedAppInstanceId.c_str(),
+        requestedVersion.c_str(),
+        runtimeConfigObject.unpackedPath.c_str());
+
+    status =
+        mLifecycleManagerStateRemoteObject->CloseApp(
+            appId,
+            Exchange::ILifecycleManagerState::
+                AppCloseReason::KILL_AND_ACTIVATE);
+
+    LOGINFO(
+        "[REPLACEMENT_DEBUG] "
+        "CloseApp(KILL_AND_ACTIVATE) returned: "
+        "appId=%s oldInstanceId=%s "
+        "requestedVersion=%s status=%d",
+        appId.c_str(),
+        suspendedAppInstanceId.c_str(),
+        requestedVersion.c_str(),
+        status);
+
+    if (Core::ERROR_NONE != status)
+    {
+        LOGERR(
+            "Failed to restart suspended app with requested version: "
+            "appId=%s status=%d oldInstanceId=%s "
+            "requestedVersion=%s path=%s",
+            appId.c_str(),
+            status,
+            suspendedAppInstanceId.c_str(),
+            requestedVersion.c_str(),
+            runtimeConfigObject.unpackedPath.c_str());
+
+        telemetry.reportTelemetryErrorData(
+            appId,
+            AppManagerImplementation::APP_ACTION_LAUNCH,
+            AppManagerImplementation::ERROR_KILL_APP);
+
+        const Core::hresult releaseStatus =
+            appManagerImplInstance->
+                releaseDeferredReplacementLock(appId);
+
+        if (Core::ERROR_NONE != releaseStatus)
+        {
+            LOGERR(
+                "Failed to release deferred replacement lock "
+                "after CloseApp failure: "
+                "appId=%s status=%d",
+                appId.c_str(),
+                releaseStatus);
+        }
+
+        return status;
+    }
+
+    return Core::ERROR_NONE;
+}
 
 /*
  * @brief LaunchApp invokes this to call LifecycleManager API.
@@ -251,15 +763,32 @@ namespace WPEFramework
                     {
                         AppInfo appInfoSnap;
                         bool appInMap = AppInfoManager::getInstance().get(appId, appInfoSnap);
-                        const Exchange::IAppManager::AppLifecycleState currentState =
+			const Exchange::IAppManager::AppLifecycleState currentState =
                             appInMap ? appInfoSnap.getAppNewState()
                                      : Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED;
+                        const string runningVersion = appInfoSnap.getPackageInfo().version;
+                        const string requestedVersion = appInfoSnap.getRequestedLaunchVersion();
+                        const string runningUnpackedPath = appInfoSnap.getPackageInfo().unpackedPath;
+                        const bool hasRunningPath = (false == runningUnpackedPath.empty());
+                        const bool hasRequestedPath = (false == runtimeConfigObject.unpackedPath.empty());
+                        const bool versionKnown = ((false == runningVersion.empty()) && (false == requestedVersion.empty()));
+                        const bool versionChanged = (true == versionKnown)
+                            ? (0 != runningVersion.compare(requestedVersion))
+                            : ((hasRunningPath && hasRequestedPath && (0 != runningUnpackedPath.compare(runtimeConfigObject.unpackedPath))) ||
+                               (hasRunningPath != hasRequestedPath));
                         if ((true == loaded) &&
                             (Core::ERROR_NONE == status) &&
                             appInMap &&
                             ((Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED == currentState) ||
-                             (Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED == currentState)))
+                             (Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED == currentState)) && (false == versionChanged))
                         {
+			    LOGINFO("[LAUNCH_FLOW][IF] Resume suspended app | appId=%s appInstanceId=%s state=%d runningVersion=%s requestedVersion=%s versionChanged=%d",
+                            appId.c_str(),
+                            appInfoSnap.getAppInstanceId().c_str(),
+                            static_cast<int>(appInfoSnap.getAppNewState()),
+                            runningVersion.c_str(),
+                            requestedVersion.c_str(),
+                            versionChanged);
                             appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_RESUME);
                             state = Exchange::ILifecycleManager::LifecycleState::ACTIVE;
                             LOGINFO("launchApp appInstanceId %s currentState %d", appInfoSnap.getAppInstanceId().c_str(), static_cast<int>(currentState));
@@ -278,38 +807,75 @@ namespace WPEFramework
                                 LOGERR("SetTargetAppState Failed");
                             }
                         }
+
+                        else if ((true == loaded) &&
+                            (Core::ERROR_NONE == status) &&
+                            appInMap &&
+                            (Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED == appInfoSnap.getAppNewState()) &&
+                            versionChanged)
+                        {
+                            LOGINFO("Suspended app replacement for appId=%s runningVersion=%s requestedVersion=%s runningPath=%s requestedPath=%s",
+                                appId.c_str(), runningVersion.c_str(), requestedVersion.c_str(), runningUnpackedPath.c_str(), runtimeConfigObject.unpackedPath.c_str());
+                            status = restartSuspendedWithRequestedVersion(appId, intent, normalizedLaunchArgs,runtimeConfigObject,
+                                appInfoSnap.getAppInstanceId(), requestedVersion);
+                        }
                         else
                         {
-                            appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_LAUNCH);
-                            state = Exchange::ILifecycleManager::LifecycleState::ACTIVE;
+			   LOGINFO("[LAUNCH_FLOW][ELSE] Fresh launch | appId=%s state=%d loaded=%d appInMap=%d runningVersion=%s requestedVersion=%s versionChanged=%d",
+                           appId.c_str(),
+                           static_cast<int>(appInfoSnap.getAppNewState()),
+                           loaded,
+                           appInMap,
+                           runningVersion.c_str(),
+                           requestedVersion.c_str(),
+                           versionChanged);
+                           appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_LAUNCH);
                             string source = "";
                             appManagerImplInstance->handleOnAppLaunchRequest(appId, intent, source);
 
                             appendLaunchParametersEnv(normalizedLaunchArgs, runtimeConfigObject);
 
+                            state = Exchange::ILifecycleManager::LifecycleState::ACTIVE;
+
                             LOGINFO("spawnApp called ,state %u",state);
                             status = mLifecycleManagerRemoteObject->SpawnApp(appId, intent, state, runtimeConfigObject, normalizedLaunchArgs, appInstanceId, errorReason, success);
 
-                            if (Core::ERROR_NONE == status)
+                            if ((Core::ERROR_NONE == status) && (true == success))
                             {
                                 LOGINFO("Update App Info");
                                 const string capturedInstanceId = appInstanceId;
                                 const Exchange::IAppManager::AppLifecycleState targetState =
                                     Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
-                                AppInfoManager::getInstance().upsert(appId, [&](AppInfo& a) {
+                                    AppInfoManager::getInstance().upsert(appId, [&](AppInfo& a) {
                                     a.setAppInstanceId(capturedInstanceId);
                                     a.setAppIntent(intent);
                                     a.getPackageInfoMutable().type = AppManagerTypes::APPLICATION_TYPE_INTERACTIVE;
+                                    AppManagerTypes::PackageInfo packageInfo = a.getPackageInfo();
+                                    if (false == requestedVersion.empty())
+                                    {
+                                        packageInfo.version = requestedVersion;
+                                        a.setRequestedLaunchVersion(requestedVersion);
+                                    }
+                                    packageInfo.unpackedPath = runtimeConfigObject.unpackedPath;
+                                    packageInfo.configMetadata = runtimeConfigObject;
+                                    a.setPackageInfo(packageInfo);
                                     a.setTargetAppState(targetState);
                                 });
                             }
                             else
                             {
-                                LOGERR("spawnApp failed");
+                                LOGERR("spawnApp failed: appId=%s status=%d success=%d errorReason=%s",
+                                    appId.c_str(), status, success, errorReason.c_str());
                                 appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_LAUNCH, AppManagerImplementation::ERROR_SPAWN_APP);
+                                if (Core::ERROR_NONE == status)
+                                {
+                                    status = Core::ERROR_GENERAL;
+                                }
                             }
                         }
+
                     }
+
                     else
                     {
                         appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_LAUNCH, AppManagerImplementation::ERROR_INTERNAL);
@@ -606,6 +1172,10 @@ namespace WPEFramework
                     {
                         LOGERR("killApp failed, result: %d, success: %d, errorReason: %s", result, success, errorReason.c_str());
                         appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_KILL, AppManagerImplementation::ERROR_KILL_APP);
+                        if (Core::ERROR_NONE == result)
+                        {
+                            result = Core::ERROR_GENERAL;
+                        }
                     }
                 }
                 mAdminLock.Unlock();

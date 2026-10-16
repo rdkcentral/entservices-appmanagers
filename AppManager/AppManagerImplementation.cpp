@@ -183,11 +183,36 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                     else if (auto appRequestParam = std::static_pointer_cast<AppLaunchRequestParam>(request->mRequestParam))
                     {
                         string appId = appRequestParam->appId;
+                        bool loadedBeforeLock = true;
+                        if (nullptr != mLifecycleInterfaceConnector)
+                        {
+                            bool loadedState = false;
+                            mAdminLock.Lock();
+                            const Core::hresult loadedStatus = mLifecycleInterfaceConnector->isAppLoaded(appId, loadedState);
+                            mAdminLock.Unlock();
+                            if (Core::ERROR_NONE == loadedStatus)
+                            {
+                                loadedBeforeLock = loadedState;
+                            }
+                            else
+                            {
+                                LOGWARN("Unable to query pre-lock loaded state for appId=%s status=%d", appId.c_str(), loadedStatus);
+                            }
+                        }
                         // Capture timestamp before packageLock to include packageManager lock time
                         AppManagerTelemetryReporting& appManagerTelemetryReporting = AppManagerTelemetryReporting::getInstance();
                         time_t actualStartTime = appManagerTelemetryReporting.getCurrentTimestampMs();
                         PackageInfo packageData;
                         packageData.version = appRequestParam->packageVersion;
+                        if ((APP_ACTION_PRELOAD == action) && (true == loadedBeforeLock))
+                        {
+                            const PackageInfo cachedPackageData = AppInfoManager::getInstance().getPackageInfo(appId);
+                            if (false == cachedPackageData.version.empty())
+                            {
+                                packageData.version = cachedPackageData.version;
+                                LOGINFO("Using cached package version %s for preload of loaded appId %s", packageData.version.c_str(), appId.c_str());
+                            }
+                        }
                         Exchange::IPackageHandler::LockReason lockReason = Exchange::IPackageHandler::LockReason::LAUNCH;
 
                         Core::hresult status = packageLock(appId, packageData, lockReason);
@@ -224,6 +249,7 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                             {
                                 LOGINFO("Debugger launch requested for appId=%s", appId.c_str());
                             }
+                            AppInfoManager::getInstance().setRequestedLaunchVersion(appId, packageData.version);
 
                             if (action == APP_ACTION_LAUNCH)
                             {
@@ -283,6 +309,11 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                                 {
                                     LOGERR("preLoadApp failed reason %s status %d", errorReason.c_str(), status);
                                 }
+                            }
+			    if ((Core::ERROR_NONE != status) && (false == loadedBeforeLock))
+                            {
+                                const Core::hresult unlockStatus = packageUnLock(appId);
+                                LOGWARN("Released package lock after failed fresh launch/preload for appId=%s status=%d", appId.c_str(), unlockStatus);
                             }
                         }
                         else
@@ -524,6 +555,71 @@ void AppManagerImplementation::Dispatch(EventNames event, const JsonObject param
                 {
                     LOGERR("appInstanceId is empty for Unloaded app");
                 }
+
+		AppInfo appInfoSnapshot;
+
+        const bool appInfoFound =
+            AppInfoManager::getInstance().get(
+                appId,
+                appInfoSnapshot);
+
+        const string pendingInstanceId =
+            appInfoFound
+                ? appInfoSnapshot
+                    .getPendingUnloadInstanceId()
+                : "";
+
+        const string pendingVersion =
+            appInfoFound
+                ? appInfoSnapshot
+                    .getPendingUnloadVersion()
+                : "";
+
+        const bool respawnUnload =
+            appInfoFound &&
+            !pendingInstanceId.empty() &&
+            (pendingInstanceId == appInstanceId);
+
+        LOGINFO(
+            "[REPLACEMENT_DEBUG] Processing UNLOADED: "
+            "appId=%s instanceId=%s "
+            "currentVersion=%s currentPath=%s "
+            "pendingInstanceId=%s pendingVersion=%s "
+            "respawnUnload=%d",
+            appId.c_str(),
+            appInstanceId.c_str(),
+            appInfoFound
+                ? appInfoSnapshot
+                    .getPackageInfo().version.c_str()
+                : "",
+            appInfoFound
+                ? appInfoSnapshot
+                    .getPackageInfo().unpackedPath.c_str()
+                : "",
+            pendingInstanceId.c_str(),
+            pendingVersion.c_str(),
+            respawnUnload);
+
+        if (respawnUnload)
+        {
+            /*
+             * Do not unlock or remove AppInfo here.
+             * The pending respawn still needs this extracted path.
+             *
+             * Unlock is deferred until the new instance reaches
+             * INITIALIZING or ACTIVE.
+             */
+            LOGINFO(
+                "[REPLACEMENT_DEBUG] Deferring package unlock "
+                "for pending respawn: appId=%s "
+                "oldInstanceId=%s version=%s",
+                appId.c_str(),
+                appInstanceId.c_str(),
+                pendingVersion.c_str());
+
+            break;
+        }
+
 
                 mAdminLock.Lock();
                 Core::hresult unlockStatus = packageUnLock(appId);
@@ -1151,17 +1247,57 @@ Core::hresult AppManagerImplementation::packageLock(const string& appId, Package
     else if (Core::ERROR_NONE == status)
     {
         const PackageInfo cachedPackageData = AppInfoManager::getInstance().getPackageInfo(appId);
-        packageData = cachedPackageData;
 
         if (cachedPackageData.version.empty())
         {
             LOGERR("Skipping packageLock for loaded appId %s failed: cached packageData is empty", appId.c_str());
             status = Core::ERROR_GENERAL;
         }
-        else
+        else if ((true == packageData.version.empty()) || (0 == cachedPackageData.version.compare(packageData.version)))
         {
+            packageData = cachedPackageData;
             LOGINFO("Skipping packageLock for appId %s because app is already loaded", appId.c_str());
             status = Core::ERROR_NONE;
+        }
+        else if (Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED !=
+            AppInfoManager::getInstance().getAppNewState(appId))
+        {
+            packageData = cachedPackageData;
+            LOGINFO("Skipping packageLock for loaded non-suspended appId %s", appId.c_str());
+            status = Core::ERROR_NONE;
+        }
+        else
+        {
+            LOGINFO("Loaded appId %s requested with new package version %s while running %s; locking requested version",
+                appId.c_str(), packageData.version.c_str(), cachedPackageData.version.c_str());
+
+            if ((nullptr != mPackageManagerHandlerObject) && (false == packageData.version.empty()))
+            {
+                Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
+                status = mPackageManagerHandlerObject->Lock(appId, packageData.version, lockReason, packageData.lockId, packageData.unpackedPath, packageData.configMetadata, appMetadata);
+                if (nullptr != appMetadata)
+                {
+                    appMetadata->Release();
+                    appMetadata = nullptr;
+                }
+                if (Core::ERROR_NONE == status)
+                {
+                    LOGINFO("Locked requested package version for loaded appId %s; AppInfo update deferred until replacement launch", appId.c_str());
+                }
+                else
+                {
+                    LOGERR("Failed to lock requested package version %s for loaded appId %s", packageData.version.c_str(), appId.c_str());
+                    appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_LAUNCH, AppManagerImplementation::ERROR_PACKAGE_LOCK);
+                    packageData.version.clear();
+                }
+            }
+            else
+            {
+                LOGERR("PackageManager handler is %s", ((nullptr != mPackageManagerHandlerObject) ? "valid, but package version is empty" : "null"));
+                CurrentActionError errorCode = (packageData.version.empty() ? AppManagerImplementation::ERROR_PACKAGE_INVALID : AppManagerImplementation::ERROR_INTERNAL);
+                appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_LAUNCH, errorCode);
+                status = Core::ERROR_GENERAL;
+            }
         }
     }
     else
@@ -1206,6 +1342,33 @@ Core::hresult AppManagerImplementation::packageUnLock(const string& appId)
         }
         return status;
 }
+
+Core::hresult AppManagerImplementation::releaseDeferredReplacementLock(const string& appId)
+{
+    const std::string activeVersion = AppInfoManager::getInstance().getPackageInfoVersion(appId);
+    const std::string requestedVersion = AppInfoManager::getInstance().getRequestedLaunchVersion(appId);
+
+    if ((true == requestedVersion.empty()) || (0 == requestedVersion.compare(activeVersion)))
+    {
+        return Core::ERROR_NONE;
+    }
+
+    if (nullptr == mPackageManagerHandlerObject)
+    {
+        LOGERR("Cannot release deferred replacement lock: package handler null for appId=%s version=%s", appId.c_str(), requestedVersion.c_str());
+        AppManagerTelemetryReporting::getInstance().reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_LAUNCH, AppManagerImplementation::ERROR_PACKAGE_UNLOCK);
+        return Core::ERROR_GENERAL;
+    }
+
+    const Core::hresult status = mPackageManagerHandlerObject->Unlock(appId, requestedVersion);
+    if (Core::ERROR_NONE != status)
+    {
+        LOGERR("Failed to release deferred replacement lock for appId=%s version=%s status=%d", appId.c_str(), requestedVersion.c_str(), status);
+        AppManagerTelemetryReporting::getInstance().reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_LAUNCH, AppManagerImplementation::ERROR_PACKAGE_UNLOCK);
+    }
+    return status;
+}
+
 /*
  * @brief Launch App requested by client.
  * @Params[in]  : const string& appId , const string& intent, const string& launchArgs

@@ -500,6 +500,15 @@ protected:
             return Core::ERROR_NONE;
         });
     }
+
+    void SetupKillApp()
+    {
+        EXPECT_CALL(*mLifecycleManagerMock, KillApp(::testing::_, ::testing::_, ::testing::_))
+        .WillRepeatedly([&](const string& appInstanceId, string& errorReason, bool& success) {
+            success = true;
+            return Core::ERROR_NONE;
+        });
+    }
 };
 
 class NotificationHandler : public Exchange::IAppManager::INotification {
@@ -1319,7 +1328,8 @@ TEST_F(AppManagerTest, LaunchAppUsingComRpcFailureIsAppLoadedReturnError)
 
     LaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::ACTIVE);
     EXPECT_CALL(*mLifecycleManagerMock, IsAppLoaded(::testing::_, ::testing::_))
-    .WillOnce([&](const std::string &appId, bool &loaded) {
+    .Times(::testing::AtLeast(1))
+    .WillRepeatedly([&](const std::string &appId, bool &loaded) {
         loaded = false;
         return Core::ERROR_GENERAL;
     });
@@ -1328,6 +1338,7 @@ TEST_F(AppManagerTest, LaunchAppUsingComRpcFailureIsAppLoadedReturnError)
 
     signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
     EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+    mAppManagerImpl->Unregister(&notification);
 
     if(status == Core::ERROR_NONE)
     {
@@ -1497,7 +1508,8 @@ TEST_F(AppManagerTest, PreloadAppUsingComRpcFailureIsAppLoadedReturnError)
     LaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::PAUSED);
 
     EXPECT_CALL(*mLifecycleManagerMock, IsAppLoaded(::testing::_, ::testing::_))
-    .WillOnce([&](const std::string &appId, bool &loaded) {
+    .Times(::testing::AtLeast(1))
+    .WillRepeatedly([&](const std::string &appId, bool &loaded) {
         loaded = false;
         return Core::ERROR_GENERAL;
     });
@@ -1505,6 +1517,7 @@ TEST_F(AppManagerTest, PreloadAppUsingComRpcFailureIsAppLoadedReturnError)
 
     signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
     EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
+    mAppManagerImpl->Unregister(&notification);
 
     if(status == Core::ERROR_NONE)
     {
@@ -2077,11 +2090,12 @@ TEST_F(AppManagerTest, KillAppUsingComRpcSuccess)
     EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->LaunchApp(APPMANAGER_APP_ID, APPMANAGER_APP_INTENT, APPMANAGER_APP_LAUNCHARGS));
     signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLaunchRequest);
     EXPECT_TRUE(signalled & AppManager_onAppLaunchRequest);
+    mAppManagerImpl->Unregister(&notification);
     SetupUnloadApp();
+    SetupKillApp();
 
     EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->KillApp(APPMANAGER_APP_ID));
 
-    mAppManagerImpl->Unregister(&notification);
     if(status == Core::ERROR_NONE)
     {
         releaseResources();
@@ -2114,7 +2128,7 @@ TEST_F(AppManagerTest, KillAppUsingJSONRpcSuccess)
     std::string request = "{\"appId\": \"" + std::string(APPMANAGER_APP_ID) + "\"}";
 
     EXPECT_CALL(*mServiceMock, Submit(::testing::_, ::testing::_))
-    .Times(1)
+    .Times(::testing::AtLeast(1))
     .WillOnce(::testing::Invoke(
         [&](const uint32_t, const Core::ProxyType<Core::JSON::IElement>& json) {
             std::string text;
@@ -2124,10 +2138,12 @@ TEST_F(AppManagerTest, KillAppUsingJSONRpcSuccess)
             onAppLaunchRequest.SetEvent();
             return Core::ERROR_NONE;
         }
-    ));
+    ))
+    .WillRepeatedly(::testing::Return(Core::ERROR_NONE));
 
     EVENT_SUBSCRIBE(0, _T("onAppLaunchRequest"), _T("org.rdk.AppManager"), message);
     LaunchAppPreRequisite(Exchange::ILifecycleManager::LifecycleState::ACTIVE);
+    SetupKillApp();
     EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("launchApp"), requestLaunch, mJsonRpcResponse));
     EXPECT_EQ(Core::ERROR_NONE, onAppLaunchRequest.Lock());
     EVENT_UNSUBSCRIBE(0, _T("onAppLaunchRequest"), _T("org.rdk.AppManager"), message);

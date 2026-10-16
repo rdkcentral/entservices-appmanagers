@@ -103,6 +103,7 @@ public:
     timespec                                     getLastActiveStateChangeTime(const std::string& appId) const;
     uint32_t                                     getLastActiveIndex(const std::string& appId) const;
     std::string                                  getAppIntent(const std::string& appId)       const;
+    std::string                                  getRequestedLaunchVersion(const std::string& appId) const;
     AppManagerTypes::CurrentAction               getCurrentAction(const std::string& appId)   const;
     std::string                                  getPackageInfoVersion(const std::string& appId) const;
     AppManagerTypes::ApplicationType             getPackageInfoType(const std::string& appId)    const;
@@ -119,6 +120,7 @@ public:
     void setLastActiveStateChangeTime(const std::string& appId, const timespec& ts);
     void setLastActiveIndex(const std::string& appId, uint32_t index);
     void setAppIntent(const std::string& appId,       const std::string& intent);
+    void setRequestedLaunchVersion(const std::string& appId, const std::string& version);
     void setCurrentAction(const std::string& appId,   AppManagerTypes::CurrentAction action);
     void setPackageInfoVersion(const std::string& appId,      const std::string& version);
     void setPackageInfoLockId(const std::string& appId,       uint32_t lockId);

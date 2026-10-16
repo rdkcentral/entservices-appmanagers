@@ -56,6 +56,9 @@ public:
     const timespec& getLastActiveStateChangeTime() const;
     uint32_t        getLastActiveIndex()            const;
     const std::string& getAppIntent()               const;
+    const std::string& getRequestedLaunchVersion()  const;
+    const std::string& getPendingUnloadInstanceId() const;
+    const std::string& getPendingUnloadVersion()    const;
 
     AppManagerTypes::CurrentAction getCurrentAction() const;
 
@@ -75,6 +78,9 @@ public:
     void setLastActiveStateChangeTime(const timespec& ts);
     void setLastActiveIndex(uint32_t index);
     void setAppIntent(const std::string& intent);
+    void setRequestedLaunchVersion(const std::string& version);
+    void setPendingUnloadInstanceId(const std::string& id);
+    void setPendingUnloadVersion(const std::string& version);
 
     void setCurrentAction(AppManagerTypes::CurrentAction action);
 
@@ -91,6 +97,9 @@ private:
     timespec   mLastActiveStateChangeTime;
     uint32_t   mLastActiveIndex;
     std::string mAppIntent;
+    std::string mRequestedLaunchVersion;
+    std::string mPendingUnloadInstanceId;
+    std::string mPendingUnloadVersion;
     AppManagerTypes::CurrentAction mCurrentAction;
     time_t mCurrentActionTime;
 };

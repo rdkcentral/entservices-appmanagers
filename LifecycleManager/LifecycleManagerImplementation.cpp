@@ -291,7 +291,7 @@ namespace WPEFramework
             return status;
         }
         
-        Core::hresult LifecycleManagerImplementation::SpawnApp(const string& appId, const string& launchIntent, const LifecycleState targetLifecycleState, const WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject, const string& launchArgs, string& appInstanceId, string& errorReason, bool& success)
+       /* Core::hresult LifecycleManagerImplementation::SpawnApp(const string& appId, const string& launchIntent, const LifecycleState targetLifecycleState, const WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject, const string& launchArgs, string& appInstanceId, string& errorReason, bool& success)
         {
 	    // Launches an app.  This will be an asynchronous call.
             // Notifies appropriate API Gateway when an app is about to be loaded
@@ -358,7 +358,368 @@ namespace WPEFramework
             }
             mAdminLock.Unlock();
             return status;
+        }*/
+
+	Core::hresult LifecycleManagerImplementation::SpawnApp(
+    const string& appId,
+    const string& launchIntent,
+    const LifecycleState targetLifecycleState,
+    const WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject,
+    const string& launchArgs,
+    string& appInstanceId,
+    string& errorReason,
+    bool& success)
+{
+    /*
+     * Launches an application asynchronously.
+     *
+     * For suspended package replacement, the first SpawnApp() call only
+     * updates the existing ApplicationContext with the new package
+     * configuration. CloseApp(KILL_AND_ACTIVATE) then performs the actual
+     * kill and deferred respawn.
+     */
+    Core::hresult status = Core::ERROR_NONE;
+    bool firstLaunch = false;
+
+    const time_t requestTime =
+        LifecycleManagerTelemetryReporting::getInstance()
+            .getCurrentTimestampMs();
+
+    auto context = getContext("", appId);
+
+    mAdminLock.Lock();
+
+    if (nullptr == context)
+    {
+        /*
+         * Normal first-launch or deferred-respawn path.
+         *
+         * After the old instance reaches UNLOADED, its context is removed.
+         * Therefore, handlePendingRespawn() reaches this branch and creates
+         * a new context with the prepared replacement configuration.
+         */
+        context =
+            std::make_shared<ApplicationContext>(appId);
+
+        if (nullptr == context)
+        {
+            LOGERR(
+                "SpawnApp failed: unable to create context "
+                "for appId=%s",
+                appId.c_str());
+
+            mAdminLock.Unlock();
+
+            return Core::ERROR_GENERAL;
         }
+
+        context->setApplicationLaunchParams(
+            appId,
+            launchIntent,
+            launchArgs,
+            targetLifecycleState,
+            runtimeConfigObject);
+
+        mLoadedApplications.push_back(context);
+
+        firstLaunch = true;
+
+        LOGINFO(
+            "[REPLACEMENT_DEBUG] Created new application context: "
+            "appId=%s targetState=%d path=%s",
+            appId.c_str(),
+            static_cast<int>(targetLifecycleState),
+            runtimeConfigObject.unpackedPath.c_str());
+    }
+    else if (context->mPendingStateTransition)
+    {
+        /*
+         * Do not modify the context or start another transition while
+         * an earlier lifecycle operation is still pending.
+         */
+        LOGERR(
+            "SpawnApp failed: lifecycle transition is pending "
+            "appId=%s instanceId=%s",
+            appId.c_str(),
+            context->getAppInstanceId().c_str());
+
+        mAdminLock.Unlock();
+
+        return Core::ERROR_GENERAL;
+    }
+    else
+    {
+        ApplicationLaunchParams& currentLaunchParams =
+            context->getApplicationLaunchParams();
+
+        const bool isSuspended =
+            (Exchange::ILifecycleManager::
+                 LifecycleState::SUSPENDED ==
+             context->getCurrentLifecycleState());
+
+        const bool activeRequested =
+            (Exchange::ILifecycleManager::
+                 LifecycleState::ACTIVE ==
+             targetLifecycleState);
+
+        const bool validNewPath =
+            !runtimeConfigObject.unpackedPath.empty();
+
+        const bool packagePathChanged =
+            validNewPath &&
+            (currentLaunchParams
+                 .mRuntimeConfigObject
+                 .unpackedPath !=
+             runtimeConfigObject.unpackedPath);
+
+        /*
+         * Special package-version replacement preparation.
+         *
+         * Execute only when:
+         * 1. The app already has a context.
+         * 2. The current app is SUSPENDED.
+         * 3. ACTIVE is requested.
+         * 4. The incoming package path is valid.
+         * 5. The incoming package path differs from the stored path.
+         *
+         * This branch does not launch a container and does not generate
+         * a new app instance ID. It only refreshes the existing context.
+         *
+         * The caller must immediately invoke:
+         *
+         * CloseApp(appId, KILL_AND_ACTIVATE)
+         *
+         * CloseApp() then captures these updated parameters, kills the
+         * old instance, and performs the real SpawnApp() only after the
+         * old instance reaches UNLOADED.
+         */
+        const bool replacementPreparation =
+            isSuspended &&
+            activeRequested &&
+            packagePathChanged;
+
+        if (replacementPreparation)
+        {
+            const string oldPath =
+                currentLaunchParams
+                    .mRuntimeConfigObject
+                    .unpackedPath;
+
+            const string oldInstanceId =
+                context->getAppInstanceId();
+
+            LOGINFO(
+                "[REPLACEMENT_DEBUG] Preparing suspended replacement: "
+                "appId=%s instanceId=%s oldPath=%s newPath=%s "
+                "launchArgsSize=%zu intentSize=%zu",
+                appId.c_str(),
+                oldInstanceId.c_str(),
+                oldPath.c_str(),
+                runtimeConfigObject.unpackedPath.c_str(),
+                launchArgs.size(),
+                launchIntent.size());
+
+            /*
+             * Update all cached launch parameters consistently:
+             * app ID, intent, launch arguments, target state and the
+             * replacement RuntimeConfig.
+             */
+            context->setApplicationLaunchParams(
+                appId,
+                launchIntent,
+                launchArgs,
+                targetLifecycleState,
+                runtimeConfigObject);
+
+            /*
+             * Return the existing suspended instance ID.
+             * This proves that no replacement instance was created yet.
+             */
+            appInstanceId =
+                oldInstanceId;
+
+            success = true;
+            errorReason.clear();
+
+            mAdminLock.Unlock();
+
+            LOGINFO(
+                "[REPLACEMENT_DEBUG] Suspended context updated: "
+                "appId=%s instanceId=%s oldPath=%s newPath=%s; "
+                "no container started, waiting for "
+                "CloseApp(KILL_AND_ACTIVATE)",
+                appId.c_str(),
+                appInstanceId.c_str(),
+                oldPath.c_str(),
+                runtimeConfigObject.unpackedPath.c_str());
+
+            return Core::ERROR_NONE;
+        }
+
+        /*
+         * Preserve the existing intent-only behavior.
+         *
+         * If the app is already in the requested state and only the
+         * navigation intent changed, avoid an unnecessary state
+         * transition and notify subscribers about the new intent.
+         */
+        const bool intentOnlyUpdate =
+            (context->getCurrentLifecycleState() ==
+             targetLifecycleState) &&
+            !launchIntent.empty() &&
+            (context->getMostRecentIntent() !=
+             launchIntent);
+
+        if (intentOnlyUpdate)
+        {
+            LOGINFO(
+                "SpawnApp: appId=%s already in target state=%d "
+                "with different intent, dispatching intent-only event",
+                appId.c_str(),
+                static_cast<int>(targetLifecycleState));
+
+            context->setMostRecentIntent(
+                launchIntent);
+
+            appInstanceId =
+                context->getAppInstanceId();
+
+            success = true;
+            errorReason.clear();
+
+            /*
+             * Capture event fields before releasing the lock.
+             */
+            const string contextAppId =
+                context->getAppId();
+
+            const string contextInstanceId =
+                context->getAppInstanceId();
+
+            const uint32_t currentState =
+                static_cast<uint32_t>(
+                    context->getCurrentLifecycleState());
+
+            mAdminLock.Unlock();
+
+            JsonObject eventData;
+
+            eventData["appId"] =
+                contextAppId;
+
+            eventData["appInstanceId"] =
+                contextInstanceId;
+
+            eventData["oldLifecycleState"] =
+                currentState;
+
+            eventData["newLifecycleState"] =
+                currentState;
+
+            eventData["navigationIntent"] =
+                launchIntent;
+
+            eventData["errorReason"] = "";
+
+            dispatchEvent(
+                LifecycleManagerImplementation::EventNames::
+                    LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED,
+                eventData);
+
+            return Core::ERROR_NONE;
+        }
+    }
+
+    /*
+     * Existing normal launch/resume flow.
+     *
+     * This executes for:
+     * - First launch
+     * - Actual deferred respawn after UNLOADED
+     * - Same-version resume
+     * - Other valid lifecycle transitions
+     */
+    context->setRequestTime(
+        requestTime);
+
+    context->setRequestType(
+        REQUEST_TYPE_LAUNCH);
+
+    context->setTargetLifecycleState(
+        targetLifecycleState);
+
+    context->setMostRecentIntent(
+        launchIntent);
+
+    context->resetPendingStates();
+
+    LOGINFO(
+        "[REPLACEMENT_DEBUG] Calling RequestHandler launch: "
+        "appId=%s firstLaunch=%d currentState=%d "
+        "targetState=%d path=%s",
+        appId.c_str(),
+        firstLaunch,
+        static_cast<int>(
+            context->getCurrentLifecycleState()),
+        static_cast<int>(
+            targetLifecycleState),
+        context->getApplicationLaunchParams()
+            .mRuntimeConfigObject
+            .unpackedPath.c_str());
+
+    success =
+        RequestHandler::getInstance()->launch(
+            context.get(),
+            launchIntent,
+            targetLifecycleState,
+            errorReason);
+
+    if (!success)
+    {
+        status = Core::ERROR_GENERAL;
+
+        LOGERR(
+            "SpawnApp failed: RequestHandler launch failed "
+            "appId=%s targetState=%d path=%s error=%s",
+            appId.c_str(),
+            static_cast<int>(targetLifecycleState),
+            context->getApplicationLaunchParams()
+                .mRuntimeConfigObject
+                .unpackedPath.c_str(),
+            errorReason.c_str());
+    }
+    else
+    {
+        if (firstLaunch)
+        {
+            /*
+             * Preserve the existing behavior. Wait until the newly
+             * created instance reaches LOADING and receives its ID.
+             */
+            sem_wait(
+                &context->mReachedLoadingStateSemaphore);
+        }
+
+        appInstanceId =
+            context->getAppInstanceId();
+
+        LOGINFO(
+            "[REPLACEMENT_DEBUG] RequestHandler launch accepted: "
+            "appId=%s instanceId=%s firstLaunch=%d "
+            "targetState=%d path=%s",
+            appId.c_str(),
+            appInstanceId.c_str(),
+            firstLaunch,
+            static_cast<int>(targetLifecycleState),
+            context->getApplicationLaunchParams()
+                .mRuntimeConfigObject
+                .unpackedPath.c_str());
+    }
+
+    mAdminLock.Unlock();
+
+    return status;
+}
         
         Core::hresult LifecycleManagerImplementation::SetTargetAppState(const string& appInstanceId, const LifecycleState targetLifecycleState, const string& launchIntent)
         {
@@ -604,7 +965,7 @@ namespace WPEFramework
 	    return status;
 	}
 
-	Core::hresult LifecycleManagerImplementation::CloseApp(const string& appId, const Exchange::ILifecycleManagerState::AppCloseReason closeReason)
+/*	Core::hresult LifecycleManagerImplementation::CloseApp(const string& appId, const Exchange::ILifecycleManagerState::AppCloseReason closeReason)
         {
             Core::hresult status = Core::ERROR_NONE;
             auto context = getContext("", appId);
@@ -655,7 +1016,196 @@ namespace WPEFramework
             mAdminLock.Unlock();
 
 	    return status;
-	}
+	}*/
+
+	Core::hresult LifecycleManagerImplementation::CloseApp(
+    const string& appId,
+    const Exchange::ILifecycleManagerState::AppCloseReason closeReason)
+{
+    Core::hresult status = Core::ERROR_NONE;
+
+    auto context = getContext("", appId);
+
+    if (nullptr == context)
+    {
+        LOGERR(
+            "CloseApp failed: context not found for appId=%s",
+            appId.c_str());
+
+        return Core::ERROR_GENERAL;
+    }
+
+    const string appInstanceId =
+        context->getAppInstanceId();
+
+    if (appInstanceId.empty())
+    {
+        LOGERR(
+            "CloseApp failed: instanceId is empty for appId=%s",
+            appId.c_str());
+
+        return Core::ERROR_GENERAL;
+    }
+
+    const bool shouldRespawn =
+        ((closeReason == KILL_AND_RUN) ||
+         (closeReason == KILL_AND_ACTIVATE));
+
+    LOGINFO(
+        "[REPLACEMENT_DEBUG] CloseApp entered: "
+        "appId=%s instanceId=%s closeReason=%d "
+        "shouldRespawn=%d",
+        appId.c_str(),
+        appInstanceId.c_str(),
+        static_cast<int>(closeReason),
+        shouldRespawn);
+
+    /*
+     * Register the respawn request before starting the asynchronous kill.
+     * The UNLOADED event can otherwise arrive before this map is updated.
+     */
+    if (shouldRespawn)
+    {
+        PendingRespawnRequest pendingRespawn;
+
+        pendingRespawn.mLaunchParams =
+            context->getApplicationLaunchParams();
+
+        pendingRespawn.mLaunchParams.mTargetState =
+            (closeReason == KILL_AND_ACTIVATE)
+                ? Exchange::ILifecycleManager::
+                    LifecycleState::ACTIVE
+                : Exchange::ILifecycleManager::
+                    LifecycleState::PAUSED;
+
+        /*
+         * Keep this only if the existing runtime contract requires
+         * the intent to be cleared during respawn.
+         */
+        pendingRespawn.mLaunchParams.mLaunchIntent = "";
+
+        LOGINFO(
+            "[REPLACEMENT_DEBUG] Registering pending respawn: "
+            "appId=%s oldInstanceId=%s targetState=%d "
+            "path=%s launchArgsSize=%zu envCount=%zu",
+            appId.c_str(),
+            appInstanceId.c_str(),
+            static_cast<int>(
+                pendingRespawn.mLaunchParams.mTargetState),
+            pendingRespawn.mLaunchParams
+                .mRuntimeConfigObject.unpackedPath.c_str(),
+            pendingRespawn.mLaunchParams.mLaunchArgs.size(),
+            pendingRespawn.mLaunchParams
+                .mRuntimeConfigObject.envVariables.size());
+
+        mAdminLock.Lock();
+        mPendingRespawns[appInstanceId] =
+            pendingRespawn;
+        const size_t pendingCount =
+            mPendingRespawns.size();
+        mAdminLock.Unlock();
+
+        LOGINFO(
+            "[REPLACEMENT_DEBUG] Pending respawn registered "
+            "before KillApp: appId=%s oldInstanceId=%s "
+            "pendingCount=%zu",
+            appId.c_str(),
+            appInstanceId.c_str(),
+            pendingCount);
+    }
+    else
+    {
+        /*
+         * USER_EXIT and ERROR must not retain an earlier pending
+         * respawn request.
+         */
+        mAdminLock.Lock();
+        const size_t erased =
+            mPendingRespawns.erase(appInstanceId);
+        mAdminLock.Unlock();
+
+        LOGINFO(
+            "[REPLACEMENT_DEBUG] Non-respawn close: "
+            "appId=%s instanceId=%s closeReason=%d "
+            "stalePendingErased=%zu",
+            appId.c_str(),
+            appInstanceId.c_str(),
+            static_cast<int>(closeReason),
+            erased);
+    }
+
+    bool success = false;
+    string errorReason("");
+
+    LOGINFO(
+        "[REPLACEMENT_DEBUG] Calling KillApp: "
+        "appId=%s instanceId=%s",
+        appId.c_str(),
+        appInstanceId.c_str());
+
+    status = KillApp(
+        appInstanceId,
+        errorReason,
+        success);
+
+    LOGINFO(
+        "[REPLACEMENT_DEBUG] KillApp returned: "
+        "appId=%s instanceId=%s status=%d "
+        "success=%d error=%s",
+        appId.c_str(),
+        appInstanceId.c_str(),
+        status,
+        success,
+        errorReason.empty()
+            ? "<empty>"
+            : errorReason.c_str());
+
+    if ((Core::ERROR_NONE != status) ||
+        (false == success))
+    {
+        /*
+         * Remove the pending request because no successful termination
+         * and corresponding UNLOADED event can be expected.
+         */
+        mAdminLock.Lock();
+        const size_t erased =
+            mPendingRespawns.erase(appInstanceId);
+        const size_t pendingCount =
+            mPendingRespawns.size();
+        mAdminLock.Unlock();
+
+        if (Core::ERROR_NONE == status)
+        {
+            status = Core::ERROR_GENERAL;
+        }
+
+        LOGERR(
+            "[REPLACEMENT_DEBUG] CloseApp failed: "
+            "appId=%s instanceId=%s status=%d "
+            "success=%d error=%s pendingErased=%zu "
+            "pendingCount=%zu",
+            appId.c_str(),
+            appInstanceId.c_str(),
+            status,
+            success,
+            errorReason.empty()
+                ? "<empty>"
+                : errorReason.c_str(),
+            erased,
+            pendingCount);
+
+        return status;
+    }
+
+    LOGINFO(
+        "[REPLACEMENT_DEBUG] Kill initiated successfully: "
+        "appId=%s oldInstanceId=%s shouldRespawn=%d",
+        appId.c_str(),
+        appInstanceId.c_str(),
+        shouldRespawn);
+
+    return Core::ERROR_NONE;
+}
 
         uint32_t LifecycleManagerImplementation::Configure(PluginHost::IShell* service)
         {
