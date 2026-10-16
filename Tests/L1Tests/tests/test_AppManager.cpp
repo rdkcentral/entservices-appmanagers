@@ -2366,11 +2366,8 @@ TEST_F(AppManagerTest, ClearAppDataUsingComRpcSuccess)
 
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
-    EXPECT_CALL(*mStorageManagerMock, Clear(::testing::_, ::testing::_))
-        .WillOnce([&](const string& appId, const string& errorReason) {
-            return Core::ERROR_NONE; // Simulating successful clear of app data
-        });
-    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->ClearAppData(APPMANAGER_APP_ID));
+    EXPECT_CALL(*mStorageManagerMock, Clear(::testing::_, ::testing::_)).Times(0);
+    EXPECT_EQ(Core::ERROR_UNAVAILABLE, mAppManagerImpl->ClearAppData(APPMANAGER_APP_ID));
 
     if(status == Core::ERROR_NONE)
     {
@@ -2391,11 +2388,8 @@ TEST_F(AppManagerTest, ClearAllAppDataUsingComRpcSuccess)
 
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
-    EXPECT_CALL(*mStorageManagerMock, ClearAll(::testing::_, ::testing::_))
-    .WillOnce([&](const string& exemptionAppIds, const string& errorReason) {
-        return Core::ERROR_NONE; // Simulating successful clear of app data
-    });
-    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->ClearAllAppData());
+    EXPECT_CALL(*mStorageManagerMock, ClearAll(::testing::_, ::testing::_)).Times(0);
+    EXPECT_EQ(Core::ERROR_UNAVAILABLE, mAppManagerImpl->ClearAllAppData());
 
     if(status == Core::ERROR_NONE)
     {
@@ -2465,14 +2459,10 @@ TEST_F(AppManagerTest, GetAppPropertyUsingComRpcSuccess)
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
 
-    EXPECT_CALL(*mStore2Mock, GetValue(Exchange::IStore2::ScopeType::DEVICE, APPMANAGER_APP_ID, key, ::testing::_, ::testing::_))
-    .WillOnce([&](const Exchange::IStore2::ScopeType scope, const string& ns, const string& key, string& value, uint32_t& ttl) {
-        value = PERSISTENT_STORE_VALUE;
-        return Core::ERROR_NONE;
-    });
+    EXPECT_CALL(*mStore2Mock, GetValue(Exchange::IStore2::ScopeType::DEVICE, APPMANAGER_APP_ID, key, ::testing::_, ::testing::_)).Times(0);
 
-    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->GetAppProperty(APPMANAGER_APP_ID, key, value));
-    EXPECT_STREQ(value.c_str(), PERSISTENT_STORE_VALUE);
+    EXPECT_EQ(Core::ERROR_UNAVAILABLE, mAppManagerImpl->GetAppProperty(APPMANAGER_APP_ID, key, value));
+    EXPECT_TRUE(value.empty());
 
     if(status == Core::ERROR_NONE)
     {
@@ -2497,13 +2487,8 @@ TEST_F(AppManagerTest, GetAppPropertyUsingJSONRpcSuccess)
 
     std::string request = "{\"appId\": \"" + std::string(APPMANAGER_APP_ID) + "\", \"key\": \"" + key + "\"}";
 
-    EXPECT_CALL(*mStore2Mock, GetValue(Exchange::IStore2::ScopeType::DEVICE, APPMANAGER_APP_ID, key, ::testing::_, ::testing::_))
-    .WillOnce([&](const Exchange::IStore2::ScopeType scope, const string& ns, const string& key, string& value, uint32_t& ttl) {
-        value = PERSISTENT_STORE_VALUE;
-        return Core::ERROR_NONE;
-    });
-    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("getAppProperty"), request, mJsonRpcResponse));
-    EXPECT_STREQ(mJsonRpcResponse.c_str(), (std::string("\"") + PERSISTENT_STORE_VALUE + "\"").c_str());
+    EXPECT_CALL(*mStore2Mock, GetValue(Exchange::IStore2::ScopeType::DEVICE, APPMANAGER_APP_ID, key, ::testing::_, ::testing::_)).Times(0);
+    EXPECT_EQ(Core::ERROR_UNAVAILABLE, mJsonRpcHandler.Invoke(connection, _T("getAppProperty"), request, mJsonRpcResponse));
 
     if(status == Core::ERROR_NONE)
     {
@@ -2569,11 +2554,8 @@ TEST_F(AppManagerTest, GetAppPropertyUsingComRpcFailureGetAppPropertyReturnError
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
 
-    EXPECT_CALL(*mStore2Mock, GetValue(Exchange::IStore2::ScopeType::DEVICE, APPMANAGER_APP_ID, key, ::testing::_, ::testing::_))
-    .WillOnce([&](const Exchange::IStore2::ScopeType scope, const string& ns, const string& key, string& value, uint32_t& ttl) {
-        return Core::ERROR_GENERAL;
-    });
-    EXPECT_EQ(Core::ERROR_GENERAL, mAppManagerImpl->GetAppProperty(APPMANAGER_APP_ID, key, value));
+    EXPECT_CALL(*mStore2Mock, GetValue(Exchange::IStore2::ScopeType::DEVICE, APPMANAGER_APP_ID, key, ::testing::_, ::testing::_)).Times(0);
+    EXPECT_EQ(Core::ERROR_UNAVAILABLE, mAppManagerImpl->GetAppProperty(APPMANAGER_APP_ID, key, value));
     if(status == Core::ERROR_NONE)
     {
         releaseResources();
@@ -2595,7 +2577,7 @@ TEST_F(AppManagerTest, GetAppPropertyUsingComRpcFailureLifecycleManagerRemoteObj
 
     createAppManagerImpl();
 
-    EXPECT_EQ(Core::ERROR_GENERAL, mAppManagerImpl->GetAppProperty(APPMANAGER_APP_ID, key, value));
+    EXPECT_EQ(Core::ERROR_UNAVAILABLE, mAppManagerImpl->GetAppProperty(APPMANAGER_APP_ID, key, value));
     releaseAppManagerImpl();
 }
 
@@ -2615,12 +2597,9 @@ TEST_F(AppManagerTest, SetAppPropertyUsingComRpcSuccess)
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
 
-    EXPECT_CALL(*mStore2Mock, SetValue(Exchange::IStore2::ScopeType::DEVICE, APPMANAGER_APP_ID, key, value, 0))
-    .WillOnce([&](const Exchange::IStore2::ScopeType scope, const string& ns, const string& key, const string& value, const uint32_t ttl) {
-        return Core::ERROR_NONE;
-    });
+    EXPECT_CALL(*mStore2Mock, SetValue(Exchange::IStore2::ScopeType::DEVICE, APPMANAGER_APP_ID, key, value, 0)).Times(0);
 
-    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->SetAppProperty(APPMANAGER_APP_ID, key, value));
+    EXPECT_EQ(Core::ERROR_UNAVAILABLE, mAppManagerImpl->SetAppProperty(APPMANAGER_APP_ID, key, value));
     if(status == Core::ERROR_NONE)
     {
         releaseResources();
@@ -2644,11 +2623,8 @@ TEST_F(AppManagerTest, SetAppPropertyUsingJSONRpcSuccess)
 
     std::string request = "{\"appId\": \"" + std::string(APPMANAGER_APP_ID) + "\", \"key\": \"" + key + "\", \"value\": \"" + value + "\"}";
 
-    EXPECT_CALL(*mStore2Mock, SetValue(Exchange::IStore2::ScopeType::DEVICE, APPMANAGER_APP_ID, key, value, 0))
-    .WillOnce([&](const Exchange::IStore2::ScopeType scope, const string& ns, const string& key, const string& value, const uint32_t ttl) {
-        return Core::ERROR_NONE;
-    });
-    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("setAppProperty"), request, mJsonRpcResponse));
+    EXPECT_CALL(*mStore2Mock, SetValue(Exchange::IStore2::ScopeType::DEVICE, APPMANAGER_APP_ID, key, value, 0)).Times(0);
+    EXPECT_EQ(Core::ERROR_UNAVAILABLE, mJsonRpcHandler.Invoke(connection, _T("setAppProperty"), request, mJsonRpcResponse));
     if(status == Core::ERROR_NONE)
     {
         releaseResources();
@@ -2762,11 +2738,8 @@ TEST_F(AppManagerTest, SetAppPropertyUsingComRpcFailureSetValueReturnError)
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
 
-    EXPECT_CALL(*mStore2Mock, SetValue(Exchange::IStore2::ScopeType::DEVICE, APPMANAGER_APP_ID, key, value, 0))
-    .WillOnce([&](const Exchange::IStore2::ScopeType scope, const string& ns, const string& key, const string& value, const uint32_t ttl) {
-        return Core::ERROR_GENERAL;
-    });
-    EXPECT_EQ(Core::ERROR_GENERAL, mAppManagerImpl->SetAppProperty(APPMANAGER_APP_ID, key, value));
+    EXPECT_CALL(*mStore2Mock, SetValue(Exchange::IStore2::ScopeType::DEVICE, APPMANAGER_APP_ID, key, value, 0)).Times(0);
+    EXPECT_EQ(Core::ERROR_UNAVAILABLE, mAppManagerImpl->SetAppProperty(APPMANAGER_APP_ID, key, value));
 
     if(status == Core::ERROR_NONE)
     {
@@ -3408,13 +3381,9 @@ TEST_F(AppManagerTest, ClearAppDataUsingComRpcFailureStorageManagerReturnError)
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
 
-    EXPECT_CALL(*mStorageManagerMock, Clear(::testing::_, ::testing::_))
-        .WillOnce([&](const string& appId, string& errorReason) {
-            errorReason = "Storage error";
-            return Core::ERROR_GENERAL;
-        });
+    EXPECT_CALL(*mStorageManagerMock, Clear(::testing::_, ::testing::_)).Times(0);
 
-    EXPECT_EQ(Core::ERROR_GENERAL, mAppManagerImpl->ClearAppData(APPMANAGER_APP_ID));
+    EXPECT_EQ(Core::ERROR_UNAVAILABLE, mAppManagerImpl->ClearAppData(APPMANAGER_APP_ID));
 
     if (status == Core::ERROR_NONE)
     {
@@ -3433,7 +3402,7 @@ TEST_F(AppManagerTest, ClearAppDataUsingComRpcFailureStorageManagerObjectIsNull)
 {
     createAppManagerImpl();
 
-    EXPECT_EQ(Core::ERROR_GENERAL, mAppManagerImpl->ClearAppData(APPMANAGER_APP_ID));
+    EXPECT_EQ(Core::ERROR_UNAVAILABLE, mAppManagerImpl->ClearAppData(APPMANAGER_APP_ID));
 
     releaseAppManagerImpl();
 }
@@ -3452,13 +3421,9 @@ TEST_F(AppManagerTest, ClearAllAppDataUsingComRpcFailureClearAllReturnError)
     status = createResources();
     EXPECT_EQ(Core::ERROR_NONE, status);
 
-    EXPECT_CALL(*mStorageManagerMock, ClearAll(::testing::_, ::testing::_))
-        .WillOnce([&](const string& exemptionAppIds, string& errorReason) {
-            errorReason = "Storage error";
-            return Core::ERROR_GENERAL;
-        });
+    EXPECT_CALL(*mStorageManagerMock, ClearAll(::testing::_, ::testing::_)).Times(0);
 
-    EXPECT_EQ(Core::ERROR_GENERAL, mAppManagerImpl->ClearAllAppData());
+    EXPECT_EQ(Core::ERROR_UNAVAILABLE, mAppManagerImpl->ClearAllAppData());
 
     if (status == Core::ERROR_NONE)
     {
@@ -3477,7 +3442,7 @@ TEST_F(AppManagerTest, ClearAllAppDataUsingComRpcFailureStorageManagerObjectIsNu
 {
     createAppManagerImpl();
 
-    EXPECT_EQ(Core::ERROR_GENERAL, mAppManagerImpl->ClearAllAppData());
+    EXPECT_EQ(Core::ERROR_UNAVAILABLE, mAppManagerImpl->ClearAllAppData());
 
     releaseAppManagerImpl();
 }

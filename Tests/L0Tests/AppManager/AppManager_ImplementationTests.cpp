@@ -291,6 +291,8 @@ uint32_t Test_AM_GetAppPropertyAndSetAppPropertyInvalidInputs()
     L0Test::ExpectEqU32(fixture.tr, fixture.impl->GetAppProperty(std::string("app"), std::string(), value), WPEFramework::Core::ERROR_GENERAL, "GetAppProperty() rejects empty key");
     L0Test::ExpectEqU32(fixture.tr, fixture.impl->SetAppProperty(std::string(), std::string("key"), std::string("value")), WPEFramework::Core::ERROR_GENERAL, "SetAppProperty() rejects empty app id");
     L0Test::ExpectEqU32(fixture.tr, fixture.impl->SetAppProperty(std::string("app"), std::string(), std::string("value")), WPEFramework::Core::ERROR_GENERAL, "SetAppProperty() rejects empty key");
+    L0Test::ExpectEqU32(fixture.tr, fixture.impl->GetAppProperty(std::string("app"), std::string("key"), value), WPEFramework::Core::ERROR_UNAVAILABLE, "GetAppProperty() rejects access without caller authorization");
+    L0Test::ExpectEqU32(fixture.tr, fixture.impl->SetAppProperty(std::string("app"), std::string("key"), std::string("value")), WPEFramework::Core::ERROR_UNAVAILABLE, "SetAppProperty() rejects access without caller authorization");
 
     return fixture.tr.failures;
 }
@@ -303,8 +305,9 @@ uint32_t Test_AM_ClearAppDataAndClearAllAppDataWithoutDependencies()
     impl->Configure(&service);
 
     L0Test::ExpectEqU32(tr, impl->ClearAppData(std::string()), WPEFramework::Core::ERROR_GENERAL, "ClearAppData() rejects empty app id");
+    L0Test::ExpectEqU32(tr, impl->ClearAppData(std::string("app")), WPEFramework::Core::ERROR_UNAVAILABLE, "ClearAppData() rejects access without caller authorization");
     // Note: ClearAllAppData now requires proper configuration
-    L0Test::ExpectEqU32(tr, impl->ClearAllAppData(), WPEFramework::Core::ERROR_NONE, "ClearAllAppData() succeeds with storage manager");
+    L0Test::ExpectEqU32(tr, impl->ClearAllAppData(), WPEFramework::Core::ERROR_UNAVAILABLE, "ClearAllAppData() rejects access without caller authorization");
     
     impl->Release();
     return tr.failures;
@@ -459,15 +462,15 @@ uint32_t Test_AM_AppPropertyRoundTripWithStore()
 
     L0Test::ExpectEqU32(tr,
         impl->SetAppProperty("app.good", "sampleKey", "sampleValue"),
-        WPEFramework::Core::ERROR_NONE,
-        "SetAppProperty() persists values when store dependency exists");
+        WPEFramework::Core::ERROR_UNAVAILABLE,
+        "SetAppProperty() rejects access without caller authorization");
 
     std::string value;
     L0Test::ExpectEqU32(tr,
         impl->GetAppProperty("app.good", "sampleKey", value),
-        WPEFramework::Core::ERROR_NONE,
-        "GetAppProperty() succeeds for existing values");
-    L0Test::ExpectEqStr(tr, value, std::string("sampleValue"), "GetAppProperty() returns previously set value");
+        WPEFramework::Core::ERROR_UNAVAILABLE,
+        "GetAppProperty() rejects access without caller authorization");
+    L0Test::ExpectTrue(tr, value.empty(), "GetAppProperty() does not disclose a value when access is rejected");
 
     impl->Release();
     return tr.failures;
@@ -492,8 +495,8 @@ uint32_t Test_AM_ClearAppDataAndSystemApisWithDependencies()
     auto* impl = CreateImpl();
     L0Test::ExpectEqU32(tr, impl->Configure(&service), WPEFramework::Core::ERROR_NONE, "Configure() succeeds with fake storage manager");
 
-    L0Test::ExpectEqU32(tr, impl->ClearAppData("app.good"), WPEFramework::Core::ERROR_NONE, "ClearAppData() succeeds with storage manager");
-    L0Test::ExpectEqU32(tr, impl->ClearAllAppData(), WPEFramework::Core::ERROR_NONE, "ClearAllAppData() succeeds with storage manager");
+    L0Test::ExpectEqU32(tr, impl->ClearAppData("app.good"), WPEFramework::Core::ERROR_UNAVAILABLE, "ClearAppData() rejects access without caller authorization");
+    L0Test::ExpectEqU32(tr, impl->ClearAllAppData(), WPEFramework::Core::ERROR_UNAVAILABLE, "ClearAllAppData() rejects access without caller authorization");
 
     int32_t v = 0;
     L0Test::ExpectEqU32(tr, impl->StartSystemApp("sys.app"), WPEFramework::Core::ERROR_NONE, "StartSystemApp() is stable");
@@ -960,9 +963,8 @@ uint32_t Test_AM_ClearAppDataWithStorageManager()
     impl->Configure(&service);
 
     const auto result = impl->ClearAppData(std::string("testApp"));
-    L0Test::ExpectTrue(tr, result == WPEFramework::Core::ERROR_NONE || 
-                            result == WPEFramework::Core::ERROR_GENERAL,
-                       "ClearAppData() with storage manager remains stable");
+    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_UNAVAILABLE,
+                       "ClearAppData() rejects access without caller authorization");
 
     impl->Release();
     return tr.failures;
@@ -986,9 +988,8 @@ uint32_t Test_AM_ClearAllAppDataWithStorageManager()
     impl->Configure(&service);
 
     const auto result = impl->ClearAllAppData();
-    L0Test::ExpectTrue(tr, result == WPEFramework::Core::ERROR_NONE || 
-                            result == WPEFramework::Core::ERROR_GENERAL,
-                       "ClearAllAppData() with storage manager remains stable");
+    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_UNAVAILABLE,
+                       "ClearAllAppData() rejects access without caller authorization");
 
     impl->Release();
     return tr.failures;
@@ -1592,8 +1593,8 @@ uint32_t Test_AM_GetAppPropertyGetValueFailed()
     auto result = fixture.impl->GetAppProperty("com.test.app", "key.not.present", value);
     L0Test::ExpectEqU32(fixture.tr,
         result,
-        WPEFramework::Core::ERROR_GENERAL,
-        "GetAppProperty returns ERROR_GENERAL when GetValue fails for missing key");
+        WPEFramework::Core::ERROR_UNAVAILABLE,
+        "GetAppProperty rejects access without caller authorization");
     return fixture.tr.failures;
 }
 
@@ -2698,8 +2699,8 @@ uint32_t Test_AM_ClearAppDataNullStorage()
     impl->mStorageManagerRemoteObject = nullptr;
 
     const auto result = impl->ClearAppData(std::string("app.storage.null"));
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
-        "ClearAppData() returns ERROR_GENERAL when storageManager is null");
+    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_UNAVAILABLE,
+        "ClearAppData() rejects access without caller authorization");
 
     impl->mStorageManagerRemoteObject = savedStorage;
     impl->Release();
@@ -2723,8 +2724,8 @@ uint32_t Test_AM_ClearAppDataStorageError()
     impl->Configure(&service);
 
     const auto result = impl->ClearAppData(std::string("app.clear.error"));
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
-        "ClearAppData() returns ERROR_GENERAL when StorageManager::Clear() fails");
+    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_UNAVAILABLE,
+        "ClearAppData() rejects access without caller authorization");
 
     impl->Release();
     return tr.failures;
@@ -2741,8 +2742,8 @@ uint32_t Test_AM_ClearAllAppDataNullStorage()
     impl->mStorageManagerRemoteObject = nullptr;
 
     const auto result = impl->ClearAllAppData();
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
-        "ClearAllAppData() returns ERROR_GENERAL when storageManager is null");
+    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_UNAVAILABLE,
+        "ClearAllAppData() rejects access without caller authorization");
 
     impl->mStorageManagerRemoteObject = savedStorage;
     impl->Release();
@@ -2766,8 +2767,8 @@ uint32_t Test_AM_ClearAllAppDataStorageError()
     impl->Configure(&service);
 
     const auto result = impl->ClearAllAppData();
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
-        "ClearAllAppData() returns ERROR_GENERAL when StorageManager::ClearAll() fails");
+    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_UNAVAILABLE,
+        "ClearAllAppData() rejects access without caller authorization");
 
     impl->Release();
     return tr.failures;
