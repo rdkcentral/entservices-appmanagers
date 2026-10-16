@@ -527,7 +527,9 @@ jobs:
             if [ -f "$log" ]; then
               echo "==== $log: Failed test cases (if any) ===="
               grep -E '^\[  FAILED  \]' "$log" || echo "No explicit [ FAILED ] lines found"
-              grep -E 'GDB CRASH REPORT|Signal caught:' "$log" || true
+              if grep -q '========== GDB CRASH REPORT ==========' "$log"; then
+                sed -n '/========== GDB CRASH REPORT ==========/,$p' "$log"
+              fi
             else
               echo "$log not found"
             fi
@@ -614,7 +616,7 @@ jobs:
             filtered_coverage.info || true
 
       - name: Upload artifacts
-        if: ${{ !env.ACT }}
+        if: ${{ always() && !env.ACT }}
         uses: actions/upload-artifact@v4
         with:
           name: artifacts-L0-appmanagers

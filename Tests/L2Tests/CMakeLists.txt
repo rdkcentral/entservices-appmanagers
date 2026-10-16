@@ -63,7 +63,6 @@ target_include_directories(
     ../../helpers
     ../../../entservices-appmanagers/Tests/mocks
     ../../../entservices-appmanagers/Tests/mocks/thunder
-    ../../../entservices-appmanagers/Tests/mocks/devicesettings
     ../../../entservices-appmanagers/Tests/mocks/MockPlugin
     ../../../entservices-appmanagers/Tests/L2Tests/L2TestsPlugin
     ${CMAKE_INSTALL_PREFIX}/include
