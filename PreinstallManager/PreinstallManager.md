@@ -156,7 +156,7 @@ sequenceDiagram
 
     loop For each package
         PM->>PM: Parse package metadata
-        PM->>PKG: Install(packageId, version, fileLocator)
+        PM->>PKG: Install(packageId, fileLocator)
         PKG-->>PM: InstallResult
         alt Install Success
             PM->>PM: Mark as installed

@@ -1107,11 +1107,10 @@ Core::hresult AppManagerImplementation::packageLock(const string& appId, Package
         if ((status == Core::ERROR_NONE) && installed)
         {
                 LOGINFO("packageData call lock  %s", packageData.version.c_str());
-                /* Ensure package version is valid before proceeding with the Lock */
                 if ((nullptr != mPackageManagerHandlerObject) && !packageData.version.empty())
                 {
                     Exchange::IPackageHandler::ILockIterator *appMetadata = nullptr;
-                    status = mPackageManagerHandlerObject->Lock(appId, packageData.version, lockReason, packageData.lockId, packageData.unpackedPath, packageData.configMetadata, appMetadata);
+                    status = mPackageManagerHandlerObject->Lock(appId, lockReason, packageData.lockId, packageData.unpackedPath, packageData.configMetadata, appMetadata);
                     if (status == Core::ERROR_NONE)
                     {
                         LOGINFO("Fetching package entry updated for appId: %s version: %s lockId: %d unpackedPath: %s appMetadata: %s",
@@ -1180,12 +1179,11 @@ Core::hresult AppManagerImplementation::packageUnLock(const string& appId)
         Core::hresult status = Core::ERROR_GENERAL;
         AppManagerTelemetryReporting& appManagerTelemetryReporting =AppManagerTelemetryReporting::getInstance();
 
-        const std::string pkgVersion = AppInfoManager::getInstance().getPackageInfoVersion(appId);
-        if (!pkgVersion.empty() || AppInfoManager::getInstance().exists(appId))
+        if (AppInfoManager::getInstance().exists(appId))
         {
             if (nullptr != mPackageManagerHandlerObject)
             {
-                status = mPackageManagerHandlerObject->Unlock(appId, pkgVersion);
+                status = mPackageManagerHandlerObject->Unlock(appId);
 
                 if(Core::ERROR_NONE != status)
                 {
@@ -1201,7 +1199,7 @@ Core::hresult AppManagerImplementation::packageUnLock(const string& appId)
         }
         if (!AppInfoManager::getInstance().exists(appId))
         {
-            LOGERR("AppId not found in map to get the version");
+            LOGERR("AppId not found in map to unlock");
             appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_CLOSE, AppManagerImplementation::ERROR_INVALID_PARAMS);
         }
         return status;

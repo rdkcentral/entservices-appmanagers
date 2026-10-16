@@ -411,9 +411,9 @@ protected:
             return Core::ERROR_NONE;
         });
 
-        EXPECT_CALL(*mPackageManagerMock, Lock(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        EXPECT_CALL(*mPackageManagerMock, Lock(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
-        .WillRepeatedly([&](const string &packageId, const string &version, const Exchange::IPackageHandler::LockReason &lockReason, uint32_t &lockId /* @out */, string &unpackedPath /* @out */, Exchange::RuntimeConfig &configMetadata /* @out */, Exchange::IPackageHandler::ILockIterator*& appMetadata /* @out */) {
+        .WillRepeatedly([&](const string &packageId, const Exchange::IPackageHandler::LockReason &lockReason, uint32_t &lockId /* @out */, string &unpackedPath /* @out */, Exchange::RuntimeConfig &configMetadata /* @out */, Exchange::IPackageHandler::ILockIterator*& appMetadata /* @out */) {
             lockId = 1;
             unpackedPath = APPMANAGER_APP_UNPACKEDPATH;
             configMetadata.capabilities = "dial-app,wan-lan";
@@ -456,9 +456,9 @@ protected:
             return Core::ERROR_NONE;
         });
 
-        EXPECT_CALL(*mPackageManagerMock, Lock(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        EXPECT_CALL(*mPackageManagerMock, Lock(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
-        .WillRepeatedly([&](const string &packageId, const string &version, const Exchange::IPackageHandler::LockReason &lockReason, uint32_t &lockId /* @out */, string &unpackedPath /* @out */, Exchange::RuntimeConfig &configMetadata /* @out */, Exchange::IPackageHandler::ILockIterator*& appMetadata /* @out */) {
+        .WillRepeatedly([&](const string &packageId, const Exchange::IPackageHandler::LockReason &lockReason, uint32_t &lockId /* @out */, string &unpackedPath /* @out */, Exchange::RuntimeConfig &configMetadata /* @out */, Exchange::IPackageHandler::ILockIterator*& appMetadata /* @out */) {
             lockId = 1;
             unpackedPath = APPMANAGER_APP_UNPACKEDPATH;
             configMetadata.capabilities = "dial-app,wan-lan";
@@ -3870,8 +3870,8 @@ TEST_F(AppManagerTest, LaunchAppLockFailureLockReturnError)
             packages = mockIterator;
             return Core::ERROR_NONE;
         });
-    EXPECT_CALL(*mPackageManagerMock, Lock(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
-        .WillRepeatedly([&](const string& packageId, const string& version,
+    EXPECT_CALL(*mPackageManagerMock, Lock(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .WillRepeatedly([&](const string& packageId,
             const Exchange::IPackageHandler::LockReason& lockReason, uint32_t& lockId,
             string& unpackedPath, Exchange::RuntimeConfig& configMetadata,
             Exchange::IPackageHandler::ILockIterator*& appMetadata) {
@@ -4261,7 +4261,7 @@ TEST_F(AppManagerTest, PackageUnlockEntryFoundUnlockSuccess)
         a.getPackageInfoMutable().version = APPMANAGER_APP_VERSION;
     });
 
-    EXPECT_CALL(*mPackageManagerMock, Unlock(APPMANAGER_APP_ID, APPMANAGER_APP_VERSION))
+    EXPECT_CALL(*mPackageManagerMock, Unlock(APPMANAGER_APP_ID))
         .WillOnce([&](const string& packageId, const string& version) {
             return Core::ERROR_NONE;
         });
@@ -4309,7 +4309,7 @@ TEST_F(AppManagerTest, PackageUnlockEntryFoundUnlockFails)
         a.getPackageInfoMutable().version = APPMANAGER_APP_VERSION;
     });
 
-    EXPECT_CALL(*mPackageManagerMock, Unlock(APPMANAGER_APP_ID, APPMANAGER_APP_VERSION))
+    EXPECT_CALL(*mPackageManagerMock, Unlock(APPMANAGER_APP_ID))
         .WillOnce([&](const string& packageId, const string& version) {
             return Core::ERROR_GENERAL;
         });
@@ -4877,7 +4877,7 @@ TEST_F(AppManagerTest, AppManagerImplRemoveAppInfoByAppIdFound)
         a.getPackageInfoMutable().version = APPMANAGER_APP_VERSION;
     });
 
-    EXPECT_CALL(*mPackageManagerMock, Unlock(APPMANAGER_APP_ID, APPMANAGER_APP_VERSION))
+    EXPECT_CALL(*mPackageManagerMock, Unlock(APPMANAGER_APP_ID))
         .WillOnce([&](const string& packageId, const string& version) {
             return Core::ERROR_NONE;
         });
