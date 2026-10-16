@@ -626,11 +626,14 @@ namespace WPEFramework
                 LOGERR("Failed to get Ralf user info. This can lead to failure in launching the app. uid: %d, gid: %d", uid, gid);
             }
 #endif
+#ifdef RDK_APPMANAGERS_DEBUG
             std::ifstream inFile("/tmp/specchange");
             if (inFile.good())
             {
                 uid = 30490;
+                LOGINFO("Debug mode: overriding uid to 30490 from /tmp/specchange");
             }
+#endif
             config.mUserId = uid;
             config.mGroupId = gid;
 
