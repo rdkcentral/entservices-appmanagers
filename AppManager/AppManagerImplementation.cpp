@@ -556,6 +556,71 @@ void AppManagerImplementation::Dispatch(EventNames event, const JsonObject param
                     LOGERR("appInstanceId is empty for Unloaded app");
                 }
 
+		AppInfo appInfoSnapshot;
+
+        const bool appInfoFound =
+            AppInfoManager::getInstance().get(
+                appId,
+                appInfoSnapshot);
+
+        const string pendingInstanceId =
+            appInfoFound
+                ? appInfoSnapshot
+                    .getPendingUnloadInstanceId()
+                : "";
+
+        const string pendingVersion =
+            appInfoFound
+                ? appInfoSnapshot
+                    .getPendingUnloadVersion()
+                : "";
+
+        const bool respawnUnload =
+            appInfoFound &&
+            !pendingInstanceId.empty() &&
+            (pendingInstanceId == appInstanceId);
+
+        LOGINFO(
+            "[REPLACEMENT_DEBUG] Processing UNLOADED: "
+            "appId=%s instanceId=%s "
+            "currentVersion=%s currentPath=%s "
+            "pendingInstanceId=%s pendingVersion=%s "
+            "respawnUnload=%d",
+            appId.c_str(),
+            appInstanceId.c_str(),
+            appInfoFound
+                ? appInfoSnapshot
+                    .getPackageInfo().version.c_str()
+                : "",
+            appInfoFound
+                ? appInfoSnapshot
+                    .getPackageInfo().unpackedPath.c_str()
+                : "",
+            pendingInstanceId.c_str(),
+            pendingVersion.c_str(),
+            respawnUnload);
+
+        if (respawnUnload)
+        {
+            /*
+             * Do not unlock or remove AppInfo here.
+             * The pending respawn still needs this extracted path.
+             *
+             * Unlock is deferred until the new instance reaches
+             * INITIALIZING or ACTIVE.
+             */
+            LOGINFO(
+                "[REPLACEMENT_DEBUG] Deferring package unlock "
+                "for pending respawn: appId=%s "
+                "oldInstanceId=%s version=%s",
+                appId.c_str(),
+                appInstanceId.c_str(),
+                pendingVersion.c_str());
+
+            break;
+        }
+
+
                 mAdminLock.Lock();
                 Core::hresult unlockStatus = packageUnLock(appId);
                 LOGINFO("package unlock triggered while sending unloaded event for appId %s status %d", appId.c_str(), unlockStatus);
