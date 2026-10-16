@@ -94,6 +94,27 @@ uint32_t Test_PM_Component_HttpClient_InvalidUrlReturnsHttpError()
     return tr.failures;
 }
 
+uint32_t Test_PM_Component_HttpClient_UrlSchemePolicy()
+{
+    L0Test::TestResult tr;
+    HttpClient client;
+
+    L0Test::ExpectTrue(tr, HttpClient::isSupportedUrl("http://example.invalid/file"), "HTTP URL is supported");
+    L0Test::ExpectTrue(tr, HttpClient::isSupportedUrl("HTTPS://example.invalid/file"), "URL scheme comparison is case-insensitive");
+    L0Test::ExpectTrue(tr, !HttpClient::isSupportedUrl("file:///tmp/input"), "Local file URL is rejected");
+    L0Test::ExpectTrue(tr, !HttpClient::isSupportedUrl("gopher://example.invalid/input"), "Unsupported network URL is rejected");
+    L0Test::ExpectTrue(tr, !HttpClient::isSupportedUrl(" http://example.invalid/file"), "Leading whitespace is rejected");
+    L0Test::ExpectTrue(tr, !HttpClient::isSupportedUrl("https%3a//example.invalid/file"), "Encoded scheme separator is rejected");
+
+    const std::string out = "/tmp/pm_l0_unsupported_url.bin";
+    std::remove(out.c_str());
+    const auto status = client.downloadFile("file:///tmp/input", out, 0);
+    L0Test::ExpectEqU32(tr, static_cast<uint32_t>(status), static_cast<uint32_t>(HttpClient::Status::HttpError), "Unsupported URL is rejected");
+    L0Test::ExpectTrue(tr, access(out.c_str(), F_OK) != 0, "Unsupported URL is rejected before creating the destination");
+
+    return tr.failures;
+}
+
 uint32_t Test_PM_Component_HttpClient_InlineMethodsCoverage()
 {
     L0Test::TestResult tr;
