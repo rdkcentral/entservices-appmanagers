@@ -137,10 +137,12 @@ uint32_t Test_PM_Shell_InitializeSuccessAndQueryInterfaces()
     void* d = fx.plugin->QueryInterface(WPEFramework::Exchange::IPackageDownloader::ID);
     void* i = fx.plugin->QueryInterface(WPEFramework::Exchange::IPackageInstaller::ID);
     void* h = fx.plugin->QueryInterface(WPEFramework::Exchange::IPackageHandler::ID);
+    void* s = fx.plugin->QueryInterface(WPEFramework::Exchange::IAppPackagesStatus::ID);
 
     L0Test::ExpectTrue(tr, d != nullptr, "Plugin exposes IPackageDownloader via QueryInterface");
     L0Test::ExpectTrue(tr, i != nullptr, "Plugin exposes IPackageInstaller via QueryInterface");
     L0Test::ExpectTrue(tr, h != nullptr, "Plugin exposes IPackageHandler via QueryInterface");
+    L0Test::ExpectTrue(tr, nullptr != s, "Plugin exposes IAppPackagesStatus via QueryInterface");
 
     if (d != nullptr) {
         static_cast<WPEFramework::Exchange::IPackageDownloader*>(d)->Release();
@@ -150,6 +152,9 @@ uint32_t Test_PM_Shell_InitializeSuccessAndQueryInterfaces()
     }
     if (h != nullptr) {
         static_cast<WPEFramework::Exchange::IPackageHandler*>(h)->Release();
+    }
+    if (nullptr != s) {
+        static_cast<WPEFramework::Exchange::IAppPackagesStatus*>(s)->Release();
     }
 
     fx.plugin->Deinitialize(&fx.service);
