@@ -40,7 +40,7 @@ namespace Plugin {
 
     SERVICE_REGISTRATION(PackageManagerImplementation, 1, 0);
 
-    #define CHECK_CACHE() { if ((packageImpl.get() == nullptr) || (!cacheInitialized)) { \
+    #define CHECK_CACHE() { if ((!cacheInitialized) || (packageImpl.get() == nullptr)) { \
         LOGERR("Cache is not initialized!"); \
         return Core::ERROR_UNAVAILABLE; \
     }}
@@ -1235,12 +1235,6 @@ namespace Plugin {
             mState.insert( { key, state } );
         }
 
-        #if !defined(UNIT_TEST) && !defined(ENABLE_NATIVEBUILD)
-        if (subSystem != nullptr) {
-            subSystem->Set(PluginHost::ISubSystem::INSTALLATION, nullptr);
-        }
-	    #endif
-
         cacheInitialized = true;
          const std::string markerFile = PACKAGE_MANAGER_MARKER_FILE;
             std::ofstream file(markerFile);
@@ -1251,6 +1245,13 @@ namespace Plugin {
             } else {
                LOGERR("Failed to create marker file: %s", markerFile.c_str());
             }
+
+
+        #if !defined(UNIT_TEST) && !defined(ENABLE_NATIVEBUILD)
+            if (subSystem != nullptr) {
+                subSystem->Set(PluginHost::ISubSystem::INSTALLATION, nullptr);
+            }
+	    #endif
 
           const int packageCount = static_cast<int>(mState.size());
           recordAndPublishTelemetryData(TELEMETRY_MARKER_PACKAGE_CACHE_INIT_TIME,
@@ -1445,6 +1446,19 @@ namespace Plugin {
         return result;
     }
 
+    Core::hresult PackageManagerImplementation::GetRunningApplicationsUsingPackage(const string &packageId, string& applicationIds)
+    {
+        std::lock_guard<std::recursive_mutex> lock(mtxState);
+        CHECK_CACHE()
+        // libpackage already returns the ids serialized as a JSON array string.
+        const packagemanager::Result result = packageImpl->GetRunningApplicationsUsingPackage(packageId, applicationIds);
+        if (packagemanager::SUCCESS != result) {
+            LOGERR("Failed to get running applications for packageId '%s': %d", packageId.c_str(), static_cast<int>(result));
+            return Core::ERROR_GENERAL;
+        }
+        return Core::ERROR_NONE;
+    }
+
     void PackageManagerImplementation::NotifyDownloadStatus(const string& id, const string& locator, const DownloadReason reason)
     {
 
@@ -1522,9 +1536,22 @@ namespace Plugin {
 Core::hresult PackageManagerImplementation::GetConfigListForInstalledPackages(const string &filter, string &config /* @out @opaque */)
 {
     CHECK_CACHE()
-    (void)filter;
+    Core::hresult result = Core::ERROR_GENERAL;
+
     config.clear();
-    return Core::ERROR_NOT_SUPPORTED;
+
+    const packagemanager::Result pmResult = packageImpl->GetConfigListForInstalledPackages(filter, config);
+    if (pmResult == packagemanager::SUCCESS)
+    {
+        result = Core::ERROR_NONE;
+    }
+    else
+    {
+        config.clear();
+        LOGWARN("GetConfigListForInstalledPackages failed for filter '%s' (pmResult=%d)", filter.c_str(), static_cast<int>(pmResult));
+    }
+
+    return result;
 }
 } // namespace Plugin
 } // namespace WPEFramework

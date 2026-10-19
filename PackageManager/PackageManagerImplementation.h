@@ -39,6 +39,7 @@
 #include "UtilsLogging.h"
 #include "TelemetryMarkers.h"
 #include <interfaces/IAppPackageManager.h>
+#include <interfaces/IAppPackagesStatus.h>
 #include <interfaces/IAppStorageManager.h>
 
 #include "HttpClient.h"
@@ -57,6 +58,7 @@ class PackageManagerImplementation
     , public Exchange::IPackageHandler
     , public Exchange::IAppPackageManagerConfig
     , public Exchange::IPackageCacheInitializer
+    , public Exchange::IAppPackagesStatus
 {
     private:
         class State {
@@ -190,12 +192,16 @@ class PackageManagerImplementation
         Core::hresult GetConfigForInstalledPackage(const string &packageId, const string &version, string &config /* @out @opaque */) override;
         Core::hresult GetConfigListForInstalledPackages(const string &filter, string &config /* @out @opaque */) override;
 
+	// IAppPackagesStatus methods
+        Core::hresult GetRunningApplicationsUsingPackage(const string &packageId, string& applicationIds) override;
+
         BEGIN_INTERFACE_MAP(PackageManagerImplementation)
             INTERFACE_ENTRY(Exchange::IPackageDownloader)
             INTERFACE_ENTRY(Exchange::IPackageInstaller)
             INTERFACE_ENTRY(Exchange::IPackageHandler)
             INTERFACE_ENTRY(Exchange::IAppPackageManagerConfig)
             INTERFACE_ENTRY(Exchange::IPackageCacheInitializer)
+            INTERFACE_ENTRY(Exchange::IAppPackagesStatus)
         END_INTERFACE_MAP
 
     private:

@@ -472,7 +472,7 @@ Json::Value DobbySpecGenerator::createEnvVars(const ApplicationConfiguration& co
            env.append("WESTEROS_SINK_USE_ESSRMGR=1");
        }
    }	     
-
+#ifdef RUNTIMEMANAGER_ENABLE_DIALCONFIG
    const bool dialEnabled = runtimeConfig.dial || hasCapability(capabilities, "dial-app");
    if (dialEnabled)
    {
@@ -493,7 +493,7 @@ Json::Value DobbySpecGenerator::createEnvVars(const ApplicationConfiguration& co
        env.append(std::string("ADDITIONAL_DATA_URL=") + dataUrl);
        env.append(std::string("DIAL_USN=") + mAIConfiguration->getDialUsn());
    }
-
+#endif
    #ifdef ENABLE_RIALTO
    if (!config.mRialtoSocketPath.empty())
    {
@@ -510,13 +510,14 @@ Json::Value DobbySpecGenerator::createEnvVars(const ApplicationConfiguration& co
    }
 
    //TODO SUPPORT WATCHDOG
-
+#ifdef RDK_APPMANAGERS_DEBUG
    const bool webRuntime = hasCapability(capabilities, "runtime-html");
 
-   if (webRuntime)
+   if (runtimeConfig.enableDebugger && webRuntime)
    {
        env.append("WEBKIT_LEGACY_INSPECTOR_SERVER=0.0.0.0:22222");
    }
+#endif
 
    return env;
 }

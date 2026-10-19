@@ -58,6 +58,8 @@ extern uint32_t Test_AM_TelemetryReportingStability();
 extern uint32_t Test_AM_SingletonPointerSetAndCleared();
 extern uint32_t Test_AM_LifecycleConnectorLaunchNewApp();
 extern uint32_t Test_AM_LifecycleConnectorLaunchSuspendedApp();
+extern uint32_t Test_AM_LifecycleConnectorLaunchPausedApp();
+extern uint32_t Test_AM_LifecycleConnectorDialLaunchNormalizesArgsAndPreservesPayload();
 extern uint32_t Test_AM_LifecycleConnectorPreloadApp();
 extern uint32_t Test_AM_LifecycleConnectorTerminateApp();
 extern uint32_t Test_AM_LifecycleConnectorCloseApp();
@@ -221,6 +223,7 @@ int main()
     };
 
     const Case cases[] = {
+        { "AM_LifecycleConnectorDialLaunchNormalizesArgsAndPreservesPayload", Test_AM_LifecycleConnectorDialLaunchNormalizesArgsAndPreservesPayload },
         { "AM_InitializeSucceedsAndDeinitializeCleansUp", Test_AM_InitializeSucceedsAndDeinitializeCleansUp },
         { "AM_InformationReturnsEmptyString", Test_AM_InformationReturnsEmptyString },
         { "AM_RegisterAndUnregisterNotification", Test_AM_RegisterAndUnregisterNotification },
@@ -258,6 +261,7 @@ int main()
         // Temporarily disabled: next-in-sequence case at latest L0 abort point after telemetry case.
         // { "AM_LifecycleConnectorLaunchNewApp", Test_AM_LifecycleConnectorLaunchNewApp },
         { "AM_LifecycleConnectorLaunchSuspendedApp", Test_AM_LifecycleConnectorLaunchSuspendedApp },
+        { "AM_LifecycleConnectorLaunchPausedApp", Test_AM_LifecycleConnectorLaunchPausedApp },
         { "AM_LifecycleConnectorPreloadApp", Test_AM_LifecycleConnectorPreloadApp },
         { "AM_LifecycleConnectorTerminateApp", Test_AM_LifecycleConnectorTerminateApp },
         { "AM_LifecycleConnectorCloseApp", Test_AM_LifecycleConnectorCloseApp },

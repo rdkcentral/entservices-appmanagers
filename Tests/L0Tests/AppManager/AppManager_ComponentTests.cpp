@@ -414,6 +414,152 @@ uint32_t Test_AM_LifecycleConnectorLaunchSuspendedApp()
     return tr.failures;
 }
 
+uint32_t Test_AM_LifecycleConnectorLaunchPausedApp()
+{
+    L0Test::TestResult tr;
+
+    L0Test::MockLifecycleManager lifecycle;
+    L0Test::MockLifecycleManagerState lifecycleState;
+
+    L0Test::AppManagerServiceMock::Config cfg;
+    cfg.lifecycleManager = &lifecycle;
+    cfg.lifecycleManagerState = &lifecycleState;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = WPEFramework::Core::Service<WPEFramework::Plugin::AppManagerImplementation>::Create<WPEFramework::Plugin::AppManagerImplementation>();
+
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    WPEFramework::Plugin::AppInfo pausedApp;
+    pausedApp.setAppInstanceId("inst-paused");
+    pausedApp.setAppNewState(WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED);
+    WPEFramework::Plugin::AppInfoManager::getInstance().upsert("YouTube",
+        [&](WPEFramework::Plugin::AppInfo& appInfo) { appInfo = pausedApp; });
+
+    lifecycle.isAppLoadedHandler = [](const std::string&, bool& loaded) {
+        loaded = true;
+        return WPEFramework::Core::ERROR_NONE;
+    };
+
+    unsigned setTargetCalls = 0;
+    unsigned spawnCalls = 0;
+    lifecycle.setTargetAppStateHandler = [&](const std::string& appInstanceId,
+                                             const WPEFramework::Exchange::ILifecycleManager::LifecycleState state,
+                                             const std::string& intent) {
+        ++setTargetCalls;
+        L0Test::ExpectEqStr(tr, appInstanceId, "inst-paused", "paused app instance is resumed");
+        L0Test::ExpectEqU32(tr, state, WPEFramework::Exchange::ILifecycleManager::ACTIVE,
+            "paused app target state is ACTIVE");
+        L0Test::ExpectEqStr(tr, intent, "intent://dial-relaunch", "relaunch intent is forwarded");
+        return WPEFramework::Core::ERROR_NONE;
+    };
+    lifecycle.spawnAppHandler = [&](const std::string&, const std::string&,
+                                    WPEFramework::Exchange::ILifecycleManager::LifecycleState,
+                                    const std::string&, const std::string&,
+                                    std::string&, std::string&, bool&) {
+        ++spawnCalls;
+        return WPEFramework::Core::ERROR_NONE;
+    };
+
+    {
+        WPEFramework::Plugin::LifecycleInterfaceConnector connector(&service);
+        L0Test::ExpectEqU32(tr, connector.createLifecycleManagerRemoteObject(), WPEFramework::Core::ERROR_NONE,
+            "createLifecycleManagerRemoteObject() succeeds for paused-app test");
+
+        std::string runtimeConfigPayload = "{}";
+        const auto status = connector.launch("YouTube", "intent://dial-relaunch", "new-dial-args", runtimeConfigPayload);
+        L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_NONE,
+            "launch() succeeds for a paused app via SetTargetAppState");
+    }
+
+    L0Test::ExpectEqU32(tr, setTargetCalls, 1, "SetTargetAppState is called once");
+    L0Test::ExpectEqU32(tr, spawnCalls, 0, "SpawnApp is not called for a loaded paused app");
+
+    L0Test::AppManagerServiceMock fullService(CreateFullServiceConfig());
+    impl->Configure(&fullService);
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+uint32_t Test_AM_LifecycleConnectorDialLaunchNormalizesArgsAndPreservesPayload()
+{
+    L0Test::TestResult tr;
+
+    L0Test::MockLifecycleManager lifecycle;
+    L0Test::MockLifecycleManagerState lifecycleState;
+
+    L0Test::AppManagerServiceMock::Config cfg;
+    cfg.lifecycleManager = &lifecycle;
+    cfg.lifecycleManagerState = &lifecycleState;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = WPEFramework::Core::Service<WPEFramework::Plugin::AppManagerImplementation>::Create<WPEFramework::Plugin::AppManagerImplementation>();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+
+    lifecycle.isAppLoadedHandler = [](const std::string&, bool& loaded) {
+        loaded = false;
+        return WPEFramework::Core::ERROR_NONE;
+    };
+
+    unsigned spawnCalls = 0;
+    std::string forwardedLaunchArgs;
+    std::string forwardedRuntimeConfig;
+    lifecycle.spawnAppHandler = [&](const std::string&, const std::string&,
+                                    WPEFramework::Exchange::ILifecycleManager::LifecycleState,
+                                    const std::string& runtimeConfig, const std::string& launchArgs,
+                                    std::string& appInstanceId, std::string&, bool& success) {
+        ++spawnCalls;
+        forwardedLaunchArgs = launchArgs;
+        forwardedRuntimeConfig = runtimeConfig;
+        appInstanceId = "inst-dial";
+        success = true;
+        return WPEFramework::Core::ERROR_NONE;
+    };
+
+    {
+        WPEFramework::Plugin::LifecycleInterfaceConnector connector(&service);
+        L0Test::ExpectEqU32(tr, connector.createLifecycleManagerRemoteObject(), WPEFramework::Core::ERROR_NONE,
+            "createLifecycleManagerRemoteObject() succeeds for DIAL launch test");
+
+        std::string runtimeConfig = R"({"capabilities":"dial-app,wan-lan","envVariables":["BASE=1"],"command":"launcher","vendor":{"nested":{"preserved":true}}})";
+        const std::string encodedLaunchArgs = "%7B%22url%22%3A%22https%3A%2F%2Fexample.com%2Fvideo%22%7D";
+        const auto status = connector.launch("YouTube", "intent://dial-launch", encodedLaunchArgs, runtimeConfig);
+        L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_NONE,
+            "DIAL launch succeeds with percent-encoded launch arguments");
+    }
+
+    L0Test::ExpectEqU32(tr, spawnCalls, 1u, "DIAL launch calls SpawnApp once");
+    L0Test::ExpectEqStr(tr, forwardedLaunchArgs, std::string(R"({"url":"https://example.com/video"})"),
+        "DIAL launch forwards decoded JSON launch arguments");
+
+    JsonObject payload;
+    const bool parsed = payload.FromString(forwardedRuntimeConfig);
+    L0Test::ExpectTrue(tr, parsed, "DIAL launch forwards a valid opaque runtime configuration");
+    if (parsed) {
+        L0Test::ExpectEqStr(tr, payload["capabilities"].String(), std::string("dial-app,wan-lan"),
+            "DIAL capabilities survive launch-argument enrichment");
+        const JsonArray environment = payload["envVariables"].Array();
+        L0Test::ExpectEqU32(tr, environment.Length(), 2u,
+            "DIAL launch preserves package environment and appends launch parameters");
+        if (environment.Length() == 2u) {
+            L0Test::ExpectEqStr(tr, environment[0].String(), std::string("BASE=1"),
+                "Existing DIAL package environment is preserved");
+            L0Test::ExpectTrue(tr, environment[1].String().find("APPLICATION_LAUNCH_PARAMETERS=") == 0,
+                "Encoded DIAL launch parameters are appended");
+        }
+        const JsonObject vendor = payload["vendor"].Object();
+        const JsonObject nested = vendor["nested"].Object();
+        L0Test::ExpectTrue(tr, nested["preserved"].Boolean(),
+            "Unknown nested runtime configuration survives DIAL launch enrichment");
+    }
+
+    L0Test::AppManagerServiceMock fullService(CreateFullServiceConfig());
+    impl->Configure(&fullService);
+    impl->Release();
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
 uint32_t Test_AM_LifecycleConnectorPreloadApp()
 {
     L0Test::TestResult tr;
