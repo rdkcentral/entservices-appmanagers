@@ -30,6 +30,7 @@
 #include <cstdint>
 #include <fstream>
 #include <iostream>
+#include <iterator>
 #include <sstream>
 #include <string>
 #include <cstdio>
@@ -717,5 +718,76 @@ uint32_t Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_ThunderAddsThun
                        "applyPermissionsToOCIConfig() adds THUNDER_ACCESS to OCI process env");
 
     unsetenv(ralf::THUNDER_ACCESS_ENV_KEY);
+    return tr.failures;
+}
+
+uint32_t Test_RalfOCIConfigGenerator_AppliesRuntimeEnvironmentAndSecrets()uint32_t Test_RalfOCIConfigGenerator_AppliesRuntimeEnvironmentAndSecrets()uint32_t Test_RalfOCIConfigGenerator_AppliesRuntimeEnvironmentAndSecrets()
+{
+    L0Test::TestResult tr;
+
+    std::vector<ralf::RalfPkgInfoPair> packages;
+    ralf::RalfOCIConfigGenerator gen("/tmp/ralf_l0test_runtime_environment.json", packages);
+    Json::Value ociConfigRootNode(Json::objectValue);
+
+    const std::string envVariables =
+        "[\"APP_CONFIG_OVERRIDES_JSON=eyJ0ZXN0Ijp0cnVlfQ==\","
+        "\"EXTRA_VALUE=first=second\"]";
+    const bool status = gen.addRuntimeEnvironmentToOCIConfig(ociConfigRootNode, envVariables);
+
+    L0Test::ExpectTrue(tr, status, "runtime environment and secret metadata are applied");
+    L0Test::ExpectTrue(tr, HasEnvEntry_OCIGen(ociConfigRootNode,
+                                              "APP_CONFIG_OVERRIDES_JSON=eyJ0ZXN0Ijp0cnVlfQ=="),
+                       "RALF config overrides are added to process environment");
+    L0Test::ExpectTrue(tr, HasEnvEntry_OCIGen(ociConfigRootNode, "EXTRA_VALUE=first=second"),
+                       "environment values preserve equals signs");
+
+    Json::Value packageConfig(Json::objectValue);
+    packageConfig["runtimeSecrets"]["applicationSecret"] = "test-secret";
+    packageConfig["runtimeSecrets"]["credentialsManager"]["certificate"] = "test-certificate";
+    packageConfig["runtimeSecrets"]["credentialsManager"]["privateKey"] = "test-private-key";
+    const bool secretsApplied = gen.addPackageSecretsToOCIConfig(ociConfigRootNode, packageConfig);
+    L0Test::ExpectTrue(tr, secretsApplied, "package secrets are applied to OCI config");
+    L0Test::ExpectTrue(tr, HasEnvEntry_OCIGen(ociConfigRootNode, "APPLICATION_SECRET=test-secret"),
+                       "application secret is added to process environment");
+    L0Test::ExpectTrue(tr, !HasEnvEntry_OCIGen(ociConfigRootNode,
+                                               "RALF_CREDMGR_CERTIFICATE=test-certificate"),
+                       "credentials are not exposed as process environment variables");
+    L0Test::ExpectTrue(tr,
+                       ociConfigRootNode["rdkPlugins"]["credentialsmanager"]["data"]["certificate"] ==
+                           "test-certificate" &&
+                           ociConfigRootNode["rdkPlugins"]["credentialsmanager"]["data"]["privateKey"] ==
+                           "test-private-key",
+                       "credentials are routed to the credentials-manager plugin");
+
+    const std::string outputPath = "/tmp/ralf_l0test_runtime_environment.json";
+    struct stat outputStat {};
+    const bool saved = gen.saveOCIConfigToFile(ociConfigRootNode, 0, 0);
+    L0Test::ExpectTrue(tr, saved, "OCI config with package secrets is written successfully");
+    L0Test::ExpectTrue(tr, saved && (::stat(outputPath.c_str(), &outputStat) == 0) &&
+                           ((outputStat.st_mode & 0777) == 0600),
+                       "OCI config containing package secrets is restricted to its owner");
+    ::unlink(outputPath.c_str());
+#ifdef RDK_APPMANAGERS_DEBUG
+    std::ifstream debugSpecFile("/tmp/generatedRalfSpec");
+    const std::string debugSpec((std::istreambuf_iterator<char>(debugSpecFile)),
+                                std::istreambuf_iterator<char>());
+    L0Test::ExpectTrue(tr, !debugSpec.empty(),
+                       "debug OCI config dump is available when secrets are present");
+    L0Test::ExpectTrue(tr, debugSpec.find("test-secret") == std::string::npos &&
+                               debugSpec.find("test-certificate") == std::string::npos &&
+                               debugSpec.find("test-private-key") == std::string::npos,
+                       "debug OCI config dump redacts application secrets and credentials");
+    L0Test::ExpectTrue(tr, debugSpec.find("<redacted>") != std::string::npos,
+                       "debug OCI config dump indicates redacted secret fields");
+    ::unlink("/tmp/generatedRalfSpec");
+#endif
+
+    Json::Value incompleteConfig(Json::objectValue);
+    Json::Value incompleteSecrets(Json::objectValue);
+    incompleteSecrets["runtimeSecrets"]["credentialsManager"]["certificate"] = "test-certificate";
+    L0Test::ExpectTrue(tr,
+                       !gen.addPackageSecretsToOCIConfig(incompleteConfig, incompleteSecrets),
+                       "incomplete credentials metadata fails launch config generation");
+
     return tr.failures;
 }

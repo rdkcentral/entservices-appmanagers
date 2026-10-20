@@ -224,6 +224,7 @@ extern uint32_t Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_ValidFir
 extern uint32_t Test_RalfOCIConfigGenerator_ApplyConfigurationToOCIConfig_PermissionsOnlySkipsPermissionNetworkUpdates();
 extern uint32_t Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_FireboltEmptyEnvReturnsFalse();
 extern uint32_t Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_ThunderAddsThunderAccess();
+extern uint32_t Test_RalfOCIConfigGenerator_AppliesRuntimeEnvironmentAndSecrets();
 
 // ── Gateway/ContainerUtils tests ─────────────────────────────────────────────
 extern uint32_t Test_ContainerUtils_GetContainerIpAddress_UnknownContainerReturnsZero();
@@ -572,6 +573,7 @@ int main()
         { "RalfOCIConfigGenerator_ApplyConfigurationToOCIConfig_PermissionsOnlySkipsPermissionNetworkUpdates", Test_RalfOCIConfigGenerator_ApplyConfigurationToOCIConfig_PermissionsOnlySkipsPermissionNetworkUpdates },
         { "RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_FireboltEmptyEnvReturnsFalse", Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_FireboltEmptyEnvReturnsFalse },
         { "RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_ThunderAddsThunderAccess", Test_RalfOCIConfigGenerator_ApplyPermissionsToOCIConfig_ThunderAddsThunderAccess },
+        { "RalfOCIConfigGenerator_AppliesRuntimeEnvironmentAndSecrets", Test_RalfOCIConfigGenerator_AppliesRuntimeEnvironmentAndSecrets },
 
         // ── Gateway/ContainerUtils tests ─────────────────────────────────────
         { "ContainerUtils_GetContainerIpAddress_UnknownContainerReturnsZero",        Test_ContainerUtils_GetContainerIpAddress_UnknownContainerReturnsZero },

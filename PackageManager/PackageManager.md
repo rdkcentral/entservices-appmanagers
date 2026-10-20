@@ -39,26 +39,31 @@ the filename does not imply ZIP content. The provider detects the format from
 package bytes and returns its RALF package-root manifest in
 `RuntimeConfig.ralfPkgPath` when the package is locked.
 
-For a RALF lock, the Sky provider resolves dependency IDs across its RALF
-registry and the installed ZIP widget database. It checks the declared version
-constraint before locking each dependency. A RALF dependency uses libralf's
-verified mount/extraction path; a ZIP dependency uses the existing verified
-widget extraction cache and remains pinned until the last RALF lock is released.
-Both become ordered rootfs layers in the same runtime manifest. Since a ZIP
-widget has no RALF auxiliary configuration, the provider writes a neutral
-empty layer config; it does not invent an entry point or permissions for it.
-The application layer still supplies its signed RALF config. Cyclic and
-unresolvable dependencies fail the whole lock and release prior layers.
+RALF packages are registered in the same `PackageDatabase` as widgets after
+their signed metadata has been read. This makes installed identity, version,
+runtime discovery, metadata, digest, and DIAL membership use the shared package
+lookup. For a RALF lock, the provider resolves dependency IDs across that
+database and checks each declared version constraint before locking. A RALF
+dependency uses libralf's verified mount/extraction path; a ZIP dependency uses
+the existing verified widget extraction cache and remains pinned until the
+last RALF lock is released. Both become ordered rootfs layers in the same
+runtime manifest. ZIP dependencies receive a role/executable layer config
+derived from their verified widget metadata. RALF layers use their signed RDK
+auxiliary config, with missing package role, entry point, arguments, and
+permissions filled from signed RALF metadata. Cyclic and unresolvable
+dependencies fail the whole lock and release prior layers.
+App secrets and credentials-manager material are kept out of the generic
+`RuntimeConfig.envVariables` field; the package provider writes them into a
+restricted per-lock metadata file for RuntimeManager to consume.
 
 The shared persistent filename is a single active slot, not two independent
 installations. Both ZIP-to-RALF and RALF-to-ZIP upgrades verify and stage the
-new bytes before committing an atomic rename. Once committed, `PackageImpl`
-retires the old format's in-memory registration without deleting the shared
-directory or its settings and data. Installed-package lookups then use only
-the new format. A previously locked RALF image keeps its old mount; a locked
-ZIP app/runtime keeps its verified extraction pinned until final unlock.
-RALF locks also pin ZIP dependency layers independently of the active RALF
-mount registry. As in legacy appserviced, a verified replacement with the same
+new bytes before committing an atomic rename, then replace the shared database
+record without deleting the package directory or its settings and data.
+Installed-package lookups then use only the new format. A previously locked
+RALF image keeps its old mount; a locked ZIP app/runtime keeps its verified
+extraction pinned until final unlock. RALF locks also pin ZIP dependency
+layers independently of the active package record. As in legacy appserviced, a verified replacement with the same
 ID **and version** is also allowed without comparing old and new formats.
 Existing locks retain their original mounted or extracted content until unlock;
 later locks after release use the newly installed format. Update detection for
@@ -66,8 +71,10 @@ running apps compares version strings only: a same-version replacement does
 not itself trigger a restart, even if the package format or bytes changed.
 Widget-only launch still follows the original database and Dobby-spec path;
 this mixed-layer bridge does not convert a widget into a RALF application.
-The provider combines ZIP and RALF DIAL descriptors for both the `dial` and
-unfiltered installed-configuration views.
+The provider combines ZIP and RALF DIAL descriptors from `PackageDatabase`
+for both the `dial` and unfiltered installed-configuration views. RALF package
+MD5 values are calculated from the committed `package.wgt` artifact and flow
+through the existing `ListPackages` digest field.
 
 `PackageManagerImplementation` forwards that field without changing the
 existing lock/unlock API. An empty `ralfPkgPath` continues to identify the

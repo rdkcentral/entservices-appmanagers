@@ -130,6 +130,8 @@ namespace ralf
          * @return true if the environment variable was added successfully, false otherwise.
          */
         bool addFireboltEndPointToConfig(Json::Value &ociConfigRootNode, const std::string &envVar);
+        bool addRuntimeEnvironmentToOCIConfig(Json::Value &ociConfigRootNode, const std::string &envVariables);
+        bool addPackageSecretsToOCIConfig(Json::Value &ociConfigRootNode, const Json::Value &packageConfig);
 
         /**
          * Adds configuration overrides from the Ralf package config to the OCI config JSON.
