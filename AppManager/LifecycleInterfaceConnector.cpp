@@ -466,11 +466,6 @@ namespace WPEFramework
                            requestedVersion.c_str(),
                            versionChanged);
                             status = launchRequestedPackage(appId, intent, launchArgs, runtimeConfigObject);
-                            if ((Core::ERROR_NONE != status) && (false == loaded))
-                            {
-                                const Core::hresult unlockStatus = appManagerImplInstance->releaseLaunchFailureLock(appId);
-                                LOGWARN("Released package lock after failed fresh launch for appId=%s status=%d", appId.c_str(), unlockStatus);
-                            }
                         }
                     }
                     else
