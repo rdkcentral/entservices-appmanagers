@@ -23,6 +23,7 @@
 #ifdef APP_MANAGER_RESOURCE_MONITOR
 #include <sys/statvfs.h>
 #endif
+#include <json/json.h>
 #include "AppManagerImplementation.h"
 #include "AppManagerTelemetryReporting.h"
 #include "UtilsAppManagerTelemetry.h"
@@ -190,99 +191,140 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                         packageData.version = appRequestParam->packageVersion;
                         Exchange::IPackageHandler::LockReason lockReason = Exchange::IPackageHandler::LockReason::LAUNCH;
 
-                        Core::hresult status = packageLock(appId, packageData, lockReason);
+                        bool packageLockAcquired = false;
+                        Core::hresult status = packageLock(appId, packageData, lockReason, &packageLockAcquired);
                         if (status == Core::ERROR_NONE)
                         {
                             // Update timestamp after packageLock succeeds (app entry now exists in mAppInfo)
                             updateCurrentActionTime(appId, actualStartTime, action);
-                            WPEFramework::Exchange::RuntimeConfig runtimeConfig = packageData.configMetadata;
-                            runtimeConfig.unpackedPath = packageData.unpackedPath;
+                            std::string runtimeConfigPayload = packageData.configMetadata;
+                            std::string payloadError;
+                            Utils::RuntimeConfigPayload runtimeConfig;
+                            if (!runtimeConfig.Parse(runtimeConfigPayload, payloadError))
+                            {
+                                LOGERR("Invalid runtime configuration payload for appId=%s: %s", appId.c_str(), payloadError.c_str());
+                                appManagerTelemetryReporting.reportTelemetryErrorData(appId, action, AppManagerImplementation::ERROR_PACKAGE_INVALID);
+                                status = Core::ERROR_INVALID_PARAMETER;
+                            }
+                            else
+                            {
+                                runtimeConfig.SetString("unpackedPath", packageData.unpackedPath);
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
-                            runtimeConfig.userId = packageData.userId;
-                            runtimeConfig.groupId = packageData.groupId;
-#endif // RALF_PACKAGE_SUPPORT_ENABLED
-                            getCustomValues(runtimeConfig);
-                            string launchArgs = appRequestParam->launchArgs;
-                            JsonObject launchArgsObj;
-                            launchArgsObj.FromString(launchArgs);
-                            bool debugLaunchRequested = false;
-                            if (launchArgsObj.HasLabel("debugger"))
-                            {
-                                const JsonValue debuggerValue = launchArgsObj["debugger"];
-                                if (JsonValue::type::BOOLEAN == debuggerValue.Content())
+                                uint64_t userId = 0;
+                                uint64_t groupId = 0;
+                                bool userIdPresent = false;
+                                bool groupIdPresent = false;
+                                if (!runtimeConfig.GetUnsigned("userId", userId, userIdPresent, payloadError)
+                                    || !runtimeConfig.GetUnsigned("groupId", groupId, groupIdPresent, payloadError))
                                 {
-                                    debugLaunchRequested = debuggerValue.Boolean();
-                                }
-                                else if (JsonValue::type::STRING == debuggerValue.Content())
-                                {
-                                    const std::string debuggerToken = debuggerValue.String();
-                                    debugLaunchRequested = (!debuggerToken.empty() && (debuggerToken != "false") && (debuggerToken != "0"));
-                                }
-                            }
-                            runtimeConfig.enableDebugger = debugLaunchRequested;
-                            if (debugLaunchRequested)
-                            {
-                                LOGINFO("Debugger launch requested for appId=%s", appId.c_str());
-                            }
-
-                            if (action == APP_ACTION_LAUNCH)
-                            {
-                                mAdminLock.Lock();
-                                if (nullptr != mLifecycleInterfaceConnector)
-                                {
-                                    status = mLifecycleInterfaceConnector->launch(appId, appRequestParam->intent, launchArgs, runtimeConfig);
+                                    LOGERR("Invalid RALF runtime configuration for appId=%s: %s", appId.c_str(), payloadError.c_str());
+                                    status = Core::ERROR_INVALID_PARAMETER;
                                 }
                                 else
                                 {
-                                    LOGERR("mLifecycleInterfaceConnector is null, cannot launch app %s", appId.c_str());
-                                    status = Core::ERROR_GENERAL;
+                                    if (userIdPresent)
+                                        runtimeConfig.SetUnsigned("userId", userId);
+                                    if (groupIdPresent)
+                                        runtimeConfig.SetUnsigned("groupId", groupId);
                                 }
-                                mAdminLock.Unlock();
-                                LOGINFO("Application Launch from thread returns with status %d", status);
-
-                                if (status != Core::ERROR_NONE)
+#endif // RALF_PACKAGE_SUPPORT_ENABLED
+                                getCustomValues(runtimeConfig);
+                                string launchArgs = appRequestParam->launchArgs;
+                                JsonObject launchArgsObj;
+                                launchArgsObj.FromString(launchArgs);
+                                bool debugLaunchRequested = false;
+                                if (launchArgsObj.HasLabel("debugger"))
                                 {
-                                    LOGERR("launch failed status %d", status);
-                                }
-                            }
-                            else if (action == APP_ACTION_PRELOAD)
-                            {
-                                // Append any env vars from launchArgs["env"] into runtimeConfig.envVariables.
-                                {
-                                    if (launchArgsObj.HasLabel("env"))
+                                    const JsonValue debuggerValue = launchArgsObj["debugger"];
+                                    if (JsonValue::type::BOOLEAN == debuggerValue.Content())
                                     {
-                                        JsonArray envArray;
-                                        if (!runtimeConfig.envVariables.empty())
-                                            envArray.FromString(runtimeConfig.envVariables);
-                                        const JsonArray& extraEnv = launchArgsObj["env"].Array();
-                                        auto it = extraEnv.Elements();
-                                        while (it.Next())
-                                            envArray.Add(it.Current());
-                                        string envArrayStr;
-                                        envArray.ToString(envArrayStr);
-                                        runtimeConfig.envVariables = envArrayStr;
-                                        LOGINFO("PreloadApp: appended env vars from launchArgs for appId=%s", appId.c_str());
+                                        debugLaunchRequested = debuggerValue.Boolean();
+                                    }
+                                    else if (JsonValue::type::STRING == debuggerValue.Content())
+                                    {
+                                        const std::string debuggerToken = debuggerValue.String();
+                                        debugLaunchRequested = (!debuggerToken.empty() && (debuggerToken != "false") && (debuggerToken != "0"));
                                     }
                                 }
-                                string errorReason;
-                                mAdminLock.Lock();
-                                if (nullptr != mLifecycleInterfaceConnector)
+                                runtimeConfig.SetBoolean("enableDebugger", debugLaunchRequested);
+                                if (debugLaunchRequested)
                                 {
-                                    status = mLifecycleInterfaceConnector->preLoadApp(appId, appRequestParam->intent, launchArgs, runtimeConfig, errorReason);
+                                    LOGINFO("Debugger launch requested for appId=%s", appId.c_str());
                                 }
-                                else
+
+                                // Preserve legacy behavior by appending launchArgs["env"] only for preload requests.
+                                if ((APP_ACTION_PRELOAD == action) && (Core::ERROR_NONE == status) && launchArgsObj.HasLabel("env"))
                                 {
-                                    errorReason = "mLifecycleInterfaceConnector is null";
-                                    LOGERR("mLifecycleInterfaceConnector is null, cannot preload app %s", appId.c_str());
+                                    if (launchArgsObj["env"].Content() != JsonValue::type::ARRAY)
+                                    {
+                                        payloadError = "launchArgs.env must be an array of strings";
+                                        status = Core::ERROR_INVALID_PARAMETER;
+                                    }
+                                    else
+                                    {
+                                        const JsonArray& extraEnv = launchArgsObj["env"].Array();
+                                        auto it = extraEnv.Elements();
+                                        while (it.Next() && (status == Core::ERROR_NONE))
+                                        {
+                                            if (it.Current().Content() != JsonValue::type::STRING)
+                                            {
+                                                payloadError = "launchArgs.env must be an array of strings";
+                                                status = Core::ERROR_INVALID_PARAMETER;
+                                            }
+                                            else if (!runtimeConfig.AppendString("envVariables", it.Current().String(), payloadError))
+                                            {
+                                                LOGERR("Failed to append launch environment for appId=%s: %s", appId.c_str(), payloadError.c_str());
+                                                status = Core::ERROR_GENERAL;
+                                            }
+                                        }
+                                    }
+                                }
+                                if ((status == Core::ERROR_NONE) && !runtimeConfig.Serialize(runtimeConfigPayload, payloadError))
+                                {
+                                    LOGERR("Failed to serialize runtime configuration for appId=%s: %s", appId.c_str(), payloadError.c_str());
                                     status = Core::ERROR_GENERAL;
                                 }
-                                mAdminLock.Unlock();
-                                LOGINFO("Application preLoad from thread returns with status %d error %s", status, errorReason.c_str());
 
-                                if ((!errorReason.empty()) || (status != Core::ERROR_NONE))
+                                if (status == Core::ERROR_NONE)
                                 {
-                                    LOGERR("preLoadApp failed reason %s status %d", errorReason.c_str(), status);
+                                    mAdminLock.Lock();
+                                    if (nullptr == mLifecycleInterfaceConnector)
+                                    {
+                                        LOGERR("mLifecycleInterfaceConnector is null, cannot process app %s", appId.c_str());
+                                        status = Core::ERROR_GENERAL;
+                                    }
+                                    else if (action == APP_ACTION_LAUNCH)
+                                    {
+                                        status = mLifecycleInterfaceConnector->launch(appId, appRequestParam->intent, launchArgs, runtimeConfigPayload);
+                                        LOGINFO("Application Launch from thread returns with status %d", status);
+
+                                        if (status != Core::ERROR_NONE)
+                                        {
+                                            LOGERR("launch failed status %d", status);
+                                        }
+                                    }
+                                    else if (action == APP_ACTION_PRELOAD)
+                                    {
+                                        string errorReason;
+                                        status = mLifecycleInterfaceConnector->preLoadApp(appId, appRequestParam->intent, launchArgs, runtimeConfigPayload, errorReason);
+                                        LOGINFO("Application preLoad from thread returns with status %d error %s", status, errorReason.c_str());
+
+                                        if ((!errorReason.empty()) || (status != Core::ERROR_NONE))
+                                        {
+                                            LOGERR("preLoadApp failed reason %s status %d", errorReason.c_str(), status);
+                                        }
+                                    }
+                                    mAdminLock.Unlock();
                                 }
+                            }
+                            if ((Core::ERROR_NONE != status) && packageLockAcquired)
+                            {
+                                packageUnLock(appId);
+                                handleOnAppLifecycleStateChanged(appId, "",
+                                    Exchange::IAppManager::APP_STATE_UNKNOWN,
+                                    Exchange::IAppManager::APP_STATE_UNLOADED,
+                                    (Core::ERROR_INVALID_PARAMETER == status) ? Exchange::IAppManager::APP_ERROR_INVALID_PARAM : Exchange::IAppManager::APP_ERROR_UNKNOWN);
+                                removeAppInfoByAppId(appId);
                             }
                         }
                         else
@@ -956,11 +998,34 @@ uint32_t AppManagerImplementation::GetAppRamTargetMB(const string& appId) const
 {
     const PackageInfo packageInfo = AppInfoManager::getInstance().getPackageInfo(appId);
     const uint32_t bytesPerMB = 1024 * 1024;
-    if (packageInfo.configMetadata.systemMemoryLimit <= 0)
+    
+    /* Decode systemMemoryLimit from opaque configMetadata JSON string */
+    int64_t systemMemoryLimit = 0;
+    if (!packageInfo.configMetadata.empty())
+    {
+        try
+        {
+            Json::Value root;
+            Json::Reader reader;
+            if (reader.parse(packageInfo.configMetadata, root))
+            {
+                if (root.isMember("systemMemoryLimit") && root["systemMemoryLimit"].isInt64())
+                {
+                    systemMemoryLimit = root["systemMemoryLimit"].asInt64();
+                }
+            }
+        }
+        catch (...)
+        {
+            LOGERR("Failed to parse configMetadata for appId=%s", appId.c_str());
+        }
+    }
+    
+    if (systemMemoryLimit <= 0)
     {
         return 0;
     }
-    return static_cast<uint32_t>((static_cast<uint64_t>(packageInfo.configMetadata.systemMemoryLimit) + bytesPerMB - 1) / bytesPerMB);
+    return static_cast<uint32_t>((static_cast<uint64_t>(systemMemoryLimit) + bytesPerMB - 1) / bytesPerMB);
 }
 
 bool AppManagerImplementation::SupportsHibernation(const string& appId)
@@ -980,7 +1045,30 @@ bool AppManagerImplementation::SupportsHibernation(const string& appId)
 bool AppManagerImplementation::HasHibernationFlashSpace(const string& appId) const
 {
     const PackageInfo packageInfo = AppInfoManager::getInstance().getPackageInfo(appId);
-    const uint64_t requiredBytes = packageInfo.configMetadata.dataImageSize;
+    
+    /* Decode dataImageSize from opaque configMetadata JSON string */
+    uint64_t dataImageSize = 0;
+    if (!packageInfo.configMetadata.empty())
+    {
+        try
+        {
+            Json::Value root;
+            Json::Reader reader;
+            if (reader.parse(packageInfo.configMetadata, root))
+            {
+                if (root.isMember("dataImageSize") && root["dataImageSize"].isUInt64())
+                {
+                    dataImageSize = root["dataImageSize"].asUInt64();
+                }
+            }
+        }
+        catch (...)
+        {
+            LOGERR("Failed to parse configMetadata for appId=%s", appId.c_str());
+        }
+    }
+    
+    const uint64_t requiredBytes = dataImageSize;
     if (requiredBytes == 0)
     {
         return false;
@@ -1063,8 +1151,12 @@ bool AppManagerImplementation::removeAppInfoByAppId(const string &appId)
     }
     return result;
 }
-Core::hresult AppManagerImplementation::packageLock(const string& appId, PackageInfo &packageData, Exchange::IPackageHandler::LockReason lockReason)
+Core::hresult AppManagerImplementation::packageLock(const string& appId, PackageInfo &packageData, Exchange::IPackageHandler::LockReason lockReason, bool* lockAcquired)
 {
+    if (nullptr != lockAcquired)
+    {
+        *lockAcquired = false;
+    }
     Core::hresult status = Core::ERROR_GENERAL;
     bool result = false;
     bool installed = false;
@@ -1112,8 +1204,12 @@ Core::hresult AppManagerImplementation::packageLock(const string& appId, Package
                 {
                     Exchange::IPackageHandler::ILockIterator *appMetadata = nullptr;
                     status = mPackageManagerHandlerObject->Lock(appId, packageData.version, lockReason, packageData.lockId, packageData.unpackedPath, packageData.configMetadata, appMetadata);
-                    if (status == Core::ERROR_NONE)
+                    if (Core::ERROR_NONE == status)
                     {
+                        if (nullptr != lockAcquired)
+                        {
+                            *lockAcquired = true;
+                        }
                         LOGINFO("Fetching package entry updated for appId: %s version: %s lockId: %d unpackedPath: %s appMetadata: %s",
                                  appId.c_str(), packageData.version.c_str(), packageData.lockId, packageData.unpackedPath.c_str(), packageData.appMetadata.c_str());
                         result = createOrUpdatePackageInfoByAppId(appId, packageData);
@@ -2017,7 +2113,7 @@ void AppManagerImplementation::OnAppInstallationStatus(const string& jsonrespons
     }
 }
 
-void AppManagerImplementation::getCustomValues(WPEFramework::Exchange::RuntimeConfig& runtimeConfig)
+void AppManagerImplementation::getCustomValues(Utils::RuntimeConfigPayload& runtimeConfigPayload)
 {
         FILE* fp = fopen("/tmp/aipath", "r");
         bool aipathchange = false;
@@ -2048,17 +2144,19 @@ void AppManagerImplementation::getCustomValues(WPEFramework::Exchange::RuntimeCo
             }
             fclose(fp);
         }
-        apppath.pop_back();
-        runtimepath.pop_back();
-        command.pop_back();
-
         if (aipathchange)
         {
-            runtimeConfig.appPath = std::move(apppath);
-            runtimeConfig.runtimePath = std::move(runtimepath);
-            runtimeConfig.command = std::move(command);
-            runtimeConfig.appType = 1;
-            runtimeConfig.resourceManagerClientEnabled = true;
+            if (!apppath.empty())
+                apppath.pop_back();
+            if (!runtimepath.empty())
+                runtimepath.pop_back();
+            if (!command.empty())
+                command.pop_back();
+            runtimeConfigPayload.SetString("appPath", apppath);
+            runtimeConfigPayload.SetString("runtimePath", runtimepath);
+            runtimeConfigPayload.SetString("command", command);
+            runtimeConfigPayload.SetString("appType", "INTERACTIVE");
+            runtimeConfigPayload.SetBoolean("resourceManagerClientEnabled", true);
         }
 }
 

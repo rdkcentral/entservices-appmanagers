@@ -519,7 +519,7 @@ namespace WPEFramework
             return status;
         }
 
-        bool RuntimeManagerImplementation::generate(const ApplicationConfiguration &config, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject, std::string &dobbySpec)
+        bool RuntimeManagerImplementation::generate(const ApplicationConfiguration &config, const RuntimeConfiguration &runtimeConfigObject, std::string &dobbySpec)
         {
 #ifdef RALF_PACKAGE_SUPPORT_ENABLED
             LOGINFO("Generating Ralf Package Config : %s", runtimeConfigObject.ralfPkgPath.c_str());
@@ -582,8 +582,22 @@ namespace WPEFramework
             }
 	        return containerId;
         }
-        Core::hresult RuntimeManagerImplementation::Run(const string &appId, const string &appInstanceId, const uint32_t userId, const uint32_t groupId, IValueIterator *const &ports, IStringIterator *const &paths, IStringIterator *const &debugSettings, const WPEFramework::Exchange::RuntimeConfig &runtimeConfigObject)
+        Core::hresult RuntimeManagerImplementation::Run(const string &appId, const string &appInstanceId, const uint32_t userId, const uint32_t groupId, IValueIterator *const &ports, IStringIterator *const &paths, IStringIterator *const &debugSettings, const string &runtimeConfigPayload)
         {
+            RuntimeConfiguration runtimeConfigObject;
+            std::string configurationError;
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED
+            const bool requireCommand = false;
+#else
+            const bool requireCommand = true;
+#endif
+            if (!RuntimeConfigurationDecoder::Decode(runtimeConfigPayload, runtimeConfigObject, configurationError, userId, groupId, requireCommand))
+            {
+                LOGERR("Invalid runtime configuration payload: %s", configurationError.c_str());
+                notifyParameterCheckFailure(appInstanceId, "ERROR_INVALID_PARAM");
+                return Core::ERROR_INVALID_PARAMETER;
+            }
+
             Core::hresult status = Core::ERROR_GENERAL;
             RuntimeAppInfo runtimeAppInfo;
             std::string xdgRuntimeDir = "";

@@ -714,10 +714,21 @@ uint32_t Test_AM_LaunchAppWithPackageHandler()
 
     impl->Configure(&service);
 
+    packageHandler.lockHandler = [](const std::string&, const std::string&,
+        const WPEFramework::Exchange::IPackageHandler::LockReason&,
+        uint32_t& lockId, std::string& unpackedPath, std::string& configMetadata,
+        WPEFramework::Exchange::IPackageHandler::ILockIterator*& appMetadata) {
+        lockId = 1;
+        unpackedPath = "/tmp/testApp1";
+        configMetadata = R"({"capabilities":"dial-app,wan-lan","envVariables":["BASE=1"],"command":"launcher","userId":30001})";
+        appMetadata = nullptr;
+        return WPEFramework::Core::ERROR_NONE;
+    };
+
     // Setup lifecycle manager to succeed
     lifecycleManager.spawnAppHandler = [](const std::string&, const std::string&, 
         const WPEFramework::Exchange::ILifecycleManager::LifecycleState,
-        const WPEFramework::Exchange::RuntimeConfig&, const std::string&,
+        const std::string&, const std::string&,
         std::string& appInstanceId, std::string& errorReason, bool& success) {
         appInstanceId = "instance-test-1";
         errorReason.clear();
@@ -781,10 +792,21 @@ uint32_t Test_AM_PreloadAppWithPackageHandler()
 
     impl->Configure(&service);
 
+    packageHandler.lockHandler = [](const std::string&, const std::string&,
+        const WPEFramework::Exchange::IPackageHandler::LockReason&,
+        uint32_t& lockId, std::string& unpackedPath, std::string& configMetadata,
+        WPEFramework::Exchange::IPackageHandler::ILockIterator*& appMetadata) {
+        lockId = 2;
+        unpackedPath = "/tmp/testApp2";
+        configMetadata = R"({"capabilities":"dial-app,wan-lan","envVariables":["BASE=1"],"command":"launcher","userId":30001})";
+        appMetadata = nullptr;
+        return WPEFramework::Core::ERROR_NONE;
+    };
+
     // Setup lifecycle manager to succeed
     lifecycleManager.spawnAppHandler = [](const std::string&, const std::string&, 
         const WPEFramework::Exchange::ILifecycleManager::LifecycleState,
-        const WPEFramework::Exchange::RuntimeConfig&, const std::string&,
+        const std::string&, const std::string&,
         std::string& appInstanceId, std::string& errorReason, bool& success) {
         appInstanceId = "instance-preload-1";
         errorReason.clear();
@@ -1602,7 +1624,7 @@ uint32_t Test_AM_GetAppPropertyGetValueFailed()
 uint32_t Test_AM_LICLaunchWithEmptyAppId()
 {
     AppManagerTestFixture fixture;
-    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
+    std::string runtimeConfig = R"({"capabilities":"dial-app,wan-lan","envVariables":["BASE=1"],"command":"launcher","userId":30001})";
     auto status = fixture.impl->mLifecycleInterfaceConnector->launch("", "intent", "args", runtimeConfig);
     L0Test::ExpectEqU32(fixture.tr, status, WPEFramework::Core::ERROR_GENERAL,
         "LifecycleInterfaceConnector::launch returns ERROR_GENERAL for empty appId");
@@ -1614,7 +1636,7 @@ uint32_t Test_AM_LICLaunchWithEmptyAppId()
 uint32_t Test_AM_LICPreloadWithEmptyAppId()
 {
     AppManagerTestFixture fixture;
-    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
+    std::string runtimeConfig = R"({"capabilities":"dial-app,wan-lan","envVariables":["BASE=1"],"command":"launcher","userId":30001})";
     std::string error;
     auto status = fixture.impl->mLifecycleInterfaceConnector->preLoadApp("", "intent", "args", runtimeConfig, error);
     L0Test::ExpectEqU32(fixture.tr, status, WPEFramework::Core::ERROR_GENERAL,
@@ -2186,7 +2208,7 @@ uint32_t Test_AM_LICSpawnAppFails()
     auto* lm = new L0Test::MockLifecycleManager();
     lm->spawnAppHandler = [](const std::string&, const std::string&,
         WPEFramework::Exchange::ILifecycleManager::LifecycleState,
-        const WPEFramework::Exchange::RuntimeConfig&, const std::string&,
+        const std::string&, const std::string&,
         std::string& appInstanceId, std::string& errorReason, bool& success) {
         errorReason = "mock spawn error";
         success = false;
@@ -2204,7 +2226,7 @@ uint32_t Test_AM_LICSpawnAppFails()
 
     WPEFramework::Plugin::AppInfoManager::getInstance().clear();
 
-    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
+    std::string runtimeConfig = R"({"capabilities":"dial-app,wan-lan","envVariables":["BASE=1"],"command":"launcher","userId":30001})";
     const auto status = impl->mLifecycleInterfaceConnector->launch(
         "app.spawn.fail", "intent", "args", runtimeConfig);
     L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_GENERAL,
@@ -2332,7 +2354,7 @@ uint32_t Test_AM_PackageLockLockFails()
     auto* handler = new L0Test::MockPackageHandler();
     handler->lockHandler = [](const std::string&, const std::string&,
         const WPEFramework::Exchange::IPackageHandler::LockReason&,
-        uint32_t&, std::string&, WPEFramework::Exchange::RuntimeConfig&,
+        uint32_t&, std::string&, std::string&,
         WPEFramework::Exchange::IPackageHandler::ILockIterator*&) {
         return WPEFramework::Core::ERROR_GENERAL;
     };
@@ -2671,12 +2693,15 @@ uint32_t Test_AM_PackageLockAlreadyLoaded()
         "app.already.loaded", "2.0.0");
 
     WPEFramework::Plugin::AppManagerImplementation::PackageInfo packageData;
+    bool lockAcquired = true;
     const auto status = impl->packageLock(
         "app.already.loaded", packageData,
-        WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH);
+        WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH, &lockAcquired);
 
     L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_NONE,
         "packageLock() returns ERROR_NONE when app is already loaded (cached-data path)");
+    L0Test::ExpectTrue(tr, !lockAcquired,
+        "Cached package data does not report a newly acquired PackageManager lock");
 
     impl->Release();
     WPEFramework::Plugin::AppInfoManager::getInstance().clear();
@@ -2781,6 +2806,7 @@ uint32_t Test_AM_WorkerThreadLaunchSuccess()
 {
     L0Test::TestResult tr;
     std::atomic<bool> spawnCalled{false};
+    std::string spawnedRuntimeConfig;
 
     L0Test::MockLifecycleManager lifecycleManager;
     L0Test::MockLifecycleManagerState lifecycleState;
@@ -2789,11 +2815,23 @@ uint32_t Test_AM_WorkerThreadLaunchSuccess()
     L0Test::MockStore2 store;
     L0Test::MockStorageManager storageManager;
 
-    lifecycleManager.spawnAppHandler = [&spawnCalled](
+    packageHandler.lockHandler = [](const std::string&, const std::string&,
+        const WPEFramework::Exchange::IPackageHandler::LockReason&,
+        uint32_t& lockId, std::string& unpackedPath, std::string& configMetadata,
+        WPEFramework::Exchange::IPackageHandler::ILockIterator*& appMetadata) {
+        lockId = 7;
+        unpackedPath = "/tmp/app.worker.launch";
+        configMetadata = R"({"capabilities":"dial-app,wan-lan","envVariables":["BASE=1"],"command":"launcher","userId":30001,"vendor":{"nested":{"preserved":true},"tags":["alpha","beta"]}})";
+        appMetadata = nullptr;
+        return WPEFramework::Core::ERROR_NONE;
+    };
+
+    lifecycleManager.spawnAppHandler = [&spawnCalled, &spawnedRuntimeConfig](
         const std::string&, const std::string&,
         const WPEFramework::Exchange::ILifecycleManager::LifecycleState,
-        const WPEFramework::Exchange::RuntimeConfig&, const std::string&,
+        const std::string& runtimeConfig, const std::string&,
         std::string& appInstanceId, std::string& errorReason, bool& success) {
+        spawnedRuntimeConfig = runtimeConfig;
         appInstanceId = "instance-worker-launch";
         errorReason.clear();
         success = true;
@@ -2819,7 +2857,7 @@ uint32_t Test_AM_WorkerThreadLaunchSuccess()
     auto* impl = CreateImpl();
     impl->Configure(&service);
 
-    impl->LaunchApp("app.worker.launch", "defaultIntent", "");
+    impl->LaunchApp("app.worker.launch", "defaultIntent", R"({"env":["EXTRA_ONE=1","EXTRA_TWO=two"]})");
 
     const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(3000);
     while (!spawnCalled.load(std::memory_order_acquire) &&
@@ -2832,6 +2870,34 @@ uint32_t Test_AM_WorkerThreadLaunchSuccess()
     L0Test::ExpectTrue(tr, packageHandler.lockCount >= 1u,
         "Worker thread calls PackageHandler::Lock as part of packageLock");
 
+    JsonObject enrichedConfig;
+    const bool parsed = enrichedConfig.FromString(spawnedRuntimeConfig);
+    L0Test::ExpectTrue(tr, parsed, "SpawnApp receives a valid opaque JSON runtime config payload");
+    if (parsed) {
+        L0Test::ExpectEqStr(tr, enrichedConfig["unpackedPath"].String(), std::string("/tmp/app.worker.launch"),
+            "Worker enriches the runtime config with the package unpackedPath");
+
+        L0Test::ExpectEqStr(tr, enrichedConfig["capabilities"].String(), std::string("dial-app,wan-lan"),
+            "Capabilities retain their supported string representation");
+        const JsonArray environment = enrichedConfig["envVariables"].Array();
+        L0Test::ExpectEqU32(tr, environment.Length(), 2u,
+            "Launch preserves the package environment and encoded launch parameters");
+        if (environment.Length() == 2u) {
+            L0Test::ExpectEqStr(tr, environment[0].String(), std::string("BASE=1"),
+                "Existing package environment is preserved");
+            L0Test::ExpectTrue(tr, environment[1].String().find("APPLICATION_LAUNCH_PARAMETERS=") == 0,
+                "Encoded launch parameters are appended");
+        }
+
+        const JsonObject vendor = enrichedConfig["vendor"].Object();
+        const JsonObject nested = vendor["nested"].Object();
+        L0Test::ExpectTrue(tr, nested["preserved"].Boolean(),
+            "Unknown nested runtime config properties survive enrichment");
+        const JsonArray tags = vendor["tags"].Array();
+        L0Test::ExpectEqU32(tr, tags.Length(), 2u,
+            "Arrays inside unknown nested properties are preserved");
+    }
+
     std::this_thread::sleep_for(std::chrono::milliseconds(20));
 
     impl->Release();
@@ -2842,6 +2908,84 @@ uint32_t Test_AM_WorkerThreadLaunchSuccess()
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
 
+    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    return tr.failures;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PackageManager returns a malformed opaque payload. The worker must reject it,
+// unlock the package, and never forward it to LifecycleManager::SpawnApp.
+// ─────────────────────────────────────────────────────────────────────────────
+uint32_t Test_AM_WorkerThreadMalformedRuntimeConfigDoesNotSpawn()
+{
+    L0Test::TestResult tr;
+    std::atomic<bool> spawnCalled{false};
+
+    L0Test::MockLifecycleManager lifecycleManager;
+    L0Test::MockLifecycleManagerState lifecycleState;
+    L0Test::MockPackageHandler packageHandler;
+    L0Test::MockPackageInstaller packageInstaller;
+    L0Test::MockStore2 store;
+    L0Test::MockStorageManager storageManager;
+
+    packageHandler.lockHandler = [](const std::string&, const std::string&,
+        const WPEFramework::Exchange::IPackageHandler::LockReason&,
+        uint32_t& lockId, std::string& unpackedPath, std::string& configMetadata,
+        WPEFramework::Exchange::IPackageHandler::ILockIterator*& appMetadata) {
+        lockId = 9;
+        unpackedPath = "/tmp/app.worker.malformed";
+        configMetadata = R"({"capabilities":["dial-app"],"vendor":{"nested":true})";
+        appMetadata = nullptr;
+        return WPEFramework::Core::ERROR_NONE;
+    };
+    lifecycleManager.spawnAppHandler = [&spawnCalled](
+        const std::string&, const std::string&,
+        const WPEFramework::Exchange::ILifecycleManager::LifecycleState,
+        const std::string&, const std::string&,
+        std::string&, std::string&, bool&) {
+        spawnCalled.store(true, std::memory_order_release);
+        return WPEFramework::Core::ERROR_NONE;
+    };
+
+    WPEFramework::Exchange::IPackageInstaller::Package pkg;
+    pkg.packageId = "app.worker.malformed";
+    pkg.version = "1.0.0";
+    pkg.state = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
+    packageInstaller.installedPackages.push_back(pkg);
+
+    L0Test::AppManagerServiceMock::Config cfg;
+    cfg.lifecycleManager = &lifecycleManager;
+    cfg.lifecycleManagerState = &lifecycleState;
+    cfg.packageHandler = &packageHandler;
+    cfg.installer = &packageInstaller;
+    cfg.store2 = &store;
+    cfg.storageManager = &storageManager;
+    L0Test::AppManagerServiceMock service(cfg);
+
+    auto* impl = CreateImpl();
+    impl->Configure(&service);
+    impl->LaunchApp("app.worker.malformed", "defaultIntent", "");
+
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(3000);
+    while (packageHandler.unlockCount == 0u && std::chrono::steady_clock::now() < deadline) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+
+    L0Test::ExpectTrue(tr, packageHandler.lockCount >= 1u,
+        "Malformed runtime config is received from PackageManager::Lock");
+    L0Test::ExpectTrue(tr, packageHandler.unlockCount >= 1u,
+        "Malformed runtime config causes the package lock to be released");
+    L0Test::ExpectTrue(tr, !spawnCalled.load(std::memory_order_acquire),
+        "LifecycleManager::SpawnApp is not called for malformed package runtime config");
+    L0Test::ExpectTrue(tr, !WPEFramework::Plugin::AppInfoManager::getInstance().exists("app.worker.malformed"),
+        "Malformed runtime config removes the AppInfo entry created by packageLock");
+
+    impl->Release();
+    const auto cleanDeadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(3000);
+    while (WPEFramework::Plugin::AppManagerImplementation::getInstance() != nullptr
+        && std::chrono::steady_clock::now() < cleanDeadline) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
     WPEFramework::Plugin::AppInfoManager::getInstance().clear();
     return tr.failures;
 }
@@ -2865,7 +3009,7 @@ uint32_t Test_AM_WorkerThreadPackageLockFails()
     packageHandler.lockHandler = [&lockAttempted](
         const std::string&, const std::string&,
         const WPEFramework::Exchange::IPackageHandler::LockReason&,
-        uint32_t&, std::string&, WPEFramework::Exchange::RuntimeConfig&,
+        uint32_t&, std::string&, std::string&,
         WPEFramework::Exchange::IPackageHandler::ILockIterator*&) {
         lockAttempted.store(true, std::memory_order_release);
         return WPEFramework::Core::ERROR_GENERAL;
@@ -2929,10 +3073,21 @@ uint32_t Test_AM_WorkerThreadPreloadSuccess()
     L0Test::MockStore2 store;
     L0Test::MockStorageManager storageManager;
 
+    packageHandler.lockHandler = [](const std::string&, const std::string&,
+        const WPEFramework::Exchange::IPackageHandler::LockReason&,
+        uint32_t& lockId, std::string& unpackedPath, std::string& configMetadata,
+        WPEFramework::Exchange::IPackageHandler::ILockIterator*& appMetadata) {
+        lockId = 8;
+        unpackedPath = "/tmp/app.worker.preload";
+        configMetadata = R"({"capabilities":"dial-app,wan-lan","envVariables":["BASE=1"],"command":"launcher","userId":30001})";
+        appMetadata = nullptr;
+        return WPEFramework::Core::ERROR_NONE;
+    };
+
     lifecycleManager.spawnAppHandler = [&spawnCalled](
         const std::string&, const std::string&,
         const WPEFramework::Exchange::ILifecycleManager::LifecycleState,
-        const WPEFramework::Exchange::RuntimeConfig&, const std::string&,
+        const std::string&, const std::string&,
         std::string& appInstanceId, std::string& errorReason, bool& success) {
         appInstanceId = "instance-worker-preload";
         errorReason.clear();
@@ -3492,7 +3647,7 @@ uint32_t Test_AM_PackageLockCreateOrUpdateFails()
         const WPEFramework::Exchange::IPackageHandler::LockReason&,
         uint32_t& lockId,
         std::string& /*unpackedPath*/,
-        WPEFramework::Exchange::RuntimeConfig&,
+        std::string&,
         WPEFramework::Exchange::IPackageHandler::ILockIterator*&) -> WPEFramework::Core::hresult {
         lockId = 42;
         // unpackedPath intentionally left empty → createOrUpdatePackageInfoByAppId returns false
@@ -3633,7 +3788,7 @@ uint32_t Test_AM_LICLaunchLoadedNotSuspended()
     // Call launch(): loaded=true, status=ERROR_NONE, appInMap=true, state=ACTIVE.
     // Condition (APP_STATE_SUSPENDED == appInfoSnap.getAppNewState()) is false
     // → L199 Branch 3 not previously taken → now covered (else/spawn path).
-    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
+    std::string runtimeConfig = R"({"capabilities":"dial-app,wan-lan","envVariables":["BASE=1"],"command":"launcher","userId":30001})";
     impl->mLifecycleInterfaceConnector->launch(
         "app.loaded.active", "intent-test", "args", runtimeConfig);
 

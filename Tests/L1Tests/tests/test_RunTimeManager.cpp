@@ -17,6 +17,7 @@
 * limitations under the License.
 **/
 #include <gtest/gtest.h>
+#include <json/json.h>
 #include <atomic>
 #include <cstdio>
 #include <string>
@@ -24,6 +25,7 @@
 
 #include "RuntimeManager.h"
 #include "RuntimeManagerImplementation.h"
+#include "RuntimeConfiguration.h"
 #include "AIConfiguration.h"
 #include "WindowManagerConnector.h"
 #include "ServiceMock.h"
@@ -33,6 +35,47 @@ namespace {
     static std::atomic<uint32_t> counter{0};
 
     return "/tmp/" + prefix + "_" + std::to_string(getpid()) + "_" + std::to_string(counter.fetch_add(1)) + ".bin";
+}
+
+std::string RuntimeConfigurationPayload(const WPEFramework::Plugin::RuntimeConfiguration& config)
+{
+    Json::Value payload(Json::objectValue);
+    payload["dial"] = config.dial;
+    payload["wanLanAccess"] = config.wanLanAccess;
+    payload["thunder"] = config.thunder;
+    payload["systemMemoryLimit"] = config.systemMemoryLimit;
+    payload["gpuMemoryLimit"] = config.gpuMemoryLimit;
+    payload["userId"] = config.userId == 0 ? 10 : config.userId;
+    payload["groupId"] = config.groupId == 0 ? 10 : config.groupId;
+    payload["dataImageSize"] = config.dataImageSize;
+    payload["resourceManagerClientEnabled"] = config.resourceManagerClientEnabled;
+    payload["dialId"] = config.dialId;
+    payload["command"] = config.command.empty() ? "SkyBrowserLauncher" : config.command;
+    payload["appType"] = config.appType;
+    payload["appPath"] = config.appPath;
+    payload["runtimePath"] = config.runtimePath;
+    payload["logFilePath"] = config.logFilePath;
+    payload["logFileMaxSize"] = config.logFileMaxSize;
+    payload["mapi"] = config.mapi;
+    payload["capabilities"] = config.capabilities;
+    payload["ralfPkgPath"] = config.ralfPkgPath;
+    payload["fireboltVersion"] = config.fireboltVersion;
+    payload["enableDebugger"] = config.enableDebugger;
+    payload["unpackedPath"] = config.unpackedPath;
+
+    payload["envVariables"] = Json::Value(Json::arrayValue);
+    for (const auto& value : config.envVariables)
+        payload["envVariables"].append(value);
+    payload["logLevels"] = Json::Value(Json::arrayValue);
+    for (const auto& value : config.logLevels)
+        payload["logLevels"].append(value);
+    payload["fkpsFiles"] = Json::Value(Json::arrayValue);
+    for (const auto& value : config.fkpsFiles)
+        payload["fkpsFiles"].append(value);
+
+    Json::StreamWriterBuilder writer;
+    writer["indentation"] = "";
+    return Json::writeString(writer, payload);
 }
 }
 #include "ThunderPortability.h"
@@ -269,8 +312,8 @@ TEST_F(RuntimeManagerTest, TerminateMethods)
     ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
         .WillByDefault(::testing::Return(Core::ERROR_NONE));
 
-    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
-    runtimeConfig.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=main";
+    WPEFramework::Plugin::RuntimeConfiguration runtimeConfig;
+    runtimeConfig.envVariables = { "XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main" };
     runtimeConfig.appPath = "/var/runTimeManager";
     runtimeConfig.runtimePath = "/tmp/runTimeManager";
     runtimeConfig.systemMemoryLimit = 512;
@@ -283,7 +326,7 @@ TEST_F(RuntimeManagerTest, TerminateMethods)
     runtimeConfig.userId = 30001;
     runtimeConfig.groupId = 30000;
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 30001, 30000, nullptr, nullptr, nullptr, runtimeConfig));
+    EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 30001, 30000, nullptr, nullptr, nullptr, RuntimeConfigurationPayload(runtimeConfig)));
 
     EXPECT_CALL(*mociContainerMock, StopContainer(TEST_APP_CONTAINER_ID, false, ::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
@@ -477,14 +520,14 @@ TEST_F(RuntimeManagerTest, HibernateMethods)
     ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
         .WillByDefault(::testing::Return(Core::ERROR_NONE));
 
-    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
-    runtimeConfig.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=main";
+    WPEFramework::Plugin::RuntimeConfiguration runtimeConfig;
+    runtimeConfig.envVariables = { "XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main" };
     runtimeConfig.appPath = "/var/runTimeManager";
     runtimeConfig.runtimePath = "/tmp/runTimeManager";
     runtimeConfig.systemMemoryLimit = 512;
     runtimeConfig.command = "SkyBrowserLauncher";
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, nullptr, nullptr, nullptr, runtimeConfig));
+    EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, nullptr, nullptr, nullptr, RuntimeConfigurationPayload(runtimeConfig)));
 
     EXPECT_CALL(*mociContainerMock, HibernateContainer(TEST_APP_CONTAINER_ID, "",::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
@@ -558,14 +601,14 @@ TEST_F(RuntimeManagerTest, KillMethods)
     ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
         .WillByDefault(::testing::Return(Core::ERROR_NONE));
 
-    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
-    runtimeConfig.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=main";
+    WPEFramework::Plugin::RuntimeConfiguration runtimeConfig;
+    runtimeConfig.envVariables = { "XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main" };
     runtimeConfig.appPath = "/var/runTimeManager";
     runtimeConfig.runtimePath = "/tmp/runTimeManager";
     runtimeConfig.systemMemoryLimit = 512;
     runtimeConfig.command = "SkyBrowserLauncher";
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, nullptr, nullptr, nullptr, runtimeConfig));
+    EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, nullptr, nullptr, nullptr, RuntimeConfigurationPayload(runtimeConfig)));
 
     EXPECT_CALL(*mociContainerMock, StopContainer(TEST_APP_CONTAINER_ID, true,::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
@@ -638,14 +681,14 @@ TEST_F(RuntimeManagerTest, AnnotateMethods)
     ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
         .WillByDefault(::testing::Return(Core::ERROR_NONE));
 
-    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
-    runtimeConfig.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=main";
+    WPEFramework::Plugin::RuntimeConfiguration runtimeConfig;
+    runtimeConfig.envVariables = { "XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main" };
     runtimeConfig.appPath = "/var/runTimeManager";
     runtimeConfig.runtimePath = "/tmp/runTimeManager";
     runtimeConfig.systemMemoryLimit = 512;
     runtimeConfig.command = "SkyBrowserLauncher";
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, nullptr, nullptr, nullptr, runtimeConfig));
+    EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, nullptr, nullptr, nullptr, RuntimeConfigurationPayload(runtimeConfig)));
 
     EXPECT_CALL(*mociContainerMock, Annotate(TEST_APP_CONTAINER_ID, appKey,appValue,::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
@@ -752,14 +795,14 @@ TEST_F(RuntimeManagerTest, GetInfoMethods)
     ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
         .WillByDefault(::testing::Return(Core::ERROR_NONE));
 
-    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
-    runtimeConfig.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=main";
+    WPEFramework::Plugin::RuntimeConfiguration runtimeConfig;
+    runtimeConfig.envVariables = { "XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main" };
     runtimeConfig.appPath = "/var/runTimeManager";
     runtimeConfig.runtimePath = "/tmp/runTimeManager";
     runtimeConfig.systemMemoryLimit = 512;
     runtimeConfig.command = "SkyBrowserLauncher";
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, nullptr, nullptr, nullptr, runtimeConfig));
+    EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, nullptr, nullptr, nullptr, RuntimeConfigurationPayload(runtimeConfig)));
 
     EXPECT_CALL(*mociContainerMock, GetContainerInfo(TEST_APP_CONTAINER_ID, ::testing::_,::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
@@ -867,8 +910,8 @@ TEST_F(RuntimeManagerTest, RunMethods)
     auto pathsListIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(pathsList);
     auto debugSettingsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
 
-    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
-    runtimeConfig.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=main";
+    WPEFramework::Plugin::RuntimeConfiguration runtimeConfig;
+    runtimeConfig.envVariables = { "XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main" };
     runtimeConfig.appPath = "/var/runTimeManager";
     runtimeConfig.runtimePath = "/tmp/runTimeManager";
     runtimeConfig.systemMemoryLimit = 512;
@@ -889,7 +932,7 @@ TEST_F(RuntimeManagerTest, RunMethods)
     ON_CALL(*mWindowManagerMock, CreateDisplay(CREATE_DISPLAY_WILDCARDS))
             .WillByDefault(::testing::Return(Core::ERROR_NONE));
 
-    const auto runStatus = interface->Run(appInstanceId, appInstanceId, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, runtimeConfig);
+    const auto runStatus = interface->Run(appInstanceId, appInstanceId, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, RuntimeConfigurationPayload(runtimeConfig));
     EXPECT_TRUE((runStatus == Core::ERROR_NONE) || (runStatus == Core::ERROR_GENERAL));
 
     releaseResources();
@@ -914,8 +957,8 @@ TEST_F(RuntimeManagerTest, RunWithoutCreateDisplay)
     auto pathsListIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(pathsList);
     auto debugSettingsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
 
-    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
-    runtimeConfig.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=main";
+    WPEFramework::Plugin::RuntimeConfiguration runtimeConfig;
+    runtimeConfig.envVariables = { "XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main" };
     runtimeConfig.appPath = "/var/runTimeManager";
     runtimeConfig.runtimePath = "/tmp/runTimeManager";
     runtimeConfig.systemMemoryLimit = 512;
@@ -936,7 +979,7 @@ TEST_F(RuntimeManagerTest, RunWithoutCreateDisplay)
     ON_CALL(*mWindowManagerMock, CreateDisplay(CREATE_DISPLAY_WILDCARDS))
             .WillByDefault(::testing::Return(Core::ERROR_GENERAL));
 
-    EXPECT_EQ(Core::ERROR_GENERAL, interface->Run(appInstanceId, appInstanceId, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, runtimeConfig));
+    EXPECT_EQ(Core::ERROR_GENERAL, interface->Run(appInstanceId, appInstanceId, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, RuntimeConfigurationPayload(runtimeConfig)));
     releaseResources();
 }
 
@@ -959,8 +1002,8 @@ TEST_F(RuntimeManagerTest, RunCreateFkpsMounts)
     auto pathsListIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(pathsList);
     auto debugSettingsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
 
-    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
-    runtimeConfig.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=main";
+    WPEFramework::Plugin::RuntimeConfiguration runtimeConfig;
+    runtimeConfig.envVariables = { "XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main" };
     runtimeConfig.appPath = "/var/runTimeManager";
     runtimeConfig.runtimePath = "/tmp/runTimeManager";
     runtimeConfig.systemMemoryLimit = 512;
@@ -978,7 +1021,7 @@ TEST_F(RuntimeManagerTest, RunCreateFkpsMounts)
         fkpsFile << "dummy FKPS content";
     }
 
-    runtimeConfig.fkpsFiles = R"(["test1.fkps"])"; // JSON array of FKPS file
+    runtimeConfig.fkpsFiles = { "test1.fkps" };
 
     EXPECT_EQ(true, createResources());
 
@@ -995,7 +1038,7 @@ TEST_F(RuntimeManagerTest, RunCreateFkpsMounts)
     ON_CALL(*mWindowManagerMock, CreateDisplay(CREATE_DISPLAY_WILDCARDS))
             .WillByDefault(::testing::Return(Core::ERROR_NONE));
 
-    const auto runStatus = interface->Run(appInstanceId, appInstanceId, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, runtimeConfig);
+    const auto runStatus = interface->Run(appInstanceId, appInstanceId, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, RuntimeConfigurationPayload(runtimeConfig));
     EXPECT_TRUE((runStatus == Core::ERROR_NONE) || (runStatus == Core::ERROR_GENERAL));
 
     releaseResources();
@@ -1026,8 +1069,8 @@ TEST_F(RuntimeManagerTest, RunCreateExtraMountsFromCapabilities)
         mountSourceFile << "{}";
     }
 
-    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
-    runtimeConfig.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=main";
+    WPEFramework::Plugin::RuntimeConfiguration runtimeConfig;
+    runtimeConfig.envVariables = { "XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main" };
     runtimeConfig.appPath = "/var/runTimeManager";
     runtimeConfig.runtimePath = "/tmp/runTimeManager";
     runtimeConfig.systemMemoryLimit = 512;
@@ -1051,7 +1094,7 @@ TEST_F(RuntimeManagerTest, RunCreateExtraMountsFromCapabilities)
     ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
             .WillByDefault(::testing::Return(Core::ERROR_NONE));
 
-    const auto runStatus = interface->Run(appInstanceId, appInstanceId, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, runtimeConfig);
+    const auto runStatus = interface->Run(appInstanceId, appInstanceId, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, RuntimeConfigurationPayload(runtimeConfig));
     EXPECT_TRUE((runStatus == Core::ERROR_NONE) || (runStatus == Core::ERROR_GENERAL));
 
     releaseResources();
@@ -1110,8 +1153,8 @@ TEST_F(RuntimeManagerTest, RunReadfromAIConfigFile)
     auto pathsListIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(pathsList);
     auto debugSettingsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
 
-    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
-    runtimeConfig.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=wst-test";
+    WPEFramework::Plugin::RuntimeConfiguration runtimeConfig;
+    runtimeConfig.envVariables = { "XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=wst-test" };
     runtimeConfig.appPath = "/var/testApp";
     runtimeConfig.runtimePath = "/tmp/testApp";
     runtimeConfig.systemMemoryLimit = 512;
@@ -1133,7 +1176,7 @@ TEST_F(RuntimeManagerTest, RunReadfromAIConfigFile)
 
     LOGINFO("Calling Run");
     const auto runStatus = interface->Run(appInstanceId, appInstanceId, 1000, 1001,
-                                          portsIterator, pathsListIterator, debugSettingsIterator, runtimeConfig);
+                                          portsIterator, pathsListIterator, debugSettingsIterator, RuntimeConfigurationPayload(runtimeConfig));
     EXPECT_TRUE((runStatus == Core::ERROR_NONE) || (runStatus == Core::ERROR_GENERAL));
 
     // Optional: Clean up the config file after test
@@ -1160,8 +1203,8 @@ TEST_F(RuntimeManagerTest, StartContainerFailure) {
     auto pathsListIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(pathsList);
     auto debugSettingsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
 
-    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
-    runtimeConfig.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=main";
+    WPEFramework::Plugin::RuntimeConfiguration runtimeConfig;
+    runtimeConfig.envVariables = { "XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main" };
     runtimeConfig.appPath = "/var/runTimeManager";
     runtimeConfig.runtimePath = "/tmp/runTimeManager";
     runtimeConfig.systemMemoryLimit = 512;
@@ -1176,7 +1219,24 @@ TEST_F(RuntimeManagerTest, StartContainerFailure) {
                 errorReason = "Dobby spec invalid";
                 return Core::ERROR_GENERAL;
             }));
-    EXPECT_EQ(Core::ERROR_GENERAL, interface->Run(appInstanceId, appInstanceId, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, runtimeConfig)); // Pass valid args
+    EXPECT_EQ(Core::ERROR_GENERAL, interface->Run(appInstanceId, appInstanceId, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, RuntimeConfigurationPayload(runtimeConfig))); // Pass valid args
+    releaseResources();
+}
+
+TEST_F(RuntimeManagerTest, InvalidRuntimeConfigurationHasNoOCIDisplaySideEffects)
+{
+    ASSERT_TRUE(createResources());
+
+    EXPECT_CALL(*mWindowManagerMock, CreateDisplay(CREATE_DISPLAY_WILDCARDS)).Times(0);
+    EXPECT_CALL(*mociContainerMock,
+        StartContainerFromDobbySpec(::testing::_, ::testing::_, ::testing::_, ::testing::_,
+                                    ::testing::_, ::testing::_, ::testing::_))
+        .Times(0);
+
+    EXPECT_EQ(Core::ERROR_INVALID_PARAMETER,
+        interface->Run("youTube", "youTube", 10, 10, nullptr, nullptr, nullptr,
+                       R"({"command":"SkyBrowserLauncher","userId":10,"envVariables":[1]})"));
+
     releaseResources();
 }
 
@@ -1189,8 +1249,8 @@ TEST_F(RuntimeManagerTest, StartContainerFailure) {
  */
 TEST_F(RuntimeManagerTest, RunWithEmptyContainerId) {
 
-    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
-    runtimeConfig.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=main";
+    WPEFramework::Plugin::RuntimeConfiguration runtimeConfig;
+    runtimeConfig.envVariables = { "XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main" };
     runtimeConfig.appPath = "/valid/path";
     runtimeConfig.runtimePath = "/valid/runtime";
 
@@ -1198,7 +1258,7 @@ TEST_F(RuntimeManagerTest, RunWithEmptyContainerId) {
 
     EXPECT_EQ(Core::ERROR_GENERAL, interface->Run(
         "", "", 10, 10, nullptr, nullptr, nullptr,
-        runtimeConfig
+        RuntimeConfigurationPayload(runtimeConfig)
     ));
     releaseResources();
 }
@@ -1221,15 +1281,15 @@ TEST_F(RuntimeManagerTest, RunWithDuplicateContainerId) {
                 return Core::ERROR_GENERAL;
             }));
 
-    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
-    runtimeConfig.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=main";
+    WPEFramework::Plugin::RuntimeConfiguration runtimeConfig;
+    runtimeConfig.envVariables = { "XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main" };
     runtimeConfig.appPath = "/valid/path";
     runtimeConfig.runtimePath = "/valid/runtime";
     runtimeConfig.systemMemoryLimit = 512;
     runtimeConfig.command ="SkyBrowserLauncher";
 
     EXPECT_EQ(Core::ERROR_GENERAL, interface->Run(
-        "youTube", "youTube", 10, 10, nullptr, nullptr, nullptr,runtimeConfig
+        "youTube", "youTube", 10, 10, nullptr, nullptr, nullptr, RuntimeConfigurationPayload(runtimeConfig)
     ));
     releaseResources();
 }
@@ -1252,15 +1312,15 @@ TEST_F(RuntimeManagerTest, RunWithTimeout) {
                 return Core::ERROR_GENERAL;
             }));
 
-    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
-    runtimeConfig.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=main";
+    WPEFramework::Plugin::RuntimeConfiguration runtimeConfig;
+    runtimeConfig.envVariables = { "XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main" };
     runtimeConfig.appPath = "/valid/path";
     runtimeConfig.runtimePath = "/valid/runtime";
     runtimeConfig.systemMemoryLimit = 512;
     runtimeConfig.command ="SkyBrowserLauncher";
 
     EXPECT_EQ(Core::ERROR_GENERAL, interface->Run(
-        "youTube", "youTube", 10, 10, nullptr, nullptr, nullptr,runtimeConfig
+        "youTube", "youTube", 10, 10, nullptr, nullptr, nullptr, RuntimeConfigurationPayload(runtimeConfig)
     ));
     releaseResources();
 }
@@ -1268,7 +1328,7 @@ TEST_F(RuntimeManagerTest, RunWithTimeout) {
 /* Test Case for RunIncludesDefaultEthanLogLevelsWhenRuntimeLogLevelsProvided
  *
  * Verifies generated Dobby spec keeps default EthanLog levels even if
- * RuntimeConfig.logLevels is set.
+ * RuntimeConfiguration.logLevels is set.
  */
 TEST_F(RuntimeManagerTest, RunIncludesDefaultEthanLogLevelsWhenRuntimeLogLevelsProvided)
 {
@@ -1281,13 +1341,13 @@ TEST_F(RuntimeManagerTest, RunIncludesDefaultEthanLogLevelsWhenRuntimeLogLevelsP
     auto pathsListIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(pathsList);
     auto debugSettingsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
 
-    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
-    runtimeConfig.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=main";
+    WPEFramework::Plugin::RuntimeConfiguration runtimeConfig;
+    runtimeConfig.envVariables = { "XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main" };
     runtimeConfig.appPath = "/var/runTimeManager";
     runtimeConfig.runtimePath = "/tmp/runTimeManager";
     runtimeConfig.systemMemoryLimit = 512;
     runtimeConfig.command = "SkyBrowserLauncher";
-    runtimeConfig.logLevels = "[\"fatal\"]";
+    runtimeConfig.logLevels = { "fatal" };
 
     EXPECT_EQ(true, createResources());
 
@@ -1310,7 +1370,7 @@ TEST_F(RuntimeManagerTest, RunIncludesDefaultEthanLogLevelsWhenRuntimeLogLevelsP
 
     EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10,
                                                portsIterator, pathsListIterator,
-                                               debugSettingsIterator, runtimeConfig));
+                                               debugSettingsIterator, RuntimeConfigurationPayload(runtimeConfig)));
 
     releaseResources();
 }
@@ -1334,8 +1394,8 @@ TEST_F(RuntimeManagerTest, WakeMethods)
     auto pathsListIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(pathsList);
     auto debugSettingsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
 
-    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
-    runtimeConfig.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=main";
+    WPEFramework::Plugin::RuntimeConfiguration runtimeConfig;
+    runtimeConfig.envVariables = { "XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main" };
     runtimeConfig.appPath = "/var/runTimeManager";
     runtimeConfig.runtimePath = "/tmp/runTimeManager";
     runtimeConfig.systemMemoryLimit = 512;
@@ -1353,7 +1413,7 @@ TEST_F(RuntimeManagerTest, WakeMethods)
                 return WPEFramework::Core::ERROR_NONE;
           }));
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, runtimeConfig));
+    EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, RuntimeConfigurationPayload(runtimeConfig)));
 
     EXPECT_CALL(*mociContainerMock, HibernateContainer(TEST_APP_CONTAINER_ID, "",::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
@@ -1399,8 +1459,8 @@ TEST_F(RuntimeManagerTest, WakeOnRunningNonHibernateContainer)
     auto pathsListIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(pathsList);
     auto debugSettingsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
 
-    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
-    runtimeConfig.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=main";
+    WPEFramework::Plugin::RuntimeConfiguration runtimeConfig;
+    runtimeConfig.envVariables = { "XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main" };
     runtimeConfig.appPath = "/var/runTimeManager";
     runtimeConfig.runtimePath = "/tmp/runTimeManager";
     runtimeConfig.systemMemoryLimit = 512;
@@ -1418,7 +1478,7 @@ TEST_F(RuntimeManagerTest, WakeOnRunningNonHibernateContainer)
                 return WPEFramework::Core::ERROR_NONE;
           }));
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, runtimeConfig));
+    EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, RuntimeConfigurationPayload(runtimeConfig)));
 
 
     EXPECT_EQ(Core::ERROR_GENERAL, interface->Wake(appInstanceId, WPEFramework::Exchange::IRuntimeManager::RUNTIME_STATE_RUNNING));
@@ -1445,8 +1505,8 @@ TEST_F(RuntimeManagerTest, WakeWithGeneralError)
     auto pathsListIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(pathsList);
     auto debugSettingsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
 
-    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
-    runtimeConfig.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=main";
+    WPEFramework::Plugin::RuntimeConfiguration runtimeConfig;
+    runtimeConfig.envVariables = { "XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main" };
     runtimeConfig.appPath = "/var/runTimeManager";
     runtimeConfig.runtimePath = "/tmp/runTimeManager";
     runtimeConfig.systemMemoryLimit = 512;
@@ -1464,7 +1524,7 @@ TEST_F(RuntimeManagerTest, WakeWithGeneralError)
                 return WPEFramework::Core::ERROR_NONE;
           }));
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, runtimeConfig));
+    EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, RuntimeConfigurationPayload(runtimeConfig)));
 
     EXPECT_CALL(*mociContainerMock, HibernateContainer(TEST_APP_CONTAINER_ID, "",::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
@@ -1545,8 +1605,8 @@ TEST_F(RuntimeManagerTest, SuspendResumeMethods)
     auto pathsListIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(pathsList);
     auto debugSettingsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
 
-    WPEFramework::Exchange::RuntimeConfig runtimeConfig;
-    runtimeConfig.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=main";
+    WPEFramework::Plugin::RuntimeConfiguration runtimeConfig;
+    runtimeConfig.envVariables = { "XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main" };
     runtimeConfig.appPath = "/var/runTimeManager";
     runtimeConfig.runtimePath = "/tmp/runTimeManager";
     runtimeConfig.systemMemoryLimit = 512;
@@ -1567,7 +1627,7 @@ TEST_F(RuntimeManagerTest, SuspendResumeMethods)
     ON_CALL(*mWindowManagerMock, CreateDisplay(CREATE_DISPLAY_WILDCARDS))
             .WillByDefault(::testing::Return(Core::ERROR_NONE));
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, runtimeConfig));
+    EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, RuntimeConfigurationPayload(runtimeConfig)));
 
     EXPECT_CALL(*mociContainerMock, PauseContainer(::testing::_, ::testing::_, ::testing::_))
     .WillOnce([](const std::string&, bool& success, std::string& reason) {
@@ -1645,8 +1705,8 @@ TEST_F(RuntimeManagerTest, SuspendFailsWithPauseContainerError)
     auto pathsListIterator = Core::Service<RPC::IteratorType<Exchange::IRuntimeManager::IStringIterator>>::Create<Exchange::IRuntimeManager::IStringIterator>(pathsList);
     auto debugSettingsIterator = Core::Service<RPC::IteratorType<Exchange::IRuntimeManager::IStringIterator>>::Create<Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
 
-    Exchange::RuntimeConfig runtimeConfig;
-    runtimeConfig.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=main";
+    Plugin::RuntimeConfiguration runtimeConfig;
+    runtimeConfig.envVariables = { "XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main" };
     runtimeConfig.appPath = "/var/runTimeManager";
     runtimeConfig.runtimePath = "/tmp/runTimeManager";
     runtimeConfig.systemMemoryLimit = 512;
@@ -1665,7 +1725,7 @@ TEST_F(RuntimeManagerTest, SuspendFailsWithPauseContainerError)
 
     ON_CALL(*mWindowManagerMock, CreateDisplay(CREATE_DISPLAY_WILDCARDS)).WillByDefault(::testing::Return(Core::ERROR_NONE));
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, runtimeConfig));
+    EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, RuntimeConfigurationPayload(runtimeConfig)));
 
     EXPECT_CALL(*mociContainerMock, PauseContainer(::testing::_, ::testing::_, ::testing::_))
         .WillOnce([](const std::string&, bool& success, std::string& reason) {
@@ -1700,8 +1760,8 @@ TEST_F(RuntimeManagerTest, ResumeFailsResumePauseContainerError)
     auto pathsListIterator = Core::Service<RPC::IteratorType<Exchange::IRuntimeManager::IStringIterator>>::Create<Exchange::IRuntimeManager::IStringIterator>(pathsList);
     auto debugSettingsIterator = Core::Service<RPC::IteratorType<Exchange::IRuntimeManager::IStringIterator>>::Create<Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
 
-    Exchange::RuntimeConfig runtimeConfig;
-    runtimeConfig.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=main";
+    Plugin::RuntimeConfiguration runtimeConfig;
+    runtimeConfig.envVariables = { "XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main" };
     runtimeConfig.appPath = "/var/runTimeManager";
     runtimeConfig.runtimePath = "/tmp/runTimeManager";
     runtimeConfig.systemMemoryLimit = 512;
@@ -1720,7 +1780,7 @@ TEST_F(RuntimeManagerTest, ResumeFailsResumePauseContainerError)
 
     ON_CALL(*mWindowManagerMock, CreateDisplay(CREATE_DISPLAY_WILDCARDS)).WillByDefault(::testing::Return(Core::ERROR_NONE));
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, runtimeConfig));
+    EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, RuntimeConfigurationPayload(runtimeConfig)));
 
     EXPECT_CALL(*mociContainerMock, PauseContainer(::testing::_, ::testing::_, ::testing::_))
     .WillOnce([](const std::string&, bool& success, std::string& reason) {
@@ -1954,9 +2014,9 @@ TEST(DobbySpecGeneratorRialtoTest, GstRegistryEnvInjectedWhenRialtoInactive)
     appCfg.mWesterosSocketPath = "/tmp/westeros";
     appCfg.mRialtoSocketPath   = ""; // Rialto not active
 
-    WPEFramework::Exchange::RuntimeConfig rtCfg;
+    WPEFramework::Plugin::RuntimeConfiguration rtCfg;
     rtCfg.command           = "SkyBrowserLauncher";
-    rtCfg.envVariables      = "XDG_RUNTIME_DIR=/tmp";
+    rtCfg.envVariables      = { "XDG_RUNTIME_DIR=/tmp" };
     rtCfg.systemMemoryLimit = 128 * 1024 * 1024;
 
     std::string spec;
@@ -1991,9 +2051,9 @@ TEST(DobbySpecGeneratorRialtoTest, GstRegistryMountedWhenRialtoInactive)
     appCfg.mWesterosSocketPath = "/tmp/westeros";
     appCfg.mRialtoSocketPath   = ""; // Rialto not active
 
-    WPEFramework::Exchange::RuntimeConfig rtCfg;
+    WPEFramework::Plugin::RuntimeConfiguration rtCfg;
     rtCfg.command           = "SkyBrowserLauncher";
-    rtCfg.envVariables      = "XDG_RUNTIME_DIR=/tmp";
+    rtCfg.envVariables      = { "XDG_RUNTIME_DIR=/tmp" };
     rtCfg.systemMemoryLimit = 128 * 1024 * 1024;
 
     std::string spec;
@@ -2019,9 +2079,9 @@ TEST(DobbySpecGeneratorRialtoTest, RialtoSocketEnvInjectedWhenRialtoActive)
     appCfg.mWesterosSocketPath = "/tmp/westeros";
     appCfg.mRialtoSocketPath   = "/tmp/amazonPrime"; // Rialto active
 
-    WPEFramework::Exchange::RuntimeConfig rtCfg;
+    WPEFramework::Plugin::RuntimeConfiguration rtCfg;
     rtCfg.command           = "run-app.sh";
-    rtCfg.envVariables      = "XDG_RUNTIME_DIR=/tmp";
+    rtCfg.envVariables      = { "XDG_RUNTIME_DIR=/tmp" };
     rtCfg.systemMemoryLimit = 128 * 1024 * 1024;
 
     std::string spec;
@@ -2052,9 +2112,9 @@ TEST(DobbySpecGeneratorRialtoTest, GstRegistryEnvAbsentWhenRialtoActive)
     appCfg.mWesterosSocketPath = "/tmp/westeros";
     appCfg.mRialtoSocketPath   = "/tmp/amazonPrime"; // Rialto active — must suppress GST_REGISTRY
 
-    WPEFramework::Exchange::RuntimeConfig rtCfg;
+    WPEFramework::Plugin::RuntimeConfiguration rtCfg;
     rtCfg.command           = "run-app.sh";
-    rtCfg.envVariables      = "XDG_RUNTIME_DIR=/tmp";
+    rtCfg.envVariables      = { "XDG_RUNTIME_DIR=/tmp" };
     rtCfg.systemMemoryLimit = 128 * 1024 * 1024;
 
     std::string spec;
@@ -2089,9 +2149,9 @@ TEST(DobbySpecGeneratorRialtoTest, GstRegistryMountAbsentWhenRialtoActive)
     appCfg.mWesterosSocketPath = "/tmp/westeros";
     appCfg.mRialtoSocketPath   = "/tmp/amazonPrime"; // Rialto active
 
-    WPEFramework::Exchange::RuntimeConfig rtCfg;
+    WPEFramework::Plugin::RuntimeConfiguration rtCfg;
     rtCfg.command           = "run-app.sh";
-    rtCfg.envVariables      = "XDG_RUNTIME_DIR=/tmp";
+    rtCfg.envVariables      = { "XDG_RUNTIME_DIR=/tmp" };
     rtCfg.systemMemoryLimit = 128 * 1024 * 1024;
 
     std::string spec;
@@ -2120,9 +2180,9 @@ TEST(DobbySpecGeneratorRialtoTest, RialtoPrefixedSocketPathUsedInSpec)
     appCfg.mWesterosSocketPath = "/tmp/westeros";
     appCfg.mRialtoSocketPath   = rialtoSocketPath;
 
-    WPEFramework::Exchange::RuntimeConfig rtCfg;
+    WPEFramework::Plugin::RuntimeConfiguration rtCfg;
     rtCfg.command           = "run-app.sh";
-    rtCfg.envVariables      = "XDG_RUNTIME_DIR=/tmp";
+    rtCfg.envVariables      = { "XDG_RUNTIME_DIR=/tmp" };
     rtCfg.systemMemoryLimit = 128 * 1024 * 1024;
 
     std::string spec;

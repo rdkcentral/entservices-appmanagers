@@ -35,7 +35,7 @@ namespace Plugin {
  *   "mediarite-underlay" (IPackage::Capability::RequiresMediarite)       -> "mediarite"
  *   "game-controller"    (IPackage::Capability::WantsGameController)     -> "gamecontrollersupport"
  *
- * @param runtimeCapabilities  Comma-separated runtime capability tokens from RuntimeConfig.
+ * @param runtimeCapabilities  Comma-separated runtime capability tokens from the decoded runtime configuration.
  * @return Comma-separated window-manager capability tokens (may be empty).
  */
 std::string buildWindowManagerCapabilities(const std::string& runtimeCapabilities);
