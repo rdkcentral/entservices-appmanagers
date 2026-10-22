@@ -253,7 +253,7 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                                 }
 
                                 // Preserve legacy behavior by appending launchArgs["env"] only for preload requests.
-                                if ((APP_ACTION_PRELOAD == action) && (Core::ERROR_NONE == status) && launchArgsObj.HasLabel("env"))
+                                if ((Core::ERROR_NONE == status) && launchArgsObj.HasLabel("env"))
                                 {
                                     if (launchArgsObj["env"].Content() != JsonValue::type::ARRAY)
                                     {
@@ -279,6 +279,27 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                                         }
                                     }
                                 }
+
+                                bool debugLaunchRequested = false;
+                                if (launchArgsObj.HasLabel("debugger"))
+                                {
+                                    const JsonValue debuggerValue = launchArgsObj["debugger"];
+                                    if (JsonValue::type::BOOLEAN == debuggerValue.Content())
+                                    {
+                                        debugLaunchRequested = debuggerValue.Boolean();
+                                    }
+                                    else if (JsonValue::type::STRING == debuggerValue.Content())
+                                    {
+                                        const std::string debuggerToken = debuggerValue.String();
+                                        debugLaunchRequested = (!debuggerToken.empty() && (debuggerToken != "false") && (debuggerToken != "0"));
+                                    }
+                                }
+                                runtimeConfig.SetBoolean("enableDebugger", debugLaunchRequested);
+                                if (debugLaunchRequested)
+                                {
+                                    LOGINFO("Debugger launch requested for appId=%s", appId.c_str());
+                                }
+
                                 if ((status == Core::ERROR_NONE) && !runtimeConfig.Serialize(runtimeConfigPayload, payloadError))
                                 {
                                     LOGERR("Failed to serialize runtime configuration for appId=%s: %s", appId.c_str(), payloadError.c_str());
