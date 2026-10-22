@@ -25,6 +25,8 @@
 #include <cstdint>
 #include <cstring>
 #include <filesystem>
+#include <ftw.h>
+#include <mutex>
 #include <sys/statvfs.h>
 #include <vector>
 
@@ -35,6 +37,34 @@
 
 /* Until we don't get it from Package configuration, use size as 1MB */
 #define STORAGE_MAX_SIZE 1024
+
+#define PACKAGES_STORAGE_PATH "/media/apps/sky/packages"
+
+namespace {
+    // nftw() callbacks take no user data, so the running total is file-static.
+    std::mutex gDirSizeLock;
+    uint64_t gDirSizeBytes = 0;
+
+    int getSize(const char*, const struct stat* sb, int typeflag, struct FTW*)
+    {
+        if ((FTW_NS != typeflag) && (FTW_DNR != typeflag) && (nullptr != sb)) {
+            // st_blocks is always in 512-byte units, matching `du -sk`.
+            gDirSizeBytes += static_cast<uint64_t>(sb->st_blocks) * 512;
+        }
+        return 0;
+    }
+
+    bool getDirectorySizeInBytes(const std::string& path, uint64_t& sizeBytes)
+    {
+        std::lock_guard<std::mutex> lock(gDirSizeLock);
+        gDirSizeBytes = 0;
+        if (0 != nftw(path.c_str(), getSize, 64, FTW_PHYS | FTW_MOUNT)) {
+            return false;
+        }
+        sizeBytes = gDirSizeBytes;
+        return true;
+    }
+}
 
 namespace WPEFramework {
 namespace Plugin {
@@ -410,25 +440,27 @@ namespace Plugin {
     {
         Core::hresult result = Core::ERROR_GENERAL;
         struct statvfs fsStat;
+        uint64_t usedBytes = 0;
 
         quotaKB = 0;
         usedKB = 0;
 
-        /* Packages are downloaded/installed under downloadDir, report the stats of its partition */
-        const string storagePath = downloadDir.empty() ? string("/") : downloadDir;
+        const string storagePath = PACKAGES_STORAGE_PATH;
 
         memset(&fsStat, 0, sizeof(fsStat));
         if (0 != statvfs(storagePath.c_str(), &fsStat)) {
             LOGERR("statvfs failed for '%s' errno=%d reason=%s", storagePath.c_str(), errno, strerror(errno));
+        } else if (!getDirectorySizeInBytes(storagePath, usedBytes)) {
+            LOGERR("Failed to get size of '%s' errno=%d reason=%s", storagePath.c_str(), errno, strerror(errno));
         } else {
-            /* f_frsize is the unit of f_blocks/f_bfree, fall back to f_bsize when the filesystem does not report it */
+            /* f_frsize is the unit of f_bavail, fall back to f_bsize when the filesystem does not report it */
             const uint64_t blockSize = (0 != fsStat.f_frsize) ? static_cast<uint64_t>(fsStat.f_frsize) : static_cast<uint64_t>(fsStat.f_bsize);
-            const uint64_t totalKB = (static_cast<uint64_t>(fsStat.f_blocks) * blockSize) / 1024;
-            const uint64_t freeKB = (static_cast<uint64_t>(fsStat.f_bfree) * blockSize) / 1024;
-            const uint64_t inUseKB = (totalKB > freeKB) ? (totalKB - freeKB) : 0;
+            const uint64_t usedKBytes = usedBytes / 1024;
+            const uint64_t availableKB = (static_cast<uint64_t>(fsStat.f_bavail) * blockSize) / 1024;
 
-            quotaKB = static_cast<uint32_t>(std::min<uint64_t>(totalKB, UINT32_MAX));
-            usedKB = static_cast<uint32_t>(std::min<uint64_t>(inUseKB, UINT32_MAX));
+            /* quota = what the directory holds now plus how much more the partition lets it grow */
+            usedKB = static_cast<uint32_t>(std::min<uint64_t>(usedKBytes, UINT32_MAX));
+            quotaKB = static_cast<uint32_t>(std::min<uint64_t>(usedKBytes + availableKB, UINT32_MAX));
 
             LOGDBG("path='%s' quotaKB=%u usedKB=%u", storagePath.c_str(), quotaKB, usedKB);
             result = Core::ERROR_NONE;
