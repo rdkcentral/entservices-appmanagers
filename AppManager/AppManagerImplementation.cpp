@@ -230,10 +230,29 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
 #endif // RALF_PACKAGE_SUPPORT_ENABLED
                                 getCustomValues(runtimeConfig);
                                 string launchArgs = appRequestParam->launchArgs;
-
-                                // Preserve legacy behavior by appending launchArgs["env"] only for preload requests.
                                 JsonObject launchArgsObj;
                                 launchArgsObj.FromString(launchArgs);
+                                bool debugLaunchRequested = false;
+                                if (launchArgsObj.HasLabel("debugger"))
+                                {
+                                    const JsonValue debuggerValue = launchArgsObj["debugger"];
+                                    if (JsonValue::type::BOOLEAN == debuggerValue.Content())
+                                    {
+                                        debugLaunchRequested = debuggerValue.Boolean();
+                                    }
+                                    else if (JsonValue::type::STRING == debuggerValue.Content())
+                                    {
+                                        const std::string debuggerToken = debuggerValue.String();
+                                        debugLaunchRequested = (!debuggerToken.empty() && (debuggerToken != "false") && (debuggerToken != "0"));
+                                    }
+                                }
+                                runtimeConfig.SetBoolean("enableDebugger", debugLaunchRequested);
+                                if (debugLaunchRequested)
+                                {
+                                    LOGINFO("Debugger launch requested for appId=%s", appId.c_str());
+                                }
+
+                                // Preserve legacy behavior by appending launchArgs["env"] only for preload requests.
                                 if ((Core::ERROR_NONE == status) && launchArgsObj.HasLabel("env"))
                                 {
                                     if (launchArgsObj["env"].Content() != JsonValue::type::ARRAY)

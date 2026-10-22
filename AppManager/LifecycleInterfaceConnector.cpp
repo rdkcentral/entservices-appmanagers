@@ -198,7 +198,11 @@ namespace WPEFramework
                 return false;
             }
 
-            const std::string normalizedLaunchArgs = ::Utils::LaunchArgs::normalizeLaunchArgs(launchArgs);
+            std::string normalizedLaunchArgs = ::Utils::LaunchArgs::normalizeLaunchArgs(launchArgs);
+            if (normalizedLaunchArgs == "{}" || normalizedLaunchArgs == "{ }") {
+                normalizedLaunchArgs.clear();
+            }
+
             if (!payload.UpsertEnvironment(std::string("APPLICATION_LAUNCH_PARAMETERS=") + LifecycleInterfaceConnector::base64Encode(normalizedLaunchArgs), error)
                 || !payload.Serialize(runtimeConfigPayload, error))
             {
@@ -285,7 +289,7 @@ namespace WPEFramework
                             string source = "";
                             appManagerImplInstance->handleOnAppLaunchRequest(appId, intent, source);
 
-                            if (!appendLaunchParametersEnv(launchArgs, runtimeConfigPayload, errorReason))
+                            if (!appendLaunchParametersEnv(normalizedLaunchArgs, runtimeConfigPayload, errorReason))
                             {
                                 LOGERR("Invalid runtime configuration payload: %s", errorReason.c_str());
                                 status = Core::ERROR_INVALID_PARAMETER;
@@ -293,7 +297,7 @@ namespace WPEFramework
                             else
                             {
                                 LOGINFO("spawnApp called ,state %u",state);
-                                status = mLifecycleManagerRemoteObject->SpawnApp(appId, intent, state, runtimeConfigPayload, launchArgs, appInstanceId, errorReason, success);
+                                status = mLifecycleManagerRemoteObject->SpawnApp(appId, intent, state, runtimeConfigPayload, normalizedLaunchArgs, appInstanceId, errorReason, success);
                             }
 
                             if (Core::ERROR_NONE == status)
@@ -363,15 +367,14 @@ namespace WPEFramework
                 {
                     appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_PRELOAD);
                     state = Exchange::ILifecycleManager::LifecycleState::PAUSED;
-                    if (!appendLaunchParametersEnv(launchArgs, runtimeConfigPayload, error))
+                    if (!appendLaunchParametersEnv(normalizedLaunchArgs, runtimeConfigPayload, error))
                     {
                         LOGERR("Invalid runtime configuration payload: %s", error.c_str());
                     }
                     else
                     {
-                        status = mLifecycleManagerRemoteObject->SpawnApp(appId, intent, state, runtimeConfigPayload, launchArgs, appInstanceId, error, success);
+                        status = mLifecycleManagerRemoteObject->SpawnApp(appId, intent, state, runtimeConfigPayload, normalizedLaunchArgs, appInstanceId, error, success);
                     }
-
                     if (Core::ERROR_NONE == status)
                     {
                         LOGINFO("Update App Info");

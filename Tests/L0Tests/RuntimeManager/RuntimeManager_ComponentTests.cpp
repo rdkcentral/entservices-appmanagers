@@ -1894,7 +1894,7 @@ uint32_t Test_DobbySpecGenerator_GenerateInjectsWebInspectorEnvWhenDebuggerEnabl
 
     WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
-    auto rtCfg  = MakeValidRuntimeConfig();
+    auto rtCfg  = MakeValidRuntimeConfiguration();
     rtCfg.enableDebugger = true;
     rtCfg.capabilities = "runtime-html";
     std::string spec;
@@ -1924,7 +1924,7 @@ uint32_t Test_DobbySpecGenerator_GenerateSkipsWebInspectorEnvWhenDebuggerDisable
 
     WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
-    auto rtCfg  = MakeValidRuntimeConfig();
+    auto rtCfg  = MakeValidRuntimeConfiguration();
     rtCfg.enableDebugger = false;
     rtCfg.capabilities = "runtime-html";
     std::string spec;

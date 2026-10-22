@@ -191,7 +191,7 @@ class PackageManagerImplementation
         // IAppPackageManagerConfig methods
         Core::hresult GetConfigForInstalledPackage(const string &packageId, const string &version, string &config /* @out @opaque */) override;
         Core::hresult GetConfigListForInstalledPackages(const string &filter, string &config /* @out @opaque */) override;
-	
+
 	// IAppPackagesStatus methods
         Core::hresult GetRunningApplicationsUsingPackage(const string &packageId, string& applicationIds) override;
 

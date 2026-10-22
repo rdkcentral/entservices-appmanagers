@@ -931,6 +931,15 @@ uint32_t Test_PM_Impl_GetConfigListForInstalledPackages()
         ERROR_NONE,
         "GetConfigListForInstalledPackages() returns ERROR_NONE for filter 'dial'");
     L0Test::ExpectTrue(tr, !config.empty(), "GetConfigListForInstalledPackages() config is non-empty on success");
+    JsonObject dialConfig;
+    const bool parsed = dialConfig.FromString(config);
+    L0Test::ExpectTrue(tr, parsed, "DIAL package config is valid JSON");
+    if (parsed) {
+        L0Test::ExpectEqStr(tr, dialConfig["packageId"].String(), std::string("YouTube"),
+            "DIAL package config contains the matching package ID");
+        L0Test::ExpectEqStr(tr, dialConfig["version"].String(), std::string("100.1.24"),
+            "DIAL package config contains the matching package version");
+    }
 
     config.clear();
     L0Test::ExpectEqU32(tr,

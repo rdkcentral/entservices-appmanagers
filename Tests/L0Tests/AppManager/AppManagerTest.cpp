@@ -59,6 +59,7 @@ extern uint32_t Test_AM_SingletonPointerSetAndCleared();
 extern uint32_t Test_AM_LifecycleConnectorLaunchNewApp();
 extern uint32_t Test_AM_LifecycleConnectorLaunchSuspendedApp();
 extern uint32_t Test_AM_LifecycleConnectorLaunchPausedApp();
+extern uint32_t Test_AM_LifecycleConnectorDialLaunchNormalizesArgsAndPreservesPayload();
 extern uint32_t Test_AM_LifecycleConnectorPreloadApp();
 extern uint32_t Test_AM_LifecycleConnectorTerminateApp();
 extern uint32_t Test_AM_LifecycleConnectorCloseApp();
@@ -222,6 +223,7 @@ int main()
     };
 
     const Case cases[] = {
+        { "AM_LifecycleConnectorDialLaunchNormalizesArgsAndPreservesPayload", Test_AM_LifecycleConnectorDialLaunchNormalizesArgsAndPreservesPayload },
         { "AM_InitializeSucceedsAndDeinitializeCleansUp", Test_AM_InitializeSucceedsAndDeinitializeCleansUp },
         { "AM_InformationReturnsEmptyString", Test_AM_InformationReturnsEmptyString },
         { "AM_RegisterAndUnregisterNotification", Test_AM_RegisterAndUnregisterNotification },
