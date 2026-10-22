@@ -681,7 +681,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithValidConfig()
 
     WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg  = MakeValidAppConfig();
-    auto rtCfg   = MakeValidRuntimeConfiguration();
+    auto rtCfg  = MakeValidRuntimeConfiguration();
     std::string spec;
 
     const bool result = gen.generate(appCfg, rtCfg, spec);
@@ -704,7 +704,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithZeroUserId()
     WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg  = MakeValidAppConfig();
     appCfg.mUserId = 0; // mandatory check will fail
-    auto rtCfg   = MakeValidRuntimeConfiguration();
+    auto rtCfg  = MakeValidRuntimeConfiguration();
     std::string spec;
 
     const bool result = gen.generate(appCfg, rtCfg, spec);
