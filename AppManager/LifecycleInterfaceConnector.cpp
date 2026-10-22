@@ -113,7 +113,7 @@ namespace WPEFramework
 
             //clear action list
             mAppCurrentActionList.clear();
-	    mPendingRelaunches.clear();
+            mPendingRelaunches.clear();
         }
 
         Core::hresult LifecycleInterfaceConnector::createLifecycleManagerRemoteObject()
@@ -269,7 +269,7 @@ namespace WPEFramework
 
         Core::hresult LifecycleInterfaceConnector::restartSuspendedWithRequestedVersion(const string& appId,
             const string& intent, const string& launchArgs, WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject,
-            const string& suspendedAppInstanceId)
+            const string& suspendedAppInstanceId, const string& requestedVersion)
         {
             (void)intent;
             (void)launchArgs;
@@ -286,6 +286,24 @@ namespace WPEFramework
                 appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_LAUNCH, AppManagerImplementation::ERROR_INTERNAL);
                 return Core::ERROR_GENERAL;
             }
+            if (nullptr == mLifecycleManagerRemoteObject)
+            {
+               LOGERR("restartSuspendedWithRequestedVersion failed: LifecycleManager remote object is null for appId=%s", appId.c_str());
+	       mPendingRelaunches.erase(suspendedAppInstanceId);
+
+               const Core::hresult releaseStatus = appManagerImplInstance->releaseDeferredReplacementLock(appId, requestedVersion);
+
+               if (Core::ERROR_NONE != releaseStatus)
+               {
+                   LOGERR("Failed to release deferred replacement lock after LifecycleManager unavailable for appId=%s requestedVersion=%s status=%d",
+                   appId.c_str(), requestedVersion.c_str(), releaseStatus);
+               }
+
+               appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_LAUNCH, AppManagerImplementation::ERROR_INTERNAL);
+
+               return Core::ERROR_GENERAL;
+             }
+
 
             appManagerImplInstance->updateCurrentAction(appId, AppManagerImplementation::APP_ACTION_KILL);
             status = mLifecycleManagerRemoteObject->KillApp(suspendedAppInstanceId, errorReason, success);
@@ -295,11 +313,19 @@ namespace WPEFramework
                 LOGERR("Failed to kill old suspended app instance for replacement appId=%s status=%d success=%d errorReason=%s",
                     appId.c_str(), status, success, errorReason.c_str());
                 mPendingRelaunches.erase(suspendedAppInstanceId);
-                appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_LAUNCH, AppManagerImplementation::ERROR_KILL_APP);
-                if (Core::ERROR_NONE == status)
-                {
-                    status = Core::ERROR_GENERAL;
-                }
+		const Core::hresult releaseStatus = appManagerImplInstance->releaseDeferredReplacementLock(
+                appId, requestedVersion);
+
+               if (Core::ERROR_NONE != releaseStatus)
+               {
+                  LOGERR("Failed to release deferred replacement lock after KillApp failure for appId=%s requestedVersion=%s status=%d",
+                  appId.c_str(), requestedVersion.c_str(), releaseStatus);
+               }
+               appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_LAUNCH, AppManagerImplementation::ERROR_KILL_APP);
+               if (Core::ERROR_NONE == status)
+               {
+                   status = Core::ERROR_GENERAL;
+               }
             }
             else
             {
@@ -325,12 +351,16 @@ namespace WPEFramework
             return true;
         }
 
-        void LifecycleInterfaceConnector::handlePendingRelaunch(const string& suspendedAppInstanceId,
-            const PendingRelaunchRequest& pendingRelaunch)
+        void LifecycleInterfaceConnector::handlePendingRelaunch(const string& suspendedAppInstanceId)
         {
-            LOGINFO("Relaunching appId=%s after unload confirmation for suspendedAppInstanceId=%s",
-                pendingRelaunch.appId.c_str(), suspendedAppInstanceId.c_str());
-
+            PendingRelaunchRequest pendingRelaunch;
+            if (false == tryGetPendingRelaunch(suspendedAppInstanceId, pendingRelaunch))
+            {
+                LOGINFO("No pending relaunch found for suspendedAppInstanceId=%s",suspendedAppInstanceId.c_str());
+                return;
+            }
+            LOGINFO("Relaunching appId=%s after old-instance cleanup for suspendedAppInstanceId=%s",
+            pendingRelaunch.appId.c_str(),suspendedAppInstanceId.c_str());
             mAdminLock.Lock();
             WPEFramework::Exchange::RuntimeConfig runtimeConfigObject = pendingRelaunch.runtimeConfigObject;
             Core::hresult status = launchRequestedPackage(pendingRelaunch.appId, pendingRelaunch.intent,
@@ -427,7 +457,7 @@ namespace WPEFramework
                                 LOGERR("SetTargetAppState Failed");
                             }
                         }
-			else if ((true == loaded) &&
+                        else if ((true == loaded) &&
                             (Core::ERROR_NONE == status) &&
                             appInMap &&
                             (Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED == appInfoSnap.getAppNewState()) &&
@@ -440,19 +470,32 @@ namespace WPEFramework
                             }
                             else
                             {
-                                PendingRelaunchRequest pendingRelaunch;
-                                pendingRelaunch.appId = appId;
-                                pendingRelaunch.intent = intent;
-                                pendingRelaunch.launchArgs = launchArgs;
-                                pendingRelaunch.runtimeConfigObject = runtimeConfigObject;
-                                mPendingRelaunches[appInfoSnap.getAppInstanceId()] = pendingRelaunch;
+                                const string suspendedAppInstanceId = appInfoSnap.getAppInstanceId();
 
-                            LOGINFO("Suspended app replacement for appId=%s runningVersion=%s requestedVersion=%s runningPath=%s requestedPath=%s",
-                                appId.c_str(), runningVersion.c_str(), requestedVersion.c_str(), runningUnpackedPath.c_str(), runtimeConfigObject.unpackedPath.c_str());
-                                LOGINFO("Queued pending relaunch before kill for appId=%s suspendedAppInstanceId=%s",
-                                    appId.c_str(), appInfoSnap.getAppInstanceId().c_str());
-                                status = restartSuspendedWithRequestedVersion(appId, intent, launchArgs, runtimeConfigObject,
-                                    appInfoSnap.getAppInstanceId());
+                                std::map<std::string, PendingRelaunchRequest>::iterator pendingRelaunchIter = mPendingRelaunches.find(suspendedAppInstanceId);
+                                if (mPendingRelaunches.end() != pendingRelaunchIter)
+                                {
+                                    LOGWARN("Pending relaunch already queued for appId=%s ""suspendedAppInstanceId=%s; ignoring duplicate request",
+				             appId.c_str(),suspendedAppInstanceId.c_str());
+
+                                    status = Core::ERROR_NONE;
+                                }
+                                else
+                                {
+                                   PendingRelaunchRequest pendingRelaunch;
+                                   pendingRelaunch.appId = appId;
+                                   pendingRelaunch.intent = intent;
+                                   pendingRelaunch.launchArgs = launchArgs;
+                                   pendingRelaunch.runtimeConfigObject = runtimeConfigObject;
+                                   mPendingRelaunches.emplace(suspendedAppInstanceId, pendingRelaunch);
+
+                                   LOGINFO("Suspended app replacement for appId=%s runningVersion=%s requestedVersion=%s runningPath=%s requestedPath=%s",
+                                   appId.c_str(), runningVersion.c_str(), requestedVersion.c_str(), runningUnpackedPath.c_str(), runtimeConfigObject.unpackedPath.c_str());
+                                   LOGINFO("Queued pending relaunch before kill for appId=%s suspendedAppInstanceId=%s",
+                                   appId.c_str(), suspendedAppInstanceId.c_str());
+                                   status = restartSuspendedWithRequestedVersion(appId, intent, launchArgs, runtimeConfigObject, suspendedAppInstanceId, requestedVersion);
+				 }
+                                     
                             }
                         }
                         else
@@ -764,7 +807,7 @@ namespace WPEFramework
                     {
                         LOGERR("killApp failed, result: %d, success: %d, errorReason: %s", result, success, errorReason.c_str());
                         appManagerTelemetryReporting.reportTelemetryErrorData(appId, AppManagerImplementation::APP_ACTION_KILL, AppManagerImplementation::ERROR_KILL_APP);
-			if (Core::ERROR_NONE == result)
+                        if (Core::ERROR_NONE == result)
                         {
                             result = Core::ERROR_GENERAL;
                         }
@@ -1155,11 +1198,6 @@ End:
                                 AppManagerTelemetryReporting::getInstance().reportAppCrashedTelemetry(appId, storedInstanceId, crashReason);
                             }
                         }
-			if ((false == appInstanceId.empty()) && tryGetPendingRelaunch(appInstanceId, pendingRelaunch))
-                        {
-                            shouldRelaunch = true;
-                            LOGINFO("Pending relaunch identified for appId=%s appInstanceId=%s", appId.c_str(), appInstanceId.c_str());
-                        }
                         mAppCurrentActionList.erase(appId);
                     }
                     else
@@ -1174,10 +1212,6 @@ End:
                 }
 
                 AppManagerTelemetryReporting::getInstance().reportTelemetryDataOnStateChange(appId, newState);
-            }
-	    if (true == shouldRelaunch)
-            {
-                handlePendingRelaunch(appInstanceId, pendingRelaunch);
             }
         }
 

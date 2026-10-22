@@ -68,6 +68,7 @@ namespace WPEFramework
                 std::string appId;
                 std::string intent;
                 std::string launchArgs;
+                std::string requestedVersion;
                 WPEFramework::Exchange::RuntimeConfig runtimeConfigObject;
             };
 
@@ -126,6 +127,7 @@ namespace WPEFramework
 #endif
                     Core::hresult sendIntent(const string& appId, const string& intent);
                     Core::hresult getLoadedApps(Exchange::IAppManager::ILoadedAppInfoIterator*& apps);
+                    void handlePendingRelaunch(const string& suspendedAppInstanceId);
                     void OnAppLifecycleStateChanged(const string& appId, const string& appInstanceId, const Exchange::ILifecycleManager::LifecycleState newState, const Exchange::ILifecycleManager::LifecycleState oldState, const string& navigationIntent);
                     void OnAppStateChanged(const string& appId, Exchange::ILifecycleManager::LifecycleState state, const string& errorReason);
                     Exchange::IAppManager::AppLifecycleState mapAppLifecycleState(Exchange::ILifecycleManager::LifecycleState state);
@@ -141,10 +143,9 @@ namespace WPEFramework
                     Core::hresult launchRequestedPackage(const string& appId, const string& intent, const string& launchArgs,
                         WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject);
                     Core::hresult restartSuspendedWithRequestedVersion(const string& appId, const string& intent, const string& launchArgs,
-                        WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject, const string& suspendedAppInstanceId);
+                        WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject, const string& suspendedAppInstanceId, const string& requestedVersion);
                     bool tryGetPendingRelaunch(const string& suspendedAppInstanceId, PendingRelaunchRequest& pendingRelaunch);
-                    void handlePendingRelaunch(const string& suspendedAppInstanceId, const PendingRelaunchRequest& pendingRelaunch);
-		    static std::string base64Encode(const std::string& in);
+                    static std::string base64Encode(const std::string& in);
                     void appendLaunchParametersEnv(const std::string& launchArgs, WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject) const;
                     mutable Core::CriticalSection mAdminLock;
                     Exchange::ILifecycleManager *mLifecycleManagerRemoteObject;
