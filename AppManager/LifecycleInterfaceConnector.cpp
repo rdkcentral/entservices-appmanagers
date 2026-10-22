@@ -371,7 +371,7 @@ namespace WPEFramework
             if (Core::ERROR_NONE != status)
             {
                 LOGERR("Failed to relaunch appId=%s after unload confirmation status=%d", pendingRelaunch.appId.c_str(), status);
-                AppManagerImplementation* appManagerImplInstance = AppManagerImplementation::getImplInstance();
+                AppManagerImplementation* appManagerImplInstance = AppManagerImplementation::getInstance();
                 if (nullptr != appManagerImplInstance)
                 {
                    const Core::hresult releaseStatus = appManagerImplInstance->releaseDeferredReplacementLock(
