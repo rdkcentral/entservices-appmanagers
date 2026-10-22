@@ -340,6 +340,7 @@ namespace WPEFramework
         bool LifecycleInterfaceConnector::tryGetPendingRelaunch(const string& suspendedAppInstanceId,
             PendingRelaunchRequest& pendingRelaunch)
         {
+            Core::SafeSyncType<Core::CriticalSection> lock(mAdminLock);
             std::map<std::string, PendingRelaunchRequest>::iterator pendingRelaunchIter = mPendingRelaunches.find(suspendedAppInstanceId);
             if (mPendingRelaunches.end() == pendingRelaunchIter)
             {
@@ -370,6 +371,22 @@ namespace WPEFramework
             if (Core::ERROR_NONE != status)
             {
                 LOGERR("Failed to relaunch appId=%s after unload confirmation status=%d", pendingRelaunch.appId.c_str(), status);
+                if (nullptr != appManagerImplInstance)
+                {
+                   const Core::hresult releaseStatus = appManagerImplInstance->releaseDeferredReplacementLock(
+                    pendingRelaunch.appId, pendingRelaunch.requestedVersion);
+
+                   if (Core::ERROR_NONE != releaseStatus)
+                   {
+                      LOGERR("Failed to release deferred replacement lock after relaunch failure for appId=%s requestedVersion=%s status=%d",
+                      pendingRelaunch.appId.c_str(), pendingRelaunch.requestedVersion.c_str(), releaseStatus);
+                   }
+                }
+                else
+                {
+                   LOGERR("Cannot release deferred replacement lock because AppManagerImplementation instance is null for appId=%s requestedVersion=%s",
+                   pendingRelaunch.appId.c_str(), pendingRelaunch.requestedVersion.c_str());
+                }
             }
         }
 
@@ -477,8 +494,18 @@ namespace WPEFramework
                                 {
                                     LOGWARN("Pending relaunch already queued for appId=%s ""suspendedAppInstanceId=%s; ignoring duplicate request",
 				             appId.c_str(),suspendedAppInstanceId.c_str());
+                                    const Core::hresult releaseStatus = appManagerImplInstance->releaseDeferredReplacementLock(appId, requestedVersion);
+                                    if (Core::ERROR_NONE != releaseStatus)
+                                    {
+                                        LOGERR("Failed to release duplicate replacement lock for appId=%s requestedVersion=%s status=%d",
+                                        appId.c_str(), requestedVersion.c_str(), releaseStatus);
 
-                                    status = Core::ERROR_NONE;
+                                        status = releaseStatus;
+                                    }
+                                    else
+                                    {
+                                       status = Core::ERROR_NONE;
+                                    }
                                 }
                                 else
                                 {
@@ -486,6 +513,7 @@ namespace WPEFramework
                                    pendingRelaunch.appId = appId;
                                    pendingRelaunch.intent = intent;
                                    pendingRelaunch.launchArgs = launchArgs;
+                                   pendingRelaunch.requestedVersion = requestedVersion;
                                    pendingRelaunch.runtimeConfigObject = runtimeConfigObject;
                                    mPendingRelaunches.emplace(suspendedAppInstanceId, pendingRelaunch);
 
@@ -1116,8 +1144,6 @@ End:
             Exchange::IAppManager::AppLifecycleState oldAppState = mapAppLifecycleState(oldState);
             Exchange::IAppManager::AppLifecycleState newAppState = mapAppLifecycleState(newState);
             bool shouldNotify = false;
-	    bool shouldRelaunch = false;
-            PendingRelaunchRequest pendingRelaunch;
 
             if (Exchange::IAppManager::APP_STATE_UNKNOWN == newAppState ||
                 Exchange::IAppManager::APP_STATE_UNKNOWN == oldAppState)

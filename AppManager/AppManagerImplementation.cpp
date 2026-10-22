@@ -1187,6 +1187,11 @@ Core::hresult AppManagerImplementation::packageLock(const string& appId, Package
             LOGINFO("Skipping packageLock for appId %s because app is already loaded", appId.c_str());
             status = Core::ERROR_NONE;
         }
+        else if (Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED != AppInfoManager::getInstance().getAppNewState(appId))
+        {
+            packageData = cachedPackageData;
+            status = Core::ERROR_NONE;
+        }
         else
         {
             LOGINFO("Loaded appId %s requested with new package version %s while running %s; locking requested version",
@@ -1266,9 +1271,6 @@ Core::hresult AppManagerImplementation::packageUnLock(const string& appId)
 
 Core::hresult AppManagerImplementation::releaseDeferredReplacementLock(const string& appId, const string& requestedVersion)
 {
-    const std::string activeVersion = AppInfoManager::getInstance().getPackageInfoVersion(appId);
-    const std::string requestedVersion = AppInfoManager::getInstance().getRequestedLaunchVersion(appId);
-
     if (true == requestedVersion.empty())
     {
         return Core::ERROR_NONE;
