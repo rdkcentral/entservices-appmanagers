@@ -724,7 +724,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithEmptyCommand()
 
     WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
-    auto rtCfg  = MakeValidRuntimeConfiguration();
+    auto rtCfg = MakeValidRuntimeConfiguration();
     rtCfg.command.clear(); // mandatory check will fail
     std::string spec;
 
@@ -745,7 +745,7 @@ uint32_t Test_DobbySpecGenerator_GenerateSpecContainsVersion()
 
     WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
-    auto rtCfg  = MakeValidRuntimeConfiguration();
+    auto rtCfg = MakeValidRuntimeConfiguration();
     std::string spec;
 
     gen.generate(appCfg, rtCfg, spec);
@@ -767,7 +767,7 @@ uint32_t Test_DobbySpecGenerator_GenerateSpecContainsArgs()
 
     WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
-    auto rtCfg  = MakeValidRuntimeConfiguration();
+    auto rtCfg = MakeValidRuntimeConfiguration();
     std::string spec;
 
     gen.generate(appCfg, rtCfg, spec);
@@ -788,7 +788,7 @@ uint32_t Test_DobbySpecGenerator_GenerateSpecContainsMemLimit()
 
     WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
-    auto rtCfg  = MakeValidRuntimeConfiguration();
+    auto rtCfg = MakeValidRuntimeConfiguration();
     std::string spec;
 
     gen.generate(appCfg, rtCfg, spec);
@@ -826,7 +826,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithRuntimePath()
 
     WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
-    auto rtCfg  = MakeValidRuntimeConfiguration();
+    auto rtCfg = MakeValidRuntimeConfiguration();
     rtCfg.runtimePath = "/opt/runtimes/sky";
     std::string spec;
 
@@ -849,7 +849,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithoutRuntimePath()
 
     WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
-    auto rtCfg  = MakeValidRuntimeConfiguration();
+    auto rtCfg = MakeValidRuntimeConfiguration();
     rtCfg.runtimePath.clear(); // no runtime path set
     std::string spec;
 
@@ -872,7 +872,7 @@ uint32_t Test_DobbySpecGenerator_GenerateSpecContainsCpu()
 
     WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
-    auto rtCfg  = MakeValidRuntimeConfiguration();
+    auto rtCfg = MakeValidRuntimeConfiguration();
     std::string spec;
 
     gen.generate(appCfg, rtCfg, spec);
@@ -893,7 +893,7 @@ uint32_t Test_DobbySpecGenerator_GenerateSpecContainsNetwork()
 
     WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
-    auto rtCfg  = MakeValidRuntimeConfiguration();
+    auto rtCfg = MakeValidRuntimeConfiguration();
     std::string spec;
 
     gen.generate(appCfg, rtCfg, spec);
@@ -914,7 +914,7 @@ uint32_t Test_DobbySpecGenerator_GenerateSpecContainsRdkPlugins()
 
     WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
-    auto rtCfg  = MakeValidRuntimeConfiguration();
+    auto rtCfg = MakeValidRuntimeConfiguration();
     std::string spec;
 
     gen.generate(appCfg, rtCfg, spec);
@@ -936,7 +936,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithMemLimitFromConfig()
 
     WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
-    auto rtCfg  = MakeValidRuntimeConfiguration();
+    auto rtCfg = MakeValidRuntimeConfiguration();
     rtCfg.systemMemoryLimit = 128 * 1024 * 1024; // 128 MB
     std::string spec;
 
@@ -1658,7 +1658,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithSpecChangeFile()
 
     WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
-    auto rtCfg  = MakeValidRuntimeConfiguration();
+    auto rtCfg = MakeValidRuntimeConfiguration();
     std::string spec;
 
     const bool result = gen.generate(appCfg, rtCfg, spec);
@@ -1682,7 +1682,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithWanLanAccessFalse()
 
     WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
-    auto rtCfg  = MakeValidRuntimeConfiguration();
+    auto rtCfg = MakeValidRuntimeConfiguration();
     rtCfg.wanLanAccess = false;
     std::string spec;
 
@@ -1705,7 +1705,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithAppPath()
 
     WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
-    auto rtCfg  = MakeValidRuntimeConfiguration();
+    auto rtCfg = MakeValidRuntimeConfiguration();
     rtCfg.appPath = "/opt/app/youTube";
     std::string spec;
 
@@ -1728,7 +1728,7 @@ uint32_t Test_DobbySpecGenerator_GenerateThunderPluginEnabled()
 
     WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
-    auto rtCfg  = MakeValidRuntimeConfiguration();
+    auto rtCfg = MakeValidRuntimeConfiguration();
     rtCfg.thunder = true;
     std::string spec;
 
@@ -1750,7 +1750,7 @@ uint32_t Test_DobbySpecGenerator_GenerateThunderPluginDisabled()
 
     WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
-    auto rtCfg  = MakeValidRuntimeConfiguration();
+    auto rtCfg = MakeValidRuntimeConfiguration();
     rtCfg.thunder = false;
     std::string spec;
 
@@ -1773,7 +1773,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithEmptyWesterosSocket()
     WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     appCfg.mWesterosSocketPath.clear();  // no GUI
-    auto rtCfg  = MakeValidRuntimeConfiguration();
+    auto rtCfg = MakeValidRuntimeConfiguration();
     rtCfg.envVariables.clear();
     std::string spec;
 
@@ -1797,7 +1797,7 @@ uint32_t Test_DobbySpecGenerator_GenerateSysMemLimitZeroFallsBack()
 
     WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
-    auto rtCfg  = MakeValidRuntimeConfiguration();
+    auto rtCfg = MakeValidRuntimeConfiguration();
     rtCfg.systemMemoryLimit = 0;   // will trigger branch in getSysMemoryLimit
     rtCfg.appType = "UNKNOWN_TYPE"; // not INTERACTIVE, so no fallback
     std::string spec;
@@ -1822,7 +1822,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithNonEmptyAppPorts()
 
     WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
-    auto rtCfg  = MakeValidRuntimeConfiguration();
+    auto rtCfg = MakeValidRuntimeConfiguration();
     appCfg.mPorts.push_back(8080u);
     std::string spec;
 
@@ -1845,7 +1845,7 @@ uint32_t Test_DobbySpecGenerator_GetVpuEnabledReturnsFalseForSystemApp()
 
     WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
-    auto rtCfg  = MakeValidRuntimeConfiguration();
+    auto rtCfg = MakeValidRuntimeConfiguration();
     rtCfg.appType = "SYSTEM";
     std::string spec;
 
@@ -1870,7 +1870,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithEnvVariablesInRuntimeConfiguration(
 
     WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
-    auto rtCfg  = MakeValidRuntimeConfiguration();
+    auto rtCfg = MakeValidRuntimeConfiguration();
     // Provide a JSON array string for envVariables
     rtCfg.envVariables = { "MY_TEST_VAR=hello" };
     std::string spec;
@@ -1894,7 +1894,7 @@ uint32_t Test_DobbySpecGenerator_GenerateInjectsWebInspectorEnvWhenDebuggerEnabl
 
     WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
-    auto rtCfg  = MakeValidRuntimeConfiguration();
+    auto rtCfg = MakeValidRuntimeConfiguration();
     rtCfg.enableDebugger = true;
     rtCfg.capabilities = "runtime-html";
     std::string spec;
@@ -1924,7 +1924,7 @@ uint32_t Test_DobbySpecGenerator_GenerateSkipsWebInspectorEnvWhenDebuggerDisable
 
     WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
-    auto rtCfg  = MakeValidRuntimeConfiguration();
+    auto rtCfg = MakeValidRuntimeConfiguration();
     rtCfg.enableDebugger = false;
     rtCfg.capabilities = "runtime-html";
     std::string spec;
@@ -1949,7 +1949,7 @@ uint32_t Test_DobbySpecGenerator_GenerateThunderPluginFromCapabilities()
 
     WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
-    auto rtCfg  = MakeValidRuntimeConfiguration();
+    auto rtCfg = MakeValidRuntimeConfiguration();
     rtCfg.thunder = false;
     rtCfg.capabilities = "thunder";
     std::string spec;
@@ -1974,7 +1974,7 @@ uint32_t Test_DobbySpecGenerator_GenerateDialEnvFromEscapedCapabilityValue()
 
     WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
-    auto rtCfg  = MakeValidRuntimeConfiguration();
+    auto rtCfg = MakeValidRuntimeConfiguration();
     rtCfg.dial = false;
     rtCfg.dialId.clear();
     rtCfg.capabilities = "dial-app=dial\\,id\\=01";
@@ -2000,7 +2000,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithEmptyCapabilitiesString()
 
     WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
-    auto rtCfg  = MakeValidRuntimeConfiguration();
+    auto rtCfg = MakeValidRuntimeConfiguration();
     rtCfg.thunder = false;
     rtCfg.capabilities.clear();
     std::string spec;
@@ -2025,7 +2025,7 @@ uint32_t Test_DobbySpecGenerator_GenerateIgnoresRuntimeLogLevelsForEthanLog()
 
     WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
-    auto rtCfg  = MakeValidRuntimeConfiguration();
+    auto rtCfg = MakeValidRuntimeConfiguration();
     rtCfg.logLevels = { "fatal" };
     std::string spec;
 
@@ -2063,7 +2063,7 @@ uint32_t Test_DobbySpecGenerator_GstRegistryInjectedWhenRialtoInactive()
 
     auto appCfg = MakeValidAppConfig();
     appCfg.mRialtoSocketPath = ""; // Rialto not active for this app
-    auto rtCfg  = MakeValidRuntimeConfiguration();
+    auto rtCfg = MakeValidRuntimeConfiguration();
     std::string spec;
 
     const bool result = gen.generate(appCfg, rtCfg, spec);
@@ -2096,7 +2096,7 @@ uint32_t Test_DobbySpecGenerator_GstRegistryMountedWhenRialtoInactive()
 
     auto appCfg = MakeValidAppConfig();
     appCfg.mRialtoSocketPath = ""; // Rialto not active
-    auto rtCfg  = MakeValidRuntimeConfiguration();
+    auto rtCfg = MakeValidRuntimeConfiguration();
     std::string spec;
 
     const bool result = gen.generate(appCfg, rtCfg, spec);
@@ -2121,7 +2121,7 @@ uint32_t Test_DobbySpecGenerator_RialtoSocketEnvInjectedWhenRialtoActive()
     WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     appCfg.mRialtoSocketPath = "/tmp/amazonPrime"; // Rialto active for this app
-    auto rtCfg  = MakeValidRuntimeConfiguration();
+    auto rtCfg = MakeValidRuntimeConfiguration();
     std::string spec;
 
     const bool result = gen.generate(appCfg, rtCfg, spec);
@@ -2152,7 +2152,7 @@ uint32_t Test_DobbySpecGenerator_GstRegistryEnvAbsentWhenRialtoActive()
 
     auto appCfg = MakeValidAppConfig();
     appCfg.mRialtoSocketPath = "/tmp/amazonPrime";
-    auto rtCfg  = MakeValidRuntimeConfiguration();
+    auto rtCfg = MakeValidRuntimeConfiguration();
     std::string spec;
 
     const bool result = gen.generate(appCfg, rtCfg, spec);
@@ -2185,7 +2185,7 @@ uint32_t Test_DobbySpecGenerator_GstRegistryMountAbsentWhenRialtoActive()
 
     auto appCfg = MakeValidAppConfig();
     appCfg.mRialtoSocketPath = "/tmp/amazonPrime"; // Rialto active
-    auto rtCfg  = MakeValidRuntimeConfiguration();
+    auto rtCfg = MakeValidRuntimeConfiguration();
     std::string spec;
 
     const bool result = gen.generate(appCfg, rtCfg, spec);
@@ -2213,7 +2213,7 @@ uint32_t Test_DobbySpecGenerator_RialtoPrefixedSocketPathUsedInSpec()
     const std::string rialtoSocketPath = "/tmp/rialto-5";
     const std::string bareAppIdPath    = "/tmp/amazonPrime";
     appCfg.mRialtoSocketPath = rialtoSocketPath;
-    auto rtCfg  = MakeValidRuntimeConfiguration();
+    auto rtCfg = MakeValidRuntimeConfiguration();
     std::string spec;
 
     const bool result = gen.generate(appCfg, rtCfg, spec);
