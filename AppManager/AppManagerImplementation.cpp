@@ -280,7 +280,7 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                                     }
                                 }
 
-                                bool debugLaunchRequested = false;
+                                /*bool debugLaunchRequested = false;
                                 if (launchArgsObj.HasLabel("debugger"))
                                 {
                                     const JsonValue debuggerValue = launchArgsObj["debugger"];
@@ -298,7 +298,7 @@ void AppManagerImplementation::AppManagerWorkerThread(void)
                                 if (debugLaunchRequested)
                                 {
                                     LOGINFO("Debugger launch requested for appId=%s", appId.c_str());
-                                }
+                                }*/
 
                                 if ((status == Core::ERROR_NONE) && !runtimeConfig.Serialize(runtimeConfigPayload, payloadError))
                                 {
