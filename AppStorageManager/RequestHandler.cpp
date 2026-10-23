@@ -428,10 +428,12 @@ namespace WPEFramework
                 }
 
                 // Calculate used bytes
+                LOGINFO("Calculating size for path: %s,st_size: %llu, st_blocks: %llu, blockSize: %llu", path, (uint64_t)statPtr->st_size, (uint64_t)statPtr->st_blocks, gStorageSize.blockSize);
                 uint64_t usedBytesForFile = ((uint64_t)statPtr->st_size > ((uint64_t)statPtr->st_blocks * (uint64_t)gStorageSize.blockSize)) ?
                                                             ((uint64_t)statPtr->st_blocks *(uint64_t)gStorageSize.blockSize) :
                                                             (uint64_t)statPtr->st_size;
                 gStorageSize.usedBytes += usedBytesForFile;
+                LOGINFO("Used bytes for file: %llu", usedBytesForFile);
                 LOGTRACE("path: %s usedBytes: %llu blockSize: %llu", path, gStorageSize.usedBytes, gStorageSize.blockSize);
             }
             (void)internalFtwUsage;
