@@ -192,7 +192,7 @@ class PackageManagerImplementation
             string& gatewayMetadataPath, bool &locked) override;
 
         // IAppPackageManagerConfig methods
-        Core::hresult GetConfigForInstalledPackage(const string &packageId, const string &version, string &config /* @out @opaque */) override;
+        Core::hresult GetConfigForInstalledPackage(const string &packageId, string &config /* @out @opaque */) override;
         Core::hresult GetConfigListForInstalledPackages(const string &filter, string &config /* @out @opaque */) override;
 	
 	// IAppPackagesStatus methods

@@ -802,7 +802,7 @@ uint32_t Test_PM_Impl_GetConfigForInstalledPackage()
 
     std::string config;
     L0Test::ExpectEqU32(tr,
-        fx.impl->GetConfigForInstalledPackage("SomePackageId", "1.0.0", config),
+        fx.impl->GetConfigForInstalledPackage("SomePackageId", config),
         ERROR_GENERAL,
         "GetConfigForInstalledPackage() returns ERROR_GENERAL for non-existent package");
 

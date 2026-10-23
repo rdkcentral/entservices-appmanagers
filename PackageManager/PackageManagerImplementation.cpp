@@ -1397,7 +1397,7 @@ namespace Plugin {
         }
         return mInprogressDownload;
     }
-    Core::hresult PackageManagerImplementation::GetConfigForInstalledPackage(const string &packageId, const string &version, string &config /* @out @opaque */)
+    Core::hresult PackageManagerImplementation::GetConfigForInstalledPackage(const string &packageId, string &config /* @out @opaque */)
     {
         CHECK_CACHE()
         Core::hresult result = Core::ERROR_GENERAL;
@@ -1407,7 +1407,7 @@ namespace Plugin {
             return Core::ERROR_INVALID_PARAMETER;
         }
 
-        packagemanager::Result pmResult = packageImpl->GetInstalledPackageMetadata(packageId, version, config);
+        packagemanager::Result pmResult = packageImpl->GetInstalledPackageMetadata(packageId, config);
         if (pmResult == packagemanager::SUCCESS)
         {
             result = Core::ERROR_NONE;

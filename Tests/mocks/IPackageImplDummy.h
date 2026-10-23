@@ -165,9 +165,9 @@ namespace packagemanager
         }
 
         // Only the package seeded by Initialize() is considered installed.
-        virtual Result GetInstalledPackageMetadata(const std::string &packageId, const std::string &version, std::string &metadata) {
-            if (packageId == "YouTube" && version == "100.1.24") {
-                metadata = "{\"packageId\":\"" + packageId + "\",\"version\":\"" + version + "\"}";
+        virtual Result GetInstalledPackageMetadata(const std::string &packageId, std::string &metadata) {
+            if (packageId == "YouTube") {
+                metadata = "{\"packageId\":\"" + packageId + "\"}";
                 return SUCCESS;
             }
             metadata.clear();
