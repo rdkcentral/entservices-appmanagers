@@ -252,7 +252,6 @@ public:
     using IPackageIterator  = WPEFramework::Exchange::IPackageInstaller::IPackageIterator;
     using IKeyValueIterator = WPEFramework::Exchange::IPackageInstaller::IKeyValueIterator;
     using INotification     = WPEFramework::Exchange::IPackageInstaller::INotification;
-    using RuntimeConfig     = WPEFramework::Exchange::RuntimeConfig;
     using InstallState      = WPEFramework::Exchange::IPackageInstaller::InstallState;
 
     FakePackageInstaller()
@@ -290,7 +289,7 @@ public:
     WPEFramework::Core::hresult GetConfigForPackage(const string& fileLocator,
                                                      string& id,
                                                      string& version,
-                                                     RuntimeConfig& config) override
+                                                     string& config) override
     {
         getConfigCallCount++;
         if (getConfigHandler) {
@@ -328,7 +327,7 @@ public:
     }
 
     WPEFramework::Core::hresult Config(const string& /*packageId*/,
-                                        RuntimeConfig& /*configMetadata*/) override
+                                        string&  /*configMetadata*/) override
     {
         return WPEFramework::Core::ERROR_NONE;
     }
@@ -356,7 +355,7 @@ public:
     std::atomic<uint32_t>         installCallCount    { 0 };
 
     // ── Configurable handlers ─────────────────────────────────────────────────
-    std::function<WPEFramework::Core::hresult(const string&, string&, string&, RuntimeConfig&)>
+    std::function<WPEFramework::Core::hresult(const string&, string&, string&, string&)>
         getConfigHandler;
 
     std::function<WPEFramework::Core::hresult(IPackageIterator*&)>

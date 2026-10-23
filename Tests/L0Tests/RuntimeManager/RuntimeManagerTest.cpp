@@ -274,7 +274,7 @@ extern uint32_t Test_DobbySpecGenerator_GenerateWithEmptyWesterosSocket();
 extern uint32_t Test_DobbySpecGenerator_GenerateSysMemLimitZeroFallsBack();
 extern uint32_t Test_DobbySpecGenerator_GenerateWithNonEmptyAppPorts();
 extern uint32_t Test_DobbySpecGenerator_GetVpuEnabledReturnsFalseForSystemApp();
-extern uint32_t Test_DobbySpecGenerator_GenerateWithEnvVariablesInRuntimeConfig();
+extern uint32_t Test_DobbySpecGenerator_GenerateWithEnvVariablesInRuntimeConfiguration();
 extern uint32_t Test_DobbySpecGenerator_GenerateInjectsWebInspectorEnvWhenDebuggerEnabled();
 extern uint32_t Test_DobbySpecGenerator_GenerateSkipsWebInspectorEnvWhenDebuggerDisabled();
 extern uint32_t Test_DobbySpecGenerator_GenerateThunderPluginFromCapabilities();
@@ -283,6 +283,13 @@ extern uint32_t Test_DobbySpecGenerator_GenerateWithEmptyCapabilitiesString();
 extern uint32_t Test_DobbySpecGenerator_GenerateIgnoresRuntimeLogLevelsForEthanLog();
 extern uint32_t Test_DobbySpecGenerator_GstRegistryInjectedWhenRialtoInactive();
 extern uint32_t Test_DobbySpecGenerator_GstRegistryMountedWhenRialtoInactive();
+extern uint32_t Test_RuntimeConfigurationDecoder_FullValidPayload();
+extern uint32_t Test_RuntimeConfigurationDecoder_OptionalDefaults();
+extern uint32_t Test_RuntimeConfigurationDecoder_RejectsMalformedAndNonObjectJson();
+extern uint32_t Test_RuntimeConfigurationDecoder_RejectsWrongScalarTypes();
+extern uint32_t Test_RuntimeConfigurationDecoder_RejectsWrongArrayTypes();
+extern uint32_t Test_RuntimeConfigurationDecoder_RequiresCommandAndUserId();
+extern uint32_t Test_RuntimeConfigurationDecoder_ToleratesUnknownProperties();
 #ifdef ENABLE_RIALTO
 extern uint32_t Test_DobbySpecGenerator_RialtoSocketEnvInjectedWhenRialtoActive();
 extern uint32_t Test_DobbySpecGenerator_GstRegistryEnvAbsentWhenRialtoActive();
@@ -438,7 +445,7 @@ int main()
         { "DobbySpecGenerator_GenerateSysMemLimitZeroFallsBack",                     Test_DobbySpecGenerator_GenerateSysMemLimitZeroFallsBack },
         { "DobbySpecGenerator_GenerateWithNonEmptyAppPorts",                         Test_DobbySpecGenerator_GenerateWithNonEmptyAppPorts },
         { "DobbySpecGenerator_GetVpuEnabledReturnsFalseForSystemApp",                Test_DobbySpecGenerator_GetVpuEnabledReturnsFalseForSystemApp },
-        { "DobbySpecGenerator_GenerateWithEnvVariablesInRuntimeConfig",              Test_DobbySpecGenerator_GenerateWithEnvVariablesInRuntimeConfig },
+        { "DobbySpecGenerator_GenerateWithEnvVariablesInRuntimeConfiguration",       Test_DobbySpecGenerator_GenerateWithEnvVariablesInRuntimeConfiguration },
         { "DobbySpecGenerator_GenerateInjectsWebInspectorEnvWhenDebuggerEnabled",    Test_DobbySpecGenerator_GenerateInjectsWebInspectorEnvWhenDebuggerEnabled },
         { "DobbySpecGenerator_GenerateSkipsWebInspectorEnvWhenDebuggerDisabled",     Test_DobbySpecGenerator_GenerateSkipsWebInspectorEnvWhenDebuggerDisabled },
         { "DobbySpecGenerator_GenerateThunderPluginFromCapabilities",                Test_DobbySpecGenerator_GenerateThunderPluginFromCapabilities },
@@ -447,6 +454,13 @@ int main()
         { "DobbySpecGenerator_GenerateIgnoresRuntimeLogLevelsForEthanLog",           Test_DobbySpecGenerator_GenerateIgnoresRuntimeLogLevelsForEthanLog },
         { "DobbySpecGenerator_GstRegistryInjectedWhenRialtoInactive",                Test_DobbySpecGenerator_GstRegistryInjectedWhenRialtoInactive },
         { "DobbySpecGenerator_GstRegistryMountedWhenRialtoInactive",                 Test_DobbySpecGenerator_GstRegistryMountedWhenRialtoInactive },
+        { "RuntimeConfigurationDecoder_FullValidPayload",                            Test_RuntimeConfigurationDecoder_FullValidPayload },
+        { "RuntimeConfigurationDecoder_OptionalDefaults",                            Test_RuntimeConfigurationDecoder_OptionalDefaults },
+        { "RuntimeConfigurationDecoder_RejectsMalformedAndNonObjectJson",             Test_RuntimeConfigurationDecoder_RejectsMalformedAndNonObjectJson },
+        { "RuntimeConfigurationDecoder_RejectsWrongScalarTypes",                     Test_RuntimeConfigurationDecoder_RejectsWrongScalarTypes },
+        { "RuntimeConfigurationDecoder_RejectsWrongArrayTypes",                      Test_RuntimeConfigurationDecoder_RejectsWrongArrayTypes },
+        { "RuntimeConfigurationDecoder_RequiresCommandAndUserId",                    Test_RuntimeConfigurationDecoder_RequiresCommandAndUserId },
+        { "RuntimeConfigurationDecoder_ToleratesUnknownProperties",                  Test_RuntimeConfigurationDecoder_ToleratesUnknownProperties },
 #ifdef ENABLE_RIALTO
         { "DobbySpecGenerator_RialtoSocketEnvInjectedWhenRialtoActive",              Test_DobbySpecGenerator_RialtoSocketEnvInjectedWhenRialtoActive },
         { "DobbySpecGenerator_GstRegistryEnvAbsentWhenRialtoActive",                 Test_DobbySpecGenerator_GstRegistryEnvAbsentWhenRialtoActive },

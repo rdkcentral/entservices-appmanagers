@@ -14,7 +14,7 @@ The **PackageManager** plugin provides comprehensive package management capabili
 - **Package Installation**: Install packages with signature verification and metadata extraction
 - **Package Locking**: Lock packages during app execution to prevent modification
 - **Package State Management**: Track installation state for all packages
-- **Runtime Configuration**: Provide runtime configuration metadata to callers
+- **Runtime Configuration**: Create and return a flat, opaque JSON payload for the launch pipeline; array-valued metadata remains JSON arrays and unknown properties are preserved by later enrichers
 
 ### Interacting Subsystems
 
@@ -127,7 +127,7 @@ PackageManager/
 |-------|------|-------------|
 | `installState` | `InstallState` | Current package installation state |
 | `mLockCount` | `uint32_t` | Number of active locks |
-| `runtimeConfig` | `Exchange::RuntimeConfig` | Runtime metadata used by launch/runtime flows |
+| `runtimeConfigPayload` | `string` | Flat opaque JSON payload created from package runtime metadata |
 | `gatewayMetadataPath` | `string` | Path to gateway metadata |
 | `unpackedPath` | `string` | Path to unpacked package contents |
 | `failReason` | `FailReason` | Last failure reason |
@@ -164,18 +164,18 @@ Core::hresult Install(const string& packageId,
 Core::hresult Uninstall(const string& packageId, string& errorReason);
 Core::hresult ListPackages(IPackageIterator*& packages);
 Core::hresult Config(const string& packageId,
-                     RuntimeConfig& configMetadata);
+                     string& runtimeConfigPayload);
 Core::hresult PackageState(const string& packageId,
                            InstallState& state);
 
 // IPackageHandler
-Core::hresult Lock(const string& packageId, LockReason lockReason,
+Core::hresult Lock(const string& packageId, LockReason lockReason, 
                    uint32_t& lockId,
-                   string& unpackedPath, RuntimeConfig& configMetadata,
+                   string& unpackedPath, string& runtimeConfigPayload,
                    ILockIterator*& appMetadata);
 Core::hresult Unlock(const string& packageId);
 Core::hresult GetLockedInfo(const string& packageId,
-                            string& unpackedPath, RuntimeConfig& configMetadata,
+                            string& unpackedPath, string& runtimeConfigPayload,
                             string& gatewayMetadataPath, bool& locked);
 ```
 
@@ -259,7 +259,7 @@ interface IPackageInstaller {
     hresult Uninstall(const string& packageId, string& errorReason);
     hresult ListPackages(IPackageIterator*& packages);
     hresult Config(const string& packageId,
-                   RuntimeConfig& config);
+                   string& runtimeConfigPayload);
     hresult PackageState(const string& packageId,
                          InstallState& state);
     hresult Register(INotification* notification);
@@ -293,13 +293,13 @@ interface IPackageHandler {
         SYSTEM
     };
 
-    hresult Lock(const string& packageId, LockReason reason,
-                 uint32_t& lockId,
-                 string& unpackedPath, RuntimeConfig& config,
+    hresult Lock(const string& packageId,
+                 LockReason reason, uint32_t& lockId,
+                 string& unpackedPath, string& runtimeConfigPayload,
                  ILockIterator*& metadata);
     hresult Unlock(const string& packageId);
     hresult GetLockedInfo(const string& packageId,
-                          string& unpackedPath, RuntimeConfig& config,
+                          string& unpackedPath, string& runtimeConfigPayload,
                           string& gatewayMetadataPath, bool& locked);
 };
 ```
@@ -323,7 +323,7 @@ classDiagram
     class State {
         +InstallState installState
         +uint32_t lockCount
-        +RuntimeConfig runtimeConfig
+        +string runtimeConfigPayload
         +string unpackedPath
     }
 
@@ -399,7 +399,7 @@ sequenceDiagram
     State-->>PKG: state
     PKG->>PKG: Increment lockCount
     PKG->>PKG: Generate lockId
-    PKG-->>AM: lockId, unpackedPath, config
+    PKG-->>AM: lockId, unpackedPath, opaque JSON payload
 ```
 
 ### Download Queue Processing

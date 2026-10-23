@@ -624,11 +624,10 @@ uint32_t Test_Impl_RunEmptyAppInstanceId()
     auto* impl = CreateImpl();
     impl->Configure(service);
 
-    WPEFramework::Exchange::RuntimeConfig cfg;
-    cfg.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=test";
-    cfg.command      = "SkyBrowserLauncher";
+    const std::string runtimeConfigPayload =
+        R"({"envVariables":["XDG_RUNTIME_DIR=/tmp","WAYLAND_DISPLAY=test"],"command":"SkyBrowserLauncher","userId":10,"groupId":10})";
 
-    const auto result = impl->Run("", "", 10, 10, nullptr, nullptr, nullptr, cfg);
+    const auto result = impl->Run("", "", 10, 10, nullptr, nullptr, nullptr, runtimeConfigPayload);
     L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
                         "Run() with empty appInstanceId returns ERROR_GENERAL");
 
@@ -661,11 +660,10 @@ uint32_t Test_Impl_RunNoWindowManagerConnector()
     auto* impl = CreateImpl();
     impl->Configure(service);
 
-    WPEFramework::Exchange::RuntimeConfig cfg;
-    cfg.envVariables = "XDG_RUNTIME_DIR=/tmp;WAYLAND_DISPLAY=test";
-    cfg.command      = "SkyBrowserLauncher";
+    const std::string runtimeConfigPayload =
+        R"({"envVariables":["XDG_RUNTIME_DIR=/tmp","WAYLAND_DISPLAY=test"],"command":"SkyBrowserLauncher","userId":10,"groupId":10})";
 
-    const auto result = impl->Run("appId", "youTube", 10, 10, nullptr, nullptr, nullptr, cfg);
+    const auto result = impl->Run("appId", "youTube", 10, 10, nullptr, nullptr, nullptr, runtimeConfigPayload);
     L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
                         "Run() without WindowManagerConnector returns ERROR_GENERAL");
 

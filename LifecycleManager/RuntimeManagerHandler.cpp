@@ -18,6 +18,7 @@
 */
 
 #include "RuntimeManagerHandler.h"
+#include "RuntimeConfigPayload.h"
 #include "UtilsLogging.h"
 #include "tracing/Logging.h"
 #include <sstream>
@@ -85,7 +86,7 @@ bool RuntimeManagerHandler::getRuntimeStats(const string& appInstanceId, string&
     return true;
 }
 
-bool RuntimeManagerHandler::run(const string& appId, const string& appInstanceId, const string& launchArgs, Exchange::ILifecycleManager::LifecycleState targetState, WPEFramework::Exchange::RuntimeConfig& runtimeConfigObject, string& errorReason)
+bool RuntimeManagerHandler::run(const string& appId, const string& appInstanceId, const string& launchArgs, Exchange::ILifecycleManager::LifecycleState targetState, std::string& runtimeConfigPayload, string& errorReason)
 {
     JsonArray debugSettingsArray, pathsArray, portsArray;
     // read data from parameters
@@ -96,36 +97,38 @@ bool RuntimeManagerHandler::run(const string& appId, const string& appInstanceId
     // -- debugSettings - [] //for vbn builds
     // -- paths - paths to set in container - path for XDG_RUNTIME_DIR
     
-    runtimeConfigObject.dialId = appId;
+    Utils::RuntimeConfigPayload payload;
+    if (!payload.Parse(runtimeConfigPayload, errorReason))
+    {
+        LOGERR("Invalid runtime configuration payload: %s", errorReason.c_str());
+        return false;
+    }
+    payload.SetString("dialId", appId);
 
     uint32_t userId = 0, groupId = 0;
     std::list<string> debugSettingsList, pathsList;
     std::list<uint32_t> portsList;
-    JsonArray envNewArray;
 
     portsList.push_back(mFireboltAccessPort);
 
     std::stringstream ss;
     ss << "FIREBOLT_ENDPOINT=ws://127.0.0.1:" << mFireboltAccessPort << "/?session=" << appInstanceId;
     string fireboltEndPoint(ss.str());
-    envNewArray.Add(fireboltEndPoint);
+    if (!payload.UpsertEnvironment(fireboltEndPoint, errorReason))
+    {
+        LOGERR("Failed to set FIREBOLT_ENDPOINT: %s", errorReason.c_str());
+        return false;
+    }
 
     std::stringstream targetAppStateEnvironmentString;
     targetAppStateEnvironmentString << "TARGET_STATE=" << (uint32_t)targetState;
     string targetAppState(targetAppStateEnvironmentString.str());
-    envNewArray.Add(targetAppState);
-
-    JsonArray envInputArray, envResultArray;
-    envInputArray.FromString(runtimeConfigObject.envVariables);
-    for (unsigned int i = 0; i < envInputArray.Length(); ++i)
+    if (!payload.UpsertEnvironment(targetAppState, errorReason)
+        || !payload.Serialize(runtimeConfigPayload, errorReason))
     {
-        envResultArray.Add(envInputArray[i].String());
+        LOGERR("Failed to enrich runtime configuration payload: %s", errorReason.c_str());
+        return false;
     }
-    for (unsigned int i = 0; i < envNewArray.Length(); ++i)
-    {
-        envResultArray.Add(envNewArray[i].String());
-    }
-    envResultArray.ToString(runtimeConfigObject.envVariables);
 
     // prepare arguments to pass
     RPC::IStringIterator* debugSettingsIterator{};
@@ -136,7 +139,7 @@ bool RuntimeManagerHandler::run(const string& appId, const string& appInstanceId
     pathsIterator = Core::Service<RPC::StringIterator>::Create<RPC::IStringIterator>(pathsList);
     portsIterator = Core::Service<RPC::ValueIterator>::Create<RPC::IValueIterator>(portsList);
 
-    Core::hresult result = mRuntimeManager->Run(appId, appInstanceId, userId, groupId, portsIterator, pathsIterator, debugSettingsIterator, runtimeConfigObject);
+    Core::hresult result = mRuntimeManager->Run(appId, appInstanceId, userId, groupId, portsIterator, pathsIterator, debugSettingsIterator, runtimeConfigPayload);
     if (Core::ERROR_NONE != result)
     {
         errorReason = "unable to start running application";

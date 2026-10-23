@@ -9,6 +9,8 @@
 RuntimeManager is responsible for all container-level operations on RDK devices. It uses Dobby (with crun as the OCI runtime) to launch, suspend, resume, hibernate, wake, terminate, and kill application containers. It generates per-application OCI bundle specifications via `DobbySpecGenerator`, allocates Wayland displays for GUI applications through RDKWindowManager, retrieves storage paths from AppStorageManager, and monitors container state changes via `DobbyEventListener`. Hibernation (checkpoint/restore) is an optional feature gated on CRIU availability.
 
 ## Requirements
+- Accept runtime configuration across the manager boundary only as a flat opaque JSON string, validate it, and decode known fields into a private runtime type
+- Keep JSON arrays as arrays; unknown payload properties are tolerated and remain preserved by upstream enrichment
 - Launch application containers via Dobby using dynamically generated OCI specs
 - Support suspend (SIGSTOP) and resume (SIGCONT) for pausing applications
 - Support checkpoint-based hibernation via CRIU and subsequent wake (restore)
@@ -38,7 +40,8 @@ RuntimeManagerImplementation
 
 ### Key Components
 - **RuntimeManagerImplementation**: Core plugin logic — dispatches all container operations
-- **DobbySpecGenerator**: Generates OCI bundle JSON from app config and RuntimeConfig
+- **RuntimeConfigurationDecoder**: Privately validates and decodes the opaque JSON payload into RuntimeManager's internal `RuntimeConfiguration`
+- **DobbySpecGenerator**: Generates OCI bundle JSON from app config and the private decoded configuration
 - **DobbyEventListener**: Listens to Dobby container lifecycle events and propagates them
 - **WindowManagerConnector**: Thin connector to RDKWindowManager for display allocation
 - **RialtoConnector**: Optional connector for Rialto media session integration
@@ -46,12 +49,26 @@ RuntimeManagerImplementation
 - **Gateway/ContainerUtils, NetFilter, NetFilterLock**: Network isolation utilities
 - **Gateway/WebInspector, Debugger**: Debug/inspection tooling
 
+### Runtime Configuration Schema Evolution
+
+`envVariables`, `logLevels`, and `fkpsFiles` are JSON arrays of strings in the opaque payload. The removed public `RuntimeConfig` structure represented each property as a `std::string` containing a second serialized JSON array. The opaque payload removes that nested serialization, and RuntimeManager represents the decoded values privately as `std::vector<std::string>`.
+
+| Property | Opaque JSON representation | Private RuntimeManager representation |
+|----------|----------------------------|---------------------------------------|
+| `envVariables` | Array of `NAME=value` strings | `std::vector<std::string>` |
+| `logLevels` | Array of log-level strings | `std::vector<std::string>` |
+| `fkpsFiles` | Array of file-path strings | `std::vector<std::string>` |
+
+This changes the JSON property type from a string containing encoded JSON to a real JSON array. Producers must emit real arrays, intermediaries must preserve them as arrays, and `RuntimeConfigurationDecoder` validates that every array element is a string.
+
+When RuntimeManager must consume a new property, the owning producer adds it to the opaque payload, a typed field with a safe default is added to private `RuntimeConfiguration`, and `RuntimeConfigurationDecoder::Decode()` validates and populates it. New properties should remain optional unless a coordinated breaking change is intended. Properties not consumed by RuntimeManager need no private field or decoder change and are tolerated as unknown properties.
+
 ## External Interfaces
 
 ### Public APIs (JSON-RPC)
 | Method | Description |
 |--------|-------------|
-| `Run(appId, appInstanceId, userId, groupId, ports, paths, debugSettings, runtimeConfig)` | Start container |
+| `Run(appId, appInstanceId, userId, groupId, ports, paths, debugSettings, runtimeConfigPayload)` | Validate/decode the opaque JSON payload and start the container |
 | `Suspend(appInstanceId)` | Pause container (SIGSTOP) |
 | `Resume(appInstanceId)` | Resume container (SIGCONT) |
 | `Hibernate(appInstanceId)` | Checkpoint to disk via CRIU |
@@ -72,7 +89,8 @@ RuntimeManagerImplementation
 ```
 LifecycleManager::SpawnApp()
     ↓
-RuntimeManagerImplementation::Run()
+RuntimeManagerImplementation::Run(runtimeConfigPayload)
+    ├→ Validate/decode opaque JSON into private RuntimeConfiguration
     ├→ DobbySpecGenerator::generate()
     │   ├→ Apply base OCI spec
     │   ├→ createMounts() — app paths and storage

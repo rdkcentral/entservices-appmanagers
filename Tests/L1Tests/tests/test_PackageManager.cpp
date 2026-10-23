@@ -18,6 +18,7 @@
 **/
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>
+#include <json/json.h>
 #include <mntent.h>
 #include <fstream>
 #include <string>
@@ -29,6 +30,7 @@
 
 #include "PackageManager.h"
 #include "PackageManagerImplementation.h"
+#include "RuntimeConfigPayload.h"
 #include "StorageManagerMock.h"
 #include "ISubSystemMock.h"
 #include "ServiceMock.h"
@@ -1298,7 +1300,7 @@ TEST_F(PackageManagerTest, installusingJsonRpcInvalidSignature) {
 	waitforSignal(TIMEOUT_FOR_INIT);
     
     // TC-32: Error on install due to invalid signature using JsonRpc
-    EXPECT_EQ(Core::ERROR_INVALID_SIGNATURE, mJsonRpcHandler.Invoke(connection, _T("install"), _T("{\"packageId\": \"YouTube\", \"version\": \"100.1.24\", \"additionalMetadata\": [{\"name\": \"testApp\", \"value\": \"2\"}], \"fileLocator\": \"\"}"), mJsonRpcResponse));
+    EXPECT_EQ(Core::ERROR_INVALID_SIGNATURE, mJsonRpcHandler.Invoke(connection, _T("install"), _T("{\"packageId\": \"YouTube\", \"additionalMetadata\": [{\"name\": \"testApp\", \"value\": \"2\"}], \"fileLocator\": \"\"}"), mJsonRpcResponse));
 
 	deinitforJsonRpc();
 }
@@ -1330,7 +1332,7 @@ TEST_F(PackageManagerTest, installusingJsonRpcSuccess) {
 	waitforSignal(TIMEOUT);
 	
     // TC-33: Install using JsonRpc
-    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("install"), _T("{\"packageId\": \"YouTube\", \"version\": \"100.1.24\", \"additionalMetadata\": [{\"name\": \"testApp\", \"value\": \"2\"}], \"fileLocator\": \"/opt/CDL/package1001\"}"), mJsonRpcResponse));
+    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("install"), _T("{\"packageId\": \"YouTube\", \"additionalMetadata\": [{\"name\": \"testApp\", \"value\": \"2\"}], \"fileLocator\": \"/opt/CDL/package1001\"}"), mJsonRpcResponse));
 
 	deinitforJsonRpc();
 }
@@ -1446,7 +1448,7 @@ TEST_F(PackageManagerTest, uninstallusingJsonRpcSuccess) {
 
 	waitforSignal(TIMEOUT);
 
-    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("install"), _T("{\"packageId\": \"YouTube\", \"version\": \"100.1.24\", \"additionalMetadata\": [{\"name\": \"testApp\", \"value\": \"2\"}], \"fileLocator\": \"/opt/CDL/package1001\"}"), mJsonRpcResponse));
+    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("install"), _T("{\"packageId\": \"YouTube\", \"additionalMetadata\": [{\"name\": \"testApp\", \"value\": \"2\"}], \"fileLocator\": \"/opt/CDL/package1001\"}"), mJsonRpcResponse));
 
 	waitforSignal(TIMEOUT_FOR_INSTALL);
 	
@@ -1554,7 +1556,7 @@ TEST_F(PackageManagerTest, listPackagesusingJsonRpcSuccess) {
 
 	waitforSignal(TIMEOUT);
 
-    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("install"), _T("{\"packageId\": \"YouTube\", \"version\": \"100.1.24\", \"additionalMetadata\": [{\"name\": \"testApp\", \"value\": \"2\"}], \"fileLocator\": \"/opt/CDL/package1001\"}"), mJsonRpcResponse));
+    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("install"), _T("{\"packageId\": \"YouTube\", \"additionalMetadata\": [{\"name\": \"testApp\", \"value\": \"2\"}], \"fileLocator\": \"/opt/CDL/package1001\"}"), mJsonRpcResponse));
 
 	waitforSignal(TIMEOUT_FOR_INSTALL);
 	
@@ -1656,12 +1658,12 @@ TEST_F(PackageManagerTest, packageStateusingJsonRpcSuccess) {
 
 	waitforSignal(TIMEOUT);
 
-    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("install"), _T("{\"packageId\": \"YouTube\", \"version\": \"100.1.24\", \"additionalMetadata\": [{\"name\": \"testApp\", \"value\": \"2\"}], \"fileLocator\": \"/opt/CDL/package1001\"}"), mJsonRpcResponse));
+    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("install"), _T("{\"packageId\": \"YouTube\", \"additionalMetadata\": [{\"name\": \"testApp\", \"value\": \"2\"}], \"fileLocator\": \"/opt/CDL/package1001\"}"), mJsonRpcResponse));
 
 	waitforSignal(TIMEOUT_FOR_INSTALL);
 	
     // TC-40: Package state using JsonRpc
-    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("packageState"), _T("{\"packageId\": \"YouTube\", \"version\": \"100.1.24\"}"), mJsonRpcResponse));
+    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("packageState"), _T("{\"packageId\": \"YouTube\"}"), mJsonRpcResponse));
 
 	deinitforJsonRpc();
 }
@@ -1753,7 +1755,7 @@ TEST_F(PackageManagerTest, lockGetLockedInfoAndUnlockusingComRpcSuccess) {
 
     uint32_t lockId = 0;
     string unpackedPath;
-    Exchange::RuntimeConfig runtimeConfig {};
+    string runtimeConfig;
     Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
 
     EXPECT_EQ(Core::ERROR_NONE,
@@ -1764,15 +1766,25 @@ TEST_F(PackageManagerTest, lockGetLockedInfoAndUnlockusingComRpcSuccess) {
                                         runtimeConfig,
                                         appMetadata));
     EXPECT_GT(lockId, 0u);
-    // In UNIT_TEST, IPackageImplDummy::Lock() does not currently populate ConfigMetaData,
-    // so appPath may be empty after lock. Keep assertion tolerant while still validating API behavior.
-    EXPECT_TRUE(runtimeConfig.appPath.empty() || runtimeConfig.appPath == "/opt/YouTube");
+
+    Plugin::Utils::RuntimeConfigPayload lockPayload;
+    string payloadError;
+    bool present = false;
+    vector<string> values;
+    ASSERT_TRUE(lockPayload.Parse(runtimeConfig, payloadError)) << payloadError;
+    EXPECT_TRUE(lockPayload.GetStringArray("envVariables", values, present, payloadError));
+    EXPECT_TRUE(present);
+    EXPECT_TRUE(lockPayload.GetStringArray("fkpsFiles", values, present, payloadError));
+    EXPECT_TRUE(present);
+    EXPECT_TRUE(lockPayload.GetStringArray("logLevels", values, present, payloadError));
+    EXPECT_TRUE(present);
 
     if (appMetadata != nullptr) {
         appMetadata->Release();
         appMetadata = nullptr;
     }
 
+    const string lockRuntimeConfig = runtimeConfig;
     bool locked = false;
     string gatewayMetadataPath;
     EXPECT_EQ(Core::ERROR_NONE,
@@ -1782,6 +1794,13 @@ TEST_F(PackageManagerTest, lockGetLockedInfoAndUnlockusingComRpcSuccess) {
                                                  gatewayMetadataPath,
                                                  locked));
     EXPECT_TRUE(locked);
+    Json::Value lockRuntimeConfigJson;
+    Json::Value runtimeConfigJson;
+    Json::Reader lockRuntimeConfigReader;
+    Json::Reader runtimeConfigReader;
+    ASSERT_TRUE(lockRuntimeConfigReader.parse(lockRuntimeConfig, lockRuntimeConfigJson));
+    ASSERT_TRUE(runtimeConfigReader.parse(runtimeConfig, runtimeConfigJson));
+    EXPECT_EQ(runtimeConfigJson, lockRuntimeConfigJson);
 
     EXPECT_EQ(Core::ERROR_NONE, pkghandlerInterface->Unlock(packageId));
 
@@ -1803,7 +1822,7 @@ TEST_F(PackageManagerTest, lockAndGetLockedInfousingComRpcBadRequest) {
 
     uint32_t lockId = 0;
     string unpackedPath;
-    Exchange::RuntimeConfig runtimeConfig {};
+    string runtimeConfig;
     Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
 
     EXPECT_EQ(Core::ERROR_BAD_REQUEST,
@@ -1845,10 +1864,28 @@ TEST_F(PackageManagerTest, configAndGetConfigForPackageusingComRpcBranches) {
 
     waitforSignal(TIMEOUT_FOR_INIT);
 
-    Exchange::RuntimeConfig runtimeConfig {};
+    string runtimeConfig;
     EXPECT_EQ(Core::ERROR_NONE,
               pkginstallerInterface->Config("YouTube", runtimeConfig));
-    EXPECT_EQ(runtimeConfig.appPath, "/opt/YouTube");
+
+    Plugin::Utils::RuntimeConfigPayload configPayload;
+    string payloadError;
+    bool present = false;
+    string value;
+    vector<string> values;
+    ASSERT_TRUE(configPayload.Parse(runtimeConfig, payloadError)) << payloadError;
+    EXPECT_TRUE(configPayload.GetString("appPath", value, present, payloadError));
+    EXPECT_TRUE(present);
+    EXPECT_EQ(value, "/opt/YouTube");
+    EXPECT_TRUE(configPayload.GetStringArray("envVariables", values, present, payloadError));
+    EXPECT_TRUE(present);
+    EXPECT_TRUE(values.empty());
+    EXPECT_TRUE(configPayload.GetStringArray("fkpsFiles", values, present, payloadError));
+    EXPECT_TRUE(present);
+    EXPECT_EQ(values, vector<string>({ "file1", "file2", "file3" }));
+    EXPECT_TRUE(configPayload.GetStringArray("logLevels", values, present, payloadError));
+    EXPECT_TRUE(present);
+    EXPECT_TRUE(values.empty());
 
     EXPECT_EQ(Core::ERROR_INVALID_PARAMETER,
               pkginstallerInterface->Config("UnknownApp", runtimeConfig));
@@ -1861,7 +1898,58 @@ TEST_F(PackageManagerTest, configAndGetConfigForPackageusingComRpcBranches) {
     EXPECT_EQ(Core::ERROR_NONE,
               pkginstallerInterface->GetConfigForPackage("/tmp/fake_pkg.ipk", packageId, version, runtimeConfig));
 
+    Plugin::Utils::RuntimeConfigPayload packagePayload;
+    ASSERT_TRUE(packagePayload.Parse(runtimeConfig, payloadError)) << payloadError;
+    EXPECT_TRUE(packagePayload.GetStringArray("envVariables", values, present, payloadError));
+    EXPECT_TRUE(present);
+    EXPECT_TRUE(packagePayload.GetStringArray("fkpsFiles", values, present, payloadError));
+    EXPECT_TRUE(present);
+    EXPECT_TRUE(packagePayload.GetStringArray("logLevels", values, present, payloadError));
+    EXPECT_TRUE(present);
+
     deinitforComRpc();
+}
+
+TEST_F(PackageManagerTest, runtimeConfigPayloadSerialization) {
+
+    Plugin::Utils::RuntimeConfigPayload canonical;
+    canonical.SetString("appPath", "/opt/TestApp");
+    canonical.SetStringArray("envVariables", { "HOME=/home/private", "LANG=en_US.UTF-8" });
+    canonical.SetStringArray("fkpsFiles", { "/etc/test/one", "/etc/test/two" });
+    canonical.SetStringArray("logLevels", { "INFO", "WARN" });
+
+    string serialized;
+    string payloadError;
+    ASSERT_TRUE(canonical.Serialize(serialized, payloadError)) << payloadError;
+
+    Plugin::Utils::RuntimeConfigPayload decoded;
+    bool present = false;
+    vector<string> values;
+    ASSERT_TRUE(decoded.Parse(serialized, payloadError)) << payloadError;
+    EXPECT_TRUE(decoded.GetStringArray("envVariables", values, present, payloadError));
+    EXPECT_TRUE(present);
+    EXPECT_EQ(values, vector<string>({ "HOME=/home/private", "LANG=en_US.UTF-8" }));
+    EXPECT_TRUE(decoded.GetStringArray("fkpsFiles", values, present, payloadError));
+    EXPECT_TRUE(present);
+    EXPECT_EQ(values, vector<string>({ "/etc/test/one", "/etc/test/two" }));
+    EXPECT_TRUE(decoded.GetStringArray("logLevels", values, present, payloadError));
+    EXPECT_TRUE(present);
+    EXPECT_EQ(values, vector<string>({ "INFO", "WARN" }));
+
+    Plugin::Utils::RuntimeConfigPayload opaque;
+    ASSERT_TRUE(opaque.Parse("{\"runtimePath\":\"/old/runtime\",\"vendorExtension\":{\"enabled\":true}}", payloadError));
+    opaque.SetString("runtimePath", "/new/runtime");
+    ASSERT_TRUE(opaque.Serialize(serialized, payloadError)) << payloadError;
+
+    JsonObject object;
+    ASSERT_TRUE(object.FromString(serialized));
+    ASSERT_TRUE(object.HasLabel("vendorExtension"));
+    const JsonObject vendor = object["vendorExtension"].Object();
+    EXPECT_TRUE(vendor["enabled"].Boolean());
+    EXPECT_EQ(object["runtimePath"].String(), "/new/runtime");
+
+    Plugin::Utils::RuntimeConfigPayload malformed;
+    EXPECT_FALSE(malformed.Parse("{\"logLevels\":[\"INFO\"]", payloadError));
 }
 
 /* Test Case for unlock failure using ComRpc
@@ -1954,7 +2042,7 @@ TEST_F(PackageManagerTest, configAndPackageStateNegativeBranchesusingComRpc) {
     EXPECT_EQ(Core::ERROR_GENERAL,
               pkginstallerInterface->Install(packageId, additionalMetadata, fileLocator, reason));
 
-    Exchange::RuntimeConfig runtimeConfig {};
+    string runtimeConfig;
     EXPECT_EQ(Core::ERROR_GENERAL,
               pkginstallerInterface->Config(packageId, runtimeConfig));
 
@@ -2003,7 +2091,7 @@ TEST_F(PackageManagerTest, uninstallBlockedWhileLockedThenProcessedOnUnlockusing
 
     uint32_t lockId = 0;
     string unpackedPath;
-    Exchange::RuntimeConfig runtimeConfig {};
+    string runtimeConfig;
     Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
 
     EXPECT_EQ(Core::ERROR_NONE,
@@ -2052,7 +2140,7 @@ TEST_F(PackageManagerTest, lockTwiceUnlockTwiceLockCountBranchusingComRpc) {
     uint32_t lockId1 = 0;
     uint32_t lockId2 = 0;
     string unpackedPath;
-    Exchange::RuntimeConfig runtimeConfig {};
+    string runtimeConfig;
     Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
 
     EXPECT_EQ(Core::ERROR_NONE,
