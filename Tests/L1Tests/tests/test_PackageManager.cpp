@@ -1300,7 +1300,7 @@ TEST_F(PackageManagerTest, installusingJsonRpcInvalidSignature) {
 	waitforSignal(TIMEOUT_FOR_INIT);
     
     // TC-32: Error on install due to invalid signature using JsonRpc
-    EXPECT_EQ(Core::ERROR_INVALID_SIGNATURE, mJsonRpcHandler.Invoke(connection, _T("install"), _T("{\"packageId\": \"YouTube\", \"version\": \"100.1.24\", \"additionalMetadata\": [{\"name\": \"testApp\", \"value\": \"2\"}], \"fileLocator\": \"\"}"), mJsonRpcResponse));
+    EXPECT_EQ(Core::ERROR_INVALID_SIGNATURE, mJsonRpcHandler.Invoke(connection, _T("install"), _T("{\"packageId\": \"YouTube\", \"additionalMetadata\": [{\"name\": \"testApp\", \"value\": \"2\"}], \"fileLocator\": \"\"}"), mJsonRpcResponse));
 
 	deinitforJsonRpc();
 }
@@ -1332,7 +1332,7 @@ TEST_F(PackageManagerTest, installusingJsonRpcSuccess) {
 	waitforSignal(TIMEOUT);
 	
     // TC-33: Install using JsonRpc
-    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("install"), _T("{\"packageId\": \"YouTube\", \"version\": \"100.1.24\", \"additionalMetadata\": [{\"name\": \"testApp\", \"value\": \"2\"}], \"fileLocator\": \"/opt/CDL/package1001\"}"), mJsonRpcResponse));
+    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("install"), _T("{\"packageId\": \"YouTube\", \"additionalMetadata\": [{\"name\": \"testApp\", \"value\": \"2\"}], \"fileLocator\": \"/opt/CDL/package1001\"}"), mJsonRpcResponse));
 
 	deinitforJsonRpc();
 }
@@ -1350,7 +1350,6 @@ TEST_F(PackageManagerTest, installusingComRpcInvalidSignature) {
     initforComRpc();
 
     string packageId = "YouTube";
-    string version = "100.1.24";
     string fileLocator = "";
     Exchange::IPackageInstaller::FailReason reason = Exchange::IPackageInstaller::FailReason::NONE;
     list<Exchange::IPackageInstaller::KeyValue> kv = { {"testapp", "2"} };
@@ -1360,7 +1359,7 @@ TEST_F(PackageManagerTest, installusingComRpcInvalidSignature) {
 	waitforSignal(TIMEOUT_FOR_INIT);
 
     // TC-34: Error on install due to invalid signature using ComRpc
-    EXPECT_EQ(Core::ERROR_INVALID_SIGNATURE, pkginstallerInterface->Install(packageId, version, additionalMetadata, fileLocator, reason));
+    EXPECT_EQ(Core::ERROR_INVALID_SIGNATURE, pkginstallerInterface->Install(packageId, additionalMetadata, fileLocator, reason));
 
 	deinitforComRpc();
 }
@@ -1385,7 +1384,6 @@ TEST_F(PackageManagerTest, installusingComRpcInvalidSignature) {
     uint32_t timeout_ms = 3000;
 
     string packageId = "YouTube";
-    string version = "100.1.24";
     string fileLocator = "/opt/CDL/package1001";
     Exchange::IPackageInstaller::FailReason reason = Exchange::IPackageInstaller::FailReason::NONE;
     list<Exchange::IPackageInstaller::KeyValue> kv = { {"testapp", "2"} };
@@ -1415,7 +1413,7 @@ TEST_F(PackageManagerTest, installusingComRpcInvalidSignature) {
  	waitforSignal(TIMEOUT);
 	 
     // TC-35: Install using ComRpc
-    EXPECT_EQ(Core::ERROR_NONE, pkginstallerInterface->Install(packageId, version, additionalMetadata, fileLocator, reason));
+    EXPECT_EQ(Core::ERROR_NONE, pkginstallerInterface->Install(packageId, additionalMetadata, fileLocator, reason));
 
     waitforSignal(timeout_ms);
 
@@ -1450,7 +1448,7 @@ TEST_F(PackageManagerTest, uninstallusingJsonRpcSuccess) {
 
 	waitforSignal(TIMEOUT);
 
-    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("install"), _T("{\"packageId\": \"YouTube\", \"version\": \"100.1.24\", \"additionalMetadata\": [{\"name\": \"testApp\", \"value\": \"2\"}], \"fileLocator\": \"/opt/CDL/package1001\"}"), mJsonRpcResponse));
+    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("install"), _T("{\"packageId\": \"YouTube\", \"additionalMetadata\": [{\"name\": \"testApp\", \"value\": \"2\"}], \"fileLocator\": \"/opt/CDL/package1001\"}"), mJsonRpcResponse));
 
 	waitforSignal(TIMEOUT_FOR_INSTALL);
 	
@@ -1483,7 +1481,6 @@ TEST_F(PackageManagerTest, uninstallusingComRpcSuccess) {
 
     string packageId = "YouTube";
     string errorReason = "no error";
-    string version = "100.1.24";
     string fileLocator = "/opt/CDL/package1001";
     Exchange::IPackageInstaller::FailReason reason = Exchange::IPackageInstaller::FailReason::NONE;
     list<Exchange::IPackageInstaller::KeyValue> kv = { {"testapp", "2"} };
@@ -1519,7 +1516,7 @@ TEST_F(PackageManagerTest, uninstallusingComRpcSuccess) {
 
 	waitforSignal(TIMEOUT);
 
-    EXPECT_EQ(Core::ERROR_NONE, pkginstallerInterface->Install(packageId, version, additionalMetadata, fileLocator, reason));
+    EXPECT_EQ(Core::ERROR_NONE, pkginstallerInterface->Install(packageId, additionalMetadata, fileLocator, reason));
 
     waitforSignal(timeout_ms);
 
@@ -1559,7 +1556,7 @@ TEST_F(PackageManagerTest, listPackagesusingJsonRpcSuccess) {
 
 	waitforSignal(TIMEOUT);
 
-    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("install"), _T("{\"packageId\": \"YouTube\", \"version\": \"100.1.24\", \"additionalMetadata\": [{\"name\": \"testApp\", \"value\": \"2\"}], \"fileLocator\": \"/opt/CDL/package1001\"}"), mJsonRpcResponse));
+    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("install"), _T("{\"packageId\": \"YouTube\", \"additionalMetadata\": [{\"name\": \"testApp\", \"value\": \"2\"}], \"fileLocator\": \"/opt/CDL/package1001\"}"), mJsonRpcResponse));
 
 	waitforSignal(TIMEOUT_FOR_INSTALL);
 	
@@ -1591,7 +1588,6 @@ TEST_F(PackageManagerTest, listPackagesusingComRpcSuccess) {
 	uri = "https://httpbin.org/bytes/1024";
 
 	string packageId = "YouTube";
-	string version = "100.1.24";
     string fileLocator = "/opt/CDL/package1001";
     Exchange::IPackageInstaller::FailReason reason = Exchange::IPackageInstaller::FailReason::NONE;
 	list<Exchange::IPackageInstaller::KeyValue> kv = { {"testapp", "2"} };
@@ -1624,7 +1620,7 @@ TEST_F(PackageManagerTest, listPackagesusingComRpcSuccess) {
 
 	waitforSignal(TIMEOUT);
 
-    EXPECT_EQ(Core::ERROR_NONE, pkginstallerInterface->Install(packageId, version, additionalMetadata, fileLocator, reason));
+    EXPECT_EQ(Core::ERROR_NONE, pkginstallerInterface->Install(packageId, additionalMetadata, fileLocator, reason));
 
     waitforSignal(TIMEOUT_FOR_INSTALL);
 
@@ -1662,12 +1658,12 @@ TEST_F(PackageManagerTest, packageStateusingJsonRpcSuccess) {
 
 	waitforSignal(TIMEOUT);
 
-    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("install"), _T("{\"packageId\": \"YouTube\", \"version\": \"100.1.24\", \"additionalMetadata\": [{\"name\": \"testApp\", \"value\": \"2\"}], \"fileLocator\": \"/opt/CDL/package1001\"}"), mJsonRpcResponse));
+    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("install"), _T("{\"packageId\": \"YouTube\", \"additionalMetadata\": [{\"name\": \"testApp\", \"value\": \"2\"}], \"fileLocator\": \"/opt/CDL/package1001\"}"), mJsonRpcResponse));
 
 	waitforSignal(TIMEOUT_FOR_INSTALL);
 	
     // TC-40: Package state using JsonRpc
-    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("packageState"), _T("{\"packageId\": \"YouTube\", \"version\": \"100.1.24\"}"), mJsonRpcResponse));
+    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("packageState"), _T("{\"packageId\": \"YouTube\"}"), mJsonRpcResponse));
 
 	deinitforJsonRpc();
 }
@@ -1694,7 +1690,6 @@ TEST_F(PackageManagerTest, packageStateusingComRpcSuccess) {
     uint32_t timeout_ms = 3000;
 
     string packageId = "YouTube";
-    string version = "100.1.24";
     string fileLocator = "/opt/CDL/package1001";
     Exchange::IPackageInstaller::FailReason reason = Exchange::IPackageInstaller::FailReason::NONE;
     list<Exchange::IPackageInstaller::KeyValue> kv = { {"testapp", "2"} };
@@ -1724,12 +1719,12 @@ TEST_F(PackageManagerTest, packageStateusingComRpcSuccess) {
 
 	waitforSignal(TIMEOUT);	
 
-    EXPECT_EQ(Core::ERROR_NONE, pkginstallerInterface->Install(packageId, version, additionalMetadata, fileLocator, reason));
+    EXPECT_EQ(Core::ERROR_NONE, pkginstallerInterface->Install(packageId, additionalMetadata, fileLocator, reason));
 
     waitforSignal(timeout_ms);
 
     // TC-41: Package state using ComRpc
-    EXPECT_EQ(Core::ERROR_NONE, pkginstallerInterface->PackageState(packageId, version, state));
+    EXPECT_EQ(Core::ERROR_NONE, pkginstallerInterface->PackageState(packageId, state));
 
 	EXPECT_EQ(static_cast<int>(state), 3);
 
@@ -1757,7 +1752,6 @@ TEST_F(PackageManagerTest, lockGetLockedInfoAndUnlockusingComRpcSuccess) {
     waitforSignal(TIMEOUT_FOR_INIT);
 
     const string packageId = "YouTube";
-    const string version = "100.1.24";
 
     uint32_t lockId = 0;
     string unpackedPath;
@@ -1766,7 +1760,6 @@ TEST_F(PackageManagerTest, lockGetLockedInfoAndUnlockusingComRpcSuccess) {
 
     EXPECT_EQ(Core::ERROR_NONE,
               pkghandlerInterface->Lock(packageId,
-                                        version,
                                         Exchange::IPackageHandler::LockReason::LAUNCH,
                                         lockId,
                                         unpackedPath,
@@ -1796,7 +1789,6 @@ TEST_F(PackageManagerTest, lockGetLockedInfoAndUnlockusingComRpcSuccess) {
     string gatewayMetadataPath;
     EXPECT_EQ(Core::ERROR_NONE,
               pkghandlerInterface->GetLockedInfo(packageId,
-                                                 version,
                                                  unpackedPath,
                                                  runtimeConfig,
                                                  gatewayMetadataPath,
@@ -1810,7 +1802,7 @@ TEST_F(PackageManagerTest, lockGetLockedInfoAndUnlockusingComRpcSuccess) {
     ASSERT_TRUE(runtimeConfigReader.parse(runtimeConfig, runtimeConfigJson));
     EXPECT_EQ(runtimeConfigJson, lockRuntimeConfigJson);
 
-    EXPECT_EQ(Core::ERROR_NONE, pkghandlerInterface->Unlock(packageId, version));
+    EXPECT_EQ(Core::ERROR_NONE, pkghandlerInterface->Unlock(packageId));
 
     deinitforComRpc();
 }
@@ -1818,11 +1810,11 @@ TEST_F(PackageManagerTest, lockGetLockedInfoAndUnlockusingComRpcSuccess) {
 /* Test Case for lock/getLockedInfo failure branches using ComRpc
  *
  * Set up and initialize required COM-RPC resources
- * Verify Lock() and GetLockedInfo() return ERROR_INVALID_PARAMETER for unknown package
+ * Verify Lock() and GetLockedInfo() return ERROR_BAD_REQUEST for unknown package
  * Deinitialize COM-RPC resources
  */
 
-TEST_F(PackageManagerTest, lockAndGetLockedInfousingComRpcFailure) {
+TEST_F(PackageManagerTest, lockAndGetLockedInfousingComRpcBadRequest) {
 
     initforComRpc();
 
@@ -1833,9 +1825,8 @@ TEST_F(PackageManagerTest, lockAndGetLockedInfousingComRpcFailure) {
     string runtimeConfig;
     Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
 
-    EXPECT_EQ(Core::ERROR_INVALID_PARAMETER,
+    EXPECT_EQ(Core::ERROR_BAD_REQUEST,
               pkghandlerInterface->Lock("UnknownApp",
-                                        "0.0.1",
                                         Exchange::IPackageHandler::LockReason::LAUNCH,
                                         lockId,
                                         unpackedPath,
@@ -1844,9 +1835,8 @@ TEST_F(PackageManagerTest, lockAndGetLockedInfousingComRpcFailure) {
 
     bool locked = false;
     string gatewayMetadataPath;
-    EXPECT_EQ(Core::ERROR_INVALID_PARAMETER,
+    EXPECT_EQ(Core::ERROR_BAD_REQUEST,
               pkghandlerInterface->GetLockedInfo("UnknownApp",
-                                                 "0.0.1",
                                                  unpackedPath,
                                                  runtimeConfig,
                                                  gatewayMetadataPath,
@@ -1876,7 +1866,7 @@ TEST_F(PackageManagerTest, configAndGetConfigForPackageusingComRpcBranches) {
 
     string runtimeConfig;
     EXPECT_EQ(Core::ERROR_NONE,
-              pkginstallerInterface->Config("YouTube", "100.1.24", runtimeConfig));
+              pkginstallerInterface->Config("YouTube", runtimeConfig));
 
     Plugin::Utils::RuntimeConfigPayload configPayload;
     string payloadError;
@@ -1898,7 +1888,7 @@ TEST_F(PackageManagerTest, configAndGetConfigForPackageusingComRpcBranches) {
     EXPECT_TRUE(values.empty());
 
     EXPECT_EQ(Core::ERROR_INVALID_PARAMETER,
-              pkginstallerInterface->Config("UnknownApp", "0", runtimeConfig));
+              pkginstallerInterface->Config("UnknownApp", runtimeConfig));
 
     string packageId;
     string version;
@@ -1975,12 +1965,11 @@ TEST_F(PackageManagerTest, unlockmethodusingComRpcFailure) {
     initforComRpc();
 
     string packageId = "YouTube";
-    string version = "100.1.24";
 
 	waitforSignal(TIMEOUT_FOR_INIT);
 
     // TC-43: Failure on unlock using ComRpc
-    EXPECT_EQ(Core::ERROR_GENERAL, pkghandlerInterface->Unlock(packageId, version));
+    EXPECT_EQ(Core::ERROR_GENERAL, pkghandlerInterface->Unlock(packageId));
 
 	deinitforComRpc();
 }
@@ -2000,33 +1989,30 @@ TEST_F(PackageManagerTest, installFailureReasonBranchesusingComRpc) {
 
     waitforSignal(TIMEOUT_FOR_INIT);
 
-    const string versionMismatch = "1.0.1";
-    const string versionPersistence = "1.0.2";
-    const string versionVerification = "1.0.3";
     const string fileLocator = "/opt/CDL/failure.pkg";
     list<Exchange::IPackageInstaller::KeyValue> kv = { {"testapp", "2"} };
     auto additionalMetadata = Core::Service<RPC::IteratorType<Exchange::IPackageInstaller::IKeyValueIterator>>::Create<Exchange::IPackageInstaller::IKeyValueIterator>(kv);
 
     Exchange::IPackageInstaller::FailReason reason = Exchange::IPackageInstaller::FailReason::NONE;
     EXPECT_EQ(Core::ERROR_GENERAL,
-              pkginstallerInterface->Install("MismatchApp", versionMismatch, additionalMetadata, fileLocator, reason));
+              pkginstallerInterface->Install("MismatchApp", additionalMetadata, fileLocator, reason));
 
     reason = Exchange::IPackageInstaller::FailReason::NONE;
     EXPECT_EQ(Core::ERROR_GENERAL,
-              pkginstallerInterface->Install("PersistFailApp", versionPersistence, additionalMetadata, fileLocator, reason));
+              pkginstallerInterface->Install("PersistFailApp", additionalMetadata, fileLocator, reason));
 
     reason = Exchange::IPackageInstaller::FailReason::NONE;
     EXPECT_EQ(Core::ERROR_GENERAL,
-              pkginstallerInterface->Install("VerifyFailApp", versionVerification, additionalMetadata, fileLocator, reason));
+              pkginstallerInterface->Install("VerifyFailApp", additionalMetadata, fileLocator, reason));
 
     Exchange::IPackageInstaller::InstallState state = Exchange::IPackageInstaller::InstallState::UNINSTALLED;
-    EXPECT_EQ(Core::ERROR_NONE, pkginstallerInterface->PackageState("MismatchApp", versionMismatch, state));
+    EXPECT_EQ(Core::ERROR_NONE, pkginstallerInterface->PackageState("MismatchApp", state));
     EXPECT_EQ(state, Exchange::IPackageInstaller::InstallState::INSTALL_FAILURE);
 
-    EXPECT_EQ(Core::ERROR_NONE, pkginstallerInterface->PackageState("PersistFailApp", versionPersistence, state));
+    EXPECT_EQ(Core::ERROR_NONE, pkginstallerInterface->PackageState("PersistFailApp", state));
     EXPECT_EQ(state, Exchange::IPackageInstaller::InstallState::INSTALL_FAILURE);
 
-    EXPECT_EQ(Core::ERROR_NONE, pkginstallerInterface->PackageState("VerifyFailApp", versionVerification, state));
+    EXPECT_EQ(Core::ERROR_NONE, pkginstallerInterface->PackageState("VerifyFailApp", state));
     EXPECT_EQ(state, Exchange::IPackageInstaller::InstallState::INSTALL_FAILURE);
 
     deinitforComRpc();
@@ -2036,7 +2022,7 @@ TEST_F(PackageManagerTest, installFailureReasonBranchesusingComRpc) {
  *
  * Set up and initialize COM-RPC resources
  * Force install failure state, then verify Config() returns ERROR_GENERAL for non-installed known package
- * Verify PackageState() returns ERROR_INVALID_PARAMETER for unknown package/version
+ * Verify PackageState() returns ERROR_INVALID_PARAMETER for an unknown package
  * Deinitialize COM-RPC resources
  */
 
@@ -2047,7 +2033,6 @@ TEST_F(PackageManagerTest, configAndPackageStateNegativeBranchesusingComRpc) {
     waitforSignal(TIMEOUT_FOR_INIT);
 
     const string packageId = "MismatchApp";
-    const string version = "2.0.0";
     const string fileLocator = "/opt/CDL/failure2.pkg";
 
     list<Exchange::IPackageInstaller::KeyValue> kv = { {"testapp", "2"} };
@@ -2055,15 +2040,15 @@ TEST_F(PackageManagerTest, configAndPackageStateNegativeBranchesusingComRpc) {
     Exchange::IPackageInstaller::FailReason reason = Exchange::IPackageInstaller::FailReason::NONE;
 
     EXPECT_EQ(Core::ERROR_GENERAL,
-              pkginstallerInterface->Install(packageId, version, additionalMetadata, fileLocator, reason));
+              pkginstallerInterface->Install(packageId, additionalMetadata, fileLocator, reason));
 
     string runtimeConfig;
     EXPECT_EQ(Core::ERROR_GENERAL,
-              pkginstallerInterface->Config(packageId, version, runtimeConfig));
+              pkginstallerInterface->Config(packageId, runtimeConfig));
 
     Exchange::IPackageInstaller::InstallState state = Exchange::IPackageInstaller::InstallState::UNINSTALLED;
     EXPECT_EQ(Core::ERROR_INVALID_PARAMETER,
-              pkginstallerInterface->PackageState("UnknownApp", "0.0.1", state));
+              pkginstallerInterface->PackageState("UnknownApp", state));
 
     deinitforComRpc();
 }
@@ -2103,7 +2088,6 @@ TEST_F(PackageManagerTest, uninstallBlockedWhileLockedThenProcessedOnUnlockusing
     waitforSignal(TIMEOUT_FOR_INIT);
 
     const string packageId = "YouTube";
-    const string version = "100.1.24";
 
     uint32_t lockId = 0;
     string unpackedPath;
@@ -2112,7 +2096,6 @@ TEST_F(PackageManagerTest, uninstallBlockedWhileLockedThenProcessedOnUnlockusing
 
     EXPECT_EQ(Core::ERROR_NONE,
               pkghandlerInterface->Lock(packageId,
-                                        version,
                                         Exchange::IPackageHandler::LockReason::LAUNCH,
                                         lockId,
                                         unpackedPath,
@@ -2127,12 +2110,12 @@ TEST_F(PackageManagerTest, uninstallBlockedWhileLockedThenProcessedOnUnlockusing
     EXPECT_EQ(Core::ERROR_GENERAL, pkginstallerInterface->Uninstall(packageId, errorReason));
 
     Exchange::IPackageInstaller::InstallState state = Exchange::IPackageInstaller::InstallState::UNINSTALLED;
-    EXPECT_EQ(Core::ERROR_NONE, pkginstallerInterface->PackageState(packageId, version, state));
+    EXPECT_EQ(Core::ERROR_NONE, pkginstallerInterface->PackageState(packageId, state));
     EXPECT_EQ(state, Exchange::IPackageInstaller::InstallState::UNINSTALL_BLOCKED);
 
-    EXPECT_EQ(Core::ERROR_NONE, pkghandlerInterface->Unlock(packageId, version));
+    EXPECT_EQ(Core::ERROR_NONE, pkghandlerInterface->Unlock(packageId));
 
-    EXPECT_EQ(Core::ERROR_NONE, pkginstallerInterface->PackageState(packageId, version, state));
+    EXPECT_EQ(Core::ERROR_NONE, pkginstallerInterface->PackageState(packageId, state));
     EXPECT_EQ(state, Exchange::IPackageInstaller::InstallState::UNINSTALLED);
 
     deinitforComRpc();
@@ -2153,7 +2136,6 @@ TEST_F(PackageManagerTest, lockTwiceUnlockTwiceLockCountBranchusingComRpc) {
     waitforSignal(TIMEOUT_FOR_INIT);
 
     const string packageId = "YouTube";
-    const string version = "100.1.24";
 
     uint32_t lockId1 = 0;
     uint32_t lockId2 = 0;
@@ -2163,7 +2145,6 @@ TEST_F(PackageManagerTest, lockTwiceUnlockTwiceLockCountBranchusingComRpc) {
 
     EXPECT_EQ(Core::ERROR_NONE,
               pkghandlerInterface->Lock(packageId,
-                                        version,
                                         Exchange::IPackageHandler::LockReason::LAUNCH,
                                         lockId1,
                                         unpackedPath,
@@ -2176,7 +2157,6 @@ TEST_F(PackageManagerTest, lockTwiceUnlockTwiceLockCountBranchusingComRpc) {
 
     EXPECT_EQ(Core::ERROR_NONE,
               pkghandlerInterface->Lock(packageId,
-                                        version,
                                         Exchange::IPackageHandler::LockReason::LAUNCH,
                                         lockId2,
                                         unpackedPath,
@@ -2188,24 +2168,22 @@ TEST_F(PackageManagerTest, lockTwiceUnlockTwiceLockCountBranchusingComRpc) {
     }
     EXPECT_GT(lockId2, lockId1);
 
-    EXPECT_EQ(Core::ERROR_NONE, pkghandlerInterface->Unlock(packageId, version));
+    EXPECT_EQ(Core::ERROR_NONE, pkghandlerInterface->Unlock(packageId));
 
     bool locked = false;
     string gatewayMetadataPath;
     EXPECT_EQ(Core::ERROR_NONE,
               pkghandlerInterface->GetLockedInfo(packageId,
-                                                 version,
                                                  unpackedPath,
                                                  runtimeConfig,
                                                  gatewayMetadataPath,
                                                  locked));
     EXPECT_TRUE(locked);
 
-    EXPECT_EQ(Core::ERROR_NONE, pkghandlerInterface->Unlock(packageId, version));
+    EXPECT_EQ(Core::ERROR_NONE, pkghandlerInterface->Unlock(packageId));
 
     EXPECT_EQ(Core::ERROR_NONE,
               pkghandlerInterface->GetLockedInfo(packageId,
-                                                 version,
                                                  unpackedPath,
                                                  runtimeConfig,
                                                  gatewayMetadataPath,
@@ -2218,7 +2196,7 @@ TEST_F(PackageManagerTest, lockTwiceUnlockTwiceLockCountBranchusingComRpc) {
 /* Test Case for unlock unknown package branch using ComRpc
  *
  * Set up and initialize COM-RPC resources
- * Verify Unlock() returns ERROR_INVALID_PARAMETER for unknown package/version
+ * Verify Unlock() returns ERROR_BAD_REQUEST for an unknown package
  * Deinitialize COM-RPC resources
  */
 
@@ -2228,7 +2206,7 @@ TEST_F(PackageManagerTest, unlockUnknownPackageusingComRpcBadRequest) {
 
     waitforSignal(TIMEOUT_FOR_INIT);
 
-    EXPECT_EQ(Core::ERROR_INVALID_PARAMETER, pkghandlerInterface->Unlock("UnknownApp", "0.0.1"));
+    EXPECT_EQ(Core::ERROR_BAD_REQUEST, pkghandlerInterface->Unlock("UnknownApp"));
 
     deinitforComRpc();
 }

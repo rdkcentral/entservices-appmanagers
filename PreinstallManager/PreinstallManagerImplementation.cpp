@@ -394,7 +394,7 @@ namespace WPEFramework
 
             FailReason failReason;
             Exchange::IPackageInstaller::IKeyValueIterator* additionalMetadata = nullptr;
-            Core::hresult installResult = packageInstaller->Install(pkg.packageId, pkg.version, additionalMetadata, pkg.fileLocator, failReason);
+            Core::hresult installResult = packageInstaller->Install(pkg.packageId, additionalMetadata, pkg.fileLocator, failReason);
 
             if (installResult != Core::ERROR_NONE)
             {

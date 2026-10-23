@@ -271,7 +271,7 @@ uint32_t Test_Comp_PIM_StartPreinstallAlreadyInProgressReturnsError()
         return WPEFramework::Core::ERROR_NONE;
     };
     // Make Install sleep a bit to keep IN_PROGRESS long enough.
-    installer.installHandler = [](const std::string&, const std::string&,
+    installer.installHandler = [](const std::string&,
                                    WPEFramework::Exchange::IPackageInstaller::IKeyValueIterator* const&,
                                    const std::string&,
                                    WPEFramework::Exchange::IPackageInstaller::FailReason&) {
@@ -659,7 +659,7 @@ uint32_t Test_Comp_PIM_InstallPackagesHandlesInstallFailure()
         version = "1.0.0";
         return WPEFramework::Core::ERROR_NONE;
     };
-    installer.installHandler = [](const std::string&, const std::string&,
+    installer.installHandler = [](const std::string&,
                                    WPEFramework::Exchange::IPackageInstaller::IKeyValueIterator* const&,
                                    const std::string&,
                                    WPEFramework::Exchange::IPackageInstaller::FailReason& reason) {
@@ -734,7 +734,7 @@ uint32_t Test_Comp_PIM_GetFailReasonAllEnumsWithoutCrash()
 
         const FailReason capturedReason = fr;
         installer.installHandler = [capturedReason](
-            const std::string&, const std::string&,
+            const std::string&,
             WPEFramework::Exchange::IPackageInstaller::IKeyValueIterator* const&,
             const std::string&,
             FailReason& reason) {
@@ -929,7 +929,7 @@ uint32_t Test_Comp_PIM_InstallPackagesCreateManagerFails()
         return WPEFramework::Core::ERROR_NONE;
     };
     // Install returns ERROR_GENERAL to simulate install-phase manager failure.
-    listingInstaller.installHandler = [](const std::string&, const std::string&,
+    listingInstaller.installHandler = [](const std::string&,
                                           WPEFramework::Exchange::IPackageInstaller::IKeyValueIterator* const&,
                                           const std::string&,
                                           WPEFramework::Exchange::IPackageInstaller::FailReason& reason) {

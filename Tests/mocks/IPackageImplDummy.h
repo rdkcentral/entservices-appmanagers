@@ -144,7 +144,7 @@ namespace packagemanager
             configMetadata.capabilities = "dial-app,wan-lan,thunder,fkps";
             configMetadata.runtimeType = "";
             configMetadata.mimeType = "application/vnd.rdk-app.dac.native";
-                configMetadata.md5Hash = "dummy-md5-" + packageId + "-" + version;
+            configMetadata.md5Hash = "dummy-md5-" + packageId + "-" + version;
             return SUCCESS;
         }
         virtual Result Uninstall(const std::string &packageId) { return SUCCESS; }
@@ -155,14 +155,19 @@ namespace packagemanager
         // XXX: Below THREE functions will be removed after RDK-M is updated, so don't need to time the changes in RDK-M
         virtual Result GetLockInfo(const std::string &packageId, const std::string &version, std::string &unpackedPath, bool &locked) { return SUCCESS; }
         virtual Result GetList(std::string &packageList) { return SUCCESS; }
-        virtual Result Lock(const std::string &packageId, const std::string &version, std::string &unpackedPath, ConfigMetaData &configMetadata) { return SUCCESS; }
+        virtual Result Lock(const std::string &packageId, std::string &unpackedPath, ConfigMetaData &configMetadata) { return SUCCESS; }
         
-        virtual Result GetFileMetadata(const std::string &fileLocator, std::string &packageId, std::string &version, ConfigMetaData &configMetadata) { return SUCCESS; }
+        virtual Result GetFileMetadata(const std::string &fileLocator, std::string &packageId, std::string &version, ConfigMetaData &configMetadata) {
+            version = (packageId == "YouTube" && fileLocator.find("youtube_200") != std::string::npos)
+                ? "200.0.0"
+                : (packageId == "YouTube" ? "100.1.24" : "1.0.0");
+            return SUCCESS;
+        }
 
         // Only the package seeded by Initialize() is considered installed.
-        virtual Result GetInstalledPackageMetadata(const std::string &packageId, const std::string &version, std::string &metadata) {
-            if (packageId == "YouTube" && version == "100.1.24") {
-                metadata = "{\"packageId\":\"" + packageId + "\",\"version\":\"" + version + "\"}";
+        virtual Result GetInstalledPackageMetadata(const std::string &packageId, std::string &metadata) {
+            if (packageId == "YouTube") {
+                metadata = "{\"packageId\":\"" + packageId + "\"}";
                 return SUCCESS;
             }
             metadata.clear();

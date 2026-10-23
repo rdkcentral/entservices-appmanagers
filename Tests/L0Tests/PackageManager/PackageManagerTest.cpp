@@ -24,11 +24,11 @@ extern uint32_t Test_PM_Impl_InstallInputValidationAndUnknownPaths();
 extern uint32_t Test_PM_Impl_GetLockedInfoAndUnlockNegativePaths();
 extern uint32_t Test_PM_Impl_DownloadWithoutInternetReturnsUnavailable();
 extern uint32_t Test_PM_Impl_GetConfigForPackageSuccessPath();
+extern uint32_t Test_PM_Impl_InstallBlockedWhileLocked();
 extern uint32_t Test_PM_Impl_GetRunningApplicationsUsingPackageSuccess();
 extern uint32_t Test_PM_Impl_GetRunningApplicationsUsingPackageBackendFailure();
 extern uint32_t Test_PM_Impl_GetRunningApplicationsUsingPackageCacheUnavailable();
 extern uint32_t Test_PM_Impl_InstallDifferentVersionBlockedWhileLockedThenProcessedOnUnlock();
-extern uint32_t Test_PM_Impl_InstallDifferentVersionWhileLocked();
 extern uint32_t Test_PM_Impl_UninstallBlockedWhileLockedThenProcessedOnUnlock();
 extern uint32_t Test_PM_Impl_InstallCreateStorageFailureReportsInstallFailure();
 extern uint32_t Test_PM_Impl_UninstallDeleteStorageFailureReturnsGeneralAndUninstalledState();
@@ -69,10 +69,10 @@ int main()
         { "PM_Impl_GetLockedInfoAndUnlockNegativePaths", Test_PM_Impl_GetLockedInfoAndUnlockNegativePaths },
         { "PM_Impl_DownloadWithoutInternetReturnsUnavailable", Test_PM_Impl_DownloadWithoutInternetReturnsUnavailable },
         { "PM_Impl_GetConfigForPackageSuccessPath", Test_PM_Impl_GetConfigForPackageSuccessPath },
+        { "PM_Impl_InstallBlockedWhileLocked", Test_PM_Impl_InstallBlockedWhileLocked },
         { "PM_Impl_GetRunningApplicationsUsingPackageSuccess", Test_PM_Impl_GetRunningApplicationsUsingPackageSuccess },
         { "PM_Impl_GetRunningApplicationsUsingPackageBackendFailure", Test_PM_Impl_GetRunningApplicationsUsingPackageBackendFailure },
         { "PM_Impl_GetRunningApplicationsUsingPackageCacheUnavailable", Test_PM_Impl_GetRunningApplicationsUsingPackageCacheUnavailable },
-        { "PM_Impl_InstallDifferentVersionWhileLocked", Test_PM_Impl_InstallDifferentVersionWhileLocked },
         { "PM_Impl_UninstallBlockedWhileLockedThenProcessedOnUnlock", Test_PM_Impl_UninstallBlockedWhileLockedThenProcessedOnUnlock },
         { "PM_Impl_InstallCreateStorageFailureReportsInstallFailure", Test_PM_Impl_InstallCreateStorageFailureReportsInstallFailure },
         { "PM_Impl_UninstallDeleteStorageFailureReturnsGeneralAndUninstalledState", Test_PM_Impl_UninstallDeleteStorageFailureReturnsGeneralAndUninstalledState },
