@@ -2940,6 +2940,7 @@ uint32_t Test_AM_WorkerThreadMalformedRuntimeConfigDoesNotSpawn()
     };
     lifecycleManager.spawnAppHandler = [&spawnCalled](
         const std::string&,
+        const std::string&,
         const WPEFramework::Exchange::ILifecycleManager::LifecycleState,
         const std::string&, const std::string&,
         std::string&, std::string&, bool&) {
@@ -3007,7 +3008,7 @@ uint32_t Test_AM_WorkerThreadPackageLockFails()
     L0Test::MockStorageManager storageManager;
 
     packageHandler.lockHandler = [&lockAttempted](
-        const std::string&, const std::string&,
+        const std::string&,
         const WPEFramework::Exchange::IPackageHandler::LockReason&,
         uint32_t&, std::string&, std::string&,
         WPEFramework::Exchange::IPackageHandler::ILockIterator*&) {
