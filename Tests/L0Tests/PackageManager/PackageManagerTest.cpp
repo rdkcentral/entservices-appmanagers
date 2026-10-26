@@ -18,6 +18,10 @@ extern uint32_t Test_PM_Impl_RuntimeConfigPayloadSerialization();
 extern uint32_t Test_PM_Impl_PauseResumeCancelProgressRateLimitWithoutActiveDownload();
 extern uint32_t Test_PM_Impl_DeleteFilePaths();
 extern uint32_t Test_PM_Impl_InstallAndUninstallFlowWithNotifications();
+extern uint32_t Test_PM_Impl_InstallNotificationUsesArtifactVersion();
+extern uint32_t Test_PM_Impl_MetadataExtractionFailurePublishesInstallFailure();
+extern uint32_t Test_PM_Impl_RejectedUpgradePublishesFailureAndKeepsInstalled();
+extern uint32_t Test_PM_Impl_GetConfigForInstalledPackage();
 extern uint32_t Test_PM_Impl_LockUnlockAndGetLockedInfo();
 extern uint32_t Test_PM_Impl_DownloadAndStorageInfoPaths();
 extern uint32_t Test_PM_Impl_InstallInputValidationAndUnknownPaths();
@@ -62,6 +66,10 @@ int main()
         { "PM_Impl_PauseResumeCancelProgressRateLimitWithoutActiveDownload", Test_PM_Impl_PauseResumeCancelProgressRateLimitWithoutActiveDownload },
         { "PM_Impl_DeleteFilePaths", Test_PM_Impl_DeleteFilePaths },
         { "PM_Impl_InstallAndUninstallFlowWithNotifications", Test_PM_Impl_InstallAndUninstallFlowWithNotifications },
+        { "PM_Impl_InstallNotificationUsesArtifactVersion", Test_PM_Impl_InstallNotificationUsesArtifactVersion },
+        { "PM_Impl_MetadataExtractionFailurePublishesInstallFailure", Test_PM_Impl_MetadataExtractionFailurePublishesInstallFailure },
+        { "PM_Impl_RejectedUpgradePublishesFailureAndKeepsInstalled", Test_PM_Impl_RejectedUpgradePublishesFailureAndKeepsInstalled },
+        { "PM_Impl_GetConfigForInstalledPackage", Test_PM_Impl_GetConfigForInstalledPackage },
         // Temporarily disabled: capabilities expectation drift in CI environment.
         // { "PM_Impl_LockUnlockAndGetLockedInfo", Test_PM_Impl_LockUnlockAndGetLockedInfo },
         { "PM_Impl_DownloadAndStorageInfoPaths", Test_PM_Impl_DownloadAndStorageInfoPaths },
@@ -96,4 +104,3 @@ int main()
     L0Test::PrintTotals(std::cerr, "PackageManager l0test", tr.failures);
     return L0Test::ResultToExitCode(tr);
 }
-

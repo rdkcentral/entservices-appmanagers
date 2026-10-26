@@ -4,6 +4,7 @@
 #include <limits>
 #include <string>
 #include <thread>
+#include <vector>
 
 #include "PackageManagerImplementation.h"
 #include "RuntimeConfigPayload.h"
@@ -67,6 +68,7 @@ public:
         : _refCount(1)
         , installStatusCount(0)
         , lastInstallStatus()
+        , installStatuses()
     {
     }
 
@@ -97,12 +99,14 @@ public:
     void OnAppInstallationStatus(const std::string& status) override
     {
         lastInstallStatus = status;
+        installStatuses.push_back(status);
         installStatusCount++;
     }
 
     mutable std::atomic<uint32_t> _refCount;
     std::atomic<uint32_t> installStatusCount;
     std::string lastInstallStatus;
+    std::vector<std::string> installStatuses;
 };
 
 struct ImplFixture {
@@ -455,6 +459,38 @@ uint32_t Test_PM_Impl_InstallAndUninstallFlowWithNotifications()
     L0Test::ExpectEqU32(tr, fx.impl->Unregister(notif), ERROR_NONE, "Installer Unregister() returns ERROR_NONE");
     notif->Release();
 
+    return tr.failures;
+}
+
+uint32_t Test_PM_Impl_InstallNotificationUsesArtifactVersion()
+{
+    L0Test::TestResult tr;
+    ImplFixture fx;
+    L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() succeeds");
+
+    auto* notif = new FakeInstallerNotification();
+    L0Test::ExpectEqU32(tr, fx.impl->Register(notif), ERROR_NONE, "Installer Register() returns ERROR_NONE");
+
+    WPEFramework::Exchange::IPackageInstaller::FailReason failReason =
+        WPEFramework::Exchange::IPackageInstaller::FailReason::NONE;
+    L0Test::ExpectEqU32(tr,
+        fx.impl->Install("YouTube", nullptr, "/tmp/youtube_200.pkg", failReason),
+        ERROR_NONE,
+        "Install() succeeds for a different version");
+
+    L0Test::ExpectTrue(tr, !notif->installStatuses.empty(),
+        "Install() emits status notifications");
+    if (!notif->installStatuses.empty()) {
+        L0Test::ExpectTrue(tr,
+            notif->installStatuses.front().find("\"state\":\"INSTALLING\"") != std::string::npos,
+            "The first install notification reports INSTALLING");
+        L0Test::ExpectTrue(tr,
+            notif->installStatuses.front().find("\"version\":\"200.0.0\"") != std::string::npos,
+            "The initial notification identifies the attempted artifact version");
+    }
+
+    L0Test::ExpectEqU32(tr, fx.impl->Unregister(notif), ERROR_NONE, "Installer Unregister() returns ERROR_NONE");
+    notif->Release();
     return tr.failures;
 }
 
@@ -882,6 +918,19 @@ uint32_t Test_PM_Impl_UninstallBlockedWhileLockedThenProcessedOnUnlock()
         state == WPEFramework::Exchange::IPackageInstaller::InstallState::UNINSTALL_BLOCKED,
         "State is UNINSTALL_BLOCKED while lock is held");
 
+    WPEFramework::Exchange::IPackageInstaller::FailReason failReason = WPEFramework::Exchange::IPackageInstaller::FailReason::NONE;
+    L0Test::ExpectEqU32(tr,
+        fx.impl->Install("YouTube", nullptr, "/tmp/youtube_200.pkg", failReason),
+        ERROR_GENERAL,
+        "Install() is rejected while a locked package has a pending uninstall");
+    L0Test::ExpectEqU32(tr,
+        fx.impl->PackageState("YouTube", state),
+        ERROR_NONE,
+        "PackageState() remains queryable after rejecting install with pending uninstall");
+    L0Test::ExpectTrue(tr,
+        state == WPEFramework::Exchange::IPackageInstaller::InstallState::UNINSTALL_BLOCKED,
+        "Rejected install preserves the pending uninstall state");
+
     L0Test::ExpectEqU32(tr,
         fx.impl->Unlock("YouTube"),
         ERROR_NONE,
@@ -926,6 +975,131 @@ uint32_t Test_PM_Impl_InstallFailureReasonBranches()
 
     return tr.failures;
 }
+
+uint32_t Test_PM_Impl_MetadataExtractionFailurePublishesInstallFailure()
+{
+    L0Test::TestResult tr;
+    ImplFixture fx;
+    L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() succeeds");
+
+    auto* notif = new FakeInstallerNotification();
+    L0Test::ExpectEqU32(tr, fx.impl->Register(notif), ERROR_NONE, "Installer Register() returns ERROR_NONE");
+
+    WPEFramework::Exchange::IPackageInstaller::FailReason failReason =
+        WPEFramework::Exchange::IPackageInstaller::FailReason::NONE;
+    L0Test::ExpectEqU32(tr,
+        fx.impl->Install("MetadataFailApp", nullptr, "/tmp/metadata_fail.pkg", failReason),
+        ERROR_GENERAL,
+        "Install() fails when GetFileMetadata() fails");
+    L0Test::ExpectTrue(tr,
+        failReason == WPEFramework::Exchange::IPackageInstaller::FailReason::INVALID_METADATA_FAILURE,
+        "Metadata extraction failure reports INVALID_METADATA_FAILURE");
+
+    WPEFramework::Exchange::IPackageInstaller::InstallState state =
+        WPEFramework::Exchange::IPackageInstaller::InstallState::UNINSTALLED;
+    L0Test::ExpectEqU32(tr,
+        fx.impl->PackageState("MetadataFailApp", state),
+        ERROR_NONE,
+        "PackageState() is queryable after metadata extraction failure");
+    L0Test::ExpectTrue(tr,
+        state == WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALL_FAILURE,
+        "Fresh package records INSTALL_FAILURE after metadata extraction failure");
+    L0Test::ExpectTrue(tr,
+        notif->lastInstallStatus.find("\"state\":\"INSTALL_FAILURE\"") != std::string::npos,
+        "Failure notification reports INSTALL_FAILURE");
+    L0Test::ExpectTrue(tr,
+        notif->lastInstallStatus.find("\"failReason\":\"INVALID_METADATA_FAILURE\"") != std::string::npos,
+        "Failure notification reports INVALID_METADATA_FAILURE");
+
+    L0Test::ExpectEqU32(tr, fx.impl->Unregister(notif), ERROR_NONE, "Installer Unregister() returns ERROR_NONE");
+    notif->Release();
+    return tr.failures;
+}
+
+uint32_t Test_PM_Impl_RejectedUpgradePublishesFailureAndKeepsInstalled()
+{
+    L0Test::TestResult tr;
+    ImplFixture fx;
+    L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() succeeds");
+
+    auto* notif = new FakeInstallerNotification();
+    L0Test::ExpectEqU32(tr, fx.impl->Register(notif), ERROR_NONE, "Installer Register() returns ERROR_NONE");
+
+    using InstallState = WPEFramework::Exchange::IPackageInstaller::InstallState;
+    WPEFramework::Exchange::IPackageInstaller::FailReason failReason =
+        WPEFramework::Exchange::IPackageInstaller::FailReason::NONE;
+    const std::string packageId = "UpgradeRejectApp";
+
+    L0Test::ExpectEqU32(tr,
+        fx.impl->Install(packageId, nullptr, "/tmp/reject_1.pkg", failReason),
+        ERROR_NONE,
+        "Initial install of UpgradeRejectApp succeeds");
+
+    // Immediate upgrade rejected by the backend.
+    L0Test::ExpectEqU32(tr,
+        fx.impl->Install(packageId, nullptr, "/tmp/reject_2.pkg", failReason),
+        ERROR_GENERAL,
+        "Rejected upgrade returns ERROR_GENERAL");
+
+    InstallState state = InstallState::UNINSTALLED;
+    L0Test::ExpectEqU32(tr, fx.impl->PackageState(packageId, state), ERROR_NONE,
+        "PackageState() is queryable after rejected upgrade");
+    L0Test::ExpectTrue(tr, state == InstallState::INSTALLED,
+        "Rejected upgrade keeps the prior installation INSTALLED");
+
+    std::string runtimeConfig;
+    L0Test::ExpectEqU32(tr, fx.impl->Config(packageId, runtimeConfig), ERROR_NONE,
+        "Config() still succeeds for the preserved installation");
+
+    L0Test::ExpectTrue(tr,
+        notif->lastInstallStatus.find("\"state\":\"INSTALL_FAILURE\"") != std::string::npos,
+        "Rejected upgrade publishes INSTALL_FAILURE");
+    L0Test::ExpectTrue(tr,
+        notif->lastInstallStatus.find("\"version\":\"2.0.0\"") != std::string::npos,
+        "Rejected upgrade notification identifies the attempted version");
+    L0Test::ExpectTrue(tr,
+        notif->lastInstallStatus.find("\"failReason\":\"PACKAGE_MISMATCH_FAILURE\"") != std::string::npos,
+        "Rejected upgrade notification includes the failReason");
+
+    // Deferred upgrade rejected after unlock.
+    uint32_t lockId = 0;
+    std::string unpackedPath;
+    WPEFramework::Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
+    L0Test::ExpectEqU32(tr,
+        fx.impl->Lock(packageId, WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH,
+            lockId, unpackedPath, runtimeConfig, appMetadata),
+        ERROR_NONE,
+        "Lock() succeeds before deferred upgrade");
+    if (appMetadata != nullptr) {
+        appMetadata->Release();
+        appMetadata = nullptr;
+    }
+
+    L0Test::ExpectEqU32(tr,
+        fx.impl->Install(packageId, nullptr, "/tmp/reject_2.pkg", failReason),
+        ERROR_GENERAL,
+        "Upgrade is deferred while locked");
+
+    notif->lastInstallStatus.clear();
+    L0Test::ExpectEqU32(tr, fx.impl->Unlock(packageId), ERROR_NONE,
+        "Unlock() succeeds even though the deferred upgrade is rejected");
+
+    L0Test::ExpectEqU32(tr, fx.impl->PackageState(packageId, state), ERROR_NONE,
+        "PackageState() is queryable after deferred rejection");
+    L0Test::ExpectTrue(tr, state == InstallState::INSTALLED,
+        "Deferred rejection keeps the prior installation INSTALLED");
+    L0Test::ExpectTrue(tr,
+        notif->lastInstallStatus.find("\"state\":\"INSTALL_FAILURE\"") != std::string::npos,
+        "Deferred rejection publishes INSTALL_FAILURE");
+    L0Test::ExpectTrue(tr,
+        notif->lastInstallStatus.find("\"version\":\"2.0.0\"") != std::string::npos,
+        "Deferred rejection notification identifies the attempted version");
+
+    L0Test::ExpectEqU32(tr, fx.impl->Unregister(notif), ERROR_NONE, "Installer Unregister() returns ERROR_NONE");
+    notif->Release();
+    return tr.failures;
+}
+
 uint32_t Test_PM_Impl_GetConfigListForInstalledPackages()
 {
     L0Test::TestResult tr;
@@ -964,6 +1138,19 @@ uint32_t Test_PM_Impl_GetConfigForInstalledPackage()
     L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() succeeds");
 
     std::string config;
+    L0Test::ExpectEqU32(tr,
+        fx.impl->GetConfigForInstalledPackage("YouTube", config),
+        ERROR_NONE,
+        "GetConfigForInstalledPackage() passes the current installed version to the backend");
+    JsonObject installedConfig;
+    const bool parsed = installedConfig.FromString(config);
+    L0Test::ExpectTrue(tr, parsed, "Installed package metadata is valid JSON");
+    if (parsed) {
+        L0Test::ExpectEqStr(tr, installedConfig["version"].String(), std::string("100.1.24"),
+            "Installed package metadata uses the current cached version");
+    }
+
+    config.clear();
     L0Test::ExpectEqU32(tr,
         fx.impl->GetConfigForInstalledPackage("SomePackageId", config),
         ERROR_GENERAL,

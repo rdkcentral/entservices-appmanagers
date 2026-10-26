@@ -80,6 +80,7 @@ class PackageManagerImplementation
             // Install() request deferred while locked (app running); applied once
             // unlocked (see processBlockedPackage()). Empty fileLocator means none pending.
             string pendingFileLocator;
+            string pendingVersion;
             packagemanager::NameValues pendingKeyValues;
         };
 
@@ -223,12 +224,16 @@ class PackageManagerImplementation
         Core::hresult UnlockPackage(const string &packageId, const string &version);
         Core::hresult processBlockedPackage(const string &packageId);
 
-        Core::hresult Install(const string &packageId, const packagemanager::NameValues &keyValues, const string &fileLocator, bool hadInstalledArtifact, State& state);
+        Core::hresult Install(const string &packageId, const packagemanager::NameValues &keyValues, const string &fileLocator, const string &version, bool hadInstalledArtifact, State& state);
 
         void InitializeState();
         void downloader(int n);
         void NotifyDownloadStatus(const string& id, const string& locator, const DownloadReason status);
         void NotifyInstallStatus(const string& id, const string& version, const State &state);
+        // Publishes INSTALL_FAILURE for an attempted version without mutating the cached state.
+        void NotifyInstallFailure(const string& id, const string& version, State state, FailReason reason);
+        // Caller must hold mtxState.
+        bool GetCurrentVersion(const string &packageId, string &version) const;
 
         DownloadInfoPtr getNext();
         int nextRetryDuration(int n) {
