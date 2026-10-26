@@ -20,6 +20,7 @@
 #include "RDKWindowManagerImplementation.h"
 #include <sys/prctl.h>
 #include <atomic>
+#include <cstdint>
 #include <chrono>
 #include <condition_variable>
 #include <deque>
@@ -733,7 +734,7 @@ Core::hresult RDKWindowManagerImplementation::CreateDisplay(const string &client
 
     LOGINFO("CreateDisplay params: clientId:%s, displayName:%s, displayWidth:%u, displayHeight:%u, virtualDisplay:%d, virtualWidth:%u, virtualHeight:%u, ownerId:%u, groupId:%u, topmost:%d, focus:%d",
             clientId.c_str(), displayName.c_str(), displayWidth, displayHeight, virtualDisplay, virtualWidth, virtualHeight, ownerId, groupId, topmost, focus);
-    time_t displayStartTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
+    const int64_t displayStartTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
     result = createDisplay(clientId, displayName, displayWidth, displayHeight,
                            virtualDisplay, virtualWidth, virtualHeight, ownerId, groupId, topmost, focus, capabilities);
 
@@ -744,7 +745,7 @@ Core::hresult RDKWindowManagerImplementation::CreateDisplay(const string &client
     }
     else
     {
-        const time_t displayEndTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
+        const int64_t displayEndTime = RDKWindowManagerTelemetryReporting::getInstance().getCurrentTimestampMs();
         const int duration = static_cast<int>(displayEndTime - displayStartTime);
         RDKWindowManagerTelemetryReporting::getInstance().recordCreateDisplayTelemetry(clientId, duration);
         status = Core::ERROR_NONE;
