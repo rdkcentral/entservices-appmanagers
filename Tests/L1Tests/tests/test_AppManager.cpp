@@ -1602,15 +1602,23 @@ TEST_F(AppManagerTest, CloseAppUsingComRpcSuccess)
     signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLaunchRequest);
     EXPECT_TRUE(signalled & AppManager_onAppLaunchRequest);
 
-    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->CloseApp(APPMANAGER_APP_ID));
-    // Simulate the app lifecycle state change event
-    mLifecycleManagerStateNotification_cb->OnAppLifecycleStateChanged(
-        APPMANAGER_APP_ID,
+    ASSERT_NE(mLifecycleManagerStateNotification_cb, nullptr);
+    EXPECT_CALL(*mLifecycleManagerMock, SetTargetAppState(
         APPMANAGER_APP_INSTANCE,
-        Exchange::ILifecycleManager::LifecycleState::ACTIVE,  // Old state
-        Exchange::ILifecycleManager::LifecycleState::PAUSED,     // New state
-        ""
-    );
+        Exchange::ILifecycleManager::LifecycleState::PAUSED,
+        APPMANAGER_APP_INTENT))
+        .WillOnce(::testing::Invoke([&](const string& appInstanceId,
+                                       const Exchange::ILifecycleManager::LifecycleState,
+                                       const string& intent) {
+            mLifecycleManagerStateNotification_cb->OnAppLifecycleStateChanged(
+                APPMANAGER_APP_ID,
+                APPMANAGER_APP_INSTANCE,
+                Exchange::ILifecycleManager::LifecycleState::ACTIVE,
+                Exchange::ILifecycleManager::LifecycleState::PAUSED,
+                "");
+            return Core::ERROR_NONE;
+        }));
+    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->CloseApp(APPMANAGER_APP_ID));
     signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
     EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
     
@@ -1672,9 +1680,7 @@ TEST_F(AppManagerTest, CloseAppUsingJSONRpcSuccess)
     EXPECT_EQ(Core::ERROR_NONE, onAppLaunchRequest.Lock());
     EVENT_UNSUBSCRIBE(0, _T("onAppLaunchRequest"), _T("org.rdk.AppManager"), message);
     
-    // Simulate the app lifecycle state change event
     EVENT_SUBSCRIBE(0, _T("onAppLifecycleStateChanged"), _T("org.rdk.AppManager"), message);
-    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("closeApp"), requestClose, mJsonRpcResponse));
     Core::Event onAppLifecycleStateChanged(false, true);
     EXPECT_CALL(*mServiceMock, Submit(::testing::_, ::testing::_))
         .Times(1)
@@ -1687,16 +1693,24 @@ TEST_F(AppManagerTest, CloseAppUsingJSONRpcSuccess)
                 onAppLifecycleStateChanged.SetEvent();
                 return Core::ERROR_NONE;
             }));
-    
     ASSERT_NE(mLifecycleManagerStateNotification_cb, nullptr)
-    << "LifecycleManagerState notification callback is not registered";
-    mLifecycleManagerStateNotification_cb->OnAppLifecycleStateChanged(
-        APPMANAGER_APP_ID,
+        << "LifecycleManagerState notification callback is not registered";
+    EXPECT_CALL(*mLifecycleManagerMock, SetTargetAppState(
         APPMANAGER_APP_INSTANCE,
-        Exchange::ILifecycleManager::LifecycleState::ACTIVE,  // Old state
-        Exchange::ILifecycleManager::LifecycleState::PAUSED,     // New state
-        ""
-    );
+        Exchange::ILifecycleManager::LifecycleState::PAUSED,
+        APPMANAGER_APP_INTENT))
+        .WillOnce(::testing::Invoke([&](const string&,
+                                       const Exchange::ILifecycleManager::LifecycleState,
+                                       const string&) {
+            mLifecycleManagerStateNotification_cb->OnAppLifecycleStateChanged(
+                APPMANAGER_APP_ID,
+                APPMANAGER_APP_INSTANCE,
+                Exchange::ILifecycleManager::LifecycleState::ACTIVE,
+                Exchange::ILifecycleManager::LifecycleState::PAUSED,
+                "");
+            return Core::ERROR_NONE;
+        }));
+    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("closeApp"), requestClose, mJsonRpcResponse));
     EXPECT_EQ(Core::ERROR_NONE, onAppLifecycleStateChanged.Lock());
     EVENT_UNSUBSCRIBE(0, _T("onAppLifecycleStateChanged"), _T("org.rdk.AppManager"), message);
 

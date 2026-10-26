@@ -464,16 +464,32 @@ namespace Plugin {
         if (found && state.mLockCount) {
             // packageId is the sole identifier now, so there is only ever one tracked
             // version per package; installing in place while it is locked (running)
-            // would replace a package that is still in use, so defer the request.
+            // would replace a package that is still in use, so defer the request and
+            // retain it to apply automatically once unlocked (see processBlockedPackage()).
             state.installState = InstallState::INSTALLATION_BLOCKED;
+            state.pendingFileLocator = fileLocator;
+            state.pendingKeyValues = keyValues;
             NotifyInstallStatus(packageId, state.version, state);
             LOGWARN("App is locked, install deferred id: '%s' count:%d", packageId.c_str(), state.mLockCount);
             result = Core::ERROR_GENERAL;
         } else {
+            // Snapshot the currently tracked version (if any) before Install() overwrites
+            // state.version, so a replace/upgrade can be reported as previous -> new below.
+            const string previousVersion = found ? state.version : string();
+            // Whether an artifact is genuinely installed and intact right now; if the
+            // backend rejects the new one below, this tells Install() whether to
+            // preserve it instead of reporting a false INSTALL_FAILURE.
+            const bool hadInstalledArtifact = found && (state.installState == InstallState::INSTALLED);
+
             state.installState = InstallState::INSTALLING;
             NotifyInstallStatus(packageId, state.version, state);
 
-            result = Install(packageId, keyValues, fileLocator, state);
+            result = Install(packageId, keyValues, fileLocator, hadInstalledArtifact, state);
+
+            if (result == Core::ERROR_NONE && found) {
+                LOGINFO("Package: %s replaced version: '%s' with version: '%s'",
+                    packageId.c_str(), previousVersion.c_str(), state.version.c_str());
+            }
 
             if (result != Core::ERROR_NONE) {
                 packageFailureErrorCode = (state.failReason == FailReason::PACKAGE_MISMATCH_FAILURE)
@@ -1083,6 +1099,7 @@ namespace Plugin {
     {
         Core::hresult result = Core::ERROR_NONE;
 
+        std::lock_guard<std::recursive_mutex> lock(mtxState);
         auto it = mState.find( packageId );
         if (it == mState.end()) {
             return result;
@@ -1103,12 +1120,36 @@ namespace Plugin {
                 LOGERR("Blocked package uninstall failed id: %s", packageId.c_str());
             }
         } else if (state.installState == InstallState::INSTALLATION_BLOCKED) {
-            // There is no retained fileLocator/metadata to automatically retry the
-            // deferred install, so simply clear the block; the caller is expected
-            // to retry Install() now that the package is unlocked.
-            state.installState = InstallState::INSTALLED;
-            NotifyInstallStatus(packageId, state.version, state);
-            LOGDBG("Blocked install cleared for id: %s; caller may retry Install()", packageId.c_str());
+            if (!state.pendingFileLocator.empty()) {
+                // Apply the Install() request that arrived while this package was locked,
+                // now that it is unlocked, so the package ends up on the version that was
+                // actually requested rather than leaving the old version running.
+                const string previousVersion = state.version;
+                const string pendingFileLocator = state.pendingFileLocator;
+                const packagemanager::NameValues pendingKeyValues = state.pendingKeyValues;
+                state.pendingFileLocator.clear();
+                state.pendingKeyValues.clear();
+                // A block only ever happens while the package is locked (running), which
+                // means an artifact is genuinely installed; if the deferred install below
+                // is rejected, Install() should preserve that still-intact installation.
+                const bool hadInstalledArtifact = !previousVersion.empty();
+
+                state.installState = InstallState::INSTALLING;
+                NotifyInstallStatus(packageId, state.version, state);
+                result = Install(packageId, pendingKeyValues, pendingFileLocator, hadInstalledArtifact, state);
+
+                if (result == Core::ERROR_NONE) {
+                    LOGINFO("Package: %s replaced version: '%s' with version: '%s'",
+                        packageId.c_str(), previousVersion.c_str(), state.version.c_str());
+                } else {
+                    LOGERR("Deferred install failed for id: '%s' after unlock", packageId.c_str());
+                }
+            } else {
+                // No retained request; simply clear the block.
+                state.installState = InstallState::INSTALLED;
+                NotifyInstallStatus(packageId, state.version, state);
+                LOGDBG("Blocked install cleared for id: %s; caller may retry Install()", packageId.c_str());
+            }
         }
         return result;
     }
@@ -1322,7 +1363,7 @@ namespace Plugin {
 
     Core::hresult PackageManagerImplementation::Install(const string &packageId,
         const packagemanager::NameValues &keyValues, const string &fileLocator,
-        State& state
+        bool hadInstalledArtifact, State& state
         )
     {
         Core::hresult result = Core::ERROR_GENERAL;
@@ -1342,13 +1383,16 @@ namespace Plugin {
             string version;
             packagemanager::ConfigMetaData fileMetadata;
             packageImpl->GetFileMetadata(fileLocator, derivedId, version, fileMetadata);
-            state.version = version;
+            // state.version is intentionally left untouched here; it is only committed
+            // once the backend has actually accepted/replaced the artifact below, so a
+            // rejected upgrade can't corrupt a still-intact prior installation's version.
 
             // Step 1: Install the package first
             packagemanager::ConfigMetaData config;
             packagemanager::Result pmResult = packageImpl->Install(packageId, version, keyValues, fileLocator, config);
             
             if (pmResult == packagemanager::SUCCESS) {
+                state.version = version;
                 LOGINFO("Package installation successful, now creating storage");
 
                 // Populate state from returned config (mirrors InitializeState())
@@ -1414,7 +1458,16 @@ namespace Plugin {
                 NotifyInstallStatus(packageId, version, state);
             } else {
                 // Package installation failed, no storage created
-                state.installState = InstallState::INSTALL_FAILURE;
+                if (hadInstalledArtifact) {
+                    // The backend rejected the new artifact before replacing anything,
+                    // so the previously installed version is still intact and usable;
+                    // keep reporting INSTALLED (with its original version/config/digest
+                    // untouched above) instead of a false INSTALL_FAILURE that would
+                    // make Config()/AppManager stop recognizing the still-installed app.
+                    state.installState = InstallState::INSTALLED;
+                } else {
+                    state.installState = InstallState::INSTALL_FAILURE;
+                }
                 switch (pmResult) {
                     case packagemanager::Result::VERSION_MISMATCH:
                         state.failReason = FailReason::PACKAGE_MISMATCH_FAILURE;
@@ -1430,7 +1483,7 @@ namespace Plugin {
                 }
                 LOGERR("Install failed reason %s", getFailReason(state.failReason).c_str());
                 LOGDBG("Package: %s Version: %s result=%d", packageId.c_str(), version.c_str(), result);
-                NotifyInstallStatus(packageId, version, state);
+                NotifyInstallStatus(packageId, hadInstalledArtifact ? state.version : version, state);
             }
         }
 

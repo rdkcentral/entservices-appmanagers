@@ -814,7 +814,7 @@ uint32_t Test_PM_Impl_InstallBlockedWhileLocked()
     L0Test::ExpectEqU32(tr,
         fx.impl->Unlock("YouTube"),
         ERROR_NONE,
-        "Unlock() clears the deferred install attempt");
+        "Unlock() applies the deferred install attempt");
 
     L0Test::ExpectEqU32(tr,
         fx.impl->PackageState("YouTube", state),
@@ -822,7 +822,24 @@ uint32_t Test_PM_Impl_InstallBlockedWhileLocked()
         "PackageState() remains queryable after unlock");
     L0Test::ExpectTrue(tr,
         state == WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED,
-        "Package reverts to INSTALLED after unlock clears the blocked install attempt");
+        "Package reaches INSTALLED after unlock applies the deferred install attempt");
+
+    WPEFramework::Exchange::IPackageInstaller::IPackageIterator* packages = nullptr;
+    L0Test::ExpectEqU32(tr, fx.impl->ListPackages(packages), ERROR_NONE, "ListPackages() succeeds after deferred install is applied");
+    L0Test::ExpectTrue(tr, nullptr != packages, "ListPackages() returns an iterator after deferred install is applied");
+    if (nullptr != packages) {
+        WPEFramework::Exchange::IPackageInstaller::Package package;
+        bool foundNewVersion = false;
+        while (packages->Next(package)) {
+            if (package.packageId == "YouTube" && package.version == "200.0.0") {
+                foundNewVersion = true;
+                break;
+            }
+        }
+        L0Test::ExpectTrue(tr, foundNewVersion,
+            "Deferred install applied after unlock installs the version that was actually requested (not the old one)");
+        packages->Release();
+    }
 
     return tr.failures;
 }

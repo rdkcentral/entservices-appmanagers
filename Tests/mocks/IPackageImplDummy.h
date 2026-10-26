@@ -91,6 +91,11 @@ namespace packagemanager
     public:
         virtual ~IPackageImplDummy() = default;
 
+        // Tracks whether the one-time "UpgradeRejectApp" test package has already
+        // been installed once, so a subsequent Install() call for it can simulate
+        // the backend rejecting an upgrade while the prior artifact stays intact.
+        mutable bool mUpgradeRejectAppInstalledOnce = false;
+
         virtual Result Initialize(const std::string &configStr, ConfigMetadataArray &aConfigMetadata) { 
             ConfigMetaData configMetadata;
             configMetadata.dial = true; 
@@ -129,6 +134,16 @@ namespace packagemanager
             if (packageId == "VerifyFailApp") {
                 return VERIFICATION_FAILURE;
             }
+            if (packageId == "UpgradeRejectApp") {
+                // Succeed the first time (simulating a normal initial install), then
+                // reject every subsequent attempt without touching the existing
+                // artifact (simulating the backend declining an upgrade in place).
+                if (!mUpgradeRejectAppInstalledOnce) {
+                    mUpgradeRejectAppInstalledOnce = true;
+                } else {
+                    return VERSION_MISMATCH;
+                }
+            }
 
             configMetadata.dial = true;
             configMetadata.wanLanAccess = true;
@@ -158,9 +173,13 @@ namespace packagemanager
         virtual Result Lock(const std::string &packageId, std::string &unpackedPath, ConfigMetaData &configMetadata) { return SUCCESS; }
         
         virtual Result GetFileMetadata(const std::string &fileLocator, std::string &packageId, std::string &version, ConfigMetaData &configMetadata) {
-            version = (packageId == "YouTube" && fileLocator.find("youtube_200") != std::string::npos)
-                ? "200.0.0"
-                : (packageId == "YouTube" ? "100.1.24" : "1.0.0");
+            if (packageId == "YouTube") {
+                version = (fileLocator.find("youtube_200") != std::string::npos) ? "200.0.0" : "100.1.24";
+            } else if (packageId == "UpgradeRejectApp") {
+                version = (fileLocator.find("reject_2") != std::string::npos) ? "2.0.0" : "1.0.0";
+            } else {
+                version = "1.0.0";
+            }
             return SUCCESS;
         }
 

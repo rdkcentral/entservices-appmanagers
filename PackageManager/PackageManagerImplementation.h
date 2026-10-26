@@ -76,6 +76,11 @@ class PackageManagerImplementation
             string runtimeType;                             // blank for runtime package
             string packageType;                              // OCI package type (e.g. "runtime", "application")
             std::pair<std::string, std::string> runtimeApp; // runtime package id & version
+
+            // Install() request deferred while locked (app running); applied once
+            // unlocked (see processBlockedPackage()). Empty fileLocator means none pending.
+            string pendingFileLocator;
+            packagemanager::NameValues pendingKeyValues;
         };
 
         // Package Manager now treats packageId as the sole external identifier;
@@ -218,7 +223,7 @@ class PackageManagerImplementation
         Core::hresult UnlockPackage(const string &packageId, const string &version);
         Core::hresult processBlockedPackage(const string &packageId);
 
-        Core::hresult Install(const string &packageId, const packagemanager::NameValues &keyValues, const string &fileLocator, State& state);
+        Core::hresult Install(const string &packageId, const packagemanager::NameValues &keyValues, const string &fileLocator, bool hadInstalledArtifact, State& state);
 
         void InitializeState();
         void downloader(int n);
