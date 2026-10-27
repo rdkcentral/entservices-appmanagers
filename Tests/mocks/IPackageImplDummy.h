@@ -125,9 +125,6 @@ namespace packagemanager
             (void)additionalMetadata;
             (void)fileLocator;
 
-            if (packageId == "MetadataFailApp") {
-                return VERSION_MISMATCH;
-            }
             if (packageId == "MismatchApp") {
                 return VERSION_MISMATCH;
             }
@@ -175,7 +172,19 @@ namespace packagemanager
         virtual Result GetList(std::string &packageList) { return SUCCESS; }
         virtual Result Lock(const std::string &packageId, std::string &unpackedPath, ConfigMetaData &configMetadata) { return SUCCESS; }
         
-        virtual Result GetFileMetadata(const std::string &fileLocator, std::string &packageId, std::string &version, ConfigMetaData &configMetadata) { return SUCCESS; }
+        virtual Result GetFileMetadata(const std::string &fileLocator, std::string &packageId, std::string &version, ConfigMetaData &configMetadata) {
+            if (packageId == "MetadataFailApp") {
+                return VERSION_MISMATCH;
+            }
+            if (packageId == "YouTube") {
+                version = (fileLocator.find("youtube_200") != std::string::npos) ? "200.0.0" : "100.1.24";
+            } else if (packageId == "UpgradeRejectApp") {
+                version = (fileLocator.find("reject_2") != std::string::npos) ? "2.0.0" : "1.0.0";
+            } else {
+                version = "1.0.0";
+            }
+            return SUCCESS;
+        }
 
         // Only the package seeded by Initialize() is considered installed.
         virtual Result GetInstalledPackageMetadata(const std::string &packageId, const std::string &version, std::string &metadata) {
