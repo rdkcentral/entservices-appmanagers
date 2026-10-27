@@ -1221,6 +1221,15 @@ namespace Plugin {
             state.digest = config.md5Hash;
             state.installState = InstallState::INSTALLED;
             state.runtimeType = config.runtimeType;
+            if (config.mimeType.find("runtime") == 0)
+            {
+                state.packageType = "runtime";
+            }
+            else if (packagemanager::ApplicationType::SYSTEM == config.appType)
+            {
+                state.packageType = "system";
+            }
+            else
             {
                 const auto sep = config.mimeType.find('/');
                 state.packageType = (sep != std::string::npos) ? config.mimeType.substr(0, sep) : config.mimeType;
@@ -1381,6 +1390,15 @@ namespace Plugin {
                 }
                 state.digest = config.md5Hash;
                 state.runtimeType = config.runtimeType;
+                if (config.mimeType.find("runtime") == 0)
+                {
+                    state.packageType = "runtime";
+                }
+                else if (packagemanager::ApplicationType::SYSTEM == config.appType)
+                {
+                    state.packageType = "system";
+                }
+                else
                 {
                     const auto sep = config.mimeType.find('/');
                     state.packageType = (sep != std::string::npos) ? config.mimeType.substr(0, sep) : config.mimeType;
@@ -1555,4 +1573,3 @@ Core::hresult PackageManagerImplementation::GetConfigListForInstalledPackages(co
 }
 } // namespace Plugin
 } // namespace WPEFramework
-

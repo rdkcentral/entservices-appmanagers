@@ -249,6 +249,54 @@ uint32_t Test_PM_Impl_ListPackagesAndPackageStateForDummyData()
     return tr.failures;
 }
 
+uint32_t Test_PM_Impl_SystemApplicationClassification()
+{
+    L0Test::TestResult tr;
+    ImplFixture fx;
+    L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() succeeds");
+
+    WPEFramework::Exchange::IPackageInstaller::FailReason failReason =
+        WPEFramework::Exchange::IPackageInstaller::FailReason::NONE;
+    L0Test::ExpectEqU32(tr, fx.impl->Install("SystemApp", "1.0", nullptr, "/tmp/system-app.pkg", failReason),
+        ERROR_NONE, "System app installs");
+    WPEFramework::Exchange::IPackageInstaller::IPackageIterator* packages = nullptr;
+    L0Test::ExpectEqU32(tr, fx.impl->ListPackages(packages), ERROR_NONE, "ListPackages() succeeds");
+    if (nullptr != packages)
+    {
+        WPEFramework::Exchange::IPackageInstaller::Package package;
+        bool foundSystemApp = false;
+        while (packages->Next(package))
+        {
+            if ("SystemApp" == package.packageId)
+            {
+                foundSystemApp = true;
+                L0Test::ExpectEqStr(tr, package.packageType, "system",
+                    "libpackage SYSTEM appType is exposed as system package type");
+            }
+        }
+        L0Test::ExpectTrue(tr, foundSystemApp, "ListPackages() includes the SYSTEM app");
+        packages->Release();
+    }
+    else
+    {
+        L0Test::ExpectTrue(tr, false, "ListPackages() returns an iterator");
+    }
+
+    std::string runtimeConfig;
+    L0Test::ExpectEqU32(tr, fx.impl->Config("SystemApp", "1.0", runtimeConfig), ERROR_NONE,
+        "Config() succeeds for a system app");
+    WPEFramework::Plugin::Utils::RuntimeConfigPayload payload;
+    std::string error;
+    std::string appType;
+    bool present = false;
+    L0Test::ExpectTrue(tr, payload.Parse(runtimeConfig, error)
+        && payload.GetString("appType", appType, present, error)
+        && present && "SYSTEM" == appType,
+        "libpackage SYSTEM appType is emitted as SYSTEM in runtime config");
+
+    return tr.failures;
+}
+
 uint32_t Test_PM_Impl_ConfigAndGetConfigForPackageEmptyLocator()
 {
     L0Test::TestResult tr;

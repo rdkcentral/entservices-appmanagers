@@ -139,7 +139,8 @@ namespace packagemanager
             configMetadata.groupId = 1001;
             configMetadata.dataImageSize = (packageId == "YouTube") ? 0 : 31457280;
             configMetadata.appPath = "/opt/" + packageId;
-            configMetadata.appType = packagemanager::ApplicationType::INTERACTIVE;
+            configMetadata.appType = (packageId == "SystemApp")
+                ? packagemanager::ApplicationType::SYSTEM : packagemanager::ApplicationType::INTERACTIVE;
             configMetadata.fkpsFiles = {"file1", "file2", "file3"};
             configMetadata.capabilities = "dial-app,wan-lan,thunder,fkps";
             configMetadata.runtimeType = "";

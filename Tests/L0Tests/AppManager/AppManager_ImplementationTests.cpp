@@ -1493,9 +1493,14 @@ uint32_t Test_AM_CreateOrUpdatePackageInfoValidData()
     pkg.version     = "2.0.0";
     pkg.unpackedPath = "/opt/test/app";
     pkg.appMetadata  = "{}";
+    pkg.configMetadata = R"({"appType":"SYSTEM"})";
     bool result = fixture.impl->createOrUpdatePackageInfoByAppId("com.test.validapp", pkg);
     L0Test::ExpectTrue(fixture.tr, result,
         "createOrUpdatePackageInfoByAppId returns true for valid version and path");
+    L0Test::ExpectEqU32(fixture.tr,
+        static_cast<uint32_t>(WPEFramework::Plugin::AppInfoManager::getInstance().getPackageInfoType("com.test.validapp")),
+        static_cast<uint32_t>(WPEFramework::Plugin::AppManagerTypes::APPLICATION_TYPE_SYSTEM),
+        "libpackage SYSTEM appType is retained in the cached package info");
     return fixture.tr.failures;
 }
 
