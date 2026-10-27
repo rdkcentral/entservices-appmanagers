@@ -70,14 +70,23 @@ class PackageManagerImplementation
             string digest;
             string gatewayMetadataPath;
             string unpackedPath;
+            string version;                                  // preserves the installed package's version internally
             FailReason failReason = Exchange::IPackageInstaller::FailReason::NONE;
             std::list<Exchange::IPackageHandler::AdditionalLock> additionalLocks;
             string runtimeType;                             // blank for runtime package
             string packageType;                              // OCI package type (e.g. "runtime", "application")
             std::pair<std::string, std::string> runtimeApp; // runtime package id & version
+
+            // Install() request deferred while locked (app running); applied once
+            // unlocked (see processBlockedPackage()). Empty fileLocator means none pending.
+            string pendingFileLocator;
+            string pendingVersion;
+            packagemanager::NameValues pendingKeyValues;
         };
 
-        typedef std::pair<std::string, std::string> StateKey;
+        // Package Manager now treats packageId as the sole external identifier;
+        // only one (current) version per packageId is tracked internally.
+        typedef std::string StateKey;
         typedef std::map<StateKey, State> StateMap;
 
         class Configuration : public Core::JSON::Container {
@@ -168,28 +177,28 @@ class PackageManagerImplementation
         Core::hresult StartCacheInitialization() override;
 
         // IPackageInstaller methods
-        Core::hresult Install(const string &packageId, const string &version, IPackageInstaller::IKeyValueIterator* const& additionalMetadata, const string &fileLocator, Exchange::IPackageInstaller::FailReason &failReason) override;
+        Core::hresult Install(const string &packageId, IPackageInstaller::IKeyValueIterator* const& additionalMetadata, const string &fileLocator, Exchange::IPackageInstaller::FailReason &failReason) override;
         Core::hresult Uninstall(const string &packageId, string &errorReason ) override;
         Core::hresult ListPackages(Exchange::IPackageInstaller::IPackageIterator*& packages);
-        Core::hresult Config(const string &packageId, const string &version, string& configMetadata) override;
-        Core::hresult PackageState(const string &packageId, const string &version, Exchange::IPackageInstaller::InstallState &state) override;
+        Core::hresult Config(const string &packageId, string& configMetadata) override;
+        Core::hresult PackageState(const string &packageId, Exchange::IPackageInstaller::InstallState &state) override;
         Core::hresult GetConfigForPackage(const string &fileLocator, string& id, string &version, string& config) override;
 
         Core::hresult Register(Exchange::IPackageInstaller::INotification *sink) override;
         Core::hresult Unregister(Exchange::IPackageInstaller::INotification *sink) override;
 
         // IPackageHandler methods
-        Core::hresult Lock(const string &packageId, const string &version, const Exchange::IPackageHandler::LockReason &lockReason,
+        Core::hresult Lock(const string &packageId, const Exchange::IPackageHandler::LockReason &lockReason,
             uint32_t &lockId, string &unpackedPath, string& configMetadata,
             Exchange::IPackageHandler::ILockIterator*& appMetadata
         ) override;
 
-        Core::hresult Unlock(const string &packageId, const string &version) override;
-        Core::hresult GetLockedInfo(const string &packageId, const string &version, string &unpackedPath, string& configMetadata,
+        Core::hresult Unlock(const string &packageId) override;
+        Core::hresult GetLockedInfo(const string &packageId, string &unpackedPath, string& configMetadata,
             string& gatewayMetadataPath, bool &locked) override;
 
         // IAppPackageManagerConfig methods
-        Core::hresult GetConfigForInstalledPackage(const string &packageId, const string &version, string &config /* @out @opaque */) override;
+        Core::hresult GetConfigForInstalledPackage(const string &packageId, string &config /* @out @opaque */) override;
         Core::hresult GetConfigListForInstalledPackages(const string &filter, string &config /* @out @opaque */) override;
 
 	// IAppPackagesStatus methods
@@ -210,46 +219,21 @@ class PackageManagerImplementation
         bool getRuntimeConfigUnsigned(const string &runtimeConfigPayload, const string &key, uint64_t &value);
         bool updateRuntimeConfigString(string &runtimeConfigPayload, const string &key, const string &value);
         Core::hresult LockRuntime(State &state, string &unpackedPath);
-        Core::hresult LockPackage(const string &packageId, const string &version, const Exchange::IPackageHandler::LockReason &lockReason,
+        Core::hresult LockPackage(const string &packageId, const Exchange::IPackageHandler::LockReason &lockReason,
             uint32_t &lockId, string &unpackedPath, packagemanager::ConfigMetaData &config, packagemanager::NameValues &locks);
         Core::hresult UnlockPackage(const string &packageId, const string &version);
-        Core::hresult processBlockedPackage(const string &packageId, const string &version);
+        Core::hresult processBlockedPackage(const string &packageId);
 
-        void setState(const string &packageId, const string &version, InstallState newState) {
-            std::lock_guard<std::recursive_mutex> lock(mtxState);
-            auto it = mState.find( { packageId, version} );
-            if (it != mState.end()) {
-                it->second.installState = newState;
-                LOGDBG("Setting InstallState %s for %s:%s", getInstallState(newState).c_str(), packageId.c_str(), version.c_str());
-            }
-        }
-
-        inline string GetInstalledVersion(const string& id) {
-            for (auto const& [key, state] : mState) {
-                if ((id.compare(key.first) == 0) &&
-                    (state.installState == InstallState::INSTALLED || state.installState == InstallState::UNINSTALL_BLOCKED)) {
-                    return key.second;
-                }
-            }
-            return "";
-        }
-
-        inline string GetBlockedVersion(const string& id) {
-            for (auto const& [key, state] : mState) {
-                if ((id.compare(key.first) == 0) &&
-                    state.installState == InstallState::UNINSTALL_BLOCKED) {
-                    return key.second;
-                }
-            }
-            return "";
-        }
-
-        Core::hresult Install(const string &packageId, const string &version, const packagemanager::NameValues &keyValues, const string &fileLocator, State& state);
+        Core::hresult Install(const string &packageId, const packagemanager::NameValues &keyValues, const string &fileLocator, const string &version, bool hadInstalledArtifact, State& state);
 
         void InitializeState();
         void downloader(int n);
         void NotifyDownloadStatus(const string& id, const string& locator, const DownloadReason status);
         void NotifyInstallStatus(const string& id, const string& version, const State &state);
+        // Publishes INSTALL_FAILURE for an attempted version without mutating the cached state.
+        void NotifyInstallFailure(const string& id, const string& version, State state, FailReason reason);
+        // Caller must hold mtxState.
+        bool GetCurrentVersion(const string &packageId, string &version) const;
 
         DownloadInfoPtr getNext();
         int nextRetryDuration(int n) {

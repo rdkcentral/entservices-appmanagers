@@ -429,7 +429,7 @@ namespace Plugin {
 
 
     // IPackageInstaller methods
-    Core::hresult PackageManagerImplementation::Install(const string &packageId, const string &version,
+    Core::hresult PackageManagerImplementation::Install(const string &packageId,
         IPackageInstaller::IKeyValueIterator* const& additionalMetadata,
         const string &fileLocator, Exchange::IPackageInstaller::FailReason &failReason)
     {
@@ -441,10 +441,10 @@ namespace Plugin {
         CHECK_CACHE()
         if (fileLocator.empty()) {
             recordAndPublishTelemetryData(TELEMETRY_MARKER_INSTALL_ERROR, packageId, requestTime, PackageManagerImplementation::PackageFailureErrorCode::ERROR_SIGNATURE_VERIFICATION_FAILURE);
-            LOGERR("fileLocator is empty '%s' ver:'%s'", packageId.c_str(), version.c_str());
+            LOGERR("fileLocator is empty '%s'", packageId.c_str());
             return Core::ERROR_INVALID_SIGNATURE;
         }
-        LOGDBG("Installing '%s' ver:'%s' fileLocator: '%s'", packageId.c_str(), version.c_str(), fileLocator.c_str());
+        LOGDBG("Installing '%s' fileLocator: '%s'", packageId.c_str(), fileLocator.c_str());
 
         packagemanager::NameValues keyValues;
         if (additionalMetadata != nullptr) {
@@ -456,59 +456,88 @@ namespace Plugin {
         }
 
         std::lock_guard<std::recursive_mutex> lock(mtxState);
-        bool bNewEntry = false;
-        StateKey key { packageId, version };
-        auto it = mState.find( key );
+        auto it = mState.find( packageId );
         State tempState;
         bool found = it != mState.end();
         State &state = found ? it->second : tempState;
-        state.installState = InstallState::INSTALLING;
+        // Whether an intact artifact is installed now; a rejected install must preserve it.
+        const bool hadInstalledArtifact = found && (state.installState == InstallState::INSTALLED);
 
-        NotifyInstallStatus(packageId, version, state);
-        string installedVersion = GetInstalledVersion(packageId);
-        StateKey installedKey { "", "" };
-        if (installedVersion.empty()) {
-            // No other versions
-            bNewEntry = true;
-        } else {
-            if (installedVersion.compare(version) == 0) {
-                LOGINFO("Same version already installed, upgrading");
+        string attemptedPackageId = packageId;
+        string attemptedVersion;
+        packagemanager::ConfigMetaData fileMetadata;
+        const packagemanager::Result metadataResult =
+            packageImpl->GetFileMetadata(fileLocator, attemptedPackageId, attemptedVersion, fileMetadata);
+        if ((metadataResult != packagemanager::SUCCESS) ||
+            attemptedPackageId != packageId || attemptedVersion.empty()) {
+            LOGERR("Failed to get valid artifact metadata for packageId: %s", packageId.c_str());
+            failReason = FailReason::INVALID_METADATA_FAILURE;
+            packageFailureErrorCode = PackageManagerImplementation::PackageFailureErrorCode::ERROR_INVALID_METADATA_FAILURE;
+            recordAndPublishTelemetryData(TELEMETRY_MARKER_INSTALL_ERROR,
+                packageId, requestTime, packageFailureErrorCode);
+            if (hadInstalledArtifact || (found && state.mLockCount)) {
+                NotifyInstallFailure(packageId, string(), state, FailReason::INVALID_METADATA_FAILURE);
             } else {
-                // different version
-                installedKey  = { packageId, installedVersion };
-                auto it = mState.find( installedKey );
-                bNewEntry = true;
-                if (it != mState.end()) {
-                    State &installedState = it->second;
-                    if ( installedState.mLockCount ) {
-                        LOGINFO("App is locked id: '%s' ver: '%s' count:%d, proceeding with install",
-                            packageId.c_str(), installedVersion.c_str(), installedState.mLockCount);
-                    }
+                state.installState = InstallState::INSTALL_FAILURE;
+                state.failReason = FailReason::INVALID_METADATA_FAILURE;
+                NotifyInstallStatus(packageId, string(), state);
+                if (!found) {
+                    LOGDBG("Inserting id: %s after invalid artifact metadata", packageId.c_str());
+                    mState.emplace(packageId, std::move(state));
                 }
             }
+            return Core::ERROR_GENERAL;
         }
 
-        if (state.installState == InstallState::INSTALLING) {
-            result = Install(packageId, version, keyValues, fileLocator, state);
-            if ((result == Core::ERROR_NONE) && (!installedVersion.empty())) {
-                setState(packageId, installedVersion, InstallState::UNINSTALLED);
+        if (found && state.mLockCount) {
+            if (state.installState == InstallState::UNINSTALL_BLOCKED) {
+                // There is only one deferred operation per package. Keep the queued
+                // uninstall intact rather than replacing it with a pending install.
+                LOGWARN("App has pending uninstall, rejecting install id: '%s'", packageId.c_str());
+            } else {
+                // packageId is the sole identifier now, so there is only ever one tracked
+                // version per package; installing in place while it is locked (running)
+                // would replace a package that is still in use, so defer the request and
+                // retain it to apply automatically once unlocked (see processBlockedPackage()).
+                state.installState = InstallState::INSTALLATION_BLOCKED;
+                state.pendingFileLocator = fileLocator;
+                state.pendingVersion = attemptedVersion;
+                state.pendingKeyValues = keyValues;
+            }
+            NotifyInstallStatus(packageId,
+                state.installState == InstallState::INSTALLATION_BLOCKED ? attemptedVersion : state.version,
+                state);
+            LOGWARN("App is locked, install not applied id: '%s' count:%d", packageId.c_str(), state.mLockCount);
+            result = Core::ERROR_GENERAL;
+        } else {
+            // Snapshot the currently tracked version (if any) before Install() overwrites
+            // state.version, so a replace/upgrade can be reported as previous -> new below.
+            const string previousVersion = found ? state.version : string();
+            state.installState = InstallState::INSTALLING;
+            NotifyInstallStatus(packageId, attemptedVersion, state);
+
+            result = Install(packageId, keyValues, fileLocator, attemptedVersion, hadInstalledArtifact, state);
+
+            if (result == Core::ERROR_NONE && found) {
+                LOGINFO("Package: %s replaced version: '%s' with version: '%s'",
+                    packageId.c_str(), previousVersion.c_str(), state.version.c_str());
             }
 
-             if (result != Core::ERROR_NONE) {
+            if (result != Core::ERROR_NONE) {
                 packageFailureErrorCode = (state.failReason == FailReason::PACKAGE_MISMATCH_FAILURE)
                     ? PackageManagerImplementation::PackageFailureErrorCode::ERROR_PACKAGE_MISMATCH_FAILURE
                     : PackageManagerImplementation::PackageFailureErrorCode::ERROR_SIGNATURE_VERIFICATION_FAILURE;
 
             }
-            recordAndPublishTelemetryData(((PackageManagerImplementation::PackageFailureErrorCode::ERROR_NONE == packageFailureErrorCode) ? TELEMETRY_MARKER_INSTALL_TIME : TELEMETRY_MARKER_INSTALL_ERROR),
-                                                        packageId,
-                                                        requestTime,
-                                                        packageFailureErrorCode);
         }
+        recordAndPublishTelemetryData(((PackageManagerImplementation::PackageFailureErrorCode::ERROR_NONE == packageFailureErrorCode) ? TELEMETRY_MARKER_INSTALL_TIME : TELEMETRY_MARKER_INSTALL_ERROR),
+                                                    packageId,
+                                                    requestTime,
+                                                    packageFailureErrorCode);
 
-        if (bNewEntry) {
-            LOGDBG("Inserting id: %s ver: %s ", key.first.c_str(), key.second.c_str());
-            mState.insert( { key, state } );
+        if (!found) {
+            LOGDBG("Inserting id: %s ver: %s ", packageId.c_str(), state.version.c_str());
+            mState.insert( { packageId, state } );
         }
 
         return result;
@@ -517,19 +546,19 @@ namespace Plugin {
     Core::hresult PackageManagerImplementation::Uninstall(const string &packageId, string &errorReason )
     {
         Core::hresult result = Core::ERROR_GENERAL;
-        string version = GetInstalledVersion(packageId);
 
         PackageManagerImplementation::PackageFailureErrorCode packageFailureErrorCode = PackageManagerImplementation::PackageFailureErrorCode::ERROR_NONE;
         /* Get current timestamp at the start of Uninstall for telemetry */
         time_t requestTime = getCurrentTimestamp();
 
-        LOGDBG("Uninstalling id: '%s' ver: '%s'", packageId.c_str(), version.c_str());
+        LOGDBG("Uninstalling id: '%s'", packageId.c_str());
         CHECK_CACHE()
 
         std::lock_guard<std::recursive_mutex> lock(mtxState);
-        auto it = mState.find( { packageId, version } );
+        auto it = mState.find( packageId );
         if (it != mState.end()) {
             auto &state = it->second;
+            const string &version = state.version;
             if (state.mLockCount == 0) {
                 if (nullptr == mStorageManagerObject) {
                     LOGINFO("Create StorageManager object");
@@ -607,7 +636,7 @@ namespace Plugin {
                 NotifyInstallStatus(packageId, version, state);
             } // mLockCount == 0
         } else {
-            LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
+            LOGERR("Package: %s Not found", packageId.c_str());
 
             result = Core::ERROR_INVALID_PARAMETER;
 
@@ -630,10 +659,10 @@ namespace Plugin {
         std::list<Exchange::IPackageInstaller::Package> packageList;
         std::lock_guard<std::recursive_mutex> lock(mtxState);
 
-        for (auto const& [key, state] : mState) {
+        for (auto const& [packageId, state] : mState) {
             Exchange::IPackageInstaller::Package package;
-            package.packageId = key.first.c_str();
-            package.version = key.second.c_str();
+            package.packageId = packageId.c_str();
+            package.version = state.version.c_str();
             package.digest = state.digest.c_str();
             package.state = state.installState;
             package.sizeKb = 0;
@@ -649,30 +678,14 @@ namespace Plugin {
         return result;
     }
 
-    Core::hresult PackageManagerImplementation::Config(const string &packageId, const string &version, string& runtimeConfigPayload)
+    Core::hresult PackageManagerImplementation::Config(const string &packageId, string& runtimeConfigPayload)
     {
         CHECK_CACHE()
-        LOGDBG("id: '%s' ver: '%s'", packageId.c_str(), version.c_str());
+        LOGDBG("id: '%s'", packageId.c_str());
         Core::hresult result = Core::ERROR_GENERAL;
         std::lock_guard<std::recursive_mutex> lock(mtxState);
 
-        StateMap::iterator it = mState.end();
-        if (!version.empty()) {
-            it = mState.find( { packageId, version } );
-        } else {
-            // No version supplied — find the first INSTALLED entry for this packageId.
-            // StateMap is sorted by {packageId, version}, so all entries for a given
-            // packageId are contiguous; lower_bound gives the first one efficiently.
-            for (auto candidate = mState.lower_bound({packageId, ""});
-                 candidate != mState.end() && candidate->first.first == packageId;
-                 ++candidate) {
-                if (candidate->second.installState == InstallState::INSTALLED) {
-                    it = candidate;
-                    break;
-                }
-            }
-        }
-
+        StateMap::iterator it = mState.find( packageId );
         if (it != mState.end()) {
             auto &state = it->second;
             if (state.installState == InstallState::INSTALLED) {
@@ -680,28 +693,28 @@ namespace Plugin {
                 result = Core::ERROR_NONE;
             }
         } else {
-            LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
+            LOGERR("Package: %s Not found", packageId.c_str());
             result = Core::ERROR_INVALID_PARAMETER;
         }
 
         return result;
     }
 
-    Core::hresult PackageManagerImplementation::PackageState(const string &packageId, const string &version,
+    Core::hresult PackageManagerImplementation::PackageState(const string &packageId,
         Exchange::IPackageInstaller::InstallState &installState)
     {
         CHECK_CACHE()
-        LOGDBG("id: '%s' ver: '%s'", packageId.c_str(), version.c_str());
+        LOGDBG("id: '%s'", packageId.c_str());
         Core::hresult result = Core::ERROR_NONE;
         std::lock_guard<std::recursive_mutex> lock(mtxState);
 
-        auto it = mState.find( { packageId, version } );
+        auto it = mState.find( packageId );
         if (it != mState.end()) {
             auto &state = it->second;
             installState = state.installState;
-            LOGDBG("id: '%s' ver: '%s' state: %s", packageId.c_str(), version.c_str(), getInstallState(installState).c_str());
+            LOGDBG("id: '%s' state: %s", packageId.c_str(), getInstallState(installState).c_str());
         } else {
-            LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
+            LOGERR("Package: %s Not found", packageId.c_str());
             result = Core::ERROR_INVALID_PARAMETER;
         }
 
@@ -745,7 +758,7 @@ namespace Plugin {
 
     // IPackageHandler methods
     Core::hresult PackageManagerImplementation::Lock(
-        const string &packageId, const string &version, const Exchange::IPackageHandler::LockReason &lockReason,
+        const string &packageId, const Exchange::IPackageHandler::LockReason &lockReason,
         uint32_t &lockId, string &unpackedPath, string& runtimeConfigPayload, Exchange::IPackageHandler::ILockIterator*& appMetadata
         )
     {
@@ -753,25 +766,30 @@ namespace Plugin {
         /* Get current timestamp at the start of Lock for telemetry */
         time_t requestTime = getCurrentTimestamp();
 
-        LOGDBG("id: %s ver: %s reason=%u", packageId.c_str(), version.c_str(), (uint8_t) lockReason);
+        LOGDBG("id: %s reason=%u", packageId.c_str(), (uint8_t) lockReason);
         CHECK_CACHE()
 
         std::lock_guard<std::recursive_mutex> lock(mtxState);
         packagemanager::ConfigMetaData config;      // XXX: cleanup
         packagemanager::NameValues locks;
-        result = LockPackage(packageId, version, lockReason, lockId, unpackedPath, config, locks);
+        result = LockPackage(packageId, lockReason, lockId, unpackedPath, config, locks);
         if (result == packagemanager::SUCCESS) {
             // Lock Runtime
-            auto it = mState.find( { packageId, version } );
+            auto it = mState.find( packageId );
             if (it != mState.end()) {
                 auto &state = it->second;
+                const string &version = state.version;
 
                 state.additionalLocks.clear();
                 string runtimeId, runtimeVersion;
                 bool runtimeLocked = false;
                 const string &rtPackageId = state.runtimeApp.first;
-                const string &rtVersion = state.runtimeApp.second;
-                if (!rtPackageId.empty() && !rtVersion.empty()) {
+                string rtVersion;
+                if (!rtPackageId.empty() && !GetCurrentVersion(rtPackageId, rtVersion)) {
+                    LOGERR("Runtime package state not found for %s", rtPackageId.c_str());
+                    result = Core::ERROR_BAD_REQUEST;
+                }
+                if (!rtVersion.empty()) {
                     string rtUnpackedPath;
                     Exchange::IPackageHandler::AdditionalLock lock;
                     lock.packageId = rtPackageId;
@@ -780,7 +798,7 @@ namespace Plugin {
 
                     #ifdef USE_LIBPACKAGE_RALF
                     uint32_t lockId = 0;
-                    result = LockPackage(rtPackageId, rtVersion, lockReason, lockId, rtUnpackedPath, config, locks);
+                    result = LockPackage(rtPackageId, lockReason, lockId, rtUnpackedPath, config, locks);
                     if (result == packagemanager::SUCCESS) {
                         runtimeLocked = true;
                         if (!updateRuntimeConfigString(state.runtimeConfigPayload, "runtimePath", config.runtimePath)) {   // XXX: find better way
@@ -794,7 +812,7 @@ namespace Plugin {
                     #endif
                     runtimeId = rtPackageId;
                     runtimeVersion = rtVersion;
-                } else {
+                } else if (rtPackageId.empty()) {
                     LOGDBG("No runtime for '%s:%s' , trying to fetch from additionalLocks", packageId.c_str(), version.c_str());
                     if (!locks.empty())
                     {
@@ -852,7 +870,7 @@ namespace Plugin {
                 getRuntimeConfigString(state.runtimeConfigPayload, "runtimePath", runtimePath);
                 LOGDBG("%s:%s appPath: %s runtimePath: %s", packageId.c_str(), version.c_str(), appPath.c_str(), runtimePath.c_str());
             } else {
-                LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());    // This should never happen
+                LOGERR("Package: %s Not found", packageId.c_str());    // This should never happen
             }
         }
 
@@ -861,16 +879,17 @@ namespace Plugin {
     }
 
     Core::hresult PackageManagerImplementation::LockPackage(
-        const string &packageId, const string &version, const Exchange::IPackageHandler::LockReason &lockReason,
+        const string &packageId, const Exchange::IPackageHandler::LockReason &lockReason,
         uint32_t &lockId, string &unpackedPath, packagemanager::ConfigMetaData &config, packagemanager::NameValues &locks
         )
     {
         Core::hresult result = Core::ERROR_NONE;
 
         std::lock_guard<std::recursive_mutex> lock(mtxState);
-        auto it = mState.find( { packageId, version } );
+        auto it = mState.find( packageId );
         if (it != mState.end()) {
             auto &state = it->second;
+            const string &version = state.version;
             bool locked = (state.mLockCount > 0);
             LOGDBG("id: %s ver: %s locked: %d runtimeType: '%s'", packageId.c_str(), version.c_str(), locked, state.runtimeType.c_str());
             if (locked)  {
@@ -900,8 +919,8 @@ namespace Plugin {
             }
             LOGERR("Package: '%s:%s' lock count: %" PRIu32, packageId.c_str(), version.c_str(), state.mLockCount);
         } else {
-            LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
-            result = Core::ERROR_INVALID_PARAMETER;
+            LOGERR("Package: %s Not found", packageId.c_str());
+            result = Core::ERROR_BAD_REQUEST;
         }
 
         return result;
@@ -1016,28 +1035,32 @@ namespace Plugin {
         return true;
     }
 
-    Core::hresult PackageManagerImplementation::Unlock(const string &packageId, const string &version)
+    Core::hresult PackageManagerImplementation::Unlock(const string &packageId)
     {
         /* Get current timestamp at the start of Lock for telemetry */
         time_t requestTime = getCurrentTimestamp();
         Core::hresult result = Core::ERROR_NONE;
-        LOGDBG("id: %s ver: %s", packageId.c_str(), version.c_str());
+        LOGDBG("id: %s", packageId.c_str());
         CHECK_CACHE()
 
+        string version;
 #ifdef USE_LIBPACKAGE_RALF
         string rtPackageId;
         string rtVersion;
 #endif
         {
             std::lock_guard<std::recursive_mutex> lock(mtxState);
-            auto it = mState.find( { packageId, version } );
+            auto it = mState.find(packageId);
             if (it == mState.end()) {
-                LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
-                result = Core::ERROR_INVALID_PARAMETER;
+                LOGERR("Package: %s Not found", packageId.c_str());
+                result = Core::ERROR_BAD_REQUEST;
             } else {
+                version = it->second.version;
 #ifdef USE_LIBPACKAGE_RALF
                 rtPackageId = it->second.runtimeApp.first;
-                rtVersion = it->second.runtimeApp.second;
+                if (!rtPackageId.empty() && !GetCurrentVersion(rtPackageId, rtVersion)) {
+                    LOGERR("Runtime package state not found while unlocking %s", rtPackageId.c_str());
+                }
 #endif
             }
         }
@@ -1045,16 +1068,19 @@ namespace Plugin {
         if (result == Core::ERROR_NONE) {
             result = UnlockPackage(packageId, version);
             if (result == Core::ERROR_NONE) {
-                processBlockedPackage(packageId, version);
+                processBlockedPackage(packageId);
             }
         }
 
 #ifdef USE_LIBPACKAGE_RALF
         if (!rtPackageId.empty()) {
-            LOGDBG("Unlocking runtime %s:%s", rtPackageId.c_str(), rtVersion.c_str() );
-            Core::hresult runtimeResult = UnlockPackage(rtPackageId, rtVersion);
+            Core::hresult runtimeResult = Core::ERROR_BAD_REQUEST;
+            if (!rtVersion.empty()) {
+                LOGDBG("Unlocking runtime %s:%s", rtPackageId.c_str(), rtVersion.c_str() );
+                runtimeResult = UnlockPackage(rtPackageId, rtVersion);
+            }
             if (runtimeResult == Core::ERROR_NONE) {
-                processBlockedPackage(rtPackageId, rtVersion);
+                processBlockedPackage(rtPackageId);
             } else if (result == Core::ERROR_NONE) {
                 result = runtimeResult;
             }
@@ -1076,7 +1102,7 @@ namespace Plugin {
     {
         Core::hresult result = Core::ERROR_NONE;
         std::lock_guard<std::recursive_mutex> lock(mtxState);
-        auto it = mState.find( { packageId, version } );
+        auto it = mState.find( packageId );
         if (it != mState.end()) {
             auto &state = it->second;
             if (state.mLockCount) {
@@ -1103,49 +1129,84 @@ namespace Plugin {
             }
             LOGDBG("id: %s ver: %s lock count:%d", packageId.c_str(), version.c_str(), state.mLockCount);
         } else {
-            LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
-            result = Core::ERROR_INVALID_PARAMETER;
+            LOGERR("Package: %s Not found", packageId.c_str());
+            result = Core::ERROR_BAD_REQUEST;
         }
 
         return result;
     }
 
-    Core::hresult PackageManagerImplementation::processBlockedPackage(const string &packageId, const string &version)
+    Core::hresult PackageManagerImplementation::processBlockedPackage(const string &packageId)
     {
         Core::hresult result = Core::ERROR_NONE;
-        string blockedVer = GetBlockedVersion(packageId);
 
-        auto it = mState.find( { packageId, version } );
-        if (it != mState.end() && it->second.mLockCount) {
-            LOGINFO("Package %s:%s is still locked", packageId.c_str(), version.c_str());
+        std::lock_guard<std::recursive_mutex> lock(mtxState);
+        auto it = mState.find( packageId );
+        if (it == mState.end()) {
             return result;
         }
-        auto itBlocked = mState.find( { packageId, blockedVer } );
-        if (itBlocked != mState.end()) {
-            auto &stateBlocked = itBlocked->second;
-            LOGDBG("blockedVer: '%s' state: %d", blockedVer.c_str(), (unsigned) stateBlocked.installState);
-            stateBlocked.unpackedPath = "";
-            if (stateBlocked.installState == InstallState::UNINSTALL_BLOCKED) {
-                string errorReason;
-                if (Uninstall(packageId, errorReason) == Core::ERROR_NONE) {
-                    LOGDBG("Blocked package uninstalled id: %s ver: %s", packageId.c_str(), blockedVer.c_str());
+        auto &state = it->second;
+        if (state.mLockCount) {
+            LOGINFO("Package %s is still locked", packageId.c_str());
+            return result;
+        }
+
+        LOGDBG("id: '%s' state: %d", packageId.c_str(), (unsigned) state.installState);
+        state.unpackedPath = "";
+        if (state.installState == InstallState::UNINSTALL_BLOCKED) {
+            string errorReason;
+            if (Uninstall(packageId, errorReason) == Core::ERROR_NONE) {
+                LOGDBG("Blocked package uninstalled id: %s", packageId.c_str());
+            } else {
+                LOGERR("Blocked package uninstall failed id: %s", packageId.c_str());
+            }
+        } else if (state.installState == InstallState::INSTALLATION_BLOCKED) {
+            if (!state.pendingFileLocator.empty()) {
+                // Apply the Install() request that arrived while this package was locked,
+                // now that it is unlocked, so the package ends up on the version that was
+                // actually requested rather than leaving the old version running.
+                const string previousVersion = state.version;
+                const string pendingFileLocator = state.pendingFileLocator;
+                const string pendingVersion = state.pendingVersion;
+                const packagemanager::NameValues pendingKeyValues = state.pendingKeyValues;
+                state.pendingFileLocator.clear();
+                state.pendingVersion.clear();
+                state.pendingKeyValues.clear();
+                // A block only ever happens while the package is locked (running), which
+                // means an artifact is genuinely installed; if the deferred install below
+                // is rejected, Install() should preserve that still-intact installation.
+                const bool hadInstalledArtifact = !previousVersion.empty();
+
+                state.installState = InstallState::INSTALLING;
+                NotifyInstallStatus(packageId, pendingVersion, state);
+                result = Install(packageId, pendingKeyValues, pendingFileLocator,
+                    pendingVersion, hadInstalledArtifact, state);
+
+                if (result == Core::ERROR_NONE) {
+                    LOGINFO("Package: %s replaced version: '%s' with version: '%s'",
+                        packageId.c_str(), previousVersion.c_str(), state.version.c_str());
                 } else {
-                    LOGERR("Blocked package uninstall failed id: %s ver: %s", packageId.c_str(), blockedVer.c_str());
+                    LOGERR("Deferred install failed for id: '%s' after unlock", packageId.c_str());
                 }
+            } else {
+                // No retained request; simply clear the block.
+                state.installState = InstallState::INSTALLED;
+                NotifyInstallStatus(packageId, state.version, state);
+                LOGDBG("Blocked install cleared for id: %s; caller may retry Install()", packageId.c_str());
             }
         }
         return result;
     }
 
-    Core::hresult PackageManagerImplementation::GetLockedInfo(const string &packageId, const string &version,
+    Core::hresult PackageManagerImplementation::GetLockedInfo(const string &packageId,
         string &unpackedPath, string& runtimeConfigPayload, string& gatewayMetadataPath, bool &locked)
     {
         CHECK_CACHE()
         Core::hresult result = Core::ERROR_NONE;
 
-        LOGDBG("id: %s ver: %s", packageId.c_str(), version.c_str());
+        LOGDBG("id: %s", packageId.c_str());
         std::lock_guard<std::recursive_mutex> lock(mtxState);
-        auto it = mState.find( { packageId, version } );
+        auto it = mState.find( packageId );
         if (it != mState.end()) {
             auto &state = it->second;
             unpackedPath = state.unpackedPath;
@@ -1156,10 +1217,10 @@ namespace Plugin {
                 runtimeConfigPayload = state.runtimeConfigPayload;
             }
             locked = (state.mLockCount > 0);
-            LOGDBG("id: %s ver: %s lock count:%d", packageId.c_str(), version.c_str(), state.mLockCount);
+            LOGDBG("id: %s lock count:%d", packageId.c_str(), state.mLockCount);
         } else {
-            LOGERR("Package: %s Version: %s Not found", packageId.c_str(), version.c_str());
-            result = Core::ERROR_INVALID_PARAMETER;
+            LOGERR("Package: %s Not found", packageId.c_str());
+            result = Core::ERROR_BAD_REQUEST;
         }
         return result;
     }
@@ -1209,15 +1270,35 @@ namespace Plugin {
         packagemanager::Result pmResult = packageImpl->Initialize(configStr, aConfigMetadata);
         LOGDBG("aConfigMetadata.count:%zu pmResult=%d", aConfigMetadata.size(), pmResult);
         std::lock_guard<std::recursive_mutex> lock(mtxState);
-        populateRuntime(aConfigMetadata);
-        for (auto it = aConfigMetadata.begin(); it != aConfigMetadata.end(); ++it ) {
-            StateKey key = it->first;
+        // Select one version per packageId first. Both runtimeMap and mState must
+        // use this same selection so dependent apps lock and unlock the same runtime.
+        std::map<string, packagemanager::ConfigMetadataArray::const_iterator> currentEntries;
+        for (auto it = aConfigMetadata.cbegin(); it != aConfigMetadata.cend(); ++it) {
+            auto inserted = currentEntries.insert({ it->first.first, it });
+            if (!inserted.second) {
+                LOGWARN("Multiple versions reported for packageId: %s; keeping version: %s",
+                    it->first.first.c_str(), it->first.second.c_str());
+                inserted.first->second = it;
+            }
+        }
+
+        packagemanager::ConfigMetadataArray currentConfigMetadata;
+        for (const auto &entry : currentEntries) {
+            currentConfigMetadata.insert(*entry.second);
+        }
+
+        runtimeMap.clear();
+        populateRuntime(currentConfigMetadata);
+        for (auto it = currentConfigMetadata.begin(); it != currentConfigMetadata.end(); ++it ) {
+            const string &packageId = it->first.first;
+            const string &version = it->first.second;
             auto config = it->second;
             State state;
             if (!getRuntimeConfig(config, state.runtimeConfigPayload)) {
-                LOGERR("Failed to create runtime configuration payload for package %s:%s", key.first.c_str(), key.second.c_str());
+                LOGERR("Failed to create runtime configuration payload for package %s:%s", packageId.c_str(), version.c_str());
                 continue;
             }
+            state.version = version;
             state.digest = config.md5Hash;
             state.installState = InstallState::INSTALLED;
             state.runtimeType = config.runtimeType;
@@ -1228,11 +1309,11 @@ namespace Plugin {
             std::map<std::string, std::pair<std::string, std::string>>::iterator it2 = runtimeMap.find(state.runtimeType);
             if (it2 != runtimeMap.end()) {
                 state.runtimeApp = it2->second;
-                //LOGDBG("packageId: %s runtimeApp: %s", key.first.c_str(), state.runtimeApp.c_str());
+                //LOGDBG("packageId: %s runtimeApp: %s", packageId.c_str(), state.runtimeApp.c_str());
             } else {
-                LOGDBG("Runtime not found for %s type: %s", key.first.c_str(), state.runtimeType.c_str());
+                LOGDBG("Runtime not found for %s type: %s", packageId.c_str(), state.runtimeType.c_str());
             }
-            mState.insert( { key, state } );
+            mState[packageId] = state;
         }
 
         cacheInitialized = true;
@@ -1339,9 +1420,9 @@ namespace Plugin {
         }
     }
 
-    Core::hresult PackageManagerImplementation::Install(const string &packageId, const string &version,
+    Core::hresult PackageManagerImplementation::Install(const string &packageId,
         const packagemanager::NameValues &keyValues, const string &fileLocator,
-        State& state
+        const string &version, bool hadInstalledArtifact, State& state
         )
     {
         Core::hresult result = Core::ERROR_GENERAL;
@@ -1353,11 +1434,16 @@ namespace Plugin {
         }
         ASSERT (nullptr != mStorageManagerObject);
         if (nullptr != mStorageManagerObject) {
+            // state.version is intentionally left untouched here; it is only committed
+            // once the backend has actually accepted/replaced the artifact below, so a
+            // rejected upgrade can't corrupt a still-intact prior installation's version.
+
             // Step 1: Install the package first
             packagemanager::ConfigMetaData config;
             packagemanager::Result pmResult = packageImpl->Install(packageId, version, keyValues, fileLocator, config);
             
             if (pmResult == packagemanager::SUCCESS) {
+                state.version = version;
                 LOGINFO("Package installation successful, now creating storage");
 
                 // Populate state from returned config (mirrors InitializeState())
@@ -1423,23 +1509,33 @@ namespace Plugin {
                 NotifyInstallStatus(packageId, version, state);
             } else {
                 // Package installation failed, no storage created
-                state.installState = InstallState::INSTALL_FAILURE;
+                FailReason reason;
                 switch (pmResult) {
                     case packagemanager::Result::VERSION_MISMATCH:
-                        state.failReason = FailReason::PACKAGE_MISMATCH_FAILURE;
+                        reason = FailReason::PACKAGE_MISMATCH_FAILURE;
                         break;
                     case packagemanager::Result::PERSISTENCE_FAILURE:
-                        state.failReason = FailReason::PERSISTENCE_FAILURE;
+                        reason = FailReason::PERSISTENCE_FAILURE;
                         break;
                     case packagemanager::Result::VERIFICATION_FAILURE:
-                        state.failReason = FailReason::SIGNATURE_VERIFICATION_FAILURE;
+                        reason = FailReason::SIGNATURE_VERIFICATION_FAILURE;
                         break;
                     default:
-                        state.failReason = FailReason::GENERAL_FAILURE;
+                        reason = FailReason::GENERAL_FAILURE;
                 }
-                LOGERR("Install failed reason %s", getFailReason(state.failReason).c_str());
+                state.failReason = reason;
+                LOGERR("Install failed reason %s", getFailReason(reason).c_str());
                 LOGDBG("Package: %s Version: %s result=%d", packageId.c_str(), version.c_str(), result);
-                NotifyInstallStatus(packageId, version, state);
+                if (hadInstalledArtifact) {
+                    // The backend rejected the new artifact before replacing anything, so the
+                    // prior installation stays INSTALLED in the cache (Config()/AppManager keep
+                    // working), while clients are told the attempted version failed.
+                    state.installState = InstallState::INSTALLED;
+                    NotifyInstallFailure(packageId, version, state, reason);
+                } else {
+                    state.installState = InstallState::INSTALL_FAILURE;
+                    NotifyInstallStatus(packageId, version, state);
+                }
             }
         }
 
@@ -1479,6 +1575,23 @@ namespace Plugin {
         mAdminLock.Unlock();
     }
 
+    void PackageManagerImplementation::NotifyInstallFailure(const string& id, const string& version, State state, FailReason reason)
+    {
+        state.installState = InstallState::INSTALL_FAILURE;
+        state.failReason = reason;
+        NotifyInstallStatus(id, version, state);
+    }
+
+    bool PackageManagerImplementation::GetCurrentVersion(const string &packageId, string &version) const
+    {
+        const auto it = mState.find(packageId);
+        if (it == mState.end() || it->second.version.empty()) {
+            return false;
+        }
+        version = it->second.version;
+        return true;
+    }
+
     void PackageManagerImplementation::NotifyInstallStatus(const string& id, const string& version, const State &state)
     {
         JsonArray list = JsonArray();
@@ -1516,7 +1629,7 @@ namespace Plugin {
         }
         return mInprogressDownload;
     }
-    Core::hresult PackageManagerImplementation::GetConfigForInstalledPackage(const string &packageId, const string &version, string &config /* @out @opaque */)
+    Core::hresult PackageManagerImplementation::GetConfigForInstalledPackage(const string &packageId, string &config /* @out @opaque */)
     {
         CHECK_CACHE()
         Core::hresult result = Core::ERROR_GENERAL;
@@ -1526,7 +1639,17 @@ namespace Plugin {
             return Core::ERROR_INVALID_PARAMETER;
         }
 
-        packagemanager::Result pmResult = packageImpl->GetInstalledPackageMetadata(packageId, version, config);
+        string version;
+        {
+            std::lock_guard<std::recursive_mutex> lock(mtxState);
+            if (!GetCurrentVersion(packageId, version)) {
+                LOGERR("Package: %s has no current version in cache", packageId.c_str());
+                return result;
+            }
+        }
+
+        packagemanager::Result pmResult =
+            packageImpl->GetInstalledPackageMetadata(packageId, version, config);
         if (pmResult == packagemanager::SUCCESS)
         {
             result = Core::ERROR_NONE;
@@ -1555,4 +1678,3 @@ Core::hresult PackageManagerImplementation::GetConfigListForInstalledPackages(co
 }
 } // namespace Plugin
 } // namespace WPEFramework
-

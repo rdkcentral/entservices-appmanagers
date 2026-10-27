@@ -427,9 +427,9 @@ protected:
             return Core::ERROR_NONE;
         });
 
-        EXPECT_CALL(*mPackageManagerMock, Lock(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        EXPECT_CALL(*mPackageManagerMock, Lock(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
-        .WillRepeatedly([&](const string &packageId, const string &version, const Exchange::IPackageHandler::LockReason &lockReason, uint32_t &lockId /* @out */, string &unpackedPath /* @out */, std::string &configMetadata /* @out */, Exchange::IPackageHandler::ILockIterator*& appMetadata /* @out */) {
+        .WillRepeatedly([&](const string &packageId, const Exchange::IPackageHandler::LockReason &lockReason, uint32_t &lockId /* @out */, string &unpackedPath /* @out */, std::string &configMetadata /* @out */, Exchange::IPackageHandler::ILockIterator*& appMetadata /* @out */) {
             lockId = 1;
             unpackedPath = APPMANAGER_APP_UNPACKEDPATH;
             configMetadata = runtimeConfigPayload;
@@ -472,9 +472,9 @@ protected:
             return Core::ERROR_NONE;
         });
 
-        EXPECT_CALL(*mPackageManagerMock, Lock(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        EXPECT_CALL(*mPackageManagerMock, Lock(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
         .Times(::testing::AnyNumber())
-        .WillRepeatedly([&](const string &packageId, const string &version, const Exchange::IPackageHandler::LockReason &lockReason, uint32_t &lockId /* @out */, string &unpackedPath /* @out */, std::string &configMetadata /* @out */, Exchange::IPackageHandler::ILockIterator*& appMetadata /* @out */) {
+        .WillRepeatedly([&](const string &packageId, const Exchange::IPackageHandler::LockReason &lockReason, uint32_t &lockId /* @out */, string &unpackedPath /* @out */, std::string &configMetadata /* @out */, Exchange::IPackageHandler::ILockIterator*& appMetadata /* @out */) {
             lockId = 1;
             unpackedPath = APPMANAGER_APP_UNPACKEDPATH;
             configMetadata = runtimeConfigPayload;
@@ -1590,7 +1590,7 @@ TEST_F(AppManagerTest, CloseAppUsingComRpcSuccess)
     Core::Sink<NotificationHandler> notification;
     AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [](Plugin::AppInfo& a) {
         a.setAppInstanceId(APPMANAGER_APP_INSTANCE);
-        a.setAppNewState(Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED);
+        a.setAppNewState(Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE);
     });
 
     /* Register the notification handler */
@@ -1602,15 +1602,23 @@ TEST_F(AppManagerTest, CloseAppUsingComRpcSuccess)
     signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLaunchRequest);
     EXPECT_TRUE(signalled & AppManager_onAppLaunchRequest);
 
-    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->CloseApp(APPMANAGER_APP_ID));
-    // Simulate the app lifecycle state change event
-    mLifecycleManagerStateNotification_cb->OnAppLifecycleStateChanged(
-        APPMANAGER_APP_ID,
+    ASSERT_NE(mLifecycleManagerStateNotification_cb, nullptr);
+    EXPECT_CALL(*mLifecycleManagerMock, SetTargetAppState(
         APPMANAGER_APP_INSTANCE,
-        Exchange::ILifecycleManager::LifecycleState::ACTIVE,  // Old state
-        Exchange::ILifecycleManager::LifecycleState::PAUSED,     // New state
-        ""
-    );
+        Exchange::ILifecycleManager::LifecycleState::PAUSED,
+        APPMANAGER_APP_INTENT))
+        .WillOnce(::testing::Invoke([&](const string& appInstanceId,
+                                       const Exchange::ILifecycleManager::LifecycleState,
+                                       const string& intent) {
+            mLifecycleManagerStateNotification_cb->OnAppLifecycleStateChanged(
+                APPMANAGER_APP_ID,
+                APPMANAGER_APP_INSTANCE,
+                Exchange::ILifecycleManager::LifecycleState::ACTIVE,
+                Exchange::ILifecycleManager::LifecycleState::PAUSED,
+                "");
+            return Core::ERROR_NONE;
+        }));
+    EXPECT_EQ(Core::ERROR_NONE, mAppManagerImpl->CloseApp(APPMANAGER_APP_ID));
     signalled = notification.WaitForRequestStatus(TIMEOUT, AppManager_onAppLifecycleStateChanged);
     EXPECT_TRUE(signalled & AppManager_onAppLifecycleStateChanged);
     
@@ -1647,7 +1655,7 @@ TEST_F(AppManagerTest, CloseAppUsingJSONRpcSuccess)
 
     AppInfoManager::getInstance().upsert(APPMANAGER_APP_ID, [](Plugin::AppInfo& a) {
         a.setAppInstanceId(APPMANAGER_APP_INSTANCE);
-        a.setAppNewState(Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED);
+        a.setAppNewState(Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE);
     });
     std::string requestClose = "{\"appId\": \"" + std::string(APPMANAGER_APP_ID) + "\"}";
     std::string requestLaunch = "{\"appId\": \"" + std::string(APPMANAGER_APP_ID) +
@@ -1672,9 +1680,7 @@ TEST_F(AppManagerTest, CloseAppUsingJSONRpcSuccess)
     EXPECT_EQ(Core::ERROR_NONE, onAppLaunchRequest.Lock());
     EVENT_UNSUBSCRIBE(0, _T("onAppLaunchRequest"), _T("org.rdk.AppManager"), message);
     
-    // Simulate the app lifecycle state change event
     EVENT_SUBSCRIBE(0, _T("onAppLifecycleStateChanged"), _T("org.rdk.AppManager"), message);
-    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("closeApp"), requestClose, mJsonRpcResponse));
     Core::Event onAppLifecycleStateChanged(false, true);
     EXPECT_CALL(*mServiceMock, Submit(::testing::_, ::testing::_))
         .Times(1)
@@ -1687,16 +1693,24 @@ TEST_F(AppManagerTest, CloseAppUsingJSONRpcSuccess)
                 onAppLifecycleStateChanged.SetEvent();
                 return Core::ERROR_NONE;
             }));
-    
     ASSERT_NE(mLifecycleManagerStateNotification_cb, nullptr)
-    << "LifecycleManagerState notification callback is not registered";
-    mLifecycleManagerStateNotification_cb->OnAppLifecycleStateChanged(
-        APPMANAGER_APP_ID,
+        << "LifecycleManagerState notification callback is not registered";
+    EXPECT_CALL(*mLifecycleManagerMock, SetTargetAppState(
         APPMANAGER_APP_INSTANCE,
-        Exchange::ILifecycleManager::LifecycleState::ACTIVE,  // Old state
-        Exchange::ILifecycleManager::LifecycleState::PAUSED,     // New state
-        ""
-    );
+        Exchange::ILifecycleManager::LifecycleState::PAUSED,
+        APPMANAGER_APP_INTENT))
+        .WillOnce(::testing::Invoke([&](const string&,
+                                       const Exchange::ILifecycleManager::LifecycleState,
+                                       const string&) {
+            mLifecycleManagerStateNotification_cb->OnAppLifecycleStateChanged(
+                APPMANAGER_APP_ID,
+                APPMANAGER_APP_INSTANCE,
+                Exchange::ILifecycleManager::LifecycleState::ACTIVE,
+                Exchange::ILifecycleManager::LifecycleState::PAUSED,
+                "");
+            return Core::ERROR_NONE;
+        }));
+    EXPECT_EQ(Core::ERROR_NONE, mJsonRpcHandler.Invoke(connection, _T("closeApp"), requestClose, mJsonRpcResponse));
     EXPECT_EQ(Core::ERROR_NONE, onAppLifecycleStateChanged.Lock());
     EVENT_UNSUBSCRIBE(0, _T("onAppLifecycleStateChanged"), _T("org.rdk.AppManager"), message);
 
@@ -3886,8 +3900,8 @@ TEST_F(AppManagerTest, LaunchAppLockFailureLockReturnError)
             packages = mockIterator;
             return Core::ERROR_NONE;
         });
-    EXPECT_CALL(*mPackageManagerMock, Lock(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
-        .WillRepeatedly([&](const string& packageId, const string& version,
+    EXPECT_CALL(*mPackageManagerMock, Lock(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
+        .WillRepeatedly([&](const string& packageId,
             const Exchange::IPackageHandler::LockReason& lockReason, uint32_t& lockId,
             string& unpackedPath, std::string& configMetadata,
             Exchange::IPackageHandler::ILockIterator*& appMetadata) {
@@ -4277,8 +4291,8 @@ TEST_F(AppManagerTest, PackageUnlockEntryFoundUnlockSuccess)
         a.getPackageInfoMutable().version = APPMANAGER_APP_VERSION;
     });
 
-    EXPECT_CALL(*mPackageManagerMock, Unlock(APPMANAGER_APP_ID, APPMANAGER_APP_VERSION))
-        .WillOnce([&](const string& packageId, const string& version) {
+    EXPECT_CALL(*mPackageManagerMock, Unlock(APPMANAGER_APP_ID))
+        .WillOnce([&](const string& packageId) {
             return Core::ERROR_NONE;
         });
 
@@ -4325,8 +4339,8 @@ TEST_F(AppManagerTest, PackageUnlockEntryFoundUnlockFails)
         a.getPackageInfoMutable().version = APPMANAGER_APP_VERSION;
     });
 
-    EXPECT_CALL(*mPackageManagerMock, Unlock(APPMANAGER_APP_ID, APPMANAGER_APP_VERSION))
-        .WillOnce([&](const string& packageId, const string& version) {
+    EXPECT_CALL(*mPackageManagerMock, Unlock(APPMANAGER_APP_ID))
+        .WillOnce([&](const string& packageId) {
             return Core::ERROR_GENERAL;
         });
 
@@ -4893,8 +4907,8 @@ TEST_F(AppManagerTest, AppManagerImplRemoveAppInfoByAppIdFound)
         a.getPackageInfoMutable().version = APPMANAGER_APP_VERSION;
     });
 
-    EXPECT_CALL(*mPackageManagerMock, Unlock(APPMANAGER_APP_ID, APPMANAGER_APP_VERSION))
-        .WillOnce([&](const string& packageId, const string& version) {
+    EXPECT_CALL(*mPackageManagerMock, Unlock(APPMANAGER_APP_ID))
+        .WillOnce([&](const string& packageId) {
             return Core::ERROR_NONE;
         });
 
