@@ -150,7 +150,7 @@ bool RuntimeConfigurationDecoder::Decode(const std::string& serialized, RuntimeC
         return false;
     }
 
-    if (requireCommand && decoded.command.empty()) {
+    if ((requireCommand || decoded.ralfPkgPath.empty()) && decoded.command.empty()) {
         error = "command is mandatory and must not be empty";
         return false;
     }

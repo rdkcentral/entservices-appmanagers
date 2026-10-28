@@ -46,6 +46,8 @@ namespace ralf
      * @return true on success, false on failure
      */
     bool parseRalPkgInfo(const std::string &configFilePath, std::vector<RalfPkgInfoPair> &packages);
+    bool getClassicRalfLaunchInfo(const std::string &manifestPath, std::string &appPath,
+                                  std::string &runtimePath, std::string &command);
     /**
      * Function to read JSON data from a file
      * @param filePath The path to the JSON file
@@ -61,12 +63,10 @@ namespace ralf
      * The overlay filesystem will use the pkgmountPaths as lowerdir and RALF_APP_ROOTFS_DIR/appInstanceId as workdir
      * @param appInstanceId The application instance ID
      * @param pkgmountPaths The colon separated list of package mount paths to be used as lowerdir
-     * @param uid The user ID to set as owner of the created directories
-     * @param gid The group ID to set as owner of the created directories
      * @param ociRootfsPath [out parameter] The path to the mounted OCI root filesystem
      * @return true on success, false on failure
      */
-    bool generateOCIRootfs(const std::string appInstanceId, const std::string &pkgmountPaths, const int uid, const int gid, std::string &ociRootfsPath);
+    bool generateOCIRootfs(const std::string appInstanceId, const std::string &pkgmountPaths, std::string &ociRootfsPath);
     /**
      * Given a device node path, this function will return the major and minor numbers.
      * @param devNodePath : Input device node path.
@@ -160,5 +160,6 @@ namespace ralf
      * @return true on success, false on failure.
      */
 
-    bool addBindMountToOCIConfig(Json::Value &ociConfigRootNode, const std::string &hostPath, const std::string &containerPath, bool readOnly = false);
+    bool addBindMountToOCIConfig(Json::Value &ociConfigRootNode, const std::string &hostPath, const std::string &containerPath,
+                                 bool readOnly = false, bool recursive = true, bool noSuid = false, bool noDev = false);
 }  // namespace ralf
