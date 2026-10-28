@@ -33,7 +33,7 @@
         LOGERR("event handler is null while forwarding OCI event"); \
     }
 
-namespace WPEFramework {
+namespace Thunder {
     namespace Plugin {
 
         DobbyEventListener::DobbyEventListener()
@@ -165,4 +165,4 @@ namespace WPEFramework {
 
 
     }// Namespace Plugin
-}// Namespace WPEFramework
+}// Namespace Thunder

@@ -8,7 +8,7 @@
 
 namespace {
 
-class FakeRuntimeManagerNoConfig final : public WPEFramework::Exchange::IRuntimeManager {
+class FakeRuntimeManagerNoConfig final : public Thunder::Exchange::IRuntimeManager {
 public:
     FakeRuntimeManagerNoConfig()
         : _refCount(1)
@@ -25,40 +25,40 @@ public:
         const uint32_t remaining = _refCount.fetch_sub(1, std::memory_order_acq_rel) - 1;
         if (0U == remaining) {
             delete this;
-            return WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED;
+            return Thunder::Core::ERROR_DESTRUCTION_SUCCEEDED;
         }
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
     void* QueryInterface(const uint32_t id) override
     {
-        if (id == WPEFramework::Exchange::IRuntimeManager::ID) {
+        if (id == Thunder::Exchange::IRuntimeManager::ID) {
             AddRef();
-            return static_cast<WPEFramework::Exchange::IRuntimeManager*>(this);
+            return static_cast<Thunder::Exchange::IRuntimeManager*>(this);
         }
         return nullptr;
     }
 
-    WPEFramework::Core::hresult Register(WPEFramework::Exchange::IRuntimeManager::INotification*) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Unregister(WPEFramework::Exchange::IRuntimeManager::INotification*) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Run(const std::string&, const std::string&, const uint32_t, const uint32_t, WPEFramework::Exchange::IRuntimeManager::IValueIterator* const&, WPEFramework::Exchange::IRuntimeManager::IStringIterator* const&, WPEFramework::Exchange::IRuntimeManager::IStringIterator* const&, const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Hibernate(const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Wake(const std::string&, const RuntimeState) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Suspend(const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Resume(const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Terminate(const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Kill(const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult GetInfo(const std::string&, std::string&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Annotate(const std::string&, const std::string&, const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Mount() override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Unmount() override { return WPEFramework::Core::ERROR_NONE; }
+    Thunder::Core::hresult Register(Thunder::Exchange::IRuntimeManager::INotification*) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Unregister(Thunder::Exchange::IRuntimeManager::INotification*) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Run(const std::string&, const std::string&, const uint32_t, const uint32_t, Thunder::Exchange::IRuntimeManager::IValueIterator* const&, Thunder::Exchange::IRuntimeManager::IStringIterator* const&, Thunder::Exchange::IRuntimeManager::IStringIterator* const&, const std::string&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Hibernate(const std::string&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Wake(const std::string&, const RuntimeState) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Suspend(const std::string&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Resume(const std::string&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Terminate(const std::string&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Kill(const std::string&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult GetInfo(const std::string&, std::string&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Annotate(const std::string&, const std::string&, const std::string&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Mount() override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Unmount() override { return Thunder::Core::ERROR_NONE; }
 
 private:
     mutable std::atomic<uint32_t> _refCount;
 };
 
-class FakeRuntimeManagerWithConfig final : public WPEFramework::Exchange::IRuntimeManager,
-                                           public WPEFramework::Exchange::IConfiguration {
+class FakeRuntimeManagerWithConfig final : public Thunder::Exchange::IRuntimeManager,
+                                           public Thunder::Exchange::IConfiguration {
 public:
     FakeRuntimeManagerWithConfig()
         : _refCount(1)
@@ -75,42 +75,42 @@ public:
         const uint32_t remaining = _refCount.fetch_sub(1, std::memory_order_acq_rel) - 1;
         if (0U == remaining) {
             delete this;
-            return WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED;
+            return Thunder::Core::ERROR_DESTRUCTION_SUCCEEDED;
         }
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
     void* QueryInterface(const uint32_t id) override
     {
-        if (id == WPEFramework::Exchange::IRuntimeManager::ID) {
+        if (id == Thunder::Exchange::IRuntimeManager::ID) {
             AddRef();
-            return static_cast<WPEFramework::Exchange::IRuntimeManager*>(this);
+            return static_cast<Thunder::Exchange::IRuntimeManager*>(this);
         }
-        if (id == WPEFramework::Exchange::IConfiguration::ID) {
+        if (id == Thunder::Exchange::IConfiguration::ID) {
             AddRef();
-            return static_cast<WPEFramework::Exchange::IConfiguration*>(this);
+            return static_cast<Thunder::Exchange::IConfiguration*>(this);
         }
         return nullptr;
     }
 
-    uint32_t Configure(WPEFramework::PluginHost::IShell*) override
+    uint32_t Configure(Thunder::PluginHost::IShell*) override
     {
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult Register(WPEFramework::Exchange::IRuntimeManager::INotification*) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Unregister(WPEFramework::Exchange::IRuntimeManager::INotification*) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Run(const std::string&, const std::string&, const uint32_t, const uint32_t, WPEFramework::Exchange::IRuntimeManager::IValueIterator* const&, WPEFramework::Exchange::IRuntimeManager::IStringIterator* const&, WPEFramework::Exchange::IRuntimeManager::IStringIterator* const&, const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Hibernate(const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Wake(const std::string&, const RuntimeState) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Suspend(const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Resume(const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Terminate(const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Kill(const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult GetInfo(const std::string&, std::string&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Annotate(const std::string&, const std::string&, const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Mount() override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Unmount() override { return WPEFramework::Core::ERROR_NONE; }
+    Thunder::Core::hresult Register(Thunder::Exchange::IRuntimeManager::INotification*) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Unregister(Thunder::Exchange::IRuntimeManager::INotification*) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Run(const std::string&, const std::string&, const uint32_t, const uint32_t, Thunder::Exchange::IRuntimeManager::IValueIterator* const&, Thunder::Exchange::IRuntimeManager::IStringIterator* const&, Thunder::Exchange::IRuntimeManager::IStringIterator* const&, const std::string&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Hibernate(const std::string&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Wake(const std::string&, const RuntimeState) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Suspend(const std::string&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Resume(const std::string&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Terminate(const std::string&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Kill(const std::string&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult GetInfo(const std::string&, std::string&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Annotate(const std::string&, const std::string&, const std::string&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Mount() override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Unmount() override { return Thunder::Core::ERROR_NONE; }
 
 private:
     mutable std::atomic<uint32_t> _refCount;
@@ -120,7 +120,7 @@ private:
 
 namespace {
 
-using WPEFramework::PluginHost::IPlugin;
+using Thunder::PluginHost::IPlugin;
 
 struct PluginAndService {
     L0Test::ServiceMock service;
@@ -128,7 +128,7 @@ struct PluginAndService {
 
     PluginAndService()
         : service()
-        , plugin(WPEFramework::Core::Service<WPEFramework::Plugin::RuntimeManager>::Create<IPlugin>())
+        , plugin(Thunder::Core::Service<Thunder::Plugin::RuntimeManager>::Create<IPlugin>())
     {
     }
 
@@ -149,7 +149,7 @@ uint32_t Test_RuntimeManager_InitializeFailsWhenRootCreationFails()
 
     PluginAndService ps;
 
-    ps.service.SetInstantiateHandler([](const WPEFramework::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
+    ps.service.SetInstantiateHandler([](const Thunder::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
         connectionId = 0;
         return nullptr;
     });
@@ -169,7 +169,7 @@ uint32_t Test_RuntimeManager_InitializeSucceedsAndDeinitializeCleansUp()
     PluginAndService ps;
 
     ps.service.SetInstantiateHandler(
-        [](const WPEFramework::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
+        [](const Thunder::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
             connectionId = 41;
             return static_cast<void*>(new FakeRuntimeManagerWithConfig());
         });
@@ -196,7 +196,7 @@ uint32_t Test_RuntimeManager_InitializeFailsWhenConfigurationInterfaceMissing()
     PluginAndService ps;
 
     ps.service.SetInstantiateHandler(
-        [](const WPEFramework::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
+        [](const Thunder::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
             connectionId = 55;
             return static_cast<void*>(new FakeRuntimeManagerNoConfig());
         });

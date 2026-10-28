@@ -25,7 +25,7 @@
 #include "RequestHandler.h"
 #include "UtilsLogging.h"
 
-namespace WPEFramework
+namespace Thunder
 {
     namespace Plugin
     {
@@ -372,4 +372,4 @@ namespace WPEFramework
             return true;
         }
     } /* namespace Plugin */
-} /* namespace WPEFramework */
+} /* namespace Thunder */

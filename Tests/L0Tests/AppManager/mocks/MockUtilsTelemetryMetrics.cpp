@@ -34,7 +34,7 @@
 
 #include "UtilsTelemetryMetrics.h"
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 namespace Utils {
 
@@ -94,4 +94,4 @@ Core::hresult TelemetryMetricsClient::publish(const std::string& appId,
 
 } // namespace Utils
 } // namespace Plugin
-} // namespace WPEFramework
+} // namespace Thunder

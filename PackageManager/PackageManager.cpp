@@ -22,9 +22,9 @@
 #include "UtilsAppManagerTelemetry.h"
 #include <interfaces/IConfiguration.h>
 
-namespace WPEFramework {
+namespace Thunder {
 
-RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::PackageManagerTelemetryReporting, "packageManagerBootstrapTime")
+RDKAM_DEFINE_TELEMETRY_CLIENT(Thunder::Plugin::PackageManagerTelemetryReporting, "packageManagerBootstrapTime")
 
 namespace Plugin
 {
@@ -227,4 +227,4 @@ namespace Plugin
         }
     }
 } // namespace Plugin
-} // namespace WPEFramework
+} // namespace Thunder

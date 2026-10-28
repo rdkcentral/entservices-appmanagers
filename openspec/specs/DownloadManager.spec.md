@@ -2,7 +2,7 @@
 
 ## Overview
 **Module Name**: DownloadManager
-**Type**: WPEFramework Plugin
+**Type**: Thunder Plugin
 **Purpose**: HTTP download service with priority queuing, pause/resume, rate limiting, and progress reporting
 
 ## Description
@@ -67,7 +67,7 @@ DownloadManagerImplementation
 ### Configuration
 - **Config File**: `DownloadManager.conf.in` / `DownloadManager.config`
 - **Download Directory**: Configurable destination path
-- **Thunder Service**: Registered as a WPEFramework/Thunder plugin
+- **Thunder Service**: Registered as a Thunder/Thunder plugin
 
 ## Data Flow
 ```
@@ -140,7 +140,7 @@ RateLimit(downloadId, bytesPerSec):
 ### System Libraries
 | Library | Version | Purpose | Optional |
 |---------|---------|---------|----------|
-| WPEFramework | Latest | Plugin framework | No |
+| Thunder | Latest | Plugin framework | No |
 | curl | Latest | HTTP client library | No |
 | jsoncpp | - | JSON serialization | No |
 

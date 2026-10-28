@@ -31,7 +31,7 @@
 #include <map>
 #include <mutex>
 
-namespace WPEFramework
+namespace Thunder
 {
     namespace Plugin
     {
@@ -173,5 +173,5 @@ namespace WPEFramework
 #endif
         };
     } /* namespace Plugin */
-} /* namespace WPEFramework */
+} /* namespace Thunder */
 

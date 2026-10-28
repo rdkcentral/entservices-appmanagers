@@ -30,7 +30,7 @@
 #include <sys/stat.h>
 #include <errno.h>
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
 GStreamerRegistry::GStreamerRegistry(std::string gstLaunchPath,
@@ -140,4 +140,4 @@ std::string GStreamerRegistry::path() const
 }
 
 } /* namespace Plugin */
-} /* namespace WPEFramework */
+} /* namespace Thunder */

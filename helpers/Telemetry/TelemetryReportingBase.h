@@ -26,7 +26,7 @@
 #include "TelemetryMarkers.h"
 #include "UtilsTelemetryMetrics.h"
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 namespace Utils {
 
@@ -88,4 +88,4 @@ private:
 
 } // namespace Utils
 } // namespace Plugin
-} // namespace WPEFramework
+} // namespace Thunder

@@ -5,7 +5,7 @@
 #include <cerrno>
 #include <cstdlib>
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 namespace Utils {
 

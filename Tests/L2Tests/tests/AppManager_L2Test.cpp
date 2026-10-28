@@ -45,10 +45,10 @@
 #define APPMANAGERL2TEST_CALLSIGN _T("L2tests.1")
 
 using ::testing::NiceMock;
-using namespace WPEFramework;
+using namespace Thunder;
 using testing::StrictMock;
-using ::WPEFramework::Exchange::IStore2;
-using ::WPEFramework::Exchange::IAppManager;
+using ::Thunder::Exchange::IStore2;
+using ::Thunder::Exchange::IAppManager;
 
 MATCHER_P(MatchRequestStatusString, data, "")
 {

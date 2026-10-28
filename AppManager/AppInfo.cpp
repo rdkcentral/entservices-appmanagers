@@ -19,7 +19,7 @@
 
 #include "AppInfo.h"
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
 AppInfo::AppInfo()
@@ -79,4 +79,4 @@ void AppInfo::setCurrentAction(AppManagerTypes::CurrentAction action) { mCurrent
 void AppInfo::setCurrentActionTime(time_t t) { mCurrentActionTime = t; }
 
 } // namespace Plugin
-} // namespace WPEFramework
+} // namespace Thunder

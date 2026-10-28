@@ -47,7 +47,7 @@
 using namespace std;
 using namespace Utils;
 
-namespace WPEFramework
+namespace Thunder
 {
     namespace Plugin
     {
@@ -124,11 +124,11 @@ namespace WPEFramework
             {
                 LOGERR("mCurrentservice is null");
             }
-            else if (nullptr == (mLifecycleManagerRemoteObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::ILifecycleManager>("org.rdk.LifecycleManager")))
+            else if (nullptr == (mLifecycleManagerRemoteObject = mCurrentservice->QueryInterfaceByCallsign<Thunder::Exchange::ILifecycleManager>("org.rdk.LifecycleManager")))
             {
                 LOGERR("Failed to create LifecycleManager Remote object: callsign=org.rdk.LifecycleManager");
             }
-            else if (nullptr == (mLifecycleManagerStateRemoteObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::ILifecycleManagerState>("org.rdk.LifecycleManager")))
+            else if (nullptr == (mLifecycleManagerStateRemoteObject = mCurrentservice->QueryInterfaceByCallsign<Thunder::Exchange::ILifecycleManagerState>("org.rdk.LifecycleManager")))
             {
                 LOGERR("Failed to create LifecycleManagerState Remote object: callsign=org.rdk.LifecycleManager");
             }
@@ -721,7 +721,7 @@ namespace WPEFramework
             LOGINFO("getLoadedApps Entered");
             Core::hresult result = Core::ERROR_GENERAL;
             AppManagerImplementation *appManagerImplInstance = AppManagerImplementation::getInstance();
-            std::list<WPEFramework::Exchange::IAppManager::LoadedAppInfo> loadedAppInfoList;
+            std::list<Thunder::Exchange::IAppManager::LoadedAppInfo> loadedAppInfoList;
 
             mAdminLock.Lock();
             /* Checking if mLifecycleManagerRemoteObject is not valid then create the object */
@@ -757,7 +757,7 @@ namespace WPEFramework
                     return obj.HasLabel(key) ? static_cast<int>(obj[key].Number()) : 0;
                 };
 
-                typedef std::pair<uint32_t, WPEFramework::Exchange::IAppManager::LoadedAppInfo> RankedApp;
+                typedef std::pair<uint32_t, Thunder::Exchange::IAppManager::LoadedAppInfo> RankedApp;
                 std::vector<RankedApp> rankedApps;
                 rankedApps.reserve(loadedAppsJsonArray.Length());
 
@@ -824,7 +824,7 @@ End:
             return result;
         }
 
-        Exchange::IAppManager::AppLifecycleState WPEFramework::Plugin::LifecycleInterfaceConnector::mapAppLifecycleState(Exchange::ILifecycleManager::LifecycleState state)
+        Exchange::IAppManager::AppLifecycleState Thunder::Plugin::LifecycleInterfaceConnector::mapAppLifecycleState(Exchange::ILifecycleManager::LifecycleState state)
         {
             Exchange::IAppManager::AppLifecycleState result = Exchange::IAppManager::AppLifecycleState::APP_STATE_UNKNOWN;
             switch(state)
@@ -1111,4 +1111,4 @@ End:
         }
 
      } /* namespace Plugin */
-} /* namespace WPEFramework */
+} /* namespace Thunder */

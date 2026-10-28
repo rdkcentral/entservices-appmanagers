@@ -23,7 +23,7 @@
 #include <interfaces/IAppNotifications.h>
 
 #include "UtilsCallsign.h"
-using namespace WPEFramework;
+using namespace Thunder;
 using namespace std;
 class ContextUtils {
     public:

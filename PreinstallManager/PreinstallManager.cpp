@@ -19,9 +19,9 @@
 
 #include "PreinstallManager.h"
 
-const string WPEFramework::Plugin::PreinstallManager::SERVICE_NAME = "org.rdk.PreinstallManager";
+const string Thunder::Plugin::PreinstallManager::SERVICE_NAME = "org.rdk.PreinstallManager";
 
-namespace WPEFramework
+namespace Thunder
 {
 
     namespace
@@ -42,7 +42,7 @@ namespace WPEFramework
     {
 
         /*
-         *Register PreinstallManager module as wpeframework plugin
+         *Register PreinstallManager module as thunder plugin
          **/
         SERVICE_REGISTRATION(PreinstallManager, PREINSTALL_MANAGER_API_VERSION_NUMBER_MAJOR, PREINSTALL_MANAGER_API_VERSION_NUMBER_MINOR, PREINSTALL_MANAGER_API_VERSION_NUMBER_PATCH);
 
@@ -98,7 +98,7 @@ namespace WPEFramework
                 {
                     // Register for notifications
                     mPreinstallManagerImpl->Register(&mPreinstallManagerNotification);
-                    // Invoking Plugin API register to wpeframework
+                    // Invoking Plugin API register to thunder
                     Exchange::JPreinstallManager::Register(*this, mPreinstallManagerImpl);
 
                     if (Core::ERROR_NONE != mPreinstallManagerConfigure->Configure(mCurrentService))
@@ -186,4 +186,4 @@ namespace WPEFramework
             }
         }
     } /* namespace Plugin */
-} /* namespace WPEFramework */
+} /* namespace Thunder */

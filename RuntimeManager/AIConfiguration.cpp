@@ -35,7 +35,7 @@
 
 #define AICONFIGURATION_JSON_PATH "/etc/rdk/rdkappmanagers.json"
 
-namespace WPEFramework
+namespace Thunder
 {
 namespace Plugin
 {
@@ -683,4 +683,4 @@ namespace Plugin
         printAIConfiguration();
     }
 } /* namespace Plugin */
-} /* namespace WPEFramework */
+} /* namespace Thunder */

@@ -21,26 +21,26 @@
 #include <gmock/gmock.h>
 #include <interfaces/IRuntimeManager.h>
 
-using ::WPEFramework::Exchange::IRuntimeManager;
+using ::Thunder::Exchange::IRuntimeManager;
 
 class RuntimeManagerMock : public IRuntimeManager {
 public:
     RuntimeManagerMock() = default;
     virtual ~RuntimeManagerMock() = default;
 
-    MOCK_METHOD(WPEFramework::Core::hresult, Register, (INotification *notification), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, Unregister, (INotification *notification), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, Run, (const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, IValueIterator* const& ports, IStringIterator* const& paths, IStringIterator* const& debugSettings, const std::string& runtimeConfigObject), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, Hibernate, (const string& appInstanceId), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, Wake, (const string& appInstanceId, const RuntimeState runtimeState), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, Suspend, (const string& appInstanceId), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, Resume, (const string& appInstanceId), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, Terminate, (const string& appInstanceId), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, Kill, (const string& appInstanceId), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, GetInfo, (const string& appInstanceId, string& info), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, Annotate, (const string& appInstanceId, const string& key, const string& value), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, Mount, (), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, Unmount, (), (override));
+    MOCK_METHOD(Thunder::Core::hresult, Register, (INotification *notification), (override));
+    MOCK_METHOD(Thunder::Core::hresult, Unregister, (INotification *notification), (override));
+    MOCK_METHOD(Thunder::Core::hresult, Run, (const string& appId, const string& appInstanceId, const uint32_t userId, const uint32_t groupId, IValueIterator* const& ports, IStringIterator* const& paths, IStringIterator* const& debugSettings, const std::string& runtimeConfigObject), (override));
+    MOCK_METHOD(Thunder::Core::hresult, Hibernate, (const string& appInstanceId), (override));
+    MOCK_METHOD(Thunder::Core::hresult, Wake, (const string& appInstanceId, const RuntimeState runtimeState), (override));
+    MOCK_METHOD(Thunder::Core::hresult, Suspend, (const string& appInstanceId), (override));
+    MOCK_METHOD(Thunder::Core::hresult, Resume, (const string& appInstanceId), (override));
+    MOCK_METHOD(Thunder::Core::hresult, Terminate, (const string& appInstanceId), (override));
+    MOCK_METHOD(Thunder::Core::hresult, Kill, (const string& appInstanceId), (override));
+    MOCK_METHOD(Thunder::Core::hresult, GetInfo, (const string& appInstanceId, string& info), (override));
+    MOCK_METHOD(Thunder::Core::hresult, Annotate, (const string& appInstanceId, const string& key, const string& value), (override));
+    MOCK_METHOD(Thunder::Core::hresult, Mount, (), (override));
+    MOCK_METHOD(Thunder::Core::hresult, Unmount, (), (override));
 
     MOCK_METHOD(uint32_t, AddRef, (), (const, override));
     MOCK_METHOD(uint32_t, Release, (), (const, override));

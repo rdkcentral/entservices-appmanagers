@@ -21,7 +21,7 @@
 
 #include <string>
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
 /**
@@ -55,4 +55,4 @@ private:
 };
 
 } /* namespace Plugin */
-} /* namespace WPEFramework */
+} /* namespace Thunder */

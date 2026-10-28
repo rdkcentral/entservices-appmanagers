@@ -46,7 +46,7 @@ typedef enum : uint32_t {
     LifecycleManager_onRippleEvent
 } LifecycleManagerTest_events_t;
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 class LifecycleManagerImplementationTest : public LifecycleManagerImplementation {
     public:
@@ -98,10 +98,10 @@ class LifecycleManagerShellTest : public LifecycleManager {
         }
 };
 } // namespace Plugin
-} // namespace WPEFramework
+} // namespace Thunder
 
 using ::testing::NiceMock;
-using namespace WPEFramework;
+using namespace Thunder;
 using namespace std;
 
 // Keep this mock local: the shared RuntimeManagerMock is intentionally not

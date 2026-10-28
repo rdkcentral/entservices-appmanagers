@@ -42,15 +42,15 @@ namespace L0Test {
 
 using string = std::string;
 
-inline WPEFramework::Exchange::IPackageInstaller::IPackageIterator* CreatePackageIterator(
-    const std::vector<WPEFramework::Exchange::IPackageInstaller::Package>& packages)
+inline Thunder::Exchange::IPackageInstaller::IPackageIterator* CreatePackageIterator(
+    const std::vector<Thunder::Exchange::IPackageInstaller::Package>& packages)
 {
-    return WPEFramework::Core::Service<
-        WPEFramework::RPC::IteratorType<WPEFramework::Exchange::IPackageInstaller::IPackageIterator>>::Create<
-        WPEFramework::Exchange::IPackageInstaller::IPackageIterator>(packages);
+    return Thunder::Core::Service<
+        Thunder::RPC::IteratorType<Thunder::Exchange::IPackageInstaller::IPackageIterator>>::Create<
+        Thunder::Exchange::IPackageInstaller::IPackageIterator>(packages);
 }
 
-class MockRemoteConnection final : public WPEFramework::RPC::IRemoteConnection {
+class MockRemoteConnection final : public Thunder::RPC::IRemoteConnection {
 public:
     explicit MockRemoteConnection(const uint32_t id = 1)
         : _refCount(1)
@@ -68,9 +68,9 @@ public:
         const uint32_t remaining = _refCount.fetch_sub(1, std::memory_order_acq_rel) - 1;
         if (0U == remaining) {
             delete this;
-            return WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED;
+            return Thunder::Core::ERROR_DESTRUCTION_SUCCEEDED;
         }
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
     uint32_t Id() const override
@@ -95,7 +95,7 @@ public:
 
     uint32_t Launch() override
     {
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
     void PostMortem() override
@@ -119,8 +119,8 @@ private:
 };
 
 class MockAppManagerNotification final
-    : public WPEFramework::Exchange::IAppManager::INotification
-    , public WPEFramework::RPC::IRemoteConnection::INotification {
+    : public Thunder::Exchange::IAppManager::INotification
+    , public Thunder::RPC::IRemoteConnection::INotification {
 public:
     MockAppManagerNotification()
         : _refCount(1)
@@ -137,30 +137,30 @@ public:
         const uint32_t remaining = _refCount.fetch_sub(1, std::memory_order_acq_rel) - 1;
         if (0U == remaining) {
             delete this;
-            return WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED;
+            return Thunder::Core::ERROR_DESTRUCTION_SUCCEEDED;
         }
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
     void* QueryInterface(const uint32_t id) override
     {
-        if (id == WPEFramework::Exchange::IAppManager::INotification::ID) {
+        if (id == Thunder::Exchange::IAppManager::INotification::ID) {
             AddRef();
-            return static_cast<WPEFramework::Exchange::IAppManager::INotification*>(this);
+            return static_cast<Thunder::Exchange::IAppManager::INotification*>(this);
         }
-        if (id == WPEFramework::RPC::IRemoteConnection::INotification::ID) {
+        if (id == Thunder::RPC::IRemoteConnection::INotification::ID) {
             AddRef();
-            return static_cast<WPEFramework::RPC::IRemoteConnection::INotification*>(this);
+            return static_cast<Thunder::RPC::IRemoteConnection::INotification*>(this);
         }
         return nullptr;
     }
 
-    void Activated(WPEFramework::RPC::IRemoteConnection*) override
+    void Activated(Thunder::RPC::IRemoteConnection*) override
     {
         activatedCount++;
     }
 
-    void Deactivated(WPEFramework::RPC::IRemoteConnection*) override
+    void Deactivated(Thunder::RPC::IRemoteConnection*) override
     {
         deactivatedCount++;
     }
@@ -175,8 +175,8 @@ public:
         uninstalledCount++;
     }
 
-    void OnAppLifecycleStateChanged(const string&, const string&, const WPEFramework::Exchange::IAppManager::AppLifecycleState,
-        const WPEFramework::Exchange::IAppManager::AppLifecycleState, const WPEFramework::Exchange::IAppManager::AppErrorReason) override
+    void OnAppLifecycleStateChanged(const string&, const string&, const Thunder::Exchange::IAppManager::AppLifecycleState,
+        const Thunder::Exchange::IAppManager::AppLifecycleState, const Thunder::Exchange::IAppManager::AppErrorReason) override
     {
         lifecycleCount++;
     }
@@ -201,11 +201,11 @@ public:
     std::atomic<uint32_t> unloadedCount { 0 };
 };
 
-class MockPackageHandler final : public WPEFramework::Exchange::IPackageHandler {
+class MockPackageHandler final : public Thunder::Exchange::IPackageHandler {
 public:
-    using LockHandler = std::function<WPEFramework::Core::hresult(
+    using LockHandler = std::function<Thunder::Core::hresult(
         const string&, const string&, const LockReason&, uint32_t&, string&, std::string&, ILockIterator*&)>;
-    using UnlockHandler = std::function<WPEFramework::Core::hresult(const string&, const string&)>;
+    using UnlockHandler = std::function<Thunder::Core::hresult(const string&, const string&)>;
 
     MockPackageHandler()
         : _refCount(1)
@@ -222,21 +222,21 @@ public:
         const uint32_t remaining = _refCount.fetch_sub(1, std::memory_order_acq_rel) - 1;
         if (0U == remaining) {
             delete this;
-            return WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED;
+            return Thunder::Core::ERROR_DESTRUCTION_SUCCEEDED;
         }
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
     void* QueryInterface(const uint32_t id) override
     {
-        if (id == WPEFramework::Exchange::IPackageHandler::ID) {
+        if (id == Thunder::Exchange::IPackageHandler::ID) {
             AddRef();
-            return static_cast<WPEFramework::Exchange::IPackageHandler*>(this);
+            return static_cast<Thunder::Exchange::IPackageHandler*>(this);
         }
         return nullptr;
     }
 
-    WPEFramework::Core::hresult Lock(const string& packageId, const string& version, const LockReason& lockReason,
+    Thunder::Core::hresult Lock(const string& packageId, const string& version, const LockReason& lockReason,
         uint32_t& lockId, string& unpackedPath, std::string& configMetadata, ILockIterator*& appMetadata) override
     {
         lockCount++;
@@ -246,21 +246,21 @@ public:
         lockId = 1;
         unpackedPath = "/tmp/app";
         appMetadata = nullptr;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult Unlock(const string& packageId, const string& version) override
+    Thunder::Core::hresult Unlock(const string& packageId, const string& version) override
     {
         unlockCount++;
         if (unlockHandler) {
             return unlockHandler(packageId, version);
         }
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult GetLockedInfo(const string&, const string&, string&, std::string&, string&, bool&) override
+    Thunder::Core::hresult GetLockedInfo(const string&, const string&, string&, std::string&, string&, bool&) override
     {
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
     mutable std::atomic<uint32_t> _refCount;
@@ -270,11 +270,11 @@ public:
     UnlockHandler unlockHandler;
 };
 
-class MockPackageInstaller final : public WPEFramework::Exchange::IPackageInstaller {
+class MockPackageInstaller final : public Thunder::Exchange::IPackageInstaller {
 public:
-    using Package = WPEFramework::Exchange::IPackageInstaller::Package;
-    using ListHandler = std::function<WPEFramework::Core::hresult(IPackageIterator*&)>;
-    using ConfigHandler = std::function<WPEFramework::Core::hresult(const string&, string&, string&, std::string&)>;
+    using Package = Thunder::Exchange::IPackageInstaller::Package;
+    using ListHandler = std::function<Thunder::Core::hresult(IPackageIterator*&)>;
+    using ConfigHandler = std::function<Thunder::Core::hresult(const string&, string&, string&, std::string&)>;
 
     MockPackageInstaller()
         : _refCount(1)
@@ -291,69 +291,69 @@ public:
         const uint32_t remaining = _refCount.fetch_sub(1, std::memory_order_acq_rel) - 1;
         if (0U == remaining) {
             delete this;
-            return WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED;
+            return Thunder::Core::ERROR_DESTRUCTION_SUCCEEDED;
         }
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
     void* QueryInterface(const uint32_t id) override
     {
-        if (id == WPEFramework::Exchange::IPackageInstaller::ID) {
+        if (id == Thunder::Exchange::IPackageInstaller::ID) {
             AddRef();
-            return static_cast<WPEFramework::Exchange::IPackageInstaller*>(this);
+            return static_cast<Thunder::Exchange::IPackageInstaller*>(this);
         }
         return nullptr;
     }
 
-    WPEFramework::Core::hresult Register(INotification*) override
+    Thunder::Core::hresult Register(INotification*) override
     {
         registerCount++;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult Unregister(INotification*) override
+    Thunder::Core::hresult Unregister(INotification*) override
     {
         unregisterCount++;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult Install(const string&, const string&, IKeyValueIterator* const&, const string&, FailReason&) override
+    Thunder::Core::hresult Install(const string&, const string&, IKeyValueIterator* const&, const string&, FailReason&) override
     {
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult Uninstall(const string&, string&) override
+    Thunder::Core::hresult Uninstall(const string&, string&) override
     {
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult ListPackages(IPackageIterator*& packages) override
+    Thunder::Core::hresult ListPackages(IPackageIterator*& packages) override
     {
         listPackagesCount++;
         if (listHandler) {
             return listHandler(packages);
         }
         packages = CreatePackageIterator(installedPackages);
-        return (nullptr != packages) ? WPEFramework::Core::ERROR_NONE : WPEFramework::Core::ERROR_GENERAL;
+        return (nullptr != packages) ? Thunder::Core::ERROR_NONE : Thunder::Core::ERROR_GENERAL;
     }
 
-    WPEFramework::Core::hresult Config(const string&, const string&, std::string&) override
+    Thunder::Core::hresult Config(const string&, const string&, std::string&) override
     {
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult PackageState(const string&, const string&, InstallState&) override
+    Thunder::Core::hresult PackageState(const string&, const string&, InstallState&) override
     {
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult GetConfigForPackage(const string& fileLocator, string& id, string& version, std::string& config) override
+    Thunder::Core::hresult GetConfigForPackage(const string& fileLocator, string& id, string& version, std::string& config) override
     {
         getConfigCount++;
         if (configHandler) {
             return configHandler(fileLocator, id, version, config);
         }
-        return WPEFramework::Core::ERROR_GENERAL;
+        return Thunder::Core::ERROR_GENERAL;
     }
 
     mutable std::atomic<uint32_t> _refCount;
@@ -366,7 +366,7 @@ public:
     ConfigHandler configHandler;
 };
 
-class MockStore2 final : public WPEFramework::Exchange::IStore2 {
+class MockStore2 final : public Thunder::Exchange::IStore2 {
 public:
     MockStore2()
         : _refCount(1)
@@ -383,28 +383,28 @@ public:
         const uint32_t remaining = _refCount.fetch_sub(1, std::memory_order_acq_rel) - 1;
         if (0U == remaining) {
             delete this;
-            return WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED;
+            return Thunder::Core::ERROR_DESTRUCTION_SUCCEEDED;
         }
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
     void* QueryInterface(const uint32_t id) override
     {
-        if (id == WPEFramework::Exchange::IStore2::ID) {
+        if (id == Thunder::Exchange::IStore2::ID) {
             AddRef();
-            return static_cast<WPEFramework::Exchange::IStore2*>(this);
+            return static_cast<Thunder::Exchange::IStore2*>(this);
         }
         return nullptr;
     }
 
-    uint32_t Register(INotification*) override { return WPEFramework::Core::ERROR_NONE; }
-    uint32_t Unregister(INotification*) override { return WPEFramework::Core::ERROR_NONE; }
+    uint32_t Register(INotification*) override { return Thunder::Core::ERROR_NONE; }
+    uint32_t Unregister(INotification*) override { return Thunder::Core::ERROR_NONE; }
 
     uint32_t SetValue(const ScopeType, const string& ns, const string& key, const string& value, const uint32_t ttl) override
     {
         (void)ttl;
         data[ns + ":" + key] = value;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
     uint32_t GetValue(const ScopeType, const string& ns, const string& key, string& value, uint32_t& ttl) override
@@ -413,16 +413,16 @@ public:
         const auto it = data.find(ns + ":" + key);
         if (it != data.end()) {
             value = it->second;
-            return WPEFramework::Core::ERROR_NONE;
+            return Thunder::Core::ERROR_NONE;
         }
         value.clear();
-        return WPEFramework::Core::ERROR_GENERAL;
+        return Thunder::Core::ERROR_GENERAL;
     }
 
     uint32_t DeleteKey(const ScopeType, const string& ns, const string& key) override
     {
         data.erase(ns + ":" + key);
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
     uint32_t DeleteNamespace(const ScopeType, const string& ns) override
@@ -434,14 +434,14 @@ public:
                 ++it;
             }
         }
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
     mutable std::atomic<uint32_t> _refCount;
     std::map<std::string, std::string> data;
 };
 
-class MockStorageManager final : public WPEFramework::Exchange::IAppStorageManager {
+class MockStorageManager final : public Thunder::Exchange::IAppStorageManager {
 public:
     MockStorageManager()
         : _refCount(1)
@@ -458,36 +458,36 @@ public:
         const uint32_t remaining = _refCount.fetch_sub(1, std::memory_order_acq_rel) - 1;
         if (0U == remaining) {
             delete this;
-            return WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED;
+            return Thunder::Core::ERROR_DESTRUCTION_SUCCEEDED;
         }
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
     void* QueryInterface(const uint32_t id) override
     {
-        if (id == WPEFramework::Exchange::IAppStorageManager::ID) {
+        if (id == Thunder::Exchange::IAppStorageManager::ID) {
             AddRef();
-            return static_cast<WPEFramework::Exchange::IAppStorageManager*>(this);
+            return static_cast<Thunder::Exchange::IAppStorageManager*>(this);
         }
         return nullptr;
     }
 
-    WPEFramework::Core::hresult CreateStorage(const string&, const uint32_t&, string&, string&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult GetStorage(const string&, const int32_t&, const int32_t&, string&, uint32_t&, uint32_t&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult DeleteStorage(const string&, string&) override { return WPEFramework::Core::ERROR_NONE; }
+    Thunder::Core::hresult CreateStorage(const string&, const uint32_t&, string&, string&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult GetStorage(const string&, const int32_t&, const int32_t&, string&, uint32_t&, uint32_t&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult DeleteStorage(const string&, string&) override { return Thunder::Core::ERROR_NONE; }
 
-    using ClearHandler = std::function<WPEFramework::Core::hresult(const string&, string&)>;
+    using ClearHandler = std::function<Thunder::Core::hresult(const string&, string&)>;
 
-    WPEFramework::Core::hresult Clear(const string& appId, string& errorReason) override
+    Thunder::Core::hresult Clear(const string& appId, string& errorReason) override
     {
         if (clearHandler) { return clearHandler(appId, errorReason); }
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult ClearAll(const string& exemptedAppIds, string& errorReason) override
+    Thunder::Core::hresult ClearAll(const string& exemptedAppIds, string& errorReason) override
     {
         if (clearAllHandler) { return clearAllHandler(exemptedAppIds, errorReason); }
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
     mutable std::atomic<uint32_t> _refCount;
@@ -495,7 +495,7 @@ public:
     ClearHandler clearAllHandler;
 };
 
-class MockLifecycleManagerState final : public WPEFramework::Exchange::ILifecycleManagerState {
+class MockLifecycleManagerState final : public Thunder::Exchange::ILifecycleManagerState {
 public:
     MockLifecycleManagerState()
         : _refCount(1)
@@ -512,41 +512,41 @@ public:
         const uint32_t remaining = _refCount.fetch_sub(1, std::memory_order_acq_rel) - 1;
         if (0U == remaining) {
             delete this;
-            return WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED;
+            return Thunder::Core::ERROR_DESTRUCTION_SUCCEEDED;
         }
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
     void* QueryInterface(const uint32_t id) override
     {
-        if (id == WPEFramework::Exchange::ILifecycleManagerState::ID) {
+        if (id == Thunder::Exchange::ILifecycleManagerState::ID) {
             AddRef();
-            return static_cast<WPEFramework::Exchange::ILifecycleManagerState*>(this);
+            return static_cast<Thunder::Exchange::ILifecycleManagerState*>(this);
         }
         return nullptr;
     }
 
-    WPEFramework::Core::hresult Register(INotification* notification) override
+    Thunder::Core::hresult Register(INotification* notification) override
     {
         registeredNotification = notification;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult Unregister(INotification*) override
+    Thunder::Core::hresult Unregister(INotification*) override
     {
         registeredNotification = nullptr;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult AppReady(const string&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult StateChangeComplete(const string&, const uint32_t, const bool) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult CloseApp(const string&, const AppCloseReason) override { return WPEFramework::Core::ERROR_NONE; }
+    Thunder::Core::hresult AppReady(const string&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult StateChangeComplete(const string&, const uint32_t, const bool) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult CloseApp(const string&, const AppCloseReason) override { return Thunder::Core::ERROR_NONE; }
 
     mutable std::atomic<uint32_t> _refCount;
     INotification* registeredNotification { nullptr };
 };
 
-class MockLifecycleManager final : public WPEFramework::Exchange::ILifecycleManager {
+class MockLifecycleManager final : public Thunder::Exchange::ILifecycleManager {
 public:
     MockLifecycleManager()
         : _refCount(1)
@@ -563,51 +563,51 @@ public:
         const uint32_t remaining = _refCount.fetch_sub(1, std::memory_order_acq_rel) - 1;
         if (0U == remaining) {
             delete this;
-            return WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED;
+            return Thunder::Core::ERROR_DESTRUCTION_SUCCEEDED;
         }
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
     void* QueryInterface(const uint32_t id) override
     {
-        if (id == WPEFramework::Exchange::ILifecycleManager::ID) {
+        if (id == Thunder::Exchange::ILifecycleManager::ID) {
             AddRef();
-            return static_cast<WPEFramework::Exchange::ILifecycleManager*>(this);
+            return static_cast<Thunder::Exchange::ILifecycleManager*>(this);
         }
         return nullptr;
     }
 
-    WPEFramework::Core::hresult Register(INotification* notification) override
+    Thunder::Core::hresult Register(INotification* notification) override
     {
         registeredNotification = notification;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult Unregister(INotification*) override
+    Thunder::Core::hresult Unregister(INotification*) override
     {
         registeredNotification = nullptr;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult GetLoadedApps(const bool, std::string& apps) override
+    Thunder::Core::hresult GetLoadedApps(const bool, std::string& apps) override
     {
         if (getLoadedAppsHandler) {
             return getLoadedAppsHandler(apps);
         }
         apps = loadedAppsJson;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult IsAppLoaded(const std::string& appId, bool& loaded) const override
+    Thunder::Core::hresult IsAppLoaded(const std::string& appId, bool& loaded) const override
     {
         if (isAppLoadedHandler) {
             return isAppLoadedHandler(appId, loaded);
         }
         loaded = false;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult SpawnApp(const string& appId, const string& launchIntent, const LifecycleState targetLifecycleState,
+    Thunder::Core::hresult SpawnApp(const string& appId, const string& launchIntent, const LifecycleState targetLifecycleState,
         const std::string& runtimeConfigObject, const string& launchArgs, string& appInstanceId,
         string& errorReason, bool& success) override
     {
@@ -618,7 +618,7 @@ public:
         appInstanceId = "instance-1";
         errorReason.clear();
         success = true;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
     uint32_t SetTargetAppState(const string& appInstanceId, const LifecycleState targetLifecycleState, const string& launchIntent) override
@@ -629,57 +629,57 @@ public:
         (void)appInstanceId;
         (void)targetLifecycleState;
         (void)launchIntent;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult UnloadApp(const string& appInstanceId, string& errorReason, bool& success) override
+    Thunder::Core::hresult UnloadApp(const string& appInstanceId, string& errorReason, bool& success) override
     {
         if (unloadAppHandler) {
             return unloadAppHandler(appInstanceId, errorReason, success);
         }
         errorReason.clear();
         success = true;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult KillApp(const string& appInstanceId, string& errorReason, bool& success) override
+    Thunder::Core::hresult KillApp(const string& appInstanceId, string& errorReason, bool& success) override
     {
         if (killAppHandler) {
             return killAppHandler(appInstanceId, errorReason, success);
         }
         errorReason.clear();
         success = true;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult SendIntentToActiveApp(const string& appInstanceId, const string& intent, string& errorReason, bool& success) override
+    Thunder::Core::hresult SendIntentToActiveApp(const string& appInstanceId, const string& intent, string& errorReason, bool& success) override
     {
         if (sendIntentHandler) {
             return sendIntentHandler(appInstanceId, intent, errorReason, success);
         }
         errorReason.clear();
         success = true;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
     mutable std::atomic<uint32_t> _refCount;
     INotification* registeredNotification { nullptr };
-    std::function<WPEFramework::Core::hresult(const std::string&, bool&)> isAppLoadedHandler;
-    std::function<WPEFramework::Core::hresult(std::string&)> getLoadedAppsHandler;
-    std::function<WPEFramework::Core::hresult(const string&, const string&, const LifecycleState, const std::string&, const string&, string&, string&, bool&)> spawnAppHandler;
+    std::function<Thunder::Core::hresult(const std::string&, bool&)> isAppLoadedHandler;
+    std::function<Thunder::Core::hresult(std::string&)> getLoadedAppsHandler;
+    std::function<Thunder::Core::hresult(const string&, const string&, const LifecycleState, const std::string&, const string&, string&, string&, bool&)> spawnAppHandler;
     std::function<uint32_t(const string&, const LifecycleState, const string&)> setTargetAppStateHandler;
-    std::function<WPEFramework::Core::hresult(const string&, string&, bool&)> unloadAppHandler;
-    std::function<WPEFramework::Core::hresult(const string&, string&, bool&)> killAppHandler;
-    std::function<WPEFramework::Core::hresult(const string&, const string&, string&, bool&)> sendIntentHandler;
+    std::function<Thunder::Core::hresult(const string&, string&, bool&)> unloadAppHandler;
+    std::function<Thunder::Core::hresult(const string&, string&, bool&)> killAppHandler;
+    std::function<Thunder::Core::hresult(const string&, const string&, string&, bool&)> sendIntentHandler;
     std::string loadedAppsJson;
 };
 
-class AppManagerServiceMock final : public WPEFramework::PluginHost::IShell {
+class AppManagerServiceMock final : public Thunder::PluginHost::IShell {
 public:
-    using InstantiateHandler = std::function<void*(const WPEFramework::RPC::Object&, const uint32_t, uint32_t&)>;
+    using InstantiateHandler = std::function<void*(const Thunder::RPC::Object&, const uint32_t, uint32_t&)>;
 
     struct Config {
-        explicit Config(WPEFramework::Exchange::IPackageInstaller* installer = nullptr)
+        explicit Config(Thunder::Exchange::IPackageInstaller* installer = nullptr)
             : installer(installer)
             , packageHandler(nullptr)
             , store2(nullptr)
@@ -691,17 +691,17 @@ public:
         {
         }
 
-        WPEFramework::Exchange::IPackageInstaller* installer;
-        WPEFramework::Exchange::IPackageHandler* packageHandler;
-        WPEFramework::Exchange::IStore2* store2;
-        WPEFramework::Exchange::IAppStorageManager* storageManager;
-        WPEFramework::Exchange::ILifecycleManager* lifecycleManager;
-        WPEFramework::Exchange::ILifecycleManagerState* lifecycleManagerState;
-        WPEFramework::RPC::IRemoteConnection* remoteConnection;
+        Thunder::Exchange::IPackageInstaller* installer;
+        Thunder::Exchange::IPackageHandler* packageHandler;
+        Thunder::Exchange::IStore2* store2;
+        Thunder::Exchange::IAppStorageManager* storageManager;
+        Thunder::Exchange::ILifecycleManager* lifecycleManager;
+        Thunder::Exchange::ILifecycleManagerState* lifecycleManagerState;
+        Thunder::RPC::IRemoteConnection* remoteConnection;
         std::string configLine;
     };
 
-    class COMLinkMock final : public WPEFramework::PluginHost::IShell::ICOMLink {
+    class COMLinkMock final : public Thunder::PluginHost::IShell::ICOMLink {
     public:
         explicit COMLinkMock(AppManagerServiceMock& parent)
             : _parent(parent)
@@ -710,11 +710,11 @@ public:
 
         ~COMLinkMock() override = default;
 
-        void Register(WPEFramework::RPC::IRemoteConnection::INotification*) override
+        void Register(Thunder::RPC::IRemoteConnection::INotification*) override
         {
         }
 
-        void Unregister(const WPEFramework::RPC::IRemoteConnection::INotification*) override
+        void Unregister(const Thunder::RPC::IRemoteConnection::INotification*) override
         {
         }
 
@@ -726,12 +726,12 @@ public:
         {
         }
 
-        WPEFramework::RPC::IRemoteConnection* RemoteConnection(const uint32_t) override
+        Thunder::RPC::IRemoteConnection* RemoteConnection(const uint32_t) override
         {
             return _parent._cfg.remoteConnection;
         }
 
-        void* Instantiate(const WPEFramework::RPC::Object& object, const uint32_t interfaceId, uint32_t& connectionId) override
+        void* Instantiate(const Thunder::RPC::Object& object, const uint32_t interfaceId, uint32_t& connectionId) override
         {
             _parent.instantiateCalls++;
             if (_parent._instantiateHandler) {
@@ -775,7 +775,7 @@ public:
     {
         releaseCalls++;
         const uint32_t remaining = _refCount.fetch_sub(1, std::memory_order_acq_rel) - 1;
-        return (0U == remaining) ? WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED : WPEFramework::Core::ERROR_NONE;
+        return (0U == remaining) ? Thunder::Core::ERROR_DESTRUCTION_SUCCEEDED : Thunder::Core::ERROR_NONE;
     }
 
     std::string Versions() const override { return std::string(); }
@@ -802,69 +802,69 @@ public:
     bool IsSupported(const uint8_t) const override { return false; }
     startup Startup() const override { return static_cast<startup>(0); }
 
-    WPEFramework::Core::hresult Activate(const reason) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Deactivate(const reason) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Unavailable(const reason) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult ConfigLine(const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult SystemRootPath(const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Hibernate(const uint32_t) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Startup(const startup) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Resumed(const bool) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Metadata(std::string& info) const override { info.clear(); return WPEFramework::Core::ERROR_NONE; }
+    Thunder::Core::hresult Activate(const reason) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Deactivate(const reason) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Unavailable(const reason) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult ConfigLine(const std::string&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult SystemRootPath(const std::string&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Hibernate(const uint32_t) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Startup(const startup) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Resumed(const bool) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Metadata(std::string& info) const override { info.clear(); return Thunder::Core::ERROR_NONE; }
 
     void EnableWebServer(const std::string&, const std::string&) override {}
     void DisableWebServer() override {}
 
-    WPEFramework::PluginHost::ISubSystem* SubSystems() override { return nullptr; }
-    uint32_t Submit(const uint32_t, const WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::IElement>&) override { return WPEFramework::Core::ERROR_NONE; }
+    Thunder::PluginHost::ISubSystem* SubSystems() override { return nullptr; }
+    uint32_t Submit(const uint32_t, const Thunder::Core::ProxyType<Thunder::Core::JSON::IElement>&) override { return Thunder::Core::ERROR_NONE; }
     void Notify(const std::string&) override {}
     void* QueryInterface(const uint32_t) override { return nullptr; }
 
     void* QueryInterfaceByCallsign(const uint32_t id, const std::string& callsign) override
     {
         if (std::string("org.rdk.AppPackageManager") == callsign) {
-            if (WPEFramework::Exchange::IPackageHandler::ID == id && nullptr != _cfg.packageHandler) {
+            if (Thunder::Exchange::IPackageHandler::ID == id && nullptr != _cfg.packageHandler) {
                 _cfg.packageHandler->AddRef();
-                return static_cast<WPEFramework::Exchange::IPackageHandler*>(_cfg.packageHandler);
+                return static_cast<Thunder::Exchange::IPackageHandler*>(_cfg.packageHandler);
             }
-            if (WPEFramework::Exchange::IPackageInstaller::ID == id && nullptr != _cfg.installer) {
+            if (Thunder::Exchange::IPackageInstaller::ID == id && nullptr != _cfg.installer) {
                 _cfg.installer->AddRef();
-                return static_cast<WPEFramework::Exchange::IPackageInstaller*>(_cfg.installer);
+                return static_cast<Thunder::Exchange::IPackageInstaller*>(_cfg.installer);
             }
         } else if (std::string("org.rdk.PersistentStore") == callsign) {
-            if (WPEFramework::Exchange::IStore2::ID == id && nullptr != _cfg.store2) {
+            if (Thunder::Exchange::IStore2::ID == id && nullptr != _cfg.store2) {
                 _cfg.store2->AddRef();
-                return static_cast<WPEFramework::Exchange::IStore2*>(_cfg.store2);
+                return static_cast<Thunder::Exchange::IStore2*>(_cfg.store2);
             }
         } else if (std::string("org.rdk.AppStorageManager") == callsign) {
-            if (WPEFramework::Exchange::IAppStorageManager::ID == id && nullptr != _cfg.storageManager) {
+            if (Thunder::Exchange::IAppStorageManager::ID == id && nullptr != _cfg.storageManager) {
                 _cfg.storageManager->AddRef();
-                return static_cast<WPEFramework::Exchange::IAppStorageManager*>(_cfg.storageManager);
+                return static_cast<Thunder::Exchange::IAppStorageManager*>(_cfg.storageManager);
             }
         } else if (std::string("org.rdk.LifecycleManager") == callsign) {
-            if (WPEFramework::Exchange::ILifecycleManager::ID == id && nullptr != _cfg.lifecycleManager) {
+            if (Thunder::Exchange::ILifecycleManager::ID == id && nullptr != _cfg.lifecycleManager) {
                 _cfg.lifecycleManager->AddRef();
-                return static_cast<WPEFramework::Exchange::ILifecycleManager*>(_cfg.lifecycleManager);
+                return static_cast<Thunder::Exchange::ILifecycleManager*>(_cfg.lifecycleManager);
             }
-            if (WPEFramework::Exchange::ILifecycleManagerState::ID == id && nullptr != _cfg.lifecycleManagerState) {
+            if (Thunder::Exchange::ILifecycleManagerState::ID == id && nullptr != _cfg.lifecycleManagerState) {
                 _cfg.lifecycleManagerState->AddRef();
-                return static_cast<WPEFramework::Exchange::ILifecycleManagerState*>(_cfg.lifecycleManagerState);
+                return static_cast<Thunder::Exchange::ILifecycleManagerState*>(_cfg.lifecycleManagerState);
             }
         }
         return nullptr;
     }
 
-    void Register(WPEFramework::PluginHost::IPlugin::INotification*) override {}
-    void Unregister(WPEFramework::PluginHost::IPlugin::INotification*) override {}
+    void Register(Thunder::PluginHost::IPlugin::INotification*) override {}
+    void Unregister(Thunder::PluginHost::IPlugin::INotification*) override {}
 
     reason Reason() const override { return reason::REQUESTED; }
 
-    WPEFramework::RPC::IRemoteConnection* RemoteConnection(const uint32_t) const
+    Thunder::RPC::IRemoteConnection* RemoteConnection(const uint32_t) const
     {
         return _cfg.remoteConnection;
     }
 
-    WPEFramework::PluginHost::IShell::ICOMLink* COMLink() override
+    Thunder::PluginHost::IShell::ICOMLink* COMLink() override
     {
         return &_comLink;
     }

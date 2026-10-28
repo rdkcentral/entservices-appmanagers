@@ -55,7 +55,7 @@ using ::testing::Invoke;
 using ::testing::NiceMock;
 using ::testing::Return;
 using ::testing::SetArgReferee;
-using namespace WPEFramework;
+using namespace Thunder;
 
 class PreinstallManagerTest : public ::testing::Test {
 protected:

@@ -20,9 +20,9 @@
 #include "DownloadManager.h"
 #include "UtilsAppManagerTelemetry.h"
 
-RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::Utils::AppManagersBootstrapper, "downloadManagerBootstrapTime")
+RDKAM_DEFINE_TELEMETRY_CLIENT(Thunder::Plugin::Utils::AppManagersBootstrapper, "downloadManagerBootstrapTime")
 
-namespace WPEFramework {
+namespace Thunder {
 
 namespace Plugin
 {
@@ -142,5 +142,5 @@ namespace Plugin
     }
 
 } // namespace Plugin
-} // namespace WPEFramework
+} // namespace Thunder
 

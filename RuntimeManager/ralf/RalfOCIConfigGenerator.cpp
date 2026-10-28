@@ -29,7 +29,7 @@
 
 namespace ralf
 {
-    bool RalfOCIConfigGenerator::generateRalfOCIConfig(const WPEFramework::Plugin::ApplicationConfiguration &config, const WPEFramework::Plugin::RuntimeConfiguration &runtimeConfigObject)
+    bool RalfOCIConfigGenerator::generateRalfOCIConfig(const Thunder::Plugin::ApplicationConfiguration &config, const Thunder::Plugin::RuntimeConfiguration &runtimeConfigObject)
     {
         Json::Value ociConfigRootNode;
 
@@ -113,7 +113,7 @@ namespace ralf
         ociConfigRootNode[RDKPLUGINS][LOGGING][DATA][LOG_FILE_OPTIONS][PATH] = logFilePath;
     }
 
-    bool RalfOCIConfigGenerator::applyRuntimeAndAppConfigToOCIConfig(Json::Value &ociConfigRootNode, const WPEFramework::Plugin::RuntimeConfiguration &runtimeConfigObject, const WPEFramework::Plugin::ApplicationConfiguration &appConfig)
+    bool RalfOCIConfigGenerator::applyRuntimeAndAppConfigToOCIConfig(Json::Value &ociConfigRootNode, const Thunder::Plugin::RuntimeConfiguration &runtimeConfigObject, const Thunder::Plugin::ApplicationConfiguration &appConfig)
     {
         bool status = true;
         // Set user and group ID

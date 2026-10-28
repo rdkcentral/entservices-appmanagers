@@ -20,11 +20,11 @@
 #include "RDKWindowManager.h"
 #include "UtilsAppManagerTelemetry.h"
 
-const string WPEFramework::Plugin::RDKWindowManager::SERVICE_NAME = "org.rdk.RDKWindowManager";
+const string Thunder::Plugin::RDKWindowManager::SERVICE_NAME = "org.rdk.RDKWindowManager";
 
-RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::Utils::AppManagersBootstrapper, "windowManagerBootstrapTime")
+RDKAM_DEFINE_TELEMETRY_CLIENT(Thunder::Plugin::Utils::AppManagersBootstrapper, "windowManagerBootstrapTime")
 
-namespace WPEFramework {
+namespace Thunder {
 
     namespace {
 
@@ -96,7 +96,7 @@ namespace WPEFramework {
                     {
                         /* Register for notifications */
                         mRDKWindowManagerImpl->Register(&mRDKWindowManagerNotification);
-                        /* Invoking Plugin API register to wpeframework */
+                        /* Invoking Plugin API register to thunder */
                         Exchange::JRDKWindowManager::Register(*this, mRDKWindowManagerImpl);
                     }
                 }
@@ -186,4 +186,4 @@ namespace WPEFramework {
             }
         }
     } /* namespace Plugin */
-} /* namespace WPEFramework */
+} /* namespace Thunder */

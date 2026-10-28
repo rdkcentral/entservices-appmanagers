@@ -23,7 +23,7 @@
 
 extern "C" char **environ;
 
-namespace WPEFramework
+namespace Thunder
 {
     namespace {
         constexpr int kRialtoTimeoutMillis = 5000;
@@ -261,4 +261,4 @@ namespace WPEFramework
 
         return environmentVariables;
     }
-} // namespace WPEFramework
+} // namespace Thunder

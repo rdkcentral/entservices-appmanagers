@@ -24,7 +24,7 @@
 #include <limits>
 #include <utility>
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
 RuntimeConfiguration::RuntimeConfiguration()
@@ -165,4 +165,4 @@ bool RuntimeConfigurationDecoder::Decode(const std::string& serialized, RuntimeC
 }
 
 } // namespace Plugin
-} // namespace WPEFramework
+} // namespace Thunder

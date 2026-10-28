@@ -20,7 +20,7 @@
 #include "ApplicationContext.h"
 #include "State.h"
 
-namespace WPEFramework
+namespace Thunder
 {
     namespace Plugin
     {
@@ -219,4 +219,4 @@ namespace WPEFramework
             return mUnexpectedTermination;
         }
     } /* namespace Plugin */
-} /* namespace WPEFramework */
+} /* namespace Thunder */

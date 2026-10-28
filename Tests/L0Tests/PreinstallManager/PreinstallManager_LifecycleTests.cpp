@@ -53,7 +53,7 @@ namespace {
  * Used for PIM-NEG-002 (Initialize fails without IConfiguration).
  */
 class FakePreinstallManagerNoConfig final
-    : public WPEFramework::Exchange::IPreinstallManager {
+    : public Thunder::Exchange::IPreinstallManager {
 public:
     FakePreinstallManagerNoConfig()
         : _refCount(1)
@@ -70,34 +70,34 @@ public:
         const uint32_t r = _refCount.fetch_sub(1, std::memory_order_acq_rel) - 1;
         if (0U == r) {
             delete this;
-            return WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED;
+            return Thunder::Core::ERROR_DESTRUCTION_SUCCEEDED;
         }
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
     void* QueryInterface(const uint32_t id) override
     {
-        if (id == WPEFramework::Exchange::IPreinstallManager::ID) {
+        if (id == Thunder::Exchange::IPreinstallManager::ID) {
             AddRef();
-            return static_cast<WPEFramework::Exchange::IPreinstallManager*>(this);
+            return static_cast<Thunder::Exchange::IPreinstallManager*>(this);
         }
         // No IConfiguration offered deliberately.
         return nullptr;
     }
 
-    WPEFramework::Core::hresult Register(WPEFramework::Exchange::IPreinstallManager::INotification*) override
+    Thunder::Core::hresult Register(Thunder::Exchange::IPreinstallManager::INotification*) override
     {
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
-    WPEFramework::Core::hresult Unregister(WPEFramework::Exchange::IPreinstallManager::INotification*) override
+    Thunder::Core::hresult Unregister(Thunder::Exchange::IPreinstallManager::INotification*) override
     {
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
-    WPEFramework::Core::hresult StartPreinstall(bool) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult GetPreinstallState(State& state) override
+    Thunder::Core::hresult StartPreinstall(bool) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult GetPreinstallState(State& state) override
     {
         state = State::NOT_STARTED;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
 private:
@@ -109,8 +109,8 @@ private:
  * ERROR_GENERAL.  Used for PIM-NEG-003.
  */
 class FakePreinstallManagerConfigFails final
-    : public WPEFramework::Exchange::IPreinstallManager
-    , public WPEFramework::Exchange::IConfiguration {
+    : public Thunder::Exchange::IPreinstallManager
+    , public Thunder::Exchange::IConfiguration {
 public:
     FakePreinstallManagerConfigFails()
         : _refCount(1)
@@ -127,42 +127,42 @@ public:
         const uint32_t r = _refCount.fetch_sub(1, std::memory_order_acq_rel) - 1;
         if (0U == r) {
             delete this;
-            return WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED;
+            return Thunder::Core::ERROR_DESTRUCTION_SUCCEEDED;
         }
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
     void* QueryInterface(const uint32_t id) override
     {
-        if (id == WPEFramework::Exchange::IPreinstallManager::ID) {
+        if (id == Thunder::Exchange::IPreinstallManager::ID) {
             AddRef();
-            return static_cast<WPEFramework::Exchange::IPreinstallManager*>(this);
+            return static_cast<Thunder::Exchange::IPreinstallManager*>(this);
         }
-        if (id == WPEFramework::Exchange::IConfiguration::ID) {
+        if (id == Thunder::Exchange::IConfiguration::ID) {
             AddRef();
-            return static_cast<WPEFramework::Exchange::IConfiguration*>(this);
+            return static_cast<Thunder::Exchange::IConfiguration*>(this);
         }
         return nullptr;
     }
 
-    uint32_t Configure(WPEFramework::PluginHost::IShell*) override
+    uint32_t Configure(Thunder::PluginHost::IShell*) override
     {
-        return WPEFramework::Core::ERROR_GENERAL; // deliberately fail Configure
+        return Thunder::Core::ERROR_GENERAL; // deliberately fail Configure
     }
 
-    WPEFramework::Core::hresult Register(WPEFramework::Exchange::IPreinstallManager::INotification*) override
+    Thunder::Core::hresult Register(Thunder::Exchange::IPreinstallManager::INotification*) override
     {
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
-    WPEFramework::Core::hresult Unregister(WPEFramework::Exchange::IPreinstallManager::INotification*) override
+    Thunder::Core::hresult Unregister(Thunder::Exchange::IPreinstallManager::INotification*) override
     {
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
-    WPEFramework::Core::hresult StartPreinstall(bool) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult GetPreinstallState(State& state) override
+    Thunder::Core::hresult StartPreinstall(bool) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult GetPreinstallState(State& state) override
     {
         state = State::NOT_STARTED;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
 private:
@@ -174,8 +174,8 @@ private:
  * Configure() returns ERROR_NONE.  Used for positive lifecycle tests.
  */
 class FakePreinstallManagerWithConfig final
-    : public WPEFramework::Exchange::IPreinstallManager
-    , public WPEFramework::Exchange::IConfiguration {
+    : public Thunder::Exchange::IPreinstallManager
+    , public Thunder::Exchange::IConfiguration {
 public:
     FakePreinstallManagerWithConfig()
         : _refCount(1)
@@ -192,42 +192,42 @@ public:
         const uint32_t r = _refCount.fetch_sub(1, std::memory_order_acq_rel) - 1;
         if (0U == r) {
             delete this;
-            return WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED;
+            return Thunder::Core::ERROR_DESTRUCTION_SUCCEEDED;
         }
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
     void* QueryInterface(const uint32_t id) override
     {
-        if (id == WPEFramework::Exchange::IPreinstallManager::ID) {
+        if (id == Thunder::Exchange::IPreinstallManager::ID) {
             AddRef();
-            return static_cast<WPEFramework::Exchange::IPreinstallManager*>(this);
+            return static_cast<Thunder::Exchange::IPreinstallManager*>(this);
         }
-        if (id == WPEFramework::Exchange::IConfiguration::ID) {
+        if (id == Thunder::Exchange::IConfiguration::ID) {
             AddRef();
-            return static_cast<WPEFramework::Exchange::IConfiguration*>(this);
+            return static_cast<Thunder::Exchange::IConfiguration*>(this);
         }
         return nullptr;
     }
 
-    uint32_t Configure(WPEFramework::PluginHost::IShell*) override
+    uint32_t Configure(Thunder::PluginHost::IShell*) override
     {
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult Register(WPEFramework::Exchange::IPreinstallManager::INotification*) override
+    Thunder::Core::hresult Register(Thunder::Exchange::IPreinstallManager::INotification*) override
     {
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
-    WPEFramework::Core::hresult Unregister(WPEFramework::Exchange::IPreinstallManager::INotification*) override
+    Thunder::Core::hresult Unregister(Thunder::Exchange::IPreinstallManager::INotification*) override
     {
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
-    WPEFramework::Core::hresult StartPreinstall(bool) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult GetPreinstallState(State& state) override
+    Thunder::Core::hresult StartPreinstall(bool) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult GetPreinstallState(State& state) override
     {
         state = State::NOT_STARTED;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
 private:
@@ -240,12 +240,12 @@ private:
 
 struct PluginAndService {
     L0Test::ServiceMock                   service;
-    WPEFramework::PluginHost::IPlugin*    plugin { nullptr };
+    Thunder::PluginHost::IPlugin*    plugin { nullptr };
 
     PluginAndService()
         : service()
-        , plugin(WPEFramework::Core::Service<WPEFramework::Plugin::PreinstallManager>::Create<
-                     WPEFramework::PluginHost::IPlugin>())
+        , plugin(Thunder::Core::Service<Thunder::Plugin::PreinstallManager>::Create<
+                     Thunder::PluginHost::IPlugin>())
     {
     }
 
@@ -279,7 +279,7 @@ uint32_t Test_PIM_InitializeFailsWhenRootCreationFails()
     // Handler is set to document the original intent, but in-process Root<>
     // bypasses COMLink and creates the real implementation via SERVICE_REGISTRATION.
     ps.service.SetInstantiateHandler(
-        [](const WPEFramework::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
+        [](const Thunder::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
             connectionId = 0;
             return nullptr;
         });
@@ -370,7 +370,7 @@ uint32_t Test_PIM_InitializeSucceedsAndDeinitializeCleansUp()
     PluginAndService ps;
 
     ps.service.SetInstantiateHandler(
-        [](const WPEFramework::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
+        [](const Thunder::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
             connectionId = 42;
             return static_cast<void*>(new FakePreinstallManagerWithConfig());
         });
@@ -421,29 +421,29 @@ uint32_t Test_PIM_SingletonBehaviorConstructAndDestruct()
 
     // Guard: if a prior test left a leaked instance, release it so that
     // this test starts with a clean _instance == nullptr.
-    if (WPEFramework::Plugin::PreinstallManagerImplementation::_instance != nullptr) {
-        WPEFramework::Plugin::PreinstallManagerImplementation::_instance->Release();
+    if (Thunder::Plugin::PreinstallManagerImplementation::_instance != nullptr) {
+        Thunder::Plugin::PreinstallManagerImplementation::_instance->Release();
         // _instance is now nullptr (destructor clears it).
     }
 
-    auto* impl = WPEFramework::Core::Service<
-        WPEFramework::Plugin::PreinstallManagerImplementation>::Create<
-        WPEFramework::Plugin::PreinstallManagerImplementation>();
+    auto* impl = Thunder::Core::Service<
+        Thunder::Plugin::PreinstallManagerImplementation>::Create<
+        Thunder::Plugin::PreinstallManagerImplementation>();
 
     L0Test::ExpectTrue(tr,
-                       WPEFramework::Plugin::PreinstallManagerImplementation::_instance == impl,
+                       Thunder::Plugin::PreinstallManagerImplementation::_instance == impl,
                        "_instance points to the newly constructed implementation");
     L0Test::ExpectTrue(tr,
-                       WPEFramework::Plugin::PreinstallManagerImplementation::getInstance() == impl,
+                       Thunder::Plugin::PreinstallManagerImplementation::getInstance() == impl,
                        "getInstance() returns the same pointer as _instance");
 
     impl->Release(); // triggers dtor → _instance = nullptr
 
     L0Test::ExpectTrue(tr,
-                       WPEFramework::Plugin::PreinstallManagerImplementation::_instance == nullptr,
+                       Thunder::Plugin::PreinstallManagerImplementation::_instance == nullptr,
                        "_instance is null after the last Release on the implementation");
     L0Test::ExpectTrue(tr,
-                       WPEFramework::Plugin::PreinstallManagerImplementation::getInstance() == nullptr,
+                       Thunder::Plugin::PreinstallManagerImplementation::getInstance() == nullptr,
                        "getInstance() returns nullptr after destruction");
     return tr.failures;
 }

@@ -36,7 +36,7 @@ namespace ralf
          * @param runtimeConfigObject The runtime configuration.
          * @return true if the OCI config was generated successfully, false otherwise.
          */
-        bool generateRalfOCIConfig(const WPEFramework::Plugin::ApplicationConfiguration &config, const WPEFramework::Plugin::RuntimeConfiguration &runtimeConfigObject);
+        bool generateRalfOCIConfig(const Thunder::Plugin::ApplicationConfiguration &config, const Thunder::Plugin::RuntimeConfiguration &runtimeConfigObject);
 
     private:
         /**
@@ -93,7 +93,7 @@ namespace ralf
          * @param config The application configuration.
          * @return true if the configuration options were applied successfully, false otherwise.
          */
-        bool applyRuntimeAndAppConfigToOCIConfig(Json::Value &ociConfigRootNode, const WPEFramework::Plugin::RuntimeConfiguration &runtimeConfigObject, const WPEFramework::Plugin::ApplicationConfiguration &config);
+        bool applyRuntimeAndAppConfigToOCIConfig(Json::Value &ociConfigRootNode, const Thunder::Plugin::RuntimeConfiguration &runtimeConfigObject, const Thunder::Plugin::ApplicationConfiguration &config);
 
         /**
          * Applies the configuration from the package config to the OCI config JSON.

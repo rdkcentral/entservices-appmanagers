@@ -46,10 +46,10 @@ uint32_t Test_Telemetry_GetInstanceReturnsSingleton()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DownloadManagerTelemetryReporting& inst1 =
-        WPEFramework::Plugin::DownloadManagerTelemetryReporting::getInstance();
-    WPEFramework::Plugin::DownloadManagerTelemetryReporting& inst2 =
-        WPEFramework::Plugin::DownloadManagerTelemetryReporting::getInstance();
+    Thunder::Plugin::DownloadManagerTelemetryReporting& inst1 =
+        Thunder::Plugin::DownloadManagerTelemetryReporting::getInstance();
+    Thunder::Plugin::DownloadManagerTelemetryReporting& inst2 =
+        Thunder::Plugin::DownloadManagerTelemetryReporting::getInstance();
 
     L0Test::ExpectTrue(tr, &inst1 == &inst2,
         "getInstance() returns the same singleton address on consecutive calls");
@@ -71,12 +71,12 @@ uint32_t Test_Telemetry_InitializeWithValidServiceDoesNotCrash()
 
     // initialize() calls setService() and initializeTelemetryClient().
     // Both must complete without crashing in an isolated / CI environment.
-    WPEFramework::Plugin::DownloadManagerTelemetryReporting::getInstance().initialize(&svc);
+    Thunder::Plugin::DownloadManagerTelemetryReporting::getInstance().initialize(&svc);
 
     L0Test::ExpectTrue(tr, true, "initialize() with valid service does not crash");
 
     // Reset to leave the singleton in a clean state for subsequent tests
-    WPEFramework::Plugin::DownloadManagerTelemetryReporting::getInstance().reset();
+    Thunder::Plugin::DownloadManagerTelemetryReporting::getInstance().reset();
 
     return tr.failures;
 }
@@ -90,11 +90,11 @@ uint32_t Test_Telemetry_ResetDoesNotCrash()
     L0Test::TestResult tr;
 
     // Calling reset() without a prior initialize() must not crash
-    WPEFramework::Plugin::DownloadManagerTelemetryReporting::getInstance().reset();
+    Thunder::Plugin::DownloadManagerTelemetryReporting::getInstance().reset();
     L0Test::ExpectTrue(tr, true, "reset() without prior initialize() does not crash");
 
     // Calling reset() a second time must be idempotent
-    WPEFramework::Plugin::DownloadManagerTelemetryReporting::getInstance().reset();
+    Thunder::Plugin::DownloadManagerTelemetryReporting::getInstance().reset();
     L0Test::ExpectTrue(tr, true, "reset() twice does not crash (idempotent)");
 
     return tr.failures;
@@ -111,10 +111,10 @@ uint32_t Test_Telemetry_RecordDownloadTimeWhenDisabledIsNoop()
     L0Test::TestResult tr;
 
     // Ensure singleton is in reset (disabled) state
-    WPEFramework::Plugin::DownloadManagerTelemetryReporting::getInstance().reset();
+    Thunder::Plugin::DownloadManagerTelemetryReporting::getInstance().reset();
 
     // Must not crash when telemetry is disabled
-    WPEFramework::Plugin::DownloadManagerTelemetryReporting::getInstance()
+    Thunder::Plugin::DownloadManagerTelemetryReporting::getInstance()
         .recordDownloadTimeTelemetry("2001", 5000LL);
 
     L0Test::ExpectTrue(tr, true,
@@ -131,9 +131,9 @@ uint32_t Test_Telemetry_RecordDownloadErrorWhenDisabledIsNoop()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DownloadManagerTelemetryReporting::getInstance().reset();
+    Thunder::Plugin::DownloadManagerTelemetryReporting::getInstance().reset();
 
-    WPEFramework::Plugin::DownloadManagerTelemetryReporting::getInstance()
+    Thunder::Plugin::DownloadManagerTelemetryReporting::getInstance()
         .recordDownloadErrorTelemetry("2001", 1 /* DOWNLOAD_FAILURE errorCode */);
 
     L0Test::ExpectTrue(tr, true,
@@ -154,16 +154,16 @@ uint32_t Test_Telemetry_RecordDownloadTimeWithValidParamsDoesNotCrash()
     L0Test::ServiceMock::Config cfg;
     L0Test::ServiceMock svc(cfg);
 
-    WPEFramework::Plugin::DownloadManagerTelemetryReporting::getInstance().initialize(&svc);
+    Thunder::Plugin::DownloadManagerTelemetryReporting::getInstance().initialize(&svc);
 
     // Must not crash whether or not the telemetry backend is available
-    WPEFramework::Plugin::DownloadManagerTelemetryReporting::getInstance()
+    Thunder::Plugin::DownloadManagerTelemetryReporting::getInstance()
         .recordDownloadTimeTelemetry("2002", 12000LL);
 
     L0Test::ExpectTrue(tr, true,
         "recordDownloadTimeTelemetry() with valid params does not crash");
 
-    WPEFramework::Plugin::DownloadManagerTelemetryReporting::getInstance().reset();
+    Thunder::Plugin::DownloadManagerTelemetryReporting::getInstance().reset();
 
     return tr.failures;
 }
@@ -179,15 +179,15 @@ uint32_t Test_Telemetry_RecordDownloadErrorWithValidParamsDoesNotCrash()
     L0Test::ServiceMock::Config cfg;
     L0Test::ServiceMock svc(cfg);
 
-    WPEFramework::Plugin::DownloadManagerTelemetryReporting::getInstance().initialize(&svc);
+    Thunder::Plugin::DownloadManagerTelemetryReporting::getInstance().initialize(&svc);
 
-    WPEFramework::Plugin::DownloadManagerTelemetryReporting::getInstance()
+    Thunder::Plugin::DownloadManagerTelemetryReporting::getInstance()
         .recordDownloadErrorTelemetry("2003", 0 /* DISK_PERSISTENCE_FAILURE */);
 
     L0Test::ExpectTrue(tr, true,
         "recordDownloadErrorTelemetry() with valid params does not crash");
 
-    WPEFramework::Plugin::DownloadManagerTelemetryReporting::getInstance().reset();
+    Thunder::Plugin::DownloadManagerTelemetryReporting::getInstance().reset();
 
     return tr.failures;
 }

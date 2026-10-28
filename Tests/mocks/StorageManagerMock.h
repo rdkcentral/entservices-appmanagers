@@ -22,8 +22,8 @@
 #include <gmock/gmock.h>
 #include <interfaces/IAppStorageManager.h>
 
-using ::WPEFramework::Exchange::IAppStorageManager;
-using namespace WPEFramework;
+using ::Thunder::Exchange::IAppStorageManager;
+using namespace Thunder;
 
 class StorageManagerMock : public IAppStorageManager {
 public:

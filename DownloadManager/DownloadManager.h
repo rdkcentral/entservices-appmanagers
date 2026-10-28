@@ -26,7 +26,7 @@
 
 #include "UtilsLogging.h"
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
     class DownloadManager : public PluginHost::IPlugin,
@@ -112,5 +112,5 @@ namespace Plugin {
     };
 
 } // namespace Plugin
-} // namespace WPEFramework
+} // namespace Thunder
 

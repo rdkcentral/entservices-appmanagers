@@ -8,7 +8,7 @@ context: |
   ### Tech Stack & Architecture
   - **Language**: C++11/14/17
   - **Build System**: CMake (3.3+)
-  - **Framework**: WPEFramework (Thunder) plugin system
+  - **Framework**: Thunder plugin system
   - **Container Runtime**: Dobby (OCI, crun)
   - **Display**: Wayland (Essos/Westeros compositor)
   - **IPC**: Thunder COM-RPC (Exchange interfaces) + Thunder JSON-RPC (HTTP/WebSocket; e.g. `http://127.0.0.1:9998/jsonrpc`)

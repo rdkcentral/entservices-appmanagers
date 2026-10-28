@@ -24,8 +24,8 @@
 #include "Telemetry.h"
 #include <interfaces/ITelemetry.h>
 
-using ::WPEFramework::Core::hresult;
-using ::WPEFramework::Exchange::ITelemetry;
+using ::Thunder::Core::hresult;
+using ::Thunder::Exchange::ITelemetry;
 
 class TelemetryApiImplMock : public TelemetryApiImpl, public ITelemetry {
 public:

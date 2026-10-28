@@ -4,7 +4,7 @@
 
 ## Overview
 
-The **entservices-appmanagers** repository provides a comprehensive suite of WPEFramework plugins for managing application lifecycle, package installation, runtime containers, and system resources on RDK-based set-top boxes and streaming devices.
+The **entservices-appmanagers** repository provides a comprehensive suite of Thunder plugins for managing application lifecycle, package installation, runtime containers, and system resources on RDK-based set-top boxes and streaming devices.
 
 ---
 

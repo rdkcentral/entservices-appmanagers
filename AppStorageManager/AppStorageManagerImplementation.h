@@ -26,7 +26,7 @@
 #include <ftw.h>
 #include <mutex>
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
     class StorageManagerImplementation : public Exchange::IAppStorageManager ,public Exchange::IConfiguration{
@@ -77,4 +77,4 @@ namespace Plugin {
         std::string mBaseStoragePath;                           /* Base path for the app storage */
     };
 } /* namespace Plugin */
-} /* namespace WPEFramework */
+} /* namespace Thunder */

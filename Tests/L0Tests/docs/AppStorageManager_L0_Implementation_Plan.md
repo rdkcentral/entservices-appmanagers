@@ -127,11 +127,11 @@ Implemented in `ServiceMock.h` with:
 
 ```cpp
 struct Config {
-    explicit Config(WPEFramework::Exchange::IStore2* store = nullptr)
+    explicit Config(Thunder::Exchange::IStore2* store = nullptr)
         : persistentStore(store)
         , configLine("{\"path\":\"/tmp/appdata\"}")
     {}
-    WPEFramework::Exchange::IStore2* persistentStore;
+    Thunder::Exchange::IStore2* persistentStore;
     std::string configLine;
 };
 ```
@@ -198,7 +198,7 @@ Implemented in `fakes/FakePersistentStore.h/.cpp`:
    ```cpp
    service.SetInstantiateHandler([](const RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
        connectionId = 0;
-       return WPEFramework::Core::Service<StorageManagerImplementation>::Create<...>();
+       return Thunder::Core::Service<StorageManagerImplementation>::Create<...>();
    });
    ```
 
@@ -408,7 +408,7 @@ Implemented in `fakes/FakePersistentStore.h/.cpp`:
 ```cpp
 namespace L0Test {
 
-class ServiceMock : public WPEFramework::PluginHost::IShell {
+class ServiceMock : public Thunder::PluginHost::IShell {
 public:
     // Configuration helpers
     void SetConfigPath(const std::string& path);
@@ -419,18 +419,18 @@ public:
 ```cpp
 namespace L0Test {
 
-class ServiceMock : public WPEFramework::PluginHost::IShell {
+class ServiceMock : public Thunder::PluginHost::IShell {
 public:
     struct Config {
-        explicit Config(WPEFramework::Exchange::IStore2* store = nullptr)
+        explicit Config(Thunder::Exchange::IStore2* store = nullptr)
             : persistentStore(store)
             , configLine("{\"path\":\"/tmp/appdata\"}")
         {}
-        WPEFramework::Exchange::IStore2* persistentStore;
+        Thunder::Exchange::IStore2* persistentStore;
         std::string configLine;
     };
     
-    using InstantiateHandler = std::function<void*(const WPEFramework::RPC::Object&, 
+    using InstantiateHandler = std::function<void*(const Thunder::RPC::Object&, 
                                                      const uint32_t, 
                                                      uint32_t&)>;
     
@@ -446,7 +446,7 @@ public:
 ```cpp
 namespace L0Test {
 
-class FakePersistentStore : public WPEFramework::Exchange::IStore2 {
+class FakePersistentStore : public Thunder::Exchange::IStore2 {
 public:
     FakePersistentStore();
     virtual ~FakePersistentStore();
@@ -707,7 +707,7 @@ if(PLUGIN_APP_STORAGE_MANAGER)
 5. ✅ **Minimal Mocking** - Only IStore2 mocked (FakePersistentStore)
 6. ✅ **Zero Plugin Changes** - All test infrastructure in test files onlyPI Documentation](../../../AppStorageManager/AppStorageManager.md)
 4. [AppStorageManager Test Cases (Topic Branch)](../../../entservices-appmanagers-topic-RDKEMW-14485/AppStorageManager/AppStorageManager_L0_TestCases.md)
-5. [Thunder/WPEFramework Plugin Development Guide](https://rdkcentral.github.io/Thunder/)
+5. [Thunder/Thunder Plugin Development Guide](https://rdkcentral.github.io/Thunder/)
 
 ---
 

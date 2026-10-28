@@ -21,7 +21,7 @@
 #include <gmock/gmock.h>
 #include <interfaces/IStore2.h>
 
-using ::WPEFramework::Exchange::IStore2;
+using ::Thunder::Exchange::IStore2;
 
 class Store2Mock : public IStore2 {
 public:

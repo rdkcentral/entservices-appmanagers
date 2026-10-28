@@ -24,7 +24,7 @@
 #include <string>
 #include <stdint.h>
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 namespace AppManagerTypes {
 
@@ -88,4 +88,4 @@ namespace AppManagerTypes {
 
 } // namespace AppManagerTypes
 } // namespace Plugin
-} // namespace WPEFramework
+} // namespace Thunder

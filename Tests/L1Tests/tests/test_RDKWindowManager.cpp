@@ -39,7 +39,7 @@
 
 #define TEST_LOG(x, ...) fprintf(stderr, "\033[1;32m[%s:%d](%s)<PID:%d><TID:%d>" x "\n\033[0m", __FILE__, __LINE__, __FUNCTION__, getpid(), gettid(), ##__VA_ARGS__); fflush(stderr);
 
-using namespace WPEFramework;
+using namespace Thunder;
 using ::testing::NiceMock;
 using ::testing::_;
 using ::testing::Return;
@@ -54,7 +54,7 @@ namespace {
     const std::string TEST_DISPLAY_NAME   = "testDisplay";
 }
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
     std::string toLower(const std::string& clientName);
 }
@@ -116,14 +116,14 @@ protected:
 #ifdef USE_THUNDER_R4
         ON_CALL(comlinkMock, Instantiate(_, _, _))
             .WillByDefault(Invoke(
-                [this](const WPEFramework::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
+                [this](const Thunder::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
                     connectionId = 0;
                     return windowManagerMock;
                 }));
 #else
         ON_CALL(comlinkMock, Instantiate(_, _, _, _, _))
             .WillByDefault(Invoke(
-                [this](const WPEFramework::RPC::Object&, const uint32_t, uint32_t& connectionId,
+                [this](const Thunder::RPC::Object&, const uint32_t, uint32_t& connectionId,
                        const string&, const string&) -> void* {
                     connectionId = 0;
                     return windowManagerMock;
@@ -2093,7 +2093,7 @@ TEST_F(RDKWindowManagerImplementationTest, Impl_InitializeAndDeinitialize_Covers
 
 TEST_F(RDKWindowManagerImplementationTest, Impl_ToLower_HelperCoverage)
 {
-    EXPECT_EQ(std::string("myapp"), WPEFramework::Plugin::toLower("MyApp"));
+    EXPECT_EQ(std::string("myapp"), Thunder::Plugin::toLower("MyApp"));
 }
 
 TEST_F(RDKWindowManagerTest, Plugin_Information_ReturnsServiceName)

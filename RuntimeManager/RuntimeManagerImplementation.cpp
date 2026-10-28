@@ -33,11 +33,11 @@
 #include "ralf/RalfSupport.h"
 #endif // RALF_PACKAGE_SUPPORT_ENABLED
 
-namespace WPEFramework
+namespace Thunder
 {
     namespace Plugin
     {
-        RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::RuntimeManagerTelemetryReporting, "runtimeManagerBootstrapTime")
+        RDKAM_DEFINE_TELEMETRY_CLIENT(Thunder::Plugin::RuntimeManagerTelemetryReporting, "runtimeManagerBootstrapTime")
 
         SERVICE_REGISTRATION(RuntimeManagerImplementation, 1, 0);
         RuntimeManagerImplementation *RuntimeManagerImplementation::_instance = nullptr;
@@ -380,7 +380,7 @@ namespace WPEFramework
 
             do
             {
-                mOciContainerObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IOCIContainer>("org.rdk.OCIContainer");
+                mOciContainerObject = mCurrentservice->QueryInterfaceByCallsign<Thunder::Exchange::IOCIContainer>("org.rdk.OCIContainer");
                 if (nullptr == mOciContainerObject)
                 {
                     LOGERR("mOciContainerObject is null (Attempt %d)", retryCount + 1);
@@ -444,7 +444,7 @@ namespace WPEFramework
             {
                 do
                 {
-                    mStorageManagerObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IAppStorageManager>("org.rdk.AppStorageManager");
+                    mStorageManagerObject = mCurrentservice->QueryInterfaceByCallsign<Thunder::Exchange::IAppStorageManager>("org.rdk.AppStorageManager");
 
                     if (nullptr == mStorageManagerObject)
                     {
@@ -1593,5 +1593,5 @@ namespace WPEFramework
             RuntimeManagerTelemetryReporting::getInstance().recordTelemetryData(marker, appId, requestTime, fieldName);
         }
     } /* namespace Plugin */
-} /* namespace WPEFramework */
+} /* namespace Thunder */
 

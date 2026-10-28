@@ -27,7 +27,7 @@
 #include <functional>
 #include <string>
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
     class StorageManagerImplementation;
 }
@@ -39,17 +39,17 @@ namespace L0Test {
  * @brief Minimal IShell mock for AppStorageManager L0 tests
  * Following RuntimeManager pattern with Config struct and InstantiateHandler
  */
-class ServiceMock : public WPEFramework::PluginHost::IShell {
+class ServiceMock : public Thunder::PluginHost::IShell {
 public:
-    using InstantiateHandler = std::function<void*(const WPEFramework::RPC::Object&, const uint32_t, uint32_t&)>;
+    using InstantiateHandler = std::function<void*(const Thunder::RPC::Object&, const uint32_t, uint32_t&)>;
 
     struct Config {
-        explicit Config(WPEFramework::Exchange::IStore2* store = nullptr)
+        explicit Config(Thunder::Exchange::IStore2* store = nullptr)
             : persistentStore(store)
             , configLine("{\"path\":\"/tmp/appdata\"}")
         {
         }
-        WPEFramework::Exchange::IStore2* persistentStore;
+        Thunder::Exchange::IStore2* persistentStore;
         std::string configLine;
     };
 
@@ -85,16 +85,16 @@ public:
         const uint32_t remaining = _refCount.fetch_sub(1, std::memory_order_acq_rel) - 1;
         if (0U == remaining) {
             delete this;
-            return WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED;
+            return Thunder::Core::ERROR_DESTRUCTION_SUCCEEDED;
         }
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
     void* QueryInterface(const uint32_t interfaceNumber) override
     {
-        if (interfaceNumber == WPEFramework::PluginHost::IShell::ID) {
+        if (interfaceNumber == Thunder::PluginHost::IShell::ID) {
             AddRef();
-            return static_cast<WPEFramework::PluginHost::IShell*>(this);
+            return static_cast<Thunder::PluginHost::IShell*>(this);
         }
         return nullptr;
     }
@@ -109,7 +109,7 @@ public:
     {
         _queryInterfaceByCallsignCallCount++;
         
-        if (name == "org.rdk.PersistentStore" && id == WPEFramework::Exchange::IStore2::ID) {
+        if (name == "org.rdk.PersistentStore" && id == Thunder::Exchange::IStore2::ID) {
             if (_cfg.persistentStore != nullptr) {
                 _cfg.persistentStore->AddRef();
                 return _cfg.persistentStore;
@@ -134,8 +134,8 @@ public:
     reason Reason() const override { return reason::REQUESTED; }
 
     void Notify(const string&) override {}
-    void Register(WPEFramework::PluginHost::IPlugin::INotification*) override {}
-    void Unregister(WPEFramework::PluginHost::IPlugin::INotification*) override {}
+    void Register(Thunder::PluginHost::IPlugin::INotification*) override {}
+    void Unregister(Thunder::PluginHost::IPlugin::INotification*) override {}
 
     // Additional IShell pure virtual methods
     void EnableWebServer(const string& URLPath, const string& fileSystemPath) override
@@ -150,42 +150,42 @@ public:
     string ClassName() const override { return string("AppStorageManager"); }
     string Versions() const override { return string(); }
     string SystemPath() const override { return string("/usr/bin"); }
-    string PluginPath() const override { return string("/usr/lib/wpeframework/plugins"); }
+    string PluginPath() const override { return string("/usr/lib/thunder/plugins"); }
     string SystemRootPath() const override { return string("/"); }
 
-    WPEFramework::Core::hresult SystemRootPath(const string& systemRootPath) override
+    Thunder::Core::hresult SystemRootPath(const string& systemRootPath) override
     {
         (void)systemRootPath;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
     startup Startup() const override { return startup::ACTIVATED; }
 
-    WPEFramework::Core::hresult Startup(const startup value) override
+    Thunder::Core::hresult Startup(const startup value) override
     {
         (void)value;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
     bool Resumed() const override { return false; }
 
-    WPEFramework::Core::hresult Resumed(const bool value) override
+    Thunder::Core::hresult Resumed(const bool value) override
     {
         (void)value;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult ConfigLine(const string& config) override
+    Thunder::Core::hresult ConfigLine(const string& config) override
     {
         _cfg.configLine = config;
         _configLineCallCount++;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult Metadata(string& info) const override
+    Thunder::Core::hresult Metadata(string& info) const override
     {
         info = string();
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
     bool IsSupported(const uint8_t version) const override
@@ -194,35 +194,35 @@ public:
         return true;
     }
 
-    WPEFramework::PluginHost::ISubSystem* SubSystems() override
+    Thunder::PluginHost::ISubSystem* SubSystems() override
     {
         return nullptr;
     }
 
-    WPEFramework::Core::hresult Hibernate(const uint32_t timeout) override
+    Thunder::Core::hresult Hibernate(const uint32_t timeout) override
     {
         (void)timeout;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
-    uint32_t Submit(const uint32_t, const WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::IElement>&) override
+    uint32_t Submit(const uint32_t, const Thunder::Core::ProxyType<Thunder::Core::JSON::IElement>&) override
     {
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult Activate(const reason) override
+    Thunder::Core::hresult Activate(const reason) override
     {
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult Deactivate(const reason) override
+    Thunder::Core::hresult Deactivate(const reason) override
     {
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult Unavailable(const reason) override
+    Thunder::Core::hresult Unavailable(const reason) override
     {
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
     class COMLinkMock : public ICOMLink {
@@ -230,15 +230,15 @@ public:
         COMLinkMock(ServiceMock& parent) : _parent(parent) {}
         ~COMLinkMock() override = default;
 
-        void Register(WPEFramework::RPC::IRemoteConnection::INotification*) override {}
-        void Unregister(const WPEFramework::RPC::IRemoteConnection::INotification*) override {}
+        void Register(Thunder::RPC::IRemoteConnection::INotification*) override {}
+        void Unregister(const Thunder::RPC::IRemoteConnection::INotification*) override {}
 
         void Register(INotification*) override {}
         void Unregister(INotification*) override {}
 
-        WPEFramework::RPC::IRemoteConnection* RemoteConnection(const uint32_t) override { return nullptr; }
+        Thunder::RPC::IRemoteConnection* RemoteConnection(const uint32_t) override { return nullptr; }
 
-        void* Instantiate(const WPEFramework::RPC::Object& object, const uint32_t interfaceId, uint32_t& connectionId) override
+        void* Instantiate(const Thunder::RPC::Object& object, const uint32_t interfaceId, uint32_t& connectionId) override
         {
             if (_parent._instantiateHandler) {
                 return _parent._instantiateHandler(object, interfaceId, connectionId);

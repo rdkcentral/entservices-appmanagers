@@ -16,24 +16,24 @@ namespace L0Test {
 
 using string = std::string;
 
-class ServiceMock final : public WPEFramework::PluginHost::IShell {
+class ServiceMock final : public Thunder::PluginHost::IShell {
 public:
-    using InstantiateHandler = std::function<void*(const WPEFramework::RPC::Object&, const uint32_t, uint32_t&)>;
+    using InstantiateHandler = std::function<void*(const Thunder::RPC::Object&, const uint32_t, uint32_t&)>;
 
     struct Config {
-        explicit Config(WPEFramework::Exchange::IOCIContainer*     oci = nullptr,
-                        WPEFramework::Exchange::IRDKWindowManager* wm  = nullptr)
+        explicit Config(Thunder::Exchange::IOCIContainer*     oci = nullptr,
+                        Thunder::Exchange::IRDKWindowManager* wm  = nullptr)
             : oci(oci)
             , wm(wm)
             , configLine("{}")
         {
         }
-        WPEFramework::Exchange::IOCIContainer*     oci;
-        WPEFramework::Exchange::IRDKWindowManager* wm;
+        Thunder::Exchange::IOCIContainer*     oci;
+        Thunder::Exchange::IRDKWindowManager* wm;
         std::string                                configLine;
     };
 
-    class COMLinkMock final : public WPEFramework::PluginHost::IShell::ICOMLink {
+    class COMLinkMock final : public Thunder::PluginHost::IShell::ICOMLink {
     public:
         explicit COMLinkMock(ServiceMock& parent)
             : _parent(parent)
@@ -42,11 +42,11 @@ public:
 
         ~COMLinkMock() override = default;
 
-        void Register(WPEFramework::RPC::IRemoteConnection::INotification*) override
+        void Register(Thunder::RPC::IRemoteConnection::INotification*) override
         {
         }
 
-        void Unregister(const WPEFramework::RPC::IRemoteConnection::INotification*) override
+        void Unregister(const Thunder::RPC::IRemoteConnection::INotification*) override
         {
         }
 
@@ -58,12 +58,12 @@ public:
         {
         }
 
-        WPEFramework::RPC::IRemoteConnection* RemoteConnection(const uint32_t) override
+        Thunder::RPC::IRemoteConnection* RemoteConnection(const uint32_t) override
         {
             return nullptr;
         }
 
-        void* Instantiate(const WPEFramework::RPC::Object& object, const uint32_t interfaceId, uint32_t& connectionId) override
+        void* Instantiate(const Thunder::RPC::Object& object, const uint32_t interfaceId, uint32_t& connectionId) override
         {
             _parent.instantiateCalls++;
             if (_parent._instantiateHandler) {
@@ -110,7 +110,7 @@ public:
     {
         releaseCalls++;
         const uint32_t newCount = _refCount.fetch_sub(1, std::memory_order_acq_rel) - 1;
-        return (0U == newCount) ? WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED : WPEFramework::Core::ERROR_NONE;
+        return (0U == newCount) ? Thunder::Core::ERROR_DESTRUCTION_SUCCEEDED : Thunder::Core::ERROR_NONE;
     }
 
     std::string Versions() const override { return ""; }
@@ -124,47 +124,47 @@ public:
     std::string DataPath() const override { return "/tmp"; }
     state State() const override { return state::ACTIVATED; }
 
-    WPEFramework::Core::hresult Activate(const reason) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Deactivate(const reason) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Unavailable(const reason) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult ConfigLine(const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult SystemRootPath(const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Hibernate(const uint32_t) override { return WPEFramework::Core::ERROR_NONE; }
+    Thunder::Core::hresult Activate(const reason) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Deactivate(const reason) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Unavailable(const reason) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult ConfigLine(const std::string&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult SystemRootPath(const std::string&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Hibernate(const uint32_t) override { return Thunder::Core::ERROR_NONE; }
     std::string SystemPath() const override { return ""; }
     std::string PluginPath() const override { return ""; }
     startup Startup() const override { return static_cast<startup>(0); }
-    WPEFramework::Core::hresult Startup(const startup) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Resumed(const bool) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Metadata(std::string& info) const override { info.clear(); return WPEFramework::Core::ERROR_NONE; }
+    Thunder::Core::hresult Startup(const startup) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Resumed(const bool) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Metadata(std::string& info) const override { info.clear(); return Thunder::Core::ERROR_NONE; }
 
     bool Resumed() const override { return false; }
     bool IsSupported(const uint8_t) const override { return false; }
     void EnableWebServer(const std::string&, const std::string&) override {}
     void DisableWebServer() override {}
-    WPEFramework::PluginHost::ISubSystem* SubSystems() override { return nullptr; }
-    uint32_t Submit(const uint32_t, const WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::IElement>&) override { return WPEFramework::Core::ERROR_NONE; }
+    Thunder::PluginHost::ISubSystem* SubSystems() override { return nullptr; }
+    uint32_t Submit(const uint32_t, const Thunder::Core::ProxyType<Thunder::Core::JSON::IElement>&) override { return Thunder::Core::ERROR_NONE; }
     void Notify(const std::string&) override {}
     void* QueryInterface(const uint32_t) override { return nullptr; }
     void* QueryInterfaceByCallsign(const uint32_t id, const std::string& callsign) override
     {
-        if (WPEFramework::Exchange::IOCIContainer::ID == id
+        if (Thunder::Exchange::IOCIContainer::ID == id
             && "org.rdk.OCIContainer" == callsign
             && nullptr != _cfg.oci)
         {
             _cfg.oci->AddRef();
-            return static_cast<WPEFramework::Exchange::IOCIContainer*>(_cfg.oci);
+            return static_cast<Thunder::Exchange::IOCIContainer*>(_cfg.oci);
         }
-        if (WPEFramework::Exchange::IRDKWindowManager::ID == id
+        if (Thunder::Exchange::IRDKWindowManager::ID == id
             && "org.rdk.RDKWindowManager" == callsign
             && nullptr != _cfg.wm)
         {
             _cfg.wm->AddRef();
-            return static_cast<WPEFramework::Exchange::IRDKWindowManager*>(_cfg.wm);
+            return static_cast<Thunder::Exchange::IRDKWindowManager*>(_cfg.wm);
         }
         return nullptr;
     }
-    void Register(WPEFramework::PluginHost::IPlugin::INotification*) override {}
-    void Unregister(WPEFramework::PluginHost::IPlugin::INotification*) override {}
+    void Register(Thunder::PluginHost::IPlugin::INotification*) override {}
+    void Unregister(Thunder::PluginHost::IPlugin::INotification*) override {}
     std::string Model() const override { return ""; }
     bool Background() const override { return false; }
     std::string Accessor() const override { return ""; }
@@ -172,7 +172,7 @@ public:
     std::string HashKey() const override { return ""; }
     std::string Substitute(const std::string&) const override { return ""; }
 
-    WPEFramework::PluginHost::IShell::ICOMLink* COMLink() override
+    Thunder::PluginHost::IShell::ICOMLink* COMLink() override
     {
         return &_comLink;
     }
@@ -180,7 +180,7 @@ public:
     reason Reason() const override { return reason::REQUESTED; }
     std::string SystemRootPath() const override { return ""; }
 
-    WPEFramework::RPC::IRemoteConnection* RemoteConnection(const uint32_t) const
+    Thunder::RPC::IRemoteConnection* RemoteConnection(const uint32_t) const
     {
         remoteConnectionCalls++;
         return nullptr;
@@ -198,13 +198,13 @@ private:
 // ──────────────────────────────────────────────────────────────────────────────
 
 /* Minimal IOCIContainer stub used by DobbyEventListener tests. */
-class FakeOCIContainer final : public WPEFramework::Exchange::IOCIContainer {
+class FakeOCIContainer final : public Thunder::Exchange::IOCIContainer {
 public:
     FakeOCIContainer()
         : _refCount(1)
         , registerCalls(0)
         , unregisterCalls(0)
-        , _registerReturnCode(WPEFramework::Core::ERROR_NONE)
+        , _registerReturnCode(Thunder::Core::ERROR_NONE)
         , _storedNotification(nullptr)
     {
     }
@@ -217,44 +217,44 @@ public:
     uint32_t Release() const override
     {
         const uint32_t r = _refCount.fetch_sub(1, std::memory_order_acq_rel) - 1;
-        return (r == 0u) ? WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED
-                         : WPEFramework::Core::ERROR_NONE;
+        return (r == 0u) ? Thunder::Core::ERROR_DESTRUCTION_SUCCEEDED
+                         : Thunder::Core::ERROR_NONE;
     }
 
     void* QueryInterface(const uint32_t /*id*/) override { return nullptr; }
 
-    WPEFramework::Core::hresult Register(WPEFramework::Exchange::IOCIContainer::INotification* notification) override
+    Thunder::Core::hresult Register(Thunder::Exchange::IOCIContainer::INotification* notification) override
     {
         registerCalls++;
         _storedNotification = notification;
         return _registerReturnCode;
     }
 
-    WPEFramework::Core::hresult Unregister(WPEFramework::Exchange::IOCIContainer::INotification* /*notification*/) override
+    Thunder::Core::hresult Unregister(Thunder::Exchange::IOCIContainer::INotification* /*notification*/) override
     {
         unregisterCalls++;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult ListContainers(string& /*containers*/, bool& /*success*/, string& /*errorReason*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult GetContainerInfo(const string& /*id*/, string& /*info*/, bool& /*success*/, string& /*err*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult GetContainerState(const string& /*id*/, ContainerState& /*state*/, bool& /*success*/, string& /*err*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult StartContainer(const string& /*id*/, const string& /*bundle*/, const string& /*cmd*/, const string& /*ws*/, int32_t& /*desc*/, bool& /*success*/, string& /*err*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult StartContainerFromDobbySpec(const string& /*id*/, const string& /*spec*/, const string& /*cmd*/, const string& /*ws*/, int32_t& /*desc*/, bool& /*success*/, string& /*err*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult StopContainer(const string& /*id*/, bool /*force*/, bool& /*success*/, string& /*err*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult PauseContainer(const string& /*id*/, bool& /*success*/, string& /*err*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult ResumeContainer(const string& /*id*/, bool& /*success*/, string& /*err*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult HibernateContainer(const string& /*id*/, const string& /*opts*/, bool& /*success*/, string& /*err*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult WakeupContainer(const string& /*id*/, bool& /*success*/, string& /*err*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult ExecuteCommand(const string& /*id*/, const string& /*opts*/, const string& /*cmd*/, bool& /*success*/, string& /*err*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Annotate(const string& /*id*/, const string& /*key*/, const string& /*val*/, bool& /*success*/, string& /*err*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult RemoveAnnotation(const string& /*id*/, const string& /*key*/, bool& /*success*/, string& /*err*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Mount(const string& /*id*/, const string& /*src*/, const string& /*tgt*/, const string& /*type*/, const string& /*opts*/, bool& /*success*/, string& /*err*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Unmount(const string& /*id*/, const string& /*tgt*/, bool& /*success*/, string& /*err*/) override { return WPEFramework::Core::ERROR_NONE; }
+    Thunder::Core::hresult ListContainers(string& /*containers*/, bool& /*success*/, string& /*errorReason*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult GetContainerInfo(const string& /*id*/, string& /*info*/, bool& /*success*/, string& /*err*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult GetContainerState(const string& /*id*/, ContainerState& /*state*/, bool& /*success*/, string& /*err*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult StartContainer(const string& /*id*/, const string& /*bundle*/, const string& /*cmd*/, const string& /*ws*/, int32_t& /*desc*/, bool& /*success*/, string& /*err*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult StartContainerFromDobbySpec(const string& /*id*/, const string& /*spec*/, const string& /*cmd*/, const string& /*ws*/, int32_t& /*desc*/, bool& /*success*/, string& /*err*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult StopContainer(const string& /*id*/, bool /*force*/, bool& /*success*/, string& /*err*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult PauseContainer(const string& /*id*/, bool& /*success*/, string& /*err*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult ResumeContainer(const string& /*id*/, bool& /*success*/, string& /*err*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult HibernateContainer(const string& /*id*/, const string& /*opts*/, bool& /*success*/, string& /*err*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult WakeupContainer(const string& /*id*/, bool& /*success*/, string& /*err*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult ExecuteCommand(const string& /*id*/, const string& /*opts*/, const string& /*cmd*/, bool& /*success*/, string& /*err*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Annotate(const string& /*id*/, const string& /*key*/, const string& /*val*/, bool& /*success*/, string& /*err*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult RemoveAnnotation(const string& /*id*/, const string& /*key*/, bool& /*success*/, string& /*err*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Mount(const string& /*id*/, const string& /*src*/, const string& /*tgt*/, const string& /*type*/, const string& /*opts*/, bool& /*success*/, string& /*err*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Unmount(const string& /*id*/, const string& /*tgt*/, bool& /*success*/, string& /*err*/) override { return Thunder::Core::ERROR_NONE; }
 
-    void SetRegisterReturnCode(WPEFramework::Core::hresult code) { _registerReturnCode = code; }
+    void SetRegisterReturnCode(Thunder::Core::hresult code) { _registerReturnCode = code; }
 
-    WPEFramework::Exchange::IOCIContainer::INotification* GetStoredNotification() const
+    Thunder::Exchange::IOCIContainer::INotification* GetStoredNotification() const
     {
         return _storedNotification;
     }
@@ -264,15 +264,15 @@ public:
     std::atomic<uint32_t> unregisterCalls;
 
 private:
-    WPEFramework::Core::hresult _registerReturnCode;
-    WPEFramework::Exchange::IOCIContainer::INotification* _storedNotification;
+    Thunder::Core::hresult _registerReturnCode;
+    Thunder::Exchange::IOCIContainer::INotification* _storedNotification;
 };
 
-} // end namespace L0Test (FakeEventHandler defined in WPEFramework::Plugin below)
+} // end namespace L0Test (FakeEventHandler defined in Thunder::Plugin below)
 
 /* Minimal IEventHandler stub counting calls per event type.
- * Defined inside WPEFramework::Plugin so bare JsonObject resolves naturally. */
-namespace WPEFramework {
+ * Defined inside Thunder::Plugin so bare JsonObject resolves naturally. */
+namespace Thunder {
     namespace Plugin {
         class FakeEventHandler final : public IEventHandler {
         public:
@@ -310,15 +310,15 @@ namespace WPEFramework {
             std::atomic<uint32_t> stateChangedCalls;
         };
     } // namespace Plugin
-} // namespace WPEFramework
+} // namespace Thunder
 
 namespace L0Test {
-    using FakeEventHandler = WPEFramework::Plugin::FakeEventHandler;
+    using FakeEventHandler = Thunder::Plugin::FakeEventHandler;
 
 /* Minimal IRDKWindowManager stub used by WindowManagerConnector tests.
  * Implements all pure-virtual methods declared in IRDKWindowManager.h.
  */
-class FakeWindowManager final : public WPEFramework::Exchange::IRDKWindowManager {
+class FakeWindowManager final : public Thunder::Exchange::IRDKWindowManager {
 public:
     FakeWindowManager()
         : _refCount(1)
@@ -326,7 +326,7 @@ public:
         , unregisterCalls(0)
         , releaseCalls(0)
         , createDisplayCalls(0)
-        , _createDisplayReturnCode(WPEFramework::Core::ERROR_NONE)
+        , _createDisplayReturnCode(Thunder::Core::ERROR_NONE)
         , _storedNotification(nullptr)
     {
     }
@@ -340,29 +340,29 @@ public:
     {
         releaseCalls++;
         const uint32_t r = _refCount.fetch_sub(1, std::memory_order_acq_rel) - 1;
-        return (r == 0u) ? WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED
-                         : WPEFramework::Core::ERROR_NONE;
+        return (r == 0u) ? Thunder::Core::ERROR_DESTRUCTION_SUCCEEDED
+                         : Thunder::Core::ERROR_NONE;
     }
 
     void* QueryInterface(const uint32_t /*id*/) override { return nullptr; }
 
-    WPEFramework::Core::hresult Register(WPEFramework::Exchange::IRDKWindowManager::INotification* notification) override
+    Thunder::Core::hresult Register(Thunder::Exchange::IRDKWindowManager::INotification* notification) override
     {
         registerCalls++;
         _storedNotification = notification;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult Unregister(WPEFramework::Exchange::IRDKWindowManager::INotification* /*notification*/) override
+    Thunder::Core::hresult Unregister(Thunder::Exchange::IRDKWindowManager::INotification* /*notification*/) override
     {
         unregisterCalls++;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult Initialize(WPEFramework::PluginHost::IShell* /*service*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Deinitialize(WPEFramework::PluginHost::IShell* /*service*/) override { return WPEFramework::Core::ERROR_NONE; }
+    Thunder::Core::hresult Initialize(Thunder::PluginHost::IShell* /*service*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Deinitialize(Thunder::PluginHost::IShell* /*service*/) override { return Thunder::Core::ERROR_NONE; }
 
-    WPEFramework::Core::hresult CreateDisplay(const string& /*appInstanceId*/,
+    Thunder::Core::hresult CreateDisplay(const string& /*appInstanceId*/,
                                               const string& /*displayName*/,
                                               const uint32_t /*displayWidth*/,
                                               const uint32_t /*displayHeight*/,
@@ -379,44 +379,44 @@ public:
         return _createDisplayReturnCode;
     }
 
-    WPEFramework::Core::hresult GetApps(WPEFramework::Exchange::IRDKWindowManager::IStringIterator*& appsIds) const override { appsIds = nullptr; return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult AddKeyIntercept(const string& /*intercept*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult AddKeyIntercepts(const string& /*clientId*/, const string& /*intercepts*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult RemoveKeyIntercept(const string& /*clientId*/, const uint32_t /*keyCode*/, const string& /*modifiers*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult AddKeyListener(const string& /*keyListeners*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult RemoveKeyListener(const string& /*keyListeners*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult InjectKey(uint32_t /*keyCode*/, const string& /*modifiers*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult GenerateKey(const string& /*keys*/, const string& /*client*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult EnableInactivityReporting(const bool /*enable*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult SetInactivityInterval(const uint32_t /*interval*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult ResetInactivityTime() override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult EnableKeyRepeats(bool /*enable*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult GetKeyRepeatsEnabled(bool& /*keyRepeat*/) const override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult IgnoreKeyInputs(bool /*ignore*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult EnableInputEvents(const string& /*clients*/, bool /*enable*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult KeyRepeatConfig(const string& /*input*/, const string& /*keyConfig*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult SetFocus(const string& /*client*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult SetVisible(const string& /*client*/, bool /*visible*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult RenderReady(const string& /*client*/, bool& /*status*/) const override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult EnableDisplayRender(const string& /*client*/, bool /*enable*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult GetLastKeyInfo(uint32_t& /*keyCode*/, uint32_t& /*modifiers*/, uint64_t& /*timestampInSeconds*/) const override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult SetZOrder(const string& /*appInstanceId*/, const int32_t /*zOrder*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult GetZOrder(const string& /*appInstanceId*/, int32_t& /*zOrder*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult GetVisibility(const std::string& /*client*/, bool& /*visible*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult GetScreenshot() override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult StartVncServer() override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult StopVncServer() override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult GetFocused(string& /*client*/) const override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult SetAlias(const string& /*clientId*/, const string& /*alias*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult ShowSplashScreen(const bool /*show*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult SetBounds(const string& /*clientId*/, const uint32_t /*x*/, const uint32_t /*y*/, const uint32_t /*width*/, const uint32_t /*height*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult GetBounds(const string& /*clientId*/, uint32_t& /*x*/, uint32_t& /*y*/, uint32_t& /*width*/, uint32_t& /*height*/) const override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult SetScale(const string& /*clientId*/, const double /*scaleX*/, const double /*scaleY*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult GetScale(const string& /*clientId*/, double& /*scaleX*/, double& /*scaleY*/) const override { return WPEFramework::Core::ERROR_NONE; }
+    Thunder::Core::hresult GetApps(Thunder::Exchange::IRDKWindowManager::IStringIterator*& appsIds) const override { appsIds = nullptr; return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult AddKeyIntercept(const string& /*intercept*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult AddKeyIntercepts(const string& /*clientId*/, const string& /*intercepts*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult RemoveKeyIntercept(const string& /*clientId*/, const uint32_t /*keyCode*/, const string& /*modifiers*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult AddKeyListener(const string& /*keyListeners*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult RemoveKeyListener(const string& /*keyListeners*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult InjectKey(uint32_t /*keyCode*/, const string& /*modifiers*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult GenerateKey(const string& /*keys*/, const string& /*client*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult EnableInactivityReporting(const bool /*enable*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult SetInactivityInterval(const uint32_t /*interval*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult ResetInactivityTime() override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult EnableKeyRepeats(bool /*enable*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult GetKeyRepeatsEnabled(bool& /*keyRepeat*/) const override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult IgnoreKeyInputs(bool /*ignore*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult EnableInputEvents(const string& /*clients*/, bool /*enable*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult KeyRepeatConfig(const string& /*input*/, const string& /*keyConfig*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult SetFocus(const string& /*client*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult SetVisible(const string& /*client*/, bool /*visible*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult RenderReady(const string& /*client*/, bool& /*status*/) const override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult EnableDisplayRender(const string& /*client*/, bool /*enable*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult GetLastKeyInfo(uint32_t& /*keyCode*/, uint32_t& /*modifiers*/, uint64_t& /*timestampInSeconds*/) const override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult SetZOrder(const string& /*appInstanceId*/, const int32_t /*zOrder*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult GetZOrder(const string& /*appInstanceId*/, int32_t& /*zOrder*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult GetVisibility(const std::string& /*client*/, bool& /*visible*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult GetScreenshot() override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult StartVncServer() override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult StopVncServer() override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult GetFocused(string& /*client*/) const override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult SetAlias(const string& /*clientId*/, const string& /*alias*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult ShowSplashScreen(const bool /*show*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult SetBounds(const string& /*clientId*/, const uint32_t /*x*/, const uint32_t /*y*/, const uint32_t /*width*/, const uint32_t /*height*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult GetBounds(const string& /*clientId*/, uint32_t& /*x*/, uint32_t& /*y*/, uint32_t& /*width*/, uint32_t& /*height*/) const override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult SetScale(const string& /*clientId*/, const double /*scaleX*/, const double /*scaleY*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult GetScale(const string& /*clientId*/, double& /*scaleX*/, double& /*scaleY*/) const override { return Thunder::Core::ERROR_NONE; }
 
-    void SetCreateDisplayReturnCode(WPEFramework::Core::hresult code) { _createDisplayReturnCode = code; }
+    void SetCreateDisplayReturnCode(Thunder::Core::hresult code) { _createDisplayReturnCode = code; }
 
-    WPEFramework::Exchange::IRDKWindowManager::INotification* GetStoredNotification() const
+    Thunder::Exchange::IRDKWindowManager::INotification* GetStoredNotification() const
     {
         return _storedNotification;
     }
@@ -428,8 +428,8 @@ public:
     std::atomic<uint32_t> createDisplayCalls;
 
 private:
-    WPEFramework::Core::hresult _createDisplayReturnCode;
-    WPEFramework::Exchange::IRDKWindowManager::INotification* _storedNotification;
+    Thunder::Core::hresult _createDisplayReturnCode;
+    Thunder::Exchange::IRDKWindowManager::INotification* _storedNotification;
 };
 
 } // namespace L0Test

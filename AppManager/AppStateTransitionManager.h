@@ -28,7 +28,7 @@
 #include <string>
 #include <thread>
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
 class AppManagerImplementation;
@@ -69,4 +69,4 @@ private:
 };
 
 } // namespace Plugin
-} // namespace WPEFramework
+} // namespace Thunder

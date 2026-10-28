@@ -23,7 +23,7 @@
 #include <thread>
 #include "StateTransitionRequest.h"
 
-namespace WPEFramework
+namespace Thunder
 {
     namespace Plugin
     {
@@ -43,4 +43,4 @@ namespace WPEFramework
 		//std::vector<StateTransitionRequest> mRequests; //TODO
         };
     } /* namespace Plugin */
-} /* namespace WPEFramework */
+} /* namespace Thunder */

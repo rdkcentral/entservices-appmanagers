@@ -20,9 +20,9 @@
 
 #include "TelemetryMetrics.h"
 
-const string WPEFramework::Plugin::TelemetryMetrics::SERVICE_NAME = "org.rdk.TelemetryMetrics";
+const string Thunder::Plugin::TelemetryMetrics::SERVICE_NAME = "org.rdk.TelemetryMetrics";
 
-namespace WPEFramework
+namespace Thunder
 {
 
     namespace {
@@ -43,7 +43,7 @@ namespace WPEFramework
     {
 
     /*
-     *Register TelemetryMetrics module as wpeframework plugin
+     *Register TelemetryMetrics module as thunder plugin
      **/
     SERVICE_REGISTRATION(TelemetryMetrics, TELEMETRY_METRICS_API_VERSION_NUMBER_MAJOR, TELEMETRY_METRICS_API_VERSION_NUMBER_MINOR, TELEMETRY_METRICS_API_VERSION_NUMBER_PATCH);
 
@@ -140,4 +140,4 @@ namespace WPEFramework
         return (string());
     }
 } /* namespace Plugin */
-} /* namespace WPEFramework */
+} /* namespace Thunder */

@@ -2,7 +2,7 @@
 
 ## Overview
 **Module Name**: PreinstallManager
-**Type**: WPEFramework Plugin
+**Type**: Thunder Plugin
 **Purpose**: Scan and install pre-installed application packages from device image directories
 
 ## Description
@@ -60,7 +60,7 @@ PreinstallManagerImplementation
 ### Configuration
 - **Config File**: `PreinstallManager.conf.in` / `PreinstallManager.config`
 - **App Preinstall Directory**: Configured via `PLUGIN_PREINSTALL_MANAGER_APP_PREINSTALL_DIRECTORY`
-- **Thunder Service**: Registered as a WPEFramework/Thunder plugin
+- **Thunder Service**: Registered as a Thunder/Thunder plugin
 
 ## Data Flow
 ```
@@ -124,7 +124,7 @@ Manual Scan (Client::Scan()):
 ### System Libraries
 | Library | Version | Purpose | Optional |
 |---------|---------|---------|----------|
-| WPEFramework | Latest | Plugin framework | No |
+| Thunder | Latest | Plugin framework | No |
 
 ### Internal Dependencies
 | Module | Type | Purpose |

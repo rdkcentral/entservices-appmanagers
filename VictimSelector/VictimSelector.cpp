@@ -19,9 +19,9 @@
 
 #include "VictimSelector.h"
 
-const string WPEFramework::Plugin::VictimSelector::SERVICE_NAME = "org.rdk.VictimSelector";
+const string Thunder::Plugin::VictimSelector::SERVICE_NAME = "org.rdk.VictimSelector";
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
 namespace {
@@ -124,4 +124,4 @@ string VictimSelector::Information() const {
 }
 
 } // namespace Plugin
-} // namespace WPEFramework
+} // namespace Thunder

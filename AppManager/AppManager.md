@@ -374,7 +374,7 @@ ans(configuration)
 
 ```mermaid
 sequenceDiagram
-    participant Thunder as WPEFramework
+    participant Thunder as Thunder
     participant Shell as AppManager
     participant Impl as AppManagerImplementation
     participant LIC as LifecycleInterfaceConnector
@@ -496,11 +496,11 @@ stateDiagram-v2
 ```mermaid
 graph LR
     subgraph "Thunder Process"
-        Shell[libWPEFrameworkAppManager.so]
+        Shell[libThunderAppManager.so]
     end
 
     subgraph "Plugin Process (if Mode=Local)"
-        Impl[libWPEFrameworkAppManagerImplementation.so]
+        Impl[libThunderAppManagerImplementation.so]
     end
 
     Shell -.->|COM-RPC| Impl

@@ -11,7 +11,7 @@
 #include "common/L0Expect.hpp"
 
 namespace {
-class CapturingTelemetryMetrics final : public WPEFramework::Exchange::ITelemetryMetrics {
+class CapturingTelemetryMetrics final : public Thunder::Exchange::ITelemetryMetrics {
 public:
     CapturingTelemetryMetrics()
         : _refCount(1)
@@ -28,33 +28,33 @@ public:
     uint32_t Release() const override
     {
         const uint32_t remaining = _refCount.fetch_sub(1, std::memory_order_acq_rel) - 1;
-        return (0U == remaining) ? WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED : WPEFramework::Core::ERROR_NONE;
+        return (0U == remaining) ? Thunder::Core::ERROR_DESTRUCTION_SUCCEEDED : Thunder::Core::ERROR_NONE;
     }
 
     void* QueryInterface(const uint32_t id) override
     {
-        if (id == WPEFramework::Exchange::ITelemetryMetrics::ID) {
+        if (id == Thunder::Exchange::ITelemetryMetrics::ID) {
             AddRef();
-            return static_cast<WPEFramework::Exchange::ITelemetryMetrics*>(this);
+            return static_cast<Thunder::Exchange::ITelemetryMetrics*>(this);
         }
         return nullptr;
     }
 
-    WPEFramework::Core::hresult Record(const std::string& id, const std::string& metrics, const std::string& name) override
+    Thunder::Core::hresult Record(const std::string& id, const std::string& metrics, const std::string& name) override
     {
         lastId = id;
         lastMetrics = metrics;
         lastName = name;
         recordCalls++;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult Publish(const std::string& id, const std::string& name) override
+    Thunder::Core::hresult Publish(const std::string& id, const std::string& name) override
     {
         lastPublishId = id;
         lastPublishName = name;
         publishCalls++;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
     mutable std::atomic<uint32_t> _refCount;
@@ -122,7 +122,7 @@ uint32_t Test_PM_Component_TelemetryReporting_Markers()
     L0Test::ServiceMock::FakeSubSystem subSystem;
     L0Test::ServiceMock service(L0Test::ServiceMock::Config(&storage, &subSystem, &telemetry));
 
-    auto& reporting = WPEFramework::Plugin::PackageManagerTelemetryReporting::getInstance();
+    auto& reporting = Thunder::Plugin::PackageManagerTelemetryReporting::getInstance();
     reporting.initialize(&service);
 
     const uint64_t requestTime = static_cast<uint64_t>(reporting.getCurrentTimestampMs() - 5);
@@ -153,7 +153,7 @@ uint32_t Test_PM_Component_TelemetryReporting_PackageCacheMarkerPayload()
     L0Test::ServiceMock::FakeSubSystem subSystem;
     L0Test::ServiceMock service(L0Test::ServiceMock::Config(&storage, &subSystem, &telemetry));
 
-    auto& reporting = WPEFramework::Plugin::PackageManagerTelemetryReporting::getInstance();
+    auto& reporting = Thunder::Plugin::PackageManagerTelemetryReporting::getInstance();
     reporting.initialize(&service);
 
     const uint64_t requestTime = static_cast<uint64_t>(reporting.getCurrentTimestampMs() - 10);

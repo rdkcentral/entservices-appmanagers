@@ -22,7 +22,7 @@
 #include <vector>
 #include <string>
 
-namespace WPEFramework
+namespace Thunder
 {
 namespace Plugin
 {
@@ -65,4 +65,4 @@ namespace Plugin
         AppStorageInfo mAppStorageInfo;
     };
 } /* namespace Plugin */
-} /* namespace WPEFramework */
+} /* namespace Thunder */

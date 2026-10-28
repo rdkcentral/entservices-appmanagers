@@ -28,7 +28,7 @@
 #include "DownloadManagerImplementation.h"
 #include <interfaces/IDownloadManager.h>
 #include <interfaces/json/JDownloadManager.h>
-using namespace WPEFramework;
+using namespace Thunder;
 
 #include "ISubSystemMock.h"
 #include "ServiceMock.h"

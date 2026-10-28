@@ -28,7 +28,7 @@
 #include <mutex>
 #include <string>
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
 class VictimSelectorImplementation : public Exchange::IVictimSelector,
@@ -98,4 +98,4 @@ private:
 };
 
 } // namespace Plugin
-} // namespace WPEFramework
+} // namespace Thunder

@@ -11,7 +11,7 @@
 #include <functional>
 #include "tracing/Logging.h"
 #include "UtilsLogging.h"
-namespace WPEFramework
+namespace Thunder
 {
 namespace Plugin
 {

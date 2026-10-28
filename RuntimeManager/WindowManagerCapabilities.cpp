@@ -20,7 +20,7 @@
 #include "WindowManagerCapabilities.h"
 #include <sstream>
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
 std::string buildWindowManagerCapabilities(const std::string& runtimeCapabilities)
@@ -72,4 +72,4 @@ std::string buildWindowManagerCapabilities(const std::string& runtimeCapabilitie
 }
 
 } // namespace Plugin
-} // namespace WPEFramework
+} // namespace Thunder

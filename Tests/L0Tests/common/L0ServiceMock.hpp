@@ -35,7 +35,7 @@ public:
     L0ServiceMock& operator=(const L0ServiceMock&) = delete;
 
     // PUBLIC_INTERFACE
-    void RegisterInterface(const std::string& callsign, const uint32_t interfaceId, WPEFramework::Core::IUnknown* instance)
+    void RegisterInterface(const std::string& callsign, const uint32_t interfaceId, Thunder::Core::IUnknown* instance)
     {
         /**
          * Register an interface instance for a given callsign + interfaceId.
@@ -58,7 +58,7 @@ public:
     }
 
     // PUBLIC_INTERFACE
-    WPEFramework::Core::IUnknown* QueryInterfaceByCallsign(const std::string& callsign, const uint32_t interfaceId) const
+    Thunder::Core::IUnknown* QueryInterfaceByCallsign(const std::string& callsign, const uint32_t interfaceId) const
     {
         /**
          * Return the registered interface for (callsign, interfaceId) or nullptr.
@@ -76,7 +76,7 @@ public:
     }
 
 private:
-    std::map<std::string, std::map<uint32_t, WPEFramework::Core::IUnknown*>> _registry;
+    std::map<std::string, std::map<uint32_t, Thunder::Core::IUnknown*>> _registry;
 };
 
 } // namespace L0Test

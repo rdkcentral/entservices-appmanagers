@@ -45,7 +45,7 @@
 #include "AppInfoManager.h"
 #include "RuntimeConfigPayload.h"
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
     class AppManagerImplementation : public Exchange::IAppManager, public Exchange::IConfiguration {
@@ -282,9 +282,9 @@ namespace Plugin {
         std::string mHibernationStoragePath;
         std::unique_ptr<AppStateTransitionManager> mStateTransitionManager;
     #endif
-        Core::hresult fetchAppPackageList(std::vector<WPEFramework::Exchange::IPackageInstaller::Package>& packageList);
+        Core::hresult fetchAppPackageList(std::vector<Thunder::Exchange::IPackageInstaller::Package>& packageList);
         void checkInstallDetails(const std::string& appId, bool& installed, std::string& version,
-                     const std::vector<WPEFramework::Exchange::IPackageInstaller::Package>& packageList);
+                     const std::vector<Thunder::Exchange::IPackageInstaller::Package>& packageList);
         Core::hresult packageLock(const string& appId, PackageInfo &packageData, Exchange::IPackageHandler::LockReason lockReason, bool* lockAcquired = nullptr);
         Core::hresult packageUnLock(const string& appId);
         bool createOrUpdatePackageInfoByAppId(const string& appId, PackageInfo &packageData);
@@ -305,6 +305,6 @@ namespace Plugin {
     bool checkInstallUninstallBlock(const std::string& appId);
     };
 } /* namespace Plugin */
-} /* namespace WPEFramework */
+} /* namespace Thunder */
 
 

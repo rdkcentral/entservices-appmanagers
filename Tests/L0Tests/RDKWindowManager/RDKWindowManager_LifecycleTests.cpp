@@ -8,11 +8,11 @@
 
 namespace {
 
-class FakeRDKWindowManagerImpl final : public WPEFramework::Exchange::IRDKWindowManager {
+class FakeRDKWindowManagerImpl final : public Thunder::Exchange::IRDKWindowManager {
 public:
     FakeRDKWindowManagerImpl()
         : _refCount(1)
-        , initializeResult(WPEFramework::Core::ERROR_NONE)
+        , initializeResult(Thunder::Core::ERROR_NONE)
         , registerCalls(0)
         , unregisterCalls(0)
     {
@@ -28,73 +28,73 @@ public:
         const uint32_t remaining = _refCount.fetch_sub(1, std::memory_order_acq_rel) - 1;
         if (0U == remaining) {
             delete this;
-            return WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED;
+            return Thunder::Core::ERROR_DESTRUCTION_SUCCEEDED;
         }
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
     void* QueryInterface(const uint32_t id) override
     {
-        if (id == WPEFramework::Exchange::IRDKWindowManager::ID) {
+        if (id == Thunder::Exchange::IRDKWindowManager::ID) {
             AddRef();
-            return static_cast<WPEFramework::Exchange::IRDKWindowManager*>(this);
+            return static_cast<Thunder::Exchange::IRDKWindowManager*>(this);
         }
         return nullptr;
     }
 
-    WPEFramework::Core::hresult Register(WPEFramework::Exchange::IRDKWindowManager::INotification*) override
+    Thunder::Core::hresult Register(Thunder::Exchange::IRDKWindowManager::INotification*) override
     {
         registerCalls++;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult Unregister(WPEFramework::Exchange::IRDKWindowManager::INotification*) override
+    Thunder::Core::hresult Unregister(Thunder::Exchange::IRDKWindowManager::INotification*) override
     {
         unregisterCalls++;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult Initialize(WPEFramework::PluginHost::IShell*) override { return initializeResult; }
-    WPEFramework::Core::hresult Deinitialize(WPEFramework::PluginHost::IShell*) override { return WPEFramework::Core::ERROR_NONE; }
+    Thunder::Core::hresult Initialize(Thunder::PluginHost::IShell*) override { return initializeResult; }
+    Thunder::Core::hresult Deinitialize(Thunder::PluginHost::IShell*) override { return Thunder::Core::ERROR_NONE; }
 
-    WPEFramework::Core::hresult CreateDisplay(const std::string&, const std::string&, uint32_t, uint32_t, bool, uint32_t, uint32_t, uint32_t, uint32_t, bool, bool, const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult GetApps(WPEFramework::Exchange::IRDKWindowManager::IStringIterator*& appsIds) const override { appsIds = nullptr; return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult AddKeyIntercept(const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult AddKeyIntercepts(const std::string&, const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult RemoveKeyIntercept(const std::string&, uint32_t, const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult AddKeyListener(const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult RemoveKeyListener(const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult InjectKey(uint32_t, const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult GenerateKey(const std::string&, const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult EnableInactivityReporting(bool) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult SetInactivityInterval(uint32_t) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult ResetInactivityTime() override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult EnableKeyRepeats(bool) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult GetKeyRepeatsEnabled(bool&) const override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult IgnoreKeyInputs(bool) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult EnableInputEvents(const std::string&, bool) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult KeyRepeatConfig(const std::string&, const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult SetFocus(const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult SetVisible(const std::string&, bool) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult GetVisibility(const std::string&, bool&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult RenderReady(const std::string&, bool&) const override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult EnableDisplayRender(const std::string&, bool) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult GetLastKeyInfo(uint32_t&, uint32_t&, uint64_t&) const override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult SetZOrder(const std::string&, int32_t) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult GetZOrder(const std::string&, int32_t&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult StartVncServer() override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult StopVncServer() override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult GetFocused(std::string&) const override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult GetScreenshot() override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult SetAlias(const std::string&, const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult ShowSplashScreen(const bool) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult SetBounds(const std::string&, const uint32_t, const uint32_t, const uint32_t, const uint32_t) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult GetBounds(const std::string&, uint32_t&, uint32_t&, uint32_t&, uint32_t&) const override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult SetScale(const std::string&, const double, const double) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult GetScale(const std::string&, double&, double&) const override { return WPEFramework::Core::ERROR_NONE; }
+    Thunder::Core::hresult CreateDisplay(const std::string&, const std::string&, uint32_t, uint32_t, bool, uint32_t, uint32_t, uint32_t, uint32_t, bool, bool, const std::string&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult GetApps(Thunder::Exchange::IRDKWindowManager::IStringIterator*& appsIds) const override { appsIds = nullptr; return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult AddKeyIntercept(const std::string&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult AddKeyIntercepts(const std::string&, const std::string&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult RemoveKeyIntercept(const std::string&, uint32_t, const std::string&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult AddKeyListener(const std::string&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult RemoveKeyListener(const std::string&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult InjectKey(uint32_t, const std::string&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult GenerateKey(const std::string&, const std::string&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult EnableInactivityReporting(bool) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult SetInactivityInterval(uint32_t) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult ResetInactivityTime() override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult EnableKeyRepeats(bool) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult GetKeyRepeatsEnabled(bool&) const override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult IgnoreKeyInputs(bool) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult EnableInputEvents(const std::string&, bool) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult KeyRepeatConfig(const std::string&, const std::string&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult SetFocus(const std::string&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult SetVisible(const std::string&, bool) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult GetVisibility(const std::string&, bool&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult RenderReady(const std::string&, bool&) const override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult EnableDisplayRender(const std::string&, bool) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult GetLastKeyInfo(uint32_t&, uint32_t&, uint64_t&) const override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult SetZOrder(const std::string&, int32_t) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult GetZOrder(const std::string&, int32_t&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult StartVncServer() override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult StopVncServer() override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult GetFocused(std::string&) const override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult GetScreenshot() override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult SetAlias(const std::string&, const std::string&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult ShowSplashScreen(const bool) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult SetBounds(const std::string&, const uint32_t, const uint32_t, const uint32_t, const uint32_t) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult GetBounds(const std::string&, uint32_t&, uint32_t&, uint32_t&, uint32_t&) const override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult SetScale(const std::string&, const double, const double) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult GetScale(const std::string&, double&, double&) const override { return Thunder::Core::ERROR_NONE; }
 
     mutable std::atomic<uint32_t> _refCount;
-    WPEFramework::Core::hresult initializeResult;
+    Thunder::Core::hresult initializeResult;
     std::atomic<uint32_t> registerCalls;
     std::atomic<uint32_t> unregisterCalls;
 };
@@ -103,7 +103,7 @@ public:
 
 namespace {
 
-using WPEFramework::PluginHost::IPlugin;
+using Thunder::PluginHost::IPlugin;
 
 struct PluginAndService {
     L0Test::ServiceMock service;
@@ -111,7 +111,7 @@ struct PluginAndService {
 
     PluginAndService()
         : service()
-        , plugin(WPEFramework::Core::Service<WPEFramework::Plugin::RDKWindowManager>::Create<IPlugin>())
+        , plugin(Thunder::Core::Service<Thunder::Plugin::RDKWindowManager>::Create<IPlugin>())
     {
     }
 
@@ -131,7 +131,7 @@ uint32_t Test_RDKWM_Lifecycle_InitializeFailsWhenRootNull()
     L0Test::TestResult tr;
 
     PluginAndService ps;
-    ps.service.SetInstantiateHandler([](const WPEFramework::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
+    ps.service.SetInstantiateHandler([](const Thunder::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
         connectionId = 0;
         return nullptr;
     });
@@ -155,11 +155,11 @@ uint32_t Test_RDKWM_Lifecycle_InitializeSuccessAndDeinitialize()
     PluginAndService ps;
     auto* fakeImpl = new FakeRDKWindowManagerImpl();
 
-    ps.service.SetInstantiateHandler([fakeImpl](const WPEFramework::RPC::Object&, const uint32_t interfaceId, uint32_t& connectionId) -> void* {
+    ps.service.SetInstantiateHandler([fakeImpl](const Thunder::RPC::Object&, const uint32_t interfaceId, uint32_t& connectionId) -> void* {
         connectionId = 0;
-        if (interfaceId == WPEFramework::Exchange::IRDKWindowManager::ID) {
+        if (interfaceId == Thunder::Exchange::IRDKWindowManager::ID) {
             fakeImpl->AddRef();
-            return static_cast<WPEFramework::Exchange::IRDKWindowManager*>(fakeImpl);
+            return static_cast<Thunder::Exchange::IRDKWindowManager*>(fakeImpl);
         }
         return nullptr;
     });

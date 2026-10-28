@@ -75,17 +75,17 @@ uint32_t L0MockPersistentStore::Release() const
     while (0U < current) {
         const uint32_t remaining = current - 1;
         if (true == _refCount.compare_exchange_weak(current, remaining, std::memory_order_acq_rel, std::memory_order_acquire)) {
-            return (0U == remaining) ? WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED : WPEFramework::Core::ERROR_NONE;
+            return (0U == remaining) ? Thunder::Core::ERROR_DESTRUCTION_SUCCEEDED : Thunder::Core::ERROR_NONE;
         }
     }
-    return WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED;
+    return Thunder::Core::ERROR_DESTRUCTION_SUCCEEDED;
 }
 
 void* L0MockPersistentStore::QueryInterface(const uint32_t interfaceNumber)
 {
-    if (interfaceNumber == WPEFramework::Exchange::IStore2::ID) {
+    if (interfaceNumber == Thunder::Exchange::IStore2::ID) {
         AddRef();
-        return static_cast<WPEFramework::Exchange::IStore2*>(this);
+        return static_cast<Thunder::Exchange::IStore2*>(this);
     }
     return nullptr;
 }
@@ -93,13 +93,13 @@ void* L0MockPersistentStore::QueryInterface(const uint32_t interfaceNumber)
 uint32_t L0MockPersistentStore::Register(INotification* notification)
 {
     (void)notification; // Unused in mock implementation
-    return WPEFramework::Core::ERROR_NONE;
+    return Thunder::Core::ERROR_NONE;
 }
 
 uint32_t L0MockPersistentStore::Unregister(INotification* notification)
 {
     (void)notification; // Unused in mock implementation
-    return WPEFramework::Core::ERROR_NONE;
+    return Thunder::Core::ERROR_NONE;
 }
 
 uint32_t L0MockPersistentStore::GetValue(const ScopeType scope, const string& ns, const string& key, string& value, uint32_t& ttl)
@@ -110,14 +110,14 @@ uint32_t L0MockPersistentStore::GetValue(const ScopeType scope, const string& ns
     _lastKey = key;
 
     if (!_getValueSuccess) {
-        return WPEFramework::Core::ERROR_UNKNOWN_KEY;
+        return Thunder::Core::ERROR_UNKNOWN_KEY;
     }
 
     // Check if we have a configured result
     if (!_getValueResult.empty()) {
         value = _getValueResult;
         ttl = 0; // No TTL in mock store
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
     // Check actual storage
@@ -127,11 +127,11 @@ uint32_t L0MockPersistentStore::GetValue(const ScopeType scope, const string& ns
         if (keyIt != nsIt->second.end()) {
             value = keyIt->second;
             ttl = 0; // No TTL in mock store
-            return WPEFramework::Core::ERROR_NONE;
+            return Thunder::Core::ERROR_NONE;
         }
     }
 
-    return WPEFramework::Core::ERROR_UNKNOWN_KEY;
+    return Thunder::Core::ERROR_UNKNOWN_KEY;
 }
 
 uint32_t L0MockPersistentStore::SetValue(const ScopeType scope, const string& ns, const string& key, const string& value, const uint32_t ttl)
@@ -144,11 +144,11 @@ uint32_t L0MockPersistentStore::SetValue(const ScopeType scope, const string& ns
     _lastValue = value;
 
     if (!_setValueSuccess) {
-        return WPEFramework::Core::ERROR_GENERAL;
+        return Thunder::Core::ERROR_GENERAL;
     }
 
     _storage[ns][key] = value;
-    return WPEFramework::Core::ERROR_NONE;
+    return Thunder::Core::ERROR_NONE;
 }
 
 uint32_t L0MockPersistentStore::DeleteKey(const ScopeType scope, const string& ns, const string& key)
@@ -159,7 +159,7 @@ uint32_t L0MockPersistentStore::DeleteKey(const ScopeType scope, const string& n
     _lastKey = key;
 
     if (!_deleteKeySuccess) {
-        return WPEFramework::Core::ERROR_GENERAL;
+        return Thunder::Core::ERROR_GENERAL;
     }
 
     auto nsIt = _storage.find(ns);
@@ -170,14 +170,14 @@ uint32_t L0MockPersistentStore::DeleteKey(const ScopeType scope, const string& n
         }
     }
 
-    return WPEFramework::Core::ERROR_NONE;
+    return Thunder::Core::ERROR_NONE;
 }
 
 uint32_t L0MockPersistentStore::DeleteNamespace(const ScopeType scope, const string& ns)
 {
     (void)scope; // Unused in mock implementation
     _storage.erase(ns);
-    return WPEFramework::Core::ERROR_NONE;
+    return Thunder::Core::ERROR_NONE;
 }
 
 } // namespace L0Test

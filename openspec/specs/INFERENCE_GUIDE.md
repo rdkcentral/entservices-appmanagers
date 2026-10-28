@@ -39,8 +39,8 @@ Specs can be automatically inferred from:
 
 **Extraction Logic**:
 ```cmake
-find_package(WPEFramework)                    → Framework dependency
-find_package(${NAMESPACE}Plugins REQUIRED)    → WPEFramework plugins
+find_package(Thunder)                    → Framework dependency
+find_package(${NAMESPACE}Plugins REQUIRED)    → Thunder plugins
 find_package(${NAMESPACE}Definitions REQUIRED)→ API definitions
 find_package(CompileSettingsDebug)            → Build settings
 find_package(Curl REQUIRED)                   → System library (curl)
@@ -55,7 +55,7 @@ External Repositories:
   └─ rdk-window-manager → RDKWindowManager module
 
 System Libraries:
-  ├─ WPEFramework
+  ├─ Thunder
   ├─ curl
   ├─ yaml-cpp (optional, guarded by if statement)
   ├─ jsoncpp

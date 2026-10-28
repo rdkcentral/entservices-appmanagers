@@ -23,7 +23,7 @@
 #include <interfaces/ITelemetryMetrics.h>
 #include <interfaces/IConfiguration.h>
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
     class TelemetryMetrics: public PluginHost::IPlugin
@@ -57,4 +57,4 @@ namespace Plugin {
     };
 
 } /* namespace Plugin */
-} /* namespace WPEFramework */
+} /* namespace Thunder */

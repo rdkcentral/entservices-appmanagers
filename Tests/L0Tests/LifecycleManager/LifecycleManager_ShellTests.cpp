@@ -40,7 +40,7 @@
 
 namespace {
 
-using WPEFramework::PluginHost::IPlugin;
+using Thunder::PluginHost::IPlugin;
 
 /** RAII wrapper that creates/destroys a LifecycleManager plugin instance. */
 struct PluginAndService {
@@ -50,7 +50,7 @@ struct PluginAndService {
     explicit PluginAndService(L0Test::LcmServiceMock::Config cfg = L0Test::LcmServiceMock::Config())
         : service(cfg)
     {
-        plugin = WPEFramework::Core::Service<WPEFramework::Plugin::LifecycleManager>::Create<IPlugin>();
+        plugin = Thunder::Core::Service<Thunder::Plugin::LifecycleManager>::Create<IPlugin>();
     }
 
     ~PluginAndService()
@@ -73,18 +73,18 @@ uint32_t Test_LCM_ConstructorSetsSInstance()
     L0Test::TestResult tr;
 
     // Reset any lingering sInstance
-    WPEFramework::Plugin::LifecycleManager::sInstance = nullptr;
+    Thunder::Plugin::LifecycleManager::sInstance = nullptr;
 
     {
         PluginAndService ps;
         L0Test::ExpectTrue(tr,
-            WPEFramework::Plugin::LifecycleManager::sInstance != nullptr,
+            Thunder::Plugin::LifecycleManager::sInstance != nullptr,
             "sInstance is non-null after construction");
     }
 
     // After plugin object is released sInstance should be nullptr
     L0Test::ExpectTrue(tr,
-        WPEFramework::Plugin::LifecycleManager::sInstance == nullptr,
+        Thunder::Plugin::LifecycleManager::sInstance == nullptr,
         "sInstance is nullptr after destruction");
 
     return tr.failures;
@@ -98,18 +98,18 @@ uint32_t Test_LCM_DestructorResetsSInstance()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::LifecycleManager::sInstance = nullptr;
+    Thunder::Plugin::LifecycleManager::sInstance = nullptr;
 
     {
         PluginAndService ps;
         // sInstance must be set
         L0Test::ExpectTrue(tr,
-            WPEFramework::Plugin::LifecycleManager::sInstance != nullptr,
+            Thunder::Plugin::LifecycleManager::sInstance != nullptr,
             "sInstance non-null while plugin is alive");
     }
 
     L0Test::ExpectTrue(tr,
-        WPEFramework::Plugin::LifecycleManager::sInstance == nullptr,
+        Thunder::Plugin::LifecycleManager::sInstance == nullptr,
         "sInstance null after plugin destroyed");
 
     return tr.failures;
@@ -133,7 +133,7 @@ uint32_t Test_LCM_InitializeSucceedsWithFakeImpl()
     PluginAndService ps(L0Test::LcmServiceMock::Config{&fakeRtm, &fakeWm});
 
     ps.service.SetInstantiateHandler(
-        [](const WPEFramework::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
+        [](const Thunder::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
             connectionId = 42;
             return static_cast<void*>(new L0Test::FakeLifecycleManagerImpl());
         });
@@ -189,7 +189,7 @@ uint32_t Test_LCM_InitializeCallsConfigureWhenConfigAvailable()
 
     PluginAndService ps(L0Test::LcmServiceMock::Config{&fakeRtm, &fakeWm});
     ps.service.SetInstantiateHandler(
-        [&fakeImpl](const WPEFramework::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
+        [&fakeImpl](const Thunder::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
             connectionId = 10;
             fakeImpl = new L0Test::FakeLifecycleManagerImpl();
             return static_cast<void*>(fakeImpl);
@@ -230,7 +230,7 @@ uint32_t Test_LCM_InitializeRegistersStateNotification()
     L0Test::FakeLifecycleManagerImpl* fakeImpl = nullptr;
     PluginAndService ps(L0Test::LcmServiceMock::Config{&fakeRtm, &fakeWm});
     ps.service.SetInstantiateHandler(
-        [&fakeImpl](const WPEFramework::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
+        [&fakeImpl](const Thunder::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
             connectionId = 11;
             fakeImpl = new L0Test::FakeLifecycleManagerImpl();
             return static_cast<void*>(fakeImpl);
@@ -271,7 +271,7 @@ uint32_t Test_LCM_DeinitializeUnregistersStateNotification()
     L0Test::FakeLifecycleManagerImpl* fakeImpl = nullptr;
     PluginAndService ps(L0Test::LcmServiceMock::Config{&fakeRtm, &fakeWm});
     ps.service.SetInstantiateHandler(
-        [&fakeImpl](const WPEFramework::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
+        [&fakeImpl](const Thunder::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
             connectionId = 12;
             fakeImpl = new L0Test::FakeLifecycleManagerImpl();
             return static_cast<void*>(fakeImpl);
@@ -312,7 +312,7 @@ uint32_t Test_LCM_DeinitializeReleasesImplementation()
     L0Test::FakeWindowManager  fakeWm;
     PluginAndService ps(L0Test::LcmServiceMock::Config{&fakeRtm, &fakeWm});
     ps.service.SetInstantiateHandler(
-        [](const WPEFramework::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
+        [](const Thunder::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
             connectionId = 13;
             return static_cast<void*>(new L0Test::FakeLifecycleManagerImpl());
         });
@@ -349,7 +349,7 @@ uint32_t Test_LCM_DeinitializeHandlesNullState()
 
     // Initialize with null impl → state stays null
     ps.service.SetInstantiateHandler(
-        [](const WPEFramework::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
+        [](const Thunder::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
             connectionId = 0;
             return nullptr;
         });
@@ -403,7 +403,7 @@ uint32_t Test_LCM_NotificationActivatedDoesNotCrash()
     L0Test::TestResult tr;
 
     PluginAndService ps;
-    auto* lcm = dynamic_cast<WPEFramework::Plugin::LifecycleManager*>(ps.plugin);
+    auto* lcm = dynamic_cast<Thunder::Plugin::LifecycleManager*>(ps.plugin);
     L0Test::ExpectTrue(tr, lcm != nullptr, "Cast to LifecycleManager succeeds");
 
     if (nullptr != lcm) {
@@ -428,7 +428,7 @@ uint32_t Test_LCM_NotificationDeactivatedDoesNotCrash()
     L0Test::TestResult tr;
 
     PluginAndService ps;
-    auto* lcm = dynamic_cast<WPEFramework::Plugin::LifecycleManager*>(ps.plugin);
+    auto* lcm = dynamic_cast<Thunder::Plugin::LifecycleManager*>(ps.plugin);
     L0Test::ExpectTrue(tr, lcm != nullptr, "Cast to LifecycleManager succeeds");
 
     if (nullptr != lcm) {
@@ -460,7 +460,7 @@ uint32_t Test_LCM_NotificationOnAppLifecycleStateChangedDoesNotCrash()
     // JSONRPC dispatch framework set up by JLifecycleManagerState::Register()
     // inside Initialize(). Without it the dispatch table is uninitialised → crash.
     PluginAndService ps(L0Test::LcmServiceMock::Config{&fakeRtm, &fakeWm});
-    auto* lcm = dynamic_cast<WPEFramework::Plugin::LifecycleManager*>(ps.plugin);
+    auto* lcm = dynamic_cast<Thunder::Plugin::LifecycleManager*>(ps.plugin);
     L0Test::ExpectTrue(tr, lcm != nullptr, "Cast to LifecycleManager succeeds");
 
     if (nullptr != lcm) {
@@ -475,8 +475,8 @@ uint32_t Test_LCM_NotificationOnAppLifecycleStateChangedDoesNotCrash()
             lcm->NotificationOnAppLifecycleStateChanged(
                 "com.example.app",
                 "inst-001",
-                WPEFramework::Exchange::ILifecycleManager::LifecycleState::PAUSED,
-                WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE,
+                Thunder::Exchange::ILifecycleManager::LifecycleState::PAUSED,
+                Thunder::Exchange::ILifecycleManager::LifecycleState::ACTIVE,
                 "home");
         } catch (...) {
             noThrow = false;
@@ -498,12 +498,12 @@ uint32_t Test_LCM_NotificationQueryInterfaceReturnsValidPointer()
     L0Test::TestResult tr;
 
     PluginAndService ps;
-    auto* lcm = dynamic_cast<WPEFramework::Plugin::LifecycleManager*>(ps.plugin);
+    auto* lcm = dynamic_cast<Thunder::Plugin::LifecycleManager*>(ps.plugin);
     L0Test::ExpectTrue(tr, lcm != nullptr, "Cast to LifecycleManager succeeds");
 
     if (nullptr != lcm) {
         void* ptr = lcm->NotificationQueryInterface(
-            WPEFramework::Exchange::ILifecycleManagerState::INotification::ID);
+            Thunder::Exchange::ILifecycleManagerState::INotification::ID);
         L0Test::ExpectTrue(tr, ptr != nullptr,
             "NotificationQueryInterface returns non-null for INotification ID");
         // NOTE: Do NOT call Release() on ptr here.

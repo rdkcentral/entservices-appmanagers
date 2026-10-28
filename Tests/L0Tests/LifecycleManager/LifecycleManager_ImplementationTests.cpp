@@ -55,15 +55,15 @@
 // Test helper: friend class for accessing private members
 // ─────────────────────────────────────────────────────────────────────────────
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
 /**
  * @brief Accesses LifecycleManagerImplementation private members via UNIT_TEST friend.
  *
- * Must be in WPEFramework::Plugin namespace to match the friend declaration
+ * Must be in Thunder::Plugin namespace to match the friend declaration
  * 'friend class LifecycleManagerImplementationTest' in LifecycleManagerImplementation.h,
- * which injects the name into the enclosing WPEFramework::Plugin namespace.
+ * which injects the name into the enclosing Thunder::Plugin namespace.
  */
 class LifecycleManagerImplementationTest {
 public:
@@ -216,12 +216,12 @@ public:
     }
 };
 } // namespace Plugin
-} // namespace WPEFramework
+} // namespace Thunder
 
 // Convenience aliases at global scope so test functions need no namespace prefix.
-using LifecycleManagerImplementationTest = WPEFramework::Plugin::LifecycleManagerImplementationTest;
-using ConcreteLifecycleManagerImpl       = WPEFramework::Plugin::ConcreteLifecycleManagerImpl;
-using RespawnTrackingLifecycleManagerImpl = WPEFramework::Plugin::RespawnTrackingLifecycleManagerImpl;
+using LifecycleManagerImplementationTest = Thunder::Plugin::LifecycleManagerImplementationTest;
+using ConcreteLifecycleManagerImpl       = Thunder::Plugin::ConcreteLifecycleManagerImpl;
+using RespawnTrackingLifecycleManagerImpl = Thunder::Plugin::RespawnTrackingLifecycleManagerImpl;
 // ─────────────────────────────────────────────────────────────────────────────
 // Constructor initialises empty lists
 // ─────────────────────────────────────────────────────────────────────────────
@@ -256,17 +256,17 @@ uint32_t Test_Impl_RegisterILcmNotification()
     ConcreteLifecycleManagerImpl impl;
     L0Test::FakeLcmNotification* notification = new L0Test::FakeLcmNotification();
 
-    WPEFramework::Core::hresult result = impl.Register(
-        static_cast<WPEFramework::Exchange::ILifecycleManager::INotification*>(notification));
+    Thunder::Core::hresult result = impl.Register(
+        static_cast<Thunder::Exchange::ILifecycleManager::INotification*>(notification));
 
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE,
         "Register(INotification) returns ERROR_NONE");
     L0Test::ExpectEqU32(tr,
         static_cast<uint32_t>(LifecycleManagerImplementationTest::getNotifications(impl).size()),
         1u,
         "Notification list has 1 entry after Register");
 
-    impl.Unregister(static_cast<WPEFramework::Exchange::ILifecycleManager::INotification*>(notification));
+    impl.Unregister(static_cast<Thunder::Exchange::ILifecycleManager::INotification*>(notification));
     notification->Release();
 
     return tr.failures;
@@ -283,15 +283,15 @@ uint32_t Test_Impl_RegisterILcmNotificationDuplicate()
     ConcreteLifecycleManagerImpl impl;
     L0Test::FakeLcmNotification* notification = new L0Test::FakeLcmNotification();
 
-    impl.Register(static_cast<WPEFramework::Exchange::ILifecycleManager::INotification*>(notification));
-    impl.Register(static_cast<WPEFramework::Exchange::ILifecycleManager::INotification*>(notification));
+    impl.Register(static_cast<Thunder::Exchange::ILifecycleManager::INotification*>(notification));
+    impl.Register(static_cast<Thunder::Exchange::ILifecycleManager::INotification*>(notification));
 
     L0Test::ExpectEqU32(tr,
         static_cast<uint32_t>(LifecycleManagerImplementationTest::getNotifications(impl).size()),
         1u,
         "Duplicate Register does not add second entry");
 
-    impl.Unregister(static_cast<WPEFramework::Exchange::ILifecycleManager::INotification*>(notification));
+    impl.Unregister(static_cast<Thunder::Exchange::ILifecycleManager::INotification*>(notification));
     notification->Release();
 
     return tr.failures;
@@ -308,11 +308,11 @@ uint32_t Test_Impl_UnregisterILcmNotification()
     ConcreteLifecycleManagerImpl impl;
     L0Test::FakeLcmNotification* notification = new L0Test::FakeLcmNotification();
 
-    impl.Register(static_cast<WPEFramework::Exchange::ILifecycleManager::INotification*>(notification));
-    WPEFramework::Core::hresult result = impl.Unregister(
-        static_cast<WPEFramework::Exchange::ILifecycleManager::INotification*>(notification));
+    impl.Register(static_cast<Thunder::Exchange::ILifecycleManager::INotification*>(notification));
+    Thunder::Core::hresult result = impl.Unregister(
+        static_cast<Thunder::Exchange::ILifecycleManager::INotification*>(notification));
 
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE,
         "Unregister returns ERROR_NONE");
     L0Test::ExpectTrue(tr,
         LifecycleManagerImplementationTest::getNotifications(impl).empty(),
@@ -333,10 +333,10 @@ uint32_t Test_Impl_UnregisterILcmNotificationUnknown()
     ConcreteLifecycleManagerImpl impl;
     L0Test::FakeLcmNotification* unknown = new L0Test::FakeLcmNotification();
 
-    WPEFramework::Core::hresult result = impl.Unregister(
-        static_cast<WPEFramework::Exchange::ILifecycleManager::INotification*>(unknown));
+    Thunder::Core::hresult result = impl.Unregister(
+        static_cast<Thunder::Exchange::ILifecycleManager::INotification*>(unknown));
 
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
         "Unregister unknown notification returns ERROR_GENERAL");
 
     unknown->Release();
@@ -355,17 +355,17 @@ uint32_t Test_Impl_RegisterILcmStateNotification()
     ConcreteLifecycleManagerImpl impl;
     L0Test::FakeLcmStateNotification* notification = new L0Test::FakeLcmStateNotification();
 
-    WPEFramework::Core::hresult result = impl.Register(
-        static_cast<WPEFramework::Exchange::ILifecycleManagerState::INotification*>(notification));
+    Thunder::Core::hresult result = impl.Register(
+        static_cast<Thunder::Exchange::ILifecycleManagerState::INotification*>(notification));
 
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE,
         "Register(ILifecycleManagerState::INotification*) returns ERROR_NONE");
     L0Test::ExpectEqU32(tr,
         static_cast<uint32_t>(LifecycleManagerImplementationTest::getStateNotifications(impl).size()),
         1u,
         "State notification list has 1 entry after Register");
 
-    impl.Unregister(static_cast<WPEFramework::Exchange::ILifecycleManagerState::INotification*>(notification));
+    impl.Unregister(static_cast<Thunder::Exchange::ILifecycleManagerState::INotification*>(notification));
     notification->Release();
 
     return tr.failures;
@@ -382,15 +382,15 @@ uint32_t Test_Impl_RegisterILcmStateNotificationDuplicate()
     ConcreteLifecycleManagerImpl impl;
     L0Test::FakeLcmStateNotification* notification = new L0Test::FakeLcmStateNotification();
 
-    impl.Register(static_cast<WPEFramework::Exchange::ILifecycleManagerState::INotification*>(notification));
-    impl.Register(static_cast<WPEFramework::Exchange::ILifecycleManagerState::INotification*>(notification));
+    impl.Register(static_cast<Thunder::Exchange::ILifecycleManagerState::INotification*>(notification));
+    impl.Register(static_cast<Thunder::Exchange::ILifecycleManagerState::INotification*>(notification));
 
     L0Test::ExpectEqU32(tr,
         static_cast<uint32_t>(LifecycleManagerImplementationTest::getStateNotifications(impl).size()),
         1u,
         "Duplicate state Register does not add second entry");
 
-    impl.Unregister(static_cast<WPEFramework::Exchange::ILifecycleManagerState::INotification*>(notification));
+    impl.Unregister(static_cast<Thunder::Exchange::ILifecycleManagerState::INotification*>(notification));
     notification->Release();
 
     return tr.failures;
@@ -407,11 +407,11 @@ uint32_t Test_Impl_UnregisterILcmStateNotification()
     ConcreteLifecycleManagerImpl impl;
     L0Test::FakeLcmStateNotification* notification = new L0Test::FakeLcmStateNotification();
 
-    impl.Register(static_cast<WPEFramework::Exchange::ILifecycleManagerState::INotification*>(notification));
-    WPEFramework::Core::hresult result = impl.Unregister(
-        static_cast<WPEFramework::Exchange::ILifecycleManagerState::INotification*>(notification));
+    impl.Register(static_cast<Thunder::Exchange::ILifecycleManagerState::INotification*>(notification));
+    Thunder::Core::hresult result = impl.Unregister(
+        static_cast<Thunder::Exchange::ILifecycleManagerState::INotification*>(notification));
 
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE,
         "Unregister state notification returns ERROR_NONE");
     L0Test::ExpectTrue(tr,
         LifecycleManagerImplementationTest::getStateNotifications(impl).empty(),
@@ -432,10 +432,10 @@ uint32_t Test_Impl_UnregisterILcmStateNotificationUnknown()
     ConcreteLifecycleManagerImpl impl;
     L0Test::FakeLcmStateNotification* unknown = new L0Test::FakeLcmStateNotification();
 
-    WPEFramework::Core::hresult result = impl.Unregister(
-        static_cast<WPEFramework::Exchange::ILifecycleManagerState::INotification*>(unknown));
+    Thunder::Core::hresult result = impl.Unregister(
+        static_cast<Thunder::Exchange::ILifecycleManagerState::INotification*>(unknown));
 
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
         "Unregister unknown state notification returns ERROR_GENERAL");
 
     unknown->Release();
@@ -454,8 +454,8 @@ uint32_t Test_Impl_GetLoadedAppsEmpty()
     ConcreteLifecycleManagerImpl impl;
     std::string apps;
 
-    WPEFramework::Core::hresult result = impl.GetLoadedApps(false, apps);
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+    Thunder::Core::hresult result = impl.GetLoadedApps(false, apps);
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE,
         "GetLoadedApps returns ERROR_NONE");
     L0Test::ExpectEqStr(tr, apps, "[]",
         "GetLoadedApps returns '[]' when no apps loaded");
@@ -474,8 +474,8 @@ uint32_t Test_Impl_GetLoadedAppsWithApps()
     ConcreteLifecycleManagerImpl impl;
 
     // Inject two contexts directly
-    auto ctx1 = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.app1");
-    auto ctx2 = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.app2");
+    auto ctx1 = std::make_shared<Thunder::Plugin::ApplicationContext>("com.test.app1");
+    auto ctx2 = std::make_shared<Thunder::Plugin::ApplicationContext>("com.test.app2");
     std::string id1 = "inst-001";
     std::string id2 = "inst-002";
     ctx1->setAppInstanceId(id1);
@@ -484,8 +484,8 @@ uint32_t Test_Impl_GetLoadedAppsWithApps()
     LifecycleManagerImplementationTest::getLoadedApps(impl).push_back(ctx2);
 
     std::string apps;
-    WPEFramework::Core::hresult result = impl.GetLoadedApps(false, apps);
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+    Thunder::Core::hresult result = impl.GetLoadedApps(false, apps);
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE,
         "GetLoadedApps returns ERROR_NONE");
     L0Test::ExpectTrue(tr, apps.find("com.test.app1") != std::string::npos,
         "Result contains appId 'com.test.app1'");
@@ -508,7 +508,7 @@ uint32_t Test_Impl_GetLoadedAppsNonVerboseOmitsRuntimeStats()
 
     ConcreteLifecycleManagerImpl impl;
 
-    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.verbose");
+    auto ctx = std::make_shared<Thunder::Plugin::ApplicationContext>("com.test.verbose");
     std::string instId = "inst-verbose-001";
     ctx->setAppInstanceId(instId);
     LifecycleManagerImplementationTest::getLoadedApps(impl).push_back(ctx);
@@ -533,14 +533,14 @@ uint32_t Test_Impl_IsAppLoadedTrue()
 
     ConcreteLifecycleManagerImpl impl;
 
-    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.loaded");
+    auto ctx = std::make_shared<Thunder::Plugin::ApplicationContext>("com.test.loaded");
     std::string inst = "inst-loaded-001";
     ctx->setAppInstanceId(inst);
     LifecycleManagerImplementationTest::getLoadedApps(impl).push_back(ctx);
 
     bool loaded = false;
-    WPEFramework::Core::hresult result = impl.IsAppLoaded("com.test.loaded", loaded);
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+    Thunder::Core::hresult result = impl.IsAppLoaded("com.test.loaded", loaded);
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE,
         "IsAppLoaded returns ERROR_NONE");
     L0Test::ExpectTrue(tr, loaded, "IsAppLoaded returns true for existing app");
 
@@ -560,8 +560,8 @@ uint32_t Test_Impl_IsAppLoadedFalse()
     ConcreteLifecycleManagerImpl impl;
 
     bool loaded = true; // pre-set to true to verify it is set to false
-    WPEFramework::Core::hresult result = impl.IsAppLoaded("com.unknown.app", loaded);
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+    Thunder::Core::hresult result = impl.IsAppLoaded("com.unknown.app", loaded);
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE,
         "IsAppLoaded returns ERROR_NONE for unknown app");
     L0Test::ExpectTrue(tr, !loaded, "IsAppLoaded sets loaded=false for unknown app");
 
@@ -580,10 +580,10 @@ uint32_t Test_Impl_SendIntentToActiveAppUnknownApp()
 
     std::string errorReason;
     bool success = true;
-    WPEFramework::Core::hresult result = impl.SendIntentToActiveApp(
+    Thunder::Core::hresult result = impl.SendIntentToActiveApp(
         "unknown-inst-id", "deeplink://home", errorReason, success);
 
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
         "SendIntentToActiveApp returns ERROR_GENERAL for unknown appInstanceId");
     L0Test::ExpectTrue(tr, !success,
         "success flag is false for unknown appInstanceId");
@@ -602,17 +602,17 @@ uint32_t Test_Impl_SendIntentToActiveAppNonActive()
     ConcreteLifecycleManagerImpl impl;
 
     // The default initial state is UNLOADED.
-    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.paused");
+    auto ctx = std::make_shared<Thunder::Plugin::ApplicationContext>("com.test.paused");
     std::string inst = "inst-paused-001";
     ctx->setAppInstanceId(inst);
     LifecycleManagerImplementationTest::getLoadedApps(impl).push_back(ctx);
 
     std::string errorReason;
     bool success = true;
-    WPEFramework::Core::hresult result = impl.SendIntentToActiveApp(
+    Thunder::Core::hresult result = impl.SendIntentToActiveApp(
         "inst-paused-001", "deeplink://home", errorReason, success);
 
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE,
         "SendIntentToActiveApp accepts a non-ACTIVE app");
     L0Test::ExpectTrue(tr, success,
         "success flag is true when the intent is queued");
@@ -636,8 +636,8 @@ uint32_t Test_Impl_AppReadyUnknownAppId()
 
     ConcreteLifecycleManagerImpl impl;
 
-    WPEFramework::Core::hresult result = impl.AppReady("com.unknown.app");
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    Thunder::Core::hresult result = impl.AppReady("com.unknown.app");
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
         "AppReady returns ERROR_GENERAL for unknown appId");
 
     return tr.failures;
@@ -653,13 +653,13 @@ uint32_t Test_Impl_AppReadyKnownAppId()
 
     ConcreteLifecycleManagerImpl impl;
 
-    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.ready");
+    auto ctx = std::make_shared<Thunder::Plugin::ApplicationContext>("com.test.ready");
     std::string inst = "inst-ready-001";
     ctx->setAppInstanceId(inst);
     LifecycleManagerImplementationTest::getLoadedApps(impl).push_back(ctx);
 
-    WPEFramework::Core::hresult result = impl.AppReady("com.test.ready");
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+    Thunder::Core::hresult result = impl.AppReady("com.test.ready");
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE,
         "AppReady returns ERROR_NONE for known appId");
 
     LifecycleManagerImplementationTest::getLoadedApps(impl).clear();
@@ -677,12 +677,12 @@ uint32_t Test_Impl_StateChangeCompleteAlwaysReturnsErrorNone()
 
     ConcreteLifecycleManagerImpl impl;
 
-    WPEFramework::Core::hresult result = impl.StateChangeComplete("any.app", 1, true);
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+    Thunder::Core::hresult result = impl.StateChangeComplete("any.app", 1, true);
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE,
         "StateChangeComplete returns ERROR_NONE (success=true)");
 
     result = impl.StateChangeComplete("any.app", 2, false);
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE,
         "StateChangeComplete returns ERROR_NONE (success=false)");
 
     return tr.failures;
@@ -698,11 +698,11 @@ uint32_t Test_Impl_CloseAppUnknownAppId()
 
     ConcreteLifecycleManagerImpl impl;
 
-    WPEFramework::Core::hresult result = impl.CloseApp(
+    Thunder::Core::hresult result = impl.CloseApp(
         "com.unknown.app",
-        WPEFramework::Exchange::ILifecycleManagerState::AppCloseReason::USER_EXIT);
+        Thunder::Exchange::ILifecycleManagerState::AppCloseReason::USER_EXIT);
 
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
         "CloseApp returns ERROR_GENERAL for unknown appId");
 
     return tr.failures;
@@ -719,7 +719,7 @@ uint32_t Test_Impl_ConfigureWithNullService()
     ConcreteLifecycleManagerImpl impl;
 
     uint32_t result = impl.Configure(nullptr);
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE,
         "Configure(nullptr) returns ERROR_NONE");
 
     return tr.failures;
@@ -734,8 +734,8 @@ uint32_t Test_Impl_OnRippleEventIsNoOp()
     L0Test::TestResult tr;
 
     ConcreteLifecycleManagerImpl impl;
-    // JsonObject in the LifecycleManager source maps to WPEFramework::Core::JSON::VariantContainer
-    WPEFramework::Core::JSON::VariantContainer data;
+    // JsonObject in the LifecycleManager source maps to Thunder::Core::JSON::VariantContainer
+    Thunder::Core::JSON::VariantContainer data;
 
     bool noThrow = true;
     try {
@@ -762,17 +762,17 @@ uint32_t Test_Impl_DispatchAppStateChangedCallsLcmNotifications()
     L0Test::FakeLcmNotification* notif1 = new L0Test::FakeLcmNotification();
     L0Test::FakeLcmNotification* notif2 = new L0Test::FakeLcmNotification();
 
-    impl.Register(static_cast<WPEFramework::Exchange::ILifecycleManager::INotification*>(notif1));
-    impl.Register(static_cast<WPEFramework::Exchange::ILifecycleManager::INotification*>(notif2));
+    impl.Register(static_cast<Thunder::Exchange::ILifecycleManager::INotification*>(notif1));
+    impl.Register(static_cast<Thunder::Exchange::ILifecycleManager::INotification*>(notif2));
 
     // Build event payload
-    WPEFramework::Core::JSON::VariantContainer params;
+    Thunder::Core::JSON::VariantContainer params;
     params["appId"] = "com.test.app";
     params["appInstanceId"] = "inst-001";
     params["oldLifecycleState"] = static_cast<uint32_t>(
-        WPEFramework::Exchange::ILifecycleManager::LifecycleState::PAUSED);
+        Thunder::Exchange::ILifecycleManager::LifecycleState::PAUSED);
     params["newLifecycleState"] = static_cast<uint32_t>(
-        WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE);
+        Thunder::Exchange::ILifecycleManager::LifecycleState::ACTIVE);
     params["navigationIntent"] = "home";
     params["errorReason"] = "";
 
@@ -787,8 +787,8 @@ uint32_t Test_Impl_DispatchAppStateChangedCallsLcmNotifications()
     L0Test::ExpectTrue(tr, notif2->onAppStateChangedCount.load() >= 1u,
         "Second notification received OnAppStateChanged callback");
 
-    impl.Unregister(static_cast<WPEFramework::Exchange::ILifecycleManager::INotification*>(notif1));
-    impl.Unregister(static_cast<WPEFramework::Exchange::ILifecycleManager::INotification*>(notif2));
+    impl.Unregister(static_cast<Thunder::Exchange::ILifecycleManager::INotification*>(notif1));
+    impl.Unregister(static_cast<Thunder::Exchange::ILifecycleManager::INotification*>(notif2));
     notif1->Release();
     notif2->Release();
 
@@ -808,16 +808,16 @@ uint32_t Test_Impl_DispatchAppStateChangedCallsStateNotifications()
     L0Test::FakeLcmStateNotification* sn1 = new L0Test::FakeLcmStateNotification();
     L0Test::FakeLcmStateNotification* sn2 = new L0Test::FakeLcmStateNotification();
 
-    impl.Register(static_cast<WPEFramework::Exchange::ILifecycleManagerState::INotification*>(sn1));
-    impl.Register(static_cast<WPEFramework::Exchange::ILifecycleManagerState::INotification*>(sn2));
+    impl.Register(static_cast<Thunder::Exchange::ILifecycleManagerState::INotification*>(sn1));
+    impl.Register(static_cast<Thunder::Exchange::ILifecycleManagerState::INotification*>(sn2));
 
-    WPEFramework::Core::JSON::VariantContainer params;
+    Thunder::Core::JSON::VariantContainer params;
     params["appId"] = "com.test.state";
     params["appInstanceId"] = "inst-state-001";
     params["oldLifecycleState"] = static_cast<uint32_t>(
-        WPEFramework::Exchange::ILifecycleManager::LifecycleState::PAUSED);
+        Thunder::Exchange::ILifecycleManager::LifecycleState::PAUSED);
     params["newLifecycleState"] = static_cast<uint32_t>(
-        WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE);
+        Thunder::Exchange::ILifecycleManager::LifecycleState::ACTIVE);
     params["navigationIntent"] = "deeplink://home";
     params["errorReason"] = "";
 
@@ -831,8 +831,8 @@ uint32_t Test_Impl_DispatchAppStateChangedCallsStateNotifications()
     L0Test::ExpectTrue(tr, sn2->onStateChangedCount.load() >= 1u,
         "Second state notification received OnAppLifecycleStateChanged");
 
-    impl.Unregister(static_cast<WPEFramework::Exchange::ILifecycleManagerState::INotification*>(sn1));
-    impl.Unregister(static_cast<WPEFramework::Exchange::ILifecycleManagerState::INotification*>(sn2));
+    impl.Unregister(static_cast<Thunder::Exchange::ILifecycleManagerState::INotification*>(sn1));
+    impl.Unregister(static_cast<Thunder::Exchange::ILifecycleManagerState::INotification*>(sn2));
     sn1->Release();
     sn2->Release();
 
@@ -844,21 +844,21 @@ uint32_t Test_Impl_QueuedLifecycleEventsPreserveOrder()
     L0Test::TestResult tr;
     ConcreteLifecycleManagerImpl impl;
     auto* notification = new L0Test::FakeLcmStateNotification();
-    impl.Register(static_cast<WPEFramework::Exchange::ILifecycleManagerState::INotification*>(notification));
+    impl.Register(static_cast<Thunder::Exchange::ILifecycleManagerState::INotification*>(notification));
 
-    WPEFramework::Core::JSON::VariantContainer params;
+    Thunder::Core::JSON::VariantContainer params;
     params["appId"] = "com.test.order";
     params["appInstanceId"] = "instance-order";
     params["navigationIntent"] = "";
     params["errorReason"] = "";
 
-    params["oldLifecycleState"] = static_cast<uint32_t>(WPEFramework::Exchange::ILifecycleManager::INITIALIZING);
-    params["newLifecycleState"] = static_cast<uint32_t>(WPEFramework::Exchange::ILifecycleManager::PAUSED);
+    params["oldLifecycleState"] = static_cast<uint32_t>(Thunder::Exchange::ILifecycleManager::INITIALIZING);
+    params["newLifecycleState"] = static_cast<uint32_t>(Thunder::Exchange::ILifecycleManager::PAUSED);
     LifecycleManagerImplementationTest::queueEvent(impl,
         LifecycleManagerImplementationTest::LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED, params);
 
-    params["oldLifecycleState"] = static_cast<uint32_t>(WPEFramework::Exchange::ILifecycleManager::PAUSED);
-    params["newLifecycleState"] = static_cast<uint32_t>(WPEFramework::Exchange::ILifecycleManager::ACTIVE);
+    params["oldLifecycleState"] = static_cast<uint32_t>(Thunder::Exchange::ILifecycleManager::PAUSED);
+    params["newLifecycleState"] = static_cast<uint32_t>(Thunder::Exchange::ILifecycleManager::ACTIVE);
     LifecycleManagerImplementationTest::queueEvent(impl,
         LifecycleManagerImplementationTest::LIFECYCLE_MANAGER_EVENT_APPSTATECHANGED, params);
 
@@ -867,14 +867,14 @@ uint32_t Test_Impl_QueuedLifecycleEventsPreserveOrder()
         "Both lifecycle transitions are delivered");
     if (2U == notification->transitions.size()) {
         L0Test::ExpectTrue(tr,
-            notification->transitions[0].first == WPEFramework::Exchange::ILifecycleManager::INITIALIZING &&
-            notification->transitions[0].second == WPEFramework::Exchange::ILifecycleManager::PAUSED &&
-            notification->transitions[1].first == WPEFramework::Exchange::ILifecycleManager::PAUSED &&
-            notification->transitions[1].second == WPEFramework::Exchange::ILifecycleManager::ACTIVE,
+            notification->transitions[0].first == Thunder::Exchange::ILifecycleManager::INITIALIZING &&
+            notification->transitions[0].second == Thunder::Exchange::ILifecycleManager::PAUSED &&
+            notification->transitions[1].first == Thunder::Exchange::ILifecycleManager::PAUSED &&
+            notification->transitions[1].second == Thunder::Exchange::ILifecycleManager::ACTIVE,
             "INITIALIZING to PAUSED is delivered before PAUSED to ACTIVE");
     }
 
-    impl.Unregister(static_cast<WPEFramework::Exchange::ILifecycleManagerState::INotification*>(notification));
+    impl.Unregister(static_cast<Thunder::Exchange::ILifecycleManagerState::INotification*>(notification));
     notification->Release();
     return tr.failures;
 }
@@ -887,15 +887,15 @@ uint32_t Test_Impl_DispatchOnFailureCallsLcmNotification()
     ConcreteLifecycleManagerImpl impl;
     L0Test::FakeLcmNotification* notif = new L0Test::FakeLcmNotification();
 
-    impl.Register(static_cast<WPEFramework::Exchange::ILifecycleManager::INotification*>(notif));
+    impl.Register(static_cast<Thunder::Exchange::ILifecycleManager::INotification*>(notif));
 
-    WPEFramework::Core::JSON::VariantContainer params;
+    Thunder::Core::JSON::VariantContainer params;
     params["appId"] = "com.test.fail";
     params["appInstanceId"] = "inst-fail-001";
     params["oldLifecycleState"] = static_cast<uint32_t>(
-        WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE);
+        Thunder::Exchange::ILifecycleManager::LifecycleState::ACTIVE);
     params["newLifecycleState"] = static_cast<uint32_t>(
-        WPEFramework::Exchange::ILifecycleManager::LifecycleState::UNLOADED);
+        Thunder::Exchange::ILifecycleManager::LifecycleState::UNLOADED);
     params["errorReason"] = "container_crashed";
     params["navigationIntent"] = "";
 
@@ -907,7 +907,7 @@ uint32_t Test_Impl_DispatchOnFailureCallsLcmNotification()
     L0Test::ExpectTrue(tr, notif->onAppStateChangedCount.load() >= 1u,
         "OnAppStateChanged called on ONFAILURE dispatch");
 
-    impl.Unregister(static_cast<WPEFramework::Exchange::ILifecycleManager::INotification*>(notif));
+    impl.Unregister(static_cast<Thunder::Exchange::ILifecycleManager::INotification*>(notif));
     notif->Release();
 
     return tr.failures;
@@ -923,7 +923,7 @@ uint32_t Test_Impl_DispatchUnknownEventDoesNotCrash()
 
     ConcreteLifecycleManagerImpl impl;
 
-    WPEFramework::Core::JSON::VariantContainer params;
+    Thunder::Core::JSON::VariantContainer params;
     params["appId"] = "com.test.unknown";
     params["appInstanceId"] = "";
     params["oldLifecycleState"] = 0u;
@@ -957,7 +957,7 @@ uint32_t Test_Impl_GetContextByAppInstanceId()
 
     ConcreteLifecycleManagerImpl impl;
 
-    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.ctx");
+    auto ctx = std::make_shared<Thunder::Plugin::ApplicationContext>("com.test.ctx");
     std::string inst = "inst-ctx-001";
     ctx->setAppInstanceId(inst);
     LifecycleManagerImplementationTest::getLoadedApps(impl).push_back(ctx);
@@ -970,9 +970,9 @@ uint32_t Test_Impl_GetContextByAppInstanceId()
     // SendIntentToActiveApp uses getContext(appInstanceId, "") for instance ID lookup
     std::string errorReason;
     bool success = false;
-    WPEFramework::Core::hresult result = impl.SendIntentToActiveApp(
+    Thunder::Core::hresult result = impl.SendIntentToActiveApp(
         "inst-ctx-001", "deeplink://test", errorReason, success);
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE,
         "getContext finds the app by appInstanceId and queues its intent");
     L0Test::ExpectTrue(tr, success,
         "success is true when getContext finds the app by appInstanceId");
@@ -1024,7 +1024,7 @@ uint32_t Test_Impl_DispatchRuntimeEventDoesNotCrash()
 
     ConcreteLifecycleManagerImpl impl;
 
-    WPEFramework::Core::JSON::VariantContainer params;
+    Thunder::Core::JSON::VariantContainer params;
     params["appId"]             = std::string("");
     params["appInstanceId"]     = std::string("");
     params["name"]              = std::string("unknownRuntimeEvent");
@@ -1059,7 +1059,7 @@ uint32_t Test_Impl_DispatchWindowEventDoesNotCrash()
 
     ConcreteLifecycleManagerImpl impl;
 
-    WPEFramework::Core::JSON::VariantContainer params;
+    Thunder::Core::JSON::VariantContainer params;
     params["appId"]             = std::string("");
     params["appInstanceId"]     = std::string("");
     params["name"]              = std::string("unknownWindowEvent");
@@ -1093,12 +1093,12 @@ uint32_t Test_Impl_SetTargetAppStateUnknownInstance()
 
     ConcreteLifecycleManagerImpl impl;
 
-    WPEFramework::Core::hresult result = impl.SetTargetAppState(
+    Thunder::Core::hresult result = impl.SetTargetAppState(
         "unknown-instance-id",
-        WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE,
+        Thunder::Exchange::ILifecycleManager::LifecycleState::ACTIVE,
         "");
 
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
         "SetTargetAppState returns ERROR_GENERAL for unknown appInstanceId");
 
     return tr.failures;
@@ -1116,10 +1116,10 @@ uint32_t Test_Impl_UnloadAppUnknownInstance()
 
     std::string errorReason;
     bool success = true;
-    WPEFramework::Core::hresult result = impl.UnloadApp(
+    Thunder::Core::hresult result = impl.UnloadApp(
         "unknown-instance-id", errorReason, success);
 
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
         "UnloadApp returns ERROR_GENERAL for unknown appInstanceId");
     L0Test::ExpectTrue(tr, !success,
         "UnloadApp sets success=false for unknown appInstanceId");
@@ -1139,10 +1139,10 @@ uint32_t Test_Impl_KillAppUnknownInstance()
 
     std::string errorReason;
     bool success = true;
-    WPEFramework::Core::hresult result = impl.KillApp(
+    Thunder::Core::hresult result = impl.KillApp(
         "unknown-instance-id", errorReason, success);
 
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
         "KillApp returns ERROR_GENERAL for unknown appInstanceId");
     L0Test::ExpectTrue(tr, !success,
         "KillApp sets success=false for unknown appInstanceId");
@@ -1162,15 +1162,15 @@ uint32_t Test_Impl_GetLoadedAppsVerboseNoRuntimeHandler()
 
     ConcreteLifecycleManagerImpl impl;
 
-    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.verbose");
+    auto ctx = std::make_shared<Thunder::Plugin::ApplicationContext>("com.test.verbose");
     std::string inst = "inst-verbose-001";
     ctx->setAppInstanceId(inst);
     LifecycleManagerImplementationTest::getLoadedApps(impl).push_back(ctx);
 
     std::string apps;
-    WPEFramework::Core::hresult result = impl.GetLoadedApps(true, apps);
+    Thunder::Core::hresult result = impl.GetLoadedApps(true, apps);
 
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE,
         "GetLoadedApps(verbose=true) returns ERROR_NONE");
     L0Test::ExpectTrue(tr, apps.find("com.test.verbose") != std::string::npos,
         "verbose result still contains the appId");
@@ -1192,20 +1192,20 @@ uint32_t Test_Impl_SendIntentToActiveAppActiveApp()
 
     ConcreteLifecycleManagerImpl impl;
 
-    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.active");
+    auto ctx = std::make_shared<Thunder::Plugin::ApplicationContext>("com.test.active");
     std::string inst = "inst-active-001";
     ctx->setAppInstanceId(inst);
     // Transition the context to ACTIVE by installing an ActiveState.
-    delete static_cast<WPEFramework::Plugin::State*>(ctx->getState());
-    ctx->setState(new WPEFramework::Plugin::ActiveState(ctx.get()));
+    delete static_cast<Thunder::Plugin::State*>(ctx->getState());
+    ctx->setState(new Thunder::Plugin::ActiveState(ctx.get()));
     LifecycleManagerImplementationTest::getLoadedApps(impl).push_back(ctx);
 
     std::string errorReason;
     bool success = false;
-    WPEFramework::Core::hresult result = impl.SendIntentToActiveApp(
+    Thunder::Core::hresult result = impl.SendIntentToActiveApp(
         "inst-active-001", "deeplink://home", errorReason, success);
 
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE,
         "SendIntentToActiveApp returns ERROR_NONE for ACTIVE app");
     L0Test::ExpectTrue(tr, errorReason.empty(),
         "errorReason is empty for ACTIVE app");
@@ -1230,7 +1230,7 @@ uint32_t Test_Impl_DispatchAppStateChangedUnloadedRemovesApp()
 
     ConcreteLifecycleManagerImpl impl;
 
-    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.unload");
+    auto ctx = std::make_shared<Thunder::Plugin::ApplicationContext>("com.test.unload");
     std::string inst = "inst-unload-001";
     ctx->setAppInstanceId(inst);
     LifecycleManagerImplementationTest::getLoadedApps(impl).push_back(ctx);
@@ -1240,13 +1240,13 @@ uint32_t Test_Impl_DispatchAppStateChangedUnloadedRemovesApp()
         1u,
         "one app in loaded list before dispatch");
 
-    WPEFramework::Core::JSON::VariantContainer params;
+    Thunder::Core::JSON::VariantContainer params;
     params["appId"]             = std::string("com.test.unload");
     params["appInstanceId"]     = std::string("inst-unload-001");
     params["oldLifecycleState"] = static_cast<uint32_t>(
-        WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE);
+        Thunder::Exchange::ILifecycleManager::LifecycleState::ACTIVE);
     params["newLifecycleState"] = static_cast<uint32_t>(
-        WPEFramework::Exchange::ILifecycleManager::LifecycleState::UNLOADED);
+        Thunder::Exchange::ILifecycleManager::LifecycleState::UNLOADED);
     params["navigationIntent"]  = std::string("");
     params["errorReason"]       = std::string("");
 
@@ -1270,7 +1270,7 @@ uint32_t Test_Impl_CloseAppKillAndRunDefersRespawnUntilUnloaded()
 
     RespawnTrackingLifecycleManagerImpl impl;
 
-    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.respawn");
+    auto ctx = std::make_shared<Thunder::Plugin::ApplicationContext>("com.test.respawn");
     std::string inst = "inst-respawn-001";
     std::string appId = "com.test.respawn";
     std::string launchIntent = "intent://respawn";
@@ -1282,15 +1282,15 @@ uint32_t Test_Impl_CloseAppKillAndRunDefersRespawnUntilUnloaded()
     ctx->setApplicationLaunchParams(appId,
                                     launchIntent,
                                     launchArgs,
-                                    WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE,
+                                    Thunder::Exchange::ILifecycleManager::LifecycleState::ACTIVE,
                                     runtimeConfigPayload);
     LifecycleManagerImplementationTest::getLoadedApps(impl).push_back(ctx);
 
-    WPEFramework::Core::hresult result = impl.CloseApp(
+    Thunder::Core::hresult result = impl.CloseApp(
         appId,
-        WPEFramework::Exchange::ILifecycleManagerState::AppCloseReason::KILL_AND_RUN);
+        Thunder::Exchange::ILifecycleManagerState::AppCloseReason::KILL_AND_RUN);
 
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE,
         "CloseApp returns ERROR_NONE for KILL_AND_RUN");
     L0Test::ExpectEqU32(tr, static_cast<uint32_t>(impl.killCallCount), 1u,
         "KillApp is called once when CloseApp is invoked");
@@ -1304,16 +1304,16 @@ uint32_t Test_Impl_CloseAppKillAndRunDefersRespawnUntilUnloaded()
         "pending respawn is stored after CloseApp(KILL_AND_RUN)");
     L0Test::ExpectEqU32(tr,
         static_cast<uint32_t>(LifecycleManagerImplementationTest::getPendingRespawnTargetState(impl, inst)),
-        static_cast<uint32_t>(WPEFramework::Exchange::ILifecycleManager::LifecycleState::PAUSED),
+        static_cast<uint32_t>(Thunder::Exchange::ILifecycleManager::LifecycleState::PAUSED),
         "pending respawn target state is PAUSED for KILL_AND_RUN");
 
-    WPEFramework::Core::JSON::VariantContainer params;
+    Thunder::Core::JSON::VariantContainer params;
     params["appId"]             = appId;
     params["appInstanceId"]     = inst;
     params["oldLifecycleState"] = static_cast<uint32_t>(
-        WPEFramework::Exchange::ILifecycleManager::LifecycleState::TERMINATING);
+        Thunder::Exchange::ILifecycleManager::LifecycleState::TERMINATING);
     params["newLifecycleState"] = static_cast<uint32_t>(
-        WPEFramework::Exchange::ILifecycleManager::LifecycleState::UNLOADED);
+        Thunder::Exchange::ILifecycleManager::LifecycleState::UNLOADED);
     params["navigationIntent"]  = std::string("");
     params["errorReason"]       = std::string("");
 
@@ -1333,7 +1333,7 @@ uint32_t Test_Impl_CloseAppKillAndRunDefersRespawnUntilUnloaded()
         "respawn preserves the opaque runtime config payload");
     L0Test::ExpectEqU32(tr,
         static_cast<uint32_t>(impl.spawnedTargetState),
-        static_cast<uint32_t>(WPEFramework::Exchange::ILifecycleManager::LifecycleState::PAUSED),
+        static_cast<uint32_t>(Thunder::Exchange::ILifecycleManager::LifecycleState::PAUSED),
         "respawn starts in PAUSED state for KILL_AND_RUN");
     L0Test::ExpectEqU32(tr,
         static_cast<uint32_t>(LifecycleManagerImplementationTest::getPendingRespawnCount(impl)),
@@ -1353,7 +1353,7 @@ uint32_t Test_Impl_RuntimeEventOnTerminatedUnknownApp()
 
     ConcreteLifecycleManagerImpl impl;
 
-    WPEFramework::Core::JSON::VariantContainer params;
+    Thunder::Core::JSON::VariantContainer params;
     params["name"]             = std::string("onTerminated");
     params["appInstanceId"]    = std::string("inst-no-such");
     params["appId"]            = std::string("");
@@ -1392,18 +1392,18 @@ uint32_t Test_Impl_RuntimeEventOnTerminatedAppInTerminatingState()
 
     ConcreteLifecycleManagerImpl impl;
 
-    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.terminating");
+    auto ctx = std::make_shared<Thunder::Plugin::ApplicationContext>("com.test.terminating");
     std::string inst = "inst-terminating-001";
     ctx->setAppInstanceId(inst);
     // Put context into TERMINATING state via TerminatingState
-    delete static_cast<WPEFramework::Plugin::State*>(ctx->getState());
+    delete static_cast<Thunder::Plugin::State*>(ctx->getState());
     ctx->setState(
-        new WPEFramework::Plugin::TerminatingState(ctx.get()));
+        new Thunder::Plugin::TerminatingState(ctx.get()));
     ctx->mPendingStateTransition = false;
     ctx->mPendingEventName       = "";
     LifecycleManagerImplementationTest::getLoadedApps(impl).push_back(ctx);
 
-    WPEFramework::Core::JSON::VariantContainer params;
+    Thunder::Core::JSON::VariantContainer params;
     params["name"]             = std::string("onTerminated");
     params["appInstanceId"]    = inst;
     params["appId"]            = std::string("");
@@ -1447,16 +1447,16 @@ uint32_t Test_Impl_RuntimeEventOnTerminatedUnexpected()
 
     ConcreteLifecycleManagerImpl impl;
 
-    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.unexpected");
+    auto ctx = std::make_shared<Thunder::Plugin::ApplicationContext>("com.test.unexpected");
     std::string inst = "inst-unexpected-001";
     ctx->setAppInstanceId(inst);
     // ACTIVE state → not TERMINATING → triggers unexpected-termination branch
-    delete static_cast<WPEFramework::Plugin::State*>(ctx->getState());
+    delete static_cast<Thunder::Plugin::State*>(ctx->getState());
     ctx->setState(
-        new WPEFramework::Plugin::ActiveState(ctx.get()));
+        new Thunder::Plugin::ActiveState(ctx.get()));
     LifecycleManagerImplementationTest::getLoadedApps(impl).push_back(ctx);
 
-    WPEFramework::Core::JSON::VariantContainer params;
+    Thunder::Core::JSON::VariantContainer params;
     params["name"]             = std::string("onTerminated");
     params["appInstanceId"]    = inst;
     params["appId"]            = std::string("");
@@ -1495,11 +1495,11 @@ uint32_t Test_Impl_RuntimeEventOnStateChangedRunningUnknownApp()
 {
     L0Test::TestResult tr;
 
-    using RuntimeState = WPEFramework::Exchange::IRuntimeManager::RuntimeState;
+    using RuntimeState = Thunder::Exchange::IRuntimeManager::RuntimeState;
 
     ConcreteLifecycleManagerImpl impl;
 
-    WPEFramework::Core::JSON::VariantContainer params;
+    Thunder::Core::JSON::VariantContainer params;
     params["name"]             = std::string("onStateChanged");
     params["appInstanceId"]    = std::string("inst-no-such");
     params["appId"]            = std::string("");
@@ -1534,18 +1534,18 @@ uint32_t Test_Impl_RuntimeEventOnStateChangedRunningKnownApp()
 {
     L0Test::TestResult tr;
 
-    using RuntimeState = WPEFramework::Exchange::IRuntimeManager::RuntimeState;
+    using RuntimeState = Thunder::Exchange::IRuntimeManager::RuntimeState;
 
     ConcreteLifecycleManagerImpl impl;
 
-    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.running");
+    auto ctx = std::make_shared<Thunder::Plugin::ApplicationContext>("com.test.running");
     std::string inst = "inst-running-001";
     ctx->setAppInstanceId(inst);
     ctx->mPendingStateTransition = false;
     ctx->mPendingEventName       = "";
     LifecycleManagerImplementationTest::getLoadedApps(impl).push_back(ctx);
 
-    WPEFramework::Core::JSON::VariantContainer params;
+    Thunder::Core::JSON::VariantContainer params;
     params["name"]             = std::string("onStateChanged");
     params["appInstanceId"]    = inst;
     params["appId"]            = std::string("");
@@ -1592,9 +1592,9 @@ uint32_t Test_Impl_RuntimeEventOnFailure()
     // Register a notification observer so the ONFAILURE dispatch actually iterates.
     L0Test::FakeLcmNotification* notif = new L0Test::FakeLcmNotification();
     impl.Register(
-        static_cast<WPEFramework::Exchange::ILifecycleManager::INotification*>(notif));
+        static_cast<Thunder::Exchange::ILifecycleManager::INotification*>(notif));
 
-    WPEFramework::Core::JSON::VariantContainer params;
+    Thunder::Core::JSON::VariantContainer params;
     params["name"]             = std::string("onFailure");
     params["appInstanceId"]    = std::string("inst-fail-001");
     params["appId"]            = std::string("");
@@ -1621,7 +1621,7 @@ uint32_t Test_Impl_RuntimeEventOnFailure()
         "onFailure job completes before fixture teardown");
 
     impl.Unregister(
-        static_cast<WPEFramework::Exchange::ILifecycleManager::INotification*>(notif));
+        static_cast<Thunder::Exchange::ILifecycleManager::INotification*>(notif));
     notif->Release();
 
     return tr.failures;
@@ -1638,16 +1638,16 @@ uint32_t Test_Impl_NotifyOnFailureKnownApp()
 
     ConcreteLifecycleManagerImpl impl;
 
-    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.failapp");
+    auto ctx = std::make_shared<Thunder::Plugin::ApplicationContext>("com.test.failapp");
     std::string inst = "inst-failapp-001";
     ctx->setAppInstanceId(inst);
     LifecycleManagerImplementationTest::getLoadedApps(impl).push_back(ctx);
 
     L0Test::FakeLcmNotification* notif = new L0Test::FakeLcmNotification();
     impl.Register(
-        static_cast<WPEFramework::Exchange::ILifecycleManager::INotification*>(notif));
+        static_cast<Thunder::Exchange::ILifecycleManager::INotification*>(notif));
 
-    WPEFramework::Core::JSON::VariantContainer params;
+    Thunder::Core::JSON::VariantContainer params;
     params["name"]             = std::string("onFailure");
     params["appInstanceId"]    = inst;
     params["appId"]            = std::string("");
@@ -1674,7 +1674,7 @@ uint32_t Test_Impl_NotifyOnFailureKnownApp()
         "known-app onFailure job completes before fixture teardown");
 
     impl.Unregister(
-        static_cast<WPEFramework::Exchange::ILifecycleManager::INotification*>(notif));
+        static_cast<Thunder::Exchange::ILifecycleManager::INotification*>(notif));
     notif->Release();
 
     // ctx memory is managed by shared_ptr; clean up the list
@@ -1693,7 +1693,7 @@ uint32_t Test_Impl_RuntimeEventOnStarted()
 
     ConcreteLifecycleManagerImpl impl;
 
-    WPEFramework::Core::JSON::VariantContainer params;
+    Thunder::Core::JSON::VariantContainer params;
     params["name"]             = std::string("onStarted");
     params["appInstanceId"]    = std::string("inst-started-001");
     params["appId"]            = std::string("");
@@ -1729,7 +1729,7 @@ uint32_t Test_Impl_WindowEventOnUserInactivity()
 
     ConcreteLifecycleManagerImpl impl;
 
-    WPEFramework::Core::JSON::VariantContainer params;
+    Thunder::Core::JSON::VariantContainer params;
     params["name"]             = std::string("onUserInactivity");
     params["appInstanceId"]    = std::string("");
     params["appId"]            = std::string("");
@@ -1763,7 +1763,7 @@ uint32_t Test_Impl_WindowEventOnDisconnect()
 
     ConcreteLifecycleManagerImpl impl;
 
-    WPEFramework::Core::JSON::VariantContainer params;
+    Thunder::Core::JSON::VariantContainer params;
     params["name"]             = std::string("onDisconnect");
     params["appInstanceId"]    = std::string("");
     params["appId"]            = std::string("");
@@ -1797,7 +1797,7 @@ uint32_t Test_Impl_WindowEventOnReadyUnknownApp()
 
     ConcreteLifecycleManagerImpl impl;
 
-    WPEFramework::Core::JSON::VariantContainer params;
+    Thunder::Core::JSON::VariantContainer params;
     params["name"]             = std::string("onReady");
     params["appInstanceId"]    = std::string("inst-no-such");
     params["appId"]            = std::string("");
@@ -1832,14 +1832,14 @@ uint32_t Test_Impl_WindowEventOnReadyKnownAppWrongTransition()
 
     ConcreteLifecycleManagerImpl impl;
 
-    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.onready");
+    auto ctx = std::make_shared<Thunder::Plugin::ApplicationContext>("com.test.onready");
     std::string inst = "inst-onready-001";
     ctx->setAppInstanceId(inst);
     ctx->mPendingStateTransition = false;  // triggers else path in addStateTransitionRequest
     ctx->mPendingEventName       = "";
     LifecycleManagerImplementationTest::getLoadedApps(impl).push_back(ctx);
 
-    WPEFramework::Core::JSON::VariantContainer params;
+    Thunder::Core::JSON::VariantContainer params;
     params["name"]             = std::string("onReady");
     params["appInstanceId"]    = inst;
     params["appId"]            = std::string("");
@@ -1876,18 +1876,18 @@ uint32_t Test_Impl_RuntimeEventOnStateChangedMatchingPendingTransition()
 {
     L0Test::TestResult tr;
 
-    using RuntimeState = WPEFramework::Exchange::IRuntimeManager::RuntimeState;
+    using RuntimeState = Thunder::Exchange::IRuntimeManager::RuntimeState;
 
     ConcreteLifecycleManagerImpl impl;
 
-    auto ctx = std::make_shared<WPEFramework::Plugin::ApplicationContext>("com.test.pending");
+    auto ctx = std::make_shared<Thunder::Plugin::ApplicationContext>("com.test.pending");
     std::string inst = "inst-pending-001";
     ctx->setAppInstanceId(inst);
     ctx->mPendingStateTransition = true;
     ctx->mPendingEventName       = "onAppRunning";  // matches the event passed
     LifecycleManagerImplementationTest::getLoadedApps(impl).push_back(ctx);
 
-    WPEFramework::Core::JSON::VariantContainer params;
+    Thunder::Core::JSON::VariantContainer params;
     params["name"]             = std::string("onStateChanged");
     params["appInstanceId"]    = inst;
     params["appId"]            = std::string("");

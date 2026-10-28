@@ -38,7 +38,7 @@
 //#include <IPackage.h>
 #include <curl/curl.h>
 
-namespace WPEFramework
+namespace Thunder
 {
 namespace Plugin
 {
@@ -1529,4 +1529,4 @@ void DobbySpecGenerator::addHolePunchPortToSpec(Json::Value &spec, in_port_t por
     }
 }
 } // namespace Plugin
-} // namespace WPEFramework
+} // namespace Thunder

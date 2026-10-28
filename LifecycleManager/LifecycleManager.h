@@ -28,7 +28,7 @@
 #include "tracing/Logging.h"
 #include <mutex>
 
-namespace WPEFramework
+namespace Thunder
 {
     namespace Plugin
     {
@@ -146,4 +146,4 @@ namespace WPEFramework
                 Core::Sink<Notification> mLifecycleManagerStateNotification;
         };
     } /* namespace Plugin */
-} /* namespace WPEFramework */
+} /* namespace Thunder */

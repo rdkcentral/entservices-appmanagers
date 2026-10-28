@@ -25,7 +25,7 @@
 #include <interfaces/json/JVictimSelector.h>
 #include "UtilsLogging.h"
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
 class VictimSelector : public PluginHost::IPlugin,
@@ -57,4 +57,4 @@ private:
 };
 
 } // namespace Plugin
-} // namespace WPEFramework
+} // namespace Thunder

@@ -20,11 +20,11 @@
 #include "AppManager.h"
 #include "UtilsAppManagerTelemetry.h"
 
-const string WPEFramework::Plugin::AppManager::SERVICE_NAME = "org.rdk.AppManager";
+const string Thunder::Plugin::AppManager::SERVICE_NAME = "org.rdk.AppManager";
 
-RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::Utils::AppManagersBootstrapper, "appManagerBootstrapTime")
+RDKAM_DEFINE_TELEMETRY_CLIENT(Thunder::Plugin::Utils::AppManagersBootstrapper, "appManagerBootstrapTime")
 
-namespace WPEFramework
+namespace Thunder
 {
 
     namespace {
@@ -45,7 +45,7 @@ namespace WPEFramework
     {
 
     /*
-     *Register AppManager module as wpeframework plugin
+     *Register AppManager module as thunder plugin
      **/
     SERVICE_REGISTRATION(AppManager, APP_MANAGER_API_VERSION_NUMBER_MAJOR, APP_MANAGER_API_VERSION_NUMBER_MINOR, APP_MANAGER_API_VERSION_NUMBER_PATCH);
 
@@ -104,7 +104,7 @@ namespace WPEFramework
             {
                 // Register for notifications
                 mAppManagerImpl->Register(&mAppManagerNotification);
-                // Invoking Plugin API register to wpeframework
+                // Invoking Plugin API register to thunder
                 Exchange::JAppManager::Register(*this, mAppManagerImpl);
 
                 if (Core::ERROR_NONE != mAppManagerConfigure->Configure(mCurrentService))
@@ -192,4 +192,4 @@ namespace WPEFramework
         }
     }
 } /* namespace Plugin */
-} /* namespace WPEFramework */
+} /* namespace Thunder */

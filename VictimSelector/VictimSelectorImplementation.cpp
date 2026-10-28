@@ -26,7 +26,7 @@
 #include <utility>
 #include <vector>
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
 namespace {
@@ -402,4 +402,4 @@ void VictimSelectorImplementation::complete(bool evicted, EvictErrorReason error
 }
 
 } // namespace Plugin
-} // namespace WPEFramework
+} // namespace Thunder

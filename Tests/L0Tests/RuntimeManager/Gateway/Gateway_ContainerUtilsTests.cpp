@@ -50,7 +50,7 @@ uint32_t Test_ContainerUtils_GetContainerIpAddress_UnknownContainerReturnsZero()
     L0Test::TestResult tr;
 
     const in_addr_t ip =
-        WPEFramework::Plugin::ContainerUtils::getContainerIpAddress(
+        Thunder::Plugin::ContainerUtils::getContainerIpAddress(
             "ralf_l0test_fake_container_id_xyz");
 
     // Should fail to find the cgroup path → returns 0
@@ -69,7 +69,7 @@ uint32_t Test_ContainerUtils_GetContainerIpAddress_EmptyContainerIdReturnsZero()
     L0Test::TestResult tr;
 
     const in_addr_t ip =
-        WPEFramework::Plugin::ContainerUtils::getContainerIpAddress("");
+        Thunder::Plugin::ContainerUtils::getContainerIpAddress("");
 
     L0Test::ExpectEqU32(tr, static_cast<uint32_t>(ip), 0u,
                         "getContainerIpAddress() returns 0 for empty container ID");
@@ -89,7 +89,7 @@ uint32_t Test_ContainerUtils_GetContainerIpAddress_MultipleCallsDoNotCrash()
     for (int i = 0; i < 5; ++i) {
         const std::string fakeId = "l0test_fake_id_" + std::to_string(i);
         const in_addr_t ip =
-            WPEFramework::Plugin::ContainerUtils::getContainerIpAddress(fakeId);
+            Thunder::Plugin::ContainerUtils::getContainerIpAddress(fakeId);
         L0Test::ExpectEqU32(tr, static_cast<uint32_t>(ip), 0u,
                             "getContainerIpAddress() returns 0 on repeated calls with fake IDs");
     }
@@ -105,7 +105,7 @@ uint32_t Test_ContainerUtils_NamespaceEnumValues()
 {
     L0Test::TestResult tr;
 
-    using NS = WPEFramework::Plugin::ContainerUtils::Namespace;
+    using NS = Thunder::Plugin::ContainerUtils::Namespace;
 
     L0Test::ExpectEqU32(tr, static_cast<uint32_t>(NS::NetworkNamespace), 0x01u,
                         "NetworkNamespace == 0x01");
@@ -134,7 +134,7 @@ uint32_t Test_ContainerUtils_GetContainerIpAddress_VeryLongContainerIdDoesNotCra
 
     const std::string longId(500, 'a');
     const in_addr_t ip =
-        WPEFramework::Plugin::ContainerUtils::getContainerIpAddress(longId);
+        Thunder::Plugin::ContainerUtils::getContainerIpAddress(longId);
 
     // Should still return 0 (no such container)
     L0Test::ExpectEqU32(tr, static_cast<uint32_t>(ip), 0u,

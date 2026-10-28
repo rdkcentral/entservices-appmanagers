@@ -36,9 +36,9 @@
 #include "common/L0Expect.hpp"
 #include "common/L0TestTypes.hpp"
 
-using WPEFramework::PluginHost::IPlugin;
-using WPEFramework::Plugin::AppStorageManager;
-using WPEFramework::Plugin::StorageManagerImplementation;
+using Thunder::PluginHost::IPlugin;
+using Thunder::Plugin::AppStorageManager;
+using Thunder::Plugin::StorageManagerImplementation;
 
 namespace {
 
@@ -47,7 +47,7 @@ namespace {
  */
 IPlugin* CreatePlugin()
 {
-    return WPEFramework::Core::Service<AppStorageManager>::Create<IPlugin>();
+    return Thunder::Core::Service<AppStorageManager>::Create<IPlugin>();
 }
 
 } // namespace
@@ -65,7 +65,7 @@ uint32_t Test_ASM_Lifecycle_InitializeSucceedsWithInstantiateFallback()
 
     L0Test::L0MockPersistentStore fakeStore;
     L0Test::ServiceMock service(L0Test::ServiceMock::Config{&fakeStore});
-    service.SetInstantiateHandler([](const WPEFramework::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
+    service.SetInstantiateHandler([](const Thunder::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
         connectionId = 0;
         return nullptr;  // Root() will fallback to in-process creation
     });
@@ -94,10 +94,10 @@ uint32_t Test_ASM_Lifecycle_InitializeSuccessAndDeinitialize()
     L0Test::ServiceMock service(L0Test::ServiceMock::Config{&fakeStore});
 
     // Create a real implementation via Instantiate handler
-    service.SetInstantiateHandler([](const WPEFramework::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
+    service.SetInstantiateHandler([](const Thunder::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
         connectionId = 0;
         // Create() already returns a ref-counted object, no extra AddRef needed
-        return WPEFramework::Core::Service<StorageManagerImplementation>::Create<StorageManagerImplementation>();
+        return Thunder::Core::Service<StorageManagerImplementation>::Create<StorageManagerImplementation>();
     });
 
     IPlugin* plugin = CreatePlugin();
@@ -128,10 +128,10 @@ uint32_t Test_ASM_Lifecycle_InformationReturnsEmptyString()
     L0Test::ServiceMock service(L0Test::ServiceMock::Config{&fakeStore});
 
     // Create a real implementation via Instantiate handler
-    service.SetInstantiateHandler([](const WPEFramework::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
+    service.SetInstantiateHandler([](const Thunder::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
         connectionId = 0;
         // Create() already returns a ref-counted object, no extra AddRef needed
-        return WPEFramework::Core::Service<StorageManagerImplementation>::Create<StorageManagerImplementation>();
+        return Thunder::Core::Service<StorageManagerImplementation>::Create<StorageManagerImplementation>();
     });
 
     IPlugin* plugin = CreatePlugin();
@@ -163,10 +163,10 @@ uint32_t Test_ASM_Lifecycle_DeinitializeSuccessWithValidService()
     L0Test::ServiceMock service(L0Test::ServiceMock::Config{&fakeStore});
 
     // Create a real implementation via Instantiate handler
-    service.SetInstantiateHandler([](const WPEFramework::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
+    service.SetInstantiateHandler([](const Thunder::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
         connectionId = 0;
         // Create() already returns a ref-counted object, no extra AddRef needed
-        return WPEFramework::Core::Service<StorageManagerImplementation>::Create<StorageManagerImplementation>();
+        return Thunder::Core::Service<StorageManagerImplementation>::Create<StorageManagerImplementation>();
     });
 
     IPlugin* plugin = CreatePlugin();

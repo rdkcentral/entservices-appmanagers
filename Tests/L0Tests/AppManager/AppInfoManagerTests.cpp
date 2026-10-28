@@ -27,42 +27,42 @@ uint32_t Test_AM_AppInfoManagerCrudAndConvenienceAccessors()
 {
     L0Test::TestResult tr;
 
-    auto& mgr = WPEFramework::Plugin::AppInfoManager::getInstance();
+    auto& mgr = Thunder::Plugin::AppInfoManager::getInstance();
     mgr.clear();
 
     L0Test::ExpectTrue(tr, !mgr.exists("missing"), "Missing entry is not present");
-    WPEFramework::Plugin::AppInfo missingSnapshot;
+    Thunder::Plugin::AppInfo missingSnapshot;
     L0Test::ExpectTrue(tr, !mgr.get("missing", missingSnapshot), "get() on a missing entry returns false");
 
     mgr.setAppInstanceId("app1", "instance-1");
     mgr.setActiveSessionId("app1", "session-1");
     mgr.setAppIntent("app1", "intent-1");
-    mgr.setCurrentAction("app1", WPEFramework::Plugin::AppManagerTypes::APP_ACTION_CLOSE);
+    mgr.setCurrentAction("app1", Thunder::Plugin::AppManagerTypes::APP_ACTION_CLOSE);
     mgr.setCurrentActionTime("app1", 77);
     mgr.setLastActiveIndex("app1", 12);
     timespec ts { 123, 456 };
     mgr.setLastActiveStateChangeTime("app1", ts);
     mgr.setPackageInfoVersion("app1", "9.8.7");
-    mgr.setPackageInfoType("app1", WPEFramework::Plugin::AppManagerTypes::APPLICATION_TYPE_SYSTEM);
+    mgr.setPackageInfoType("app1", Thunder::Plugin::AppManagerTypes::APPLICATION_TYPE_SYSTEM);
 
     L0Test::ExpectTrue(tr, mgr.exists("app1"), "Entry exists after setter calls");
     L0Test::ExpectEqStr(tr, mgr.getAppInstanceId("app1"), std::string("instance-1"), "Instance id getter returns stored value");
     L0Test::ExpectEqStr(tr, mgr.getActiveSessionId("app1"), std::string("session-1"), "Session id getter returns stored value");
     L0Test::ExpectEqStr(tr, mgr.getAppIntent("app1"), std::string("intent-1"), "Intent getter returns stored value");
-    L0Test::ExpectEqU32(tr, static_cast<uint32_t>(mgr.getCurrentAction("app1")), static_cast<uint32_t>(WPEFramework::Plugin::AppManagerTypes::APP_ACTION_CLOSE), "Current action getter returns stored value");
+    L0Test::ExpectEqU32(tr, static_cast<uint32_t>(mgr.getCurrentAction("app1")), static_cast<uint32_t>(Thunder::Plugin::AppManagerTypes::APP_ACTION_CLOSE), "Current action getter returns stored value");
     L0Test::ExpectEqU32(tr, static_cast<uint32_t>(mgr.getCurrentActionTime("app1")), 77U, "Current action time getter returns stored value");
     L0Test::ExpectEqU32(tr, mgr.getLastActiveIndex("app1"), 12U, "Last active index getter returns stored value");
     L0Test::ExpectEqU32(tr, static_cast<uint32_t>(mgr.getLastActiveStateChangeTime("app1").tv_sec), 123U, "Timestamp seconds getter returns stored value");
     L0Test::ExpectEqStr(tr, mgr.getPackageInfoVersion("app1"), std::string("9.8.7"), "Package version getter returns stored value");
-    L0Test::ExpectEqU32(tr, static_cast<uint32_t>(mgr.getPackageInfoType("app1")), static_cast<uint32_t>(WPEFramework::Plugin::AppManagerTypes::APPLICATION_TYPE_SYSTEM), "Package type getter returns stored value");
+    L0Test::ExpectEqU32(tr, static_cast<uint32_t>(mgr.getPackageInfoType("app1")), static_cast<uint32_t>(Thunder::Plugin::AppManagerTypes::APPLICATION_TYPE_SYSTEM), "Package type getter returns stored value");
 
-    WPEFramework::Plugin::AppInfo snapshot;
+    Thunder::Plugin::AppInfo snapshot;
     L0Test::ExpectTrue(tr, mgr.get("app1", snapshot), "get() returns a snapshot for an existing entry");
     L0Test::ExpectEqStr(tr, snapshot.getAppInstanceId(), std::string("instance-1"), "Snapshot contains the stored instance id");
 
-    const bool updated = mgr.update("app1", [&](WPEFramework::Plugin::AppInfo& a) {
+    const bool updated = mgr.update("app1", [&](Thunder::Plugin::AppInfo& a) {
         a.setAppInstanceId("instance-2");
-        a.setCurrentAction(WPEFramework::Plugin::AppManagerTypes::APP_ACTION_RESUME);
+        a.setCurrentAction(Thunder::Plugin::AppManagerTypes::APP_ACTION_RESUME);
     });
     L0Test::ExpectTrue(tr, updated, "update() succeeds for an existing entry");
     L0Test::ExpectEqStr(tr, mgr.getAppInstanceId("app1"), std::string("instance-2"), "update() changes the stored instance id");
@@ -78,11 +78,11 @@ uint32_t Test_AM_AppInfoManagerUpsertUpdateBranch()
 {
     L0Test::TestResult tr;
 
-    auto& mgr = WPEFramework::Plugin::AppInfoManager::getInstance();
+    auto& mgr = Thunder::Plugin::AppInfoManager::getInstance();
     mgr.clear();
 
     // First upsert — creates a new entry.
-    mgr.upsert("app.upsert", [](WPEFramework::Plugin::AppInfo& a) {
+    mgr.upsert("app.upsert", [](Thunder::Plugin::AppInfo& a) {
         a.setAppInstanceId("instance-first");
     });
     L0Test::ExpectTrue(tr, mgr.exists("app.upsert"), "upsert() creates entry on first call");
@@ -90,7 +90,7 @@ uint32_t Test_AM_AppInfoManagerUpsertUpdateBranch()
         "upsert() stores the initial instance id");
 
     // Second upsert on same key — hits the update-existing branch (copy = it->second).
-    mgr.upsert("app.upsert", [](WPEFramework::Plugin::AppInfo& a) {
+    mgr.upsert("app.upsert", [](Thunder::Plugin::AppInfo& a) {
         a.setAppInstanceId("instance-updated");
     });
     L0Test::ExpectEqStr(tr, mgr.getAppInstanceId("app.upsert"), std::string("instance-updated"),
@@ -119,7 +119,7 @@ uint32_t Test_AM_AppInfoManagerIteratorEdgeCases()
 uint32_t Test_AM_AppInfoManagerRemoveMultipleInstances()
 {
     L0Test::TestResult tr;
-    auto& mgr = WPEFramework::Plugin::AppInfoManager::getInstance();
+    auto& mgr = Thunder::Plugin::AppInfoManager::getInstance();
     mgr.clear();
 
     // In new API, appId is unique key - test basic remove instead
@@ -140,7 +140,7 @@ uint32_t Test_AM_AppInfoManagerRemoveMultipleInstances()
 uint32_t Test_AM_AppInfoManagerRemoveByInstanceIdEdgeCases()
 {
     L0Test::TestResult tr;
-    auto& mgr = WPEFramework::Plugin::AppInfoManager::getInstance();
+    auto& mgr = Thunder::Plugin::AppInfoManager::getInstance();
     mgr.clear();
 
     // Test basic remove by appId instead
@@ -160,14 +160,14 @@ uint32_t Test_AM_AppInfoManagerRemoveByInstanceIdEdgeCases()
 uint32_t Test_AM_AppInfoManagerGetByAppIdMultipleInstances()
 {
     L0Test::TestResult tr;
-    auto& mgr = WPEFramework::Plugin::AppInfoManager::getInstance();
+    auto& mgr = Thunder::Plugin::AppInfoManager::getInstance();
     mgr.clear();
 
     // In new API, appId is unique key - test basic get functionality
     mgr.setAppInstanceId("app1", "instance1");
     mgr.setPackageInfoVersion("app1", "1.0.0");
 
-    WPEFramework::Plugin::AppInfo snapshot;
+    Thunder::Plugin::AppInfo snapshot;
     bool found = mgr.get("app1", snapshot);
     L0Test::ExpectTrue(tr, found, "get() finds existing app");
     L0Test::ExpectEqStr(tr, snapshot.getAppInstanceId(), std::string("instance1"), "Instance ID matches");
@@ -180,27 +180,27 @@ uint32_t Test_AM_AppInfoManagerGetByAppIdMultipleInstances()
 uint32_t Test_AM_AppInfoManagerUpsertEmptyFields()
 {
     L0Test::TestResult tr;
-    auto& mgr = WPEFramework::Plugin::AppInfoManager::getInstance();
+    auto& mgr = Thunder::Plugin::AppInfoManager::getInstance();
     mgr.clear();
 
     // Add app with minimal info
-    mgr.upsert("minimalApp", [](WPEFramework::Plugin::AppInfo& a) {
+    mgr.upsert("minimalApp", [](Thunder::Plugin::AppInfo& a) {
         a.setAppInstanceId("instance1");
     });
 
     L0Test::ExpectTrue(tr, mgr.exists("minimalApp"), "App created");
 
     // Upsert with additional fields
-    mgr.upsert("minimalApp", [](WPEFramework::Plugin::AppInfo& a) {
+    mgr.upsert("minimalApp", [](Thunder::Plugin::AppInfo& a) {
         a.setAppInstanceId("instance1");
     });
     mgr.setPackageInfoVersion("minimalApp", "1.0.0");
-    mgr.setPackageInfoType("minimalApp", WPEFramework::Plugin::AppManagerTypes::APPLICATION_TYPE_INTERACTIVE);
+    mgr.setPackageInfoType("minimalApp", Thunder::Plugin::AppManagerTypes::APPLICATION_TYPE_INTERACTIVE);
 
     // Verify updated fields
     L0Test::ExpectEqStr(tr, mgr.getPackageInfoVersion("minimalApp"), std::string("1.0.0"), "Version updated");
     L0Test::ExpectEqU32(tr, static_cast<uint32_t>(mgr.getPackageInfoType("minimalApp")),
-        static_cast<uint32_t>(WPEFramework::Plugin::AppManagerTypes::APPLICATION_TYPE_INTERACTIVE), "Type updated");
+        static_cast<uint32_t>(Thunder::Plugin::AppManagerTypes::APPLICATION_TYPE_INTERACTIVE), "Type updated");
 
     mgr.clear();
     return tr.failures;
@@ -209,7 +209,7 @@ uint32_t Test_AM_AppInfoManagerUpsertEmptyFields()
 uint32_t Test_AM_AppInfoManagerClear()
 {
     L0Test::TestResult tr;
-    auto& mgr = WPEFramework::Plugin::AppInfoManager::getInstance();
+    auto& mgr = Thunder::Plugin::AppInfoManager::getInstance();
     mgr.clear();
 
     // Add multiple apps
@@ -235,7 +235,7 @@ uint32_t Test_AM_AppInfoManagerClear()
 uint32_t Test_AM_AppInfoManagerBasicThreadSafety()
 {
     L0Test::TestResult tr;
-    auto& mgr = WPEFramework::Plugin::AppInfoManager::getInstance();
+    auto& mgr = Thunder::Plugin::AppInfoManager::getInstance();
     mgr.clear();
 
     // Add app
@@ -254,23 +254,23 @@ uint32_t Test_AM_AppInfoManagerBasicThreadSafety()
 uint32_t Test_AM_AppInfoManagerUpdateOperationBranches()
 {
     L0Test::TestResult tr;
-    auto& mgr = WPEFramework::Plugin::AppInfoManager::getInstance();
+    auto& mgr = Thunder::Plugin::AppInfoManager::getInstance();
     mgr.clear();
 
     // Add initial app
-    mgr.upsert("updateTestApp", [](WPEFramework::Plugin::AppInfo& a) {
+    mgr.upsert("updateTestApp", [](Thunder::Plugin::AppInfo& a) {
         a.setAppInstanceId("instance1");
     });
     mgr.setPackageInfoVersion("updateTestApp", "1.0.0");
 
     // Update non-existent app (should return false)
-    bool updated = mgr.update("differentApp", [](WPEFramework::Plugin::AppInfo& a) {
+    bool updated = mgr.update("differentApp", [](Thunder::Plugin::AppInfo& a) {
         a.setAppInstanceId("instance2");
     });
     L0Test::ExpectTrue(tr, !updated, "update() on non-existent app returns false");
 
     // Update existing app (should succeed)
-    updated = mgr.update("updateTestApp", [](WPEFramework::Plugin::AppInfo& a) {
+    updated = mgr.update("updateTestApp", [](Thunder::Plugin::AppInfo& a) {
         a.setAppInstanceId("instance1");
     });
     mgr.setPackageInfoVersion("updateTestApp", "2.0.0");
@@ -286,22 +286,22 @@ uint32_t Test_AM_AppInfoManagerUpdateOperationBranches()
 uint32_t Test_AM_AppInfoManagerGetByCopyEdgeCases()
 {
     L0Test::TestResult tr;
-    auto& mgr = WPEFramework::Plugin::AppInfoManager::getInstance();
+    auto& mgr = Thunder::Plugin::AppInfoManager::getInstance();
     mgr.clear();
 
     // Test with non-existent app
-    WPEFramework::Plugin::AppInfo outInfo;
+    Thunder::Plugin::AppInfo outInfo;
     bool found = mgr.get("nonExistent", outInfo);
     L0Test::ExpectTrue(tr, !found, "get() returns false for non-existent app");
 
     // Add test app
-    mgr.upsert("copyTestApp", [](WPEFramework::Plugin::AppInfo& a) {
+    mgr.upsert("copyTestApp", [](Thunder::Plugin::AppInfo& a) {
         a.setAppInstanceId("instance1");
     });
     mgr.setPackageInfoVersion("copyTestApp", "1.0.0");
 
     // Get by copy
-    WPEFramework::Plugin::AppInfo copiedInfo;
+    Thunder::Plugin::AppInfo copiedInfo;
     found = mgr.get("copyTestApp", copiedInfo);
     L0Test::ExpectTrue(tr, found, "get() finds existing app");
     L0Test::ExpectEqStr(tr, copiedInfo.getAppInstanceId(), std::string("instance1"), "Copied info has correct instance ID");
@@ -322,16 +322,16 @@ uint32_t Test_AM_AppInfoManagerGetByCopyEdgeCases()
 uint32_t Test_AM_AppInfoManagerStateSettersAndGetters()
 {
     L0Test::TestResult tr;
-    auto& mgr = WPEFramework::Plugin::AppInfoManager::getInstance();
+    auto& mgr = Thunder::Plugin::AppInfoManager::getInstance();
     mgr.clear();
 
     // ---- setPackageInfo / getPackageInfo ----
-    WPEFramework::Plugin::AppManagerTypes::PackageInfo pkg;
+    Thunder::Plugin::AppManagerTypes::PackageInfo pkg;
     pkg.version      = "3.2.1";
     pkg.lockId       = 42u;
     pkg.unpackedPath = "/data/apps/pkg";
     pkg.appMetadata  = "meta-payload";
-    pkg.type         = WPEFramework::Plugin::AppManagerTypes::APPLICATION_TYPE_INTERACTIVE;
+    pkg.type         = Thunder::Plugin::AppManagerTypes::APPLICATION_TYPE_INTERACTIVE;
     mgr.setPackageInfo("app.pkg", pkg);
     const auto gotPkg = mgr.getPackageInfo("app.pkg");
     L0Test::ExpectEqStr(tr, gotPkg.version, std::string("3.2.1"),
@@ -344,11 +344,11 @@ uint32_t Test_AM_AppInfoManagerStateSettersAndGetters()
         "setPackageInfo/getPackageInfo: appMetadata round-trips");
     L0Test::ExpectEqU32(tr,
         static_cast<uint32_t>(gotPkg.type),
-        static_cast<uint32_t>(WPEFramework::Plugin::AppManagerTypes::APPLICATION_TYPE_INTERACTIVE),
+        static_cast<uint32_t>(Thunder::Plugin::AppManagerTypes::APPLICATION_TYPE_INTERACTIVE),
         "setPackageInfo/getPackageInfo: type round-trips");
 
     // ---- setAppNewState / getAppNewState ----
-    using AppState = WPEFramework::Exchange::IAppManager::AppLifecycleState;
+    using AppState = Thunder::Exchange::IAppManager::AppLifecycleState;
     mgr.setAppNewState("app.state", AppState::APP_STATE_ACTIVE);
     L0Test::ExpectEqU32(tr,
         static_cast<uint32_t>(mgr.getAppNewState("app.state")),
@@ -370,7 +370,7 @@ uint32_t Test_AM_AppInfoManagerStateSettersAndGetters()
         "setAppOldState/getAppOldState: LOADING round-trips");
 
     // ---- setAppLifecycleState / getAppLifecycleState ----
-    using LCState = WPEFramework::Exchange::ILifecycleManager::LifecycleState;
+    using LCState = Thunder::Exchange::ILifecycleManager::LifecycleState;
     mgr.setAppLifecycleState("app.state", LCState::PAUSED);
     L0Test::ExpectEqU32(tr,
         static_cast<uint32_t>(mgr.getAppLifecycleState("app.state")),
@@ -410,7 +410,7 @@ uint32_t Test_AM_AppInfoManagerStateSettersAndGetters()
 uint32_t Test_AM_AppInfoManagerGetterNotFoundBranches()
 {
     L0Test::TestResult tr;
-    auto& mgr = WPEFramework::Plugin::AppInfoManager::getInstance();
+    auto& mgr = Thunder::Plugin::AppInfoManager::getInstance();
     mgr.clear();
 
     const std::string missing = "no.such.app";
@@ -422,25 +422,25 @@ uint32_t Test_AM_AppInfoManagerGetterNotFoundBranches()
     // getAppNewState — not found → APP_STATE_UNLOADED
     L0Test::ExpectEqU32(tr,
         static_cast<uint32_t>(mgr.getAppNewState(missing)),
-        static_cast<uint32_t>(WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED),
+        static_cast<uint32_t>(Thunder::Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED),
         "getAppNewState() returns APP_STATE_UNLOADED for missing app");
 
     // getTargetAppState — not found → APP_STATE_UNLOADED
     L0Test::ExpectEqU32(tr,
         static_cast<uint32_t>(mgr.getTargetAppState(missing)),
-        static_cast<uint32_t>(WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED),
+        static_cast<uint32_t>(Thunder::Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED),
         "getTargetAppState() returns APP_STATE_UNLOADED for missing app");
 
     // getAppOldState — not found → APP_STATE_UNLOADED
     L0Test::ExpectEqU32(tr,
         static_cast<uint32_t>(mgr.getAppOldState(missing)),
-        static_cast<uint32_t>(WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED),
+        static_cast<uint32_t>(Thunder::Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED),
         "getAppOldState() returns APP_STATE_UNLOADED for missing app");
 
     // getAppLifecycleState — not found → UNLOADED
     L0Test::ExpectEqU32(tr,
         static_cast<uint32_t>(mgr.getAppLifecycleState(missing)),
-        static_cast<uint32_t>(WPEFramework::Exchange::ILifecycleManager::LifecycleState::UNLOADED),
+        static_cast<uint32_t>(Thunder::Exchange::ILifecycleManager::LifecycleState::UNLOADED),
         "getAppLifecycleState() returns UNLOADED for missing app");
 
     // getActiveSessionId — not found → empty string
@@ -463,7 +463,7 @@ uint32_t Test_AM_AppInfoManagerGetterNotFoundBranches()
     // getCurrentAction — not found → APP_ACTION_NONE
     L0Test::ExpectEqU32(tr,
         static_cast<uint32_t>(mgr.getCurrentAction(missing)),
-        static_cast<uint32_t>(WPEFramework::Plugin::AppManagerTypes::APP_ACTION_NONE),
+        static_cast<uint32_t>(Thunder::Plugin::AppManagerTypes::APP_ACTION_NONE),
         "getCurrentAction() returns APP_ACTION_NONE for missing app");
 
     // getPackageInfoVersion — not found → empty string
@@ -473,7 +473,7 @@ uint32_t Test_AM_AppInfoManagerGetterNotFoundBranches()
     // getPackageInfoType — not found → APPLICATION_TYPE_UNKNOWN
     L0Test::ExpectEqU32(tr,
         static_cast<uint32_t>(mgr.getPackageInfoType(missing)),
-        static_cast<uint32_t>(WPEFramework::Plugin::AppManagerTypes::APPLICATION_TYPE_UNKNOWN),
+        static_cast<uint32_t>(Thunder::Plugin::AppManagerTypes::APPLICATION_TYPE_UNKNOWN),
         "getPackageInfoType() returns APPLICATION_TYPE_UNKNOWN for missing app");
 
     // getCurrentActionTime — not found → 0

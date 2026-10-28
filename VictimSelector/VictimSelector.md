@@ -265,7 +265,7 @@ PLUGIN_VICTIM_SELECTOR_STARTUPORDER
 
 ## Validation
 
-A full CMake build could not be run in the development environment because CMake and the Thunder/WPEFramework development headers were unavailable.
+A full CMake build could not be run in the development environment because CMake and the Thunder/Thunder development headers were unavailable.
 
 ## 9. Beginner-to-Expert Teaching Mode
 

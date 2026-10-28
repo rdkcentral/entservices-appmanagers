@@ -61,7 +61,7 @@ namespace ralf
          * @param dobbySpec Output parameter that will hold the path to the RALF rootfs
          * @return true if the dobby specification was generated successfully, false otherwise.
          */
-        bool generateRalfDobbySpec(const WPEFramework::Plugin::ApplicationConfiguration &config, const WPEFramework::Plugin::RuntimeConfiguration &runtimeConfigObject, std::string &dobbySpec);
+        bool generateRalfDobbySpec(const Thunder::Plugin::ApplicationConfiguration &config, const Thunder::Plugin::RuntimeConfiguration &runtimeConfigObject, std::string &dobbySpec);
 
         bool unmountOverlayfsIfExists(const std::string &appInstanceId);
         

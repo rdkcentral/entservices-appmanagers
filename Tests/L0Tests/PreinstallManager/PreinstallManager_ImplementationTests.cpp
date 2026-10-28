@@ -60,24 +60,24 @@
 namespace {
 
 /* Creates a heap-allocated PreinstallManagerImplementation with refcount=1. */
-WPEFramework::Plugin::PreinstallManagerImplementation* CreateImpl()
+Thunder::Plugin::PreinstallManagerImplementation* CreateImpl()
 {
-    return WPEFramework::Core::Service<
-        WPEFramework::Plugin::PreinstallManagerImplementation>::Create<
-        WPEFramework::Plugin::PreinstallManagerImplementation>();
+    return Thunder::Core::Service<
+        Thunder::Plugin::PreinstallManagerImplementation>::Create<
+        Thunder::Plugin::PreinstallManagerImplementation>();
 }
 
-bool ReleaseAndWaitForDestruction(WPEFramework::Plugin::PreinstallManagerImplementation* impl,
+bool ReleaseAndWaitForDestruction(Thunder::Plugin::PreinstallManagerImplementation* impl,
                                   std::chrono::milliseconds timeout = std::chrono::milliseconds(5000))
 {
     impl->Release();
     const auto deadline = std::chrono::steady_clock::now() + timeout;
-    while ((nullptr != WPEFramework::Plugin::PreinstallManagerImplementation::getInstance()) &&
+    while ((nullptr != Thunder::Plugin::PreinstallManagerImplementation::getInstance()) &&
            (std::chrono::steady_clock::now() < deadline))
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
     }
-    return nullptr == WPEFramework::Plugin::PreinstallManagerImplementation::getInstance();
+    return nullptr == Thunder::Plugin::PreinstallManagerImplementation::getInstance();
 }
 
 } // namespace
@@ -97,7 +97,7 @@ uint32_t Test_Impl_PIM_RegisterNotification()
     L0Test::FakePreinstallNotification notif;
 
     const auto result = impl->Register(&notif);
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE,
                         "Register() returns ERROR_NONE for a valid notification");
 
     impl->Unregister(&notif);
@@ -119,7 +119,7 @@ uint32_t Test_Impl_PIM_RegisterDuplicate()
     impl->Register(&notif);
     const auto result = impl->Register(&notif); // duplicate
 
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE,
                         "Duplicate Register() returns ERROR_NONE (idempotent)");
 
     impl->Unregister(&notif);
@@ -140,7 +140,7 @@ uint32_t Test_Impl_PIM_UnregisterNotification()
     impl->Register(&notif);
     const auto result = impl->Unregister(&notif);
 
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE,
                         "Unregister() returns ERROR_NONE for a registered notification");
 
     impl->Release();
@@ -159,7 +159,7 @@ uint32_t Test_Impl_PIM_UnregisterNotRegistered()
 
     const auto result = impl->Unregister(&notif);
 
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
                         "Unregister() on an unregistered notification returns ERROR_GENERAL");
 
     impl->Release();
@@ -180,7 +180,7 @@ uint32_t Test_Impl_PIM_ConfigureWithNullService()
     auto* impl = CreateImpl();
     const auto result = impl->Configure(nullptr);
 
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
                         "Configure(nullptr) returns ERROR_GENERAL");
 
     impl->Release();
@@ -202,7 +202,7 @@ uint32_t Test_Impl_PIM_ConfigureParsesPreinstallDirectory()
     L0Test::ServiceMock service(cfg);
     const auto result = impl->Configure(&service);
 
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE,
                         "Configure() with a valid service returns ERROR_NONE");
     // AddRef should have been called on the service inside Configure.
     L0Test::ExpectEqU32(tr, service.addRefCalls.load(), 1U,
@@ -228,7 +228,7 @@ uint32_t Test_Impl_PIM_ConfigureWithEmptyDirectoryParsesOk()
     L0Test::ServiceMock service(cfg);
     const auto result = impl->Configure(&service);
 
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE,
                         "Configure() with empty config line returns ERROR_NONE");
 
     impl->Release();
@@ -248,13 +248,13 @@ uint32_t Test_Impl_PIM_GetPreinstallStateInitiallyNotStarted()
 
     auto* impl = CreateImpl();
 
-    WPEFramework::Exchange::IPreinstallManager::State state;
+    Thunder::Exchange::IPreinstallManager::State state;
     const auto result = impl->GetPreinstallState(state);
 
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE,
                         "GetPreinstallState() returns ERROR_NONE");
     L0Test::ExpectEqU32(tr, static_cast<uint32_t>(state),
-                        static_cast<uint32_t>(WPEFramework::Exchange::IPreinstallManager::State::NOT_STARTED),
+                        static_cast<uint32_t>(Thunder::Exchange::IPreinstallManager::State::NOT_STARTED),
                         "Initial state is NOT_STARTED");
 
     impl->Release();
@@ -276,11 +276,11 @@ uint32_t Test_Impl_PIM_GetPreinstallStateAfterConfigureStillNotStarted()
     L0Test::ServiceMock service(cfg);
     impl->Configure(&service);
 
-    WPEFramework::Exchange::IPreinstallManager::State state;
+    Thunder::Exchange::IPreinstallManager::State state;
     impl->GetPreinstallState(state);
 
     L0Test::ExpectEqU32(tr, static_cast<uint32_t>(state),
-                        static_cast<uint32_t>(WPEFramework::Exchange::IPreinstallManager::State::NOT_STARTED),
+                        static_cast<uint32_t>(Thunder::Exchange::IPreinstallManager::State::NOT_STARTED),
                         "State remains NOT_STARTED after Configure() alone");
 
     impl->Release();
@@ -301,7 +301,7 @@ uint32_t Test_Impl_PIM_GetInstanceReturnsSelf()
     auto* impl = CreateImpl();
 
     L0Test::ExpectTrue(tr,
-                       WPEFramework::Plugin::PreinstallManagerImplementation::getInstance() == impl,
+                       Thunder::Plugin::PreinstallManagerImplementation::getInstance() == impl,
                        "getInstance() returns the active implementation");
 
     impl->Release();
@@ -319,7 +319,7 @@ uint32_t Test_Impl_PIM_GetInstanceAfterDestructionReturnsNull()
     impl->Release(); // dtor sets _instance = nullptr
 
     L0Test::ExpectTrue(tr,
-                       WPEFramework::Plugin::PreinstallManagerImplementation::getInstance() == nullptr,
+                       Thunder::Plugin::PreinstallManagerImplementation::getInstance() == nullptr,
                        "getInstance() returns nullptr after destruction");
     return tr.failures;
 }
@@ -335,8 +335,8 @@ uint32_t Test_Impl_PIM_QueryInterfaceIPreinstallManager()
 
     auto* impl = CreateImpl();
 
-    void* raw = impl->QueryInterface(WPEFramework::Exchange::IPreinstallManager::ID);
-    auto* iface = static_cast<WPEFramework::Exchange::IPreinstallManager*>(raw);
+    void* raw = impl->QueryInterface(Thunder::Exchange::IPreinstallManager::ID);
+    auto* iface = static_cast<Thunder::Exchange::IPreinstallManager*>(raw);
     L0Test::ExpectTrue(tr, iface != nullptr,
                        "QueryInterface(IPreinstallManager::ID) returns non-null");
 
@@ -353,8 +353,8 @@ uint32_t Test_Impl_PIM_QueryInterfaceIConfiguration()
 
     auto* impl = CreateImpl();
 
-    void* raw = impl->QueryInterface(WPEFramework::Exchange::IConfiguration::ID);
-    auto* iface = static_cast<WPEFramework::Exchange::IConfiguration*>(raw);
+    void* raw = impl->QueryInterface(Thunder::Exchange::IConfiguration::ID);
+    auto* iface = static_cast<Thunder::Exchange::IConfiguration*>(raw);
     L0Test::ExpectTrue(tr, iface != nullptr,
                        "QueryInterface(IConfiguration::ID) returns non-null");
 
@@ -394,16 +394,16 @@ uint32_t Test_Impl_PIM_MultipleNotificationsRegisterUnregister()
     L0Test::FakePreinstallNotification notif2;
     L0Test::FakePreinstallNotification notif3;
 
-    L0Test::ExpectEqU32(tr, impl->Register(&notif1), WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, impl->Register(&notif1), Thunder::Core::ERROR_NONE,
                         "Register notif1");
-    L0Test::ExpectEqU32(tr, impl->Register(&notif2), WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, impl->Register(&notif2), Thunder::Core::ERROR_NONE,
                         "Register notif2");
-    L0Test::ExpectEqU32(tr, impl->Register(&notif3), WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, impl->Register(&notif3), Thunder::Core::ERROR_NONE,
                         "Register notif3");
 
-    L0Test::ExpectEqU32(tr, impl->Unregister(&notif2), WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, impl->Unregister(&notif2), Thunder::Core::ERROR_NONE,
                         "Unregister notif2 succeeds");
-    L0Test::ExpectEqU32(tr, impl->Unregister(&notif2), WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, impl->Unregister(&notif2), Thunder::Core::ERROR_GENERAL,
                         "Unregister notif2 again returns ERROR_GENERAL");
 
     impl->Unregister(&notif1);
@@ -429,13 +429,13 @@ uint32_t Test_Impl_PIM_StartPreinstallWithoutServiceFails()
 
     const auto result = impl->StartPreinstall(true);
 
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
                         "StartPreinstall returns ERROR_GENERAL when no service has been configured");
 
-    WPEFramework::Exchange::IPreinstallManager::State state;
+    Thunder::Exchange::IPreinstallManager::State state;
     impl->GetPreinstallState(state);
     L0Test::ExpectEqU32(tr, static_cast<uint32_t>(state),
-                        static_cast<uint32_t>(WPEFramework::Exchange::IPreinstallManager::State::NOT_STARTED),
+                        static_cast<uint32_t>(Thunder::Exchange::IPreinstallManager::State::NOT_STARTED),
                         "State remains NOT_STARTED after failed StartPreinstall");
 
     impl->Release();
@@ -460,7 +460,7 @@ uint32_t Test_Impl_PIM_StartPreinstallWithNoInstallerFails()
 
     const auto result = impl->StartPreinstall(true);
 
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
                         "StartPreinstall returns ERROR_GENERAL when IPackageInstaller is unavailable");
 
     impl->Release();
@@ -500,18 +500,18 @@ uint32_t RunVersionComparison(const std::string& preinstallVer, const std::strin
                                                   std::string&) {
         id      = "myapp";
         version = preinstallVer;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     };
 
-    installer.listPackagesHandler = [installedVer](WPEFramework::Exchange::IPackageInstaller::IPackageIterator*& packages) {
-        std::list<WPEFramework::Exchange::IPackageInstaller::Package> pkgs;
-        WPEFramework::Exchange::IPackageInstaller::Package pkg;
+    installer.listPackagesHandler = [installedVer](Thunder::Exchange::IPackageInstaller::IPackageIterator*& packages) {
+        std::list<Thunder::Exchange::IPackageInstaller::Package> pkgs;
+        Thunder::Exchange::IPackageInstaller::Package pkg;
         pkg.packageId = "myapp";
         pkg.version   = installedVer;
-        pkg.state     = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
+        pkg.state     = Thunder::Exchange::IPackageInstaller::InstallState::INSTALLED;
         pkgs.push_back(pkg);
         packages = L0Test::MakePackageIterator(pkgs);
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     };
 
     L0Test::ServiceMock::Config cfg(&installer);
@@ -523,11 +523,11 @@ uint32_t RunVersionComparison(const std::string& preinstallVer, const std::strin
     impl->StartPreinstall(false);
 
     // Wait for completion (max 2s).
-    WPEFramework::Exchange::IPreinstallManager::State state;
+    Thunder::Exchange::IPreinstallManager::State state;
     bool completed = false;
     for (int i = 0; i < 200; ++i) {
         impl->GetPreinstallState(state);
-        if (state == WPEFramework::Exchange::IPreinstallManager::State::COMPLETED) {
+        if (state == Thunder::Exchange::IPreinstallManager::State::COMPLETED) {
             completed = true;
             break;
         }

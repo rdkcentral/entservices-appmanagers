@@ -39,8 +39,8 @@
 #include "common/L0Expect.hpp"
 #include "common/L0TestTypes.hpp"
 
-using WPEFramework::Plugin::StorageManagerImplementation;
-using WPEFramework::Plugin::RequestHandler;
+using Thunder::Plugin::StorageManagerImplementation;
+using Thunder::Plugin::RequestHandler;
 
 namespace {
 
@@ -49,7 +49,7 @@ namespace {
  */
 StorageManagerImplementation* CreateImpl()
 {
-    return WPEFramework::Core::Service<StorageManagerImplementation>::Create<StorageManagerImplementation>();
+    return Thunder::Core::Service<StorageManagerImplementation>::Create<StorageManagerImplementation>();
 }
 
 } // namespace
@@ -72,7 +72,7 @@ uint32_t Test_Impl_ConfigureWithValidService()
     L0Test::ExpectTrue(tr, impl != nullptr, "Implementation created");
 
     const uint32_t result = impl->Configure(&service);
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE, "Configure returns ERROR_NONE");
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE, "Configure returns ERROR_NONE");
 
     impl->Release();
 
@@ -102,7 +102,7 @@ uint32_t Test_Impl_ConfigureWithNullService()
 
     // Now test that calling Configure with nullptr returns error
     const uint32_t result = impl->Configure(nullptr);
-    L0Test::ExpectTrue(tr, result != WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectTrue(tr, result != Thunder::Core::ERROR_NONE,
                        "Configure returns error with null service");
 
     impl->Release();
@@ -132,7 +132,7 @@ uint32_t Test_Impl_CreateStorageWithValidInput()
     std::string errorReason;
     const uint32_t result = impl->CreateStorage("com.test.app", 10240, path, errorReason);
 
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE, "CreateStorage returns ERROR_NONE");
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE, "CreateStorage returns ERROR_NONE");
     L0Test::ExpectTrue(tr, !path.empty(), "Path is not empty");
     L0Test::ExpectTrue(tr, errorReason.empty(), "Error reason is empty on success");
 
@@ -162,7 +162,7 @@ uint32_t Test_Impl_CreateStorageWithEmptyAppId()
     std::string errorReason;
     const uint32_t result = impl->CreateStorage("", 10240, path, errorReason);
 
-    L0Test::ExpectTrue(tr, result != WPEFramework::Core::ERROR_NONE, "CreateStorage returns error");
+    L0Test::ExpectTrue(tr, result != Thunder::Core::ERROR_NONE, "CreateStorage returns error");
     L0Test::ExpectTrue(tr, !errorReason.empty(), "Error reason provides explanation");
 
     impl->Release();
@@ -201,7 +201,7 @@ uint32_t Test_Impl_GetStorageWithValidAppId()
     uint32_t used = 0;
     const uint32_t result = impl->GetStorage("com.test.app", -1, -1, path, size, used);
 
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE, "GetStorage returns ERROR_NONE");
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE, "GetStorage returns ERROR_NONE");
     L0Test::ExpectTrue(tr, !path.empty(), "Path is not empty");
 
     impl->Release();
@@ -231,7 +231,7 @@ uint32_t Test_Impl_GetStorageWithEmptyAppId()
     uint32_t used = 0;
     const uint32_t result = impl->GetStorage("", 1000, 1000, path, size, used);
 
-    L0Test::ExpectTrue(tr, result != WPEFramework::Core::ERROR_NONE, "GetStorage returns error");
+    L0Test::ExpectTrue(tr, result != Thunder::Core::ERROR_NONE, "GetStorage returns error");
 
     impl->Release();
 
@@ -260,7 +260,7 @@ uint32_t Test_Impl_GetStorageWithNonExistentAppId()
     uint32_t used = 0;
     const uint32_t result = impl->GetStorage("com.nonexistent.app", 1000, 1000, path, size, used);
 
-    L0Test::ExpectTrue(tr, result != WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectTrue(tr, result != Thunder::Core::ERROR_NONE,
                        "GetStorage returns error for non-existent app");
 
     impl->Release();
@@ -294,7 +294,7 @@ uint32_t Test_Impl_DeleteStorageWithValidAppId()
     std::string errorReason;
     const uint32_t result = impl->DeleteStorage("com.test.app", errorReason);
 
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE, "DeleteStorage returns ERROR_NONE");
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE, "DeleteStorage returns ERROR_NONE");
     L0Test::ExpectTrue(tr, errorReason.empty(), "Error reason is empty on success");
 
     impl->Release();
@@ -322,7 +322,7 @@ uint32_t Test_Impl_DeleteStorageWithEmptyAppId()
     std::string errorReason;
     const uint32_t result = impl->DeleteStorage("", errorReason);
 
-    L0Test::ExpectTrue(tr, result != WPEFramework::Core::ERROR_NONE, "DeleteStorage returns error");
+    L0Test::ExpectTrue(tr, result != Thunder::Core::ERROR_NONE, "DeleteStorage returns error");
     L0Test::ExpectTrue(tr, !errorReason.empty(), "Error reason provides explanation");
 
     impl->Release();
@@ -385,7 +385,7 @@ uint32_t Test_Impl_ClearStorageWithEmptyAppId()
     std::string errorReason;
     const uint32_t result = impl->Clear("", errorReason);
 
-    L0Test::ExpectTrue(tr, result != WPEFramework::Core::ERROR_NONE, "Clear returns error");
+    L0Test::ExpectTrue(tr, result != Thunder::Core::ERROR_NONE, "Clear returns error");
     L0Test::ExpectTrue(tr, !errorReason.empty(), "Error reason provides explanation");
 
     impl->Release();
@@ -414,7 +414,7 @@ uint32_t Test_Impl_ClearAllWithNoExemptions()
     const uint32_t result = impl->ClearAll("", errorReason);
 
     // ClearAll should succeed even if no apps exist
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE, "ClearAll returns ERROR_NONE");
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE, "ClearAll returns ERROR_NONE");
     L0Test::ExpectEqStr(tr, errorReason, std::string(), "No error reason on success");
 
     impl->Release();
@@ -444,7 +444,7 @@ uint32_t Test_Impl_ClearAllWithExemptions()
     const uint32_t result = impl->ClearAll(exemptionList, errorReason);
 
     // ClearAll should succeed with exemptions
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE, "ClearAll returns ERROR_NONE");
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE, "ClearAll returns ERROR_NONE");
     L0Test::ExpectEqStr(tr, errorReason, std::string(), "No error reason on success");
 
     impl->Release();

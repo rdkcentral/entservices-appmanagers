@@ -16,7 +16,7 @@ OpenSpec explore should generate the following artifacts when run on this codeba
 # ENT Services AppManagers - Repository Overview
 
 ## Quick Facts
-- **Type**: WPEFramework Plugin Collection
+- **Type**: Thunder Plugin Collection
 - **Language**: C++11
 - **Modules**: 9 plugins + helpers
 - **Build System**: CMake 3.3+
@@ -34,7 +34,7 @@ OpenSpec explore should generate the following artifacts when run on this codeba
 [Generate simple ASCII or mermaid diagram from extracted architecture]
 
 ## Key Dependencies
-- **Framework**: WPEFramework
+- **Framework**: Thunder
 - **Container Runtime**: Dobby (crun)
 - **Display**: Wayland (Essos/Westeros)
 - **Packages**: libpackage-sky
@@ -54,7 +54,7 @@ OpenSpec explore should generate the following artifacts when run on this codeba
 | Package | Version | Purpose | Optional |
 |---------|---------|---------|----------|
 | CMake | ≥3.3 | Build system | No |
-| WPEFramework | Latest | Plugin framework | No |
+| Thunder | Latest | Plugin framework | No |
 | curl | Latest | HTTP client | No |
 | jsoncpp | - | JSON handling | No |
 | yaml-cpp | - | YAML config parsing | Yes* |
@@ -99,7 +99,7 @@ OpenSpec explore should generate the following artifacts when run on this codeba
 | Dependencies | LifecycleManager, PackageManager, AppStorageManager |
 | Build Size | ~500 KB |
 | Memory (avg) | 5-10 MB |
-| External Deps | WPEFramework |
+| External Deps | Thunder |
 | Optional Features | Telemetry |
 
 [Repeat for each module with auto-generated metrics]

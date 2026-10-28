@@ -1,6 +1,6 @@
 #include "UserIdManager.h"
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
 UserIdManager::UserIdManager()
@@ -68,4 +68,4 @@ gid_t UserIdManager::getAppsGid()
     return 30000;
 }
 } // namespace Plugin
-} // namespace WPEFramework
+} // namespace Thunder

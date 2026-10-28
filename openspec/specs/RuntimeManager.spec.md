@@ -2,7 +2,7 @@
 
 ## Overview
 **Module Name**: RuntimeManager
-**Type**: WPEFramework Plugin
+**Type**: Thunder Plugin
 **Purpose**: OCI container runtime management using Dobby for application execution, resource isolation, hibernation, and lifecycle control
 
 ## Description
@@ -83,7 +83,7 @@ When RuntimeManager must consume a new property, the owning producer adds it to 
 
 ### Configuration
 - **Config File**: Runtime config YAML (if `ENABLE_RDKAPPMANAGERS_RUNTIMECONFIG`)
-- **Thunder Service**: Registered as a WPEFramework/Thunder plugin
+- **Thunder Service**: Registered as a Thunder/Thunder plugin
 
 ## Data Flow
 ```
@@ -160,7 +160,7 @@ Wake:
 ### System Libraries
 | Library | Version | Purpose | Optional |
 |---------|---------|---------|----------|
-| WPEFramework | Latest | Plugin framework | No |
+| Thunder | Latest | Plugin framework | No |
 | crun | >=0.13 | OCI runtime | No |
 | criu | Latest | Checkpoint/restore (hibernation) | Yes |
 | jsoncpp | - | OCI spec JSON generation | No |

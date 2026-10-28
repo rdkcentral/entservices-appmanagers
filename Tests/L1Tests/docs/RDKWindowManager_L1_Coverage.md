@@ -16,7 +16,7 @@
 
 | Step | Description |
 |---|---|
-| Plugin creation | `Core::ProxyType<Plugin::RDKWindowManager>::Create()` — creates the WPEFramework plugin proxy |
+| Plugin creation | `Core::ProxyType<Plugin::RDKWindowManager>::Create()` — creates the Thunder plugin proxy |
 | Worker pool | `WorkerPoolImplementation(2 threads)` assigned to `Core::IWorkerPool` |
 | Mock injection | `NiceMock<COMLinkMock>` provided via `ServiceMock::COMLink()` |
 | Implementation mock | `NiceMock<WindowManagerMock>` returned by `COMLink()->Instantiate()`, replacing `RDKWindowManagerImplementation` entirely |

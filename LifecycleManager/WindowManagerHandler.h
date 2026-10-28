@@ -26,7 +26,7 @@
 #include "tracing/Logging.h"
 #include <utility>
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
     class WindowManagerHandler
     {
@@ -76,4 +76,4 @@ namespace Plugin {
             IEventHandler* mEventHandler;
     };
 } // namespace Plugin
-} // namespace WPEFramework
+} // namespace Thunder

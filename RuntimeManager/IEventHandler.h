@@ -23,7 +23,7 @@
 #include <string>
 
 
-namespace WPEFramework
+namespace Thunder
 {
     namespace Plugin
     {
@@ -36,4 +36,4 @@ namespace WPEFramework
             virtual void onOCIContainerStateChangedEvent(std::string name, JsonObject& data) = 0;
         };
     } /* namespace Plugin */
-} /* namespace WPEFramework */
+} /* namespace Thunder */

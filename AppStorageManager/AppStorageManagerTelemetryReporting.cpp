@@ -20,7 +20,7 @@
 #include "AppStorageManagerTelemetryReporting.h"
 #include "UtilsLogging.h"
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
 AppStorageManagerTelemetryReporting::AppStorageManagerTelemetryReporting()
@@ -69,4 +69,4 @@ void AppStorageManagerTelemetryReporting::recordGetStorageTelemetry(const std::s
 }
 
 } // namespace Plugin
-} // namespace WPEFramework
+} // namespace Thunder

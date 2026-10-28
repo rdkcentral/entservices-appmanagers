@@ -2,7 +2,7 @@
 
 ## Overview
 **Module Name**: LifecycleManager
-**Type**: WPEFramework Plugin
+**Type**: Thunder Plugin
 **Purpose**: Application lifecycle state machine managing transitions between app states (UNLOADED → LOADING → ACTIVE/PAUSED → SUSPENDED/HIBERNATED → TERMINATING)
 
 ## Description
@@ -66,7 +66,7 @@ UNLOADED (0)
 
 ### Configuration
 - **Config File**: `LifecycleManager.conf.in` / `LifecycleManager.config`
-- **Thunder Service**: Registered as a WPEFramework/Thunder plugin
+- **Thunder Service**: Registered as a Thunder/Thunder plugin
 
 ## Data Flow
 ```
@@ -130,7 +130,7 @@ UnloadApp():
 ### System Libraries
 | Library | Version | Purpose | Optional |
 |---------|---------|---------|----------|
-| WPEFramework | Latest | Plugin framework | No |
+| Thunder | Latest | Plugin framework | No |
 | jsoncpp | - | JSON serialization | No |
 
 ### Internal Dependencies

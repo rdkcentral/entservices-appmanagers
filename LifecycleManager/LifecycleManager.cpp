@@ -22,11 +22,11 @@
 #include "UtilsAppManagerTelemetry.h"
 #include <interfaces/IConfiguration.h>
 
-const string WPEFramework::Plugin::LifecycleManager::SERVICE_NAME = "org.rdk.LifecycleManager";
+const string Thunder::Plugin::LifecycleManager::SERVICE_NAME = "org.rdk.LifecycleManager";
 
-RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::LifecycleManagerTelemetryReporting, "lifecycleManagerBootstrapTime")
+RDKAM_DEFINE_TELEMETRY_CLIENT(Thunder::Plugin::LifecycleManagerTelemetryReporting, "lifecycleManagerBootstrapTime")
 
-namespace WPEFramework
+namespace Thunder
 {
     namespace {
 
@@ -166,4 +166,4 @@ namespace WPEFramework
             return(string("{\"service\": \"") + SERVICE_NAME + string("\"}"));
         }
     } /* namespace Plugin */
-} /* namespace WPEFramework */
+} /* namespace Thunder */

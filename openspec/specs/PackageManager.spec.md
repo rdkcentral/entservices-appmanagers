@@ -2,7 +2,7 @@
 
 ## Overview
 **Module Name**: PackageManager
-**Type**: WPEFramework Plugin
+**Type**: Thunder Plugin
 **Purpose**: Application package lifecycle management including download, installation, locking, and uninstallation
 
 ## Description
@@ -63,7 +63,7 @@ PackageManagerImplementation
 ### Configuration
 - **Config File**: `AppPackageManager.conf.in` / `AppPackageManager.config`
 - **Download Dir**: Configurable via `PLUGIN_PACKAGEMANAGER_DOWNLOAD_DIR`
-- **Thunder Service**: Registered as a WPEFramework/Thunder plugin
+- **Thunder Service**: Registered as a Thunder/Thunder plugin
 
 ## Data Flow
 ```
@@ -135,7 +135,7 @@ Unlock(packageId, version):
 ### System Libraries
 | Library | Version | Purpose | Optional |
 |---------|---------|---------|----------|
-| WPEFramework | Latest | Plugin framework | No |
+| Thunder | Latest | Plugin framework | No |
 | curl | Latest | HTTP client for downloads | No |
 | jsoncpp | - | JSON serialization | No |
 

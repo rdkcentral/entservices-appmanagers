@@ -23,7 +23,7 @@
 #include <core/core.h>
 #include <plugins/plugins.h>
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 namespace Utils {
 
@@ -92,4 +92,4 @@ public:
 
 } // namespace Utils
 } // namespace Plugin
-} // namespace WPEFramework
+} // namespace Thunder

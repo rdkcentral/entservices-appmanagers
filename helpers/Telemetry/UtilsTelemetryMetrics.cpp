@@ -24,7 +24,7 @@
 #include <mutex>
 #endif
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 namespace Utils {
 
@@ -65,7 +65,7 @@ Core::hresult TelemetryMetricsClient::initialize(PluginHost::IShell* service,
         return Core::ERROR_GENERAL;
     }
 
-    gTelemetryMetricsObject = service->QueryInterfaceByCallsign<WPEFramework::Exchange::ITelemetryMetrics>(callsign.c_str());
+    gTelemetryMetricsObject = service->QueryInterfaceByCallsign<Thunder::Exchange::ITelemetryMetrics>(callsign.c_str());
 
     return (gTelemetryMetricsObject != nullptr) ? Core::ERROR_NONE : Core::ERROR_GENERAL;
 #else
@@ -137,4 +137,4 @@ Core::hresult TelemetryMetricsClient::publish(const std::string& appId,
 
 } // namespace Utils
 } // namespace Plugin
-} // namespace WPEFramework
+} // namespace Thunder

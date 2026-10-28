@@ -32,7 +32,7 @@
 #include <rdkwindowmanager/include/rdkwindowmanager.h>
 #include <rdkwindowmanager/include/linuxkeys.h>
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
     struct CreateDisplayRequest
@@ -224,4 +224,4 @@ namespace Plugin {
         friend class Job;
     };
 } /* namespace Plugin */
-} /* namespace WPEFramework */
+} /* namespace Thunder */

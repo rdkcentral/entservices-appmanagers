@@ -226,7 +226,7 @@ fi
 
 securityToken=""
 if [ $isThunderSecurityEnabled = "1" ]; then
-  securityToken=`WPEFrameworkSecurityUtility |awk -F\" '{print $4}'`
+  securityToken=`ThunderSecurityUtility |awk -F\" '{print $4}'`
 fi
 
 validate()
@@ -782,11 +782,11 @@ testSetInputEventDisable() {
 testInputEventEnable() {
     client_name="testapp"
     #CreateDisplay
-    curl -H "Authorization: Bearer `WPEFrameworkSecurityUtility | cut -d '"' -f 4`"  --header "Content-Type: application/json" --request POST -d  '{"jsonrpc":"2.0","id":"3","method": "org.rdk.RDKWindowManager.createDisplay", "params":{"displayParams": "{\"client\":\"testapp\",\"displayName\":\"wst-webkitbrowser\"}"}}' http://127.0.0.1:9998/jsonrpc;
+    curl -H "Authorization: Bearer `ThunderSecurityUtility | cut -d '"' -f 4`"  --header "Content-Type: application/json" --request POST -d  '{"jsonrpc":"2.0","id":"3","method": "org.rdk.RDKWindowManager.createDisplay", "params":{"displayParams": "{\"client\":\"testapp\",\"displayName\":\"wst-webkitbrowser\"}"}}' http://127.0.0.1:9998/jsonrpc;
     #webkitBrower activate
-    curl -H "Authorization: Bearer `WPEFrameworkSecurityUtility | cut -d '"' -f 4`"  --header "Content-Type: application/json" --request POST -d  '{"jsonrpc": "2.0","id": 5,"method": "Controller.1.activate", "params": { "callsign": "WebKitBrowser"}}' http://127.0.0.1:9998/jsonrpc ;
+    curl -H "Authorization: Bearer `ThunderSecurityUtility | cut -d '"' -f 4`"  --header "Content-Type: application/json" --request POST -d  '{"jsonrpc": "2.0","id": 5,"method": "Controller.1.activate", "params": { "callsign": "WebKitBrowser"}}' http://127.0.0.1:9998/jsonrpc ;
     #Load Google Browser:
-    curl -H "Authorization: Bearer `WPEFrameworkSecurityUtility | cut -d '"' -f 4`" --header "Content-Type: application/json" --request POST -d '{"jsonrpc":"2.0","id":"3","method":"WebKitBrowser.1.url","params":"http://www.google.com"}' http://127.0.0.1:9998/jsonrpc;
+    curl -H "Authorization: Bearer `ThunderSecurityUtility | cut -d '"' -f 4`" --header "Content-Type: application/json" --request POST -d '{"jsonrpc":"2.0","id":"3","method":"WebKitBrowser.1.url","params":"http://www.google.com"}' http://127.0.0.1:9998/jsonrpc;
 
     # Enable Input Events
     testSetInputEventEnable "$client_name"
@@ -798,7 +798,7 @@ testInputEventEnable() {
     testAPI "testInjectKey_InputEventEnabled" "$injectKeyInput" "$expectedResult"
 
     sleep $testAppTimeOut
-    curl -H "Authorization: Bearer `WPEFrameworkSecurityUtility | cut -d '"' -f 4`" --header "Content-Type: application/json" --request POST -d  '{"jsonrpc": "2.0","id": 4,"method": "Controller.1.deactivate", "params": { "callsign": "WebKitBrowser"}}' http://127.0.0.1:9998/jsonrpc;
+    curl -H "Authorization: Bearer `ThunderSecurityUtility | cut -d '"' -f 4`" --header "Content-Type: application/json" --request POST -d  '{"jsonrpc": "2.0","id": 4,"method": "Controller.1.deactivate", "params": { "callsign": "WebKitBrowser"}}' http://127.0.0.1:9998/jsonrpc;
 
     echo "---- Confirm on the WebKitBrowser application side that the Generate key is  accepted when input events are Enabled. ----"
 }
@@ -807,11 +807,11 @@ testInputEventEnable() {
 testInputEventDisable() {
     client_name="testapp"
     #CreateDisplay
-    curl -H "Authorization: Bearer `WPEFrameworkSecurityUtility | cut -d '"' -f 4`"  --header "Content-Type: application/json" --request POST -d  '{"jsonrpc":"2.0","id":"3","method": "org.rdk.RDKWindowManager.createDisplay", "params":{"displayParams": "{\"client\":\"testapp\",\"displayName\":\"wst-webkitbrowser\"}"}}' http://127.0.0.1:9998/jsonrpc;
+    curl -H "Authorization: Bearer `ThunderSecurityUtility | cut -d '"' -f 4`"  --header "Content-Type: application/json" --request POST -d  '{"jsonrpc":"2.0","id":"3","method": "org.rdk.RDKWindowManager.createDisplay", "params":{"displayParams": "{\"client\":\"testapp\",\"displayName\":\"wst-webkitbrowser\"}"}}' http://127.0.0.1:9998/jsonrpc;
     #webkitBrower actiate
-    curl -H "Authorization: Bearer `WPEFrameworkSecurityUtility | cut -d '"' -f 4`"  --header "Content-Type: application/json" --request POST -d  '{"jsonrpc": "2.0","id": 5,"method": "Controller.1.activate", "params": { "callsign": "WebKitBrowser"}}' http://127.0.0.1:9998/jsonrpc ;
+    curl -H "Authorization: Bearer `ThunderSecurityUtility | cut -d '"' -f 4`"  --header "Content-Type: application/json" --request POST -d  '{"jsonrpc": "2.0","id": 5,"method": "Controller.1.activate", "params": { "callsign": "WebKitBrowser"}}' http://127.0.0.1:9998/jsonrpc ;
     #Load Google Browser:
-    curl -H "Authorization: Bearer `WPEFrameworkSecurityUtility | cut -d '"' -f 4`" --header "Content-Type: application/json" --request POST -d '{"jsonrpc":"2.0","id":"3","method":"WebKitBrowser.1.url","params":"http://www.google.com"}' http://127.0.0.1:9998/jsonrpc; 
+    curl -H "Authorization: Bearer `ThunderSecurityUtility | cut -d '"' -f 4`" --header "Content-Type: application/json" --request POST -d '{"jsonrpc":"2.0","id":"3","method":"WebKitBrowser.1.url","params":"http://www.google.com"}' http://127.0.0.1:9998/jsonrpc; 
 
     # Disable Input Events
     testSetInputEventDisable "$client_name"
@@ -822,7 +822,7 @@ testInputEventDisable() {
     testAPI "testInjectKey_InputEventDisabled" "$injectKeyInput" "$expectedResult"
     sleep $testAppTimeOut
 
-    curl -H "Authorization: Bearer `WPEFrameworkSecurityUtility | cut -d '"' -f 4`" --header "Content-Type: application/json" --request POST -d  '{"jsonrpc": "2.0","id": 4,"method": "Controller.1.deactivate", "params": { "callsign": "WebKitBrowser"}}' http://127.0.0.1:9998/jsonrpc;
+    curl -H "Authorization: Bearer `ThunderSecurityUtility | cut -d '"' -f 4`" --header "Content-Type: application/json" --request POST -d  '{"jsonrpc": "2.0","id": 4,"method": "Controller.1.deactivate", "params": { "callsign": "WebKitBrowser"}}' http://127.0.0.1:9998/jsonrpc;
     echo "---- Confirm on the WebKitBrowser application side that the Generate key is NOT accepted when input events are disabled. ----"
 }
 

@@ -30,7 +30,7 @@ namespace L0Test {
 /**
  * @brief Mock IStore2 implementation for testing without real persistent storage
  */
-class L0MockPersistentStore : public WPEFramework::Exchange::IStore2 {
+class L0MockPersistentStore : public Thunder::Exchange::IStore2 {
 public:
     L0MockPersistentStore();
     ~L0MockPersistentStore() override = default;

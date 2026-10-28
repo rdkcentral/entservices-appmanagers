@@ -21,18 +21,18 @@
 #include <gmock/gmock.h>
 #include <interfaces/IRDKWindowManager.h>
 
-using ::WPEFramework::Exchange::IRDKWindowManager;
+using ::Thunder::Exchange::IRDKWindowManager;
 
 class WindowManagerMock : public IRDKWindowManager {
 public:
     WindowManagerMock() = default;
     virtual ~WindowManagerMock() = default;
 
-    MOCK_METHOD(WPEFramework::Core::hresult, Register, (INotification *notification), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, Unregister, (INotification *notification), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, Initialize, (WPEFramework::PluginHost::IShell* service), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, Deinitialize, (WPEFramework::PluginHost::IShell* service), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, CreateDisplay,
+    MOCK_METHOD(Thunder::Core::hresult, Register, (INotification *notification), (override));
+    MOCK_METHOD(Thunder::Core::hresult, Unregister, (INotification *notification), (override));
+    MOCK_METHOD(Thunder::Core::hresult, Initialize, (Thunder::PluginHost::IShell* service), (override));
+    MOCK_METHOD(Thunder::Core::hresult, Deinitialize, (Thunder::PluginHost::IShell* service), (override));
+    MOCK_METHOD(Thunder::Core::hresult, CreateDisplay,
         (const string& clientId, const string& displayName,
          const uint32_t displayWidth, const uint32_t displayHeight,
          const bool virtualDisplay,
@@ -40,43 +40,43 @@ public:
          const uint32_t ownerId, const uint32_t groupId,
          const bool topmost, const bool focus, const string& capabilities),
         (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, GetApps, (WPEFramework::Exchange::IRDKWindowManager::IStringIterator*& appsIds), (const, override));
-    MOCK_METHOD(WPEFramework::Core::hresult, AddKeyIntercept, (const string &intercept), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, AddKeyIntercepts, (const string &clientId, const string &intercepts), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, RemoveKeyIntercept, (const string &clientId, uint32_t keyCode, const string &modifiers), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, AddKeyListener, (const string &keyListeners), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, RemoveKeyListener, (const string &keyListeners), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, InjectKey, (uint32_t keyCode, const string &modifiers), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, GenerateKey, (const string& keys, const string& client), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, EnableInactivityReporting, (const bool enable), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, SetInactivityInterval, (const uint32_t interval), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, ResetInactivityTime, (), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, EnableKeyRepeats, (bool enable), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, GetKeyRepeatsEnabled, (bool &keyRepeat), (const, override));
-    MOCK_METHOD(WPEFramework::Core::hresult, IgnoreKeyInputs, (bool ignore), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, EnableInputEvents, (const string &clients, bool enable), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, KeyRepeatConfig, (const string &input, const string &keyConfig), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, SetFocus, (const string &client), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, SetVisible, (const std::string &client, bool visible), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, GetVisibility, (const std::string &client, bool &visible), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, RenderReady, (const string& client, bool &status), (const, override));
-    MOCK_METHOD(WPEFramework::Core::hresult, EnableDisplayRender, (const string& client, bool enable), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, GetLastKeyInfo, (uint32_t &keyCode, uint32_t &modifiers, uint64_t &timestampInSeconds), (const, override));
-    MOCK_METHOD(WPEFramework::Core::hresult, SetZOrder, (const string& appInstanceId, const int32_t zOrder), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, GetZOrder, (const string& appInstanceId, int32_t &zOrder), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, StartVncServer, (), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, StopVncServer, (), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, GetFocused, (string& client), (const, override));
-    MOCK_METHOD(WPEFramework::Core::hresult, GetScreenshot, (), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, SetAlias, (const string& clientId, const string& alias), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, ShowSplashScreen, (const bool show), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, SetBounds,
+    MOCK_METHOD(Thunder::Core::hresult, GetApps, (Thunder::Exchange::IRDKWindowManager::IStringIterator*& appsIds), (const, override));
+    MOCK_METHOD(Thunder::Core::hresult, AddKeyIntercept, (const string &intercept), (override));
+    MOCK_METHOD(Thunder::Core::hresult, AddKeyIntercepts, (const string &clientId, const string &intercepts), (override));
+    MOCK_METHOD(Thunder::Core::hresult, RemoveKeyIntercept, (const string &clientId, uint32_t keyCode, const string &modifiers), (override));
+    MOCK_METHOD(Thunder::Core::hresult, AddKeyListener, (const string &keyListeners), (override));
+    MOCK_METHOD(Thunder::Core::hresult, RemoveKeyListener, (const string &keyListeners), (override));
+    MOCK_METHOD(Thunder::Core::hresult, InjectKey, (uint32_t keyCode, const string &modifiers), (override));
+    MOCK_METHOD(Thunder::Core::hresult, GenerateKey, (const string& keys, const string& client), (override));
+    MOCK_METHOD(Thunder::Core::hresult, EnableInactivityReporting, (const bool enable), (override));
+    MOCK_METHOD(Thunder::Core::hresult, SetInactivityInterval, (const uint32_t interval), (override));
+    MOCK_METHOD(Thunder::Core::hresult, ResetInactivityTime, (), (override));
+    MOCK_METHOD(Thunder::Core::hresult, EnableKeyRepeats, (bool enable), (override));
+    MOCK_METHOD(Thunder::Core::hresult, GetKeyRepeatsEnabled, (bool &keyRepeat), (const, override));
+    MOCK_METHOD(Thunder::Core::hresult, IgnoreKeyInputs, (bool ignore), (override));
+    MOCK_METHOD(Thunder::Core::hresult, EnableInputEvents, (const string &clients, bool enable), (override));
+    MOCK_METHOD(Thunder::Core::hresult, KeyRepeatConfig, (const string &input, const string &keyConfig), (override));
+    MOCK_METHOD(Thunder::Core::hresult, SetFocus, (const string &client), (override));
+    MOCK_METHOD(Thunder::Core::hresult, SetVisible, (const std::string &client, bool visible), (override));
+    MOCK_METHOD(Thunder::Core::hresult, GetVisibility, (const std::string &client, bool &visible), (override));
+    MOCK_METHOD(Thunder::Core::hresult, RenderReady, (const string& client, bool &status), (const, override));
+    MOCK_METHOD(Thunder::Core::hresult, EnableDisplayRender, (const string& client, bool enable), (override));
+    MOCK_METHOD(Thunder::Core::hresult, GetLastKeyInfo, (uint32_t &keyCode, uint32_t &modifiers, uint64_t &timestampInSeconds), (const, override));
+    MOCK_METHOD(Thunder::Core::hresult, SetZOrder, (const string& appInstanceId, const int32_t zOrder), (override));
+    MOCK_METHOD(Thunder::Core::hresult, GetZOrder, (const string& appInstanceId, int32_t &zOrder), (override));
+    MOCK_METHOD(Thunder::Core::hresult, StartVncServer, (), (override));
+    MOCK_METHOD(Thunder::Core::hresult, StopVncServer, (), (override));
+    MOCK_METHOD(Thunder::Core::hresult, GetFocused, (string& client), (const, override));
+    MOCK_METHOD(Thunder::Core::hresult, GetScreenshot, (), (override));
+    MOCK_METHOD(Thunder::Core::hresult, SetAlias, (const string& clientId, const string& alias), (override));
+    MOCK_METHOD(Thunder::Core::hresult, ShowSplashScreen, (const bool show), (override));
+    MOCK_METHOD(Thunder::Core::hresult, SetBounds,
         (const string& clientId, const uint32_t x, const uint32_t y, const uint32_t width, const uint32_t height), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, GetBounds,
+    MOCK_METHOD(Thunder::Core::hresult, GetBounds,
         (const string& clientId, uint32_t& x, uint32_t& y, uint32_t& width, uint32_t& height), (const, override));
-    MOCK_METHOD(WPEFramework::Core::hresult, SetScale,
+    MOCK_METHOD(Thunder::Core::hresult, SetScale,
         (const string& clientId, const double scaleX, const double scaleY), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, GetScale,
+    MOCK_METHOD(Thunder::Core::hresult, GetScale,
         (const string& clientId, double& scaleX, double& scaleY), (const, override));
     MOCK_METHOD(uint32_t, AddRef, (), (const, override));
     MOCK_METHOD(uint32_t, Release, (), (const, override));

@@ -84,8 +84,8 @@ struct ExpectedAppLifecycleEvent {
     Exchange::IAppManager::AppErrorReason errorReason;
 };
 using ::testing::NiceMock;
-using namespace WPEFramework;
-using namespace WPEFramework::Plugin;
+using namespace Thunder;
+using namespace Thunder::Plugin;
 
 namespace {
 const string callSign = _T("AppManager");
@@ -366,20 +366,20 @@ protected:
 
      Exchange::IAppManager::ILoadedAppInfoIterator* FillLoadedAppsIterator()
     {
-        std::list<WPEFramework::Exchange::IAppManager::LoadedAppInfo> loadedAppInfoList;
+        std::list<Thunder::Exchange::IAppManager::LoadedAppInfo> loadedAppInfoList;
 
-        WPEFramework::Exchange::IAppManager::LoadedAppInfo app_1, app_2;
+        Thunder::Exchange::IAppManager::LoadedAppInfo app_1, app_2;
         app_1.appId = "NexTennis";
         app_1.appInstanceId = "0295effd-2883-44ed-b614-471e3f682762";
         app_1.activeSessionId = "";
-        app_1.targetLifecycleState = WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE; 
-        app_1.lifecycleState = WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
+        app_1.targetLifecycleState = Thunder::Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE; 
+        app_1.lifecycleState = Thunder::Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
 
         app_2.appId = "uktv";
         app_2.appInstanceId = "67fa75b6-0c85-43d4-a591-fd29e7214be5";
         app_2.activeSessionId = "";
-        app_2.targetLifecycleState = WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE; 
-        app_2.lifecycleState = WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
+        app_2.targetLifecycleState = Thunder::Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE; 
+        app_2.lifecycleState = Thunder::Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE;
 
         loadedAppInfoList.emplace_back(app_1);
         loadedAppInfoList.emplace_back(app_2);

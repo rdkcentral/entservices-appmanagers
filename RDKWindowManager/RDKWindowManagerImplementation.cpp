@@ -45,10 +45,10 @@ static std::atomic<bool> sRunning{true};
 #define KEYCODE_INVALID          -1
 #define TRY_LOCK_WAIT_TIME_IN_MS 250
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
-RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::RDKWindowManagerTelemetryReporting, "windowManagerBootstrapTime")
+RDKAM_DEFINE_TELEMETRY_CLIENT(Thunder::Plugin::RDKWindowManagerTelemetryReporting, "windowManagerBootstrapTime")
 
 SERVICE_REGISTRATION(RDKWindowManagerImplementation, RDK_WINDOW_MANAGER_API_VERSION_NUMBER_MAJOR, RDK_WINDOW_MANAGER_API_VERSION_NUMBER_MINOR);
 RDKWindowManagerImplementation* RDKWindowManagerImplementation::_instance = nullptr;
@@ -2525,4 +2525,4 @@ Core::hresult RDKWindowManagerImplementation::GetScale(const string& clientId, d
 }
 
 } /* namespace Plugin */
-} /* namespace WPEFramework */
+} /* namespace Thunder */

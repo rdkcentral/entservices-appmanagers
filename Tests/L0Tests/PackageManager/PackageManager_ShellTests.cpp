@@ -15,14 +15,14 @@ struct PluginFixture {
     L0Test::ServiceMock::FakeSubSystem subSystem;
     L0Test::ServiceMock::FakeTelemetryMetrics telemetry;
     L0Test::ServiceMock service;
-    WPEFramework::PluginHost::IPlugin* plugin;
+    Thunder::PluginHost::IPlugin* plugin;
 
     PluginFixture()
         : storage()
         , subSystem()
         , telemetry()
         , service(L0Test::ServiceMock::Config(&storage, &subSystem, &telemetry))
-        , plugin(WPEFramework::Core::Service<WPEFramework::Plugin::PackageManager>::Create<WPEFramework::PluginHost::IPlugin>())
+        , plugin(Thunder::Core::Service<Thunder::Plugin::PackageManager>::Create<Thunder::PluginHost::IPlugin>())
     {
     }
 
@@ -56,7 +56,7 @@ private:
     }
 };
 
-class FakeDownloadNotification final : public WPEFramework::Exchange::IPackageDownloader::INotification {
+class FakeDownloadNotification final : public Thunder::Exchange::IPackageDownloader::INotification {
 public:
     FakeDownloadNotification()
         : _refCount(1)
@@ -74,21 +74,21 @@ public:
         const uint32_t remaining = _refCount.fetch_sub(1, std::memory_order_acq_rel) - 1;
         if (0U == remaining) {
             delete this;
-            return WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED;
+            return Thunder::Core::ERROR_DESTRUCTION_SUCCEEDED;
         }
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
     void* QueryInterface(const uint32_t id) override
     {
-        if (id == WPEFramework::Exchange::IPackageDownloader::INotification::ID) {
+        if (id == Thunder::Exchange::IPackageDownloader::INotification::ID) {
             AddRef();
-            return static_cast<WPEFramework::Exchange::IPackageDownloader::INotification*>(this);
+            return static_cast<Thunder::Exchange::IPackageDownloader::INotification*>(this);
         }
         return nullptr;
     }
 
-    void OnAppDownloadStatus(WPEFramework::Exchange::IPackageDownloader::IPackageInfoIterator* const) override
+    void OnAppDownloadStatus(Thunder::Exchange::IPackageDownloader::IPackageInfoIterator* const) override
     {
         calls++;
     }
@@ -104,7 +104,7 @@ uint32_t Test_PM_Shell_InitializeFailsWhenRootInstantiationFails()
     L0Test::TestResult tr;
     PluginFixture fx;
 
-    fx.service.SetInstantiateHandler([](const WPEFramework::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
+    fx.service.SetInstantiateHandler([](const Thunder::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
         connectionId = 0;
         return nullptr;
     });
@@ -126,18 +126,18 @@ uint32_t Test_PM_Shell_InitializeSuccessAndQueryInterfaces()
     L0Test::TestResult tr;
     PluginFixture fx;
 
-    fx.service.SetInstantiateHandler([](const WPEFramework::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
+    fx.service.SetInstantiateHandler([](const Thunder::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
         connectionId = 777;
-        return WPEFramework::Core::Service<WPEFramework::Plugin::PackageManagerImplementation>::Create<WPEFramework::Exchange::IPackageDownloader>();
+        return Thunder::Core::Service<Thunder::Plugin::PackageManagerImplementation>::Create<Thunder::Exchange::IPackageDownloader>();
     });
 
     const std::string status = fx.plugin->Initialize(&fx.service);
     L0Test::ExpectEqStr(tr, status, "", "Initialize() succeeds with in-process PackageManagerImplementation root");
 
-    void* d = fx.plugin->QueryInterface(WPEFramework::Exchange::IPackageDownloader::ID);
-    void* i = fx.plugin->QueryInterface(WPEFramework::Exchange::IPackageInstaller::ID);
-    void* h = fx.plugin->QueryInterface(WPEFramework::Exchange::IPackageHandler::ID);
-    void* s = fx.plugin->QueryInterface(WPEFramework::Exchange::IAppPackagesStatus::ID);
+    void* d = fx.plugin->QueryInterface(Thunder::Exchange::IPackageDownloader::ID);
+    void* i = fx.plugin->QueryInterface(Thunder::Exchange::IPackageInstaller::ID);
+    void* h = fx.plugin->QueryInterface(Thunder::Exchange::IPackageHandler::ID);
+    void* s = fx.plugin->QueryInterface(Thunder::Exchange::IAppPackagesStatus::ID);
 
     L0Test::ExpectTrue(tr, d != nullptr, "Plugin exposes IPackageDownloader via QueryInterface");
     L0Test::ExpectTrue(tr, i != nullptr, "Plugin exposes IPackageInstaller via QueryInterface");
@@ -145,16 +145,16 @@ uint32_t Test_PM_Shell_InitializeSuccessAndQueryInterfaces()
     L0Test::ExpectTrue(tr, nullptr != s, "Plugin exposes IAppPackagesStatus via QueryInterface");
 
     if (d != nullptr) {
-        static_cast<WPEFramework::Exchange::IPackageDownloader*>(d)->Release();
+        static_cast<Thunder::Exchange::IPackageDownloader*>(d)->Release();
     }
     if (i != nullptr) {
-        static_cast<WPEFramework::Exchange::IPackageInstaller*>(i)->Release();
+        static_cast<Thunder::Exchange::IPackageInstaller*>(i)->Release();
     }
     if (h != nullptr) {
-        static_cast<WPEFramework::Exchange::IPackageHandler*>(h)->Release();
+        static_cast<Thunder::Exchange::IPackageHandler*>(h)->Release();
     }
     if (nullptr != s) {
-        static_cast<WPEFramework::Exchange::IAppPackagesStatus*>(s)->Release();
+        static_cast<Thunder::Exchange::IAppPackagesStatus*>(s)->Release();
     }
 
     fx.plugin->Deinitialize(&fx.service);
@@ -176,27 +176,27 @@ uint32_t Test_PM_Shell_DownloadPathThroughPluginAggregate()
     L0Test::TestResult tr;
     PluginFixture fx;
 
-    fx.service.SetInstantiateHandler([](const WPEFramework::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
+    fx.service.SetInstantiateHandler([](const Thunder::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
         connectionId = 778;
-        return WPEFramework::Core::Service<WPEFramework::Plugin::PackageManagerImplementation>::Create<WPEFramework::Exchange::IPackageDownloader>();
+        return Thunder::Core::Service<Thunder::Plugin::PackageManagerImplementation>::Create<Thunder::Exchange::IPackageDownloader>();
     });
 
     const std::string status = fx.plugin->Initialize(&fx.service);
     L0Test::ExpectEqStr(tr, status, "", "Initialize() succeeds");
 
-    auto* downloader = static_cast<WPEFramework::Exchange::IPackageDownloader*>(
-        fx.plugin->QueryInterface(WPEFramework::Exchange::IPackageDownloader::ID));
+    auto* downloader = static_cast<Thunder::Exchange::IPackageDownloader*>(
+        fx.plugin->QueryInterface(Thunder::Exchange::IPackageDownloader::ID));
     L0Test::ExpectTrue(tr, downloader != nullptr, "IPackageDownloader is available after initialize");
 
     if (downloader != nullptr) {
         auto* notif = new FakeDownloadNotification();
         downloader->Register(notif);
 
-        WPEFramework::Exchange::IPackageDownloader::Options options { false, 1, 0 };
-        WPEFramework::Exchange::IPackageDownloader::DownloadId downloadId {};
+        Thunder::Exchange::IPackageDownloader::Options options { false, 1, 0 };
+        Thunder::Exchange::IPackageDownloader::DownloadId downloadId {};
 
         const auto rc = downloader->Download("http://127.0.0.1:1/non-existent", options, downloadId);
-        L0Test::ExpectEqU32(tr, rc, WPEFramework::Core::ERROR_NONE, "Download() on aggregate interface returns ERROR_NONE for queued request");
+        L0Test::ExpectEqU32(tr, rc, Thunder::Core::ERROR_NONE, "Download() on aggregate interface returns ERROR_NONE for queued request");
         L0Test::ExpectTrue(tr, !downloadId.downloadId.empty(), "Download() returns non-empty downloadId");
 
         std::this_thread::sleep_for(std::chrono::milliseconds(300));
@@ -207,17 +207,17 @@ uint32_t Test_PM_Shell_DownloadPathThroughPluginAggregate()
         downloader->Release();
     }
 
-    auto* installer = static_cast<WPEFramework::Exchange::IPackageInstaller*>(
-        fx.plugin->QueryInterface(WPEFramework::Exchange::IPackageInstaller::ID));
+    auto* installer = static_cast<Thunder::Exchange::IPackageInstaller*>(
+        fx.plugin->QueryInterface(Thunder::Exchange::IPackageInstaller::ID));
     L0Test::ExpectTrue(tr, installer != nullptr, "IPackageInstaller is available after initialize");
     if (installer != nullptr) {
-        WPEFramework::Exchange::IPackageInstaller::FailReason failReason = WPEFramework::Exchange::IPackageInstaller::FailReason::NONE;
+        Thunder::Exchange::IPackageInstaller::FailReason failReason = Thunder::Exchange::IPackageInstaller::FailReason::NONE;
         const auto installRc = installer->Install("PluginAggregateApp", "1.0.0", nullptr, "/tmp/plugin_aggregate.pkg", failReason);
-        L0Test::ExpectEqU32(tr, installRc, WPEFramework::Core::ERROR_NONE, "Installer aggregate Install() succeeds through plugin wrapper");
+        L0Test::ExpectEqU32(tr, installRc, Thunder::Core::ERROR_NONE, "Installer aggregate Install() succeeds through plugin wrapper");
 
         std::string errorReason;
         const auto uninstallRc = installer->Uninstall("PluginAggregateApp", errorReason);
-        L0Test::ExpectEqU32(tr, uninstallRc, WPEFramework::Core::ERROR_NONE, "Installer aggregate Uninstall() succeeds through plugin wrapper");
+        L0Test::ExpectEqU32(tr, uninstallRc, Thunder::Core::ERROR_NONE, "Installer aggregate Uninstall() succeeds through plugin wrapper");
 
         installer->Release();
     }

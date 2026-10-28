@@ -50,7 +50,7 @@ Each module specification documents:
 ### **Interfaces**
 - **Public APIs** (JSON-RPC methods)
 - **Configuration Files** (*.conf.in, *.config)
-- **Callsigns / JSON-RPC Endpoints** (Thunder/WPEFramework, e.g. `org.rdk.<PluginName>` via `http://127.0.0.1:9998/jsonrpc`)
+- **Callsigns / JSON-RPC Endpoints** (Thunder/Thunder, e.g. `org.rdk.<PluginName>` via `http://127.0.0.1:9998/jsonrpc`)
 
 ### **Data Flow**
 - Visual representation of how data flows through the module
@@ -131,7 +131,7 @@ External Dependencies:
 └─ eshelpers (shared utilities)
 
 System Libraries:
-├─ WPEFramework (all plugins)
+├─ Thunder (all plugins)
 ├─ curl (DownloadManager, PackageManager)
 ├─ yaml-cpp (RuntimeManager, optional)
 ├─ jsoncpp (all JSON-handling modules)
@@ -234,7 +234,7 @@ Before considering a spec "complete":
 
 ### By System Library
 
-**WPEFramework**
+**Thunder**
 - Used by: All plugins
 - Specs affected: All
 

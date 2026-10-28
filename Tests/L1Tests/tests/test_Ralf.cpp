@@ -1022,7 +1022,7 @@ TEST_F(RalfPackageBuilderMockedTest, GenerateRalfDobbySpec_ParseRalPkgInfoFails_
 {
     TEST_LOG("Testing generateRalfDobbySpec returns false when parseRalPkgInfo fails");
 
-    WPEFramework::Plugin::ApplicationConfiguration config;
+    Thunder::Plugin::ApplicationConfiguration config;
     config.mAppId = "com.example.app";
     config.mAppInstanceId = "inst_parsefail_001";
     config.mUserId = 1000;
@@ -1030,7 +1030,7 @@ TEST_F(RalfPackageBuilderMockedTest, GenerateRalfDobbySpec_ParseRalPkgInfoFails_
     config.mWesterosSocketPath = "/tmp/wst-test";
     config.mAppStorageInfo.path = "/data/apps/com.example.app";
 
-    WPEFramework::Plugin::RuntimeConfiguration rc;
+    Thunder::Plugin::RuntimeConfiguration rc;
     rc.envVariables = {};
     // Point to a path that does not exist — parseRalPkgInfo will fail to open it.
     rc.ralfPkgPath = "/tmp/ralf_l1_no_such_pkginfo_xyz_12345.json";
@@ -1063,7 +1063,7 @@ TEST_F(RalfPackageBuilderMockedTest, GenerateRalfDobbySpec_GenerateOCIRootfsPack
             return -1;
         }));
 
-    WPEFramework::Plugin::ApplicationConfiguration config;
+    Thunder::Plugin::ApplicationConfiguration config;
     config.mAppId = "com.example.app";
     config.mAppInstanceId = "inst_mountfail_001";
     config.mUserId = 0; // uid=0 skips chown in create_directories
@@ -1071,7 +1071,7 @@ TEST_F(RalfPackageBuilderMockedTest, GenerateRalfDobbySpec_GenerateOCIRootfsPack
     config.mWesterosSocketPath = "/tmp/wst-test";
     config.mAppStorageInfo.path = "/data/apps/com.example.app";
 
-    WPEFramework::Plugin::RuntimeConfiguration rc;
+    Thunder::Plugin::RuntimeConfiguration rc;
     rc.envVariables = {};
     // Use the valid pkg-info file created in SetUp() so parseRalPkgInfo succeeds.
     rc.ralfPkgPath = mPkgInfoFile;
@@ -1102,12 +1102,12 @@ protected:
     }
 
     // Helpers to construct lightweight test objects
-    WPEFramework::Plugin::ApplicationConfiguration makeConfig(
+    Thunder::Plugin::ApplicationConfiguration makeConfig(
         const std::string& appId = "com.example.testapp",
         const std::string& instanceId = "test_inst_001",
         uint32_t uid = 1000, uint32_t gid = 1000)
     {
-        WPEFramework::Plugin::ApplicationConfiguration config;
+        Thunder::Plugin::ApplicationConfiguration config;
         config.mAppId = appId;
         config.mAppInstanceId = instanceId;
         config.mUserId = uid;
@@ -1117,10 +1117,10 @@ protected:
         return config;
     }
 
-    WPEFramework::Plugin::RuntimeConfiguration makeRuntimeConfiguration(
+    Thunder::Plugin::RuntimeConfiguration makeRuntimeConfiguration(
         const std::vector<std::string>& envVars = {})
     {
-        WPEFramework::Plugin::RuntimeConfiguration rc;
+        Thunder::Plugin::RuntimeConfiguration rc;
         rc.envVariables = envVars;
         return rc;
     }
@@ -1289,8 +1289,8 @@ public:
         return mGen.applyConfigurationToOCIConfig(node, manifestNode);
     }
     bool applyRuntimeAndAppConfigToOCIConfig(Json::Value& node,
-        const WPEFramework::Plugin::RuntimeConfiguration& rc,
-        const WPEFramework::Plugin::ApplicationConfiguration& ac)
+        const Thunder::Plugin::RuntimeConfiguration& rc,
+        const Thunder::Plugin::ApplicationConfiguration& ac)
     {
         return mGen.applyRuntimeAndAppConfigToOCIConfig(node, rc, ac);
     }
@@ -1946,13 +1946,13 @@ TEST_F(RalfOCIConfigGeneratorPrivateTest, ApplyConfiguration_WithFullApplication
 // ──────────────────────────────────────────────────────────
 
 /* Helper: build a minimal ApplicationConfiguration for the tests below. */
-static WPEFramework::Plugin::ApplicationConfiguration makeAppConfig(
+static Thunder::Plugin::ApplicationConfiguration makeAppConfig(
     const std::string& appId = "com.example.app",
     const std::string& instanceId = "inst001",
     uint32_t uid = 1000, uint32_t gid = 1001,
     const std::string& wstSocket = "/tmp/wst-testapp")
 {
-    WPEFramework::Plugin::ApplicationConfiguration c;
+    Thunder::Plugin::ApplicationConfiguration c;
     c.mAppId = appId;
     c.mAppInstanceId = instanceId;
     c.mUserId = uid;
@@ -1963,9 +1963,9 @@ static WPEFramework::Plugin::ApplicationConfiguration makeAppConfig(
 }
 
 /* Helper: build a minimal RuntimeConfiguration for the tests below. */
-static WPEFramework::Plugin::RuntimeConfiguration makeRtConfig()
+static Thunder::Plugin::RuntimeConfiguration makeRtConfig()
 {
-    WPEFramework::Plugin::RuntimeConfiguration rc;
+    Thunder::Plugin::RuntimeConfiguration rc;
     rc.envVariables = {};
     return rc;
 }

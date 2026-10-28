@@ -37,7 +37,7 @@ int main() {
 - `L0BootstrapGuard` mirrors typical patterns in existing tests:
   - If no `Core::IWorkerPool` is available, it creates one and starts it.
   - On shutdown, it stops and detaches the worker pool (only if it owns it).
-  - Always calls `WPEFramework::Core::Singleton::Dispose()` at end of process.
+  - Always calls `Thunder::Core::Singleton::Dispose()` at end of process.
 
 - `L0ServiceMock` is a **helper base**, not a full Thunder host implementation.
   Extend your plugin-specific `ServiceMock` and use the registry to keep

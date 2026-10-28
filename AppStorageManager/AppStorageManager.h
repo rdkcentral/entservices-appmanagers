@@ -24,7 +24,7 @@
 #include <interfaces/IAppStorageManager.h>
 #include <interfaces/IConfiguration.h>
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
     class AppStorageManager: public PluginHost::IPlugin, public PluginHost::JSONRPC
@@ -60,4 +60,4 @@ namespace Plugin {
     };
 
 } /* namespace Plugin */
-} /* namespace WPEFramework */
+} /* namespace Thunder */

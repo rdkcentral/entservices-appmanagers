@@ -49,7 +49,7 @@
 namespace {
 
 /* Fake IRuntimeManager::INotification to count callbacks. */
-class FakeNotification final : public WPEFramework::Exchange::IRuntimeManager::INotification {
+class FakeNotification final : public Thunder::Exchange::IRuntimeManager::INotification {
 public:
     FakeNotification()
         : _refCount(1)
@@ -70,16 +70,16 @@ public:
         const uint32_t remaining = _refCount.fetch_sub(1, std::memory_order_acq_rel) - 1;
         if (0U == remaining) {
             delete this;
-            return WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED;
+            return Thunder::Core::ERROR_DESTRUCTION_SUCCEEDED;
         }
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
     void* QueryInterface(const uint32_t id) override
     {
-        if (id == WPEFramework::Exchange::IRuntimeManager::INotification::ID) {
+        if (id == Thunder::Exchange::IRuntimeManager::INotification::ID) {
             AddRef();
-            return static_cast<WPEFramework::Exchange::IRuntimeManager::INotification*>(this);
+            return static_cast<Thunder::Exchange::IRuntimeManager::INotification*>(this);
         }
         return nullptr;
     }
@@ -96,7 +96,7 @@ public:
     }
 
     void OnStateChanged(const std::string& /*appInstanceId*/,
-                        WPEFramework::Exchange::IRuntimeManager::RuntimeState /*state*/) override
+                        Thunder::Exchange::IRuntimeManager::RuntimeState /*state*/) override
     {
         onStateChangedCount++;
     }
@@ -115,10 +115,10 @@ public:
 };
 
 /* Creates a fresh RuntimeManagerImplementation instance. */
-WPEFramework::Plugin::RuntimeManagerImplementation* CreateImpl()
+Thunder::Plugin::RuntimeManagerImplementation* CreateImpl()
 {
-    return WPEFramework::Core::Service<WPEFramework::Plugin::RuntimeManagerImplementation>::Create<
-        WPEFramework::Plugin::RuntimeManagerImplementation>();
+    return Thunder::Core::Service<Thunder::Plugin::RuntimeManagerImplementation>::Create<
+        Thunder::Plugin::RuntimeManagerImplementation>();
 }
 
 } // namespace
@@ -139,7 +139,7 @@ uint32_t Test_Impl_RegisterNotification()
     FakeNotification notif;
 
     const auto result = impl->Register(&notif);
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE,
                         "Register() returns ERROR_NONE for valid notification");
 
     // Cleanup – unregister before release to avoid dangling reference
@@ -163,7 +163,7 @@ uint32_t Test_Impl_RegisterDuplicate()
 
     impl->Register(&notif);
     const auto result = impl->Register(&notif); // duplicate
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE,
                         "Duplicate Register() returns ERROR_NONE (idempotent)");
 
     impl->Unregister(&notif);
@@ -185,7 +185,7 @@ uint32_t Test_Impl_UnregisterNotification()
 
     impl->Register(&notif);
     const auto result = impl->Unregister(&notif);
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE,
                         "Unregister() returns ERROR_NONE for a registered notification");
 
     impl->Release();
@@ -205,7 +205,7 @@ uint32_t Test_Impl_UnregisterNotRegistered()
     FakeNotification notif; // never registered
 
     const auto result = impl->Unregister(&notif);
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
                         "Unregister() on unregistered notification returns ERROR_GENERAL");
 
     impl->Release();
@@ -226,7 +226,7 @@ uint32_t Test_Impl_ConfigureWithNullService()
 
     auto* impl = CreateImpl();
     const auto result = impl->Configure(nullptr);
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
                         "Configure() with null service returns ERROR_GENERAL");
 
     impl->Release();
@@ -248,7 +248,7 @@ uint32_t Test_Impl_ConfigureWithServiceMissingOCIPlugin()
     // service.QueryInterfaceByCallsign returns nullptr by default → OCI creation fails
 
     const auto result = impl->Configure(&service);
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
                         "Configure() returns ERROR_GENERAL when OCI plugin is unavailable");
 
     impl->Release();
@@ -271,8 +271,8 @@ uint32_t Test_Impl_ConfigureSetsRuntimePortalFromConfigLine()
     const auto result = impl->Configure(&service);
     // Result is ERROR_GENERAL (OCI plugin missing) – what we test is no crash
     L0Test::ExpectTrue(tr,
-                       result == WPEFramework::Core::ERROR_NONE ||
-                           result == WPEFramework::Core::ERROR_GENERAL,
+                       result == Thunder::Core::ERROR_NONE ||
+                           result == Thunder::Core::ERROR_GENERAL,
                        "Configure() does not crash when parsing empty config line");
 
     impl->Release();
@@ -293,7 +293,7 @@ uint32_t Test_Impl_TerminateEmptyAppInstanceId()
 
     auto* impl = CreateImpl();
     const auto result = impl->Terminate("");
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
                         "Terminate() with empty appInstanceId returns ERROR_GENERAL");
 
     impl->Release();
@@ -311,7 +311,7 @@ uint32_t Test_Impl_TerminateNoOCIPlugin()
 
     auto* impl = CreateImpl();
     const auto result = impl->Terminate("youTube");
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
                         "Terminate() without OCI plugin returns ERROR_GENERAL");
 
     impl->Release();
@@ -328,7 +328,7 @@ uint32_t Test_Impl_KillEmptyAppInstanceId()
 
     auto* impl = CreateImpl();
     const auto result = impl->Kill("");
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
                         "Kill() with empty appInstanceId returns ERROR_GENERAL");
 
     impl->Release();
@@ -345,7 +345,7 @@ uint32_t Test_Impl_KillNoOCIPlugin()
 
     auto* impl = CreateImpl();
     const auto result = impl->Kill("youTube");
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
                         "Kill() without OCI plugin returns ERROR_GENERAL");
 
     impl->Release();
@@ -366,7 +366,7 @@ uint32_t Test_Impl_HibernateEmptyAppInstanceId()
 
     auto* impl = CreateImpl();
     const auto result = impl->Hibernate("");
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
                         "Hibernate() with empty appInstanceId returns ERROR_GENERAL");
 
     impl->Release();
@@ -383,7 +383,7 @@ uint32_t Test_Impl_HibernateNoOCIPlugin()
 
     auto* impl = CreateImpl();
     const auto result = impl->Hibernate("youTube");
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
                         "Hibernate() without OCI plugin returns ERROR_GENERAL");
 
     impl->Release();
@@ -399,8 +399,8 @@ uint32_t Test_Impl_WakeEmptyAppInstanceId()
     L0Test::TestResult tr;
 
     auto* impl = CreateImpl();
-    const auto result = impl->Wake("", WPEFramework::Exchange::IRuntimeManager::RUNTIME_STATE_RUNNING);
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    const auto result = impl->Wake("", Thunder::Exchange::IRuntimeManager::RUNTIME_STATE_RUNNING);
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
                         "Wake() with empty appInstanceId returns ERROR_GENERAL");
 
     impl->Release();
@@ -417,8 +417,8 @@ uint32_t Test_Impl_WakeNoRunningContainer()
     L0Test::TestResult tr;
 
     auto* impl = CreateImpl();
-    const auto result = impl->Wake("youTube", WPEFramework::Exchange::IRuntimeManager::RUNTIME_STATE_RUNNING);
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    const auto result = impl->Wake("youTube", Thunder::Exchange::IRuntimeManager::RUNTIME_STATE_RUNNING);
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
                         "Wake() for unknown container returns ERROR_GENERAL");
 
     impl->Release();
@@ -439,7 +439,7 @@ uint32_t Test_Impl_SuspendEmptyAppInstanceId()
 
     auto* impl = CreateImpl();
     const auto result = impl->Suspend("");
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
                         "Suspend() with empty appInstanceId returns ERROR_GENERAL");
 
     impl->Release();
@@ -457,7 +457,7 @@ uint32_t Test_Impl_SuspendNoOCIPlugin()
 
     auto* impl = CreateImpl();
     const auto result = impl->Suspend("youTube");
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
                         "Suspend() without OCI plugin returns ERROR_GENERAL");
 
     impl->Release();
@@ -474,7 +474,7 @@ uint32_t Test_Impl_ResumeEmptyAppInstanceId()
 
     auto* impl = CreateImpl();
     const auto result = impl->Resume("");
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
                         "Resume() with empty appInstanceId returns ERROR_GENERAL");
 
     impl->Release();
@@ -492,7 +492,7 @@ uint32_t Test_Impl_ResumeNoOCIPlugin()
 
     auto* impl = CreateImpl();
     const auto result = impl->Resume("youTube");
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
                         "Resume() without OCI plugin returns ERROR_GENERAL");
 
     impl->Release();
@@ -513,7 +513,7 @@ uint32_t Test_Impl_AnnotateEmptyAppInstanceId()
 
     auto* impl = CreateImpl();
     const auto result = impl->Annotate("", "key", "value");
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
                         "Annotate() with empty appInstanceId returns ERROR_GENERAL");
 
     impl->Release();
@@ -530,7 +530,7 @@ uint32_t Test_Impl_AnnotateEmptyKey()
 
     auto* impl = CreateImpl();
     const auto result = impl->Annotate("youTube", "", "value");
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
                         "Annotate() with empty key returns ERROR_GENERAL");
 
     impl->Release();
@@ -547,7 +547,7 @@ uint32_t Test_Impl_AnnotateNoOCIPlugin()
 
     auto* impl = CreateImpl();
     const auto result = impl->Annotate("youTube", "key", "value");
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
                         "Annotate() without OCI plugin returns ERROR_GENERAL");
 
     impl->Release();
@@ -569,7 +569,7 @@ uint32_t Test_Impl_GetInfoEmptyAppInstanceId()
     auto* impl = CreateImpl();
     std::string info;
     const auto result = impl->GetInfo("", info);
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
                         "GetInfo() with empty appInstanceId returns ERROR_GENERAL");
     L0Test::ExpectTrue(tr, info.empty(), "GetInfo() leaves info empty on failure");
 
@@ -589,7 +589,7 @@ uint32_t Test_Impl_GetInfoNoOCIPlugin()
     auto* impl = CreateImpl();
     std::string info;
     const auto result = impl->GetInfo("youTube", info);
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
                         "GetInfo() without OCI plugin returns ERROR_GENERAL");
 
     impl->Release();
@@ -628,7 +628,7 @@ uint32_t Test_Impl_RunEmptyAppInstanceId()
         R"({"envVariables":["XDG_RUNTIME_DIR=/tmp","WAYLAND_DISPLAY=test"],"command":"SkyBrowserLauncher","userId":10,"groupId":10})";
 
     const auto result = impl->Run("", "", 10, 10, nullptr, nullptr, nullptr, runtimeConfigPayload);
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
                         "Run() with empty appInstanceId returns ERROR_GENERAL");
 
     impl->Release();
@@ -664,7 +664,7 @@ uint32_t Test_Impl_RunNoWindowManagerConnector()
         R"({"envVariables":["XDG_RUNTIME_DIR=/tmp","WAYLAND_DISPLAY=test"],"command":"SkyBrowserLauncher","userId":10,"groupId":10})";
 
     const auto result = impl->Run("appId", "youTube", 10, 10, nullptr, nullptr, nullptr, runtimeConfigPayload);
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
                         "Run() without WindowManagerConnector returns ERROR_GENERAL");
 
     impl->Release();
@@ -686,7 +686,7 @@ uint32_t Test_Impl_MountReturnsSuccess()
 
     auto* impl = CreateImpl();
     const auto result = impl->Mount();
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE,
                         "Mount() stub returns ERROR_NONE");
 
     impl->Release();
@@ -703,7 +703,7 @@ uint32_t Test_Impl_UnmountReturnsSuccess()
 
     auto* impl = CreateImpl();
     const auto result = impl->Unmount();
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE,
                         "Unmount() stub returns ERROR_NONE");
 
     impl->Release();
@@ -724,16 +724,16 @@ uint32_t Test_Impl_GetInstanceReturnsSelf()
 
     // _instance is a persistent static: set at construction, never cleared by the
     // destructor.  Reset it so this CreateImpl() call updates it predictably.
-    WPEFramework::Plugin::RuntimeManagerImplementation::_instance = nullptr;
+    Thunder::Plugin::RuntimeManagerImplementation::_instance = nullptr;
     auto* impl = CreateImpl();
-    auto* retrieved = WPEFramework::Plugin::RuntimeManagerImplementation::getInstance();
+    auto* retrieved = Thunder::Plugin::RuntimeManagerImplementation::getInstance();
     L0Test::ExpectTrue(tr, retrieved == impl,
                        "getInstance() returns the most recently constructed instance");
 
     impl->Release();
     // Clear the dangling _instance pointer so later tests (and any code calling
     // getInstance()) are not affected by this stale reference.
-    WPEFramework::Plugin::RuntimeManagerImplementation::_instance = nullptr;
+    Thunder::Plugin::RuntimeManagerImplementation::_instance = nullptr;
     return tr.failures;
 }
 
@@ -751,7 +751,7 @@ uint32_t Test_Impl_GetInstanceBeforeConstruction()
     impl->Release();
 
     // Simply calling getInstance() must not crash
-    (void)WPEFramework::Plugin::RuntimeManagerImplementation::getInstance();
+    (void)Thunder::Plugin::RuntimeManagerImplementation::getInstance();
 
     L0Test::ExpectTrue(tr, true, "getInstance() after release does not crash");
     return tr.failures;
@@ -838,7 +838,7 @@ uint32_t Test_Impl_OCIContainerStateChangedEvent()
     JsonObject obj;
     obj["containerId"] = "dummyContainer";
     obj["state"] = std::to_string(static_cast<int>(
-        WPEFramework::Exchange::IRuntimeManager::RUNTIME_STATE_RUNNING));
+        Thunder::Exchange::IRuntimeManager::RUNTIME_STATE_RUNNING));
     obj["eventName"] = "onContainerStateChanged";
 
     impl->onOCIContainerStateChangedEvent("dummyName", obj);
@@ -863,7 +863,7 @@ uint32_t Test_Impl_OCIContainerAllEventsCoverage()
     obj["containerId"] = "testContainer";
     obj["name"]        = "testApp";
     obj["state"]       = std::to_string(static_cast<int>(
-        WPEFramework::Exchange::IRuntimeManager::RUNTIME_STATE_RUNNING));
+        Thunder::Exchange::IRuntimeManager::RUNTIME_STATE_RUNNING));
     obj["eventName"]   = "onContainerStateChanged";
     obj["errorCode"]   = "TEST_ERROR";
 
@@ -900,7 +900,7 @@ uint32_t Test_Impl_OCIEventsWithRegisteredNotification()
     obj["containerId"] = "com.sky.as.appsyouTube";
     obj["name"]        = "youTube";
     obj["state"]       = std::to_string(static_cast<int>(
-        WPEFramework::Exchange::IRuntimeManager::RUNTIME_STATE_RUNNING));
+        Thunder::Exchange::IRuntimeManager::RUNTIME_STATE_RUNNING));
     obj["eventName"]   = "onContainerStarted";
     obj["errorCode"]   = "0";
 
@@ -931,11 +931,11 @@ uint32_t Test_Impl_QueryInterfaceIRuntimeManager()
     L0Test::TestResult tr;
 
     auto* impl = CreateImpl();
-    void* iface = impl->QueryInterface(WPEFramework::Exchange::IRuntimeManager::ID);
+    void* iface = impl->QueryInterface(Thunder::Exchange::IRuntimeManager::ID);
     L0Test::ExpectTrue(tr, iface != nullptr,
                        "QueryInterface(IRuntimeManager::ID) returns non-null");
     if (iface) {
-        static_cast<WPEFramework::Exchange::IRuntimeManager*>(iface)->Release();
+        static_cast<Thunder::Exchange::IRuntimeManager*>(iface)->Release();
     }
 
     impl->Release();
@@ -951,11 +951,11 @@ uint32_t Test_Impl_QueryInterfaceIConfiguration()
     L0Test::TestResult tr;
 
     auto* impl = CreateImpl();
-    void* iface = impl->QueryInterface(WPEFramework::Exchange::IConfiguration::ID);
+    void* iface = impl->QueryInterface(Thunder::Exchange::IConfiguration::ID);
     L0Test::ExpectTrue(tr, iface != nullptr,
                        "QueryInterface(IConfiguration::ID) returns non-null");
     if (iface) {
-        static_cast<WPEFramework::Exchange::IConfiguration*>(iface)->Release();
+        static_cast<Thunder::Exchange::IConfiguration*>(iface)->Release();
     }
 
     impl->Release();
@@ -995,14 +995,14 @@ uint32_t Test_Impl_MultipleNotificationsRegisterUnregister()
     auto* impl = CreateImpl();
     FakeNotification n1, n2;
 
-    L0Test::ExpectEqU32(tr, impl->Register(&n1), WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, impl->Register(&n1), Thunder::Core::ERROR_NONE,
                         "Register n1 returns ERROR_NONE");
-    L0Test::ExpectEqU32(tr, impl->Register(&n2), WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, impl->Register(&n2), Thunder::Core::ERROR_NONE,
                         "Register n2 returns ERROR_NONE");
 
-    L0Test::ExpectEqU32(tr, impl->Unregister(&n1), WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, impl->Unregister(&n1), Thunder::Core::ERROR_NONE,
                         "Unregister n1 returns ERROR_NONE");
-    L0Test::ExpectEqU32(tr, impl->Unregister(&n2), WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, impl->Unregister(&n2), Thunder::Core::ERROR_NONE,
                         "Unregister n2 returns ERROR_NONE");
 
     impl->Release();
@@ -1013,7 +1013,7 @@ uint32_t Test_Impl_MultipleNotificationsRegisterUnregister()
 // Dispatch with registered notification – callback verification
 //
 // The event handlers call dispatchEvent() which submits a Job to the
-// WPEFramework worker pool. We sleep briefly to allow the pool to execute
+// Thunder worker pool. We sleep briefly to allow the pool to execute
 // the Job before checking notification counters.
 // ──────────────────────────────────────────────────────────────────────────────
 
@@ -1125,7 +1125,7 @@ uint32_t Test_Impl_DispatchStateChangedFiresOnStateChangedCallback()
     JsonObject obj;
     obj["containerId"] = "youTube";
     obj["state"]       = std::to_string(static_cast<int>(
-        WPEFramework::Exchange::IRuntimeManager::RUNTIME_STATE_RUNNING));
+        Thunder::Exchange::IRuntimeManager::RUNTIME_STATE_RUNNING));
     obj["eventName"]   = "onContainerStateChanged";
 
     impl->onOCIContainerStateChangedEvent("youTube", obj);

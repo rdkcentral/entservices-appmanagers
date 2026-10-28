@@ -257,7 +257,7 @@ The following L0-specific test infrastructure is in `Tests/L0Tests/` and should 
 
 - `Tests/L0Tests/RuntimeManager/ServiceMock.h` — minimal `IShell` / `IPlugin` service stub used by all implementation tests
 - `Tests/L0Tests/common/L0Expect.hpp` — lightweight assertion helpers (`ExpectTrue`, `ExpectEqU32`)
-- `Tests/L0Tests/common/L0Bootstrap.hpp` — WPEFramework worker-pool / messaging initialisation guard
+- `Tests/L0Tests/common/L0Bootstrap.hpp` — Thunder worker-pool / messaging initialisation guard
 - `FakeNotification` (defined inline in `RuntimeManager_ImplementationTests.cpp`) — atomic-counter `IRuntimeManager::INotification` stub used in dispatch callback tests
 
 ### Recommended stub additions (not currently present)

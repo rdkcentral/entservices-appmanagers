@@ -57,10 +57,10 @@
 namespace {
 
 /** Creates a fresh DownloadManagerImplementation COM object. */
-WPEFramework::Plugin::DownloadManagerImplementation* CreateImpl()
+Thunder::Plugin::DownloadManagerImplementation* CreateImpl()
 {
-    return WPEFramework::Core::Service<WPEFramework::Plugin::DownloadManagerImplementation>
-        ::Create<WPEFramework::Plugin::DownloadManagerImplementation>();
+    return Thunder::Core::Service<Thunder::Plugin::DownloadManagerImplementation>
+        ::Create<Thunder::Plugin::DownloadManagerImplementation>();
 }
 
 /** Poll until pred() returns true or maxMs milliseconds elapse. */
@@ -88,7 +88,7 @@ uint32_t Test_Impl_RegisterNotification()
     L0Test::FakeDownloadNotification notif;
 
     const auto result = impl->Register(&notif);
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE,
         "Register() returns ERROR_NONE for valid notification");
     // AddRef must have been called once → refCount goes from 1 to 2
     L0Test::ExpectEqU32(tr, notif._refCount.load(), 2u,
@@ -114,13 +114,13 @@ uint32_t Test_Impl_RegisterDuplicate()
     L0Test::FakeDownloadNotification notif2;
 
     const auto r1 = impl->Register(&notif1);
-    L0Test::ExpectEqU32(tr, r1, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, r1, Thunder::Core::ERROR_NONE,
         "First Register() returns ERROR_NONE");
     L0Test::ExpectEqU32(tr, notif1._refCount.load(), 2u,
         "First notification AddRef() called by Register()");
 
     const auto r2 = impl->Register(&notif2);
-    L0Test::ExpectEqU32(tr, r2, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, r2, Thunder::Core::ERROR_NONE,
         "Second Register() of distinct notification returns ERROR_NONE");
     L0Test::ExpectEqU32(tr, notif2._refCount.load(), 2u,
         "Second notification AddRef() called by Register()");
@@ -160,7 +160,7 @@ uint32_t Test_Impl_UnregisterRegisteredNotification()
 
     impl->Register(&notif);
     const auto result = impl->Unregister(&notif);
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE,
         "Unregister() returns ERROR_NONE for a registered notification");
 
     impl->Release();
@@ -179,7 +179,7 @@ uint32_t Test_Impl_UnregisterUnknownReturnsError()
     L0Test::FakeDownloadNotification notif; // never registered
 
     const auto result = impl->Unregister(&notif);
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
         "Unregister() on unregistered notification returns ERROR_GENERAL");
 
     impl->Release();
@@ -199,13 +199,13 @@ uint32_t Test_Impl_MultipleNotificationsRegisterUnregister()
     L0Test::FakeDownloadNotification notif2;
     L0Test::FakeDownloadNotification notif3;
 
-    L0Test::ExpectEqU32(tr, impl->Register(&notif1), WPEFramework::Core::ERROR_NONE, "Register notif1");
-    L0Test::ExpectEqU32(tr, impl->Register(&notif2), WPEFramework::Core::ERROR_NONE, "Register notif2");
-    L0Test::ExpectEqU32(tr, impl->Register(&notif3), WPEFramework::Core::ERROR_NONE, "Register notif3");
+    L0Test::ExpectEqU32(tr, impl->Register(&notif1), Thunder::Core::ERROR_NONE, "Register notif1");
+    L0Test::ExpectEqU32(tr, impl->Register(&notif2), Thunder::Core::ERROR_NONE, "Register notif2");
+    L0Test::ExpectEqU32(tr, impl->Register(&notif3), Thunder::Core::ERROR_NONE, "Register notif3");
 
-    L0Test::ExpectEqU32(tr, impl->Unregister(&notif2), WPEFramework::Core::ERROR_NONE, "Unregister notif2");
-    L0Test::ExpectEqU32(tr, impl->Unregister(&notif1), WPEFramework::Core::ERROR_NONE, "Unregister notif1");
-    L0Test::ExpectEqU32(tr, impl->Unregister(&notif3), WPEFramework::Core::ERROR_NONE, "Unregister notif3");
+    L0Test::ExpectEqU32(tr, impl->Unregister(&notif2), Thunder::Core::ERROR_NONE, "Unregister notif2");
+    L0Test::ExpectEqU32(tr, impl->Unregister(&notif1), Thunder::Core::ERROR_NONE, "Unregister notif1");
+    L0Test::ExpectEqU32(tr, impl->Unregister(&notif3), Thunder::Core::ERROR_NONE, "Unregister notif3");
 
     impl->Release();
     return tr.failures;
@@ -221,7 +221,7 @@ uint32_t Test_Impl_InitializeWithNullService()
 
     auto* impl = CreateImpl();
     const auto result = impl->Initialize(nullptr);
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
         "Initialize(nullptr) returns ERROR_GENERAL");
 
     impl->Release();
@@ -246,12 +246,12 @@ uint32_t Test_Impl_InitializeValidServiceAndDeinitialize()
 
     auto* impl = CreateImpl();
     const auto initResult = impl->Initialize(&svc);
-    L0Test::ExpectEqU32(tr, initResult, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, initResult, Thunder::Core::ERROR_NONE,
         "Initialize() with valid service returns ERROR_NONE");
 
-    if (WPEFramework::Core::ERROR_NONE == initResult) {
+    if (Thunder::Core::ERROR_NONE == initResult) {
         const auto deinitResult = impl->Deinitialize(&svc);
-        L0Test::ExpectEqU32(tr, deinitResult, WPEFramework::Core::ERROR_NONE,
+        L0Test::ExpectEqU32(tr, deinitResult, Thunder::Core::ERROR_NONE,
             "Deinitialize() returns ERROR_NONE after successful Initialize()");
     }
 
@@ -285,11 +285,11 @@ uint32_t Test_Impl_InitializeReadsDownloadDir()
 
     auto* impl = CreateImpl();
     const auto result = impl->Initialize(&svc);
-    if (WPEFramework::Core::ERROR_NONE == result) {
+    if (Thunder::Core::ERROR_NONE == result) {
         L0Test::FakeDownloadNotification notif;
         impl->Register(&notif);
 
-        WPEFramework::Exchange::IDownloadManager::Options opts{};
+        Thunder::Exchange::IDownloadManager::Options opts{};
         opts.priority = false; opts.retries = 2; opts.rateLimit = 0;
         std::string downloadId;
         impl->Download("file://" + srcFile, opts, downloadId);
@@ -299,7 +299,7 @@ uint32_t Test_Impl_InitializeReadsDownloadDir()
         const bool fired = WaitFor([&]{ return notif.onAppDownloadStatusCount.load() > 0u; }, 5000u);
         if (fired) {
             // The fileLocator in the notification must be rooted under customDir.
-            // WPEFramework's JSON serialiser escapes '/' as '\/', so we search
+            // Thunder's JSON serialiser escapes '/' as '\/', so we search
             // for the unique directory name rather than the full path with slashes.
             const std::string dirMarker = "dm_l0_custom_dir";
             L0Test::ExpectTrue(tr,
@@ -337,8 +337,8 @@ uint32_t Test_Impl_InitializeReadsDownloadId()
 
     auto* impl = CreateImpl();
     const auto result = impl->Initialize(&svc);
-    if (WPEFramework::Core::ERROR_NONE == result) {
-        WPEFramework::Exchange::IDownloadManager::Options opts{};
+    if (Thunder::Core::ERROR_NONE == result) {
+        Thunder::Exchange::IDownloadManager::Options opts{};
         opts.priority = false; opts.retries = 2; opts.rateLimit = 0;
         std::string downloadId;
         impl->Download("file:///dev/null", opts, downloadId);
@@ -370,10 +370,10 @@ uint32_t Test_Impl_InitializeExistingDirReturnsNone()
 
     auto* impl = CreateImpl();
     const auto result = impl->Initialize(&svc);
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE,
         "Initialize() with pre-existing dir returns ERROR_NONE (mkdir EEXIST is OK)");
 
-    if (WPEFramework::Core::ERROR_NONE == result) {
+    if (Thunder::Core::ERROR_NONE == result) {
         impl->Deinitialize(&svc);
     }
 
@@ -397,11 +397,11 @@ uint32_t Test_Impl_DeinitializeClearsQueues()
 
     auto* impl = CreateImpl();
     const auto initResult = impl->Initialize(&svc);
-    if (WPEFramework::Core::ERROR_NONE == initResult) {
+    if (Thunder::Core::ERROR_NONE == initResult) {
         // Enqueue a couple of downloads so queues are non-empty
-        WPEFramework::Exchange::IDownloadManager::Options pOpts{};
+        Thunder::Exchange::IDownloadManager::Options pOpts{};
         pOpts.priority = true; pOpts.retries = 2; pOpts.rateLimit = 0;
-        WPEFramework::Exchange::IDownloadManager::Options rOpts{};
+        Thunder::Exchange::IDownloadManager::Options rOpts{};
         rOpts.priority = false; rOpts.retries = 2; rOpts.rateLimit = 0;
 
         std::string id1, id2;
@@ -410,7 +410,7 @@ uint32_t Test_Impl_DeinitializeClearsQueues()
 
         // Deinitialize must drain queues and join thread without deadlock
         const auto result = impl->Deinitialize(&svc);
-        L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+        L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE,
             "Deinitialize() drains queues and returns ERROR_NONE");
     } else {
         std::cout << "SKIP: Initialize returned non-zero (acceptable in CI)" << std::endl;
@@ -436,12 +436,12 @@ uint32_t Test_Impl_DownloadNoInternetReturnsUnavailable()
 
     auto* impl = CreateImpl();
     const auto initResult = impl->Initialize(&svc);
-    if (WPEFramework::Core::ERROR_NONE == initResult) {
-        WPEFramework::Exchange::IDownloadManager::Options opts{};
+    if (Thunder::Core::ERROR_NONE == initResult) {
+        Thunder::Exchange::IDownloadManager::Options opts{};
         opts.priority = false; opts.retries = 3; opts.rateLimit = 0;
         std::string downloadId;
         const auto result = impl->Download("http://example.com/pkg.zip", opts, downloadId);
-        L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_UNAVAILABLE,
+        L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_UNAVAILABLE,
             "Download() returns ERROR_UNAVAILABLE when internet subsystem is inactive");
         L0Test::ExpectTrue(tr, downloadId.empty(),
             "downloadId output is empty when Download() is rejected");
@@ -469,12 +469,12 @@ uint32_t Test_Impl_DownloadEmptyUrlReturnsError()
 
     auto* impl = CreateImpl();
     const auto initResult = impl->Initialize(&svc);
-    if (WPEFramework::Core::ERROR_NONE == initResult) {
-        WPEFramework::Exchange::IDownloadManager::Options opts{};
+    if (Thunder::Core::ERROR_NONE == initResult) {
+        Thunder::Exchange::IDownloadManager::Options opts{};
         opts.priority = false; opts.retries = 2; opts.rateLimit = 0;
         std::string downloadId;
         const auto result = impl->Download("", opts, downloadId);
-        L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+        L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
             "Download() with empty URL returns ERROR_GENERAL");
         L0Test::ExpectTrue(tr, downloadId.empty(),
             "downloadId remains empty for rejected empty-URL Download()");
@@ -502,19 +502,19 @@ uint32_t Test_Impl_DownloadPriorityAndRegularQueues()
 
     auto* impl = CreateImpl();
     const auto initResult = impl->Initialize(&svc);
-    if (WPEFramework::Core::ERROR_NONE == initResult) {
-        WPEFramework::Exchange::IDownloadManager::Options pOpts{};
+    if (Thunder::Core::ERROR_NONE == initResult) {
+        Thunder::Exchange::IDownloadManager::Options pOpts{};
         pOpts.priority = true; pOpts.retries = 2; pOpts.rateLimit = 0;
-        WPEFramework::Exchange::IDownloadManager::Options rOpts{};
+        Thunder::Exchange::IDownloadManager::Options rOpts{};
         rOpts.priority = false; rOpts.retries = 2; rOpts.rateLimit = 0;
 
         std::string pid, rid;
         const auto pResult = impl->Download("file:///dev/null", pOpts, pid);
         const auto rResult = impl->Download("file:///dev/null", rOpts, rid);
 
-        L0Test::ExpectEqU32(tr, pResult, WPEFramework::Core::ERROR_NONE,
+        L0Test::ExpectEqU32(tr, pResult, Thunder::Core::ERROR_NONE,
             "Priority Download() returns ERROR_NONE");
-        L0Test::ExpectEqU32(tr, rResult, WPEFramework::Core::ERROR_NONE,
+        L0Test::ExpectEqU32(tr, rResult, Thunder::Core::ERROR_NONE,
             "Regular Download() returns ERROR_NONE");
         L0Test::ExpectTrue(tr, !pid.empty(), "Priority download received an id");
         L0Test::ExpectTrue(tr, !rid.empty(), "Regular download received an id");
@@ -544,8 +544,8 @@ uint32_t Test_Impl_DownloadReturnsIncrementedId()
 
     auto* impl = CreateImpl();
     const auto initResult = impl->Initialize(&svc);
-    if (WPEFramework::Core::ERROR_NONE == initResult) {
-        WPEFramework::Exchange::IDownloadManager::Options opts{};
+    if (Thunder::Core::ERROR_NONE == initResult) {
+        Thunder::Exchange::IDownloadManager::Options opts{};
         opts.priority = false; opts.retries = 2; opts.rateLimit = 0;
         std::string downloadId;
         impl->Download("file:///dev/null", opts, downloadId);
@@ -576,8 +576,8 @@ uint32_t Test_Impl_TwoDownloadsReturnUniqueIds()
 
     auto* impl = CreateImpl();
     const auto initResult = impl->Initialize(&svc);
-    if (WPEFramework::Core::ERROR_NONE == initResult) {
-        WPEFramework::Exchange::IDownloadManager::Options opts{};
+    if (Thunder::Core::ERROR_NONE == initResult) {
+        Thunder::Exchange::IDownloadManager::Options opts{};
         opts.priority = false; opts.retries = 2; opts.rateLimit = 0;
         std::string id1, id2;
         impl->Download("file:///dev/null", opts, id1);
@@ -604,7 +604,7 @@ uint32_t Test_Impl_PauseEmptyIdReturnsError()
 
     auto* impl = CreateImpl();
     const auto result = impl->Pause("");
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
         "Pause() with empty downloadId returns ERROR_GENERAL");
 
     impl->Release();
@@ -622,7 +622,7 @@ uint32_t Test_Impl_PauseNoActiveDownloadReturnsError()
     auto* impl = CreateImpl();
     // mCurrentDownload is nullptr → condition fails → ERROR_GENERAL
     const auto result = impl->Pause("2001");
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
         "Pause() with no active download returns ERROR_GENERAL");
 
     impl->Release();
@@ -639,7 +639,7 @@ uint32_t Test_Impl_ResumeEmptyIdReturnsError()
 
     auto* impl = CreateImpl();
     const auto result = impl->Resume("");
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
         "Resume() with empty downloadId returns ERROR_GENERAL");
 
     impl->Release();
@@ -656,7 +656,7 @@ uint32_t Test_Impl_ResumeNoActiveDownloadReturnsError()
 
     auto* impl = CreateImpl();
     const auto result = impl->Resume("2001");
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
         "Resume() with no active download returns ERROR_GENERAL");
 
     impl->Release();
@@ -673,7 +673,7 @@ uint32_t Test_Impl_CancelEmptyIdReturnsError()
 
     auto* impl = CreateImpl();
     const auto result = impl->Cancel("");
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
         "Cancel() with empty downloadId returns ERROR_GENERAL");
 
     impl->Release();
@@ -690,7 +690,7 @@ uint32_t Test_Impl_CancelNoActiveDownloadReturnsError()
 
     auto* impl = CreateImpl();
     const auto result = impl->Cancel("2001");
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
         "Cancel() with no active download returns ERROR_GENERAL");
 
     impl->Release();
@@ -708,7 +708,7 @@ uint32_t Test_Impl_DeleteEmptyFileLocatorReturnsError()
     auto* impl = CreateImpl();
     const auto result = impl->Delete("");
     // empty fileLocator → the else branch calls remove("") → fails → ERROR_GENERAL
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
         "Delete() with empty fileLocator returns ERROR_GENERAL");
 
     impl->Release();
@@ -734,7 +734,7 @@ uint32_t Test_Impl_DeleteNonCurrentFileReturnsNone()
     auto* impl = CreateImpl();
     // No active download → mCurrentDownload is nullptr → goes to else → remove()
     const auto result = impl->Delete(tmpFile);
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE,
         "Delete() for non-current file returns ERROR_NONE");
 
     // Verify the file no longer exists
@@ -758,7 +758,7 @@ uint32_t Test_Impl_DeleteNonExistentFileReturnsError()
 
     auto* impl = CreateImpl();
     const auto result = impl->Delete("/nonexistent/dm_l0_ghost.pkg");
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
         "Delete() on non-existent file returns ERROR_GENERAL");
 
     impl->Release();
@@ -776,7 +776,7 @@ uint32_t Test_Impl_ProgressNoActiveDownloadReturnsError()
     auto* impl = CreateImpl();
     uint8_t percent = 0;
     const auto result = impl->Progress("2001", percent);
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
         "Progress() with no active download returns ERROR_GENERAL");
 
     impl->Release();
@@ -794,7 +794,7 @@ uint32_t Test_Impl_ProgressEmptyIdReturnsError()
     auto* impl = CreateImpl();
     uint8_t percent = 0u;
     const auto result = impl->Progress("", percent);
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
         "Progress() with empty downloadId returns ERROR_GENERAL");
 
     impl->Release();
@@ -812,7 +812,7 @@ uint32_t Test_Impl_RateLimitEmptyIdReturnsError()
     auto* impl = CreateImpl();
     const uint32_t limit = 1024;
     const auto result = impl->RateLimit("", limit);
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
         "RateLimit() with empty downloadId returns ERROR_GENERAL");
 
     impl->Release();
@@ -829,7 +829,7 @@ uint32_t Test_Impl_RateLimitNoActiveDownloadReturnsError()
 
     auto* impl = CreateImpl();
     const auto result = impl->RateLimit("2001", 512u);
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
         "RateLimit() with no active download returns ERROR_GENERAL");
 
     impl->Release();
@@ -852,10 +852,10 @@ uint32_t Test_Impl_PickDownloadJobPriorityFirst()
 
     auto* impl = CreateImpl();
     const auto initResult = impl->Initialize(&svc);
-    if (WPEFramework::Core::ERROR_NONE == initResult) {
-        WPEFramework::Exchange::IDownloadManager::Options pOpts{};
+    if (Thunder::Core::ERROR_NONE == initResult) {
+        Thunder::Exchange::IDownloadManager::Options pOpts{};
         pOpts.priority = true; pOpts.retries = 2; pOpts.rateLimit = 0;
-        WPEFramework::Exchange::IDownloadManager::Options rOpts{};
+        Thunder::Exchange::IDownloadManager::Options rOpts{};
         rOpts.priority = false; rOpts.retries = 2; rOpts.rateLimit = 0;
 
         std::string pid, rid;
@@ -902,7 +902,7 @@ uint32_t Test_Impl_NotifyStatusFiresAllNotifications()
 
     auto* impl = CreateImpl();
     const auto initResult = impl->Initialize(&svc);
-    if (WPEFramework::Core::ERROR_NONE != initResult) {
+    if (Thunder::Core::ERROR_NONE != initResult) {
         (void) std::remove(srcFile.c_str());
         L0Test::ExpectTrue(tr, true, "Initialize non-zero (acceptable in CI)");
         impl->Release();
@@ -919,7 +919,7 @@ uint32_t Test_Impl_NotifyStatusFiresAllNotifications()
     L0Test::ExpectEqU32(tr, notif2._refCount.load(), 2u, "notif2 AddRef by Register");
 
     // Trigger a real download completion → notifyDownloadStatus fans out to all listeners
-    WPEFramework::Exchange::IDownloadManager::Options opts{};
+    Thunder::Exchange::IDownloadManager::Options opts{};
     opts.priority = false; opts.retries = 2; opts.rateLimit = 0;
     std::string downloadId;
     impl->Download("file://" + srcFile, opts, downloadId);
@@ -964,12 +964,12 @@ uint32_t Test_Impl_DownloadInfoFieldsViaDownload()
 
     auto* impl = CreateImpl();
     const auto initResult = impl->Initialize(&svc);
-    if (WPEFramework::Core::ERROR_NONE == initResult) {
-        WPEFramework::Exchange::IDownloadManager::Options opts{};
+    if (Thunder::Core::ERROR_NONE == initResult) {
+        Thunder::Exchange::IDownloadManager::Options opts{};
         opts.priority = false; opts.retries = 5; opts.rateLimit = 512u;
         std::string downloadId;
         const auto result = impl->Download("file:///dev/null", opts, downloadId);
-        L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+        L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE,
             "Download() succeeds and returns id");
         L0Test::ExpectTrue(tr, !downloadId.empty(),
             "DownloadInfo created with correct id (non-empty)");
@@ -1002,15 +1002,15 @@ uint32_t Test_Impl_DownloadInfoZeroRetriesClampsToMin()
 
     auto* impl = CreateImpl();
     const auto initResult = impl->Initialize(&svc);
-    if (WPEFramework::Core::ERROR_NONE == initResult) {
-        WPEFramework::Exchange::IDownloadManager::Options opts{};
+    if (Thunder::Core::ERROR_NONE == initResult) {
+        Thunder::Exchange::IDownloadManager::Options opts{};
         opts.priority = false; opts.retries = 0; opts.rateLimit = 0;
         std::string downloadId;
         const auto result = impl->Download("file:///dev/null", opts, downloadId);
         // Verifies that retries=0 does not crash or reject the Download() call.
         // The clamping to MIN_RETRIES(2) happens inside DownloadInfo constructor
         // and is not directly observable via the public API.
-        L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+        L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE,
             "Download() with retries=0 is accepted without crash");
         L0Test::ExpectTrue(tr, !downloadId.empty(),
             "Download() with retries=0 returns a non-empty downloadId");
@@ -1072,7 +1072,7 @@ uint32_t Test_Impl_InitializeFailsWhenMkdirFails()
 
     auto* impl = CreateImpl();
     const auto result = impl->Initialize(&svc);
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
         "Initialize() returns ERROR_GENERAL when mkdir fails (ENOENT path)");
 
     // Initialize() AddRef()s the service before mkdir(), so always Deinitialize() to Release it.
@@ -1098,14 +1098,14 @@ uint32_t Test_Impl_InitializeWithMissingDownloadDir()
 
     auto* impl = CreateImpl();
     const auto initResult = impl->Initialize(&svc);
-    L0Test::ExpectEqU32(tr, initResult, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, initResult, Thunder::Core::ERROR_GENERAL,
         "Initialize() with no downloadDir in config returns ERROR_GENERAL");
 
     // mCurrentservice was AddRef'd before the mkdir step, so Deinitialize
     // is needed for correct cleanup.  It also exercises the mDownloadThreadPtr
     // == nullptr branch (the thread was never started).
     const auto deinitResult = impl->Deinitialize(&svc);
-    L0Test::ExpectEqU32(tr, deinitResult, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, deinitResult, Thunder::Core::ERROR_NONE,
         "Deinitialize() after failed Initialize (no thread started) returns ERROR_NONE");
 
     impl->Release();
@@ -1169,7 +1169,7 @@ uint32_t Test_Impl_DownloaderRoutineSuccessPath()
 
     auto* impl = CreateImpl();
     const auto initResult = impl->Initialize(&svc);
-    if (WPEFramework::Core::ERROR_NONE != initResult) {
+    if (Thunder::Core::ERROR_NONE != initResult) {
         (void) std::remove(srcFile.c_str());
         L0Test::ExpectTrue(tr, true, "Initialize non-zero (acceptable in CI)");
         impl->Release();
@@ -1179,11 +1179,11 @@ uint32_t Test_Impl_DownloaderRoutineSuccessPath()
     L0Test::FakeDownloadNotification notif;
     impl->Register(&notif);
 
-    WPEFramework::Exchange::IDownloadManager::Options opts{};
+    Thunder::Exchange::IDownloadManager::Options opts{};
     opts.priority = false; opts.retries = 2; opts.rateLimit = 0;
     std::string downloadId;
     const auto dlResult = impl->Download("file://" + srcFile, opts, downloadId);
-    L0Test::ExpectEqU32(tr, dlResult, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, dlResult, Thunder::Core::ERROR_NONE,
         "Download() enqueued file:// URL successfully");
 
     // Wait for the downloader thread to complete the download (max 5 s)
@@ -1231,7 +1231,7 @@ uint32_t Test_Impl_DownloaderRoutineDiskErrorPath()
 
     auto* impl = CreateImpl();
     const auto initResult = impl->Initialize(&svc);
-    if (WPEFramework::Core::ERROR_NONE != initResult) {
+    if (Thunder::Core::ERROR_NONE != initResult) {
         L0Test::ExpectTrue(tr, true, "Initialize non-zero (acceptable in CI)");
         impl->Release();
         return tr.failures;
@@ -1245,7 +1245,7 @@ uint32_t Test_Impl_DownloaderRoutineDiskErrorPath()
     // fail because the parent directory no longer exists → DiskError.
     (void) std::remove(dirNoSlash.c_str());
 
-    WPEFramework::Exchange::IDownloadManager::Options opts{};
+    Thunder::Exchange::IDownloadManager::Options opts{};
     opts.priority = false; opts.retries = 2; opts.rateLimit = 0;
     std::string downloadId;
     impl->Download("file:///dev/null", opts, downloadId);
@@ -1285,7 +1285,7 @@ uint32_t Test_Impl_DownloaderRoutineHttpErrorPath()
 
     auto* impl = CreateImpl();
     const auto initResult = impl->Initialize(&svc);
-    if (WPEFramework::Core::ERROR_NONE != initResult) {
+    if (Thunder::Core::ERROR_NONE != initResult) {
         L0Test::ExpectTrue(tr, true, "Initialize non-zero (acceptable in CI)");
         impl->Release();
         return tr.failures;
@@ -1295,7 +1295,7 @@ uint32_t Test_Impl_DownloaderRoutineHttpErrorPath()
     impl->Register(&notif);
 
     // A non-existent file:// URL → curl returns CURLE_FILE_COULDNT_READ_FILE → HttpError
-    WPEFramework::Exchange::IDownloadManager::Options opts{};
+    Thunder::Exchange::IDownloadManager::Options opts{};
     opts.priority = false; opts.retries = 2; opts.rateLimit = 0;
     std::string downloadId;
     impl->Download("file:///nonexistent_dm_l0_file_that_does_not_exist.pkg", opts, downloadId);
@@ -1335,7 +1335,7 @@ uint32_t Test_Impl_ActiveDownloadMatchIdOperations()
 
     auto* impl = CreateImpl();
     const auto initResult = impl->Initialize(&svc);
-    if (WPEFramework::Core::ERROR_NONE != initResult) {
+    if (Thunder::Core::ERROR_NONE != initResult) {
         L0Test::ExpectTrue(tr, true, "Initialize non-zero (acceptable in CI)");
         impl->Release();
         return tr.failures;
@@ -1346,7 +1346,7 @@ uint32_t Test_Impl_ActiveDownloadMatchIdOperations()
 
     // Enqueue a download of the inexhaustible /dev/zero → curl will keep
     // running until we cancel it. Set rateLimit to 1 byte/s to make it slow.
-    WPEFramework::Exchange::IDownloadManager::Options opts{};
+    Thunder::Exchange::IDownloadManager::Options opts{};
     opts.priority = false; opts.retries = 2; opts.rateLimit = 1u;
     std::string downloadId;
     impl->Download("file:///dev/zero", opts, downloadId);
@@ -1357,7 +1357,7 @@ uint32_t Test_Impl_ActiveDownloadMatchIdOperations()
     // download is active. Give it up to 3 seconds.
     uint8_t pct = 0u;
     const bool active = WaitFor([&]{
-        return impl->Progress(downloadId, pct) == WPEFramework::Core::ERROR_NONE;
+        return impl->Progress(downloadId, pct) == Thunder::Core::ERROR_NONE;
     }, 3000u);
 
     if (!active) {
@@ -1375,22 +1375,22 @@ uint32_t Test_Impl_ActiveDownloadMatchIdOperations()
     // ── Progress with matching ID → ERROR_NONE ───────────────────────────────
     uint8_t progressPct = 0u;
     const auto progressResult = impl->Progress(downloadId, progressPct);
-    L0Test::ExpectEqU32(tr, progressResult, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, progressResult, Thunder::Core::ERROR_NONE,
         "Progress() with matching active downloadId returns ERROR_NONE");
 
     // ── Pause with matching ID → ERROR_NONE ──────────────────────────────────
     const auto pauseResult = impl->Pause(downloadId);
-    L0Test::ExpectEqU32(tr, pauseResult, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, pauseResult, Thunder::Core::ERROR_NONE,
         "Pause() with matching active downloadId returns ERROR_NONE");
 
     // ── Resume with matching ID → ERROR_NONE ─────────────────────────────────
     const auto resumeResult = impl->Resume(downloadId);
-    L0Test::ExpectEqU32(tr, resumeResult, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, resumeResult, Thunder::Core::ERROR_NONE,
         "Resume() with matching active downloadId returns ERROR_NONE");
 
     // ── RateLimit with matching ID → ERROR_NONE ──────────────────────────────
     const auto rateLimitResult = impl->RateLimit(downloadId, 512u);
-    L0Test::ExpectEqU32(tr, rateLimitResult, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, rateLimitResult, Thunder::Core::ERROR_NONE,
         "RateLimit() with matching active downloadId returns ERROR_NONE");
 
     // Cancel the in-progress download and wait for thread to finish
@@ -1420,7 +1420,7 @@ uint32_t Test_Impl_ActiveDownloadMismatchIdOperations()
 
     auto* impl = CreateImpl();
     const auto initResult = impl->Initialize(&svc);
-    if (WPEFramework::Core::ERROR_NONE != initResult) {
+    if (Thunder::Core::ERROR_NONE != initResult) {
         L0Test::ExpectTrue(tr, true, "Initialize non-zero (acceptable in CI)");
         impl->Release();
         return tr.failures;
@@ -1429,7 +1429,7 @@ uint32_t Test_Impl_ActiveDownloadMismatchIdOperations()
     L0Test::FakeDownloadNotification notif;
     impl->Register(&notif);
 
-    WPEFramework::Exchange::IDownloadManager::Options opts{};
+    Thunder::Exchange::IDownloadManager::Options opts{};
     opts.priority = false; opts.retries = 2; opts.rateLimit = 1u;
     std::string downloadId;
     impl->Download("file:///dev/zero", opts, downloadId);
@@ -1437,7 +1437,7 @@ uint32_t Test_Impl_ActiveDownloadMismatchIdOperations()
     // Wait for active download
     uint8_t pct = 0u;
     const bool active = WaitFor([&]{
-        return impl->Progress(downloadId, pct) == WPEFramework::Core::ERROR_NONE;
+        return impl->Progress(downloadId, pct) == Thunder::Core::ERROR_NONE;
     }, 3000u);
 
     if (!active) {
@@ -1454,28 +1454,28 @@ uint32_t Test_Impl_ActiveDownloadMismatchIdOperations()
 
     // ── Pause mismatch → ERROR_UNKNOWN_KEY ───────────────────────────────────
     const auto pauseResult = impl->Pause(wrongId);
-    L0Test::ExpectEqU32(tr, pauseResult, WPEFramework::Core::ERROR_UNKNOWN_KEY,
+    L0Test::ExpectEqU32(tr, pauseResult, Thunder::Core::ERROR_UNKNOWN_KEY,
         "Pause() with mismatched downloadId returns ERROR_UNKNOWN_KEY");
 
     // ── Resume mismatch → ERROR_UNKNOWN_KEY ──────────────────────────────────
     const auto resumeResult = impl->Resume(wrongId);
-    L0Test::ExpectEqU32(tr, resumeResult, WPEFramework::Core::ERROR_UNKNOWN_KEY,
+    L0Test::ExpectEqU32(tr, resumeResult, Thunder::Core::ERROR_UNKNOWN_KEY,
         "Resume() with mismatched downloadId returns ERROR_UNKNOWN_KEY");
 
     // ── Progress mismatch → ERROR_UNKNOWN_KEY ────────────────────────────────
     uint8_t progressPct = 0u;
     const auto progressResult = impl->Progress(wrongId, progressPct);
-    L0Test::ExpectEqU32(tr, progressResult, WPEFramework::Core::ERROR_UNKNOWN_KEY,
+    L0Test::ExpectEqU32(tr, progressResult, Thunder::Core::ERROR_UNKNOWN_KEY,
         "Progress() with mismatched downloadId returns ERROR_UNKNOWN_KEY");
 
     // ── RateLimit mismatch → ERROR_UNKNOWN_KEY ───────────────────────────────
     const auto rateLimitResult = impl->RateLimit(wrongId, 256u);
-    L0Test::ExpectEqU32(tr, rateLimitResult, WPEFramework::Core::ERROR_UNKNOWN_KEY,
+    L0Test::ExpectEqU32(tr, rateLimitResult, Thunder::Core::ERROR_UNKNOWN_KEY,
         "RateLimit() with mismatched downloadId returns ERROR_UNKNOWN_KEY");
 
     // ── Cancel mismatch → ERROR_UNKNOWN_KEY ──────────────────────────────────
     const auto cancelMismatch = impl->Cancel(wrongId);
-    L0Test::ExpectEqU32(tr, cancelMismatch, WPEFramework::Core::ERROR_UNKNOWN_KEY,
+    L0Test::ExpectEqU32(tr, cancelMismatch, Thunder::Core::ERROR_UNKNOWN_KEY,
         "Cancel() with mismatched downloadId returns ERROR_UNKNOWN_KEY");
 
     // Cancel the real download to let the thread exit cleanly
@@ -1512,7 +1512,7 @@ uint32_t Test_Impl_DeleteInProgressFileReturnsError()
 
     auto* impl = CreateImpl();
     const auto initResult = impl->Initialize(&svc);
-    if (WPEFramework::Core::ERROR_NONE != initResult) {
+    if (Thunder::Core::ERROR_NONE != initResult) {
         L0Test::ExpectTrue(tr, true, "Initialize non-zero (acceptable in CI)");
         impl->Release();
         return tr.failures;
@@ -1523,7 +1523,7 @@ uint32_t Test_Impl_DeleteInProgressFileReturnsError()
 
     // retries=1: the downloader only checks the cancel flag *after* its retry
     // backoff sleep, so extra attempts make teardown slow and flaky here.
-    WPEFramework::Exchange::IDownloadManager::Options opts{};
+    Thunder::Exchange::IDownloadManager::Options opts{};
     opts.priority = false; opts.retries = 1; opts.rateLimit = 1u;
     std::string downloadId;
     impl->Download("file:///dev/zero", opts, downloadId);
@@ -1535,7 +1535,7 @@ uint32_t Test_Impl_DeleteInProgressFileReturnsError()
 
     uint8_t pct = 0u;
     const bool active = WaitFor([&]{
-        return impl->Progress(downloadId, pct) == WPEFramework::Core::ERROR_NONE;
+        return impl->Progress(downloadId, pct) == Thunder::Core::ERROR_NONE;
     }, 3000u);
 
     if (!active) {
@@ -1550,7 +1550,7 @@ uint32_t Test_Impl_DeleteInProgressFileReturnsError()
 
     // Try to delete the in-progress file — should return ERROR_GENERAL (warning path)
     const auto deleteResult = impl->Delete(expectedLocator);
-    L0Test::ExpectEqU32(tr, deleteResult, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, deleteResult, Thunder::Core::ERROR_GENERAL,
         "Delete() of in-progress file returns ERROR_GENERAL");
 
     // Cancel and clean up. A cancel issued before curl_easy_perform starts is
@@ -1585,7 +1585,7 @@ uint32_t Test_Impl_DeleteDifferentFileWhileActiveDownload()
 
     auto* impl = CreateImpl();
     const auto initResult = impl->Initialize(&svc);
-    if (WPEFramework::Core::ERROR_NONE != initResult) {
+    if (Thunder::Core::ERROR_NONE != initResult) {
         L0Test::ExpectTrue(tr, true, "Initialize non-zero (acceptable in CI)");
         impl->Release();
         return tr.failures;
@@ -1596,14 +1596,14 @@ uint32_t Test_Impl_DeleteDifferentFileWhileActiveDownload()
 
     // Start a slow active download to keep mCurrentDownload non-null.
     // retries=1 keeps teardown deterministic (no retry backoff after cancel).
-    WPEFramework::Exchange::IDownloadManager::Options opts{};
+    Thunder::Exchange::IDownloadManager::Options opts{};
     opts.priority = false; opts.retries = 1; opts.rateLimit = 1u;
     std::string downloadId;
     impl->Download("file:///dev/zero", opts, downloadId);
 
     uint8_t pct = 0u;
     const bool active = WaitFor([&]{
-        return impl->Progress(downloadId, pct) == WPEFramework::Core::ERROR_NONE;
+        return impl->Progress(downloadId, pct) == Thunder::Core::ERROR_NONE;
     }, 3000u);
 
     if (!active) {
@@ -1630,7 +1630,7 @@ uint32_t Test_Impl_DeleteDifferentFileWhileActiveDownload()
     // mCurrentDownload != null, but fileLocator != mCurrentDownload->getFileLocator()
     // → condition false → else branch → remove(otherFile) succeeds → ERROR_NONE
     const auto deleteResult = impl->Delete(otherFile);
-    L0Test::ExpectEqU32(tr, deleteResult, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, deleteResult, Thunder::Core::ERROR_NONE,
         "Delete() of a different file while active download returns ERROR_NONE");
 
     for (int i = 0; i < 50 && notif.onAppDownloadStatusCount.load() == 0u; ++i) {
@@ -1668,7 +1668,7 @@ uint32_t Test_Impl_PickDownloadJobRegularQueueUsed()
 
     auto* impl = CreateImpl();
     const auto initResult = impl->Initialize(&svc);
-    if (WPEFramework::Core::ERROR_NONE != initResult) {
+    if (Thunder::Core::ERROR_NONE != initResult) {
         (void) std::remove(srcFile.c_str());
         L0Test::ExpectTrue(tr, true, "Initialize non-zero (acceptable in CI)");
         impl->Release();
@@ -1679,7 +1679,7 @@ uint32_t Test_Impl_PickDownloadJobRegularQueueUsed()
     impl->Register(&notif);
 
     // Enqueue only a REGULAR download (priority=false → goes to mRegularDownloadQueue)
-    WPEFramework::Exchange::IDownloadManager::Options opts{};
+    Thunder::Exchange::IDownloadManager::Options opts{};
     opts.priority = false; opts.retries = 2; opts.rateLimit = 0;
     std::string downloadId;
     impl->Download("file://" + srcFile, opts, downloadId);
@@ -1714,7 +1714,7 @@ uint32_t Test_Impl_NotifyStatusIncludesFailReason()
 
     auto* impl = CreateImpl();
     const auto initResult = impl->Initialize(&svc);
-    if (WPEFramework::Core::ERROR_NONE != initResult) {
+    if (Thunder::Core::ERROR_NONE != initResult) {
         L0Test::ExpectTrue(tr, true, "Initialize non-zero (acceptable in CI)");
         impl->Release();
         return tr.failures;
@@ -1724,7 +1724,7 @@ uint32_t Test_Impl_NotifyStatusIncludesFailReason()
     impl->Register(&notif);
 
     // Non-existent file → HttpError → notifyDownloadStatus with DOWNLOAD_FAILURE
-    WPEFramework::Exchange::IDownloadManager::Options opts{};
+    Thunder::Exchange::IDownloadManager::Options opts{};
     opts.priority = false; opts.retries = 2; opts.rateLimit = 0;
     std::string downloadId;
     impl->Download("file:///definitely_does_not_exist_dm_l0.pkg", opts, downloadId);
@@ -1763,7 +1763,7 @@ uint32_t Test_Impl_CancelWithActiveDownloadMatchId()
 
     auto* impl = CreateImpl();
     const auto initResult = impl->Initialize(&svc);
-    if (WPEFramework::Core::ERROR_NONE != initResult) {
+    if (Thunder::Core::ERROR_NONE != initResult) {
         L0Test::ExpectTrue(tr, true, "Initialize non-zero (acceptable in CI)");
         impl->Release();
         return tr.failures;
@@ -1772,7 +1772,7 @@ uint32_t Test_Impl_CancelWithActiveDownloadMatchId()
     L0Test::FakeDownloadNotification notif;
     impl->Register(&notif);
 
-    WPEFramework::Exchange::IDownloadManager::Options opts{};
+    Thunder::Exchange::IDownloadManager::Options opts{};
     opts.priority = false; opts.retries = 2; opts.rateLimit = 1u;
     std::string downloadId;
     impl->Download("file:///dev/zero", opts, downloadId);
@@ -1780,7 +1780,7 @@ uint32_t Test_Impl_CancelWithActiveDownloadMatchId()
     // Wait for active download
     uint8_t pct = 0u;
     const bool active = WaitFor([&]{
-        return impl->Progress(downloadId, pct) == WPEFramework::Core::ERROR_NONE;
+        return impl->Progress(downloadId, pct) == Thunder::Core::ERROR_NONE;
     }, 3000u);
 
     if (!active) {
@@ -1795,7 +1795,7 @@ uint32_t Test_Impl_CancelWithActiveDownloadMatchId()
 
     // Cancel with the exact matching ID → ERROR_NONE
     const auto cancelResult = impl->Cancel(downloadId);
-    L0Test::ExpectEqU32(tr, cancelResult, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, cancelResult, Thunder::Core::ERROR_NONE,
         "Cancel() with matching active downloadId returns ERROR_NONE");
 
     WaitFor([&]{ return notif.onAppDownloadStatusCount.load() > 0u; }, 5000u);
@@ -1832,7 +1832,7 @@ uint32_t Test_Impl_DownloaderRoutinePriorityQueuePath()
 
     auto* impl = CreateImpl();
     const auto initResult = impl->Initialize(&svc);
-    if (WPEFramework::Core::ERROR_NONE != initResult) {
+    if (Thunder::Core::ERROR_NONE != initResult) {
         (void) std::remove(srcFile.c_str());
         L0Test::ExpectTrue(tr, true, "Initialize non-zero (acceptable in CI)");
         impl->Release();
@@ -1846,11 +1846,11 @@ uint32_t Test_Impl_DownloaderRoutinePriorityQueuePath()
     // Because we wait for the notification before calling Deinitialize, the
     // downloader thread calls pickDownloadJob() while the priority queue is
     // non-empty, covering DMImpl.cpp L576 B0 and the LOGINFO at L581.
-    WPEFramework::Exchange::IDownloadManager::Options opts{};
+    Thunder::Exchange::IDownloadManager::Options opts{};
     opts.priority = true; opts.retries = 2; opts.rateLimit = 0;
     std::string downloadId;
     const auto dlResult = impl->Download("file://" + srcFile, opts, downloadId);
-    L0Test::ExpectEqU32(tr, dlResult, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, dlResult, Thunder::Core::ERROR_NONE,
         "Priority Download() enqueued file:// URL successfully");
 
     // Wait for the downloader thread to complete (max 5 s).
@@ -1892,7 +1892,7 @@ uint32_t Test_Impl_DeinitializeNotifyOneAfterLockRelease()
 
     auto* impl = CreateImpl();
     const auto initResult = impl->Initialize(&svc);
-    if (WPEFramework::Core::ERROR_NONE != initResult) {
+    if (Thunder::Core::ERROR_NONE != initResult) {
         std::cout << "SKIP: Initialize non-zero (acceptable in CI)" << std::endl;
         impl->Release();
         return tr.failures;
@@ -1908,7 +1908,7 @@ uint32_t Test_Impl_DeinitializeNotifyOneAfterLockRelease()
     const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
         std::chrono::steady_clock::now() - t0).count();
 
-    L0Test::ExpectEqU32(tr, deinitResult, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, deinitResult, Thunder::Core::ERROR_NONE,
         "Deinitialize() returns ERROR_NONE");
     L0Test::ExpectTrue(tr, elapsed < 3000,
         "Deinitialize() joins thread promptly (< 3 s); notify_one after lock release works");
@@ -1950,7 +1950,7 @@ uint32_t Test_Impl_WaitForPredicateWakesOnQueuedDownload()
 
     auto* impl = CreateImpl();
     const auto initResult = impl->Initialize(&svc);
-    if (WPEFramework::Core::ERROR_NONE != initResult) {
+    if (Thunder::Core::ERROR_NONE != initResult) {
         (void) std::remove(srcFile.c_str());
         std::cout << "SKIP: Initialize non-zero (acceptable in CI)" << std::endl;
         impl->Release();
@@ -1963,14 +1963,14 @@ uint32_t Test_Impl_WaitForPredicateWakesOnQueuedDownload()
     // Let the thread settle into wait_for before queuing
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-    WPEFramework::Exchange::IDownloadManager::Options opts{};
+    Thunder::Exchange::IDownloadManager::Options opts{};
     opts.priority = false; opts.retries = 1; opts.rateLimit = 0;
     std::string downloadId;
 
     const auto dlResult = impl->Download("file://" + srcFile, opts, downloadId);
-    L0Test::ExpectEqU32(tr, dlResult, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, dlResult, Thunder::Core::ERROR_NONE,
         "Download() enqueued file:// URL successfully");
-    if (WPEFramework::Core::ERROR_NONE != dlResult) {
+    if (Thunder::Core::ERROR_NONE != dlResult) {
         impl->Unregister(&notif);
         impl->Deinitialize(&svc);
         impl->Release();

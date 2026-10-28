@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 namespace Utils {
 

@@ -22,8 +22,8 @@
 #include <gmock/gmock.h>
 #include <interfaces/IOCIContainer.h>
 
-using ::WPEFramework::Exchange::IOCIContainer;
-using namespace WPEFramework;
+using ::Thunder::Exchange::IOCIContainer;
+using namespace Thunder;
 
 
 class OCIContainerMock : public IOCIContainer {
@@ -31,8 +31,8 @@ public:
     OCIContainerMock() = default;
     virtual ~OCIContainerMock() = default;
 
-    MOCK_METHOD(Core::hresult, Register,(WPEFramework::Exchange::IOCIContainer::INotification *notification), (override));
-    MOCK_METHOD(Core::hresult, Unregister,(WPEFramework::Exchange::IOCIContainer::INotification *notification), (override));
+    MOCK_METHOD(Core::hresult, Register,(Thunder::Exchange::IOCIContainer::INotification *notification), (override));
+    MOCK_METHOD(Core::hresult, Unregister,(Thunder::Exchange::IOCIContainer::INotification *notification), (override));
     MOCK_METHOD(Core::hresult, ListContainers, (string& containers , bool& success , string& errorReason ), (override));
     MOCK_METHOD(Core::hresult, GetContainerInfo, (const string& containerId , string& info , bool& success, string& errorReason ), (override));
     MOCK_METHOD(Core::hresult, GetContainerState, (const string& containerId /* @in */, ContainerState& state /* @out */, bool& success /* @out */, string& errorReason /* @out */), (override));
@@ -62,6 +62,6 @@ class IOCIContainerNotificationMock : public IOCIContainer::INotification {
     MOCK_METHOD(void, OnContainerStarted, (const string& containerId, const string& name), (override));
     MOCK_METHOD(void, OnContainerStopped, (const string& containerId, const string& name, int32_t exitCode), (override));
     MOCK_METHOD(void, OnContainerFailed, (const string& containerId, const string& name, uint32_t error), (override));
-    MOCK_METHOD(void, OnContainerStateChanged, (const string& containerId, WPEFramework::Exchange::IOCIContainer::ContainerState state), (override));
+    MOCK_METHOD(void, OnContainerStateChanged, (const string& containerId, Thunder::Exchange::IOCIContainer::ContainerState state), (override));
 
 };

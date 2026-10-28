@@ -32,7 +32,7 @@
 
 #include "UtilsLogging.h"
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
     class PackageManager : public PluginHost::IPlugin,
@@ -130,4 +130,4 @@ END_INTERFACE_MAP
     };
 
 } // namespace Plugin
-} // namespace WPEFramework
+} // namespace Thunder

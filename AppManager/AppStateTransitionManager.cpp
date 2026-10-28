@@ -21,7 +21,7 @@
 #include "AppManagerImplementation.h"
 #include "UtilsLogging.h"
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
 AppStateTransitionManager::AppStateTransitionManager(AppManagerImplementation& parent)
@@ -174,4 +174,4 @@ void AppStateTransitionManager::Process(const std::string& appId, Exchange::IApp
 }
 
 } // namespace Plugin
-} // namespace WPEFramework
+} // namespace Thunder

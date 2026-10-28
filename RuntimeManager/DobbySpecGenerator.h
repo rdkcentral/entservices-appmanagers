@@ -31,7 +31,7 @@
 #include "RuntimeConfiguration.h"
 #include "AIConfiguration.h"
 
-namespace WPEFramework
+namespace Thunder
 {
 namespace Plugin
 {
@@ -124,4 +124,4 @@ namespace Plugin
             unsigned mDefaultLoggingMask;   ///< pre-computed from aisettings defaultAllowedLogLevels
     };
 } /* namespace Plugin */
-} /* namespace WPEFramework */
+} /* namespace Thunder */

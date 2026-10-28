@@ -23,7 +23,7 @@
 #include <plugins/plugins.h>
 #include "IEventHandler.h"
 
-namespace WPEFramework {
+namespace Thunder {
     namespace Plugin {
         class DobbyEventListener
         {
@@ -69,4 +69,4 @@ namespace WPEFramework {
 
         };
 } // namespace Plugin
-} // namespace WPEFramework
+} // namespace Thunder

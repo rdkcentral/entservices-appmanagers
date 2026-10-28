@@ -46,7 +46,7 @@
 #define TIMEOUT_FOR_INSTALL (200)
 
 using ::testing::NiceMock;
-using namespace WPEFramework;
+using namespace Thunder;
 using namespace std;
 
 typedef enum : uint32_t {

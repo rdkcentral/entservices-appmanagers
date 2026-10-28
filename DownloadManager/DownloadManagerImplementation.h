@@ -38,7 +38,7 @@
 
 #define DOWNLOAD_REASON_NONE    (0xFF)
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
     typedef Exchange::IDownloadManager::FailReason DownloadReason;
 
@@ -172,5 +172,5 @@ namespace Plugin {
         PluginHost::IShell* mCurrentservice;
     };
 } // namespace Plugin
-} // namespace WPEFramework
+} // namespace Thunder
 

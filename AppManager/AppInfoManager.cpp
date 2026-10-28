@@ -19,7 +19,7 @@
 
 #include "AppInfoManager.h"
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
 /* ---- Singleton accessor ---- */
@@ -334,4 +334,4 @@ void AppInfoManager::setCurrentActionTime(const std::string& appId, time_t t)
 }
 
 } // namespace Plugin
-} // namespace WPEFramework
+} // namespace Thunder

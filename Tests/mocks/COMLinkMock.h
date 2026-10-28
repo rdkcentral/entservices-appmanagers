@@ -25,26 +25,26 @@
 #include "Module.h"
 
 #ifndef USE_THUNDER_R4
-class COMLinkMock : public WPEFramework::PluginHost::IShell::ICOMLink {
+class COMLinkMock : public Thunder::PluginHost::IShell::ICOMLink {
 public:
     virtual ~COMLinkMock() = default;
 
-    MOCK_METHOD(void, Register, (WPEFramework::RPC::IRemoteConnection::INotification*), (override));
-    MOCK_METHOD(void, Unregister, (WPEFramework::RPC::IRemoteConnection::INotification*), (override));
-    MOCK_METHOD(WPEFramework::RPC::IRemoteConnection*, RemoteConnection, (const uint32_t), (override));
-    MOCK_METHOD(void*, Instantiate, (const WPEFramework::RPC::Object&, const uint32_t, uint32_t&, const string&, const string&), (override));
+    MOCK_METHOD(void, Register, (Thunder::RPC::IRemoteConnection::INotification*), (override));
+    MOCK_METHOD(void, Unregister, (Thunder::RPC::IRemoteConnection::INotification*), (override));
+    MOCK_METHOD(Thunder::RPC::IRemoteConnection*, RemoteConnection, (const uint32_t), (override));
+    MOCK_METHOD(void*, Instantiate, (const Thunder::RPC::Object&, const uint32_t, uint32_t&, const string&, const string&), (override));
 };
 #else
-class COMLinkMock : public WPEFramework::PluginHost::IShell::ICOMLink {
+class COMLinkMock : public Thunder::PluginHost::IShell::ICOMLink {
 public:
     virtual ~COMLinkMock() = default;
 
-    MOCK_METHOD(void, Register, (WPEFramework::RPC::IRemoteConnection::INotification*), (override));
-    MOCK_METHOD(void, Unregister, (const WPEFramework::RPC::IRemoteConnection::INotification*), (override));
+    MOCK_METHOD(void, Register, (Thunder::RPC::IRemoteConnection::INotification*), (override));
+    MOCK_METHOD(void, Unregister, (const Thunder::RPC::IRemoteConnection::INotification*), (override));
     MOCK_METHOD(void, Register, (INotification*), (override));
     MOCK_METHOD(void, Unregister, (INotification*), (override));
-    MOCK_METHOD(WPEFramework::RPC::IRemoteConnection*, RemoteConnection, (const uint32_t), (override));
-    MOCK_METHOD(void*, Instantiate, (const WPEFramework::RPC::Object&, const uint32_t, uint32_t&), (override));
+    MOCK_METHOD(Thunder::RPC::IRemoteConnection*, RemoteConnection, (const uint32_t), (override));
+    MOCK_METHOD(void*, Instantiate, (const Thunder::RPC::Object&, const uint32_t, uint32_t&), (override));
 };
 #endif /* ! USE_THUNDER_R4 */
 #endif //RDKSERVICES_TESTS_MOCKS_COMLINKMOCK_H_

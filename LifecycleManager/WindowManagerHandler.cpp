@@ -21,7 +21,7 @@
 #include <fstream>
 #include <random>
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
 WindowManagerHandler::WindowManagerHandler()
@@ -152,4 +152,4 @@ void WindowManagerHandler::WindowManagerNotification::OnBlur(const std::string &
 }
 
 } // namespace Plugin
-} // namespace WPEFramework
+} // namespace Thunder

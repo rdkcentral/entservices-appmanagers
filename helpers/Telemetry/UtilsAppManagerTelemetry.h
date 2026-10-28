@@ -21,7 +21,7 @@
 
 #include "TelemetryReportingBase.h"
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 namespace Utils {
 
@@ -41,7 +41,7 @@ private:
 
 } // namespace Utils
 } // namespace Plugin
-} // namespace WPEFramework
+} // namespace Thunder
 
 /*
  * Macro pattern intentionally mirrors AppGateway telemetry helpers:
@@ -65,7 +65,7 @@ private:
     } while (0)
 
 #define RDKAM_RECORD_BOOTSTRAP_TIME(service) \
-    WPEFramework::Plugin::Utils::TelemetryReportingBase::ScopedBootstrapTimer bootstrapTimer( \
+    Thunder::Plugin::Utils::TelemetryReportingBase::ScopedBootstrapTimer bootstrapTimer( \
         &GetLocalTelemetryClient(), \
         service, \
         GetLocalBootstrapFieldName())

@@ -21,7 +21,7 @@
 #include "TelemetryMarkers.h"
 #include "UtilsLogging.h"
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
 DownloadManagerTelemetryReporting::DownloadManagerTelemetryReporting()
@@ -82,4 +82,4 @@ void DownloadManagerTelemetryReporting::recordDownloadErrorTelemetry(const std::
 }
 
 } // namespace Plugin
-} // namespace WPEFramework
+} // namespace Thunder

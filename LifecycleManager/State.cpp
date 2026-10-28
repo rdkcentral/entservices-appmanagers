@@ -25,7 +25,7 @@
 #include <boost/uuid/uuid_generators.hpp>
 #include <boost/uuid/uuid_io.hpp>
 
-namespace WPEFramework
+namespace Thunder
 {
     namespace Plugin
     {
@@ -237,4 +237,4 @@ namespace WPEFramework
             return success;
         }
     }
-} /* namespace WPEFramework */
+} /* namespace Thunder */

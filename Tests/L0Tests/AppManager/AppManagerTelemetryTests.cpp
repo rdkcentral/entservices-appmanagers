@@ -27,21 +27,21 @@ uint32_t Test_AM_TelemetryReportingStability()
 {
     L0Test::TestResult tr;
 
-    auto& telemetry = WPEFramework::Plugin::AppManagerTelemetryReporting::getInstance();
-    auto& telemetryAgain = WPEFramework::Plugin::AppManagerTelemetryReporting::getInstance();
+    auto& telemetry = Thunder::Plugin::AppManagerTelemetryReporting::getInstance();
+    auto& telemetryAgain = Thunder::Plugin::AppManagerTelemetryReporting::getInstance();
     L0Test::ExpectTrue(tr, &telemetry == &telemetryAgain, "getInstance() returns the same singleton reference");
 
-    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
-    WPEFramework::Plugin::AppInfoManager::getInstance().setCurrentAction("app-telemetry", WPEFramework::Plugin::AppManagerTypes::APP_ACTION_LAUNCH);
-    WPEFramework::Plugin::AppInfoManager::getInstance().setCurrentActionTime("app-telemetry", 1);
-    WPEFramework::Plugin::AppInfoManager::getInstance().setAppInstanceId("app-telemetry", "instance-1");
+    Thunder::Plugin::AppInfoManager::getInstance().clear();
+    Thunder::Plugin::AppInfoManager::getInstance().setCurrentAction("app-telemetry", Thunder::Plugin::AppManagerTypes::APP_ACTION_LAUNCH);
+    Thunder::Plugin::AppInfoManager::getInstance().setCurrentActionTime("app-telemetry", 1);
+    Thunder::Plugin::AppInfoManager::getInstance().setAppInstanceId("app-telemetry", "instance-1");
 
-    telemetry.reportTelemetryData("app-telemetry", WPEFramework::Plugin::AppManagerImplementation::APP_ACTION_LAUNCH);
-    telemetry.reportTelemetryDataOnStateChange("app-telemetry", WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE);
-    telemetry.reportTelemetryErrorData("app-telemetry", WPEFramework::Plugin::AppManagerImplementation::APP_ACTION_LAUNCH, WPEFramework::Plugin::AppManagerImplementation::ERROR_INTERNAL);
+    telemetry.reportTelemetryData("app-telemetry", Thunder::Plugin::AppManagerImplementation::APP_ACTION_LAUNCH);
+    telemetry.reportTelemetryDataOnStateChange("app-telemetry", Thunder::Exchange::ILifecycleManager::LifecycleState::ACTIVE);
+    telemetry.reportTelemetryErrorData("app-telemetry", Thunder::Plugin::AppManagerImplementation::APP_ACTION_LAUNCH, Thunder::Plugin::AppManagerImplementation::ERROR_INTERNAL);
     telemetry.reportAppCrashedTelemetry("app-telemetry", "instance-1", "crash");
 
-    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    Thunder::Plugin::AppInfoManager::getInstance().clear();
     L0Test::ExpectTrue(tr, true, "Telemetry reporting paths remain stable in the L0 environment");
     return tr.failures;
 }
@@ -51,12 +51,12 @@ uint32_t Test_AM_TelemetryReportingStability()
 // ============================================================
 namespace {
 
-using AppIM    = WPEFramework::Plugin::AppInfoManager;
-using AppAct   = WPEFramework::Plugin::AppManagerImplementation;
-using AppTel   = WPEFramework::Plugin::AppManagerTelemetryReporting;
-using LcState  = WPEFramework::Exchange::ILifecycleManager::LifecycleState;
-using AppState = WPEFramework::Exchange::IAppManager::AppLifecycleState;
-namespace AppType = WPEFramework::Plugin::AppManagerTypes;
+using AppIM    = Thunder::Plugin::AppInfoManager;
+using AppAct   = Thunder::Plugin::AppManagerImplementation;
+using AppTel   = Thunder::Plugin::AppManagerTelemetryReporting;
+using LcState  = Thunder::Exchange::ILifecycleManager::LifecycleState;
+using AppState = Thunder::Exchange::IAppManager::AppLifecycleState;
+namespace AppType = Thunder::Plugin::AppManagerTypes;
 
 void setupTelApp(const std::string& appId,
                  AppType::CurrentAction action,

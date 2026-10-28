@@ -46,7 +46,7 @@
 
 namespace {
 
-using WPEFramework::PluginHost::IPlugin;
+using Thunder::PluginHost::IPlugin;
 
 struct PluginAndService {
     L0Test::ServiceMock service;
@@ -54,7 +54,7 @@ struct PluginAndService {
 
     explicit PluginAndService(L0Test::ServiceMock::Config cfg = L0Test::ServiceMock::Config())
         : service(cfg)
-        , plugin(WPEFramework::Core::Service<WPEFramework::Plugin::DownloadManager>::Create<IPlugin>())
+        , plugin(Thunder::Core::Service<Thunder::Plugin::DownloadManager>::Create<IPlugin>())
     {
     }
 
@@ -87,7 +87,7 @@ uint32_t Test_Shell_InitializeRootCreationFailureReturnsError()
 
     // COMLink::Instantiate returns nullptr → Root<IDownloadManager>() fails
     ps.service.SetInstantiateHandler(
-        [](const WPEFramework::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
+        [](const Thunder::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
             connectionId = 0;
             return nullptr;
         });
@@ -124,7 +124,7 @@ uint32_t Test_Shell_InitializeSuccessRegistersNotification()
     L0Test::FakeDownloadManagerImpl* fakeImpl = nullptr;
 
     ps.service.SetInstantiateHandler(
-        [&fakeImpl](const WPEFramework::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
+        [&fakeImpl](const Thunder::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
             connectionId = 41;
             fakeImpl = new L0Test::FakeDownloadManagerImpl();
             return static_cast<void*>(fakeImpl);
@@ -178,7 +178,7 @@ uint32_t Test_Shell_DeinitializeCleansUp()
     PluginAndService ps(cfg);
 
     ps.service.SetInstantiateHandler(
-        [](const WPEFramework::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
+        [](const Thunder::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
             connectionId = 42;
             return static_cast<void*>(new L0Test::FakeDownloadManagerImpl());
         });
@@ -249,7 +249,7 @@ uint32_t Test_Shell_InitializeDeinitialize_NoCrash()
     const uint32_t testConnectionId = 77;
 
     ps.service.SetInstantiateHandler(
-        [testConnectionId](const WPEFramework::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
+        [testConnectionId](const Thunder::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
             connectionId = testConnectionId;
             return static_cast<void*>(new L0Test::FakeDownloadManagerImpl());
         });
@@ -303,7 +303,7 @@ uint32_t Test_Shell_NotificationHandlerOnAppDownloadStatus()
     L0Test::FakeDownloadManagerImpl* fakeImpl = nullptr;
 
     ps.service.SetInstantiateHandler(
-        [&fakeImpl](const WPEFramework::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
+        [&fakeImpl](const Thunder::RPC::Object&, const uint32_t, uint32_t& connectionId) -> void* {
             connectionId = 55;
             fakeImpl = new L0Test::FakeDownloadManagerImpl();
             return static_cast<void*>(fakeImpl);
@@ -341,26 +341,26 @@ uint32_t Test_Shell_QueryInterfaceVariations()
 
     PluginAndService ps;
 
-    auto* unknown = ps.plugin->QueryInterface<WPEFramework::Core::IUnknown>();
+    auto* unknown = ps.plugin->QueryInterface<Thunder::Core::IUnknown>();
     L0Test::ExpectTrue(tr, nullptr != unknown,
         "QI<IUnknown> returns non-null (BEGIN_INTERFACE_MAP early-return)");
     if (nullptr != unknown) {
         unknown->Release();
     }
 
-    auto* dispatcher = ps.plugin->QueryInterface<WPEFramework::PluginHost::IDispatcher>();
+    auto* dispatcher = ps.plugin->QueryInterface<Thunder::PluginHost::IDispatcher>();
     L0Test::ExpectTrue(tr, nullptr != dispatcher,
         "QI<IDispatcher> returns non-null (no Initialize needed)");
     if (nullptr != dispatcher) {
         dispatcher->Release();
     }
 
-    auto* dmNull = ps.plugin->QueryInterface<WPEFramework::Exchange::IDownloadManager>();
+    auto* dmNull = ps.plugin->QueryInterface<Thunder::Exchange::IDownloadManager>();
     L0Test::ExpectTrue(tr, nullptr == dmNull,
         "QI<IDownloadManager> returns null before Initialize (impl pointer null)");
 
     auto* notif =
-        ps.plugin->QueryInterface<WPEFramework::Exchange::IDownloadManager::INotification>();
+        ps.plugin->QueryInterface<Thunder::Exchange::IDownloadManager::INotification>();
     L0Test::ExpectTrue(tr, nullptr == notif,
         "QI<IDownloadManager::INotification> returns null (not in shell INTERFACE_MAP)");
 
@@ -369,7 +369,7 @@ uint32_t Test_Shell_QueryInterfaceVariations()
     PluginAndService ps2(cfg);
     if (ps2.plugin->Initialize(&ps2.service).empty()) {
         // mDownloadManagerImpl is now non-null → aggregate returns non-null
-        auto* dmImpl = ps2.plugin->QueryInterface<WPEFramework::Exchange::IDownloadManager>();
+        auto* dmImpl = ps2.plugin->QueryInterface<Thunder::Exchange::IDownloadManager>();
         L0Test::ExpectTrue(tr, nullptr != dmImpl,
             "QI<IDownloadManager> returns non-null after Initialize");
         if (nullptr != dmImpl) {
@@ -403,8 +403,8 @@ uint32_t Test_Shell_DeinitializeWithExtraImplReference()
     }
 
     // QI<IDownloadManager> via INTERFACE_AGGREGATE increments the impl refcount (1 → 2).
-    WPEFramework::Exchange::IDownloadManager* dmImpl =
-        ps.plugin->QueryInterface<WPEFramework::Exchange::IDownloadManager>();
+    Thunder::Exchange::IDownloadManager* dmImpl =
+        ps.plugin->QueryInterface<Thunder::Exchange::IDownloadManager>();
 
     if (nullptr == dmImpl) {
         // QI returned null unexpectedly — fall back to a clean deinit.

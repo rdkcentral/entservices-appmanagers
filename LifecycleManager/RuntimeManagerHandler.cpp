@@ -23,7 +23,7 @@
 #include "tracing/Logging.h"
 #include <sstream>
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
 #define FIREBOLT_ENDPOINT_APPACCESS_PORT 3473
@@ -267,4 +267,4 @@ void RuntimeManagerHandler::onEvent(JsonObject& data)
 }
 
 } // namespace Plugin
-} // namespace WPEFramework
+} // namespace Thunder

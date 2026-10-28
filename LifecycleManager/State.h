@@ -24,7 +24,7 @@
 
 //class ApplicationContext;
 
-namespace WPEFramework
+namespace Thunder
 {
     namespace Plugin
     {
@@ -118,4 +118,4 @@ namespace WPEFramework
                 bool handle(string& errorReason);
         };
     } /* namespace Plugin */
-} /* namespace WPEFramework */
+} /* namespace Thunder */

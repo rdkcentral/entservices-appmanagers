@@ -25,7 +25,7 @@
 #include "IEventHandler.h"
 #include "ApplicationContext.h"
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
     class RuntimeManagerHandler
     {
@@ -83,4 +83,4 @@ namespace Plugin {
             IEventHandler* mEventHandler;
     };
 } // namespace Plugin
-} // namespace WPEFramework
+} // namespace Thunder

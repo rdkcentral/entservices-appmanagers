@@ -26,10 +26,10 @@
 #include <sys/statvfs.h>
 
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
-    RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::AppStorageManagerTelemetryReporting, "appStorageManagerBootstrapTime")
+    RDKAM_DEFINE_TELEMETRY_CLIENT(Thunder::Plugin::AppStorageManagerTelemetryReporting, "appStorageManagerBootstrapTime")
 
     SERVICE_REGISTRATION(StorageManagerImplementation, 1, 0);
 
@@ -230,4 +230,4 @@ namespace Plugin {
         return status;
     }
 } /* namespace Plugin */
-} /* namespace WPEFramework */
+} /* namespace Thunder */

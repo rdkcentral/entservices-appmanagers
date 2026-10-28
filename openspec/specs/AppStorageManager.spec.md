@@ -2,7 +2,7 @@
 
 ## Overview
 **Module Name**: AppStorageManager
-**Type**: WPEFramework Plugin
+**Type**: Thunder Plugin
 **Purpose**: Application-specific persistent storage allocation, management, and cleanup on the filesystem
 
 ## Description
@@ -51,7 +51,7 @@ AppStorageManagerImplementation
 ### Configuration
 - **Config File**: `AppStorageManager.conf.in` / `AppStorageManager.config`
 - **Storage Root**: Configurable via system settings
-- **Thunder Service**: Exposed as a WPEFramework/Thunder plugin
+- **Thunder Service**: Exposed as a Thunder/Thunder plugin
 
 ## Data Flow
 ```
@@ -123,7 +123,7 @@ AppStorageManagerImplementation::DeleteStorage(appId)
 ### System Libraries
 | Library | Version | Purpose | Optional |
 |---------|---------|---------|----------|
-| WPEFramework | Latest | Plugin framework | No |
+| Thunder | Latest | Plugin framework | No |
 
 ### Internal Dependencies
 | Module | Type | Purpose |

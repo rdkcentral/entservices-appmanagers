@@ -40,7 +40,7 @@
 #include <map>
 #include <queue>
 
-namespace WPEFramework
+namespace Thunder
 {
     namespace Plugin
     {

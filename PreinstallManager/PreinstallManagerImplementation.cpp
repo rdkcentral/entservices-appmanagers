@@ -23,7 +23,7 @@
 #include "PreinstallManagerImplementation.h"
 
 
-namespace WPEFramework
+namespace Thunder
 {
     namespace Plugin
     {
@@ -188,7 +188,7 @@ namespace WPEFramework
         {
             LOGERR("mCurrentservice is null");
         }
-        else if (nullptr == (packageInstaller = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IPackageInstaller>("org.rdk.AppPackageManager")))
+        else if (nullptr == (packageInstaller = mCurrentservice->QueryInterfaceByCallsign<Thunder::Exchange::IPackageInstaller>("org.rdk.AppPackageManager")))
         {
             LOGERR("QueryInterfaceByCallsign failed for org.rdk.AppPackageManager");
         }
@@ -519,7 +519,7 @@ namespace WPEFramework
                 return result;
             }
 
-            WPEFramework::Exchange::IPackageInstaller::Package package;
+            Thunder::Exchange::IPackageInstaller::Package package;
             std::unordered_map<std::string, std::string> existingApps; // packageId -> version
 
             while (packageList->Next(package) && package.state == InstallState::INSTALLED) // only consider installed apps
@@ -623,4 +623,4 @@ namespace WPEFramework
     }
 
     } /* namespace Plugin */
-} /* namespace WPEFramework */
+} /* namespace Thunder */

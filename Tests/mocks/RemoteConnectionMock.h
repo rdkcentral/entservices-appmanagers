@@ -24,7 +24,7 @@
 
 #include "Module.h"
 
-class RemoteConnectionMock : public WPEFramework::RPC::IRemoteConnection {
+class RemoteConnectionMock : public Thunder::RPC::IRemoteConnection {
 public:
     virtual ~RemoteConnectionMock() = default;
 

@@ -33,7 +33,7 @@
 #include <map>
 #include <thread>
 
-namespace WPEFramework
+namespace Thunder
 {
     namespace Plugin
     {
@@ -178,4 +178,4 @@ namespace WPEFramework
             // void updateCurrentAction(const std::string &appId, CurrentAction action);
         };
     } /* namespace Plugin */
-} /* namespace WPEFramework */
+} /* namespace Thunder */

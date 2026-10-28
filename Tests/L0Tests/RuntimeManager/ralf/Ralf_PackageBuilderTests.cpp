@@ -58,13 +58,13 @@ static bool WriteFile_PB(const std::string &path, const std::string &content)
     return true;
 }
 
-static WPEFramework::Plugin::ApplicationConfiguration MakeAppConfig(
+static Thunder::Plugin::ApplicationConfiguration MakeAppConfig(
     const std::string &appId,
     const std::string &appInstanceId,
     uint32_t uid = 1000,
     uint32_t gid = 1000)
 {
-    WPEFramework::Plugin::ApplicationConfiguration config;
+    Thunder::Plugin::ApplicationConfiguration config;
     config.mAppId = appId;
     config.mAppInstanceId = appInstanceId;
     config.mUserId = uid;
@@ -72,9 +72,9 @@ static WPEFramework::Plugin::ApplicationConfiguration MakeAppConfig(
     return config;
 }
 
-static WPEFramework::Plugin::RuntimeConfiguration MakeRuntimeConfig(const std::string &ralfPkgPath = "")
+static Thunder::Plugin::RuntimeConfiguration MakeRuntimeConfig(const std::string &ralfPkgPath = "")
 {
-    WPEFramework::Plugin::RuntimeConfiguration cfg;
+    Thunder::Plugin::RuntimeConfiguration cfg;
     cfg.ralfPkgPath = ralfPkgPath;
     return cfg;
 }

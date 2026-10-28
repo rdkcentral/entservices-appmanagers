@@ -21,7 +21,7 @@
 
 #include <string>
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
 /**
@@ -41,4 +41,4 @@ namespace Plugin {
 std::string buildWindowManagerCapabilities(const std::string& runtimeCapabilities);
 
 } // namespace Plugin
-} // namespace WPEFramework
+} // namespace Thunder

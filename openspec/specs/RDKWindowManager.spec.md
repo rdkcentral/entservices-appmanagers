@@ -2,7 +2,7 @@
 
 ## Overview
 **Module Name**: RDKWindowManager
-**Type**: WPEFramework Plugin
+**Type**: Thunder Plugin
 **Purpose**: Display and window management for RDK platform, providing Wayland display creation, client management, focus control, and key interception
 
 ## Description
@@ -59,7 +59,7 @@ RDKWindowManagerImplementation
 ### Configuration
 - **Config File**: `RDKWindowManager.conf.in` / `RDKWindowManager.config`
 - **Display Settings**: Wayland socket paths, compositor connection parameters
-- **Thunder Service**: Exposed as a WPEFramework/Thunder plugin
+- **Thunder Service**: Exposed as a Thunder/Thunder plugin
 
 ## Data Flow
 ```
@@ -140,7 +140,7 @@ Inactivity:
 ### System Libraries
 | Library | Version | Purpose | Optional |
 |---------|---------|---------|----------|
-| WPEFramework | Latest | Plugin framework | No |
+| Thunder | Latest | Plugin framework | No |
 | Wayland | Latest | Wayland protocol client/server | No |
 | Essos/Westeros | - | Wayland compositor | No |
 

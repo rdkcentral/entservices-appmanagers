@@ -21,11 +21,11 @@
 #include "AppStorageManager.h"
 #include "UtilsAppManagerTelemetry.h"
 
-const string WPEFramework::Plugin::AppStorageManager::SERVICE_NAME = "org.rdk.AppStorageManager";
+const string Thunder::Plugin::AppStorageManager::SERVICE_NAME = "org.rdk.AppStorageManager";
 
-RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::Utils::AppManagersBootstrapper, "appStorageManagerBootstrapTime")
+RDKAM_DEFINE_TELEMETRY_CLIENT(Thunder::Plugin::Utils::AppManagersBootstrapper, "appStorageManagerBootstrapTime")
 
-namespace WPEFramework
+namespace Thunder
 {
 
     namespace {
@@ -46,7 +46,7 @@ namespace WPEFramework
     {
 
     /*
-     *Register AppStorageManager module as wpeframework plugin
+     *Register AppStorageManager module as thunder plugin
      **/
     SERVICE_REGISTRATION(AppStorageManager, STORAGE_MANAGER_API_VERSION_NUMBER_MAJOR, STORAGE_MANAGER_API_VERSION_NUMBER_MINOR, STORAGE_MANAGER_API_VERSION_NUMBER_PATCH);
 
@@ -101,7 +101,7 @@ namespace WPEFramework
                 {
                     message = _T("mStorageManagerImpl implementation did not provide a configuration interface");
                 }
-                // Invoking Plugin API register to wpeframework
+                // Invoking Plugin API register to thunder
                 Exchange::JAppStorageManager::Register(*this, mStorageManagerImpl);
             }
         }
@@ -172,4 +172,4 @@ namespace WPEFramework
         return (string());
     }
 } /* namespace Plugin */
-} /* namespace WPEFramework */
+} /* namespace Thunder */

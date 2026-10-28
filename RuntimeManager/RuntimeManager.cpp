@@ -20,11 +20,11 @@
 #include "RuntimeManager.h"
 #include "UtilsAppManagerTelemetry.h"
 
-const string WPEFramework::Plugin::RuntimeManager::SERVICE_NAME = "org.rdk.RuntimeManager";
+const string Thunder::Plugin::RuntimeManager::SERVICE_NAME = "org.rdk.RuntimeManager";
 
-RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::Utils::AppManagersBootstrapper, "runtimeManagerBootstrapTime")
+RDKAM_DEFINE_TELEMETRY_CLIENT(Thunder::Plugin::Utils::AppManagersBootstrapper, "runtimeManagerBootstrapTime")
 
-namespace WPEFramework
+namespace Thunder
 {
     namespace {
 
@@ -161,4 +161,4 @@ namespace WPEFramework
             return(string("{\"service\": \"") + SERVICE_NAME + string("\"}"));
         }
     } /* namespace Plugin */
-} /* namespace WPEFramework */
+} /* namespace Thunder */

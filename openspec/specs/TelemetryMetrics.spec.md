@@ -2,11 +2,11 @@
 
 ## Overview
 **Module Name**: TelemetryMetrics
-**Type**: WPEFramework Plugin
+**Type**: Thunder Plugin
 **Purpose**: Centralized metrics recording and publishing for performance analytics and operational monitoring
 
 ## Description
-TelemetryMetrics is a WPEFramework plugin that records JSON-formatted metrics in-memory and publishes them to the platform telemetry bus (T2) when `Publish` is invoked. Metrics are stored in an internal map keyed by `"<id>:<markerName>"` and are cleared after a successful publish. Other modules may optionally emit telemetry when built with `AIMANAGERS_TELEMETRY_METRICS_SUPPORT`, but the TelemetryMetrics plugin itself is enabled/disabled independently.
+TelemetryMetrics is a Thunder plugin that records JSON-formatted metrics in-memory and publishes them to the platform telemetry bus (T2) when `Publish` is invoked. Metrics are stored in an internal map keyed by `"<id>:<markerName>"` and are cleared after a successful publish. Other modules may optionally emit telemetry when built with `AIMANAGERS_TELEMETRY_METRICS_SUPPORT`, but the TelemetryMetrics plugin itself is enabled/disabled independently.
 
 ## Requirements
 - Provide JSON-RPC API for `Record(id, metrics, name)` and `Publish(id, name)` operations
@@ -68,7 +68,7 @@ TelemetryMetricsImplementation
 ### Configuration
 - **Config File**: `TelemetryMetrics.conf.in` / `TelemetryMetrics.config`
 - **Callsign**: `org.rdk.TelemetryMetrics`
-- **Thunder Service**: Exposed via WPEFramework/Thunder JSON-RPC
+- **Thunder Service**: Exposed via Thunder/Thunder JSON-RPC
 
 ## Data Flow
 ```
@@ -131,7 +131,7 @@ _Not applicable — TelemetryMetrics operates on internal performance data only;
 ### System Libraries
 | Library | Version | Purpose | Optional |
 |---------|---------|---------|----------|
-| WPEFramework | Latest | Plugin framework | No |
+| Thunder | Latest | Plugin framework | No |
 | jsoncpp | - | JSON serialization for metrics payloads | No |
 
 ### Internal Dependencies

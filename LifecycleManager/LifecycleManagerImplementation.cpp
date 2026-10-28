@@ -27,11 +27,11 @@
 #include "UtilsAppManagerTelemetry.h"
 #include "RuntimeConfigPayload.h"
 
-namespace WPEFramework
+namespace Thunder
 {
     namespace Plugin
     {
-        RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::LifecycleManagerTelemetryReporting, "lifecycleManagerBootstrapTime")
+        RDKAM_DEFINE_TELEMETRY_CLIENT(Thunder::Plugin::LifecycleManagerTelemetryReporting, "lifecycleManagerBootstrapTime")
 
         SERVICE_REGISTRATION(LifecycleManagerImplementation, 1, 0);
 
@@ -940,6 +940,6 @@ namespace WPEFramework
     }
 
     } /* namespace Plugin */
-} /* namespace WPEFramework */
+} /* namespace Thunder */
 
 

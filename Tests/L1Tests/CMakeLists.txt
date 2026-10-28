@@ -192,9 +192,9 @@ add_executable(${TEST_RUNNER_NAME} ${TEST_SRC})
 include_directories(${TEST_INC})
 
 if(BUILD_L1_TESTS_SHARED_MODULE)
-    target_link_directories(${MODULE_NAME} PUBLIC ${CMAKE_INSTALL_PREFIX}/lib ${CMAKE_INSTALL_PREFIX}/lib/wpeframework/plugins)
+    target_link_directories(${MODULE_NAME} PUBLIC ${CMAKE_INSTALL_PREFIX}/lib ${CMAKE_INSTALL_PREFIX}/lib/${STORAGE_DIRECTORY}/plugins)
 endif()
-target_link_directories(${TEST_RUNNER_NAME} PUBLIC ${CMAKE_INSTALL_PREFIX}/lib ${CMAKE_INSTALL_PREFIX}/lib/wpeframework/plugins)
+target_link_directories(${TEST_RUNNER_NAME} PUBLIC ${CMAKE_INSTALL_PREFIX}/lib ${CMAKE_INSTALL_PREFIX}/lib/${STORAGE_DIRECTORY}/plugins)
 
 if(BUILD_L1_TESTS_SHARED_MODULE)
     target_link_libraries(${MODULE_NAME} ${TEST_LIB} AppManagersHelpers PkgConfig::JSONCPP)

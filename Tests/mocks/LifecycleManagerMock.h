@@ -22,23 +22,23 @@
 #include <interfaces/ILifecycleManager.h>
 #include <interfaces/ILifecycleManagerState.h>
 
-using ::WPEFramework::Exchange::ILifecycleManager;
-using ::WPEFramework::Exchange::ILifecycleManagerState;
+using ::Thunder::Exchange::ILifecycleManager;
+using ::Thunder::Exchange::ILifecycleManagerState;
 
 class LifecycleManagerMock : public ILifecycleManager {
 public:
     LifecycleManagerMock() = default;
     virtual ~LifecycleManagerMock() = default;
 
-    MOCK_METHOD(WPEFramework::Core::hresult, Register, (INotification *notification), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, Unregister, (INotification *notification), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, GetLoadedApps, (const bool verbose, std::string &apps), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, IsAppLoaded, (const std::string &appId, bool &loaded), (const, override));
-    MOCK_METHOD(WPEFramework::Core::hresult, SpawnApp, (const string& appId, const string& launchIntent, const LifecycleState targetLifecycleState, const std::string& runtimeConfigObject, const string& launchArgs, string& appInstanceId, string& errorReason, bool& success), (override));
+    MOCK_METHOD(Thunder::Core::hresult, Register, (INotification *notification), (override));
+    MOCK_METHOD(Thunder::Core::hresult, Unregister, (INotification *notification), (override));
+    MOCK_METHOD(Thunder::Core::hresult, GetLoadedApps, (const bool verbose, std::string &apps), (override));
+    MOCK_METHOD(Thunder::Core::hresult, IsAppLoaded, (const std::string &appId, bool &loaded), (const, override));
+    MOCK_METHOD(Thunder::Core::hresult, SpawnApp, (const string& appId, const string& launchIntent, const LifecycleState targetLifecycleState, const std::string& runtimeConfigObject, const string& launchArgs, string& appInstanceId, string& errorReason, bool& success), (override));
     MOCK_METHOD(uint32_t, SetTargetAppState, (const string& appInstanceId , const LifecycleState targetLifecycleState , const string& launchIntent),(override));
-    MOCK_METHOD(WPEFramework::Core::hresult, UnloadApp,(const string& appInstanceId , string& errorReason , bool& success) , (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, KillApp,(const string& appInstanceId , string& errorReason , bool& success) , (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, SendIntentToActiveApp,(const string& appInstanceId , const string& intent , string& errorReason , bool& success), (override)) ;
+    MOCK_METHOD(Thunder::Core::hresult, UnloadApp,(const string& appInstanceId , string& errorReason , bool& success) , (override));
+    MOCK_METHOD(Thunder::Core::hresult, KillApp,(const string& appInstanceId , string& errorReason , bool& success) , (override));
+    MOCK_METHOD(Thunder::Core::hresult, SendIntentToActiveApp,(const string& appInstanceId , const string& intent , string& errorReason , bool& success), (override)) ;
 
     MOCK_METHOD(uint32_t, AddRef, (), (const, override));
     MOCK_METHOD(uint32_t, Release, (), (const, override));
@@ -58,11 +58,11 @@ public:
     LifecycleManagerStateMock() = default;
     virtual ~LifecycleManagerStateMock() = default;
 
-    MOCK_METHOD(WPEFramework::Core::hresult, Register, (INotification *notification), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, Unregister, (INotification *notification), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, AppReady, (const string& appId), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, StateChangeComplete, (const string& appId, const uint32_t stateChangedId, const bool success ), (override));
-    MOCK_METHOD(WPEFramework::Core::hresult, CloseApp, (const string& appId, const AppCloseReason closeReason ), (override));
+    MOCK_METHOD(Thunder::Core::hresult, Register, (INotification *notification), (override));
+    MOCK_METHOD(Thunder::Core::hresult, Unregister, (INotification *notification), (override));
+    MOCK_METHOD(Thunder::Core::hresult, AppReady, (const string& appId), (override));
+    MOCK_METHOD(Thunder::Core::hresult, StateChangeComplete, (const string& appId, const uint32_t stateChangedId, const bool success ), (override));
+    MOCK_METHOD(Thunder::Core::hresult, CloseApp, (const string& appId, const AppCloseReason closeReason ), (override));
 
     MOCK_METHOD(uint32_t, AddRef, (), (const, override));
     MOCK_METHOD(uint32_t, Release, (), (const, override));

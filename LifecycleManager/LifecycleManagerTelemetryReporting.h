@@ -23,7 +23,7 @@
 #include "TelemetryMarkers.h"
 #include "TelemetryReportingBase.h"
 
-namespace WPEFramework
+namespace Thunder
 {
 namespace Plugin
 {
@@ -45,5 +45,5 @@ class LifecycleManagerTelemetryReporting : public Utils::TelemetryReportingBase
 };
 
 } /* namespace Plugin */
-} /* namespace WPEFramework */
+} /* namespace Thunder */
 

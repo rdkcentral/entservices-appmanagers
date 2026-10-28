@@ -47,7 +47,7 @@ class WebInspector;
 #define RIALTO_TIMEOUT_MILLIS 5000
 #endif
 
-namespace WPEFramework
+namespace Thunder
 {
     namespace Plugin
     {
@@ -256,4 +256,4 @@ namespace WPEFramework
                 static RuntimeManagerImplementation* _instance;
         };
     } /* namespace Plugin */
-} /* namespace WPEFramework */
+} /* namespace Thunder */

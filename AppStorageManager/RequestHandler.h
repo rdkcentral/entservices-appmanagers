@@ -5,7 +5,7 @@
 #include <memory>
 #include <mutex>
 
-namespace WPEFramework
+namespace Thunder
 {
     namespace Plugin 
     {
@@ -77,4 +77,4 @@ namespace WPEFramework
                 bool mEnhancedLoggingEnabled;
         };
     } /* namespace Plugin */
-} /* namespace WPEFramework */
+} /* namespace Thunder */

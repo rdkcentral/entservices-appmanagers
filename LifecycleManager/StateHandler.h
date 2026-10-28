@@ -27,7 +27,7 @@
 #include <string>
 #include "StateTransitionRequest.h"
 
-namespace WPEFramework
+namespace Thunder
 {
     namespace Plugin
     {
@@ -49,4 +49,4 @@ namespace WPEFramework
                 static std::map<Exchange::ILifecycleManager::LifecycleState, std::string> mStateStrings;
         };
     } /* namespace Plugin */
-} /* namespace WPEFramework */
+} /* namespace Thunder */

@@ -66,13 +66,13 @@ static bool WriteFile_OCIGen(const std::string &path, const std::string &content
     return true;
 }
 
-static WPEFramework::Plugin::ApplicationConfiguration MakeAppConfig_OCI(
+static Thunder::Plugin::ApplicationConfiguration MakeAppConfig_OCI(
     const std::string &appId = "com.test.app",
     const std::string &appInstanceId = "inst-oci-001",
     uint32_t uid = 1000,
     uint32_t gid = 1000)
 {
-    WPEFramework::Plugin::ApplicationConfiguration config;
+    Thunder::Plugin::ApplicationConfiguration config;
     config.mAppId = appId;
     config.mAppInstanceId = appInstanceId;
     config.mUserId = uid;
@@ -80,9 +80,9 @@ static WPEFramework::Plugin::ApplicationConfiguration MakeAppConfig_OCI(
     return config;
 }
 
-static WPEFramework::Plugin::RuntimeConfiguration MakeRuntimeConfig_OCI()
+static Thunder::Plugin::RuntimeConfiguration MakeRuntimeConfig_OCI()
 {
-    WPEFramework::Plugin::RuntimeConfiguration cfg;
+    Thunder::Plugin::RuntimeConfiguration cfg;
     cfg.ralfPkgPath = "";
     cfg.envVariables = {};
     return cfg;
@@ -358,7 +358,7 @@ uint32_t Test_RalfOCIConfigGenerator_LogPathSetCorrectlyInOCIConfig()
         return tr.failures;
     }
 
-    WPEFramework::Plugin::ApplicationConfiguration config;
+    Thunder::Plugin::ApplicationConfiguration config;
     config.mAppId               = appId;
     config.mAppInstanceId       = "inst-logpath-001";
     config.mUserId              = static_cast<uint32_t>(getuid());

@@ -32,28 +32,28 @@ uint32_t Test_AM_MapLifecycleStateAndErrorReason()
 {
     L0Test::TestResult tr;
     L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
-    WPEFramework::Plugin::LifecycleInterfaceConnector connector(&service);
+    Thunder::Plugin::LifecycleInterfaceConnector connector(&service);
 
     L0Test::ExpectEqU32(tr,
-        static_cast<uint32_t>(connector.mapAppLifecycleState(WPEFramework::Exchange::ILifecycleManager::LifecycleState::UNLOADED)),
-        static_cast<uint32_t>(WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED),
+        static_cast<uint32_t>(connector.mapAppLifecycleState(Thunder::Exchange::ILifecycleManager::LifecycleState::UNLOADED)),
+        static_cast<uint32_t>(Thunder::Exchange::IAppManager::AppLifecycleState::APP_STATE_UNLOADED),
         "UNLOADED maps to APP_STATE_UNLOADED");
     L0Test::ExpectEqU32(tr,
-        static_cast<uint32_t>(connector.mapAppLifecycleState(WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE)),
-        static_cast<uint32_t>(WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE),
+        static_cast<uint32_t>(connector.mapAppLifecycleState(Thunder::Exchange::ILifecycleManager::LifecycleState::ACTIVE)),
+        static_cast<uint32_t>(Thunder::Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE),
         "ACTIVE maps to APP_STATE_ACTIVE");
     L0Test::ExpectEqU32(tr,
-        static_cast<uint32_t>(connector.mapAppLifecycleState(static_cast<WPEFramework::Exchange::ILifecycleManager::LifecycleState>(999))),
-        static_cast<uint32_t>(WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_UNKNOWN),
+        static_cast<uint32_t>(connector.mapAppLifecycleState(static_cast<Thunder::Exchange::ILifecycleManager::LifecycleState>(999))),
+        static_cast<uint32_t>(Thunder::Exchange::IAppManager::AppLifecycleState::APP_STATE_UNKNOWN),
         "Unknown lifecycle state maps to APP_STATE_UNKNOWN");
 
     L0Test::ExpectEqU32(tr,
         static_cast<uint32_t>(connector.mapErrorReason(std::string("ERROR_CREATE_DISPLAY"))),
-        static_cast<uint32_t>(WPEFramework::Exchange::IAppManager::AppErrorReason::APP_ERROR_CREATE_DISPLAY),
+        static_cast<uint32_t>(Thunder::Exchange::IAppManager::AppErrorReason::APP_ERROR_CREATE_DISPLAY),
         "ERROR_CREATE_DISPLAY maps correctly");
     L0Test::ExpectEqU32(tr,
         static_cast<uint32_t>(connector.mapErrorReason(std::string("does-not-exist"))),
-        static_cast<uint32_t>(WPEFramework::Exchange::IAppManager::AppErrorReason::APP_ERROR_UNKNOWN),
+        static_cast<uint32_t>(Thunder::Exchange::IAppManager::AppErrorReason::APP_ERROR_UNKNOWN),
         "Unknown error string maps to APP_ERROR_UNKNOWN");
 
     return tr.failures;
@@ -64,12 +64,12 @@ uint32_t Test_AM_LifecycleConnectorNullServiceConstructor()
     L0Test::TestResult tr;
 
     {
-        WPEFramework::Plugin::LifecycleInterfaceConnector connector(nullptr);
-        L0Test::ExpectTrue(tr, nullptr != WPEFramework::Plugin::LifecycleInterfaceConnector::_instance, "Lifecycle connector singleton is set during construction");
+        Thunder::Plugin::LifecycleInterfaceConnector connector(nullptr);
+        L0Test::ExpectTrue(tr, nullptr != Thunder::Plugin::LifecycleInterfaceConnector::_instance, "Lifecycle connector singleton is set during construction");
         L0Test::ExpectEqStr(tr, connector.GetAppInstanceId(std::string("missing")), std::string(), "GetAppInstanceId() returns empty for missing app");
     }
 
-    L0Test::ExpectTrue(tr, nullptr == WPEFramework::Plugin::LifecycleInterfaceConnector::_instance, "Lifecycle connector singleton is cleared after destruction");
+    L0Test::ExpectTrue(tr, nullptr == Thunder::Plugin::LifecycleInterfaceConnector::_instance, "Lifecycle connector singleton is cleared after destruction");
     return tr.failures;
 }
 
@@ -77,10 +77,10 @@ uint32_t Test_AM_LifecycleConnectorOnAppStateChangedWithoutManager()
 {
     L0Test::TestResult tr;
     L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
-    WPEFramework::Plugin::LifecycleInterfaceConnector connector(&service);
+    Thunder::Plugin::LifecycleInterfaceConnector connector(&service);
 
-    WPEFramework::Plugin::AppManagerImplementation::_instance = nullptr;
-    connector.OnAppStateChanged(std::string("app1"), WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE, std::string("ERROR_INVALID_PARAM"));
+    Thunder::Plugin::AppManagerImplementation::_instance = nullptr;
+    connector.OnAppStateChanged(std::string("app1"), Thunder::Exchange::ILifecycleManager::LifecycleState::ACTIVE, std::string("ERROR_INVALID_PARAM"));
     L0Test::ExpectTrue(tr, true, "OnAppStateChanged() remains stable when AppManagerImplementation singleton is null");
 
     return tr.failures;
@@ -90,20 +90,20 @@ uint32_t Test_AM_LifecycleConnectorRemoveAppInfoByAppId()
 {
     L0Test::TestResult tr;
     L0Test::AppManagerServiceMock service(CreateFullServiceConfig());
-    WPEFramework::Plugin::LifecycleInterfaceConnector connector(&service);
+    Thunder::Plugin::LifecycleInterfaceConnector connector(&service);
 
-    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
-    WPEFramework::Plugin::AppInfo info;
+    Thunder::Plugin::AppInfoManager::getInstance().clear();
+    Thunder::Plugin::AppInfo info;
     info.setAppInstanceId("instance-1");
-    WPEFramework::Plugin::AppInfoManager::getInstance().upsert("app-to-remove", [&](WPEFramework::Plugin::AppInfo& a) { a = info; });
+    Thunder::Plugin::AppInfoManager::getInstance().upsert("app-to-remove", [&](Thunder::Plugin::AppInfo& a) { a = info; });
 
     connector.removeAppInfoByAppId("app-to-remove");
-    L0Test::ExpectTrue(tr, !WPEFramework::Plugin::AppInfoManager::getInstance().exists("app-to-remove"), "removeAppInfoByAppId() removes existing app");
+    L0Test::ExpectTrue(tr, !Thunder::Plugin::AppInfoManager::getInstance().exists("app-to-remove"), "removeAppInfoByAppId() removes existing app");
 
     connector.removeAppInfoByAppId("missing-app");
     L0Test::ExpectTrue(tr, true, "removeAppInfoByAppId() remains stable for missing app");
 
-    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    Thunder::Plugin::AppInfoManager::getInstance().clear();
     return tr.failures;
 }
 
@@ -111,14 +111,14 @@ uint32_t Test_AM_LifecycleConnectorGetAppInstanceId()
 {
     L0Test::TestResult tr;
     L0Test::AppManagerServiceMock service;
-    WPEFramework::Plugin::LifecycleInterfaceConnector connector(&service);
+    Thunder::Plugin::LifecycleInterfaceConnector connector(&service);
 
-    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
-    WPEFramework::Plugin::AppInfoManager::getInstance().setAppInstanceId("app1", "instance-1");
+    Thunder::Plugin::AppInfoManager::getInstance().clear();
+    Thunder::Plugin::AppInfoManager::getInstance().setAppInstanceId("app1", "instance-1");
     L0Test::ExpectEqStr(tr, connector.GetAppInstanceId("app1"), std::string("instance-1"), "GetAppInstanceId() returns the stored instance id");
     L0Test::ExpectEqStr(tr, connector.GetAppInstanceId("missing"), std::string(), "GetAppInstanceId() returns empty for missing entry");
 
-    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    Thunder::Plugin::AppInfoManager::getInstance().clear();
     return tr.failures;
 }
 
@@ -138,16 +138,16 @@ uint32_t Test_AM_LifecycleConnectorCreateAndGetLoadedAppsSuccess()
     L0Test::AppManagerServiceMock service(cfg);
 
     {
-        WPEFramework::Plugin::LifecycleInterfaceConnector connector(&service);
+        Thunder::Plugin::LifecycleInterfaceConnector connector(&service);
 
         L0Test::ExpectEqU32(tr,
             connector.createLifecycleManagerRemoteObject(),
-            WPEFramework::Core::ERROR_NONE,
+            Thunder::Core::ERROR_NONE,
             "createLifecycleManagerRemoteObject() succeeds with lifecycle manager dependencies");
 
-        WPEFramework::Exchange::IAppManager::ILoadedAppInfoIterator* iterator = nullptr;
+        Thunder::Exchange::IAppManager::ILoadedAppInfoIterator* iterator = nullptr;
         const auto status = connector.getLoadedApps(iterator);
-        L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_NONE, "getLoadedApps() succeeds for valid lifecycle JSON payload");
+        L0Test::ExpectEqU32(tr, status, Thunder::Core::ERROR_NONE, "getLoadedApps() succeeds for valid lifecycle JSON payload");
         L0Test::ExpectTrue(tr, nullptr != iterator, "getLoadedApps() returns a non-null iterator on success");
 
         if (nullptr != iterator) {
@@ -155,7 +155,7 @@ uint32_t Test_AM_LifecycleConnectorCreateAndGetLoadedAppsSuccess()
         }
     }
 
-    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    Thunder::Plugin::AppInfoManager::getInstance().clear();
     return tr.failures;
 }
 
@@ -174,22 +174,22 @@ uint32_t Test_AM_LifecycleConnectorGetLoadedAppsOrdersByLastActiveIndex()
     cfg.lifecycleManager = &lifecycle;
     cfg.lifecycleManagerState = &lifecycleState;
     L0Test::AppManagerServiceMock service(cfg);
-    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
-    WPEFramework::Plugin::AppInfoManager::getInstance().setLastActiveIndex("newest", 12U);
-    WPEFramework::Plugin::AppInfoManager::getInstance().setLastActiveIndex("alpha", 7U);
-    WPEFramework::Plugin::AppInfoManager::getInstance().setLastActiveIndex("beta", 7U);
-    auto* impl = WPEFramework::Core::Service<WPEFramework::Plugin::AppManagerImplementation>::Create<WPEFramework::Plugin::AppManagerImplementation>();
+    Thunder::Plugin::AppInfoManager::getInstance().clear();
+    Thunder::Plugin::AppInfoManager::getInstance().setLastActiveIndex("newest", 12U);
+    Thunder::Plugin::AppInfoManager::getInstance().setLastActiveIndex("alpha", 7U);
+    Thunder::Plugin::AppInfoManager::getInstance().setLastActiveIndex("beta", 7U);
+    auto* impl = Thunder::Core::Service<Thunder::Plugin::AppManagerImplementation>::Create<Thunder::Plugin::AppManagerImplementation>();
 
     {
-        WPEFramework::Plugin::LifecycleInterfaceConnector connector(&service);
-        WPEFramework::Exchange::IAppManager::ILoadedAppInfoIterator* iterator = nullptr;
-        const WPEFramework::Core::hresult status = connector.getLoadedApps(iterator);
-        L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_NONE, "getLoadedApps() succeeds for ordered app data");
+        Thunder::Plugin::LifecycleInterfaceConnector connector(&service);
+        Thunder::Exchange::IAppManager::ILoadedAppInfoIterator* iterator = nullptr;
+        const Thunder::Core::hresult status = connector.getLoadedApps(iterator);
+        L0Test::ExpectEqU32(tr, status, Thunder::Core::ERROR_NONE, "getLoadedApps() succeeds for ordered app data");
         L0Test::ExpectTrue(tr, nullptr != iterator, "getLoadedApps() returns an iterator for ordered app data");
 
         const char* expectedAppIds[] = { "newest", "alpha", "beta", "never-active" };
         if (nullptr != iterator) {
-            WPEFramework::Exchange::IAppManager::LoadedAppInfo loadedAppInfo;
+            Thunder::Exchange::IAppManager::LoadedAppInfo loadedAppInfo;
             for (const char* expectedAppId : expectedAppIds) {
                 L0Test::ExpectTrue(tr, iterator->Next(loadedAppInfo), "Iterator contains expected app");
                 L0Test::ExpectEqStr(tr, loadedAppInfo.appId, expectedAppId, "Apps are ordered by last-active index then app id");
@@ -202,7 +202,7 @@ uint32_t Test_AM_LifecycleConnectorGetLoadedAppsOrdersByLastActiveIndex()
     L0Test::AppManagerServiceMock fullService(CreateFullServiceConfig());
     impl->Configure(&fullService);
     impl->Release();
-    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    Thunder::Plugin::AppInfoManager::getInstance().clear();
     return tr.failures;
 }
 
@@ -218,25 +218,25 @@ uint32_t Test_AM_LifecycleConnectorIsAppLoadedAndErrorPaths()
     cfg.lifecycleManagerState = &lifecycleState;
     L0Test::AppManagerServiceMock service(cfg);
 
-    WPEFramework::Plugin::LifecycleInterfaceConnector connector(&service);
-    L0Test::ExpectEqU32(tr, connector.createLifecycleManagerRemoteObject(), WPEFramework::Core::ERROR_NONE, "createLifecycleManagerRemoteObject() succeeds");
+    Thunder::Plugin::LifecycleInterfaceConnector connector(&service);
+    L0Test::ExpectEqU32(tr, connector.createLifecycleManagerRemoteObject(), Thunder::Core::ERROR_NONE, "createLifecycleManagerRemoteObject() succeeds");
 
     bool loaded = false;
-    L0Test::ExpectEqU32(tr, connector.isAppLoaded("app.loaded", loaded), WPEFramework::Core::ERROR_NONE, "isAppLoaded() succeeds with lifecycle manager");
+    L0Test::ExpectEqU32(tr, connector.isAppLoaded("app.loaded", loaded), Thunder::Core::ERROR_NONE, "isAppLoaded() succeeds with lifecycle manager");
     L0Test::ExpectTrue(tr, !loaded, "isAppLoaded() default fake result is false");
 
     lifecycle.isAppLoadedHandler = [](const std::string&, bool& result) {
         result = true;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     };
-    L0Test::ExpectEqU32(tr, connector.isAppLoaded("app.loaded", loaded), WPEFramework::Core::ERROR_NONE, "isAppLoaded() succeeds with custom handler");
+    L0Test::ExpectEqU32(tr, connector.isAppLoaded("app.loaded", loaded), Thunder::Core::ERROR_NONE, "isAppLoaded() succeeds with custom handler");
     L0Test::ExpectTrue(tr, loaded, "isAppLoaded() reflects custom handler loaded=true");
 
-    WPEFramework::Exchange::IAppManager::ILoadedAppInfoIterator* iterator = nullptr;
+    Thunder::Exchange::IAppManager::ILoadedAppInfoIterator* iterator = nullptr;
     lifecycle.loadedAppsJson = "invalid-json";
     // NOTE: Current source code behavior returns ERROR_NONE when GetLoadedApps succeeds but JSON parsing fails
     // Ideally this should return ERROR_GENERAL, but to avoid changing source code, test expects actual behavior
-    L0Test::ExpectEqU32(tr, connector.getLoadedApps(iterator), WPEFramework::Core::ERROR_NONE, "getLoadedApps() returns ERROR_NONE for invalid JSON payload (source limitation)");
+    L0Test::ExpectEqU32(tr, connector.getLoadedApps(iterator), Thunder::Core::ERROR_NONE, "getLoadedApps() returns ERROR_NONE for invalid JSON payload (source limitation)");
     L0Test::ExpectTrue(tr, nullptr == iterator, "getLoadedApps() keeps iterator null on failure");
 
     return tr.failures;
@@ -254,32 +254,32 @@ uint32_t Test_AM_LifecycleConnectorSendIntentAndKillEdgeCases()
     cfg.lifecycleManagerState = &lifecycleState;
     L0Test::AppManagerServiceMock service(cfg);
 
-    WPEFramework::Plugin::LifecycleInterfaceConnector connector(&service);
+    Thunder::Plugin::LifecycleInterfaceConnector connector(&service);
 
     L0Test::ExpectEqU32(tr,
         connector.sendIntent("", "intent"),
-        WPEFramework::Core::ERROR_GENERAL,
+        Thunder::Core::ERROR_GENERAL,
         "sendIntent() rejects empty app id");
 
     L0Test::ExpectEqU32(tr,
         connector.killApp(""),
-        WPEFramework::Core::ERROR_GENERAL,
+        Thunder::Core::ERROR_GENERAL,
         "killApp() rejects empty app id");
 
-    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
-    WPEFramework::Plugin::AppInfoManager::getInstance().setAppInstanceId("app.one", "inst-1");
+    Thunder::Plugin::AppInfoManager::getInstance().clear();
+    Thunder::Plugin::AppInfoManager::getInstance().setAppInstanceId("app.one", "inst-1");
 
     L0Test::ExpectEqU32(tr,
         connector.sendIntent("app.one", "play"),
-        WPEFramework::Core::ERROR_NONE,
+        Thunder::Core::ERROR_NONE,
         "sendIntent() succeeds for valid app id and instance");
 
     L0Test::ExpectEqU32(tr,
         connector.killApp("app.one"),
-        WPEFramework::Core::ERROR_NONE,
+        Thunder::Core::ERROR_NONE,
         "killApp() succeeds for valid app id and instance");
 
-    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    Thunder::Plugin::AppInfoManager::getInstance().clear();
     return tr.failures;
 }
 
@@ -287,33 +287,33 @@ uint32_t Test_AM_LifecycleConnectorStateCallbacksStability()
 {
     L0Test::TestResult tr;
 
-    auto* impl = WPEFramework::Core::Service<WPEFramework::Plugin::AppManagerImplementation>::Create<WPEFramework::Plugin::AppManagerImplementation>();
+    auto* impl = Thunder::Core::Service<Thunder::Plugin::AppManagerImplementation>::Create<Thunder::Plugin::AppManagerImplementation>();
     L0Test::AppManagerServiceMock service;
 
-    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
-    WPEFramework::Plugin::AppInfo app;
+    Thunder::Plugin::AppInfoManager::getInstance().clear();
+    Thunder::Plugin::AppInfo app;
     app.setAppInstanceId("inst-1");
-    app.setAppNewState(WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE);
-    WPEFramework::Plugin::AppInfoManager::getInstance().upsert("app.state", [&](WPEFramework::Plugin::AppInfo& a) { a = app; });
+    app.setAppNewState(Thunder::Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE);
+    Thunder::Plugin::AppInfoManager::getInstance().upsert("app.state", [&](Thunder::Plugin::AppInfo& a) { a = app; });
 
     {
         // Scoped so the connector (and its lifecycle worker thread) is destroyed
         // and its queued callbacks are drained while impl is still alive, avoiding
         // a use-after-free/pure-virtual-call race against impl->Release() below.
-        WPEFramework::Plugin::LifecycleInterfaceConnector connector(&service);
+        Thunder::Plugin::LifecycleInterfaceConnector connector(&service);
 
-        connector.OnAppStateChanged("app.state", WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE, "ERROR_DOBBY_SPEC");
+        connector.OnAppStateChanged("app.state", Thunder::Exchange::ILifecycleManager::LifecycleState::ACTIVE, "ERROR_DOBBY_SPEC");
         L0Test::ExpectTrue(tr, true, "OnAppStateChanged() remains stable with mapped error reason");
 
         connector.OnAppLifecycleStateChanged("app.state", "inst-1",
-            WPEFramework::Exchange::ILifecycleManager::LifecycleState::ACTIVE,
-            WPEFramework::Exchange::ILifecycleManager::LifecycleState::PAUSED,
+            Thunder::Exchange::ILifecycleManager::LifecycleState::ACTIVE,
+            Thunder::Exchange::ILifecycleManager::LifecycleState::PAUSED,
             "intent://navigate");
         L0Test::ExpectTrue(tr, true, "OnAppLifecycleStateChanged() remains stable for regular transitions");
 
         connector.OnAppLifecycleStateChanged("app.state", "inst-1",
-            static_cast<WPEFramework::Exchange::ILifecycleManager::LifecycleState>(999),
-            WPEFramework::Exchange::ILifecycleManager::LifecycleState::PAUSED,
+            static_cast<Thunder::Exchange::ILifecycleManager::LifecycleState>(999),
+            Thunder::Exchange::ILifecycleManager::LifecycleState::PAUSED,
             "intent://navigate");
         L0Test::ExpectTrue(tr, true, "OnAppLifecycleStateChanged() ignores unknown state transitions safely");
     }
@@ -322,7 +322,7 @@ uint32_t Test_AM_LifecycleConnectorStateCallbacksStability()
     L0Test::AppManagerServiceMock fullService(CreateFullServiceConfig());
     impl->Configure(&fullService);
     impl->Release();
-    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    Thunder::Plugin::AppInfoManager::getInstance().clear();
     return tr.failures;
 }
 
@@ -338,22 +338,22 @@ uint32_t Test_AM_LifecycleConnectorLaunchNewApp()
     cfg.lifecycleManagerState = &lifecycleState;
     L0Test::AppManagerServiceMock service(cfg);
 
-    auto* impl = WPEFramework::Core::Service<WPEFramework::Plugin::AppManagerImplementation>::Create<WPEFramework::Plugin::AppManagerImplementation>();
+    auto* impl = Thunder::Core::Service<Thunder::Plugin::AppManagerImplementation>::Create<Thunder::Plugin::AppManagerImplementation>();
 
-    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    Thunder::Plugin::AppInfoManager::getInstance().clear();
 
     {
-        WPEFramework::Plugin::LifecycleInterfaceConnector connector(&service);
-        L0Test::ExpectEqU32(tr, connector.createLifecycleManagerRemoteObject(), WPEFramework::Core::ERROR_NONE,
+        Thunder::Plugin::LifecycleInterfaceConnector connector(&service);
+        L0Test::ExpectEqU32(tr, connector.createLifecycleManagerRemoteObject(), Thunder::Core::ERROR_NONE,
             "createLifecycleManagerRemoteObject() succeeds");
 
         std::string runtimeConfig = R"({"capabilities":"dial-app,wan-lan","envVariables":["BASE=1"],"command":"launcher","userId":30001})";
 
         // Launch a new (never-seen) app — goes through the SpawnApp path.
         const auto status = connector.launch("com.app.new", "intent://play", "", runtimeConfig);
-        L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_NONE,
+        L0Test::ExpectEqU32(tr, status, Thunder::Core::ERROR_NONE,
             "launch() succeeds for a new app via SpawnApp");
-        L0Test::ExpectTrue(tr, WPEFramework::Plugin::AppInfoManager::getInstance().exists("com.app.new"),
+        L0Test::ExpectTrue(tr, Thunder::Plugin::AppInfoManager::getInstance().exists("com.app.new"),
             "launch() creates an AppInfo entry for the newly spawned app");
     }
 
@@ -361,7 +361,7 @@ uint32_t Test_AM_LifecycleConnectorLaunchNewApp()
     L0Test::AppManagerServiceMock fullService(CreateFullServiceConfig());
     impl->Configure(&fullService);
     impl->Release();
-    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    Thunder::Plugin::AppInfoManager::getInstance().clear();
     return tr.failures;
 }
 
@@ -377,32 +377,32 @@ uint32_t Test_AM_LifecycleConnectorLaunchSuspendedApp()
     cfg.lifecycleManagerState = &lifecycleState;
     L0Test::AppManagerServiceMock service(cfg);
 
-    auto* impl = WPEFramework::Core::Service<WPEFramework::Plugin::AppManagerImplementation>::Create<WPEFramework::Plugin::AppManagerImplementation>();
+    auto* impl = Thunder::Core::Service<Thunder::Plugin::AppManagerImplementation>::Create<Thunder::Plugin::AppManagerImplementation>();
 
     // Pre-populate AppInfoManager to simulate a suspended app.
-    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
-    WPEFramework::Plugin::AppInfo suspendedApp;
+    Thunder::Plugin::AppInfoManager::getInstance().clear();
+    Thunder::Plugin::AppInfo suspendedApp;
     suspendedApp.setAppInstanceId("inst-suspended");
-    suspendedApp.setAppNewState(WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED);
-    WPEFramework::Plugin::AppInfoManager::getInstance().upsert("com.app.suspended",
-        [&](WPEFramework::Plugin::AppInfo& a) { a = suspendedApp; });
+    suspendedApp.setAppNewState(Thunder::Exchange::IAppManager::AppLifecycleState::APP_STATE_SUSPENDED);
+    Thunder::Plugin::AppInfoManager::getInstance().upsert("com.app.suspended",
+        [&](Thunder::Plugin::AppInfo& a) { a = suspendedApp; });
 
     // Make isAppLoaded return true so the resume/SetTargetAppState path is taken.
     lifecycle.isAppLoadedHandler = [](const std::string&, bool& loaded) {
         loaded = true;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     };
 
     {
-        WPEFramework::Plugin::LifecycleInterfaceConnector connector(&service);
-        L0Test::ExpectEqU32(tr, connector.createLifecycleManagerRemoteObject(), WPEFramework::Core::ERROR_NONE,
+        Thunder::Plugin::LifecycleInterfaceConnector connector(&service);
+        L0Test::ExpectEqU32(tr, connector.createLifecycleManagerRemoteObject(), Thunder::Core::ERROR_NONE,
             "createLifecycleManagerRemoteObject() succeeds for suspended-app test");
 
         std::string runtimeConfig = R"({"capabilities":"dial-app,wan-lan","envVariables":["BASE=1"],"command":"launcher","userId":30001})";
 
         // Launch a suspended app — goes through SetTargetAppState (resume) path.
         const auto status = connector.launch("com.app.suspended", "intent://resume", "", runtimeConfig);
-        L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_NONE,
+        L0Test::ExpectEqU32(tr, status, Thunder::Core::ERROR_NONE,
             "launch() succeeds for a suspended app via SetTargetAppState");
     }
 
@@ -410,7 +410,7 @@ uint32_t Test_AM_LifecycleConnectorLaunchSuspendedApp()
     L0Test::AppManagerServiceMock fullService(CreateFullServiceConfig());
     impl->Configure(&fullService);
     impl->Release();
-    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    Thunder::Plugin::AppInfoManager::getInstance().clear();
     return tr.failures;
 }
 
@@ -426,48 +426,48 @@ uint32_t Test_AM_LifecycleConnectorLaunchPausedApp()
     cfg.lifecycleManagerState = &lifecycleState;
     L0Test::AppManagerServiceMock service(cfg);
 
-    auto* impl = WPEFramework::Core::Service<WPEFramework::Plugin::AppManagerImplementation>::Create<WPEFramework::Plugin::AppManagerImplementation>();
+    auto* impl = Thunder::Core::Service<Thunder::Plugin::AppManagerImplementation>::Create<Thunder::Plugin::AppManagerImplementation>();
 
-    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
-    WPEFramework::Plugin::AppInfo pausedApp;
+    Thunder::Plugin::AppInfoManager::getInstance().clear();
+    Thunder::Plugin::AppInfo pausedApp;
     pausedApp.setAppInstanceId("inst-paused");
-    pausedApp.setAppNewState(WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED);
-    WPEFramework::Plugin::AppInfoManager::getInstance().upsert("YouTube",
-        [&](WPEFramework::Plugin::AppInfo& appInfo) { appInfo = pausedApp; });
+    pausedApp.setAppNewState(Thunder::Exchange::IAppManager::AppLifecycleState::APP_STATE_PAUSED);
+    Thunder::Plugin::AppInfoManager::getInstance().upsert("YouTube",
+        [&](Thunder::Plugin::AppInfo& appInfo) { appInfo = pausedApp; });
 
     lifecycle.isAppLoadedHandler = [](const std::string&, bool& loaded) {
         loaded = true;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     };
 
     unsigned setTargetCalls = 0;
     unsigned spawnCalls = 0;
     lifecycle.setTargetAppStateHandler = [&](const std::string& appInstanceId,
-                                             const WPEFramework::Exchange::ILifecycleManager::LifecycleState state,
+                                             const Thunder::Exchange::ILifecycleManager::LifecycleState state,
                                              const std::string& intent) {
         ++setTargetCalls;
         L0Test::ExpectEqStr(tr, appInstanceId, "inst-paused", "paused app instance is resumed");
-        L0Test::ExpectEqU32(tr, state, WPEFramework::Exchange::ILifecycleManager::ACTIVE,
+        L0Test::ExpectEqU32(tr, state, Thunder::Exchange::ILifecycleManager::ACTIVE,
             "paused app target state is ACTIVE");
         L0Test::ExpectEqStr(tr, intent, "intent://dial-relaunch", "relaunch intent is forwarded");
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     };
     lifecycle.spawnAppHandler = [&](const std::string&, const std::string&,
-                                    WPEFramework::Exchange::ILifecycleManager::LifecycleState,
+                                    Thunder::Exchange::ILifecycleManager::LifecycleState,
                                     const std::string&, const std::string&,
                                     std::string&, std::string&, bool&) {
         ++spawnCalls;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     };
 
     {
-        WPEFramework::Plugin::LifecycleInterfaceConnector connector(&service);
-        L0Test::ExpectEqU32(tr, connector.createLifecycleManagerRemoteObject(), WPEFramework::Core::ERROR_NONE,
+        Thunder::Plugin::LifecycleInterfaceConnector connector(&service);
+        L0Test::ExpectEqU32(tr, connector.createLifecycleManagerRemoteObject(), Thunder::Core::ERROR_NONE,
             "createLifecycleManagerRemoteObject() succeeds for paused-app test");
 
         std::string runtimeConfigPayload = "{}";
         const auto status = connector.launch("YouTube", "intent://dial-relaunch", "new-dial-args", runtimeConfigPayload);
-        L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_NONE,
+        L0Test::ExpectEqU32(tr, status, Thunder::Core::ERROR_NONE,
             "launch() succeeds for a paused app via SetTargetAppState");
     }
 
@@ -477,7 +477,7 @@ uint32_t Test_AM_LifecycleConnectorLaunchPausedApp()
     L0Test::AppManagerServiceMock fullService(CreateFullServiceConfig());
     impl->Configure(&fullService);
     impl->Release();
-    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    Thunder::Plugin::AppInfoManager::getInstance().clear();
     return tr.failures;
 }
 
@@ -493,19 +493,19 @@ uint32_t Test_AM_LifecycleConnectorDialLaunchNormalizesArgsAndPreservesPayload()
     cfg.lifecycleManagerState = &lifecycleState;
     L0Test::AppManagerServiceMock service(cfg);
 
-    auto* impl = WPEFramework::Core::Service<WPEFramework::Plugin::AppManagerImplementation>::Create<WPEFramework::Plugin::AppManagerImplementation>();
-    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    auto* impl = Thunder::Core::Service<Thunder::Plugin::AppManagerImplementation>::Create<Thunder::Plugin::AppManagerImplementation>();
+    Thunder::Plugin::AppInfoManager::getInstance().clear();
 
     lifecycle.isAppLoadedHandler = [](const std::string&, bool& loaded) {
         loaded = false;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     };
 
     unsigned spawnCalls = 0;
     std::string forwardedLaunchArgs;
     std::string forwardedRuntimeConfig;
     lifecycle.spawnAppHandler = [&](const std::string&, const std::string&,
-                                    WPEFramework::Exchange::ILifecycleManager::LifecycleState,
+                                    Thunder::Exchange::ILifecycleManager::LifecycleState,
                                     const std::string& runtimeConfig, const std::string& launchArgs,
                                     std::string& appInstanceId, std::string&, bool& success) {
         ++spawnCalls;
@@ -513,18 +513,18 @@ uint32_t Test_AM_LifecycleConnectorDialLaunchNormalizesArgsAndPreservesPayload()
         forwardedRuntimeConfig = runtimeConfig;
         appInstanceId = "inst-dial";
         success = true;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     };
 
     {
-        WPEFramework::Plugin::LifecycleInterfaceConnector connector(&service);
-        L0Test::ExpectEqU32(tr, connector.createLifecycleManagerRemoteObject(), WPEFramework::Core::ERROR_NONE,
+        Thunder::Plugin::LifecycleInterfaceConnector connector(&service);
+        L0Test::ExpectEqU32(tr, connector.createLifecycleManagerRemoteObject(), Thunder::Core::ERROR_NONE,
             "createLifecycleManagerRemoteObject() succeeds for DIAL launch test");
 
         std::string runtimeConfig = R"({"capabilities":"dial-app,wan-lan","envVariables":["BASE=1"],"command":"launcher","vendor":{"nested":{"preserved":true}}})";
         const std::string encodedLaunchArgs = "%7B%22url%22%3A%22https%3A%2F%2Fexample.com%2Fvideo%22%7D";
         const auto status = connector.launch("YouTube", "intent://dial-launch", encodedLaunchArgs, runtimeConfig);
-        L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_NONE,
+        L0Test::ExpectEqU32(tr, status, Thunder::Core::ERROR_NONE,
             "DIAL launch succeeds with percent-encoded launch arguments");
     }
 
@@ -556,7 +556,7 @@ uint32_t Test_AM_LifecycleConnectorDialLaunchNormalizesArgsAndPreservesPayload()
     L0Test::AppManagerServiceMock fullService(CreateFullServiceConfig());
     impl->Configure(&fullService);
     impl->Release();
-    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    Thunder::Plugin::AppInfoManager::getInstance().clear();
     return tr.failures;
 }
 
@@ -572,22 +572,22 @@ uint32_t Test_AM_LifecycleConnectorPreloadApp()
     cfg.lifecycleManagerState = &lifecycleState;
     L0Test::AppManagerServiceMock service(cfg);
 
-    auto* impl = WPEFramework::Core::Service<WPEFramework::Plugin::AppManagerImplementation>::Create<WPEFramework::Plugin::AppManagerImplementation>();
+    auto* impl = Thunder::Core::Service<Thunder::Plugin::AppManagerImplementation>::Create<Thunder::Plugin::AppManagerImplementation>();
 
-    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    Thunder::Plugin::AppInfoManager::getInstance().clear();
 
     {
-        WPEFramework::Plugin::LifecycleInterfaceConnector connector(&service);
-        L0Test::ExpectEqU32(tr, connector.createLifecycleManagerRemoteObject(), WPEFramework::Core::ERROR_NONE,
+        Thunder::Plugin::LifecycleInterfaceConnector connector(&service);
+        L0Test::ExpectEqU32(tr, connector.createLifecycleManagerRemoteObject(), Thunder::Core::ERROR_NONE,
             "createLifecycleManagerRemoteObject() succeeds for preload test");
 
         std::string runtimeConfig = R"({"capabilities":"dial-app,wan-lan","envVariables":["BASE=1"],"command":"launcher","userId":30001})";
         std::string error;
 
         const auto status = connector.preLoadApp("com.app.preload", "intent://preload", "", runtimeConfig, error);
-        L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_NONE,
+        L0Test::ExpectEqU32(tr, status, Thunder::Core::ERROR_NONE,
             "preLoadApp() succeeds via SpawnApp with PAUSED target state");
-        L0Test::ExpectTrue(tr, WPEFramework::Plugin::AppInfoManager::getInstance().exists("com.app.preload"),
+        L0Test::ExpectTrue(tr, Thunder::Plugin::AppInfoManager::getInstance().exists("com.app.preload"),
             "preLoadApp() creates an AppInfo entry for the preloaded app");
     }
 
@@ -595,7 +595,7 @@ uint32_t Test_AM_LifecycleConnectorPreloadApp()
     L0Test::AppManagerServiceMock fullService(CreateFullServiceConfig());
     impl->Configure(&fullService);
     impl->Release();
-    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    Thunder::Plugin::AppInfoManager::getInstance().clear();
     return tr.failures;
 }
 
@@ -611,23 +611,23 @@ uint32_t Test_AM_LifecycleConnectorTerminateApp()
     cfg.lifecycleManagerState = &lifecycleState;
     L0Test::AppManagerServiceMock service(cfg);
 
-    auto* impl = WPEFramework::Core::Service<WPEFramework::Plugin::AppManagerImplementation>::Create<WPEFramework::Plugin::AppManagerImplementation>();
+    auto* impl = Thunder::Core::Service<Thunder::Plugin::AppManagerImplementation>::Create<Thunder::Plugin::AppManagerImplementation>();
 
     // Pre-populate AppInfoManager with a running app.
-    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
-    WPEFramework::Plugin::AppInfo runningApp;
+    Thunder::Plugin::AppInfoManager::getInstance().clear();
+    Thunder::Plugin::AppInfo runningApp;
     runningApp.setAppInstanceId("inst-terminate");
-    runningApp.setAppNewState(WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE);
-    WPEFramework::Plugin::AppInfoManager::getInstance().upsert("com.app.terminate",
-        [&](WPEFramework::Plugin::AppInfo& a) { a = runningApp; });
+    runningApp.setAppNewState(Thunder::Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE);
+    Thunder::Plugin::AppInfoManager::getInstance().upsert("com.app.terminate",
+        [&](Thunder::Plugin::AppInfo& a) { a = runningApp; });
 
     {
-        WPEFramework::Plugin::LifecycleInterfaceConnector connector(&service);
-        L0Test::ExpectEqU32(tr, connector.createLifecycleManagerRemoteObject(), WPEFramework::Core::ERROR_NONE,
+        Thunder::Plugin::LifecycleInterfaceConnector connector(&service);
+        L0Test::ExpectEqU32(tr, connector.createLifecycleManagerRemoteObject(), Thunder::Core::ERROR_NONE,
             "createLifecycleManagerRemoteObject() succeeds for terminate test");
 
         const auto status = connector.terminateApp("com.app.terminate");
-        L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_NONE,
+        L0Test::ExpectEqU32(tr, status, Thunder::Core::ERROR_NONE,
             "terminateApp() succeeds for an app with a known instance id via UnloadApp");
     }
 
@@ -635,7 +635,7 @@ uint32_t Test_AM_LifecycleConnectorTerminateApp()
     L0Test::AppManagerServiceMock fullService(CreateFullServiceConfig());
     impl->Configure(&fullService);
     impl->Release();
-    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    Thunder::Plugin::AppInfoManager::getInstance().clear();
     return tr.failures;
 }
 
@@ -649,9 +649,9 @@ uint32_t Test_AM_LifecycleConnectorCloseApp()
     // Force SetTargetAppState to fail immediately so the test does not block
     // on the 1-second PAUSE_STATE_WAITTIME timeout.
     lifecycle.setTargetAppStateHandler = [](const std::string&,
-        WPEFramework::Exchange::ILifecycleManager::LifecycleState,
+        Thunder::Exchange::ILifecycleManager::LifecycleState,
         const std::string&) -> uint32_t {
-        return WPEFramework::Core::ERROR_GENERAL;
+        return Thunder::Core::ERROR_GENERAL;
     };
 
     L0Test::AppManagerServiceMock::Config cfg;
@@ -659,24 +659,24 @@ uint32_t Test_AM_LifecycleConnectorCloseApp()
     cfg.lifecycleManagerState = &lifecycleState;
     L0Test::AppManagerServiceMock service(cfg);
 
-    auto* impl = WPEFramework::Core::Service<WPEFramework::Plugin::AppManagerImplementation>::Create<WPEFramework::Plugin::AppManagerImplementation>();
+    auto* impl = Thunder::Core::Service<Thunder::Plugin::AppManagerImplementation>::Create<Thunder::Plugin::AppManagerImplementation>();
 
     // Pre-populate AppInfoManager with a running app.
-    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
-    WPEFramework::Plugin::AppInfo runningApp;
+    Thunder::Plugin::AppInfoManager::getInstance().clear();
+    Thunder::Plugin::AppInfo runningApp;
     runningApp.setAppInstanceId("inst-close");
-    runningApp.setAppNewState(WPEFramework::Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE);
-    WPEFramework::Plugin::AppInfoManager::getInstance().upsert("com.app.close",
-        [&](WPEFramework::Plugin::AppInfo& a) { a = runningApp; });
+    runningApp.setAppNewState(Thunder::Exchange::IAppManager::AppLifecycleState::APP_STATE_ACTIVE);
+    Thunder::Plugin::AppInfoManager::getInstance().upsert("com.app.close",
+        [&](Thunder::Plugin::AppInfo& a) { a = runningApp; });
 
     {
-        WPEFramework::Plugin::LifecycleInterfaceConnector connector(&service);
-        L0Test::ExpectEqU32(tr, connector.createLifecycleManagerRemoteObject(), WPEFramework::Core::ERROR_NONE,
+        Thunder::Plugin::LifecycleInterfaceConnector connector(&service);
+        L0Test::ExpectEqU32(tr, connector.createLifecycleManagerRemoteObject(), Thunder::Core::ERROR_NONE,
             "createLifecycleManagerRemoteObject() succeeds for close test");
 
         // SetTargetAppState fails → closeApp() returns ERROR_GENERAL without blocking.
         const auto status = connector.closeApp("com.app.close");
-        L0Test::ExpectEqU32(tr, status, WPEFramework::Core::ERROR_GENERAL,
+        L0Test::ExpectEqU32(tr, status, Thunder::Core::ERROR_GENERAL,
             "closeApp() returns ERROR_GENERAL when SetTargetAppState fails");
     }
 
@@ -684,7 +684,7 @@ uint32_t Test_AM_LifecycleConnectorCloseApp()
     L0Test::AppManagerServiceMock fullService(CreateFullServiceConfig());
     impl->Configure(&fullService);
     impl->Release();
-    WPEFramework::Plugin::AppInfoManager::getInstance().clear();
+    Thunder::Plugin::AppInfoManager::getInstance().clear();
     return tr.failures;
 }
 
@@ -701,9 +701,9 @@ uint32_t Test_AM_LifecycleConnectorReleaseRemoteObjects()
     L0Test::AppManagerServiceMock service(cfg);
 
     {
-        WPEFramework::Plugin::LifecycleInterfaceConnector connector(&service);
+        Thunder::Plugin::LifecycleInterfaceConnector connector(&service);
 
-        L0Test::ExpectEqU32(tr, connector.createLifecycleManagerRemoteObject(), WPEFramework::Core::ERROR_NONE,
+        L0Test::ExpectEqU32(tr, connector.createLifecycleManagerRemoteObject(), Thunder::Core::ERROR_NONE,
             "createLifecycleManagerRemoteObject() succeeds before release test");
         L0Test::ExpectTrue(tr, lifecycle.registeredNotification != nullptr,
             "MockLifecycleManager has a registered notification after createLifecycleManagerRemoteObject()");
@@ -722,10 +722,10 @@ uint32_t Test_AM_LifecycleConnectorMapRemainingStates()
 {
     L0Test::TestResult tr;
     L0Test::AppManagerServiceMock service;
-    WPEFramework::Plugin::LifecycleInterfaceConnector connector(&service);
+    Thunder::Plugin::LifecycleInterfaceConnector connector(&service);
 
-    using LS = WPEFramework::Exchange::ILifecycleManager::LifecycleState;
-    using AS = WPEFramework::Exchange::IAppManager::AppLifecycleState;
+    using LS = Thunder::Exchange::ILifecycleManager::LifecycleState;
+    using AS = Thunder::Exchange::IAppManager::AppLifecycleState;
 
     L0Test::ExpectEqU32(tr,
         static_cast<uint32_t>(connector.mapAppLifecycleState(LS::LOADING)),
@@ -746,7 +746,7 @@ uint32_t Test_AM_LifecycleConnectorMapRemainingStates()
 
     L0Test::ExpectEqU32(tr,
         static_cast<uint32_t>(connector.mapErrorReason(std::string("ERROR_INVALID_PARAM"))),
-        static_cast<uint32_t>(WPEFramework::Exchange::IAppManager::AppErrorReason::APP_ERROR_INVALID_PARAM),
+        static_cast<uint32_t>(Thunder::Exchange::IAppManager::AppErrorReason::APP_ERROR_INVALID_PARAM),
         "ERROR_INVALID_PARAM maps to APP_ERROR_INVALID_PARAM");
 
     return tr.failures;

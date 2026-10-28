@@ -27,7 +27,7 @@
 #include <semaphore>
 #include <vector>
 
-namespace WPEFramework
+namespace Thunder
 {
     namespace Plugin
     {
@@ -120,4 +120,4 @@ namespace WPEFramework
                 bool mUnexpectedTermination;
         };
     } /* namespace Plugin */
-} /* namespace WPEFramework */
+} /* namespace Thunder */

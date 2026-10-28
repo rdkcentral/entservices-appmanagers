@@ -46,7 +46,7 @@ using string = std::string;
 // proper _refCount tracking, no self-delete (caller owns lifetime on stack).
 // ──────────────────────────────────────────────────────────────────────────────
 
-class FakeRuntimeManager final : public WPEFramework::Exchange::IRuntimeManager {
+class FakeRuntimeManager final : public Thunder::Exchange::IRuntimeManager {
 public:
     FakeRuntimeManager()
         : _refCount(1)
@@ -63,40 +63,40 @@ public:
     uint32_t Release() const override
     {
         const uint32_t r = _refCount.fetch_sub(1, std::memory_order_acq_rel) - 1;
-        return (r == 0u) ? WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED
-                         : WPEFramework::Core::ERROR_NONE;
+        return (r == 0u) ? Thunder::Core::ERROR_DESTRUCTION_SUCCEEDED
+                         : Thunder::Core::ERROR_NONE;
     }
 
     void* QueryInterface(const uint32_t /*id*/) override { return nullptr; }
 
-    WPEFramework::Core::hresult Register(INotification* /*notification*/) override
+    Thunder::Core::hresult Register(INotification* /*notification*/) override
     {
         registerCalls++;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult Unregister(INotification* /*notification*/) override
+    Thunder::Core::hresult Unregister(INotification* /*notification*/) override
     {
         unregisterCalls++;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult Run(
+    Thunder::Core::hresult Run(
         const string& /*appId*/, const string& /*appInstanceId*/,
         const uint32_t /*userId*/, const uint32_t /*groupId*/,
         IValueIterator* const& /*ports*/, IStringIterator* const& /*paths*/,
         IStringIterator* const& /*debugSettings*/,
-        const std::string& /*runtimeConfigPayload*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Hibernate(const string& /*appInstanceId*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Wake(const string& /*appInstanceId*/, RuntimeState /*runtimeState*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Suspend(const string& /*appInstanceId*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Resume(const string& /*appInstanceId*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Terminate(const string& /*appInstanceId*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Kill(const string& /*appInstanceId*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult GetInfo(const string& /*appInstanceId*/, string& /*info*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Annotate(const string& /*appInstanceId*/, const string& /*key*/, const string& /*value*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Mount() override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Unmount() override { return WPEFramework::Core::ERROR_NONE; }
+        const std::string& /*runtimeConfigPayload*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Hibernate(const string& /*appInstanceId*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Wake(const string& /*appInstanceId*/, RuntimeState /*runtimeState*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Suspend(const string& /*appInstanceId*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Resume(const string& /*appInstanceId*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Terminate(const string& /*appInstanceId*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Kill(const string& /*appInstanceId*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult GetInfo(const string& /*appInstanceId*/, string& /*info*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Annotate(const string& /*appInstanceId*/, const string& /*key*/, const string& /*value*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Mount() override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Unmount() override { return Thunder::Core::ERROR_NONE; }
 
     mutable std::atomic<uint32_t> _refCount;
     std::atomic<uint32_t> registerCalls;
@@ -111,7 +111,7 @@ public:
 // IRDKWindowManager interface, no self-delete (stack-allocated by tests).
 // ──────────────────────────────────────────────────────────────────────────────
 
-class FakeWindowManager final : public WPEFramework::Exchange::IRDKWindowManager {
+class FakeWindowManager final : public Thunder::Exchange::IRDKWindowManager {
 public:
     FakeWindowManager()
         : _refCount(1)
@@ -128,70 +128,70 @@ public:
     uint32_t Release() const override
     {
         const uint32_t r = _refCount.fetch_sub(1, std::memory_order_acq_rel) - 1;
-        return (r == 0u) ? WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED
-                         : WPEFramework::Core::ERROR_NONE;
+        return (r == 0u) ? Thunder::Core::ERROR_DESTRUCTION_SUCCEEDED
+                         : Thunder::Core::ERROR_NONE;
     }
 
     void* QueryInterface(const uint32_t /*id*/) override { return nullptr; }
 
-    WPEFramework::Core::hresult Register(INotification* /*notification*/) override
+    Thunder::Core::hresult Register(INotification* /*notification*/) override
     {
         registerCalls++;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult Unregister(INotification* /*notification*/) override
+    Thunder::Core::hresult Unregister(INotification* /*notification*/) override
     {
         unregisterCalls++;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult Initialize(WPEFramework::PluginHost::IShell* /*service*/) override   { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Deinitialize(WPEFramework::PluginHost::IShell* /*service*/) override { return WPEFramework::Core::ERROR_NONE; }
+    Thunder::Core::hresult Initialize(Thunder::PluginHost::IShell* /*service*/) override   { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Deinitialize(Thunder::PluginHost::IShell* /*service*/) override { return Thunder::Core::ERROR_NONE; }
 
-    WPEFramework::Core::hresult CreateDisplay(
+    Thunder::Core::hresult CreateDisplay(
         const string& /*appInstanceId*/, const string& /*displayName*/,
         const uint32_t /*displayWidth*/, const uint32_t /*displayHeight*/,
         const bool /*virtualDisplay*/,
         const uint32_t /*virtualWidth*/, const uint32_t /*virtualHeight*/,
         const uint32_t /*ownerId*/, const uint32_t /*groupId*/,
         const bool /*topmost*/, const bool /*focus*/,
-        const string& /*capabilities*/) override { return WPEFramework::Core::ERROR_NONE; }
+        const string& /*capabilities*/) override { return Thunder::Core::ERROR_NONE; }
 
-    WPEFramework::Core::hresult GetApps(WPEFramework::Exchange::IRDKWindowManager::IStringIterator*& appsIds) const override { appsIds = nullptr; return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult AddKeyIntercept(const string& /*intercept*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult AddKeyIntercepts(const string& /*clientId*/, const string& /*intercepts*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult RemoveKeyIntercept(const string& /*clientId*/, uint32_t /*keyCode*/, const string& /*modifiers*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult AddKeyListener(const string& /*keyListeners*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult RemoveKeyListener(const string& /*keyListeners*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult InjectKey(uint32_t /*keyCode*/, const string& /*modifiers*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult GenerateKey(const string& /*keys*/, const string& /*client*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult EnableInactivityReporting(const bool /*enable*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult SetInactivityInterval(const uint32_t /*interval*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult ResetInactivityTime() override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult EnableKeyRepeats(bool /*enable*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult GetKeyRepeatsEnabled(bool& /*keyRepeat*/) const override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult IgnoreKeyInputs(bool /*ignore*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult EnableInputEvents(const string& /*clients*/, bool /*enable*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult KeyRepeatConfig(const string& /*input*/, const string& /*keyConfig*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult SetFocus(const string& /*client*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult SetVisible(const string& /*client*/, bool /*visible*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult GetVisibility(const string& /*client*/, bool& /*visible*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult RenderReady(const string& /*client*/, bool& /*status*/) const override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult EnableDisplayRender(const string& /*client*/, bool /*enable*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult GetLastKeyInfo(uint32_t& /*keyCode*/, uint32_t& /*modifiers*/, uint64_t& /*timestampInSeconds*/) const override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult SetZOrder(const string& /*appInstanceId*/, const int32_t /*zOrder*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult GetZOrder(const string& /*appInstanceId*/, int32_t& /*zOrder*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult StartVncServer() override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult StopVncServer() override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult GetFocused(string& /*client*/) const override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult GetScreenshot() override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult SetAlias(const string& /*clientId*/, const string& /*alias*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult ShowSplashScreen(const bool /*show*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult SetBounds(const string& /*clientId*/, const uint32_t /*x*/, const uint32_t /*y*/, const uint32_t /*width*/, const uint32_t /*height*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult GetBounds(const string& /*clientId*/, uint32_t& /*x*/, uint32_t& /*y*/, uint32_t& /*width*/, uint32_t& /*height*/) const override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult SetScale(const string& /*clientId*/, const double /*scaleX*/, const double /*scaleY*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult GetScale(const string& /*clientId*/, double& /*scaleX*/, double& /*scaleY*/) const override { return WPEFramework::Core::ERROR_NONE; }
+    Thunder::Core::hresult GetApps(Thunder::Exchange::IRDKWindowManager::IStringIterator*& appsIds) const override { appsIds = nullptr; return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult AddKeyIntercept(const string& /*intercept*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult AddKeyIntercepts(const string& /*clientId*/, const string& /*intercepts*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult RemoveKeyIntercept(const string& /*clientId*/, uint32_t /*keyCode*/, const string& /*modifiers*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult AddKeyListener(const string& /*keyListeners*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult RemoveKeyListener(const string& /*keyListeners*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult InjectKey(uint32_t /*keyCode*/, const string& /*modifiers*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult GenerateKey(const string& /*keys*/, const string& /*client*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult EnableInactivityReporting(const bool /*enable*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult SetInactivityInterval(const uint32_t /*interval*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult ResetInactivityTime() override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult EnableKeyRepeats(bool /*enable*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult GetKeyRepeatsEnabled(bool& /*keyRepeat*/) const override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult IgnoreKeyInputs(bool /*ignore*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult EnableInputEvents(const string& /*clients*/, bool /*enable*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult KeyRepeatConfig(const string& /*input*/, const string& /*keyConfig*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult SetFocus(const string& /*client*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult SetVisible(const string& /*client*/, bool /*visible*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult GetVisibility(const string& /*client*/, bool& /*visible*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult RenderReady(const string& /*client*/, bool& /*status*/) const override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult EnableDisplayRender(const string& /*client*/, bool /*enable*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult GetLastKeyInfo(uint32_t& /*keyCode*/, uint32_t& /*modifiers*/, uint64_t& /*timestampInSeconds*/) const override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult SetZOrder(const string& /*appInstanceId*/, const int32_t /*zOrder*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult GetZOrder(const string& /*appInstanceId*/, int32_t& /*zOrder*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult StartVncServer() override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult StopVncServer() override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult GetFocused(string& /*client*/) const override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult GetScreenshot() override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult SetAlias(const string& /*clientId*/, const string& /*alias*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult ShowSplashScreen(const bool /*show*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult SetBounds(const string& /*clientId*/, const uint32_t /*x*/, const uint32_t /*y*/, const uint32_t /*width*/, const uint32_t /*height*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult GetBounds(const string& /*clientId*/, uint32_t& /*x*/, uint32_t& /*y*/, uint32_t& /*width*/, uint32_t& /*height*/) const override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult SetScale(const string& /*clientId*/, const double /*scaleX*/, const double /*scaleY*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult GetScale(const string& /*clientId*/, double& /*scaleX*/, double& /*scaleY*/) const override { return Thunder::Core::ERROR_NONE; }
 
     mutable std::atomic<uint32_t> _refCount;
     std::atomic<uint32_t> registerCalls;
@@ -205,23 +205,23 @@ public:
  * resolves to ICOMLink::Instantiate() under the hood.  This mock provides
  * configurable Instantiate() and RemoteConnection() behaviour.
  */
-class LcmServiceMock final : public WPEFramework::PluginHost::IShell {
+class LcmServiceMock final : public Thunder::PluginHost::IShell {
 public:
-    using InstantiateHandler = std::function<void*(const WPEFramework::RPC::Object&, const uint32_t, uint32_t&)>;
+    using InstantiateHandler = std::function<void*(const Thunder::RPC::Object&, const uint32_t, uint32_t&)>;
 
     struct Config {
         explicit Config(
-            WPEFramework::Exchange::IRuntimeManager*   rtm = nullptr,
-            WPEFramework::Exchange::IRDKWindowManager* wm  = nullptr)
+            Thunder::Exchange::IRuntimeManager*   rtm = nullptr,
+            Thunder::Exchange::IRDKWindowManager* wm  = nullptr)
             : rtm(rtm)
             , wm(wm)
         {
         }
-        WPEFramework::Exchange::IRuntimeManager*   rtm;
-        WPEFramework::Exchange::IRDKWindowManager* wm;
+        Thunder::Exchange::IRuntimeManager*   rtm;
+        Thunder::Exchange::IRDKWindowManager* wm;
     };
 
-    class COMLinkMock final : public WPEFramework::PluginHost::IShell::ICOMLink {
+    class COMLinkMock final : public Thunder::PluginHost::IShell::ICOMLink {
     public:
         explicit COMLinkMock(LcmServiceMock& parent)
             : _parent(parent)
@@ -230,17 +230,17 @@ public:
 
         ~COMLinkMock() override = default;
 
-        void Register(WPEFramework::RPC::IRemoteConnection::INotification*) override {}
-        void Unregister(const WPEFramework::RPC::IRemoteConnection::INotification*) override {}
+        void Register(Thunder::RPC::IRemoteConnection::INotification*) override {}
+        void Unregister(const Thunder::RPC::IRemoteConnection::INotification*) override {}
         void Register(INotification*) override {}
         void Unregister(INotification*) override {}
 
-        WPEFramework::RPC::IRemoteConnection* RemoteConnection(const uint32_t) override
+        Thunder::RPC::IRemoteConnection* RemoteConnection(const uint32_t) override
         {
             return _parent._fakeConnection;
         }
 
-        void* Instantiate(const WPEFramework::RPC::Object& object, const uint32_t interfaceId, uint32_t& connectionId) override
+        void* Instantiate(const Thunder::RPC::Object& object, const uint32_t interfaceId, uint32_t& connectionId) override
         {
             _parent.instantiateCalls++;
             if (_parent._instantiateHandler) {
@@ -272,7 +272,7 @@ public:
         _instantiateHandler = handler;
     }
 
-    void SetFakeConnection(WPEFramework::RPC::IRemoteConnection* conn)
+    void SetFakeConnection(Thunder::RPC::IRemoteConnection* conn)
     {
         _fakeConnection = conn;
     }
@@ -292,7 +292,7 @@ public:
     {
         releaseCalls++;
         const uint32_t newCount = _refCount.fetch_sub(1, std::memory_order_acq_rel) - 1;
-        return (0U == newCount) ? WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED : WPEFramework::Core::ERROR_NONE;
+        return (0U == newCount) ? Thunder::Core::ERROR_DESTRUCTION_SUCCEEDED : Thunder::Core::ERROR_NONE;
     }
 
     std::string Versions() const override { return ""; }
@@ -306,46 +306,46 @@ public:
     std::string DataPath() const override { return "/tmp"; }
     state State() const override { return state::ACTIVATED; }
 
-    WPEFramework::Core::hresult Activate(const reason) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Deactivate(const reason) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Unavailable(const reason) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult ConfigLine(const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult SystemRootPath(const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Hibernate(const uint32_t) override { return WPEFramework::Core::ERROR_NONE; }
+    Thunder::Core::hresult Activate(const reason) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Deactivate(const reason) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Unavailable(const reason) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult ConfigLine(const std::string&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult SystemRootPath(const std::string&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Hibernate(const uint32_t) override { return Thunder::Core::ERROR_NONE; }
     std::string SystemPath() const override { return ""; }
     std::string PluginPath() const override { return ""; }
     startup Startup() const override { return static_cast<startup>(0); }
-    WPEFramework::Core::hresult Startup(const startup) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Resumed(const bool) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Metadata(std::string& info) const override { info.clear(); return WPEFramework::Core::ERROR_NONE; }
+    Thunder::Core::hresult Startup(const startup) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Resumed(const bool) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Metadata(std::string& info) const override { info.clear(); return Thunder::Core::ERROR_NONE; }
     bool Resumed() const override { return false; }
     bool IsSupported(const uint8_t) const override { return false; }
     void EnableWebServer(const std::string&, const std::string&) override {}
     void DisableWebServer() override {}
-    WPEFramework::PluginHost::ISubSystem* SubSystems() override { return nullptr; }
-    uint32_t Submit(const uint32_t, const WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::IElement>&) override { return WPEFramework::Core::ERROR_NONE; }
+    Thunder::PluginHost::ISubSystem* SubSystems() override { return nullptr; }
+    uint32_t Submit(const uint32_t, const Thunder::Core::ProxyType<Thunder::Core::JSON::IElement>&) override { return Thunder::Core::ERROR_NONE; }
     void Notify(const std::string&) override {}
     void* QueryInterface(const uint32_t) override { return nullptr; }
     void* QueryInterfaceByCallsign(const uint32_t id, const std::string& callsign) override
     {
-        if (WPEFramework::Exchange::IRuntimeManager::ID == id
+        if (Thunder::Exchange::IRuntimeManager::ID == id
             && "org.rdk.RuntimeManager" == callsign
             && nullptr != _cfg.rtm)
         {
             _cfg.rtm->AddRef();
-            return static_cast<WPEFramework::Exchange::IRuntimeManager*>(_cfg.rtm);
+            return static_cast<Thunder::Exchange::IRuntimeManager*>(_cfg.rtm);
         }
-        if (WPEFramework::Exchange::IRDKWindowManager::ID == id
+        if (Thunder::Exchange::IRDKWindowManager::ID == id
             && "org.rdk.RDKWindowManager" == callsign
             && nullptr != _cfg.wm)
         {
             _cfg.wm->AddRef();
-            return static_cast<WPEFramework::Exchange::IRDKWindowManager*>(_cfg.wm);
+            return static_cast<Thunder::Exchange::IRDKWindowManager*>(_cfg.wm);
         }
         return nullptr;
     }
-    void Register(WPEFramework::PluginHost::IPlugin::INotification*) override {}
-    void Unregister(WPEFramework::PluginHost::IPlugin::INotification*) override {}
+    void Register(Thunder::PluginHost::IPlugin::INotification*) override {}
+    void Unregister(Thunder::PluginHost::IPlugin::INotification*) override {}
     std::string Model() const override { return ""; }
     bool Background() const override { return false; }
     std::string Accessor() const override { return ""; }
@@ -353,7 +353,7 @@ public:
     std::string HashKey() const override { return ""; }
     std::string Substitute(const std::string&) const override { return ""; }
 
-    WPEFramework::PluginHost::IShell::ICOMLink* COMLink() override
+    Thunder::PluginHost::IShell::ICOMLink* COMLink() override
     {
         return &_comLink;
     }
@@ -361,7 +361,7 @@ public:
     reason Reason() const override { return reason::REQUESTED; }
     std::string SystemRootPath() const override { return ""; }
 
-    WPEFramework::RPC::IRemoteConnection* RemoteConnection(const uint32_t) const
+    Thunder::RPC::IRemoteConnection* RemoteConnection(const uint32_t) const
     {
         return _fakeConnection;
     }
@@ -371,14 +371,14 @@ private:
     InstantiateHandler _instantiateHandler;
     Config _cfg;
     COMLinkMock _comLink;
-    WPEFramework::RPC::IRemoteConnection* _fakeConnection;
+    Thunder::RPC::IRemoteConnection* _fakeConnection;
 };
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Fake ILifecycleManager::INotification stub for notification callback tests
 // ──────────────────────────────────────────────────────────────────────────────
 
-class FakeLcmNotification final : public WPEFramework::Exchange::ILifecycleManager::INotification {
+class FakeLcmNotification final : public Thunder::Exchange::ILifecycleManager::INotification {
 public:
     FakeLcmNotification()
         : _refCount(1)
@@ -397,23 +397,23 @@ public:
         const uint32_t r = _refCount.fetch_sub(1, std::memory_order_acq_rel) - 1;
         if (0U == r) {
             delete this;
-            return WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED;
+            return Thunder::Core::ERROR_DESTRUCTION_SUCCEEDED;
         }
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
     void* QueryInterface(const uint32_t id) override
     {
-        if (id == WPEFramework::Exchange::ILifecycleManager::INotification::ID) {
+        if (id == Thunder::Exchange::ILifecycleManager::INotification::ID) {
             AddRef();
-            return static_cast<WPEFramework::Exchange::ILifecycleManager::INotification*>(this);
+            return static_cast<Thunder::Exchange::ILifecycleManager::INotification*>(this);
         }
         return nullptr;
     }
 
     void OnAppStateChanged(
         const std::string& appId,
-        const WPEFramework::Exchange::ILifecycleManager::LifecycleState newState,
+        const Thunder::Exchange::ILifecycleManager::LifecycleState newState,
         const std::string& errorReason) override
     {
         onAppStateChangedCount++;
@@ -425,7 +425,7 @@ public:
     mutable std::atomic<uint32_t> _refCount;
     std::atomic<uint32_t> onAppStateChangedCount;
     std::string lastAppId;
-    WPEFramework::Exchange::ILifecycleManager::LifecycleState lastState {};
+    Thunder::Exchange::ILifecycleManager::LifecycleState lastState {};
     std::string lastError;
 };
 
@@ -433,7 +433,7 @@ public:
 // Fake ILifecycleManagerState::INotification stub
 // ──────────────────────────────────────────────────────────────────────────────
 
-class FakeLcmStateNotification final : public WPEFramework::Exchange::ILifecycleManagerState::INotification {
+class FakeLcmStateNotification final : public Thunder::Exchange::ILifecycleManagerState::INotification {
 public:
     FakeLcmStateNotification()
         : _refCount(1)
@@ -451,16 +451,16 @@ public:
         const uint32_t r = _refCount.fetch_sub(1, std::memory_order_acq_rel) - 1;
         if (0U == r) {
             delete this;
-            return WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED;
+            return Thunder::Core::ERROR_DESTRUCTION_SUCCEEDED;
         }
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
     void* QueryInterface(const uint32_t id) override
     {
-        if (id == WPEFramework::Exchange::ILifecycleManagerState::INotification::ID) {
+        if (id == Thunder::Exchange::ILifecycleManagerState::INotification::ID) {
             AddRef();
-            return static_cast<WPEFramework::Exchange::ILifecycleManagerState::INotification*>(this);
+            return static_cast<Thunder::Exchange::ILifecycleManagerState::INotification*>(this);
         }
         return nullptr;
     }
@@ -468,8 +468,8 @@ public:
     void OnAppLifecycleStateChanged(
         const std::string& appId,
         const std::string& appInstanceId,
-        const WPEFramework::Exchange::ILifecycleManager::LifecycleState oldState,
-        const WPEFramework::Exchange::ILifecycleManager::LifecycleState newState,
+        const Thunder::Exchange::ILifecycleManager::LifecycleState oldState,
+        const Thunder::Exchange::ILifecycleManager::LifecycleState newState,
         const std::string& navigationIntent) override
     {
         transitions.emplace_back(oldState, newState);
@@ -485,11 +485,11 @@ public:
     std::atomic<uint32_t> onStateChangedCount;
     std::string lastAppId;
     std::string lastAppInstanceId;
-    WPEFramework::Exchange::ILifecycleManager::LifecycleState lastOldState {};
-    WPEFramework::Exchange::ILifecycleManager::LifecycleState lastNewState {};
+    Thunder::Exchange::ILifecycleManager::LifecycleState lastOldState {};
+    Thunder::Exchange::ILifecycleManager::LifecycleState lastNewState {};
     std::string lastNavigationIntent;
-    std::vector<std::pair<WPEFramework::Exchange::ILifecycleManager::LifecycleState,
-                          WPEFramework::Exchange::ILifecycleManager::LifecycleState>> transitions;
+    std::vector<std::pair<Thunder::Exchange::ILifecycleManager::LifecycleState,
+                          Thunder::Exchange::ILifecycleManager::LifecycleState>> transitions;
 };
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -498,9 +498,9 @@ public:
 // ──────────────────────────────────────────────────────────────────────────────
 
 class FakeLifecycleManagerImpl final
-    : public WPEFramework::Exchange::ILifecycleManager
-    , public WPEFramework::Exchange::ILifecycleManagerState
-    , public WPEFramework::Exchange::IConfiguration {
+    : public Thunder::Exchange::ILifecycleManager
+    , public Thunder::Exchange::ILifecycleManagerState
+    , public Thunder::Exchange::IConfiguration {
 public:
     FakeLifecycleManagerImpl()
         : _refCount(1)
@@ -520,73 +520,73 @@ public:
         const uint32_t r = _refCount.fetch_sub(1, std::memory_order_acq_rel) - 1;
         if (0U == r) {
             delete this;
-            return WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED;
+            return Thunder::Core::ERROR_DESTRUCTION_SUCCEEDED;
         }
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
     void* QueryInterface(const uint32_t id) override
     {
-        if (id == WPEFramework::Exchange::ILifecycleManager::ID) {
+        if (id == Thunder::Exchange::ILifecycleManager::ID) {
             AddRef();
-            return static_cast<WPEFramework::Exchange::ILifecycleManager*>(this);
+            return static_cast<Thunder::Exchange::ILifecycleManager*>(this);
         }
-        if (id == WPEFramework::Exchange::ILifecycleManagerState::ID) {
+        if (id == Thunder::Exchange::ILifecycleManagerState::ID) {
             AddRef();
-            return static_cast<WPEFramework::Exchange::ILifecycleManagerState*>(this);
+            return static_cast<Thunder::Exchange::ILifecycleManagerState*>(this);
         }
-        if (id == WPEFramework::Exchange::IConfiguration::ID) {
+        if (id == Thunder::Exchange::IConfiguration::ID) {
             AddRef();
-            return static_cast<WPEFramework::Exchange::IConfiguration*>(this);
+            return static_cast<Thunder::Exchange::IConfiguration*>(this);
         }
         return nullptr;
     }
 
     // IConfiguration
-    uint32_t Configure(WPEFramework::PluginHost::IShell*) override
+    uint32_t Configure(Thunder::PluginHost::IShell*) override
     {
         configureCalls++;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
     // ILifecycleManager
-    WPEFramework::Core::hresult Register(WPEFramework::Exchange::ILifecycleManager::INotification*) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Unregister(WPEFramework::Exchange::ILifecycleManager::INotification*) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult GetLoadedApps(const bool, std::string&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult IsAppLoaded(const std::string&, bool&) const override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult SpawnApp(const std::string&, const std::string&,
-        const WPEFramework::Exchange::ILifecycleManager::LifecycleState,
+    Thunder::Core::hresult Register(Thunder::Exchange::ILifecycleManager::INotification*) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Unregister(Thunder::Exchange::ILifecycleManager::INotification*) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult GetLoadedApps(const bool, std::string&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult IsAppLoaded(const std::string&, bool&) const override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult SpawnApp(const std::string&, const std::string&,
+        const Thunder::Exchange::ILifecycleManager::LifecycleState,
         const std::string&,
-        const std::string&, std::string&, std::string&, bool&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult SetTargetAppState(const std::string&,
-        const WPEFramework::Exchange::ILifecycleManager::LifecycleState,
-        const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult UnloadApp(const std::string&, std::string&, bool&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult KillApp(const std::string&, std::string&, bool&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult SendIntentToActiveApp(const std::string&, const std::string&, std::string&, bool&) override { return WPEFramework::Core::ERROR_NONE; }
+        const std::string&, std::string&, std::string&, bool&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult SetTargetAppState(const std::string&,
+        const Thunder::Exchange::ILifecycleManager::LifecycleState,
+        const std::string&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult UnloadApp(const std::string&, std::string&, bool&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult KillApp(const std::string&, std::string&, bool&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult SendIntentToActiveApp(const std::string&, const std::string&, std::string&, bool&) override { return Thunder::Core::ERROR_NONE; }
 
     // ILifecycleManagerState
-    WPEFramework::Core::hresult Register(WPEFramework::Exchange::ILifecycleManagerState::INotification* n) override
+    Thunder::Core::hresult Register(Thunder::Exchange::ILifecycleManagerState::INotification* n) override
     {
         registerStateCalls++;
         _storedStateNotification = n;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
-    WPEFramework::Core::hresult Unregister(WPEFramework::Exchange::ILifecycleManagerState::INotification*) override
+    Thunder::Core::hresult Unregister(Thunder::Exchange::ILifecycleManagerState::INotification*) override
     {
         unregisterStateCalls++;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
-    WPEFramework::Core::hresult AppReady(const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult StateChangeComplete(const std::string&, const uint32_t, const bool) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult CloseApp(const std::string&,
-        const WPEFramework::Exchange::ILifecycleManagerState::AppCloseReason) override { return WPEFramework::Core::ERROR_NONE; }
+    Thunder::Core::hresult AppReady(const std::string&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult StateChangeComplete(const std::string&, const uint32_t, const bool) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult CloseApp(const std::string&,
+        const Thunder::Exchange::ILifecycleManagerState::AppCloseReason) override { return Thunder::Core::ERROR_NONE; }
 
     mutable std::atomic<uint32_t> _refCount;
     std::atomic<uint32_t> registerStateCalls;
     std::atomic<uint32_t> unregisterStateCalls;
     std::atomic<uint32_t> configureCalls;
-    WPEFramework::Exchange::ILifecycleManagerState::INotification* _storedStateNotification { nullptr };
+    Thunder::Exchange::ILifecycleManagerState::INotification* _storedStateNotification { nullptr };
 };
 
 } // namespace L0Test
@@ -598,14 +598,14 @@ public:
 // entservices-apis installs only headers, so these definitions must be
 // provided here.  Marked inline to be safe if ever included by multiple TUs.
 // ---------------------------------------------------------------------------
-namespace WPEFramework {
+namespace Thunder {
 namespace Core {
 
 template <>
-inline const EnumerateConversion<WPEFramework::Exchange::ILifecycleManager::LifecycleState>*
-EnumerateType<WPEFramework::Exchange::ILifecycleManager::LifecycleState>::Table(const uint16_t index)
+inline const EnumerateConversion<Thunder::Exchange::ILifecycleManager::LifecycleState>*
+EnumerateType<Thunder::Exchange::ILifecycleManager::LifecycleState>::Table(const uint16_t index)
 {
-    using LS = WPEFramework::Exchange::ILifecycleManager::LifecycleState;
+    using LS = Thunder::Exchange::ILifecycleManager::LifecycleState;
     static const EnumerateConversion<LS> table[] = {
         { LS::UNLOADED,     "UNLOADED"     },
         { LS::LOADING,      "LOADING"      },
@@ -620,10 +620,10 @@ EnumerateType<WPEFramework::Exchange::ILifecycleManager::LifecycleState>::Table(
 }
 
 template <>
-inline const EnumerateConversion<WPEFramework::Exchange::ILifecycleManagerState::AppCloseReason>*
-EnumerateType<WPEFramework::Exchange::ILifecycleManagerState::AppCloseReason>::Table(const uint16_t index)
+inline const EnumerateConversion<Thunder::Exchange::ILifecycleManagerState::AppCloseReason>*
+EnumerateType<Thunder::Exchange::ILifecycleManagerState::AppCloseReason>::Table(const uint16_t index)
 {
-    using ACR = WPEFramework::Exchange::ILifecycleManagerState::AppCloseReason;
+    using ACR = Thunder::Exchange::ILifecycleManagerState::AppCloseReason;
     static const EnumerateConversion<ACR> table[] = {
         { ACR::USER_EXIT,         "USER_EXIT"         },
         { ACR::ERROR,             "ERROR"             },
@@ -634,4 +634,4 @@ EnumerateType<WPEFramework::Exchange::ILifecycleManagerState::AppCloseReason>::T
 }
 
 } // namespace Core
-} // namespace WPEFramework
+} // namespace Thunder

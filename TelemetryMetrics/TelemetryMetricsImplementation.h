@@ -26,7 +26,7 @@
 #include <json/json.h>
 
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
     class TelemetryMetricsImplementation : public Exchange::ITelemetryMetrics {
@@ -51,4 +51,4 @@ namespace Plugin {
         std::mutex mMetricsMutex;
     };
 } /* namespace Plugin */
-} /* namespace WPEFramework */
+} /* namespace Thunder */

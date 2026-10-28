@@ -33,10 +33,10 @@
 /* Until we don't get it from Package configuration, use size as 1MB */
 #define STORAGE_MAX_SIZE 1024
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
-    RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::PackageManagerTelemetryReporting, "packageManagerBootstrapTime")
+    RDKAM_DEFINE_TELEMETRY_CLIENT(Thunder::Plugin::PackageManagerTelemetryReporting, "packageManagerBootstrapTime")
 
     SERVICE_REGISTRATION(PackageManagerImplementation, 1, 0);
 
@@ -235,7 +235,7 @@ namespace Plugin {
 
         if (nullptr == mCurrentservice) {
             LOGERR("mCurrentservice is null \n");
-        } else if (nullptr == (mStorageManagerObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IAppStorageManager>("org.rdk.AppStorageManager"))) {
+        } else if (nullptr == (mStorageManagerObject = mCurrentservice->QueryInterfaceByCallsign<Thunder::Exchange::IAppStorageManager>("org.rdk.AppStorageManager"))) {
             LOGERR("mStorageManagerObject is null \n");
         } else {
             LOGINFO("created StorageManager Object\n");
@@ -1554,5 +1554,5 @@ Core::hresult PackageManagerImplementation::GetConfigListForInstalledPackages(co
     return result;
 }
 } // namespace Plugin
-} // namespace WPEFramework
+} // namespace Thunder
 

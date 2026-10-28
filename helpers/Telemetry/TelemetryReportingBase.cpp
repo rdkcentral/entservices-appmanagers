@@ -25,7 +25,7 @@
 
 #include "UtilsLogging.h"
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 namespace Utils {
 
@@ -265,4 +265,4 @@ Core::hresult TelemetryReportingBase::recordBootstrapTelemetry(PluginHost::IShel
 
 } // namespace Utils
 } // namespace Plugin
-} // namespace WPEFramework
+} // namespace Thunder

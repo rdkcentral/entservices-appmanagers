@@ -13,13 +13,13 @@
 
 namespace {
 
-using WPEFramework::Core::ERROR_GENERAL;
-using WPEFramework::Core::ERROR_INVALID_PARAMETER;
-using WPEFramework::Core::ERROR_INVALID_SIGNATURE;
-using WPEFramework::Core::ERROR_NONE;
-using WPEFramework::Core::ERROR_NOT_SUPPORTED;
+using Thunder::Core::ERROR_GENERAL;
+using Thunder::Core::ERROR_INVALID_PARAMETER;
+using Thunder::Core::ERROR_INVALID_SIGNATURE;
+using Thunder::Core::ERROR_NONE;
+using Thunder::Core::ERROR_NOT_SUPPORTED;
 
-class FakeDownloaderNotification final : public WPEFramework::Exchange::IPackageDownloader::INotification {
+class FakeDownloaderNotification final : public Thunder::Exchange::IPackageDownloader::INotification {
 public:
     FakeDownloaderNotification()
         : _refCount(1)
@@ -37,21 +37,21 @@ public:
         const uint32_t remaining = _refCount.fetch_sub(1, std::memory_order_acq_rel) - 1;
         if (0U == remaining) {
             delete this;
-            return WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED;
+            return Thunder::Core::ERROR_DESTRUCTION_SUCCEEDED;
         }
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
     void* QueryInterface(const uint32_t id) override
     {
-        if (id == WPEFramework::Exchange::IPackageDownloader::INotification::ID) {
+        if (id == Thunder::Exchange::IPackageDownloader::INotification::ID) {
             AddRef();
-            return static_cast<WPEFramework::Exchange::IPackageDownloader::INotification*>(this);
+            return static_cast<Thunder::Exchange::IPackageDownloader::INotification*>(this);
         }
         return nullptr;
     }
 
-    void OnAppDownloadStatus(WPEFramework::Exchange::IPackageDownloader::IPackageInfoIterator* const) override
+    void OnAppDownloadStatus(Thunder::Exchange::IPackageDownloader::IPackageInfoIterator* const) override
     {
         downloadStatusCount++;
     }
@@ -60,7 +60,7 @@ public:
     std::atomic<uint32_t> downloadStatusCount;
 };
 
-class FakeInstallerNotification final : public WPEFramework::Exchange::IPackageInstaller::INotification {
+class FakeInstallerNotification final : public Thunder::Exchange::IPackageInstaller::INotification {
 public:
     FakeInstallerNotification()
         : _refCount(1)
@@ -79,16 +79,16 @@ public:
         const uint32_t remaining = _refCount.fetch_sub(1, std::memory_order_acq_rel) - 1;
         if (0U == remaining) {
             delete this;
-            return WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED;
+            return Thunder::Core::ERROR_DESTRUCTION_SUCCEEDED;
         }
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
     void* QueryInterface(const uint32_t id) override
     {
-        if (id == WPEFramework::Exchange::IPackageInstaller::INotification::ID) {
+        if (id == Thunder::Exchange::IPackageInstaller::INotification::ID) {
             AddRef();
-            return static_cast<WPEFramework::Exchange::IPackageInstaller::INotification*>(this);
+            return static_cast<Thunder::Exchange::IPackageInstaller::INotification*>(this);
         }
         return nullptr;
     }
@@ -109,15 +109,15 @@ struct ImplFixture {
     L0Test::ServiceMock::FakeSubSystem subSystem;
     L0Test::ServiceMock::FakeTelemetryMetrics telemetry;
     L0Test::ServiceMock service;
-    WPEFramework::Plugin::PackageManagerImplementation* impl;
+    Thunder::Plugin::PackageManagerImplementation* impl;
 
     ImplFixture()
         : storage()
         , subSystem()
         , telemetry()
         , service(L0Test::ServiceMock::Config(&storage, &subSystem, &telemetry))
-        , impl(WPEFramework::Core::Service<WPEFramework::Plugin::PackageManagerImplementation>::Create<
-            WPEFramework::Plugin::PackageManagerImplementation>())
+        , impl(Thunder::Core::Service<Thunder::Plugin::PackageManagerImplementation>::Create<
+            Thunder::Plugin::PackageManagerImplementation>())
     {
     }
 
@@ -214,11 +214,11 @@ uint32_t Test_PM_Impl_ListPackagesAndPackageStateForDummyData()
 
     L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() succeeds");
 
-    WPEFramework::Exchange::IPackageInstaller::IPackageIterator* packages = nullptr;
+    Thunder::Exchange::IPackageInstaller::IPackageIterator* packages = nullptr;
     L0Test::ExpectEqU32(tr, fx.impl->ListPackages(packages), ERROR_NONE, "ListPackages() returns ERROR_NONE");
     L0Test::ExpectTrue(tr, packages != nullptr, "ListPackages() returns non-null iterator");
     if (packages != nullptr) {
-        WPEFramework::Exchange::IPackageInstaller::Package package;
+        Thunder::Exchange::IPackageInstaller::Package package;
         bool foundPackage = false;
         while (packages->Next(package)) {
             if (package.packageId == "YouTube" && package.version == "100.1.24") {
@@ -233,13 +233,13 @@ uint32_t Test_PM_Impl_ListPackagesAndPackageStateForDummyData()
         L0Test::ExpectTrue(tr, foundPackage, "ListPackages() contains dummy package entry");
     }
 
-    WPEFramework::Exchange::IPackageInstaller::InstallState state = WPEFramework::Exchange::IPackageInstaller::InstallState::UNINSTALLED;
+    Thunder::Exchange::IPackageInstaller::InstallState state = Thunder::Exchange::IPackageInstaller::InstallState::UNINSTALLED;
     L0Test::ExpectEqU32(tr,
                         fx.impl->PackageState("YouTube", "100.1.24", state),
                         ERROR_NONE,
                         "PackageState() for dummy package returns ERROR_NONE");
     L0Test::ExpectTrue(tr,
-                       state == WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED,
+                       state == Thunder::Exchange::IPackageInstaller::InstallState::INSTALLED,
                        "Dummy package starts in INSTALLED state");
 
     if (packages != nullptr) {
@@ -262,7 +262,7 @@ uint32_t Test_PM_Impl_ConfigAndGetConfigForPackageEmptyLocator()
                         ERROR_NONE,
                         "Config() for installed dummy package returns ERROR_NONE");
 
-    WPEFramework::Plugin::Utils::RuntimeConfigPayload payload;
+    Thunder::Plugin::Utils::RuntimeConfigPayload payload;
     std::string error;
     bool present = false;
     L0Test::ExpectTrue(tr, payload.Parse(config, error), "Config() returns a valid JSON runtime payload");
@@ -302,7 +302,7 @@ uint32_t Test_PM_Impl_RuntimeConfigPayloadSerialization()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::Utils::RuntimeConfigPayload canonical;
+    Thunder::Plugin::Utils::RuntimeConfigPayload canonical;
     canonical.SetString("appPath", "/opt/TestApp");
     canonical.SetStringArray("envVariables", { "HOME=/home/private", "LANG=en_US.UTF-8" });
     canonical.SetStringArray("fkpsFiles", { "/etc/test/one", "/etc/test/two" });
@@ -315,7 +315,7 @@ uint32_t Test_PM_Impl_RuntimeConfigPayloadSerialization()
                        canonical.Serialize(serialized, error),
                        "RuntimeConfigPayload serializes a canonical opaque runtime payload");
 
-    WPEFramework::Plugin::Utils::RuntimeConfigPayload decoded;
+    Thunder::Plugin::Utils::RuntimeConfigPayload decoded;
     bool present = false;
     std::vector<std::string> values;
     L0Test::ExpectTrue(tr, decoded.Parse(serialized, error), "Canonical runtime payload parses successfully");
@@ -337,16 +337,16 @@ uint32_t Test_PM_Impl_RuntimeConfigPayloadSerialization()
                            unsignedValue == std::numeric_limits<uint64_t>::max(),
                        "Unsigned payload values round trip through the full uint64 range");
 
-    WPEFramework::Plugin::Utils::RuntimeConfigPayload opaque;
+    Thunder::Plugin::Utils::RuntimeConfigPayload opaque;
     L0Test::ExpectTrue(tr,
                        opaque.Parse("{\"runtimePath\":\"/old/runtime\",\"vendorExtension\":{\"enabled\":true}}", error),
                        "Opaque payload with an unknown property parses successfully");
     opaque.SetString("runtimePath", "/new/runtime");
     L0Test::ExpectTrue(tr, opaque.Serialize(serialized, error), "runtimePath mutation serializes successfully");
 
-    WPEFramework::Core::JSON::VariantContainer object;
+    Thunder::Core::JSON::VariantContainer object;
     L0Test::ExpectTrue(tr, object.FromString(serialized), "Mutated runtime payload remains valid JSON");
-    const WPEFramework::Core::JSON::VariantContainer vendor = object["vendorExtension"].Object();
+    const Thunder::Core::JSON::VariantContainer vendor = object["vendorExtension"].Object();
     L0Test::ExpectTrue(tr,
                        object.HasLabel("vendorExtension") && vendor.HasLabel("enabled") && vendor["enabled"].Boolean(),
                        "runtimePath mutation preserves unknown object properties");
@@ -354,7 +354,7 @@ uint32_t Test_PM_Impl_RuntimeConfigPayloadSerialization()
                        object.HasLabel("runtimePath") && object["runtimePath"].String() == "/new/runtime",
                        "runtimePath mutation updates only the requested property");
 
-    WPEFramework::Plugin::Utils::RuntimeConfigPayload environmentPayload;
+    Thunder::Plugin::Utils::RuntimeConfigPayload environmentPayload;
     L0Test::ExpectTrue(tr,
                        environmentPayload.Parse("{\"envVariables\":[\"FIREBOLT_ENDPOINT=old1\",\"KEEP=value\",\"FIREBOLT_ENDPOINT=old2\"]}", error) &&
                            environmentPayload.UpsertEnvironment("FIREBOLT_ENDPOINT=new", error) &&
@@ -362,7 +362,7 @@ uint32_t Test_PM_Impl_RuntimeConfigPayloadSerialization()
                            values == std::vector<std::string>({ "FIREBOLT_ENDPOINT=new", "KEEP=value" }),
                        "Environment upsert replaces duplicate definitions and preserves unrelated values");
 
-    WPEFramework::Plugin::Utils::RuntimeConfigPayload malformed;
+    Thunder::Plugin::Utils::RuntimeConfigPayload malformed;
     L0Test::ExpectTrue(tr,
                        !malformed.Parse("{\"envVariables\":[\"VALID\"]", error),
                        "Malformed runtime payload serialization is rejected");
@@ -378,7 +378,7 @@ uint32_t Test_PM_Impl_PauseResumeCancelProgressRateLimitWithoutActiveDownload()
 
     L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() succeeds");
 
-    WPEFramework::Exchange::IPackageDownloader::ProgressInfo progress {};
+    Thunder::Exchange::IPackageDownloader::ProgressInfo progress {};
     L0Test::ExpectEqU32(tr, fx.impl->Pause("1"), ERROR_GENERAL, "Pause() with no active download returns ERROR_GENERAL");
     L0Test::ExpectEqU32(tr, fx.impl->Resume("1"), ERROR_GENERAL, "Resume() with no active download returns ERROR_GENERAL");
     L0Test::ExpectEqU32(tr, fx.impl->Cancel("1"), ERROR_GENERAL, "Cancel() with no active download returns ERROR_GENERAL");
@@ -426,16 +426,16 @@ uint32_t Test_PM_Impl_InstallAndUninstallFlowWithNotifications()
                         ERROR_NONE,
                         "Uninstall() succeeds for the package loaded during cache initialization");
 
-    WPEFramework::Exchange::IPackageInstaller::FailReason failReason = WPEFramework::Exchange::IPackageInstaller::FailReason::NONE;
+    Thunder::Exchange::IPackageInstaller::FailReason failReason = Thunder::Exchange::IPackageInstaller::FailReason::NONE;
     const auto installResult = fx.impl->Install(packageId, version, nullptr, "/tmp/fake_pkg.ipk", failReason);
     L0Test::ExpectEqU32(tr, installResult, ERROR_NONE, "Reinstall() returns ERROR_NONE with dummy package impl");
     L0Test::ExpectTrue(tr, notif->installStatusCount.load() >= 4, "Uninstall and reinstall emit installation notifications");
 
-    WPEFramework::Exchange::IPackageInstaller::IPackageIterator* packages = nullptr;
+    Thunder::Exchange::IPackageInstaller::IPackageIterator* packages = nullptr;
     L0Test::ExpectEqU32(tr, fx.impl->ListPackages(packages), ERROR_NONE, "ListPackages() succeeds immediately after reinstall");
     L0Test::ExpectTrue(tr, nullptr != packages, "ListPackages() returns an iterator immediately after reinstall");
     if (nullptr != packages) {
-        WPEFramework::Exchange::IPackageInstaller::Package package;
+        Thunder::Exchange::IPackageInstaller::Package package;
         bool foundPackage = false;
         while (packages->Next(package)) {
             if ((packageId == package.packageId) && (version == package.version)) {
@@ -469,7 +469,7 @@ uint32_t Test_PM_Impl_InstallCreateStorageFailureReportsInstallFailure()
 
     fx.storage.createStorageResult = ERROR_GENERAL;
 
-    WPEFramework::Exchange::IPackageInstaller::FailReason failReason = WPEFramework::Exchange::IPackageInstaller::FailReason::NONE;
+    Thunder::Exchange::IPackageInstaller::FailReason failReason = Thunder::Exchange::IPackageInstaller::FailReason::NONE;
     const std::string packageId = "StorageCreateFailApp";
     const std::string version = "1.2.3";
     const auto installResult = fx.impl->Install(packageId, version, nullptr, "/tmp/storage_create_fail.pkg", failReason);
@@ -479,13 +479,13 @@ uint32_t Test_PM_Impl_InstallCreateStorageFailureReportsInstallFailure()
                         "Install() returns ERROR_GENERAL when CreateStorage() fails after successful package install");
     L0Test::ExpectTrue(tr, fx.storage.createStorageCalls.load() > 0, "CreateStorage() was attempted");
 
-    WPEFramework::Exchange::IPackageInstaller::InstallState state = WPEFramework::Exchange::IPackageInstaller::InstallState::UNINSTALLED;
+    Thunder::Exchange::IPackageInstaller::InstallState state = Thunder::Exchange::IPackageInstaller::InstallState::UNINSTALLED;
     L0Test::ExpectEqU32(tr,
                         fx.impl->PackageState(packageId, version, state),
                         ERROR_NONE,
                         "PackageState() is queryable after CreateStorage() failure");
     L0Test::ExpectTrue(tr,
-                       state == WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALL_FAILURE,
+                       state == Thunder::Exchange::IPackageInstaller::InstallState::INSTALL_FAILURE,
                        "CreateStorage() failure reports INSTALL_FAILURE state");
 
     L0Test::ExpectTrue(tr,
@@ -514,7 +514,7 @@ uint32_t Test_PM_Impl_UninstallDeleteStorageFailureReturnsGeneralAndUninstalledS
     auto* notif = new FakeInstallerNotification();
     L0Test::ExpectEqU32(tr, fx.impl->Register(notif), ERROR_NONE, "Installer Register() returns ERROR_NONE");
 
-    WPEFramework::Exchange::IPackageInstaller::FailReason failReason = WPEFramework::Exchange::IPackageInstaller::FailReason::NONE;
+    Thunder::Exchange::IPackageInstaller::FailReason failReason = Thunder::Exchange::IPackageInstaller::FailReason::NONE;
     const std::string packageId = "DeleteStorageFailApp";
     const std::string version = "4.5.6";
     L0Test::ExpectEqU32(tr,
@@ -532,13 +532,13 @@ uint32_t Test_PM_Impl_UninstallDeleteStorageFailureReturnsGeneralAndUninstalledS
                         "Uninstall() returns ERROR_NONE when DeleteStorage() fails - package binaries removed successfully, storage cleanup is advisory (telemetry captures persistence failure)");
     L0Test::ExpectTrue(tr, fx.storage.deleteStorageCalls.load() > 0, "DeleteStorage() was attempted");
 
-    WPEFramework::Exchange::IPackageInstaller::InstallState state = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
+    Thunder::Exchange::IPackageInstaller::InstallState state = Thunder::Exchange::IPackageInstaller::InstallState::INSTALLED;
     L0Test::ExpectEqU32(tr,
                         fx.impl->PackageState(packageId, version, state),
                         ERROR_NONE,
                         "PackageState() is queryable after DeleteStorage() failure");
     L0Test::ExpectTrue(tr,
-                       state == WPEFramework::Exchange::IPackageInstaller::InstallState::UNINSTALLED,
+                       state == Thunder::Exchange::IPackageInstaller::InstallState::UNINSTALLED,
                        "DeleteStorage() failure keeps package state as UNINSTALLED (partial success semantics)");
 
     L0Test::ExpectTrue(tr,
@@ -567,15 +567,15 @@ uint32_t Test_PM_Impl_LockUnlockAndGetLockedInfo()
     uint32_t lockId = 0;
     std::string unpackedPath;
     std::string runtimeConfig;
-    WPEFramework::Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
+    Thunder::Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
 
     L0Test::ExpectEqU32(tr,
-                        fx.impl->Lock("YouTube", "100.1.24", WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH, lockId, unpackedPath, runtimeConfig, appMetadata),
+                        fx.impl->Lock("YouTube", "100.1.24", Thunder::Exchange::IPackageHandler::LockReason::LAUNCH, lockId, unpackedPath, runtimeConfig, appMetadata),
                         ERROR_NONE,
                         "Lock() for dummy package returns ERROR_NONE");
     L0Test::ExpectTrue(tr, lockId > 0, "Lock() returns non-zero lockId");
 
-    WPEFramework::Plugin::Utils::RuntimeConfigPayload lockPayload;
+    Thunder::Plugin::Utils::RuntimeConfigPayload lockPayload;
     std::string error;
     bool present = false;
     std::vector<std::string> values;
@@ -618,7 +618,7 @@ uint32_t Test_PM_Impl_LockUnlockAndGetLockedInfo()
                         "Unlock() for previously locked package returns ERROR_NONE");
 
     L0Test::ExpectEqU32(tr,
-                        fx.impl->Lock("UnknownApp", "0.0.1", WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH, lockId, unpackedPath, runtimeConfig, appMetadata),
+                        fx.impl->Lock("UnknownApp", "0.0.1", Thunder::Exchange::IPackageHandler::LockReason::LAUNCH, lockId, unpackedPath, runtimeConfig, appMetadata),
                         ERROR_INVALID_PARAMETER,
                         "Lock() for unknown package returns ERROR_INVALID_PARAMETER");
 
@@ -632,8 +632,8 @@ uint32_t Test_PM_Impl_DownloadAndStorageInfoPaths()
 
     L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() succeeds");
 
-    WPEFramework::Exchange::IPackageDownloader::Options options { false, 1, 0 };
-    WPEFramework::Exchange::IPackageDownloader::DownloadId downloadId {};
+    Thunder::Exchange::IPackageDownloader::Options options { false, 1, 0 };
+    Thunder::Exchange::IPackageDownloader::DownloadId downloadId {};
     L0Test::ExpectEqU32(tr,
                         fx.impl->Download("http://127.0.0.1:1/not-found", options, downloadId),
                         ERROR_NONE,
@@ -656,7 +656,7 @@ uint32_t Test_PM_Impl_InstallInputValidationAndUnknownPaths()
     ImplFixture fx;
     L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() succeeds");
 
-    WPEFramework::Exchange::IPackageInstaller::FailReason failReason = WPEFramework::Exchange::IPackageInstaller::FailReason::NONE;
+    Thunder::Exchange::IPackageInstaller::FailReason failReason = Thunder::Exchange::IPackageInstaller::FailReason::NONE;
     L0Test::ExpectEqU32(tr,
                         fx.impl->Install("AppX", "1.0", nullptr, "", failReason),
                         ERROR_INVALID_SIGNATURE,
@@ -674,7 +674,7 @@ uint32_t Test_PM_Impl_InstallInputValidationAndUnknownPaths()
                         ERROR_INVALID_PARAMETER,
                         "Config() for unknown package returns ERROR_INVALID_PARAMETER");
 
-    WPEFramework::Exchange::IPackageInstaller::InstallState state = WPEFramework::Exchange::IPackageInstaller::InstallState::UNINSTALLED;
+    Thunder::Exchange::IPackageInstaller::InstallState state = Thunder::Exchange::IPackageInstaller::InstallState::UNINSTALLED;
     L0Test::ExpectEqU32(tr,
                         fx.impl->PackageState("NoSuchApp", "0", state),
                         ERROR_INVALID_PARAMETER,
@@ -710,8 +710,8 @@ uint32_t Test_PM_Impl_GetLockedInfoAndUnlockNegativePaths()
 uint32_t Test_PM_Impl_InitializeWithNullServiceReturnsError()
 {
     L0Test::TestResult tr;
-    auto* impl = WPEFramework::Core::Service<WPEFramework::Plugin::PackageManagerImplementation>::Create<
-        WPEFramework::Plugin::PackageManagerImplementation>();
+    auto* impl = Thunder::Core::Service<Thunder::Plugin::PackageManagerImplementation>::Create<
+        Thunder::Plugin::PackageManagerImplementation>();
 
     L0Test::ExpectEqU32(tr,
                         impl->Initialize(nullptr),
@@ -730,12 +730,12 @@ uint32_t Test_PM_Impl_DownloadWithoutInternetReturnsUnavailable()
 
     L0Test::ExpectEqU32(tr, fx.Initialize(), ERROR_NONE, "Initialize() succeeds");
 
-    WPEFramework::Exchange::IPackageDownloader::Options options { false, 1, 0 };
-    WPEFramework::Exchange::IPackageDownloader::DownloadId downloadId {};
+    Thunder::Exchange::IPackageDownloader::Options options { false, 1, 0 };
+    Thunder::Exchange::IPackageDownloader::DownloadId downloadId {};
 
     L0Test::ExpectEqU32(tr,
                         fx.impl->Download("http://127.0.0.1:1/offline", options, downloadId),
-                        WPEFramework::Core::ERROR_UNAVAILABLE,
+                        Thunder::Core::ERROR_UNAVAILABLE,
                         "Download() returns ERROR_UNAVAILABLE when INTERNET subsystem is inactive");
 
     return tr.failures;
@@ -756,7 +756,7 @@ uint32_t Test_PM_Impl_GetConfigForPackageSuccessPath()
                         ERROR_NONE,
                         "GetConfigForPackage() with non-empty locator returns ERROR_NONE in UNIT_TEST path");
 
-    WPEFramework::Plugin::Utils::RuntimeConfigPayload payload;
+    Thunder::Plugin::Utils::RuntimeConfigPayload payload;
     std::string error;
     bool present = false;
     std::vector<std::string> values;
@@ -783,10 +783,10 @@ uint32_t Test_PM_Impl_InstallDifferentVersionWhileLocked()
     uint32_t lockId = 0;
     std::string unpackedPath;
     std::string runtimeConfig;
-    WPEFramework::Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
+    Thunder::Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
 
     L0Test::ExpectEqU32(tr,
-        fx.impl->Lock("YouTube", "100.1.24", WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH,
+        fx.impl->Lock("YouTube", "100.1.24", Thunder::Exchange::IPackageHandler::LockReason::LAUNCH,
             lockId, unpackedPath, runtimeConfig, appMetadata),
         ERROR_NONE,
         "Lock() existing package before install");
@@ -796,20 +796,20 @@ uint32_t Test_PM_Impl_InstallDifferentVersionWhileLocked()
         appMetadata = nullptr;
     }
 
-    WPEFramework::Exchange::IPackageInstaller::FailReason failReason = WPEFramework::Exchange::IPackageInstaller::FailReason::NONE;
+    Thunder::Exchange::IPackageInstaller::FailReason failReason = Thunder::Exchange::IPackageInstaller::FailReason::NONE;
     const auto install = fx.impl->Install("YouTube", "200.0.0", nullptr, "/tmp/youtube_200.pkg", failReason);
     L0Test::ExpectEqU32(tr,
         install,
         ERROR_NONE,
         "Install() succeeds while the old version is locked");
 
-    WPEFramework::Exchange::IPackageInstaller::InstallState state = WPEFramework::Exchange::IPackageInstaller::InstallState::UNINSTALLED;
+    Thunder::Exchange::IPackageInstaller::InstallState state = Thunder::Exchange::IPackageInstaller::InstallState::UNINSTALLED;
     L0Test::ExpectEqU32(tr,
         fx.impl->PackageState("YouTube", "200.0.0", state),
         ERROR_NONE,
         "PackageState() for new version is queryable while old version is locked");
     L0Test::ExpectTrue(tr,
-        state == WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED,
+        state == Thunder::Exchange::IPackageInstaller::InstallState::INSTALLED,
         "New version is installed while old version remains locked");
 
     L0Test::ExpectEqU32(tr,
@@ -817,7 +817,7 @@ uint32_t Test_PM_Impl_InstallDifferentVersionWhileLocked()
         ERROR_NONE,
         "PackageState() for old version is queryable while its lock is held");
     L0Test::ExpectTrue(tr,
-        state == WPEFramework::Exchange::IPackageInstaller::InstallState::UNINSTALLED,
+        state == Thunder::Exchange::IPackageInstaller::InstallState::UNINSTALLED,
         "Old version is marked uninstalled after the new version installs");
 
     L0Test::ExpectEqU32(tr,
@@ -830,7 +830,7 @@ uint32_t Test_PM_Impl_InstallDifferentVersionWhileLocked()
         ERROR_NONE,
         "PackageState() for new version remains queryable after unlock");
     L0Test::ExpectTrue(tr,
-        state == WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED,
+        state == Thunder::Exchange::IPackageInstaller::InstallState::INSTALLED,
         "New version remains installed after unlock");
 
     return tr.failures;
@@ -845,10 +845,10 @@ uint32_t Test_PM_Impl_UninstallBlockedWhileLockedThenProcessedOnUnlock()
     uint32_t lockId = 0;
     std::string unpackedPath;
     std::string runtimeConfig;
-    WPEFramework::Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
+    Thunder::Exchange::IPackageHandler::ILockIterator* appMetadata = nullptr;
 
     L0Test::ExpectEqU32(tr,
-        fx.impl->Lock("YouTube", "100.1.24", WPEFramework::Exchange::IPackageHandler::LockReason::LAUNCH,
+        fx.impl->Lock("YouTube", "100.1.24", Thunder::Exchange::IPackageHandler::LockReason::LAUNCH,
             lockId, unpackedPath, runtimeConfig, appMetadata),
         ERROR_NONE,
         "Lock() existing package before uninstall-block test");
@@ -865,13 +865,13 @@ uint32_t Test_PM_Impl_UninstallBlockedWhileLockedThenProcessedOnUnlock()
         ERROR_GENERAL,
         "Uninstall() returns ERROR_GENERAL while package is locked (blocked uninstall)");
 
-    WPEFramework::Exchange::IPackageInstaller::InstallState state = WPEFramework::Exchange::IPackageInstaller::InstallState::UNINSTALLED;
+    Thunder::Exchange::IPackageInstaller::InstallState state = Thunder::Exchange::IPackageInstaller::InstallState::UNINSTALLED;
     L0Test::ExpectEqU32(tr,
         fx.impl->PackageState("YouTube", "100.1.24", state),
         ERROR_NONE,
         "PackageState() remains queryable during blocked uninstall");
     L0Test::ExpectTrue(tr,
-        state == WPEFramework::Exchange::IPackageInstaller::InstallState::UNINSTALL_BLOCKED,
+        state == Thunder::Exchange::IPackageInstaller::InstallState::UNINSTALL_BLOCKED,
         "State is UNINSTALL_BLOCKED while lock is held");
 
     L0Test::ExpectEqU32(tr,
@@ -884,7 +884,7 @@ uint32_t Test_PM_Impl_UninstallBlockedWhileLockedThenProcessedOnUnlock()
         ERROR_NONE,
         "PackageState() is queryable after blocked uninstall processing");
     L0Test::ExpectTrue(tr,
-        state == WPEFramework::Exchange::IPackageInstaller::InstallState::UNINSTALLED,
+        state == Thunder::Exchange::IPackageInstaller::InstallState::UNINSTALLED,
         "Blocked uninstall transitions to UNINSTALLED after unlock");
 
     return tr.failures;
@@ -900,20 +900,20 @@ uint32_t Test_PM_Impl_InstallFailureReasonBranches()
     const std::string ids[] = { "MismatchApp", "PersistFailApp", "VerifyFailApp" };
 
     for (size_t idx = 0; idx < 3; ++idx) {
-        WPEFramework::Exchange::IPackageInstaller::FailReason failReason = WPEFramework::Exchange::IPackageInstaller::FailReason::NONE;
+        Thunder::Exchange::IPackageInstaller::FailReason failReason = Thunder::Exchange::IPackageInstaller::FailReason::NONE;
         const auto rc = fx.impl->Install(ids[idx], versions[idx], nullptr, "/tmp/failure.pkg", failReason);
         L0Test::ExpectEqU32(tr,
             rc,
             ERROR_GENERAL,
             std::string("Install() failure branch returns ERROR_GENERAL for ") + ids[idx]);
 
-        WPEFramework::Exchange::IPackageInstaller::InstallState state = WPEFramework::Exchange::IPackageInstaller::InstallState::UNINSTALLED;
+        Thunder::Exchange::IPackageInstaller::InstallState state = Thunder::Exchange::IPackageInstaller::InstallState::UNINSTALLED;
         L0Test::ExpectEqU32(tr,
             fx.impl->PackageState(ids[idx], versions[idx], state),
             ERROR_NONE,
             std::string("PackageState() is queryable after failed install for ") + ids[idx]);
         L0Test::ExpectTrue(tr,
-            state == WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALL_FAILURE,
+            state == Thunder::Exchange::IPackageInstaller::InstallState::INSTALL_FAILURE,
             std::string("Failed install transitions to INSTALL_FAILURE for ") + ids[idx]);
     }
 
@@ -1006,12 +1006,12 @@ uint32_t Test_PM_Impl_GetRunningApplicationsUsingPackageCacheUnavailable()
     // No Initialize(): packageImpl stays null until the cache initialization runs,
     // so CHECK_CACHE rejects the call. Deinitialize is skipped deliberately - with
     // no Initialize there is no downloader thread or service to tear down.
-    auto* impl = WPEFramework::Core::Service<WPEFramework::Plugin::PackageManagerImplementation>::Create<
-        WPEFramework::Plugin::PackageManagerImplementation>();
+    auto* impl = Thunder::Core::Service<Thunder::Plugin::PackageManagerImplementation>::Create<
+        Thunder::Plugin::PackageManagerImplementation>();
     std::string applicationIds;
     L0Test::ExpectEqU32(tr,
         impl->GetRunningApplicationsUsingPackage("YouTube", applicationIds),
-        WPEFramework::Core::ERROR_UNAVAILABLE,
+        Thunder::Core::ERROR_UNAVAILABLE,
         "GetRunningApplicationsUsingPackage() before cache initialization returns ERROR_UNAVAILABLE");
     impl->Release();
 

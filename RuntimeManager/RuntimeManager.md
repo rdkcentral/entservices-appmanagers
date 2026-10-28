@@ -449,7 +449,7 @@ ans(configuration)
 
 - `yaml-cpp` - For YAML configuration parsing
 - `jsoncpp` - For JSON/OCI spec generation
-- `WPEFramework` - Thunder framework
+- `Thunder` - Thunder framework
 - `RialtoServerManager` (optional) - For Rialto integration
 
 ---

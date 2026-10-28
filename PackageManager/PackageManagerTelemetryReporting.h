@@ -22,7 +22,7 @@
 #include "Module.h"
 #include "TelemetryReportingBase.h"
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
 class PackageManagerTelemetryReporting : public Utils::TelemetryReportingBase {
@@ -49,4 +49,4 @@ private:
 };
 
 } // namespace Plugin
-} // namespace WPEFramework
+} // namespace Thunder

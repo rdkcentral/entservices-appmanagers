@@ -23,7 +23,7 @@
 #include <string>
 #include <vector>
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
 struct RuntimeConfiguration {
@@ -65,4 +65,4 @@ public:
 };
 
 } // namespace Plugin
-} // namespace WPEFramework
+} // namespace Thunder

@@ -12,7 +12,7 @@
 
 namespace {
 
-using namespace WPEFramework;
+using namespace Thunder;
 
 class FakeAppManager : public Exchange::IAppManager {
 public:
@@ -160,13 +160,13 @@ Plugin::VictimSelectorImplementation* CreateSelector(FakeAppManager*& appManager
 uint32_t Test_VS_NonRamEvictionIsRejected()
 {
     L0Test::TestResult result;
-    FakeAppManager* appManager = new FakeAppManager(std::list<WPEFramework::Exchange::IAppManager::LoadedAppInfo>());
-    WPEFramework::Plugin::VictimSelectorImplementation* selector = CreateSelector(appManager);
+    FakeAppManager* appManager = new FakeAppManager(std::list<Thunder::Exchange::IAppManager::LoadedAppInfo>());
+    Thunder::Plugin::VictimSelectorImplementation* selector = CreateSelector(appManager);
 
-    const WPEFramework::Core::hresult status = selector->Evict(
-        WPEFramework::Exchange::IVictimSelector::EVICTION_REASON_GPU,
-        WPEFramework::Exchange::IVictimSelector::EVICTION_TYPE_SOFT);
-    L0Test::ExpectEqU32(result, status, WPEFramework::Core::ERROR_UNAVAILABLE, "Non-RAM evictions are rejected");
+    const Thunder::Core::hresult status = selector->Evict(
+        Thunder::Exchange::IVictimSelector::EVICTION_REASON_GPU,
+        Thunder::Exchange::IVictimSelector::EVICTION_TYPE_SOFT);
+    L0Test::ExpectEqU32(result, status, Thunder::Core::ERROR_UNAVAILABLE, "Non-RAM evictions are rejected");
     L0Test::ExpectEqU32(result, appManager->getLoadedAppsCalls, 0, "Rejected eviction does not load app list");
 
     selector->Release();
@@ -176,16 +176,16 @@ uint32_t Test_VS_NonRamEvictionIsRejected()
 uint32_t Test_VS_EvictionWithoutRuntimeManagerIsRejected()
 {
     L0Test::TestResult result;
-    std::list<WPEFramework::Exchange::IAppManager::LoadedAppInfo> apps;
-    apps.push_back(LoadedApp("candidate", WPEFramework::Exchange::IAppManager::APP_STATE_SUSPENDED));
+    std::list<Thunder::Exchange::IAppManager::LoadedAppInfo> apps;
+    apps.push_back(LoadedApp("candidate", Thunder::Exchange::IAppManager::APP_STATE_SUSPENDED));
     FakeAppManager* appManager = new FakeAppManager(apps);
-    WPEFramework::Plugin::VictimSelectorImplementation* selector = WPEFramework::Core::Service<WPEFramework::Plugin::VictimSelectorImplementation>::Create<WPEFramework::Plugin::VictimSelectorImplementation>();
+    Thunder::Plugin::VictimSelectorImplementation* selector = Thunder::Core::Service<Thunder::Plugin::VictimSelectorImplementation>::Create<Thunder::Plugin::VictimSelectorImplementation>();
     selector->mAppManager = appManager;
 
-    const WPEFramework::Core::hresult status = selector->Evict(
-        WPEFramework::Exchange::IVictimSelector::EVICTION_REASON_RAM,
-        WPEFramework::Exchange::IVictimSelector::EVICTION_TYPE_SOFT);
-    L0Test::ExpectEqU32(result, status, WPEFramework::Core::ERROR_UNAVAILABLE, "Eviction without RuntimeManager is rejected");
+    const Thunder::Core::hresult status = selector->Evict(
+        Thunder::Exchange::IVictimSelector::EVICTION_REASON_RAM,
+        Thunder::Exchange::IVictimSelector::EVICTION_TYPE_SOFT);
+    L0Test::ExpectEqU32(result, status, Thunder::Core::ERROR_UNAVAILABLE, "Eviction without RuntimeManager is rejected");
     L0Test::ExpectEqU32(result, appManager->getLoadedAppsCalls, 0, "Unavailable RuntimeManager does not load app list");
 
     selector->Release();
@@ -195,20 +195,20 @@ uint32_t Test_VS_EvictionWithoutRuntimeManagerIsRejected()
 uint32_t Test_VS_SoftEvictionSelectsPausedCandidate()
 {
     L0Test::TestResult result;
-    std::list<WPEFramework::Exchange::IAppManager::LoadedAppInfo> apps;
-    apps.push_back(LoadedApp("protected", WPEFramework::Exchange::IAppManager::APP_STATE_PAUSED));
-    apps.push_back(LoadedApp("paused", WPEFramework::Exchange::IAppManager::APP_STATE_PAUSED));
-    apps.push_back(LoadedApp("suspended", WPEFramework::Exchange::IAppManager::APP_STATE_SUSPENDED));
+    std::list<Thunder::Exchange::IAppManager::LoadedAppInfo> apps;
+    apps.push_back(LoadedApp("protected", Thunder::Exchange::IAppManager::APP_STATE_PAUSED));
+    apps.push_back(LoadedApp("paused", Thunder::Exchange::IAppManager::APP_STATE_PAUSED));
+    apps.push_back(LoadedApp("suspended", Thunder::Exchange::IAppManager::APP_STATE_SUSPENDED));
     FakeAppManager* appManager = new FakeAppManager(apps);
     appManager->priorities["protected"] = "0";
     appManager->priorities["paused"] = "2";
     appManager->priorities["suspended"] = "2";
-    WPEFramework::Plugin::VictimSelectorImplementation* selector = CreateSelector(appManager);
+    Thunder::Plugin::VictimSelectorImplementation* selector = CreateSelector(appManager);
 
-    const WPEFramework::Core::hresult status = selector->Evict(
-        WPEFramework::Exchange::IVictimSelector::EVICTION_REASON_RAM,
-        WPEFramework::Exchange::IVictimSelector::EVICTION_TYPE_SOFT);
-    L0Test::ExpectEqU32(result, status, WPEFramework::Core::ERROR_NONE, "RAM eviction starts successfully");
+    const Thunder::Core::hresult status = selector->Evict(
+        Thunder::Exchange::IVictimSelector::EVICTION_REASON_RAM,
+        Thunder::Exchange::IVictimSelector::EVICTION_TYPE_SOFT);
+    L0Test::ExpectEqU32(result, status, Thunder::Core::ERROR_NONE, "RAM eviction starts successfully");
     L0Test::ExpectEqStr(result, appManager->terminatedAppId, "paused", "Single eligible paused app is selected before suspended app");
     L0Test::ExpectTrue(result, appManager->killedAppId.empty(), "Soft eviction does not kill the selected paused app");
     L0Test::ExpectEqU32(result, static_cast<FakeRuntimeManager*>(selector->mRuntimeManager)->getInfoCalls, 1,
@@ -221,18 +221,18 @@ uint32_t Test_VS_SoftEvictionSelectsPausedCandidate()
 uint32_t Test_VS_SelectsHighestPriorityCandidate()
 {
     L0Test::TestResult result;
-    std::list<WPEFramework::Exchange::IAppManager::LoadedAppInfo> apps;
-    apps.push_back(LoadedApp("low-priority", WPEFramework::Exchange::IAppManager::APP_STATE_SUSPENDED));
-    apps.push_back(LoadedApp("high-priority", WPEFramework::Exchange::IAppManager::APP_STATE_SUSPENDED));
+    std::list<Thunder::Exchange::IAppManager::LoadedAppInfo> apps;
+    apps.push_back(LoadedApp("low-priority", Thunder::Exchange::IAppManager::APP_STATE_SUSPENDED));
+    apps.push_back(LoadedApp("high-priority", Thunder::Exchange::IAppManager::APP_STATE_SUSPENDED));
     FakeAppManager* appManager = new FakeAppManager(apps);
     appManager->priorities["low-priority"] = "1";
     appManager->priorities["high-priority"] = "2";
-    WPEFramework::Plugin::VictimSelectorImplementation* selector = CreateSelector(appManager);
+    Thunder::Plugin::VictimSelectorImplementation* selector = CreateSelector(appManager);
 
-    const WPEFramework::Core::hresult status = selector->Evict(
-        WPEFramework::Exchange::IVictimSelector::EVICTION_REASON_RAM,
-        WPEFramework::Exchange::IVictimSelector::EVICTION_TYPE_SOFT);
-    L0Test::ExpectEqU32(result, status, WPEFramework::Core::ERROR_NONE, "RAM eviction starts successfully");
+    const Thunder::Core::hresult status = selector->Evict(
+        Thunder::Exchange::IVictimSelector::EVICTION_REASON_RAM,
+        Thunder::Exchange::IVictimSelector::EVICTION_TYPE_SOFT);
+    L0Test::ExpectEqU32(result, status, Thunder::Core::ERROR_NONE, "RAM eviction starts successfully");
     L0Test::ExpectEqStr(result, appManager->terminatedAppId, "high-priority", "Higher eviction priority is selected first");
 
     selector->Release();
@@ -242,21 +242,21 @@ uint32_t Test_VS_SelectsHighestPriorityCandidate()
 uint32_t Test_VS_SelectsLargestMemoryCandidateAtSamePriority()
 {
     L0Test::TestResult result;
-    std::list<WPEFramework::Exchange::IAppManager::LoadedAppInfo> apps;
-    apps.push_back(LoadedApp("smaller", WPEFramework::Exchange::IAppManager::APP_STATE_SUSPENDED));
-    apps.push_back(LoadedApp("larger", WPEFramework::Exchange::IAppManager::APP_STATE_SUSPENDED));
+    std::list<Thunder::Exchange::IAppManager::LoadedAppInfo> apps;
+    apps.push_back(LoadedApp("smaller", Thunder::Exchange::IAppManager::APP_STATE_SUSPENDED));
+    apps.push_back(LoadedApp("larger", Thunder::Exchange::IAppManager::APP_STATE_SUSPENDED));
     FakeAppManager* appManager = new FakeAppManager(apps);
     appManager->priorities["smaller"] = "2";
     appManager->priorities["larger"] = "2";
-    WPEFramework::Plugin::VictimSelectorImplementation* selector = CreateSelector(appManager);
+    Thunder::Plugin::VictimSelectorImplementation* selector = CreateSelector(appManager);
     FakeRuntimeManager* runtimeManager = static_cast<FakeRuntimeManager*>(selector->mRuntimeManager);
     runtimeManager->runtimeInfo["smaller.instance"] = "{\"memory\":{\"user\":{\"usage\":100}}}";
     runtimeManager->runtimeInfo["larger.instance"] = "{\"memory\":{\"user\":{\"usage\":200}}}";
 
-    const WPEFramework::Core::hresult status = selector->Evict(
-        WPEFramework::Exchange::IVictimSelector::EVICTION_REASON_RAM,
-        WPEFramework::Exchange::IVictimSelector::EVICTION_TYPE_SOFT);
-    L0Test::ExpectEqU32(result, status, WPEFramework::Core::ERROR_NONE, "RAM eviction starts successfully");
+    const Thunder::Core::hresult status = selector->Evict(
+        Thunder::Exchange::IVictimSelector::EVICTION_REASON_RAM,
+        Thunder::Exchange::IVictimSelector::EVICTION_TYPE_SOFT);
+    L0Test::ExpectEqU32(result, status, Thunder::Core::ERROR_NONE, "RAM eviction starts successfully");
     L0Test::ExpectEqStr(result, appManager->terminatedAppId, "larger", "Largest memory user is selected at the same priority");
 
     selector->Release();
@@ -266,18 +266,18 @@ uint32_t Test_VS_SelectsLargestMemoryCandidateAtSamePriority()
 uint32_t Test_VS_NoCandidateNotifiesCaller()
 {
     L0Test::TestResult result;
-    FakeAppManager* appManager = new FakeAppManager(std::list<WPEFramework::Exchange::IAppManager::LoadedAppInfo>());
-    WPEFramework::Plugin::VictimSelectorImplementation* selector = CreateSelector(appManager);
+    FakeAppManager* appManager = new FakeAppManager(std::list<Thunder::Exchange::IAppManager::LoadedAppInfo>());
+    Thunder::Plugin::VictimSelectorImplementation* selector = CreateSelector(appManager);
     FakeEvictionNotification* notification = new FakeEvictionNotification();
     selector->Register(notification);
 
-    const WPEFramework::Core::hresult status = selector->Evict(
-        WPEFramework::Exchange::IVictimSelector::EVICTION_REASON_RAM,
-        WPEFramework::Exchange::IVictimSelector::EVICTION_TYPE_SOFT);
-    L0Test::ExpectEqU32(result, status, WPEFramework::Core::ERROR_NONE, "No-candidate eviction completes successfully");
+    const Thunder::Core::hresult status = selector->Evict(
+        Thunder::Exchange::IVictimSelector::EVICTION_REASON_RAM,
+        Thunder::Exchange::IVictimSelector::EVICTION_TYPE_SOFT);
+    L0Test::ExpectEqU32(result, status, Thunder::Core::ERROR_NONE, "No-candidate eviction completes successfully");
     L0Test::ExpectEqU32(result, notification->completionCalls, 1, "No-candidate eviction notifies caller");
     L0Test::ExpectTrue(result, !notification->lastEvicted, "No-candidate notification reports no eviction");
-    L0Test::ExpectEqU32(result, notification->lastError, WPEFramework::Exchange::IVictimSelector::EVICT_ERROR_NO_CANDIDATE_FOUND, "No-candidate notification reports the reason");
+    L0Test::ExpectEqU32(result, notification->lastError, Thunder::Exchange::IVictimSelector::EVICT_ERROR_NO_CANDIDATE_FOUND, "No-candidate notification reports the reason");
 
     selector->Unregister(notification);
     notification->Release();
@@ -288,20 +288,20 @@ uint32_t Test_VS_NoCandidateNotifiesCaller()
 uint32_t Test_VS_HardEvictionEscalatesPendingSoftEviction()
 {
     L0Test::TestResult result;
-    std::list<WPEFramework::Exchange::IAppManager::LoadedAppInfo> apps;
-    apps.push_back(LoadedApp("candidate", WPEFramework::Exchange::IAppManager::APP_STATE_SUSPENDED));
+    std::list<Thunder::Exchange::IAppManager::LoadedAppInfo> apps;
+    apps.push_back(LoadedApp("candidate", Thunder::Exchange::IAppManager::APP_STATE_SUSPENDED));
     FakeAppManager* appManager = new FakeAppManager(apps);
     appManager->priorities["candidate"] = "2";
-    WPEFramework::Plugin::VictimSelectorImplementation* selector = CreateSelector(appManager);
+    Thunder::Plugin::VictimSelectorImplementation* selector = CreateSelector(appManager);
 
-    const WPEFramework::Core::hresult softStatus = selector->Evict(
-        WPEFramework::Exchange::IVictimSelector::EVICTION_REASON_RAM,
-        WPEFramework::Exchange::IVictimSelector::EVICTION_TYPE_SOFT);
-    const WPEFramework::Core::hresult hardStatus = selector->Evict(
-        WPEFramework::Exchange::IVictimSelector::EVICTION_REASON_RAM,
-        WPEFramework::Exchange::IVictimSelector::EVICTION_TYPE_HARD);
-    L0Test::ExpectEqU32(result, softStatus, WPEFramework::Core::ERROR_NONE, "Soft eviction starts successfully");
-    L0Test::ExpectEqU32(result, hardStatus, WPEFramework::Core::ERROR_NONE, "Hard request escalates pending soft eviction");
+    const Thunder::Core::hresult softStatus = selector->Evict(
+        Thunder::Exchange::IVictimSelector::EVICTION_REASON_RAM,
+        Thunder::Exchange::IVictimSelector::EVICTION_TYPE_SOFT);
+    const Thunder::Core::hresult hardStatus = selector->Evict(
+        Thunder::Exchange::IVictimSelector::EVICTION_REASON_RAM,
+        Thunder::Exchange::IVictimSelector::EVICTION_TYPE_HARD);
+    L0Test::ExpectEqU32(result, softStatus, Thunder::Core::ERROR_NONE, "Soft eviction starts successfully");
+    L0Test::ExpectEqU32(result, hardStatus, Thunder::Core::ERROR_NONE, "Hard request escalates pending soft eviction");
     L0Test::ExpectEqU32(result, appManager->terminateCalls, 1, "Soft eviction terminates selected app once");
     L0Test::ExpectEqU32(result, appManager->killCalls, 1, "Hard escalation kills the pending app once");
     L0Test::ExpectEqStr(result, appManager->killedAppId, "candidate", "Hard escalation targets the pending app");

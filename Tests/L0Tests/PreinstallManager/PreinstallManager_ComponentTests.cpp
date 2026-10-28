@@ -53,11 +53,11 @@
 namespace {
 
 /* Creates a PreinstallManagerImplementation with refcount=1. */
-WPEFramework::Plugin::PreinstallManagerImplementation* CreateImpl()
+Thunder::Plugin::PreinstallManagerImplementation* CreateImpl()
 {
-    return WPEFramework::Core::Service<
-        WPEFramework::Plugin::PreinstallManagerImplementation>::Create<
-        WPEFramework::Plugin::PreinstallManagerImplementation>();
+    return Thunder::Core::Service<
+        Thunder::Plugin::PreinstallManagerImplementation>::Create<
+        Thunder::Plugin::PreinstallManagerImplementation>();
 }
 
 /* RAII temporary directory.  Cleaned up (recursively, one level) on destruction. */
@@ -101,15 +101,15 @@ struct TempDir {
 };
 
 /* Wait until GetPreinstallState returns COMPLETED or the deadline passes. */
-bool WaitForCompleted(WPEFramework::Plugin::PreinstallManagerImplementation* impl,
+bool WaitForCompleted(Thunder::Plugin::PreinstallManagerImplementation* impl,
                       std::chrono::milliseconds timeout = std::chrono::milliseconds(5000))
 {
     using Clock = std::chrono::steady_clock;
     const auto deadline = Clock::now() + timeout;
-    WPEFramework::Exchange::IPreinstallManager::State state;
+    Thunder::Exchange::IPreinstallManager::State state;
     do {
         impl->GetPreinstallState(state);
-        if (state == WPEFramework::Exchange::IPreinstallManager::State::COMPLETED) {
+        if (state == Thunder::Exchange::IPreinstallManager::State::COMPLETED) {
             return true;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -135,7 +135,7 @@ bool WaitForNotification(const std::atomic<uint32_t>& counter,
  * This prevents async worker-pool jobs from releasing the final reference only
  * after test stack objects (e.g. ServiceMock) are destroyed.
  */
-bool ReleaseAndWaitForDestruction(WPEFramework::Plugin::PreinstallManagerImplementation* impl,
+bool ReleaseAndWaitForDestruction(Thunder::Plugin::PreinstallManagerImplementation* impl,
                                   std::chrono::milliseconds timeout = std::chrono::milliseconds(5000))
 {
     if (impl == nullptr) {
@@ -147,13 +147,13 @@ bool ReleaseAndWaitForDestruction(WPEFramework::Plugin::PreinstallManagerImpleme
     using Clock = std::chrono::steady_clock;
     const auto deadline = Clock::now() + timeout;
     do {
-        if (WPEFramework::Plugin::PreinstallManagerImplementation::getInstance() == nullptr) {
+        if (Thunder::Plugin::PreinstallManagerImplementation::getInstance() == nullptr) {
             return true;
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(5));
     } while (Clock::now() < deadline);
 
-    return (WPEFramework::Plugin::PreinstallManagerImplementation::getInstance() == nullptr);
+    return (Thunder::Plugin::PreinstallManagerImplementation::getInstance() == nullptr);
 }
 
 } // namespace
@@ -174,7 +174,7 @@ uint32_t Test_Comp_PIM_StartPreinstallInvalidDirectoryFails()
                                      std::string&) {
         id      = "testapp";
         version = "1.0.0";
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     };
 
     L0Test::ServiceMock::Config cfg(&installer);
@@ -187,7 +187,7 @@ uint32_t Test_Comp_PIM_StartPreinstallInvalidDirectoryFails()
     impl->Configure(&service);
 
     const auto result = impl->StartPreinstall(true);
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_GENERAL,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_GENERAL,
                         "StartPreinstall returns ERROR_GENERAL when directory does not exist");
 
     L0Test::ExpectTrue(tr, ReleaseAndWaitForDestruction(impl),
@@ -223,16 +223,16 @@ uint32_t Test_Comp_PIM_StartPreinstallEmptyDirSendsCompletionEvent()
     impl->Configure(&service);
 
     const auto result = impl->StartPreinstall(true);
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE,
                         "StartPreinstall returns ERROR_NONE for an empty directory");
 
     // Empty dir → packages list is empty → state becomes COMPLETED synchronously
     // and the completion event is dispatched via the worker pool.
-    WPEFramework::Exchange::IPreinstallManager::State state;
+    Thunder::Exchange::IPreinstallManager::State state;
     impl->GetPreinstallState(state);
     L0Test::ExpectEqU32(tr,
                         static_cast<uint32_t>(state),
-                        static_cast<uint32_t>(WPEFramework::Exchange::IPreinstallManager::State::COMPLETED),
+                        static_cast<uint32_t>(Thunder::Exchange::IPreinstallManager::State::COMPLETED),
                         "State is COMPLETED immediately after empty-dir StartPreinstall");
 
     // Wait for the worker-pool job to fire the notification.
@@ -268,15 +268,15 @@ uint32_t Test_Comp_PIM_StartPreinstallAlreadyInProgressReturnsError()
                                      std::string&) {
         id      = "myapp";
         version = "1.0.0";
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     };
     // Make Install sleep a bit to keep IN_PROGRESS long enough.
     installer.installHandler = [](const std::string&, const std::string&,
-                                   WPEFramework::Exchange::IPackageInstaller::IKeyValueIterator* const&,
+                                   Thunder::Exchange::IPackageInstaller::IKeyValueIterator* const&,
                                    const std::string&,
-                                   WPEFramework::Exchange::IPackageInstaller::FailReason&) {
+                                   Thunder::Exchange::IPackageInstaller::FailReason&) {
         std::this_thread::sleep_for(std::chrono::milliseconds(200));
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     };
 
     L0Test::ServiceMock::Config cfg(&installer);
@@ -290,15 +290,15 @@ uint32_t Test_Comp_PIM_StartPreinstallAlreadyInProgressReturnsError()
 
     // First call—should succeed and spawn the thread.
     const auto firstResult = impl->StartPreinstall(true);
-    L0Test::ExpectEqU32(tr, firstResult, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, firstResult, Thunder::Core::ERROR_NONE,
                         "First StartPreinstall(true) succeeds");
 
     // Second call—should fail because IN_PROGRESS.
-    WPEFramework::Exchange::IPreinstallManager::State state;
+    Thunder::Exchange::IPreinstallManager::State state;
     impl->GetPreinstallState(state);
-    if (state == WPEFramework::Exchange::IPreinstallManager::State::IN_PROGRESS) {
+    if (state == Thunder::Exchange::IPreinstallManager::State::IN_PROGRESS) {
         const auto secondResult = impl->StartPreinstall(true);
-        L0Test::ExpectEqU32(tr, secondResult, WPEFramework::Core::ERROR_GENERAL,
+        L0Test::ExpectEqU32(tr, secondResult, Thunder::Core::ERROR_GENERAL,
                             "Second StartPreinstall while IN_PROGRESS returns ERROR_GENERAL");
     } else {
         // Install finished faster than expected — this is also acceptable.
@@ -341,7 +341,7 @@ uint32_t Test_Comp_PIM_StartPreinstallForceInstallAllPackages()
         const auto slash = locator.rfind('/');
         id      = (slash != std::string::npos) ? locator.substr(slash + 1) : locator;
         version = "2.0.0";
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     };
 
     L0Test::ServiceMock::Config cfg(&installer);
@@ -354,18 +354,18 @@ uint32_t Test_Comp_PIM_StartPreinstallForceInstallAllPackages()
     impl->Configure(&service);
 
     const auto result = impl->StartPreinstall(true /* forceInstall */);
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE,
                         "StartPreinstall(force=true) returns ERROR_NONE");
 
     // Wait for install thread to complete.
     const bool completed = WaitForCompleted(impl);
     L0Test::ExpectTrue(tr, completed, "State reaches COMPLETED within timeout");
 
-    WPEFramework::Exchange::IPreinstallManager::State state;
+    Thunder::Exchange::IPreinstallManager::State state;
     impl->GetPreinstallState(state);
     L0Test::ExpectEqU32(tr,
                         static_cast<uint32_t>(state),
-                        static_cast<uint32_t>(WPEFramework::Exchange::IPreinstallManager::State::COMPLETED),
+                        static_cast<uint32_t>(Thunder::Exchange::IPreinstallManager::State::COMPLETED),
                         "State is COMPLETED after force install");
 
     // Install should have been called for both packages.
@@ -405,19 +405,19 @@ uint32_t Test_Comp_PIM_StartPreinstallFiltersOlderVersionWhenNotForce()
                                      std::string&) {
         id      = "myapp";
         version = "1.5.0"; // older than the installed version
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     };
 
     // ListPackages returns myapp at version 2.0.0 already installed.
-    installer.listPackagesHandler = [](WPEFramework::Exchange::IPackageInstaller::IPackageIterator*& packages) {
-        std::list<WPEFramework::Exchange::IPackageInstaller::Package> pkgs;
-        WPEFramework::Exchange::IPackageInstaller::Package pkg;
+    installer.listPackagesHandler = [](Thunder::Exchange::IPackageInstaller::IPackageIterator*& packages) {
+        std::list<Thunder::Exchange::IPackageInstaller::Package> pkgs;
+        Thunder::Exchange::IPackageInstaller::Package pkg;
         pkg.packageId = "myapp";
         pkg.version   = "2.0.0";
-        pkg.state     = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
+        pkg.state     = Thunder::Exchange::IPackageInstaller::InstallState::INSTALLED;
         pkgs.push_back(pkg);
         packages = L0Test::MakePackageIterator(pkgs);
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     };
 
     L0Test::ServiceMock::Config cfg(&installer);
@@ -430,15 +430,15 @@ uint32_t Test_Comp_PIM_StartPreinstallFiltersOlderVersionWhenNotForce()
     impl->Configure(&service);
 
     const auto result = impl->StartPreinstall(false /* forceInstall disabled */);
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE,
                         "StartPreinstall(force=false) with older version returns ERROR_NONE");
 
     // All packages filtered out → empty list path → COMPLETED without Install call.
-    WPEFramework::Exchange::IPreinstallManager::State state;
+    Thunder::Exchange::IPreinstallManager::State state;
     impl->GetPreinstallState(state);
     L0Test::ExpectEqU32(tr,
                         static_cast<uint32_t>(state),
-                        static_cast<uint32_t>(WPEFramework::Exchange::IPreinstallManager::State::COMPLETED),
+                        static_cast<uint32_t>(Thunder::Exchange::IPreinstallManager::State::COMPLETED),
                         "State is COMPLETED after all packages filtered out");
 
     L0Test::ExpectEqU32(tr, installer.installCallCount.load(), 0U,
@@ -476,19 +476,19 @@ uint32_t Test_Comp_PIM_StartPreinstallInstallsNewerVersionWhenNotForce()
                                      std::string&) {
         id      = "myapp";
         version = "3.0.0"; // newer than installed
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     };
 
     // ListPackages returns myapp at 2.0.0.
-    installer.listPackagesHandler = [](WPEFramework::Exchange::IPackageInstaller::IPackageIterator*& packages) {
-        std::list<WPEFramework::Exchange::IPackageInstaller::Package> pkgs;
-        WPEFramework::Exchange::IPackageInstaller::Package pkg;
+    installer.listPackagesHandler = [](Thunder::Exchange::IPackageInstaller::IPackageIterator*& packages) {
+        std::list<Thunder::Exchange::IPackageInstaller::Package> pkgs;
+        Thunder::Exchange::IPackageInstaller::Package pkg;
         pkg.packageId = "myapp";
         pkg.version   = "2.0.0";
-        pkg.state     = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
+        pkg.state     = Thunder::Exchange::IPackageInstaller::InstallState::INSTALLED;
         pkgs.push_back(pkg);
         packages = L0Test::MakePackageIterator(pkgs);
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     };
 
     L0Test::ServiceMock::Config cfg(&installer);
@@ -501,7 +501,7 @@ uint32_t Test_Comp_PIM_StartPreinstallInstallsNewerVersionWhenNotForce()
     impl->Configure(&service);
 
     const auto result = impl->StartPreinstall(false);
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE,
                         "StartPreinstall(force=false) with newer version returns ERROR_NONE");
 
     const bool completed = WaitForCompleted(impl);
@@ -540,17 +540,17 @@ uint32_t Test_Comp_PIM_StartPreinstallEqualVersionFilteredSendsCompletionEvent()
                                      std::string&) {
         id      = "myapp";
         version = "1.0.0"; // same as installed
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     };
-    installer.listPackagesHandler = [](WPEFramework::Exchange::IPackageInstaller::IPackageIterator*& packages) {
-        std::list<WPEFramework::Exchange::IPackageInstaller::Package> pkgs;
-        WPEFramework::Exchange::IPackageInstaller::Package pkg;
+    installer.listPackagesHandler = [](Thunder::Exchange::IPackageInstaller::IPackageIterator*& packages) {
+        std::list<Thunder::Exchange::IPackageInstaller::Package> pkgs;
+        Thunder::Exchange::IPackageInstaller::Package pkg;
         pkg.packageId = "myapp";
         pkg.version   = "1.0.0"; // equal — should be filtered
-        pkg.state     = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
+        pkg.state     = Thunder::Exchange::IPackageInstaller::InstallState::INSTALLED;
         pkgs.push_back(pkg);
         packages = L0Test::MakePackageIterator(pkgs);
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     };
 
     L0Test::ServiceMock::Config cfg(&installer);
@@ -564,11 +564,11 @@ uint32_t Test_Comp_PIM_StartPreinstallEqualVersionFilteredSendsCompletionEvent()
 
     impl->StartPreinstall(false);
 
-    WPEFramework::Exchange::IPreinstallManager::State state;
+    Thunder::Exchange::IPreinstallManager::State state;
     impl->GetPreinstallState(state);
     L0Test::ExpectEqU32(tr,
                         static_cast<uint32_t>(state),
-                        static_cast<uint32_t>(WPEFramework::Exchange::IPreinstallManager::State::COMPLETED),
+                        static_cast<uint32_t>(Thunder::Exchange::IPreinstallManager::State::COMPLETED),
                         "State COMPLETED when equal version filtered out");
     L0Test::ExpectEqU32(tr, installer.installCallCount.load(), 0U,
                         "Install() NOT called for equal version");
@@ -604,7 +604,7 @@ uint32_t Test_Comp_PIM_InstallPackagesWithInvalidFieldsSkipsPackage()
                                      std::string& /*version*/,
                                      std::string&) {
         id = ""; // empty packageId
-        return WPEFramework::Core::ERROR_GENERAL;
+        return Thunder::Core::ERROR_GENERAL;
     };
 
     L0Test::ServiceMock::Config cfg(&installer);
@@ -617,7 +617,7 @@ uint32_t Test_Comp_PIM_InstallPackagesWithInvalidFieldsSkipsPackage()
     impl->Configure(&service);
 
     const auto result = impl->StartPreinstall(true);
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE,
                         "StartPreinstall succeeds (thread spawned) even with invalid package entry");
 
     const bool completed = WaitForCompleted(impl);
@@ -657,14 +657,14 @@ uint32_t Test_Comp_PIM_InstallPackagesHandlesInstallFailure()
                                      std::string&) {
         id      = "failing_pkg";
         version = "1.0.0";
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     };
     installer.installHandler = [](const std::string&, const std::string&,
-                                   WPEFramework::Exchange::IPackageInstaller::IKeyValueIterator* const&,
+                                   Thunder::Exchange::IPackageInstaller::IKeyValueIterator* const&,
                                    const std::string&,
-                                   WPEFramework::Exchange::IPackageInstaller::FailReason& reason) {
-        reason = WPEFramework::Exchange::IPackageInstaller::FailReason::SIGNATURE_VERIFICATION_FAILURE;
-        return WPEFramework::Core::ERROR_GENERAL;
+                                   Thunder::Exchange::IPackageInstaller::FailReason& reason) {
+        reason = Thunder::Exchange::IPackageInstaller::FailReason::SIGNATURE_VERIFICATION_FAILURE;
+        return Thunder::Core::ERROR_GENERAL;
     };
 
     L0Test::ServiceMock::Config cfg(&installer);
@@ -705,7 +705,7 @@ uint32_t Test_Comp_PIM_GetFailReasonAllEnumsWithoutCrash()
 {
     L0Test::TestResult tr;
 
-    using FailReason = WPEFramework::Exchange::IPackageInstaller::FailReason;
+    using FailReason = Thunder::Exchange::IPackageInstaller::FailReason;
 
     const FailReason reasons[] = {
         FailReason::NONE,
@@ -729,17 +729,17 @@ uint32_t Test_Comp_PIM_GetFailReasonAllEnumsWithoutCrash()
                                          std::string&) {
             id      = "pkg";
             version = "1.0.0";
-            return WPEFramework::Core::ERROR_NONE;
+            return Thunder::Core::ERROR_NONE;
         };
 
         const FailReason capturedReason = fr;
         installer.installHandler = [capturedReason](
             const std::string&, const std::string&,
-            WPEFramework::Exchange::IPackageInstaller::IKeyValueIterator* const&,
+            Thunder::Exchange::IPackageInstaller::IKeyValueIterator* const&,
             const std::string&,
             FailReason& reason) {
             reason = capturedReason;
-            return WPEFramework::Core::ERROR_GENERAL; // force the fail-reason path
+            return Thunder::Core::ERROR_GENERAL; // force the fail-reason path
         };
 
         L0Test::ServiceMock::Config cfg(&installer);
@@ -753,11 +753,11 @@ uint32_t Test_Comp_PIM_GetFailReasonAllEnumsWithoutCrash()
         impl->StartPreinstall(true);
         WaitForCompleted(impl);
 
-        WPEFramework::Exchange::IPreinstallManager::State state;
+        Thunder::Exchange::IPreinstallManager::State state;
         impl->GetPreinstallState(state);
         L0Test::ExpectEqU32(tr,
                             static_cast<uint32_t>(state),
-                            static_cast<uint32_t>(WPEFramework::Exchange::IPreinstallManager::State::COMPLETED),
+                            static_cast<uint32_t>(Thunder::Exchange::IPreinstallManager::State::COMPLETED),
                             "State COMPLETED after install failure with each FailReason");
 
         const bool fired = WaitForNotification(notif.onPreinstallationCompleteCount);
@@ -843,7 +843,7 @@ uint32_t Test_Comp_PIM_StartPreinstallJoinsPreviousCompletedThread()
                                      std::string&) {
         id      = "pkg";
         version = "1.0.0";
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     };
 
     L0Test::ServiceMock::Config cfg(&installer);
@@ -857,7 +857,7 @@ uint32_t Test_Comp_PIM_StartPreinstallJoinsPreviousCompletedThread()
 
     // First run — spawn thread and wait for it to complete.
     const auto r1 = impl->StartPreinstall(true);
-    L0Test::ExpectEqU32(tr, r1, WPEFramework::Core::ERROR_NONE, "First StartPreinstall succeeds");
+    L0Test::ExpectEqU32(tr, r1, Thunder::Core::ERROR_NONE, "First StartPreinstall succeeds");
     const bool completed1 = WaitForCompleted(impl);
     L0Test::ExpectTrue(tr, completed1, "First run reaches COMPLETED");
 
@@ -875,7 +875,7 @@ uint32_t Test_Comp_PIM_StartPreinstallJoinsPreviousCompletedThread()
     // Second run — the previous thread is joinable but COMPLETED, so it should
     // be joined and a new thread launched.
     const auto r2 = impl->StartPreinstall(true);
-    L0Test::ExpectEqU32(tr, r2, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, r2, Thunder::Core::ERROR_NONE,
                         "Second StartPreinstall succeeds after first completed");
 
     const bool completed2 = WaitForCompleted(impl);
@@ -926,15 +926,15 @@ uint32_t Test_Comp_PIM_InstallPackagesCreateManagerFails()
                                             std::string&) {
         id      = "pkg";
         version = "1.0.0";
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     };
     // Install returns ERROR_GENERAL to simulate install-phase manager failure.
     listingInstaller.installHandler = [](const std::string&, const std::string&,
-                                          WPEFramework::Exchange::IPackageInstaller::IKeyValueIterator* const&,
+                                          Thunder::Exchange::IPackageInstaller::IKeyValueIterator* const&,
                                           const std::string&,
-                                          WPEFramework::Exchange::IPackageInstaller::FailReason& reason) {
-        reason = WPEFramework::Exchange::IPackageInstaller::FailReason::PERSISTENCE_FAILURE;
-        return WPEFramework::Core::ERROR_GENERAL;
+                                          Thunder::Exchange::IPackageInstaller::FailReason& reason) {
+        reason = Thunder::Exchange::IPackageInstaller::FailReason::PERSISTENCE_FAILURE;
+        return Thunder::Core::ERROR_GENERAL;
     };
 
     L0Test::ServiceMock::Config cfg(&listingInstaller);
@@ -987,7 +987,7 @@ uint32_t Test_Comp_PIM_ReadPreinstallDirectorySkipsDotEntries()
         getConfigCalls++;
         id      = "real_pkg";
         version = "1.0.0";
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     };
 
     L0Test::ServiceMock::Config cfg(&installer);
@@ -1035,17 +1035,17 @@ uint32_t Test_Comp_PIM_StartPreinstallVersionWithSuffixStripped()
                                      std::string&) {
         id      = "app";
         version = "1.2.3-beta+build11"; // stripped to 1.2.3
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     };
-    installer.listPackagesHandler = [](WPEFramework::Exchange::IPackageInstaller::IPackageIterator*& packages) {
-        std::list<WPEFramework::Exchange::IPackageInstaller::Package> pkgs;
-        WPEFramework::Exchange::IPackageInstaller::Package pkg;
+    installer.listPackagesHandler = [](Thunder::Exchange::IPackageInstaller::IPackageIterator*& packages) {
+        std::list<Thunder::Exchange::IPackageInstaller::Package> pkgs;
+        Thunder::Exchange::IPackageInstaller::Package pkg;
         pkg.packageId = "app";
         pkg.version   = "1.2.2";
-        pkg.state     = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
+        pkg.state     = Thunder::Exchange::IPackageInstaller::InstallState::INSTALLED;
         pkgs.push_back(pkg);
         packages = L0Test::MakePackageIterator(pkgs);
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     };
 
     L0Test::ServiceMock::Config cfg(&installer);
@@ -1093,17 +1093,17 @@ uint32_t Test_Comp_PIM_InvalidVersionDoesNotCrash()
                                      std::string&) {
         id      = "badver";
         version = "abc.xyz.not-semver";
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     };
-    installer.listPackagesHandler = [](WPEFramework::Exchange::IPackageInstaller::IPackageIterator*& packages) {
-        std::list<WPEFramework::Exchange::IPackageInstaller::Package> pkgs;
-        WPEFramework::Exchange::IPackageInstaller::Package pkg;
+    installer.listPackagesHandler = [](Thunder::Exchange::IPackageInstaller::IPackageIterator*& packages) {
+        std::list<Thunder::Exchange::IPackageInstaller::Package> pkgs;
+        Thunder::Exchange::IPackageInstaller::Package pkg;
         pkg.packageId = "badver";
         pkg.version   = "1.0.0";
-        pkg.state     = WPEFramework::Exchange::IPackageInstaller::InstallState::INSTALLED;
+        pkg.state     = Thunder::Exchange::IPackageInstaller::InstallState::INSTALLED;
         pkgs.push_back(pkg);
         packages = L0Test::MakePackageIterator(pkgs);
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     };
 
     L0Test::ServiceMock::Config cfg(&installer);
@@ -1117,14 +1117,14 @@ uint32_t Test_Comp_PIM_InvalidVersionDoesNotCrash()
 
     // Must not crash — invalid version treated as not newer → filtered out.
     const auto result = impl->StartPreinstall(false);
-    L0Test::ExpectEqU32(tr, result, WPEFramework::Core::ERROR_NONE,
+    L0Test::ExpectEqU32(tr, result, Thunder::Core::ERROR_NONE,
                         "StartPreinstall does not crash on invalid version string");
 
     // Either package filtered (state COMPLETED immediately), or thread spawned.
-    WPEFramework::Exchange::IPreinstallManager::State state;
+    Thunder::Exchange::IPreinstallManager::State state;
     impl->GetPreinstallState(state);
     const bool finishedOrFiltered =
-        (state == WPEFramework::Exchange::IPreinstallManager::State::COMPLETED) ||
+        (state == Thunder::Exchange::IPreinstallManager::State::COMPLETED) ||
         WaitForCompleted(impl);
     L0Test::ExpectTrue(tr, finishedOrFiltered, "State eventually COMPLETED after invalid version");
 
@@ -1197,7 +1197,7 @@ uint32_t Test_Comp_PIM_ReadPreinstallDirectoryLoadsValidPackages()
                                      std::string&) {
         id      = "com.example.app";
         version = "2.1.3";
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     };
 
     L0Test::ServiceMock::Config cfg(&installer);

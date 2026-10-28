@@ -66,7 +66,7 @@ std::string CreateUniqueTmpPath(const std::string& prefix)
 uint32_t Test_UserIdManager_GetUserIdReturnsValidRange()
 {
     L0Test::TestResult tr;
-    WPEFramework::Plugin::UserIdManager mgr;
+    Thunder::Plugin::UserIdManager mgr;
     const uid_t uid = mgr.getUserId("com.sky.app.youtube");
 
     L0Test::ExpectTrue(tr, uid >= 30001u && uid <= 31000u,
@@ -84,7 +84,7 @@ uint32_t Test_UserIdManager_GetUserIdSameAppReturnsSameUid()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::UserIdManager mgr;
+    Thunder::Plugin::UserIdManager mgr;
     const uid_t uid1 = mgr.getUserId("com.sky.app.youtube");
     const uid_t uid2 = mgr.getUserId("com.sky.app.youtube");
 
@@ -102,7 +102,7 @@ uint32_t Test_UserIdManager_GetUserIdDifferentAppsGetDifferentUids()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::UserIdManager mgr;
+    Thunder::Plugin::UserIdManager mgr;
     const uid_t uid1 = mgr.getUserId("com.sky.app.youtube");
     const uid_t uid2 = mgr.getUserId("com.sky.app.netflix");
 
@@ -120,7 +120,7 @@ uint32_t Test_UserIdManager_ClearUserIdReturnsUidToPool()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::UserIdManager mgr;
+    Thunder::Plugin::UserIdManager mgr;
     const uid_t uid1 = mgr.getUserId("com.sky.app.youtube");
 
     // Release the UID back to the pool
@@ -149,7 +149,7 @@ uint32_t Test_UserIdManager_ClearUserIdForUnknownAppDoesNotCrash()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::UserIdManager mgr;
+    Thunder::Plugin::UserIdManager mgr;
     mgr.clearUserId("com.sky.app.unknown"); // must not crash
     L0Test::ExpectTrue(tr, true,
                        "clearUserId() for unknown appId does not crash");
@@ -165,7 +165,7 @@ uint32_t Test_UserIdManager_GetAppsGidReturns30000()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::UserIdManager mgr;
+    Thunder::Plugin::UserIdManager mgr;
     L0Test::ExpectEqU32(tr, static_cast<uint32_t>(mgr.getAppsGid()), 30000u,
                         "getAppsGid() returns 30000");
 
@@ -184,7 +184,7 @@ uint32_t Test_UserIdManager_ExhaustPoolReturnsZero()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::UserIdManager mgr;
+    Thunder::Plugin::UserIdManager mgr;
 
     // Consume all but 4 UIDs from the pool
     for (int i = 0; i < 996; ++i) {
@@ -208,7 +208,7 @@ uint32_t Test_UserIdManager_MultipleGetAndClearCycles()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::UserIdManager mgr;
+    Thunder::Plugin::UserIdManager mgr;
     const std::string id = "com.sky.app.cycling";
 
     for (int cycle = 0; cycle < 5; ++cycle) {
@@ -234,7 +234,7 @@ uint32_t Test_AIConfig_DefaultConsoleLogCap()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::AIConfiguration cfg;
+    Thunder::Plugin::AIConfiguration cfg;
     cfg.initialize(); // reads from /opt/demo/config.ini (likely absent in test env)
 
     const size_t cap = cfg.getContainerConsoleLogCap();
@@ -254,7 +254,7 @@ uint32_t Test_AIConfig_DefaultNonHomeAppMemoryLimit()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::AIConfiguration cfg;
+    Thunder::Plugin::AIConfiguration cfg;
     cfg.initialize();
 
     const ssize_t memLimit = cfg.getNonHomeAppMemoryLimit();
@@ -273,7 +273,7 @@ uint32_t Test_AIConfig_DefaultNonHomeAppGpuLimit()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::AIConfiguration cfg;
+    Thunder::Plugin::AIConfiguration cfg;
     cfg.initialize();
 
     const ssize_t gpuLimit = cfg.getNonHomeAppGpuLimit();
@@ -292,7 +292,7 @@ uint32_t Test_AIConfig_DefaultAppsCpuSet()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::AIConfiguration cfg;
+    Thunder::Plugin::AIConfiguration cfg;
     cfg.initialize();
 
     const auto cpuSet = cfg.getAppsCpuSet();
@@ -310,7 +310,7 @@ uint32_t Test_AIConfig_DefaultDialServerPort()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::AIConfiguration cfg;
+    Thunder::Plugin::AIConfiguration cfg;
     cfg.initialize();
 
     const in_port_t port = cfg.getDialServerPort();
@@ -328,7 +328,7 @@ uint32_t Test_AIConfig_DefaultIonHeapQuota()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::AIConfiguration cfg;
+    Thunder::Plugin::AIConfiguration cfg;
     cfg.initialize();
 
     const size_t quota = cfg.getIonHeapDefaultQuota();
@@ -347,7 +347,7 @@ uint32_t Test_AIConfig_DefaultEnvVariablesNonEmpty()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::AIConfiguration cfg;
+    Thunder::Plugin::AIConfiguration cfg;
     cfg.initialize();
 
     const auto envVars = cfg.getEnvs();
@@ -365,7 +365,7 @@ uint32_t Test_AIConfig_ResourceManagerClientDisabledByDefault()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::AIConfiguration cfg;
+    Thunder::Plugin::AIConfiguration cfg;
     cfg.initialize();
 
     L0Test::ExpectTrue(tr, !cfg.getResourceManagerClientEnabled(),
@@ -382,7 +382,7 @@ uint32_t Test_AIConfig_SvpDisabledByDefault()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::AIConfiguration cfg;
+    Thunder::Plugin::AIConfiguration cfg;
     cfg.initialize();
 
     L0Test::ExpectTrue(tr, !cfg.getSvpEnabled(),
@@ -399,7 +399,7 @@ uint32_t Test_AIConfig_IPv6DisabledByDefault()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::AIConfiguration cfg;
+    Thunder::Plugin::AIConfiguration cfg;
     cfg.initialize();
 
     L0Test::ExpectTrue(tr, !cfg.getIPv6Enabled(),
@@ -416,7 +416,7 @@ uint32_t Test_AIConfig_PrintAIConfigurationDoesNotCrash()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::AIConfiguration cfg;
+    Thunder::Plugin::AIConfiguration cfg;
     cfg.initialize();
     cfg.printAIConfiguration(); // redirected to stdout; no assertion
 
@@ -440,7 +440,7 @@ uint32_t Test_DobbyEventListener_ConstructionAndDestruction()
     L0Test::TestResult tr;
 
     {
-        WPEFramework::Plugin::DobbyEventListener listener;
+        Thunder::Plugin::DobbyEventListener listener;
         L0Test::ExpectTrue(tr, true, "DobbyEventListener constructs without crash");
     }
 
@@ -457,7 +457,7 @@ uint32_t Test_DobbyEventListener_InitializeWithNullOCIPlugin()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbyEventListener listener;
+    Thunder::Plugin::DobbyEventListener listener;
     const bool result = listener.initialize(nullptr, nullptr, nullptr);
     // No contract on return value when nullptr is passed, but must not crash
     L0Test::ExpectTrue(tr, !result,
@@ -476,7 +476,7 @@ uint32_t Test_DobbyEventListener_DeinitializeWithoutInitialize()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbyEventListener listener;
+    Thunder::Plugin::DobbyEventListener listener;
     // Call initialize with null args so mOCIContainerObject is explicitly
     // set to nullptr before deinitialize() is invoked.
     listener.initialize(nullptr, nullptr, nullptr);
@@ -497,7 +497,7 @@ uint32_t Test_DobbyEventListener_DoubleDeinitialize()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbyEventListener listener;
+    Thunder::Plugin::DobbyEventListener listener;
     // Call initialize with null args so mOCIContainerObject is explicitly
     // set to nullptr before the two deinitialize() calls.
     listener.initialize(nullptr, nullptr, nullptr);
@@ -524,7 +524,7 @@ uint32_t Test_WindowManagerConnector_ConstructionAndDestruction()
     L0Test::TestResult tr;
 
     {
-        WPEFramework::Plugin::WindowManagerConnector connector;
+        Thunder::Plugin::WindowManagerConnector connector;
         L0Test::ExpectTrue(tr, true,
                            "WindowManagerConnector constructs without crash");
     }
@@ -543,7 +543,7 @@ uint32_t Test_WindowManagerConnector_IsPluginInitializedReturnsFalseInitially()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::WindowManagerConnector connector;
+    Thunder::Plugin::WindowManagerConnector connector;
     L0Test::ExpectTrue(tr, !connector.isPluginInitialized(),
                        "isPluginInitialized() returns false before initialization");
 
@@ -558,7 +558,7 @@ uint32_t Test_WindowManagerConnector_InitializeWithNullServiceReturnsFalse()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::WindowManagerConnector connector;
+    Thunder::Plugin::WindowManagerConnector connector;
     const bool result = connector.initializePlugin(nullptr, nullptr);
     L0Test::ExpectTrue(tr, !result,
                        "initializePlugin(nullptr) returns false");
@@ -577,7 +577,7 @@ uint32_t Test_WindowManagerConnector_InitializeWithServiceMissingWindowManagerPl
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::WindowManagerConnector connector;
+    Thunder::Plugin::WindowManagerConnector connector;
     L0Test::ServiceMock service; // QueryInterfaceByCallsign returns nullptr by default
 
     const bool result = connector.initializePlugin(&service, nullptr);
@@ -598,7 +598,7 @@ uint32_t Test_WindowManagerConnector_ReleasePluginWithoutInitDoesNotCrash()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::WindowManagerConnector connector;
+    Thunder::Plugin::WindowManagerConnector connector;
     connector.releasePlugin(); // must not crash
 
     L0Test::ExpectTrue(tr, true,
@@ -616,7 +616,7 @@ uint32_t Test_WindowManagerConnector_GetDisplayInfoWithoutInitDoesNotCrash()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::WindowManagerConnector connector;
+    Thunder::Plugin::WindowManagerConnector connector;
     std::string xdgRuntimeDir, waylandDisplayName;
     connector.getDisplayInfo("youTube", xdgRuntimeDir, waylandDisplayName);
 
@@ -634,11 +634,11 @@ namespace {
 /* Static fixture: shared AIConfiguration instance for all DobbySpecGenerator tests.
  * Initialized once to avoid repeated file I/O across tests.
  */
-static WPEFramework::Plugin::AIConfiguration g_aiConfiguration;
+static Thunder::Plugin::AIConfiguration g_aiConfiguration;
 static bool g_aiConfigurationInitialized = false;
 
 /* Helper: gets or initializes the shared AIConfiguration fixture. */
-WPEFramework::Plugin::AIConfiguration& GetAIConfigurationFixture()
+Thunder::Plugin::AIConfiguration& GetAIConfigurationFixture()
 {
     if (!g_aiConfigurationInitialized) {
         g_aiConfiguration.initialize();
@@ -648,9 +648,9 @@ WPEFramework::Plugin::AIConfiguration& GetAIConfigurationFixture()
 }
 
 /* Helper: creates a minimal valid ApplicationConfiguration. */
-WPEFramework::Plugin::ApplicationConfiguration MakeValidAppConfig()
+Thunder::Plugin::ApplicationConfiguration MakeValidAppConfig()
 {
-    WPEFramework::Plugin::ApplicationConfiguration cfg;
+    Thunder::Plugin::ApplicationConfiguration cfg;
     cfg.mAppId              = "com.sky.app.youtube";
     cfg.mAppInstanceId      = "youTube";
     cfg.mUserId             = 30001u;
@@ -660,9 +660,9 @@ WPEFramework::Plugin::ApplicationConfiguration MakeValidAppConfig()
 }
 
 /* Helper: creates a minimal valid RuntimeConfiguration. */
-WPEFramework::Plugin::RuntimeConfiguration MakeValidRuntimeConfiguration()
+Thunder::Plugin::RuntimeConfiguration MakeValidRuntimeConfiguration()
 {
-    WPEFramework::Plugin::RuntimeConfiguration cfg;
+    Thunder::Plugin::RuntimeConfiguration cfg;
     cfg.command             = "SkyBrowserLauncher";
     cfg.envVariables        = { "XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=test" };
     cfg.systemMemoryLimit   = 128 * 1024 * 1024; // 128 MB — required by getSysMemoryLimit()
@@ -679,7 +679,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithValidConfig()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    Thunder::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg  = MakeValidAppConfig();
     auto rtCfg   = MakeValidRuntimeConfiguration();
     std::string spec;
@@ -701,7 +701,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithZeroUserId()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    Thunder::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg  = MakeValidAppConfig();
     appCfg.mUserId = 0; // mandatory check will fail
     auto rtCfg   = MakeValidRuntimeConfiguration();
@@ -722,7 +722,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithEmptyCommand()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    Thunder::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfiguration();
     rtCfg.command.clear(); // mandatory check will fail
@@ -743,7 +743,7 @@ uint32_t Test_DobbySpecGenerator_GenerateSpecContainsVersion()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    Thunder::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfiguration();
     std::string spec;
@@ -765,7 +765,7 @@ uint32_t Test_DobbySpecGenerator_GenerateSpecContainsArgs()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    Thunder::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfiguration();
     std::string spec;
@@ -786,7 +786,7 @@ uint32_t Test_DobbySpecGenerator_GenerateSpecContainsMemLimit()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    Thunder::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfiguration();
     std::string spec;
@@ -808,7 +808,7 @@ uint32_t Test_DobbySpecGenerator_ConstructionAndDestruction()
     L0Test::TestResult tr;
 
     {
-        WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+        Thunder::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
         L0Test::ExpectTrue(tr, true, "DobbySpecGenerator constructs without crash");
     }
 
@@ -824,7 +824,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithRuntimePath()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    Thunder::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfiguration();
     rtCfg.runtimePath = "/opt/runtimes/sky";
@@ -847,7 +847,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithoutRuntimePath()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    Thunder::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfiguration();
     rtCfg.runtimePath.clear(); // no runtime path set
@@ -870,7 +870,7 @@ uint32_t Test_DobbySpecGenerator_GenerateSpecContainsCpu()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    Thunder::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfiguration();
     std::string spec;
@@ -891,7 +891,7 @@ uint32_t Test_DobbySpecGenerator_GenerateSpecContainsNetwork()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    Thunder::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfiguration();
     std::string spec;
@@ -912,7 +912,7 @@ uint32_t Test_DobbySpecGenerator_GenerateSpecContainsRdkPlugins()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    Thunder::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfiguration();
     std::string spec;
@@ -934,7 +934,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithMemLimitFromConfig()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    Thunder::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfiguration();
     rtCfg.systemMemoryLimit = 128 * 1024 * 1024; // 128 MB
@@ -962,7 +962,7 @@ uint32_t Test_AIConfig_GetGstreamerRegistryEnabledDefault()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::AIConfiguration cfg;
+    Thunder::Plugin::AIConfiguration cfg;
     cfg.initialize();
 
     L0Test::ExpectTrue(tr, !cfg.getGstreamerRegistryEnabled(),
@@ -980,7 +980,7 @@ uint32_t Test_AIConfig_GetEnableUsbMassStorageDefault()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::AIConfiguration cfg;
+    Thunder::Plugin::AIConfiguration cfg;
     cfg.initialize();
 
     L0Test::ExpectTrue(tr, !cfg.getEnableUsbMassStorage(),
@@ -997,7 +997,7 @@ uint32_t Test_AIConfig_GetMapiPortsEmptyByDefault()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::AIConfiguration cfg;
+    Thunder::Plugin::AIConfiguration cfg;
     cfg.initialize();
 
     const auto ports = cfg.getMapiPorts();
@@ -1015,7 +1015,7 @@ uint32_t Test_AIConfig_GetVpuAccessBlacklistEmptyByDefault()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::AIConfiguration cfg;
+    Thunder::Plugin::AIConfiguration cfg;
     cfg.initialize();
 
     const auto list = cfg.getVpuAccessBlacklist();
@@ -1033,7 +1033,7 @@ uint32_t Test_AIConfig_GetAppsRequiringDBusEmptyByDefault()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::AIConfiguration cfg;
+    Thunder::Plugin::AIConfiguration cfg;
     cfg.initialize();
 
     const auto list = cfg.getAppsRequiringDBus();
@@ -1051,7 +1051,7 @@ uint32_t Test_AIConfig_GetDialUsnEmptyByDefault()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::AIConfiguration cfg;
+    Thunder::Plugin::AIConfiguration cfg;
     cfg.initialize();
 
     const std::string usn = cfg.getDialUsn();
@@ -1069,7 +1069,7 @@ uint32_t Test_AIConfig_GetDialServerPathPrefixEmptyByDefault()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::AIConfiguration cfg;
+    Thunder::Plugin::AIConfiguration cfg;
     cfg.initialize();
 
     const std::string prefix = cfg.getDialServerPathPrefix();
@@ -1087,7 +1087,7 @@ uint32_t Test_AIConfig_GetPreloadsEmptyByDefault()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::AIConfiguration cfg;
+    Thunder::Plugin::AIConfiguration cfg;
     cfg.initialize();
 
     const auto preloads = cfg.getPreloads();
@@ -1106,7 +1106,7 @@ uint32_t Test_AIConfig_GetIonHeapQuotasEmptyByDefault()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::AIConfiguration cfg;
+    Thunder::Plugin::AIConfiguration cfg;
     cfg.initialize();
 
     const auto quotas = cfg.getIonHeapQuotas();
@@ -1129,7 +1129,7 @@ uint32_t Test_WindowManagerConnector_CreateDisplayWithoutInitReturnsFalse()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::WindowManagerConnector connector;
+    Thunder::Plugin::WindowManagerConnector connector;
     const bool result = connector.createDisplay("appInst", "wst-appInst", 30001u, 30000u);
     L0Test::ExpectTrue(tr, !result,
                        "createDisplay() returns false when plugin is not initialised");
@@ -1147,7 +1147,7 @@ uint32_t Test_WindowManagerConnector_GetDisplayInfoSetsNonEmptyDisplayName()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::WindowManagerConnector connector;
+    Thunder::Plugin::WindowManagerConnector connector;
     std::string xdgDir, waylandName;
     connector.getDisplayInfo("youTube", xdgDir, waylandName);
 
@@ -1180,7 +1180,7 @@ uint32_t Test_DobbyEventListener_InitializeWithValidOCIContainerSucceeds()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbyEventListener listener;
+    Thunder::Plugin::DobbyEventListener listener;
     FakeEventHandler handler;
     FakeOCIContainer container;
 
@@ -1204,10 +1204,10 @@ uint32_t Test_DobbyEventListener_InitializeWithRegisterFailureReturnsFalse()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbyEventListener listener;
+    Thunder::Plugin::DobbyEventListener listener;
     FakeEventHandler handler;
     FakeOCIContainer container;
-    container.SetRegisterReturnCode(WPEFramework::Core::ERROR_GENERAL);
+    container.SetRegisterReturnCode(Thunder::Core::ERROR_GENERAL);
 
     const bool result = listener.initialize(nullptr, &handler, &container);
 
@@ -1227,7 +1227,7 @@ uint32_t Test_DobbyEventListener_DeinitializeWithValidOCIContainerCallsUnregiste
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbyEventListener listener;
+    Thunder::Plugin::DobbyEventListener listener;
     FakeEventHandler handler;
     FakeOCIContainer container;
 
@@ -1251,7 +1251,7 @@ uint32_t Test_DobbyEventListener_OnContainerStartedCallsEventHandler()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbyEventListener listener;
+    Thunder::Plugin::DobbyEventListener listener;
     FakeEventHandler handler;
     FakeOCIContainer container;
 
@@ -1280,7 +1280,7 @@ uint32_t Test_DobbyEventListener_OnContainerStoppedCallsEventHandler()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbyEventListener listener;
+    Thunder::Plugin::DobbyEventListener listener;
     FakeEventHandler handler;
     FakeOCIContainer container;
 
@@ -1308,7 +1308,7 @@ uint32_t Test_DobbyEventListener_OnContainerFailedCallsEventHandler()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbyEventListener listener;
+    Thunder::Plugin::DobbyEventListener listener;
     FakeEventHandler handler;
     FakeOCIContainer container;
 
@@ -1337,7 +1337,7 @@ uint32_t Test_DobbyEventListener_OnContainerStateChangedStartingState()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbyEventListener listener;
+    Thunder::Plugin::DobbyEventListener listener;
     FakeEventHandler handler;
     FakeOCIContainer container;
 
@@ -1348,7 +1348,7 @@ uint32_t Test_DobbyEventListener_OnContainerStateChangedStartingState()
                        "Notification object was registered with OCI container");
     if (notif != nullptr) {
         notif->OnContainerStateChanged("container-1",
-            WPEFramework::Exchange::IOCIContainer::ContainerState::STARTING);
+            Thunder::Exchange::IOCIContainer::ContainerState::STARTING);
         L0Test::ExpectEqU32(tr, handler.stateChangedCalls.load(), 1u,
                             "OnContainerStateChanged(STARTING) calls state-changed handler");
     }
@@ -1365,7 +1365,7 @@ uint32_t Test_DobbyEventListener_OnContainerStateChangedRunningState()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbyEventListener listener;
+    Thunder::Plugin::DobbyEventListener listener;
     FakeEventHandler handler;
     FakeOCIContainer container;
 
@@ -1374,7 +1374,7 @@ uint32_t Test_DobbyEventListener_OnContainerStateChangedRunningState()
     auto* notif = container.GetStoredNotification();
     if (notif != nullptr) {
         notif->OnContainerStateChanged("container-1",
-            WPEFramework::Exchange::IOCIContainer::ContainerState::RUNNING);
+            Thunder::Exchange::IOCIContainer::ContainerState::RUNNING);
         L0Test::ExpectEqU32(tr, handler.stateChangedCalls.load(), 1u,
                             "OnContainerStateChanged(RUNNING) calls state-changed handler");
     } else {
@@ -1394,7 +1394,7 @@ uint32_t Test_DobbyEventListener_OnContainerStateChangedAllStates()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbyEventListener listener;
+    Thunder::Plugin::DobbyEventListener listener;
     FakeEventHandler handler;
     FakeOCIContainer container;
 
@@ -1404,7 +1404,7 @@ uint32_t Test_DobbyEventListener_OnContainerStateChangedAllStates()
     L0Test::ExpectTrue(tr, notif != nullptr, "Notification was registered");
 
     if (notif != nullptr) {
-        using CS = WPEFramework::Exchange::IOCIContainer::ContainerState;
+        using CS = Thunder::Exchange::IOCIContainer::ContainerState;
         // Cover each named state in the switch
         notif->OnContainerStateChanged("c1", CS::STOPPING);
         notif->OnContainerStateChanged("c1", CS::PAUSED);
@@ -1430,7 +1430,7 @@ uint32_t Test_DobbyEventListener_OnContainerStateChangedNullEventHandler()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbyEventListener listener;
+    Thunder::Plugin::DobbyEventListener listener;
     FakeOCIContainer container;
 
     // initialize with null event handler on purpose
@@ -1444,7 +1444,7 @@ uint32_t Test_DobbyEventListener_OnContainerStateChangedNullEventHandler()
         notif->OnContainerStopped("c1", "youTube", 0);
         notif->OnContainerFailed("c1", "youTube", 2u);
         notif->OnContainerStateChanged("c1",
-            WPEFramework::Exchange::IOCIContainer::ContainerState::RUNNING);
+            Thunder::Exchange::IOCIContainer::ContainerState::RUNNING);
     }
     L0Test::ExpectTrue(tr, true, "No crash with null event handler");
 
@@ -1467,7 +1467,7 @@ uint32_t Test_WindowManagerConnector_InitializeWithValidWindowManagerSucceeds()
 
     FakeWindowManager wm;
     L0Test::ServiceMock service(L0Test::ServiceMock::Config(nullptr, &wm));
-    WPEFramework::Plugin::WindowManagerConnector connector;
+    Thunder::Plugin::WindowManagerConnector connector;
 
     const bool result = connector.initializePlugin(&service, nullptr);
 
@@ -1494,7 +1494,7 @@ uint32_t Test_WindowManagerConnector_ReleasePluginAfterInitCallsUnregister()
 
     FakeWindowManager wm;
     L0Test::ServiceMock service(L0Test::ServiceMock::Config(nullptr, &wm));
-    WPEFramework::Plugin::WindowManagerConnector connector;
+    Thunder::Plugin::WindowManagerConnector connector;
 
     connector.initializePlugin(&service, nullptr);
     L0Test::ExpectTrue(tr, connector.isPluginInitialized(),
@@ -1522,7 +1522,7 @@ uint32_t Test_WindowManagerConnector_CreateDisplayAfterInitReturnsTrue()
 
     FakeWindowManager wm;
     L0Test::ServiceMock service(L0Test::ServiceMock::Config(nullptr, &wm));
-    WPEFramework::Plugin::WindowManagerConnector connector;
+    Thunder::Plugin::WindowManagerConnector connector;
 
     connector.initializePlugin(&service, nullptr);
 
@@ -1546,9 +1546,9 @@ uint32_t Test_WindowManagerConnector_CreateDisplayAfterInitReturnsFalseOnError()
     L0Test::TestResult tr;
 
     FakeWindowManager wm;
-    wm.SetCreateDisplayReturnCode(WPEFramework::Core::ERROR_GENERAL);
+    wm.SetCreateDisplayReturnCode(Thunder::Core::ERROR_GENERAL);
     L0Test::ServiceMock service(L0Test::ServiceMock::Config(nullptr, &wm));
-    WPEFramework::Plugin::WindowManagerConnector connector;
+    Thunder::Plugin::WindowManagerConnector connector;
 
     connector.initializePlugin(&service, nullptr);
 
@@ -1572,7 +1572,7 @@ uint32_t Test_WindowManagerConnector_OnUserInactivityDoesNotCrash()
 
     FakeWindowManager wm;
     L0Test::ServiceMock service(L0Test::ServiceMock::Config(nullptr, &wm));
-    WPEFramework::Plugin::WindowManagerConnector connector;
+    Thunder::Plugin::WindowManagerConnector connector;
 
     connector.initializePlugin(&service, nullptr);
 
@@ -1601,7 +1601,7 @@ uint32_t Test_WindowManagerConnector_GetDisplayInfoWithXdgRuntimeDirSet()
     // Set the env var to a directory that always exists on the CI runner.
     setenv("XDG_RUNTIME_DIR", "/tmp", 1);
 
-    WPEFramework::Plugin::WindowManagerConnector connector;
+    Thunder::Plugin::WindowManagerConnector connector;
     std::string xdgDir, waylandName;
     connector.getDisplayInfo("testApp123", xdgDir, waylandName);
 
@@ -1625,7 +1625,7 @@ uint32_t Test_WindowManagerConnector_GetDisplayInfoWithoutXdgRuntimeDirFallsToTm
 
     unsetenv("XDG_RUNTIME_DIR");
 
-    WPEFramework::Plugin::WindowManagerConnector connector;
+    Thunder::Plugin::WindowManagerConnector connector;
     std::string xdgDir, waylandName;
     connector.getDisplayInfo("testApp456", xdgDir, waylandName);
 
@@ -1656,7 +1656,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithSpecChangeFile()
         f << "{\"version\":\"1.1\"}";
     }
 
-    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    Thunder::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfiguration();
     std::string spec;
@@ -1680,7 +1680,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithWanLanAccessFalse()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    Thunder::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfiguration();
     rtCfg.wanLanAccess = false;
@@ -1703,7 +1703,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithAppPath()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    Thunder::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfiguration();
     rtCfg.appPath = "/opt/app/youTube";
@@ -1726,7 +1726,7 @@ uint32_t Test_DobbySpecGenerator_GenerateThunderPluginEnabled()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    Thunder::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfiguration();
     rtCfg.thunder = true;
@@ -1748,7 +1748,7 @@ uint32_t Test_DobbySpecGenerator_GenerateThunderPluginDisabled()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    Thunder::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfiguration();
     rtCfg.thunder = false;
@@ -1770,7 +1770,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithEmptyWesterosSocket()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    Thunder::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     appCfg.mWesterosSocketPath.clear();  // no GUI
     auto rtCfg  = MakeValidRuntimeConfiguration();
@@ -1795,7 +1795,7 @@ uint32_t Test_DobbySpecGenerator_GenerateSysMemLimitZeroFallsBack()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    Thunder::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfiguration();
     rtCfg.systemMemoryLimit = 0;   // will trigger branch in getSysMemoryLimit
@@ -1820,7 +1820,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithNonEmptyAppPorts()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    Thunder::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfiguration();
     appCfg.mPorts.push_back(8080u);
@@ -1843,7 +1843,7 @@ uint32_t Test_DobbySpecGenerator_GetVpuEnabledReturnsFalseForSystemApp()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    Thunder::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfiguration();
     rtCfg.appType = "SYSTEM";
@@ -1868,7 +1868,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithEnvVariablesInRuntimeConfiguration(
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    Thunder::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfiguration();
     // Provide a JSON array string for envVariables
@@ -1892,7 +1892,7 @@ uint32_t Test_DobbySpecGenerator_GenerateInjectsWebInspectorEnvWhenDebuggerEnabl
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    Thunder::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfiguration();
     rtCfg.enableDebugger = true;
@@ -1922,7 +1922,7 @@ uint32_t Test_DobbySpecGenerator_GenerateSkipsWebInspectorEnvWhenDebuggerDisable
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    Thunder::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfiguration();
     rtCfg.enableDebugger = false;
@@ -1947,7 +1947,7 @@ uint32_t Test_DobbySpecGenerator_GenerateThunderPluginFromCapabilities()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    Thunder::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfiguration();
     rtCfg.thunder = false;
@@ -1972,7 +1972,7 @@ uint32_t Test_DobbySpecGenerator_GenerateDialEnvFromEscapedCapabilityValue()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    Thunder::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfiguration();
     rtCfg.dial = false;
@@ -1998,7 +1998,7 @@ uint32_t Test_DobbySpecGenerator_GenerateWithEmptyCapabilitiesString()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    Thunder::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfiguration();
     rtCfg.thunder = false;
@@ -2023,7 +2023,7 @@ uint32_t Test_DobbySpecGenerator_GenerateIgnoresRuntimeLogLevelsForEthanLog()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    Thunder::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     auto rtCfg  = MakeValidRuntimeConfiguration();
     rtCfg.logLevels = { "fatal" };
@@ -2058,7 +2058,7 @@ uint32_t Test_DobbySpecGenerator_GstRegistryInjectedWhenRialtoInactive()
         f << "fake gst registry";
     }
 
-    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    Thunder::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     gen.setGstreamerRegistryPath(tmpPath);
 
     auto appCfg = MakeValidAppConfig();
@@ -2091,7 +2091,7 @@ uint32_t Test_DobbySpecGenerator_GstRegistryMountedWhenRialtoInactive()
         f << "fake gst registry";
     }
 
-    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    Thunder::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     gen.setGstreamerRegistryPath(tmpPath);
 
     auto appCfg = MakeValidAppConfig();
@@ -2118,7 +2118,7 @@ uint32_t Test_DobbySpecGenerator_RialtoSocketEnvInjectedWhenRialtoActive()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    Thunder::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     auto appCfg = MakeValidAppConfig();
     appCfg.mRialtoSocketPath = "/tmp/amazonPrime"; // Rialto active for this app
     auto rtCfg  = MakeValidRuntimeConfiguration();
@@ -2147,7 +2147,7 @@ uint32_t Test_DobbySpecGenerator_GstRegistryEnvAbsentWhenRialtoActive()
         f << "fake gst registry";
     }
 
-    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    Thunder::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     gen.setGstreamerRegistryPath(tmpPath);
 
     auto appCfg = MakeValidAppConfig();
@@ -2180,7 +2180,7 @@ uint32_t Test_DobbySpecGenerator_GstRegistryMountAbsentWhenRialtoActive()
         f << "fake gst registry";
     }
 
-    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    Thunder::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
     gen.setGstreamerRegistryPath(tmpPath);
 
     auto appCfg = MakeValidAppConfig();
@@ -2206,7 +2206,7 @@ uint32_t Test_DobbySpecGenerator_RialtoPrefixedSocketPathUsedInSpec()
 {
     L0Test::TestResult tr;
 
-    WPEFramework::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
+    Thunder::Plugin::DobbySpecGenerator gen(GetAIConfigurationFixture());
 
     auto appCfg = MakeValidAppConfig();
     // Simulate the auto-allocated path that Rialto assigns (e.g. /tmp/rialto-5).
@@ -2244,7 +2244,7 @@ uint32_t Test_DobbySpecGenerator_RialtoPrefixedSocketPathUsedInSpec()
 uint32_t Test_RuntimeConfigurationDecoder_FullValidPayload()
 {
     L0Test::TestResult tr;
-    WPEFramework::Plugin::RuntimeConfiguration cfg;
+    Thunder::Plugin::RuntimeConfiguration cfg;
     std::string error;
     const std::string payload = R"({
         "dial":true,"wanLanAccess":true,"thunder":true,
@@ -2260,7 +2260,7 @@ uint32_t Test_RuntimeConfigurationDecoder_FullValidPayload()
         "enableDebugger":true,"unpackedPath":"/tmp/unpacked"
     })";
 
-    L0Test::ExpectTrue(tr, WPEFramework::Plugin::RuntimeConfigurationDecoder::Decode(payload, cfg, error),
+    L0Test::ExpectTrue(tr, Thunder::Plugin::RuntimeConfigurationDecoder::Decode(payload, cfg, error),
                        "decoder accepts a complete valid payload");
     L0Test::ExpectTrue(tr, cfg.dial && cfg.wanLanAccess && cfg.thunder && cfg.resourceManagerClientEnabled,
                        "decoder populates boolean fields");
@@ -2280,10 +2280,10 @@ uint32_t Test_RuntimeConfigurationDecoder_FullValidPayload()
 uint32_t Test_RuntimeConfigurationDecoder_OptionalDefaults()
 {
     L0Test::TestResult tr;
-    WPEFramework::Plugin::RuntimeConfiguration cfg;
+    Thunder::Plugin::RuntimeConfiguration cfg;
     std::string error;
     L0Test::ExpectTrue(tr,
-        WPEFramework::Plugin::RuntimeConfigurationDecoder::Decode(R"({"command":"launcher"})", cfg, error, 41, 42),
+        Thunder::Plugin::RuntimeConfigurationDecoder::Decode(R"({"command":"launcher"})", cfg, error, 41, 42),
         "decoder accepts omitted optional properties");
     L0Test::ExpectTrue(tr, !cfg.dial && !cfg.wanLanAccess && !cfg.thunder && cfg.userId == 41 && cfg.groupId == 42,
                        "omitted scalar properties retain caller defaults");
@@ -2295,11 +2295,11 @@ uint32_t Test_RuntimeConfigurationDecoder_OptionalDefaults()
 uint32_t Test_RuntimeConfigurationDecoder_RejectsMalformedAndNonObjectJson()
 {
     L0Test::TestResult tr;
-    WPEFramework::Plugin::RuntimeConfiguration cfg;
+    Thunder::Plugin::RuntimeConfiguration cfg;
     std::string error;
-    L0Test::ExpectTrue(tr, !WPEFramework::Plugin::RuntimeConfigurationDecoder::Decode("{bad json", cfg, error),
+    L0Test::ExpectTrue(tr, !Thunder::Plugin::RuntimeConfigurationDecoder::Decode("{bad json", cfg, error),
                        "decoder rejects malformed JSON");
-    L0Test::ExpectTrue(tr, !WPEFramework::Plugin::RuntimeConfigurationDecoder::Decode("[]", cfg, error),
+    L0Test::ExpectTrue(tr, !Thunder::Plugin::RuntimeConfigurationDecoder::Decode("[]", cfg, error),
                        "decoder rejects a non-object JSON root");
     return tr.failures;
 }
@@ -2314,9 +2314,9 @@ uint32_t Test_RuntimeConfigurationDecoder_RejectsWrongScalarTypes()
         R"({"command":"launcher","userId":-1})"
     };
     for (const auto& payload : payloads) {
-        WPEFramework::Plugin::RuntimeConfiguration cfg;
+        Thunder::Plugin::RuntimeConfiguration cfg;
         std::string error;
-        L0Test::ExpectTrue(tr, !WPEFramework::Plugin::RuntimeConfigurationDecoder::Decode(payload, cfg, error),
+        L0Test::ExpectTrue(tr, !Thunder::Plugin::RuntimeConfigurationDecoder::Decode(payload, cfg, error),
                            "decoder rejects a wrong scalar type");
     }
     return tr.failures;
@@ -2332,9 +2332,9 @@ uint32_t Test_RuntimeConfigurationDecoder_RejectsWrongArrayTypes()
         R"({"command":"launcher","userId":1,"fkpsFiles":{}})"
     };
     for (const auto& payload : payloads) {
-        WPEFramework::Plugin::RuntimeConfiguration cfg;
+        Thunder::Plugin::RuntimeConfiguration cfg;
         std::string error;
-        L0Test::ExpectTrue(tr, !WPEFramework::Plugin::RuntimeConfigurationDecoder::Decode(payload, cfg, error),
+        L0Test::ExpectTrue(tr, !Thunder::Plugin::RuntimeConfigurationDecoder::Decode(payload, cfg, error),
                            "decoder rejects wrong array or array-element types");
     }
     return tr.failures;
@@ -2348,15 +2348,15 @@ uint32_t Test_RuntimeConfigurationDecoder_RequiresCommandAndUserId()
         R"({"command":"launcher"})", R"({"command":"launcher","userId":0})"
     };
     for (const auto& payload : payloads) {
-        WPEFramework::Plugin::RuntimeConfiguration cfg;
+        Thunder::Plugin::RuntimeConfiguration cfg;
         std::string error;
-        L0Test::ExpectTrue(tr, !WPEFramework::Plugin::RuntimeConfigurationDecoder::Decode(payload, cfg, error),
+        L0Test::ExpectTrue(tr, !Thunder::Plugin::RuntimeConfigurationDecoder::Decode(payload, cfg, error),
                            "decoder requires non-empty command and non-zero userId");
     }
-    WPEFramework::Plugin::RuntimeConfiguration ralfConfig;
+    Thunder::Plugin::RuntimeConfiguration ralfConfig;
     std::string ralfError;
     L0Test::ExpectTrue(tr,
-        WPEFramework::Plugin::RuntimeConfigurationDecoder::Decode(R"({"userId":1,"ralfPkgPath":"/tmp/ralf"})", ralfConfig, ralfError, 0, 0, false),
+        Thunder::Plugin::RuntimeConfigurationDecoder::Decode(R"({"userId":1,"ralfPkgPath":"/tmp/ralf"})", ralfConfig, ralfError, 0, 0, false),
         "decoder permits RALF configuration without a command");
     return tr.failures;
 }
@@ -2364,10 +2364,10 @@ uint32_t Test_RuntimeConfigurationDecoder_RequiresCommandAndUserId()
 uint32_t Test_RuntimeConfigurationDecoder_ToleratesUnknownProperties()
 {
     L0Test::TestResult tr;
-    WPEFramework::Plugin::RuntimeConfiguration cfg;
+    Thunder::Plugin::RuntimeConfiguration cfg;
     std::string error;
     L0Test::ExpectTrue(tr,
-        WPEFramework::Plugin::RuntimeConfigurationDecoder::Decode(
+        Thunder::Plugin::RuntimeConfigurationDecoder::Decode(
             R"({"command":"launcher","userId":7,"futureOption":{"nested":[1,2,3]}})", cfg, error),
         "decoder tolerates unknown properties");
     L0Test::ExpectEqU32(tr, cfg.userId, 7, "known fields remain decoded with unknown properties present");

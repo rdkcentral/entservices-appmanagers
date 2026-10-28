@@ -46,7 +46,7 @@
 
 #define PACKAGE_MANAGER_MARKER_FILE              "/tmp/package_manager_ready"
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
     typedef Exchange::IPackageDownloader::Reason DownloadReason;
     typedef Exchange::IPackageInstaller::InstallState InstallState;
@@ -330,4 +330,4 @@ class PackageManagerImplementation
         std::map<std::string, std::pair<std::string, std::string>> runtimeMap;
     };
 } // namespace Plugin
-} // namespace WPEFramework
+} // namespace Thunder

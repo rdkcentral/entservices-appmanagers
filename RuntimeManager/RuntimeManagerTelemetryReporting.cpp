@@ -21,7 +21,7 @@
 #include "UtilsLogging.h"
 #include <inttypes.h>
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
 RuntimeManagerTelemetryReporting::RuntimeManagerTelemetryReporting()
@@ -94,4 +94,4 @@ void RuntimeManagerTelemetryReporting::recordTelemetryData(const std::string& ma
 }
 
 } // namespace Plugin
-} // namespace WPEFramework
+} // namespace Thunder

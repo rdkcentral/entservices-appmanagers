@@ -35,8 +35,8 @@
 #include "common/L0Expect.hpp"
 #include "common/L0TestTypes.hpp"
 
-using WPEFramework::Plugin::RequestHandler;
-using WPEFramework::Plugin::AppStorageManagerTelemetryReporting;
+using Thunder::Plugin::RequestHandler;
+using Thunder::Plugin::AppStorageManagerTelemetryReporting;
 
 /* ========================================================================== */
 /* RequestHandler Tests

@@ -31,9 +31,9 @@
 #define TIME_DATA_SIZE           200
 static std::atomic<bool> sRunning{false};
 
-RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::AppManagerTelemetryReporting, "appManagerBootstrapTime")
+RDKAM_DEFINE_TELEMETRY_CLIENT(Thunder::Plugin::AppManagerTelemetryReporting, "appManagerBootstrapTime")
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
 SERVICE_REGISTRATION(AppManagerImplementation, 1, 0);
@@ -779,7 +779,7 @@ Core::hresult AppManagerImplementation::createPersistentStoreRemoteStoreObject()
     {
         LOGERR("mCurrentservice is null \n");
     }
-    else if (nullptr == (mPersistentStoreRemoteStoreObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IStore2>("org.rdk.PersistentStore")))
+    else if (nullptr == (mPersistentStoreRemoteStoreObject = mCurrentservice->QueryInterfaceByCallsign<Thunder::Exchange::IStore2>("org.rdk.PersistentStore")))
     {
         LOGERR("mPersistentStoreRemoteStoreObject is null \n");
     }
@@ -809,11 +809,11 @@ Core::hresult AppManagerImplementation::createPackageManagerObject()
     {
         LOGERR("mCurrentservice is null \n");
     }
-    else if (nullptr == (mPackageManagerHandlerObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IPackageHandler>("org.rdk.AppPackageManager")))
+    else if (nullptr == (mPackageManagerHandlerObject = mCurrentservice->QueryInterfaceByCallsign<Thunder::Exchange::IPackageHandler>("org.rdk.AppPackageManager")))
     {
         LOGERR("mPackageManagerHandlerObject is null \n");
     }
-    else if (nullptr == (mPackageManagerInstallerObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IPackageInstaller>("org.rdk.AppPackageManager")))
+    else if (nullptr == (mPackageManagerInstallerObject = mCurrentservice->QueryInterfaceByCallsign<Thunder::Exchange::IPackageInstaller>("org.rdk.AppPackageManager")))
     {
         LOGERR("mPackageManagerInstallerObject is null \n");
     }
@@ -854,7 +854,7 @@ Core::hresult AppManagerImplementation::createStorageManagerRemoteObject()
     }
     else
     {
-        mStorageManagerRemoteObject = mCurrentservice->QueryInterfaceByCallsign<WPEFramework::Exchange::IAppStorageManager>("org.rdk.AppStorageManager");
+        mStorageManagerRemoteObject = mCurrentservice->QueryInterfaceByCallsign<Thunder::Exchange::IAppStorageManager>("org.rdk.AppStorageManager");
 
         if (nullptr != mStorageManagerRemoteObject)
         {
@@ -1161,7 +1161,7 @@ Core::hresult AppManagerImplementation::packageLock(const string& appId, Package
     bool result = false;
     bool installed = false;
     bool loaded = false;
-    std::vector<WPEFramework::Exchange::IPackageInstaller::Package> packageList;
+    std::vector<Thunder::Exchange::IPackageInstaller::Package> packageList;
     AppManagerTelemetryReporting& appManagerTelemetryReporting =AppManagerTelemetryReporting::getInstance();
 
     mAdminLock.Lock();
@@ -1329,7 +1329,7 @@ Core::hresult AppManagerImplementation::LaunchApp(const string& appId , const st
     }
     else
     {
-        std::vector<WPEFramework::Exchange::IPackageInstaller::Package> packageList;
+        std::vector<Thunder::Exchange::IPackageInstaller::Package> packageList;
         result = fetchAppPackageList(packageList);
         if (result == Core::ERROR_NONE)
         {
@@ -1586,7 +1586,7 @@ Core::hresult AppManagerImplementation::PreloadApp(const string& appId , const s
     }
     else
     {
-        std::vector<WPEFramework::Exchange::IPackageInstaller::Package> packageList;
+        std::vector<Thunder::Exchange::IPackageInstaller::Package> packageList;
         result = fetchAppPackageList(packageList);
         if (result == Core::ERROR_NONE)
         {
@@ -1806,7 +1806,7 @@ Core::hresult AppManagerImplementation::SetAppProperty(const string& appId, cons
     return status;
 }
 
-Core::hresult AppManagerImplementation::fetchAppPackageList(std::vector<WPEFramework::Exchange::IPackageInstaller::Package>& packageList)
+Core::hresult AppManagerImplementation::fetchAppPackageList(std::vector<Thunder::Exchange::IPackageInstaller::Package>& packageList)
 {
     Core::hresult status = Core::ERROR_GENERAL;
     packageList.clear();
@@ -1829,7 +1829,7 @@ Core::hresult AppManagerImplementation::fetchAppPackageList(std::vector<WPEFrame
             goto End;
         }
 
-        WPEFramework::Exchange::IPackageInstaller::Package package;
+        Thunder::Exchange::IPackageInstaller::Package package;
         while (packages->Next(package)) {
             packageList.push_back(package);
         }
@@ -1858,7 +1858,7 @@ Core::hresult AppManagerImplementation::GetInstalledApps(std::string& apps)
 {
     Core::hresult status = Core::ERROR_GENERAL;
     apps.clear();
-    std::vector<WPEFramework::Exchange::IPackageInstaller::Package> packageList;
+    std::vector<Thunder::Exchange::IPackageInstaller::Package> packageList;
     JsonArray installedAppsArray;
     char timeData[TIME_DATA_SIZE];
 
@@ -1913,7 +1913,7 @@ Core::hresult AppManagerImplementation::GetInstalledApps(std::string& apps)
 
 /* Method to check if the app is installed and fetch its installed version */
 void AppManagerImplementation::checkInstallDetails(const std::string& appId, bool& installed, std::string& version,
-    const std::vector<WPEFramework::Exchange::IPackageInstaller::Package>& packageList)
+    const std::vector<Thunder::Exchange::IPackageInstaller::Package>& packageList)
 {
     installed = false;
     version.clear();
@@ -1944,7 +1944,7 @@ Core::hresult AppManagerImplementation::IsInstalled(const std::string& appId, bo
     }
     else
     {
-        std::vector<WPEFramework::Exchange::IPackageInstaller::Package> packageList;
+        std::vector<Thunder::Exchange::IPackageInstaller::Package> packageList;
         status = fetchAppPackageList(packageList);
         if (status == Core::ERROR_NONE)
         {
@@ -2199,7 +2199,7 @@ bool AppManagerImplementation::checkInstallUninstallBlock(const std::string& app
     bool blocked = false;
     int duplicateCount = 0;
 
-    std::vector<WPEFramework::Exchange::IPackageInstaller::Package> packageList;
+    std::vector<Thunder::Exchange::IPackageInstaller::Package> packageList;
     Core::hresult status = fetchAppPackageList(packageList);
 
     if (status != Core::ERROR_NONE) {
@@ -2222,6 +2222,6 @@ bool AppManagerImplementation::checkInstallUninstallBlock(const std::string& app
     return blocked;
 }
 } /* namespace Plugin */
-} /* namespace WPEFramework */
+} /* namespace Thunder */
 
 

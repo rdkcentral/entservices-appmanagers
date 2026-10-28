@@ -25,7 +25,7 @@
 #include "tracing/Logging.h"
 #include <utility>
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
     class WindowManagerConnector
     {
@@ -74,4 +74,4 @@ namespace Plugin {
             class RuntimeManagerImplementation* mRuntimeManager;
     };
 } // namespace Plugin
-} // namespace WPEFramework
+} // namespace Thunder

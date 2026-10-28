@@ -22,7 +22,7 @@
 #include <string>
 #include <core/JSON.h>
 
-namespace WPEFramework
+namespace Thunder
 {
     namespace Plugin
     {
@@ -35,4 +35,4 @@ namespace WPEFramework
 	        virtual void onStateChangeEvent(JsonObject& data) = 0;
         };
     } /* namespace Plugin */
-} /* namespace WPEFramework */
+} /* namespace Thunder */

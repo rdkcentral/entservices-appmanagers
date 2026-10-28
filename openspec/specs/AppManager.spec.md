@@ -2,7 +2,7 @@
 
 ## Overview
 **Module Name**: AppManager
-**Type**: WPEFramework Plugin
+**Type**: Thunder Plugin
 **Purpose**: Primary API for application lifecycle management and orchestration on RDK-based devices
 
 ## Description
@@ -57,7 +57,7 @@ AppManagerImplementation
 
 ### Configuration
 - **Config File**: `AppManager.conf.in` / `AppManager.config`
-- **Callsign**: `org.rdk.AppManager` (WPEFramework/Thunder plugin)
+- **Callsign**: `org.rdk.AppManager` (Thunder/Thunder plugin)
 
 ## Data Flow
 ```
@@ -119,7 +119,7 @@ State Changes:
 ### System Libraries
 | Library | Version | Purpose | Optional |
 |---------|---------|---------|----------|
-| WPEFramework | Latest | Plugin framework | No |
+| Thunder | Latest | Plugin framework | No |
 | jsoncpp | - | JSON-RPC serialization | No |
 
 ### Internal Dependencies

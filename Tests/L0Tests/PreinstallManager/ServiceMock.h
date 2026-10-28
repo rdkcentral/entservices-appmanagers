@@ -51,23 +51,23 @@ using string = std::string;
 // ServiceMock — full PluginHost::IShell implementation for L0 tests
 // ─────────────────────────────────────────────────────────────────────────────
 
-class ServiceMock final : public WPEFramework::PluginHost::IShell {
+class ServiceMock final : public Thunder::PluginHost::IShell {
 public:
-    using InstantiateHandler = std::function<void*(const WPEFramework::RPC::Object&, const uint32_t, uint32_t&)>;
+    using InstantiateHandler = std::function<void*(const Thunder::RPC::Object&, const uint32_t, uint32_t&)>;
 
     struct Config {
-        explicit Config(WPEFramework::Exchange::IPackageInstaller* installer = nullptr)
+        explicit Config(Thunder::Exchange::IPackageInstaller* installer = nullptr)
             : installer(installer)
             , configLine("{\"appPreinstallDirectory\":\"/tmp/preinstall\"}")
         {
         }
 
-        WPEFramework::Exchange::IPackageInstaller* installer;
+        Thunder::Exchange::IPackageInstaller* installer;
         std::string                                configLine;
     };
 
     // ── Inner COMLinkMock ─────────────────────────────────────────────────────
-    class COMLinkMock final : public WPEFramework::PluginHost::IShell::ICOMLink {
+    class COMLinkMock final : public Thunder::PluginHost::IShell::ICOMLink {
     public:
         explicit COMLinkMock(ServiceMock& parent)
             : _parent(parent)
@@ -76,11 +76,11 @@ public:
 
         ~COMLinkMock() override = default;
 
-        void Register(WPEFramework::RPC::IRemoteConnection::INotification*) override
+        void Register(Thunder::RPC::IRemoteConnection::INotification*) override
         {
         }
 
-        void Unregister(const WPEFramework::RPC::IRemoteConnection::INotification*) override
+        void Unregister(const Thunder::RPC::IRemoteConnection::INotification*) override
         {
         }
 
@@ -92,12 +92,12 @@ public:
         {
         }
 
-        WPEFramework::RPC::IRemoteConnection* RemoteConnection(const uint32_t) override
+        Thunder::RPC::IRemoteConnection* RemoteConnection(const uint32_t) override
         {
             return nullptr;
         }
 
-        void* Instantiate(const WPEFramework::RPC::Object& object, const uint32_t interfaceId, uint32_t& connectionId) override
+        void* Instantiate(const Thunder::RPC::Object& object, const uint32_t interfaceId, uint32_t& connectionId) override
         {
             _parent.instantiateCalls++;
             if (_parent._instantiateHandler) {
@@ -145,8 +145,8 @@ public:
     {
         releaseCalls++;
         const uint32_t newCount = _refCount.fetch_sub(1, std::memory_order_acq_rel) - 1;
-        return (0U == newCount) ? WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED
-                                : WPEFramework::Core::ERROR_NONE;
+        return (0U == newCount) ? Thunder::Core::ERROR_DESTRUCTION_SUCCEEDED
+                                : Thunder::Core::ERROR_NONE;
     }
 
     // ── IShell surface — identity / paths ────────────────────────────────────
@@ -175,28 +175,28 @@ public:
 
     startup Startup() const override { return static_cast<startup>(0); }
 
-    WPEFramework::Core::hresult Activate(const reason)          override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Deactivate(const reason)        override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Unavailable(const reason)       override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult ConfigLine(const std::string&)  override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult SystemRootPath(const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Hibernate(const uint32_t)       override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Startup(const startup)          override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Resumed(const bool)             override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Metadata(std::string& info) const override
+    Thunder::Core::hresult Activate(const reason)          override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Deactivate(const reason)        override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Unavailable(const reason)       override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult ConfigLine(const std::string&)  override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult SystemRootPath(const std::string&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Hibernate(const uint32_t)       override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Startup(const startup)          override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Resumed(const bool)             override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Metadata(std::string& info) const override
     {
         info.clear();
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
     void EnableWebServer(const std::string&, const std::string&) override {}
     void DisableWebServer() override {}
 
-    WPEFramework::PluginHost::ISubSystem* SubSystems() override { return nullptr; }
+    Thunder::PluginHost::ISubSystem* SubSystems() override { return nullptr; }
 
-    uint32_t Submit(const uint32_t, const WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::IElement>&) override
+    uint32_t Submit(const uint32_t, const Thunder::Core::ProxyType<Thunder::Core::JSON::IElement>&) override
     {
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
     void Notify(const std::string&) override {}
@@ -205,28 +205,28 @@ public:
 
     void* QueryInterfaceByCallsign(const uint32_t id, const std::string& callsign) override
     {
-        if (WPEFramework::Exchange::IPackageInstaller::ID == id
+        if (Thunder::Exchange::IPackageInstaller::ID == id
             && "org.rdk.AppPackageManager" == callsign
             && nullptr != _cfg.installer)
         {
             _cfg.installer->AddRef();
-            return static_cast<WPEFramework::Exchange::IPackageInstaller*>(_cfg.installer);
+            return static_cast<Thunder::Exchange::IPackageInstaller*>(_cfg.installer);
         }
         return nullptr;
     }
 
-    void Register(WPEFramework::PluginHost::IPlugin::INotification*) override {}
-    void Unregister(WPEFramework::PluginHost::IPlugin::INotification*) override {}
+    void Register(Thunder::PluginHost::IPlugin::INotification*) override {}
+    void Unregister(Thunder::PluginHost::IPlugin::INotification*) override {}
 
     reason Reason() const override { return reason::REQUESTED; }
 
-    WPEFramework::RPC::IRemoteConnection* RemoteConnection(const uint32_t) const
+    Thunder::RPC::IRemoteConnection* RemoteConnection(const uint32_t) const
     {
         remoteConnectionCalls++;
         return nullptr;
     }
 
-    WPEFramework::PluginHost::IShell::ICOMLink* COMLink() override
+    Thunder::PluginHost::IShell::ICOMLink* COMLink() override
     {
         return &_comLink;
     }
@@ -245,14 +245,14 @@ private:
 // std::function handlers so each test can configure the fake independently.
 // ─────────────────────────────────────────────────────────────────────────────
 
-class FakePackageInstaller final : public WPEFramework::Exchange::IPackageInstaller {
+class FakePackageInstaller final : public Thunder::Exchange::IPackageInstaller {
 public:
-    using Package           = WPEFramework::Exchange::IPackageInstaller::Package;
-    using FailReason        = WPEFramework::Exchange::IPackageInstaller::FailReason;
-    using IPackageIterator  = WPEFramework::Exchange::IPackageInstaller::IPackageIterator;
-    using IKeyValueIterator = WPEFramework::Exchange::IPackageInstaller::IKeyValueIterator;
-    using INotification     = WPEFramework::Exchange::IPackageInstaller::INotification;
-    using InstallState      = WPEFramework::Exchange::IPackageInstaller::InstallState;
+    using Package           = Thunder::Exchange::IPackageInstaller::Package;
+    using FailReason        = Thunder::Exchange::IPackageInstaller::FailReason;
+    using IPackageIterator  = Thunder::Exchange::IPackageInstaller::IPackageIterator;
+    using IKeyValueIterator = Thunder::Exchange::IPackageInstaller::IKeyValueIterator;
+    using INotification     = Thunder::Exchange::IPackageInstaller::INotification;
+    using InstallState      = Thunder::Exchange::IPackageInstaller::InstallState;
 
     FakePackageInstaller()
         : _refCount(1)
@@ -271,22 +271,22 @@ public:
     uint32_t Release() const override
     {
         const uint32_t r = _refCount.fetch_sub(1, std::memory_order_acq_rel) - 1;
-        return (r == 0u) ? WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED
-                         : WPEFramework::Core::ERROR_NONE;
+        return (r == 0u) ? Thunder::Core::ERROR_DESTRUCTION_SUCCEEDED
+                         : Thunder::Core::ERROR_NONE;
     }
 
     void* QueryInterface(const uint32_t id) override
     {
-        if (id == WPEFramework::Exchange::IPackageInstaller::ID) {
+        if (id == Thunder::Exchange::IPackageInstaller::ID) {
             AddRef();
-            return static_cast<WPEFramework::Exchange::IPackageInstaller*>(this);
+            return static_cast<Thunder::Exchange::IPackageInstaller*>(this);
         }
         return nullptr;
     }
 
     // IPackageInstaller methods ─────────────────────────────────────────────
 
-    WPEFramework::Core::hresult GetConfigForPackage(const string& fileLocator,
+    Thunder::Core::hresult GetConfigForPackage(const string& fileLocator,
                                                      string& id,
                                                      string& version,
                                                      string& config) override
@@ -295,20 +295,20 @@ public:
         if (getConfigHandler) {
             return getConfigHandler(fileLocator, id, version, config);
         }
-        return WPEFramework::Core::ERROR_GENERAL;
+        return Thunder::Core::ERROR_GENERAL;
     }
 
-    WPEFramework::Core::hresult ListPackages(IPackageIterator*& packages) override
+    Thunder::Core::hresult ListPackages(IPackageIterator*& packages) override
     {
         listPackagesCallCount++;
         if (listPackagesHandler) {
             return listPackagesHandler(packages);
         }
         packages = nullptr;
-        return WPEFramework::Core::ERROR_GENERAL;
+        return Thunder::Core::ERROR_GENERAL;
     }
 
-    WPEFramework::Core::hresult Install(const string& packageId,
+    Thunder::Core::hresult Install(const string& packageId,
                                          const string& version,
                                          IKeyValueIterator* const& additionalMetadata,
                                          const string& fileLocator,
@@ -318,37 +318,37 @@ public:
         if (installHandler) {
             return installHandler(packageId, version, additionalMetadata, fileLocator, failReason);
         }
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult Uninstall(const string& /*packageId*/,
+    Thunder::Core::hresult Uninstall(const string& /*packageId*/,
                                            string& /*errorReason*/) override
     {
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult Config(const string& /*packageId*/,
+    Thunder::Core::hresult Config(const string& /*packageId*/,
                                         const string& /*version*/,
                                         string& /*configMetadata*/) override
     {
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult PackageState(const string& /*packageId*/,
+    Thunder::Core::hresult PackageState(const string& /*packageId*/,
                                               const string& /*version*/,
                                               InstallState& /*state*/) override
     {
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult Register(INotification* /*notification*/) override
+    Thunder::Core::hresult Register(INotification* /*notification*/) override
     {
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult Unregister(INotification* /*notification*/) override
+    Thunder::Core::hresult Unregister(INotification* /*notification*/) override
     {
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
     // ── Observability ─────────────────────────────────────────────────────────
@@ -358,13 +358,13 @@ public:
     std::atomic<uint32_t>         installCallCount    { 0 };
 
     // ── Configurable handlers ─────────────────────────────────────────────────
-    std::function<WPEFramework::Core::hresult(const string&, string&, string&, string&)>
+    std::function<Thunder::Core::hresult(const string&, string&, string&, string&)>
         getConfigHandler;
 
-    std::function<WPEFramework::Core::hresult(IPackageIterator*&)>
+    std::function<Thunder::Core::hresult(IPackageIterator*&)>
         listPackagesHandler;
 
-    std::function<WPEFramework::Core::hresult(const string&, const string&,
+    std::function<Thunder::Core::hresult(const string&, const string&,
                                                IKeyValueIterator* const&,
                                                const string&, FailReason&)>
         installHandler;
@@ -377,7 +377,7 @@ public:
 // ─────────────────────────────────────────────────────────────────────────────
 
 class FakePreinstallNotification final
-    : public WPEFramework::Exchange::IPreinstallManager::INotification {
+    : public Thunder::Exchange::IPreinstallManager::INotification {
 public:
     FakePreinstallNotification()
         : _refCount(1)
@@ -392,15 +392,15 @@ public:
     uint32_t Release() const override
     {
         const uint32_t r = _refCount.fetch_sub(1, std::memory_order_acq_rel) - 1;
-        return (r == 0u) ? WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED
-                         : WPEFramework::Core::ERROR_NONE;
+        return (r == 0u) ? Thunder::Core::ERROR_DESTRUCTION_SUCCEEDED
+                         : Thunder::Core::ERROR_NONE;
     }
 
     void* QueryInterface(const uint32_t id) override
     {
-        if (id == WPEFramework::Exchange::IPreinstallManager::INotification::ID) {
+        if (id == Thunder::Exchange::IPreinstallManager::INotification::ID) {
             AddRef();
-            return static_cast<WPEFramework::Exchange::IPreinstallManager::INotification*>(this);
+            return static_cast<Thunder::Exchange::IPreinstallManager::INotification*>(this);
         }
         return nullptr;
     }
@@ -426,16 +426,16 @@ public:
 // ─────────────────────────────────────────────────────────────────────────────
 // Helper: MakePackageIterator
 //
-// Creates a real WPEFramework IPackageIterator from a list of Package structs,
+// Creates a real Thunder IPackageIterator from a list of Package structs,
 // matching the pattern used in the production code and L1 tests.
 // ─────────────────────────────────────────────────────────────────────────────
-inline WPEFramework::Exchange::IPackageInstaller::IPackageIterator*
-MakePackageIterator(std::list<WPEFramework::Exchange::IPackageInstaller::Package> pkgs)
+inline Thunder::Exchange::IPackageInstaller::IPackageIterator*
+MakePackageIterator(std::list<Thunder::Exchange::IPackageInstaller::Package> pkgs)
 {
-    using IterType = WPEFramework::RPC::IteratorType<
-        WPEFramework::Exchange::IPackageInstaller::IPackageIterator>;
-    return WPEFramework::Core::Service<IterType>::Create<
-        WPEFramework::Exchange::IPackageInstaller::IPackageIterator>(pkgs);
+    using IterType = Thunder::RPC::IteratorType<
+        Thunder::Exchange::IPackageInstaller::IPackageIterator>;
+    return Thunder::Core::Service<IterType>::Create<
+        Thunder::Exchange::IPackageInstaller::IPackageIterator>(pkgs);
 }
 
 } // namespace L0Test

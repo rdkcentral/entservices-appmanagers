@@ -23,7 +23,7 @@
 #include <random>
 #include "WindowManagerCapabilities.h"
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
 WindowManagerConnector::WindowManagerConnector()
@@ -185,4 +185,4 @@ void WindowManagerConnector::onWindowManagerDisconnected(const std::string& clie
 }
 
 } // namespace Plugin
-} // namespace WPEFramework
+} // namespace Thunder

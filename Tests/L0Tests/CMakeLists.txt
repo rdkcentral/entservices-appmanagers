@@ -41,7 +41,7 @@ endif()
 set(PREFIX "${PREFIX}" CACHE STRING "Install prefix to locate Thunder artifacts" FORCE)
 message(STATUS "Using PREFIX='${PREFIX}'")
 
-# Detect Thunder/WPEFramework namespace
+# Detect Thunder namespace
 if(NOT DEFINED NAMESPACE OR "${NAMESPACE}" STREQUAL "")
     if(EXISTS "${PREFIX}/include/Thunder")
         set(NAMESPACE "Thunder")
@@ -49,7 +49,7 @@ if(NOT DEFINED NAMESPACE OR "${NAMESPACE}" STREQUAL "")
         set(NAMESPACE "WPEFramework")
     endif()
 endif()
-set(NAMESPACE "${NAMESPACE}" CACHE STRING "Thunder framework namespace (Thunder or WPEFramework)" FORCE)
+set(NAMESPACE "${NAMESPACE}" CACHE STRING "Thunder framework namespace (Thunder)" FORCE)
 string(TOLOWER "${NAMESPACE}" STORAGE_DIRECTORY)
 message(STATUS "Using NAMESPACE='${NAMESPACE}', STORAGE_DIRECTORY='${STORAGE_DIRECTORY}'")
 
@@ -350,7 +350,7 @@ if(PLUGIN_RUNTIME_MANAGER)
         target_compile_options(runtimemanager_l0test PRIVATE -Wall -Wextra -Wno-unused-parameter)
     endif()
 
-    # Suppress deprecation warnings from Thunder/WPEFramework headers
+    # Suppress deprecation warnings from Thunder headers
     target_compile_options(runtimemanager_l0test PRIVATE -Wno-error=deprecated-declarations)
 
     target_include_directories(runtimemanager_l0test PRIVATE
@@ -365,7 +365,7 @@ if(PLUGIN_RUNTIME_MANAGER)
         ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry
     )
 
-    # Mark WPEFramework/Thunder headers as SYSTEM to suppress external warnings
+    # Mark Thunder headers as SYSTEM to suppress external warnings
     target_include_directories(runtimemanager_l0test SYSTEM PRIVATE
         ${PREFIX}/include
         ${PREFIX}/include/${NAMESPACE}
@@ -408,7 +408,7 @@ if(PLUGIN_LIFECYCLE_MANAGER)
         target_compile_options(lifecyclemanager_l0test PRIVATE -Wall -Wextra -Wno-unused-parameter)
     endif()
 
-    # Suppress deprecation warnings from Thunder/WPEFramework headers
+    # Suppress deprecation warnings from Thunder headers
     target_compile_options(lifecyclemanager_l0test PRIVATE -Wno-error=deprecated-declarations)
 
     target_include_directories(lifecyclemanager_l0test PRIVATE
@@ -457,7 +457,7 @@ if(PLUGIN_RDK_WINDOW_MANAGER)
         target_compile_options(rdkwindowmanager_l0test PRIVATE -Wall -Wextra -Wno-unused-parameter)
     endif()
 
-    # Suppress deprecation warnings from Thunder/WPEFramework headers
+    # Suppress deprecation warnings from Thunder headers
     target_compile_options(rdkwindowmanager_l0test PRIVATE -Wno-error=deprecated-declarations)
 
     target_include_directories(rdkwindowmanager_l0test PRIVATE
@@ -471,7 +471,7 @@ if(PLUGIN_RDK_WINDOW_MANAGER)
         ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry
     )
 
-    # Mark WPEFramework/Thunder headers as SYSTEM to suppress external warnings
+    # Mark Thunder headers as SYSTEM to suppress external warnings
     target_include_directories(rdkwindowmanager_l0test SYSTEM PRIVATE
         ${PREFIX}/include
         ${PREFIX}/include/${NAMESPACE}
@@ -511,7 +511,7 @@ if(PLUGIN_DOWNLOAD_MANAGER)
         target_compile_options(downloadmanager_l0test PRIVATE -Wall -Wextra -Wno-unused-parameter)
     endif()
 
-    # Suppress deprecation warnings from Thunder/WPEFramework headers
+    # Suppress deprecation warnings from Thunder headers
     target_compile_options(downloadmanager_l0test PRIVATE -Wno-error=deprecated-declarations)
 
     target_include_directories(downloadmanager_l0test PRIVATE
@@ -561,7 +561,7 @@ if(PLUGIN_APP_STORAGE_MANAGER)
         target_compile_options(appstorage_l0test PRIVATE -Wall -Wextra -Wno-unused-parameter)
     endif()
 
-    # Suppress deprecation warnings from Thunder/WPEFramework headers
+    # Suppress deprecation warnings from Thunder headers
     target_compile_options(appstorage_l0test PRIVATE -Wno-error=deprecated-declarations)
 
     target_include_directories(appstorage_l0test PRIVATE
@@ -574,7 +574,7 @@ if(PLUGIN_APP_STORAGE_MANAGER)
         ${CMAKE_SOURCE_DIR}/../../helpers/Telemetry
     )
 
-    # Mark WPEFramework/Thunder headers as SYSTEM to suppress external warnings
+    # Mark/ Thunder headers as SYSTEM to suppress external warnings
     target_include_directories(appstorage_l0test SYSTEM PRIVATE
         ${PREFIX}/include
         ${PREFIX}/include/${NAMESPACE}
@@ -750,7 +750,7 @@ if(PLUGIN_APP_MANAGER)
 endif()
 
 # ---------------------------------------------------------------------------
-# Thunder / WPEFramework library discovery (shared for all targets)
+# Thunder  library discovery (shared for all targets)
 # ---------------------------------------------------------------------------
 find_library(THUNDER_CORE_LIB      NAMES ${NAMESPACE}Core      HINTS "${PREFIX}/lib")
 find_library(THUNDER_MESSAGING_LIB NAMES ${NAMESPACE}Messaging HINTS "${PREFIX}/lib")

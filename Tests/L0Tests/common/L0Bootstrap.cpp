@@ -4,7 +4,7 @@ namespace L0Test {
 
 namespace {
 
-class TestOnlyDispatcher final : public WPEFramework::Core::ThreadPool::IDispatcher {
+class TestOnlyDispatcher final : public Thunder::Core::ThreadPool::IDispatcher {
 public:
     TestOnlyDispatcher() = default;
     ~TestOnlyDispatcher() override = default;
@@ -22,7 +22,7 @@ public:
         // No-op for L0 tests.
     }
 
-    void Dispatch(WPEFramework::Core::IDispatch* job) override
+    void Dispatch(Thunder::Core::IDispatch* job) override
     {
         if (job != nullptr) {
             job->Dispatch();
@@ -32,7 +32,7 @@ public:
 
 static bool g_ownsWorkerPool = false;
 static TestOnlyDispatcher* g_dispatcher = nullptr;
-static WPEFramework::Core::WorkerPool* g_workerPool = nullptr;
+static Thunder::Core::WorkerPool* g_workerPool = nullptr;
 
 } // namespace
 
@@ -40,15 +40,15 @@ static WPEFramework::Core::WorkerPool* g_workerPool = nullptr;
 void L0Init()
 {
     /** Initialize a minimal Core::WorkerPool if none is assigned yet. */
-    if (WPEFramework::Core::IWorkerPool::IsAvailable() == false) {
+    if (Thunder::Core::IWorkerPool::IsAvailable() == false) {
         const uint8_t threadCount = 2;
         const uint32_t stackSize = 0;  // default stack size
         const uint32_t queueSize = 64; // sufficient for L0 tests
 
         g_dispatcher = new TestOnlyDispatcher();
-        g_workerPool = new WPEFramework::Core::WorkerPool(threadCount, stackSize, queueSize, g_dispatcher);
+        g_workerPool = new Thunder::Core::WorkerPool(threadCount, stackSize, queueSize, g_dispatcher);
 
-        WPEFramework::Core::IWorkerPool::Assign(g_workerPool);
+        Thunder::Core::IWorkerPool::Assign(g_workerPool);
         g_workerPool->Run();
 
         g_ownsWorkerPool = true;
@@ -67,7 +67,7 @@ void L0Shutdown()
             g_workerPool->Stop();
         }
 
-        WPEFramework::Core::IWorkerPool::Assign(nullptr);
+        Thunder::Core::IWorkerPool::Assign(nullptr);
 
         delete g_workerPool;
         g_workerPool = nullptr;
@@ -78,7 +78,7 @@ void L0Shutdown()
         g_ownsWorkerPool = false;
     }
 
-    WPEFramework::Core::Singleton::Dispose();
+    Thunder::Core::Singleton::Dispose();
 }
 
 L0BootstrapGuard::L0BootstrapGuard()

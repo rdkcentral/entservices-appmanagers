@@ -20,7 +20,7 @@
 #include "PackageManagerTelemetryReporting.h"
 #include "UtilsLogging.h"
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
 PackageManagerTelemetryReporting::PackageManagerTelemetryReporting()
@@ -120,4 +120,4 @@ void PackageManagerTelemetryReporting::recordAndPublishTelemetryData(const std::
 }
 
 } // namespace Plugin
-} // namespace WPEFramework
+} // namespace Thunder

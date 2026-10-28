@@ -30,10 +30,10 @@
  * It is intentionally distinct from the retry-backoff seed (waitTime). */
 #define DOWNLOADER_IDLE_WAIT_SECONDS        (60)
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
-    RDKAM_DEFINE_TELEMETRY_CLIENT(WPEFramework::Plugin::DownloadManagerTelemetryReporting, "downloadManagerBootstrapTime")
+    RDKAM_DEFINE_TELEMETRY_CLIENT(Thunder::Plugin::DownloadManagerTelemetryReporting, "downloadManagerBootstrapTime")
 
     SERVICE_REGISTRATION(DownloadManagerImplementation, 1, 0);
 
@@ -633,4 +633,4 @@ namespace Plugin {
     }
 
 } // namespace Plugin
-} // namespace WPEFramework
+} // namespace Thunder

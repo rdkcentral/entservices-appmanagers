@@ -24,7 +24,7 @@
 #include "WindowManagerHandler.h"
 #include "IEventHandler.h"
 
-namespace WPEFramework
+namespace Thunder
 {
     namespace Plugin
     {
@@ -57,4 +57,4 @@ namespace WPEFramework
                 IEventHandler* mEventHandler;
         };
     } /* namespace Plugin */
-} /* namespace WPEFramework */
+} /* namespace Thunder */

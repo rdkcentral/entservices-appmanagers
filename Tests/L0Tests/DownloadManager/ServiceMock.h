@@ -42,7 +42,7 @@ using string = std::string;
 // success and the ERROR_UNAVAILABLE code paths.
 // ─────────────────────────────────────────────────────────────────────────────
 
-class FakeSubSystem final : public WPEFramework::PluginHost::ISubSystem {
+class FakeSubSystem final : public Thunder::PluginHost::ISubSystem {
 public:
     explicit FakeSubSystem(bool internetActive = true)
         : _refCount(1)
@@ -60,16 +60,16 @@ public:
         const uint32_t r = _refCount.fetch_sub(1, std::memory_order_acq_rel) - 1;
         if (0U == r) {
             delete this;
-            return WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED;
+            return Thunder::Core::ERROR_DESTRUCTION_SUCCEEDED;
         }
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
     void* QueryInterface(const uint32_t /*id*/) override { return nullptr; }
 
     bool IsActive(const subsystem type) const override
     {
-        if (WPEFramework::PluginHost::ISubSystem::INTERNET == type) {
+        if (Thunder::PluginHost::ISubSystem::INTERNET == type) {
             return _internetActive;
         }
         return false;
@@ -78,10 +78,10 @@ public:
     void SetInternetActive(bool v) { _internetActive = v; }
 
     // Pure-virtual stubs
-    void Register(WPEFramework::PluginHost::ISubSystem::INotification*) override {}
-    void Unregister(WPEFramework::PluginHost::ISubSystem::INotification*) override {}
-    void Set(const WPEFramework::PluginHost::ISubSystem::subsystem, WPEFramework::Core::IUnknown*) override {}
-    const WPEFramework::Core::IUnknown* Get(const WPEFramework::PluginHost::ISubSystem::subsystem) const override { return nullptr; }
+    void Register(Thunder::PluginHost::ISubSystem::INotification*) override {}
+    void Unregister(Thunder::PluginHost::ISubSystem::INotification*) override {}
+    void Set(const Thunder::PluginHost::ISubSystem::subsystem, Thunder::Core::IUnknown*) override {}
+    const Thunder::Core::IUnknown* Get(const Thunder::PluginHost::ISubSystem::subsystem) const override { return nullptr; }
     string BuildTreeHash() const override { return ""; }
     string Version() const override { return ""; }
 
@@ -99,11 +99,11 @@ public:
 //   - Observability counters: addRefCalls, releaseCalls, instantiateCalls
 // ─────────────────────────────────────────────────────────────────────────────
 
-class ServiceMock final : public WPEFramework::PluginHost::IShell,
+class ServiceMock final : public Thunder::PluginHost::IShell,
                           public L0Test::L0ServiceMock {
 public:
     using InstantiateHandler =
-        std::function<void*(const WPEFramework::RPC::Object&, const uint32_t, uint32_t&)>;
+        std::function<void*(const Thunder::RPC::Object&, const uint32_t, uint32_t&)>;
 
     // Configures which sub-systems are injected and what the config line contains.
     struct Config {
@@ -113,18 +113,18 @@ public:
     };
 
     // ── Nested COMLinkMock ────────────────────────────────────────────────────
-    class COMLinkMock final : public WPEFramework::PluginHost::IShell::ICOMLink {
+    class COMLinkMock final : public Thunder::PluginHost::IShell::ICOMLink {
     public:
         explicit COMLinkMock(ServiceMock& parent) : _parent(parent) {}
         ~COMLinkMock() override = default;
 
-        void Register(WPEFramework::RPC::IRemoteConnection::INotification*) override {}
-        void Unregister(const WPEFramework::RPC::IRemoteConnection::INotification*) override {}
+        void Register(Thunder::RPC::IRemoteConnection::INotification*) override {}
+        void Unregister(const Thunder::RPC::IRemoteConnection::INotification*) override {}
         void Register(INotification*) override {}
         void Unregister(INotification*) override {}
-        WPEFramework::RPC::IRemoteConnection* RemoteConnection(const uint32_t) override { return nullptr; }
+        Thunder::RPC::IRemoteConnection* RemoteConnection(const uint32_t) override { return nullptr; }
 
-        void* Instantiate(const WPEFramework::RPC::Object& object,
+        void* Instantiate(const Thunder::RPC::Object& object,
                           const uint32_t interfaceId,
                           uint32_t& connectionId) override
         {
@@ -183,8 +183,8 @@ public:
     {
         releaseCalls++;
         const uint32_t newCount = _refCount.fetch_sub(1, std::memory_order_acq_rel) - 1;
-        return (0U == newCount) ? WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED
-                                : WPEFramework::Core::ERROR_NONE;
+        return (0U == newCount) ? Thunder::Core::ERROR_DESTRUCTION_SUCCEEDED
+                                : Thunder::Core::ERROR_NONE;
     }
 
     void* QueryInterface(const uint32_t /*id*/) override { return nullptr; }
@@ -215,43 +215,43 @@ public:
     startup Startup() const override { return static_cast<startup>(0); }
     reason Reason() const override { return reason::REQUESTED; }
 
-    WPEFramework::PluginHost::ISubSystem* SubSystems() override
+    Thunder::PluginHost::ISubSystem* SubSystems() override
     {
         return _subSystem;
     }
 
-    WPEFramework::Core::hresult Activate(const reason) override   { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Deactivate(const reason) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Unavailable(const reason) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult ConfigLine(const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult SystemRootPath(const std::string&) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Hibernate(const uint32_t) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Startup(const startup) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Resumed(const bool) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Metadata(std::string& info) const override
+    Thunder::Core::hresult Activate(const reason) override   { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Deactivate(const reason) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Unavailable(const reason) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult ConfigLine(const std::string&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult SystemRootPath(const std::string&) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Hibernate(const uint32_t) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Startup(const startup) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Resumed(const bool) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Metadata(std::string& info) const override
     {
         info.clear();
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
     void EnableWebServer(const std::string&, const std::string&) override {}
     void DisableWebServer() override {}
 
     uint32_t Submit(const uint32_t,
-                    const WPEFramework::Core::ProxyType<WPEFramework::Core::JSON::IElement>&) override
+                    const Thunder::Core::ProxyType<Thunder::Core::JSON::IElement>&) override
     {
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
     void Notify(const std::string&) override {}
 
-    void Register(WPEFramework::PluginHost::IPlugin::INotification*) override {}
-    void Unregister(WPEFramework::PluginHost::IPlugin::INotification*) override {}
+    void Register(Thunder::PluginHost::IPlugin::INotification*) override {}
+    void Unregister(Thunder::PluginHost::IPlugin::INotification*) override {}
 
     void* QueryInterfaceByCallsign(const uint32_t id, const std::string& callsign) override
     {
         // Delegate to L0ServiceMock registry
-        WPEFramework::Core::IUnknown* iface =
+        Thunder::Core::IUnknown* iface =
             L0Test::L0ServiceMock::QueryInterfaceByCallsign(callsign, id);
         if (nullptr != iface) {
             iface->AddRef();
@@ -260,13 +260,13 @@ public:
         return nullptr;
     }
 
-    WPEFramework::RPC::IRemoteConnection* RemoteConnection(const uint32_t id)
+    Thunder::RPC::IRemoteConnection* RemoteConnection(const uint32_t id)
     {
         remoteConnectionCalls++;
         return nullptr;
     }
 
-    WPEFramework::PluginHost::IShell::ICOMLink* COMLink() override
+    Thunder::PluginHost::IShell::ICOMLink* COMLink() override
     {
         return &_comLink;
     }
@@ -291,7 +291,7 @@ private:
 // Root<IDownloadManager>() needs to succeed without a real out-of-process impl.
 // ─────────────────────────────────────────────────────────────────────────────
 
-class FakeDownloadManagerImpl final : public WPEFramework::Exchange::IDownloadManager {
+class FakeDownloadManagerImpl final : public Thunder::Exchange::IDownloadManager {
 public:
     FakeDownloadManagerImpl()
         : _refCount(1)
@@ -313,64 +313,64 @@ public:
         if (0U == r) {
             // Intentionally do not delete this fake. Lifecycle tests keep a raw
             // pointer to inspect counters after plugin deinitialization.
-            return WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED;
+            return Thunder::Core::ERROR_DESTRUCTION_SUCCEEDED;
         }
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
     void* QueryInterface(const uint32_t id) override
     {
-        if (WPEFramework::Exchange::IDownloadManager::ID == id) {
+        if (Thunder::Exchange::IDownloadManager::ID == id) {
             AddRef();
-            return static_cast<WPEFramework::Exchange::IDownloadManager*>(this);
+            return static_cast<Thunder::Exchange::IDownloadManager*>(this);
         }
         return nullptr;
     }
 
-    WPEFramework::Core::hresult Register(INotification* /*notification*/) override
+    Thunder::Core::hresult Register(INotification* /*notification*/) override
     {
         registerCalls++;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult Unregister(INotification* /*notification*/) override
+    Thunder::Core::hresult Unregister(INotification* /*notification*/) override
     {
         unregisterCalls++;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult Initialize(WPEFramework::PluginHost::IShell* /*service*/) override
+    Thunder::Core::hresult Initialize(Thunder::PluginHost::IShell* /*service*/) override
     {
         initializeCalls++;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult Deinitialize(WPEFramework::PluginHost::IShell* /*service*/) override
+    Thunder::Core::hresult Deinitialize(Thunder::PluginHost::IShell* /*service*/) override
     {
         deinitializeCalls++;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult Download(const string& /*url*/,
+    Thunder::Core::hresult Download(const string& /*url*/,
                                           const Options& /*options*/,
                                           string& downloadId) override
     {
         downloadId = "2001";
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
-    WPEFramework::Core::hresult Pause(const string& /*downloadId*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Resume(const string& /*downloadId*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Cancel(const string& /*downloadId*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Delete(const string& /*fileLocator*/) override { return WPEFramework::Core::ERROR_NONE; }
-    WPEFramework::Core::hresult Progress(const string& /*downloadId*/, uint8_t& percent) override
+    Thunder::Core::hresult Pause(const string& /*downloadId*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Resume(const string& /*downloadId*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Cancel(const string& /*downloadId*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Delete(const string& /*fileLocator*/) override { return Thunder::Core::ERROR_NONE; }
+    Thunder::Core::hresult Progress(const string& /*downloadId*/, uint8_t& percent) override
     {
         percent = 55;
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
-    WPEFramework::Core::hresult RateLimit(const string& /*downloadId*/, const uint32_t& /*limit*/) override
+    Thunder::Core::hresult RateLimit(const string& /*downloadId*/, const uint32_t& /*limit*/) override
     {
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
     mutable std::atomic<uint32_t> _refCount;
@@ -387,7 +387,7 @@ public:
 // ─────────────────────────────────────────────────────────────────────────────
 
 class FakeDownloadNotification final
-    : public WPEFramework::Exchange::IDownloadManager::INotification
+    : public Thunder::Exchange::IDownloadManager::INotification
 {
 public:
     FakeDownloadNotification()
@@ -406,16 +406,16 @@ public:
         const uint32_t r = _refCount.fetch_sub(1, std::memory_order_acq_rel) - 1;
         if (0U == r) {
             delete this;
-            return WPEFramework::Core::ERROR_DESTRUCTION_SUCCEEDED;
+            return Thunder::Core::ERROR_DESTRUCTION_SUCCEEDED;
         }
-        return WPEFramework::Core::ERROR_NONE;
+        return Thunder::Core::ERROR_NONE;
     }
 
     void* QueryInterface(const uint32_t id) override
     {
-        if (WPEFramework::Exchange::IDownloadManager::INotification::ID == id) {
+        if (Thunder::Exchange::IDownloadManager::INotification::ID == id) {
             AddRef();
-            return static_cast<WPEFramework::Exchange::IDownloadManager::INotification*>(this);
+            return static_cast<Thunder::Exchange::IDownloadManager::INotification*>(this);
         }
         return nullptr;
     }

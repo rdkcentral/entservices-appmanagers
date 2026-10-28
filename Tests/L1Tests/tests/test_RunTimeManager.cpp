@@ -37,7 +37,7 @@ namespace {
     return "/tmp/" + prefix + "_" + std::to_string(getpid()) + "_" + std::to_string(counter.fetch_add(1)) + ".bin";
 }
 
-std::string RuntimeConfigurationPayload(const WPEFramework::Plugin::RuntimeConfiguration& config)
+std::string RuntimeConfigurationPayload(const Thunder::Plugin::RuntimeConfiguration& config)
 {
     Json::Value payload(Json::objectValue);
     payload["dial"] = config.dial;
@@ -98,7 +98,7 @@ std::string RuntimeConfigurationPayload(const WPEFramework::Plugin::RuntimeConfi
 #define TEST_APP_CONTAINER_ID            "com.sky.as.apps_youTube_youTube"
 #define TEST_APP_CONTAINER_ID_UNREGISTERED "com.sky.as.apps_youTube"
 
-using namespace WPEFramework;
+using namespace Thunder;
 using ::testing::NiceMock;
 
 class RuntimeManagerNotificationProbe : public Exchange::IRuntimeManager::INotification {
@@ -306,13 +306,13 @@ TEST_F(RuntimeManagerTest, TerminateMethods)
                 descriptor = 100;
                 success = true;
                 errorReason = "No Error";
-                return WPEFramework::Core::ERROR_NONE;
+                return Thunder::Core::ERROR_NONE;
             }));
 
     ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
         .WillByDefault(::testing::Return(Core::ERROR_NONE));
 
-    WPEFramework::Plugin::RuntimeConfiguration runtimeConfig;
+    Thunder::Plugin::RuntimeConfiguration runtimeConfig;
     runtimeConfig.envVariables = { "XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main" };
     runtimeConfig.appPath = "/var/runTimeManager";
     runtimeConfig.runtimePath = "/tmp/runTimeManager";
@@ -334,7 +334,7 @@ TEST_F(RuntimeManagerTest, TerminateMethods)
             [&](const string&, bool force, bool& success, string& errorReason) {
                 success = true;
                 errorReason = "No Error";
-                return WPEFramework::Core::ERROR_NONE;
+                return Thunder::Core::ERROR_NONE;
             }));
 
     EXPECT_EQ(Core::ERROR_NONE, interface->Terminate(appInstanceId));
@@ -363,7 +363,7 @@ TEST_F(RuntimeManagerTest, TerminateFailsWithEmptyAppInstanceId)
             [&](const string&, bool force, bool& success, string& errorReason) {
                 success = true;
                 errorReason = "No Error";
-                return WPEFramework::Core::ERROR_NONE;
+                return Thunder::Core::ERROR_NONE;
           }));
 
     EXPECT_EQ(Core::ERROR_GENERAL, interface->Terminate(appInstanceId));
@@ -514,13 +514,13 @@ TEST_F(RuntimeManagerTest, HibernateMethods)
                 descriptor = 100;
                 success = true;
                 errorReason = "No Error";
-                return WPEFramework::Core::ERROR_NONE;
+                return Thunder::Core::ERROR_NONE;
             }));
 
     ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
         .WillByDefault(::testing::Return(Core::ERROR_NONE));
 
-    WPEFramework::Plugin::RuntimeConfiguration runtimeConfig;
+    Thunder::Plugin::RuntimeConfiguration runtimeConfig;
     runtimeConfig.envVariables = { "XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main" };
     runtimeConfig.appPath = "/var/runTimeManager";
     runtimeConfig.runtimePath = "/tmp/runTimeManager";
@@ -535,7 +535,7 @@ TEST_F(RuntimeManagerTest, HibernateMethods)
             [&](const string&, const string&, bool& success, string& errorReason) {
                 success = true;
                 errorReason = "No Error";
-                return WPEFramework::Core::ERROR_NONE;
+                return Thunder::Core::ERROR_NONE;
           }));
 
     EXPECT_EQ(Core::ERROR_NONE, interface->Hibernate(appInstanceId));
@@ -564,7 +564,7 @@ TEST_F(RuntimeManagerTest, HibernateFailsWithEmptyAppInstanceId)
             [&](const string&, const string&, bool& success, string& errorReason) {
                 success = true;
                 errorReason = "No Error";
-                return WPEFramework::Core::ERROR_NONE;
+                return Thunder::Core::ERROR_NONE;
           }));
 
     EXPECT_EQ(Core::ERROR_GENERAL, interface->Hibernate(appInstanceId));
@@ -595,13 +595,13 @@ TEST_F(RuntimeManagerTest, KillMethods)
                 descriptor = 100;
                 success = true;
                 errorReason = "No Error";
-                return WPEFramework::Core::ERROR_NONE;
+                return Thunder::Core::ERROR_NONE;
             }));
 
     ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
         .WillByDefault(::testing::Return(Core::ERROR_NONE));
 
-    WPEFramework::Plugin::RuntimeConfiguration runtimeConfig;
+    Thunder::Plugin::RuntimeConfiguration runtimeConfig;
     runtimeConfig.envVariables = { "XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main" };
     runtimeConfig.appPath = "/var/runTimeManager";
     runtimeConfig.runtimePath = "/tmp/runTimeManager";
@@ -616,7 +616,7 @@ TEST_F(RuntimeManagerTest, KillMethods)
             [&](const string&, bool force, bool& success, string& errorReason) {
                 success = true;
                 errorReason = "No Error";
-                return WPEFramework::Core::ERROR_NONE;
+                return Thunder::Core::ERROR_NONE;
           }));
 
     EXPECT_EQ(Core::ERROR_NONE, interface->Kill(appInstanceId));
@@ -644,7 +644,7 @@ TEST_F(RuntimeManagerTest, KillFailsWithEmptyAppInstanceId)
             [&](const string&, bool force, bool& success, string& errorReason) {
                 success = true;
                 errorReason = "No Error";
-                return WPEFramework::Core::ERROR_NONE;
+                return Thunder::Core::ERROR_NONE;
           }));
 
     EXPECT_EQ(Core::ERROR_GENERAL, interface->Kill(appInstanceId));
@@ -675,13 +675,13 @@ TEST_F(RuntimeManagerTest, AnnotateMethods)
                 descriptor = 100;
                 success = true;
                 errorReason = "No Error";
-                return WPEFramework::Core::ERROR_NONE;
+                return Thunder::Core::ERROR_NONE;
             }));
 
     ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
         .WillByDefault(::testing::Return(Core::ERROR_NONE));
 
-    WPEFramework::Plugin::RuntimeConfiguration runtimeConfig;
+    Thunder::Plugin::RuntimeConfiguration runtimeConfig;
     runtimeConfig.envVariables = { "XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main" };
     runtimeConfig.appPath = "/var/runTimeManager";
     runtimeConfig.runtimePath = "/tmp/runTimeManager";
@@ -696,7 +696,7 @@ TEST_F(RuntimeManagerTest, AnnotateMethods)
             [&](const string& , const string& , const string& , bool& success , string& errorReason ){
                 success = true;
                 errorReason = "No Error";
-                return WPEFramework::Core::ERROR_NONE;
+                return Thunder::Core::ERROR_NONE;
           }));
 
     EXPECT_EQ(Core::ERROR_NONE, interface->Annotate(appInstanceId, appKey, appValue));
@@ -757,7 +757,7 @@ TEST_F(RuntimeManagerTest, AnnotateFailsWithEmptyAppInstanceId)
             [&](const string& , const string& , const string& , bool& success , string& errorReason ){
                 success = true;
                 errorReason = "No Error";
-                return WPEFramework::Core::ERROR_NONE;
+                return Thunder::Core::ERROR_NONE;
           }));
 
     EXPECT_EQ(Core::ERROR_GENERAL, interface->Annotate(appInstanceId, appKey, appValue));
@@ -789,13 +789,13 @@ TEST_F(RuntimeManagerTest, GetInfoMethods)
                 descriptor = 100;
                 success = true;
                 errorReason = "No Error";
-                return WPEFramework::Core::ERROR_NONE;
+                return Thunder::Core::ERROR_NONE;
             }));
 
     ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
         .WillByDefault(::testing::Return(Core::ERROR_NONE));
 
-    WPEFramework::Plugin::RuntimeConfiguration runtimeConfig;
+    Thunder::Plugin::RuntimeConfiguration runtimeConfig;
     runtimeConfig.envVariables = { "XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main" };
     runtimeConfig.appPath = "/var/runTimeManager";
     runtimeConfig.runtimePath = "/tmp/runTimeManager";
@@ -811,7 +811,7 @@ TEST_F(RuntimeManagerTest, GetInfoMethods)
                 info = expectedAppInfo;
                 success = true;
                 errorReason = "No Error";
-                return WPEFramework::Core::ERROR_NONE;
+                return Thunder::Core::ERROR_NONE;
           }));
 
     EXPECT_EQ(Core::ERROR_NONE, interface->GetInfo(appInstanceId, appInfo));
@@ -884,7 +884,7 @@ TEST_F(RuntimeManagerTest, GetInfoFailsWithEmptyAppInstanceId)
                 info = expectedAppInfo;
                 success = true;
                 errorReason = "No Error";
-                return WPEFramework::Core::ERROR_NONE;
+                return Thunder::Core::ERROR_NONE;
           }));
 
     EXPECT_EQ(Core::ERROR_GENERAL, interface->GetInfo(appInstanceId, appInfo));
@@ -906,11 +906,11 @@ TEST_F(RuntimeManagerTest, RunMethods)
     std::vector<std::string> pathsList = {"/tmp", "/opt"};
     std::vector<std::string> debugSettingsList = {"MIL", "INFO"};
 
-    auto portsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IValueIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IValueIterator>(portList);
-    auto pathsListIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(pathsList);
-    auto debugSettingsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
+    auto portsIterator = Core::Service<RPC::IteratorType<Thunder::Exchange::IRuntimeManager::IValueIterator>>::Create<Thunder::Exchange::IRuntimeManager::IValueIterator>(portList);
+    auto pathsListIterator = Core::Service<RPC::IteratorType<Thunder::Exchange::IRuntimeManager::IStringIterator>>::Create<Thunder::Exchange::IRuntimeManager::IStringIterator>(pathsList);
+    auto debugSettingsIterator = Core::Service<RPC::IteratorType<Thunder::Exchange::IRuntimeManager::IStringIterator>>::Create<Thunder::Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
 
-    WPEFramework::Plugin::RuntimeConfiguration runtimeConfig;
+    Thunder::Plugin::RuntimeConfiguration runtimeConfig;
     runtimeConfig.envVariables = { "XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main" };
     runtimeConfig.appPath = "/var/runTimeManager";
     runtimeConfig.runtimePath = "/tmp/runTimeManager";
@@ -926,7 +926,7 @@ TEST_F(RuntimeManagerTest, RunMethods)
                 descriptor = 100;
                 success = true;
                 errorReason = "No Error";
-                return WPEFramework::Core::ERROR_NONE;
+                return Thunder::Core::ERROR_NONE;
           }));
 
     ON_CALL(*mWindowManagerMock, CreateDisplay(CREATE_DISPLAY_WILDCARDS))
@@ -953,11 +953,11 @@ TEST_F(RuntimeManagerTest, RunWithoutCreateDisplay)
     std::vector<std::string> pathsList = {"/tmp", "/opt"};
     std::vector<std::string> debugSettingsList = {"MIL", "INFO"};
 
-    auto portsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IValueIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IValueIterator>(portList);
-    auto pathsListIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(pathsList);
-    auto debugSettingsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
+    auto portsIterator = Core::Service<RPC::IteratorType<Thunder::Exchange::IRuntimeManager::IValueIterator>>::Create<Thunder::Exchange::IRuntimeManager::IValueIterator>(portList);
+    auto pathsListIterator = Core::Service<RPC::IteratorType<Thunder::Exchange::IRuntimeManager::IStringIterator>>::Create<Thunder::Exchange::IRuntimeManager::IStringIterator>(pathsList);
+    auto debugSettingsIterator = Core::Service<RPC::IteratorType<Thunder::Exchange::IRuntimeManager::IStringIterator>>::Create<Thunder::Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
 
-    WPEFramework::Plugin::RuntimeConfiguration runtimeConfig;
+    Thunder::Plugin::RuntimeConfiguration runtimeConfig;
     runtimeConfig.envVariables = { "XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main" };
     runtimeConfig.appPath = "/var/runTimeManager";
     runtimeConfig.runtimePath = "/tmp/runTimeManager";
@@ -973,7 +973,7 @@ TEST_F(RuntimeManagerTest, RunWithoutCreateDisplay)
                 descriptor = 100;
                 success = true;
                 errorReason = "No Error";
-                return WPEFramework::Core::ERROR_NONE;
+                return Thunder::Core::ERROR_NONE;
           }));
 
     ON_CALL(*mWindowManagerMock, CreateDisplay(CREATE_DISPLAY_WILDCARDS))
@@ -998,11 +998,11 @@ TEST_F(RuntimeManagerTest, RunCreateFkpsMounts)
     std::vector<std::string> pathsList = {"/tmp", "/opt"};
     std::vector<std::string> debugSettingsList = {"MIL", "INFO"};
 
-    auto portsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IValueIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IValueIterator>(portList);
-    auto pathsListIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(pathsList);
-    auto debugSettingsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
+    auto portsIterator = Core::Service<RPC::IteratorType<Thunder::Exchange::IRuntimeManager::IValueIterator>>::Create<Thunder::Exchange::IRuntimeManager::IValueIterator>(portList);
+    auto pathsListIterator = Core::Service<RPC::IteratorType<Thunder::Exchange::IRuntimeManager::IStringIterator>>::Create<Thunder::Exchange::IRuntimeManager::IStringIterator>(pathsList);
+    auto debugSettingsIterator = Core::Service<RPC::IteratorType<Thunder::Exchange::IRuntimeManager::IStringIterator>>::Create<Thunder::Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
 
-    WPEFramework::Plugin::RuntimeConfiguration runtimeConfig;
+    Thunder::Plugin::RuntimeConfiguration runtimeConfig;
     runtimeConfig.envVariables = { "XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main" };
     runtimeConfig.appPath = "/var/runTimeManager";
     runtimeConfig.runtimePath = "/tmp/runTimeManager";
@@ -1032,7 +1032,7 @@ TEST_F(RuntimeManagerTest, RunCreateFkpsMounts)
                 descriptor = 100;
                 success = true;
                 errorReason = "No Error";
-                return WPEFramework::Core::ERROR_NONE;
+                return Thunder::Core::ERROR_NONE;
           }));
 
     ON_CALL(*mWindowManagerMock, CreateDisplay(CREATE_DISPLAY_WILDCARDS))
@@ -1057,9 +1057,9 @@ TEST_F(RuntimeManagerTest, RunCreateExtraMountsFromCapabilities)
     std::vector<std::string> pathsList = {"/tmp", "/opt"};
     std::vector<std::string> debugSettingsList = {"MIL", "INFO"};
 
-    auto portsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IValueIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IValueIterator>(portList);
-    auto pathsListIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(pathsList);
-    auto debugSettingsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
+    auto portsIterator = Core::Service<RPC::IteratorType<Thunder::Exchange::IRuntimeManager::IValueIterator>>::Create<Thunder::Exchange::IRuntimeManager::IValueIterator>(portList);
+    auto pathsListIterator = Core::Service<RPC::IteratorType<Thunder::Exchange::IRuntimeManager::IStringIterator>>::Create<Thunder::Exchange::IRuntimeManager::IStringIterator>(pathsList);
+    auto debugSettingsIterator = Core::Service<RPC::IteratorType<Thunder::Exchange::IRuntimeManager::IStringIterator>>::Create<Thunder::Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
 
     const std::string extraMountSource = "/tmp/l1-extra-mount-source.json";
     const std::string extraMountDestination = "/tmp/l1-extra-mount-destination.json";
@@ -1069,7 +1069,7 @@ TEST_F(RuntimeManagerTest, RunCreateExtraMountsFromCapabilities)
         mountSourceFile << "{}";
     }
 
-    WPEFramework::Plugin::RuntimeConfiguration runtimeConfig;
+    Thunder::Plugin::RuntimeConfiguration runtimeConfig;
     runtimeConfig.envVariables = { "XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main" };
     runtimeConfig.appPath = "/var/runTimeManager";
     runtimeConfig.runtimePath = "/tmp/runTimeManager";
@@ -1088,7 +1088,7 @@ TEST_F(RuntimeManagerTest, RunCreateExtraMountsFromCapabilities)
                 descriptor = 100;
                 success = true;
                 errorReason = "No Error";
-                return WPEFramework::Core::ERROR_NONE;
+                return Thunder::Core::ERROR_NONE;
           }));
 
     ON_CALL(*mWindowManagerMock, CreateDisplay(::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_, ::testing::_))
@@ -1149,11 +1149,11 @@ TEST_F(RuntimeManagerTest, RunReadfromAIConfigFile)
     std::vector<std::string> pathsList = { "/tmp" };
     std::vector<std::string> debugSettingsList = { "INFO" };
 
-    auto portsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IValueIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IValueIterator>(portList);
-    auto pathsListIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(pathsList);
-    auto debugSettingsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
+    auto portsIterator = Core::Service<RPC::IteratorType<Thunder::Exchange::IRuntimeManager::IValueIterator>>::Create<Thunder::Exchange::IRuntimeManager::IValueIterator>(portList);
+    auto pathsListIterator = Core::Service<RPC::IteratorType<Thunder::Exchange::IRuntimeManager::IStringIterator>>::Create<Thunder::Exchange::IRuntimeManager::IStringIterator>(pathsList);
+    auto debugSettingsIterator = Core::Service<RPC::IteratorType<Thunder::Exchange::IRuntimeManager::IStringIterator>>::Create<Thunder::Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
 
-    WPEFramework::Plugin::RuntimeConfiguration runtimeConfig;
+    Thunder::Plugin::RuntimeConfiguration runtimeConfig;
     runtimeConfig.envVariables = { "XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=wst-test" };
     runtimeConfig.appPath = "/var/testApp";
     runtimeConfig.runtimePath = "/tmp/testApp";
@@ -1199,11 +1199,11 @@ TEST_F(RuntimeManagerTest, StartContainerFailure) {
     std::vector<std::string> pathsList = {"/tmp", "/opt"};
     std::vector<std::string> debugSettingsList = {"MIL", "INFO"};
 
-    auto portsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IValueIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IValueIterator>(portList);
-    auto pathsListIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(pathsList);
-    auto debugSettingsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
+    auto portsIterator = Core::Service<RPC::IteratorType<Thunder::Exchange::IRuntimeManager::IValueIterator>>::Create<Thunder::Exchange::IRuntimeManager::IValueIterator>(portList);
+    auto pathsListIterator = Core::Service<RPC::IteratorType<Thunder::Exchange::IRuntimeManager::IStringIterator>>::Create<Thunder::Exchange::IRuntimeManager::IStringIterator>(pathsList);
+    auto debugSettingsIterator = Core::Service<RPC::IteratorType<Thunder::Exchange::IRuntimeManager::IStringIterator>>::Create<Thunder::Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
 
-    WPEFramework::Plugin::RuntimeConfiguration runtimeConfig;
+    Thunder::Plugin::RuntimeConfiguration runtimeConfig;
     runtimeConfig.envVariables = { "XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main" };
     runtimeConfig.appPath = "/var/runTimeManager";
     runtimeConfig.runtimePath = "/tmp/runTimeManager";
@@ -1249,7 +1249,7 @@ TEST_F(RuntimeManagerTest, InvalidRuntimeConfigurationHasNoOCIDisplaySideEffects
  */
 TEST_F(RuntimeManagerTest, RunWithEmptyContainerId) {
 
-    WPEFramework::Plugin::RuntimeConfiguration runtimeConfig;
+    Thunder::Plugin::RuntimeConfiguration runtimeConfig;
     runtimeConfig.envVariables = { "XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main" };
     runtimeConfig.appPath = "/valid/path";
     runtimeConfig.runtimePath = "/valid/runtime";
@@ -1281,7 +1281,7 @@ TEST_F(RuntimeManagerTest, RunWithDuplicateContainerId) {
                 return Core::ERROR_GENERAL;
             }));
 
-    WPEFramework::Plugin::RuntimeConfiguration runtimeConfig;
+    Thunder::Plugin::RuntimeConfiguration runtimeConfig;
     runtimeConfig.envVariables = { "XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main" };
     runtimeConfig.appPath = "/valid/path";
     runtimeConfig.runtimePath = "/valid/runtime";
@@ -1312,7 +1312,7 @@ TEST_F(RuntimeManagerTest, RunWithTimeout) {
                 return Core::ERROR_GENERAL;
             }));
 
-    WPEFramework::Plugin::RuntimeConfiguration runtimeConfig;
+    Thunder::Plugin::RuntimeConfiguration runtimeConfig;
     runtimeConfig.envVariables = { "XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main" };
     runtimeConfig.appPath = "/valid/path";
     runtimeConfig.runtimePath = "/valid/runtime";
@@ -1337,11 +1337,11 @@ TEST_F(RuntimeManagerTest, RunIncludesDefaultEthanLogLevelsWhenRuntimeLogLevelsP
     std::vector<std::string> pathsList = {"/tmp", "/opt"};
     std::vector<std::string> debugSettingsList = {"MIL", "INFO"};
 
-    auto portsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IValueIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IValueIterator>(portList);
-    auto pathsListIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(pathsList);
-    auto debugSettingsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
+    auto portsIterator = Core::Service<RPC::IteratorType<Thunder::Exchange::IRuntimeManager::IValueIterator>>::Create<Thunder::Exchange::IRuntimeManager::IValueIterator>(portList);
+    auto pathsListIterator = Core::Service<RPC::IteratorType<Thunder::Exchange::IRuntimeManager::IStringIterator>>::Create<Thunder::Exchange::IRuntimeManager::IStringIterator>(pathsList);
+    auto debugSettingsIterator = Core::Service<RPC::IteratorType<Thunder::Exchange::IRuntimeManager::IStringIterator>>::Create<Thunder::Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
 
-    WPEFramework::Plugin::RuntimeConfiguration runtimeConfig;
+    Thunder::Plugin::RuntimeConfiguration runtimeConfig;
     runtimeConfig.envVariables = { "XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main" };
     runtimeConfig.appPath = "/var/runTimeManager";
     runtimeConfig.runtimePath = "/tmp/runTimeManager";
@@ -1361,7 +1361,7 @@ TEST_F(RuntimeManagerTest, RunIncludesDefaultEthanLogLevelsWhenRuntimeLogLevelsP
                 descriptor = 100;
                 success = true;
                 errorReason = "No Error";
-                return WPEFramework::Core::ERROR_NONE;
+                return Thunder::Core::ERROR_NONE;
             }));
 
     ON_CALL(*mWindowManagerMock,
@@ -1390,11 +1390,11 @@ TEST_F(RuntimeManagerTest, WakeMethods)
     std::vector<std::string> pathsList = {"/tmp", "/opt"};
     std::vector<std::string> debugSettingsList = {"MIL", "INFO"};
 
-    auto portsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IValueIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IValueIterator>(portList);
-    auto pathsListIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(pathsList);
-    auto debugSettingsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
+    auto portsIterator = Core::Service<RPC::IteratorType<Thunder::Exchange::IRuntimeManager::IValueIterator>>::Create<Thunder::Exchange::IRuntimeManager::IValueIterator>(portList);
+    auto pathsListIterator = Core::Service<RPC::IteratorType<Thunder::Exchange::IRuntimeManager::IStringIterator>>::Create<Thunder::Exchange::IRuntimeManager::IStringIterator>(pathsList);
+    auto debugSettingsIterator = Core::Service<RPC::IteratorType<Thunder::Exchange::IRuntimeManager::IStringIterator>>::Create<Thunder::Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
 
-    WPEFramework::Plugin::RuntimeConfiguration runtimeConfig;
+    Thunder::Plugin::RuntimeConfiguration runtimeConfig;
     runtimeConfig.envVariables = { "XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main" };
     runtimeConfig.appPath = "/var/runTimeManager";
     runtimeConfig.runtimePath = "/tmp/runTimeManager";
@@ -1410,7 +1410,7 @@ TEST_F(RuntimeManagerTest, WakeMethods)
                 descriptor = 100;
                 success = true;
                 errorReason = "No Error";
-                return WPEFramework::Core::ERROR_NONE;
+                return Thunder::Core::ERROR_NONE;
           }));
 
     EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, RuntimeConfigurationPayload(runtimeConfig)));
@@ -1421,7 +1421,7 @@ TEST_F(RuntimeManagerTest, WakeMethods)
             [&](const string&, const string&, bool& success, string& errorReason) {
                 success = true;
                 errorReason = "No Error";
-                return WPEFramework::Core::ERROR_NONE;
+                return Thunder::Core::ERROR_NONE;
           }));
 
     EXPECT_EQ(Core::ERROR_NONE, interface->Hibernate(appInstanceId));
@@ -1432,10 +1432,10 @@ TEST_F(RuntimeManagerTest, WakeMethods)
             [&](const string&, bool& success, string& errorReason) {
                 success = true;
                 errorReason = "No Error";
-                return WPEFramework::Core::ERROR_NONE;
+                return Thunder::Core::ERROR_NONE;
           }));
 
-    EXPECT_EQ(Core::ERROR_NONE, interface->Wake(appInstanceId, WPEFramework::Exchange::IRuntimeManager::RUNTIME_STATE_RUNNING));
+    EXPECT_EQ(Core::ERROR_NONE, interface->Wake(appInstanceId, Thunder::Exchange::IRuntimeManager::RUNTIME_STATE_RUNNING));
 
     releaseResources();
 }
@@ -1455,11 +1455,11 @@ TEST_F(RuntimeManagerTest, WakeOnRunningNonHibernateContainer)
     std::vector<std::string> pathsList = {"/tmp", "/opt"};
     std::vector<std::string> debugSettingsList = {"MIL", "INFO"};
 
-    auto portsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IValueIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IValueIterator>(portList);
-    auto pathsListIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(pathsList);
-    auto debugSettingsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
+    auto portsIterator = Core::Service<RPC::IteratorType<Thunder::Exchange::IRuntimeManager::IValueIterator>>::Create<Thunder::Exchange::IRuntimeManager::IValueIterator>(portList);
+    auto pathsListIterator = Core::Service<RPC::IteratorType<Thunder::Exchange::IRuntimeManager::IStringIterator>>::Create<Thunder::Exchange::IRuntimeManager::IStringIterator>(pathsList);
+    auto debugSettingsIterator = Core::Service<RPC::IteratorType<Thunder::Exchange::IRuntimeManager::IStringIterator>>::Create<Thunder::Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
 
-    WPEFramework::Plugin::RuntimeConfiguration runtimeConfig;
+    Thunder::Plugin::RuntimeConfiguration runtimeConfig;
     runtimeConfig.envVariables = { "XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main" };
     runtimeConfig.appPath = "/var/runTimeManager";
     runtimeConfig.runtimePath = "/tmp/runTimeManager";
@@ -1475,13 +1475,13 @@ TEST_F(RuntimeManagerTest, WakeOnRunningNonHibernateContainer)
                 descriptor = 100;
                 success = true;
                 errorReason = "No Error";
-                return WPEFramework::Core::ERROR_NONE;
+                return Thunder::Core::ERROR_NONE;
           }));
 
     EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, RuntimeConfigurationPayload(runtimeConfig)));
 
 
-    EXPECT_EQ(Core::ERROR_GENERAL, interface->Wake(appInstanceId, WPEFramework::Exchange::IRuntimeManager::RUNTIME_STATE_RUNNING));
+    EXPECT_EQ(Core::ERROR_GENERAL, interface->Wake(appInstanceId, Thunder::Exchange::IRuntimeManager::RUNTIME_STATE_RUNNING));
 
     releaseResources();
 }
@@ -1501,11 +1501,11 @@ TEST_F(RuntimeManagerTest, WakeWithGeneralError)
     std::vector<std::string> pathsList = {"/tmp", "/opt"};
     std::vector<std::string> debugSettingsList = {"MIL", "INFO"};
 
-    auto portsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IValueIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IValueIterator>(portList);
-    auto pathsListIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(pathsList);
-    auto debugSettingsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
+    auto portsIterator = Core::Service<RPC::IteratorType<Thunder::Exchange::IRuntimeManager::IValueIterator>>::Create<Thunder::Exchange::IRuntimeManager::IValueIterator>(portList);
+    auto pathsListIterator = Core::Service<RPC::IteratorType<Thunder::Exchange::IRuntimeManager::IStringIterator>>::Create<Thunder::Exchange::IRuntimeManager::IStringIterator>(pathsList);
+    auto debugSettingsIterator = Core::Service<RPC::IteratorType<Thunder::Exchange::IRuntimeManager::IStringIterator>>::Create<Thunder::Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
 
-    WPEFramework::Plugin::RuntimeConfiguration runtimeConfig;
+    Thunder::Plugin::RuntimeConfiguration runtimeConfig;
     runtimeConfig.envVariables = { "XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main" };
     runtimeConfig.appPath = "/var/runTimeManager";
     runtimeConfig.runtimePath = "/tmp/runTimeManager";
@@ -1521,7 +1521,7 @@ TEST_F(RuntimeManagerTest, WakeWithGeneralError)
                 descriptor = 100;
                 success = true;
                 errorReason = "No Error";
-                return WPEFramework::Core::ERROR_NONE;
+                return Thunder::Core::ERROR_NONE;
           }));
 
     EXPECT_EQ(Core::ERROR_NONE, interface->Run(appInstanceId, appInstanceId, 10, 10, portsIterator, pathsListIterator, debugSettingsIterator, RuntimeConfigurationPayload(runtimeConfig)));
@@ -1532,7 +1532,7 @@ TEST_F(RuntimeManagerTest, WakeWithGeneralError)
             [&](const string&, const string&, bool& success, string& errorReason) {
                 success = true;
                 errorReason = "No Error";
-                return WPEFramework::Core::ERROR_NONE;
+                return Thunder::Core::ERROR_NONE;
           }));
 
     EXPECT_EQ(Core::ERROR_NONE, interface->Hibernate(appInstanceId));
@@ -1543,10 +1543,10 @@ TEST_F(RuntimeManagerTest, WakeWithGeneralError)
             [&](const string&, bool& success, string& errorReason) {
                 success = false;
                 errorReason = "Genral Error";
-                return WPEFramework::Core::ERROR_GENERAL;
+                return Thunder::Core::ERROR_GENERAL;
           }));
 
-    EXPECT_EQ(Core::ERROR_GENERAL, interface->Wake(appInstanceId, WPEFramework::Exchange::IRuntimeManager::RUNTIME_STATE_RUNNING));
+    EXPECT_EQ(Core::ERROR_GENERAL, interface->Wake(appInstanceId, Thunder::Exchange::IRuntimeManager::RUNTIME_STATE_RUNNING));
 
     releaseResources();
 }
@@ -1563,7 +1563,7 @@ TEST_F(RuntimeManagerTest, WakeOnNonRunningContainer)
     string appInstanceId("youTube");
     EXPECT_EQ(true, createResources());
 
-    EXPECT_EQ(Core::ERROR_GENERAL, interface->Wake(appInstanceId, WPEFramework::Exchange::IRuntimeManager::RUNTIME_STATE_RUNNING));
+    EXPECT_EQ(Core::ERROR_GENERAL, interface->Wake(appInstanceId, Thunder::Exchange::IRuntimeManager::RUNTIME_STATE_RUNNING));
 
     releaseResources();
 }
@@ -1581,7 +1581,7 @@ TEST_F(RuntimeManagerTest, WakeFailsWithEmptyAppInstanceId)
 
     EXPECT_EQ(true, createResources());
 
-    EXPECT_EQ(Core::ERROR_GENERAL, interface->Wake(appInstanceId, WPEFramework::Exchange::IRuntimeManager::RUNTIME_STATE_RUNNING));
+    EXPECT_EQ(Core::ERROR_GENERAL, interface->Wake(appInstanceId, Thunder::Exchange::IRuntimeManager::RUNTIME_STATE_RUNNING));
 
     releaseResources();
 }
@@ -1601,11 +1601,11 @@ TEST_F(RuntimeManagerTest, SuspendResumeMethods)
     std::vector<std::string> pathsList = {"/tmp", "/opt"};
     std::vector<std::string> debugSettingsList = {"MIL", "INFO"};
 
-    auto portsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IValueIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IValueIterator>(portList);
-    auto pathsListIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(pathsList);
-    auto debugSettingsIterator = Core::Service<RPC::IteratorType<WPEFramework::Exchange::IRuntimeManager::IStringIterator>>::Create<WPEFramework::Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
+    auto portsIterator = Core::Service<RPC::IteratorType<Thunder::Exchange::IRuntimeManager::IValueIterator>>::Create<Thunder::Exchange::IRuntimeManager::IValueIterator>(portList);
+    auto pathsListIterator = Core::Service<RPC::IteratorType<Thunder::Exchange::IRuntimeManager::IStringIterator>>::Create<Thunder::Exchange::IRuntimeManager::IStringIterator>(pathsList);
+    auto debugSettingsIterator = Core::Service<RPC::IteratorType<Thunder::Exchange::IRuntimeManager::IStringIterator>>::Create<Thunder::Exchange::IRuntimeManager::IStringIterator>(debugSettingsList);
 
-    WPEFramework::Plugin::RuntimeConfiguration runtimeConfig;
+    Thunder::Plugin::RuntimeConfiguration runtimeConfig;
     runtimeConfig.envVariables = { "XDG_RUNTIME_DIR=/tmp", "WAYLAND_DISPLAY=main" };
     runtimeConfig.appPath = "/var/runTimeManager";
     runtimeConfig.runtimePath = "/tmp/runTimeManager";
@@ -1621,7 +1621,7 @@ TEST_F(RuntimeManagerTest, SuspendResumeMethods)
                 descriptor = 100;
                 success = true;
                 errorReason = "No Error";
-                return WPEFramework::Core::ERROR_NONE;
+                return Thunder::Core::ERROR_NONE;
           }));
 
     ON_CALL(*mWindowManagerMock, CreateDisplay(CREATE_DISPLAY_WILDCARDS))
@@ -1981,9 +1981,9 @@ TEST_F(RuntimeManagerTest, UnmountMethods)
 #ifdef ENABLE_RIALTO
 
 /* Helper: create a minimal AIConfiguration for standalone DobbySpecGenerator tests. */
-static WPEFramework::Plugin::AIConfiguration& GetL1AIConfigurationFixture()
+static Thunder::Plugin::AIConfiguration& GetL1AIConfigurationFixture()
 {
-    static WPEFramework::Plugin::AIConfiguration cfg;
+    static Thunder::Plugin::AIConfiguration cfg;
     static bool initialized = false;
     if (!initialized) {
         cfg.initialize();
@@ -2003,10 +2003,10 @@ TEST(DobbySpecGeneratorRialtoTest, GstRegistryEnvInjectedWhenRialtoInactive)
         f << "fake gst registry";
     }
 
-    WPEFramework::Plugin::DobbySpecGenerator gen(GetL1AIConfigurationFixture());
+    Thunder::Plugin::DobbySpecGenerator gen(GetL1AIConfigurationFixture());
     gen.setGstreamerRegistryPath(tmpPath);
 
-    WPEFramework::Plugin::ApplicationConfiguration appCfg;
+    Thunder::Plugin::ApplicationConfiguration appCfg;
     appCfg.mAppId              = "com.sky.app.youtube";
     appCfg.mAppInstanceId      = "youTube";
     appCfg.mUserId             = 30001u;
@@ -2014,7 +2014,7 @@ TEST(DobbySpecGeneratorRialtoTest, GstRegistryEnvInjectedWhenRialtoInactive)
     appCfg.mWesterosSocketPath = "/tmp/westeros";
     appCfg.mRialtoSocketPath   = ""; // Rialto not active
 
-    WPEFramework::Plugin::RuntimeConfiguration rtCfg;
+    Thunder::Plugin::RuntimeConfiguration rtCfg;
     rtCfg.command           = "SkyBrowserLauncher";
     rtCfg.envVariables      = { "XDG_RUNTIME_DIR=/tmp" };
     rtCfg.systemMemoryLimit = 128 * 1024 * 1024;
@@ -2040,10 +2040,10 @@ TEST(DobbySpecGeneratorRialtoTest, GstRegistryMountedWhenRialtoInactive)
         f << "fake gst registry";
     }
 
-    WPEFramework::Plugin::DobbySpecGenerator gen(GetL1AIConfigurationFixture());
+    Thunder::Plugin::DobbySpecGenerator gen(GetL1AIConfigurationFixture());
     gen.setGstreamerRegistryPath(tmpPath);
 
-    WPEFramework::Plugin::ApplicationConfiguration appCfg;
+    Thunder::Plugin::ApplicationConfiguration appCfg;
     appCfg.mAppId              = "com.sky.app.youtube";
     appCfg.mAppInstanceId      = "youTube";
     appCfg.mUserId             = 30001u;
@@ -2051,7 +2051,7 @@ TEST(DobbySpecGeneratorRialtoTest, GstRegistryMountedWhenRialtoInactive)
     appCfg.mWesterosSocketPath = "/tmp/westeros";
     appCfg.mRialtoSocketPath   = ""; // Rialto not active
 
-    WPEFramework::Plugin::RuntimeConfiguration rtCfg;
+    Thunder::Plugin::RuntimeConfiguration rtCfg;
     rtCfg.command           = "SkyBrowserLauncher";
     rtCfg.envVariables      = { "XDG_RUNTIME_DIR=/tmp" };
     rtCfg.systemMemoryLimit = 128 * 1024 * 1024;
@@ -2069,9 +2069,9 @@ TEST(DobbySpecGeneratorRialtoTest, GstRegistryMountedWhenRialtoInactive)
  */
 TEST(DobbySpecGeneratorRialtoTest, RialtoSocketEnvInjectedWhenRialtoActive)
 {
-    WPEFramework::Plugin::DobbySpecGenerator gen(GetL1AIConfigurationFixture());
+    Thunder::Plugin::DobbySpecGenerator gen(GetL1AIConfigurationFixture());
 
-    WPEFramework::Plugin::ApplicationConfiguration appCfg;
+    Thunder::Plugin::ApplicationConfiguration appCfg;
     appCfg.mAppId              = "amazonPrime";
     appCfg.mAppInstanceId      = "amazonPrime";
     appCfg.mUserId             = 30001u;
@@ -2079,7 +2079,7 @@ TEST(DobbySpecGeneratorRialtoTest, RialtoSocketEnvInjectedWhenRialtoActive)
     appCfg.mWesterosSocketPath = "/tmp/westeros";
     appCfg.mRialtoSocketPath   = "/tmp/amazonPrime"; // Rialto active
 
-    WPEFramework::Plugin::RuntimeConfiguration rtCfg;
+    Thunder::Plugin::RuntimeConfiguration rtCfg;
     rtCfg.command           = "run-app.sh";
     rtCfg.envVariables      = { "XDG_RUNTIME_DIR=/tmp" };
     rtCfg.systemMemoryLimit = 128 * 1024 * 1024;
@@ -2101,10 +2101,10 @@ TEST(DobbySpecGeneratorRialtoTest, GstRegistryEnvAbsentWhenRialtoActive)
         f << "fake gst registry";
     }
 
-    WPEFramework::Plugin::DobbySpecGenerator gen(GetL1AIConfigurationFixture());
+    Thunder::Plugin::DobbySpecGenerator gen(GetL1AIConfigurationFixture());
     gen.setGstreamerRegistryPath(tmpPath); // Would normally cause GST_REGISTRY injection
 
-    WPEFramework::Plugin::ApplicationConfiguration appCfg;
+    Thunder::Plugin::ApplicationConfiguration appCfg;
     appCfg.mAppId              = "amazonPrime";
     appCfg.mAppInstanceId      = "amazonPrime";
     appCfg.mUserId             = 30001u;
@@ -2112,7 +2112,7 @@ TEST(DobbySpecGeneratorRialtoTest, GstRegistryEnvAbsentWhenRialtoActive)
     appCfg.mWesterosSocketPath = "/tmp/westeros";
     appCfg.mRialtoSocketPath   = "/tmp/amazonPrime"; // Rialto active — must suppress GST_REGISTRY
 
-    WPEFramework::Plugin::RuntimeConfiguration rtCfg;
+    Thunder::Plugin::RuntimeConfiguration rtCfg;
     rtCfg.command           = "run-app.sh";
     rtCfg.envVariables      = { "XDG_RUNTIME_DIR=/tmp" };
     rtCfg.systemMemoryLimit = 128 * 1024 * 1024;
@@ -2138,10 +2138,10 @@ TEST(DobbySpecGeneratorRialtoTest, GstRegistryMountAbsentWhenRialtoActive)
         f << "fake gst registry";
     }
 
-    WPEFramework::Plugin::DobbySpecGenerator gen(GetL1AIConfigurationFixture());
+    Thunder::Plugin::DobbySpecGenerator gen(GetL1AIConfigurationFixture());
     gen.setGstreamerRegistryPath(tmpPath);
 
-    WPEFramework::Plugin::ApplicationConfiguration appCfg;
+    Thunder::Plugin::ApplicationConfiguration appCfg;
     appCfg.mAppId              = "amazonPrime";
     appCfg.mAppInstanceId      = "amazonPrime";
     appCfg.mUserId             = 30001u;
@@ -2149,7 +2149,7 @@ TEST(DobbySpecGeneratorRialtoTest, GstRegistryMountAbsentWhenRialtoActive)
     appCfg.mWesterosSocketPath = "/tmp/westeros";
     appCfg.mRialtoSocketPath   = "/tmp/amazonPrime"; // Rialto active
 
-    WPEFramework::Plugin::RuntimeConfiguration rtCfg;
+    Thunder::Plugin::RuntimeConfiguration rtCfg;
     rtCfg.command           = "run-app.sh";
     rtCfg.envVariables      = { "XDG_RUNTIME_DIR=/tmp" };
     rtCfg.systemMemoryLimit = 128 * 1024 * 1024;
@@ -2170,9 +2170,9 @@ TEST(DobbySpecGeneratorRialtoTest, RialtoPrefixedSocketPathUsedInSpec)
     const std::string rialtoSocketPath = "/tmp/rialto-5";   // simulates Rialto auto-allocation
     const std::string bareAppIdPath    = "/tmp/amazonPrime";
 
-    WPEFramework::Plugin::DobbySpecGenerator gen(GetL1AIConfigurationFixture());
+    Thunder::Plugin::DobbySpecGenerator gen(GetL1AIConfigurationFixture());
 
-    WPEFramework::Plugin::ApplicationConfiguration appCfg;
+    Thunder::Plugin::ApplicationConfiguration appCfg;
     appCfg.mAppId              = "amazonPrime";
     appCfg.mAppInstanceId      = "amazonPrime";
     appCfg.mUserId             = 30001u;
@@ -2180,7 +2180,7 @@ TEST(DobbySpecGeneratorRialtoTest, RialtoPrefixedSocketPathUsedInSpec)
     appCfg.mWesterosSocketPath = "/tmp/westeros";
     appCfg.mRialtoSocketPath   = rialtoSocketPath;
 
-    WPEFramework::Plugin::RuntimeConfiguration rtCfg;
+    Thunder::Plugin::RuntimeConfiguration rtCfg;
     rtCfg.command           = "run-app.sh";
     rtCfg.envVariables      = { "XDG_RUNTIME_DIR=/tmp" };
     rtCfg.systemMemoryLimit = 128 * 1024 * 1024;

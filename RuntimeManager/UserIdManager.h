@@ -8,7 +8,7 @@
 #include <string>
 #include <memory>
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
     class UserIdManager
@@ -28,6 +28,6 @@ namespace Plugin {
     };
 
 } // namespace Plugin
-} // namespace WPEFramework
+} // namespace Thunder
 
 #endif // !defined(USERIDMANAGER_H)

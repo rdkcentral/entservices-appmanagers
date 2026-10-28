@@ -22,7 +22,7 @@
 #include <gmock/gmock.h>
 #include "ISubSystem.h"
 
-using namespace WPEFramework::PluginHost;
+using namespace Thunder::PluginHost;
 using namespace std;
 
 class SubSystemMock : public ISubSystem {
@@ -32,8 +32,8 @@ public:
 
     MOCK_METHOD(void, Register, (ISubSystem::INotification* notification), (override));
     MOCK_METHOD(void, Unregister, (ISubSystem::INotification* notification), (override));
-    MOCK_METHOD(void, Set, (const subsystem type, WPEFramework::Core::IUnknown* information), (override));
-    MOCK_METHOD(const WPEFramework::Core::IUnknown*, Get, (const subsystem type), (const, override));
+    MOCK_METHOD(void, Set, (const subsystem type, Thunder::Core::IUnknown* information), (override));
+    MOCK_METHOD(const Thunder::Core::IUnknown*, Get, (const subsystem type), (const, override));
     MOCK_METHOD(bool, IsActive, (const subsystem type), (const, override));
     MOCK_METHOD(string, BuildTreeHash, (), (const, override));
     MOCK_METHOD(string, Version, (), (const, override));

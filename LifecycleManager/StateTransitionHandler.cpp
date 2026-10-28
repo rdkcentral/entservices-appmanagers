@@ -30,7 +30,7 @@
 #include <exception>
 #include "UtilsLogging.h"
 
-namespace WPEFramework
+namespace Thunder
 {
     namespace Plugin
     {
@@ -240,4 +240,4 @@ namespace WPEFramework
 	}
 
     } /* namespace Plugin */
-} /* namespace WPEFramework */
+} /* namespace Thunder */

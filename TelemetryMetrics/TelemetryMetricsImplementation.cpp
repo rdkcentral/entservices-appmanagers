@@ -23,7 +23,7 @@
 #include "TelemetryFilters.h"
 
 
-namespace WPEFramework {
+namespace Thunder {
 namespace Plugin {
 
     SERVICE_REGISTRATION(TelemetryMetricsImplementation, 1, 0);
@@ -259,4 +259,4 @@ namespace Plugin {
         return status;
     }
 } /* namespace Plugin */
-} /* namespace WPEFramework */
+} /* namespace Thunder */

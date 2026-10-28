@@ -1,7 +1,7 @@
 # Gateway CMakeLists.txt
 # Builds Gateway as a static library with NetFilter support
 
-# Gateway needs WPEFramework dependencies
+# Gateway needs Thunder dependencies
 find_package(${NAMESPACE}Plugins REQUIRED)
 find_package(CompileSettingsDebug CONFIG REQUIRED)
 
@@ -67,7 +67,7 @@ set_target_properties(Gateway PROPERTIES
     CXX_STANDARD 11
     CXX_STANDARD_REQUIRED YES)
 
-# Link WPEFramework dependencies
+# Link Thunder dependencies
 target_link_libraries(Gateway PUBLIC
     CompileSettingsDebug::CompileSettingsDebug
     ${NAMESPACE}Plugins::${NAMESPACE}Plugins)

@@ -14,7 +14,7 @@
 #include "../RuntimeManager/ralf/RalfSupport.h"
 #endif // RALF_PACKAGE_SUPPORT_ENABLED
 
-namespace WPEFramework
+namespace Thunder
 {
     namespace Plugin
     {
@@ -247,7 +247,7 @@ namespace WPEFramework
             {
                 LOGERR("mService is null");
             }
-            else if (nullptr == (mPersistentStoreRemoteStoreObject = mService->QueryInterfaceByCallsign<WPEFramework::Exchange::IStore2>("org.rdk.PersistentStore")))
+            else if (nullptr == (mPersistentStoreRemoteStoreObject = mService->QueryInterfaceByCallsign<Thunder::Exchange::IStore2>("org.rdk.PersistentStore")))
             {
                 LOGERR("mPersistentStoreRemoteStoreObject is null \n");
             }
