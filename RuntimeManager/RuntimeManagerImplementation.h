@@ -76,10 +76,16 @@ namespace WPEFramework
                             , runtimeAppPortal()
                             , runtimeConfigFile()
                             , hibernation()
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED
+                            , ralfEnabled(true)
+#endif
                         {
                             Add(_T("runtimeAppPortal"), &runtimeAppPortal);
                             Add(_T("runtimeConfigFile"), &runtimeConfigFile);
                             Add(_T("hibernate"), &hibernation);
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED
+                            Add(_T("ralfEnabled"), &ralfEnabled);
+#endif
                         }
                         ~Configuration() = default;
 
@@ -92,6 +98,9 @@ namespace WPEFramework
                         Core::JSON::String runtimeAppPortal;
                         Core::JSON::String runtimeConfigFile;
                         Hibernation hibernation;
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED
+                        Core::JSON::Boolean ralfEnabled;
+#endif
                 };
 
             public:
@@ -258,6 +267,9 @@ namespace WPEFramework
                 std::shared_ptr<RialtoConnector> mRialtoConnector;
 #endif
                 std::string mRuntimeConfigFile;
+#ifdef RALF_PACKAGE_SUPPORT_ENABLED
+                bool mRalfEnabled;
+#endif
                 AIConfiguration* mAIConfiguration;
                 std::string mGstRegistrySourcePath;  ///< path to pre-built GST registry (empty if disabled/failed)
 

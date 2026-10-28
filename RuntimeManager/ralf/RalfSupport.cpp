@@ -337,12 +337,19 @@ namespace ralf
             if (!JsonFromFile(packages.front().first, runtimeConfig) ||
                 !runtimeConfig[PACKAGE_TYPE].isString() ||
                 PKG_TYPE_RUNTIME != runtimeConfig[PACKAGE_TYPE].asString() ||
-                !runtimeConfig[ENTRY_POINT].isString())
+                (runtimeConfig.isMember(ENTRY_POINT) && !runtimeConfig[ENTRY_POINT].isString()))
             {
                 return false;
             }
-            runtimeMountPath = packages.front().second;
-            executable = runtimeConfig[ENTRY_POINT].asString();
+            executable = runtimeConfig[ENTRY_POINT].isString() ? runtimeConfig[ENTRY_POINT].asString() : "";
+            if (!executable.empty())
+            {
+                runtimeMountPath = packages.front().second;
+            }
+            else
+            {
+                executable = appConfig[ENTRY_POINT].asString();
+            }
         }
         else
         {
